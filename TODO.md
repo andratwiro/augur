@@ -22,17 +22,33 @@ surfaces what's next. Check items off (`- [x]`) as they land; add new ones freel
         city switcher + copy-paste catalog (`components.md`). Transcribed from the
         real `@citizenlab/cl2-component-library`.
 
-## Review site — Foundations + Pages reference tabs
-A top-right tab nav on the Cloudflare review site: **Prototypes · Foundations ·
-Pages**. Prototypes stays the main page (`/`); Foundations + Pages are a glossary
-for designers to review and copy from, so we never rebuild GoVocal twice. Decided:
-faithful-but-flagged contrast (keep brand pink `#ef0071`; audit flags it). Build
-order: Foundations + tabs first, then Pages one page at a time.
-- [ ] **Foundations tab** — the "Storybook": a gallery rendering every govocal-ui
-      primitive in every state, across city themes. Source: `skills/govocal-ui/gallery.html`.
-- [ ] **3-tab nav in `build.js`** — top-right `Prototypes · Foundations · Pages`.
-- [ ] **Pages tab** — composed reference pages (homepage, project page, input form,
-      map, page builder). Starts as an empty state; build one page at a time.
+## Review site — Patterns + Pages reference tabs
+A top-right tab nav on the Cloudflare review site: **Prototypes · Patterns ·
+Pages**. Prototypes stays the main page (`/`); Patterns + Pages are a glossary
+for designers to review and copy from, so we never rebuild GoVocal twice.
+- [x] **3-tab nav in `build.js`** — top-right `Prototypes · Patterns · Pages`,
+      self-contained styles, injected into the gallery + generated index pages.
+- [x] **Patterns tab** — the govocal-ui gallery shipped to `/patterns/` (build.js
+      copies `skills/govocal-ui/gallery.html` + assets out of the skill). Live.
+- [x] **Pages tab** — composed reference pages from a top-level `pages/<name>/`
+      folder, carousel + Open/Download like prototypes. Live with 2 samples
+      (`homepage` = Stadt Wien reference rebuild, `hello-world`).
+- [ ] **More Pages** — project page, input form, map, page builder (one at a time,
+      each reviewed for compliance before it lands).
+
+## Cookie consent (resident-facing rule)
+- [x] **Cookie-consent pattern** — `skills/govocal-ui/govocal-cookies.js`: drop-in
+      English Edit/Decline/Accept dialog, themeable, shown first on resident/
+      participant prototypes; admin/backend skip it. Rule in CLAUDE.md + components.md,
+      demoed in the gallery, wired into both sample Pages.
+
+## Known a11y flags (faithful-but-flagged)
+- [ ] **`gv-badge.inverse` looks like a rendering bug** — renders coloured text on
+      grey (`#04884c` on `#bdbdbd`, 2.41:1) instead of filling with the colour +
+      white text as `components.md` describes. Fix in `govocal-ui.css` or its usage.
+- [ ] **Orange status label** (`--gv-orange-500` + white = 2.9:1) and the homepage
+      **Klimateam placeholder tiles** (coloured text on coloured stand-in "photos")
+      fail contrast. Decide keep-faithful vs nudge; tiles become real photos anyway.
 
 ## Context for agents
 - [ ] Add a **GoVocal product context file** — what GoVocal is, its vocabulary,
