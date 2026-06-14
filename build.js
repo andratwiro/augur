@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.08";
+const UI_VERSION = "0.09";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -559,7 +559,27 @@ const PAGE_CSS = `
     .status-chip.is-progress { background: #fef3c7; color: #8a5200; border-color: #fcd9a4; }
     .status-chip.is-progress .status-dot { background: #c2710c; }
     .status-chip.is-closed { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
-    .status-chip.is-closed .status-dot { background: #059669; }`;
+    .status-chip.is-closed .status-dot { background: #059669; }
+
+    /* ── Phones ───────────────────────────────────────────────────────────────
+       Tighter gutters under the 52px bar, a smaller hero, and full-width actions
+       so cards never overflow or cramp. The carousel gutter follows .wrap padding
+       so the first slide still lines up with the page content. */
+    @media (max-width: 600px) {
+      .wrap { padding: 30px 16px 80px; }
+      h1 { font-size: 30px; }
+      .subtitle { font-size: 15px; }
+      .carousel { --gutter: 16px; }
+      .proto-meta { padding: 14px 16px; }
+      .proto-actions { width: 100%; }
+      .proto-actions .btn { flex: 1 1 auto; justify-content: center; }
+      .playground { gap: 14px; padding: 16px; }
+      .playground__go { display: none; }
+    }
+    @media (max-width: 380px) {
+      h1 { font-size: 26px; }
+      .page-grid { grid-template-columns: 1fr; }
+    }`;
 
 const CAROUSEL_JS = `
     (function () {
@@ -739,9 +759,9 @@ const NAV_CSS = `
       display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: -0.02em;
     }
     .gvhead__title { font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    /* Phones: drop the wordmark, keep the mark — frees room for search + tabs and
-       avoids the longer "Product Prototypes" colliding with the search button. */
-    @media (max-width: 560px) { .gvhead__title { display: none; } }
+    /* Only drop the wordmark on the very narrowest phones — the hamburger frees the
+       room the inline tabs used to eat, so the brand can stay visible far longer. */
+    @media (max-width: 400px) { .gvhead__title { display: none; } }
     .gvnav { display: flex; align-items: center; gap: 1px; }
     .gvnav a {
       display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
@@ -751,6 +771,50 @@ const NAV_CSS = `
     .gvnav a:hover { background: rgba(16,17,26,0.05); color: #16171a; }
     .gvnav a[aria-current="page"] { background: rgba(16,17,26,0.08); color: #16171a; }
     .gvnav a:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+
+    /* ── Mobile menu (hamburger) ──────────────────────────────────────────────
+       Below 720px the four inline tabs would crowd the search + brand, so they
+       collapse into a dropdown opened by the hamburger. Desktop is untouched. */
+    .gvnav-toggle {
+      display: none; width: 34px; height: 32px; flex: none; padding: 0;
+      align-items: center; justify-content: center; cursor: pointer;
+      border-radius: 8px; border: 1px solid rgba(16,17,26,0.12);
+      background: rgba(16,17,26,0.03); color: #16171a;
+      transition: background .12s ease, border-color .12s ease;
+    }
+    .gvnav-toggle:hover { background: rgba(16,17,26,0.06); border-color: rgba(16,17,26,0.20); }
+    .gvnav-toggle:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvnav-toggle__bars { position: relative; display: block; width: 16px; height: 12px; }
+    .gvnav-toggle__bars span {
+      position: absolute; left: 0; right: 0; height: 2px; border-radius: 2px; background: currentColor;
+      transition: transform .18s ease, opacity .12s ease, top .18s ease;
+    }
+    .gvnav-toggle__bars span:nth-child(1) { top: 0; }
+    .gvnav-toggle__bars span:nth-child(2) { top: 5px; }
+    .gvnav-toggle__bars span:nth-child(3) { top: 10px; }
+    .gvnav-toggle[aria-expanded="true"] .gvnav-toggle__bars span:nth-child(1) { top: 5px; transform: rotate(45deg); }
+    .gvnav-toggle[aria-expanded="true"] .gvnav-toggle__bars span:nth-child(2) { opacity: 0; }
+    .gvnav-toggle[aria-expanded="true"] .gvnav-toggle__bars span:nth-child(3) { top: 5px; transform: rotate(-45deg); }
+
+    @media (max-width: 720px) {
+      .gvnav-toggle { display: inline-flex; }
+      .gvnav {
+        position: absolute; top: calc(100% + 7px); right: 10px; z-index: 5;
+        flex-direction: column; align-items: stretch; gap: 2px;
+        min-width: 200px; padding: 7px;
+        background: rgba(255,255,255,0.97); -webkit-backdrop-filter: blur(14px) saturate(180%); backdrop-filter: blur(14px) saturate(180%);
+        border: 1px solid rgba(16,17,26,0.10); border-radius: 12px;
+        box-shadow: 0 18px 48px -16px rgba(16,24,40,0.34);
+        opacity: 0; visibility: hidden; transform: translateY(-6px);
+        transition: opacity .15s ease, transform .15s ease, visibility .15s;
+      }
+      .gvnav.is-open { opacity: 1; visibility: visible; transform: translateY(0); }
+      .gvnav a { height: 42px; padding: 0 14px; border-radius: 8px; font-size: 14.5px; }
+      .gvnav a[aria-current="page"] { color: #3b43b0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .gvnav, .gvnav-toggle__bars span { transition: none; }
+    }
 
     /* ── Global search (⌘K / Ctrl+K / "/") ───────────────────────────────── */
     .gvhead__actions { display: inline-flex; align-items: center; gap: 14px; min-width: 0; }
@@ -767,7 +831,7 @@ const NAV_CSS = `
       font: inherit; font-size: 11px; line-height: 1; padding: 3px 5px; border-radius: 5px;
       background: rgba(16,17,26,0.05); border: 1px solid rgba(16,17,26,0.12); color: #5b626e;
     }
-    @media (max-width: 600px) {
+    @media (max-width: 520px) {
       .gvsearch-trigger__label, .gvsearch-trigger kbd { display: none; }
       .gvsearch-trigger { padding: 0 7px; width: 32px; justify-content: center; }
     }
@@ -832,7 +896,8 @@ function navBar(active) {
   const tab = (href, label, key) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;
   const trigger = `<button type="button" class="gvsearch-trigger" data-search-open aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" title="Search the library — press / or ⌘K">${SEARCH_ICON}<span class="gvsearch-trigger__label">Search</span><kbd data-search-kbd>⌘K</kbd></button>`;
-  return `<header class="gvhead"><a class="gvhead__brand" href="/" aria-label="Product Prototypes — back to Prototypes"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Prototypes</span></a><div class="gvhead__actions">${trigger}<nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>${searchOverlay()}`;
+  const hamburger = `<button type="button" class="gvnav-toggle" data-nav-toggle aria-expanded="false" aria-controls="gvnav-menu" aria-label="Open menu"><span class="gvnav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>`;
+  return `<header class="gvhead"><a class="gvhead__brand" href="/" aria-label="Product Prototypes — back to Prototypes"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Prototypes</span></a><div class="gvhead__actions">${trigger}${hamburger}<nav class="gvnav" id="gvnav-menu" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>${searchOverlay()}`;
 }
 
 // Module-level: the JSON search index, embedded into every chrome page. Set in main()
@@ -950,6 +1015,24 @@ function searchScript() {
       if(tag !== 'INPUT' && tag !== 'TEXTAREA' && !(el && el.isContentEditable)){ e.preventDefault(); open(); }
     }
   });
+
+  // ── Mobile nav dropdown (hamburger) ──────────────────────────────────────
+  var navToggle = document.querySelector('[data-nav-toggle]');
+  var nav = document.getElementById('gvnav-menu');
+  if(navToggle && nav){
+    function closeNav(){ navToggle.setAttribute('aria-expanded','false'); nav.classList.remove('is-open'); }
+    function openNav(){ navToggle.setAttribute('aria-expanded','true'); nav.classList.add('is-open'); }
+    navToggle.addEventListener('click', function(e){
+      e.stopPropagation();
+      nav.classList.contains('is-open') ? closeNav() : openNav();
+    });
+    nav.addEventListener('click', function(e){ if(e.target.closest('a')) closeNav(); });
+    document.addEventListener('click', function(e){
+      if(nav.classList.contains('is-open') && !nav.contains(e.target) && !navToggle.contains(e.target)) closeNav();
+    });
+    document.addEventListener('keydown', function(e){ if((e.key||'').toLowerCase() === 'escape') closeNav(); });
+    window.addEventListener('resize', function(){ if(window.innerWidth > 720) closeNav(); });
+  }
 })();`;
 }
 
