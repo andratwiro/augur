@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Phase timeline — GoVocal component</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <script src="govocal-icons.js" defer></script>
+  <style>
+    /* Demo chrome only — the component styles (.gv-phases / .gv-stepper / .gv-pstep /
+       .gv-phasepanel …) live in the shared govocal-ui.css, never forked here. */
+    body { margin: 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+    .demo { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 8px 0 12px; }
+  </style>
+</head>
+<body class="gv-root" data-gv-theme-picker="off">
+  <div class="demo">
+    <p class="eyebrow">Phase timeline — desktop</p>
+
+    <!-- ============ PHASE TIMELINE COMPONENT (copy from here) ============ -->
+    <section class="gv-phases" aria-labelledby="phT">
+      <div class="gv-phases__bar">
+        <h2 id="phT">Phases</h2>
+        <div class="gv-phases__nav">
+          <button class="gv-pnav" aria-label="Previous phase"><span data-gv-icon="chevron-left"></span></button>
+          <button class="gv-pnav" aria-label="Go to current phase"><span class="gv-dotmark"></span></button>
+          <button class="gv-pnav" aria-label="Next phase"><span data-gv-icon="chevron-right"></span></button>
+        </div>
+      </div>
+
+      <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"></div>
+
+      <div class="gv-phasepanel" role="tabpanel">
+        <div class="gv-phasepanel__head">
+          <span class="gv-phasepanel__num" aria-hidden="true">10</span>
+          <div>
+            <h3 class="gv-phasepanel__name">Development plan is announced</h3>
+            <p class="gv-phasepanel__date">October 6, 2025 12:00 AM – No end date</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ============ /PHASE TIMELINE COMPONENT ============ -->
+  </div>
+
+  <script>
+    const LABELS = ["The one problem we should work on","Idea consolidation","Community prioritization","Product Circle meets","Development plan is announced","The one problem we should work on","Idea consolidation","Community prioritization","Product Circle meets","Development plan is announced"];
+    const CURRENT = 9; // index of current phase (10th)
+    const stepper = document.getElementById("stepper");
+    LABELS.forEach((label, i) => {
+      const b = document.createElement("button");
+      b.className = "gv-phase" + (i === CURRENT ? " current" : "");
+      b.setAttribute("role","tab");
+      b.setAttribute("aria-selected", i === CURRENT ? "true" : "false");
+      const num = i === CURRENT ? `<span class="gv-pstep__dot"></span>${i+1}` : (i+1);
+      b.innerHTML = `<span class="gv-pstep">${num}</span><span class="gv-phase__label">${label}</span>`;
+      stepper.appendChild(b);
+    });
+  </script>
+</body>
+</html>

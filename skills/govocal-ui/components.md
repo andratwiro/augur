@@ -318,6 +318,42 @@ card clickable. **Never nest `<a>` in `<a>`** (it breaks the layout).
 ```
 - Overlay tints with `--gv-tenant-primary` (re-themes per city), keeping white text legible.
 
+## Phase timeline — `.gv-phases` (`components/phase-timeline/`)
+
+Project phase navigation: a connected row of **chevron/arrow “ribbon” segments**
+(number inside, label below); only the **current** phase is green with a “• N”.
+Nav = `[‹ Previous] [● Current] [› Next]`. Content panel leads with a big green
+numbered circle. The stepper is `role="tablist"`, each phase a `role="tab"`.
+
+```html
+<section class="gv-phases">
+  <div class="gv-phases__bar">
+    <h2>Phases</h2>
+    <div class="gv-phases__nav">
+      <button class="gv-pnav" aria-label="Previous phase"><span data-gv-icon="chevron-left"></span></button>
+      <button class="gv-pnav" aria-label="Go to current phase"><span class="gv-dotmark"></span></button>
+      <button class="gv-pnav" aria-label="Next phase"><span data-gv-icon="chevron-right"></span></button>
+    </div>
+  </div>
+  <div class="gv-stepper" role="tablist" aria-label="Project phases">
+    <button class="gv-phase" role="tab" aria-label="Phase 1: …"><span class="gv-pstep">1</span><span class="gv-phase__label">The one problem…</span></button>
+    <!-- … -->
+    <button class="gv-phase current" role="tab" aria-selected="true"><span class="gv-pstep"><span class="gv-pstep__dot"></span>10</span><span class="gv-phase__label">Development plan is announced</span></button>
+  </div>
+  <div class="gv-phasepanel" role="tabpanel">
+    <div class="gv-phasepanel__head">
+      <span class="gv-phasepanel__num">10</span>
+      <div>
+        <h3 class="gv-phasepanel__name">Development plan is announced</h3>
+        <p class="gv-phasepanel__date">October 6, 2025 12:00 AM – No end date</p>
+      </div>
+    </div>
+    <!-- phase content here -->
+  </div>
+</section>
+```
+- Switching phases (click a tab / prev-next) is JS in the page; the component is the markup + `.gv-*` styling. Current = green (`--gv-green-500`); chevrons via `clip-path`.
+
 ## Cookie consent — `govocal-cookies.js` (resident-facing, required)
 
 **Rule:** every resident / participant-facing prototype shows this first, in English

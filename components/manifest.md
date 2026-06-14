@@ -17,6 +17,7 @@ shared CSS source of truth is `skills/govocal-ui/govocal-ui.css`; never fork it.
 | Project card + rail | `components/project-card/` | `.gv-rail` `.gv-pcard` (`.wide` `.square`) | Participation-project card (thumb, title, status meta, CTA) + horizontal scroll rail. Stretched-link card, no nested anchors. |
 | Hero / banner | `components/hero/` | `.gv-hero` `.gv-avatars` | Full-bleed page banner: tenant-tinted overlay, title/lead, avatar+count stack, CTA. Image-agnostic. |
 | Modal + login | `components/login-modal/` | `.gv-modal-overlay`/`.gv-modal` `.gv-modal__header`/`__title`/`__close`/`__body` `.gv-or` | Reusable dialog abstraction (overlay → card → title header + close + scrollable body), shown via GoVocal’s real “Before you participate” auth flow (email + “Or” + Google). ARIA on the card; primitives in body. |
+| Phase timeline | `components/phase-timeline/` | `.gv-phases__bar` `.gv-pnav`/`.gv-dotmark` `.gv-stepper` `.gv-phase`/`.gv-pstep`/`.gv-pstep__dot`/`.gv-phase__label` `.gv-phasepanel`/`__num`/`__name`/`__date` | GoVocal’s project phase nav: a connected row of **chevron/arrow “ribbon” segments** (interlocking, number inside, label below); only the **current** phase is green with a “• N”. 3-button nav (Previous · Current · Next) top-right. Content panel leads with a big green numbered circle + green name + date. `role=tablist`/`tab`/`tabpanel`. |
 
 ## How to reuse in a prototype
 
