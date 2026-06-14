@@ -40,7 +40,9 @@ for designers to review and copy from, so we never rebuild GoVocal twice.
 - [x] **Cookie-consent pattern** — `skills/govocal-ui/govocal-cookies.js`: drop-in
       English Edit/Decline/Accept dialog, themeable, shown first on resident/
       participant prototypes; admin/backend skip it. Rule in CLAUDE.md + components.md,
-      demoed in the gallery, wired into both sample Pages.
+      demoed in the gallery (button-triggered). Scoped to real prototypes under
+      `<opportunity>/prototypes/` — the Pages-tab reference reproductions do NOT show
+      it (a blocking modal obscures the reference designers study/copy).
 
 ## Known a11y flags (faithful-but-flagged)
 - [ ] **`gv-badge.inverse` looks like a rendering bug** — renders coloured text on
