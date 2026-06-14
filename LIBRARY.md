@@ -44,6 +44,7 @@ Design tokens (`--gv-*`) + base `.gv-*` classes. **Live demo:** `skills/govocal-
 - StatusLabel
 - Spinner
 - Card & Divider
+- Icons
 
 ## Components (blocks) — `components/<name>/`
 
