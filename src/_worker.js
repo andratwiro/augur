@@ -129,10 +129,18 @@ function applyOp(threads, op) {
       id: clamp(t.id, 64) || String(Date.now()),
       sel: clamp(t.sel, 600),
       fx: +t.fx || 0, fy: +t.fy || 0, px: +t.px || 0, py: +t.py || 0,
+      view: clamp(t.view, 600) || null,
       resolved: false,
       messages: (Array.isArray(t.messages) ? t.messages : []).slice(0, 1).map(sanitizeMsg),
     });
     if (threads.length > 500) threads = threads.slice(-500);
+  } else if (op.op === "move") {
+    const t = threads.find((x) => x.id === op.id);
+    if (t) {
+      t.sel = clamp(op.sel, 600);
+      t.fx = +op.fx || 0; t.fy = +op.fy || 0; t.px = +op.px || 0; t.py = +op.py || 0;
+      if (op.view != null) t.view = clamp(op.view, 600) || null;
+    }
   } else if (op.op === "reply" && op.message) {
     const t = threads.find((x) => x.id === op.id);
     if (t) t.messages = (t.messages || []).concat([sanitizeMsg(op.message)]).slice(0, 200);

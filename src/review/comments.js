@@ -2,25 +2,29 @@
  * GoVocal prototype review overlay.
  *
  * Injected into every prototype's HTML by build.js (as
- * `<script src="/__review/comments.js" defer>`), but DORMANT until activated.
+ * `<script src="/__review/comments.js" defer>`), DORMANT until activated.
  *
- *   Shift+C  → toggle the review layer (pins + toolbar) on/off
- *   click    → (in add mode) drop a pin anchored to the clicked element
- *   Esc      → leave add mode / hide the layer
+ *   Shift+C  → toggle review mode. Turning it ON drops you straight into
+ *              "placing" mode: click anywhere to attach a comment.
+ *   Esc      → placing → browse (interact with the prototype, drag pins);
+ *              then close an open thread; then turn review off.
  *
- * Comments are shared via the worker's KV-backed API (/__review/api). If that
- * API is unreachable (e.g. the file was downloaded and opened locally), it
- * silently falls back to localStorage so the prototype itself never breaks.
+ * Pins are anchored to the element you click (CSS selector + offset) and to the
+ * screen/URL they were made on. A collapsible right sidebar lists every comment;
+ * clicking one opens it in place, navigating to its screen first if needed.
  *
- * Everything lives in a shadow root so it cannot collide with the prototype's
- * own CSS/JS. It stays completely inert inside the index-page preview iframes.
+ * Lifecycle: a comment lives as long as its anchor element exists. If you're on
+ * the screen it was made on and that element is gone (removed by dev work), the
+ * comment auto-deletes. On a different screen it's just hidden from the canvas
+ * but stays listed (and navigable) in the sidebar.
+ *
+ * Shared via the worker's KV API (/__review/api); falls back to localStorage if
+ * the API is unreachable. Completely inert inside the index-page preview iframes.
  */
 (function () {
   "use strict";
 
-  // Never run inside the little preview iframes on the index pages.
-  if (window.top !== window.self) return;
-  // Avoid double-injection.
+  if (window.top !== window.self) return;        // never run in preview iframes
   if (window.__gvReview) return;
   window.__gvReview = true;
 
@@ -29,8 +33,12 @@
   var LS_THREADS = "gv-review:" + PATH;
   var LS_NAME = "gv-review-name";
   var LS_ACTIVE = "gv-review-active";
+  var LS_SB = "gv-review-sb-collapsed";
+  var SS_PENDING = "gv-review-pending-open";
 
-  var state = { threads: [], active: false, adding: false, openId: null };
+  var state = { threads: [], active: false, mode: "add", openId: null };
+  var deleted = {};       // ids we've already issued a delete for
+  var settled = false;    // becomes true after load grace period
 
   /* ---------- storage ---------- */
 
@@ -39,11 +47,9 @@
     catch (e) { return []; }
   }
   function saveLocal() {
-    try { localStorage.setItem(LS_THREADS, JSON.stringify(state.threads)); }
-    catch (e) {}
+    try { localStorage.setItem(LS_THREADS, JSON.stringify(state.threads)); } catch (e) {}
   }
-
-  async function api(method, body) {
+  async function apiCall(method, body) {
     var res = await fetch(API + "?path=" + encodeURIComponent(PATH), {
       method: method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -53,64 +59,64 @@
     if (!res.ok) throw new Error("api " + res.status);
     return res.json();
   }
-
-  // Load threads (server first, local fallback). Always render after.
   async function refresh() {
     try {
-      var data = await api("GET");
+      var data = await apiCall("GET");
       state.threads = (data && data.threads) || [];
-      saveLocal(); // keep a local mirror
+      saveLocal();
     } catch (e) {
       state.threads = loadLocal();
     }
     render();
+    tryOpenPending();
   }
-
-  // Apply an op server-side; fall back to mutating + saving locally.
   async function mutate(op) {
     try {
-      var data = await api("POST", op);
+      var data = await apiCall("POST", op);
       state.threads = (data && data.threads) || [];
       saveLocal();
     } catch (e) {
-      applyLocal(op);
-      saveLocal();
+      applyLocal(op); saveLocal();
     }
     render();
   }
-
   function applyLocal(op) {
     var t;
-    if (op.op === "add") {
-      state.threads.push(op.thread);
-    } else if (op.op === "reply") {
+    if (op.op === "add") state.threads.push(op.thread);
+    else if (op.op === "reply") { t = find(op.id); if (t) t.messages.push(op.message); }
+    else if (op.op === "resolve") { t = find(op.id); if (t) t.resolved = op.resolved; }
+    else if (op.op === "move") {
       t = find(op.id);
-      if (t) t.messages.push(op.message);
-    } else if (op.op === "resolve") {
-      t = find(op.id);
-      if (t) t.resolved = op.resolved;
-    } else if (op.op === "delete") {
-      state.threads = state.threads.filter(function (x) { return x.id !== op.id; });
-    }
+      if (t) { t.sel = op.sel; t.fx = op.fx; t.fy = op.fy; t.px = op.px; t.py = op.py; t.view = op.view; }
+    } else if (op.op === "delete") state.threads = state.threads.filter(function (x) { return x.id !== op.id; });
   }
-  function find(id) {
-    return state.threads.filter(function (t) { return t.id === id; })[0];
+  function find(id) { return state.threads.filter(function (t) { return t.id === id; })[0]; }
+
+  /* ---------- views & anchoring ---------- */
+
+  function curView() { return location.pathname + location.search + location.hash; }
+  function normView(v) {
+    if (v == null) return null;
+    try { var u = new URL(v, location.href); return u.pathname + u.search + u.hash; }
+    catch (e) { return v; }
   }
+  function onThisView(t) { return t.view == null || normView(t.view) === curView(); }
+  function safeQuery(sel) { try { return sel ? document.querySelector(sel) : null; } catch (e) { return null; } }
+  function anchorOf(t) { return safeQuery(t.sel); }
+  function resolvesHere(t) { return !!anchorOf(t); }
+  // Listed in sidebar unless it's a confirmed orphan (own view, anchor gone).
+  function isListed(t) { return resolvesHere(t) || !onThisView(t); }
 
-  /* ---------- anchoring ---------- */
-
-  // A reasonably-stable CSS selector for an element.
   function cssPath(el) {
-    if (!el || el.nodeType !== 1) return "";
+    if (!el || el.nodeType !== 1) return "body";
+    if (el === document.body || el === document.documentElement) return "body";
     var parts = [];
     while (el && el.nodeType === 1 && el !== document.body && parts.length < 12) {
-      var sel = el.nodeName.toLowerCase();
-      var p = el.parentNode;
+      var sel = el.nodeName.toLowerCase(), p = el.parentNode;
       if (p && p.children) {
         var same = [];
-        for (var i = 0; i < p.children.length; i++) {
+        for (var i = 0; i < p.children.length; i++)
           if (p.children[i].nodeName === el.nodeName) same.push(p.children[i]);
-        }
         if (same.length > 1) sel += ":nth-of-type(" + (same.indexOf(el) + 1) + ")";
       }
       parts.unshift(sel);
@@ -118,27 +124,35 @@
     }
     return parts.join(">");
   }
-
-  // Where on screen a pin should sit, from its anchor (fallback: page coords).
   function pinXY(t) {
-    var el = t.sel ? safeQuery(t.sel) : null;
-    if (el) {
-      var r = el.getBoundingClientRect();
-      return { x: r.left + t.fx * r.width, y: r.top + t.fy * r.height, lost: false };
+    var el = anchorOf(t);
+    if (!el) return null;
+    // Body/page-level anchors use absolute page coords (the body box is the
+    // whole page, so fractions are meaningless); element anchors use the rect.
+    if (el === document.body || el === document.documentElement) {
+      return { x: t.px - window.scrollX, y: t.py - window.scrollY };
     }
-    return { x: t.px - window.scrollX, y: t.py - window.scrollY, lost: true };
+    var r = el.getBoundingClientRect();
+    return { x: r.left + t.fx * r.width, y: r.top + t.fy * r.height };
   }
-  function safeQuery(sel) {
-    try { return document.querySelector(sel); } catch (e) { return null; }
+  function anchorAt(x, y) {
+    host.style.pointerEvents = "none";
+    var el = document.elementFromPoint(x, y);
+    host.style.pointerEvents = "";
+    if (!el || host.contains(el)) el = document.body;
+    var r = el.getBoundingClientRect();
+    return {
+      sel: cssPath(el),
+      fx: r.width ? (x - r.left) / r.width : 0.5,
+      fy: r.height ? (y - r.top) / r.height : 0.5,
+      px: x + window.scrollX, py: y + window.scrollY,
+      view: curView(),
+    };
   }
 
-  function uid() {
-    return Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e6).toString(36);
-  }
-  function now() { return new Date().toISOString(); }
-  function getName() {
-    try { return localStorage.getItem(LS_NAME) || ""; } catch (e) { return ""; }
-  }
+  function uid() { return Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e6).toString(36); }
+  function nowIso() { return new Date().toISOString(); }
+  function getName() { try { return localStorage.getItem(LS_NAME) || ""; } catch (e) { return ""; } }
   function setName(n) { try { localStorage.setItem(LS_NAME, n); } catch (e) {} }
 
   /* ---------- shadow UI ---------- */
@@ -154,24 +168,35 @@
     ':host,*{box-sizing:border-box;}' +
     '.layer{position:fixed;inset:0;pointer-events:none;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a;}' +
     '.hidden{display:none!important;}' +
-    /* add-mode catcher */
-    '.catcher{position:fixed;inset:0;pointer-events:auto;cursor:crosshair;background:rgba(37,99,235,0.04);}' +
-    /* pins */
-    '.pin{position:fixed;pointer-events:auto;transform:translate(-50%,-100%);cursor:pointer;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50% 50% 50% 2px;background:#2563eb;color:#fff;font-weight:600;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid #fff;}' +
+    '.catcher{position:fixed;inset:0;pointer-events:auto;cursor:crosshair;background:rgba(37,99,235,0.045);}' +
+    '.pin{position:fixed;pointer-events:auto;transform:translate(-50%,-100%);cursor:grab;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50% 50% 50% 2px;background:#2563eb;color:#fff;font-weight:600;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid #fff;touch-action:none;}' +
     '.pin.resolved{background:#16a34a;}' +
-    '.pin.lost{opacity:0.5;}' +
     '.pin.active{outline:3px solid rgba(37,99,235,0.4);}' +
-    /* toolbar */
-    '.bar{position:fixed;top:14px;left:50%;transform:translateX(-50%);pointer-events:auto;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:7px 8px 7px 16px;box-shadow:0 6px 24px rgba(0,0,0,0.18);}' +
-    '.bar .dot{width:8px;height:8px;border-radius:50%;background:#2563eb;}' +
-    '.bar .lbl{font-weight:600;}' +
-    '.bar .cnt{color:#6b7280;}' +
-    '.bar button{font:inherit;cursor:pointer;border:1px solid #e5e7eb;background:#fff;color:#1a1a1a;border-radius:999px;padding:6px 12px;font-weight:500;}' +
-    '.bar button:hover{background:#f3f4f6;}' +
-    '.bar button.on{background:#2563eb;color:#fff;border-color:transparent;}' +
-    '.bar .x{border:0;padding:6px 9px;color:#6b7280;font-size:16px;line-height:1;}' +
+    '.pin.dragging{cursor:grabbing;opacity:0.85;}' +
+    /* sidebar */
+    '.sb{position:fixed;top:0;right:0;height:100vh;width:300px;max-width:85vw;pointer-events:auto;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-6px 0 24px rgba(0,0,0,0.10);display:flex;flex-direction:column;transition:transform .18s ease;}' +
+    '.sb.collapsed{transform:translateX(100%);}' +
+    '.sb header{display:flex;align-items:center;gap:8px;padding:14px 14px 10px;border-bottom:1px solid #f0f0f0;}' +
+    '.sb header strong{font-size:14px;}' +
+    '.sb header .cnt{color:#6b7280;font-size:12px;flex:1;}' +
+    '.sb header button{font:inherit;cursor:pointer;border:1px solid #e5e7eb;background:#fff;color:#1a1a1a;border-radius:8px;width:30px;height:30px;line-height:1;font-size:16px;}' +
+    '.sb header button:hover{background:#f3f4f6;}' +
+    '.sb .hint{padding:8px 14px;color:#6b7280;font-size:12px;border-bottom:1px solid #f0f0f0;}' +
+    '.sb .list{list-style:none;margin:0;padding:6px;overflow:auto;flex:1;}' +
+    '.sb .it{display:flex;gap:9px;align-items:flex-start;padding:9px 8px;border-radius:9px;cursor:pointer;}' +
+    '.sb .it:hover{background:#f3f4f6;}' +
+    '.sb .it.active{background:#eef2ff;}' +
+    '.sb .it .num{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:#2563eb;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:1px;}' +
+    '.sb .it.resolved .num{background:#16a34a;}' +
+    '.sb .it .txt{flex:1;min-width:0;}' +
+    '.sb .it .body{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
+    '.sb .it .meta{display:block;color:#9ca3af;font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
+    '.sb .it .away{color:#2563eb;}' +
+    '.sb .empty{padding:18px 14px;color:#9ca3af;font-size:13px;}' +
+    /* collapsed handle */
+    '.tab{position:fixed;top:16px;right:16px;pointer-events:auto;display:flex;align-items:center;gap:7px;background:#2563eb;color:#fff;border:0;border-radius:999px;padding:9px 14px;font:600 13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.22);}' +
     /* cards */
-    '.card{position:fixed;pointer-events:auto;width:300px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.22);padding:14px;}' +
+    '.card{position:fixed;pointer-events:auto;width:300px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.22);padding:14px;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1a1a1a;}' +
     '.card h4{margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;}' +
     '.msg{padding:8px 0;border-top:1px solid #f0f0f0;}' +
     '.msg:first-of-type{border-top:0;}' +
@@ -186,177 +211,204 @@
     '.card button.primary{background:#2563eb;color:#fff;border-color:transparent;}' +
     '.card button.link{border:0;background:0;color:#6b7280;padding:8px 4px;}' +
     '.card button.danger{border:0;background:0;color:#dc2626;padding:8px 4px;}' +
-    /* toast */
-    '.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);pointer-events:none;background:#1a1a1a;color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;}' +
+    '.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);pointer-events:none;background:#1a1a1a;color:#fff;padding:8px 14px;border-radius:999px;font:13px -apple-system,BlinkMacSystemFont,sans-serif;opacity:0;transition:opacity .2s;}' +
     '.toast.show{opacity:0.95;}' +
     '@media (prefers-color-scheme: dark){' +
-    '.bar,.card{background:#161619;border-color:#26262b;color:#f3f4f6;}' +
-    '.bar button,.card button{background:#161619;color:#f3f4f6;border-color:#26262b;}' +
-    '.bar button:hover{background:#26262b;}' +
-    '.bar button.on,.card button.primary{background:#60a5fa;color:#0d0d0f;}' +
+    '.sb,.card{background:#161619;color:#f3f4f6;border-color:#26262b;}' +
+    '.sb header,.sb .hint{border-color:#26262b;}' +
+    '.sb header button{background:#161619;color:#f3f4f6;border-color:#26262b;}' +
+    '.sb header button:hover,.sb .it:hover{background:#26262b;}' +
+    '.sb .it.active{background:#1e2740;}' +
     '.card input,.card textarea{background:#0d0d0f;color:#f3f4f6;border-color:#26262b;}' +
+    '.card button{background:#161619;color:#f3f4f6;border-color:#26262b;}' +
+    '.card button.primary{background:#60a5fa;color:#0d0d0f;}' +
     '.msg{border-color:#26262b;}.msg:first-of-type{border-top:0;}' +
     '}' +
     '</style>' +
     '<div class="layer hidden">' +
     '  <div class="catcher hidden"></div>' +
     '  <div class="pins"></div>' +
-    '  <div class="bar">' +
-    '    <span class="dot"></span><span class="lbl">Review</span><span class="cnt"></span>' +
-    '    <button class="add">+ Add comment</button>' +
-    '    <button class="exp">Export</button>' +
-    '    <button class="x" title="Hide (Shift+C)">&times;</button>' +
-    '  </div>' +
+    '  <aside class="sb">' +
+    '    <header><strong>Comments</strong><span class="cnt"></span>' +
+    '      <button class="newc" title="New comment">+</button>' +
+    '      <button class="collapse" title="Collapse">&rsaquo;</button></header>' +
+    '    <div class="hint"></div>' +
+    '    <ul class="list"></ul>' +
+    '  </aside>' +
+    '  <button class="tab hidden">&#128172; <span class="cnt2"></span></button>' +
     '  <div class="cardholder"></div>' +
     '  <div class="toast"></div>' +
     '</div>';
 
   var $ = function (s) { return root.querySelector(s); };
   var layer = $(".layer"), catcher = $(".catcher"), pinsEl = $(".pins"),
-      bar = $(".bar"), cntEl = $(".cnt"), addBtn = $(".add"), expBtn = $(".exp"),
-      cardholder = $(".cardholder"), toastEl = $(".toast");
+      sb = $(".sb"), listEl = $(".list"), cntEl = $(".cnt"), cnt2El = $(".cnt2"),
+      hintEl = $(".hint"), tabEl = $(".tab"), cardholder = $(".cardholder"), toastEl = $(".toast");
+
+  var sbCollapsed = false;
+  try { sbCollapsed = localStorage.getItem(LS_SB) === "1"; } catch (e) {}
 
   /* ---------- rendering ---------- */
 
   function render() {
     layer.classList.toggle("hidden", !state.active);
     if (!state.active) { closeCard(); return; }
-    catcher.classList.toggle("hidden", !state.adding);
-    addBtn.classList.toggle("on", state.adding);
-    var open = state.threads.filter(function (t) { return !t.resolved; }).length;
-    cntEl.textContent = state.threads.length
-      ? open + " open" + (state.threads.length - open ? " · " + (state.threads.length - open) + " resolved" : "")
-      : "no comments yet";
+    catcher.classList.toggle("hidden", state.mode !== "add");
+    sb.classList.toggle("collapsed", sbCollapsed);
+    tabEl.classList.toggle("hidden", !sbCollapsed);
+    hintEl.textContent = state.mode === "add"
+      ? "Click anywhere to place a comment · Esc to browse"
+      : "Drag a pin to move it · + for a new comment";
+    renderList();
     renderPins();
+  }
+
+  function listed() { return state.threads.filter(isListed); }
+
+  function renderList() {
+    var items = listed();
+    var open = items.filter(function (t) { return !t.resolved; }).length;
+    cntEl.textContent = items.length ? open + " open" + (items.length - open ? " · " + (items.length - open) + " done" : "") : "";
+    cnt2El.textContent = items.length || "";
+    listEl.textContent = "";
+    if (!items.length) {
+      var e = document.createElement("li");
+      e.className = "empty";
+      e.textContent = "No comments yet. Click the prototype to add one.";
+      listEl.appendChild(e);
+      return;
+    }
+    items.forEach(function (t, i) {
+      var li = document.createElement("li");
+      li.className = "it" + (t.resolved ? " resolved" : "") + (state.openId === t.id ? " active" : "");
+      var away = !resolvesHere(t);
+      li.innerHTML = '<span class="num"></span><span class="txt"><span class="body"></span>' +
+        '<span class="meta"></span></span>';
+      li.querySelector(".num").textContent = String(i + 1);
+      li.querySelector(".body").textContent = (t.messages[0] && t.messages[0].body) || "(empty)";
+      li.querySelector(".meta").textContent = (t.messages[0] ? t.messages[0].author : "") +
+        (away ? " · ↗ on another screen" : "") + (t.resolved ? " · resolved" : "");
+      if (away) li.querySelector(".meta").className = "meta away";
+      li.addEventListener("click", function () { openOrNavigate(t.id); });
+      listEl.appendChild(li);
+    });
   }
 
   function renderPins() {
     pinsEl.textContent = "";
-    state.threads.forEach(function (t, i) {
-      var p = pinXY(t);
+    listed().forEach(function (t, i) {
+      var xy = pinXY(t);
+      if (!xy) return; // elsewhere → sidebar only
       var b = document.createElement("button");
-      b.className = "pin" + (t.resolved ? " resolved" : "") + (p.lost ? " lost" : "") +
-        (state.openId === t.id ? " active" : "");
-      b.style.left = p.x + "px";
-      b.style.top = p.y + "px";
+      b.className = "pin" + (t.resolved ? " resolved" : "") + (state.openId === t.id ? " active" : "");
+      b.style.left = xy.x + "px"; b.style.top = xy.y + "px";
       b.textContent = String(i + 1);
       b.title = (t.messages[0] && t.messages[0].body) || "";
-      b.addEventListener("click", function (e) {
-        e.stopPropagation();
-        openThread(t.id);
-      });
+      attachPinDrag(b, t.id);
       pinsEl.appendChild(b);
     });
   }
 
   function reposition() {
     if (!state.active) return;
-    var pins = pinsEl.children;
-    for (var i = 0; i < pins.length; i++) {
-      var p = pinXY(state.threads[i]);
-      pins[i].style.left = p.x + "px";
-      pins[i].style.top = p.y + "px";
-      pins[i].classList.toggle("lost", p.lost);
+    var pins = pinsEl.children, items = listed().filter(function (t) { return pinXY(t); });
+    for (var i = 0; i < pins.length && i < items.length; i++) {
+      var xy = pinXY(items[i]);
+      if (xy) { pins[i].style.left = xy.x + "px"; pins[i].style.top = xy.y + "px"; }
     }
     if (openCardAnchor) positionCard(openCardAnchor);
   }
 
-  /* ---------- cards (compose + thread) ---------- */
+  /* ---------- pin dragging ---------- */
+
+  function attachPinDrag(btn, id) {
+    var sx, sy, moved, dragging;
+    btn.addEventListener("pointerdown", function (e) {
+      if (state.mode === "add") return;
+      e.preventDefault();
+      sx = e.clientX; sy = e.clientY; moved = false; dragging = true;
+      btn.setPointerCapture(e.pointerId);
+      btn.classList.add("dragging");
+    });
+    btn.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      if (!moved && Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) < 4) return;
+      moved = true;
+      btn.style.left = e.clientX + "px"; btn.style.top = e.clientY + "px";
+    });
+    btn.addEventListener("pointerup", function (e) {
+      if (!dragging) return;
+      dragging = false; btn.classList.remove("dragging");
+      try { btn.releasePointerCapture(e.pointerId); } catch (err) {}
+      if (!moved) { openThread(id); return; }
+      var a = anchorAt(e.clientX, e.clientY);
+      mutate({ op: "move", id: id, sel: a.sel, fx: a.fx, fy: a.fy, px: a.px, py: a.py, view: a.view });
+      toast("Comment moved");
+    });
+  }
+
+  /* ---------- cards ---------- */
 
   var openCardAnchor = null;
-
-  function closeCard() {
-    cardholder.textContent = "";
-    state.openId = null;
-    openCardAnchor = null;
-    renderPins();
-  }
-
+  function closeCard() { cardholder.textContent = ""; state.openId = null; openCardAnchor = null; if (state.active) { renderPins(); renderList(); } }
   function positionCard(at) {
-    var card = cardholder.firstElementChild;
-    if (!card) return;
+    var card = cardholder.firstElementChild; if (!card) return;
     var w = card.offsetWidth, h = card.offsetHeight;
-    var x = Math.min(Math.max(12, at.x + 16), window.innerWidth - w - 12);
-    var y = Math.min(Math.max(12, at.y), window.innerHeight - h - 12);
-    card.style.left = x + "px";
-    card.style.top = y + "px";
+    var rightLimit = window.innerWidth - (sbCollapsed ? 12 : 312) - w;
+    card.style.left = Math.min(Math.max(12, at.x + 16), Math.max(12, rightLimit)) + "px";
+    card.style.top = Math.min(Math.max(12, at.y), window.innerHeight - h - 12) + "px";
   }
-
-  function makeCard(at) {
-    cardholder.textContent = "";
-    var card = document.createElement("div");
-    card.className = "card";
-    cardholder.appendChild(card);
-    openCardAnchor = at;
-    return card;
-  }
+  function makeCard(at) { cardholder.textContent = ""; var c = document.createElement("div"); c.className = "card"; cardholder.appendChild(c); openCardAnchor = at; return c; }
 
   function composeNew(loc) {
-    state.openId = null;
-    renderPins();
-    var card = makeCard({ x: loc.x, y: loc.y });
+    state.openId = null; renderPins(); renderList();
+    var card = makeCard({ x: loc.px - window.scrollX, y: loc.py - window.scrollY });
     var needName = !getName();
-    card.innerHTML =
-      '<h4>New comment</h4>' +
+    card.innerHTML = '<h4>New comment</h4>' +
       (needName ? '<input class="nm" placeholder="Your name" />' : '') +
       '<textarea class="tx" placeholder="What\'s your feedback?"></textarea>' +
       '<div class="row"><button class="cancel link">Cancel</button>' +
       '<button class="save primary">Comment</button></div>';
-    positionCard({ x: loc.x, y: loc.y });
-    var tx = card.querySelector(".tx");
-    var nm = card.querySelector(".nm");
+    positionCard(openCardAnchor);
+    var tx = card.querySelector(".tx"), nm = card.querySelector(".nm");
     (nm || tx).focus();
     card.querySelector(".cancel").addEventListener("click", closeCard);
     card.querySelector(".save").addEventListener("click", function () {
       var name = (nm ? nm.value.trim() : getName()) || "Anonymous";
-      var text = tx.value.trim();
-      if (!text) { tx.focus(); return; }
+      var text = tx.value.trim(); if (!text) { tx.focus(); return; }
       if (nm) setName(name);
-      var thread = {
-        id: uid(), sel: loc.sel, fx: loc.fx, fy: loc.fy, px: loc.px, py: loc.py,
-        resolved: false, messages: [{ author: name, body: text, at: now() }],
-      };
+      var thread = { id: uid(), sel: loc.sel, fx: loc.fx, fy: loc.fy, px: loc.px, py: loc.py,
+        view: loc.view, resolved: false, messages: [{ author: name, body: text, at: nowIso() }] };
       closeCard();
-      setAdding(false);
       mutate({ op: "add", thread: thread });
       toast("Comment added");
     });
   }
 
   function openThread(id) {
-    var t = find(id);
-    if (!t) return;
-    state.openId = id;
-    renderPins();
-    var at = pinXY(t);
-    var card = makeCard(at);
-    var msgs = t.messages.map(function (m) {
-      return '<div class="msg"><span class="who"></span><span class="when"></span>' +
-        '<div class="body"></div></div>';
-    }).join("");
-    card.innerHTML =
-      '<h4>Comment ' + (state.threads.indexOf(t) + 1) + (t.resolved ? ' · resolved' : '') + '</h4>' +
-      '<div class="msgs">' + msgs + '</div>' +
+    var t = find(id); if (!t) return;
+    state.mode = "browse"; state.openId = id;
+    var xy = pinXY(t) || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    render();
+    var card = makeCard(xy);
+    card.innerHTML = '<h4>Comment' + (t.resolved ? ' · resolved' : '') + '</h4><div class="msgs"></div>' +
       '<textarea class="tx" placeholder="Reply…"></textarea>' +
-      '<div class="row">' +
-      '<button class="del danger">Delete</button>' +
+      '<div class="row"><button class="del danger">Delete</button>' +
       '<button class="res link">' + (t.resolved ? 'Reopen' : 'Resolve') + '</button>' +
-      '<span class="spacer"></span>' +
-      '<button class="reply primary">Reply</button></div>';
-    // fill messages safely (textContent, no HTML injection)
-    var rows = card.querySelectorAll(".msg");
-    t.messages.forEach(function (m, i) {
-      rows[i].querySelector(".who").textContent = m.author;
-      rows[i].querySelector(".when").textContent = fmt(m.at);
-      rows[i].querySelector(".body").textContent = m.body;
+      '<span class="spacer"></span><button class="reply primary">Reply</button></div>';
+    var msgs = card.querySelector(".msgs");
+    t.messages.forEach(function (m) {
+      var d = document.createElement("div"); d.className = "msg";
+      d.innerHTML = '<span class="who"></span><span class="when"></span><div class="body"></div>';
+      d.querySelector(".who").textContent = m.author;
+      d.querySelector(".when").textContent = fmt(m.at);
+      d.querySelector(".body").textContent = m.body;
+      msgs.appendChild(d);
     });
-    positionCard(at);
+    positionCard(xy);
     card.querySelector(".reply").addEventListener("click", function () {
-      var tx = card.querySelector(".tx");
-      var text = tx.value.trim();
-      if (!text) { tx.focus(); return; }
-      var name = getName() || "Anonymous";
-      mutate({ op: "reply", id: id, message: { author: name, body: text, at: now() } })
+      var tx = card.querySelector(".tx"), text = tx.value.trim(); if (!text) { tx.focus(); return; }
+      mutate({ op: "reply", id: id, message: { author: getName() || "Anonymous", body: text, at: nowIso() } })
         .then(function () { openThread(id); });
     });
     card.querySelector(".res").addEventListener("click", function () {
@@ -364,92 +416,84 @@
     });
     card.querySelector(".del").addEventListener("click", function () {
       if (!confirm("Delete this comment thread?")) return;
+      deleted[id] = 1;
       mutate({ op: "delete", id: id }).then(closeCard);
     });
+  }
+
+  // Open a thread; if it lives on another screen, navigate there first.
+  function openOrNavigate(id) {
+    var t = find(id); if (!t) return;
+    if (resolvesHere(t)) {
+      var el = anchorOf(t);
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: "center", inline: "center" });
+      setTimeout(function () { openThread(id); }, 60);
+      return;
+    }
+    if (!onThisView(t) && t.view) {
+      try { sessionStorage.setItem(SS_PENDING, id); } catch (e) {}
+      var dest = new URL(t.view, location.href).href;
+      if (dest === location.href) { tryOpenPending(); return; }
+      location.href = dest; // reload or hashchange → tryOpenPending runs on arrival
+      setTimeout(tryOpenPending, 80); // same-document (hash) case
+    }
+  }
+
+  function tryOpenPending() {
+    var id; try { id = sessionStorage.getItem(SS_PENDING); } catch (e) {}
+    if (!id) return;
+    var attempts = 0;
+    (function poll() {
+      var t = find(id);
+      if (t && resolvesHere(t)) {
+        try { sessionStorage.removeItem(SS_PENDING); } catch (e) {}
+        if (!state.active) setActive(true);
+        var el = anchorOf(t); if (el && el.scrollIntoView) el.scrollIntoView({ block: "center" });
+        setTimeout(function () { openThread(id); }, 60);
+        return;
+      }
+      if (attempts++ < 20) setTimeout(poll, 100);
+      else { try { sessionStorage.removeItem(SS_PENDING); } catch (e) {} }
+    })();
   }
 
   function fmt(iso) {
     try {
       var d = new Date(iso);
-      return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-        " " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " +
+        d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
     } catch (e) { return ""; }
   }
 
-  /* ---------- add mode ---------- */
+  /* ---------- modes ---------- */
 
   function setActive(on) {
     state.active = on;
     try { sessionStorage.setItem(LS_ACTIVE, on ? "1" : "0"); } catch (e) {}
-    if (!on) { setAdding(false); closeCard(); }
+    if (on) { state.mode = "add"; } else { closeCard(); }
     render();
-    if (on) toast("Review mode · Shift+C to hide");
+    if (on) toast("Review on · click to comment · Esc to browse");
   }
-  function setAdding(on) {
-    state.adding = on;
-    if (on) closeCard();
-    render();
-  }
+  function setMode(m) { state.mode = m; if (m === "add") closeCard(); render(); }
 
   catcher.addEventListener("click", function (e) {
-    var x = e.clientX, y = e.clientY;
-    // peek under the catcher to find the real anchor element
-    catcher.style.display = "none";
-    var el = document.elementFromPoint(x, y);
-    catcher.style.display = "";
-    if (!el || host.contains(el)) el = document.body;
-    var r = el.getBoundingClientRect();
-    var fx = r.width ? (x - r.left) / r.width : 0.5;
-    var fy = r.height ? (y - r.top) / r.height : 0.5;
-    composeNew({
-      x: x, y: y, sel: cssPath(el),
-      fx: fx, fy: fy, px: x + window.scrollX, py: y + window.scrollY,
-    });
+    composeNew(anchorAt(e.clientX, e.clientY));
   });
 
-  addBtn.addEventListener("click", function () { setAdding(!state.adding); });
-  $(".x").addEventListener("click", function () { setActive(false); });
-  expBtn.addEventListener("click", exportThreads);
-
-  /* ---------- export (client-side convenience) ---------- */
-
-  function exportThreads() {
-    var lines = ["# Review comments — " + PATH, ""];
-    state.threads.forEach(function (t, i) {
-      lines.push("## " + (i + 1) + (t.resolved ? " (resolved)" : "") +
-        (t.sel ? " — `" + t.sel + "`" : ""));
-      t.messages.forEach(function (m) {
-        lines.push("- **" + m.author + "** (" + fmt(m.at) + "): " + m.body);
-      });
-      lines.push("");
-    });
-    var blob = new Blob([lines.join("\n")], { type: "text/markdown" });
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "comments" + PATH.replace(/\//g, "-") + "md";
-    a.click();
-    URL.revokeObjectURL(a.href);
+  $(".newc").addEventListener("click", function () { setMode("add"); });
+  $(".collapse").addEventListener("click", function () { toggleSidebar(true); });
+  tabEl.addEventListener("click", function () { toggleSidebar(false); });
+  function toggleSidebar(collapse) {
+    sbCollapsed = collapse;
+    try { localStorage.setItem(LS_SB, collapse ? "1" : "0"); } catch (e) {}
+    render();
   }
-
-  /* ---------- misc ---------- */
 
   var toastT;
   function toast(msg) {
-    toastEl.textContent = msg;
-    toastEl.classList.add("show");
-    clearTimeout(toastT);
-    toastT = setTimeout(function () { toastEl.classList.remove("show"); }, 1800);
+    toastEl.textContent = msg; toastEl.classList.add("show");
+    clearTimeout(toastT); toastT = setTimeout(function () { toastEl.classList.remove("show"); }, 1900);
   }
-
-  window.addEventListener("keydown", function (e) {
-    if (e.shiftKey && (e.code === "KeyC" || e.key === "C" || e.key === "c") && !isTyping(e.target)) {
-      e.preventDefault();
-      setActive(!state.active);
-    } else if (e.key === "Escape" && state.active) {
-      if (state.adding) setAdding(false);
-      else if (state.openId) closeCard();
-    }
-  }, true);
 
   function isTyping(el) {
     if (!el) return false;
@@ -457,10 +501,63 @@
     return tag === "input" || tag === "textarea" || el.isContentEditable;
   }
 
+  window.addEventListener("keydown", function (e) {
+    if (e.shiftKey && (e.code === "KeyC" || e.key === "C" || e.key === "c") && !isTyping(e.target)) {
+      e.preventDefault(); setActive(!state.active);
+    } else if (e.key === "Escape" && state.active) {
+      if (state.openId) closeCard();
+      else if (state.mode === "add") setMode("browse");
+      else setActive(false);
+    }
+  }, true);
+
+  /* ---------- lifecycle: orphan sweep + view changes ---------- */
+
+  // A comment is an orphan when we're on its own screen but its anchor is gone.
+  // Confirm after a short delay so a transient re-render doesn't delete it.
+  var orphanTimers = {};
+  function isOrphan(t) { return onThisView(t) && t.view != null && !resolvesHere(t); }
+  function orphanSweep() {
+    if (!settled) return;
+    state.threads.forEach(function (t) {
+      if (deleted[t.id]) return;
+      if (isOrphan(t)) {
+        if (!orphanTimers[t.id]) {
+          orphanTimers[t.id] = setTimeout(function () {
+            orphanTimers[t.id] = null;
+            var cur = find(t.id);
+            if (cur && !deleted[cur.id] && isOrphan(cur)) {
+              deleted[cur.id] = 1;
+              mutate({ op: "delete", id: cur.id });
+              toast("Comment removed (its UI is gone)");
+            }
+          }, 700);
+        }
+      } else if (orphanTimers[t.id]) { clearTimeout(orphanTimers[t.id]); orphanTimers[t.id] = null; }
+    });
+  }
+
+  var reRenderT;
+  function scheduleRerender() {
+    clearTimeout(reRenderT);
+    reRenderT = setTimeout(function () {
+      if (state.active) { renderList(); renderPins(); }
+      orphanSweep();
+    }, 200);
+  }
+  if (window.MutationObserver) {
+    new MutationObserver(scheduleRerender).observe(document.documentElement, { childList: true, subtree: true });
+  }
   window.addEventListener("scroll", reposition, { passive: true });
   window.addEventListener("resize", reposition, { passive: true });
+  window.addEventListener("hashchange", function () { if (state.active) { render(); } tryOpenPending(); setTimeout(orphanSweep, 1200); });
+  window.addEventListener("popstate", function () { if (state.active) { render(); } tryOpenPending(); setTimeout(orphanSweep, 1200); });
 
-  // Restore active state within the session, then load comments.
+  // Boot.
   try { state.active = sessionStorage.getItem(LS_ACTIVE) === "1"; } catch (e) {}
-  refresh();
+  refresh().then(function () {
+    var grace = function () { settled = true; orphanSweep(); };
+    if (document.readyState === "complete") setTimeout(grace, 1500);
+    else window.addEventListener("load", function () { setTimeout(grace, 1500); });
+  });
 })();
