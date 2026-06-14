@@ -4,37 +4,39 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Theme Switch — GoVocal Prototype</title>
+  <title>City Theme Preview — GoVocal Prototype</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
   <style>
-    /* Placeholder visuals — replace with tokens from skills/govocal-design/. */
-    :root { --bg:#fafafa; --fg:#1a1a1a; --muted:#6b7280; --accent:#2563eb; --card:#fff; --line:#e5e7eb; }
-    [data-theme="dark"] { --bg:#0d0d0f; --fg:#f3f4f6; --muted:#9ca3af; --accent:#60a5fa; --card:#161619; --line:#26262b; }
-    * { box-sizing: border-box; }
-    body { margin:0; min-height:100vh; display:grid; place-items:center; font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--fg); transition:background .2s ease,color .2s ease; -webkit-font-smoothing:antialiased; }
-    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:40px; max-width:440px; width:calc(100% - 48px); box-shadow:0 1px 3px rgba(0,0,0,0.06); text-align:center; }
-    h1 { font-size:26px; font-weight:650; letter-spacing:-0.02em; margin:0 0 8px; }
-    p { color:var(--muted); margin:0 0 24px; }
-    button { font:inherit; font-weight:500; color:#fff; background:var(--accent); border:0; border-radius:10px; padding:12px 22px; cursor:pointer; transition:filter .12s ease; }
-    button:hover { filter:brightness(1.08); }
-    a.back { display:inline-block; margin-top:28px; color:var(--accent); text-decoration:none; font-size:14px; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--gv-background); padding:24px; }
+    .card { max-width:460px; width:100%; }
+    .swatches { display:flex; gap:10px; margin:4px 0 20px; }
+    .sw { flex:1; height:60px; border-radius:var(--gv-radius); display:flex; align-items:flex-end; padding:6px; font-size:11px; font-weight:600; color:#fff; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }
+    .demo { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    a.back { display:inline-block; margin-top:24px; color:var(--gv-tenant-primary); text-decoration:none; font-size:var(--gv-fs-s); font-weight:600; }
     a.back:hover { text-decoration:underline; }
   </style>
 </head>
-<body>
-  <main class="card">
-    <h1>Hello World — Theme Switch</h1>
-    <p>Current theme: <strong id="label">light</strong></p>
-    <button id="toggle">Toggle theme</button>
+<body class="gv-root">
+  <main class="card gv-card">
+    <h1 class="gv-title h2" style="margin-bottom:4px">City theme preview</h1>
+    <p class="gv-text bodyS gv-text--secondary" style="margin-bottom:16px">
+      Each city configures three brand colours. Switch cities with the picker
+      (bottom-right) or <code>?theme=1</code> and watch the components re-skin.
+    </p>
+    <div class="swatches" aria-hidden="true">
+      <div class="sw" style="background:var(--gv-tenant-primary)">Primary</div>
+      <div class="sw" style="background:var(--gv-tenant-secondary)">Secondary</div>
+      <div class="sw" style="background:var(--gv-tenant-text)">Text</div>
+    </div>
+    <div class="demo">
+      <button class="gv-btn primary">Submit idea</button>
+      <button class="gv-btn primary-outlined">Learn more</button>
+      <label class="gv-checkbox"><input type="checkbox" checked /><span class="box"><span class="check">✓</span></span> Subscribe</label>
+      <span class="gv-status-label" style="--bg: var(--gv-success)">Open</span>
+    </div>
     <a class="back" href="../">← All prototypes</a>
   </main>
-  <script>
-    const root = document.documentElement;
-    const label = document.getElementById("label");
-    document.getElementById("toggle").addEventListener("click", () => {
-      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
-      root.setAttribute("data-theme", next);
-      label.textContent = next;
-    });
-  </script>
+  <script src="govocal-themes.js" defer></script>
 </body>
 </html>

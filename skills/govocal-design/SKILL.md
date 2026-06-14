@@ -23,6 +23,15 @@ Consult this skill **whenever building or modifying a prototype** under any
 - **Patterns:** common flows and interaction conventions.
 - **Assets:** where to find icons, illustrations, and shared CSS.
 
+## Companion: govocal-ui (real components & tokens)
+
+For the **exact, source-grounded** components and colour tokens — transcribed from
+the real product (`@citizenlab/cl2-component-library`) — use the companion skill
+`skills/govocal-ui/`. This skill (govocal-design) owns brand voice, tone, and
+visual *direction / when-to-use*; govocal-ui owns the *exact how*: `--gv-*` tokens,
+`.gv-*` component CSS, the catalog, and the per-city `?theme=` switcher. Build with
+its `var(--gv-tenant-primary|secondary|text)` variables — never hardcode brand hex.
+
 ## Notes
 
 Prototypes are self-contained static HTML/JS, so prefer copy-pasteable snippets

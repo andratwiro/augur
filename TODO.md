@@ -9,8 +9,30 @@ surfaces what's next. Check items off (`- [x]`) as they land; add new ones freel
       → `skills/govocal-a11y/`: build-by-default checklist + tripwire patterns, plus
       `audit.mjs` (axe-core headless, WCAG 2.2 AA) via `npm run audit`. Non-blocking:
       flags violations in chat. Wired into CLAUDE.md as a hard rule.
-- [ ] Create a **govocal-ui** skill — reusable UI components / snippets for
+- [x] Create a **govocal-ui** skill — reusable UI components / snippets for
       prototypes (complements the existing `skills/govocal-design/`).
+      → `skills/govocal-ui/`: design tokens (`govocal-tokens.css`) + component CSS
+      (`govocal-ui.css`, `.gv-*`) transcribed from `CitizenLabDotCo/citizenlab`
+      @ 5d67730, a `components.md` catalog, a live `gallery.html`, and a per-city
+      `?theme=` switcher (`govocal-themes.js`). Wired into CLAUDE.md. The 4 sample
+      prototypes were retrofitted to use `--gv-tenant-*` vars + the switcher.
+      Default `--gv-tenant-primary` nudged to AA-safe `#E10069` (exact brand
+      `#ef0071` fails white-text AA by 0.23); all 4 prototypes pass `npm run audit`.
+      → `skills/govocal-ui/`: source-grounded tokens + component CSS + `?theme=`
+        city switcher + copy-paste catalog (`components.md`). Transcribed from the
+        real `@citizenlab/cl2-component-library`.
+
+## Review site — Foundations + Pages reference tabs
+A top-right tab nav on the Cloudflare review site: **Prototypes · Foundations ·
+Pages**. Prototypes stays the main page (`/`); Foundations + Pages are a glossary
+for designers to review and copy from, so we never rebuild GoVocal twice. Decided:
+faithful-but-flagged contrast (keep brand pink `#ef0071`; audit flags it). Build
+order: Foundations + tabs first, then Pages one page at a time.
+- [ ] **Foundations tab** — the "Storybook": a gallery rendering every govocal-ui
+      primitive in every state, across city themes. Source: `skills/govocal-ui/gallery.html`.
+- [ ] **3-tab nav in `build.js`** — top-right `Prototypes · Foundations · Pages`.
+- [ ] **Pages tab** — composed reference pages (homepage, project page, input form,
+      map, page builder). Starts as an empty state; build one page at a time.
 
 ## Context for agents
 - [ ] Add a **GoVocal product context file** — what GoVocal is, its vocabulary,
@@ -41,9 +63,12 @@ surfaces what's next. Check items off (`- [x]`) as they land; add new ones freel
         wiring DONE and verified locally with `wrangler pages dev`.
         **Go-live pending** — needs the KV namespace + binding + export secret
         (see "Comments go-live" under Deploy & access).
-  - [ ] **City colour theming** — switch a prototype's colour scheme per city via a
-        URL param, e.g. `?city=1`, so the same prototype can be previewed in
-        different cities' branding. Define the city→palette mapping centrally.
+  - [x] **City colour theming** — switch a prototype's colour scheme per city via a
+        URL param. Implemented as `?theme=N` in `skills/govocal-ui/govocal-themes.js`:
+        a central `GV_THEMES` map drives the three tenant CSS vars
+        (`--gv-tenant-primary/secondary/text`) plus an on-screen swatch picker.
+        Templates: 0 GoVocal · 1 Ocean · 2 Forest · 3 Royal · 4 Sunset (extend the
+        map to add cities). Prototypes must build with the tenant vars to re-skin.
 
 ## Review & critique
 - [x] **Screenshot review** — capture is done: `skills/webapp-testing/` (Playwright,

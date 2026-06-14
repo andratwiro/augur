@@ -54,14 +54,15 @@ problem, users, and constraints. They are internal-only and must never ship.
 ## Front-end work — load these skills first (required)
 
 **Before writing or modifying any front-end code** — a prototype's HTML/CSS/JS, or
-the `build.js` shell / landing-page UI — read all four SKILL.md files below into
+the `build.js` shell / landing-page UI — read all five SKILL.md files below into
 context first. This is not optional and applies even to "quick" edits; the skills
 are interdependent (design ↔ a11y ↔ review). If a task touches front-end output and
 you have not loaded them this session, load them before your first edit.
 
 | Skill | Read | Use it for |
 |---|---|---|
-| `skills/govocal-design/SKILL.md` | brand & components | visuals, components, tone |
+| `skills/govocal-design/SKILL.md` | brand & tone | visual direction, voice, when-to-use |
+| `skills/govocal-ui/SKILL.md` | real components & tokens | source-grounded `.gv-*` components, `--gv-*` tokens, `?theme=` city switcher |
 | `skills/frontend-design/SKILL.md` | visual direction | typography, color, non-templated design |
 | `skills/govocal-a11y/SKILL.md` | WCAG 2.2 AA | build compliant; run `npm run audit`; flag violations |
 | `skills/webapp-testing/SKILL.md` | Playwright | screenshot & review the change before reporting done |
@@ -72,9 +73,16 @@ calling it done or deploying. Report both results in chat.
 
 ## Design system
 
-A design-system skill lives in `skills/govocal-design/`. **Consult it when
-building any prototype** so visuals, components, and tone stay consistent across
-opportunities.
+Two companion skills, **consult both when building any prototype**:
+
+- `skills/govocal-design/` — brand voice, tone, visual direction, when-to-use.
+- `skills/govocal-ui/` — the **source-grounded fidelity layer**: real design
+  tokens (`govocal-tokens.css`), copy-paste component CSS (`govocal-ui.css`,
+  `.gv-*` classes), a component catalog (`components.md`), a live `gallery.html`,
+  and a per-city `?theme=` colour switcher (`govocal-themes.js`). Transcribed from
+  `CitizenLabDotCo/citizenlab` (pinned commit). **Never hardcode brand colours** —
+  use `var(--gv-tenant-primary|secondary|text)` so cities re-theme via `?theme=`.
+  Copy the three asset files into a prototype folder (prototypes are self-contained).
 
 ## Review comments (how to read reviewer feedback)
 

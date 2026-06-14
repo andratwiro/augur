@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GoVocal UI — component gallery</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <style>
+    body { margin: 0; background: var(--gv-background); padding: 32px 24px 96px; }
+    .wrap { max-width: 880px; margin: 0 auto; display: grid; gap: 20px; }
+    .sec { display: grid; gap: 14px; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sw { width: 56px; height: 40px; border-radius: var(--gv-radius); display: flex; align-items: flex-end;
+          font-size: 9px; color: #000; padding: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+    .tenant-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .tenant-row .sw { width: 96px; height: 56px; color: #fff; align-items: flex-start; font-weight: 600; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 600; margin: 0; }
+  </style>
+</head>
+<body class="gv-root">
+  <div class="wrap">
+    <header class="gv-card">
+      <h1 class="gv-title h1" style="margin-bottom:4px">GoVocal UI gallery</h1>
+      <p class="gv-text bodyM gv-text--secondary" style="margin:0">
+        Source-grounded primitives. Use the city picker (bottom-right) or
+        <code>?theme=1</code> to preview across cities — watch tenant-primary re-skin.
+      </p>
+    </header>
+
+    <section class="sec gv-card">
+      <p class="eyebrow">Tenant colours (city-configurable)</p>
+      <div class="tenant-row">
+        <div class="sw" style="background:var(--gv-tenant-primary)">primary</div>
+        <div class="sw" style="background:var(--gv-tenant-secondary)">secondary</div>
+        <div class="sw" style="background:var(--gv-tenant-text)">text</div>
+      </div>
+      <p class="eyebrow">Semantic palette</p>
+      <div class="swatches">
+        <div class="sw" style="background:var(--gv-primary);color:#fff">primary</div>
+        <div class="sw" style="background:var(--gv-success);color:#fff">success</div>
+        <div class="sw" style="background:var(--gv-error);color:#fff">error</div>
+        <div class="sw" style="background:var(--gv-teal-500);color:#fff">teal</div>
+        <div class="sw" style="background:var(--gv-background)">bg</div>
+        <div class="sw" style="background:var(--gv-grey-300)">divider</div>
+      </div>
+    </section>
+
+    <section class="sec gv-card">
+      <p class="eyebrow">Buttons</p>
+      <div class="row">
+        <button class="gv-btn primary"><span class="gv-btn__label">Primary</span></button>
+        <button class="gv-btn primary-outlined">Outlined</button>
+        <button class="gv-btn secondary">Secondary</button>
+        <button class="gv-btn white">White</button>
+        <button class="gv-btn text">Text</button>
+        <button class="gv-btn delete">Delete</button>
+        <button class="gv-btn admin-dark">Admin</button>
+      </div>
+      <div class="row">
+        <button class="gv-btn primary" disabled>Disabled</button>
+        <button class="gv-btn primary processing"><span class="gv-btn__label">Saving</span><span class="gv-spinner sm"></span></button>
+        <button class="gv-btn primary size-m">Medium</button>
+        <button class="gv-btn primary size-l">Large</button>
+        <button class="gv-btn primary size-xl">XL</button>
+      </div>
+    </section>
+
+    <section class="sec gv-card">
+      <p class="eyebrow">Inputs</p>
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:1;min-width:220px">
+          <label class="gv-label" for="g-email">Email</label>
+          <input class="gv-input" id="g-email" type="email" placeholder="you@example.com" />
+        </div>
+        <div style="flex:1;min-width:220px">
+          <label class="gv-label" for="g-err">Email (error)</label>
+          <input class="gv-input error" id="g-err" value="nope" aria-invalid="true" />
+          <p class="gv-error-text">⚠ Enter a valid email address.</p>
+        </div>
+      </div>
+      <div class="row" style="align-items:flex-start">
+        <div style="flex:1;min-width:220px">
+          <label class="gv-label" for="g-dis">Disabled</label>
+          <input class="gv-input" id="g-dis" disabled value="Disabled field" />
+        </div>
+        <div style="flex:1;min-width:220px">
+          <label class="gv-label" for="g-ta">Idea</label>
+          <textarea class="gv-textarea" id="g-ta" placeholder="Share your idea…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec gv-card">
+      <p class="eyebrow">Selection controls</p>
+      <div class="row" style="gap:28px">
+        <label class="gv-checkbox"><input type="checkbox" checked /><span class="box"><span class="check">✓</span></span> Checked</label>
+        <label class="gv-checkbox"><input type="checkbox" /><span class="box"><span class="check">✓</span></span> Unchecked</label>
+        <label class="gv-checkbox"><input type="checkbox" checked disabled /><span class="box"><span class="check">✓</span></span> Disabled</label>
+      </div>
+      <div class="row" style="gap:28px">
+        <label class="gv-radio"><input type="radio" name="g-r" checked /><span class="circle"></span> Option A</label>
+        <label class="gv-radio"><input type="radio" name="g-r" /><span class="circle"></span> Option B</label>
+        <label class="gv-radio"><input type="radio" name="g-r" disabled /><span class="circle"></span> Disabled</label>
+      </div>
+      <div class="row" style="gap:28px">
+        <label class="gv-toggle"><input type="checkbox" checked /><span class="track"></span><span class="label">On</span></label>
+        <label class="gv-toggle"><input type="checkbox" /><span class="track"></span><span class="label">Off</span></label>
+        <label class="gv-toggle"><input type="checkbox" disabled /><span class="track"></span><span class="label">Disabled</span></label>
+      </div>
+    </section>
+
+    <section class="sec gv-card">
+      <p class="eyebrow">Status, badges, spinner</p>
+      <div class="row">
+        <span class="gv-status-label" style="--bg: var(--gv-success)">Published</span>
+        <span class="gv-status-label" style="--bg: var(--gv-orange-500)">Pending</span>
+        <span class="gv-status-label outlined">Draft</span>
+        <span class="gv-badge" style="color: var(--gv-teal-500)">New</span>
+        <span class="gv-badge inverse" style="color: var(--gv-success)">Live</span>
+        <span class="gv-spinner"></span>
+      </div>
+    </section>
+
+    <section class="sec gv-card">
+      <p class="eyebrow">Type scale</p>
+      <h1 class="gv-title h1" style="margin:0">Title h1 — 30</h1>
+      <h2 class="gv-title h2" style="margin:0">Title h2 — 25</h2>
+      <h3 class="gv-title h3" style="margin:0">Title h3 — 21</h3>
+      <p class="gv-text bodyL" style="margin:0">Body L — 18 / 600</p>
+      <p class="gv-text bodyM" style="margin:0">Body M — 16</p>
+      <p class="gv-text bodyS gv-text--secondary" style="margin:0">Body S secondary — 14</p>
+    </section>
+  </div>
+  <script src="govocal-themes.js" defer></script>
+</body>
+</html>
