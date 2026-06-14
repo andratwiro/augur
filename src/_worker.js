@@ -66,6 +66,13 @@ function loginPage(redirect, error) {
     }
     button:hover { filter: brightness(1.08); }
     .error { color: var(--err); font-size: 13px; margin: 12px 0 0; ${error ? "" : "display:none;"} }
+    /* Present in the DOM for password managers (Bitwarden pairs username+password),
+       but visually hidden so the UI stays password-only. NOT display:none — managers
+       skip removed/hidden fields. */
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
   </style>
 </head>
 <body>
@@ -74,6 +81,8 @@ function loginPage(redirect, error) {
     <p class="sub">Enter the password to continue.</p>
     <form method="POST" action="/__auth">
       <input type="hidden" name="redirect" value="${safeRedirect}" />
+      <input class="visually-hidden" type="text" name="username" value="govocal"
+             autocomplete="username" tabindex="-1" aria-hidden="true" readonly />
       <label for="password">Password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" autofocus required />
       <button type="submit">Enter</button>
@@ -124,6 +133,7 @@ export default {
     if (authed) return env.ASSETS.fetch(request);
 
     // Otherwise show the login page, remembering where they were headed.
-    return htmlResponse(loginPage(url.pathname + url.search, false), 401);
+    // 200 (not 401) so password managers treat it as a normal login page.
+    return htmlResponse(loginPage(url.pathname + url.search, false), 200);
   },
 };

@@ -2,3 +2,8 @@ node_modules/
 /dist
 .DS_Store
 *.log
+
+# Local deploy secrets — NEVER commit. Copy .env.deploy.example → .env.deploy
+.env.deploy
+.env*.local
+.dev.vars*

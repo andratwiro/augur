@@ -16,9 +16,30 @@ surfaces what's next. Check items off (`- [x]`) as they land; add new ones freel
 - [ ] Add a **link to the GoVocal repository** (and any other key references) so
       Claude can jump in and research the real product quickly.
 
+## Prototype review environment
+- [ ] Turn the prototypes link into a proper **dev review environment** for
+      capturing output/feedback, not just a list of links. Includes:
+  - [ ] **Carousel** navigation — on the landing page (across prototypes) and
+        within an individual prototype (across its screens/variants).
+  - [ ] **Download HTML** button — let a viewer grab the self-contained prototype.
+  - [ ] **Comments overlay** — a way to leave comments on top of a prototype
+        (pin/annotate + a comment thread) so reviewers can capture feedback.
+
+## Review & critique
+- [ ] **Screenshot review** — a skill/flow for Claude to screenshot a prototype
+      and visually review its own work. (Note: the built-in `run` / `verify`
+      skills can already drive the app and capture screenshots — decide whether to
+      lean on those or wrap a dedicated `govocal-screenshot` skill.)
+- [ ] **Persona design critique** — a skill to walk through a prototype "in
+      character" as a user persona I describe (e.g. low-tech, older, low
+      digital-literacy, screen-reader user) and produce a design critique from
+      that lens. Personas should be parameterizable/describable per run.
+
 ## Deploy & access
-- [ ] **Roll the Cloudflare API token** — it was pasted into chat. My Profile →
-      API Tokens → ⋯ → Roll (or Delete). Setup no longer needs it.
+- [ ] **Roll the Cloudflare API token** — it was pasted into chat, so the old
+      value must be invalidated. Profile → API Tokens → ⋯ → **Roll** → copy the new
+      value into `.env.deploy` (gitignored; `cp .env.deploy.example .env.deploy`).
+      Then deploy with `npm run deploy`. Never paste the token into chat again.
 - [ ] (Optional) **Auto-deploy on git push** — one-time GitHub↔Cloudflare OAuth in
       the dashboard (Workers & Pages → govocal-prototypes → Settings → Builds &
       deployments → Connect to Git). Until then deploys are manual:
@@ -36,4 +57,5 @@ surfaces what's next. Check items off (`- [x]`) as they land; add new ones freel
 - Mark items done with `- [x]`. Keep this file at the repo root; it is internal
   and never copied into `/dist`.
 - Deploys need `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (account
-  `3d37adccf204bcf2ca53a33b00c5886d`).
+  `3d37adccf204bcf2ca53a33b00c5886d`), kept in gitignored `.env.deploy`. Deploy
+  with `npm run deploy` (sources `.env.deploy`, builds, then wrangler-uploads).
