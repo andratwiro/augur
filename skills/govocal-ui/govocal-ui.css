@@ -223,6 +223,11 @@ body.gv-root {
 .gv-card.hoverable { transition: box-shadow 150ms ease-out, transform 150ms ease-out; will-change: transform, box-shadow; }
 .gv-card.hoverable:hover { box-shadow: var(--gv-shadow-hover-lg); transform: translateY(-3px); }
 
+/* ── Icon ────────────────────────────────────────────────────────────────────
+   Real GoVocal icon set (see govocal-icons.js). Inline <svg class="gv-icon">,
+   sized 1em and filled with currentColor so it inherits text colour + size. */
+.gv-icon { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; fill: currentColor; flex: none; }
+
 /* ── Divider ───────────────────────────────────────────────────────────────── */
 .gv-divider { border: none; border-top: 1px solid var(--gv-divider); margin: 16px 0; }
 

@@ -61,6 +61,13 @@ never rebuild GoVocal twice.
 - [x] **Primitives tab** (renamed from Patterns → `/primitives/`) — the govocal-ui
       gallery: tokens (colour/type/shadow) + base `.gv-*`. build.js copies
       `skills/govocal-ui/gallery.html` + assets out of the skill. Live.
+  - [x] **Gallery redesigned** — sticky left side-nav (TOC + scrollspy), section
+        structure, polished light layout matching the shell. Added the real **GoVocal
+        icon set** (`govocal-icons.js`, 64-icon curated subset transcribed verbatim from
+        `Icon/index.tsx` @ 5d67730) with a click-to-copy icon grid + an Icon buttons /
+        avatars / divider section. `<span data-gv-icon="…">` → inline `.gv-icon` svg
+        (1em, currentColor). Asset ships to `/primitives/` + copyable into prototypes.
+        Passes `npm run audit` (fixed the two old faithful-but-flagged demo chips).
 - [x] **Components tab** — composed blocks from `components/<name>/`, shown as a
       **table** with a small live preview per row (`renderComponentsIndex`). build.js
       auto-discovers each subfolder; `components/manifest.md` is the recall index.

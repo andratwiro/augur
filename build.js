@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.07";
+const UI_VERSION = "0.08";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -345,6 +345,7 @@ const PAGE_CSS = `
       background: var(--bg); color: var(--fg);
       -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
       letter-spacing: -0.011em;
+      overflow-x: clip; /* the full-bleed carousel breaks out to 100vw — never let that add a horizontal scrollbar */
     }
     /* Signature: a faint indigo wash behind the hero, fixed so it doesn't scroll. */
     body::before {
@@ -394,18 +395,21 @@ const PAGE_CSS = `
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
     footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
 
-    /* ---- Carousel (contained within the page; one card + a peek of the next) ---- */
-    .carousel { position: relative; margin: 0; }
+    /* ---- Carousel (full-bleed: breaks out of the column to span the viewport) ----
+       --gutter aligns the first card's left edge with the page content; the track
+       scrolls edge-to-edge so the rail reads as full-width, with a peek of the next. */
+    .carousel { position: relative; width: 100vw; margin-left: calc(50% - 50vw); --gutter: max(24px, calc(50vw - 516px)); }
     .carousel.single .cbtn, .carousel.single .dots { display: none; }
     .track {
       display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory;
-      scroll-behavior: smooth; padding: 8px 4px 8px; scrollbar-width: none;
+      scroll-behavior: smooth; padding: 8px var(--gutter); scrollbar-width: none;
       -webkit-overflow-scrolling: touch;
     }
     .track::-webkit-scrollbar { display: none; }
     .slide { flex: 0 0 86%; scroll-snap-align: start; }
-    @media (min-width: 680px) { .slide { flex: 0 0 58%; } }
-    @media (min-width: 1000px) { .slide { flex: 0 0 52%; } }
+    @media (min-width: 680px) { .slide { flex: 0 0 52%; } }
+    @media (min-width: 1000px) { .slide { flex: 0 0 42%; } }
+    @media (min-width: 1400px) { .slide { flex: 0 0 36%; } }
     .cbtn {
       position: absolute; top: calc(50% - 28px); transform: translateY(-50%); z-index: 5;
       width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-2);
@@ -417,7 +421,7 @@ const PAGE_CSS = `
     .cbtn:hover { background: var(--card-hover); border-color: var(--accent); }
     .cbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .cbtn[disabled] { opacity: 0; pointer-events: none; }
-    .cbtn.prev { left: 6px; } .cbtn.next { right: 6px; }
+    .cbtn.prev { left: 16px; } .cbtn.next { right: 16px; }
     .dots { display: flex; gap: 2px; justify-content: center; margin-top: 12px; }
     .dot {
       width: 24px; height: 24px; padding: 0; border: 0; background: transparent;
@@ -608,6 +612,25 @@ const CAROUSEL_JS = `
           if (e.key === 'ArrowLeft') { goTo(active() - 1); e.preventDefault(); }
           if (e.key === 'ArrowRight') { goTo(active() + 1); e.preventDefault(); }
         });
+
+        // A preview iframe can autofocus an element on load, which makes the browser
+        // scroll our horizontal track to reveal it — landing the carousel on the wrong
+        // slide. Pin it to the start (instantly, no animation) until the user interacts.
+        var userMoved = false;
+        ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) {
+          c.addEventListener(ev, function () { userMoved = true; }, { passive: true, capture: true });
+        });
+        var pinUntil = 0;
+        var pin = setInterval(function () {
+          if (userMoved || (pinUntil += 100) > 1500) { clearInterval(pin); return; }
+          if (track.scrollLeft !== 0) {
+            var sb = track.style.scrollBehavior;
+            track.style.scrollBehavior = 'auto';
+            track.scrollLeft = 0;
+            track.style.scrollBehavior = sb;
+          }
+        }, 100);
+
         update();
       });
     })();`;
@@ -674,7 +697,9 @@ const NAV_CSS = `
       border-bottom: 1px solid rgba(16,17,26,0.09);
       font: 500 13.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    .gvhead__brand { display: inline-flex; align-items: center; gap: 9px; min-width: 0; overflow: hidden; }
+    .gvhead__brand { display: inline-flex; align-items: center; gap: 9px; min-width: 0; overflow: hidden; text-decoration: none; color: inherit; border-radius: 7px; transition: opacity .12s ease; }
+    .gvhead__brand:hover { opacity: .72; }
+    .gvhead__brand:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 3px; }
     .gvhead__mark {
       width: 22px; height: 22px; flex: none; border-radius: 6px;
       background: linear-gradient(150deg, #828bf5, #5e6ad2 70%);
@@ -775,7 +800,7 @@ function navBar(active) {
   const tab = (href, label, key) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;
   const trigger = `<button type="button" class="gvsearch-trigger" data-search-open aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" title="Search the library — press / or ⌘K">${SEARCH_ICON}<span class="gvsearch-trigger__label">Search</span><kbd data-search-kbd>⌘K</kbd></button>`;
-  return `<header class="gvhead"><span class="gvhead__brand"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Prototypes</span></span><div class="gvhead__actions">${trigger}<nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>${searchOverlay()}`;
+  return `<header class="gvhead"><a class="gvhead__brand" href="/" aria-label="Product Prototypes — back to Prototypes"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Prototypes</span></a><div class="gvhead__actions">${trigger}<nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>${searchOverlay()}`;
 }
 
 // Module-level: the JSON search index, embedded into every chrome page. Set in main()
@@ -907,10 +932,10 @@ function injectNav(html, active) {
 }
 
 // "Shell skin" for the Primitives gallery so it matches the light shell: the page
-// canvas takes the shell's near-white bg + faint indigo wash, the gallery's white
-// .gv-card sections float as elevated cards, and its duplicate intro header is hidden.
-// Injected last so it wins over the gallery's own body rule (equal specificity,
-// later in document).
+// canvas takes the shell's near-white bg + faint indigo wash, and the gallery's white
+// .gv-card sections get a crisp hairline + soft shadow. The gallery owns its own
+// (side-nav) layout; the skin only harmonises colours and reserves the top-bar height.
+// Injected last so it wins over the gallery's own body rule (equal specificity).
 const PRIMITIVES_SKIN = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body.gv-root {
@@ -923,11 +948,10 @@ const PRIMITIVES_SKIN = `
         radial-gradient(940px 440px at 14% -12%, rgba(94,106,210,0.10), transparent 60%),
         radial-gradient(700px 420px at 98% -6%, rgba(140,99,210,0.07), transparent 55%);
     }
-    body.gv-root > .wrap { position: relative; z-index: 1; max-width: 940px; }
-    /* The gallery's intro header duplicates the nav label — drop it for a clean canvas. */
-    body.gv-root > .wrap > header.gv-card { display: none; }
-    body.gv-root .sec.gv-card {
-      border: 1px solid rgba(16,17,26,0.08);
+    body.gv-root > .gv-gallery { position: relative; z-index: 1; }
+    body.gv-root .gv-sidenav { top: 72px; }
+    body.gv-root .gv-card {
+      border: 1px solid rgba(16,17,26,0.07);
       box-shadow: 0 12px 30px -18px rgba(16,24,40,0.22);
     }`;
 
@@ -1217,7 +1241,7 @@ async function main() {
     injectPrimitives(galleryHtml),
     "utf8"
   );
-  const patternAssets = ["govocal-tokens.css", "govocal-ui.css", "govocal-themes.js", "govocal-cookies.js", "govocal-logo.svg"];
+  const patternAssets = ["govocal-tokens.css", "govocal-ui.css", "govocal-themes.js", "govocal-cookies.js", "govocal-icons.js", "govocal-logo.svg"];
   for (const asset of patternAssets) {
     if (await exists(path.join(UI_SKILL, asset))) {
       await fs.copyFile(path.join(UI_SKILL, asset), path.join(patternsDir, asset));

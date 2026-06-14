@@ -151,6 +151,34 @@ Filled status pill; set the background via `--bg`.
 <hr class="gv-divider" />
 ```
 
+## Icons — `govocal-icons.js` (`components/Icon`)
+
+The real GoVocal icon set (Material-Design-derived paths), transcribed verbatim from
+`components/Icon/index.tsx`. Curated 64-icon subset of what the product UI actually uses.
+
+```html
+<script src="govocal-icons.js" defer></script>
+
+<!-- Drop an icon anywhere; it fills with an inline <svg class="gv-icon"> -->
+<span data-gv-icon="vote-up"></span>                 <!-- decorative → auto aria-hidden -->
+<span data-gv-icon="comment" aria-label="Comments"></span>  <!-- meaningful → label it -->
+<button class="gv-iconbtn" aria-label="Search"><span data-gv-icon="search"></span></button>
+```
+
+- **Sizing/colour:** `.gv-icon` is `1em` and `fill: currentColor` — set the parent's
+  `font-size`/`color` and the icon follows (so it re-themes with `--gv-tenant-*`).
+- **API:** `window.GVIcons.svg("search")` → markup string; `.names` → sorted list;
+  `.render(root)` → rescan after injecting new `[data-gv-icon]` nodes.
+- **Names (64):** navigation/UI — `search close menu dots-horizontal plus minus check
+  edit delete settings filter refresh link open-in-new download send share
+  chevron-{up,down,left,right} arrow-{up,down,left,right}`; participation — `vote-up
+  vote-down idea comment comments basket basket-plus survey initiatives volunteer flag
+  bookmark bookmark-outline eye eye-off stars`; meta — `user user-circle group calendar
+  calendar-range clock location-simple gps map info-outline info-solid alert-circle
+  check-circle lock key email notification home trend-up money-bag timeline pen label`.
+- **More icons exist** in the repo (~130 total incl. SSO/sidebar glyphs); extend
+  `govocal-icons.js` from `Icon/index.tsx` @ `5d67730` following the same discipline.
+
 ---
 
 # Composed components (Components tab)

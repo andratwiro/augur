@@ -32,6 +32,7 @@ project brain. Match its vocabulary when labelling components.
 | `govocal-tokens.css` | Design tokens as CSS custom properties (`--gv-*`): full palette, type scale, radius (3px), shadows, focus, tenant colours. |
 | `govocal-ui.css` | Component classes (`.gv-btn`, `.gv-input`, `.gv-checkbox`, …) built on the tokens. |
 | `govocal-themes.js` | `?theme=` per-city colour + **font** switcher + on-screen picker + per-city logos. |
+| `govocal-icons.js` | The real **GoVocal icon set** (64-icon curated subset, transcribed verbatim from the repo). Drop in, then `<span data-gv-icon="vote-up"></span>` → inline `<svg class="gv-icon">` that inherits text colour + size. |
 | `govocal-logo.svg` | The real **go·vocal** wordmark (footer “powered by” attribution). Muted grey; use as `<img>`. |
 | `components.md` | The catalog — copy-paste HTML for primitives **and composed components**, with notes. |
 | `gallery.html` | Live demo of every primitive in every state, across all city themes. Open it to eyeball fidelity. |
@@ -65,17 +66,25 @@ Prototypes are self-contained, so **copy the three asset files into the prototyp
 folder** and reference them locally:
 
 ```bash
-cp skills/govocal-ui/{govocal-tokens.css,govocal-ui.css,govocal-themes.js} \
+cp skills/govocal-ui/{govocal-tokens.css,govocal-ui.css,govocal-themes.js,govocal-icons.js} \
    <opportunity>/prototypes/<name>/
 ```
+
+(Add `govocal-icons.js` only if you use icons; `govocal-cookies.js` on resident-facing
+prototypes — see the cookie rule.)
 
 ```html
 <head>
   <link rel="stylesheet" href="govocal-tokens.css" />
   <link rel="stylesheet" href="govocal-ui.css" />
   <script src="govocal-themes.js" defer></script>
+  <script src="govocal-icons.js" defer></script>   <!-- if using icons -->
 </head>
-<body class="gv-root"> … </body>
+<body class="gv-root">
+  …
+  <span data-gv-icon="vote-up"></span>             <!-- decorative; auto aria-hidden -->
+  <button class="gv-iconbtn" aria-label="Search"><span data-gv-icon="search"></span></button>
+</body>
 ```
 
 Then build markup from `components.md`. **Use the tokens for every colour** —
