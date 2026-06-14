@@ -52,6 +52,13 @@
     '<span style="line-height:1;color:#1C2745"><span style="font-weight:800;font-size:15px;letter-spacing:-.01em">Engaged</span>' +
     '<br><span style="font-weight:700;font-size:9px;letter-spacing:.14em">CALIFORNIA</span></span></span>';
 
+  // GoVocal's own mark — red "V" on a pale mint disc (as on the internal instance).
+  var LOGO_GV =
+    '<span style="display:inline-flex;align-items:center">' +
+    '<svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true">' +
+    '<circle cx="20" cy="20" r="19" fill="#d9efe4"/>' +
+    '<path d="M9 12 L20 30 L31 12 L24.6 12 L20 20.4 L15.4 12 Z" fill="#df4233"/></svg></span>';
+
   // id 0 = the GoVocal platform default — deep teal #0E7C86 (4.95:1 white-on-primary)
   // + warm coral accent #E2603A. Replaced the old hot-pink/black default. Ids 1+ are REAL city tenants
   // with their authoritative brand colours + logos (researched from official sources):
@@ -72,7 +79,7 @@
   //   GoVocal default — Public Sans (the component-library default; no custom font).
   var FONT_FALLBACK = '"Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif';
   var GV_THEMES = [
-    { id: 0, name: 'GoVocal',            primary: '#0E7C86', secondary: '#E2603A', text: '#333333', logo: null,      font: null },
+    { id: 0, name: 'GoVocal',            primary: '#0E7C86', secondary: '#E2603A', text: '#333333', logo: LOGO_GV,   font: null },
     { id: 1, name: 'Københavns Kommune', primary: '#000C2E', secondary: '#0A1A4A', text: '#1A1A1A', logo: LOGO_KBH,  font: '"KBH Sans", "KBH", "Archivo", ' + FONT_FALLBACK },
     { id: 2, name: 'Stadt Wien',         primary: '#FF0000', secondary: '#000000', text: '#1A1A1A', logo: LOGO_WIEN, font: '"Wiener Melange", "WienerMelange_W_Rg", "Mulish", ' + FONT_FALLBACK },
     { id: 3, name: 'Engaged California', primary: '#1C2745', secondary: '#E79450', text: '#1A1A1A', logo: LOGO_CA,   font: '"Noto Sans", ' + FONT_FALLBACK },
@@ -134,8 +141,9 @@
   function syncUrl(theme) {
     try {
       var url = new URL(window.location.href);
-      if (theme.id === 0) url.searchParams.delete('theme');
-      else url.searchParams.set('theme', theme.id);
+      // Always write ?theme=<id> into the URL — including the default (0) — so the
+      // parameter is visible by default and trivially editable to switch cities.
+      url.searchParams.set('theme', theme.id);
       window.history.replaceState({}, '', url);
     } catch (e) { /* file:// — ignore */ }
   }

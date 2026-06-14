@@ -378,11 +378,11 @@ body.gv-root {
    initials circle. The whole account control opens the user menu in the real product. */
 .gv-iconbtn__badge {
   position: absolute; top: 3px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px;
-  border-radius: 999px; background: var(--gv-tenant-primary); color: #fff;
+  border-radius: 999px; background: var(--gv-red-500); color: #fff;     /* notification red, like the product */
   font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; border: 2px solid #fff;
 }
 .gv-account {
-  display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 4px 8px 4px 4px;
+  display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 4px 5px 4px 12px;
   background: none; border: 0; border-radius: 999px; cursor: pointer; font-family: inherit;
   font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary);
 }
