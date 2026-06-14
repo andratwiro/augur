@@ -157,7 +157,9 @@ GoVocal twice.
       `npm run comments`. NOTE: bindings are project-level (not in repo), so a
       `wrangler.toml` is intentionally NOT used — don't add one expecting CI to
       set bindings.
-- [ ] Add real prototypes for the `departments/` opportunity (currently empty).
+- [ ] Add real prototypes for the `departments/` opportunity. (Scaffolded with two
+      hello-world placeholders: `department-spaces`, `sms-verification` — still need
+      real flows.)
 
 ## Recently done
 - [x] Deployed to Cloudflare Pages (Direct Upload) → https://govocal-prototypes.pages.dev
