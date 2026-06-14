@@ -87,6 +87,20 @@ never rebuild GoVocal twice.
       `npm run audit`; the only contrast flags are pre-existing in the gallery's own
       component demos (orange status label, inverse badge — faithful-but-flagged).
 
+### Shell branding & ordering (shipped)
+- [x] **Renamed the site to "Product Prototypes"** — top-bar wordmark (was "Product
+      Team"), browser `<title>`, and footer. Kept the Refined-Linear look: indigo "P"
+      mark + indigo accent unchanged. Wordmark truncates and drops to mark-only below
+      560px so the longer name never collides with the search button on phones.
+- [x] **Ordering now keys off git last-commit time, not filesystem mtime** — a git
+      checkout (the CI deploy) resets every file's mtime to the checkout time, which
+      silently collapsed the "most recently worked on first" sort on the live site.
+      `build.js` now sorts by `git log -1 --format=%ct` per folder (prototypes, pages,
+      components, opportunities), falling back to fs mtime for untracked/new folders,
+      with a name tiebreaker for items sharing a commit. CI workflow set to
+      `fetch-depth: 0` so full history is available at build time. `titleCase()` also
+      learned acronyms (SMS, UI, API, …) so `sms-verification` → "SMS Verification".
+
 ## Cookie consent (resident-facing rule)
 - [x] **Cookie-consent pattern** — `skills/govocal-ui/govocal-cookies.js`: drop-in
       English Edit/Decline/Accept dialog, themeable, shown first on resident/

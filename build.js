@@ -23,6 +23,7 @@
  */
 
 import { promises as fs } from "node:fs";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -49,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.06";
+const UI_VERSION = "0.07";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -123,6 +124,47 @@ async function isDir(p) {
   }
 }
 
+/**
+ * Last-commit time (ms) for a path, from git. Returns 0 when git is unavailable
+ * or the path is untracked (e.g. a brand-new, uncommitted prototype).
+ *
+ * Why git instead of filesystem mtime: a checkout (the CI deploy) stamps EVERY
+ * file with the same checkout time, collapsing any mtime-based "most recent first"
+ * ordering. Git's last-commit time is stable across checkouts, so local
+ * (`npm run deploy`) and CI builds produce the same, correct order. Needs full
+ * history at build time — the deploy workflow sets `fetch-depth: 0` for this.
+ */
+function gitMtime(absPath) {
+  try {
+    const out = execFileSync("git", ["log", "-1", "--format=%ct", "--", absPath], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return out ? Number(out) * 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * The "last worked on" time (ms) for a copied folder: git last-commit time when
+ * available, else the latest filesystem mtime within it (covers new/untracked
+ * folders that have no commit yet). This is the sort key for every listing.
+ */
+function modifiedTime(srcDir, fsLatest) {
+  return gitMtime(srcDir) || fsLatest;
+}
+
+/**
+ * Sort a list of {name, mtimeMs} most-recently-worked-on first, with a stable,
+ * deterministic name tiebreaker so items sharing a commit (e.g. scaffolded
+ * together) keep a predictable A→Z order instead of relying on readdir order.
+ */
+function byRecency(a, b) {
+  return b.mtimeMs - a.mtimeMs || a.name.localeCompare(b.name);
+}
+
 /** Recursively copy a directory. Returns the latest mtime (ms) seen within it. */
 async function copyDir(src, dest) {
   await fs.mkdir(dest, { recursive: true });
@@ -194,13 +236,13 @@ async function scan() {
         name: proto.name,
         href,
         file,
-        mtimeMs: latest,
+        mtimeMs: modifiedTime(protoDir, latest),
       });
     }
 
     if (prototypes.length === 0) continue;
 
-    prototypes.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    prototypes.sort(byRecency);
     opportunities.push({
       name: top.name,
       prototypes,
@@ -208,8 +250,8 @@ async function scan() {
     });
   }
 
-  // Most-recently-modified opportunity first.
-  opportunities.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  // Most-recently-worked-on opportunity first.
+  opportunities.sort(byRecency);
   return opportunities;
 }
 
@@ -226,9 +268,9 @@ async function scanPages() {
     const dir = path.join(PAGES_SRC, e.name);
     const latest = await copyDir(dir, path.join(DIST, "pages", e.name));
     const { href, file } = await entryPoint(e.name, dir);
-    pages.push({ name: e.name, href, file, mtimeMs: latest });
+    pages.push({ name: e.name, href, file, mtimeMs: modifiedTime(dir, latest) });
   }
-  pages.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  pages.sort(byRecency);
   return pages;
 }
 
@@ -246,14 +288,22 @@ async function scanComponents() {
     const dir = path.join(COMPONENTS_SRC, e.name);
     const latest = await copyDir(dir, path.join(DIST, "components", e.name));
     const { href, file } = await entryPoint(e.name, dir);
-    components.push({ name: e.name, href, file, mtimeMs: latest });
+    components.push({ name: e.name, href, file, mtimeMs: modifiedTime(dir, latest) });
   }
-  components.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  components.sort(byRecency);
   return components;
 }
 
+// Slug words that should render fully upper-cased (acronyms) rather than
+// Capitalized — so `sms-verification` reads "SMS Verification", not "Sms …".
+const ACRONYMS = new Set(["sms", "ui", "ux", "api", "url", "faq", "sso", "cta", "pdf", "csv"]);
+
 function titleCase(slug) {
-  return slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return slug
+    .replace(/[-_]/g, " ")
+    .replace(/\S+/g, (w) =>
+      ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)
+    );
 }
 
 function fmtDate(ms) {
@@ -624,14 +674,17 @@ const NAV_CSS = `
       border-bottom: 1px solid rgba(16,17,26,0.09);
       font: 500 13.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    .gvhead__brand { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
+    .gvhead__brand { display: inline-flex; align-items: center; gap: 9px; min-width: 0; overflow: hidden; }
     .gvhead__mark {
       width: 22px; height: 22px; flex: none; border-radius: 6px;
       background: linear-gradient(150deg, #828bf5, #5e6ad2 70%);
       box-shadow: 0 0 0 1px rgba(255,255,255,0.25) inset, 0 2px 8px rgba(94,106,210,0.4);
       display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: -0.02em;
     }
-    .gvhead__title { font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em; color: #16171a; white-space: nowrap; }
+    .gvhead__title { font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* Phones: drop the wordmark, keep the mark — frees room for search + tabs and
+       avoids the longer "Product Prototypes" colliding with the search button. */
+    @media (max-width: 560px) { .gvhead__title { display: none; } }
     .gvnav { display: flex; align-items: center; gap: 1px; }
     .gvnav a {
       display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
@@ -722,7 +775,7 @@ function navBar(active) {
   const tab = (href, label, key) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;
   const trigger = `<button type="button" class="gvsearch-trigger" data-search-open aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" title="Search the library — press / or ⌘K">${SEARCH_ICON}<span class="gvsearch-trigger__label">Search</span><kbd data-search-kbd>⌘K</kbd></button>`;
-  return `<header class="gvhead"><span class="gvhead__brand"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Team</span></span><div class="gvhead__actions">${trigger}<nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>${searchOverlay()}`;
+  return `<header class="gvhead"><span class="gvhead__brand"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Prototypes</span></span><div class="gvhead__actions">${trigger}<nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>${searchOverlay()}`;
 }
 
 // Module-level: the JSON search index, embedded into every chrome page. Set in main()
@@ -906,7 +959,7 @@ function shell({ title, body, back, activeTab = "prototypes" }) {
   <div class="wrap">
     ${backLink}
     ${body}
-    <footer>GoVocal Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}</footer>
+    <footer>Product Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}</footer>
   </div>
   <script>${CAROUSEL_JS}
   </script>
@@ -938,7 +991,7 @@ function carousel(slidesHtml) {
 function renderRootIndex(opportunities) {
   if (!opportunities.length) {
     return shell({
-      title: "GoVocal Prototypes",
+      title: "Product Prototypes",
       subtitle: "Private &mdash; do not share outside the team.",
       body: `<p class="empty">No prototypes yet. Add one under
        <code>&lt;opportunity&gt;/prototypes/&lt;name&gt;/</code> and rebuild.</p>`,
@@ -979,7 +1032,7 @@ function renderRootIndex(opportunities) {
   const opps = `<p class="section-eyebrow">${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}</p>${carousel(slides)}`;
 
   return shell({
-    title: "GoVocal Prototypes",
+    title: "Product Prototypes",
     subtitle: "",
     eyebrow: "Prototype Library",
     body: opps + playground,
