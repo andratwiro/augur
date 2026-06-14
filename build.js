@@ -49,7 +49,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.05";
+const UI_VERSION = "0.06";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -270,23 +270,23 @@ function plural(n, word) {
 }
 
 const PAGE_CSS = `
-    /* Linear-style shell — deep near-black canvas, indigo accent, Inter type.
-       This is the TOOLING UI, deliberately distinct from the GoVocal prototype brand. */
+    /* Linear-style shell — light edition: near-white canvas, indigo accent, Inter type.
+       This is the TOOLING UI; a light shell sits comfortably next to GoVocal's light brand. */
     :root {
-      --bg: #08090a;          /* page canvas */
-      --bg-2: #0e0f11;        /* subtle elevated zone */
-      --card: #121315;        /* card surface */
-      --card-hover: #17181b;
-      --fg: #f7f8f8;          /* primary text */
-      --muted: #9197a1;       /* secondary text */
-      --faint: #878d97;       /* tertiary (AA-safe for small labels) */
-      --line: rgba(255,255,255,0.08);
-      --line-2: rgba(255,255,255,0.14);
-      --accent: #939bf7;      /* indigo, lifted for AA on dark */
+      --bg: #fbfbfd;          /* page canvas */
+      --bg-2: #f3f4f7;        /* subtle inset / preview backing */
+      --card: #ffffff;        /* card surface */
+      --card-hover: #fafafc;
+      --fg: #16171a;          /* primary text */
+      --muted: #5b626e;       /* secondary text (AA on white) */
+      --faint: #6b7280;       /* tertiary (AA-safe for small labels) */
+      --line: rgba(16,17,26,0.09);
+      --line-2: rgba(16,17,26,0.15);
+      --accent: #5159c9;      /* indigo, darkened for AA as text/icon on white */
       --accent-solid: #5e6ad2;/* Linear indigo (fills) */
       --radius: 12px;
       --maxw: 1080px;
-      color-scheme: dark;
+      color-scheme: light;
     }
     * { box-sizing: border-box; }
     body {
@@ -296,12 +296,12 @@ const PAGE_CSS = `
       -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
       letter-spacing: -0.011em;
     }
-    /* Signature: a faint indigo aurora behind the hero, fixed so it doesn't scroll. */
+    /* Signature: a faint indigo wash behind the hero, fixed so it doesn't scroll. */
     body::before {
       content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
-        radial-gradient(920px 460px at 16% -10%, rgba(94,106,210,0.22), transparent 60%),
-        radial-gradient(680px 420px at 96% -4%, rgba(140,99,210,0.13), transparent 55%);
+        radial-gradient(940px 440px at 14% -12%, rgba(94,106,210,0.10), transparent 60%),
+        radial-gradient(700px 420px at 98% -6%, rgba(140,99,210,0.07), transparent 55%);
     }
     .wrap { position: relative; z-index: 1; max-width: var(--maxw); margin: 0 auto; padding: 60px 24px 120px; }
     .back {
@@ -359,9 +359,9 @@ const PAGE_CSS = `
     .cbtn {
       position: absolute; top: calc(50% - 28px); transform: translateY(-50%); z-index: 5;
       width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-2);
-      background: rgba(18,19,21,0.82); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+      background: rgba(255,255,255,0.86); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
       color: var(--fg); font-size: 18px; line-height: 1;
-      cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+      cursor: pointer; box-shadow: 0 4px 16px rgba(16,24,40,0.14);
       transition: opacity .15s ease, background .15s ease, border-color .15s ease; display: grid; place-items: center;
     }
     .cbtn:hover { background: var(--card-hover); border-color: var(--accent); }
@@ -390,7 +390,7 @@ const PAGE_CSS = `
     .card-opp { transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease; }
     .card-opp:hover {
       border-color: var(--line-2);
-      box-shadow: 0 16px 40px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(94,106,210,0.18);
+      box-shadow: 0 14px 34px -16px rgba(16,24,40,0.30), 0 0 0 1px rgba(94,106,210,0.22);
       transform: translateY(-3px);
     }
     .preview {
@@ -425,7 +425,7 @@ const PAGE_CSS = `
     /* ---- Pages grid (fast vertical scan, ~4 columns) ---- */
     .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 22px 20px; }
     .page-grid .card-proto { transition: box-shadow .18s ease, transform .18s ease; }
-    .page-grid .card-proto:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.13); transform: translateY(-3px); }
+    .page-grid .card-proto:hover { box-shadow: 0 12px 28px -14px rgba(16,24,40,0.28); border-color: var(--line-2); transform: translateY(-3px); }
     .page-grid .proto-meta { padding: 12px 14px; }
     .page-grid .proto-name { font-size: 15px; }
     .page-grid .proto-actions { margin-top: 10px; gap: 8px; }
@@ -436,7 +436,7 @@ const PAGE_CSS = `
     .card-proto.is-pending:hover { transform: none; box-shadow: none; }
     .preview--pending {
       display: grid; place-items: center; background:
-        repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 10px, transparent 10px 20px), var(--bg-2);
+        repeating-linear-gradient(45deg, rgba(16,17,26,0.025) 0 10px, transparent 10px 20px), var(--bg-2);
     }
     .pending-glyph { font-size: 26px; color: var(--faint); }
     .card-proto.is-pending .proto-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -489,10 +489,6 @@ const PAGE_CSS = `
     .status-badge.is-progress .status-dot { background: #c2710c; }
     .status-badge.is-closed { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
     .status-badge.is-closed .status-dot { background: #059669; }
-    @media (prefers-color-scheme: dark) {
-      .status-badge.is-progress { background: rgba(194,113,12,.20); color: #fcd34d; border-color: rgba(194,113,12,.42); }
-      .status-badge.is-closed { background: rgba(5,150,105,.22); color: #6ee7b7; border-color: rgba(5,150,105,.46); }
-    }
     @media (prefers-reduced-motion: reduce) { .status-badge { transition: none; } }`;
 
 const CAROUSEL_JS = `
@@ -624,67 +620,265 @@ const NAV_CSS = `
       position: fixed; top: 0; left: 0; right: 0; z-index: 2147483100; height: 52px;
       display: flex; align-items: center; justify-content: space-between; gap: 16px;
       padding: 0 18px;
-      background: rgba(8,9,10,0.72); -webkit-backdrop-filter: blur(14px) saturate(180%); backdrop-filter: blur(14px) saturate(180%);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.78); -webkit-backdrop-filter: blur(14px) saturate(180%); backdrop-filter: blur(14px) saturate(180%);
+      border-bottom: 1px solid rgba(16,17,26,0.09);
       font: 500 13.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     .gvhead__brand { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
     .gvhead__mark {
       width: 22px; height: 22px; flex: none; border-radius: 6px;
       background: linear-gradient(150deg, #828bf5, #5e6ad2 70%);
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset, 0 2px 8px rgba(94,106,210,0.5);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.25) inset, 0 2px 8px rgba(94,106,210,0.4);
       display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: -0.02em;
     }
-    .gvhead__title { font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em; color: #f7f8f8; white-space: nowrap; }
+    .gvhead__title { font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em; color: #16171a; white-space: nowrap; }
     .gvnav { display: flex; align-items: center; gap: 1px; }
     .gvnav a {
       display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
-      border-radius: 7px; text-decoration: none; color: #9197a1; white-space: nowrap; font-weight: 500;
+      border-radius: 7px; text-decoration: none; color: #5b626e; white-space: nowrap; font-weight: 500;
       transition: background .12s ease, color .12s ease;
     }
-    .gvnav a:hover { background: rgba(255,255,255,0.06); color: #f7f8f8; }
-    .gvnav a[aria-current="page"] { background: rgba(255,255,255,0.09); color: #f7f8f8; }
-    .gvnav a:focus-visible { outline: 2px solid #828bf5; outline-offset: 1px; }`;
+    .gvnav a:hover { background: rgba(16,17,26,0.05); color: #16171a; }
+    .gvnav a[aria-current="page"] { background: rgba(16,17,26,0.08); color: #16171a; }
+    .gvnav a:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+
+    /* ── Global search (⌘K / Ctrl+K / "/") ───────────────────────────────── */
+    .gvhead__actions { display: inline-flex; align-items: center; gap: 14px; min-width: 0; }
+    .gvsearch-trigger {
+      display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px 0 10px;
+      border-radius: 8px; border: 1px solid rgba(16,17,26,0.12); background: rgba(16,17,26,0.03);
+      color: #5b626e; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
+      transition: background .12s ease, color .12s ease, border-color .12s ease;
+    }
+    .gvsearch-trigger:hover { background: rgba(16,17,26,0.06); color: #16171a; border-color: rgba(16,17,26,0.20); }
+    .gvsearch-trigger:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvsearch-trigger svg { width: 15px; height: 15px; flex: none; }
+    .gvsearch-trigger kbd {
+      font: inherit; font-size: 11px; line-height: 1; padding: 3px 5px; border-radius: 5px;
+      background: rgba(16,17,26,0.05); border: 1px solid rgba(16,17,26,0.12); color: #5b626e;
+    }
+    @media (max-width: 600px) {
+      .gvsearch-trigger__label, .gvsearch-trigger kbd { display: none; }
+      .gvsearch-trigger { padding: 0 7px; width: 32px; justify-content: center; }
+    }
+
+    .gvsearch { position: fixed; inset: 0; z-index: 2147483200; display: flex; align-items: flex-start; justify-content: center; }
+    .gvsearch[hidden] { display: none; }
+    .gvsearch__backdrop { position: absolute; inset: 0; background: rgba(16,17,26,0.38); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+    .gvsearch__panel {
+      position: relative; margin-top: 11vh; width: min(620px, calc(100vw - 28px)); max-height: 72vh;
+      display: flex; flex-direction: column; overflow: hidden;
+      background: #ffffff; border: 1px solid rgba(16,17,26,0.10); border-radius: 12px;
+      box-shadow: 0 26px 70px -24px rgba(16,24,40,0.45);
+      font: 500 14px/1.4 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .gvsearch__inputrow { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(16,17,26,0.08); }
+    .gvsearch__inputrow svg { width: 18px; height: 18px; flex: none; color: #5b626e; }
+    .gvsearch__input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: #16171a; font: inherit; font-size: 15px; }
+    .gvsearch__input::placeholder { color: #8a909a; }
+    .gvsearch__esc { font: inherit; font-size: 11px; color: #5b626e; padding: 3px 6px; border-radius: 5px; background: rgba(16,17,26,0.05); border: 1px solid rgba(16,17,26,0.12); }
+    .gvsearch__results { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
+    .gvsearch__results[hidden] { display: none; }
+    .gvsearch__opt {
+      display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; cursor: pointer;
+      color: #16171a; scroll-margin: 8px;
+    }
+    .gvsearch__opt[aria-selected="true"] { background: rgba(94,106,210,0.12); }
+    .gvsearch__cat {
+      flex: none; min-width: 78px; text-align: center; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      padding: 3px 7px; border-radius: 5px;
+    }
+    .gvsearch__cat.is-proto { color: #3b43b0; background: rgba(94,106,210,0.14); }
+    .gvsearch__cat.is-comp { color: #1d7a4d; background: rgba(47,143,91,0.16); }
+    .gvsearch__cat.is-page { color: #9a5a12; background: rgba(231,148,80,0.18); }
+    .gvsearch__bd { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+    .gvsearch__title { font-size: 14px; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gvsearch__title b { color: #3b43b0; background: rgba(94,106,210,0.16); border-radius: 3px; padding: 0 1px; }
+    .gvsearch__sub { font-size: 12px; color: #5b626e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gvsearch__go { flex: none; color: #8a909a; font-size: 14px; }
+    .gvsearch__empty { padding: 26px 16px 30px; text-align: center; color: #5b626e; font-size: 13.5px; }
+    .gvsearch__empty[hidden] { display: none; }
+    @media (prefers-reduced-motion: reduce) { .gvsearch__backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; } }`;
+
+// Magnifier glyph reused by the trigger + the overlay input row.
+const SEARCH_ICON = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+
+// Command-palette overlay markup — present on every chrome page (populated by searchScript).
+function searchOverlay() {
+  return `<div class="gvsearch" data-search hidden>` +
+    `<div class="gvsearch__backdrop" data-search-close></div>` +
+    `<div class="gvsearch__panel" role="dialog" aria-modal="true" aria-label="Search the library">` +
+      `<div class="gvsearch__inputrow">${SEARCH_ICON}` +
+        `<input class="gvsearch__input" type="text" placeholder="Search prototypes, components, pages…" aria-label="Search prototypes, components, and pages" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="gvsearch-results" aria-autocomplete="list" data-search-input />` +
+        `<kbd class="gvsearch__esc">Esc</kbd>` +
+      `</div>` +
+      `<ul class="gvsearch__results" id="gvsearch-results" role="listbox" aria-label="Results" data-search-results></ul>` +
+      `<div class="gvsearch__empty" data-search-empty hidden>No matches.</div>` +
+    `</div>` +
+  `</div>`;
+}
 
 function navBar(active) {
   const tab = (href, label, key) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;
-  return `<header class="gvhead"><span class="gvhead__brand"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Team</span></span><nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></header>`;
+  const trigger = `<button type="button" class="gvsearch-trigger" data-search-open aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" title="Search the library — press / or ⌘K">${SEARCH_ICON}<span class="gvsearch-trigger__label">Search</span><kbd data-search-kbd>⌘K</kbd></button>`;
+  return `<header class="gvhead"><span class="gvhead__brand"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Team</span></span><div class="gvhead__actions">${trigger}<nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>${searchOverlay()}`;
+}
+
+// Module-level: the JSON search index, embedded into every chrome page. Set in main()
+// once all three sources (prototypes, components, pages) have been scanned.
+let SEARCH_INDEX_JSON = "[]";
+
+/** Build the flat global search index across Prototypes · Components · Pages. */
+function buildSearchIndex(opportunities, components, pages) {
+  const items = [];
+  for (const opp of opportunities) {
+    for (const p of opp.prototypes) {
+      items.push({ t: titleCase(p.name), c: "Prototype", g: titleCase(opp.name), h: `/${encodeURIComponent(opp.name)}/${p.href}` });
+    }
+  }
+  for (const c of components) {
+    const desc = ((COMPONENT_BLURBS[c.name] || {}).desc || "").replace(/<[^>]+>/g, "");
+    items.push({ t: titleCase(c.name), c: "Component", g: "", h: `/components/${c.href}`, d: desc });
+  }
+  for (const p of pages) {
+    items.push({ t: titleCase(p.name), c: "Page", g: "", h: `/pages/${p.href}` });
+  }
+  // Escape "<" so the JSON can't break out of the <script> it's embedded in.
+  return JSON.stringify(items).replace(/</g, "\\u003c");
+}
+
+/** Client-side command palette: filter the embedded index, keyboard-navigate, open. */
+function searchScript() {
+  return `(function(){
+  var IDX = ${SEARCH_INDEX_JSON};
+  var overlay = document.querySelector('[data-search]');
+  if (!overlay || overlay.dataset.wired) return;
+  overlay.dataset.wired = '1';
+  var input = overlay.querySelector('[data-search-input]');
+  var list = overlay.querySelector('[data-search-results]');
+  var empty = overlay.querySelector('[data-search-empty]');
+  var triggers = document.querySelectorAll('[data-search-open]');
+  var active = -1, items = [], lastFocus = null;
+  var isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+  document.querySelectorAll('[data-search-kbd]').forEach(function(k){ k.textContent = isMac ? '\\u2318K' : 'Ctrl K'; });
+  function catClass(c){ return c==='Prototype'?'is-proto':(c==='Component'?'is-comp':'is-page'); }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]; }); }
+  function hl(text, q){
+    if(!q) return esc(text);
+    var i = text.toLowerCase().indexOf(q);
+    if(i<0) return esc(text);
+    return esc(text.slice(0,i))+'<b>'+esc(text.slice(i,i+q.length))+'</b>'+esc(text.slice(i+q.length));
+  }
+  function score(it, terms, raw){
+    var hay = (it.t+' '+(it.g||'')+' '+it.c+' '+(it.d||'')).toLowerCase();
+    for(var i=0;i<terms.length;i++){ if(hay.indexOf(terms[i])<0) return -1; }
+    var t = it.t.toLowerCase();
+    if(t===raw) return 100;
+    if(t.indexOf(raw)===0) return 80;
+    if(t.indexOf(raw)>=0) return 60;
+    return 30;
+  }
+  function render(){
+    var raw = input.value.trim().toLowerCase();
+    var terms = raw ? raw.split(/\\s+/) : [];
+    var matched = IDX.map(function(it){ return { it: it, s: terms.length ? score(it, terms, raw) : 50 }; })
+      .filter(function(x){ return x.s >= 0; });
+    var order = { Prototype:0, Component:1, Page:2 };
+    matched.sort(function(a,b){ return b.s - a.s || order[a.it.c] - order[b.it.c] || a.it.t.localeCompare(b.it.t); });
+    items = matched.slice(0,60).map(function(x){ return x.it; });
+    list.innerHTML = items.map(function(it, i){
+      var sub = it.g || it.d || '';
+      return '<li class="gvsearch__opt" role="option" id="gvs-opt-'+i+'" data-i="'+i+'" aria-selected="false">'
+        + '<span class="gvsearch__cat '+catClass(it.c)+'">'+it.c+'</span>'
+        + '<span class="gvsearch__bd"><span class="gvsearch__title">'+hl(it.t, raw)+'</span>'
+        + (sub ? '<span class="gvsearch__sub">'+esc(sub)+'</span>' : '')
+        + '</span><span class="gvsearch__go" aria-hidden="true">\\u2197</span></li>';
+    }).join('');
+    var none = items.length === 0;
+    empty.hidden = !none; list.hidden = none;
+    setActive(none ? -1 : 0);
+  }
+  function setActive(i){
+    active = i;
+    var opts = list.querySelectorAll('.gvsearch__opt');
+    opts.forEach(function(o, idx){
+      var on = idx === i; o.setAttribute('aria-selected', on ? 'true' : 'false');
+      if(on){ o.scrollIntoView({ block:'nearest' }); input.setAttribute('aria-activedescendant', o.id); }
+    });
+    if(i < 0) input.removeAttribute('aria-activedescendant');
+  }
+  function go(i){ var it = items[i]; if(it) window.location.href = it.h; }
+  function open(){
+    if(!overlay.hidden) return;
+    lastFocus = document.activeElement;
+    overlay.hidden = false; document.documentElement.style.overflow = 'hidden';
+    input.value = ''; render(); input.focus();
+  }
+  function close(){
+    if(overlay.hidden) return;
+    overlay.hidden = true; document.documentElement.style.overflow = '';
+    if(lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  triggers.forEach(function(t){ t.addEventListener('click', open); });
+  overlay.querySelectorAll('[data-search-close]').forEach(function(b){ b.addEventListener('click', close); });
+  input.addEventListener('input', render);
+  list.addEventListener('click', function(e){ var li = e.target.closest('.gvsearch__opt'); if(li) go(+li.getAttribute('data-i')); });
+  list.addEventListener('mousemove', function(e){ var li = e.target.closest('.gvsearch__opt'); if(li){ var i = +li.getAttribute('data-i'); if(i !== active) setActive(i); } });
+  input.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowDown'){ e.preventDefault(); if(items.length) setActive((active+1) % items.length); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); if(items.length) setActive((active-1+items.length) % items.length); }
+    else if(e.key === 'Enter'){ e.preventDefault(); go(active); }
+    else if(e.key === 'Escape'){ e.preventDefault(); close(); }
+  });
+  document.addEventListener('keydown', function(e){
+    var k = (e.key || '').toLowerCase();
+    if((e.metaKey || e.ctrlKey) && k === 'k'){ e.preventDefault(); overlay.hidden ? open() : close(); return; }
+    if(k === 'escape' && !overlay.hidden){ close(); return; }
+    if(k === '/' && overlay.hidden){
+      var el = document.activeElement, tag = el && el.tagName;
+      if(tag !== 'INPUT' && tag !== 'TEXTAREA' && !(el && el.isContentEditable)){ e.preventDefault(); open(); }
+    }
+  });
+})();`;
 }
 
 /** Inject the nav (with its own styles) right after the opening <body> tag. */
 function injectNav(html, active) {
   const m = html.match(/<body[^>]*>/i);
   if (!m) return html;
-  return html.replace(m[0], `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${navBar(active)}`);
+  return html.replace(
+    m[0],
+    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${navBar(active)}\n  <script>${searchScript()}</script>`
+  );
 }
 
-// Dark "shell skin" for the Primitives gallery so it sits inside the Linear chrome:
-// the page canvas goes near-black with the indigo aurora, and the gallery's white
-// .gv-card sections float as elevated cards — while the GoVocal components inside
-// stay light (that IS the real product look). Injected last so it wins over the
-// gallery's own body rule (equal specificity, later in document).
+// "Shell skin" for the Primitives gallery so it matches the light shell: the page
+// canvas takes the shell's near-white bg + faint indigo wash, the gallery's white
+// .gv-card sections float as elevated cards, and its duplicate intro header is hidden.
+// Injected last so it wins over the gallery's own body rule (equal specificity,
+// later in document).
 const PRIMITIVES_SKIN = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body.gv-root {
-      background: #08090a !important;
+      background: #fbfbfd !important;
       padding-top: 76px !important;
     }
     body.gv-root::before {
       content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
-        radial-gradient(920px 460px at 16% -10%, rgba(94,106,210,0.22), transparent 60%),
-        radial-gradient(680px 420px at 96% -4%, rgba(140,99,210,0.13), transparent 55%);
+        radial-gradient(940px 440px at 14% -12%, rgba(94,106,210,0.10), transparent 60%),
+        radial-gradient(700px 420px at 98% -6%, rgba(140,99,210,0.07), transparent 55%);
     }
     body.gv-root > .wrap { position: relative; z-index: 1; max-width: 940px; }
     /* The gallery's intro header duplicates the nav label — drop it for a clean canvas. */
     body.gv-root > .wrap > header.gv-card { display: none; }
     body.gv-root .sec.gv-card {
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 16px 40px -20px rgba(0,0,0,0.7);
+      border: 1px solid rgba(16,17,26,0.08);
+      box-shadow: 0 12px 30px -18px rgba(16,24,40,0.22);
     }`;
 
-/** Inject the nav + the dark Primitives skin into the gallery. */
+/** Inject the nav + the Primitives skin (light, matches the shell) into the gallery. */
 function injectPrimitives(html) {
   const withNav = injectNav(html, "primitives");
   return withNav.replace(/<\/head>/i, `  <style>${PRIMITIVES_SKIN}</style>\n</head>`);
@@ -717,6 +911,8 @@ function shell({ title, body, back, activeTab = "prototypes" }) {
   <script>${CAROUSEL_JS}
   </script>
   <script>${STATUS_JS}
+  </script>
+  <script>${searchScript()}
   </script>
 </body>
 </html>
@@ -938,7 +1134,12 @@ async function main() {
   await fs.rm(DIST, { recursive: true, force: true });
   await fs.mkdir(DIST, { recursive: true });
 
+  // Scan all three sources up front (each also copies its folders into dist) so the
+  // global search index is complete before any chrome page is rendered.
   const opportunities = await scan();
+  const components = await scanComponents();
+  const pages = await scanPages();
+  SEARCH_INDEX_JSON = buildSearchIndex(opportunities, components, pages);
 
   // Root index → opportunities.
   await fs.writeFile(path.join(DIST, "index.html"), renderRootIndex(opportunities), "utf8");
@@ -971,7 +1172,6 @@ async function main() {
   }
 
   // ── Components tab → composed component library from components/<name>/.
-  const components = await scanComponents();
   await fs.mkdir(path.join(DIST, "components"), { recursive: true });
   await fs.writeFile(
     path.join(DIST, "components", "index.html"),
@@ -980,7 +1180,6 @@ async function main() {
   );
 
   // ── Pages tab → composed reference pages from pages/<name>/.
-  const pages = await scanPages();
   await fs.mkdir(path.join(DIST, "pages"), { recursive: true });
   await fs.writeFile(
     path.join(DIST, "pages", "index.html"),
