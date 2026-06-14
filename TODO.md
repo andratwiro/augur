@@ -4,8 +4,11 @@ Pending work for this repo. Claude reads this at the start of each session and
 surfaces what's next. Check items off (`- [x]`) as they land; add new ones freely.
 
 ## Skills & tooling
-- [ ] Create a **WCAG 2.2 (AA) accessibility** skill for prototypes — checklist +
+- [x] Create a **WCAG 2.2 (AA) accessibility** skill for prototypes — checklist +
       patterns so every prototype meets accessibility guidelines by default.
+      → `skills/govocal-a11y/`: build-by-default checklist + tripwire patterns, plus
+      `audit.mjs` (axe-core headless, WCAG 2.2 AA) via `npm run audit`. Non-blocking:
+      flags violations in chat. Wired into CLAUDE.md as a hard rule.
 - [ ] Create a **govocal-ui** skill — reusable UI components / snippets for
       prototypes (complements the existing `skills/govocal-design/`).
 
@@ -19,9 +22,13 @@ surfaces what's next. Check items off (`- [x]`) as they land; add new ones freel
 ## Prototype review environment
 - [ ] Turn the prototypes link into a proper **dev review environment** for
       capturing output/feedback, not just a list of links. Includes:
-  - [ ] **Carousel** navigation — on the landing page (across prototypes) and
-        within an individual prototype (across its screens/variants).
-  - [ ] **Download HTML** button — let a viewer grab the self-contained prototype.
+  - [x] **Carousel** navigation — big preview carousels on both the landing page
+        (live-iframe cover per opportunity) and the opportunity page (live preview
+        per prototype). Arrow buttons, dots, keyboard ←/→, scroll-snap; controls
+        auto-hide when there's a single slide. (`build.js` shell + `CAROUSEL_JS`.)
+  - [x] **Download HTML** button — on the opportunity (pre-prototype) page, each
+        prototype card has a `↓ Download HTML` button that grabs its entry HTML
+        (same-origin `download` attr, filename = prototype slug).
   - [ ] **Comments overlay** — a way to leave comments on top of a prototype
         (pin/annotate + a comment thread) so reviewers can capture feedback.
   - [ ] **City colour theming** — switch a prototype's colour scheme per city via a
