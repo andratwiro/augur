@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.09";
+const UI_VERSION = "0.10";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -79,6 +79,17 @@ const PENDING_PAGES = [
   "ideation",
   "project-list",
   "project-editor",
+];
+
+// Theme combinations offered by the review-site theme picker. Mirrors GV_THEMES
+// (id + name) in skills/govocal-ui/govocal-themes.js — keep in sync when cities are
+// added/removed. Choosing one stamps ?theme=<id> onto every prototype/page/component
+// open-link + ⌘K result and re-renders the live previews in that theme.
+const THEMES = [
+  { id: 0, label: "GoVocal" },
+  { id: 1, label: "Copenhagen" },
+  { id: 2, label: "Vienna" },
+  { id: 3, label: "California" },
 ];
 
 // Source for the reference tabs (Primitives · Components · Pages).
@@ -834,7 +845,19 @@ const NAV_CSS = `
     @media (max-width: 520px) {
       .gvsearch-trigger__label, .gvsearch-trigger kbd { display: none; }
       .gvsearch-trigger { padding: 0 7px; width: 32px; justify-content: center; }
+      .gvhead__actions { gap: 10px; }
+      .gvtheme { max-width: 108px; }
     }
+
+    /* Review-site theme picker — stamps ?theme= onto every prototype/page/component
+       link + preview so you can re-skin anything you open from the chrome. */
+    .gvtheme {
+      height: 30px; max-width: 150px; border-radius: 8px; padding: 0 8px;
+      border: 1px solid rgba(16,17,26,0.12); background: rgba(16,17,26,0.03); color: #16171a;
+      font: inherit; font-size: 13px; cursor: pointer;
+    }
+    .gvtheme:hover { background: rgba(16,17,26,0.06); border-color: rgba(16,17,26,0.20); }
+    .gvtheme:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
 
     .gvsearch { position: fixed; inset: 0; z-index: 2147483200; display: flex; align-items: flex-start; justify-content: center; }
     .gvsearch[hidden] { display: none; }
@@ -897,7 +920,8 @@ function navBar(active) {
     `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;
   const trigger = `<button type="button" class="gvsearch-trigger" data-search-open aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" title="Search the library — press / or ⌘K">${SEARCH_ICON}<span class="gvsearch-trigger__label">Search</span><kbd data-search-kbd>⌘K</kbd></button>`;
   const hamburger = `<button type="button" class="gvnav-toggle" data-nav-toggle aria-expanded="false" aria-controls="gvnav-menu" aria-label="Open menu"><span class="gvnav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>`;
-  return `<header class="gvhead"><a class="gvhead__brand" href="/" aria-label="Product Prototypes — back to Prototypes"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Prototypes</span></a><div class="gvhead__actions">${trigger}${hamburger}<nav class="gvnav" id="gvnav-menu" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>${searchOverlay()}`;
+  const themeCtl = `<select class="gvtheme" data-theme-select aria-label="Preview theme" title="Preview theme — applies to links &amp; previews">${THEMES.map((t) => `<option value="${t.id}">${t.label}</option>`).join("")}</select>`;
+  return `<header class="gvhead"><a class="gvhead__brand" href="/" aria-label="Product Prototypes — back to Prototypes"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Prototypes</span></a><div class="gvhead__actions">${themeCtl}${trigger}${hamburger}<nav class="gvnav" id="gvnav-menu" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>${searchOverlay()}`;
 }
 
 // Module-level: the JSON search index, embedded into every chrome page. Set in main()
@@ -930,6 +954,14 @@ function searchScript() {
   var overlay = document.querySelector('[data-search]');
   if (!overlay || overlay.dataset.wired) return;
   overlay.dataset.wired = '1';
+  function gvTheme(){ try { return localStorage.getItem('gv-theme') || '1'; } catch(e){ return '1'; } }
+  function gvWithTheme(url, n){
+    var hash = ''; var hi = url.indexOf('#'); if(hi >= 0){ hash = url.slice(hi); url = url.slice(0, hi); }
+    var qi = url.indexOf('?'); var base = qi >= 0 ? url.slice(0, qi) : url; var qs = qi >= 0 ? url.slice(qi + 1) : '';
+    var parts = qs.split('&').filter(function(p){ return p && p.indexOf('theme=') !== 0; });
+    parts.push('theme=' + n);
+    return base + '?' + parts.join('&') + hash;
+  }
   var input = overlay.querySelector('[data-search-input]');
   var list = overlay.querySelector('[data-search-results]');
   var empty = overlay.querySelector('[data-search-empty]');
@@ -983,7 +1015,7 @@ function searchScript() {
     });
     if(i < 0) input.removeAttribute('aria-activedescendant');
   }
-  function go(i){ var it = items[i]; if(it) window.location.href = it.h; }
+  function go(i){ var it = items[i]; if(it) window.location.href = gvWithTheme(it.h, gvTheme()); }
   function open(){
     if(!overlay.hidden) return;
     lastFocus = document.activeElement;
@@ -1032,6 +1064,59 @@ function searchScript() {
     });
     document.addEventListener('keydown', function(e){ if((e.key||'').toLowerCase() === 'escape') closeNav(); });
     window.addEventListener('resize', function(){ if(window.innerWidth > 720) closeNav(); });
+  }
+
+  // ── Review-site theme picker ─────────────────────────────────────────────
+  // Persists a chosen theme and stamps ?theme= onto every prototype/page/component
+  // open-link + live preview, so anything opened from the chrome renders in it.
+  var themeSel = document.querySelector('[data-theme-select]');
+  if (themeSel) {
+    var isThemed = document.body.classList.contains('gv-root'); // a GoVocal-themed page (the gallery)
+    var urlN = new URLSearchParams(location.search).get('theme');
+    var active = urlN;
+    if (active == null) { try { active = localStorage.getItem('gv-theme'); } catch(e){} }
+    // Default to theme 1 (a visually distinct city skin) so the ?theme= param is always
+    // present + editable in the URL, and so any colour that ISN'T wired to the theme
+    // variables stands out instead of silently matching the default.
+    if (active == null || !themeSel.querySelector('option[value="' + active + '"]')) active = '1';
+    themeSel.value = active;
+    try { localStorage.setItem('gv-theme', active); } catch(e){}
+
+    function gvStampLinks(n){
+      [].forEach.call(document.querySelectorAll('[data-themeable]'), function(a){
+        a.href = gvWithTheme(a.getAttribute('href'), n);
+      });
+    }
+    function gvStampFrames(n){
+      [].forEach.call(document.querySelectorAll('.preview iframe, .comp-thumb iframe'), function(f){
+        var nx = gvWithTheme(f.getAttribute('src'), n);
+        if (f.getAttribute('src') !== nx) f.src = nx;
+      });
+    }
+
+    if (!isThemed) {
+      gvStampLinks(active);
+      gvStampFrames(active);
+      themeSel.addEventListener('change', function(){
+        var n = themeSel.value;
+        try { localStorage.setItem('gv-theme', n); } catch(e){}
+        gvStampLinks(n); gvStampFrames(n);
+      });
+    } else {
+      // The Primitives gallery owns its own theming via govocal-themes.js (reads ?theme
+      // on load), so switch by reloading with the param.
+      themeSel.addEventListener('change', function(){
+        var n = themeSel.value;
+        try { localStorage.setItem('gv-theme', n); } catch(e){}
+        var u = new URL(location.href);
+        if (n === '0') u.searchParams.delete('theme'); else u.searchParams.set('theme', n);
+        location.href = u.toString();
+      });
+      // Reflect a saved non-default theme on first landing (no ?theme in the URL yet).
+      if (urlN == null && active !== '0') {
+        var u2 = new URL(location.href); u2.searchParams.set('theme', active); location.replace(u2.toString());
+      }
+    }
   }
 })();`;
 }
@@ -1153,7 +1238,7 @@ function renderRootIndex(opportunities) {
       const statusSummary = `<div class="opp-status" data-opp-status data-proto-paths="${protoPaths}"><span class="status-chip is-progress"><span class="status-dot" aria-hidden="true"></span>${n} In progress</span></div>`;
       return `
         <div class="slide">
-          <a class="card-opp" href="${oppPath}">
+          <a class="card-opp" data-themeable href="${oppPath}">
             ${preview(coverSrc)}
             <div class="opp-meta">
               <div class="proto-name">${titleCase(opp.name)}</div>
@@ -1168,7 +1253,7 @@ function renderRootIndex(opportunities) {
   // Standalone Playground entry — lives below the carousel, a quick scratch space.
   const playground = `
     <p class="section-eyebrow" style="margin-top:48px">Scratch space</p>
-    <a class="playground" href="playground/">
+    <a class="playground" data-themeable href="playground/">
       <span class="playground__icon" aria-hidden="true">🛝</span>
       <span class="playground__text">
         <span class="playground__name">Playground</span>
@@ -1202,7 +1287,7 @@ function renderOpportunityIndex(opp) {
           <div class="card-proto">
             <div class="preview">
               <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
-              <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
+              <a class="preview-link" data-themeable href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
             </div>
             <div class="proto-meta">
               <div>
@@ -1211,7 +1296,7 @@ function renderOpportunityIndex(opp) {
                 ${status}
               </div>
               <div class="proto-actions">
-                <a class="btn primary" href="${p.href}">Open &rarr;</a>
+                <a class="btn primary" data-themeable href="${p.href}">Open &rarr;</a>
                 ${download}
               </div>
             </div>
@@ -1245,13 +1330,13 @@ function renderPagesIndex(pages) {
         <div class="card-proto">
           <div class="preview">
             <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
-            <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
+            <a class="preview-link" data-themeable href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
           </div>
           <div class="proto-meta">
             <div class="proto-name">${titleCase(p.name)}</div>
             <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
             <div class="proto-actions">
-              <a class="btn primary" href="${p.href}">Open &rarr;</a>
+              <a class="btn primary" data-themeable href="${p.href}">Open &rarr;</a>
             </div>
           </div>
         </div>`;
@@ -1307,14 +1392,14 @@ function renderComponentsIndex(components) {
       return `
         <tr>
           <td>
-            <a class="comp-thumb" href="${c.href}" aria-label="Open ${titleCase(c.name)}">
+            <a class="comp-thumb" data-themeable href="${c.href}" aria-label="Open ${titleCase(c.name)}">
               <iframe src="${c.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
             </a>
           </td>
           <td><div class="comp-name">${titleCase(c.name)}${classes}</div></td>
           <td><div class="comp-desc">${blurb.desc}</div></td>
           <td class="comp-actions">
-            <a class="btn primary" href="${c.href}">Open &rarr;</a>
+            <a class="btn primary" data-themeable href="${c.href}">Open &rarr;</a>
           </td>
         </tr>`;
     })

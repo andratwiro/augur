@@ -11,16 +11,16 @@
     REFERENCE REBUILD of the Stadt Wien GoVocal homepage (mitgestalten.wien.gv.at),
     composed from the govocal-ui composed components (.gv-header / .gv-hero /
     .gv-rail+.gv-pcard / .gv-footer). Tenant = Stadt Wien (Wien Rot + Wiener Melange).
-    Photos/illustrations are CSS placeholders; copy, structure, components, spacing
-    and colour follow the live page. Fixed Vienna theme (no ?theme= picker here).
+    Photos/illustrations are CSS placeholders; copy, structure, components and spacing
+    follow the live page. Brand colours are theme-driven (?theme= switcher), so the page
+    re-skins per city; the Vienna content (logo emblem, German copy) stays as the example.
   -->
   <style>
-    /* ── Stadt Wien tenant theme (the product themes 3 colours + font per city) ── */
+    /* Tenant COLOURS are not hardcoded here — they come from govocal-tokens.css and are
+       driven by the ?theme= switcher (govocal-themes.js), so this page re-skins per city
+       like every other surface. Only the default city typeface is set below; the switcher
+       overrides --gv-font-family per city when that city ships its own font. */
     :root {
-      --gv-tenant-primary: #E2001A;     /* Wien Rot (AA-safe rendering of the city red) */
-      --gv-tenant-secondary: #000000;
-      --gv-tenant-text: #1A1A1A;
-      /* Vienna ships the city typeface tenant-wide; Public Sans is the graceful fallback. */
       --gv-font-family: 'WienerMelange_W_Rg', 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     }
     body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
@@ -297,5 +297,6 @@
   </footer>
   <!-- No cookie banner here: the cookie-consent rule applies to interactive
        PROTOTYPES, not to the Pages-tab reference reproductions. -->
+  <script src="govocal-themes.js" defer></script>
 </body>
 </html>
