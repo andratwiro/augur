@@ -5,11 +5,12 @@
   "description": "Monorepo of design prototypes, built to a static site for private sharing.",
   "type": "module",
   "scripts": {
-    "build": "node build.js",
+    "index": "node scripts/build-index.mjs",
+    "build": "node scripts/build-index.mjs && node build.js",
     "audit": "node skills/govocal-a11y/audit.mjs",
     "comments": "node review-comments.mjs",
-    "dev": "node build.js && npx --yes serve dist",
-    "deploy": "set -a && . ./.env.deploy && set +a && node build.js && npx wrangler pages deploy dist --project-name govocal-prototypes --branch main"
+    "dev": "node scripts/build-index.mjs && node build.js && npx --yes serve dist",
+    "deploy": "set -a && . ./.env.deploy && set +a && node scripts/build-index.mjs && node build.js && npx wrangler pages deploy dist --project-name govocal-prototypes --branch main"
   },
   "engines": {
     "node": ">=18"
