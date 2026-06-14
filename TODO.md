@@ -22,19 +22,48 @@ surfaces what's next. Check items off (`- [x]`) as they land; add new ones freel
         city switcher + copy-paste catalog (`components.md`). Transcribed from the
         real `@citizenlab/cl2-component-library`.
 
-## Review site — Patterns + Pages reference tabs
+## ⭐ Main pending work — UI-compliant building blocks
+
+The priority now is making the shared UI layer trustworthy end-to-end, so that a
+prototype assembled from our primitives + pages is **actually compliant with the
+real GoVocal UI** (visually faithful, themeable, a11y-clean) with no per-prototype
+re-litigation. Three threads, interlocking:
+
+- [ ] **Components / Primitives — test & refine** — the `components/<name>/` library
+      (live on the **Components** tab) and the shared `.gv-*` CSS it draws from
+      (`skills/govocal-ui/govocal-ui.css`). Goal: each primitive is a faithful,
+      reusable, source-grounded building block.
+  - Current set: `header-nav`, `footer`, `project-card`, `hero` (see
+    `components/manifest.md`).
+  - [ ] **Test each primitive**: screenshot (mobile + desktop) vs. the real product,
+        run `npm run audit`, check every state + `?theme=` re-skin. Fix drift in the
+        shared CSS (never fork it — `manifest.md` rule).
+  - [ ] **Refine + grow the set**: tighten the existing 4, then add the primitives a
+        prototype actually needs (e.g. buttons/inputs/forms, idea card, status pill,
+        tabs, avatars/meta, modal/dialog). One at a time, each verified before it lands.
+- [ ] **More Pages** — composed reference pages on the **Pages** tab: project page,
+      input form, map, page builder (one at a time, each reviewed for compliance
+      before it lands). These compose the primitives into full surfaces.
+- [ ] **Prove the loop** — build (or retrofit) at least one real prototype purely
+      from the refined primitives/pages to confirm the building blocks hold up in a
+      real assembly and stay compliant.
+
+### Review-site tabs (shipped)
 A top-right tab nav on the Cloudflare review site: **Prototypes · Patterns ·
-Pages**. Prototypes stays the main page (`/`); Patterns + Pages are a glossary
-for designers to review and copy from, so we never rebuild GoVocal twice.
-- [x] **3-tab nav in `build.js`** — top-right `Prototypes · Patterns · Pages`,
-      self-contained styles, injected into the gallery + generated index pages.
+Components · Pages**. Prototypes stays the main page (`/`); Patterns / Components /
+Pages are a glossary for designers to review and copy from, so we never rebuild
+GoVocal twice.
+- [x] **Tab nav in `build.js`** — top-right `Prototypes · Patterns · Components ·
+      Pages`, self-contained styles, injected into the gallery + generated index pages.
 - [x] **Patterns tab** — the govocal-ui gallery shipped to `/patterns/` (build.js
       copies `skills/govocal-ui/gallery.html` + assets out of the skill). Live.
+- [x] **Components tab** — composed primitive demos from a top-level
+      `components/<name>/` folder, carousel + Open/Download like prototypes.
+      Build.js auto-discovers each subfolder; `components/manifest.md` is the recall
+      index. Live with 4 (`header-nav`, `footer`, `project-card`, `hero`).
 - [x] **Pages tab** — composed reference pages from a top-level `pages/<name>/`
       folder, carousel + Open/Download like prototypes. Live with 2 samples
       (`homepage` = Stadt Wien reference rebuild, `hello-world`).
-- [ ] **More Pages** — project page, input form, map, page builder (one at a time,
-      each reviewed for compliance before it lands).
 
 ## Cookie consent (resident-facing rule)
 - [x] **Cookie-consent pattern** — `skills/govocal-ui/govocal-cookies.js`: drop-in
@@ -49,10 +78,18 @@ for designers to review and copy from, so we never rebuild GoVocal twice.
       the product itself, and key concepts, so agents can ramp up fast.
       (Internal-only — keep it OUTSIDE any `prototypes/` folder so it never ships.)
       → `GOVOCAL.md` at repo root. Synthesized from all ~70 support-base articles
-      (`support.govocal.com`, read 2026-06-14). Tiered: §1 big-picture +
-      §2 vocabulary first, deeper reference (methods, roles, config, analysis,
-      specs, gotchas) below. ~3.5k tokens. NOT in a `prototypes/` folder, so
-      `build.js` never ships it.
+      (`support.govocal.com`, read 2026-06-14) + **Appendix A source-grounded
+      from the repo** (`CitizenLabDotCo/citizenlab` @ 5d67730: exact participation-
+      method keys, idea statuses, voting/reaction/input-term enums, front-office +
+      admin URL patterns, survey/form `input_type` field types). Tiered: §1 big-
+      picture + §2 vocabulary first, reference below, Appendix A = literal data
+      model. NOT in a `prototypes/` folder, so `build.js` never ships it.
+      **Wired in:** read at session start + referenced from govocal-design/ui
+      skills + design-system section (CLAUDE.md).
+      **Living doc:** §13 "Working knowledge" + a CLAUDE.md "Keeping GOVOCAL.md
+      alive" rule — fold in learnings from convos / `research.md` / reviewer
+      feedback as we go, so it becomes a faithful representation of the user's
+      thinking about the project.
 - [x] Add a **link to the GoVocal repository** (and any other key references) so
       Claude can jump in and research the real product quickly.
       → Public support/help base https://support.govocal.com/en/ (browsable, no

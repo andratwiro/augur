@@ -13,6 +13,15 @@ description: GoVocal design system — consult when building any prototype to ke
 Consult this skill **whenever building or modifying a prototype** under any
 `<opportunity>/prototypes/` folder.
 
+## Product grounding first: `GOVOCAL.md`
+
+Before designing a GoVocal surface, read **`GOVOCAL.md`** (repo root) — the internal
+product-context brief + living project brain. It defines what a
+Project/Phase/Input/participation-method actually is, the exact terminology and asset
+specs to mirror, the roles, and the constraints. This skill owns *how it looks and
+sounds*; `GOVOCAL.md` owns *what the thing is*. Get the product model right there
+first, then style it here.
+
 ## To fill in
 
 - **Brand:** logo usage, voice & tone.

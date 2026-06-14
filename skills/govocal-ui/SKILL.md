@@ -10,6 +10,11 @@ code, so prototypes look like GoVocal — not an approximation. Companion to
 `skills/govocal-design/` (brand voice / visual direction / when-to-use). This
 skill is the *exact how*; that one is the *why & when*.
 
+For the **product model** behind the UI — what a Project/Phase/Input/participation
+method is, the exact terminology, roles, and asset specs (image dimensions, etc.) —
+read **`GOVOCAL.md`** (repo root), the internal product-context brief + living
+project brain. Match its vocabulary when labelling components.
+
 ## Source & provenance
 
 - Repo: `CitizenLabDotCo/citizenlab` (public). Pinned at commit **`5d67730`**.

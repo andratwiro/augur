@@ -10,6 +10,13 @@ user what's pending / next before doing anything else. Keep `TODO.md` up to date
 check items off as they land and add new ones as they come up. `TODO.md` is
 internal — it lives at the root, outside any `prototypes/` folder, so it never ships.
 
+Also read `GOVOCAL.md` at the repo root — the internal **product-context brief and
+living project brain** (what GoVocal is, its vocabulary, the
+Folder→Project→Phase→method model, roles, constraints, asset specs, plus accumulated
+working knowledge). It grounds everything you build: §1–2 are the quick ramp, the
+rest is reference you scan when building a specific surface. Keep it alive — see
+"Keeping GOVOCAL.md alive" below. Internal-only, outside `prototypes/`, never ships.
+
 ## Folder convention
 
 Each top-level folder is an **opportunity** (a problem space / project area):
@@ -42,6 +49,30 @@ If you add a new kind of internal file, keep it **outside** `prototypes/`.
 Every opportunity has a `research.md` and `context.md`. **Agents should read
 these for context** before building or modifying a prototype — they describe the
 problem, users, and constraints. They are internal-only and must never ship.
+
+## Keeping `GOVOCAL.md` alive (the project brain)
+
+`GOVOCAL.md` is not a static snapshot — it is meant to **grow into a faithful
+representation of the user's thinking about this project**. Treat it like memory,
+scoped to GoVocal product knowledge and how we work on it. As we go:
+
+- **Fold in what's learned.** When a conversation, a prototype build, an opportunity's
+  `research.md`/`context.md`, or reviewer feedback (`npm run comments`) surfaces
+  something durable — a product fact, a correction, the user's opinion/priority, a
+  terminology preference, a decision about how a surface should behave — add it to
+  the **`§ Working knowledge`** section at the bottom of `GOVOCAL.md` (or correct the
+  relevant reference section if it's a plain factual fix).
+- **Capture the user's brain, not just the product.** Their product opinions,
+  what they care about, recurring asks, and how they think about GoVocal belong here
+  — this file should let a fresh agent think about the project the way the user does.
+- **Keep it tidy & deduped** (same discipline as memory): update the existing line
+  rather than appending a duplicate; delete what turns out wrong; date entries that
+  are point-in-time. Don't let it sprawl — compress.
+- **Cite where it matters.** For product facts, the help center
+  (`support.govocal.com`) and the source repo (`CitizenLabDotCo/citizenlab`) are
+  ground truth — re-fetch rather than guess, then record what you confirmed.
+- **Do it proactively**, without being asked, whenever something worth remembering
+  comes up — and mention in chat that you updated it.
 
 ## Prototypes
 
@@ -83,6 +114,11 @@ personas the flow most needs to serve and run the lens — don't wait to be aske
 `skills/govocal-persona-critique/`).
 
 ## Design system
+
+Ground the *product* in `GOVOCAL.md` (root) and the *look & feel* in the two skills
+below. `GOVOCAL.md` tells you what a Project/Phase/Input/participation-method
+actually is and the exact terminology + asset specs to mirror; the skills tell you
+how it looks and sounds. Consult all three when building any prototype.
 
 Two companion skills, **consult both when building any prototype**:
 
