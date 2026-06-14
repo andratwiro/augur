@@ -460,5 +460,14 @@ Keep entries short, deduped, and dated when point-in-time. Newest at top.
   Pull learnings from prototype conversations, the opportunities' `research.md` /
   `context.md`, and reviewer feedback as we go.
 
+- _(2026-06-14)_ **Live navbar markup (from rendered Stadt Wien `mitgestalten.wien.gv.at`):**
+  the real header is `<header id="e2e-navbar">`; the primary nav is a
+  `<nav aria-label="Primäre">` landmark; the active homepage/logo link carries
+  `aria-current="page"`; the **hamburger is GoVocal's filled three-bar icon**
+  `M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z` (not a generic stroked icon) with
+  label "Mobiles Navigationsmenü anzeigen"; sign-in button is `Anmelden`
+  (`#e2e-navbar-login-menu-item`). Our header-nav component + `.gv-*` source now mirror
+  this (`.gv-nav` = the `<nav>` wrapper, `.gv-nav__list` = the `<ul>`).
+
 <!-- Add new learnings above this line. Format: - _(YYYY-MM-DD)_ <fact / decision / preference>. -->
 
