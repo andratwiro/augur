@@ -136,9 +136,12 @@
     return { x: r.left + t.fx * r.width, y: r.top + t.fy * r.height };
   }
   function anchorAt(x, y) {
-    host.style.pointerEvents = "none";
+    // Fully hide the overlay while hit-testing — pointer-events:none on the host
+    // isn't enough because the catcher re-enables pointer-events on itself.
+    var prev = host.style.display;
+    host.style.display = "none";
     var el = document.elementFromPoint(x, y);
-    host.style.pointerEvents = "";
+    host.style.display = prev;
     if (!el || host.contains(el)) el = document.body;
     var r = el.getBoundingClientRect();
     return {
@@ -324,8 +327,9 @@
   function attachPinDrag(btn, id) {
     var sx, sy, moved, dragging;
     btn.addEventListener("pointerdown", function (e) {
-      if (state.mode === "add") return;
+      // Draggable in any mode — pins paint above the add-mode catcher.
       e.preventDefault();
+      e.stopPropagation();
       sx = e.clientX; sy = e.clientY; moved = false; dragging = true;
       btn.setPointerCapture(e.pointerId);
       btn.classList.add("dragging");
