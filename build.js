@@ -70,7 +70,6 @@ const IGNORED_TOPLEVEL = new Set([
 // real page lands under pages/<slug>/. Slugs are kebab-case; titleCase() labels them.
 const PENDING_PAGES = [
   "content-builder",
-  "project-page",
   "input-form",
   "survey-builder",
   "perspectives",
@@ -543,30 +542,81 @@ const PAGE_CSS = `
     .status-badge[disabled] { opacity: .55; cursor: progress; }
     @media (prefers-reduced-motion: reduce) { .status-badge { transition: none; } }
 
-    /* Read-only status summary on the main carousel's opportunity cards: one chip
-       per status with a count of that opportunity's prototypes. Non-interactive
-       (the cards are links; cycling lives on the opportunity page). Same AA-safe
-       palette as the badges. */
-    .opp-status { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-    .status-chip {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 12px; font-weight: 600; line-height: 1;
-      padding: 5px 10px; border-radius: 999px; border: 1px solid transparent;
-    }
-    .status-chip .status-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+    /* Prototype dev-pipeline palette (interactive badge). Colour is always paired
+       with the text label (1.4.1). Each palette is AA-safe (text ≥ 4.5:1 on its bg). */
+    .status-badge.is-playground { background: #e8eaed; color: #3f4651; border-color: #d3d8de; }
+    .status-badge.is-playground .status-dot { background: #6b7280; }
+    .status-badge.is-progress { background: #fef3c7; color: #8a5200; border-color: #fcd9a4; }
+    .status-badge.is-progress .status-dot { background: #c2710c; }
+    .status-badge.is-ready { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
+    .status-badge.is-ready .status-dot { background: #059669; }
+    .status-badge.is-shipped { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+    .status-badge.is-shipped .status-dot { background: #2563eb; }
+    .status-badge.is-parked { background: #ffe4e6; color: #9f1239; border-color: #fecdd3; }
+    .status-badge.is-parked .status-dot { background: #e11d48; }
+    /* Folder lifecycle palette (For dev / Implemented; In progress reuses amber).
+       Distinct hues from the prototype pipeline, also AA-safe. */
+    .status-badge.is-fordev { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+    .status-badge.is-fordev .status-dot { background: #4f46e5; }
+    .status-badge.is-implemented { background: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
+    .status-badge.is-implemented .status-dot { background: #7c3aed; }
 
-    /* Shared dev-status palette — applies to both the interactive badge and the
-       read-only count chips. Colour is paired with the text label everywhere. */
-    .status-badge.is-playground, .status-chip.is-playground { background: #e8eaed; color: #3f4651; border-color: #d3d8de; }
-    .status-badge.is-playground .status-dot, .status-chip.is-playground .status-dot { background: #6b7280; }
-    .status-badge.is-progress, .status-chip.is-progress { background: #fef3c7; color: #8a5200; border-color: #fcd9a4; }
-    .status-badge.is-progress .status-dot, .status-chip.is-progress .status-dot { background: #c2710c; }
-    .status-badge.is-ready, .status-chip.is-ready { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
-    .status-badge.is-ready .status-dot, .status-chip.is-ready .status-dot { background: #059669; }
-    .status-badge.is-shipped, .status-chip.is-shipped { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
-    .status-badge.is-shipped .status-dot, .status-chip.is-shipped .status-dot { background: #2563eb; }
-    .status-badge.is-parked, .status-chip.is-parked { background: #ffe4e6; color: #9f1239; border-color: #fecdd3; }
-    .status-badge.is-parked .status-dot, .status-chip.is-parked .status-dot { background: #e11d48; }
+    /* Opportunity card = a stretched cover link (whole card opens the folder) with
+       the folder-status badge floated above it so it stays independently clickable.
+       The badge is the folder's OWN lifecycle state — not an aggregate of the
+       prototypes one level down. */
+    .card-opp { position: relative; }
+    .card-cover-link { position: absolute; inset: 0; z-index: 1; border-radius: var(--radius); }
+    .card-cover-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .folder-status { position: relative; z-index: 2; }
+
+    /* Kebab (⋯) menu on a prototype card — opens a floating menu (position:fixed so
+       it escapes the card's overflow:hidden). One action for now: remove from list. */
+    .kebab { position: relative; display: inline-flex; }
+    .kebab-btn {
+      font: inherit; line-height: 1; cursor: pointer; font-size: 18px;
+      width: 36px; height: 36px; min-width: 36px; border-radius: 8px;
+      border: 1px solid var(--line-2); background: transparent; color: var(--fg);
+      display: inline-grid; place-items: center;
+      transition: background .12s ease, border-color .12s ease;
+    }
+    .kebab-btn:hover { background: var(--card-hover); border-color: var(--accent); }
+    .kebab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .kebab-menu {
+      position: fixed; z-index: 2147483300; min-width: 176px; padding: 6px;
+      background: var(--card); border: 1px solid var(--line-2); border-radius: 10px;
+      box-shadow: 0 16px 40px -16px rgba(16,24,40,0.40);
+    }
+    .kebab-menu[hidden] { display: none; }
+    .kebab-item {
+      display: flex; width: 100%; align-items: center; gap: 8px;
+      font: inherit; font-size: 13.5px; font-weight: 500; text-align: left; cursor: pointer;
+      padding: 9px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--fg);
+    }
+    .kebab-item:hover { background: var(--bg-2); }
+    .kebab-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .kebab-item--danger { color: #b42318; }
+    .kebab-item--danger:hover { background: #fef3f2; }
+
+    /* "Show hidden" tray — reversible removals live here so a hide is never a dead end. */
+    .hidden-tray { margin-top: 24px; }
+    .hidden-toggle {
+      font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+      color: var(--muted); background: transparent; border: 1px dashed var(--line-2);
+      border-radius: 8px; padding: 7px 13px; min-height: 32px;
+      transition: color .12s ease, border-color .12s ease;
+    }
+    .hidden-toggle:hover { color: var(--fg); border-color: var(--accent); }
+    .hidden-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .hidden-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .hidden-list[hidden] { display: none; }
+    .hidden-chip {
+      display: inline-flex; align-items: center; gap: 12px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+      padding: 5px 6px 5px 14px; font-size: 13px;
+    }
+    .hidden-chip__name { color: var(--muted); }
+    .hidden-chip__restore { padding: 5px 12px; font-size: 12.5px; min-height: 30px; }
 
     /* ── Phones ───────────────────────────────────────────────────────────────
        Tighter gutters under the 52px bar, a smaller hero, and full-width actions
@@ -626,28 +676,37 @@ const CAROUSEL_JS = `
         var prev = c.querySelector('[data-prev]');
         var next = c.querySelector('[data-next]');
         var dotsWrap = c.querySelector('[data-dots]');
-        var slides = [].slice.call(track.children);
-        function step() { return slides.length > 1 ? slides[1].offsetLeft - slides[0].offsetLeft : track.clientWidth; }
+        // Read slides live: cards can be hidden/restored after init (see HIDE_JS),
+        // so the count must never be cached.
+        function slides() { return [].slice.call(track.children); }
+        function step() { var s = slides(); return s.length > 1 ? s[1].offsetLeft - s[0].offsetLeft : track.clientWidth; }
         function active() { return Math.round(track.scrollLeft / step()); }
         function goTo(i) { track.scrollTo({ left: i * step(), behavior: 'smooth' }); }
 
         var dots = [];
-        if (slides.length > 1) {
-          slides.forEach(function (s, i) {
-            var d = document.createElement('button');
-            d.className = 'dot';
-            d.setAttribute('aria-label', 'Go to item ' + (i + 1));
-            d.addEventListener('click', function () { goTo(i); });
-            dotsWrap.appendChild(d); dots.push(d);
-          });
-        } else { c.classList.add('single'); }
+        function buildDots() {
+          dotsWrap.innerHTML = ''; dots = [];
+          var s = slides();
+          c.classList.toggle('single', s.length <= 1);
+          if (s.length > 1) {
+            s.forEach(function (sl, i) {
+              var d = document.createElement('button');
+              d.className = 'dot';
+              d.setAttribute('aria-label', 'Go to item ' + (i + 1));
+              d.addEventListener('click', function () { goTo(i); });
+              dotsWrap.appendChild(d); dots.push(d);
+            });
+          }
+        }
 
         function update() {
           var a = active();
           dots.forEach(function (d, i) { d.classList.toggle('on', i === a); });
           if (prev) prev.disabled = a <= 0;
-          if (next) next.disabled = a >= slides.length - 1;
+          if (next) next.disabled = a >= slides().length - 1;
         }
+        // Let HIDE_JS rebuild dots/arrows after it mutates the track.
+        c.__gvRebuild = function () { buildDots(); update(); };
         if (prev) prev.addEventListener('click', function () { goTo(active() - 1); });
         if (next) next.addEventListener('click', function () { goTo(active() + 1); });
         // A preview iframe can autofocus an element after it lazy-loads, which makes the
@@ -673,6 +732,7 @@ const CAROUSEL_JS = `
           if (e.key === 'ArrowRight') { goTo(active() + 1); e.preventDefault(); }
         });
 
+        buildDots();
         update();
       });
     })();`;
@@ -701,38 +761,31 @@ const STATUS_CLASSES = {
   shipped: "is-shipped",
   parked: "is-parked",
 };
+// Folder (opportunity) lifecycle — its OWN coarse status, not an aggregate of the
+// prototypes inside it. A separate, shorter cycle from the prototype pipeline.
+const FOLDER_ORDER = ["for_dev", "in_progress", "implemented"];
+const FOLDER_LABELS = { for_dev: "For dev", in_progress: "In progress", implemented: "Implemented" };
+const FOLDER_CLASSES = { for_dev: "is-fordev", in_progress: "is-progress", implemented: "is-implemented" };
 const STATUS_JS = `
     (function () {
-      var ORDER = ${JSON.stringify(STATUS_ORDER)};
-      var LABELS = ${JSON.stringify(STATUS_LABELS)};
-      var CLASSES = ${JSON.stringify(STATUS_CLASSES)};
+      var P_ORDER = ${JSON.stringify(STATUS_ORDER)};   // prototype dev pipeline
+      var F_ORDER = ${JSON.stringify(FOLDER_ORDER)};   // folder lifecycle
+      var LABELS = ${JSON.stringify({ ...STATUS_LABELS, ...FOLDER_LABELS })};
+      var CLASSES = ${JSON.stringify({ ...STATUS_CLASSES, ...FOLDER_CLASSES })};
       var DEFAULT = 'in_progress';
-      var ALL_CLASSES = ORDER.map(function (s) { return CLASSES[s]; });
-      function norm(s) { return ORDER.indexOf(s) === -1 ? DEFAULT : s; }
+      var ALL_CLASSES = Object.keys(CLASSES).map(function (k) { return CLASSES[k]; });
       var badges = [].slice.call(document.querySelectorAll('.status-badge'));
-      var summaries = [].slice.call(document.querySelectorAll('[data-opp-status]'));
-      if (!badges.length && !summaries.length) return;
+      if (!badges.length) return;
+      // Folder badges cycle the lifecycle; prototype badges run the dev pipeline.
+      function order(b) { return b.hasAttribute('data-folder-status') ? F_ORDER : P_ORDER; }
+      function norm(b, s) { return order(b).indexOf(s) === -1 ? DEFAULT : s; }
       function apply(b, s) {
-        s = norm(s);
+        s = norm(b, s);
         b.dataset.status = s;
         ALL_CLASSES.forEach(function (c) { b.classList.toggle(c, c === CLASSES[s]); });
         var l = b.querySelector('.status-label');
         if (l) l.textContent = LABELS[s];
         b.setAttribute('aria-label', 'Status: ' + LABELS[s] + '. Activate to change.');
-      }
-      function chip(cls, label) {
-        return '<span class="status-chip ' + cls + '"><span class="status-dot" aria-hidden="true"></span>' + label + '</span>';
-      }
-      // Replace an opportunity card's default chip with real per-status counts,
-      // one chip per status that's present, in pipeline order.
-      function summarize(el, statuses) {
-        var paths = (el.getAttribute('data-proto-paths') || '').split(',').filter(Boolean);
-        if (!paths.length) return;
-        var counts = {};
-        paths.forEach(function (p) { var s = norm(statuses[p] || DEFAULT); counts[s] = (counts[s] || 0) + 1; });
-        var html = ORDER.filter(function (s) { return counts[s]; })
-          .map(function (s) { return chip(CLASSES[s], counts[s] + ' ' + LABELS[s]); }).join('');
-        el.innerHTML = html;
       }
       fetch('/__review/status', { headers: { Accept: 'application/json' } })
         .then(function (r) { return r.ok ? r.json() : null; })
@@ -742,12 +795,12 @@ const STATUS_JS = `
             var s = d.statuses[b.getAttribute('data-status-for')];
             if (s) apply(b, s);
           });
-          summaries.forEach(function (el) { summarize(el, d.statuses); });
         }).catch(function () {});
       badges.forEach(function (b) {
         b.addEventListener('click', function () {
-          var cur = norm(b.dataset.status);
-          var next = ORDER[(ORDER.indexOf(cur) + 1) % ORDER.length];
+          var ord = order(b);
+          var cur = norm(b, b.dataset.status);
+          var next = ord[(ord.indexOf(cur) + 1) % ord.length];
           apply(b, next);
           b.disabled = true;
           fetch('/__review/status?path=' + encodeURIComponent(b.getAttribute('data-status-for')), {
@@ -759,6 +812,151 @@ const STATUS_JS = `
             .then(function () { b.disabled = false; });
         });
       });
+    })();`;
+
+// Kebab (⋯) menu + remove-from-list for prototype cards. Removing a prototype is a
+// reversible soft-hide persisted to the worker's KV (/__review/hidden) — the build
+// always re-scans the filesystem, so this never deletes files. Hidden cards drop out
+// of the carousel and land in a "Show hidden" tray with a Restore button. No-ops on
+// pages without prototype cards (root index, Pages/Components reference tabs).
+const HIDE_JS = `
+    (function () {
+      var cards = [].slice.call(document.querySelectorAll('.card-proto[data-proto-id]'));
+      if (!cards.length) return;
+      var tray = document.querySelector('[data-hidden-tray]');
+      var hiddenNodes = {}; // path -> detached .slide node, for restore
+
+      // ---- floating kebab menu (position:fixed so it escapes card overflow) ----
+      var openMenu = null, openBtn = null;
+      function closeMenu() {
+        if (openMenu) { openMenu.hidden = true; openMenu.style.cssText = ''; }
+        if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
+        openMenu = openBtn = null;
+      }
+      function placeMenu(btn, menu) {
+        var r = btn.getBoundingClientRect();
+        menu.hidden = false;
+        menu.style.position = 'fixed';
+        menu.style.top = (r.bottom + 6) + 'px';
+        var mw = menu.offsetWidth;
+        menu.style.left = Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8)) + 'px';
+      }
+      document.addEventListener('click', function (e) {
+        var kb = e.target.closest && e.target.closest('[data-kebab]');
+        if (kb) {
+          e.preventDefault();
+          var menu = kb.parentNode.querySelector('.kebab-menu');
+          if (openMenu === menu) { closeMenu(); return; }
+          closeMenu();
+          openMenu = menu; openBtn = kb;
+          kb.setAttribute('aria-expanded', 'true');
+          placeMenu(kb, menu);
+          return;
+        }
+        if (openMenu && !(e.target.closest && e.target.closest('.kebab-menu'))) closeMenu();
+      });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
+      window.addEventListener('scroll', closeMenu, true);
+      window.addEventListener('resize', closeMenu);
+
+      // ---- hide / restore ----
+      function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/["\\\\]/g, '\\\\$&'); }
+      function rebuild(c) { if (c && c.__gvRebuild) c.__gvRebuild(); }
+      function post(path, hidden) {
+        fetch('/__review/hidden?path=' + encodeURIComponent(path), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hidden: hidden }),
+        }).catch(function () {});
+      }
+      function updateTray() {
+        if (!tray) return;
+        var n = Object.keys(hiddenNodes).length;
+        tray.hidden = n === 0;
+        var cnt = tray.querySelector('[data-hidden-count]');
+        if (cnt) cnt.textContent = n;
+        if (n === 0) {
+          var list = tray.querySelector('[data-hidden-list]');
+          var tgl = tray.querySelector('[data-hidden-toggle]');
+          if (list) list.hidden = true;
+          if (tgl) tgl.setAttribute('aria-expanded', 'false');
+        }
+      }
+      function addChip(path, name) {
+        var list = tray && tray.querySelector('[data-hidden-list]');
+        if (!list) return;
+        var chip = document.createElement('div');
+        chip.className = 'hidden-chip';
+        chip.setAttribute('data-hidden-chip', path);
+        var label = document.createElement('span');
+        label.className = 'hidden-chip__name';
+        label.textContent = name;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn ghost hidden-chip__restore';
+        btn.textContent = 'Restore';
+        btn.addEventListener('click', function () { restore(path); });
+        chip.appendChild(label); chip.appendChild(btn);
+        list.appendChild(chip);
+      }
+      function removeChip(path) {
+        var c = tray && tray.querySelector('[data-hidden-chip="' + cssEsc(path) + '"]');
+        if (c) c.parentNode.removeChild(c);
+      }
+      function hide(card, persist) {
+        var path = card.getAttribute('data-proto-id');
+        if (hiddenNodes[path]) return;
+        var slide = card.closest('.slide') || card;
+        var c = slide.closest('[data-carousel]');
+        var nm = card.querySelector('.proto-name');
+        hiddenNodes[path] = slide;
+        if (slide.parentNode) slide.parentNode.removeChild(slide);
+        rebuild(c);
+        addChip(path, nm ? nm.textContent : path);
+        updateTray();
+        if (persist) post(path, true);
+      }
+      function restore(path) {
+        var slide = hiddenNodes[path];
+        if (!slide) return;
+        var track = document.querySelector('[data-track]');
+        if (track) track.appendChild(slide);
+        delete hiddenNodes[path];
+        rebuild(track && track.closest('[data-carousel]'));
+        removeChip(path);
+        updateTray();
+        post(path, false);
+      }
+      document.addEventListener('click', function (e) {
+        var h = e.target.closest && e.target.closest('[data-proto-hide]');
+        if (!h) return;
+        e.preventDefault();
+        closeMenu();
+        var card = h.closest('.card-proto');
+        if (card) hide(card, true);
+      });
+
+      // ---- tray toggle ----
+      if (tray) {
+        var tgl = tray.querySelector('[data-hidden-toggle]');
+        var list = tray.querySelector('[data-hidden-list]');
+        if (tgl && list) tgl.addEventListener('click', function () {
+          var willOpen = list.hidden;
+          list.hidden = !willOpen;
+          tgl.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
+      }
+
+      // ---- apply persisted hides on load ----
+      fetch('/__review/hidden', { headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.hidden || !d.hidden.length) return;
+          var set = {};
+          d.hidden.forEach(function (p) { set[p] = 1; });
+          cards.forEach(function (card) {
+            if (set[card.getAttribute('data-proto-id')]) hide(card, false);
+          });
+        }).catch(function () {});
     })();`;
 
 // Top-right tab nav for the site's chrome/reference pages (Prototypes · Primitives ·

@@ -47,6 +47,15 @@ re-litigation. Three threads, interlocking:
       (driven by `PENDING_PAGES` in `build.js`; remove a slug when its page lands):
       Content Builder · Project Page · Input Form · Survey Builder · Perspectives ·
       Voting · Common Ground · Ideation · Project List · Project Editor.
+  - **Pipeline (active):** user exports the real GoVocal page HTML + a screenshot into
+    `references/pages/<slug>/` (internal, never ships — see its README). Per page, one at
+    a time: **analyze** (map blocks to `LIBRARY.md`, write `notes.md` reuse-list + gaps)
+    → **build** `pages/<slug>/index.html` from existing components, creating new canonical
+    `components/<name>/` for gaps (themeable `--gv-*`, a11y) → **verify** (screenshot
+    mobile+desktop vs reference + `npm run audit`) → **land** (drop slug from
+    `PENDING_PAGES`, `npm run index`, rebuild) → **deploy**. Fidelity = faithful, rebuilt
+    in our system (not a DOM copy). Pages-tab reproductions: no cookie banner / no persona
+    critique. Reuse compounds — build resident-facing cluster first, admin cluster later.
 - [ ] **Prove the loop** — build (or retrofit) at least one real prototype purely
       from the refined primitives/pages to confirm the building blocks hold up in a
       real assembly and stay compliant.
@@ -157,6 +166,15 @@ never rebuild GoVocal twice.
         Claude reads comments via `npm run comments` (secret-guarded export
         endpoint → gitignored `review-comments.local.md`). **LIVE on prod** —
         KV bound, export verified end-to-end (write → worker → pull script).
+  - [x] **Folder-level status chip** — the opportunity cards on the main carousel now
+        carry their **own** lifecycle status (not an aggregate of the prototypes inside):
+        a clickable badge cycling **For dev → In progress → Implemented** (default In
+        progress), keyed by folder path in the same KV as the prototype badges
+        (`s:/<opp>/`). AA-safe palette (blue/amber/violet), label always present.
+  - [x] **Remove a prototype from the UI (kebab ⋯ menu)** — each prototype card has a
+        3-dots menu with **Remove from list**; it soft-hides the prototype (reversible
+        via a **Show hidden** tray with Restore), persisted to KV (`h:<path>` via
+        `/__review/hidden`). Never deletes files — the build always re-scans disk.
   - [x] **City colour theming** — switch a prototype's colour scheme per city via a
         URL param. Implemented as `?theme=N` in `skills/govocal-ui/govocal-themes.js`:
         a central `GV_THEMES` map drives the three tenant CSS vars
