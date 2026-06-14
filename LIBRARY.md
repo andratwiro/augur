@@ -82,3 +82,4 @@ and reuse patterns. Prototypes are free to diverge from the library.
 | **Greeting** | Parallel Participation | `parallel-participation/prototypes/greeting/` | Greeting — GoVocal Prototype |
 | **Hello World** | Parallel Participation | `parallel-participation/prototypes/hello-world/` | Self-contained static prototype for Parallel Participation . |
 | **Theme Switch** | Parallel Participation | `parallel-participation/prototypes/theme-switch/` | City Theme Preview — GoVocal Prototype |
+| **Hello World** | Sms Verification | `sms-verification/prototypes/hello-world/` | Scaffold placeholder for the SMS Verification opportunity. |
