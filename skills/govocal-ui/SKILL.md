@@ -71,9 +71,12 @@ a prototype across several city palettes:
 - `?theme=0` GoVocal · `1` Ocean · `2` Forest · `3` Royal · `4` Sunset
 - Live picker renders bottom-right (swatches); it also rewrites the URL so a view
   is shareable. Disable with `<body data-gv-theme-picker="off">`.
-- Add a city template: append `{id, name, primary, secondary, text}` to
+- Add a city template: append `{id, name, primary, secondary, text, logo}` to
   `GV_THEMES` in `govocal-themes.js`. Only the three tenant colours are set per
   city — tints, focus ring and component states derive automatically.
+- **City logos:** a theme's optional `logo` (inline `<svg>` or `<img>`) renders into
+  any `[data-gv-logo]` slot and swaps with the theme; a placeholder (city mark +
+  name) is generated until a real logo is provided. Put `<a data-gv-logo>` in a header.
 
 ## Accessibility notes (read with `skills/govocal-a11y/`)
 

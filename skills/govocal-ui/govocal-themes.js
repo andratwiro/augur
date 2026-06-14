@@ -14,20 +14,50 @@
 
    Add a template: append to GV_THEMES. Each city sets only the 3 tenant colours;
    tints + focus + component states derive from them automatically.
+
+   City logos (for realism): give a theme a `logo` (an HTML string — inline <svg>
+   or <img src="logos/ocean.svg">) and any element with `data-gv-logo` renders it,
+   swapping live with the theme. Until a real logo is set, a clean placeholder
+   (city mark + name) is generated automatically. Example slot in a header:
+     <a class="brand" data-gv-logo aria-label="City home"></a>
    ────────────────────────────────────────────────────────────────────────── */
 (function () {
   // id 0 is the faithful GoVocal brand default. Templates 1+ are AA-safe
   // (white button text ≥ 4.5:1 on `primary`) so they're safe to demo.
   // NOTE: the GoVocal default uses an AA-safe pink (#E10069, 4.77:1 white-on-primary).
   // The exact brand pink is #ef0071 but it's ~4.3:1 — just under WCAG AA for white text.
+  // Drop a real city logo in via `logo:` (inline SVG or <img>); omit for a placeholder.
   var GV_THEMES = [
-    { id: 0, name: 'GoVocal',  primary: '#E10069', secondary: '#000000', text: '#333333' },
-    { id: 1, name: 'Ocean',    primary: '#044D6C', secondary: '#147985', text: '#1A2B33' },
-    { id: 2, name: 'Forest',   primary: '#04884C', secondary: '#0A5159', text: '#20302A' },
-    { id: 3, name: 'Royal',    primary: '#4B2E83', secondary: '#2E1A47', text: '#241B33' },
-    { id: 4, name: 'Sunset',   primary: '#C2410C', secondary: '#8C680D', text: '#3A2A18' },
+    { id: 0, name: 'GoVocal',  primary: '#E10069', secondary: '#000000', text: '#333333', logo: null },
+    { id: 1, name: 'Ocean',    primary: '#044D6C', secondary: '#147985', text: '#1A2B33', logo: null },
+    { id: 2, name: 'Forest',   primary: '#04884C', secondary: '#0A5159', text: '#20302A', logo: null },
+    { id: 3, name: 'Royal',    primary: '#4B2E83', secondary: '#2E1A47', text: '#241B33', logo: null },
+    { id: 4, name: 'Sunset',   primary: '#C2410C', secondary: '#8C680D', text: '#3A2A18', logo: null },
   ];
   window.GV_THEMES = GV_THEMES;
+
+  // ── City logo: real `logo` markup if provided, else a generated placeholder. ──
+  function initials(name) {
+    return (name || '?').trim().split(/\s+/).map(function (w) { return w.charAt(0); })
+      .join('').slice(0, 2).toUpperCase();
+  }
+  function logoMarkup(theme) {
+    if (theme.logo) return theme.logo; // real city logo (inline SVG or <img>)
+    return (
+      '<span style="display:inline-flex;align-items:center;gap:9px;' +
+      "font-family:'Public Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif\">" +
+      '<span aria-hidden="true" style="display:inline-grid;place-items:center;width:30px;height:30px;' +
+      'border-radius:7px;background:' + theme.primary + ';color:#fff;font-weight:800;font-size:13px;' +
+      'letter-spacing:-.02em;flex:0 0 auto">' + initials(theme.name) + '</span>' +
+      '<span style="font-weight:700;font-size:16px;letter-spacing:-.01em;' +
+      'color:var(--gv-tenant-text,#1a1a1a)">' + theme.name + '</span></span>'
+    );
+  }
+  function renderLogos(theme) {
+    var slots = document.querySelectorAll('[data-gv-logo]');
+    for (var i = 0; i < slots.length; i++) slots[i].innerHTML = logoMarkup(theme);
+  }
+  window.GVThemeLogo = logoMarkup; // expose for custom rendering
 
   function findTheme(raw) {
     if (raw == null || raw === '') return GV_THEMES[0];
@@ -43,6 +73,7 @@
     r.setProperty('--gv-tenant-secondary', theme.secondary);
     r.setProperty('--gv-tenant-text', theme.text);
     document.documentElement.setAttribute('data-gv-theme', theme.id);
+    if (document.body) renderLogos(theme); // body absent on first (pre-parse) call
   }
 
   function syncUrl(theme) {
@@ -112,6 +143,7 @@
   // Opt out of the on-screen picker with <body data-gv-theme-picker="off">.
   function init() {
     syncUrl(current());
+    renderLogos(current()); // fill any [data-gv-logo] slots now that <body> exists
     if (document.body && document.body.getAttribute('data-gv-theme-picker') !== 'off') {
       renderPicker();
     }

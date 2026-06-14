@@ -182,7 +182,15 @@ prototype re-skins for free:
 - `?theme=0` GoVocal (default) · `1` Ocean · `2` Forest · `3` Royal · `4` Sunset
 - On-screen picker (bottom-right swatches) switches live and updates the URL.
 - Opt out of the picker with `<body data-gv-theme-picker="off">`.
-- Add a city: append `{id, name, primary, secondary, text}` to `GV_THEMES`.
+- Add a city: append `{id, name, primary, secondary, text, logo}` to `GV_THEMES`.
+
+**City logos:** give a theme a `logo` (inline `<svg>` or `<img src="logos/ocean.svg">`)
+and any `[data-gv-logo]` element renders it, swapping live with the theme. Until a
+real logo is set, a clean placeholder (city mark + name) is generated.
+
+```html
+<a class="brand" data-gv-logo aria-label="City home"></a>   <!-- fills with the active city's logo -->
+```
 
 **Contrast caveat:** the genuine brand pink `#ef0071` gives only ~4.3:1 for white
 text on a `primary` button (just under WCAG AA). The default `--gv-tenant-primary`
