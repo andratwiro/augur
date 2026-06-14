@@ -83,12 +83,13 @@
   /* ── Tenant (per-city) colours ────────────────────────────────────────── */
   /* The product themes these per tenant. Override --gv-tenant-primary on :root
      (or a [data-city] scope) to re-skin.
-     The genuine GoVocal brand pink is #ef0071, but that gives only 4.27:1 for
-     white button text (just under WCAG AA). The default below is nudged to an
-     AA-safe pink (4.77:1 white-on-primary) so prototypes pass the audit; it's
-     visually indistinguishable. Use #ef0071 if exact brand match matters more. */
-  --gv-tenant-primary:   #E10069; /* AA-safe GoVocal pink (exact brand: #ef0071) */
-  --gv-tenant-secondary: #000000;
+     DEFAULT GoVocal combination = deep teal + warm coral (replaces the old hot-pink
+     #E10069 / black, which read poorly and barely cleared AA). Teal #0E7C86 gives
+     4.95:1 for white button text (comfortable WCAG AA); coral is a warm brand accent
+     (use dark/large text if filled — ~3.5:1 white-on-coral). Real city tenants keep
+     their own brand colours via the ?theme= switcher (govocal-themes.js). */
+  --gv-tenant-primary:   #0E7C86; /* deep teal — AA-safe (4.95:1 white-on-primary) */
+  --gv-tenant-secondary: #E2603A; /* warm coral accent */
   --gv-tenant-text:      #333333;
   /* Lightened tenant-primary tints (product: tenantPrimaryLighten75/90/95).
      Derived with color-mix so they re-theme automatically with the primary. */

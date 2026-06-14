@@ -52,8 +52,8 @@
     '<span style="line-height:1;color:#1C2745"><span style="font-weight:800;font-size:15px;letter-spacing:-.01em">Engaged</span>' +
     '<br><span style="font-weight:700;font-size:9px;letter-spacing:.14em">CALIFORNIA</span></span></span>';
 
-  // id 0 = the GoVocal platform default (AA-safe pink #E10069, 4.77:1 white-on-primary;
-  // exact brand pink is #ef0071 ≈ 4.3:1, just under AA). Ids 1+ are REAL city tenants
+  // id 0 = the GoVocal platform default — deep teal #0E7C86 (4.95:1 white-on-primary)
+  // + warm coral accent #E2603A. Replaced the old hot-pink/black default. Ids 1+ are REAL city tenants
   // with their authoritative brand colours + logos (researched from official sources):
   //   Københavns Kommune — KBH Blå #000C2E (Pantone 296C), design.kk.dk
   //   Stadt Wien — Wien Rot #FF0000 + Ur Schwarz #000000, wien.gv.at CD-manual
@@ -68,7 +68,7 @@
   // visible differentiation, then the GoVocal Public Sans fallback — same as the live sites.
   var FONT_FALLBACK = '"Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif';
   var GV_THEMES = [
-    { id: 0, name: 'GoVocal',            primary: '#E10069', secondary: '#000000', text: '#333333', logo: null,      font: null },
+    { id: 0, name: 'GoVocal',            primary: '#0E7C86', secondary: '#E2603A', text: '#333333', logo: null,      font: null },
     { id: 1, name: 'Københavns Kommune', primary: '#000C2E', secondary: '#0A1A4A', text: '#1A1A1A', logo: LOGO_KBH,  font: '"KBH", "Archivo", ' + FONT_FALLBACK },
     { id: 2, name: 'Stadt Wien',         primary: '#FF0000', secondary: '#000000', text: '#1A1A1A', logo: LOGO_WIEN, font: '"WienerMelange_W_Rg", "Libre Franklin", ' + FONT_FALLBACK },
     { id: 3, name: 'Engaged California', primary: '#1C2745', secondary: '#E79450', text: '#1A1A1A', logo: LOGO_CA,   font: '"Noto Sans", ' + FONT_FALLBACK },

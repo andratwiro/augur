@@ -123,9 +123,10 @@ a prototype across several city palettes:
   keep it.
 - Checked checkboxes/toggles are **success green**, not primary — that's the real
   product, and it means state isn't signalled by the brand hue alone.
-- **Contrast:** the genuine brand pink `#ef0071` is ~4.3:1 for white-on-primary
-  (just under AA), so the default `--gv-tenant-primary` is an AA-safe `#E10069`
-  (4.77:1, visually identical); use `#ef0071` if exact brand match matters more.
+- **Contrast:** the default GoVocal combination is a **deep teal `#0E7C86`
+  primary** (4.95:1 white-on-primary, comfortable AA) + a **warm coral `#E2603A`
+  secondary** (a brand accent — use dark/large text if filled, ~3.5:1 white-on-coral).
+  This replaced the old hot-pink/black default (`#E10069`, which barely cleared AA).
   Custom templates 1–4 clear 4.5:1. Always run `npm run audit` and report results;
   if a city's primary is light, the real platform would need dark button text.
 

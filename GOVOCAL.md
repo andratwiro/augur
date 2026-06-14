@@ -460,6 +460,16 @@ Keep entries short, deduped, and dated when point-in-time. Newest at top.
   Pull learnings from prototype conversations, the opportunities' `research.md` /
   `context.md`, and reviewer feedback as we go.
 
+- _(2026-06-14)_ **The user dislikes the GoVocal hot-pink brand.** The default
+  `?theme=0` ("GoVocal") combination was changed from pink `#E10069` + black to a
+  **deep teal `#0E7C86` primary + warm coral `#E2603A` secondary** (their call to me:
+  "the pink is terrible, choose something better"). Teal clears AA for white button
+  text (4.95:1); coral is a warm accent. Changed in the canonical `govocal-tokens.css`
+  default + theme-0 in `govocal-themes.js`, and re-synced into every prototype's
+  self-contained asset copy. **Themes 1–3 are real city tenants (Copenhagen, Vienna,
+  California) — left untouched.** Note: this default is no longer the literal product
+  brand; if exact GoVocal-brand fidelity is ever needed, the real pink is `#ef0071`.
+
 - _(2026-06-14)_ **Live navbar markup (from rendered Stadt Wien `mitgestalten.wien.gv.at`):**
   the real header is `<header id="e2e-navbar">`; the primary nav is a
   `<nav aria-label="Primäre">` landmark; the active homepage/logo link carries
