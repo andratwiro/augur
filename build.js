@@ -954,7 +954,7 @@ function searchScript() {
   var overlay = document.querySelector('[data-search]');
   if (!overlay || overlay.dataset.wired) return;
   overlay.dataset.wired = '1';
-  function gvTheme(){ try { return localStorage.getItem('gv-theme') || '1'; } catch(e){ return '1'; } }
+  function gvTheme(){ try { return localStorage.getItem('gv-theme') || '0'; } catch(e){ return '0'; } }
   function gvWithTheme(url, n){
     var hash = ''; var hi = url.indexOf('#'); if(hi >= 0){ hash = url.slice(hi); url = url.slice(0, hi); }
     var qi = url.indexOf('?'); var base = qi >= 0 ? url.slice(0, qi) : url; var qs = qi >= 0 ? url.slice(qi + 1) : '';
@@ -1075,10 +1075,7 @@ function searchScript() {
     var urlN = new URLSearchParams(location.search).get('theme');
     var active = urlN;
     if (active == null) { try { active = localStorage.getItem('gv-theme'); } catch(e){} }
-    // Default to theme 1 (a visually distinct city skin) so the ?theme= param is always
-    // present + editable in the URL, and so any colour that ISN'T wired to the theme
-    // variables stands out instead of silently matching the default.
-    if (active == null || !themeSel.querySelector('option[value="' + active + '"]')) active = '1';
+    if (active == null || !themeSel.querySelector('option[value="' + active + '"]')) active = '0';
     themeSel.value = active;
     try { localStorage.setItem('gv-theme', active); } catch(e){}
 
@@ -1096,7 +1093,7 @@ function searchScript() {
 
     if (!isThemed) {
       gvStampLinks(active);
-      gvStampFrames(active);
+      if (active !== '0') gvStampFrames(active);
       themeSel.addEventListener('change', function(){
         var n = themeSel.value;
         try { localStorage.setItem('gv-theme', n); } catch(e){}

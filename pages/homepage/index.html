@@ -46,13 +46,9 @@
   <!-- ════════ Header ════════ -->
   <header id="e2e-navbar" class="gv-header sticky">
     <div class="gv-header__inner">
-      <a class="gv-brand" href="#" aria-label="Stadt Wien — Startseite" aria-current="page">
-        <svg width="30" height="34" viewBox="0 0 34 38" aria-hidden="true">
-          <path d="M2 2h30v18c0 9-7 14-15 17C9 34 2 29 2 20V2Z" fill="var(--gv-tenant-primary)"/>
-          <path d="M14.2 7h5.6v6.2H26v5.6h-6.2V25h-5.6v-6.2H8v-5.6h6.2V7Z" fill="#fff"/>
-        </svg>
-        <span class="gv-brand__word">Stadt<br>Wien</span>
-      </a>
+      <!-- Logo slot: govocal-themes.js fills it with the active city's logo, so the
+           brand mark swaps with ?theme= (Vienna shield → Copenhagen towers → …). -->
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite" aria-current="page"></a>
 
       <nav class="gv-nav" aria-label="Primäre">
         <ul class="gv-nav__list">
@@ -272,13 +268,9 @@
   <!-- ════════ Footer ════════ -->
   <footer class="gv-footer" style="margin-top:40px">
     <div class="gv-footer__inner">
-      <div class="gv-footer__logo">
-        <svg width="50" height="56" viewBox="0 0 34 38" aria-hidden="true">
-          <path d="M2 2h30v18c0 9-7 14-15 17C9 34 2 29 2 20V2Z" fill="var(--gv-tenant-primary)"/>
-          <path d="M14.2 7h5.6v6.2H26v5.6h-6.2V25h-5.6v-6.2H8v-5.6h6.2V7Z" fill="#fff"/>
-        </svg>
-        <span class="gv-brand__word" style="font-size:24px;text-align:center">Stadt<br>Wien</span>
-      </div>
+      <!-- Tenant logo slot — swaps with the active theme (the go·vocal "powered by"
+           attribution below stays fixed; that's not a tenant logo). -->
+      <div class="gv-footer__logo" data-gv-logo></div>
       <nav class="gv-footer__links" aria-label="Rechtliches">
         <a href="#">Nutzungsbedingungen</a>
         <a href="#">Impressum &amp; Datenschutz</a>
