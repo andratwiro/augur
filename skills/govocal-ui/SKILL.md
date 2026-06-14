@@ -43,7 +43,7 @@ The design system is layered, and the review site has a tab per tier:
 1. **Primitives** (`/primitives/`, the `gallery.html`) — tokens (colour, type, shadow,
    radius, focus) and base `.gv-*` primitives (button, input, badge, card…). The atoms.
 2. **Components** (`/components/`) — composed, section-level blocks assembled from
-   primitives: **header/nav, footer, project-card + rail, hero**. Source lives in
+   primitives: **header/nav, footer, project-card + rail, hero, modal + login**. Source lives in
    `components/<name>/` (self-contained demos); the recall index is
    [`components/manifest.md`](../../components/manifest.md). Styling is in `govocal-ui.css`.
 3. **Pages** (`/pages/`) — whole screens (e.g. the Stadt Wien homepage) built from

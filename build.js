@@ -64,6 +64,22 @@ const IGNORED_TOPLEVEL = new Set([
   ".github",
 ]);
 
+// Planned reference pages (Pages tab) that aren't built yet — rendered as a
+// "Pending" roadmap so the team sees what's coming. Remove a slug here once its
+// real page lands under pages/<slug>/. Slugs are kebab-case; titleCase() labels them.
+const PENDING_PAGES = [
+  "content-builder",
+  "project-page",
+  "input-form",
+  "survey-builder",
+  "perspectives",
+  "voting",
+  "common-ground",
+  "ideation",
+  "project-list",
+  "project-editor",
+];
+
 // Source for the reference tabs (Primitives · Components · Pages).
 const UI_SKILL = path.join(ROOT, "skills", "govocal-ui"); // Primitives gallery + assets
 const PAGES_SRC = path.join(ROOT, "pages"); // composed reference pages
@@ -328,17 +344,18 @@ const PAGE_CSS = `
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
     footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
 
-    /* ---- Carousel ---- */
-    .carousel { position: relative; margin: 0 -24px; }
+    /* ---- Carousel (contained within the page; one card + a peek of the next) ---- */
+    .carousel { position: relative; margin: 0; }
     .carousel.single .cbtn, .carousel.single .dots { display: none; }
     .track {
-      display: flex; gap: 24px; overflow-x: auto; scroll-snap-type: x mandatory;
-      scroll-behavior: smooth; padding: 8px 24px 20px; scrollbar-width: none;
+      display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory;
+      scroll-behavior: smooth; padding: 8px 4px 8px; scrollbar-width: none;
       -webkit-overflow-scrolling: touch;
     }
     .track::-webkit-scrollbar { display: none; }
-    .slide { flex: 0 0 86%; scroll-snap-align: center; }
-    @media (min-width: 760px) { .slide { flex: 0 0 76%; } }
+    .slide { flex: 0 0 86%; scroll-snap-align: start; }
+    @media (min-width: 680px) { .slide { flex: 0 0 58%; } }
+    @media (min-width: 1000px) { .slide { flex: 0 0 52%; } }
     .cbtn {
       position: absolute; top: calc(50% - 28px); transform: translateY(-50%); z-index: 5;
       width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-2);
@@ -413,6 +430,21 @@ const PAGE_CSS = `
     .page-grid .proto-name { font-size: 15px; }
     .page-grid .proto-actions { margin-top: 10px; gap: 8px; }
     .page-grid .btn { padding: 7px 12px; font-size: 13px; border-radius: 8px; }
+
+    /* ---- Pending page cards (planned, not built) ---- */
+    .card-proto.is-pending { border-style: dashed; border-color: var(--line-2); background: transparent; }
+    .card-proto.is-pending:hover { transform: none; box-shadow: none; }
+    .preview--pending {
+      display: grid; place-items: center; background:
+        repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 10px, transparent 10px 20px), var(--bg-2);
+    }
+    .pending-glyph { font-size: 26px; color: var(--faint); }
+    .card-proto.is-pending .proto-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .card-proto.is-pending .proto-name { color: var(--muted); }
+    .pending-badge {
+      flex: none; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
+      color: var(--faint); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 9px;
+    }
 
     /* ---- Components table (small preview per row) ---- */
     .comp-table { width: 100%; border-collapse: collapse; }
@@ -627,7 +659,38 @@ function injectNav(html, active) {
   return html.replace(m[0], `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${navBar(active)}`);
 }
 
-function shell({ title, subtitle, body, back, eyebrow, activeTab = "prototypes" }) {
+// Dark "shell skin" for the Primitives gallery so it sits inside the Linear chrome:
+// the page canvas goes near-black with the indigo aurora, and the gallery's white
+// .gv-card sections float as elevated cards — while the GoVocal components inside
+// stay light (that IS the real product look). Injected last so it wins over the
+// gallery's own body rule (equal specificity, later in document).
+const PRIMITIVES_SKIN = `
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body.gv-root {
+      background: #08090a !important;
+      padding-top: 76px !important;
+    }
+    body.gv-root::before {
+      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(920px 460px at 16% -10%, rgba(94,106,210,0.22), transparent 60%),
+        radial-gradient(680px 420px at 96% -4%, rgba(140,99,210,0.13), transparent 55%);
+    }
+    body.gv-root > .wrap { position: relative; z-index: 1; max-width: 940px; }
+    /* The gallery's intro header duplicates the nav label — drop it for a clean canvas. */
+    body.gv-root > .wrap > header.gv-card { display: none; }
+    body.gv-root .sec.gv-card {
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 16px 40px -20px rgba(0,0,0,0.7);
+    }`;
+
+/** Inject the nav + the dark Primitives skin into the gallery. */
+function injectPrimitives(html) {
+  const withNav = injectNav(html, "primitives");
+  return withNav.replace(/<\/head>/i, `  <style>${PRIMITIVES_SKIN}</style>\n</head>`);
+}
+
+function shell({ title, body, back, activeTab = "prototypes" }) {
   const backLink = back
     ? `<a class="back" href="${back.href}">${back.label}</a>`
     : "";
@@ -648,9 +711,6 @@ function shell({ title, subtitle, body, back, eyebrow, activeTab = "prototypes" 
   ${navBar(activeTab)}
   <div class="wrap">
     ${backLink}
-    ${eyebrow ? `<span class="eyebrow">${eyebrow}</span>` : ""}
-    <h1>${title}</h1>
-    ${subtitle ? `<p class="subtitle">${subtitle}</p>` : ""}
     ${body}
     <footer>GoVocal Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}</footer>
   </div>
@@ -765,8 +825,7 @@ function renderOpportunityIndex(opp) {
 
   return shell({
     title: titleCase(opp.name),
-    subtitle: plural(opp.prototypes.length, "prototype"),
-    body: carousel(slides),
+    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${carousel(slides)}`,
     back: { href: "../", label: "&larr; All opportunities" },
   });
 }
@@ -782,11 +841,9 @@ function renderPagesIndex(pages) {
     });
   }
 
+  // Pages are a designer reference — Open only, no HTML download.
   const cards = pages
     .map((p) => {
-      const download = p.file
-        ? `<button type="button" class="btn ghost" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html">&darr; HTML</button>`
-        : "";
       return `
         <div class="card-proto">
           <div class="preview">
@@ -798,19 +855,35 @@ function renderPagesIndex(pages) {
             <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
             <div class="proto-actions">
               <a class="btn primary" href="${p.href}">Open &rarr;</a>
-              ${download}
             </div>
           </div>
         </div>`;
     })
     .join("");
 
+  // Planned reference pages not built yet — shown as a roadmap of pending work.
+  const builtSlugs = new Set(pages.map((p) => p.name));
+  const pending = PENDING_PAGES.filter((s) => !builtSlugs.has(s))
+    .map(
+      (slug) => `
+        <div class="card-proto is-pending" aria-label="${titleCase(slug)} — pending">
+          <div class="preview preview--pending"><span class="pending-glyph" aria-hidden="true">◴</span></div>
+          <div class="proto-meta">
+            <div class="proto-name">${titleCase(slug)}</div>
+            <span class="pending-badge">Pending</span>
+          </div>
+        </div>`
+    )
+    .join("");
+
+  const pendingSection = pending
+    ? `<p class="section-eyebrow" style="margin-top:44px">Pending &middot; ${PENDING_PAGES.length} planned</p><div class="page-grid">${pending}</div>`
+    : "";
+
   return shell({
     title: "Pages",
-    subtitle:
-      "Whole composed pages &mdash; components assembled into real screens. Scan, then dive in to review.",
     activeTab: "pages",
-    body: `<div class="page-grid">${cards}</div>`,
+    body: `<p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${cards}</div>${pendingSection}`,
   });
 }
 
@@ -833,9 +906,7 @@ function renderComponentsIndex(components) {
       const classes = blurb.classes
         ? `<code>${blurb.classes}</code>`
         : "";
-      const download = c.file
-        ? `<button type="button" class="btn ghost" data-dl="${c.file}" data-dlname="${encodeURIComponent(c.name)}.html">&darr; HTML</button>`
-        : "";
+      // Components are a designer reference — Open only, no HTML download.
       return `
         <tr>
           <td>
@@ -847,7 +918,6 @@ function renderComponentsIndex(components) {
           <td><div class="comp-desc">${blurb.desc}</div></td>
           <td class="comp-actions">
             <a class="btn primary" href="${c.href}">Open &rarr;</a>
-            ${download}
           </td>
         </tr>`;
     })
@@ -855,9 +925,8 @@ function renderComponentsIndex(components) {
 
   return shell({
     title: "Components",
-    subtitle,
     activeTab: "components",
-    body: `<table class="comp-table">
+    body: `<p class="section-eyebrow">Reusable building blocks</p><table class="comp-table">
       <thead><tr><th>Preview</th><th>Component</th><th>What it is</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`,
@@ -891,7 +960,7 @@ async function main() {
   const galleryHtml = await fs.readFile(path.join(UI_SKILL, "gallery.html"), "utf8");
   await fs.writeFile(
     path.join(patternsDir, "index.html"),
-    injectNav(galleryHtml, "primitives"),
+    injectPrimitives(galleryHtml),
     "utf8"
   );
   const patternAssets = ["govocal-tokens.css", "govocal-ui.css", "govocal-themes.js", "govocal-cookies.js", "govocal-logo.svg"];

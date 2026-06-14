@@ -469,5 +469,18 @@ Keep entries short, deduped, and dated when point-in-time. Newest at top.
   (`#e2e-navbar-login-menu-item`). Our header-nav component + `.gv-*` source now mirror
   this (`.gv-nav` = the `<nav>` wrapper, `.gv-nav__list` = the `<ul>`).
 
+- _(2026-06-14)_ **The prototypes review site (the build.js shell) has its own
+  Linear.app-style identity, kept deliberately separate from the GoVocal product
+  brand.** Dark near-black canvas, indigo accent (`#5e6ad2` — never the GoVocal pink),
+  Inter, glassy sticky top bar titled **"Product Team"**. User pref: **no big page
+  titles** (compact uppercase section labels instead); the user cares about the tooling
+  UI being beautiful to work from. The **Components and Pages tabs are a designer
+  reference** (Open only, no HTML download) — they exist so we verify surfaces look
+  correct when building a prototype, not to copy from.
+- _(2026-06-14)_ **10 GoVocal reference pages are the planned "Pages" roadmap**
+  (shown as Pending cards, `PENDING_PAGES` in build.js): Content Builder, Project Page,
+  Input Form, Survey Builder, Perspectives, Voting, Common Ground, Ideation, Project
+  List, Project Editor. These are the real product surfaces to reproduce next.
+
 <!-- Add new learnings above this line. Format: - _(YYYY-MM-DD)_ <fact / decision / preference>. -->
 

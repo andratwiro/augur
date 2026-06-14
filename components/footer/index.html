@@ -21,22 +21,24 @@
 <body class="gv-root" data-gv-cookies="off">
   <div class="demo">
     <h1>Footer</h1>
-    <p class="sub">Centered tenant logo, middot-separated legal links, and the
-      “Ermöglicht durch go·vocal” powered-by attribution (real GoVocal wordmark).</p>
+    <p class="sub">Source-grounded on GoVocal’s real <code>&lt;footer id="hook-footer"&gt;</code>:
+      a secondary-nav row of legal links — one is the <strong>Cookie-Einstellungen</strong> button —
+      plus the “Ermöglicht durch go·vocal” powered-by attribution (real GoVocal wordmark).
+      No tenant logo (that lives in the header).</p>
 
     <div class="stage">
       <!-- ============ FOOTER COMPONENT (copy from here) ============ -->
       <footer class="gv-footer">
         <div class="gv-footer__inner">
-          <!-- Logo slot: govocal-themes.js fills it with the active city's logo. -->
-          <div class="gv-footer__logo"><a href="#" data-gv-logo aria-label="Startseite"></a></div>
-          <nav class="gv-footer__links" aria-label="Rechtliches">
-            <a href="#">Nutzungsbedingungen</a>
-            <a href="#">Impressum &amp; Datenschutz</a>
-            <a href="#">Cookierichtlinie</a>
-            <a href="#">Richtlinie zur Barrierefreiheit</a>
-            <a href="#">Cookie-Einstellungen</a>
-            <a href="#">Sitemap</a>
+          <nav class="gv-footer__links" aria-label="Secondary">
+            <ul>
+              <li><a href="#">Nutzungsbedingungen</a></li>
+              <li><a href="#">Impressum &amp; Datenschutz</a></li>
+              <li><a href="#">Cookierichtlinie</a></li>
+              <li><a href="#">Richtlinie zur Barrierefreiheit</a></li>
+              <li><button type="button">Cookie-Einstellungen</button></li>
+              <li><a href="#">Sitemap</a></li>
+            </ul>
           </nav>
           <div class="gv-footer__powered">
             <span>Ermöglicht durch</span>
@@ -50,13 +52,16 @@
     </div>
 
     <div class="notes">
-      <p><strong>Use it:</strong> copy the <code>&lt;footer class="gv-footer"&gt;</code> block and
-      drop your city logo into <code>.gv-footer__logo</code> (or use <code>data-gv-logo</code>).</p>
+      <p><strong>Use it:</strong> copy the <code>&lt;footer class="gv-footer"&gt;</code> block.
+      The legal links are a semantic <code>&lt;ul&gt;</code> inside a
+      <code>&lt;nav aria-label="Secondary"&gt;</code> landmark; <strong>Cookie-Einstellungen</strong>
+      is a real <code>&lt;button&gt;</code> (it opens the cookie dialog), the rest are links.</p>
       <p><strong>go·vocal logo:</strong> <code>&lt;img class="gv-powered-logo" src="govocal-logo.svg"&gt;</code>
       — GoVocal’s own brand mark in its muted footer grey (it doesn’t re-theme per city).
       Copy <code>govocal-logo.svg</code> into the prototype folder. Keep this attribution on resident-facing pages.</p>
       <p><strong>Links:</strong> middot separators are automatic
-      (<code>.gv-footer__links a:not(:first-child)::before</code>). They wrap on small screens.</p>
+      (<code>.gv-footer__links li:not(:first-child)::before</code>). They wrap on small screens,
+      and the whole row stacks below the attribution under 720px.</p>
     </div>
   </div>
   <script src="govocal-themes.js" defer></script>

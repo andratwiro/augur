@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Modal + login — GoVocal component</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); background: #fff; padding: 26px; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    /* Visually-hidden but available to assistive tech. */
+    .gv-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    .auth-intro { margin: 0 0 18px; color: var(--gv-text-secondary); }
+  </style>
+</head>
+<body class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Modal + login</h1>
+    <p class="sub">The reusable modal abstraction (overlay → dialog card → title
+      header + top-right close + scrollable body), shown via GoVocal’s real
+      “Before you participate” authentication flow: email-first, an “Or” split, and a
+      Google sign-in option. Mirrors the live <code>#modal-portal</code> / <code>.modalcontent</code>.</p>
+
+    <div class="eyebrow">Demo</div>
+    <div class="stage">
+      <button class="gv-btn primary" type="button" data-open-modal>Open the modal</button>
+    </div>
+
+    <!-- ============ MODAL COMPONENT (copy from here) ============ -->
+    <!-- Overlay = scrim; toggle .is-open to show. The .gv-modal card is the dialog. -->
+    <div class="gv-modal-overlay is-open" id="auth-overlay" data-modal-overlay>
+      <div class="gv-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-heading">
+        <div class="gv-modal__header">
+          <h1 class="gv-modal__title" id="auth-modal-heading">Before you participate</h1>
+        </div>
+        <button class="gv-modal__close" type="button" aria-label="Close window" data-close-modal>
+          <svg viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L13.41,12L19,6.41Z"></path>
+          </svg>
+        </button>
+
+        <div class="gv-modal__body">
+          <!-- ── Login content (composed from primitives: .gv-label / .gv-input / .gv-btn / .gv-or) ── -->
+          <span class="gv-sr-only">Authentication</span>
+          <p class="auth-intro">Enter your email address to continue.</p>
+
+          <form novalidate>
+            <div style="margin-bottom: 18px;">
+              <label class="gv-label" for="email">Email</label>
+              <input class="gv-input" id="email" name="email" type="email"
+                     autocomplete="email" required placeholder="you@example.com" aria-invalid="false" />
+            </div>
+            <button class="gv-btn primary" type="submit">
+              <span class="gv-btn__label">Continue</span>
+            </button>
+          </form>
+
+          <div class="gv-or" aria-hidden="true"><span>Or</span></div>
+
+          <button class="gv-btn white full" type="button">
+            <svg viewBox="0 0 533.5 544.3" width="20" height="20" aria-hidden="true" style="flex:0 0 auto;">
+              <path fill="#4285f4" d="M533.5 278.4c0-18.5-1.5-37.1-4.7-55.3H272.1v104.8h147c-6.1 33.8-25.7 63.7-54.4 82.7v68h87.7c51.5-47.4 81.1-117.4 81.1-200.2z"></path>
+              <path fill="#34a853" d="M272.1 544.3c73.4 0 135.3-24.1 180.4-65.7l-87.7-68c-24.4 16.6-55.9 26-92.6 26-71 0-131.2-47.9-152.8-112.3H28.9v70.1c46.2 91.9 140.3 149.9 243.2 149.9z"></path>
+              <path fill="#fbbc04" d="M119.3 324.3c-11.4-33.8-11.4-70.4 0-104.2V150H28.9c-38.6 76.9-38.6 167.5 0 244.4l90.4-70.1z"></path>
+              <path fill="#ea4335" d="M272.1 107.7c38.8-.6 76.3 14 104.4 40.8l77.7-77.7C405 24.6 339.7-.8 272.1 0 169.2 0 75.1 58 28.9 150l90.4 70.1c21.5-64.5 81.8-112.4 152.8-112.4z"></path>
+            </svg>
+            <span class="gv-btn__label">Continue with Google</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- ============ /MODAL COMPONENT ============ -->
+
+    <div class="notes">
+      <p><strong>The abstraction:</strong> <code>.gv-modal-overlay</code> (scrim, toggle
+      <code>.is-open</code>) wraps the <code>.gv-modal</code> card — its parts are
+      <code>__header</code> + <code>__title</code>, the top-right <code>__close</code> icon button,
+      and a scrollable <code>__body</code>. Width via <code>--gv-modal-w</code>
+      (<code>.size-s</code> 420 / default 500 / <code>.size-l</code> 680).</p>
+      <p><strong>Wiring:</strong> the card is the dialog — <code>role="dialog"</code>,
+      <code>aria-modal="true"</code>, and <code>aria-labelledby</code> pointing at the
+      <code>__title</code> id. Esc and a backdrop click close it here; real focus-trap and
+      focus-restore are the dev team’s job on the live codebase.</p>
+      <p><strong>Body is pure primitives:</strong> this login uses <code>.gv-label</code> +
+      <code>.gv-input</code>, the <code>.gv-or</code> labeled divider, and <code>.gv-btn</code>
+      (<code>primary</code> Continue, <code>white full</code> Google) — swap the body for any
+      content to reuse the modal.</p>
+    </div>
+  </div>
+
+  <script>
+    // Minimal open/close for the demo — the dialog markup is what you copy.
+    (function () {
+      const overlay = document.getElementById('auth-overlay');
+      const open = () => { overlay.classList.add('is-open'); overlay.querySelector('.gv-modal').focus?.(); };
+      const close = () => overlay.classList.remove('is-open');
+      document.querySelectorAll('[data-open-modal]').forEach((b) => b.addEventListener('click', open));
+      document.querySelectorAll('[data-close-modal]').forEach((b) => b.addEventListener('click', close));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('is-open')) close(); });
+    })();
+  </script>
+  <script src="govocal-themes.js" defer></script>
+</body>
+</html>

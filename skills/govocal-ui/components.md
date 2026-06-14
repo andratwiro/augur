@@ -204,8 +204,16 @@ filled three-bar hamburger icon.
 ```html
 <footer class="gv-footer">
   <div class="gv-footer__inner">
-    <div class="gv-footer__logo"><a href="#" data-gv-logo></a></div>
-    <nav class="gv-footer__links"><a href="#">Nutzungsbedingungen</a><a href="#">Impressum</a>…</nav>
+    <nav class="gv-footer__links" aria-label="Secondary">
+      <ul>
+        <li><a href="#">Nutzungsbedingungen</a></li>
+        <li><a href="#">Impressum &amp; Datenschutz</a></li>
+        <li><a href="#">Cookierichtlinie</a></li>
+        <li><a href="#">Richtlinie zur Barrierefreiheit</a></li>
+        <li><button type="button">Cookie-Einstellungen</button></li>
+        <li><a href="#">Sitemap</a></li>
+      </ul>
+    </nav>
     <div class="gv-footer__powered"><span>Ermöglicht durch</span>
       <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal">
         <img class="gv-powered-logo" src="govocal-logo.svg" alt="Go Vocal" /></a>
@@ -213,8 +221,43 @@ filled three-bar hamburger icon.
   </div>
 </footer>
 ```
-- Legal links get middot separators automatically. Copy `govocal-logo.svg` into the
-  prototype folder. The go·vocal mark is GoVocal’s brand (muted grey) — it doesn’t theme.
+- Source-grounded on the real `<footer id="hook-footer">`: a secondary-nav row of legal
+  links + the powered-by mark, **no tenant logo** (that lives in the header).
+- Links are a semantic `<ul>` in a `<nav aria-label="Secondary">`; **Cookie-Einstellungen
+  is a `<button>`** (opens the cookie dialog), the rest are `<a>`. Middot separators are
+  automatic. Desktop = links left / attribution right; under 720px it stacks & centers.
+- Copy `govocal-logo.svg` into the prototype folder. The go·vocal mark is GoVocal’s brand
+  (muted grey) — it doesn’t theme per city.
+
+## Modal + login — `.gv-modal` (`components/login-modal/`)
+
+The reusable dialog abstraction (mirrors GoVocal’s `#modal-portal` → `.modalcontent`):
+an overlay scrim centres a card with a title header, a top-right close button, and a
+scrollable body. The **card** is the dialog — put the ARIA on it, not the overlay.
+
+```html
+<div class="gv-modal-overlay is-open">                    <!-- scrim; toggle .is-open to show -->
+  <div class="gv-modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <div class="gv-modal__header"><h1 class="gv-modal__title" id="m-title">Before you participate</h1></div>
+    <button class="gv-modal__close" type="button" aria-label="Close window"><svg viewBox="0 0 24 24">…X…</svg></button>
+    <div class="gv-modal__body">
+      <!-- any content. The login demo composes primitives: -->
+      <label class="gv-label" for="email">Email</label>
+      <input class="gv-input" id="email" type="email" autocomplete="email" required />
+      <button class="gv-btn primary" type="submit">Continue</button>
+      <div class="gv-or"><span>Or</span></div>                <!-- labelled divider -->
+      <button class="gv-btn white full">…G… Continue with Google</button>
+    </div>
+  </div>
+</div>
+```
+- Width via `--gv-modal-w` (`.size-s` 420 / default 500 / `.size-l` 680). Body scrolls;
+  the card caps at the viewport height.
+- ARIA goes on the **card**: `role="dialog"` + `aria-modal="true"` + `aria-labelledby`
+  → the `__title` id. Esc + backdrop-click close are demoed in JS; **real focus-trap and
+  focus-restore are the dev team’s job** — don’t over-engineer it into a mockup.
+- The `.gv-or` rule/label/rule divider is a standalone primitive — reuse it anywhere you
+  split two choices.
 
 ## Project card + rail — `.gv-rail` / `.gv-pcard` (`components/project-card/`)
 

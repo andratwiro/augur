@@ -41,9 +41,12 @@ re-litigation. Three threads, interlocking:
   - [ ] **Refine + grow the set**: tighten the existing 4, then add the primitives a
         prototype actually needs (e.g. buttons/inputs/forms, idea card, status pill,
         tabs, avatars/meta, modal/dialog). One at a time, each verified before it lands.
-- [ ] **More Pages** — composed reference pages on the **Pages** tab: project page,
-      input form, map, page builder (one at a time, each reviewed for compliance
-      before it lands). These compose the primitives into full surfaces.
+- [ ] **More Pages** — composed reference pages on the **Pages** tab (one at a time,
+      each reviewed for compliance before it lands). These compose the primitives into
+      full surfaces. **10 planned, now shown as "Pending" cards on the Pages tab**
+      (driven by `PENDING_PAGES` in `build.js`; remove a slug when its page lands):
+      Content Builder · Project Page · Input Form · Survey Builder · Perspectives ·
+      Voting · Common Ground · Ideation · Project List · Project Editor.
 - [ ] **Prove the loop** — build (or retrofit) at least one real prototype purely
       from the refined primitives/pages to confirm the building blocks hold up in a
       real assembly and stay compliant.
@@ -62,10 +65,27 @@ never rebuild GoVocal twice.
       **table** with a small live preview per row (`renderComponentsIndex`). build.js
       auto-discovers each subfolder; `components/manifest.md` is the recall index.
       Live with 4 (`header-nav` responsive/CSS-only drawer, `footer` w/ real go·vocal
-      logo, `project-card`+rail stretched-link, `hero`).
-- [x] **Pages tab** — composed reference pages from `pages/<name>/`, now a **4-up
-      vertical grid** (was a carousel) for fast scanning + Open/Download. `homepage`
-      rebuilt on the new components (high-fidelity Stadt Wien match; real footer logo).
+      logo, `project-card`+rail stretched-link, `hero`). **Open only — no HTML
+      download** (it's a designer reference to check correctness, not a copy source).
+- [x] **Pages tab** — composed reference pages from `pages/<name>/`, a **4-up
+      vertical grid** for fast scanning, **Open only — no HTML download** (designer
+      reference). `homepage` rebuilt on the new components (Stadt Wien match). Now also
+      lists the 10 planned pages as **"Pending" cards** (see More Pages above).
+
+### Linear-style review-site redesign (shipped)
+- [x] **Shell redesigned to a Linear.app aesthetic** (`build.js` PAGE_CSS/NAV_CSS) —
+      deliberately **separate from the GoVocal prototype brand**: forced dark near-black
+      canvas (`#08090a`), indigo accent (`#5e6ad2`, NOT brand pink), Inter type, faint
+      indigo aurora behind the hero. Full-width glassy sticky **top bar titled "Product
+      Team"** (left mark + nav right). **Page titles removed** (the big `h1` heroes) per
+      user pref — compact uppercase section labels carry context instead. Carousel
+      contained within the page (no viewport bleed) with smaller cards + a peek. The
+      **Primitives gallery gets a dark skin injected** (`PRIMITIVES_SKIN`) so its white
+      `.gv-card` demos float on the dark canvas while the GoVocal components stay
+      brand-accurate. Added a standalone **Playground** scratch page (`/playground/`,
+      top-level `playground/`, linked below the carousel). All shell pages pass
+      `npm run audit`; the only contrast flags are pre-existing in the gallery's own
+      component demos (orange status label, inverse badge — faithful-but-flagged).
 
 ## Cookie consent (resident-facing rule)
 - [x] **Cookie-consent pattern** — `skills/govocal-ui/govocal-cookies.js`: drop-in

@@ -13,9 +13,10 @@ shared CSS source of truth is `skills/govocal-ui/govocal-ui.css`; never fork it.
 | Component | Folder | Key classes | What it is |
 |---|---|---|---|
 | Header + nav | `components/header-nav/` | `.gv-header` `.gv-nav`/`.gv-nav__list` `.gv-nav__dd` `.gv-nav-m` | Responsive 78px site chrome (mirrors live `#e2e-navbar`): logo slot, `<nav aria-label="Primäre">` primary nav, dropdown + “Mehr ···” overflow, search, CTA; CSS-only hamburger drawer (real filled-bar icon) < 860px. |
-| Footer | `components/footer/` | `.gv-footer` `.gv-footer__links` `.gv-powered-logo` | Centered tenant logo, middot legal links, “Ermöglicht durch go·vocal” attribution (real logo via CSS mask). |
+| Footer | `components/footer/` | `.gv-footer` `.gv-footer__links` `.gv-powered-logo` | Source-grounded on `#hook-footer`: secondary-nav `<ul>` of legal links (Cookie-Einstellungen is a `<button>`) + “Ermöglicht durch go·vocal” attribution. No tenant logo. Links left / attribution right, stacks < 720px. |
 | Project card + rail | `components/project-card/` | `.gv-rail` `.gv-pcard` (`.wide` `.square`) | Participation-project card (thumb, title, status meta, CTA) + horizontal scroll rail. Stretched-link card, no nested anchors. |
 | Hero / banner | `components/hero/` | `.gv-hero` `.gv-avatars` | Full-bleed page banner: tenant-tinted overlay, title/lead, avatar+count stack, CTA. Image-agnostic. |
+| Modal + login | `components/login-modal/` | `.gv-modal-overlay`/`.gv-modal` `.gv-modal__header`/`__title`/`__close`/`__body` `.gv-or` | Reusable dialog abstraction (overlay → card → title header + close + scrollable body), shown via GoVocal’s real “Before you participate” auth flow (email + “Or” + Google). ARIA on the card; primitives in body. |
 
 ## How to reuse in a prototype
 
