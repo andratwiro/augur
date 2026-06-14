@@ -44,22 +44,20 @@ for designers to review and copy from, so we never rebuild GoVocal twice.
       `<opportunity>/prototypes/` — the Pages-tab reference reproductions do NOT show
       it (a blocking modal obscures the reference designers study/copy).
 
-## Known a11y flags (faithful-but-flagged)
-- [ ] **`gv-badge.inverse` looks like a rendering bug** — renders coloured text on
-      grey (`#04884c` on `#bdbdbd`, 2.41:1) instead of filling with the colour +
-      white text as `components.md` describes. Fix in `govocal-ui.css` or its usage.
-- [ ] **Orange status label** (`--gv-orange-500` + white = 2.9:1) and the homepage
-      **Klimateam placeholder tiles** (coloured text on coloured stand-in "photos")
-      fail contrast. Decide keep-faithful vs nudge; tiles become real photos anyway.
-
 ## Context for agents
-- [ ] Add a **GoVocal product context file** — what GoVocal is, its vocabulary,
+- [x] Add a **GoVocal product context file** — what GoVocal is, its vocabulary,
       the product itself, and key concepts, so agents can ramp up fast.
       (Internal-only — keep it OUTSIDE any `prototypes/` folder so it never ships.)
-- [ ] Add a **link to the GoVocal repository** (and any other key references) so
+      → `GOVOCAL.md` at repo root. Synthesized from all ~70 support-base articles
+      (`support.govocal.com`, read 2026-06-14). Tiered: §1 big-picture +
+      §2 vocabulary first, deeper reference (methods, roles, config, analysis,
+      specs, gotchas) below. ~3.5k tokens. NOT in a `prototypes/` folder, so
+      `build.js` never ships it.
+- [x] Add a **link to the GoVocal repository** (and any other key references) so
       Claude can jump in and research the real product quickly.
-      → Done: public support/help base https://support.govocal.com/en/ (browsable,
-        no login) saved as a reference. Still pending: the GoVocal source repo link.
+      → Public support/help base https://support.govocal.com/en/ (browsable, no
+        login) saved as a reference. Source repo: github.com/CitizenLabDotCo/citizenlab
+        (saved in memory + pinned in `skills/govocal-ui/SKILL.md`).
 
 ## Prototype review environment
 - [ ] Turn the prototypes link into a proper **dev review environment** for
@@ -92,12 +90,15 @@ for designers to review and copy from, so we never rebuild GoVocal twice.
       it + report in chat" on every front-end change. Decision: lean on existing tools,
       do NOT build a separate `govocal-screenshot` skill (redundant). The "visually
       review its own work" half is folded into the Persona critique item below.
-- [ ] **Persona design critique** — a skill to walk through a prototype "in
-      character" as a user persona I describe (e.g. low-tech, older, low
-      digital-literacy, screen-reader user) and produce a design critique from
-      that lens. Personas should be parameterizable/describable per run. (This is
-      also the home for the structured "visually review the work" flow — screenshot
-      via `webapp-testing`, then critique through the persona + design/a11y lenses.)
+- [x] **Persona design critique** — `skills/govocal-persona-critique/`: a canon
+      persona roster (`personas.md` — participants: Down syndrome, neurodivergent,
+      low-literacy/older, non-native, savvy techie; admins: reluctant tender-assigned,
+      quick-survey officer, expert participation officer, moderator) with per-run
+      override, plus a critique runner (SKILL.md): screenshot via `webapp-testing`
+      (mobile-first), walk the task in character, judge through persona + a11y +
+      design lenses, output an in-character narrative + severity-ranked findings.
+      Scoped to prototypes only; agent proactively offers the lens when building one.
+      Wired into CLAUDE.md (skill table + mobile-first/proactive rule).
 
 ## Deploy & access
 - [x] **Rolled the Cloudflare API token** — old (leaked) value invalidated; new

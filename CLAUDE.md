@@ -54,7 +54,7 @@ problem, users, and constraints. They are internal-only and must never ship.
 ## Front-end work — load these skills first (required)
 
 **Before writing or modifying any front-end code** — a prototype's HTML/CSS/JS, or
-the `build.js` shell / landing-page UI — read all five SKILL.md files below into
+the `build.js` shell / landing-page UI — read the SKILL.md files below into
 context first. This is not optional and applies even to "quick" edits; the skills
 are interdependent (design ↔ a11y ↔ review). If a task touches front-end output and
 you have not loaded them this session, load them before your first edit.
@@ -66,10 +66,21 @@ you have not loaded them this session, load them before your first edit.
 | `skills/frontend-design/SKILL.md` | visual direction | typography, color, non-templated design |
 | `skills/govocal-a11y/SKILL.md` | WCAG 2.2 AA | build compliant; run `npm run audit`; flag violations |
 | `skills/webapp-testing/SKILL.md` | Playwright | screenshot & review the change before reporting done |
+| `skills/govocal-persona-critique/SKILL.md` | persona design lens | **prototypes only** — critique a flow in character (participant/admin personas); load when building a prototype |
+
+The first five apply to all front-end work. **`govocal-persona-critique` is scoped to
+prototypes** (`<opportunity>/prototypes/`) — load it when building/modifying one, skip
+it for the build.js shell or reference pages.
 
 Closing the loop on every front-end change: **screenshot it** (webapp-testing, via
 `.venv/bin/python`) to confirm it renders, and **run `npm run audit`** (a11y) before
 calling it done or deploying. Report both results in chat.
+
+**Mobile-first, always** — check the phone viewport first (participants are
+phone-primary; admins desktop-primary but mobile happens). **Proactively offer a
+persona critique** when building or finishing a prototype: name the one or two
+personas the flow most needs to serve and run the lens — don't wait to be asked (see
+`skills/govocal-persona-critique/`).
 
 ## Design system
 
