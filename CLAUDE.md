@@ -51,11 +51,44 @@ problem, users, and constraints. They are internal-only and must never ship.
 - Prefer `index.html` as the entry point (it becomes the clickable link).
 - Keep assets (css/js/img) local to the prototype folder so the copy is complete.
 
+## Front-end work — load these skills first (required)
+
+**Before writing or modifying any front-end code** — a prototype's HTML/CSS/JS, or
+the `build.js` shell / landing-page UI — read all four SKILL.md files below into
+context first. This is not optional and applies even to "quick" edits; the skills
+are interdependent (design ↔ a11y ↔ review). If a task touches front-end output and
+you have not loaded them this session, load them before your first edit.
+
+| Skill | Read | Use it for |
+|---|---|---|
+| `skills/govocal-design/SKILL.md` | brand & components | visuals, components, tone |
+| `skills/frontend-design/SKILL.md` | visual direction | typography, color, non-templated design |
+| `skills/govocal-a11y/SKILL.md` | WCAG 2.2 AA | build compliant; run `npm run audit`; flag violations |
+| `skills/webapp-testing/SKILL.md` | Playwright | screenshot & review the change before reporting done |
+
+Closing the loop on every front-end change: **screenshot it** (webapp-testing, via
+`.venv/bin/python`) to confirm it renders, and **run `npm run audit`** (a11y) before
+calling it done or deploying. Report both results in chat.
+
 ## Design system
 
 A design-system skill lives in `skills/govocal-design/`. **Consult it when
 building any prototype** so visuals, components, and tone stay consistent across
 opportunities.
+
+## Accessibility (WCAG 2.2 AA — non-negotiable)
+
+GoVocal's real platform is WCAG 2.2 AA certified; prototypes must hold the same bar.
+An accessibility skill lives in `skills/govocal-a11y/`. **Consult it when building or
+modifying any prototype** and:
+
+- **Build compliant by default** — apply its patterns as you write markup, don't bolt
+  accessibility on afterward. Flag the user the moment a request hits a known
+  "tripwire" interaction (color-only state, icon-only buttons, custom dropdowns,
+  modals, carousels, drag-and-drop, hover-only reveals, disabled zoom, …).
+- **Audit before calling a prototype done / before deploy** — run `npm run audit`
+  (axe-core headless, WCAG 2.2 AA) and **report any violations in chat**. The audit is
+  non-blocking by design (these are prototypes); never silently ship a known violation.
 
 ## Build & deploy
 
