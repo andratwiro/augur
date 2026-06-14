@@ -1,0 +1,261 @@
+#!/usr/bin/env node
+/**
+ * build.js — scans opportunity folders and generates a static site in /dist.
+ *
+ * Convention (see CLAUDE.md):
+ *   <opportunity>/
+ *     research.md   <- context for agents, NEVER published
+ *     context.md    <- context for agents, NEVER published
+ *     prototypes/
+ *       <prototype>/  <- self-contained static HTML/JS, THIS is what ships
+ *
+ * Rules:
+ *   - ONLY files inside a prototypes/ folder are copied to /dist.
+ *   - research.md, context.md, and anything outside prototypes/ are never copied.
+ *   - Output: /dist/<opportunity>/<prototype>/...  + /dist/index.html
+ *
+ * Plain Node, no dependencies.
+ */
+
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = path.dirname(fileURLToPath(import.meta.url));
+const DIST = path.join(ROOT, "dist");
+
+// Top-level folders that are never treated as opportunity folders.
+const IGNORED_TOPLEVEL = new Set([
+  "dist",
+  "node_modules",
+  "skills",
+  ".git",
+  ".github",
+]);
+
+async function exists(p) {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function isDir(p) {
+  try {
+    return (await fs.stat(p)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/** Recursively copy a directory. Returns the latest mtime (ms) seen within it. */
+async function copyDir(src, dest) {
+  await fs.mkdir(dest, { recursive: true });
+  let latest = 0;
+  const entries = await fs.readdir(src, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      latest = Math.max(latest, await copyDir(srcPath, destPath));
+    } else if (entry.isFile()) {
+      await fs.copyFile(srcPath, destPath);
+      const st = await fs.stat(srcPath);
+      latest = Math.max(latest, st.mtimeMs);
+    }
+  }
+  return latest;
+}
+
+/** Find the entry file to link to for a prototype (prefer index.html). */
+async function entryHref(opportunity, prototype, protoDir) {
+  const base = `${encodeURIComponent(opportunity)}/${encodeURIComponent(prototype)}`;
+  if (await exists(path.join(protoDir, "index.html"))) return `${base}/`;
+  // Fall back to the first .html file found at the top level of the prototype.
+  const entries = await fs.readdir(protoDir, { withFileTypes: true });
+  const html = entries.find((e) => e.isFile() && e.name.endsWith(".html"));
+  if (html) return `${base}/${encodeURIComponent(html.name)}`;
+  return `${base}/`;
+}
+
+async function scan() {
+  const opportunities = [];
+  const topEntries = await fs.readdir(ROOT, { withFileTypes: true });
+
+  for (const top of topEntries) {
+    if (!top.isDirectory()) continue;
+    if (IGNORED_TOPLEVEL.has(top.name) || top.name.startsWith(".")) continue;
+
+    const protoParent = path.join(ROOT, top.name, "prototypes");
+    if (!(await isDir(protoParent))) continue;
+
+    const protoEntries = await fs.readdir(protoParent, { withFileTypes: true });
+    const prototypes = [];
+
+    for (const proto of protoEntries) {
+      if (!proto.isDirectory()) continue;
+      const protoDir = path.join(protoParent, proto.name);
+
+      // Copy ONLY the prototype folder into dist.
+      const destDir = path.join(DIST, top.name, proto.name);
+      const latest = await copyDir(protoDir, destDir);
+
+      prototypes.push({
+        name: proto.name,
+        href: await entryHref(top.name, proto.name, protoDir),
+        mtimeMs: latest,
+      });
+    }
+
+    if (prototypes.length === 0) continue;
+
+    prototypes.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    opportunities.push({
+      name: top.name,
+      prototypes,
+      mtimeMs: Math.max(...prototypes.map((p) => p.mtimeMs)),
+    });
+  }
+
+  // Most-recently-modified opportunity first.
+  opportunities.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return opportunities;
+}
+
+function titleCase(slug) {
+  return slug
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function fmtDate(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function renderIndex(opportunities) {
+  const sections = opportunities
+    .map((opp) => {
+      const items = opp.prototypes
+        .map(
+          (p) => `
+          <li class="proto">
+            <a href="${p.href}">
+              <span class="proto-name">${titleCase(p.name)}</span>
+              <span class="proto-date">${fmtDate(p.mtimeMs)}</span>
+            </a>
+          </li>`
+        )
+        .join("");
+      return `
+      <section class="opportunity">
+        <h2>${titleCase(opp.name)}</h2>
+        <ul class="protos">${items}
+        </ul>
+      </section>`;
+    })
+    .join("");
+
+  const empty = `<p class="empty">No prototypes yet. Add one under
+    <code>&lt;opportunity&gt;/prototypes/&lt;name&gt;/</code> and rebuild.</p>`;
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>GoVocal Prototypes</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --fg: #1a1a1a;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --card: #ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d0d0f; --fg: #f3f4f6; --muted: #9ca3af;
+        --line: #26262b; --accent: #60a5fa; --card: #161619;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 64px 24px 96px; }
+    header { margin-bottom: 48px; }
+    h1 { font-size: 28px; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.02em; }
+    .subtitle { color: var(--muted); margin: 0; font-size: 15px; }
+    .opportunity { margin-bottom: 40px; }
+    h2 {
+      font-size: 13px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted);
+      margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+    }
+    ul.protos { list-style: none; margin: 0; padding: 0; }
+    .proto a {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 16px; padding: 14px 16px; margin: 0 -16px;
+      border-radius: 10px; text-decoration: none; color: var(--fg);
+      transition: background 0.12s ease;
+    }
+    .proto a:hover { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .proto-name { font-weight: 500; }
+    .proto-date { color: var(--muted); font-size: 13px; white-space: nowrap; }
+    .empty { color: var(--muted); }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+    footer { margin-top: 64px; color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>GoVocal Prototypes</h1>
+      <p class="subtitle">Clickable design prototypes. Private &mdash; do not share outside the team.</p>
+    </header>
+    ${opportunities.length ? sections : empty}
+    <footer>Generated by build.js &middot; ${fmtDate(Date.now())}</footer>
+  </div>
+</body>
+</html>
+`;
+}
+
+async function main() {
+  // Clean dist for a deterministic build.
+  await fs.rm(DIST, { recursive: true, force: true });
+  await fs.mkdir(DIST, { recursive: true });
+
+  const opportunities = await scan();
+  await fs.writeFile(path.join(DIST, "index.html"), renderIndex(opportunities), "utf8");
+
+  const protoCount = opportunities.reduce((n, o) => n + o.prototypes.length, 0);
+  console.log(
+    `Built dist/ — ${opportunities.length} opportunit${
+      opportunities.length === 1 ? "y" : "ies"
+    }, ${protoCount} prototype${protoCount === 1 ? "" : "s"}.`
+  );
+  for (const opp of opportunities) {
+    console.log(`  ${opp.name}/`);
+    for (const p of opp.prototypes) console.log(`    - ${p.name}`);
+  }
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

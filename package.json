@@ -1,0 +1,14 @@
+{
+  "name": "govocal-prototypes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo of design prototypes, built to a static site for private sharing.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js && npx --yes serve dist"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
