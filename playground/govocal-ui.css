@@ -279,8 +279,14 @@ body.gv-root {
   border-top: 3px solid transparent;            /* active indicator sits on top, like the live site */
   border-bottom: 3px solid transparent;
 }
-.gv-nav__link:hover { color: var(--gv-tenant-primary); }
-.gv-nav__link[aria-current="page"] { border-top-color: var(--gv-tenant-primary); font-weight: 700; }
+.gv-nav__link:hover { color: var(--gv-tenant-primary); background: var(--gv-grey-100); }
+.gv-nav__dd[open] > summary.gv-nav__link { color: var(--gv-tenant-primary); background: var(--gv-grey-100); }
+/* Active page — tenant-tinted cell + top accent bar, mirroring the live #e2e-navbar */
+.gv-nav__link[aria-current="page"] {
+  border-top-color: var(--gv-tenant-primary); font-weight: 700; color: var(--gv-black);
+  background: color-mix(in srgb, var(--gv-tenant-primary) 9%, #fff);
+}
+.gv-nav__link[aria-current="page"]:hover { color: var(--gv-black); background: color-mix(in srgb, var(--gv-tenant-primary) 15%, #fff); }
 .gv-nav__link:focus-visible { outline: var(--gv-focus-outline); outline-offset: -3px; }
 .gv-nav__chev { width: 12px; height: 12px; transition: transform 120ms ease-out; }
 
