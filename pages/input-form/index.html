@@ -241,8 +241,11 @@
 
     /* ── Footer (progress + nav) ────────────────────────────────────────────── */
     .sv-foot { flex: 0 0 auto; border-top: 1px solid var(--gv-grey-200); }
+    /* Survey progress accent. Faithful default is GoVocal's gold; exposed as a named
+       variable so a city can re-skin it (set --sv-progress, or point it at a tenant token). */
+    .sv-card { --sv-progress: #F0C808; }
     .sv-progress { height: 6px; background: var(--gv-grey-200); }
-    .sv-progress__bar { height: 100%; width: 0; background: #F0C808; transition: width 220ms ease-out; }
+    .sv-progress__bar { height: 100%; width: 0; background: var(--sv-progress); transition: width 220ms ease-out; }
     .sv-foot__row { display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 16px 22px; position: relative; }
     .sv-foot__pct { position: absolute; left: 0; right: 0; text-align: center; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); pointer-events: none; }
     .sv-foot__nav { display: flex; gap: 12px; position: relative; z-index: 1; }
