@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.10";
+const UI_VERSION = "0.11";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -526,7 +526,10 @@ const PAGE_CSS = `
       .comp-thumb { max-width: 100%; width: 100%; }
     }
 
-    /* ---- Prototype status badge (In progress / Closed), toggled in place ---- */
+    /* ---- Prototype dev-status badge, click-to-cycle in place ----
+       A dev-facing pipeline: Playground → In progress → Dev ready → Shipped, with
+       Parked off to the side. The text label always states the status, so colour is
+       never the only signal (1.4.1). Each palette is AA-safe (text ≥ 4.5:1 on its bg). */
     .status-badge {
       display: inline-flex; align-items: center; gap: 7px; margin-top: 10px;
       font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1;
@@ -538,16 +541,11 @@ const PAGE_CSS = `
     .status-badge:hover { filter: brightness(0.97); }
     .status-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .status-badge[disabled] { opacity: .55; cursor: progress; }
-    /* Colour is never the only signal — the text label always states the status. */
-    .status-badge.is-progress { background: #fef3c7; color: #8a5200; border-color: #fcd9a4; }
-    .status-badge.is-progress .status-dot { background: #c2710c; }
-    .status-badge.is-closed { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
-    .status-badge.is-closed .status-dot { background: #059669; }
     @media (prefers-reduced-motion: reduce) { .status-badge { transition: none; } }
 
     /* Read-only status summary on the main carousel's opportunity cards: one chip
        per status with a count of that opportunity's prototypes. Non-interactive
-       (the cards are links; toggling lives on the opportunity page). Same AA-safe
+       (the cards are links; cycling lives on the opportunity page). Same AA-safe
        palette as the badges. */
     .opp-status { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
     .status-chip {
@@ -556,10 +554,19 @@ const PAGE_CSS = `
       padding: 5px 10px; border-radius: 999px; border: 1px solid transparent;
     }
     .status-chip .status-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-    .status-chip.is-progress { background: #fef3c7; color: #8a5200; border-color: #fcd9a4; }
-    .status-chip.is-progress .status-dot { background: #c2710c; }
-    .status-chip.is-closed { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
-    .status-chip.is-closed .status-dot { background: #059669; }
+
+    /* Shared dev-status palette — applies to both the interactive badge and the
+       read-only count chips. Colour is paired with the text label everywhere. */
+    .status-badge.is-playground, .status-chip.is-playground { background: #e8eaed; color: #3f4651; border-color: #d3d8de; }
+    .status-badge.is-playground .status-dot, .status-chip.is-playground .status-dot { background: #6b7280; }
+    .status-badge.is-progress, .status-chip.is-progress { background: #fef3c7; color: #8a5200; border-color: #fcd9a4; }
+    .status-badge.is-progress .status-dot, .status-chip.is-progress .status-dot { background: #c2710c; }
+    .status-badge.is-ready, .status-chip.is-ready { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
+    .status-badge.is-ready .status-dot, .status-chip.is-ready .status-dot { background: #059669; }
+    .status-badge.is-shipped, .status-chip.is-shipped { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+    .status-badge.is-shipped .status-dot, .status-chip.is-shipped .status-dot { background: #2563eb; }
+    .status-badge.is-parked, .status-chip.is-parked { background: #ffe4e6; color: #9f1239; border-color: #fecdd3; }
+    .status-badge.is-parked .status-dot, .status-chip.is-parked .status-dot { background: #e11d48; }
 
     /* ── Phones ───────────────────────────────────────────────────────────────
        Tighter gutters under the 52px bar, a smaller hero, and full-width actions
@@ -670,22 +677,45 @@ const CAROUSEL_JS = `
       });
     })();`;
 
-// Prototype status badges (In progress / Closed). Each badge is a real toggle
-// button; state is loaded from and persisted to the worker's KV-backed
-// /__review/status endpoint (same gate as the comments overlay). On a static
-// preview with no worker (local `serve`), the load/POST just no-op and the badge
-// stays at its default — clicking optimistically flips, then reverts if unsaved.
+// Prototype dev-status badges. A dev-facing pipeline that tells engineering what to
+// do with each prototype: Playground (ignore — scratch) → In progress (shaping, don't
+// build yet) → Dev ready (decided, build this) → Shipped (built into the product),
+// plus Parked (set aside; the cue to roll learnings into GOVOCAL.md §13). Each badge
+// is a real toggle button that cycles through the states in that order; state is loaded
+// from and persisted to the worker's KV-backed /__review/status endpoint (same gate as
+// the comments overlay). On a static preview with no worker (local \`serve\`), the
+// load/POST just no-op and the badge stays at its default — clicking optimistically
+// advances, then reverts if unsaved. "in_progress" is the default (absent KV key).
+const STATUS_ORDER = ["playground", "in_progress", "dev_ready", "shipped", "parked"];
+const STATUS_LABELS = {
+  playground: "Playground",
+  in_progress: "In progress",
+  dev_ready: "Dev ready",
+  shipped: "Shipped",
+  parked: "Parked",
+};
+const STATUS_CLASSES = {
+  playground: "is-playground",
+  in_progress: "is-progress",
+  dev_ready: "is-ready",
+  shipped: "is-shipped",
+  parked: "is-parked",
+};
 const STATUS_JS = `
     (function () {
+      var ORDER = ${JSON.stringify(STATUS_ORDER)};
+      var LABELS = ${JSON.stringify(STATUS_LABELS)};
+      var CLASSES = ${JSON.stringify(STATUS_CLASSES)};
+      var DEFAULT = 'in_progress';
+      var ALL_CLASSES = ORDER.map(function (s) { return CLASSES[s]; });
+      function norm(s) { return ORDER.indexOf(s) === -1 ? DEFAULT : s; }
       var badges = [].slice.call(document.querySelectorAll('.status-badge'));
       var summaries = [].slice.call(document.querySelectorAll('[data-opp-status]'));
       if (!badges.length && !summaries.length) return;
-      var LABELS = { in_progress: 'In progress', closed: 'Closed' };
       function apply(b, s) {
-        if (s !== 'closed') s = 'in_progress';
+        s = norm(s);
         b.dataset.status = s;
-        b.classList.toggle('is-closed', s === 'closed');
-        b.classList.toggle('is-progress', s !== 'closed');
+        ALL_CLASSES.forEach(function (c) { b.classList.toggle(c, c === CLASSES[s]); });
         var l = b.querySelector('.status-label');
         if (l) l.textContent = LABELS[s];
         b.setAttribute('aria-label', 'Status: ' + LABELS[s] + '. Activate to change.');
@@ -693,16 +723,15 @@ const STATUS_JS = `
       function chip(cls, label) {
         return '<span class="status-chip ' + cls + '"><span class="status-dot" aria-hidden="true"></span>' + label + '</span>';
       }
-      // Replace an opportunity card's default chip with real per-status counts.
+      // Replace an opportunity card's default chip with real per-status counts,
+      // one chip per status that's present, in pipeline order.
       function summarize(el, statuses) {
         var paths = (el.getAttribute('data-proto-paths') || '').split(',').filter(Boolean);
         if (!paths.length) return;
-        var closed = 0;
-        paths.forEach(function (p) { if (statuses[p] === 'closed') closed++; });
-        var prog = paths.length - closed;
-        var html = '';
-        if (prog) html += chip('is-progress', prog + ' ' + LABELS.in_progress);
-        if (closed) html += chip('is-closed', closed + ' ' + LABELS.closed);
+        var counts = {};
+        paths.forEach(function (p) { var s = norm(statuses[p] || DEFAULT); counts[s] = (counts[s] || 0) + 1; });
+        var html = ORDER.filter(function (s) { return counts[s]; })
+          .map(function (s) { return chip(CLASSES[s], counts[s] + ' ' + LABELS[s]); }).join('');
         el.innerHTML = html;
       }
       fetch('/__review/status', { headers: { Accept: 'application/json' } })
@@ -717,8 +746,8 @@ const STATUS_JS = `
         }).catch(function () {});
       badges.forEach(function (b) {
         b.addEventListener('click', function () {
-          var cur = b.dataset.status === 'closed' ? 'closed' : 'in_progress';
-          var next = cur === 'closed' ? 'in_progress' : 'closed';
+          var cur = norm(b.dataset.status);
+          var next = ORDER[(ORDER.indexOf(cur) + 1) % ORDER.length];
           apply(b, next);
           b.disabled = true;
           fetch('/__review/status?path=' + encodeURIComponent(b.getAttribute('data-status-for')), {
