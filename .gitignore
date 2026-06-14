@@ -8,3 +8,9 @@ node_modules/
 .env.deploy
 .env*.local
 .dev.vars*
+
+# Pulled review comments — local working copy, never committed.
+review-comments.local.md
+
+# Wrangler local state
+.wrangler/

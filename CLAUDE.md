@@ -76,6 +76,23 @@ A design-system skill lives in `skills/govocal-design/`. **Consult it when
 building any prototype** so visuals, components, and tone stay consistent across
 opportunities.
 
+## Review comments (how to read reviewer feedback)
+
+Every prototype ships with a hidden review overlay (`src/review/comments.js`,
+injected by `build.js` as `/__review/comments.js`). Reviewers press **Shift+C**
+to drop pinned comment threads on the live prototype. Threads are stored in
+Cloudflare KV via the worker (`src/_worker.js` → `/__review/api`).
+
+**To read reviewer feedback, run `npm run comments`.** It pulls every thread
+from the secret-guarded export endpoint into a gitignored `review-comments.local.md`,
+grouped by prototype with each pin's CSS-selector context, author, and timestamp.
+Read that file to act on in-context feedback. It needs `REVIEW_SITE_URL` and
+`REVIEW_EXPORT_KEY` in `.env.deploy` (the export key is also a Pages secret).
+
+The `REVIEW_EXPORT_KEY` is a secret — never paste it into chat (same rule as the
+Cloudflare token). The overlay tag is injected at build time only, so prototype
+source stays clean and Download HTML strips it for a clean dev copy.
+
 ## Accessibility — design-level (WCAG 2.2 AA, perceivable parts)
 
 Prototypes are **interactive guidance**, not the shipping build. Accessibility here is

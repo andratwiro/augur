@@ -100,12 +100,120 @@ function htmlResponse(body, status) {
   });
 }
 
+// ---- Review comments API (KV-backed) ----------------------------------------
+// Threads are stored one KV value per prototype page path, key "c:<path>".
+
+function jsonResponse(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+  });
+}
+
+const clamp = (s, n) => String(s == null ? "" : s).slice(0, n);
+
+function sanitizeMsg(m) {
+  return {
+    author: clamp(m && m.author, 80) || "Anonymous",
+    body: clamp(m && m.body, 4000),
+    at: clamp(m && m.at, 40) || new Date().toISOString(),
+  };
+}
+
+// Apply a single review op to a thread array; returns the new array.
+function applyOp(threads, op) {
+  if (!op || typeof op !== "object") return threads;
+  if (op.op === "add" && op.thread) {
+    const t = op.thread;
+    threads.push({
+      id: clamp(t.id, 64) || String(Date.now()),
+      sel: clamp(t.sel, 600),
+      fx: +t.fx || 0, fy: +t.fy || 0, px: +t.px || 0, py: +t.py || 0,
+      resolved: false,
+      messages: (Array.isArray(t.messages) ? t.messages : []).slice(0, 1).map(sanitizeMsg),
+    });
+    if (threads.length > 500) threads = threads.slice(-500);
+  } else if (op.op === "reply" && op.message) {
+    const t = threads.find((x) => x.id === op.id);
+    if (t) t.messages = (t.messages || []).concat([sanitizeMsg(op.message)]).slice(0, 200);
+  } else if (op.op === "resolve") {
+    const t = threads.find((x) => x.id === op.id);
+    if (t) t.resolved = !!op.resolved;
+  } else if (op.op === "delete") {
+    threads = threads.filter((x) => x.id !== op.id);
+  }
+  return threads;
+}
+
+// GET/POST /__review/api?path=<page> — read or mutate one page's threads.
+async function reviewApi(request, url, env) {
+  const kv = env.COMMENTS;
+  const path = clamp(url.searchParams.get("path") || "/", 600);
+  if (!kv) return jsonResponse({ threads: [], warning: "no-kv-binding" });
+  const key = "c:" + path;
+
+  if (request.method === "GET") {
+    const raw = await kv.get(key);
+    return jsonResponse({ threads: raw ? JSON.parse(raw) : [] });
+  }
+  if (request.method === "POST") {
+    let op;
+    try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const raw = await kv.get(key);
+    let threads = raw ? JSON.parse(raw) : [];
+    threads = applyOp(threads, op);
+    await kv.put(key, JSON.stringify(threads));
+    return jsonResponse({ threads });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
+// GET /__review/api/export?key=<REVIEW_EXPORT_KEY> — all threads, every page.
+// Secret-guarded so tooling can read comments WITHOUT the site password.
+async function reviewExport(request, url, env) {
+  const secret = env.REVIEW_EXPORT_KEY;
+  if (!secret) return jsonResponse({ error: "export-disabled" }, 404);
+  const given = url.searchParams.get("key") || request.headers.get("X-Review-Key") || "";
+  if (given.length !== secret.length || given !== secret) {
+    return jsonResponse({ error: "forbidden" }, 403);
+  }
+  const kv = env.COMMENTS;
+  if (!kv) return jsonResponse({ pages: {}, warning: "no-kv-binding" });
+  const pages = {};
+  let cursor;
+  do {
+    const list = await kv.list({ prefix: "c:", cursor });
+    for (const k of list.keys) {
+      const raw = await kv.get(k.name);
+      pages[k.name.slice(2)] = raw ? JSON.parse(raw) : [];
+    }
+    cursor = list.list_complete ? null : list.cursor;
+  } while (cursor);
+  return jsonResponse({ pages, generatedAt: new Date().toISOString() });
+}
+
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+
+    // Review export bypasses the password gate (its own secret guards it).
+    if (url.pathname === "/__review/api/export") return reviewExport(request, url, env);
+
     const expected = env.SITE_PASSWORD;
+
+    // Comment read/write: gated by the site password (cookie) when one is set.
+    if (url.pathname === "/__review/api") {
+      if (expected) {
+        const token = await tokenFor(expected);
+        const cookies = request.headers.get("Cookie") || "";
+        const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
+        if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      return reviewApi(request, url, env);
+    }
+
     if (!expected) return env.ASSETS.fetch(request); // open when no password configured
 
-    const url = new URL(request.url);
     const expectedToken = await tokenFor(expected);
 
     // Login form submission.

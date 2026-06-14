@@ -29,6 +29,20 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
+const SRC_REVIEW = path.join(ROOT, "src", "review", "comments.js");
+
+// Marker-wrapped tag injected into every prototype's HTML. Dormant until the
+// reviewer hits Shift+C; the markers let the Download HTML button strip it so
+// devs get a clean file. Absolute path => served from /dist root by the worker.
+const REVIEW_TAG =
+  '<!--gv-review-start--><script src="/__review/comments.js" defer></script><!--gv-review-end-->';
+
+/** Inject the review overlay tag before </body> (or append if none). */
+function injectReview(html) {
+  if (html.includes("gv-review-start")) return html; // already injected
+  const i = html.toLowerCase().lastIndexOf("</body>");
+  return i === -1 ? html + REVIEW_TAG : html.slice(0, i) + REVIEW_TAG + html.slice(i);
+}
 
 // Version of the PROTOTYPES SITE UI (the landing/shell pages this file generates),
 // shown in the footer. Bump this ONLY when the site UI changes — i.e. edits to
@@ -75,7 +89,12 @@ async function copyDir(src, dest) {
     if (entry.isDirectory()) {
       latest = Math.max(latest, await copyDir(srcPath, destPath));
     } else if (entry.isFile()) {
-      await fs.copyFile(srcPath, destPath);
+      if (entry.name.endsWith(".html")) {
+        const html = await fs.readFile(srcPath, "utf8");
+        await fs.writeFile(destPath, injectReview(html), "utf8");
+      } else {
+        await fs.copyFile(srcPath, destPath);
+      }
       const st = await fs.stat(srcPath);
       latest = Math.max(latest, st.mtimeMs);
     }
@@ -261,6 +280,23 @@ const PAGE_CSS = `
 
 const CAROUSEL_JS = `
     (function () {
+      // Download HTML: fetch the prototype, strip the injected review tag so
+      // devs get a clean, self-contained file.
+      document.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('[data-dl]');
+        if (!b) return;
+        e.preventDefault();
+        fetch(b.getAttribute('data-dl')).then(function (r) { return r.text(); }).then(function (t) {
+          t = t.replace(/<!--gv-review-start-->[\\s\\S]*?<!--gv-review-end-->/g, '');
+          var blob = new Blob([t], { type: 'text/html' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = b.getAttribute('data-dlname') || 'prototype.html';
+          a.click();
+          URL.revokeObjectURL(a.href);
+        }).catch(function () { window.location.href = b.getAttribute('data-dl'); });
+      });
+
       // Scale each live preview iframe so the whole page fits the card.
       function fit(p) {
         var f = p.querySelector('iframe');
@@ -398,7 +434,7 @@ function renderOpportunityIndex(opp) {
   const slides = opp.prototypes
     .map((p) => {
       const download = p.file
-        ? `<a class="btn ghost" href="${p.file}" download="${encodeURIComponent(p.name)}.html">&darr; Download HTML</a>`
+        ? `<button type="button" class="btn ghost" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html">&darr; Download HTML</button>`
         : "";
       return `
         <div class="slide">
@@ -451,6 +487,10 @@ async function main() {
 
   // Edge auth gate.
   await fs.copyFile(SRC_WORKER, path.join(DIST, "_worker.js"));
+
+  // Review overlay asset (shared by every injected prototype).
+  await fs.mkdir(path.join(DIST, "__review"), { recursive: true });
+  await fs.copyFile(SRC_REVIEW, path.join(DIST, "__review", "comments.js"));
 
   const protoCount = opportunities.reduce((n, o) => n + o.prototypes.length, 0);
   console.log(
