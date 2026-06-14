@@ -237,7 +237,7 @@ scrollable body. The **card** is the dialog — put the ARIA on it, not the over
 
 ```html
 <div class="gv-modal-overlay is-open">                    <!-- scrim; toggle .is-open to show -->
-  <div class="gv-modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+  <div class="gv-modal size-s" role="dialog" aria-modal="true" aria-labelledby="m-title">
     <div class="gv-modal__header"><h1 class="gv-modal__title" id="m-title">Before you participate</h1></div>
     <button class="gv-modal__close" type="button" aria-label="Close window"><svg viewBox="0 0 24 24">…X…</svg></button>
     <div class="gv-modal__body">
@@ -251,8 +251,9 @@ scrollable body. The **card** is the dialog — put the ARIA on it, not the over
   </div>
 </div>
 ```
-- Width via `--gv-modal-w` (`.size-s` 420 / default 500 / `.size-l` 680). Body scrolls;
-  the card caps at the viewport height.
+- Width via `--gv-modal-w` (real default 650 / `.size-s` 500 compact-auth / `.size-l` 820).
+  Scrim is `rgba(0,0,0,.75)` with **no card shadow**; the card top-aligns with a 50px gap
+  (not vertically centred), caps at `85vh`, and scrolls its body — all matching the live Modal.
 - ARIA goes on the **card**: `role="dialog"` + `aria-modal="true"` + `aria-labelledby`
   → the `__title` id. Esc + backdrop-click close are demoed in JS; **real focus-trap and
   focus-restore are the dev team’s job** — don’t over-engineer it into a mockup.

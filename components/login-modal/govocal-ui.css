@@ -231,35 +231,35 @@ body.gv-root {
 .gv-or::before, .gv-or::after { content: ""; flex: 1 1 0; height: 1px; background: var(--gv-grey-300); }
 
 /* ── Modal / dialog ───────────────────────────────────────────────────────────
-   Mirrors GoVocal's #modal-portal → .modalcontent: a scrim overlay centering a
-   white dialog card with a title header, a top-right close button, and a
-   scrollable body. The card is the dialog: role="dialog" aria-modal="true" and
-   aria-labelledby pointing at .gv-modal__title's id. Width via --gv-modal-w
-   (default 500px; .size-s / .size-l presets). Toggle .is-open on the overlay to
-   show it (display:none when closed). Real focus-trap/restore is the dev team's job. */
+   Source-grounded on GoVocal's #modal-portal → .modalcontent (components/UI/Modal):
+   a dark scrim (rgba(0,0,0,.75) — no card shadow; the scrim does the separation)
+   holding a white dialog card, top-aligned with a 50px gap (NOT vertically centred),
+   capped at 85vh and scrolling its body. The card is the dialog: role="dialog"
+   aria-modal="true" + aria-labelledby → .gv-modal__title's id. Width via --gv-modal-w
+   (real default 650px; .size-s 500 for compact/auth, .size-l 820 wide). Toggle
+   .is-open on the overlay to show it. Real focus-trap/restore is the dev team's job. */
 .gv-modal-overlay {
   position: fixed; inset: 0; z-index: 1000;
-  display: none; align-items: center; justify-content: center;
-  padding: 20px; overflow-y: auto;
-  background: rgba(0, 0, 0, 0.5);
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 50px 20px; overflow-y: auto;
+  background: rgba(0, 0, 0, 0.75);
 }
 .gv-modal-overlay.is-open { display: flex; }
 .gv-modal {
-  position: relative; width: 100%; max-width: var(--gv-modal-w, 500px);
-  max-height: calc(100vh - 40px);
+  position: relative; width: 100%; max-width: var(--gv-modal-w, 650px);
+  max-height: 85vh;
   display: flex; flex-direction: column;
   background: #fff; border-radius: var(--gv-radius);
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.20);
 }
-.gv-modal.size-s { --gv-modal-w: 420px; }
-.gv-modal.size-l { --gv-modal-w: 680px; }
+.gv-modal.size-s { --gv-modal-w: 500px; }
+.gv-modal.size-l { --gv-modal-w: 820px; }
 .gv-modal__header {
   flex: 0 0 auto; display: flex; align-items: center;
-  min-height: 28px; padding: 22px 64px 18px 28px;
+  min-height: 28px; padding: 26px 66px 14px 30px;
 }
 .gv-modal__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 600; line-height: 1.3; color: var(--gv-text-primary); }
 .gv-modal__close {
-  position: absolute; top: 14px; right: 14px;
+  position: absolute; top: 16px; right: 16px;
   display: inline-flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; padding: 0;
   background: none; border: 0; border-radius: var(--gv-radius);
@@ -268,10 +268,12 @@ body.gv-root {
 .gv-modal__close:hover { background: var(--gv-grey-100); }
 .gv-modal__close:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
 .gv-modal__close svg { display: block; width: 24px; height: 24px; fill: currentColor; }
-.gv-modal__body { flex: 1 1 auto; overflow-y: auto; padding: 4px 28px 30px; }
+.gv-modal__body { flex: 1 1 auto; overflow-y: auto; padding: 6px 30px 30px; }
 @media (max-width: 520px) {
-  .gv-modal { max-height: calc(100vh - 24px); }
-  .gv-modal-overlay { padding: 12px; align-items: flex-start; }
+  .gv-modal { max-height: calc(100vh - 30px); }
+  .gv-modal-overlay { padding: 15px; }
+  .gv-modal__header { padding: 20px 60px 12px 20px; }
+  .gv-modal__body { padding: 4px 20px 20px; }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
