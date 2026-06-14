@@ -3,6 +3,13 @@
 A monorepo of clickable design prototypes. `build.js` compiles the publishable
 parts into `/dist`, which is deployed to a private URL (Cloudflare Pages + Access).
 
+## Session start (read this first)
+
+At the start of each session, read `TODO.md` at the repo root and briefly tell the
+user what's pending / next before doing anything else. Keep `TODO.md` up to date:
+check items off as they land and add new ones as they come up. `TODO.md` is
+internal — it lives at the root, outside any `prototypes/` folder, so it never ships.
+
 ## Folder convention
 
 Each top-level folder is an **opportunity** (a problem space / project area):

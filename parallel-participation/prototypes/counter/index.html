@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Counter — GoVocal Prototype</title>
+  <style>
+    /* Placeholder visuals — replace with tokens from skills/govocal-design/. */
+    :root { --bg:#fafafa; --fg:#1a1a1a; --muted:#6b7280; --accent:#2563eb; --card:#fff; --line:#e5e7eb; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0d0d0f; --fg:#f3f4f6; --muted:#9ca3af; --accent:#60a5fa; --card:#161619; --line:#26262b; } }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:40px; max-width:440px; width:calc(100% - 48px); box-shadow:0 1px 3px rgba(0,0,0,0.06); text-align:center; }
+    h1 { font-size:26px; font-weight:650; letter-spacing:-0.02em; margin:0 0 8px; }
+    .count { font-size:56px; font-weight:700; font-variant-numeric:tabular-nums; margin:8px 0 20px; }
+    .controls { display:flex; gap:10px; justify-content:center; }
+    button { font:inherit; font-weight:500; color:#fff; background:var(--accent); border:0; border-radius:10px; padding:12px 22px; cursor:pointer; transition:filter .12s ease; }
+    button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); }
+    button:hover { filter:brightness(1.08); }
+    a.back { display:inline-block; margin-top:28px; color:var(--accent); text-decoration:none; font-size:14px; }
+    a.back:hover { text-decoration:underline; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Hello World — Counter</h1>
+    <div class="count" id="count">0</div>
+    <div class="controls">
+      <button id="inc">Count +1</button>
+      <button id="reset" class="ghost">Reset</button>
+    </div>
+    <a class="back" href="../">← All prototypes</a>
+  </main>
+  <script>
+    let n = 0;
+    const out = document.getElementById("count");
+    document.getElementById("inc").addEventListener("click", () => { n++; out.textContent = n; });
+    document.getElementById("reset").addEventListener("click", () => { n = 0; out.textContent = n; });
+  </script>
+</body>
+</html>
