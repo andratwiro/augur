@@ -246,10 +246,12 @@
     .sv-card { --sv-progress: #F0C808; }
     .sv-progress { height: 6px; background: var(--gv-grey-200); }
     .sv-progress__bar { height: 100%; width: 0; background: var(--sv-progress); transition: width 220ms ease-out; }
-    .sv-foot__row { display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 16px 22px; position: relative; }
-    .sv-foot__pct { position: absolute; left: 0; right: 0; text-align: center; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); pointer-events: none; }
-    .sv-foot__nav { display: flex; gap: 12px; position: relative; z-index: 1; }
-    @media (max-width: 480px) { .sv-foot__pct { position: static; text-align: left; flex: 1; } .sv-foot__row { justify-content: space-between; } }
+    /* %-complete sits in the space LEFT of the buttons (like the real form) — never
+       overlapping them. On phones it stacks above the button row. */
+    .sv-foot__row { display: flex; align-items: center; gap: 16px; padding: 16px 22px; }
+    .sv-foot__pct { flex: 1 1 auto; text-align: center; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); white-space: nowrap; }
+    .sv-foot__nav { display: flex; gap: 12px; flex: 0 0 auto; }
+    @media (max-width: 480px) { .sv-foot__row { flex-direction: column; align-items: stretch; } .sv-foot__pct { order: -1; } .sv-foot__nav { justify-content: flex-end; } }
 
     /* a11y: honour reduced motion for the bar + faces */
     @media (prefers-reduced-motion: reduce) { .sv-progress__bar, .sv-matrix .dot::after { transition: none; } }
