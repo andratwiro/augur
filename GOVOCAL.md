@@ -525,5 +525,25 @@ Keep entries short, deduped, and dated when point-in-time. Newest at top.
   Input Form, Survey Builder, Perspectives, Voting, Common Ground, Ideation, Project
   List, Project Editor. These are the real product surfaces to reproduce next.
 
+- _(2026-06-14)_ **The `parallel-participation` opportunity's bet = breaking "one method
+  per phase."** The real product runs exactly one participation method per phase (parallel
+  participation = separate projects, §9). The first real prototype here
+  (`parallel-participation/prototypes/parallel-project/`) explores the opposite: **one
+  project running survey + ideation + voting *simultaneously*,** presented as a
+  parallel-methods strip + tabbed panels with a per-method status ("Not started →
+  Completed"). Design stance chosen with the user: lead with the methods open *at once*,
+  reassure "do one, or do all three, in any order," and track progress so a resident can
+  dip into whichever fits their time. This is the lens to design future
+  parallel-participation surfaces through. Built English on the default GoVocal teal theme.
+
+- _(2026-06-14)_ **"Prove the loop" works: a prototype assembles cleanly from Pages +
+  Primitives.** `parallel-project` was built by forking `pages/homepage` and
+  `pages/project-page` and reusing `.gv-*` classes — the library held up. Recurring gotcha
+  to carry forward: **the default-theme teal `#0E7C86` on a light same-hue tint (e.g.
+  `color-mix(primary 12%, #fff)`) fails AA (~4.2:1)** — for primary-coloured pills use a
+  **white background + primary text/border** (primary-on-white ≈ 4.95:1) instead of a faint
+  primary tint. Also: a `position:fixed` toast parked off-screen with `transform` still gets
+  captured by Playwright full-page screenshots — gate it with `visibility:hidden` until shown.
+
 <!-- Add new learnings above this line. Format: - _(YYYY-MM-DD)_ <fact / decision / preference>. -->
 

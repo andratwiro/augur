@@ -68,7 +68,7 @@ as a starting point for a prototype.
 |---|---|---|---|
 | **Hello World** | `/pages/hello-world/` | `pages/hello-world/` | Hello world — GoVocal reference page |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Wien mitgestalten — GoVocal homepage (reference) |
-| **Input Form** | `/pages/input-form/` | `pages/input-form/` | _(no description)_ |
+| **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
 | **Project Page** | `/pages/project-page/` | `pages/project-page/` | Project page — GoVocal (reference) |
 
 ## Prototypes (existing — for reference & patterns) — `<opportunity>/prototypes/<name>/`

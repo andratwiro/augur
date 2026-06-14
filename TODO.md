@@ -56,9 +56,15 @@ re-litigation. Three threads, interlocking:
     `PENDING_PAGES`, `npm run index`, rebuild) → **deploy**. Fidelity = faithful, rebuilt
     in our system (not a DOM copy). Pages-tab reproductions: no cookie banner / no persona
     critique. Reuse compounds — build resident-facing cluster first, admin cluster later.
-- [ ] **Prove the loop** — build (or retrofit) at least one real prototype purely
-      from the refined primitives/pages to confirm the building blocks hold up in a
-      real assembly and stay compliant.
+- [x] **Prove the loop** — built `parallel-participation/prototypes/parallel-project/`
+      (homepage → multi-method project page) purely by forking `pages/homepage` +
+      `pages/project-page` and reusing the `.gv-*` primitives/components. Confirms the
+      building blocks hold up in a real assembly: themeable via `?theme=`, cookie banner,
+      passes `npm run audit` (fixed 3 contrast misses on the way). The project page is the
+      **parallel-participation bet** — survey + ideation + voting all live at once (tabs),
+      each with full states (error/disabled/loading/empty/success). _(landed 2026-06-14)_
+  - [ ] Next: more prototypes once the primitive/page set grows; persona-critique findings
+        on parallel-project were addressed inline (required-legend, mobile scroll-to-panel).
 
 ### Review-site tabs (shipped)
 A top-right tab nav on the Cloudflare review site: **Prototypes · Primitives ·

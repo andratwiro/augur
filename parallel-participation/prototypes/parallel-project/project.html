@@ -407,7 +407,7 @@
       <div class="pp-panel" id="panel-survey" role="tabpanel" aria-labelledby="tab-survey" tabindex="0">
         <form id="surveyForm" novalidate>
           <div class="pp-panel__head"><h3>Quick survey</h3></div>
-          <p class="pp-panel__lead">A couple of quick questions about how you use the square today. Takes about two minutes.</p>
+          <p class="pp-panel__lead">A couple of quick questions about how you use the square today. Takes about two minutes. Questions marked <span class="pp-q__req" aria-hidden="true">*</span> <strong>are required</strong>.</p>
 
           <div class="pp-q" id="q1">
             <span class="pp-q__label">1. How often do you visit Gellert Square? <span class="pp-q__req" aria-hidden="true">*</span></span>
@@ -651,7 +651,12 @@
       if (focusPanel) document.getElementById(panels[key]).focus();
     }
     tabs.forEach((t, i) => {
-      t.addEventListener("click", () => activate(t.id.replace("tab-", "")));
+      t.addEventListener("click", () => {
+        const key = t.id.replace("tab-", "");
+        activate(key);
+        // bring the swapped panel into view on small screens (no-op if already visible)
+        document.getElementById(panels[key]).scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
       // Cheap roving arrow-key support between tabs
       t.addEventListener("keydown", (e) => {
         if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
