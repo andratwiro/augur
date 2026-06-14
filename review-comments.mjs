@@ -58,10 +58,19 @@ async function main() {
   const pages = data.pages || {};
   const paths = Object.keys(pages).filter((p) => (pages[p] || []).length).sort();
 
+  const statuses = data.statuses || {};
+  const closed = Object.keys(statuses).filter((p) => statuses[p] === "closed").sort();
+
   const lines = [
     "# GoVocal prototype review comments",
     "",
     `_Pulled ${fmt(data.generatedAt || new Date().toISOString())} from ${base}_`,
+    "",
+    "## Prototype statuses",
+    "",
+    closed.length
+      ? `**Closed** (roll learnings into \`GOVOCAL.md\` §13 if not done):\n${closed.map((p) => `- \`${p}\``).join("\n")}`
+      : "_No prototypes marked Closed yet._",
     "",
   ];
   let total = 0, open = 0;

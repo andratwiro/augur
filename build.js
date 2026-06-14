@@ -254,45 +254,79 @@ function plural(n, word) {
 }
 
 const PAGE_CSS = `
+    /* Linear-style shell — deep near-black canvas, indigo accent, Inter type.
+       This is the TOOLING UI, deliberately distinct from the GoVocal prototype brand. */
     :root {
-      --bg: #fafafa; --fg: #1a1a1a; --muted: #6b7280;
-      --line: #e5e7eb; --accent: #2563eb; --card: #ffffff;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0d0d0f; --fg: #f3f4f6; --muted: #9ca3af;
-        --line: #26262b; --accent: #60a5fa; --card: #161619;
-      }
+      --bg: #08090a;          /* page canvas */
+      --bg-2: #0e0f11;        /* subtle elevated zone */
+      --card: #121315;        /* card surface */
+      --card-hover: #17181b;
+      --fg: #f7f8f8;          /* primary text */
+      --muted: #9197a1;       /* secondary text */
+      --faint: #6b7079;       /* tertiary */
+      --line: rgba(255,255,255,0.08);
+      --line-2: rgba(255,255,255,0.14);
+      --accent: #939bf7;      /* indigo, lifted for AA on dark */
+      --accent-solid: #5e6ad2;/* Linear indigo (fills) */
+      --radius: 12px;
+      --maxw: 1080px;
+      color-scheme: dark;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: var(--bg); color: var(--fg); -webkit-font-smoothing: antialiased;
+      font: 15px/1.55 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg); color: var(--fg);
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.011em;
     }
-    .wrap { max-width: 1040px; margin: 0 auto; padding: 56px 24px 96px; }
+    /* Signature: a faint indigo aurora behind the hero, fixed so it doesn't scroll. */
+    body::before {
+      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(920px 460px at 16% -10%, rgba(94,106,210,0.22), transparent 60%),
+        radial-gradient(680px 420px at 96% -4%, rgba(140,99,210,0.13), transparent 55%);
+    }
+    .wrap { position: relative; z-index: 1; max-width: var(--maxw); margin: 0 auto; padding: 60px 24px 120px; }
     .back {
-      display: inline-block; margin-bottom: 28px; color: var(--muted);
-      text-decoration: none; font-size: 14px;
+      display: inline-flex; align-items: center; gap: 6px; margin-bottom: 30px; color: var(--muted);
+      text-decoration: none; font-size: 13.5px; font-weight: 500;
+      transition: color .12s ease;
     }
-    .back:hover { color: var(--accent); }
-    h1 { font-size: 28px; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.02em; }
-    .subtitle { color: var(--muted); margin: 0 0 28px; font-size: 15px; }
+    .back:hover { color: var(--fg); }
+    /* Hero — large, tight, with a small eyebrow */
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 7px; margin-bottom: 16px;
+      font-size: 12px; font-weight: 560; letter-spacing: .04em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px 1px var(--accent); }
+    h1 { font-size: 40px; line-height: 1.05; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.03em; }
+    .subtitle { color: var(--muted); margin: 0 0 30px; font-size: 16px; max-width: 56ch; }
+    .section-eyebrow {
+      font-size: 12px; font-weight: 560; letter-spacing: .05em; text-transform: uppercase;
+      color: var(--faint); margin: 0 0 14px;
+    }
     .empty { color: var(--muted); }
     .playground {
-      display: flex; align-items: center; gap: 18px; margin-top: 28px; padding: 20px 22px;
-      background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-      text-decoration: none; color: inherit; transition: border-color .14s ease, transform .14s ease;
+      display: flex; align-items: center; gap: 18px; margin-top: 18px; padding: 18px 20px;
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+      text-decoration: none; color: inherit;
+      transition: border-color .15s ease, background .15s ease, transform .15s ease;
     }
-    .playground:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .playground:hover { border-color: var(--line-2); background: var(--card-hover); transform: translateY(-1px); }
     .playground:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-    .playground__icon { font-size: 32px; line-height: 1; flex: none; }
-    .playground__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-    .playground__name { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
-    .playground__desc { color: var(--muted); font-size: 14px; }
-    .playground__go { margin-left: auto; font-size: 26px; color: var(--muted); flex: none; }
+    .playground__icon {
+      display: grid; place-items: center; width: 44px; height: 44px; flex: none; font-size: 22px;
+      border-radius: 10px; background: var(--bg-2); border: 1px solid var(--line);
+    }
+    .playground__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .playground__name { font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+    .playground__desc { color: var(--muted); font-size: 13.5px; }
+    .playground__go { margin-left: auto; font-size: 22px; color: var(--faint); flex: none; transition: color .15s, transform .15s; }
+    .playground:hover .playground__go { color: var(--fg); transform: translateX(2px); }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
-    footer { margin-top: 56px; color: var(--muted); font-size: 13px; }
+    footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
 
     /* ---- Carousel ---- */
     .carousel { position: relative; margin: 0 -24px; }
@@ -307,56 +341,63 @@ const PAGE_CSS = `
     @media (min-width: 760px) { .slide { flex: 0 0 76%; } }
     .cbtn {
       position: absolute; top: calc(50% - 28px); transform: translateY(-50%); z-index: 5;
-      width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--line);
-      background: var(--card); color: var(--fg); font-size: 22px; line-height: 1;
-      cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.14);
-      transition: opacity .15s ease, filter .15s ease; display: grid; place-items: center;
+      width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-2);
+      background: rgba(18,19,21,0.82); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+      color: var(--fg); font-size: 18px; line-height: 1;
+      cursor: pointer; box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+      transition: opacity .15s ease, background .15s ease, border-color .15s ease; display: grid; place-items: center;
     }
-    .cbtn:hover { filter: brightness(1.06); }
+    .cbtn:hover { background: var(--card-hover); border-color: var(--accent); }
+    .cbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .cbtn[disabled] { opacity: 0; pointer-events: none; }
-    .cbtn.prev { left: 4px; } .cbtn.next { right: 4px; }
-    .dots { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
+    .cbtn.prev { left: 6px; } .cbtn.next { right: 6px; }
+    .dots { display: flex; gap: 7px; justify-content: center; margin-top: 16px; }
     .dot {
-      width: 8px; height: 8px; padding: 0; border: 0; border-radius: 50%;
-      background: var(--line); cursor: pointer; transition: background .15s, transform .15s;
+      width: 6px; height: 6px; padding: 0; border: 0; border-radius: 50%;
+      background: var(--line-2); cursor: pointer; transition: background .15s, width .15s;
     }
-    .dot.on { background: var(--accent); transform: scale(1.35); }
+    .dot.on { background: var(--accent); width: 18px; border-radius: 3px; }
 
     /* ---- Cards & live previews ---- */
     .card-opp, .card-proto {
       display: block; background: var(--card); border: 1px solid var(--line);
-      border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border-radius: var(--radius); overflow: hidden;
       text-decoration: none; color: inherit;
     }
-    .card-opp { transition: box-shadow .18s ease, transform .18s ease; }
-    .card-opp:hover { box-shadow: 0 10px 34px rgba(0,0,0,0.13); transform: translateY(-3px); }
+    .card-opp { transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease; }
+    .card-opp:hover {
+      border-color: var(--line-2);
+      box-shadow: 0 16px 40px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(94,106,210,0.18);
+      transform: translateY(-3px);
+    }
     .preview {
       position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden;
-      background: var(--bg); border-bottom: 1px solid var(--line);
+      background: var(--bg-2); border-bottom: 1px solid var(--line);
     }
     .preview iframe {
       position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0;
       transform-origin: top left; pointer-events: none;
     }
     .preview-link { position: absolute; inset: 0; z-index: 2; }
-    .opp-meta, .proto-meta { padding: 18px 20px; }
+    .opp-meta, .proto-meta { padding: 16px 18px; }
     .proto-meta {
       display: flex; align-items: center; justify-content: space-between;
       gap: 14px; flex-wrap: wrap;
     }
-    .proto-name { font-weight: 600; font-size: 18px; letter-spacing: -0.01em; }
-    .proto-date { color: var(--muted); font-size: 13px; margin-top: 2px; }
-    .proto-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .proto-name { font-weight: 600; font-size: 16px; letter-spacing: -0.015em; }
+    .proto-date { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+    .proto-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn {
-      font: inherit; font-size: 14px; font-weight: 500; border-radius: 10px;
-      padding: 10px 16px; text-decoration: none; cursor: pointer;
-      border: 1px solid var(--line); background: transparent; color: var(--fg);
+      font: inherit; font-size: 13px; font-weight: 500; border-radius: 8px;
+      padding: 8px 13px; text-decoration: none; cursor: pointer;
+      border: 1px solid var(--line-2); background: transparent; color: var(--fg);
       display: inline-flex; align-items: center; gap: 6px;
-      transition: filter .12s ease, background .12s ease;
+      transition: background .12s ease, border-color .12s ease;
     }
-    .btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
-    .btn.primary:hover { filter: brightness(1.08); }
-    .btn.ghost:hover { background: var(--bg); }
+    .btn:hover { background: var(--card-hover); border-color: var(--accent); }
+    .btn.primary { background: var(--accent-solid); color: #fff; border-color: transparent; }
+    .btn.primary:hover { background: #6b76e0; border-color: transparent; }
+    .btn.ghost:hover { background: var(--bg-2); }
 
     /* ---- Pages grid (fast vertical scan, ~4 columns) ---- */
     .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 22px 20px; }
@@ -391,7 +432,30 @@ const PAGE_CSS = `
       .comp-table td { border: 0; padding: 4px 0; }
       .comp-table tr { border-bottom: 1px solid var(--line); padding: 16px 0; }
       .comp-thumb { max-width: 100%; width: 100%; }
-    }`;
+    }
+
+    /* ---- Prototype status badge (In progress / Closed), toggled in place ---- */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 7px; margin-top: 10px;
+      font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1;
+      min-height: 30px; padding: 7px 13px; border-radius: 999px; cursor: pointer;
+      border: 1px solid transparent; transition: filter .12s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .status-badge .status-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+    .status-badge:hover { filter: brightness(0.97); }
+    .status-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .status-badge[disabled] { opacity: .55; cursor: progress; }
+    /* Colour is never the only signal — the text label always states the status. */
+    .status-badge.is-progress { background: #fef3c7; color: #8a5200; border-color: #fcd9a4; }
+    .status-badge.is-progress .status-dot { background: #c2710c; }
+    .status-badge.is-closed { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
+    .status-badge.is-closed .status-dot { background: #059669; }
+    @media (prefers-color-scheme: dark) {
+      .status-badge.is-progress { background: rgba(194,113,12,.20); color: #fcd34d; border-color: rgba(194,113,12,.42); }
+      .status-badge.is-closed { background: rgba(5,150,105,.22); color: #6ee7b7; border-color: rgba(5,150,105,.46); }
+    }
+    @media (prefers-reduced-motion: reduce) { .status-badge { transition: none; } }`;
 
 const CAROUSEL_JS = `
     (function () {
@@ -464,44 +528,90 @@ const CAROUSEL_JS = `
       });
     })();`;
 
+// Prototype status badges (In progress / Closed). Each badge is a real toggle
+// button; state is loaded from and persisted to the worker's KV-backed
+// /__review/status endpoint (same gate as the comments overlay). On a static
+// preview with no worker (local `serve`), the load/POST just no-op and the badge
+// stays at its default — clicking optimistically flips, then reverts if unsaved.
+const STATUS_JS = `
+    (function () {
+      var badges = [].slice.call(document.querySelectorAll('.status-badge'));
+      if (!badges.length) return;
+      var LABELS = { in_progress: 'In progress', closed: 'Closed' };
+      function apply(b, s) {
+        if (s !== 'closed') s = 'in_progress';
+        b.dataset.status = s;
+        b.classList.toggle('is-closed', s === 'closed');
+        b.classList.toggle('is-progress', s !== 'closed');
+        var l = b.querySelector('.status-label');
+        if (l) l.textContent = LABELS[s];
+        b.setAttribute('aria-label', 'Status: ' + LABELS[s] + '. Activate to change.');
+      }
+      fetch('/__review/status', { headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.statuses) return;
+          badges.forEach(function (b) {
+            var s = d.statuses[b.getAttribute('data-status-for')];
+            if (s) apply(b, s);
+          });
+        }).catch(function () {});
+      badges.forEach(function (b) {
+        b.addEventListener('click', function () {
+          var cur = b.dataset.status === 'closed' ? 'closed' : 'in_progress';
+          var next = cur === 'closed' ? 'in_progress' : 'closed';
+          apply(b, next);
+          b.disabled = true;
+          fetch('/__review/status?path=' + encodeURIComponent(b.getAttribute('data-status-for')), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: next }),
+          }).then(function (r) { if (!r.ok) apply(b, cur); })
+            .catch(function () { apply(b, cur); })
+            .then(function () { b.disabled = false; });
+        });
+      });
+    })();`;
+
 // Top-right tab nav for the site's chrome/reference pages (Prototypes · Primitives ·
 // Components · Pages). NOT injected into prototypes themselves. Styles are self-contained
 // so the same nav can be injected into the Primitives gallery, which doesn't use PAGE_CSS.
 // Root-relative hrefs => correct from any depth.
+// Full-width sticky top bar (Linear-style). Self-contained literal colours so the
+// same bar can be injected into the Primitives gallery (which doesn't load PAGE_CSS).
+// The 52px bar height is reserved via body padding so content never hides under it.
 const NAV_CSS = `
+    body { padding-top: 52px; }
     .gvhead {
-      position: fixed; top: 14px; right: 16px; z-index: 2147483100;
-      display: flex; align-items: center; gap: 14px;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 2147483100; height: 52px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 0 18px;
+      background: rgba(8,9,10,0.72); -webkit-backdrop-filter: blur(14px) saturate(180%); backdrop-filter: blur(14px) saturate(180%);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font: 500 13.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    .gvhead__title {
-      font: 700 16px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      letter-spacing: -0.01em; color: #14181c; white-space: nowrap;
+    .gvhead__brand { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
+    .gvhead__mark {
+      width: 22px; height: 22px; flex: none; border-radius: 6px;
+      background: linear-gradient(150deg, #828bf5, #5e6ad2 70%);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.10) inset, 0 2px 8px rgba(94,106,210,0.5);
+      display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: -0.02em;
     }
-    .gvnav {
-      display: flex; gap: 2px; padding: 4px; border-radius: 999px;
-      background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.14); border: 1px solid rgba(0,0,0,0.07);
-      font: 600 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
+    .gvhead__title { font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em; color: #f7f8f8; white-space: nowrap; }
+    .gvnav { display: flex; align-items: center; gap: 1px; }
     .gvnav a {
-      display: inline-flex; align-items: center; min-height: 34px; padding: 0 15px;
-      border-radius: 999px; text-decoration: none; color: #4a5560; white-space: nowrap;
+      display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
+      border-radius: 7px; text-decoration: none; color: #9197a1; white-space: nowrap; font-weight: 500;
       transition: background .12s ease, color .12s ease;
     }
-    .gvnav a:hover { background: rgba(0,0,0,0.05); color: #111; }
-    .gvnav a[aria-current="page"] { background: #1b1f24; color: #fff; }
-    @media (prefers-color-scheme: dark) {
-      .gvhead__title { color: #f3f4f6; }
-      .gvnav { background: rgba(26,28,32,0.92); border-color: rgba(255,255,255,0.09); box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
-      .gvnav a { color: #c2cad2; }
-      .gvnav a:hover { background: rgba(255,255,255,0.09); color: #fff; }
-      .gvnav a[aria-current="page"] { background: #f3f4f6; color: #14181c; }
-    }`;
+    .gvnav a:hover { background: rgba(255,255,255,0.06); color: #f7f8f8; }
+    .gvnav a[aria-current="page"] { background: rgba(255,255,255,0.09); color: #f7f8f8; }
+    .gvnav a:focus-visible { outline: 2px solid #828bf5; outline-offset: 1px; }`;
 
 function navBar(active) {
   const tab = (href, label, key) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;
-  return `<header class="gvhead"><span class="gvhead__title">Product Team</span><nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></header>`;
+  return `<header class="gvhead"><span class="gvhead__brand"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Team</span></span><nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></header>`;
 }
 
 /** Inject the nav (with its own styles) right after the opening <body> tag. */
@@ -535,6 +645,8 @@ function shell({ title, subtitle, body, back, activeTab = "prototypes" }) {
     <footer>GoVocal Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}</footer>
   </div>
   <script>${CAROUSEL_JS}
+  </script>
+  <script>${STATUS_JS}
   </script>
 </body>
 </html>
@@ -610,6 +722,10 @@ function renderOpportunityIndex(opp) {
       const download = p.file
         ? `<button type="button" class="btn ghost" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html">&darr; Download HTML</button>`
         : "";
+      // KV identity = the absolute path the prototype is served at, matching the
+      // comments overlay. Defaults to "In progress"; the STATUS_JS load corrects it.
+      const protoPath = `/${encodeURIComponent(opp.name)}/${p.href}`;
+      const status = `<button type="button" class="status-badge is-progress" data-status="in_progress" data-status-for="${protoPath}" aria-label="Status: In progress. Activate to change."><span class="status-dot" aria-hidden="true"></span><span class="status-label">In progress</span></button>`;
       return `
         <div class="slide">
           <div class="card-proto">
@@ -621,6 +737,7 @@ function renderOpportunityIndex(opp) {
               <div>
                 <div class="proto-name">${titleCase(p.name)}</div>
                 <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
+                ${status}
               </div>
               <div class="proto-actions">
                 <a class="btn primary" href="${p.href}">Open &rarr;</a>

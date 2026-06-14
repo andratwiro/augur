@@ -176,8 +176,55 @@ async function reviewApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
-// GET /__review/api/export?key=<REVIEW_EXPORT_KEY> — all threads, every page.
-// Secret-guarded so tooling can read comments WITHOUT the site password.
+// ---- Prototype status API (KV-backed) ---------------------------------------
+// One KV value per prototype page path, key "s:<path>", value "in_progress" |
+// "closed". An absent key means the default, "in_progress" — so "closed" is the
+// only value ever stored, and re-opening just deletes the key.
+
+const STATUSES = ["in_progress", "closed"];
+
+async function allStatuses(kv) {
+  const statuses = {};
+  let cursor;
+  do {
+    const list = await kv.list({ prefix: "s:", cursor });
+    for (const k of list.keys) {
+      const v = await kv.get(k.name);
+      if (v) statuses[k.name.slice(2)] = v;
+    }
+    cursor = list.list_complete ? null : list.cursor;
+  } while (cursor);
+  return statuses;
+}
+
+// GET /__review/status                  — { statuses: { "<path>": "closed", … } }
+// POST /__review/status?path=<page>     — body { status } ; persists one prototype.
+async function statusApi(request, url, env) {
+  const kv = env.COMMENTS;
+  if (!kv) return jsonResponse({ statuses: {}, warning: "no-kv-binding" });
+
+  if (request.method === "GET") {
+    return jsonResponse({ statuses: await allStatuses(kv) });
+  }
+  if (request.method === "POST") {
+    const path = clamp(url.searchParams.get("path") || "", 600);
+    if (!path) return jsonResponse({ error: "no-path" }, 400);
+    let body;
+    try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const status = STATUSES.includes(body && body.status) ? body.status : "in_progress";
+    const key = "s:" + path;
+    if (status === "in_progress") {
+      await kv.delete(key); // default = absence of a key
+    } else {
+      await kv.put(key, status);
+    }
+    return jsonResponse({ path, status });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
+// GET /__review/api/export?key=<REVIEW_EXPORT_KEY> — all threads + statuses.
+// Secret-guarded so tooling can read review data WITHOUT the site password.
 async function reviewExport(request, url, env) {
   const secret = env.REVIEW_EXPORT_KEY;
   if (!secret) return jsonResponse({ error: "export-disabled" }, 404);
@@ -186,7 +233,7 @@ async function reviewExport(request, url, env) {
     return jsonResponse({ error: "forbidden" }, 403);
   }
   const kv = env.COMMENTS;
-  if (!kv) return jsonResponse({ pages: {}, warning: "no-kv-binding" });
+  if (!kv) return jsonResponse({ pages: {}, statuses: {}, warning: "no-kv-binding" });
   const pages = {};
   let cursor;
   do {
@@ -197,7 +244,7 @@ async function reviewExport(request, url, env) {
     }
     cursor = list.list_complete ? null : list.cursor;
   } while (cursor);
-  return jsonResponse({ pages, generatedAt: new Date().toISOString() });
+  return jsonResponse({ pages, statuses: await allStatuses(kv), generatedAt: new Date().toISOString() });
 }
 
 export default {
@@ -209,15 +256,17 @@ export default {
 
     const expected = env.SITE_PASSWORD;
 
-    // Comment read/write: gated by the site password (cookie) when one is set.
-    if (url.pathname === "/__review/api") {
+    // Comment + status read/write: gated by the site password (cookie) when set.
+    if (url.pathname === "/__review/api" || url.pathname === "/__review/status") {
       if (expected) {
         const token = await tokenFor(expected);
         const cookies = request.headers.get("Cookie") || "";
         const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
         if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
       }
-      return reviewApi(request, url, env);
+      return url.pathname === "/__review/status"
+        ? statusApi(request, url, env)
+        : reviewApi(request, url, env);
     }
 
     if (!expected) return env.ASSETS.fetch(request); // open when no password configured

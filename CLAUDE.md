@@ -182,6 +182,23 @@ The `REVIEW_EXPORT_KEY` is a secret — never paste it into chat (same rule as t
 Cloudflare token). The overlay tag is injected at build time only, so prototype
 source stays clean and Download HTML strips it for a clean dev copy.
 
+## Prototype status — In progress / Closed (and the close → memory roll-up)
+
+Each prototype card on its **opportunity index page** carries a status badge —
+**In progress** (default) or **Closed** — that the user toggles by clicking it on
+the live review site. State persists to the same KV the comments use, via the
+worker (`src/_worker.js` → `/__review/status`, keyed `s:<prototype-path>`, gated by
+the site password). `build.js` renders the badge + the `STATUS_JS` toggle into the
+opportunity index shell; default is server-rendered, then corrected from KV on load.
+
+**Closing a prototype is the cue to roll its learnings into `GOVOCAL.md` §13.** When
+the user moves a prototype to **Closed** (or asks you to), treat it as the checkpoint
+to consolidate what we learned building it — product facts, decisions, the user's
+preferences — into `GOVOCAL.md`'s Working knowledge (see "Keeping GOVOCAL.md alive"),
+then commit. The user drives this and will usually ask; `npm run comments` also lists
+which prototypes are currently **Closed** (the export now includes statuses) so you
+can spot any whose learnings aren't captured yet.
+
 ## Accessibility — design-level (WCAG 2.2 AA, perceivable parts)
 
 Prototypes are **interactive guidance**, not the shipping build. Accessibility here is
