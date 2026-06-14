@@ -209,13 +209,18 @@ async function reviewApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
-// ---- Prototype status API (KV-backed) ---------------------------------------
-// One KV value per prototype page path, key "s:<path>". The dev-facing pipeline:
-// "playground" | "in_progress" | "dev_ready" | "shipped" | "parked". An absent key
-// means the default, "in_progress" — so that value is never stored, and returning a
-// prototype to "In progress" just deletes the key.
+// ---- Status API (KV-backed) -------------------------------------------------
+// One KV value per page path, key "s:<path>". An absent key means the default,
+// "in_progress" — so that value is never stored, and resetting to it deletes the
+// key. Two kinds of subject share this map, distinguished only by their path:
+//   • prototypes (path /<opp>/<proto>/) run the dev pipeline:
+//       "playground" | "in_progress" | "dev_ready" | "shipped" | "parked"
+//   • folders    (path /<opp>/)         carry their own coarser lifecycle:
+//       "for_dev" | "in_progress" | "implemented"
+// The client decides which values a given badge may take; the worker just stores
+// any whitelisted value.
 
-const STATUSES = ["playground", "in_progress", "dev_ready", "shipped", "parked"];
+const STATUSES = ["playground", "in_progress", "dev_ready", "shipped", "parked", "for_dev", "implemented"];
 
 async function allStatuses(kv) {
   const statuses = {};
@@ -257,6 +262,46 @@ async function statusApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Hidden prototypes API (KV-backed) --------------------------------------
+// One KV value per prototype page path, key "h:<path>", value "1". An absent key
+// means visible. Lets reviewers remove a prototype from the listing without
+// touching files on disk (the build always re-scans the filesystem); the hide is
+// reversible from the "Show hidden" tray.
+
+async function allHidden(kv) {
+  const hidden = [];
+  let cursor;
+  do {
+    const list = await kv.list({ prefix: "h:", cursor });
+    for (const k of list.keys) hidden.push(k.name.slice(2));
+    cursor = list.list_complete ? null : list.cursor;
+  } while (cursor);
+  return hidden;
+}
+
+// GET  /__review/hidden               — { hidden: ["<path>", …] }
+// POST /__review/hidden?path=<page>   — body { hidden: bool } ; hides/un-hides one.
+async function hiddenApi(request, url, env) {
+  const kv = env.COMMENTS;
+  if (!kv) return jsonResponse({ hidden: [], warning: "no-kv-binding" });
+
+  if (request.method === "GET") {
+    return jsonResponse({ hidden: await allHidden(kv) });
+  }
+  if (request.method === "POST") {
+    const path = clamp(url.searchParams.get("path") || "", 600);
+    if (!path) return jsonResponse({ error: "no-path" }, 400);
+    let body;
+    try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const hidden = !!(body && body.hidden);
+    const key = "h:" + path;
+    if (hidden) await kv.put(key, "1");
+    else await kv.delete(key);
+    return jsonResponse({ path, hidden });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
 // GET /__review/api/export?key=<REVIEW_EXPORT_KEY> — all threads + statuses.
 // Secret-guarded so tooling can read review data WITHOUT the site password.
 async function reviewExport(request, url, env) {
@@ -290,17 +335,21 @@ export default {
 
     const expected = env.SITE_PASSWORD;
 
-    // Comment + status read/write: gated by the site password (cookie) when set.
-    if (url.pathname === "/__review/api" || url.pathname === "/__review/status") {
+    // Comment + status + hidden read/write: gated by the site password (cookie) when set.
+    if (
+      url.pathname === "/__review/api" ||
+      url.pathname === "/__review/status" ||
+      url.pathname === "/__review/hidden"
+    ) {
       if (expected) {
         const token = await tokenFor(expected);
         const cookies = request.headers.get("Cookie") || "";
         const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
         if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
       }
-      return url.pathname === "/__review/status"
-        ? statusApi(request, url, env)
-        : reviewApi(request, url, env);
+      if (url.pathname === "/__review/status") return statusApi(request, url, env);
+      if (url.pathname === "/__review/hidden") return hiddenApi(request, url, env);
+      return reviewApi(request, url, env);
     }
 
     if (!expected) return env.ASSETS.fetch(request); // open when no password configured
