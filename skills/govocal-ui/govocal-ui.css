@@ -97,6 +97,10 @@ body.gv-root {
 .gv-btn.processing { color: transparent !important; }
 .gv-btn.processing .gv-btn__label { opacity: 0; }
 .gv-btn .gv-spinner { position: absolute; }
+/* Icon inside a button: keep it centred on the button's cross axis and drop the
+   inline baseline shift (.gv-icon's vertical-align), so it lines up with the label
+   regardless of the button's line-height. The button's gap:8px handles spacing. */
+.gv-btn > .gv-icon, .gv-btn > [data-gv-icon] { display: inline-flex; align-items: center; vertical-align: 0; }
 
 /* ── Input / Textarea (defaultInputStyle) ─────────────────────────────────── */
 .gv-input, .gv-textarea {
