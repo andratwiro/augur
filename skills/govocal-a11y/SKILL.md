@@ -1,6 +1,6 @@
 ---
 name: govocal-a11y
-description: Design-level accessibility for GoVocal prototypes (WCAG 2.2 AA, the perceivable/visual parts). Prototypes are visual guidance, so get color contrast, use-of-color, legible type, target sizes, focus styling and motion right — deeper keyboard/ARIA/semantics are the dev team's job on the real codebase. Build compliant, run `npm run audit`, flag failings in chat.
+description: Design-level accessibility for GoVocal prototypes (WCAG 2.2 AA, the perceivable/visual parts). Prototypes are interactive guidance — design and demonstrate ALL states (error, focus, hover, disabled, loading, empty) and get color contrast, use-of-color, legible type, target sizes, focus styling and motion right. Deep keyboard/ARIA/screen-reader correctness is the dev team's job on the real codebase. Build compliant, run `npm run audit`, flag failings in chat.
 ---
 
 # GoVocal Accessibility — design-level (WCAG 2.2 AA)
@@ -14,28 +14,51 @@ layer. Complementary to `skills/govocal-design/`.
 ## Scope — what a prototype is responsible for
 
 **✅ In scope (a design decision — get it right here):**
+- **All interactive & feedback states** — error/validation, focus, hover, active,
+  selected, disabled, loading, empty. *Showing every state is the whole point of an
+  interactive prototype* — design them and make them trigger so they can be reviewed.
 - **Color contrast** — text and meaningful UI must be legible. *The one we can't
-  afford to fail.*
+  afford to fail* — and check it in *every* state (error red, disabled gray, etc.).
 - **Use of color** — never let color be the *only* signal (status, errors, active
   state, links in text).
 - **Legible type & scaling** — readable sizes; layout survives zoom; pinch-zoom never
   disabled.
 - **Target sizes** — tap/click targets big enough and not cramped (≥ 24×24px).
-- **Visible focus styling** — a clear focus *look* (the visual, not the JS behavior).
+- **Visible focus styling** — a clear, on-brand focus *look* on every interactive
+  element.
 - **Motion** — no autoplaying/flashing motion; honor `prefers-reduced-motion`.
 - **Meaningful imagery** — don't encode essential info in an image with no visible
   text equivalent.
 
-**⛔ Out of scope (the dev team handles this on the real GoVocal codebase):**
-full keyboard operability, ARIA roles/states, focus management & traps, screen-reader
-semantics, live regions, form-error wiring. A prototype should *visually represent*
-these states (show the focus ring, show the error style, show the open menu) — it does
-**not** need to be perfectly keyboard- or screen-reader-operable. Don't over-engineer
-ARIA into a mockup; represent the design, leave the implementation to engineering.
+**⛔ Out of scope (the dev team hardens this on the real GoVocal codebase):**
+the *deep implementation correctness* that only matters to a keyboard or screen
+reader — full keyboard operability of custom widgets, exact ARIA role/state
+semantics, focus-trap robustness, live-region announcement timing. **Demonstrating**
+a state is in scope; making it *perfectly screen-reader-operable* is not. So: build
+and trigger the error state, the focus state, the open menu — just don't sweat whether
+a screen reader announces them flawlessly. Cheap, obvious wiring (`aria-invalid`,
+`aria-describedby` on an error, an `aria-label` on an icon) is welcome and makes the
+prototype a better spec; full ARIA widget engineering is not expected.
 
-> Rule of thumb: if it's something you'd *see in a screenshot*, it's in scope. If it
-> only matters when you *operate the thing with a keyboard or screen reader*, it's the
-> dev team's.
+> Rule of thumb: if it's something you'd *see in a screenshot* — including a triggered
+> error or focus state — it's in scope. If it only matters when you *operate the thing
+> with a keyboard or screen reader*, it's the dev team's.
+
+## States to demonstrate
+
+Interactive prototypes earn their keep by showing states reviewers can't see in a flat
+mock. For each meaningful component, build and make reachable the states that apply:
+
+- **Form fields:** default · focus · filled · **error (message + style + icon, not
+  color alone)** · disabled · (optional) success.
+- **Buttons / controls:** default · hover · focus · active · disabled · loading.
+- **Lists / data:** populated · **empty state** · loading.
+- **Selection:** unselected · selected · active/current.
+
+Trigger them for real where you can (submit an invalid form to reveal errors, Tab to
+reveal focus) or expose a quick toggle to preview each — whatever lets the reviewer
+*see* the state. Contrast and use-of-color rules apply to **every** state, so audit
+the error/disabled looks too, not just the resting design.
 
 ## How this is enforced
 
@@ -127,6 +150,11 @@ don't wait for the audit:
 
 <!-- Links in body text carry a non-color cue -->
 <p>Read the <a href="#" style="text-decoration:underline">full proposal</a>.</p>
+
+<!-- Form error state: icon + message (not red alone), cheap aria wiring -->
+<label for="email">Email</label>
+<input id="email" type="email" aria-invalid="true" aria-describedby="email-err" />
+<p id="email-err" class="field-error">⚠ Enter a valid email address.</p>
 ```
 
 ## Handing off to engineering

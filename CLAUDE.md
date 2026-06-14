@@ -78,11 +78,16 @@ opportunities.
 
 ## Accessibility — design-level (WCAG 2.2 AA, perceivable parts)
 
-Prototypes are **visual guidance**, not the shipping build, so accessibility here is
-scoped to what a mockup actually decides: the *perceivable / visual* layer — **color
-contrast (non-negotiable), use of color, legible type & zoom, target sizes, visible
-focus styling, motion**. Deeper keyboard/ARIA/semantics/focus-management are the **dev
-team's** job on the real GoVocal codebase. Don't over-engineer ARIA into a mockup.
+Prototypes are **interactive guidance**, not the shipping build. Accessibility here is
+scoped to what a mockup decides and demonstrates: **design and show ALL states** (error
+/validation, focus, hover, disabled, loading, empty — that's the point of an
+interactive prototype) plus the *perceivable / visual* layer — **color contrast
+(non-negotiable, in every state), use of color, legible type & zoom, target sizes,
+visible focus styling, motion**. Only the *deep implementation correctness* that a
+keyboard/screen reader needs (full ARIA widget behavior, focus-trap robustness,
+live-region timing) is the **dev team's** job on the real codebase. Demonstrating a
+state is in scope; making it perfectly screen-reader-operable is not — don't
+over-engineer ARIA into a mockup, but cheap obvious wiring is welcome.
 The skill lives in `skills/govocal-a11y/`. **Consult it when building or modifying any
 prototype** and:
 
