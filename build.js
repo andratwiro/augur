@@ -263,7 +263,7 @@ const PAGE_CSS = `
       --card-hover: #17181b;
       --fg: #f7f8f8;          /* primary text */
       --muted: #9197a1;       /* secondary text */
-      --faint: #6b7079;       /* tertiary */
+      --faint: #878d97;       /* tertiary (AA-safe for small labels) */
       --line: rgba(255,255,255,0.08);
       --line-2: rgba(255,255,255,0.14);
       --accent: #939bf7;      /* indigo, lifted for AA on dark */
@@ -351,12 +351,18 @@ const PAGE_CSS = `
     .cbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .cbtn[disabled] { opacity: 0; pointer-events: none; }
     .cbtn.prev { left: 6px; } .cbtn.next { right: 6px; }
-    .dots { display: flex; gap: 7px; justify-content: center; margin-top: 16px; }
+    .dots { display: flex; gap: 2px; justify-content: center; margin-top: 12px; }
     .dot {
-      width: 6px; height: 6px; padding: 0; border: 0; border-radius: 50%;
-      background: var(--line-2); cursor: pointer; transition: background .15s, width .15s;
+      width: 24px; height: 24px; padding: 0; border: 0; background: transparent;
+      cursor: pointer; display: inline-grid; place-items: center;
     }
-    .dot.on { background: var(--accent); width: 18px; border-radius: 3px; }
+    .dot::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--line-2); transition: background .15s, width .15s;
+    }
+    .dot:hover::before { background: var(--muted); }
+    .dot.on::before { background: var(--accent); width: 18px; border-radius: 3px; }
+    .dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-radius: 6px; }
 
     /* ---- Cards & live previews ---- */
     .card-opp, .card-proto {
@@ -396,7 +402,7 @@ const PAGE_CSS = `
     }
     .btn:hover { background: var(--card-hover); border-color: var(--accent); }
     .btn.primary { background: var(--accent-solid); color: #fff; border-color: transparent; }
-    .btn.primary:hover { background: #6b76e0; border-color: transparent; }
+    .btn.primary:hover { background: #525dc6; border-color: transparent; }
     .btn.ghost:hover { background: var(--bg-2); }
 
     /* ---- Pages grid (fast vertical scan, ~4 columns) ---- */
@@ -621,7 +627,7 @@ function injectNav(html, active) {
   return html.replace(m[0], `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${navBar(active)}`);
 }
 
-function shell({ title, subtitle, body, back, activeTab = "prototypes" }) {
+function shell({ title, subtitle, body, back, eyebrow, activeTab = "prototypes" }) {
   const backLink = back
     ? `<a class="back" href="${back.href}">${back.label}</a>`
     : "";
@@ -632,6 +638,9 @@ function shell({ title, subtitle, body, back, activeTab = "prototypes" }) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <title>${title}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
   <style>${PAGE_CSS}${NAV_CSS}
   </style>
 </head>
@@ -639,6 +648,7 @@ function shell({ title, subtitle, body, back, activeTab = "prototypes" }) {
   ${navBar(activeTab)}
   <div class="wrap">
     ${backLink}
+    ${eyebrow ? `<span class="eyebrow">${eyebrow}</span>` : ""}
     <h1>${title}</h1>
     ${subtitle ? `<p class="subtitle">${subtitle}</p>` : ""}
     ${body}
@@ -700,6 +710,7 @@ function renderRootIndex(opportunities) {
 
   // Standalone Playground entry — lives below the carousel, a quick scratch space.
   const playground = `
+    <p class="section-eyebrow" style="margin-top:48px">Scratch space</p>
     <a class="playground" href="playground/">
       <span class="playground__icon" aria-hidden="true">🛝</span>
       <span class="playground__text">
@@ -709,10 +720,13 @@ function renderRootIndex(opportunities) {
       <span class="playground__go" aria-hidden="true">&rsaquo;</span>
     </a>`;
 
+  const opps = `<p class="section-eyebrow">${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}</p>${carousel(slides)}`;
+
   return shell({
     title: "GoVocal Prototypes",
     subtitle: "",
-    body: carousel(slides) + playground,
+    eyebrow: "Prototype Library",
+    body: opps + playground,
   });
 }
 

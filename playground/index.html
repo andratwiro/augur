@@ -8,15 +8,15 @@
   <link rel="stylesheet" href="govocal-tokens.css" />
   <link rel="stylesheet" href="govocal-ui.css" />
   <style>
-    body { margin:0; min-height:100vh; background:var(--gv-background); color:var(--gv-text); }
+    body { margin:0; min-height:100vh; background:#fff; color:var(--gv-text); }
     .pg-wrap { max-width:880px; margin:0 auto; padding:40px 24px 96px; }
     .pg-head { margin-bottom:8px; }
     .pg-sub { color:var(--gv-text-secondary); margin:0 0 32px; }
-    .pg-sub code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.9em; background:rgba(0,0,0,.06); padding:1px 5px; border-radius:4px; }
+    .pg-sub code { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.9em; color:var(--gv-text); background:rgba(0,0,0,.06); padding:1px 5px; border-radius:4px; }
     /* Scratch canvas — edit freely below this line. */
     .pg-canvas {
-      border:1px dashed var(--gv-divider, #d5d8de); border-radius:var(--gv-radius, 3px);
-      padding:32px 24px; min-height:240px; background:var(--gv-card, #fff);
+      border:1px dashed #9aa3ad; border-radius:var(--gv-radius, 3px);
+      padding:32px 24px; min-height:240px; background:var(--gv-background, #edeff0);
     }
     a.back { display:inline-block; margin-top:32px; color:var(--gv-tenant-primary); text-decoration:none; font-size:var(--gv-fs-s); font-weight:600; }
     a.back:hover { text-decoration:underline; }
@@ -34,13 +34,10 @@
     <!-- ▼▼▼  SCRATCH CANVAS — replace everything inside  ▼▼▼ -->
     <section class="pg-canvas">
       <h2 class="gv-title h4" style="margin-top:0">Start here</h2>
-      <p class="gv-text bodyM" style="color:var(--gv-text-secondary)">
-        A few primitives to riff on:
-      </p>
+      <p class="gv-text bodyM">A few primitives to riff on:</p>
       <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:8px">
         <button class="gv-btn primary"><span class="gv-btn__label">Primary</span></button>
         <button class="gv-btn secondary"><span class="gv-btn__label">Secondary</span></button>
-        <span class="gv-badge">Badge</span>
         <span class="gv-status-label" style="--bg:var(--gv-success)">Open</span>
       </div>
     </section>
