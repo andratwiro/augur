@@ -456,6 +456,14 @@ const PAGE_CSS = `
       transform-origin: top left; pointer-events: none;
     }
     .preview-link { position: absolute; inset: 0; z-index: 2; }
+    /* Download + kebab overlay the preview image, top-right, above the cover link.
+       A translucent white backdrop keeps the icons legible over any screenshot. */
+    .preview-actions { position: absolute; top: 8px; right: 8px; z-index: 3; display: flex; gap: 6px; }
+    .preview-actions .btn-icon, .preview-actions .kebab-btn {
+      background: rgba(255,255,255,0.92); border-color: rgba(16,24,40,0.14); color: #1d2333;
+      box-shadow: 0 2px 8px -2px rgba(16,24,40,0.30); backdrop-filter: blur(4px);
+    }
+    .preview-actions .btn-icon:hover, .preview-actions .kebab-btn:hover { background: #fff; border-color: var(--accent); }
     .opp-meta, .proto-meta { padding: 16px 18px; }
     .proto-meta {
       display: flex; align-items: flex-start; justify-content: space-between;
@@ -1449,6 +1457,10 @@ function renderOpportunityIndex(opp) {
             <div class="preview">
               <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
               <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
+              <div class="preview-actions">
+                ${download}
+                ${kebab}
+              </div>
             </div>
             <div class="proto-meta">
               <div class="proto-text">
@@ -1457,8 +1469,6 @@ function renderOpportunityIndex(opp) {
               </div>
               <div class="proto-actions">
                 ${status}
-                ${download}
-                ${kebab}
               </div>
             </div>
           </div>
