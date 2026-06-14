@@ -22,19 +22,68 @@
      <a class="brand" data-gv-logo aria-label="City home"></a>
    ────────────────────────────────────────────────────────────────────────── */
 (function () {
-  // id 0 is the faithful GoVocal brand default. Templates 1+ are AA-safe
-  // (white button text ≥ 4.5:1 on `primary`) so they're safe to demo.
-  // NOTE: the GoVocal default uses an AA-safe pink (#E10069, 4.77:1 white-on-primary).
-  // The exact brand pink is #ef0071 but it's ~4.3:1 — just under WCAG AA for white text.
-  // Drop a real city logo in via `logo:` (inline SVG or <img>); omit for a placeholder.
+  // ── City logos (inline SVG recreations of each tenant's mark + wordmark). ──
+  // Replace any of these with the official asset (inline <svg> or <img src>) anytime.
+  var LOGO_WIEN =
+    '<span style="display:inline-flex;align-items:center;gap:8px;font-family:var(--gv-font-family,sans-serif)">' +
+    '<svg width="29" height="33" viewBox="0 0 34 38" aria-hidden="true">' +
+    '<path d="M2 2h30v18c0 9-7 14-15 17C9 34 2 29 2 20V2Z" fill="#FF0000"/>' +
+    '<path d="M14.2 7h5.6v6.2H26v5.6h-6.2V25h-5.6v-6.2H8v-5.6h6.2V7Z" fill="#fff"/></svg>' +
+    '<span style="font-weight:800;font-size:17px;line-height:.9;color:#000;letter-spacing:-.01em">Stadt<br>Wien</span></span>';
+
+  var LOGO_KBH =
+    '<span style="display:inline-flex;align-items:center;gap:9px;font-family:var(--gv-font-family,sans-serif)">' +
+    '<svg width="34" height="34" viewBox="0 0 48 48" aria-hidden="true">' +
+    '<circle cx="24" cy="24" r="22" fill="none" stroke="#000C2E" stroke-width="2"/>' +
+    '<g fill="#000C2E">' +
+    '<rect x="21" y="14" width="6" height="13"/><path d="M21 14l3-5 3 5Z"/>' +
+    '<rect x="12.5" y="18" width="5.5" height="9"/><path d="M12.5 18l2.75-4 2.75 4Z"/>' +
+    '<rect x="30" y="18" width="5.5" height="9"/><path d="M30 18l2.75-4 2.75 4Z"/></g>' +
+    '<path d="M12 32q3 -3 6 0t6 0 6 0 6 0" fill="none" stroke="#000C2E" stroke-width="1.6"/>' +
+    '<path d="M12 36q3 -3 6 0t6 0 6 0 6 0" fill="none" stroke="#000C2E" stroke-width="1.6"/></svg>' +
+    '<span style="line-height:1.04;color:#000C2E"><span style="font-weight:800;font-size:13px">Københavns</span>' +
+    '<br><span style="font-weight:600;font-size:11px;letter-spacing:.03em">Kommune</span></span></span>';
+
+  var LOGO_CA =
+    '<span style="display:inline-flex;align-items:center;gap:9px;font-family:var(--gv-font-family,sans-serif)">' +
+    '<svg width="38" height="31" viewBox="0 0 46 38" aria-hidden="true">' +
+    '<path d="M25 4h12a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6h-1v5l-6-5h-5a6 6 0 0 1-6-6v-8a6 6 0 0 1 6-6Z" fill="#E79450"/>' +
+    '<path d="M9 1h12a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6h-5l-6 5v-5H9a6 6 0 0 1-6-6V7a6 6 0 0 1 6-6Z" fill="#1C2745"/></svg>' +
+    '<span style="line-height:1;color:#1C2745"><span style="font-weight:800;font-size:15px;letter-spacing:-.01em">Engaged</span>' +
+    '<br><span style="font-weight:700;font-size:9px;letter-spacing:.14em">CALIFORNIA</span></span></span>';
+
+  // id 0 = the GoVocal platform default (AA-safe pink #E10069, 4.77:1 white-on-primary;
+  // exact brand pink is #ef0071 ≈ 4.3:1, just under AA). Ids 1+ are REAL city tenants
+  // with their authoritative brand colours + logos (researched from official sources):
+  //   Københavns Kommune — KBH Blå #000C2E (Pantone 296C), design.kk.dk
+  //   Stadt Wien — Wien Rot #FF0000 + Ur Schwarz #000000, wien.gv.at CD-manual
+  //   Engaged California — navy #1C2745 + orange #E79450
+  // FAITHFUL-BUT-FLAGGED: Wien Rot #FF0000 is only ~4:1 white-on-primary (under AA) —
+  // it's the official colour, kept faithful; the audit will flag it (expected).
+  // Each tenant also configures a custom font (the product's customFontName).
+  // Real fonts read off the live sites: Stadt Wien = "WienerMelange_W_Rg" (proprietary),
+  // Engaged California = "Noto Sans" (free, loaded exactly), Københavns Kommune = "KBH"
+  // (proprietary). Proprietary fonts can't be loaded here, so the stack lists the real
+  // name first (used where licensed) then a close FREE substitute (loaded below) for
+  // visible differentiation, then the GoVocal Public Sans fallback — same as the live sites.
+  var FONT_FALLBACK = '"Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif';
   var GV_THEMES = [
-    { id: 0, name: 'GoVocal',  primary: '#E10069', secondary: '#000000', text: '#333333', logo: null },
-    { id: 1, name: 'Ocean',    primary: '#044D6C', secondary: '#147985', text: '#1A2B33', logo: null },
-    { id: 2, name: 'Forest',   primary: '#04884C', secondary: '#0A5159', text: '#20302A', logo: null },
-    { id: 3, name: 'Royal',    primary: '#4B2E83', secondary: '#2E1A47', text: '#241B33', logo: null },
-    { id: 4, name: 'Sunset',   primary: '#C2410C', secondary: '#8C680D', text: '#3A2A18', logo: null },
+    { id: 0, name: 'GoVocal',            primary: '#E10069', secondary: '#000000', text: '#333333', logo: null,      font: null },
+    { id: 1, name: 'Københavns Kommune', primary: '#000C2E', secondary: '#0A1A4A', text: '#1A1A1A', logo: LOGO_KBH,  font: '"KBH", "Archivo", ' + FONT_FALLBACK },
+    { id: 2, name: 'Stadt Wien',         primary: '#FF0000', secondary: '#000000', text: '#1A1A1A', logo: LOGO_WIEN, font: '"WienerMelange_W_Rg", "Libre Franklin", ' + FONT_FALLBACK },
+    { id: 3, name: 'Engaged California', primary: '#1C2745', secondary: '#E79450', text: '#1A1A1A', logo: LOGO_CA,   font: '"Noto Sans", ' + FONT_FALLBACK },
   ];
   window.GV_THEMES = GV_THEMES;
+
+  // Load the free substitute/real web fonts once (Google Fonts; Public Sans already loaded by govocal-ui.css).
+  (function loadFonts() {
+    if (document.getElementById('gv-theme-fonts')) return;
+    var l = document.createElement('link');
+    l.id = 'gv-theme-fonts';
+    l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&family=Libre+Franklin:wght@400;600;700;800&family=Noto+Sans:wght@400;600;700;800&display=swap';
+    (document.head || document.documentElement).appendChild(l);
+  })();
 
   // ── City logo: real `logo` markup if provided, else a generated placeholder. ──
   function initials(name) {
@@ -72,6 +121,8 @@
     r.setProperty('--gv-tenant-primary', theme.primary);
     r.setProperty('--gv-tenant-secondary', theme.secondary);
     r.setProperty('--gv-tenant-text', theme.text);
+    if (theme.font) r.setProperty('--gv-font-family', theme.font);
+    else r.removeProperty('--gv-font-family'); // fall back to the tokens.css default
     document.documentElement.setAttribute('data-gv-theme', theme.id);
     if (document.body) renderLogos(theme); // body absent on first (pre-parse) call
   }

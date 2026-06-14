@@ -71,12 +71,18 @@ a prototype across several city palettes:
 - `?theme=0` GoVocal · `1` Ocean · `2` Forest · `3` Royal · `4` Sunset
 - Live picker renders bottom-right (swatches); it also rewrites the URL so a view
   is shareable. Disable with `<body data-gv-theme-picker="off">`.
-- Add a city template: append `{id, name, primary, secondary, text, logo}` to
-  `GV_THEMES` in `govocal-themes.js`. Only the three tenant colours are set per
-  city — tints, focus ring and component states derive automatically.
-- **City logos:** a theme's optional `logo` (inline `<svg>` or `<img>`) renders into
-  any `[data-gv-logo]` slot and swaps with the theme; a placeholder (city mark +
-  name) is generated until a real logo is provided. Put `<a data-gv-logo>` in a header.
+- Templates are **real city tenants** (researched from each one's official brand):
+  `1` Københavns Kommune (`#000C2E`), `2` Stadt Wien (`#FF0000`), `3` Engaged
+  California (`#1C2745` + `#E79450`), plus `0` GoVocal default. Add one by appending
+  `{id, name, primary, secondary, text, logo, font}` to `GV_THEMES`.
+- **City logos:** a theme's `logo` (inline `<svg>` or `<img>`) renders into any
+  `[data-gv-logo]` slot and swaps with the theme; a placeholder is generated until a
+  real logo is set. Put `<a data-gv-logo>` in a header.
+- **City fonts:** a theme's `font` drives `var(--gv-font-family)` (real tenant font
+  name first, then a free stand-in; proprietary fonts fall back to Public Sans like
+  the live sites). Build text with `font-family: var(--gv-font-family)`.
+- **Faithful-but-flagged:** real brand colours are kept even when under AA — `Wien Rot
+  #FF0000` is ~4:1 white-on-primary and the audit flags it (expected, accepted).
 
 ## Accessibility notes (read with `skills/govocal-a11y/`)
 

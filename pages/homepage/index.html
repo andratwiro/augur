@@ -15,12 +15,16 @@
   -->
   <style>
     /* ── Stadt Wien tenant theme ──────────────────────────────────────────
-       The product themes 3 colours per city. Vienna's primary is the
-       Stadt-Wien red; override the govocal-ui tenant tokens here. */
+       The product themes 3 colours + a font per city. Authoritative values from
+       wien.gv.at CD-manual: Wien Rot #FF0000, Ur Schwarz #000000, font WienerMelange
+       (proprietary → free stand-in "Libre Franklin", then Public Sans). NOTE: white
+       text on #FF0000 is ~4:1 (under WCAG AA) — the real brand colour, faithful-but-flagged. */
+    @import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&display=swap');
     :root {
-      --gv-tenant-primary: #E2001A;   /* Stadt Wien red */
+      --gv-tenant-primary: #FF0000;   /* Wien Rot (official) */
       --gv-tenant-secondary: #000000;
       --gv-tenant-text: #1A1A1A;
+      --gv-font-family: "WienerMelange_W_Rg", "Libre Franklin", "Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
       --wien-red: var(--gv-tenant-primary);
     }
 
@@ -53,7 +57,7 @@
       position: relative; min-height: 318px; display: grid; place-items: center; text-align: center;
       color: #fff; overflow: hidden;
       background:
-        linear-gradient(0deg, rgba(226,0,26,0.60), rgba(226,0,26,0.60)),
+        linear-gradient(0deg, rgba(255,0,0,0.55), rgba(255,0,0,0.55)),
         radial-gradient(circle at 20% 28%, #cf9468, transparent 46%),
         radial-gradient(circle at 78% 64%, #95663f, transparent 52%),
         linear-gradient(120deg, #6f4a34, #b07a4f 55%, #7a5238);
@@ -142,7 +146,7 @@
       <a class="brand" href="#" aria-label="Stadt Wien — Startseite">
         <!-- simplified Vienna coat of arms: white cross on a red shield -->
         <svg width="32" height="36" viewBox="0 0 34 38" aria-hidden="true">
-          <path d="M2 2h30v18c0 9-7 14-15 17C9 34 2 29 2 20V2Z" fill="#E2001A"/>
+          <path d="M2 2h30v18c0 9-7 14-15 17C9 34 2 29 2 20V2Z" fill="#FF0000"/>
           <path d="M14.2 7h5.6v6.2H26v5.6h-6.2V25h-5.6v-6.2H8v-5.6h6.2V7Z" fill="#fff"/>
         </svg>
         <span class="wordmark">Stadt<br>Wien</span>
@@ -335,7 +339,7 @@
     <div class="container">
       <div class="footer-logo">
         <svg width="50" height="56" viewBox="0 0 34 38" aria-hidden="true">
-          <path d="M2 2h30v18c0 9-7 14-15 17C9 34 2 29 2 20V2Z" fill="#E2001A"/>
+          <path d="M2 2h30v18c0 9-7 14-15 17C9 34 2 29 2 20V2Z" fill="#FF0000"/>
           <path d="M14.2 7h5.6v6.2H26v5.6h-6.2V25h-5.6v-6.2H8v-5.6h6.2V7Z" fill="#fff"/>
         </svg>
         <span class="wordmark">Stadt<br>Wien</span>

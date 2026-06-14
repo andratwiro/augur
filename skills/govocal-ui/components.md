@@ -175,26 +175,35 @@ themeable via `--gv-tenant-primary`.
 
 ## City theming (`govocal-themes.js`)
 
-The product themes three colours per tenant: **primary, secondary, text**
-(`getTheme()` → `tenantPrimary/Secondary/Text`). Build with those variables and a
-prototype re-skins for free:
+The product themes **primary, secondary, text colours + a custom font** per tenant
+(`getTheme()` → `tenantPrimary/Secondary/Text` + `customFontName`). Build with
+`var(--gv-tenant-*)` and `var(--gv-font-family)` and a prototype re-skins for free.
 
-- `?theme=0` GoVocal (default) · `1` Ocean · `2` Forest · `3` Royal · `4` Sunset
+Templates ship as **real city tenants** (researched from each one's official brand):
+
+| `?theme=` | City | Primary | Font (real → free stand-in) |
+|---|---|---|---|
+| `0` | GoVocal (default) | `#E10069` | Public Sans |
+| `1` | Københavns Kommune | `#000C2E` (KBH Blå) | KBH → Archivo |
+| `2` | Stadt Wien | `#FF0000` (Wien Rot) | WienerMelange → Libre Franklin |
+| `3` | Engaged California | `#1C2745` + `#E79450` | Noto Sans |
+
 - On-screen picker (bottom-right swatches) switches live and updates the URL.
 - Opt out of the picker with `<body data-gv-theme-picker="off">`.
-- Add a city: append `{id, name, primary, secondary, text, logo}` to `GV_THEMES`.
+- Add a city: append `{id, name, primary, secondary, text, logo, font}` to `GV_THEMES`.
 
-**City logos:** give a theme a `logo` (inline `<svg>` or `<img src="logos/ocean.svg">`)
-and any `[data-gv-logo]` element renders it, swapping live with the theme. Until a
-real logo is set, a clean placeholder (city mark + name) is generated.
+**City logos:** a theme's `logo` (inline `<svg>` or `<img>`) renders into any
+`[data-gv-logo]` element, swapping live with the theme; a placeholder (city mark +
+name) is generated until a real logo is set. **Fonts:** `font` sets the stack — the
+real tenant font name first (used where licensed), then a free stand-in; proprietary
+fonts (WienerMelange, KBH) fall back to Public Sans exactly as the live sites do.
 
 ```html
 <a class="brand" data-gv-logo aria-label="City home"></a>   <!-- fills with the active city's logo -->
 ```
 
-**Contrast caveat:** the genuine brand pink `#ef0071` gives only ~4.3:1 for white
-text on a `primary` button (just under WCAG AA). The default `--gv-tenant-primary`
-is therefore an AA-safe pink (`#E10069`, 4.77:1) — visually identical, passes the
-audit. Swap in `#ef0071` if exact brand match outweighs the 0.23 contrast gap.
-Templates 1–4 also clear 4.5:1. A real city with a light primary would need dark
-button text on the platform.
+**Contrast caveat (faithful-but-flagged):** real brand colours are kept even when
+they miss WCAG AA. `Wien Rot #FF0000` is only ~4:1 white-on-primary and the audit
+flags it — that's the official colour, kept faithful. The GoVocal default uses an
+AA-safe pink (`#E10069`, 4.77:1; exact brand `#ef0071` ≈ 4.3:1). On the real
+platform a light primary would take dark button text.
