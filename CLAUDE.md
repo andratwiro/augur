@@ -100,7 +100,11 @@ without it reads as fake.
   (once per browser; use `data-gv-cookies="always"` to always show for review,
   `…="off"` to disable). Themes with `--gv-tenant-primary`.
 - **Backend / admin prototypes:** **skip it** — no cookie banner needed.
-- When a request is for a resident-facing screen and omits this, add it by default.
+- **Pages-tab reference reproductions** (`pages/<name>/`, the Patterns/Pages glossary)
+  are **NOT** prototypes — **no cookie banner**. They exist for designers to study and
+  copy from; a blocking consent modal obscures the reference. The rule is scoped to the
+  interactive prototypes under `<opportunity>/prototypes/`.
+- When a request is for a resident-facing **prototype** and omits this, add it by default.
 
 ## Review comments (how to read reviewer feedback)
 
