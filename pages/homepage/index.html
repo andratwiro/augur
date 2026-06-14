@@ -16,13 +16,9 @@
     re-skins per city; the Vienna content (logo emblem, German copy) stays as the example.
   -->
   <style>
-    /* Tenant COLOURS are not hardcoded here — they come from govocal-tokens.css and are
-       driven by the ?theme= switcher (govocal-themes.js), so this page re-skins per city
-       like every other surface. Only the default city typeface is set below; the switcher
-       overrides --gv-font-family per city when that city ships its own font. */
-    :root {
-      --gv-font-family: 'WienerMelange_W_Rg', 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    }
+    /* Tenant colours AND typography are not hardcoded here — both come from
+       govocal-tokens.css and are driven by the ?theme= switcher (govocal-themes.js),
+       so this page re-skins AND re-types per city like every other surface. */
     body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
 
     /* Klimateam badge tiles — these are campaign graphics, kept as light placeholders. */
