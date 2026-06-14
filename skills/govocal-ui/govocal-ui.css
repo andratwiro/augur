@@ -240,7 +240,9 @@ body.gv-root {
 .gv-shell { --gv-shell-w: 1150px; }
 
 /* ── Site header + navigation (responsive) ──────────────────────────────────
-   Markup: header.gv-header > .gv-header__inner > [brand] [nav] [actions].
+   Markup mirrors the live product: header#e2e-navbar.gv-header >
+   .gv-header__inner > [brand] [nav.gv-nav aria-label="Primäre"] [actions].
+   The primary nav is a <nav aria-label> landmark wrapping a <ul.gv-nav__list>.
    Mobile menu is a CSS-only disclosure via <details class="gv-nav-m">, so the
    component is drop-in with NO JavaScript. Menu height 78px (--gv-menu-height). */
 .gv-header {
@@ -264,9 +266,10 @@ body.gv-root {
 .gv-brand img, .gv-brand svg { display: block; }
 .gv-brand .gv-brand__word { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: -0.01em; }
 
-/* Desktop nav */
-.gv-nav { display: flex; align-items: stretch; height: 100%; margin: 0 0 0 18px; padding: 0; list-style: none; }
-.gv-nav > li { display: flex; }
+/* Desktop nav — <nav class="gv-nav" aria-label="Primäre"> wrapping <ul class="gv-nav__list"> */
+.gv-nav { display: flex; align-items: stretch; height: 100%; margin: 0 0 0 18px; }
+.gv-nav__list { display: flex; align-items: stretch; height: 100%; margin: 0; padding: 0; list-style: none; }
+.gv-nav__list > li { display: flex; }
 .gv-nav__link {
   display: inline-flex; align-items: center; gap: 6px;
   height: 100%; padding: 0 22px;
@@ -336,16 +339,22 @@ body.gv-root {
 }
 
 /* ── Footer ──────────────────────────────────────────────────────────────────
-   Centered tenant logo, legal links (middot-separated), powered-by attribution. */
-.gv-footer { border-top: 1px solid var(--gv-grey-200); padding: 44px 24px 32px; font-family: var(--gv-font-family); }
-.gv-footer__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; display: grid; justify-items: center; gap: 22px; text-align: center; }
-.gv-footer__logo { color: var(--gv-tenant-text); display: grid; justify-items: center; gap: 8px; }
-.gv-footer__logo img, .gv-footer__logo svg { display: block; }
-.gv-footer__links { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 0; font-size: var(--gv-fs-s); }
-.gv-footer__links a { color: var(--gv-grey-800); text-decoration: none; padding: 2px 0; }
-.gv-footer__links a:hover { color: var(--gv-tenant-primary); text-decoration: underline; }
-.gv-footer__links a:not(:first-child)::before { content: "·"; color: var(--gv-grey-500); margin: 0 14px; text-decoration: none; display: inline-block; }
-.gv-footer__powered { display: inline-flex; align-items: center; gap: 10px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); }
+   Source-grounded on GoVocal's real <footer id="hook-footer">: a secondary-nav row
+   of legal links (one is the Cookie-Einstellungen *button*) + the "Ermöglicht durch
+   go·vocal" powered-by attribution. No tenant logo (that lives in the header).
+   Desktop = links left / attribution right; mobile = stacked & centered. */
+.gv-footer { border-top: 1px solid var(--gv-grey-200); padding: 28px 24px; font-family: var(--gv-font-family); background: var(--gv-background); }
+.gv-footer__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 28px; }
+.gv-footer__links ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; font-size: var(--gv-fs-s); }
+.gv-footer__links li { display: inline-flex; align-items: center; }
+.gv-footer__links a, .gv-footer__links button { color: var(--gv-grey-800); text-decoration: none; padding: 2px 0; font: inherit; background: none; border: 0; cursor: pointer; }
+.gv-footer__links a:hover, .gv-footer__links button:hover { color: var(--gv-tenant-primary); text-decoration: underline; }
+.gv-footer__links li:not(:first-child)::before { content: "·"; color: var(--gv-grey-500); margin: 0 14px; display: inline-block; }
+.gv-footer__powered { display: inline-flex; align-items: center; gap: 10px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); white-space: nowrap; }
+@media (max-width: 720px) {
+  .gv-footer__inner { flex-direction: column; justify-content: center; text-align: center; gap: 22px; }
+  .gv-footer__links ul { justify-content: center; }
+}
 /* The go·vocal "powered by" wordmark (govocal-logo.svg) — GoVocal's own brand mark,
    shown in its muted footer grey; it does NOT re-theme per city. Rendered as a plain
    <img> so it works when a prototype is opened directly via file:// (a CSS mask to an

@@ -32,40 +32,44 @@
     <p class="eyebrow">Desktop</p>
     <div class="stage scene">
       <!-- ============ HEADER COMPONENT (copy from here) ============ -->
-      <header class="gv-header sticky">
+      <header id="e2e-navbar" class="gv-header sticky">
         <div class="gv-header__inner">
-          <!-- Logo slot: govocal-themes.js fills it with the active city's logo. -->
-          <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite"></a>
+          <!-- Logo slot: govocal-themes.js fills it with the active city's logo.
+               aria-current="page" = the homepage link is the active page (live product). -->
+          <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite" aria-current="page"></a>
 
-          <ul class="gv-nav">
-            <li><a class="gv-nav__link" href="#" aria-current="page">Willkommen</a></li>
-            <li>
-              <details class="gv-nav__dd">
-                <summary class="gv-nav__link">Beteiligungsprojekte
-                  <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </summary>
-                <div class="gv-nav__menu">
-                  <a href="#">Alle Projekte</a>
-                  <a href="#">Laufende Projekte</a>
-                  <a href="#">Abgeschlossene Projekte</a>
-                </div>
-              </details>
-            </li>
-            <li><a class="gv-nav__link" href="#">Mitmachen</a></li>
-            <li><a class="gv-nav__link" href="#">Netiquette</a></li>
-            <li>
-              <details class="gv-nav__dd right">
-                <summary class="gv-nav__link">Mehr
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                </summary>
-                <div class="gv-nav__menu">
-                  <a href="#">Über die Plattform</a>
-                  <a href="#">Häufige Fragen</a>
-                  <a href="#">Kontakt</a>
-                </div>
-              </details>
-            </li>
-          </ul>
+          <!-- Primary nav landmark (live product: <nav aria-label="Primäre">). -->
+          <nav class="gv-nav" aria-label="Primäre">
+            <ul class="gv-nav__list">
+              <li><a class="gv-nav__link" href="#" aria-current="page">Willkommen</a></li>
+              <li>
+                <details class="gv-nav__dd">
+                  <summary class="gv-nav__link">Beteiligungsprojekte
+                    <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </summary>
+                  <div class="gv-nav__menu">
+                    <a href="#">Alle Projekte</a>
+                    <a href="#">Laufende Projekte</a>
+                    <a href="#">Abgeschlossene Projekte</a>
+                  </div>
+                </details>
+              </li>
+              <li><a class="gv-nav__link" href="#">Mitmachen</a></li>
+              <li><a class="gv-nav__link" href="#">Netiquette</a></li>
+              <li>
+                <details class="gv-nav__dd right">
+                  <summary class="gv-nav__link">Mehr
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                  </summary>
+                  <div class="gv-nav__menu">
+                    <a href="#">Über die Plattform</a>
+                    <a href="#">Häufige Fragen</a>
+                    <a href="#">Kontakt</a>
+                  </div>
+                </details>
+              </li>
+            </ul>
+          </nav>
 
           <div class="gv-header__actions">
             <button class="gv-iconbtn gv-desktop-only" aria-label="Suche">
@@ -73,10 +77,10 @@
             </button>
             <button class="gv-btn primary gv-desktop-only" style="padding:8px 18px;line-height:20px">Anmelden</button>
 
-            <!-- Mobile menu (shows < 860px) -->
+            <!-- Mobile menu (shows < 860px). Real product icon = filled three-bar; label "Mobiles Navigationsmenü anzeigen". -->
             <details class="gv-nav-m">
-              <summary aria-label="Menü öffnen">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <summary aria-label="Mobiles Navigationsmenü anzeigen">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
               </summary>
               <nav class="gv-nav-m__panel" aria-label="Hauptnavigation (mobil)">
                 <a href="#" aria-current="page">Willkommen</a>

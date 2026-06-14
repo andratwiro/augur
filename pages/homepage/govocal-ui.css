@@ -240,7 +240,9 @@ body.gv-root {
 .gv-shell { --gv-shell-w: 1150px; }
 
 /* ── Site header + navigation (responsive) ──────────────────────────────────
-   Markup: header.gv-header > .gv-header__inner > [brand] [nav] [actions].
+   Markup mirrors the live product: header#e2e-navbar.gv-header >
+   .gv-header__inner > [brand] [nav.gv-nav aria-label="Primäre"] [actions].
+   The primary nav is a <nav aria-label> landmark wrapping a <ul.gv-nav__list>.
    Mobile menu is a CSS-only disclosure via <details class="gv-nav-m">, so the
    component is drop-in with NO JavaScript. Menu height 78px (--gv-menu-height). */
 .gv-header {
@@ -264,9 +266,10 @@ body.gv-root {
 .gv-brand img, .gv-brand svg { display: block; }
 .gv-brand .gv-brand__word { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: -0.01em; }
 
-/* Desktop nav */
-.gv-nav { display: flex; align-items: stretch; height: 100%; margin: 0 0 0 18px; padding: 0; list-style: none; }
-.gv-nav > li { display: flex; }
+/* Desktop nav — <nav class="gv-nav" aria-label="Primäre"> wrapping <ul class="gv-nav__list"> */
+.gv-nav { display: flex; align-items: stretch; height: 100%; margin: 0 0 0 18px; }
+.gv-nav__list { display: flex; align-items: stretch; height: 100%; margin: 0; padding: 0; list-style: none; }
+.gv-nav__list > li { display: flex; }
 .gv-nav__link {
   display: inline-flex; align-items: center; gap: 6px;
   height: 100%; padding: 0 22px;

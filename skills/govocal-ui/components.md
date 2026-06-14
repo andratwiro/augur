@@ -163,23 +163,31 @@ in `components/<name>/index.html` (and ship to `/components/`); the recall index
 
 Responsive 78px chrome. CSS-only: dropdowns and the “Mehr ···” overflow are
 `<details>`; the mobile drawer (`< 860px`) is `<details class="gv-nav-m">`. No JS.
+Markup mirrors the live product — `header#e2e-navbar`, a `<nav aria-label="Primäre">`
+primary-nav landmark around `<ul class="gv-nav__list">`, and the real GoVocal
+filled three-bar hamburger icon.
 
 ```html
-<header class="gv-header sticky">
+<header id="e2e-navbar" class="gv-header sticky">
   <div class="gv-header__inner">
-    <a class="gv-brand" href="#" data-gv-logo aria-label="Home"></a>  <!-- logo slot (themes per city) -->
-    <ul class="gv-nav">
-      <li><a class="gv-nav__link" href="#" aria-current="page">Willkommen</a></li>
-      <li><details class="gv-nav__dd"><summary class="gv-nav__link">Beteiligungsprojekte <svg class="gv-nav__chev">…</svg></summary>
-        <div class="gv-nav__menu"><a href="#">Alle Projekte</a>…</div></details></li>
-      <li><a class="gv-nav__link" href="#">Mitmachen</a></li>
-      <li><details class="gv-nav__dd right"><summary class="gv-nav__link">Mehr <svg>…</svg></summary>
-        <div class="gv-nav__menu">…</div></details></li>
-    </ul>
+    <a class="gv-brand" href="#" data-gv-logo aria-label="Home" aria-current="page"></a>  <!-- logo slot (themes per city) -->
+    <nav class="gv-nav" aria-label="Primäre">
+      <ul class="gv-nav__list">
+        <li><a class="gv-nav__link" href="#" aria-current="page">Willkommen</a></li>
+        <li><details class="gv-nav__dd"><summary class="gv-nav__link">Beteiligungsprojekte <svg class="gv-nav__chev">…</svg></summary>
+          <div class="gv-nav__menu"><a href="#">Alle Projekte</a>…</div></details></li>
+        <li><a class="gv-nav__link" href="#">Mitmachen</a></li>
+        <li><details class="gv-nav__dd right"><summary class="gv-nav__link">Mehr <svg>…</svg></summary>
+          <div class="gv-nav__menu">…</div></details></li>
+      </ul>
+    </nav>
     <div class="gv-header__actions">
       <button class="gv-iconbtn gv-desktop-only" aria-label="Suche">…</button>
       <button class="gv-btn primary gv-desktop-only">Anmelden</button>
-      <details class="gv-nav-m"><summary aria-label="Menü öffnen">☰</summary>
+      <details class="gv-nav-m">
+        <summary aria-label="Mobiles Navigationsmenü anzeigen">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+        </summary>
         <nav class="gv-nav-m__panel">…links… <button class="gv-btn primary full">Anmelden</button></nav>
       </details>
     </div>
@@ -188,6 +196,8 @@ Responsive 78px chrome. CSS-only: dropdowns and the “Mehr ···” overflow a
 ```
 - Active link → red top indicator via `aria-current="page"`. Add `sticky` to pin.
 - Logo: `data-gv-logo` (themes per city) or drop a literal `<svg>`/`<img>` in `.gv-brand`.
+- Primary nav is a `<nav aria-label="Primäre">` landmark; the `<ul>` carries `.gv-nav__list`.
+- Hamburger uses the real GoVocal filled three-bar icon (`M3,6H21V8H3V6…`), not a generic stroked one.
 
 ## Footer — `.gv-footer` (`components/footer/`)
 
