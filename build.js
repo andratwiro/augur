@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.11";
+const UI_VERSION = "0.12";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -1331,6 +1331,8 @@ function shell({ title, body, back, activeTab = "prototypes" }) {
   </script>
   <script>${STATUS_JS}
   </script>
+  <script>${HIDE_JS}
+  </script>
   <script>${searchScript()}
   </script>
 </body>
@@ -1370,24 +1372,23 @@ function renderRootIndex(opportunities) {
       // Cover = most-recent prototype of the opportunity (already sorted first).
       const cover = opp.prototypes[0];
       const coverSrc = cover ? `${oppPath}${cover.href}` : "";
-      // Read-only status summary. KV keys match the per-prototype badges
-      // (/<opp>/<proto href>); STATUS_JS reads the same fetch and replaces the
-      // server default (all "In progress") with real counts on load.
-      const protoPaths = opp.prototypes
-        .map((p) => `/${encodeURIComponent(opp.name)}/${p.href}`)
-        .join(",");
-      const n = opp.prototypes.length;
-      const statusSummary = `<div class="opp-status" data-opp-status data-proto-paths="${protoPaths}"><span class="status-chip is-progress"><span class="status-dot" aria-hidden="true"></span>${n} In progress</span></div>`;
+      // Folder's OWN lifecycle status — its own state, not an aggregate of the
+      // prototypes inside it. Clickable toggle cycling For dev → In progress →
+      // Implemented, keyed by the folder path; STATUS_JS corrects the server
+      // default ("In progress") from KV on load.
+      const folderKey = `/${encodeURIComponent(opp.name)}/`;
+      const folderStatus = `<button type="button" class="status-badge folder-status is-progress" data-folder-status data-status="in_progress" data-status-for="${folderKey}" aria-label="Status: In progress. Activate to change."><span class="status-dot" aria-hidden="true"></span><span class="status-label">In progress</span></button>`;
       return `
         <div class="slide">
-          <a class="card-opp" href="${oppPath}">
+          <div class="card-opp">
+            <a class="card-cover-link" href="${oppPath}" aria-label="Open ${titleCase(opp.name)}"></a>
             ${preview(coverSrc)}
             <div class="opp-meta">
               <div class="proto-name">${titleCase(opp.name)}</div>
               <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; ${fmtDate(opp.mtimeMs)}</div>
-              ${statusSummary}
+              ${folderStatus}
             </div>
-          </a>
+          </div>
         </div>`;
     })
     .join("");
@@ -1424,9 +1425,15 @@ function renderOpportunityIndex(opp) {
       // comments overlay. Defaults to "In progress"; the STATUS_JS load corrects it.
       const protoPath = `/${encodeURIComponent(opp.name)}/${p.href}`;
       const status = `<button type="button" class="status-badge is-progress" data-status="in_progress" data-status-for="${protoPath}" aria-label="Status: In progress. Activate to change."><span class="status-dot" aria-hidden="true"></span><span class="status-label">In progress</span></button>`;
+      const kebab = `<div class="kebab">
+                  <button type="button" class="kebab-btn" data-kebab aria-haspopup="menu" aria-expanded="false" aria-label="More actions for ${titleCase(p.name)}">⋯</button>
+                  <div class="kebab-menu" role="menu" hidden>
+                    <button type="button" role="menuitem" class="kebab-item kebab-item--danger" data-proto-hide>Remove from list</button>
+                  </div>
+                </div>`;
       return `
         <div class="slide">
-          <div class="card-proto">
+          <div class="card-proto" data-proto-id="${protoPath}">
             <div class="preview">
               <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
               <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
@@ -1440,6 +1447,7 @@ function renderOpportunityIndex(opp) {
               <div class="proto-actions">
                 <a class="btn primary" href="${p.href}">Open &rarr;</a>
                 ${download}
+                ${kebab}
               </div>
             </div>
           </div>
@@ -1447,9 +1455,15 @@ function renderOpportunityIndex(opp) {
     })
     .join("");
 
+  // Reversible removals land here (populated by HIDE_JS); hidden until something's hidden.
+  const tray = `<div class="hidden-tray" data-hidden-tray hidden>
+      <button type="button" class="hidden-toggle" data-hidden-toggle aria-expanded="false">Show hidden (<span data-hidden-count>0</span>)</button>
+      <div class="hidden-list" data-hidden-list hidden></div>
+    </div>`;
+
   return shell({
     title: titleCase(opp.name),
-    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${carousel(slides)}`,
+    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${carousel(slides)}${tray}`,
     back: { href: "../", label: "&larr; All opportunities" },
   });
 }
