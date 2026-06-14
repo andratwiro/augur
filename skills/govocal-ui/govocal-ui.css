@@ -365,11 +365,36 @@ body.gv-root {
 /* Header right-side actions */
 .gv-header__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: 0 0 auto; }
 .gv-iconbtn {
+  position: relative;
   display: grid; place-items: center; width: 40px; height: 40px; min-width: 40px;
   border-radius: 50%; border: 0; background: transparent; color: var(--gv-grey-800); cursor: pointer;
 }
 .gv-iconbtn:hover { background: var(--gv-grey-100); color: var(--gv-tenant-primary); }
 .gv-iconbtn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+
+/* Logged-in actions — notification badge + account button (avatar + name + chevron).
+   Swap these into .gv-header__actions in place of the logged-out search + "Sign in"
+   CTA. Count badge on the bell uses the tenant colour; the avatar is an <img> or an
+   initials circle. The whole account control opens the user menu in the real product. */
+.gv-iconbtn__badge {
+  position: absolute; top: 3px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; background: var(--gv-tenant-primary); color: #fff;
+  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; border: 2px solid #fff;
+}
+.gv-account {
+  display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 4px 8px 4px 4px;
+  background: none; border: 0; border-radius: 999px; cursor: pointer; font-family: inherit;
+  font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary);
+}
+.gv-account:hover { background: var(--gv-grey-100); }
+.gv-account:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-account .gv-nav__chev { width: 14px; height: 14px; color: var(--gv-grey-700); }
+.gv-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  overflow: hidden; background: var(--gv-tenant-primary); color: #fff; font-weight: 700; font-size: 13px;
+}
+.gv-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-avatar.sm { width: 26px; height: 26px; font-size: 11px; }
 
 /* Hamburger (shown on mobile) — a <details> disclosure, label is the toggle */
 .gv-nav-m { display: none; }                    /* hidden on desktop */

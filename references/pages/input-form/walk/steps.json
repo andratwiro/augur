@@ -1,0 +1,47 @@
+[
+  {
+    "i": 0,
+    "title": "We're renovating Coffman Park!",
+    "button": "next"
+  },
+  {
+    "i": 1,
+    "title": "\ud83d\udc4b About you",
+    "button": "next"
+  },
+  {
+    "i": 2,
+    "title": "\ud83c\udf3f How you use Coffman Park today",
+    "button": "next"
+  },
+  {
+    "i": 3,
+    "title": "\ud83e\udde0 Ideas & improvements",
+    "button": "next"
+  },
+  {
+    "i": 4,
+    "title": "\ud83c\udfa8 Design preferences",
+    "button": "next"
+  },
+  {
+    "i": 5,
+    "title": "\ud83d\udea7 Let's zoom in on the Recreation Features demolition",
+    "button": "next"
+  },
+  {
+    "i": 6,
+    "title": "\ud83d\uddfa\ufe0f Spatial feedback",
+    "button": "next"
+  },
+  {
+    "i": 7,
+    "title": "\ud83d\udc77 Are you a planner or GIS professional with an idea for the park development?",
+    "button": "next"
+  },
+  {
+    "i": 8,
+    "title": "\u2705 Final Thoughts",
+    "button": "submit"
+  }
+]

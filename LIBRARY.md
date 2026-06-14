@@ -68,6 +68,7 @@ as a starting point for a prototype.
 |---|---|---|---|
 | **Hello World** | `/pages/hello-world/` | `pages/hello-world/` | Hello world — GoVocal reference page |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Wien mitgestalten — GoVocal homepage (reference) |
+| **Input Form** | `/pages/input-form/` | `pages/input-form/` | _(no description)_ |
 | **Project Page** | `/pages/project-page/` | `pages/project-page/` | Project page — GoVocal (reference) |
 
 ## Prototypes (existing — for reference & patterns) — `<opportunity>/prototypes/<name>/`
@@ -82,5 +83,6 @@ and reuse patterns. Prototypes are free to diverge from the library.
 | **Counter** | Parallel Participation | `parallel-participation/prototypes/counter/` | Counter — GoVocal Prototype |
 | **Greeting** | Parallel Participation | `parallel-participation/prototypes/greeting/` | Greeting — GoVocal Prototype |
 | **Hello World** | Parallel Participation | `parallel-participation/prototypes/hello-world/` | Self-contained static prototype for Parallel Participation . |
+| **Parallel Project** | Parallel Participation | `parallel-participation/prototypes/parallel-project/` | Greenfield mitmachen — Parallel participation (prototype) |
 | **Theme Switch** | Parallel Participation | `parallel-participation/prototypes/theme-switch/` | City Theme Preview — GoVocal Prototype |
 | **Hello World** | Sms Verification | `sms-verification/prototypes/hello-world/` | Scaffold placeholder for the SMS Verification opportunity. |

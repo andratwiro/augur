@@ -29,7 +29,7 @@
     <p class="sub">Responsive site chrome — 78px bar, logo slot, dropdown + “Mehr ···” overflow,
       search, primary CTA. Collapses to a hamburger drawer on narrow screens. CSS-only (no JS).</p>
 
-    <p class="eyebrow">Desktop</p>
+    <p class="eyebrow">Desktop — signed out</p>
     <div class="stage scene">
       <!-- ============ HEADER COMPONENT (copy from here) ============ -->
       <header id="e2e-navbar" class="gv-header sticky">
@@ -95,6 +95,50 @@
         </div>
       </header>
       <!-- ============ /HEADER COMPONENT ============ -->
+      <div class="scene-body" aria-hidden="true"></div>
+    </div>
+
+    <p class="eyebrow">Desktop — signed in</p>
+    <div class="stage scene">
+      <!-- Same chrome, logged-in actions: swap the search + "Sign in" CTA for
+           search · notification (with count badge) · account (avatar + name). -->
+      <header class="gv-header sticky">
+        <div class="gv-header__inner">
+          <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite" aria-current="page"></a>
+          <nav class="gv-nav" aria-label="Primäre">
+            <ul class="gv-nav__list">
+              <li><a class="gv-nav__link" href="#" aria-current="page">Willkommen</a></li>
+              <li><a class="gv-nav__link" href="#">Beteiligungsprojekte</a></li>
+              <li><a class="gv-nav__link" href="#">Mitmachen</a></li>
+            </ul>
+          </nav>
+          <div class="gv-header__actions">
+            <button class="gv-iconbtn gv-desktop-only" aria-label="Suche">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <button class="gv-iconbtn" aria-label="Benachrichtigungen, 1 ungelesen">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 20a2 2 0 004 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <span class="gv-iconbtn__badge" aria-hidden="true">1</span>
+            </button>
+            <button class="gv-account gv-desktop-only" aria-label="Konto — Rob" aria-haspopup="menu">
+              <span class="gv-avatar">R</span>
+              <span>Rob</span>
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <details class="gv-nav-m">
+              <summary aria-label="Mobiles Navigationsmenü anzeigen">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+              </summary>
+              <nav class="gv-nav-m__panel" aria-label="Hauptnavigation (mobil)">
+                <a href="#" aria-current="page">Willkommen</a>
+                <a href="#">Beteiligungsprojekte</a>
+                <a href="#">Mitmachen</a>
+                <a href="#">Rob — Konto</a>
+              </nav>
+            </details>
+          </div>
+        </div>
+      </header>
       <div class="scene-body" aria-hidden="true"></div>
     </div>
 

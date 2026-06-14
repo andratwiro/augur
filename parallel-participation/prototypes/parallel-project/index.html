@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Greenfield mitmachen — Parallel participation (prototype)</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <script src="govocal-themes.js" defer></script>
+  <script src="govocal-icons.js" defer></script>
+  <!--
+    PARALLEL PARTICIPATION — prototype entry point (the homepage).
+    Forked from pages/homepage (Stadt Wien reference), retold in English on the default
+    GoVocal teal theme. The featured project "Reimagine Gellert Square" runs THREE
+    participation methods AT ONCE (survey + ideation + vote) — the parallel-participation
+    bet, which the real product can't do (one method per phase). Clicking it → project.html.
+    Resident-facing prototype → cookie-consent banner shows first (CLAUDE.md rule).
+  -->
+  <style>
+    body { margin: 0; background: #fff; font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+
+    /* ── Featured parallel-project callout ─────────────────────────────────────── */
+    .pp-feature { background: var(--gv-grey-50); border-bottom: 1px solid var(--gv-divider); }
+    .pp-feature__inner {
+      max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 30px 24px;
+      display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 36px; align-items: center;
+    }
+    .pp-eyebrow {
+      display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-xs); font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em; color: var(--gv-tenant-primary); margin: 0 0 10px;
+    }
+    .pp-feature h2 { margin: 0 0 10px; font-size: clamp(24px, 3vw, 30px); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+    .pp-feature p { margin: 0 0 18px; font-size: var(--gv-fs-l); line-height: 1.55; color: var(--gv-text-primary); max-width: 56ch; }
+    .pp-ways { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; padding: 0; list-style: none; }
+    .pp-way {
+      display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
+      background: #fff; border: 1px solid var(--gv-divider); font-size: var(--gv-fs-s); font-weight: 600;
+    }
+    .pp-way .gv-icon { color: var(--gv-tenant-primary); }
+    .pp-way b { color: var(--gv-text-primary); }
+    .pp-way span { color: var(--gv-text-secondary); font-weight: 500; }
+    .pp-feature__art {
+      aspect-ratio: 4 / 3; border-radius: var(--gv-radius); overflow: hidden; position: relative;
+      background: radial-gradient(120% 130% at 75% 15%, #5fc6d1 0%, var(--gv-teal-300) 48%, var(--gv-teal-500) 100%);
+      display: grid; place-items: center;
+    }
+    .pp-feature__art::before {
+      content: ""; position: absolute; inset: 0; opacity: 0.16;
+      background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .pp-feature__cast { position: relative; font-size: clamp(48px, 10vw, 84px); filter: drop-shadow(0 4px 6px rgba(0,0,0,.14)); }
+    .pp-badge {
+      position: absolute; top: 14px; left: 14px; background: #fff; color: var(--gv-tenant-primary);
+      font-size: var(--gv-fs-xs); font-weight: 700; padding: 6px 11px; border-radius: 999px; box-shadow: var(--gv-shadow);
+    }
+    @media (max-width: 820px) { .pp-feature__inner { grid-template-columns: 1fr; gap: 22px; } .pp-feature__art { order: -1; } }
+
+    /* card "ways" badge on the project rail */
+    .gv-pcard__ways {
+      display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin: 2px 0 0;
+      background: color-mix(in srgb, var(--gv-tenant-primary) 12%, #fff);
+      color: var(--gv-tenant-primary); font-size: var(--gv-fs-xs); font-weight: 700;
+      padding: 4px 9px; border-radius: 999px;
+    }
+
+    .closing { text-align: center; max-width: 680px; margin: 56px auto 0; padding: 0 24px; }
+  </style>
+</head>
+<body data-gv-cookies-city="Greenfield" class="gv-root">
+
+  <!-- ════════ Header ════════ -->
+  <header id="e2e-navbar" class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Home" aria-current="page"></a>
+
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#" aria-current="page">Welcome</a></li>
+          <li>
+            <details class="gv-nav__dd">
+              <summary class="gv-nav__link">Projects
+                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">All projects</a>
+                <a href="#">Open projects</a>
+                <a href="#">Finished projects</a>
+              </div>
+            </details>
+          </li>
+          <li><a class="gv-nav__link" href="#">Get involved</a></li>
+          <li><a class="gv-nav__link" href="#">Guidelines</a></li>
+          <li>
+            <details class="gv-nav__dd right">
+              <summary class="gv-nav__link">More
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">About the platform</a>
+                <a href="#">FAQ</a>
+                <a href="#">Contact</a>
+              </div>
+            </details>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
+        <button class="gv-btn primary gv-desktop-only" style="padding:8px 18px;line-height:20px">Sign in</button>
+        <details class="gv-nav-m">
+          <summary aria-label="Show mobile navigation menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <a href="#" aria-current="page">Welcome</a>
+            <a href="#">Projects</a>
+            <a href="#">Get involved</a>
+            <a href="#">Guidelines</a>
+            <a href="#">More</a>
+            <button class="gv-btn primary full">Sign in</button>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════ Hero ════════ -->
+  <section class="gv-hero">
+    <div class="gv-hero__inner">
+      <h1 class="gv-hero__title">Shape Greenfield</h1>
+      <p class="gv-hero__lead">The participation platform for the City of Greenfield</p>
+      <div class="gv-avatars" aria-label="8,200 participants">
+        <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
+        <span class="count">8.2k</span>
+      </div>
+      <div><button class="gv-btn white" style="line-height:22px">Register</button></div>
+    </div>
+    <span class="gv-hero__credit">Banner: © City of Greenfield</span>
+  </section>
+
+  <!-- ════════ Featured parallel project ════════ -->
+  <section class="pp-feature" aria-labelledby="ppFeatureTitle">
+    <div class="pp-feature__inner">
+      <div>
+        <p class="pp-eyebrow"><span class="gv-icon" data-gv-icon="stars" aria-hidden="true"></span> Spotlight · open now</p>
+        <h2 id="ppFeatureTitle">Reimagine Gellert Square</h2>
+        <p>One project, three ways to take part — and they're all open at the same time. Answer a 2‑minute survey, post your own idea, or help decide how the budget is spent. Do one, or do all three.</p>
+        <ul class="pp-ways">
+          <li class="pp-way"><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> <b>Survey</b> <span>· 2 min</span></li>
+          <li class="pp-way"><span class="gv-icon" data-gv-icon="idea" aria-hidden="true"></span> <b>Share an idea</b> <span>· 34 so far</span></li>
+          <li class="pp-way"><span class="gv-icon" data-gv-icon="basket" aria-hidden="true"></span> <b>Vote the budget</b> <span>· €250k</span></li>
+        </ul>
+        <a class="gv-btn primary size-m" href="project.html" style="text-decoration:none">Take part <span class="gv-icon" data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+      </div>
+      <a class="pp-feature__art" href="project.html" aria-label="Open the Reimagine Gellert Square project">
+        <span class="pp-badge">3 ways to take part</span>
+        <span class="pp-feature__cast" role="img" aria-label="Park bench and trees">🌳🪑</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ════════ Open for participation ════════ -->
+  <section class="gv-section">
+    <div class="gv-section__head"><h2 class="gv-title h2">Open for participation</h2></div>
+    <div class="gv-section__body">
+      <div class="gv-rail">
+        <article class="gv-pcard">
+          <div class="gv-pcard__thumb" style="background:radial-gradient(120% 130% at 70% 20%, #5fc6d1, var(--gv-teal-500))">
+            <span style="position:relative;font-size:46px">🌳🪑</span>
+          </div>
+          <h3 class="gv-pcard__title"><a href="project.html">Reimagine Gellert Square</a></h3>
+          <span class="gv-pcard__ways"><span class="gv-icon" data-gv-icon="stars" aria-hidden="true"></span> 3 ways to take part</span>
+          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 3 weeks left</span>
+          <a class="gv-pcard__cta" href="project.html">Take part</a>
+        </article>
+        <article class="gv-pcard">
+          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9fb0a3,#cdd6cd)"></div>
+          <h3 class="gv-pcard__title"><a href="#">Safer cycling on Mill Road</a></h3>
+          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 2 weeks left</span>
+          <a class="gv-pcard__cta" href="#">Complete the survey</a>
+        </article>
+        <article class="gv-pcard">
+          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#2b8cab,#8fcfd6)">RIVERSIDE<br>WALK</div>
+          <h3 class="gv-pcard__title"><a href="#">Riverside Walk lighting</a></h3>
+          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 4 weeks left</span>
+          <a class="gv-pcard__cta" href="#">Share an idea</a>
+        </article>
+        <article class="gv-pcard">
+          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#e2603a,#f0a07f)">MARKET<br>SQUARE</div>
+          <h3 class="gv-pcard__title"><a href="#">Market Square refresh</a></h3>
+          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> 5 weeks left</span>
+          <a class="gv-pcard__cta" href="#">Vote</a>
+        </article>
+        <article class="gv-pcard">
+          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9a9a9a,#c7c2bd)"></div>
+          <h3 class="gv-pcard__title"><a href="#">Greenfield climate plan</a></h3>
+          <span class="gv-pcard__meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 412 participants</span>
+          <a class="gv-pcard__cta" href="#">Learn more</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Finished projects ════════ -->
+  <section class="gv-section">
+    <div class="gv-section__head"><h2 class="gv-title h2">Finished projects</h2></div>
+    <div class="gv-section__body">
+      <div class="gv-rail">
+        <article class="gv-pcard square">
+          <div class="gv-pcard__thumb" style="background:#f3e2a6;color:#7a5e12;font-size:14px;padding:12px">Old Town renewal</div>
+          <h3 class="gv-pcard__title"><a href="#">Old Town renewal</a></h3>
+          <span class="gv-pcard__meta done"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20Zm-1 14l-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z"/></svg> 6 weeks ago</span>
+          <a class="gv-pcard__cta" href="#">Learn more</a>
+        </article>
+        <article class="gv-pcard square">
+          <div class="gv-pcard__thumb" style="background:#2b8cab;color:#fff;font-size:13px;padding:12px">School Streets pilot</div>
+          <h3 class="gv-pcard__title"><a href="#">School Streets pilot</a></h3>
+          <span class="gv-pcard__meta done"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20Zm-1 14l-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z"/></svg> 3 months ago</span>
+          <a class="gv-pcard__cta" href="#">Learn more</a>
+        </article>
+        <article class="gv-pcard square">
+          <div class="gv-pcard__thumb" style="background:#ece9e2;color:#0e7c86;font-size:15px;padding:12px">PARK<br>LAB</div>
+          <h3 class="gv-pcard__title"><a href="#">Greenfield Park Lab</a></h3>
+          <span class="gv-pcard__meta done"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20Zm-1 14l-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z"/></svg> 4 months ago</span>
+          <a class="gv-pcard__cta" href="#">Learn more</a>
+        </article>
+        <article class="gv-pcard square">
+          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#8a8f93,#b9bdc0)"></div>
+          <h3 class="gv-pcard__title"><a href="#">Library opening hours</a></h3>
+          <span class="gv-pcard__meta done"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20Zm-1 14l-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z"/></svg> 5 months ago</span>
+          <a class="gv-pcard__cta" href="#">Learn more</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Closing ════════ -->
+  <div class="closing">
+    <h2 class="gv-title h2">Together, we shape Greenfield.</h2>
+    <p class="gv-text bodyM">This is where the City of Greenfield runs its participation projects. Share your thoughts, gather ideas, and give feedback on the questions that shape our city.</p>
+  </div>
+
+  <!-- ════════ Footer ════════ -->
+  <footer class="gv-footer" style="margin-top:40px">
+    <div class="gv-footer__inner">
+      <div class="gv-footer__logo" data-gv-logo></div>
+      <nav class="gv-footer__links" aria-label="Legal">
+        <a href="#">Terms and conditions</a>
+        <a href="#">Privacy policy</a>
+        <a href="#">Cookie policy</a>
+        <a href="#">Accessibility statement</a>
+        <a href="#">Cookie settings</a>
+        <a href="#">Site map</a>
+      </nav>
+      <div class="gv-footer__powered">
+        <span>Powered by</span>
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal (formerly CitizenLab)">
+          <img class="gv-powered-logo" src="govocal-logo.svg" alt="Go Vocal" />
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="govocal-cookies.js" defer></script>
+</body>
+</html>

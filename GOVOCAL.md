@@ -460,6 +460,23 @@ Keep entries short, deduped, and dated when point-in-time. Newest at top.
   Pull learnings from prototype conversations, the opportunities' `research.md` /
   `context.md`, and reviewer feedback as we go.
 
+- _(2026-06-14)_ **Input-form / survey capture is reproducible without auth via the
+  form-definition API.** `GET /web_api/v1/phases/<phase_id>/custom_fields` returns the
+  full form JSON publicly (`data[]` = fields by `ordering`, `included[]` = options,
+  matrix statements, images, map_configs) — even when the phase is closed and the
+  resident render is gated. The pre-rendered `…/custom_fields/json_forms_schema` needs
+  auth (401), but you don't need it. Captured a deliberate **kitchen-sink demo survey**
+  ("Redesigning Coffman Park", wietsedemo tenant) exercising **all 17 input types** into
+  `references/pages/input-form/` (internal) to drive the **Input Form** Pages-tab build.
+  Capture script: `scripts/capture-input-form.py` (Playwright walk, both viewports).
+- _(2026-06-14)_ **Survey "Next" gates on scale/rating/matrix fields even when they're
+  marked `required:false`.** In the resident survey runner, the **Next** button stays
+  `aria-disabled` until **`rating`, `linear_scale`, `sentiment_linear_scale`, and
+  `matrix_linear_scale`** fields on the page are answered — pages with only
+  text/select/checkbox advance unfilled. So these field types are *de-facto required to
+  advance*. Reproduce this behavior in the Input Form page rebuild (it's real UX, not a
+  bug to "fix"). The custom radio/scale controls are styled cards whose `<input>` is
+  overlaid by divs → automating them needs `force=True` clicks on the option element.
 - _(2026-06-14)_ **The user dislikes the GoVocal hot-pink brand.** The default
   `?theme=0` ("GoVocal") combination was changed from pink `#E10069` + black to a
   **deep teal `#0E7C86` primary + warm coral `#E2603A` secondary** (their call to me:

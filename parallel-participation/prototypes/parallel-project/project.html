@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Reimagine Gellert Square — Parallel participation (prototype)</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <script src="govocal-themes.js" defer></script>
+  <script src="govocal-icons.js" defer></script>
+  <!--
+    PARALLEL PARTICIPATION — the project page (the bet).
+    Shell forked from pages/project-page (header · action bar · banner · title/desc/
+    participants · accordion · footer). The signature change: instead of ONE phase running
+    ONE method, this project runs THREE methods AT ONCE — Survey + Share an idea + Vote —
+    presented as a parallel-methods strip + tabbed panels, each fully interactive with all
+    states (default/focus/error/disabled/loading/empty/success). Default GoVocal teal theme,
+    themeable via --gv-tenant-*. Resident-facing prototype → cookie banner (CLAUDE.md rule).
+  -->
+  <style>
+    body { margin: 0; background: #fff; font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+    .gv-wrap { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px; }
+
+    /* ── Logged-in header extras ───────────────────────────────────────────────── */
+    .gv-bell { position: relative; }
+    .gv-bell__dot {
+      position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px;
+      border-radius: 999px; background: var(--gv-tenant-primary); color: #fff;
+      font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; border: 2px solid #fff;
+    }
+    .gv-avatar-btn {
+      display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 4px 6px 4px 4px;
+      background: none; border: 0; border-radius: 999px; cursor: pointer; font-family: inherit;
+      font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary);
+    }
+    .gv-avatar-btn:hover { background: var(--gv-grey-100); }
+    .gv-avatar-btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+    .gv-avatar-btn img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; display: block; }
+
+    /* ── Action bar ────────────────────────────────────────────────────────────── */
+    .gv-projbar { border-bottom: 1px solid var(--gv-divider); }
+    .gv-projbar__inner {
+      max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 12px 24px;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .gv-back {
+      display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; cursor: pointer;
+      font-family: inherit; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-secondary);
+      padding: 6px 4px; border-radius: var(--gv-radius); text-decoration: none;
+    }
+    .gv-back:hover { color: var(--gv-text-primary); }
+    .gv-back:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+    .gv-projbar__spacer { flex: 1 1 auto; }
+
+    /* ── Banner ────────────────────────────────────────────────────────────────── */
+    .gv-banner { background: var(--gv-grey-100); }
+    .gv-banner__art {
+      max-width: var(--gv-shell-w, 1150px); margin: 0 auto;
+      position: relative; aspect-ratio: 1150 / 300; min-height: 200px; overflow: hidden;
+      background: radial-gradient(120% 140% at 80% 10%, #5fc6d1 0%, var(--gv-teal-300) 45%, var(--gv-teal-500) 100%);
+      display: grid; place-items: center;
+    }
+    .gv-banner__art::before {
+      content: ""; position: absolute; inset: 0; opacity: 0.18;
+      background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px);
+      background-size: 34px 34px;
+    }
+    .gv-banner__cast { position: relative; font-size: clamp(40px, 9vw, 92px); letter-spacing: 6px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.12)); }
+    .gv-banner__sticker {
+      position: absolute; top: 26%; right: 9%; transform: rotate(-7deg);
+      background: #ffe14d; color: #1a1a1a; font-weight: 800; letter-spacing: 0.04em;
+      font-size: clamp(14px, 2.2vw, 22px); padding: 8px 14px; border-radius: 4px;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+    }
+    @media (max-width: 600px) { .gv-banner__sticker { top: 10%; right: 6%; } }
+
+    /* ── Project head ──────────────────────────────────────────────────────────── */
+    .gv-projhead { display: grid; grid-template-columns: minmax(0,1fr) 280px; gap: 40px; padding: 36px 0 8px; align-items: start; }
+    .gv-projhead__title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 16px; }
+    .gv-projhead__title h1 { margin: 0; font-size: clamp(26px, 3.4vw, 34px); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+    .gv-chip {
+      display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px;
+      background: var(--gv-grey-100); color: var(--gv-text-secondary); font-size: var(--gv-fs-xs); font-weight: 600;
+    }
+    .gv-prose p { margin: 0 0 14px; font-size: var(--gv-fs-l); line-height: 1.6; color: var(--gv-text-primary); }
+    .gv-projhead__aside { background: var(--gv-grey-50); border: 1px solid var(--gv-divider); border-radius: var(--gv-radius); padding: 18px; }
+    .gv-projhead__aside .gv-avatars { margin-bottom: 10px; }
+    .gv-avatars.on-light .av { border-color: #fff; box-shadow: 0 0 0 1px var(--gv-grey-300); }
+    .gv-avatars.on-light .count { border-color: var(--gv-grey-300); color: var(--gv-text-primary); background: #fff; }
+    .gv-pcount { font-size: var(--gv-fs-l); font-weight: 700; }
+    .gv-pcount span { font-weight: 400; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); display: block; margin-top: 2px; }
+    .gv-deadline { margin: 14px 0 0; display: flex; gap: 7px; align-items: center; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+    .gv-deadline .gv-icon { color: var(--gv-cool-grey-500); }
+    @media (max-width: 760px) { .gv-projhead { grid-template-columns: 1fr; gap: 22px; } }
+
+    /* ════════ PARALLEL METHODS — the signature block ════════ */
+    .pp { margin: 40px 0 8px; }
+    .pp__intro { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
+    .pp__intro h2 { margin: 0 0 4px; font-size: var(--gv-fs-xxl); font-weight: 700; letter-spacing: -0.01em; }
+    .pp__intro p { margin: 0; color: var(--gv-text-secondary); font-size: var(--gv-fs-base); line-height: 1.5; max-width: 60ch; }
+    .pp__live {
+      display: inline-flex; align-items: center; gap: 7px; flex: none; margin-top: 4px;
+      background: color-mix(in srgb, var(--gv-success) 14%, #fff); color: var(--gv-green-700);
+      font-size: var(--gv-fs-xs); font-weight: 700; padding: 5px 11px; border-radius: 999px;
+    }
+    .pp__live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gv-success); }
+
+    /* method strip = tablist of 3 cards */
+    .pp__strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .pp-tab {
+      position: relative; text-align: left; cursor: pointer; font-family: inherit;
+      background: #fff; border: 1px solid var(--gv-divider); border-radius: var(--gv-radius);
+      padding: 16px 16px 15px; display: flex; flex-direction: column; gap: 6px;
+      transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    }
+    .pp-tab:hover { border-color: color-mix(in srgb, var(--gv-tenant-primary) 50%, var(--gv-divider)); box-shadow: var(--gv-shadow); }
+    .pp-tab:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+    .pp-tab[aria-selected="true"] {
+      border-color: var(--gv-tenant-primary);
+      box-shadow: inset 0 -3px 0 var(--gv-tenant-primary), var(--gv-shadow);
+    }
+    .pp-tab__top { display: flex; align-items: center; gap: 10px; }
+    .pp-tab__icon {
+      width: 38px; height: 38px; border-radius: 10px; flex: none; display: grid; place-items: center;
+      background: color-mix(in srgb, var(--gv-tenant-primary) 12%, #fff); color: var(--gv-tenant-primary); font-size: 20px;
+    }
+    .pp-tab__name { font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.2; }
+    .pp-tab__meta { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+    .pp-tab__status {
+      display: inline-flex; align-items: center; gap: 5px; margin-top: 2px;
+      font-size: var(--gv-fs-xs); font-weight: 700; color: var(--gv-green-700);
+    }
+    .pp-tab__status .gv-icon { color: var(--gv-green-700); }
+    .pp-tab.is-done .pp-tab__status { color: var(--gv-text-secondary); }
+    .pp-tab.is-done .pp-tab__status .gv-icon { color: var(--gv-success); }
+    @media (max-width: 720px) { .pp__strip { grid-template-columns: 1fr; } .pp__intro { flex-direction: column; } }
+
+    /* panel */
+    .pp-panel {
+      margin-top: 16px; background: #fff; border: 1px solid var(--gv-divider);
+      border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 26px 28px;
+    }
+    .pp-panel[hidden] { display: none; }
+    .pp-panel__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+    .pp-panel__head h3 { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; }
+    .pp-panel__lead { margin: 2px 0 22px; color: var(--gv-text-secondary); font-size: var(--gv-fs-base); line-height: 1.55; max-width: var(--gv-text-width); }
+    @media (max-width: 560px) { .pp-panel { padding: 22px 18px; } }
+
+    /* ── Survey ────────────────────────────────────────────────────────────────── */
+    .pp-q { margin: 0 0 26px; }
+    .pp-q__label { display: block; font-size: var(--gv-fs-l); font-weight: 600; margin-bottom: 12px; }
+    .pp-q__req { color: var(--gv-red-600, #d92d20); font-weight: 700; }
+    .pp-scale { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pp-scale input { position: absolute; opacity: 0; pointer-events: none; }
+    .pp-scale label {
+      cursor: pointer; min-width: 52px; min-height: 48px; padding: 6px 10px; display: flex;
+      flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      border: 1px solid var(--gv-border-dark, #767676); border-radius: var(--gv-radius);
+      font-weight: 700; font-size: var(--gv-fs-l); color: var(--gv-text-primary); background: #fff;
+    }
+    .pp-scale label small { font-size: 10px; font-weight: 600; color: var(--gv-text-secondary); text-transform: uppercase; letter-spacing: .03em; }
+    .pp-scale label:hover { border-color: #000; }
+    .pp-scale input:focus-visible + label { outline: var(--gv-focus-outline); outline-offset: 2px; }
+    .pp-scale input:checked + label { background: var(--gv-tenant-primary); border-color: var(--gv-tenant-primary); color: #fff; }
+    .pp-scale input:checked + label small { color: rgba(255,255,255,.85); }
+
+    .pp-options { display: grid; gap: 10px; }
+    .pp-opt {
+      display: flex; align-items: center; gap: 12px; padding: 13px 15px; cursor: pointer;
+      border: 1px solid var(--gv-border-dark, #767676); border-radius: var(--gv-radius); font-size: var(--gv-fs-base);
+    }
+    .pp-opt:hover { border-color: #000; }
+    .pp-opt input { accent-color: var(--gv-tenant-primary); width: 20px; height: 20px; flex: none; }
+    .pp-opt:has(input:focus-visible) { outline: var(--gv-focus-outline); outline-offset: 2px; }
+    .pp-opt:has(input:checked) { border-color: var(--gv-tenant-primary); background: color-mix(in srgb, var(--gv-tenant-primary) 6%, #fff); }
+
+    .pp-fielderr { display: none; align-items: center; gap: 6px; margin: 10px 0 0; color: var(--gv-red-600, #d92d20); font-size: var(--gv-fs-s); font-weight: 600; }
+    .pp-q.is-invalid .pp-fielderr { display: flex; }
+    .pp-q.is-invalid .pp-scale label, .pp-q.is-invalid .pp-opt { border-color: var(--gv-red-600, #d92d20); }
+
+    .pp-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+    .pp-formnote { color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
+
+    /* success state */
+    .pp-success { display: none; text-align: center; padding: 22px 10px; }
+    .pp-success.show { display: block; }
+    .pp-success__icon { width: 56px; height: 56px; border-radius: 50%; margin: 0 auto 14px; display: grid; place-items: center; background: color-mix(in srgb, var(--gv-success) 16%, #fff); color: var(--gv-green-700); font-size: 30px; }
+    .pp-success h4 { margin: 0 0 6px; font-size: var(--gv-fs-xl); font-weight: 700; }
+    .pp-success p { margin: 0 auto 16px; color: var(--gv-text-secondary); max-width: 46ch; line-height: 1.55; }
+
+    /* ── Ideation ──────────────────────────────────────────────────────────────── */
+    .pp-postcard { background: var(--gv-grey-50); border: 1px solid var(--gv-divider); border-radius: var(--gv-radius); padding: 16px; margin-bottom: 24px; }
+    .pp-postcard .gv-label { margin-top: 12px; }
+    .pp-postcard .gv-label:first-child { margin-top: 0; }
+    .pp-ideas { display: grid; gap: 14px; }
+    .pp-idea { border: 1px solid var(--gv-divider); border-radius: var(--gv-radius); padding: 16px; display: flex; gap: 14px; }
+    .pp-idea.is-new { animation: ppPop 320ms ease; border-color: var(--gv-tenant-primary); }
+    @keyframes ppPop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+    .pp-vote { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: none; }
+    .pp-vote button {
+      width: 36px; height: 30px; display: grid; place-items: center; cursor: pointer;
+      background: #fff; border: 1px solid var(--gv-divider); border-radius: var(--gv-radius); color: var(--gv-text-secondary);
+    }
+    .pp-vote button:hover { border-color: #000; color: var(--gv-text-primary); }
+    .pp-vote button:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+    .pp-vote button[aria-pressed="true"].up { background: color-mix(in srgb, var(--gv-success) 14%, #fff); border-color: var(--gv-success); color: var(--gv-green-700); }
+    .pp-vote button[aria-pressed="true"].down { background: color-mix(in srgb, var(--gv-red-600, #d92d20) 12%, #fff); border-color: var(--gv-red-600, #d92d20); color: var(--gv-red-600, #d92d20); }
+    .pp-vote .score { font-size: var(--gv-fs-s); font-weight: 700; }
+    .pp-idea__body { min-width: 0; }
+    .pp-idea__title { margin: 0 0 4px; font-size: var(--gv-fs-l); font-weight: 700; }
+    .pp-idea__text { margin: 0 0 10px; color: var(--gv-text-primary); font-size: var(--gv-fs-base); line-height: 1.5; }
+    .pp-idea__meta { display: flex; align-items: center; gap: 14px; color: var(--gv-text-secondary); font-size: var(--gv-fs-xs); flex-wrap: wrap; }
+    .pp-idea__meta .m { display: inline-flex; align-items: center; gap: 5px; }
+
+    /* ── Voting (approval) ─────────────────────────────────────────────────────── */
+    .pp-votehead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .pp-counter { font-size: var(--gv-fs-s); font-weight: 700; padding: 7px 13px; border-radius: 999px; background: var(--gv-grey-100); color: var(--gv-text-primary); }
+    .pp-counter.full { background: color-mix(in srgb, var(--gv-tenant-primary) 14%, #fff); color: var(--gv-tenant-primary); }
+    .pp-budget { display: grid; gap: 12px; }
+    .pp-bud {
+      display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 14px; padding: 14px 16px;
+      border: 1px solid var(--gv-divider); border-radius: var(--gv-radius);
+    }
+    .pp-bud.is-picked { border-color: var(--gv-tenant-primary); background: color-mix(in srgb, var(--gv-tenant-primary) 6%, #fff); }
+    .pp-bud__art { width: 56px; height: 56px; border-radius: 8px; display: grid; place-items: center; font-size: 26px; background: var(--gv-grey-100); }
+    .pp-bud__name { font-size: var(--gv-fs-l); font-weight: 700; margin: 0 0 3px; }
+    .pp-bud__cost { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+    .pp-bud__btn { white-space: nowrap; }
+    @media (max-width: 560px) { .pp-bud { grid-template-columns: 44px 1fr; } .pp-bud__art { width:44px;height:44px;font-size:20px } .pp-bud__btn { grid-column: 1 / -1; } }
+
+    /* ── Accordion (reused) ────────────────────────────────────────────────────── */
+    .gv-accordion { border-top: 1px solid var(--gv-divider); margin-top: 44px; }
+    .gv-acc__item { border-bottom: 1px solid var(--gv-divider); }
+    .gv-acc__head {
+      display: flex; align-items: center; gap: 12px; cursor: pointer; list-style: none;
+      padding: 18px 4px; font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary);
+    }
+    .gv-acc__head::-webkit-details-marker { display: none; }
+    .gv-acc__head:hover { color: var(--gv-tenant-primary); }
+    .gv-acc__item > summary:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
+    .gv-acc__q { flex: 1 1 auto; }
+    .gv-acc__chev { flex: none; color: var(--gv-text-secondary); transition: transform 180ms ease; }
+    .gv-acc__item[open] .gv-acc__chev { transform: rotate(180deg); }
+    .gv-acc__body { padding: 0 4px 20px; max-width: var(--gv-text-width); }
+    .gv-acc__body p { margin: 0 0 10px; font-size: var(--gv-fs-base); line-height: 1.6; }
+
+    /* ── Toast ─────────────────────────────────────────────────────────────────── */
+    .pp-toast {
+      position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 140%);
+      background: #15211f; color: #fff; padding: 13px 18px; border-radius: var(--gv-radius);
+      box-shadow: 0 10px 30px rgba(0,0,0,.28); display: flex; align-items: center; gap: 10px;
+      font-size: var(--gv-fs-s); font-weight: 600; z-index: 60; transition: transform 260ms ease, visibility 260ms; max-width: calc(100vw - 32px);
+      visibility: hidden;
+    }
+    .pp-toast.show { transform: translate(-50%, 0); visibility: visible; }
+    .pp-toast .gv-icon { color: #62d39a; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .gv-acc__chev, .pp-tab, .pp-toast, .pp-idea.is-new { transition: none; animation: none; }
+    }
+  </style>
+</head>
+<body class="gv-root" data-gv-cookies-city="Greenfield">
+
+  <!-- ════════ Header (logged-in) ════════ -->
+  <header class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="index.html" data-gv-logo aria-label="Home"></a>
+
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="index.html">Home</a></li>
+          <li>
+            <details class="gv-nav__dd">
+              <summary class="gv-nav__link">Projects
+                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">All projects</a>
+                <a href="#">Open projects</a>
+                <a href="#">Finished projects</a>
+              </div>
+            </details>
+          </li>
+          <li><a class="gv-nav__link" href="#">Get involved</a></li>
+        </ul>
+      </nav>
+
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
+        <button class="gv-iconbtn gv-bell" aria-label="Notifications, 2 unread">
+          <span data-gv-icon="notification"></span>
+          <span class="gv-bell__dot" aria-hidden="true">2</span>
+        </button>
+        <button class="gv-avatar-btn" aria-label="Account menu — Mara">
+          <img src="data:image/svg+xml;utf8,&lt;svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'&gt;&lt;rect width='64' height='64' fill='%230E7C86'/&gt;&lt;text x='32' y='43' font-family='Arial' font-size='28' fill='white' text-anchor='middle'&gt;M&lt;/text&gt;&lt;/svg&gt;" alt="" />
+          <span class="gv-desktop-only">Mara</span>
+        </button>
+        <details class="gv-nav-m">
+          <summary aria-label="Show mobile navigation menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <a href="index.html">Home</a>
+            <a href="#">All projects</a>
+            <a href="#">Get involved</a>
+            <a href="#">Search</a>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════ Action bar ════════ -->
+  <div class="gv-projbar">
+    <div class="gv-projbar__inner">
+      <a class="gv-back" href="index.html"><span data-gv-icon="arrow-left"></span> Back to projects</a>
+      <span class="gv-projbar__spacer"></span>
+      <button class="gv-btn white size-s" id="followBtn" aria-pressed="false" style="padding:8px 16px">
+        <span data-gv-icon="bookmark-outline" aria-hidden="true"></span> <span id="followLabel">Follow (218)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ════════ Banner ════════ -->
+  <section class="gv-banner" aria-label="Project banner">
+    <div class="gv-banner__art">
+      <span class="gv-banner__cast" role="img" aria-label="Park bench under trees">🌳🪑</span>
+      <span class="gv-banner__sticker">HAVE YOUR SAY</span>
+    </div>
+  </section>
+
+  <main class="gv-wrap">
+
+    <!-- ════════ Title + description + participants ════════ -->
+    <div class="gv-projhead">
+      <div>
+        <div class="gv-projhead__title">
+          <h1>Reimagine Gellert Square</h1>
+          <span class="gv-chip"><span data-gv-icon="location-simple" aria-hidden="true"></span> District 4</span>
+        </div>
+        <div class="gv-prose">
+          <p>Gellert Square is getting a full redesign next year, and we want it shaped by the people who use it. There are <strong>three ways to take part — and they're all open right now.</strong> Pick whichever fits the time you have.</p>
+        </div>
+      </div>
+
+      <aside class="gv-projhead__aside">
+        <div class="gv-avatars on-light" aria-hidden="true">
+          <span class="av" style="background:#f1a3c2"></span>
+          <span class="av" style="background:#a3c2f1"></span>
+          <span class="av" style="background:#c2f1a3"></span>
+          <span class="count">218</span>
+        </div>
+        <div class="gv-pcount">218 participants<span>people contributing so far</span></div>
+        <p class="gv-deadline"><span class="gv-icon" data-gv-icon="clock" aria-hidden="true"></span> All three close in <strong>&nbsp;3 weeks</strong></p>
+      </aside>
+    </div>
+
+    <!-- ════════ PARALLEL METHODS ════════ -->
+    <section class="pp" aria-labelledby="ppTitle">
+      <div class="pp__intro">
+        <div>
+          <h2 id="ppTitle">Three ways to take part</h2>
+          <p>Usually a project asks one thing at a time. Here, the survey, the idea wall, and the budget vote are <strong>all open at once</strong> — do one, or do all three, in any order.</p>
+        </div>
+        <span class="pp__live"><span class="dot" aria-hidden="true"></span> All open now</span>
+      </div>
+
+      <!-- method strip = tablist -->
+      <div class="pp__strip" role="tablist" aria-label="Ways to take part">
+        <button class="pp-tab" role="tab" id="tab-survey" aria-selected="true" aria-controls="panel-survey">
+          <span class="pp-tab__top">
+            <span class="pp-tab__icon" aria-hidden="true"><span data-gv-icon="survey"></span></span>
+            <span>
+              <span class="pp-tab__name">Quick survey</span><br>
+              <span class="pp-tab__meta">3 questions · ~2 min</span>
+            </span>
+          </span>
+          <span class="pp-tab__status" id="status-survey"><span class="gv-icon" data-gv-icon="clock" aria-hidden="true"></span> Not started</span>
+        </button>
+
+        <button class="pp-tab" role="tab" id="tab-ideas" aria-selected="false" aria-controls="panel-ideas" tabindex="-1">
+          <span class="pp-tab__top">
+            <span class="pp-tab__icon" aria-hidden="true"><span data-gv-icon="idea"></span></span>
+            <span>
+              <span class="pp-tab__name">Share an idea</span><br>
+              <span class="pp-tab__meta"><span id="ideaCount">34</span> ideas · open to all</span>
+            </span>
+          </span>
+          <span class="pp-tab__status"><span class="gv-icon" data-gv-icon="comment" aria-hidden="true"></span> Add yours</span>
+        </button>
+
+        <button class="pp-tab" role="tab" id="tab-vote" aria-selected="false" aria-controls="panel-vote" tabindex="-1">
+          <span class="pp-tab__top">
+            <span class="pp-tab__icon" aria-hidden="true"><span data-gv-icon="basket"></span></span>
+            <span>
+              <span class="pp-tab__name">Vote the budget</span><br>
+              <span class="pp-tab__meta">€250k · pick up to 3</span>
+            </span>
+          </span>
+          <span class="pp-tab__status" id="status-vote"><span class="gv-icon" data-gv-icon="basket" aria-hidden="true"></span> Cast your vote</span>
+        </button>
+      </div>
+
+      <!-- ─── Panel: Survey ─── -->
+      <div class="pp-panel" id="panel-survey" role="tabpanel" aria-labelledby="tab-survey" tabindex="0">
+        <form id="surveyForm" novalidate>
+          <div class="pp-panel__head"><h3>Quick survey</h3></div>
+          <p class="pp-panel__lead">A couple of quick questions about how you use the square today. Takes about two minutes.</p>
+
+          <div class="pp-q" id="q1">
+            <span class="pp-q__label">1. How often do you visit Gellert Square? <span class="pp-q__req" aria-hidden="true">*</span></span>
+            <div class="pp-scale" role="radiogroup" aria-label="How often do you visit Gellert Square?" aria-required="true">
+              <input type="radio" name="q1" id="q1-1" value="1"><label for="q1-1">1<small>Never</small></label>
+              <input type="radio" name="q1" id="q1-2" value="2"><label for="q1-2">2</label>
+              <input type="radio" name="q1" id="q1-3" value="3"><label for="q1-3">3</label>
+              <input type="radio" name="q1" id="q1-4" value="4"><label for="q1-4">4</label>
+              <input type="radio" name="q1" id="q1-5" value="5"><label for="q1-5">5<small>Daily</small></label>
+            </div>
+            <p class="pp-fielderr" id="q1-err"><span data-gv-icon="alert-circle" aria-hidden="true"></span> Please pick a number to continue.</p>
+          </div>
+
+          <div class="pp-q" id="q2">
+            <span class="pp-q__label">2. What should the redesign prioritise most? <span class="pp-q__req" aria-hidden="true">*</span></span>
+            <div class="pp-options" role="radiogroup" aria-label="What should the redesign prioritise most?" aria-required="true">
+              <label class="pp-opt"><input type="radio" name="q2" value="green"> More greenery &amp; shade</label>
+              <label class="pp-opt"><input type="radio" name="q2" value="seating"> More seating &amp; quiet corners</label>
+              <label class="pp-opt"><input type="radio" name="q2" value="play"> A bigger play area for kids</label>
+              <label class="pp-opt"><input type="radio" name="q2" value="events"> Space for markets &amp; events</label>
+            </div>
+            <p class="pp-fielderr" id="q2-err"><span data-gv-icon="alert-circle" aria-hidden="true"></span> Please choose one option to continue.</p>
+          </div>
+
+          <div class="pp-q">
+            <label class="pp-q__label" for="q3">3. Anything else we should know? <span style="font-weight:500;color:var(--gv-text-secondary)">(optional)</span></label>
+            <textarea class="gv-textarea" id="q3" name="q3" rows="3" placeholder="Type your answer…"></textarea>
+          </div>
+
+          <div class="pp-actions">
+            <button class="gv-btn primary size-m" type="submit" id="surveySubmit"><span class="gv-btn__label">Submit survey</span></button>
+            <span class="pp-formnote">Your answers are anonymous.</span>
+          </div>
+        </form>
+
+        <div class="pp-success" id="surveySuccess" role="status">
+          <div class="pp-success__icon" aria-hidden="true">✓</div>
+          <h4>Thanks — your survey is in.</h4>
+          <p>That's one of three done. The idea wall and the budget vote are still open if you'd like to keep going.</p>
+          <button class="gv-btn primary-outlined size-m" type="button" data-goto="ideas">Share an idea next <span class="gv-icon" data-gv-icon="arrow-right" aria-hidden="true"></span></button>
+        </div>
+      </div>
+
+      <!-- ─── Panel: Ideas ─── -->
+      <div class="pp-panel" id="panel-ideas" role="tabpanel" aria-labelledby="tab-ideas" tabindex="0" hidden>
+        <div class="pp-panel__head"><h3>Share an idea</h3></div>
+        <p class="pp-panel__lead">Post your own idea for the square, and react to what others have suggested. Every idea is read by the project team.</p>
+
+        <form class="pp-postcard" id="ideaForm" novalidate>
+          <label class="gv-label" for="ideaTitle">Idea title</label>
+          <input class="gv-input" id="ideaTitle" name="ideaTitle" maxlength="80" placeholder="e.g. A drinking fountain by the playground" />
+          <label class="gv-label" for="ideaText">Describe it briefly</label>
+          <textarea class="gv-textarea" id="ideaText" name="ideaText" rows="3" placeholder="What's the idea, and why would it help?"></textarea>
+          <div class="pp-actions" style="margin-top:14px">
+            <button class="gv-btn primary size-m" type="submit" id="ideaSubmit" disabled><span class="gv-btn__label">Post idea</span></button>
+            <span class="pp-formnote">Posting as <strong>Mara</strong>.</span>
+          </div>
+        </form>
+
+        <div class="pp-ideas" id="ideaList">
+          <article class="pp-idea">
+            <div class="pp-vote" data-score="28">
+              <button class="up" aria-label="Agree with this idea" aria-pressed="false"><span data-gv-icon="vote-up"></span></button>
+              <span class="score">28</span>
+              <button class="down" aria-label="Disagree with this idea" aria-pressed="false"><span data-gv-icon="vote-down"></span></button>
+            </div>
+            <div class="pp-idea__body">
+              <h4 class="pp-idea__title">Shade trees along the south edge</h4>
+              <p class="pp-idea__text">The benches by the south wall are unusable in summer — there's no shade at all. A row of trees would make it the nicest spot in the square.</p>
+              <div class="pp-idea__meta">
+                <span class="m"><span data-gv-icon="user" aria-hidden="true"></span> Jonas</span>
+                <span class="m"><span data-gv-icon="comment" aria-hidden="true"></span> 6 comments</span>
+                <span class="m">2 days ago</span>
+              </div>
+            </div>
+          </article>
+          <article class="pp-idea">
+            <div class="pp-vote" data-score="19">
+              <button class="up" aria-label="Agree with this idea" aria-pressed="false"><span data-gv-icon="vote-up"></span></button>
+              <span class="score">19</span>
+              <button class="down" aria-label="Disagree with this idea" aria-pressed="false"><span data-gv-icon="vote-down"></span></button>
+            </div>
+            <div class="pp-idea__body">
+              <h4 class="pp-idea__title">A small stage for weekend markets</h4>
+              <p class="pp-idea__text">A simple raised platform would let local musicians and the farmers' market use the space on weekends without blocking the paths.</p>
+              <div class="pp-idea__meta">
+                <span class="m"><span data-gv-icon="user" aria-hidden="true"></span> Priya</span>
+                <span class="m"><span data-gv-icon="comment" aria-hidden="true"></span> 3 comments</span>
+                <span class="m">4 days ago</span>
+              </div>
+            </div>
+          </article>
+          <article class="pp-idea">
+            <div class="pp-vote" data-score="11">
+              <button class="up" aria-label="Agree with this idea" aria-pressed="false"><span data-gv-icon="vote-up"></span></button>
+              <span class="score">11</span>
+              <button class="down" aria-label="Disagree with this idea" aria-pressed="false"><span data-gv-icon="vote-down"></span></button>
+            </div>
+            <div class="pp-idea__body">
+              <h4 class="pp-idea__title">Better lighting on the east path</h4>
+              <p class="pp-idea__text">It's pitch dark after sunset and feels unsafe walking through. Low-level path lighting would make a big difference.</p>
+              <div class="pp-idea__meta">
+                <span class="m"><span data-gv-icon="user" aria-hidden="true"></span> Sam</span>
+                <span class="m"><span data-gv-icon="comment" aria-hidden="true"></span> 2 comments</span>
+                <span class="m">5 days ago</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <!-- ─── Panel: Vote ─── -->
+      <div class="pp-panel" id="panel-vote" role="tabpanel" aria-labelledby="tab-vote" tabindex="0" hidden>
+        <div class="pp-panel__head"><h3>Vote the budget</h3></div>
+        <p class="pp-panel__lead">The city has set aside <strong>€250,000</strong> for the square. Pick the up-to-three improvements you'd most like funded.</p>
+
+        <div class="pp-votehead">
+          <span class="pp-counter" id="voteCounter" aria-live="polite">0 of 3 selected</span>
+        </div>
+
+        <form id="voteForm">
+          <div class="pp-budget" id="budgetList">
+            <div class="pp-bud" data-id="trees">
+              <span class="pp-bud__art" aria-hidden="true">🌳</span>
+              <div><p class="pp-bud__name">Plant 40 shade trees</p><span class="pp-bud__cost">€60,000</span></div>
+              <button type="button" class="gv-btn primary-outlined size-s pp-bud__btn" aria-pressed="false">Select</button>
+            </div>
+            <div class="pp-bud" data-id="play">
+              <span class="pp-bud__art" aria-hidden="true">🛝</span>
+              <div><p class="pp-bud__name">New play area</p><span class="pp-bud__cost">€90,000</span></div>
+              <button type="button" class="gv-btn primary-outlined size-s pp-bud__btn" aria-pressed="false">Select</button>
+            </div>
+            <div class="pp-bud" data-id="lighting">
+              <span class="pp-bud__art" aria-hidden="true">💡</span>
+              <div><p class="pp-bud__name">Path lighting</p><span class="pp-bud__cost">€35,000</span></div>
+              <button type="button" class="gv-btn primary-outlined size-s pp-bud__btn" aria-pressed="false">Select</button>
+            </div>
+            <div class="pp-bud" data-id="stage">
+              <span class="pp-bud__art" aria-hidden="true">🎪</span>
+              <div><p class="pp-bud__name">Market stage</p><span class="pp-bud__cost">€45,000</span></div>
+              <button type="button" class="gv-btn primary-outlined size-s pp-bud__btn" aria-pressed="false">Select</button>
+            </div>
+            <div class="pp-bud" data-id="fountain">
+              <span class="pp-bud__art" aria-hidden="true">⛲</span>
+              <div><p class="pp-bud__name">Drinking fountain &amp; refill point</p><span class="pp-bud__cost">€20,000</span></div>
+              <button type="button" class="gv-btn primary-outlined size-s pp-bud__btn" aria-pressed="false">Select</button>
+            </div>
+          </div>
+
+          <div class="pp-actions" style="margin-top:20px">
+            <button class="gv-btn primary size-m" type="submit" id="voteSubmit" disabled><span class="gv-btn__label">Submit my vote</span></button>
+            <span class="pp-formnote" id="voteNote">Select at least one option.</span>
+          </div>
+        </form>
+
+        <div class="pp-success" id="voteSuccess" role="status">
+          <div class="pp-success__icon" aria-hidden="true">✓</div>
+          <h4>Your vote is counted.</h4>
+          <p>Thanks for helping decide how the budget is spent. Results will be shared with everyone once voting closes.</p>
+          <button class="gv-btn primary-outlined size-m" type="button" data-goto="survey">Back to the survey</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ Accordion ════════ -->
+    <div class="gv-accordion">
+      <details class="gv-acc__item" open>
+        <summary class="gv-acc__head">
+          <span class="gv-acc__q">Why are all three open at the same time?</span>
+          <span class="gv-acc__chev gv-icon" data-gv-icon="chevron-down" aria-hidden="true"></span>
+        </summary>
+        <div class="gv-acc__body">
+          <p>Different people have different amounts of time and different things to say. Some want to answer a quick survey, some have a specific idea, and some just want to weigh in on where the money goes. Running all three together means you can take part in whatever way suits you — without waiting for a separate phase.</p>
+        </div>
+      </details>
+      <details class="gv-acc__item">
+        <summary class="gv-acc__head">
+          <span class="gv-acc__q">Do I have to do all three?</span>
+          <span class="gv-acc__chev gv-icon" data-gv-icon="chevron-down" aria-hidden="true"></span>
+        </summary>
+        <div class="gv-acc__body">
+          <p>Not at all. Any one of them is a real contribution. The card at the top tracks what you've done so you can pick up where you left off.</p>
+        </div>
+      </details>
+      <details class="gv-acc__item">
+        <summary class="gv-acc__head">
+          <span class="gv-acc__q">What happens with my input?</span>
+          <span class="gv-acc__chev gv-icon" data-gv-icon="chevron-down" aria-hidden="true"></span>
+        </summary>
+        <div class="gv-acc__body">
+          <p>The project team reads every idea and survey answer, and the budget vote directly shapes the shortlist the city council reviews. We'll publish a summary back here once participation closes.</p>
+        </div>
+      </details>
+    </div>
+  </main>
+
+  <!-- ════════ Footer ════════ -->
+  <footer class="gv-footer" style="margin-top:48px">
+    <div class="gv-footer__inner">
+      <div class="gv-footer__logo" data-gv-logo></div>
+      <nav class="gv-footer__links" aria-label="Legal">
+        <a href="#">Terms and conditions</a>
+        <a href="#">Privacy policy</a>
+        <a href="#">Cookie policy</a>
+        <a href="#">Accessibility statement</a>
+        <a href="#">Cookie settings</a>
+        <a href="#">Site map</a>
+      </nav>
+      <div class="gv-footer__powered">
+        <span>Powered by</span>
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal (formerly CitizenLab)">
+          <img class="gv-powered-logo" src="govocal-logo.svg" alt="Go Vocal" />
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- toast -->
+  <div class="pp-toast" id="toast" role="status" aria-live="polite"><span class="gv-icon" data-gv-icon="check-circle" aria-hidden="true"></span> <span id="toastMsg">Saved</span></div>
+
+  <script src="govocal-cookies.js" defer></script>
+  <script>
+    // ── Toast helper ───────────────────────────────────────────────────────────
+    const toast = document.getElementById("toast"), toastMsg = document.getElementById("toastMsg");
+    let toastT;
+    function showToast(msg) {
+      toastMsg.textContent = msg; toast.classList.add("show");
+      clearTimeout(toastT); toastT = setTimeout(() => toast.classList.remove("show"), 3200);
+    }
+
+    // ── Tabs (parallel methods) ──────────────────────────────────────────────────
+    const tabs = Array.from(document.querySelectorAll(".pp-tab"));
+    const panels = { survey: "panel-survey", ideas: "panel-ideas", vote: "panel-vote" };
+    function activate(key, focusPanel) {
+      tabs.forEach(t => {
+        const on = t.id === "tab-" + key;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        t.tabIndex = on ? 0 : -1;
+      });
+      Object.entries(panels).forEach(([k, id]) => document.getElementById(id).hidden = (k !== key));
+      if (focusPanel) document.getElementById(panels[key]).focus();
+    }
+    tabs.forEach((t, i) => {
+      t.addEventListener("click", () => activate(t.id.replace("tab-", "")));
+      // Cheap roving arrow-key support between tabs
+      t.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+        e.preventDefault();
+        const dir = e.key === "ArrowRight" ? 1 : -1;
+        const next = tabs[(i + dir + tabs.length) % tabs.length];
+        activate(next.id.replace("tab-", "")); next.focus();
+      });
+    });
+    // "go to next method" buttons inside success states
+    document.querySelectorAll("[data-goto]").forEach(b =>
+      b.addEventListener("click", () => { activate(b.dataset.goto, true); window.scrollTo({ top: document.querySelector(".pp").offsetTop - 70, behavior: "smooth" }); }));
+
+    // ── Survey ───────────────────────────────────────────────────────────────────
+    const surveyForm = document.getElementById("surveyForm");
+    surveyForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const data = new FormData(surveyForm);
+      let ok = true;
+      [["q1","q1-err"],["q2","q2-err"]].forEach(([name, errId]) => {
+        const q = document.getElementById(name === "q1" ? "q1" : "q2");
+        const answered = !!data.get(name);
+        q.classList.toggle("is-invalid", !answered);
+        const group = q.querySelector("[role=radiogroup]");
+        if (group) group.setAttribute("aria-invalid", answered ? "false" : "true");
+        if (!answered) ok = false;
+      });
+      if (!ok) { document.querySelector(".pp-q.is-invalid")?.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
+
+      // loading state
+      const btn = document.getElementById("surveySubmit");
+      btn.classList.add("processing"); btn.disabled = true;
+      btn.insertAdjacentHTML("beforeend", '<span class="gv-spinner sm"></span>');
+      setTimeout(() => {
+        surveyForm.hidden = true;
+        document.getElementById("surveySuccess").classList.add("show");
+        const s = document.getElementById("status-survey");
+        s.innerHTML = '<span class="gv-icon" data-gv-icon="check-circle" aria-hidden="true"></span> Completed';
+        document.getElementById("tab-survey").classList.add("is-done");
+        if (window.GVIcons) window.GVIcons.render();
+        showToast("Survey submitted — thank you!");
+      }, 750);
+    });
+    // clear a field error as soon as it's answered
+    surveyForm.addEventListener("change", (e) => {
+      if (e.target.name === "q1") document.getElementById("q1").classList.remove("is-invalid");
+      if (e.target.name === "q2") document.getElementById("q2").classList.remove("is-invalid");
+    });
+
+    // ── Ideation ─────────────────────────────────────────────────────────────────
+    const ideaForm = document.getElementById("ideaForm");
+    const ideaTitle = document.getElementById("ideaTitle");
+    const ideaText = document.getElementById("ideaText");
+    const ideaSubmit = document.getElementById("ideaSubmit");
+    const ideaList = document.getElementById("ideaList");
+    const ideaCountEl = document.getElementById("ideaCount");
+    function syncIdeaSubmit() { ideaSubmit.disabled = !(ideaTitle.value.trim() && ideaText.value.trim()); }
+    ideaTitle.addEventListener("input", syncIdeaSubmit);
+    ideaText.addEventListener("input", syncIdeaSubmit);
+
+    ideaForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (ideaSubmit.disabled) return;
+      ideaSubmit.classList.add("processing"); ideaSubmit.disabled = true;
+      ideaSubmit.insertAdjacentHTML("beforeend", '<span class="gv-spinner sm"></span>');
+      const title = ideaTitle.value.trim(), text = ideaText.value.trim();
+      setTimeout(() => {
+        const art = document.createElement("article");
+        art.className = "pp-idea is-new";
+        art.innerHTML = `
+          <div class="pp-vote" data-score="1">
+            <button class="up" aria-label="Agree with this idea" aria-pressed="true"><span data-gv-icon="vote-up"></span></button>
+            <span class="score">1</span>
+            <button class="down" aria-label="Disagree with this idea" aria-pressed="false"><span data-gv-icon="vote-down"></span></button>
+          </div>
+          <div class="pp-idea__body">
+            <h4 class="pp-idea__title"></h4>
+            <p class="pp-idea__text"></p>
+            <div class="pp-idea__meta">
+              <span class="m"><span data-gv-icon="user" aria-hidden="true"></span> You</span>
+              <span class="m"><span data-gv-icon="comment" aria-hidden="true"></span> 0 comments</span>
+              <span class="m">Just now</span>
+            </div>
+          </div>`;
+        art.querySelector(".pp-idea__title").textContent = title;   // textContent = no HTML injection
+        art.querySelector(".pp-idea__text").textContent = text;
+        ideaList.prepend(art);
+        ideaCountEl.textContent = String(parseInt(ideaCountEl.textContent, 10) + 1);
+        ideaForm.reset(); syncIdeaSubmit();
+        ideaSubmit.classList.remove("processing");
+        ideaSubmit.querySelector(".gv-spinner")?.remove();
+        if (window.GVIcons) window.GVIcons.render();
+        showToast("Your idea is posted.");
+      }, 750);
+    });
+
+    // up/down voting (event-delegated; mutually exclusive)
+    ideaList.addEventListener("click", (e) => {
+      const btn = e.target.closest(".pp-vote button"); if (!btn) return;
+      const box = btn.closest(".pp-vote"), score = box.querySelector(".score");
+      const up = box.querySelector(".up"), down = box.querySelector(".down");
+      let base = parseInt(box.dataset.score, 10);
+      const isUp = btn.classList.contains("up");
+      const wasUp = up.getAttribute("aria-pressed") === "true";
+      const wasDown = down.getAttribute("aria-pressed") === "true";
+      // reset both, then apply the toggled one
+      up.setAttribute("aria-pressed", "false"); down.setAttribute("aria-pressed", "false");
+      let delta = 0;
+      if (isUp && !wasUp) { up.setAttribute("aria-pressed", "true"); delta = 1; }
+      else if (!isUp && !wasDown) { down.setAttribute("aria-pressed", "true"); delta = -1; }
+      score.textContent = String(base + delta);
+    });
+
+    // ── Voting (approval, max 3) ─────────────────────────────────────────────────
+    const MAX = 3;
+    const budgetList = document.getElementById("budgetList");
+    const counter = document.getElementById("voteCounter");
+    const voteSubmit = document.getElementById("voteSubmit");
+    const voteNote = document.getElementById("voteNote");
+    const voteForm = document.getElementById("voteForm");
+    function picked() { return Array.from(budgetList.querySelectorAll('[aria-pressed="true"]')); }
+    function syncVote() {
+      const n = picked().length;
+      counter.textContent = `${n} of ${MAX} selected`;
+      counter.classList.toggle("full", n >= MAX);
+      voteSubmit.disabled = n === 0;
+      voteNote.textContent = n === 0 ? "Select at least one option." : (n >= MAX ? "That's the maximum — deselect one to swap." : `You can pick ${MAX - n} more.`);
+      // disable unselected options' buttons when full (a real "max reached" state)
+      budgetList.querySelectorAll(".pp-bud").forEach(row => {
+        const b = row.querySelector(".pp-bud__btn");
+        const on = b.getAttribute("aria-pressed") === "true";
+        b.disabled = (n >= MAX && !on);
+      });
+    }
+    budgetList.addEventListener("click", (e) => {
+      const b = e.target.closest(".pp-bud__btn"); if (!b || b.disabled) return;
+      const on = b.getAttribute("aria-pressed") === "true";
+      b.setAttribute("aria-pressed", String(!on));
+      b.textContent = !on ? "Selected ✓" : "Select";
+      b.classList.toggle("primary", !on); b.classList.toggle("primary-outlined", on);
+      b.closest(".pp-bud").classList.toggle("is-picked", !on);
+      syncVote();
+    });
+    voteForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (voteSubmit.disabled) return;
+      voteSubmit.classList.add("processing"); voteSubmit.disabled = true;
+      voteSubmit.insertAdjacentHTML("beforeend", '<span class="gv-spinner sm"></span>');
+      setTimeout(() => {
+        voteForm.hidden = true;
+        document.getElementById("voteSuccess").classList.add("show");
+        const s = document.getElementById("status-vote");
+        s.innerHTML = '<span class="gv-icon" data-gv-icon="check-circle" aria-hidden="true"></span> Voted';
+        document.getElementById("tab-vote").classList.add("is-done");
+        if (window.GVIcons) window.GVIcons.render();
+        showToast("Your budget vote is counted.");
+      }, 750);
+    });
+
+    // ── Follow toggle ────────────────────────────────────────────────────────────
+    let following = false, fcount = 218;
+    const followBtn = document.getElementById("followBtn"), followLabel = document.getElementById("followLabel");
+    followBtn.addEventListener("click", () => {
+      following = !following; fcount += following ? 1 : -1;
+      followLabel.textContent = following ? `Following (${fcount})` : `Follow (${fcount})`;
+      followBtn.setAttribute("aria-pressed", String(following));
+      followBtn.querySelector("[data-gv-icon]")?.setAttribute("data-gv-icon", following ? "bookmark" : "bookmark-outline");
+      if (window.GVIcons) window.GVIcons.render();
+    });
+  </script>
+</body>
+</html>
