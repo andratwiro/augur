@@ -59,6 +59,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Login Modal** | `/components/login-modal/` | `components/login-modal/` | The reusable modal abstraction (overlay → dialog card → title header + top-right close + scrollable body), shown via GoVocal’s real “Before you participate” au… |
 | **Phase Timeline** | `/components/phase-timeline/` | `components/phase-timeline/` | Phase timeline — GoVocal component |
 | **Project Card** | `/components/project-card/` | `components/project-card/` | The participation-project card (thumb, title, meta with status icon, CTA) and the horizontal scroll rail. The whole card is clickable via a stretched title lin… |
+| **Survey Fields** | `/components/survey-fields/` | `components/survey-fields/` | The GoVocal input-form / survey field widgets — every question type, themeable via --gv-* . One shared source: govocal-survey.css + govocal-survey.js . Rendere… |
 
 ## Pages (screens) — `pages/<name>/`
 
@@ -67,7 +68,6 @@ as a starting point for a prototype.
 
 | Page | Open | Source | What it is |
 |---|---|---|---|
-| **Hello World** | `/pages/hello-world/` | `pages/hello-world/` | Hello world — GoVocal reference page |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Wien mitgestalten — GoVocal homepage (reference) |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
 | **Project Page** | `/pages/project-page/` | `pages/project-page/` | Project page — GoVocal (reference) |

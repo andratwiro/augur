@@ -44,7 +44,7 @@ def walk(vp,w,h):
         for i in range(11):
             pg.wait_for_timeout(250)
             pg.screenshot(path=f"{OUT}/{vp}-{i:02d}.png", full_page=True)
-            nxt=pg.locator("#sv-next")
+            nxt=pg.locator(".sv-next")
             if nxt.count()==0 or not nxt.is_visible(): break
             fill_gates(pg); pg.wait_for_timeout(150)
             if nxt.get_attribute("aria-disabled")=="true":

@@ -31,6 +31,7 @@ project brain. Match its vocabulary when labelling components.
 |---|---|
 | `govocal-tokens.css` | Design tokens as CSS custom properties (`--gv-*`): full palette, type scale, radius (3px), shadows, focus, tenant colours. |
 | `govocal-ui.css` | Component classes (`.gv-btn`, `.gv-input`, `.gv-checkbox`, …) built on the tokens. |
+| `govocal-survey.css` + `govocal-survey.js` | The **survey field kit**: every input-form question type (rating, ranking, linear/sentiment scale, image-select, matrix, map, file/shapefile, …) + the page-by-page runner. `GVSurvey.field({type,…})` renders one widget; `GVSurvey.mount(el, FORM)` renders a whole survey. Built on the gv-* primitives; themeable. Demo: `components/survey-fields/`; used by the Input Form page. |
 | `govocal-themes.js` | `?theme=` per-city colour + **font** switcher + on-screen picker + per-city logos. |
 | `govocal-icons.js` | The real **GoVocal icon set** (64-icon curated subset, transcribed verbatim from the repo). Drop in, then `<span data-gv-icon="vote-up"></span>` → inline `<svg class="gv-icon">` that inherits text colour + size. |
 | `govocal-logo.svg` | The real **go·vocal** wordmark (footer “powered by” attribution). Muted grey; use as `<img>`. |

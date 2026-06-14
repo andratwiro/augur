@@ -354,6 +354,42 @@ numbered circle. The stepper is `role="tablist"`, each phase a `role="tab"`.
 ```
 - Switching phases (click a tab / prev-next) is JS in the page; the component is the markup + `.gv-*` styling. Current = green (`--gv-green-500`); chevrons via `clip-path`.
 
+## Survey fields — `govocal-survey.css` + `govocal-survey.js` (`components/survey-fields/`)
+
+The input-form / survey question types, as ONE shared, themeable kit (its own
+stylesheet + JS engine on top of the gv-* primitives — not folded into govocal-ui.css).
+Demo: `components/survey-fields/`; the whole runner powers the **Input Form** page.
+
+Copy `govocal-tokens.css`, `govocal-ui.css`, `govocal-survey.css`, `govocal-survey.js`
+into the prototype, then:
+
+```html
+<link rel="stylesheet" href="govocal-survey.css" />
+<script src="govocal-survey.js" defer></script>
+
+<!-- A) one field widget anywhere (recall just a matrix, ranking, rating, …) -->
+<div id="q"></div>
+<script>
+  document.getElementById('q').innerHTML = GVSurvey.field({
+    type: 'matrix', label: 'Please rate the following aspects',
+    scale: ['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'],
+    statements: ['The park should prioritize quiet natural areas.', 'I’d prefer a fenced playground.']
+  });
+</script>
+
+<!-- B) a whole page-by-page survey (wizard + progress + gating) -->
+<main class="sv-wrap"><div id="survey"></div></main>
+<script>
+  GVSurvey.mount(document.getElementById('survey'), { pages: [ /* …FORM… */ ] }, { title: 'Survey' });
+</script>
+```
+
+Field `type` ∈ `text · multiline_text · number · select · multiselect · rating ·
+ranking · linear_scale · sentiment · multiselect_image · matrix · map · file_upload ·
+shapefile_upload`. `gate:true` marks the types that block Next until answered
+(rating/scale/sentiment/matrix — the real runner's behaviour). Every colour/font is a
+`--gv-*` token, so fields re-skin per city via `?theme=`.
+
 ## Cookie consent — `govocal-cookies.js` (resident-facing, required)
 
 **Rule:** every resident / participant-facing prototype shows this first, in English

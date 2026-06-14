@@ -57,8 +57,15 @@ re-litigation. Three threads, interlocking:
     polygon/page). Themeable `--gv-*`, mobile-first (matrix stacks), reproduces the real
     "Next gates on scale/rating/matrix" behaviour. Verified vs real screenshots
     (`scripts/shoot-input-form.py`) + `npm run audit` (pass). Maps use a static
-    placeholder (not live Esri). Next: promote the field renderers into canonical
-    `components/<name>/` so prototypes can pull individual field types.
+    placeholder (not live Esri).
+  - **Survey field kit promoted to a Component (done 2026-06-14):** the field renderers
+    were extracted out of the page into a shared, themeable kit —
+    `skills/govocal-ui/govocal-survey.css` + `govocal-survey.js` (one source of truth, no
+    per-field CSS duplication). `GVSurvey.field({type,…})` recalls a single widget
+    (matrix, ranking, rating, …); `GVSurvey.mount(el, FORM)` renders a whole survey.
+    Catalogued on the Components tab (`components/survey-fields/`), in `manifest.md`,
+    `components.md`, the govocal-ui SKILL, and `LIBRARY.md`. The Input Form page now
+    consumes the kit (verified pixel-identical + audit pass), proving the reuse.
   - **Pipeline (active):** user exports the real GoVocal page HTML + a screenshot into
     `references/pages/<slug>/` (internal, never ships — see its README). Per page, one at
     a time: **analyze** (map blocks to `LIBRARY.md`, write `notes.md` reuse-list + gaps)

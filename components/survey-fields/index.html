@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Survey fields — GoVocal component</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <link rel="stylesheet" href="govocal-survey.css" />
+  <script src="govocal-themes.js" defer></script>
+  <script src="govocal-survey.js" defer></script>
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 760px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 6px; color: var(--gv-text-secondary); font-size: 14px; line-height: 1.55; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 30px 0 2px; }
+    .stage { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 8px 22px 22px; }
+    .notes { margin-top: 30px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root">
+  <div class="demo">
+    <h1>Survey fields</h1>
+    <p class="sub">The GoVocal input-form / survey field widgets — every question type, themeable via
+      <code>--gv-*</code>. One shared source: <code>govocal-survey.css</code> + <code>govocal-survey.js</code>.
+      Rendered below from a field object via <code>GVSurvey.field({type, …})</code>. The full page-by-page
+      runner (wizard, progress, gating) is <code>GVSurvey.mount()</code> — see the <b>Input Form</b> page.</p>
+
+    <div id="catalog"></div>
+
+    <div class="notes">
+      <p><b>Reuse one field type anywhere</b> (e.g. a matrix or ranking question):</p>
+      <p>1. Copy <code>govocal-tokens.css</code>, <code>govocal-ui.css</code>, <code>govocal-survey.css</code>
+        and <code>govocal-survey.js</code> into your prototype.<br>
+        2. <code>el.innerHTML = GVSurvey.field({ type:'matrix', label:'…', scale:[…], statements:[…] })</code>
+        — or build a whole survey with <code>GVSurvey.mount(el, FORM)</code>.</p>
+      <p>Field types: <code>text · multiline_text · number · select · multiselect · rating · ranking ·
+        linear_scale · sentiment · multiselect_image · matrix · map · file_upload · shapefile_upload</code>.
+        Colours/fonts are tokens, so every field re-skins per city via <code>?theme=</code>.</p>
+    </div>
+  </div>
+
+  <script>
+  // One example field per type — rendered with the shared GVSurvey.field() renderer.
+  var FIELDS = [
+    ['Single choice (select)',        { type:'select', label:'How often do you visit the park?', options:['Daily','A few times a week','Weekly','Rarely','Never'] }],
+    ['Multi choice (multiselect)',    { type:'multiselect', label:'What activities do you enjoy?', desc:'Select all that apply', options:['Walking','Picnicking','Playing sports','Dog walking'] }],
+    ['Short text',                    { type:'text', label:'What’s the first word that comes to mind?' }],
+    ['Long text (multiline)',         { type:'multiline_text', label:'What improvements would you like to see?' }],
+    ['Number',                        { type:'number', label:'How many in your household visit the park?' }],
+    ['Rating (stars)',                { type:'rating', label:'Rate your overall experience', desc:'(1 = very poor, 5 = excellent)', max:5 }],
+    ['Linear scale',                  { type:'linear_scale', label:'How important is sustainability?', desc:'(1 = not important, 7 = extremely important)', max:7, minLabel:'not important', maxLabel:'extremely important' }],
+    ['Sentiment scale',               { type:'sentiment', label:'How do you feel about current safety?', faces:['😣','🙁','😐','🙂','😄'], labels:['Very bad','Bad','Ok','Good','Very good'] }],
+    ['Ranking',                       { type:'ranking', label:'Rank these features by importance', desc:'(1 = most important)', options:['Nature & biodiversity','Play & recreation','Safety & lighting','Public restrooms'] }],
+    ['Image select',                  { type:'multiselect_image', label:'Which playground style do you prefer?', desc:'(Select one image)', images:[{src:'img/playground-wooden.jpeg',label:'Natural wooden play structures'},{src:'img/playground-modern.jpeg',label:'Colorful rubberized modern sets'}] }],
+    ['Matrix (statements × scale)',   { type:'matrix', label:'Please rate the following aspects', scale:['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'], statements:['The park should prioritize quiet natural areas.','I’d prefer a fenced playground for safety.','The park should host community events.'] }],
+    ['Map (point / line / polygon)',  { type:'map', shape:'point', label:'Where would you like new bicycle storage?', desc:'Highlight a specific area on the map.' }],
+    ['File upload',                   { type:'file_upload', label:'Share any related documents or photos', desc:'Upload files here' }],
+    ['Shapefile upload',              { type:'shapefile_upload', label:'Upload your Esri shapefile', desc:'For planners / GIS professionals.' }],
+  ];
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var root = document.getElementById('catalog');
+    root.innerHTML = FIELDS.map(function (f) {
+      return '<p class="eyebrow">' + f[0] + '</p><div class="stage">' + GVSurvey.field(f[1]) + '</div>';
+    }).join('');
+    // Minimal glue so the rating stars fill on click (the rest work via native :checked).
+    root.addEventListener('change', function (e) {
+      var wrap = e.target.closest('.sv-rating');
+      if (!wrap) return;
+      var v = +e.target.value;
+      wrap.classList.add('is-set');
+      wrap.querySelectorAll('label').forEach(function (l) { l.classList.toggle('on', +l.dataset.val <= v); });
+    });
+  });
+  </script>
+</body>
+</html>
