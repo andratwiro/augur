@@ -210,11 +210,12 @@ async function reviewApi(request, url, env) {
 }
 
 // ---- Prototype status API (KV-backed) ---------------------------------------
-// One KV value per prototype page path, key "s:<path>", value "in_progress" |
-// "closed". An absent key means the default, "in_progress" — so "closed" is the
-// only value ever stored, and re-opening just deletes the key.
+// One KV value per prototype page path, key "s:<path>". The dev-facing pipeline:
+// "playground" | "in_progress" | "dev_ready" | "shipped" | "parked". An absent key
+// means the default, "in_progress" — so that value is never stored, and returning a
+// prototype to "In progress" just deletes the key.
 
-const STATUSES = ["in_progress", "closed"];
+const STATUSES = ["playground", "in_progress", "dev_ready", "shipped", "parked"];
 
 async function allStatuses(kv) {
   const statuses = {};
@@ -230,7 +231,7 @@ async function allStatuses(kv) {
   return statuses;
 }
 
-// GET /__review/status                  — { statuses: { "<path>": "closed", … } }
+// GET /__review/status                  — { statuses: { "<path>": "dev_ready", … } }
 // POST /__review/status?path=<page>     — body { status } ; persists one prototype.
 async function statusApi(request, url, env) {
   const kv = env.COMMENTS;

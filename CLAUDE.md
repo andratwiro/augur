@@ -198,22 +198,35 @@ The `REVIEW_EXPORT_KEY` is a secret — never paste it into chat (same rule as t
 Cloudflare token). The overlay tag is injected at build time only, so prototype
 source stays clean and Download HTML strips it for a clean dev copy.
 
-## Prototype status — In progress / Closed (and the close → memory roll-up)
+## Prototype dev-status — a pipeline for engineering (and the roll-up to memory)
 
-Each prototype card on its **opportunity index page** carries a status badge —
-**In progress** (default) or **Closed** — that the user toggles by clicking it on
-the live review site. State persists to the same KV the comments use, via the
-worker (`src/_worker.js` → `/__review/status`, keyed `s:<prototype-path>`, gated by
-the site password). `build.js` renders the badge + the `STATUS_JS` toggle into the
-opportunity index shell; default is server-rendered, then corrected from KV on load.
+Each prototype card on its **opportunity index page** carries a **dev-facing status
+badge** that answers the one question a developer asks — *"what do I do with this?"*.
+The user cycles it by clicking on the live review site; it advances through a
+left-to-right pipeline (then loops):
 
-**Closing a prototype is the cue to roll its learnings into `GOVOCAL.md` §13.** When
-the user moves a prototype to **Closed** (or asks you to), treat it as the checkpoint
-to consolidate what we learned building it — product facts, decisions, the user's
-preferences — into `GOVOCAL.md`'s Working knowledge (see "Keeping GOVOCAL.md alive"),
-then commit. The user drives this and will usually ask; `npm run comments` also lists
-which prototypes are currently **Closed** (the export now includes statuses) so you
-can spot any whose learnings aren't captured yet.
+| Status | Colour | Means | Dev reads it as |
+|---|---|---|---|
+| **Playground** | grey | Scratch / playing around | *Ignore — not a real proposal* |
+| **In progress** *(default)* | amber | Real candidate, still being shaped | *Preview it, but don't build — it'll change* |
+| **Dev ready** | green | Design decided — this is the intended build | *This is the spec — build it* |
+| **Shipped** | blue | Built into the real product | *Done — delivered* |
+| **Parked** | rose | Set aside / on hold / won't build for now | *Ignore* |
+
+Colour is **never** the only signal — the badge always carries the text label (1.4.1).
+State persists to the same KV the comments use, via the worker (`src/_worker.js` →
+`/__review/status`, keyed `s:<prototype-path>`, gated by the site password). `build.js`
+renders the badge + the `STATUS_JS` cycle into the opportunity index shell; the default
+(`in_progress`, the absent KV key) is server-rendered, then corrected from KV on load.
+The main carousel's opportunity cards show a read-only count chip per present status.
+
+**Parked or Shipped is the cue to roll learnings into `GOVOCAL.md` §13.** When the
+user moves a prototype to **Parked** (set aside) or **Shipped** (built) — or asks you
+to — treat it as the checkpoint to consolidate what we learned building it: product
+facts, decisions, the user's preferences → `GOVOCAL.md`'s Working knowledge (see
+"Keeping GOVOCAL.md alive"), then commit. The user drives this and will usually ask;
+`npm run comments` lists prototypes by status and flags the Parked/Shipped ones whose
+learnings may not be captured yet.
 
 ## Accessibility — design-level (WCAG 2.2 AA, perceivable parts)
 
