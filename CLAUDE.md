@@ -76,19 +76,24 @@ A design-system skill lives in `skills/govocal-design/`. **Consult it when
 building any prototype** so visuals, components, and tone stay consistent across
 opportunities.
 
-## Accessibility (WCAG 2.2 AA — non-negotiable)
+## Accessibility — design-level (WCAG 2.2 AA, perceivable parts)
 
-GoVocal's real platform is WCAG 2.2 AA certified; prototypes must hold the same bar.
-An accessibility skill lives in `skills/govocal-a11y/`. **Consult it when building or
-modifying any prototype** and:
+Prototypes are **visual guidance**, not the shipping build, so accessibility here is
+scoped to what a mockup actually decides: the *perceivable / visual* layer — **color
+contrast (non-negotiable), use of color, legible type & zoom, target sizes, visible
+focus styling, motion**. Deeper keyboard/ARIA/semantics/focus-management are the **dev
+team's** job on the real GoVocal codebase. Don't over-engineer ARIA into a mockup.
+The skill lives in `skills/govocal-a11y/`. **Consult it when building or modifying any
+prototype** and:
 
-- **Build compliant by default** — apply its patterns as you write markup, don't bolt
-  accessibility on afterward. Flag the user the moment a request hits a known
-  "tripwire" interaction (color-only state, icon-only buttons, custom dropdowns,
-  modals, carousels, drag-and-drop, hover-only reveals, disabled zoom, …).
+- **Build it right visually by default** — apply its checklist as you write markup.
+  Flag the user the moment a request would bake in a *visual* a11y failure (color-only
+  state, links by color alone, low-contrast text, disabled zoom, tiny targets,
+  autoplaying motion, …).
 - **Audit before calling a prototype done / before deploy** — run `npm run audit`
-  (axe-core headless, WCAG 2.2 AA) and **report any violations in chat**. The audit is
-  non-blocking by design (these are prototypes); never silently ship a known violation.
+  (design-level checks: contrast, use-of-color, zoom, target size) and **report
+  results in chat**. Non-blocking; never silently ship a contrast/use-of-color
+  failure. `npm run audit -- --all` runs the full WCAG 2.2 AA set for the dev handoff.
 
 ## Build & deploy
 
