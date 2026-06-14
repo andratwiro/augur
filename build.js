@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.12";
+const UI_VERSION = "0.13";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -458,12 +458,25 @@ const PAGE_CSS = `
     .preview-link { position: absolute; inset: 0; z-index: 2; }
     .opp-meta, .proto-meta { padding: 16px 18px; }
     .proto-meta {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 14px; flex-wrap: wrap;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
     }
+    .proto-text { min-width: 0; flex: 1 1 auto; }
     .proto-name { font-weight: 600; font-size: 16px; letter-spacing: -0.015em; }
     .proto-date { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
-    .proto-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .proto-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+    /* Status badge sits inline in the top-right control cluster, not below the date. */
+    .proto-actions .status-badge { margin-top: 0; }
+    /* Icon-only control (download) — square, matches the kebab button. */
+    .btn-icon {
+      font: inherit; line-height: 1; cursor: pointer; font-size: 18px;
+      width: 36px; height: 36px; min-width: 36px; border-radius: 8px;
+      border: 1px solid var(--line-2); background: transparent; color: var(--fg);
+      display: inline-grid; place-items: center;
+      transition: background .12s ease, border-color .12s ease;
+    }
+    .btn-icon:hover { background: var(--card-hover); border-color: var(--accent); }
+    .btn-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .btn {
       font: inherit; font-size: 13px; font-weight: 500; border-radius: 8px;
       padding: 8px 13px; text-decoration: none; cursor: pointer;
@@ -629,8 +642,6 @@ const PAGE_CSS = `
       .subtitle { font-size: 15px; }
       .carousel { --gutter: 16px; }
       .proto-meta { padding: 14px 16px; }
-      .proto-actions { width: 100%; }
-      .proto-actions .btn { flex: 1 1 auto; justify-content: center; }
       .playground { gap: 14px; padding: 16px; }
       .playground__go { display: none; }
     }
@@ -1420,7 +1431,7 @@ function renderOpportunityIndex(opp) {
   const slides = opp.prototypes
     .map((p) => {
       const download = p.file
-        ? `<button type="button" class="btn ghost" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html">&darr; Download HTML</button>`
+        ? `<button type="button" class="btn-icon" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html" aria-label="Download HTML" title="Download HTML">&darr;</button>`
         : "";
       // KV identity = the absolute path the prototype is served at, matching the
       // comments overlay. Defaults to "In progress"; the STATUS_JS load corrects it.
@@ -1440,13 +1451,12 @@ function renderOpportunityIndex(opp) {
               <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
             </div>
             <div class="proto-meta">
-              <div>
+              <div class="proto-text">
                 <div class="proto-name">${titleCase(p.name)}</div>
                 <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
-                ${status}
               </div>
               <div class="proto-actions">
-                <a class="btn primary" href="${p.href}">Open &rarr;</a>
+                ${status}
                 ${download}
                 ${kebab}
               </div>
@@ -1492,9 +1502,6 @@ function renderPagesIndex(pages) {
           <div class="proto-meta">
             <div class="proto-name">${titleCase(p.name)}</div>
             <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
-            <div class="proto-actions">
-              <a class="btn primary" href="${p.href}">Open &rarr;</a>
-            </div>
           </div>
         </div>`;
     })
@@ -1555,9 +1562,6 @@ function renderComponentsIndex(components) {
           </td>
           <td><div class="comp-name">${titleCase(c.name)}${classes}</div></td>
           <td><div class="comp-desc">${blurb.desc}</div></td>
-          <td class="comp-actions">
-            <a class="btn primary" href="${c.href}">Open &rarr;</a>
-          </td>
         </tr>`;
     })
     .join("");
@@ -1566,7 +1570,7 @@ function renderComponentsIndex(components) {
     title: "Components",
     activeTab: "components",
     body: `<p class="section-eyebrow">Reusable building blocks</p><table class="comp-table">
-      <thead><tr><th>Preview</th><th>Component</th><th>What it is</th><th></th></tr></thead>
+      <thead><tr><th>Preview</th><th>Component</th><th>What it is</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`,
   });
