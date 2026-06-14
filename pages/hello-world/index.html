@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hello world — GoVocal reference page</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <style>
+    body { margin: 0; background: var(--gv-background); min-height: 100vh;
+      display: grid; place-items: center; padding: 32px; }
+    .card { max-width: 480px; text-align: center; }
+  </style>
+</head>
+<body class="gv-root" data-gv-cookies-city="Vienna" data-gv-cookies="always">
+  <div class="gv-card card">
+    <span class="gv-badge" style="color: var(--gv-teal-500)">Sample</span>
+    <h1 class="gv-title h1" style="margin-top:14px;">Hello, world</h1>
+    <p class="gv-text bodyM gv-text--secondary">A minimal resident-facing reference page. It loads the GoVocal
+      tokens, components, the city theme switcher, and the cookie banner — copy this folder to start a new page.</p>
+    <button class="gv-btn primary size-l">Get started</button>
+  </div>
+
+  <script src="govocal-themes.js" defer></script>
+  <script src="govocal-cookies.js" defer></script>
+</body>
+</html>

@@ -82,7 +82,25 @@ Two companion skills, **consult both when building any prototype**:
   and a per-city `?theme=` colour switcher (`govocal-themes.js`). Transcribed from
   `CitizenLabDotCo/citizenlab` (pinned commit). **Never hardcode brand colours** —
   use `var(--gv-tenant-primary|secondary|text)` so cities re-theme via `?theme=`.
-  Copy the three asset files into a prototype folder (prototypes are self-contained).
+  Copy the asset files into a prototype folder (prototypes are self-contained):
+  `govocal-tokens.css`, `govocal-ui.css`, `govocal-themes.js`, and — on
+  resident-facing prototypes — `govocal-cookies.js` (see the cookie rule below).
+
+## Cookie consent — resident/participant-facing prototypes (required)
+
+For realism, **every prototype that touches the resident / participant experience
+must show the GoVocal cookie-consent dialog first** (the modal with **Edit /
+Decline / Accept**). It is part of the real first-load experience, so a prototype
+without it reads as fake.
+
+- **In English.** Title `Your cookie settings — <City>`, Edit / Decline / Accept.
+- **How:** copy `skills/govocal-ui/govocal-cookies.js` into the prototype folder and
+  add `<script src="govocal-cookies.js" defer></script>` near the end of `<body>`.
+  Set the city with `<body data-gv-cookies-city="Vienna">`. It auto-shows on load
+  (once per browser; use `data-gv-cookies="always"` to always show for review,
+  `…="off"` to disable). Themes with `--gv-tenant-primary`.
+- **Backend / admin prototypes:** **skip it** — no cookie banner needed.
+- When a request is for a resident-facing screen and omits this, add it by default.
 
 ## Review comments (how to read reviewer feedback)
 

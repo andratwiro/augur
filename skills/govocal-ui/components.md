@@ -151,6 +151,26 @@ Filled status pill; set the background via `--bg`.
 <hr class="gv-divider" />
 ```
 
+## Cookie consent — `govocal-cookies.js` (resident-facing, required)
+
+**Rule:** every resident / participant-facing prototype shows this first, in English
+(Edit / Decline / Accept). Backend/admin screens skip it. Drop-in, self-contained,
+themeable via `--gv-tenant-primary`.
+
+```html
+<body class="gv-root" data-gv-cookies-city="Vienna">
+  …
+  <script src="govocal-cookies.js" defer></script>   <!-- auto-shows on first load -->
+</body>
+```
+
+- Title is `Your cookie settings — <City>` (from `data-gv-cookies-city`; omit for no city).
+- `data-gv-cookies="always"` shows it on every load (handy for review); `"off"` disables;
+  `?cookies=reset` re-triggers a stored choice.
+- **Edit** expands Essential (locked on) / Analytics / Marketing preferences + save.
+- Choice persists in `localStorage`; fires a `gv-cookie-consent` event with the result.
+- Manual control: `window.GVCookies.show()` / `.reset()` / `.choice()`.
+
 ---
 
 ## City theming (`govocal-themes.js`)

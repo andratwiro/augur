@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Wien mitgestalten — GoVocal homepage (reference)</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <!--
+    REFERENCE REBUILD of the Stadt Wien GoVocal homepage (mitgestalten.wien.gv.at),
+    composed entirely from the govocal-ui skill. Tenant theme = Stadt Wien red.
+    Photos/illustrations are CSS placeholders (we don't have the originals); all
+    copy, structure, components, spacing and colour follow the live page.
+  -->
+  <style>
+    /* ── Stadt Wien tenant theme ──────────────────────────────────────────
+       The product themes 3 colours per city. Vienna's primary is the
+       Stadt-Wien red; override the govocal-ui tenant tokens here. */
+    :root {
+      --gv-tenant-primary: #E2001A;   /* Stadt Wien red */
+      --gv-tenant-secondary: #000000;
+      --gv-tenant-text: #1A1A1A;
+      --wien-red: var(--gv-tenant-primary);
+    }
+
+    body { margin: 0; background: #fff; }
+    .container { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Header ───────────────────────────────────────────────────────── */
+    .site-header { border-bottom: 1px solid var(--gv-grey-200); background: #fff; position: relative; z-index: 5; }
+    .header-inner { display: flex; align-items: center; gap: 28px; height: 64px; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--gv-tenant-text); }
+    .brand .wordmark { font-weight: 700; font-size: 16px; line-height: 1.0; letter-spacing: -0.01em; }
+    .mainnav { display: flex; align-items: center; gap: 2px; height: 100%; flex: 1; }
+    .mainnav a {
+      display: inline-flex; align-items: center; gap: 5px; height: 100%; padding: 0 13px;
+      text-decoration: none; color: var(--gv-grey-800); font-size: var(--gv-fs-s); font-weight: 500;
+      border-bottom: 3px solid transparent;
+    }
+    .mainnav a:hover { color: var(--wien-red); }
+    .mainnav a[aria-current="page"] { color: var(--gv-tenant-text); border-bottom-color: var(--wien-red); font-weight: 600; }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .icon-btn {
+      display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+      border: none; background: transparent; cursor: pointer; color: var(--gv-grey-800);
+    }
+    .icon-btn:hover { background: var(--gv-grey-100); }
+    @media (max-width: 880px) { .mainnav { display: none; } }
+
+    /* ── Hero ─────────────────────────────────────────────────────────── */
+    .hero {
+      position: relative; min-height: 318px; display: grid; place-items: center; text-align: center;
+      color: #fff; overflow: hidden;
+      background:
+        linear-gradient(0deg, rgba(226,0,26,0.60), rgba(226,0,26,0.60)),
+        radial-gradient(circle at 20% 28%, #cf9468, transparent 46%),
+        radial-gradient(circle at 78% 64%, #95663f, transparent 52%),
+        linear-gradient(120deg, #6f4a34, #b07a4f 55%, #7a5238);
+    }
+    .hero-inner { padding: 54px 24px; max-width: 720px; }
+    .hero h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; margin: 0 0 10px; letter-spacing: -0.01em; }
+    .hero p.lead { font-size: var(--gv-fs-l); margin: 0 0 22px; opacity: 0.97; }
+    .avatars { display: inline-flex; align-items: center; margin-bottom: 24px; }
+    .avatars .av {
+      width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px;
+      background: linear-gradient(135deg, #dcdcdc, #a6a6a6); box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+    .avatars .av:first-child { margin-left: 0; }
+    .avatars .count {
+      margin-left: 8px; height: 34px; padding: 0 12px; border-radius: 999px; border: 2px solid #fff;
+      background: rgba(0,0,0,0.30); display: inline-flex; align-items: center; font-size: 13px; font-weight: 600;
+    }
+    .hero .gv-btn.white { padding-left: 28px; padding-right: 28px; }
+    .hero-credit { position: absolute; left: 24px; bottom: 10px; font-size: 11px; opacity: 0.82; }
+
+    /* ── Sections ─────────────────────────────────────────────────────── */
+    .section { padding: 40px 0 8px; }
+    .section > .container > h2 { margin: 0 0 4px; }
+    /* horizontal scroller that bleeds off the right edge, like the live page */
+    .rail { display: flex; gap: 22px; overflow-x: auto; padding: 16px 24px 24px; margin: 0 -24px;
+      scrollbar-width: thin; scroll-snap-type: x proximity; }
+    .rail::-webkit-scrollbar { height: 8px; }
+    .rail::-webkit-scrollbar-thumb { background: var(--gv-grey-300); border-radius: 999px; }
+    .rail > * { scroll-snap-align: start; }
+
+    /* generic project card */
+    .pcard { flex: 0 0 248px; display: flex; flex-direction: column; text-decoration: none; color: inherit; }
+    .pcard .thumb { width: 100%; aspect-ratio: 16 / 10; border-radius: 6px; overflow: hidden; position: relative;
+      display: grid; place-items: center; text-align: center; color: #fff; font-weight: 800; line-height: 1.15; }
+    .pcard .ptitle { font-weight: 700; font-size: var(--gv-fs-m); margin: 12px 0 8px; line-height: 1.25; }
+    .pcard:hover .ptitle { color: var(--wien-red); }
+    .meta { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-s); }
+    .meta.time { color: var(--gv-grey-700); }
+    .meta.time svg { color: var(--wien-red); flex: 0 0 auto; }
+    .meta.people { color: var(--gv-grey-700); }
+    .meta.people svg { color: var(--wien-red); flex: 0 0 auto; }
+    .meta.done { color: var(--gv-success); }
+    .meta.done svg { flex: 0 0 auto; }
+    .clink { margin-top: 8px; color: var(--wien-red); font-size: var(--gv-fs-s); font-weight: 600;
+      text-decoration: none; display: inline-block; }
+    .clink:hover { text-decoration: underline; }
+    .pdesc { color: var(--gv-grey-800); font-size: var(--gv-fs-s); line-height: 1.5; margin: 10px 0 0; }
+
+    /* Klimateam / Laufende = wider tiles */
+    .kcard { flex: 0 0 360px; }
+    .kcard .ktile { aspect-ratio: 16 / 9; border-radius: 6px; display: grid; place-items: center; }
+    .kbadge { width: 172px; height: 172px; border-radius: 50%; border: 6px solid rgba(255,255,255,0.85);
+      display: grid; place-items: center; text-align: center; line-height: 1.12; color: #1a1a1a; position: relative; }
+    .kbadge b { font-size: 21px; display: block; }
+    .kbadge .macht { font-style: italic; font-weight: 500; font-size: 13px; color: #2c2724; }
+    .kbadge .team { position: absolute; right: -10px; bottom: 14px; width: 60px; height: 60px; border-radius: 50%;
+      background: rgba(255,255,255,0.95); border: 5px solid rgba(255,255,255,0.85);
+      display: grid; place-items: center; font-size: 11px; font-weight: 700; line-height: 1.05; }
+
+    .completed-card { flex: 0 0 210px; }
+    .completed-card .thumb { aspect-ratio: 1 / 1; padding: 12px; }
+
+    /* ── Closing + footer ─────────────────────────────────────────────── */
+    .closing { text-align: center; max-width: 720px; margin: 56px auto 0; padding: 0 24px; }
+    .closing h2 { margin: 0 0 14px; }
+    .banner-credit { color: var(--gv-grey-700); font-size: var(--gv-fs-s); margin: 40px 0 0; }
+    .site-footer { border-top: 1px solid var(--gv-grey-200); margin-top: 40px; padding: 40px 0 28px; }
+    .footer-logo { display: grid; place-items: center; gap: 10px; margin-bottom: 26px; color: var(--gv-tenant-text); }
+    .footer-logo .wordmark { font-weight: 700; font-size: 24px; text-align: center; line-height: 1.0; }
+    .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: var(--gv-fs-s); }
+    .footer-links a { color: var(--gv-grey-800); text-decoration: none; }
+    .footer-links a:hover { color: var(--wien-red); text-decoration: underline; }
+    .footer-by { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 22px;
+      color: var(--gv-grey-700); font-size: var(--gv-fs-s); }
+    .footer-by .gv-logo { font-weight: 800; letter-spacing: -0.02em; color: var(--gv-tenant-text); }
+    .footer-by .gv-logo span { color: var(--wien-red); }
+
+    @media (prefers-reduced-motion: reduce) { .rail { scroll-behavior: auto; } }
+  </style>
+</head>
+<body class="gv-root">
+
+  <!-- ════════ Header ════════ -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="#" aria-label="Stadt Wien — Startseite">
+        <!-- simplified Vienna coat of arms: white cross on a red shield -->
+        <svg width="32" height="36" viewBox="0 0 34 38" aria-hidden="true">
+          <path d="M2 2h30v18c0 9-7 14-15 17C9 34 2 29 2 20V2Z" fill="#E2001A"/>
+          <path d="M14.2 7h5.6v6.2H26v5.6h-6.2V25h-5.6v-6.2H8v-5.6h6.2V7Z" fill="#fff"/>
+        </svg>
+        <span class="wordmark">Stadt<br>Wien</span>
+      </a>
+
+      <nav class="mainnav" aria-label="Hauptnavigation">
+        <a href="#" aria-current="page">Willkommen</a>
+        <a href="#">Beteiligungsprojekte
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="#">Mitmachen</a>
+        <a href="#">Netiquette</a>
+        <a href="#">Mehr
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+        </a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="icon-btn" aria-label="Suche">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <button class="gv-btn primary" style="padding:8px 18px;line-height:20px">Anmelden</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════ Hero ════════ -->
+  <section class="hero">
+    <div class="hero-inner">
+      <h1>Wien mitgestalten</h1>
+      <p class="lead">Die Beteiligungsplattform der Stadt Wien</p>
+      <div class="avatars" aria-label="15,4 Tausend Teilnehmende">
+        <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
+        <span class="count">15.4k</span>
+      </div>
+      <div><button class="gv-btn white" style="line-height:22px">Registrieren</button></div>
+    </div>
+    <div class="hero-credit">Banner: © Stadt Wien, Gerd Götzenbrucker</div>
+  </section>
+
+  <!-- ════════ Aktuell zum Mitgestalten ════════ -->
+  <section class="section">
+    <div class="container"><h2 class="gv-title h2">Aktuell zum Mitgestalten</h2></div>
+    <div class="container">
+      <div class="rail">
+        <a class="pcard" href="#">
+          <div class="thumb" style="background:#eef0e8">
+            <span style="background:#0a7a4f;color:#fff;border-radius:14px 14px 14px 2px;padding:14px 16px;font-size:13px;line-height:1.15;max-width:80%">GESUNDE<br>BLINDENGASSE</span>
+          </div>
+          <div class="ptitle">Gesunde Blindengasse</div>
+          <span class="meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Ein Tag verbleibend</span>
+          <a class="clink" href="#">Umfrage ausfüllen</a>
+        </a>
+        <a class="pcard" href="#">
+          <div class="thumb" style="background:linear-gradient(135deg,#9fb0a3,#cdd6cd)"></div>
+          <div class="ptitle">Gellertplatz für alle</div>
+          <span class="meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> noch 3 Wochen</span>
+          <a class="clink" href="#">Umfrage ausfüllen</a>
+        </a>
+        <a class="pcard" href="#">
+          <div class="thumb" style="background:linear-gradient(135deg,#b7423a,#d98a5a)">DIE GROSSE<br>MEIDLING-UMFRAGE</div>
+          <div class="ptitle">Die große Meidling-Umfrage</div>
+          <span class="meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> noch 4 Wochen</span>
+          <a class="clink" href="#">Umfrage ausfüllen</a>
+        </a>
+        <a class="pcard" href="#">
+          <div class="thumb" style="background:linear-gradient(135deg,#9a9a9a,#c7c2bd)"></div>
+          <div class="ptitle">Supergrätzl Favoriten</div>
+          <span class="meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> noch 5 Wochen</span>
+          <a class="clink" href="#">Umfrage ausfüllen</a>
+        </a>
+        <a class="pcard" href="#">
+          <div class="thumb" style="background:linear-gradient(135deg,#f06321,#f59a3c)">ZUKUNFT<br>TABORSTRASSE</div>
+          <div class="ptitle">Zukunft Taborstraße</div>
+          <span class="meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> noch 6 Wochen</span>
+          <a class="clink" href="#">Umfrage ausfüllen</a>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Wiener Klimateam ════════ -->
+  <section class="section">
+    <div class="container"><h2 class="gv-title h2">Wiener Klimateam</h2></div>
+    <div class="container">
+      <div class="rail">
+        <a class="pcard kcard" href="#">
+          <div class="ktile" style="background:#f4736f">
+            <div class="kbadge"><span><span class="macht">macht</span><b style="color:#d83a36">Penzing</b><b>gutes<br>Klima</b></span><span class="team">Klima<br>team</span></div>
+          </div>
+          <div class="ptitle">14er Klimateam</div>
+          <span class="meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 145 Teilnehmende</span>
+          <p class="pdesc">Gesucht: Deine Idee fürs gute Klima in Penzing</p>
+        </a>
+        <a class="pcard kcard" href="#">
+          <div class="ktile" style="background:#bfe3c9">
+            <div class="kbadge"><span><span class="macht">macht</span><b style="color:#2f8f5b">Josefstadt</b><b>gutes<br>Klima</b></span><span class="team">Klima<br>team</span></div>
+          </div>
+          <div class="ptitle">8er Klimateam</div>
+          <span class="meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 69 Teilnehmende</span>
+          <p class="pdesc">Gesucht: Deine Idee fürs gute Klima in Josefstadt</p>
+        </a>
+        <a class="pcard kcard" href="#">
+          <div class="ktile" style="background:#e9e9e7">
+            <div class="kbadge"><span><span class="macht">macht</span><b style="color:#b39419">Alsergrund</b><b>gutes<br>Klima</b></span><span class="team">Klima<br>team</span></div>
+          </div>
+          <div class="ptitle">9er Klimateam</div>
+          <span class="meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 132 Teilnehmende</span>
+          <p class="pdesc">2024/2025 haben wir Ideen fürs gute Klima am Alsergrund gesucht. Die entstandenen Projekte befinden sich in der Umsetzung.</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Laufende Projekte ════════ -->
+  <section class="section">
+    <div class="container"><h2 class="gv-title h2">Laufende Projekte</h2></div>
+    <div class="container">
+      <div class="rail">
+        <a class="pcard kcard" href="#">
+          <div class="thumb" style="aspect-ratio:16/9;background:linear-gradient(135deg,#9a9a9a,#c7c2bd)"></div>
+          <div class="ptitle">Supergrätzl Favoriten</div>
+          <span class="meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 111 Teilnehmende</span>
+          <p class="pdesc">Das erste Wiener Supergrätzl ist fertig! Nach dem Vorbild von Barcelona und Berlin hat die Stadt Wien im vergangenen Jahr das erste Supergrätzl im 10. Wiener Gemeindebezirk baulich umgesetzt. Jetzt ist Ihre Meinung gefragt!</p>
+        </a>
+        <a class="pcard kcard" href="#">
+          <div class="thumb" style="aspect-ratio:16/9;background:linear-gradient(135deg,#9fb0a3,#cdd6cd)"></div>
+          <div class="ptitle">Gellertplatz für alle</div>
+          <span class="meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 122 Teilnehmende</span>
+          <p class="pdesc">Wie wird der Gellertplatz zu einem beliebten Treffpunkt im Grätzl?</p>
+        </a>
+        <a class="pcard kcard" href="#">
+          <div class="thumb" style="aspect-ratio:16/9;background:linear-gradient(135deg,#2b5cab,#f2c200)">MITMACH-BUDGET</div>
+          <div class="ptitle">Mitmach-Budget Brigittenau 2026</div>
+          <span class="meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 16 Teilnehmende</span>
+          <p class="pdesc">Brigittenauer Mitmachbudget</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Abgeschlossene Projekte ════════ -->
+  <section class="section">
+    <div class="container"><h2 class="gv-title h2">Abgeschlossene Projekte</h2></div>
+    <div class="container">
+      <div class="rail">
+        <a class="pcard completed-card" href="#">
+          <div class="thumb" style="background:#f3e2a6;color:#7a5e12;font-size:14px">Alt-Ottakring wie neu!</div>
+          <div class="ptitle">Alt-Ottakring wie neu!</div>
+          <span class="meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Kein Enddatum</span>
+          <a class="clink" href="#">Mehr erfahren</a>
+        </a>
+        <a class="pcard completed-card" href="#">
+          <div class="thumb" style="background:#c63f30;color:#fff;font-size:13px">Zukunft Margaretenplatz</div>
+          <div class="ptitle">Neugestaltung des Margaretenplatz-Grätzls</div>
+          <span class="meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Kein Enddatum</span>
+          <a class="clink" href="#">Mehr erfahren</a>
+        </a>
+        <a class="pcard completed-card" href="#">
+          <div class="thumb" style="background:#ece9e2;color:#a32a1c;font-size:15px">GRÄTZL<br>LABOR</div>
+          <div class="ptitle">Grätzllabor Innere Stadt</div>
+          <span class="meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Kein Enddatum</span>
+          <a class="clink" href="#">Mehr erfahren</a>
+        </a>
+        <a class="pcard completed-card" href="#">
+          <div class="thumb" style="background:linear-gradient(135deg,#8a8f93,#b9bdc0)"></div>
+          <div class="ptitle">Städtebauliches Leitbild "Schnittstelle Erdberg"</div>
+          <span class="meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Kein Enddatum</span>
+          <a class="clink" href="#">Mehr erfahren</a>
+        </a>
+        <a class="pcard completed-card" href="#">
+          <div class="thumb" style="background:#cdb6e0;color:#3a2057;font-size:12px">Wiener Kinder- &amp; Jugendstrategie 2025–2030</div>
+          <div class="ptitle">Wiener Kinder- und Jugendstrategie 2025–2030</div>
+          <span class="meta done"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20Zm-1 14l-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z"/></svg> vor 7 Wochen</span>
+          <a class="clink" href="#">Mehr erfahren</a>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ Closing ════════ -->
+  <div class="closing">
+    <h2 class="gv-title h2">Gemeinsam gestalten wir Wien.</h2>
+    <p class="gv-text bodyM">Auf dieser Plattform finden Sie die Beteiligungsprojekte der Stadt Wien. Hier können Sie im Dialog mit der Stadt zu bestimmten Fragestellungen Ihre Gedanken austauschen, Ideen sammeln und Feedback geben.</p>
+  </div>
+  <div class="container"><p class="banner-credit">Banner: © Stadt Wien, Gerd Götzenbrucker</p></div>
+
+  <!-- ════════ Footer ════════ -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-logo">
+        <svg width="50" height="56" viewBox="0 0 34 38" aria-hidden="true">
+          <path d="M2 2h30v18c0 9-7 14-15 17C9 34 2 29 2 20V2Z" fill="#E2001A"/>
+          <path d="M14.2 7h5.6v6.2H26v5.6h-6.2V25h-5.6v-6.2H8v-5.6h6.2V7Z" fill="#fff"/>
+        </svg>
+        <span class="wordmark">Stadt<br>Wien</span>
+      </div>
+      <nav class="footer-links" aria-label="Rechtliches">
+        <a href="#">Nutzungsbedingungen</a>
+        <a href="#">Impressum &amp; Datenschutz</a>
+        <a href="#">Cookierichtlinie</a>
+        <a href="#">Richtlinie zur Barrierefreiheit</a>
+        <a href="#">Cookie-Einstellungen</a>
+        <a href="#">Sitemap</a>
+      </nav>
+      <div class="footer-by">
+        <span>Ermöglicht durch</span>
+        <span class="gv-logo">go<span>·</span>vocal</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Cookie consent (resident-facing rule): English banner, shown first on load. -->
+  <script>document.body.setAttribute('data-gv-cookies-city', 'Vienna');</script>
+  <script src="govocal-cookies.js" defer></script>
+</body>
+</html>

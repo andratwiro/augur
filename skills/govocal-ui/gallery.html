@@ -19,7 +19,7 @@
     .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 600; margin: 0; }
   </style>
 </head>
-<body class="gv-root">
+<body class="gv-root" data-gv-cookies="off">
   <div class="wrap">
     <header class="gv-card">
       <h1 class="gv-title h1" style="margin-bottom:4px">GoVocal UI gallery</h1>
@@ -132,7 +132,20 @@
       <p class="gv-text bodyM" style="margin:0">Body M — 16</p>
       <p class="gv-text bodyS gv-text--secondary" style="margin:0">Body S secondary — 14</p>
     </section>
+
+    <section class="sec gv-card">
+      <p class="eyebrow">Cookie consent (resident-facing)</p>
+      <p class="gv-text bodyS gv-text--secondary" style="margin:0">
+        Shown first on every resident / participant page, in English — Edit / Decline / Accept.
+        Drop-in via <code>govocal-cookies.js</code>; set the city with
+        <code>data-gv-cookies-city</code>. Admin/backend screens skip it.
+      </p>
+      <div class="row">
+        <button class="gv-btn primary" type="button" onclick="window.GVCookies&amp;&amp;window.GVCookies.show()">Preview cookie banner</button>
+      </div>
+    </section>
   </div>
   <script src="govocal-themes.js" defer></script>
+  <script src="govocal-cookies.js" defer></script>
 </body>
 </html>

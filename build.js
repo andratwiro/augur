@@ -49,7 +49,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.02";
+const UI_VERSION = "0.03";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -57,9 +57,14 @@ const IGNORED_TOPLEVEL = new Set([
   "node_modules",
   "skills",
   "src",
+  "pages", // composed reference pages — shipped via their own builder, not as an opportunity
   ".git",
   ".github",
 ]);
+
+// Source for the reference tabs (Patterns + Pages).
+const UI_SKILL = path.join(ROOT, "skills", "govocal-ui"); // Patterns gallery + assets
+const PAGES_SRC = path.join(ROOT, "pages"); // composed reference pages
 
 async function exists(p) {
   try {
@@ -166,6 +171,25 @@ async function scan() {
   // Most-recently-modified opportunity first.
   opportunities.sort((a, b) => b.mtimeMs - a.mtimeMs);
   return opportunities;
+}
+
+/**
+ * Scan the top-level pages/ folder for composed reference pages. Each subfolder
+ * is a self-contained page (like a prototype) shipped under /pages/<name>/.
+ */
+async function scanPages() {
+  if (!(await isDir(PAGES_SRC))) return [];
+  const entries = await fs.readdir(PAGES_SRC, { withFileTypes: true });
+  const pages = [];
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    const dir = path.join(PAGES_SRC, e.name);
+    const latest = await copyDir(dir, path.join(DIST, "pages", e.name));
+    const { href, file } = await entryPoint(e.name, dir);
+    pages.push({ name: e.name, href, file, mtimeMs: latest });
+  }
+  pages.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return pages;
 }
 
 function titleCase(slug) {
@@ -349,7 +373,46 @@ const CAROUSEL_JS = `
       });
     })();`;
 
-function shell({ title, subtitle, body, back }) {
+// Top-right tab nav for the site's chrome/reference pages (Prototypes · Patterns ·
+// Pages). NOT injected into prototypes themselves. Styles are self-contained so the
+// same nav can be injected into the Patterns gallery, which doesn't use PAGE_CSS.
+// Root-relative hrefs => correct from any depth.
+const NAV_CSS = `
+    .gvnav {
+      position: fixed; top: 14px; right: 16px; z-index: 2147483100;
+      display: flex; gap: 2px; padding: 4px; border-radius: 999px;
+      background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.14); border: 1px solid rgba(0,0,0,0.07);
+      font: 600 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .gvnav a {
+      display: inline-flex; align-items: center; min-height: 34px; padding: 0 15px;
+      border-radius: 999px; text-decoration: none; color: #4a5560; white-space: nowrap;
+      transition: background .12s ease, color .12s ease;
+    }
+    .gvnav a:hover { background: rgba(0,0,0,0.05); color: #111; }
+    .gvnav a[aria-current="page"] { background: #1b1f24; color: #fff; }
+    @media (prefers-color-scheme: dark) {
+      .gvnav { background: rgba(26,28,32,0.92); border-color: rgba(255,255,255,0.09); box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+      .gvnav a { color: #c2cad2; }
+      .gvnav a:hover { background: rgba(255,255,255,0.09); color: #fff; }
+      .gvnav a[aria-current="page"] { background: #f3f4f6; color: #14181c; }
+    }`;
+
+function navBar(active) {
+  const tab = (href, label, key) =>
+    `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;
+  return `<nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/patterns/", "Patterns", "patterns")}${tab("/pages/", "Pages", "pages")}</nav>`;
+}
+
+/** Inject the nav (with its own styles) right after the opening <body> tag. */
+function injectNav(html, active) {
+  const m = html.match(/<body[^>]*>/i);
+  if (!m) return html;
+  return html.replace(m[0], `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${navBar(active)}`);
+}
+
+function shell({ title, subtitle, body, back, activeTab = "prototypes" }) {
   const backLink = back
     ? `<a class="back" href="${back.href}">${back.label}</a>`
     : "";
@@ -360,10 +423,11 @@ function shell({ title, subtitle, body, back }) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <title>${title}</title>
-  <style>${PAGE_CSS}
+  <style>${PAGE_CSS}${NAV_CSS}
   </style>
 </head>
 <body>
+  ${navBar(activeTab)}
   <div class="wrap">
     ${backLink}
     <h1>${title}</h1>
@@ -466,6 +530,52 @@ function renderOpportunityIndex(opp) {
   });
 }
 
+function renderPagesIndex(pages) {
+  if (!pages.length) {
+    return shell({
+      title: "Pages",
+      subtitle: "Composed GoVocal reference pages &mdash; copy one as a starting point.",
+      activeTab: "pages",
+      body: `<p class="empty">No reference pages yet. Add one under
+        <code>pages/&lt;name&gt;/</code> and rebuild.</p>`,
+    });
+  }
+
+  const slides = pages
+    .map((p) => {
+      const download = p.file
+        ? `<button type="button" class="btn ghost" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html">&darr; Download HTML</button>`
+        : "";
+      return `
+        <div class="slide">
+          <div class="card-proto">
+            <div class="preview">
+              <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
+              <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
+            </div>
+            <div class="proto-meta">
+              <div>
+                <div class="proto-name">${titleCase(p.name)}</div>
+                <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
+              </div>
+              <div class="proto-actions">
+                <a class="btn primary" href="${p.href}">Open &rarr;</a>
+                ${download}
+              </div>
+            </div>
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  return shell({
+    title: "Pages",
+    subtitle: "Composed GoVocal reference pages &mdash; copy one as a starting point.",
+    activeTab: "pages",
+    body: carousel(slides),
+  });
+}
+
 async function main() {
   // Clean dist for a deterministic build.
   await fs.rm(DIST, { recursive: true, force: true });
@@ -485,6 +595,32 @@ async function main() {
     );
   }
 
+  // ── Patterns tab → ship the govocal-ui gallery + its assets out of the skill
+  // (skills/ doesn't ship on its own). Inject the site nav into the gallery.
+  const patternsDir = path.join(DIST, "patterns");
+  await fs.mkdir(patternsDir, { recursive: true });
+  const galleryHtml = await fs.readFile(path.join(UI_SKILL, "gallery.html"), "utf8");
+  await fs.writeFile(
+    path.join(patternsDir, "index.html"),
+    injectNav(galleryHtml, "patterns"),
+    "utf8"
+  );
+  const patternAssets = ["govocal-tokens.css", "govocal-ui.css", "govocal-themes.js", "govocal-cookies.js"];
+  for (const asset of patternAssets) {
+    if (await exists(path.join(UI_SKILL, asset))) {
+      await fs.copyFile(path.join(UI_SKILL, asset), path.join(patternsDir, asset));
+    }
+  }
+
+  // ── Pages tab → composed reference pages from pages/<name>/.
+  const pages = await scanPages();
+  await fs.mkdir(path.join(DIST, "pages"), { recursive: true });
+  await fs.writeFile(
+    path.join(DIST, "pages", "index.html"),
+    renderPagesIndex(pages),
+    "utf8"
+  );
+
   // Edge auth gate.
   await fs.copyFile(SRC_WORKER, path.join(DIST, "_worker.js"));
 
@@ -500,6 +636,9 @@ async function main() {
     console.log(`  ${opp.name}/`);
     for (const p of opp.prototypes) console.log(`    - ${p.name}`);
   }
+  console.log(`  patterns/  (Patterns gallery)`);
+  console.log(`  pages/  — ${plural(pages.length, "reference page")}`);
+  for (const p of pages) console.log(`    - ${p.name}`);
 }
 
 main().catch((err) => {
