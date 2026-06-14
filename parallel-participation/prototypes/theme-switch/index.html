@@ -17,12 +17,13 @@
     a.back:hover { text-decoration:underline; }
   </style>
 </head>
-<body class="gv-root">
+<body data-gv-theme-picker="off" class="gv-root">
   <main class="card gv-card">
     <h1 class="gv-title h2" style="margin-bottom:4px">City theme preview</h1>
     <p class="gv-text bodyS gv-text--secondary" style="margin-bottom:16px">
-      Each city configures three brand colours. Switch cities with the picker
-      (bottom-right) or <code>?theme=1</code> and watch the components re-skin.
+      Each city configures three brand colours. Switch cities by changing
+      <code>?theme=</code> in the URL (try <code>?theme=1</code>, <code>2</code>, <code>3</code>)
+      and watch the components re-skin.
     </p>
     <div class="swatches" aria-hidden="true">
       <div class="sw" style="background:var(--gv-tenant-primary)">Primary</div>
