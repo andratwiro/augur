@@ -402,8 +402,8 @@ const PAGE_CSS = `
     .carousel.single .cbtn, .carousel.single .dots { display: none; }
     .track {
       display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory;
-      scroll-behavior: smooth; padding: 8px var(--gutter); scrollbar-width: none;
-      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth; padding: 8px var(--gutter); scroll-padding-inline: var(--gutter);
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
     }
     .track::-webkit-scrollbar { display: none; }
     .slide { flex: 0 0 86%; scroll-snap-align: start; }
@@ -543,7 +543,23 @@ const PAGE_CSS = `
     .status-badge.is-progress .status-dot { background: #c2710c; }
     .status-badge.is-closed { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
     .status-badge.is-closed .status-dot { background: #059669; }
-    @media (prefers-reduced-motion: reduce) { .status-badge { transition: none; } }`;
+    @media (prefers-reduced-motion: reduce) { .status-badge { transition: none; } }
+
+    /* Read-only status summary on the main carousel's opportunity cards: one chip
+       per status with a count of that opportunity's prototypes. Non-interactive
+       (the cards are links; toggling lives on the opportunity page). Same AA-safe
+       palette as the badges. */
+    .opp-status { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .status-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 600; line-height: 1;
+      padding: 5px 10px; border-radius: 999px; border: 1px solid transparent;
+    }
+    .status-chip .status-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+    .status-chip.is-progress { background: #fef3c7; color: #8a5200; border-color: #fcd9a4; }
+    .status-chip.is-progress .status-dot { background: #c2710c; }
+    .status-chip.is-closed { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
+    .status-chip.is-closed .status-dot { background: #059669; }`;
 
 const CAROUSEL_JS = `
     (function () {
@@ -607,29 +623,28 @@ const CAROUSEL_JS = `
         }
         if (prev) prev.addEventListener('click', function () { goTo(active() - 1); });
         if (next) next.addEventListener('click', function () { goTo(active() + 1); });
-        track.addEventListener('scroll', function () { requestAnimationFrame(update); }, { passive: true });
-        c.addEventListener('keydown', function (e) {
-          if (e.key === 'ArrowLeft') { goTo(active() - 1); e.preventDefault(); }
-          if (e.key === 'ArrowRight') { goTo(active() + 1); e.preventDefault(); }
-        });
-
-        // A preview iframe can autofocus an element on load, which makes the browser
-        // scroll our horizontal track to reveal it — landing the carousel on the wrong
-        // slide. Pin it to the start (instantly, no animation) until the user interacts.
+        // A preview iframe can autofocus an element after it lazy-loads, which makes the
+        // browser scroll our horizontal track to reveal it — landing the carousel on the
+        // wrong slide. Until the user genuinely interacts, snap any such drift back to the
+        // start (instantly, no animation). Real gestures fire pointerdown/keydown/wheel/
+        // touchstart (capture) before any scroll, so they flip the flag off first.
         var userMoved = false;
         ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) {
           c.addEventListener(ev, function () { userMoved = true; }, { passive: true, capture: true });
         });
-        var pinUntil = 0;
-        var pin = setInterval(function () {
-          if (userMoved || (pinUntil += 100) > 1500) { clearInterval(pin); return; }
-          if (track.scrollLeft !== 0) {
+        track.addEventListener('scroll', function () {
+          if (!userMoved && track.scrollLeft !== 0) {
             var sb = track.style.scrollBehavior;
             track.style.scrollBehavior = 'auto';
             track.scrollLeft = 0;
             track.style.scrollBehavior = sb;
           }
-        }, 100);
+          requestAnimationFrame(update);
+        }, { passive: true });
+        c.addEventListener('keydown', function (e) {
+          if (e.key === 'ArrowLeft') { goTo(active() - 1); e.preventDefault(); }
+          if (e.key === 'ArrowRight') { goTo(active() + 1); e.preventDefault(); }
+        });
 
         update();
       });
@@ -643,7 +658,8 @@ const CAROUSEL_JS = `
 const STATUS_JS = `
     (function () {
       var badges = [].slice.call(document.querySelectorAll('.status-badge'));
-      if (!badges.length) return;
+      var summaries = [].slice.call(document.querySelectorAll('[data-opp-status]'));
+      if (!badges.length && !summaries.length) return;
       var LABELS = { in_progress: 'In progress', closed: 'Closed' };
       function apply(b, s) {
         if (s !== 'closed') s = 'in_progress';
@@ -654,6 +670,21 @@ const STATUS_JS = `
         if (l) l.textContent = LABELS[s];
         b.setAttribute('aria-label', 'Status: ' + LABELS[s] + '. Activate to change.');
       }
+      function chip(cls, label) {
+        return '<span class="status-chip ' + cls + '"><span class="status-dot" aria-hidden="true"></span>' + label + '</span>';
+      }
+      // Replace an opportunity card's default chip with real per-status counts.
+      function summarize(el, statuses) {
+        var paths = (el.getAttribute('data-proto-paths') || '').split(',').filter(Boolean);
+        if (!paths.length) return;
+        var closed = 0;
+        paths.forEach(function (p) { if (statuses[p] === 'closed') closed++; });
+        var prog = paths.length - closed;
+        var html = '';
+        if (prog) html += chip('is-progress', prog + ' ' + LABELS.in_progress);
+        if (closed) html += chip('is-closed', closed + ' ' + LABELS.closed);
+        el.innerHTML = html;
+      }
       fetch('/__review/status', { headers: { Accept: 'application/json' } })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
@@ -662,6 +693,7 @@ const STATUS_JS = `
             var s = d.statuses[b.getAttribute('data-status-for')];
             if (s) apply(b, s);
           });
+          summaries.forEach(function (el) { summarize(el, d.statuses); });
         }).catch(function () {});
       badges.forEach(function (b) {
         b.addEventListener('click', function () {
@@ -1028,6 +1060,14 @@ function renderRootIndex(opportunities) {
       // Cover = most-recent prototype of the opportunity (already sorted first).
       const cover = opp.prototypes[0];
       const coverSrc = cover ? `${oppPath}${cover.href}` : "";
+      // Read-only status summary. KV keys match the per-prototype badges
+      // (/<opp>/<proto href>); STATUS_JS reads the same fetch and replaces the
+      // server default (all "In progress") with real counts on load.
+      const protoPaths = opp.prototypes
+        .map((p) => `/${encodeURIComponent(opp.name)}/${p.href}`)
+        .join(",");
+      const n = opp.prototypes.length;
+      const statusSummary = `<div class="opp-status" data-opp-status data-proto-paths="${protoPaths}"><span class="status-chip is-progress"><span class="status-dot" aria-hidden="true"></span>${n} In progress</span></div>`;
       return `
         <div class="slide">
           <a class="card-opp" href="${oppPath}">
@@ -1035,6 +1075,7 @@ function renderRootIndex(opportunities) {
             <div class="opp-meta">
               <div class="proto-name">${titleCase(opp.name)}</div>
               <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; ${fmtDate(opp.mtimeMs)}</div>
+              ${statusSummary}
             </div>
           </a>
         </div>`;
