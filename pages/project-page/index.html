@@ -43,12 +43,11 @@
     .gv-back:hover .gv-back__ic { filter: brightness(0.92); }
     .gv-back:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
     .gv-projbar__spacer { flex: 1 1 auto; }
-    /* manager controls: an outlined "Edit project" + a solid navy "Unfollow" (the product's manager bar) */
+    /* manager controls: outlined "Edit project" + the SOLID tenant-coloured "Unfollow"
+       (.gv-btn.primary, which re-themes per city — red on Vienna, teal on default). */
     .gv-projbar .gv-btn { gap: 8px; }
     .gv-edit { background: #fff; color: var(--gv-text-primary); border: 1px solid var(--gv-grey-300); box-shadow: none; }
     .gv-edit:hover { background: var(--gv-grey-100); }
-    .gv-unfollow { background: #162466; color: #fff; border-color: transparent; }
-    .gv-unfollow:hover { filter: brightness(1.2); }
 
     /* ── Banner (image-only project hero) ──────────────────────────────────────── */
     .gv-banner { background: var(--gv-grey-100); }
@@ -106,7 +105,9 @@
        .gv-phases__bar / .gv-pnav / .gv-stepper / .gv-pstep / .gv-phasepanel…).
        Page-local additions only: outer spacing, and the phase BODY + "read more"
        that this page renders inside the panel below the head. */
-    .gv-phases { margin: 38px 0 8px; }
+    /* the phases + method content sit in a full-width grey band (like the product) */
+    .gv-methodband { background: var(--gv-grey-200); margin-top: 30px; padding: 34px 0 44px; }
+    .gv-phases { margin: 0; }
     /* when viewing a non-current phase, the panel's number circle + name go neutral */
     .gv-phasepanel__head.muted .gv-phasepanel__num { background: var(--gv-cool-grey-500); }
     .gv-phasepanel__head.muted .gv-phasepanel__name { color: var(--gv-text-primary); }
@@ -183,7 +184,7 @@
       <button class="gv-back"><span class="gv-back__ic"><span data-gv-icon="arrow-left" aria-hidden="true"></span></span> Back to folder</button>
       <span class="gv-projbar__spacer"></span>
       <a class="gv-btn gv-edit size-s" href="#"><span data-gv-icon="edit" aria-hidden="true"></span> Edit project</a>
-      <button class="gv-btn gv-unfollow size-s" id="followBtn" aria-pressed="true">
+      <button class="gv-btn primary size-s" id="followBtn" aria-pressed="true">
         <span data-gv-icon="notification" aria-hidden="true"></span> <span id="followLabel">Unfollow (31)</span>
       </button>
     </div>
@@ -231,7 +232,8 @@
     </div>
   </section>
 
-  <main class="gv-wrap">
+  <main>
+   <div class="gv-wrap">
 
     <!-- ════════ Title + description + participants ════════ -->
     <div class="gv-projhead">
@@ -284,7 +286,11 @@
         </div>
       </details>
     </div>
+   </div><!-- /.gv-wrap (white top) -->
 
+   <!-- ════════ Method band (grey) — phases + the active phase's method content ════════ -->
+   <div class="gv-methodband">
+    <div class="gv-wrap">
     <!-- ════════ Phases timeline ════════ -->
     <section class="gv-phases" aria-labelledby="phasesTitle">
       <div class="gv-phases__bar">
@@ -309,6 +315,8 @@
         <button class="gv-readmore" id="readMore" aria-expanded="false">Read more <span data-gv-icon="arrow-right" aria-hidden="true"></span></button>
       </div>
     </section>
+    </div>
+   </div><!-- /.gv-methodband -->
   </main>
 
   <!-- ════════ Footer ════════ -->

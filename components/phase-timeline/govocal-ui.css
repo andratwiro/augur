@@ -548,7 +548,9 @@ body.gv-root {
 .gv-phase.current .gv-phase__label { color: var(--gv-green-700); font-weight: 600; }
 .gv-phase:hover .gv-pstep { filter: brightness(0.97); }
 .gv-phase:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
-.gv-phase[aria-selected="true"]:not(.current) .gv-phase__label { text-decoration: underline; text-underline-offset: 3px; font-weight: 600; color: var(--gv-text-primary); }
+/* the phase you're VIEWING (if it isn't the current one) fills dark charcoal */
+.gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-cool-grey-700); color: #fff; }
+.gv-phase[aria-selected="true"]:not(.current) .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
 /* content panel: big green numbered circle + green name + date */
 .gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 26px 30px; margin-top: 8px; }
 .gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
