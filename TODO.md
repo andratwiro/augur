@@ -53,16 +53,14 @@ order: Foundations + tabs first, then Pages one page at a time.
   - [x] **Download HTML** button — on the opportunity (pre-prototype) page, each
         prototype card has a `↓ Download HTML` button that grabs its entry HTML
         (same-origin `download` attr, filename = prototype slug).
-  - [~] **Comments overlay** — `Shift+C` reveals a hidden review layer on any
+  - [x] **Comments overlay** — `Shift+C` reveals a hidden review layer on any
         prototype: click to drop element-anchored pins, each a comment thread
         (reply/resolve/delete). Shadow-DOM so it can't clash with the prototype;
         inert inside the index previews. Shared via a KV-backed worker API
         (`/__review/api`); falls back to localStorage if the API is unreachable.
         Claude reads comments via `npm run comments` (secret-guarded export
-        endpoint → gitignored `review-comments.local.md`). Client + worker + build
-        wiring DONE and verified locally with `wrangler pages dev`.
-        **Go-live pending** — needs the KV namespace + binding + export secret
-        (see "Comments go-live" under Deploy & access).
+        endpoint → gitignored `review-comments.local.md`). **LIVE on prod** —
+        KV bound, export verified end-to-end (write → worker → pull script).
   - [x] **City colour theming** — switch a prototype's colour scheme per city via a
         URL param. Implemented as `?theme=N` in `skills/govocal-ui/govocal-themes.js`:
         a central `GV_THEMES` map drives the three tenant CSS vars
@@ -91,17 +89,18 @@ order: Foundations + tabs first, then Pages one page at a time.
       `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` repo secrets. (Chose Actions
       over Cloudflare's native Git integration since the project is Direct Upload
       and can't be converted.) Local deploys still work via `npm run deploy`.
-- [ ] **Comments go-live** — the review-comments code is shipped but the KV
-      backend isn't wired yet. Steps:
-  1. **(User)** Add **Workers KV Storage → Edit** to the deploy API token at
-     dash.cloudflare.com/profile/api-tokens (currently Pages-only; `wrangler kv
-     namespace list` fails with auth error 10000 until this is added).
-  2. **(Claude)** Create a KV namespace, add a `wrangler.toml` binding it as
-     `COMMENTS`, generate `REVIEW_EXPORT_KEY`, set it as a Pages secret
-     (`wrangler pages secret put`) AND in gitignored `.env.deploy` (+
-     `REVIEW_SITE_URL`), then deploy and verify `npm run comments` reads prod.
-  - Until then the overlay still works per-browser via localStorage fallback;
-    comments just aren't shared and Claude can't read them yet.
+- [x] **Comments go-live** — KV backend wired for the review-comments overlay.
+      Token got **Workers KV Storage → Edit**; created KV namespace
+      `gv_review_comments` (id `98062803805e48a9a061cac648a1446f`), bound as
+      `COMMENTS` at the **project level** via the Pages API
+      (`deployment_configs.{production,preview}.kv_namespaces`, merged so
+      `SITE_PASSWORD` was preserved) so both local and CI deploys inherit it.
+      Generated `REVIEW_EXPORT_KEY`, set as a Pages secret + in gitignored
+      `.env.deploy` (with `REVIEW_SITE_URL`). Verified end-to-end on prod:
+      seeded KV → export endpoint (key-guarded, 403 on wrong key) →
+      `npm run comments`. NOTE: bindings are project-level (not in repo), so a
+      `wrangler.toml` is intentionally NOT used — don't add one expecting CI to
+      set bindings.
 - [ ] Add real prototypes for the `departments/` opportunity (currently empty).
 
 ## Recently done
