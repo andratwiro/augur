@@ -24,6 +24,9 @@ surfaces what's next. Check items off (`- [x]`) as they land; add new ones freel
   - [ ] **Download HTML** button — let a viewer grab the self-contained prototype.
   - [ ] **Comments overlay** — a way to leave comments on top of a prototype
         (pin/annotate + a comment thread) so reviewers can capture feedback.
+  - [ ] **City colour theming** — switch a prototype's colour scheme per city via a
+        URL param, e.g. `?city=1`, so the same prototype can be previewed in
+        different cities' branding. Define the city→palette mapping centrally.
 
 ## Review & critique
 - [ ] **Screenshot review** — a skill/flow for Claude to screenshot a prototype

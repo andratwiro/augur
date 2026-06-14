@@ -61,5 +61,41 @@ opportunities.
 
 - `node build.js` → regenerates `/dist` (cleaned each run) + `dist/index.html`
   landing page, sorted most-recently-modified first.
-- Deployed via Cloudflare Pages: build command `node build.js`, output dir `dist`.
-- `/dist` and `node_modules` are gitignored; `/dist` is built by CI on deploy.
+- Deployed to Cloudflare Pages via **Direct Upload** (`govocal-prototypes` project,
+  isolated account). `/dist` and `node_modules` are gitignored.
+- **Two ways to deploy:**
+  - Local: `npm run deploy` (sources gitignored `.env.deploy`, builds, uploads).
+  - Push: GitHub Actions (`.github/workflows/deploy.yml`) builds + deploys on every
+    push to `main`, using repo secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`.
+- The Cloudflare API token must **never** be pasted into chat — it lives only in
+  `.env.deploy` (local) and the GitHub secret (CI).
+
+### Deploy automatically (standing authorization)
+
+After finishing a set of changes that affect the **live site** — a prototype's
+files, or the landing/shell UI — deploy them without waiting to be asked: run
+`npm run deploy`, then report the deployment URL. Don't deploy half-finished work;
+deploy once a change is complete. (No deploy needed for internal-only edits like
+`TODO.md`, `research.md`, `context.md`, or skills.)
+
+### Commit & push automatically (standing authorization)
+
+The user does not want to manage git. After completing any change, commit it and
+push — without being asked:
+
+- Commit directly to **`main`** (it is the deploy branch; do not create feature
+  branches for this repo). Use a clear, imperative commit message.
+- **Push to `main`** so the remote stays in sync. Pushing also triggers the CI
+  autodeploy; combined with the local `npm run deploy` rule above the two are
+  idempotent (same `/dist`), so a redundant CI deploy is harmless.
+- Commit logical units of work as they complete, not half-finished edits. Group
+  related file changes into one commit.
+- Never commit secrets — `.env.deploy` is gitignored and must stay that way.
+
+### Site UI version
+
+`build.js` has a `UI_VERSION` constant shown in every generated page's footer
+(`v0.01`). Bump it **only** when the prototypes-site UI changes — the build.js
+shell/CSS, index pages, or features like carousel/comments/download. **Do not**
+bump it for changes inside individual prototypes; those are versioned by their own
+modified date, not this number.
