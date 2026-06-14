@@ -60,17 +60,21 @@
   //   Engaged California — navy #1C2745 + orange #E79450
   // FAITHFUL-BUT-FLAGGED: Wien Rot #FF0000 is only ~4:1 white-on-primary (under AA) —
   // it's the official colour, kept faithful; the audit will flag it (expected).
-  // Each tenant also configures a custom font (the product's customFontName).
-  // Real fonts read off the live sites: Stadt Wien = "WienerMelange_W_Rg" (proprietary),
-  // Engaged California = "Noto Sans" (free, loaded exactly), Københavns Kommune = "KBH"
-  // (proprietary). Proprietary fonts can't be loaded here, so the stack lists the real
-  // name first (used where licensed) then a close FREE substitute (loaded below) for
-  // visible differentiation, then the GoVocal Public Sans fallback — same as the live sites.
+  // Each tenant configures a custom font (the product's customFontName). The real city
+  // faces are proprietary and can't be bundled, so each stack lists the real name(s)
+  // first (rendered where licensed/installed) then a FREE substitute chosen to match the
+  // city's brand character, then the GoVocal Public Sans fallback (same as the live sites):
+  //   Stadt Wien — "Wiener Melange" (Dalton Maag, 2019: warm, humanist, rounded, open
+  //     counters) → substitute Mulish (warm humanist sans).
+  //   Københavns Kommune — "KBH Sans" (Playtype/e-Types: Art-Nouveau curves + modern
+  //     grotesque) → substitute Archivo (grotesque).
+  //   Engaged California — "Noto Sans" (free, loaded exactly).
+  //   GoVocal default — Public Sans (the component-library default; no custom font).
   var FONT_FALLBACK = '"Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif';
   var GV_THEMES = [
     { id: 0, name: 'GoVocal',            primary: '#0E7C86', secondary: '#E2603A', text: '#333333', logo: null,      font: null },
-    { id: 1, name: 'Københavns Kommune', primary: '#000C2E', secondary: '#0A1A4A', text: '#1A1A1A', logo: LOGO_KBH,  font: '"KBH", "Archivo", ' + FONT_FALLBACK },
-    { id: 2, name: 'Stadt Wien',         primary: '#FF0000', secondary: '#000000', text: '#1A1A1A', logo: LOGO_WIEN, font: '"WienerMelange_W_Rg", "Libre Franklin", ' + FONT_FALLBACK },
+    { id: 1, name: 'Københavns Kommune', primary: '#000C2E', secondary: '#0A1A4A', text: '#1A1A1A', logo: LOGO_KBH,  font: '"KBH Sans", "KBH", "Archivo", ' + FONT_FALLBACK },
+    { id: 2, name: 'Stadt Wien',         primary: '#FF0000', secondary: '#000000', text: '#1A1A1A', logo: LOGO_WIEN, font: '"Wiener Melange", "WienerMelange_W_Rg", "Mulish", ' + FONT_FALLBACK },
     { id: 3, name: 'Engaged California', primary: '#1C2745', secondary: '#E79450', text: '#1A1A1A', logo: LOGO_CA,   font: '"Noto Sans", ' + FONT_FALLBACK },
   ];
   window.GV_THEMES = GV_THEMES;
@@ -81,7 +85,7 @@
     var l = document.createElement('link');
     l.id = 'gv-theme-fonts';
     l.rel = 'stylesheet';
-    l.href = 'https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&family=Libre+Franklin:wght@400;600;700;800&family=Noto+Sans:wght@400;600;700;800&display=swap';
+    l.href = 'https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&family=Mulish:wght@400;600;700;800&family=Noto+Sans:wght@400;600;700;800&display=swap';
     (document.head || document.documentElement).appendChild(l);
   })();
 

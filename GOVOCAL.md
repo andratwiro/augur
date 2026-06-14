@@ -470,6 +470,20 @@ Keep entries short, deduped, and dated when point-in-time. Newest at top.
   California) — left untouched.** Note: this default is no longer the literal product
   brand; if exact GoVocal-brand fidelity is ever needed, the real pink is `#ef0071`.
 
+- _(2026-06-14)_ **Per-theme typography is a real, wired feature** (the user cares about
+  it switching per city). `--gv-font-family` is set per theme in `govocal-themes.js` and
+  applied via `.gv-root`/components; every prototype/component/page/primitive uses the
+  variable (no hardcoded fonts except monospace `<code>`). Real city faces (researched
+  from official sources): **Stadt Wien = "Wiener Melange"** (Dalton Maag, 2019 — warm,
+  humanist, rounded, open counters; proprietary, `wien.gv.at` CD-manual); **Københavns
+  Kommune = "KBH Sans"** (Playtype/e-Types — Art-Nouveau curves + modern grotesque;
+  proprietary, `design.kk.dk`); **GoVocal = Public Sans** (component-library default, no
+  custom face); Engaged California = Noto Sans (free, exact). Proprietary faces can't be
+  bundled → free substitutes chosen to match brand character: **Wien → Mulish** (warm
+  humanist), **Copenhagen → Archivo** (grotesque). Real names are listed first in each
+  stack so a licensed machine renders the true face. Drop in real web-font files for
+  pixel-exact Wien/Copenhagen if/when licensed.
+
 - _(2026-06-14)_ **Live navbar markup (from rendered Stadt Wien `mitgestalten.wien.gv.at`):**
   the real header is `<header id="e2e-navbar">`; the primary nav is a
   `<nav aria-label="Primäre">` landmark; the active homepage/logo link carries
