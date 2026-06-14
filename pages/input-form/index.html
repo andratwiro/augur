@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Input Form (survey) — GoVocal (reference)</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <script src="govocal-themes.js" defer></script>
+  <script src="govocal-icons.js" defer></script>
+  <!--
+    REFERENCE REBUILD of the GoVocal resident INPUT FORM / survey runner — the
+    page-by-page wizard that renders a `custom_fields` form definition. Rebuilt in our
+    system (gv-* primitives + survey field components below), faithful to the live
+    "Redesigning Coffman Park" kitchen-sink survey (wietsedemo tenant) captured in
+    references/pages/input-form/. It exercises ALL 17 input types:
+      text · multiline_text · number · select · multiselect · rating · ranking ·
+      linear_scale · sentiment_linear_scale · multiselect_image · matrix_linear_scale ·
+      file_upload · shapefile_upload · point/line/polygon (map) · page breaks.
+
+    DATA-DRIVEN: the whole survey is the FORM object in the script — change that JSON and
+    the page renders a different survey. Every colour/font is a --gv-* token (theme-driven
+    via ?theme=), so the form re-skins per city. Pages-tab reference → NO cookie banner.
+
+    Real product behaviour reproduced: the **Next** button stays disabled until the page's
+    scale/rating/matrix questions are answered, even though they're marked optional
+    (confirmed on the live runner — see references notes + GOVOCAL.md §13).
+  -->
+  <style>
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+
+    /* ════════ Survey runner shell ════════
+       A white panel on the grey app background, like the real survey route: a
+       "Survey" titlebar with a close ✕, a scrolling body, and a sticky footer with the
+       yellow progress bar + Previous/Next. */
+    .sv-wrap { max-width: 880px; margin: 0 auto; padding: 28px 16px 60px; }
+    .sv-card {
+      background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow-hover-lg);
+      display: flex; flex-direction: column; min-height: 78vh; overflow: hidden;
+    }
+    .sv-titlebar {
+      flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 22px; border-bottom: 1px solid var(--gv-grey-200);
+    }
+    .sv-titlebar h1 { margin: 0; font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-secondary); }
+    .sv-close {
+      display: grid; place-items: center; width: 40px; height: 40px; border: 0; background: none;
+      border-radius: var(--gv-radius); color: var(--gv-text-primary); cursor: pointer;
+    }
+    .sv-close:hover { background: var(--gv-grey-100); }
+    .sv-close:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+    .sv-close svg { width: 22px; height: 22px; fill: currentColor; }
+
+    .sv-body { flex: 1 1 auto; overflow-y: auto; padding: 30px 40px 36px; }
+    @media (max-width: 600px) { .sv-body { padding: 22px 18px 28px; } .sv-wrap { padding: 0; } .sv-card { min-height: 100vh; border-radius: 0; } }
+
+    /* Page heading + description */
+    .sv-page__title { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.25; color: var(--gv-tenant-primary); margin: 0 0 14px; word-break: break-word; }
+    .sv-page__desc  { font-size: var(--gv-fs-l); font-style: italic; color: var(--gv-text-primary); line-height: 1.5; margin: 0 0 8px; }
+
+    /* Question block */
+    .sv-q { margin-top: 34px; }
+    .sv-q:first-of-type { margin-top: 26px; }
+    .sv-q__label { font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-text-primary); line-height: 1.4; }
+    .sv-q__optional { font-weight: 400; color: var(--gv-text-secondary); margin-left: 6px; }
+    .sv-q__desc { font-size: var(--gv-fs-s); font-style: italic; color: var(--gv-text-primary); margin: 4px 0 0; line-height: 1.5; }
+    .sv-q__control { margin-top: 14px; }
+
+    /* ── Option card (select / multiselect) ─────────────────────────────────
+       A bordered rectangle holding a real radio/checkbox + label. Selected =
+       tenant-primary border (+ the control's own checked styling). */
+    .sv-optcard {
+      display: flex; align-items: center; gap: 12px;
+      border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius);
+      padding: 16px 18px; margin-bottom: 12px; cursor: pointer;
+      transition: border-color 100ms ease-out, box-shadow 100ms ease-out;
+    }
+    .sv-optcard:hover { border-color: var(--gv-black); }
+    .sv-optcard:has(input:checked) { border-color: var(--gv-tenant-primary); box-shadow: inset 0 0 0 1px var(--gv-tenant-primary); }
+    .sv-optcard:has(input:focus-visible) { outline: var(--gv-focus-outline); outline-offset: 2px; }
+    .sv-optcard__txt { font-size: var(--gv-fs-base); color: var(--gv-text-primary); }
+    /* keep the inner gv-radio/gv-checkbox from adding its own bottom margin here */
+    .sv-optcard .gv-radio, .sv-optcard .gv-checkbox { margin: 0; gap: 0; }
+
+    /* ── Rating (stars) ─────────────────────────────────────────────────────── */
+    .sv-rating { display: inline-flex; gap: 8px; }
+    .sv-rating input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .sv-rating label { cursor: pointer; color: var(--gv-grey-700); line-height: 0; border-radius: var(--gv-radius); }
+    .sv-rating label svg { width: 38px; height: 38px; fill: currentColor; transition: color 80ms ease-out; display: block; }
+    .sv-rating label:hover { color: var(--gv-tenant-primary); }
+    .sv-rating input:focus-visible + label { outline: var(--gv-focus-outline); outline-offset: 3px; }
+    /* fill the chosen star and all before it (CSS sibling trick: inputs are before labels in source order, reversed visually) */
+    .sv-rating.is-set label.on { color: var(--gv-tenant-primary); }
+
+    /* ── Linear scale (1…N segmented buttons) ───────────────────────────────── */
+    .sv-scale { display: flex; gap: 10px; flex-wrap: wrap; }
+    .sv-scale input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .sv-scale label {
+      min-width: 56px; height: 54px; padding: 0 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius);
+      font-size: var(--gv-fs-base); color: var(--gv-text-primary); cursor: pointer; background: #fff;
+      transition: all 90ms ease-out;
+    }
+    .sv-scale label:hover { border-color: var(--gv-black); }
+    .sv-scale input:checked + label { background: var(--gv-tenant-primary); border-color: var(--gv-tenant-primary); color: #fff; font-weight: 600; }
+    .sv-scale input:focus-visible + label { outline: var(--gv-focus-outline); outline-offset: 2px; }
+    .sv-scale__ends { display: flex; justify-content: space-between; max-width: 420px; margin-top: 8px; font-size: var(--gv-fs-s); font-style: italic; color: var(--gv-text-secondary); }
+    @media (max-width: 600px) { .sv-scale label { min-width: 44px; height: 48px; } }
+
+    /* ── Sentiment scale (emoji faces) ──────────────────────────────────────── */
+    .sv-sentiment { display: flex; gap: 8px; flex-wrap: wrap; }
+    .sv-sentiment input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .sv-sentiment label {
+      flex: 1 1 0; min-width: 64px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 8px 4px; border-radius: var(--gv-radius); cursor: pointer; text-align: center;
+    }
+    .sv-sentiment .face {
+      position: relative; width: 52px; height: 52px; border-radius: var(--gv-radius);
+      display: grid; place-items: center; font-size: 32px; border: 2px solid transparent;
+      transition: border-color 90ms ease-out, background 90ms ease-out;
+    }
+    .sv-sentiment label:hover .face { background: var(--gv-grey-100); }
+    .sv-sentiment input:checked + label .face { border-color: var(--gv-tenant-primary); background: var(--gv-tenant-primary-lighten95); }
+    .sv-sentiment input:checked + label .face::after {
+      content: ""; position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%;
+      background: var(--gv-tenant-primary); border: 2px solid #fff;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff'%3E%3Cpath d='M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
+      background-size: 14px; background-repeat: no-repeat; background-position: center;
+    }
+    .sv-sentiment input:focus-visible + label .face { outline: var(--gv-focus-outline); outline-offset: 2px; }
+    .sv-sentiment .slabel { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+    .sv-sentiment input:checked + label .slabel { color: var(--gv-text-primary); font-weight: 600; }
+
+    /* ── Ranking (rank dropdown + drag handle per card) ─────────────────────── */
+    .sv-rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+    .sv-rank li {
+      display: flex; align-items: center; gap: 14px;
+      border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius);
+      padding: 12px 16px; background: #fff;
+    }
+    .sv-rank li.drag-over { border-color: var(--gv-tenant-primary); box-shadow: inset 0 0 0 1px var(--gv-tenant-primary); }
+    .sv-rank__select {
+      height: 38px; min-width: 56px; padding: 0 8px; border: 1px solid var(--gv-grey-400);
+      border-radius: var(--gv-radius); font: inherit; font-size: var(--gv-fs-s); color: var(--gv-text-primary);
+      background: #fff; cursor: pointer;
+    }
+    .sv-rank__select:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+    .sv-rank__txt { flex: 1 1 auto; font-size: var(--gv-fs-base); color: var(--gv-text-primary); }
+    .sv-rank__handle { color: var(--gv-grey-600); cursor: grab; display: grid; place-items: center; width: 28px; height: 28px; }
+    .sv-rank__handle:active { cursor: grabbing; }
+    .sv-rank__handle svg { width: 18px; height: 18px; fill: currentColor; }
+
+    /* ── Image multi-select ─────────────────────────────────────────────────── */
+    .sv-imggrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+    @media (max-width: 560px) { .sv-imggrid { grid-template-columns: 1fr; } }
+    .sv-imgcard {
+      border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius); overflow: hidden;
+      cursor: pointer; transition: border-color 100ms ease-out, box-shadow 100ms ease-out; background: #fff;
+    }
+    .sv-imgcard:hover { border-color: var(--gv-black); }
+    .sv-imgcard:has(input:checked) { border-color: var(--gv-tenant-primary); box-shadow: inset 0 0 0 1px var(--gv-tenant-primary); }
+    .sv-imgcard:has(input:focus-visible) { outline: var(--gv-focus-outline); outline-offset: 2px; }
+    .sv-imgcard__media { position: relative; aspect-ratio: 16 / 10; background: var(--gv-grey-200); }
+    .sv-imgcard__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .sv-imgcard__zoom {
+      position: absolute; right: 8px; bottom: 8px; width: 30px; height: 30px; border-radius: var(--gv-radius);
+      background: rgba(255,255,255,0.92); display: grid; place-items: center; color: var(--gv-text-primary);
+    }
+    .sv-imgcard__zoom svg { width: 16px; height: 16px; fill: currentColor; }
+    .sv-imgcard__foot { display: flex; align-items: center; gap: 10px; padding: 14px 16px; }
+    .sv-imgcard__foot .gv-checkbox { margin: 0; }
+    .sv-imgcard__foot .label { font-size: var(--gv-fs-base); color: var(--gv-text-primary); }
+
+    /* ── Matrix (statements × scale) ────────────────────────────────────────── */
+    .sv-matrix { width: 100%; border-collapse: collapse; }
+    .sv-matrix th, .sv-matrix td { padding: 10px 6px; text-align: center; }
+    .sv-matrix thead th { font-size: var(--gv-fs-xs); font-weight: 600; color: var(--gv-text-secondary); vertical-align: bottom; }
+    .sv-matrix thead th:first-child { text-align: left; }
+    .sv-matrix tbody th { text-align: left; font-weight: 400; font-size: var(--gv-fs-s); color: var(--gv-text-primary); padding-right: 14px; }
+    .sv-matrix tbody tr { border-top: 1px solid var(--gv-grey-200); }
+    .sv-matrix input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .sv-matrix .cell { display: inline-grid; place-items: center; width: 24px; height: 24px; }
+    .sv-matrix .dot { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--gv-border-dark); background: #fff; display: grid; place-items: center; }
+    .sv-matrix .dot::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--gv-tenant-primary); transform: scale(0); transition: transform 100ms ease-out; }
+    .sv-matrix input:checked + .cell .dot { border-color: var(--gv-tenant-primary); }
+    .sv-matrix input:checked + .cell .dot::after { transform: scale(1); }
+    .sv-matrix label { cursor: pointer; }
+    .sv-matrix input:focus-visible + .cell .dot { outline: var(--gv-focus-outline); outline-offset: 2px; }
+    /* Mobile: stack each statement as its own labelled mini-scale */
+    .sv-matrix-mobile { display: none; }
+    @media (max-width: 640px) {
+      .sv-matrix { display: none; }
+      .sv-matrix-mobile { display: flex; flex-direction: column; gap: 22px; }
+      .sv-matrix-mobile .stmt { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary); margin-bottom: 10px; }
+    }
+
+    /* ── Map field (point / line / polygon) — static placeholder, not live Esri ── */
+    .sv-map { position: relative; height: 320px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); overflow: hidden;
+      background:
+        repeating-linear-gradient(0deg, transparent 0 38px, rgba(0,0,0,0.04) 38px 39px),
+        repeating-linear-gradient(90deg, transparent 0 38px, rgba(0,0,0,0.04) 38px 39px),
+        linear-gradient(135deg, #e8efe6, #dfeae8 60%, #e9eff2);
+    }
+    .sv-map__hint { display: flex; align-items: center; gap: 8px; font-size: var(--gv-fs-base); color: var(--gv-text-secondary); margin: 4px 0 14px; }
+    .sv-map__hint svg { width: 18px; height: 18px; fill: currentColor; flex: none; }
+    .sv-map__zoom { position: absolute; top: 12px; left: 12px; display: flex; flex-direction: column; background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); }
+    .sv-map__zoom button { width: 34px; height: 34px; border: 0; background: none; font-size: 20px; color: var(--gv-text-primary); cursor: pointer; }
+    .sv-map__zoom button:first-child { border-bottom: 1px solid var(--gv-grey-200); }
+    .sv-map__zoom button:hover { background: var(--gv-grey-100); }
+    .sv-map__tools { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .sv-map__tools button { width: 34px; height: 34px; border: 0; background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); display: grid; place-items: center; color: var(--gv-text-primary); cursor: pointer; }
+    .sv-map__tools button:hover { background: var(--gv-grey-100); }
+    .sv-map__tools svg { width: 18px; height: 18px; fill: currentColor; }
+    .sv-map__draw { position: absolute; left: 12px; bottom: 12px; width: 64px; height: 48px; border-radius: var(--gv-radius);
+      background: var(--gv-tenant-primary); display: grid; place-items: center; box-shadow: var(--gv-shadow); }
+    .sv-map__draw svg { width: 26px; height: 26px; fill: #fff; }
+
+    /* ── File / shapefile dropzone ──────────────────────────────────────────── */
+    .sv-drop {
+      border: 1px dashed var(--gv-border-dark); border-radius: var(--gv-radius);
+      padding: 28px 20px; text-align: center; background: var(--gv-grey-50); cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .sv-drop:hover { border-color: var(--gv-tenant-primary); background: var(--gv-tenant-primary-lighten95); }
+    .sv-drop svg { width: 30px; height: 30px; fill: var(--gv-text-secondary); }
+    .sv-drop__main { font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); }
+    .sv-drop__main b { color: var(--gv-tenant-primary); }
+    .sv-drop__sub { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+
+    /* ── Intro / thank-you ──────────────────────────────────────────────────── */
+    .sv-intro__media, .sv-thanks__media {
+      height: 220px; border-radius: var(--gv-radius); margin: 18px 0 8px;
+      background: linear-gradient(120deg, #3f5f3a, #6f8f55 55%, #4a6b3a); display: grid; place-items: center;
+      color: rgba(255,255,255,0.9); font-weight: 800; font-size: 24px; letter-spacing: .04em; text-align:center;
+    }
+    .sv-thanks { text-align: center; padding: 30px 10px; }
+    .sv-thanks__check { width: 72px; height: 72px; border-radius: 50%; background: var(--gv-success); display: grid; place-items: center; margin: 0 auto 20px; }
+    .sv-thanks__check svg { width: 38px; height: 38px; fill: #fff; }
+
+    /* ── Footer (progress + nav) ────────────────────────────────────────────── */
+    .sv-foot { flex: 0 0 auto; border-top: 1px solid var(--gv-grey-200); }
+    .sv-progress { height: 6px; background: var(--gv-grey-200); }
+    .sv-progress__bar { height: 100%; width: 0; background: #F0C808; transition: width 220ms ease-out; }
+    .sv-foot__row { display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 16px 22px; position: relative; }
+    .sv-foot__pct { position: absolute; left: 0; right: 0; text-align: center; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); pointer-events: none; }
+    .sv-foot__nav { display: flex; gap: 12px; position: relative; z-index: 1; }
+    @media (max-width: 480px) { .sv-foot__pct { position: static; text-align: left; flex: 1; } .sv-foot__row { justify-content: space-between; } }
+
+    /* a11y: honour reduced motion for the bar + faces */
+    @media (prefers-reduced-motion: reduce) { .sv-progress__bar, .sv-matrix .dot::after { transition: none; } }
+  </style>
+</head>
+<body class="gv-root" data-gv-theme-picker="off">
+  <main class="sv-wrap">
+    <section class="sv-card" aria-label="Survey">
+      <div class="sv-titlebar">
+        <h1>Survey</h1>
+        <button class="sv-close" type="button" aria-label="Close survey">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+
+      <form class="sv-body" id="sv-body" novalidate><!-- pages render here --></form>
+
+      <div class="sv-foot">
+        <div class="sv-progress"><div class="sv-progress__bar" id="sv-bar"></div></div>
+        <div class="sv-foot__row">
+          <span class="sv-foot__pct" id="sv-pct">0% complete</span>
+          <div class="sv-foot__nav">
+            <button type="button" class="gv-btn primary-outlined" id="sv-prev">
+              <svg class="gv-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+              Previous
+            </button>
+            <button type="button" class="gv-btn primary" id="sv-next">
+              <span id="sv-next-label">Next</span>
+              <svg class="gv-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  /* ════════════════════════════════════════════════════════════════════════
+     THE FORM DEFINITION — mirrors a GoVocal `custom_fields` payload, simplified.
+     Swap this object to render a different survey. Field `type` ∈ the 17 input
+     types. `gate:true` marks the de-facto-required-to-advance types (the live
+     runner won't enable Next until these are answered).
+     ════════════════════════════════════════════════════════════════════════ */
+  const FORM = {
+    pages: [
+      { kind:'intro', title:"We're renovating Coffman Park!",
+        desc:"In 2025 we've decided to do a renovation of the Coffman Park in order to build a more enjoyable recreation area for residents. Please explore the plan in the following survey and respond to questions about the proposal. Thank you!" },
+
+      { emoji:'👋', title:'About you', desc:'Help us understand who is participating in this survey so we can design a park that meets the needs of the community.',
+        fields:[
+          { type:'select', label:'Which age group do you belong to?', desc:'Choose one',
+            options:['Under 18','18–24','25–34','35–44','45–54','55–64','65+'] },
+          { type:'number', label:'How many people in your household typically visit Coffman Park?' },
+        ] },
+
+      { emoji:'🌿', title:'How you use Coffman Park today', desc:'Tell us how often you visit the park and what you currently do there.',
+        fields:[
+          { type:'select', label:'Do you live within 15 minute walking distance of Coffman park?', options:['Yes','No'] },
+          { type:'select', label:'How often do you visit the park?', options:['Daily','A few times a week','Weekly','A few times a month','Rarely','Never'] },
+          { type:'text', label:'What’s the first word that comes to mind when you think of Coffman Park?' },
+          { type:'multiselect', label:'What activities do you currently enjoy in the park?', desc:'Select all that apply',
+            options:['Walking or running','Picnicking','Playing sports','Reading or relaxing','Letting kids play','Dog walking','Birdwatching','Attending events','Other'] },
+          { type:'rating', label:'How would you rate your current overall experience with Coffman Park?', desc:'(1 = very poor, 5 = excellent)', max:5, gate:true },
+        ] },
+
+      { emoji:'🧠', title:'Ideas & improvements', desc:'Let’s improve together. Share your ideas and help us prioritize what matters most.',
+        fields:[
+          { type:'multiline_text', label:'What improvements would make Coffman Park more useful or enjoyable for you?' },
+          { type:'ranking', label:'Rank the following features in order of importance for the redesigned park.', desc:'(1 = most important)',
+            options:['Nature and biodiversity','Play and recreation','Accessibility for all ages and abilities','Community gathering spaces','Art and cultural installations','Safety and lighting','Public restrooms'] },
+          { type:'linear_scale', label:'How important is environmental sustainability in the park redesign?', desc:'(1 = not important, 7 = extremely important)', max:7, minLabel:'not important', maxLabel:'extremely important', gate:true },
+          { type:'sentiment', label:'How do you feel about the current safety in Coffman Park?', desc:'(from very unsafe to very safe)',
+            faces:['😣','🙁','😐','🙂','😄'], labels:['Very bad','Bad','Ok','Good','Very good'], gate:true },
+        ] },
+
+      { emoji:'🎨', title:'Design preferences', desc:'We’d love to know what you’d like to see in terms of look, feel, and features.',
+        fields:[
+          { type:'multiselect_image', label:'Which type of playground style do you prefer for the new design?', desc:'(Select one image)',
+            images:[
+              { src:'img/playground-wooden.jpeg',    label:'Natural wooden play structures' },
+              { src:'img/playground-modern.jpeg',    label:'Colorful rubberized modern sets' },
+              { src:'img/playground-adventure.png',  label:'Adventure playground with climbing nets' },
+              { src:'img/playground-splash.jpeg',    label:'Water-based splash zone' },
+            ] },
+          { type:'matrix', label:'Please rate the following aspects of Coffman Park.', gate:true,
+            scale:['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'],
+            statements:[
+              'I prefer fewer features in the park if it means lower maintenance costs.',
+              'The park should prioritize quiet natural areas, even if it means fewer activities.',
+              'It’s more important to add security features than to keep the park feeling open.',
+              'The park should host community events, even if it means more noise.',
+              'I would accept fewer trees if it meant better lighting and visibility.',
+              'I’d rather have more native plants than large lawn areas.',
+              'I’d prefer a fenced playground for safety, even if it feels less open.',
+              'I support water features (like fountains) even if they raise maintenance.',
+              'The park should offer Wi-Fi access, even if it means installing more infrastructure.',
+            ] },
+          { type:'file_upload', label:'Do you have any documents, photos, or past proposals related to the park to share?', desc:'Upload files here' },
+        ] },
+
+      { emoji:'🚧', title:"Let's zoom in on the Recreation Features demolition",
+        desc:"Due to the skate park and courts being largely unused, we've decided to demolish them and replace them with something the community wants more.",
+        fields:[
+          { type:'linear_scale', label:'Do you think demolishing these features is the right choice?', desc:'(1 = Strongly disagree, 5 = Strongly agree)', max:5, minLabel:'Strongly disagree', maxLabel:'Strongly agree', gate:true },
+          { type:'text', label:'Why?' },
+          { type:'select', label:'What features would you like to see here instead?', options:['Community garden','Splash pad','Playground','Botanical garden and greenhouse','Grass field','Other'] },
+        ] },
+
+      { emoji:'🗺️', title:'Spatial feedback', desc:'Let us know where improvements are most needed using the interactive map tools.',
+        fields:[
+          { type:'map', shape:'line', label:'What route do you most often walk in Coffman Park?', desc:'Draw the usual path you take when walking through the park.' },
+          { type:'map', shape:'polygon', label:'Where would you like to see more parking along your walking route?', desc:'Highlight a specific area in the park that you believe needs the most improvement.' },
+          { type:'map', shape:'point', label:'Where would you most like to see new bicycle storage in Coffman Park?', desc:'Highlight a specific area in the park that you believe needs the most improvement.' },
+        ] },
+
+      { emoji:'👷', title:'Are you a planner or GIS professional with an idea for the park development?',
+        desc:'If you are a planner or GIS professional with ideas for the redevelopment, we invite you to share spatial data with us.',
+        fields:[
+          { type:'shapefile_upload', label:'Upload your Esri shapefile containing park redevelopment ideas here.', desc:'Are you part of a community group or planner with GIS data? Upload shapefiles here.' },
+        ] },
+
+      { emoji:'✅', title:'Final Thoughts', desc:'Thanks for your participation—your feedback is shaping the future of the Coffman Park!',
+        fields:[
+          { type:'multiline_text', label:'Do you have any additional thoughts to share with us on the redesigning of Coffman Park?' },
+        ] },
+
+      { kind:'thankyou', title:'Thank you for sharing your input!', desc:'Your input has been successfully submitted.' },
+    ]
+  };
+
+  /* ════════ Renderers (one per input type) ════════ */
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  let uid = 0; const nid = () => 'f' + (++uid);
+
+  function qShell(f, inner) {
+    const opt = f.required ? '' : `<span class="sv-q__optional">(optional)</span>`;
+    const desc = f.desc ? `<p class="sv-q__desc">${esc(f.desc)}</p>` : '';
+    return `<div class="sv-q" data-gate="${f.gate ? 1 : 0}">
+      <div class="sv-q__label">${esc(f.label)}${opt}</div>${desc}
+      <div class="sv-q__control">${inner}</div></div>`;
+  }
+
+  function rText(f){ return qShell(f, `<input class="gv-input" type="text" placeholder="Type your answer" />`); }
+  function rMultiline(f){ return qShell(f, `<textarea class="gv-textarea" placeholder="Type your answer"></textarea>`); }
+  function rNumber(f){ return qShell(f, `<input class="gv-input" type="number" inputmode="numeric" placeholder="0" style="max-width:160px" />`); }
+
+  function rSelect(f){
+    const n = nid();
+    const cards = f.options.map((o,i)=>`
+      <label class="sv-optcard">
+        <span class="gv-radio"><input type="radio" name="${n}" value="${i}" /><span class="circle"></span></span>
+        <span class="sv-optcard__txt">${esc(o)}</span>
+      </label>`).join('');
+    return qShell(f, cards);
+  }
+  function rMultiselect(f){
+    const cards = f.options.map((o,i)=>`
+      <label class="sv-optcard">
+        <span class="gv-checkbox"><input type="checkbox" value="${i}" /><span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span></span>
+        <span class="sv-optcard__txt">${esc(o)}</span>
+      </label>`).join('');
+    return qShell(f, cards);
+  }
+
+  function star(){ return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`; }
+  function rRating(f){
+    const n = nid();
+    let h = `<div class="sv-rating" role="radiogroup" aria-label="${esc(f.label)}">`;
+    for(let i=1;i<=f.max;i++){
+      h += `<input type="radio" name="${n}" id="${n}-${i}" value="${i}" />
+            <label for="${n}-${i}" data-val="${i}" aria-label="${i} of ${f.max}">${star()}</label>`;
+    }
+    h += `</div>`;
+    return qShell(f, h);
+  }
+
+  function rScale(f){
+    const n = nid();
+    let btns = '';
+    for(let i=1;i<=f.max;i++){
+      btns += `<input type="radio" name="${n}" id="${n}-${i}" value="${i}" /><label for="${n}-${i}">${i}</label>`;
+    }
+    // end labels under the rail (the "(1 = …, N = …)" sits in the question desc, like
+    // the real form — so here we show the SHORT word labels beneath the two end buttons).
+    const ends = (f.minLabel||f.maxLabel)
+      ? `<div class="sv-scale__ends"><span>${esc(f.minLabel||'')}</span><span>${esc(f.maxLabel||'')}</span></div>` : '';
+    return qShell(f, `<div class="sv-scale" role="radiogroup" aria-label="${esc(f.label)}">${btns}</div>${ends}`);
+  }
+
+  function rSentiment(f){
+    const n = nid();
+    const items = f.faces.map((face,i)=>`
+      <input type="radio" name="${n}" id="${n}-${i}" value="${i+1}" />
+      <label for="${n}-${i}"><span class="face" aria-hidden="true">${face}</span><span class="slabel">${esc(f.labels[i])}</span></label>`).join('');
+    return qShell(f, `<div class="sv-sentiment" role="radiogroup" aria-label="${esc(f.label)}">${items}</div>`);
+  }
+
+  function rRanking(f){
+    const N = f.options.length;
+    const opts = f.options.map((o,i)=>{
+      let sel = `<select class="sv-rank__select" aria-label="Rank for ${esc(o)}"><option value="">–</option>`;
+      for(let r=1;r<=N;r++) sel += `<option value="${r}">${r}</option>`;
+      sel += `</select>`;
+      return `<li draggable="true" data-i="${i}">
+        ${sel}
+        <span class="sv-rank__txt">${esc(o)}</span>
+        <span class="sv-rank__handle" aria-hidden="true" title="Drag to reorder"><svg viewBox="0 0 24 24"><path d="M9 5h2v2H9V5m4 0h2v2h-2V5M9 11h2v2H9v-2m4 0h2v2h-2v-2m-4 6h2v2H9v-2m4 0h2v2h-2v-2"/></svg></span>
+      </li>`;
+    }).join('');
+    return qShell(f, `<ul class="sv-rank">${opts}</ul>`);
+  }
+
+  function rImages(f){
+    const n = nid();
+    const zoom = `<span class="sv-imgcard__zoom" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 3h6v6h-2V6.41l-3.29 3.3-1.42-1.42L17.59 5H15V3M3 15h2v2.59l3.29-3.3 1.42 1.42L6.41 19H9v2H3v-6z"/></svg></span>`;
+    const cards = f.images.map((im,i)=>`
+      <label class="sv-imgcard">
+        <span class="sv-imgcard__media"><img src="${esc(im.src)}" alt="${esc(im.label)}" />${zoom}</span>
+        <span class="sv-imgcard__foot">
+          <span class="gv-checkbox"><input type="checkbox" name="${n}" value="${i}" /><span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span></span>
+          <span class="label">${esc(im.label)}</span>
+        </span>
+      </label>`).join('');
+    return qShell(f, `<div class="sv-imggrid">${cards}</div>`);
+  }
+
+  function rMatrix(f){
+    const head = `<tr><th></th>${f.scale.map(s=>`<th>${esc(s)}</th>`).join('')}</tr>`;
+    const rows = f.statements.map((st,r)=>{
+      const n = 'mx'+nid();
+      const cells = f.scale.map((s,c)=>`
+        <td><label><input type="radio" name="${n}" value="${c+1}" aria-label="${esc(st)} — ${esc(s)}" /><span class="cell"><span class="dot"></span></span></label></td>`).join('');
+      return `<tr data-mxrow="1"><th scope="row">${esc(st)}</th>${cells}</tr>`;
+    }).join('');
+    const table = `<table class="sv-matrix"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+    // mobile stacked
+    const mob = f.statements.map((st,r)=>{
+      const n = 'mxm'+nid();
+      const btns = f.scale.map((s,c)=>`<input type="radio" name="${n}" id="${n}-${c}" value="${c+1}" /><label for="${n}-${c}">${c+1}</label>`).join('');
+      return `<div data-mxrow="1"><div class="stmt">${esc(st)}</div><div class="sv-scale" role="radiogroup" aria-label="${esc(st)}">${btns}</div></div>`;
+    }).join('');
+    return qShell(f, table + `<div class="sv-matrix-mobile">${mob}</div>`);
+  }
+
+  function rMap(f){
+    const tools = `
+      <div class="sv-map__zoom"><button type="button" aria-label="Zoom in">+</button><button type="button" aria-label="Zoom out">−</button></div>
+      <div class="sv-map__tools">
+        <button type="button" aria-label="Undo"><svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62A7.45 7.45 0 0 1 12.5 11c3.04 0 5.63 1.98 6.54 4.73l2.37-.78A9.01 9.01 0 0 0 12.5 8z"/></svg></button>
+        <button type="button" aria-label="Find my location"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8m8.94 3A8.99 8.99 0 0 0 13 3.06V1h-2v2.06A8.99 8.99 0 0 0 3.06 11H1v2h2.06A8.99 8.99 0 0 0 11 20.94V23h2v-2.06A8.99 8.99 0 0 0 20.94 13H23v-2zM12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14"/></svg></button>
+      </div>
+      <div class="sv-map__draw" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></svg></div>`;
+    const hint = `<p class="sv-map__hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 7h2v2h-2V7m0 4h2v6h-2v-6m1-9a10 10 0 1 0 0 20 10 10 0 0 0 0-20"/></svg> Click on the map to draw. Then, drag on points to move them.</p>`;
+    return qShell(f, hint + `<div class="sv-map" role="img" aria-label="Interactive map (${esc(f.shape)} drawing)">${tools}</div>`);
+  }
+
+  function rDrop(f, shapefile){
+    const cloud = `<svg viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14a6 6 0 0 0 6 6h13a5 5 0 0 0 .35-9.96M14 13v4h-4v-4H7l5-5 5 5z"/></svg>`;
+    const sub = shapefile ? 'Esri shapefile (.zip containing .shp, .shx, .dbf)' : 'PDF, PNG, JPG, DOCX — up to 50MB';
+    return qShell(f, `<div class="sv-drop" role="button" tabindex="0">${cloud}<span class="sv-drop__main"><b>Click to upload</b> or drag and drop</span><span class="sv-drop__sub">${sub}</span></div>`);
+  }
+
+  const RENDER = {
+    text:rText, multiline_text:rMultiline, number:rNumber, select:rSelect, multiselect:rMultiselect,
+    rating:rRating, linear_scale:rScale, sentiment:rSentiment, ranking:rRanking,
+    multiselect_image:rImages, matrix:rMatrix, map:rMap,
+    file_upload:f=>rDrop(f,false), shapefile_upload:f=>rDrop(f,true),
+  };
+
+  function renderPage(p){
+    if(p.kind==='intro'){
+      return `<div class="sv-page" data-kind="intro">
+        <h2 class="sv-page__title">${esc(p.title)}</h2>
+        <div class="sv-intro__media" aria-hidden="true">COFFMAN PARK<br>RENOVATION</div>
+        <p class="sv-page__desc" style="font-style:normal">${esc(p.desc)}</p></div>`;
+    }
+    if(p.kind==='thankyou'){
+      return `<div class="sv-page" data-kind="thankyou"><div class="sv-thanks">
+        <div class="sv-thanks__check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
+        <h2 class="sv-page__title" style="text-align:center">${esc(p.title)}</h2>
+        <p class="sv-page__desc" style="font-style:normal">${esc(p.desc)}</p></div></div>`;
+    }
+    const head = `<h2 class="sv-page__title">${p.emoji?esc(p.emoji)+' ':''}${esc(p.title)}</h2>${p.desc?`<p class="sv-page__desc">${esc(p.desc)}</p>`:''}`;
+    const body = (p.fields||[]).map(f => RENDER[f.type] ? RENDER[f.type](f) : '').join('');
+    return `<div class="sv-page">${head}${body}</div>`;
+  }
+
+  /* ════════ Wizard ════════ */
+  const bodyEl = document.getElementById('sv-body');
+  const barEl  = document.getElementById('sv-bar');
+  const pctEl  = document.getElementById('sv-pct');
+  const prevBtn= document.getElementById('sv-prev');
+  const nextBtn= document.getElementById('sv-next');
+  const nextLbl= document.getElementById('sv-next-label');
+  let step = 0;
+  const total = FORM.pages.length;
+  const lastContent = total - 2; // index of "Final Thoughts" (before thank-you)
+
+  function show(){
+    const p = FORM.pages[step];
+    bodyEl.innerHTML = renderPage(p);
+    bodyEl.scrollTop = 0;
+    // progress: % across content pages
+    const pct = Math.round((Math.min(step, lastContent) / lastContent) * 100);
+    barEl.style.width = pct + '%';
+    pctEl.textContent = (p.kind==='thankyou' ? 100 : pct) + '% complete';
+    // nav
+    prevBtn.style.visibility = (step===0 || p.kind==='thankyou') ? 'hidden' : 'visible';
+    if(p.kind==='thankyou'){ nextBtn.style.display='none'; }
+    else { nextBtn.style.display=''; nextLbl.textContent = (step===lastContent ? 'Submit' : 'Next'); }
+    refreshGate();
+  }
+
+  // A page is advanceable when every gate question on it is answered (real behaviour).
+  function refreshGate(){
+    const gates = [...bodyEl.querySelectorAll('.sv-q[data-gate="1"]')];
+    const ok = gates.every(q => q.querySelector('input:checked'));
+    nextBtn.classList.toggle('disabled', !ok);
+    nextBtn.setAttribute('aria-disabled', ok ? 'false' : 'true');
+  }
+
+  bodyEl.addEventListener('change', e=>{
+    refreshGate();
+    // rating: fill the chosen star and all below it
+    const wrap = e.target.closest('.sv-rating');
+    if(wrap){
+      const v = +e.target.value;
+      wrap.classList.add('is-set');
+      wrap.querySelectorAll('label').forEach(l=> l.classList.toggle('on', +l.dataset.val <= v));
+    }
+    // ranking dropdown: keep selections unique-ish (swap on collision)
+    if(e.target.classList.contains('sv-rank__select')){
+      const sel=e.target, v=sel.value, list=sel.closest('.sv-rank');
+      if(v){ list.querySelectorAll('.sv-rank__select').forEach(o=>{ if(o!==sel && o.value===v) o.value=''; }); }
+    }
+  });
+
+  // ranking drag-to-reorder
+  let dragEl=null;
+  bodyEl.addEventListener('dragstart', e=>{ const li=e.target.closest('.sv-rank li'); if(li){ dragEl=li; e.dataTransfer.effectAllowed='move'; } });
+  bodyEl.addEventListener('dragover', e=>{ const li=e.target.closest('.sv-rank li'); if(li&&dragEl&&li!==dragEl){ e.preventDefault(); li.classList.add('drag-over'); } });
+  bodyEl.addEventListener('dragleave', e=>{ const li=e.target.closest('.sv-rank li'); if(li) li.classList.remove('drag-over'); });
+  bodyEl.addEventListener('drop', e=>{ const li=e.target.closest('.sv-rank li'); if(li&&dragEl&&li!==dragEl){ e.preventDefault(); li.classList.remove('drag-over');
+    const list=li.parentNode, items=[...list.children]; if(items.indexOf(dragEl)<items.indexOf(li)) li.after(dragEl); else li.before(dragEl); } });
+  bodyEl.addEventListener('dragend', ()=>{ dragEl=null; bodyEl.querySelectorAll('.drag-over').forEach(n=>n.classList.remove('drag-over')); });
+
+  nextBtn.addEventListener('click', ()=>{ if(nextBtn.classList.contains('disabled')) return; if(step<total-1){ step++; show(); } });
+  prevBtn.addEventListener('click', ()=>{ if(step>0){ step--; show(); } });
+  document.querySelector('.sv-close').addEventListener('click', ()=> alert('Close — returns to the project page in the real product.'));
+
+  show();
+  </script>
+</body>
+</html>

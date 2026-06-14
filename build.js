@@ -72,7 +72,6 @@ const IGNORED_TOPLEVEL = new Set([
 // real page lands under pages/<slug>/. Slugs are kebab-case; titleCase() labels them.
 const PENDING_PAGES = [
   "content-builder",
-  "input-form",
   "survey-builder",
   "perspectives",
   "voting",

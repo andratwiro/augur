@@ -57,6 +57,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Header Nav** | `/components/header-nav/` | `components/header-nav/` | Responsive site chrome — 78px bar, logo slot, dropdown + “Mehr ···” overflow, search, primary CTA. Collapses to a hamburger drawer on narrow screens. CSS-only… |
 | **Hero** | `/components/hero/` | `components/hero/` | Full-bleed banner with a tenant-tinted overlay, title + lead, an avatar stack with participant count, and a primary CTA. Image-agnostic — set a photo or leave… |
 | **Login Modal** | `/components/login-modal/` | `components/login-modal/` | The reusable modal abstraction (overlay → dialog card → title header + top-right close + scrollable body), shown via GoVocal’s real “Before you participate” au… |
+| **Phase Timeline** | `/components/phase-timeline/` | `components/phase-timeline/` | Phase timeline — GoVocal component |
 | **Project Card** | `/components/project-card/` | `components/project-card/` | The participation-project card (thumb, title, meta with status icon, CTA) and the horizontal scroll rail. The whole card is clickable via a stretched title lin… |
 
 ## Pages (screens) — `pages/<name>/`

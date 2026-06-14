@@ -43,10 +43,22 @@ re-litigation. Three threads, interlocking:
         tabs, avatars/meta, modal/dialog). One at a time, each verified before it lands.
 - [ ] **More Pages** — composed reference pages on the **Pages** tab (one at a time,
       each reviewed for compliance before it lands). These compose the primitives into
-      full surfaces. **10 planned, now shown as "Pending" cards on the Pages tab**
-      (driven by `PENDING_PAGES` in `build.js`; remove a slug when its page lands):
-      Content Builder · Project Page · Input Form · Survey Builder · Perspectives ·
-      Voting · Common Ground · Ideation · Project List · Project Editor.
+      full surfaces. **10 planned**, driven by `PENDING_PAGES` in `build.js` (remove a
+      slug when its page lands). Landed: ✅ Project Page · ✅ **Input Form**. Pending:
+      Content Builder · Survey Builder · Perspectives · Voting · Common Ground ·
+      Ideation · Project List · Project Editor.
+  - **Input Form (done 2026-06-14):** captured the live "Redesigning Coffman Park"
+    kitchen-sink survey (wietsedemo) via the public `custom_fields` API + a Playwright
+    page-by-page walk (`scripts/capture-input-form.py`) → `references/pages/input-form/`.
+    Rebuilt as a **data-driven survey runner** (`pages/input-form/`): the whole form is a
+    JS `FORM` object + one renderer per input type, so swapping the JSON renders any
+    survey. Covers all **17 input types** (text/multiline/number/select/multiselect/
+    rating/ranking/linear_scale/sentiment/image-select/matrix/file/shapefile/point/line/
+    polygon/page). Themeable `--gv-*`, mobile-first (matrix stacks), reproduces the real
+    "Next gates on scale/rating/matrix" behaviour. Verified vs real screenshots
+    (`scripts/shoot-input-form.py`) + `npm run audit` (pass). Maps use a static
+    placeholder (not live Esri). Next: promote the field renderers into canonical
+    `components/<name>/` so prototypes can pull individual field types.
   - **Pipeline (active):** user exports the real GoVocal page HTML + a screenshot into
     `references/pages/<slug>/` (internal, never ships — see its README). Per page, one at
     a time: **analyze** (map blocks to `LIBRARY.md`, write `notes.md` reuse-list + gaps)
