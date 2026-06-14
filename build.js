@@ -61,6 +61,8 @@ const IGNORED_TOPLEVEL = new Set([
   "pages", // composed reference pages — shipped via their own builder, not as an opportunity
   "components", // composed component library — shipped via its own builder, not as an opportunity
   "playground", // standalone scratch prototype — shipped to /playground/, not as an opportunity
+  "references", // internal source exports (raw GoVocal HTML + screenshots) — NEVER ships
+  "govocal-exports", // internal raw GoVocal page exports (HTML + screenshots) — NEVER ships
   ".git",
   ".github",
 ]);
