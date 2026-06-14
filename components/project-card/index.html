@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Project card + rail — GoVocal component</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 8px 0; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    /* the rail margins assume a 24px-padded container; give the stage that padding */
+    .stage > .gv-rail { padding-left: 24px; padding-right: 24px; margin: 0; }
+  </style>
+</head>
+<body class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Project card + rail</h1>
+    <p class="sub">The participation-project card (thumb, title, meta with status icon, CTA) and the
+      horizontal scroll rail. The whole card is clickable via a stretched title link — no nested anchors.</p>
+
+    <p class="eyebrow">Rail — survey cards (time + CTA)</p>
+    <div class="stage">
+      <!-- ============ RAIL + CARDS (copy from here) ============ -->
+      <div class="gv-rail">
+        <article class="gv-pcard">
+          <div class="gv-pcard__thumb" style="background:#eef0e8">
+            <span style="background:#0a7a4f;color:#fff;border-radius:14px 14px 14px 2px;padding:12px 14px;font-size:13px;max-width:80%">GESUNDE<br>BLINDENGASSE</span>
+          </div>
+          <h3 class="gv-pcard__title"><a href="#">Gesunde Blindengasse</a></h3>
+          <span class="gv-pcard__meta time">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Ein Tag verbleibend
+          </span>
+          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
+        </article>
+
+        <article class="gv-pcard">
+          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9fb0a3,#cdd6cd)"></div>
+          <h3 class="gv-pcard__title"><a href="#">Gellertplatz für alle</a></h3>
+          <span class="gv-pcard__meta time">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            noch 3 Wochen
+          </span>
+          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
+        </article>
+
+        <article class="gv-pcard">
+          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#b7423a,#d98a5a)">DIE GROSSE<br>MEIDLING-UMFRAGE</div>
+          <h3 class="gv-pcard__title"><a href="#">Die große Meidling-Umfrage</a></h3>
+          <span class="gv-pcard__meta time">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            noch 4 Wochen
+          </span>
+          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
+        </article>
+
+        <article class="gv-pcard">
+          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9a9a9a,#c7c2bd)"></div>
+          <h3 class="gv-pcard__title"><a href="#">Supergrätzl Favoriten</a></h3>
+          <span class="gv-pcard__meta time">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            noch 5 Wochen
+          </span>
+          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
+        </article>
+      </div>
+      <!-- ============ /RAIL + CARDS ============ -->
+    </div>
+
+    <p class="eyebrow">Wide cards — people count + description</p>
+    <div class="stage">
+      <div class="gv-rail">
+        <article class="gv-pcard wide">
+          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9a9a9a,#c7c2bd)"></div>
+          <h3 class="gv-pcard__title"><a href="#">Supergrätzl Favoriten</a></h3>
+          <span class="gv-pcard__meta people">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg>
+            111 Teilnehmende
+          </span>
+          <p class="gv-pcard__desc">Das erste Wiener Supergrätzl ist fertig! Jetzt ist Ihre Meinung gefragt.</p>
+        </article>
+        <article class="gv-pcard wide">
+          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#2b5cab,#f2c200)">MITMACH-BUDGET</div>
+          <h3 class="gv-pcard__title"><a href="#">Mitmach-Budget Brigittenau 2026</a></h3>
+          <span class="gv-pcard__meta people">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg>
+            16 Teilnehmende
+          </span>
+          <p class="gv-pcard__desc">Brigittenauer Mitmachbudget.</p>
+        </article>
+      </div>
+    </div>
+
+    <p class="eyebrow">Square cards — completed (done status)</p>
+    <div class="stage">
+      <div class="gv-rail">
+        <article class="gv-pcard square">
+          <div class="gv-pcard__thumb" style="background:#f3e2a6;color:#7a5e12;font-size:14px;padding:12px">Alt-Ottakring wie neu!</div>
+          <h3 class="gv-pcard__title"><a href="#">Alt-Ottakring wie neu!</a></h3>
+          <span class="gv-pcard__meta done">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20Zm-1 14l-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z"/></svg>
+            vor 7 Wochen
+          </span>
+          <a class="gv-pcard__cta" href="#">Mehr erfahren</a>
+        </article>
+        <article class="gv-pcard square">
+          <div class="gv-pcard__thumb" style="background:#ece9e2;color:#a32a1c;font-size:15px;padding:12px">GRÄTZL<br>LABOR</div>
+          <h3 class="gv-pcard__title"><a href="#">Grätzllabor Innere Stadt</a></h3>
+          <span class="gv-pcard__meta time">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Kein Enddatum
+          </span>
+          <a class="gv-pcard__cta" href="#">Mehr erfahren</a>
+        </article>
+      </div>
+    </div>
+
+    <div class="notes">
+      <p><strong>No nested anchors:</strong> the card is an <code>&lt;article&gt;</code>; the
+      <code>.gv-pcard__title a</code> is stretched (<code>::after { inset:0 }</code>) so the whole
+      card is one click target. A secondary <code>.gv-pcard__cta</code> sits above it with
+      <code>z-index:1</code> so it stays separately clickable.</p>
+      <p><strong>Meta variants:</strong> <code>.time</code> (clock, tenant colour),
+      <code>.people</code> (count), <code>.done</code> (green check) — status is never colour-alone.</p>
+      <p><strong>Widths:</strong> default 250px · <code>.wide</code> 360px (16:9) ·
+      <code>.square</code> 210px (1:1). Replace the placeholder thumb with
+      <code>&lt;img&gt;</code> for real projects.</p>
+    </div>
+  </div>
+  <script src="govocal-themes.js" defer></script>
+</body>
+</html>

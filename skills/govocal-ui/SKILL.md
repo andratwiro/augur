@@ -31,9 +31,28 @@ project brain. Match its vocabulary when labelling components.
 |---|---|
 | `govocal-tokens.css` | Design tokens as CSS custom properties (`--gv-*`): full palette, type scale, radius (3px), shadows, focus, tenant colours. |
 | `govocal-ui.css` | Component classes (`.gv-btn`, `.gv-input`, `.gv-checkbox`, …) built on the tokens. |
-| `govocal-themes.js` | `?theme=` per-city colour switcher + on-screen picker. |
-| `components.md` | The catalog — copy-paste HTML for every primitive, with notes. |
-| `gallery.html` | Live demo of every component in every state, across all city themes. Open it to eyeball fidelity. |
+| `govocal-themes.js` | `?theme=` per-city colour + **font** switcher + on-screen picker + per-city logos. |
+| `govocal-logo.svg` | The real **go·vocal** wordmark (footer “powered by” attribution). Muted grey; use as `<img>`. |
+| `components.md` | The catalog — copy-paste HTML for primitives **and composed components**, with notes. |
+| `gallery.html` | Live demo of every primitive in every state, across all city themes. Open it to eyeball fidelity. |
+
+## Library tiers — Primitives → Components → Pages
+
+The design system is layered, and the review site has a tab per tier:
+
+1. **Primitives** (`/primitives/`, the `gallery.html`) — tokens (colour, type, shadow,
+   radius, focus) and base `.gv-*` primitives (button, input, badge, card…). The atoms.
+2. **Components** (`/components/`) — composed, section-level blocks assembled from
+   primitives: **header/nav, footer, project-card + rail, hero**. Source lives in
+   `components/<name>/` (self-contained demos); the recall index is
+   [`components/manifest.md`](../../components/manifest.md). Styling is in `govocal-ui.css`.
+3. **Pages** (`/pages/`) — whole screens (e.g. the Stadt Wien homepage) built from
+   components. Source in `pages/<name>/`.
+
+**Recall flow when building a prototype:** you don't need every component in context.
+Scan `components/manifest.md` (one small table), then open just the one component file
+you need, or grab its snippet from `components.md`. Prototypes can pull from any tier —
+a token, a component, or a whole page as a starting point.
 
 ## When to use
 

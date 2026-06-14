@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Header (mobile preview)</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <style>
+    body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
+    .scene-body { height: 280px; background: repeating-linear-gradient(45deg, #f7f8fa, #f7f8fa 12px, #f2f4f6 12px, #f2f4f6 24px); }
+  </style>
+</head>
+<body class="gv-root" data-gv-cookies="off" data-gv-theme-picker="off">
+  <header class="gv-header">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite"></a>
+      <div class="gv-header__actions">
+        <details class="gv-nav-m">
+          <summary aria-label="Menü öffnen">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Hauptnavigation (mobil)">
+            <a href="#" aria-current="page">Willkommen</a>
+            <a href="#">Beteiligungsprojekte</a>
+            <a href="#">Mitmachen</a>
+            <a href="#">Netiquette</a>
+            <a href="#">Mehr</a>
+            <button class="gv-btn primary full">Anmelden</button>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+  <div class="scene-body" aria-hidden="true"></div>
+  <script src="govocal-themes.js" defer></script>
+</body>
+</html>

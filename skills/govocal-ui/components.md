@@ -151,6 +151,91 @@ Filled status pill; set the background via `--bg`.
 <hr class="gv-divider" />
 ```
 
+---
+
+# Composed components (Components tab)
+
+Section-level blocks assembled from the primitives above. Full, copy-ready demos live
+in `components/<name>/index.html` (and ship to `/components/`); the recall index is
+`components/manifest.md`. Skeletons below — open the demo for the complete markup.
+
+## Header + nav — `.gv-header` (`components/header-nav/`)
+
+Responsive 78px chrome. CSS-only: dropdowns and the “Mehr ···” overflow are
+`<details>`; the mobile drawer (`< 860px`) is `<details class="gv-nav-m">`. No JS.
+
+```html
+<header class="gv-header sticky">
+  <div class="gv-header__inner">
+    <a class="gv-brand" href="#" data-gv-logo aria-label="Home"></a>  <!-- logo slot (themes per city) -->
+    <ul class="gv-nav">
+      <li><a class="gv-nav__link" href="#" aria-current="page">Willkommen</a></li>
+      <li><details class="gv-nav__dd"><summary class="gv-nav__link">Beteiligungsprojekte <svg class="gv-nav__chev">…</svg></summary>
+        <div class="gv-nav__menu"><a href="#">Alle Projekte</a>…</div></details></li>
+      <li><a class="gv-nav__link" href="#">Mitmachen</a></li>
+      <li><details class="gv-nav__dd right"><summary class="gv-nav__link">Mehr <svg>…</svg></summary>
+        <div class="gv-nav__menu">…</div></details></li>
+    </ul>
+    <div class="gv-header__actions">
+      <button class="gv-iconbtn gv-desktop-only" aria-label="Suche">…</button>
+      <button class="gv-btn primary gv-desktop-only">Anmelden</button>
+      <details class="gv-nav-m"><summary aria-label="Menü öffnen">☰</summary>
+        <nav class="gv-nav-m__panel">…links… <button class="gv-btn primary full">Anmelden</button></nav>
+      </details>
+    </div>
+  </div>
+</header>
+```
+- Active link → red top indicator via `aria-current="page"`. Add `sticky` to pin.
+- Logo: `data-gv-logo` (themes per city) or drop a literal `<svg>`/`<img>` in `.gv-brand`.
+
+## Footer — `.gv-footer` (`components/footer/`)
+
+```html
+<footer class="gv-footer">
+  <div class="gv-footer__inner">
+    <div class="gv-footer__logo"><a href="#" data-gv-logo></a></div>
+    <nav class="gv-footer__links"><a href="#">Nutzungsbedingungen</a><a href="#">Impressum</a>…</nav>
+    <div class="gv-footer__powered"><span>Ermöglicht durch</span>
+      <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal">
+        <img class="gv-powered-logo" src="govocal-logo.svg" alt="Go Vocal" /></a>
+    </div>
+  </div>
+</footer>
+```
+- Legal links get middot separators automatically. Copy `govocal-logo.svg` into the
+  prototype folder. The go·vocal mark is GoVocal’s brand (muted grey) — it doesn’t theme.
+
+## Project card + rail — `.gv-rail` / `.gv-pcard` (`components/project-card/`)
+
+The card is an `<article>`, NOT an `<a>` — the title link is stretched to make the whole
+card clickable. **Never nest `<a>` in `<a>`** (it breaks the layout).
+
+```html
+<div class="gv-rail">
+  <article class="gv-pcard">                          <!-- + .wide (16:9, 360px) | .square (1:1, 210px) -->
+    <div class="gv-pcard__thumb"><img src="…" alt="…" /></div>
+    <h3 class="gv-pcard__title"><a href="#">Project name</a></h3>   <!-- stretched link -->
+    <span class="gv-pcard__meta time">⏱ noch 3 Wochen</span>        <!-- .time | .people | .done -->
+    <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>          <!-- sits above the stretched link -->
+  </article>
+</div>
+```
+
+## Hero / banner — `.gv-hero` (`components/hero/`)
+
+```html
+<section class="gv-hero" style="--gv-hero-image:url('photo.jpg')">  <!-- omit var for placeholder -->
+  <div class="gv-hero__inner">
+    <h1 class="gv-hero__title">Wien mitgestalten</h1>
+    <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
+    <div class="gv-avatars"><span class="av"></span>…<span class="count">15.4k</span></div>
+    <button class="gv-btn white">Registrieren</button>
+  </div>
+</section>
+```
+- Overlay tints with `--gv-tenant-primary` (re-themes per city), keeping white text legible.
+
 ## Cookie consent — `govocal-cookies.js` (resident-facing, required)
 
 **Rule:** every resident / participant-facing prototype shows this first, in English

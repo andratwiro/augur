@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Header + navigation — GoVocal component</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); overflow: hidden; }
+    .stage.scene { background: linear-gradient(#fff, #fff) padding-box, var(--gv-grey-100); }
+    .scene-body { height: 160px; background: repeating-linear-gradient(45deg, #f7f8fa, #f7f8fa 12px, #f2f4f6 12px, #f2f4f6 24px); }
+    .frame { width: 390px; max-width: 100%; border: 1px solid var(--gv-grey-300); border-radius: 14px; overflow: hidden; box-shadow: var(--gv-shadow); background: #fff; }
+    .frame iframe { display: block; width: 390px; height: 360px; border: 0; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Header + navigation</h1>
+    <p class="sub">Responsive site chrome — 78px bar, logo slot, dropdown + “Mehr ···” overflow,
+      search, primary CTA. Collapses to a hamburger drawer on narrow screens. CSS-only (no JS).</p>
+
+    <p class="eyebrow">Desktop</p>
+    <div class="stage scene">
+      <!-- ============ HEADER COMPONENT (copy from here) ============ -->
+      <header class="gv-header sticky">
+        <div class="gv-header__inner">
+          <!-- Logo slot: govocal-themes.js fills it with the active city's logo. -->
+          <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite"></a>
+
+          <ul class="gv-nav">
+            <li><a class="gv-nav__link" href="#" aria-current="page">Willkommen</a></li>
+            <li>
+              <details class="gv-nav__dd">
+                <summary class="gv-nav__link">Beteiligungsprojekte
+                  <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </summary>
+                <div class="gv-nav__menu">
+                  <a href="#">Alle Projekte</a>
+                  <a href="#">Laufende Projekte</a>
+                  <a href="#">Abgeschlossene Projekte</a>
+                </div>
+              </details>
+            </li>
+            <li><a class="gv-nav__link" href="#">Mitmachen</a></li>
+            <li><a class="gv-nav__link" href="#">Netiquette</a></li>
+            <li>
+              <details class="gv-nav__dd right">
+                <summary class="gv-nav__link">Mehr
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                </summary>
+                <div class="gv-nav__menu">
+                  <a href="#">Über die Plattform</a>
+                  <a href="#">Häufige Fragen</a>
+                  <a href="#">Kontakt</a>
+                </div>
+              </details>
+            </li>
+          </ul>
+
+          <div class="gv-header__actions">
+            <button class="gv-iconbtn gv-desktop-only" aria-label="Suche">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <button class="gv-btn primary gv-desktop-only" style="padding:8px 18px;line-height:20px">Anmelden</button>
+
+            <!-- Mobile menu (shows < 860px) -->
+            <details class="gv-nav-m">
+              <summary aria-label="Menü öffnen">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </summary>
+              <nav class="gv-nav-m__panel" aria-label="Hauptnavigation (mobil)">
+                <a href="#" aria-current="page">Willkommen</a>
+                <a href="#">Beteiligungsprojekte</a>
+                <a href="#">Mitmachen</a>
+                <a href="#">Netiquette</a>
+                <a href="#">Mehr</a>
+                <button class="gv-btn primary full">Anmelden</button>
+              </nav>
+            </details>
+          </div>
+        </div>
+      </header>
+      <!-- ============ /HEADER COMPONENT ============ -->
+      <div class="scene-body" aria-hidden="true"></div>
+    </div>
+
+    <p class="eyebrow">Mobile (≤ 860px — live, in a 390px frame)</p>
+    <div class="frame">
+      <iframe src="preview-mobile.html" title="Header at mobile width" loading="lazy"></iframe>
+    </div>
+
+    <div class="notes">
+      <p><strong>Use it:</strong> copy the <code>&lt;header class="gv-header"&gt;</code> block.
+      Add <code>sticky</code> to pin it. The logo is a slot — drop a city <code>&lt;svg&gt;</code>/<code>&lt;img&gt;</code>,
+      or use <code>data-gv-logo</code> to let the theme switcher fill it per city.</p>
+      <p><strong>Responsive:</strong> below 860px the desktop nav + actions hide and the
+      <code>&lt;details class="gv-nav-m"&gt;</code> hamburger drawer takes over — no JavaScript.
+      Dropdowns and the “Mehr ···” overflow are <code>&lt;details&gt;</code> disclosures too.</p>
+      <p><strong>Theme:</strong> all colours come from <code>--gv-tenant-*</code>; the active link
+      indicator and CTA re-skin per city. Try <code>?theme=1</code>.</p>
+    </div>
+  </div>
+  <script src="govocal-themes.js" defer></script>
+</body>
+</html>

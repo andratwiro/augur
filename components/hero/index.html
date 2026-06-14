@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Hero / page banner — GoVocal component</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { border-radius: var(--gv-radius); overflow: hidden; box-shadow: var(--gv-shadow); }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Hero / page banner</h1>
+    <p class="sub">Full-bleed banner with a tenant-tinted overlay, title + lead, an avatar stack
+      with participant count, and a primary CTA. Image-agnostic — set a photo or leave the placeholder.</p>
+
+    <p class="eyebrow">Placeholder (no photo)</p>
+    <div class="stage">
+      <!-- ============ HERO COMPONENT (copy from here) ============ -->
+      <section class="gv-hero">
+        <div class="gv-hero__inner">
+          <h1 class="gv-hero__title">Wien mitgestalten</h1>
+          <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
+          <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
+            <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
+            <span class="count">15.4k</span>
+          </div>
+          <div><button class="gv-btn white" style="line-height:22px">Registrieren</button></div>
+        </div>
+        <span class="gv-hero__credit">Banner: © Stadt Wien</span>
+      </section>
+      <!-- ============ /HERO COMPONENT ============ -->
+    </div>
+
+    <p class="eyebrow">With a photo (<code>--gv-hero-image</code>)</p>
+    <div class="stage">
+      <section class="gv-hero" style="--gv-hero-image:url('https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60')">
+        <div class="gv-hero__inner">
+          <h1 class="gv-hero__title">Wien mitgestalten</h1>
+          <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
+          <div><button class="gv-btn white" style="line-height:22px">Registrieren</button></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="notes">
+      <p><strong>Overlay:</strong> <code>.gv-hero::before</code> tints the banner with
+      <code>--gv-tenant-primary</code> (multiply, 0.62) so it re-skins per city and keeps white text legible.</p>
+      <p><strong>Photo:</strong> set <code>style="--gv-hero-image:url(…)"</code>. With no image a
+      tenant-neutral gradient shows — the prototype never looks broken without assets.</p>
+      <p><strong>Avatars:</strong> <code>.gv-avatars</code> is the social-proof stack; give each
+      <code>.av</code> a <code>background-image</code> for real faces, and set the <code>.count</code> pill.</p>
+    </div>
+  </div>
+  <script src="govocal-themes.js" defer></script>
+</body>
+</html>

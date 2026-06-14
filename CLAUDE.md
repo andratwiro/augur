@@ -125,13 +125,24 @@ Two companion skills, **consult both when building any prototype**:
 - `skills/govocal-design/` — brand voice, tone, visual direction, when-to-use.
 - `skills/govocal-ui/` — the **source-grounded fidelity layer**: real design
   tokens (`govocal-tokens.css`), copy-paste component CSS (`govocal-ui.css`,
-  `.gv-*` classes), a component catalog (`components.md`), a live `gallery.html`,
-  and a per-city `?theme=` colour switcher (`govocal-themes.js`). Transcribed from
-  `CitizenLabDotCo/citizenlab` (pinned commit). **Never hardcode brand colours** —
-  use `var(--gv-tenant-primary|secondary|text)` so cities re-theme via `?theme=`.
+  `.gv-*` classes), a catalog (`components.md`), a live `gallery.html`, the real
+  `govocal-logo.svg` (footer “powered by”), and a per-city `?theme=` colour + font
+  switcher (`govocal-themes.js`). Transcribed from `CitizenLabDotCo/citizenlab`
+  (pinned commit). **Never hardcode brand colours** — use
+  `var(--gv-tenant-primary|secondary|text)` so cities re-theme via `?theme=`.
   Copy the asset files into a prototype folder (prototypes are self-contained):
   `govocal-tokens.css`, `govocal-ui.css`, `govocal-themes.js`, and — on
-  resident-facing prototypes — `govocal-cookies.js` (see the cookie rule below).
+  resident-facing prototypes — `govocal-cookies.js` (see the cookie rule below),
+  plus `govocal-logo.svg` if the footer is used.
+
+**Library tiers (Primitives → Components → Pages).** The system is layered and the
+review site has a tab per tier: **Primitives** (`/primitives/` = `gallery.html`,
+tokens + base `.gv-*`), **Components** (`/components/` = composed blocks: header/nav,
+footer, project-card+rail, hero — source in `components/<name>/`), and **Pages**
+(`/pages/` = whole screens built from components). When building a prototype you can
+pull from any tier. **To reuse a component without loading them all:** scan
+`components/manifest.md` (the recall index), then open just the one component file or
+grab its snippet from `components.md`.
 
 ## Cookie consent — resident/participant-facing prototypes (required)
 
@@ -147,8 +158,9 @@ without it reads as fake.
   (once per browser; use `data-gv-cookies="always"` to always show for review,
   `…="off"` to disable). Themes with `--gv-tenant-primary`.
 - **Backend / admin prototypes:** **skip it** — no cookie banner needed.
-- **Pages-tab reference reproductions** (`pages/<name>/`, the Patterns/Pages glossary)
-  are **NOT** prototypes — **no cookie banner**. They exist for designers to study and
+- **Pages-tab & Components-tab reference reproductions** (`pages/<name>/`,
+  `components/<name>/` — the Primitives/Components/Pages glossary) are **NOT**
+  prototypes — **no cookie banner**. They exist for designers to study and
   copy from; a blocking consent modal obscures the reference. The rule is scoped to the
   interactive prototypes under `<opportunity>/prototypes/`.
 - When a request is for a resident-facing **prototype** and omits this, add it by default.

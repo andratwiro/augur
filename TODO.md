@@ -49,21 +49,23 @@ re-litigation. Three threads, interlocking:
       real assembly and stay compliant.
 
 ### Review-site tabs (shipped)
-A top-right tab nav on the Cloudflare review site: **Prototypes · Patterns ·
-Components · Pages**. Prototypes stays the main page (`/`); Patterns / Components /
-Pages are a glossary for designers to review and copy from, so we never rebuild
-GoVocal twice.
-- [x] **Tab nav in `build.js`** — top-right `Prototypes · Patterns · Components ·
-      Pages`, self-contained styles, injected into the gallery + generated index pages.
-- [x] **Patterns tab** — the govocal-ui gallery shipped to `/patterns/` (build.js
-      copies `skills/govocal-ui/gallery.html` + assets out of the skill). Live.
-- [x] **Components tab** — composed primitive demos from a top-level
-      `components/<name>/` folder, carousel + Open/Download like prototypes.
-      Build.js auto-discovers each subfolder; `components/manifest.md` is the recall
-      index. Live with 4 (`header-nav`, `footer`, `project-card`, `hero`).
-- [x] **Pages tab** — composed reference pages from a top-level `pages/<name>/`
-      folder, carousel + Open/Download like prototypes. Live with 2 samples
-      (`homepage` = Stadt Wien reference rebuild, `hello-world`).
+A top-right tab nav on the Cloudflare review site: **Prototypes · Primitives ·
+Components · Pages** — atoms → blocks → screens. Prototypes stays the main page (`/`);
+the other three are a layered glossary for designers to review and copy from, so we
+never rebuild GoVocal twice.
+- [x] **4-tab nav in `build.js`** — `Prototypes · Primitives · Components · Pages`,
+      self-contained styles, injected into the gallery + generated index pages.
+- [x] **Primitives tab** (renamed from Patterns → `/primitives/`) — the govocal-ui
+      gallery: tokens (colour/type/shadow) + base `.gv-*`. build.js copies
+      `skills/govocal-ui/gallery.html` + assets out of the skill. Live.
+- [x] **Components tab** — composed blocks from `components/<name>/`, shown as a
+      **table** with a small live preview per row (`renderComponentsIndex`). build.js
+      auto-discovers each subfolder; `components/manifest.md` is the recall index.
+      Live with 4 (`header-nav` responsive/CSS-only drawer, `footer` w/ real go·vocal
+      logo, `project-card`+rail stretched-link, `hero`).
+- [x] **Pages tab** — composed reference pages from `pages/<name>/`, now a **4-up
+      vertical grid** (was a carousel) for fast scanning + Open/Download. `homepage`
+      rebuilt on the new components (high-fidelity Stadt Wien match; real footer logo).
 
 ## Cookie consent (resident-facing rule)
 - [x] **Cookie-consent pattern** — `skills/govocal-ui/govocal-cookies.js`: drop-in

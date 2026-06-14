@@ -49,7 +49,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.03";
+const UI_VERSION = "0.05";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -58,13 +58,37 @@ const IGNORED_TOPLEVEL = new Set([
   "skills",
   "src",
   "pages", // composed reference pages — shipped via their own builder, not as an opportunity
+  "components", // composed component library — shipped via its own builder, not as an opportunity
+  "playground", // standalone scratch prototype — shipped to /playground/, not as an opportunity
   ".git",
   ".github",
 ]);
 
-// Source for the reference tabs (Patterns + Pages).
-const UI_SKILL = path.join(ROOT, "skills", "govocal-ui"); // Patterns gallery + assets
+// Source for the reference tabs (Primitives · Components · Pages).
+const UI_SKILL = path.join(ROOT, "skills", "govocal-ui"); // Primitives gallery + assets
 const PAGES_SRC = path.join(ROOT, "pages"); // composed reference pages
+const COMPONENTS_SRC = path.join(ROOT, "components"); // composed component library
+
+// Short blurb + key classes per component, shown in the Components table.
+// Keyed by folder name; falls back to a generic line for anything unlisted.
+const COMPONENT_BLURBS = {
+  "header-nav": {
+    classes: ".gv-header / .gv-nav / .gv-nav-m",
+    desc: "Responsive 78px site chrome: logo slot, dropdown + “Mehr ···” overflow, search, CTA; CSS-only hamburger drawer on mobile.",
+  },
+  footer: {
+    classes: ".gv-footer / .gv-powered-logo",
+    desc: "Centered tenant logo, middot-separated legal links, and the “Ermöglicht durch go·vocal” powered-by attribution.",
+  },
+  "project-card": {
+    classes: ".gv-rail / .gv-pcard",
+    desc: "Participation-project card (thumb, title, status meta, CTA) + horizontal rail. Stretched-link card — no nested anchors.",
+  },
+  hero: {
+    classes: ".gv-hero / .gv-avatars",
+    desc: "Full-bleed page banner: tenant-tinted overlay, title/lead, avatar + count stack, primary CTA. Image-agnostic.",
+  },
+};
 
 async function exists(p) {
   try {
@@ -192,6 +216,26 @@ async function scanPages() {
   return pages;
 }
 
+/**
+ * Scan the top-level components/ folder for composed component demos. Each
+ * subfolder is a self-contained demo (like a page) shipped under /components/<name>/.
+ * The manifest.md (a file, not a dir) is internal and intentionally not shipped.
+ */
+async function scanComponents() {
+  if (!(await isDir(COMPONENTS_SRC))) return [];
+  const entries = await fs.readdir(COMPONENTS_SRC, { withFileTypes: true });
+  const components = [];
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    const dir = path.join(COMPONENTS_SRC, e.name);
+    const latest = await copyDir(dir, path.join(DIST, "components", e.name));
+    const { href, file } = await entryPoint(e.name, dir);
+    components.push({ name: e.name, href, file, mtimeMs: latest });
+  }
+  components.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return components;
+}
+
 function titleCase(slug) {
   return slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
@@ -235,6 +279,18 @@ const PAGE_CSS = `
     h1 { font-size: 28px; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.02em; }
     .subtitle { color: var(--muted); margin: 0 0 28px; font-size: 15px; }
     .empty { color: var(--muted); }
+    .playground {
+      display: flex; align-items: center; gap: 18px; margin-top: 28px; padding: 20px 22px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+      text-decoration: none; color: inherit; transition: border-color .14s ease, transform .14s ease;
+    }
+    .playground:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .playground:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .playground__icon { font-size: 32px; line-height: 1; flex: none; }
+    .playground__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .playground__name { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+    .playground__desc { color: var(--muted); font-size: 14px; }
+    .playground__go { margin-left: auto; font-size: 26px; color: var(--muted); flex: none; }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
     footer { margin-top: 56px; color: var(--muted); font-size: 13px; }
 
@@ -300,7 +356,42 @@ const PAGE_CSS = `
     }
     .btn.primary { background: var(--accent); color: #fff; border-color: transparent; }
     .btn.primary:hover { filter: brightness(1.08); }
-    .btn.ghost:hover { background: var(--bg); }`;
+    .btn.ghost:hover { background: var(--bg); }
+
+    /* ---- Pages grid (fast vertical scan, ~4 columns) ---- */
+    .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 22px 20px; }
+    .page-grid .card-proto { transition: box-shadow .18s ease, transform .18s ease; }
+    .page-grid .card-proto:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.13); transform: translateY(-3px); }
+    .page-grid .proto-meta { padding: 12px 14px; }
+    .page-grid .proto-name { font-size: 15px; }
+    .page-grid .proto-actions { margin-top: 10px; gap: 8px; }
+    .page-grid .btn { padding: 7px 12px; font-size: 13px; border-radius: 8px; }
+
+    /* ---- Components table (small preview per row) ---- */
+    .comp-table { width: 100%; border-collapse: collapse; }
+    .comp-table th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--muted); font-weight: 600; padding: 0 14px 10px; border-bottom: 1px solid var(--line); }
+    .comp-table td { padding: 16px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .comp-table tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+    .comp-thumb {
+      position: relative; width: 200px; max-width: 38vw; aspect-ratio: 16 / 9; overflow: hidden;
+      border-radius: 10px; border: 1px solid var(--line); background: var(--bg); display: block;
+    }
+    .comp-thumb iframe {
+      position: absolute; top: 0; left: 0; width: 1280px; height: 720px; border: 0;
+      transform-origin: top left; pointer-events: none;
+    }
+    .comp-name { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+    .comp-name code { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 4px; }
+    .comp-desc { color: var(--muted); font-size: 14px; max-width: 42ch; }
+    .comp-actions { white-space: nowrap; }
+    @media (max-width: 620px) {
+      .comp-table, .comp-table tbody, .comp-table tr, .comp-table td { display: block; }
+      .comp-table thead { display: none; }
+      .comp-table td { border: 0; padding: 4px 0; }
+      .comp-table tr { border-bottom: 1px solid var(--line); padding: 16px 0; }
+      .comp-thumb { max-width: 100%; width: 100%; }
+    }`;
 
 const CAROUSEL_JS = `
     (function () {
@@ -326,7 +417,7 @@ const CAROUSEL_JS = `
         var f = p.querySelector('iframe');
         if (f) f.style.transform = 'scale(' + (p.clientWidth / 1280) + ')';
       }
-      var previews = [].slice.call(document.querySelectorAll('.preview'));
+      var previews = [].slice.call(document.querySelectorAll('.preview, .comp-thumb'));
       if (window.ResizeObserver) {
         var ro = new ResizeObserver(function (es) { es.forEach(function (e) { fit(e.target); }); });
         previews.forEach(function (p) { ro.observe(p); fit(p); });
@@ -373,13 +464,20 @@ const CAROUSEL_JS = `
       });
     })();`;
 
-// Top-right tab nav for the site's chrome/reference pages (Prototypes · Patterns ·
-// Pages). NOT injected into prototypes themselves. Styles are self-contained so the
-// same nav can be injected into the Patterns gallery, which doesn't use PAGE_CSS.
+// Top-right tab nav for the site's chrome/reference pages (Prototypes · Primitives ·
+// Components · Pages). NOT injected into prototypes themselves. Styles are self-contained
+// so the same nav can be injected into the Primitives gallery, which doesn't use PAGE_CSS.
 // Root-relative hrefs => correct from any depth.
 const NAV_CSS = `
-    .gvnav {
+    .gvhead {
       position: fixed; top: 14px; right: 16px; z-index: 2147483100;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .gvhead__title {
+      font: 700 16px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      letter-spacing: -0.01em; color: #14181c; white-space: nowrap;
+    }
+    .gvnav {
       display: flex; gap: 2px; padding: 4px; border-radius: 999px;
       background: rgba(255,255,255,0.92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
       box-shadow: 0 2px 12px rgba(0,0,0,0.14); border: 1px solid rgba(0,0,0,0.07);
@@ -393,6 +491,7 @@ const NAV_CSS = `
     .gvnav a:hover { background: rgba(0,0,0,0.05); color: #111; }
     .gvnav a[aria-current="page"] { background: #1b1f24; color: #fff; }
     @media (prefers-color-scheme: dark) {
+      .gvhead__title { color: #f3f4f6; }
       .gvnav { background: rgba(26,28,32,0.92); border-color: rgba(255,255,255,0.09); box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
       .gvnav a { color: #c2cad2; }
       .gvnav a:hover { background: rgba(255,255,255,0.09); color: #fff; }
@@ -402,7 +501,7 @@ const NAV_CSS = `
 function navBar(active) {
   const tab = (href, label, key) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;
-  return `<nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/patterns/", "Patterns", "patterns")}${tab("/pages/", "Pages", "pages")}</nav>`;
+  return `<header class="gvhead"><span class="gvhead__title">Product Team</span><nav class="gvnav" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></header>`;
 }
 
 /** Inject the nav (with its own styles) right after the opening <body> tag. */
@@ -431,7 +530,7 @@ function shell({ title, subtitle, body, back, activeTab = "prototypes" }) {
   <div class="wrap">
     ${backLink}
     <h1>${title}</h1>
-    <p class="subtitle">${subtitle}</p>
+    ${subtitle ? `<p class="subtitle">${subtitle}</p>` : ""}
     ${body}
     <footer>GoVocal Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}</footer>
   </div>
@@ -487,10 +586,21 @@ function renderRootIndex(opportunities) {
     })
     .join("");
 
+  // Standalone Playground entry — lives below the carousel, a quick scratch space.
+  const playground = `
+    <a class="playground" href="playground/">
+      <span class="playground__icon" aria-hidden="true">🛝</span>
+      <span class="playground__text">
+        <span class="playground__name">Playground</span>
+        <span class="playground__desc">A scratch space for quick experiments &mdash; jump in and build.</span>
+      </span>
+      <span class="playground__go" aria-hidden="true">&rsaquo;</span>
+    </a>`;
+
   return shell({
     title: "GoVocal Prototypes",
-    subtitle: "Browse opportunities &mdash; private, do not share outside the team.",
-    body: carousel(slides),
+    subtitle: "",
+    body: carousel(slides) + playground,
   });
 }
 
@@ -541,27 +651,23 @@ function renderPagesIndex(pages) {
     });
   }
 
-  const slides = pages
+  const cards = pages
     .map((p) => {
       const download = p.file
-        ? `<button type="button" class="btn ghost" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html">&darr; Download HTML</button>`
+        ? `<button type="button" class="btn ghost" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html">&darr; HTML</button>`
         : "";
       return `
-        <div class="slide">
-          <div class="card-proto">
-            <div class="preview">
-              <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
-              <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
-            </div>
-            <div class="proto-meta">
-              <div>
-                <div class="proto-name">${titleCase(p.name)}</div>
-                <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
-              </div>
-              <div class="proto-actions">
-                <a class="btn primary" href="${p.href}">Open &rarr;</a>
-                ${download}
-              </div>
+        <div class="card-proto">
+          <div class="preview">
+            <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
+            <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
+          </div>
+          <div class="proto-meta">
+            <div class="proto-name">${titleCase(p.name)}</div>
+            <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
+            <div class="proto-actions">
+              <a class="btn primary" href="${p.href}">Open &rarr;</a>
+              ${download}
             </div>
           </div>
         </div>`;
@@ -570,9 +676,60 @@ function renderPagesIndex(pages) {
 
   return shell({
     title: "Pages",
-    subtitle: "Composed GoVocal reference pages &mdash; copy one as a starting point.",
+    subtitle:
+      "Whole composed pages &mdash; components assembled into real screens. Scan, then dive in to review.",
     activeTab: "pages",
-    body: carousel(slides),
+    body: `<div class="page-grid">${cards}</div>`,
+  });
+}
+
+function renderComponentsIndex(components) {
+  const subtitle =
+    "Reusable building blocks &mdash; primitives composed into navbar, footer, cards, hero. They assemble into Pages.";
+  if (!components.length) {
+    return shell({
+      title: "Components",
+      subtitle,
+      activeTab: "components",
+      body: `<p class="empty">No components yet. Add one under
+        <code>components/&lt;name&gt;/</code> and rebuild.</p>`,
+    });
+  }
+
+  const rows = components
+    .map((c) => {
+      const blurb = COMPONENT_BLURBS[c.name] || { classes: "", desc: "" };
+      const classes = blurb.classes
+        ? `<code>${blurb.classes}</code>`
+        : "";
+      const download = c.file
+        ? `<button type="button" class="btn ghost" data-dl="${c.file}" data-dlname="${encodeURIComponent(c.name)}.html">&darr; HTML</button>`
+        : "";
+      return `
+        <tr>
+          <td>
+            <a class="comp-thumb" href="${c.href}" aria-label="Open ${titleCase(c.name)}">
+              <iframe src="${c.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
+            </a>
+          </td>
+          <td><div class="comp-name">${titleCase(c.name)}${classes}</div></td>
+          <td><div class="comp-desc">${blurb.desc}</div></td>
+          <td class="comp-actions">
+            <a class="btn primary" href="${c.href}">Open &rarr;</a>
+            ${download}
+          </td>
+        </tr>`;
+    })
+    .join("");
+
+  return shell({
+    title: "Components",
+    subtitle,
+    activeTab: "components",
+    body: `<table class="comp-table">
+      <thead><tr><th>Preview</th><th>Component</th><th>What it is</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`,
   });
 }
 
@@ -595,22 +752,32 @@ async function main() {
     );
   }
 
-  // ── Patterns tab → ship the govocal-ui gallery + its assets out of the skill
-  // (skills/ doesn't ship on its own). Inject the site nav into the gallery.
-  const patternsDir = path.join(DIST, "patterns");
+  // ── Primitives tab → ship the govocal-ui gallery (tokens: colour, type, shadow,
+  // and the base primitives) + its assets out of the skill (skills/ doesn't ship
+  // on its own). Inject the site nav into the gallery.
+  const patternsDir = path.join(DIST, "primitives");
   await fs.mkdir(patternsDir, { recursive: true });
   const galleryHtml = await fs.readFile(path.join(UI_SKILL, "gallery.html"), "utf8");
   await fs.writeFile(
     path.join(patternsDir, "index.html"),
-    injectNav(galleryHtml, "patterns"),
+    injectNav(galleryHtml, "primitives"),
     "utf8"
   );
-  const patternAssets = ["govocal-tokens.css", "govocal-ui.css", "govocal-themes.js", "govocal-cookies.js"];
+  const patternAssets = ["govocal-tokens.css", "govocal-ui.css", "govocal-themes.js", "govocal-cookies.js", "govocal-logo.svg"];
   for (const asset of patternAssets) {
     if (await exists(path.join(UI_SKILL, asset))) {
       await fs.copyFile(path.join(UI_SKILL, asset), path.join(patternsDir, asset));
     }
   }
+
+  // ── Components tab → composed component library from components/<name>/.
+  const components = await scanComponents();
+  await fs.mkdir(path.join(DIST, "components"), { recursive: true });
+  await fs.writeFile(
+    path.join(DIST, "components", "index.html"),
+    renderComponentsIndex(components),
+    "utf8"
+  );
 
   // ── Pages tab → composed reference pages from pages/<name>/.
   const pages = await scanPages();
@@ -620,6 +787,13 @@ async function main() {
     renderPagesIndex(pages),
     "utf8"
   );
+
+  // ── Playground → standalone scratch prototype, copied to /playground/.
+  let hasPlayground = false;
+  if (await isDir(path.join(ROOT, "playground"))) {
+    await copyDir(path.join(ROOT, "playground"), path.join(DIST, "playground"));
+    hasPlayground = true;
+  }
 
   // Edge auth gate.
   await fs.copyFile(SRC_WORKER, path.join(DIST, "_worker.js"));
@@ -636,7 +810,8 @@ async function main() {
     console.log(`  ${opp.name}/`);
     for (const p of opp.prototypes) console.log(`    - ${p.name}`);
   }
-  console.log(`  patterns/  (Patterns gallery)`);
+  if (hasPlayground) console.log(`  playground/  (scratch prototype)`);
+  console.log(`  primitives/  (Primitives gallery)`);
   console.log(`  pages/  — ${plural(pages.length, "reference page")}`);
   for (const p of pages) console.log(`    - ${p.name}`);
 }
