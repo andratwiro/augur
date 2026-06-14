@@ -36,14 +36,13 @@ surfaces what's next. Check items off (`- [x]`) as they land; add new ones freel
       that lens. Personas should be parameterizable/describable per run.
 
 ## Deploy & access
-- [ ] **Roll the Cloudflare API token** — it was pasted into chat, so the old
-      value must be invalidated. Profile → API Tokens → ⋯ → **Roll** → copy the new
-      value into `.env.deploy` (gitignored; `cp .env.deploy.example .env.deploy`).
-      Then deploy with `npm run deploy`. Never paste the token into chat again.
-- [ ] (Optional) **Auto-deploy on git push** — one-time GitHub↔Cloudflare OAuth in
-      the dashboard (Workers & Pages → govocal-prototypes → Settings → Builds &
-      deployments → Connect to Git). Until then deploys are manual:
-      `node build.js && npx wrangler pages deploy dist --project-name govocal-prototypes --branch main`
+- [x] **Rolled the Cloudflare API token** — old (leaked) value invalidated; new
+      token lives in gitignored `.env.deploy`. Deploy verified via `npm run deploy`.
+- [x] **Auto-deploy on git push** — GitHub Actions (`.github/workflows/deploy.yml`)
+      builds and runs `wrangler pages deploy` on every push to `main`, using the
+      `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` repo secrets. (Chose Actions
+      over Cloudflare's native Git integration since the project is Direct Upload
+      and can't be converted.) Local deploys still work via `npm run deploy`.
 - [ ] Add real prototypes for the `departments/` opportunity (currently empty).
 
 ## Recently done
