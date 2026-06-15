@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.14";
+const UI_VERSION = "0.15";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -542,6 +542,46 @@ const PAGE_CSS = `
       .comp-thumb { max-width: 100%; width: 100%; }
     }
 
+    /* ---- Root layout: sticky sidebar + opportunity grid ----
+       The landing page swaps the single centered column for a two-column shell:
+       a thin nav rail (Playground pinned on top, then every opportunity) beside a
+       responsive card grid that grows columns with available width. */
+    .wrap--root { max-width: 1240px; display: grid; grid-template-columns: 212px minmax(0, 1fr); gap: 44px; align-items: start; }
+    .root-side { position: sticky; top: 72px; display: flex; flex-direction: column; gap: 4px; }
+    .side-pin {
+      display: flex; align-items: center; gap: 11px; padding: 11px 13px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      text-decoration: none; color: inherit; font-weight: 600; font-size: 14.5px;
+      transition: border-color .14s ease, background .14s ease, transform .14s ease;
+    }
+    .side-pin:hover { border-color: var(--line-2); background: var(--card-hover); transform: translateY(-1px); }
+    .side-pin__icon { font-size: 18px; line-height: 1; flex: none; }
+    .side-divider { height: 1px; background: var(--line); margin: 12px 2px; }
+    .side-label {
+      font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+      color: var(--faint); margin: 0 0 8px 13px;
+    }
+    .side-nav { display: flex; flex-direction: column; gap: 1px; }
+    .side-nav a {
+      display: block; padding: 8px 13px; border-radius: 8px; text-decoration: none;
+      color: var(--muted); font-weight: 500; font-size: 14px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: background .12s ease, color .12s ease;
+    }
+    .side-nav a:hover { background: rgba(16,17,26,0.05); color: var(--fg); }
+    .side-pin:focus-visible, .side-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    /* Figma-style auto-fill grid: as many ~260px columns as fit, no carousel. */
+    .opp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 22px; }
+
+    @media (max-width: 820px) {
+      .wrap--root { grid-template-columns: 1fr; gap: 26px; }
+      .root-side { position: static; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+      .side-divider, .side-label { display: none; }
+      .side-nav { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+      .side-nav a { border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; }
+    }
+
     /* Opportunity card = a stretched cover link: the whole card opens the folder. */
     .card-opp { position: relative; }
     .card-cover-link { position: absolute; inset: 0; z-index: 1; border-radius: var(--radius); }
@@ -1005,7 +1045,7 @@ function injectPrimitives(html) {
   return withNav.replace(/<\/head>/i, `  <style>${PRIMITIVES_SKIN}</style>\n</head>`);
 }
 
-function shell({ title, body, back, activeTab = "prototypes" }) {
+function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) {
   const backLink = back
     ? `<a class="back" href="${back.href}">${back.label}</a>`
     : "";
@@ -1024,7 +1064,7 @@ function shell({ title, body, back, activeTab = "prototypes" }) {
 </head>
 <body>
   ${navBar(activeTab)}
-  <div class="wrap">
+  <div class="wrap${wrapClass ? " " + wrapClass : ""}">
     ${backLink}
     ${body}
     <footer>Product Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}</footer>
@@ -1064,45 +1104,50 @@ function renderRootIndex(opportunities) {
     });
   }
 
-  const slides = opportunities
+  const cards = opportunities
     .map((opp) => {
       const oppPath = `${encodeURIComponent(opp.name)}/`;
       // Cover = most-recent prototype of the opportunity (already sorted first).
       const cover = opp.prototypes[0];
       const coverSrc = cover ? `${oppPath}${cover.href}` : "";
       return `
-        <div class="slide">
-          <div class="card-opp">
-            <a class="card-cover-link" href="${oppPath}" aria-label="Open ${titleCase(opp.name)}"></a>
-            ${preview(coverSrc)}
-            <div class="opp-meta">
-              <div class="proto-name">${titleCase(opp.name)}</div>
-              <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; ${fmtDate(opp.mtimeMs)}</div>
-            </div>
+        <div class="card-opp">
+          <a class="card-cover-link" href="${oppPath}" aria-label="Open ${titleCase(opp.name)}"></a>
+          ${preview(coverSrc)}
+          <div class="opp-meta">
+            <div class="proto-name">${titleCase(opp.name)}</div>
+            <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; ${fmtDate(opp.mtimeMs)}</div>
           </div>
         </div>`;
     })
     .join("");
 
-  // Standalone Playground entry — lives below the carousel, a quick scratch space.
-  const playground = `
-    <p class="section-eyebrow" style="margin-top:48px">Scratch space</p>
-    <a class="playground" href="playground/">
-      <span class="playground__icon" aria-hidden="true">🛝</span>
-      <span class="playground__text">
-        <span class="playground__name">Playground</span>
-        <span class="playground__desc">A scratch space for quick experiments &mdash; jump in and build.</span>
-      </span>
-      <span class="playground__go" aria-hidden="true">&rsaquo;</span>
-    </a>`;
+  // Sidebar nav rail: Playground locked on top, then a jump link per opportunity.
+  const sideLinks = opportunities
+    .map((opp) => `<a href="${encodeURIComponent(opp.name)}/">${titleCase(opp.name)}</a>`)
+    .join("");
 
-  const opps = `<p class="section-eyebrow">${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}</p>${carousel(slides)}`;
+  const sidebar = `
+    <aside class="root-side">
+      <a class="side-pin" href="playground/">
+        <span class="side-pin__icon" aria-hidden="true">🛝</span>
+        <span>Playground</span>
+      </a>
+      <div class="side-divider"></div>
+      <p class="side-label">Opportunities</p>
+      <nav class="side-nav" aria-label="Opportunities">${sideLinks}</nav>
+    </aside>`;
+
+  const main = `
+    <div class="root-main">
+      <p class="section-eyebrow">${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}</p>
+      <div class="opp-grid">${cards}</div>
+    </div>`;
 
   return shell({
     title: "Product Prototypes",
-    subtitle: "",
-    eyebrow: "Prototype Library",
-    body: opps + playground,
+    wrapClass: "wrap--root",
+    body: sidebar + main,
   });
 }
 
