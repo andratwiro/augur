@@ -317,9 +317,15 @@
         return `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
             <h2 class="gv-feed__count">${IDEAS.length} ideas</h2>
-            <div class="gv-viewseg" role="tablist" aria-label="View ideas as">
-              <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
-              <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="gv-filters-btn" type="button" aria-expanded="false" aria-controls="e2e-project-sidebar">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Filters
+              </button>
+              <div class="gv-viewseg" role="tablist" aria-label="View ideas as">
+                <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
+                <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
+              </div>
             </div>
           </div>
           <div class="gv-feed">
@@ -398,6 +404,16 @@
     document.getElementById('ppPrev').addEventListener('click', () => setPhase(Math.max(0, active - 1)));
     document.getElementById('ppNext').addEventListener('click', () => setPhase(Math.min(PHASES.length - 1, active + 1)));
     document.getElementById('ppCur').addEventListener('click', () => setPhase(CURRENT));
+
+    /* Mobile "Filters" toggle — delegated so it survives feed re-renders when the
+       phase/method changes. Shows/hides the filter panel (CSS gates it to mobile). */
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.gv-filters-btn');
+      if (!btn) return;
+      const aside = document.getElementById(btn.getAttribute('aria-controls'));
+      if (!aside) return;
+      btn.setAttribute('aria-expanded', String(aside.classList.toggle('is-open')));
+    });
 
     renderStepper();
     setPhase(CURRENT);

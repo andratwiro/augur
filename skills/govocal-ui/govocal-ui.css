@@ -843,9 +843,22 @@
 .gv-feed { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 28px; align-items: start; }
 .gv-feed__count { font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-heading); line-height: 20.8px; margin: 0 0 14px; }
 .gv-feed__col { display: flex; flex-direction: column; gap: 16px; }
-@media (max-width: 860px) { .gv-feed { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .gv-feed { grid-template-columns: minmax(0, 1fr); } }
 /* filter sidebar — live container computes 14px/lh19.999 (not the 16px FO base) */
 .gv-feedfilter { display: flex; flex-direction: column; gap: 14px; font-size: var(--gv-fs-s); line-height: 19.999px; }
+/* On mobile the live ideation feed hides the filter panel behind a "Filters"
+   button (govocal-filters.js / page wiring toggles .is-open). Desktop: button
+   hidden, panel always shown in the sidebar column. */
+.gv-filters-btn { display: none; }
+@media (max-width: 860px) {
+  .gv-filters-btn { display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius);
+    padding: 9px 14px; font: 600 var(--gv-fs-s)/1 var(--gv-font-family); color: var(--gv-grey-800); }
+  .gv-filters-btn svg, .gv-filters-btn .gv-icon { width: 16px; height: 16px; }
+  .gv-filters-btn[aria-expanded="true"] { background: var(--gv-grey-100); }
+  .gv-feedfilter { display: none; order: -1; }   /* opened panel sits above the cards */
+  .gv-feedfilter.is-open { display: flex; }
+}
 /* Each filter SECTION (label + its options) is grouped on its own white panel —
    the background sits on the group, not the individual option buttons. */
 .gv-feedfilter > div { background: #fff; border-radius: var(--gv-radius); padding: 14px 16px; }
