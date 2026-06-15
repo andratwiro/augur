@@ -789,13 +789,16 @@
 .gv-feed__col { display: flex; flex-direction: column; gap: 16px; }
 @media (max-width: 860px) { .gv-feed { grid-template-columns: 1fr; } }
 /* filter sidebar — live container computes 14px/lh19.999 (not the 16px FO base) */
-.gv-feedfilter { display: flex; flex-direction: column; gap: 22px; font-size: var(--gv-fs-s); line-height: 19.999px; }
+.gv-feedfilter { display: flex; flex-direction: column; gap: 14px; font-size: var(--gv-fs-s); line-height: 19.999px; }
+/* Each filter SECTION (label + its options) is grouped on its own white panel —
+   the background sits on the group, not the individual option buttons. */
+.gv-feedfilter > div { background: #fff; border-radius: var(--gv-radius); padding: 14px 16px; }
 .gv-feedfilter__group { display: flex; flex-direction: column; gap: 2px; }
 .gv-feedfilter__label { font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-grey-800); margin: 0 0 8px; }
 /* status/topic filter button — .e2e-topic : 16px/400, 1px transparent, radius 3px, 8px 14px */
 .gv-feedfilter__btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
-  text-align: left; cursor: pointer; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius);
-  background: #fff; color: var(--gv-grey-800); font-family: inherit; font-size: var(--gv-fs-base); font-weight: 400; padding: 8px 14px; }
+  text-align: left; cursor: pointer; border: 1px solid transparent; border-radius: var(--gv-radius);
+  background: transparent; color: var(--gv-grey-800); font-family: inherit; font-size: var(--gv-fs-base); font-weight: 400; padding: 8px 14px; }
 .gv-feedfilter__btn:hover { background: var(--gv-grey-100); }
 .gv-feedfilter__btn.is-active { background: var(--gv-tenant-primary); color: #fff; }
 .gv-feedfilter__btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
