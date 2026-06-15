@@ -249,3 +249,13 @@
        already supplies that hairline, so we drop the yellow .sv-progress bar here.
        (CSS-only: the renderer still emits the element; we hide it so barEl stays valid.) */
     .sv-progress { display: none; }
+
+    /* ── Runner-card width fidelity (source-grounded: live GoVocal survey runner) ──
+       The real runner is a 700px white column (div.bmXoZS, width 700px, padding
+       0 24px) centred on the page, with inner fields ~648px wide — NOT the wider
+       880px / 40px-padded card the base .sv-wrap/.sv-body defined. Narrow the card
+       column to the real 700px and bring the body's horizontal padding down from
+       40px to the measured 24px (vertical padding stays generous, matching the body
+       rhythm). Append-only override so existing consumers update in lock-step. */
+    .sv-wrap { max-width: 700px; }
+    .sv-body { padding: 30px 24px 36px; }
