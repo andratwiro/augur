@@ -208,80 +208,95 @@
         <!-- Grid of boxed project + folder cards -->
         <div class="gv-pgrid">
 
-          <!-- Wide feature card (image left, copy right) -->
+          <!-- Wide feature card (image left, copy right). Top meta-row: progress
+               (left) + CTA (top-right) with a divider; avatars at the bottom. -->
           <article class="gv-pcard boxed horizontal span-3">
             <div class="gv-pcard__thumb icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
             </div>
             <div class="gv-pcard__body">
+              <div class="gv-pcard__top">
+                <div class="gv-pcard__topprog">
+                  <span class="gv-pcard__meta time">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    4 weeks left
+                  </span>
+                  <div class="gv-progress" role="progressbar" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:35%"></div></div>
+                </div>
+                <a class="gv-btn primary-outlined" href="#">Take the survey</a>
+              </div>
               <h3 class="gv-pcard__title"><a href="#">The big downtown survey</a></h3>
               <p class="gv-pcard__desc">What does downtown need to become more liveable? Tell us which places,
                 routes and ideas matter most to you.</p>
-              <div class="gv-pcard__progress">
-                <span class="gv-pcard__meta time">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  4 weeks left
-                </span>
-                <div class="gv-progress" role="progressbar" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:35%"></div></div>
-              </div>
+              <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
                 <div class="gv-bubbles" aria-label="248 participants">
                   <span class="av"></span><span class="av"></span><span class="av"></span>
                   <span class="gv-bubbles__label">248 participants</span>
                 </div>
-                <a class="gv-btn primary-outlined" href="#">Take the survey</a>
               </div>
             </div>
           </article>
 
-          <!-- Standard project card with image + bubbles + CTA -->
+          <!-- Standard project card: contributions (left) + CTA top-right; avatars bottom -->
           <article class="gv-pcard boxed">
+            <div class="gv-pcard__top">
+              <span class="gv-poststat"><b>122</b>&nbsp;contributions</span>
+              <a class="gv-btn primary-outlined" href="#">Learn more</a>
+            </div>
             <div class="gv-pcard__thumb icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">A square for everyone</a></h3>
               <p class="gv-pcard__desc">How can Market Square become a popular meeting point in the neighbourhood?</p>
-              <span class="gv-poststat" style="margin-top:10px"><b>122</b>&nbsp;contributions</span>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
                 <div class="gv-bubbles" aria-label="122 participants">
                   <span class="av"></span><span class="av"></span><span class="av"></span>
                   <span class="gv-bubbles__label">122 participants</span>
                 </div>
-                <a class="gv-btn primary-outlined" href="#">Learn more</a>
               </div>
             </div>
           </article>
 
-          <!-- Project card with no image (placeholder icon) + time + progress -->
+          <!-- Project card (placeholder icon): progress top-left + CTA top-right; avatars bottom -->
           <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
-            </div>
-            <div class="gv-pcard__body">
-              <div class="gv-pcard__progress" style="margin-top:0;margin-bottom:14px">
+            <div class="gv-pcard__top">
+              <div class="gv-pcard__topprog">
                 <span class="gv-pcard__meta time">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   6 weeks left
                 </span>
                 <div class="gv-progress" role="progressbar" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:18%"></div></div>
               </div>
+              <a class="gv-btn primary-outlined" href="#">Take the survey</a>
+            </div>
+            <div class="gv-pcard__thumb icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
+            </div>
+            <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">The future of Station Road</a></h3>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
-                <a class="gv-btn primary-outlined" href="#">Take the survey</a>
+                <div class="gv-bubbles" aria-label="57 participants">
+                  <span class="av"></span><span class="av"></span><span class="av"></span>
+                  <span class="gv-bubbles__label">57 participants</span>
+                </div>
               </div>
             </div>
           </article>
 
-          <!-- Folder card: count badge + folder icon + description + bubbles -->
+          <!-- Folder card: "N projects" (left) + a folder icon top-right in secondary
+               colour on the white meta-row; emblem thumb; avatars at the bottom. -->
           <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb gv-pcard__thumb--coral">
-              <span class="gv-pcard__count">
+            <div class="gv-pcard__top">
+              <span class="gv-pcard__meta">3 projects</span>
+              <span class="gv-pcard__topicon" role="img" aria-label="Project folder">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
-                3 projects
               </span>
+            </div>
+            <div class="gv-pcard__thumb gv-pcard__thumb--coral">
               <div class="gv-pcard__badge"><span><span class="pre">our</span><b class="accent">Westside</b><b>climate<br>team</b></span></div>
             </div>
             <div class="gv-pcard__body">
@@ -297,41 +312,46 @@
             </div>
           </article>
 
-          <!-- Finished project card (status label + report CTA) -->
+          <!-- Finished project card: status (left) + report CTA top-right; count bottom -->
           <article class="gv-pcard boxed">
+            <div class="gv-pcard__top">
+              <span class="gv-status-label finished">Finished</span>
+              <a class="gv-btn primary-outlined" href="#">Read the report</a>
+            </div>
             <div class="gv-pcard__thumb gv-pcard__thumb--sand"><span class="gv-thumb-cap gv-thumb-cap--xs">Old Town renewal</span></div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Old Town renewal</a></h3>
               <p class="gv-pcard__desc">Participation has closed. Read which proposals are being put into action.</p>
-              <span class="gv-poststat closed" style="margin-top:10px"><b>503</b>&nbsp;contributions</span>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
-                <span class="gv-status-label finished">Finished</span>
-                <a class="gv-btn primary-outlined" href="#">Read the report</a>
+                <span class="gv-poststat closed"><b>503</b>&nbsp;contributions</span>
               </div>
             </div>
           </article>
 
-          <!-- Participatory budget card -->
+          <!-- Participatory budget card: progress top-left + CTA top-right; avatars bottom -->
           <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb gv-pcard__thumb--civic">
-              <span class="gv-thumb-cap gv-thumb-cap--sm">PARTICIPATORY BUDGET</span>
-            </div>
-            <div class="gv-pcard__body">
-              <div class="gv-pcard__progress" style="margin-top:0;margin-bottom:14px">
+            <div class="gv-pcard__top">
+              <div class="gv-pcard__topprog">
                 <span class="gv-pcard__meta time">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   2 weeks left
                 </span>
                 <div class="gv-progress" role="progressbar" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:62%"></div></div>
               </div>
+              <a class="gv-btn primary-outlined" href="#">Submit a proposal</a>
+            </div>
+            <div class="gv-pcard__thumb gv-pcard__thumb--civic">
+              <span class="gv-thumb-cap gv-thumb-cap--sm">PARTICIPATORY BUDGET</span>
+            </div>
+            <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Participatory budget 2026</a></h3>
+              <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
                 <div class="gv-bubbles" aria-label="86 participants">
                   <span class="av"></span><span class="av"></span>
                   <span class="gv-bubbles__label">86 participants</span>
                 </div>
-                <a class="gv-btn primary-outlined" href="#">Submit a proposal</a>
               </div>
             </div>
           </article>

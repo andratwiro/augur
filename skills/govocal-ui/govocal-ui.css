@@ -528,6 +528,23 @@
 .gv-pcard__progress { margin: 12px 0 0; }
 .gv-pcard__progress .gv-pcard__meta { margin-bottom: 8px; }
 
+/* ── Boxed-card top meta-row ──────────────────────────────────────────────────
+   Live Raleigh project cards lead with a white header strip: progress/time (or a
+   status/format icon) on the LEFT, the CTA button (or an icon) pinned top-RIGHT,
+   a hair divider beneath. Participant avatars then sit in the card foot at the
+   bottom. Vertical cards put __top above the thumb; the wide card nests it at the
+   top of the body and full-bleeds the divider to the content edges. */
+.gv-pcard.boxed .gv-pcard__top { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--gv-divider); min-height: 58px; background: #fff; }
+.gv-pcard__topprog { display: flex; flex-direction: column; gap: 7px; flex: 1 1 auto; min-width: 0; }
+.gv-pcard__topprog .gv-pcard__meta { margin: 0; }
+.gv-pcard__top .gv-btn { flex: 0 0 auto; margin-left: auto; }
+.gv-pcard__top .gv-status-label { margin: 0; }
+.gv-pcard__topicon { margin-left: auto; color: var(--gv-text-secondary); display: inline-flex; flex: 0 0 auto; }
+.gv-pcard__topicon svg, .gv-pcard__topicon .gv-icon { width: 22px; height: 22px; }
+.gv-pcard.boxed.horizontal .gv-pcard__top { margin: -32px -36px 22px; padding: 16px 36px; }
+.gv-pcard.boxed.horizontal .gv-pcard__body { justify-content: flex-start; }
+
 /* Full-width horizontal feature card (image left, copy right) */
 .gv-pcard.boxed.horizontal { flex-direction: row; }
 .gv-pcard.boxed.horizontal .gv-pcard__thumb { flex: 0 0 46%; aspect-ratio: auto; min-height: 300px; }
