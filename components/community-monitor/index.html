@@ -58,61 +58,36 @@
           <div class="gv-sentiment-scale" role="group" aria-labelledby="monitor-q" data-monitor-scale>
             <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
                     aria-label="1 out of 5, Very poor">
-              <span class="gv-sentiment-scale__face">
-                <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                  <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
-                  <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
-                  <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
-                  <path d="M13 28 Q20 22 27 28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+              <span class="gv-sentiment-scale__face is-emoji">
+                <span class="gv-sentiment-scale__glyph" aria-hidden="true">&#128547;</span>
               </span>
               <span class="gv-sentiment-scale__cap">Very poor</span>
             </button>
             <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
                     aria-label="2 out of 5, Poor">
-              <span class="gv-sentiment-scale__face">
-                <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                  <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
-                  <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
-                  <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
-                  <path d="M13 27 Q20 23 27 27" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+              <span class="gv-sentiment-scale__face is-emoji">
+                <span class="gv-sentiment-scale__glyph" aria-hidden="true">&#128577;</span>
               </span>
               <span class="gv-sentiment-scale__cap">Poor</span>
             </button>
             <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
                     aria-label="3 out of 5, Neither">
-              <span class="gv-sentiment-scale__face">
-                <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                  <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
-                  <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
-                  <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
-                  <path d="M13 26 H27" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+              <span class="gv-sentiment-scale__face is-emoji">
+                <span class="gv-sentiment-scale__glyph" aria-hidden="true">&#128528;</span>
               </span>
               <span class="gv-sentiment-scale__cap">Neither</span>
             </button>
             <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
                     aria-label="4 out of 5, Good">
-              <span class="gv-sentiment-scale__face">
-                <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                  <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
-                  <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
-                  <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
-                  <path d="M13 25 Q20 30 27 25" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+              <span class="gv-sentiment-scale__face is-emoji">
+                <span class="gv-sentiment-scale__glyph" aria-hidden="true">&#128578;</span>
               </span>
               <span class="gv-sentiment-scale__cap">Good</span>
             </button>
             <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
                     aria-label="5 out of 5, Excellent">
-              <span class="gv-sentiment-scale__face">
-                <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                  <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
-                  <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
-                  <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
-                  <path d="M12 24 Q20 32 28 24" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
-                </svg>
+              <span class="gv-sentiment-scale__face is-emoji">
+                <span class="gv-sentiment-scale__glyph" aria-hidden="true">&#128512;</span>
               </span>
               <span class="gv-sentiment-scale__cap">Excellent</span>
             </button>
@@ -138,7 +113,9 @@
       <code>var(--gv-tenant-primary)</code>, emoji over <code>__cap</code> caption). It is
       a sibling of the survey kit’s vertical <code>.sv-sentiment</code> — built fresh, not
       a mutation of it. Options are <code>aria-pressed</code> buttons; one selects at a
-      time. Faces are inline SVG so the module is self-contained and re-themeable.</p>
+      time. Faces are native full-colour emoji glyphs (😣 🙁 😐 🙂 😀) via the
+      <code>.gv-sentiment-scale__face.is-emoji</code> variant — matching the real
+      yellow-face linear scale; selection chrome stays on the face.</p>
     </div>
   </div>
 

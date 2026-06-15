@@ -1216,6 +1216,18 @@
 .gv-sentiment-scale__opt[aria-pressed="true"] .gv-sentiment-scale__cap { color: var(--gv-text-primary); font-weight: 600; }
 @media (max-width: 480px) { .gv-sentiment-scale { gap: 4px; justify-content: center; } }
 
+/* Emoji-glyph face variant (matches the real linear-scale, which renders native
+   full-colour platform emoji 😣 🙁 😐 🙂 😀 — filled yellow faces, not monochrome
+   outline icons). Render the emoji character at face size with the native colour
+   font so it reads as the real yellow-face scale rather than a thin tenant-tinted
+   outline. Selection chrome (border/tint) still lives on .gv-sentiment-scale__face. */
+.gv-sentiment-scale__face.is-emoji {
+  font-size: 32px; line-height: 1; padding: 4px;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  -webkit-font-smoothing: auto;
+}
+.gv-sentiment-scale__face.is-emoji .gv-sentiment-scale__glyph { display: block; }
+
 /* ── Event DETAIL page (/events/:id) ────────────────────────────────────────── */
 /* Source-grounded on wietsedemo.govocal.com/en/events/<id> (capture: fo-event-detail,
    Cultuurconnect tenant). NEW page reached from a Past-event card. Anatomy: a
