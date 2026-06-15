@@ -528,10 +528,10 @@ const PAGE_CSS = `
     .comp-table { width: 100%; border-collapse: collapse; }
     .comp-table th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
       color: var(--muted); font-weight: 600; padding: 0 14px 10px; border-bottom: 1px solid var(--line); }
-    .comp-table td { padding: 16px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .comp-table td { padding: 8px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
     .comp-table tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent); }
     .comp-thumb {
-      position: relative; width: 200px; max-width: 38vw; aspect-ratio: 16 / 9; overflow: hidden;
+      position: relative; width: 100px; max-width: 38vw; aspect-ratio: 16 / 9; overflow: hidden;
       border-radius: 10px; border: 1px solid var(--line); background: var(--bg); display: block;
     }
     .comp-thumb iframe {
