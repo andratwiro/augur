@@ -299,7 +299,32 @@ checkpoints. Everything scopes under `.gv-bo` so the BO palette applies.
 - New button variant: **`.gv-btn.success`** (green CTA, `--gv-green-600`) + size **`.gv-btn.size-s`**.
 
 The page wires the six project top-tabs (General · Timeline · Audience · Messaging ·
-Events · 360 Input) to swap panels in JS — a clickable starting point for BO flows.
+Events · 360 Input) to swap panels in JS, and the **Timeline → phase** panel wires four
+`.pp-sub` sub-tabs (Setup · Input manager · Input form · Insights) — a clickable
+starting point for BO flows.
+
+### Phase sub-tab views (grounded on `bo-project-ideas`, `bo-input-form-builder`, `bo-phase-insights`)
+
+- **Input manager** — `.gv-bo-imgr` (216px rail + table grid):
+  - **`.gv-bo-table.is-bordered`** — posts-table card variant: 1px `--gv-grey-300`
+    outline + 3px radius, even rows `--gv-bo-row-alt`. Blue 700 headers (the base
+    `thead th` is now the grounded `--gv-bo-primary`/12px). `__check` (narrow checkbox
+    col), `__num` (centred count cols), `__title` (idea link). **`.gv-bo-th--sort`**
+    (`.is-sorted` → `--gv-grey-200` tint) = sortable header.
+  - **`.gv-bo-filterrail`** (`__tabs`/`__tab`/`__group`/`__item`(`.is-active`)/`__count`)
+    — bordered Timeline/Tags/Status facet rail with per-phase counts.
+  - **`.gv-bo-banner--ai`** — the teal callout with a right-pushed `__cta`.
+  - **`.gv-bo-headrow`** (`__title`/`__actions`), **`.gv-bo-count-line`**,
+    **`.gv-bo-link`** (icon + text link, e.g. Exports).
+- **Input form** — **`.gv-bo-eyebrow`** (uppercase section caption) +
+  **`.gv-bo-importlist`** / **`.gv-bo-importcard`** (`__icon` light-blue tile · `__main`
+  `__title`/`__desc` · `__actions` link + primary button). Source cards (Paper-OCR,
+  Spreadsheet) measured at 1px `--gv-grey-300`/3px/12px.
+- **Insights** (SHARED — both surfaces) — **`.gv-bo-statgrid`** auto-fill grid of
+  **`.gv-bo-stat`** cards (`__top` label + `__icon`, `__num` 34/700 blue, `__delta`
+  7-day change). White/3px/`var(--gv-shadow)`/17px. **`.gv-bo-chartcard`**
+  (`__title`/`__sub` + inline `<svg>` area plot). Header pairs Download with a green
+  `.gv-btn.success` AI-analysis CTA.
 
 ---
 

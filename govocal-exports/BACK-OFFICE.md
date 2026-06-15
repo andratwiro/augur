@@ -92,9 +92,9 @@ cross-surface pieces (tables, stat cards) **shared** in the manifest.
   - [x] **Audience** — Participants data table (`.gv-bo-table`) + toolbar + pager.
   - [x] **Messaging** — "Send your first email" empty state on a card/grey pane.
   - [x] **Events** — project events list with registrant counts + row actions.
-- [ ] **Input manager tab** — the posts/data table (checkbox, sortable headers, status meta, row actions, pagination dots) + left filter rail (Timeline/Tags/Status, phase list w/ counts) + filter bar ("Any administrator" dropdown, toggle, Exports, Search) + AI banner. (capture: `bo-project-ideas`)
-- [ ] **Input form tab** — `.gv-bo-import-cards` (Paper/OCR, Spreadsheet sources) + "Edit input form" entry. (capture: `bo-input-form-builder`)
-- [ ] **Insights tab** — `bo-stat-cards` (label · big number · 7-day change · icon; tag **shared**) + charts. (capture: `bo-phase-insights`)
-- [ ] **Phase sub-tabs** beyond Setup: Description / Map / Phase access / Notifications — capture as needed, build per pattern.
+- [x] **Input manager tab** — `.gv-bo-table.is-bordered` posts table (checkbox, sortable blue headers, assignee dropdowns, like/dislike counts) + `.gv-bo-filterrail` (Timeline/Tags/Status + phase facets w/ counts) + filter bar (assignee select, need-feedback toggle, Exports, Search) + `.gv-bo-banner--ai` callout. Wired to the phase **Input manager** sub-tab. Checkpoints `imgr-table/-th/-title`. (capture: `bo-project-ideas`) ✅
+- [x] **Input form tab** — `.gv-bo-importlist`/`.gv-bo-importcard` (Paper-OCR, Spreadsheet sources w/ icon tile + actions) + `.gv-bo-eyebrow` + "Edit input form" entry. Checkpoint `inputform-head`. (capture: `bo-input-form-builder`) ✅
+- [x] **Insights tab** — `.gv-bo-statgrid`/`.gv-bo-stat` stat cards (label · 34px number · 7-day change · icon; tagged **shared**) + green AI-analysis CTA + `.gv-bo-chartcard` participation chart. Checkpoint `insights-stat`. (capture: `bo-phase-insights`) ✅
+- [ ] **Phase sub-tabs** beyond the built four: Description / Map / Phase access / Notifications — capture as needed, build per pattern.
 
 Site: `/pages/` index is split **Back office / Front office** (build.js, via `<meta name="gv-surface">` / `bo-` prefix). New BO pages auto-group under Back office.
