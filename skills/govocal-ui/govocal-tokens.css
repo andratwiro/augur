@@ -119,7 +119,10 @@
   --gv-bo-border:         var(--gv-cool-grey-600);     /* #596B7A — outline-button border */
 
   /* ── Typography ───────────────────────────────────────────────────────── */
-  --gv-font-family: 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* The product's computed font stack repeats the theme family name before the
+     base fallbacks ("Public Sans","Public Sans",…) — every live capture shows it
+     doubled. Mirror it verbatim so probed font-family checkpoints diff cleanly. */
+  --gv-font-family: 'Public Sans', 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --gv-fs-xs:     12px;
   --gv-fs-s:      14px;
   --gv-fs-base:   16px;
@@ -146,6 +149,17 @@
   --gv-shadow-hover-sm:  0px 2px 4px -1px rgba(0,0,0,0.2);
   --gv-shadow-hover-lg:  0px 4px 12px -1px rgba(0,0,0,0.12);
   --gv-shadow-error:     0 0 0 3px rgba(214,22,7,0.35); /* transparentize(.65, red600) */
+  /* Left-edge inset shadow on the Content-Builder right settings panel (measured
+     live, bo-content-builder-settings, div#e2e-content-builder-settings). Distinct
+     from --gv-shadow/--gv-shadow-header — it casts to the left, panel flush right. */
+  --gv-shadow-panel-left: -2px 0px 1px 0px rgba(0,0,0,0.06);
+
+  /* ── Back-office Content/Description Builder (measured live) ─────────────
+     The craft.js content editor (top bar + widget palette + canvas + settings).
+     The Save CTA green (#08833a) sits between green-500/600 — its own systemic
+     token. The canvas-frame width (1000px) recurs as the editable-frame metric. */
+  --gv-green-save:        #08833a;  /* Content-Builder Save button fill (measured) */
+  --gv-bo-cb-frame-w:     1000px;   /* editable content frame width / max-width */
 
   /* ── Focus ────────────────────────────────────────────────────────────── */
   /* defaultOutline: 2px solid tenantPrimary */

@@ -552,3 +552,214 @@
 .gv-bo-chartcard__title { margin: 0 0 4px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-chartcard__sub { margin: 0 0 16px; font-size: 13px; color: var(--gv-text-secondary); }
 .gv-bo-chartcard svg { display: block; width: 100%; height: auto; }
+
+/* ── Content / Description Builder (the craft.js editor) ─────────────────────
+   Measured live (bo-content-builder + bo-content-builder-settings). A full-screen
+   editor: a fixed white top bar, a left widget-palette rail, a centred white
+   editable frame on the #EDEFF0 canvas, and a right settings panel. Build from
+   the digest values; verify against the probed e2e ids. Chrome lives here as
+   .gv-bo-cb-* so the page is pure assembly. */
+
+/* App root: a column shell with the fixed top bar reserved (78px) above a
+   palette / canvas / settings three-pane row that fills the rest of the height. */
+.gv-bo-cb { display: flex; flex-direction: column; min-height: 100vh; background: var(--gv-bo-canvas); }
+.gv-bo-cb__body { display: flex; flex: 1 1 auto; min-height: 0; padding-top: var(--gv-menu-height); }
+
+/* ── Top bar ───────────────────────────────────────────────────────────────
+   Fixed full-width white bar, 78px tall, z-index 3, 1px solid #bdbdbd bottom
+   border, NO shadow (measured div.fVDvek). */
+.gv-bo-cb-topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 3;
+  display: flex; align-items: center;
+  height: var(--gv-menu-height);
+  background: var(--gv-white);
+  border-bottom: 1px solid var(--gv-grey-500);
+  box-shadow: none;
+  font-family: var(--gv-font-family);
+}
+.gv-bo-cb-topbar__back {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; margin: 0 4px 0 12px;
+  border: 0; background: transparent; color: var(--gv-grey-800); cursor: pointer;
+}
+.gv-bo-cb-topbar__back .gv-icon { width: 20px; height: 24px; }
+.gv-bo-cb-topbar__titles { display: flex; flex-direction: column; min-width: 0; }
+.gv-bo-cb-topbar__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-grey-800); }
+.gv-bo-cb-topbar__sub { margin: 0; font-size: var(--gv-fs-base); font-weight: 400; line-height: 24px; color: var(--gv-cool-grey-600); }
+.gv-bo-cb-topbar__actions { margin-left: auto; display: flex; align-items: center; padding-right: 16px; }
+.gv-bo-cb-topbar__actions > * { margin-left: 8px; }
+
+/* Locale pill — grey #edeff0 chip wrapping a borderless native <select>, 34px. */
+.gv-bo-cb-locale {
+  display: inline-flex; align-items: center;
+  height: 34px; padding: 4px 8px; border-radius: var(--gv-radius);
+  background: var(--gv-bo-canvas); color: var(--gv-blue-500);
+}
+.gv-bo-cb-locale select {
+  height: 26px; border: 0; background: transparent; cursor: pointer;
+  font-family: var(--gv-font-family); font-size: var(--gv-fs-s); color: var(--gv-grey-800);
+}
+
+/* Preview toggle group: a pill switch + a 16px label (off track #ccc; the shared
+   .gv-toggle primitive already turns success-green when checked). */
+.gv-bo-cb-preview { display: inline-flex; align-items: center; gap: 8px; }
+.gv-bo-cb-preview__label { font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-grey-800); }
+
+/* Eye / view-project button = the secondary-outlined .gv-btn icon variant, 44×34. */
+/* .secondary-outlined keeps the grey #596B7A border; the eye glyph itself is the
+   link-blue #4183C4 (measured). Carry .secondary-outlined so the colour beats the
+   variant's (0,2,0) grey text in the cascade. */
+.gv-bo-cb-topbar__view { width: 44px; height: 34px; padding: 6px 11px; }
+.gv-btn.secondary-outlined.gv-bo-cb-topbar__view { color: var(--gv-bo-link); }
+
+/* Save wrapper (measured #e2e-content-builder-topbar-save) — transparent flex box
+   carrying the inherited navy text colour + 14px/19.999px chrome metrics; the green
+   fill lives on the inner .gv-bo-cb-save button. */
+.gv-bo-cb-save-wrap {
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--gv-blue-500);
+  font-size: var(--gv-fs-s); font-weight: 400; line-height: 19.999px;
+}
+/* GREEN primary Save — the .gv-btn primary overridden to the content-builder
+   success green (#08833a, measured — between green-500/600). Selector carries
+   .primary so it beats .gv-btn.primary's (0,2,0) tenant-teal fill in the cascade. */
+.gv-btn.primary.gv-bo-cb-save {
+  background: var(--gv-green-save); border-color: var(--gv-green-save); color: var(--gv-white);
+  border-radius: var(--gv-radius); padding: 4px 12px 3px; height: 34px;
+  font-size: var(--gv-fs-s); box-shadow: none;
+}
+.gv-btn.primary.gv-bo-cb-save:hover { background: var(--gv-green-700); border-color: var(--gv-green-700); }
+
+/* ── Left palette rail ───────────────────────────────────────────────────────
+   Vertical white rail of draggable widgets, grouped into sections divided by a
+   1px #E0E0E0 top border (measured .fuAcZc). Item = 235×48, navy #044D6C icon,
+   #333 label. Rail width inferred from the 235px item + side gutter (not probed). */
+.gv-bo-cb-palette {
+  flex: none; width: 268px; box-sizing: border-box;
+  background: var(--gv-white); border-right: 1px solid var(--gv-grey-300);
+  padding: 0 16px; overflow-y: auto;
+}
+.gv-bo-cb-palette__group { border-top: 1px solid var(--gv-grey-300); padding: 12px 0 0; margin: 0 0 12px; }
+.gv-bo-cb-palette__group:first-child { border-top: 0; padding-top: 16px; }
+.gv-bo-cb-item {
+  display: flex; align-items: center; gap: 12px;
+  width: 235px; height: 48px;
+  color: var(--gv-blue-500); font-family: var(--gv-font-family);
+  font-size: var(--gv-fs-s); font-weight: 400; line-height: 19.999px;
+  cursor: grab; user-select: none;
+}
+.gv-bo-cb-item:hover { background: var(--gv-grey-100); }
+.gv-bo-cb-item:active { cursor: grabbing; }
+.gv-bo-cb-item.is-dragging { opacity: .4; }
+.gv-bo-cb-item__icon { flex: none; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: var(--gv-blue-500); }
+.gv-bo-cb-item__icon .gv-icon,
+.gv-bo-cb-item__icon svg { width: 20px; height: 20px; }
+/* label paints darker grey #333, not the item's navy (measured: label #333333) */
+.gv-bo-cb-item__label { font-size: var(--gv-fs-base); font-weight: 400; line-height: 16px; color: var(--gv-grey-800); }
+
+/* ── Centre canvas + editable frame ──────────────────────────────────────────
+   The canvas is the #EDEFF0 shell showing through; the white frame is the craft
+   root (#e2e-content-builder-frame), 1000px wide, 4px padding, 1px dashed
+   transparent border (the drop hint, visible only while empty/drag-over). */
+.gv-bo-cb-canvas { flex: 1 1 auto; min-width: 0; overflow-y: auto; background: var(--gv-bo-canvas); display: flex; justify-content: center; padding: 24px 0 80px; }
+.gv-bo-cb-frame {
+  position: relative;
+  width: var(--gv-bo-cb-frame-w); max-width: var(--gv-bo-cb-frame-w);
+  background: var(--gv-white);
+  padding: 4px; margin: 4px 0;
+  border: 1px dashed transparent;
+  color: var(--gv-blue-500); font-family: var(--gv-font-family);
+  font-size: var(--gv-fs-s); line-height: 19.999px;
+}
+/* Empty / drag-over: surface the dashed drop hint in a light grey. */
+.gv-bo-cb-frame.is-empty,
+.gv-bo-cb-frame.is-dragover { border-color: var(--gv-grey-400); }
+.gv-bo-cb-frame__empty { display: none; padding: 60px 16px; text-align: center; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-base); }
+.gv-bo-cb-frame.is-empty .gv-bo-cb-frame__empty { display: block; }
+
+/* A rendered block. Selected = 1px solid navy border + the floating label tab;
+   unselected keeps a 1px dashed transparent border so selecting causes no shift. */
+.gv-bo-cb-block {
+  position: relative;
+  width: 990px; max-width: 100%;
+  margin: 4px 0; padding: 0;
+  border: 1px dashed transparent;
+  background: var(--gv-white); color: var(--gv-blue-500); cursor: pointer;
+}
+.gv-bo-cb-block:hover { border-color: var(--gv-cool-grey-300); }
+.gv-bo-cb-block.is-selected { border: 1px solid var(--gv-bo-primary); }
+.gv-bo-cb-block.is-dragging { opacity: .4; }
+/* Navy identity tab, pinned flush above the block's top-left (only when selected). */
+.gv-bo-cb-block__label {
+  display: none; position: absolute; top: -28px; left: -1px;
+  padding: 4px; background: var(--gv-bo-primary); color: var(--gv-white);
+  font-size: var(--gv-fs-s); line-height: 19.999px; font-weight: 400; white-space: nowrap;
+}
+.gv-bo-cb-block.is-selected .gv-bo-cb-block__label { display: block; }
+/* Block body copy inherits the navy frame text (measured #044D6C / 14px). */
+.gv-bo-cb-block__body { color: var(--gv-blue-500); font-size: var(--gv-fs-s); line-height: 19.999px; }
+
+/* Drop indicator — a thin teal insertion line shown between blocks while dragging. */
+.gv-bo-cb-dropline { height: 2px; margin: 2px 0; background: var(--gv-teal-500); border-radius: 1px; }
+
+/* ── Right settings panel ────────────────────────────────────────────────────
+   Fixed white panel anchored to the right edge under the 78px top bar; 400px,
+   20px gutter, left-edge inset shadow (measured #e2e-content-builder-settings). */
+.gv-bo-cb-settings {
+  position: fixed; top: var(--gv-menu-height); right: 0; bottom: 0;
+  width: 400px; box-sizing: border-box; z-index: 99999;
+  background: var(--gv-white); padding: 20px;
+  box-shadow: var(--gv-shadow-panel-left);
+  color: var(--gv-bo-primary); font-family: var(--gv-font-family); font-size: var(--gv-fs-s);
+  overflow-y: auto;
+}
+.gv-bo-cb-settings__close {
+  position: absolute; top: 16px; right: 16px;
+  width: 28px; height: 28px; display: grid; place-items: center;
+  border: 0; background: transparent; color: var(--gv-black); cursor: pointer;
+}
+.gv-bo-cb-settings__title { margin: 0 0 16px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px; color: var(--gv-grey-800); }
+
+/* RTE (Quill ql-snow) toolbar — light #F8F8F8 tint, #767676 border on three sides
+   (bottom open to join the text area), 3px top corners (measured ql-toolbar). */
+.gv-bo-cb-rte__toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+  padding: 8px; background: #F8F8F8;
+  border: 1px solid var(--gv-border-dark); border-bottom: 0;
+  border-radius: var(--gv-radius) var(--gv-radius) 0 0;
+}
+.gv-bo-cb-rte__group { display: inline-flex; align-items: center; gap: 2px; margin-right: 12px; }
+.gv-bo-cb-rte__select {
+  height: 24px; padding: 0 2px 0 8px; min-width: 98px;
+  border: 1px solid transparent; background: transparent;
+  font-family: var(--gv-font-family); font-size: var(--gv-fs-s); font-weight: 500; color: #444; cursor: pointer;
+}
+.gv-bo-cb-rte__btn {
+  width: 24px; height: 24px; display: grid; place-items: center;
+  border: 0; background: transparent; color: #444; cursor: pointer; border-radius: var(--gv-radius);
+}
+.gv-bo-cb-rte__btn .gv-icon, .gv-bo-cb-rte__btn svg { width: 18px; height: 18px; }
+.gv-bo-cb-rte__btn:hover { background: var(--gv-grey-200); }
+.gv-bo-cb-rte__btn.is-on { color: var(--gv-bo-primary); background: var(--gv-grey-200); }
+/* Editable area — square, full #808080 border, butts under the open toolbar edge. */
+.gv-bo-cb-rte__editor {
+  min-height: 200px; padding: 12px 15px;
+  border: 1px solid #808080; border-radius: 0;
+  background: var(--gv-white); color: var(--gv-grey-800);
+  font-size: 13px; line-height: 24px; outline: none; /* matches the real Quill ql-container digest (13px) */
+}
+
+/* Delete — destructive outline button (red border + red text, transparent fill).
+   A new variant of the BO outline button; does NOT mutate .gv-btn primary-outlined. */
+.gv-bo-cb-delete {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 20px; padding: 9px 18px; height: 45px;
+  background: transparent; border: 1px solid var(--gv-red-500); border-radius: var(--gv-radius);
+  color: var(--gv-red-500); font-family: var(--gv-font-family); font-size: var(--gv-fs-s); cursor: pointer;
+}
+.gv-bo-cb-delete .gv-icon, .gv-bo-cb-delete svg { width: 18px; height: 18px; }
+.gv-bo-cb-delete:hover { background: var(--gv-red-100); }
+
+/* Settings rows for non-text blocks (a faithful generic settings body). */
+.gv-bo-cb-settings__row { margin-bottom: 16px; }
+.gv-bo-cb-settings__rowlabel { display: block; margin-bottom: 6px; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-bo-primary); }
