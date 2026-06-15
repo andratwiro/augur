@@ -25,6 +25,7 @@
     /* layout-only (no colour/elevation/type authored here) */
     .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
     .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pp-title { padding: 36px 0 8px; }
     .pp-action { display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
     .pp-action .gv-btn.primary { min-width: 300px; }
   </style>
@@ -54,6 +55,21 @@
   </header>
 
   <main>
+   <!-- ════════ White header band — banner + project H1 (canonical project-page header) ════════ -->
+   <div class="gv-wrap">
+    <!-- Banner (real full-bleed photo within page container) -->
+    <section class="pp-banner gv-pcard__thumb--forest" aria-label="Project banner">
+      <img src="../../skills/govocal-ui/img/westmere/square.webp" alt="Downtown Centre &amp; Harbour from above" loading="lazy" />
+    </section>
+    <!-- Title block — project H1 (the standard FO project-page H1, grounded by fo-project/ideation-h1) -->
+    <div class="pp-title">
+      <h1 class="gv-title h1" style="margin:20px 0 16px;line-height:39px;">The big downtown survey</h1>
+      <div class="gv-projdesc">
+        <p>Help us understand how you use downtown today and what would make Centre &amp; Harbour work better for everyone. The survey is open now and takes about three minutes.</p>
+      </div>
+    </div>
+   </div><!-- /.gv-wrap -->
+
    <!-- ════════ Method band (grey) — Timeline + survey method ════════ -->
    <div class="gv-methodband">
     <div class="gv-wrap">
