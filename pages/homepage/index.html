@@ -187,6 +187,82 @@
       </div>
     </section>
 
+    <!-- ════════ Open to participation — status-grouped widget (Stadt Wien pattern) ════════
+         The live product also composes the homepage as separate status sections
+         ("Laufende Projekte" / "Abgeschlossene Projekte" on mitgestalten.wien.gv.at)
+         instead of one tabbed grid. This is that widget: a titled section + a grid of
+         currently-open projects, each carrying the green .gv-poststat live count. -->
+    <section class="gv-section" aria-labelledby="open-title">
+      <div class="gv-section__head"><h2 class="gv-title h2" id="open-title">Open to participation</h2></div>
+      <div class="gv-section__body">
+        <div class="gv-pgrid">
+
+          <article class="gv-pcard boxed">
+            <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#2f6f4f,#7fb08a)"></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Cooler streets for summer</a></h3>
+              <p class="gv-pcard__desc">Which streets should we plant, shade and de-pave first? Drop your pins on the map.</p>
+              <div class="gv-pcard__progress">
+                <span class="gv-pcard__meta time">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  3 weeks left
+                </span>
+                <div class="gv-progress" role="progressbar" aria-valuenow="48" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:48%"></div></div>
+              </div>
+              <span class="gv-poststat" style="margin-top:12px"><b>289</b>&nbsp;contributions</span>
+              <div class="gv-pcard__spacer"></div>
+              <div class="gv-pcard__foot">
+                <a class="gv-btn primary-outlined" href="#">Add your idea</a>
+              </div>
+            </div>
+          </article>
+
+          <article class="gv-pcard boxed">
+            <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#33567e,#7c96b8)"></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Name the new river bridge</a></h3>
+              <p class="gv-pcard__desc">Five shortlisted names are open for a public vote. One vote per resident.</p>
+              <div class="gv-pcard__progress">
+                <span class="gv-pcard__meta time">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  5 days left
+                </span>
+                <div class="gv-progress" role="progressbar" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:80%"></div></div>
+              </div>
+              <span class="gv-poststat" style="margin-top:12px"><b>1.2k</b>&nbsp;votes</span>
+              <div class="gv-pcard__spacer"></div>
+              <div class="gv-pcard__foot">
+                <a class="gv-btn primary-outlined" href="#">Cast your vote</a>
+              </div>
+            </div>
+          </article>
+
+          <article class="gv-pcard boxed">
+            <div class="gv-pcard__thumb icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v2H4V4Zm0 5h16v2H4V9Zm0 5h10v2H4v-2Z"/></svg>
+            </div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Have your say on the budget</a></h3>
+              <p class="gv-pcard__desc">Tell us where €2.4M of neighbourhood funding should go next year.</p>
+              <div class="gv-pcard__progress">
+                <span class="gv-pcard__meta time">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  2 weeks left
+                </span>
+                <div class="gv-progress" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:40%"></div></div>
+              </div>
+              <span class="gv-poststat" style="margin-top:12px"><b>74</b>&nbsp;contributions</span>
+              <div class="gv-pcard__spacer"></div>
+              <div class="gv-pcard__foot">
+                <a class="gv-btn primary-outlined" href="#">Take the survey</a>
+              </div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
     <!-- ════════ Participation projects — tabs + filter + grid ════════ -->
     <section class="gv-section" aria-labelledby="proj-title">
       <div class="gv-section__head"><h2 class="gv-title h2" id="proj-title">Participation projects</h2></div>
@@ -432,6 +508,43 @@
         set(el.getAttribute('data-auth-set'));
         // close any open dropdown (the account/lang <details>) after the action
         document.querySelectorAll('.gv-nav__dd[open]').forEach(function (d) { d.open = false; });
+      });
+    })();
+
+    // Status tabs (Published / Archived / All) — single-select, keyboard-roving.
+    (function () {
+      var tabs = Array.prototype.slice.call(document.querySelectorAll('.gv-tabs [role="tab"]'));
+      if (!tabs.length) return;
+      function select(tab) {
+        tabs.forEach(function (t) { t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+      }
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () { select(tab); });
+        tab.addEventListener('keydown', function (e) {
+          var i = tabs.indexOf(tab);
+          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            var next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+            next.focus(); select(next);
+          }
+        });
+      });
+    })();
+
+    // Filter selectors (Tag / Area) — toggle the open affordance; close on outside click.
+    (function () {
+      var btns = Array.prototype.slice.call(document.querySelectorAll('.gv-filter-btn'));
+      btns.forEach(function (b) {
+        b.setAttribute('aria-expanded', 'false');
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var open = b.getAttribute('aria-expanded') === 'true';
+          btns.forEach(function (o) { o.setAttribute('aria-expanded', 'false'); o.classList.remove('is-open'); });
+          if (!open) { b.setAttribute('aria-expanded', 'true'); b.classList.add('is-open'); }
+        });
+      });
+      document.addEventListener('click', function () {
+        btns.forEach(function (o) { o.setAttribute('aria-expanded', 'false'); o.classList.remove('is-open'); });
       });
     })();
   </script>
