@@ -53,6 +53,16 @@ canonical and every consumer updates.
 - Inputs: `#767676` border, radius **3px**, 48px tall. Buttons 45px / `9px 18px`.
 - Alt table row / hover `#FCFCFC` (`--gv-grey-50`). Radius **3px** throughout.
 
+**Type & state (measured `bo-phase-setup`, easy to get wrong):**
+- **Tabs** (project + sub) — 16px, **weight 400 even when active** (active = blue + 3px
+  underline, NOT bold); inactive `#596B7A`, active `#044D6C`; padding `16px 0`.
+- **Field labels** (`.gv-bo-field > .gv-label`, e.g. "Phase name") — **18px / weight 500 /
+  admin-blue `#044D6C`** (larger + lighter than a generic label, not small dark grey).
+- Section headings (`Edit Phase` / `New ideas!`) **21px**/700 blue; meta rows **14px** `#596B7A`.
+- **Phase ribbon chevrons** — **23px** tall, grey track `#D4D9DD` (`--gv-bo-step`) with
+  cool-grey-700 numbers/labels; current phase fills **green-600 `#096F03`** (not green-500).
+  Overrides scoped under `.gv-bo` so the shared FO ribbon primitive is untouched.
+
 **Containers / elevation (the layer between content and page — measured `bo-phase-setup`):**
 the staff content does **not** sit flat on white. It's a stack of elevated panels on a
 light blue-grey **app canvas `#EDEFF0`** (`--gv-bo-canvas`; NOT white):

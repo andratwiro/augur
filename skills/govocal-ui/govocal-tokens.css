@@ -112,6 +112,7 @@
   --gv-bo-link:           #4183C4;                     /* link/anchor blue */
   --gv-bo-canvas:         #EDEFF0;                     /* app canvas behind content (measured live, light blue-grey) */
   --gv-bo-tabstrip:       #FBFBFB;                     /* elevated tab-strip / panel-header tint (measured live) */
+  --gv-bo-step:           #D4D9DD;                     /* phase-ribbon chevron / +New phase track (measured live) */
   --gv-bo-row-alt:        var(--gv-grey-50);           /* #FCFCFC — alt table row / hover */
   --gv-bo-border:         var(--gv-cool-grey-600);     /* #596B7A — outline-button border */
 

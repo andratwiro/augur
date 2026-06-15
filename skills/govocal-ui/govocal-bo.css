@@ -143,7 +143,7 @@
 .gv-bo-meta { display: flex; flex-wrap: wrap; gap: 16px; margin: 6px 0 0; }
 .gv-bo-meta__item {
   display: inline-flex; align-items: center; gap: 5px;
-  font-size: 13px; color: var(--gv-text-secondary);
+  font-size: var(--gv-fs-s); color: var(--gv-text-secondary);
 }
 .gv-bo-meta__item .gv-icon { width: 14px; height: 14px; }
 
@@ -162,9 +162,9 @@
   border-bottom: 1px solid var(--gv-grey-300);
 }
 .gv-bo-tab {
-  padding: 14px 0;
+  padding: 16px 0;
   font-size: 16px;
-  color: var(--gv-text-secondary);
+  color: var(--gv-cool-grey-600);
   text-decoration: none;
   border-bottom: 3px solid transparent;
   margin-bottom: -1px;
@@ -172,7 +172,8 @@
   cursor: pointer;
 }
 .gv-bo-tab:hover { color: var(--gv-bo-primary); }
-.gv-bo-tab.is-active { color: var(--gv-bo-primary); font-weight: 600; border-bottom-color: var(--gv-bo-primary); }
+/* Active = tenant-blue text + 3px underline only; the real product does NOT bold it. */
+.gv-bo-tab.is-active { color: var(--gv-bo-primary); border-bottom-color: var(--gv-bo-primary); }
 .gv-bo-tab__new {
   margin-left: 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
   background: var(--gv-teal-100); color: var(--gv-teal-700);
@@ -191,21 +192,29 @@
 
 /* Phase ribbon (reuses .gv-phases/.gv-stepper) — back office adds a flat
    "+ New phase" cell at the end of the chevron row. */
-.gv-bo .gv-stepper { align-items: stretch; }
+.gv-bo .gv-stepper { align-items: flex-start; }
+/* Phase ribbon chevrons measured live: a 23px-tall grey (#D4D9DD) track with
+   cool-grey-700 numbers/labels; the current phase fills green-600 (#096F03).
+   Scoped to .gv-bo so the front-office ribbon (shared primitive) is untouched. */
+.gv-bo .gv-pstep { height: 23px; background: var(--gv-bo-step); color: var(--gv-cool-grey-700); font-size: var(--gv-fs-s); }
+.gv-bo .gv-phase.current .gv-pstep { background: var(--gv-green-600); color: #fff; }
+.gv-bo .gv-phase__label { color: var(--gv-cool-grey-700); }
+.gv-bo .gv-phase.current .gv-phase__label { color: var(--gv-green-600); font-weight: 600; }
+/* "+ New phase" — a flat grey chevron-tail cell at the end of the ribbon. */
 .gv-bo-addphase {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 0 14px; height: 38px; flex: none;
+  padding: 0 12px; height: 23px; flex: none;
   border: 0; border-radius: var(--gv-radius);
-  background: var(--gv-grey-100); color: var(--gv-bo-primary);
-  font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  background: var(--gv-bo-step); color: var(--gv-cool-grey-700);
+  font-size: var(--gv-fs-s); font-weight: 500; cursor: pointer; white-space: nowrap;
 }
-.gv-bo-addphase:hover { background: var(--gv-grey-200); }
+.gv-bo-addphase:hover { background: var(--gv-cool-grey-300); }
 
 /* Phase header — back-office config uses a plain text header (title + meta + ⋯),
    NOT the resident-facing green numbered-circle panel. */
 .gv-bo-phasehead { display: flex; align-items: flex-start; gap: 16px; padding: 20px 0 4px; }
-.gv-bo-phasehead__title { margin: 0; font-size: 20px; font-weight: 700; color: var(--gv-bo-primary); }
-.gv-bo-phasehead__meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; font-size: 13px; color: var(--gv-text-secondary); }
+.gv-bo-phasehead__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
+.gv-bo-phasehead__meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
 .gv-bo-phasehead__meta > span { display: inline-flex; align-items: center; gap: 5px; }
 .gv-bo-phasehead__meta .gv-icon { width: 14px; height: 14px; }
 .gv-bo-phasehead__actions { margin-left: auto; }
@@ -221,9 +230,10 @@
 .gv-bo-multiloc button.is-active { background: var(--gv-bo-primary); border-color: var(--gv-bo-primary); color: #fff; }
 .gv-bo-multiloc .miss { width: 6px; height: 6px; border-radius: 50%; background: var(--gv-red-500); display: inline-block; }
 
-/* Field grouping inside config forms. */
+/* Field grouping inside config forms. Measured live: the field label ("Phase name")
+   is 18px / weight 500 / admin-blue — larger and lighter than a generic label. */
 .gv-bo-field { margin-bottom: 22px; max-width: 540px; }
-.gv-bo-field > .gv-label { display: block; margin-bottom: 6px; font-weight: 600; color: var(--gv-text-primary); }
+.gv-bo-field > .gv-label { display: block; margin-bottom: 8px; font-size: var(--gv-fs-l); font-weight: 500; color: var(--gv-bo-primary); }
 
 /* Read-only/date input shell with a trailing icon (date-range picker face). */
 .gv-bo-dateface {
