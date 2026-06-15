@@ -53,6 +53,18 @@ canonical and every consumer updates.
 - Inputs: `#767676` border, radius **3px**, 48px tall. Buttons 45px / `9px 18px`.
 - Alt table row / hover `#FCFCFC` (`--gv-grey-50`). Radius **3px** throughout.
 
+**Containers / elevation (the layer between content and page — measured `bo-phase-setup`):**
+the staff content does **not** sit flat on white. It's a stack of elevated panels on a
+light blue-grey **app canvas `#EDEFF0`** (`--gv-bo-canvas`; NOT white):
+- **Tab strips** (project tabs + phase sub-tabs, `nav.sc-gEXpur`) are elevated **`#FBFBFB`**
+  (`--gv-bo-tabstrip`) panel **headers** — rounded **top** corners (`3px 3px 0 0`) + the soft
+  card shadow `0 2px 4px -1px rgba(0,0,0,.06)` (`--gv-shadow`), NOT a flat underline row.
+- **Content cards** (`div.sc-loIdfG`) — white, **3px** radius, same `--gv-shadow` — float on
+  the canvas with a gutter; form/table content lives inside them.
+- Encoded: `.gv-bo-shell` paints the canvas; `.gv-bo-tabs`/`--sub` are the strips;
+  `.gv-bo-card` is the floating panel; `.gv-bo-section` is the transparent canvas gutter.
+  Checkpoints `bo-project-phase/{canvas,content-card,tabstrip-project,tabstrip-sub}`.
+
 → Encoded as `--gv-bo-*` tokens in `govocal-tokens.css`; chrome in `govocal-bo.css`;
 the `.gv-bo` scope remaps `--gv-tenant-*` so primitives need no BO-specific code.
 
@@ -94,6 +106,11 @@ cross-surface pieces (tables, stat cards) **shared** in the manifest.
   - [x] **Events** — project events list with registrant counts + row actions.
 - [x] **Input manager tab** — `.gv-bo-table.is-bordered` posts table (checkbox, sortable blue headers, assignee dropdowns, like/dislike counts) + `.gv-bo-filterrail` (Timeline/Tags/Status + phase facets w/ counts) + filter bar (assignee select, need-feedback toggle, Exports, Search) + `.gv-bo-banner--ai` callout. Wired to the phase **Input manager** sub-tab. Checkpoints `imgr-table/-th/-title`. (capture: `bo-project-ideas`) ✅
 - [x] **Input form tab** — `.gv-bo-importlist`/`.gv-bo-importcard` (Paper-OCR, Spreadsheet sources w/ icon tile + actions) + `.gv-bo-eyebrow` + "Edit input form" entry. Checkpoint `inputform-head`. (capture: `bo-input-form-builder`) ✅
+- [x] **Container / elevation pass** — the layer between content and page: app canvas
+  `#EDEFF0` (`--gv-bo-canvas`), elevated `#FBFBFB` tab strips (`--gv-bo-tabstrip`, rounded
+  top + `--gv-shadow`), and white floating content cards (`.gv-bo-card`, 3px + shadow) with
+  canvas gutters (`.gv-bo-section`). Re-captured `bo-phase-setup` with `--probe` on the
+  canvas / card / both tab-strip selectors. Checkpoints `bo-project-phase/{canvas,content-card,tabstrip-project,tabstrip-sub}`. ✅
 - [x] **Insights tab** — `.gv-bo-statgrid`/`.gv-bo-stat` stat cards (label · 34px number · 7-day change · icon; tagged **shared**) + green AI-analysis CTA + `.gv-bo-chartcard` participation chart. Checkpoint `insights-stat`. (capture: `bo-phase-insights`) ✅
 - [ ] **Phase sub-tabs** beyond the built four: Description / Map / Phase access / Notifications — capture as needed, build per pattern.
 

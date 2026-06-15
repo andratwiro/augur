@@ -125,9 +125,10 @@
 .gv-bo-main { min-width: 0; display: flex; flex-direction: column; }
 
 /* ── Project top bar ──────────────────────────────────────────────────────── */
+/* White title band at the top of the main column; the project tab strip below
+   carries the elevation. Sits flush above the #EDEFF0 canvas. */
 .gv-bo-topbar {
   background: #fff;
-  border-bottom: 1px solid var(--gv-grey-300);
   padding: 16px 24px 0;
 }
 .gv-bo-topbar__row { display: flex; align-items: flex-start; gap: 16px; }
@@ -146,10 +147,18 @@
 }
 .gv-bo-meta__item .gv-icon { width: 14px; height: 14px; }
 
-/* ── Tab bar (project tabs AND phase sub-tabs share this) ─────────────────── */
+/* ── Tab bar (project tabs AND phase sub-tabs share this) ─────────────────────
+   Measured live (bo-phase-setup, nav.sc-gEXpur): the tab row is an *elevated
+   panel header* — a #FBFBFB strip with rounded top corners and the soft card
+   shadow, NOT a flat underline row. Its content card sits just below it on the
+   canvas. The active tab keeps the 3px tenant underline along the strip's base. */
 .gv-bo-tabs {
   display: flex; gap: 24px;
   margin-top: 12px;
+  padding: 0 16px;
+  background: var(--gv-bo-tabstrip);
+  border-radius: var(--gv-radius) var(--gv-radius) 0 0;
+  box-shadow: var(--gv-shadow);
   border-bottom: 1px solid var(--gv-grey-300);
 }
 .gv-bo-tab {
@@ -176,8 +185,9 @@
 
 /* ── Project configuration screens (the /admin/projects/<id>/… editor) ────── */
 
-/* Section padding inside the white content canvas. */
-.gv-bo-section { padding: 20px 24px 28px; }
+/* Canvas gutter region: transparent so the #EDEFF0 app canvas shows around the
+   elevated cards/strips it contains. Pads the content off the main-column edges. */
+.gv-bo-section { padding: 16px 24px 28px; }
 
 /* Phase ribbon (reuses .gv-phases/.gv-stepper) — back office adds a flat
    "+ New phase" cell at the end of the chevron row. */
@@ -339,8 +349,10 @@
 .gv-bo-pager button.is-active { background: var(--gv-bo-primary); color: #fff; font-weight: 600; }
 .gv-bo-pager button:disabled { color: var(--gv-cool-grey-300); cursor: default; }
 
-/* ── Card pane (Messaging/Events sit in a white card on a grey gutter) ─────── */
-.gv-bo-pane { background: var(--gv-grey-100); padding: 24px; min-height: 420px; }
+/* ── Card pane (Messaging/Events sit in a white card on the canvas gutter) ─── */
+.gv-bo-pane { background: var(--gv-bo-canvas); padding: 24px; min-height: 420px; }
+/* Elevated white content card — the form/table panel that floats on the canvas.
+   Measured live (bo-phase-setup, div.sc-loIdfG): white, 3px radius, soft shadow. */
 .gv-bo-card { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 32px; }
 
 /* Empty state (Messaging "Send your first email"). */

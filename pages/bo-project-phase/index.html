@@ -16,8 +16,9 @@
     /* the ribbon sits inside the white canvas, edge-to-edge under the tabs */
     .gv-bo-section .gv-phases { box-shadow: none; border: 0; padding: 0; background: transparent; margin: 0 0 4px; }
     .gv-bo-section .gv-stepper { display: flex; flex-wrap: wrap; gap: 2px; }
-    /* phase sub-tab panels (Setup / Input manager / Input form / Insights) */
-    .pp-sub { display: none; padding-top: 24px; }
+    /* phase sub-tab panels (Setup / Input manager / Input form / Insights) —
+       the .gv-bo-card wrapper supplies the padding, so panels add none of their own */
+    .pp-sub { display: none; }
     .pp-sub.is-active { display: block; }
     .pp-setup { max-width: 640px; }
     .pp-setup__thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 520px; margin-top: 12px; }
@@ -82,7 +83,8 @@
 
       <!-- ════════════ GENERAL ════════════ -->
       <section class="gv-panel" id="panel-general">
-        <div class="gv-bo-section pp-setup">
+        <div class="gv-bo-section">
+         <div class="gv-bo-card">
           <h3 class="gv-bo-formhead">General settings for the project</h3>
 
           <div class="gv-bo-field">
@@ -174,6 +176,7 @@
           </div>
 
           <button class="gv-btn admin-dark"><span class="gv-btn__label">Save</span></button>
+         </div>
         </div>
       </section>
 
@@ -213,6 +216,7 @@
             <a class="gv-bo-tab" href="#">Notifications</a>
           </nav>
 
+          <div class="gv-bo-card">
           <!-- Setup panel -->
           <div class="pp-setup pp-sub is-active" data-sub="setup">
             <h3 class="gv-bo-formhead">Edit Phase</h3>
@@ -460,6 +464,7 @@
               </svg>
             </div>
           </div>
+          </div><!-- /gv-bo-card -->
         </div>
       </section>
 
@@ -472,7 +477,8 @@
             <a class="gv-bo-tab" href="#">Traffic</a>
           </nav>
 
-          <div style="display:flex;align-items:flex-end;gap:16px;margin-top:20px">
+          <div class="gv-bo-card">
+          <div style="display:flex;align-items:flex-end;gap:16px;margin-top:0">
             <div>
               <h2 style="margin:0;font-size:28px;font-weight:600;color:var(--gv-bo-primary)">Participants</h2>
               <p class="gv-bo-help">An overview of participants who have an account. Anonymous participation isn't counted.</p>
@@ -501,6 +507,7 @@
             <span style="color:var(--gv-cool-grey-500)">…</span><button>9</button>
             <button><span data-gv-icon="chevron-right"></span></button>
           </div>
+          </div><!-- /gv-bo-card -->
         </div>
       </section>
 

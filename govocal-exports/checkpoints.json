@@ -121,6 +121,38 @@
       "map": { ".e2e-card": ".gv-bo-stat" },
       "props": ["background-color", "border-radius", "box-shadow", "padding", "font-size"],
       "uses": [".gv-bo-stat"]
+    },
+    {
+      "id": "bo-project-phase/canvas",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-setup",
+      "map": { "div.sc-hCxPwq.jkSMfk": ".gv-bo-shell" },
+      "props": ["background-color"],
+      "uses": [".gv-bo-shell"]
+    },
+    {
+      "id": "bo-project-phase/content-card",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-setup",
+      "map": { "div.sc-beqWaB.sc-loIdfG": ".gv-bo-card" },
+      "props": ["background-color", "border-radius", "box-shadow"],
+      "uses": [".gv-bo-card"]
+    },
+    {
+      "id": "bo-project-phase/tabstrip-project",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-setup",
+      "map": { "nav.sc-gEXpur.gceAGH": ".gv-bo-topbar .gv-bo-tabs" },
+      "props": ["background-color", "border-radius", "box-shadow"],
+      "uses": [".gv-bo-tabs"]
+    },
+    {
+      "id": "bo-project-phase/tabstrip-sub",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-setup",
+      "map": { "nav.sc-gEXpur.kBjgE": ".gv-bo-tabs--sub" },
+      "props": ["background-color", "border-radius", "box-shadow"],
+      "uses": [".gv-bo-tabs"]
     }
   ]
 }

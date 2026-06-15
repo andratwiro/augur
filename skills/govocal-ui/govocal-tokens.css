@@ -110,7 +110,8 @@
   --gv-bo-sidebar-active: rgba(0,0,0,0.30);           /* active/hover cell on the navy */
   --gv-bo-primary:        var(--gv-blue-500);          /* #044D6C — fills, headings, table text */
   --gv-bo-link:           #4183C4;                     /* link/anchor blue */
-  --gv-bo-canvas:         var(--gv-white);             /* content background */
+  --gv-bo-canvas:         #EDEFF0;                     /* app canvas behind content (measured live, light blue-grey) */
+  --gv-bo-tabstrip:       #FBFBFB;                     /* elevated tab-strip / panel-header tint (measured live) */
   --gv-bo-row-alt:        var(--gv-grey-50);           /* #FCFCFC — alt table row / hover */
   --gv-bo-border:         var(--gv-cool-grey-600);     /* #596B7A — outline-button border */
 
