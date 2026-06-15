@@ -209,8 +209,12 @@ async function reviewApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
-// GET /__review/api/export?key=<REVIEW_EXPORT_KEY> — all comment threads.
+// /__review/api/export?key=<REVIEW_EXPORT_KEY> — all comment threads.
 // Secret-guarded so tooling can read review data WITHOUT the site password.
+//   GET  → { pages, generatedAt }
+//   POST → apply a moderation op ({ path, op:"resolve"|"delete", id, resolved })
+//          to one page's threads and return that page's updated threads. This lets
+//          CLI tooling resolve/close threads without the site password.
 async function reviewExport(request, url, env) {
   const secret = env.REVIEW_EXPORT_KEY;
   if (!secret) return jsonResponse({ error: "export-disabled" }, 404);
@@ -220,6 +224,20 @@ async function reviewExport(request, url, env) {
   }
   const kv = env.COMMENTS;
   if (!kv) return jsonResponse({ pages: {}, warning: "no-kv-binding" });
+
+  if (request.method === "POST") {
+    let op;
+    try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const path = clamp(op && op.path, 600);
+    if (!path) return jsonResponse({ error: "missing-path" }, 400);
+    const key = "c:" + path;
+    const raw = await kv.get(key);
+    let threads = raw ? JSON.parse(raw) : [];
+    threads = applyOp(threads, op);
+    await kv.put(key, JSON.stringify(threads));
+    return jsonResponse({ path, threads });
+  }
+
   const pages = {};
   let cursor;
   do {
