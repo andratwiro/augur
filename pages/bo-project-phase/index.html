@@ -19,7 +19,8 @@
        the .gv-bo-card wrapper supplies the padding, so panels add none of their own */
     .pp-sub { display: none; }
     .pp-sub.is-active { display: block; }
-    .pp-setup { max-width: 640px; }
+    /* The Setup form spans the full card; individual text fields stay constrained
+       (via .gv-bo-field max-width), but the method/view grids run full width. */
     .pp-setup__thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 520px; margin-top: 12px; }
     .pp-setup__thresholds .gv-bo-caption { margin-bottom: 4px; }
   </style>
@@ -95,7 +96,7 @@
 
           <div class="gv-bo-field">
             <span class="gv-label">Project name</span>
-            <div class="gv-bo-multiloc"><button type="button" class="is-active">EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+            <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
             <input class="gv-input" type="text" value="Let's Reimagine Dorothea Dix Park" />
           </div>
 
@@ -107,7 +108,7 @@
 
           <div class="gv-bo-field" style="max-width:640px">
             <span class="gv-label">Project description</span>
-            <div class="gv-bo-multiloc"><button type="button" class="is-active">EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+            <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
             <textarea class="gv-input" rows="5" style="resize:vertical">As part of the 2024 Master Planning process, Raleigh is redesigning many of the city's most iconic and well-known public spaces, including Dorothea Dix Park. Tell us what you and your community would like to see in the park.</textarea>
           </div>
 
@@ -159,7 +160,7 @@
 
           <div class="gv-bo-field">
             <span class="gv-label">Header image alt text</span>
-            <div class="gv-bo-multiloc"><button type="button" class="is-active">EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+            <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
             <input class="gv-input" type="text" value="A sunlit meadow in Dorothea Dix Park" />
           </div>
 
@@ -229,7 +230,7 @@
 
             <div class="gv-bo-field">
               <span class="gv-label">Phase name</span>
-              <div class="gv-bo-multiloc"><button type="button" class="is-active">EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
               <input class="gv-input" type="text" value="New ideas!" />
             </div>
 
@@ -273,15 +274,15 @@
 
             <!-- Actions -->
             <h4 class="gv-bo-subhead">Actions for users</h4>
-            <div class="gv-bo-togglerow">
+            <div class="gv-bo-togglerow is-action">
               <div class="gv-bo-togglerow__title">Submitting posts</div>
               <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
             </div>
-            <div class="gv-bo-togglerow">
+            <div class="gv-bo-togglerow is-action">
               <div class="gv-bo-togglerow__title">Commenting on posts</div>
               <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
             </div>
-            <div class="gv-bo-togglerow">
+            <div class="gv-bo-togglerow is-action">
               <div class="gv-bo-togglerow__title">Reacting to inputs</div>
               <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
             </div>

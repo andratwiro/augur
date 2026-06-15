@@ -231,7 +231,7 @@
 .gv-bo-phasehead {
   display: flex; align-items: flex-start; gap: 16px;
   background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow);
-  padding: 24px 32px; margin-bottom: 8px;
+  padding: 40px; margin-bottom: 8px;
 }
 .gv-bo-phasehead__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-phasehead__meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
@@ -239,16 +239,22 @@
 .gv-bo-phasehead__meta .gv-icon { width: 14px; height: 14px; }
 .gv-bo-phasehead__actions { margin-left: auto; }
 
-/* Multiloc language tabs (EN / ES-ES) above a translatable field. */
+/* Multiloc language tabs (EN / ES-ES) above a translatable field. Measured live
+   (button.sc-hVkBjg): 14px/500, no border, 7px 8px padding; inactive = grey-200
+   fill + admin-blue text, active = admin-blue fill + white text. A 9px status
+   dot leads the label — green when translated, red when a translation is missing. */
 .gv-bo-multiloc { display: inline-flex; gap: 4px; margin-bottom: 8px; }
 .gv-bo-multiloc button {
   display: inline-flex; align-items: center; gap: 5px;
-  padding: 3px 10px; border-radius: var(--gv-radius);
-  border: 1px solid var(--gv-grey-300); background: #fff;
-  color: var(--gv-text-secondary); font-size: 12px; font-weight: 600; cursor: pointer;
+  padding: 7px 8px; border-radius: var(--gv-radius);
+  border: 0; background: var(--gv-grey-200);
+  color: var(--gv-bo-primary); font-size: var(--gv-fs-s); font-weight: 500; cursor: pointer;
 }
-.gv-bo-multiloc button.is-active { background: var(--gv-bo-primary); border-color: var(--gv-bo-primary); color: #fff; }
-.gv-bo-multiloc .miss { width: 6px; height: 6px; border-radius: 50%; background: var(--gv-red-500); display: inline-block; }
+.gv-bo-multiloc button.is-active { background: var(--gv-bo-primary); color: #fff; }
+.gv-bo-multiloc .miss,
+.gv-bo-multiloc .done { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.gv-bo-multiloc .miss { background: var(--gv-red-500); }
+.gv-bo-multiloc .done { background: var(--gv-green-500); }
 
 /* Field grouping inside config forms. Measured live: the field label ("Phase name")
    is 18px / weight 500 / admin-blue — larger and lighter than a generic label. */
@@ -327,7 +333,15 @@
 }
 .gv-bo-togglerow:first-of-type { border-top: 0; }
 .gv-bo-togglerow .gv-toggle { margin-left: auto; flex: none; }
-.gv-bo-togglerow__title { font-size: var(--gv-fs-base); color: var(--gv-text-primary); font-weight: 500; }
+/* Plain on/off action toggles (Submitting posts, Commenting…) — 16px/400 dark. */
+.gv-bo-togglerow__title { font-size: var(--gv-fs-base); color: var(--gv-text-primary); font-weight: 400; }
+/* A toggle that carries a description (wrapped with help text) gets a prominent
+   16px/600 admin-blue title (measured: "Allow users to participate anonymously"). */
+.gv-bo-togglerow > div > .gv-bo-togglerow__title { font-weight: 600; color: var(--gv-bo-primary); }
+/* Action-list toggles (Submitting posts, Commenting, Reacting) — measured live as
+   a tight, divider-less list with the green toggle FIRST, label to its right. */
+.gv-bo-togglerow.is-action { justify-content: flex-start; gap: 10px; padding: 7px 0; border-top: 0; }
+.gv-bo-togglerow.is-action .gv-toggle { order: -1; margin-left: 0; }
 
 /* In the back office, selected radio dots are success green (matches live). */
 .gv-bo .gv-radio .circle::after { background: var(--gv-success); }
