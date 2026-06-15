@@ -664,10 +664,17 @@
    Reuses the boxed-card border/shadow/radius tokens; date chip year band + Register
    are tenant-themed (re-skin per ?theme=). */
 .gv-events__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
-/* Live event card (community.govocal.com): #CCC border, 6px radius (larger than the
-   3px project card), no shadow; meta rows grouped on a grey-100 panel. */
+/* Event-card frame — RE-GROUNDED on the stated review target wietsedemo.govocal.com/en/events
+   (capture fo-event-card-frame, 2026-06). Probing the real card wrappers
+   (.e2e-event-card and its inner sc-beqWaB / sc-fRcFJl frames) returns
+   border:0px none, border-radius:0px, box-shadow:none on EVERY level — the live
+   wietsedemo card is a FLAT, borderless, square, shadowless white card. The visual
+   separation comes entirely from the media image + the grey-100 meta panel
+   (rgb(244,246,248) = --gv-event-meta-tint), not from a frame border/shadow.
+   This supersedes the earlier community.govocal.com spec (1px #CCC + 6px radius),
+   which was anchored to the wrong tenant. */
 .gv-event-card { display: flex; flex-direction: column; position: relative; background: #fff;
-  border: 1px solid var(--gv-grey-400); border-radius: 6px; overflow: hidden; }
+  border: 0; border-radius: 0; box-shadow: none; overflow: hidden; }
 /* Media block ratio grounded on wietsedemo.govocal.com/en/events: the event-image
    wrapper renders 369×123 (object-fit:cover, padding-top box) = exactly 3 / 1. */
 .gv-event-card__media { position: relative; aspect-ratio: 3 / 1; background: var(--gv-grey-300); color: #fff;
