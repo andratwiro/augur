@@ -69,6 +69,7 @@
                     <span class="gv-react__count">3</span>
                   </div>
                   <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments"></span>3</span>
+                  <span class="gv-ideacard__status e2e-status">Accepted</span>
                 </footer>
               </div>
             </article>
@@ -96,6 +97,7 @@
                     <span class="gv-react__count">5</span>
                   </div>
                   <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments"></span>2</span>
+                  <span class="gv-ideacard__status is-implemented e2e-status">Implemented</span>
                 </footer>
               </div>
             </article>
@@ -123,6 +125,7 @@
                     <span class="gv-react__count">0</span>
                   </div>
                   <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments"></span>1</span>
+                  <span class="gv-ideacard__status is-considered e2e-status">Under consideration</span>
                 </footer>
               </div>
             </article>
@@ -155,6 +158,10 @@
       <code>.gv-idealist</code> container.</p>
       <p><strong>Toggle:</strong> <code>.gv-viewseg</code> with two <code>.gv-viewseg__tab</code> buttons
       switches List / Map; <code>.gv-feed__count</code> shows the result total.</p>
+      <p><strong>Status badge:</strong> each card foot carries a right-aligned
+      <code>.gv-ideacard__status</code> — an uppercase, semantic-coloured outline pill
+      (<code>.is-implemented</code> / <code>.is-considered</code> / <code>.is-rejected</code>,
+      default = accepted/success green) sitting opposite the reaction controls.</p>
       <p><strong>Filters:</strong> each group is a <code>.gv-feedfilter__label</code> heading over a
       <code>.gv-feedfilter__group</code> of <code>.gv-feedfilter__btn</code> chips, some carrying a
       <code>.gv-feedfilter__count</code> badge; <code>.is-active</code> marks the current selection.</p>
