@@ -48,11 +48,11 @@
   font-size: var(--gv-fs-base); font-weight: 500; line-height: 1;
   color: var(--gv-black); text-decoration: none;
   background: none; border: 0; cursor: pointer; font-family: inherit;
-  border-top: 3px solid transparent;            /* active indicator sits on top, like the live site */
-  border-bottom: 3px solid transparent;
+  border-top: 4px solid transparent;            /* active indicator sits on top, like the live site (≈4px bar) */
+  border-bottom: 4px solid transparent;
 }
 .gv-nav__link:hover { color: var(--gv-tenant-primary); background: var(--gv-grey-100); }
-.gv-nav__dd[open] > summary.gv-nav__link { color: var(--gv-tenant-primary); background: var(--gv-grey-100); }
+.gv-nav__dd[open] > summary.gv-nav__link { color: var(--gv-tenant-primary); background: var(--gv-grey-100); border-top-color: var(--gv-tenant-primary); }
 /* Active page — tenant-tinted cell + top accent bar, mirroring the live #e2e-navbar */
 /* Active = tenant top-bar + subtle tinted cell. NOT bold — the live product keeps
    weight 500 for the current item (the bar + cell carry the state). */
@@ -70,10 +70,11 @@
 .gv-nav__dd > summary::-webkit-details-marker { display: none; }
 .gv-nav__dd[open] > summary .gv-nav__chev { transform: rotate(180deg); }
 .gv-nav__menu {
-  position: absolute; top: calc(100% - 3px); left: 12px; z-index: 60;
+  position: absolute; top: calc(100% - 4px); left: 12px; z-index: 60;
   min-width: 240px; padding: 8px;
   background: #fff; border-radius: var(--gv-radius);
   box-shadow: var(--gv-shadow-hover-lg); border: 1px solid var(--gv-grey-200);
+  border-bottom: 3px solid var(--gv-tenant-secondary);   /* live dropdown carries a coloured bottom accent */
   display: grid; gap: 2px;
 }
 .gv-nav__dd.right .gv-nav__menu { left: auto; right: 12px; }
