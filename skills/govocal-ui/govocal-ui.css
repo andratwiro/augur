@@ -668,7 +668,9 @@
    3px project card), no shadow; meta rows grouped on a grey-100 panel. */
 .gv-event-card { display: flex; flex-direction: column; position: relative; background: #fff;
   border: 1px solid var(--gv-grey-400); border-radius: 6px; overflow: hidden; }
-.gv-event-card__media { position: relative; aspect-ratio: 16 / 7; background: var(--gv-grey-300); color: #fff;
+/* Media block ratio grounded on wietsedemo.govocal.com/en/events: the event-image
+   wrapper renders 369×123 (object-fit:cover, padding-top box) = exactly 3 / 1. */
+.gv-event-card__media { position: relative; aspect-ratio: 3 / 1; background: var(--gv-grey-300); color: #fff;
   display: grid; place-items: center; }
 .gv-event-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gv-event-card__media svg, .gv-event-card__media .gv-icon { width: 40px; height: 40px; }
