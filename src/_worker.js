@@ -209,100 +209,7 @@ async function reviewApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
-// ---- Status API (KV-backed) -------------------------------------------------
-// One KV value per page path, key "s:<path>". An absent key means the default,
-// "in_progress" — so that value is never stored, and resetting to it deletes the
-// key. Two kinds of subject share this map, distinguished only by their path:
-//   • prototypes (path /<opp>/<proto>/) run the dev pipeline:
-//       "playground" | "in_progress" | "dev_ready" | "shipped" | "parked"
-//   • folders    (path /<opp>/)         carry their own coarser lifecycle:
-//       "for_dev" | "in_progress" | "implemented"
-// The client decides which values a given badge may take; the worker just stores
-// any whitelisted value.
-
-const STATUSES = ["playground", "in_progress", "dev_ready", "shipped", "parked", "for_dev", "implemented"];
-
-async function allStatuses(kv) {
-  const statuses = {};
-  let cursor;
-  do {
-    const list = await kv.list({ prefix: "s:", cursor });
-    for (const k of list.keys) {
-      const v = await kv.get(k.name);
-      if (v) statuses[k.name.slice(2)] = v;
-    }
-    cursor = list.list_complete ? null : list.cursor;
-  } while (cursor);
-  return statuses;
-}
-
-// GET /__review/status                  — { statuses: { "<path>": "dev_ready", … } }
-// POST /__review/status?path=<page>     — body { status } ; persists one prototype.
-async function statusApi(request, url, env) {
-  const kv = env.COMMENTS;
-  if (!kv) return jsonResponse({ statuses: {}, warning: "no-kv-binding" });
-
-  if (request.method === "GET") {
-    return jsonResponse({ statuses: await allStatuses(kv) });
-  }
-  if (request.method === "POST") {
-    const path = clamp(url.searchParams.get("path") || "", 600);
-    if (!path) return jsonResponse({ error: "no-path" }, 400);
-    let body;
-    try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
-    const status = STATUSES.includes(body && body.status) ? body.status : "in_progress";
-    const key = "s:" + path;
-    if (status === "in_progress") {
-      await kv.delete(key); // default = absence of a key
-    } else {
-      await kv.put(key, status);
-    }
-    return jsonResponse({ path, status });
-  }
-  return jsonResponse({ error: "method-not-allowed" }, 405);
-}
-
-// ---- Hidden prototypes API (KV-backed) --------------------------------------
-// One KV value per prototype page path, key "h:<path>", value "1". An absent key
-// means visible. Lets reviewers remove a prototype from the listing without
-// touching files on disk (the build always re-scans the filesystem); the hide is
-// reversible from the "Show hidden" tray.
-
-async function allHidden(kv) {
-  const hidden = [];
-  let cursor;
-  do {
-    const list = await kv.list({ prefix: "h:", cursor });
-    for (const k of list.keys) hidden.push(k.name.slice(2));
-    cursor = list.list_complete ? null : list.cursor;
-  } while (cursor);
-  return hidden;
-}
-
-// GET  /__review/hidden               — { hidden: ["<path>", …] }
-// POST /__review/hidden?path=<page>   — body { hidden: bool } ; hides/un-hides one.
-async function hiddenApi(request, url, env) {
-  const kv = env.COMMENTS;
-  if (!kv) return jsonResponse({ hidden: [], warning: "no-kv-binding" });
-
-  if (request.method === "GET") {
-    return jsonResponse({ hidden: await allHidden(kv) });
-  }
-  if (request.method === "POST") {
-    const path = clamp(url.searchParams.get("path") || "", 600);
-    if (!path) return jsonResponse({ error: "no-path" }, 400);
-    let body;
-    try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
-    const hidden = !!(body && body.hidden);
-    const key = "h:" + path;
-    if (hidden) await kv.put(key, "1");
-    else await kv.delete(key);
-    return jsonResponse({ path, hidden });
-  }
-  return jsonResponse({ error: "method-not-allowed" }, 405);
-}
-
-// GET /__review/api/export?key=<REVIEW_EXPORT_KEY> — all threads + statuses.
+// GET /__review/api/export?key=<REVIEW_EXPORT_KEY> — all comment threads.
 // Secret-guarded so tooling can read review data WITHOUT the site password.
 async function reviewExport(request, url, env) {
   const secret = env.REVIEW_EXPORT_KEY;
@@ -312,7 +219,7 @@ async function reviewExport(request, url, env) {
     return jsonResponse({ error: "forbidden" }, 403);
   }
   const kv = env.COMMENTS;
-  if (!kv) return jsonResponse({ pages: {}, statuses: {}, warning: "no-kv-binding" });
+  if (!kv) return jsonResponse({ pages: {}, warning: "no-kv-binding" });
   const pages = {};
   let cursor;
   do {
@@ -323,7 +230,7 @@ async function reviewExport(request, url, env) {
     }
     cursor = list.list_complete ? null : list.cursor;
   } while (cursor);
-  return jsonResponse({ pages, statuses: await allStatuses(kv), generatedAt: new Date().toISOString() });
+  return jsonResponse({ pages, generatedAt: new Date().toISOString() });
 }
 
 export default {
@@ -335,20 +242,14 @@ export default {
 
     const expected = env.SITE_PASSWORD;
 
-    // Comment + status + hidden read/write: gated by the site password (cookie) when set.
-    if (
-      url.pathname === "/__review/api" ||
-      url.pathname === "/__review/status" ||
-      url.pathname === "/__review/hidden"
-    ) {
+    // Comment read/write: gated by the site password (cookie) when set.
+    if (url.pathname === "/__review/api") {
       if (expected) {
         const token = await tokenFor(expected);
         const cookies = request.headers.get("Cookie") || "";
         const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
         if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
       }
-      if (url.pathname === "/__review/status") return statusApi(request, url, env);
-      if (url.pathname === "/__review/hidden") return hiddenApi(request, url, env);
       return reviewApi(request, url, env);
     }
 

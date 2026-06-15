@@ -58,37 +58,10 @@ async function main() {
   const pages = data.pages || {};
   const paths = Object.keys(pages).filter((p) => (pages[p] || []).length).sort();
 
-  // Dev-facing pipeline. "in_progress" is the default (absent key), so it's not listed.
-  const STATUS_LABELS = {
-    playground: "Playground",
-    in_progress: "In progress",
-    dev_ready: "Dev ready",
-    shipped: "Shipped",
-    parked: "Parked",
-  };
-  const STATUS_ORDER = ["playground", "dev_ready", "shipped", "parked"];
-  const statuses = data.statuses || {};
-  const byStatus = (s) => Object.keys(statuses).filter((p) => statuses[p] === s).sort();
-  // Parked + Shipped are the cue to roll learnings into GOVOCAL.md §13.
-  const rollup = [...byStatus("parked"), ...byStatus("shipped")].sort();
-
-  const statusLines = STATUS_ORDER.flatMap((s) => {
-    const paths = byStatus(s);
-    if (!paths.length) return [];
-    return [`**${STATUS_LABELS[s]}**`, ...paths.map((p) => `- \`${p}\``), ""];
-  });
-
   const lines = [
     "# GoVocal prototype review comments",
     "",
     `_Pulled ${fmt(data.generatedAt || new Date().toISOString())} from ${base}_`,
-    "",
-    "## Prototype statuses",
-    "",
-    ...(statusLines.length ? statusLines : ["_All prototypes are In progress (the default)._", ""]),
-    rollup.length
-      ? `> ℹ️ **Roll learnings into \`GOVOCAL.md\` §13** for these Parked/Shipped prototypes if not done:\n${rollup.map((p) => `> - \`${p}\``).join("\n")}`
-      : "",
     "",
   ];
   let total = 0, open = 0;

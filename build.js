@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.13";
+const UI_VERSION = "0.14";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -456,14 +456,14 @@ const PAGE_CSS = `
       transform-origin: top left; pointer-events: none;
     }
     .preview-link { position: absolute; inset: 0; z-index: 2; }
-    /* Download + kebab overlay the preview image, top-right, above the cover link.
-       A translucent white backdrop keeps the icons legible over any screenshot. */
+    /* Download icon overlays the preview image, top-right, above the cover link.
+       A translucent white backdrop keeps it legible over any screenshot. */
     .preview-actions { position: absolute; top: 8px; right: 8px; z-index: 3; display: flex; gap: 6px; }
-    .preview-actions .btn-icon, .preview-actions .kebab-btn {
+    .preview-actions .btn-icon {
       background: rgba(255,255,255,0.92); border-color: rgba(16,24,40,0.14); color: #1d2333;
       box-shadow: 0 2px 8px -2px rgba(16,24,40,0.30); backdrop-filter: blur(4px);
     }
-    .preview-actions .btn-icon:hover, .preview-actions .kebab-btn:hover { background: #fff; border-color: var(--accent); }
+    .preview-actions .btn-icon:hover { background: #fff; border-color: var(--accent); }
     .opp-meta, .proto-meta { padding: 16px 18px; }
     .proto-meta {
       display: flex; align-items: flex-start; justify-content: space-between;
@@ -472,10 +472,7 @@ const PAGE_CSS = `
     .proto-text { min-width: 0; flex: 1 1 auto; }
     .proto-name { font-weight: 600; font-size: 16px; letter-spacing: -0.015em; }
     .proto-date { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
-    .proto-actions { display: flex; align-items: center; gap: 8px; flex: none; }
-    /* Status badge sits inline in the top-right control cluster, not below the date. */
-    .proto-actions .status-badge { margin-top: 0; }
-    /* Icon-only control (download) — square, matches the kebab button. */
+    /* Icon-only control (download) — square. */
     .btn-icon {
       font: inherit; line-height: 1; cursor: pointer; font-size: 18px;
       width: 36px; height: 36px; min-width: 36px; border-radius: 8px;
@@ -503,8 +500,6 @@ const PAGE_CSS = `
     .page-grid .card-proto:hover { box-shadow: 0 12px 28px -14px rgba(16,24,40,0.28); border-color: var(--line-2); transform: translateY(-3px); }
     .page-grid .proto-meta { padding: 12px 14px; }
     .page-grid .proto-name { font-size: 15px; }
-    .page-grid .proto-actions { margin-top: 10px; gap: 8px; }
-    .page-grid .btn { padding: 7px 12px; font-size: 13px; border-radius: 8px; }
 
     /* ---- Pending page cards (planned, not built) ---- */
     .card-proto.is-pending { border-style: dashed; border-color: var(--line-2); background: transparent; }
@@ -547,98 +542,10 @@ const PAGE_CSS = `
       .comp-thumb { max-width: 100%; width: 100%; }
     }
 
-    /* ---- Prototype dev-status badge, click-to-cycle in place ----
-       A dev-facing pipeline: Playground → In progress → Dev ready → Shipped, with
-       Parked off to the side. The text label always states the status, so colour is
-       never the only signal (1.4.1). Each palette is AA-safe (text ≥ 4.5:1 on its bg). */
-    .status-badge {
-      display: inline-flex; align-items: center; gap: 7px; margin-top: 10px;
-      font: inherit; font-size: 12.5px; font-weight: 600; line-height: 1;
-      min-height: 30px; padding: 7px 13px; border-radius: 999px; cursor: pointer;
-      border: 1px solid transparent; transition: filter .12s ease;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .status-badge .status-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-    .status-badge:hover { filter: brightness(0.97); }
-    .status-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .status-badge[disabled] { opacity: .55; cursor: progress; }
-    @media (prefers-reduced-motion: reduce) { .status-badge { transition: none; } }
-
-    /* Prototype dev-pipeline palette (interactive badge). Colour is always paired
-       with the text label (1.4.1). Each palette is AA-safe (text ≥ 4.5:1 on its bg). */
-    .status-badge.is-playground { background: #e8eaed; color: #3f4651; border-color: #d3d8de; }
-    .status-badge.is-playground .status-dot { background: #6b7280; }
-    .status-badge.is-progress { background: #fef3c7; color: #8a5200; border-color: #fcd9a4; }
-    .status-badge.is-progress .status-dot { background: #c2710c; }
-    .status-badge.is-ready { background: #d1fae5; color: #05603a; border-color: #a7f3d0; }
-    .status-badge.is-ready .status-dot { background: #059669; }
-    .status-badge.is-shipped { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
-    .status-badge.is-shipped .status-dot { background: #2563eb; }
-    .status-badge.is-parked { background: #ffe4e6; color: #9f1239; border-color: #fecdd3; }
-    .status-badge.is-parked .status-dot { background: #e11d48; }
-    /* Folder lifecycle palette (For dev / Implemented; In progress reuses amber).
-       Distinct hues from the prototype pipeline, also AA-safe. */
-    .status-badge.is-fordev { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
-    .status-badge.is-fordev .status-dot { background: #4f46e5; }
-    .status-badge.is-implemented { background: #ede9fe; color: #5b21b6; border-color: #ddd6fe; }
-    .status-badge.is-implemented .status-dot { background: #7c3aed; }
-
-    /* Opportunity card = a stretched cover link (whole card opens the folder) with
-       the folder-status badge floated above it so it stays independently clickable.
-       The badge is the folder's OWN lifecycle state — not an aggregate of the
-       prototypes one level down. */
+    /* Opportunity card = a stretched cover link: the whole card opens the folder. */
     .card-opp { position: relative; }
     .card-cover-link { position: absolute; inset: 0; z-index: 1; border-radius: var(--radius); }
     .card-cover-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .folder-status { position: relative; z-index: 2; }
-
-    /* Kebab (⋯) menu on a prototype card — opens a floating menu (position:fixed so
-       it escapes the card's overflow:hidden). One action for now: remove from list. */
-    .kebab { position: relative; display: inline-flex; }
-    .kebab-btn {
-      font: inherit; line-height: 1; cursor: pointer; font-size: 18px;
-      width: 36px; height: 36px; min-width: 36px; border-radius: 8px;
-      border: 1px solid var(--line-2); background: transparent; color: var(--fg);
-      display: inline-grid; place-items: center;
-      transition: background .12s ease, border-color .12s ease;
-    }
-    .kebab-btn:hover { background: var(--card-hover); border-color: var(--accent); }
-    .kebab-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .kebab-menu {
-      position: fixed; z-index: 2147483300; min-width: 176px; padding: 6px;
-      background: var(--card); border: 1px solid var(--line-2); border-radius: 10px;
-      box-shadow: 0 16px 40px -16px rgba(16,24,40,0.40);
-    }
-    .kebab-menu[hidden] { display: none; }
-    .kebab-item {
-      display: flex; width: 100%; align-items: center; gap: 8px;
-      font: inherit; font-size: 13.5px; font-weight: 500; text-align: left; cursor: pointer;
-      padding: 9px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--fg);
-    }
-    .kebab-item:hover { background: var(--bg-2); }
-    .kebab-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-    .kebab-item--danger { color: #b42318; }
-    .kebab-item--danger:hover { background: #fef3f2; }
-
-    /* "Show hidden" tray — reversible removals live here so a hide is never a dead end. */
-    .hidden-tray { margin-top: 24px; }
-    .hidden-toggle {
-      font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
-      color: var(--muted); background: transparent; border: 1px dashed var(--line-2);
-      border-radius: 8px; padding: 7px 13px; min-height: 32px;
-      transition: color .12s ease, border-color .12s ease;
-    }
-    .hidden-toggle:hover { color: var(--fg); border-color: var(--accent); }
-    .hidden-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .hidden-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-    .hidden-list[hidden] { display: none; }
-    .hidden-chip {
-      display: inline-flex; align-items: center; gap: 12px;
-      background: var(--card); border: 1px solid var(--line); border-radius: 999px;
-      padding: 5px 6px 5px 14px; font-size: 13px;
-    }
-    .hidden-chip__name { color: var(--muted); }
-    .hidden-chip__restore { padding: 5px 12px; font-size: 12.5px; min-height: 30px; }
 
     /* ── Phones ───────────────────────────────────────────────────────────────
        Tighter gutters under the 52px bar, a smaller hero, and full-width actions
@@ -696,8 +603,7 @@ const CAROUSEL_JS = `
         var prev = c.querySelector('[data-prev]');
         var next = c.querySelector('[data-next]');
         var dotsWrap = c.querySelector('[data-dots]');
-        // Read slides live: cards can be hidden/restored after init (see HIDE_JS),
-        // so the count must never be cached.
+        // Read slides live so the count is never cached.
         function slides() { return [].slice.call(track.children); }
         function step() { var s = slides(); return s.length > 1 ? s[1].offsetLeft - s[0].offsetLeft : track.clientWidth; }
         function active() { return Math.round(track.scrollLeft / step()); }
@@ -725,8 +631,6 @@ const CAROUSEL_JS = `
           if (prev) prev.disabled = a <= 0;
           if (next) next.disabled = a >= slides().length - 1;
         }
-        // Let HIDE_JS rebuild dots/arrows after it mutates the track.
-        c.__gvRebuild = function () { buildDots(); update(); };
         if (prev) prev.addEventListener('click', function () { goTo(active() - 1); });
         if (next) next.addEventListener('click', function () { goTo(active() + 1); });
         // A preview iframe can autofocus an element after it lazy-loads, which makes the
@@ -755,228 +659,6 @@ const CAROUSEL_JS = `
         buildDots();
         update();
       });
-    })();`;
-
-// Prototype dev-status badges. A dev-facing pipeline that tells engineering what to
-// do with each prototype: Playground (ignore — scratch) → In progress (shaping, don't
-// build yet) → Dev ready (decided, build this) → Shipped (built into the product),
-// plus Parked (set aside; the cue to roll learnings into GOVOCAL.md §13). Each badge
-// is a real toggle button that cycles through the states in that order; state is loaded
-// from and persisted to the worker's KV-backed /__review/status endpoint (same gate as
-// the comments overlay). On a static preview with no worker (local \`serve\`), the
-// load/POST just no-op and the badge stays at its default — clicking optimistically
-// advances, then reverts if unsaved. "in_progress" is the default (absent KV key).
-const STATUS_ORDER = ["playground", "in_progress", "dev_ready", "shipped", "parked"];
-const STATUS_LABELS = {
-  playground: "Playground",
-  in_progress: "In progress",
-  dev_ready: "Dev ready",
-  shipped: "Shipped",
-  parked: "Parked",
-};
-const STATUS_CLASSES = {
-  playground: "is-playground",
-  in_progress: "is-progress",
-  dev_ready: "is-ready",
-  shipped: "is-shipped",
-  parked: "is-parked",
-};
-// Folder (opportunity) lifecycle — its OWN coarse status, not an aggregate of the
-// prototypes inside it. A separate, shorter cycle from the prototype pipeline.
-const FOLDER_ORDER = ["for_dev", "in_progress", "implemented"];
-const FOLDER_LABELS = { for_dev: "For dev", in_progress: "In progress", implemented: "Implemented" };
-const FOLDER_CLASSES = { for_dev: "is-fordev", in_progress: "is-progress", implemented: "is-implemented" };
-const STATUS_JS = `
-    (function () {
-      var P_ORDER = ${JSON.stringify(STATUS_ORDER)};   // prototype dev pipeline
-      var F_ORDER = ${JSON.stringify(FOLDER_ORDER)};   // folder lifecycle
-      var LABELS = ${JSON.stringify({ ...STATUS_LABELS, ...FOLDER_LABELS })};
-      var CLASSES = ${JSON.stringify({ ...STATUS_CLASSES, ...FOLDER_CLASSES })};
-      var DEFAULT = 'in_progress';
-      var ALL_CLASSES = Object.keys(CLASSES).map(function (k) { return CLASSES[k]; });
-      var badges = [].slice.call(document.querySelectorAll('.status-badge'));
-      if (!badges.length) return;
-      // Folder badges cycle the lifecycle; prototype badges run the dev pipeline.
-      function order(b) { return b.hasAttribute('data-folder-status') ? F_ORDER : P_ORDER; }
-      function norm(b, s) { return order(b).indexOf(s) === -1 ? DEFAULT : s; }
-      function apply(b, s) {
-        s = norm(b, s);
-        b.dataset.status = s;
-        ALL_CLASSES.forEach(function (c) { b.classList.toggle(c, c === CLASSES[s]); });
-        var l = b.querySelector('.status-label');
-        if (l) l.textContent = LABELS[s];
-        b.setAttribute('aria-label', 'Status: ' + LABELS[s] + '. Activate to change.');
-      }
-      fetch('/__review/status', { headers: { Accept: 'application/json' } })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) {
-          if (!d || !d.statuses) return;
-          badges.forEach(function (b) {
-            var s = d.statuses[b.getAttribute('data-status-for')];
-            if (s) apply(b, s);
-          });
-        }).catch(function () {});
-      badges.forEach(function (b) {
-        b.addEventListener('click', function () {
-          var ord = order(b);
-          var cur = norm(b, b.dataset.status);
-          var next = ord[(ord.indexOf(cur) + 1) % ord.length];
-          apply(b, next);
-          b.disabled = true;
-          fetch('/__review/status?path=' + encodeURIComponent(b.getAttribute('data-status-for')), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: next }),
-          }).then(function (r) { if (!r.ok) apply(b, cur); })
-            .catch(function () { apply(b, cur); })
-            .then(function () { b.disabled = false; });
-        });
-      });
-    })();`;
-
-// Kebab (⋯) menu + remove-from-list for prototype cards. Removing a prototype is a
-// reversible soft-hide persisted to the worker's KV (/__review/hidden) — the build
-// always re-scans the filesystem, so this never deletes files. Hidden cards drop out
-// of the carousel and land in a "Show hidden" tray with a Restore button. No-ops on
-// pages without prototype cards (root index, Pages/Components reference tabs).
-const HIDE_JS = `
-    (function () {
-      var cards = [].slice.call(document.querySelectorAll('.card-proto[data-proto-id]'));
-      if (!cards.length) return;
-      var tray = document.querySelector('[data-hidden-tray]');
-      var hiddenNodes = {}; // path -> detached .slide node, for restore
-
-      // ---- floating kebab menu (position:fixed so it escapes card overflow) ----
-      var openMenu = null, openBtn = null;
-      function closeMenu() {
-        if (openMenu) { openMenu.hidden = true; openMenu.style.cssText = ''; }
-        if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
-        openMenu = openBtn = null;
-      }
-      function placeMenu(btn, menu) {
-        var r = btn.getBoundingClientRect();
-        menu.hidden = false;
-        menu.style.position = 'fixed';
-        menu.style.top = (r.bottom + 6) + 'px';
-        var mw = menu.offsetWidth;
-        menu.style.left = Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8)) + 'px';
-      }
-      document.addEventListener('click', function (e) {
-        var kb = e.target.closest && e.target.closest('[data-kebab]');
-        if (kb) {
-          e.preventDefault();
-          var menu = kb.parentNode.querySelector('.kebab-menu');
-          if (openMenu === menu) { closeMenu(); return; }
-          closeMenu();
-          openMenu = menu; openBtn = kb;
-          kb.setAttribute('aria-expanded', 'true');
-          placeMenu(kb, menu);
-          return;
-        }
-        if (openMenu && !(e.target.closest && e.target.closest('.kebab-menu'))) closeMenu();
-      });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
-      window.addEventListener('scroll', closeMenu, true);
-      window.addEventListener('resize', closeMenu);
-
-      // ---- hide / restore ----
-      function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/["\\\\]/g, '\\\\$&'); }
-      function rebuild(c) { if (c && c.__gvRebuild) c.__gvRebuild(); }
-      function post(path, hidden) {
-        fetch('/__review/hidden?path=' + encodeURIComponent(path), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ hidden: hidden }),
-        }).catch(function () {});
-      }
-      function updateTray() {
-        if (!tray) return;
-        var n = Object.keys(hiddenNodes).length;
-        tray.hidden = n === 0;
-        var cnt = tray.querySelector('[data-hidden-count]');
-        if (cnt) cnt.textContent = n;
-        if (n === 0) {
-          var list = tray.querySelector('[data-hidden-list]');
-          var tgl = tray.querySelector('[data-hidden-toggle]');
-          if (list) list.hidden = true;
-          if (tgl) tgl.setAttribute('aria-expanded', 'false');
-        }
-      }
-      function addChip(path, name) {
-        var list = tray && tray.querySelector('[data-hidden-list]');
-        if (!list) return;
-        var chip = document.createElement('div');
-        chip.className = 'hidden-chip';
-        chip.setAttribute('data-hidden-chip', path);
-        var label = document.createElement('span');
-        label.className = 'hidden-chip__name';
-        label.textContent = name;
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn ghost hidden-chip__restore';
-        btn.textContent = 'Restore';
-        btn.addEventListener('click', function () { restore(path); });
-        chip.appendChild(label); chip.appendChild(btn);
-        list.appendChild(chip);
-      }
-      function removeChip(path) {
-        var c = tray && tray.querySelector('[data-hidden-chip="' + cssEsc(path) + '"]');
-        if (c) c.parentNode.removeChild(c);
-      }
-      function hide(card, persist) {
-        var path = card.getAttribute('data-proto-id');
-        if (hiddenNodes[path]) return;
-        var slide = card.closest('.slide') || card;
-        var c = slide.closest('[data-carousel]');
-        var nm = card.querySelector('.proto-name');
-        hiddenNodes[path] = slide;
-        if (slide.parentNode) slide.parentNode.removeChild(slide);
-        rebuild(c);
-        addChip(path, nm ? nm.textContent : path);
-        updateTray();
-        if (persist) post(path, true);
-      }
-      function restore(path) {
-        var slide = hiddenNodes[path];
-        if (!slide) return;
-        var track = document.querySelector('[data-track]');
-        if (track) track.appendChild(slide);
-        delete hiddenNodes[path];
-        rebuild(track && track.closest('[data-carousel]'));
-        removeChip(path);
-        updateTray();
-        post(path, false);
-      }
-      document.addEventListener('click', function (e) {
-        var h = e.target.closest && e.target.closest('[data-proto-hide]');
-        if (!h) return;
-        e.preventDefault();
-        closeMenu();
-        var card = h.closest('.card-proto');
-        if (card) hide(card, true);
-      });
-
-      // ---- tray toggle ----
-      if (tray) {
-        var tgl = tray.querySelector('[data-hidden-toggle]');
-        var list = tray.querySelector('[data-hidden-list]');
-        if (tgl && list) tgl.addEventListener('click', function () {
-          var willOpen = list.hidden;
-          list.hidden = !willOpen;
-          tgl.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-        });
-      }
-
-      // ---- apply persisted hides on load ----
-      fetch('/__review/hidden', { headers: { Accept: 'application/json' } })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) {
-          if (!d || !d.hidden || !d.hidden.length) return;
-          var set = {};
-          d.hidden.forEach(function (p) { set[p] = 1; });
-          cards.forEach(function (card) {
-            if (set[card.getAttribute('data-proto-id')]) hide(card, false);
-          });
-        }).catch(function () {});
     })();`;
 
 // Top-right tab nav for the site's chrome/reference pages (Prototypes · Primitives ·
@@ -1349,10 +1031,6 @@ function shell({ title, body, back, activeTab = "prototypes" }) {
   </div>
   <script>${CAROUSEL_JS}
   </script>
-  <script>${STATUS_JS}
-  </script>
-  <script>${HIDE_JS}
-  </script>
   <script>${searchScript()}
   </script>
 </body>
@@ -1392,12 +1070,6 @@ function renderRootIndex(opportunities) {
       // Cover = most-recent prototype of the opportunity (already sorted first).
       const cover = opp.prototypes[0];
       const coverSrc = cover ? `${oppPath}${cover.href}` : "";
-      // Folder's OWN lifecycle status — its own state, not an aggregate of the
-      // prototypes inside it. Clickable toggle cycling For dev → In progress →
-      // Implemented, keyed by the folder path; STATUS_JS corrects the server
-      // default ("In progress") from KV on load.
-      const folderKey = `/${encodeURIComponent(opp.name)}/`;
-      const folderStatus = `<button type="button" class="status-badge folder-status is-progress" data-folder-status data-status="in_progress" data-status-for="${folderKey}" aria-label="Status: In progress. Activate to change."><span class="status-dot" aria-hidden="true"></span><span class="status-label">In progress</span></button>`;
       return `
         <div class="slide">
           <div class="card-opp">
@@ -1406,7 +1078,6 @@ function renderRootIndex(opportunities) {
             <div class="opp-meta">
               <div class="proto-name">${titleCase(opp.name)}</div>
               <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; ${fmtDate(opp.mtimeMs)}</div>
-              ${folderStatus}
             </div>
           </div>
         </div>`;
@@ -1441,25 +1112,14 @@ function renderOpportunityIndex(opp) {
       const download = p.file
         ? `<button type="button" class="btn-icon" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html" aria-label="Download HTML" title="Download HTML">&darr;</button>`
         : "";
-      // KV identity = the absolute path the prototype is served at, matching the
-      // comments overlay. Defaults to "In progress"; the STATUS_JS load corrects it.
-      const protoPath = `/${encodeURIComponent(opp.name)}/${p.href}`;
-      const status = `<button type="button" class="status-badge is-progress" data-status="in_progress" data-status-for="${protoPath}" aria-label="Status: In progress. Activate to change."><span class="status-dot" aria-hidden="true"></span><span class="status-label">In progress</span></button>`;
-      const kebab = `<div class="kebab">
-                  <button type="button" class="kebab-btn" data-kebab aria-haspopup="menu" aria-expanded="false" aria-label="More actions for ${titleCase(p.name)}">⋯</button>
-                  <div class="kebab-menu" role="menu" hidden>
-                    <button type="button" role="menuitem" class="kebab-item kebab-item--danger" data-proto-hide>Remove from list</button>
-                  </div>
-                </div>`;
       return `
         <div class="slide">
-          <div class="card-proto" data-proto-id="${protoPath}">
+          <div class="card-proto">
             <div class="preview">
               <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
               <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
               <div class="preview-actions">
                 ${download}
-                ${kebab}
               </div>
             </div>
             <div class="proto-meta">
@@ -1467,24 +1127,15 @@ function renderOpportunityIndex(opp) {
                 <div class="proto-name">${titleCase(p.name)}</div>
                 <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
               </div>
-              <div class="proto-actions">
-                ${status}
-              </div>
             </div>
           </div>
         </div>`;
     })
     .join("");
 
-  // Reversible removals land here (populated by HIDE_JS); hidden until something's hidden.
-  const tray = `<div class="hidden-tray" data-hidden-tray hidden>
-      <button type="button" class="hidden-toggle" data-hidden-toggle aria-expanded="false">Show hidden (<span data-hidden-count>0</span>)</button>
-      <div class="hidden-list" data-hidden-list hidden></div>
-    </div>`;
-
   return shell({
     title: titleCase(opp.name),
-    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${carousel(slides)}${tray}`,
+    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${carousel(slides)}`,
     back: { href: "../", label: "&larr; All opportunities" },
   });
 }
