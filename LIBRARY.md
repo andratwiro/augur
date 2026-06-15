@@ -78,10 +78,12 @@ as a starting point for a prototype.
 | **Bo Input Manager** | `/pages/bo-input-manager/` | `pages/bo-input-manager/` | Input manager — GoVocal back office (reference) |
 | **Bo Inspiration Hub** | `/pages/bo-inspiration-hub/` | `pages/bo-inspiration-hub/` | Inspiration hub — GoVocal back office (reference) |
 | **Bo Messaging** | `/pages/bo-messaging/` | `pages/bo-messaging/` | Messaging — GoVocal back office (reference) |
+| **Bo Notifications** | `/pages/bo-notifications/` | `pages/bo-notifications/` | Notifications — GoVocal back office (reference) |
 | **Bo Pages Menu** | `/pages/bo-pages-menu/` | `pages/bo-pages-menu/` | Pages & menu — GoVocal back office (reference) |
 | **Bo Project Phase** | `/pages/bo-project-phase/` | `pages/bo-project-phase/` | Project configuration — GoVocal back office (reference) |
 | **Bo Projects** | `/pages/bo-projects/` | `pages/bo-projects/` | Projects — GoVocal back office (reference) |
 | **Bo Reporting** | `/pages/bo-reporting/` | `pages/bo-reporting/` | Reporting — GoVocal back office (reference) |
+| **Bo Settings** | `/pages/bo-settings/` | `pages/bo-settings/` | Settings — GoVocal back office (reference) |
 | **Bo Tools** | `/pages/bo-tools/` | `pages/bo-tools/` | Tools — GoVocal back office (reference) |
 | **Bo Users** | `/pages/bo-users/` | `pages/bo-users/` | Users — GoVocal back office (reference) |
 | **Events** | `/pages/events/` | `pages/events/` | Events — GoVocal (reference) |

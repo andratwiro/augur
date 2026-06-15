@@ -129,4 +129,30 @@ cross-surface pieces (tables, stat cards) **shared** in the manifest.
 - [x] **Insights tab** — `.gv-bo-statgrid`/`.gv-bo-stat` stat cards (label · 34px number · 7-day change · icon; tagged **shared**) + green AI-analysis CTA + `.gv-bo-chartcard` participation chart. Checkpoint `insights-stat`. (capture: `bo-phase-insights`) ✅
 - [ ] **Phase sub-tabs** beyond the built four: Description / Map / Phase access / Notifications — capture as needed, build per pattern.
 
+## Top-level admin SECTION pages (the 12 sidebar destinations) — built 2026-06-15
+
+All 12 reference Pages under `pages/bo-*/`, one per sidebar item, linked together via a
+shared per-page `bo-chrome.js` (renders the sidebar, sets the active item, hrefs to
+siblings). Standard section chrome = sidebar + a top **section tab strip**
+(`.gv-bo-tabs--top` — measured 60px `#FBFBFB`, rounded top, soft shadow, 44px left inset)
+where the screen has sub-views; otherwise a `.gv-bo-pagehead` title block. Net-new shared
+chrome added: `.gv-bo-tabs--top`, `.gv-bo-table.is-list` (striped full-width list table),
+`.gv-bo-listrow`, `.gv-bo-status`/`-substack`, `.gv-status-label.draft`/`.published`; base
+`.gv-bo-table`/`.gv-bo-tabs` gained measured `#044D6C`/20px colour+leading.
+
+| Screen | URL | Capture | Built | Notes |
+|---|---|---|---|---|
+| Dashboard | `/admin/dashboard` | `bo-dashboard` | ✅ | Overview charts render empty on demo → content reconstructed; chrome verified (`bo-dashboard/tabstrip`). |
+| Projects | `/admin/projects` | `bo-projects-list` | ✅ | `.gv-bo-table.is-list` verified (`bo-projects/table-th`,`-row`). |
+| Input manager | `/admin/ideas` | `bo-input-manager` | ✅ | Cross-project; reuses filter rail + bordered posts table. |
+| Users | `/admin/users` | `bo-users` | ✅ | Two-pane: roles/groups rail + users table. |
+| Messaging | `/admin/messaging` | `bo-messaging` | ✅ | DRAFT pill `#FF672F` verified (`bo-messaging/draft-label`). |
+| Reporting | `/admin/reporting/report-builder` | `bo-reporting` | ✅ | Report rows on `.gv-bo-listrow`. |
+| Community monitor | `/admin/community-monitor` | `bo-community-monitor` | ✅ | Health Score + sentiment battery (no data on demo). |
+| Inspiration hub | `/admin/inspiration-hub` | `bo-inspiration-hub` | ✅ | Highlighted cards + project gallery. |
+| Tools | `/admin/tools` | `bo-tools` | ✅ | Integration cards + locked premium buttons. |
+| Pages & menu | `/admin/pages-menu` | `bo-pages-menu` | ✅ | Navbar item rows (live page also renders the FO navbar preview; reference keeps sidebar chrome only). |
+| Settings | `/admin/settings/general` | `bo-settings` | ✅ | Tabbed; General matched to capture. |
+| Notifications | — (bell flyout) | `bo-notifications` (404) | ✅ | No standalone page → reconstructed activity feed. |
+
 Site: `/pages/` index is split **Back office / Front office** (build.js, via `<meta name="gv-surface">` / `bo-` prefix). New BO pages auto-group under Back office.

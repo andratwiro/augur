@@ -540,5 +540,24 @@ Keep entries short, deduped, and dated when point-in-time. Newest at top.
   primary tint. Also: a `position:fixed` toast parked off-screen with `transform` still gets
   captured by Playwright full-page screenshots — gate it with `visibility:hidden` until shown.
 
+- _(2026-06-15)_ **The full back-office is now reconstructed as 12 reference Pages**
+  (`pages/bo-{dashboard,projects,input-manager,users,messaging,reporting,
+  community-monitor,inspiration-hub,tools,pages-menu,settings,notifications}/`) — one
+  per top-level admin sidebar destination, all clickable-linked via a shared per-page
+  `bo-chrome.js` that renders the sidebar and sets the active item. **Section-page chrome
+  pattern** (distinct from the project editor's `.gv-bo-topbar`): sidebar + a top
+  **section tab strip** `.gv-bo-tabs--top` (measured 60px `#FBFBFB`, rounded-top, soft
+  shadow, 44px left inset) for screens with sub-views (Dashboard, Messaging, Settings,
+  Community monitor), else a `.gv-bo-pagehead` title block. Pages & menu uniquely also
+  renders the FO navbar (it previews navbar changes) — the reference keeps sidebar-only
+  chrome. New shared classes: `.gv-bo-table.is-list` (striped full-width list table),
+  `.gv-bo-listrow` (admin list row), `.gv-bo-status`/`-substack`, `.gv-status-label.draft`
+  (#FF672F)/`.published`. **Two screens are reconstructed, not source-grounded:** the
+  Dashboard Overview (the `uxusertesting` demo tenant renders no dashboard data) and
+  Notifications (`/admin/notifications` 404s — it's a bell flyout, no standalone page);
+  both are flagged in-page and in `govocal-exports/BACK-OFFICE.md` for re-capture on a
+  tenant with data. Everything else is built from live `styles.json` digests and
+  verified (`bo-dashboard/tabstrip`, `bo-projects/table-*`, `bo-messaging/draft-label`).
+
 <!-- Add new learnings above this line. Format: - _(YYYY-MM-DD)_ <fact / decision / preference>. -->
 
