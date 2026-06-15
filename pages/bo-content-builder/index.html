@@ -48,6 +48,11 @@
        text renders in an inner .cb-richtext at the real 16px / #1E1E1E (lh 24) —
        same size the resident sees on the project page. */
     #cb-root .cb-richtext { font-size: var(--gv-fs-base); color: #1E1E1E; line-height: 24px; outline: none; }
+    /* A clear border between the fixed top bar and the right settings panel. */
+    #cb-root .gv-bo-cb-settings { border-top: 1px solid var(--gv-grey-500); }
+    /* RTE editor line-height matches the real Quill container (≈20px, not 24px) —
+       the 24px made the typed text read too loose. */
+    #cb-root .gv-bo-cb-rte__editor { line-height: 20px; }
 
     /* Block content presentation (page content, not gv chrome) ----------------- */
     .cb-h { margin: 0 0 8px; line-height: 1.3; }
