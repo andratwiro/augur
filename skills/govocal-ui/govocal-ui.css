@@ -1355,6 +1355,15 @@
 .gv-sticky__authorname { font-size: var(--gv-fs-s); font-weight: 600; line-height: 21px;
   color: var(--gv-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gv-sticky__emoji { margin-left: auto; font-size: var(--gv-fs-m); line-height: 1; }
+/* Top-right corner affordance (grounded: the source sticky note shows a small square
+   share/branch 'fork' action icon in the corner, not a category emoji). Sits pinned
+   to the card's top-right; the author row is just avatar + name. */
+.gv-sticky__share { margin-left: auto; flex: 0 0 auto; display: inline-flex;
+  align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: var(--gv-radius); background: none; cursor: pointer;
+  color: var(--gv-text-secondary, #5a5a5a); }
+.gv-sticky__share:hover { background: rgba(0,0,0,0.06); color: var(--gv-text-primary); }
+.gv-sticky__share svg { width: 18px; height: 18px; }
 /* card title — live p = 21px / 700 / 31.5px #333 (detail). */
 .gv-sticky__title { margin: 0 0 8px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 31.5px;
   color: var(--gv-text-primary); }
