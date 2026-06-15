@@ -89,6 +89,8 @@ body.gv-root {
 .gv-btn.admin-dark-text:hover{ background: rgba(4,77,108,0.1); }
 .gv-btn.delete           { background: var(--gv-red-600); color: #fff; }
 .gv-btn.delete:hover     { filter: brightness(0.88); }
+.gv-btn.success          { background: var(--gv-green-600); color: #fff; }
+.gv-btn.success:hover    { filter: brightness(0.92); }
 
 .gv-btn:disabled, .gv-btn.disabled, .gv-btn[aria-disabled='true'] {
   opacity: 0.37; cursor: not-allowed; filter: none; pointer-events: none;
@@ -309,6 +311,7 @@ body.gv-root {
   position: relative;
   z-index: 50;
   font-family: var(--gv-font-family);
+  box-shadow: var(--gv-shadow-header);   /* live product header carries a soft bottom shadow */
 }
 .gv-header.sticky { position: sticky; top: 0; }
 /* Full-width bar: logo flush-left, actions flush-right (matches the live product —
@@ -671,6 +674,18 @@ body.gv-root {
 .gv-bubbles .count { margin-left: -8px; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 999px; border: 2px solid #fff;
   background: var(--gv-tenant-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
 .gv-bubbles__label { margin-left: 10px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+
+/* ── Post / contribution count ("142 Beiträge" · "open to participation") ──────
+   The status meta GoVocal shows on a live project card: a success-green dot + a
+   count, in the cool-grey secondary text. Green = the live "open" colour
+   (#04884C, getComputedStyle on mitgestalten.wien.gv.at). Use .closed for the
+   muted finished state. */
+.gv-poststat { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-m);
+  line-height: 1.4; color: var(--gv-text-secondary); }
+.gv-poststat::before { content: ""; width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto;
+  background: var(--gv-poststat-dot, var(--gv-success)); }   /* #04884C — live "open" green */
+.gv-poststat b { color: var(--gv-grey-800); font-weight: 700; }
+.gv-poststat.closed { --gv-poststat-dot: var(--gv-grey-500); }
 
 /* ── Progress / time-remaining bar ─────────────────────────────────────────
    Thin track + tenant-primary fill. Set inline width on __fill (% elapsed). */

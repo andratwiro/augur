@@ -42,6 +42,7 @@
   --gv-teal-300: #40B8C5;
   --gv-teal-200: #80CFD8;
   --gv-teal-100: #BEE7EB; /* tealLight */
+  --gv-teal-75:  #E5F5F7; /* selected-card / inspiration tint (BO) */
   --gv-teal-50:  #EDF8FA;
 
   /* ── Red ──────────────────────────────────────────────────────────────── */
@@ -53,6 +54,7 @@
 
   /* ── Green ────────────────────────────────────────────────────────────── */
   --gv-green-700: #024D2B;
+  --gv-green-600: #096F03; /* green CTA fill (e.g. "Stats overview") */
   --gv-green-500: #04884C; /* success (also default checked checkbox/toggle) */
   --gv-green-400: #32B67A;
   --gv-green-300: #62C462;
@@ -136,6 +138,7 @@
 
   /* ── Elevation (defaultStyles) ────────────────────────────────────────── */
   --gv-shadow:           0px 2px 4px -1px rgba(0,0,0,0.06);
+  --gv-shadow-header:    0px 2px 4px -1px rgba(0,0,0,0.10); /* live site <header> (mitgestalten.wien.gv.at) */
   --gv-shadow-hover-sm:  0px 2px 4px -1px rgba(0,0,0,0.2);
   --gv-shadow-hover-lg:  0px 4px 12px -1px rgba(0,0,0,0.12);
   --gv-shadow-error:     0 0 0 3px rgba(214,22,7,0.35); /* transparentize(.65, red600) */

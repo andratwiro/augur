@@ -42,6 +42,7 @@
   --gv-teal-300: #40B8C5;
   --gv-teal-200: #80CFD8;
   --gv-teal-100: #BEE7EB; /* tealLight */
+  --gv-teal-75:  #E5F5F7; /* selected-card / inspiration tint (BO) */
   --gv-teal-50:  #EDF8FA;
 
   /* ── Red ──────────────────────────────────────────────────────────────── */
@@ -53,6 +54,7 @@
 
   /* ── Green ────────────────────────────────────────────────────────────── */
   --gv-green-700: #024D2B;
+  --gv-green-600: #096F03; /* green CTA fill (e.g. "Stats overview") */
   --gv-green-500: #04884C; /* success (also default checked checkbox/toggle) */
   --gv-green-400: #32B67A;
   --gv-green-300: #62C462;
@@ -97,6 +99,21 @@
   --gv-tenant-primary-lighten90: color-mix(in srgb, var(--gv-tenant-primary) 10%, transparent);
   --gv-tenant-primary-lighten95: color-mix(in srgb, var(--gv-tenant-primary) 5%,  transparent);
 
+  /* ── Back-office surface (GoVocal's OWN theme — NOT city-themed) ──────────
+     GoVocal has ~two UIs: the front office is themed per city (--gv-tenant-*);
+     the back office uses a fixed GoVocal teal/navy palette. Same type, radius,
+     spacing and primitives — only the colour layer differs. Measured live from
+     the demo platform (uxusertesting.govocal.com, City of Raleigh back office).
+     Apply by scoping markup under `.gv-bo`, which remaps the tenant vars below. */
+  --gv-bo-sidebar-bg:     #003349;                    /* dark teal/navy left nav */
+  --gv-bo-sidebar-text:   rgba(255,255,255,0.78);     /* nav labels */
+  --gv-bo-sidebar-active: rgba(0,0,0,0.30);           /* active/hover cell on the navy */
+  --gv-bo-primary:        var(--gv-blue-500);          /* #044D6C — fills, headings, table text */
+  --gv-bo-link:           #4183C4;                     /* link/anchor blue */
+  --gv-bo-canvas:         var(--gv-white);             /* content background */
+  --gv-bo-row-alt:        var(--gv-grey-50);           /* #FCFCFC — alt table row / hover */
+  --gv-bo-border:         var(--gv-cool-grey-600);     /* #596B7A — outline-button border */
+
   /* ── Typography ───────────────────────────────────────────────────────── */
   --gv-font-family: 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --gv-fs-xs:     12px;
@@ -121,6 +138,7 @@
 
   /* ── Elevation (defaultStyles) ────────────────────────────────────────── */
   --gv-shadow:           0px 2px 4px -1px rgba(0,0,0,0.06);
+  --gv-shadow-header:    0px 2px 4px -1px rgba(0,0,0,0.10); /* live site <header> (mitgestalten.wien.gv.at) */
   --gv-shadow-hover-sm:  0px 2px 4px -1px rgba(0,0,0,0.2);
   --gv-shadow-hover-lg:  0px 4px 12px -1px rgba(0,0,0,0.12);
   --gv-shadow-error:     0 0 0 3px rgba(214,22,7,0.35); /* transparentize(.65, red600) */

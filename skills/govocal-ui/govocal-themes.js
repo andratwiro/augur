@@ -63,10 +63,12 @@
   // + warm coral accent #E2603A. Replaced the old hot-pink/black default. Ids 1+ are REAL city tenants
   // with their authoritative brand colours + logos (researched from official sources):
   //   Københavns Kommune — KBH Blå #000C2E (Pantone 296C), design.kk.dk
-  //   Stadt Wien — Wien Rot #FF0000 + Ur Schwarz #000000, wien.gv.at CD-manual
+  //   Stadt Wien — live-captured in-product red #FF5A64 (the colour the real platform
+  //     actually renders on buttons/links — getComputedStyle on mitgestalten.wien.gv.at;
+  //     a softened tint of the #FF0000 Wien-Rot CD colour) + Ur Schwarz #000000.
   //   Engaged California — navy #1C2745 + orange #E79450
-  // FAITHFUL-BUT-FLAGGED: Wien Rot #FF0000 is only ~4:1 white-on-primary (under AA) —
-  // it's the official colour, kept faithful; the audit will flag it (expected).
+  // FAITHFUL-BUT-FLAGGED: Wien red #FF5A64 is only ~3.4:1 white-on-primary (under AA) —
+  // it's the colour the live product ships, kept faithful; the audit will flag it (expected).
   // Each tenant configures a custom font (the product's customFontName). The real city
   // faces are proprietary and can't be bundled, so each stack lists the real name(s)
   // first (rendered where licensed/installed) then a FREE substitute chosen to match the
@@ -81,7 +83,7 @@
   var GV_THEMES = [
     { id: 0, name: 'GoVocal',            primary: '#0E7C86', secondary: '#E2603A', text: '#333333', logo: LOGO_GV,   font: null },
     { id: 1, name: 'Københavns Kommune', primary: '#000C2E', secondary: '#0A1A4A', text: '#1A1A1A', logo: LOGO_KBH,  font: '"KBH Sans", "KBH", "Archivo", ' + FONT_FALLBACK },
-    { id: 2, name: 'Stadt Wien',         primary: '#FF0000', secondary: '#000000', text: '#1A1A1A', logo: LOGO_WIEN, font: '"Wiener Melange", "WienerMelange_W_Rg", "Mulish", ' + FONT_FALLBACK },
+    { id: 2, name: 'Stadt Wien',         primary: '#FF5A64', secondary: '#000000', text: '#1A1A1A', logo: LOGO_WIEN, font: '"Wiener Melange", "WienerMelange_W_Rg", "Mulish", ' + FONT_FALLBACK },
     { id: 3, name: 'Engaged California', primary: '#1C2745', secondary: '#E79450', text: '#1A1A1A', logo: LOGO_CA,   font: '"Noto Sans", ' + FONT_FALLBACK },
   ];
   window.GV_THEMES = GV_THEMES;

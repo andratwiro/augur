@@ -7,7 +7,16 @@
     "map": "object of { realSelector: yourSelector } pinning what to diff (or a 'real=mine|…' string). Omit to pair identical selector strings.",
     "viewport": "optional WxH; defaults to the capture's own viewport",
     "tol": "optional px tolerance (default 1)",
+    "props": "optional list of CSS props to diff (default: the visually-salient set). Narrow it when only specific values are grounded for a selector.",
     "uses": "optional explicit dependency list (e.g. ['.gv-btn']). Omitted = auto-derived from the gv-* classes in `built`, which powers `--changed`."
   },
-  "checkpoints": []
+  "checkpoints": [
+    {
+      "id": "homepage-header",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage-wien",
+      "map": { "header": ".gv-header" },
+      "props": ["background-color", "box-shadow", "border-radius"]
+    }
+  ]
 }

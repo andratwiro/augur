@@ -449,6 +449,16 @@ runs flush to the edges; content lives in `.gv-pcard__body`; `__spacer` pushes t
       </div>
     </div>
   </article>
+```
+
+**Contribution count** (`.gv-poststat`) — the green-dot "X Beiträge / contributions"
+status meta the live product shows on an open project card (dot `#04884C`,
+secondary cool-grey text). Add `.closed` for the muted finished state. Source:
+`getComputedStyle` on mitgestalten.wien.gv.at.
+
+```html
+<span class="gv-poststat"><b>122</b>&nbsp;contributions</span>
+<span class="gv-poststat closed"><b>503</b>&nbsp;contributions</span>
 
   <!-- standard card; no-image → .gv-pcard__thumb.icon; finished → .gv-status-label.finished -->
   <article class="gv-pcard boxed">
