@@ -518,6 +518,29 @@
 /* Show-more row */
 .gv-showmore { display: flex; justify-content: center; margin-top: 32px; }
 
+/* ── Light project card (borderless) — the Stadt Wien homepage pattern ────────
+   (mitgestalten.wien.gv.at): the WHOLE card is a link — a rounded thumb on top,
+   then an 18px/700 title, an optional status line (clock = tenant-primary + #333
+   text for ongoing / "Kein Enddatum"; green check + green for completed
+   "vor N Wochen"), participant count, and a quiet "Mehr erfahren" link. No box,
+   border or shadow — the artwork tile carries the card. Same .gv-pgrid as boxed. */
+.gv-pcard.light { background: none; border: 0; box-shadow: none; overflow: visible; }
+.gv-pcard.light:hover { transform: none; box-shadow: none; }
+.gv-pcard.light .gv-pcard__thumb { aspect-ratio: 16 / 10; border-radius: var(--gv-radius); }  /* live thumb = 3px */
+.gv-pcard.light .gv-pcard__body { padding: 14px 0 0; }                 /* text sits flush under the thumb */
+.gv-pcard.light .gv-pcard__title { margin: 0 0 10px; font-size: var(--gv-fs-l); }  /* live title = 18px/700 */
+.gv-pcard.light .gv-pcard__desc { color: var(--gv-text-secondary); margin-top: 4px; }
+/* status line: icon + "Kein Enddatum" / "noch N Wochen" (#333) or "vor N Wochen" (green) */
+.gv-pcard__status { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-base);
+  line-height: 1.5; color: var(--gv-grey-800); }
+.gv-pcard__status svg, .gv-pcard__status .gv-icon { flex: 0 0 auto; width: 16px; height: 16px; color: var(--gv-tenant-primary); }
+.gv-pcard__status.done { color: var(--gv-success); }
+.gv-pcard__status.done svg, .gv-pcard__status.done .gv-icon { color: var(--gv-success); }
+/* quiet "Mehr erfahren / Learn more" link beneath a light card */
+.gv-pcard__more { position: relative; z-index: 1; align-self: flex-start; margin-top: 10px;
+  font-size: var(--gv-fs-base); color: var(--gv-text-secondary); text-decoration: none; }
+.gv-pcard__more:hover { color: var(--gv-tenant-primary); }
+
 /* ── Events widget (with empty state) ──────────────────────────────────────── */
 .gv-events__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
 .gv-events__empty { display: grid; place-items: center; gap: 6px; text-align: center;
