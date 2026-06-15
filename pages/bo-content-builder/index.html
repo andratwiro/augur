@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
   <style>
     /* Page-local layout + interaction-state CSS only. No gv-* class is DEFINED
        here (the chrome lives in canonical govocal-bo.css as .gv-bo-cb-*); these
@@ -40,14 +41,14 @@
        the whole page — otherwise the tall page lets the palette scroll away and
        the icons disappear under the fixed top bar. */
     #cb-root { height: 100vh; overflow: hidden; }
-    /* Eye / view-project glyph: the real button's icon PATH is filled #333 (the
+    /* Eye / view-project glyph: the real button's icon PATH is filled grey-800 (the
        blue is only currentColor, which the path overrides) — so it renders grey. */
     #cb-root .gv-bo-cb-topbar__view { color: var(--gv-grey-800); }
     /* Text blocks mirror the real editor's TWO levels: the .gv-bo-cb-block__body
        wrapper keeps the captured 14px chrome value (checkpoint), while the VISIBLE
-       text renders in an inner .cb-richtext at the real 16px / #1E1E1E (lh 24) —
+       text renders in an inner .cb-richtext at the real 16px / heading colour (lh 24) —
        same size the resident sees on the project page. */
-    #cb-root .cb-richtext { font-size: var(--gv-fs-base); color: #1E1E1E; line-height: 24px; outline: none; }
+    #cb-root .cb-richtext { font-size: var(--gv-fs-base); color: var(--gv-text-heading); line-height: 24px; outline: none; }
     /* A clear border between the fixed top bar and the right settings panel. */
     #cb-root .gv-bo-cb-settings { border-top: 1px solid var(--gv-grey-500); }
     /* RTE editor line-height matches the real Quill container (≈20px, not 24px) —
@@ -86,8 +87,8 @@
     .cb-iframe__cap { font-size: var(--gv-fs-xs); opacity: .85; }
 
     /* ── Nested drop-zone affordances (page-local) ──────────────────────────── */
-    #cb-root .cb-zone--over { background: #eef6f9; border-color: var(--gv-teal-500); }
-    .cb-zone__ph { display: none; align-items: center; justify-content: center; min-height: 48px; border: 1px dashed #cbd4dc; border-radius: 3px; color: var(--gv-cool-grey-500); font-size: 13px; text-align: center; padding: 6px; }
+    #cb-root .cb-zone--over { background: var(--gv-teal-50); border-color: var(--gv-teal-500); }
+    .cb-zone__ph { display: none; align-items: center; justify-content: center; min-height: 48px; border: 1px dashed #cbd4dc; border-radius: 3px; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-13); text-align: center; padding: 6px; }
     #cb-root .cb-zone--empty > .cb-zone__ph { display: flex; }
     .cb-dropline--x { width: 2px; height: auto; min-height: 24px; margin: 0 2px; align-self: stretch; }
 
@@ -108,7 +109,7 @@
     #cb-root .gv-bo-cb-block.cb-locked { cursor: default; }
     .cb-lockmark { display: inline-flex; vertical-align: middle; opacity: .8; }
     .cb-lockmark .gv-icon { width: 12px; height: 12px; }
-    .cb-lockednote { display: flex; align-items: center; gap: 7px; margin: 14px 0 0; padding: 10px 12px; background: var(--gv-grey-100); border-radius: 4px; font-size: 13px; color: var(--gv-cool-grey-600); }
+    .cb-lockednote { display: flex; align-items: center; gap: 7px; margin: 14px 0 0; padding: 10px 12px; background: var(--gv-grey-100); border-radius: 4px; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
     .cb-lockednote .gv-icon { width: 14px; height: 14px; flex: none; }
     .cb-hero { border-radius: 4px; overflow: hidden; }
     .cb-hero__img { display: block; width: 100%; height: 240px; object-fit: cover; }
@@ -131,7 +132,7 @@
     .cb-cards[data-n="4"] { grid-template-columns: 1fr 1fr 1fr 1fr; }
     .cb-card { border: 1px solid var(--gv-grey-300); border-radius: 3px; overflow: hidden; }
     .cb-card__img { height: 90px; background: #e9eef2; }
-    .cb-card__cap { padding: 10px 12px; font-size: 13px; color: var(--gv-grey-800); }
+    .cb-card__cap { padding: 10px 12px; font-size: var(--gv-fs-13); color: var(--gv-grey-800); }
     .cb-file { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--gv-grey-300); border-radius: 3px; }
     .cb-file__info { display: flex; flex-direction: column; }
     .cb-file__name { font-size: var(--gv-fs-s); color: var(--gv-blue-500); }
@@ -141,7 +142,7 @@
     .cb-toast {
       position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
       background: var(--gv-grey-800); color: var(--gv-white); padding: 8px 14px; border-radius: 4px;
-      font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 100000;
+      font-size: var(--gv-fs-13); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 100000;
     }
     .cb-toast.is-show { opacity: .94; }
   </style>
@@ -347,7 +348,7 @@
             '<a class="gv-btn primary-outlined" data-pbox="events" href="#">Upcoming events</a>' +
           '</div>' +
           '<div class="gv-participants cb-pbox__people">' +
-            '<span class="gv-avatars on-light" aria-hidden="true"><span class="av" style="background:linear-gradient(135deg,#b6a290,#cdbfae)"></span><span class="av" style="background:linear-gradient(135deg,#8fa3b8,#b3c0cd)"></span><span class="av" style="background:linear-gradient(135deg,#a8927f,#c4b3a3)"></span></span>' +
+            '<span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>' +
             '<span class="gv-pcount"><span data-pbox="count">2,435</span> participants</span>' +
           '</div>' +
         '</div>'; } },
@@ -506,7 +507,7 @@
       if (widget === 'timeline') {
         var opts = CB_PHASES.map(function (p, i) { return '<option value="' + i + '"' + (i === CB_CURRENT ? ' selected' : '') + '>' + p.name + '</option>'; }).join('');
         return settingsRow('Current phase', '<select class="gv-bo-select" id="cb-f-curphase">' + opts + '</select>') +
-               settingsRow('', '<p class="cb-p" style="color:var(--gv-cool-grey-600);font-size:13px">The phase timeline mirrors the project’s phases. Residents see the same component.</p>');
+               settingsRow('', '<p class="cb-p" style="color:var(--gv-cool-grey-600);font-size:var(--gv-fs-13)">The phase timeline mirrors the project’s phases. Residents see the same component.</p>');
       }
       if (widget === 'events') {
         return settingsRow('Events shown', '<select class="gv-bo-select" id="cb-f-eventcount"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>');
@@ -844,6 +845,7 @@
       wireAccordion(block);
       wireTimeline(block);
       if (window.GVIcons) window.GVIcons.render(block);
+      if (window.GVAvatars) window.GVAvatars.fill(block);   // random faces in any avatar bubble (e.g. Participation Box)
       return block;
     }
 

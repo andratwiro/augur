@@ -319,3 +319,8 @@ body.gv-root {
 /* ── Content wrapper (page gutter, shell width) ────────────────────────────── */
 .gv-wrap { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px; }
 
+/* ── Responsive visibility utility ─────────────────────────────────────────────
+   Show by default, hide at the mobile breakpoint (the header hamburger threshold).
+   General-purpose: works anywhere, not only inside .gv-header__actions. */
+@media (max-width: 860px) { .gv-desktop-only { display: none !important; } }
+

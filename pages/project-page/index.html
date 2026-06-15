@@ -26,8 +26,6 @@
     main { padding-bottom: 8px; }
     /* layout-only (no colour/elevation/type authored here) */
     .pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
-    /* manager controls use the COMPACT button size (measured 6px 12px / ~39px) */
-    .pp-managers .gv-btn { padding: 6px 12px; }
     /* width:100% so the min-height + aspect-ratio can't drive the width past the
        viewport on mobile (the banner was computing ~767px from a 200px min-height). */
     .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
@@ -97,8 +95,8 @@
 
     <!-- ════════ Manager controls (right-aligned, above banner) ════════ -->
     <div class="pp-managers">
-      <a class="gv-btn secondary-outlined" href="#"><span data-gv-icon="edit" aria-hidden="true"></span> Edit project</a>
-      <button class="gv-btn primary" id="followBtn" aria-pressed="true">
+      <a class="gv-btn secondary-outlined size-s" href="#"><span data-gv-icon="edit" aria-hidden="true"></span> Edit project</a>
+      <button class="gv-btn primary size-s" id="followBtn" aria-pressed="true">
         <span data-gv-icon="notification" aria-hidden="true"></span> <span id="followLabel">Unfollow (9)</span>
       </button>
     </div>

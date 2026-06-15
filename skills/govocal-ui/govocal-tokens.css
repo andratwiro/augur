@@ -124,6 +124,7 @@
      doubled. Mirror it verbatim so probed font-family checkpoints diff cleanly. */
   --gv-font-family: 'Public Sans', 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --gv-fs-xs:     12px;
+  --gv-fs-13:     13px;  /* small-UI step (captions, toasts, help, drop placeholders) — recurs in BO chrome */
   --gv-fs-s:      14px;
   --gv-fs-base:   16px;
   --gv-fs-m:      16px;

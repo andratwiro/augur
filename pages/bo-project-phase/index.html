@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: #fff; font-family: var(--gv-font-family); }
@@ -678,12 +679,10 @@
     const tbody = document.getElementById("participants");
     PEOPLE.forEach(([name, email, role, active, joined], i) => {
       const tr = document.createElement("tr");
-      const initials = name.split(" ").map(w => w[0]).slice(0,2).join("");
-      const hue = (i * 47) % 360;
       tr.innerHTML = `
         <td><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
         <td><div class="gv-bo-table__person">
-          <span class="gv-bo-table__avatar" style="background:hsl(${hue} 35% 55%)">${initials}</span>
+          <span class="gv-bo-table__avatar"></span>
           <span><span class="gv-bo-table__name">${name}</span><br><span class="gv-bo-table__sub">${email}</span></span>
         </div></td>
         <td>${role}</td>

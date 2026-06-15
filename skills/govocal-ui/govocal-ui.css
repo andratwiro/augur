@@ -221,6 +221,10 @@
 .gv-footer__links a:hover, .gv-footer__links button:hover { color: var(--gv-tenant-primary); text-decoration: underline; }
 .gv-footer__links li:not(:first-child)::before { content: "·"; color: var(--gv-grey-500); margin: 0 14px; display: inline-block; }
 .gv-footer__powered { display: inline-flex; align-items: center; gap: 10px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); white-space: nowrap; }
+/* Optional tenant-logo slot (left of the legal links). Filled per-city by the theme
+   switcher via [data-gv-logo]; sizes whatever wordmark/svg/img it injects. */
+.gv-footer__logo { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.gv-footer__logo img, .gv-footer__logo svg { height: 28px; width: auto; display: block; }
 @media (max-width: 720px) {
   .gv-footer__inner { flex-direction: column; justify-content: center; text-align: center; gap: 22px; }
   .gv-footer__links ul { justify-content: center; }
