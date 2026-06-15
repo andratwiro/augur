@@ -1682,3 +1682,11 @@
    computes to rgb(30,30,30). Route the project content title (h1.gv-title) to the
    strong heading token without disturbing .gv-title.h2/.h3 (homepage sections). */
 h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
+
+/* ── FO idea-card reaction tally — grounded to match the comment tally ───────
+   Real product (digest .sc-dcEUjE 'comment'/'124', fo-project-ideation-list):
+   the like/dislike count renders at 16px / weight 400 / slate rgb(89,107,122),
+   identical to the comment-count tally — not the smaller, darker, semibold
+   treatment the base rule carried. Override so the reaction count matches the
+   comment count and the real product. */
+.gv-react__count { font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-cool-grey-600); }
