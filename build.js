@@ -1220,15 +1220,16 @@ function renderPagesIndex(pages) {
   // Split by surface: back-office (GoVocal's own theme) vs front-office (city-themed).
   const back = pages.filter((p) => p.surface === "back-office");
   const front = pages.filter((p) => p.surface !== "back-office");
-  const group = (label, list) =>
+  const group = (label, list, spaced) =>
     list.length
-      ? `<p class="section-eyebrow">${label} &middot; ${list.length}</p><div class="page-grid">${list.map(pageCard).join("")}</div>`
+      ? `<p class="section-eyebrow"${spaced ? ' style="margin-top:56px"' : ""}>${label} &middot; ${list.length}</p><div class="page-grid">${list.map(pageCard).join("")}</div>`
       : "";
-  // Back office first (the current focus); fall back to a single ungrouped list only
-  // if every page is the same surface and grouping would add no signal.
+  // Front office first (resident-facing surfaces), then back office. Fall back to a
+  // single ungrouped list only if every page is the same surface and grouping would
+  // add no signal.
   const cards =
     back.length && front.length
-      ? group("Back office", back) + group("Front office", front)
+      ? group("Front office", front) + group("Back office", back, true)
       : `<p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${pages.map(pageCard).join("")}</div>`;
 
   // Planned reference pages not built yet — shown as a roadmap of pending work.
