@@ -821,6 +821,51 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
   `gv-pcard__thumb--*` placeholder tints, `gv-thumb-cap` caption sizes, `gv-pcard__badge`
   emblem and `gv-spotlight__chip` (all canonical in `govocal-ui.css`), so it re-skins per theme.
 
+## Projects & folders LIST page — `.gv-projlist__title` / `.gv-searchfield` (`pages/projects-list/`)
+
+The standalone front-office **"All projects"** index (`/projects`), source-grounded on
+wietsedemo.govocal.com/en/projects (capture `fo-projects-list`). It REUSES the homepage
+toolbar (`.gv-ptoolbar` → status tabs + Tag/District filter selectors) and the boxed-card
+grid (`.gv-pgrid` of `.gv-pcard.boxed`) wholesale — net-new are only the **centered page
+title** and the **search field** wrapper. Verified via `fo-projects-list/{search,filter-btn,card}`.
+
+```html
+<div class="gv-section__body" id="e2e-projects-list">
+  <h1 class="gv-projlist__title">Projects</h1>          <!-- 34px / 500 / #474747 (--gv-text-pagetitle) -->
+
+  <!-- Search field: a .gv-input with room for the magnifier glyph on the right.
+       Wrapper is full-width × 48px, transparent (the input carries the 3px/#767676 border). -->
+  <div class="gv-searchfield">
+    <label class="gv-sr-only" for="projsearch">Search projects and folders</label>
+    <input class="gv-input" id="projsearch" type="search" placeholder="Search projects and folders" />
+    <span class="gv-searchfield__icon" aria-hidden="true"><svg><!--magnifier--></svg></span>
+  </div>
+
+  <!-- REUSED homepage toolbar: status tabs + Tag/District filter selectors -->
+  <div class="gv-ptoolbar">
+    <div class="gv-tabs" role="tablist">
+      <button class="gv-tab" role="tab" aria-selected="true">Published <span class="ct">(21)</span></button>
+      <button class="gv-tab" role="tab" aria-selected="false">Archived <span class="ct">(1)</span></button>
+      <button class="gv-tab" role="tab" aria-selected="false">All <span class="ct">(22)</span></button>
+    </div>
+    <div class="gv-filterbar">
+      <span class="gv-filterbar__label">Filter by</span>
+      <button class="gv-filter-btn">Tag <svg><!--chevron--></svg></button>
+      <button class="gv-filter-btn">District <svg><!--chevron--></svg></button>
+    </div>
+  </div>
+
+  <!-- REUSED boxed-card grid (see "Project card + rail"). Card chrome incl. the
+       outlined CTA ("View the issues"), "N weeks left" timer and "Finished" status. -->
+  <div class="gv-pgrid"><!-- .gv-pcard.boxed × N --></div>
+  <div class="gv-showmore"><button class="gv-btn primary-outlined">Show more</button></div>
+</div>
+```
+- Built page: `pages/projects-list/`. **Pure assembly** — the only page-new visuals are the
+  two atoms above (in `govocal-ui.css`) + the `--gv-text-pagetitle` token; everything else is
+  reused canonical, so it re-skins per `?theme=`. NOTE: the demo tenant has **no folders** — the
+  folder card here is reconstructed from the homepage folder-card pattern.
+
 ## Hero / banner — `.gv-hero` (`components/hero/`)
 
 ```html

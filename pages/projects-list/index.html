@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="gv-surface" content="front-office" />
+  <title>Projects &amp; folders — GoVocal (reference)</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <!--
+    REFERENCE REBUILD of the front-office "All projects" LIST/index page,
+    source-grounded on wietsedemo.govocal.com/en/projects (capture fo-projects-list):
+      centered "Projects" page title (34px/500/#474747)
+      → full-width search field ("Search projects and folders", magnifier)
+      → .gv-ptoolbar: status tabs (Published / Archived / All, with counts) on the
+        left + Tag / District filter selectors on the right
+      → .gv-pgrid 3-up grid of boxed project & folder cards (.gv-pcard.boxed) — the
+        same card chrome as the homepage (time-remaining, Finished status, outlined
+        CTAs incl. "View the issues").
+    Pure assembly: every colour / border / shadow / type comes from the canonical
+    govocal-ui.css + govocal-primitives.css. The whole page re-skins per city via
+    the ?theme= switcher. (This demo tenant has NO folders, so folder cards here are
+    reconstructed from the homepage folder-card pattern, flagged in the manifest.)
+  -->
+  <style>
+    /* Page-level layout only — no colour/elevation/type authored here. */
+    body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
+    .projlist-page { padding: 40px 0 64px; }
+
+    /* Demo-only floating auth toggle (sets data-auth on <body>; no real auth). */
+    .auth-toggle { position: fixed; left: 16px; bottom: 16px; z-index: 1200;
+      display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px;
+      background: var(--gv-grey-800); color: #fff; border: 0; border-radius: 999px; cursor: pointer;
+      font: 600 13px/1 var(--gv-font-family); }
+    .auth-toggle::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
+    [data-auth="in"] .auth-toggle::before { background: var(--gv-green-400); }
+  </style>
+</head>
+<body data-gv-theme-picker="off" data-auth="in" class="gv-root">
+
+  <!-- ════════ Header ════════ -->
+  <header id="e2e-navbar" class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Home"></a>
+
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#">Home</a></li>
+          <li>
+            <details class="gv-nav__dd">
+              <summary class="gv-nav__link">All projects
+                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">Report issues to the Council</a>
+                <a href="#">The Big Conversation</a>
+                <a href="#">Deliberation: Budget Priorities</a>
+                <a href="#">A square for everyone</a>
+                <a href="#">Participatory budget 2026</a>
+              </div>
+            </details>
+          </li>
+          <li><a class="gv-nav__link" href="#" aria-current="page">Projects</a></li>
+          <li><a class="gv-nav__link" href="#">Events</a></li>
+          <li>
+            <details class="gv-nav__dd right">
+              <summary class="gv-nav__link">More
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">About the platform</a>
+                <a href="#">FAQ</a>
+                <a href="#">Contact</a>
+              </div>
+            </details>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search">
+          <span data-gv-icon="search"></span>
+        </button>
+
+        <span class="gv-auth-out gv-desktop-only">
+          <button class="gv-btn primary" data-auth-set="in">Sign in</button>
+        </span>
+
+        <span class="gv-auth-in gv-desktop-only">
+          <button class="gv-iconbtn" aria-label="Notifications, 3 unread">
+            <span data-gv-icon="notification"></span>
+            <span class="gv-iconbtn__badge">3</span>
+          </button>
+          <details class="gv-nav__dd right gv-account-dd">
+            <summary class="gv-account">
+              <span class="gv-account__name">Go Vocal</span>
+              <span class="gv-avatar">GV</span>
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu gv-nav__menu--account">
+              <a href="#">Manage platform <span data-gv-icon="shield"></span></a>
+              <a href="#">My activity <span data-gv-icon="user-circle"></span></a>
+              <a href="#">My settings <span data-gv-icon="cogs"></span></a>
+              <button type="button" data-auth-set="out">Sign out <span data-gv-icon="power"></span></button>
+            </div>
+          </details>
+          <details class="gv-nav__dd right">
+            <summary class="gv-lang">EN
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu">
+              <a href="#">English</a>
+              <a href="#">Español</a>
+              <a href="#">Français</a>
+            </div>
+          </details>
+        </span>
+
+        <details class="gv-nav-m">
+          <summary aria-label="Show mobile navigation menu">
+            <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+            <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
+            <a href="#">Home</a>
+            <a href="#">All projects</a>
+            <a href="#" aria-current="page">Projects</a>
+            <a href="#">Events</a>
+            <a href="#">More</a>
+            <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Search</a>
+            <span class="gv-auth-in">
+              <a href="#">Manage platform</a>
+              <a href="#">My activity</a>
+              <a href="#">My settings</a>
+              <button class="gv-btn primary-outlined full" style="margin-top:14px" data-auth-set="out">Sign out</button>
+            </span>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" class="projlist-page">
+    <div class="gv-section__body" id="e2e-projects-list">
+
+      <!-- Centered page title -->
+      <h1 class="gv-projlist__title">Projects</h1>
+
+      <!-- Full-width search field (magnifier on the right) -->
+      <div class="gv-searchfield">
+        <label class="gv-sr-only" for="projsearch">Search projects and folders</label>
+        <input class="gv-input e2e-search-input" id="projsearch" type="search"
+               placeholder="Search projects and folders" />
+        <span class="gv-searchfield__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </span>
+      </div>
+
+      <!-- Toolbar: status tabs (left) + filter selectors (right) -->
+      <div class="gv-ptoolbar">
+        <div class="gv-tabs" role="tablist" aria-label="Publication status">
+          <button class="gv-tab" role="tab" aria-selected="true">Published <span class="ct">(21)</span></button>
+          <button class="gv-tab" role="tab" aria-selected="false">Archived <span class="ct">(1)</span></button>
+          <button class="gv-tab" role="tab" aria-selected="false">All <span class="ct">(22)</span></button>
+        </div>
+        <div class="gv-filterbar">
+          <span class="gv-filterbar__label">Filter by</span>
+          <button class="gv-filter-btn e2e-filter-selector-button">Tag
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="gv-filter-btn e2e-filter-selector-button">District
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3-up grid of boxed project + folder cards (static — the live list is virtualized) -->
+      <div class="gv-pgrid">
+
+        <!-- Issue-reporting project: outlined "View the issues" CTA + weeks-left timer -->
+        <article class="gv-pcard boxed e2e-project-card">
+          <div class="gv-pcard__top">
+            <div class="gv-pcard__topprog">
+              <span class="gv-pcard__meta time">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                6 weeks left
+              </span>
+              <div class="gv-progress" role="progressbar" aria-valuenow="22" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:22%"></div></div>
+            </div>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">View the issues</a>
+          </div>
+          <div class="gv-pcard__thumb icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
+          </div>
+          <div class="gv-pcard__body">
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Report issues to the Council</a></h3>
+            <p class="gv-pcard__desc">Spotted a pothole, broken light or fly-tipping? Report it here and follow how it's resolved.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <div class="gv-bubbles" aria-label="6 participants">
+                <span class="av"></span><span class="av"></span><span class="av"></span>
+                <span class="gv-bubbles__label">6 participants</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Survey project: contributions count + outlined CTA -->
+        <article class="gv-pcard boxed e2e-project-card">
+          <div class="gv-pcard__top">
+            <div class="gv-pcard__topprog">
+              <span class="gv-pcard__meta time">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                3 weeks left
+              </span>
+              <div class="gv-progress" role="progressbar" aria-valuenow="48" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:48%"></div></div>
+            </div>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Take the survey</a>
+          </div>
+          <div class="gv-pcard__thumb gv-pcard__thumb--ocean"><span class="gv-thumb-cap gv-thumb-cap--sm">THE BIG CONVERSATION</span></div>
+          <div class="gv-pcard__body">
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">The Big Conversation</a></h3>
+            <p class="gv-pcard__desc">Your voice, plus thousands of others. Tell us what matters most for the year ahead.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <div class="gv-bubbles" aria-label="1.2 thousand participants">
+                <span class="av"></span><span class="av"></span><span class="av"></span>
+                <span class="gv-bubbles__label">1,204 participants</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Ideation project: progress + CTA -->
+        <article class="gv-pcard boxed e2e-project-card">
+          <div class="gv-pcard__top">
+            <div class="gv-pcard__topprog">
+              <span class="gv-pcard__meta time">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                2 weeks left
+              </span>
+              <div class="gv-progress" role="progressbar" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:64%"></div></div>
+            </div>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Share your idea</a>
+          </div>
+          <div class="gv-pcard__thumb gv-pcard__thumb--sage"><span class="gv-thumb-cap gv-thumb-cap--sm">BUDGET PRIORITIES</span></div>
+          <div class="gv-pcard__body">
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Deliberation: Budget Priorities</a></h3>
+            <p class="gv-pcard__desc">How should we invest next year? Weigh in on the priorities that shape the city budget.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <div class="gv-bubbles" aria-label="312 participants">
+                <span class="av"></span><span class="av"></span><span class="av"></span>
+                <span class="gv-bubbles__label">312 participants</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Folder card: "N projects" + folder icon -->
+        <article class="gv-pcard boxed e2e-folder-card">
+          <div class="gv-pcard__top">
+            <span class="gv-pcard__meta">4 projects</span>
+            <span class="gv-pcard__topicon" role="img" aria-label="Project folder">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
+            </span>
+          </div>
+          <div class="gv-pcard__thumb gv-pcard__thumb--forest">
+            <div class="gv-pcard__badge"><span><span class="pre">our</span><b class="accent">district</b><b>climate<br>teams</b></span></div>
+          </div>
+          <div class="gv-pcard__body">
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">City climate teams</a></h3>
+            <p class="gv-pcard__desc">Four neighbourhood projects working on a greener, cooler, more liveable city.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <div class="gv-bubbles" aria-label="528 participants">
+                <span class="av"></span><span class="av"></span><span class="av"></span>
+                <span class="gv-bubbles__label">528 participants</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Participatory budget project -->
+        <article class="gv-pcard boxed e2e-project-card">
+          <div class="gv-pcard__top">
+            <div class="gv-pcard__topprog">
+              <span class="gv-pcard__meta time">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                5 weeks left
+              </span>
+              <div class="gv-progress" role="progressbar" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:30%"></div></div>
+            </div>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Submit a proposal</a>
+          </div>
+          <div class="gv-pcard__thumb gv-pcard__thumb--civic"><span class="gv-thumb-cap gv-thumb-cap--sm">PARTICIPATORY BUDGET</span></div>
+          <div class="gv-pcard__body">
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Participatory budget 2026</a></h3>
+            <p class="gv-pcard__desc">You decide how €500,000 is spent. Propose, discuss and vote on projects for your district.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <div class="gv-bubbles" aria-label="86 participants">
+                <span class="av"></span><span class="av"></span>
+                <span class="gv-bubbles__label">86 participants</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Finished project: status label + Read the report -->
+        <article class="gv-pcard boxed e2e-project-card">
+          <div class="gv-pcard__top">
+            <span class="gv-status-label finished">Finished</span>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Read the report</a>
+          </div>
+          <div class="gv-pcard__thumb gv-pcard__thumb--sand"><span class="gv-thumb-cap gv-thumb-cap--xs">Old Town renewal</span></div>
+          <div class="gv-pcard__body">
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Old Town renewal</a></h3>
+            <p class="gv-pcard__desc">Participation has closed. Read which proposals are being put into action.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <span class="gv-poststat closed"><b>503</b>&nbsp;contributions</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Volunteering project -->
+        <article class="gv-pcard boxed e2e-project-card">
+          <div class="gv-pcard__top">
+            <span class="gv-pcard__meta">Ongoing</span>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Volunteer</a>
+          </div>
+          <div class="gv-pcard__thumb icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
+          </div>
+          <div class="gv-pcard__body">
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Neighbourhood clean-up days</a></h3>
+            <p class="gv-pcard__desc">Lend a hand at one of our seasonal clean-ups. Sign up for the dates that suit you.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <div class="gv-bubbles" aria-label="74 participants">
+                <span class="av"></span><span class="av"></span><span class="av"></span>
+                <span class="gv-bubbles__label">74 participants</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Map / proposals project -->
+        <article class="gv-pcard boxed e2e-project-card">
+          <div class="gv-pcard__top">
+            <div class="gv-pcard__topprog">
+              <span class="gv-pcard__meta time">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                8 weeks left
+              </span>
+              <div class="gv-progress" role="progressbar" aria-valuenow="12" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:12%"></div></div>
+            </div>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Add a place</a>
+          </div>
+          <div class="gv-pcard__thumb gv-pcard__thumb--coral"><span class="gv-thumb-cap gv-thumb-cap--sm">A SQUARE FOR EVERYONE</span></div>
+          <div class="gv-pcard__body">
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">A square for everyone</a></h3>
+            <p class="gv-pcard__desc">Pin the places that matter to you and tell us how Market Square should change.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <div class="gv-bubbles" aria-label="122 participants">
+                <span class="av"></span><span class="av"></span><span class="av"></span>
+                <span class="gv-bubbles__label">122 participants</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Information / no-end-date project -->
+        <article class="gv-pcard boxed e2e-project-card">
+          <div class="gv-pcard__top">
+            <span class="gv-pcard__meta">122 contributions</span>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Learn more</a>
+          </div>
+          <div class="gv-pcard__thumb icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
+          </div>
+          <div class="gv-pcard__body">
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Our long-term city vision</a></h3>
+            <p class="gv-pcard__desc">An ongoing space to read, discuss and shape where the city is heading over the next decade.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <div class="gv-bubbles" aria-label="194 participants">
+                <span class="av"></span><span class="av"></span><span class="av"></span>
+                <span class="gv-bubbles__label">194 participants</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+      <div class="gv-showmore">
+        <button class="gv-btn primary-outlined">
+          Show more
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ════════ Footer ════════ -->
+  <footer class="gv-footer" style="margin-top:48px">
+    <div class="gv-footer__inner">
+      <div class="gv-footer__logo" data-gv-logo></div>
+      <nav class="gv-footer__links" aria-label="Legal">
+        <ul>
+          <li><a href="#">Terms and conditions</a></li>
+          <li><a href="#">Privacy policy</a></li>
+          <li><a href="#">Cookie policy</a></li>
+          <li><a href="#">Accessibility statement</a></li>
+          <li><button type="button">Cookie settings</button></li>
+          <li><a href="#">Site map</a></li>
+        </ul>
+      </nav>
+      <div class="gv-footer__powered">
+        <span>Powered by</span>
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal (formerly CitizenLab)">
+          <img class="gv-powered-logo" src="../../skills/govocal-ui/govocal-logo.svg" alt="Go Vocal" />
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Demo toggle: flip the header between signed-out and signed-in states -->
+  <button class="auth-toggle" id="authToggle" aria-pressed="true">Signed in</button>
+  <script>
+    (function () {
+      var body = document.body, t = document.getElementById('authToggle');
+      function set(s) {
+        body.dataset.auth = s;
+        t.textContent = s === 'in' ? 'Signed in' : 'Signed out';
+        t.setAttribute('aria-pressed', s === 'in');
+      }
+      t.addEventListener('click', function () { set(body.dataset.auth === 'in' ? 'out' : 'in'); });
+      document.addEventListener('click', function (e) {
+        var el = e.target.closest('[data-auth-set]');
+        if (!el) return;
+        e.preventDefault();
+        set(el.getAttribute('data-auth-set'));
+        document.querySelectorAll('.gv-nav__dd[open]').forEach(function (d) { d.open = false; });
+      });
+    })();
+
+    // Status tabs (Published / Archived / All) — single-select, keyboard-roving.
+    (function () {
+      var tabs = Array.prototype.slice.call(document.querySelectorAll('.gv-tabs [role="tab"]'));
+      if (!tabs.length) return;
+      function select(tab) {
+        tabs.forEach(function (t) { t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); });
+      }
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () { select(tab); });
+        tab.addEventListener('keydown', function (e) {
+          var i = tabs.indexOf(tab);
+          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            e.preventDefault();
+            var next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+            next.focus(); select(next);
+          }
+        });
+      });
+    })();
+
+    // Filter selectors (Tag / District) — toggle the open affordance; close on outside click.
+    (function () {
+      var btns = Array.prototype.slice.call(document.querySelectorAll('.gv-filter-btn'));
+      btns.forEach(function (b) {
+        b.setAttribute('aria-expanded', 'false');
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var open = b.getAttribute('aria-expanded') === 'true';
+          btns.forEach(function (o) { o.setAttribute('aria-expanded', 'false'); o.classList.remove('is-open'); });
+          if (!open) { b.setAttribute('aria-expanded', 'true'); b.classList.add('is-open'); }
+        });
+      });
+      document.addEventListener('click', function () {
+        btns.forEach(function (o) { o.setAttribute('aria-expanded', 'false'); o.classList.remove('is-open'); });
+      });
+    })();
+  </script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+</body>
+</html>

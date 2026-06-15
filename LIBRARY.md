@@ -100,6 +100,7 @@ as a starting point for a prototype.
 | **Project Proposals** | `/pages/project-proposals/` | `pages/project-proposals/` | Project page — Proposals (reference) |
 | **Project Survey** | `/pages/project-survey/` | `pages/project-survey/` | Project page — Survey (reference) |
 | **Project Volunteering** | `/pages/project-volunteering/` | `pages/project-volunteering/` | Project page — Volunteering (reference) |
+| **Projects List** | `/pages/projects-list/` | `pages/projects-list/` | Projects & folders — GoVocal (reference) |
 
 ## Prototypes (existing — for reference & patterns) — `<opportunity>/prototypes/<name>/`
 

@@ -1242,6 +1242,53 @@
       ]
     },
     {
+      "id": "fo-projects-list/search",
+      "built": "pages/projects-list/index.html",
+      "against": "fo-projects-list",
+      "map": {
+        ".e2e-search-input": ".gv-searchfield"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "border-radius",
+        "width"
+      ],
+      "uses": [
+        ".gv-searchfield"
+      ]
+    },
+    {
+      "id": "fo-projects-list/filter-btn",
+      "built": "pages/projects-list/index.html",
+      "against": "fo-projects-list",
+      "map": {
+        ".e2e-filter-selector-button": ".gv-filter-btn"
+      },
+      "props": [
+        "padding"
+      ],
+      "uses": [
+        ".gv-filter-btn"
+      ]
+    },
+    {
+      "id": "fo-projects-list/card",
+      "built": "pages/projects-list/index.html",
+      "against": "fo-projects-list",
+      "map": {
+        ".e2e-project-card": ".gv-pcard.boxed"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "border-radius"
+      ],
+      "uses": [
+        ".gv-pcard"
+      ]
+    },
+    {
       "id": "fo-homepage-survey-band/cta",
       "built": "components/homepage-survey-band/index.html",
       "against": "fo-homepage-survey-band",

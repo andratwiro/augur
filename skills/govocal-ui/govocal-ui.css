@@ -1336,3 +1336,25 @@
 @media (max-width: 860px) {
   .gv-featured-row { grid-template-columns: 1fr; gap: 28px; }
 }
+
+/* ── Projects & folders LIST page (FO /projects) ─────────────────────────────
+   Source-grounded on wietsedemo.govocal.com/en/projects (capture fo-projects-list).
+   The standalone "All projects" index: a centered page title, a full-width search
+   field, then the SAME .gv-ptoolbar (status tabs + Tag/District filter selectors)
+   and .gv-pgrid boxed-card grid already used on the homepage. Only net-new here are
+   the page-title atom and the magnifier search-field wrapper. */
+
+/* Centered page heading — live "Projects" span computes to 34px / 500 / rgb(71,71,71). */
+.gv-projlist__title { margin: 0 0 24px; text-align: center;
+  font-family: var(--gv-font-family); font-size: 34px; font-weight: 500;
+  line-height: 1.2; color: var(--gv-text-pagetitle); }
+
+/* Search field: a .gv-input with room on the right for a magnifier glyph. The live
+   wrapper (.e2e-search-input) is full-width × 48px; the input keeps the 3px radius +
+   #767676 border + 16px text of the .gv-input primitive (padding 12px 40px 12px 12px
+   to clear the icon). Pure layout — colour/border/type come from the primitive. */
+.gv-searchfield { position: relative; display: block; width: 100%; margin: 0 0 24px; }
+.gv-searchfield .gv-input { padding-right: 40px; }
+.gv-searchfield__icon { position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
+  width: 18px; height: 18px; color: var(--gv-text-secondary); pointer-events: none; }
+.gv-searchfield__icon svg, .gv-searchfield__icon .gv-icon { width: 18px; height: 18px; display: block; }
