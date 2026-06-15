@@ -444,7 +444,9 @@
   transition: box-shadow 150ms ease-out, transform 150ms ease-out; }
 .gv-pcard.boxed:hover { box-shadow: var(--gv-shadow-hover-lg); transform: translateY(-3px); }
 .gv-pcard.boxed .gv-pcard__thumb { border-radius: 0; aspect-ratio: 16 / 9; }
-.gv-pcard.boxed .gv-pcard__thumb.icon { background: var(--gv-grey-100); color: var(--gv-grey-500); }
+/* Real image-less project placeholder: white institution glyph on light grey
+   (source-grounded on the live .e2e-project-card placeholder, uxusertesting). */
+.gv-pcard.boxed .gv-pcard__thumb.icon { background: var(--gv-grey-300); color: #fff; }
 .gv-pcard.boxed .gv-pcard__thumb.icon svg, .gv-pcard.boxed .gv-pcard__thumb.icon .gv-icon { width: 56px; height: 56px; }
 
 /* ── Thumbnail image placeholders ─────────────────────────────────────────────
@@ -516,6 +518,41 @@
   padding: 52px 24px; border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
   background: var(--gv-grey-50); color: var(--gv-text-secondary); }
 .gv-events__empty svg, .gv-events__empty .gv-icon { width: 30px; height: 30px; color: var(--gv-grey-500); margin-bottom: 4px; }
+
+/* Events grid + event card — source-grounded on the live homepage events widget
+   (community.govocal.com): bordered white card, header image with a two-tone date
+   chip pinned top-right, then clock / link / registrants rows + a Register button.
+   Reuses the boxed-card border/shadow/radius tokens; date chip year band + Register
+   are tenant-themed (re-skin per ?theme=). */
+.gv-events__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+.gv-event-card { display: flex; flex-direction: column; position: relative; background: #fff;
+  border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); overflow: hidden; }
+.gv-event-card__media { position: relative; aspect-ratio: 16 / 7; background: var(--gv-grey-300); color: #fff;
+  display: grid; place-items: center; }
+.gv-event-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-event-card__media svg, .gv-event-card__media .gv-icon { width: 40px; height: 40px; }
+/* two-tone date chip, pinned top-right over the media */
+.gv-event-card__date { position: absolute; top: 14px; right: 14px; width: 58px; border-radius: var(--gv-radius);
+  overflow: hidden; text-align: center; box-shadow: var(--gv-shadow); line-height: 1.05; }
+.gv-event-card__date .m { display: block; padding-top: 6px; background: var(--gv-grey-100); color: var(--gv-grey-800);
+  font-size: var(--gv-fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+.gv-event-card__date .d { display: block; padding-bottom: 5px; background: var(--gv-grey-100); color: var(--gv-grey-800);
+  font-size: 22px; font-weight: 700; }
+.gv-event-card__date .y { display: block; padding: 3px 0; background: var(--gv-tenant-primary); color: #fff;
+  font-size: var(--gv-fs-xs); font-weight: 500; }
+/* attendance / RSVP pill, top-left */
+.gv-event-card__rsvp { position: absolute; top: 14px; left: 14px; padding: 4px 10px; border-radius: 999px;
+  background: var(--gv-success); color: #fff; font-size: var(--gv-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.gv-event-card__body { display: flex; flex-direction: column; flex: 1 1 auto; gap: 10px; padding: 18px 22px 22px; }
+.gv-event-card__title { margin: 0 0 2px; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }
+.gv-event-card__title a { color: inherit; text-decoration: none; }
+.gv-event-card__title a:hover { color: var(--gv-tenant-primary); }
+.gv-event-card__title a::after { content: ""; position: absolute; inset: 0; }
+.gv-event-card__title a:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-event-card__row { display: flex; align-items: center; gap: 9px; margin: 0; font-size: var(--gv-fs-s); color: var(--gv-grey-700); }
+.gv-event-card__row svg, .gv-event-card__row .gv-icon { flex: 0 0 auto; width: 16px; height: 16px; color: var(--gv-grey-700); }
+.gv-event-card__row a { position: relative; z-index: 1; color: var(--gv-tenant-primary); text-decoration: underline; }
+.gv-event-card__body .gv-btn { position: relative; z-index: 1; margin-top: auto; }
 
 /* ── CTA band (proposals / generic call to action) ─────────────────────────── */
 .gv-ctaband { background: color-mix(in srgb, var(--gv-tenant-primary) 8%, #fff); }

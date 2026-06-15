@@ -157,7 +157,8 @@ Filled status pill; set the background via `--bg`.
 ## Icons — `govocal-icons.js` (`components/Icon`)
 
 The real GoVocal icon set (Material-Design-derived paths), transcribed verbatim from
-`components/Icon/index.tsx`. Curated 81-icon subset of what the product UI actually uses.
+`components/Icon/index.tsx`. Curated subset of what the product UI actually uses
+(the live count + sorted list is `GVIcons.names` — it grows as we transcribe more).
 
 ```html
 <script src="govocal-icons.js" defer></script>
@@ -172,7 +173,7 @@ The real GoVocal icon set (Material-Design-derived paths), transcribed verbatim 
   `font-size`/`color` and the icon follows (so it re-themes with `--gv-tenant-*`).
 - **API:** `window.GVIcons.svg("search")` → markup string; `.names` → sorted list;
   `.render(root)` → rescan after injecting new `[data-gv-icon]` nodes.
-- **Names (81):** navigation/UI — `search close menu dots-horizontal plus minus check
+- **Names** (representative — `GVIcons.names` is the authoritative live list): navigation/UI — `search close menu dots-horizontal plus minus check
   edit delete settings filter refresh link open-in-new download send share
   chevron-{up,down,left,right} arrow-{up,down,left,right}`; participation — `vote-up
   vote-down idea comment comments basket basket-plus survey initiatives volunteer flag
@@ -588,8 +589,27 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
 <!-- Show more -->
 <div class="gv-showmore"><button class="gv-btn primary-outlined size-m">Mehr anzeigen <svg><!--chevron--></svg></button></div>
 
-<!-- Events widget (empty state) -->
+<!-- Events widget: head + grid of event cards (source-grounded on community.govocal.com).
+     Event card: header image (or placeholder + calendar icon) with a two-tone date chip
+     pinned top-right (month/day grey · year tenant-themed) + optional RSVP pill; body =
+     title, clock/link-or-location/registrants rows, filled Register. Reuses card tokens. -->
 <div class="gv-events__head"><h2 class="gv-title h2">Veranstaltungen</h2><a class="gv-btn text" href="#">Alle ansehen</a></div>
+<div class="gv-events__grid">
+  <article class="gv-event-card">
+    <div class="gv-event-card__media"><img src="…" alt="…" />  <!-- or placeholder + calendar icon -->
+      <span class="gv-event-card__date"><span class="m">Jun</span><span class="d">18</span><span class="y">2026</span></span>
+      <span class="gv-event-card__rsvp">Going</span>           <!-- optional attendance pill -->
+    </div>
+    <div class="gv-event-card__body">
+      <h3 class="gv-event-card__title"><a href="#">Community session …</a></h3>
+      <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 18 Jun 2026 · 11:00 – 12:00</p>
+      <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online meeting</a></p>  <!-- or location-simple + venue -->
+      <p class="gv-event-card__row"><span data-gv-icon="user"></span> 2 registrants</p>
+      <a class="gv-btn primary full" href="#">Register</a>
+    </div>
+  </article>
+</div>
+<!-- Empty-state variant (no events) -->
 <div class="gv-events__empty"><svg><!--calendar--></svg><p class="gv-text bodyM">Derzeit sind keine … geplant.</p></div>
 
 <!-- Proposals / generic CTA band -->
@@ -604,12 +624,16 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
 <!-- Rich-text block -->
 <div class="gv-prose"><p>…</p><p><em>…</em></p></div>
 
-<!-- Image placeholders: photo stand-ins so a page stays pure assembly (no inline
-     gradient/hex). Neutral mirrors the product's real image-less card; tinted set
-     reads like uploaded photography (content, fixed). Caption sizes a title tile. -->
-<div class="gv-pcard__thumb gv-pcard__thumb--placeholder"></div>           <!-- neutral (= #EDEFF0) -->
-<div class="gv-pcard__thumb gv-pcard__thumb--clay"><span class="gv-thumb-cap gv-thumb-cap--lg">THE BIG<br>DOWNTOWN SURVEY</span></div>
-<!-- tints: --forest --ocean --clay --sage --civic --coral --sand · caption sizes: (base 22) --lg 26 / --sm 20 / --xs 18 -->
+<!-- Image-less project card: the REAL product state is a light-grey placeholder with a
+     white institution glyph (use .gv-pcard__thumb.icon) — NOT a colour gradient. Use this
+     for any card without an uploaded photo; it's what live GoVocal renders. -->
+<div class="gv-pcard__thumb icon"><svg viewBox="0 0 24 24" fill="currentColor"><!--bank/columns--></svg></div>
+
+<!-- Branded campaign tiles (real but rarer — e.g. Stadt Wien "gutes Klima" / "Mitmach-Budget"
+     artwork): a tinted tile + big caption. Decorative, fixed (not a photo stand-in). Keep
+     sparing — most cards are photos or the grey placeholder above. -->
+<div class="gv-pcard__thumb gv-pcard__thumb--civic"><span class="gv-thumb-cap gv-thumb-cap--sm">PARTICIPATORY BUDGET</span></div>
+<!-- tints: --placeholder(neutral) --forest --ocean --clay --sage --civic --coral --sand · caption: (base 22) --lg 26 / --sm 20 / --xs 18 -->
 <!-- folder emblem inside a thumb -->
 <div class="gv-pcard__thumb gv-pcard__thumb--coral"><div class="gv-pcard__badge"><span><span class="pre">our</span><b class="accent">Westside</b><b>climate<br>team</b></span></div></div>
 ```
@@ -739,7 +763,7 @@ Templates ship as **real city tenants** (researched from each one's official bra
 |---|---|---|---|
 | `0` | GoVocal (default) | `#0E7C86` + `#E2603A` | Public Sans |
 | `1` | Københavns Kommune | `#000C2E` (KBH Blå) | KBH → Archivo |
-| `2` | Stadt Wien | `#FF5A64` (softened Wien-Rot) | WienerMelange → Mulish |
+| `2` | Stadt Wien | `#FF1D2B` (Wien-Rot) | WienerMelange → Mulish |
 | `3` | Engaged California | `#1C2745` + `#E79450` | Noto Sans |
 
 - On-screen picker (bottom-right swatches) switches live and updates the URL.
@@ -757,8 +781,8 @@ fonts (WienerMelange, KBH) fall back to Public Sans exactly as the live sites do
 ```
 
 **Contrast caveat (faithful-but-flagged):** real brand colours are kept even when
-they miss WCAG AA. Stadt Wien's in-product `#FF5A64` (a softened Wien-Rot) is only
-~3.4:1 white-on-primary and the audit flags it — kept faithful. The GoVocal default is
+they miss WCAG AA. Stadt Wien's in-product `#FF1D2B` (near-pure Wien-Rot) is only
+~3.8:1 white-on-primary and the audit flags it — kept faithful. The GoVocal default is
 an AA-safe **deep teal `#0E7C86`** (4.95:1) + warm coral `#E2603A` accent, chosen over
 the literal product pink (`#E10069`/`#ef0071`, which barely cleared AA). On the real
 platform a light primary would take dark button text.

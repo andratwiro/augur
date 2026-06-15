@@ -43,6 +43,14 @@
       "uses": [".gv-pcard", ".gv-btn"]
     },
     {
+      "id": "homepage-event-title",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage-community",
+      "map": { ".e2e-event-card h3": ".gv-event-card__title" },
+      "props": ["color", "font-size", "font-weight"],
+      "uses": [".gv-event-card"]
+    },
+    {
       "id": "homepage-section-title",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage",
