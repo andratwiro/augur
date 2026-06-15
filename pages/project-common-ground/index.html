@@ -114,7 +114,7 @@
     @media (max-width: 560px) { .cg-spot { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body class="gv-root gv-shell" data-gv-theme-picker="off">
+<body class="gv-root gv-shell" data-gv-theme-picker="off" data-auth="in">
 
   <!-- ════════ Header ════════ -->
   <header class="gv-header sticky">
@@ -129,7 +129,59 @@
         </ul>
       </nav>
       <div class="gv-header__actions">
-        <button class="gv-iconbtn" aria-label="Search"><span data-gv-icon="search"></span></button>
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
+
+        <!-- ════ Signed-OUT actions ════ -->
+        <span class="gv-auth-out gv-desktop-only">
+          <button class="gv-btn primary" data-auth-set="in">Sign in</button>
+        </span>
+
+        <!-- ════ Signed-IN actions (same component, other state — flip with the toggle) ════ -->
+        <span class="gv-auth-in gv-desktop-only">
+          <button class="gv-iconbtn" aria-label="Notifications, 3 unread">
+            <span data-gv-icon="notification"></span>
+            <span class="gv-iconbtn__badge">3</span>
+          </button>
+          <details class="gv-nav__dd right gv-account-dd">
+            <summary class="gv-account">
+              <span class="gv-account__name">Sofie Maes</span>
+              <span class="gv-avatar">SM</span>
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu gv-nav__menu--account">
+              <a href="#">Manage platform <span data-gv-icon="shield"></span></a>
+              <a href="#">My activity <span data-gv-icon="user-circle"></span></a>
+              <a href="#">My settings <span data-gv-icon="cogs"></span></a>
+              <button type="button" data-auth-set="out">Sign out <span data-gv-icon="power"></span></button>
+            </div>
+          </details>
+          <details class="gv-nav__dd right">
+            <summary class="gv-lang">EN
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu">
+              <a href="#">English</a>
+              <a href="#">Español</a>
+              <a href="#">Français</a>
+            </div>
+          </details>
+        </span>
+
+        <!-- Mobile menu (shows < 860px) -->
+        <details class="gv-nav-m">
+          <summary aria-label="Open navigation menu">
+            <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+            <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
+            <a href="#" aria-current="page">Home</a>
+            <a href="#">All projects</a>
+            <a href="#">Proposals</a>
+            <a href="#">Events</a>
+            <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Search</a>
+          </nav>
+        </details>
       </div>
     </div>
   </header>
