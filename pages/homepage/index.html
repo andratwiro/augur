@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Wien mitgestalten — GoVocal homepage (reference)</title>
+  <title>Homepage — GoVocal (reference)</title>
   <link rel="stylesheet" href="govocal-tokens.css" />
   <link rel="stylesheet" href="govocal-ui.css" />
   <!--
@@ -15,13 +15,13 @@
     project/folder cards (avatar bubbles, time-remaining + progress, status labels,
     a wide feature card, Show more) → events widget (empty state) → proposals CTA
     band → rich-text block → footer.
-    Content/tenant = Stadt Wien (Wien Rot + Wiener Melange) so it reads like a real
-    platform; photos/illustrations are CSS placeholders. Brand colours + type are
-    theme-driven (?theme= switcher), so the whole page re-skins per city.
+    Uses every homepage widget in the library. Photos/illustrations are CSS
+    placeholders; brand colours + type are theme-driven (?theme= switcher), so the
+    whole page re-skins per city.
   -->
   <style>
     body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
-    /* Klimateam campaign badge tiles (folder-card thumb) — light placeholders. */
+    /* Climate-team campaign badge tile (folder-card thumb) — light placeholder. */
     .kbadge { width: 150px; height: 150px; border-radius: 50%; border: 6px solid rgba(255,255,255,0.85);
       display: grid; place-items: center; text-align: center; line-height: 1.12; color: #1a1a1a; position: relative; }
     .kbadge b { font-size: 19px; display: block; }
@@ -33,34 +33,34 @@
   <!-- ════════ Header ════════ -->
   <header id="e2e-navbar" class="gv-header sticky">
     <div class="gv-header__inner">
-      <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite" aria-current="page"></a>
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Home" aria-current="page"></a>
 
-      <nav class="gv-nav" aria-label="Primäre">
+      <nav class="gv-nav" aria-label="Primary">
         <ul class="gv-nav__list">
-          <li><a class="gv-nav__link" href="#" aria-current="page">Willkommen</a></li>
+          <li><a class="gv-nav__link" href="#" aria-current="page">Home</a></li>
           <li>
             <details class="gv-nav__dd">
-              <summary class="gv-nav__link">Beteiligungsprojekte
+              <summary class="gv-nav__link">All projects
                 <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </summary>
               <div class="gv-nav__menu">
-                <a href="#">Alle Projekte</a>
-                <a href="#">Laufende Projekte</a>
-                <a href="#">Abgeschlossene Projekte</a>
+                <a href="#">All projects</a>
+                <a href="#">Ongoing projects</a>
+                <a href="#">Finished projects</a>
               </div>
             </details>
           </li>
-          <li><a class="gv-nav__link" href="#">Mitmachen</a></li>
-          <li><a class="gv-nav__link" href="#">Netiquette</a></li>
+          <li><a class="gv-nav__link" href="#">Proposals</a></li>
+          <li><a class="gv-nav__link" href="#">Events</a></li>
           <li>
             <details class="gv-nav__dd right">
-              <summary class="gv-nav__link">Mehr
+              <summary class="gv-nav__link">More
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
               </summary>
               <div class="gv-nav__menu">
-                <a href="#">Über die Plattform</a>
-                <a href="#">Häufige Fragen</a>
-                <a href="#">Kontakt</a>
+                <a href="#">About the platform</a>
+                <a href="#">FAQ</a>
+                <a href="#">Contact</a>
               </div>
             </details>
           </li>
@@ -68,21 +68,21 @@
       </nav>
 
       <div class="gv-header__actions">
-        <button class="gv-iconbtn gv-desktop-only" aria-label="Suche">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         </button>
-        <button class="gv-btn primary gv-desktop-only" style="padding:8px 18px;line-height:20px">Anmelden</button>
+        <button class="gv-btn primary gv-desktop-only" style="padding:8px 18px;line-height:20px">Sign in</button>
         <details class="gv-nav-m">
-          <summary aria-label="Mobiles Navigationsmenü anzeigen">
+          <summary aria-label="Show mobile navigation menu">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
           </summary>
-          <nav class="gv-nav-m__panel" aria-label="Hauptnavigation (mobil)">
-            <a href="#" aria-current="page">Willkommen</a>
-            <a href="#">Beteiligungsprojekte</a>
-            <a href="#">Mitmachen</a>
-            <a href="#">Netiquette</a>
-            <a href="#">Mehr</a>
-            <button class="gv-btn primary full">Anmelden</button>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <a href="#" aria-current="page">Home</a>
+            <a href="#">All projects</a>
+            <a href="#">Proposals</a>
+            <a href="#">Events</a>
+            <a href="#">More</a>
+            <button class="gv-btn primary full">Sign in</button>
           </nav>
         </details>
       </div>
@@ -94,63 +94,63 @@
     <!-- ════════ Hero / full-width banner (+ overlaid CTA) ════════ -->
     <section class="gv-hero">
       <div class="gv-hero__inner">
-        <h1 class="gv-hero__title">Wien mitgestalten</h1>
-        <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
-        <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
+        <h1 class="gv-hero__title">Welcome to our participation platform</h1>
+        <p class="gv-hero__lead">Have your say on the decisions that shape our city</p>
+        <div class="gv-avatars" aria-label="15.4 thousand participants">
           <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
-          <span class="count">15,4 Tsd.</span>
+          <span class="count">15.4k</span>
         </div>
-        <div><button class="gv-btn white" style="line-height:22px">Registrieren</button></div>
+        <div><button class="gv-btn white" style="line-height:22px">Register</button></div>
       </div>
       <!-- Staff-pinned banner CTA pointing at one project -->
       <a class="gv-hero__cta" href="#">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Sagen Sie Ihre Meinung zum Otto-Wagner-Areal!</span>
+        <span>Have your say on the future of Central Park!</span>
       </a>
-      <span class="gv-hero__credit">Banner: © Stadt Wien, Gerd Götzenbrucker</span>
+      <span class="gv-hero__credit">Banner: © City of Springfield</span>
     </section>
 
     <!-- ════════ Spotlight — currently working on ════════ -->
     <section class="gv-spotlight" aria-labelledby="spot-title">
       <div class="gv-spotlight__inner">
         <div>
-          <p class="gv-spotlight__eyebrow">Aktuell in Bearbeitung</p>
-          <h2 class="gv-spotlight__title" id="spot-title">Gesunde Blindengasse</h2>
-          <p class="gv-spotlight__lead">Wie wird die Blindengasse kühler, grüner und gesünder? Teilen Sie Ihre Ideen
-            in unserer Umfrage — die Beteiligung läuft nur noch wenige Tage.</p>
+          <p class="gv-spotlight__eyebrow">Currently working on</p>
+          <h2 class="gv-spotlight__title" id="spot-title">A greener Main Street</h2>
+          <p class="gv-spotlight__lead">How do we make Main Street cooler, greener and healthier? Share your ideas
+            in our survey — participation closes in just a few days.</p>
           <div class="gv-spotlight__actions">
-            <a class="gv-btn primary size-m" href="#">Umfrage ausfüllen</a>
-            <div class="gv-bubbles" aria-label="145 Teilnehmende">
+            <a class="gv-btn primary size-m" href="#">Take the survey</a>
+            <div class="gv-bubbles" aria-label="145 participants">
               <span class="av"></span><span class="av"></span><span class="av"></span>
               <span class="count">145</span>
-              <span class="gv-bubbles__label">Teilnehmende</span>
+              <span class="gv-bubbles__label">participants</span>
             </div>
           </div>
         </div>
         <div class="gv-spotlight__media" style="background:#0a7a4f">
-          <span style="background:#0a7a4f;color:#fff;border-radius:16px 16px 16px 2px;padding:18px 22px;font-size:22px;font-weight:800;line-height:1.1">GESUNDE<br>BLINDENGASSE</span>
+          <span style="background:#0a7a4f;color:#fff;border-radius:16px 16px 16px 2px;padding:18px 22px;font-size:22px;font-weight:800;line-height:1.1">A GREENER<br>MAIN STREET</span>
         </div>
       </div>
     </section>
 
-    <!-- ════════ Beteiligungsprojekte — tabs + filter + grid ════════ -->
+    <!-- ════════ Participation projects — tabs + filter + grid ════════ -->
     <section class="gv-section" aria-labelledby="proj-title">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="proj-title">Beteiligungsprojekte</h2></div>
+      <div class="gv-section__head"><h2 class="gv-title h2" id="proj-title">Participation projects</h2></div>
       <div class="gv-section__body">
 
         <!-- Toolbar: status tabs (left) + filter selectors (right) -->
         <div class="gv-ptoolbar">
-          <div class="gv-tabs" role="tablist" aria-label="Projektstatus">
-            <button class="gv-tab" role="tab" aria-selected="true">Veröffentlicht <span class="ct">(12)</span></button>
-            <button class="gv-tab" role="tab" aria-selected="false">Archiviert <span class="ct">(5)</span></button>
-            <button class="gv-tab" role="tab" aria-selected="false">Alle <span class="ct">(17)</span></button>
+          <div class="gv-tabs" role="tablist" aria-label="Project status">
+            <button class="gv-tab" role="tab" aria-selected="true">Published <span class="ct">(12)</span></button>
+            <button class="gv-tab" role="tab" aria-selected="false">Archived <span class="ct">(5)</span></button>
+            <button class="gv-tab" role="tab" aria-selected="false">All <span class="ct">(17)</span></button>
           </div>
           <div class="gv-filterbar">
-            <span class="gv-filterbar__label">Filtern nach</span>
-            <button class="gv-filter-btn">Thema
+            <span class="gv-filterbar__label">Filter by</span>
+            <button class="gv-filter-btn">Tag
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
-            <button class="gv-filter-btn">Bezirk
+            <button class="gv-filter-btn">Area
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
@@ -162,26 +162,26 @@
           <!-- Wide feature card (image left, copy right) -->
           <article class="gv-pcard boxed horizontal span-3">
             <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#b7423a,#d98a5a)">
-              <span style="color:#fff;font-size:26px;font-weight:800;line-height:1.1">DIE GROSSE<br>MEIDLING-UMFRAGE</span>
+              <span style="color:#fff;font-size:26px;font-weight:800;line-height:1.1">THE BIG<br>DOWNTOWN SURVEY</span>
             </div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Die große Meidling-Umfrage</a></h3>
-              <p class="gv-pcard__desc">Was braucht Meidling, um lebenswerter zu werden? Sagen Sie uns, welche Orte,
-                Wege und Ideen Ihnen am wichtigsten sind.</p>
+              <h3 class="gv-pcard__title"><a href="#">The big downtown survey</a></h3>
+              <p class="gv-pcard__desc">What does downtown need to become more liveable? Tell us which places,
+                routes and ideas matter most to you.</p>
               <div class="gv-pcard__progress">
                 <span class="gv-pcard__meta time">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Noch 4 Wochen
+                  4 weeks left
                 </span>
-                <div class="gv-progress" role="progressbar" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100" aria-label="Zeitlicher Fortschritt"><div class="gv-progress__fill" style="width:35%"></div></div>
+                <div class="gv-progress" role="progressbar" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:35%"></div></div>
               </div>
               <div class="gv-pcard__foot">
-                <div class="gv-bubbles" aria-label="248 Teilnehmende">
+                <div class="gv-bubbles" aria-label="248 participants">
                   <span class="av"></span><span class="av"></span><span class="av"></span>
                   <span class="count">248</span>
-                  <span class="gv-bubbles__label">Teilnehmende</span>
+                  <span class="gv-bubbles__label">participants</span>
                 </div>
-                <a class="gv-btn primary-outlined" href="#">Umfrage ausfüllen</a>
+                <a class="gv-btn primary-outlined" href="#">Take the survey</a>
               </div>
             </div>
           </article>
@@ -190,15 +190,15 @@
           <article class="gv-pcard boxed">
             <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9fb0a3,#cdd6cd)"></div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Gellertplatz für alle</a></h3>
-              <p class="gv-pcard__desc">Wie wird der Gellertplatz zu einem beliebten Treffpunkt im Grätzl?</p>
+              <h3 class="gv-pcard__title"><a href="#">A square for everyone</a></h3>
+              <p class="gv-pcard__desc">How can Market Square become a popular meeting point in the neighbourhood?</p>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
-                <div class="gv-bubbles" aria-label="122 Teilnehmende">
+                <div class="gv-bubbles" aria-label="122 participants">
                   <span class="av"></span><span class="av"></span><span class="av"></span>
                   <span class="count">122</span>
                 </div>
-                <a class="gv-btn primary-outlined" href="#">Mehr erfahren</a>
+                <a class="gv-btn primary-outlined" href="#">Learn more</a>
               </div>
             </div>
           </article>
@@ -209,17 +209,17 @@
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 3 8v2h18V8l-9-5Zm-7 9v6H4v2h16v-2h-1v-6h-2v6h-3v-6h-2v6H9v-6H7v6H5v-6H5Z"/></svg>
             </div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Zukunft Taborstraße</a></h3>
+              <h3 class="gv-pcard__title"><a href="#">The future of Station Road</a></h3>
               <div class="gv-pcard__progress">
                 <span class="gv-pcard__meta time">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Noch 6 Wochen
+                  6 weeks left
                 </span>
-                <div class="gv-progress" role="progressbar" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100" aria-label="Zeitlicher Fortschritt"><div class="gv-progress__fill" style="width:18%"></div></div>
+                <div class="gv-progress" role="progressbar" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:18%"></div></div>
               </div>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
-                <a class="gv-btn primary-outlined" href="#">Umfrage ausfüllen</a>
+                <a class="gv-btn primary-outlined" href="#">Take the survey</a>
               </div>
             </div>
           </article>
@@ -229,16 +229,16 @@
             <div class="gv-pcard__thumb" style="background:#f4736f">
               <span class="gv-pcard__count">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
-                3 Projekte
+                3 projects
               </span>
-              <div class="kbadge"><span><span class="macht">macht</span><b style="color:#d83a36">Penzing</b><b>gutes<br>Klima</b></span></div>
+              <div class="kbadge"><span><span class="macht">our</span><b style="color:#d83a36">Westside</b><b>climate<br>team</b></span></div>
             </div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Wiener Klimateam</a></h3>
-              <p class="gv-pcard__desc">Gesucht: Ihre Ideen fürs gute Klima in den Bezirken Penzing, Josefstadt und Alsergrund.</p>
+              <h3 class="gv-pcard__title"><a href="#">City climate teams</a></h3>
+              <p class="gv-pcard__desc">Wanted: your ideas for a better climate in the Westside, Old Town and Riverside districts.</p>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
-                <div class="gv-bubbles" aria-label="346 Teilnehmende">
+                <div class="gv-bubbles" aria-label="346 participants">
                   <span class="av"></span><span class="av"></span><span class="av"></span>
                   <span class="count">346</span>
                 </div>
@@ -248,38 +248,38 @@
 
           <!-- Finished project card (status label + report CTA) -->
           <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb" style="background:#f3e2a6;color:#7a5e12;font-weight:800;font-size:18px;padding:14px">Alt-Ottakring wie neu!</div>
+            <div class="gv-pcard__thumb" style="background:#f3e2a6;color:#7a5e12;font-weight:800;font-size:18px;padding:14px">Old Town renewal</div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Alt-Ottakring wie neu!</a></h3>
-              <p class="gv-pcard__desc">Die Beteiligung ist abgeschlossen. Lesen Sie, welche Vorschläge umgesetzt werden.</p>
+              <h3 class="gv-pcard__title"><a href="#">Old Town renewal</a></h3>
+              <p class="gv-pcard__desc">Participation has closed. Read which proposals are being put into action.</p>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
-                <span class="gv-status-label finished">Abgeschlossen</span>
-                <a class="gv-btn primary-outlined" href="#">Bericht lesen</a>
+                <span class="gv-status-label finished">Finished</span>
+                <a class="gv-btn primary-outlined" href="#">Read the report</a>
               </div>
             </div>
           </article>
 
-          <!-- Mitmach-Budget card -->
+          <!-- Participatory budget card -->
           <article class="gv-pcard boxed">
             <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#2b5cab,#f2c200)">
-              <span style="color:#fff;font-size:20px;font-weight:800">MITMACH-BUDGET</span>
+              <span style="color:#fff;font-size:20px;font-weight:800">PARTICIPATORY BUDGET</span>
             </div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Mitmach-Budget Brigittenau 2026</a></h3>
+              <h3 class="gv-pcard__title"><a href="#">Participatory budget 2026</a></h3>
               <div class="gv-pcard__progress">
                 <span class="gv-pcard__meta time">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Noch 2 Wochen
+                  2 weeks left
                 </span>
-                <div class="gv-progress" role="progressbar" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100" aria-label="Zeitlicher Fortschritt"><div class="gv-progress__fill" style="width:62%"></div></div>
+                <div class="gv-progress" role="progressbar" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:62%"></div></div>
               </div>
               <div class="gv-pcard__foot">
-                <div class="gv-bubbles" aria-label="86 Teilnehmende">
+                <div class="gv-bubbles" aria-label="86 participants">
                   <span class="av"></span><span class="av"></span>
                   <span class="count">86</span>
                 </div>
-                <a class="gv-btn primary-outlined" href="#">Vorschlag einreichen</a>
+                <a class="gv-btn primary-outlined" href="#">Submit a proposal</a>
               </div>
             </div>
           </article>
@@ -288,7 +288,7 @@
 
         <div class="gv-showmore">
           <button class="gv-btn primary-outlined size-m">
-            Mehr anzeigen
+            Show more
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
         </div>
@@ -299,12 +299,12 @@
     <section class="gv-section" aria-labelledby="events-title">
       <div class="gv-section__body">
         <div class="gv-events__head">
-          <h2 class="gv-title h2" id="events-title" style="margin:0">Kommende und laufende Veranstaltungen</h2>
-          <a class="gv-btn text" href="#">Alle Veranstaltungen ansehen</a>
+          <h2 class="gv-title h2" id="events-title" style="margin:0">Upcoming and ongoing events</h2>
+          <a class="gv-btn text" href="#">View all events</a>
         </div>
         <div class="gv-events__empty">
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          <p class="gv-text bodyM" style="margin:0">Derzeit sind keine kommenden oder laufenden Veranstaltungen geplant.</p>
+          <p class="gv-text bodyM" style="margin:0">No upcoming or ongoing events are currently scheduled.</p>
         </div>
       </div>
     </section>
@@ -312,19 +312,20 @@
     <!-- ════════ Proposals CTA band ════════ -->
     <section class="gv-ctaband" aria-labelledby="cta-title">
       <div class="gv-ctaband__inner">
-        <h2 class="gv-ctaband__title" id="cta-title">Was ist Ihr Anliegen?</h2>
-        <p class="gv-ctaband__lead">Reichen Sie Ihren Vorschlag auf dieser Plattform ein, sammeln Sie Unterstützung
-          und bringen Sie ihn auf die Agenda der Stadt.</p>
-        <a class="gv-btn primary size-m" href="#">Alle Vorschläge entdecken</a>
+        <h2 class="gv-ctaband__title" id="cta-title">What is your proposal?</h2>
+        <p class="gv-ctaband__lead">Post your proposal on this platform, gather support and place it on the
+          city's agenda.</p>
+        <a class="gv-btn primary size-m" href="#">Explore all proposals</a>
       </div>
     </section>
 
     <!-- ════════ Rich-text welcome block ════════ -->
     <section class="gv-section">
       <div class="gv-prose">
-        <p>Auf dieser Plattform finden Sie die Beteiligungsprojekte der Stadt Wien. Hier können Sie im Dialog
-          mit der Stadt zu bestimmten Fragestellungen Ihre Gedanken austauschen, Ideen sammeln und Feedback geben.</p>
-        <p><em>Registrieren Sie sich noch heute und gestalten Sie ein lebenswerteres Wien mit!</em></p>
+        <p>Welcome to the official engagement platform of our city. Here you can learn about participation
+          projects, exchange your thoughts on specific questions, collect ideas and give feedback in dialogue
+          with the city.</p>
+        <p><em>Sign up today and help us create a more connected city!</em></p>
       </div>
     </section>
 
@@ -334,19 +335,19 @@
   <footer class="gv-footer" style="margin-top:48px">
     <div class="gv-footer__inner">
       <div class="gv-footer__logo" data-gv-logo></div>
-      <nav class="gv-footer__links" aria-label="Rechtliches">
+      <nav class="gv-footer__links" aria-label="Legal">
         <ul>
-          <li><a href="#">Nutzungsbedingungen</a></li>
-          <li><a href="#">Impressum &amp; Datenschutz</a></li>
-          <li><a href="#">Cookierichtlinie</a></li>
-          <li><a href="#">Richtlinie zur Barrierefreiheit</a></li>
-          <li><button type="button">Cookie-Einstellungen</button></li>
-          <li><a href="#">Sitemap</a></li>
+          <li><a href="#">Terms and conditions</a></li>
+          <li><a href="#">Privacy policy</a></li>
+          <li><a href="#">Cookie policy</a></li>
+          <li><a href="#">Accessibility statement</a></li>
+          <li><button type="button">Cookie settings</button></li>
+          <li><a href="#">Site map</a></li>
         </ul>
       </nav>
       <div class="gv-footer__powered">
-        <span>Ermöglicht durch</span>
-        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal (ehemals CitizenLab)">
+        <span>Powered by</span>
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal (formerly CitizenLab)">
           <img class="gv-powered-logo" src="govocal-logo.svg" alt="Go Vocal" />
         </a>
       </div>
