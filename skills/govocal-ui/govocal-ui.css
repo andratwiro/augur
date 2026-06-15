@@ -727,6 +727,10 @@
 .gv-projdesc { color: var(--gv-text-primary); max-width: 760px; }
 .gv-projdesc p { margin: 0 0 14px; font-size: var(--gv-fs-l); line-height: 1.6; }
 .gv-projdesc strong { font-weight: 700; }
+/* an accordion sitting inside a project description matches the 18px body copy
+   around it (question + answer), not the denser 16px in-phase accordion. */
+.gv-projdesc .gv-acc__head { font-size: var(--gv-fs-l); }
+.gv-projdesc .gv-acc__body p { font-size: var(--gv-fs-l); }
 .gv-participants { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; padding-top: 4px; }
 .gv-participants .gv-avatars { margin: 0; }
 .gv-avatars.on-light .av { border-color: #fff; box-shadow: 0 0 0 1px var(--gv-grey-300); }

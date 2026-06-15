@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
   <!--
     FLAGSHIP reference rebuild of a GoVocal IDEATION project page, composed from the
     govocal-ui system. Source: uxusertesting.govocal.com (City of Raleigh, "Let's
@@ -27,12 +28,14 @@
     .pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
     /* manager controls use the COMPACT button size (measured 6px 12px / ~39px) */
     .pp-managers .gv-btn { padding: 6px 12px; }
-    .pp-banner { aspect-ratio: 1150 / 300; min-height: 200px; border-radius: 0; overflow: hidden; margin-top: 12px; }
+    .pp-banner { aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
     .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .pp-title { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 10px 40px; align-items: start; padding: 36px 0 44px; }
     .pp-title h1 { grid-column: 1; }
     .pp-cta { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 10px; }
     .pp-cta .gv-btn { justify-content: center; }
+    /* participant row centered under the CTA stack (Wien project-header pattern) */
+    .pp-cta .gv-participants { display: flex; justify-content: center; }
     .pp-desc { grid-column: 1; }
     @media (max-width: 760px) { .pp-title { grid-template-columns: 1fr; } .pp-title h1, .pp-cta, .pp-desc { grid-column: 1; } .pp-cta { grid-row: auto; } }
   </style>
@@ -104,9 +107,9 @@
         <a class="gv-btn primary-outlined" href="#ideas">See the ideas</a>
         <div class="gv-participants" style="margin-top:4px;">
           <span class="gv-avatars on-light" aria-hidden="true">
-            <span class="av" style="background:linear-gradient(135deg,#b6a290,#cdbfae)"></span>
-            <span class="av" style="background:linear-gradient(135deg,#8fa3b8,#b3c0cd)"></span>
-            <span class="av" style="background:linear-gradient(135deg,#a8927f,#c4b3a3)"></span>
+            <span class="av"></span>
+            <span class="av"></span>
+            <span class="av"></span>
           </span>
           <span class="gv-pcount">170 participants</span>
           <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time participant count."></span>
