@@ -214,11 +214,26 @@
 .gv-rail {
   display: flex; gap: 22px; overflow-x: auto; -webkit-overflow-scrolling: touch;
   padding: 4px 24px 20px; margin: 0 -24px;
-  scroll-snap-type: x proximity; scrollbar-width: thin;
-  /* soft white degradation at both ends so cards fade out instead of cutting cold
-     (live Wien carousels) — page bg is white, so a horizontal mask reads as a fade */
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
+  /* snap must respect the 24px bleed padding, else it auto-scrolls the gutter away
+     on load and the first card rests flush to the rail edge (left of the title). */
+  scroll-snap-type: x proximity; scroll-padding-inline: 24px; scrollbar-width: thin;
+}
+/* Soft white degradation so cards fade out instead of cutting cold (live Wien/
+   Raleigh carousels). The fade is SCROLL-AWARE (govocal-rail.js toggles the
+   classes): at rest only the right end fades, so the first card sits flush with
+   the section title; a left fade appears once you scroll, and the right fade
+   drops at the end. Page bg is white, so the mask reads as a fade. */
+.gv-rail.rail--fade-left.rail--fade-right {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+}
+.gv-rail.rail--fade-right:not(.rail--fade-left) {
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+}
+.gv-rail.rail--fade-left:not(.rail--fade-right) {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 100%);
 }
 .gv-rail::-webkit-scrollbar { height: 8px; }
 .gv-rail::-webkit-scrollbar-thumb { background: var(--gv-grey-300); border-radius: 999px; }
