@@ -156,8 +156,9 @@ layer** — Primitives → Components → Pages — instead of rebuilding it. Wo
 1. **Find it here first.** Need a footer, a card, a nav, a login modal, a whole
    page? Check the tables below — if it exists, start from it.
 2. **Copy it in.** Prototypes are self-contained: copy the asset/snippet into the
-   prototype folder (assets: \`govocal-tokens.css\`, \`govocal-ui.css\`,
-   \`govocal-themes.js\`, + \`govocal-logo.svg\`/\`govocal-cookies.js\` as needed).
+   prototype folder (assets: \`govocal-tokens.css\`, \`govocal-primitives.css\`,
+   \`govocal-ui.css\` (which \`@import\`s primitives), \`govocal-themes.js\`, +
+   \`govocal-logo.svg\`/\`govocal-cookies.js\` as needed).
    Markup/snippets live in \`skills/govocal-ui/components.md\`; details for each
    component in \`components/manifest.md\`.
 3. **Then adapt it freely.** A prototype is allowed to fork, restyle, version, and

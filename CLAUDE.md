@@ -152,7 +152,8 @@ assembly so primitive gains flow into them for free; they're also the user's pro
 
 **CSS files (edit the right one):** `govocal-tokens.css` (rarely) · `govocal-primitives.css`
 (shared atoms — both surfaces) · `govocal-ui.css` (FO components, `@import`s primitives) ·
-`govocal-bo.css` (BO chrome). **Agents split FO vs BO**; whoever needs a shared atom edits
+`govocal-bo.css` (BO chrome) · `govocal-survey.css` (the opt-in survey field kit, paired
+with `govocal-survey.js`). **Agents split FO vs BO**; whoever needs a shared atom edits
 `govocal-primitives.css`. Append new rules, don't reflow existing ones, and commit often so
 a co-worker's commit can't sweep half-finished state.
 

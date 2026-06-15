@@ -97,8 +97,4 @@ cross-surface pieces (tables, stat cards) **shared** in the manifest.
 - [ ] **Insights tab** — `bo-stat-cards` (label · big number · 7-day change · icon; tag **shared**) + charts. (capture: `bo-phase-insights`)
 - [ ] **Phase sub-tabs** beyond Setup: Description / Map / Phase access / Notifications — capture as needed, build per pattern.
 
-**Known fixups (surfaced by tooling):**
-- [ ] `bo-app-shell` markup still uses *generic* icons — swap to the real admin glyphs (it now loads the real icon set via canonical).
-- [ ] `general-input` checkpoint is red — re-capture `bo-project-general` with `--probe "input"` to fix.
-
 Site: `/pages/` index is split **Back office / Front office** (build.js, via `<meta name="gv-surface">` / `bo-` prefix). New BO pages auto-group under Back office.

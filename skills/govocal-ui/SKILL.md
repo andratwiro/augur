@@ -47,9 +47,10 @@ source of truth per layer and the review site showing a tab per tier:
 
 1. **Primitives** (`/primitives/`, the `gallery.html`) — tokens (colour, type, shadow,
    radius, focus) and base `.gv-*` primitives (button, input, badge, card…). The atoms.
-   Defined ONLY in `govocal-tokens.css` / `govocal-ui.css` / `govocal-bo.css`.
+   Defined in `govocal-tokens.css` (token values) + `govocal-primitives.css` (the `.gv-*` atoms).
 2. **Components** (`/components/`) — composed, section-level blocks assembled from
-   primitives: **header/nav, footer, project-card + rail, hero, modal + login**. Each
+   primitives: **header/nav, footer, project-card + rail, hero, modal + login, phase
+   timeline, survey fields, and the back-office app-shell + sidebar**. Each
    `components/<name>/` is a demo that **uses** `.gv-*` classes — it must not redefine
    them. Recall index: [`components/manifest.md`](../../components/manifest.md).
 3. **Pages** (`/pages/`) — whole screens built from components "dragged in". A page is
@@ -74,8 +75,10 @@ a token, a component, or a whole page as a starting point.
 
 ## When to use
 
-Consult this skill **whenever building or restyling any prototype**. It pairs with
-the required front-end skill set in `CLAUDE.md` (design, a11y, webapp-testing).
+Consult this skill when a prototype should match GoVocal's **real** look — i.e. when a
+mode loads it (System-building, or the future GoVocal UI mode) or the user asks ad-hoc
+("make it GoVocal"). It's **opt-in**, not loaded by Free mode's default; see CLAUDE.md
+(Modes). Pair it with `skills/frontend-design/` for generic design craft.
 
 ## How to use it in a prototype
 
@@ -119,11 +122,11 @@ Never hardcode a hex for brand colour; that's what breaks city theming.
 Each GoVocal city configures primary/secondary/text. The switcher lets you preview
 a prototype across several city palettes:
 
-- `?theme=0` GoVocal · `1` Ocean · `2` Forest · `3` Royal · `4` Sunset
+- `?theme=0` GoVocal (default) · `1` Københavns Kommune · `2` Stadt Wien · `3` Engaged California
 - Live picker renders bottom-right (swatches); it also rewrites the URL so a view
   is shareable. Disable with `<body data-gv-theme-picker="off">`.
 - Templates are **real city tenants** (researched from each one's official brand):
-  `1` Københavns Kommune (`#000C2E`), `2` Stadt Wien (`#FF0000`), `3` Engaged
+  `1` Københavns Kommune (`#000C2E`), `2` Stadt Wien (`#FF5A64`), `3` Engaged
   California (`#1C2745` + `#E79450`), plus `0` GoVocal default. Add one by appending
   `{id, name, primary, secondary, text, logo, font}` to `GV_THEMES`.
 - **City logos:** a theme's `logo` (inline `<svg>` or `<img>`) renders into any
@@ -132,8 +135,9 @@ a prototype across several city palettes:
 - **City fonts:** a theme's `font` drives `var(--gv-font-family)` (real tenant font
   name first, then a free stand-in; proprietary fonts fall back to Public Sans like
   the live sites). Build text with `font-family: var(--gv-font-family)`.
-- **Faithful-but-flagged:** real brand colours are kept even when under AA — `Wien Rot
-  #FF0000` is ~4:1 white-on-primary and the audit flags it (expected, accepted).
+- **Faithful-but-flagged:** real brand colours are kept even when under AA — Stadt Wien's
+  in-product `#FF5A64` (a softened Wien-Rot) is ~4:1 white-on-primary and the audit flags
+  it (expected, accepted).
 
 ## Accessibility notes (read with `skills/govocal-a11y/`)
 
@@ -145,7 +149,8 @@ a prototype across several city palettes:
   primary** (4.95:1 white-on-primary, comfortable AA) + a **warm coral `#E2603A`
   secondary** (a brand accent — use dark/large text if filled, ~3.5:1 white-on-coral).
   This replaced the old hot-pink/black default (`#E10069`, which barely cleared AA).
-  Custom templates 1–4 clear 4.5:1. Always run `npm run audit` and report results;
+  Of the city templates, Copenhagen (1) and Engaged California (3) clear AA; Wien (2,
+  `#FF5A64`) is the flagged ~4:1 exception. Always run `npm run audit` and report results;
   if a city's primary is light, the real platform would need dark button text.
 
 ## Building & extending the library (System-building mode)

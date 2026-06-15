@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse(Write|Edit) hook: when an edit targets front-end output —
 # a prototype's HTML/CSS/JS/SVG, or the site shell build.js — remind the agent
-# to load the required GoVocal front-end skill set first (see CLAUDE.md).
+# to load the design skill set per CLAUDE.md's modes (Free mode is the default).
 # Fires once per session to avoid repeating on every edit.
 set -euo pipefail
 
@@ -23,5 +23,5 @@ flag="${TMPDIR:-/tmp}/claude-fe-skills-${sid}"
 : > "$flag"
 
 cat <<'JSON'
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"Front-end work detected (CLAUDE.md rule). Before editing, load the required skill set: read skills/govocal-design/SKILL.md, skills/frontend-design/SKILL.md, skills/govocal-a11y/SKILL.md, and skills/webapp-testing/SKILL.md. Build to WCAG 2.2 AA, then close the loop with a Playwright screenshot (.venv/bin/python) and `npm run audit`."}}
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"Front-end work detected (CLAUDE.md). Default is Free mode — load skills/frontend-design/SKILL.md for design craft before editing. GoVocal-specific layers are opt-in per CLAUDE.md (Modes), not front-loaded: pull skills/govocal-ui/ to match the real product, and skills/govocal-a11y/ + `npm run audit` before a handoff or when asked. Flag any request that would bake in a visual a11y failure."}}
 JSON

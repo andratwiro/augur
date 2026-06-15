@@ -711,9 +711,9 @@ Templates ship as **real city tenants** (researched from each one's official bra
 
 | `?theme=` | City | Primary | Font (real → free stand-in) |
 |---|---|---|---|
-| `0` | GoVocal (default) | `#E10069` | Public Sans |
+| `0` | GoVocal (default) | `#0E7C86` + `#E2603A` | Public Sans |
 | `1` | Københavns Kommune | `#000C2E` (KBH Blå) | KBH → Archivo |
-| `2` | Stadt Wien | `#FF0000` (Wien Rot) | WienerMelange → Libre Franklin |
+| `2` | Stadt Wien | `#FF5A64` (softened Wien-Rot) | WienerMelange → Libre Franklin |
 | `3` | Engaged California | `#1C2745` + `#E79450` | Noto Sans |
 
 - On-screen picker (bottom-right swatches) switches live and updates the URL.
@@ -731,7 +731,8 @@ fonts (WienerMelange, KBH) fall back to Public Sans exactly as the live sites do
 ```
 
 **Contrast caveat (faithful-but-flagged):** real brand colours are kept even when
-they miss WCAG AA. `Wien Rot #FF0000` is only ~4:1 white-on-primary and the audit
-flags it — that's the official colour, kept faithful. The GoVocal default uses an
-AA-safe pink (`#E10069`, 4.77:1; exact brand `#ef0071` ≈ 4.3:1). On the real
+they miss WCAG AA. Stadt Wien's in-product `#FF5A64` (a softened Wien-Rot) is only
+~4:1 white-on-primary and the audit flags it — kept faithful. The GoVocal default is
+an AA-safe **deep teal `#0E7C86`** (4.95:1) + warm coral `#E2603A` accent, chosen over
+the literal product pink (`#E10069`/`#ef0071`, which barely cleared AA). On the real
 platform a light primary would take dark button text.
