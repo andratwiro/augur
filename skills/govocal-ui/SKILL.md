@@ -30,7 +30,8 @@ project brain. Match its vocabulary when labelling components.
 | File | What it is |
 |---|---|
 | `govocal-tokens.css` | Design tokens as CSS custom properties (`--gv-*`): full palette, type scale, radius (3px), shadows, focus, tenant colours. |
-| `govocal-ui.css` | Component classes (`.gv-btn`, `.gv-input`, `.gv-checkbox`, …) built on the tokens. |
+| `govocal-primitives.css` | **Shared atoms** (`.gv-btn`, `.gv-input`, `.gv-checkbox`, `.gv-badge`, `.gv-modal`, … + `.gv-sr-only`/`.gv-panel`/`.gv-wrap` utilities). Used by BOTH surfaces. Edit an atom HERE. |
+| `govocal-ui.css` | **Front-office components** (header/nav, footer, card, hero, phase timeline, homepage + project-page blocks). `@import`s `govocal-primitives.css`, so linking `govocal-ui.css` pulls the atoms automatically. |
 | `govocal-bo.css` | **Back-office** chrome (`.gv-bo-*`): app shell, sidebar, top-bar, tabs. The `.gv-bo` scope remaps `--gv-tenant-*` → GoVocal's fixed teal/navy BO palette, so the same primitives render in back-office colours. See `govocal-exports/BACK-OFFICE.md`. |
 | `govocal-survey.css` + `govocal-survey.js` | The **survey field kit**: every input-form question type (rating, ranking, linear/sentiment scale, image-select, matrix, map, file/shapefile, …) + the page-by-page runner. `GVSurvey.field({type,…})` renders one widget; `GVSurvey.mount(el, FORM)` renders a whole survey. Built on the gv-* primitives; themeable. Demo: `components/survey-fields/`; used by the Input Form page. |
 | `govocal-themes.js` | `?theme=` per-city colour + **font** switcher + on-screen picker + per-city logos. |
@@ -82,7 +83,7 @@ Prototypes are self-contained, so **copy the three asset files into the prototyp
 folder** and reference them locally:
 
 ```bash
-cp skills/govocal-ui/{govocal-tokens.css,govocal-ui.css,govocal-themes.js,govocal-icons.js} \
+cp skills/govocal-ui/{govocal-tokens.css,govocal-primitives.css,govocal-ui.css,govocal-themes.js,govocal-icons.js} \
    <opportunity>/prototypes/<name>/
 ```
 

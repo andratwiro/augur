@@ -146,11 +146,30 @@ primitive**, and it flows to every consumer (confirm with `npm run verify:all`).
 components *dragged in* — layout + content only. **Only prototypes are exempt** (they copy
 and may fork/break). Don't re-introduce per-folder asset copies — that was the old drift bug.
 
-**Disciplines:** primitives are the durable asset (source-derived, kept monotonic by
-the ratchet — improve freely, never regress). Pages are pure assembly so primitive gains
-flow into them for free; they're also the user's prototyping *starting point* (pre-wired
-flows), so keep them clickable and hooked together. **Parallel agents split by layer, not
-surface** — serialize shared-CSS edits so two agents don't fight over `govocal-ui.css`.
+**Disciplines:** primitives are the durable asset (source-derived). Pages are pure
+assembly so primitive gains flow into them for free; they're also the user's prototyping
+*starting point* (pre-wired flows), so keep them clickable and hooked together.
+
+**CSS files (edit the right one):** `govocal-tokens.css` (rarely) · `govocal-primitives.css`
+(shared atoms — both surfaces) · `govocal-ui.css` (FO components, `@import`s primitives) ·
+`govocal-bo.css` (BO chrome). **Agents split FO vs BO**; whoever needs a shared atom edits
+`govocal-primitives.css`. Append new rules, don't reflow existing ones, and commit often so
+a co-worker's commit can't sweep half-finished state.
+
+**Discovery-phase working agreement (while still matching screens to the real UI):**
+- The guards are **harden-checkpoints, not iteration-gates**. They govern ONLY the `gv-`
+  namespace. Experiment freely with page-local non-`gv-` classes and literal values; the
+  lint ignores everything outside `gv-`. Run `lint` before you *store* a piece, not mid-build.
+- **Tokenize by judgment, case-by-case** — no rule forcing premature abstraction. Match the
+  real screen first; promote a value to a token/primitive when the pattern recurs. The real
+  product hardcodes CSS too, so canonical may hold genuine one-off literals (lint never
+  checks canonical). Tokenize what's *systemic* (the design language), leave one-offs literal.
+- **`verify:all` is advisory now** — a red means a primitive change moved another checkpoint;
+  review and re-capture it, don't treat it as a hard stop. Primitives are *meant* to churn
+  while we learn; the ratchet shows blast radius so you change atoms knowingly.
+- **Fidelity bar = numeric verify + eyeball:** a piece is "aligned" when its probed
+  checkpoints pass AND a screenshot matches the real capture. Build against `styles.json`
+  digest values, never approximate off the PNG.
 
 > **Parked backlog** (build only when this mode is active): refine the existing
 > `.gv-*` primitives (`header-nav`, `footer`, `project-card`, `hero`) vs the real
