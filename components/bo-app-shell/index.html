@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Back-office app shell — GoVocal component</title>
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <link rel="stylesheet" href="govocal-bo.css" />
+  <script src="govocal-icons.js" defer></script>
+  <style>
+    body { margin: 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); }
+    .demo { padding: 24px 20px 60px; }
+    .demo > h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo > p.sub { margin: 0 0 20px; color: var(--gv-text-secondary); font-size: 14px; max-width: 760px; line-height: 1.5; }
+    .stage { border-radius: var(--gv-radius); box-shadow: var(--gv-shadow-hover-lg); overflow: hidden; border: 1px solid var(--gv-grey-300); }
+    /* placeholder content region — NOT part of the component; stands in for whatever page mounts here */
+    .bo-content-stub { padding: 24px; }
+    .bo-stub-block { background: repeating-linear-gradient(45deg,#f3f5f7,#f3f5f7 10px,#eef1f4 10px,#eef1f4 20px); border-radius: var(--gv-radius); height: 220px; display: grid; place-items: center; color: var(--gv-cool-grey-500); font-size: 13px; }
+    .notes { margin: 26px auto 0; max-width: 760px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-200); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="demo">
+    <h1>Back-office app shell</h1>
+    <p class="sub">The persistent staff-facing chrome shared by every back-office screen: dark teal/navy
+      sidebar (icon + label nav, active cell, notification count), a project top-bar (title · status
+      pills · actions), and the project tab row. GoVocal's own fixed theme — not city-themed. Mount any
+      page inside <code>.gv-bo-main</code>.</p>
+
+    <div class="stage">
+      <!-- ============ BACK-OFFICE APP SHELL (copy from here) ============ -->
+      <div class="gv-bo gv-bo-shell">
+
+        <!-- ── Sidebar ──────────────────────────────────────────────── -->
+        <nav class="gv-bo-side" aria-label="Admin">
+          <a class="gv-bo-side__brand" href="#">
+            <span class="gv-bo-side__logo"><span data-gv-icon="arrow-left" style="color:#fff;font-size:14px"></span></span>
+            To platform
+          </a>
+
+          <div class="gv-bo-nav">
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="home"></span>Dashboard</a>
+            <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="survey"></span>Projects</a>
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="comments"></span>Input manager</a>
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="group"></span>Users</a>
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="email"></span>Messaging</a>
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="trend-up"></span>Reporting</a>
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="eye"></span>Community monitor</a>
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="idea"></span>Inspiration hub</a>
+          </div>
+
+          <div class="gv-bo-nav gv-bo-nav--bottom">
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="settings"></span>Tools</a>
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="menu"></span>Pages &amp; menu</a>
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="settings"></span>Settings</a>
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="notification"></span>Notifications<span class="gv-bo-count">29</span></a>
+            <a class="gv-bo-nav__item" href="#">
+              <span class="gv-bo-nav__icon" data-gv-icon="user-circle"></span>
+              <span>Go Vocal Admin<span class="gv-bo-nav__sub" style="display:block">Administrator</span></span>
+              <span class="gv-bo-chev" data-gv-icon="chevron-right"></span>
+            </a>
+            <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="info-outline"></span>Support<span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+          </div>
+        </nav>
+
+        <!-- ── Main content ─────────────────────────────────────────── -->
+        <div class="gv-bo-main">
+
+          <!-- Project top bar -->
+          <header class="gv-bo-topbar">
+            <div class="gv-bo-topbar__row">
+              <div>
+                <h1 class="gv-bo-topbar__title">Let's Reimagine Dorothea Dix Park</h1>
+                <div class="gv-bo-meta">
+                  <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="lock"></span>Everyone</span>
+                  <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="eye"></span>Public</span>
+                  <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="group"></span>170 project participants</span>
+                  <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Published · Active</span>
+                </div>
+              </div>
+              <div class="gv-bo-topbar__actions">
+                <button class="gv-iconbtn" aria-label="Preview project"><span data-gv-icon="eye"></span></button>
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="share"></span><span class="gv-btn__label">Share</span></button>
+                <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
+              </div>
+            </div>
+
+            <!-- Project tabs -->
+            <nav class="gv-bo-tabs" aria-label="Project">
+              <a class="gv-bo-tab" href="#">General</a>
+              <a class="gv-bo-tab is-active" href="#">Timeline</a>
+              <a class="gv-bo-tab" href="#">Audience</a>
+              <a class="gv-bo-tab" href="#">Messaging</a>
+              <a class="gv-bo-tab" href="#">Events</a>
+              <a class="gv-bo-tab" href="#">360 Input<span class="gv-bo-tab__new">NEW</span></a>
+            </nav>
+          </header>
+
+          <!-- Page mounts here -->
+          <div class="bo-content-stub">
+            <div class="bo-stub-block">page content mounts in <code>.gv-bo-main</code></div>
+          </div>
+        </div>
+      </div>
+      <!-- ============ /APP SHELL ============ -->
+    </div>
+
+    <div class="notes">
+      <p><strong>Reuse:</strong> scope markup under <code>.gv-bo</code> — it remaps <code>--gv-tenant-*</code>
+      to GoVocal's fixed back-office palette, so existing primitives (<code>.gv-btn.admin-dark</code>,
+      <code>.gv-iconbtn</code>, inputs, focus) render in back-office colours automatically. The shell adds
+      only what the front office lacks: <code>.gv-bo-shell</code>, <code>.gv-bo-side</code>,
+      <code>.gv-bo-topbar</code>, <code>.gv-bo-tabs</code>. Phase ribbon, sub-tabs, tables and stat cards
+      are separate components that mount in the content area.</p>
+    </div>
+  </div>
+</body>
+</html>

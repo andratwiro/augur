@@ -187,6 +187,52 @@ Section-level blocks assembled from the primitives above. Full, copy-ready demos
 in `components/<name>/index.html` (and ship to `/components/`); the recall index is
 `components/manifest.md`. Skeletons below — open the demo for the complete markup.
 
+> **Front office vs back office.** Everything below the next divider is **front-office**
+> (resident-facing, city-themed via `?theme=`). The **back-office** (staff) surface uses
+> GoVocal's own fixed teal/navy theme — load `govocal-bo.css` and scope under `.gv-bo`,
+> which remaps `--gv-tenant-*` so the same primitives render in BO colours.
+
+## Back-office app shell — `.gv-bo-shell` (`components/bo-app-shell/`)
+
+The persistent staff chrome: navy sidebar + project top-bar + project tabs. Scope the
+whole app under `.gv-bo`; mount the page in `.gv-bo-main`. Reuses `.gv-btn.admin-dark`
+(primary, `#044D6C`), `.gv-btn.secondary-outlined`, `.gv-iconbtn` — no new button code.
+
+```html
+<div class="gv-bo gv-bo-shell">
+  <nav class="gv-bo-side" aria-label="Admin">
+    <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo">…</span> To platform</a>
+    <div class="gv-bo-nav">
+      <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="survey"></span>Projects</a>
+      <!-- …more items… -->
+    </div>
+    <div class="gv-bo-nav gv-bo-nav--bottom">
+      <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="notification"></span>Notifications<span class="gv-bo-count">29</span></a>
+    </div>
+  </nav>
+  <div class="gv-bo-main">
+    <header class="gv-bo-topbar">
+      <div class="gv-bo-topbar__row">
+        <div>
+          <h1 class="gv-bo-topbar__title">Project title</h1>
+          <div class="gv-bo-meta"><span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="eye"></span>Public</span></div>
+        </div>
+        <div class="gv-bo-topbar__actions">
+          <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
+        </div>
+      </div>
+      <nav class="gv-bo-tabs" aria-label="Project">
+        <a class="gv-bo-tab is-active" href="#">Timeline</a>
+        <a class="gv-bo-tab" href="#">Audience</a>
+      </nav>
+    </header>
+    <!-- page content here -->
+  </div>
+</div>
+```
+
+---
+
 ## Header + nav — `.gv-header` (`components/header-nav/`)
 
 Responsive 78px chrome. CSS-only: dropdowns and the “Mehr ···” overflow are
