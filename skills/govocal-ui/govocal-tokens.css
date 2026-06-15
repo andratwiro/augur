@@ -70,6 +70,7 @@
   /* ── Semantic aliases (semanticColors) ────────────────────────────────── */
   --gv-text-primary:   var(--gv-grey-800);
   --gv-text-secondary: var(--gv-cool-grey-600);
+  --gv-text-heading:   #1E1E1E;   /* live heading colour (h1–h3 / card titles compute to rgb(30,30,30)) */
   --gv-border-dark:    var(--gv-grey-700);
   --gv-border-light:   var(--gv-grey-400);
   --gv-placeholder:    var(--gv-grey-600);

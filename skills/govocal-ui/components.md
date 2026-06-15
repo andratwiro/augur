@@ -50,7 +50,7 @@ for back-office), then:
 - **Styles:** `primary` (tenant primary, white text), `primary-outlined`,
   `primary-inverse`, `secondary`, `white` (shadow), `text`, `admin-dark`,
   `admin-dark-outlined`, `admin-dark-text`, `delete` (red600).
-- **Sizes:** default `9px 18px`/16px · `size-m` `11px 22px`/18px ·
+- **Sizes:** default `9px 18px`/16px · `size-m` `13px 22px`/16px·500 (prominent CTA) ·
   `size-l` `13px 24px`/21px · `size-xl` `15px 26px`/21px (lh 28). Radius 3px.
 - **States:** `:hover` darkens (approximated via `filter: brightness`),
   `disabled` → opacity .37, `processing` hides the label and shows `.gv-spinner`.
@@ -587,7 +587,7 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
 </div>
 
 <!-- Show more -->
-<div class="gv-showmore"><button class="gv-btn primary-outlined size-m">Mehr anzeigen <svg><!--chevron--></svg></button></div>
+<div class="gv-showmore"><button class="gv-btn primary-outlined">Mehr anzeigen <svg><!--chevron--></svg></button></div>
 
 <!-- Events widget: head + grid of event cards (source-grounded on community.govocal.com).
      Event card: header image (or placeholder + calendar icon) with a two-tone date chip

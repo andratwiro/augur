@@ -19,7 +19,7 @@ body.gv-root {
 /* ── Typography ───────────────────────────────────────────────────────────
    Title: variant h1..h6 → xxxl/xxl/xl/l/m/s, weight bold, line-height 1.3
    Text:  variant bodyL/M/S/Xs, line-height 1.5 (bodyL is weight 600)        */
-.gv-title { color: var(--gv-text-primary); font-weight: 700; line-height: 1.3; word-break: break-word; margin: 0 0 16px; }
+.gv-title { color: var(--gv-text-heading); font-weight: 700; line-height: 1.3; word-break: break-word; margin: 0 0 16px; }
 .gv-title.h1, h1.gv-title { font-size: var(--gv-fs-xxxl); }
 .gv-title.h2, h2.gv-title { font-size: var(--gv-fs-xxl); }
 .gv-title.h3, h3.gv-title { font-size: var(--gv-fs-xl); }
@@ -61,7 +61,7 @@ body.gv-root {
 
 /* sizes */
 .gv-btn.size-s  { padding: 5px 12px; font-size: var(--gv-fs-s);  line-height: 20px; }
-.gv-btn.size-m  { padding: 11px 22px; font-size: var(--gv-fs-l);  line-height: 26px; }
+.gv-btn.size-m  { padding: 13px 22px; font-size: var(--gv-fs-base); font-weight: 500; line-height: 26px; }  /* live prominent CTA = 16px/500, 13px 22px */
 .gv-btn.size-l  { padding: 13px 24px; font-size: var(--gv-fs-xl); line-height: 26px; }
 .gv-btn.size-xl { padding: 15px 26px; font-size: var(--gv-fs-xl); line-height: 28px; }
 
