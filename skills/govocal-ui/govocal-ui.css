@@ -1357,6 +1357,35 @@
   .gv-issuecanvas__pile.is-scatter { max-width: 340px; height: 800px; min-height: 800px; }
 }
 
+/* ── Scatter pile · mobile overlap (fix 29/93 "mobile-pile-overlap") ──
+   Grounded on the live mobile [data-cy=e2e-sticky-notes-pile] (fo-perspectives-entry-m
+   digest): position:relative, 340×800, notes overlapping/bleeding in ONE packed column
+   with the bottom CLIPPED. The page authors per-note placement as layout-only inline
+   styles (left/top/width), but those are sized for the 1166px desktop canvas — on a
+   340px canvas they bleed off the RIGHT instead of overlapping in-column. So on mobile
+   we override the desktop horizontal placement only (left/width), keeping the authored
+   vertical offset (top) and rotation so the notes retain the scatter overlap character:
+   a single ~full-width column of lightly-staggered, overlapping notes, bottom clipped by
+   the 800px height. Layout-only override (no visual tokens), so we use !important purely
+   to win over the page's inline layout styles — same pattern other consumers inherit. */
+@media (max-width: 860px) {
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky {
+    width: 300px !important; max-width: calc(100% - 24px) !important;
+    height: auto !important; }
+  /* lightly stagger the left edge so notes overlap rather than stack flush — keeps the
+     scatter feel inside the narrow column. We also re-cascade `top` on mobile because the
+     authored desktop tops cluster the notes into two side-by-side rows; on the narrow
+     single column we want one continuous overlapping run that the 800px height clips. */
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(odd)  { left: 8px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(even) { left: 32px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(1) { top: 0px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(2) { top: 150px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(3) { top: 300px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(4) { top: 450px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(5) { top: 600px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(6) { top: 750px !important; }
+}
+
 /* ── Sticky-note idea card ── live button = 320px, padding 20px, radius 3px, pastel bg.
    Resting shadow + (.is-raised) the selected/floating detail shadow. Variants set bg. */
 .gv-sticky { position: relative; box-sizing: border-box; width: 320px; padding: 20px;
