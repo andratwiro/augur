@@ -170,6 +170,9 @@
 .gv-bo-tabs {
   display: flex; gap: 40px;
   padding: 0 24px;
+  /* The strip's own text colour/leading (measured nav.sc-gEXpur: #044D6C / 20px);
+     individual tabs override colour per state, so this only shows through chrome. */
+  color: var(--gv-bo-primary); line-height: 20px;
   background: var(--gv-bo-tabstrip);
   border-radius: var(--gv-radius) var(--gv-radius) 0 0;
   box-shadow: var(--gv-shadow);
@@ -204,6 +207,12 @@
   background: var(--gv-teal-100); color: var(--gv-teal-700);
   padding: 2px 5px; border-radius: 3px; vertical-align: middle;
 }
+
+/* Top-level SECTION tab strip (Dashboard, Settings, Messaging…): the SAME tab
+   component, but it sits flush at the very top of the content column instead of
+   inside a topbar/canvas gutter. Measured live (nav.sc-gEXpur on /admin/dashboard):
+   #FBFBFB elevated strip, 60px tall, rounded top, soft shadow, 44px left inset. */
+.gv-bo-tabs--top { padding: 0 0 0 44px; min-height: 60px; box-sizing: border-box; align-items: stretch; }
 
 /* Phase sub-tabs are the SAME tab component as the project tabs (measured: same
    sc-lilDSw wrapper, 16px text, 40px gap, teal active underline) — just a strip

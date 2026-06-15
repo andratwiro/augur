@@ -15,388 +15,850 @@
       "id": "homepage-header",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage-wien",
-      "map": { "header": ".gv-header" },
-      "props": ["background-color", "box-shadow", "border-radius"]
+      "map": {
+        "header": ".gv-header"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "border-radius"
+      ]
     },
     {
       "id": "homepage-card",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage",
-      "map": { ".e2e-project-card": ".gv-pcard.boxed" },
-      "props": ["background-color", "box-shadow", "border", "border-radius"],
-      "uses": [".gv-pcard"]
+      "map": {
+        ".e2e-project-card": ".gv-pcard.boxed"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "border",
+        "border-radius"
+      ],
+      "uses": [
+        ".gv-pcard"
+      ]
     },
     {
       "id": "homepage-folder-card",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage",
-      "map": { ".e2e-folder-card": ".gv-pcard.boxed" },
-      "props": ["background-color", "box-shadow", "border", "border-radius"],
-      "uses": [".gv-pcard"]
+      "map": {
+        ".e2e-folder-card": ".gv-pcard.boxed"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "border",
+        "border-radius"
+      ],
+      "uses": [
+        ".gv-pcard"
+      ]
     },
     {
       "id": "homepage-card-cta",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage",
-      "map": { ".e2e-project-card-cta": ".gv-pcard.boxed .gv-btn" },
-      "props": ["border-radius", "padding", "font-size"],
-      "uses": [".gv-pcard", ".gv-btn"]
+      "map": {
+        ".e2e-project-card-cta": ".gv-pcard.boxed .gv-btn"
+      },
+      "props": [
+        "border-radius",
+        "padding",
+        "font-size"
+      ],
+      "uses": [
+        ".gv-pcard",
+        ".gv-btn"
+      ]
     },
     {
       "id": "homepage-event-title",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage-community",
-      "map": { ".e2e-event-card h3": ".gv-event-card__title" },
-      "props": ["color", "font-size", "font-weight"],
-      "uses": [".gv-event-card"]
+      "map": {
+        ".e2e-event-card h3": ".gv-event-card__title"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight"
+      ],
+      "uses": [
+        ".gv-event-card"
+      ]
     },
     {
       "id": "homepage-section-title",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage",
-      "map": { "h2": ".gv-title.h2" },
-      "props": ["font-size", "font-weight", "line-height"],
-      "uses": [".gv-title"]
+      "map": {
+        "h2": ".gv-title.h2"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-title"
+      ]
     },
     {
       "id": "homepage-hero-title",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage",
-      "map": { "h1": ".gv-hero__title" },
-      "props": ["font-size", "font-weight", "line-height"],
-      "uses": [".gv-hero"]
+      "map": {
+        "h1": ".gv-hero__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-hero"
+      ]
     },
     {
       "id": "homepage-time-remaining",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage",
-      "map": { ".e2e-project-card-time-remaining": ".gv-pcard__meta.time" },
-      "props": ["font-size", "font-weight"],
-      "uses": [".gv-pcard"]
+      "map": {
+        ".e2e-project-card-time-remaining": ".gv-pcard__meta.time"
+      },
+      "props": [
+        "font-size",
+        "font-weight"
+      ],
+      "uses": [
+        ".gv-pcard"
+      ]
     },
     {
       "id": "homepage-filter-btn",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage",
-      "map": { ".e2e-filter-selector-button": ".gv-filter-btn" },
-      "props": ["padding"],
-      "uses": [".gv-filter-btn"]
+      "map": {
+        ".e2e-filter-selector-button": ".gv-filter-btn"
+      },
+      "props": [
+        "padding"
+      ],
+      "uses": [
+        ".gv-filter-btn"
+      ]
     },
     {
       "id": "bo-project-phase/setup-input",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "input": "#panel-timeline .gv-input" },
-      "props": ["color", "background-color", "background-image", "font-size", "font-weight", "border", "border-radius", "box-shadow", "padding"],
-      "uses": [".gv-input"]
+      "map": {
+        "input": "#panel-timeline .gv-input"
+      },
+      "props": [
+        "color",
+        "background-color",
+        "background-image",
+        "font-size",
+        "font-weight",
+        "border",
+        "border-radius",
+        "box-shadow",
+        "padding"
+      ],
+      "uses": [
+        ".gv-input"
+      ]
     },
     {
       "id": "bo-project-phase/setup-select",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "select": ".gv-bo-select" },
-      "props": ["color", "background-color", "background-image", "font-size", "font-weight", "border", "border-radius", "box-shadow", "padding"],
-      "uses": [".gv-bo-select"]
+      "map": {
+        "select": ".gv-bo-select"
+      },
+      "props": [
+        "color",
+        "background-color",
+        "background-image",
+        "font-size",
+        "font-weight",
+        "border",
+        "border-radius",
+        "box-shadow",
+        "padding"
+      ],
+      "uses": [
+        ".gv-bo-select"
+      ]
     },
     {
       "id": "bo-project-phase/general-input",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-project-general",
-      "map": { "input": "#panel-general .gv-input" },
-      "props": ["color", "background-color", "font-size", "font-weight", "border", "border-radius", "box-shadow", "padding"],
-      "uses": [".gv-input"]
+      "map": {
+        "input": "#panel-general .gv-input"
+      },
+      "props": [
+        "color",
+        "background-color",
+        "font-size",
+        "font-weight",
+        "border",
+        "border-radius",
+        "box-shadow",
+        "padding"
+      ],
+      "uses": [
+        ".gv-input"
+      ]
     },
     {
       "id": "bo-project-phase/imgr-table",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-project-ideas",
-      "map": { "table": ".gv-bo-table.is-bordered" },
-      "props": ["border", "border-radius", "font-size", "font-weight"],
-      "uses": [".gv-bo-table"]
+      "map": {
+        "table": ".gv-bo-table.is-bordered"
+      },
+      "props": [
+        "border",
+        "border-radius",
+        "font-size",
+        "font-weight"
+      ],
+      "uses": [
+        ".gv-bo-table"
+      ]
     },
     {
       "id": "bo-project-phase/imgr-th",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-project-ideas",
-      "map": { "th": ".gv-bo-table.is-bordered thead th.gv-bo-th--sort" },
-      "props": ["color", "font-size", "font-weight", "padding"],
-      "uses": [".gv-bo-table"]
+      "map": {
+        "th": ".gv-bo-table.is-bordered thead th.gv-bo-th--sort"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "padding"
+      ],
+      "uses": [
+        ".gv-bo-table"
+      ]
     },
     {
       "id": "bo-project-phase/imgr-title",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-project-ideas",
-      "map": { ".e2e-idea-manager-idea-title": ".gv-bo-table__title" },
-      "props": ["color", "font-size", "font-weight"],
-      "uses": [".gv-bo-table"]
+      "map": {
+        ".e2e-idea-manager-idea-title": ".gv-bo-table__title"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight"
+      ],
+      "uses": [
+        ".gv-bo-table"
+      ]
     },
     {
       "id": "bo-project-phase/inputform-head",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-input-form-builder",
-      "map": { "h3": ".pp-sub[data-sub=inputform] .gv-bo-formhead" },
-      "props": ["color", "font-size", "font-weight"],
-      "uses": [".gv-bo-formhead"]
+      "map": {
+        "h3": ".pp-sub[data-sub=inputform] .gv-bo-formhead"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight"
+      ],
+      "uses": [
+        ".gv-bo-formhead"
+      ]
     },
     {
       "id": "bo-project-phase/insights-stat",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-insights",
-      "map": { ".e2e-card": ".gv-bo-stat" },
-      "props": ["background-color", "border-radius", "box-shadow", "padding", "font-size"],
-      "uses": [".gv-bo-stat"]
+      "map": {
+        ".e2e-card": ".gv-bo-stat"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "box-shadow",
+        "padding",
+        "font-size"
+      ],
+      "uses": [
+        ".gv-bo-stat"
+      ]
     },
     {
       "id": "bo-project-phase/canvas",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "div.sc-hCxPwq.jkSMfk": ".gv-bo-shell" },
-      "props": ["background-color"],
-      "uses": [".gv-bo-shell"]
+      "map": {
+        "div.sc-hCxPwq.jkSMfk": ".gv-bo-shell"
+      },
+      "props": [
+        "background-color"
+      ],
+      "uses": [
+        ".gv-bo-shell"
+      ]
     },
     {
       "id": "bo-project-phase/content-card",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "div.sc-beqWaB.sc-loIdfG": ".gv-bo-phasehead" },
-      "props": ["background-color", "border-radius", "box-shadow"],
-      "uses": [".gv-bo-phasehead"]
+      "map": {
+        "div.sc-beqWaB.sc-loIdfG": ".gv-bo-phasehead"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "box-shadow"
+      ],
+      "uses": [
+        ".gv-bo-phasehead"
+      ]
     },
     {
       "id": "bo-project-phase/topbar-panel",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "nav.sc-gEXpur.gceAGH": ".gv-bo-topbar" },
-      "props": ["background-color", "border-radius", "box-shadow"]
+      "map": {
+        "nav.sc-gEXpur.gceAGH": ".gv-bo-topbar"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "box-shadow"
+      ]
     },
     {
       "id": "bo-project-phase/tabstrip-sub",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "nav.sc-gEXpur.kBjgE": ".gv-bo-tabs--sub" },
-      "props": ["background-color", "border-radius", "box-shadow"],
-      "uses": [".gv-bo-tabs"]
+      "map": {
+        "nav.sc-gEXpur.kBjgE": ".gv-bo-tabs--sub"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "box-shadow"
+      ],
+      "uses": [
+        ".gv-bo-tabs"
+      ]
     },
     {
       "id": "bo-project-phase/tab-active",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "a.intercom-admin-project-timeline-tab": ".gv-bo-topbar .gv-bo-tab.is-active" },
-      "props": ["color", "font-size", "font-weight", "line-height", "padding"],
-      "uses": [".gv-bo-tabs"]
+      "map": {
+        "a.intercom-admin-project-timeline-tab": ".gv-bo-topbar .gv-bo-tab.is-active"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "padding"
+      ],
+      "uses": [
+        ".gv-bo-tabs"
+      ]
     },
     {
       "id": "bo-project-phase/tab-inactive",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "a.intercom-admin-project-general-tab": ".gv-bo-topbar .gv-bo-tab:not(.is-active)" },
-      "props": ["color", "font-size", "font-weight", "line-height", "padding"],
-      "uses": [".gv-bo-tabs"]
+      "map": {
+        "a.intercom-admin-project-general-tab": ".gv-bo-topbar .gv-bo-tab:not(.is-active)"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "padding"
+      ],
+      "uses": [
+        ".gv-bo-tabs"
+      ]
     },
     {
       "id": "bo-project-phase/tab-underline",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "div.sc-lilDSw.hYUwXA": ".gv-bo-topbar .gv-bo-tab.is-active" },
-      "props": ["border-width", "border-style", "border-color"],
-      "uses": [".gv-bo-tabs"]
+      "map": {
+        "div.sc-lilDSw.hYUwXA": ".gv-bo-topbar .gv-bo-tab.is-active"
+      },
+      "props": [
+        "border-width",
+        "border-style",
+        "border-color"
+      ],
+      "uses": [
+        ".gv-bo-tabs"
+      ]
     },
     {
       "id": "bo-project-phase/form-card",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "div.sc-beqWaB.jDPsVV": "#panel-timeline .gv-bo-card" },
-      "props": ["background-color", "padding"],
-      "uses": [".gv-bo-card"]
+      "map": {
+        "div.sc-beqWaB.jDPsVV": "#panel-timeline .gv-bo-card"
+      },
+      "props": [
+        "background-color",
+        "padding"
+      ],
+      "uses": [
+        ".gv-bo-card"
+      ]
     },
-
     {
       "id": "bo-content-builder/palette-text",
       "built": "pages/bo-content-builder/index.html",
       "against": "bo-content-builder",
-      "map": { "#e2e-draggable-text": "#e2e-draggable-text" },
-      "props": ["color", "background-color", "font-family", "font-size", "font-weight", "line-height", "border", "border-radius", "box-shadow"],
-      "uses": [".gv-bo-cb-item"]
+      "map": {
+        "#e2e-draggable-text": "#e2e-draggable-text"
+      },
+      "props": [
+        "color",
+        "background-color",
+        "font-family",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "border",
+        "border-radius",
+        "box-shadow"
+      ],
+      "uses": [
+        ".gv-bo-cb-item"
+      ]
     },
     {
       "id": "bo-content-builder/palette-two-column",
       "built": "pages/bo-content-builder/index.html",
       "against": "bo-content-builder",
-      "map": { "#e2e-draggable-two-column": "#e2e-draggable-two-column" },
-      "props": ["color", "background-color", "font-family", "font-size", "font-weight", "line-height", "border", "border-radius", "box-shadow"],
-      "uses": [".gv-bo-cb-item"]
+      "map": {
+        "#e2e-draggable-two-column": "#e2e-draggable-two-column"
+      },
+      "props": [
+        "color",
+        "background-color",
+        "font-family",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "border",
+        "border-radius",
+        "box-shadow"
+      ],
+      "uses": [
+        ".gv-bo-cb-item"
+      ]
     },
     {
       "id": "bo-content-builder/topbar-save",
       "built": "pages/bo-content-builder/index.html",
       "against": "bo-content-builder",
-      "map": { "#e2e-content-builder-topbar-save": "#e2e-content-builder-topbar-save" },
-      "props": ["color", "background-color", "font-family", "font-size", "font-weight", "line-height", "border"],
-      "uses": [".gv-bo-cb-save"]
+      "map": {
+        "#e2e-content-builder-topbar-save": "#e2e-content-builder-topbar-save"
+      },
+      "props": [
+        "color",
+        "background-color",
+        "font-family",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "border"
+      ],
+      "uses": [
+        ".gv-bo-cb-save"
+      ]
     },
     {
       "id": "bo-content-builder/frame-text",
       "built": "pages/bo-content-builder/index.html",
       "against": "bo-content-builder",
-      "map": { "#e2e-content-builder-frame": "#e2e-content-builder-frame" },
-      "props": ["color", "background-color", "font-family", "font-size", "font-weight", "line-height", "border", "border-radius", "box-shadow"],
-      "uses": [".gv-bo-cb-frame", ".gv-bo-cb-block"]
+      "map": {
+        "#e2e-content-builder-frame": "#e2e-content-builder-frame"
+      },
+      "props": [
+        "color",
+        "background-color",
+        "font-family",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "border",
+        "border-radius",
+        "box-shadow"
+      ],
+      "uses": [
+        ".gv-bo-cb-frame",
+        ".gv-bo-cb-block"
+      ]
     },
     {
       "id": "fo-project/ideation-h1",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-list",
-      "map": { "main h1": ".gv-title.h1" },
-      "props": ["font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-title"]
+      "map": {
+        "main h1": ".gv-title.h1"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-title"
+      ]
     },
     {
       "id": "fo-project/ideacard",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-list",
-      "map": { ".e2e-idea-card": ".gv-ideacard" },
-      "props": ["background-color", "border-radius", "box-shadow", "padding", "font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-ideacard"]
+      "map": {
+        ".e2e-idea-card": ".gv-ideacard"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "box-shadow",
+        "padding",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-ideacard"
+      ]
     },
     {
       "id": "fo-project/ideacard-title",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-list",
-      "map": { ".e2e-idea-card-title": ".gv-ideacard__title" },
-      "props": ["font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-ideacard"]
+      "map": {
+        ".e2e-idea-card-title": ".gv-ideacard__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-ideacard"
+      ]
     },
     {
       "id": "fo-project/ideacard-author",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-list",
-      "map": { ".e2e-username": ".gv-ideacard__author" },
-      "props": ["font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-ideacard"]
+      "map": {
+        ".e2e-username": ".gv-ideacard__author"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-ideacard"
+      ]
     },
     {
       "id": "fo-project/ideacard-comment-count",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-list",
-      "map": { ".e2e-ideacard-comment-count": ".gv-react__comment" },
-      "props": ["font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-react"]
+      "map": {
+        ".e2e-ideacard-comment-count": ".gv-react__comment"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-react"
+      ]
     },
     {
       "id": "fo-project/reaction-controls",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-feed",
-      "map": { ".e2e-reaction-controls": ".gv-react" },
-      "props": ["height"],
-      "uses": [".gv-react"]
+      "map": {
+        ".e2e-reaction-controls": ".gv-react"
+      },
+      "props": [
+        "height"
+      ],
+      "uses": [
+        ".gv-react"
+      ]
     },
     {
       "id": "fo-project/feed-count",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-feed",
-      "map": { "h2.iGgcgb": ".gv-feed__count" },
-      "props": ["font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-feed"]
+      "map": {
+        "h2.iGgcgb": ".gv-feed__count"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-feed"
+      ]
     },
     {
       "id": "fo-project/feed-sidebar",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-feed",
-      "map": { "#e2e-project-sidebar": "#e2e-project-sidebar" },
-      "props": ["width", "font-size", "font-weight", "line-height"],
-      "uses": [".gv-feedfilter"]
+      "map": {
+        "#e2e-project-sidebar": "#e2e-project-sidebar"
+      },
+      "props": [
+        "width",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-feedfilter"
+      ]
     },
     {
       "id": "fo-project/viewseg",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-map",
-      "map": { ".e2e-list-map-viewbuttons": ".gv-viewseg" },
-      "props": ["background-color", "border-radius", "padding", "height"],
-      "uses": [".gv-viewseg"]
+      "map": {
+        ".e2e-list-map-viewbuttons": ".gv-viewseg"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "padding",
+        "height"
+      ],
+      "uses": [
+        ".gv-viewseg"
+      ]
     },
-
     {
       "id": "fo-project/proposals-card",
       "built": "pages/project-proposals/index.html",
       "against": "fo-project-proposals",
-      "map": { ".e2e-idea-card": ".gv-ideacard" },
-      "props": ["background-color", "border-radius", "box-shadow", "padding", "font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-ideacard"]
+      "map": {
+        ".e2e-idea-card": ".gv-ideacard"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "box-shadow",
+        "padding",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-ideacard"
+      ]
     },
     {
       "id": "fo-project/proposals-title",
       "built": "pages/project-proposals/index.html",
       "against": "fo-project-proposals",
-      "map": { ".e2e-idea-card-title": ".gv-ideacard__title" },
-      "props": ["font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-ideacard"]
+      "map": {
+        ".e2e-idea-card-title": ".gv-ideacard__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-ideacard"
+      ]
     },
     {
       "id": "fo-project/proposals-threshold-count",
       "built": "pages/project-proposals/index.html",
       "against": "fo-project-proposals",
-      "map": { "p.cyVyPb": ".gv-threshold__count" },
-      "props": ["font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-threshold"]
+      "map": {
+        "p.cyVyPb": ".gv-threshold__count"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-threshold"
+      ]
     },
     {
       "id": "fo-project/proposals-comment-count",
       "built": "pages/project-proposals/index.html",
       "against": "fo-project-proposals",
-      "map": { ".e2e-ideacard-comment-count": ".gv-react__comment" },
-      "props": ["font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-react"]
+      "map": {
+        ".e2e-ideacard-comment-count": ".gv-react__comment"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-react"
+      ]
     },
-
     {
       "id": "fo-project/survey-band",
       "built": "pages/project-survey/index.html",
       "against": "fo-project-survey",
-      "map": { "div.sc-beqWaB.fAJdnP": ".gv-surveyband__inner" },
-      "props": ["padding", "font-size", "font-weight", "line-height"],
-      "uses": [".gv-surveyband"]
+      "map": {
+        "div.sc-beqWaB.fAJdnP": ".gv-surveyband__inner"
+      },
+      "props": [
+        "padding",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-surveyband"
+      ]
     },
     {
       "id": "fo-project/survey-band-status",
       "built": "pages/project-survey/index.html",
       "against": "fo-project-survey",
-      "map": { "span.sc-crPCXo.cjdBYi": ".gv-surveyband__status" },
-      "props": ["color", "font-size", "font-weight", "line-height"],
-      "uses": [".gv-surveyband"]
+      "map": {
+        "span.sc-crPCXo.cjdBYi": ".gv-surveyband__status"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-surveyband"
+      ]
     },
-
     {
       "id": "fo-project/volunteer-desc",
       "built": "pages/project-volunteering/index.html",
       "against": "fo-project-volunteering",
-      "map": { ".sc-jYvNne": ".gv-cause__desc" },
-      "props": ["color", "font-size", "font-weight", "line-height"],
-      "uses": [".gv-cause"]
+      "map": {
+        ".sc-jYvNne": ".gv-cause__desc"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-cause"
+      ]
     },
     {
       "id": "fo-project/volunteer-btn",
       "built": "pages/project-volunteering/index.html",
       "against": "fo-project-volunteering",
-      "map": { ".button.primary": ".gv-btn.volunteer" },
-      "props": ["color", "font-size", "line-height", "border-radius", "padding"],
-      "uses": [".gv-btn"]
+      "map": {
+        ".button.primary": ".gv-btn.volunteer"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "line-height",
+        "border-radius",
+        "padding"
+      ],
+      "uses": [
+        ".gv-btn"
+      ]
     },
-
     {
       "id": "fo-project/common-ground-panel",
       "built": "pages/project-common-ground/index.html",
       "against": "fo-project-common-ground",
-      "map": { "div.sc-beqWaB.kBEbkK": "#methodCard" },
-      "props": ["background-color", "border-radius"],
-      "uses": [".gv-phasepanel"]
+      "map": {
+        "div.sc-beqWaB.kBEbkK": "#methodCard"
+      },
+      "props": [
+        "background-color",
+        "border-radius"
+      ],
+      "uses": [
+        ".gv-phasepanel"
+      ]
     },
     {
       "id": "fo-project/common-ground-title",
       "built": "pages/project-common-ground/index.html",
       "against": "fo-project-common-ground",
-      "map": { "h3.e2e-phase-title": ".e2e-phase-title" },
-      "props": ["font-size", "font-weight", "line-height", "color"],
-      "uses": [".gv-title"]
+      "map": {
+        "h3.e2e-phase-title": ".e2e-phase-title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-title"
+      ]
+    },
+    {
+      "id": "bo-dashboard/tabstrip",
+      "built": "pages/bo-dashboard/index.html",
+      "against": "bo-dashboard",
+      "map": {
+        "nav.sc-gEXpur.ghFGVy": ".gv-bo-tabs--top"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "border-radius",
+        "color",
+        "line-height",
+        "height"
+      ],
+      "uses": [
+        ".gv-bo-tabs"
+      ]
     }
   ]
 }

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Dashboard — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    /* Dashboard panels swap under the section tab strip. */
+    .db-panel { display: none; }
+    .db-panel.is-active { display: block; }
+    /* Filter toolbar above the cards (project + time-range selects). */
+    .db-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 18px; }
+    .db-controls .gv-bo-select { max-width: 240px; height: 40px; padding: 8px 12px; }
+    .db-controls .db-spacer { margin-left: auto; }
+    /* The overview is a responsive grid of metric/chart cards. */
+    .db-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .db-span-3 { grid-column: span 3; }
+    .db-span-6 { grid-column: span 6; }
+    .db-span-12 { grid-column: span 12; }
+    @media (max-width: 1100px) { .db-span-3 { grid-column: span 6; } .db-span-6 { grid-column: span 12; } }
+    @media (max-width: 680px)  { .db-span-3, .db-span-6 { grid-column: span 12; } }
+    /* Lightweight inline chart styling (page-local data-viz, not chrome). */
+    .db-spark { width: 100%; height: 40px; display: block; margin-top: 8px; }
+    .db-area  { width: 100%; height: 220px; display: block; }
+    .db-bars  { width: 100%; height: 220px; display: block; }
+    .db-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; font-size: 13px; color: var(--gv-text-secondary); }
+    .db-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .db-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+    /* Donut + table mix in the lower cards. */
+    .db-rep { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+    .db-rep__score { text-align: center; }
+    .db-rep__num { font-size: 44px; font-weight: 700; line-height: 1; color: var(--gv-bo-primary); }
+    .db-rep__cap { font-size: 13px; color: var(--gv-text-secondary); margin-top: 4px; }
+    .db-rep__bars { flex: 1 1 280px; display: flex; flex-direction: column; gap: 12px; min-width: 260px; }
+    .db-repbar__row { display: grid; grid-template-columns: 130px 1fr 44px; align-items: center; gap: 10px; font-size: 13px; }
+    .db-repbar__track { height: 10px; border-radius: 5px; background: var(--gv-grey-200); overflow: hidden; }
+    .db-repbar__fill { height: 100%; border-radius: 5px; background: var(--gv-teal-400); }
+    .db-note { margin: 18px 24px 0; font-size: 12px; color: var(--gv-text-secondary); }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+
+    <!-- ── Sidebar (shared BO chrome) ───────────────────────────────────── -->
+    <nav class="gv-bo-side" aria-label="Admin" data-active="dashboard"></nav>
+
+    <!-- ── Main ─────────────────────────────────────────────────────────── -->
+    <div class="gv-bo-main">
+
+      <nav class="gv-bo-tabs gv-bo-tabs--top" aria-label="Dashboard sections">
+        <a class="gv-bo-tab is-active" href="#" data-db="overview">Overview</a>
+        <a class="gv-bo-tab" href="#" data-db="users">Users</a>
+        <a class="gv-bo-tab" href="#" data-db="visitors">Visitors</a>
+        <a class="gv-bo-tab" href="#" data-db="representativeness">Representativeness</a>
+        <a class="gv-bo-tab" href="#" data-db="participation">Participation feed</a>
+        <a class="gv-bo-tab" href="#" data-db="management">Management feed</a>
+      </nav>
+
+      <!-- ── Overview ─────────────────────────────────────────────────── -->
+      <section class="gv-bo-section db-panel is-active" data-panel="overview">
+        <div class="db-controls">
+          <select class="gv-bo-select" aria-label="Project filter">
+            <option>All projects</option>
+            <option>Let's Reimagine Dorothea Dix Park</option>
+            <option>2024 Budget priorities</option>
+            <option>Downtown mobility plan</option>
+          </select>
+          <select class="gv-bo-select" aria-label="Group filter">
+            <option>All groups</option>
+            <option>Newsletter subscribers</option>
+            <option>District 3 residents</option>
+          </select>
+          <div class="db-spacer"></div>
+          <select class="gv-bo-select" aria-label="Time range" style="max-width:180px">
+            <option>Last 30 days</option>
+            <option>Last 90 days</option>
+            <option selected>Last year</option>
+            <option>All time</option>
+          </select>
+          <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Export</span></button>
+        </div>
+
+        <!-- KPI stat cards -->
+        <div class="db-grid" style="margin-bottom:16px">
+          <div class="db-span-3" id="kpis"></div>
+        </div>
+
+        <!-- Charts -->
+        <div class="db-grid">
+          <div class="gv-bo-chartcard db-span-6">
+            <h3 class="gv-bo-chartcard__title">Participants over time</h3>
+            <p class="gv-bo-chartcard__sub">New participants, by week · Last year</p>
+            <svg class="db-area" viewBox="0 0 600 220" preserveAspectRatio="none" role="img" aria-label="Area chart of participants over time">
+              <defs>
+                <linearGradient id="dbArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--gv-teal-400)" stop-opacity="0.35" />
+                  <stop offset="100%" stop-color="var(--gv-teal-400)" stop-opacity="0.02" />
+                </linearGradient>
+              </defs>
+              <polyline points="0,180 60,165 120,150 180,120 240,135 300,95 360,80 420,55 480,70 540,40 600,30"
+                        fill="none" stroke="var(--gv-teal-400)" stroke-width="2.5" />
+              <polygon points="0,180 60,165 120,150 180,120 240,135 300,95 360,80 420,55 480,70 540,40 600,30 600,220 0,220"
+                       fill="url(#dbArea)" stroke="none" />
+            </svg>
+          </div>
+          <div class="gv-bo-chartcard db-span-6">
+            <h3 class="gv-bo-chartcard__title">Participation by method</h3>
+            <p class="gv-bo-chartcard__sub">Inputs collected, by participation method</p>
+            <svg class="db-bars" viewBox="0 0 600 220" role="img" aria-label="Bar chart of participation by method">
+              <g fill="var(--gv-teal-400)">
+                <rect x="20"  y="40"  width="60" height="150" rx="2" />
+                <rect x="110" y="95"  width="60" height="95"  rx="2" />
+                <rect x="200" y="70"  width="60" height="120" rx="2" />
+                <rect x="290" y="130" width="60" height="60"  rx="2" />
+                <rect x="380" y="150" width="60" height="40"  rx="2" />
+                <rect x="470" y="165" width="60" height="25"  rx="2" />
+              </g>
+              <g fill="var(--gv-text-secondary)" font-size="11" text-anchor="middle" font-family="var(--gv-font-family)">
+                <text x="50"  y="206">Ideation</text>
+                <text x="140" y="206">Survey</text>
+                <text x="230" y="206">Voting</text>
+                <text x="320" y="206">Proposals</text>
+                <text x="410" y="206">Volunteer</text>
+                <text x="500" y="206">Poll</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="gv-bo-chartcard db-span-6">
+            <h3 class="gv-bo-chartcard__title">Representation</h3>
+            <p class="gv-bo-chartcard__sub">Participants vs. community base data · Representation score</p>
+            <div class="db-rep">
+              <div class="db-rep__score">
+                <div class="db-rep__num">76%</div>
+                <div class="db-rep__cap">Representation<br>score</div>
+              </div>
+              <div class="db-rep__bars" id="repbars"></div>
+            </div>
+          </div>
+          <div class="gv-bo-chartcard db-span-6">
+            <h3 class="gv-bo-chartcard__title">Registrations</h3>
+            <p class="gv-bo-chartcard__sub">Registered users vs. visits · conversion</p>
+            <svg class="db-area" viewBox="0 0 600 220" preserveAspectRatio="none" role="img" aria-label="Registrations over time">
+              <polyline points="0,170 60,160 120,150 180,140 240,118 300,120 360,96 420,90 480,72 540,66 600,48"
+                        fill="none" stroke="var(--gv-blue-400)" stroke-width="2.5" />
+              <polyline points="0,200 60,196 120,192 180,184 240,178 300,176 360,168 420,160 480,156 540,150 600,142"
+                        fill="none" stroke="var(--gv-cool-grey-400)" stroke-width="2" stroke-dasharray="4 4" />
+            </svg>
+            <div class="db-legend">
+              <span><i style="background:var(--gv-blue-400)"></i> Registrations</span>
+              <span><i style="background:var(--gv-cool-grey-400)"></i> Visits (× 100)</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="db-note">Reference reconstruction — the demo tenant's Overview renders no data, so the metrics shown are illustrative. Layout + chrome are source-grounded; re-capture on a tenant with data to pin exact chart-card values.</p>
+      </section>
+
+      <!-- ── Other tabs (stubs) ───────────────────────────────────────── -->
+      <section class="gv-bo-section db-panel" data-panel="users">
+        <div class="gv-bo-card"><h3 class="gv-bo-chartcard__title">Users dashboard</h3><p class="gv-bo-chartcard__sub">Registrations, activity and demographic breakdowns of registered users.</p></div>
+      </section>
+      <section class="gv-bo-section db-panel" data-panel="visitors">
+        <div class="gv-bo-card"><h3 class="gv-bo-chartcard__title">Visitors dashboard</h3><p class="gv-bo-chartcard__sub">Visitors vs. visits, traffic sources, and language breakdown.</p></div>
+      </section>
+      <section class="gv-bo-section db-panel" data-panel="representativeness">
+        <div class="gv-bo-card"><h3 class="gv-bo-chartcard__title">Representativeness</h3><p class="gv-bo-chartcard__sub">Compare participant demographics against the community base data.</p></div>
+      </section>
+      <section class="gv-bo-section db-panel" data-panel="participation">
+        <div class="gv-bo-card"><h3 class="gv-bo-chartcard__title">Participation feed</h3><p class="gv-bo-chartcard__sub">A live log of resident participation across the platform.</p></div>
+      </section>
+      <section class="gv-bo-section db-panel" data-panel="management">
+        <div class="gv-bo-card"><h3 class="gv-bo-chartcard__title">Management feed</h3><p class="gv-bo-chartcard__sub">Created / modified / deleted events on inputs, phases, projects and folders (30-day window).</p></div>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="bo-chrome.js"></script>
+  <script>
+    // ── KPI stat cards (illustrative) ──────────────────────────────────────
+    const KPIS = [
+      ["Registered users", "8,412", "user-circle", "+312", true],
+      ["Participants", "3,190", "group", "+128", true],
+      ["Inputs", "1,047", "survey", "+54", true],
+      ["Comments", "2,386", "comment", "+90", true],
+    ];
+    document.getElementById("kpis").outerHTML =
+      KPIS.map(([label, num, icon, delta, up]) => `
+        <div class="gv-bo-stat db-span-3">
+          <div class="gv-bo-stat__top"><span class="gv-bo-stat__label">${label}</span><span class="gv-bo-stat__icon gv-icon" data-gv-icon="${icon}"></span></div>
+          <div class="gv-bo-stat__num">${num}</div>
+          <div class="gv-bo-stat__delta"><b>${delta}</b> last 30 days</div>
+        </div>`).join("");
+
+    // ── Representation bars ────────────────────────────────────────────────
+    const REP = [["Age 18–34", 62], ["Age 35–54", 88], ["Age 55+", 71], ["Women", 84], ["District 1–3", 58]];
+    document.getElementById("repbars").innerHTML = REP.map(([label, pct]) => `
+      <div class="db-repbar__row">
+        <span style="color:var(--gv-text-secondary)">${label}</span>
+        <span class="db-repbar__track"><span class="db-repbar__fill" style="width:${pct}%"></span></span>
+        <span style="text-align:right;font-weight:600;color:var(--gv-bo-primary)">${pct}%</span>
+      </div>`).join("");
+
+    // ── Tab switching ──────────────────────────────────────────────────────
+    document.querySelectorAll(".gv-bo-tab[data-db]").forEach(tab => {
+      tab.addEventListener("click", e => {
+        e.preventDefault();
+        document.querySelectorAll(".gv-bo-tab[data-db]").forEach(t => t.classList.remove("is-active"));
+        tab.classList.add("is-active");
+        const key = tab.dataset.db;
+        document.querySelectorAll(".db-panel").forEach(p => p.classList.toggle("is-active", p.dataset.panel === key));
+      });
+    });
+
+    if (window.GVIcons) window.GVIcons.render(document.body);
+  </script>
+</body>
+</html>
+</content>
