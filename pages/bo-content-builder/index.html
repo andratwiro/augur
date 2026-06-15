@@ -51,20 +51,61 @@
     .cb-cols { display: grid; gap: 16px; }
     .cb-cols.cb-cols-2 { grid-template-columns: 1fr 1fr; }
     .cb-cols.cb-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
-    .cb-col { min-height: 60px; padding: 12px; background: #f8fafb; border: 1px dashed #d6dde3; color: #84939e; font-size: 13px; }
+    /* A column is now a real nested DROP ZONE: flex container, min-height, dashed
+       frame. Direct block children stack vertically inside it. */
+    .cb-col { min-height: 64px; padding: 10px; background: #f8fafb; border: 1px dashed #d6dde3; border-radius: 3px; display: flex; flex-direction: column; gap: 8px; }
     .cb-ws { height: 40px; }
     .cb-accordion { border: 1px solid #e0e0e0; border-radius: 3px; }
-    .cb-accordion__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; font-weight: 600; color: var(--gv-grey-800); }
-    .cb-accordion__body { padding: 0 16px 14px; color: var(--gv-cool-grey-600); font-size: 14px; }
-    .cb-iframe { height: 200px; background: #1b1f23; color: #cfd6dc; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: monospace; border-radius: 3px; }
-    .cb-pbox { padding: 18px; background: var(--gv-blue-10); border-radius: 3px; }
-    .cb-pbox__title { font-weight: 700; color: var(--gv-blue-500); margin: 0 0 4px; }
+    .cb-accordion__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; font-weight: 600; color: var(--gv-grey-800); cursor: pointer; }
+    .cb-accordion__title { flex: 1; }
+    .cb-accordion__body { padding: 12px 16px 14px; color: var(--gv-cool-grey-600); font-size: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .cb-accordion__text { color: var(--gv-cool-grey-600); }
+    .cb-accordion:not(.cb-accordion--open) .cb-accordion__body { display: none; }
+    .cb-accordion__head .gv-icon { transition: transform .15s ease; }
+    .cb-accordion--open .cb-accordion__head .gv-icon { transform: rotate(180deg); }
+    .cb-iframe { height: 200px; background: #1b1f23; color: #cfd6dc; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: monospace; border-radius: 3px; }
+    .cb-iframe__cap { font-size: 12px; opacity: .85; }
+
+    /* ── Nested drop-zone affordances (page-local) ──────────────────────────── */
+    #cb-root .cb-zone--over { background: #eef6f9; border-color: var(--gv-teal-500); }
+    .cb-zone__ph { display: none; align-items: center; justify-content: center; min-height: 48px; border: 1px dashed #cbd4dc; border-radius: 3px; color: #84939e; font-size: 13px; text-align: center; padding: 6px; }
+    #cb-root .cb-zone--empty > .cb-zone__ph { display: flex; }
+    .cb-dropline--x { width: 2px; height: auto; min-height: 24px; margin: 0 2px; align-self: stretch; }
+
+    /* ── Participation Box (about-box) — faithful resident-facing card ──────── */
+    .cb-pbox { padding: 20px; background: var(--gv-blue-10); border: 1px solid #d4e0e6; border-radius: 4px; }
+    .cb-pbox__top { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
+    #cb-root.cb-pbox-nostatus .cb-pbox__top { display: none; }
+    .cb-pbox__pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background: var(--gv-green-100); color: var(--gv-green-600); }
+    .cb-pbox__pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gv-green-500); }
+    .cb-pbox__pill.is-ended { background: #eef1f3; color: var(--gv-cool-grey-600); }
+    .cb-pbox__pill.is-ended::before { background: var(--gv-cool-grey-500); }
+    .cb-pbox__title { font-weight: 700; font-size: 18px; color: var(--gv-blue-500); margin: 0 0 6px; line-height: 1.3; }
+    .cb-pbox__phase { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--gv-cool-grey-600); margin: 0 0 4px; }
+    .cb-pbox__phase .gv-icon { width: 15px; height: 15px; flex: none; }
+    .cb-pbox__timeline { font-size: 13px; color: var(--gv-cool-grey-600); margin: 0 0 14px; }
+    .cb-pbox__stats { display: flex; gap: 22px; padding: 12px 0 16px; border-top: 1px solid #d4e0e6; margin-top: 4px; }
+    .cb-pbox__stat { display: flex; flex-direction: column; }
+    .cb-pbox__statnum { font-size: 22px; font-weight: 700; color: var(--gv-grey-800); line-height: 1.1; }
+    .cb-pbox__statlbl { font-size: 12px; color: var(--gv-cool-grey-600); }
+    .cb-pbox__cta { display: flex; }
+    .cb-pbox .cb-fakebtn { font-size: 15px; padding: 11px 22px; }
+    .cb-pbox .cb-fakebtn.is-secondary { background: #fff; color: var(--gv-tenant-primary); border: 1px solid var(--gv-tenant-primary); }
+
+    /* ── Button style variants (page-local) ────────────────────────────────── */
+    .cb-fakebtn.cb-fakebtn--secondary { background: #fff; color: var(--gv-tenant-primary); border: 1px solid var(--gv-tenant-primary); }
+    .cb-fakebtn.cb-fakebtn--link { background: transparent; color: var(--gv-tenant-primary); padding-left: 0; padding-right: 0; text-decoration: underline; }
+
     .cb-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .cb-cards[data-n="2"] { grid-template-columns: 1fr 1fr; }
+    .cb-cards[data-n="4"] { grid-template-columns: 1fr 1fr 1fr 1fr; }
     .cb-card { border: 1px solid #e0e0e0; border-radius: 3px; overflow: hidden; }
     .cb-card__img { height: 90px; background: #e9eef2; }
     .cb-card__cap { padding: 10px 12px; font-size: 13px; color: var(--gv-grey-800); }
     .cb-file { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #e0e0e0; border-radius: 3px; }
+    .cb-file__info { display: flex; flex-direction: column; }
     .cb-file__name { font-size: 14px; color: var(--gv-blue-500); }
+    .cb-file__meta { font-size: 12px; color: var(--gv-cool-grey-600); }
 
     /* Drop indicator helper visible only mid-drag (the line element is gv chrome). */
     .cb-toast {
@@ -250,15 +291,26 @@
       'text':            { label: 'Text',              make: function () { return '<div class="cb-p gv-bo-cb-block__body" contenteditable="true">This is some text. You can edit and format it by using the editor in the panel on the right.</div>'; } },
       'button':          { label: 'Button',            make: function () { return '<div class="cb-btnblock"><span class="cb-fakebtn">Take the survey</span></div>'; } },
       'image':           { label: 'Image',             make: function () { return '<div class="cb-imgph"><span class="gv-icon" data-gv-icon="eye"></span> Click to upload an image</div>'; } },
-      'two-column':      { label: '2 column',          make: function () { return '<div class="cb-cols cb-cols-2"><div class="cb-col">Column 1 — drop content here</div><div class="cb-col">Column 2 — drop content here</div></div>'; } },
-      'three-column':    { label: '3 column',          make: function () { return '<div class="cb-cols cb-cols-3"><div class="cb-col">1</div><div class="cb-col">2</div><div class="cb-col">3</div></div>'; } },
+      'two-column':      { label: '2 column',          make: function () { return '<div class="cb-cols cb-cols-2"><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
+      'three-column':    { label: '3 column',          make: function () { return '<div class="cb-cols cb-cols-3"><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
       'white-space':     { label: 'White space',       make: function () { return '<div class="cb-ws"></div>'; } },
-      'accordion':       { label: 'Accordion',         make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head">Accordion title <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body">Hidden panel content the resident can expand.</div></div>'; } },
-      'iframe':          { label: 'Embed',             make: function () { return '<div class="cb-iframe">&lt;/&gt; Embedded content</div>'; } },
-      'about-box':       { label: 'Participation Box',  make: function () { return '<div class="cb-pbox"><p class="cb-pbox__title">About this project</p><div class="cb-p">Key dates, status and how to take part appear here.</div></div>'; } },
-      'file-attachment': { label: 'File Attachment',    make: function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__name">project-brief.pdf</span></div>'; } },
-      'image-text-cards':{ label: 'Image & text cards', make: function () { return '<div class="cb-cards"><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card one</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card two</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card three</div></div></div>'; } },
-      'info-accordions': { label: 'Info & accordions',  make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head">How will my input be used? <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body">An explanation of the process.</div></div>'; } }
+      'accordion':       { label: 'Accordion',         make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">Accordion title</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">Hidden panel content the resident can expand.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
+      'iframe':          { label: 'Embed',             make: function () { return '<div class="cb-iframe">&lt;/&gt; Embedded content<span class="cb-iframe__cap">Paste a URL to embed</span></div>'; } },
+      'about-box':       { label: 'Participation Box',  make: function () { return '' +
+        '<div class="cb-pbox">' +
+          '<div class="cb-pbox__top"><span class="cb-pbox__pill" data-pbox="pill">Active</span></div>' +
+          '<p class="cb-pbox__title" data-pbox="title">Share your ideas</p>' +
+          '<div class="cb-pbox__phase"><span class="gv-icon" data-gv-icon="survey"></span><span data-pbox="phase">Phase 2 of 4 · Collect input</span></div>' +
+          '<p class="cb-pbox__timeline" data-pbox="timeline">15 May – 30 Jun 2026</p>' +
+          '<div class="cb-pbox__stats">' +
+            '<div class="cb-pbox__stat"><span class="cb-pbox__statnum" data-pbox="count">1,284</span><span class="cb-pbox__statlbl">participants</span></div>' +
+            '<div class="cb-pbox__stat"><span class="cb-pbox__statnum">312</span><span class="cb-pbox__statlbl">contributions</span></div>' +
+          '</div>' +
+          '<div class="cb-pbox__cta"><span class="cb-fakebtn" data-pbox="cta">Take the survey</span></div>' +
+        '</div>'; } },
+      'file-attachment': { label: 'File Attachment',    make: function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__info"><span class="cb-file__name">project-brief.pdf</span><span class="cb-file__meta">PDF · 1.2 MB</span></span></div>'; } },
+      'image-text-cards':{ label: 'Image & text cards', make: function () { return '<div class="cb-cards" data-n="3"><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card one</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card two</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card three</div></div></div>'; } },
+      'info-accordions': { label: 'Info & accordions',  make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">How will my input be used?</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">An explanation of the process.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } }
     };
 
     function toast(msg) {
@@ -295,47 +347,66 @@
       return '<div class="gv-bo-cb-settings__row"><span class="gv-bo-cb-settings__rowlabel">' + label + '</span>' + control + '</div>';
     }
 
-    function bodyFor(widget) {
+    function bodyFor(widget, block) {
       if (widget === 'text') {
         return rteToolbar() +
-          '<div class="gv-bo-cb-rte__editor" contenteditable="true">This is some text. You can edit and format it by using the editor in the panel on the right.</div>';
+          '<div class="gv-bo-cb-rte__editor" id="cb-rte-editor" contenteditable="true"></div>';
       }
       if (widget === 'button') {
-        return settingsRow('Button text', '<input class="gv-input" value="Take the survey">') +
-               settingsRow('Link URL', '<input class="gv-input" value="/projects/dix-park/survey">') +
-               settingsRow('Style', '<select class="gv-bo-select"><option>Primary</option><option>Secondary</option><option>Text link</option></select>');
+        return settingsRow('Button text', '<input class="gv-input" id="cb-f-btnlabel" value="Take the survey">') +
+               settingsRow('Link URL', '<input class="gv-input" id="cb-f-btnurl" value="/projects/dix-park/survey">') +
+               settingsRow('Style', '<select class="gv-bo-select" id="cb-f-btnstyle"><option value="primary">Primary</option><option value="secondary">Secondary</option><option value="link">Text link</option></select>');
       }
       if (widget === 'image') {
-        return settingsRow('Image', '<input class="gv-input" type="file">') +
-               settingsRow('Alt text', '<input class="gv-input" placeholder="Describe the image">');
+        return settingsRow('Image', '<input class="gv-input" type="file" id="cb-f-imgfile" accept="image/*">') +
+               settingsRow('Or paste URL', '<input class="gv-input" id="cb-f-imgurl" placeholder="https://…">') +
+               settingsRow('Alt text', '<input class="gv-input" id="cb-f-imgalt" placeholder="Describe the image">');
       }
       if (widget === 'two-column' || widget === 'three-column') {
-        return settingsRow('Column layout', '<select class="gv-bo-select"><option>Equal</option><option>Wide / narrow</option><option>Narrow / wide</option></select>');
+        var threeOpts = widget === 'three-column'
+          ? '<option value="equal">Equal</option><option value="wide-center">Wide centre</option>'
+          : '<option value="equal">Equal</option><option value="wide-narrow">Wide / narrow</option><option value="narrow-wide">Narrow / wide</option>';
+        return settingsRow('Column layout', '<select class="gv-bo-select" id="cb-f-collayout">' + threeOpts + '</select>');
       }
       if (widget === 'white-space') {
-        return settingsRow('Height', '<select class="gv-bo-select"><option>Small</option><option>Medium</option><option>Large</option></select>');
+        return settingsRow('Height', '<select class="gv-bo-select" id="cb-f-wsheight"><option value="24">Small</option><option value="40" selected>Medium</option><option value="80">Large</option></select>');
       }
       if (widget === 'accordion' || widget === 'info-accordions') {
-        return settingsRow('Title', '<input class="gv-input" value="Accordion title">') +
-               settingsRow('Content', '<textarea class="gv-input" rows="4">Hidden panel content the resident can expand.</textarea>');
+        return settingsRow('Title', '<input class="gv-input" id="cb-f-acctitle" value="Accordion title">') +
+               settingsRow('Content', '<textarea class="gv-input" id="cb-f-acccontent" rows="4">Hidden panel content the resident can expand.</textarea>');
       }
       if (widget === 'iframe') {
-        return settingsRow('Embed URL', '<input class="gv-input" placeholder="https://…">');
+        return settingsRow('Embed URL', '<input class="gv-input" id="cb-f-embedurl" placeholder="https://…">');
       }
       if (widget === 'about-box') {
-        return settingsRow('Heading', '<input class="gv-input" value="About this project">');
+        return settingsRow('Heading', '<input class="gv-input" id="cb-f-heading" value="Share your ideas">') +
+          settingsRow('Phase method', '<select class="gv-bo-select" data-set="method" id="cb-f-method"><option value="survey">Survey</option><option value="ideation">Ideation</option><option value="voting">Voting</option><option value="proposals">Proposals</option><option value="common-ground">Common ground</option></select>') +
+          settingsRow('CTA label', '<input class="gv-input" data-set="cta" id="cb-f-cta" value="Take the survey">') +
+          settingsRow('CTA style', '<select class="gv-bo-select" data-set="ctastyle" id="cb-f-ctastyle"><option value="primary">Primary</option><option value="secondary">Secondary</option></select>') +
+          settingsRow('Show status', '<span class="gv-toggle"><input type="checkbox" data-set="status" id="cb-f-status" checked><span class="track"></span></span>');
       }
       if (widget === 'file-attachment') {
-        return settingsRow('File', '<input class="gv-input" type="file">');
+        return settingsRow('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') +
+               settingsRow('File', '<input class="gv-input" type="file" id="cb-f-filefile">');
       }
       if (widget === 'image-text-cards') {
-        return settingsRow('Number of cards', '<select class="gv-bo-select"><option>2</option><option selected>3</option><option>4</option></select>');
+        return settingsRow('Number of cards', '<select class="gv-bo-select" id="cb-f-cardcount"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>') +
+               '<div id="cb-f-cardcaps"></div>';
       }
       return settingsRow('Settings', '<div class="cb-p">No additional settings for this element.</div>');
     }
 
     // ── selection ─────────────────────────────────────────────────────────────
     var selected = null;
+    var syncing = false; // single loop-guard for two-way text binding
+
+    // Which DOM node inside a block the RTE mirrors (or null).
+    function textTargetOf(block) {
+      var w = block.getAttribute('data-widget');
+      if (w === 'text') return block.querySelector('.gv-bo-cb-block__body, .cb-p');
+      return null;
+    }
+
     function deselect() {
       if (selected) selected.classList.remove('is-selected');
       selected = null;
@@ -349,9 +420,11 @@
       var widget = block.getAttribute('data-widget');
       var label  = block.getAttribute('data-label') || (WIDGETS[widget] && WIDGETS[widget].label) || 'Block';
       sTitle.textContent = label;
-      sBody.innerHTML = bodyFor(widget);
+      sBody.innerHTML = bodyFor(widget, block);
       if (window.GVIcons) window.GVIcons.render(panel);
+      bindTextBinding(block, widget);
       bindRteButtons();
+      wireBody(widget, block);
       var delBtn = document.createElement('button');
       delBtn.className = 'gv-bo-cb-delete';
       delBtn.type = 'button';
@@ -361,16 +434,214 @@
       if (window.GVIcons) window.GVIcons.render(delBtn);
       delBtn.addEventListener('click', function () {
         if (!selected) return;
-        var b = selected; deselect(); b.parentNode.removeChild(b); reflectEmpty();
+        var b = selected; deselect(); b.parentNode.removeChild(b); reflectEmptyAll();
         toast('Element deleted');
       });
     }
 
-    function bindRteButtons() {
-      var btns = panel.querySelectorAll('.gv-bo-cb-rte__btn');
-      for (var i = 0; i < btns.length; i++) {
-        btns[i].addEventListener('click', function () { this.classList.toggle('is-on'); });
+    // ── live two-way text binding (RTE <-> block, simple fields) ──────────────
+    function bindTextBinding(block, widget) {
+      if (widget === 'text') {
+        var ed = document.getElementById('cb-rte-editor');
+        var tgt = textTargetOf(block);
+        if (ed && tgt) {
+          syncing = true; ed.innerHTML = tgt.innerHTML; syncing = false;
+          ed.addEventListener('input', function () {
+            if (syncing) return; syncing = true; tgt.innerHTML = ed.innerHTML; syncing = false;
+          });
+          if (tgt._cbSync) tgt.removeEventListener('input', tgt._cbSync);
+          tgt._cbSync = function () {
+            if (syncing) return; syncing = true; ed.innerHTML = tgt.innerHTML; syncing = false;
+          };
+          tgt.addEventListener('input', tgt._cbSync);
+          bindHeadingSelect(ed);
+        }
       }
+    }
+
+    function bindHeadingSelect(ed) {
+      var sel = panel.querySelector('.gv-bo-cb-rte__select');
+      if (!sel || !ed) return;
+      sel.addEventListener('change', function () {
+        ed.focus();
+        var tag = sel.value === 'Title' ? 'H2' : sel.value === 'Subtitle' ? 'H3' : 'P';
+        document.execCommand('formatBlock', false, tag);
+        var tgt = selected && textTargetOf(selected);
+        if (tgt) { syncing = true; tgt.innerHTML = ed.innerHTML; syncing = false; }
+      });
+    }
+
+    function bindRteButtons() {
+      var ed = document.getElementById('cb-rte-editor');
+      var btns = panel.querySelectorAll('.gv-bo-cb-rte__btn');
+      var CMD = { bold: 'bold', italic: 'italic', left: 'justifyLeft', center: 'justifyCenter', right: 'justifyRight', ol: 'insertOrderedList', ul: 'insertUnorderedList', clean: 'removeFormat' };
+      for (var i = 0; i < btns.length; i++) {
+        (function (btn) {
+          btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+          btn.addEventListener('click', function () {
+            if (!ed) { btn.classList.toggle('is-on'); return; }
+            var fmt = btn.getAttribute('data-fmt');
+            ed.focus();
+            if (fmt === 'link') { var url = prompt('Link URL', 'https://'); if (url) document.execCommand('createLink', false, url); }
+            else if (CMD[fmt]) document.execCommand(CMD[fmt], false, null);
+            if (fmt === 'bold' || fmt === 'italic') btn.classList.toggle('is-on');
+            var tgt = selected && textTargetOf(selected);
+            if (tgt) { syncing = true; tgt.innerHTML = ed.innerHTML; syncing = false; }
+          });
+        })(btns[i]);
+      }
+    }
+
+    // ── per-widget live binding: settings controls -> rendered block ──────────
+    function wireBody(widget, block) {
+      function pv(id) { return document.getElementById(id); }   // panel control
+      function bq(sel) { return block.querySelector(sel); }     // block content node
+
+      if (widget === 'button') {
+        var lbl = pv('cb-f-btnlabel'), sty = pv('cb-f-btnstyle'), url = pv('cb-f-btnurl');
+        var btn = bq('.cb-fakebtn');
+        if (lbl && btn) { lbl.value = (btn.textContent || '').trim(); lbl.addEventListener('input', function () { btn.textContent = lbl.value || 'Button'; }); }
+        if (sty && btn) sty.addEventListener('change', function () {
+          btn.classList.remove('cb-fakebtn--secondary', 'cb-fakebtn--link');
+          if (sty.value === 'secondary') btn.classList.add('cb-fakebtn--secondary');
+          else if (sty.value === 'link') btn.classList.add('cb-fakebtn--link');
+        });
+        if (url && btn) url.addEventListener('input', function () { btn.setAttribute('data-href', url.value); });
+        return;
+      }
+
+      if (widget === 'white-space') {
+        var ws = bq('.cb-ws'), hs = pv('cb-f-wsheight');
+        if (ws && hs) hs.addEventListener('change', function () { ws.style.height = hs.value + 'px'; });
+        return;
+      }
+
+      if (widget === 'image') {
+        var ph = bq('.cb-imgph'), img = bq('.cb-img'), fileIn = pv('cb-f-imgfile'), urlIn = pv('cb-f-imgurl'), altIn = pv('cb-f-imgalt');
+        function setSrc(src) {
+          var node = block.querySelector('.cb-img');
+          if (!node) {
+            node = document.createElement('img'); node.className = 'cb-img';
+            var slot = block.querySelector('.cb-imgph');
+            if (slot) slot.parentNode.replaceChild(node, slot);
+            else block.appendChild(node);
+          }
+          node.src = src;
+          if (altIn) node.alt = altIn.value || '';
+        }
+        if (fileIn) fileIn.addEventListener('change', function () {
+          if (fileIn.files && fileIn.files[0]) setSrc(URL.createObjectURL(fileIn.files[0]));
+        });
+        if (urlIn) urlIn.addEventListener('input', function () { if (urlIn.value) setSrc(urlIn.value); });
+        if (altIn) altIn.addEventListener('input', function () { var n = block.querySelector('.cb-img'); if (n) n.alt = altIn.value; });
+        return;
+      }
+
+      if (widget === 'iframe') {
+        var cap = bq('.cb-iframe__cap'), embed = pv('cb-f-embedurl');
+        if (cap && embed) embed.addEventListener('input', function () {
+          var v = embed.value.trim();
+          if (!v) { cap.textContent = 'Paste a URL to embed'; return; }
+          var host = v.replace(/^https?:\/\//, '').split('/')[0];
+          var type = /youtu/.test(v) ? 'embedded video' : /vimeo/.test(v) ? 'embedded video' : /maps|google\.[a-z]+\/maps/.test(v) ? 'embedded map' : 'embedded content';
+          cap.textContent = host + ' — ' + type;
+        });
+        return;
+      }
+
+      if (widget === 'two-column' || widget === 'three-column') {
+        var cols = bq('.cb-cols'), lay = pv('cb-f-collayout');
+        if (cols && lay) lay.addEventListener('change', function () {
+          var map3 = { equal: '1fr 1fr 1fr', 'wide-center': '1fr 2fr 1fr' };
+          var map2 = { equal: '1fr 1fr', 'wide-narrow': '2fr 1fr', 'narrow-wide': '1fr 2fr' };
+          var m = widget === 'three-column' ? map3 : map2;
+          cols.style.gridTemplateColumns = m[lay.value] || m.equal;
+        });
+        return;
+      }
+
+      if (widget === 'accordion' || widget === 'info-accordions') {
+        var head = bq('.cb-accordion__title'), textNode = bq('.cb-accordion__text');
+        var tIn = pv('cb-f-acctitle'), cIn = pv('cb-f-acccontent');
+        if (head && tIn) { tIn.value = (head.textContent || '').trim(); tIn.addEventListener('input', function () { head.textContent = tIn.value; }); }
+        if (textNode && cIn) { cIn.value = (textNode.textContent || '').trim(); cIn.addEventListener('input', function () { textNode.textContent = cIn.value; }); }
+        return;
+      }
+
+      if (widget === 'file-attachment') {
+        var nameNode = bq('.cb-file__name'), metaNode = bq('.cb-file__meta');
+        var nIn = pv('cb-f-filename'), fIn = pv('cb-f-filefile');
+        if (nameNode && nIn) { nIn.value = (nameNode.textContent || '').trim(); nIn.addEventListener('input', function () { nameNode.textContent = nIn.value; }); }
+        if (fIn) fIn.addEventListener('change', function () {
+          if (!fIn.files || !fIn.files[0]) return;
+          var f = fIn.files[0];
+          if (nameNode) nameNode.textContent = f.name;
+          if (nIn) nIn.value = f.name;
+          if (metaNode) {
+            var ext = (f.name.split('.').pop() || '').toUpperCase();
+            var size = f.size < 1024 * 1024 ? (Math.max(1, Math.round(f.size / 1024)) + ' KB') : ((f.size / 1024 / 1024).toFixed(1) + ' MB');
+            metaNode.textContent = ext + ' · ' + size;
+          }
+        });
+        return;
+      }
+
+      if (widget === 'image-text-cards') {
+        var grid = bq('.cb-cards'), countSel = pv('cb-f-cardcount'), capsHost = pv('cb-f-cardcaps');
+        function renderCaps() {
+          if (!capsHost || !grid) return;
+          var caps = grid.querySelectorAll('.cb-card__cap');
+          var html = '';
+          for (var c = 0; c < caps.length; c++) html += settingsRow('Card ' + (c + 1), '<input class="gv-input" data-cardcap="' + c + '" value="' + (caps[c].textContent || '').replace(/"/g, '&quot;') + '">');
+          capsHost.innerHTML = html;
+          var capIns = capsHost.querySelectorAll('[data-cardcap]');
+          for (var d = 0; d < capIns.length; d++) (function (inp) {
+            inp.addEventListener('input', function () {
+              var idx = +inp.getAttribute('data-cardcap');
+              var node = grid.querySelectorAll('.cb-card__cap')[idx];
+              if (node) node.textContent = inp.value;
+            });
+          })(capIns[d]);
+        }
+        if (countSel && grid) countSel.addEventListener('change', function () {
+          var n = +countSel.value;
+          var cur = grid.querySelectorAll('.cb-card').length;
+          while (grid.querySelectorAll('.cb-card').length > n) grid.removeChild(grid.lastElementChild);
+          var idx = cur;
+          while (grid.querySelectorAll('.cb-card').length < n) {
+            idx = grid.querySelectorAll('.cb-card').length;
+            var card = document.createElement('div'); card.className = 'cb-card';
+            card.innerHTML = '<div class="cb-card__img"></div><div class="cb-card__cap">Card ' + (idx + 1) + '</div>';
+            grid.appendChild(card);
+          }
+          grid.setAttribute('data-n', String(n));
+          renderCaps();
+        });
+        renderCaps();
+        return;
+      }
+
+      if (widget === 'about-box') { bindAboutBox(block); return; }
+    }
+
+    function bindAboutBox(block) {
+      var card = block.querySelector('.cb-pbox');
+      function q(sel) { return panel.querySelector('[data-set="' + sel + '"]'); }
+      function r(sel) { return card ? card.querySelector('[data-pbox="' + sel + '"]') : null; }
+      var titleIn = document.getElementById('cb-f-heading'), ctaIn = q('cta'), styleSel = q('ctastyle'), methodSel = q('method'), statusTgl = q('status');
+      if (titleIn) titleIn.addEventListener('input', function () { var t = r('title'); if (t) t.textContent = this.value || 'Share your ideas'; });
+      if (ctaIn) ctaIn.addEventListener('input', function () { var c = r('cta'); if (c) c.textContent = this.value || 'Take part'; });
+      if (styleSel) styleSel.addEventListener('change', function () { var c = r('cta'); if (c) c.classList.toggle('is-secondary', this.value === 'secondary'); });
+      if (methodSel) methodSel.addEventListener('change', function () {
+        var map = { survey: ['Collect input', 'Take the survey', 'survey'], ideation: ['Collect ideas', 'Submit your input', 'idea'], voting: ['Voting', 'Cast your vote', 'vote-up'], proposals: ['Collect proposals', 'Submit a proposal', 'edit'], 'common-ground': ['Find common ground', 'Add a statement', 'comments'] };
+        var m = map[this.value] || map.survey;
+        var ph = r('phase'), c = r('cta'), ctaField = q('cta'), icon = card && card.querySelector('.cb-pbox__phase .gv-icon');
+        if (ph) ph.textContent = 'Phase 2 of 4 · ' + m[0];
+        if (c) c.textContent = m[1];
+        if (ctaField) ctaField.value = m[1];
+        if (icon && window.GVIcons) { icon.setAttribute('data-gv-icon', m[2]); window.GVIcons.render(card); }
+      });
+      if (statusTgl) statusTgl.addEventListener('change', function () { root.classList.toggle('cb-pbox-nostatus', !this.checked); });
     }
 
     // ── block factory + wiring ────────────────────────────────────────────────
@@ -390,20 +661,48 @@
       content.innerHTML = def.make();
       while (content.firstChild) block.appendChild(content.firstChild);
       wireBlock(block);
+      // Activate any nested drop zones this block introduces (columns / accordion).
+      var zones = block.querySelectorAll('[data-cb-zone]');
+      for (var z = 0; z < zones.length; z++) makeDropZone(zones[z], 'y');
+      // Accordion head toggles expand/collapse on the canvas.
+      wireAccordion(block);
       if (window.GVIcons) window.GVIcons.render(block);
       return block;
+    }
+
+    function wireAccordion(block) {
+      var heads = block.querySelectorAll('.cb-accordion__head');
+      for (var i = 0; i < heads.length; i++) {
+        (function (head) {
+          head.addEventListener('click', function (e) {
+            var acc = head.closest('.cb-accordion');
+            if (root.classList.contains('cb-preview')) {
+              // resident behaviour: expand/collapse, don't select
+              if (acc) acc.classList.toggle('cb-accordion--open');
+              return;
+            }
+            // edit mode: chevron toggles; elsewhere bubbles up to select the block
+            if (e.target.closest('.gv-icon')) {
+              e.stopPropagation();
+              if (acc) acc.classList.toggle('cb-accordion--open');
+            }
+          });
+        })(heads[i]);
+      }
     }
 
     function wireBlock(block) {
       block.addEventListener('click', function (e) {
         if (root.classList.contains('cb-preview')) return;
-        if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') { select(block); return; }
+        if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') { e.stopPropagation(); select(block); return; }
         e.stopPropagation();
         select(block);
       });
       // reorder within the canvas
       block.addEventListener('dragstart', function (e) {
         if (root.classList.contains('cb-preview')) { e.preventDefault(); return; }
+        e.stopPropagation();
+        clearLine();
         dragData = { mode: 'move', el: block };
         block.classList.add('is-dragging');
         try { e.dataTransfer.setData('text/plain', 'move'); } catch (x) {}
@@ -412,16 +711,128 @@
       block.addEventListener('dragend', function () { block.classList.remove('is-dragging'); clearLine(); });
     }
 
-    // wire the pre-rendered default block
+    // ── drag state + a single GLOBAL clear that delegates to the active zone ───
+    var dragData = null;
+    var activeZone = null;
+    function clearLine() {
+      if (activeZone && activeZone._cbZone) activeZone._cbZone.clear();
+      activeZone = null;
+    }
+
+    // Direct-child .gv-bo-cb-block before which to insert (or null = append).
+    function zoneChildUnder(zoneEl, axis, x, y) {
+      var kids = zoneEl.children;
+      for (var i = 0; i < kids.length; i++) {
+        var child = kids[i];
+        if (!child.classList || !child.classList.contains('gv-bo-cb-block')) continue;
+        var r = child.getBoundingClientRect();
+        if (axis === 'x') { if (x < r.left + r.width / 2) return child; }
+        else { if (y < r.top + r.height / 2) return child; }
+      }
+      return null;
+    }
+
+    // Generic, reusable drop zone applied to the frame AND every nested zone.
+    function makeDropZone(zoneEl, axis) {
+      if (zoneEl._cbZone) return;            // already wired
+      var line = document.createElement('div');
+      line.className = 'gv-bo-cb-dropline cb-dropline--' + axis;
+      function clear() {
+        if (line.parentNode) line.parentNode.removeChild(line);
+        zoneEl.classList.remove('cb-zone--over', 'is-dragover');
+      }
+      zoneEl._cbZone = { line: line, clear: clear };
+
+      zoneEl.addEventListener('dragover', function (e) {
+        if (!dragData) return;
+        if (root.classList.contains('cb-preview')) return;
+        // Never drop a container into its own descendant.
+        if (dragData.mode === 'move' && (dragData.el === zoneEl || dragData.el.contains(zoneEl))) {
+          e.dataTransfer.dropEffect = 'none';
+          e.stopPropagation();               // swallow so the parent frame can't treat it as a valid drop
+          return;                            // no preventDefault -> no-drop cursor, drop won't fire here
+        }
+        e.preventDefault();
+        e.stopPropagation();                 // inner zone reacts; parent frame does not
+        e.dataTransfer.dropEffect = dragData.mode === 'move' ? 'move' : 'copy';
+        if (activeZone && activeZone !== zoneEl && activeZone._cbZone) activeZone._cbZone.clear();
+        activeZone = zoneEl;
+        zoneEl.classList.add('cb-zone--over', 'is-dragover');
+        var before = zoneChildUnder(zoneEl, axis, e.clientX, e.clientY);
+        if (before && before === dragData.el) { clear(); zoneEl.classList.add('cb-zone--over'); return; }
+        if (before) zoneEl.insertBefore(line, before);
+        else zoneEl.appendChild(line);
+      });
+
+      zoneEl.addEventListener('dragleave', function (e) {
+        if (e.target === zoneEl && !zoneEl.contains(e.relatedTarget)) clear();
+      });
+
+      zoneEl.addEventListener('drop', function (e) {
+        if (!dragData) return;
+        if (root.classList.contains('cb-preview')) return;
+        if (dragData.mode === 'move' && (dragData.el === zoneEl || dragData.el.contains(zoneEl))) {
+          e.preventDefault(); e.stopPropagation(); return;   // no-op drop; never bubble to frame (no self-nest reorder)
+        }
+        e.preventDefault();
+        e.stopPropagation();                 // stop the parent frame's drop from also firing
+        var ref = line.parentNode ? line : zoneChildUnder(zoneEl, axis, e.clientX, e.clientY);
+        if (dragData.mode === 'add') {
+          var block = makeBlock(dragData.widget);
+          if (line.parentNode) zoneEl.insertBefore(block, line);
+          else if (ref) zoneEl.insertBefore(block, ref);
+          else zoneEl.appendChild(block);
+          select(block);
+          toast('Added: ' + (WIDGETS[dragData.widget] ? WIDGETS[dragData.widget].label : dragData.widget));
+        } else if (dragData.mode === 'move' && dragData.el) {
+          if (line.parentNode) line.parentNode.insertBefore(dragData.el, line);
+          else if (ref) zoneEl.insertBefore(dragData.el, ref);
+          else zoneEl.appendChild(dragData.el);
+          toast('Element moved');
+        }
+        clear(); activeZone = null; dragData = null; reflectEmptyAll();
+      });
+    }
+
+    // Empty-state reflection across the frame AND every nested zone.
+    function reflectEmptyAll() {
+      var n = directBlockCount(frame);
+      frame.classList.toggle('is-empty', n === 0);
+      if (n === 0) deselect();
+      var zones = document.querySelectorAll('#cb-frame [data-cb-zone]');
+      for (var i = 0; i < zones.length; i++) {
+        zones[i].classList.toggle('cb-zone--empty', zoneIsEmpty(zones[i]));
+      }
+    }
+    // A zone is "empty" (shows the drop placeholder) only when it holds no nested
+    // blocks AND no meaningful default content — accordion bodies ship default text.
+    function zoneIsEmpty(zone) {
+      if (directBlockCount(zone) > 0) return false;
+      if (zone.querySelector('.cb-accordion__text')) return false;
+      return true;
+    }
+    function directBlockCount(el) {
+      var n = 0, kids = el.children;
+      for (var i = 0; i < kids.length; i++) if (kids[i].classList && kids[i].classList.contains('gv-bo-cb-block')) n++;
+      return n;
+    }
+    // Back-compat alias (now direct-child aware).
+    function reflectEmpty() { reflectEmptyAll(); }
+
+    // ── wire the frame as the primary drop zone (axis y), and the default block ─
+    makeDropZone(frame, 'y');
     var first = frame.querySelector('.gv-bo-cb-block');
     if (first) wireBlock(first);
+    // Robustness: activate any nested zones already present in the static DOM.
+    var initialZones = document.querySelectorAll('#cb-frame [data-cb-zone]');
+    for (var iz = 0; iz < initialZones.length; iz++) makeDropZone(initialZones[iz], 'y');
 
     // ── drag from palette ─────────────────────────────────────────────────────
-    var dragData = null;
     var items = document.querySelectorAll('.gv-bo-cb-item');
     for (var i = 0; i < items.length; i++) {
       (function (item) {
         item.addEventListener('dragstart', function (e) {
+          clearLine();
           dragData = { mode: 'add', widget: item.getAttribute('data-widget') };
           item.classList.add('is-dragging');
           try { e.dataTransfer.setData('text/plain', item.getAttribute('data-widget')); } catch (x) {}
@@ -429,57 +840,6 @@
         });
         item.addEventListener('dragend', function () { item.classList.remove('is-dragging'); clearLine(); });
       })(items[i]);
-    }
-
-    // ── drop target = the frame, with an insertion line ───────────────────────
-    var dropLine = document.createElement('div');
-    dropLine.className = 'gv-bo-cb-dropline';
-    function clearLine() { if (dropLine.parentNode) dropLine.parentNode.removeChild(dropLine); frame.classList.remove('is-dragover'); }
-
-    function blockUnder(y) {
-      var blocks = frame.querySelectorAll('.gv-bo-cb-block');
-      for (var i = 0; i < blocks.length; i++) {
-        var r = blocks[i].getBoundingClientRect();
-        if (y < r.top + r.height / 2) return blocks[i];
-      }
-      return null;
-    }
-
-    frame.addEventListener('dragover', function (e) {
-      if (!dragData) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = dragData.mode === 'move' ? 'move' : 'copy';
-      frame.classList.add('is-dragover');
-      var before = blockUnder(e.clientY);
-      if (before && before === dragData.el) { clearLine(); frame.classList.add('is-dragover'); return; }
-      if (before) frame.insertBefore(dropLine, before);
-      else frame.appendChild(dropLine);
-    });
-    frame.addEventListener('dragleave', function (e) {
-      if (e.target === frame && !frame.contains(e.relatedTarget)) clearLine();
-    });
-    frame.addEventListener('drop', function (e) {
-      if (!dragData) return;
-      e.preventDefault();
-      var ref = dropLine.parentNode ? dropLine : blockUnder(e.clientY);
-      if (dragData.mode === 'add') {
-        var block = makeBlock(dragData.widget);
-        if (dropLine.parentNode) frame.insertBefore(block, dropLine);
-        else if (ref) frame.insertBefore(block, ref);
-        else frame.appendChild(block);
-        select(block);
-        toast('Added: ' + (WIDGETS[dragData.widget] ? WIDGETS[dragData.widget].label : dragData.widget));
-      } else if (dragData.mode === 'move' && dragData.el) {
-        if (dropLine.parentNode) frame.insertBefore(dragData.el, dropLine);
-        toast('Element moved');
-      }
-      clearLine(); dragData = null; reflectEmpty();
-    });
-
-    function reflectEmpty() {
-      var n = frame.querySelectorAll('.gv-bo-cb-block').length;
-      frame.classList.toggle('is-empty', n === 0);
-      if (n === 0) deselect();
     }
 
     // click empty canvas area to deselect
