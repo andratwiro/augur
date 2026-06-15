@@ -1,0 +1,51 @@
+/* Vienna Custom Fonts */
+
+@font-face {
+  font-family: 'WienerMelangeCd_W_Bd';
+  src:url("/fonts/042c3a7a-211a-4a6e-9a40-8773648b9c97/WOFF/WienerMelange_W_Bd.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'WienerMelangeCd_W_BdIt';
+  src:url("/fonts/042c3a7a-211a-4a6e-9a40-8773648b9c97/WOFF/WienerMelangeCd_W_BdIt.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'WienerMelangeCd_W_Rg';
+  src:url("/fonts/042c3a7a-211a-4a6e-9a40-8773648b9c97/WOFF/WienerMelangeCd_W_Rg.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'WienerMelangeCd_W_It';
+  src:url("/fonts/042c3a7a-211a-4a6e-9a40-8773648b9c97/WOFF/WienerMelangeCd_W_It.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'WienerMelange_W_Bd';
+  src:url("/fonts/042c3a7a-211a-4a6e-9a40-8773648b9c97/WOFF/WienerMelange_W_Bd.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'WienerMelange_W_BdIt';
+  src:url("/fonts/042c3a7a-211a-4a6e-9a40-8773648b9c97/WOFF/WienerMelange_W_BdIt.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'WienerMelange_W_ExBd';
+  src:url("/fonts/042c3a7a-211a-4a6e-9a40-8773648b9c97/WOFF/WienerMelange_W_ExBd.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'WienerMelange_W_ExBdIt';
+  src:url("/fonts/042c3a7a-211a-4a6e-9a40-8773648b9c97/WOFF/WienerMelange_W_ExBdIt.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'WienerMelange_W_It';
+  src:url("/fonts/042c3a7a-211a-4a6e-9a40-8773648b9c97/WOFF/WienerMelange_W_It.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'WienerMelange_W_Rg';
+  src:url("/fonts/042c3a7a-211a-4a6e-9a40-8773648b9c97/WOFF/WienerMelange_W_Rg.woff") format("woff");
+}

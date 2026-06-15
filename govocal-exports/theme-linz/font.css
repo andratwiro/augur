@@ -1,0 +1,40 @@
+@font-face {
+  font-family: 'LentiaNova-Bulky';
+  src:url("/fonts/7413b333-a14a-4a3a-a037-da6ac4caf440/OTF/LentiaNova-Bulky.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'LentiaNova-BulkyItalic';
+  src:url("/fonts/7413b333-a14a-4a3a-a037-da6ac4caf440/OTF/LentiaNova-BulkyItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'LentiaNova-Median';
+  src:url("/fonts/7413b333-a14a-4a3a-a037-da6ac4caf440/OTF/LentiaNova-Median.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'LentiaNova-MedianItalic';
+  src:url("/fonts/7413b333-a14a-4a3a-a037-da6ac4caf440/OTF/LentiaNova-MedianItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'LentiaNova-Neutral';
+  src:url("/fonts/7413b333-a14a-4a3a-a037-da6ac4caf440/OTF/LentiaNova-Neutral.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'LentiaNova-NeutralItalic';
+  src:url("/fonts/7413b333-a14a-4a3a-a037-da6ac4caf440/OTF/LentiaNova-NeutralItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'LentiaNova-Slim';
+  src:url("/fonts/7413b333-a14a-4a3a-a037-da6ac4caf440/OTF/LentiaNova-Slim.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'LentiaNova-SlimItalic';
+  src:url("/fonts/7413b333-a14a-4a3a-a037-da6ac4caf440/OTF/LentiaNova-SlimItalic.otf") format("opentype");
+}
+

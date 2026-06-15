@@ -1,0 +1,70 @@
+@font-face {
+  font-family: 'KBH-Black';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-Black.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-MediumItalic';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-MediumItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-Medium';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-Medium.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-ThinItalic';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-ThinItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-Thin';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-Thin.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-BoldItalic';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-BoldItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-Italic';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-Italic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-Bold';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-Bold.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-BlackItalic';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-BlackItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-LightItalic';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-LightItalic.otf") format("opentype");
+}
+
+
+@font-face {
+  font-family: 'KBH-DemiBoldItalic';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-DemiBoldItalic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-DemiBold';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-DemiBold.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-Regular';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-Regular.otf") format("opentype");
+}
+
+@font-face {
+  font-family: 'KBH-Light';
+  src:url("/fonts/743d892a-9489-4765-a546-ecf0943d262d/OTF/KBH-Light.otf") format("opentype");
+}
