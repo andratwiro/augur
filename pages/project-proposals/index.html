@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
   <!--
     Reference rebuild — PROPOSALS method panel body on a project page. Source capture:
     fo-project-proposals (City of Raleigh, tenant primary green rgb(8,131,58)). The
@@ -32,7 +33,20 @@
     .pp-box__list li a:hover { color: var(--gv-tenant-primary); }
     .pp-box__list li a .count { margin-left: auto; color: var(--gv-cool-grey-600); }
     .pp-box__label { margin: 0 0 8px; font-weight: 700; color: var(--gv-grey-800); }
+    /* project-header region (layout-only — reuses canonical .gv-* components; same
+       structure as pages/project-page) */
+    .pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
+    .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
+    .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pp-title { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 10px 40px; align-items: start; padding: 36px 0 32px; }
+    .pp-title h1 { grid-column: 1; }
+    .pp-cta { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 10px; }
+    .pp-cta .gv-btn { justify-content: center; }
+    .pp-cta .gv-participants { display: flex; justify-content: center; }
+    .pp-desc { grid-column: 1; }
+    .pp-manager-row { display: flex; align-items: center; gap: 10px; }
     @media (max-width: 860px) { .pp-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) { .pp-title { grid-template-columns: 1fr; } .pp-title h1, .pp-cta, .pp-desc { grid-column: 1; } .pp-cta { grid-row: auto; } }
   </style>
 </head>
 <body class="gv-root gv-shell" data-gv-theme-picker="off">
@@ -58,6 +72,43 @@
   </header>
 
   <main class="pp-frame">
+
+    <!-- ════════ Project header — manager controls · banner · title block (H1 +
+         CTA stack + participants) · manager avatar row. Same region the canonical
+         pages/project-page renders; pure assembly of canonical .gv-* components,
+         pp-* classes carry layout only. ════════ -->
+    <div class="pp-managers">
+      <a class="gv-btn secondary-outlined size-s" href="#"><span data-gv-icon="edit" aria-hidden="true"></span> Edit project</a>
+      <button class="gv-btn primary size-s" id="followBtn" aria-pressed="true">
+        <span data-gv-icon="notification" aria-hidden="true"></span> <span id="followLabel">Unfollow (29)</span>
+      </button>
+    </div>
+
+    <section class="pp-banner gv-pcard__thumb--forest" aria-label="Project banner">
+      <img src="../../skills/govocal-ui/img/westmere/oldtown.webp" alt="Cobbled Old Town street near Market Square" loading="lazy" />
+    </section>
+
+    <div class="pp-title">
+      <h1 class="gv-title h1" style="margin:20px 0 16px;">Put your proposal on the agenda</h1>
+      <div class="pp-cta">
+        <a class="gv-btn primary" href="#proposals">Submit a proposal</a>
+        <a class="gv-btn primary-outlined" href="#proposals">See the proposals</a>
+        <div class="gv-participants" style="margin-top:4px;">
+          <span class="gv-avatars on-light" aria-hidden="true">
+            <span class="av"></span><span class="av"></span><span class="av"></span>
+          </span>
+          <span class="gv-pcount">5 proposals · 1,663 votes</span>
+          <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time totals."></span>
+        </div>
+      </div>
+      <div class="gv-projdesc pp-desc">
+        <p>Reach <strong>500 votes</strong> and your proposal goes on the agenda of the next City of Westmere council meeting. Post an idea, gather support, and we'll respond to every proposal that crosses the threshold.</p>
+        <div class="pp-manager-row">
+          <span class="gv-avatar" aria-hidden="true">HV</span>
+          <span class="gv-pcount">Managed by Hanne Vos · Westmere City — Engagement team</span>
+        </div>
+      </div>
+    </div>
 
     <!-- ════════ Timeline ════════ -->
     <section class="gv-phases" aria-labelledby="phasesTitle" style="margin:0 0 24px;">
@@ -177,5 +228,18 @@
     </div>
 
   </main>
+
+  <script>
+    /* Follow toggle (same behaviour as the canonical project-page header) */
+    (function () {
+      let following = true, count = 29;
+      var btn = document.getElementById('followBtn');
+      btn && btn.addEventListener('click', function (e) {
+        following = !following; count += following ? 1 : -1;
+        document.getElementById('followLabel').textContent = following ? 'Unfollow (' + count + ')' : 'Follow (' + count + ')';
+        e.currentTarget.setAttribute('aria-pressed', String(following));
+      });
+    })();
+  </script>
 </body>
 </html>
