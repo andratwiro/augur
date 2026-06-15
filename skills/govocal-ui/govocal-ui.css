@@ -1168,6 +1168,14 @@
 .gv-partbar__status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #fff; flex: none; }
 .gv-partbar .gv-btn { margin-left: auto; }
 
+/* Modal base text colour — the real dialog card (.modalcontent) renders its body
+   and the close X at rgba(0,0,0,0.87) (measured wietsedemo), the same near-black
+   the idea-card body uses, NOT the global #333 body text. Scope it to the FO modal
+   so .gv-modal inherits it and the close button (which sets its own colour in the
+   primitive) is re-aligned here too. Modal headings keep --gv-text-heading. */
+.gv-modal { color: rgba(0, 0, 0, 0.87); }
+.gv-modal__close { color: rgba(0, 0, 0, 0.87); }
+
 /* Round close-button variant — the Community Monitor modal frames its X in a
    46px circle (measured .e2e-modal-close-button: border-radius 50%, padding 10px,
    1px transparent border). A modifier on the base .gv-modal__close — it does NOT
