@@ -94,6 +94,7 @@ const PROBE_PROPS = [
   'box-shadow', 'outline',
   'display', 'flex-direction', 'align-items', 'justify-content',
   'width', 'height', 'min-height', 'max-width',
+  'position', 'top', 'left', 'overflow', 'overflow-y', 'z-index',
   'opacity',
 ];
 

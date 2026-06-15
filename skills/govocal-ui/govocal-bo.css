@@ -45,6 +45,15 @@
   font-size: 14px;
   line-height: 20px;
   padding: 0 0 35px;
+  /* Live: #sidebar is position:fixed, top:0, left:0, height:100vh — it stays put
+     while the body scrolls, so the bottom-pinned items are always reachable. We
+     use sticky within the grid (same result, no margin math; the 224px grid
+     column reserves the space). Internal scroll if the nav exceeds the viewport. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 /* Brand band */
