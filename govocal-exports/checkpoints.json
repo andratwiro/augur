@@ -1333,7 +1333,10 @@
       "props": [
         "background-color",
         "padding",
-        "margin"
+        "margin",
+        "box-shadow",
+        "border-radius",
+        "border-width"
       ],
       "uses": [
         ".gv-tally"
