@@ -1464,3 +1464,31 @@
   border: 1px solid var(--gv-tenant-primary); overflow: hidden; display: flex; align-items: center; }
 .gv-voteresult__fill { height: 6px; background: var(--gv-tenant-primary); }
 .gv-voteresult__foot { display: flex; align-items: center; gap: 18px; margin-top: 2px; }
+
+/* ── Poll method body — the poll participation form (FO) ──────────────────────────
+   Grounded on wietsedemo poll-mobility-plan-for-riverside-heights:
+   .e2e-poll-form (flex column, centred, 1166px), .e2e-poll-question (white card,
+   20px pad, 3px radius, --gv-shadow), the numbered badge (sc-jiwKzQ: 25px square,
+   #F2F2F2 bg, 16px/600, 3px radius), the question label (18px/600 #474747), and the
+   .e2e-poll-option choices (16px, indented 35px) which REUSE the .gv-radio / .gv-checkbox
+   primitives. The full-width 'Send' (.e2e-send-poll) is .gv-btn.primary.full. The sticky
+   'Open for participation · Take the poll' partbar and any participation CTA REUSE the
+   existing .gv-partbar / .gv-surveyband — this adds only the poll question/option body. */
+.gv-poll { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%;
+  color: var(--gv-text-pagetitle); font-size: var(--gv-fs-s); line-height: 19.999px; }
+.gv-poll__question { background: #fff; padding: 20px; margin: 0; border: 0; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow);
+  color: var(--gv-text-pagetitle); align-self: stretch; }
+.gv-poll__qhead { display: flex; align-items: center; gap: 13px; margin-bottom: 16px; }
+/* the order badge — neutral #F2F2F2 chip (one-off grey, not the grey-100 token #F4F6F8). */
+.gv-poll__num { width: 25px; height: 25px; flex: none; display: flex; align-items: center; justify-content: center;
+  background: #F2F2F2; color: var(--gv-text-pagetitle); font-size: var(--gv-fs-base); font-weight: 600;
+  border-radius: var(--gv-radius); }
+.gv-poll__label { font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-pagetitle); line-height: 1.3; }
+.gv-poll__options { display: flex; flex-direction: column; align-items: flex-start; }
+/* each option (the live .e2e-poll-option label) is 16px, indented 35px, stacked 12px.
+   It reuses the .gv-radio / .gv-checkbox primitive; align-items/line-height are reset
+   to the live label flow without mutating the base primitive elsewhere. */
+.gv-poll__options .gv-radio, .gv-poll__options .gv-checkbox {
+  font-size: var(--gv-fs-base); line-height: normal; align-items: normal; margin: 0 0 12px 35px; }
+/* the full-width Send row — a .gv-btn.primary.full; disabled until the poll is complete. */
+.gv-poll__send { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 12px; }

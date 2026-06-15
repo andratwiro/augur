@@ -186,6 +186,75 @@ The real GoVocal icon set (Material-Design-derived paths), transcribed verbatim 
 - **More icons exist** in the repo (~130 total incl. SSO + other specialized glyphs); extend
   `govocal-icons.js` from `Icon/index.tsx` @ `5d67730` following the same discipline.
 
+## Avatar & avatar stack — `.gv-avatar` / `.gv-bubbles` (`govocal-ui.css`)
+
+The circular participant avatar and the overlapping social-proof stack + count, reused
+by the hero, project cards, spotlight, perspectives and more.
+
+```html
+<span class="gv-avatar"></span>                 <!-- single 32px circle; set background-image for a face -->
+<div class="gv-bubbles" aria-label="145 participants">
+  <span class="av"></span><span class="av"></span><span class="av"></span>
+  <span class="gv-bubbles__label">145 participants</span>
+</div>
+```
+
+## Progress bar — `.gv-progress` (`govocal-ui.css`)
+
+Generic tenant-tinted track + fill; `__fill` width is the value. Used for time-remaining,
+proposal thresholds, survey completion.
+
+```html
+<div class="gv-progress" role="progressbar" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed">
+  <div class="gv-progress__fill" style="width:18%"></div>
+</div>
+```
+
+## Tabs — `.gv-tabs` / `.gv-tab` (`govocal-ui.css`)
+
+Underline tab strip with optional `.ct` count, used by the homepage/projects toolbars.
+
+```html
+<div class="gv-tabs" role="tablist" aria-label="Publication status">
+  <button class="gv-tab" role="tab" aria-selected="true">Published <span class="ct">(21)</span></button>
+  <button class="gv-tab" role="tab" aria-selected="false">Archived <span class="ct">(1)</span></button>
+</div>
+```
+
+## Filter control — `.gv-filter-btn` / `.gv-filter-pill` (`govocal-ui.css`)
+
+The two filter-trigger atoms: the neutral toolbar button (`.gv-filter-btn`, Tag/Area
+selectors) and the tenant-primary pill dropdown (`.gv-filter-pill`, the /events filters).
+
+```html
+<button class="gv-filter-btn">All topics</button>
+<button class="gv-filter-pill" aria-haspopup="listbox" aria-expanded="false" aria-label="Date">Date</button>
+```
+
+## Segmented toggle — `.gv-viewseg` / `.gv-pviewtoggle` (`govocal-ui.css`)
+
+Two segmented view-switchers: the grey-track `.gv-viewseg` (List/Map on a project page)
+and the white-wrapper own-shadow `.gv-pviewtoggle` (List/Perspective on Perspectives).
+
+```html
+<div class="gv-viewseg" role="tablist" aria-label="View ideas as">
+  <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
+  <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
+</div>
+```
+
+## Search field — `.gv-searchfield` (`govocal-ui.css`)
+
+Full-width search wrapper: a `.gv-input` with a right-aligned magnifier glyph.
+
+```html
+<div class="gv-searchfield">
+  <label class="gv-sr-only" for="q">Search</label>
+  <input class="gv-input" id="q" type="search" placeholder="Search projects and folders" />
+  <span class="gv-searchfield__icon" aria-hidden="true"><span data-gv-icon="search"></span></span>
+</div>
+```
+
 ---
 
 # Composed components (Components tab)
@@ -1298,6 +1367,53 @@ dashed-box `.gv-events__empty`). Drop it after `.gv-phasebody`; re-skins per `?t
     </div>
   </section>
 </div>
+```
+
+---
+
+## Poll method body — `.gv-poll` (`components/poll/`)
+
+The **poll participation form** that renders for a Poll phase: a centred stack of
+white question cards, each a numbered badge + label over single/multi-choice options,
+ending in a full-width **Send**. Source-grounded on wietsedemo
+`…/poll-mobility-plan…` (`fo-poll`), verified via `fo-poll/{form,question,option,send}`.
+**Reuse-first:** option choices are the `.gv-radio` / `.gv-checkbox` primitives, Send is
+`.gv-btn.primary.full`, and the sticky "Open for participation · Take the poll" band is
+the existing `.gv-partbar` — net-new is only the poll question/option scaffold.
+
+- `.gv-poll` — the form: centred flex column, `--gv-text-pagetitle` (#474747), 14px/19.999.
+- `.gv-poll__question` — white card (20px pad, 3px radius, soft `--gv-shadow`). Use a
+  `<fieldset>` — the class resets its UA border/margin to `0`.
+- `.gv-poll__qhead` — the badge + label row. `__num` = a 25px square **#F2F2F2** chip
+  (16/600 — a one-off neutral grey, *not* the `--gv-grey-100` #F4F6F8 token).
+- `.gv-poll__label` — 18px/600 question text (`<legend>`).
+- `.gv-poll__options` — option list; reused `.gv-radio`/`.gv-checkbox` are bumped to 16px,
+  indented 35px, with line-height/align reset to the live label flow (scoped, base untouched).
+- `.gv-poll__send` — full-width row wrapping `.gv-btn.primary.full` (`disabled` until complete).
+
+```html
+<!-- sticky participation band — REUSED .gv-partbar -->
+<div class="gv-partbar"><div class="gv-partbar__inner">
+  <span class="gv-partbar__status">Open for participation</span>
+  <a class="gv-btn on-color" href="#poll">Take the poll <span data-gv-icon="arrow-right"></span></a>
+</div></div>
+
+<form class="gv-poll" id="poll" aria-label="Poll">
+  <fieldset class="gv-poll__question">
+    <div class="gv-poll__qhead">
+      <span class="gv-poll__num" aria-hidden="true">1</span>
+      <legend class="gv-poll__label">Select your age range</legend>
+    </div>
+    <div class="gv-poll__options" role="radiogroup">
+      <label class="gv-radio"><input type="radio" name="q1"><span class="circle"></span> Under 25</label>
+      <label class="gv-radio"><input type="radio" name="q1"><span class="circle"></span> 25-45</label>
+      <!-- …or .gv-checkbox for a "select all that apply" question… -->
+    </div>
+  </fieldset>
+  <div class="gv-poll__send">
+    <button type="submit" class="gv-btn primary full" disabled>Send</button>
+  </div>
+</form>
 ```
 
 ---

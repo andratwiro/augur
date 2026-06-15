@@ -1474,6 +1474,83 @@
       "uses": [
         ".gv-project-events"
       ]
+    },
+    {
+      "id": "fo-poll/form",
+      "built": "components/poll/index.html",
+      "against": "fo-poll",
+      "map": {
+        ".e2e-poll-form": ".gv-poll"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "line-height",
+        "display",
+        "flex-direction",
+        "align-items"
+      ],
+      "uses": [
+        ".gv-poll"
+      ]
+    },
+    {
+      "id": "fo-poll/question",
+      "built": "components/poll/index.html",
+      "against": "fo-poll",
+      "map": {
+        ".e2e-poll-question": ".gv-poll__question"
+      },
+      "props": [
+        "background-color",
+        "color",
+        "padding",
+        "border",
+        "border-radius",
+        "box-shadow",
+        "margin"
+      ],
+      "uses": [
+        ".gv-poll"
+      ]
+    },
+    {
+      "id": "fo-poll/option",
+      "built": "components/poll/index.html",
+      "against": "fo-poll",
+      "map": {
+        ".e2e-poll-option": ".gv-poll__options .gv-radio.e2e-poll-option"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "line-height",
+        "display",
+        "align-items",
+        "margin"
+      ],
+      "uses": [
+        ".gv-poll",
+        ".gv-radio"
+      ]
+    },
+    {
+      "id": "fo-poll/send",
+      "built": "components/poll/index.html",
+      "against": "fo-poll",
+      "map": {
+        ".e2e-send-poll": ".gv-poll__send.e2e-send-poll"
+      },
+      "props": [
+        "display",
+        "align-items",
+        "justify-content",
+        "width"
+      ],
+      "uses": [
+        ".gv-poll",
+        ".gv-btn"
+      ]
     }
   ]
 }
