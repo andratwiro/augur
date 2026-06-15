@@ -1339,6 +1339,24 @@
 .gv-issuecanvas__pile[hidden], .gv-issuecanvas__view[hidden] { display: none; }
 .gv-issuecanvas.is-detail { align-items: flex-start; }
 
+/* ── Scatter pile (fix 27/93) ── the DEFINING Perspective layout: a fixed-height
+   RELATIVE canvas of absolutely-positioned, lightly-rotated, OVERLAPPING sticky
+   notes of varied sizes, with the bottom edge CLIPPED by the fixed height.
+   Grounded on the live [data-cy=e2e-sticky-notes-pile]: position:relative,
+   width 1166px, height/min-height 650px desktop (340×800 mobile). Opt-in variant —
+   the base masonry grid above is untouched for any other consumer. The page authors
+   per-note placement (left/top/width/rotate) as layout-only inline styles. */
+.gv-issuecanvas__pile.is-scatter { display: block; position: relative;
+  width: 100%; max-width: 1166px; height: 650px; min-height: 650px;
+  margin: 0 auto; overflow: hidden; }
+.gv-issuecanvas__pile.is-scatter > .gv-sticky { position: absolute; }
+/* the canvas wrapper shouldn't center a block-level scatter pile, and the bottom
+   fade hints at clipped content (decorative — the real height clip does the work). */
+.gv-issuecanvas.has-scatter { align-items: stretch; justify-content: stretch; }
+@media (max-width: 860px) {
+  .gv-issuecanvas__pile.is-scatter { max-width: 340px; height: 800px; min-height: 800px; }
+}
+
 /* ── Sticky-note idea card ── live button = 320px, padding 20px, radius 3px, pastel bg.
    Resting shadow + (.is-raised) the selected/floating detail shadow. Variants set bg. */
 .gv-sticky { position: relative; box-sizing: border-box; width: 320px; padding: 20px;

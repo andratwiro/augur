@@ -244,10 +244,15 @@
 
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-    // Sticky-note card (Perspective view) — reuses canonical .gv-sticky
-    function stickyHTML(d, h) {
+    // Sticky-note card (Perspective view) — reuses canonical .gv-sticky.
+    // `pos` carries the scatter placement authored as layout-only inline styles
+    // (left/top/width/height/rotate) so the absolutely-positioned overlap+rotation
+    // lives in the page, not in the canonical .is-scatter variant.
+    function stickyHTML(d, pos) {
+      const s = `left:${pos.x}px;top:${pos.y}px;width:${pos.w}px;height:${pos.h}px;`
+        + `transform:rotate(${pos.r}deg);z-index:${pos.z};`;
       return `
-        <button type="button" class="gv-sticky ${d.color}" data-cy="e2e-sticky-note" style="height:${h}px">
+        <button type="button" class="gv-sticky ${d.color}" data-cy="e2e-sticky-note" style="${s}">
           <span class="gv-sticky__author">
             <span class="av"></span>
             <span class="gv-sticky__authorname">${esc(d.author)}</span>
@@ -293,10 +298,20 @@
     }
 
     /* ════════ Method-panel registry ════════ */
-    const HEIGHTS = [337, 300, 320, 290, 300, 280];
+    /* Scatter placement — layout-only coordinates for the fixed-height (650px) canvas:
+       overlapping, lightly-rotated sticky notes of varied sizes, bottom row clipped.
+       x/y = absolute offset, w/h = note size, r = rotation deg, z = stacking. */
+    const SCATTER = [
+      { x: 24,  y: 18,  w: 300, h: 330, r: -2.5, z: 3 },
+      { x: 300, y: 64,  w: 320, h: 300, r: 1.8,  z: 5 },
+      { x: 612, y: 12,  w: 300, h: 320, r: -1.2, z: 4 },
+      { x: 56,  y: 322, w: 320, h: 300, r: 2.2,  z: 6 },  /* bottom row — clipped by 650px */
+      { x: 372, y: 348, w: 300, h: 290, r: -2.8, z: 7 },
+      { x: 668, y: 318, w: 320, h: 300, r: 1.4,  z: 6 },
+    ];
     const METHODS = {
       perspectives() {
-        const pile = IDEAS.map((d, i) => stickyHTML(d, HEIGHTS[i % HEIGHTS.length])).join('');
+        const pile = IDEAS.map((d, i) => stickyHTML(d, SCATTER[i % SCATTER.length])).join('');
         const list = IDEAS.map(listCardHTML).join('');
         return `
           <div id="e2e-ideas-container">
@@ -313,8 +328,8 @@
             </div>
 
             <!-- Perspective view (default) — masonry pile of sticky notes, inline -->
-            <div class="gv-issuecanvas" data-cy="e2e-sticky-notes-pile" id="perspectiveView">
-              <div class="gv-issuecanvas__pile">${pile}</div>
+            <div class="gv-issuecanvas has-scatter" id="perspectiveView">
+              <div class="gv-issuecanvas__pile is-scatter" data-cy="e2e-sticky-notes-pile">${pile}</div>
             </div>
 
             <!-- List view — same ideas flattened -->
