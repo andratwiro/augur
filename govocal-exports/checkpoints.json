@@ -1138,6 +1138,40 @@
         "display"
       ],
       "uses": []
+    },
+    {
+      "id": "fo-perspectives-board/idea-detail-card",
+      "built": "pages/perspectives-board/index.html",
+      "against": "fo-perspectives-feed",
+      "map": {
+        "[data-cy=e2e-sticky-note]": ".gv-sticky.is-raised"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "border-radius",
+        "padding"
+      ],
+      "uses": [
+        ".gv-sticky"
+      ]
+    },
+    {
+      "id": "fo-perspectives-board/like-button",
+      "built": "pages/perspectives-board/index.html",
+      "against": "fo-perspectives-board",
+      "map": {
+        ".e2e-ideacard-like-button": ".e2e-ideacard-like-button"
+      },
+      "props": [
+        "display",
+        "align-items",
+        "margin",
+        "padding"
+      ],
+      "uses": [
+        ".gv-sticky__reactbtn"
+      ]
     }
   ]
 }

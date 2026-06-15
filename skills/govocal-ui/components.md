@@ -1023,6 +1023,25 @@ are **new variants**, not mutations of any base.
 
 ---
 
+## Perspectives — idea-mapping BOARD + idea DETAIL (`pages/perspectives-board/`)
+
+The **same Issue-Mapping board as the feed above, opened on a selected idea** — i.e.
+the live `…/ideas-feed?initial_idea_id=…` state, source-grounded on capture
+`fo-perspectives-board`. This is the lane's **idea/proposal DETAIL surface**: the
+canvas opens in `.gv-issuecanvas.is-detail` with ONE raised, floating `.gv-sticky`
+`.is-raised` idea-detail card (author chip + title + the *full* body + row-reverse
+dislike/like reactions). **Back** drops to the masonry `.gv-issuecanvas__pile`;
+clicking any resting note re-opens it as a detail card. No new classes — it reuses the
+exact `.gv-issuefeed`/`.gv-themecard`/`.gv-issuecanvas`/`.gv-sticky` set from the feed
+(same markup as the snippet above), so a detail card is just `.gv-sticky.is-raised`
+inside `.gv-issuecanvas__view` while the pile sits `hidden`. The detail card simply
+widens (`style="width:420px"`) and carries a longer `.gv-sticky__excerpt`. Verified via
+the `fo-perspectives-board/{idea-detail-card,like-button}` checkpoints (the raised card
+re-uses the grounded `fo-perspectives-feed` sticky probe). Use this page as the starting
+point when a prototype needs the **opened idea detail** rather than the browsing pile.
+
+---
+
 ## Perspectives — in-timeline phase entry — `.gv-pviewtoggle` (`pages/perspectives-entry/`)
 
 The **Perspective phase ENTRY POINT inside the project timeline** — distinct from the
