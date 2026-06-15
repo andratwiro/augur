@@ -308,3 +308,10 @@
        --gv-border-dark, so no change needed there. Real padding measured 20px 20px 8px
        (was 16px 18px — slightly tighter). Append-only override so every consumer updates. */
     .sv-optcard { border-color: var(--gv-border-dark); padding: 20px 20px 8px; }
+
+    /* ── Question-label weight fidelity (shared-fix survey-question-label-weight) ──
+       Real survey question label (span.diOXeU 'Your question') = 16px / weight 600 /
+       rgb(30,30,30). The base rule above shipped weight 700; the runner uses semibold
+       600, not bold. The '(optional)' suffix stays 16px / 400 / cool grey (our
+       .sv-q__optional already matches). Append-only override so every consumer updates. */
+    .sv-q__label { font-weight: 600; }
