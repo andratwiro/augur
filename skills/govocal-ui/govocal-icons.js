@@ -17,7 +17,12 @@
     var ic = GV_ICONS[name];
     if (!ic) return "";
     var cls = "gv-icon" + (opts && opts.className ? " " + opts.className : "");
-    return '<svg class="' + cls + '" viewBox="' + ic.vb + '" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">' + ic.inner + '</svg>';
+    // width/height are presentation attributes (lowest CSS priority) so the
+    // .gv-icon rule and every BO size override still win once CSS applies — but
+    // they keep the icon at 1em instead of the 300x150 replaced-element default
+    // during the brief window before govocal-primitives.css (loaded via @import)
+    // arrives. Without them, every injected icon flashes huge & black on load.
+    return '<svg class="' + cls + '" viewBox="' + ic.vb + '" width="1em" height="1em" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">' + ic.inner + '</svg>';
   }
   function render(root) {
     (root || document).querySelectorAll('[data-gv-icon]').forEach(function (el) {
