@@ -601,6 +601,7 @@
    image on the RIGHT (body comes first in source), a large title, a solid CTA and
    the participant row on the LEFT. One-off literals: this card is intentionally
    larger than the regular grid cards. */
+.gv-pcard.boxed.horizontal.feature { flex-direction: row-reverse; }   /* image LEFT, copy RIGHT */
 .gv-pcard.boxed.horizontal.feature .gv-pcard__thumb { flex: 0 0 50%; min-height: 430px; }
 .gv-pcard.boxed.horizontal.feature .gv-pcard__body { padding: 40px 46px; gap: 0; }
 .gv-pcard.boxed.horizontal.feature .gv-pcard__title { font-size: 28px; line-height: 1.18; margin: 0 0 14px; }
