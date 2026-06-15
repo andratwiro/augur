@@ -156,3 +156,114 @@ chrome added: `.gv-bo-tabs--top`, `.gv-bo-table.is-list` (striped full-width lis
 | Notifications | — (bell flyout) | `bo-notifications` (404) | ✅ | No standalone page → reconstructed activity feed. |
 
 Site: `/pages/` index is split **Back office / Front office** (build.js, via `<meta name="gv-surface">` / `bo-` prefix). New BO pages auto-group under Back office.
+
+---
+
+# 5-RUN DEEP RECONSTRUCTION SWEEP (started 2026-06-15)
+
+Goal: screenshot-level fidelity across the WHOLE back office + abstract recurring UI
+into canonical `.gv-*`. Orchestrator serializes all canonical CSS edits; page agents
+do page-local work only. Captures for this sweep are prefixed `r1-*` (discovery),
+`r2-*`, etc., so they never clobber the canonical capture set.
+
+## Run 1 — Whole-BO map & gap register (DONE)
+
+Four parallel read-only discovery agents enumerated every reachable BO route/state
+and captured ~70 new screens (`govocal-exports/r1-{pe,an,cf,px}-*`). Real tenant =
+Raleigh demo (`uxusertesting.govocal.com`). Measured palette confirmed everywhere:
+navy `#044D6C` (headings/text), teal `#147985` (accents/status chips), cool-grey
+`#596B7A` (meta/inactive), dividers `#E0E0E0`, header-card shadow
+`rgba(0,0,0,.06) 0 2px 4px -1px`, radius 3px, Public Sans. Accent red `#E52516`
+(notif badge, method chips). All `--gv-*`-aliasable.
+
+### Project enumeration (Raleigh, 20 projects)
+Method coverage PRESENT as live phases: ideation ✓, voting/**budgeting** ✓, native
+survey ✓, poll ✓, volunteering ✓, information ✓, common-ground/Polis ✓ (as `/report`
+tab). NOT present as configured phases (only as method-picker options): standalone
+**proposals**, **external survey**, **document_annotation**. Reference projects:
+- *Reimagine Dorothea Dix Park* `dbfa9b1a-7625-4480-bd9a-344e65154ec6` — multi-phase
+  (ideation P1 `0fd4b191` → voting P2 → winners → implementation → new ideas).
+- *Participatory Budget – District 2* `33eaf246…` — ideation `419f4a31` + **budgeting**
+  `149d7728` (Total budget + EUR min/max).
+- *Ctrl+Alt+Oslo* `d9f0f78c` — native survey (`/survey-form`). *Open survey test
+  demographics* `76d99db8` — native survey. *Metro Line* `a0fa6185` — survey-results.
+- *Public Healthcare Opinions* `fe77c6bd` — survey + **information** phase `c8502d40`.
+- *Forest Gate Community Assemblies* `b3343dbb` — ideation+map + **poll** (`/polls`).
+- *Showroom Participation Garage* `9c712d53` — **volunteering** `d17a4e60`.
+- *Test Polis* `0c095f98` — **common-ground**/Polis `692cea20` (`/report`).
+- **Active-phase trap:** the SPA only renders the *selected* phase's real sub-tabs;
+  other phases collapse to generic `setup`/`ideas`. Identify a method from the active
+  phase's tab signature or its ribbon label ("Voting phase ·", "Volunteering phase ·").
+
+### Consolidated gap register (✗ = unbuilt, ◐ = partial, ✓ = built & ok)
+**Project editor (biggest gap area):**
+- ✗ Native **survey form builder** — `/phases/:id/survey-form/edit` — 3-pane (field
+  palette / canvas of `Page N` + 51px field rows / settings); field-type chips +
+  Required toggle + logic. `r1-pe-survey-form-edit`.
+- ✗ Native **survey results** — `/survey-results` — per-question bar/donut cards.
+- ✗ **Voting/budgeting Setup** — method cards (One vote per option / Multiple votes /
+  Budget allocation), EUR Total/Min/Max numeric row. `r1-pe-pb-ph1-setup`. (No data
+  `/voting` tab — options managed via Input manager; results in Insights/FO.)
+- ✗ **Poll editor** — `/polls` — question list, single/multiple, Export. `r1-pe-poll`.
+- ✗ **Volunteering** causes/opportunities — `/volunteering`. `r1-pe-volunteering`.
+- ✗ **Common-ground** setup (≤120-char statements, agree/unsure/disagree) + `/report`.
+  `r1-pe-commonground-{setup,report}`.
+- ✗ **Information** phase setup (minimal; tabs Setup/Description/Report). `r1-pe-information-setup`.
+- ◐ **Phase access-rights** — permissions/auth-flow matrix; under-captured, RE-CAPTURE
+  with `--click`/longer settle. `r1-pe-access-rights`.
+- ✗ **Phase description** = Content Builder (reuse bo-content-builder). `r1-pe-phase-description`.
+- ✗ **Phase emails** — per-phase automated-email toggle list. `r1-pe-phase-emails`.
+- ✗ **Input importer** — Excel/form dropzone. `r1-pe-input-importer`.
+- ✗ **Project Timeline** top-tab (phase Gantt strip). `r1-pe-proj-timeline`.
+- ✗ **"360 Input NEW"** project top-tab (after Events on every project).
+- ✗ **New project** flow — From scratch / From a template gallery (collapsible facet
+  rail Departments/Purposes/Levels + template cards Use template/More details). Form
+  body = same as General tab (heavy reuse). `r1-pe-project-new`, `r1-px-projects-new{,-template}`.
+
+**Analytics cluster:**
+- ✗ **Report-builder EDITOR** — `/reporting/report-builder/:uuid/editor` — Content
+  Builder: Widgets/✨AI rail, 17 draggable widget tiles, A4 canvas w/ logo + sections +
+  "no data for filters" empty widget. BIGGEST single new page. `r1-an-reporting-editor`.
+- ◐ Reporting **two tabs** (your-reports / service-reports) — built shows one. `r1-an-reporting-service`.
+- ◐ **Community monitor** — live-monitor (Health Score `–/5`, quarter navigator
+  `← Q2 2026 →`, 3 sentiment dimensions, 11 question rows w/ scale bars) + sub-tabs
+  Participants / Reports / Settings / Settings→Popup. `r1-an-cm-*`.
+- ◐ Dashboard date-range control cluster (All Time select + native date picker +
+  project combobox + Days/Weeks/Months segmented). `r1-an-dash-daterange-open`.
+- ✓ Dashboard 6 tabs, Inspiration hub (method chip red `#E52516` r=2px) — built ok.
+
+**Config cluster:**
+- ✗ **Users sub-views** — admins (seat summary Total/Assigned/Available + empty state),
+  blocked, banned-emails (email-checker input+Check), seats table, single group view.
+  `r1-cf-users-{admins,blocked,banned,seats,group}`.
+- ✗ **Add-group modal** — the only TRUE modal in cluster: `role=dialog`, 650px white
+  card, 3px radius, 46px circular close, Manual vs Smart group choice cards. `r1-cf-users-groupmodal`.
+- ✗ Settings **add-forms (routes not modals)**: registration add-question (7 answer
+  formats), areas add-area (multiloc), statuses **Proposal** tab (distinct lifecycle),
+  pages-menu create-page. `r1-cf-set-reg-addq`, `r1-cf-set-areas-addmodal`, `r1-cf-set-statuses-proposal`, `r1-cf-pages-new`.
+- ✗ **Tools**: widgets builder (dimensions/style/color form + preview), esri config
+  (API key). `r1-cf-tools-{widgets,esri}`.
+
+**Projects/messaging/inputs:**
+- ✗ **Projects Arrange** tab — drag-reorder rows + Edit + Draft pill. `r1-px-projects-arrange`.
+- ◐ Projects **Calendar** = "Enable calendar view" opt-in empty state (not a grid). `r1-px-projects-calendar`.
+- ✗ **Messaging compose** editor — Sender/recipients + Subject multiloc (0/80 counter)
+  + rich-text toolbar + Save as draft. `r1-px-messaging-compose`.
+- ◐ **Automated emails** — grouped trigger registry (audience groups, View/Edit +
+  on/off), distinct from custom campaign cards. `r1-px-messaging-automated`.
+- ✗ **Exports menu** dropdown (input manager) + bell **notif flyout** (badge 29). `r1-px-input-manager-exports`, `r1-px-notif-flyout`.
+
+### Canonical-component backlog (the abstraction mandate — orchestrator owns these)
+HIGH (used ≥2 places, blocks builds): **`.gv-modal`/`.gv-bo-modal`** (missing
+entirely — 650px, 3px, 46px circular close); **drag-handle vertical-grip icon**
+(missing from `govocal-icons.js` — Areas/Statuses/Pages-menu/Arrange/survey rows);
+**filled-grey badge variant** (`.gv-badge.is-filled`/DEFAULT — `#EBEDEF` bg, `#596B7A`,
+12px/700 uppercase, 3px, pad 0 6px) + **method chip red** (`#E52516`, r=2px);
+**`.gv-bo-segmented`** (scratch/template, Days/Weeks/Months).
+MED: `.gv-bo-radiocard` (label+helper radio), color-picker field, `.gv-bo-menu`
+dropdown, `.gv-bo-rte` rich-text toolbar + `.gv-bo-charcount`, `.gv-bo-scalebar`
+(sentiment n/5), chart-card tokens `--gv-chart-*`, date-range control cluster,
+`.gv-bo-templatecard` + collapsible `.gv-bo-facetgroup`, `.gv-bo-automatedrow`,
+`.gv-bo-arrangerow` (drag), `.gv-bo-notifflyout`/`__item`, survey `.gv-bo-fieldrow` +
+field-type chips, voting-method picker card + EUR min/max row, quarter navigator.
+(Confirm `.gv-bo-empty`, `.gv-bo-multiloc` already exist — they do — and reuse.)
