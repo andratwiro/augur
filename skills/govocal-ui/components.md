@@ -301,10 +301,51 @@ filled three-bar hamburger icon.
   </div>
 </header>
 ```
-- Active link → red top indicator via `aria-current="page"`. Add `sticky` to pin.
+- The bar is **full-width** (`.gv-header__inner` is `width:100%`, `box-sizing:border-box`):
+  logo flush-left, actions flush-right — like the live product — while page content stays capped.
+- Active link → tenant **top-bar + subtle tinted cell** via `aria-current="page"`. **Not bold**
+  (weight stays 500, matching the product). Add `sticky` to pin.
 - Logo: `data-gv-logo` (themes per city) or drop a literal `<svg>`/`<img>` in `.gv-brand`.
 - Primary nav is a `<nav aria-label="Primäre">` landmark; the `<ul>` carries `.gv-nav__list`.
 - Hamburger uses the real GoVocal filled three-bar icon (`M3,6H21V8H3V6…`), not a generic stroked one.
+
+### Signed-out vs signed-in — one component, a state switch
+
+Same header; the **actions** cluster swaps. Wrap each cluster in `.gv-auth-out` /
+`.gv-auth-in` and set `data-auth="out" | "in"` on a root (e.g. `<body>`): the matching
+cluster shows, the other hides (`display:none`). Flip it for a quick demo of both —
+no real auth logic. In the mobile drawer the wrappers are `display:contents`, so their
+links flow into the drawer grid.
+
+```html
+<div class="gv-header__actions">
+  <button class="gv-iconbtn gv-desktop-only" aria-label="Search">…</button>
+
+  <span class="gv-auth-out gv-desktop-only"><button class="gv-btn primary">Sign in</button></span>
+
+  <span class="gv-auth-in gv-desktop-only">
+    <button class="gv-iconbtn" aria-label="Notifications, 3 unread">…bell…<span class="gv-iconbtn__badge">3</span></button>
+    <details class="gv-nav__dd right gv-account-dd">                  <!-- account = a dropdown -->
+      <summary class="gv-account"><span class="gv-avatar">GV</span><span class="gv-account__name">Go Vocal</span><svg class="gv-nav__chev">…</svg></summary>
+      <div class="gv-nav__menu" style="min-width:220px">
+        <a href="#">Manage platform <svg>…</svg></a>
+        <a href="#">My activity <svg>…</svg></a>
+        <a href="#">My settings <svg>…</svg></a>
+        <div class="gv-menu-sep"></div>
+        <button type="button">Sign out <svg>…</svg></button>
+      </div>
+    </details>
+    <details class="gv-nav__dd right">                               <!-- language switcher -->
+      <summary class="gv-lang">EN <svg class="gv-nav__chev">…</svg></summary>
+      <div class="gv-nav__menu"><a href="#">English</a><a href="#">Español</a></div>
+    </details>
+  </span>
+  <details class="gv-nav-m">…hamburger; put .gv-auth-out / .gv-auth-in inside the drawer too…</details>
+</div>
+```
+- Account menu items are `.gv-nav__menu a` / `button` (flex, trailing icon, `.gv-menu-sep`
+  divider before Sign out) — source-grounded on the live user menu (Manage platform · My
+  activity · My settings · Sign out).
 
 ## Footer — `.gv-footer` (`components/footer/`)
 

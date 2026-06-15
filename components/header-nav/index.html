@@ -98,10 +98,11 @@
       <div class="scene-body" aria-hidden="true"></div>
     </div>
 
-    <p class="eyebrow">Desktop — signed in</p>
-    <div class="stage scene">
-      <!-- Same chrome, logged-in actions: swap the search + "Sign in" CTA for
-           search · notification (with count badge) · account (avatar + name). -->
+    <p class="eyebrow">Desktop — signed in (account menu · notifications · language)</p>
+    <div class="stage scene" style="overflow:visible">
+      <!-- Same chrome, logged-in actions: swap the search + "Anmelden" CTA for
+           search · notification (count badge) · account dropdown (avatar + name +
+           menu) · language switcher. Account menu shown OPEN here. -->
       <header class="gv-header sticky">
         <div class="gv-header__inner">
           <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite" aria-current="page"></a>
@@ -116,14 +117,42 @@
             <button class="gv-iconbtn gv-desktop-only" aria-label="Suche">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
-            <button class="gv-iconbtn" aria-label="Benachrichtigungen, 1 ungelesen">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 20a2 2 0 004 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              <span class="gv-iconbtn__badge" aria-hidden="true">1</span>
+            <button class="gv-iconbtn" aria-label="Benachrichtigungen, 3 ungelesen">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <span class="gv-iconbtn__badge" aria-hidden="true">3</span>
             </button>
-            <button class="gv-account gv-desktop-only" aria-label="Konto — Rob" aria-haspopup="menu">
-              <span>Rob</span>
-              <span class="gv-avatar">R</span>
-            </button>
+            <details class="gv-nav__dd right gv-account-dd gv-desktop-only" open>
+              <summary class="gv-account" aria-haspopup="menu">
+                <span class="gv-avatar">R</span>
+                <span class="gv-account__name">Rob</span>
+                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </summary>
+              <div class="gv-nav__menu" style="min-width:220px">
+                <a href="#">Plattform verwalten
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 21v-7m0-4V3m6 18v-9m0-4V3m6 18v-5m0-4V3M1 14h4M7 8h4m4 8h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </a>
+                <a href="#">Meine Aktivität
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                </a>
+                <a href="#">Meine Einstellungen
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 12a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 5.3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 12 3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 .9 1.5H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5.9Z" stroke="currentColor" stroke-width="1.6"/></svg>
+                </a>
+                <div class="gv-menu-sep"></div>
+                <button type="button">Abmelden
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+            </details>
+            <details class="gv-nav__dd right gv-desktop-only">
+              <summary class="gv-lang">DE
+                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">Deutsch</a>
+                <a href="#">English</a>
+                <a href="#">Français</a>
+              </div>
+            </details>
             <details class="gv-nav-m">
               <summary aria-label="Mobiles Navigationsmenü anzeigen">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
@@ -132,7 +161,9 @@
                 <a href="#" aria-current="page">Willkommen</a>
                 <a href="#">Beteiligungsprojekte</a>
                 <a href="#">Mitmachen</a>
-                <a href="#">Rob — Konto</a>
+                <a href="#">Plattform verwalten</a>
+                <a href="#">Meine Aktivität</a>
+                <button class="gv-btn primary-outlined full" style="margin-top:14px">Abmelden</button>
               </nav>
             </details>
           </div>

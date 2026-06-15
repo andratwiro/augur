@@ -334,6 +334,7 @@ body.gv-root {
 .gv-nav__list { display: flex; align-items: stretch; height: 100%; margin: 0; padding: 0; list-style: none; }
 .gv-nav__list > li { display: flex; }
 .gv-nav__link {
+  box-sizing: border-box;                        /* borders are part of the 100% height, else the cell overflows the bar */
   display: inline-flex; align-items: center; gap: 6px;
   height: 100%; padding: 0 22px;
   font-size: var(--gv-fs-base); font-weight: 500; line-height: 1;
@@ -345,8 +346,10 @@ body.gv-root {
 .gv-nav__link:hover { color: var(--gv-tenant-primary); background: var(--gv-grey-100); }
 .gv-nav__dd[open] > summary.gv-nav__link { color: var(--gv-tenant-primary); background: var(--gv-grey-100); }
 /* Active page — tenant-tinted cell + top accent bar, mirroring the live #e2e-navbar */
+/* Active = tenant top-bar + subtle tinted cell. NOT bold — the live product keeps
+   weight 500 for the current item (the bar + cell carry the state). */
 .gv-nav__link[aria-current="page"] {
-  border-top-color: var(--gv-tenant-primary); font-weight: 700; color: var(--gv-black);
+  border-top-color: var(--gv-tenant-primary); color: var(--gv-black);
   background: color-mix(in srgb, var(--gv-tenant-primary) 9%, #fff);
 }
 .gv-nav__link[aria-current="page"]:hover { color: var(--gv-black); background: color-mix(in srgb, var(--gv-tenant-primary) 15%, #fff); }
@@ -366,11 +369,20 @@ body.gv-root {
   display: grid; gap: 2px;
 }
 .gv-nav__dd.right .gv-nav__menu { left: auto; right: 12px; }
-.gv-nav__menu a {
-  display: block; padding: 9px 12px; border-radius: var(--gv-radius);
-  font-size: var(--gv-fs-s); color: var(--gv-grey-800); text-decoration: none;
+.gv-nav__menu a, .gv-nav__menu button {
+  box-sizing: border-box; width: 100%;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 9px 12px; border-radius: var(--gv-radius);
+  font-family: inherit; font-size: var(--gv-fs-s); color: var(--gv-grey-800);
+  text-align: left; text-decoration: none; background: none; border: 0; cursor: pointer;
 }
-.gv-nav__menu a:hover { background: var(--gv-grey-100); color: var(--gv-tenant-primary); }
+.gv-nav__menu a:hover, .gv-nav__menu button:hover { background: var(--gv-grey-100); color: var(--gv-tenant-primary); }
+.gv-nav__menu a svg, .gv-nav__menu a .gv-icon, .gv-nav__menu button svg, .gv-nav__menu button .gv-icon {
+  width: 16px; height: 16px; flex: none; color: var(--gv-grey-600);
+}
+.gv-nav__menu a:hover svg, .gv-nav__menu button:hover svg { color: var(--gv-tenant-primary); }
+/* in-menu divider (e.g. above "Sign out") */
+.gv-menu-sep { height: 1px; background: var(--gv-grey-200); margin: 6px 4px; }
 
 /* Header right-side actions */
 .gv-header__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: 0 0 auto; }
@@ -405,6 +417,35 @@ body.gv-root {
 }
 .gv-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gv-avatar.sm { width: 26px; height: 26px; font-size: 11px; }
+
+/* Account control as a CSS-only dropdown: <details class="gv-nav__dd right
+   gv-account-dd"> with a <summary class="gv-account"> (avatar + name + chevron)
+   and a .gv-nav__menu (My activity / My settings / … / Sign out). */
+.gv-account__name { white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.gv-account-dd > summary.gv-account { list-style: none; }
+.gv-account-dd > summary.gv-account::-webkit-details-marker { display: none; }
+.gv-account-dd[open] > summary.gv-account { background: var(--gv-grey-100); }
+.gv-account-dd[open] > summary .gv-nav__chev { transform: rotate(180deg); }
+
+/* Language switcher — compact text button (EN ▾) opening a dropdown */
+.gv-lang {
+  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px;
+  background: none; border: 0; border-radius: var(--gv-radius); cursor: pointer; list-style: none;
+  font-family: inherit; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary);
+}
+.gv-lang::-webkit-details-marker { display: none; }
+.gv-lang:hover { background: var(--gv-grey-100); }
+.gv-lang:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-lang .gv-nav__chev { width: 12px; height: 12px; color: var(--gv-grey-700); }
+.gv-nav__dd[open] > summary.gv-lang .gv-nav__chev { transform: rotate(180deg); }
+
+/* Signed-in / signed-out STATE SWITCH (one component, two states).
+   Set data-auth="out" | "in" on a root element (e.g. <body>); the matching
+   cluster shows, the other hides. Default (unset) shows the signed-out state. */
+.gv-header__actions .gv-auth-out, .gv-header__actions .gv-auth-in { display: inline-flex; align-items: center; gap: 6px; }
+.gv-nav-m__panel .gv-auth-out, .gv-nav-m__panel .gv-auth-in { display: contents; }   /* children flow in the drawer grid */
+[data-auth="in"]  .gv-auth-out { display: none !important; }
+[data-auth="out"] .gv-auth-in  { display: none !important; }
 
 /* Hamburger (shown on mobile) — a <details> disclosure, label is the toggle */
 .gv-nav-m { display: none; }                    /* hidden on desktop */
