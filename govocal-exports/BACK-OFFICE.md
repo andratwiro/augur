@@ -38,8 +38,9 @@ GoVocal's **real admin glyphs** transcribed from `#sidebar` (each `<a>`'s svg; v
 24×24, 14×12, 16×16), rendered **24×20**, with per-state colour: inactive **`#00577C`**
 (`--gv-blue-400`), **active item → `#01A1B1`** (`--gv-teal-400`), **Support → `#32B67A`**
 (`--gv-green-400`). Notification badge red, overlaps the bell when collapsed. Driven by `.is-rail`
-(matchMedia at 1200px — product is JS-driven). NOTE: bo-app-shell / bo-project-phase still carry
-the earlier sidebar copy; re-sync `govocal-bo.css` once the sidebar is signed off.
+(matchMedia at 1200px — product is JS-driven). NOTE: as of the hardwiring refactor,
+bo-app-shell / bo-project-phase **reference canonical `govocal-bo.css` directly** (no
+per-folder copy), so the sidebar can no longer drift — edit canonical and both update.
 Earlier wrong guesses now corrected: icon colour was not `#4183C4`, glyphs were generic Material,
 labels were 14px — all fixed against the live capture.
 

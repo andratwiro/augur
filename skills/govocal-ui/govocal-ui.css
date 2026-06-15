@@ -796,3 +796,82 @@ body.gv-root {
   .gv-nav__chev, .gv-rail { transition: none; scroll-behavior: auto; }
   .gv-pcard.boxed, .gv-hero__cta { transition: none; }
 }
+
+/* ── Visually-hidden utility (available to assistive tech) ─────────────────── */
+.gv-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ── Generic tab panel (show/hide by .is-active) ───────────────────────────── */
+.gv-panel { display: none; }
+.gv-panel.is-active { display: block; }
+
+/* ── Content wrapper (page gutter, shell width) ────────────────────────────── */
+.gv-wrap { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px; }
+
+/* ── Project page components — promoted from pages/project-page so the page is
+   pure assembly. Reusable on any project surface. ──────────────────────────── */
+
+/* header action icons read larger on the real product */
+.gv-header__actions .gv-iconbtn { font-size: 22px; color: var(--gv-grey-800); }
+
+/* Project action bar (Back · Edit · Follow) */
+.gv-projbar__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gv-back { display: inline-flex; align-items: center; gap: 10px; background: none; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); padding: 4px; border-radius: var(--gv-radius); }
+.gv-back__ic { width: 28px; height: 28px; border-radius: 50%; background: var(--gv-cool-grey-600); color: #fff; display: grid; place-items: center; flex: none; }
+.gv-back__ic .gv-icon { width: 15px; height: 15px; }
+.gv-back:hover .gv-back__ic { filter: brightness(0.92); }
+.gv-back:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-projbar__spacer { flex: 1 1 auto; }
+.gv-projbar .gv-btn { gap: 8px; }
+.gv-edit { background: #fff; color: var(--gv-text-primary); border: 1px solid var(--gv-grey-300); box-shadow: none; }
+.gv-edit:hover { background: var(--gv-grey-100); }
+
+/* Banner (image-only project hero) */
+.gv-banner { background: var(--gv-grey-100); }
+.gv-banner__art { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; position: relative; aspect-ratio: 1150 / 300; min-height: 200px; overflow: hidden; background: radial-gradient(130% 150% at 75% 8%, #5fc6d1 0%, var(--gv-teal-300) 48%, var(--gv-teal-400) 100%); }
+.gv-banner__art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gv-banner__sticker { position: absolute; left: 7%; bottom: 16%; transform: rotate(-7deg); background: #ffe14d; color: #1a1a1a; font-weight: 800; letter-spacing: 0.04em; font-size: clamp(13px, 2vw, 20px); padding: 7px 13px; border-radius: 4px; box-shadow: 0 6px 14px rgba(0,0,0,0.18); }
+
+/* Project head (title + description + participants, no boxes) */
+.gv-projhead { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px 40px; padding: 30px 0 6px; align-items: start; }
+.gv-projhead__title { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 4px; }
+.gv-projhead__title h1 { margin: 0; font-size: clamp(26px, 3.4vw, 34px); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+.gv-chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--gv-grey-100); color: var(--gv-text-secondary); font-size: var(--gv-fs-xs); font-weight: 600; }
+.gv-projdesc { color: var(--gv-text-primary); max-width: 760px; }
+.gv-projdesc p { margin: 0 0 14px; font-size: var(--gv-fs-l); line-height: 1.6; }
+.gv-projdesc strong { font-weight: 700; }
+.gv-participants { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; padding-top: 4px; }
+.gv-participants .gv-avatars { margin: 0; }
+.gv-avatars.on-light .av { border-color: #fff; box-shadow: 0 0 0 1px var(--gv-grey-300); }
+.gv-pcount { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary); }
+.gv-pinfo { font-size: 17px; color: var(--gv-cool-grey-500); margin-left: -2px; cursor: help; }
+@media (max-width: 760px) { .gv-projhead { grid-template-columns: 1fr; } .gv-participants { padding-top: 0; } }
+
+/* Accordion (CSS-only <details>, collapsed by default, chevron rotates) */
+.gv-accordion { border-top: 1px solid var(--gv-divider); margin-top: 26px; }
+.gv-acc__item { border-bottom: 1px solid var(--gv-divider); }
+.gv-acc__head { display: flex; align-items: center; gap: 12px; cursor: pointer; list-style: none; padding: 18px 4px; font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary); }
+.gv-acc__head::-webkit-details-marker { display: none; }
+.gv-acc__head:hover { color: var(--gv-tenant-primary); }
+.gv-acc__item > summary:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
+.gv-acc__head .gv-acc__q { flex: 1 1 auto; }
+.gv-acc__chev { flex: none; color: var(--gv-text-secondary); transition: transform 180ms ease; }
+.gv-acc__item[open] .gv-acc__chev { transform: rotate(90deg); }
+.gv-acc__body { padding: 0 4px 20px; max-width: var(--gv-text-width); }
+.gv-acc__body p { margin: 0 0 10px; font-size: var(--gv-fs-base); line-height: 1.6; color: var(--gv-text-primary); }
+.gv-acc__body p:last-child { margin-bottom: 0; }
+
+/* Phase method band + phase body + read-more (rendered inside the phase panel) */
+.gv-methodband { background: var(--gv-grey-200); margin-top: 30px; padding: 34px 0 44px; }
+.gv-methodband .gv-phases { margin: 0; }
+.gv-phasepanel__head.muted .gv-phasepanel__num { background: var(--gv-cool-grey-500); }
+.gv-phasepanel__head.muted .gv-phasepanel__name { color: var(--gv-text-primary); }
+.gv-phasebody { margin-top: 16px; font-size: var(--gv-fs-base); line-height: 1.65; color: var(--gv-text-primary); max-width: var(--gv-text-width); }
+.gv-phasebody p { margin: 0 0 12px; }
+.gv-phasebody a { color: var(--gv-tenant-primary); text-decoration: underline; }
+.gv-phasebody ul { margin: 0 0 12px; padding-left: 22px; }
+.gv-phasebody li { margin: 0 0 6px; }
+.gv-phasebody.clamped { max-height: 150px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 58%, transparent); mask-image: linear-gradient(#000 58%, transparent); }
+.gv-readmore { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; background: none; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-tenant-primary); padding: 6px 0; }
+.gv-readmore:hover { text-decoration: underline; }
+.gv-readmore:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .gv-acc__chev { transition: none; } }

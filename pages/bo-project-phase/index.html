@@ -6,22 +6,19 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>Project configuration — GoVocal back office (reference)</title>
   <meta name="gv-surface" content="back-office" />
-  <link rel="stylesheet" href="govocal-tokens.css" />
-  <link rel="stylesheet" href="govocal-ui.css" />
-  <link rel="stylesheet" href="govocal-bo.css" />
-  <script src="govocal-icons.js" defer></script>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: #fff; font-family: var(--gv-font-family); }
     /* the ribbon sits inside the white canvas, edge-to-edge under the tabs */
     .gv-bo-section .gv-phases { box-shadow: none; border: 0; padding: 0; background: transparent; margin: 0 0 4px; }
     .gv-bo-section .gv-stepper { display: flex; flex-wrap: wrap; gap: 2px; }
-    /* tab panels */
-    .gv-panel { display: none; }
-    .gv-panel.is-active { display: block; }
-    .gv-setup { padding-top: 24px; max-width: 640px; }
-    .gv-setup__thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 520px; margin-top: 12px; }
-    .gv-setup__thresholds .gv-bo-caption { margin-bottom: 4px; }
+    .pp-setup { padding-top: 24px; max-width: 640px; }
+    .pp-setup__thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 520px; margin-top: 12px; }
+    .pp-setup__thresholds .gv-bo-caption { margin-bottom: 4px; }
   </style>
 </head>
 <body class="gv-bo">
@@ -82,7 +79,7 @@
 
       <!-- ════════════ GENERAL ════════════ -->
       <section class="gv-panel" id="panel-general">
-        <div class="gv-bo-section gv-setup">
+        <div class="gv-bo-section pp-setup">
           <h3 class="gv-bo-formhead">General settings for the project</h3>
 
           <div class="gv-bo-field">
@@ -214,7 +211,7 @@
           </nav>
 
           <!-- Setup panel -->
-          <div class="gv-setup">
+          <div class="pp-setup">
             <h3 class="gv-bo-formhead">Edit Phase</h3>
 
             <div class="gv-bo-field">
@@ -296,7 +293,7 @@
                 <p class="gv-bo-help">Warn participants when their input looks like one that already exists.</p></div>
               <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
             </div>
-            <div class="gv-setup__thresholds">
+            <div class="pp-setup__thresholds">
               <div><p class="gv-bo-caption">Similarity threshold (title)</p><input class="gv-input" type="text" value="0.3" /></div>
               <div><p class="gv-bo-caption">Similarity threshold (body)</p><input class="gv-input" type="text" value="0.5" /></div>
             </div>
