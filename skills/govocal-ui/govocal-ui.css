@@ -670,7 +670,7 @@
 .gv-acc__body p:last-child { margin-bottom: 0; }
 
 /* Phase method band + phase body + read-more (rendered inside the phase panel) */
-.gv-methodband { background: var(--gv-grey-200); margin-top: 30px; padding: 34px 0 44px; }
+.gv-methodband { background: var(--gv-background); margin-top: 0; padding: 34px 0 44px; }  /* live phase content sits on the page grey (#EDEFF0) */
 .gv-methodband .gv-phases { margin: 0; }
 .gv-phasepanel__head.muted .gv-phasepanel__num { background: var(--gv-cool-grey-500); }
 .gv-phasepanel__head.muted .gv-phasepanel__name { color: var(--gv-text-primary); }
@@ -835,7 +835,10 @@
 
 /* ── Sticky participation bar — pinned bottom band: tenant-primary, white status
    left, white-on-colour button right (the shell-authority "participate" footer). ─ */
-.gv-partbar { position: sticky; bottom: 0; z-index: 30; background: var(--gv-tenant-primary); color: #fff; }
+/* Sits above the grey method band; sticks below the header on desktop, to the
+   bottom of the viewport on mobile (matches the live project page). */
+.gv-partbar { position: sticky; top: var(--gv-menu-height, 78px); z-index: 30; background: var(--gv-tenant-primary); color: #fff; }
+@media (max-width: 760px) { .gv-partbar { top: auto; bottom: 0; } }
 .gv-partbar__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 14px 24px;
   display: flex; align-items: center; gap: 16px; }
 .gv-partbar__status { display: inline-flex; align-items: center; gap: 9px; font-size: var(--gv-fs-base); color: #fff; }
