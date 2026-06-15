@@ -529,6 +529,7 @@ const PAGE_CSS = `
     .comp-table th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
       color: var(--muted); font-weight: 600; padding: 0 14px 10px; border-bottom: 1px solid var(--line); }
     .comp-table td { padding: 8px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .comp-table td:first-child { width: 100px; padding-right: 0; }
     .comp-table tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent); }
     .comp-thumb {
       position: relative; width: 100px; max-width: 38vw; aspect-ratio: 16 / 9; overflow: hidden;
@@ -538,7 +539,7 @@ const PAGE_CSS = `
       position: absolute; top: 0; left: 0; width: 1280px; height: 720px; border: 0;
       transform-origin: top left; pointer-events: none;
     }
-    .comp-name { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; }
+    .comp-name { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; }
     .comp-name code { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 4px; }
     .comp-desc { color: var(--muted); font-size: 14px; max-width: 42ch; }
     .comp-actions { white-space: nowrap; }
