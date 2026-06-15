@@ -978,7 +978,7 @@
 .gv-ideacard__avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gv-ideacard__meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
 /* username — .e2e-username : 16px/400/18.4px/#1E1E1E */
-.gv-ideacard__author { font-size: var(--gv-fs-m); font-weight: 400; line-height: 1.15; color: var(--gv-text-heading); }
+.gv-ideacard__author { font-size: var(--gv-fs-m); font-weight: 400; line-height: 1.15; color: var(--gv-text-heading-strong); }
 .gv-ideacard__sep { color: var(--gv-text-secondary); margin: 0 2px; }
 /* time — .e2e-idea-card .sc-OROEG : 14px/500/#596B7A */
 .gv-ideacard__time { font-size: var(--gv-fs-s); font-weight: 500; line-height: 21px; color: var(--gv-cool-grey-600); }
@@ -1031,7 +1031,7 @@
 
 /* ── Feed layout — feed column + 310px filter sidebar (#e2e-project-sidebar) ──── */
 .gv-feed { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 28px; align-items: start; }
-.gv-feed__count { font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-heading); line-height: 20.8px; margin: 0 0 14px; }
+.gv-feed__count { font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-heading-strong); line-height: 20.8px; margin: 0 0 14px; }
 .gv-feed__col { display: flex; flex-direction: column; gap: 16px; }
 @media (max-width: 860px) { .gv-feed { grid-template-columns: minmax(0, 1fr); } }
 /* filter sidebar — live container computes 14px/lh19.999 (not the 16px FO base) */
@@ -1123,9 +1123,9 @@
   font-size: var(--gv-fs-s); font-weight: 400; line-height: 1.4; }
 .gv-cause__badge .gv-icon, .gv-cause__badge svg { width: 20px; height: 20px; }
 .gv-cause__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.gv-cause__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-text-heading); }
-.gv-cause__count { font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: var(--gv-text-heading); }
-.gv-cause__desc { font-size: var(--gv-fs-base); font-weight: 400; line-height: 24px; color: var(--gv-text-heading); }
+.gv-cause__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-text-heading-strong); }
+.gv-cause__count { font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: var(--gv-text-heading-strong); }
+.gv-cause__desc { font-size: var(--gv-fs-base); font-weight: 400; line-height: 24px; color: var(--gv-text-heading-strong); }
 .gv-cause__desc p { margin: 0 0 8px; }
 .gv-cause__desc p:last-child { margin-bottom: 0; }
 .gv-cause__cta { flex: 0 0 auto; align-self: flex-start; }
@@ -1669,3 +1669,11 @@
   font-size: var(--gv-fs-base); line-height: normal; align-items: normal; margin: 0 0 12px 35px; }
 /* the full-width Send row — a .gv-btn.primary.full; disabled until the poll is complete. */
 .gv-poll__send { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 12px; }
+
+/* ── FO project-page content H1 — grounded darker heading ───────────────────
+   The base .gv-title now carries the homepage card/section treatment (#474747,
+   wietsedemo fo-homepage-featured-row). FO project content pages use a darker H1:
+   real `main h1` on fo-project-ideation-list / proposals / survey / perspectives
+   computes to rgb(30,30,30). Route the project content title (h1.gv-title) to the
+   strong heading token without disturbing .gv-title.h2/.h3 (homepage sections). */
+h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
