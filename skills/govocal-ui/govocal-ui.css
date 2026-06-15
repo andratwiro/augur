@@ -1099,6 +1099,14 @@
 .gv-cause__desc p:last-child { margin-bottom: 0; }
 .gv-cause__cta { flex: 0 0 auto; align-self: flex-start; }
 @media (max-width: 720px) { .gv-cause { flex-direction: column; } .gv-cause__media, .gv-cause__img { flex-basis: auto; width: 100%; } }
+/* Cause-card vertical rhythm — grounded fix. The real cause cards
+   (.sc-iAUooG kuTmzy, fo-project-volunteering digest) carry margin: 0 0 20px →
+   20px between cards. Our cause lists reuse the shared .gv-idealist atom, whose
+   gap is 16px (correct for the ideation/proposals feeds, whose idea cards have
+   margin:0 and inherit the list's 16px rhythm). Rather than bump the shared atom
+   (and over-space every ideation feed), scope the +4px to lists that actually
+   hold cause cards, leaving ideation/proposals on the source-true 16px. */
+.gv-idealist:has(.gv-cause) { gap: 20px; }
 
 /* ── Survey participation band — full-width tenant-primary strip framing a survey
    CTA on the project page (div.sc-beqWaB.fAJdnP : bg tenant-primary, 20px pad,
