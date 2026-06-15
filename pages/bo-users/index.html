@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Users — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    .us-layout { display: grid; grid-template-columns: 264px 1fr; gap: 16px; align-items: start; }
+    /* Left rail: roles + groups navigation (a white card on the canvas). */
+    .us-rail { background: #fff; border-radius: 3px; box-shadow: var(--gv-shadow); padding: 16px 12px; display: flex; flex-direction: column; }
+    .us-railitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border-radius: 3px; color: var(--gv-bo-primary); font-size: 16px; text-decoration: none; cursor: pointer; }
+    .us-railitem:hover { background: var(--gv-grey-50); }
+    .us-railitem.is-active { background: rgba(4, 77, 108, 0.08); font-weight: 600; }
+    .us-railitem__count { color: var(--gv-text-secondary); font-size: 14px; }
+    .us-railitem.is-active .us-railitem__count { color: var(--gv-bo-primary); }
+    .us-groupshead { display: flex; align-items: center; justify-content: space-between; margin: 22px 0 6px; padding: 0 12px; }
+    .us-groupshead h2 { margin: 0; font-size: 21px; font-weight: 600; color: var(--gv-bo-primary); }
+    .us-addgroup { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--gv-border-dark); background: #fff; color: var(--gv-bo-primary); display: grid; place-items: center; cursor: pointer; }
+    .us-projfilter { margin: 8px 12px; }
+    .us-projfilter .gv-bo-select { height: 38px; padding: 6px 10px; font-size: 13px; }
+    .us-invite { margin-top: 16px; }
+    .us-invite .gv-btn { width: 100%; }
+    /* Right content card. */
+    .us-main { background: #fff; border-radius: 3px; box-shadow: var(--gv-shadow); padding: 32px; }
+    .us-head { display: flex; align-items: flex-start; gap: 16px; }
+    .us-head__main { min-width: 0; }
+    .us-head__actions { margin-left: auto; display: flex; gap: 10px; flex: none; }
+    .us-toolbar { display: flex; align-items: center; gap: 16px; margin: 22px 0 6px; }
+    .us-toolbar .us-spacer { margin-left: auto; }
+    .us-assigned { display: inline-flex; align-items: center; gap: 4px; color: var(--gv-bo-link); font-size: 13px; cursor: pointer; }
+    .us-role { color: var(--gv-bo-primary); }
+    .us-role small { display: block; }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+    <nav class="gv-bo-side" aria-label="Admin" data-active="users"></nav>
+
+    <div class="gv-bo-main">
+      <section class="gv-bo-section">
+        <div class="us-layout">
+
+          <!-- ── Left rail ──────────────────────────────────────────── -->
+          <aside class="us-rail">
+            <a class="us-railitem is-active" href="#">Registered users <span class="us-railitem__count">1214</span></a>
+            <a class="us-railitem" href="#">Admins <span class="us-railitem__count">0</span></a>
+            <a class="us-railitem" href="#">Folder managers <span class="us-railitem__count">0</span></a>
+            <a class="us-railitem" href="#">Project managers <span class="us-railitem__count">1</span></a>
+            <a class="us-railitem" href="#">Blocked users <span class="us-railitem__count">0</span></a>
+            <a class="us-railitem" href="#">Banned emails <span class="us-railitem__count">0</span></a>
+
+            <div class="us-groupshead">
+              <h2>Groups</h2>
+              <button class="us-addgroup" aria-label="Add a new group"><span data-gv-icon="plus"></span></button>
+            </div>
+            <div class="us-projfilter"><select class="gv-bo-select" aria-label="Filter by project"><option>Filter by project</option><option>Dorothea Dix Park</option></select></div>
+            <a class="us-railitem" href="#">Department Directors <span class="us-railitem__count">17</span></a>
+            <a class="us-railitem" href="#">James Test #1 <span class="us-railitem__count">2</span></a>
+            <a class="us-railitem" href="#">Council Members <span class="us-railitem__count">7</span></a>
+
+            <div class="us-invite"><button class="gv-btn success"><span data-gv-icon="email"></span><span class="gv-btn__label">Invite users</span></button></div>
+          </aside>
+
+          <!-- ── Right content ─────────────────────────────────────── -->
+          <section class="us-main">
+            <div class="us-head">
+              <div class="us-head__main">
+                <h1 class="gv-bo-pagehead">Registered users</h1>
+                <p class="gv-bo-pagelede" style="margin:6px 0 0">Get an overview of all the people and organisations that registered on the platform. Add a selection of users to Manual groups or Smart groups.</p>
+              </div>
+              <div class="us-head__actions">
+                <button class="gv-btn success"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
+              </div>
+            </div>
+
+            <div class="us-toolbar">
+              <label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label>
+              <span style="color:var(--gv-text-secondary)">Select</span>
+              <div class="us-spacer"></div>
+              <button class="gv-bo-link"><span data-gv-icon="download"></span>Export all</button>
+              <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search users"><span class="gv-icon" data-gv-icon="search"></span></span>
+            </div>
+
+            <table class="gv-bo-table is-list">
+              <thead>
+                <tr>
+                  <th class="gv-bo-table__check"></th>
+                  <th>NAME</th>
+                  <th>ROLE</th>
+                  <th>LAST ACTIVE</th>
+                  <th class="gv-bo-th--sort is-sorted">JOINED <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th>OPTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </section>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="bo-chrome.js"></script>
+  <script>
+    // [name, email, role, pm(bool), lastActive, joined]
+    const USERS = [
+      ["Rob Aris", "rob.and.per@gmail.com", "Project manager", true, "4 months ago", "August 21, 2024"],
+      ["Nola Moreau", "nola@citizenlab.co", "Registered user", false, "", "December 11, 2023"],
+      ["Kevin Anderson", "worldswimmingprospects@gmail.com", "Registered user", false, "", "December 5, 2023"],
+      ["Hannah Adams", "hannah@citizenlab.co", "Registered user", false, "", "December 4, 2023"],
+      ["Pamela Beasly", "pamela9202@plucatyo.com", "Registered user", false, "", "November 7, 2023"],
+      ["Nicolas Geijo", "nicolasmgeijo@gmail.com", "Registered user", false, "", "November 7, 2023"],
+      ["Alexia Lopez", "alexbelg30@gmail.com", "Registered user", false, "", "November 7, 2023"],
+      ["Roberto Andrade", "rob@govocal.com", "Project manager", true, "1 month ago", "November 7, 2023"],
+      ["Roberto Test", "roberto@deltastudio.io", "Registered user", false, "", "November 3, 2023"],
+      ["Philip Stein", "steinhein@gmail.com", "Registered user", false, "", "September 27, 2023"],
+      ["Mary Noel", "marynoel@gmail.com", "Registered user", false, "", "September 27, 2023"],
+    ];
+    document.getElementById("rows").innerHTML = USERS.map(u => {
+      const [name, email, role, pm, last, joined] = u;
+      const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2);
+      const roleCell = pm
+        ? `<span class="us-role">${role}<small><span class="us-assigned">Assigned items <span class="gv-icon" data-gv-icon="chevron-down"></span></span></small></span>`
+        : `<span class="us-role">${role}</span>`;
+      return `<tr>
+        <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+        <td><span class="gv-bo-table__person"><span class="gv-bo-table__avatar">${initials}</span><span><span class="gv-bo-table__name">${name}</span><span class="gv-bo-table__sub">${email}</span></span></span></td>
+        <td>${roleCell}</td>
+        <td style="color:var(--gv-text-secondary)">${last || "—"}</td>
+        <td style="white-space:nowrap">${joined}</td>
+        <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>`;
+    }).join("");
+
+    if (window.GVIcons) window.GVIcons.render(document.body);
+  </script>
+</body>
+</html>
+</content>
