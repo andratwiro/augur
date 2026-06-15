@@ -73,6 +73,30 @@
       "map": { "input": "#panel-general .gv-input" },
       "props": ["color", "background-color", "font-size", "font-weight", "border", "border-radius", "box-shadow", "padding"],
       "uses": [".gv-input"]
+    },
+    {
+      "id": "bo-project-phase/imgr-table",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-project-ideas",
+      "map": { "table": ".gv-bo-table.is-bordered" },
+      "props": ["border", "border-radius", "font-size", "font-weight"],
+      "uses": [".gv-bo-table"]
+    },
+    {
+      "id": "bo-project-phase/imgr-th",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-project-ideas",
+      "map": { "th": ".gv-bo-table.is-bordered thead th.gv-bo-th--sort" },
+      "props": ["color", "font-size", "font-weight", "padding"],
+      "uses": [".gv-bo-table"]
+    },
+    {
+      "id": "bo-project-phase/imgr-title",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-project-ideas",
+      "map": { ".e2e-idea-manager-idea-title": ".gv-bo-table__title" },
+      "props": ["color", "font-size", "font-weight"],
+      "uses": [".gv-bo-table"]
     }
   ]
 }

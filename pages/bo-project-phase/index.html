@@ -16,7 +16,10 @@
     /* the ribbon sits inside the white canvas, edge-to-edge under the tabs */
     .gv-bo-section .gv-phases { box-shadow: none; border: 0; padding: 0; background: transparent; margin: 0 0 4px; }
     .gv-bo-section .gv-stepper { display: flex; flex-wrap: wrap; gap: 2px; }
-    .pp-setup { padding-top: 24px; max-width: 640px; }
+    /* phase sub-tab panels (Setup / Input manager / Input form / Insights) */
+    .pp-sub { display: none; padding-top: 24px; }
+    .pp-sub.is-active { display: block; }
+    .pp-setup { max-width: 640px; }
     .pp-setup__thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 520px; margin-top: 12px; }
     .pp-setup__thresholds .gv-bo-caption { margin-bottom: 4px; }
   </style>
@@ -200,18 +203,18 @@
 
           <!-- Phase sub-tabs -->
           <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Phase">
-            <a class="gv-bo-tab is-active" href="#">Setup</a>
+            <a class="gv-bo-tab is-active" href="#" data-sub="setup">Setup</a>
             <a class="gv-bo-tab" href="#">Description</a>
-            <a class="gv-bo-tab" href="#">Input manager</a>
-            <a class="gv-bo-tab" href="#">Input form</a>
+            <a class="gv-bo-tab" href="#" data-sub="inputmgr">Input manager</a>
+            <a class="gv-bo-tab" href="#" data-sub="inputform">Input form</a>
             <a class="gv-bo-tab" href="#">Map</a>
-            <a class="gv-bo-tab" href="#">Insights</a>
+            <a class="gv-bo-tab" href="#" data-sub="insights">Insights</a>
             <a class="gv-bo-tab" href="#">Phase access and user data</a>
             <a class="gv-bo-tab" href="#">Notifications</a>
           </nav>
 
           <!-- Setup panel -->
-          <div class="pp-setup">
+          <div class="pp-setup pp-sub is-active" data-sub="setup">
             <h3 class="gv-bo-formhead">Edit Phase</h3>
 
             <div class="gv-bo-field">
@@ -320,6 +323,78 @@
             <button class="gv-bo-dropzone"><span class="gv-icon" data-gv-icon="download"></span>Select a file</button>
 
             <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
+          </div>
+
+          <!-- ════ Input manager sub-panel ════ -->
+          <div class="pp-sub" data-sub="inputmgr">
+            <!-- AI callout -->
+            <div class="gv-bo-banner gv-bo-banner--ai">
+              <span class="gv-icon" data-gv-icon="stars"></span>
+              <div>Explore AI-powered summaries and view individual submissions.</div>
+              <a class="gv-bo-banner__cta" href="#">Open AI analysis →</a>
+            </div>
+
+            <!-- Header row -->
+            <div class="gv-bo-headrow">
+              <h3 class="gv-bo-headrow__title">Input manager</h3>
+              <div class="gv-bo-headrow__actions">
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="open-in-new"></span><span class="gv-btn__label">Import</span></button>
+                <button class="gv-btn admin-dark"><span data-gv-icon="plus"></span><span class="gv-btn__label">New idea</span></button>
+              </div>
+            </div>
+            <p class="gv-bo-help" style="margin:0 0 16px">Give feedback, add tags or copy posts to the next project phase.</p>
+
+            <!-- Filter bar -->
+            <div class="gv-bo-toolbar">
+              <select class="gv-bo-select" style="max-width:190px;height:40px;padding:8px 12px"><option>Any administrator</option><option>Go Vocal Admin</option><option>Rob Aris</option></select>
+              <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+                <span class="gv-toggle"><input type="checkbox"><span class="track"></span></span>
+                <span style="color:var(--gv-text-secondary)">Only show posts that need feedback</span>
+              </label>
+              <a class="gv-bo-spacer" href="#" style="display:inline-flex;align-items:center;gap:6px;color:var(--gv-bo-primary);font-weight:600;text-decoration:none"><span data-gv-icon="download"></span>Exports</a>
+            </div>
+
+            <!-- Count + search -->
+            <div style="display:flex;align-items:center;margin:14px 0">
+              <span class="gv-bo-count-line" style="margin:0">4 posts</span>
+              <div class="gv-bo-search" style="margin-left:auto">
+                <input class="gv-input" type="search" placeholder="Search" aria-label="Search posts" style="max-width:240px" />
+                <span class="gv-icon" data-gv-icon="search"></span>
+              </div>
+            </div>
+
+            <!-- Filter rail + posts table -->
+            <div class="gv-bo-imgr">
+              <aside class="gv-bo-filterrail" aria-label="Filter inputs">
+                <div class="gv-bo-filterrail__tabs">
+                  <span class="gv-bo-filterrail__tab is-active">Timeline</span>
+                  <span class="gv-bo-filterrail__tab">Tags</span>
+                  <span class="gv-bo-filterrail__tab">Status</span>
+                </div>
+                <div class="gv-bo-filterrail__body">
+                  <p class="gv-bo-filterrail__group">All phases</p>
+                  <div class="gv-bo-filterrail__item is-active"><span>All input</span><span class="gv-bo-filterrail__count">4</span></div>
+                  <div class="gv-bo-filterrail__item"><span>1 · Submit your ideas</span><span class="gv-bo-filterrail__count">2</span></div>
+                  <div class="gv-bo-filterrail__item"><span>2 · Vote</span><span class="gv-bo-filterrail__count">0</span></div>
+                  <div class="gv-bo-filterrail__item"><span>5 · New ideas!</span><span class="gv-bo-filterrail__count">2</span></div>
+                </div>
+              </aside>
+
+              <table class="gv-bo-table is-bordered">
+                <thead>
+                  <tr>
+                    <th class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></th>
+                    <th class="gv-bo-th--sort">Title</th>
+                    <th>Assignee</th>
+                    <th class="gv-bo-table__num gv-bo-th--sort">Comments</th>
+                    <th class="gv-bo-table__num gv-bo-th--sort">Likes</th>
+                    <th class="gv-bo-table__num gv-bo-th--sort">Dislikes</th>
+                    <th class="gv-bo-th--sort is-sorted">Published on <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  </tr>
+                </thead>
+                <tbody id="ideas"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
@@ -455,12 +530,23 @@
       window.scrollTo(0, 0);
     }));
 
-    // Generic active-state for sub-tab rows (no panel swap — Setup is the built one).
+    // Sub-tab rows: toggle active, and (Phase nav) swap the built .pp-sub panels.
+    const subPanels = document.querySelectorAll('.pp-sub');
     document.querySelectorAll('.gv-bo-tabs--sub').forEach(nav => {
       nav.querySelectorAll('.gv-bo-tab').forEach(t => t.addEventListener('click', e => {
         e.preventDefault();
         nav.querySelectorAll('.gv-bo-tab').forEach(x => x.classList.remove('is-active'));
         t.classList.add('is-active');
+        const sub = t.dataset.sub;
+        if (sub) subPanels.forEach(p => p.classList.toggle('is-active', p.dataset.sub === sub));
+      }));
+    });
+
+    // Sortable-header demo affordance: clicking a sortable header marks it sorted.
+    document.querySelectorAll('.gv-bo-table thead').forEach(head => {
+      head.querySelectorAll('.gv-bo-th--sort').forEach(th => th.addEventListener('click', () => {
+        head.querySelectorAll('th').forEach(x => x.classList.remove('is-sorted'));
+        th.classList.add('is-sorted');
       }));
     });
 
@@ -527,6 +613,27 @@
         <td>${joined}</td>
         <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>`;
       tbody.appendChild(tr);
+    });
+
+    // ── Input-manager posts table ─────────────────────────────────────────
+    const IDEAS = [
+      ["This is my random idea!", "Unassigned", 0, 1, 0, "2 years ago"],
+      ["More trees along the riverside path", "Go Vocal Admin", 3, 12, 1, "2 years ago"],
+      ["Better lighting near the south entrance", "Rob Aris", 5, 8, 0, "2 years ago"],
+      ["A weekly food market on the plaza", "Unassigned", 1, 21, 4, "2 years ago"],
+    ];
+    const ideasBody = document.getElementById("ideas");
+    if (ideasBody) IDEAS.forEach(([title, assignee, comments, likes, dislikes, when]) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+        <td><a class="gv-bo-table__title" href="#">${title}</a></td>
+        <td><select class="gv-bo-select" style="max-width:150px;height:34px;padding:4px 8px"><option${assignee === "Unassigned" ? " selected" : ""}>Unassigned</option><option${assignee === "Go Vocal Admin" ? " selected" : ""}>Go Vocal Admin</option><option${assignee === "Rob Aris" ? " selected" : ""}>Rob Aris</option></select></td>
+        <td class="gv-bo-table__num">${comments}</td>
+        <td class="gv-bo-table__num"><span class="gv-bo-react"><span data-gv-icon="vote-up"></span>${likes}</span></td>
+        <td class="gv-bo-table__num"><span class="gv-bo-react"><span data-gv-icon="vote-down"></span>${dislikes}</span></td>
+        <td>${when}</td>`;
+      ideasBody.appendChild(tr);
     });
 
     if (window.GVIcons) window.GVIcons.render(document.body);
