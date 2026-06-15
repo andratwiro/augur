@@ -1266,6 +1266,7 @@ async function main() {
   const SHARED_ASSETS = [
     "govocal-tokens.css", "govocal-primitives.css", "govocal-ui.css", "govocal-bo.css",
     "govocal-themes.js", "govocal-cookies.js", "govocal-icons.js",
+    "govocal-avatars.js", "govocal-rail.js",
     "govocal-survey.css", "govocal-survey.js", "govocal-logo.svg",
   ];
   const sharedDir = path.join(DIST, "skills", "govocal-ui");
@@ -1273,6 +1274,16 @@ async function main() {
   for (const asset of SHARED_ASSETS) {
     if (await exists(path.join(UI_SKILL, asset))) {
       await fs.copyFile(path.join(UI_SKILL, asset), path.join(sharedDir, asset));
+    }
+  }
+  // Asset SUBDIRECTORIES the shared JS depends on (binary, so not in the file
+  // whitelist above): e.g. avatars/ — the bundled face set govocal-avatars.js
+  // drops into every .av bubble. Copied wholesale so the faces resolve on the
+  // shipped site exactly as they do locally (file://).
+  const SHARED_ASSET_DIRS = ["avatars"];
+  for (const d of SHARED_ASSET_DIRS) {
+    if (await isDir(path.join(UI_SKILL, d))) {
+      await copyDir(path.join(UI_SKILL, d), path.join(sharedDir, d));
     }
   }
 
