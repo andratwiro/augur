@@ -300,3 +300,11 @@
       .sv-foot__row { flex-wrap: wrap; }
       .sv-foot__lang { order: -2; flex: 0 0 auto; }
     }
+
+    /* ── Option-card border fidelity (shared-fix survey-optcard-border) ──────────
+       Real option box (div.sc-eNCGxt) border = 1px solid rgb(118,118,118) = #767676,
+       the same dark grey as input borders (--gv-border-dark / grey-700), not the lighter
+       grey-400 (#CBCBCB) the base rule shipped. The inner .gv-radio circle already uses
+       --gv-border-dark, so no change needed there. Real padding measured 20px 20px 8px
+       (was 16px 18px — slightly tighter). Append-only override so every consumer updates. */
+    .sv-optcard { border-color: var(--gv-border-dark); padding: 20px 20px 8px; }
