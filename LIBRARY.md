@@ -54,7 +54,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | Component | Open | Source | What it is |
 |---|---|---|---|
 | **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
-| **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation. Two states: extended (224px, icon + label) and a collapsed rail (80px, icon-only) that GoVocal switches to at ≤1200px. Resize… |
+| **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
 | **Footer** | `/components/footer/` | `components/footer/` | Source-grounded on GoVocal’s real <footer id="hook-footer"> : a secondary-nav row of legal links — one is the Cookie-Einstellungen button — plus the “Ermöglich… |
 | **Header Nav** | `/components/header-nav/` | `components/header-nav/` | Responsive site chrome — 78px bar, logo slot, dropdown + “Mehr ···” overflow, search, primary CTA. Collapses to a hamburger drawer on narrow screens. CSS-only… |
 | **Hero** | `/components/hero/` | `components/hero/` | Full-bleed banner with a tenant-tinted overlay, title + lead, an avatar stack with participant count, and a primary CTA. Image-agnostic — set a photo or leave… |
