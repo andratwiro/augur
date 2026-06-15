@@ -156,26 +156,40 @@
 [data-auth="in"]  .gv-auth-out { display: none !important; }
 [data-auth="out"] .gv-auth-in  { display: none !important; }
 
-/* Hamburger (shown on mobile) — a <details> disclosure, label is the toggle */
+/* Hamburger (shown on mobile) — a <details> disclosure that opens a FULL-SCREEN
+   overlay menu, matching live GoVocal mobile nav: brand logo centred at the top,
+   the toggle flips from bars to an X (top-right, in a soft circle), links centred
+   and generously spaced (no dividers), the current link in the tenant colour, and
+   a Search row at the bottom. */
 .gv-nav-m { display: none; }                    /* hidden on desktop */
 .gv-nav-m > summary {
   list-style: none; display: grid; place-items: center;
-  width: 44px; height: 44px; border-radius: var(--gv-radius); cursor: pointer; color: var(--gv-grey-800);
+  width: 44px; height: 44px; border-radius: 50%; cursor: pointer; color: var(--gv-grey-800);
+  position: relative; z-index: 1001;            /* X stays above the overlay + clickable */
 }
 .gv-nav-m > summary::-webkit-details-marker { display: none; }
 .gv-nav-m > summary:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-nav-m__x { display: none; }
+.gv-nav-m[open] > summary { background: var(--gv-grey-100); }
+.gv-nav-m[open] > summary .gv-nav-m__bars { display: none; }
+.gv-nav-m[open] > summary .gv-nav-m__x { display: block; }
 .gv-nav-m__panel {
   box-sizing: border-box;
-  position: absolute; left: 0; right: 0; top: var(--gv-menu-height); z-index: 40;
-  background: #fff; border-top: 1px solid var(--gv-grey-200); box-shadow: var(--gv-shadow-hover-lg);
-  padding: 8px 24px 16px; display: grid; gap: 2px;        /* 24px sides → items align under the logo gutter */
+  position: fixed; inset: 0; z-index: 1000;
+  background: #fff; padding: 74px 24px 32px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; overflow-y: auto;
 }
+.gv-nav-m__logo { display: block; margin-bottom: 26px; }
+.gv-nav-m__logo img, .gv-nav-m__logo svg { height: 34px; width: auto; display: block; }
 .gv-nav-m__panel a, .gv-nav-m__panel summary {
-  display: block; padding: 13px 8px; font-size: var(--gv-fs-l); font-weight: 500;
-  color: var(--gv-grey-800); text-decoration: none; border-bottom: 1px solid var(--gv-grey-200);
+  display: block; width: 100%; max-width: 340px; text-align: center;
+  padding: 15px 8px; font-size: var(--gv-fs-l); font-weight: 500;
+  color: var(--gv-grey-800); text-decoration: none;
 }
-.gv-nav-m__panel a[aria-current="page"] { color: var(--gv-tenant-primary); }
-.gv-nav-m__panel .gv-btn { margin-top: 14px; }
+.gv-nav-m__panel a[aria-current="page"] { color: var(--gv-tenant-primary); font-weight: 600; }
+.gv-nav-m__panel .gv-btn { margin-top: 18px; width: 100%; max-width: 340px; }
+.gv-nav-m__search { display: inline-flex; align-items: center; justify-content: center; gap: 9px; }
+.gv-nav-m__search svg, .gv-nav-m__search .gv-icon { width: 18px; height: 18px; flex: none; }
 
 /* Header responsive switch */
 @media (max-width: 860px) {
@@ -337,7 +351,7 @@
 /* the FO project-page ribbon segments read a touch shorter than the standalone
    component and carry a clear dark-grey top edge (clipped to the chevron shape) —
    the "dark grey border on top" + "slightly smaller modules" seen on the real timeline */
-.gv-methodband .gv-pstep { height: 21px; box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.22); }
+.gv-methodband .gv-pstep { box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.22); }  /* height stays the live 23px (.gv-pstep base) */
 .gv-pstep__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
 .gv-phase__label { padding: 9px 6px 0; text-align: center; font-size: var(--gv-fs-s); line-height: 1.3; color: var(--gv-text-primary); }
 .gv-phase.current .gv-phase__label { color: var(--gv-green-600); font-weight: 600; }
