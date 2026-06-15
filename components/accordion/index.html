@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Accordion — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    /* Demo chrome only — the component styles (.gv-accordion / .gv-acc__item /
+       .gv-acc__head / .gv-acc__body / .gv-acc__chev) live in the shared
+       govocal-ui.css, never forked here. */
+    body { margin: 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+    .demo { max-width: 760px; margin: 0 auto; padding: 28px 20px 80px; }
+    .eyebrow { font-size: var(--gv-fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 8px 0 4px; }
+    .sub { margin: 0 0 20px; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
+    .card { background: var(--gv-white); border-radius: var(--gv-radius); padding: 4px 24px 8px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  </style>
+</head>
+<body class="gv-root" data-gv-theme-picker="off">
+  <div class="demo">
+    <p class="eyebrow">Accordion</p>
+    <p class="sub">CSS-only <code>&lt;details&gt;</code> accordion — collapsed by default, chevron rotates on open. Used for FAQs in a project description.</p>
+
+    <div class="card">
+      <!-- ============ ACCORDION COMPONENT (copy from here) ============ -->
+      <div class="gv-accordion">
+        <details class="gv-acc__item" open>
+          <summary class="gv-acc__head"><span class="gv-acc__q">How will my idea be used?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+          <div class="gv-acc__body"><p>Every idea is read by the project team and grouped with similar suggestions. The most-supported, workable ideas move forward to the prioritisation phase, where residents help decide which ones to take into the final design.</p></div>
+        </details>
+        <details class="gv-acc__item">
+          <summary class="gv-acc__head"><span class="gv-acc__q">What can I suggest?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+          <div class="gv-acc__body"><p>Anything that fits within Market Square and its surrounding streets — seating, planting and trees, the weekly market layout, play, lighting, paving, cycle parking or how traffic moves through. Out-of-scope ideas are tagged and passed to the right team.</p></div>
+        </details>
+        <details class="gv-acc__item">
+          <summary class="gv-acc__head"><span class="gv-acc__q">Who is running this project?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+          <div class="gv-acc__body"><p>The City of Westmere — Engagement team, together with the Old Town public-space designers. Project updates are posted to followers as each phase opens.</p></div>
+        </details>
+      </div>
+      <!-- ============ /ACCORDION COMPONENT ============ -->
+    </div>
+  </div>
+</body>
+</html>

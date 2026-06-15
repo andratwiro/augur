@@ -140,6 +140,15 @@ Filled status pill; set the background via `--bg`.
 <span class="gv-status-label outlined">Draft</span>
 ```
 
+## Chip — `.gv-chip` (`govocal-ui.css`)
+
+Small rounded-pill tag (grey-100, 26px tall) for inline metadata — a location, a
+category, a count. Optional leading icon.
+
+```html
+<span class="gv-chip"><span data-gv-icon="location-simple" aria-hidden="true"></span> District 4</span>
+```
+
 ## Spinner — `components/Spinner`
 
 ```html
@@ -997,6 +1006,36 @@ title** and the **search field** wrapper. Verified via `fo-projects-list/{search
 </section>
 ```
 - Overlay tints with `--gv-tenant-primary` (re-themes per city), keeping white text legible.
+
+## Banner — `.gv-banner` (`components/banner/`)
+
+Image-only project hero — distinct from `.gv-hero` (which carries title + CTA). A
+full-width teal gradient art panel (1150×300, `--gv-shell-w` capped) holding an
+illustration `<svg>` and an optional rotated campaign sticker.
+
+```html
+<section class="gv-banner" aria-label="Project banner">
+  <div class="gv-banner__art">
+    <svg viewBox="0 0 1150 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">…</svg>
+    <span class="gv-banner__sticker">HAVE YOUR SAY</span>
+  </div>
+</section>
+```
+
+## Accordion — `.gv-accordion` (`components/accordion/`)
+
+CSS-only `<details>` accordion (collapsed by default, chevron rotates on open) — FAQ
+blocks on a project page. Inside `.gv-projdesc` the head/body step up to 18px to match
+the surrounding body copy.
+
+```html
+<div class="gv-accordion">
+  <details class="gv-acc__item" open>
+    <summary class="gv-acc__head"><span class="gv-acc__q">How will my idea be used?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+    <div class="gv-acc__body"><p>Every idea is read by the project team…</p></div>
+  </details>
+</div>
+```
 
 ## Phase timeline — `.gv-phases` (`components/phase-timeline/`)
 

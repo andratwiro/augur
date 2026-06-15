@@ -43,6 +43,7 @@ Design tokens (`--gv-*`) + base `.gv-*` classes. **Live demo:** `skills/govocal-
 - Toggle
 - Badge
 - StatusLabel
+- Chip
 - Spinner
 - Card & Divider
 - Icons
@@ -63,7 +64,9 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 
 | Component | Open | Source | What it is |
 |---|---|---|---|
+| **Accordion** | `/components/accordion/` | `components/accordion/` | CSS-only <details> accordion — collapsed by default, chevron rotates on open. Used for FAQs in a project description. |
 | **Approval Voting** | `/components/approval-voting/` | `components/approval-voting/` | The per-method panel that renders inside .gv-phasebody for a voting phase. Two parts: a collapsible .gv-voteoptions accordion of vote options, and the .gv-tall… |
+| **Banner** | `/components/banner/` | `components/banner/` | Image-only project hero: a full-width teal gradient art panel (1150×300) with an optional rotated campaign sticker. Drop an illustration <svg> inside __art . |
 | **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
 | **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
 | **Community Monitor** | `/components/community-monitor/` | `components/community-monitor/` | The “City at a glance” satisfaction module — an ongoing survey that surfaces as a top modal/banner on the homepage and asks how residents feel about governance… |

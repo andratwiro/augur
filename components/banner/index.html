@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Banner — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Demo chrome only — the component styles (.gv-banner / .gv-banner__art /
+       .gv-banner__sticker) live in the shared govocal-ui.css, never forked here. */
+    body { margin: 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+    .demo { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; }
+    .eyebrow { font-size: var(--gv-fs-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 8px 0 4px; }
+    .sub { margin: 0 0 20px; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
+  </style>
+</head>
+<body class="gv-root" data-gv-theme-picker="off">
+  <div class="demo">
+    <p class="eyebrow">Banner</p>
+    <p class="sub">Image-only project hero: a full-width teal gradient art panel (1150×300) with an optional rotated campaign sticker. Drop an illustration <code>&lt;svg&gt;</code> inside <code>__art</code>.</p>
+
+    <!-- ============ BANNER COMPONENT (copy from here) ============ -->
+    <section class="gv-banner" aria-label="Project banner">
+      <div class="gv-banner__art">
+        <svg viewBox="0 0 1150 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <g fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="2">
+            <circle cx="930" cy="80" r="120" />
+            <circle cx="930" cy="80" r="190" />
+            <circle cx="930" cy="80" r="260" />
+          </g>
+          <g fill="#ffffff" fill-opacity="0.16">
+            <rect x="80" y="210" width="120" height="60" rx="6" />
+            <rect x="220" y="180" width="120" height="90" rx="6" />
+            <rect x="360" y="150" width="120" height="120" rx="6" />
+          </g>
+        </svg>
+        <span class="gv-banner__sticker">HAVE YOUR SAY</span>
+      </div>
+    </section>
+    <!-- ============ /BANNER COMPONENT ============ -->
+  </div>
+</body>
+</html>
