@@ -134,11 +134,13 @@
         </div>
         <aside class="gv-feedfilter" id="e2e-project-sidebar" aria-label="Filter ideas">
           <div><p class="gv-feedfilter__label">Search posts</p><input class="gv-input" type="search" placeholder="Search" aria-label="Search posts" /></div>
-          <div><p class="gv-feedfilter__label">SORT BY</p><div class="gv-feedfilter__group">
-            <button class="gv-feedfilter__btn is-active" type="button">Most liked</button>
-            <button class="gv-feedfilter__btn" type="button">Most discussed</button>
-            <button class="gv-feedfilter__btn" type="button">Trending</button>
-            <button class="gv-feedfilter__btn" type="button">Newest</button></div></div>
+          <div><p class="gv-feedfilter__label">SORT BY</p><div class="gv-feedfilter__group gv-feedfilter__group--sort">
+            <button class="gv-feedfilter__btn is-active" type="button"><span class="gv-feedfilter__icon" data-gv-icon="idea" aria-hidden="true"></span>Most liked</button>
+            <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="comments" aria-hidden="true"></span>Most discussed</button>
+            <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="trend-up" aria-hidden="true"></span>Trending</button>
+            <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="refresh" aria-hidden="true"></span>Random</button>
+            <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="clock" aria-hidden="true"></span>New</button>
+            <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="clock-solid" aria-hidden="true"></span>Old</button></div></div>
           <div><p class="gv-feedfilter__label">STATUS</p><div class="gv-feedfilter__group">
             <button class="gv-feedfilter__btn is-active" type="button">All <span class="gv-feedfilter__count">44</span></button>
             <button class="gv-feedfilter__btn" type="button">Under consideration <span class="gv-feedfilter__count">2</span></button>
@@ -163,8 +165,11 @@
       (<code>.is-implemented</code> / <code>.is-considered</code> / <code>.is-rejected</code>,
       default = accepted/success green) sitting opposite the reaction controls.</p>
       <p><strong>Filters:</strong> each group is a <code>.gv-feedfilter__label</code> heading over a
-      <code>.gv-feedfilter__group</code> of <code>.gv-feedfilter__btn</code> chips, some carrying a
-      <code>.gv-feedfilter__count</code> badge; <code>.is-active</code> marks the current selection.</p>
+      <code>.gv-feedfilter__group</code> of full-width <code>.gv-feedfilter__btn</code> rows, some carrying a
+      trailing <code>.gv-feedfilter__count</code> badge; <code>.is-active</code> renders the row as a
+      full-width tenant-coloured filled bar. <strong>SORT BY</strong> uses the
+      <code>.gv-feedfilter__group--sort</code> variant: each row hugs the left with a leading
+      <code>.gv-feedfilter__icon</code> (rocket / chat / trend / dice …) instead of a trailing count.</p>
       <p><strong>Mobile:</strong> below 860px the sidebar collapses behind a full-width
       <code>.gv-filters-btn</code> (sliders icon) shown above the list; tapping it toggles
       <code>.is-open</code> on <code>.gv-feedfilter</code> to reveal the panel inline.</p>

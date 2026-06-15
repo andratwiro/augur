@@ -1076,6 +1076,23 @@
 .gv-feedfilter__count { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
 .gv-feedfilter__btn.is-active .gv-feedfilter__count { color: rgba(255, 255, 255, 0.85); }
 
+/* ── SORT BY variant ─────────────────────────────────────────────────────────
+   The real ideation feed renders SORT BY as a vertical option LIST inside the
+   boxed filter card (same .gv-feedfilter > div panel as STATUS/TOPICS), NOT a
+   row of inline chips. Each row is a full-width .gv-feedfilter__btn carrying a
+   small leading icon (rocket=Most liked, chat=Most discussed, trend=Trending,
+   dice=Random, etc.); the active row is the full-width tenant-coloured filled
+   bar already produced by .gv-feedfilter__btn.is-active. Grounded by
+   fo-project-ideation-feed/page.png sidebar. New VARIANT — base btn untouched.
+   On a sort row the icon+label hug the left edge (no trailing count), so we
+   drop the justify-content:space-between to flex-start for this group only. */
+.gv-feedfilter__group--sort .gv-feedfilter__btn { justify-content: flex-start; }
+.gv-feedfilter__icon { flex: 0 0 auto; display: inline-flex; align-items: center;
+  width: 16px; height: 16px; }
+.gv-feedfilter__icon .gv-icon, .gv-feedfilter__icon svg { width: 16px; height: 16px; }
+/* active row: icon inherits the white-on-tenant treatment of the filled bar */
+.gv-feedfilter__btn.is-active .gv-feedfilter__icon { color: #fff; }
+
 /* ── List/Map segmented toggle — .e2e-list-map-viewbuttons : white, 4px pad,
    3px radius, h40. Tabs (#view-tab-N) 4px 8px, 16px; active = tenant-primary + white. */
 .gv-viewseg { display: inline-flex; gap: 0; padding: 4px; height: 40px; box-sizing: border-box;
