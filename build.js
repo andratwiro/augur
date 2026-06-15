@@ -1342,6 +1342,26 @@ async function main() {
     }
   }
 
+  // ── Canonical shared assets → dist/skills/govocal-ui/ (whitelist ONLY — never
+  // the internal .md files like SKILL.md / components.md). Library demos
+  // (components/<name>/, pages/<name>/) reference these via ../../skills/govocal-ui/
+  // so they're HARDWIRED to the live canonical source — no per-folder snapshot, so
+  // drift between primitives → components → pages is structurally impossible. The
+  // same relative path resolves locally (file://) and here on the shipped site.
+  // (Prototypes are the only tier that still copies assets — they're allowed to fork.)
+  const SHARED_ASSETS = [
+    "govocal-tokens.css", "govocal-ui.css", "govocal-bo.css",
+    "govocal-themes.js", "govocal-cookies.js", "govocal-icons.js",
+    "govocal-survey.css", "govocal-survey.js", "govocal-logo.svg",
+  ];
+  const sharedDir = path.join(DIST, "skills", "govocal-ui");
+  await fs.mkdir(sharedDir, { recursive: true });
+  for (const asset of SHARED_ASSETS) {
+    if (await exists(path.join(UI_SKILL, asset))) {
+      await fs.copyFile(path.join(UI_SKILL, asset), path.join(sharedDir, asset));
+    }
+  }
+
   // ── Components tab → composed component library from components/<name>/.
   await fs.mkdir(path.join(DIST, "components"), { recursive: true });
   await fs.writeFile(
