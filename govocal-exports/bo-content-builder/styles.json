@@ -164,6 +164,47 @@
         "z-index": "auto",
         "opacity": "1"
       }
+    ],
+    ".e2e-text-box": [
+      {
+        "tag": "div",
+        "class": "sc-beqWaB sc-eYjxJN ekvjbt byXCdX e2e-text-box",
+        "text": "This is some text. You can edit and format it by using the e",
+        "color": "rgb(4, 77, 108)",
+        "background-color": "rgba(0, 0, 0, 0)",
+        "background-image": "none",
+        "font-family": "\"Public Sans\", \"Public Sans\", \"Helvetica Neue\", Helvetica, Arial, sans-serif",
+        "font-size": "14px",
+        "font-weight": "400",
+        "line-height": "19.999px",
+        "letter-spacing": "normal",
+        "text-transform": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "border": "0px none rgb(4, 77, 108)",
+        "border-width": "0px",
+        "border-color": "rgb(4, 77, 108)",
+        "border-radius": "0px",
+        "border-style": "none",
+        "box-shadow": "none",
+        "outline": "rgb(4, 77, 108) none 3px",
+        "display": "block",
+        "flex-direction": "row",
+        "align-items": "normal",
+        "justify-content": "normal",
+        "width": "988px",
+        "height": "26px",
+        "min-height": "26px",
+        "max-width": "1200px",
+        "position": "static",
+        "top": "auto",
+        "left": "auto",
+        "overflow": "visible",
+        "overflow-y": "visible",
+        "z-index": "auto",
+        "opacity": "1"
+      }
     ]
   },
   "digest": [

@@ -35,6 +35,20 @@
     #cb-root .gv-bo-cb-settings { display: none; }
     #cb-root.cb-has-panel .gv-bo-cb-settings { display: block; }
 
+    /* ── Review-pin fixes (page-local overrides; canonical untouched) ───────────
+       Bound the shell to the viewport so the CANVAS scrolls internally instead of
+       the whole page — otherwise the tall page lets the palette scroll away and
+       the icons disappear under the fixed top bar. */
+    #cb-root { height: 100vh; overflow: hidden; }
+    /* Eye / view-project glyph: the real button's icon PATH is filled #333 (the
+       blue is only currentColor, which the path overrides) — so it renders grey. */
+    #cb-root .gv-bo-cb-topbar__view { color: var(--gv-grey-800); }
+    /* Text blocks mirror the real editor's TWO levels: the .gv-bo-cb-block__body
+       wrapper keeps the captured 14px chrome value (checkpoint), while the VISIBLE
+       text renders in an inner .cb-richtext at the real 16px / #1E1E1E (lh 24) —
+       same size the resident sees on the project page. */
+    #cb-root .cb-richtext { font-size: var(--gv-fs-base); color: #1E1E1E; line-height: 24px; outline: none; }
+
     /* Block content presentation (page content, not gv chrome) ----------------- */
     .cb-h { margin: 0 0 8px; line-height: 1.3; }
     .cb-p { margin: 0; }
@@ -280,7 +294,7 @@
           <!-- Default Text block (selected on load mirrors the -settings capture) -->
           <div class="gv-bo-cb-block" data-widget="text" data-label="Text" draggable="true">
             <span class="gv-bo-cb-block__label">Text</span>
-            <div class="gv-bo-cb-block__body" id="e2e-content-builder-frame">Help us reimagine <strong>Dorothea Dix Park</strong> — a 308-acre destination park in the heart of Raleigh. Share your ideas on what this once-in-a-generation public space should become.</div>
+            <div class="gv-bo-cb-block__body" id="e2e-content-builder-frame"><div class="cb-richtext" contenteditable="true">Help us reimagine <strong>Dorothea Dix Park</strong> — a 308-acre destination park in the heart of Raleigh. Share your ideas on what this once-in-a-generation public space should become.</div></div>
           </div>
         </div>
       </main>
@@ -318,7 +332,7 @@
 
     // ── widget catalogue: label + the default content markup it drops ──────────
     var WIDGETS = {
-      'text':            { label: 'Text',              make: function () { return '<div class="cb-p gv-bo-cb-block__body" contenteditable="true">This is some text. You can edit and format it by using the editor in the panel on the right.</div>'; } },
+      'text':            { label: 'Text',              make: function () { return '<div class="gv-bo-cb-block__body"><div class="cb-richtext cb-p" contenteditable="true">This is some text. You can edit and format it by using the editor in the panel on the right.</div></div>'; } },
       'button':          { label: 'Button',            make: function () { return '<div class="cb-btnblock"><span class="cb-fakebtn">Take the survey</span></div>'; } },
       'image':           { label: 'Image',             make: function () { return '<div class="cb-imgph"><span class="gv-icon" data-gv-icon="eye"></span> Click to upload an image</div>'; } },
       'two-column':      { label: '2 column',          make: function () { return '<div class="cb-cols cb-cols-2"><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
@@ -514,7 +528,7 @@
     // Which DOM node inside a block the RTE mirrors (or null).
     function textTargetOf(block) {
       var w = block.getAttribute('data-widget');
-      if (w === 'text') return block.querySelector('.gv-bo-cb-block__body, .cb-p');
+      if (w === 'text') return block.querySelector('.cb-richtext') || block.querySelector('.gv-bo-cb-block__body, .cb-p');
       return null;
     }
 
@@ -1088,7 +1102,7 @@
     function seedBlock(widget, html) {
       var b = makeBlock(widget);
       if (html != null) {
-        var body = b.querySelector('.gv-bo-cb-block__body') || b.querySelector('.cb-p');
+        var body = b.querySelector('.cb-richtext') || b.querySelector('.gv-bo-cb-block__body') || b.querySelector('.cb-p');
         if (body) body.innerHTML = html;
       }
       return b;
