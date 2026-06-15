@@ -1213,7 +1213,6 @@ function renderPagesIndex(pages) {
           </div>
           <div class="proto-meta">
             <div class="proto-name">${titleCase(p.name)}</div>
-            <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
           </div>
         </div>`;
 
