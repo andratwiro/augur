@@ -33,6 +33,10 @@
       font: 600 13px/1 var(--gv-font-family); }
     .auth-toggle::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
     [data-auth="in"] .auth-toggle::before { background: var(--gv-green-400); }
+
+    /* Layout-only: fix each climate-team card width inside the .gv-rail scroller so
+       the horizontal carousel has a stable track (no colour/border/type authored). */
+    .climate-team { flex: 0 0 300px; }
   </style>
 </head>
 <body data-gv-theme-picker="off" data-auth="out" class="gv-root">
@@ -193,15 +197,8 @@
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Cooler streets for summer</a></h3>
-              <p class="gv-pcard__desc">Which streets should we plant, shade and de-pave first? Drop your pins on the map.</p>
-              <div class="gv-pcard__progress">
-                <span class="gv-pcard__meta time">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  3 weeks left
-                </span>
-                <div class="gv-progress" role="progressbar" aria-valuenow="48" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:48%"></div></div>
-              </div>
-              <span class="gv-poststat" style="margin-top:12px"><b>289</b>&nbsp;contributions</span>
+              <span class="gv-poststat"><b>289</b>&nbsp;contributions</span>
+              <p class="gv-pcard__desc" style="margin-top:10px">Which streets should we plant, shade and de-pave first? Drop your pins on the map.</p>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
                 <a class="gv-btn primary-outlined" href="#">Add your idea</a>
@@ -215,15 +212,8 @@
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Name the new river bridge</a></h3>
-              <p class="gv-pcard__desc">Five shortlisted names are open for a public vote. One vote per resident.</p>
-              <div class="gv-pcard__progress">
-                <span class="gv-pcard__meta time">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  5 days left
-                </span>
-                <div class="gv-progress" role="progressbar" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:80%"></div></div>
-              </div>
-              <span class="gv-poststat" style="margin-top:12px"><b>1.2k</b>&nbsp;votes</span>
+              <span class="gv-poststat"><b>1.2k</b>&nbsp;votes</span>
+              <p class="gv-pcard__desc" style="margin-top:10px">Five shortlisted names are open for a public vote. One vote per resident.</p>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
                 <a class="gv-btn primary-outlined" href="#">Cast your vote</a>
@@ -237,15 +227,8 @@
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Have your say on the budget</a></h3>
-              <p class="gv-pcard__desc">Tell us where €2.4M of neighbourhood funding should go next year.</p>
-              <div class="gv-pcard__progress">
-                <span class="gv-pcard__meta time">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  2 weeks left
-                </span>
-                <div class="gv-progress" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:40%"></div></div>
-              </div>
-              <span class="gv-poststat" style="margin-top:12px"><b>74</b>&nbsp;contributions</span>
+              <span class="gv-poststat"><b>74</b>&nbsp;contributions</span>
+              <p class="gv-pcard__desc" style="margin-top:10px">Tell us where €2.4M of neighbourhood funding should go next year.</p>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
                 <a class="gv-btn primary-outlined" href="#">Take the survey</a>
@@ -300,10 +283,9 @@
                 <div class="gv-progress" role="progressbar" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:35%"></div></div>
               </div>
               <div class="gv-pcard__foot">
-                <div class="gv-bubbles sm" aria-label="248 participants">
+                <div class="gv-bubbles" aria-label="248 participants">
                   <span class="av"></span><span class="av"></span><span class="av"></span>
-                  <span class="count">248</span>
-                  <span class="gv-bubbles__label">participants</span>
+                  <span class="gv-bubbles__label">248 participants</span>
                 </div>
                 <a class="gv-btn primary-outlined" href="#">Take the survey</a>
               </div>
@@ -321,9 +303,9 @@
               <span class="gv-poststat" style="margin-top:10px"><b>122</b>&nbsp;contributions</span>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
-                <div class="gv-bubbles sm" aria-label="122 participants">
+                <div class="gv-bubbles" aria-label="122 participants">
                   <span class="av"></span><span class="av"></span><span class="av"></span>
-                  <span class="count">122</span>
+                  <span class="gv-bubbles__label">122 participants</span>
                 </div>
                 <a class="gv-btn primary-outlined" href="#">Learn more</a>
               </div>
@@ -336,14 +318,14 @@
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
             </div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">The future of Station Road</a></h3>
-              <div class="gv-pcard__progress">
+              <div class="gv-pcard__progress" style="margin-top:0;margin-bottom:14px">
                 <span class="gv-pcard__meta time">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   6 weeks left
                 </span>
                 <div class="gv-progress" role="progressbar" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:18%"></div></div>
               </div>
+              <h3 class="gv-pcard__title"><a href="#">The future of Station Road</a></h3>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
                 <a class="gv-btn primary-outlined" href="#">Take the survey</a>
@@ -365,9 +347,9 @@
               <p class="gv-pcard__desc">Wanted: your ideas for a better climate in the Westside, Old Town and Riverside districts.</p>
               <div class="gv-pcard__spacer"></div>
               <div class="gv-pcard__foot">
-                <div class="gv-bubbles sm" aria-label="346 participants">
+                <div class="gv-bubbles" aria-label="346 participants">
                   <span class="av"></span><span class="av"></span><span class="av"></span>
-                  <span class="count">346</span>
+                  <span class="gv-bubbles__label">346 participants</span>
                 </div>
               </div>
             </div>
@@ -394,18 +376,18 @@
               <span class="gv-thumb-cap gv-thumb-cap--sm">PARTICIPATORY BUDGET</span>
             </div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Participatory budget 2026</a></h3>
-              <div class="gv-pcard__progress">
+              <div class="gv-pcard__progress" style="margin-top:0;margin-bottom:14px">
                 <span class="gv-pcard__meta time">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   2 weeks left
                 </span>
                 <div class="gv-progress" role="progressbar" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:62%"></div></div>
               </div>
+              <h3 class="gv-pcard__title"><a href="#">Participatory budget 2026</a></h3>
               <div class="gv-pcard__foot">
-                <div class="gv-bubbles sm" aria-label="86 participants">
+                <div class="gv-bubbles" aria-label="86 participants">
                   <span class="av"></span><span class="av"></span>
-                  <span class="count">86</span>
+                  <span class="gv-bubbles__label">86 participants</span>
                 </div>
                 <a class="gv-btn primary-outlined" href="#">Submit a proposal</a>
               </div>
@@ -431,50 +413,75 @@
     <section class="gv-section" aria-labelledby="teams-title">
       <div class="gv-section__head"><h2 class="gv-title h2" id="teams-title">City climate teams</h2></div>
       <div class="gv-section__body">
-        <div class="gv-pgrid">
+        <!-- Horizontal carousel: the live Wien "Wiener Klimateam" row scrolls
+             horizontally. Uses the canonical .gv-rail scroller (overflow-x, scroll-snap,
+             no JS) with the emblem .gv-pcard.light cards; the .climate-team layout class
+             below is page-local layout only (a wider track item for the emblem card). -->
+        <div class="gv-rail" tabindex="0" role="group" aria-label="City climate teams, scroll for more">
 
-          <article class="gv-pcard light">
+          <article class="gv-pcard light climate-team">
             <div class="gv-pcard__thumb gv-pcard__thumb--coral">
               <div class="gv-pcard__badge"><span><b class="accent">Riverside</b><span class="pre">for a better</span><b>climate</b></span></div>
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Riverside climate team</a></h3>
-              <div class="gv-bubbles sm" aria-label="145 participants">
-                <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="count">145</span>
-                <span class="gv-bubbles__label">participants</span>
-              </div>
+              <span class="gv-poststat"><b>145</b>&nbsp;participants</span>
               <p class="gv-pcard__desc">Wanted: your idea for a better climate in the Riverside district.</p>
             </div>
           </article>
 
-          <article class="gv-pcard light">
+          <article class="gv-pcard light climate-team">
             <div class="gv-pcard__thumb gv-pcard__thumb--forest">
               <div class="gv-pcard__badge"><span><b class="accent">Old Town</b><span class="pre">for a better</span><b>climate</b></span></div>
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Old Town climate team</a></h3>
-              <div class="gv-bubbles sm" aria-label="69 participants">
-                <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="count">69</span>
-                <span class="gv-bubbles__label">participants</span>
-              </div>
+              <span class="gv-poststat"><b>69</b>&nbsp;participants</span>
               <p class="gv-pcard__desc">Wanted: your idea for a better climate in the Old Town district.</p>
             </div>
           </article>
 
-          <article class="gv-pcard light">
+          <article class="gv-pcard light climate-team">
             <div class="gv-pcard__thumb gv-pcard__thumb--sand">
               <div class="gv-pcard__badge"><span><b class="accent">Harbour</b><span class="pre">for a better</span><b>climate</b></span></div>
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Harbour climate team</a></h3>
-              <div class="gv-bubbles sm" aria-label="132 participants">
-                <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="count">132</span>
-                <span class="gv-bubbles__label">participants</span>
-              </div>
-              <p class="gv-pcard__desc">In 2024–25 we gathered climate ideas for the Harbour; the resulting projects are now being delivered.</p>
+              <span class="gv-poststat"><b>132</b>&nbsp;participants</span>
+              <p class="gv-pcard__desc">Wanted: your idea for a better climate in the Harbour district.</p>
+            </div>
+          </article>
+
+          <article class="gv-pcard light climate-team">
+            <div class="gv-pcard__thumb gv-pcard__thumb--ocean">
+              <div class="gv-pcard__badge"><span><b class="accent">Northgate</b><span class="pre">for a better</span><b>climate</b></span></div>
+            </div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Northgate climate team</a></h3>
+              <span class="gv-poststat"><b>98</b>&nbsp;participants</span>
+              <p class="gv-pcard__desc">Wanted: your idea for a better climate in the Northgate district.</p>
+            </div>
+          </article>
+
+          <article class="gv-pcard light climate-team">
+            <div class="gv-pcard__thumb gv-pcard__thumb--forest">
+              <div class="gv-pcard__badge"><span><b class="accent">Westside</b><span class="pre">for a better</span><b>climate</b></span></div>
+            </div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Westside climate team</a></h3>
+              <span class="gv-poststat"><b>211</b>&nbsp;participants</span>
+              <p class="gv-pcard__desc">Wanted: your idea for a better climate in the Westside district.</p>
+            </div>
+          </article>
+
+          <article class="gv-pcard light climate-team">
+            <div class="gv-pcard__thumb gv-pcard__thumb--coral">
+              <div class="gv-pcard__badge"><span><b class="accent">Lakeshore</b><span class="pre">for a better</span><b>climate</b></span></div>
+            </div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Lakeshore climate team</a></h3>
+              <span class="gv-poststat"><b>54</b>&nbsp;participants</span>
+              <p class="gv-pcard__desc">Wanted: your idea for a better climate in the Lakeshore district.</p>
             </div>
           </article>
 
@@ -490,9 +497,12 @@
     <section class="gv-section" aria-labelledby="done-title">
       <div class="gv-section__head"><h2 class="gv-title h2" id="done-title">Completed projects</h2></div>
       <div class="gv-section__body">
-        <div class="gv-pgrid">
+        <!-- Completed-project cards are the COMPACT light variant on a dense (5-col)
+             grid — the live Wien "Abgeschlossene Projekte" row shows visibly smaller
+             cards (more per row) than the ongoing-projects row. -->
+        <div class="gv-pgrid dense">
 
-          <article class="gv-pcard light">
+          <article class="gv-pcard light compact">
             <div class="gv-pcard__thumb gv-pcard__thumb--sand"><span class="gv-thumb-cap gv-thumb-cap--sm">OLD TOWN<br>AS NEW</span></div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Old Town as new</a></h3>
@@ -504,7 +514,7 @@
             </div>
           </article>
 
-          <article class="gv-pcard light">
+          <article class="gv-pcard light compact">
             <div class="gv-pcard__thumb gv-pcard__thumb--ocean"><span class="gv-thumb-cap gv-thumb-cap--xs">Market Square, your say</span></div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Redesigning Market Square</a></h3>
@@ -516,13 +526,37 @@
             </div>
           </article>
 
-          <article class="gv-pcard light">
+          <article class="gv-pcard light compact">
             <div class="gv-pcard__thumb gv-pcard__thumb--civic"><span class="gv-thumb-cap gv-thumb-cap--xs">Children &amp; Youth Strategy 2025–2030</span></div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Children &amp; youth strategy 2025–2030</a></h3>
               <span class="gv-pcard__status done">
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 7 weeks ago
+              </span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb gv-pcard__thumb--forest"><span class="gv-thumb-cap gv-thumb-cap--xs">Greening the schoolyards</span></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Greening the schoolyards</a></h3>
+              <span class="gv-pcard__status done">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                3 weeks ago
+              </span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb gv-pcard__thumb--clay"><span class="gv-thumb-cap gv-thumb-cap--xs">Riverside path study</span></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Riverside path study</a></h3>
+              <span class="gv-pcard__status">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                No end date
               </span>
               <span class="gv-pcard__more">Learn more</span>
             </div>
