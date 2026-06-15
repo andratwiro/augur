@@ -267,3 +267,37 @@ dropdown, `.gv-bo-rte` rich-text toolbar + `.gv-bo-charcount`, `.gv-bo-scalebar`
 `.gv-bo-arrangerow` (drag), `.gv-bo-notifflyout`/`__item`, survey `.gv-bo-fieldrow` +
 field-type chips, voting-method picker card + EUR min/max row, quarter navigator.
 (Confirm `.gv-bo-empty`, `.gv-bo-multiloc` already exist — they do — and reuse.)
+
+## Run 2 — Project editor, core methods (DONE)
+
+Two parallel build agents (disjoint files), lint green, render-verified vs captures.
+- **`pages/bo-project-phase`** extended: method-aware **phase ribbon** (PB 4-phase
+  lifecycle Submit→Vote→**Budget allocation**[current]→Implementation); **voting/
+  budgeting Setup** (3 voting-method cards via `.gv-bo-methodcard`, EUR Total/Min/Max
+  numeric row, Options/Actions/Result-sharing toggles) matching `r1-pe-pb-ph1-setup`;
+  **Access rights** sub-tab (page-local `.pp-accordion` "who can submit/comment/react"
+  + auth-radio fieldset) matching `r2-access-rights`; **survey-results** panel (export
+  variant — `r1-pe-survey-results` is the external-export panel, not per-Q charts);
+  faithful **Timeline** strip; **Survey form** sub-tab links out to bo-survey-builder.
+  (`r1-pe-proj-timeline` was a 404 — no separate Gantt route exists.)
+- **`pages/bo-survey-builder`** (NEW) = native survey form builder, 3-pane, reuses the
+  canonical content-builder editor shell (`.gv-bo-cb-*`): top bar (Open-for-responses
+  pill, EN, Download PDF, View, Save) · left palette (13 field types, AI badge on
+  short/long answer) · canvas (drag hint, Page-N groups w/ "Continues to…" logic line,
+  ~51px field rows, locked Ending) · right per-field settings + **logic-rule editor**
+  for single_choice/linear_scale/ranking. Matches `r1-pe-survey-form-edit`.
+
+### Run-3 promotion queue (canonical needs reported by Run-2 agents, measured)
+- **`.gv-bo-accordion`** — access-rights/who-can rows: head 21px(`--gv-fs-xl`)/500/navy,
+  1px `--gv-divider`, chevron-right→down, body pad `0 0 22px`. (page-local `.pp-accordion` now)
+- **`.gv-bo-fieldrow`** (survey) — flex, min-h 51px, pad `8px 18px`, top divider
+  `1px var(--gv-grey-300)`; grip · `Question N`(16/700 `--gv-teal-500`) · title(16
+  `--gv-grey-800`) · badges; hover `--gv-grey-100`, selected `--gv-teal-50` + inset
+  `3px 0 0 --gv-teal-500`. + **`.gv-bo-typebadge`** (12/700 uppercase chip),
+  **`.gv-bo-surveypage`** header, **`.gv-bo-logicbox`** (If→Go-to select pair).
+- **drag-handle (6-dot grip) icon** + **`info` icon** + **13 question-type glyphs** —
+  ABSENT from `govocal-icons.js` (only `info-solid/outline` exist). Add to registry.
+- **voting-method picker card** variant + **EUR min/max field row** (labels 16/400
+  `--gv-cool-grey-600`) + **`.gv-bo-infodot`** (16px info dot beside labels).
+- Note: `.gv-bo-cb-topbar__view` is hardcoded `width:44px` (icon-only) — a *labeled*
+  view/download button needs a variant (survey-builder used page-local `.sb-topbtn`).
