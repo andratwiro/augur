@@ -110,8 +110,24 @@
       </div>
     </div>
 
+  </main>
+
+  <!-- ════════ Participation bar — full-width tenant-primary band between the
+       project header and the phase timeline (canonical .gv-partbar, themed via
+       --gv-tenant-primary; matches the real proposals page: green band padding
+       20px, status left, primary 'Add a proposal' CTA right). Lives outside the
+       max-width frame so the green strip bleeds edge-to-edge like the real page. ═ -->
+  <div class="gv-partbar">
+    <div class="gv-partbar__inner">
+      <span class="gv-partbar__status">Open for participation</span>
+      <a class="gv-btn on-color" href="#proposals">Add a proposal <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+    </div>
+  </div>
+
+  <main class="pp-frame">
+
     <!-- ════════ Timeline ════════ -->
-    <section class="gv-phases" aria-labelledby="phasesTitle" style="margin:0 0 24px;">
+    <section class="gv-phases" aria-labelledby="phasesTitle" style="margin:24px 0 24px;">
       <div class="gv-phases__bar"><h2 id="phasesTitle">Timeline</h2></div>
       <div class="gv-stepper" role="tablist" aria-label="Project phases">
         <button class="gv-phase current" role="tab" aria-selected="true">
