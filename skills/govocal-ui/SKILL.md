@@ -39,18 +39,32 @@ project brain. Match its vocabulary when labelling components.
 | `components.md` | The catalog — copy-paste HTML for primitives **and composed components**, with notes. |
 | `gallery.html` | Live demo of every primitive in every state, across all city themes. Open it to eyeball fidelity. |
 
-## Library tiers — Primitives → Components → Pages
+## Library tiers — Primitives → Components → Pages (HARDWIRED)
 
-The design system is layered, and the review site has a tab per tier:
+The design system is a **normal, hardwired component system**, layered, with one
+source of truth per layer and the review site showing a tab per tier:
 
 1. **Primitives** (`/primitives/`, the `gallery.html`) — tokens (colour, type, shadow,
    radius, focus) and base `.gv-*` primitives (button, input, badge, card…). The atoms.
+   Defined ONLY in `govocal-tokens.css` / `govocal-ui.css` / `govocal-bo.css`.
 2. **Components** (`/components/`) — composed, section-level blocks assembled from
-   primitives: **header/nav, footer, project-card + rail, hero, modal + login**. Source lives in
-   `components/<name>/` (self-contained demos); the recall index is
-   [`components/manifest.md`](../../components/manifest.md). Styling is in `govocal-ui.css`.
-3. **Pages** (`/pages/`) — whole screens (e.g. the Stadt Wien homepage) built from
-   components. Source in `pages/<name>/`.
+   primitives: **header/nav, footer, project-card + rail, hero, modal + login**. Each
+   `components/<name>/` is a demo that **uses** `.gv-*` classes — it must not redefine
+   them. Recall index: [`components/manifest.md`](../../components/manifest.md).
+3. **Pages** (`/pages/`) — whole screens built from components "dragged in". A page is
+   **layout + content only**; it uses component/primitive classes, defines none, and
+   authors no colour/border/shadow/type of its own. Source in `pages/<name>/`.
+
+**The invariant (enforced by `npm run lint`):** primitives → components → pages are
+linked in real time — every demo references the canonical assets via
+`../../skills/govocal-ui/<asset>`; **no tier copies assets, redefines `.gv-*`, or
+hardcodes visual values.** Fix a primitive and every component and page changes with
+it, because nothing downstream holds a private copy or its own definition. If a
+component needs a change that belongs to a primitive, **edit the primitive** (then
+`npm run verify:all` — the ratchet confirms you improved it without regressing other
+consumers). **Only prototypes are exempt** — they copy assets and may fork/break, on
+purpose. `build.js` ships the canonical assets once to `dist/skills/govocal-ui/` so the
+same relative path resolves on the live site.
 
 **Recall flow when building a prototype:** you don't need every component in context.
 Scan `components/manifest.md` (one small table), then open just the one component file

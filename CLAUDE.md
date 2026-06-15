@@ -135,13 +135,21 @@ docs in `skills/govocal-ui/SKILL.md` ("Building & extending") and
    after ANY shared-CSS change run `npm run verify:all` (green = real improvement,
    red = a dependent regressed — fix or back out). `--changed .gv-x` = blast radius.
 5. **Store** — `components.md` snippet + `components/manifest.md` row (+ `govocal-bo.css`
-   for back-office chrome), then `npm run index`.
+   for back-office chrome), then `npm run index`. Run **`npm run lint`** — it must pass.
+
+**The hardwired invariant (this is a normal UI system — `npm run lint` enforces it):**
+primitives → components → pages are linked in real time, one source of truth per layer.
+Library demos (`components/`, `pages/`) **reference** the canonical assets via
+`../../skills/govocal-ui/<asset>` — they **never copy assets, redefine a `.gv-*` class,
+or hardcode visual values.** A component that needs a primitive-level change → **edit the
+primitive**, and it flows to every consumer (confirm with `npm run verify:all`). A page is
+components *dragged in* — layout + content only. **Only prototypes are exempt** (they copy
+and may fork/break). Don't re-introduce per-folder asset copies — that was the old drift bug.
 
 **Disciplines:** primitives are the durable asset (source-derived, kept monotonic by
-the ratchet — improve freely, never regress). **Pages are pure assembly** (components
-+ tokens, no local colour/border/shadow values) so primitive gains flow into them
-for free; pages are also the user's prototyping *starting point* (pre-wired flows),
-so keep them clickable and hooked together. **Parallel agents split by layer, not
+the ratchet — improve freely, never regress). Pages are pure assembly so primitive gains
+flow into them for free; they're also the user's prototyping *starting point* (pre-wired
+flows), so keep them clickable and hooked together. **Parallel agents split by layer, not
 surface** — serialize shared-CSS edits so two agents don't fight over `govocal-ui.css`.
 
 > **Parked backlog** (build only when this mode is active): refine the existing
