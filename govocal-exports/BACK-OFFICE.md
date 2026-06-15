@@ -30,14 +30,18 @@ with `npm run capture`. Each folder has `page.png` · `viewport.png` · `dom.htm
 | `fo-project-page/` | Public project page | front-office contrast (themed header, hero, CTAs, sticky bar) |
 | `bo-sidebar-1024/`, `bo-sidebar-768/` | Admin at tablet widths | sidebar collapse behaviour |
 
-**Sidebar (measured, now its own component `components/bo-sidebar/`):** extended **224px**,
-collapses to an **80px icon rail at ≤1200px** (breakpoint confirmed: 1210 extended, 1200 rail).
-Brand band = teal **`#147985`** (`--gv-teal-500`), 60px; nav navy `#003349`; items 40px,
-icons **24px** link-blue `#4183C4`, labels **white**; active = `rgba(0,0,0,.5)` cell (no bold),
-inset+rounded in the rail; notification badge red, overlaps the bell when collapsed. Driven by
-`.is-rail` (toggle via matchMedia at 1200px — the product is JS-driven). NOTE: bo-app-shell /
-bo-project-phase still carry the earlier sidebar copy; re-sync `govocal-bo.css` + drop the
-white-arrow inline style once the sidebar is signed off.
+**Sidebar (`components/bo-sidebar/`, verified via `#sidebar` checkpoint):** extended **224px**,
+collapses to an **80px icon rail at ≤1200px** (1210 extended, 1200 rail). Brand band = teal
+**`#147985`** (`--gv-teal-500`), 60px; nav navy `#003349`, `padding 0 0 35px`, line-height 20px;
+items 40px, **labels 15px white**, active cell = **`rgba(0,0,0,.7)`** (no bold). Icons are
+GoVocal's **real admin glyphs** transcribed from `#sidebar` (each `<a>`'s svg; viewBoxes vary —
+24×24, 14×12, 16×16), rendered **24×20**, with per-state colour: inactive **`#00577C`**
+(`--gv-blue-400`), **active item → `#01A1B1`** (`--gv-teal-400`), **Support → `#32B67A`**
+(`--gv-green-400`). Notification badge red, overlaps the bell when collapsed. Driven by `.is-rail`
+(matchMedia at 1200px — product is JS-driven). NOTE: bo-app-shell / bo-project-phase still carry
+the earlier sidebar copy; re-sync `govocal-bo.css` once the sidebar is signed off.
+Earlier wrong guesses now corrected: icon colour was not `#4183C4`, glyphs were generic Material,
+labels were 14px — all fixed against the live capture.
 
 ## Measured BO theme (live `getComputedStyle`)
 
