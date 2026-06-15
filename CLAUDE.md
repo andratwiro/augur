@@ -104,9 +104,15 @@ library** of primitives, components, and pages built into `skills/govocal-ui/` a
 index (`LIBRARY.md`, `components/manifest.md`). This is the one mode where editing
 the canonical library source is the goal.
 
-> **Scaffolding TBD** — the user will flesh out the exact System-building workflow
-> when they next pick it up. For now: load `govocal-ui`, work source-grounded, keep
-> the library tidy.
+> **Scaffolding TBD** — the user will flesh out the exact workflow when they next
+> pick it up. For now: load `govocal-ui`, work source-grounded, keep the library
+> tidy. **Parked backlog** (from the old TODO, build only when this mode is active):
+> refine the existing `.gv-*` primitives (`header-nav`, `footer`, `project-card`,
+> `hero`) vs the real product, and build the remaining reference Pages one at a time
+> — Content Builder, Survey Builder, Perspectives, Voting, Common Ground, Ideation,
+> Project List, Project Editor (pipeline: capture real HTML/screenshot → analyze vs
+> `LIBRARY.md` → build from components → verify → land). Also still open: real
+> prototypes for the `departments/` opportunity (currently hello-world placeholders).
 
 ### Future modes (not built yet — don't assume them)
 
