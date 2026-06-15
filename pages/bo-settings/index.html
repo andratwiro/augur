@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Settings — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    .st-panel { display: none; }
+    .st-panel.is-active { display: block; }
+    .st-divider { border: 0; border-top: 1px solid var(--gv-divider); margin: 28px 0; }
+    /* Languages multi-value field. */
+    .st-langbox { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 48px; padding: 6px 12px; border: 1px solid var(--gv-border-dark); border-radius: 3px; background: #fff; max-width: 540px; }
+    .st-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 3px; background: var(--gv-grey-200); color: var(--gv-bo-primary); font-size: 14px; }
+    .st-chip button { border: 0; background: none; color: var(--gv-cool-grey-600); cursor: pointer; line-height: 1; padding: 0; }
+    .st-langbox__arrow { margin-left: auto; color: var(--gv-cool-grey-500); }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+    <nav class="gv-bo-side" aria-label="Admin" data-active="settings"></nav>
+
+    <div class="gv-bo-main">
+      <nav class="gv-bo-tabs gv-bo-tabs--top" aria-label="Settings sections">
+        <a class="gv-bo-tab is-active" href="#" data-st="general">General</a>
+        <a class="gv-bo-tab" href="#" data-st="branding">Branding</a>
+        <a class="gv-bo-tab" href="#" data-st="registration">Registration</a>
+        <a class="gv-bo-tab" href="#" data-st="tags">Tags</a>
+        <a class="gv-bo-tab" href="#" data-st="areas">Areas</a>
+        <a class="gv-bo-tab" href="#" data-st="statuses">Statuses</a>
+        <a class="gv-bo-tab" href="#" data-st="policies">Policies</a>
+      </nav>
+
+      <section class="gv-bo-section">
+        <div class="gv-bo-card">
+
+          <!-- ── General ─────────────────────────────────────────────── -->
+          <div class="st-panel is-active" data-panel="general">
+            <h2 class="gv-bo-formhead">General settings</h2>
+
+            <h3 class="gv-bo-subhead" style="margin-top:0">Platform configuration</h3>
+            <p class="gv-bo-help" style="margin-bottom:22px">Choose how people will see your organization name, select the languages of your platform and link to your website.</p>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Name of city or organization</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="City of Raleigh">
+            </div>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Languages</span>
+              <div class="st-langbox">
+                <span class="st-chip">English <button aria-label="Remove English">✕</button></span>
+                <span class="st-chip">Español (España) <button aria-label="Remove Spanish">✕</button></span>
+                <span class="st-langbox__arrow" data-gv-icon="chevron-down"></span>
+              </div>
+            </div>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Website</span>
+              <input class="gv-input" type="text" value="https://raleighnc.gov/">
+            </div>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Population</span>
+              <input class="gv-input" type="text" value="100000">
+            </div>
+
+            <button class="gv-btn success">Save</button>
+
+            <hr class="st-divider">
+
+            <h3 class="gv-bo-subhead" style="margin-top:0">Content moderation</h3>
+            <div class="gv-bo-togglerow" style="max-width:640px">
+              <div><div class="gv-bo-togglerow__title">Profanity blocker</div>
+                <p class="gv-bo-help">Block input, proposals and comments containing the most commonly reported offensive words.</p></div>
+              <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+            </div>
+            <div class="gv-bo-togglerow" style="max-width:640px">
+              <div><div class="gv-bo-togglerow__title">Detect inappropriate content</div>
+                <p class="gv-bo-help">Auto-detect inappropriate content posted on the platform.</p></div>
+              <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+            </div>
+
+            <h3 class="gv-bo-subhead">User name display <span style="font-weight:400;font-size:14px;color:var(--gv-text-secondary)">(for users with email confirmed only)</span></h3>
+            <p class="gv-bo-help" style="margin-bottom:14px;max-width:620px">Choose how users without a name in their profile will appear in the platform. This will occur when you set the access rights for a phase to 'Email confirmation'. In all cases, upon participation, users will be able to update the profile name we autogenerated for them.</p>
+            <label class="gv-radio" style="display:flex"><input type="radio" name="uname" checked><span class="circle"></span>User · eg User 123456</label>
+            <label class="gv-radio" style="display:flex"><input type="radio" name="uname"><span class="circle"></span>Animal · eg Elephant Cat</label>
+
+            <hr class="st-divider">
+
+            <h2 class="gv-bo-formhead">Project approval settings</h2>
+            <p class="gv-bo-help" style="margin-bottom:18px;max-width:620px">Select which admins will receive notifications to approve projects. Folder Managers are by default approvers for all projects within their folders.</p>
+            <div class="gv-bo-field"><span class="gv-label">Select approvers</span>
+              <select class="gv-bo-select"><option>Select approvers</option><option>Go Vocal Admin</option></select>
+            </div>
+            <button class="gv-btn admin-dark">Save</button>
+          </div>
+
+          <!-- ── Other tabs (faithful stubs) ─────────────────────────── -->
+          <div class="st-panel" data-panel="branding">
+            <h2 class="gv-bo-formhead">Branding</h2>
+            <p class="gv-bo-help" style="margin-bottom:18px">Set your platform colours, logo and favicon. Fonts and navbar colour are configured by GoVocal Support.</p>
+            <div class="gv-bo-field"><span class="gv-label">Main color</span><input class="gv-input" type="text" value="#0E7C86" style="max-width:200px"></div>
+            <div class="gv-bo-field"><span class="gv-label">Secondary color</span><input class="gv-input" type="text" value="#E2603A" style="max-width:200px"></div>
+            <div class="gv-bo-field"><span class="gv-label">Text color</span><input class="gv-input" type="text" value="#1A1A1A" style="max-width:200px"></div>
+            <button class="gv-btn success">Save</button>
+          </div>
+          <div class="st-panel" data-panel="registration">
+            <h2 class="gv-bo-formhead">Registration</h2>
+            <p class="gv-bo-help">Configure the registration flow and the questions asked at sign-up (Gender, Year of birth, Place of residence + custom fields).</p>
+          </div>
+          <div class="st-panel" data-panel="tags">
+            <h2 class="gv-bo-formhead">Tags</h2>
+            <p class="gv-bo-help">Manage the platform tags used to categorise projects and drive "follow by interest".</p>
+          </div>
+          <div class="st-panel" data-panel="areas">
+            <h2 class="gv-bo-formhead">Areas</h2>
+            <p class="gv-bo-help">Manage the geographic areas residents can filter and follow projects by.</p>
+          </div>
+          <div class="st-panel" data-panel="statuses">
+            <h2 class="gv-bo-formhead">Statuses</h2>
+            <p class="gv-bo-help">Configure the input statuses for ideation and proposals (e.g. Under consideration, Accepted, Implemented).</p>
+          </div>
+          <div class="st-panel" data-panel="policies">
+            <h2 class="gv-bo-formhead">Policies</h2>
+            <p class="gv-bo-help">Edit your Terms &amp; Conditions and Privacy Policy, accepted by residents at registration.</p>
+          </div>
+
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="bo-chrome.js"></script>
+  <script>
+    document.querySelectorAll(".gv-bo-tab[data-st]").forEach(tab => {
+      tab.addEventListener("click", e => {
+        e.preventDefault();
+        document.querySelectorAll(".gv-bo-tab[data-st]").forEach(t => t.classList.remove("is-active"));
+        tab.classList.add("is-active");
+        const k = tab.dataset.st;
+        document.querySelectorAll(".st-panel").forEach(p => p.classList.toggle("is-active", p.dataset.panel === k));
+      });
+    });
+    if (window.GVIcons) window.GVIcons.render(document.body);
+  </script>
+</body>
+</html>
+</content>

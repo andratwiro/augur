@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Pages &amp; menu — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    .pm-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+    .pm-head__main { max-width: 540px; }
+    .pm-head__actions { margin-left: auto; display: flex; align-items: center; gap: 14px; flex: none; }
+    .pm-add-disabled { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-cool-grey-400); font-size: 14px; cursor: not-allowed; }
+    .pm-cardtitle { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--gv-bo-primary); }
+    .pm-card + .pm-card { margin-top: 18px; }
+    .pm-default { color: var(--gv-cool-grey-500); }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+    <nav class="gv-bo-side" aria-label="Admin" data-active="pages"></nav>
+
+    <div class="gv-bo-main">
+      <section class="gv-bo-section">
+        <div class="pm-head">
+          <div class="pm-head__main">
+            <h1 class="gv-bo-pagehead">Pages &amp; menu</h1>
+            <p class="gv-bo-pagelede" style="margin:6px 0 0">Your navigation bar can display up to six pages in addition to the Home page. You can rename and reorder items and add new pages with your own content.</p>
+          </div>
+          <div class="pm-head__actions">
+            <span class="pm-add-disabled"><span data-gv-icon="link"></span>Add project or folder to navbar</span>
+            <button class="gv-btn admin-dark"><span data-gv-icon="plus"></span><span class="gv-btn__label">Create custom page</span></button>
+          </div>
+        </div>
+
+        <div class="gv-bo-card pm-card">
+          <h3 class="pm-cardtitle">Pages shown on your navigation bar</h3>
+          <div id="navrows"></div>
+        </div>
+
+        <div class="gv-bo-card pm-card">
+          <h3 class="pm-cardtitle">Other available pages</h3>
+          <div id="otherrows"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="bo-chrome.js"></script>
+  <script>
+    function actionBtn(label, icon, muted) {
+      return `<button class="gv-btn secondary-outlined size-s"${muted ? ' style="color:var(--gv-cool-grey-400);border-color:var(--gv-grey-300);cursor:not-allowed"' : ''}><span data-gv-icon="${icon}"></span><span class="gv-btn__label">${label}</span></button>`;
+    }
+    // [name, locked, isDefault, candelete, removable]
+    const NAV = [
+      ["Home", true, true, false, false],
+      ["All projects", false, true, false, true],
+      ["Proposals", false, false, false, true],
+      ["Events", false, true, false, true],
+      ["Testing a larger name", false, true, false, true],
+      ["About", false, false, true, true],
+      ["FAQ", false, false, true, true],
+    ];
+    document.getElementById("navrows").innerHTML = NAV.map(([name, locked, def, del, removable]) => {
+      const badge = def ? `<span class="gv-badge pm-default">Default</span>` : "";
+      const lead = locked
+        ? `<span class="gv-bo-listrow__handle" data-gv-icon="lock"></span>`
+        : `<span class="gv-bo-listrow__handle" data-gv-icon="dots-horizontal"></span>`;
+      let actions = actionBtn("Edit", "pen") + actionBtn("View", "eye");
+      if (del) actions += actionBtn("Delete", "delete");
+      if (removable) actions += actionBtn("Remove from navbar", "close");
+      return `<div class="gv-bo-listrow">
+        ${lead}
+        <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title"><a href="#">${name}</a> ${badge}</h4></div>
+        <div class="gv-bo-listrow__actions">${actions}</div>
+      </div>`;
+    }).join("");
+
+    const OTHER = [["Chapel Hill"], ["Proposals"]];
+    document.getElementById("otherrows").innerHTML = OTHER.map(([name]) => `
+      <div class="gv-bo-listrow">
+        <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title"><a href="#">${name}</a></h4></div>
+        <div class="gv-bo-listrow__actions">${actionBtn("Edit","pen")}${actionBtn("View","eye")}${actionBtn("Delete","delete")}${actionBtn("Add to navbar","plus",true)}</div>
+      </div>`).join("");
+
+    if (window.GVIcons) window.GVIcons.render(document.body);
+  </script>
+</body>
+</html>
+</content>
