@@ -261,19 +261,20 @@
   content: ""; position: absolute; inset: 0;
   background: var(--gv-tenant-primary); opacity: 0.62; mix-blend-mode: multiply;
 }
-.gv-hero__inner { position: relative; z-index: 1; padding: 48px 24px; max-width: 720px; }
+.gv-hero__inner { position: relative; z-index: 1; padding: 76px 24px; max-width: 720px; }  /* live banner has generous top/bottom spacing */
 /* Live homepage banner H1 (uxusertesting.govocal.com) computes to 25px/700/32.5px. */
 .gv-hero__title { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; margin: 0 0 10px; }
 /* Live banner subtitle (mitgestalten.wien.gv.at / community.govocal.com h2) = 18px/400/23.4px. */
 .gv-hero__lead { font-size: var(--gv-fs-l); font-weight: 400; line-height: 1.3; margin: 0 0 22px; opacity: 0.97; }
 .gv-hero__credit { position: absolute; left: 24px; bottom: 10px; z-index: 1; font-size: 11px; opacity: 0.85; }
-/* avatar stack + count pill */
+/* avatar stack + count bubble — live banner: 38px avatars, the overflow count is
+   a PERFECT CIRCLE the same size as the avatars (not a pill), part of the stack. */
 .gv-avatars { display: inline-flex; align-items: center; margin-bottom: 22px; }
-.gv-avatars .av { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px;
+.gv-avatars .av { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px;
   background: linear-gradient(135deg, #dcdcdc, #a6a6a6); background-size: cover; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
 .gv-avatars .av:first-child { margin-left: 0; }
-.gv-avatars .count { margin-left: 8px; height: 34px; padding: 0 14px; border-radius: 999px; border: 2px solid #fff;
-  background: rgba(0,0,0,0.28); display: inline-flex; align-items: center; font-size: 13px; font-weight: 600; }
+.gv-avatars .count { margin-left: -8px; width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 2px solid #fff;
+  background: var(--gv-cool-grey-600); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
 @media (max-width: 600px) { .gv-hero { min-height: 280px; } .gv-hero__inner { padding: 36px 20px; } }
 
 /* ── Section heading + content rhythm for composed pages ─────────────────────── */
@@ -612,7 +613,7 @@
    pure assembly. Reusable on any project surface. ──────────────────────────── */
 
 /* header action icons read larger on the real product */
-.gv-header__actions .gv-iconbtn { font-size: 22px; color: var(--gv-grey-800); }
+.gv-header__actions .gv-iconbtn { font-size: 24px; color: var(--gv-grey-800); }
 
 /* Project action bar (Back · Edit · Follow) */
 .gv-projbar__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
