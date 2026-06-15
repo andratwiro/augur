@@ -70,6 +70,14 @@ resolves against `govocal-ui.css` (in `skills/govocal-ui/`), NOT the page — so
 404s. For page heroes set the photo with a **direct inline** `style="background-image:url('img/hero.webp')"`
 on `.gv-hero` (resolves against the document). The teal `::before` scrim still applies.
 
+### Vetted Pexels photo pool (reuse across pages — it's one city)
+Source form: `https://images.pexels.com/photos/<id>/pexels-photo-<id>.jpeg?auto=compress&cs=tinysrgb&w=<n>`
+- **Hero / waterfront / harbour:** 17908346 (waterfront city ★hero) · 2652498 (harbour boats) · 1601484 (dusk skyline) · 16413981 (marina apts) · 3886405 (marina yachts) · 8910345 (traditional waterfront houses) · 12127180 (hillside harbour)
+- **Old town / streets:** 18596348 (cobbled old town ★) · 2930355 (sunny townhouses) · 14388759 (townhouse street) · 16292490 (brick alley) · 26742744 (tree-lined road)
+- **Square / civic:** 23881340 (square + cyclists)
+- **Green / parks / avenues:** 17908434 (sun-dappled avenue ★) · 12542477 (cycle avenue) · 17290272 (autumn avenue) · 14388869 (green street) · 18460923 (park path) · 22756674 (park benches) · 11966651 (park) · 12362083 (park people) · 20830641 (park aerial) · 9862227 (bench)
+- **People / workshops / participation:** 29581807 (workshop+screens ★) · 5756657 (meeting, hand raised ★) · 5756759 (small group table ★) · 15189553 (community meeting) · 15377735 (outdoor gathering) · 3321802 (busy community event) · 17501007 (consultation table)
+
 **Pipeline:** `scripts/fetch-img.sh <url> pages/<page>/img/<name>.webp <width> <maxKB>`
 (groups of ≤6 downloads per shell call — Pexels throttles bursts). Source URL form:
 `https://images.pexels.com/photos/<id>/pexels-photo-<id>.jpeg?auto=compress&cs=tinysrgb&w=<n>`.
