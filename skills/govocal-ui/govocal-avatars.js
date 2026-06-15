@@ -1,6 +1,7 @@
 /* govocal-avatars.js — drops varied human faces into avatar bubbles to give them
-   a bit of life. Faces are a bundled set of 10 CC0, AI-generated portraits (no real
-   person, no attribution) stored in ./avatars/, optimised to 128px. Fills EVERY
+   a bit of life. Faces are a bundled set of 20 Untitled UI placeholder portraits
+   (with-background variants, free for commercial use, no attribution required)
+   stored in ./avatars/, optimised to 128px. Fills EVERY
    avatar placeholder — .av (FO hero / spotlight / card participant rows) and
    .gv-bo-table__avatar (BO people tables) — with a RANDOM face, overriding any inline
    placeholder colour or initials, so every page and prototype gets a fresh random
@@ -17,7 +18,9 @@
     return s ? s.src.replace(/govocal-avatars\.js(?:\?.*)?$/, 'avatars/') : 'avatars/';
   })();
   var FACES = ['face-01.jpg', 'face-02.jpg', 'face-03.jpg', 'face-04.jpg', 'face-05.jpg',
-               'face-06.jpg', 'face-07.jpg', 'face-08.jpg', 'face-09.jpg', 'face-10.jpg'];
+               'face-06.jpg', 'face-07.jpg', 'face-08.jpg', 'face-09.jpg', 'face-10.jpg',
+               'face-11.jpg', 'face-12.jpg', 'face-13.jpg', 'face-14.jpg', 'face-15.jpg',
+               'face-16.jpg', 'face-17.jpg', 'face-18.jpg', 'face-19.jpg', 'face-20.jpg'];
   function faceURL() { return BASE + FACES[Math.floor(Math.random() * FACES.length)]; }
   function fill(root) {
     var scope = root || document;
