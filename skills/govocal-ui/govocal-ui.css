@@ -700,6 +700,21 @@
 .gv-event-card__row a { position: relative; z-index: 1; color: var(--gv-tenant-primary); text-decoration: underline; }
 .gv-event-card__body .gv-btn { position: relative; z-index: 1; margin-top: auto; }
 
+/* Beside-title date badge — a NEW VARIANT (does NOT mutate the media-overlay
+   .gv-event-card__date used/verified on the homepage). The real project-page
+   events context renders the date as a small outlined box sitting BESIDE the
+   title: month + day stacked in a bordered cell, with a tenant (green) year band
+   beneath. To use, put .gv-event-card__date.is-beside inside a flex title row
+   (.gv-event-card__titlerow) in the card body, NOT over the media. Two-tone
+   values reuse the grounded overlay chip (grey-100 month/day cells, tenant-primary
+   year band); the box just gains a border + drops the absolute positioning. */
+.gv-event-card__titlerow { display: flex; align-items: flex-start; gap: 12px; }
+.gv-event-card__titlerow .gv-event-card__title { flex: 1 1 auto; }
+.gv-event-card__date.is-beside { position: static; top: auto; right: auto;
+  flex: 0 0 auto; width: 52px; border: 1px solid var(--gv-grey-400); box-shadow: none; }
+.gv-event-card__date.is-beside .m { padding-top: 5px; }
+.gv-event-card__date.is-beside .d { padding-bottom: 4px; font-size: 20px; }
+
 /* ── Events PAGE (/events) — title block, section headers, filter bar ───────── */
 /* Source-grounded on wietsedemo.govocal.com/en/events (Cultuurconnect tenant).
    The standalone events page reuses the .gv-event-card / .gv-events__grid /
