@@ -192,6 +192,39 @@ in `components/<name>/index.html` (and ship to `/components/`); the recall index
 > GoVocal's own fixed teal/navy theme — load `govocal-bo.css` and scope under `.gv-bo`,
 > which remaps `--gv-tenant-*` so the same primitives render in BO colours.
 
+## Back-office sidebar — `.gv-bo-side` (`components/bo-sidebar/`)
+
+Standalone, responsive. **Extended** 224px (teal brand band + navy nav, 24px blue
+icons + white labels, active = dark cell). Collapses to an **80px icon rail** at
+≤1200px — add `.is-rail` to force it, or `data-gv-side-auto` + the matchMedia snippet
+to auto-toggle. Labels go in `.gv-bo-nav__label` (hidden in the rail); the count badge
+overlaps the icon when collapsed.
+
+```html
+<nav class="gv-bo-side" aria-label="Admin">   <!-- + .is-rail to collapse to 80px -->
+  <a class="gv-bo-side__brand" href="#">
+    <span class="gv-bo-side__logo"><span data-gv-icon="arrow-left"></span></span>
+    <span class="gv-bo-side__brandtext">To platform</span>
+  </a>
+  <div class="gv-bo-nav">
+    <a class="gv-bo-nav__item is-active" href="#" title="Projects">
+      <span class="gv-bo-nav__icon" data-gv-icon="survey"></span><span class="gv-bo-nav__label">Projects</span></a>
+    <!-- …more items… -->
+  </div>
+  <div class="gv-bo-nav gv-bo-nav--bottom">
+    <a class="gv-bo-nav__item" href="#" title="Notifications">
+      <span class="gv-bo-nav__icon" data-gv-icon="notification"></span><span class="gv-bo-nav__label">Notifications</span><span class="gv-bo-count">29</span></a>
+  </div>
+</nav>
+```
+```js
+// auto-collapse at 1200px (the product's breakpoint)
+const mq = matchMedia("(max-width: 1200px)");
+const sync = () => document.querySelectorAll("[data-gv-side-auto], .gv-bo-shell")
+  .forEach((el) => el.classList.toggle("is-rail", mq.matches));
+mq.addEventListener("change", sync); sync();
+```
+
 ## Back-office app shell — `.gv-bo-shell` (`components/bo-app-shell/`)
 
 The persistent staff chrome: navy sidebar + project top-bar + project tabs. Scope the

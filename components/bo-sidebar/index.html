@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Back-office sidebar — GoVocal component</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <link rel="stylesheet" href="govocal-bo.css" />
+  <script src="govocal-icons.js" defer></script>
+  <style>
+    body { margin: 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+    .demo { padding: 24px 20px 70px; }
+    .demo > h1 { font-size: 22px; margin: 0 0 4px; }
+    .demo > p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; max-width: 760px; line-height: 1.5; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 0 0 10px; }
+    /* show both states side by side at a fixed height */
+    .stages { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+    .stage { height: 660px; border-radius: var(--gv-radius); overflow: hidden; box-shadow: var(--gv-shadow-hover-lg); }
+    .stage .gv-bo-side { height: 100%; }
+    .cap { font-size: 12px; color: var(--gv-text-secondary); margin: 8px 2px 0; }
+    .notes { margin: 30px 0 0; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; max-width: 760px; }
+    .notes code { background: var(--gv-grey-200); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    @media (max-width: 1200px) { .demo > p.sub::after { content: " — the window is now ≤1200px, so the auto sidebar (left) has collapsed."; color: var(--gv-bo-primary); } }
+  </style>
+</head>
+<body>
+  <div class="demo">
+    <h1>Back-office sidebar</h1>
+    <p class="sub">The persistent staff navigation. Two states: <strong>extended</strong> (224px, icon + label)
+      and a <strong>collapsed rail</strong> (80px, icon-only) that GoVocal switches to at ≤1200px. Resize this
+      window past 1200px to see the left one adapt; the right one is forced to the rail with <code>.is-rail</code>.</p>
+
+    <div class="stages">
+      <div>
+        <p class="eyebrow">Extended · auto-collapses ≤1200px</p>
+        <div class="stage"><div id="side-auto"></div></div>
+        <p class="cap">224px — <code>data-gv-side-auto</code></p>
+      </div>
+      <div>
+        <p class="eyebrow">Collapsed rail (tablet)</p>
+        <div class="stage"><div id="side-rail"></div></div>
+        <p class="cap">80px — <code>.gv-bo-side.is-rail</code></p>
+      </div>
+    </div>
+
+    <div class="notes">
+      <p><strong>Reuse:</strong> the markup is one <code>&lt;nav class="gv-bo-side"&gt;</code> (template below).
+      Default is extended; add <code>.is-rail</code> for the rail. To make it adapt automatically, mark it
+      <code>data-gv-side-auto</code> and include the matchMedia snippet (it toggles <code>.is-rail</code> on the
+      sidebar and any <code>.gv-bo-shell</code> at 1200px). Icons are 24px link-blue; labels white; the active
+      item is a dark cell (inset+rounded in the rail). Notification count overlaps the bell when collapsed.</p>
+    </div>
+  </div>
+
+  <!-- ============ BACK-OFFICE SIDEBAR (copy this nav) ============ -->
+  <template id="side-tpl">
+    <nav class="gv-bo-side" aria-label="Admin">
+      <a class="gv-bo-side__brand" href="#">
+        <span class="gv-bo-side__logo"><span data-gv-icon="arrow-left"></span></span>
+        <span class="gv-bo-side__brandtext">To platform</span>
+      </a>
+      <div class="gv-bo-nav">
+        <a class="gv-bo-nav__item" href="#" title="Dashboard"><span class="gv-bo-nav__icon" data-gv-icon="home"></span><span class="gv-bo-nav__label">Dashboard</span></a>
+        <a class="gv-bo-nav__item is-active" href="#" title="Projects" aria-current="page"><span class="gv-bo-nav__icon" data-gv-icon="survey"></span><span class="gv-bo-nav__label">Projects</span></a>
+        <a class="gv-bo-nav__item" href="#" title="Input manager"><span class="gv-bo-nav__icon" data-gv-icon="comments"></span><span class="gv-bo-nav__label">Input manager</span></a>
+        <a class="gv-bo-nav__item" href="#" title="Users"><span class="gv-bo-nav__icon" data-gv-icon="group"></span><span class="gv-bo-nav__label">Users</span></a>
+        <a class="gv-bo-nav__item" href="#" title="Messaging"><span class="gv-bo-nav__icon" data-gv-icon="email"></span><span class="gv-bo-nav__label">Messaging</span></a>
+        <a class="gv-bo-nav__item" href="#" title="Reporting"><span class="gv-bo-nav__icon" data-gv-icon="trend-up"></span><span class="gv-bo-nav__label">Reporting</span></a>
+        <a class="gv-bo-nav__item" href="#" title="Community monitor"><span class="gv-bo-nav__icon" data-gv-icon="eye"></span><span class="gv-bo-nav__label">Community monitor</span></a>
+        <a class="gv-bo-nav__item" href="#" title="Inspiration hub"><span class="gv-bo-nav__icon" data-gv-icon="idea"></span><span class="gv-bo-nav__label">Inspiration hub</span></a>
+      </div>
+      <div class="gv-bo-nav gv-bo-nav--bottom">
+        <a class="gv-bo-nav__item" href="#" title="Tools"><span class="gv-bo-nav__icon" data-gv-icon="settings"></span><span class="gv-bo-nav__label">Tools</span></a>
+        <a class="gv-bo-nav__item" href="#" title="Pages &amp; menu"><span class="gv-bo-nav__icon" data-gv-icon="menu"></span><span class="gv-bo-nav__label">Pages &amp; menu</span></a>
+        <a class="gv-bo-nav__item" href="#" title="Settings"><span class="gv-bo-nav__icon" data-gv-icon="settings"></span><span class="gv-bo-nav__label">Settings</span></a>
+        <a class="gv-bo-nav__item" href="#" title="Notifications"><span class="gv-bo-nav__icon" data-gv-icon="notification"></span><span class="gv-bo-nav__label">Notifications</span><span class="gv-bo-count">29</span></a>
+        <a class="gv-bo-nav__item" href="#" title="Go Vocal Admin"><span class="gv-bo-avatar">v</span><span class="gv-bo-nav__label">Go Vocal Admin<span class="gv-bo-nav__sub">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+        <a class="gv-bo-nav__item" href="#" title="Support"><span class="gv-bo-nav__icon" data-gv-icon="info-outline"></span><span class="gv-bo-nav__label">Support</span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+      </div>
+    </nav>
+  </template>
+
+  <script>
+    // Mount the same sidebar markup into both stages (one auto, one forced rail).
+    const tpl = document.getElementById("side-tpl");
+    const auto = tpl.content.firstElementChild.cloneNode(true);
+    auto.setAttribute("data-gv-side-auto", "");
+    document.getElementById("side-auto").appendChild(auto);
+    const rail = tpl.content.firstElementChild.cloneNode(true);
+    rail.classList.add("is-rail");
+    document.getElementById("side-rail").appendChild(rail);
+
+    // ── Responsive snippet (copy into a prototype to auto-collapse at 1200px) ──
+    const mq = matchMedia("(max-width: 1200px)");
+    const sync = () => document.querySelectorAll("[data-gv-side-auto], .gv-bo-shell").forEach(
+      (el) => el.classList.toggle("is-rail", mq.matches)
+    );
+    mq.addEventListener("change", sync); sync();
+
+    if (window.GVIcons) window.GVIcons.render(document.body);
+  </script>
+</body>
+</html>

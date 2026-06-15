@@ -1,0 +1,737 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   GoVocal UI components — static-HTML reproductions of the product's
+   @citizenlab/cl2-component-library primitives.
+   Source: CitizenLabDotCo/citizenlab @ 5d67730, front/app/component-library/components/*
+   Requires govocal-tokens.css (loaded first). See components.md for usage + provenance.
+
+   Fidelity note: the product uses styled-components with polished colour maths
+   (darken/transparentize). Hover darkening here is approximated with
+   filter: brightness(); everything else is transcribed 1:1.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Public Sans — the product's default font */
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+.gv-root,
+body.gv-root {
+  font-family: var(--gv-font-family);
+  color: var(--gv-text-primary);
+  font-size: var(--gv-fs-base);
+}
+
+/* ── Typography ───────────────────────────────────────────────────────────
+   Title: variant h1..h6 → xxxl/xxl/xl/l/m/s, weight bold, line-height 1.3
+   Text:  variant bodyL/M/S/Xs, line-height 1.5 (bodyL is weight 600)        */
+.gv-title { color: var(--gv-text-primary); font-weight: 700; line-height: 1.3; word-break: break-word; margin: 0 0 16px; }
+.gv-title.h1, h1.gv-title { font-size: var(--gv-fs-xxxl); }
+.gv-title.h2, h2.gv-title { font-size: var(--gv-fs-xxl); }
+.gv-title.h3, h3.gv-title { font-size: var(--gv-fs-xl); }
+.gv-title.h4, h4.gv-title { font-size: var(--gv-fs-l); }
+.gv-title.h5, h5.gv-title { font-size: var(--gv-fs-m); }
+.gv-title.h6, h6.gv-title { font-size: var(--gv-fs-s); }
+
+.gv-text { color: var(--gv-text-primary); font-weight: 400; line-height: 1.5; margin: 0 0 16px; }
+.gv-text.bodyL  { font-size: var(--gv-fs-l); font-weight: 600; }
+.gv-text.bodyM  { font-size: var(--gv-fs-m); }
+.gv-text.bodyS  { font-size: var(--gv-fs-s); }
+.gv-text.bodyXs { font-size: var(--gv-fs-xs); }
+.gv-text--secondary { color: var(--gv-text-secondary); }
+
+/* ── Button ───────────────────────────────────────────────────────────────
+   .gv-btn + a style modifier + an optional size modifier.
+   Default size: padding 9px 18px, font-size base, line-height 26px.          */
+.gv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  position: relative;
+  box-sizing: border-box;
+  border-radius: var(--gv-radius);
+  border: 1px solid transparent;
+  padding: 9px 18px;
+  font-family: var(--gv-font-family);
+  font-size: var(--gv-fs-base);
+  line-height: 26px;
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 80ms ease-out, border-color 80ms ease-out, box-shadow 125ms ease-in-out, filter 80ms ease-out;
+}
+.gv-btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+
+/* sizes */
+.gv-btn.size-m  { padding: 11px 22px; font-size: var(--gv-fs-l);  line-height: 26px; }
+.gv-btn.size-l  { padding: 13px 24px; font-size: var(--gv-fs-xl); line-height: 26px; }
+.gv-btn.size-xl { padding: 15px 26px; font-size: var(--gv-fs-xl); line-height: 28px; }
+
+/* full-width */
+.gv-btn.full { display: flex; width: 100%; }
+
+/* variants */
+.gv-btn.primary          { background: var(--gv-tenant-primary); color: #fff; }
+.gv-btn.primary:hover    { filter: brightness(0.88); }
+.gv-btn.primary-outlined          { background: transparent; color: var(--gv-tenant-primary); border-color: var(--gv-tenant-primary); }
+.gv-btn.primary-outlined:hover    { background: color-mix(in srgb, var(--gv-tenant-primary) 5%, transparent); }
+.gv-btn.primary-inverse           { background: #fff; color: var(--gv-tenant-text); }
+.gv-btn.secondary, .gv-btn.secondary-outlined        { background: transparent; color: var(--gv-text-secondary); border-color: var(--gv-text-secondary); }
+.gv-btn.secondary:hover, .gv-btn.secondary-outlined:hover { background: color-mix(in srgb, var(--gv-text-secondary) 5%, transparent); }
+.gv-btn.white            { background: #fff; color: var(--gv-tenant-text); border-color: transparent; box-shadow: var(--gv-shadow); }
+.gv-btn.white:hover      { box-shadow: var(--gv-shadow-hover-sm); }
+.gv-btn.text             { background: transparent; color: var(--gv-text-secondary); padding-left: 4px; padding-right: 4px; }
+.gv-btn.text:hover       { filter: brightness(0.8); }
+.gv-btn.admin-dark           { background: var(--gv-primary); color: #fff; }
+.gv-btn.admin-dark:hover     { filter: brightness(0.88); }
+.gv-btn.admin-dark-outlined  { background: transparent; color: var(--gv-primary); border-color: var(--gv-primary); }
+.gv-btn.admin-dark-text      { background: transparent; color: var(--gv-primary); }
+.gv-btn.admin-dark-text:hover{ background: rgba(4,77,108,0.1); }
+.gv-btn.delete           { background: var(--gv-red-600); color: #fff; }
+.gv-btn.delete:hover     { filter: brightness(0.88); }
+
+.gv-btn:disabled, .gv-btn.disabled, .gv-btn[aria-disabled='true'] {
+  opacity: 0.37; cursor: not-allowed; filter: none; pointer-events: none;
+}
+/* processing/loading: hide label, show spinner via the .gv-spinner child */
+.gv-btn.processing { color: transparent !important; }
+.gv-btn.processing .gv-btn__label { opacity: 0; }
+.gv-btn .gv-spinner { position: absolute; }
+/* Icon inside a button: keep it centred on the button's cross axis and drop the
+   inline baseline shift (.gv-icon's vertical-align), so it lines up with the label
+   regardless of the button's line-height. The button's gap:8px handles spacing. */
+.gv-btn > .gv-icon, .gv-btn > [data-gv-icon] { display: inline-flex; align-items: center; vertical-align: 0; }
+
+/* ── Input / Textarea (defaultInputStyle) ─────────────────────────────────── */
+.gv-input, .gv-textarea {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  color: var(--gv-text-primary);
+  font-family: var(--gv-font-family);
+  font-size: var(--gv-fs-base);
+  line-height: normal;
+  font-weight: 400;
+  padding: var(--gv-input-padding);
+  height: var(--gv-input-height);
+  border-radius: var(--gv-radius);
+  border: 1px solid var(--gv-border-dark);
+  background: #fff;
+  cursor: text;
+  outline: none;
+  appearance: none;
+  transition: box-shadow 100ms ease-out, border-color 100ms ease-out;
+}
+.gv-textarea { height: auto; min-height: 96px; resize: vertical; line-height: 1.5; }
+.gv-input::placeholder, .gv-textarea::placeholder { color: var(--gv-placeholder); opacity: 1; }
+.gv-input.size-small { font-size: var(--gv-fs-s); padding: 10px; }
+.gv-input:not(:disabled):hover, .gv-textarea:not(:disabled):hover { border-color: var(--gv-black); }
+.gv-input:not(:disabled):focus, .gv-textarea:not(:disabled):focus { outline: var(--gv-focus-outline); outline-offset: -1px; border-color: var(--gv-tenant-primary); }
+.gv-input.error, .gv-textarea.error { border-color: var(--gv-red-600); }
+.gv-input.error:focus, .gv-textarea.error:focus { box-shadow: var(--gv-shadow-error); outline: none; }
+.gv-input:disabled, .gv-textarea:disabled, .gv-input.disabled {
+  color: #666; background-color: #f9f9f9; border-color: #ccc; cursor: not-allowed; opacity: 1;
+}
+
+/* field scaffolding (Label + Error) */
+.gv-label { display: inline-block; margin-bottom: 6px; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); }
+.gv-error-text { display: flex; align-items: center; gap: 6px; margin-top: 6px; color: var(--gv-error); font-size: var(--gv-fs-s); }
+
+/* ── Checkbox (24px, radius 3px; checked = success green) ──────────────────
+   Markup: <label class="gv-checkbox"><input type=checkbox><span class=box>✓</span> label</label> */
+.gv-checkbox { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: var(--gv-fs-base); }
+.gv-checkbox input { position: absolute; opacity: 0; width: 0; height: 0; }
+.gv-checkbox .box {
+  box-sizing: border-box;
+  width: 24px; height: 24px; flex: 0 0 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid var(--gv-border-dark); border-radius: var(--gv-radius);
+  transition: all 120ms ease-out;
+}
+.gv-checkbox .box svg, .gv-checkbox .box .check { width: 16px; height: 16px; fill: #fff; stroke: #fff; opacity: 0; }
+.gv-checkbox:hover .box { border-color: var(--gv-black); }
+.gv-checkbox input:checked + .box { background: var(--gv-success); border-color: var(--gv-success); }
+.gv-checkbox input:checked + .box svg, .gv-checkbox input:checked + .box .check { opacity: 1; }
+.gv-checkbox:hover input:checked + .box { filter: brightness(0.95); }
+.gv-checkbox input:focus-visible + .box { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-checkbox input:disabled ~ .box { opacity: 0.5; }
+.gv-checkbox:has(input:disabled) { cursor: not-allowed; opacity: 0.9; }
+
+/* ── Radio (20px circle, 12px inner dot in tenant primary) ─────────────────── */
+.gv-radio { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: var(--gv-fs-base); margin-bottom: 12px; }
+.gv-radio input { position: absolute; opacity: 0; width: 0; height: 0; }
+.gv-radio .circle {
+  box-sizing: border-box;
+  width: 20px; height: 20px; flex: 0 0 20px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid var(--gv-border-dark); border-radius: 50%;
+  transition: all 120ms ease-out;
+}
+.gv-radio .circle::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--gv-tenant-primary); transform: scale(0); transition: transform 120ms ease-out; }
+.gv-radio:hover .circle { border-color: var(--gv-black); }
+.gv-radio input:checked + .circle::after { transform: scale(1); }
+.gv-radio input:focus-visible + .circle { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-radio input:disabled ~ .circle { opacity: 0.5; }
+.gv-radio:has(input:disabled) { cursor: not-allowed; }
+
+/* ── Toggle (track 21px knob, off #ccc, on success green) ──────────────────── */
+.gv-toggle { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+.gv-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.gv-toggle .track {
+  box-sizing: border-box;
+  display: inline-block; width: 48px; height: 27px;
+  padding: 3px; border-radius: 24px; background: #ccc; border: 1px solid transparent;
+  transition: background-color 80ms ease-out;
+}
+.gv-toggle .track::before {
+  content: ''; display: block; width: 21px; height: 21px; border-radius: 21px; background: #fff;
+  transition: transform 150ms cubic-bezier(0.165,0.84,0.44,1);
+}
+.gv-toggle input:checked + .track { background: var(--gv-success); }
+.gv-toggle input:checked + .track::before { transform: translateX(21px); }
+.gv-toggle:hover input:not(:checked) + .track { background: #bbb; }
+.gv-toggle input:focus-visible + .track { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-toggle input:disabled + .track { opacity: 0.25; cursor: not-allowed; }
+.gv-toggle .label { font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-text-primary); }
+
+/* ── Badge (uppercase pill, outlined by default; .inverse = filled) ────────── */
+.gv-badge {
+  display: inline-block; color: var(--gv-disabled); font-size: var(--gv-fs-xs); line-height: 16px;
+  border-radius: var(--gv-radius); padding: 4px 8px; text-transform: uppercase; text-align: center;
+  font-weight: 500; border: 1px solid currentColor;
+}
+.gv-badge.inverse { color: #fff; background-color: var(--gv-disabled); border: none; }
+
+/* ── StatusLabel (filled status pill; set --bg per status) ──────────────────── */
+.gv-status-label {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  height: 28px; padding: 0 10px; border-radius: var(--gv-radius);
+  font-size: var(--gv-fs-xs); font-weight: 500; line-height: normal; text-transform: uppercase; white-space: nowrap;
+  background: var(--bg, var(--gv-success)); color: #fff;
+}
+.gv-status-label.outlined { background: transparent; color: var(--gv-text-secondary); border: 1px solid var(--gv-text-secondary); }
+
+/* ── Spinner (rotating ring; default 32px / 3px / #666) ────────────────────── */
+.gv-spinner {
+  display: inline-block; width: 32px; height: 32px;
+  border: 3px solid currentColor; border-right-color: transparent !important;
+  border-radius: 50%; color: #666;
+  animation: gv-spin 800ms infinite linear;
+}
+.gv-spinner.sm { width: 20px; height: 20px; border-width: 2px; }
+.gv-btn .gv-spinner { color: currentColor; }
+@keyframes gv-spin { to { transform: rotate(360deg); } }
+
+/* ── Card (defaultCardStyle + hover lift) ──────────────────────────────────── */
+.gv-card { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 20px; }
+.gv-card.hoverable { transition: box-shadow 150ms ease-out, transform 150ms ease-out; will-change: transform, box-shadow; }
+.gv-card.hoverable:hover { box-shadow: var(--gv-shadow-hover-lg); transform: translateY(-3px); }
+
+/* ── Icon ────────────────────────────────────────────────────────────────────
+   Real GoVocal icon set (see govocal-icons.js). Inline <svg class="gv-icon">,
+   sized 1em and filled with currentColor so it inherits text colour + size. */
+.gv-icon { width: 1em; height: 1em; display: inline-block; vertical-align: -0.125em; fill: currentColor; flex: none; }
+
+/* ── Divider ───────────────────────────────────────────────────────────────── */
+.gv-divider { border: none; border-top: 1px solid var(--gv-divider); margin: 16px 0; }
+
+/* Labeled "Or" divider — rule / centered label / rule (auth flows, choice splits). */
+.gv-or { display: flex; align-items: center; gap: 14px; margin: 18px 0; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
+.gv-or::before, .gv-or::after { content: ""; flex: 1 1 0; height: 1px; background: var(--gv-grey-300); }
+
+/* ── Modal / dialog ───────────────────────────────────────────────────────────
+   Source-grounded on GoVocal's #modal-portal → .modalcontent (components/UI/Modal):
+   a dark scrim (rgba(0,0,0,.75) — no card shadow; the scrim does the separation)
+   holding a white dialog card, top-aligned with a 50px gap (NOT vertically centred),
+   capped at 85vh and scrolling its body. The card is the dialog: role="dialog"
+   aria-modal="true" + aria-labelledby → .gv-modal__title's id. Width via --gv-modal-w
+   (real default 650px; .size-s 500 for compact/auth, .size-l 820 wide). Toggle
+   .is-open on the overlay to show it. Real focus-trap/restore is the dev team's job. */
+.gv-modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 50px 20px; overflow-y: auto;
+  background: rgba(0, 0, 0, 0.75);
+}
+.gv-modal-overlay.is-open { display: flex; }
+.gv-modal {
+  position: relative; width: 100%; max-width: var(--gv-modal-w, 650px);
+  max-height: 85vh;
+  display: flex; flex-direction: column;
+  background: #fff; border-radius: var(--gv-radius);
+}
+.gv-modal.size-s { --gv-modal-w: 500px; }
+.gv-modal.size-l { --gv-modal-w: 820px; }
+.gv-modal__header {
+  flex: 0 0 auto; display: flex; align-items: center;
+  min-height: 28px; padding: 26px 66px 14px 30px;
+}
+.gv-modal__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 600; line-height: 1.3; color: var(--gv-text-primary); }
+.gv-modal__close {
+  position: absolute; top: 16px; right: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; padding: 0;
+  background: none; border: 0; border-radius: var(--gv-radius);
+  color: var(--gv-text-primary); cursor: pointer;
+}
+.gv-modal__close:hover { background: var(--gv-grey-100); }
+.gv-modal__close:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-modal__close svg { display: block; width: 24px; height: 24px; fill: currentColor; }
+.gv-modal__body { flex: 1 1 auto; overflow-y: auto; padding: 6px 30px 30px; }
+@media (max-width: 520px) {
+  .gv-modal { max-height: calc(100vh - 30px); }
+  .gv-modal-overlay { padding: 15px; }
+  .gv-modal__header { padding: 20px 60px 12px 20px; }
+  .gv-modal__body { padding: 4px 20px 20px; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   COMPOSED COMPONENTS — section-level building blocks (the "Components" library)
+
+   These are larger blocks assembled from the primitives above: site header/nav
+   (responsive), footer, project card + rail, and the page hero/banner. They model
+   the GoVocal platform chrome as seen on a live tenant (mitgestalten.wien.gv.at).
+   Each is documented in components.md and demoed standalone under /components/<name>/.
+   All colours come from tokens so they re-theme per city via --gv-tenant-*.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Shared content width for chrome (product uses ~1150px page width). */
+.gv-shell { --gv-shell-w: 1150px; }
+
+/* ── Site header + navigation (responsive) ──────────────────────────────────
+   Markup mirrors the live product: header#e2e-navbar.gv-header >
+   .gv-header__inner > [brand] [nav.gv-nav aria-label="Primäre"] [actions].
+   The primary nav is a <nav aria-label> landmark wrapping a <ul.gv-nav__list>.
+   Mobile menu is a CSS-only disclosure via <details class="gv-nav-m">, so the
+   component is drop-in with NO JavaScript. Menu height 78px (--gv-menu-height). */
+.gv-header {
+  background: #fff;
+  position: relative;
+  z-index: 50;
+  font-family: var(--gv-font-family);
+}
+.gv-header.sticky { position: sticky; top: 0; }
+/* Full-width bar: logo flush-left, actions flush-right (matches the live product —
+   the navbar spans the viewport even when the page CONTENT below is capped at
+   --gv-shell-w). Only the side gutter is fixed. */
+.gv-header__inner {
+  box-sizing: border-box;                 /* width:100% must INCLUDE the gutter, else the bar overflows the viewport */
+  width: 100%;
+  margin: 0;
+  padding: 0 24px;
+  height: var(--gv-menu-height);          /* 78px */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Brand / logo slot */
+.gv-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--gv-tenant-text); flex: 0 0 auto; }
+.gv-brand img, .gv-brand svg { display: block; }
+.gv-brand .gv-brand__word { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: -0.01em; }
+
+/* Desktop nav — <nav class="gv-nav" aria-label="Primäre"> wrapping <ul class="gv-nav__list"> */
+.gv-nav { display: flex; align-items: stretch; height: 100%; margin: 0 0 0 18px; }
+.gv-nav__list { display: flex; align-items: stretch; height: 100%; margin: 0; padding: 0; list-style: none; }
+.gv-nav__list > li { display: flex; }
+.gv-nav__link {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 100%; padding: 0 22px;
+  font-size: var(--gv-fs-base); font-weight: 500; line-height: 1;
+  color: var(--gv-black); text-decoration: none;
+  background: none; border: 0; cursor: pointer; font-family: inherit;
+  border-top: 3px solid transparent;            /* active indicator sits on top, like the live site */
+  border-bottom: 3px solid transparent;
+}
+.gv-nav__link:hover { color: var(--gv-tenant-primary); background: var(--gv-grey-100); }
+.gv-nav__dd[open] > summary.gv-nav__link { color: var(--gv-tenant-primary); background: var(--gv-grey-100); }
+/* Active page — tenant-tinted cell + top accent bar, mirroring the live #e2e-navbar */
+.gv-nav__link[aria-current="page"] {
+  border-top-color: var(--gv-tenant-primary); font-weight: 700; color: var(--gv-black);
+  background: color-mix(in srgb, var(--gv-tenant-primary) 9%, #fff);
+}
+.gv-nav__link[aria-current="page"]:hover { color: var(--gv-black); background: color-mix(in srgb, var(--gv-tenant-primary) 15%, #fff); }
+.gv-nav__link:focus-visible { outline: var(--gv-focus-outline); outline-offset: -3px; }
+.gv-nav__chev { width: 12px; height: 12px; transition: transform 120ms ease-out; }
+
+/* Dropdown / overflow ("Mehr ···") — CSS-only via <details> */
+.gv-nav__dd { position: relative; }
+.gv-nav__dd > summary { list-style: none; }
+.gv-nav__dd > summary::-webkit-details-marker { display: none; }
+.gv-nav__dd[open] > summary .gv-nav__chev { transform: rotate(180deg); }
+.gv-nav__menu {
+  position: absolute; top: calc(100% - 3px); left: 12px; z-index: 60;
+  min-width: 240px; padding: 8px;
+  background: #fff; border-radius: var(--gv-radius);
+  box-shadow: var(--gv-shadow-hover-lg); border: 1px solid var(--gv-grey-200);
+  display: grid; gap: 2px;
+}
+.gv-nav__dd.right .gv-nav__menu { left: auto; right: 12px; }
+.gv-nav__menu a {
+  display: block; padding: 9px 12px; border-radius: var(--gv-radius);
+  font-size: var(--gv-fs-s); color: var(--gv-grey-800); text-decoration: none;
+}
+.gv-nav__menu a:hover { background: var(--gv-grey-100); color: var(--gv-tenant-primary); }
+
+/* Header right-side actions */
+.gv-header__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: 0 0 auto; }
+.gv-iconbtn {
+  position: relative;
+  display: grid; place-items: center; width: 40px; height: 40px; min-width: 40px;
+  border-radius: 50%; border: 0; background: transparent; color: var(--gv-grey-800); cursor: pointer;
+}
+.gv-iconbtn:hover { background: var(--gv-grey-100); color: var(--gv-tenant-primary); }
+.gv-iconbtn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+
+/* Logged-in actions — notification badge + account button (avatar + name + chevron).
+   Swap these into .gv-header__actions in place of the logged-out search + "Sign in"
+   CTA. Count badge on the bell uses the tenant colour; the avatar is an <img> or an
+   initials circle. The whole account control opens the user menu in the real product. */
+.gv-iconbtn__badge {
+  position: absolute; top: 3px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; background: var(--gv-red-500); color: #fff;     /* notification red, like the product */
+  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; border: 2px solid #fff;
+}
+.gv-account {
+  display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 4px 5px 4px 12px;
+  background: none; border: 0; border-radius: 999px; cursor: pointer; font-family: inherit;
+  font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary);
+}
+.gv-account:hover { background: var(--gv-grey-100); }
+.gv-account:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-account .gv-nav__chev { width: 14px; height: 14px; color: var(--gv-grey-700); }
+.gv-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  overflow: hidden; background: var(--gv-tenant-primary); color: #fff; font-weight: 700; font-size: 13px;
+}
+.gv-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-avatar.sm { width: 26px; height: 26px; font-size: 11px; }
+
+/* Hamburger (shown on mobile) — a <details> disclosure, label is the toggle */
+.gv-nav-m { display: none; }                    /* hidden on desktop */
+.gv-nav-m > summary {
+  list-style: none; display: grid; place-items: center;
+  width: 44px; height: 44px; border-radius: var(--gv-radius); cursor: pointer; color: var(--gv-grey-800);
+}
+.gv-nav-m > summary::-webkit-details-marker { display: none; }
+.gv-nav-m > summary:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-nav-m__panel {
+  box-sizing: border-box;
+  position: absolute; left: 0; right: 0; top: var(--gv-menu-height); z-index: 40;
+  background: #fff; border-top: 1px solid var(--gv-grey-200); box-shadow: var(--gv-shadow-hover-lg);
+  padding: 8px 24px 16px; display: grid; gap: 2px;        /* 24px sides → items align under the logo gutter */
+}
+.gv-nav-m__panel a, .gv-nav-m__panel summary {
+  display: block; padding: 13px 8px; font-size: var(--gv-fs-l); font-weight: 500;
+  color: var(--gv-grey-800); text-decoration: none; border-bottom: 1px solid var(--gv-grey-200);
+}
+.gv-nav-m__panel a[aria-current="page"] { color: var(--gv-tenant-primary); }
+.gv-nav-m__panel .gv-btn { margin-top: 14px; }
+
+/* Header responsive switch */
+@media (max-width: 860px) {
+  .gv-nav, .gv-header__actions .gv-desktop-only { display: none; }
+  .gv-nav-m { display: block; }
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────────
+   Source-grounded on GoVocal's real <footer id="hook-footer">: a secondary-nav row
+   of legal links (one is the Cookie-Einstellungen *button*) + the "Ermöglicht durch
+   go·vocal" powered-by attribution. No tenant logo (that lives in the header).
+   Desktop = links left / attribution right; mobile = stacked & centered. */
+.gv-footer { border-top: 1px solid var(--gv-grey-200); padding: 28px 24px; font-family: var(--gv-font-family); background: var(--gv-background); }
+.gv-footer__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 28px; }
+.gv-footer__links ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; font-size: var(--gv-fs-s); }
+.gv-footer__links li { display: inline-flex; align-items: center; }
+.gv-footer__links a, .gv-footer__links button { color: var(--gv-grey-800); text-decoration: none; padding: 2px 0; font: inherit; background: none; border: 0; cursor: pointer; }
+.gv-footer__links a:hover, .gv-footer__links button:hover { color: var(--gv-tenant-primary); text-decoration: underline; }
+.gv-footer__links li:not(:first-child)::before { content: "·"; color: var(--gv-grey-500); margin: 0 14px; display: inline-block; }
+.gv-footer__powered { display: inline-flex; align-items: center; gap: 10px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); white-space: nowrap; }
+@media (max-width: 720px) {
+  .gv-footer__inner { flex-direction: column; justify-content: center; text-align: center; gap: 22px; }
+  .gv-footer__links ul { justify-content: center; }
+}
+/* The go·vocal "powered by" wordmark (govocal-logo.svg) — GoVocal's own brand mark,
+   shown in its muted footer grey; it does NOT re-theme per city. Rendered as a plain
+   <img> so it works when a prototype is opened directly via file:// (a CSS mask to an
+   external SVG is CORS-blocked on file://). Aspect ratio ~2.985:1. */
+.gv-powered-logo { display: inline-block; height: 26px; width: auto; flex: 0 0 auto; }
+
+/* ── Project card + rail ─────────────────────────────────────────────────────
+   IMPORTANT: the card is an <article>, NOT an <a>. The title link is stretched to
+   make the whole card clickable (::after overlay); any secondary CTA sits above it
+   with position:relative + z-index. This avoids invalid nested anchors. */
+.gv-rail {
+  display: flex; gap: 22px; overflow-x: auto;
+  padding: 4px 24px 20px; margin: 0 -24px;
+  scroll-snap-type: x proximity; scrollbar-width: thin;
+}
+.gv-rail::-webkit-scrollbar { height: 8px; }
+.gv-rail::-webkit-scrollbar-thumb { background: var(--gv-grey-300); border-radius: 999px; }
+.gv-rail > * { scroll-snap-align: start; }
+
+.gv-pcard { position: relative; flex: 0 0 250px; display: flex; flex-direction: column; min-width: 0; }
+.gv-pcard__thumb {
+  width: 100%; aspect-ratio: 16 / 10; border-radius: var(--gv-radius); overflow: hidden;
+  background: var(--gv-grey-200); display: grid; place-items: center; text-align: center;
+  color: #fff; font-weight: 800; line-height: 1.15;
+}
+.gv-pcard__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-pcard__title { font-size: var(--gv-fs-base); font-weight: 700; line-height: 1.3; color: var(--gv-black); margin: 12px 0 8px; }
+.gv-pcard__title a { color: inherit; text-decoration: none; }
+.gv-pcard__title a:hover { color: var(--gv-tenant-primary); }
+.gv-pcard__title a::after { content: ""; position: absolute; inset: 0; }      /* stretched link → whole card clickable */
+.gv-pcard__title a:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-pcard__desc { font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-grey-800); margin: 0; }
+/* meta row: icon + label. Variant colours via modifier. */
+.gv-pcard__meta { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-s); color: var(--gv-grey-700); }
+.gv-pcard__meta svg { flex: 0 0 auto; }
+.gv-pcard__meta.time svg, .gv-pcard__meta.people svg { color: var(--gv-tenant-primary); }
+.gv-pcard__meta.done { color: var(--gv-success); }
+.gv-pcard__meta + .gv-pcard__desc, .gv-pcard__meta + .gv-pcard__cta { margin-top: 8px; }
+/* secondary CTA must sit ABOVE the stretched title link to stay clickable */
+.gv-pcard__cta { position: relative; z-index: 1; align-self: flex-start; margin-top: 8px;
+  font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-tenant-primary); text-decoration: none; }
+.gv-pcard__cta:hover { text-decoration: underline; }
+/* card width variants */
+.gv-pcard.wide { flex-basis: 360px; }
+.gv-pcard.wide .gv-pcard__thumb { aspect-ratio: 16 / 9; }
+.gv-pcard.square { flex-basis: 210px; }
+.gv-pcard.square .gv-pcard__thumb { aspect-ratio: 1 / 1; }
+
+/* ── Hero / page banner ──────────────────────────────────────────────────────
+   Full-bleed banner. Set --gv-hero-image to a url() for a photo; a tenant-tinted
+   placeholder shows otherwise. Overlay uses tenant-primary so it re-themes. */
+.gv-hero {
+  position: relative; display: grid; place-items: center; text-align: center;
+  min-height: 340px; color: #fff; overflow: hidden;
+  background-image: var(--gv-hero-image, linear-gradient(120deg, #6f4a34, #b07a4f 55%, #7a5238));
+  background-size: cover; background-position: center;
+}
+.gv-hero::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--gv-tenant-primary); opacity: 0.62; mix-blend-mode: multiply;
+}
+.gv-hero__inner { position: relative; z-index: 1; padding: 48px 24px; max-width: 720px; }
+.gv-hero__title { font-size: clamp(28px, 4vw, 40px); font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; margin: 0 0 10px; }
+.gv-hero__lead { font-size: var(--gv-fs-l); margin: 0 0 22px; opacity: 0.97; }
+.gv-hero__credit { position: absolute; left: 24px; bottom: 10px; z-index: 1; font-size: 11px; opacity: 0.85; }
+/* avatar stack + count pill */
+.gv-avatars { display: inline-flex; align-items: center; margin-bottom: 22px; }
+.gv-avatars .av { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px;
+  background: linear-gradient(135deg, #dcdcdc, #a6a6a6); background-size: cover; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.gv-avatars .av:first-child { margin-left: 0; }
+.gv-avatars .count { margin-left: 8px; height: 34px; padding: 0 14px; border-radius: 999px; border: 2px solid #fff;
+  background: rgba(0,0,0,0.28); display: inline-flex; align-items: center; font-size: 13px; font-weight: 600; }
+@media (max-width: 600px) { .gv-hero { min-height: 280px; } .gv-hero__inner { padding: 36px 20px; } }
+
+/* ── Section heading + content rhythm for composed pages ─────────────────────── */
+.gv-section { padding: 38px 0 4px; }
+.gv-section__head { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px; }
+.gv-section__body { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px; }
+
+/* ── Phase timeline (components/phase-timeline/) ──────────────────────────────
+   GoVocal's project phase navigation: a connected row of arrow/chevron "ribbon"
+   segments (interlocking, pointing right) with the phase number inside and the
+   label below. ONLY the current phase is filled green (with a • dot). A 3-button
+   nav (Previous · Current · Next) sits top-right. The content panel leads with a
+   big green numbered circle + green phase name + date. role=tablist on the stepper,
+   role=tab per phase, role=tabpanel on the content. */
+.gv-phases__bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.gv-phases__bar h2 { margin: 0; font-size: var(--gv-fs-xxl); font-weight: 700; letter-spacing: -0.01em; }
+.gv-phases__nav { margin-left: auto; display: inline-flex; gap: 6px; }
+.gv-pnav { width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
+  background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); color: var(--gv-grey-700); }
+.gv-pnav svg, .gv-pnav .gv-icon { width: 16px; height: 16px; }
+.gv-pnav:hover { background: var(--gv-grey-100); }
+.gv-pnav:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-pnav[disabled] { color: var(--gv-grey-500); cursor: not-allowed; }
+.gv-pnav .gv-dotmark { width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
+.gv-stepper { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; }
+.gv-phase { flex: 1 1 0; min-width: 92px; background: none; border: 0; padding: 0; cursor: pointer;
+  font-family: inherit; display: flex; flex-direction: column; align-items: stretch; }
+.gv-pstep { position: relative; height: 28px; display: flex; align-items: center; justify-content: center;
+  background: #d9dde0; color: #39424a; font-weight: 700; font-size: 13.5px; line-height: 1;
+  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%, 15px 50%); }
+.gv-phase:first-child .gv-pstep { clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%); }
+.gv-phase.current .gv-pstep { background: var(--gv-green-500); color: #fff; }
+.gv-pstep__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
+.gv-phase__label { padding: 9px 6px 0; text-align: center; font-size: var(--gv-fs-s); line-height: 1.3; color: var(--gv-text-primary); }
+.gv-phase.current .gv-phase__label { color: var(--gv-green-700); font-weight: 600; }
+.gv-phase:hover .gv-pstep { filter: brightness(0.97); }
+.gv-phase:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
+/* the phase you're VIEWING (if it isn't the current one) fills dark charcoal */
+.gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-cool-grey-700); color: #fff; }
+.gv-phase[aria-selected="true"]:not(.current) .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
+/* content panel: big green numbered circle + green name + date */
+.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 26px 30px; margin-top: 8px; }
+.gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
+.gv-phasepanel__num { width: 52px; height: 52px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: var(--gv-green-500); color: #fff; font-size: var(--gv-fs-l); font-weight: 700; }
+.gv-phasepanel__name { margin: 0; font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-green-700); line-height: 1.2; }
+.gv-phasepanel__date { margin: 4px 0 0; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HOMEPAGE WIDGETS — the modern GoVocal landing-page anatomy
+   Source-grounded on the live signed-in homepage (uxusertesting.govocal.com,
+   City of Raleigh): a full-width banner with an overlaid CTA, a "currently
+   working on" SPOTLIGHT, a tabbed + filterable project GRID of boxed cards
+   (project + folder), an events widget, a proposals CTA band, and a rich-text
+   block. Measured live: card = 1px var(--gv-grey-300) + var(--gv-radius) +
+   var(--gv-shadow) (probe matched the token exactly), 26px grid gap; card CTA =
+   .gv-btn.primary-outlined; tab/progress/filter all themeable via --gv-tenant-*.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Banner overlay CTA ────────────────────────────────────────────────────
+   A white pill the staff can pin onto the hero pointing at one project. Sits on
+   top of .gv-hero (which is position:relative); collapses inline on mobile. */
+.gv-hero__cta {
+  position: absolute; right: 24px; bottom: 24px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 10px;
+  max-width: min(360px, 64%); padding: 14px 18px;
+  background: #fff; color: var(--gv-tenant-text); border-radius: var(--gv-radius);
+  font-size: var(--gv-fs-s); font-weight: 600; line-height: 1.3; text-align: left; text-decoration: none;
+  box-shadow: var(--gv-shadow-hover-lg);
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out;
+}
+.gv-hero__cta:hover { transform: translateY(-2px); box-shadow: var(--gv-shadow-hover-sm); }
+.gv-hero__cta:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.gv-hero__cta .gv-icon, .gv-hero__cta svg { width: 18px; height: 18px; flex: none; color: var(--gv-tenant-primary); }
+@media (max-width: 640px) { .gv-hero__cta { position: static; max-width: none; margin: 16px auto 0; } }
+
+/* ── Spotlight: the "currently working on" featured project ─────────────────
+   A full-bleed tinted band, two columns (copy + media). Real measure: 56px
+   block padding, 30px/700 title. Collapses to one column (media first) ≤820px. */
+.gv-spotlight { background: var(--gv-grey-100); }
+.gv-spotlight__inner {
+  max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 52px 24px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
+}
+.gv-spotlight__eyebrow { margin: 0 0 12px; font-size: var(--gv-fs-s); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--gv-text-secondary); }
+.gv-spotlight__title { margin: 0 0 14px; font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 1.2; color: var(--gv-text-primary); }
+.gv-spotlight__lead { margin: 0 0 24px; font-size: var(--gv-fs-m); line-height: 1.55; color: var(--gv-grey-800); }
+.gv-spotlight__actions { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.gv-spotlight__media { aspect-ratio: 16 / 10; border-radius: var(--gv-radius); overflow: hidden;
+  background: var(--gv-grey-200); display: grid; place-items: center; color: #fff; font-weight: 800; text-align: center; }
+.gv-spotlight__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 820px) {
+  .gv-spotlight__inner { grid-template-columns: 1fr; gap: 26px; padding: 36px 24px; }
+  .gv-spotlight__media { order: -1; aspect-ratio: 16 / 9; }
+}
+
+/* ── Avatar bubbles + participant count ────────────────────────────────────
+   Overlapping avatars, an optional "+N" count bubble, and a text label. The
+   on-light version used inside cards/spotlight (the hero uses .gv-avatars). */
+.gv-bubbles { display: inline-flex; align-items: center; }
+.gv-bubbles .av { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px;
+  background: linear-gradient(135deg, #cfd6dd, #9aa7b2); background-size: cover; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+.gv-bubbles .av:first-child { margin-left: 0; }
+.gv-bubbles .count { margin-left: -8px; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 999px; border: 2px solid #fff;
+  background: var(--gv-tenant-primary); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.gv-bubbles__label { margin-left: 10px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+
+/* ── Progress / time-remaining bar ─────────────────────────────────────────
+   Thin track + tenant-primary fill. Set inline width on __fill (% elapsed). */
+.gv-progress { height: 4px; border-radius: 999px; background: var(--gv-grey-300); overflow: hidden; }
+.gv-progress__fill { height: 100%; border-radius: inherit; background: var(--gv-tenant-primary); }
+
+/* ── Projects toolbar: status tabs + filter selectors ──────────────────────
+   Tabs left (Published/Archived/All) with a tenant-primary underline on the
+   selected one; filter selectors right ("Filter by" + Tag/Area pills). */
+.gv-ptoolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 24px;
+  flex-wrap: wrap; border-bottom: 1px solid var(--gv-grey-300); margin-bottom: 28px; }
+.gv-tabs { display: flex; gap: 2px; }
+.gv-tab { display: inline-flex; align-items: center; gap: 6px; padding: 12px 14px; margin-bottom: -1px;
+  background: none; border: 0; border-bottom: 3px solid transparent; cursor: pointer;
+  font-family: inherit; font-size: var(--gv-fs-base); font-weight: 500; color: var(--gv-grey-800); }
+.gv-tab .ct { color: var(--gv-text-secondary); }
+.gv-tab:hover { color: var(--gv-tenant-primary); }
+.gv-tab[aria-selected="true"] { color: var(--gv-text-primary); font-weight: 700; border-bottom-color: var(--gv-tenant-primary); }
+.gv-tab[aria-selected="true"] .ct { color: var(--gv-tenant-primary); }
+.gv-tab:focus-visible { outline: var(--gv-focus-outline); outline-offset: -2px; border-radius: var(--gv-radius); }
+.gv-filterbar { display: flex; align-items: center; gap: 10px; padding-bottom: 9px; }
+.gv-filterbar__label { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+.gv-filter-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px;
+  background: #fff; border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius); cursor: pointer;
+  font-family: inherit; font-size: var(--gv-fs-s); color: var(--gv-text-primary); }
+.gv-filter-btn:hover { border-color: var(--gv-grey-700); }
+.gv-filter-btn svg, .gv-filter-btn .gv-icon { width: 14px; height: 14px; color: var(--gv-grey-700); }
+.gv-filter-btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+@media (max-width: 620px) { .gv-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; } }
+
+/* ── Project / folder GRID of boxed cards ──────────────────────────────────
+   The homepage "All projects" widget: a 3-col grid of boxed cards. Span helpers
+   place the occasional wide/featured card. Cards stretch to equal row height. */
+.gv-pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; align-items: stretch; }
+.gv-pgrid > .span-2 { grid-column: span 2; }
+.gv-pgrid > .span-3 { grid-column: 1 / -1; }
+@media (max-width: 980px) { .gv-pgrid { grid-template-columns: repeat(2, 1fr); } .gv-pgrid > .span-3 { grid-column: 1 / -1; } .gv-pgrid > .span-2 { grid-column: 1 / -1; } }
+@media (max-width: 640px) { .gv-pgrid { grid-template-columns: 1fr; } .gv-pgrid > .span-2, .gv-pgrid > .span-3 { grid-column: 1 / -1; } }
+
+/* Boxed card = the rail .gv-pcard wrapped in a bordered, elevated box with a
+   padded body. Thumb runs flush to the card edges; content sits in __body. */
+.gv-pcard.boxed { flex: initial; background: #fff; border: 1px solid var(--gv-grey-300);
+  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); overflow: hidden;
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out; }
+.gv-pcard.boxed:hover { box-shadow: var(--gv-shadow-hover-lg); transform: translateY(-3px); }
+.gv-pcard.boxed .gv-pcard__thumb { border-radius: 0; aspect-ratio: 16 / 9; }
+.gv-pcard.boxed .gv-pcard__thumb.icon { background: var(--gv-grey-100); color: var(--gv-grey-500); }
+.gv-pcard.boxed .gv-pcard__thumb.icon svg, .gv-pcard.boxed .gv-pcard__thumb.icon .gv-icon { width: 56px; height: 56px; }
+.gv-pcard__body { display: flex; flex-direction: column; flex: 1 1 auto; padding: 18px 22px 22px; }
+.gv-pcard.boxed .gv-pcard__title { margin: 0 0 8px; font-size: var(--gv-fs-l); }
+.gv-pcard.boxed .gv-pcard__desc { color: var(--gv-grey-800); }
+.gv-pcard__spacer { flex: 1 1 auto; min-height: 8px; }
+.gv-pcard__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+/* the boxed-card CTA is a real outline button; keep it above the stretched link */
+.gv-pcard.boxed .gv-btn { position: relative; z-index: 1; }
+/* progress block inside a boxed card */
+.gv-pcard__progress { margin: 12px 0 0; }
+.gv-pcard__progress .gv-pcard__meta { margin-bottom: 8px; }
+
+/* Full-width horizontal feature card (image left, copy right) */
+.gv-pcard.boxed.horizontal { flex-direction: row; }
+.gv-pcard.boxed.horizontal .gv-pcard__thumb { flex: 0 0 46%; aspect-ratio: auto; min-height: 300px; }
+.gv-pcard.boxed.horizontal .gv-pcard__body { justify-content: center; padding: 32px 36px; }
+.gv-pcard.boxed.horizontal .gv-pcard__title { font-size: var(--gv-fs-xl); }
+@media (max-width: 640px) {
+  .gv-pcard.boxed.horizontal { flex-direction: column; }
+  .gv-pcard.boxed.horizontal .gv-pcard__thumb { flex: none; min-height: 0; aspect-ratio: 16 / 9; }
+  .gv-pcard.boxed.horizontal .gv-pcard__body { padding: 18px 22px 22px; }
+}
+
+/* Folder card: a "N projects" count badge pinned over the thumb */
+.gv-pcard__count { position: absolute; top: 12px; left: 12px; z-index: 1;
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px;
+  background: rgba(0,0,0,0.62); color: #fff; font-size: var(--gv-fs-xs); font-weight: 600; }
+.gv-pcard__count svg, .gv-pcard__count .gv-icon { width: 14px; height: 14px; }
+
+/* "Finished/archived" status label tone (StatusLabel primitive, neutral grey) */
+.gv-status-label.finished { background: var(--gv-grey-200); color: var(--gv-grey-800); }
+
+/* Show-more row */
+.gv-showmore { display: flex; justify-content: center; margin-top: 32px; }
+
+/* ── Events widget (with empty state) ──────────────────────────────────────── */
+.gv-events__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.gv-events__empty { display: grid; place-items: center; gap: 6px; text-align: center;
+  padding: 52px 24px; border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
+  background: var(--gv-grey-50); color: var(--gv-text-secondary); }
+.gv-events__empty svg, .gv-events__empty .gv-icon { width: 30px; height: 30px; color: var(--gv-grey-500); margin-bottom: 4px; }
+
+/* ── CTA band (proposals / generic call to action) ─────────────────────────── */
+.gv-ctaband { background: color-mix(in srgb, var(--gv-tenant-primary) 8%, #fff); }
+.gv-ctaband__inner { max-width: var(--gv-text-width, 720px); margin: 0 auto; padding: 54px 24px; text-align: center; }
+.gv-ctaband__title { margin: 0 0 12px; font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-text-primary); }
+.gv-ctaband__lead { margin: 0 0 26px; font-size: var(--gv-fs-m); line-height: 1.6; color: var(--gv-grey-800); }
+
+/* ── Rich-text / prose block ───────────────────────────────────────────────── */
+.gv-prose { max-width: var(--gv-text-width, 720px); margin: 0 auto; padding: 8px 24px; }
+.gv-prose p { margin: 0 0 16px; font-size: var(--gv-fs-m); line-height: 1.7; color: var(--gv-grey-800); }
+.gv-prose em { color: var(--gv-text-primary); font-style: italic; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-spinner { animation-duration: 1600ms; }
+  .gv-toggle .track::before, .gv-btn, .gv-checkbox .box, .gv-radio .circle, .gv-radio .circle::after { transition: none; }
+  .gv-nav__chev, .gv-rail { transition: none; scroll-behavior: auto; }
+  .gv-pcard.boxed, .gv-hero__cta { transition: none; }
+}

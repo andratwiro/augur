@@ -18,6 +18,16 @@ with `npm run capture`. Each folder has `page.png` · `viewport.png` · `dom.htm
 | `bo-input-form-builder/` | Phase → Input form | import-source cards, section headers |
 | `bo-phase-insights/` | Phase → Insights | stat cards, AI-analysis button, charts (shared/crossover) |
 | `fo-project-page/` | Public project page | front-office contrast (themed header, hero, CTAs, sticky bar) |
+| `bo-sidebar-1024/`, `bo-sidebar-768/` | Admin at tablet widths | sidebar collapse behaviour |
+
+**Sidebar (measured, now its own component `components/bo-sidebar/`):** extended **224px**,
+collapses to an **80px icon rail at ≤1200px** (breakpoint confirmed: 1210 extended, 1200 rail).
+Brand band = teal **`#147985`** (`--gv-teal-500`), 60px; nav navy `#003349`; items 40px,
+icons **24px** link-blue `#4183C4`, labels **white**; active = `rgba(0,0,0,.5)` cell (no bold),
+inset+rounded in the rail; notification badge red, overlaps the bell when collapsed. Driven by
+`.is-rail` (toggle via matchMedia at 1200px — the product is JS-driven). NOTE: bo-app-shell /
+bo-project-phase still carry the earlier sidebar copy; re-sync `govocal-bo.css` + drop the
+white-arrow inline style once the sidebar is signed off.
 
 ## Measured BO theme (live `getComputedStyle`)
 
