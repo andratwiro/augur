@@ -279,3 +279,24 @@
        rhythm). Append-only override so existing consumers update in lock-step. */
     .sv-wrap { max-width: 700px; }
     .sv-body { padding: 30px 24px 36px; }
+
+    /* ── Runner-footer language selector (source-grounded: live GoVocal survey runner) ──
+       The real footer (div.Wgsme, flex/align-center, padding 16px 24px) carries an EN
+       language dropdown on the LEFT (span.diOXeU 'EN', 16px / weight 500 / rgb(30,30,30),
+       with a chevron), then a CENTRED '0% complete', then the green nav/Submit on the
+       right. The renderer now emits a .gv-lang dropdown (reusing the canonical header
+       language switcher) as .sv-foot__lang; we balance the flex so the % stays optically
+       centred (lang + nav take equal flex on each end) and align .gv-lang to the measured
+       16px / 500 sizing here (the header instance is 14px / 600). Append-only override so
+       every consumer updates. Near-black rgb(30,30,30) is the measured runner one-off. */
+    .sv-foot__lang { flex: 1 1 0; min-width: 0; }
+    .sv-foot__lang > .gv-lang { height: auto; padding: 4px 6px; margin-left: -6px;
+      font-size: var(--gv-fs-base); font-weight: 500; line-height: 16px; color: rgb(30, 30, 30); }
+    /* Real footer row padding is the measured 16px 24px (div.Wgsme) — was 22px. */
+    .sv-foot__row { padding: 16px 24px; }
+    .sv-foot__pct { flex: 0 0 auto; }
+    .sv-foot__nav { flex: 1 1 0; justify-content: flex-end; }
+    @media (max-width: 480px) {
+      .sv-foot__row { flex-wrap: wrap; }
+      .sv-foot__lang { order: -2; flex: 0 0 auto; }
+    }

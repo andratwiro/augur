@@ -1553,6 +1553,36 @@
       ]
     },
     {
+      "id": "fo-input-form/footer-lang",
+      "built": "pages/input-form/index.html",
+      "against": "fo-survey-runner-foot",
+      "map": {
+        "span.sc-flFvMs.MwNxj": ".sv-foot__lang .gv-lang"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "color",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-lang"
+      ]
+    },
+    {
+      "id": "fo-input-form/footer-row",
+      "built": "pages/input-form/index.html",
+      "against": "fo-survey-runner-foot",
+      "map": {
+        "div.sc-beqWaB.Wgsme": ".sv-foot__row"
+      },
+      "props": [
+        "padding",
+        "display",
+        "align-items"
+      ]
+    },
+    {
       "id": "bo-users/people-header",
       "built": "pages/bo-users/index.html",
       "against": "bo-users",

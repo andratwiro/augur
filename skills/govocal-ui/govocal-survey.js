@@ -203,7 +203,10 @@
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>' +
       '<form class="sv-body" novalidate></form>' +
       '<div class="sv-foot"><div class="sv-progress"><div class="sv-progress__bar"></div></div>' +
-      '<div class="sv-foot__row"><span class="sv-foot__pct">0% complete</span><div class="sv-foot__nav">' +
+      '<div class="sv-foot__row">' +
+      '<details class="gv-nav__dd sv-foot__lang"><summary class="gv-lang">EN' +
+      '<svg class="gv-nav__chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg></summary></details>' +
+      '<span class="sv-foot__pct">0% complete</span><div class="sv-foot__nav">' +
       '<button type="button" class="gv-btn primary-outlined sv-prev"><svg class="gv-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>Previous</button>' +
       '<button type="button" class="gv-btn primary sv-next"><span class="sv-next-label">Next</span><svg class="gv-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg></button>' +
       '</div></div></div></section>';
