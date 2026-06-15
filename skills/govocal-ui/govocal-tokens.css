@@ -134,6 +134,7 @@
   --gv-fs-xxxl:   30px;
   --gv-fs-xxxxl:  34px;
   --gv-fs-xxxxxl: 42px;
+  --gv-fs-display: 80px; /* huge per-tenant page title (FO /events H1: 80px/700/lh 104px) */
 
   /* ── Radius, sizing, layout (stylingConsts) ───────────────────────────── */
   --gv-radius: 3px;

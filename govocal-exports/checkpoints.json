@@ -986,6 +986,38 @@
       "uses": [
         ".gv-status-label"
       ]
+    },
+    {
+      "id": "fo-events/title",
+      "built": "pages/events/index.html",
+      "against": "fo-events",
+      "map": {
+        "h1": ".gv-events-page__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-events-page__title"
+      ]
+    },
+    {
+      "id": "fo-events/section",
+      "built": "pages/events/index.html",
+      "against": "fo-events",
+      "map": {
+        "h2.sc-hAtEyd": ".gv-events-page__section"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-events-page__section"
+      ]
     }
   ]
 }

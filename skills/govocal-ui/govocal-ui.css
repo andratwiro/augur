@@ -733,7 +733,44 @@
 .gv-event-card__row a { position: relative; z-index: 1; color: var(--gv-tenant-primary); text-decoration: underline; }
 .gv-event-card__body .gv-btn { position: relative; z-index: 1; margin-top: auto; }
 
-/* ── CTA band (proposals / generic call to action) ─────────────────────────── */
+/* ── Events PAGE (/events) — title block, section headers, filter bar ───────── */
+/* Source-grounded on wietsedemo.govocal.com/en/events (Cultuurconnect tenant).
+   The standalone events page reuses the .gv-event-card / .gv-events__grid /
+   .gv-events__empty atoms above; what's net-new here is the page title scale,
+   the section h2s, and the FO filter-pill dropdowns under the upcoming section. */
+
+/* Huge per-tenant page title — live H1 "Events": 80px / 700 / tenant-primary,
+   line-height 104px, 53.6px top / 16px bottom margin (digest #19). */
+.gv-events-page__title { margin: 53.6px 0 16px; font-size: var(--gv-fs-display); font-weight: 700;
+  line-height: 104px; color: var(--gv-tenant-primary); }
+
+/* Section headers — live "Upcoming and ongoing events" / "Past events":
+   h2 25px / 700 / neutral dark #474747 (digest #17, count 2). Matches --gv-fs-xxl. */
+.gv-events-page__section { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px;
+  color: var(--gv-text-primary); margin: 5.75px 0; }
+
+/* The upcoming-section head holds the title left, the filter bar right. */
+.gv-events-page__sectionhead { display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+
+/* Filter bar — row of FO filter-pill dropdowns (Date, Projects). */
+.gv-eventfilters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* FO filter pill (a NEW variant — NOT .gv-btn, which is 3px radius). Live filter
+   button: tenant-primary fill, white text + down-chevron, 24px pill radius,
+   9px 18px padding, 14px text (digest #16). Used for the events Date/Projects
+   selectors and other resident-facing pill filters. */
+.gv-filter-pill { display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 9px 18px; border: 1px solid transparent; border-radius: 24px;
+  background: var(--gv-tenant-primary); color: #fff;
+  font-family: var(--gv-font-family); font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px;
+  text-align: left; white-space: nowrap; }
+.gv-filter-pill:hover { filter: brightness(0.88); }
+.gv-filter-pill:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-filter-pill svg, .gv-filter-pill .gv-icon { width: 18px; height: 18px; color: currentColor; flex: 0 0 auto; }
+.gv-filter-pill[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+/* CTA band (proposals / generic call to action) ────────────────────────────── */
 /* Live proposals CTA sits on the plain page background (no tinted band on the
    captured tenant) — the primary button carries the colour. */
 .gv-ctaband { background: transparent; }

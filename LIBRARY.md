@@ -56,6 +56,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 |---|---|---|---|
 | **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
 | **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
+| **Community Monitor** | `/components/community-monitor/` | `components/community-monitor/` | The “City at a glance” satisfaction module — an ongoing survey that surfaces as a top modal/banner on the homepage and asks how residents feel about governance… |
 | **Footer** | `/components/footer/` | `components/footer/` | Source-grounded on GoVocal’s real <footer id="hook-footer"> : a secondary-nav row of legal links — one is the Cookie-Einstellungen button — plus the “Ermöglich… |
 | **Header Nav** | `/components/header-nav/` | `components/header-nav/` | Responsive site chrome — 78px bar, logo slot, dropdown + “Mehr ···” overflow, search, primary CTA. Collapses to a hamburger drawer on narrow screens. CSS-only… |
 | **Hero** | `/components/hero/` | `components/hero/` | Full-bleed banner with a tenant-tinted overlay, title + lead, an avatar stack with participant count, and a primary CTA. Image-agnostic — set a photo or leave… |
@@ -71,8 +72,19 @@ as a starting point for a prototype.
 
 | Page | Open | Source | What it is |
 |---|---|---|---|
+| **Bo Community Monitor** | `/pages/bo-community-monitor/` | `pages/bo-community-monitor/` | Community monitor — GoVocal back office (reference) |
 | **Bo Content Builder** | `/pages/bo-content-builder/` | `pages/bo-content-builder/` | Content builder — GoVocal back office (reference) |
+| **Bo Dashboard** | `/pages/bo-dashboard/` | `pages/bo-dashboard/` | Dashboard — GoVocal back office (reference) |
+| **Bo Input Manager** | `/pages/bo-input-manager/` | `pages/bo-input-manager/` | Input manager — GoVocal back office (reference) |
+| **Bo Inspiration Hub** | `/pages/bo-inspiration-hub/` | `pages/bo-inspiration-hub/` | Inspiration hub — GoVocal back office (reference) |
+| **Bo Messaging** | `/pages/bo-messaging/` | `pages/bo-messaging/` | Messaging — GoVocal back office (reference) |
+| **Bo Pages Menu** | `/pages/bo-pages-menu/` | `pages/bo-pages-menu/` | Pages & menu — GoVocal back office (reference) |
 | **Bo Project Phase** | `/pages/bo-project-phase/` | `pages/bo-project-phase/` | Project configuration — GoVocal back office (reference) |
+| **Bo Projects** | `/pages/bo-projects/` | `pages/bo-projects/` | Projects — GoVocal back office (reference) |
+| **Bo Reporting** | `/pages/bo-reporting/` | `pages/bo-reporting/` | Reporting — GoVocal back office (reference) |
+| **Bo Tools** | `/pages/bo-tools/` | `pages/bo-tools/` | Tools — GoVocal back office (reference) |
+| **Bo Users** | `/pages/bo-users/` | `pages/bo-users/` | Users — GoVocal back office (reference) |
+| **Events** | `/pages/events/` | `pages/events/` | Events — GoVocal (reference) |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Homepage — GoVocal (reference) |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
 | **Project Common Ground** | `/pages/project-common-ground/` | `pages/project-common-ground/` | Project page — Common Ground / Polis (reference) |

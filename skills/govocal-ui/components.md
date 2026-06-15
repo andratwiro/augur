@@ -654,6 +654,32 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
 <!-- Empty-state variant (no events) -->
 <div class="gv-events__empty"><svg><!--calendar--></svg><p class="gv-text bodyM">Derzeit sind keine … geplant.</p></div>
 
+<!-- Events PAGE (/events) — title block, section headers, FO filter-pill bar.
+     Source-grounded on wietsedemo.govocal.com/en/events. Reuses the event-card /
+     grid / empty-state atoms above; net-new here = the huge tenant-primary page
+     title (80px, --gv-fs-display), the 25px section h2s, and the FO filter pills.
+     Built page: pages/events/index.html. -->
+<h1 class="gv-events-page__title">Events</h1>                 <!-- 80px / 700 / tenant-primary -->
+<section>
+  <div class="gv-events-page__sectionhead">
+    <h2 class="gv-events-page__section">Upcoming and ongoing events</h2>  <!-- 25px / 700 / #333 -->
+    <!-- FO filter bar — pill dropdowns (NEW variant; .gv-btn is 3px, this is a 24px pill) -->
+    <div class="gv-eventfilters">
+      <button class="gv-filter-pill" aria-haspopup="listbox" aria-expanded="false" aria-label="Date">
+        Date <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/></svg>
+      </button>
+      <button class="gv-filter-pill" aria-haspopup="listbox" aria-expanded="false" aria-label="Projects">
+        Projects <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="gv-events__empty"><span data-gv-icon="calendar"></span><p class="gv-text bodyM">No upcoming or ongoing events are currently scheduled.</p></div>
+</section>
+<section>
+  <h2 class="gv-events-page__section">Past events</h2>
+  <div class="gv-events__grid"><!-- .gv-event-card × N (reused unchanged) --></div>
+</section>
+
 <!-- Proposals / generic CTA band -->
 <section class="gv-ctaband">
   <div class="gv-ctaband__inner">
