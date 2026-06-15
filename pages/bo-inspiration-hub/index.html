@@ -13,25 +13,25 @@
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
-    .ih-section-title { margin: 22px 0 14px; font-size: 25px; font-weight: 700; line-height: 32.5px; color: var(--gv-bo-primary); }
+    .ih-section-title { margin: 22px 0 14px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px; color: var(--gv-bo-primary); }
     .ih-country { margin-bottom: 16px; }
-    .ih-country .gv-bo-select { width: 226px; height: 48px; padding: 12px; font-size: 16px; }
+    .ih-country .gv-bo-select { width: 226px; height: 48px; padding: 12px; font-size: var(--gv-fs-base); }
     .ih-highlight { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
     @media (max-width: 1000px) { .ih-highlight { grid-template-columns: 1fr; } }
-    .ih-card { background: #fff; border-radius: 3px; box-shadow: var(--gv-shadow); overflow: hidden; display: flex; flex-direction: column; }
-    .ih-card__media { height: 124px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 26px; letter-spacing: .02em; position: relative; }
-    .ih-card__check { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--gv-teal-400); color: #fff; display: grid; place-items: center; }
+    .ih-card { background: var(--gv-white); border-radius: 3px; box-shadow: var(--gv-shadow); overflow: hidden; display: flex; flex-direction: column; }
+    .ih-card__media { height: 124px; display: grid; place-items: center; color: var(--gv-white); font-weight: 800; font-size: 26px; letter-spacing: .02em; position: relative; }
+    .ih-card__check { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--gv-teal-400); color: var(--gv-white); display: grid; place-items: center; }
     .ih-card__check .gv-icon { width: 13px; height: 13px; }
     .ih-card__body { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-    .ih-card__title { margin: 4px 0 0; font-size: 21px; font-weight: 700; line-height: 27.3px; color: var(--gv-bo-primary); }
-    .ih-card__org { display: flex; align-items: center; gap: 6px; font-size: 14px; line-height: 21px; color: var(--gv-text-secondary); }
+    .ih-card__title { margin: 4px 0 0; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-bo-primary); }
+    .ih-card__org { display: flex; align-items: center; gap: 6px; font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-text-secondary); }
     .ih-card__org .ih-count { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
     .ih-card__org .ih-count .gv-icon { width: 16px; height: 16px; }
-    .ih-quote { background: #EDF8FA; border-radius: 3px; padding: 12px; margin: 4px 0 4px; font-size: 14px; color: var(--gv-bo-primary); line-height: 21px; }
+    .ih-quote { background: var(--gv-teal-50); border-radius: 3px; padding: 12px; margin: 4px 0 4px; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); line-height: 20px; }
     /* page-local badge to match real inspiration-hub method tag (filled grey pill) */
     .ih-badge { color: var(--gv-cool-grey-600); background: var(--gv-grey-100); border-color: var(--gv-cool-grey-600); padding: 0 10px; height: 28px; display: inline-flex; align-items: center; justify-content: center; line-height: normal; align-self: flex-start; }
     .ih-allfilters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0 18px; }
-    .ih-allfilters .gv-bo-select { height: 48px; padding: 12px; font-size: 16px; max-width: 150px; width: auto; }
+    .ih-allfilters .gv-bo-select { height: 48px; padding: 12px; font-size: var(--gv-fs-base); max-width: 150px; width: auto; }
     .ih-allfilters .gv-bo-dateface { height: 48px; }
     .ih-allfilters .ih-spacer { margin-left: auto; }
     .ih-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }

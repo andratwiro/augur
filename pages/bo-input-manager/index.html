@@ -18,20 +18,25 @@
     .im-head__actions { margin-left: auto; }
 
     /* White content panel that holds the filter bar + rail + table (real: 40px pad, white) */
-    .im-panel { background: #fff; padding: 40px; }
+    .im-panel { background: var(--gv-white); padding: 40px; }
 
     .im-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 22px; }
     .im-bar .gv-bo-select { height: 40px; padding: 8px 12px; max-width: 220px; width: auto; }
-    .im-bar .im-feedback { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--gv-bo-primary); }
+    .im-bar .im-feedback { display: inline-flex; align-items: center; gap: 10px; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
     .im-bar .im-spacer { margin-left: auto; }
-    .im-needs { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--gv-red-500); color: #fff; font-size: 12px; font-weight: 700; }
+    .im-exports { gap: 8px; border: 1px solid transparent; background: transparent; }
+    .im-needs { display: inline-flex; align-items: center; justify-content: center; padding: 0 3px; border-radius: 3px; background: var(--gv-red-500); color: var(--gv-white); font-size: var(--gv-fs-xs); font-weight: 500; line-height: 20px; }
+
+    /* Sub-bar: posts count (left) + search (right), above the rail/table grid */
+    .im-subbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+    .im-search .gv-input { width: 241px; }
 
     /* Borderless rail to match the real cross-project input manager */
-    .im-rail.gv-bo-filterrail { border: 0; border-radius: 0; overflow: visible; font-size: 14px; }
+    .im-rail.gv-bo-filterrail { border: 0; border-radius: 0; overflow: visible; font-size: var(--gv-fs-s); }
     .im-rail .gv-bo-filterrail__tabs { background: transparent; border-bottom: 1px solid var(--gv-grey-300); }
-    .im-rail .gv-bo-filterrail__tab { padding: 10px 4px; margin-right: 28px; font-size: 16px; }
+    .im-rail .gv-bo-filterrail__tab { padding: 10px 4px; margin-right: 28px; font-size: var(--gv-fs-base); }
     .im-rail .gv-bo-filterrail__tab.is-active { background: transparent; }
-    .im-tabinfo { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 6px; border-radius: 50%; background: var(--gv-cool-grey-500); color: #fff; font-size: 11px; font-weight: 700; font-style: normal; }
+    .im-tabinfo { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 6px; border-radius: 50%; background: var(--gv-cool-grey-500); color: var(--gv-white); font-size: 11px; font-weight: 700; font-style: normal; }
     .im-allprojects { margin: 14px 0 0; padding: 10px 12px; border-radius: 3px; background: var(--gv-grey-100); color: var(--gv-bo-primary); font-weight: 600; }
     .im-rail-div { height: 1px; background: var(--gv-divider); margin: 12px 0; }
     .im-editprojects { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--gv-bo-link); text-decoration: none; }
@@ -40,8 +45,8 @@
     .im-rail .gv-bo-filterrail__item { padding: 8px 12px; color: var(--gv-bo-primary); border-radius: 3px; line-height: 1.35; }
 
     /* Outlined project-tag chip (real: transparent bg, 1px teal border, teal text) */
-    .im-tag { display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 3px; background: transparent; border: 1px solid var(--gv-teal-500); color: var(--gv-teal-500); font-size: 13px; }
-    .im-count { margin: 0 0 14px; font-size: 14px; font-weight: 700; color: var(--gv-bo-primary); }
+    .im-tag { display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 3px; background: transparent; border: 1px solid var(--gv-teal-500); color: var(--gv-teal-500); font-size: var(--gv-fs-13); }
+    .im-count { margin: 0; font-size: var(--gv-fs-s); font-weight: 500; color: var(--gv-bo-primary); }
   </style>
 </head>
 <body class="gv-bo">
@@ -57,10 +62,7 @@
         <div class="im-head">
           <div class="im-head__main">
             <h1 class="gv-bo-pagetitle">Input manager</h1>
-            <p class="gv-bo-pagelede" style="margin-bottom:0">Give feedback, add tags and move input from one project to another.</p>
-          </div>
-          <div class="im-head__actions">
-            <button class="gv-bo-link"><span data-gv-icon="download"></span>Exports</button>
+            <p class="gv-bo-pagelede" style="margin-bottom:0">Give feedback, add tags and move input from one project to another</p>
           </div>
         </div>
 
@@ -72,9 +74,14 @@
             <option>Go Vocal Admin</option>
             <option>Unassigned</option>
           </select>
-          <span class="im-feedback"><span class="gv-toggle"><input type="checkbox" aria-label="Only show posts that need feedback"><span class="track"></span></span> Only show posts that need feedback <span class="im-needs">36</span></span>
+          <span class="im-feedback"><span class="gv-toggle"><input type="checkbox" aria-label="Only show posts that need feedback"><span class="track"></span></span> Only show posts that need feedback <span class="im-needs">316</span></span>
           <div class="im-spacer"></div>
-          <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search input"><span class="gv-icon" data-gv-icon="search"></span></span>
+          <button class="gv-bo-link im-exports"><span data-gv-icon="download"></span>Exports</button>
+        </div>
+
+        <div class="im-subbar">
+          <p class="im-count">355 posts</p>
+          <span class="gv-bo-search im-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search input"><span class="gv-icon" data-gv-icon="search"></span></span>
         </div>
 
         <div class="gv-bo-imgr">
@@ -92,16 +99,15 @@
 
           <!-- Posts table -->
           <div>
-            <p class="im-count">355 posts</p>
             <table class="gv-bo-table is-bordered">
               <thead>
                 <tr>
                   <th class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></th>
                   <th>Title</th>
                   <th>Assignee</th>
-                  <th class="gv-bo-table__num gv-bo-th--sort">Comments <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
-                  <th class="gv-bo-table__num gv-bo-th--sort">Likes <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
-                  <th class="gv-bo-table__num gv-bo-th--sort">Dislikes <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th class="gv-bo-table__num gv-bo-th--sort">Comments</th>
+                  <th class="gv-bo-table__num gv-bo-th--sort">Likes</th>
+                  <th class="gv-bo-table__num gv-bo-th--sort">Dislikes</th>
                   <th class="gv-bo-th--sort is-sorted">Published on <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
                 </tr>
               </thead>
@@ -135,7 +141,7 @@
 
     // Posts: [title, projectTag, assignee, comments, likes, dislikes, when]
     const POSTS = [
-      ["This is my random idea!", "Let's Reimagine Dorothea Dix Park", "Unassigned", 1, 0, 0, "2 years ago"],
+      ["This is my random idea!", "Let's Reimagine Dorothea Dix Park", "Unassigned", 0, 1, 0, "2 years ago"],
       ["Sample idea", "", "Unassigned", 0, 0, 0, "2 years ago"],
       ["Sample survey", "", "Unassigned", 0, 0, 0, "2 years ago"],
       ["Traffic in the city", "Mapping: Building Protected Bike Lanes", "Unassigned", 2, 4, 1, "2 years ago"],
@@ -151,7 +157,7 @@
       return `<tr>
         <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
         <td><a class="gv-bo-table__title" href="#">${title}</a>${tag ? `<span class="im-tag">${tag}</span>` : ""}</td>
-        <td><select class="gv-bo-select" style="max-width:150px;height:34px;padding:4px 8px"><option>Unassigned</option><option>Go Vocal Admin</option><option>Rob Aris</option></select></td>
+        <td><select class="gv-bo-select" style="width:148px;height:36px;padding:4px 28px 4px 12px"><option>Unassigned</option><option>Go Vocal Admin</option><option>Rob Aris</option></select></td>
         <td class="gv-bo-table__num">${comments}</td>
         <td class="gv-bo-table__num"><span class="gv-bo-react"><span data-gv-icon="vote-up"></span>${likes}</span></td>
         <td class="gv-bo-table__num"><span class="gv-bo-react"><span data-gv-icon="vote-down"></span>${dislikes}</span></td>

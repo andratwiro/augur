@@ -10,24 +10,36 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
     .rp-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
     .rp-head__actions { margin-left: auto; flex: none; }
-    /* Page header in this view is 30px/700 (digest); canonical .gv-bo-pagehead is 28px — override locally */
-    .rp-pagehead { font-size: 30px; }
-    .rp-tabs { display: flex; gap: 32px; border-bottom: 1px solid var(--gv-divider); margin: 16px 0 0; }
-    .rp-tabs a { padding: 16px 0; font-size: 16px; line-height: 24px; color: var(--gv-text-secondary); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+    /* Page header in this view is 30px/700 (digest); canonical .gv-bo-pagehead is 28px/600 — override locally */
+    .rp-pagehead { font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 39px; }
+
+    /* Tabs + rows sit inside one bordered card (digest: border 1px #E0E0E0, radius 3px). */
+    .rp-card { border: 1px solid var(--gv-divider); border-radius: var(--gv-radius); background: #fff; margin-top: 16px; }
+    /* Tab bar = light-grey strip, rounded top, ~44px left indent (digest: bg #FBFBFB, radius 3px 3px 0 0, padding-left 44px). */
+    .rp-tabs { display: flex; gap: 32px; background: var(--gv-grey-50, #FBFBFB); border-bottom: 1px solid var(--gv-divider); border-radius: var(--gv-radius) var(--gv-radius) 0 0; padding: 0 0 0 44px; }
+    .rp-tabs a { padding: 16px 0; font-size: var(--gv-fs-base); line-height: 24px; color: var(--gv-text-secondary); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; }
     .rp-tabs a.is-active { color: var(--gv-bo-primary); border-color: var(--gv-bo-primary); }
-    .rp-title { font-size: 16px; font-weight: 700; line-height: 20.8px; }
+    /* Card body: rows get 36px side padding (digest: padding 0 36px 36px). */
+    .rp-list { padding: 0 36px; }
+
+    .rp-title { font-size: var(--gv-fs-base); font-weight: 700; line-height: 20.8px; }
     .rp-title a { color: var(--gv-bo-primary); text-decoration: none; }
     .rp-title a:hover { text-decoration: underline; }
-    .rp-meta { font-size: 14px; line-height: 21px; color: var(--gv-text-secondary); }
-    .rp-meta .gv-icon { width: 13px; height: 13px; vertical-align: -2px; color: var(--gv-orange-500); }
-    /* Row action buttons (digest): 14px/400, padding 9px 18px, radius 3px */
-    .rp-actions .gv-bo-link { font-size: 14px; }
-    .rp-actions .gv-btn.size-s { font-size: 14px; }
+    .rp-meta { font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-text-secondary); }
+    /* Modified-by indicator is a small round author avatar (digest: avatarImage, 28px native ≈ 14px, radius 50%) — NOT a coral pen. */
+    .rp-meta .rp-avatar { width: 16px; height: 16px; border-radius: 50%; background: var(--gv-grey-200); vertical-align: -3px; display: inline-block; }
+
+    /* Row action buttons use base .gv-btn size (digest: 16px/400, padding 9px 18px, radius 3px). */
+    .rp-actions { gap: 12px; }
+    /* Delete reads flat: white bg, transparent border, secondary-grey label (digest). */
+    .rp-actions .rp-del { background: #fff; border-color: transparent; color: var(--gv-text-secondary); }
+    .rp-actions .rp-del:hover { background: var(--gv-grey-100); }
   </style>
 </head>
 <body class="gv-bo">
@@ -43,13 +55,14 @@
 
         <span class="gv-bo-search" style="display:inline-block"><input class="gv-input" type="search" placeholder="Search reports" aria-label="Search reports" style="max-width:280px"><span class="gv-icon" data-gv-icon="search"></span></span>
 
-        <nav class="rp-tabs" aria-label="Report views">
-          <a href="#">Your reports (10)</a>
-          <a class="is-active" href="#">All reports (17)</a>
-          <a href="#">Progress reports (10)</a>
-        </nav>
-
-        <div style="margin-top:8px"><div id="reports"></div></div>
+        <div class="rp-card">
+          <nav class="rp-tabs" aria-label="Report views">
+            <a href="#">Your reports (10)</a>
+            <a class="is-active" href="#">All reports (17)</a>
+            <a href="#">Progress reports (10)</a>
+          </nav>
+          <div class="rp-list" id="reports"></div>
+        </div>
       </section>
     </div>
   </div>
@@ -80,15 +93,16 @@
       <div class="gv-bo-listrow">
         <div class="gv-bo-listrow__main">
           <div class="rp-title"><a href="#">${title}</a></div>
-          <div class="gv-bo-listrow__sub rp-meta">${date} · <span class="gv-icon" data-gv-icon="pen"></span> Modified ${days} days ago</div>
+          <div class="gv-bo-listrow__sub rp-meta">${date} • <span class="av rp-avatar" aria-hidden="true"></span> Modified ${days} days ago</div>
         </div>
         <div class="gv-bo-listrow__actions rp-actions">
-          <button class="gv-bo-link" style="color:var(--gv-text-secondary)"><span data-gv-icon="delete"></span>Delete</button>
-          <button class="gv-bo-link" style="color:var(--gv-text-secondary)"><span data-gv-icon="open-in-new"></span>Duplicate</button>
-          <button class="gv-btn secondary-outlined size-s" style="color:var(--gv-bo-link)"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+          <button class="gv-btn rp-del"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+          <button class="gv-btn secondary-outlined"><span data-gv-icon="open-in-new"></span><span class="gv-btn__label">Duplicate</span></button>
+          <button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
         </div>
       </div>`).join("");
     if (window.GVIcons) window.GVIcons.render(document.body);
+    if (window.GVAvatars) window.GVAvatars.fill(document.body);
   </script>
 </body>
 </html>

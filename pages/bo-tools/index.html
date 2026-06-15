@@ -14,28 +14,29 @@
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
     /* Real: H1 30px/700/#044D6C, margin 20px 0 16px */
-    .tl-head { margin: 20px 0 16px; font-size: 30px; font-weight: 700; color: var(--gv-bo-primary); line-height: 1.3; }
-    /* Real card: 800px content, padding 20px, height ~280px, white, soft shadow, margin-bottom 20px. */
-    .tl-list { display: flex; flex-direction: column; gap: 20px; max-width: 840px; }
-    .tl-card { display: flex; gap: 24px; background: #fff; border-radius: 3px; box-shadow: var(--gv-shadow); padding: 20px; align-items: stretch; }
-    /* Real media banner: 320 x 240, radius 3px, colourful illustration placeholder. */
-    .tl-card__media { flex: none; width: 320px; height: 240px; border-radius: 3px; display: grid; place-items: center; color: #fff; }
-    .tl-card__media .gv-icon { width: 64px; height: 64px; opacity: .95; }
-    .tl-card__body { min-width: 0; flex: 1 1 auto; padding-top: 4px; }
+    .tl-head { margin: 20px 0 16px; font-size: var(--gv-fs-xxxl); font-weight: 700; color: var(--gv-bo-primary); line-height: 1.3; }
+    /* Real card: 800px wide (incl. 20px padding), height 280px, white, soft shadow, gap 20px. */
+    .tl-list { display: flex; flex-direction: column; gap: 20px; max-width: 800px; }
+    .tl-card { display: flex; gap: 24px; background: var(--gv-white); border-radius: 3px; box-shadow: var(--gv-shadow); padding: 20px; align-items: flex-start; }
+    /* Real media banner: 320 x 240, radius 3px, colourful illustration in a white inner frame. */
+    .tl-card__media { flex: none; width: 320px; height: 240px; border-radius: 3px; display: grid; place-items: center; padding: 40px; box-sizing: border-box; }
+    .tl-card__frame { width: 100%; height: 100%; background: var(--gv-white); border-radius: 2px; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .tl-card__frame .gv-icon { width: 56px; height: 56px; }
+    .tl-card__body { min-width: 0; flex: 1 1 auto; }
     /* Real title: 18px/600/#044D6C, line-height 27px. */
-    .tl-card__title { margin: 0; font-size: 18px; font-weight: 600; color: var(--gv-bo-primary); line-height: 27px; }
+    .tl-card__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-bo-primary); line-height: 27px; }
     /* Real desc: 16px/400/#43515D, line-height 24px, margin 16px 0, width ~408px. */
-    .tl-card__desc { margin: 16px 0; font-size: 16px; color: #43515D; line-height: 24px; max-width: 408px; }
+    .tl-card__desc { margin: 16px 0; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-700); line-height: 24px; max-width: 408px; }
     .tl-card__actions { display: flex; align-items: center; gap: 8px; }
     /* Real dark button: bg #044D6C, padding 9px 18px, radius 3px, white 16px label. */
-    .tl-btn { display: inline-flex; align-items: center; gap: 10px; padding: 9px 18px; border: 0; border-radius: 3px; background: var(--gv-bo-primary); color: #fff; font-size: 16px; line-height: 26px; font-family: var(--gv-font-family); cursor: pointer; }
+    .tl-btn { display: inline-flex; align-items: center; gap: 10px; padding: 9px 18px; border: 0; border-radius: 3px; background: var(--gv-bo-primary); color: var(--gv-white); font-size: var(--gv-fs-base); line-height: 26px; font-family: var(--gv-font-family); cursor: pointer; }
     .tl-btn:hover { filter: brightness(0.9); }
     .tl-btn .gv-icon { width: 18px; height: 18px; }
     /* Real "Learn more": link blue #4183C4, 16px, padding 9px 18px. */
-    .tl-link { display: inline-flex; align-items: center; padding: 9px 18px; color: var(--gv-bo-link); font-size: 16px; line-height: 26px; text-decoration: none; }
+    .tl-link { display: inline-flex; align-items: center; padding: 9px 18px; color: var(--gv-bo-link); font-size: var(--gv-fs-base); line-height: 26px; text-decoration: none; }
     .tl-link:hover { text-decoration: underline; }
     /* Real locked button: grey fill + lock icon, not-allowed. */
-    .tl-locked { display: inline-flex; align-items: center; gap: 10px; padding: 9px 18px; border-radius: 3px; border: 0; background: var(--gv-cool-grey-300); color: #fff; font-size: 16px; line-height: 26px; font-family: var(--gv-font-family); cursor: not-allowed; }
+    .tl-locked { display: inline-flex; align-items: center; gap: 10px; padding: 9px 18px; border-radius: 3px; border: 0; background: var(--gv-cool-grey-300); color: var(--gv-white); font-size: var(--gv-fs-base); line-height: 26px; font-family: var(--gv-font-family); cursor: not-allowed; }
     .tl-locked .gv-icon { width: 16px; height: 16px; }
   </style>
 </head>
@@ -57,7 +58,7 @@
     const TOOLS = [
       // mediaColor values from styles.json digest: Esri rgb(128,207,216)=#80CFD8, Widget rgb(20,121,133)=teal-500, PowerBI darker teal #1A6E78.
       ["Online deliberation workshops", "Hold live video meetings, facilitate simultaneous group discussions and debates. Gather input, vote and reach consensus, just like you would offline.", "var(--gv-teal-500)", "comments", "Manage workshops", "arrow-right", false, "Learn more"],
-      ["Esri integration", "Connect your Esri account and import data from ArcGIS Online directly into your mapping projects.", "#80CFD8", "map", "Enable Esri", "arrow-right", false, ""],
+      ["Esri integration", "Connect your Esri account and import data from ArcGIS Online directly into your mapping projects.", "var(--gv-teal-200)", "map", "Enable Esri", "arrow-right", false, ""],
       ["Widget", "You can create a widget, customize it and add it to your own website to attract people to this platform.", "var(--gv-teal-500)", "open-in-new", "Manage widget", "arrow-right", false, ""],
       ["Public API Access", "Manage the credentials to create custom integrations on our public API.", "#C7A9E0", "key", "Manage API Keys", "", true, ""],
       ["Webhooks", "Configure webhooks to receive real-time notifications when events occur on your platform.", "#E3D2A0", "send", "Manage webhooks", "", true, ""],
@@ -70,7 +71,7 @@
         : `<button class="tl-btn">${alabel}${aicon ? `<span data-gv-icon="${aicon}"></span>` : ""}</button>`;
       const sec = secondary ? `<a class="tl-link" href="#">${secondary}</a>` : "";
       return `<div class="tl-card">
-        <div class="tl-card__media" style="background:${color}"><span data-gv-icon="${micon}"></span></div>
+        <div class="tl-card__media" style="background:${color}"><span class="tl-card__frame" style="color:${color}"><span data-gv-icon="${micon}"></span></span></div>
         <div class="tl-card__body">
           <h3 class="tl-card__title">${title}</h3>
           <p class="tl-card__desc">${desc}</p>

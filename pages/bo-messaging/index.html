@@ -16,15 +16,18 @@
     .ms-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
     .ms-head__main { min-width: 0; }
     .ms-head__actions { margin-left: auto; flex: none; }
-    .ms-title { margin: 0 0 4px; font-size: 30px; font-weight: 700; line-height: 1.3; color: var(--gv-bo-primary); }
+    .ms-title { margin: 0 0 4px; font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 1.3; color: var(--gv-bo-primary); }
     /* Automated-emails panel (alt tab) groups. */
     .ms-auto { display: none; }
     .ms-auto.is-active { display: block; }
     .ms-custom.is-hidden { display: none; }
-    .ms-grouphead { margin: 4px 0 6px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gv-cool-grey-500); }
+    .ms-grouphead { margin: 4px 0 6px; font-size: var(--gv-fs-s); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gv-cool-grey-500); }
     /* Manage button = real product default-size outlined button: 14px/300, 9px 18px, ~45px tall. */
-    .ms-manage { font-size: 14px; font-weight: 300; line-height: 20px; }
+    .ms-manage { font-size: var(--gv-fs-s); font-weight: 300; line-height: 20px; }
     .ms-manage [data-gv-icon] svg { width: 16px; height: 16px; }
+    /* Real custom-email rows are denser than the canonical .gv-bo-listrow (18px 0):
+       probed e2e-admin-list-row = padding 10px 0, height ~82px. Match page-local. */
+    .ms-custom .gv-bo-listrow { padding: 10px 0; }
   </style>
 </head>
 <body class="gv-bo">

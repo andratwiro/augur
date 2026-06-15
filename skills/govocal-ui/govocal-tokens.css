@@ -124,11 +124,14 @@
      base fallbacks ("Public Sans","Public Sans",…) — every live capture shows it
      doubled. Mirror it verbatim so probed font-family checkpoints diff cleanly. */
   --gv-font-family: 'Public Sans', 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Type scale is t-shirt-named (xs · s · base · l · xl …); --gv-fs-13 is the one
+     deliberate numeric step — a 13px micro-size that sits between xs(12) and s(14)
+     and recurs across BO chrome (captions, toasts, help text, drop placeholders). */
   --gv-fs-xs:     12px;
-  --gv-fs-13:     13px;  /* small-UI step (captions, toasts, help, drop placeholders) — recurs in BO chrome */
+  --gv-fs-13:     13px;
   --gv-fs-s:      14px;
-  --gv-fs-base:   16px;
-  --gv-fs-m:      16px;
+  --gv-fs-base:   16px;            /* body default — the single 16px source */
+  --gv-fs-m:      var(--gv-fs-base); /* alias of base; kept so existing .gv-* refs resolve */
   --gv-fs-l:      18px;
   --gv-fs-xl:     21px;
   --gv-fs-xxl:    25px;

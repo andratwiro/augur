@@ -15,6 +15,15 @@
 // Prototypes are intentionally EXEMPT — they're the one tier allowed to copy, fork
 // and break. This only governs the shared library (components/ and pages/).
 //
+// Hard invariants (exit 1): INV-1 no asset copies · INV-2 canonical refs only ·
+//   INV-3 no .gv-* redefinition · INV-6 no redundant text literals — a page
+//   font-size / text `color:` whose value already equals a token MUST use the token
+//   (parsed live from govocal-tokens.css; the lint names the exact replacement).
+//   INV-6 is what makes "text drinks from tokens" self-enforcing instead of a
+//   recurring manual sweep — a value with NO token is a legitimate one-off, untouched.
+// Soft warnings (don't fail): INV-4 judgment-zone visuals (non-text colour, elevation,
+//   untokenized font-sizes) · INV-5 canonical .gv-* blocks no demo/primitive surfaces.
+//
 // Usage:  npm run lint   (exit 1 on any hard violation; warnings don't fail)
 
 import fs from 'node:fs';
@@ -28,6 +37,31 @@ const CANONICAL = '../../skills/govocal-ui/';
 
 const violations = []; // hard — break the layering
 const warnings = [];    // soft — page-authored styling that should live upstream
+
+// ── Token tables (parsed from canonical govocal-tokens.css) ───────────────────
+// INV-6 below uses these to catch the recurring drift: a page hardcodes a value
+// (font-size:14px, color:#333) that ALREADY has a token. That's never correct for
+// text — the token exists, so the literal must drink from it. We only know it's
+// redundant because we read the real token values here; a value with NO token is a
+// legitimate one-off (per the "tokenize by judgment" rule) and is left alone.
+const expandHex = (h) => {
+  h = h.toLowerCase().replace('#', '');
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  return '#' + h;
+};
+const fsByValue = new Map();    // "14px" → "--gv-fs-s"
+const colorByValue = new Map(); // "#333333" → "--gv-grey-800"
+const tokensPath = path.join(ROOT, 'skills/govocal-ui/govocal-tokens.css');
+if (fs.existsSync(tokensPath)) {
+  const t = fs.readFileSync(tokensPath, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const m of t.matchAll(/(--gv-fs-[\w-]+):\s*([0-9.]+px)\s*;/g)) {
+    if (!fsByValue.has(m[2])) fsByValue.set(m[2], m[1]); // first definition wins
+  }
+  for (const m of t.matchAll(/(--gv-[\w-]+):\s*(#[0-9a-fA-F]{3,8})\s*;/g)) {
+    const v = expandHex(m[2]);
+    if (!colorByValue.has(v)) colorByValue.set(v, m[1]);
+  }
+}
 
 for (const tier of TIERS) {
   const base = path.join(ROOT, tier);
@@ -62,17 +96,47 @@ for (const tier of TIERS) {
       violations.push(`[reinvent]  ${rel}/index.html defines library classes in <style>: ${defined.slice(0, 8).join(', ')}${defined.length > 8 ? ` (+${defined.length - 8})` : ''} — promote to canonical, then only use them here.`);
     }
 
-    // INV-4 (warn, PAGES only): a page should be pure assembly — layout + content.
-    // Raw colour/elevation/type in a page won't sync from upstream. (Component demos
-    // are exempt: their <style> is showcase chrome, not the component itself.)
+    // INV-4 (warn) + INV-6 (hard), PAGES only: a page should be pure assembly —
+    // layout + content. Raw colour/elevation/type won't sync from upstream.
+    // (Component demos are exempt: their <style> is showcase chrome, not the
+    // component itself.) We split the old fuzzy "page-authored visuals" warning:
+    //   • INV-6 [redundant] (HARD): a font-size or text `color:` literal whose value
+    //     EXACTLY equals a token. Zero judgment — the token exists, so the literal is
+    //     strictly wrong. We name the replacement so the fix is mechanical. This is
+    //     the recurring drift; making it a violation means "text drinks from tokens"
+    //     is enforced, not re-swept by hand every time.
+    //   • INV-4 [styling] (SOFT): the judgment zone — non-text colour (bg/border),
+    //     elevation, and font-sizes with NO token (genuine one-offs). Surfaced, not failed.
     if (tier === 'pages') {
       const inlineStyles = [...html.matchAll(/\sstyle=("|')([^"']*)\1/g)].map((m) => m[2]).join(';');
-      const hay = styleBlocks + ';' + inlineStyles;
-      const hex = (hay.match(/#[0-9a-fA-F]{3,8}\b/g) || []).filter((h) => !/^#(fff|ffffff|000|000000)$/i.test(h));
-      const shadows = (hay.match(/box-shadow\s*:\s*(?!none)/g) || []).length;
-      const fonts = (hay.match(/font-size\s*:\s*\d/g) || []).length;
-      if (hex.length || shadows || fonts) {
-        warnings.push(`[styling]   ${rel}/index.html page-authored visuals: ${hex.length} hex, ${shadows} box-shadow, ${fonts} font-size — move colour/elevation/type to tokens/components (layout css is fine).`);
+      // strip /* */ comments — documented hexes in comments aren't rendered styling.
+      const css = styleBlocks.replace(/\/\*[\s\S]*?\*\//g, '') + ';' + inlineStyles;
+
+      // INV-6: literals that already have a token (must use it).
+      const redundant = new Map(); // "font-size:14px → var(--gv-fs-s)" → count
+      const bump = (k) => redundant.set(k, (redundant.get(k) || 0) + 1);
+      for (const m of css.matchAll(/font-size:\s*([0-9.]+px)/g)) {
+        const tok = fsByValue.get(m[1]);
+        if (tok) bump(`font-size:${m[1]} → var(${tok})`);
+      }
+      // text colour only — `color:` not `background-color:`/`border-color:`, so chart
+      // fills and viz backgrounds (genuine one-offs) are out of scope.
+      for (const m of css.matchAll(/(?<![-\w])color:\s*(#[0-9a-fA-F]{3,8})\b/g)) {
+        const tok = colorByValue.get(expandHex(m[1]));
+        if (tok) bump(`color:${m[1]} → var(${tok})`);
+      }
+      if (redundant.size) {
+        const total = [...redundant.values()].reduce((a, b) => a + b, 0);
+        const list = [...redundant.entries()].map(([k, n]) => (n > 1 ? `${k} (×${n})` : k)).join('; ');
+        violations.push(`[redundant] ${rel}/index.html — ${total} text literal(s) already have a token; drink from it: ${list}`);
+      }
+
+      // INV-4: remaining judgment-zone visuals (non-text colour + elevation + untokenized type).
+      const hex = (css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).filter((h) => !/^#(fff|ffffff|000|000000)$/i.test(h));
+      const shadows = (css.match(/box-shadow\s*:\s*(?!none)/g) || []).length;
+      const looseFonts = (css.match(/font-size:\s*([0-9.]+px)/g) || []).filter((s) => !fsByValue.has(s.split(/:\s*/)[1])).length;
+      if (hex.length || shadows || looseFonts) {
+        warnings.push(`[styling]   ${rel}/index.html page-authored visuals: ${hex.length} hex, ${shadows} box-shadow, ${looseFonts} non-token font-size — promote what's systemic to tokens/components; genuine one-offs are fine (layout css is fine).`);
       }
     }
   }

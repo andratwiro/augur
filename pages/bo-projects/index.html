@@ -17,25 +17,25 @@
     .pl-head { display: flex; align-items: flex-start; gap: 16px; margin: 0 0 18px; }
     .pl-head__actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
     /* Real title is 30px / 700 (digest), heavier than the canonical pagehead default. */
-    .pl-title { font-size: 30px; font-weight: 700; line-height: 1.2; }
+    .pl-title { font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 1.2; }
     /* Secondary view nav (Projects / Folders / Calendar / Arrange). */
     .pl-subnav { display: flex; gap: 28px; border-bottom: 1px solid var(--gv-divider); margin: 4px 0 18px; }
-    .pl-subnav a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 0 12px; font-size: 16px; color: var(--gv-text-secondary); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .pl-subnav a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 0 12px; font-size: var(--gv-fs-base); color: var(--gv-text-secondary); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
     .pl-subnav a.is-active { color: var(--gv-bo-primary); border-color: var(--gv-bo-primary); font-weight: 600; }
     .pl-subnav a .gv-icon { width: 18px; height: 18px; }
     /* Filter toolbar — real controls are 48px tall, white, bordered. */
     .pl-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
-    .pl-filters .gv-bo-select { height: 48px; padding: 12px; max-width: 240px; width: auto; font-size: 16px; }
-    .pl-filters .gv-bo-dateface { height: 48px; font-size: 16px; }
+    .pl-filters .gv-bo-select { height: 48px; padding: 12px; max-width: 240px; width: auto; font-size: var(--gv-fs-base); }
+    .pl-filters .gv-bo-dateface { height: 48px; font-size: var(--gv-fs-base); }
     .pl-filters .pl-spacer { margin-left: auto; }
     .pl-filters .gv-bo-search input { height: 48px; }
     /* Small project thumbnail (we don't ship real project art — neutral tile). */
-    .pl-thumb { width: 36px; height: 28px; border-radius: 4px; flex: none; display: grid; place-items: center; color: #fff; background: var(--gv-teal-400); overflow: hidden; }
+    .pl-thumb { width: 36px; height: 28px; border-radius: 4px; flex: none; display: grid; place-items: center; color: var(--gv-white); background: var(--gv-teal-400); overflow: hidden; }
     .pl-thumb .gv-icon { width: 16px; height: 16px; opacity: .9; }
     .pl-proj { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .pl-proj__name { color: #333; text-decoration: none; font-size: 14px; }
+    .pl-proj__name { color: var(--gv-grey-800); text-decoration: none; font-size: var(--gv-fs-s); }
     .pl-proj__name:hover { color: var(--gv-bo-link); text-decoration: underline; }
-    .pl-proj__sub { display: block; font-size: 12px; color: var(--gv-text-secondary); line-height: 18px; margin-top: 2px; }
+    .pl-proj__sub { display: block; font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); line-height: 18px; margin-top: 2px; }
     /* Participants count is left-aligned in the real product. */
     .pl-num { text-align: left; white-space: nowrap; }
     .pl-num-head { display: inline-flex; align-items: center; gap: 5px; }
@@ -43,36 +43,36 @@
     /* Managers: photo avatar, or grey ring placeholder + muted "Not assigned". */
     .pl-mgr { display: inline-flex; align-items: center; gap: 10px; }
     .pl-avatar { width: 32px; height: 32px; border-radius: 50%; flex: none; object-fit: cover; }
-    .pl-noavatar { width: 20px; height: 20px; border-radius: 50%; background: #e0e0e0; flex: none; }
+    .pl-noavatar { width: 20px; height: 20px; border-radius: 50%; background: var(--gv-grey-300); flex: none; }
     .pl-unassigned { display: inline-flex; align-items: center; gap: 10px; color: var(--gv-text-secondary); }
     /* Visibility: thin vertical status bar + status text + visibility sub-line. */
     .pl-vis { display: flex; align-items: center; gap: 10px; }
     .pl-vis__bar { width: 4px; height: 16px; border-radius: 2px; flex: none; background: var(--gv-cool-grey-500); }
-    .pl-vis.is-published .pl-vis__bar { background: #04884C; }
-    .pl-vis.is-draft .pl-vis__bar { background: #FF672F; }
+    .pl-vis.is-published .pl-vis__bar { background: var(--gv-green-save); }
+    .pl-vis.is-draft .pl-vis__bar { background: var(--gv-orange-500); }
     .pl-vis__txt { line-height: 1.25; }
-    .pl-vis__status { font-size: 14px; color: #333; }
-    .pl-vis__who { display: block; font-size: 12px; color: var(--gv-text-secondary); line-height: 18px; }
-    .pl-foot { text-align: center; padding: 18px; color: var(--gv-text-secondary); font-size: 16px; }
+    .pl-vis__status { font-size: var(--gv-fs-s); color: var(--gv-grey-800); }
+    .pl-vis__who { display: block; font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); line-height: 18px; }
+    .pl-foot { text-align: center; padding: 18px; color: var(--gv-text-secondary); font-size: var(--gv-fs-base); }
     /* Sub-nav views. */
     .pl-view { display: none; }
     .pl-view.is-active { display: block; }
     /* Folders view: Manager/Status/Spaces filter pills. */
     .pl-pills { display: flex; gap: 10px; margin-bottom: 18px; }
-    .pl-pill { padding: 10px 16px; border: 1px solid var(--gv-border-dark); border-radius: 3px; background: #fff; color: var(--gv-bo-primary); font-size: 14px; cursor: pointer; font-family: var(--gv-font-family); }
+    .pl-pill { padding: 10px 16px; border: 1px solid var(--gv-border-dark); border-radius: 3px; background: var(--gv-white); color: var(--gv-bo-primary); font-size: var(--gv-fs-s); cursor: pointer; font-family: var(--gv-font-family); }
     .pl-pill:hover { border-color: var(--gv-bo-primary); }
     .pl-folder { display: flex; align-items: center; gap: 12px; }
     .pl-folder__thumb { width: 28px; height: 28px; border-radius: 4px; flex: none; display: grid; place-items: center; background: var(--gv-grey-200); color: var(--gv-cool-grey-500); overflow: hidden; }
     .pl-folder__thumb .gv-icon { width: 15px; height: 15px; }
-    .pl-folder__name { color: #333; font-size: 14px; }
-    .pl-folder__sub { display: block; font-size: 12px; color: var(--gv-text-secondary); margin-top: 2px; }
+    .pl-folder__name { color: var(--gv-grey-800); font-size: var(--gv-fs-s); }
+    .pl-folder__sub { display: block; font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); margin-top: 2px; }
     /* Calendar view: feature-promo empty state. */
     .pl-calendar { display: flex; gap: 40px; align-items: flex-start; padding: 10px 0; max-width: 900px; }
     .pl-calendar__copy { max-width: 360px; }
-    .pl-calendar__title { margin: 0 0 12px; font-size: 25px; font-weight: 700; line-height: 1.25; color: var(--gv-bo-primary); }
-    .pl-calendar__desc { margin: 0 0 20px; font-size: 16px; color: var(--gv-text-secondary); line-height: 1.5; }
+    .pl-calendar__title { margin: 0 0 12px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.25; color: var(--gv-bo-primary); }
+    .pl-calendar__desc { margin: 0 0 20px; font-size: var(--gv-fs-base); color: var(--gv-text-secondary); line-height: 1.5; }
     .pl-calendar__actions { display: flex; align-items: center; gap: 18px; }
-    .pl-calendar__btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border: 0; border-radius: 3px; background: var(--gv-green-200, #BDE3CB); color: #fff; font-size: 16px; font-family: var(--gv-font-family); cursor: not-allowed; }
+    .pl-calendar__btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border: 0; border-radius: 3px; background: var(--gv-green-200, #BDE3CB); color: var(--gv-white); font-size: var(--gv-fs-base); font-family: var(--gv-font-family); cursor: not-allowed; }
     .pl-calendar__illus { flex: 1 1 auto; min-width: 0; }
     .pl-calendar__illus svg { width: 100%; height: auto; border-radius: 4px; box-shadow: var(--gv-shadow); }
   </style>

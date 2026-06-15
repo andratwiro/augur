@@ -17,17 +17,17 @@
     .st-panel.is-active { display: block; }
     .st-divider { border: 0; border-top: 1px solid var(--gv-divider); margin: 28px 0; }
     /* Languages multi-value field. */
-    .st-langbox { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 48px; padding: 6px 12px; border: 1px solid var(--gv-border-dark); border-radius: 3px; background: #fff; max-width: 540px; }
-    .st-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 3px; background: var(--gv-grey-200); color: var(--gv-bo-primary); font-size: 14px; }
+    .st-langbox { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 48px; padding: 6px 12px; border: 1px solid var(--gv-border-dark); border-radius: 3px; background: var(--gv-white); max-width: 540px; }
+    .st-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 3px; background: var(--gv-grey-200); color: var(--gv-bo-primary); font-size: var(--gv-fs-s); }
     .st-chip button { border: 0; background: none; color: var(--gv-cool-grey-600); cursor: pointer; line-height: 1; padding: 0; }
     .st-langbox__arrow { margin-left: auto; color: var(--gv-cool-grey-500); }
     /* Colour field: swatch + hex input. */
-    .st-color { display: flex; align-items: stretch; max-width: 220px; border: 1px solid var(--gv-border-dark); border-radius: 3px; overflow: hidden; }
-    .st-color__swatch { width: 40px; flex: none; }
-    .st-color input { border: 0; flex: 1 1 auto; padding: 0 12px; font-family: var(--gv-font-family); font-size: 14px; color: var(--gv-text-primary); outline: none; min-width: 0; }
+    .st-color { display: flex; align-items: stretch; width: 180px; height: 46px; border: 1px solid var(--gv-grey-700); border-radius: 3px; overflow: hidden; }
+    .st-color__swatch { width: 46px; flex: none; }
+    .st-color input { border: 0; flex: 1 1 auto; padding: 0 10px; font-family: var(--gv-font-family); font-size: var(--gv-fs-s); color: var(--gv-text-primary); outline: none; min-width: 0; }
     /* Logo preview. */
     .st-logo { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 120px; height: 80px; border: 1px solid var(--gv-grey-300); border-radius: 3px; }
-    .st-logo__x { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%; background: var(--gv-cool-grey-500); color: #fff; border: 0; display: grid; place-items: center; cursor: pointer; }
+    .st-logo__x { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%; background: var(--gv-cool-grey-500); color: var(--gv-white); border: 0; display: grid; place-items: center; cursor: pointer; }
     /* Settings sub-tabs (Statuses, Tags). */
     .st-subtabs { display: flex; gap: 28px; border-bottom: 1px solid var(--gv-divider); margin: 0 0 20px; }
     .st-subtabs a { padding: 10px 0; color: var(--gv-text-secondary); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -37,15 +37,19 @@
     .st-collapse { display: flex; align-items: center; gap: 8px; padding: 14px 0; border-top: 1px solid var(--gv-divider); color: var(--gv-bo-primary); cursor: pointer; }
     .st-collapse:first-of-type { border-top: 0; }
     .st-collapse .gv-icon { color: var(--gv-cool-grey-500); }
-    .st-swatch { width: 16px; height: 16px; border-radius: 3px; flex: none; }
+    .st-swatch { width: 24px; height: 24px; border-radius: 3px; flex: none; }
     .st-addbtn { margin-bottom: 6px; }
     .st-fullbtn { width: 100%; margin-top: 14px; }
     .st-warn { color: var(--gv-red-500); }
     /* Field row: label left, multiloc switcher right (matches real). */
     .st-fieldrow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; max-width: 540px; }
     .st-fieldrow .gv-label { margin-bottom: 0; }
-    /* Real field labels are cool-grey 16px/400, not blue/500. */
-    .st-lbl { color: var(--gv-cool-grey-600); font-weight: 400; }
+    /* Real field labels are cool-grey 16px/400, not blue/500. Self-sufficient so
+       it beats the canonical `.gv-bo-field > .gv-label` blue/500 rule. */
+    .st-lbl { display: inline-block; margin-bottom: 8px; font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); }
+    .gv-bo-field > .st-lbl { display: block; }
+    /* Multiloc locale codes render uppercase in the real product (source text is lowercase). */
+    .st-ml button { text-transform: uppercase; }
     .st-lbl-info { color: var(--gv-cool-grey-500); display: inline-flex; vertical-align: middle; margin-left: 5px; }
     .st-lbl-info svg, .st-lbl-info .gv-icon { width: 14px; height: 14px; }
     /* Multiloc: lowercase locale labels, filled dot. */
@@ -54,7 +58,7 @@
     /* Toggle rows where the toggle sits on the LEFT (real layout). */
     .st-togglerow { display: flex; align-items: flex-start; gap: 12px; padding: 6px 0; max-width: 640px; }
     .st-togglerow .gv-toggle { flex: none; margin-top: 2px; }
-    .st-togglerow__title { font-size: 14px; font-weight: 700; color: var(--gv-bo-primary); }
+    .st-togglerow__title { font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-bo-primary); }
     /* Real subheads/heads use 500 weight, not 700. */
     .st-head { font-weight: 500; }
     .st-sub { font-weight: 500; }
@@ -89,21 +93,21 @@
             <p class="gv-bo-help" style="margin-bottom:22px">Choose how people will see your organization name, select the languages of your platform and link to your website.</p>
             <div class="gv-bo-field">
               <div class="st-fieldrow">
-                <span class="gv-label st-lbl">Name of city or organization</span>
-                <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="st-ml-dot done"></span>en</button><button type="button"><span class="st-ml-dot done"></span>es-ES</button></div>
+                <span class="st-lbl">Name of city or organization</span>
+                <div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="st-ml-dot done"></span>es-ES</button></div>
               </div>
               <input class="gv-input" type="text" value="City of Raleigh">
             </div>
             <div class="gv-bo-field">
-              <span class="gv-label st-lbl">Languages<span class="st-lbl-info" data-gv-icon="info-outline"></span></span>
+              <span class="st-lbl">Languages<span class="st-lbl-info" data-gv-icon="info-outline"></span></span>
               <div class="st-langbox">
                 <span class="st-chip">English <button aria-label="Remove English">✕</button></span>
                 <span class="st-chip">Español (España) <button aria-label="Remove Spanish">✕</button></span>
                 <span class="st-langbox__arrow" data-gv-icon="chevron-down"></span>
               </div>
             </div>
-            <div class="gv-bo-field"><span class="gv-label st-lbl">Website<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><input class="gv-input" type="text" value="https://raleighnc.gov/"></div>
-            <div class="gv-bo-field"><span class="gv-label st-lbl">Population<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><input class="gv-input" type="text" value="100000"></div>
+            <div class="gv-bo-field"><span class="st-lbl">Website<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><input class="gv-input" type="text" value="https://raleighnc.gov/"></div>
+            <div class="gv-bo-field"><span class="st-lbl">Population<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><input class="gv-input" type="text" value="100000"></div>
             <button class="gv-btn success">Save</button>
 
             <hr class="st-divider">
@@ -114,16 +118,16 @@
             </div>
             <div class="st-togglerow">
               <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
-              <div><div class="st-togglerow__title">Detect inappropriate content</div><p class="gv-bo-help" style="margin-top:2px">Auto-detect inappropriate content posted on the platform.</p></div>
+              <div><div class="st-togglerow__title">Detect inappropriate content<span class="st-lbl-info" data-gv-icon="info-outline"></span></div><p class="gv-bo-help" style="margin-top:2px">Auto-detect inappropriate content posted on the platform.</p></div>
             </div>
-            <h3 class="gv-bo-subhead st-sub">User name display <span style="font-weight:400;font-size:14px;color:var(--gv-text-secondary)">(for users with email confirmed only)</span></h3>
+            <h3 class="gv-bo-subhead st-sub">User name display <span style="font-weight:400;font-size:var(--gv-fs-s);color:var(--gv-text-secondary)">(for users with email confirmed only)</span></h3>
             <p class="gv-bo-help" style="margin-bottom:14px;max-width:620px">Choose how users without a name in their profile will appear in the platform. This will occur when you set the access rights for a phase to 'Email confirmation'. In all cases, upon participation, users will be able to update the profile name we autogenerated for them.</p>
-            <label class="gv-radio" style="display:flex"><input type="radio" name="uname" checked><span class="circle"></span>User · eg User 123456</label>
-            <label class="gv-radio" style="display:flex"><input type="radio" name="uname"><span class="circle"></span>Animal · eg Elephant Cat</label>
+            <label class="gv-radio" style="display:flex;color:var(--gv-bo-primary);font-size:var(--gv-fs-base)"><input type="radio" name="uname" checked><span class="circle"></span>User · eg User 123456</label>
+            <label class="gv-radio" style="display:flex;color:var(--gv-bo-primary);font-size:var(--gv-fs-base)"><input type="radio" name="uname"><span class="circle"></span>Animal · eg Elephant Cat</label>
             <hr class="st-divider">
             <h2 class="gv-bo-formhead st-head">Project approval settings</h2>
             <p class="gv-bo-help" style="margin-bottom:18px;max-width:620px">Select which admins will receive notifications to approve projects. Folder Managers are by default approvers for all projects within their folders.</p>
-            <div class="gv-bo-field"><span class="gv-label st-lbl">Select approvers</span><select class="gv-bo-select"><option>Select approvers</option><option>Go Vocal Admin</option></select></div>
+            <div class="gv-bo-field"><span class="st-lbl">Select approvers</span><select class="gv-bo-select"><option>Select approvers</option><option>Go Vocal Admin</option></select></div>
             <button class="gv-btn admin-dark">Save</button>
           </div>
 
@@ -132,12 +136,12 @@
             <h2 class="gv-bo-formhead st-head">Platform branding</h2>
             <p class="gv-bo-help" style="margin-bottom:18px">Add your logo and set the platform colors.</p>
             <h3 class="gv-bo-subhead st-sub" style="margin-top:0">Colors</h3>
-            <div class="gv-bo-field"><span class="gv-label st-lbl">Primary color</span>
-              <div class="st-color"><span class="st-color__swatch" style="background:#08833a"></span><input type="text" value="#08833a"></div></div>
-            <div class="gv-bo-field"><span class="gv-label st-lbl">Secondary color</span>
+            <div class="gv-bo-field"><span class="st-lbl">Primary color</span>
+              <div class="st-color"><span class="st-color__swatch" style="background:var(--gv-green-save)"></span><input type="text" value="#08833a"></div></div>
+            <div class="gv-bo-field"><span class="st-lbl">Secondary color</span>
               <div class="st-color"><span class="st-color__swatch" style="background:#830851"></span><input type="text" value="#830851"></div></div>
-            <div class="gv-bo-field"><span class="gv-label st-lbl">Text color</span>
-              <div class="st-color"><span class="st-color__swatch" style="background:#1e1e1e"></span><input type="text" value="#1e1e1e"></div></div>
+            <div class="gv-bo-field"><span class="st-lbl">Text color</span>
+              <div class="st-color"><span class="st-color__swatch" style="background:var(--gv-text-heading)"></span><input type="text" value="#1e1e1e"></div></div>
             <h3 class="gv-bo-subhead st-sub">Logo</h3>
             <div class="st-logo"><button class="st-logo__x" aria-label="Remove logo"><span data-gv-icon="close"></span></button><span style="font-weight:700;color:var(--gv-green-500)">🌳 Raleigh</span></div>
             <div style="margin-top:20px"><button class="gv-btn admin-dark st-btn-disabled" disabled>Save</button></div>
@@ -148,10 +152,10 @@
             <h2 class="gv-bo-formhead st-head">Registration</h2>
             <h3 class="gv-bo-subhead st-sub" style="margin-top:0">Registration and login helper text</h3>
             <p class="gv-bo-help" style="margin-bottom:18px">Add short descriptions for the top of the sign-up and login forms.</p>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="gv-label st-lbl">Enter email step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="st-ml-dot done"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="gv-label st-lbl">Enter password step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="st-ml-dot done"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="gv-label st-lbl">'Complete your profile' step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="st-ml-dot done"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="gv-label st-lbl">Demographic questions<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="st-ml-dot done"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text" value="Can't sign up? Use this test account: pemeta9222@jucatyo.com, p"></div>
+            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Enter email step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
+            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Enter password step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
+            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">'Complete your profile' step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
+            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Demographic questions<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text" value="Can't sign up? Use this test account: pemeta9222@jucatyo.com, p"></div>
             <button class="gv-btn admin-dark st-btn-disabled" disabled>Save</button>
 
             <hr class="st-divider">
@@ -229,8 +233,8 @@
       <div class="gv-bo-listrow">
         <span class="gv-bo-listrow__handle" data-gv-icon="dots-horizontal"></span>
         <label class="gv-toggle"><input type="checkbox"${on ? " checked" : ""}><span class="track"></span></label>
-        <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:16px"><a href="#">${name}</a></h4></div>
-        <div class="gv-bo-listrow__actions">${def ? '<span style="color:var(--gv-text-secondary);font-size:13px">Default question</span>' : smallBtn("Delete", "delete")}${smallBtn("Edit", "pen")}</div>
+        <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:var(--gv-fs-base)"><a href="#">${name}</a>${name === "Place of residence" ? '<span class="st-lbl-info" data-gv-icon="info-outline"></span>' : ""}</h4></div>
+        <div class="gv-bo-listrow__actions">${def ? '<span style="color:var(--gv-text-secondary);font-size:var(--gv-fs-13)">Default question</span>' : smallBtn("Delete", "delete")}${smallBtn("Edit", "pen")}</div>
       </div>`).join("");
 
     // Platform tags: [name, category]
@@ -245,7 +249,7 @@
     ];
     document.getElementById("tagrows").innerHTML = TAGS.map(([name, cat]) => `
       <div class="gv-bo-listrow">
-        <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:16px"><a href="#">${name}</a></h4><div class="gv-bo-listrow__sub st-sub-blue">${cat}</div></div>
+        <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:var(--gv-fs-base)"><a href="#">${name}</a></h4><div class="gv-bo-listrow__sub st-sub-blue">${cat}</div></div>
         <div class="gv-bo-listrow__actions">${smallBtn("Edit", "pen")}${smallBtn("Delete", "delete")}</div>
       </div>`).join("");
 
@@ -254,21 +258,21 @@
     document.getElementById("arearows").innerHTML = AREAS.map(([name, warn]) => `
       <div class="gv-bo-listrow">
         <span class="gv-bo-listrow__handle" data-gv-icon="dots-horizontal"></span>
-        <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:15px"><a href="#">${name}</a></h4></div>
+        <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:var(--gv-fs-base)"><a href="#">${name}</a></h4></div>
         <div class="gv-bo-listrow__actions">${warn ? '<span class="st-warn gv-icon" data-gv-icon="alert-circle" title="Used in access rights"></span>' : ""}${smallBtn("Delete", "delete", warn)}${smallBtn("Edit", "pen")}</div>
       </div>`).join("");
 
     // Input statuses: [name, color, locked]
     const STATUSES = [
-      ["screening", "#595959", true], ["proposed", "var(--gv-blue-400)", true], ["viewed", "var(--gv-teal-400)", false],
-      ["under consideration", "var(--gv-teal-500)", false], ["accepted", "var(--gv-green-500)", false],
-      ["rejected", "var(--gv-red-500)", false], ["implemented", "var(--gv-green-600)", false],
+      ["screening", "#4b4b4b", true], ["proposed", "#057abe", true], ["viewed", "#01a1b1", false],
+      ["under consideration", "#0080a5", false], ["accepted", "#04884c", false],
+      ["rejected", "#e52516", false], ["implemented", "#0e7b3e", false],
     ];
     document.getElementById("statusrows").innerHTML = STATUSES.map(([name, color, locked]) => `
       <div class="gv-bo-listrow">
         <span class="gv-bo-listrow__handle" data-gv-icon="${locked ? "lock" : "dots-horizontal"}"></span>
         <span class="st-swatch" style="background:${color}"></span>
-        <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:15px"><a href="#">${name}</a></h4></div>
+        <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:var(--gv-fs-base)"><a href="#">${name}</a></h4></div>
         <div class="gv-bo-listrow__actions">${smallBtn("Delete", "delete", true)}${smallBtn("Edit", "pen")}</div>
       </div>`).join("");
 

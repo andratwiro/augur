@@ -13,22 +13,46 @@
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
-    .pm-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+    .pm-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
     .pm-head__main { max-width: 540px; }
+    /* Real h1: 30px/700/#044D6C, line-height 39px (digest); canonical .gv-bo-pagehead is 28px/600 */
+    .pm-title { margin: 0; font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 39px; color: var(--gv-bo-primary); }
+    /* Real lede: 16px/400, #596B7A, line-height 24px, ~521px wide (digest) */
+    .pm-lede { margin: 12px 0 0; font-size: var(--gv-fs-base); line-height: 24px; color: var(--gv-cool-grey-500); max-width: 522px; }
     .pm-head__actions { margin-left: auto; display: flex; align-items: center; gap: 14px; flex: none; }
-    .pm-add-disabled { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-cool-grey-400); font-size: 14px; cursor: not-allowed; }
-    .pm-cardtitle { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--gv-bo-primary); }
-    .pm-card + .pm-card { margin-top: 18px; }
-    /* Real DEFAULT badge: filled grey pill, no border, bold uppercase (digest: #596B7A on #EBEDEF, 12px/700, 0 6px, radius 3px) */
+    .pm-add-disabled { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-s); cursor: not-allowed; opacity: .55; }
+    /* Real card title: 18px/500/#044D6C, line-height 30px (digest span "Pages shown…") */
+    .pm-cardtitle { margin: 0 0 8px; font-size: var(--gv-fs-l); font-weight: 500; line-height: 30px; color: var(--gv-bo-primary); }
+    .pm-card + .pm-card { margin-top: 24px; }
+    /* Real rows are denser than canonical .gv-bo-listrow (18px 0): real div is padding 10px 0 (digest). */
+    .pm-card .gv-bo-listrow { padding: 13px 0; }
+    /* Real page-name title: 16px/500, #1E1E1E (digest "All projects" span) — not the canonical teal 18px. */
+    .pm-card .gv-bo-listrow__title { font-size: var(--gv-fs-base); font-weight: 500; color: var(--gv-text-heading); gap: 0; }
+    /* Real row buttons: secondary-outlined 14px, padding 9px 18px, grey #596B7A border, radius 3px (~45px tall).
+       Edit text = #044D6C (bo-primary); View text = #4183C4 (link blue). Bigger than .size-s. */
+    .pm-card .gv-bo-listrow__actions .gv-btn {
+      padding: 9px 18px;
+      font-size: var(--gv-fs-s);
+      line-height: 16px;
+      font-weight: 400;
+      color: var(--gv-bo-primary);
+      border-color: var(--gv-cool-grey-500);
+      gap: 8px;
+    }
+    .pm-card .gv-bo-listrow__actions .gv-btn[data-view] { color: var(--gv-bo-link); }
+    .pm-card .gv-bo-listrow__actions { gap: 10px; }
+    /* Real DEFAULT badge: filled grey pill, no border, bold uppercase (digest: #596B7A on #EBEDEF, 12px/700, 0 6px, radius 3px), margin-left 15px */
     .pm-default {
       color: var(--gv-cool-grey-500);
-      background-color: #ebedef;
+      background-color: var(--gv-grey-200);
       border: 0;
-      font-size: 12px;
+      font-size: var(--gv-fs-xs);
       font-weight: 700;
       line-height: 20px;
       padding: 0 6px;
       border-radius: 3px;
+      margin-left: 15px;
+      text-transform: uppercase;
     }
     /* Vertical 6-dot drag grip (canonical icon set only has horizontal dots) */
     .pm-grip { display: inline-block; width: 12px; height: 16px; color: var(--gv-cool-grey-400); }
@@ -43,8 +67,8 @@
       <section class="gv-bo-section">
         <div class="pm-head">
           <div class="pm-head__main">
-            <h1 class="gv-bo-pagehead">Pages &amp; menu</h1>
-            <p class="gv-bo-pagelede" style="margin:6px 0 0">Your navigation bar can display up to six pages in addition to the Home page. You can rename and reorder items and add new pages with your own content.</p>
+            <h1 class="pm-title">Pages &amp; menu</h1>
+            <p class="pm-lede">Your navigation bar can display up to six pages in addition to the Home page. You can rename and reorder items and add new pages with your own content.</p>
           </div>
           <div class="pm-head__actions">
             <span class="pm-add-disabled"><span data-gv-icon="link"></span>Add project or folder to navbar</span>
@@ -68,7 +92,8 @@
   <script src="bo-chrome.js"></script>
   <script>
     function actionBtn(label, icon, muted) {
-      return `<button class="gv-btn secondary-outlined size-s"${muted ? ' style="color:var(--gv-cool-grey-400);border-color:var(--gv-grey-300);cursor:not-allowed"' : ''}><span data-gv-icon="${icon}"></span><span class="gv-btn__label">${label}</span></button>`;
+      const isView = label === "View";
+      return `<button class="gv-btn secondary-outlined"${isView ? ' data-view' : ''}${muted ? ' style="color:var(--gv-cool-grey-400);border-color:var(--gv-grey-300);cursor:not-allowed;opacity:.65"' : ''}><span data-gv-icon="${icon}"></span><span class="gv-btn__label">${label}</span></button>`;
     }
     // [name, locked, isDefault, candelete, removable]
     const NAV = [

@@ -14,39 +14,40 @@
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
     .cm-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
-    .cm-head__title { font-size: 30px; font-weight: 700; line-height: 1.3; }
+    .cm-head__title { font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 1.3; }
     .cm-head__ctrls { margin-left: auto; display: flex; align-items: center; gap: 8px; }
     /* Quarter selector: three separate bordered controls. */
-    .cm-qbtn { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 30px; padding: 0; border: 1px solid var(--gv-bo-border); border-radius: 3px; background: #fff; color: var(--gv-bo-primary); cursor: pointer; }
+    .cm-qbtn { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 30px; padding: 0; border: 1px solid var(--gv-bo-border); border-radius: 3px; background: var(--gv-white); color: var(--gv-bo-primary); cursor: pointer; }
     .cm-qbtn svg, .cm-qbtn .gv-icon { width: 16px; height: 16px; }
-    .cm-qlabel { display: inline-flex; align-items: center; height: 31px; padding: 0 9px; border: 1px solid #84939E; border-radius: 3px; background: #fff; font-size: 14px; color: var(--gv-grey-800); white-space: nowrap; }
-    .cm-view { display: inline-flex; align-items: center; gap: 6px; height: 35px; padding: 0 14px; border: 0; border-radius: 3px; background: var(--gv-bo-primary); color: #fff; font-size: 16px; font-family: inherit; cursor: pointer; }
+    .cm-qlabel { display: inline-flex; align-items: center; height: 31px; padding: 0 9px; border: 1px solid var(--gv-cool-grey-500); border-radius: 3px; background: var(--gv-white); font-size: var(--gv-fs-s); color: var(--gv-grey-800); white-space: nowrap; }
+    .cm-view { display: inline-flex; align-items: center; gap: 6px; height: 35px; padding: 0 14px; border: 0; border-radius: 3px; background: var(--gv-bo-primary); color: var(--gv-white); font-size: var(--gv-fs-base); font-family: inherit; cursor: pointer; }
     .cm-view svg, .cm-view .gv-icon { width: 16px; height: 16px; }
     /* Health score card. */
-    .cm-health { width: 575px; max-width: 100%; box-sizing: border-box; background: #fff; border: 1px solid var(--gv-grey-400); border-radius: 3px; padding: 20px 24px; margin-bottom: 24px; }
+    .cm-health { width: 575px; max-width: 100%; box-sizing: border-box; background: var(--gv-white); border: 1px solid var(--gv-grey-400); border-radius: 3px; padding: 20px 24px; margin-bottom: 24px; }
     .cm-health__top { display: flex; gap: 24px; align-items: flex-start; }
     .cm-health__score { flex: none; }
-    .cm-health__label { display: inline-flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 700; color: var(--gv-grey-800); }
+    .cm-health__label { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-grey-800); }
     .cm-health__label::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--gv-orange-500); }
-    .cm-health__num { font-size: 34px; font-weight: 700; color: var(--gv-grey-800); line-height: 1.1; margin: 8px 0 10px; }
-    .cm-health__num small { font-size: 25px; font-weight: 600; }
+    .cm-health__num { font-size: var(--gv-fs-xxxxl); font-weight: 700; color: var(--gv-grey-800); line-height: 1.1; margin: 8px 0 10px; }
+    .cm-health__num small { font-size: var(--gv-fs-xxl); font-weight: 600; }
     .cm-health__track { width: 160px; height: 8px; border-radius: 3px; background: var(--gv-grey-300); }
     .cm-health__chart { flex: 1 1 auto; min-width: 0; }
     .cm-health__chart svg { width: 100%; height: 88px; }
-    .cm-legend { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 18px; font-size: 14px; }
-    .cm-legend span { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--gv-grey-800); }
+    .cm-legend { display: flex; flex-wrap: wrap; gap: 38px; margin-top: 20px; font-size: var(--gv-fs-s); }
+    .cm-legend span { display: inline-flex; flex-direction: column; gap: 6px; font-weight: 700; color: var(--gv-grey-800); }
+    .cm-legend span > u { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
     .cm-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-    .cm-legend b { font-weight: 600; color: #767676; }
+    .cm-legend b { font-weight: 600; color: var(--gv-grey-800); font-size: var(--gv-fs-base); }
     /* Category groups + question cards. */
-    .cm-cat { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; font-size: 18px; font-weight: 700; color: var(--gv-grey-800); }
+    .cm-cat { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; font-size: var(--gv-fs-l); font-weight: 700; color: var(--gv-grey-800); }
     .cm-cat i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-    .cm-q { display: flex; align-items: center; gap: 20px; background: #fff; border: 1px solid var(--gv-grey-400); border-radius: 4px; padding: 16px; margin-bottom: 8px; }
+    .cm-q { display: flex; align-items: center; gap: 20px; background: var(--gv-white); border: 1px solid var(--gv-grey-400); border-radius: 4px; padding: 16px; margin-bottom: 8px; }
     .cm-q__main { min-width: 0; flex: 1 1 auto; }
-    .cm-q__title { margin: 0; font-size: 18px; font-weight: 700; color: var(--gv-grey-800); line-height: 1.3; }
-    .cm-q__sub { margin: 4px 0 0; font-size: 14px; color: var(--gv-text-secondary); }
-    .cm-q__score { flex: none; display: flex; align-items: center; gap: 16px; }
-    .cm-q__num { font-size: 21px; font-weight: 700; color: var(--gv-grey-800); white-space: nowrap; }
-    .cm-q__num small { font-size: 14px; font-weight: 600; color: #767676; }
+    .cm-q__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; color: var(--gv-grey-800); line-height: 1.3; }
+    .cm-q__sub { margin: 4px 0 0; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+    .cm-q__score { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 160px; }
+    .cm-q__num { font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-grey-800); white-space: nowrap; }
+    .cm-q__num small { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-grey-700); }
     .cm-q__bar { width: 160px; height: 8px; border-radius: 3px; background: var(--gv-grey-300); }
   </style>
 </head>
@@ -66,9 +67,9 @@
         <div class="cm-head">
           <h1 class="gv-bo-pagehead cm-head__title">Community monitor</h1>
           <div class="cm-head__ctrls">
-            <button class="cm-qbtn" aria-label="Previous quarter"><span data-gv-icon="chevron-left"></span></button>
+            <button class="cm-qbtn" aria-label="Previous quarter"><span data-gv-icon="arrow-left"></span></button>
             <span class="cm-qlabel">Q2 2026</span>
-            <button class="cm-qbtn" aria-label="Next quarter"><span data-gv-icon="chevron-right"></span></button>
+            <button class="cm-qbtn" aria-label="Next quarter"><span data-gv-icon="arrow-right"></span></button>
             <button class="cm-view"><span data-gv-icon="eye"></span>View</button>
           </div>
         </div>
@@ -85,9 +86,9 @@
             </div>
           </div>
           <div class="cm-legend">
-            <span><i style="background:var(--gv-blue-500)"></i> Quality of life <b>– /5</b></span>
-            <span><i style="background:var(--gv-teal-400)"></i> Service delivery <b>– /5</b></span>
-            <span><i style="background:var(--gv-orange-500)"></i> Governance and trust <b>– /5</b></span>
+            <span><u><i style="background:var(--gv-blue-500)"></i> Quality of life</u><b>– /5</b></span>
+            <span><u><i style="background:var(--gv-teal-400)"></i> Service delivery</u><b>– /5</b></span>
+            <span><u><i style="background:var(--gv-brown)"></i> Governance and trust</u><b>– /5</b></span>
           </div>
         </div>
 
@@ -111,7 +112,7 @@
         "Overall value you receive for your city taxes and fees",
         "Overall cleanliness and maintenance of streets and public spaces",
       ]],
-      ["Governance and trust", "var(--gv-orange-500)", [
+      ["Governance and trust", "var(--gv-brown)", [
         "Trust in local government",
         "Responsiveness of elected officials to community concerns",
         "Transparency about how municipal tax money is spent",

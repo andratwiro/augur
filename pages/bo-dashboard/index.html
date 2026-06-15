@@ -13,6 +13,8 @@
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    /* Chart palette sampled from the real dashboard (page-local, illustrative). */
+    .db-panel { --ch-blue: #2F478A; --ch-bar: #073F80; --ch-teal: #01A1B1; --ch-red: #E5484D; }
     .db-panel { display: none; }
     .db-panel.is-active { display: block; }
 
@@ -23,11 +25,11 @@
     .db-controls .db-spacer { margin-left: auto; }
     /* Days/Weeks/Months segmented toggle. */
     .db-seg { display: inline-flex; border: 1px solid var(--gv-border-dark); border-radius: 3px; overflow: hidden; }
-    .db-seg button { border: 0; background: #fff; color: var(--gv-bo-primary); padding: 9px 16px; font-size: 14px; cursor: pointer; font-family: var(--gv-font-family); border-left: 1px solid var(--gv-grey-300); }
+    .db-seg button { border: 0; background: var(--gv-white); color: var(--gv-bo-primary); padding: 9px 16px; font-size: var(--gv-fs-s); cursor: pointer; font-family: var(--gv-font-family); border-left: 1px solid var(--gv-grey-300); }
     .db-seg button:first-child { border-left: 0; }
-    .db-seg button.is-active { background: var(--gv-bo-primary); color: #fff; }
+    .db-seg button.is-active { background: var(--gv-bo-primary); color: var(--gv-white); }
 
-    .db-sectionhead { margin: 28px 0 12px; font-size: 25px; font-weight: 700; color: var(--gv-bo-primary); }
+    .db-sectionhead { margin: 28px 0 12px; font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-bo-primary); }
     .db-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; align-items: start; }
     .db-span-4 { grid-column: span 4; } .db-span-6 { grid-column: span 6; }
     .db-span-7 { grid-column: span 7; } .db-span-5 { grid-column: span 5; } .db-span-12 { grid-column: span 12; }
@@ -37,19 +39,19 @@
 
     /* Chart-card header: title left + download (and optional dropdown) right. */
     .db-cardhead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-    .db-cardhead h3 { margin: 0; font-size: 25px; font-weight: 700; color: var(--gv-bo-primary); line-height: 1.2; }
-    .db-cardhead h3 .db-delta { font-size: 16px; font-weight: 700; color: var(--gv-green-500); }
+    .db-cardhead h3 { margin: 0; font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-bo-primary); line-height: 1.2; }
+    .db-cardhead h3 .db-delta { font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-green-500); }
     .db-cardhead__tools { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--gv-cool-grey-500); }
     .db-cardhead__tools .gv-icon { width: 16px; height: 16px; }
     /* Big-number block above a line chart: label / number / sublabel stacked. */
-    .db-bignum { font-size: 14px; color: var(--gv-text-secondary); margin: 0 0 8px; }
-    .db-bignum .db-bignum__lbl { font-size: 14px; color: var(--gv-bo-primary); }
-    .db-bignum .db-bignum__big { font-size: 25px; font-weight: 700; color: var(--gv-text); display: block; line-height: 1.1; margin: 2px 0; }
-    .db-bignum .db-bignum__sub { font-size: 14px; color: var(--gv-text-secondary); }
+    .db-bignum { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); margin: 0 0 8px; }
+    .db-bignum .db-bignum__lbl { font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
+    .db-bignum .db-bignum__big { font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-text); display: block; line-height: 1.1; margin: 2px 0; }
+    .db-bignum .db-bignum__sub { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
     .db-bignum .db-bignum__sub b { color: var(--gv-text-secondary); font-weight: 700; }
     .db-statline { display: flex; gap: 36px; flex-wrap: wrap; margin: 6px 0 10px; }
-    .db-stat__num { font-size: 21px; font-weight: 400; color: var(--gv-text); line-height: 1.2; }
-    .db-stat__lbl { font-size: 14px; color: var(--gv-text-secondary); }
+    .db-stat__num { font-size: var(--gv-fs-xl); font-weight: 400; color: var(--gv-text); line-height: 1.2; }
+    .db-stat__lbl { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
     .db-stat__lbl.db-stat__top { color: var(--gv-bo-primary); }
     .db-stat__lbl b { color: var(--gv-text-secondary); font-weight: 700; }
     /* Card split: stat/number block on the left, chart on the right. */
@@ -59,42 +61,69 @@
     .db-split__chart { min-width: 0; }
     @media (max-width: 1100px) { .db-split { grid-template-columns: 1fr; } }
 
-    /* CSS horizontal bar chart. */
-    .ch-h { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-    .ch-hrow { display: grid; grid-template-columns: 150px 1fr 28px; align-items: center; gap: 10px; font-size: 12px; }
-    .ch-hlabel { color: var(--gv-text-secondary); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ch-htrack { background: var(--gv-grey-100); border-radius: 2px; height: 16px; }
-    .ch-hbar { display: block; height: 100%; border-radius: 2px; background: var(--gv-blue-500); min-width: 1px; }
-    .ch-hval { color: var(--gv-bo-primary); font-weight: 600; }
-    /* CSS vertical bar chart. */
+    /* CSS horizontal bar chart — navy bars, right-aligned wrapping labels, x-axis scale. */
+    .ch-h { display: grid; grid-template-columns: 150px 1fr; gap: 4px 12px; margin-top: 8px; align-items: center; }
+    .ch-hrow { display: contents; }
+    .ch-hlabel { color: var(--gv-bo-primary); text-align: right; line-height: 1.25; font-size: var(--gv-fs-xs); }
+    .ch-hbarcell { display: flex; align-items: center; gap: 8px; }
+    .ch-htrack { flex: 1; height: 15px; min-width: 0; }
+    .ch-hbar { display: block; height: 100%; background: var(--ch-bar); min-width: 1px; }
+    .ch-hval { color: var(--gv-bo-primary); font-weight: 400; font-size: var(--gv-fs-xs); flex: none; }
+    /* X-axis scale under horizontal bars. */
+    .ch-haxis { display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-top: 6px; }
+    .ch-haxis__scale { grid-column: 2; display: flex; justify-content: space-between; border-top: 1px solid var(--gv-grey-300); padding-top: 4px; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); }
+    /* CSS vertical bar chart with y-axis scale. */
+    .ch-vframe { display: grid; grid-template-columns: 22px 1fr; gap: 6px; margin-top: 8px; }
+    .ch-vyaxis { display: flex; flex-direction: column-reverse; justify-content: space-between; align-items: flex-end; height: 170px; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); padding-bottom: 16px; }
     .ch-v { display: flex; align-items: flex-end; gap: 10px; height: 170px; padding-top: 10px; border-bottom: 1px solid var(--gv-grey-300); }
     .ch-vcol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
-    .ch-vbar { width: 60%; max-width: 46px; background: var(--gv-blue-500); border-radius: 2px 2px 0 0; min-height: 2px; }
-    .ch-vnum { font-size: 11px; color: var(--gv-text-secondary); }
-    .ch-vlabels { display: flex; gap: 10px; margin-top: 6px; }
-    .ch-vlabels span { flex: 1; text-align: center; font-size: 11px; color: var(--gv-text-secondary); }
+    .ch-vbar { width: 60%; max-width: 46px; background: var(--ch-bar); min-height: 2px; }
+    .ch-vnum { font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); }
+    .ch-vlabels { display: flex; gap: 10px; margin-top: 6px; grid-column: 2; }
+    .ch-vlabels span { flex: 1; text-align: center; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); }
     /* Legend. */
-    .ch-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; color: var(--gv-text-secondary); justify-content: center; }
+    .ch-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: var(--gv-fs-13); color: var(--gv-text); justify-content: center; }
     .ch-legend span { display: inline-flex; align-items: center; gap: 6px; }
     .ch-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
     .db-line { width: 100%; height: 130px; display: block; }
-    /* Line-chart frame: chart area + month axis along the bottom. */
-    .ch-line { margin-top: 6px; }
+    /* Line-chart frame: y-axis scale + chart area + month axis along the bottom. */
+    .ch-line { display: grid; grid-template-columns: 22px 1fr; gap: 6px; margin-top: 6px; }
+    .ch-yaxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); height: 130px; }
+    .ch-plot { min-width: 0; }
     .ch-axis { display: flex; justify-content: space-between; margin-top: 4px; padding: 0 2px; }
-    .ch-axis span { font-size: 11px; color: var(--gv-text-secondary); }
-    .db-donutwrap { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+    .ch-axis span { font-size: var(--gv-fs-13); color: var(--gv-bo-primary); }
+    .db-donutwrap { display: flex; align-items: center; gap: 22px; flex-wrap: nowrap; }
+    /* Donut SVG fixed size (canonical forces chartcard svg to 100% width — override). */
+    .db-donutwrap .db-donut__svg { width: 150px !important; height: 150px; flex: none; }
     .db-donut__center { text-align: center; }
     .db-donut__pct { font-size: 22px; font-weight: 700; color: var(--gv-bo-primary); }
     .db-pie { display: flex; align-items: center; gap: 24px; padding: 8px 0; }
     /* Pie SVG fixed size (canonical forces chartcard svg to 100% width — override). */
     .db-pie .db-pie__svg { width: 150px !important; height: 150px; flex: none; }
+    /* Input-status: progress-bar rows + stacked-status bar + 2-row legend. */
+    .db-prog { flex: 1; min-width: 0; }
+    .db-progrow { display: grid; grid-template-columns: 1fr 90px; gap: 12px; align-items: center; margin-bottom: 14px; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
+    .db-progrow .db-progtrack { grid-column: 1 / -1; height: 7px; border-radius: 4px; background: var(--gv-grey-200); overflow: hidden; }
+    .db-progrow .db-progtrack i { display: block; height: 100%; background: var(--ch-teal); }
+    .db-progrow .db-prog__lbl { white-space: nowrap; }
+    .db-progrow .db-prog__val { text-align: right; }
+    .db-stackbar { display: flex; height: 18px; border-radius: 3px; overflow: hidden; margin: 18px 0 10px; }
+    .db-stackbar i { display: block; height: 100%; }
+    .db-inputlink { display: block; text-align: center; margin-top: 14px; font-size: var(--gv-fs-s); }
     .db-empty-illus { width: 300px; height: auto; opacity: .55; margin-top: 6px; }
     /* Participation feed table extras. */
-    .db-feed__date .db-feed__time { display: block; font-size: 13px; }
-    .db-feed__sub { display: block; font-size: 12px; color: var(--gv-text-secondary); margin-top: 2px; }
-    .db-feed__more { font-size: 13px; white-space: nowrap; }
+    .db-feed__date .db-feed__time { display: block; font-size: var(--gv-fs-13); }
+    .db-feed__sub { display: block; font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); margin-top: 2px; }
+    .db-feed__more { font-size: var(--gv-fs-13); white-space: nowrap; }
+    /* Participation feed: uppercase headers + text-only dropdown buttons + content title. */
+    .db-uc { text-transform: uppercase; letter-spacing: .02em; }
+    .db-ddbtn { background: none; border: 0; color: var(--gv-bo-primary); font-family: var(--gv-font-family); font-size: var(--gv-fs-s); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 9px 4px; }
+    .db-ddbtn .gv-icon { width: 14px; height: 14px; }
+    .db-feed__title { display: block; font-weight: 700; color: var(--gv-bo-primary); margin-bottom: 3px; }
+    .db-feed__belongs { color: var(--gv-bo-primary); }
+    .db-feed__open { color: var(--gv-cool-grey-500); }
     /* Management feed table extras. */
-    .db-mgmt__date .db-mgmt__time { display: block; font-size: 13px; }
+    .db-mgmt__date .db-mgmt__time { display: block; font-size: var(--gv-fs-13); }
     .db-mgmt__sub { display: block; margin-top: 2px; }
     .db-mgmt__details { display: block; margin-top: 2px; }
     .db-mgmt__details .gv-icon { width: 12px; height: 12px; vertical-align: middle; }
@@ -125,15 +154,15 @@
         </div>
 
         <div class="db-grid">
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,0,1,2,3,4,5,6,8,9" data-title="Registrations" data-lbl="Total registrations" data-big="9" data-sub="Last 30 days <b>0</b>" data-series="New registrations"></div>
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,1,0,2,1,3,2,5,8,14,20" data-title="Participants" data-lbl="Total participants" data-big="20" data-sub="Last 30 days <b>0</b>" data-series="Participants"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="5,0,0,0,1,0,0,0,0,0,0,9" data-title="Registrations" data-lbl="Total registrations" data-big="9" data-sub="Last 30 days: <b>0</b>" data-series="New registrations"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="0,0,1,0,2,1,3,2,5,8,14,20" data-title="Participants" data-lbl="Total participants" data-big="20" data-sub="Last 30 days: <b>0</b>" data-series="Participants"></div>
         </div>
 
         <h2 class="db-sectionhead">Projects &amp; Participation</h2>
         <div class="db-grid">
           <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,1,2,4,8,40,180,300,340,347" data-title='Inputs 347 <span class="db-delta">(+347)</span>' data-series="Total · This month"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="barsH" data-title="Participation per project"
-               data-bars='[["First and last name…",4],["Mapping: Building Protected Bike Lanes",4],["Participatory Budget - District 1",3],["Participatory Budget - District 3",2],["Let&#39;s Reimagine Dorothea Dix Park",1]]' data-dropdown="Inputs"></div>
+               data-bars='[["Post your proposal here and place it on…",8],["Mapping: Building Protected Bike Lanes",3],["Participatory Budget - District 3",3],["Sample survey",1],["Let&#39;s Reimagine Dorothea Dix Park",1]]' data-dropdown="Inputs"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,0,741,0,0,0,0,0,0,0" data-title='Comments 741 <span class="db-delta">(+741)</span>' data-series="Total · This month"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="barsH" data-title="Participation per tag"
                data-bars='[["Public spaces and buildings",7],["Health and welfare",6],["Sustainable development",5],["Culture, sports and events",5],["Mobility",4],["Public services",3],["Community development",3],["Education and youth",2],["Social inclusion",1]]' data-dropdown="Inputs"></div>
@@ -142,43 +171,70 @@
 
         <h2 class="db-sectionhead">Management</h2>
         <div class="db-grid">
-          <div class="gv-bo-chartcard db-span-6">
-            <div class="db-cardhead"><h3>Input status</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
-            <div class="db-donutwrap">
-              <svg width="150" height="150" viewBox="0 0 42 42" aria-hidden="true">
-                <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--gv-grey-200)" stroke-width="6"></circle>
-                <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--gv-teal-400)" stroke-width="6" stroke-dasharray="4 96" stroke-dashoffset="25"></circle>
-                <text x="21" y="20" text-anchor="middle" font-size="6" font-weight="700" fill="var(--gv-bo-primary)" font-family="var(--gv-font-family)">4%</text>
-                <text x="21" y="26" text-anchor="middle" font-size="2.6" fill="var(--gv-text-secondary)" font-family="var(--gv-font-family)">Feedback given</text>
-              </svg>
-              <div>
-                <div class="db-bignum">Status changed <b>1.5%</b></div>
-                <div class="db-bignum">Official update <b>11.0%</b></div>
-                <div class="db-bignum">Avg. response time <b>279 days</b></div>
+          <!-- LEFT column: Input status, then Events. -->
+          <div class="db-span-6" style="display:flex;flex-direction:column;gap:20px">
+            <div class="gv-bo-chartcard">
+              <div class="db-cardhead"><h3>Input status</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
+              <div class="db-donutwrap">
+                <svg class="db-donut__svg" width="150" height="150" viewBox="0 0 42 42" aria-hidden="true">
+                  <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--gv-grey-200)" stroke-width="5"></circle>
+                  <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--ch-teal)" stroke-width="5" stroke-dasharray="4 96" stroke-dashoffset="25"></circle>
+                  <text x="21" y="20.5" text-anchor="middle" font-size="7" font-weight="700" fill="var(--gv-bo-primary)" font-family="var(--gv-font-family)">4%</text>
+                  <text x="21" y="26.5" text-anchor="middle" font-size="2.8" fill="var(--gv-bo-primary)" font-family="var(--gv-font-family)">Feedback given</text>
+                </svg>
+                <div class="db-prog">
+                  <div class="db-progrow"><span class="db-prog__lbl">Status changed</span><span class="db-prog__val">2 (1%)</span><span class="db-progtrack"><i style="width:6%"></i></span></div>
+                  <div class="db-progrow"><span class="db-prog__lbl">Official update</span><span class="db-prog__val">11 (3%)</span><span class="db-progtrack"><i style="width:14%"></i></span></div>
+                  <div class="db-bignum" style="margin:0"><span class="gv-icon" data-gv-icon="calendar" style="width:13px;height:13px;vertical-align:-2px;color:var(--gv-bo-primary)"></span> Avg. response time: <b>274 days</b></div>
+                </div>
+              </div>
+              <div class="db-stackbar">
+                <i style="width:6%;background:var(--ch-teal)"></i><i style="width:1%;background:var(--gv-green-500)"></i><i style="width:1%;background:var(--ch-blue)"></i><i style="width:1%;background:var(--gv-red-500)"></i><i style="width:2%;background:var(--gv-cool-grey-400)"></i><i style="width:89%;background:var(--gv-grey-300)"></i>
+              </div>
+              <div class="ch-legend">
+                <span><i style="background:var(--ch-teal)"></i>Under consideration</span>
+                <span><i style="background:var(--gv-green-500)"></i>Implemented</span>
+                <span><i style="background:var(--ch-blue)"></i>Accepted</span>
+                <span><i style="background:var(--gv-red-500)"></i>Rejected</span>
+                <span><i style="background:var(--gv-cool-grey-400)"></i>Proposed</span>
+                <span><i style="background:var(--gv-grey-300)"></i>Viewed</span>
+              </div>
+              <a class="gv-bo-link db-inputlink" href="#">Go to Input Manager <span class="gv-icon" data-gv-icon="chevron-right" style="width:12px;height:12px;vertical-align:-1px"></span></a>
+            </div>
+            <div class="gv-bo-chartcard">
+              <div class="db-cardhead"><h3>Events</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
+              <div class="db-statline"><div><div class="db-stat__lbl db-stat__top">Total events added</div><div class="db-stat__num">14</div></div><div><div class="db-stat__lbl db-stat__top">Upcoming</div><div class="db-stat__num">-</div></div><div><div class="db-stat__lbl db-stat__top">Completed</div><div class="db-stat__num">14</div></div></div>
+            </div>
+          </div>
+          <!-- RIGHT column: Emails, Invitations, Internal adoption. -->
+          <div class="db-span-6" style="display:flex;flex-direction:column;gap:20px">
+            <div class="gv-bo-chartcard">
+              <div class="db-cardhead"><h3>Emails</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
+              <div class="db-split" style="grid-template-columns:minmax(120px,200px) 1fr">
+                <div>
+                  <div class="db-bignum"><span class="db-bignum__lbl">Total emails sent</span><span class="db-bignum__big">5</span></div>
+                  <div class="db-bignum"><span class="db-bignum__lbl">Automated emails</span><span class="db-bignum__big">5</span><span class="db-bignum__sub">From 2 campaigns</span></div>
+                  <div class="db-bignum"><span class="db-bignum__lbl">Custom emails</span><span class="db-bignum__big">0</span><span class="db-bignum__sub">From 0 campaigns</span></div>
+                </div>
+                <div class="db-split__chart">
+                  <div class="ch-line"><div class="ch-yaxis"><span>2</span><span>1.5</span><span>1</span><span>0.5</span><span>0</span></div>
+                  <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+                    <line x1="0" y1="12" x2="600" y2="12" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="112" x2="600" y2="112" stroke="var(--gv-grey-200)" stroke-width="0.5"/>
+                    <polyline points="0,112 90,12 180,112 280,12 380,112 480,12 600,112" fill="none" stroke="var(--ch-blue)" stroke-width="1.5"/></svg>
+                    <div class="ch-axis"><span>Dec</span><span>Apr</span><span>Aug</span><span>Dec</span><span>Apr</span><span>Aug</span><span>Jun</span></div>
+                    <div class="ch-legend"><span><i style="background:var(--ch-red)"></i>Custom emails</span><span><i style="background:var(--ch-blue)"></i>Automated emails</span></div>
+                  </div></div>
+                </div>
               </div>
             </div>
-            <div class="ch-legend">
-              <span><i style="background:var(--gv-teal-400)"></i>Under consideration</span>
-              <span><i style="background:var(--gv-green-500)"></i>Implemented</span>
-              <span><i style="background:var(--gv-blue-400)"></i>Accepted</span>
-              <span><i style="background:var(--gv-red-500)"></i>Rejected</span>
-              <span><i style="background:var(--gv-cool-grey-400)"></i>Proposed</span>
-              <span><i style="background:var(--gv-grey-300)"></i>Viewed</span>
+            <div class="gv-bo-chartcard">
+              <div class="db-cardhead"><h3>Invitations</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
+              <div class="db-statline"><div><div class="db-stat__lbl db-stat__top">Total invites sent</div><div class="db-stat__num">-</div><div class="db-stat__lbl">Last 30 days: -</div></div><div><div class="db-stat__lbl db-stat__top">Pending</div><div class="db-stat__num">-</div></div><div><div class="db-stat__lbl db-stat__top">Accepted</div><div class="db-stat__num">-</div><div class="db-stat__lbl">Last 30 days: -</div></div></div>
             </div>
-          </div>
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,1,0,2,1,3,0,1,2,0,1,0" data-title="Emails" data-num="<b>5</b> Total emails sent · From 6 campaigns" data-series="Custom emails · Automated emails"></div>
-          <div class="gv-bo-chartcard db-span-6">
-            <div class="db-cardhead"><h3>Invitations</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
-            <div class="db-statline"><div><div class="db-stat__num">0</div><div class="db-stat__lbl">Total invites sent · Last 30 days 0</div></div><div><div class="db-stat__num">0</div><div class="db-stat__lbl">Pending</div></div><div><div class="db-stat__num">0</div><div class="db-stat__lbl">Accepted</div></div></div>
-          </div>
-          <div class="gv-bo-chartcard db-span-6">
-            <div class="db-cardhead"><h3>Events</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
-            <div class="db-statline"><div><div class="db-stat__num">14</div><div class="db-stat__lbl">Total events added</div></div><div><div class="db-stat__num">0</div><div class="db-stat__lbl">Upcoming</div></div><div><div class="db-stat__num">14</div><div class="db-stat__lbl">Completed</div></div></div>
-          </div>
-          <div class="gv-bo-chartcard db-span-12">
-            <div class="db-cardhead"><h3>Internal adoption</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
-            <div class="db-statline"><div><div class="db-stat__num">0</div><div class="db-stat__lbl">Admins · Active last 30 days</div></div><div><div class="db-stat__num">1</div><div class="db-stat__lbl">PMs · Active last 30 days</div></div><div><div class="db-stat__num">1</div><div class="db-stat__lbl">Total · Active last 30 days</div></div></div>
-            <svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,110 100,108 200,90 300,70 360,30 420,60 500,95 600,100" fill="none" stroke="var(--gv-teal-400)" stroke-width="2"/></svg>
+            <div class="gv-bo-chartcard">
+              <div class="db-cardhead"><h3>Internal adoption</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
+              <div class="db-statline"><div><div class="db-stat__lbl db-stat__top">Admins</div><div class="db-stat__num">0</div><div class="db-stat__lbl">Active last 30 days: <b>0</b></div></div><div><div class="db-stat__lbl db-stat__top">PMs</div><div class="db-stat__num">2</div><div class="db-stat__lbl">Active last 30 days: <b>0</b></div></div><div><div class="db-stat__lbl db-stat__top">Total</div><div class="db-stat__num">2</div><div class="db-stat__lbl">Active last 30 days: <b>0</b></div></div></div>
+            </div>
           </div>
         </div>
       </section>
@@ -219,25 +275,26 @@
                 <div><div class="db-stat__lbl db-stat__top">Pageviews per visit</div><div class="db-stat__num">4.52</div><div class="db-stat__lbl">Last 30 days: <b>4.33</b></div></div>
               </div>
               <div class="db-split__chart">
-                <div class="ch-line"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+                <div class="ch-line"><div class="ch-yaxis"><span>60</span><span>45</span><span>30</span><span>15</span><span>0</span></div>
+                <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
                   <line x1="0" y1="12" x2="600" y2="12" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="37" x2="600" y2="37" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="62" x2="600" y2="62" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="87" x2="600" y2="87" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="112" x2="600" y2="112" stroke="var(--gv-grey-200)" stroke-width="0.5"/>
-                  <polyline points="0,110 50,109 100,107 150,100 200,80 250,40 280,18 320,40 370,80 430,105 490,109 540,110 600,111" fill="none" stroke="var(--gv-blue-500)" stroke-width="2"/>
-                  <polyline points="0,113 50,112 100,111 150,107 200,95 250,70 280,55 320,72 370,98 430,110 490,113 540,114 600,114" fill="none" stroke="var(--gv-red-500)" stroke-width="1.5"/>
+                  <polyline points="0,110 50,109 100,107 150,100 200,80 250,40 280,18 320,40 370,80 430,105 490,109 540,110 600,111" fill="none" stroke="var(--ch-blue)" stroke-width="2"/>
+                  <polyline points="0,113 50,112 100,111 150,107 200,95 250,70 280,55 320,72 370,98 430,110 490,113 540,114 600,114" fill="none" stroke="var(--ch-red)" stroke-width="1.5"/>
                 </svg>
-                <div class="ch-axis"><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span></div>
-                <div class="ch-legend" style="margin-top:8px"><span><i style="background:var(--gv-blue-500)"></i>Visitors</span><span><i style="background:var(--gv-red-500)"></i>Visits</span></div>
-                </div>
+                <div class="ch-axis"><span>Nov</span><span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span><span>Jan</span><span>Mar</span><span>May</span></div>
+                <div class="ch-legend" style="margin-top:8px"><span><i style="background:var(--ch-blue)"></i>Visitors</span><span><i style="background:var(--ch-red)"></i>Visits</span></div>
+                </div></div>
               </div>
             </div>
           </div>
           <div class="gv-bo-chartcard db-span-12" data-chart="pie" data-title="Traffic sources"
-               data-pie='[["Direct entry (100%)",100,"var(--gv-blue-500)"]]'></div>
+               data-pie='[["Direct entry (100%)",100,"var(--ch-blue)"]]'></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="0,0,0,0,0,0,0,0,0,0,0,0" data-title="Registrations" data-lbl="Total registrations" data-big="0" data-sub="Last 30 days <b>0</b><br>Registration rate <b>0%</b>" data-series="New registrations"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="0,1,1,2,3,4,5,6,7,9,10,11" data-title="Participants" data-lbl="Total participants" data-big="11" data-sub="Last 30 days <b>0</b><br>Participation rate <b>37%</b>" data-series="Participants"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="pie" data-title="Language"
-               data-pie='[["EN (98%)",98,"var(--gv-blue-500)"],["ES-ES (2%)",2,"var(--gv-teal-400)"]]'></div>
+               data-pie='[["EN (98%)",98,"var(--ch-blue)"],["ES-ES (2%)",2,"var(--ch-teal)"]]'></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="pie" data-title="Device Types"
-               data-pie='[["Desktop or Other (97%)",97,"var(--gv-blue-500)"],["Mobile (3%)",3,"var(--gv-teal-400)"]]'></div>
+               data-pie='[["Desktop or Other (97%)",97,"var(--ch-blue)"],["Mobile (3%)",3,"var(--ch-teal)"]]'></div>
         </div>
       </section>
 
@@ -270,18 +327,17 @@
 
       <!-- ── Participation feed (moderation) ──────────────────────────── -->
       <section class="gv-bo-section db-panel" data-panel="participation">
-        <h1 class="gv-bo-pagehead" style="margin-bottom:14px">Feed <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--gv-red-500);vertical-align:middle"></span></h1>
+        <h1 class="gv-bo-pagehead" style="margin-bottom:14px">Feed <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--gv-cool-grey-400);vertical-align:middle"></span></h1>
         <div class="db-controls">
-          <select class="gv-bo-select" aria-label="Seen"><option>Not seen</option><option>All</option></select>
-          <select class="gv-bo-select" aria-label="Warnings"><option>Content Warnings (2)</option></select>
-          <select class="gv-bo-select" aria-label="Type"><option>Type</option><option>Post</option><option>Comment</option></select>
-          <select class="gv-bo-select" aria-label="Project"><option>Project</option></select>
+          <span class="db-seg"><button class="is-active">Not seen</button><button>Seen</button><button>Content Warnings (0)</button></span>
+          <button class="db-ddbtn">Type <span class="gv-icon" data-gv-icon="chevron-down"></span></button>
+          <button class="db-ddbtn">Project <span class="gv-icon" data-gv-icon="chevron-down"></span></button>
           <div class="db-spacer"></div>
           <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search feed"><span class="gv-icon" data-gv-icon="search"></span></span>
         </div>
         <div>
           <table class="gv-bo-table is-bordered">
-            <thead><tr><th class="gv-bo-table__check"></th><th>Date</th><th>Type</th><th>Project</th><th>Content</th><th></th></tr></thead>
+            <thead><tr><th class="gv-bo-table__check"></th><th class="db-uc">Date</th><th class="db-uc">Type</th><th class="db-uc">Belongs to</th><th class="db-uc">Content</th><th></th></tr></thead>
             <tbody id="feed"></tbody>
           </table>
           <nav class="gv-bo-pager" aria-label="Pagination"><button disabled><span data-gv-icon="chevron-left"></span></button><button class="is-active">1</button><button>2</button><button>3</button><span>…</span><button>10</button><button><span data-gv-icon="chevron-right"></span></button></nav>
@@ -311,33 +367,51 @@
   <script>
     // ── Chart renderers ────────────────────────────────────────────────────
     function cardHead(title, dropdown) {
-      const dd = dropdown ? `<select class="gv-bo-select" style="max-width:110px;height:30px;padding:2px 8px;font-size:13px"><option>${dropdown}</option></select>` : "";
+      const dd = dropdown ? `<select class="gv-bo-select" style="max-width:110px;height:30px;padding:2px 8px;font-size:var(--gv-fs-13)"><option>${dropdown}</option></select>` : "";
       return `<div class="db-cardhead"><h3>${title}</h3><span class="db-cardhead__tools">${dd}<span class="gv-icon" data-gv-icon="download"></span></span></div>`;
     }
-    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    // Build a "nice" axis scale (0..max) into ~4 ticks.
+    function niceTicks(max) {
+      const m = Math.max(max, 1);
+      const step = m <= 4 ? 1 : m <= 8 ? 2 : m <= 20 ? 5 : Math.ceil(m / 4 / 10) * 10;
+      const top = Math.ceil(m / step) * step;
+      const ticks = []; for (let v = 0; v <= top; v += step) ticks.push(v);
+      return { top, ticks };
+    }
+    // Sparse month labels along the x-axis (real shows ~every 3rd label, ending Jun).
+    const XMONTHS = ["Jan","Apr","Jul","Oct","Jan","Apr","Jul","Oct","Feb","Jun"];
     function lineSVG(points) {
       const vals = points.split(",").map(Number);
-      const max = Math.max(...vals, 1), n = vals.length;
-      const pts = vals.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / max * 100).toFixed(1)}`).join(" ");
-      const grid = [0.25, 0.5, 0.75, 1].map(g =>
-        `<line x1="0" y1="${(112 - g * 100).toFixed(1)}" x2="600" y2="${(112 - g * 100).toFixed(1)}" stroke="var(--gv-grey-200)" stroke-width="0.5"/>`).join("");
-      const axis = MONTHS.map(m => `<span>${m}</span>`).join("");
-      return `<div class="ch-line"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-        ${grid}<polyline points="${pts}" fill="none" stroke="var(--gv-blue-500)" stroke-width="2"/></svg>
-        <div class="ch-axis">${axis}</div></div>`;
+      const { top, ticks } = niceTicks(Math.max(...vals, 1));
+      const n = vals.length;
+      const pts = vals.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / top * 100).toFixed(1)}`).join(" ");
+      // Vertical month gridlines.
+      const grid = vals.map((_, i) =>
+        `<line x1="${(i / (n - 1) * 600).toFixed(1)}" y1="12" x2="${(i / (n - 1) * 600).toFixed(1)}" y2="112" stroke="var(--gv-grey-200)" stroke-width="0.5"/>`).join("");
+      const yaxis = ticks.slice().reverse().map(v => `<span>${v}</span>`).join("");
+      const axis = XMONTHS.map(m => `<span>${m}</span>`).join("");
+      return `<div class="ch-line"><div class="ch-yaxis">${yaxis}</div>
+        <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+        ${grid}<polyline points="${pts}" fill="none" stroke="var(--ch-blue)" stroke-width="2"/></svg>
+        <div class="ch-axis">${axis}</div></div></div>`;
     }
     function barsH(json) {
       const items = JSON.parse(json);
-      const max = Math.max(...items.map(i => i[1]), 1);
-      return `<div class="ch-h">${items.map(([l, v]) =>
-        `<div class="ch-hrow"><span class="ch-hlabel" title="${l}">${l}</span><span class="ch-htrack"><span class="ch-hbar" style="width:${(v / max * 100).toFixed(1)}%"></span></span><span class="ch-hval">${v}</span></div>`).join("")}</div>`;
+      const { top, ticks } = niceTicks(Math.max(...items.map(i => i[1]), 1));
+      const rows = items.map(([l, v]) =>
+        `<div class="ch-hrow"><span class="ch-hlabel" title="${l}">${l}</span><span class="ch-hbarcell"><span class="ch-htrack"><span class="ch-hbar" style="width:${(v / top * 100).toFixed(1)}%"></span></span><span class="ch-hval">${v}</span></span></div>`).join("");
+      const scale = ticks.map(v => `<span>${v}</span>`).join("");
+      return `<div class="ch-h">${rows}</div><div class="ch-haxis"><span class="ch-haxis__scale">${scale}</span></div>`;
     }
     function barsV(json) {
       const items = JSON.parse(json);
-      const max = Math.max(...items.map(i => i[1]), 1);
-      return `<div class="ch-v">${items.map(([l, v]) =>
-        `<div class="ch-vcol"><span class="ch-vnum">${v}</span><span class="ch-vbar" style="height:${(v / max * 100).toFixed(1)}%"></span></div>`).join("")}</div>
-        <div class="ch-vlabels">${items.map(([l]) => `<span>${l}</span>`).join("")}</div>`;
+      const { top, ticks } = niceTicks(Math.max(...items.map(i => i[1]), 1));
+      const yaxis = ticks.slice().reverse().map(v => `<span>${v}</span>`).join("");
+      const cols = items.map(([l, v]) =>
+        `<div class="ch-vcol"><span class="ch-vnum">${v}</span><span class="ch-vbar" style="height:${(v / top * 100).toFixed(1)}%"></span></div>`).join("");
+      const labels = items.map(([l]) => `<span>${l}</span>`).join("");
+      return `<div class="ch-vframe"><div class="ch-vyaxis">${yaxis}</div><div class="ch-v">${cols}</div>
+        <div class="ch-vlabels">${labels}</div></div>`;
     }
     function pieSVG(json) {
       const segs = JSON.parse(json);
@@ -359,7 +433,8 @@
           const big = card.dataset.big
             ? `<div class="db-bignum"><span class="db-bignum__lbl">${card.dataset.lbl || ""}</span><span class="db-bignum__big">${card.dataset.big}</span><span class="db-bignum__sub">${card.dataset.sub || ""}</span></div>`
             : (card.dataset.num ? `<div class="db-bignum">${card.dataset.num}</div>` : "");
-          const chart = `${lineSVG(card.dataset.points)}<div class="ch-legend">${(card.dataset.series || "").split(" · ").map(s => `<span>${s}</span>`).join("")}</div>`;
+          const lineColors = ["var(--ch-blue)", "var(--ch-teal)", "var(--ch-red)"];
+          const chart = `${lineSVG(card.dataset.points)}<div class="ch-legend">${(card.dataset.series || "").split(" · ").map((s, i) => `<span><i style="background:${lineColors[i] || "var(--ch-blue)"}"></i>${s}</span>`).join("")}</div>`;
           body = card.dataset.split !== undefined
             ? `<div class="db-split"><div class="db-bigblock">${big}</div><div class="db-split__chart">${chart}</div></div>`
             : `${big}${chart}`;
@@ -372,28 +447,29 @@
     });
 
     // ── Participation feed rows ─────────────────────────────────────────────
+    // [date, time, type, project, title, body]
     const FEED = [
-      ["08/27/2024", "9:34 AM", "Post", "Let's Reimagine Dorothea Dix Park", "This is my random idea!", false],
-      ["08/27/2024", "8:02 AM", "Post", "Let's Reimagine Dorothea Dix Park", "More trees along the riverside path would help everyone, especially on hot days when the shade really matters.", true],
-      ["08/26/2024", "4:12 PM", "Comment", "Public Healthcare Options Survey", "Trying to gather feedback from residents and citizens to improve our public healthcare service across the district.", true],
-      ["08/25/2024", "1:02 PM", "Post", "Mapping: Building Protected Bike Lanes", "Traffic in the city is a real problem.", false],
-      ["08/24/2024", "6:48 PM", "Comment", "Mapping: improve bicycle infrastructure", "Bikes get stolen in the city all the time.", false],
-      ["08/23/2024", "9:15 AM", "Post", "Forest Gate Community Assemblies", "Build a green space to help with the air quality.", false],
-      ["08/22/2024", "5:51 PM", "Comment", "2020-2025 budget", "Make crosswalks more visible.", false],
-      ["08/21/2024", "11:30 AM", "Post", "Participatory Budget - District 1", "We need more recycling points around the neighbourhood centre.", false],
-      ["08/20/2024", "3:24 PM", "Comment", "Participatory Budget - District 3", "Test test test test test", false],
-      ["08/19/2024", "10:08 AM", "Post", "Let's Reimagine Dorothea Dix Park", "A playground for younger kids would be a great addition near the main entrance.", false],
-      ["08/18/2024", "7:41 PM", "Comment", "Mapping: improve bicycle infrastructure", "Add lighting along the path for safety at night.", false],
-      ["08/17/2024", "2:19 PM", "Post", "Forest Gate Community Assemblies", "Community garden idea — residents could grow vegetables together.", false],
+      ["08/21/2024", "9:44 AM", "Post", "Let's Reimagine Dorothea Dix Park", "This is my random idea!", "This is my random idea!This is my random idea!This is my random idea!This is my random idea!This is my random idea!This is my random idea!This is my random idea!"],
+      ["08/20/2024", "8:02 AM", "Post", "Let's Reimagine Dorothea Dix Park", "Sample survey", "More trees along the riverside path would help everyone, especially on hot days when the shade really matters."],
+      ["08/19/2024", "4:12 PM", "Post", "Public Healthcare Options Survey", "Survey on Public health care", "Trying to gather feedback from residents and citizens to improve our public healthcare service across the district."],
+      ["08/18/2024", "1:02 PM", "Comment", "Mapping: Building Protected Bike Lanes", "Cars travel too fast along this section", "I like cycling to work along this section of the road, but sometimes the cars seem very close to my bike which makes me feel very nervous so close to traffic."],
+      ["08/17/2024", "6:48 PM", "Comment", "Mapping: improve bicycle infrastructure", "Traffic in the city", "Traffic in the city is a real problem."],
+      ["08/16/2024", "9:15 AM", "Comment", "Mapping: improve bicycle infrastructure", "Bikes get stolen in the area", "Bikes get stolen in the area all the time."],
+      ["08/15/2024", "5:51 PM", "Comment", "Participatory Budget - District 3", "Test test test", "Test test test test test"],
+      ["08/14/2024", "11:30 AM", "Comment", "Participatory Budget - District 1", "More fun ice cream please", "It is good especially mint choc chip."],
+      ["08/13/2024", "3:24 PM", "Post", "Forest Gate Community Assemblies", "Great idea", "Great idea, we want everyone in the community to feel safe and secure in their day-to-day living and bad-weather purposes."],
+      ["08/12/2024", "10:08 AM", "Post", "Participatory Budget - District 1", "Install a green tree-lined area", "A green tree-lined area would create a much more pleasant environment for everyone."],
+      ["08/11/2024", "7:41 PM", "Comment", "Public spaces and buildings", "Make crosswalks more visible", "Make crosswalks more visible — paint plus better lighting where school routes cross the avenue."],
+      ["08/10/2024", "2:19 PM", "Post", "Forest Gate Community Assemblies", "Light up our streets at night", "Light up our streets at night to make the city a safer place to live and walk after dark."],
     ];
-    document.getElementById("feed").innerHTML = FEED.map(([date, time, type, proj, content, more]) => `
+    document.getElementById("feed").innerHTML = FEED.map(([date, time, type, proj, title, body]) => `
       <tr>
         <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
-        <td class="db-feed__date" style="white-space:nowrap;color:var(--gv-text-secondary)">${date}<span class="db-feed__time">${time}</span></td>
+        <td class="db-feed__date" style="white-space:nowrap;color:var(--gv-bo-primary)">${date}<span class="db-feed__time">${time}</span></td>
         <td>${type}</td>
-        <td><a class="gv-bo-table__title" href="#">${proj}</a><span class="db-feed__sub">Posted in: ${proj}</span></td>
-        <td>${content}${more ? ` <a class="gv-bo-link db-feed__more" href="#">Read more</a>` : ""}</td>
-        <td class="gv-bo-table__opts"><span data-gv-icon="eye"></span></td>
+        <td class="db-feed__belongs">Project: <a class="gv-bo-link" href="#">${proj}</a></td>
+        <td><span class="db-feed__title">${title}</span>${body}</td>
+        <td class="gv-bo-table__opts db-feed__open"><span data-gv-icon="open-in-new"></span></td>
       </tr>`).join("");
 
     // ── Management feed rows ────────────────────────────────────────────────
