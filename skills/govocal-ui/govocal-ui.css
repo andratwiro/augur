@@ -1543,6 +1543,27 @@
    (author chip → title → excerpt → reactions). No image; excerpt clamps to fit. */
 .gv-sticky { height: 400px; }
 
+/* SHARED FIX 49/93 — sticky-note category emoji is a TOP-RIGHT CORNER CHIP, not an
+   inline glyph on the author line. In both real captures the emoji sits in its own
+   small ~32px grey rounded-square chip pinned to the card's top-right corner, visible
+   even on the raised/detail card where there is no author row. Promote the emoji to an
+   absolutely-positioned boxed chip (grounded: ~32px square, light grey #F2F2F2 fill,
+   small radius, centred glyph) and decouple it from the (display:none on raised)
+   author row. Appended override — the inline author rule above is left untouched. */
+.gv-sticky__emoji {
+  position: absolute; top: 20px; right: 20px; margin-left: 0; z-index: 2;
+  box-sizing: border-box; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: #F2F2F2; border-radius: var(--gv-radius);
+  font-size: var(--gv-fs-m); line-height: 1;
+}
+/* Decouple from the hidden author row: on the raised card the avatar+name collapse
+   but the corner chip stays. Keep the author row laid out (so the absolutely-positioned
+   emoji child still renders) while visually hiding only its avatar + name children. */
+.gv-sticky.is-raised .gv-sticky__author { display: flex; min-height: 0; margin-bottom: 0; }
+.gv-sticky.is-raised .gv-sticky__author > .av,
+.gv-sticky.is-raised .gv-sticky__author > .gv-sticky__authorname { display: none; }
+
 /* Floating bottom-right "Add an idea" — live primary CTA pinned to the canvas corner. */
 .gv-issuecanvas__add { position: absolute; right: 24px; bottom: 24px; z-index: 5; }
 
