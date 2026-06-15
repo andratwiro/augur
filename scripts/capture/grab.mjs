@@ -6,7 +6,12 @@
 //   page.png      full-page screenshot (the visual spec + verify target)
 //   viewport.png  above-the-fold screenshot at the requested viewport
 //   dom.html      the RENDERED outerHTML (the source of truth, not a guess)
-//   styles.json   computed-style table for the nodes you --probe (exact tokens)
+//   styles.json   ALWAYS written. { digest, probed }:
+//                   digest = every DISTINCT visual treatment on the page (deduped
+//                            by style signature, exact computed values + count) —
+//                            read these instead of eyeballing colours off the PNG.
+//                   probed = the selectors you pass to --probe (pinned checkpoints
+//                            for `npm run verify`); null when --probe is omitted.
 //   meta.json     url, title, viewport, captured-at, surface guess
 //
 // Auth: logs into the demo platform once and reuses the saved session
@@ -187,27 +192,67 @@ async function finish(page) {
   const dom = await page.evaluate(() => document.documentElement.outerHTML);
   await fs.promises.writeFile(path.join(outDir, 'dom.html'), dom, 'utf8');
 
-  if (probe) {
-    const selectors = (probe + '').split('|').map((s) => s.trim()).filter(Boolean);
-    const styles = await page.evaluate(
-      ({ selectors, props }) => {
-        const result = {};
-        for (const sel of selectors) {
-          const nodes = Array.from(document.querySelectorAll(sel)).slice(0, 8);
-          result[sel] = nodes.map((el) => {
-            const cs = getComputedStyle(el);
-            const rec = { tag: el.tagName.toLowerCase(), class: el.className || null, text: (el.textContent || '').trim().slice(0, 60) };
-            for (const p of props) rec[p] = cs.getPropertyValue(p);
-            return rec;
-          });
-        }
-        return result;
-      },
-      { selectors, props: PROBE_PROPS }
-    );
-    await fs.promises.writeFile(path.join(outDir, 'styles.json'), JSON.stringify(styles, null, 2), 'utf8');
-    console.log('· probed', selectors.length, 'selector(s) →', path.relative(ROOT, path.join(outDir, 'styles.json')));
-  }
+  // ── styles.json: always-on visual digest (+ optional targeted probe) ──────
+  // digest = every DISTINCT visual treatment on the page (deduped by a style
+  // signature, with a representative selector + occurrence count). This is the
+  // exact-value source the build agent reads INSTEAD of eyeballing the PNG.
+  // probed = your hand-picked selectors, kept as pinned checkpoints for verify.
+  const selectors = probe ? (probe + '').split('|').map((s) => s.trim()).filter(Boolean) : [];
+  const styles = await page.evaluate(
+    ({ selectors, props }) => {
+      const read = (el) => {
+        const cs = getComputedStyle(el);
+        const rec = { tag: el.tagName.toLowerCase(), class: el.className || null, text: (el.textContent || '').trim().slice(0, 60) };
+        for (const p of props) rec[p] = cs.getPropertyValue(p);
+        return rec;
+      };
+
+      // -- probed (targeted, backward-compatible) --
+      const probed = {};
+      for (const sel of selectors) {
+        probed[sel] = Array.from(document.querySelectorAll(sel)).slice(0, 8).map(read);
+      }
+
+      // -- digest (auto, whole-page, deduped) --
+      const SKIP = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'HEAD', 'TITLE', 'PATH', 'G', 'SVG', 'DEFS', 'BR', 'NOSCRIPT']);
+      const isTransparent = (c) => !c || c === 'transparent' || c === 'rgba(0, 0, 0, 0)';
+      const hasDirectText = (el) => Array.from(el.childNodes).some((n) => n.nodeType === 3 && n.textContent.trim());
+      const seen = new Map();
+      for (const el of document.querySelectorAll('*')) {
+        if (SKIP.has(el.tagName)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width < 4 || r.height < 4) continue;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+        const hasBorder = cs.borderStyle !== 'none' && parseFloat(cs.borderWidth) > 0;
+        const interesting =
+          !isTransparent(cs.backgroundColor) || cs.backgroundImage !== 'none' ||
+          hasBorder || cs.boxShadow !== 'none' || parseFloat(cs.borderRadius) > 0 ||
+          hasDirectText(el);
+        if (!interesting) continue;
+        // signature = visual identity (not size/position/text) so look-alikes collapse
+        const sig = JSON.stringify([
+          el.tagName, cs.color, cs.backgroundColor, cs.backgroundImage, cs.border,
+          cs.borderRadius, cs.boxShadow, cs.fontFamily, cs.fontSize, cs.fontWeight,
+          cs.lineHeight, cs.textTransform, cs.padding, cs.display,
+        ]);
+        if (seen.has(sig)) { seen.get(sig).count++; continue; }
+        const rec = read(el);
+        const cls = (el.className || '').toString().trim().split(/\s+/).filter(Boolean).slice(0, 2);
+        rec.selector = el.tagName.toLowerCase() + cls.map((c) => '.' + c).join('');
+        rec.count = 1;
+        seen.set(sig, rec);
+      }
+      const digest = Array.from(seen.values())
+        .sort((a, b) => b.count - a.count || parseFloat(b['font-size']) - parseFloat(a['font-size']))
+        .slice(0, 500);
+
+      return { probed: selectors.length ? probed : null, digest };
+    },
+    { selectors, props: PROBE_PROPS }
+  );
+  await fs.promises.writeFile(path.join(outDir, 'styles.json'), JSON.stringify(styles, null, 2), 'utf8');
+  console.log(`· styles.json → ${styles.digest.length} distinct treatments` + (probe ? `, ${selectors.length} probed selector(s)` : ''));
 
   const meta = {
     url,
@@ -219,7 +264,7 @@ async function finish(page) {
   await fs.promises.writeFile(path.join(outDir, 'meta.json'), JSON.stringify(meta, null, 2), 'utf8');
 
   console.log(`\n✓ captured → ${path.relative(ROOT, outDir)}/  [${surface}]`);
-  console.log('  page.png · viewport.png · dom.html · meta.json' + (probe ? ' · styles.json' : ''));
+  console.log('  page.png · viewport.png · dom.html · styles.json · meta.json');
 }
 
 main().catch((e) => {

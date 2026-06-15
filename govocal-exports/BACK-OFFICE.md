@@ -8,7 +8,17 @@ colour layer. This file = the measured BO spec + the build queue.
 ## Source captures (`govocal-exports/`)
 
 All from the demo platform `uxusertesting.govocal.com` (City of Raleigh), captured
-with `npm run capture`. Each folder has `page.png` · `viewport.png` · `dom.html` · `meta.json`.
+with `npm run capture`. Each folder has `page.png` · `viewport.png` · `dom.html` ·
+`styles.json` · `meta.json`.
+
+**`styles.json` is the exact-value source — read it, don't eyeball the PNG.** It has:
+- `digest` — every *distinct* visual treatment on the page (deduped by style
+  signature), each with exact computed `background-color` / `border` / `box-shadow`
+  / `border-radius` / `font-*` / `padding` and an occurrence `count`. Build from
+  these numbers; map them back to `--gv-*` tokens (don't hardcode a hex you can
+  alias). This is what closes the "80%, missing borders/shadows/fonts" gap.
+- `probed` — the selectors passed to `--probe` at capture time, kept as **pinned
+  checkpoints** for `npm run verify`. Null if you didn't probe.
 
 | Folder | Screen | Best for |
 |---|---|---|
@@ -53,8 +63,11 @@ the `.gv-bo` scope remaps `--gv-tenant-*` so primitives need no BO-specific code
 
 ## Component queue (build from the captures above, one at a time, verify-loop each)
 
-Pipeline per piece: probe exact values → build from existing primitives → render +
-screenshot + compare to capture → fix → store (govocal-bo.css + components.md + manifest + `npm run index`).
+Pipeline per piece:
+1. **Capture with checkpoints** — `npm run capture -- <url> --name <slug> --probe "<the real selectors you'll rebuild>"`. (digest is automatic; `--probe` pins the verify targets.)
+2. **Build from exact values** — read `styles.json` `digest`, assemble from existing `.gv-*` primitives, map values to `--gv-*` tokens (never eyeball / hardcode).
+3. **Verify numerically** — `npm run verify -- <built.html> --against <slug> --map "realSel=mineSel|…"`. Fix every mismatch it prints; loop until it exits ✓. This replaces "eyeball the screenshot".
+4. **Store** — govocal-bo.css + components.md + manifest + `npm run index`.
 
 **Focus (set 2026-06-15): the project-configuration editor** — `/admin/projects/<id>/…`
 (phases, Setup, Input manager, etc.). Build these screens out deeply first.
