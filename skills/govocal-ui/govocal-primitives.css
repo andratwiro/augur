@@ -303,6 +303,86 @@ body.gv-root {
   .gv-modal__body { padding: 4px 20px 20px; }
 }
 
+/* ── Select (native <select> + chevron) ──────────────────────────────────────
+   Source: component-library/components/Select/index.tsx. A native <select> wearing
+   the shared defaultInputStyle (identical to .gv-input) plus a chevron-down glyph
+   absolutely placed at right:11px (fill #999 → black on hover/focus). Height =
+   --gv-input-height (48px); 27px right-padding clears the chevron; cursor:pointer
+   (not text). Wrap the <select> in .gv-select so the chevron can position. */
+.gv-select { position: relative; display: block; width: 100%; }
+.gv-select select {
+  box-sizing: border-box; display: block; width: 100%;
+  color: var(--gv-text-primary); font-family: var(--gv-font-family);
+  font-size: var(--gv-fs-base); line-height: normal; font-weight: 400;
+  padding: var(--gv-input-padding); padding-right: 27px;
+  height: var(--gv-input-height); border-radius: var(--gv-radius);
+  border: 1px solid var(--gv-border-dark); background: #fff;
+  cursor: pointer; outline: none; appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  transition: box-shadow 100ms ease-out, border-color 100ms ease-out;
+}
+.gv-select select:not(:disabled):hover { border-color: var(--gv-black); }
+.gv-select select:not(:disabled):focus { outline: var(--gv-focus-outline); outline-offset: -1px; border-color: var(--gv-tenant-primary); }
+.gv-select select:disabled { color: #666; background-color: #f9f9f9; border-color: #ccc; cursor: not-allowed; }
+.gv-select.error select { border-color: var(--gv-red-600); }
+.gv-select.error select:focus { box-shadow: var(--gv-shadow-error); outline: none; }
+.gv-select select.placeholder { color: var(--gv-placeholder); }  /* unselected placeholder option */
+.gv-select.size-small select { font-size: var(--gv-fs-s); padding: 10px; padding-right: 27px; }
+/* chevron-down standing in for the icon: fill #999 → black on hover/focus (source) */
+.gv-select::after {
+  content: ""; position: absolute; right: 11px; top: 0; bottom: 0; width: 12px; pointer-events: none;
+  background: no-repeat center / 12px 12px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999999' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+.gv-select:hover::after, .gv-select:focus-within::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+/* ── Table ────────────────────────────────────────────────────────────────────
+   Source: component-library/components/Table (Table/Th/Td/Tr). <table> width:100%,
+   text-align:left, 14px, text colour = --gv-primary (#044D6C, blue500),
+   border-collapse:separate, border-spacing:0; header row underlined with grey200;
+   cell padding 12px (Td/Th render <Box p="12px">). Inner borders are opt-in in the
+   product (innerBorders={headerCells|bodyRows|bodyCells}) → modifier classes. */
+.gv-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-family: var(--gv-font-family); font-size: var(--gv-fs-s); color: var(--gv-primary); }
+.gv-table th, .gv-table td { padding: 12px; vertical-align: middle; }
+.gv-table thead > tr > th { border-bottom: 1px solid var(--gv-grey-200); font-weight: 600; }
+.gv-table th.clickable { cursor: pointer; }            /* sortable header cell */
+.gv-table th.clickable:hover { background: var(--gv-grey-200); }
+.gv-table.borders-header-cells thead > tr > th { border-right: 1px solid var(--gv-grey-200); }
+.gv-table.borders-header-cells thead > tr > th:last-child { border-right: none; }
+.gv-table.borders-body-rows tbody > tr > td { border-bottom: 1px solid var(--gv-grey-200); }
+.gv-table.borders-body-rows tbody > tr:last-child > td { border-bottom: none; }
+.gv-table.borders-body-cells tbody > tr > td { border-right: 1px solid var(--gv-grey-200); }
+.gv-table.borders-body-cells tbody > tr > td:last-child { border-right: none; }
+
+/* ── Tooltip ──────────────────────────────────────────────────────────────────
+   Source: component-library/components/Tooltip/index.tsx — a Tippy.js wrapper that
+   ships tippy's bundled **light** theme. Those visuals are tippy's defaults, NOT a
+   --gv-* token set: white bubble, text #26323d, 4px radius, the layered tippy
+   shadow, content padding 5px 9px, 8px arrow. Reproduced CSS-only (hover/focus,
+   placement=top) for static prototypes — the real one is JS-positioned. The
+   #26323d / shadow / 4px values are tippy's own, kept literal on purpose (genuine
+   third-party one-offs, outside the GoVocal token system). */
+.gv-tooltip { position: relative; display: inline-flex; }
+.gv-tooltip__bubble {
+  position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%) translateY(4px);
+  z-index: 50; min-width: max-content; max-width: 280px;
+  background: #fff; color: #26323d; font-family: var(--gv-font-family);
+  font-size: var(--gv-fs-s); line-height: 1.4; font-weight: 400; text-align: left;
+  padding: 5px 9px; border-radius: 4px;
+  box-shadow: 0 0 20px 4px rgba(154,161,177,.15), 0 4px 80px -8px rgba(36,40,47,.25), 0 4px 4px -2px rgba(91,94,105,.15);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+.gv-tooltip__bubble::after {   /* solid white arrow over the shadow */
+  content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 8px solid transparent; border-bottom-width: 0; border-top-color: #fff;
+}
+.gv-tooltip:hover .gv-tooltip__bubble,
+.gv-tooltip:focus-within .gv-tooltip__bubble {
+  opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    COMPOSED COMPONENTS — section-level building blocks (the "Components" library)
 

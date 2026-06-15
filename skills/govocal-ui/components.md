@@ -257,6 +257,55 @@ Full-width search wrapper: a `.gv-input` with a right-aligned magnifier glyph.
 
 ---
 
+## Select — `.gv-select` (`components/Select`)
+
+Native `<select>` wearing `defaultInputStyle` (same as `.gv-input`) + a chevron-down
+glyph (`fill #999` → black on hover/focus). 48px tall. Wrap the `<select>` in
+`.gv-select`. Give the first option `.placeholder` to render it greyed. Modifiers:
+`.error`, `.size-small`.
+
+```html
+<div class="gv-select">
+  <select aria-label="Sort by">
+    <option class="placeholder" value="" selected disabled hidden>Choose…</option>
+    <option>Most recent</option>
+    <option>Most discussed</option>
+  </select>
+</div>
+```
+
+## Table — `.gv-table` (`components/Table`)
+
+`<table>` at 14px, text colour `--gv-primary` (#044D6C), `border-collapse:separate`;
+header row underlined with grey200; 12px cell padding. Inner borders are opt-in:
+`.borders-header-cells`, `.borders-body-rows`, `.borders-body-cells`. Sortable header
+cells take `.clickable` (hover tint).
+
+```html
+<table class="gv-table borders-body-rows">
+  <thead><tr><th class="clickable">Name</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>Bike lane consultation</td><td>Open</td></tr>
+    <tr><td>Park redesign</td><td>Closed</td></tr>
+  </tbody>
+</table>
+```
+
+## Tooltip — `.gv-tooltip` (`components/Tooltip`)
+
+Tippy **light**-theme bubble (white, text `#26323d`, 4px radius, layered tippy shadow,
+8px arrow) reproduced CSS-only — shows on hover/focus of the wrapper, placement top.
+Wrap a focusable trigger and put the bubble alongside it.
+
+```html
+<span class="gv-tooltip" tabindex="0">
+  <span data-gv-icon="info"></span>
+  <span class="gv-tooltip__bubble" role="tooltip">Only admins can see this field.</span>
+</span>
+```
+
+---
+
 # Composed components (Components tab)
 
 Section-level blocks assembled from the primitives above. Full, copy-ready demos live

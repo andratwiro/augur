@@ -183,6 +183,25 @@
               <textarea class="gv-textarea" id="g-ta" placeholder="Share your idea…"></textarea>
             </div>
           </div>
+          <div class="row" style="align-items:flex-start">
+            <div class="field">
+              <label class="gv-label" for="g-sel">Sort by</label>
+              <div class="gv-select">
+                <select id="g-sel" aria-label="Sort by">
+                  <option class="placeholder" value="" selected disabled hidden>Choose…</option>
+                  <option>Most recent</option>
+                  <option>Most discussed</option>
+                  <option>Trending</option>
+                </select>
+              </div>
+            </div>
+            <div class="field">
+              <label class="gv-label" for="g-sel2">Disabled select</label>
+              <div class="gv-select">
+                <select id="g-sel2" disabled aria-label="Disabled"><option>Locked value</option></select>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -204,6 +223,32 @@
             <label class="gv-toggle"><input type="checkbox" /><span class="track"></span><span class="label">Off</span></label>
             <label class="gv-toggle"><input type="checkbox" disabled /><span class="track"></span><span class="label">Disabled</span></label>
           </div>
+        </div>
+      </section>
+
+      <section class="gv-sec" id="table-tooltip">
+        <h2 class="gv-sec__title">Table &amp; tooltip</h2>
+        <div class="gv-card">
+          <table class="gv-table borders-body-rows">
+            <thead>
+              <tr>
+                <th class="clickable">Project</th>
+                <th>Status</th>
+                <th>
+                  Inputs
+                  <span class="gv-tooltip" tabindex="0" style="margin-left:4px;vertical-align:middle">
+                    <span data-gv-icon="info-outline" aria-hidden="true"></span>
+                    <span class="gv-tooltip__bubble" role="tooltip">Total resident submissions across all phases.</span>
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Bike lane consultation</td><td>Open</td><td>128</td></tr>
+              <tr><td>Park redesign</td><td>Closed</td><td>342</td></tr>
+              <tr><td>Budget 2026</td><td>Open</td><td>57</td></tr>
+            </tbody>
+          </table>
         </div>
       </section>
 

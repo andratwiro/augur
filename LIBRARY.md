@@ -52,6 +52,9 @@ Design tokens (`--gv-*`) + base `.gv-*` classes. **Live demo:** `skills/govocal-
 - Filter control
 - Segmented toggle
 - Search field
+- Select
+- Table
+- Tooltip
 
 ## Components (blocks) — `components/<name>/`
 
@@ -109,7 +112,7 @@ as a starting point for a prototype.
 | **Bo Tools** | `/pages/bo-tools/` | `pages/bo-tools/` | Tools — GoVocal back office (reference) |
 | **Bo Users** | `/pages/bo-users/` | `pages/bo-users/` | Users — GoVocal back office (reference) |
 | **Event Detail** | `/pages/event-detail/` | `pages/event-detail/` | Event detail — GoVocal (reference) |
-| **Events** | `/pages/events/` | `pages/events/` | Events — GoVocal (reference) |
+| **Events** | `/pages/events/` | `pages/events/` | Events — Westmere |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Westmere — Have your say |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
 | **Perspectives Entry** | `/pages/perspectives-entry/` | `pages/perspectives-entry/` | Perspectives — in-timeline phase entry (reference) |
