@@ -1236,6 +1236,21 @@
 }
 .gv-sentiment-scale__face.is-emoji .gv-sentiment-scale__glyph { display: block; }
 
+/* Mobile reflow (measured fo-community-monitor-m: 390px viewport → 360px .modalcontent
+   card). The 5-option row must stay on ONE line inside the narrow card by narrowing each
+   option from the 56px desktop column to ~40px (measured #place_to_live-linear-scale-option-1
+   = 40px wide, height unchanged at 49px), NOT wrap or overflow. The desktop base above is a
+   rigid flex:0 0 56px column (correct for the 460px card); inside the constrained card we let
+   each option flex/shrink to a ~40px floor and the 48px face shrink to fit. Appended override
+   — desktop checkpoint geometry above is untouched. */
+@media (max-width: 480px) {
+  .gv-sentiment-scale__opt {
+    flex: 0 0 40px; width: 40px; min-width: 40px; max-width: 40px;
+  }
+  .gv-sentiment-scale__face { box-sizing: border-box; width: 40px; height: 40px; max-width: 40px; }
+  .gv-sentiment-scale__face.is-emoji { font-size: 26px; }
+}
+
 /* ── Event DETAIL page (/events/:id) ────────────────────────────────────────── */
 /* Source-grounded on wietsedemo.govocal.com/en/events/<id> (capture: fo-event-detail,
    Cultuurconnect tenant). NEW page reached from a Past-event card. Anatomy: a
