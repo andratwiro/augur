@@ -78,6 +78,63 @@ for (const tier of TIERS) {
   }
 }
 
+// INV-5 (warn, FO): every component-grade .gv-* block defined in the canonical FO
+// stylesheet should be SURFACED by a components/<name>/ demo or documented as a
+// primitive in components.md. This catches the drift that BURIES reusable blocks
+// inside pages — real in the CSS, but invisible on the Components tab and in
+// LIBRARY.md (both scan FOLDERS, not the prose in manifest page rows). When a block
+// is authored straight into govocal-ui.css and only ever used in a page, the lists
+// never grow even though the library did. Page-composition fragments and text/layout
+// utilities are exempt (PAGE_LOCAL) — they're meant to live in a page, not stand
+// alone. BO chrome (govocal-bo.css) is intentionally out of scope for now: it's
+// surfaced via the bo-app-shell / bo-sidebar components plus the BO section pages.
+const familyRoot = (cls) =>
+  cls.replace(/^\./, '').replace(/__.*/, '').replace(/--.*/, '').replace(/\..*/, '');
+
+const PAGE_LOCAL = new Set([
+  // text / layout utilities — composition, not a standalone block
+  'gv-prose', 'gv-section', 'gv-pgrid', 'gv-filterbar', 'gv-filters-btn',
+  // single-page composition fragments (project-page header, event-detail layout, …)
+  'gv-eventdetail', 'gv-projbar', 'gv-projhead', 'gv-projdesc', 'gv-pinfo',
+  'gv-participants', 'gv-pcount', 'gv-poststat', 'gv-thumb-cap',
+  // inline link / control utilities
+  'gv-back', 'gv-readmore', 'gv-edit',
+  // root / a11y helpers
+  'gv-root', 'gv-sr-only',
+]);
+
+const uiCssPath = path.join(ROOT, 'skills/govocal-ui/govocal-ui.css');
+if (fs.existsSync(uiCssPath)) {
+  const css = fs.readFileSync(uiCssPath, 'utf8');
+  const defined = new Set();
+  for (const m of css.matchAll(/(?:^|[}{;])\s*(\.gv-[\w-]+)/g)) defined.add(familyRoot(m[1]));
+
+  const surfaced = new Set();
+  // classes USED in component demos (markup only — strip the showcase <style>).
+  const compBase = path.join(ROOT, 'components');
+  if (fs.existsSync(compBase)) {
+    for (const name of fs.readdirSync(compBase)) {
+      const idx = path.join(compBase, name, 'index.html');
+      if (!fs.existsSync(idx)) continue;
+      const markup = fs.readFileSync(idx, 'utf8').replace(/<style[\s\S]*?<\/style>/gi, '');
+      for (const m of markup.matchAll(/gv-[\w-]+/g)) surfaced.add(familyRoot(m[0]));
+    }
+  }
+  // families documented as primitives in components.md (before the Composed divider).
+  const mdPath = path.join(ROOT, 'skills/govocal-ui/components.md');
+  if (fs.existsSync(mdPath)) {
+    const prim = fs.readFileSync(mdPath, 'utf8').split(/^#\s+Composed components/m)[0];
+    for (const m of prim.matchAll(/gv-[\w-]+/g)) surfaced.add(familyRoot(m[0]));
+  }
+
+  const buried = [...defined]
+    .filter((f) => f && f.startsWith('gv-') && !surfaced.has(f) && !PAGE_LOCAL.has(f))
+    .sort();
+  for (const f of buried) {
+    warnings.push(`[unsurfaced] .${f} is in govocal-ui.css but no components/<name>/ demo or primitive surfaces it — add a component folder (or promote to a primitive), else it stays invisible on the Components tab/LIBRARY.md. If it's page-local layout, add it to PAGE_LOCAL in lint-architecture.mjs.`);
+  }
+}
+
 // ── report ──────────────────────────────────────────────────────────────────
 console.log(`\nArchitecture lint — library tiers must be hardwired to canonical (prototypes exempt)\n`);
 if (violations.length) {
@@ -87,7 +144,7 @@ if (violations.length) {
   console.log('✓ no violations — every component & page references canonical; nothing redefines or copies.');
 }
 if (warnings.length) {
-  console.log(`\n⚠ ${warnings.length} warning(s) — page-authored styling that won't sync downstream:`);
+  console.log(`\n⚠ ${warnings.length} warning(s) — page-authored styling [styling] + unsurfaced canonical blocks [unsurfaced]:`);
   for (const w of warnings) console.log('  ' + w);
 }
 console.log('');
