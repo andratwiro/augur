@@ -1311,3 +1311,28 @@
   .gv-issuefeed__rail { border-right: 0; border-bottom: 1px solid var(--gv-grey-200); }
   .gv-issuecanvas { min-height: 420px; }
 }
+
+/* ── Homepage "We want to hear from you" featured 3-up spotlight row ──────────
+   Source-grounded on wietsedemo /en (capture fo-homepage-featured-row): a row of
+   large, image-led featured project cards that sit ABOVE the regular project grid,
+   under a shared .gv-title.h2 ("We want to hear from you" — 25px/700/#474747,
+   margin-bottom 16px). Each card is borderless and photo-dominant: a 4:3 image
+   (live 376×282, radius 3px, overflow hidden) + an 18px/700 title 8px below + the
+   avatar bubbles row — NO progress bar / timer / status (that's the boxed grid card).
+   Distinct from the wide single-block .gv-spotlight and from the bordered
+   .gv-pcard.boxed grid card. Built as a NEW layout (.gv-featured-row) of a NEW
+   .gv-pcard.featured variant — base .gv-pcard / .gv-pcard__thumb / __title unchanged.
+   Section h2 = the shared .gv-title.h2; bubbles = .gv-bubbles.xs (live 20px avatars). */
+.gv-featured-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+
+/* Featured card = borderless photo card. Thumb fills 3 of the 3-up columns;
+   live thumb is 376×282 (≈4:3) with the shared 3px radius + clipped corners. */
+.gv-pcard.featured { flex: initial; }
+.gv-pcard.featured .gv-pcard__thumb { aspect-ratio: 4 / 3; border-radius: var(--gv-radius); }
+.gv-pcard.featured .gv-pcard__title { font-size: var(--gv-fs-l); font-weight: 700;
+  line-height: 1.3; margin: 8px 0 0; }                 /* live h3 = 18px/700, margin-top 8px */
+.gv-pcard.featured .gv-bubbles { margin-top: 8px; }
+
+@media (max-width: 860px) {
+  .gv-featured-row { grid-template-columns: 1fr; gap: 28px; }
+}

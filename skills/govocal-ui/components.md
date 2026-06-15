@@ -553,6 +553,37 @@ card. Source-grounded on wietsedemo `/en`: the tinted card `.fGrxMq`
   standing in for the live `/SentimentQuestionPreview.png`, which isn't redistributable.
   Verified via `fo-homepage-survey-band/{card,title,cta}`.
 
+## Featured 3-up spotlight row — `.gv-featured-row` / `.gv-pcard.featured` (`components/homepage-featured-row/`)
+
+The homepage **"We want to hear from you"** row: three large, image-led featured project
+cards above the regular project grid, under a shared `.gv-title.h2` section heading.
+Source-grounded on wietsedemo `/en` (capture `fo-homepage-featured-row`). Each card is a
+**borderless, photo-dominant** `.gv-pcard.featured` — a **4:3** photo thumb (live 376×282,
+`--gv-radius` 3px, clipped) + an **18px/700** `.gv-pcard__title` 8px below + an avatar
+`.gv-bubbles.xs` row. **No** progress bar / timer / status (that's the `.gv-pcard.boxed`
+grid card), and **distinct** from the single wide-block `.gv-spotlight`. New layout
+(`.gv-featured-row`) + a new `.gv-pcard.featured` variant — the base `.gv-pcard` /
+`__thumb` / `__title` are unchanged. Section `h2` = `.gv-title.h2` (25px/700, margin-bottom 16).
+Cards are `<article>`s with a stretched title link (never nest `<a>` in `<a>`). Collapses to
+one column < 860px. Verified via `fo-homepage-featured-row/{section-title,card-title}`.
+
+```html
+<section aria-labelledby="featured-h">
+  <h2 id="featured-h" class="gv-title h2" style="margin-bottom:16px;">We want to hear from you</h2>
+  <div class="gv-featured-row">
+    <article class="gv-pcard featured">
+      <div class="gv-pcard__thumb"><img src="…" alt="" /></div>
+      <h3 class="gv-pcard__title"><a href="…">Ideation: Let's Reimagine our Central Park</a></h3>
+      <div class="gv-bubbles xs" aria-hidden="true">
+        <span class="av" style="…"></span><span class="av" style="…"></span>
+        <span class="count">+42</span><span class="gv-bubbles__label">45 participants</span>
+      </div>
+    </article>
+    <!-- + 2 more .gv-pcard.featured -->
+  </div>
+</section>
+```
+
 ## Project card + rail — `.gv-rail` / `.gv-pcard` (`components/project-card/`)
 
 The card is an `<article>`, NOT an `<a>` — the title link is stretched to make the whole

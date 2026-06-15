@@ -1174,6 +1174,40 @@
       ]
     },
     {
+      "id": "fo-homepage-featured-row/section-title",
+      "built": "components/homepage-featured-row/index.html",
+      "against": "fo-homepage-featured-row",
+      "map": {
+        "h2.fbbiek": ".gv-title.h2"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "margin"
+      ],
+      "uses": [
+        ".gv-title"
+      ]
+    },
+    {
+      "id": "fo-homepage-featured-row/card-title",
+      "built": "components/homepage-featured-row/index.html",
+      "against": "fo-homepage-featured-row",
+      "map": {
+        "h3.cNGScl": ".gv-pcard.featured .gv-pcard__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "margin"
+      ],
+      "uses": [
+        ".gv-pcard"
+      ]
+    },
+    {
       "id": "fo-homepage-survey-band/card",
       "built": "components/homepage-survey-band/index.html",
       "against": "fo-homepage-survey-band",
