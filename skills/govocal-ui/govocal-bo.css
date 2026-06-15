@@ -267,8 +267,13 @@
 
 /* ── Config-form scaffolding (the deep Setup/General editors) ───────────────── */
 
-/* Section heading (h3, "Edit Phase" / "General settings"): 21px/700 admin blue. */
+/* Section heading (h3, "Edit Phase" / "Input form" / "Input manager"): 21px/700
+   admin blue (measured). */
 .gv-bo-formhead { margin: 0 0 20px; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
+/* Project-config PAGE title (General "…settings", "Project events"): a larger,
+   lighter 25px/500 heading, usually paired with a 16px lede line (measured). */
+.gv-bo-pagetitle { margin: 0 0 4px; font-size: var(--gv-fs-xxl); font-weight: 500; color: var(--gv-bo-primary); }
+.gv-bo-pagelede { margin: 0 0 24px; font-size: var(--gv-fs-base); color: var(--gv-text-secondary); }
 /* Sub-section heading (h4, "What do you want to do?"): 18px/700 admin blue. */
 .gv-bo-subhead { margin: 28px 0 4px; font-size: 18px; font-weight: 700; color: var(--gv-bo-primary); }
 /* Small grouping caption (h6, e.g. method-section labels): 14px/700 cool grey. */
@@ -394,16 +399,16 @@
 /* Empty state (Messaging "Send your first email"). */
 .gv-bo-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 48px 24px; }
 .gv-bo-empty__icon { width: 56px; height: 56px; color: var(--gv-teal-200); }
-.gv-bo-empty__title { margin: 0; font-size: 18px; font-weight: 700; color: var(--gv-bo-primary); }
+.gv-bo-empty__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-empty__text { margin: 0; max-width: 360px; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); line-height: 1.5; }
 
 /* Events list rows. */
 .gv-bo-eventrow { display: flex; align-items: center; gap: 16px; padding: 18px 0; border-top: 1px solid var(--gv-divider); }
 .gv-bo-eventrow__main { min-width: 0; flex: 1 1 auto; }
-.gv-bo-eventrow__title { margin: 0 0 4px; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-bo-primary); }
-.gv-bo-eventrow__dates { font-size: 13px; font-weight: 300; color: var(--gv-text-secondary); line-height: 1.5; }
-.gv-bo-eventrow__count { flex: none; width: 96px; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
-.gv-bo-eventrow__count b { font-size: 18px; font-weight: 600; }
+.gv-bo-eventrow__title { margin: 0 0 4px; font-size: var(--gv-fs-l); font-weight: 500; color: var(--gv-bo-primary); }
+.gv-bo-eventrow__dates { font-size: var(--gv-fs-s); font-weight: 300; color: var(--gv-bo-primary); line-height: 1.5; }
+.gv-bo-eventrow__count { flex: none; width: 110px; font-size: var(--gv-fs-base); color: var(--gv-text-secondary); }
+.gv-bo-eventrow__count b { font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-eventrow__actions { flex: none; display: flex; align-items: center; gap: 8px; }
 
 /* ── Input manager (the phase "posts" table view) ───────────────────────────
@@ -457,7 +462,7 @@
 
 /* Section header row: title on the left, primary actions on the right. */
 .gv-bo-headrow { display: flex; align-items: center; gap: 16px; margin: 18px 0 4px; }
-.gv-bo-headrow__title { margin: 0; font-size: 20px; font-weight: 700; color: var(--gv-bo-primary); }
+.gv-bo-headrow__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-headrow__actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .gv-bo-count-line { margin: 10px 0; font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-bo-primary); }
 

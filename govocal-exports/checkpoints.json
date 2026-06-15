@@ -158,9 +158,9 @@
       "id": "bo-project-phase/content-card",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "div.sc-beqWaB.sc-loIdfG": ".gv-bo-card" },
+      "map": { "div.sc-beqWaB.sc-loIdfG": ".gv-bo-phasehead" },
       "props": ["background-color", "border-radius", "box-shadow"],
-      "uses": [".gv-bo-card"]
+      "uses": [".gv-bo-phasehead"]
     },
     {
       "id": "bo-project-phase/topbar-panel",

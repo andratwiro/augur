@@ -71,6 +71,7 @@ as a starting point for a prototype.
 
 | Page | Open | Source | What it is |
 |---|---|---|---|
+| ** Drafts** | `/pages/_drafts/` | `pages/_drafts/` | _(no description)_ |
 | **Bo Project Phase** | `/pages/bo-project-phase/` | `pages/bo-project-phase/` | Project configuration — GoVocal back office (reference) |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Homepage — GoVocal (reference) |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
