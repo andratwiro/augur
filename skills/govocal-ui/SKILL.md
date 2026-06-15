@@ -6,9 +6,9 @@ description: Source-grounded GoVocal UI components for prototypes — real desig
 # GoVocal UI (source-grounded components)
 
 The **fidelity layer**: tokens and components transcribed from the real product
-code, so prototypes look like GoVocal — not an approximation. Companion to
-`skills/govocal-design/` (brand voice / visual direction / when-to-use). This
-skill is the *exact how*; that one is the *why & when*.
+code, so prototypes look like GoVocal — not an approximation. This skill is the
+*exact how* (tokens + components); for generic design craft (typography, palette,
+layout direction) pair it with `skills/frontend-design/`.
 
 For the **product model** behind the UI — what a Project/Phase/Input/participation
 method is, the exact terminology, roles, and asset specs (image dimensions, etc.) —

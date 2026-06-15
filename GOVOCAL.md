@@ -5,8 +5,8 @@ Synthesized from the public help center (`support.govocal.com`, all 70 articles,
 read 2026-06-14). **Internal-only — never ships.** Lives at repo root, outside any
 `prototypes/` folder, so `build.js` never copies it to `/dist`.
 
-Companions: brand/voice → `skills/govocal-design/`; real components & tokens →
-`skills/govocal-ui/`; a11y → `skills/govocal-a11y/`. This file is the *product
+Companions: real components & tokens → `skills/govocal-ui/`; generic design craft →
+`skills/frontend-design/`; a11y → `skills/govocal-a11y/`. This file is the *product
 model* (what the thing is and how it works); those are the *how it looks/sounds*.
 
 ---
@@ -246,14 +246,9 @@ Eight options shown when creating a phase:
 
 ## 8. Asset specs & accessibility (use when building UI)
 
-- **Images**: PNG/JPG, max 10 MB, min 72 dpi. Homepage banner **1440×480 (3:1)**;
-  project/folder card **1400×1050 (4:3)**; project/folder banner **2400×600
-  (4:1)**; **idea card 1024×1024 (1:1)**; proposal card **1000×500 (2:1)**; event
-  card **1800×600 (3:1)**; logo min **48px** height. Mobile crops differ.
 - **Accessibility**: platform certifies to **WCAG 2.2 AA** (with AnySurfer);
   keyboard nav, screen-reader support, alt-text, contrast warnings on custom
   colors. No third-party a11y overlays. (Mirrors our `skills/govocal-a11y/` rule.)
-- **Browsers**: Chrome, Firefox, Safari, Edge (latest). No IE11.
 - **Editors**: **Content Builder** (block page editor; images not resizable) vs
   **Text Box editor** (WYSIWYG; reduced variant for emails).
 

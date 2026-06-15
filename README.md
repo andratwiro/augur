@@ -16,7 +16,8 @@ govocal-prototypes/
 ├── build.js                 # scans folders → generates /dist + index.html
 ├── CLAUDE.md                # conventions (read this)
 ├── skills/
-│   └── govocal-design/      # design-system skill
+│   ├── frontend-design/     # generic design craft (Free mode default)
+│   └── govocal-ui/          # source-grounded GoVocal components & tokens
 ├── parallel-participation/
 │   ├── research.md          # internal — never published
 │   ├── context.md           # internal — never published

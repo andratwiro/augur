@@ -10,7 +10,7 @@ what fails *them*. This is the structured "review my own work" flow: **screensho
 walk the task in character → critique through the persona + design + a11y lenses →
 severity-ranked findings with fixes.**
 
-Companion to `skills/govocal-design/` (brand/tone), `skills/govocal-ui/` (real
+Companion to `skills/govocal-ui/` (real
 components/tokens), `skills/govocal-a11y/` (WCAG 2.2 AA, the perceivable layer), and
 `skills/webapp-testing/` (Playwright capture). The persona roster lives in
 **`personas.md`** next to this file — read it before critiquing.
@@ -99,7 +99,7 @@ self-review and report back). Don't wait to be told.
    - **a11y (perceivable)** — contrast/use-of-color/type/targets/focus/motion +
      all states shown (defer to `govocal-a11y`; don't re-derive it).
    - **Design** — on-brand, clear hierarchy, right components/tokens (defer to
-     `govocal-design` + `govocal-ui`).
+     `govocal-ui` + `frontend-design`).
 6. **Write it up** in the format below.
 
 ## Output format

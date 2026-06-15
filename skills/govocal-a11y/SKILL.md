@@ -9,7 +9,8 @@ GoVocal's mission is *"hearing the many, not the few."* The real platform is
 **WCAG 2.2 AA certified** (audited with AnySurfer). These prototypes are **visual
 guidance** for what to build — not the shipping implementation — so this skill scopes
 accessibility to **the decisions a mockup actually makes**: the *perceivable / visual*
-layer. Complementary to `skills/govocal-design/`.
+layer. Complementary to `skills/govocal-ui/` (real components/tokens) and
+`skills/frontend-design/` (visual direction).
 
 ## Scope — what a prototype is responsible for
 
