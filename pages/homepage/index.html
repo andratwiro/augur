@@ -78,7 +78,7 @@
 
       <div class="gv-header__actions">
         <button class="gv-iconbtn gv-desktop-only" aria-label="Search">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span data-gv-icon="search"></span>
         </button>
 
         <!-- ════ Signed-OUT actions ════ -->
@@ -89,7 +89,7 @@
         <!-- ════ Signed-IN actions (same component, other state — flip with the toggle) ════ -->
         <span class="gv-auth-in gv-desktop-only">
           <button class="gv-iconbtn" aria-label="Notifications, 3 unread">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span data-gv-icon="notification"></span>
             <span class="gv-iconbtn__badge">3</span>
           </button>
           <details class="gv-nav__dd right gv-account-dd">
@@ -99,19 +99,11 @@
               <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </summary>
             <div class="gv-nav__menu" style="min-width:220px">
-              <a href="#">Manage platform
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 21v-7m0-4V3m6 18v-9m0-4V3m6 18v-5m0-4V3M1 14h4M7 8h4m4 8h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              </a>
-              <a href="#">My activity
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              </a>
-              <a href="#">My settings
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 12a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 5.3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 12 3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 .9 1.5H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5.9Z" stroke="currentColor" stroke-width="1.6"/></svg>
-              </a>
+              <a href="#">Manage platform <span data-gv-icon="shield"></span></a>
+              <a href="#">My activity <span data-gv-icon="user-circle"></span></a>
+              <a href="#">My settings <span data-gv-icon="cogs"></span></a>
               <div class="gv-menu-sep"></div>
-              <button type="button" data-auth-set="out">Sign out
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </button>
+              <button type="button" data-auth-set="out">Sign out <span data-gv-icon="power"></span></button>
             </div>
           </details>
           <details class="gv-nav__dd right">
@@ -441,6 +433,7 @@
       });
     })();
   </script>
+  <script src="govocal-icons.js" defer></script>
   <script src="govocal-themes.js" defer></script>
 </body>
 </html>

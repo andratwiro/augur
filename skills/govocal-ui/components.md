@@ -154,7 +154,7 @@ Filled status pill; set the background via `--bg`.
 ## Icons — `govocal-icons.js` (`components/Icon`)
 
 The real GoVocal icon set (Material-Design-derived paths), transcribed verbatim from
-`components/Icon/index.tsx`. Curated 64-icon subset of what the product UI actually uses.
+`components/Icon/index.tsx`. Curated 67-icon subset of what the product UI actually uses.
 
 ```html
 <script src="govocal-icons.js" defer></script>
@@ -169,13 +169,15 @@ The real GoVocal icon set (Material-Design-derived paths), transcribed verbatim 
   `font-size`/`color` and the icon follows (so it re-themes with `--gv-tenant-*`).
 - **API:** `window.GVIcons.svg("search")` → markup string; `.names` → sorted list;
   `.render(root)` → rescan after injecting new `[data-gv-icon]` nodes.
-- **Names (64):** navigation/UI — `search close menu dots-horizontal plus minus check
+- **Names (67):** navigation/UI — `search close menu dots-horizontal plus minus check
   edit delete settings filter refresh link open-in-new download send share
   chevron-{up,down,left,right} arrow-{up,down,left,right}`; participation — `vote-up
   vote-down idea comment comments basket basket-plus survey initiatives volunteer flag
   bookmark bookmark-outline eye eye-off stars`; meta — `user user-circle group calendar
   calendar-range clock location-simple gps map info-outline info-solid alert-circle
-  check-circle lock key email notification home trend-up money-bag timeline pen label`.
+  check-circle lock key email notification home trend-up money-bag timeline pen label`;
+  account menu (transcribed live from the user dropdown) — `shield` (Manage platform)
+  `cogs` (My settings) `power` (Sign out).
 - **More icons exist** in the repo (~130 total incl. SSO/sidebar glyphs); extend
   `govocal-icons.js` from `Icon/index.tsx` @ `5d67730` following the same discipline.
 

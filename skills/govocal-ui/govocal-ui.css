@@ -393,6 +393,7 @@ body.gv-root {
 }
 .gv-iconbtn:hover { background: var(--gv-grey-100); color: var(--gv-tenant-primary); }
 .gv-iconbtn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-iconbtn .gv-icon { width: 22px; height: 22px; }    /* size primitive icons (search, bell) in the round button */
 
 /* Logged-in actions — notification badge + account button (avatar + name + chevron).
    Swap these into .gv-header__actions in place of the logged-out search + "Sign in"

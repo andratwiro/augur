@@ -34,7 +34,7 @@ project brain. Match its vocabulary when labelling components.
 | `govocal-bo.css` | **Back-office** chrome (`.gv-bo-*`): app shell, sidebar, top-bar, tabs. The `.gv-bo` scope remaps `--gv-tenant-*` → GoVocal's fixed teal/navy BO palette, so the same primitives render in back-office colours. See `govocal-exports/BACK-OFFICE.md`. |
 | `govocal-survey.css` + `govocal-survey.js` | The **survey field kit**: every input-form question type (rating, ranking, linear/sentiment scale, image-select, matrix, map, file/shapefile, …) + the page-by-page runner. `GVSurvey.field({type,…})` renders one widget; `GVSurvey.mount(el, FORM)` renders a whole survey. Built on the gv-* primitives; themeable. Demo: `components/survey-fields/`; used by the Input Form page. |
 | `govocal-themes.js` | `?theme=` per-city colour + **font** switcher + on-screen picker + per-city logos. |
-| `govocal-icons.js` | The real **GoVocal icon set** (64-icon curated subset, transcribed verbatim from the repo). Drop in, then `<span data-gv-icon="vote-up"></span>` → inline `<svg class="gv-icon">` that inherits text colour + size. |
+| `govocal-icons.js` | The real **GoVocal icon set** (67-icon curated subset, transcribed verbatim from the repo + the live account menu). Drop in, then `<span data-gv-icon="vote-up"></span>` → inline `<svg class="gv-icon">` that inherits text colour + size. |
 | `govocal-logo.svg` | The real **go·vocal** wordmark (footer “powered by” attribution). Muted grey; use as `<img>`. |
 | `components.md` | The catalog — copy-paste HTML for primitives **and composed components**, with notes. |
 | `gallery.html` | Live demo of every primitive in every state, across all city themes. Open it to eyeball fidelity. |
