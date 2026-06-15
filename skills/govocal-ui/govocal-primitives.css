@@ -221,6 +221,9 @@ body.gv-root {
   background: var(--bg, var(--gv-success)); color: #fff;
 }
 .gv-status-label.outlined { background: transparent; color: var(--gv-text-secondary); border: 1px solid var(--gv-text-secondary); }
+/* Common publication statuses (measured live): Draft = orange #FF672F. */
+.gv-status-label.draft { background: var(--gv-orange-500); }
+.gv-status-label.published { background: var(--gv-success); }
 
 /* ── Spinner (rotating ring; default 32px / 3px / #666) ────────────────────── */
 .gv-spinner {

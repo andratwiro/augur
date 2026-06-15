@@ -468,6 +468,20 @@
 .gv-bo-empty__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-empty__text { margin: 0; max-width: 360px; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); line-height: 1.5; }
 
+/* Generic admin list row (Messaging emails, Pages & menu items, Reporting list):
+   a divider-separated row — leading content (icon/handle + title + sub/status) on
+   the left, actions flush right. Measured live (bo-messaging email rows): title
+   18px/500 admin-blue, 18px vertical rhythm, hairline divider between rows. */
+.gv-bo-listrow { display: flex; align-items: center; gap: 14px; padding: 18px 0; border-top: 1px solid var(--gv-divider); }
+.gv-bo-listrow:first-child { border-top: 0; }
+.gv-bo-listrow__handle { flex: none; color: var(--gv-cool-grey-400); cursor: grab; }
+.gv-bo-listrow__main { min-width: 0; flex: 1 1 auto; }
+.gv-bo-listrow__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 500; color: var(--gv-bo-primary); display: inline-flex; align-items: center; gap: 8px; }
+.gv-bo-listrow__title a { color: inherit; text-decoration: none; }
+.gv-bo-listrow__title a:hover { text-decoration: underline; }
+.gv-bo-listrow__sub { margin-top: 6px; display: flex; align-items: center; gap: 10px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+.gv-bo-listrow__actions { flex: none; display: flex; align-items: center; gap: 8px; }
+
 /* Events list rows. */
 .gv-bo-eventrow { display: flex; align-items: center; gap: 16px; padding: 18px 0; border-top: 1px solid var(--gv-divider); }
 .gv-bo-eventrow__main { min-width: 0; flex: 1 1 auto; }

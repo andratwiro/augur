@@ -472,6 +472,48 @@ scrollable body. The **card** is the dialog — put the ARIA on it, not the over
 - The `.gv-or` rule/label/rule divider is a standalone primitive — reuse it anywhere you
   split two choices.
 
+## Community Monitor — `.gv-monitor` / `.gv-sentiment-scale` (`components/community-monitor/`)
+
+The "City at a glance" satisfaction module: an ongoing survey that surfaces as a top
+modal/banner on the homepage and asks how residents feel about governance & public
+services as a **5-point emoji sentiment** linear scale. Grounded on wietsedemo
+(`.modalcontent` · `#community-monitor-modal-title` · `#<q>-linear-scale-option-N` ·
+`.e2e-modal-close-button`).
+
+```html
+<div class="gv-modal-overlay is-open">
+  <div class="gv-modal size-monitor" role="dialog" aria-modal="true" aria-labelledby="cm-title">  <!-- 460px card -->
+    <div class="gv-modal__header"><h1 class="gv-modal__title" id="cm-title">City at a glance</h1></div>
+    <button class="gv-modal__close round" aria-label="Close window"><svg viewBox="0 0 24 24">…X…</svg></button>  <!-- round 46px variant -->
+    <div class="gv-modal__body">
+      <p class="gv-monitor__intro">This ongoing survey tracks how you feel about governance and public services.</p>
+      <p class="gv-monitor__question" id="cm-q">City as a place to live</p>
+      <div class="gv-sentiment-scale" role="group" aria-labelledby="cm-q">
+        <button class="gv-sentiment-scale__opt" aria-pressed="false" aria-label="1 out of 5, Very poor">
+          <span class="gv-sentiment-scale__face"><svg viewBox="0 0 40 40">…face…</svg></span>
+          <span class="gv-sentiment-scale__cap">Very poor</span>
+        </button>
+        …options 2–5 (Poor / Neither / Good / Excellent)…
+      </div>
+      <div class="gv-monitor__footer"><span class="gv-monitor__count">195 participants</span></div>
+    </div>
+  </div>
+</div>
+```
+
+- **Shell is the reusable modal** — `.gv-modal.size-monitor` pins the measured 460px card
+  (`--gv-modal-w: 460px`); everything else (overlay, `__header/__title/__close/__body`) is the
+  standard abstraction. The close uses the new **`.gv-modal__close.round`** modifier (46px circle,
+  `padding 10px`, measured `.e2e-modal-close-button`) — a *variant*, the square 40px base is untouched.
+- **`.gv-sentiment-scale`** is a NEW horizontal emoji linear-scale, a sibling of the survey kit's
+  vertical `.sv-sentiment` (built fresh, not a mutation). Each `__opt` is a bare **56px** column
+  (measured: 0 border / 0 radius / 0 pad) tinted `var(--gv-tenant-primary)`; selection chrome
+  (border + tint) lives on the inner `__face` so the option's grounded geometry stays exact.
+  Options are `aria-pressed` buttons, single-select. Faces are inline SVG → self-contained + re-themeable.
+- **`.gv-monitor__intro`** = the muted cool-grey copy (`#596B7A`, 14/21); `__question` is the bold
+  question; `__count` the participant tally. Set the tenant skin via `--gv-tenant-primary` (the
+  captured wietsedemo is `#044D6C`) — nothing is hardcoded.
+
 ## Project card + rail — `.gv-rail` / `.gv-pcard` (`components/project-card/`)
 
 The card is an `<article>`, NOT an `<a>` — the title link is stretched to make the whole

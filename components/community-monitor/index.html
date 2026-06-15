@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Community Monitor — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed to the captured wietsedemo tenant (primary #044D6C — the measured
+       link-blue rgb(4,77,108) the sentiment options render in). Swap this one var,
+       or use ?theme=, and the whole module re-themes — nothing is hardcoded. */
+    :root { --gv-tenant-primary: #044D6C; }
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); background: #fff; padding: 26px; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Community Monitor</h1>
+    <p class="sub">The “City at a glance” satisfaction module — an ongoing survey that
+      surfaces as a top modal/banner on the homepage and asks how residents feel about
+      governance and public services as a 5-point emoji sentiment scale. Grounded on
+      the live <code>.modalcontent</code> / <code>#community-monitor-modal-title</code> /
+      <code>#&lt;q&gt;-linear-scale-option-N</code>.</p>
+
+    <div class="eyebrow">Demo</div>
+    <div class="stage">
+      <button class="gv-btn primary" type="button" data-open-modal>Open the Community Monitor</button>
+    </div>
+
+    <!-- ============ COMMUNITY MONITOR MODAL (copy from here) ============ -->
+    <!-- Shell = the reusable .gv-modal abstraction; .size-monitor pins the 460px card.
+         Body = .gv-monitor intro + the new horizontal .gv-sentiment-scale. -->
+    <div class="gv-modal-overlay is-open" id="monitor-overlay" data-modal-overlay>
+      <div class="gv-modal size-monitor" role="dialog" aria-modal="true" aria-labelledby="monitor-title">
+        <div class="gv-modal__header">
+          <h1 class="gv-modal__title" id="monitor-title">City at a glance</h1>
+        </div>
+        <button class="gv-modal__close round" type="button" aria-label="Close window" data-close-modal>
+          <svg viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L13.41,12L19,6.41Z"></path>
+          </svg>
+        </button>
+
+        <div class="gv-modal__body">
+          <p class="gv-monitor__intro">This ongoing survey tracks how you feel about
+            governance and public services.</p>
+          <p class="gv-monitor__question" id="monitor-q">City as a place to live</p>
+
+          <div class="gv-sentiment-scale" role="group" aria-labelledby="monitor-q" data-monitor-scale>
+            <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
+                    aria-label="1 out of 5, Very poor">
+              <span class="gv-sentiment-scale__face">
+                <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                  <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
+                  <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
+                  <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
+                  <path d="M13 28 Q20 22 27 28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="gv-sentiment-scale__cap">Very poor</span>
+            </button>
+            <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
+                    aria-label="2 out of 5, Poor">
+              <span class="gv-sentiment-scale__face">
+                <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                  <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
+                  <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
+                  <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
+                  <path d="M13 27 Q20 23 27 27" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="gv-sentiment-scale__cap">Poor</span>
+            </button>
+            <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
+                    aria-label="3 out of 5, Neither">
+              <span class="gv-sentiment-scale__face">
+                <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                  <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
+                  <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
+                  <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
+                  <path d="M13 26 H27" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="gv-sentiment-scale__cap">Neither</span>
+            </button>
+            <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
+                    aria-label="4 out of 5, Good">
+              <span class="gv-sentiment-scale__face">
+                <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                  <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
+                  <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
+                  <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
+                  <path d="M13 25 Q20 30 27 25" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="gv-sentiment-scale__cap">Good</span>
+            </button>
+            <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
+                    aria-label="5 out of 5, Excellent">
+              <span class="gv-sentiment-scale__face">
+                <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                  <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
+                  <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
+                  <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
+                  <path d="M12 24 Q20 32 28 24" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="gv-sentiment-scale__cap">Excellent</span>
+            </button>
+          </div>
+
+          <div class="gv-monitor__footer">
+            <span class="gv-monitor__count">195 participants</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ============ /COMMUNITY MONITOR MODAL ============ -->
+
+    <div class="notes">
+      <p><strong>Reuse:</strong> the shell is the standard modal abstraction —
+      <code>.gv-modal-overlay</code> → <code>.gv-modal.size-monitor</code> (460px card),
+      <code>__header/__title</code>, top-right <code>__close</code>, scrollable
+      <code>__body</code>. The body is the new <code>.gv-monitor</code> module:
+      <code>__intro</code> (muted cool-grey copy) + <code>__question</code> +
+      <code>__count</code>.</p>
+      <p><strong>The new variant:</strong> <code>.gv-sentiment-scale</code> is a
+      horizontal 5-emoji linear scale (each <code>__opt</code> a 56px column, tinted in
+      <code>var(--gv-tenant-primary)</code>, emoji over <code>__cap</code> caption). It is
+      a sibling of the survey kit’s vertical <code>.sv-sentiment</code> — built fresh, not
+      a mutation of it. Options are <code>aria-pressed</code> buttons; one selects at a
+      time. Faces are inline SVG so the module is self-contained and re-themeable.</p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const overlay = document.getElementById('monitor-overlay');
+      const open = () => { overlay.classList.add('is-open'); overlay.querySelector('.gv-modal').focus?.(); };
+      const close = () => overlay.classList.remove('is-open');
+      document.querySelectorAll('[data-open-modal]').forEach((b) => b.addEventListener('click', open));
+      document.querySelectorAll('[data-close-modal]').forEach((b) => b.addEventListener('click', close));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('is-open')) close(); });
+
+      // Single-select sentiment: clicking one option presses it, releases the rest.
+      const scale = overlay.querySelector('[data-monitor-scale]');
+      scale.querySelectorAll('.gv-sentiment-scale__opt').forEach((opt) => {
+        opt.addEventListener('click', () => {
+          scale.querySelectorAll('.gv-sentiment-scale__opt').forEach((o) =>
+            o.setAttribute('aria-pressed', o === opt ? 'true' : 'false'));
+        });
+      });
+    })();
+  </script>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script>
+    // Pin the captured wietsedemo tenant (primary #044D6C link-blue, Montserrat) so
+    // the module renders in its real tenant skin. Runs after themes.js' default pass;
+    // any city re-themes the same way via these two vars.
+    window.addEventListener('DOMContentLoaded', function () {
+      var r = document.documentElement.style;
+      r.setProperty('--gv-tenant-primary', '#044D6C');
+      r.setProperty('--gv-font-family', 'Montserrat, "Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif');
+    });
+  </script>
+</body>
+</html>

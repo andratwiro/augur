@@ -895,6 +895,97 @@
       "uses": [
         ".gv-bo-table"
       ]
+    },
+    {
+      "id": "community-monitor/card",
+      "built": "components/community-monitor/index.html",
+      "against": "fo-community-monitor",
+      "map": {
+        ".modalcontent": ".gv-modal"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "box-shadow",
+        "width",
+        "padding"
+      ],
+      "uses": [
+        ".gv-modal"
+      ]
+    },
+    {
+      "id": "community-monitor/intro",
+      "built": "components/community-monitor/index.html",
+      "against": "fo-community-monitor",
+      "map": {
+        "#community-monitor-modal-title": ".gv-monitor__intro"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "line-height",
+        "margin"
+      ],
+      "uses": [
+        ".gv-sentiment-scale"
+      ]
+    },
+    {
+      "id": "community-monitor/sentiment-option",
+      "built": "components/community-monitor/index.html",
+      "against": "fo-community-monitor",
+      "map": {
+        "#place_to_live-linear-scale-option-1": ".gv-sentiment-scale__opt"
+      },
+      "props": [
+        "color",
+        "width",
+        "border",
+        "border-radius",
+        "padding"
+      ],
+      "uses": [
+        ".gv-sentiment-scale"
+      ]
+    },
+    {
+      "id": "community-monitor/close",
+      "built": "components/community-monitor/index.html",
+      "against": "fo-community-monitor",
+      "map": {
+        ".e2e-modal-close-button": ".gv-modal__close"
+      },
+      "props": [
+        "width",
+        "height",
+        "border",
+        "border-radius",
+        "padding",
+        "background-color"
+      ],
+      "uses": [
+        ".gv-modal"
+      ]
+    },
+    {
+      "id": "bo-messaging/draft-label",
+      "built": "pages/bo-messaging/index.html",
+      "against": "bo-messaging",
+      "map": {
+        "div.bOilJI": ".gv-status-label.draft"
+      },
+      "props": [
+        "background-color",
+        "color",
+        "height",
+        "border-radius",
+        "text-transform",
+        "font-weight"
+      ],
+      "uses": [
+        ".gv-status-label"
+      ]
     }
   ]
 }

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Messaging — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    .ms-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+    .ms-head__main { min-width: 0; }
+    .ms-head__actions { margin-left: auto; flex: none; }
+    .ms-title { margin: 0 0 4px; font-size: 30px; font-weight: 700; line-height: 1.3; color: var(--gv-bo-primary); }
+    /* Automated-emails panel (alt tab) groups. */
+    .ms-auto { display: none; }
+    .ms-auto.is-active { display: block; }
+    .ms-custom.is-hidden { display: none; }
+    .ms-grouphead { margin: 4px 0 6px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gv-cool-grey-500); }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+    <nav class="gv-bo-side" aria-label="Admin" data-active="messaging"></nav>
+
+    <div class="gv-bo-main">
+      <nav class="gv-bo-tabs gv-bo-tabs--top" aria-label="Messaging sections">
+        <a class="gv-bo-tab is-active" href="#" data-ms="custom">Custom emails</a>
+        <a class="gv-bo-tab" href="#" data-ms="automated">Automated emails</a>
+      </nav>
+
+      <section class="gv-bo-section">
+        <!-- ── Custom emails ──────────────────────────────────────────── -->
+        <div class="ms-custom" data-panel="custom">
+          <div class="ms-head">
+            <div class="ms-head__main">
+              <h1 class="ms-title">Custom emails</h1>
+              <p class="gv-bo-pagelede" style="margin:0">Send out custom emails and check statistics.</p>
+            </div>
+            <div class="ms-head__actions">
+              <button class="gv-btn admin-dark"><span data-gv-icon="plus"></span><span class="gv-btn__label">Create email</span></button>
+            </div>
+          </div>
+
+          <div class="gv-bo-card">
+            <div class="gv-bo-listrow">
+              <div class="gv-bo-listrow__main">
+                <h3 class="gv-bo-listrow__title">🏡 <a href="#">New consultation: we want to hear your feedback on our social housing plan</a></h3>
+                <div class="gv-bo-listrow__sub"><span class="gv-status-label draft">Draft</span></div>
+              </div>
+              <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Manage</span></button></div>
+            </div>
+            <div class="gv-bo-listrow">
+              <div class="gv-bo-listrow__main">
+                <h3 class="gv-bo-listrow__title"><a href="#">test</a></h3>
+                <div class="gv-bo-listrow__sub"><span class="gv-status-label draft">Draft</span></div>
+              </div>
+              <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Manage</span></button></div>
+            </div>
+            <div class="gv-bo-listrow">
+              <div class="gv-bo-listrow__main">
+                <h3 class="gv-bo-listrow__title">📊 <a href="#">Thank you for participating: here's what we heard</a></h3>
+                <div class="gv-bo-listrow__sub"><span class="gv-status-label draft">Draft</span></div>
+              </div>
+              <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Manage</span></button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Automated emails (alt tab) ─────────────────────────────── -->
+        <div class="ms-auto" data-panel="automated">
+          <div class="ms-head">
+            <div class="ms-head__main">
+              <h1 class="ms-title">Automated emails</h1>
+              <p class="gv-bo-pagelede" style="margin:0">These emails are sent automatically. You can disable non-essential ones platform-wide.</p>
+            </div>
+          </div>
+          <div class="gv-bo-card">
+            <p class="ms-grouphead">For all users</p>
+            <div class="gv-bo-listrow"><div class="gv-bo-listrow__main"><h3 class="gv-bo-listrow__title">Welcome email</h3><div class="gv-bo-listrow__sub">Sent when a user completes registration.</div></div><div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" checked aria-label="Welcome email enabled"><span class="track"></span></span></div></div>
+            <div class="gv-bo-listrow"><div class="gv-bo-listrow__main"><h3 class="gv-bo-listrow__title">Password reset</h3><div class="gv-bo-listrow__sub">Essential — cannot be disabled.</div></div><div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" checked disabled aria-label="Password reset (essential)"><span class="track"></span></span></div></div>
+            <p class="ms-grouphead" style="margin-top:22px">For admins &amp; managers</p>
+            <div class="gv-bo-listrow"><div class="gv-bo-listrow__main"><h3 class="gv-bo-listrow__title">New input published</h3><div class="gv-bo-listrow__sub">Notifies project managers when a resident posts an input.</div></div><div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" checked aria-label="New input published enabled"><span class="track"></span></span></div></div>
+            <div class="gv-bo-listrow"><div class="gv-bo-listrow__main"><h3 class="gv-bo-listrow__title">Weekly assignment reminder</h3><div class="gv-bo-listrow__sub">A weekly digest of inputs assigned to you.</div></div><div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" aria-label="Weekly assignment reminder"><span class="track"></span></span></div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="bo-chrome.js"></script>
+  <script>
+    document.querySelectorAll(".gv-bo-tab[data-ms]").forEach(tab => {
+      tab.addEventListener("click", e => {
+        e.preventDefault();
+        document.querySelectorAll(".gv-bo-tab[data-ms]").forEach(t => t.classList.remove("is-active"));
+        tab.classList.add("is-active");
+        const k = tab.dataset.ms;
+        document.querySelector(".ms-custom").classList.toggle("is-hidden", k !== "custom");
+        document.querySelector(".ms-auto").classList.toggle("is-active", k === "automated");
+      });
+    });
+    if (window.GVIcons) window.GVIcons.render(document.body);
+  </script>
+</body>
+</html>
+</content>

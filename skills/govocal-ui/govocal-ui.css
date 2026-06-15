@@ -1007,3 +1007,51 @@
 .gv-partbar__status { display: inline-flex; align-items: center; gap: 9px; font-size: var(--gv-fs-base); color: #fff; }
 .gv-partbar__status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #fff; flex: none; }
 .gv-partbar .gv-btn { margin-left: auto; }
+
+/* Round close-button variant — the Community Monitor modal frames its X in a
+   46px circle (measured .e2e-modal-close-button: border-radius 50%, padding 10px,
+   1px transparent border). A modifier on the base .gv-modal__close — it does NOT
+   change the default square 40px close other modals (e.g. login) rely on. */
+.gv-modal__close.round { width: 46px; height: 46px; padding: 10px; border: 1px solid transparent; border-radius: 50%; }
+
+/* ── Community Monitor — FO satisfaction module ("City at a glance") ──────────────
+   The ongoing-survey banner/modal that asks how residents feel about governance &
+   public services as a 5-point EMOJI SENTIMENT linear scale. Grounded on
+   wietsedemo (.modalcontent / #community-monitor-modal-title / *-linear-scale-option).
+   Shell = the .gv-modal abstraction; this adds the monitor body + a NEW horizontal
+   emoji sentiment-scale variant (distinct from the survey kit's vertical .sv-sentiment).
+   The modal card is a tight 460px (measured .modalcontent width). ──────────────── */
+.gv-modal.size-monitor { --gv-modal-w: 460px; }
+
+/* Monitor body — question title block. The intro copy is the muted cool-grey
+   (#596B7A, measured #community-monitor-modal-title), 14px / 21px. */
+.gv-monitor__intro { margin: 14px 0 16px; font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-cool-grey-600); }
+.gv-monitor__question { margin: 0 0 12px; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); }
+.gv-monitor__footer { margin-top: 18px; display: flex; align-items: center; gap: 12px; }
+.gv-monitor__count { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
+
+/* Horizontal 5-emoji sentiment scale (linear-scale variant). Each option is a
+   ~56px column (measured #*-linear-scale-option-N = 56px wide), tinted in the
+   tenant primary (measured rgb(4,77,108) link-blue — themeable). Emoji on top,
+   caption under. Rendered as a row of radio-backed buttons (aria-pressed live). */
+.gv-sentiment-scale { display: flex; gap: 0; justify-content: space-between; flex-wrap: wrap; }
+/* The option itself is a bare 56px column (measured: 0 border / 0 radius / 0 pad,
+   tenant-primary text). Selection chrome lives on the inner __face, not here, so the
+   option's grounded geometry matches the live linear-scale option div exactly. */
+.gv-sentiment-scale__opt {
+  flex: 0 0 56px; width: 56px; min-width: 56px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  appearance: none; background: transparent; border: 0; border-radius: 0; padding: 0; cursor: pointer;
+  color: var(--gv-tenant-primary); font-family: inherit; font-size: var(--gv-fs-s); line-height: 1.4285;
+}
+.gv-sentiment-scale__opt:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-sentiment-scale__face {
+  width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+  color: inherit; border: 2px solid transparent; border-radius: 8px; padding: 4px;
+}
+.gv-sentiment-scale__face svg { width: 100%; height: 100%; display: block; }
+.gv-sentiment-scale__opt:hover .gv-sentiment-scale__face { background: var(--gv-tenant-primary-lighten95); }
+.gv-sentiment-scale__cap { font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); text-align: center; }
+.gv-sentiment-scale__opt[aria-pressed="true"] .gv-sentiment-scale__face { border-color: var(--gv-tenant-primary); background: var(--gv-tenant-primary-lighten90); }
+.gv-sentiment-scale__opt[aria-pressed="true"] .gv-sentiment-scale__cap { color: var(--gv-text-primary); font-weight: 600; }
+@media (max-width: 480px) { .gv-sentiment-scale { gap: 4px; justify-content: center; } }
