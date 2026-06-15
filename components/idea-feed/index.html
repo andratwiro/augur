@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Idea feed — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1100px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { }
+    .feed-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Idea feed</h1>
+    <p class="sub">The ideation feed layout — a count + List/Map segmented toggle above a two-column
+      grid pairing the idea list with a 310px filter sidebar of sort, status and topic controls.</p>
+
+    <p class="eyebrow">Feed layout (list + filter sidebar)</p>
+    <div class="stage">
+      <!-- ===== COMPONENT (copy from here) ===== -->
+      <div class="feed-head">
+        <h2 class="gv-feed__count">3 ideas</h2>
+        <div class="gv-viewseg" role="tablist" aria-label="View ideas as">
+          <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
+          <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
+        </div>
+      </div>
+      <div class="gv-feed">
+        <div class="gv-feed__col">
+          <div class="gv-idealist">
+
+            <article class="gv-ideacard e2e-idea-card">
+              <div class="gv-ideacard__thumb"><img src="https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=320&h=320&fit=crop" alt="" loading="lazy" /></div>
+              <div class="gv-ideacard__body">
+                <h3 class="gv-ideacard__title e2e-idea-card-title"><a href="#">Cycle route network</a></h3>
+                <div class="gv-ideacard__head">
+                  <span class="gv-ideacard__avatar" aria-hidden="true">EW</span>
+                  <div>
+                    <div class="gv-ideacard__meta">
+                      <span class="gv-ideacard__author e2e-username">Eddy Walker</span>
+                      <span class="gv-ideacard__sep" aria-hidden="true">&bull;</span>
+                      <span class="gv-ideacard__time">2 years ago</span>
+                    </div>
+                    <p class="gv-ideacard__excerpt">Connect the park to the existing bike lanes with a safe, separated cycle route so families can ride here without using busy roads.</p>
+                  </div>
+                </div>
+                <footer class="gv-ideacard__foot">
+                  <div class="gv-react e2e-reaction-controls">
+                    <button class="gv-react__btn" aria-label="Like"><span data-gv-icon="vote-up"></span></button>
+                    <span class="gv-react__count">47</span>
+                    <button class="gv-react__btn" aria-label="Dislike"><span data-gv-icon="vote-down"></span></button>
+                    <span class="gv-react__count">3</span>
+                  </div>
+                  <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments"></span>3</span>
+                </footer>
+              </div>
+            </article>
+
+            <article class="gv-ideacard e2e-idea-card">
+              <div class="gv-ideacard__thumb"><img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=320&h=320&fit=crop" alt="" loading="lazy" /></div>
+              <div class="gv-ideacard__body">
+                <h3 class="gv-ideacard__title e2e-idea-card-title"><a href="#">Save the trees on Washington Boulevard</a></h3>
+                <div class="gv-ideacard__head">
+                  <span class="gv-ideacard__avatar" aria-hidden="true">GC</span>
+                  <div>
+                    <div class="gv-ideacard__meta">
+                      <span class="gv-ideacard__author e2e-username">Gerry Camillery</span>
+                      <span class="gv-ideacard__sep" aria-hidden="true">&bull;</span>
+                      <span class="gv-ideacard__time">3 years ago</span>
+                    </div>
+                    <p class="gv-ideacard__excerpt">The trees are set to be cut down to widen the road. We propose an alternative plan that keeps the green canopy intact.</p>
+                  </div>
+                </div>
+                <footer class="gv-ideacard__foot">
+                  <div class="gv-react e2e-reaction-controls">
+                    <button class="gv-react__btn" aria-label="Like"><span data-gv-icon="vote-up"></span></button>
+                    <span class="gv-react__count">88</span>
+                    <button class="gv-react__btn" aria-label="Dislike"><span data-gv-icon="vote-down"></span></button>
+                    <span class="gv-react__count">5</span>
+                  </div>
+                  <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments"></span>2</span>
+                </footer>
+              </div>
+            </article>
+
+            <article class="gv-ideacard e2e-idea-card">
+              <div class="gv-ideacard__thumb"><span data-gv-icon="vote-up" aria-hidden="true"></span></div>
+              <div class="gv-ideacard__body">
+                <h3 class="gv-ideacard__title e2e-idea-card-title"><a href="#">More benches along the riverfront</a></h3>
+                <div class="gv-ideacard__head">
+                  <span class="gv-ideacard__avatar" aria-hidden="true">MR</span>
+                  <div>
+                    <div class="gv-ideacard__meta">
+                      <span class="gv-ideacard__author e2e-username">Maria Rossi</span>
+                      <span class="gv-ideacard__sep" aria-hidden="true">&bull;</span>
+                      <span class="gv-ideacard__time">5 months ago</span>
+                    </div>
+                    <p class="gv-ideacard__excerpt">Add a row of benches between the bridge and the boathouse so older residents can rest on their walk.</p>
+                  </div>
+                </div>
+                <footer class="gv-ideacard__foot">
+                  <div class="gv-react e2e-reaction-controls">
+                    <button class="gv-react__btn" aria-label="Like"><span data-gv-icon="vote-up"></span></button>
+                    <span class="gv-react__count">19</span>
+                    <button class="gv-react__btn" aria-label="Dislike"><span data-gv-icon="vote-down"></span></button>
+                    <span class="gv-react__count">0</span>
+                  </div>
+                  <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments"></span>1</span>
+                </footer>
+              </div>
+            </article>
+
+          </div>
+        </div>
+        <aside class="gv-feedfilter" id="e2e-project-sidebar" aria-label="Filter ideas">
+          <div><p class="gv-feedfilter__label">Search posts</p><input class="gv-input" type="search" placeholder="Search" aria-label="Search posts" /></div>
+          <div><p class="gv-feedfilter__label">SORT BY</p><div class="gv-feedfilter__group">
+            <button class="gv-feedfilter__btn is-active" type="button">Most liked</button>
+            <button class="gv-feedfilter__btn" type="button">Most discussed</button>
+            <button class="gv-feedfilter__btn" type="button">Trending</button>
+            <button class="gv-feedfilter__btn" type="button">Newest</button></div></div>
+          <div><p class="gv-feedfilter__label">STATUS</p><div class="gv-feedfilter__group">
+            <button class="gv-feedfilter__btn is-active" type="button">All <span class="gv-feedfilter__count">44</span></button>
+            <button class="gv-feedfilter__btn" type="button">Under consideration <span class="gv-feedfilter__count">2</span></button>
+            <button class="gv-feedfilter__btn" type="button">Accepted <span class="gv-feedfilter__count">1</span></button></div></div>
+          <div><p class="gv-feedfilter__label">TOPICS</p><div class="gv-feedfilter__group">
+            <button class="gv-feedfilter__btn" type="button">Recreation <span class="gv-feedfilter__count">8</span></button>
+            <button class="gv-feedfilter__btn" type="button">Nature &amp; environment <span class="gv-feedfilter__count">12</span></button>
+            <button class="gv-feedfilter__btn" type="button">Mobility <span class="gv-feedfilter__count">6</span></button></div></div>
+        </aside>
+      </div>
+      <!-- ===== /COMPONENT ===== -->
+    </div>
+
+    <div class="notes">
+      <p><strong>Grid:</strong> <code>.gv-feed</code> is the two-column shell — <code>.gv-feed__col</code>
+      holds the list, <code>.gv-feedfilter</code> is the fixed 310px sidebar. Cards sit in a flat
+      <code>.gv-idealist</code> container.</p>
+      <p><strong>Toggle:</strong> <code>.gv-viewseg</code> with two <code>.gv-viewseg__tab</code> buttons
+      switches List / Map; <code>.gv-feed__count</code> shows the result total.</p>
+      <p><strong>Filters:</strong> each group is a <code>.gv-feedfilter__label</code> heading over a
+      <code>.gv-feedfilter__group</code> of <code>.gv-feedfilter__btn</code> chips, some carrying a
+      <code>.gv-feedfilter__count</code> badge; <code>.is-active</code> marks the current selection.</p>
+    </div>
+  </div>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+</body>
+</html>

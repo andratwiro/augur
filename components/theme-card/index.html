@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Theme card — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { display: flex; flex-direction: column; gap: 10px; max-width: 460px; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Theme card</h1>
+    <p class="sub">Ranked Perspectives category card with an emoji swatch, name, response count and a mini share bar; the first one shows the active selection.</p>
+
+    <p class="eyebrow">Ranked category list (first card <code>.is-active</code>)</p>
+    <div class="stage">
+      <!-- ===== COMPONENT (copy from here) ===== -->
+      <button type="button" class="gv-themecard is-active" data-cy="e2e-topic-item"
+        style="--gv-themecard-swatch: rgb(255, 212, 216)">
+        <span class="gv-themecard__swatch" aria-hidden="true">🚧</span>
+        <span class="gv-themecard__main">
+          <span class="gv-themecard__head">
+            <span class="gv-themecard__name">Infrastructure &amp; Transportation</span>
+            <span class="gv-themecard__count">57</span>
+          </span>
+          <span class="gv-themecard__desc">Concerns about road conditions, traffic congestion, public transit, and the inability of existing infrastructure to keep pace with population growth and development.</span>
+          <span class="gv-themecard__bar"><i style="width: 85%; --gv-themecard-bar: rgb(229, 147, 156)"></i></span>
+        </span>
+      </button>
+      <!-- ===== /COMPONENT ===== -->
+
+      <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
+        style="--gv-themecard-swatch: rgb(255, 235, 214)">
+        <span class="gv-themecard__swatch" aria-hidden="true">💼</span>
+        <span class="gv-themecard__main">
+          <span class="gv-themecard__head">
+            <span class="gv-themecard__name">Economic Opportunity &amp; Wages</span>
+            <span class="gv-themecard__count">32</span>
+          </span>
+          <span class="gv-themecard__desc">Issues around low wages, lack of well-paying jobs, economic inequality, workforce development, and the need for better economic investment in communities.</span>
+          <span class="gv-themecard__bar"><i style="width: 56%; --gv-themecard-bar: rgb(229, 184, 140)"></i></span>
+        </span>
+      </button>
+
+      <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
+        style="--gv-themecard-swatch: rgb(221, 226, 243)">
+        <span class="gv-themecard__swatch" aria-hidden="true">🏠</span>
+        <span class="gv-themecard__main">
+          <span class="gv-themecard__head">
+            <span class="gv-themecard__name">Housing &amp; Cost of Living</span>
+            <span class="gv-themecard__count">27</span>
+          </span>
+          <span class="gv-themecard__desc">Challenges related to rising housing costs, affordability, availability of homes, and the broader cost-of-living pressures facing residents.</span>
+          <span class="gv-themecard__bar"><i style="width: 48%; --gv-themecard-bar: rgb(163, 172, 207)"></i></span>
+        </span>
+      </button>
+
+      <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
+        style="--gv-themecard-swatch: rgb(208, 243, 231)">
+        <span class="gv-themecard__swatch" aria-hidden="true">🩺</span>
+        <span class="gv-themecard__main">
+          <span class="gv-themecard__head">
+            <span class="gv-themecard__name">Healthcare &amp; Public Health</span>
+            <span class="gv-themecard__count">21</span>
+          </span>
+          <span class="gv-themecard__desc">Access to affordable healthcare, reproductive services, mental-health support, and stronger public-health provision across the region.</span>
+          <span class="gv-themecard__bar"><i style="width: 38%; --gv-themecard-bar: rgb(139, 207, 181)"></i></span>
+        </span>
+      </button>
+    </div>
+
+    <div class="notes">
+      <p><strong>Selection:</strong> add <code>.is-active</code> to mark the chosen category; only one card carries it at a time.</p>
+      <p><strong>Swatch tint:</strong> set <code>style="--gv-themecard-swatch: rgb(…)"</code> on the card to colour the emoji chip per theme.</p>
+      <p><strong>Share bar:</strong> the <code>__bar</code> inner <code>&lt;i&gt;</code> takes a <code>width:%</code> and its own
+      <code>--gv-themecard-bar</code> fill colour to show each theme's share of responses.</p>
+    </div>
+  </div>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Spotlight — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { border-radius: var(--gv-radius); overflow: hidden; box-shadow: var(--gv-shadow); }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Spotlight — "currently working on"</h1>
+    <p class="sub">Homepage spotlight block — copy column (eyebrow, title, lead, action plus an avatar-bubble participant count) beside a media tile, with a placeholder when no image is set.</p>
+
+    <p class="eyebrow">Placeholder media + avatar bubbles</p>
+    <div class="stage">
+      <!-- ===== COMPONENT (copy from here) ===== -->
+      <section class="gv-spotlight" aria-labelledby="spot-title">
+        <div class="gv-spotlight__inner">
+          <div>
+            <p class="gv-spotlight__eyebrow">Currently working on</p>
+            <h2 class="gv-spotlight__title" id="spot-title">A greener Main Street</h2>
+            <p class="gv-spotlight__lead">How do we make Main Street cooler, greener and healthier? Share your ideas
+              in our survey — participation closes in just a few days.</p>
+            <div class="gv-spotlight__actions">
+              <a class="gv-btn primary size-m" href="#">Take the survey</a>
+            </div>
+            <div class="gv-bubbles" aria-label="145 participants" style="margin-top:18px">
+              <span class="av"></span><span class="av"></span><span class="av"></span>
+              <span class="gv-bubbles__label">145 participants</span>
+            </div>
+          </div>
+          <div class="gv-spotlight__media gv-spotlight__media--placeholder" aria-hidden="true"></div>
+        </div>
+      </section>
+      <!-- ===== /COMPONENT ===== -->
+    </div>
+
+    <p class="eyebrow">Campaign chip over the media (+ time-elapsed progress)</p>
+    <div class="stage">
+      <!-- ===== COMPONENT (copy from here) ===== -->
+      <section class="gv-spotlight" aria-labelledby="spot-title-2">
+        <div class="gv-spotlight__inner">
+          <div>
+            <p class="gv-spotlight__eyebrow">Currently working on</p>
+            <h2 class="gv-spotlight__title" id="spot-title-2">Participatory budget 2026</h2>
+            <p class="gv-spotlight__lead">Decide how we spend €500,000 across the district. Submit a proposal and
+              vote for the ideas you want to see funded.</p>
+            <div class="gv-spotlight__actions">
+              <a class="gv-btn primary size-m" href="#">Submit a proposal</a>
+            </div>
+            <div class="gv-progress" role="progressbar" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed" style="margin-top:18px"><div class="gv-progress__fill" style="width:62%"></div></div>
+            <div class="gv-bubbles" aria-label="86 participants" style="margin-top:14px">
+              <span class="av"></span><span class="av"></span><span class="av"></span>
+              <span class="gv-bubbles__label">86 participants</span>
+            </div>
+          </div>
+          <div class="gv-spotlight__media gv-spotlight__media--placeholder" aria-hidden="true">
+            <span class="gv-spotlight__chip">€500,000<br>your call</span>
+          </div>
+        </div>
+      </section>
+      <!-- ===== /COMPONENT ===== -->
+    </div>
+
+    <div class="notes">
+      <p><strong>Two columns:</strong> <code>.gv-spotlight__inner</code> is a 1fr / 1fr grid (copy +
+      media) that collapses to one column with the media first ≤820px.</p>
+      <p><strong>Copy:</strong> <code>__eyebrow</code> → <code>__title</code> → <code>__lead</code> →
+      <code>__actions</code>. <strong>Media:</strong> <code>__media</code> takes an <code>img</code>;
+      add <code>--placeholder</code> for the grey tile, or drop a <code>__chip</code> campaign bubble over it.</p>
+      <p><strong>Adjacent atoms:</strong> <code>.gv-bubbles</code> (avatar <code>.av</code> stack +
+      <code>.count</code> overflow + <code>__label</code>) and <code>.gv-progress</code> /
+      <code>__fill</code> for time elapsed re-skin per city.</p>
+    </div>
+  </div>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+</body>
+</html>

@@ -110,7 +110,7 @@ as a starting point for a prototype.
 | **Bo Users** | `/pages/bo-users/` | `pages/bo-users/` | Users — GoVocal back office (reference) |
 | **Event Detail** | `/pages/event-detail/` | `pages/event-detail/` | Event detail — GoVocal (reference) |
 | **Events** | `/pages/events/` | `pages/events/` | Events — GoVocal (reference) |
-| **Homepage** | `/pages/homepage/` | `pages/homepage/` | Homepage — GoVocal (reference) |
+| **Homepage** | `/pages/homepage/` | `pages/homepage/` | Westmere — Have your say |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
 | **Perspectives Entry** | `/pages/perspectives-entry/` | `pages/perspectives-entry/` | Perspectives — in-timeline phase entry (reference) |
 | **Perspectives Feed** | `/pages/perspectives-feed/` | `pages/perspectives-feed/` | Perspectives — Issue Mapping (reference) |

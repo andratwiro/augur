@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Volunteer cause card — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { border-radius: var(--gv-radius); overflow: hidden; box-shadow: var(--gv-shadow); background: #fff; padding: 18px 20px; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Volunteer cause card</h1>
+    <p class="sub">A volunteering opportunity card — photo with a participant badge, title, count, description, and a green sign-up button that toggles to a withdraw state.</p>
+
+    <p class="eyebrow">Default (sign up)</p>
+    <div class="stage">
+      <!-- ===== COMPONENT (copy from here) ===== -->
+      <article class="gv-cause">
+        <div class="gv-cause__media">
+          <img class="gv-cause__img" alt="" src="https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=600&h=300&fit=crop" />
+          <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>1 participant</span>
+        </div>
+        <div class="gv-cause__body">
+          <h3 class="gv-cause__title">Volunteer residential care centers 'Out and about with residents'</h3>
+          <span class="gv-cause__count">1 participant</span>
+          <div class="gv-cause__desc">
+            <p>You take the residents of the residential care center outside for a walk or do some shopping together.</p>
+            <p><strong>WHAT DO WE EXPECT?</strong></p>
+            <p>Do you like being outside and can you drive a wheelchair? And do you have a socially sensitive heart for older people?</p>
+          </div>
+        </div>
+        <div class="gv-cause__cta">
+          <button class="gv-btn volunteer" type="button"><span data-gv-icon="volunteer"></span>I want to participate</button>
+        </div>
+      </article>
+      <!-- ===== /COMPONENT ===== -->
+    </div>
+
+    <p class="eyebrow">Signed up (<code>.is-in</code>)</p>
+    <div class="stage">
+      <article class="gv-cause">
+        <div class="gv-cause__media">
+          <img class="gv-cause__img" alt="" src="https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=600&h=300&fit=crop" />
+          <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>4 participants</span>
+        </div>
+        <div class="gv-cause__body">
+          <h3 class="gv-cause__title">Volunteer for cycling lessons to adults</h3>
+          <span class="gv-cause__count">4 participants</span>
+          <div class="gv-cause__desc">
+            <p>Help adults gain confidence on a bike. You guide a small group through weekly lessons in a quiet, friendly setting.</p>
+          </div>
+        </div>
+        <div class="gv-cause__cta">
+          <button class="gv-btn volunteer is-in" type="button"><span data-gv-icon="volunteer"></span>I withdraw my offer to volunteer</button>
+        </div>
+      </article>
+    </div>
+
+    <div class="notes">
+      <p><strong>Button:</strong> <code>.gv-btn.volunteer</code> is the faithful, lower-contrast green sign-up treatment (dark text); add <code>.is-in</code> for the withdraw state once the resident has joined.</p>
+      <p><strong>Badge:</strong> <code>.gv-cause__badge</code> overlays the participant count on the media; mirror it as <code>.gv-cause__count</code> in the body.</p>
+    </div>
+  </div>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+</body>
+</html>

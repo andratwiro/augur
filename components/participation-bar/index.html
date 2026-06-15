@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Participation bar — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { border-radius: var(--gv-radius); overflow: hidden; box-shadow: var(--gv-shadow); }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Participation bar</h1>
+    <p class="sub">The sticky project-page action bar — a participation status on the left and a primary on-color CTA on the right that pins as residents scroll the phase.</p>
+
+    <p class="eyebrow">Open for participation</p>
+    <div class="stage">
+      <!-- ===== COMPONENT (copy from here) ===== -->
+      <div class="gv-partbar">
+        <div class="gv-partbar__inner">
+          <span class="gv-partbar__status">Open for participation</span>
+          <a class="gv-btn on-color" href="#ideas">Submit your idea <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+        </div>
+      </div>
+      <!-- ===== /COMPONENT ===== -->
+    </div>
+
+    <div class="notes">
+      <p><strong>Placement:</strong> on a project page the bar sits between the white project context and the grey phase content, sticking to the top on desktop (bottom on mobile).</p>
+      <p><strong>CTA:</strong> the action label adapts to the active method (Submit your idea, Take the survey, …); <code>.gv-btn.on-color</code> keeps it legible on the bar.</p>
+    </div>
+  </div>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+</body>
+</html>

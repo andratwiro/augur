@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Survey participation band — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { border-radius: var(--gv-radius); overflow: hidden; box-shadow: var(--gv-shadow); }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Survey participation band</h1>
+    <p class="sub">The tenant-primary "Take the survey" strip on a project page survey phase — a status with a live dot on the left and an on-color CTA on the right.</p>
+
+    <p class="eyebrow">Open for participation</p>
+    <div class="stage">
+      <!-- ===== COMPONENT (copy from here) ===== -->
+      <div class="gv-surveyband" role="region" aria-label="Survey participation status">
+        <div class="gv-surveyband__inner">
+          <span class="gv-surveyband__status"><span class="gv-surveyband__dot" aria-hidden="true"></span> Open for participation</span>
+          <a class="gv-btn on-color gv-surveyband__cta" href="#survey">Take the survey <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+        </div>
+      </div>
+      <!-- ===== /COMPONENT ===== -->
+    </div>
+
+    <div class="notes">
+      <p><strong>Background:</strong> the band fills with <code>--gv-tenant-primary</code>; the CTA uses <code>.gv-btn.on-color</code> so it reads against the tinted strip in any city theme.</p>
+      <p><strong>Status dot:</strong> <code>.gv-surveyband__dot</code> signals a live phase next to the status label.</p>
+      <p><strong>Not the field kit:</strong> this is the project-page CTA strip — survey form fields live in the separate <code>components/survey-fields/</code> demo.</p>
+    </div>
+  </div>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+</body>
+</html>

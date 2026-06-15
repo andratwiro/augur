@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Issue canvas — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { position: relative; height: 620px; border-radius: var(--gv-radius); overflow: hidden; box-shadow: var(--gv-shadow); }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Issue canvas</h1>
+    <p class="sub">Dotted-grid Perspectives canvas that floats pastel sticky-note ideas in a masonry pile, with a floating "Add an idea" button.</p>
+
+    <p class="eyebrow">Pile state (masonry of sticky notes)</p>
+    <div class="stage">
+      <!-- ===== COMPONENT (copy from here) ===== -->
+      <div class="gv-issuecanvas" id="issueCanvas">
+        <div class="gv-issuecanvas__view">
+          <div class="gv-issuecanvas__pile">
+
+            <button type="button" class="gv-sticky lavender" data-cy="e2e-sticky-note" style="height: 290px">
+              <span class="gv-sticky__author">
+                <span class="av"></span>
+                <span class="gv-sticky__authorname">Anonymous</span>
+                <span class="gv-sticky__emoji" aria-hidden="true">🌱</span>
+              </span>
+              <span class="gv-sticky__title">Reproductive Healthcare Access</span>
+              <span class="gv-sticky__excerpt">We should solve women's reproductive rights. I work in women's health and have friends who've needed services and medical care that is banned.</span>
+              <span class="gv-sticky__react e2e-reaction-controls neutral">
+                <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+                <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>13</b></button>
+              </span>
+            </button>
+
+            <button type="button" class="gv-sticky mint" data-cy="e2e-sticky-note" style="height: 310px">
+              <span class="gv-sticky__author">
+                <span class="av"></span>
+                <span class="gv-sticky__authorname">Jonathan Kongstad</span>
+                <span class="gv-sticky__emoji" aria-hidden="true">🚧</span>
+              </span>
+              <span class="gv-sticky__title">Roads &amp; transit can't keep up</span>
+              <span class="gv-sticky__excerpt">Infrastructure has not kept pace with overall population growth. Congestion is getting worse every year and public transit barely reaches the new neighbourhoods on the edge of town.</span>
+              <span class="gv-sticky__react e2e-reaction-controls neutral">
+                <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+                <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>17</b></button>
+              </span>
+            </button>
+
+            <button type="button" class="gv-sticky pink" data-cy="e2e-sticky-note" style="height: 300px">
+              <span class="gv-sticky__author">
+                <span class="av"></span>
+                <span class="gv-sticky__authorname">Bill Berman</span>
+                <span class="gv-sticky__emoji" aria-hidden="true">📚</span>
+              </span>
+              <span class="gv-sticky__title">Black history and its erasure</span>
+              <span class="gv-sticky__excerpt">I take issue with how local history is taught — important parts of our community's story are being left out of the curriculum. We owe the next generation an honest, complete account.</span>
+              <span class="gv-sticky__react e2e-reaction-controls neutral">
+                <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+                <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>18</b></button>
+              </span>
+            </button>
+
+            <button type="button" class="gv-sticky grey" data-cy="e2e-sticky-note" style="height: 280px">
+              <span class="gv-sticky__author">
+                <span class="av"></span>
+                <span class="gv-sticky__authorname">Lise Dawson</span>
+                <span class="gv-sticky__emoji" aria-hidden="true">🗳️</span>
+              </span>
+              <span class="gv-sticky__title">Getting voters to the polls</span>
+              <span class="gv-sticky__excerpt">Since people are able to vote by mail now, turnout should be higher than it is. We need to make registration easier and remind residents that local elections are the ones that affect them most.</span>
+              <span class="gv-sticky__react e2e-reaction-controls neutral">
+                <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+                <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>17</b></button>
+              </span>
+            </button>
+
+          </div>
+        </div>
+
+        <!-- floating bottom-right CTA -->
+        <div class="gv-issuecanvas__add">
+          <button type="button" class="gv-btn primary"><span data-gv-icon="plus" aria-hidden="true"></span> Add an idea</button>
+        </div>
+      </div>
+      <!-- ===== /COMPONENT ===== -->
+    </div>
+
+    <p class="eyebrow">Detail state (<code>.is-detail</code> — one raised note)</p>
+    <div class="stage">
+      <div class="gv-issuecanvas is-detail">
+        <div class="gv-issuecanvas__view">
+          <button type="button" class="gv-sticky is-raised lavender" data-cy="e2e-sticky-note" style="min-height: 400px">
+            <span class="gv-sticky__author">
+              <span class="av"></span>
+              <span class="gv-sticky__authorname">Anonymous</span>
+              <span class="gv-sticky__emoji" aria-hidden="true">🌱</span>
+            </span>
+            <span class="gv-sticky__title">Reproductive Healthcare Access</span>
+            <span class="gv-sticky__excerpt">We should solve women's reproductive rights. I work in women's health and have friends who've needed services &amp; medical care that is banned. People in our region deserve safe, legal access close to home — not a long, expensive trip to another state when they're already in a difficult situation.</span>
+            <span class="gv-sticky__react e2e-reaction-controls neutral">
+              <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+              <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>13</b></button>
+            </span>
+          </button>
+        </div>
+        <div class="gv-issuecanvas__add">
+          <button type="button" class="gv-btn primary"><span data-gv-icon="plus" aria-hidden="true"></span> Add an idea</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <p><strong>Canvas:</strong> <code>.gv-issuecanvas</code> draws the dotted grid and floats sticky notes; the
+      <code>__view</code> wraps the content and <code>__pile</code> lays the notes out as a masonry.</p>
+      <p><strong>States:</strong> add <code>.is-detail</code> to centre one raised <code>.gv-sticky.is-raised</code> note;
+      the default state is the pile.</p>
+      <p><strong>CTA:</strong> <code>.gv-issuecanvas__add</code> pins the floating "Add an idea" button to the bottom-right of the canvas.</p>
+      <p><strong>Rail:</strong> in a full page the canvas sits beside <code>.gv-issuefeed</code> / <code>__rail</code>
+      (Back link, title, participant bubbles, framing question and ranked theme cards) — see <code>pages/perspectives-feed/</code>.</p>
+    </div>
+  </div>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+</body>
+</html>
