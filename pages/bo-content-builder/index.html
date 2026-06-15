@@ -1113,20 +1113,30 @@
       return b;
     }
     function seedDefault() {
-      // Locked top: the project hero image + title, pinned above all content.
+      // Mirror of the resident-facing PROJECT PAGE (the content this builder edits):
+      //   locked hero + title · wide/narrow 2-column (description text + accordions
+      //   on the left, participation box on the right) · then timeline · then events.
       frame.insertBefore(makeLockedBlock('hero'), first);
       frame.insertBefore(makeLockedBlock('title'), first);
-      // 'first' (the static intro text) stays as the first editable content block, then:
-      frame.appendChild(makeBlock('timeline'));
+      // Wide/narrow 2-column.
       var two = makeBlock('two-column');
       frame.appendChild(two);
+      var grid = two.querySelector('.cb-cols');
+      grid.setAttribute('data-collayout', 'wide-narrow');
+      grid.style.gridTemplateColumns = '2fr 1fr';
       var cols = two.querySelectorAll('.cb-col');
-      if (cols[0]) cols[0].appendChild(seedBlock('text', '<strong>Share your ideas</strong><br>What should this once-in-a-generation space include?'));
-      if (cols[1]) cols[1].appendChild(seedBlock('text', '<strong>Join an event</strong><br>Walk the site with our design team this spring.'));
-      frame.appendChild(makeBlock('about-box'));
+      if (cols[0]) {
+        // Left (wide): the project description text (= 'first', carries the frame
+        // checkpoint id) followed by info accordions.
+        cols[0].appendChild(first);
+        cols[0].appendChild(makeBlock('info-accordions'));
+        cols[0].appendChild(makeBlock('accordion'));
+      }
+      // Right (narrow): the participation box.
+      if (cols[1]) cols[1].appendChild(makeBlock('about-box'));
+      // Out of the column, below: timeline, then events.
+      frame.appendChild(makeBlock('timeline'));
       frame.appendChild(makeBlock('events'));
-      frame.appendChild(seedBlock('text', '<strong>Frequently asked questions</strong>'));
-      frame.appendChild(makeBlock('accordion'));
       reflectEmptyAll();
     }
     seedDefault();
