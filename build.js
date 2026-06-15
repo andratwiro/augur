@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.17";
+const UI_VERSION = "0.18";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -76,6 +76,20 @@ const PENDING_PAGES = [
   "common-ground",
   "ideation",
 ];
+
+// Pages index has three top-level groups: Front office, Methods, Back office.
+// "Methods" are the front-office screens where a resident actually runs a
+// participation method (survey, proposals, …). Classified by slug here; a page
+// can also opt in/out via <meta name="gv-surface" content="method">.
+const METHOD_PAGES = new Set([
+  "project-survey", // Survey
+  "project-proposals", // Proposals / Petitions
+  "project-volunteering", // Recruit volunteers
+  "project-common-ground", // Common Ground
+  "perspectives-feed", // Ideation — Perspectives feed view
+  "perspectives-entry", // Ideation — Perspectives intro
+  "input-form", // Ideation — input/submission form
+]);
 
 // Source for the reference tabs (Primitives · Components · Pages).
 const UI_SKILL = path.join(ROOT, "skills", "govocal-ui"); // Primitives gallery + assets
@@ -264,13 +278,19 @@ async function scanPages() {
     const dir = path.join(PAGES_SRC, e.name);
     const latest = await copyDir(dir, path.join(DIST, "pages", e.name));
     const { href, file } = await entryPoint(e.name, dir);
-    // Surface = back-office (GoVocal's own theme) or front-office (city-themed).
-    // Base it on a bo-/fo- name prefix, then let <meta name="gv-surface"> override.
+    // Surface = back-office (GoVocal's own theme), front-office (city-themed), or
+    // method (a front-office participation-method runner — its own Pages group).
+    // Base it on the bo-/fo- name prefix + METHOD_PAGES, then let the
+    // <meta name="gv-surface"> tag override (back | front | method).
     let surface = /^bo-/.test(e.name) ? "back-office" : "front-office";
+    if (METHOD_PAGES.has(e.name)) surface = "method";
     try {
       const html = await fs.readFile(file, "utf8");
       const m = html.match(/<meta\s+name=["']gv-surface["']\s+content=["']([^"']+)["']/i);
-      if (m) surface = /back/i.test(m[1]) ? "back-office" : "front-office";
+      if (m) {
+        const v = m[1].toLowerCase();
+        surface = /back/.test(v) ? "back-office" : /method/.test(v) ? "method" : "front-office";
+      }
     } catch {}
     pages.push({ name: e.name, href, file, surface, mtimeMs: modifiedTime(dir, latest) });
   }
@@ -379,6 +399,26 @@ const PAGE_CSS = `
       color: var(--faint); margin: 0 0 14px;
     }
     .empty { color: var(--muted); }
+
+    /* ---- Collapsible Pages sections (native <details>) ---- */
+    details.fsection { margin: 0; }
+    details.fsection + details.fsection { margin-top: 34px; }
+    summary.section-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px; width: fit-content;
+      cursor: pointer; user-select: none; list-style: none;
+      transition: color .12s ease;
+    }
+    summary.section-eyebrow::-webkit-details-marker { display: none; }
+    summary.section-eyebrow::marker { content: ""; }
+    summary.section-eyebrow:hover { color: var(--muted); }
+    summary.section-eyebrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    .fsection__caret {
+      width: 0; height: 0; flex: none;
+      border-style: solid; border-width: 4px 0 4px 6px;
+      border-color: transparent transparent transparent currentColor;
+      transition: transform .15s ease; opacity: .8;
+    }
+    details.fsection[open] > summary .fsection__caret { transform: rotate(90deg); }
 
     /* ---- In-page real-time filter field ---- */
     .pfilter {
@@ -878,6 +918,17 @@ function chromeScript() {
       groups.forEach(function(g){
         var vis = g.querySelectorAll('[data-fitem]:not(.is-fhidden)').length;
         g.classList.toggle('is-fhidden', vis === 0);
+        // Collapsible <details> groups: while searching, force-open matching
+        // sections so their cards are reachable; restore the user's state on clear.
+        if(g.tagName === 'DETAILS'){
+          if(raw){
+            if(g._wasOpen === undefined) g._wasOpen = g.open;
+            g.open = vis > 0;
+          } else if(g._wasOpen !== undefined){
+            g.open = g._wasOpen;
+            g._wasOpen = undefined;
+          }
+        }
       });
       if(emptyMsg) emptyMsg.hidden = shown !== 0;
       if(clear) clear.hidden = !raw;
@@ -1126,19 +1177,28 @@ function renderPagesIndex(pages) {
           </div>
         </div>`;
 
-  // Split by surface: back-office (GoVocal's own theme) vs front-office (city-themed).
+  // Split by surface into three collapsible groups: Front office (city-themed
+  // shells), Methods (participation-method runners), Back office (GoVocal's theme).
+  const front = pages.filter((p) => p.surface === "front-office");
+  const methods = pages.filter((p) => p.surface === "method");
   const back = pages.filter((p) => p.surface === "back-office");
-  const front = pages.filter((p) => p.surface !== "back-office");
-  const group = (label, list, spaced) =>
-    list.length
-      ? `<section data-fgroup><p class="section-eyebrow"${spaced ? ' style="margin-top:56px"' : ""}>${label} &middot; ${list.length}</p><div class="page-grid">${list.map(pageCard).join("")}</div></section>`
-      : "";
-  // Front office first (resident-facing surfaces), then back office. Fall back to a
-  // single ungrouped list only if every page is the same surface and grouping would
-  // add no signal.
+  // A collapsible section: <details> with the eyebrow as its <summary>. Filtering
+  // (chromeScript) force-opens sections with matches, so search still reaches
+  // collapsed cards.
+  const group = (label, inner, count) => `
+        <details class="fsection" data-fgroup open>
+          <summary class="section-eyebrow"><span class="fsection__caret" aria-hidden="true"></span>${label}${count == null ? "" : ` &middot; ${count}`}</summary>
+          <div class="page-grid">${inner}</div>
+        </details>`;
+  const built = [
+    ["Front office", front],
+    ["Methods", methods],
+    ["Back office", back],
+  ].filter(([, list]) => list.length);
+  // Two or more surfaces present → grouped; otherwise a single ungrouped list.
   const cards =
-    back.length && front.length
-      ? group("Front office", front) + group("Back office", back, true)
+    built.length > 1
+      ? built.map(([label, list]) => group(label, list.map(pageCard).join(""), list.length)).join("")
       : `<section data-fgroup><p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${pages.map(pageCard).join("")}</div></section>`;
 
   // Planned reference pages not built yet — shown as a roadmap of pending work.
@@ -1156,8 +1216,9 @@ function renderPagesIndex(pages) {
     )
     .join("");
 
+  const pendingCount = PENDING_PAGES.filter((s) => !builtSlugs.has(s)).length;
   const pendingSection = pending
-    ? `<section data-fgroup><p class="section-eyebrow" style="margin-top:44px">Pending &middot; ${PENDING_PAGES.length} planned</p><div class="page-grid">${pending}</div></section>`
+    ? group(`Pending &middot; ${pendingCount} planned`, pending, null)
     : "";
 
   return shell({
