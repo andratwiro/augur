@@ -96,22 +96,13 @@
        participation widget the resident sees: a primary CTA, a secondary
        "Upcoming events" button, and an avatar row + participant count. Config is
        just whether to show the buttons and the avatars (toggles, scoped per card). */
+    /* Participation box uses the SAME front-office components as the project page:
+       .gv-btn (primary + primary-outlined), .gv-avatars/.av, .gv-pcount. Page-local
+       CSS only stacks them + drives the show/hide toggles. */
     .cb-pbox { display: flex; flex-direction: column; gap: 16px; }
-    .cb-pbox__actions { display: flex; flex-direction: column; gap: 12px; }
+    .cb-pbox__actions { display: flex; flex-direction: column; gap: 12px; }   /* full-width gv-btns stack */
     .cb-pbox--nobtns .cb-pbox__actions { display: none; }
-    .cb-pbox .cb-fakebtn { justify-content: center; font-size: 17px; padding: 13px 22px; border-radius: 6px; font-weight: 600; }
-    .cb-pbox__cta { background: var(--gv-tenant-primary); color: var(--gv-white); }
-    .cb-pbox__events { background: var(--gv-white); color: var(--gv-cool-grey-700); border: 1px solid #d6dde3; }
-    .cb-pbox__people { display: flex; align-items: center; gap: 12px; }
     .cb-pbox--nopeople .cb-pbox__people { display: none; }
-    .cb-avatars { display: inline-flex; }
-    .cb-avatar { width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--gv-white); margin-left: -10px; background: #c7d2da; }
-    .cb-avatar:first-child { margin-left: 0; }
-    .cb-avatar:nth-child(1) { background: linear-gradient(135deg, #8aa9b8, #5f7d8c); }
-    .cb-avatar:nth-child(2) { background: linear-gradient(135deg, #caa3a0, #9c6f6b); }
-    .cb-avatar:nth-child(3) { background: linear-gradient(135deg, #b7b2c4, #8b8597); }
-    .cb-pbox__count { font-size: 17px; color: var(--gv-cool-grey-700); }
-    .cb-pbox__count strong { font-weight: 700; }
 
     /* ── Locked top blocks (hero image + title) — pinned, editable, not movable ── */
     #cb-root .gv-bo-cb-block.cb-locked { cursor: default; }
@@ -126,6 +117,10 @@
     /* ── Timeline + Events blocks (canonical .gv-phases / .gv-event-card) ──────── */
     .cb-timeline { margin: 0; }
     .cb-events { display: block; }
+    /* auto-FIT (not the canonical auto-fill) so 2 event cards stretch to the full
+       container width instead of leaving an empty 3rd track narrower than the
+       content above. */
+    #cb-root .cb-events .gv-events__grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 
     /* ── Button style variants (page-local) ────────────────────────────────── */
     .cb-fakebtn.cb-fakebtn--secondary { background: var(--gv-white); color: var(--gv-tenant-primary); border: 1px solid var(--gv-tenant-primary); }
@@ -348,12 +343,12 @@
       'about-box':       { label: 'Participation Box',  make: function () { return '' +
         '<div class="cb-pbox">' +
           '<div class="cb-pbox__actions">' +
-            '<span class="cb-fakebtn cb-pbox__cta" data-pbox="cta">' + cbCurrentCTA() + '</span>' +
-            '<span class="cb-fakebtn cb-pbox__events" data-pbox="events">Upcoming events</span>' +
+            '<a class="gv-btn primary" data-pbox="cta" href="#">' + cbCurrentCTA() + '</a>' +
+            '<a class="gv-btn primary-outlined" data-pbox="events" href="#">Upcoming events</a>' +
           '</div>' +
-          '<div class="cb-pbox__people">' +
-            '<span class="cb-avatars"><span class="cb-avatar"></span><span class="cb-avatar"></span><span class="cb-avatar"></span></span>' +
-            '<span class="cb-pbox__count"><strong data-pbox="count">2,435</strong> participants</span>' +
+          '<div class="gv-participants cb-pbox__people">' +
+            '<span class="gv-avatars on-light" aria-hidden="true"><span class="av" style="background:linear-gradient(135deg,#b6a290,#cdbfae)"></span><span class="av" style="background:linear-gradient(135deg,#8fa3b8,#b3c0cd)"></span><span class="av" style="background:linear-gradient(135deg,#a8927f,#c4b3a3)"></span></span>' +
+            '<span class="gv-pcount"><span data-pbox="count">2,435</span> participants</span>' +
           '</div>' +
         '</div>'; } },
       'file-attachment': { label: 'File Attachment',    make: function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__info"><span class="cb-file__name">project-brief.pdf</span><span class="cb-file__meta">PDF · 1.2 MB</span></span></div>'; } },
@@ -497,8 +492,8 @@
         return settingsRow('Action label', '<input class="gv-input" data-set="cta" id="cb-f-cta" value="Take the survey">') +
           settingsRow('Events label', '<input class="gv-input" data-set="events" id="cb-f-events" value="Upcoming events">') +
           settingsRow('Participants', '<input class="gv-input" data-set="count" id="cb-f-count" value="2,435">') +
-          settingsRow('Show buttons', '<span class="gv-toggle"><input type="checkbox" data-set="btns" id="cb-f-btns" checked><span class="track"></span></span>') +
-          settingsRow('Show participants', '<span class="gv-toggle"><input type="checkbox" data-set="people" id="cb-f-people" checked><span class="track"></span></span>');
+          settingsRow('Show buttons', '<label class="gv-toggle"><input type="checkbox" data-set="btns" id="cb-f-btns" checked><span class="track"></span></label>') +
+          settingsRow('Show participants', '<label class="gv-toggle"><input type="checkbox" data-set="people" id="cb-f-people" checked><span class="track"></span></label>');
       }
       if (widget === 'file-attachment') {
         return settingsRow('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') +
