@@ -682,8 +682,10 @@
   overflow: hidden; text-align: center; box-shadow: none; line-height: 1.05; }
 .gv-event-card__date .m { display: block; padding-top: 6px; background: var(--gv-event-chip-grey); color: var(--gv-grey-800);
   font-size: var(--gv-fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+/* Day glyph matches the uniform live chip (fo-events digest: month/day/year all
+   14px, day NOT enlarged/bolded) — month=500, day=400, year=500. */
 .gv-event-card__date .d { display: block; padding-bottom: 5px; background: var(--gv-event-chip-grey); color: var(--gv-grey-800);
-  font-size: 22px; font-weight: 700; }
+  font-size: var(--gv-fs-s); font-weight: 400; }
 .gv-event-card__date .y { display: block; padding: 3px 0; background: var(--gv-tenant-primary); color: #fff;
   font-size: var(--gv-fs-xs); font-weight: 500; }
 /* attendance / RSVP pill, top-left */
