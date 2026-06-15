@@ -28,7 +28,9 @@
     .pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
     /* manager controls use the COMPACT button size (measured 6px 12px / ~39px) */
     .pp-managers .gv-btn { padding: 6px 12px; }
-    .pp-banner { aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
+    /* width:100% so the min-height + aspect-ratio can't drive the width past the
+       viewport on mobile (the banner was computing ~767px from a 200px min-height). */
+    .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
     .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .pp-title { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 10px 40px; align-items: start; padding: 36px 0 44px; }
     .pp-title h1 { grid-column: 1; }

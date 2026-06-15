@@ -319,7 +319,7 @@
 .gv-pnav:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
 .gv-pnav[disabled] { color: var(--gv-grey-500); cursor: not-allowed; }
 .gv-pnav .gv-dotmark { width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
-.gv-stepper { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; }
+.gv-stepper { display: flex; gap: 2px; overflow-x: auto; padding-bottom: 4px; }
 .gv-phase { flex: 1 1 0; min-width: 92px; background: none; border: 0; padding: 0; cursor: pointer;
   font-family: inherit; display: flex; flex-direction: column; align-items: stretch; }
 /* Measured live (fo-project-ideation): segments are 23px tall, grey-track #D4D9DD,
@@ -327,10 +327,12 @@
    in a point. */
 .gv-pstep { position: relative; height: 23px; display: flex; align-items: center; justify-content: center;
   background: var(--gv-bo-step); color: var(--gv-cool-grey-700); font-weight: 500; font-size: var(--gv-fs-s); line-height: 1;
-  clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%, 15px 50%); }
-.gv-phase:first-child .gv-pstep { clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 50%, calc(100% - 15px) 100%, 0 100%); border-radius: 3px 0 0 3px; }
+  /* shallower 11px chevron notch — the live Wien timeline point is gentler (less
+     steep) than a deep 15px arrow. */
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%, 11px 50%); }
+.gv-phase:first-child .gv-pstep { clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%); border-radius: 3px 0 0 3px; }
 /* last segment: notch on the left to interlock, but a FLAT (rounded) right end. */
-.gv-phase:last-child .gv-pstep { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 15px 50%); border-radius: 0 3px 3px 0; }
+.gv-phase:last-child .gv-pstep { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 11px 50%); border-radius: 0 3px 3px 0; }
 .gv-phase.current .gv-pstep { background: var(--gv-green-600); color: #fff; }
 /* the FO project-page ribbon segments read a touch shorter than the standalone
    component and carry a clear dark-grey top edge (clipped to the chevron shape) —
@@ -345,7 +347,7 @@
 .gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-cool-grey-700); color: #fff; }
 .gv-phase[aria-selected="true"]:not(.current) .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
 /* content panel: big green numbered circle + green name + date */
-.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 26px 30px; margin-top: 8px; }
+.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 26px 30px; margin-top: 22px; }
 .gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
 /* Measured live (fo-project-ideation): the phase number sits in a 39px green-500
    circle (16px/400 white), and the phase name is 21px/700 green-500 — not larger. */
@@ -924,7 +926,13 @@
 /* Sits above the grey method band; sticks below the header on desktop, to the
    bottom of the viewport on mobile (matches the live project page). */
 .gv-partbar { position: sticky; top: var(--gv-menu-height, 78px); z-index: 30; background: var(--gv-tenant-primary); color: #fff; }
-@media (max-width: 760px) { .gv-partbar { top: auto; bottom: 0; } }
+@media (max-width: 760px) {
+  /* sticks to the BOTTOM of the viewport on mobile; status stacks above a
+     full-width CTA (live ideation project behaviour). */
+  .gv-partbar { top: auto; bottom: 0; box-shadow: 0 -2px 12px rgba(0,0,0,0.14); }
+  .gv-partbar__inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 20px; }
+  .gv-partbar .gv-btn { margin-left: 0; width: 100%; justify-content: center; }
+}
 .gv-partbar__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 14px 24px;
   display: flex; align-items: center; gap: 16px; }
 .gv-partbar__status { display: inline-flex; align-items: center; gap: 9px; font-size: var(--gv-fs-base); color: #fff; }
