@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.16";
+const UI_VERSION = "0.17";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -383,6 +383,37 @@ const PAGE_CSS = `
       color: var(--faint); margin: 0 0 14px;
     }
     .empty { color: var(--muted); }
+
+    /* ---- In-page real-time filter field ---- */
+    .pfilter {
+      display: flex; align-items: center; gap: 9px; width: min(420px, 100%); height: 40px;
+      padding: 0 10px 0 12px; margin: 0 0 28px; box-sizing: border-box;
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      transition: border-color .12s ease, box-shadow .12s ease;
+    }
+    .pfilter:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(94,106,210,0.14); }
+    .pfilter svg { width: 16px; height: 16px; flex: none; color: var(--faint); }
+    .pfilter input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--fg); font: inherit; font-size: 14px; }
+    .pfilter input::placeholder { color: var(--faint); }
+    .pfilter kbd {
+      flex: none; font: inherit; font-size: 11px; line-height: 1; padding: 3px 6px; border-radius: 5px;
+      background: var(--bg-2); border: 1px solid var(--line); color: var(--muted);
+    }
+    .pfilter__clear {
+      flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; cursor: pointer;
+      display: grid; place-items: center; background: var(--bg-2); color: var(--muted); font-size: 16px; line-height: 1;
+      transition: background .12s ease, color .12s ease;
+    }
+    .pfilter__clear:hover { background: var(--line); color: var(--fg); }
+    .pfilter kbd[hidden], .pfilter__clear[hidden] { display: none; }
+    .is-fhidden { display: none !important; }
+    .filter-empty { color: var(--muted); font-size: 14.5px; margin: 6px 0 0; }
+    /* While a query is active, collapse the full-bleed carousel into a plain wrapped
+       grid so matches lay out simply (the scroll/arrows/dots make no sense filtered). */
+    html.is-filtering .carousel { width: auto; margin-left: 0; }
+    html.is-filtering .carousel .cbtn, html.is-filtering .carousel .dots { display: none; }
+    html.is-filtering .track { overflow: visible; flex-wrap: wrap; padding: 8px 0; }
+    html.is-filtering .slide { flex: 0 1 300px; }
     .playground {
       display: flex; align-items: center; gap: 18px; margin-top: 18px; padding: 18px 20px;
       background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
@@ -794,205 +825,83 @@ const NAV_CSS = `
       .gvnav, .gvnav-toggle__bars span { transition: none; }
     }
 
-    /* ── Global search (⌘K / Ctrl+K / "/") ───────────────────────────────── */
-    .gvhead__actions { display: inline-flex; align-items: center; gap: 14px; min-width: 0; }
-    .gvsearch-trigger {
-      display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px 0 10px;
-      border-radius: 8px; border: 1px solid rgba(16,17,26,0.12); background: rgba(16,17,26,0.03);
-      color: #5b626e; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
-      transition: background .12s ease, color .12s ease, border-color .12s ease;
-    }
-    .gvsearch-trigger:hover { background: rgba(16,17,26,0.06); color: #16171a; border-color: rgba(16,17,26,0.20); }
-    .gvsearch-trigger:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvsearch-trigger svg { width: 15px; height: 15px; flex: none; }
-    .gvsearch-trigger kbd {
-      font: inherit; font-size: 11px; line-height: 1; padding: 3px 5px; border-radius: 5px;
-      background: rgba(16,17,26,0.05); border: 1px solid rgba(16,17,26,0.12); color: #5b626e;
-    }
-    @media (max-width: 520px) {
-      .gvsearch-trigger__label, .gvsearch-trigger kbd { display: none; }
-      .gvsearch-trigger { padding: 0 7px; width: 32px; justify-content: center; }
-    }
-
-    .gvsearch { position: fixed; inset: 0; z-index: 2147483200; display: flex; align-items: flex-start; justify-content: center; }
-    .gvsearch[hidden] { display: none; }
-    .gvsearch__backdrop { position: absolute; inset: 0; background: rgba(16,17,26,0.38); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
-    .gvsearch__panel {
-      position: relative; margin-top: 11vh; width: min(620px, calc(100vw - 28px)); max-height: 72vh;
-      display: flex; flex-direction: column; overflow: hidden;
-      background: #ffffff; border: 1px solid rgba(16,17,26,0.10); border-radius: 12px;
-      box-shadow: 0 26px 70px -24px rgba(16,24,40,0.45);
-      font: 500 14px/1.4 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    .gvsearch__inputrow { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(16,17,26,0.08); }
-    .gvsearch__inputrow svg { width: 18px; height: 18px; flex: none; color: #5b626e; }
-    .gvsearch__input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: #16171a; font: inherit; font-size: 15px; }
-    .gvsearch__input::placeholder { color: #8a909a; }
-    .gvsearch__esc { font: inherit; font-size: 11px; color: #5b626e; padding: 3px 6px; border-radius: 5px; background: rgba(16,17,26,0.05); border: 1px solid rgba(16,17,26,0.12); }
-    .gvsearch__results { list-style: none; margin: 0; padding: 6px; overflow-y: auto; }
-    .gvsearch__results[hidden] { display: none; }
-    .gvsearch__opt {
-      display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; cursor: pointer;
-      color: #16171a; scroll-margin: 8px;
-    }
-    .gvsearch__opt[aria-selected="true"] { background: rgba(94,106,210,0.12); }
-    .gvsearch__cat {
-      flex: none; min-width: 78px; text-align: center; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
-      padding: 3px 7px; border-radius: 5px;
-    }
-    .gvsearch__cat.is-proto { color: #3b43b0; background: rgba(94,106,210,0.14); }
-    .gvsearch__cat.is-comp { color: #1d7a4d; background: rgba(47,143,91,0.16); }
-    .gvsearch__cat.is-page { color: #9a5a12; background: rgba(231,148,80,0.18); }
-    .gvsearch__bd { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
-    .gvsearch__title { font-size: 14px; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .gvsearch__title b { color: #3b43b0; background: rgba(94,106,210,0.16); border-radius: 3px; padding: 0 1px; }
-    .gvsearch__sub { font-size: 12px; color: #5b626e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .gvsearch__go { flex: none; color: #8a909a; font-size: 14px; }
-    .gvsearch__empty { padding: 26px 16px 30px; text-align: center; color: #5b626e; font-size: 13.5px; }
-    .gvsearch__empty[hidden] { display: none; }
-    @media (prefers-reduced-motion: reduce) { .gvsearch__backdrop { -webkit-backdrop-filter: none; backdrop-filter: none; } }`;
+    .gvhead__actions { display: inline-flex; align-items: center; gap: 14px; min-width: 0; }`;
 
 // Magnifier glyph reused by the trigger + the overlay input row.
 const SEARCH_ICON = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
 
-// Command-palette overlay markup — present on every chrome page (populated by searchScript).
-function searchOverlay() {
-  return `<div class="gvsearch" data-search hidden>` +
-    `<div class="gvsearch__backdrop" data-search-close></div>` +
-    `<div class="gvsearch__panel" role="dialog" aria-modal="true" aria-label="Search the library">` +
-      `<div class="gvsearch__inputrow">${SEARCH_ICON}` +
-        `<input class="gvsearch__input" type="text" placeholder="Search prototypes, components, pages…" aria-label="Search prototypes, components, and pages" autocomplete="off" autocapitalize="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="gvsearch-results" aria-autocomplete="list" data-search-input />` +
-        `<kbd class="gvsearch__esc">Esc</kbd>` +
-      `</div>` +
-      `<ul class="gvsearch__results" id="gvsearch-results" role="listbox" aria-label="Results" data-search-results></ul>` +
-      `<div class="gvsearch__empty" data-search-empty hidden>No matches.</div>` +
-    `</div>` +
+// In-page real-time filter field. Each listing page renders one near the top; the
+// shared chrome script (filterScript) wires it to that page's [data-fitem] cards.
+function filterField(placeholder) {
+  return `<div class="pfilter">${SEARCH_ICON}` +
+    `<input type="text" data-filter placeholder="${placeholder}" aria-label="${placeholder}" autocomplete="off" autocapitalize="off" spellcheck="false" />` +
+    `<button type="button" class="pfilter__clear" data-filter-clear aria-label="Clear search" hidden>&times;</button>` +
+    `<kbd data-filter-kbd>/</kbd>` +
   `</div>`;
+}
+
+// "No matches" line shown under the cards when a query filters everything out.
+function filterEmpty() {
+  return `<p class="filter-empty" data-filter-empty hidden>No matches.</p>`;
 }
 
 function navBar(active) {
   const tab = (href, label, key) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;
-  const trigger = `<button type="button" class="gvsearch-trigger" data-search-open aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+K" title="Search the library — press / or ⌘K">${SEARCH_ICON}<span class="gvsearch-trigger__label">Search</span><kbd data-search-kbd>⌘K</kbd></button>`;
   const hamburger = `<button type="button" class="gvnav-toggle" data-nav-toggle aria-expanded="false" aria-controls="gvnav-menu" aria-label="Open menu"><span class="gvnav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>`;
-  return `<header class="gvhead"><a class="gvhead__brand" href="/" aria-label="Product Prototypes — back to Prototypes"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Prototypes</span></a><div class="gvhead__actions">${trigger}${hamburger}<nav class="gvnav" id="gvnav-menu" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>${searchOverlay()}`;
+  return `<header class="gvhead"><a class="gvhead__brand" href="/" aria-label="Product Prototypes — back to Prototypes"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Prototypes</span></a><div class="gvhead__actions">${hamburger}<nav class="gvnav" id="gvnav-menu" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>`;
 }
 
-// Module-level: the JSON search index, embedded into every chrome page. Set in main()
-// once all three sources (prototypes, components, pages) have been scanned.
-let SEARCH_INDEX_JSON = "[]";
-
-/** Build the flat global search index across Prototypes · Components · Pages. */
-function buildSearchIndex(opportunities, components, pages) {
-  const items = [];
-  for (const opp of opportunities) {
-    for (const p of opp.prototypes) {
-      items.push({ t: titleCase(p.name), c: "Prototype", g: titleCase(opp.name), h: `/${encodeURIComponent(opp.name)}/${p.href}` });
-    }
-  }
-  for (const c of components) {
-    const desc = ((COMPONENT_BLURBS[c.name] || {}).desc || "").replace(/<[^>]+>/g, "");
-    items.push({ t: titleCase(c.name), c: "Component", g: "", h: `/components/${c.href}`, d: desc });
-  }
-  for (const p of pages) {
-    items.push({ t: titleCase(p.name), c: "Page", g: "", h: `/pages/${p.href}` });
-  }
-  // Escape "<" so the JSON can't break out of the <script> it's embedded in.
-  return JSON.stringify(items).replace(/</g, "\\u003c");
-}
-
-/** Client-side command palette: filter the embedded index, keyboard-navigate, open. */
-function searchScript() {
+/** Shared chrome script: real-time in-page filter + the mobile nav dropdown. */
+function chromeScript() {
   return `(function(){
-  var IDX = ${SEARCH_INDEX_JSON};
-  var overlay = document.querySelector('[data-search]');
-  if (!overlay || overlay.dataset.wired) return;
-  overlay.dataset.wired = '1';
-  var input = overlay.querySelector('[data-search-input]');
-  var list = overlay.querySelector('[data-search-results]');
-  var empty = overlay.querySelector('[data-search-empty]');
-  var triggers = document.querySelectorAll('[data-search-open]');
-  var active = -1, items = [], lastFocus = null;
-  var isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
-  document.querySelectorAll('[data-search-kbd]').forEach(function(k){ k.textContent = isMac ? '\\u2318K' : 'Ctrl K'; });
-  function catClass(c){ return c==='Prototype'?'is-proto':(c==='Component'?'is-comp':'is-page'); }
-  function esc(s){ return String(s).replace(/[&<>"]/g, function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]; }); }
-  function hl(text, q){
-    if(!q) return esc(text);
-    var i = text.toLowerCase().indexOf(q);
-    if(i<0) return esc(text);
-    return esc(text.slice(0,i))+'<b>'+esc(text.slice(i,i+q.length))+'</b>'+esc(text.slice(i+q.length));
-  }
-  function score(it, terms, raw){
-    var hay = (it.t+' '+(it.g||'')+' '+it.c+' '+(it.d||'')).toLowerCase();
-    for(var i=0;i<terms.length;i++){ if(hay.indexOf(terms[i])<0) return -1; }
-    var t = it.t.toLowerCase();
-    if(t===raw) return 100;
-    if(t.indexOf(raw)===0) return 80;
-    if(t.indexOf(raw)>=0) return 60;
-    return 30;
-  }
-  function render(){
-    var raw = input.value.trim().toLowerCase();
-    var terms = raw ? raw.split(/\\s+/) : [];
-    var matched = IDX.map(function(it){ return { it: it, s: terms.length ? score(it, terms, raw) : 50 }; })
-      .filter(function(x){ return x.s >= 0; });
-    var order = { Prototype:0, Component:1, Page:2 };
-    matched.sort(function(a,b){ return b.s - a.s || order[a.it.c] - order[b.it.c] || a.it.t.localeCompare(b.it.t); });
-    items = matched.slice(0,60).map(function(x){ return x.it; });
-    list.innerHTML = items.map(function(it, i){
-      var sub = it.g || it.d || '';
-      return '<li class="gvsearch__opt" role="option" id="gvs-opt-'+i+'" data-i="'+i+'" aria-selected="false">'
-        + '<span class="gvsearch__cat '+catClass(it.c)+'">'+it.c+'</span>'
-        + '<span class="gvsearch__bd"><span class="gvsearch__title">'+hl(it.t, raw)+'</span>'
-        + (sub ? '<span class="gvsearch__sub">'+esc(sub)+'</span>' : '')
-        + '</span><span class="gvsearch__go" aria-hidden="true">\\u2197</span></li>';
-    }).join('');
-    var none = items.length === 0;
-    empty.hidden = !none; list.hidden = none;
-    setActive(none ? -1 : 0);
-  }
-  function setActive(i){
-    active = i;
-    var opts = list.querySelectorAll('.gvsearch__opt');
-    opts.forEach(function(o, idx){
-      var on = idx === i; o.setAttribute('aria-selected', on ? 'true' : 'false');
-      if(on){ o.scrollIntoView({ block:'nearest' }); input.setAttribute('aria-activedescendant', o.id); }
+  // ── In-page real-time filter ─────────────────────────────────────────────
+  var input = document.querySelector('[data-filter]');
+  if (input && !input.dataset.wired) {
+    input.dataset.wired = '1';
+    var clear = document.querySelector('[data-filter-clear]');
+    var kbd = document.querySelector('[data-filter-kbd]');
+    var emptyMsg = document.querySelector('[data-filter-empty]');
+    var items = [].slice.call(document.querySelectorAll('[data-fitem]'));
+    var groups = [].slice.call(document.querySelectorAll('[data-fgroup]'));
+    // Cache each card's searchable text once (explicit data-fkey wins over visible text).
+    items.forEach(function(el){
+      el._fk = (el.getAttribute('data-fkey') || el.textContent || '').toLowerCase().replace(/\\s+/g,' ').trim();
     });
-    if(i < 0) input.removeAttribute('aria-activedescendant');
-  }
-  function go(i){ var it = items[i]; if(it) window.location.href = it.h; }
-  function open(){
-    if(!overlay.hidden) return;
-    lastFocus = document.activeElement;
-    overlay.hidden = false; document.documentElement.style.overflow = 'hidden';
-    input.value = ''; render(); input.focus();
-  }
-  function close(){
-    if(overlay.hidden) return;
-    overlay.hidden = true; document.documentElement.style.overflow = '';
-    if(lastFocus && lastFocus.focus) lastFocus.focus();
-  }
-  triggers.forEach(function(t){ t.addEventListener('click', open); });
-  overlay.querySelectorAll('[data-search-close]').forEach(function(b){ b.addEventListener('click', close); });
-  input.addEventListener('input', render);
-  list.addEventListener('click', function(e){ var li = e.target.closest('.gvsearch__opt'); if(li) go(+li.getAttribute('data-i')); });
-  list.addEventListener('mousemove', function(e){ var li = e.target.closest('.gvsearch__opt'); if(li){ var i = +li.getAttribute('data-i'); if(i !== active) setActive(i); } });
-  input.addEventListener('keydown', function(e){
-    if(e.key === 'ArrowDown'){ e.preventDefault(); if(items.length) setActive((active+1) % items.length); }
-    else if(e.key === 'ArrowUp'){ e.preventDefault(); if(items.length) setActive((active-1+items.length) % items.length); }
-    else if(e.key === 'Enter'){ e.preventDefault(); go(active); }
-    else if(e.key === 'Escape'){ e.preventDefault(); close(); }
-  });
-  document.addEventListener('keydown', function(e){
-    var k = (e.key || '').toLowerCase();
-    if((e.metaKey || e.ctrlKey) && k === 'k'){ e.preventDefault(); overlay.hidden ? open() : close(); return; }
-    if(k === 'escape' && !overlay.hidden){ close(); return; }
-    if(k === '/' && overlay.hidden){
-      var el = document.activeElement, tag = el && el.tagName;
-      if(tag !== 'INPUT' && tag !== 'TEXTAREA' && !(el && el.isContentEditable)){ e.preventDefault(); open(); }
+    function apply(){
+      var raw = input.value.trim().toLowerCase();
+      var terms = raw ? raw.split(/\\s+/) : [];
+      var shown = 0;
+      items.forEach(function(el){
+        var hit = true;
+        for(var i=0;i<terms.length;i++){ if(el._fk.indexOf(terms[i]) < 0){ hit = false; break; } }
+        el.classList.toggle('is-fhidden', !hit);
+        if(hit) shown++;
+      });
+      // Hide a group's heading when none of its cards survive the filter.
+      groups.forEach(function(g){
+        var vis = g.querySelectorAll('[data-fitem]:not(.is-fhidden)').length;
+        g.classList.toggle('is-fhidden', vis === 0);
+      });
+      if(emptyMsg) emptyMsg.hidden = shown !== 0;
+      if(clear) clear.hidden = !raw;
+      if(kbd) kbd.hidden = !!raw;
+      // Collapse the full-bleed carousel to a plain wrapped grid while searching.
+      document.documentElement.classList.toggle('is-filtering', !!raw);
     }
-  });
+    input.addEventListener('input', apply);
+    input.addEventListener('keydown', function(e){ if(e.key === 'Escape' && input.value){ e.preventDefault(); e.stopPropagation(); input.value=''; apply(); } });
+    if(clear) clear.addEventListener('click', function(){ input.value=''; apply(); input.focus(); });
+    var isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+    document.addEventListener('keydown', function(e){
+      var k = (e.key || '').toLowerCase();
+      var el = document.activeElement, tag = el && el.tagName;
+      var typing = tag === 'INPUT' || tag === 'TEXTAREA' || (el && el.isContentEditable);
+      if((e.metaKey || e.ctrlKey) && k === 'k'){ e.preventDefault(); input.focus(); input.select(); return; }
+      if(k === '/' && !typing){ e.preventDefault(); input.focus(); }
+    });
+    apply();
+  }
 
   // ── Mobile nav dropdown (hamburger) ──────────────────────────────────────
   var navToggle = document.querySelector('[data-nav-toggle]');
@@ -1020,7 +929,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${navBar(active)}\n  <script>${searchScript()}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${navBar(active)}\n  <script>${chromeScript()}</script>`
   );
 }
 
@@ -1080,7 +989,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   </div>
   <script>${CAROUSEL_JS}
   </script>
-  <script>${searchScript()}
+  <script>${chromeScript()}
   </script>
 </body>
 </html>
@@ -1120,7 +1029,7 @@ function renderRootIndex(opportunities) {
       const cover = opp.prototypes[0];
       const coverSrc = cover ? `${oppPath}${cover.href}` : "";
       return `
-        <div class="card-opp">
+        <div class="card-opp" data-fitem data-fkey="${titleCase(opp.name)}">
           <a class="card-cover-link" href="${oppPath}" aria-label="Open ${titleCase(opp.name)}"></a>
           ${preview(coverSrc)}
           <div class="opp-meta">
@@ -1149,8 +1058,12 @@ function renderRootIndex(opportunities) {
 
   const main = `
     <div class="root-main">
-      <p class="section-eyebrow">${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}</p>
-      <div class="opp-grid">${cards}</div>
+      ${filterField("Search opportunities…")}
+      <div data-fgroup>
+        <p class="section-eyebrow">${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}</p>
+        <div class="opp-grid">${cards}</div>
+      </div>
+      ${filterEmpty()}
     </div>`;
 
   return shell({
@@ -1167,7 +1080,7 @@ function renderOpportunityIndex(opp) {
         ? `<button type="button" class="btn-icon" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html" aria-label="Download HTML" title="Download HTML">&darr;</button>`
         : "";
       return `
-        <div class="slide">
+        <div class="slide" data-fitem data-fkey="${titleCase(p.name)}">
           <div class="card-proto">
             <div class="preview">
               <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
@@ -1189,7 +1102,7 @@ function renderOpportunityIndex(opp) {
 
   return shell({
     title: titleCase(opp.name),
-    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${carousel(slides)}`,
+    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${filterField("Search prototypes…")}${carousel(slides)}${filterEmpty()}`,
     back: { href: "../", label: "&larr; All opportunities" },
   });
 }
@@ -1207,7 +1120,7 @@ function renderPagesIndex(pages) {
 
   // Pages are a designer reference — Open only, no HTML download.
   const pageCard = (p) => `
-        <div class="card-proto">
+        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}">
           <div class="preview">
             <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
@@ -1222,7 +1135,7 @@ function renderPagesIndex(pages) {
   const front = pages.filter((p) => p.surface !== "back-office");
   const group = (label, list, spaced) =>
     list.length
-      ? `<p class="section-eyebrow"${spaced ? ' style="margin-top:56px"' : ""}>${label} &middot; ${list.length}</p><div class="page-grid">${list.map(pageCard).join("")}</div>`
+      ? `<section data-fgroup><p class="section-eyebrow"${spaced ? ' style="margin-top:56px"' : ""}>${label} &middot; ${list.length}</p><div class="page-grid">${list.map(pageCard).join("")}</div></section>`
       : "";
   // Front office first (resident-facing surfaces), then back office. Fall back to a
   // single ungrouped list only if every page is the same surface and grouping would
@@ -1230,14 +1143,14 @@ function renderPagesIndex(pages) {
   const cards =
     back.length && front.length
       ? group("Front office", front) + group("Back office", back, true)
-      : `<p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${pages.map(pageCard).join("")}</div>`;
+      : `<section data-fgroup><p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${pages.map(pageCard).join("")}</div></section>`;
 
   // Planned reference pages not built yet — shown as a roadmap of pending work.
   const builtSlugs = new Set(pages.map((p) => p.name));
   const pending = PENDING_PAGES.filter((s) => !builtSlugs.has(s))
     .map(
       (slug) => `
-        <div class="card-proto is-pending" aria-label="${titleCase(slug)} — pending">
+        <div class="card-proto is-pending" data-fitem data-fkey="${titleCase(slug)}" aria-label="${titleCase(slug)} — pending">
           <div class="preview preview--pending"><span class="pending-glyph" aria-hidden="true">◴</span></div>
           <div class="proto-meta">
             <div class="proto-name">${titleCase(slug)}</div>
@@ -1248,13 +1161,13 @@ function renderPagesIndex(pages) {
     .join("");
 
   const pendingSection = pending
-    ? `<p class="section-eyebrow" style="margin-top:44px">Pending &middot; ${PENDING_PAGES.length} planned</p><div class="page-grid">${pending}</div>`
+    ? `<section data-fgroup><p class="section-eyebrow" style="margin-top:44px">Pending &middot; ${PENDING_PAGES.length} planned</p><div class="page-grid">${pending}</div></section>`
     : "";
 
   return shell({
     title: "Pages",
     activeTab: "pages",
-    body: `${cards}${pendingSection}`,
+    body: `${filterField("Search pages…")}${cards}${pendingSection}${filterEmpty()}`,
   });
 }
 
@@ -1278,8 +1191,10 @@ function renderComponentsIndex(components) {
         ? `<code>${blurb.classes}</code>`
         : "";
       // Components are a designer reference — Open only, no HTML download.
+      // Filter key spans name + classes + description so a search matches any of them.
+      const fkey = `${titleCase(c.name)} ${blurb.classes} ${blurb.desc}`.replace(/<[^>]+>/g, " ").replace(/"/g, "");
       return `
-        <tr>
+        <tr data-fitem data-fkey="${fkey}">
           <td>
             <a class="comp-thumb" href="${c.href}" aria-label="Open ${titleCase(c.name)}">
               <iframe src="${c.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
@@ -1294,10 +1209,10 @@ function renderComponentsIndex(components) {
   return shell({
     title: "Components",
     activeTab: "components",
-    body: `<p class="section-eyebrow" style="margin-bottom:26px">Reusable building blocks</p><table class="comp-table">
+    body: `<p class="section-eyebrow" style="margin-bottom:26px">Reusable building blocks</p>${filterField("Search components…")}<table class="comp-table">
       <thead><tr><th>Preview</th><th>Component</th><th>What it is</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>`,
+    </table>${filterEmpty()}`,
   });
 }
 
@@ -1306,12 +1221,10 @@ async function main() {
   await fs.rm(DIST, { recursive: true, force: true });
   await fs.mkdir(DIST, { recursive: true });
 
-  // Scan all three sources up front (each also copies its folders into dist) so the
-  // global search index is complete before any chrome page is rendered.
+  // Scan all three sources (each also copies its folders into dist).
   const opportunities = await scan();
   const components = await scanComponents();
   const pages = await scanPages();
-  SEARCH_INDEX_JSON = buildSearchIndex(opportunities, components, pages);
 
   // Root index → opportunities.
   await fs.writeFile(path.join(DIST, "index.html"), renderRootIndex(opportunities), "utf8");
