@@ -1034,6 +1034,21 @@
 .gv-react__comment { display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-m); line-height: 1.25; color: var(--gv-cool-grey-600); }
 .gv-react__comment .gv-icon, .gv-react__comment svg { width: 18px; height: 18px; color: var(--gv-cool-grey-600); }
 
+/* ── Labeled reaction variant — worded Like/Dislike buttons (icon + word + count
+   inside one pill). Source: fo-project-ideation-feed probed .e2e-reaction-controls
+   (text 'Like124Dislike4', w 144.17px, h35) + .e2e-ideacard-like-button (text
+   'Like124', w 64.11px, fs14). Opt-in via .gv-react--labeled so the base circular
+   icon-only buttons stay intact for existing consumers. ──────────────────────── */
+.gv-react--labeled { gap: 16px; }
+.gv-react--labeled .gv-react__btn {
+  width: auto; height: 35px; border-radius: 999px; padding: 0 14px;
+  gap: 6px; font-size: var(--gv-fs-m); font-weight: 500;
+}
+.gv-react--labeled .gv-react__btn .gv-react__label { display: inline; }
+.gv-react--labeled .gv-react__btn .gv-react__count { font-size: var(--gv-fs-m); font-weight: 500; color: inherit; }
+/* base buttons hide the word label (icon-only) */
+.gv-react__btn .gv-react__label { display: none; }
+
 /* ── Feed layout — feed column + 310px filter sidebar (#e2e-project-sidebar) ──── */
 .gv-feed { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 28px; align-items: start; }
 .gv-feed__count { font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-heading-strong); line-height: 20.8px; margin: 0 0 14px; }
