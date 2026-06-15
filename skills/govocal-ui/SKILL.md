@@ -132,6 +132,33 @@ a prototype across several city palettes:
   Custom templates 1–4 clear 4.5:1. Always run `npm run audit` and report results;
   if a city's primary is light, the real platform would need dark button text.
 
+## Building & extending the library (System-building mode)
+
+Everything above is about **consuming** the library in a prototype. This section is
+the **contract for growing it** — the source-grounded pipeline that turns a live
+GoVocal screen into a verified, reusable primitive/component/page. Follow it
+whenever System-building mode is active; don't eyeball screens into approximate CSS.
+
+The four tools (all `npm` scripts; full docs in `govocal-exports/BACK-OFFICE.md`):
+
+| Step | Command | What it does |
+|---|---|---|
+| **1. Capture** | `npm run capture -- <url> --name <slug> --probe "<real selectors>"` | Logs into the demo platform, dumps `page.png` · `dom.html` · `styles.json` · `meta.json`. `styles.json.digest` = every distinct visual treatment with **exact computed values** (read these, never eyeball the PNG); `--probe` pins selectors into `styles.json.probed` as verify checkpoints. |
+| **2. Build** | — | Assemble from existing `.gv-*` primitives; map digest values to `--gv-*` **tokens** (don't hardcode a hex you can alias). New visual? decide *new variant vs base fix* — extend, don't mutate the base out from under existing users. |
+| **3. Verify** | `npm run verify -- <built.html> --against <slug> --map "realSel=mineSel|…"` | Renders your build and **numerically diffs** computed styles vs the capture's probed checkpoints. Loop until ✓. Replaces "compare to the screenshot by eye." |
+| **4. Register (ratchet)** | add to `govocal-exports/checkpoints.json`, then `npm run verify:all` | Once green, pin the checkpoint so it's guarded forever. After ANY change to shared CSS (`govocal-ui.css`/`govocal-bo.css`/`govocal-tokens.css`) run `verify:all` — green = real improvement, red = you regressed a dependent. `--changed .gv-btn` runs only a primitive's blast radius. |
+
+Then store: snippet in `components.md`, row in `components/manifest.md` (+ `govocal-bo.css`
+for back-office chrome), and `npm run index` to refresh `LIBRARY.md`.
+
+**Why the ratchet matters:** primitives are *meant* to improve on each capture, but a
+refinement that matches one screen can overfit and silently break the components
+already using it. `verify:all` is what makes shared CSS monotonic — improvements
+only, no regressions. Register a checkpoint for every piece you build so the guard
+has teeth (e.g. it catches the back-office shell and the standalone sidebar drifting
+apart). **Pages stay pure assembly** (components + tokens, no local colour/border/
+shadow values) so primitive gains flow into them automatically.
+
 ## Refreshing from source (when GoVocal's design system moves)
 
 1. Find the new commit SHA on `master` and update the pin here + in file headers.
