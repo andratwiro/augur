@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="gv-surface" content="front-office" />
-  <title>Event detail — GoVocal (reference)</title>
+  <title>Station Road walk &amp; talk: see the plans on site — Westmere</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
   <!--
     REFERENCE REBUILD of a single GoVocal event detail page (/events/:id),
     source-grounded on wietsedemo.govocal.com/en/events/<id> (capture:
@@ -27,6 +28,24 @@
     /* Page-level layout only — all colour/elevation/type lives in canonical CSS. */
     body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
     .eventdetail-backbar { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 20px 24px 0; }
+    /* Event cover photo — page-local frame; canonical owns no event-cover atom, so
+       layout/radius here, no .gv-* redefinition. */
+    .eventdetail-cover { margin: 0 0 22px; border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 7; background: var(--gv-grey-100); }
+    .eventdetail-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* Organiser + attendees blocks on the sidebar panel. Avatar faces are filled by
+       canonical govocal-avatars.js into .av bubbles — no per-page portrait assets. */
+    .eventdetail-organiser { display: flex; align-items: center; gap: 12px; margin-top: 18px;
+      padding-top: 18px; border-top: 1px solid var(--gv-grey-300); }
+    .eventdetail-organiser .av { width: 42px; height: 42px; border-radius: 50%; flex: none;
+      background-size: cover; background-position: center; }
+    .eventdetail-organiser__name { font-size: var(--gv-fs-m); font-weight: 600; color: var(--gv-text-primary); line-height: 1.25; }
+    .eventdetail-organiser__role { font-size: var(--gv-fs-s); color: var(--gv-grey-700); }
+    .eventdetail-attendees { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--gv-grey-300); }
+    .eventdetail-attendees__count { display: block; margin-bottom: 10px; font-size: var(--gv-fs-s); color: var(--gv-grey-700); }
+    .eventdetail-attendees__count strong { color: var(--gv-text-primary); font-weight: 700; }
+    /* Related events section */
+    .eventdetail-related { max-width: var(--gv-shell-w, 1150px); margin: 8px auto 0; padding: 0 24px; }
+    .eventdetail-related > h2 { font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-text-primary); margin: 8px 0 18px; }
   </style>
 </head>
 <body class="gv-root" data-auth="in">
@@ -149,27 +168,41 @@
 
   <main id="main-content" class="gv-eventdetail">
 
-    <!-- ════ Main column: eyebrow · project link · title · description ════ -->
+    <!-- ════ Main column: cover · eyebrow · project link · title · description ════ -->
     <div class="gv-eventdetail__main">
-      <p class="gv-eventdetail__from">From "Climate action planning"</p>
+
+      <!-- Event cover photo (Station Road, a quiet tree-lined road in Northgate) -->
+      <figure class="eventdetail-cover">
+        <img src="../../skills/govocal-ui/img/westmere/street-trees.webp" loading="lazy"
+          alt="Station Road in Northgate — a quiet, tree-lined road where the new plans will be staked out on site." />
+      </figure>
+
+      <p class="gv-eventdetail__from">From "The future of Station Road"</p>
       <a class="gv-eventdetail__projlink" href="#">
         Go to the project
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 5l7 7-7 7-1.4-1.4 4.6-4.6H3v-2h14.2L12.6 6.4 14 5Z"/></svg>
       </a>
 
-      <h1 id="e2e-event-title" class="gv-eventdetail__title">Climate assembly</h1>
+      <h1 id="e2e-event-title" class="gv-eventdetail__title">Station Road walk &amp; talk: see the plans on site</h1>
 
       <div id="e2e-event-description" class="gv-prose">
-        <p>Join the citizens' <em>climate assembly</em> — a working session where a
-          randomly selected, representative group of residents deliberates on the
-          city's climate action plan. Facilitators will present the draft measures,
-          and participants discuss trade-offs in small groups before a plenary vote
-          on priorities.</p>
-        <p>The session is open to the public to observe. Recommendations from the
-          assembly feed directly into the next phase of "Climate action planning",
-          where the council reviews and responds to each proposal.</p>
-        <p>Refreshments are provided. The venue is wheelchair accessible; please let
-          us know in advance if you have any access requirements.</p>
+        <p>Come and see the proposals for <em>Station Road</em> where they'll actually
+          happen. We'll walk the street together — from Northgate station down to the
+          junction — stopping at the points where the biggest changes are planned:
+          the new cycle lane, the widened pavements, the crossing by the school and
+          the extra street trees.</p>
+        <p>At each stop the project team will explain what's proposed and why, and
+          there's plenty of time to ask questions, point out what works for you, and
+          flag anything we've missed. What we hear on the walk feeds straight into the
+          next phase of "The future of Station Road", so this is a real chance to
+          shape the design before it's fixed.</p>
+        <p>Wear comfortable shoes and dress for the weather — we'll be outside for the
+          full hour and a half. The route is step-free and wheelchair accessible; if
+          you have any access requirements or questions beforehand, get in touch with
+          the engagement team and we'll make sure you're looked after.</p>
+        <p><strong>Meeting point:</strong> outside Northgate station, Station Road
+          (look for the Westmere — Have your say banner). No need to book, but
+          registering helps us plan numbers.</p>
       </div>
     </div>
 
@@ -177,15 +210,38 @@
     <aside class="gv-eventdetail__side">
       <div class="gv-eventdetail__datecard">
         <div id="e2e-event-date-stylized" class="gv-eventdetail__datestylized">
-          <span class="gv-sr-only">Event date: April 21st, 2024 from 7:15 PM to 7:45 PM.</span>
+          <span class="gv-sr-only">Event date: 25 June 2026 from 5:30 PM to 7:00 PM. Meet outside Northgate station, Station Road, Northgate.</span>
           <div class="gv-eventdetail__date" aria-hidden="true">
-            <span class="d">21</span>
-            <span class="m">Apr</span>
-            <span class="t">7:15 PM - 7:45 PM CEST</span>
+            <span class="d">25</span>
+            <span class="m">Jun 2026</span>
+            <span class="t">5:30 PM - 7:00 PM CEST</span>
           </div>
         </div>
         <div class="gv-eventdetail__actions">
           <button type="button" class="gv-btn primary-text size-s">Add to calendar</button>
+        </div>
+
+        <p class="gv-eventdetail__row" style="display:flex;align-items:flex-start;gap:9px;margin:18px 0 0;font-size:var(--gv-fs-s);color:var(--gv-grey-700)">
+          <span data-gv-icon="location" aria-hidden="true" style="flex:none;width:16px;height:16px;color:var(--gv-tenant-primary)"></span>
+          Meet outside Northgate station, Station Road, Northgate
+        </p>
+
+        <!-- Organiser -->
+        <div class="eventdetail-organiser">
+          <span class="av" aria-hidden="true"></span>
+          <span>
+            <span class="eventdetail-organiser__name">Hanne Vos</span><br />
+            <span class="eventdetail-organiser__role">Organiser · City of Westmere</span>
+          </span>
+        </div>
+
+        <!-- Attendees -->
+        <div class="eventdetail-attendees">
+          <span class="eventdetail-attendees__count"><strong>41 people</strong> are going</span>
+          <div class="gv-bubbles sm" aria-hidden="true">
+            <span class="av"></span><span class="av"></span><span class="av"></span>
+            <span class="av"></span><span class="av"></span><span class="av"></span>
+          </div>
         </div>
       </div>
 
@@ -199,6 +255,65 @@
     </aside>
 
   </main>
+
+  <!-- ════ Related events — reuses canonical .gv-event-card / .gv-events__grid ════ -->
+  <section class="eventdetail-related" aria-labelledby="related-events-h">
+    <h2 id="related-events-h">Other upcoming events</h2>
+    <div class="gv-events__grid">
+
+      <article class="gv-event-card">
+        <div class="gv-event-card__media">
+          <img src="../../skills/govocal-ui/img/westmere/workshop.webp" loading="lazy"
+            alt="Residents and staff around screens at a community session" />
+          <span class="gv-event-card__date"><span class="m">Jun</span><span class="d">18</span><span class="y">2026</span></span>
+        </div>
+        <div class="gv-event-card__body">
+          <h3 class="gv-event-card__title"><a href="#">Community session: bringing online &amp; offline participation together</a></h3>
+          <div class="gv-event-card__meta">
+            <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 18 Jun 2026 · 11:00 – 12:00</p>
+            <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online meeting</a></p>
+            <p class="gv-event-card__row"><span data-gv-icon="user"></span> 2 registrants</p>
+          </div>
+          <a class="gv-btn primary-outlined full" href="#">View event</a>
+        </div>
+      </article>
+
+      <article class="gv-event-card">
+        <div class="gv-event-card__media">
+          <img src="../../skills/govocal-ui/img/westmere/meeting.webp" loading="lazy"
+            alt="Public meeting with a resident raising a hand to speak" />
+          <span class="gv-event-card__date"><span class="m">Jul</span><span class="d">02</span><span class="y">2026</span></span>
+        </div>
+        <div class="gv-event-card__body">
+          <h3 class="gv-event-card__title"><a href="#">Participatory budget: info &amp; Q&amp;A session</a></h3>
+          <div class="gv-event-card__meta">
+            <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 2 Jul 2026 · 18:30 – 19:30</p>
+            <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online meeting</a></p>
+            <p class="gv-event-card__row"><span data-gv-icon="user"></span> 7 registrants</p>
+          </div>
+          <a class="gv-btn primary-outlined full" href="#">View event</a>
+        </div>
+      </article>
+
+      <article class="gv-event-card">
+        <div class="gv-event-card__media">
+          <img src="../../skills/govocal-ui/img/westmere/community.webp" loading="lazy"
+            alt="Busy community open house with a mixed crowd of residents" />
+          <span class="gv-event-card__date"><span class="m">Jul</span><span class="d">09</span><span class="y">2026</span></span>
+        </div>
+        <div class="gv-event-card__body">
+          <h3 class="gv-event-card__title"><a href="#">Old Town renewal — neighbourhood open house</a></h3>
+          <div class="gv-event-card__meta">
+            <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 9 Jul 2026 · 16:00 – 19:00</p>
+            <p class="gv-event-card__row"><span data-gv-icon="location"></span> Old Town Hall, Market Square</p>
+            <p class="gv-event-card__row"><span data-gv-icon="user"></span> 33 registrants</p>
+          </div>
+          <a class="gv-btn primary-outlined full" href="#">View event</a>
+        </div>
+      </article>
+
+    </div>
+  </section>
 
   <!-- ════════════════════════════════ Footer ════════════════════════════════ -->
   <footer class="gv-footer" style="margin-top:48px">

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Project page — Survey (reference)</title>
+  <title>The big downtown survey — Westmere</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
@@ -16,12 +16,15 @@
     "Open survey test demographics"). Two survey-specific pieces sit on the stable
     shell: a prominent "Take the survey" CTA (gv-btn.primary) and a full-width
     participation band (.gv-surveyband). An open single-method survey shows NO phase
-    stepper. Picker OFF (Pages rule).
+    stepper. Picker OFF (Pages rule). Dressed as City of Westmere — "The big downtown
+    survey" (Centre/Harbour, open, 248 participants).
   -->
   <style>
     body { margin: 0; background: #fff; }
     main { padding-bottom: 8px; }
-    /* layout-only */
+    /* layout-only (no colour/elevation/type authored here) */
+    .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
+    .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .pp-action { display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
     .pp-action .gv-btn.primary { min-width: 300px; }
   </style>
@@ -31,11 +34,11 @@
   <!-- ════════ Header — logged-in ════════ -->
   <header class="gv-header sticky">
     <div class="gv-header__inner">
-      <a class="gv-brand" href="#" data-gv-logo aria-label="Go Vocal — Home"></a>
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Westmere — Home"></a>
       <nav class="gv-nav" aria-label="Primary">
         <ul class="gv-nav__list">
-          <li><a class="gv-nav__link" href="#" aria-current="page">Home</a></li>
-          <li><a class="gv-nav__link" href="#">All projects</a></li>
+          <li><a class="gv-nav__link" href="#">Home</a></li>
+          <li><a class="gv-nav__link" href="#" aria-current="page">All projects</a></li>
           <li><a class="gv-nav__link" href="#">Proposals</a></li>
           <li><a class="gv-nav__link" href="#">Events</a></li>
         </ul>
@@ -45,7 +48,7 @@
         <button class="gv-iconbtn" aria-label="Notifications, 29 unviewed">
           <span data-gv-icon="notification"></span><span class="gv-iconbtn__badge" aria-hidden="true">29</span>
         </button>
-        <button class="gv-account gv-desktop-only" aria-label="Account menu"><span>Go Vocal</span><span class="gv-avatar">G</span></button>
+        <button class="gv-account gv-desktop-only" aria-label="Account menu"><span>Sofie</span><span class="gv-avatar">S</span></button>
       </div>
     </div>
   </header>
@@ -54,24 +57,54 @@
   <div class="gv-wrap" style="display:flex;justify-content:flex-end;gap:12px;padding-top:24px;">
     <a class="gv-btn secondary-outlined size-s" href="#"><span data-gv-icon="edit" aria-hidden="true"></span> Edit project</a>
     <button class="gv-btn primary size-s" id="followBtn" aria-pressed="false">
-      <span data-gv-icon="notification" aria-hidden="true"></span> <span id="followLabel">Follow (1)</span>
+      <span data-gv-icon="notification" aria-hidden="true"></span> <span id="followLabel">Follow (214)</span>
     </button>
   </div>
 
   <main>
    <div class="gv-wrap">
+
+    <!-- ════════ Banner (real downtown photo within page container) ════════ -->
+    <section class="pp-banner gv-pcard__thumb--ocean" aria-label="Project banner">
+      <img src="../../skills/govocal-ui/img/westmere/harbour.webp" alt="Westmere harbour and the streets of the Centre district seen across the water" loading="lazy" />
+    </section>
+
     <!-- Title + survey action + participants -->
     <div class="gv-projhead">
-      <div class="gv-projhead__title"><h1>Open survey test demographics</h1></div>
+      <div class="gv-projhead__title"><h1>The big downtown survey</h1></div>
       <div class="pp-action">
         <a class="gv-btn primary" href="#survey">Take the survey</a>
         <div class="gv-participants">
           <span class="gv-avatars on-light" aria-hidden="true">
             <span class="av"></span>
+            <span class="av"></span>
+            <span class="av"></span>
           </span>
-          <span class="gv-pcount">1 participant</span>
+          <span class="gv-pcount">248 participants</span>
           <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time participant count."></span>
         </div>
+      </div>
+    </div>
+
+    <!-- About this project -->
+    <div class="gv-projdesc" style="max-width:760px;margin:8px 0 32px;">
+      <p>Downtown Westmere — the <strong>Centre and Harbour districts</strong> — is where the city comes together to shop, work, eat and meet. But the way we use these streets is changing, and we want to plan the next decade with you, not for you.</p>
+      <p>This short survey asks one big question: <strong>what does downtown need to become more liveable?</strong> Your answers will shape the priorities we take into the Centre &amp; Harbour action plan, from greener streets and the weekly market to cycling, parking and the quayside.</p>
+      <p>It takes about three minutes, your answers are anonymous, and every response counts. Have a read of the questions below, then have your say.</p>
+
+      <div class="gv-accordion" style="margin-top:20px">
+        <details class="gv-acc__item" open>
+          <summary class="gv-acc__head"><span class="gv-acc__q">How will my answers be used?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+          <div class="gv-acc__body"><p>Responses are analysed together and shared back as a public summary. The strongest themes feed straight into the Centre &amp; Harbour action plan that goes to the council later this year.</p></div>
+        </details>
+        <details class="gv-acc__item">
+          <summary class="gv-acc__head"><span class="gv-acc__q">Who can take part?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+          <div class="gv-acc__body"><p>Anyone who lives, works, studies in or visits downtown Westmere. You don't need to live in the Centre or Harbour districts to have a say in their future.</p></div>
+        </details>
+        <details class="gv-acc__item">
+          <summary class="gv-acc__head"><span class="gv-acc__q">Who is running this project?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+          <div class="gv-acc__body"><p>The City of Westmere — Engagement team, with the downtown planning group. Follow the project and we'll let you know when the results are published.</p></div>
+        </details>
       </div>
     </div>
    </div>
@@ -89,12 +122,32 @@
     <div class="gv-wrap">
       <div class="gv-phasepanel" id="survey">
         <div class="gv-phasebody">
-          <p>This short survey helps us understand who is taking part. It takes about three minutes and your answers are anonymous.</p>
-          <p>Have your say below — every response shapes how we plan the next phase of work.</p>
+          <p>This short survey helps us understand how you use downtown today and what would make it work better for you. It takes about three minutes and your answers are anonymous.</p>
+          <p>Have your say below — every response shapes the next phase of the Centre &amp; Harbour action plan.</p>
         </div>
         <p style="margin-top:20px"><a class="gv-btn primary size-m" href="#">Take the survey <span data-gv-icon="arrow-right" aria-hidden="true"></span></a></p>
       </div>
     </div>
+   </div>
+
+   <!-- ════════ Spotlight — why downtown, with a real photo ════════ -->
+   <div class="gv-wrap">
+    <section class="gv-spotlight" aria-labelledby="spot-title" style="padding-top:8px;">
+      <div class="gv-spotlight__inner">
+        <div>
+          <p class="gv-spotlight__eyebrow">Centre &amp; Harbour · liveability</p>
+          <h2 class="gv-spotlight__title" id="spot-title">A downtown that works for everyone</h2>
+          <p class="gv-spotlight__lead">From the weekly market on the square to the quayside walk along the Mere, downtown belongs to all of us. Tell us what's working, what isn't, and what you'd change first — it only takes a few minutes.</p>
+          <div class="gv-spotlight__actions">
+            <a class="gv-btn primary" href="#survey">Take the survey</a>
+            <a class="gv-btn text" href="#">Read the project plan</a>
+          </div>
+        </div>
+        <div class="gv-spotlight__media">
+          <img src="../../skills/govocal-ui/img/westmere/square.webp" alt="Westmere's downtown civic square with residents and cyclists crossing the open paving" loading="lazy" />
+        </div>
+      </div>
+    </section>
    </div>
   </main>
 
@@ -120,7 +173,7 @@
   </footer>
 
   <script>
-    let following = false, count = 1;
+    let following = false, count = 214;
     document.getElementById("followBtn").addEventListener("click", (e) => {
       following = !following; count += following ? 1 : -1;
       document.getElementById("followLabel").textContent = following ? `Unfollow (${count})` : `Follow (${count})`;

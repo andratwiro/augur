@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="gv-surface" content="front-office" />
-  <title>Projects &amp; folders — GoVocal (reference)</title>
+  <title>Projects &amp; folders — Westmere</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <!--
@@ -53,11 +53,11 @@
                 <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </summary>
               <div class="gv-nav__menu">
-                <a href="#">Report issues to the Council</a>
-                <a href="#">The Big Conversation</a>
-                <a href="#">Deliberation: Budget Priorities</a>
+                <a href="#">The big downtown survey</a>
                 <a href="#">A square for everyone</a>
+                <a href="#">The future of Station Road</a>
                 <a href="#">Participatory budget 2026</a>
+                <a href="#">Cleaner Harbour, healthier Mere</a>
               </div>
             </details>
           </li>
@@ -94,8 +94,8 @@
           </button>
           <details class="gv-nav__dd right gv-account-dd">
             <summary class="gv-account">
-              <span class="gv-account__name">Go Vocal</span>
-              <span class="gv-avatar">GV</span>
+              <span class="gv-account__name">Sofie Maes</span>
+              <span class="gv-avatar">SM</span>
               <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </summary>
             <div class="gv-nav__menu gv-nav__menu--account">
@@ -161,9 +161,9 @@
       <!-- Toolbar: status tabs (left) + filter selectors (right) -->
       <div class="gv-ptoolbar">
         <div class="gv-tabs" role="tablist" aria-label="Publication status">
-          <button class="gv-tab" role="tab" aria-selected="true">Published <span class="ct">(21)</span></button>
-          <button class="gv-tab" role="tab" aria-selected="false">Archived <span class="ct">(1)</span></button>
-          <button class="gv-tab" role="tab" aria-selected="false">All <span class="ct">(22)</span></button>
+          <button class="gv-tab" role="tab" aria-selected="true">Published <span class="ct">(22)</span></button>
+          <button class="gv-tab" role="tab" aria-selected="false">Archived <span class="ct">(16)</span></button>
+          <button class="gv-tab" role="tab" aria-selected="false">All <span class="ct">(38)</span></button>
         </div>
         <div class="gv-filterbar">
           <span class="gv-filterbar__label">Filter by</span>
@@ -179,35 +179,36 @@
       <!-- 3-up grid of boxed project + folder cards (static — the live list is virtualized) -->
       <div class="gv-pgrid">
 
-        <!-- Issue-reporting project: outlined "View the issues" CTA + weeks-left timer -->
+        <!-- The big downtown survey (featured survey, Centre) -->
         <article class="gv-pcard boxed e2e-project-card">
           <div class="gv-pcard__top">
             <div class="gv-pcard__topprog">
               <span class="gv-pcard__meta time">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                6 weeks left
+                4 weeks left
               </span>
-              <div class="gv-progress" role="progressbar" aria-valuenow="22" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:22%"></div></div>
+              <div class="gv-progress" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:40%"></div></div>
             </div>
-            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">View the issues</a>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Take the survey</a>
           </div>
-          <div class="gv-pcard__thumb icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
+          <div class="gv-pcard__thumb">
+            <img src="../../skills/govocal-ui/img/westmere/hero-waterfront.webp" loading="lazy" alt="Westmere waterfront and city centre across the water" />
           </div>
           <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Report issues to the Council</a></h3>
-            <p class="gv-pcard__desc">Spotted a pothole, broken light or fly-tipping? Report it here and follow how it's resolved.</p>
+            <span class="gv-pcard__meta">Survey · Centre</span>
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">The big downtown survey</a></h3>
+            <p class="gv-pcard__desc">Help shape the heart of Westmere. Tell us how the centre should look, move and feel over the next ten years.</p>
             <div class="gv-pcard__spacer"></div>
             <div class="gv-pcard__foot">
-              <div class="gv-bubbles" aria-label="6 participants">
+              <div class="gv-bubbles" aria-label="248 participants">
                 <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="gv-bubbles__label">6 participants</span>
+                <span class="gv-bubbles__label">248 participants</span>
               </div>
             </div>
           </div>
         </article>
 
-        <!-- Survey project: contributions count + outlined CTA -->
+        <!-- A square for everyone (ideation, Old Town / Market Square) -->
         <article class="gv-pcard boxed e2e-project-card">
           <div class="gv-pcard__top">
             <div class="gv-pcard__topprog">
@@ -215,25 +216,82 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 3 weeks left
               </span>
-              <div class="gv-progress" role="progressbar" aria-valuenow="48" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:48%"></div></div>
+              <div class="gv-progress" role="progressbar" aria-valuenow="58" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:58%"></div></div>
             </div>
-            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Take the survey</a>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Share your idea</a>
           </div>
-          <div class="gv-pcard__thumb gv-pcard__thumb--ocean"><span class="gv-thumb-cap gv-thumb-cap--sm">THE BIG CONVERSATION</span></div>
+          <div class="gv-pcard__thumb">
+            <img src="../../skills/govocal-ui/img/westmere/square.webp" loading="lazy" alt="Westmere civic square with cyclists" />
+          </div>
           <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">The Big Conversation</a></h3>
-            <p class="gv-pcard__desc">Your voice, plus thousands of others. Tell us what matters most for the year ahead.</p>
+            <span class="gv-pcard__meta">Ideation · Old Town</span>
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">A square for everyone</a></h3>
+            <p class="gv-pcard__desc">Pin the places that matter to you and tell us how Market Square should change for people of every age.</p>
             <div class="gv-pcard__spacer"></div>
             <div class="gv-pcard__foot">
-              <div class="gv-bubbles" aria-label="1.2 thousand participants">
+              <div class="gv-bubbles" aria-label="122 contributions">
                 <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="gv-bubbles__label">1,204 participants</span>
+                <span class="gv-bubbles__label">122 contributions</span>
               </div>
             </div>
           </div>
         </article>
 
-        <!-- Ideation project: progress + CTA -->
+        <!-- The future of Station Road (survey, Northgate / mobility) -->
+        <article class="gv-pcard boxed e2e-project-card">
+          <div class="gv-pcard__top">
+            <div class="gv-pcard__topprog">
+              <span class="gv-pcard__meta time">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                6 weeks left
+              </span>
+              <div class="gv-progress" role="progressbar" aria-valuenow="24" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:24%"></div></div>
+            </div>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Take the survey</a>
+          </div>
+          <div class="gv-pcard__thumb">
+            <img src="../../skills/govocal-ui/img/westmere/street-trees.webp" loading="lazy" alt="Quiet tree-lined road in Northgate" />
+          </div>
+          <div class="gv-pcard__body">
+            <span class="gv-pcard__meta">Survey · Northgate</span>
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">The future of Station Road</a></h3>
+            <p class="gv-pcard__desc">Safer crossings, more greenery, calmer traffic? Have your say on the plans for Station Road.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <div class="gv-bubbles" aria-label="57 participants">
+                <span class="av"></span><span class="av"></span><span class="av"></span>
+                <span class="gv-bubbles__label">57 participants</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Westmere climate teams (folder, 3 projects) -->
+        <article class="gv-pcard boxed e2e-folder-card">
+          <div class="gv-pcard__top">
+            <span class="gv-pcard__meta">3 projects</span>
+            <span class="gv-pcard__topicon" role="img" aria-label="Project folder">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
+            </span>
+          </div>
+          <div class="gv-pcard__thumb">
+            <img src="../../skills/govocal-ui/img/westmere/park.webp" loading="lazy" alt="Green park path in Westmere" />
+          </div>
+          <div class="gv-pcard__body">
+            <span class="gv-pcard__meta">Folder · Westside · Old Town · Riverside</span>
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Westmere climate teams</a></h3>
+            <p class="gv-pcard__desc">Three neighbourhood teams working on a greener, cooler, more liveable Westmere — one district at a time.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <div class="gv-bubbles" aria-label="346 participants">
+                <span class="av"></span><span class="av"></span><span class="av"></span>
+                <span class="gv-bubbles__label">346 participants</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Participatory budget 2026 (voting, citywide) -->
         <article class="gv-pcard boxed e2e-project-card">
           <div class="gv-pcard__top">
             <div class="gv-pcard__topprog">
@@ -241,64 +299,17 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 2 weeks left
               </span>
-              <div class="gv-progress" role="progressbar" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:64%"></div></div>
+              <div class="gv-progress" role="progressbar" aria-valuenow="72" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:72%"></div></div>
             </div>
-            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Share your idea</a>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Cast your vote</a>
           </div>
-          <div class="gv-pcard__thumb gv-pcard__thumb--sage"><span class="gv-thumb-cap gv-thumb-cap--sm">BUDGET PRIORITIES</span></div>
-          <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Deliberation: Budget Priorities</a></h3>
-            <p class="gv-pcard__desc">How should we invest next year? Weigh in on the priorities that shape the city budget.</p>
-            <div class="gv-pcard__spacer"></div>
-            <div class="gv-pcard__foot">
-              <div class="gv-bubbles" aria-label="312 participants">
-                <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="gv-bubbles__label">312 participants</span>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Folder card: "N projects" + folder icon -->
-        <article class="gv-pcard boxed e2e-folder-card">
-          <div class="gv-pcard__top">
-            <span class="gv-pcard__meta">4 projects</span>
-            <span class="gv-pcard__topicon" role="img" aria-label="Project folder">
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
-            </span>
-          </div>
-          <div class="gv-pcard__thumb gv-pcard__thumb--forest">
-            <div class="gv-pcard__badge"><span><span class="pre">our</span><b class="accent">district</b><b>climate<br>teams</b></span></div>
+          <div class="gv-pcard__thumb">
+            <img src="../../skills/govocal-ui/img/westmere/meeting.webp" loading="lazy" alt="Westmere residents at a public budget meeting" />
           </div>
           <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">City climate teams</a></h3>
-            <p class="gv-pcard__desc">Four neighbourhood projects working on a greener, cooler, more liveable city.</p>
-            <div class="gv-pcard__spacer"></div>
-            <div class="gv-pcard__foot">
-              <div class="gv-bubbles" aria-label="528 participants">
-                <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="gv-bubbles__label">528 participants</span>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Participatory budget project -->
-        <article class="gv-pcard boxed e2e-project-card">
-          <div class="gv-pcard__top">
-            <div class="gv-pcard__topprog">
-              <span class="gv-pcard__meta time">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                5 weeks left
-              </span>
-              <div class="gv-progress" role="progressbar" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:30%"></div></div>
-            </div>
-            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Submit a proposal</a>
-          </div>
-          <div class="gv-pcard__thumb gv-pcard__thumb--civic"><span class="gv-thumb-cap gv-thumb-cap--sm">PARTICIPATORY BUDGET</span></div>
-          <div class="gv-pcard__body">
+            <span class="gv-pcard__meta">Voting · Citywide</span>
             <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Participatory budget 2026</a></h3>
-            <p class="gv-pcard__desc">You decide how €500,000 is spent. Propose, discuss and vote on projects for your district.</p>
+            <p class="gv-pcard__desc">€1.2M to allocate, and you decide. Browse the proposals and vote for the ones that should go ahead.</p>
             <div class="gv-pcard__spacer"></div>
             <div class="gv-pcard__foot">
               <div class="gv-bubbles" aria-label="86 participants">
@@ -309,16 +320,39 @@
           </div>
         </article>
 
-        <!-- Finished project: status label + Read the report -->
+        <!-- Cleaner Harbour, healthier Mere (common ground, Harbour) -->
+        <article class="gv-pcard boxed e2e-project-card">
+          <div class="gv-pcard__top">
+            <span class="gv-pcard__meta">Ongoing</span>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Vote on statements</a>
+          </div>
+          <div class="gv-pcard__thumb">
+            <img src="../../skills/govocal-ui/img/westmere/harbour.webp" loading="lazy" alt="Working harbour full of boats below a hillside town" />
+          </div>
+          <div class="gv-pcard__body">
+            <span class="gv-pcard__meta">Common ground · Harbour</span>
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Cleaner Harbour, healthier Mere</a></h3>
+            <p class="gv-pcard__desc">Where do residents agree on cleaning up the harbour and the river? Vote on the statements and find common ground.</p>
+            <div class="gv-pcard__spacer"></div>
+            <div class="gv-pcard__foot">
+              <span class="gv-poststat"><b>1,204</b>&nbsp;votes</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Old Town renewal (finished, Old Town) -->
         <article class="gv-pcard boxed e2e-project-card">
           <div class="gv-pcard__top">
             <span class="gv-status-label finished">Finished</span>
             <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Read the report</a>
           </div>
-          <div class="gv-pcard__thumb gv-pcard__thumb--sand"><span class="gv-thumb-cap gv-thumb-cap--xs">Old Town renewal</span></div>
+          <div class="gv-pcard__thumb">
+            <img src="../../skills/govocal-ui/img/westmere/oldtown.webp" loading="lazy" alt="Cobbled Old Town street in Westmere" />
+          </div>
           <div class="gv-pcard__body">
+            <span class="gv-pcard__meta">Project · Old Town</span>
             <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Old Town renewal</a></h3>
-            <p class="gv-pcard__desc">Participation has closed. Read which proposals are being put into action.</p>
+            <p class="gv-pcard__desc">Participation has closed. Read which proposals for the Old Town are being put into action.</p>
             <div class="gv-pcard__spacer"></div>
             <div class="gv-pcard__foot">
               <span class="gv-poststat closed"><b>503</b>&nbsp;contributions</span>
@@ -326,72 +360,45 @@
           </div>
         </article>
 
-        <!-- Volunteering project -->
+        <!-- Tree-planting volunteers (volunteering, citywide) -->
         <article class="gv-pcard boxed e2e-project-card">
           <div class="gv-pcard__top">
             <span class="gv-pcard__meta">Ongoing</span>
             <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Volunteer</a>
           </div>
-          <div class="gv-pcard__thumb icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
+          <div class="gv-pcard__thumb">
+            <img src="../../skills/govocal-ui/img/westmere/community.webp" loading="lazy" alt="Westmere residents at a busy community event" />
           </div>
           <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Neighbourhood clean-up days</a></h3>
-            <p class="gv-pcard__desc">Lend a hand at one of our seasonal clean-ups. Sign up for the dates that suit you.</p>
+            <span class="gv-pcard__meta">Volunteering · Citywide</span>
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Tree-planting volunteers</a></h3>
+            <p class="gv-pcard__desc">Help plant the next generation of Westmere's street trees. 18 spots left across this season's planting days.</p>
             <div class="gv-pcard__spacer"></div>
             <div class="gv-pcard__foot">
-              <div class="gv-bubbles" aria-label="74 participants">
+              <div class="gv-bubbles" aria-label="18 spots open">
                 <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="gv-bubbles__label">74 participants</span>
+                <span class="gv-bubbles__label">18 spots open</span>
               </div>
             </div>
           </div>
         </article>
 
-        <!-- Map / proposals project -->
+        <!-- Greening the schoolyards (finished ideation, citywide) -->
         <article class="gv-pcard boxed e2e-project-card">
           <div class="gv-pcard__top">
-            <div class="gv-pcard__topprog">
-              <span class="gv-pcard__meta time">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                8 weeks left
-              </span>
-              <div class="gv-progress" role="progressbar" aria-valuenow="12" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:12%"></div></div>
-            </div>
-            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Add a place</a>
+            <span class="gv-status-label finished">Finished</span>
+            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">See the results</a>
           </div>
-          <div class="gv-pcard__thumb gv-pcard__thumb--coral"><span class="gv-thumb-cap gv-thumb-cap--sm">A SQUARE FOR EVERYONE</span></div>
-          <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">A square for everyone</a></h3>
-            <p class="gv-pcard__desc">Pin the places that matter to you and tell us how Market Square should change.</p>
-            <div class="gv-pcard__spacer"></div>
-            <div class="gv-pcard__foot">
-              <div class="gv-bubbles" aria-label="122 participants">
-                <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="gv-bubbles__label">122 participants</span>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Information / no-end-date project -->
-        <article class="gv-pcard boxed e2e-project-card">
-          <div class="gv-pcard__top">
-            <span class="gv-pcard__meta">122 contributions</span>
-            <a class="gv-btn primary-outlined e2e-project-card-cta" href="#">Learn more</a>
-          </div>
-          <div class="gv-pcard__thumb icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
+          <div class="gv-pcard__thumb">
+            <img src="../../skills/govocal-ui/img/westmere/park-people.webp" loading="lazy" alt="People walking in a leafy Westmere park" />
           </div>
           <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Our long-term city vision</a></h3>
-            <p class="gv-pcard__desc">An ongoing space to read, discuss and shape where the city is heading over the next decade.</p>
+            <span class="gv-pcard__meta">Ideation · Citywide</span>
+            <h3 class="gv-pcard__title"><a class="e2e-card-title-link" href="#">Greening the schoolyards</a></h3>
+            <p class="gv-pcard__desc">Finished three weeks ago. See the ideas residents chose to turn grey schoolyards into green, shaded play.</p>
             <div class="gv-pcard__spacer"></div>
             <div class="gv-pcard__foot">
-              <div class="gv-bubbles" aria-label="194 participants">
-                <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="gv-bubbles__label">194 participants</span>
-              </div>
+              <span class="gv-poststat closed"><b>187</b>&nbsp;contributions</span>
             </div>
           </div>
         </article>
