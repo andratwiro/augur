@@ -102,15 +102,15 @@
 }
 .gv-iconbtn:hover { background: var(--gv-grey-100); color: var(--gv-tenant-primary); }
 .gv-iconbtn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
-.gv-iconbtn .gv-icon { width: 22px; height: 22px; }    /* size primitive icons (search, bell) in the round button */
+.gv-iconbtn .gv-icon { width: 28px; height: 28px; }    /* live header glyphs (search, bell) run ~30px — bigger than 22px */
 
 /* Logged-in actions — notification badge + account button (avatar + name + chevron).
    Swap these into .gv-header__actions in place of the logged-out search + "Sign in"
    CTA. Count badge on the bell uses the tenant colour; the avatar is an <img> or an
    initials circle. The whole account control opens the user menu in the real product. */
 .gv-iconbtn__badge {
-  position: absolute; top: 3px; right: 3px; min-width: 16px; height: 16px; padding: 0 4px;
-  border-radius: 999px; background: var(--gv-red-500); color: #fff;     /* notification red, like the product */
+  position: absolute; top: 2px; right: 2px; min-width: 17px; height: 16px; padding: 0 4px;
+  border-radius: 5px; background: var(--gv-red-500); color: #fff;       /* live badge is a red rounded SQUARE, not a pill */
   font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; border: 2px solid #fff;
 }
 .gv-account {
