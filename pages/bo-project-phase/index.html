@@ -430,6 +430,36 @@
               </div>
             </div>
           </div>
+
+          <!-- ════ Insights sub-panel ════ -->
+          <div class="pp-sub" data-sub="insights">
+            <div class="gv-bo-headrow">
+              <div>
+                <h3 class="gv-bo-headrow__title">Insights</h3>
+                <p class="gv-bo-help" style="margin:2px 0 0">Track engagement in real-time</p>
+              </div>
+              <div class="gv-bo-headrow__actions">
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Download</span></button>
+                <button class="gv-btn success"><span data-gv-icon="stars"></span><span class="gv-btn__label">AI analysis</span></button>
+              </div>
+            </div>
+
+            <div class="gv-bo-statgrid" id="stats" style="margin-top:14px"></div>
+
+            <div class="gv-bo-chartcard">
+              <h4 class="gv-bo-chartcard__title">Participation over time</h4>
+              <p class="gv-bo-chartcard__sub">Cumulative inputs since the phase opened</p>
+              <svg viewBox="0 0 600 160" preserveAspectRatio="none" role="img" aria-label="Participation over time area chart">
+                <defs><linearGradient id="pp-area" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0" stop-color="var(--gv-bo-primary)" stop-opacity="0.18"/>
+                  <stop offset="1" stop-color="var(--gv-bo-primary)" stop-opacity="0"/>
+                </linearGradient></defs>
+                <line x1="0" y1="130" x2="600" y2="130" stroke="var(--gv-grey-300)"/>
+                <path d="M0,128 L80,120 L160,118 L240,96 L320,86 L400,58 L480,48 L560,30 L600,24 L600,130 L0,130 Z" fill="url(#pp-area)"/>
+                <path d="M0,128 L80,120 L160,118 L240,96 L320,86 L400,58 L480,48 L560,30 L600,24" fill="none" stroke="var(--gv-bo-primary)" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -669,6 +699,23 @@
         <td>${when}</td>`;
       ideasBody.appendChild(tr);
     });
+
+    // ── Insights stat cards ───────────────────────────────────────────────
+    const STATS = [
+      ["Visitors", "1", "user-circle"],
+      ["Phase participants", "1", "group"],
+      ["Inputs", "1", "survey"],
+      ["Comments", "0", "comment"],
+      ["Reactions", "2", "vote-up"],
+      ["Participation rate", "100.0%", "trend-up"],
+    ];
+    const statsEl = document.getElementById("stats");
+    if (statsEl) statsEl.innerHTML = STATS.map(([label, num, icon]) => `
+      <div class="gv-bo-stat">
+        <div class="gv-bo-stat__top"><span class="gv-bo-stat__label">${label}</span><span class="gv-bo-stat__icon gv-icon" data-gv-icon="${icon}"></span></div>
+        <div class="gv-bo-stat__num">${num}</div>
+        <div class="gv-bo-stat__delta"><b>0%</b> 7-day change</div>
+      </div>`).join("");
 
     if (window.GVIcons) window.GVIcons.render(document.body);
   </script>

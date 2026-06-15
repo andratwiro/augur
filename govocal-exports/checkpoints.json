@@ -105,6 +105,14 @@
       "map": { "h3": ".pp-sub[data-sub=inputform] .gv-bo-formhead" },
       "props": ["color", "font-size", "font-weight"],
       "uses": [".gv-bo-formhead"]
+    },
+    {
+      "id": "bo-project-phase/insights-stat",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-insights",
+      "map": { ".e2e-card": ".gv-bo-stat" },
+      "props": ["background-color", "border-radius", "box-shadow", "padding", "font-size"],
+      "uses": [".gv-bo-stat"]
     }
   ]
 }

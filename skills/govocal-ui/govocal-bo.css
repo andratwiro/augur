@@ -441,3 +441,22 @@
 .gv-bo-link { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-bo-primary); font-weight: 600; font-size: var(--gv-fs-s); text-decoration: none; cursor: pointer; }
 .gv-bo-link:hover { text-decoration: underline; }
 .gv-bo-link .gv-icon { width: 16px; height: 16px; }
+
+/* ── Insights: stat cards + chart card (SHARED — both surfaces use these) ────
+   Measured live (bo-phase-insights): each metric is a white card, 3px radius,
+   shadow var(--gv-shadow) (0 2px 4px -1px rgba(0,0,0,.06)), 17px padding — a
+   label + trailing icon, a 34px/700 blue number, and a muted 7-day delta line. */
+.gv-bo-statgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 14px; max-width: 1000px; }
+.gv-bo-stat { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 17px; }
+.gv-bo-stat__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gv-bo-stat__label { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+.gv-bo-stat__icon { flex: none; width: 18px; height: 18px; color: var(--gv-bo-primary); }
+.gv-bo-stat__num { margin: 10px 0 8px; font-size: 34px; font-weight: 700; line-height: 1.1; color: var(--gv-bo-primary); }
+.gv-bo-stat__delta { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--gv-text-secondary); }
+.gv-bo-stat__delta b { font-weight: 700; color: var(--gv-bo-primary); }
+
+/* Chart card (Participation over time) — same white/shadow card, holds a title + plot. */
+.gv-bo-chartcard { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 20px; max-width: 1000px; margin-top: 18px; }
+.gv-bo-chartcard__title { margin: 0 0 4px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-bo-primary); }
+.gv-bo-chartcard__sub { margin: 0 0 16px; font-size: 13px; color: var(--gv-text-secondary); }
+.gv-bo-chartcard svg { display: block; width: 100%; height: auto; }
