@@ -188,8 +188,9 @@
    of legal links (one is the Cookie-Einstellungen *button*) + the "Ermöglicht durch
    go·vocal" powered-by attribution. No tenant logo (that lives in the header).
    Desktop = links left / attribution right; mobile = stacked & centered. */
-.gv-footer { border-top: 1px solid var(--gv-grey-200); padding: 28px 24px; font-family: var(--gv-font-family); background: var(--gv-background); }
-.gv-footer__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 28px; }
+/* Live footer is a thin WHITE bar (bg #fff, ~11px 28px), content spans wide. */
+.gv-footer { border-top: 1px solid var(--gv-grey-200); padding: 12px 28px; font-family: var(--gv-font-family); background: #fff; }
+.gv-footer__inner { max-width: var(--gv-page-width, 1280px); margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 28px; }
 .gv-footer__links ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; font-size: var(--gv-fs-s); }
 .gv-footer__links li { display: inline-flex; align-items: center; }
 .gv-footer__links a, .gv-footer__links button { color: var(--gv-grey-800); text-decoration: none; padding: 2px 0; font: inherit; background: none; border: 0; cursor: pointer; }
@@ -352,9 +353,10 @@
 @media (max-width: 640px) { .gv-hero__cta { position: static; max-width: none; margin: 16px auto 0; } }
 
 /* ── Spotlight: the "currently working on" featured project ─────────────────
-   A full-bleed tinted band, two columns (copy + media). Real measure: 56px
-   block padding, 30px/700 title. Collapses to one column (media first) ≤820px. */
-.gv-spotlight { background: var(--gv-grey-100); }
+   Sits on the plain page background (live .e2e-spotlight-widget bg = transparent —
+   NOT a tinted band), two columns (copy + media). 56px block padding, 30px/700
+   title. Collapses to one column (media first) ≤820px. */
+.gv-spotlight { background: #fff; }
 .gv-spotlight__inner {
   max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 56px 24px;  /* live .e2e-spotlight-widget = 56px vertical */
   display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
@@ -378,16 +380,21 @@
 }
 
 /* ── Avatar bubbles + participant count ────────────────────────────────────
-   Overlapping avatars, an optional "+N" count bubble, and a text label. The
-   on-light version used inside cards/spotlight (the hero uses .gv-avatars). */
+   The SAME component as the hero .gv-avatars (38px avatars + a perfect-circle
+   overflow count), used in the spotlight. Add `.sm` for the smaller card variant
+   (project/folder/climate cards), which the live Wien cards render smaller. */
 .gv-bubbles { display: inline-flex; align-items: center; }
-.gv-bubbles .av { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px;
+.gv-bubbles .av { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px;
   background: linear-gradient(135deg, #cfd6dd, #9aa7b2); background-size: cover; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
 .gv-bubbles .av:first-child { margin-left: 0; }
 /* Live participant-overflow bubble is a cool-grey circle (#596B7A), not the brand hue. */
-.gv-bubbles .count { margin-left: -8px; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 999px; border: 2px solid #fff;
+.gv-bubbles .count { margin-left: -8px; width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 2px solid #fff;
   background: var(--gv-cool-grey-600); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
 .gv-bubbles__label { margin-left: 10px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+/* smaller variant for cards */
+.gv-bubbles.sm .av { width: 28px; height: 28px; }
+.gv-bubbles.sm .count { width: 28px; height: 28px; font-size: 10px; }
+.gv-bubbles.sm .gv-bubbles__label { margin-left: 8px; }
 
 /* ── Post / contribution count ("142 Beiträge" · "open to participation") ──────
    The status meta GoVocal shows on a live project card: a success-green dot + a
