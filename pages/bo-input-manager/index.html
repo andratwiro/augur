@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Input manager — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    .im-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+    .im-head__main { min-width: 0; }
+    .im-head__actions { margin-left: auto; }
+    .im-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .im-bar .gv-bo-select { height: 40px; padding: 8px 12px; max-width: 220px; width: auto; }
+    .im-bar .im-feedback { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--gv-text-primary); }
+    .im-bar .im-spacer { margin-left: auto; }
+    .im-needs { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--gv-red-500); color: #fff; font-size: 11px; font-weight: 700; }
+    .im-railhead { padding: 8px 10px 4px; }
+    .im-railhead .gv-bo-select { height: 34px; padding: 4px 8px; font-size: 13px; }
+    .im-rail-scroll { max-height: 1000px; overflow-y: auto; }
+    .im-tag { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 3px; background: var(--gv-teal-75); color: var(--gv-bo-primary); font-size: 12px; }
+    .im-count { margin: 0 0 12px; font-size: 14px; font-weight: 700; color: var(--gv-bo-primary); }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+    <nav class="gv-bo-side" aria-label="Admin" data-active="input"></nav>
+
+    <div class="gv-bo-main">
+      <nav class="gv-bo-tabs gv-bo-tabs--top" aria-label="Input manager sections">
+        <a class="gv-bo-tab is-active" href="#">Overview</a>
+      </nav>
+
+      <section class="gv-bo-section">
+        <div class="im-head">
+          <div class="im-head__main">
+            <h1 class="gv-bo-pagetitle">Input manager</h1>
+            <p class="gv-bo-pagelede" style="margin-bottom:0">Give feedback, add tags and copy and move input from one project to another.</p>
+          </div>
+          <div class="im-head__actions">
+            <button class="gv-bo-link"><span data-gv-icon="download"></span>Exports</button>
+          </div>
+        </div>
+
+        <div class="im-bar">
+          <select class="gv-bo-select" aria-label="Assignee filter">
+            <option>Any administrator</option>
+            <option>Assigned to me</option>
+            <option>Go Vocal Admin</option>
+            <option>Unassigned</option>
+          </select>
+          <span class="im-feedback"><span class="gv-toggle"><input type="checkbox" aria-label="Only show posts that need feedback"><span class="track"></span></span> Only show posts that need feedback <span class="im-needs">36</span></span>
+          <div class="im-spacer"></div>
+          <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search input"><span class="gv-icon" data-gv-icon="search"></span></span>
+        </div>
+
+        <div class="gv-bo-imgr">
+          <!-- Left filter rail: Projects / Status facets -->
+          <aside class="gv-bo-filterrail">
+            <div class="gv-bo-filterrail__tabs">
+              <span class="gv-bo-filterrail__tab is-active">Projects</span>
+              <span class="gv-bo-filterrail__tab">Status</span>
+            </div>
+            <div class="im-railhead">
+              <div class="gv-bo-filterrail__item is-active" style="font-weight:600">All projects</div>
+              <div style="margin:8px 0 2px"><select class="gv-bo-select" aria-label="Sort projects"><option>Sort projects by</option><option>A–Z</option><option>Most recent</option></select></div>
+            </div>
+            <div class="gv-bo-filterrail__body im-rail-scroll" id="projfacets"></div>
+          </aside>
+
+          <!-- Posts table -->
+          <div>
+            <p class="im-count">356 posts</p>
+            <table class="gv-bo-table is-bordered">
+              <thead>
+                <tr>
+                  <th class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></th>
+                  <th>Title</th>
+                  <th>Assignee</th>
+                  <th class="gv-bo-table__num gv-bo-th--sort">Comments <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th class="gv-bo-table__num gv-bo-th--sort">Likes <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th class="gv-bo-table__num gv-bo-th--sort">Dislikes <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th class="gv-bo-th--sort is-sorted">Published on <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                </tr>
+              </thead>
+              <tbody id="posts"></tbody>
+            </table>
+            <nav class="gv-bo-pager" aria-label="Pagination">
+              <button aria-label="Previous" disabled><span data-gv-icon="chevron-left"></span></button>
+              <button class="is-active">1</button><button>2</button><button>3</button>
+              <span>…</span><button>30</button>
+              <button aria-label="Next"><span data-gv-icon="chevron-right"></span></button>
+            </nav>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="bo-chrome.js"></script>
+  <script>
+    // Project facets in the left rail.
+    const PROJECTS = ["Spatial poll","Test Polls","Sample survey","Showroom","Participatory Budget - District 1",
+      "Toolbox","Test","A 100 Approval Voting: Deciding on the future of the Greenwald commons","test",
+      "A 100 Cumulative Voting: Deciding on the future","A 100 Participatory Budgeting: Spending our neighborhood","Participatory Budget - District 3",
+      "Participatory Budget - District 4","Public Healthcare Options Survey","Ctrl-Alt-Debs towards Online commons",
+      "Open survey test demographics","Evaluate your local Health services","Main issues with city's public services",
+      "Issues With Healthcare","Issues With Healthcare - Copy","Forest Gate Community Assemblies",
+      "Mapping: improve bicycle infrastructure","Survey share your comments on the 2020-2025 budget","Let's Reimagine the City Park - Draft"];
+    document.getElementById("projfacets").innerHTML = PROJECTS.map(p =>
+      `<div class="gv-bo-filterrail__item">${p}</div>`).join("");
+
+    // Posts: [title, projectTag, assignee, comments, likes, dislikes, when]
+    const POSTS = [
+      ["This is my random idea!", "Let's Reimagine Dorothea Dix Park", "Unassigned", 1, 0, 0, "2 years ago"],
+      ["Sample idea", "", "Unassigned", 0, 0, 0, "2 years ago"],
+      ["Sample survey", "", "Unassigned", 0, 0, 0, "2 years ago"],
+      ["Traffic in the city", "Mapping: Building Protected Bike Lanes", "Unassigned", 2, 4, 1, "2 years ago"],
+      ["Bikes get stolen in the city", "Mapping: improve bicycle infrastructure", "Unassigned", 7, 9, 2, "2 years ago"],
+      ["Test vote test Note", "", "Unassigned", 0, 1, 0, "2 years ago"],
+      ["More free rec rooms", "", "Unassigned", 1, 5, 0, "2 years ago"],
+      ["Dog exercise area", "", "Unassigned", 0, 3, 1, "2 years ago"],
+      ["Testing this thing", "", "Unassigned", 0, 0, 0, "2 years ago"],
+      ["Community Library", "A 100 Participatory Budgeting: Deciding on neighborhood projects", "Unassigned", 3, 12, 0, "2 years ago"],
+    ];
+    document.getElementById("posts").innerHTML = POSTS.map(p => {
+      const [title, tag, assignee, comments, likes, dislikes, when] = p;
+      return `<tr>
+        <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+        <td><a class="gv-bo-table__title" href="#">${title}</a>${tag ? `<span class="im-tag">${tag}</span>` : ""}</td>
+        <td><select class="gv-bo-select" style="max-width:150px;height:34px;padding:4px 8px"><option>Unassigned</option><option>Go Vocal Admin</option><option>Rob Aris</option></select></td>
+        <td class="gv-bo-table__num">${comments}</td>
+        <td class="gv-bo-table__num"><span class="gv-bo-react"><span data-gv-icon="vote-up"></span>${likes}</span></td>
+        <td class="gv-bo-table__num"><span class="gv-bo-react"><span data-gv-icon="vote-down"></span>${dislikes}</span></td>
+        <td style="white-space:nowrap">${when}</td>`;
+    }).join("");
+
+    if (window.GVIcons) window.GVIcons.render(document.body);
+  </script>
+</body>
+</html>
+</content>
