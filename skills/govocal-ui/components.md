@@ -350,6 +350,115 @@ card clickable. **Never nest `<a>` in `<a>`** (it breaks the layout).
 </div>
 ```
 
+**Boxed grid card** — the homepage "All projects" layout: bordered/elevated cards in a
+`.gv-pgrid` (3-col, `.span-2`/`.span-3` to widen). `.gv-pcard.boxed` adds the box; thumb
+runs flush to the edges; content lives in `.gv-pcard__body`; `__spacer` pushes the
+`__foot` (bubbles + CTA) to the bottom so cards in a row stay equal height.
+
+```html
+<div class="gv-pgrid">
+  <!-- full-width feature card: image left, copy right -->
+  <article class="gv-pcard boxed horizontal span-3">
+    <div class="gv-pcard__thumb"><img src="…" alt="…" /></div>
+    <div class="gv-pcard__body">
+      <h3 class="gv-pcard__title"><a href="#">Die große Meidling-Umfrage</a></h3>
+      <p class="gv-pcard__desc">…</p>
+      <div class="gv-pcard__progress">
+        <span class="gv-pcard__meta time">⏱ Noch 4 Wochen</span>
+        <div class="gv-progress" role="progressbar" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100"><div class="gv-progress__fill" style="width:35%"></div></div>
+      </div>
+      <div class="gv-pcard__foot">
+        <span class="gv-bubbles"><span class="av"></span><span class="av"></span><span class="count">248</span><span class="gv-bubbles__label">Teilnehmende</span></span>
+        <a class="gv-btn primary-outlined" href="#">Umfrage ausfüllen</a>
+      </div>
+    </div>
+  </article>
+
+  <!-- standard card; no-image → .gv-pcard__thumb.icon; finished → .gv-status-label.finished -->
+  <article class="gv-pcard boxed">
+    <div class="gv-pcard__thumb icon"><svg viewBox="0 0 24 24" fill="currentColor"><!--building--></svg></div>
+    <div class="gv-pcard__body">
+      <h3 class="gv-pcard__title"><a href="#">Alt-Ottakring wie neu!</a></h3>
+      <p class="gv-pcard__desc">…</p>
+      <div class="gv-pcard__spacer"></div>
+      <div class="gv-pcard__foot">
+        <span class="gv-status-label finished">Abgeschlossen</span>
+        <a class="gv-btn primary-outlined" href="#">Bericht lesen</a>
+      </div>
+    </div>
+  </article>
+
+  <!-- folder card: count badge pinned over the thumb -->
+  <article class="gv-pcard boxed">
+    <div class="gv-pcard__thumb">
+      <span class="gv-pcard__count"><svg viewBox="0 0 24 24" fill="currentColor"><!--folder--></svg> 3 Projekte</span>
+    </div>
+    <div class="gv-pcard__body">
+      <h3 class="gv-pcard__title"><a href="#">Wiener Klimateam</a></h3> …
+    </div>
+  </article>
+</div>
+```
+
+## Homepage widgets — `.gv-spotlight` / `.gv-ptoolbar` / `.gv-ctaband` (`pages/homepage/`)
+
+The modern GoVocal landing-page anatomy (source-grounded on the live signed-in homepage).
+Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
+
+```html
+<!-- Banner overlay CTA: pin one project onto the hero (child of .gv-hero) -->
+<a class="gv-hero__cta" href="#"><svg><!--arrow--></svg> <span>Sagen Sie Ihre Meinung zum …!</span></a>
+
+<!-- Spotlight: "currently working on" featured project (copy + media) -->
+<section class="gv-spotlight">
+  <div class="gv-spotlight__inner">
+    <div>
+      <p class="gv-spotlight__eyebrow">Aktuell in Bearbeitung</p>
+      <h2 class="gv-spotlight__title">Gesunde Blindengasse</h2>
+      <p class="gv-spotlight__lead">…</p>
+      <div class="gv-spotlight__actions">
+        <a class="gv-btn primary size-m" href="#">Umfrage ausfüllen</a>
+        <span class="gv-bubbles"><span class="av"></span><span class="count">145</span><span class="gv-bubbles__label">Teilnehmende</span></span>
+      </div>
+    </div>
+    <div class="gv-spotlight__media"><img src="…" alt="…" /></div>
+  </div>
+</section>
+
+<!-- Projects toolbar: status tabs (left) + filter selectors (right) -->
+<div class="gv-ptoolbar">
+  <div class="gv-tabs" role="tablist">
+    <button class="gv-tab" role="tab" aria-selected="true">Veröffentlicht <span class="ct">(12)</span></button>
+    <button class="gv-tab" role="tab" aria-selected="false">Archiviert <span class="ct">(5)</span></button>
+  </div>
+  <div class="gv-filterbar">
+    <span class="gv-filterbar__label">Filtern nach</span>
+    <button class="gv-filter-btn">Thema <svg><!--chevron--></svg></button>
+  </div>
+</div>
+
+<!-- Show more -->
+<div class="gv-showmore"><button class="gv-btn primary-outlined size-m">Mehr anzeigen <svg><!--chevron--></svg></button></div>
+
+<!-- Events widget (empty state) -->
+<div class="gv-events__head"><h2 class="gv-title h2">Veranstaltungen</h2><a class="gv-btn text" href="#">Alle ansehen</a></div>
+<div class="gv-events__empty"><svg><!--calendar--></svg><p class="gv-text bodyM">Derzeit sind keine … geplant.</p></div>
+
+<!-- Proposals / generic CTA band -->
+<section class="gv-ctaband">
+  <div class="gv-ctaband__inner">
+    <h2 class="gv-ctaband__title">Was ist Ihr Anliegen?</h2>
+    <p class="gv-ctaband__lead">…</p>
+    <a class="gv-btn primary size-m" href="#">Alle Vorschläge entdecken</a>
+  </div>
+</section>
+
+<!-- Rich-text block -->
+<div class="gv-prose"><p>…</p><p><em>…</em></p></div>
+```
+- The whole page assembled: `pages/homepage/`. Cards stretch to equal height; `__spacer`
+  pushes `__foot` down. Progress fill + tab underline + count bubble all use `--gv-tenant-primary`.
+
 ## Hero / banner — `.gv-hero` (`components/hero/`)
 
 ```html

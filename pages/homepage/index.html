@@ -8,33 +8,24 @@
   <link rel="stylesheet" href="govocal-tokens.css" />
   <link rel="stylesheet" href="govocal-ui.css" />
   <!--
-    REFERENCE REBUILD of the Stadt Wien GoVocal homepage (mitgestalten.wien.gv.at),
-    composed from the govocal-ui composed components (.gv-header / .gv-hero /
-    .gv-rail+.gv-pcard / .gv-footer). Tenant = Stadt Wien (Wien Rot + Wiener Melange).
-    Photos/illustrations are CSS placeholders; copy, structure, components and spacing
-    follow the live page. Brand colours are theme-driven (?theme= switcher), so the page
-    re-skins per city; the Vienna content (logo emblem, German copy) stays as the example.
+    REFERENCE REBUILD of the modern GoVocal homepage, composed from the govocal-ui
+    components. Anatomy is source-grounded on the live signed-in homepage
+    (uxusertesting.govocal.com, City of Raleigh): full-width banner + overlaid CTA →
+    "currently working on" SPOTLIGHT → tabbed + filterable project GRID of boxed
+    project/folder cards (avatar bubbles, time-remaining + progress, status labels,
+    a wide feature card, Show more) → events widget (empty state) → proposals CTA
+    band → rich-text block → footer.
+    Content/tenant = Stadt Wien (Wien Rot + Wiener Melange) so it reads like a real
+    platform; photos/illustrations are CSS placeholders. Brand colours + type are
+    theme-driven (?theme= switcher), so the whole page re-skins per city.
   -->
   <style>
-    /* Tenant colours AND typography are not hardcoded here — both come from
-       govocal-tokens.css and are driven by the ?theme= switcher (govocal-themes.js),
-       so this page re-skins AND re-types per city like every other surface. */
     body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
-
-    /* Klimateam badge tiles — these are campaign graphics, kept as light placeholders. */
-    .ktile { aspect-ratio: 16 / 9; border-radius: var(--gv-radius); display: grid; place-items: center; }
-    .kbadge { width: 172px; height: 172px; border-radius: 50%; border: 6px solid rgba(255,255,255,0.85);
+    /* Klimateam campaign badge tiles (folder-card thumb) — light placeholders. */
+    .kbadge { width: 150px; height: 150px; border-radius: 50%; border: 6px solid rgba(255,255,255,0.85);
       display: grid; place-items: center; text-align: center; line-height: 1.12; color: #1a1a1a; position: relative; }
-    .kbadge b { font-size: 21px; display: block; }
-    .kbadge .macht { font-style: italic; font-weight: 500; font-size: 13px; color: #2c2724; }
-    .kbadge .team { position: absolute; right: -10px; bottom: 14px; width: 60px; height: 60px; border-radius: 50%;
-      background: rgba(255,255,255,0.95); border: 5px solid rgba(255,255,255,0.85);
-      display: grid; place-items: center; font-size: 11px; font-weight: 700; line-height: 1.05; }
-
-    /* Closing block + banner credit */
-    .closing { text-align: center; max-width: 720px; margin: 52px auto 0; padding: 0 24px; }
-    .banner-credit { max-width: 1150px; margin: 0 auto; padding: 0 24px; color: var(--gv-grey-700); font-size: var(--gv-fs-s); }
-    .banner-credit p { margin: 36px 0 0; }
+    .kbadge b { font-size: 19px; display: block; }
+    .kbadge .macht { font-style: italic; font-weight: 500; font-size: 12px; color: #2c2724; }
   </style>
 </head>
 <body data-gv-theme-picker="off" class="gv-root">
@@ -42,8 +33,6 @@
   <!-- ════════ Header ════════ -->
   <header id="e2e-navbar" class="gv-header sticky">
     <div class="gv-header__inner">
-      <!-- Logo slot: govocal-themes.js fills it with the active city's logo, so the
-           brand mark swaps with ?theme= (Vienna shield → Copenhagen towers → …). -->
       <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite" aria-current="page"></a>
 
       <nav class="gv-nav" aria-label="Primäre">
@@ -100,180 +89,260 @@
     </div>
   </header>
 
-  <!-- ════════ Hero ════════ -->
-  <section class="gv-hero">
-    <div class="gv-hero__inner">
-      <h1 class="gv-hero__title">Wien mitgestalten</h1>
-      <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
-      <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
-        <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
-        <span class="count">15.4k</span>
-      </div>
-      <div><button class="gv-btn white" style="line-height:22px">Registrieren</button></div>
-    </div>
-    <span class="gv-hero__credit">Banner: © Stadt Wien, Gerd Götzenbrucker</span>
-  </section>
+  <main id="main-content">
 
-  <!-- ════════ Aktuell zum Mitgestalten ════════ -->
-  <section class="gv-section">
-    <div class="gv-section__head"><h2 class="gv-title h2">Aktuell zum Mitgestalten</h2></div>
-    <div class="gv-section__body">
-      <div class="gv-rail">
-        <article class="gv-pcard">
-          <div class="gv-pcard__thumb" style="background:#eef0e8">
-            <span style="background:#0a7a4f;color:#fff;border-radius:14px 14px 14px 2px;padding:14px 16px;font-size:13px;line-height:1.15;max-width:80%">GESUNDE<br>BLINDENGASSE</span>
+    <!-- ════════ Hero / full-width banner (+ overlaid CTA) ════════ -->
+    <section class="gv-hero">
+      <div class="gv-hero__inner">
+        <h1 class="gv-hero__title">Wien mitgestalten</h1>
+        <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
+        <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
+          <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
+          <span class="count">15,4 Tsd.</span>
+        </div>
+        <div><button class="gv-btn white" style="line-height:22px">Registrieren</button></div>
+      </div>
+      <!-- Staff-pinned banner CTA pointing at one project -->
+      <a class="gv-hero__cta" href="#">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Sagen Sie Ihre Meinung zum Otto-Wagner-Areal!</span>
+      </a>
+      <span class="gv-hero__credit">Banner: © Stadt Wien, Gerd Götzenbrucker</span>
+    </section>
+
+    <!-- ════════ Spotlight — currently working on ════════ -->
+    <section class="gv-spotlight" aria-labelledby="spot-title">
+      <div class="gv-spotlight__inner">
+        <div>
+          <p class="gv-spotlight__eyebrow">Aktuell in Bearbeitung</p>
+          <h2 class="gv-spotlight__title" id="spot-title">Gesunde Blindengasse</h2>
+          <p class="gv-spotlight__lead">Wie wird die Blindengasse kühler, grüner und gesünder? Teilen Sie Ihre Ideen
+            in unserer Umfrage — die Beteiligung läuft nur noch wenige Tage.</p>
+          <div class="gv-spotlight__actions">
+            <a class="gv-btn primary size-m" href="#">Umfrage ausfüllen</a>
+            <div class="gv-bubbles" aria-label="145 Teilnehmende">
+              <span class="av"></span><span class="av"></span><span class="av"></span>
+              <span class="count">145</span>
+              <span class="gv-bubbles__label">Teilnehmende</span>
+            </div>
           </div>
-          <h3 class="gv-pcard__title"><a href="#">Gesunde Blindengasse</a></h3>
-          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Ein Tag verbleibend</span>
-          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
-        </article>
-        <article class="gv-pcard">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9fb0a3,#cdd6cd)"></div>
-          <h3 class="gv-pcard__title"><a href="#">Gellertplatz für alle</a></h3>
-          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> noch 3 Wochen</span>
-          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
-        </article>
-        <article class="gv-pcard">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#b7423a,#d98a5a)">DIE GROSSE<br>MEIDLING-UMFRAGE</div>
-          <h3 class="gv-pcard__title"><a href="#">Die große Meidling-Umfrage</a></h3>
-          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> noch 4 Wochen</span>
-          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
-        </article>
-        <article class="gv-pcard">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9a9a9a,#c7c2bd)"></div>
-          <h3 class="gv-pcard__title"><a href="#">Supergrätzl Favoriten</a></h3>
-          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> noch 5 Wochen</span>
-          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
-        </article>
-        <article class="gv-pcard">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#f06321,#f59a3c)">ZUKUNFT<br>TABORSTRASSE</div>
-          <h3 class="gv-pcard__title"><a href="#">Zukunft Taborstraße</a></h3>
-          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> noch 6 Wochen</span>
-          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
-        </article>
+        </div>
+        <div class="gv-spotlight__media" style="background:#0a7a4f">
+          <span style="background:#0a7a4f;color:#fff;border-radius:16px 16px 16px 2px;padding:18px 22px;font-size:22px;font-weight:800;line-height:1.1">GESUNDE<br>BLINDENGASSE</span>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- ════════ Wiener Klimateam ════════ -->
-  <section class="gv-section">
-    <div class="gv-section__head"><h2 class="gv-title h2">Wiener Klimateam</h2></div>
-    <div class="gv-section__body">
-      <div class="gv-rail">
-        <article class="gv-pcard wide">
-          <div class="gv-pcard__thumb ktile" style="background:#f4736f">
-            <div class="kbadge"><span><span class="macht">macht</span><b style="color:#d83a36">Penzing</b><b>gutes<br>Klima</b></span><span class="team">Klima<br>team</span></div>
+    <!-- ════════ Beteiligungsprojekte — tabs + filter + grid ════════ -->
+    <section class="gv-section" aria-labelledby="proj-title">
+      <div class="gv-section__head"><h2 class="gv-title h2" id="proj-title">Beteiligungsprojekte</h2></div>
+      <div class="gv-section__body">
+
+        <!-- Toolbar: status tabs (left) + filter selectors (right) -->
+        <div class="gv-ptoolbar">
+          <div class="gv-tabs" role="tablist" aria-label="Projektstatus">
+            <button class="gv-tab" role="tab" aria-selected="true">Veröffentlicht <span class="ct">(12)</span></button>
+            <button class="gv-tab" role="tab" aria-selected="false">Archiviert <span class="ct">(5)</span></button>
+            <button class="gv-tab" role="tab" aria-selected="false">Alle <span class="ct">(17)</span></button>
           </div>
-          <h3 class="gv-pcard__title"><a href="#">14er Klimateam</a></h3>
-          <span class="gv-pcard__meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 145 Teilnehmende</span>
-          <p class="gv-pcard__desc">Gesucht: Deine Idee fürs gute Klima in Penzing</p>
-        </article>
-        <article class="gv-pcard wide">
-          <div class="gv-pcard__thumb ktile" style="background:#bfe3c9">
-            <div class="kbadge"><span><span class="macht">macht</span><b style="color:#2f8f5b">Josefstadt</b><b>gutes<br>Klima</b></span><span class="team">Klima<br>team</span></div>
+          <div class="gv-filterbar">
+            <span class="gv-filterbar__label">Filtern nach</span>
+            <button class="gv-filter-btn">Thema
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="gv-filter-btn">Bezirk
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
           </div>
-          <h3 class="gv-pcard__title"><a href="#">8er Klimateam</a></h3>
-          <span class="gv-pcard__meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 69 Teilnehmende</span>
-          <p class="gv-pcard__desc">Gesucht: Deine Idee fürs gute Klima in Josefstadt</p>
-        </article>
-        <article class="gv-pcard wide">
-          <div class="gv-pcard__thumb ktile" style="background:#e9e9e7">
-            <div class="kbadge"><span><span class="macht">macht</span><b style="color:#b39419">Alsergrund</b><b>gutes<br>Klima</b></span><span class="team">Klima<br>team</span></div>
-          </div>
-          <h3 class="gv-pcard__title"><a href="#">9er Klimateam</a></h3>
-          <span class="gv-pcard__meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 132 Teilnehmende</span>
-          <p class="gv-pcard__desc">2024/2025 haben wir Ideen fürs gute Klima am Alsergrund gesucht. Die entstandenen Projekte befinden sich in der Umsetzung.</p>
-        </article>
-      </div>
-    </div>
-  </section>
+        </div>
 
-  <!-- ════════ Laufende Projekte ════════ -->
-  <section class="gv-section">
-    <div class="gv-section__head"><h2 class="gv-title h2">Laufende Projekte</h2></div>
-    <div class="gv-section__body">
-      <div class="gv-rail">
-        <article class="gv-pcard wide">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9a9a9a,#c7c2bd)"></div>
-          <h3 class="gv-pcard__title"><a href="#">Supergrätzl Favoriten</a></h3>
-          <span class="gv-pcard__meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 111 Teilnehmende</span>
-          <p class="gv-pcard__desc">Das erste Wiener Supergrätzl ist fertig! Nach dem Vorbild von Barcelona und Berlin hat die Stadt Wien im vergangenen Jahr das erste Supergrätzl im 10. Wiener Gemeindebezirk baulich umgesetzt. Jetzt ist Ihre Meinung gefragt!</p>
-        </article>
-        <article class="gv-pcard wide">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9fb0a3,#cdd6cd)"></div>
-          <h3 class="gv-pcard__title"><a href="#">Gellertplatz für alle</a></h3>
-          <span class="gv-pcard__meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 122 Teilnehmende</span>
-          <p class="gv-pcard__desc">Wie wird der Gellertplatz zu einem beliebten Treffpunkt im Grätzl?</p>
-        </article>
-        <article class="gv-pcard wide">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#2b5cab,#f2c200)">MITMACH-BUDGET</div>
-          <h3 class="gv-pcard__title"><a href="#">Mitmach-Budget Brigittenau 2026</a></h3>
-          <span class="gv-pcard__meta people"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg> 16 Teilnehmende</span>
-          <p class="gv-pcard__desc">Brigittenauer Mitmachbudget</p>
-        </article>
-      </div>
-    </div>
-  </section>
+        <!-- Grid of boxed project + folder cards -->
+        <div class="gv-pgrid">
 
-  <!-- ════════ Abgeschlossene Projekte ════════ -->
-  <section class="gv-section">
-    <div class="gv-section__head"><h2 class="gv-title h2">Abgeschlossene Projekte</h2></div>
-    <div class="gv-section__body">
-      <div class="gv-rail">
-        <article class="gv-pcard square">
-          <div class="gv-pcard__thumb" style="background:#f3e2a6;color:#7a5e12;font-size:14px;padding:12px">Alt-Ottakring wie neu!</div>
-          <h3 class="gv-pcard__title"><a href="#">Alt-Ottakring wie neu!</a></h3>
-          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Kein Enddatum</span>
-          <a class="gv-pcard__cta" href="#">Mehr erfahren</a>
-        </article>
-        <article class="gv-pcard square">
-          <div class="gv-pcard__thumb" style="background:#c63f30;color:#fff;font-size:13px;padding:12px">Zukunft Margaretenplatz</div>
-          <h3 class="gv-pcard__title"><a href="#">Neugestaltung des Margaretenplatz-Grätzls</a></h3>
-          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Kein Enddatum</span>
-          <a class="gv-pcard__cta" href="#">Mehr erfahren</a>
-        </article>
-        <article class="gv-pcard square">
-          <div class="gv-pcard__thumb" style="background:#ece9e2;color:#a32a1c;font-size:15px;padding:12px">GRÄTZL<br>LABOR</div>
-          <h3 class="gv-pcard__title"><a href="#">Grätzllabor Innere Stadt</a></h3>
-          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Kein Enddatum</span>
-          <a class="gv-pcard__cta" href="#">Mehr erfahren</a>
-        </article>
-        <article class="gv-pcard square">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#8a8f93,#b9bdc0)"></div>
-          <h3 class="gv-pcard__title"><a href="#">Städtebauliches Leitbild "Schnittstelle Erdberg"</a></h3>
-          <span class="gv-pcard__meta time"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Kein Enddatum</span>
-          <a class="gv-pcard__cta" href="#">Mehr erfahren</a>
-        </article>
-        <article class="gv-pcard square">
-          <div class="gv-pcard__thumb" style="background:#cdb6e0;color:#3a2057;font-size:12px;padding:12px">Wiener Kinder- &amp; Jugendstrategie 2025–2030</div>
-          <h3 class="gv-pcard__title"><a href="#">Wiener Kinder- und Jugendstrategie 2025–2030</a></h3>
-          <span class="gv-pcard__meta done"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20Zm-1 14l-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z"/></svg> vor 7 Wochen</span>
-          <a class="gv-pcard__cta" href="#">Mehr erfahren</a>
-        </article>
-      </div>
-    </div>
-  </section>
+          <!-- Wide feature card (image left, copy right) -->
+          <article class="gv-pcard boxed horizontal span-3">
+            <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#b7423a,#d98a5a)">
+              <span style="color:#fff;font-size:26px;font-weight:800;line-height:1.1">DIE GROSSE<br>MEIDLING-UMFRAGE</span>
+            </div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Die große Meidling-Umfrage</a></h3>
+              <p class="gv-pcard__desc">Was braucht Meidling, um lebenswerter zu werden? Sagen Sie uns, welche Orte,
+                Wege und Ideen Ihnen am wichtigsten sind.</p>
+              <div class="gv-pcard__progress">
+                <span class="gv-pcard__meta time">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Noch 4 Wochen
+                </span>
+                <div class="gv-progress" role="progressbar" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100" aria-label="Zeitlicher Fortschritt"><div class="gv-progress__fill" style="width:35%"></div></div>
+              </div>
+              <div class="gv-pcard__foot">
+                <div class="gv-bubbles" aria-label="248 Teilnehmende">
+                  <span class="av"></span><span class="av"></span><span class="av"></span>
+                  <span class="count">248</span>
+                  <span class="gv-bubbles__label">Teilnehmende</span>
+                </div>
+                <a class="gv-btn primary-outlined" href="#">Umfrage ausfüllen</a>
+              </div>
+            </div>
+          </article>
 
-  <!-- ════════ Closing ════════ -->
-  <div class="closing">
-    <h2 class="gv-title h2">Gemeinsam gestalten wir Wien.</h2>
-    <p class="gv-text bodyM">Auf dieser Plattform finden Sie die Beteiligungsprojekte der Stadt Wien. Hier können Sie im Dialog mit der Stadt zu bestimmten Fragestellungen Ihre Gedanken austauschen, Ideen sammeln und Feedback geben.</p>
-  </div>
-  <div class="banner-credit"><p>Banner: © Stadt Wien, Gerd Götzenbrucker</p></div>
+          <!-- Standard project card with image + bubbles + CTA -->
+          <article class="gv-pcard boxed">
+            <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9fb0a3,#cdd6cd)"></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Gellertplatz für alle</a></h3>
+              <p class="gv-pcard__desc">Wie wird der Gellertplatz zu einem beliebten Treffpunkt im Grätzl?</p>
+              <div class="gv-pcard__spacer"></div>
+              <div class="gv-pcard__foot">
+                <div class="gv-bubbles" aria-label="122 Teilnehmende">
+                  <span class="av"></span><span class="av"></span><span class="av"></span>
+                  <span class="count">122</span>
+                </div>
+                <a class="gv-btn primary-outlined" href="#">Mehr erfahren</a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Project card with no image (placeholder icon) + time + progress -->
+          <article class="gv-pcard boxed">
+            <div class="gv-pcard__thumb icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 3 8v2h18V8l-9-5Zm-7 9v6H4v2h16v-2h-1v-6h-2v6h-3v-6h-2v6H9v-6H7v6H5v-6H5Z"/></svg>
+            </div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Zukunft Taborstraße</a></h3>
+              <div class="gv-pcard__progress">
+                <span class="gv-pcard__meta time">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Noch 6 Wochen
+                </span>
+                <div class="gv-progress" role="progressbar" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100" aria-label="Zeitlicher Fortschritt"><div class="gv-progress__fill" style="width:18%"></div></div>
+              </div>
+              <div class="gv-pcard__spacer"></div>
+              <div class="gv-pcard__foot">
+                <a class="gv-btn primary-outlined" href="#">Umfrage ausfüllen</a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Folder card: count badge + folder icon + description + bubbles -->
+          <article class="gv-pcard boxed">
+            <div class="gv-pcard__thumb" style="background:#f4736f">
+              <span class="gv-pcard__count">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
+                3 Projekte
+              </span>
+              <div class="kbadge"><span><span class="macht">macht</span><b style="color:#d83a36">Penzing</b><b>gutes<br>Klima</b></span></div>
+            </div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Wiener Klimateam</a></h3>
+              <p class="gv-pcard__desc">Gesucht: Ihre Ideen fürs gute Klima in den Bezirken Penzing, Josefstadt und Alsergrund.</p>
+              <div class="gv-pcard__spacer"></div>
+              <div class="gv-pcard__foot">
+                <div class="gv-bubbles" aria-label="346 Teilnehmende">
+                  <span class="av"></span><span class="av"></span><span class="av"></span>
+                  <span class="count">346</span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Finished project card (status label + report CTA) -->
+          <article class="gv-pcard boxed">
+            <div class="gv-pcard__thumb" style="background:#f3e2a6;color:#7a5e12;font-weight:800;font-size:18px;padding:14px">Alt-Ottakring wie neu!</div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Alt-Ottakring wie neu!</a></h3>
+              <p class="gv-pcard__desc">Die Beteiligung ist abgeschlossen. Lesen Sie, welche Vorschläge umgesetzt werden.</p>
+              <div class="gv-pcard__spacer"></div>
+              <div class="gv-pcard__foot">
+                <span class="gv-status-label finished">Abgeschlossen</span>
+                <a class="gv-btn primary-outlined" href="#">Bericht lesen</a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Mitmach-Budget card -->
+          <article class="gv-pcard boxed">
+            <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#2b5cab,#f2c200)">
+              <span style="color:#fff;font-size:20px;font-weight:800">MITMACH-BUDGET</span>
+            </div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Mitmach-Budget Brigittenau 2026</a></h3>
+              <div class="gv-pcard__progress">
+                <span class="gv-pcard__meta time">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Noch 2 Wochen
+                </span>
+                <div class="gv-progress" role="progressbar" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100" aria-label="Zeitlicher Fortschritt"><div class="gv-progress__fill" style="width:62%"></div></div>
+              </div>
+              <div class="gv-pcard__foot">
+                <div class="gv-bubbles" aria-label="86 Teilnehmende">
+                  <span class="av"></span><span class="av"></span>
+                  <span class="count">86</span>
+                </div>
+                <a class="gv-btn primary-outlined" href="#">Vorschlag einreichen</a>
+              </div>
+            </div>
+          </article>
+
+        </div>
+
+        <div class="gv-showmore">
+          <button class="gv-btn primary-outlined size-m">
+            Mehr anzeigen
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ Events widget (empty state) ════════ -->
+    <section class="gv-section" aria-labelledby="events-title">
+      <div class="gv-section__body">
+        <div class="gv-events__head">
+          <h2 class="gv-title h2" id="events-title" style="margin:0">Kommende und laufende Veranstaltungen</h2>
+          <a class="gv-btn text" href="#">Alle Veranstaltungen ansehen</a>
+        </div>
+        <div class="gv-events__empty">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <p class="gv-text bodyM" style="margin:0">Derzeit sind keine kommenden oder laufenden Veranstaltungen geplant.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ Proposals CTA band ════════ -->
+    <section class="gv-ctaband" aria-labelledby="cta-title">
+      <div class="gv-ctaband__inner">
+        <h2 class="gv-ctaband__title" id="cta-title">Was ist Ihr Anliegen?</h2>
+        <p class="gv-ctaband__lead">Reichen Sie Ihren Vorschlag auf dieser Plattform ein, sammeln Sie Unterstützung
+          und bringen Sie ihn auf die Agenda der Stadt.</p>
+        <a class="gv-btn primary size-m" href="#">Alle Vorschläge entdecken</a>
+      </div>
+    </section>
+
+    <!-- ════════ Rich-text welcome block ════════ -->
+    <section class="gv-section">
+      <div class="gv-prose">
+        <p>Auf dieser Plattform finden Sie die Beteiligungsprojekte der Stadt Wien. Hier können Sie im Dialog
+          mit der Stadt zu bestimmten Fragestellungen Ihre Gedanken austauschen, Ideen sammeln und Feedback geben.</p>
+        <p><em>Registrieren Sie sich noch heute und gestalten Sie ein lebenswerteres Wien mit!</em></p>
+      </div>
+    </section>
+
+  </main>
 
   <!-- ════════ Footer ════════ -->
-  <footer class="gv-footer" style="margin-top:40px">
+  <footer class="gv-footer" style="margin-top:48px">
     <div class="gv-footer__inner">
-      <!-- Tenant logo slot — swaps with the active theme (the go·vocal "powered by"
-           attribution below stays fixed; that's not a tenant logo). -->
       <div class="gv-footer__logo" data-gv-logo></div>
       <nav class="gv-footer__links" aria-label="Rechtliches">
-        <a href="#">Nutzungsbedingungen</a>
-        <a href="#">Impressum &amp; Datenschutz</a>
-        <a href="#">Cookierichtlinie</a>
-        <a href="#">Richtlinie zur Barrierefreiheit</a>
-        <a href="#">Cookie-Einstellungen</a>
-        <a href="#">Sitemap</a>
+        <ul>
+          <li><a href="#">Nutzungsbedingungen</a></li>
+          <li><a href="#">Impressum &amp; Datenschutz</a></li>
+          <li><a href="#">Cookierichtlinie</a></li>
+          <li><a href="#">Richtlinie zur Barrierefreiheit</a></li>
+          <li><button type="button">Cookie-Einstellungen</button></li>
+          <li><a href="#">Sitemap</a></li>
+        </ul>
       </nav>
       <div class="gv-footer__powered">
         <span>Ermöglicht durch</span>
