@@ -301,3 +301,25 @@ Two parallel build agents (disjoint files), lint green, render-verified vs captu
   `--gv-cool-grey-600`) + **`.gv-bo-infodot`** (16px info dot beside labels).
 - Note: `.gv-bo-cb-topbar__view` is hardcoded `width:44px` (icon-only) — a *labeled*
   view/download button needs a variant (survey-builder used page-local `.sb-topbtn`).
+
+## Run 3 — Component abstraction (DONE)
+
+Orchestrator-serialized canonical additions, then parallel page-refactor agents
+consumed them + deleted page-local fakes. `npm run lint` 0 violations; `verify:all`
+88 green (the 2 reds are `fo-project/survey-band` — concurrent FO edits, out of scope).
+- **`drag-handle`** 6-dot vertical grip → `govocal-icons.js` (83 icons now). Consumed
+  by bo-pages-menu, bo-settings (Areas/Statuses/demographic-Q), bo-projects (Arrange).
+- **`.gv-badge.is-filled`** → `govocal-primitives.css`: filled grey DEFAULT/category
+  pill (`--gv-grey-200` bg, `--gv-cool-grey-600`, 700, 1px 6px, no border). Consumed
+  by bo-pages-menu (navbar DEFAULT) + bo-inspiration-hub (method tags).
+- **`.gv-bo-accordion`** (+`__row/__head/__title/__chev/__body`, chevron auto-rotates
+  on `aria-expanded=true`) → `govocal-bo.css`; consumed by bo-project-phase access-rights
+  (deleted page-local `.pp-accordion`).
+- **`.gv-bo-fieldrow`** (+`__grip/__qno/__title/__badges`) + **`.gv-bo-typebadge`**
+  (`.is-type` grey chip / `.is-required` teal) → `govocal-bo.css`; consumed by
+  bo-survey-builder (deleted page-local `.sb-field*`/`.sb-badge*`; kept `.sb-fieldmore`).
+- **Confirmed `.gv-modal` ALREADY EXISTS** in primitives (overlay, 650px, size-s/l,
+  header, 46px close) — Run-1 config agent was wrong; Run-4 modals just consume it.
+- Deferred (promote when a 2nd consumer lands in Run 4): `.gv-bo-segmented`,
+  `.gv-bo-menu` dropdown, `.gv-bo-rte`, `.gv-bo-scalebar`, `.gv-bo-radiocard`,
+  templatecard/facetgroup, automatedrow, notifflyout, quarter navigator, color-picker.
