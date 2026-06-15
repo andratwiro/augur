@@ -416,6 +416,10 @@
 .gv-bubbles.sm .av { width: 28px; height: 28px; }
 .gv-bubbles.sm .count { width: 28px; height: 28px; font-size: 10px; }
 .gv-bubbles.sm .gv-bubbles__label { margin-left: 8px; }
+/* xs = the live Wien Klimateam participant row: 20px avatars + a 16px count label */
+.gv-bubbles.xs .av { width: 20px; height: 20px; }
+.gv-bubbles.xs .count { width: 20px; height: 20px; font-size: 9px; }
+.gv-bubbles.xs .gv-bubbles__label { margin-left: 8px; font-size: var(--gv-fs-base); }
 
 /* ── Post / contribution count ("142 Beiträge" · "open to participation") ──────
    The status meta GoVocal shows on a live project card: a success-green dot + a
@@ -558,7 +562,7 @@
 .gv-pcard.light .gv-pcard__thumb { aspect-ratio: 16 / 10; border-radius: var(--gv-radius); }  /* live thumb = 3px */
 .gv-pcard.light .gv-pcard__body { padding: 14px 0 0; }                 /* text sits flush under the thumb */
 .gv-pcard.light .gv-pcard__title { margin: 0 0 10px; font-size: var(--gv-fs-l); }  /* live title = 18px/700 */
-.gv-pcard.light .gv-pcard__desc { color: var(--gv-text-secondary); margin-top: 4px; }
+.gv-pcard.light .gv-pcard__desc { color: var(--gv-text-primary); margin-top: 4px; }  /* live Wien card body = #333 (primary), not the lighter slate */
 /* status line: icon + "Kein Enddatum" / "noch N Wochen" (#333) or "vor N Wochen" (green) */
 .gv-pcard__status { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-base);
   line-height: 1.5; color: var(--gv-grey-800); }
@@ -701,14 +705,14 @@
 /* Accordion (CSS-only <details>, collapsed by default, chevron rotates) */
 .gv-accordion { border-top: 1px solid var(--gv-divider); margin-top: 26px; }
 .gv-acc__item { border-bottom: 1px solid var(--gv-divider); }
-.gv-acc__head { display: flex; align-items: center; gap: 12px; cursor: pointer; list-style: none; padding: 18px 4px; font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary); }
+.gv-acc__head { display: flex; align-items: center; gap: 12px; cursor: pointer; list-style: none; padding: 18px 0; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); }
 .gv-acc__head::-webkit-details-marker { display: none; }
 .gv-acc__head:hover { color: var(--gv-tenant-primary); }
 .gv-acc__item > summary:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
 .gv-acc__head .gv-acc__q { flex: 1 1 auto; }
 .gv-acc__chev { flex: none; color: var(--gv-text-secondary); transition: transform 180ms ease; }
 .gv-acc__item[open] .gv-acc__chev { transform: rotate(90deg); }
-.gv-acc__body { padding: 0 4px 20px; max-width: var(--gv-text-width); }
+.gv-acc__body { padding: 0 0 20px; max-width: var(--gv-text-width); }
 .gv-acc__body p { margin: 0 0 10px; font-size: var(--gv-fs-base); line-height: 1.6; color: var(--gv-text-primary); }
 .gv-acc__body p:last-child { margin-bottom: 0; }
 

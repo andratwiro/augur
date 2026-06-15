@@ -35,8 +35,9 @@
     [data-auth="in"] .auth-toggle::before { background: var(--gv-green-400); }
 
     /* Layout-only: fix each climate-team card width inside the .gv-rail scroller so
-       the horizontal carousel has a stable track (no colour/border/type authored). */
-    .climate-team { flex: 0 0 300px; }
+       the horizontal carousel has a stable track (no colour/border/type authored).
+       ~376px ≈ 3 cards across the content width, matching the live Wien Klimateam row. */
+    .climate-team { flex: 0 0 376px; }
   </style>
 </head>
 <body data-gv-theme-picker="off" data-auth="out" class="gv-root">
@@ -170,75 +171,16 @@
             in our survey — participation closes in just a few days.</p>
           <div class="gv-spotlight__actions">
             <a class="gv-btn primary size-m" href="#">Take the survey</a>
-            <div class="gv-bubbles" aria-label="145 participants">
-              <span class="av"></span><span class="av"></span><span class="av"></span>
-              <span class="count">145</span>
-              <span class="gv-bubbles__label">participants</span>
-            </div>
+          </div>
+          <div class="gv-bubbles" aria-label="145 participants" style="margin-top:18px">
+            <span class="av"></span><span class="av"></span><span class="av"></span>
+            <span class="gv-bubbles__label">145 participants</span>
           </div>
         </div>
         <div class="gv-spotlight__media gv-spotlight__media--placeholder" aria-hidden="true"></div>
       </div>
     </section>
 
-    <!-- ════════ Open to participation — status-grouped widget (Stadt Wien pattern) ════════
-         The live product also composes the homepage as separate status sections
-         ("Laufende Projekte" / "Abgeschlossene Projekte" on mitgestalten.wien.gv.at)
-         instead of one tabbed grid. This is that widget: a titled section + a grid of
-         currently-open projects, each carrying the green .gv-poststat live count. -->
-    <section class="gv-section" aria-labelledby="open-title">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="open-title">Open to participation</h2></div>
-      <div class="gv-section__body">
-        <div class="gv-pgrid">
-
-          <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
-            </div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Cooler streets for summer</a></h3>
-              <span class="gv-poststat"><b>289</b>&nbsp;contributions</span>
-              <p class="gv-pcard__desc" style="margin-top:10px">Which streets should we plant, shade and de-pave first? Drop your pins on the map.</p>
-              <div class="gv-pcard__spacer"></div>
-              <div class="gv-pcard__foot">
-                <a class="gv-btn primary-outlined" href="#">Add your idea</a>
-              </div>
-            </div>
-          </article>
-
-          <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
-            </div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Name the new river bridge</a></h3>
-              <span class="gv-poststat"><b>1.2k</b>&nbsp;votes</span>
-              <p class="gv-pcard__desc" style="margin-top:10px">Five shortlisted names are open for a public vote. One vote per resident.</p>
-              <div class="gv-pcard__spacer"></div>
-              <div class="gv-pcard__foot">
-                <a class="gv-btn primary-outlined" href="#">Cast your vote</a>
-              </div>
-            </div>
-          </article>
-
-          <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 8v2h20V8L12 3Zm-7 9v5H4v2h16v-2h-1v-5h-2v5h-3v-5h-2v5H8v-5H5Z"/></svg>
-            </div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Have your say on the budget</a></h3>
-              <span class="gv-poststat"><b>74</b>&nbsp;contributions</span>
-              <p class="gv-pcard__desc" style="margin-top:10px">Tell us where €2.4M of neighbourhood funding should go next year.</p>
-              <div class="gv-pcard__spacer"></div>
-              <div class="gv-pcard__foot">
-                <a class="gv-btn primary-outlined" href="#">Take the survey</a>
-              </div>
-            </div>
-          </article>
-
-        </div>
-      </div>
-    </section>
 
     <!-- ════════ Participation projects — tabs + filter + grid ════════ -->
     <section class="gv-section" aria-labelledby="proj-title">
@@ -425,7 +367,7 @@
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Riverside climate team</a></h3>
-              <div class="gv-bubbles sm" aria-label="145 participants">
+              <div class="gv-bubbles xs" aria-label="145 participants">
                 <span class="av"></span><span class="av"></span><span class="av"></span>
                 <span class="gv-bubbles__label">145 participants</span>
               </div>
@@ -439,7 +381,7 @@
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Old Town climate team</a></h3>
-              <div class="gv-bubbles sm" aria-label="69 participants">
+              <div class="gv-bubbles xs" aria-label="69 participants">
                 <span class="av"></span><span class="av"></span><span class="av"></span>
                 <span class="gv-bubbles__label">69 participants</span>
               </div>
@@ -453,7 +395,7 @@
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Harbour climate team</a></h3>
-              <div class="gv-bubbles sm" aria-label="132 participants">
+              <div class="gv-bubbles xs" aria-label="132 participants">
                 <span class="av"></span><span class="av"></span><span class="av"></span>
                 <span class="gv-bubbles__label">132 participants</span>
               </div>
@@ -467,7 +409,7 @@
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Northgate climate team</a></h3>
-              <div class="gv-bubbles sm" aria-label="98 participants">
+              <div class="gv-bubbles xs" aria-label="98 participants">
                 <span class="av"></span><span class="av"></span><span class="av"></span>
                 <span class="gv-bubbles__label">98 participants</span>
               </div>
@@ -481,7 +423,7 @@
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Westside climate team</a></h3>
-              <div class="gv-bubbles sm" aria-label="211 participants">
+              <div class="gv-bubbles xs" aria-label="211 participants">
                 <span class="av"></span><span class="av"></span><span class="av"></span>
                 <span class="gv-bubbles__label">211 participants</span>
               </div>
@@ -495,7 +437,7 @@
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Lakeshore climate team</a></h3>
-              <div class="gv-bubbles sm" aria-label="54 participants">
+              <div class="gv-bubbles xs" aria-label="54 participants">
                 <span class="av"></span><span class="av"></span><span class="av"></span>
                 <span class="gv-bubbles__label">54 participants</span>
               </div>
@@ -760,5 +702,6 @@
   </script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
 </body>
 </html>
