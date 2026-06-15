@@ -7,6 +7,9 @@
 // against the screenshot, you get an exact mismatch list (real vs yours) and a
 // non-zero exit when anything drifts.
 //
+// Its core is exported (loadReference / verifyCheckpoint) so the ratchet runner
+// `verify-all.mjs` re-checks every registered checkpoint with the same logic.
+//
 // Prereq: the reference capture must have been probed at grab time, e.g.
 //   npm run capture -- <url> --name bo-sidebar --probe ".gv-bo-side|.gv-bo-nav__item"
 // (Local renders can't reproduce the live computed styles from dom.html alone —
@@ -32,91 +35,54 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(HERE, '..', '..');
-
-const argv = process.argv.slice(2);
-const target = argv.find((a) => !a.startsWith('--'));
-function opt(name, def = null) {
-  const i = argv.indexOf(`--${name}`);
-  if (i === -1) return def;
-  const v = argv[i + 1];
-  return v && !v.startsWith('--') ? v : true;
-}
-const flag = (name) => argv.includes(`--${name}`);
-
-const against = opt('against');
-if (!target || !against) {
-  console.error('Usage: node scripts/capture/verify.mjs <built.html> --against <captureName> [--map "real=mine|…"] [--tol 1] [--viewport WxH]');
-  process.exit(1);
-}
-
-const capDir = path.join(ROOT, 'govocal-exports', against);
-const stylesPath = path.join(capDir, 'styles.json');
-if (!fs.existsSync(stylesPath)) {
-  console.error(`✗ no styles.json in ${path.relative(ROOT, capDir)} — re-capture that screen first.`);
-  process.exit(1);
-}
-const ref = JSON.parse(fs.readFileSync(stylesPath, 'utf8'));
-if (!ref.probed || !Object.keys(ref.probed).length) {
-  console.error(`✗ ${against}/styles.json has no "probed" checkpoints. Re-capture with --probe "<real selectors>" so there's something to verify against.`);
-  process.exit(1);
-}
+export const ROOT = path.resolve(HERE, '..', '..');
 
 // Default props to compare — the ones that actually carry visual fidelity.
-const DEFAULT_PROPS = [
+export const DEFAULT_PROPS = [
   'color', 'background-color', 'background-image',
   'font-family', 'font-size', 'font-weight', 'line-height', 'text-transform',
   'border', 'border-radius', 'box-shadow', 'padding',
 ];
-const PROPS = opt('props') ? (opt('props') + '').split(',').map((s) => s.trim()) : DEFAULT_PROPS;
-const TOL = Number(opt('tol', 1));
-
-// Build the selector pairs: real (key in probed) → mine (local selector).
-let pairs;
-if (opt('map')) {
-  pairs = (opt('map') + '').split('|').map((p) => {
-    const [real, mine] = p.split('=').map((s) => s.trim());
-    return { real, mine: mine || real };
-  });
-} else {
-  pairs = Object.keys(ref.probed).map((real) => ({ real, mine: real }));
-}
-
-const capMeta = (() => {
-  const m = path.join(capDir, 'meta.json');
-  return fs.existsSync(m) ? JSON.parse(fs.readFileSync(m, 'utf8')) : {};
-})();
-const [vw, vh] = (opt('viewport', `${capMeta.viewport?.width || 1440}x${capMeta.viewport?.height || 900}`) + '').split('x').map(Number);
 
 // ── normalise + compare a single property value ───────────────────────────
 const norm = (v) => (v || '').replace(/\s+/g, ' ').trim().toLowerCase();
 const lengths = (v) => (v.match(/-?\d*\.?\d+px/g) || []).map(parseFloat);
-function propMatches(real, mine) {
+export function propMatches(real, mine, tol = 1) {
   if (norm(real) === norm(mine)) return true;
   // tolerate sub-px / rounding differences when the non-numeric skeleton matches
-  const rl = lengths(real), ml = lengths(mine);
+  const rl = lengths(real || ''), ml = lengths(mine || '');
   if (rl.length && rl.length === ml.length) {
     const skeleton = (v) => norm(v).replace(/-?\d*\.?\d+px/g, '«»');
-    if (skeleton(real) === skeleton(mine) && rl.every((n, i) => Math.abs(n - ml[i]) <= TOL)) return true;
+    if (skeleton(real) === skeleton(mine) && rl.every((n, i) => Math.abs(n - ml[i]) <= tol)) return true;
   }
   return false;
 }
 
-async function main() {
-  const browser = await chromium.launch({ headless: !flag('headed') });
-  const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 2 });
-  const page = await ctx.newPage();
+// Load a capture's pinned checkpoints. Throws (with a fix hint) if unusable.
+export function loadReference(against) {
+  const capDir = path.join(ROOT, 'govocal-exports', against);
+  const stylesPath = path.join(capDir, 'styles.json');
+  if (!fs.existsSync(stylesPath)) {
+    throw new Error(`no styles.json in govocal-exports/${against} — re-capture that screen first.`);
+  }
+  const ref = JSON.parse(fs.readFileSync(stylesPath, 'utf8'));
+  if (!ref.probed || !Object.keys(ref.probed).length) {
+    throw new Error(`govocal-exports/${against}/styles.json has no "probed" checkpoints — re-capture with --probe "<real selectors>".`);
+  }
+  const metaPath = path.join(capDir, 'meta.json');
+  const meta = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : {};
+  return { probed: ref.probed, meta };
+}
 
-  const url = /^https?:\/\//.test(target) ? target : 'file://' + path.resolve(ROOT, target);
-  await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-  await page.waitForTimeout(300);
-
+// Diff one already-loaded page against a reference's probed checkpoints.
+// pairs: [{ real, mine }]. Returns a structured result (no printing, no exit).
+export async function verifyCheckpoint(page, { pairs, probed, props = DEFAULT_PROPS, tol = 1 }) {
+  const results = [];
   let totalDiffs = 0, missing = 0, checked = 0;
-  const lines = [];
 
   for (const { real, mine } of pairs) {
-    const refRec = (ref.probed[real] || [])[0];
-    if (!refRec) { lines.push(`  ⚠ no probed reference for "${real}" in capture`); missing++; continue; }
+    const refRec = (probed[real] || [])[0];
+    if (!refRec) { results.push({ real, mine, status: 'no-ref' }); missing++; continue; }
 
     const mineRec = await page.evaluate(({ sel, props }) => {
       const el = document.querySelector(sel);
@@ -125,30 +91,78 @@ async function main() {
       const rec = {};
       for (const p of props) rec[p] = cs.getPropertyValue(p);
       return rec;
-    }, { sel: mine, props: PROPS });
+    }, { sel: mine, props });
 
-    if (!mineRec) { lines.push(`  ✗ "${mine}" not found in your render (maps to real "${real}")`); missing++; continue; }
+    if (!mineRec) { results.push({ real, mine, status: 'not-found' }); missing++; continue; }
 
     checked++;
     const diffs = [];
-    for (const p of PROPS) {
-      if (!propMatches(refRec[p], mineRec[p])) {
-        diffs.push(`      ${p}\n        real: ${refRec[p]}\n        you : ${mineRec[p]}`);
-      }
+    for (const p of props) {
+      if (!propMatches(refRec[p], mineRec[p], tol)) diffs.push({ prop: p, real: refRec[p], mine: mineRec[p] });
     }
-    if (diffs.length) {
-      totalDiffs += diffs.length;
-      lines.push(`  ✗ ${mine}  ← ${real}  (${diffs.length} off)`);
-      lines.push(...diffs);
-    } else {
-      lines.push(`  ✓ ${mine}  ← ${real}`);
-    }
+    if (diffs.length) totalDiffs += diffs.length;
+    results.push({ real, mine, status: diffs.length ? 'drift' : 'ok', diffs });
+  }
+  return { results, totalDiffs, missing, checked };
+}
+
+// Parse a "real=mine|real2=mine2" map string into pairs.
+export function parseMap(str) {
+  return (str + '').split('|').map((p) => {
+    const [real, mine] = p.split('=').map((s) => s.trim());
+    return { real, mine: mine || real };
+  });
+}
+
+// Resolve a target path/url to something playwright can open.
+export function toURL(target) {
+  return /^https?:\/\//.test(target) ? target : 'file://' + path.resolve(ROOT, target);
+}
+
+// ── CLI ───────────────────────────────────────────────────────────────────
+async function main() {
+  const argv = process.argv.slice(2);
+  const target = argv.find((a) => !a.startsWith('--'));
+  const opt = (name, def = null) => {
+    const i = argv.indexOf(`--${name}`);
+    if (i === -1) return def;
+    const v = argv[i + 1];
+    return v && !v.startsWith('--') ? v : true;
+  };
+  const flag = (name) => argv.includes(`--${name}`);
+
+  const against = opt('against');
+  if (!target || !against) {
+    console.error('Usage: node scripts/capture/verify.mjs <built.html> --against <captureName> [--map "real=mine|…"] [--tol 1] [--viewport WxH]');
+    process.exit(1);
   }
 
+  let probed, meta;
+  try { ({ probed, meta } = loadReference(against)); }
+  catch (e) { console.error('✗ ' + e.message); process.exit(1); }
+
+  const props = opt('props') ? (opt('props') + '').split(',').map((s) => s.trim()) : DEFAULT_PROPS;
+  const tol = Number(opt('tol', 1));
+  const pairs = opt('map') ? parseMap(opt('map')) : Object.keys(probed).map((real) => ({ real, mine: real }));
+  const [vw, vh] = (opt('viewport', `${meta.viewport?.width || 1440}x${meta.viewport?.height || 900}`) + '').split('x').map(Number);
+
+  const browser = await chromium.launch({ headless: !flag('headed') });
+  const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 2 });
+  const page = await ctx.newPage();
+  await page.goto(toURL(target), { waitUntil: 'networkidle', timeout: 30000 });
+  await page.waitForTimeout(300);
+
+  const { results, totalDiffs, missing, checked } = await verifyCheckpoint(page, { pairs, probed, props, tol });
   await browser.close();
 
-  console.log(`\nVerify  ${path.relative(ROOT, target)}  vs  capture:${against}  @ ${vw}x${vh}`);
-  console.log(lines.join('\n'));
+  console.log(`\nVerify  ${target}  vs  capture:${against}  @ ${vw}x${vh}`);
+  for (const r of results) {
+    if (r.status === 'no-ref') { console.log(`  ⚠ no probed reference for "${r.real}" in capture`); continue; }
+    if (r.status === 'not-found') { console.log(`  ✗ "${r.mine}" not found in your render (maps to real "${r.real}")`); continue; }
+    if (r.status === 'ok') { console.log(`  ✓ ${r.mine}  ← ${r.real}`); continue; }
+    console.log(`  ✗ ${r.mine}  ← ${r.real}  (${r.diffs.length} off)`);
+    for (const d of r.diffs) console.log(`      ${d.prop}\n        real: ${d.real}\n        you : ${d.mine}`);
+  }
   console.log(`\n${checked} checkpoint(s) checked · ${totalDiffs} mismatch(es)` + (missing ? ` · ${missing} unresolved selector(s)` : ''));
 
   if (totalDiffs || missing) {
@@ -158,7 +172,7 @@ async function main() {
   console.log('✓ matches the live capture within tolerance.\n');
 }
 
-main().catch((e) => {
-  console.error('✗ verify failed:', e.message);
-  process.exit(1);
-});
+// Only run the CLI when invoked directly (not when imported by verify-all).
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((e) => { console.error('✗ verify failed:', e.message); process.exit(1); });
+}

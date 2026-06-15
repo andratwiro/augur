@@ -71,7 +71,20 @@ Pipeline per piece:
 1. **Capture with checkpoints** — `npm run capture -- <url> --name <slug> --probe "<the real selectors you'll rebuild>"`. (digest is automatic; `--probe` pins the verify targets.)
 2. **Build from exact values** — read `styles.json` `digest`, assemble from existing `.gv-*` primitives, map values to `--gv-*` tokens (never eyeball / hardcode).
 3. **Verify numerically** — `npm run verify -- <built.html> --against <slug> --map "realSel=mineSel|…"`. Fix every mismatch it prints; loop until it exits ✓. This replaces "eyeball the screenshot".
-4. **Store** — govocal-bo.css + components.md + manifest + `npm run index`.
+4. **Register the checkpoint (ratchet)** — once green, add an entry to `govocal-exports/checkpoints.json` (`id` · `built` · `against` · `map`). It's now guarded forever.
+5. **Store** — govocal-bo.css + components.md + manifest + `npm run index`.
+
+**The ratchet — primitives improve without regressing.** Primitives are *meant* to
+get better on each capture, but a "refinement" of a shared class (`.gv-btn`,
+`.gv-bo-side`, …) to match one screen can overfit and silently break the components
+already using it. So after ANY change to shared CSS (`govocal-ui.css` /
+`govocal-bo.css` / `govocal-tokens.css`) run **`npm run verify:all`** — it
+re-renders every registered checkpoint and re-diffs it against its live capture.
+Green = real improvement; red = you regressed a dependent (fix or back it out).
+`npm run verify:all -- --changed .gv-btn` runs only the checkpoints whose built
+file uses that class (deps auto-derived from the markup), so you can check just a
+primitive's blast radius. (This is what catches drift like the bo-app-shell /
+bo-sidebar copies diverging — register both, and a re-sync that misses one goes red.)
 
 **Focus (set 2026-06-15): the project-configuration editor** — `/admin/projects/<id>/…`
 (phases, Setup, Input manager, etc.). Build these screens out deeply first.

@@ -1,0 +1,13 @@
+{
+  "$schema": "Ratchet registry for `npm run verify:all`. Internal, never ships. Add an entry AFTER you build a component/page and verify it green, so it's guarded against regression forever. When a shared change (govocal-ui.css / govocal-bo.css / govocal-tokens.css) is made, `npm run verify:all` re-renders every built file below and re-diffs it against its live capture. Green = real improvement; red = a dependent regressed.",
+  "$fields": {
+    "id": "short unique name shown in the report",
+    "built": "path to YOUR rendered file (component demo or page index.html), repo-relative",
+    "against": "capture folder under govocal-exports/ — must have a `probed` block (captured with --probe)",
+    "map": "object of { realSelector: yourSelector } pinning what to diff (or a 'real=mine|…' string). Omit to pair identical selector strings.",
+    "viewport": "optional WxH; defaults to the capture's own viewport",
+    "tol": "optional px tolerance (default 1)",
+    "uses": "optional explicit dependency list (e.g. ['.gv-btn']). Omitted = auto-derived from the gv-* classes in `built`, which powers `--changed`."
+  },
+  "checkpoints": []
+}
