@@ -506,7 +506,10 @@
   }
 
   window.addEventListener("keydown", function (e) {
-    if (e.shiftKey && (e.code === "KeyC" || e.key === "C" || e.key === "c") && !isTyping(e.target)) {
+    // e.target is retargeted to the shadow host for events from inside our
+    // shadow DOM, so check the real originating node via composedPath.
+    var src = (e.composedPath && e.composedPath()[0]) || e.target;
+    if (e.shiftKey && (e.code === "KeyC" || e.key === "C" || e.key === "c") && !isTyping(src)) {
       e.preventDefault(); setActive(!state.active);
     } else if (e.key === "Escape" && state.active) {
       if (state.openId) closeCard();
