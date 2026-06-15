@@ -97,6 +97,14 @@
       "map": { ".e2e-idea-manager-idea-title": ".gv-bo-table__title" },
       "props": ["color", "font-size", "font-weight"],
       "uses": [".gv-bo-table"]
+    },
+    {
+      "id": "bo-project-phase/inputform-head",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-input-form-builder",
+      "map": { "h3": ".pp-sub[data-sub=inputform] .gv-bo-formhead" },
+      "props": ["color", "font-size", "font-weight"],
+      "uses": [".gv-bo-formhead"]
     }
   ]
 }

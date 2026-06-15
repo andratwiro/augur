@@ -412,3 +412,32 @@
 .gv-bo-headrow__title { margin: 0; font-size: 20px; font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-headrow__actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .gv-bo-count-line { margin: 10px 0; font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-bo-primary); }
+
+/* Uppercase section caption ("IMPORT RESPONSES"). */
+.gv-bo-eyebrow { margin: 28px 0 12px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gv-cool-grey-500); }
+
+/* ── Input form: import-source cards ────────────────────────────────────────
+   Measured live (bo-input-form-builder): each source is a horizontal card —
+   1px #E0E0E0 border, 3px radius, 12px padding, white; a light-blue icon tile
+   (#E6EEF1, 8px pad, 3px), a title+description block, and right-aligned actions
+   (a text link + a primary button). */
+.gv-bo-importlist { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+.gv-bo-importcard {
+  display: flex; align-items: center; gap: 14px;
+  border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius);
+  padding: 12px; background: #fff;
+}
+.gv-bo-importcard__icon {
+  flex: none; width: 36px; height: 36px; display: grid; place-items: center;
+  background: #E6EEF1; border-radius: var(--gv-radius); color: var(--gv-bo-primary);
+}
+.gv-bo-importcard__icon .gv-icon { width: 20px; height: 20px; }
+.gv-bo-importcard__main { min-width: 0; flex: 1 1 auto; }
+.gv-bo-importcard__title { font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-bo-primary); }
+.gv-bo-importcard__desc { font-size: 13px; color: var(--gv-text-secondary); margin-top: 2px; }
+.gv-bo-importcard__actions { flex: none; display: flex; align-items: center; gap: 16px; }
+
+/* Inline text link with a leading icon (Download PDF / Template / Exports). */
+.gv-bo-link { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-bo-primary); font-weight: 600; font-size: var(--gv-fs-s); text-decoration: none; cursor: pointer; }
+.gv-bo-link:hover { text-decoration: underline; }
+.gv-bo-link .gv-icon { width: 16px; height: 16px; }

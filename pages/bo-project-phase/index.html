@@ -351,7 +351,7 @@
                 <span class="gv-toggle"><input type="checkbox"><span class="track"></span></span>
                 <span style="color:var(--gv-text-secondary)">Only show posts that need feedback</span>
               </label>
-              <a class="gv-bo-spacer" href="#" style="display:inline-flex;align-items:center;gap:6px;color:var(--gv-bo-primary);font-weight:600;text-decoration:none"><span data-gv-icon="download"></span>Exports</a>
+              <a class="gv-bo-link gv-bo-spacer" href="#"><span data-gv-icon="download"></span>Exports</a>
             </div>
 
             <!-- Count + search -->
@@ -394,6 +394,40 @@
                 </thead>
                 <tbody id="ideas"></tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- ════ Input form sub-panel ════ -->
+          <div class="pp-sub" data-sub="inputform">
+            <h3 class="gv-bo-formhead" style="margin-bottom:8px">Input form</h3>
+            <p class="gv-bo-help" style="max-width:680px;margin:0 0 18px">Specify what information should be provided, add short descriptions or instructions to guide participant responses and specify whether each field is optional or required.</p>
+
+            <button class="gv-btn admin-dark"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit input form</span></button>
+
+            <p class="gv-bo-eyebrow">Import responses</p>
+            <div class="gv-bo-importlist">
+              <div class="gv-bo-importcard">
+                <span class="gv-bo-importcard__icon"><span class="gv-icon" data-gv-icon="survey"></span></span>
+                <div class="gv-bo-importcard__main">
+                  <div class="gv-bo-importcard__title">Paper forms OCR</div>
+                  <div class="gv-bo-importcard__desc">Print form, collect on paper, scan responses back</div>
+                </div>
+                <div class="gv-bo-importcard__actions">
+                  <a class="gv-bo-link" href="#"><span data-gv-icon="download"></span>Download PDF</a>
+                  <button class="gv-btn admin-dark size-s"><span data-gv-icon="open-in-new"></span><span class="gv-btn__label">Import scans</span></button>
+                </div>
+              </div>
+              <div class="gv-bo-importcard">
+                <span class="gv-bo-importcard__icon"><span class="gv-icon" data-gv-icon="menu"></span></span>
+                <div class="gv-bo-importcard__main">
+                  <div class="gv-bo-importcard__title">Spreadsheet</div>
+                  <div class="gv-bo-importcard__desc">Download a template, fill it in, and upload responses</div>
+                </div>
+                <div class="gv-bo-importcard__actions">
+                  <a class="gv-bo-link" href="#"><span data-gv-icon="download"></span>Template</a>
+                  <a class="gv-bo-link" href="#"><span data-gv-icon="open-in-new"></span>Import file</a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
