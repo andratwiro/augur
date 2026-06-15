@@ -37,6 +37,9 @@
    responsively by toggling `.is-rail` at 1200px (see the demo's matchMedia
    snippet) — the real product is JS-driven, not CSS-only. */
 .gv-bo-side {
+  box-sizing: border-box; /* keep the 35px bottom padding INSIDE 100vh so the bottom-pinned
+                             items (account / Support) clear the viewport edge instead of
+                             crashing into it — the content-box default pushed them off-screen */
   background: var(--gv-bo-sidebar-bg);
   color: var(--gv-blue-500); /* cascade root (matches live); visible text is set white per-item */
   display: flex;
