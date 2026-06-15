@@ -1172,6 +1172,57 @@
       "uses": [
         ".gv-sticky__reactbtn"
       ]
+    },
+    {
+      "id": "fo-homepage-survey-band/card",
+      "built": "components/homepage-survey-band/index.html",
+      "against": "fo-homepage-survey-band",
+      "map": {
+        ".fGrxMq": ".gv-monitorband__inner"
+      },
+      "props": [
+        "padding",
+        "gap",
+        "border-radius"
+      ],
+      "uses": [
+        ".gv-monitorband"
+      ]
+    },
+    {
+      "id": "fo-homepage-survey-band/title",
+      "built": "components/homepage-survey-band/index.html",
+      "against": "fo-homepage-survey-band",
+      "map": {
+        ".cSCkWt h2": ".gv-monitorband__title",
+        ".cSCkWt p": ".gv-monitorband__lead"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-monitorband"
+      ]
+    },
+    {
+      "id": "fo-homepage-survey-band/cta",
+      "built": "components/homepage-survey-band/index.html",
+      "against": "fo-homepage-survey-band",
+      "map": {
+        ".fGrxMq .button.primary": ".gv-monitorband__cta .gv-btn.primary"
+      },
+      "props": [
+        "background-color",
+        "padding",
+        "border-radius"
+      ],
+      "uses": [
+        ".gv-monitorband",
+        ".gv-btn"
+      ]
     }
   ]
 }

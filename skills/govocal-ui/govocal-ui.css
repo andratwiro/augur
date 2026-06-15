@@ -778,6 +778,36 @@
 .gv-ctaband__title { margin: 0 0 12px; font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-text-heading); }
 .gv-ctaband__lead { margin: 0 0 26px; font-size: var(--gv-fs-m); line-height: 1.6; color: var(--gv-grey-800); }
 
+/* Embedded-survey band ("Help us serve you better") ─────────────────────────
+   The homepage in-page banner that promotes the ongoing community-monitor
+   survey — the SISTER surface of the community-monitor modal (banner vs modal).
+   Source-grounded on wietsedemo `/en` (capture fo-homepage-survey-band):
+   outer wrapper `.drTRMc` = margin 0 120px, width 1200px; the tinted card
+   `.fGrxMq` = flex row, bg rgba(17,45,126,.1) (tenant-primary @ 10% =
+   --gv-tenant-primary-lighten90), padding 32px, gap 16px, radius 16px. Three
+   zones: text column (h2 25/700 #333 + lede 16/400 #333), a 240px preview
+   image, and a primary CTA. DISTINCT from .gv-ctaband (centered single-column,
+   transparent) — new variant, no base mutated. CTA = .gv-btn.primary.size-m. */
+.gv-monitorband { margin: 0 120px; }
+.gv-monitorband__inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 32px;
+  border-radius: 16px;
+  background: var(--gv-tenant-primary-lighten90);   /* live = rgba(primary, .1) */
+}
+.gv-monitorband__text { flex: 1 1 auto; min-width: 0; }
+.gv-monitorband__title { margin: 0 0 16px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; color: var(--gv-grey-800); }  /* live 25px/700/32.5px/#333 */
+.gv-monitorband__lead { margin: 0; font-size: var(--gv-fs-m); font-weight: 400; line-height: 1.5; color: var(--gv-grey-800); }            /* live 16px/400/24px/#333 */
+.gv-monitorband__media { flex: 0 0 auto; }
+.gv-monitorband__media img { display: block; width: 240px; height: auto; }       /* live img width:240px */
+.gv-monitorband__cta { flex: 0 0 auto; }
+@media (max-width: 980px) {
+  .gv-monitorband { margin: 0 24px; }
+  .gv-monitorband__inner { flex-wrap: wrap; }
+}
+
 /* ── Rich-text / prose block ───────────────────────────────────────────────── */
 .gv-prose { max-width: var(--gv-text-width, 720px); margin: 0 auto; padding: 8px 24px; }
 .gv-prose p { margin: 0 0 16px; font-size: var(--gv-fs-m); line-height: 1.5; color: var(--gv-grey-800); }  /* live rich-text = 16px/400/24px */

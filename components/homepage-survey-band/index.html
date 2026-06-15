@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Embedded-survey band — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed to the captured wietsedemo tenant (primary #112D7E — the measured
+       tenant-primary the band tints to rgba(17,45,126,.1) and the CTA fills with).
+       Swap this one var, or use ?theme=, and the whole band re-themes — nothing
+       brand-coloured is hardcoded. */
+    :root { --gv-tenant-primary: #112D7E; }
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1240px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    /* page-local: the preview-image artwork is a non-grounded reconstruction
+       (the live /SentimentQuestionPreview.png is not redistributable). It uses
+       no gv-* class and no brand hex — it inherits the tenant primary so it
+       re-themes with the band. */
+    .sqp { width: 240px; }
+    .sqp__q { font-size: 13px; font-weight: 600; color: var(--gv-grey-800); margin: 0 0 8px; }
+    .sqp__faces { display: flex; gap: 6px; }
+    .sqp__faces svg { width: 100%; height: auto; color: var(--gv-tenant-primary); }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Embedded-survey band</h1>
+    <p class="sub">The full-width homepage banner promoting the ongoing
+      community-monitor survey — the SISTER surface of the
+      <code>community-monitor</code> modal (in-page band vs. pop-up modal).
+      Source-grounded on wietsedemo <code>/en</code>: the tinted card
+      <code>.fGrxMq</code> (bg rgba(17,45,126,.1), padding 32, gap 16, radius 16),
+      the h2 (<code>.cSCkWt h2</code>, 25/700/#333), the lede
+      (<code>.cSCkWt p</code>, 16/400/#333) and the wrapper
+      <code>.drTRMc</code> (margin 0 120, width 1200).</p>
+
+    <div class="eyebrow">Demo</div>
+
+    <!-- ============ EMBEDDED-SURVEY BAND (copy from here) ============ -->
+    <!-- 3-zone tinted card: text column · 240px preview image · primary CTA.
+         New .gv-monitorband variant (NOT .gv-ctaband). CTA reuses .gv-btn. -->
+    <section class="gv-monitorband" aria-labelledby="survey-band-title">
+      <div class="gv-monitorband__inner">
+        <div class="gv-monitorband__text">
+          <h2 class="gv-monitorband__title" id="survey-band-title">Help us serve you better</h2>
+          <p class="gv-monitorband__lead">Ongoing survey about how feel about quality of
+            life, public services, and governance in our city.</p>
+        </div>
+
+        <div class="gv-monitorband__media">
+          <!-- preview of a sentiment survey question (page-local reconstruction
+               of the live SentimentQuestionPreview.png illustration) -->
+          <div class="sqp" role="img" aria-label="Example of a sentiment survey question">
+            <p class="sqp__q">The city as a place to live</p>
+            <div class="sqp__faces">
+              <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
+                <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
+                <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
+                <path d="M13 28 Q20 22 27 28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
+                <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
+                <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
+                <path d="M13 26 H27" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2"/>
+                <circle cx="14" cy="16" r="1.8" fill="currentColor"/>
+                <circle cx="26" cy="16" r="1.8" fill="currentColor"/>
+                <path d="M12 24 Q20 32 28 24" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="gv-monitorband__cta">
+          <button class="gv-btn primary" type="button">Take the survey</button>
+        </div>
+      </div>
+    </section>
+    <!-- ============ /EMBEDDED-SURVEY BAND ============ -->
+
+    <div class="notes">
+      <p><strong>Reuse:</strong> <code>.gv-monitorband</code> (FO, in
+      <code>govocal-ui.css</code>) is the homepage embedded-survey banner.
+      <code>__inner</code> is the tinted flex card (tenant-primary @ 10% via
+      <code>--gv-tenant-primary-lighten90</code>, 32px padding, 16px gap, 16px
+      radius); <code>__text</code> holds the <code>__title</code> (25/700/#333)
+      and <code>__lead</code> (16/400/#333); <code>__media</code> wraps a 240px
+      preview image; <code>__cta</code> holds a real
+      <code>.gv-btn.primary</code>. Distinct from
+      <code>.gv-ctaband</code> (centered single-column proposals band) — a new
+      variant, no base mutated.</p>
+      <p><strong>Theming:</strong> the tint and CTA derive from
+      <code>--gv-tenant-primary</code>, so <code>?theme=</code> (or overriding
+      that one var) re-skins the whole band. The preview artwork is a page-local
+      reconstruction (no gv-* class, no brand hex) standing in for the live
+      <code>/SentimentQuestionPreview.png</code>.</p>
+    </div>
+  </div>
+
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script>
+    // Pin the captured wietsedemo tenant (primary #112D7E, Montserrat) so the
+    // band renders in its real tenant skin. Any city re-themes the same way.
+    window.addEventListener('DOMContentLoaded', function () {
+      var r = document.documentElement.style;
+      r.setProperty('--gv-tenant-primary', '#112D7E');
+      r.setProperty('--gv-font-family', 'Montserrat, "Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif');
+    });
+  </script>
+</body>
+</html>

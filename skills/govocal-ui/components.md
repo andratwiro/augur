@@ -514,6 +514,45 @@ services as a **5-point emoji sentiment** linear scale. Grounded on wietsedemo
   question; `__count` the participant tally. Set the tenant skin via `--gv-tenant-primary` (the
   captured wietsedemo is `#044D6C`) — nothing is hardcoded.
 
+## Embedded-survey band — `.gv-monitorband` (`components/homepage-survey-band/`)
+
+The homepage in-page banner that promotes the ongoing community-monitor survey — the
+**SISTER surface of the Community Monitor modal** (banner vs. pop-up). A 3-zone tinted
+card. Source-grounded on wietsedemo `/en`: the tinted card `.fGrxMq`
+(`background rgba(17,45,126,.1)` = tenant-primary @ 10%, `padding 32px`, `gap 16px`,
+`border-radius 16px`), the h2 (`.cSCkWt h2`, 25/700/#333), the lede (`.cSCkWt p`,
+16/400/#333), the 240px preview image, and the primary CTA. **Distinct from
+`.gv-ctaband`** (centered single-column proposals band) — a new variant, no base mutated.
+
+```html
+<section class="gv-monitorband" aria-labelledby="survey-band-title">
+  <div class="gv-monitorband__inner">
+    <div class="gv-monitorband__text">
+      <h2 class="gv-monitorband__title" id="survey-band-title">Help us serve you better</h2>
+      <p class="gv-monitorband__lead">Ongoing survey about how feel about quality of life,
+        public services, and governance in our city.</p>
+    </div>
+    <div class="gv-monitorband__media">
+      <img src="…/SentimentQuestionPreview.png" width="240"
+           alt="Example of a sentiment survey question" />
+    </div>
+    <div class="gv-monitorband__cta">
+      <button class="gv-btn primary" type="button">Take the survey</button>
+    </div>
+  </div>
+</section>
+```
+
+- **`.gv-monitorband`** = the full-width wrapper (`margin: 0 120px` live; collapses at
+  ≤980px); **`__inner`** = the tinted flex-row card (tint from
+  `--gv-tenant-primary-lighten90`, so `?theme=` re-skins the whole band — nothing brand
+  hardcoded). **`__text`** holds `__title` (25/700/#333 = `--gv-grey-800`) + `__lead`
+  (16/400/#333); **`__media`** caps a 240px preview image; **`__cta`** carries a real
+  **`.gv-btn.primary`** (grounded 9px 18px / radius 3px — base button, no size class).
+- The demo's preview artwork is a page-local reconstruction (no gv-* class, no brand hex)
+  standing in for the live `/SentimentQuestionPreview.png`, which isn't redistributable.
+  Verified via `fo-homepage-survey-band/{card,title,cta}`.
+
 ## Project card + rail — `.gv-rail` / `.gv-pcard` (`components/project-card/`)
 
 The card is an `<article>`, NOT an `<a>` — the title link is stretched to make the whole
