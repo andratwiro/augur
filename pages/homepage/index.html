@@ -83,7 +83,7 @@
 
         <!-- ════ Signed-OUT actions ════ -->
         <span class="gv-auth-out gv-desktop-only">
-          <button class="gv-btn primary" style="padding:8px 18px;line-height:20px">Sign in</button>
+          <button class="gv-btn primary" style="padding:8px 18px;line-height:20px" data-auth-set="in">Sign in</button>
         </span>
 
         <!-- ════ Signed-IN actions (same component, other state — flip with the toggle) ════ -->
@@ -109,7 +109,7 @@
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 12a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 5.3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 12 3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 .9 1.5H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5.9Z" stroke="currentColor" stroke-width="1.6"/></svg>
               </a>
               <div class="gv-menu-sep"></div>
-              <button type="button">Sign out
+              <button type="button" data-auth-set="out">Sign out
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>
             </div>
@@ -137,13 +137,13 @@
             <a href="#">Events</a>
             <a href="#">More</a>
             <span class="gv-auth-out">
-              <button class="gv-btn primary full">Sign in</button>
+              <button class="gv-btn primary full" data-auth-set="in">Sign in</button>
             </span>
             <span class="gv-auth-in">
               <a href="#">Manage platform</a>
               <a href="#">My activity</a>
               <a href="#">My settings</a>
-              <button class="gv-btn primary-outlined full" style="margin-top:14px">Sign out</button>
+              <button class="gv-btn primary-outlined full" style="margin-top:14px" data-auth-set="out">Sign out</button>
             </span>
           </nav>
         </details>
@@ -423,8 +423,22 @@
   <script>
     (function () {
       var body = document.body, t = document.getElementById('authToggle');
-      function set(s) { body.dataset.auth = s; t.textContent = s === 'in' ? 'Signed in' : 'Signed out'; t.setAttribute('aria-pressed', s === 'in'); }
+      function set(s) {
+        body.dataset.auth = s;
+        t.textContent = s === 'in' ? 'Signed in' : 'Signed out';
+        t.setAttribute('aria-pressed', s === 'in');
+      }
+      // the floating demo toggle
       t.addEventListener('click', function () { set(body.dataset.auth === 'in' ? 'out' : 'in'); });
+      // in-header "Sign in" / "Sign out" buttons flip the state too
+      document.addEventListener('click', function (e) {
+        var el = e.target.closest('[data-auth-set]');
+        if (!el) return;
+        e.preventDefault();
+        set(el.getAttribute('data-auth-set'));
+        // close any open dropdown (the account/lang <details>) after the action
+        document.querySelectorAll('.gv-nav__dd[open]').forEach(function (d) { d.open = false; });
+      });
     })();
   </script>
   <script src="govocal-themes.js" defer></script>
