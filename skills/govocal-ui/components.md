@@ -1255,6 +1255,53 @@ conventions, `.gv-btn.text`, and `.gv-react__comment`.
 
 ---
 
+## Project-page embedded events section — `.gv-project-events` (`components/voting/`)
+
+The **"Upcoming and ongoing events" + "Past events"** sections a project page renders
+**below the phase body**, on the project's own content column. Source-grounded on
+wietsedemo `…/option-analysis-voting…` (capture `fo-voting`), verified via
+`fo-voting/{events-section,events-section-title,events-date-filter,events-card-title,events-empty}`.
+
+**Pure assembly** — it reuses the events atoms wholesale: `.gv-events-page__section`
+(the 25/700/32.5/#474747 h2, identical to the standalone `/events` page),
+`.gv-events-page__sectionhead` (title left, filter right), `.gv-filter-pill` (Date
+dropdown, tenant-primary fill / 24px pill), and `.gv-events__grid` + `.gv-event-card`.
+**Net-new is only** the `.gv-project-events` scaffold (flex column, **gap 48px**,
+max-width 1166px — probed), the `.gv-project-events__rule` divider under each head, and
+the **plain** `.gv-project-events__empty` line (16px/#596B7A/lh 26 — distinct from the
+dashed-box `.gv-events__empty`). Drop it after `.gv-phasebody`; re-skins per `?theme=`.
+
+```html
+<div id="e2e-events-section-project-page" class="gv-project-events">
+  <!-- Upcoming and ongoing: head + Date filter + empty line -->
+  <section class="gv-project-events__sec">
+    <div class="gv-events-page__sectionhead">
+      <h2 class="gv-events-page__section">Upcoming and ongoing events</h2>
+      <div class="gv-eventfilters" id="e2e-event-date-filter">
+        <button class="gv-filter-pill" aria-haspopup="listbox" aria-expanded="false" aria-label="Date">
+          Date <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path></svg>
+        </button>
+      </div>
+    </div>
+    <hr class="gv-project-events__rule" aria-hidden="true" />
+    <p class="gv-project-events__empty">No upcoming or ongoing events are currently scheduled.</p>
+  </section>
+
+  <!-- Past events: head (no filter) + grid of .gv-event-card -->
+  <section class="gv-project-events__sec">
+    <div class="gv-events-page__sectionhead">
+      <h2 class="gv-events-page__section">Past events</h2>
+    </div>
+    <hr class="gv-project-events__rule" aria-hidden="true" />
+    <div class="gv-events__grid">
+      <article class="gv-event-card"><!-- …reused unchanged… --></article>
+    </div>
+  </section>
+</div>
+```
+
+---
+
 ## City theming (`govocal-themes.js`)
 
 The product themes **primary, secondary, text colours + a custom font** per tenant

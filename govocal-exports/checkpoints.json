@@ -1390,6 +1390,90 @@
       "uses": [
         ".gv-voteresult__rank"
       ]
+    },
+    {
+      "id": "fo-voting/events-section",
+      "built": "components/voting/index.html",
+      "against": "fo-voting",
+      "map": {
+        "#e2e-events-section-project-page": ".gv-project-events"
+      },
+      "props": [
+        "display",
+        "gap",
+        "max-width",
+        "padding",
+        "background-color",
+        "border-radius",
+        "box-shadow"
+      ],
+      "uses": [
+        ".gv-project-events"
+      ]
+    },
+    {
+      "id": "fo-voting/events-section-title",
+      "built": "components/voting/index.html",
+      "against": "fo-voting",
+      "map": {
+        "#e2e-events-section-project-page h2.sc-hAtEyd": ".gv-project-events .gv-events-page__section"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-events-page__section"
+      ]
+    },
+    {
+      "id": "fo-voting/events-date-filter",
+      "built": "components/voting/index.html",
+      "against": "fo-voting",
+      "map": {
+        "#e2e-event-date-filter .button.primary": ".gv-filter-pill"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "padding",
+        "font-size"
+      ],
+      "uses": [
+        ".gv-filter-pill"
+      ]
+    },
+    {
+      "id": "fo-voting/events-card-title",
+      "built": "components/voting/index.html",
+      "against": "fo-voting",
+      "map": {
+        "#e2e-events-section-project-page .e2e-event-card h3": ".gv-event-card__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-event-card"
+      ]
+    },
+    {
+      "id": "fo-voting/events-empty",
+      "built": "components/voting/index.html",
+      "against": "fo-voting",
+      "map": {
+        ".sc-crPCXo.cjdBYi": ".gv-project-events__empty"
+      },
+      "props": [
+        "font-size",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-project-events"
+      ]
     }
   ]
 }

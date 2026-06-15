@@ -770,6 +770,26 @@
 .gv-filter-pill svg, .gv-filter-pill .gv-icon { width: 18px; height: 18px; color: currentColor; flex: 0 0 auto; }
 .gv-filter-pill[aria-expanded="true"] svg { transform: rotate(180deg); }
 
+/* ── Project-page embedded EVENTS section ───────────────────────────────────── */
+/* The "Upcoming and ongoing events" + "Past events" sections the project page
+   renders below the phase body, on the project's own content column.
+   Source-grounded on wietsedemo …/option-analysis-voting… (capture fo-voting):
+   the section container #e2e-events-section-project-page is a flex column with a
+   48px gap (digest/probed), max-width 1166px, transparent (sits on the page bg).
+   REUSES the events atoms wholesale — .gv-events-page__section h2 (25/700/32.5/#474747,
+   identical to the standalone /events page), .gv-events-page__sectionhead (title left,
+   Date filter right), .gv-filter-pill, .gv-events__grid + .gv-event-card. Net-new here
+   is ONLY the section scaffold/divider/plain empty-state that frame those in the
+   project context — distinct from the dashed-box .gv-events__empty. */
+.gv-project-events { display: flex; flex-direction: column; gap: 48px; max-width: 1166px; }
+/* a thin rule directly under each section head (live divider = grey-300) */
+.gv-project-events__sec { display: flex; flex-direction: column; }
+.gv-project-events__rule { border: none; border-top: 1px solid var(--gv-divider); margin: 6px 0 22px; }
+/* plain left-aligned empty line (NOT the .gv-events__empty dashed box): live text
+   #596B7A / 16px / line-height 26px (probed .sc-crPCXo), indented from the rule. */
+.gv-project-events__empty { margin: 0; padding: 14px 0 14px 48px; color: var(--gv-text-secondary);
+  font-size: var(--gv-fs-base); line-height: 26px; }
+
 /* CTA band (proposals / generic call to action) ────────────────────────────── */
 /* Live proposals CTA sits on the plain page background (no tinted band on the
    captured tenant) — the primary button carries the colour. */

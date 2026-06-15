@@ -54,6 +54,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 
 | Component | Open | Source | What it is |
 |---|---|---|---|
+| **Approval Voting** | `/components/approval-voting/` | `components/approval-voting/` | The per-method panel that renders inside .gv-phasebody for a voting phase. Two parts: a collapsible .gv-voteoptions accordion of vote options, and the .gv-tall… |
 | **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
 | **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
 | **Community Monitor** | `/components/community-monitor/` | `components/community-monitor/` | The “City at a glance” satisfaction module — an ongoing survey that surfaces as a top modal/banner on the homepage and asks how residents feel about governance… |
@@ -66,6 +67,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Phase Timeline** | `/components/phase-timeline/` | `components/phase-timeline/` | Phase timeline — GoVocal component |
 | **Project Card** | `/components/project-card/` | `components/project-card/` | The participation-project card (thumb, title, meta with status icon, CTA) and the horizontal scroll rail. The whole card is clickable via a stretched title lin… |
 | **Survey Fields** | `/components/survey-fields/` | `components/survey-fields/` | The GoVocal input-form / survey field widgets — every question type, themeable via --gv-* . One shared source: govocal-survey.css + govocal-survey.js . Rendere… |
+| **Voting** | `/components/voting/` | `components/voting/` | The Upcoming and ongoing events + Past events sections a project page renders below the phase body (on the project's own content column). Source-grounded on wi… |
 
 ## Pages (screens) — `pages/<name>/`
 
@@ -92,7 +94,6 @@ as a starting point for a prototype.
 | **Events** | `/pages/events/` | `pages/events/` | Events — GoVocal (reference) |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Homepage — GoVocal (reference) |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
-| **Perspectives Board** | `/pages/perspectives-board/` | `pages/perspectives-board/` | Perspectives — idea-mapping board + idea detail (reference) |
 | **Perspectives Entry** | `/pages/perspectives-entry/` | `pages/perspectives-entry/` | Perspectives — in-timeline phase entry (reference) |
 | **Perspectives Feed** | `/pages/perspectives-feed/` | `pages/perspectives-feed/` | Perspectives — Issue Mapping (reference) |
 | **Project Common Ground** | `/pages/project-common-ground/` | `pages/project-common-ground/` | Project page — Common Ground / Polis (reference) |
