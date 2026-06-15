@@ -27,22 +27,37 @@
     .db-seg button:first-child { border-left: 0; }
     .db-seg button.is-active { background: var(--gv-bo-primary); color: #fff; }
 
-    .db-sectionhead { margin: 28px 0 12px; font-size: 21px; font-weight: 700; color: var(--gv-bo-primary); }
-    .db-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .db-sectionhead { margin: 28px 0 12px; font-size: 25px; font-weight: 700; color: var(--gv-bo-primary); }
+    .db-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; align-items: start; }
     .db-span-4 { grid-column: span 4; } .db-span-6 { grid-column: span 6; }
     .db-span-7 { grid-column: span 7; } .db-span-5 { grid-column: span 5; } .db-span-12 { grid-column: span 12; }
     @media (max-width: 1100px) { .db-span-4, .db-span-5, .db-span-6, .db-span-7 { grid-column: span 12; } }
+    /* Cards in the dashboard grid fill their column (canonical caps width at 1000px). */
+    .db-grid .gv-bo-chartcard { max-width: none; width: 100%; margin-top: 0; box-sizing: border-box; }
 
     /* Chart-card header: title left + download (and optional dropdown) right. */
-    .db-cardhead { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-    .db-cardhead h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--gv-bo-primary); }
+    .db-cardhead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .db-cardhead h3 { margin: 0; font-size: 25px; font-weight: 700; color: var(--gv-bo-primary); line-height: 1.2; }
+    .db-cardhead h3 .db-delta { font-size: 16px; font-weight: 700; color: var(--gv-green-500); }
     .db-cardhead__tools { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--gv-cool-grey-500); }
     .db-cardhead__tools .gv-icon { width: 16px; height: 16px; }
-    .db-bignum { font-size: 14px; color: var(--gv-text-secondary); margin: 2px 0 4px; }
-    .db-bignum b { font-size: 15px; color: var(--gv-bo-primary); }
+    /* Big-number block above a line chart: label / number / sublabel stacked. */
+    .db-bignum { font-size: 14px; color: var(--gv-text-secondary); margin: 0 0 8px; }
+    .db-bignum .db-bignum__lbl { font-size: 14px; color: var(--gv-bo-primary); }
+    .db-bignum .db-bignum__big { font-size: 25px; font-weight: 700; color: var(--gv-text); display: block; line-height: 1.1; margin: 2px 0; }
+    .db-bignum .db-bignum__sub { font-size: 14px; color: var(--gv-text-secondary); }
+    .db-bignum .db-bignum__sub b { color: var(--gv-text-secondary); font-weight: 700; }
     .db-statline { display: flex; gap: 36px; flex-wrap: wrap; margin: 6px 0 10px; }
-    .db-stat__num { font-size: 22px; font-weight: 700; color: var(--gv-bo-primary); }
-    .db-stat__lbl { font-size: 12px; color: var(--gv-text-secondary); }
+    .db-stat__num { font-size: 21px; font-weight: 400; color: var(--gv-text); line-height: 1.2; }
+    .db-stat__lbl { font-size: 14px; color: var(--gv-text-secondary); }
+    .db-stat__lbl.db-stat__top { color: var(--gv-bo-primary); }
+    .db-stat__lbl b { color: var(--gv-text-secondary); font-weight: 700; }
+    /* Card split: stat/number block on the left, chart on the right. */
+    .db-split { display: grid; grid-template-columns: minmax(150px, 320px) 1fr; gap: 24px; align-items: start; }
+    .db-statgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; }
+    .db-bigblock { padding-top: 4px; }
+    .db-split__chart { min-width: 0; }
+    @media (max-width: 1100px) { .db-split { grid-template-columns: 1fr; } }
 
     /* CSS horizontal bar chart. */
     .ch-h { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
@@ -62,12 +77,27 @@
     .ch-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; color: var(--gv-text-secondary); justify-content: center; }
     .ch-legend span { display: inline-flex; align-items: center; gap: 6px; }
     .ch-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-    .db-line { width: 100%; height: 120px; display: block; }
+    .db-line { width: 100%; height: 130px; display: block; }
+    /* Line-chart frame: chart area + month axis along the bottom. */
+    .ch-line { margin-top: 6px; }
+    .ch-axis { display: flex; justify-content: space-between; margin-top: 4px; padding: 0 2px; }
+    .ch-axis span { font-size: 11px; color: var(--gv-text-secondary); }
     .db-donutwrap { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
     .db-donut__center { text-align: center; }
     .db-donut__pct { font-size: 22px; font-weight: 700; color: var(--gv-bo-primary); }
-    .db-pie { display: flex; align-items: center; gap: 20px; }
-    .db-empty-illus { width: 280px; height: 150px; opacity: .25; }
+    .db-pie { display: flex; align-items: center; gap: 24px; padding: 8px 0; }
+    /* Pie SVG fixed size (canonical forces chartcard svg to 100% width — override). */
+    .db-pie .db-pie__svg { width: 150px !important; height: 150px; flex: none; }
+    .db-empty-illus { width: 300px; height: auto; opacity: .55; margin-top: 6px; }
+    /* Participation feed table extras. */
+    .db-feed__date .db-feed__time { display: block; font-size: 13px; }
+    .db-feed__sub { display: block; font-size: 12px; color: var(--gv-text-secondary); margin-top: 2px; }
+    .db-feed__more { font-size: 13px; white-space: nowrap; }
+    /* Management feed table extras. */
+    .db-mgmt__date .db-mgmt__time { display: block; font-size: 13px; }
+    .db-mgmt__sub { display: block; margin-top: 2px; }
+    .db-mgmt__details { display: block; margin-top: 2px; }
+    .db-mgmt__details .gv-icon { width: 12px; height: 12px; vertical-align: middle; }
   </style>
 </head>
 <body class="gv-bo">
@@ -95,19 +125,19 @@
         </div>
 
         <div class="db-grid">
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="9,8,7,6,5,4,4,3,3,2,1,2" data-title="Registrations" data-num="<b>9</b> Total registrations · Last 30 days 0" data-series="New registrations"></div>
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="2,1,3,2,5,2,6,3,8,5,12,20" data-title="Participants" data-num="<b>20</b> Total participants · Last 30 days 0" data-series="Participants"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,0,1,2,3,4,5,6,8,9" data-title="Registrations" data-lbl="Total registrations" data-big="9" data-sub="Last 30 days <b>0</b>" data-series="New registrations"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,1,0,2,1,3,2,5,8,14,20" data-title="Participants" data-lbl="Total participants" data-big="20" data-sub="Last 30 days <b>0</b>" data-series="Participants"></div>
         </div>
 
         <h2 class="db-sectionhead">Projects &amp; Participation</h2>
         <div class="db-grid">
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,1,2,4,40,180,160,300,250,340,347" data-title="Inputs 347" data-num="<b>&gt;347</b>" data-series="Total · This month"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,1,2,4,8,40,180,300,340,347" data-title='Inputs 347 <span class="db-delta">(+347)</span>' data-series="Total · This month"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="barsH" data-title="Participation per project"
                data-bars='[["First and last name…",4],["Mapping: Building Protected Bike Lanes",4],["Participatory Budget - District 1",3],["Participatory Budget - District 3",2],["Let&#39;s Reimagine Dorothea Dix Park",1]]' data-dropdown="Inputs"></div>
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,2,741,40,20,10,8,6,4,2" data-title="Comments 741" data-num="<b>&gt;741</b>" data-series="Total · This month"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,0,741,0,0,0,0,0,0,0" data-title='Comments 741 <span class="db-delta">(+741)</span>' data-series="Total · This month"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="barsH" data-title="Participation per tag"
                data-bars='[["Public spaces and buildings",7],["Health and welfare",6],["Sustainable development",5],["Culture, sports and events",5],["Mobility",4],["Public services",3],["Community development",3],["Education and youth",2],["Social inclusion",1]]' data-dropdown="Inputs"></div>
-          <div class="gv-bo-chartcard db-span-12" data-chart="line" data-points="0,2683,200,120,90,60,40,30,20,15,10,8" data-title="Reactions 2683" data-num="<b>&gt;2683</b>" data-series="Total · Likes · Dislikes"></div>
+          <div class="gv-bo-chartcard db-span-12" data-chart="line" data-points="0,2683,0,0,0,0,0,0,0,0,0,0" data-title='Reactions 2683 <span class="db-delta">(+2683)</span>' data-series="Total · Likes · Dislikes"></div>
         </div>
 
         <h2 class="db-sectionhead">Management</h2>
@@ -181,22 +211,29 @@
         <div class="db-grid">
           <div class="gv-bo-chartcard db-span-12">
             <div class="db-cardhead"><h3>Visitors</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
-            <div class="db-statline">
-              <div><div class="db-stat__num">30</div><div class="db-stat__lbl">Visitors · Last 30 days: 8</div></div>
-              <div><div class="db-stat__num">167</div><div class="db-stat__lbl">Visits · Last 30 days: 30</div></div>
-              <div><div class="db-stat__num">00:01:05</div><div class="db-stat__lbl">Visit duration · Last 30 days: 00:01:09</div></div>
-              <div><div class="db-stat__num">4.52</div><div class="db-stat__lbl">Pageviews per visit · Last 30 days: 4.33</div></div>
+            <div class="db-split">
+              <div class="db-statgrid">
+                <div><div class="db-stat__lbl db-stat__top">Visitors</div><div class="db-stat__num">30</div><div class="db-stat__lbl">Last 30 days: <b>8</b></div></div>
+                <div><div class="db-stat__lbl db-stat__top">Visits</div><div class="db-stat__num">167</div><div class="db-stat__lbl">Last 30 days: <b>30</b></div></div>
+                <div><div class="db-stat__lbl db-stat__top">Visit duration</div><div class="db-stat__num">00:01:05</div><div class="db-stat__lbl">Last 30 days: <b>00:01:09</b></div></div>
+                <div><div class="db-stat__lbl db-stat__top">Pageviews per visit</div><div class="db-stat__num">4.52</div><div class="db-stat__lbl">Last 30 days: <b>4.33</b></div></div>
+              </div>
+              <div class="db-split__chart">
+                <div class="ch-line"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+                  <line x1="0" y1="12" x2="600" y2="12" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="37" x2="600" y2="37" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="62" x2="600" y2="62" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="87" x2="600" y2="87" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="112" x2="600" y2="112" stroke="var(--gv-grey-200)" stroke-width="0.5"/>
+                  <polyline points="0,110 50,109 100,107 150,100 200,80 250,40 280,18 320,40 370,80 430,105 490,109 540,110 600,111" fill="none" stroke="var(--gv-blue-500)" stroke-width="2"/>
+                  <polyline points="0,113 50,112 100,111 150,107 200,95 250,70 280,55 320,72 370,98 430,110 490,113 540,114 600,114" fill="none" stroke="var(--gv-red-500)" stroke-width="1.5"/>
+                </svg>
+                <div class="ch-axis"><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span></div>
+                <div class="ch-legend" style="margin-top:8px"><span><i style="background:var(--gv-blue-500)"></i>Visitors</span><span><i style="background:var(--gv-red-500)"></i>Visits</span></div>
+                </div>
+              </div>
             </div>
-            <svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-              <polyline points="0,110 60,108 120,105 180,90 240,60 300,20 360,40 420,80 480,100 540,108 600,110" fill="none" stroke="var(--gv-blue-500)" stroke-width="2"/>
-              <polyline points="0,116 60,114 120,112 180,108 240,100 300,70 360,90 420,110 480,116 540,118 600,118" fill="none" stroke="var(--gv-red-500)" stroke-width="1.5"/>
-            </svg>
-            <div class="ch-legend"><span><i style="background:var(--gv-blue-500)"></i>Visitors</span><span><i style="background:var(--gv-red-500)"></i>Visits</span></div>
           </div>
           <div class="gv-bo-chartcard db-span-12" data-chart="pie" data-title="Traffic sources"
                data-pie='[["Direct entry (100%)",100,"var(--gv-blue-500)"]]'></div>
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,0,0,0,0,0,0,0,0,0" data-title="Registrations" data-num="<b>0</b> Total registrations · Last 30 days 0 · rate 0%" data-series="New registrations"></div>
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,1,1,2,3,4,5,6,7,9,10,11" data-title="Participants" data-num="<b>11</b> Total participants · rate 37%" data-series="Participants"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="0,0,0,0,0,0,0,0,0,0,0,0" data-title="Registrations" data-lbl="Total registrations" data-big="0" data-sub="Last 30 days <b>0</b><br>Registration rate <b>0%</b>" data-series="New registrations"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="0,1,1,2,3,4,5,6,7,9,10,11" data-title="Participants" data-lbl="Total participants" data-big="11" data-sub="Last 30 days <b>0</b><br>Participation rate <b>37%</b>" data-series="Participants"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="pie" data-title="Language"
                data-pie='[["EN (98%)",98,"var(--gv-blue-500)"],["ES-ES (2%)",2,"var(--gv-teal-400)"]]'></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="pie" data-title="Device Types"
@@ -214,11 +251,18 @@
             <h3 class="gv-bo-empty__title">Please provide a base dataset.</h3>
             <p class="gv-bo-empty__text">This base dataset is required to calculate the representativeness of platform users compared to the total population.</p>
             <button class="gv-btn admin-dark">Submit base data</button>
-            <svg class="db-empty-illus" viewBox="0 0 280 150" aria-hidden="true">
-              <g fill="var(--gv-cool-grey-400)">
-                <rect x="20" y="80" width="24" height="60"/><rect x="60" y="50" width="24" height="90"/><rect x="100" y="30" width="24" height="110"/>
-                <rect x="140" y="60" width="24" height="80"/><rect x="180" y="45" width="24" height="95"/><rect x="220" y="90" width="24" height="50"/>
+            <svg class="db-empty-illus" viewBox="0 0 280 160" aria-hidden="true">
+              <rect x="2" y="2" width="276" height="156" rx="6" fill="#fff" stroke="var(--gv-grey-200)"/>
+              <rect x="16" y="14" width="70" height="6" rx="3" fill="var(--gv-grey-300)"/>
+              <g fill="var(--gv-grey-300)">
+                <rect x="30" y="86" width="10" height="44"/><rect x="70" y="70" width="10" height="60"/><rect x="110" y="44" width="10" height="86"/>
+                <rect x="150" y="78" width="10" height="52"/><rect x="190" y="60" width="10" height="70"/><rect x="230" y="96" width="10" height="34"/>
               </g>
+              <g fill="var(--gv-cool-grey-400)">
+                <rect x="42" y="74" width="10" height="56"/><rect x="82" y="58" width="10" height="72"/><rect x="122" y="36" width="10" height="94"/>
+                <rect x="162" y="66" width="10" height="64"/><rect x="202" y="50" width="10" height="80"/><rect x="242" y="84" width="10" height="46"/>
+              </g>
+              <line x1="16" y1="130" x2="264" y2="130" stroke="var(--gv-grey-300)"/>
             </svg>
           </div>
         </div>
@@ -270,12 +314,17 @@
       const dd = dropdown ? `<select class="gv-bo-select" style="max-width:110px;height:30px;padding:2px 8px;font-size:13px"><option>${dropdown}</option></select>` : "";
       return `<div class="db-cardhead"><h3>${title}</h3><span class="db-cardhead__tools">${dd}<span class="gv-icon" data-gv-icon="download"></span></span></div>`;
     }
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     function lineSVG(points) {
       const vals = points.split(",").map(Number);
       const max = Math.max(...vals, 1), n = vals.length;
       const pts = vals.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / max * 100).toFixed(1)}`).join(" ");
-      return `<svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-        <polyline points="${pts}" fill="none" stroke="var(--gv-blue-500)" stroke-width="2"/></svg>`;
+      const grid = [0.25, 0.5, 0.75, 1].map(g =>
+        `<line x1="0" y1="${(112 - g * 100).toFixed(1)}" x2="600" y2="${(112 - g * 100).toFixed(1)}" stroke="var(--gv-grey-200)" stroke-width="0.5"/>`).join("");
+      const axis = MONTHS.map(m => `<span>${m}</span>`).join("");
+      return `<div class="ch-line"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+        ${grid}<polyline points="${pts}" fill="none" stroke="var(--gv-blue-500)" stroke-width="2"/></svg>
+        <div class="ch-axis">${axis}</div></div>`;
     }
     function barsH(json) {
       const items = JSON.parse(json);
@@ -292,20 +341,29 @@
     }
     function pieSVG(json) {
       const segs = JSON.parse(json);
+      // Solid pie: r=10.5 + stroke-width=21 fills from centre to edge (no donut hole).
       let off = 25, circles = "";
       segs.forEach(([, pct, color]) => {
-        circles += `<circle cx="21" cy="21" r="15.9" fill="none" stroke="${color}" stroke-width="9" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="${off}"></circle>`;
+        circles += `<circle cx="21" cy="21" r="10.5" fill="none" stroke="${color}" stroke-width="21" stroke-dasharray="${(pct * 0.66).toFixed(2)} ${(66 - pct * 0.66).toFixed(2)}" stroke-dashoffset="${(off * 0.66).toFixed(2)}"></circle>`;
         off = (off - pct + 100) % 100;
       });
       const legend = segs.map(([l, , c]) => `<span><i style="background:${c}"></i>${l}</span>`).join("");
-      return `<div class="db-pie"><svg width="130" height="130" viewBox="0 0 42 42" aria-hidden="true">${circles}</svg>
+      return `<div class="db-pie"><svg class="db-pie__svg" width="150" height="150" viewBox="0 0 42 42" aria-hidden="true">${circles}</svg>
         <div class="ch-legend" style="justify-content:flex-start;flex-direction:column;align-items:flex-start">${legend}</div></div>`;
     }
     document.querySelectorAll(".gv-bo-chartcard[data-chart]").forEach(card => {
       try {
         const t = card.dataset.chart, title = card.dataset.title;
         let body = "";
-        if (t === "line") body = `<div class="db-bignum">${card.dataset.num || ""}</div>${lineSVG(card.dataset.points)}<div class="ch-legend">${(card.dataset.series || "").split(" · ").map(s => `<span>${s}</span>`).join("")}</div>`;
+        if (t === "line") {
+          const big = card.dataset.big
+            ? `<div class="db-bignum"><span class="db-bignum__lbl">${card.dataset.lbl || ""}</span><span class="db-bignum__big">${card.dataset.big}</span><span class="db-bignum__sub">${card.dataset.sub || ""}</span></div>`
+            : (card.dataset.num ? `<div class="db-bignum">${card.dataset.num}</div>` : "");
+          const chart = `${lineSVG(card.dataset.points)}<div class="ch-legend">${(card.dataset.series || "").split(" · ").map(s => `<span>${s}</span>`).join("")}</div>`;
+          body = card.dataset.split !== undefined
+            ? `<div class="db-split"><div class="db-bigblock">${big}</div><div class="db-split__chart">${chart}</div></div>`
+            : `${big}${chart}`;
+        }
         else if (t === "barsH") body = barsH(card.dataset.bars);
         else if (t === "barsV") body = barsV(card.dataset.bars);
         else if (t === "pie") body = pieSVG(card.dataset.pie);
@@ -315,36 +373,41 @@
 
     // ── Participation feed rows ─────────────────────────────────────────────
     const FEED = [
-      ["08/27/2024 9:34 AM", "Post", "Let's Reimagine Dorothea Dix Park", "This is my random idea!"],
-      ["08/26/2024 4:12 PM", "Post", "Let's Reimagine Dorothea Dix Park", "More trees along the riverside path would help everyone."],
-      ["08/25/2024 1:02 PM", "Comment", "Public Healthcare Options Survey", "Trying to gather feedback from residents and citizens to improve our public healthcare service."],
-      ["08/24/2024 6:48 PM", "Post", "Mapping: Building Protected Bike Lanes", "Traffic in the city is a real problem."],
-      ["08/23/2024 9:15 AM", "Comment", "Mapping: improve bicycle infrastructure", "Bikes get stolen in the city all the time."],
-      ["08/22/2024 5:51 PM", "Post", "Forest Gate Community Assemblies", "Build a green space to help with the air quality."],
-      ["08/21/2024 11:30 AM", "Comment", "2020-2025 budget", "Make crosswalks more visible."],
+      ["08/27/2024", "9:34 AM", "Post", "Let's Reimagine Dorothea Dix Park", "This is my random idea!", false],
+      ["08/27/2024", "8:02 AM", "Post", "Let's Reimagine Dorothea Dix Park", "More trees along the riverside path would help everyone, especially on hot days when the shade really matters.", true],
+      ["08/26/2024", "4:12 PM", "Comment", "Public Healthcare Options Survey", "Trying to gather feedback from residents and citizens to improve our public healthcare service across the district.", true],
+      ["08/25/2024", "1:02 PM", "Post", "Mapping: Building Protected Bike Lanes", "Traffic in the city is a real problem.", false],
+      ["08/24/2024", "6:48 PM", "Comment", "Mapping: improve bicycle infrastructure", "Bikes get stolen in the city all the time.", false],
+      ["08/23/2024", "9:15 AM", "Post", "Forest Gate Community Assemblies", "Build a green space to help with the air quality.", false],
+      ["08/22/2024", "5:51 PM", "Comment", "2020-2025 budget", "Make crosswalks more visible.", false],
+      ["08/21/2024", "11:30 AM", "Post", "Participatory Budget - District 1", "We need more recycling points around the neighbourhood centre.", false],
+      ["08/20/2024", "3:24 PM", "Comment", "Participatory Budget - District 3", "Test test test test test", false],
+      ["08/19/2024", "10:08 AM", "Post", "Let's Reimagine Dorothea Dix Park", "A playground for younger kids would be a great addition near the main entrance.", false],
+      ["08/18/2024", "7:41 PM", "Comment", "Mapping: improve bicycle infrastructure", "Add lighting along the path for safety at night.", false],
+      ["08/17/2024", "2:19 PM", "Post", "Forest Gate Community Assemblies", "Community garden idea — residents could grow vegetables together.", false],
     ];
-    document.getElementById("feed").innerHTML = FEED.map(([date, type, proj, content]) => `
+    document.getElementById("feed").innerHTML = FEED.map(([date, time, type, proj, content, more]) => `
       <tr>
         <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
-        <td style="white-space:nowrap;color:var(--gv-text-secondary)">${date}</td>
+        <td class="db-feed__date" style="white-space:nowrap;color:var(--gv-text-secondary)">${date}<span class="db-feed__time">${time}</span></td>
         <td>${type}</td>
-        <td><a class="gv-bo-table__title" href="#">${proj}</a></td>
-        <td>${content}</td>
+        <td><a class="gv-bo-table__title" href="#">${proj}</a><span class="db-feed__sub">Posted in: ${proj}</span></td>
+        <td>${content}${more ? ` <a class="gv-bo-link db-feed__more" href="#">Read more</a>` : ""}</td>
         <td class="gv-bo-table__opts"><span data-gv-icon="eye"></span></td>
       </tr>`).join("");
 
     // ── Management feed rows ────────────────────────────────────────────────
     const MGMT = [
-      ["5/22/2026 9:23 PM", "Go Vocal Admin", "Polis process", "Phase in project Test Polis", "Created", false],
-      ["5/22/2026 9:23 PM", "Go Vocal Admin", "Test Polis", "Project", "Modified", true],
-      ["5/22/2026 9:23 PM", "Go Vocal Admin", "Test Polis", "Project", "Created", false],
+      ["5/22/2026", "9:23 PM", "Go Vocal Admin", "Polis process", 'Phase in project <a class="gv-bo-table__title" href="#">Test Polis</a>', "Created", false],
+      ["5/22/2026", "9:23 PM", "Go Vocal Admin", "Test Polis", "Project", "Modified", true],
+      ["5/22/2026", "9:23 PM", "Go Vocal Admin", "Test Polis", "Project", "Created", false],
     ];
-    document.getElementById("mgmt").innerHTML = MGMT.map(([date, user, item, sub, action, details]) => `
+    document.getElementById("mgmt").innerHTML = MGMT.map(([date, time, user, item, sub, action, details]) => `
       <tr>
-        <td style="white-space:nowrap;color:var(--gv-bo-link)">${date}</td>
+        <td class="db-mgmt__date" style="white-space:nowrap;color:var(--gv-bo-link)">${date}<span class="db-mgmt__time">${time}</span></td>
         <td><span class="gv-bo-table__person"><span class="gv-bo-table__avatar">GV</span><span class="gv-bo-table__name">${user}</span></span></td>
-        <td><a class="gv-bo-table__title" href="#">${item}</a><span class="gv-bo-table__sub">${sub}</span></td>
-        <td>${action}${details ? ` <span class="gv-bo-link" style="font-weight:400">View details <span class="gv-icon" data-gv-icon="chevron-down"></span></span>` : ""}</td>
+        <td><a class="gv-bo-table__title" href="#">${item}</a><span class="gv-bo-table__sub db-mgmt__sub">${sub}</span></td>
+        <td>${action}${details ? `<span class="gv-bo-link db-mgmt__details" style="font-weight:400">View details <span class="gv-icon" data-gv-icon="chevron-down"></span></span>` : ""}</td>
       </tr>`).join("");
 
     // ── Tab switching ───────────────────────────────────────────────────────

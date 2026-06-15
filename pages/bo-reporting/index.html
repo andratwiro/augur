@@ -15,14 +15,19 @@
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
     .rp-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
     .rp-head__actions { margin-left: auto; flex: none; }
-    .rp-tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--gv-divider); margin: 14px 0 0; }
-    .rp-tabs a { padding: 12px 0; color: var(--gv-text-secondary); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-    .rp-tabs a.is-active { color: var(--gv-bo-primary); border-color: var(--gv-bo-primary); font-weight: 600; }
-    .rp-title { font-size: 15px; font-weight: 700; }
+    /* Page header in this view is 30px/700 (digest); canonical .gv-bo-pagehead is 28px — override locally */
+    .rp-pagehead { font-size: 30px; }
+    .rp-tabs { display: flex; gap: 32px; border-bottom: 1px solid var(--gv-divider); margin: 16px 0 0; }
+    .rp-tabs a { padding: 16px 0; font-size: 16px; line-height: 24px; color: var(--gv-text-secondary); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+    .rp-tabs a.is-active { color: var(--gv-bo-primary); border-color: var(--gv-bo-primary); }
+    .rp-title { font-size: 16px; font-weight: 700; line-height: 20.8px; }
     .rp-title a { color: var(--gv-bo-primary); text-decoration: none; }
     .rp-title a:hover { text-decoration: underline; }
-    .rp-meta { color: var(--gv-text-secondary); }
+    .rp-meta { font-size: 14px; line-height: 21px; color: var(--gv-text-secondary); }
     .rp-meta .gv-icon { width: 13px; height: 13px; vertical-align: -2px; color: var(--gv-orange-500); }
+    /* Row action buttons (digest): 14px/400, padding 9px 18px, radius 3px */
+    .rp-actions .gv-bo-link { font-size: 14px; }
+    .rp-actions .gv-btn.size-s { font-size: 14px; }
   </style>
 </head>
 <body class="gv-bo">
@@ -32,7 +37,7 @@
     <div class="gv-bo-main">
       <section class="gv-bo-section">
         <div class="rp-head">
-          <h1 class="gv-bo-pagehead">Report builder</h1>
+          <h1 class="gv-bo-pagehead rp-pagehead">Report builder</h1>
           <div class="rp-head__actions"><button class="gv-btn admin-dark"><span data-gv-icon="plus"></span><span class="gv-btn__label">Create a report</span></button></div>
         </div>
 
@@ -77,10 +82,10 @@
           <div class="rp-title"><a href="#">${title}</a></div>
           <div class="gv-bo-listrow__sub rp-meta">${date} · <span class="gv-icon" data-gv-icon="pen"></span> Modified ${days} days ago</div>
         </div>
-        <div class="gv-bo-listrow__actions">
+        <div class="gv-bo-listrow__actions rp-actions">
           <button class="gv-bo-link" style="color:var(--gv-text-secondary)"><span data-gv-icon="delete"></span>Delete</button>
           <button class="gv-bo-link" style="color:var(--gv-text-secondary)"><span data-gv-icon="open-in-new"></span>Duplicate</button>
-          <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+          <button class="gv-btn secondary-outlined size-s" style="color:var(--gv-bo-link)"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
         </div>
       </div>`).join("");
     if (window.GVIcons) window.GVIcons.render(document.body);

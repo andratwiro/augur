@@ -22,6 +22,9 @@
     .ms-auto.is-active { display: block; }
     .ms-custom.is-hidden { display: none; }
     .ms-grouphead { margin: 4px 0 6px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gv-cool-grey-500); }
+    /* Manage button = real product default-size outlined button: 14px/300, 9px 18px, ~45px tall. */
+    .ms-manage { font-size: 14px; font-weight: 300; line-height: 20px; }
+    .ms-manage [data-gv-icon] svg { width: 16px; height: 16px; }
   </style>
 </head>
 <body class="gv-bo">
@@ -43,7 +46,7 @@
               <p class="gv-bo-pagelede" style="margin:0">Send out custom emails and check statistics.</p>
             </div>
             <div class="ms-head__actions">
-              <button class="gv-btn admin-dark"><span data-gv-icon="plus"></span><span class="gv-btn__label">Create email</span></button>
+              <button class="gv-btn admin-dark"><svg class="ms-plus-circle" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#fff"/><path d="M10 5.5v9M5.5 10h9" stroke="var(--gv-primary)" stroke-width="2" stroke-linecap="round"/></svg><span class="gv-btn__label">Create email</span></button>
             </div>
           </div>
 
@@ -53,21 +56,21 @@
                 <h3 class="gv-bo-listrow__title">🏡 <a href="#">New consultation: we want to hear your feedback on our social housing plan</a></h3>
                 <div class="gv-bo-listrow__sub"><span class="gv-status-label draft">Draft</span></div>
               </div>
-              <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Manage</span></button></div>
+              <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined ms-manage"><span data-gv-icon="edit"></span><span class="gv-btn__label">Manage</span></button></div>
             </div>
             <div class="gv-bo-listrow">
               <div class="gv-bo-listrow__main">
                 <h3 class="gv-bo-listrow__title"><a href="#">test</a></h3>
                 <div class="gv-bo-listrow__sub"><span class="gv-status-label draft">Draft</span></div>
               </div>
-              <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Manage</span></button></div>
+              <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined ms-manage"><span data-gv-icon="edit"></span><span class="gv-btn__label">Manage</span></button></div>
             </div>
             <div class="gv-bo-listrow">
               <div class="gv-bo-listrow__main">
                 <h3 class="gv-bo-listrow__title">📊 <a href="#">Thank you for participating: here's what we heard</a></h3>
                 <div class="gv-bo-listrow__sub"><span class="gv-status-label draft">Draft</span></div>
               </div>
-              <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Manage</span></button></div>
+              <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined ms-manage"><span data-gv-icon="edit"></span><span class="gv-btn__label">Manage</span></button></div>
             </div>
           </div>
         </div>

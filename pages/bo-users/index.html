@@ -16,14 +16,13 @@
     .us-layout { display: grid; grid-template-columns: 264px 1fr; gap: 16px; align-items: start; }
     /* Left rail: roles + groups navigation (a white card on the canvas). */
     .us-rail { background: #fff; border-radius: 3px; box-shadow: var(--gv-shadow); padding: 16px 12px; display: flex; flex-direction: column; }
-    .us-railitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px; border-radius: 3px; color: var(--gv-bo-primary); font-size: 16px; text-decoration: none; cursor: pointer; }
+    .us-railitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0 12px 12px; margin: 0 0 6px; border-radius: 3px; color: var(--gv-bo-primary); font-size: 16px; font-weight: 400; text-decoration: none; cursor: pointer; }
     .us-railitem:hover { background: var(--gv-grey-50); }
-    .us-railitem.is-active { background: rgba(4, 77, 108, 0.08); font-weight: 600; }
-    .us-railitem__count { color: var(--gv-text-secondary); font-size: 14px; }
-    .us-railitem.is-active .us-railitem__count { color: var(--gv-bo-primary); }
+    .us-railitem.is-active { background: rgba(4, 77, 108, 0.08); }
+    .us-railitem__count { color: var(--gv-bo-primary); font-size: 16px; }
     .us-groupshead { display: flex; align-items: center; justify-content: space-between; margin: 22px 0 6px; padding: 0 12px; }
     .us-groupshead h2 { margin: 0; font-size: 21px; font-weight: 600; color: var(--gv-bo-primary); }
-    .us-addgroup { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--gv-border-dark); background: #fff; color: var(--gv-bo-primary); display: grid; place-items: center; cursor: pointer; }
+    .us-addgroup { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--gv-border-dark); background: #fff; color: var(--gv-bo-primary); display: grid; place-items: center; cursor: pointer; }
     .us-projfilter { margin: 8px 12px; }
     .us-projfilter .gv-bo-select { height: 38px; padding: 6px 10px; font-size: 13px; }
     .us-invite { margin-top: 16px; }
@@ -35,9 +34,15 @@
     .us-head__actions { margin-left: auto; display: flex; gap: 10px; flex: none; }
     .us-toolbar { display: flex; align-items: center; gap: 16px; margin: 22px 0 6px; }
     .us-toolbar .us-spacer { margin-left: auto; }
-    .us-assigned { display: inline-flex; align-items: center; gap: 4px; color: var(--gv-bo-link); font-size: 13px; cursor: pointer; }
-    .us-role { color: var(--gv-bo-primary); }
-    .us-role small { display: block; }
+    .us-assigned { display: inline-flex; align-items: center; gap: 4px; color: var(--gv-text-secondary); font-size: 14px; cursor: pointer; }
+    .us-role { color: var(--gv-bo-primary); font-size: 14px; }
+    .us-role small { display: block; font-size: 14px; }
+    /* Real-capture table specifics (page-local overrides). */
+    .us-main .gv-bo-table__avatar { width: 38px; height: 38px; }
+    .us-main .gv-bo-table__name { font-weight: 400; }
+    .us-main .gv-bo-table__sub { font-size: 14px; line-height: 21px; }
+    .us-main .gv-bo-table tbody td { color: var(--gv-bo-primary); }
+    .us-last { color: var(--gv-bo-primary); }
   </style>
 </head>
 <body class="gv-bo">
@@ -136,7 +141,7 @@
         <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
         <td><span class="gv-bo-table__person"><span class="gv-bo-table__avatar">${initials}</span><span><span class="gv-bo-table__name">${name}</span><span class="gv-bo-table__sub">${email}</span></span></span></td>
         <td>${roleCell}</td>
-        <td style="color:var(--gv-text-secondary)">${last || "—"}</td>
+        <td class="us-last">${last || ""}</td>
         <td style="white-space:nowrap">${joined}</td>
         <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>`;
     }).join("");

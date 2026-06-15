@@ -14,26 +14,46 @@
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
     /* Page header row: title left, actions right. */
-    .pl-head { display: flex; align-items: flex-start; gap: 16px; margin: 0 0 12px; }
+    .pl-head { display: flex; align-items: flex-start; gap: 16px; margin: 0 0 18px; }
     .pl-head__actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    /* Real title is 30px / 700 (digest), heavier than the canonical pagehead default. */
+    .pl-title { font-size: 30px; font-weight: 700; line-height: 1.2; }
     /* Secondary view nav (Projects / Folders / Calendar / Arrange). */
-    .pl-subnav { display: flex; gap: 24px; border-bottom: 1px solid var(--gv-divider); margin: 4px 0 16px; }
-    .pl-subnav a { display: inline-flex; align-items: center; gap: 6px; padding: 10px 0; color: var(--gv-text-secondary); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .pl-subnav { display: flex; gap: 28px; border-bottom: 1px solid var(--gv-divider); margin: 4px 0 18px; }
+    .pl-subnav a { display: inline-flex; align-items: center; gap: 8px; padding: 8px 0 12px; font-size: 16px; color: var(--gv-text-secondary); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
     .pl-subnav a.is-active { color: var(--gv-bo-primary); border-color: var(--gv-bo-primary); font-weight: 600; }
-    .pl-subnav .gv-icon { width: 16px; height: 16px; }
-    /* Filter toolbar. */
+    .pl-subnav a .gv-icon { width: 18px; height: 18px; }
+    /* Filter toolbar — real controls are 48px tall, white, bordered. */
     .pl-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
-    .pl-filters .gv-bo-select { height: 40px; padding: 8px 12px; max-width: 200px; width: auto; }
+    .pl-filters .gv-bo-select { height: 48px; padding: 12px; max-width: 240px; width: auto; font-size: 16px; }
+    .pl-filters .gv-bo-dateface { height: 48px; font-size: 16px; }
     .pl-filters .pl-spacer { margin-left: auto; }
-    /* Small project thumbnail (we don't ship real project art). */
-    .pl-thumb { width: 36px; height: 28px; border-radius: 3px; flex: none; display: grid; place-items: center; color: #fff; background: var(--gv-teal-400); }
-    .pl-thumb .gv-icon { width: 16px; height: 16px; }
+    .pl-filters .gv-bo-search input { height: 48px; }
+    /* Small project thumbnail (we don't ship real project art — neutral tile). */
+    .pl-thumb { width: 36px; height: 28px; border-radius: 4px; flex: none; display: grid; place-items: center; color: #fff; background: var(--gv-teal-400); overflow: hidden; }
+    .pl-thumb .gv-icon { width: 16px; height: 16px; opacity: .9; }
     .pl-proj { display: flex; align-items: center; gap: 12px; min-width: 0; }
-    .pl-proj__name { color: var(--gv-bo-primary); text-decoration: none; }
-    .pl-proj__name:hover { text-decoration: underline; }
-    .pl-proj__sub { display: block; font-size: 12px; color: var(--gv-text-secondary); margin-top: 2px; }
-    .pl-mgr { display: inline-flex; align-items: center; gap: 8px; }
-    .pl-foot { text-align: center; padding: 18px; color: var(--gv-text-secondary); font-size: 13px; }
+    .pl-proj__name { color: #333; text-decoration: none; font-size: 14px; }
+    .pl-proj__name:hover { color: var(--gv-bo-link); text-decoration: underline; }
+    .pl-proj__sub { display: block; font-size: 12px; color: var(--gv-text-secondary); line-height: 18px; margin-top: 2px; }
+    /* Participants count is left-aligned in the real product. */
+    .pl-num { text-align: left; white-space: nowrap; }
+    .pl-num-head { display: inline-flex; align-items: center; gap: 5px; }
+    .pl-num-head .gv-icon { width: 16px; height: 16px; }
+    /* Managers: photo avatar, or grey ring placeholder + muted "Not assigned". */
+    .pl-mgr { display: inline-flex; align-items: center; gap: 10px; }
+    .pl-avatar { width: 32px; height: 32px; border-radius: 50%; flex: none; object-fit: cover; }
+    .pl-noavatar { width: 20px; height: 20px; border-radius: 50%; background: #e0e0e0; flex: none; }
+    .pl-unassigned { display: inline-flex; align-items: center; gap: 10px; color: var(--gv-text-secondary); }
+    /* Visibility: thin vertical status bar + status text + visibility sub-line. */
+    .pl-vis { display: flex; align-items: center; gap: 10px; }
+    .pl-vis__bar { width: 4px; height: 16px; border-radius: 2px; flex: none; background: var(--gv-cool-grey-500); }
+    .pl-vis.is-published .pl-vis__bar { background: #04884C; }
+    .pl-vis.is-draft .pl-vis__bar { background: #FF672F; }
+    .pl-vis__txt { line-height: 1.25; }
+    .pl-vis__status { font-size: 14px; color: #333; }
+    .pl-vis__who { display: block; font-size: 12px; color: var(--gv-text-secondary); line-height: 18px; }
+    .pl-foot { text-align: center; padding: 18px; color: var(--gv-text-secondary); font-size: 16px; }
   </style>
 </head>
 <body class="gv-bo">
@@ -44,7 +64,7 @@
       <section class="gv-bo-section">
 
         <div class="pl-head">
-          <h1 class="gv-bo-pagehead">Projects</h1>
+          <h1 class="gv-bo-pagehead pl-title">Projects</h1>
           <div class="pl-head__actions">
             <button class="gv-btn secondary-outlined"><span data-gv-icon="label"></span><span class="gv-btn__label">New folder</span></button>
             <button class="gv-btn admin-dark"><span data-gv-icon="plus"></span><span class="gv-btn__label">New project</span></button>
@@ -72,7 +92,7 @@
             <thead>
               <tr>
                 <th>Project</th>
-                <th class="gv-bo-table__num"><span class="gv-icon" data-gv-icon="group" aria-label="Participants"></span></th>
+                <th class="pl-num"><span class="pl-num-head"><span class="gv-icon" data-gv-icon="group" aria-label="Participants"></span><span class="gv-icon" data-gv-icon="info-outline" style="width:14px;height:14px;color:var(--gv-cool-grey-500)"></span></span></th>
                 <th>Phase</th>
                 <th>Managers</th>
                 <th>Visibility</th>
@@ -113,18 +133,19 @@
       ["Mapping: improve bicycle infrastructure", "", 16, "Ended", "Not assigned", "draft", "Anyone", "10/18/2023", "10/7/2024", "var(--gv-green-500)", "map"],
     ];
     const statusLabel = { published: "Published", draft: "Draft", archived: "Archived" };
+    const FACES = { "Rob Aris": "../../skills/govocal-ui/avatars/face-04.jpg", "Roberto Andrade": "../../skills/govocal-ui/avatars/face-07.jpg" };
     document.getElementById("rows").innerHTML = PROJECTS.map(p => {
       const [name, sub, parts, phase, mgr, status, vis, start, end, color, icon] = p;
       const mgrCell = mgr === "Not assigned"
-        ? `<span style="color:var(--gv-text-secondary)">Not assigned</span>`
-        : `<span class="pl-mgr"><span class="gv-bo-table__avatar">${mgr.split(" ").map(w=>w[0]).join("").slice(0,2)}</span>${mgr}</span>`;
+        ? `<span class="pl-unassigned"><span class="pl-noavatar"></span>Not assigned</span>`
+        : `<span class="pl-mgr"><img class="pl-avatar" src="${FACES[mgr] || ""}" alt="">${mgr}</span>`;
       return `<tr>
         <td><span class="pl-proj"><span class="pl-thumb" style="background:${color}"><span data-gv-icon="${icon}"></span></span>
           <span style="min-width:0"><a class="pl-proj__name" href="../bo-project-phase/">${name}</a>${sub ? `<span class="pl-proj__sub">${sub}</span>` : ""}</span></span></td>
-        <td class="gv-bo-table__num">${parts}</td>
+        <td class="pl-num">${parts}</td>
         <td>${phase}</td>
         <td>${mgrCell}</td>
-        <td><span class="gv-bo-substack"><span class="gv-bo-status is-${status}">${statusLabel[status]}</span><small>${vis}</small></span></td>
+        <td><span class="pl-vis is-${status}"><span class="pl-vis__bar"></span><span class="pl-vis__txt"><span class="pl-vis__status">${statusLabel[status]}</span><span class="pl-vis__who">${vis}</span></span></span></td>
         <td style="white-space:nowrap">${start || "—"}</td>
         <td style="white-space:nowrap">${end || "—"}</td>
         <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>`;

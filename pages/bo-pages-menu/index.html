@@ -19,7 +19,20 @@
     .pm-add-disabled { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-cool-grey-400); font-size: 14px; cursor: not-allowed; }
     .pm-cardtitle { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--gv-bo-primary); }
     .pm-card + .pm-card { margin-top: 18px; }
-    .pm-default { color: var(--gv-cool-grey-500); }
+    /* Real DEFAULT badge: filled grey pill, no border, bold uppercase (digest: #596B7A on #EBEDEF, 12px/700, 0 6px, radius 3px) */
+    .pm-default {
+      color: var(--gv-cool-grey-500);
+      background-color: #ebedef;
+      border: 0;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 20px;
+      padding: 0 6px;
+      border-radius: 3px;
+    }
+    /* Vertical 6-dot drag grip (canonical icon set only has horizontal dots) */
+    .pm-grip { display: inline-block; width: 12px; height: 16px; color: var(--gv-cool-grey-400); }
+    .pm-grip svg { display: block; }
   </style>
 </head>
 <body class="gv-bo">
@@ -69,9 +82,10 @@
     ];
     document.getElementById("navrows").innerHTML = NAV.map(([name, locked, def, del, removable]) => {
       const badge = def ? `<span class="gv-badge pm-default">Default</span>` : "";
+      const grip = `<span class="gv-bo-listrow__handle pm-grip"><svg viewBox="0 0 12 16" width="12" height="16" fill="currentColor"><circle cx="3" cy="3" r="1.4"/><circle cx="9" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="9" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="9" cy="13" r="1.4"/></svg></span>`;
       const lead = locked
         ? `<span class="gv-bo-listrow__handle" data-gv-icon="lock"></span>`
-        : `<span class="gv-bo-listrow__handle" data-gv-icon="dots-horizontal"></span>`;
+        : grip;
       let actions = actionBtn("Edit", "pen") + actionBtn("View", "eye");
       if (del) actions += actionBtn("Delete", "delete");
       if (removable) actions += actionBtn("Remove from navbar", "close");

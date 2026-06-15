@@ -13,16 +13,30 @@
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
-    .tl-list { display: flex; flex-direction: column; gap: 16px; max-width: 880px; }
-    .tl-card { display: flex; gap: 28px; background: #fff; border-radius: 3px; box-shadow: var(--gv-shadow); padding: 20px; align-items: center; }
-    .tl-card__media { flex: none; width: 260px; height: 130px; border-radius: 3px; display: grid; place-items: center; color: #fff; }
-    .tl-card__media .gv-icon { width: 48px; height: 48px; opacity: .92; }
-    .tl-card__body { min-width: 0; flex: 1 1 auto; }
-    .tl-card__title { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: var(--gv-bo-link); }
-    .tl-card__desc { margin: 0 0 14px; font-size: 14px; color: var(--gv-text-secondary); line-height: 1.5; max-width: 460px; }
-    .tl-card__actions { display: flex; align-items: center; gap: 16px; }
-    .tl-locked { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 3px; border: 0; background: var(--gv-cool-grey-300); color: var(--gv-cool-grey-600); font-size: 14px; font-family: var(--gv-font-family); cursor: not-allowed; }
-    .tl-locked .gv-icon { width: 14px; height: 14px; }
+    /* Real: H1 30px/700/#044D6C, margin 20px 0 16px */
+    .tl-head { margin: 20px 0 16px; font-size: 30px; font-weight: 700; color: var(--gv-bo-primary); line-height: 1.3; }
+    /* Real card: 800px content, padding 20px, height ~280px, white, soft shadow, margin-bottom 20px. */
+    .tl-list { display: flex; flex-direction: column; gap: 20px; max-width: 840px; }
+    .tl-card { display: flex; gap: 24px; background: #fff; border-radius: 3px; box-shadow: var(--gv-shadow); padding: 20px; align-items: stretch; }
+    /* Real media banner: 320 x 240, radius 3px, colourful illustration placeholder. */
+    .tl-card__media { flex: none; width: 320px; height: 240px; border-radius: 3px; display: grid; place-items: center; color: #fff; }
+    .tl-card__media .gv-icon { width: 64px; height: 64px; opacity: .95; }
+    .tl-card__body { min-width: 0; flex: 1 1 auto; padding-top: 4px; }
+    /* Real title: 18px/600/#044D6C, line-height 27px. */
+    .tl-card__title { margin: 0; font-size: 18px; font-weight: 600; color: var(--gv-bo-primary); line-height: 27px; }
+    /* Real desc: 16px/400/#43515D, line-height 24px, margin 16px 0, width ~408px. */
+    .tl-card__desc { margin: 16px 0; font-size: 16px; color: #43515D; line-height: 24px; max-width: 408px; }
+    .tl-card__actions { display: flex; align-items: center; gap: 8px; }
+    /* Real dark button: bg #044D6C, padding 9px 18px, radius 3px, white 16px label. */
+    .tl-btn { display: inline-flex; align-items: center; gap: 10px; padding: 9px 18px; border: 0; border-radius: 3px; background: var(--gv-bo-primary); color: #fff; font-size: 16px; line-height: 26px; font-family: var(--gv-font-family); cursor: pointer; }
+    .tl-btn:hover { filter: brightness(0.9); }
+    .tl-btn .gv-icon { width: 18px; height: 18px; }
+    /* Real "Learn more": link blue #4183C4, 16px, padding 9px 18px. */
+    .tl-link { display: inline-flex; align-items: center; padding: 9px 18px; color: var(--gv-bo-link); font-size: 16px; line-height: 26px; text-decoration: none; }
+    .tl-link:hover { text-decoration: underline; }
+    /* Real locked button: grey fill + lock icon, not-allowed. */
+    .tl-locked { display: inline-flex; align-items: center; gap: 10px; padding: 9px 18px; border-radius: 3px; border: 0; background: var(--gv-cool-grey-300); color: #fff; font-size: 16px; line-height: 26px; font-family: var(--gv-font-family); cursor: not-allowed; }
+    .tl-locked .gv-icon { width: 16px; height: 16px; }
   </style>
 </head>
 <body class="gv-bo">
@@ -31,7 +45,7 @@
 
     <div class="gv-bo-main">
       <section class="gv-bo-section">
-        <h1 class="gv-bo-pagehead" style="margin-bottom:18px">Tools</h1>
+        <h1 class="tl-head">Tools</h1>
         <div class="tl-list" id="tools"></div>
       </section>
     </div>
@@ -41,19 +55,20 @@
   <script>
     // [title, desc, mediaColor, mediaIcon, actionLabel, actionIcon, locked, secondaryLink]
     const TOOLS = [
+      // mediaColor values from styles.json digest: Esri rgb(128,207,216)=#80CFD8, Widget rgb(20,121,133)=teal-500, PowerBI darker teal #1A6E78.
       ["Online deliberation workshops", "Hold live video meetings, facilitate simultaneous group discussions and debates. Gather input, vote and reach consensus, just like you would offline.", "var(--gv-teal-500)", "comments", "Manage workshops", "arrow-right", false, "Learn more"],
-      ["Esri integration", "Connect your Esri account and import data from ArcGIS Online directly into your mapping projects.", "var(--gv-teal-300)", "map", "Enable Esri", "arrow-right", false, ""],
-      ["Widget", "You can create a widget, customize it and add it to your own website to attract people to this platform.", "var(--gv-teal-400)", "open-in-new", "Manage widget", "arrow-right", false, ""],
+      ["Esri integration", "Connect your Esri account and import data from ArcGIS Online directly into your mapping projects.", "#80CFD8", "map", "Enable Esri", "arrow-right", false, ""],
+      ["Widget", "You can create a widget, customize it and add it to your own website to attract people to this platform.", "var(--gv-teal-500)", "open-in-new", "Manage widget", "arrow-right", false, ""],
       ["Public API Access", "Manage the credentials to create custom integrations on our public API.", "#C7A9E0", "key", "Manage API Keys", "", true, ""],
       ["Webhooks", "Configure webhooks to receive real-time notifications when events occur on your platform.", "#E3D2A0", "send", "Manage webhooks", "", true, ""],
-      ["Power BI", "Use our plug & play Power BI Templates to access Go Vocal data in your Microsoft Power BI Workspace.", "var(--gv-teal-600, #0d5b65)", "trend-up", "Download templates", "", true, ""],
+      ["Power BI", "Use our plug & play Power BI Templates to access Go Vocal data in your Microsoft Power BI Workspace.", "#1A6E78", "trend-up", "Download templates", "", true, ""],
     ];
     document.getElementById("tools").innerHTML = TOOLS.map(t => {
       const [title, desc, color, micon, alabel, aicon, locked, secondary] = t;
       const action = locked
         ? `<button class="tl-locked">${alabel} <span data-gv-icon="lock"></span></button>`
-        : `<button class="gv-btn admin-dark"><span class="gv-btn__label">${alabel}</span>${aicon ? `<span data-gv-icon="${aicon}"></span>` : ""}</button>`;
-      const sec = secondary ? `<a class="gv-bo-link" href="#">${secondary}</a>` : "";
+        : `<button class="tl-btn">${alabel}${aicon ? `<span data-gv-icon="${aicon}"></span>` : ""}</button>`;
+      const sec = secondary ? `<a class="tl-link" href="#">${secondary}</a>` : "";
       return `<div class="tl-card">
         <div class="tl-card__media" style="background:${color}"><span data-gv-icon="${micon}"></span></div>
         <div class="tl-card__body">

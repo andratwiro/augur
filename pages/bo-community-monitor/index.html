@@ -13,34 +13,41 @@
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
-    .cm-head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
-    .cm-head__ctrls { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-    .cm-quarter { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--gv-border-dark); border-radius: 3px; overflow: hidden; }
-    .cm-quarter button { border: 0; background: #fff; color: var(--gv-bo-primary); width: 34px; height: 38px; cursor: pointer; }
-    .cm-quarter span { padding: 0 12px; font-size: 14px; color: var(--gv-bo-primary); }
+    .cm-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+    .cm-head__title { font-size: 30px; font-weight: 700; line-height: 1.3; }
+    .cm-head__ctrls { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    /* Quarter selector: three separate bordered controls. */
+    .cm-qbtn { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 30px; padding: 0; border: 1px solid var(--gv-bo-border); border-radius: 3px; background: #fff; color: var(--gv-bo-primary); cursor: pointer; }
+    .cm-qbtn svg, .cm-qbtn .gv-icon { width: 16px; height: 16px; }
+    .cm-qlabel { display: inline-flex; align-items: center; height: 31px; padding: 0 9px; border: 1px solid #84939E; border-radius: 3px; background: #fff; font-size: 14px; color: var(--gv-grey-800); white-space: nowrap; }
+    .cm-view { display: inline-flex; align-items: center; gap: 6px; height: 35px; padding: 0 14px; border: 0; border-radius: 3px; background: var(--gv-bo-primary); color: #fff; font-size: 16px; font-family: inherit; cursor: pointer; }
+    .cm-view svg, .cm-view .gv-icon { width: 16px; height: 16px; }
     /* Health score card. */
-    .cm-health { max-width: 520px; margin-bottom: 26px; }
+    .cm-health { width: 575px; max-width: 100%; box-sizing: border-box; background: #fff; border: 1px solid var(--gv-grey-400); border-radius: 3px; padding: 20px 24px; margin-bottom: 24px; }
     .cm-health__top { display: flex; gap: 24px; align-items: flex-start; }
     .cm-health__score { flex: none; }
-    .cm-health__label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--gv-text-secondary); }
+    .cm-health__label { display: inline-flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 700; color: var(--gv-grey-800); }
     .cm-health__label::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--gv-orange-500); }
-    .cm-health__num { font-size: 40px; font-weight: 700; color: var(--gv-bo-primary); line-height: 1.1; margin: 6px 0; }
-    .cm-health__track { width: 150px; height: 6px; border-radius: 3px; background: var(--gv-grey-200); }
+    .cm-health__num { font-size: 34px; font-weight: 700; color: var(--gv-grey-800); line-height: 1.1; margin: 8px 0 10px; }
+    .cm-health__num small { font-size: 25px; font-weight: 600; }
+    .cm-health__track { width: 160px; height: 8px; border-radius: 3px; background: var(--gv-grey-300); }
     .cm-health__chart { flex: 1 1 auto; min-width: 0; }
-    .cm-health__chart svg { width: 100%; height: 90px; }
-    .cm-legend { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 16px; font-size: 13px; }
-    .cm-legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-bo-primary); }
+    .cm-health__chart svg { width: 100%; height: 88px; }
+    .cm-legend { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 18px; font-size: 14px; }
+    .cm-legend span { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--gv-grey-800); }
     .cm-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    .cm-legend b { font-weight: 600; color: #767676; }
     /* Category groups + question cards. */
-    .cm-cat { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; font-size: 16px; font-weight: 700; color: var(--gv-bo-primary); }
+    .cm-cat { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; font-size: 18px; font-weight: 700; color: var(--gv-grey-800); }
     .cm-cat i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-    .cm-q { display: flex; align-items: center; gap: 20px; background: #fff; border-radius: 3px; box-shadow: var(--gv-shadow); padding: 18px 24px; margin-bottom: 10px; }
+    .cm-q { display: flex; align-items: center; gap: 20px; background: #fff; border: 1px solid var(--gv-grey-400); border-radius: 4px; padding: 16px; margin-bottom: 8px; }
     .cm-q__main { min-width: 0; flex: 1 1 auto; }
-    .cm-q__title { margin: 0; font-size: 16px; font-weight: 700; color: var(--gv-bo-primary); }
-    .cm-q__sub { margin: 4px 0 0; font-size: 13px; color: var(--gv-text-secondary); }
-    .cm-q__score { flex: none; display: flex; align-items: center; gap: 14px; }
-    .cm-q__num { font-size: 15px; color: var(--gv-text-secondary); white-space: nowrap; }
-    .cm-q__bar { width: 80px; height: 6px; border-radius: 3px; background: var(--gv-grey-200); }
+    .cm-q__title { margin: 0; font-size: 18px; font-weight: 700; color: var(--gv-grey-800); line-height: 1.3; }
+    .cm-q__sub { margin: 4px 0 0; font-size: 14px; color: var(--gv-text-secondary); }
+    .cm-q__score { flex: none; display: flex; align-items: center; gap: 16px; }
+    .cm-q__num { font-size: 21px; font-weight: 700; color: var(--gv-grey-800); white-space: nowrap; }
+    .cm-q__num small { font-size: 14px; font-weight: 600; color: #767676; }
+    .cm-q__bar { width: 160px; height: 8px; border-radius: 3px; background: var(--gv-grey-300); }
   </style>
 </head>
 <body class="gv-bo">
@@ -57,18 +64,20 @@
 
       <section class="gv-bo-section">
         <div class="cm-head">
-          <h1 class="gv-bo-pagehead">Community monitor</h1>
+          <h1 class="gv-bo-pagehead cm-head__title">Community monitor</h1>
           <div class="cm-head__ctrls">
-            <span class="cm-quarter"><button aria-label="Previous quarter"><span data-gv-icon="chevron-left"></span></button><span>Q2 2026</span><button aria-label="Next quarter"><span data-gv-icon="chevron-right"></span></button></span>
-            <button class="gv-btn admin-dark size-s"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button>
+            <button class="cm-qbtn" aria-label="Previous quarter"><span data-gv-icon="chevron-left"></span></button>
+            <span class="cm-qlabel">Q2 2026</span>
+            <button class="cm-qbtn" aria-label="Next quarter"><span data-gv-icon="chevron-right"></span></button>
+            <button class="cm-view"><span data-gv-icon="eye"></span>View</button>
           </div>
         </div>
 
-        <div class="gv-bo-card cm-health">
+        <div class="cm-health">
           <div class="cm-health__top">
             <div class="cm-health__score">
               <span class="cm-health__label">Health Score <span class="gv-icon" data-gv-icon="info-outline" style="width:13px;height:13px"></span></span>
-              <div class="cm-health__num">– /5</div>
+              <div class="cm-health__num">–<small> /5</small></div>
               <div class="cm-health__track"></div>
             </div>
             <div class="cm-health__chart">
@@ -76,9 +85,9 @@
             </div>
           </div>
           <div class="cm-legend">
-            <span><i style="background:var(--gv-blue-500)"></i> Quality of life <b style="font-weight:400;color:var(--gv-text-secondary)">– /5</b></span>
-            <span><i style="background:var(--gv-teal-400)"></i> Service delivery <b style="font-weight:400;color:var(--gv-text-secondary)">– /5</b></span>
-            <span><i style="background:var(--gv-orange-500)"></i> Governance and trust <b style="font-weight:400;color:var(--gv-text-secondary)">– /5</b></span>
+            <span><i style="background:var(--gv-blue-500)"></i> Quality of life <b>– /5</b></span>
+            <span><i style="background:var(--gv-teal-400)"></i> Service delivery <b>– /5</b></span>
+            <span><i style="background:var(--gv-orange-500)"></i> Governance and trust <b>– /5</b></span>
           </div>
         </div>
 
@@ -117,7 +126,7 @@
             <h3 class="cm-q__title">${++n}. ${q}</h3>
             <p class="cm-q__sub">0/0 · Sentiment linear scale · optional</p>
           </div>
-          <div class="cm-q__score"><span class="cm-q__num">– /5</span><span class="cm-q__bar"></span></div>
+          <div class="cm-q__score"><span class="cm-q__num">–<small> /5</small></span><span class="cm-q__bar"></span></div>
         </div>`).join("")}`).join("");
     if (window.GVIcons) window.GVIcons.render(document.body);
   </script>

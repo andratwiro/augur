@@ -13,19 +13,35 @@
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
-    .im-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+    .im-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
     .im-head__main { min-width: 0; }
     .im-head__actions { margin-left: auto; }
-    .im-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 16px; }
+
+    /* White content panel that holds the filter bar + rail + table (real: 40px pad, white) */
+    .im-panel { background: #fff; padding: 40px; }
+
+    .im-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 22px; }
     .im-bar .gv-bo-select { height: 40px; padding: 8px 12px; max-width: 220px; width: auto; }
-    .im-bar .im-feedback { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--gv-text-primary); }
+    .im-bar .im-feedback { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--gv-bo-primary); }
     .im-bar .im-spacer { margin-left: auto; }
-    .im-needs { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--gv-red-500); color: #fff; font-size: 11px; font-weight: 700; }
-    .im-railhead { padding: 8px 10px 4px; }
-    .im-railhead .gv-bo-select { height: 34px; padding: 4px 8px; font-size: 13px; }
-    .im-rail-scroll { max-height: 1000px; overflow-y: auto; }
-    .im-tag { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 3px; background: var(--gv-teal-75); color: var(--gv-bo-primary); font-size: 12px; }
-    .im-count { margin: 0 0 12px; font-size: 14px; font-weight: 700; color: var(--gv-bo-primary); }
+    .im-needs { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--gv-red-500); color: #fff; font-size: 12px; font-weight: 700; }
+
+    /* Borderless rail to match the real cross-project input manager */
+    .im-rail.gv-bo-filterrail { border: 0; border-radius: 0; overflow: visible; font-size: 14px; }
+    .im-rail .gv-bo-filterrail__tabs { background: transparent; border-bottom: 1px solid var(--gv-grey-300); }
+    .im-rail .gv-bo-filterrail__tab { padding: 10px 4px; margin-right: 28px; font-size: 16px; }
+    .im-rail .gv-bo-filterrail__tab.is-active { background: transparent; }
+    .im-tabinfo { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 6px; border-radius: 50%; background: var(--gv-cool-grey-500); color: #fff; font-size: 11px; font-weight: 700; font-style: normal; }
+    .im-allprojects { margin: 14px 0 0; padding: 10px 12px; border-radius: 3px; background: var(--gv-grey-100); color: var(--gv-bo-primary); font-weight: 600; }
+    .im-rail-div { height: 1px; background: var(--gv-divider); margin: 12px 0; }
+    .im-editprojects { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; color: var(--gv-bo-link); text-decoration: none; }
+    .im-editprojects .gv-icon { width: 14px; height: 14px; }
+    .im-rail-scroll { overflow: visible; }
+    .im-rail .gv-bo-filterrail__item { padding: 8px 12px; color: var(--gv-bo-primary); border-radius: 3px; line-height: 1.35; }
+
+    /* Outlined project-tag chip (real: transparent bg, 1px teal border, teal text) */
+    .im-tag { display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 3px; background: transparent; border: 1px solid var(--gv-teal-500); color: var(--gv-teal-500); font-size: 13px; }
+    .im-count { margin: 0 0 14px; font-size: 14px; font-weight: 700; color: var(--gv-bo-primary); }
   </style>
 </head>
 <body class="gv-bo">
@@ -41,13 +57,14 @@
         <div class="im-head">
           <div class="im-head__main">
             <h1 class="gv-bo-pagetitle">Input manager</h1>
-            <p class="gv-bo-pagelede" style="margin-bottom:0">Give feedback, add tags and copy and move input from one project to another.</p>
+            <p class="gv-bo-pagelede" style="margin-bottom:0">Give feedback, add tags and move input from one project to another.</p>
           </div>
           <div class="im-head__actions">
             <button class="gv-bo-link"><span data-gv-icon="download"></span>Exports</button>
           </div>
         </div>
 
+        <div class="im-panel">
         <div class="im-bar">
           <select class="gv-bo-select" aria-label="Assignee filter">
             <option>Any administrator</option>
@@ -62,21 +79,20 @@
 
         <div class="gv-bo-imgr">
           <!-- Left filter rail: Projects / Status facets -->
-          <aside class="gv-bo-filterrail">
+          <aside class="gv-bo-filterrail im-rail">
             <div class="gv-bo-filterrail__tabs">
-              <span class="gv-bo-filterrail__tab is-active">Projects</span>
+              <span class="gv-bo-filterrail__tab is-active">Projects <i class="im-tabinfo" aria-hidden="true">i</i></span>
               <span class="gv-bo-filterrail__tab">Status</span>
             </div>
-            <div class="im-railhead">
-              <div class="gv-bo-filterrail__item is-active" style="font-weight:600">All projects</div>
-              <div style="margin:8px 0 2px"><select class="gv-bo-select" aria-label="Sort projects"><option>Sort projects by</option><option>A–Z</option><option>Most recent</option></select></div>
-            </div>
+            <div class="im-allprojects">All projects</div>
+            <div class="im-rail-div"></div>
+            <a class="im-editprojects" href="#">Edit projects <span class="gv-icon" data-gv-icon="edit"></span></a>
             <div class="gv-bo-filterrail__body im-rail-scroll" id="projfacets"></div>
           </aside>
 
           <!-- Posts table -->
           <div>
-            <p class="im-count">356 posts</p>
+            <p class="im-count">355 posts</p>
             <table class="gv-bo-table is-bordered">
               <thead>
                 <tr>
@@ -99,6 +115,7 @@
             </nav>
           </div>
         </div>
+        </div><!-- /.im-panel -->
       </section>
     </div>
   </div>

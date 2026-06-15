@@ -13,23 +13,28 @@
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
-    .ih-section-title { margin: 18px 0 12px; font-size: 21px; font-weight: 700; color: var(--gv-bo-primary); }
-    .ih-country { max-width: 220px; margin-bottom: 16px; }
-    .ih-highlight { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .ih-section-title { margin: 22px 0 14px; font-size: 25px; font-weight: 700; line-height: 32.5px; color: var(--gv-bo-primary); }
+    .ih-country { margin-bottom: 16px; }
+    .ih-country .gv-bo-select { width: 226px; height: 48px; padding: 12px; font-size: 16px; }
+    .ih-highlight { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
     @media (max-width: 1000px) { .ih-highlight { grid-template-columns: 1fr; } }
     .ih-card { background: #fff; border-radius: 3px; box-shadow: var(--gv-shadow); overflow: hidden; display: flex; flex-direction: column; }
-    .ih-card__media { height: 150px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 26px; letter-spacing: .02em; position: relative; }
-    .ih-card__check { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--gv-teal-400); color: #fff; display: grid; place-items: center; }
+    .ih-card__media { height: 124px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 26px; letter-spacing: .02em; position: relative; }
+    .ih-card__check { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--gv-teal-400); color: #fff; display: grid; place-items: center; }
     .ih-card__check .gv-icon { width: 13px; height: 13px; }
     .ih-card__body { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-    .ih-card__title { margin: 0; font-size: 16px; font-weight: 700; color: var(--gv-bo-link); }
-    .ih-card__org { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gv-text-secondary); }
+    .ih-card__title { margin: 4px 0 0; font-size: 21px; font-weight: 700; line-height: 27.3px; color: var(--gv-bo-primary); }
+    .ih-card__org { display: flex; align-items: center; gap: 6px; font-size: 14px; line-height: 21px; color: var(--gv-text-secondary); }
     .ih-card__org .ih-count { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
-    .ih-quote { background: var(--gv-teal-75); border-radius: 3px; padding: 12px; font-size: 13px; font-style: italic; color: var(--gv-bo-primary); line-height: 1.5; }
-    .ih-allfilters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0 16px; }
-    .ih-allfilters .gv-bo-select { height: 40px; padding: 8px 12px; max-width: 150px; width: auto; }
+    .ih-card__org .ih-count .gv-icon { width: 16px; height: 16px; }
+    .ih-quote { background: #EDF8FA; border-radius: 3px; padding: 12px; margin: 4px 0 4px; font-size: 14px; color: var(--gv-bo-primary); line-height: 21px; }
+    /* page-local badge to match real inspiration-hub method tag (filled grey pill) */
+    .ih-badge { color: var(--gv-cool-grey-600); background: var(--gv-grey-100); border-color: var(--gv-cool-grey-600); padding: 0 10px; height: 28px; display: inline-flex; align-items: center; justify-content: center; line-height: normal; align-self: flex-start; }
+    .ih-allfilters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0 18px; }
+    .ih-allfilters .gv-bo-select { height: 48px; padding: 12px; font-size: 16px; max-width: 150px; width: auto; }
+    .ih-allfilters .gv-bo-dateface { height: 48px; }
     .ih-allfilters .ih-spacer { margin-left: auto; }
-    .ih-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .ih-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
     @media (max-width: 1000px) { .ih-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 680px) { .ih-grid { grid-template-columns: 1fr; } }
   </style>
@@ -52,17 +57,17 @@
               <h3 class="ih-card__title">Results</h3>
               <div class="ih-card__org">🇧🇪 Université Libre de Bruxelles <span class="ih-count"><span data-gv-icon="group"></span>0</span></div>
               <p class="ih-quote">Between January and April 2025, Dreamocracy designed and facilitated for ULB the largest university participatory process ever held in Belgium — a survey (2,000 responses) and a citizens' assembly of 48 randomly selected members to formulate concrete proposals for its future.</p>
-              <span class="gv-badge">Information</span>
+              <span class="gv-badge ih-badge">Information</span>
             </div>
           </article>
 
           <article class="ih-card">
             <div class="ih-card__media" style="background:var(--gv-blue-500)">BORNEM<span class="ih-card__check"><span data-gv-icon="check"></span></span></div>
             <div class="ih-card__body">
-              <h3 class="ih-card__title">Bornem is a strong house</h3>
+              <h3 class="ih-card__title" style="color:var(--gv-green-600)">Bornem is a strong house</h3>
               <div class="ih-card__org">🇧🇪 Gemeente Bornem <span class="ih-count"><span data-gv-icon="group"></span>1</span></div>
               <p class="ih-quote">Bornem has put its multi-year plan on Go Vocal, right down to individual actions. Click through to dig in, and head back to the map to see the full picture.</p>
-              <span class="gv-badge">Ideation</span>
+              <span class="gv-badge ih-badge">Ideation</span>
             </div>
           </article>
 
@@ -72,14 +77,14 @@
               <h3 class="ih-card__title">Street art seeks wall</h3>
               <div class="ih-card__org">🇧🇪 Stad Harelbeke <span class="ih-count"><span data-gv-icon="group"></span>20</span></div>
               <p class="ih-quote">Harelbeke already has some beautiful murals and now wants to explore with its residents whether they know of any suitable locations. Residents can submit proposals, after which Harelbeke will assess whether these qualify.</p>
-              <span class="gv-badge">Ideation</span>
+              <span class="gv-badge ih-badge">Ideation</span>
             </div>
           </article>
         </div>
 
         <h2 class="ih-section-title" style="margin-top:30px">All projects</h2>
         <div class="ih-allfilters">
-          <div class="gv-bo-dateface" style="height:40px"><span data-gv-icon="calendar"></span>Select date<span class="sep">–</span>Select date</div>
+          <div class="gv-bo-dateface"><span data-gv-icon="calendar"></span>Select date<span class="sep">–</span>Select date</div>
           <select class="gv-bo-select" aria-label="Country"><option>Country (1)</option></select>
           <select class="gv-bo-select" aria-label="Method"><option>Method</option></select>
           <select class="gv-bo-select" aria-label="Population"><option>Population</option></select>
@@ -111,7 +116,7 @@
         <div class="ih-card__body">
           <h3 class="ih-card__title">${title}</h3>
           <div class="ih-card__org">${flag} ${org} <span class="ih-count"><span data-gv-icon="group"></span>${count}</span></div>
-          <span class="gv-badge">${method}</span>
+          <span class="gv-badge ih-badge">${method}</span>
         </div>
       </article>`;
     }).join("");
