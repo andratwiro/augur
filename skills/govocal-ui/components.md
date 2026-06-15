@@ -1138,25 +1138,6 @@ are **new variants**, not mutations of any base.
 
 ---
 
-## Perspectives — idea-mapping BOARD + idea DETAIL (`pages/perspectives-board/`)
-
-The **same Issue-Mapping board as the feed above, opened on a selected idea** — i.e.
-the live `…/ideas-feed?initial_idea_id=…` state, source-grounded on capture
-`fo-perspectives-board`. This is the lane's **idea/proposal DETAIL surface**: the
-canvas opens in `.gv-issuecanvas.is-detail` with ONE raised, floating `.gv-sticky`
-`.is-raised` idea-detail card (author chip + title + the *full* body + row-reverse
-dislike/like reactions). **Back** drops to the masonry `.gv-issuecanvas__pile`;
-clicking any resting note re-opens it as a detail card. No new classes — it reuses the
-exact `.gv-issuefeed`/`.gv-themecard`/`.gv-issuecanvas`/`.gv-sticky` set from the feed
-(same markup as the snippet above), so a detail card is just `.gv-sticky.is-raised`
-inside `.gv-issuecanvas__view` while the pile sits `hidden`. The detail card simply
-widens (`style="width:420px"`) and carries a longer `.gv-sticky__excerpt`. Verified via
-the `fo-perspectives-board/{idea-detail-card,like-button}` checkpoints (the raised card
-re-uses the grounded `fo-perspectives-feed` sticky probe). Use this page as the starting
-point when a prototype needs the **opened idea detail** rather than the browsing pile.
-
----
-
 ## Perspectives — in-timeline phase entry — `.gv-pviewtoggle` (`pages/perspectives-entry/`)
 
 The **Perspective phase ENTRY POINT inside the project timeline** — distinct from the
@@ -1196,6 +1177,81 @@ else is reused canonical (`.gv-sticky`, `.gv-issuecanvas__pile`, `.gv-ideacard`,
 
 Active fill `#EFD015` is the live Perspective method accent (held literal, not tokenized).
 The toggle text and the rest re-skin per `?theme=` via `--gv-tenant-text` / `--gv-tenant-primary`.
+
+---
+
+## Voting method body — `.gv-voteoptions` / `.gv-tally` / `.gv-voteresult` (`components/approval-voting/`)
+
+The per-method panel that renders inside `.gv-phasebody` for a **voting** phase
+(approval / single / budget voting). Two parts: a collapsible **options accordion**
+and the **results** state (a "Final tally" panel + ranked result cards).
+Source-grounded on wietsedemo `…/approval-voting…` (capture `fo-approval-voting`),
+verified via `fo-approval-voting/{option-title,tally-card,tally-title,result-card,rank-badge}`.
+
+**Part 1 — Options accordion.** Each option is a white card with a header button
+(21px/700/#474747 title + 24px right-chevron that rotates 90° when open) and a
+collapsible description region. Toggle with a tiny page-local script — no JS lives
+in the canonical CSS.
+
+```html
+<div class="gv-voteoptions">
+  <div class="gv-voteoption">
+    <button class="gv-voteoption__head" aria-expanded="true" aria-controls="opt-1">
+      <h3 class="gv-voteoption__title">Option 1: Embrace the Past, Illuminate the Future</h3>
+      <span class="gv-voteoption__chevron"><span data-gv-icon="chevron-right"></span></span>
+    </button>
+    <div class="gv-voteoption__panel is-open" id="opt-1" role="region">
+      <p>Restore the historic monuments while adding low-impact path lighting…</p>
+    </div>
+  </div>
+  <!-- …more .gv-voteoption rows -->
+</div>
+```
+
+**Part 2 — Results.** A `.gv-tally` "Final tally" card (white / 20px / soft-shadow):
+heading 18px/700/tenant-primary, caption (16px), a big count number (34px/700/#333,
+`--gv-fs-xxxxl`) + caption. Below it, a 2-up `.gv-voteresults` grid of ranked
+`.gv-voteresult` cards (white / 3px / 17px / soft-shadow flex row) — a rank-badged
+thumbnail (`__rank` = bg `--gv-blue-500` `#044D6C`, 3px, white #N) + body (title
+16px/700, a `__pct` line 14px/700/tenant-primary, a percentage `__track`/`__fill` bar,
+and a `.gv-btn.text` "Read more" + optional `.gv-react__comment`).
+
+```html
+<h2 class="gv-title h2">Voting closed</h2>
+<div class="gv-tally">
+  <h3 class="gv-tally__title">Final tally</h3>
+  <p class="gv-tally__caption">Voting closed on <strong>April 20, 2026.</strong>
+    Participants could <strong>vote for 2 options.</strong></p>
+  <p class="gv-tally__count">4</p>
+  <p class="gv-tally__sub">people submitted their votes online</p>
+</div>
+
+<div class="gv-voteresults">
+  <a class="gv-voteresult" href="#">
+    <div class="gv-voteresult__thumb">
+      <img src="…" alt="" />
+      <span class="gv-voteresult__rank">#1</span>
+    </div>
+    <div class="gv-voteresult__body">
+      <h5 class="gv-voteresult__title">Bridging History and Innovation</h5>
+      <p class="gv-voteresult__pct">50% • 2 votes</p>
+      <div class="gv-voteresult__track"><div class="gv-voteresult__fill" style="width:50%"></div></div>
+      <div class="gv-voteresult__foot">
+        <button class="gv-btn text" type="button"><u>Read more</u></button>
+        <span class="gv-react__comment"><span data-gv-icon="comment"></span><span>1</span></span>
+      </div>
+    </div>
+  </a>
+  <!-- …#2 / #2 result cards -->
+</div>
+```
+
+The percentage `__track` is a NEW variant (NOT `.gv-threshold__bar`): tenant-primary
+tinted to 25% + a 1px tenant-primary border (4px radius, 8px tall), with a solid
+tenant-primary `__fill` (6px). Set option/result counts and bar widths inline;
+everything brand-coloured comes from `--gv-tenant-primary` (`--gv-blue-500` for the
+rank badge), so it re-skins per `?theme=`. Reuses `.gv-statuspill`-style status
+conventions, `.gv-btn.text`, and `.gv-react__comment`.
 
 ---
 

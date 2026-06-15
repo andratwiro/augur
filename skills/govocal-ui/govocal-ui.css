@@ -1358,3 +1358,89 @@
 .gv-searchfield__icon { position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
   width: 18px; height: 18px; color: var(--gv-text-secondary); pointer-events: none; }
 .gv-searchfield__icon svg, .gv-searchfield__icon .gv-icon { width: 18px; height: 18px; display: block; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   VOTING METHOD BODY — the per-method panel that renders inside .gv-phasebody for
+   a voting phase (approval / single / budget voting). Two parts, source-grounded on
+   wietsedemo …/approval-voting-decide-on-the-future-of-the-greenwood-cemetery
+   (capture fo-approval-voting, Cultuurconnect tenant, primary #112D7E):
+     (1) .gv-voteoptions — a collapsible OPTIONS accordion at the top (one row per
+         vote option: 21px/700 title + right-chevron, expandable description region).
+     (2) the RESULTS state: a .gv-tally "Final tally" panel (a "Voting closed"
+         .gv-statuspill, big count number + caption) followed by a .gv-voteresults
+         grid of ranked .gv-voteresult cards (rank badge · thumb · title · percentage
+         bar · "Read more").
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Options accordion ──────────────────────────────────────────────────────
+   Each option is a white card (the live wrapper .cBWbiv) with a full-width header
+   button. The accordion title (.e2e-accordion h3) computes to 21px/700/#474747; the
+   chevron is a 24px right-arrow that rotates to point down when expanded. */
+.gv-voteoptions { display: flex; flex-direction: column; gap: 14px; }
+.gv-voteoption { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); overflow: hidden; }
+.gv-voteoption__head { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  width: 100%; padding: 20px; border: 0; background: transparent; cursor: pointer;
+  font-family: inherit; text-align: left; }
+.gv-voteoption__head:focus-visible { outline: var(--gv-focus-outline); outline-offset: -2px; }
+/* title — .e2e-accordion h3 : 21px / 700 / rgb(71,71,71) */
+.gv-voteoption__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.3; color: var(--gv-text-pagetitle); }
+.gv-voteoption__chevron { flex: 0 0 auto; display: inline-flex; color: var(--gv-grey-800);
+  transition: transform .15s ease; }
+.gv-voteoption__chevron svg, .gv-voteoption__chevron .gv-icon { width: 24px; height: 24px; }
+.gv-voteoption__head[aria-expanded="true"] .gv-voteoption__chevron { transform: rotate(90deg); }
+/* expandable region — collapsed by default; the page toggles .is-open */
+.gv-voteoption__panel { display: none; padding: 0 20px 20px; font-size: var(--gv-fs-base);
+  line-height: 1.65; color: var(--gv-text-primary); }
+.gv-voteoption__panel.is-open { display: block; }
+.gv-voteoption__panel p { margin: 0 0 12px; }
+.gv-voteoption__panel p:last-child { margin-bottom: 0; }
+
+/* ── Final tally panel — #voting-status-module's inner card (.hzyaEs). White, 20px
+   padding, soft --gv-shadow, 16px bottom margin. */
+.gv-tally { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow);
+  padding: 20px; margin: 0 0 16px; }
+/* "Final tally" heading — h3.igaFHq : 18px/700/tenant-primary, margin 4px 0 16px */
+.gv-tally__title { margin: 4px 0 16px; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.3; color: var(--gv-tenant-primary); }
+/* "Voting closed on … Participants could vote for N options." — span : 16px/.87 */
+.gv-tally__caption { font-size: var(--gv-fs-base); line-height: 1.5; color: rgba(0, 0, 0, 0.87); }
+.gv-tally__caption strong { font-weight: 700; }
+/* the headline count — p.ZrGRl : 34px/700/#333 */
+.gv-tally__count { margin: 12px 0 0; font-size: var(--gv-fs-xxxxl); font-weight: 700; line-height: 1.5; color: var(--gv-grey-800); }
+/* caption under it — p.jtLtWx : 16px/400/#333 */
+.gv-tally__sub { margin: 0; font-size: var(--gv-fs-base); font-weight: 400; line-height: 1.5; color: var(--gv-grey-800); }
+
+/* ── Ranked result cards — a 2-up grid (live each card is calc(50% - 16px)). ───
+   Each card (.e2e-card) is white, 3px radius, --gv-shadow, 17px padding, a flex row
+   with the rank-badged thumbnail (left) + the body (title · percentage bar · Read
+   more). Shares the soft-shadow media-card pattern with .gv-ideacard but carries a
+   ranked thumbnail and a percentage bar instead of author/reactions. */
+.gv-voteresults { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+@media (max-width: 720px) { .gv-voteresults { grid-template-columns: minmax(0, 1fr); } }
+.gv-voteresult { display: flex; align-items: center; gap: 17px; background: #fff;
+  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 17px;
+  color: var(--gv-text-primary); text-decoration: none; }
+.gv-voteresult:hover .gv-voteresult__title { color: var(--gv-tenant-primary); }
+.gv-voteresult:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+/* thumbnail + rank badge overlay */
+.gv-voteresult__thumb { position: relative; flex: 0 0 120px; width: 120px; height: 120px;
+  border-radius: var(--gv-radius); overflow: hidden; background: var(--gv-background);
+  display: grid; place-items: center; color: var(--gv-grey-500); }
+.gv-voteresult__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-voteresult__thumb svg, .gv-voteresult__thumb .gv-icon { width: 40px; height: 40px; }
+/* rank badge — .dcvdmw : bg --gv-blue-500 (#044D6C), 3px radius, 4px 12px pad, white #N 21px/700 */
+.gv-voteresult__rank { position: absolute; top: 0; left: 0; background: var(--gv-blue-500);
+  color: #fff; border-radius: var(--gv-radius); padding: 4px 12px;
+  font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.4; }
+.gv-voteresult__body { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1 1 auto; }
+/* option title — h5.jlDUZH : 16px/700/#474747 */
+.gv-voteresult__title { margin: 0; font-size: var(--gv-fs-base); font-weight: 700; line-height: 1.3; color: var(--gv-text-pagetitle); }
+/* percentage line — p.hgLDJh : 14px/700/tenant-primary (e.g. "50% • 2 votes") */
+.gv-voteresult__pct { margin: 0; font-size: var(--gv-fs-s); font-weight: 700; line-height: 1.5; color: var(--gv-tenant-primary); }
+/* the fill bar — distinct from .gv-threshold__bar: the track (.bsnfRS) is the tenant
+   primary tinted to 25% with a 1px tenant-primary border + 4px radius, 8px tall; the
+   fill (.kpdUEH) is solid tenant primary, 6px tall. */
+.gv-voteresult__track { height: 8px; border-radius: 4px; box-sizing: border-box;
+  background: color-mix(in srgb, var(--gv-tenant-primary) 25%, transparent);
+  border: 1px solid var(--gv-tenant-primary); overflow: hidden; display: flex; align-items: center; }
+.gv-voteresult__fill { height: 6px; background: var(--gv-tenant-primary); }
+.gv-voteresult__foot { display: flex; align-items: center; gap: 18px; margin-top: 2px; }

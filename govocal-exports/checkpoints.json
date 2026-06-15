@@ -1140,8 +1140,8 @@
       "uses": []
     },
     {
-      "id": "fo-perspectives-board/idea-detail-card",
-      "built": "pages/perspectives-board/index.html",
+      "id": "fo-perspectives-feed/idea-detail-card",
+      "built": "pages/perspectives-feed/index.html",
       "against": "fo-perspectives-feed",
       "map": {
         "[data-cy=e2e-sticky-note]": ".gv-sticky.is-raised"
@@ -1157,8 +1157,8 @@
       ]
     },
     {
-      "id": "fo-perspectives-board/like-button",
-      "built": "pages/perspectives-board/index.html",
+      "id": "fo-perspectives-feed/like-button",
+      "built": "pages/perspectives-feed/index.html",
       "against": "fo-perspectives-board",
       "map": {
         ".e2e-ideacard-like-button": ".e2e-ideacard-like-button"
@@ -1303,6 +1303,92 @@
       "uses": [
         ".gv-monitorband",
         ".gv-btn"
+      ]
+    },
+    {
+      "id": "fo-approval-voting/option-title",
+      "built": "components/approval-voting/index.html",
+      "against": "fo-approval-voting",
+      "map": {
+        ".e2e-accordion h3": ".gv-voteoption__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "color",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-voteoptions",
+        ".gv-voteoption"
+      ]
+    },
+    {
+      "id": "fo-approval-voting/tally-card",
+      "built": "components/approval-voting/index.html",
+      "against": "fo-approval-voting",
+      "map": {
+        ".hzyaEs": ".gv-tally"
+      },
+      "props": [
+        "background-color",
+        "padding",
+        "margin"
+      ],
+      "uses": [
+        ".gv-tally"
+      ]
+    },
+    {
+      "id": "fo-approval-voting/tally-title",
+      "built": "components/approval-voting/index.html",
+      "against": "fo-approval-voting",
+      "map": {
+        "#voting-status-module h3": ".gv-tally__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "color"
+      ],
+      "uses": [
+        ".gv-tally"
+      ]
+    },
+    {
+      "id": "fo-approval-voting/result-card",
+      "built": "components/approval-voting/index.html",
+      "against": "fo-approval-voting",
+      "map": {
+        ".e2e-card": ".gv-voteresult"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "box-shadow",
+        "padding",
+        "display",
+        "align-items"
+      ],
+      "uses": [
+        ".gv-voteresults",
+        ".gv-voteresult"
+      ]
+    },
+    {
+      "id": "fo-approval-voting/rank-badge",
+      "built": "components/approval-voting/index.html",
+      "against": "fo-approval-voting",
+      "map": {
+        ".e2e-card .dcvdmw": ".gv-voteresult__rank"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "padding"
+      ],
+      "uses": [
+        ".gv-voteresult__rank"
       ]
     }
   ]
