@@ -1301,6 +1301,27 @@
   border-radius: 4px; overflow: hidden; }
 .gv-themecard__bar > i { display: block; height: 100%; background: var(--gv-themecard-bar, var(--gv-cool-grey-600)); }
 
+/* ── Theme card · grounded structure (fix 24/93) ── matches the live wietsedemo rail:
+   single-column body (no left swatch); emoji is INLINE before the name (18px/700);
+   the COUNT sits in a 40×40 circular pastel badge on the RIGHT (live div.ifTotU =
+   40×40, radius 50%, bg pastel e.g. rgb(255,212,216), count 14px/700 slate);
+   progress bar is 6px tall (live div.elgHSk height 6px). Opt-in variant so the base
+   above stays intact for any other consumer. */
+.gv-themecard--grounded { grid-template-columns: 1fr; }
+/* head: title (emoji inline) on the left, count badge on the right. */
+.gv-themecard--grounded .gv-themecard__head { align-items: center; }
+.gv-themecard--grounded .gv-themecard__name { font-size: var(--gv-fs-l); font-weight: 700;
+  line-height: 27px; }
+/* emoji rides inline at the start of the title text. */
+.gv-themecard--grounded .gv-themecard__emoji { margin-right: 6px; }
+/* count → 40×40 circular pastel badge on the right; pastel fill reuses --gv-themecard-swatch. */
+.gv-themecard--grounded .gv-themecard__count { display: inline-flex; align-items: center;
+  justify-content: center; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--gv-themecard-swatch, var(--gv-grey-100)); font-size: var(--gv-fs-s);
+  font-weight: 700; line-height: 21px; color: var(--gv-text-primary); }
+/* grounded share bar is 6px tall (vs the 8px base). */
+.gv-themecard--grounded .gv-themecard__bar { height: 6px; }
+
 /* ── Dotted-grid canvas ── floats sticky-note idea cards.
    Live bg = white + tiled inline-svg dot (circle r1.5 #e5e5e5) at 20×20. */
 .gv-issuecanvas { position: relative; overflow: auto; background-color: #fff;
