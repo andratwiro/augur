@@ -59,16 +59,16 @@
 
   <main class="pp-frame">
 
-    <!-- Title -->
-    <h1 class="gv-title h1" style="margin:0 0 20px;">Proposals</h1>
-
-    <!-- Action band (open for participation) -->
-    <div class="gv-surveyband" style="border-radius:var(--gv-radius);overflow:hidden;">
-      <div class="gv-surveyband__inner" style="max-width:none;">
-        <span class="gv-surveyband__status"><span class="gv-surveyband__dot" aria-hidden="true"></span> Open for participation</span>
-        <a class="gv-btn on-color size-s gv-surveyband__cta" href="#">Add a proposal <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+    <!-- ════════ Timeline ════════ -->
+    <section class="gv-phases" aria-labelledby="phasesTitle" style="margin:0 0 24px;">
+      <div class="gv-phases__bar"><h2 id="phasesTitle">Timeline</h2></div>
+      <div class="gv-stepper" role="tablist" aria-label="Project phases">
+        <button class="gv-phase current" role="tab" aria-selected="true">
+          <span class="gv-pstep"><span class="gv-pstep__dot"></span>1</span>
+          <span class="gv-phase__label">Method: Proposals</span>
+        </button>
       </div>
-    </div>
+    </section>
 
     <!-- List header (count + List/Map toggle) -->
     <div class="pp-head">
@@ -79,7 +79,7 @@
       </div>
     </div>
 
-    <div class="pp-layout">
+    <div>
       <!-- Proposals list -->
       <div class="gv-idealist" id="e2e-ideas-list">
 
@@ -174,31 +174,6 @@
         </article>
 
       </div>
-
-      <!-- Sidebar -->
-      <aside class="pp-sidebar" id="e2e-project-sidebar">
-        <div class="pp-search">
-          <input class="gv-input" type="search" placeholder="Search posts" aria-label="Search posts" />
-          <span class="gv-icon" data-gv-icon="search" aria-hidden="true"></span>
-        </div>
-        <div>
-          <p class="pp-box__label">Sort by</p>
-          <ul class="pp-box__list">
-            <li><a href="#"><span data-gv-icon="vote-up" aria-hidden="true"></span> Most liked</a></li>
-            <li><a href="#"><span data-gv-icon="comments" aria-hidden="true"></span> Most discussed</a></li>
-            <li><a href="#"><span data-gv-icon="clock" aria-hidden="true"></span> New</a></li>
-          </ul>
-        </div>
-        <div>
-          <p class="pp-box__label">Topics</p>
-          <ul class="pp-box__list">
-            <li><a href="#">Public spaces &amp; the Mere <span class="count">3</span></a></li>
-            <li><a href="#">Mobility &amp; streets <span class="count">2</span></a></li>
-            <li><a href="#">Green &amp; environment <span class="count">2</span></a></li>
-            <li><a href="#">Children &amp; young people <span class="count">2</span></a></li>
-          </ul>
-        </div>
-      </aside>
     </div>
 
   </main>
