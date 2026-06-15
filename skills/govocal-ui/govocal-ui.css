@@ -925,6 +925,12 @@
    real thumb-to-body proportion for every consumer, with the grounded 162px thumb
    left untouched. Pages with their own column layout may still override. */
 .gv-idealist { max-width: 785px; }
+/* ideas-container-list-leak fix: .gv-idealist sets display:flex, which overrides the
+   native [hidden]{display:none}, so a toggled-off list view (#listView[hidden]) stayed
+   in flow stacked under the active perspective canvas. Restore the hidden contract so
+   only the active view renders (matches the .gv-issuecanvas__pile[hidden] guard).
+   Same class of bug to check on any flex/grid gv-* container toggled via [hidden]. */
+.gv-idealist[hidden] { display: none; }
 .gv-ideacard {
   display: flex; align-items: stretch; gap: 18px;
   background: #fff; border-radius: var(--gv-radius);
