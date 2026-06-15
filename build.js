@@ -528,8 +528,8 @@ const PAGE_CSS = `
     .comp-table { width: 100%; border-collapse: collapse; }
     .comp-table th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
       color: var(--muted); font-weight: 600; padding: 0 14px 10px; border-bottom: 1px solid var(--line); }
-    .comp-table td { padding: 8px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-    .comp-table td:first-child { width: 100px; padding-right: 0; }
+    .comp-table td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .comp-table td:first-child { width: 100px; padding-right: 18px; }
     .comp-table tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent); }
     .comp-thumb {
       position: relative; width: 100px; max-width: 38vw; aspect-ratio: 16 / 9; overflow: hidden;
