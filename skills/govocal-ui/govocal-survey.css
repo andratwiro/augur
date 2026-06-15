@@ -250,6 +250,26 @@
        (CSS-only: the renderer still emits the element; we hide it so barEl stays valid.) */
     .sv-progress { display: none; }
 
+    /* ── Runner-titlebar fidelity (source-grounded: live GoVocal survey runner) ──
+       The real runner titlebar shows the 'Survey' label as plain body text, NOT a
+       cool-grey heading: 16px (fs-base) / weight 400 / near-black rgb(30,30,30) —
+       the same near-black the runner question labels use (probed span.sc-uJiQo =
+       rgb(30,30,30)). The base rule above set it to 18px / 600 / secondary grey; we
+       override to the measured values. Append-only so every consumer updates.
+       The near-black is a measured one-off (not --gv-text-primary #333), kept literal. */
+    .sv-titlebar h1 { font-size: var(--gv-fs-base); font-weight: 400; color: rgb(30, 30, 30); }
+    /* Real header also carries an 'Edit survey' OUTLINE button (admin-preview affordance)
+       to the left of the close ✕: white bg, 1px solid border, 3px radius, 9px 18px pad,
+       16px text. Structural fidelity only — the renderer can opt to emit it. */
+    .sv-titlebar__edit {
+      margin-left: auto; margin-right: 8px; background: #fff; color: var(--gv-text-primary);
+      border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius);
+      padding: 9px 18px; font-size: var(--gv-fs-base); line-height: 1.2; cursor: pointer;
+      text-decoration: none; white-space: nowrap;
+    }
+    .sv-titlebar__edit:hover { background: var(--gv-grey-100); }
+    .sv-titlebar__edit:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+
     /* ── Runner-card width fidelity (source-grounded: live GoVocal survey runner) ──
        The real runner is a 700px white column (div.bmXoZS, width 700px, padding
        0 24px) centred on the page, with inner fields ~648px wide — NOT the wider
