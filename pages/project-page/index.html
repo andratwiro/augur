@@ -127,81 +127,25 @@
       </div>
     </div>
 
-   <!-- ════════ Method band (grey) — phase ribbon + ideation feed body ════════ -->
+   <!-- ════════ Method band (grey) — phase ribbon (switcher) + active method body ════════
+        The timeline is data-driven: PHASES[] drives the ribbon, the phase panel, and the
+        method body. Clicking a phase swaps the panel + body. Each method has its own panel
+        renderer (METHODS registry) assembled from canonical .gv-* components, so any
+        sequence of methods ("survey → information → results") is just a data change. ════ -->
    <div class="gv-methodband">
     <div class="gv-wrap">
     <section class="gv-phases" aria-labelledby="phasesTitle">
       <div class="gv-phases__bar">
         <h2 id="phasesTitle">Phases</h2>
         <div class="gv-phases__nav">
-          <button class="gv-pnav" aria-label="Previous phase"><span data-gv-icon="chevron-left"></span></button>
-          <button class="gv-pnav" aria-label="Go to current phase"><span class="gv-dotmark"></span></button>
-          <button class="gv-pnav" aria-label="Next phase"><span data-gv-icon="chevron-right"></span></button>
+          <button class="gv-pnav" id="ppPrev" aria-label="Previous phase"><span data-gv-icon="chevron-left"></span></button>
+          <button class="gv-pnav" id="ppCur" aria-label="Go to current phase"><span class="gv-dotmark"></span></button>
+          <button class="gv-pnav" id="ppNext" aria-label="Next phase"><span data-gv-icon="chevron-right"></span></button>
         </div>
       </div>
-      <div class="gv-stepper" role="tablist" aria-label="Project phases">
-        <button class="gv-phase" role="tab" aria-selected="false"><span class="gv-pstep">1</span><span class="gv-phase__label">Submit your ideas</span></button>
-        <button class="gv-phase" role="tab" aria-selected="false"><span class="gv-pstep">2</span><span class="gv-phase__label">Consolidation</span></button>
-        <button class="gv-phase" role="tab" aria-selected="false"><span class="gv-pstep">3</span><span class="gv-phase__label">Prioritization</span></button>
-        <button class="gv-phase" role="tab" aria-selected="false"><span class="gv-pstep">4</span><span class="gv-phase__label">Review</span></button>
-        <button class="gv-phase current" role="tab" aria-selected="true"><span class="gv-pstep"><span class="gv-pstep__dot"></span>5</span><span class="gv-phase__label">New ideas!</span></button>
-      </div>
-
-      <div class="gv-phasepanel">
-        <div class="gv-phasepanel__head">
-          <span class="gv-phasepanel__num" aria-hidden="true">5</span>
-          <div>
-            <h3 class="gv-phasepanel__name">New ideas!</h3>
-            <p class="gv-phasepanel__date">August 14, 2024 – No end date</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── Ideation FEED method body — separate from the phase-title module, sits on the grey band ── -->
-      <div class="gv-phasebody gv-phasebody--full" role="tabpanel" id="ideas">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
-            <h2 class="gv-feed__count">4 ideas</h2>
-            <div class="gv-viewseg" role="tablist" aria-label="View ideas as">
-              <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
-              <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
-            </div>
-          </div>
-          <div class="gv-feed">
-            <div class="gv-feed__col" id="feedCol"><!-- cards injected --></div>
-
-            <aside class="gv-feedfilter" id="e2e-project-sidebar" aria-label="Filter ideas">
-              <div>
-                <p class="gv-feedfilter__label">Search posts</p>
-                <input class="gv-input" type="search" placeholder="Search" aria-label="Search posts" />
-              </div>
-              <div>
-                <p class="gv-feedfilter__label">SORT BY</p>
-                <div class="gv-feedfilter__group">
-                  <button class="gv-feedfilter__btn is-active" type="button">Most liked</button>
-                  <button class="gv-feedfilter__btn" type="button">Most discussed</button>
-                  <button class="gv-feedfilter__btn" type="button">Trending</button>
-                  <button class="gv-feedfilter__btn" type="button">Newest</button>
-                </div>
-              </div>
-              <div>
-                <p class="gv-feedfilter__label">STATUS</p>
-                <div class="gv-feedfilter__group">
-                  <button class="gv-feedfilter__btn is-active" type="button">All <span class="gv-feedfilter__count">44</span></button>
-                  <button class="gv-feedfilter__btn" type="button">Under consideration <span class="gv-feedfilter__count">2</span></button>
-                  <button class="gv-feedfilter__btn" type="button">Accepted <span class="gv-feedfilter__count">1</span></button>
-                </div>
-              </div>
-              <div>
-                <p class="gv-feedfilter__label">TOPICS</p>
-                <div class="gv-feedfilter__group">
-                  <button class="gv-feedfilter__btn" type="button">Recreation <span class="gv-feedfilter__count">8</span></button>
-                  <button class="gv-feedfilter__btn" type="button">Nature &amp; environment <span class="gv-feedfilter__count">12</span></button>
-                  <button class="gv-feedfilter__btn" type="button">Mobility <span class="gv-feedfilter__count">6</span></button>
-                </div>
-              </div>
-            </aside>
-          </div>
-        </div>
+      <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"><!-- phases injected --></div>
+      <div class="gv-phasepanel" id="phasepanel"><!-- active phase header injected --></div>
+      <div class="gv-phasebody gv-phasebody--full" role="tabpanel" id="phasebody"><!-- active method body injected --></div>
     </section>
     </div>
    </div><!-- /.gv-methodband -->
@@ -235,6 +179,24 @@
       document.getElementById("followLabel").textContent = following ? `Unfollow (${count})` : `Follow (${count})`;
       e.currentTarget.setAttribute("aria-pressed", String(following));
     });
+
+    /* ════════ PHASES — the data that drives the whole timeline ════════
+       Change this array (order / methods) to compose any project, e.g. a
+       survey → information → results timeline. Each `method` maps to a renderer
+       in METHODS below; unbuilt methods fall back to a placeholder panel. */
+    const PHASES = [
+      { name: 'Submit your ideas', method: 'ideation', dates: 'May 2 – Aug 13, 2024', status: 'past',
+        description: 'The opening phase: residents posted ideas for the park and reacted to each other’s suggestions.' },
+      { name: 'Consolidation', method: 'information', dates: 'Aug 14 – Aug 28, 2024', status: 'past',
+        description: 'The project team grouped similar ideas and shared how the longlist was put together.' },
+      { name: 'Prioritization', method: 'voting', dates: 'Aug 29 – Sep 15, 2024', status: 'upcoming',
+        description: 'Residents will get a budget of points to spend across the shortlisted ideas.' },
+      { name: 'Review', method: 'results', dates: 'Sep 16 – Sep 30, 2024', status: 'upcoming',
+        description: 'The outcome of the vote, with the winning ideas and what happens next.' },
+      { name: 'New ideas!', method: 'ideation', dates: 'August 14, 2024 – No end date', status: 'current',
+        description: 'An open, ongoing call for fresh ideas now that the master plan is underway.' },
+    ];
+    const CURRENT = PHASES.findIndex((p) => p.status === 'current');
 
     const IDEAS = [
       { title: 'Basketball Court', author: 'Nilsa Heidenreich', time: '3 years ago',
@@ -284,7 +246,97 @@
           </div>
         </article>`;
     }
-    document.getElementById('feedCol').innerHTML = IDEAS.map(cardHTML).join('');
+    /* ════════ Method-panel registry — each renders a phase BODY from canonical
+       .gv-* components. Add a method by adding a renderer here. ════════ */
+    const METHODS = {
+      ideation() {
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
+            <h2 class="gv-feed__count">${IDEAS.length} ideas</h2>
+            <div class="gv-viewseg" role="tablist" aria-label="View ideas as">
+              <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
+              <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
+            </div>
+          </div>
+          <div class="gv-feed">
+            <div class="gv-feed__col">${IDEAS.map(cardHTML).join('')}</div>
+            <aside class="gv-feedfilter" id="e2e-project-sidebar" aria-label="Filter ideas">
+              <div><p class="gv-feedfilter__label">Search posts</p><input class="gv-input" type="search" placeholder="Search" aria-label="Search posts" /></div>
+              <div><p class="gv-feedfilter__label">SORT BY</p><div class="gv-feedfilter__group">
+                <button class="gv-feedfilter__btn is-active" type="button">Most liked</button>
+                <button class="gv-feedfilter__btn" type="button">Most discussed</button>
+                <button class="gv-feedfilter__btn" type="button">Trending</button>
+                <button class="gv-feedfilter__btn" type="button">Newest</button></div></div>
+              <div><p class="gv-feedfilter__label">STATUS</p><div class="gv-feedfilter__group">
+                <button class="gv-feedfilter__btn is-active" type="button">All <span class="gv-feedfilter__count">44</span></button>
+                <button class="gv-feedfilter__btn" type="button">Under consideration <span class="gv-feedfilter__count">2</span></button>
+                <button class="gv-feedfilter__btn" type="button">Accepted <span class="gv-feedfilter__count">1</span></button></div></div>
+              <div><p class="gv-feedfilter__label">TOPICS</p><div class="gv-feedfilter__group">
+                <button class="gv-feedfilter__btn" type="button">Recreation <span class="gv-feedfilter__count">8</span></button>
+                <button class="gv-feedfilter__btn" type="button">Nature &amp; environment <span class="gv-feedfilter__count">12</span></button>
+                <button class="gv-feedfilter__btn" type="button">Mobility <span class="gv-feedfilter__count">6</span></button></div></div>
+            </aside>
+          </div>`;
+      },
+      information() {
+        const acc = (q, ...ps) => `<details class="gv-acc__item"><summary class="gv-acc__head"><span class="gv-acc__q">${q}</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary><div class="gv-acc__body">${ps.map((p) => `<p>${p}</p>`).join('')}</div></details>`;
+        return `
+          <div class="gv-prose" style="margin:0;padding:0;">
+            <p>During consolidation we reviewed every submission, removed duplicates, and grouped the remaining ideas into themes. Below is how the process worked and what comes next.</p>
+            <p>The shortlist will move forward to the prioritization phase, where you’ll help decide which ideas get funded first.</p>
+          </div>
+          <div class="gv-accordion">
+            ${acc('How were ideas grouped?', 'Ideas were clustered by topic (recreation, nature, mobility, access) and by location in the park. Near-identical ideas were merged, keeping the original authors credited.')}
+            ${acc('What makes an idea eligible?', 'Ideas had to be within the project scope, feasible within the park boundary, and aligned with the 2024 Master Plan. Out-of-scope ideas were tagged and redirected.')}
+            ${acc('When can I vote?', 'Prioritization opens on August 29. Followers of this project will get a notification when voting starts.')}
+          </div>`;
+      },
+    };
+    function placeholderHTML(p) {
+      const icon = { voting: 'vote-up', results: 'trend-up', survey: 'survey', volunteering: 'volunteer', information: 'info-outline' }[p.method] || 'info-outline';
+      return `<div class="gv-phasebody" style="display:flex;gap:14px;align-items:flex-start;max-width:640px;">
+          <span class="gv-icon" data-gv-icon="${icon}" style="color:var(--gv-tenant-primary);width:28px;height:28px;flex:none;"></span>
+          <div><p style="margin:0 0 6px;font-weight:600;color:var(--gv-text-primary);">${p.name} — ${p.method} phase</p>
+          <p style="margin:0;color:var(--gv-text-secondary);">This phase hasn’t opened yet. Its ${p.method} panel will appear here when it goes live.</p></div>
+        </div>`;
+    }
+
+    /* ════════ Render + switch ════════ */
+    const stepperEl = document.getElementById('stepper');
+    const panelEl = document.getElementById('phasepanel');
+    const bodyEl = document.getElementById('phasebody');
+    let active = CURRENT;
+
+    function renderStepper() {
+      stepperEl.innerHTML = PHASES.map((p, i) => {
+        const isCurrent = i === CURRENT, dot = isCurrent ? '<span class="gv-pstep__dot"></span>' : '';
+        return `<button class="gv-phase${isCurrent ? ' current' : ''}" role="tab" data-i="${i}" aria-selected="${i === active}">
+            <span class="gv-pstep">${dot}${i + 1}</span><span class="gv-phase__label">${p.name}</span></button>`;
+      }).join('');
+      stepperEl.querySelectorAll('.gv-phase').forEach((b) => b.addEventListener('click', () => setPhase(+b.dataset.i)));
+    }
+    function setPhase(i) {
+      active = i;
+      const p = PHASES[i], isCurrent = i === CURRENT;
+      stepperEl.querySelectorAll('.gv-phase').forEach((b) => b.setAttribute('aria-selected', String(+b.dataset.i === i)));
+      panelEl.innerHTML = `
+        <div class="gv-phasepanel__head${isCurrent ? '' : ' muted'}">
+          <span class="gv-phasepanel__num" aria-hidden="true">${i + 1}</span>
+          <div>
+            <h3 class="gv-phasepanel__name">${p.name}</h3>
+            <p class="gv-phasepanel__date">${p.dates}</p>
+          </div>
+        </div>
+        <p class="gv-phasebody" style="margin:14px 0 0;">${p.description}</p>`;
+      bodyEl.innerHTML = (METHODS[p.method] ? METHODS[p.method](p) : placeholderHTML(p));
+      if (window.GVIcons) window.GVIcons.render();
+    }
+    document.getElementById('ppPrev').addEventListener('click', () => setPhase(Math.max(0, active - 1)));
+    document.getElementById('ppNext').addEventListener('click', () => setPhase(Math.min(PHASES.length - 1, active + 1)));
+    document.getElementById('ppCur').addEventListener('click', () => setPhase(CURRENT));
+
+    renderStepper();
+    setPhase(CURRENT);
     if (window.GVIcons) window.GVIcons.render();
   </script>
 </body>
