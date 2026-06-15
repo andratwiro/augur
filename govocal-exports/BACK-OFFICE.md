@@ -142,7 +142,7 @@ chrome added: `.gv-bo-tabs--top`, `.gv-bo-table.is-list` (striped full-width lis
 
 | Screen | URL | Capture | Built | Notes |
 |---|---|---|---|---|
-| Dashboard | `/admin/dashboard` | `bo-dashboard` | ✅ | Overview charts render empty on demo → content reconstructed; chrome verified (`bo-dashboard/tabstrip`). |
+| Dashboard | `/admin/dashboard/*` | `bo-dash-{overview,users,visitors,representation,moderation,management}` | ✅ | **All 6 tabs captured + built** (charts load with a 7s settle). Overview (lines + donut + bar charts using real numbers), Users (demographic bars), Visitors (stats + pies/lines), Representativeness (empty state), Participation feed (moderation table), Management feed (actions table). Chrome verified (`bo-dashboard/tabstrip`). |
 | Projects | `/admin/projects` | `bo-projects-list` | ✅ | `.gv-bo-table.is-list` verified (`bo-projects/table-th`,`-row`). |
 | Input manager | `/admin/ideas` | `bo-input-manager` | ✅ | Cross-project; reuses filter rail + bordered posts table. |
 | Users | `/admin/users` | `bo-users` | ✅ | Two-pane: roles/groups rail + users table. |
@@ -152,7 +152,7 @@ chrome added: `.gv-bo-tabs--top`, `.gv-bo-table.is-list` (striped full-width lis
 | Inspiration hub | `/admin/inspiration-hub` | `bo-inspiration-hub` | ✅ | Highlighted cards + project gallery. |
 | Tools | `/admin/tools` | `bo-tools` | ✅ | Integration cards + locked premium buttons. |
 | Pages & menu | `/admin/pages-menu` | `bo-pages-menu` | ✅ | Navbar item rows (live page also renders the FO navbar preview; reference keeps sidebar chrome only). |
-| Settings | `/admin/settings/general` | `bo-settings` | ✅ | Tabbed; General matched to capture. |
+| Settings | `/admin/settings/*` | `bo-set-{general,branding,registration,topics,areas,statuses,policies}` | ✅ | **All 7 sub-tabs captured + built**: General, Branding (colour fields + logo), Registration (helper text + demographic questions), Tags (platform tags), Areas, Statuses (Input/Proposal), Policies. |
 | Notifications | — (bell flyout) | `bo-notifications` (404) | ✅ | No standalone page → reconstructed activity feed. |
 
 Site: `/pages/` index is split **Back office / Front office** (build.js, via `<meta name="gv-surface">` / `bo-` prefix). New BO pages auto-group under Back office.

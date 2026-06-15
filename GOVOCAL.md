@@ -558,6 +558,17 @@ Keep entries short, deduped, and dated when point-in-time. Newest at top.
   both are flagged in-page and in `govocal-exports/BACK-OFFICE.md` for re-capture on a
   tenant with data. Everything else is built from live `styles.json` digests and
   verified (`bo-dashboard/tabstrip`, `bo-projects/table-*`, `bo-messaging/draft-label`).
+- _(2026-06-15, 2nd pass)_ **Dashboard and Settings are now captured + built per-tab,
+  not stubbed.** The Dashboard's Overview charts DO render — they just need a long
+  settle (`--settle 7000`); the first pass captured too early and saw an empty canvas.
+  Captured all 6 dashboard tabs (`bo-dash-{overview,users,visitors,representation,
+  moderation,management}`) and all 7 settings sub-tabs (`bo-set-{general,branding,
+  registration,topics,areas,statuses,policies}`) and rebuilt each from the real data.
+  Net-new: compact page-local chart renderers (line/barsH/barsV/pie-donut) in the
+  dashboard page (page-local `.db-*`/`.ch-*`, not gv- classes). **Lesson: for
+  data-driven BO screens, capture with a 6–7s settle so async charts/tables load
+  before the snapshot.** Real measured brand colours for the Raleigh demo tenant:
+  primary `#08833a`, secondary `#830851`, text `#1e1e1e` (Settings → Branding).
 
 <!-- Add new learnings above this line. Format: - _(YYYY-MM-DD)_ <fact / decision / preference>. -->
 
