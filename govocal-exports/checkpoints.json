@@ -1089,6 +1089,55 @@
       "uses": [
         ".gv-sticky__reactbtn"
       ]
+    },
+    {
+      "id": "fo-perspectives-entry/view-toggle",
+      "built": "pages/perspectives-entry/index.html",
+      "against": "fo-perspectives-entry",
+      "map": {
+        ".e2e-list-map-viewbuttons": ".gv-pviewtoggle"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "padding",
+        "display"
+      ],
+      "uses": [
+        ".gv-pviewtoggle"
+      ]
+    },
+    {
+      "id": "fo-perspectives-entry/view-tab",
+      "built": "pages/perspectives-entry/index.html",
+      "against": "fo-perspectives-entry",
+      "map": {
+        "#view-tab-1": "#view-tab-1"
+      },
+      "props": [
+        "box-shadow",
+        "border-radius",
+        "padding",
+        "font-size",
+        "line-height",
+        "font-weight",
+        "background-color"
+      ],
+      "uses": [
+        ".gv-pviewtoggle__btn"
+      ]
+    },
+    {
+      "id": "fo-perspectives-entry/ideas-container",
+      "built": "pages/perspectives-entry/index.html",
+      "against": "fo-perspectives-entry",
+      "map": {
+        "#e2e-ideas-container": "#e2e-ideas-container"
+      },
+      "props": [
+        "display"
+      ],
+      "uses": []
     }
   ]
 }

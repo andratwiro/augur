@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="gv-surface" content="front-office" />
+  <title>Perspectives — in-timeline phase entry (reference)</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+  <!--
+    REFERENCE REBUILD of the PERSPECTIVES phase ENTRY POINT *inside the project
+    timeline* (NOT the dedicated full-bleed feed — that's pages/perspectives-feed/).
+    Source-grounded on wietsedemo.govocal.com …/greenville-s-largest-community-
+    dialogue-perspectives/1 (capture: govocal-exports/fo-perspectives-entry).
+
+    Anatomy = the standard project-page SHELL (header · manager controls · banner ·
+    two-col title block · the .gv-partbar sticky CTA) + the grey method band carrying
+    the EXISTING .gv-phases ribbon (5 phases: Issue Mapping[past] · Issue Voting ·
+    Issue Reporting · Discussion Workshop · Recommendations) and, in the phase BODY,
+    the Perspective method view: an "178 ideas" .gv-feed__count + the NEW
+    List | Perspective .gv-pviewtoggle + the .gv-issuecanvas__pile of pastel
+    .gv-sticky notes shown INLINE under the phase. The List state swaps the same
+    ideas to a flat .gv-idealist of .gv-ideacard.
+
+    Pure assembly: every colour/border/shadow/type lives in canonical CSS
+    (.gv-sticky / .gv-pviewtoggle / .gv-feed__count / .gv-phases / .gv-partbar);
+    this page authors layout + content only. Re-skins per city via ?theme=.
+  -->
+  <style>
+    body { margin: 0; background: #fff; }
+    main { padding-bottom: 8px; }
+    /* layout-only (no colour/elevation/type authored here) */
+    .pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
+    .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
+    .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pp-title { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 10px 40px; align-items: start; padding: 36px 0 44px; }
+    .pp-title h1 { grid-column: 1; }
+    .pp-cta { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 10px; }
+    .pp-cta .gv-btn { justify-content: center; }
+    .pp-cta .gv-participants { display: flex; justify-content: center; }
+    .pp-desc { grid-column: 1; }
+    @media (max-width: 760px) { .pp-title { grid-template-columns: 1fr; } .pp-title h1, .pp-cta, .pp-desc { grid-column: 1; } .pp-cta { grid-row: auto; } }
+    /* ideas-container header row: count on the left, view toggle on the right */
+    #e2e-ideas-container { display: flex; flex-direction: column; }
+    .pp-ideashead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .pp-ideashead .gv-feed__count { margin: 0; }
+  </style>
+</head>
+<body class="gv-root gv-shell" data-auth="in">
+
+  <!-- ════════ Header — logged-in (dragged in) ════════ -->
+  <header id="e2e-navbar" class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Home"></a>
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#">Home</a></li>
+          <li>
+            <details class="gv-nav__dd">
+              <summary class="gv-nav__link">All projects
+                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">The Big Conversation</a>
+                <a href="#">A square for everyone</a>
+                <a href="#">The future of Station Road</a>
+                <a href="#">Participatory budget 2026</a>
+              </div>
+            </details>
+          </li>
+          <li><a class="gv-nav__link" href="#">Events</a></li>
+        </ul>
+      </nav>
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
+        <span class="gv-auth-in gv-desktop-only">
+          <button class="gv-iconbtn" aria-label="Notifications, 2 unread">
+            <span data-gv-icon="notification"></span><span class="gv-iconbtn__badge">2</span>
+          </button>
+          <details class="gv-nav__dd right gv-account-dd">
+            <summary class="gv-account">
+              <span class="gv-account__name">Go Vocal</span>
+              <span class="gv-avatar">GV</span>
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu gv-nav__menu--account">
+              <a href="#">Manage platform <span data-gv-icon="shield"></span></a>
+              <a href="#">My activity <span data-gv-icon="user-circle"></span></a>
+              <a href="#">My settings <span data-gv-icon="cogs"></span></a>
+              <button type="button">Sign out <span data-gv-icon="power"></span></button>
+            </div>
+          </details>
+        </span>
+        <details class="gv-nav-m">
+          <summary aria-label="Show mobile navigation menu">
+            <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+            <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
+            <a href="#">Home</a><a href="#">All projects</a><a href="#">Events</a>
+            <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Search</a>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content" class="e2e-project-page">
+   <div class="gv-wrap">
+
+    <!-- ════════ Manager controls ════════ -->
+    <div class="pp-managers">
+      <a class="gv-btn secondary-outlined size-s" href="#"><span data-gv-icon="edit" aria-hidden="true"></span> Edit project</a>
+      <button class="gv-btn primary size-s" id="followBtn" aria-pressed="true">
+        <span data-gv-icon="notification" aria-hidden="true"></span> <span id="followLabel">Follow (88)</span>
+      </button>
+    </div>
+
+    <!-- ════════ Banner ════════ -->
+    <section class="pp-banner gv-pcard__thumb--forest" aria-label="Project banner">
+      <img src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1400&h=400&fit=crop" alt="" />
+    </section>
+
+    <!-- ════════ Title block ════════ -->
+    <div class="pp-title">
+      <h1 class="gv-title h1" style="margin:20px 0 16px;line-height:39px;">The Big Conversation</h1>
+      <div class="pp-cta">
+        <a class="gv-btn primary" href="#ideas">What needs fixing?</a>
+        <a class="gv-btn primary-outlined" href="#ideas">See the perspectives</a>
+        <div class="gv-participants" style="margin-top:4px;">
+          <span class="gv-avatars on-light" aria-hidden="true">
+            <span class="av"></span><span class="av"></span><span class="av"></span>
+          </span>
+          <span class="gv-pcount">213 participants</span>
+          <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time participant count."></span>
+        </div>
+      </div>
+      <div class="gv-projdesc pp-desc">
+        <p>We’re creating a new way for community members of Greenville to <strong>speak up about what we want to fix in our region.</strong></p>
+        <p>Everywhere you look in Greenville you are confronted with a choice: accept things as they are, or have a say in making them better. The Big Conversation is your chance to set the agenda.</p>
+      </div>
+    </div>
+   </div><!-- /.gv-wrap -->
+
+    <!-- ════════ Participation bar ════════ -->
+    <div class="gv-partbar">
+      <div class="gv-partbar__inner">
+        <span class="gv-partbar__status">6 weeks left</span>
+        <a class="gv-btn on-color" href="#ideas">Volunteer <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+      </div>
+    </div>
+
+   <!-- ════════ Method band (grey) — phase ribbon (switcher) + Perspective body ════════ -->
+   <div class="gv-methodband">
+    <div class="gv-wrap">
+    <section class="gv-phases" aria-labelledby="phasesTitle">
+      <div class="gv-phases__bar">
+        <h2 id="phasesTitle">Phases</h2>
+        <div class="gv-phases__nav">
+          <button class="gv-pnav" id="ppPrev" aria-label="Previous phase"><span data-gv-icon="chevron-left"></span></button>
+          <button class="gv-pnav" id="ppCur" aria-label="Go to current phase"><span class="gv-dotmark"></span></button>
+          <button class="gv-pnav" id="ppNext" aria-label="Next phase"><span data-gv-icon="chevron-right"></span></button>
+        </div>
+      </div>
+      <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"><!-- phases injected --></div>
+      <div class="gv-phasepanel" id="phasepanel"><!-- active phase header injected --></div>
+      <div class="gv-phasebody gv-phasebody--full" role="tabpanel" id="phasebody"><!-- active method body injected --></div>
+    </section>
+    </div>
+   </div><!-- /.gv-methodband -->
+  </main>
+
+  <!-- ════════ Footer ════════ -->
+  <footer class="gv-footer">
+    <div class="gv-footer__inner">
+      <nav class="gv-footer__links" aria-label="Legal">
+        <ul>
+          <li><a href="#">Terms and conditions</a></li>
+          <li><a href="#">Privacy policy</a></li>
+          <li><a href="#">Cookie policy</a></li>
+          <li><a href="#">Accessibility statement</a></li>
+          <li><button type="button">Cookie settings</button></li>
+        </ul>
+      </nav>
+      <div class="gv-footer__powered">
+        <span>Powered by</span>
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal">
+          <img class="gv-powered-logo" src="../../skills/govocal-ui/govocal-logo.svg" alt="Go Vocal" />
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Follow button
+    let following = true, count = 88;
+    document.getElementById("followBtn").addEventListener("click", (e) => {
+      following = !following; count += following ? 1 : -1;
+      document.getElementById("followLabel").textContent = following ? `Following (${count})` : `Follow (${count})`;
+      e.currentTarget.setAttribute("aria-pressed", String(following));
+    });
+
+    /* ════════ PHASES — the project's real 5-phase Perspectives timeline ════════ */
+    const PHASES = [
+      { name: 'Issue Mapping', method: 'perspectives', dates: 'April 9, 2026 12:00 AM - May 14, 2026 11:59 PM', status: 'current',
+        description: 'If Greenville and its residents could solve one problem in our region, what should it be? Share your perspective and react to what your neighbours across the state are saying.' },
+      { name: 'Issue Voting', method: 'voting', dates: 'May 15 – June 18, 2026', status: 'upcoming',
+        description: 'Residents get a budget of points to spend across the issues raised in mapping, surfacing the region’s shared priorities.' },
+      { name: 'Issue Reporting', method: 'information', dates: 'June 19 – July 9, 2026', status: 'upcoming',
+        description: 'The project team reports back on the most-supported issues and how they were grouped.' },
+      { name: 'Discussion Workshop', method: 'information', dates: 'July 10 – July 30, 2026', status: 'upcoming',
+        description: 'In-person and online workshops to turn the top issues into concrete recommendations.' },
+      { name: 'Recommendations: Civic Assembly', method: 'results', dates: 'August 1 – August 31, 2026', status: 'upcoming',
+        description: 'A representative civic assembly deliberates on the recommendations and reports its conclusions.' },
+    ];
+    const CURRENT = PHASES.findIndex((p) => p.status === 'current');
+
+    /* ════════ Perspective ideas — pastel sticky notes / list cards ════════ */
+    const IDEAS = [
+      { author: 'Jonathan Kongstad', emoji: '🚧', color: 'mint', likes: 17, dislikes: 0, time: '2 weeks ago',
+        title: 'Infrastructure has not kept pace with overall development',
+        excerpt: 'Everywhere you look in Greenville you are confronted with congestion and ageing roads. Infrastructure has not kept pace with our population growth, and public transit barely reaches the new neighbourhoods.' },
+      { author: 'Prof. Jean-Christophe Coe', emoji: '📚', color: 'lavender', likes: 13, dislikes: 1, time: '3 weeks ago',
+        title: 'Decline in education',
+        excerpt: 'One of the biggest issues we face is the steady decline in the quality of our public schools — funding gaps, teacher retention, and unequal access to a good education for every child in the region.' },
+      { author: 'Polina Luu', emoji: '🗳️', color: 'mint', likes: 22, dislikes: 2, time: '3 weeks ago',
+        title: 'Voters need to have more confidence in our voting',
+        excerpt: 'Distrust in the process keeps people home on election day. We need transparent, well-run local elections and clear communication so residents know their vote counts.' },
+      { author: 'Marisol Reyes', emoji: '🏠', color: 'grey', likes: 19, dislikes: 0, time: '1 week ago',
+        title: 'Rent is outpacing wages',
+        excerpt: 'Young families can’t afford to stay in the neighbourhoods they grew up in. We need more affordable housing and protections against rapid rent increases.' },
+      { author: 'Anonymous', emoji: '🩺', color: 'pink', likes: 14, dislikes: 0, time: '5 days ago',
+        title: 'Mental-health support gaps',
+        excerpt: 'There aren’t enough affordable counselling and crisis services in our area. People wait weeks for an appointment when they need help right away.' },
+      { author: 'Bill Berman', emoji: '🌱', color: 'lavender', likes: 11, dislikes: 1, time: '4 days ago',
+        title: 'Protect our green spaces',
+        excerpt: 'As the region grows we keep losing parks and tree cover to development. We should set aside protected green space now, before it’s gone for good.' },
+    ];
+
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    // Sticky-note card (Perspective view) — reuses canonical .gv-sticky
+    function stickyHTML(d, h) {
+      return `
+        <button type="button" class="gv-sticky ${d.color}" data-cy="e2e-sticky-note" style="height:${h}px">
+          <span class="gv-sticky__author">
+            <span class="av"></span>
+            <span class="gv-sticky__authorname">${esc(d.author)}</span>
+            <span class="gv-sticky__emoji" aria-hidden="true">${d.emoji}</span>
+          </span>
+          <span class="gv-sticky__title">${esc(d.title)}</span>
+          <span class="gv-sticky__excerpt">${esc(d.excerpt)}</span>
+          <span class="gv-sticky__react e2e-reaction-controls neutral">
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>${d.dislikes}</b></button>
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>${d.likes}</b></button>
+          </span>
+        </button>`;
+    }
+    // Flat list card (List view) — reuses canonical .gv-ideacard
+    function listCardHTML(d) {
+      const initials = d.author === 'Anonymous' ? 'A' : d.author.split(' ').map((w) => w[0]).slice(0, 2).join('');
+      return `
+        <article class="gv-ideacard e2e-idea-card">
+          <div class="gv-ideacard__thumb"><span data-gv-icon="vote-up" aria-hidden="true"></span></div>
+          <div class="gv-ideacard__body">
+            <h3 class="gv-ideacard__title e2e-idea-card-title"><a href="#">${esc(d.title)}</a></h3>
+            <div class="gv-ideacard__head">
+              <span class="gv-ideacard__avatar" aria-hidden="true">${esc(initials)}</span>
+              <div>
+                <div class="gv-ideacard__meta">
+                  <span class="gv-ideacard__author e2e-username">${esc(d.author)}</span>
+                  <span class="gv-ideacard__sep" aria-hidden="true">&bull;</span>
+                  <span class="gv-ideacard__time">${esc(d.time)}</span>
+                </div>
+                <p class="gv-ideacard__excerpt">${esc(d.excerpt)}</p>
+              </div>
+            </div>
+            <footer class="gv-ideacard__foot">
+              <div class="gv-react e2e-reaction-controls">
+                <button class="gv-react__btn" aria-label="Like"><span data-gv-icon="vote-up"></span></button>
+                <span class="gv-react__count">${d.likes}</span>
+                <button class="gv-react__btn" aria-label="Dislike"><span data-gv-icon="vote-down"></span></button>
+                <span class="gv-react__count">${d.dislikes}</span>
+              </div>
+            </footer>
+          </div>
+        </article>`;
+    }
+
+    /* ════════ Method-panel registry ════════ */
+    const HEIGHTS = [337, 300, 320, 290, 300, 280];
+    const METHODS = {
+      perspectives() {
+        const pile = IDEAS.map((d, i) => stickyHTML(d, HEIGHTS[i % HEIGHTS.length])).join('');
+        const list = IDEAS.map(listCardHTML).join('');
+        return `
+          <div id="e2e-ideas-container">
+            <div class="pp-ideashead">
+              <h2 class="gv-feed__count">${178} ideas</h2>
+              <div class="gv-pviewtoggle e2e-list-map-viewbuttons" role="tablist" aria-label="View ideas as">
+                <button id="view-tab-1" class="gv-pviewtoggle__btn" role="tab" aria-selected="false" data-view="list">
+                  <span data-gv-icon="menu" aria-hidden="true"></span>List
+                </button>
+                <button id="view-tab-2" class="gv-pviewtoggle__btn is-active" role="tab" aria-selected="true" data-view="perspective">
+                  <span data-gv-icon="stars" aria-hidden="true"></span>Perspective
+                </button>
+              </div>
+            </div>
+
+            <!-- Perspective view (default) — masonry pile of sticky notes, inline -->
+            <div class="gv-issuecanvas" data-cy="e2e-sticky-notes-pile" id="perspectiveView">
+              <div class="gv-issuecanvas__pile">${pile}</div>
+            </div>
+
+            <!-- List view — same ideas flattened -->
+            <div class="gv-idealist" id="listView" hidden>${list}</div>
+          </div>`;
+      },
+      information() {
+        return `<div class="gv-prose" style="margin:0;padding:0;"><p>This phase hasn’t opened yet. Its content will appear here when it goes live.</p></div>`;
+      },
+    };
+    function placeholderHTML(p) {
+      const icon = { voting: 'vote-up', results: 'trend-up' }[p.method] || 'info-outline';
+      return `<div class="gv-phasebody" style="display:flex;gap:14px;align-items:flex-start;max-width:640px;">
+          <span class="gv-icon" data-gv-icon="${icon}" style="color:var(--gv-tenant-primary);width:28px;height:28px;flex:none;"></span>
+          <div><p style="margin:0 0 6px;font-weight:600;color:var(--gv-text-primary);">${p.name} — ${p.method} phase</p>
+          <p style="margin:0;color:var(--gv-text-secondary);">This phase hasn’t opened yet. Its ${p.method} panel will appear here when it goes live.</p></div>
+        </div>`;
+    }
+
+    /* ════════ Render + switch ════════ */
+    const stepperEl = document.getElementById('stepper');
+    const panelEl = document.getElementById('phasepanel');
+    const bodyEl = document.getElementById('phasebody');
+    let active = CURRENT;
+
+    function renderStepper() {
+      stepperEl.innerHTML = PHASES.map((p, i) => {
+        const isCurrent = i === CURRENT, dot = isCurrent ? '<span class="gv-pstep__dot"></span>' : '';
+        return `<button class="gv-phase${isCurrent ? ' current' : ''}" role="tab" data-i="${i}" aria-selected="${i === active}">
+            <span class="gv-pstep">${dot}${i + 1}</span><span class="gv-phase__label">${p.name}</span></button>`;
+      }).join('');
+      stepperEl.querySelectorAll('.gv-phase').forEach((b) => b.addEventListener('click', () => setPhase(+b.dataset.i)));
+    }
+    function setPhase(i) {
+      active = i;
+      const p = PHASES[i], isCurrent = i === CURRENT;
+      stepperEl.querySelectorAll('.gv-phase').forEach((b) => b.setAttribute('aria-selected', String(+b.dataset.i === i)));
+      panelEl.innerHTML = `
+        <div class="gv-phasepanel__head${isCurrent ? '' : ' muted'}">
+          <span class="gv-phasepanel__num" aria-hidden="true">${i + 1}</span>
+          <div>
+            <h3 class="gv-phasepanel__name e2e-phase-title">${p.name}</h3>
+            <p class="gv-phasepanel__date">${p.dates}</p>
+          </div>
+        </div>
+        <div class="gv-phasepanel__desc" id="e2e-project-phase-description"><p>${p.description}</p></div>`;
+      bodyEl.innerHTML = (METHODS[p.method] ? METHODS[p.method](p) : placeholderHTML(p));
+      wireViewToggle();
+      if (window.GVIcons) window.GVIcons.render();
+    }
+
+    // List | Perspective view toggle (inside the Perspective body)
+    function wireViewToggle() {
+      const toggle = bodyEl.querySelector('.gv-pviewtoggle');
+      if (!toggle) return;
+      const persp = bodyEl.querySelector('#perspectiveView');
+      const list = bodyEl.querySelector('#listView');
+      toggle.querySelectorAll('.gv-pviewtoggle__btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          toggle.querySelectorAll('.gv-pviewtoggle__btn').forEach((b) => { b.classList.remove('is-active'); b.setAttribute('aria-selected', 'false'); });
+          btn.classList.add('is-active'); btn.setAttribute('aria-selected', 'true');
+          const isList = btn.dataset.view === 'list';
+          list.hidden = !isList; persp.hidden = isList;
+        });
+      });
+    }
+
+    document.getElementById('ppPrev').addEventListener('click', () => setPhase(Math.max(0, active - 1)));
+    document.getElementById('ppNext').addEventListener('click', () => setPhase(Math.min(PHASES.length - 1, active + 1)));
+    document.getElementById('ppCur').addEventListener('click', () => setPhase(CURRENT));
+
+    renderStepper();
+    setPhase(CURRENT);
+    if (window.GVIcons) window.GVIcons.render();
+  </script>
+</body>
+</html>

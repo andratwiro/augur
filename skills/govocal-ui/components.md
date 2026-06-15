@@ -1023,6 +1023,48 @@ are **new variants**, not mutations of any base.
 
 ---
 
+## Perspectives — in-timeline phase entry — `.gv-pviewtoggle` (`pages/perspectives-entry/`)
+
+The **Perspective phase ENTRY POINT inside the project timeline** — distinct from the
+full-bleed feed above. It's the standard project-page shell (header · banner · title
+block · `.gv-partbar`) + the `.gv-methodband` grey band carrying the EXISTING
+`.gv-phases` ribbon, where the active phase BODY is the Perspective view: a
+`.gv-feed__count` "178 ideas" + the **List | Perspective** view toggle + the
+`.gv-issuecanvas__pile` of `.gv-sticky` notes shown INLINE under the phase. Toggling to
+**List** swaps the same ideas to a flat `.gv-idealist` of `.gv-ideacard`. Source-grounded
+on wietsedemo `…/perspectives/1` (capture `fo-perspectives-entry`); verified via
+`fo-perspectives-entry/{view-toggle,view-tab,ideas-container}`.
+
+The only NET-NEW piece is the **view toggle** (`govocal-ui.css`) — measured live: a white
+wrapper (`.gv-pviewtoggle`, padding 4px, 3px radius) holding pill tab buttons that each
+carry their own soft `var(--gv-shadow)` + 3px radius / 4px 8px padding / 16px-400-18.4px;
+inactive tab = transparent + `var(--gv-tenant-text)`, active tab = the Perspective
+method-accent fill `#EFD015` (a one-off literal, not a tenant hue) + white text. Everything
+else is reused canonical (`.gv-sticky`, `.gv-issuecanvas__pile`, `.gv-ideacard`, `.gv-phases`).
+
+```html
+<div id="e2e-ideas-container" style="display:flex;flex-direction:column">
+  <div class="pp-ideashead"><!-- layout: count left, toggle right -->
+    <h2 class="gv-feed__count">178 ideas</h2>
+    <div class="gv-pviewtoggle e2e-list-map-viewbuttons" role="tablist" aria-label="View ideas as">
+      <button id="view-tab-1" class="gv-pviewtoggle__btn" role="tab" aria-selected="false" data-view="list">
+        <span data-gv-icon="menu"></span>List</button>
+      <button id="view-tab-2" class="gv-pviewtoggle__btn is-active" role="tab" aria-selected="true" data-view="perspective">
+        <span data-gv-icon="stars"></span>Perspective</button>
+    </div>
+  </div>
+  <div class="gv-issuecanvas" data-cy="e2e-sticky-notes-pile">
+    <div class="gv-issuecanvas__pile"> … resting .gv-sticky notes … </div>
+  </div>
+  <div class="gv-idealist" hidden> … .gv-ideacard list … </div>
+</div>
+```
+
+Active fill `#EFD015` is the live Perspective method accent (held literal, not tokenized).
+The toggle text and the rest re-skin per `?theme=` via `--gv-tenant-text` / `--gv-tenant-primary`.
+
+---
+
 ## City theming (`govocal-themes.js`)
 
 The product themes **primary, secondary, text colours + a custom font** per tenant

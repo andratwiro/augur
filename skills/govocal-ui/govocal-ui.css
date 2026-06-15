@@ -978,6 +978,24 @@
 .gv-viewseg__tab:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
 .gv-viewseg__tab .gv-icon, .gv-viewseg__tab svg { width: 20px; height: 20px; }
 
+/* ── Perspectives in-timeline List | Perspective toggle — the .e2e-list-map-viewbuttons
+   variant used inside a Perspective phase body (NOT List|Map). Measured live
+   (fo-perspectives-entry): a WHITE wrapper (.gv-pviewtoggle — padding 4px, 3px radius,
+   no shadow) holding pill tab buttons that each carry their own soft shadow
+   var(--gv-shadow) + 3px radius, 4px 8px padding, 16px/400 / lh 18.4px. Inactive tab =
+   transparent + heading text (live #474747 → var(--gv-text-heading)); active tab = the
+   Perspective method-accent fill (live #EFD015, a one-off literal, not a tenant hue) +
+   white text. */
+.gv-pviewtoggle { display: inline-flex; align-items: center; gap: 8px; padding: 4px;
+  background: #fff; border-radius: var(--gv-radius); box-sizing: border-box; }
+.gv-pviewtoggle__btn { display: inline-flex; align-items: center; gap: 6px; height: 32px;
+  padding: 4px 8px; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-base);
+  font-weight: 400; line-height: 18.4px; color: var(--gv-tenant-text); background: transparent;
+  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); }
+.gv-pviewtoggle__btn[aria-selected="true"], .gv-pviewtoggle__btn.is-active { background: #EFD015; color: #fff; }
+.gv-pviewtoggle__btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-pviewtoggle__btn .gv-icon, .gv-pviewtoggle__btn svg { width: 18px; height: 18px; }
+
 /* ── Signature / vote threshold — proposals. Count p.cyVyPb : #596B7A/14px;
    bold count .fBuzIc : tenant-primary/16px/700. Track : 6px, --gv-grey-200, 3px;
    fill : tenant-primary. ─────────────────────────────────────────────────────── */

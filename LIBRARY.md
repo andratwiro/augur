@@ -90,6 +90,7 @@ as a starting point for a prototype.
 | **Events** | `/pages/events/` | `pages/events/` | Events — GoVocal (reference) |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Homepage — GoVocal (reference) |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
+| **Perspectives Entry** | `/pages/perspectives-entry/` | `pages/perspectives-entry/` | Perspectives — in-timeline phase entry (reference) |
 | **Perspectives Feed** | `/pages/perspectives-feed/` | `pages/perspectives-feed/` | Perspectives — Issue Mapping (reference) |
 | **Project Common Ground** | `/pages/project-common-ground/` | `pages/project-common-ground/` | Project page — Common Ground / Polis (reference) |
 | **Project Page** | `/pages/project-page/` | `pages/project-page/` | Project page — Ideation (reference) |
