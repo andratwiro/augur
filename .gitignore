@@ -9,6 +9,10 @@ node_modules/
 .env*.local
 .dev.vars*
 
+# Capture harness — creds + saved browser session. NEVER commit.
+.env.capture
+scripts/capture/.auth/
+
 # Pulled review comments — local working copy, never committed.
 review-comments.local.md
 
