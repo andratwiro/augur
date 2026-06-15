@@ -311,9 +311,13 @@ body.gv-root {
   font-family: var(--gv-font-family);
 }
 .gv-header.sticky { position: sticky; top: 0; }
+/* Full-width bar: logo flush-left, actions flush-right (matches the live product —
+   the navbar spans the viewport even when the page CONTENT below is capped at
+   --gv-shell-w). Only the side gutter is fixed. */
 .gv-header__inner {
-  max-width: var(--gv-shell-w, 1150px);
-  margin: 0 auto;
+  box-sizing: border-box;                 /* width:100% must INCLUDE the gutter, else the bar overflows the viewport */
+  width: 100%;
+  margin: 0;
   padding: 0 24px;
   height: var(--gv-menu-height);          /* 78px */
   display: flex;
@@ -411,9 +415,10 @@ body.gv-root {
 .gv-nav-m > summary::-webkit-details-marker { display: none; }
 .gv-nav-m > summary:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
 .gv-nav-m__panel {
+  box-sizing: border-box;
   position: absolute; left: 0; right: 0; top: var(--gv-menu-height); z-index: 40;
   background: #fff; border-top: 1px solid var(--gv-grey-200); box-shadow: var(--gv-shadow-hover-lg);
-  padding: 8px 16px 16px; display: grid; gap: 2px;
+  padding: 8px 24px 16px; display: grid; gap: 2px;        /* 24px sides → items align under the logo gutter */
 }
 .gv-nav-m__panel a, .gv-nav-m__panel summary {
   display: block; padding: 13px 8px; font-size: var(--gv-fs-l); font-weight: 500;
