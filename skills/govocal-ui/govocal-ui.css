@@ -364,6 +364,11 @@
 .gv-spotlight__media { aspect-ratio: 16 / 10; border-radius: var(--gv-radius); overflow: hidden;
   background: var(--gv-grey-200); display: grid; place-items: center; color: #fff; font-weight: 800; text-align: center; }
 .gv-spotlight__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-spotlight__media--placeholder { background: var(--gv-grey-200); }
+/* Spotlight "campaign chip" — a themed chat-bubble title tile over the media
+   (theme-aware: re-skins per city via --gv-tenant-primary). */
+.gv-spotlight__chip { display: inline-block; padding: 18px 22px; border-radius: 16px 16px 16px 2px;
+  background: var(--gv-tenant-primary); color: #fff; font-size: 22px; font-weight: 800; line-height: 1.1; }
 @media (max-width: 820px) {
   .gv-spotlight__inner { grid-template-columns: 1fr; gap: 26px; padding: 36px 24px; }
   .gv-spotlight__media { order: -1; aspect-ratio: 16 / 9; }
@@ -441,6 +446,35 @@
 .gv-pcard.boxed .gv-pcard__thumb { border-radius: 0; aspect-ratio: 16 / 9; }
 .gv-pcard.boxed .gv-pcard__thumb.icon { background: var(--gv-grey-100); color: var(--gv-grey-500); }
 .gv-pcard.boxed .gv-pcard__thumb.icon svg, .gv-pcard.boxed .gv-pcard__thumb.icon .gv-icon { width: 56px; height: 56px; }
+
+/* ── Thumbnail image placeholders ─────────────────────────────────────────────
+   Photo stand-ins so reference/demo pages stay PURE ASSEMBLY (no inline gradient
+   or hex). `--placeholder` mirrors the product's real image-less card (the live
+   skeleton fill #EDEFF0 = --gv-background); the tinted set reads like uploaded
+   project photography — content, not chrome, so deliberately fixed (not themed).
+   `gv-thumb-cap` sizes a campaign title set inside a tile (the thumb base already
+   centres + sets white/800-weight). */
+.gv-pcard__thumb--placeholder { background: var(--gv-background); }
+.gv-pcard__thumb--forest { background: linear-gradient(135deg, #2f6f4f, #7fb08a); }
+.gv-pcard__thumb--ocean  { background: linear-gradient(135deg, #33567e, #7c96b8); }
+.gv-pcard__thumb--clay   { background: linear-gradient(135deg, #b7423a, #d98a5a); }
+.gv-pcard__thumb--sage   { background: linear-gradient(135deg, #9fb0a3, #cdd6cd); }
+.gv-pcard__thumb--civic  { background: linear-gradient(135deg, #2b5cab, #f2c200); }
+.gv-pcard__thumb--coral  { background: #f4736f; }
+.gv-pcard__thumb--sand   { background: #f3e2a6; color: #7a5e12; }
+.gv-thumb-cap { font-size: 22px; line-height: 1.1; padding: 0 16px; }
+.gv-thumb-cap--lg { font-size: 26px; }
+.gv-thumb-cap--sm { font-size: 20px; }
+.gv-thumb-cap--xs { font-size: 18px; padding: 14px; }
+
+/* Circular campaign emblem dropped inside a folder/card thumb (decorative). */
+.gv-pcard__badge { width: 150px; height: 150px; border-radius: 50%;
+  border: 6px solid rgba(255,255,255,0.85); display: grid; place-items: center;
+  text-align: center; line-height: 1.12; color: #1a1a1a; }
+.gv-pcard__badge b { font-size: 19px; display: block; }
+.gv-pcard__badge .pre { font-style: italic; font-weight: 500; font-size: 12px; color: #2c2724; }
+.gv-pcard__badge .accent { color: #d83a36; }
+
 .gv-pcard__body { display: flex; flex-direction: column; flex: 1 1 auto; padding: 18px 22px 22px; }
 .gv-pcard.boxed .gv-pcard__title { margin: 0 0 8px; font-size: var(--gv-fs-l); }
 .gv-pcard.boxed .gv-pcard__desc { color: var(--gv-grey-800); }

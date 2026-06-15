@@ -542,7 +542,8 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
         <span class="gv-bubbles"><span class="av"></span><span class="count">145</span><span class="gv-bubbles__label">Teilnehmende</span></span>
       </div>
     </div>
-    <div class="gv-spotlight__media"><img src="…" alt="…" /></div>
+    <!-- real photo → <img>; no photo → neutral placeholder + optional themed chip -->
+    <div class="gv-spotlight__media gv-spotlight__media--placeholder"><span class="gv-spotlight__chip">A GREENER<br>MAIN STREET</span></div>
   </div>
 </section>
 
@@ -576,9 +577,21 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
 
 <!-- Rich-text block -->
 <div class="gv-prose"><p>…</p><p><em>…</em></p></div>
+
+<!-- Image placeholders: photo stand-ins so a page stays pure assembly (no inline
+     gradient/hex). Neutral mirrors the product's real image-less card; tinted set
+     reads like uploaded photography (content, fixed). Caption sizes a title tile. -->
+<div class="gv-pcard__thumb gv-pcard__thumb--placeholder"></div>           <!-- neutral (= #EDEFF0) -->
+<div class="gv-pcard__thumb gv-pcard__thumb--clay"><span class="gv-thumb-cap gv-thumb-cap--lg">THE BIG<br>DOWNTOWN SURVEY</span></div>
+<!-- tints: --forest --ocean --clay --sage --civic --coral --sand · caption sizes: (base 22) --lg 26 / --sm 20 / --xs 18 -->
+<!-- folder emblem inside a thumb -->
+<div class="gv-pcard__thumb gv-pcard__thumb--coral"><div class="gv-pcard__badge"><span><span class="pre">our</span><b class="accent">Westside</b><b>climate<br>team</b></span></div></div>
 ```
 - The whole page assembled: `pages/homepage/`. Cards stretch to equal height; `__spacer`
   pushes `__foot` down. Progress fill + tab underline + count bubble all use `--gv-tenant-primary`.
+- **Pure assembly:** the page authors zero colour/elevation/type — image stand-ins use the
+  `gv-pcard__thumb--*` placeholder tints, `gv-thumb-cap` caption sizes, `gv-pcard__badge`
+  emblem and `gv-spotlight__chip` (all canonical in `govocal-ui.css`), so it re-skins per theme.
 
 ## Hero / banner — `.gv-hero` (`components/hero/`)
 

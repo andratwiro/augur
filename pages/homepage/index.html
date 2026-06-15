@@ -20,20 +20,18 @@
     whole page re-skins per city.
   -->
   <style>
+    /* Page-level layout only — all colour/elevation/type lives in canonical
+       govocal-ui.css (this page is pure assembly). */
     body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
-    /* Climate-team campaign badge tile (folder-card thumb) — light placeholder. */
-    .kbadge { width: 150px; height: 150px; border-radius: 50%; border: 6px solid rgba(255,255,255,0.85);
-      display: grid; place-items: center; text-align: center; line-height: 1.12; color: #1a1a1a; position: relative; }
-    .kbadge b { font-size: 19px; display: block; }
-    .kbadge .macht { font-style: italic; font-weight: 500; font-size: 12px; color: #2c2724; }
 
     /* Demo-only: a quick toggle to flip the header between signed-out / signed-in
-       (it just sets data-auth on <body> — no real auth). Not part of the component. */
+       (it just sets data-auth on <body> — no real auth). Not part of the component;
+       styled from tokens only (no page-authored hex/shadow). */
     .auth-toggle { position: fixed; left: 16px; bottom: 16px; z-index: 1200;
       display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px;
-      background: #1e1e1e; color: #fff; border: 0; border-radius: 999px; cursor: pointer;
-      font: 600 13px/1 var(--gv-font-family); box-shadow: 0 4px 14px rgba(0,0,0,.28); }
-    .auth-toggle::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #b0b0b0; }
+      background: var(--gv-grey-800); color: #fff; border: 0; border-radius: 999px; cursor: pointer;
+      font: 600 13px/1 var(--gv-font-family); }
+    .auth-toggle::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
     [data-auth="in"] .auth-toggle::before { background: var(--gv-green-400); }
   </style>
 </head>
@@ -181,8 +179,8 @@
             </div>
           </div>
         </div>
-        <div class="gv-spotlight__media" style="background:#0a7a4f">
-          <span style="background:#0a7a4f;color:#fff;border-radius:16px 16px 16px 2px;padding:18px 22px;font-size:22px;font-weight:800;line-height:1.1">A GREENER<br>MAIN STREET</span>
+        <div class="gv-spotlight__media gv-spotlight__media--placeholder">
+          <span class="gv-spotlight__chip">A GREENER<br>MAIN STREET</span>
         </div>
       </div>
     </section>
@@ -198,7 +196,7 @@
         <div class="gv-pgrid">
 
           <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#2f6f4f,#7fb08a)"></div>
+            <div class="gv-pcard__thumb gv-pcard__thumb--forest"></div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Cooler streets for summer</a></h3>
               <p class="gv-pcard__desc">Which streets should we plant, shade and de-pave first? Drop your pins on the map.</p>
@@ -218,7 +216,7 @@
           </article>
 
           <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#33567e,#7c96b8)"></div>
+            <div class="gv-pcard__thumb gv-pcard__thumb--ocean"></div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Name the new river bridge</a></h3>
               <p class="gv-pcard__desc">Five shortlisted names are open for a public vote. One vote per resident.</p>
@@ -291,8 +289,8 @@
 
           <!-- Wide feature card (image left, copy right) -->
           <article class="gv-pcard boxed horizontal span-3">
-            <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#b7423a,#d98a5a)">
-              <span style="color:#fff;font-size:26px;font-weight:800;line-height:1.1">THE BIG<br>DOWNTOWN SURVEY</span>
+            <div class="gv-pcard__thumb gv-pcard__thumb--clay">
+              <span class="gv-thumb-cap gv-thumb-cap--lg">THE BIG<br>DOWNTOWN SURVEY</span>
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">The big downtown survey</a></h3>
@@ -318,7 +316,7 @@
 
           <!-- Standard project card with image + bubbles + CTA -->
           <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9fb0a3,#cdd6cd)"></div>
+            <div class="gv-pcard__thumb gv-pcard__thumb--sage"></div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">A square for everyone</a></h3>
               <p class="gv-pcard__desc">How can Market Square become a popular meeting point in the neighbourhood?</p>
@@ -357,12 +355,12 @@
 
           <!-- Folder card: count badge + folder icon + description + bubbles -->
           <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb" style="background:#f4736f">
+            <div class="gv-pcard__thumb gv-pcard__thumb--coral">
               <span class="gv-pcard__count">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
                 3 projects
               </span>
-              <div class="kbadge"><span><span class="macht">our</span><b style="color:#d83a36">Westside</b><b>climate<br>team</b></span></div>
+              <div class="gv-pcard__badge"><span><span class="pre">our</span><b class="accent">Westside</b><b>climate<br>team</b></span></div>
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">City climate teams</a></h3>
@@ -379,7 +377,7 @@
 
           <!-- Finished project card (status label + report CTA) -->
           <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb" style="background:#f3e2a6;color:#7a5e12;font-weight:800;font-size:18px;padding:14px">Old Town renewal</div>
+            <div class="gv-pcard__thumb gv-pcard__thumb--sand"><span class="gv-thumb-cap gv-thumb-cap--xs">Old Town renewal</span></div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Old Town renewal</a></h3>
               <p class="gv-pcard__desc">Participation has closed. Read which proposals are being put into action.</p>
@@ -394,8 +392,8 @@
 
           <!-- Participatory budget card -->
           <article class="gv-pcard boxed">
-            <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#2b5cab,#f2c200)">
-              <span style="color:#fff;font-size:20px;font-weight:800">PARTICIPATORY BUDGET</span>
+            <div class="gv-pcard__thumb gv-pcard__thumb--civic">
+              <span class="gv-thumb-cap gv-thumb-cap--sm">PARTICIPATORY BUDGET</span>
             </div>
             <div class="gv-pcard__body">
               <h3 class="gv-pcard__title"><a href="#">Participatory budget 2026</a></h3>

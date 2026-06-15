@@ -27,6 +27,14 @@
       "uses": [".gv-pcard"]
     },
     {
+      "id": "homepage-folder-card",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage",
+      "map": { ".e2e-folder-card": ".gv-pcard.boxed" },
+      "props": ["background-color", "box-shadow", "border", "border-radius"],
+      "uses": [".gv-pcard"]
+    },
+    {
       "id": "homepage-card-cta",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage",
