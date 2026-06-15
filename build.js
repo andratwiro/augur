@@ -1336,7 +1336,7 @@ async function main() {
     injectPrimitives(galleryHtml),
     "utf8"
   );
-  const patternAssets = ["govocal-tokens.css", "govocal-ui.css", "govocal-themes.js", "govocal-cookies.js", "govocal-icons.js", "govocal-logo.svg"];
+  const patternAssets = ["govocal-tokens.css", "govocal-primitives.css", "govocal-ui.css", "govocal-themes.js", "govocal-cookies.js", "govocal-icons.js", "govocal-logo.svg"];
   for (const asset of patternAssets) {
     if (await exists(path.join(UI_SKILL, asset))) {
       await fs.copyFile(path.join(UI_SKILL, asset), path.join(patternsDir, asset));
@@ -1351,7 +1351,7 @@ async function main() {
   // same relative path resolves locally (file://) and here on the shipped site.
   // (Prototypes are the only tier that still copies assets — they're allowed to fork.)
   const SHARED_ASSETS = [
-    "govocal-tokens.css", "govocal-ui.css", "govocal-bo.css",
+    "govocal-tokens.css", "govocal-primitives.css", "govocal-ui.css", "govocal-bo.css",
     "govocal-themes.js", "govocal-cookies.js", "govocal-icons.js",
     "govocal-survey.css", "govocal-survey.js", "govocal-logo.svg",
   ];
