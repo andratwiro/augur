@@ -94,6 +94,20 @@
     .cb-pbox__count { font-size: 17px; color: var(--gv-cool-grey-700); }
     .cb-pbox__count strong { font-weight: 700; }
 
+    /* ── Locked top blocks (hero image + title) — pinned, editable, not movable ── */
+    #cb-root .gv-bo-cb-block.cb-locked { cursor: default; }
+    .cb-lockmark { display: inline-flex; vertical-align: middle; opacity: .8; }
+    .cb-lockmark .gv-icon { width: 12px; height: 12px; }
+    .cb-lockednote { display: flex; align-items: center; gap: 7px; margin: 14px 0 0; padding: 10px 12px; background: var(--gv-grey-100); border-radius: 4px; font-size: 13px; color: var(--gv-cool-grey-600); }
+    .cb-lockednote .gv-icon { width: 14px; height: 14px; flex: none; }
+    .cb-hero { border-radius: 4px; overflow: hidden; }
+    .cb-hero__img { display: block; width: 100%; height: 240px; object-fit: cover; }
+    .cb-title { margin: 4px 0 0; outline: none; }
+
+    /* ── Timeline + Events blocks (canonical .gv-phases / .gv-event-card) ──────── */
+    .cb-timeline { margin: 0; }
+    .cb-events { display: block; }
+
     /* ── Button style variants (page-local) ────────────────────────────────── */
     .cb-fakebtn.cb-fakebtn--secondary { background: var(--gv-white); color: var(--gv-tenant-primary); border: 1px solid var(--gv-tenant-primary); }
     .cb-fakebtn.cb-fakebtn--link { background: transparent; color: var(--gv-tenant-primary); padding-left: 0; padding-right: 0; text-decoration: underline; }
@@ -242,6 +256,20 @@
             <span class="gv-bo-cb-item__label">Accordion</span>
           </div>
         </div>
+        <div class="gv-bo-cb-palette__group">
+          <div class="gv-bo-cb-item" id="e2e-draggable-timeline" draggable="true" data-widget="timeline">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><circle cx="4" cy="10" r="2.2" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="10" r="2.2" fill="currentColor"/><circle cx="16" cy="10" r="2.2" stroke="currentColor" stroke-width="1.4"/><path d="M6.2 10h1.6M12.2 10h1.6" stroke="currentColor" stroke-width="1.4"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Timeline</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-events" draggable="true" data-widget="events">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4.5" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M3 8h14M7 3v3M13 3v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Events</span>
+          </div>
+        </div>
       </aside>
 
       <!-- ══════════ CENTRE CANVAS ══════════ -->
@@ -311,8 +339,66 @@
         '</div>'; } },
       'file-attachment': { label: 'File Attachment',    make: function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__info"><span class="cb-file__name">project-brief.pdf</span><span class="cb-file__meta">PDF · 1.2 MB</span></span></div>'; } },
       'image-text-cards':{ label: 'Image & text cards', make: function () { return '<div class="cb-cards" data-n="3"><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card one</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card two</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card three</div></div></div>'; } },
-      'info-accordions': { label: 'Info & accordions',  make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">How will my input be used?</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">An explanation of the process.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } }
+      'info-accordions': { label: 'Info & accordions',  make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">How will my input be used?</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">An explanation of the process.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
+      // ── project-page components (this is the project's content builder) ──────
+      'timeline':        { label: 'Timeline',           make: function () { return cbTimelineHTML(); } },
+      'events':          { label: 'Events',             make: function () { return cbEventsHTML(2); } },
+      // locked top blocks (never in the palette; created via makeLockedBlock)
+      'hero':            { label: 'Project image' },
+      'title':           { label: 'Project title' }
     };
+
+    // The project's phase timeline = the canonical .gv-phases / .gv-stepper ribbon
+    // (the same component the resident sees on the project page).
+    var CB_PHASES = [
+      { name: 'Information',      dates: '1 Mar – 31 Mar 2026',  desc: 'Background on the project and how to take part.' },
+      { name: 'Share your ideas', dates: '1 Apr – 31 May 2026',  desc: 'Submit your ideas and react to what others suggest.' },
+      { name: 'Vote',             dates: '1 Jun – 30 Jun 2026',  desc: 'Help prioritise the shortlisted ideas.' },
+      { name: 'Results',          dates: 'Jul 2026',             desc: 'See which ideas move into the master plan.' }
+    ];
+    var CB_CURRENT = 1;
+    function cbPhasePanel(i) {
+      var p = CB_PHASES[i], muted = i === CB_CURRENT ? '' : ' muted';
+      return '<div class="gv-phasepanel__head' + muted + '">' +
+          '<span class="gv-phasepanel__num" aria-hidden="true">' + (i + 1) + '</span>' +
+          '<div><h3 class="gv-phasepanel__name">' + p.name + '</h3>' +
+          '<p class="gv-phasepanel__date">' + p.dates + '</p></div></div>' +
+        '<div class="gv-phasepanel__desc"><p>' + p.desc + '</p></div>';
+    }
+    function cbTimelineHTML() {
+      var steps = CB_PHASES.map(function (p, i) {
+        var cur = i === CB_CURRENT, dot = cur ? '<span class="gv-pstep__dot"></span>' : '';
+        return '<button class="gv-phase' + (cur ? ' current' : '') + '" type="button" role="tab" data-i="' + i + '" aria-selected="' + (i === CB_CURRENT) + '">' +
+          '<span class="gv-pstep">' + dot + (i + 1) + '</span><span class="gv-phase__label">' + p.name + '</span></button>';
+      }).join('');
+      return '<section class="gv-phases cb-timeline">' +
+        '<div class="gv-phases__bar"><h2>Phases</h2></div>' +
+        '<div class="gv-stepper" role="tablist" aria-label="Project phases">' + steps + '</div>' +
+        '<div class="gv-phasepanel cb-timeline__panel">' + cbPhasePanel(CB_CURRENT) + '</div></section>';
+    }
+    function cbEventCard(ev) {
+      return '<article class="gv-event-card">' +
+        '<div class="gv-event-card__media" aria-hidden="true">' +
+          '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+          '<span class="gv-event-card__date"><span class="m">' + ev.m + '</span><span class="d">' + ev.d + '</span><span class="y">' + ev.y + '</span></span></div>' +
+        '<div class="gv-event-card__body"><h3 class="gv-event-card__title"><a href="#">' + ev.title + '</a></h3>' +
+          '<div class="gv-event-card__meta">' +
+            '<p class="gv-event-card__row"><span data-gv-icon="clock"></span> ' + ev.when + '</p>' +
+            '<p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> ' + ev.where + '</p>' +
+            '<p class="gv-event-card__row"><span data-gv-icon="user"></span> ' + ev.regs + ' registrants</p></div>' +
+          '<a class="gv-btn primary full" href="#">Register</a></div></article>';
+    }
+    var CB_EVENTS = [
+      { m: 'Aug', d: '22', y: '2026', title: 'Dorothea Dix Park — on-site design walk', when: '22 Aug 2026 · 17:30 – 19:00', where: 'Dorothea Dix Park, Raleigh', regs: '41' },
+      { m: 'Sep', d: '10', y: '2026', title: 'Online townhall: review the shortlisted ideas', when: '10 Sep 2026 · 18:00 – 19:30', where: 'Online (Zoom)', regs: '88' },
+      { m: 'Sep', d: '24', y: '2026', title: 'Pop-up booth at the State Fair', when: '24 Sep 2026 · 10:00 – 16:00', where: 'NC State Fairgrounds', regs: '12' }
+    ];
+    function cbEventsHTML(n) {
+      var cards = CB_EVENTS.slice(0, n).map(cbEventCard).join('');
+      return '<section class="cb-events"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Events</h2>' +
+        '<a class="gv-btn text" href="#">View all events</a></div>' +
+        '<div class="gv-events__grid">' + cards + '</div></section>';
+    }
 
     function toast(msg) {
       toastEl.textContent = msg; toastEl.classList.add('is-show');
@@ -394,6 +480,21 @@
         return settingsRow('Number of cards', '<select class="gv-bo-select" id="cb-f-cardcount"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>') +
                '<div id="cb-f-cardcaps"></div>';
       }
+      if (widget === 'timeline') {
+        var opts = CB_PHASES.map(function (p, i) { return '<option value="' + i + '"' + (i === CB_CURRENT ? ' selected' : '') + '>' + p.name + '</option>'; }).join('');
+        return settingsRow('Current phase', '<select class="gv-bo-select" id="cb-f-curphase">' + opts + '</select>') +
+               settingsRow('', '<p class="cb-p" style="color:var(--gv-cool-grey-600);font-size:13px">The phase timeline mirrors the project’s phases. Residents see the same component.</p>');
+      }
+      if (widget === 'events') {
+        return settingsRow('Events shown', '<select class="gv-bo-select" id="cb-f-eventcount"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>');
+      }
+      if (widget === 'hero') {
+        return settingsRow('Replace image', '<input class="gv-input" type="file" id="cb-f-herofile" accept="image/*">') +
+               settingsRow('Image URL', '<input class="gv-input" id="cb-f-herourl" placeholder="https://…">');
+      }
+      if (widget === 'title') {
+        return settingsRow('Project title', '<input class="gv-input" id="cb-f-ptitle" value="Let’s Reimagine Dorothea Dix Park">');
+      }
       return settingsRow('Settings', '<div class="cb-p">No additional settings for this element.</div>');
     }
 
@@ -426,6 +527,15 @@
       bindTextBinding(block, widget);
       bindRteButtons();
       wireBody(widget, block);
+      // Locked blocks (hero / title) can't be deleted — show a pinned note instead of Delete.
+      if (block.classList.contains('cb-locked')) {
+        var note = document.createElement('p');
+        note.className = 'cb-lockednote';
+        note.innerHTML = '<span class="gv-icon" data-gv-icon="lock"></span> Pinned to the top of the page — editable, but can’t be moved or removed.';
+        sBody.appendChild(note);
+        if (window.GVIcons) window.GVIcons.render(note);
+        return;
+      }
       var delBtn = document.createElement('button');
       delBtn.className = 'gv-bo-cb-delete';
       delBtn.type = 'button';
@@ -622,6 +732,47 @@
         return;
       }
 
+      if (widget === 'timeline') {
+        var curSel = pv('cb-f-curphase');
+        if (curSel) curSel.addEventListener('change', function () {
+          CB_CURRENT = +curSel.value;
+          var sec = bq('.cb-timeline');
+          if (!sec) return;
+          // re-render this timeline's stepper + panel for the new current phase
+          var steps = CB_PHASES.map(function (p, i) {
+            var cur = i === CB_CURRENT, dot = cur ? '<span class="gv-pstep__dot"></span>' : '';
+            return '<button class="gv-phase' + (cur ? ' current' : '') + '" type="button" role="tab" data-i="' + i + '" aria-selected="' + (i === CB_CURRENT) + '"><span class="gv-pstep">' + dot + (i + 1) + '</span><span class="gv-phase__label">' + p.name + '</span></button>';
+          }).join('');
+          sec.querySelector('.gv-stepper').innerHTML = steps;
+          sec.querySelector('.cb-timeline__panel').innerHTML = cbPhasePanel(CB_CURRENT);
+          wireTimeline(block);
+          if (window.GVIcons) window.GVIcons.render(sec);
+        });
+        return;
+      }
+
+      if (widget === 'events') {
+        var evGrid = bq('.gv-events__grid'), evCount = pv('cb-f-eventcount');
+        if (evGrid && evCount) evCount.addEventListener('change', function () {
+          evGrid.innerHTML = CB_EVENTS.slice(0, +evCount.value).map(cbEventCard).join('');
+          if (window.GVIcons) window.GVIcons.render(evGrid);
+        });
+        return;
+      }
+
+      if (widget === 'hero') {
+        var heroImg = bq('.cb-hero__img'), hf = pv('cb-f-herofile'), hu = pv('cb-f-herourl');
+        if (hf && heroImg) hf.addEventListener('change', function () { if (hf.files && hf.files[0]) heroImg.src = URL.createObjectURL(hf.files[0]); });
+        if (hu && heroImg) hu.addEventListener('input', function () { if (hu.value) heroImg.src = hu.value; });
+        return;
+      }
+
+      if (widget === 'title') {
+        var h1 = bq('.cb-title'), tIn2 = pv('cb-f-ptitle');
+        if (h1 && tIn2) { tIn2.value = (h1.textContent || '').trim(); tIn2.addEventListener('input', function () { h1.textContent = tIn2.value; }); }
+        return;
+      }
+
       if (widget === 'about-box') { bindAboutBox(block); return; }
     }
 
@@ -662,8 +813,53 @@
       for (var z = 0; z < zones.length; z++) makeDropZone(zones[z], 'y');
       // Accordion head toggles expand/collapse on the canvas.
       wireAccordion(block);
+      wireTimeline(block);
       if (window.GVIcons) window.GVIcons.render(block);
       return block;
+    }
+
+    // Locked top blocks: the project hero image + title. Editable, but pinned to
+    // the top — not draggable, not deletable, not reorderable.
+    function makeLockedBlock(kind) {
+      var def = WIDGETS[kind] || {};
+      var block = document.createElement('div');
+      block.className = 'gv-bo-cb-block cb-locked';
+      block.setAttribute('data-widget', kind);
+      block.setAttribute('data-label', def.label || kind);
+      block.setAttribute('draggable', 'false');
+      block.id = 'cb-block-' + (uid++);
+      var tab = document.createElement('span');
+      tab.className = 'gv-bo-cb-block__label';
+      tab.innerHTML = (def.label || kind) + ' <span class="cb-lockmark" aria-hidden="true"><span class="gv-icon" data-gv-icon="lock"></span></span>';
+      block.appendChild(tab);
+      var content = document.createElement('div');
+      if (kind === 'hero') {
+        content.innerHTML = '<div class="cb-hero"><img class="cb-hero__img" src="https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=1400&h=400&fit=crop" alt="Project banner"></div>';
+      } else {
+        content.innerHTML = '<h1 class="gv-title h1 cb-title" contenteditable="true">Let’s Reimagine Dorothea Dix Park</h1>';
+      }
+      while (content.firstChild) block.appendChild(content.firstChild);
+      wireBlock(block);
+      if (window.GVIcons) window.GVIcons.render(block);
+      return block;
+    }
+
+    // Timeline phase switching (the .gv-stepper ribbon) — works in edit + preview.
+    function wireTimeline(block) {
+      var steppers = block.querySelectorAll('.cb-timeline .gv-stepper');
+      for (var s = 0; s < steppers.length; s++) {
+        (function (stepper) {
+          var section = stepper.closest('.cb-timeline');
+          var panel = section ? section.querySelector('.cb-timeline__panel') : null;
+          stepper.querySelectorAll('.gv-phase').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var i = +btn.dataset.i;
+              stepper.querySelectorAll('.gv-phase').forEach(function (b) { b.setAttribute('aria-selected', String(+b.dataset.i === i)); });
+              if (panel) { panel.innerHTML = cbPhasePanel(i); if (window.GVIcons) window.GVIcons.render(panel); }
+            });
+          });
+        })(steppers[s]);
+      }
     }
 
     function wireAccordion(block) {
@@ -694,6 +890,8 @@
         e.stopPropagation();
         select(block);
       });
+      // Locked blocks (hero image / title) are pinned to the top: editable but not draggable.
+      if (block.classList.contains('cb-locked')) { block.setAttribute('draggable', 'false'); return; }
       // reorder within the canvas
       block.addEventListener('dragstart', function (e) {
         if (root.classList.contains('cb-preview')) { e.preventDefault(); return; }
@@ -721,6 +919,7 @@
       for (var i = 0; i < kids.length; i++) {
         var child = kids[i];
         if (!child.classList || !child.classList.contains('gv-bo-cb-block')) continue;
+        if (child.classList.contains('cb-locked')) continue;   // locked header pins the top; never insert above it
         var r = child.getBoundingClientRect();
         if (axis === 'x') { if (x < r.left + r.width / 2) return child; }
         else { if (y < r.top + r.height / 2) return child; }
@@ -880,14 +1079,18 @@
       return b;
     }
     function seedDefault() {
-      frame.appendChild(makeBlock('image'));
-      frame.appendChild(seedBlock('text', '<strong>What we’re asking</strong><br>The park will be built in phases over the next decade. Right now we want your input on the spaces, activities and priorities that matter most to you.'));
+      // Locked top: the project hero image + title, pinned above all content.
+      frame.insertBefore(makeLockedBlock('hero'), first);
+      frame.insertBefore(makeLockedBlock('title'), first);
+      // 'first' (the static intro text) stays as the first editable content block, then:
+      frame.appendChild(makeBlock('timeline'));
       var two = makeBlock('two-column');
       frame.appendChild(two);
       var cols = two.querySelectorAll('.cb-col');
       if (cols[0]) cols[0].appendChild(seedBlock('text', '<strong>Share your ideas</strong><br>What should this once-in-a-generation space include?'));
       if (cols[1]) cols[1].appendChild(seedBlock('text', '<strong>Join an event</strong><br>Walk the site with our design team this spring.'));
       frame.appendChild(makeBlock('about-box'));
+      frame.appendChild(makeBlock('events'));
       frame.appendChild(seedBlock('text', '<strong>Frequently asked questions</strong>'));
       frame.appendChild(makeBlock('accordion'));
       reflectEmptyAll();
