@@ -54,8 +54,11 @@ canonical and every consumer updates.
 - Alt table row / hover `#FCFCFC` (`--gv-grey-50`). Radius **3px** throughout.
 
 **Type & state (measured `bo-phase-setup`, easy to get wrong):**
-- **Tabs** (project + sub) — 16px, **weight 400 even when active** (active = blue + 3px
-  underline, NOT bold); inactive `#596B7A`, active `#044D6C`; padding `16px 0`.
+- **Tabs** (project + sub are the SAME component, `sc-lilDSw` wrapper) — 16px / lh 24px,
+  **weight 400 even when active** (NOT bold); inactive text `#596B7A`, active text `#044D6C`;
+  padding `16px 0`; tabs spaced **40px** apart. Active indicator = a **3px TEAL `#147985`
+  (teal-500) bottom border on the wrapper** — NOT the navy text colour. Both tab rows sit on
+  elevated `#FBFBFB` panels (project header `gceAGH` + tabs `kBjgE` flush; phase sub-tabs `jDYmOv`).
 - **Field labels** (`.gv-bo-field > .gv-label`, e.g. "Phase name") — **18px / weight 500 /
   admin-blue `#044D6C`** (larger + lighter than a generic label, not small dark grey).
 - Section headings (`Edit Phase` / `New ideas!`) **21px**/700 blue; meta rows **14px** `#596B7A`.
@@ -70,7 +73,9 @@ light blue-grey **app canvas `#EDEFF0`** (`--gv-bo-canvas`; NOT white):
   (`--gv-bo-tabstrip`) panel **headers** — rounded **top** corners (`3px 3px 0 0`) + the soft
   card shadow `0 2px 4px -1px rgba(0,0,0,.06)` (`--gv-shadow`), NOT a flat underline row.
 - **Content cards** (`div.sc-loIdfG`) — white, **3px** radius, same `--gv-shadow` — float on
-  the canvas with a gutter; form/table content lives inside them.
+  the canvas with a gutter; form/table content lives inside them with **40px** internal padding
+  (`div.jDPsVV`). The **phase header is its own content card** (`sc-loIdfG`, `margin-bottom 8px`)
+  above the sub-tab strip, not bare text on the canvas.
 - Encoded: `.gv-bo-shell` paints the canvas; `.gv-bo-tabs`/`--sub` are the strips;
   `.gv-bo-card` is the floating panel; `.gv-bo-section` is the transparent canvas gutter.
   Checkpoints `bo-project-phase/{canvas,content-card,tabstrip-project,tabstrip-sub}`.

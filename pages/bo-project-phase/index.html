@@ -14,8 +14,7 @@
     html, body { margin: 0; height: 100%; }
     body { background: #fff; font-family: var(--gv-font-family); }
     /* the ribbon sits inside the white canvas, edge-to-edge under the tabs */
-    .gv-bo-section .gv-phases { box-shadow: none; border: 0; padding: 0; background: transparent; margin: 0 0 4px; }
-    .gv-bo-section .gv-stepper { display: flex; flex-wrap: wrap; gap: 2px; }
+    .gv-bo-section .gv-phases { margin: 0 0 14px; }
     /* phase sub-tab panels (Setup / Input manager / Input form / Insights) —
        the .gv-bo-card wrapper supplies the padding, so panels add none of their own */
     .pp-sub { display: none; }
@@ -480,7 +479,7 @@
           <div class="gv-bo-card">
           <div style="display:flex;align-items:flex-end;gap:16px;margin-top:0">
             <div>
-              <h2 style="margin:0;font-size:28px;font-weight:600;color:var(--gv-bo-primary)">Participants</h2>
+              <h2 class="gv-bo-pagehead">Participants</h2>
               <p class="gv-bo-help">An overview of participants who have an account. Anonymous participation isn't counted.</p>
             </div>
             <div style="margin-left:auto;display:flex;gap:8px">
@@ -676,7 +675,7 @@
       tr.innerHTML = `
         <td><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
         <td><div class="gv-bo-table__person">
-          <span class="gv-bo-table__avatar" style="display:grid;place-items:center;color:#fff;font-size:12px;font-weight:600;background:hsl(${hue} 35% 55%)">${initials}</span>
+          <span class="gv-bo-table__avatar" style="background:hsl(${hue} 35% 55%)">${initials}</span>
           <span><span class="gv-bo-table__name">${name}</span><br><span class="gv-bo-table__sub">${email}</span></span>
         </div></td>
         <td>${role}</td>

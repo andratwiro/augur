@@ -59,6 +59,30 @@
       "uses": [".gv-title"]
     },
     {
+      "id": "homepage-hero-title",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage",
+      "map": { "h1": ".gv-hero__title" },
+      "props": ["font-size", "font-weight", "line-height"],
+      "uses": [".gv-hero"]
+    },
+    {
+      "id": "homepage-time-remaining",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage",
+      "map": { ".e2e-project-card-time-remaining": ".gv-pcard__meta.time" },
+      "props": ["font-size", "font-weight"],
+      "uses": [".gv-pcard"]
+    },
+    {
+      "id": "homepage-filter-btn",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage",
+      "map": { ".e2e-filter-selector-button": ".gv-filter-btn" },
+      "props": ["padding"],
+      "uses": [".gv-filter-btn"]
+    },
+    {
       "id": "bo-project-phase/setup-input",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
@@ -139,12 +163,11 @@
       "uses": [".gv-bo-card"]
     },
     {
-      "id": "bo-project-phase/tabstrip-project",
+      "id": "bo-project-phase/topbar-panel",
       "built": "pages/bo-project-phase/index.html",
       "against": "bo-phase-setup",
-      "map": { "nav.sc-gEXpur.gceAGH": ".gv-bo-topbar .gv-bo-tabs" },
-      "props": ["background-color", "border-radius", "box-shadow"],
-      "uses": [".gv-bo-tabs"]
+      "map": { "nav.sc-gEXpur.gceAGH": ".gv-bo-topbar" },
+      "props": ["background-color", "border-radius", "box-shadow"]
     },
     {
       "id": "bo-project-phase/tabstrip-sub",
@@ -153,6 +176,38 @@
       "map": { "nav.sc-gEXpur.kBjgE": ".gv-bo-tabs--sub" },
       "props": ["background-color", "border-radius", "box-shadow"],
       "uses": [".gv-bo-tabs"]
+    },
+    {
+      "id": "bo-project-phase/tab-active",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-setup",
+      "map": { "a.intercom-admin-project-timeline-tab": ".gv-bo-topbar .gv-bo-tab.is-active" },
+      "props": ["color", "font-size", "font-weight", "line-height", "padding"],
+      "uses": [".gv-bo-tabs"]
+    },
+    {
+      "id": "bo-project-phase/tab-inactive",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-setup",
+      "map": { "a.intercom-admin-project-general-tab": ".gv-bo-topbar .gv-bo-tab:not(.is-active)" },
+      "props": ["color", "font-size", "font-weight", "line-height", "padding"],
+      "uses": [".gv-bo-tabs"]
+    },
+    {
+      "id": "bo-project-phase/tab-underline",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-setup",
+      "map": { "div.sc-lilDSw.hYUwXA": ".gv-bo-topbar .gv-bo-tab.is-active" },
+      "props": ["border-width", "border-style", "border-color"],
+      "uses": [".gv-bo-tabs"]
+    },
+    {
+      "id": "bo-project-phase/form-card",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-setup",
+      "map": { "div.sc-beqWaB.jDPsVV": "#panel-timeline .gv-bo-card" },
+      "props": ["background-color", "padding"],
+      "uses": [".gv-bo-card"]
     }
   ]
 }

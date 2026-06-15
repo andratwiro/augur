@@ -125,10 +125,16 @@
 .gv-bo-main { min-width: 0; display: flex; flex-direction: column; }
 
 /* ── Project top bar ──────────────────────────────────────────────────────── */
-/* White title band at the top of the main column; the project tab strip below
-   carries the elevation. Sits flush above the #EDEFF0 canvas. */
+/* Measured live (bo-phase-setup, nav.sc-gEXpur.gceAGH): the project header is an
+   *elevated* #FBFBFB panel — rounded top corners, the soft card shadow and a 1px
+   #E0E0E0 border (transparent bottom) — NOT a flat white band. The project tab
+   strip sits flush directly below it as a second elevated panel. */
 .gv-bo-topbar {
-  background: #fff;
+  background: var(--gv-bo-tabstrip);
+  border: 1px solid var(--gv-grey-300);
+  border-bottom: 0;
+  border-radius: var(--gv-radius) var(--gv-radius) 0 0;
+  box-shadow: var(--gv-shadow);
   padding: 16px 24px 0;
 }
 .gv-bo-topbar__row { display: flex; align-items: flex-start; gap: 16px; }
@@ -153,17 +159,19 @@
    shadow, NOT a flat underline row. Its content card sits just below it on the
    canvas. The active tab keeps the 3px tenant underline along the strip's base. */
 .gv-bo-tabs {
-  display: flex; gap: 24px;
-  margin-top: 12px;
-  padding: 0 16px;
+  display: flex; gap: 40px;
+  padding: 0 24px;
   background: var(--gv-bo-tabstrip);
   border-radius: var(--gv-radius) var(--gv-radius) 0 0;
   box-shadow: var(--gv-shadow);
-  border-bottom: 1px solid var(--gv-grey-300);
+  border: 1px solid var(--gv-grey-300);
+  border-bottom: 0;
 }
+/* Project tabs sit flush directly below the topbar panel (no canvas gap). */
+.gv-bo-topbar .gv-bo-tabs { margin-top: 0; border-radius: 0; box-shadow: none; border-top: 0; }
 .gv-bo-tab {
   padding: 16px 0;
-  font-size: 16px;
+  font-size: 16px; line-height: 24px;
   color: var(--gv-cool-grey-600);
   text-decoration: none;
   border-bottom: 3px solid transparent;
@@ -172,17 +180,21 @@
   cursor: pointer;
 }
 .gv-bo-tab:hover { color: var(--gv-bo-primary); }
-/* Active = tenant-blue text + 3px underline only; the real product does NOT bold it. */
-.gv-bo-tab.is-active { color: var(--gv-bo-primary); border-bottom-color: var(--gv-bo-primary); }
+/* Active = admin-blue text + a 3px TEAL underline (measured: rgb(20,121,133) =
+   teal-500, NOT the navy text colour); the real product does NOT bold it. */
+.gv-bo-tab.is-active { color: var(--gv-bo-primary); border-color: var(--gv-teal-500); }
 .gv-bo-tab__new {
   margin-left: 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
   background: var(--gv-teal-100); color: var(--gv-teal-700);
   padding: 2px 5px; border-radius: 3px; vertical-align: middle;
 }
 
-/* sub-tab variant: smaller, sits inside a phase panel */
-.gv-bo-tabs--sub { gap: 20px; }
-.gv-bo-tabs--sub .gv-bo-tab { font-size: 14px; padding: 12px 0; }
+/* Phase sub-tabs are the SAME tab component as the project tabs (measured: same
+   sc-lilDSw wrapper, 16px text, 40px gap, teal active underline) — just a strip
+   that stands alone on the canvas rather than below the topbar. The content card
+   sits flush directly below it, so square off the card's top corners. */
+.gv-bo-tabs--sub { padding: 0 24px; }
+.gv-bo-tabs--sub + .gv-bo-card { border-top-left-radius: 0; border-top-right-radius: 0; }
 
 /* ── Project configuration screens (the /admin/projects/<id>/… editor) ────── */
 
@@ -191,8 +203,10 @@
 .gv-bo-section { padding: 16px 24px 28px; }
 
 /* Phase ribbon (reuses .gv-phases/.gv-stepper) — back office adds a flat
-   "+ New phase" cell at the end of the chevron row. */
-.gv-bo .gv-stepper { align-items: flex-start; }
+   "+ New phase" cell at the end of the chevron row. In the BO the ribbon sits
+   bare on the canvas, so strip the front-office card chrome off .gv-phases. */
+.gv-bo .gv-phases { box-shadow: none; border: 0; padding: 0; background: transparent; }
+.gv-bo .gv-stepper { align-items: flex-start; display: flex; flex-wrap: wrap; gap: 2px; }
 /* Phase ribbon chevrons measured live: a 23px-tall grey (#D4D9DD) track with
    cool-grey-700 numbers/labels; the current phase fills green-600 (#096F03).
    Scoped to .gv-bo so the front-office ribbon (shared primitive) is untouched. */
@@ -211,8 +225,14 @@
 .gv-bo-addphase:hover { background: var(--gv-cool-grey-300); }
 
 /* Phase header — back-office config uses a plain text header (title + meta + ⋯),
-   NOT the resident-facing green numbered-circle panel. */
-.gv-bo-phasehead { display: flex; align-items: flex-start; gap: 16px; padding: 20px 0 4px; }
+   NOT the resident-facing green numbered-circle panel. Measured live
+   (div.sc-loIdfG): it's its own elevated white card sitting on the canvas, with
+   an 8px gutter below it before the sub-tab strip. */
+.gv-bo-phasehead {
+  display: flex; align-items: flex-start; gap: 16px;
+  background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow);
+  padding: 24px 32px; margin-bottom: 8px;
+}
 .gv-bo-phasehead__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-phasehead__meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
 .gv-bo-phasehead__meta > span { display: inline-flex; align-items: center; gap: 5px; }
@@ -280,17 +300,20 @@
 
 /* Participation-method picker — grid of selectable cards. */
 .gv-bo-methods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 8px 0 4px; }
+/* Measured live: an UNSELECTED method card is white with a #CBCBCB (grey-400)
+   border and cool-grey-500 (#84939E) icon/title/desc; SELECTING it flips the
+   fill to teal-75, the border + all text to admin blue. */
 .gv-bo-methodcard {
   display: flex; flex-direction: column; gap: 8px; text-align: left;
   padding: 16px; border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius);
-  background: #fff; color: var(--gv-bo-primary); font-size: var(--gv-fs-s); cursor: pointer;
+  background: #fff; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-s); cursor: pointer;
   transition: border-color 120ms ease, background-color 120ms ease;
 }
 .gv-bo-methodcard:hover { border-color: var(--gv-bo-primary); }
-.gv-bo-methodcard.is-selected { background: var(--gv-teal-75); border-color: var(--gv-bo-primary); }
-.gv-bo-methodcard__icon { width: 28px; height: 28px; color: var(--gv-bo-primary); }
-.gv-bo-methodcard__title { font-weight: 700; }
-.gv-bo-methodcard__desc { color: var(--gv-text-secondary); line-height: 1.4; }
+.gv-bo-methodcard.is-selected { background: var(--gv-teal-75); border-color: var(--gv-bo-primary); color: var(--gv-bo-primary); }
+.gv-bo-methodcard__icon { width: 28px; height: 28px; color: inherit; }
+.gv-bo-methodcard__title { font-weight: 700; color: inherit; }
+.gv-bo-methodcard__desc { color: inherit; line-height: 1.5; }
 
 /* Toggle row — label/help block on the left, .gv-toggle on the right. */
 .gv-bo-togglerow {
@@ -329,6 +352,9 @@
 }
 .gv-bo-dropzone .gv-icon { color: var(--gv-bo-primary); }
 
+/* Page-level heading (Audience → "Participants"): 28px/600 admin blue (measured). */
+.gv-bo-pagehead { margin: 0; font-size: 28px; font-weight: 600; color: var(--gv-bo-primary); }
+
 /* ── Data table (Audience → Participants, and any admin list) ──────────────── */
 .gv-bo-table { width: 100%; border-collapse: collapse; font-size: var(--gv-fs-s); }
 .gv-bo-table thead th {
@@ -338,7 +364,7 @@
 .gv-bo-table tbody td { padding: 12px; color: var(--gv-bo-primary); border-bottom: 1px solid var(--gv-divider); vertical-align: middle; }
 .gv-bo-table tbody tr:hover { background: var(--gv-grey-50); }
 .gv-bo-table__person { display: flex; align-items: center; gap: 10px; }
-.gv-bo-table__avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: none; background: var(--gv-cool-grey-300); }
+.gv-bo-table__avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: none; background: var(--gv-cool-grey-300); display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 600; }
 .gv-bo-table__name { font-weight: 600; color: var(--gv-bo-primary); }
 .gv-bo-table__sub { color: var(--gv-text-secondary); font-size: 13px; }
 .gv-bo-table__opts { color: var(--gv-cool-grey-500); text-align: right; }
@@ -363,7 +389,7 @@
 .gv-bo-pane { background: var(--gv-bo-canvas); padding: 24px; min-height: 420px; }
 /* Elevated white content card — the form/table panel that floats on the canvas.
    Measured live (bo-phase-setup, div.sc-loIdfG): white, 3px radius, soft shadow. */
-.gv-bo-card { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 32px; }
+.gv-bo-card { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 40px; }
 
 /* Empty state (Messaging "Send your first email"). */
 .gv-bo-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 48px 24px; }
