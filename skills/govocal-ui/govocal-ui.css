@@ -912,6 +912,16 @@
    Thumbnail 162×162 (.e2e-idea-card .sc-cYRYSS). The variants each defined it
    slightly differently; this is the unified component. ───────────────────────── */
 .gv-idealist { display: flex; flex-direction: column; gap: 16px; }
+/* Feed column width — grounded fix for ideacard-thumb-scale. The real ideation/
+   proposal cards sit in a constrained list column, NOT the full content frame:
+   measured .e2e-idea-card width = 785px across fo-project-ideation-list / -feed /
+   -proposals (sidebar = 310px takes the rest of the row). The thumb is correctly
+   162px in both real and ours; the only proportion drift was that an uncapped feed
+   let the body sprawl (162px read as ~14% of an 1150px card instead of the real
+   ~20.6% of 785px). Capping the shared list at the source-true 785px restores the
+   real thumb-to-body proportion for every consumer, with the grounded 162px thumb
+   left untouched. Pages with their own column layout may still override. */
+.gv-idealist { max-width: 785px; }
 .gv-ideacard {
   display: flex; align-items: stretch; gap: 18px;
   background: #fff; border-radius: var(--gv-radius);
