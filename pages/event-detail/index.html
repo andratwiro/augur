@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="gv-surface" content="front-office" />
+  <title>Event detail — GoVocal (reference)</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <!--
+    REFERENCE REBUILD of a single GoVocal event detail page (/events/:id),
+    source-grounded on wietsedemo.govocal.com/en/events/<id> (capture:
+    govocal-exports/fo-event-detail, Cultuurconnect tenant). Anatomy:
+    header → "Go back" tenant-primary text link → two-column body:
+      • main: "From <project>" eyebrow + "Go to the project" link + event H1
+        (30px/700) + rich-text .gv-prose description
+      • side (350px): stylized date block on the grey app-canvas panel (day 34px,
+        month, time) + "Add to calendar" text button + "Share this event"
+    → footer. Pure assembly: every colour/border/type lives in canonical
+    govocal-ui.css / govocal-primitives.css; this page authors layout + content
+    only. Re-skins per city via the ?theme= switcher.
+  -->
+  <style>
+    /* Page-level layout only — all colour/elevation/type lives in canonical CSS. */
+    body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
+    .eventdetail-backbar { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 20px 24px 0; }
+  </style>
+</head>
+<body class="gv-root" data-auth="in">
+
+  <!-- ════════════════════════ Header / nav (dragged in) ════════════════════════ -->
+  <header id="e2e-navbar" class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Home"></a>
+
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#">Home</a></li>
+          <li>
+            <details class="gv-nav__dd">
+              <summary class="gv-nav__link">All projects
+                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">Climate action planning</a>
+                <a href="#">A square for everyone</a>
+                <a href="#">The future of Station Road</a>
+                <a href="#">Participatory budget 2026</a>
+                <a href="#">Old Town renewal</a>
+              </div>
+            </details>
+          </li>
+          <li><a class="gv-nav__link" href="#">Proposals</a></li>
+          <li><a class="gv-nav__link" href="../events/" aria-current="page">Events</a></li>
+          <li>
+            <details class="gv-nav__dd right">
+              <summary class="gv-nav__link">More
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">About the platform</a>
+                <a href="#">FAQ</a>
+                <a href="#">Contact</a>
+              </div>
+            </details>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search">
+          <span data-gv-icon="search"></span>
+        </button>
+
+        <span class="gv-auth-out gv-desktop-only">
+          <button class="gv-btn primary" data-auth-set="in">Sign in</button>
+        </span>
+
+        <span class="gv-auth-in gv-desktop-only">
+          <button class="gv-iconbtn" aria-label="Notifications, 3 unread">
+            <span data-gv-icon="notification"></span>
+            <span class="gv-iconbtn__badge">3</span>
+          </button>
+          <details class="gv-nav__dd right gv-account-dd">
+            <summary class="gv-account">
+              <span class="gv-account__name">Go Vocal</span>
+              <span class="gv-avatar">GV</span>
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu gv-nav__menu--account">
+              <a href="#">Manage platform <span data-gv-icon="shield"></span></a>
+              <a href="#">My activity <span data-gv-icon="user-circle"></span></a>
+              <a href="#">My settings <span data-gv-icon="cogs"></span></a>
+              <button type="button" data-auth-set="out">Sign out <span data-gv-icon="power"></span></button>
+            </div>
+          </details>
+          <details class="gv-nav__dd right">
+            <summary class="gv-lang">EN
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu">
+              <a href="#">English</a>
+              <a href="#">Español</a>
+              <a href="#">Français</a>
+            </div>
+          </details>
+        </span>
+
+        <details class="gv-nav-m">
+          <summary aria-label="Show mobile navigation menu">
+            <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+            <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
+            <a href="#">Home</a>
+            <a href="#">All projects</a>
+            <a href="#">Proposals</a>
+            <a href="../events/" aria-current="page">Events</a>
+            <a href="#">More</a>
+            <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Search</a>
+            <span class="gv-auth-out">
+              <button class="gv-btn primary full" data-auth-set="in">Sign in</button>
+            </span>
+            <span class="gv-auth-in">
+              <a href="#">Manage platform</a>
+              <a href="#">My activity</a>
+              <a href="#">My settings</a>
+              <button class="gv-btn primary-outlined full" style="margin-top:14px" data-auth-set="out">Sign out</button>
+            </span>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═════════════════════════════════ Page ═════════════════════════════════ -->
+
+  <!-- "Go back" tenant-primary text link (live #e2e-go-back-link) -->
+  <div class="eventdetail-backbar">
+    <a id="e2e-go-back-link" class="gv-btn primary-text" href="../events/">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="m12 16 1.4-1.4-1.6-1.6H16v-2h-4.2l1.6-1.6L12 8l-4 4Zm0 6q-2.075 0-3.9-.788-1.825-.787-3.175-2.137-1.35-1.35-2.137-3.175Q2 14.075 2 12t.788-3.9q.787-1.825 2.137-3.175 1.35-1.35 3.175-2.138Q9.925 2 12 2t3.9.787q1.825.788 3.175 2.138 1.35 1.35 2.137 3.175Q22 9.925 22 12t-.787 3.9q-.788 1.825-2.138 3.175-1.35 1.35-3.175 2.137Q14.075 22 12 22Z"/></svg>
+      Go back
+    </a>
+  </div>
+
+  <main id="main-content" class="gv-eventdetail">
+
+    <!-- ════ Main column: eyebrow · project link · title · description ════ -->
+    <div class="gv-eventdetail__main">
+      <p class="gv-eventdetail__from">From "Climate action planning"</p>
+      <a class="gv-eventdetail__projlink" href="#">
+        Go to the project
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 5l7 7-7 7-1.4-1.4 4.6-4.6H3v-2h14.2L12.6 6.4 14 5Z"/></svg>
+      </a>
+
+      <h1 id="e2e-event-title" class="gv-eventdetail__title">Climate assembly</h1>
+
+      <div id="e2e-event-description" class="gv-prose">
+        <p>Join the citizens' <em>climate assembly</em> — a working session where a
+          randomly selected, representative group of residents deliberates on the
+          city's climate action plan. Facilitators will present the draft measures,
+          and participants discuss trade-offs in small groups before a plenary vote
+          on priorities.</p>
+        <p>The session is open to the public to observe. Recommendations from the
+          assembly feed directly into the next phase of "Climate action planning",
+          where the council reviews and responds to each proposal.</p>
+        <p>Refreshments are provided. The venue is wheelchair accessible; please let
+          us know in advance if you have any access requirements.</p>
+      </div>
+    </div>
+
+    <!-- ════ Sidebar: stylized date block · Add to calendar · Share ════ -->
+    <aside class="gv-eventdetail__side">
+      <div class="gv-eventdetail__datecard">
+        <div id="e2e-event-date-stylized" class="gv-eventdetail__datestylized">
+          <span class="gv-sr-only">Event date: April 21st, 2024 from 7:15 PM to 7:45 PM.</span>
+          <div class="gv-eventdetail__date" aria-hidden="true">
+            <span class="d">21</span>
+            <span class="m">Apr</span>
+            <span class="t">7:15 PM - 7:45 PM CEST</span>
+          </div>
+        </div>
+        <div class="gv-eventdetail__actions">
+          <button type="button" class="gv-btn primary-text size-s">Add to calendar</button>
+        </div>
+      </div>
+
+      <section class="gv-eventdetail__share">
+        <h2>Share this event</h2>
+        <div class="gv-eventdetail__sharebtns">
+          <button class="gv-iconbtn" aria-label="Share this event"><span data-gv-icon="share"></span></button>
+          <a class="gv-btn primary-outlined size-s" href="#"><span data-gv-icon="link"></span> Copy link</a>
+        </div>
+      </section>
+    </aside>
+
+  </main>
+
+  <!-- ════════════════════════════════ Footer ════════════════════════════════ -->
+  <footer class="gv-footer" style="margin-top:48px">
+    <div class="gv-footer__inner">
+      <div class="gv-footer__logo" data-gv-logo></div>
+      <nav class="gv-footer__links" aria-label="Legal">
+        <ul>
+          <li><a href="#">Terms and conditions</a></li>
+          <li><a href="#">Privacy policy</a></li>
+          <li><a href="#">Cookie policy</a></li>
+          <li><a href="#">Accessibility statement</a></li>
+          <li><button type="button">Cookie settings</button></li>
+          <li><a href="#">Site map</a></li>
+        </ul>
+      </nav>
+      <div class="gv-footer__powered">
+        <span>Powered by</span>
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal (formerly CitizenLab)">
+          <img class="gv-powered-logo" src="../../skills/govocal-ui/govocal-logo.svg" alt="Go Vocal" />
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <button class="auth-toggle" id="authToggle" aria-pressed="true"
+    style="position:fixed;left:16px;bottom:16px;z-index:1200;display:inline-flex;align-items:center;gap:8px;padding:9px 15px;background:var(--gv-grey-800);color:#fff;border:0;border-radius:999px;cursor:pointer;font:600 13px/1 var(--gv-font-family)">Signed in</button>
+  <script>
+    (function () {
+      var body = document.body, t = document.getElementById('authToggle');
+      function set(s) { body.dataset.auth = s; t.textContent = s === 'in' ? 'Signed in' : 'Signed out'; t.setAttribute('aria-pressed', s === 'in'); }
+      t.addEventListener('click', function () { set(body.dataset.auth === 'in' ? 'out' : 'in'); });
+      document.addEventListener('click', function (e) {
+        var el = e.target.closest('[data-auth-set]');
+        if (el) { e.preventDefault(); set(el.getAttribute('data-auth-set')); document.querySelectorAll('.gv-nav__dd[open]').forEach(function (d) { d.open = false; }); }
+      });
+    })();
+  </script>
+</body>
+</html>

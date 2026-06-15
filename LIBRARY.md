@@ -86,6 +86,7 @@ as a starting point for a prototype.
 | **Bo Settings** | `/pages/bo-settings/` | `pages/bo-settings/` | Settings — GoVocal back office (reference) |
 | **Bo Tools** | `/pages/bo-tools/` | `pages/bo-tools/` | Tools — GoVocal back office (reference) |
 | **Bo Users** | `/pages/bo-users/` | `pages/bo-users/` | Users — GoVocal back office (reference) |
+| **Event Detail** | `/pages/event-detail/` | `pages/event-detail/` | Event detail — GoVocal (reference) |
 | **Events** | `/pages/events/` | `pages/events/` | Events — GoVocal (reference) |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Homepage — GoVocal (reference) |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |

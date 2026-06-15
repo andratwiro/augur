@@ -1018,6 +1018,42 @@
       "uses": [
         ".gv-events-page__section"
       ]
+    },
+    {
+      "id": "fo-event-detail/title",
+      "built": "pages/event-detail/index.html",
+      "against": "fo-event-detail",
+      "map": {
+        "#e2e-event-title": "#e2e-event-title"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-eventdetail__title"
+      ]
+    },
+    {
+      "id": "fo-event-detail/date-stylized",
+      "built": "pages/event-detail/index.html",
+      "against": "fo-event-detail",
+      "map": {
+        "#e2e-event-date-stylized": "#e2e-event-date-stylized"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "border",
+        "border-radius"
+      ],
+      "uses": [
+        ".gv-eventdetail__datestylized"
+      ]
     }
   ]
 }

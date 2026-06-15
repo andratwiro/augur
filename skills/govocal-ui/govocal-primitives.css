@@ -80,6 +80,10 @@ body.gv-root {
 .gv-btn.white:hover      { box-shadow: var(--gv-shadow-hover-sm); }
 .gv-btn.text             { background: transparent; color: var(--gv-text-secondary); padding-left: 4px; padding-right: 4px; }
 .gv-btn.text:hover       { filter: brightness(0.8); }
+/* tenant-primary text button — transparent bg/border, tenant-primary label (live
+   "Add to calendar" / event detail back link: 14px, color = tenant primary, 3px radius). */
+.gv-btn.primary-text     { background: transparent; color: var(--gv-tenant-primary); padding-left: 4px; padding-right: 4px; }
+.gv-btn.primary-text:hover { background: color-mix(in srgb, var(--gv-tenant-primary) 6%, transparent); }
 .gv-btn.admin-dark           { background: var(--gv-primary); color: #fff; }
 .gv-btn.admin-dark:hover     { filter: brightness(0.88); }
 .gv-btn.admin-dark-outlined  { background: transparent; color: var(--gv-primary); border-color: var(--gv-primary); }

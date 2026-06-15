@@ -1092,3 +1092,54 @@
 .gv-sentiment-scale__opt[aria-pressed="true"] .gv-sentiment-scale__face { border-color: var(--gv-tenant-primary); background: var(--gv-tenant-primary-lighten90); }
 .gv-sentiment-scale__opt[aria-pressed="true"] .gv-sentiment-scale__cap { color: var(--gv-text-primary); font-weight: 600; }
 @media (max-width: 480px) { .gv-sentiment-scale { gap: 4px; justify-content: center; } }
+
+/* ── Event DETAIL page (/events/:id) ────────────────────────────────────────── */
+/* Source-grounded on wietsedemo.govocal.com/en/events/<id> (capture: fo-event-detail,
+   Cultuurconnect tenant). NEW page reached from a Past-event card. Anatomy: a
+   "Go back" tenant-primary text link at top → a two-column body: left = event H1 +
+   "From <project>" eyebrow + "Go to the project" link + rich-text .gv-prose body;
+   right 350px sidebar = a stylized date block on the grey app-canvas panel
+   (#EDEFF0, 3px radius) showing the big day number / month / time, + an "Add to
+   calendar" text button + a "Share this event" block. Pure layout/content here —
+   colours/type live in tokens; net-new = the .gv-eventdetail-* layout atoms and the
+   stylized date block (distinct from the small .gv-event-card__date chip). */
+
+/* Two-column grid: main column + a fixed 350px sidebar (live `eFNXIK` = 350px). */
+.gv-eventdetail { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 40px;
+  max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px 64px; align-items: start; }
+.gv-eventdetail__main { min-width: 0; }
+.gv-eventdetail__side { min-width: 0; }
+
+/* "From <project>" eyebrow line — live p.jtLtWx: 16px / 400 / #333. */
+.gv-eventdetail__from { margin: 0 0 4px; font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-text-primary); }
+/* "Go to the project" link — live p.fOUwoV: 14px / 400 / cool-grey #596B7A. */
+.gv-eventdetail__projlink { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 20px;
+  font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-text-secondary); text-decoration: none; }
+.gv-eventdetail__projlink:hover { text-decoration: underline; }
+.gv-eventdetail__projlink svg, .gv-eventdetail__projlink .gv-icon { width: 16px; height: 16px; color: currentColor; }
+
+/* Event H1 — live #e2e-event-title: 30px / 700 / #333, line-height 39px. NOTE this
+   is the per-event heading, smaller than the /events page display title. */
+.gv-eventdetail__title { margin: 0 0 16px; font-size: 30px; font-weight: 700; line-height: 39px; color: var(--gv-text-primary); }
+
+/* Stylized date block — live `.jaafFe`: grey app-canvas panel #EDEFF0, 3px radius. */
+.gv-eventdetail__datecard { background: var(--gv-background); border-radius: var(--gv-radius); padding: 24px; }
+/* The probed container itself (live `.lgwDnG`) is plain body text — 14px / 400 /
+   rgba(0,0,0,.87) / lh 20px — wrapping the sr-only sentence + the visible stack. */
+.gv-eventdetail__datestylized { font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: rgba(0, 0, 0, 0.87); }
+/* The visible two-tone date stack (the sr-only sentence is read by AT, hidden here). */
+.gv-eventdetail__date { text-align: center; }
+.gv-eventdetail__date .d { display: block; font-size: 34px; font-weight: 700; line-height: 1; color: var(--gv-text-primary); }  /* live p.dMIryb */
+.gv-eventdetail__date .m { display: block; font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-grey-700); }  /* live p.kwLlLs — 16px #767676 */
+.gv-eventdetail__date .t { display: block; margin-top: 8px; font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary); }  /* live p.dwwqWS — 18px/600 */
+/* sidebar action group under the date block */
+.gv-eventdetail__actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 16px; }
+
+/* "Share this event" block — live h2 span: 21px / 700 / #333. */
+.gv-eventdetail__share { margin-top: 28px; }
+.gv-eventdetail__share h2 { margin: 0 0 12px; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-text-primary); }
+.gv-eventdetail__sharebtns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+@media (max-width: 860px) {
+  .gv-eventdetail { grid-template-columns: 1fr; gap: 24px; }
+}

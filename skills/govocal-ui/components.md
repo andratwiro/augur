@@ -680,6 +680,46 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
   <div class="gv-events__grid"><!-- .gv-event-card × N (reused unchanged) --></div>
 </section>
 
+<!-- Event DETAIL page (/events/:id) — reached from a Past-event card.
+     Source-grounded on wietsedemo.govocal.com/en/events/<id> (capture fo-event-detail,
+     Cultuurconnect tenant). Two-column body (main + 350px sidebar) with a stylized
+     date block. Net-new = .gv-eventdetail-* layout atoms + .gv-btn.primary-text
+     (tenant-primary text button, used for "Go back" / "Add to calendar"). The
+     #e2e-event-date-stylized container is plain body text (14px/.87) wrapping an
+     sr-only date sentence + the visible two-tone stack. Built page: pages/event-detail/.
+     Verified via fo-event-detail/{title,date-stylized}. -->
+<a class="gv-btn primary-text" href="../events/"><svg viewBox="0 0 24 24"><!--back-arrow--></svg> Go back</a>
+<main class="gv-eventdetail">
+  <div class="gv-eventdetail__main">
+    <p class="gv-eventdetail__from">From "Climate action planning"</p>     <!-- 16px / #333 -->
+    <a class="gv-eventdetail__projlink" href="#">Go to the project <svg><!--arrow--></svg></a>  <!-- 14px / cool-grey -->
+    <h1 id="e2e-event-title" class="gv-eventdetail__title">Climate assembly</h1>  <!-- 30px / 700 / #333 -->
+    <div id="e2e-event-description" class="gv-prose"><p>…rich text…</p></div>
+  </div>
+  <aside class="gv-eventdetail__side">
+    <div class="gv-eventdetail__datecard">                                  <!-- #EDEFF0 panel, 3px -->
+      <div id="e2e-event-date-stylized" class="gv-eventdetail__datestylized">
+        <span class="gv-sr-only">Event date: April 21st, 2024 from 7:15 PM to 7:45 PM.</span>
+        <div class="gv-eventdetail__date" aria-hidden="true">
+          <span class="d">21</span>          <!-- 34px / 700 -->
+          <span class="m">Apr</span>          <!-- 16px / #767676 -->
+          <span class="t">7:15 PM - 7:45 PM CEST</span>  <!-- 18px / 600 -->
+        </div>
+      </div>
+      <div class="gv-eventdetail__actions">
+        <button class="gv-btn primary-text size-s">Add to calendar</button>
+      </div>
+    </div>
+    <section class="gv-eventdetail__share">
+      <h2>Share this event</h2>                                           <!-- 21px / 700 -->
+      <div class="gv-eventdetail__sharebtns">
+        <button class="gv-iconbtn" aria-label="Share this event"><span data-gv-icon="share"></span></button>
+        <a class="gv-btn primary-outlined size-s" href="#"><span data-gv-icon="link"></span> Copy link</a>
+      </div>
+    </section>
+  </aside>
+</main>
+
 <!-- Proposals / generic CTA band -->
 <section class="gv-ctaband">
   <div class="gv-ctaband__inner">
