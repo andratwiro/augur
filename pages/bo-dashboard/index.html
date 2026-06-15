@@ -74,7 +74,7 @@
     .ch-haxis__scale { grid-column: 2; display: flex; justify-content: space-between; border-top: 1px solid var(--gv-grey-300); padding-top: 4px; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); }
     /* CSS vertical bar chart with y-axis scale. */
     .ch-vframe { display: grid; grid-template-columns: 22px 1fr; gap: 6px; margin-top: 8px; }
-    .ch-vyaxis { display: flex; flex-direction: column-reverse; justify-content: space-between; align-items: flex-end; height: 170px; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); padding-bottom: 16px; }
+    .ch-vyaxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; height: 170px; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); padding-bottom: 16px; }
     .ch-v { display: flex; align-items: flex-end; gap: 10px; height: 170px; padding-top: 10px; border-bottom: 1px solid var(--gv-grey-300); }
     .ch-vcol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
     .ch-vbar { width: 60%; max-width: 46px; background: var(--ch-bar); min-height: 2px; }
@@ -95,8 +95,6 @@
     .db-donutwrap { display: flex; align-items: center; gap: 22px; flex-wrap: nowrap; }
     /* Donut SVG fixed size (canonical forces chartcard svg to 100% width — override). */
     .db-donutwrap .db-donut__svg { width: 150px !important; height: 150px; flex: none; }
-    .db-donut__center { text-align: center; }
-    .db-donut__pct { font-size: 22px; font-weight: 700; color: var(--gv-bo-primary); }
     .db-pie { display: flex; align-items: center; gap: 24px; padding: 8px 0; }
     /* Pie SVG fixed size (canonical forces chartcard svg to 100% width — override). */
     .db-pie .db-pie__svg { width: 150px !important; height: 150px; flex: none; }
