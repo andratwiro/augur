@@ -319,9 +319,11 @@
 /* content panel: big green numbered circle + green name + date */
 .gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 26px 30px; margin-top: 8px; }
 .gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
-.gv-phasepanel__num { width: 52px; height: 52px; border-radius: 50%; flex: none; display: grid; place-items: center;
-  background: var(--gv-green-500); color: #fff; font-size: var(--gv-fs-l); font-weight: 700; }
-.gv-phasepanel__name { margin: 0; font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-green-700); line-height: 1.2; }
+/* Measured live (fo-project-ideation): the phase number sits in a 39px green-500
+   circle (16px/400 white), and the phase name is 21px/700 green-500 — not larger. */
+.gv-phasepanel__num { width: 39px; height: 39px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: var(--gv-green-500); color: #fff; font-size: var(--gv-fs-base); font-weight: 400; }
+.gv-phasepanel__name { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-green-500); line-height: 1.2; }
 .gv-phasepanel__date { margin: 4px 0 0; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -651,8 +653,8 @@
 .gv-participants { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; padding-top: 4px; }
 .gv-participants .gv-avatars { margin: 0; }
 .gv-avatars.on-light .av { border-color: #fff; box-shadow: 0 0 0 1px var(--gv-grey-300); }
-.gv-pcount { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary); }
-.gv-pinfo { font-size: 17px; color: var(--gv-cool-grey-500); margin-left: -2px; cursor: help; }
+.gv-pcount { font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-text-secondary); }
+.gv-pinfo { font-size: 16px; line-height: 1; color: var(--gv-cool-grey-500); cursor: help; display: inline-flex; align-items: center; }
 @media (max-width: 760px) { .gv-projhead { grid-template-columns: 1fr; } .gv-participants { padding-top: 0; } }
 
 /* Accordion (CSS-only <details>, collapsed by default, chevron rotates) */
@@ -670,7 +672,7 @@
 .gv-acc__body p:last-child { margin-bottom: 0; }
 
 /* Phase method band + phase body + read-more (rendered inside the phase panel) */
-.gv-methodband { background: var(--gv-background); margin-top: 0; padding: 34px 0 44px; }  /* live phase content sits on the page grey (#EDEFF0) */
+.gv-methodband { background: var(--gv-background); margin-top: 0; padding: 60px 0 80px; }  /* live phase content sits on the page grey (#EDEFF0); measured 60/80 vertical rhythm */
 .gv-methodband .gv-phases { margin: 0; }
 .gv-phasepanel__head.muted .gv-phasepanel__num { background: var(--gv-cool-grey-500); }
 .gv-phasepanel__head.muted .gv-phasepanel__name { color: var(--gv-text-primary); }
