@@ -22,8 +22,8 @@ SaaS used by 500+ governments, mostly municipalities. A city runs a branded
 analyze from a **back office**. The whole product hangs off one spine:
 **Folder → Project → Phase → Participation method** — each phase runs exactly **one**
 method (survey, ideation, voting, …). Every prototype is one of **two surfaces**:
-**front office** (resident-facing, public, branded — gets the cookie banner) or
-**back office** (staff config/moderation/analytics — no cookie banner). An **"input"**
+**front office** (resident-facing, public, branded) or
+**back office** (staff config/moderation/analytics). An **"input"**
 is the generic word for anything a resident submits. Direction is heavily **AI**
 (sensemaking, auto-theming, OCR). _That's the whole standing summary — for depth
 (vocabulary, the 8 methods, roles, URLs, data model) read **`GOVOCAL.md`** at the repo
@@ -119,15 +119,37 @@ library** of primitives, components, and pages built into `skills/govocal-ui/` a
 index (`LIBRARY.md`, `components/manifest.md`). This is the one mode where editing
 the canonical library source is the goal.
 
-> **Scaffolding TBD** — the user will flesh out the exact workflow when they next
-> pick it up. For now: load `govocal-ui`, work source-grounded, keep the library
-> tidy. **Parked backlog** (from the old TODO, build only when this mode is active):
-> refine the existing `.gv-*` primitives (`header-nav`, `footer`, `project-card`,
-> `hero`) vs the real product, and build the remaining reference Pages one at a time
-> — Content Builder, Survey Builder, Perspectives, Voting, Common Ground, Ideation,
-> Project List, Project Editor (pipeline: capture real HTML/screenshot → analyze vs
-> `LIBRARY.md` → build from components → verify → land). Also still open: real
-> prototypes for the `departments/` opportunity (currently hello-world placeholders).
+**The workflow is the source-grounded pipeline — follow it, don't eyeball.** Full
+docs in `skills/govocal-ui/SKILL.md` ("Building & extending") and
+`govocal-exports/BACK-OFFICE.md`. Per piece:
+
+1. **Capture** — `npm run capture -- <url> --name <slug> --probe "<real selectors>"`.
+   Read exact values from `styles.json.digest`; **never approximate colours/borders/
+   shadows/fonts off the screenshot.**
+2. **Build** — assemble from existing `.gv-*` primitives, map values to `--gv-*`
+   tokens (never hardcode a hex you can alias). New visual → *new variant*, don't
+   mutate the base out from under existing users.
+3. **Verify** — `npm run verify -- <built.html> --against <slug> --map "real=mine|…"`;
+   loop until it exits ✓.
+4. **Register + ratchet** — add the checkpoint to `govocal-exports/checkpoints.json`;
+   after ANY shared-CSS change run `npm run verify:all` (green = real improvement,
+   red = a dependent regressed — fix or back out). `--changed .gv-x` = blast radius.
+5. **Store** — `components.md` snippet + `components/manifest.md` row (+ `govocal-bo.css`
+   for back-office chrome), then `npm run index`.
+
+**Disciplines:** primitives are the durable asset (source-derived, kept monotonic by
+the ratchet — improve freely, never regress). **Pages are pure assembly** (components
++ tokens, no local colour/border/shadow values) so primitive gains flow into them
+for free; pages are also the user's prototyping *starting point* (pre-wired flows),
+so keep them clickable and hooked together. **Parallel agents split by layer, not
+surface** — serialize shared-CSS edits so two agents don't fight over `govocal-ui.css`.
+
+> **Parked backlog** (build only when this mode is active): refine the existing
+> `.gv-*` primitives (`header-nav`, `footer`, `project-card`, `hero`) vs the real
+> product, and build the remaining reference Pages one at a time — Content Builder,
+> Survey Builder, Perspectives, Voting, Common Ground, Ideation, Project List,
+> Project Editor. Also still open: real prototypes for the `departments/` opportunity
+> (currently hello-world placeholders).
 
 ### Future modes (not built yet — don't assume them)
 
@@ -151,10 +173,6 @@ None of these load by default. Reach for them when the task or the user calls fo
   components. **Never hardcode brand colours** when you do use it — use
   `var(--gv-tenant-primary|secondary|text)` so cities re-theme via `?theme=`. Copy
   asset files into the prototype folder (prototypes are self-contained).
-- **Cookie consent** — when building a **resident/participant-facing** prototype in
-  GoVocal's language, copy `skills/govocal-ui/govocal-cookies.js` in and set
-  `<body data-gv-cookies-city="Vienna">` so first-load shows the real consent modal.
-  Skip for admin/backend prototypes and for reference reproductions.
 - **A11y audit** — `skills/govocal-a11y/` + `npm run audit` (design-level: contrast,
   use-of-color, zoom, target size). Run before a real handoff or when the user asks;
   report results in chat. Flag immediately if a request would bake in a *visual* a11y
