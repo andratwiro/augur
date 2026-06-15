@@ -35,7 +35,7 @@ project brain. Match its vocabulary when labelling components.
 | `govocal-bo.css` | **Back-office** chrome (`.gv-bo-*`): app shell, sidebar, top-bar, tabs. The `.gv-bo` scope remaps `--gv-tenant-*` → GoVocal's fixed teal/navy BO palette, so the same primitives render in back-office colours. See `govocal-exports/BACK-OFFICE.md`. |
 | `govocal-survey.css` + `govocal-survey.js` | The **survey field kit**: every input-form question type (rating, ranking, linear/sentiment scale, image-select, matrix, map, file/shapefile, …) + the page-by-page runner. `GVSurvey.field({type,…})` renders one widget; `GVSurvey.mount(el, FORM)` renders a whole survey. Built on the gv-* primitives; themeable. Demo: `components/survey-fields/`; used by the Input Form page. |
 | `govocal-themes.js` | `?theme=` per-city colour + **font** switcher + on-screen picker + per-city logos. |
-| `govocal-icons.js` | The real **GoVocal icon set** (81-icon curated subset, transcribed verbatim from the repo + the admin sidebar glyphs + the live account menu). Drop in, then `<span data-gv-icon="vote-up"></span>` → inline `<svg class="gv-icon">` that inherits text colour + size. |
+| `govocal-icons.js` | The real **GoVocal icon set** (curated subset transcribed verbatim from the repo + the admin sidebar glyphs + the live account menu; `GVIcons.names` is the live list — grows as we transcribe more, so don't hardcode a count). Drop in, then `<span data-gv-icon="vote-up"></span>` → inline `<svg class="gv-icon">` that inherits text colour + size. |
 | `govocal-logo.svg` | The real **go·vocal** wordmark (footer “powered by” attribution). Muted grey; use as `<img>`. |
 | `components.md` | The catalog — copy-paste HTML for primitives **and composed components**, with notes. |
 | `gallery.html` | Live demo of every primitive in every state, across all city themes. Open it to eyeball fidelity. |
@@ -126,7 +126,7 @@ a prototype across several city palettes:
 - Live picker renders bottom-right (swatches); it also rewrites the URL so a view
   is shareable. Disable with `<body data-gv-theme-picker="off">`.
 - Templates are **real city tenants** (researched from each one's official brand):
-  `1` Københavns Kommune (`#000C2E`), `2` Stadt Wien (`#FF5A64`), `3` Engaged
+  `1` Københavns Kommune (`#000C2E`), `2` Stadt Wien (`#FF1D2B`), `3` Engaged
   California (`#1C2745` + `#E79450`), plus `0` GoVocal default. Add one by appending
   `{id, name, primary, secondary, text, logo, font}` to `GV_THEMES`.
 - **City logos:** a theme's `logo` (inline `<svg>` or `<img>`) renders into any
@@ -136,7 +136,7 @@ a prototype across several city palettes:
   name first, then a free stand-in; proprietary fonts fall back to Public Sans like
   the live sites). Build text with `font-family: var(--gv-font-family)`.
 - **Faithful-but-flagged:** real brand colours are kept even when under AA — Stadt Wien's
-  in-product `#FF5A64` (a softened Wien-Rot) is ~3.4:1 white-on-primary and the audit flags
+  in-product `#FF1D2B` (near-pure Wien-Rot) is ~3.8:1 white-on-primary and the audit flags
   it (expected, accepted).
 
 ## Accessibility notes (read with `skills/govocal-a11y/`)
@@ -150,7 +150,7 @@ a prototype across several city palettes:
   secondary** (a brand accent — use dark/large text if filled, ~3.5:1 white-on-coral).
   This replaced the old hot-pink/black default (`#E10069`, which barely cleared AA).
   Of the city templates, Copenhagen (1) and Engaged California (3) clear AA; Wien (2,
-  `#FF5A64`) is the flagged ~3.4:1 exception. Always run `npm run audit` and report results;
+  `#FF1D2B`) is the flagged ~3.8:1 exception. Always run `npm run audit` and report results;
   if a city's primary is light, the real platform would need dark button text.
 
 ## Building & extending the library (System-building mode)
