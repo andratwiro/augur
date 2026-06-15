@@ -313,6 +313,9 @@
 /* last segment: notch on the left to interlock, but a FLAT (rounded) right end. */
 .gv-phase:last-child .gv-pstep { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 15px 50%); border-radius: 0 3px 3px 0; }
 .gv-phase.current .gv-pstep { background: var(--gv-green-600); color: #fff; }
+/* subtle darker top edge on the FO project-page ribbon segments (clipped to the
+   chevron shape) — the "dark grey border on top" seen on the real timeline */
+.gv-methodband .gv-pstep { box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.13); }
 .gv-pstep__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
 .gv-phase__label { padding: 9px 6px 0; text-align: center; font-size: var(--gv-fs-s); line-height: 1.3; color: var(--gv-text-primary); }
 .gv-phase.current .gv-phase__label { color: var(--gv-green-600); font-weight: 600; }
