@@ -84,7 +84,7 @@
     .cb-pbox__cta { background: var(--gv-tenant-primary); color: var(--gv-white); }
     .cb-pbox__events { background: var(--gv-white); color: var(--gv-cool-grey-700); border: 1px solid #d6dde3; }
     .cb-pbox__people { display: flex; align-items: center; gap: 12px; }
-    .cb-pbox--noavatars .cb-pbox__people .cb-avatars { display: none; }
+    .cb-pbox--nopeople .cb-pbox__people { display: none; }
     .cb-avatars { display: inline-flex; }
     .cb-avatar { width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--gv-white); margin-left: -10px; background: #c7d2da; }
     .cb-avatar:first-child { margin-left: 0; }
@@ -329,7 +329,7 @@
       'about-box':       { label: 'Participation Box',  make: function () { return '' +
         '<div class="cb-pbox">' +
           '<div class="cb-pbox__actions">' +
-            '<span class="cb-fakebtn cb-pbox__cta" data-pbox="cta">Take the survey</span>' +
+            '<span class="cb-fakebtn cb-pbox__cta" data-pbox="cta">' + cbCurrentCTA() + '</span>' +
             '<span class="cb-fakebtn cb-pbox__events" data-pbox="events">Upcoming events</span>' +
           '</div>' +
           '<div class="cb-pbox__people">' +
@@ -351,12 +351,21 @@
     // The project's phase timeline = the canonical .gv-phases / .gv-stepper ribbon
     // (the same component the resident sees on the project page).
     var CB_PHASES = [
-      { name: 'Information',      dates: '1 Mar – 31 Mar 2026',  desc: 'Background on the project and how to take part.' },
-      { name: 'Share your ideas', dates: '1 Apr – 31 May 2026',  desc: 'Submit your ideas and react to what others suggest.' },
-      { name: 'Vote',             dates: '1 Jun – 30 Jun 2026',  desc: 'Help prioritise the shortlisted ideas.' },
-      { name: 'Results',          dates: 'Jul 2026',             desc: 'See which ideas move into the master plan.' }
+      { name: 'Information',      method: 'information', dates: '1 Mar – 31 Mar 2026',  desc: 'Background on the project and how to take part.' },
+      { name: 'Share your ideas', method: 'ideation',    dates: '1 Apr – 31 May 2026',  desc: 'Submit your ideas and react to what others suggest.' },
+      { name: 'Vote',             method: 'voting',      dates: '1 Jun – 30 Jun 2026',  desc: 'Help prioritise the shortlisted ideas.' },
+      { name: 'Results',          method: 'information', dates: 'Jul 2026',             desc: 'See which ideas move into the master plan.' }
     ];
     var CB_CURRENT = 1;
+    // The participation box CTA mirrors the action available in the CURRENT phase.
+    var CB_METHOD_CTA = { information: 'Learn more', survey: 'Take the survey', ideation: 'Submit your idea', voting: 'Cast your vote', proposals: 'Submit a proposal' };
+    function cbCurrentCTA() { var p = CB_PHASES[CB_CURRENT] || {}; return CB_METHOD_CTA[p.method] || 'Take part'; }
+    // Keep every participation box's primary CTA in sync with the current phase,
+    // unless an editor has manually overridden it (data-cta-custom).
+    function syncParticipationCTAs() {
+      var ctas = document.querySelectorAll('#cb-frame .cb-pbox [data-pbox="cta"]');
+      for (var i = 0; i < ctas.length; i++) if (!ctas[i].hasAttribute('data-cta-custom')) ctas[i].textContent = cbCurrentCTA();
+    }
     function cbPhasePanel(i) {
       var p = CB_PHASES[i], muted = i === CB_CURRENT ? '' : ' muted';
       return '<div class="gv-phasepanel__head' + muted + '">' +
@@ -470,7 +479,7 @@
           settingsRow('Events label', '<input class="gv-input" data-set="events" id="cb-f-events" value="Upcoming events">') +
           settingsRow('Participants', '<input class="gv-input" data-set="count" id="cb-f-count" value="2,435">') +
           settingsRow('Show buttons', '<span class="gv-toggle"><input type="checkbox" data-set="btns" id="cb-f-btns" checked><span class="track"></span></span>') +
-          settingsRow('Show avatars', '<span class="gv-toggle"><input type="checkbox" data-set="avatars" id="cb-f-avatars" checked><span class="track"></span></span>');
+          settingsRow('Show participants', '<span class="gv-toggle"><input type="checkbox" data-set="people" id="cb-f-people" checked><span class="track"></span></span>');
       }
       if (widget === 'file-attachment') {
         return settingsRow('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') +
@@ -662,12 +671,16 @@
 
       if (widget === 'two-column' || widget === 'three-column') {
         var cols = bq('.cb-cols'), lay = pv('cb-f-collayout');
-        if (cols && lay) lay.addEventListener('change', function () {
-          var map3 = { equal: '1fr 1fr 1fr', 'wide-center': '1fr 2fr 1fr' };
-          var map2 = { equal: '1fr 1fr', 'wide-narrow': '2fr 1fr', 'narrow-wide': '1fr 2fr' };
-          var m = widget === 'three-column' ? map3 : map2;
-          cols.style.gridTemplateColumns = m[lay.value] || m.equal;
-        });
+        var map3 = { equal: '1fr 1fr 1fr', 'wide-center': '1fr 2fr 1fr' };
+        var map2 = { equal: '1fr 1fr', 'wide-narrow': '2fr 1fr', 'narrow-wide': '1fr 2fr' };
+        var m = widget === 'three-column' ? map3 : map2;
+        if (cols && lay) {
+          lay.value = cols.getAttribute('data-collayout') || 'equal';   // reflect the block's current layout on (re)select
+          lay.addEventListener('change', function () {
+            cols.setAttribute('data-collayout', lay.value);
+            cols.style.gridTemplateColumns = m[lay.value] || m.equal;
+          });
+        }
         return;
       }
 
@@ -747,6 +760,7 @@
           sec.querySelector('.cb-timeline__panel').innerHTML = cbPhasePanel(CB_CURRENT);
           wireTimeline(block);
           if (window.GVIcons) window.GVIcons.render(sec);
+          syncParticipationCTAs();   // participation box CTA mirrors the current phase
         });
         return;
       }
@@ -780,15 +794,16 @@
       var card = block.querySelector('.cb-pbox');
       function q(sel) { return panel.querySelector('[data-set="' + sel + '"]'); }
       function r(sel) { return card ? card.querySelector('[data-pbox="' + sel + '"]') : null; }
-      var ctaIn = q('cta'), eventsIn = q('events'), countIn = q('count'), btnsTgl = q('btns'), avTgl = q('avatars');
-      // reflect the card's current state back into the toggles on (re)select
+      var ctaIn = q('cta'), eventsIn = q('events'), countIn = q('count'), btnsTgl = q('btns'), peopleTgl = q('people');
+      // reflect the card's current state back into the panel on (re)select
       if (btnsTgl) btnsTgl.checked = !card.classList.contains('cb-pbox--nobtns');
-      if (avTgl) avTgl.checked = !card.classList.contains('cb-pbox--noavatars');
-      if (ctaIn) ctaIn.addEventListener('input', function () { var c = r('cta'); if (c) c.textContent = this.value || 'Take part'; });
+      if (peopleTgl) peopleTgl.checked = !card.classList.contains('cb-pbox--nopeople');
+      var ctaNode = r('cta'); if (ctaIn && ctaNode) ctaIn.value = (ctaNode.textContent || '').trim();   // CTA mirrors the current phase action
+      if (ctaIn) ctaIn.addEventListener('input', function () { var c = r('cta'); if (c) { c.textContent = this.value || 'Take part'; c.setAttribute('data-cta-custom', ''); } });
       if (eventsIn) eventsIn.addEventListener('input', function () { var e = r('events'); if (e) e.textContent = this.value || 'Upcoming events'; });
       if (countIn) countIn.addEventListener('input', function () { var c = r('count'); if (c) c.textContent = this.value || '0'; });
       if (btnsTgl) btnsTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--nobtns', !this.checked); });
-      if (avTgl) avTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--noavatars', !this.checked); });
+      if (peopleTgl) peopleTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--nopeople', !this.checked); });
     }
 
     // ── block factory + wiring ────────────────────────────────────────────────
