@@ -239,3 +239,13 @@
 
     /* a11y: honour reduced motion for the bar + faces */
     @media (prefers-reduced-motion: reduce) { .sv-progress__bar, .sv-matrix .dot::after { transition: none; } }
+
+    /* ── Runner-footer fidelity (source-grounded on live GoVocal survey runner) ──
+       The real survey runner has NO coloured progress bar. Its footer (div.Wgsme,
+       700px, bg #fff, padding 16px 24px) sits directly below a 1px hairline strip
+       (div.iOxvMm, bg rgb(237,239,240)) and shows only the centred '0% complete'
+       text, the language dropdown, and the nav button — progress is communicated by
+       the text %, not a coloured bar. The .sv-foot's own 1px top border (var(--gv-grey-200))
+       already supplies that hairline, so we drop the yellow .sv-progress bar here.
+       (CSS-only: the renderer still emits the element; we hide it so barEl stays valid.) */
+    .sv-progress { display: none; }
