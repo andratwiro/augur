@@ -212,9 +212,13 @@
    make the whole card clickable (::after overlay); any secondary CTA sits above it
    with position:relative + z-index. This avoids invalid nested anchors. */
 .gv-rail {
-  display: flex; gap: 22px; overflow-x: auto;
+  display: flex; gap: 22px; overflow-x: auto; -webkit-overflow-scrolling: touch;
   padding: 4px 24px 20px; margin: 0 -24px;
   scroll-snap-type: x proximity; scrollbar-width: thin;
+  /* soft white degradation at both ends so cards fade out instead of cutting cold
+     (live Wien carousels) — page bg is white, so a horizontal mask reads as a fade */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 40px), transparent 100%);
 }
 .gv-rail::-webkit-scrollbar { height: 8px; }
 .gv-rail::-webkit-scrollbar-thumb { background: var(--gv-grey-300); border-radius: 999px; }
@@ -262,7 +266,7 @@
   content: ""; position: absolute; inset: 0;
   background: var(--gv-tenant-primary); opacity: 0.62; mix-blend-mode: multiply;
 }
-.gv-hero__inner { position: relative; z-index: 1; padding: 76px 24px; max-width: 720px; }  /* live banner has generous top/bottom spacing */
+.gv-hero__inner { position: relative; z-index: 1; padding: 100px 24px; max-width: 720px; }  /* live Wien banner module ≈450px tall — generous top/bottom spacing */
 /* Live homepage banner H1 (uxusertesting.govocal.com) computes to 25px/700/32.5px. */
 .gv-hero__title { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; margin: 0 0 10px; }
 /* Live banner subtitle (mitgestalten.wien.gv.at / community.govocal.com h2) = 18px/400/23.4px. */
@@ -276,7 +280,7 @@
 .gv-avatars .av:first-child { margin-left: 0; }
 .gv-avatars .count { margin-left: -8px; width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 2px solid #fff;
   background: var(--gv-cool-grey-600); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
-@media (max-width: 600px) { .gv-hero { min-height: 280px; } .gv-hero__inner { padding: 36px 20px; } }
+@media (max-width: 600px) { .gv-hero { min-height: 280px; } .gv-hero__inner { padding: 56px 20px; } }
 
 /* ── Section heading + content rhythm for composed pages ─────────────────────── */
 .gv-section { padding: 38px 0 4px; }
@@ -313,9 +317,10 @@
 /* last segment: notch on the left to interlock, but a FLAT (rounded) right end. */
 .gv-phase:last-child .gv-pstep { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 15px 50%); border-radius: 0 3px 3px 0; }
 .gv-phase.current .gv-pstep { background: var(--gv-green-600); color: #fff; }
-/* subtle darker top edge on the FO project-page ribbon segments (clipped to the
-   chevron shape) — the "dark grey border on top" seen on the real timeline */
-.gv-methodband .gv-pstep { box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.13); }
+/* the FO project-page ribbon segments read a touch shorter than the standalone
+   component and carry a clear dark-grey top edge (clipped to the chevron shape) —
+   the "dark grey border on top" + "slightly smaller modules" seen on the real timeline */
+.gv-methodband .gv-pstep { height: 21px; box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.22); }
 .gv-pstep__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
 .gv-phase__label { padding: 9px 6px 0; text-align: center; font-size: var(--gv-fs-s); line-height: 1.3; color: var(--gv-text-primary); }
 .gv-phase.current .gv-phase__label { color: var(--gv-green-600); font-weight: 600; }
@@ -333,6 +338,12 @@
   background: var(--gv-green-500); color: #fff; font-size: var(--gv-fs-base); font-weight: 400; }
 .gv-phasepanel__name { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-green-500); line-height: 1.2; }
 .gv-phasepanel__date { margin: 4px 0 0; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
+/* the phase description sits inside the panel card, under the head — part of the
+   component (the real phase card always carries a few lines of phase description). */
+.gv-phasepanel__desc { margin: 14px 0 0; font-size: var(--gv-fs-base); line-height: 1.65;
+  color: var(--gv-text-primary); max-width: var(--gv-text-width); }
+.gv-phasepanel__desc p { margin: 0 0 12px; }
+.gv-phasepanel__desc p:last-child { margin-bottom: 0; }
 
 /* ════════════════════════════════════════════════════════════════════════════
    HOMEPAGE WIDGETS — the modern GoVocal landing-page anatomy
@@ -562,6 +573,9 @@
 /* Compact light card — the Stadt Wien "Abgeschlossene Projekte" row renders the
    completed-project cards visibly SMALLER than the ongoing ones (more cards per
    row, tighter type). New variant on top of .light; doesn't change the base. */
+/* compact poster thumbs are squarer/taller than the ongoing-project 16:10 — the live
+   Wien "Abgeschlossene Projekte" image tiles measure 240×180 (4:3). */
+.gv-pcard.light.compact .gv-pcard__thumb { aspect-ratio: 4 / 3; }
 .gv-pcard.light.compact .gv-pcard__title { font-size: var(--gv-fs-base); margin: 0 0 6px; line-height: 1.3; }  /* ~14px vs 18px */
 .gv-pcard.light.compact .gv-pcard__body { padding-top: 12px; }
 .gv-pcard.light.compact .gv-pcard__status { font-size: var(--gv-fs-s); }

@@ -114,6 +114,22 @@
       </div>
       <div class="gv-projdesc pp-desc">
         <p>As part of the 2024 Master Planning process, Raleigh is <strong>redesigning many of the city's most iconic and well-known public spaces, including Dorothea Dix Park.</strong> Tell us what you and your community would like to see in the Park.</p>
+        <p>Dorothea Dix Park is the largest park in Raleigh — 308 acres of open meadows, woodland and historic buildings just south of downtown. Over the coming months we'll be gathering ideas, testing concepts on site, and bringing the community's priorities into the final master plan.</p>
+        <p>Everything you share here is public and helps shape the shortlist that goes to the prioritization phase. Read the questions below before you post, then add your idea or react to others.</p>
+        <div class="gv-accordion" style="margin-top:20px">
+          <details class="gv-acc__item" open>
+            <summary class="gv-acc__head"><span class="gv-acc__q">How will my idea be used?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+            <div class="gv-acc__body"><p>Every idea is read by the project team and grouped with similar suggestions. The most-supported, in-scope ideas move forward to the prioritization phase, where residents help decide which get funded first.</p></div>
+          </details>
+          <details class="gv-acc__item">
+            <summary class="gv-acc__head"><span class="gv-acc__q">What can I suggest?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+            <div class="gv-acc__body"><p>Anything that fits within the park boundary and the 2024 Master Plan — new facilities, planting, paths, programming or accessibility improvements. Out-of-scope ideas are tagged and redirected to the right team.</p></div>
+          </details>
+          <details class="gv-acc__item">
+            <summary class="gv-acc__head"><span class="gv-acc__q">Who is running this project?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+            <div class="gv-acc__body"><p>The City of Raleigh Parks, Recreation &amp; Cultural Resources department, together with the master-plan design consultants. Project updates are posted to followers as each phase opens.</p></div>
+          </details>
+        </div>
       </div>
     </div>
    </div><!-- /.gv-wrap -->
@@ -370,7 +386,7 @@
             <p class="gv-phasepanel__date">${p.dates}</p>
           </div>
         </div>
-        <p class="gv-phasebody" style="margin:14px 0 0;">${p.description}</p>`;
+        <div class="gv-phasepanel__desc"><p>${p.description}</p></div>`;
       bodyEl.innerHTML = (METHODS[p.method] ? METHODS[p.method](p) : placeholderHTML(p));
       if (window.GVIcons) window.GVIcons.render();
     }
