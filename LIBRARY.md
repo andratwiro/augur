@@ -112,6 +112,7 @@ as a starting point for a prototype.
 | **Bo Projects** | `/pages/bo-projects/` | `pages/bo-projects/` | Projects — GoVocal back office (reference) |
 | **Bo Reporting** | `/pages/bo-reporting/` | `pages/bo-reporting/` | Reporting — GoVocal back office (reference) |
 | **Bo Settings** | `/pages/bo-settings/` | `pages/bo-settings/` | Settings — GoVocal back office (reference) |
+| **Bo Survey Builder** | `/pages/bo-survey-builder/` | `pages/bo-survey-builder/` | Survey form builder — GoVocal back office (reference) |
 | **Bo Tools** | `/pages/bo-tools/` | `pages/bo-tools/` | Tools — GoVocal back office (reference) |
 | **Bo Users** | `/pages/bo-users/` | `pages/bo-users/` | Users — GoVocal back office (reference) |
 | **Event Detail** | `/pages/event-detail/` | `pages/event-detail/` | Station Road walk & talk: see the plans on site — Westmere |

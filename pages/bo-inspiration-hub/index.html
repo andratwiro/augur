@@ -28,8 +28,8 @@
     .ih-card__org .ih-count { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
     .ih-card__org .ih-count .gv-icon { width: 16px; height: 16px; }
     .ih-quote { background: var(--gv-teal-50); border-radius: 3px; padding: 12px; margin: 4px 0 4px; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); line-height: 20px; }
-    /* page-local badge to match real inspiration-hub method tag (filled grey pill) */
-    .ih-badge { color: var(--gv-cool-grey-600); background: var(--gv-grey-100); border-color: var(--gv-cool-grey-600); padding: 0 10px; height: 28px; display: inline-flex; align-items: center; justify-content: center; line-height: normal; align-self: flex-start; }
+    /* Method tag uses canonical .gv-badge.is-filled; just align it to the start of the flex column. */
+    .ih-card__body .gv-badge.is-filled { align-self: flex-start; }
     .ih-allfilters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0 18px; }
     .ih-allfilters .gv-bo-select { height: 48px; padding: 12px; font-size: var(--gv-fs-base); max-width: 150px; width: auto; }
     .ih-allfilters .gv-bo-dateface { height: 48px; }
@@ -57,7 +57,7 @@
               <h3 class="ih-card__title">Results</h3>
               <div class="ih-card__org">🇧🇪 Université Libre de Bruxelles <span class="ih-count"><span data-gv-icon="group"></span>0</span></div>
               <p class="ih-quote">Between January and April 2025, Dreamocracy designed and facilitated for ULB the largest university participatory process ever held in Belgium — a survey (2,000 responses) and a citizens' assembly of 48 randomly selected members to formulate concrete proposals for its future.</p>
-              <span class="gv-badge ih-badge">Information</span>
+              <span class="gv-badge is-filled">Information</span>
             </div>
           </article>
 
@@ -67,7 +67,7 @@
               <h3 class="ih-card__title" style="color:var(--gv-green-600)">Bornem is a strong house</h3>
               <div class="ih-card__org">🇧🇪 Gemeente Bornem <span class="ih-count"><span data-gv-icon="group"></span>1</span></div>
               <p class="ih-quote">Bornem has put its multi-year plan on Go Vocal, right down to individual actions. Click through to dig in, and head back to the map to see the full picture.</p>
-              <span class="gv-badge ih-badge">Ideation</span>
+              <span class="gv-badge is-filled">Ideation</span>
             </div>
           </article>
 
@@ -77,7 +77,7 @@
               <h3 class="ih-card__title">Street art seeks wall</h3>
               <div class="ih-card__org">🇧🇪 Stad Harelbeke <span class="ih-count"><span data-gv-icon="group"></span>20</span></div>
               <p class="ih-quote">Harelbeke already has some beautiful murals and now wants to explore with its residents whether they know of any suitable locations. Residents can submit proposals, after which Harelbeke will assess whether these qualify.</p>
-              <span class="gv-badge ih-badge">Ideation</span>
+              <span class="gv-badge is-filled">Ideation</span>
             </div>
           </article>
         </div>
@@ -116,7 +116,7 @@
         <div class="ih-card__body">
           <h3 class="ih-card__title">${title}</h3>
           <div class="ih-card__org">${flag} ${org} <span class="ih-count"><span data-gv-icon="group"></span>${count}</span></div>
-          <span class="gv-badge ih-badge">${method}</span>
+          <span class="gv-badge is-filled">${method}</span>
         </div>
       </article>`;
     }).join("");

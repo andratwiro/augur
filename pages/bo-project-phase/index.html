@@ -26,17 +26,7 @@
     .pp-setup__thresholds .gv-bo-caption { margin-bottom: 4px; }
     /* small info-dot icon next to a label/heading (page-local) */
     .pp-infodot { width: 16px; height: 16px; vertical-align: -3px; color: var(--gv-cool-grey-600); }
-    /* Access-rights accordion — collapsible "Who can …" rows separated by dividers.
-       Page-local layout; colours via tokens. Candidate for a shared .gv-bo-accordion. */
-    .pp-accordion { border-top: 1px solid var(--gv-divider); }
-    .pp-accordion__row { border-bottom: 1px solid var(--gv-divider); }
-    .pp-accordion__head {
-      display: flex; align-items: center; width: 100%; gap: 16px;
-      background: none; border: 0; padding: 18px 2px; cursor: pointer; text-align: left;
-    }
-    .pp-accordion__title { font-size: var(--gv-fs-xl); font-weight: 500; color: var(--gv-bo-primary); }
-    .pp-accordion__chev { margin-left: auto; width: 22px; height: 22px; color: var(--gv-bo-primary); flex: none; }
-    .pp-accordion__body { padding: 0 2px 22px; }
+    /* Access-rights accordion now uses the canonical .gv-bo-accordion (govocal-bo.css). */
 </style>
 </head>
 <body class="gv-bo">
@@ -461,13 +451,13 @@
             <h3 class="gv-bo-formhead" style="margin-bottom:8px">Phase access and user data</h3>
             <p class="gv-bo-help" style="max-width:680px;margin:0 0 22px">You can specify who can take each action, and ask additional questions to participants to collect more information.</p>
 
-            <div class="pp-accordion">
-              <div class="pp-accordion__row">
-                <button class="pp-accordion__head" aria-expanded="true">
-                  <span class="pp-accordion__title">Who can submit inputs?</span>
-                  <span class="pp-accordion__chev gv-icon" data-gv-icon="chevron-down"></span>
+            <div class="gv-bo-accordion">
+              <div class="gv-bo-accordion__row">
+                <button class="gv-bo-accordion__head" aria-expanded="true">
+                  <span class="gv-bo-accordion__title">Who can submit inputs?</span>
+                  <span class="gv-bo-accordion__chev gv-icon" data-gv-icon="chevron-right"></span>
                 </button>
-                <div class="pp-accordion__body">
+                <div class="gv-bo-accordion__body">
                   <label class="gv-bo-qlabel" style="margin-top:0">Who can perform this action?</label>
                   <label class="gv-radio"><input type="radio" name="acc-submit"><span class="circle"></span>Administrators and project managers</label><br>
                   <label class="gv-radio"><input type="radio" name="acc-submit" checked><span class="circle"></span>Anyone, including unregistered users</label><br>
@@ -476,36 +466,36 @@
                   <label class="gv-radio"><input type="radio" name="acc-submit"><span class="circle"></span>Anyone who verifies their identity (SSO)</label>
                 </div>
               </div>
-              <div class="pp-accordion__row">
-                <button class="pp-accordion__head" aria-expanded="false">
-                  <span class="pp-accordion__title">Who can comment on inputs?</span>
-                  <span class="pp-accordion__chev gv-icon" data-gv-icon="chevron-right"></span>
+              <div class="gv-bo-accordion__row">
+                <button class="gv-bo-accordion__head" aria-expanded="false">
+                  <span class="gv-bo-accordion__title">Who can comment on inputs?</span>
+                  <span class="gv-bo-accordion__chev gv-icon" data-gv-icon="chevron-right"></span>
                 </button>
-                <div class="pp-accordion__body" hidden>
+                <div class="gv-bo-accordion__body" hidden>
                   <label class="gv-bo-qlabel" style="margin-top:0">Who can perform this action?</label>
                   <label class="gv-radio"><input type="radio" name="acc-comment"><span class="circle"></span>Administrators and project managers</label><br>
                   <label class="gv-radio"><input type="radio" name="acc-comment" checked><span class="circle"></span>Anyone with an account</label><br>
                   <label class="gv-radio"><input type="radio" name="acc-comment"><span class="circle"></span>Anyone who verifies their identity (SSO)</label>
                 </div>
               </div>
-              <div class="pp-accordion__row">
-                <button class="pp-accordion__head" aria-expanded="false">
-                  <span class="pp-accordion__title">Who can react to inputs?</span>
-                  <span class="pp-accordion__chev gv-icon" data-gv-icon="chevron-right"></span>
+              <div class="gv-bo-accordion__row">
+                <button class="gv-bo-accordion__head" aria-expanded="false">
+                  <span class="gv-bo-accordion__title">Who can react to inputs?</span>
+                  <span class="gv-bo-accordion__chev gv-icon" data-gv-icon="chevron-right"></span>
                 </button>
-                <div class="pp-accordion__body" hidden>
+                <div class="gv-bo-accordion__body" hidden>
                   <label class="gv-bo-qlabel" style="margin-top:0">Who can perform this action?</label>
                   <label class="gv-radio"><input type="radio" name="acc-react"><span class="circle"></span>Administrators and project managers</label><br>
                   <label class="gv-radio"><input type="radio" name="acc-react" checked><span class="circle"></span>Anyone with an account</label><br>
                   <label class="gv-radio"><input type="radio" name="acc-react"><span class="circle"></span>Anyone who verifies their identity (SSO)</label>
                 </div>
               </div>
-              <div class="pp-accordion__row">
-                <button class="pp-accordion__head" aria-expanded="false">
-                  <span class="pp-accordion__title">Who can sign up to attend an event? <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></span>
-                  <span class="pp-accordion__chev gv-icon" data-gv-icon="chevron-right"></span>
+              <div class="gv-bo-accordion__row">
+                <button class="gv-bo-accordion__head" aria-expanded="false">
+                  <span class="gv-bo-accordion__title">Who can sign up to attend an event? <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></span>
+                  <span class="gv-bo-accordion__chev gv-icon" data-gv-icon="chevron-right"></span>
                 </button>
-                <div class="pp-accordion__body" hidden>
+                <div class="gv-bo-accordion__body" hidden>
                   <label class="gv-bo-qlabel" style="margin-top:0">Who can perform this action?</label>
                   <label class="gv-radio"><input type="radio" name="acc-event" checked><span class="circle"></span>Anyone with an account</label><br>
                   <label class="gv-radio"><input type="radio" name="acc-event"><span class="circle"></span>Anyone who confirms their email</label>
@@ -889,15 +879,14 @@
     stepper.appendChild(add);
 
     // ── Access-rights accordion: expand/collapse "Who can …" rows. ──
-    document.querySelectorAll(".pp-accordion__head").forEach(head => {
+    // The canonical .gv-bo-accordion__chev rotates 90° via CSS on aria-expanded,
+    // so JS only toggles aria-expanded + the body's hidden state.
+    document.querySelectorAll(".gv-bo-accordion__head").forEach(head => {
       head.addEventListener("click", () => {
         const open = head.getAttribute("aria-expanded") === "true";
         head.setAttribute("aria-expanded", String(!open));
         const body = head.nextElementSibling;
         if (body) body.hidden = open;
-        const chev = head.querySelector(".pp-accordion__chev");
-        if (chev) { chev.setAttribute("data-gv-icon", open ? "chevron-right" : "chevron-down"); }
-        if (window.GVIcons) window.GVIcons.render(head);
       });
     });
 

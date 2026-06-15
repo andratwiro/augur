@@ -97,35 +97,14 @@
     .sb-page__logic .sb-logic-link { color: var(--gv-cool-grey-600); }
     .sb-page__logic .sb-logic-target { color: var(--gv-cool-grey-600); }
 
-    /* Field row — the ~51px draggable question line. Hover + selected states. */
-    .sb-field {
-      display: flex; align-items: center; gap: 12px; min-height: 51px;
-      padding: 8px 18px; border-top: 1px solid var(--gv-grey-300); cursor: pointer;
-      background: var(--gv-white);
-    }
-    .sb-field:hover { background: var(--gv-grey-100); }
-    .sb-field.is-selected { background: var(--gv-teal-50); box-shadow: inset 3px 0 0 var(--gv-teal-500); }
-    .sb-field__grip { color: var(--gv-cool-grey-500); display: inline-flex; cursor: grab; flex: none; }
-    .sb-field__grip svg { width: 14px; height: 14px; }
-    .sb-field__qno { font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-teal-500); flex: none; }
-    .sb-field__title { font-size: var(--gv-fs-base); color: var(--gv-grey-800); flex: 1 1 auto; }
-    .sb-field__title.is-empty { color: var(--gv-cool-grey-500); font-style: italic; }
-    .sb-field__badges { display: flex; align-items: center; gap: 10px; flex: none; }
-
-    /* small uppercase meta badges on the right of a field row */
-    .sb-badge {
-      display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px;
-      border-radius: 3px; font-size: var(--gv-fs-xs); font-weight: 700; letter-spacing: .03em;
-      text-transform: uppercase;
-    }
-    .sb-badge--type { color: var(--gv-cool-grey-600); background: var(--gv-grey-100); }
-    .sb-badge--type svg { width: 14px; height: 14px; color: var(--gv-cool-grey-600); flex: none; }
-    .sb-badge--required { color: var(--gv-teal-500); background: transparent; padding-left: 0; }
-    .sb-field__more {
+    /* Field row + type/required meta badges now use the canonical
+       .gv-bo-fieldrow / .gv-bo-typebadge (govocal-bo.css). The ⋯ more-actions
+       button has no canonical equivalent, so it stays page-local. */
+    .sb-fieldmore {
       border: 0; background: transparent; color: var(--gv-cool-grey-600); cursor: pointer;
       width: 26px; height: 26px; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center;
     }
-    .sb-field__more:hover { background: var(--gv-grey-100); }
+    .sb-fieldmore:hover { background: var(--gv-grey-100); }
 
     /* Ending row — pinned, lock icon. */
     .sb-ending {
@@ -371,17 +350,17 @@
         var rows = page.fields.map(function (f) {
           qCounter++;
           var t = TYPES[f.type] || {};
-          var titleCls = f.title ? 'sb-field__title' : 'sb-field__title is-empty';
+          var titleCls = f.title ? 'gv-bo-fieldrow__title' : 'gv-bo-fieldrow__title is-empty';
           var titleTxt = f.title || 'Untitled question';
           return '' +
-            '<div class="sb-field" data-field="' + f.id + '" tabindex="0">' +
-              '<span class="sb-field__grip">' + svgGrip() + '</span>' +
-              '<span class="sb-field__qno">Question ' + qCounter + '</span>' +
+            '<div class="gv-bo-fieldrow" data-field="' + f.id + '" tabindex="0">' +
+              '<span class="gv-bo-fieldrow__grip">' + svgGrip() + '</span>' +
+              '<span class="gv-bo-fieldrow__qno">Question ' + qCounter + '</span>' +
               '<span class="' + titleCls + '">' + esc(titleTxt) + '</span>' +
-              '<span class="sb-field__badges">' +
-                (f.required ? '<span class="sb-badge sb-badge--required">Required</span>' : '') +
-                '<span class="sb-badge sb-badge--type">' + (t.icon || '') + (TYPE_BADGE[f.type] || f.type) + '</span>' +
-                '<button class="sb-field__more" type="button" aria-label="More actions"><span class="gv-icon" data-gv-icon="dots-horizontal"></span></button>' +
+              '<span class="gv-bo-fieldrow__badges">' +
+                (f.required ? '<span class="gv-bo-typebadge is-required">Required</span>' : '') +
+                '<span class="gv-bo-typebadge is-type">' + (t.icon || '') + (TYPE_BADGE[f.type] || f.type) + '</span>' +
+                '<button class="sb-fieldmore" type="button" aria-label="More actions"><span class="gv-icon" data-gv-icon="dots-horizontal"></span></button>' +
               '</span>' +
             '</div>';
         }).join('');
@@ -396,10 +375,10 @@
       });
 
       // wire field rows
-      var rowsEls = pagesHost.querySelectorAll('.sb-field');
+      var rowsEls = pagesHost.querySelectorAll('.gv-bo-fieldrow');
       Array.prototype.forEach.call(rowsEls, function (el) {
         el.addEventListener('click', function (e) {
-          if (e.target.closest('.sb-field__more') || e.target.closest('.sb-field__grip')) return;
+          if (e.target.closest('.sb-fieldmore') || e.target.closest('.gv-bo-fieldrow__grip')) return;
           selectField(el.getAttribute('data-field'));
         });
         el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectField(el.getAttribute('data-field')); } });
@@ -448,7 +427,7 @@
     // ── Selection → populate the right settings panel ─────────────────────────
     var selectedId = null;
     function clearSel() {
-      var prev = pagesHost.querySelector('.sb-field.is-selected');
+      var prev = pagesHost.querySelector('.gv-bo-fieldrow.is-selected');
       if (prev) prev.classList.remove('is-selected');
     }
     function selectField(id) {

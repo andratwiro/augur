@@ -216,6 +216,13 @@ body.gv-root {
   font-weight: 500; border: 1px solid currentColor;
 }
 .gv-badge.inverse { color: #fff; background-color: var(--gv-disabled); border: none; }
+/* .is-filled = the real product's DEFAULT / category tag: a filled grey pill, no
+   border, bold (measured #596B7A on #EBEDEF, 12px/700, radius 3px). Used for
+   navbar "DEFAULT" tags, inspiration-hub method tags, any non-status category chip. */
+.gv-badge.is-filled {
+  border: none; background-color: var(--gv-grey-200); color: var(--gv-cool-grey-600);
+  font-weight: 700; padding: 1px 6px;
+}
 
 /* ── StatusLabel (filled status pill; set --bg per status) ──────────────────── */
 .gv-status-label {

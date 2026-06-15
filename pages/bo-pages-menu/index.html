@@ -41,22 +41,8 @@
     }
     .pm-card .gv-bo-listrow__actions .gv-btn[data-view] { color: var(--gv-bo-link); }
     .pm-card .gv-bo-listrow__actions { gap: 10px; }
-    /* Real DEFAULT badge: filled grey pill, no border, bold uppercase (digest: #596B7A on #EBEDEF, 12px/700, 0 6px, radius 3px), margin-left 15px */
-    .pm-default {
-      color: var(--gv-cool-grey-500);
-      background-color: var(--gv-grey-200);
-      border: 0;
-      font-size: var(--gv-fs-xs);
-      font-weight: 700;
-      line-height: 20px;
-      padding: 0 6px;
-      border-radius: 3px;
-      margin-left: 15px;
-      text-transform: uppercase;
-    }
-    /* Vertical 6-dot drag grip (canonical icon set only has horizontal dots) */
-    .pm-grip { display: inline-block; width: 12px; height: 16px; color: var(--gv-cool-grey-400); }
-    .pm-grip svg { display: block; }
+    /* DEFAULT badge now uses canonical .gv-badge.is-filled; just position it. */
+    .pm-card .gv-badge.is-filled { margin-left: 15px; }
   </style>
 </head>
 <body class="gv-bo">
@@ -106,8 +92,8 @@
       ["FAQ", false, false, true, true],
     ];
     document.getElementById("navrows").innerHTML = NAV.map(([name, locked, def, del, removable]) => {
-      const badge = def ? `<span class="gv-badge pm-default">Default</span>` : "";
-      const grip = `<span class="gv-bo-listrow__handle pm-grip"><svg viewBox="0 0 12 16" width="12" height="16" fill="currentColor"><circle cx="3" cy="3" r="1.4"/><circle cx="9" cy="3" r="1.4"/><circle cx="3" cy="8" r="1.4"/><circle cx="9" cy="8" r="1.4"/><circle cx="3" cy="13" r="1.4"/><circle cx="9" cy="13" r="1.4"/></svg></span>`;
+      const badge = def ? `<span class="gv-badge is-filled">Default</span>` : "";
+      const grip = `<span class="gv-bo-listrow__handle" data-gv-icon="drag-handle"></span>`;
       const lead = locked
         ? `<span class="gv-bo-listrow__handle" data-gv-icon="lock"></span>`
         : grip;

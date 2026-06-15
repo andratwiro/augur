@@ -248,7 +248,7 @@
     document.getElementById("arrangerows").innerHTML = PROJECTS.slice(0, 8).map(p => {
       const [name, , , , , status] = p;
       return `<tr>
-        <td class="gv-bo-table__check" style="width:1%"><span class="gv-bo-listrow__handle" data-gv-icon="dots-horizontal"></span></td>
+        <td class="gv-bo-table__check" style="width:1%"><span class="gv-bo-listrow__handle" data-gv-icon="drag-handle"></span></td>
         <td><span class="pl-proj__name">${name}</span></td>
         <td><span class="pl-vis is-${status}"><span class="pl-vis__bar"></span><span class="pl-vis__status">${statusLabel[status]}</span></span></td>`;
     }).join("");

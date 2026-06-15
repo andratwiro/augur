@@ -231,7 +231,7 @@
     ];
     document.getElementById("regq").innerHTML = REGQ.map(([name, on, def]) => `
       <div class="gv-bo-listrow">
-        <span class="gv-bo-listrow__handle" data-gv-icon="dots-horizontal"></span>
+        <span class="gv-bo-listrow__handle" data-gv-icon="drag-handle"></span>
         <label class="gv-toggle"><input type="checkbox"${on ? " checked" : ""}><span class="track"></span></label>
         <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:var(--gv-fs-base)"><a href="#">${name}</a>${name === "Place of residence" ? '<span class="st-lbl-info" data-gv-icon="info-outline"></span>' : ""}</h4></div>
         <div class="gv-bo-listrow__actions">${def ? '<span style="color:var(--gv-text-secondary);font-size:var(--gv-fs-13)">Default question</span>' : smallBtn("Delete", "delete")}${smallBtn("Edit", "pen")}</div>
@@ -257,7 +257,7 @@
     const AREAS = [["Cary", false], ["Chapel Hill", true], ["Durham", false], ["Raleigh", false], ["Other", false]];
     document.getElementById("arearows").innerHTML = AREAS.map(([name, warn]) => `
       <div class="gv-bo-listrow">
-        <span class="gv-bo-listrow__handle" data-gv-icon="dots-horizontal"></span>
+        <span class="gv-bo-listrow__handle" data-gv-icon="drag-handle"></span>
         <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:var(--gv-fs-base)"><a href="#">${name}</a></h4></div>
         <div class="gv-bo-listrow__actions">${warn ? '<span class="st-warn gv-icon" data-gv-icon="alert-circle" title="Used in access rights"></span>' : ""}${smallBtn("Delete", "delete", warn)}${smallBtn("Edit", "pen")}</div>
       </div>`).join("");
@@ -270,7 +270,7 @@
     ];
     document.getElementById("statusrows").innerHTML = STATUSES.map(([name, color, locked]) => `
       <div class="gv-bo-listrow">
-        <span class="gv-bo-listrow__handle" data-gv-icon="${locked ? "lock" : "dots-horizontal"}"></span>
+        <span class="gv-bo-listrow__handle" data-gv-icon="${locked ? "lock" : "drag-handle"}"></span>
         <span class="st-swatch" style="background:${color}"></span>
         <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:var(--gv-fs-base)"><a href="#">${name}</a></h4></div>
         <div class="gv-bo-listrow__actions">${smallBtn("Delete", "delete", true)}${smallBtn("Edit", "pen")}</div>
