@@ -675,8 +675,11 @@
 .gv-event-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gv-event-card__media svg, .gv-event-card__media .gv-icon { width: 40px; height: 40px; }
 /* two-tone date chip, pinned top-right over the media */
-.gv-event-card__date { position: absolute; top: 14px; right: 14px; width: 58px; border-radius: var(--gv-radius);
-  overflow: hidden; text-align: center; box-shadow: var(--gv-shadow); line-height: 1.05; }
+/* Grounded on fo-events digest (div.sc-lilDSw grey month/day + div.sc-jtdBMk
+   tenant-primary year): the real badge is width:75px and FLAT (box-shadow:none);
+   the two-tone grey-top / tenant-primary-bottom split radii below are correct. */
+.gv-event-card__date { position: absolute; top: 14px; right: 14px; width: 75px; border-radius: var(--gv-radius);
+  overflow: hidden; text-align: center; box-shadow: none; line-height: 1.05; }
 .gv-event-card__date .m { display: block; padding-top: 6px; background: var(--gv-grey-100); color: var(--gv-grey-800);
   font-size: var(--gv-fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
 .gv-event-card__date .d { display: block; padding-bottom: 5px; background: var(--gv-grey-100); color: var(--gv-grey-800);
