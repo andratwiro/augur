@@ -63,6 +63,7 @@ body.gv-root {
 .gv-btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
 
 /* sizes */
+.gv-btn.size-s  { padding: 5px 12px; font-size: var(--gv-fs-s);  line-height: 20px; }
 .gv-btn.size-m  { padding: 11px 22px; font-size: var(--gv-fs-l);  line-height: 26px; }
 .gv-btn.size-l  { padding: 13px 24px; font-size: var(--gv-fs-xl); line-height: 26px; }
 .gv-btn.size-xl { padding: 15px 26px; font-size: var(--gv-fs-xl); line-height: 28px; }
@@ -648,7 +649,7 @@ body.gv-root {
    block padding, 30px/700 title. Collapses to one column (media first) ≤820px. */
 .gv-spotlight { background: var(--gv-grey-100); }
 .gv-spotlight__inner {
-  max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 52px 24px;
+  max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 56px 24px;  /* live .e2e-spotlight-widget = 56px vertical */
   display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
 }
 .gv-spotlight__eyebrow { margin: 0 0 12px; font-size: var(--gv-fs-s); font-weight: 700;
@@ -712,7 +713,9 @@ body.gv-root {
   background: #fff; border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius); cursor: pointer;
   font-family: inherit; font-size: var(--gv-fs-s); color: var(--gv-text-primary); }
 .gv-filter-btn:hover { border-color: var(--gv-grey-700); }
-.gv-filter-btn svg, .gv-filter-btn .gv-icon { width: 14px; height: 14px; color: var(--gv-grey-700); }
+.gv-filter-btn.is-open { border-color: var(--gv-tenant-primary); color: var(--gv-tenant-primary); }
+.gv-filter-btn svg, .gv-filter-btn .gv-icon { width: 14px; height: 14px; color: var(--gv-grey-700); transition: transform 120ms ease-out; }
+.gv-filter-btn.is-open svg { transform: rotate(180deg); color: var(--gv-tenant-primary); }
 .gv-filter-btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
 @media (max-width: 620px) { .gv-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; } }
 
@@ -739,8 +742,9 @@ body.gv-root {
 .gv-pcard.boxed .gv-pcard__desc { color: var(--gv-grey-800); }
 .gv-pcard__spacer { flex: 1 1 auto; min-height: 8px; }
 .gv-pcard__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
-/* the boxed-card CTA is a real outline button; keep it above the stretched link */
-.gv-pcard.boxed .gv-btn { position: relative; z-index: 1; }
+/* the boxed-card CTA is a real outline button; keep it above the stretched link.
+   Geometry source-grounded on the live .e2e-project-card-cta (14px / 8px 14px). */
+.gv-pcard.boxed .gv-btn { position: relative; z-index: 1; font-size: var(--gv-fs-s); padding: 8px 14px; line-height: 20px; }
 /* progress block inside a boxed card */
 .gv-pcard__progress { margin: 12px 0 0; }
 .gv-pcard__progress .gv-pcard__meta { margin-bottom: 8px; }

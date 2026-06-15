@@ -17,6 +17,54 @@
       "against": "fo-homepage-wien",
       "map": { "header": ".gv-header" },
       "props": ["background-color", "box-shadow", "border-radius"]
+    },
+    {
+      "id": "homepage-card",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage",
+      "map": { ".e2e-project-card": ".gv-pcard.boxed" },
+      "props": ["background-color", "box-shadow", "border", "border-radius"],
+      "uses": [".gv-pcard"]
+    },
+    {
+      "id": "homepage-card-cta",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage",
+      "map": { ".e2e-project-card-cta": ".gv-pcard.boxed .gv-btn" },
+      "props": ["border-radius", "padding", "font-size"],
+      "uses": [".gv-pcard", ".gv-btn"]
+    },
+    {
+      "id": "homepage-section-title",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage",
+      "map": { "h2": ".gv-title.h2" },
+      "props": ["font-size", "font-weight", "line-height"],
+      "uses": [".gv-title"]
+    },
+    {
+      "id": "bo-project-phase/setup-input",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-setup",
+      "map": { "input": "#panel-timeline .gv-input" },
+      "props": ["color", "background-color", "background-image", "font-size", "font-weight", "border", "border-radius", "box-shadow", "padding"],
+      "uses": [".gv-input"]
+    },
+    {
+      "id": "bo-project-phase/setup-select",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-phase-setup",
+      "map": { "select": ".gv-bo-select" },
+      "props": ["color", "background-color", "background-image", "font-size", "font-weight", "border", "border-radius", "box-shadow", "padding"],
+      "uses": [".gv-bo-select"]
+    },
+    {
+      "id": "bo-project-phase/general-input",
+      "built": "pages/bo-project-phase/index.html",
+      "against": "bo-project-general",
+      "map": { "input": "#panel-general .gv-input" },
+      "props": ["color", "background-color", "font-size", "font-weight", "border", "border-radius", "box-shadow", "padding"],
+      "uses": [".gv-input"]
     }
   ]
 }

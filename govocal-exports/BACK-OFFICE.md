@@ -93,7 +93,12 @@ bo-sidebar copies diverging — register both, and a re-sync that misses one goe
 - [x] **bo-phase-ribbon** — REUSED FO `.gv-phases`/`.gv-stepper` under `.gv-bo` + a flat `.gv-bo-addphase` "+ New phase" cell. ✅
 - [x] **bo-sub-tabs + phase header** — `.gv-bo-tabs--sub` + `.gv-bo-phasehead` (title · meta · ⋯). ✅
 - [x] **bo-form (Setup)** — `.gv-bo-field`, `.gv-bo-multiloc` (EN/ES-ES lang tabs), `.gv-bo-dateface`, reused `.gv-input`/`.gv-btn`. ✅
-- [x] **Pages tier: `pages/bo-project-phase/`** — full clickable Setup screen assembled from the above. ✅ verified vs `bo-phase-setup`.
+- [x] **Pages tier: `pages/bo-project-phase/`** — now the **full project-configuration editor**: all six project top-tabs wired to swap panels. Verified vs `bo-phase-setup` + `bo-project-general` (`bo-project-phase/*` checkpoints). Adds config classes `.gv-bo-formhead/-subhead/-caption/-qlabel/-help`, `.gv-bo-select`, `.gv-bo-banner`, `.gv-bo-methods/-methodcard`, `.gv-bo-togglerow`, `.gv-bo-tags/-tag`, `.gv-bo-imageup/-dropzone`, `.gv-bo-table/-toolbar/-search/-pager`, `.gv-bo-pane/-card/-empty/-eventrow` + `.gv-btn.success`/`.size-s` + tokens `--gv-teal-75`/`--gv-green-600`. New captures: `bo-project-{general,audience,messaging,events}`.
+  - [x] **Setup** deepened to real complexity (method picker, anonymity, action toggles, likes/dislikes, similar-input detection, available views, sorting, attachments).
+  - [x] **General** — full project-settings form (multiloc fields, tags, area/content radios, header/card image uploads, attachments).
+  - [x] **Audience** — Participants data table (`.gv-bo-table`) + toolbar + pager.
+  - [x] **Messaging** — "Send your first email" empty state on a card/grey pane.
+  - [x] **Events** — project events list with registrant counts + row actions.
 - [ ] **Input manager tab** — the posts/data table (checkbox, sortable headers, status meta, row actions, pagination dots) + left filter rail (Timeline/Tags/Status, phase list w/ counts) + filter bar ("Any administrator" dropdown, toggle, Exports, Search) + AI banner. (capture: `bo-project-ideas`)
 - [ ] **Input form tab** — `.gv-bo-import-cards` (Paper/OCR, Spreadsheet sources) + "Edit input form" entry. (capture: `bo-input-form-builder`)
 - [ ] **Insights tab** — `bo-stat-cards` (label · big number · 7-day change · icon; tag **shared**) + charts. (capture: `bo-phase-insights`)

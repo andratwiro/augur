@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Project configuration (phase) — GoVocal back office (reference)</title>
+  <title>Project configuration — GoVocal back office (reference)</title>
   <meta name="gv-surface" content="back-office" />
   <link rel="stylesheet" href="govocal-tokens.css" />
   <link rel="stylesheet" href="govocal-ui.css" />
@@ -16,6 +16,12 @@
     /* the ribbon sits inside the white canvas, edge-to-edge under the tabs */
     .gv-bo-section .gv-phases { box-shadow: none; border: 0; padding: 0; background: transparent; margin: 0 0 4px; }
     .gv-bo-section .gv-stepper { display: flex; flex-wrap: wrap; gap: 2px; }
+    /* tab panels */
+    .gv-panel { display: none; }
+    .gv-panel.is-active { display: block; }
+    .gv-setup { padding-top: 24px; max-width: 640px; }
+    .gv-setup__thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 520px; margin-top: 12px; }
+    .gv-setup__thresholds .gv-bo-caption { margin-bottom: 4px; }
   </style>
 </head>
 <body class="gv-bo">
@@ -25,22 +31,22 @@
     <nav class="gv-bo-side" aria-label="Admin">
       <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo"><span data-gv-icon="arrow-left" style="color:#fff;font-size:14px"></span></span> To platform</a>
       <div class="gv-bo-nav">
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="home"></span>Dashboard</a>
-        <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="survey"></span>Projects</a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="comments"></span>Input manager</a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="group"></span>Users</a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="email"></span>Messaging</a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="trend-up"></span>Reporting</a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="eye"></span>Community monitor</a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="idea"></span>Inspiration hub</a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="home"></span><span class="gv-bo-nav__label">Dashboard</span></a>
+        <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="survey"></span><span class="gv-bo-nav__label">Projects</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="comments"></span><span class="gv-bo-nav__label">Input manager</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="group"></span><span class="gv-bo-nav__label">Users</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="email"></span><span class="gv-bo-nav__label">Messaging</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="trend-up"></span><span class="gv-bo-nav__label">Reporting</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="eye"></span><span class="gv-bo-nav__label">Community monitor</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="idea"></span><span class="gv-bo-nav__label">Inspiration hub</span></a>
       </div>
       <div class="gv-bo-nav gv-bo-nav--bottom">
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="settings"></span>Tools</a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="menu"></span>Pages &amp; menu</a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="settings"></span>Settings</a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="notification"></span>Notifications<span class="gv-bo-count">29</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="user-circle"></span><span>Go Vocal Admin<span class="gv-bo-nav__sub" style="display:block">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="info-outline"></span>Support<span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="settings"></span><span class="gv-bo-nav__label">Tools</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="menu"></span><span class="gv-bo-nav__label">Pages &amp; menu</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="settings"></span><span class="gv-bo-nav__label">Settings</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="notification"></span><span class="gv-bo-nav__label">Notifications</span><span class="gv-bo-count">29</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-avatar" data-gv-icon="user-circle"></span><span class="gv-bo-nav__label">Go Vocal Admin<span class="gv-bo-nav__sub">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="info-outline"></span><span class="gv-bo-nav__label">Support</span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
       </div>
     </nav>
 
@@ -65,81 +71,414 @@
           </div>
         </div>
         <nav class="gv-bo-tabs" aria-label="Project">
-          <a class="gv-bo-tab" href="#">General</a>
-          <a class="gv-bo-tab is-active" href="#">Timeline</a>
-          <a class="gv-bo-tab" href="#">Audience</a>
-          <a class="gv-bo-tab" href="#">Messaging</a>
-          <a class="gv-bo-tab" href="#">Events</a>
-          <a class="gv-bo-tab" href="#">360 Input<span class="gv-bo-tab__new">NEW</span></a>
+          <a class="gv-bo-tab" href="#" data-tab="general">General</a>
+          <a class="gv-bo-tab is-active" href="#" data-tab="timeline">Timeline</a>
+          <a class="gv-bo-tab" href="#" data-tab="audience">Audience</a>
+          <a class="gv-bo-tab" href="#" data-tab="messaging">Messaging</a>
+          <a class="gv-bo-tab" href="#" data-tab="events">Events</a>
+          <a class="gv-bo-tab" href="#" data-tab="input360">360 Input<span class="gv-bo-tab__new">NEW</span></a>
         </nav>
       </header>
 
-      <div class="gv-bo-section">
-
-        <!-- Phase ribbon (reuses .gv-phases / .gv-stepper) -->
-        <section class="gv-phases" aria-label="Project phases">
-          <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"></div>
-        </section>
-
-        <!-- Phase header -->
-        <div class="gv-bo-phasehead">
-          <div>
-            <h2 class="gv-bo-phasehead__title">New ideas!</h2>
-            <div class="gv-bo-phasehead__meta">
-              <span>Ideation phase</span>
-              <span><span class="gv-icon" data-gv-icon="calendar-range"></span>June 2, 2024 12:00 AM → No end date</span>
-              <span><span class="gv-icon" data-gv-icon="eye"></span>Mixed rights</span>
-            </div>
-          </div>
-          <div class="gv-bo-phasehead__actions">
-            <button class="gv-iconbtn" aria-label="Phase options"><span data-gv-icon="dots-horizontal"></span></button>
-          </div>
-        </div>
-
-        <!-- Phase sub-tabs -->
-        <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Phase">
-          <a class="gv-bo-tab is-active" href="#">Setup</a>
-          <a class="gv-bo-tab" href="#">Description</a>
-          <a class="gv-bo-tab" href="#">Input manager</a>
-          <a class="gv-bo-tab" href="#">Input form</a>
-          <a class="gv-bo-tab" href="#">Map</a>
-          <a class="gv-bo-tab" href="#">Insights</a>
-          <a class="gv-bo-tab" href="#">Phase access and user data</a>
-          <a class="gv-bo-tab" href="#">Notifications</a>
-        </nav>
-
-        <!-- Setup panel -->
-        <div style="padding-top:24px; max-width:600px;">
-          <h3 class="gv-title h3" style="margin:0 0 20px; color:var(--gv-bo-primary)">Edit Phase</h3>
+      <!-- ════════════ GENERAL ════════════ -->
+      <section class="gv-panel" id="panel-general">
+        <div class="gv-bo-section gv-setup">
+          <h3 class="gv-bo-formhead">General settings for the project</h3>
 
           <div class="gv-bo-field">
-            <span class="gv-label">Phase name</span>
-            <div class="gv-bo-multiloc">
-              <button type="button" class="is-active">EN</button>
-              <button type="button"><span class="miss"></span>ES-ES</button>
+            <span class="gv-label">Project name</span>
+            <div class="gv-bo-multiloc"><button type="button" class="is-active">EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+            <input class="gv-input" type="text" value="Let's Reimagine Dorothea Dix Park" />
+          </div>
+
+          <div class="gv-bo-togglerow" style="max-width:640px">
+            <div><div class="gv-bo-togglerow__title">Use Content Builder for description</div>
+              <p class="gv-bo-help">Build a richer description with layouts, images and embeds.</p></div>
+            <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+          </div>
+
+          <div class="gv-bo-field" style="max-width:640px">
+            <span class="gv-label">Project description</span>
+            <div class="gv-bo-multiloc"><button type="button" class="is-active">EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+            <textarea class="gv-input" rows="5" style="resize:vertical">As part of the 2024 Master Planning process, Raleigh is redesigning many of the city's most iconic and well-known public spaces, including Dorothea Dix Park. Tell us what you and your community would like to see in the park.</textarea>
+          </div>
+
+          <div class="gv-bo-field" style="max-width:640px">
+            <span class="gv-label">Homepage description</span>
+            <textarea class="gv-input" rows="3" style="resize:vertical">The City is seeking input from the community on redesigning iconic public spaces like Dorothea Dix Park.</textarea>
+          </div>
+
+          <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="stars"></span><div><b>Need inspiration?</b> Explore similar projects from other cities in the <a href="#">Inspiration hub</a>.</div></div>
+
+          <div class="gv-bo-field">
+            <span class="gv-label">URL</span>
+            <p class="gv-bo-help" style="margin:0 0 6px">Slug</p>
+            <input class="gv-input" type="text" value="dorothea-dix-park" />
+            <p class="gv-bo-help">Resulting URL: uxusertesting.govocal.com/en/projects/dorothea-dix-park</p>
+          </div>
+
+          <div class="gv-bo-field" style="max-width:640px">
+            <span class="gv-label">Tags</span>
+            <div class="gv-bo-tags">
+              <button class="gv-bo-tag is-selected">Mobility</button>
+              <button class="gv-bo-tag is-selected">Public spaces</button>
+              <button class="gv-bo-tag">Nature and biodiversity</button>
+              <button class="gv-bo-tag">Sustainable development</button>
+              <button class="gv-bo-tag">Energy and technology</button>
+              <button class="gv-bo-tag">Health and welfare</button>
+              <button class="gv-bo-tag">Culture, sports and events</button>
+              <button class="gv-bo-tag">Education and youth</button>
+              <button class="gv-bo-tag">Community development</button>
             </div>
-            <input class="gv-input" type="text" value="New ideas!" />
+          </div>
+
+          <label class="gv-bo-qlabel">Areas filter</label>
+          <label class="gv-radio"><input type="radio" name="areas" checked><span class="circle"></span>No specific area</label><br>
+          <label class="gv-radio"><input type="radio" name="areas"><span class="circle"></span>All Areas</label><br>
+          <label class="gv-radio"><input type="radio" name="areas"><span class="circle"></span>Selection</label>
+
+          <label class="gv-bo-qlabel">Project content</label>
+          <label class="gv-radio"><input type="radio" name="content"><span class="circle"></span>Folder</label><br>
+          <label class="gv-radio"><input type="radio" name="content" checked><span class="circle"></span>None</label>
+
+          <div class="gv-bo-field" style="max-width:520px;margin-top:22px">
+            <span class="gv-label">Header image</span>
+            <div class="gv-bo-imageup"><div class="gv-bo-imageup__preview">
+              <img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=900&q=70&auto=format&fit=crop" alt="" />
+              <button class="gv-bo-imageup__remove" aria-label="Remove image"><span data-gv-icon="close"></span></button>
+            </div></div>
           </div>
 
           <div class="gv-bo-field">
-            <span class="gv-label">Dates</span>
-            <div class="gv-bo-dateface">
-              <span>06/02/2024 12:00 AM</span>
-              <span class="sep">›</span>
-              <span>Open ended</span>
-              <span class="gv-icon" data-gv-icon="calendar"></span>
+            <span class="gv-label">Header image alt text</span>
+            <div class="gv-bo-multiloc"><button type="button" class="is-active">EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+            <input class="gv-input" type="text" value="A sunlit meadow in Dorothea Dix Park" />
+          </div>
+
+          <div class="gv-bo-field" style="max-width:520px">
+            <span class="gv-label">Project card image</span>
+            <div class="gv-bo-imageup"><div class="gv-bo-imageup__preview">
+              <img src="https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=900&q=70&auto=format&fit=crop" alt="" />
+              <button class="gv-bo-imageup__remove" aria-label="Remove image"><span data-gv-icon="close"></span></button>
+            </div></div>
+          </div>
+
+          <div class="gv-bo-field">
+            <span class="gv-label">Project card image alternative text</span>
+            <input class="gv-input" type="text" value="" placeholder="Describe the image for screen readers" />
+          </div>
+
+          <div class="gv-bo-field">
+            <span class="gv-label">Attachments <span style="color:var(--gv-text-secondary);font-weight:400">(max 50MB)</span></span>
+            <button class="gv-bo-dropzone"><span class="gv-icon" data-gv-icon="download"></span>Select a file</button>
+          </div>
+
+          <button class="gv-btn admin-dark"><span class="gv-btn__label">Save</span></button>
+        </div>
+      </section>
+
+      <!-- ════════════ TIMELINE → PHASE → SETUP ════════════ -->
+      <section class="gv-panel is-active" id="panel-timeline">
+        <div class="gv-bo-section">
+
+          <!-- Phase ribbon -->
+          <section class="gv-phases" aria-label="Project phases">
+            <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"></div>
+          </section>
+
+          <!-- Phase header -->
+          <div class="gv-bo-phasehead">
+            <div>
+              <h2 class="gv-bo-phasehead__title">New ideas!</h2>
+              <div class="gv-bo-phasehead__meta">
+                <span>Ideation phase</span>
+                <span><span class="gv-icon" data-gv-icon="calendar-range"></span>June 2, 2024 12:00 AM → No end date</span>
+                <span><span class="gv-icon" data-gv-icon="eye"></span>Mixed rights</span>
+              </div>
+            </div>
+            <div class="gv-bo-phasehead__actions">
+              <button class="gv-iconbtn" aria-label="Phase options"><span data-gv-icon="dots-horizontal"></span></button>
             </div>
           </div>
 
-          <button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button>
-        </div>
+          <!-- Phase sub-tabs -->
+          <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Phase">
+            <a class="gv-bo-tab is-active" href="#">Setup</a>
+            <a class="gv-bo-tab" href="#">Description</a>
+            <a class="gv-bo-tab" href="#">Input manager</a>
+            <a class="gv-bo-tab" href="#">Input form</a>
+            <a class="gv-bo-tab" href="#">Map</a>
+            <a class="gv-bo-tab" href="#">Insights</a>
+            <a class="gv-bo-tab" href="#">Phase access and user data</a>
+            <a class="gv-bo-tab" href="#">Notifications</a>
+          </nav>
 
-      </div>
+          <!-- Setup panel -->
+          <div class="gv-setup">
+            <h3 class="gv-bo-formhead">Edit Phase</h3>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Phase name</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active">EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="New ideas!" />
+            </div>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Dates</span>
+              <div class="gv-bo-dateface"><span>06/02/2024 12:00 AM</span><span class="sep">›</span><span>Open ended</span><span class="gv-icon" data-gv-icon="calendar"></span></div>
+            </div>
+
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>This phase has no end date and stays open until you set one or add a later phase. Participants can submit input the whole time it's running.</div></div>
+
+            <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
+
+            <!-- Participation method -->
+            <h4 class="gv-bo-subhead">What do you want to do?</h4>
+            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <div class="gv-bo-methods">
+              <button class="gv-bo-methodcard is-selected"><span class="gv-bo-methodcard__icon" data-gv-icon="comments"></span><span class="gv-bo-methodcard__title">Collect input and feedback</span><span class="gv-bo-methodcard__desc">Gather ideas, comments and reactions from participants.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__icon" data-gv-icon="group"></span><span class="gv-bo-methodcard__title">Find common ground</span><span class="gv-bo-methodcard__desc">Surface where people agree and disagree on statements.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__icon" data-gv-icon="survey"></span><span class="gv-bo-methodcard__title">Conduct a survey</span><span class="gv-bo-methodcard__desc">Build a structured questionnaire with many field types.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__icon" data-gv-icon="check-circle"></span><span class="gv-bo-methodcard__title">Create a poll</span><span class="gv-bo-methodcard__desc">Ask a quick single- or multiple-choice question.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__icon" data-gv-icon="vote-up"></span><span class="gv-bo-methodcard__title">Run a voting or prioritization exercise</span><span class="gv-bo-methodcard__desc">Let people allocate votes or a budget across options.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__icon" data-gv-icon="volunteer"></span><span class="gv-bo-methodcard__title">Recruit volunteers</span><span class="gv-bo-methodcard__desc">Offer causes people can sign up to support.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__icon" data-gv-icon="info-outline"></span><span class="gv-bo-methodcard__title">Share information</span><span class="gv-bo-methodcard__desc">A read-only phase with no participation.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__icon" data-gv-icon="open-in-new"></span><span class="gv-bo-methodcard__title">Externally hosted survey</span><span class="gv-bo-methodcard__desc">Embed a Typeform, Google Form or other tool.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__icon" data-gv-icon="edit"></span><span class="gv-bo-methodcard__title">Document annotation</span><span class="gv-bo-methodcard__desc">Collect comments on a hosted PDF document.</span></button>
+            </div>
+
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>Collect responses on paper or imported from other tools, and add them later from the Input manager.</div></div>
+
+            <!-- User anonymity -->
+            <h4 class="gv-bo-subhead">User anonymity</h4>
+            <div class="gv-bo-togglerow">
+              <div><div class="gv-bo-togglerow__title">Allow users to participate anonymously</div>
+                <p class="gv-bo-help">Users won't be able to track their identity from their input; project managers won't see who submitted what.</p></div>
+              <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+            </div>
+
+            <!-- Naming -->
+            <label class="gv-bo-qlabel">What should we call inputs?</label>
+            <select class="gv-bo-select"><option>Idea</option><option>Contribution</option><option>Comment</option><option>Issue</option><option>Project</option><option>Question</option></select>
+
+            <!-- Actions -->
+            <h4 class="gv-bo-subhead">Actions for users</h4>
+            <div class="gv-bo-togglerow">
+              <div class="gv-bo-togglerow__title">Submitting posts</div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+            <div class="gv-bo-togglerow">
+              <div class="gv-bo-togglerow__title">Commenting on posts</div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+            <div class="gv-bo-togglerow">
+              <div class="gv-bo-togglerow__title">Reacting to inputs</div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+
+            <!-- Likes -->
+            <label class="gv-bo-qlabel">Number of likes per participant</label>
+            <label class="gv-radio"><input type="radio" name="likes" checked><span class="circle"></span>Unlimited</label><br>
+            <label class="gv-radio"><input type="radio" name="likes"><span class="circle"></span>Limited</label>
+
+            <label class="gv-bo-qlabel">Enable disliking</label>
+            <label class="gv-radio"><input type="radio" name="dislike" checked><span class="circle"></span>Enabled</label><br>
+            <label class="gv-radio"><input type="radio" name="dislike"><span class="circle"></span>Disabled</label>
+
+            <label class="gv-bo-qlabel">Number of dislikes per participant</label>
+            <label class="gv-radio"><input type="radio" name="dislikes" checked><span class="circle"></span>Unlimited</label><br>
+            <label class="gv-radio"><input type="radio" name="dislikes"><span class="circle"></span>Limited</label>
+
+            <!-- Similar input detection -->
+            <h4 class="gv-bo-subhead">Similar input detection</h4>
+            <div class="gv-bo-togglerow">
+              <div><div class="gv-bo-togglerow__title">Enable similar input detection</div>
+                <p class="gv-bo-help">Warn participants when their input looks like one that already exists.</p></div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+            <div class="gv-setup__thresholds">
+              <div><p class="gv-bo-caption">Similarity threshold (title)</p><input class="gv-input" type="text" value="0.3" /></div>
+              <div><p class="gv-bo-caption">Similarity threshold (body)</p><input class="gv-input" type="text" value="0.5" /></div>
+            </div>
+
+            <!-- Available views -->
+            <h4 class="gv-bo-subhead">Available views</h4>
+            <div class="gv-bo-methods" style="grid-template-columns:repeat(3,1fr)">
+              <button class="gv-bo-methodcard is-selected"><span class="gv-bo-methodcard__icon" data-gv-icon="menu"></span><span class="gv-bo-methodcard__title">List view</span><span class="gv-bo-methodcard__desc">Inputs shown as a sortable, filterable list.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__icon" data-gv-icon="map"></span><span class="gv-bo-methodcard__title">Map view</span><span class="gv-bo-methodcard__desc">Inputs placed on a map by location.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__icon" data-gv-icon="stars"></span><span class="gv-bo-methodcard__title">Perspectives view</span><span class="gv-bo-methodcard__desc">AI-grouped themes across the inputs.</span></button>
+            </div>
+
+            <!-- Sorting -->
+            <label class="gv-bo-qlabel">Default sorting of inputs</label>
+            <label class="gv-radio"><input type="radio" name="sort" checked><span class="circle"></span>Trending</label><br>
+            <label class="gv-radio"><input type="radio" name="sort"><span class="circle"></span>Most discussed</label><br>
+            <label class="gv-radio"><input type="radio" name="sort"><span class="circle"></span>Random</label><br>
+            <label class="gv-radio"><input type="radio" name="sort"><span class="circle"></span>Most reacted</label><br>
+            <label class="gv-radio"><input type="radio" name="sort"><span class="circle"></span>Newest</label><br>
+            <label class="gv-radio"><input type="radio" name="sort"><span class="circle"></span>Oldest</label>
+
+            <!-- Attachments -->
+            <label class="gv-bo-qlabel">Upload attachments</label>
+            <button class="gv-bo-dropzone"><span class="gv-icon" data-gv-icon="download"></span>Select a file</button>
+
+            <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ AUDIENCE ════════════ -->
+      <section class="gv-panel" id="panel-audience">
+        <div class="gv-bo-section">
+          <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Audience">
+            <a class="gv-bo-tab is-active" href="#">Participants</a>
+            <a class="gv-bo-tab" href="#">Demographics</a>
+            <a class="gv-bo-tab" href="#">Traffic</a>
+          </nav>
+
+          <div style="display:flex;align-items:flex-end;gap:16px;margin-top:20px">
+            <div>
+              <h2 style="margin:0;font-size:28px;font-weight:600;color:var(--gv-bo-primary)">Participants</h2>
+              <p class="gv-bo-help">An overview of participants who have an account. Anonymous participation isn't counted.</p>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <button class="gv-btn success"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">Stats overview</span></button>
+              <button class="gv-btn secondary-outlined"><span data-gv-icon="stars"></span><span class="gv-btn__label">User insights</span></button>
+            </div>
+          </div>
+
+          <div class="gv-bo-toolbar">
+            <label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span>Select</label>
+            <div class="gv-bo-spacer"></div>
+            <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="download"></span><span class="gv-btn__label">Export all</span></button>
+            <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" /><span class="gv-icon" data-gv-icon="search"></span></span>
+          </div>
+
+          <table class="gv-bo-table">
+            <thead><tr><th style="width:30px"></th><th>Name</th><th>Role</th><th>Last active</th><th>Joined</th><th style="width:40px"></th></tr></thead>
+            <tbody id="participants"></tbody>
+          </table>
+
+          <div class="gv-bo-pager">
+            <button disabled><span data-gv-icon="chevron-left"></span></button>
+            <button class="is-active">1</button><button>2</button><button>3</button>
+            <span style="color:var(--gv-cool-grey-500)">…</span><button>9</button>
+            <button><span data-gv-icon="chevron-right"></span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ MESSAGING ════════════ -->
+      <section class="gv-panel" id="panel-messaging">
+        <div class="gv-bo-pane">
+          <div class="gv-bo-card">
+            <div class="gv-bo-empty">
+              <span class="gv-bo-empty__icon" data-gv-icon="email"></span>
+              <h3 class="gv-bo-empty__title">Send your first email</h3>
+              <p class="gv-bo-empty__text">Easily connect with your participants by sending them emails. Choose who to contact and track their engagement.</p>
+              <button class="gv-btn admin-dark"><span data-gv-icon="plus"></span><span class="gv-btn__label">Create email</span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ EVENTS ════════════ -->
+      <section class="gv-panel" id="panel-events">
+        <div class="gv-bo-pane">
+          <div class="gv-bo-card">
+            <h3 class="gv-bo-formhead">Project events</h3>
+            <p class="gv-bo-help" style="margin:-12px 0 16px">Link upcoming events to this project and show them on the project's event page.</p>
+            <button class="gv-btn admin-dark" style="margin-bottom:16px"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add an event</span></button>
+
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>To email registrants directly from the platform, admins must create a user group in the <a href="#">Users</a> tab. <a href="#">See the support article.</a></div></div>
+
+            <p class="gv-bo-caption" style="margin:18px 0 0">Title and dates</p>
+            <div class="gv-bo-eventrow" style="border-top:0">
+              <div class="gv-bo-eventrow__main">
+                <h4 class="gv-bo-eventrow__title">Neighbourhood Workshop</h4>
+                <div class="gv-bo-eventrow__dates">February 21, 2024 8:00 PM → February 21, 2024 9:30 PM</div>
+              </div>
+              <div class="gv-bo-eventrow__count"><b>0</b> registrants</div>
+              <div class="gv-bo-eventrow__actions">
+                <button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                <button class="gv-btn secondary-outlined size-s" disabled><span data-gv-icon="download"></span><span class="gv-btn__label">Export registrants</span></button>
+                <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+              </div>
+            </div>
+            <div class="gv-bo-eventrow">
+              <div class="gv-bo-eventrow__main">
+                <h4 class="gv-bo-eventrow__title">Townhall Meeting: Shaping Our City</h4>
+                <div class="gv-bo-eventrow__dates">Raleigh, NC, USA<br>December 1, 2023 5:00 PM → December 1, 2023 7:00 PM</div>
+              </div>
+              <div class="gv-bo-eventrow__count"><b>1</b> registrant</div>
+              <div class="gv-bo-eventrow__actions">
+                <button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="download"></span><span class="gv-btn__label">Export registrants</span></button>
+                <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+              </div>
+            </div>
+            <div class="gv-bo-eventrow">
+              <div class="gv-bo-eventrow__main">
+                <h4 class="gv-bo-eventrow__title">Initial Information Session</h4>
+                <div class="gv-bo-eventrow__dates">August 10, 2023 1:00 AM → August 10, 2023 3:00 AM</div>
+              </div>
+              <div class="gv-bo-eventrow__count"><b>0</b> registrants</div>
+              <div class="gv-bo-eventrow__actions">
+                <button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                <button class="gv-btn secondary-outlined size-s" disabled><span data-gv-icon="download"></span><span class="gv-btn__label">Export registrants</span></button>
+                <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════════════ 360 INPUT (placeholder) ════════════ -->
+      <section class="gv-panel" id="panel-input360">
+        <div class="gv-bo-pane"><div class="gv-bo-card"><div class="gv-bo-empty">
+          <span class="gv-bo-empty__icon" data-gv-icon="stars"></span>
+          <h3 class="gv-bo-empty__title">360 Input</h3>
+          <p class="gv-bo-empty__text">Bring offline and online contributions together into one project view. (Reference placeholder.)</p>
+        </div></div></div>
+      </section>
+
     </div>
   </div>
 
   <script>
-    // Phase ribbon — back office: 5 phases, current = "New ideas!" (#5), + New phase.
+    // ── Project top-tab switching ──────────────────────────────────────────
+    const tabs = document.querySelectorAll('.gv-bo-tabs[aria-label="Project"] .gv-bo-tab');
+    const panels = document.querySelectorAll('.gv-panel');
+    tabs.forEach(tab => tab.addEventListener('click', e => {
+      e.preventDefault();
+      tabs.forEach(t => t.classList.remove('is-active'));
+      tab.classList.add('is-active');
+      const id = 'panel-' + tab.dataset.tab;
+      panels.forEach(p => p.classList.toggle('is-active', p.id === id));
+      window.scrollTo(0, 0);
+    }));
+
+    // Generic active-state for sub-tab rows (no panel swap — Setup is the built one).
+    document.querySelectorAll('.gv-bo-tabs--sub').forEach(nav => {
+      nav.querySelectorAll('.gv-bo-tab').forEach(t => t.addEventListener('click', e => {
+        e.preventDefault();
+        nav.querySelectorAll('.gv-bo-tab').forEach(x => x.classList.remove('is-active'));
+        t.classList.add('is-active');
+      }));
+    });
+
+    // Method cards & view cards: single-select within their grid.
+    document.querySelectorAll('.gv-bo-methods').forEach(grid => {
+      grid.querySelectorAll('.gv-bo-methodcard').forEach(c => c.addEventListener('click', () => {
+        grid.querySelectorAll('.gv-bo-methodcard').forEach(x => x.classList.remove('is-selected'));
+        c.classList.add('is-selected');
+      }));
+    });
+
+    // Tag chips: toggle.
+    document.querySelectorAll('.gv-bo-tag').forEach(t => t.addEventListener('click', () => t.classList.toggle('is-selected')));
+
+    // ── Phase ribbon — 5 phases, current = "New ideas!" (#5), + New phase. ──
     const LABELS = ["Submit your ideas", "Vote", "Winners announcement", "Implementation of projects", "New ideas!"];
     const CURRENT = 4;
     const stepper = document.getElementById("stepper");
@@ -156,7 +495,44 @@
     add.className = "gv-bo-addphase";
     add.innerHTML = `<span data-gv-icon="plus"></span> New phase`;
     stepper.appendChild(add);
-    if (window.GVIcons) window.GVIcons.render(stepper);
+
+    // ── Participants table ─────────────────────────────────────────────────
+    const PEOPLE = [
+      ["Rob Aris", "rob.aris@yardpost.co", "Project manager", "4 months ago", "August 23, 2024"],
+      ["Hannah Adams", "hanna@archerlab.co", "Registered user", "—", "December 4, 2023"],
+      ["Pamela Reedy", "pamela2023@gocake.com", "Registered user", "—", "November 7, 2023"],
+      ["Nicolas Daly", "ndaly@robinmail.co", "Registered user", "—", "November 7, 2023"],
+      ["Walter Van Rensbeeck", "wal.vanrensbeeck@route.co", "Registered user", "—", "September 26, 2023"],
+      ["Go Vocal Admin", "moderator@citizenlab.co", "Platform admin", "52 minutes ago", "September 24, 2023"],
+      ["Ralph Murray", "rmurray@brinco.com", "Registered user", "—", "September 21, 2023"],
+      ["Sarah Hamil", "s.hamil@orb.org", "Registered user", "—", "September 21, 2023"],
+      ["Joe Huett", "joe.huett@northpost.info", "Registered user", "—", "September 21, 2023"],
+      ["Cassidy Ruescher", "cas@brightspace.co", "Registered user", "—", "September 21, 2023"],
+      ["Cameron Frances", "cam@civichub.io", "Registered user", "—", "September 21, 2023"],
+      ["Ingrid Hibbert", "ingrid.h@meadowglass.org", "Registered user", "—", "September 21, 2023"],
+      ["Ben Gordon", "bengordon@coastmail.com", "Registered user", "—", "September 21, 2023"],
+      ["Marcus Weber", "m.weber@lindenco.co", "Registered user", "—", "September 21, 2023"],
+      ["Janneke Bergsson", "j.bergsson@northcity.org", "Registered user", "—", "September 21, 2023"],
+    ];
+    const tbody = document.getElementById("participants");
+    PEOPLE.forEach(([name, email, role, active, joined], i) => {
+      const tr = document.createElement("tr");
+      const initials = name.split(" ").map(w => w[0]).slice(0,2).join("");
+      const hue = (i * 47) % 360;
+      tr.innerHTML = `
+        <td><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+        <td><div class="gv-bo-table__person">
+          <span class="gv-bo-table__avatar" style="display:grid;place-items:center;color:#fff;font-size:12px;font-weight:600;background:hsl(${hue} 35% 55%)">${initials}</span>
+          <span><span class="gv-bo-table__name">${name}</span><br><span class="gv-bo-table__sub">${email}</span></span>
+        </div></td>
+        <td>${role}</td>
+        <td>${active}</td>
+        <td>${joined}</td>
+        <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>`;
+      tbody.appendChild(tr);
+    });
+
+    if (window.GVIcons) window.GVIcons.render(document.body);
   </script>
 </body>
 </html>

@@ -268,6 +268,38 @@ whole app under `.gv-bo`; mount the page in `.gv-bo-main`. Reuses `.gv-btn.admin
 
 ---
 
+## Back-office config forms — `.gv-bo-*` (`pages/bo-project-phase/`)
+
+The deep project-configuration editor (`/admin/projects/<id>/…`). All values
+source-grounded from the live captures (`bo-phase-setup`, `bo-project-general`,
+`bo-project-audience`, `bo-project-events`); verified via the `bo-project-phase/*`
+checkpoints. Everything scopes under `.gv-bo` so the BO palette applies.
+
+- **Headings:** `.gv-bo-formhead` (21/700 blue), `.gv-bo-subhead` (18/700 blue),
+  `.gv-bo-caption` (14/700 cool-grey), `.gv-bo-qlabel` (16/600 blue), `.gv-bo-help`
+  (14 secondary).
+- **Controls:** reuse `.gv-input`/`.gv-textarea`, `.gv-toggle`, `.gv-radio`
+  (BO selected-dot is success-green via the `.gv-bo` scope), `.gv-checkbox`.
+  New: `.gv-bo-select` (native select styled like `.gv-input`).
+- **`.gv-bo-banner`** — light-teal info callout (icon + text, `--gv-teal-100`).
+- **`.gv-bo-methods` / `.gv-bo-methodcard`(`.is-selected`)** — participation-method
+  / view picker grid (icon · title · desc; selected = `--gv-teal-75` + blue border).
+- **`.gv-bo-togglerow`** — label/help on the left, `.gv-toggle` pinned right; rows
+  divided by a top border.
+- **`.gv-bo-tags` / `.gv-bo-tag`(`.is-selected`)** — selectable tag chips (5px radius).
+- **`.gv-bo-imageup`** (`__preview`/`__remove`) + **`.gv-bo-dropzone`** — image upload.
+- **`.gv-bo-table`** (`thead th`, `__person`/`__avatar`/`__name`/`__sub`/`__opts`) +
+  **`.gv-bo-toolbar`** (`.gv-bo-search`) + **`.gv-bo-pager`** — admin data table.
+- **`.gv-bo-pane` / `.gv-bo-card`** — white card on a grey gutter (Messaging/Events).
+- **`.gv-bo-empty`** (`__icon`/`__title`/`__text`) — empty state.
+- **`.gv-bo-eventrow`** (`__main`/`__title`/`__dates`/`__count`/`__actions`) — events list.
+- New button variant: **`.gv-btn.success`** (green CTA, `--gv-green-600`) + size **`.gv-btn.size-s`**.
+
+The page wires the six project top-tabs (General · Timeline · Audience · Messaging ·
+Events · 360 Input) to swap panels in JS — a clickable starting point for BO flows.
+
+---
+
 ## Header + nav — `.gv-header` (`components/header-nav/`)
 
 Responsive 78px chrome. CSS-only: dropdowns and the “Mehr ···” overflow are
