@@ -186,7 +186,7 @@ The real GoVocal icon set (Material-Design-derived paths), transcribed verbatim 
 - **More icons exist** in the repo (~130 total incl. SSO + other specialized glyphs); extend
   `govocal-icons.js` from `Icon/index.tsx` @ `5d67730` following the same discipline.
 
-## Avatar & avatar stack — `.gv-avatar` / `.gv-bubbles` (`govocal-ui.css`)
+## Avatar & avatar stack — `.gv-avatar` / `.gv-bubbles` (`govocal-primitives.css`)
 
 The circular participant avatar and the overlapping social-proof stack + count, reused
 by the hero, project cards, spotlight, perspectives and more.
@@ -199,7 +199,7 @@ by the hero, project cards, spotlight, perspectives and more.
 </div>
 ```
 
-## Progress bar — `.gv-progress` (`govocal-ui.css`)
+## Progress bar — `.gv-progress` (`govocal-primitives.css`)
 
 Generic tenant-tinted track + fill; `__fill` width is the value. Used for time-remaining,
 proposal thresholds, survey completion.
@@ -243,7 +243,7 @@ and the white-wrapper own-shadow `.gv-pviewtoggle` (List/Perspective on Perspect
 </div>
 ```
 
-## Search field — `.gv-searchfield` (`govocal-ui.css`)
+## Search field — `.gv-searchfield` (`govocal-primitives.css`)
 
 Full-width search wrapper: a `.gv-input` with a right-aligned magnifier glyph.
 

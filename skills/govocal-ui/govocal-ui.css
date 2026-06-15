@@ -130,12 +130,7 @@
 .gv-account:hover { background: var(--gv-grey-100); }
 .gv-account:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
 .gv-account .gv-nav__chev { width: 14px; height: 14px; color: var(--gv-grey-700); }
-.gv-avatar {
-  width: 32px; height: 32px; border-radius: 50%; flex: none; display: grid; place-items: center;
-  overflow: hidden; background: var(--gv-tenant-primary); color: #fff; font-weight: 700; font-size: 13px;
-}
-.gv-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.gv-avatar.sm { width: 26px; height: 26px; font-size: 11px; }
+/* .gv-avatar → moved to govocal-primitives.css (cross-surface atom). */
 
 /* Account control as a CSS-only dropdown: <details class="gv-nav__dd right
    gv-account-dd"> with a <summary class="gv-account"> (avatar + name + chevron)
@@ -315,14 +310,7 @@
 /* Live banner subtitle (mitgestalten.wien.gv.at / community.govocal.com h2) = 18px/400/23.4px. */
 .gv-hero__lead { font-size: var(--gv-fs-l); font-weight: 400; line-height: 1.3; margin: 0 0 22px; opacity: 0.97; }
 .gv-hero__credit { position: absolute; left: 24px; bottom: 10px; z-index: 1; font-size: 11px; opacity: 0.85; }
-/* avatar stack + count bubble — live banner: 38px avatars, the overflow count is
-   a PERFECT CIRCLE the same size as the avatars (not a pill), part of the stack. */
-.gv-avatars { display: inline-flex; align-items: center; margin-bottom: 22px; }
-.gv-avatars .av { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px;
-  background: linear-gradient(135deg, #dcdcdc, #a6a6a6); background-size: cover; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
-.gv-avatars .av:first-child { margin-left: 0; }
-.gv-avatars .count { margin-left: -8px; width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 2px solid #fff;
-  background: var(--gv-cool-grey-600); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+/* .gv-avatars (hero stack) → moved to govocal-primitives.css (cross-surface atom). */
 @media (max-width: 600px) { .gv-hero { min-height: 280px; } .gv-hero__inner { padding: 56px 20px; } }
 
 /* ── Section heading + content rhythm for composed pages ─────────────────────── */
@@ -445,26 +433,7 @@
   .gv-spotlight__media { order: -1; aspect-ratio: 16 / 9; }
 }
 
-/* ── Avatar bubbles + participant count ────────────────────────────────────
-   The SAME component as the hero .gv-avatars (38px avatars + a perfect-circle
-   overflow count), used in the spotlight. Add `.sm` for the smaller card variant
-   (project/folder/climate cards), which the live Wien cards render smaller. */
-.gv-bubbles { display: inline-flex; align-items: center; }
-.gv-bubbles .av { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px;
-  background: linear-gradient(135deg, #cfd6dd, #9aa7b2); background-size: cover; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
-.gv-bubbles .av:first-child { margin-left: 0; }
-/* Live participant-overflow bubble is a cool-grey circle (#596B7A), not the brand hue. */
-.gv-bubbles .count { margin-left: -8px; width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 2px solid #fff;
-  background: var(--gv-cool-grey-600); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
-.gv-bubbles__label { margin-left: 10px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
-/* smaller variant for cards */
-.gv-bubbles.sm .av { width: 28px; height: 28px; }
-.gv-bubbles.sm .count { width: 28px; height: 28px; font-size: 10px; }
-.gv-bubbles.sm .gv-bubbles__label { margin-left: 8px; }
-/* xs = the live Wien Klimateam participant row: 20px avatars + a 16px count label */
-.gv-bubbles.xs .av { width: 20px; height: 20px; }
-.gv-bubbles.xs .count { width: 20px; height: 20px; font-size: 9px; }
-.gv-bubbles.xs .gv-bubbles__label { margin-left: 8px; font-size: var(--gv-fs-base); }
+/* .gv-bubbles (avatar stack + count) → moved to govocal-primitives.css (cross-surface atom). */
 
 /* ── Post / contribution count ("142 Beiträge" · "open to participation") ──────
    The status meta GoVocal shows on a live project card: a success-green dot + a
@@ -478,11 +447,7 @@
 .gv-poststat b { color: var(--gv-grey-800); font-weight: 700; }
 .gv-poststat.closed { --gv-poststat-dot: var(--gv-grey-500); }
 
-/* ── Progress / time-remaining bar ─────────────────────────────────────────
-   Thin track + tenant-primary fill. Set inline width on __fill (% elapsed). */
-/* Live project-card progress: #D6DADE track, 3px radius (getComputedStyle, uxusertesting). */
-.gv-progress { height: 6px; border-radius: var(--gv-radius); background: #D6DADE; overflow: hidden; }
-.gv-progress__fill { height: 100%; border-radius: inherit; background: var(--gv-tenant-primary); }
+/* .gv-progress (time-remaining bar) → moved to govocal-primitives.css (cross-surface atom). */
 
 /* ── Projects toolbar: status tabs + filter selectors ──────────────────────
    Tabs left (Published/Archived/All) with a tenant-primary underline on the
@@ -877,8 +842,7 @@
 .gv-projdesc .gv-acc__head { font-size: var(--gv-fs-l); }
 .gv-projdesc .gv-acc__body p { font-size: var(--gv-fs-l); }
 .gv-participants { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; padding-top: 4px; }
-.gv-participants .gv-avatars { margin: 0; }
-.gv-avatars.on-light .av { border-color: #fff; box-shadow: 0 0 0 1px var(--gv-grey-300); }
+.gv-participants .gv-avatars { margin: 0; }   /* .gv-avatars.on-light variant → moved with the atom to govocal-primitives.css */
 .gv-pcount { font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-text-secondary); }
 .gv-pinfo { font-size: 16px; line-height: 1; color: var(--gv-cool-grey-500); cursor: help; display: inline-flex; align-items: center; }
 @media (max-width: 760px) { .gv-projhead { grid-template-columns: 1fr; } .gv-participants { padding-top: 0; } }
@@ -1369,15 +1333,7 @@
   font-family: var(--gv-font-family); font-size: 34px; font-weight: 500;
   line-height: 1.2; color: var(--gv-text-pagetitle); }
 
-/* Search field: a .gv-input with room on the right for a magnifier glyph. The live
-   wrapper (.e2e-search-input) is full-width × 48px; the input keeps the 3px radius +
-   #767676 border + 16px text of the .gv-input primitive (padding 12px 40px 12px 12px
-   to clear the icon). Pure layout — colour/border/type come from the primitive. */
-.gv-searchfield { position: relative; display: block; width: 100%; margin: 0 0 24px; }
-.gv-searchfield .gv-input { padding-right: 40px; }
-.gv-searchfield__icon { position: absolute; top: 50%; right: 14px; transform: translateY(-50%);
-  width: 18px; height: 18px; color: var(--gv-text-secondary); pointer-events: none; }
-.gv-searchfield__icon svg, .gv-searchfield__icon .gv-icon { width: 18px; height: 18px; display: block; }
+/* .gv-searchfield → moved to govocal-primitives.css (cross-surface atom). */
 
 /* ════════════════════════════════════════════════════════════════════════════
    VOTING METHOD BODY — the per-method panel that renders inside .gv-phasebody for

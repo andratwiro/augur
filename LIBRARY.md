@@ -111,18 +111,18 @@ as a starting point for a prototype.
 | **Bo Settings** | `/pages/bo-settings/` | `pages/bo-settings/` | Settings — GoVocal back office (reference) |
 | **Bo Tools** | `/pages/bo-tools/` | `pages/bo-tools/` | Tools — GoVocal back office (reference) |
 | **Bo Users** | `/pages/bo-users/` | `pages/bo-users/` | Users — GoVocal back office (reference) |
-| **Event Detail** | `/pages/event-detail/` | `pages/event-detail/` | Event detail — GoVocal (reference) |
+| **Event Detail** | `/pages/event-detail/` | `pages/event-detail/` | Station Road walk & talk: see the plans on site — Westmere |
 | **Events** | `/pages/events/` | `pages/events/` | Events — Westmere |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Westmere — Have your say |
-| **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
-| **Perspectives Entry** | `/pages/perspectives-entry/` | `pages/perspectives-entry/` | Perspectives — in-timeline phase entry (reference) |
-| **Perspectives Feed** | `/pages/perspectives-feed/` | `pages/perspectives-feed/` | Perspectives — Issue Mapping (reference) |
-| **Project Common Ground** | `/pages/project-common-ground/` | `pages/project-common-ground/` | Project page — Common Ground / Polis (reference) |
-| **Project Page** | `/pages/project-page/` | `pages/project-page/` | Project page — Ideation (reference) |
-| **Project Proposals** | `/pages/project-proposals/` | `pages/project-proposals/` | Project page — Proposals (reference) |
-| **Project Survey** | `/pages/project-survey/` | `pages/project-survey/` | Project page — Survey (reference) |
-| **Project Volunteering** | `/pages/project-volunteering/` | `pages/project-volunteering/` | Project page — Volunteering (reference) |
-| **Projects List** | `/pages/projects-list/` | `pages/projects-list/` | Projects & folders — GoVocal (reference) |
+| **Input Form** | `/pages/input-form/` | `pages/input-form/` | A square for everyone — share your idea — Westmere |
+| **Perspectives Entry** | `/pages/perspectives-entry/` | `pages/perspectives-entry/` | The Big Westmere Conversation — Perspectives — Westmere |
+| **Perspectives Feed** | `/pages/perspectives-feed/` | `pages/perspectives-feed/` | Perspectives — Westmere |
+| **Project Common Ground** | `/pages/project-common-ground/` | `pages/project-common-ground/` | Cleaner Harbour, healthier Mere — Common ground — Westmere |
+| **Project Page** | `/pages/project-page/` | `pages/project-page/` | A square for everyone — Westmere |
+| **Project Proposals** | `/pages/project-proposals/` | `pages/project-proposals/` | Proposals — Westmere |
+| **Project Survey** | `/pages/project-survey/` | `pages/project-survey/` | The big downtown survey — Westmere |
+| **Project Volunteering** | `/pages/project-volunteering/` | `pages/project-volunteering/` | Tree-planting volunteers — Westmere |
+| **Projects List** | `/pages/projects-list/` | `pages/projects-list/` | Projects & folders — Westmere |
 
 ## Prototypes (existing — for reference & patterns) — `<opportunity>/prototypes/<name>/`
 
