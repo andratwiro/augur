@@ -1497,6 +1497,11 @@
 .gv-sticky:hover { box-shadow: rgba(0,0,0,0.15) 0px 8px 12px 0px, rgba(0,0,0,0.1) 0px 2px 4px 0px; }
 /* the selected / floating-detail card sits raised. */
 .gv-sticky.is-raised { box-shadow: rgba(0,0,0,0.15) 0px 8px 12px 0px, rgba(0,0,0,0.1) 0px 2px 4px 0px; }
+/* Grounded (wietsedemo perspectives RAISED detail, desktop page.png + mobile
+   fo-perspectives-feed-m): the raised/expanded note carries NO author row — it
+   leads straight with the title, then excerpt, then reactions. The author chip
+   (avatar + name + emoji) stays only on the resting pile notes. */
+.gv-sticky.is-raised .gv-sticky__author { display: none; }
 /* pastel variants — exact digest backgrounds. */
 .gv-sticky.lavender { --gv-sticky-bg: rgb(221, 226, 243); }
 .gv-sticky.mint     { --gv-sticky-bg: rgb(197, 232, 237); }
