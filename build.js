@@ -1294,7 +1294,7 @@ function renderComponentsIndex(components) {
   return shell({
     title: "Components",
     activeTab: "components",
-    body: `<p class="section-eyebrow">Reusable building blocks</p><table class="comp-table">
+    body: `<p class="section-eyebrow" style="margin-bottom:26px">Reusable building blocks</p><table class="comp-table">
       <thead><tr><th>Preview</th><th>Component</th><th>What it is</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`,
