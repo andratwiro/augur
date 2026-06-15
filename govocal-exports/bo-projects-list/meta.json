@@ -1,10 +1,10 @@
 {
-  "url": "https://uxusertesting.govocal.com/en/admin/projects",
+  "url": "https://uxusertesting.govocal.com/admin/projects",
   "title": "(29) City of Raleigh participation platform",
   "surface": "back-office",
   "viewport": {
     "width": 1440,
-    "height": 900
+    "height": 1200
   },
-  "capturedAt": "2026-06-15T08:28:14.037Z"
+  "capturedAt": "2026-06-15T18:35:37.037Z"
 }

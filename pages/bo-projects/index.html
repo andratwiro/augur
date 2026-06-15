@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Projects — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    /* Page header row: title left, actions right. */
+    .pl-head { display: flex; align-items: flex-start; gap: 16px; margin: 0 0 12px; }
+    .pl-head__actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    /* Secondary view nav (Projects / Folders / Calendar / Arrange). */
+    .pl-subnav { display: flex; gap: 24px; border-bottom: 1px solid var(--gv-divider); margin: 4px 0 16px; }
+    .pl-subnav a { display: inline-flex; align-items: center; gap: 6px; padding: 10px 0; color: var(--gv-text-secondary); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .pl-subnav a.is-active { color: var(--gv-bo-primary); border-color: var(--gv-bo-primary); font-weight: 600; }
+    .pl-subnav .gv-icon { width: 16px; height: 16px; }
+    /* Filter toolbar. */
+    .pl-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .pl-filters .gv-bo-select { height: 40px; padding: 8px 12px; max-width: 200px; width: auto; }
+    .pl-filters .pl-spacer { margin-left: auto; }
+    /* Small project thumbnail (we don't ship real project art). */
+    .pl-thumb { width: 36px; height: 28px; border-radius: 3px; flex: none; display: grid; place-items: center; color: #fff; background: var(--gv-teal-400); }
+    .pl-thumb .gv-icon { width: 16px; height: 16px; }
+    .pl-proj { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .pl-proj__name { color: var(--gv-bo-primary); text-decoration: none; }
+    .pl-proj__name:hover { text-decoration: underline; }
+    .pl-proj__sub { display: block; font-size: 12px; color: var(--gv-text-secondary); margin-top: 2px; }
+    .pl-mgr { display: inline-flex; align-items: center; gap: 8px; }
+    .pl-foot { text-align: center; padding: 18px; color: var(--gv-text-secondary); font-size: 13px; }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+    <nav class="gv-bo-side" aria-label="Admin" data-active="projects"></nav>
+
+    <div class="gv-bo-main">
+      <section class="gv-bo-section">
+
+        <div class="pl-head">
+          <h1 class="gv-bo-pagehead">Projects</h1>
+          <div class="pl-head__actions">
+            <button class="gv-btn secondary-outlined"><span data-gv-icon="label"></span><span class="gv-btn__label">New folder</span></button>
+            <button class="gv-btn admin-dark"><span data-gv-icon="plus"></span><span class="gv-btn__label">New project</span></button>
+          </div>
+        </div>
+
+        <nav class="pl-subnav" aria-label="Project views">
+          <a class="is-active" href="#"><span data-gv-icon="admin-projects"></span>Projects</a>
+          <a href="#"><span data-gv-icon="label"></span>Folders</a>
+          <a href="#"><span data-gv-icon="calendar"></span>Calendar</a>
+          <a href="#"><span data-gv-icon="menu"></span>Arrange projects</a>
+        </nav>
+
+        <div class="pl-filters">
+          <select class="gv-bo-select" aria-label="Sort"><option>Recently viewed</option><option>A–Z</option><option>Newest</option></select>
+          <select class="gv-bo-select" aria-label="Approval"><option>Pending approval</option><option>All</option><option>Approved</option></select>
+          <div class="gv-bo-dateface" style="height:40px"><span data-gv-icon="calendar"></span>Select date<span class="sep">–</span>Select date</div>
+          <button class="gv-bo-link"><span data-gv-icon="plus"></span>Add filter</button>
+          <div class="pl-spacer"></div>
+          <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search projects" aria-label="Search projects"><span class="gv-icon" data-gv-icon="search"></span></span>
+        </div>
+
+        <div>
+          <table class="gv-bo-table is-list">
+            <thead>
+              <tr>
+                <th>Project</th>
+                <th class="gv-bo-table__num"><span class="gv-icon" data-gv-icon="group" aria-label="Participants"></span></th>
+                <th>Phase</th>
+                <th>Managers</th>
+                <th>Visibility</th>
+                <th>Start</th>
+                <th>End</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <div class="pl-foot">Scroll down to load more</div>
+        </div>
+
+      </section>
+    </div>
+  </div>
+
+  <script src="bo-chrome.js"></script>
+  <script>
+    // [name, sub, participants, phase, manager, status(published|draft|archived), visibility, start, end, color, icon]
+    const PROJECTS = [
+      ["Let's Reimagine Dorothea Dix Park", "", 170, "Ideation", "Not assigned", "published", "Anyone", "7/16/2023", "", "var(--gv-teal-400)", "location-simple"],
+      ["Test Polls", "", 0, "Information", "Not assigned", "published", "Anyone", "5/1/2025", "8/30/2026", "var(--gv-blue-400)", "survey"],
+      ["test", "", 0, "Survey", "Rob Aris", "draft", "Anyone", "4/10/2025", "", "var(--gv-green-500)", "survey"],
+      ["Test", "", 0, "Pre-launch", "Not assigned", "draft", "Anyone", "8/11/2025", "", "var(--gv-cool-grey-500)", "info-outline"],
+      ["Test Project", "", 0, "Ideation", "Not assigned", "draft", "Anyone", "", "", "var(--gv-teal-400)", "idea"],
+      ["Your Opinion About the Metro Line Extension", "", 0, "Ended", "Not assigned", "published", "Anyone", "7/17/2023", "3/28/2024", "var(--gv-blue-400)", "map"],
+      ["Public Healthcare Options Survey", "", 2, "Information", "Not assigned", "draft", "Anyone", "8/20/2024", "", "var(--gv-teal-400)", "survey"],
+      ["Ctrl-Alt-Debs towards Online commons", "", 4, "Ended", "Not assigned", "published", "Anyone", "1/2/2025", "5/31/2025", "var(--gv-green-500)", "comment"],
+      ["Let's Reimagine the City Park - Draft", "", 154, "Ended", "Not assigned", "draft", "Anyone", "7/17/2023", "5/18/2025", "var(--gv-teal-400)", "location-simple"],
+      ["Showroom", "Participation Garage", 8, "Volunteering", "Roberto Andrade", "published", "Anyone", "11/29/2021", "", "var(--gv-blue-400)", "group"],
+      ["Survey share your comments on the 2020-2025 budget", "", 186, "Ended", "Not assigned", "published", "Anyone", "2/15/2022", "7/7/2024", "var(--gv-green-500)", "survey"],
+      ["Participatory Budget - District 3", "Participatory Budgeting: 100€ for Your District's Community Projects", 9, "Ended", "Not assigned", "published", "Anyone", "9/12/2023", "9/14/2025", "var(--gv-teal-400)", "vote-up"],
+      ["Participatory Budget - District 4", "Participatory Budgeting: 100€ for Your District's Community Projects", 12, "Ended", "Not assigned", "published", "Anyone", "9/12/2023", "9/14/2025", "var(--gv-blue-400)", "vote-up"],
+      ["Participatory Budget - District 1", "Participatory Budgeting: 100€ for Your District's Community Projects", 30, "Ended", "Not assigned", "published", "Anyone", "9/12/2023", "9/17/2027", "var(--gv-green-500)", "vote-up"],
+      ["Forest Gate Community Assemblies", "", 701, "Ended", "Not assigned", "draft", "Anyone", "1/24/2023", "1/8/2024", "var(--gv-teal-400)", "group"],
+      ["Mapping: Building Protected Bike Lanes", "", 7, "Ended", "Not assigned", "published", "Anyone", "10/5/2023", "2/3/2025", "var(--gv-blue-400)", "map"],
+      ["Mapping: improve bicycle infrastructure", "", 16, "Ended", "Not assigned", "draft", "Anyone", "10/18/2023", "10/7/2024", "var(--gv-green-500)", "map"],
+    ];
+    const statusLabel = { published: "Published", draft: "Draft", archived: "Archived" };
+    document.getElementById("rows").innerHTML = PROJECTS.map(p => {
+      const [name, sub, parts, phase, mgr, status, vis, start, end, color, icon] = p;
+      const mgrCell = mgr === "Not assigned"
+        ? `<span style="color:var(--gv-text-secondary)">Not assigned</span>`
+        : `<span class="pl-mgr"><span class="gv-bo-table__avatar">${mgr.split(" ").map(w=>w[0]).join("").slice(0,2)}</span>${mgr}</span>`;
+      return `<tr>
+        <td><span class="pl-proj"><span class="pl-thumb" style="background:${color}"><span data-gv-icon="${icon}"></span></span>
+          <span style="min-width:0"><a class="pl-proj__name" href="../bo-project-phase/">${name}</a>${sub ? `<span class="pl-proj__sub">${sub}</span>` : ""}</span></span></td>
+        <td class="gv-bo-table__num">${parts}</td>
+        <td>${phase}</td>
+        <td>${mgrCell}</td>
+        <td><span class="gv-bo-substack"><span class="gv-bo-status is-${status}">${statusLabel[status]}</span><small>${vis}</small></span></td>
+        <td style="white-space:nowrap">${start || "—"}</td>
+        <td style="white-space:nowrap">${end || "—"}</td>
+        <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>`;
+    }).join("");
+
+    if (window.GVIcons) window.GVIcons.render(document.body);
+  </script>
+</body>
+</html>
+</content>

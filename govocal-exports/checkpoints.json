@@ -859,6 +859,42 @@
       "uses": [
         ".gv-bo-tabs"
       ]
+    },
+    {
+      "id": "bo-projects/table-th",
+      "built": "pages/bo-projects/index.html",
+      "against": "bo-projects-list",
+      "map": {
+        "th.htowTp": ".gv-bo-table.is-list thead th"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height",
+        "padding",
+        "height"
+      ],
+      "uses": [
+        ".gv-bo-table"
+      ]
+    },
+    {
+      "id": "bo-projects/table-row",
+      "built": "pages/bo-projects/index.html",
+      "against": "bo-projects-list",
+      "map": {
+        "tr.iVbPIv": ".gv-bo-table.is-list tbody tr:nth-child(even)"
+      },
+      "props": [
+        "background-color",
+        "color",
+        "font-size",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-bo-table"
+      ]
     }
   ]
 }

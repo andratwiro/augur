@@ -409,7 +409,7 @@
 .gv-bo-pagehead { margin: 0; font-size: 28px; font-weight: 600; color: var(--gv-bo-primary); }
 
 /* ── Data table (Audience → Participants, and any admin list) ──────────────── */
-.gv-bo-table { width: 100%; border-collapse: collapse; font-size: var(--gv-fs-s); }
+.gv-bo-table { width: 100%; border-collapse: collapse; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); line-height: 20px; border-color: var(--gv-grey-300); }
 .gv-bo-table thead th {
   text-align: left; padding: 12px; font-size: var(--gv-fs-s); font-weight: 700;
   color: var(--gv-bo-primary); border-bottom: 1px solid var(--gv-divider); white-space: nowrap;
@@ -421,6 +421,24 @@
 .gv-bo-table__name { font-weight: 600; color: var(--gv-bo-primary); }
 .gv-bo-table__sub { color: var(--gv-text-secondary); font-size: 13px; }
 .gv-bo-table__opts { color: var(--gv-cool-grey-500); text-align: right; }
+
+/* Full-width "list" table treatment (admin Projects list, Registered users list):
+   measured live (table.kRaEJh) — #FCFCFC alternating rows, 700 admin-blue headers
+   with 16px/12px padding, 54px rows; no outer card border (the table fills the
+   content card edge-to-edge). A modifier, so the base table is untouched. */
+.gv-bo-table.is-list { border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); overflow: hidden; }
+.gv-bo-table.is-list thead th { padding: 16px 12px; height: 54px; background: #fff; }
+.gv-bo-table.is-list tbody td { padding: 10px 12px; }
+.gv-bo-table.is-list tbody tr { background: #fff; }
+.gv-bo-table.is-list tbody tr:nth-child(even) { background: var(--gv-bo-row-alt); }
+/* Small publication-status marker: a coloured dot + label, with an optional
+   muted sub-line (visibility). Measured: Published = green, Draft = cool grey. */
+.gv-bo-status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.gv-bo-status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gv-cool-grey-400); flex: none; }
+.gv-bo-status.is-published::before { background: var(--gv-green-500); }
+.gv-bo-status.is-archived::before { background: var(--gv-cool-grey-500); }
+.gv-bo-substack { display: flex; flex-direction: column; gap: 2px; }
+.gv-bo-substack small { color: var(--gv-text-secondary); font-size: 12px; }
 
 /* Toolbar above a table: select-all + spacer + actions + search. */
 .gv-bo-toolbar { display: flex; align-items: center; gap: 12px; margin: 14px 0; }
