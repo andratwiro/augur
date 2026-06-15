@@ -47,10 +47,12 @@
                   <summary class="gv-nav__link">Beteiligungsprojekte
                     <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </summary>
+                  <!-- live "projects" dropdown lists actual projects, not status filters -->
                   <div class="gv-nav__menu">
-                    <a href="#">Alle Projekte</a>
-                    <a href="#">Laufende Projekte</a>
-                    <a href="#">Abgeschlossene Projekte</a>
+                    <a href="#">Zukunft Taborstraße</a>
+                    <a href="#">Wiener Klimateam</a>
+                    <a href="#">Partizipatives Budget 2026</a>
+                    <a href="#">Neugestaltung Praterstraße</a>
                   </div>
                 </details>
               </li>
@@ -80,14 +82,17 @@
             <!-- Mobile menu (shows < 860px). Real product icon = filled three-bar; label "Mobiles Navigationsmenü anzeigen". -->
             <details class="gv-nav-m">
               <summary aria-label="Mobiles Navigationsmenü anzeigen">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+                <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+                <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
               </summary>
               <nav class="gv-nav-m__panel" aria-label="Hauptnavigation (mobil)">
+                <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
                 <a href="#" aria-current="page">Willkommen</a>
                 <a href="#">Beteiligungsprojekte</a>
                 <a href="#">Mitmachen</a>
                 <a href="#">Netiquette</a>
                 <a href="#">Mehr</a>
+                <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Suche</a>
                 <button class="gv-btn primary full">Anmelden</button>
               </nav>
             </details>
@@ -123,15 +128,14 @@
             </button>
             <details class="gv-nav__dd right gv-account-dd gv-desktop-only" open>
               <summary class="gv-account" aria-haspopup="menu">
-                <span class="gv-avatar">R</span>
                 <span class="gv-account__name">Rob</span>
+                <span class="gv-avatar">R</span>
                 <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </summary>
-              <div class="gv-nav__menu" style="min-width:220px">
+              <div class="gv-nav__menu gv-nav__menu--account">
                 <a href="#">Plattform verwalten <span data-gv-icon="shield"></span></a>
                 <a href="#">Meine Aktivität <span data-gv-icon="user-circle"></span></a>
                 <a href="#">Meine Einstellungen <span data-gv-icon="cogs"></span></a>
-                <div class="gv-menu-sep"></div>
                 <button type="button">Abmelden <span data-gv-icon="power"></span></button>
               </div>
             </details>
@@ -147,14 +151,17 @@
             </details>
             <details class="gv-nav-m">
               <summary aria-label="Mobiles Navigationsmenü anzeigen">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+                <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+                <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
               </summary>
               <nav class="gv-nav-m__panel" aria-label="Hauptnavigation (mobil)">
+                <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
                 <a href="#" aria-current="page">Willkommen</a>
                 <a href="#">Beteiligungsprojekte</a>
                 <a href="#">Mitmachen</a>
                 <a href="#">Plattform verwalten</a>
                 <a href="#">Meine Aktivität</a>
+                <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Suche</a>
                 <button class="gv-btn primary-outlined full" style="margin-top:14px">Abmelden</button>
               </nav>
             </details>

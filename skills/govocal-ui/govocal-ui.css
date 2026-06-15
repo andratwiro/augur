@@ -92,6 +92,15 @@
 .gv-nav__menu a:hover svg, .gv-nav__menu button:hover svg { color: var(--gv-tenant-primary); }
 /* in-menu divider (e.g. above "Sign out") */
 .gv-menu-sep { height: 1px; background: var(--gv-grey-200); margin: 6px 4px; }
+/* account/user menu — wider, cool-grey items in roomy rows, no divider, grey icons
+   on the right (live signed-in user menu measures ≈260px, items 14px #596B7A). */
+.gv-nav__menu--account { min-width: 260px; padding: 10px; }
+.gv-nav__menu--account a, .gv-nav__menu--account button { color: var(--gv-cool-grey-600); padding: 11px 14px; }
+.gv-nav__menu--account a svg, .gv-nav__menu--account a .gv-icon,
+.gv-nav__menu--account button svg, .gv-nav__menu--account button .gv-icon { color: var(--gv-cool-grey-500); }
+.gv-nav__menu--account a:hover, .gv-nav__menu--account button:hover { background: var(--gv-grey-100); color: var(--gv-cool-grey-700); }
+.gv-nav__menu--account a:hover svg, .gv-nav__menu--account button:hover svg,
+.gv-nav__menu--account a:hover .gv-icon, .gv-nav__menu--account button:hover .gv-icon { color: var(--gv-cool-grey-700); }
 
 /* Header right-side actions */
 .gv-header__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: 0 0 auto; }
