@@ -680,9 +680,9 @@
    the two-tone grey-top / tenant-primary-bottom split radii below are correct. */
 .gv-event-card__date { position: absolute; top: 14px; right: 14px; width: 75px; border-radius: var(--gv-radius);
   overflow: hidden; text-align: center; box-shadow: none; line-height: 1.05; }
-.gv-event-card__date .m { display: block; padding-top: 6px; background: var(--gv-grey-100); color: var(--gv-grey-800);
+.gv-event-card__date .m { display: block; padding-top: 6px; background: var(--gv-event-chip-grey); color: var(--gv-grey-800);
   font-size: var(--gv-fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-.gv-event-card__date .d { display: block; padding-bottom: 5px; background: var(--gv-grey-100); color: var(--gv-grey-800);
+.gv-event-card__date .d { display: block; padding-bottom: 5px; background: var(--gv-event-chip-grey); color: var(--gv-grey-800);
   font-size: 22px; font-weight: 700; }
 .gv-event-card__date .y { display: block; padding: 3px 0; background: var(--gv-tenant-primary); color: #fff;
   font-size: var(--gv-fs-xs); font-weight: 500; }
@@ -693,7 +693,7 @@
 .gv-event-card__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }
 /* the date/time · location · registrants rows are grouped on a grey-100 panel (live) */
 .gv-event-card__meta { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto;
-  background: var(--gv-grey-100); border-radius: var(--gv-radius); padding: 12px 14px; }
+  background: var(--gv-event-meta-tint); border-radius: var(--gv-radius); padding: 12px 14px; }
 .gv-event-card__title a { color: inherit; text-decoration: none; }
 .gv-event-card__title a:hover { color: var(--gv-tenant-primary); }
 .gv-event-card__title a::after { content: ""; position: absolute; inset: 0; }
@@ -774,6 +774,28 @@
    #596B7A / 16px / line-height 26px (probed .sc-crPCXo), indented from the rule. */
 .gv-project-events__empty { margin: 0; padding: 14px 0 14px 48px; color: var(--gv-text-secondary);
   font-size: var(--gv-fs-base); line-height: 26px; }
+
+/* ── Event card — GROUNDED layout (wietsedemo /events + project events) ───────
+   SHARED FIX: the live ground truth (fo-events AND fo-voting, desktop + mobile)
+   renders the card NOT with the date chip overlaid on the media, but as:
+     media banner (optional)
+       → upper BODY block: title (h3) left, two-tone date chip BESIDE it right
+       → tinted meta PANEL (div.kjzjNu, bg #F4F6F8 = --gv-event-meta-tint,
+         padding 12px 16px 4px, margin 16px 0, radius 0, no shadow)
+       → full-width navy "Read more".
+   This is the canonical structure for /events, project events and the homepage
+   row. Markup: wrap title + chip in .gv-event-card__titlerow inside __body, give
+   the chip .is-beside, and add .has-panel to the card so __meta picks up the
+   grounded panel metrics. Reuses the existing two-tone chip + __titlerow + is-beside
+   atoms above (no new visual atoms — just the grounded panel + assembly defaults). */
+.gv-event-card__body > .gv-event-card__titlerow { margin-bottom: 0; }
+.gv-event-card__titlerow .gv-event-card__title { font-size: var(--gv-fs-l); line-height: 1.3; }
+/* Grounded meta panel (div.kjzjNu): flush-square tinted band, generous top pad,
+   light bottom pad, 16px vertical margin separating it from title-row + CTA. */
+.gv-event-card.has-panel .gv-event-card__meta { background: var(--gv-event-meta-tint);
+  border-radius: 0; padding: 12px 16px 4px; margin: 16px 0; gap: 6px; }
+/* On the panel layout the card body gaps collapse to 0 (the panel owns its margin). */
+.gv-event-card.has-panel .gv-event-card__body { gap: 0; }
 
 /* CTA band (proposals / generic call to action) ────────────────────────────── */
 /* Live proposals CTA sits on the plain page background (no tinted band on the

@@ -170,4 +170,13 @@
   /* ── Focus ────────────────────────────────────────────────────────────── */
   /* defaultOutline: 2px solid tenantPrimary */
   --gv-focus-outline: 2px solid var(--gv-tenant-primary);
+
+  /* ── Event card (measured live: wietsedemo /events + project events) ──────
+     The event card meta rows sit on a tinted panel (div.kjzjNu) = #F4F6F8,
+     identical to --gv-grey-100; aliased semantically so the panel reads as
+     intent, not an incidental grey. The two-tone date chip's month/day cell
+     is a slightly cooler grey (#F5F6F7, div.sc-lilDSw) than grey-100 — its own
+     token; the year band reuses --gv-tenant-primary. */
+  --gv-event-meta-tint: var(--gv-grey-100);  /* #F4F6F8 meta panel */
+  --gv-event-chip-grey: #F5F6F7;             /* date chip month/day cell */
 }
