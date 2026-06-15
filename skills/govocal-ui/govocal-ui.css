@@ -1350,6 +1350,10 @@
 .gv-sticky__reactbtn .gv-sr-only + span,
 .gv-sticky__reactbtn b { font-weight: 400; }
 
+/* Grounded fixed card height — every probed live sticky note is 320×400, text-only
+   (author chip → title → excerpt → reactions). No image; excerpt clamps to fit. */
+.gv-sticky { height: 400px; }
+
 /* Floating bottom-right "Add an idea" — live primary CTA pinned to the canvas corner. */
 .gv-issuecanvas__add { position: absolute; right: 24px; bottom: 24px; z-index: 5; }
 
