@@ -41,7 +41,7 @@
     .cb-img { width: 100%; display: block; border-radius: 3px; }
     .cb-imgph {
       width: 100%; height: 220px; display: flex; align-items: center; justify-content: center;
-      gap: 8px; background: #f4f6f8; color: #84939e; border: 1px dashed #cbd4dc;
+      gap: 8px; background: var(--gv-grey-100); color: var(--gv-cool-grey-500); border: 1px dashed #cbd4dc;
     }
     .cb-btnblock { display: flex; }
     .cb-btnblock .cb-fakebtn {
@@ -53,9 +53,9 @@
     .cb-cols.cb-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
     /* A column is now a real nested DROP ZONE: flex container, min-height, dashed
        frame. Direct block children stack vertically inside it. */
-    .cb-col { min-height: 64px; padding: 10px; background: #f8fafb; border: 1px dashed #d6dde3; border-radius: 3px; display: flex; flex-direction: column; gap: 8px; }
+    .cb-col { min-width: 0; min-height: 64px; padding: 10px; background: #f8fafb; border: 1px dashed #d6dde3; border-radius: 3px; display: flex; flex-direction: column; gap: 8px; }
     .cb-ws { height: 40px; }
-    .cb-accordion { border: 1px solid #e0e0e0; border-radius: 3px; }
+    .cb-accordion { border: 1px solid var(--gv-grey-300); border-radius: 3px; }
     .cb-accordion__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; font-weight: 600; color: var(--gv-grey-800); cursor: pointer; }
     .cb-accordion__title { flex: 1; }
     .cb-accordion__body { padding: 12px 16px 14px; color: var(--gv-cool-grey-600); font-size: 14px; display: flex; flex-direction: column; gap: 8px; }
@@ -68,29 +68,31 @@
 
     /* ── Nested drop-zone affordances (page-local) ──────────────────────────── */
     #cb-root .cb-zone--over { background: #eef6f9; border-color: var(--gv-teal-500); }
-    .cb-zone__ph { display: none; align-items: center; justify-content: center; min-height: 48px; border: 1px dashed #cbd4dc; border-radius: 3px; color: #84939e; font-size: 13px; text-align: center; padding: 6px; }
+    .cb-zone__ph { display: none; align-items: center; justify-content: center; min-height: 48px; border: 1px dashed #cbd4dc; border-radius: 3px; color: var(--gv-cool-grey-500); font-size: 13px; text-align: center; padding: 6px; }
     #cb-root .cb-zone--empty > .cb-zone__ph { display: flex; }
     .cb-dropline--x { width: 2px; height: auto; min-height: 24px; margin: 0 2px; align-self: stretch; }
 
     /* ── Participation Box (about-box) — faithful resident-facing card ──────── */
-    .cb-pbox { padding: 20px; background: var(--gv-blue-10); border: 1px solid #d4e0e6; border-radius: 4px; }
-    .cb-pbox__top { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
-    #cb-root.cb-pbox-nostatus .cb-pbox__top { display: none; }
-    .cb-pbox__pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background: var(--gv-green-100); color: var(--gv-green-600); }
-    .cb-pbox__pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gv-green-500); }
-    .cb-pbox__pill.is-ended { background: #eef1f3; color: var(--gv-cool-grey-600); }
-    .cb-pbox__pill.is-ended::before { background: var(--gv-cool-grey-500); }
-    .cb-pbox__title { font-weight: 700; font-size: 18px; color: var(--gv-blue-500); margin: 0 0 6px; line-height: 1.3; }
-    .cb-pbox__phase { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--gv-cool-grey-600); margin: 0 0 4px; }
-    .cb-pbox__phase .gv-icon { width: 15px; height: 15px; flex: none; }
-    .cb-pbox__timeline { font-size: 13px; color: var(--gv-cool-grey-600); margin: 0 0 14px; }
-    .cb-pbox__stats { display: flex; gap: 22px; padding: 12px 0 16px; border-top: 1px solid #d4e0e6; margin-top: 4px; }
-    .cb-pbox__stat { display: flex; flex-direction: column; }
-    .cb-pbox__statnum { font-size: 22px; font-weight: 700; color: var(--gv-grey-800); line-height: 1.1; }
-    .cb-pbox__statlbl { font-size: 12px; color: var(--gv-cool-grey-600); }
-    .cb-pbox__cta { display: flex; }
-    .cb-pbox .cb-fakebtn { font-size: 15px; padding: 11px 22px; }
-    .cb-pbox .cb-fakebtn.is-secondary { background: #fff; color: var(--gv-tenant-primary); border: 1px solid var(--gv-tenant-primary); }
+    /* Participation Box (about-box) — a MIRROR of the front-office project
+       participation widget the resident sees: a primary CTA, a secondary
+       "Upcoming events" button, and an avatar row + participant count. Config is
+       just whether to show the buttons and the avatars (toggles, scoped per card). */
+    .cb-pbox { display: flex; flex-direction: column; gap: 16px; }
+    .cb-pbox__actions { display: flex; flex-direction: column; gap: 12px; }
+    .cb-pbox--nobtns .cb-pbox__actions { display: none; }
+    .cb-pbox .cb-fakebtn { justify-content: center; font-size: 17px; padding: 13px 22px; border-radius: 6px; font-weight: 600; }
+    .cb-pbox__cta { background: var(--gv-tenant-primary); color: #fff; }
+    .cb-pbox__events { background: #fff; color: var(--gv-cool-grey-700); border: 1px solid #d6dde3; }
+    .cb-pbox__people { display: flex; align-items: center; gap: 12px; }
+    .cb-pbox--noavatars .cb-pbox__people .cb-avatars { display: none; }
+    .cb-avatars { display: inline-flex; }
+    .cb-avatar { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #fff; margin-left: -10px; background: #c7d2da; }
+    .cb-avatar:first-child { margin-left: 0; }
+    .cb-avatar:nth-child(1) { background: linear-gradient(135deg, #8aa9b8, #5f7d8c); }
+    .cb-avatar:nth-child(2) { background: linear-gradient(135deg, #caa3a0, #9c6f6b); }
+    .cb-avatar:nth-child(3) { background: linear-gradient(135deg, #b7b2c4, #8b8597); }
+    .cb-pbox__count { font-size: 17px; color: var(--gv-cool-grey-700); }
+    .cb-pbox__count strong { font-weight: 700; }
 
     /* ── Button style variants (page-local) ────────────────────────────────── */
     .cb-fakebtn.cb-fakebtn--secondary { background: #fff; color: var(--gv-tenant-primary); border: 1px solid var(--gv-tenant-primary); }
@@ -99,10 +101,10 @@
     .cb-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
     .cb-cards[data-n="2"] { grid-template-columns: 1fr 1fr; }
     .cb-cards[data-n="4"] { grid-template-columns: 1fr 1fr 1fr 1fr; }
-    .cb-card { border: 1px solid #e0e0e0; border-radius: 3px; overflow: hidden; }
+    .cb-card { border: 1px solid var(--gv-grey-300); border-radius: 3px; overflow: hidden; }
     .cb-card__img { height: 90px; background: #e9eef2; }
     .cb-card__cap { padding: 10px 12px; font-size: 13px; color: var(--gv-grey-800); }
-    .cb-file { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #e0e0e0; border-radius: 3px; }
+    .cb-file { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--gv-grey-300); border-radius: 3px; }
     .cb-file__info { display: flex; flex-direction: column; }
     .cb-file__name { font-size: 14px; color: var(--gv-blue-500); }
     .cb-file__meta { font-size: 12px; color: var(--gv-cool-grey-600); }
@@ -250,7 +252,7 @@
           <!-- Default Text block (selected on load mirrors the -settings capture) -->
           <div class="gv-bo-cb-block" data-widget="text" data-label="Text" draggable="true">
             <span class="gv-bo-cb-block__label">Text</span>
-            <div class="gv-bo-cb-block__body" id="e2e-content-builder-frame">This is some text. You can edit and format it by using the editor in the panel on the right.</div>
+            <div class="gv-bo-cb-block__body" id="e2e-content-builder-frame">Help us reimagine <strong>Dorothea Dix Park</strong> — a 308-acre destination park in the heart of Raleigh. Share your ideas on what this once-in-a-generation public space should become.</div>
           </div>
         </div>
       </main>
@@ -298,15 +300,14 @@
       'iframe':          { label: 'Embed',             make: function () { return '<div class="cb-iframe">&lt;/&gt; Embedded content<span class="cb-iframe__cap">Paste a URL to embed</span></div>'; } },
       'about-box':       { label: 'Participation Box',  make: function () { return '' +
         '<div class="cb-pbox">' +
-          '<div class="cb-pbox__top"><span class="cb-pbox__pill" data-pbox="pill">Active</span></div>' +
-          '<p class="cb-pbox__title" data-pbox="title">Share your ideas</p>' +
-          '<div class="cb-pbox__phase"><span class="gv-icon" data-gv-icon="survey"></span><span data-pbox="phase">Phase 2 of 4 · Collect input</span></div>' +
-          '<p class="cb-pbox__timeline" data-pbox="timeline">15 May – 30 Jun 2026</p>' +
-          '<div class="cb-pbox__stats">' +
-            '<div class="cb-pbox__stat"><span class="cb-pbox__statnum" data-pbox="count">1,284</span><span class="cb-pbox__statlbl">participants</span></div>' +
-            '<div class="cb-pbox__stat"><span class="cb-pbox__statnum">312</span><span class="cb-pbox__statlbl">contributions</span></div>' +
+          '<div class="cb-pbox__actions">' +
+            '<span class="cb-fakebtn cb-pbox__cta" data-pbox="cta">Take the survey</span>' +
+            '<span class="cb-fakebtn cb-pbox__events" data-pbox="events">Upcoming events</span>' +
           '</div>' +
-          '<div class="cb-pbox__cta"><span class="cb-fakebtn" data-pbox="cta">Take the survey</span></div>' +
+          '<div class="cb-pbox__people">' +
+            '<span class="cb-avatars"><span class="cb-avatar"></span><span class="cb-avatar"></span><span class="cb-avatar"></span></span>' +
+            '<span class="cb-pbox__count"><strong data-pbox="count">2,435</strong> participants</span>' +
+          '</div>' +
         '</div>'; } },
       'file-attachment': { label: 'File Attachment',    make: function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__info"><span class="cb-file__name">project-brief.pdf</span><span class="cb-file__meta">PDF · 1.2 MB</span></span></div>'; } },
       'image-text-cards':{ label: 'Image & text cards', make: function () { return '<div class="cb-cards" data-n="3"><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card one</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card two</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card three</div></div></div>'; } },
@@ -379,11 +380,11 @@
         return settingsRow('Embed URL', '<input class="gv-input" id="cb-f-embedurl" placeholder="https://…">');
       }
       if (widget === 'about-box') {
-        return settingsRow('Heading', '<input class="gv-input" id="cb-f-heading" value="Share your ideas">') +
-          settingsRow('Phase method', '<select class="gv-bo-select" data-set="method" id="cb-f-method"><option value="survey">Survey</option><option value="ideation">Ideation</option><option value="voting">Voting</option><option value="proposals">Proposals</option><option value="common-ground">Common ground</option></select>') +
-          settingsRow('CTA label', '<input class="gv-input" data-set="cta" id="cb-f-cta" value="Take the survey">') +
-          settingsRow('CTA style', '<select class="gv-bo-select" data-set="ctastyle" id="cb-f-ctastyle"><option value="primary">Primary</option><option value="secondary">Secondary</option></select>') +
-          settingsRow('Show status', '<span class="gv-toggle"><input type="checkbox" data-set="status" id="cb-f-status" checked><span class="track"></span></span>');
+        return settingsRow('Action label', '<input class="gv-input" data-set="cta" id="cb-f-cta" value="Take the survey">') +
+          settingsRow('Events label', '<input class="gv-input" data-set="events" id="cb-f-events" value="Upcoming events">') +
+          settingsRow('Participants', '<input class="gv-input" data-set="count" id="cb-f-count" value="2,435">') +
+          settingsRow('Show buttons', '<span class="gv-toggle"><input type="checkbox" data-set="btns" id="cb-f-btns" checked><span class="track"></span></span>') +
+          settingsRow('Show avatars', '<span class="gv-toggle"><input type="checkbox" data-set="avatars" id="cb-f-avatars" checked><span class="track"></span></span>');
       }
       if (widget === 'file-attachment') {
         return settingsRow('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') +
@@ -628,20 +629,15 @@
       var card = block.querySelector('.cb-pbox');
       function q(sel) { return panel.querySelector('[data-set="' + sel + '"]'); }
       function r(sel) { return card ? card.querySelector('[data-pbox="' + sel + '"]') : null; }
-      var titleIn = document.getElementById('cb-f-heading'), ctaIn = q('cta'), styleSel = q('ctastyle'), methodSel = q('method'), statusTgl = q('status');
-      if (titleIn) titleIn.addEventListener('input', function () { var t = r('title'); if (t) t.textContent = this.value || 'Share your ideas'; });
+      var ctaIn = q('cta'), eventsIn = q('events'), countIn = q('count'), btnsTgl = q('btns'), avTgl = q('avatars');
+      // reflect the card's current state back into the toggles on (re)select
+      if (btnsTgl) btnsTgl.checked = !card.classList.contains('cb-pbox--nobtns');
+      if (avTgl) avTgl.checked = !card.classList.contains('cb-pbox--noavatars');
       if (ctaIn) ctaIn.addEventListener('input', function () { var c = r('cta'); if (c) c.textContent = this.value || 'Take part'; });
-      if (styleSel) styleSel.addEventListener('change', function () { var c = r('cta'); if (c) c.classList.toggle('is-secondary', this.value === 'secondary'); });
-      if (methodSel) methodSel.addEventListener('change', function () {
-        var map = { survey: ['Collect input', 'Take the survey', 'survey'], ideation: ['Collect ideas', 'Submit your input', 'idea'], voting: ['Voting', 'Cast your vote', 'vote-up'], proposals: ['Collect proposals', 'Submit a proposal', 'edit'], 'common-ground': ['Find common ground', 'Add a statement', 'comments'] };
-        var m = map[this.value] || map.survey;
-        var ph = r('phase'), c = r('cta'), ctaField = q('cta'), icon = card && card.querySelector('.cb-pbox__phase .gv-icon');
-        if (ph) ph.textContent = 'Phase 2 of 4 · ' + m[0];
-        if (c) c.textContent = m[1];
-        if (ctaField) ctaField.value = m[1];
-        if (icon && window.GVIcons) { icon.setAttribute('data-gv-icon', m[2]); window.GVIcons.render(card); }
-      });
-      if (statusTgl) statusTgl.addEventListener('change', function () { root.classList.toggle('cb-pbox-nostatus', !this.checked); });
+      if (eventsIn) eventsIn.addEventListener('input', function () { var e = r('events'); if (e) e.textContent = this.value || 'Upcoming events'; });
+      if (countIn) countIn.addEventListener('input', function () { var c = r('count'); if (c) c.textContent = this.value || '0'; });
+      if (btnsTgl) btnsTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--nobtns', !this.checked); });
+      if (avTgl) avTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--noavatars', !this.checked); });
     }
 
     // ── block factory + wiring ────────────────────────────────────────────────
@@ -873,6 +869,30 @@
 
     // Save / view buttons are inert in the reference page.
     document.getElementById('e2e-content-builder-topbar-save').addEventListener('click', function () { toast('Saved'); });
+
+    // ── seed a fuller default layout (built via makeBlock so it's fully wired) ──
+    function seedBlock(widget, html) {
+      var b = makeBlock(widget);
+      if (html != null) {
+        var body = b.querySelector('.gv-bo-cb-block__body') || b.querySelector('.cb-p');
+        if (body) body.innerHTML = html;
+      }
+      return b;
+    }
+    function seedDefault() {
+      frame.appendChild(makeBlock('image'));
+      frame.appendChild(seedBlock('text', '<strong>What we’re asking</strong><br>The park will be built in phases over the next decade. Right now we want your input on the spaces, activities and priorities that matter most to you.'));
+      var two = makeBlock('two-column');
+      frame.appendChild(two);
+      var cols = two.querySelectorAll('.cb-col');
+      if (cols[0]) cols[0].appendChild(seedBlock('text', '<strong>Share your ideas</strong><br>What should this once-in-a-generation space include?'));
+      if (cols[1]) cols[1].appendChild(seedBlock('text', '<strong>Join an event</strong><br>Walk the site with our design team this spring.'));
+      frame.appendChild(makeBlock('about-box'));
+      frame.appendChild(seedBlock('text', '<strong>Frequently asked questions</strong>'));
+      frame.appendChild(makeBlock('accordion'));
+      reflectEmptyAll();
+    }
+    seedDefault();
 
     // open the panel for the default block to mirror the -settings capture
     if (first) select(first);
