@@ -1502,8 +1502,14 @@
    Each option is a white card (the live wrapper .cBWbiv) with a full-width header
    button. The accordion title (.e2e-accordion h3) computes to 21px/700/#474747; the
    chevron is a 24px right-arrow that rotates to point down when expanded. */
-.gv-voteoptions { display: flex; flex-direction: column; gap: 14px; }
-.gv-voteoption { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); overflow: hidden; }
+.gv-voteoptions { display: flex; flex-direction: column; gap: 0; }
+/* Live wietsedemo renders options as a single FLAT divided list: each row is
+   transparent, no shadow/radius/padding, with a 1px top/bottom #E0E0E0 hairline
+   (.cBWbiv border-width 1px 0px) so consecutive rows share one rule. We put the
+   rule on border-top of every row and suppress the leading one on the first. */
+.gv-voteoption { background: transparent; border-radius: 0; box-shadow: none;
+  border-top: 1px solid var(--gv-grey-300); overflow: hidden; }
+.gv-voteoption:first-child { border-top: 0; }
 .gv-voteoption__head { display: flex; align-items: center; justify-content: space-between; gap: 16px;
   width: 100%; padding: 20px; border: 0; background: transparent; cursor: pointer;
   font-family: inherit; text-align: left; }
