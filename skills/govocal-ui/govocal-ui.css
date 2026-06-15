@@ -363,7 +363,7 @@
 .gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-cool-grey-700); color: #fff; }
 .gv-phase[aria-selected="true"]:not(.current) .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
 /* content panel: big green numbered circle + green name + date */
-.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 26px 30px; margin-top: 22px; }
+.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 30px 30px; margin-top: 22px; }
 .gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
 /* Measured live (fo-project-ideation): the phase number sits in a 39px green-500
    circle (16px/400 white), and the phase name is 21px/700 green-500 — not larger. */
