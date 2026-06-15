@@ -13,48 +13,68 @@
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
-    /* Dashboard panels swap under the section tab strip. */
     .db-panel { display: none; }
     .db-panel.is-active { display: block; }
-    /* Filter toolbar above the cards (project + time-range selects). */
+
+    /* Filter toolbar above the cards. */
     .db-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 18px; }
-    .db-controls .gv-bo-select { max-width: 240px; height: 40px; padding: 8px 12px; }
+    .db-controls .gv-bo-select { max-width: 150px; height: 40px; padding: 8px 12px; width: auto; }
+    .db-controls .gv-bo-search input { max-width: 280px; }
     .db-controls .db-spacer { margin-left: auto; }
-    /* The overview is a responsive grid of metric/chart cards. */
+    /* Days/Weeks/Months segmented toggle. */
+    .db-seg { display: inline-flex; border: 1px solid var(--gv-border-dark); border-radius: 3px; overflow: hidden; }
+    .db-seg button { border: 0; background: #fff; color: var(--gv-bo-primary); padding: 9px 16px; font-size: 14px; cursor: pointer; font-family: var(--gv-font-family); border-left: 1px solid var(--gv-grey-300); }
+    .db-seg button:first-child { border-left: 0; }
+    .db-seg button.is-active { background: var(--gv-bo-primary); color: #fff; }
+
+    .db-sectionhead { margin: 28px 0 12px; font-size: 21px; font-weight: 700; color: var(--gv-bo-primary); }
     .db-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
-    .db-span-3 { grid-column: span 3; }
-    .db-span-6 { grid-column: span 6; }
-    .db-span-12 { grid-column: span 12; }
-    @media (max-width: 1100px) { .db-span-3 { grid-column: span 6; } .db-span-6 { grid-column: span 12; } }
-    @media (max-width: 680px)  { .db-span-3, .db-span-6 { grid-column: span 12; } }
-    /* Lightweight inline chart styling (page-local data-viz, not chrome). */
-    .db-spark { width: 100%; height: 40px; display: block; margin-top: 8px; }
-    .db-area  { width: 100%; height: 220px; display: block; }
-    .db-bars  { width: 100%; height: 220px; display: block; }
-    .db-legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; font-size: 13px; color: var(--gv-text-secondary); }
-    .db-legend span { display: inline-flex; align-items: center; gap: 6px; }
-    .db-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
-    /* Donut + table mix in the lower cards. */
-    .db-rep { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
-    .db-rep__score { text-align: center; }
-    .db-rep__num { font-size: 44px; font-weight: 700; line-height: 1; color: var(--gv-bo-primary); }
-    .db-rep__cap { font-size: 13px; color: var(--gv-text-secondary); margin-top: 4px; }
-    .db-rep__bars { flex: 1 1 280px; display: flex; flex-direction: column; gap: 12px; min-width: 260px; }
-    .db-repbar__row { display: grid; grid-template-columns: 130px 1fr 44px; align-items: center; gap: 10px; font-size: 13px; }
-    .db-repbar__track { height: 10px; border-radius: 5px; background: var(--gv-grey-200); overflow: hidden; }
-    .db-repbar__fill { height: 100%; border-radius: 5px; background: var(--gv-teal-400); }
-    .db-note { margin: 18px 24px 0; font-size: 12px; color: var(--gv-text-secondary); }
+    .db-span-4 { grid-column: span 4; } .db-span-6 { grid-column: span 6; }
+    .db-span-7 { grid-column: span 7; } .db-span-5 { grid-column: span 5; } .db-span-12 { grid-column: span 12; }
+    @media (max-width: 1100px) { .db-span-4, .db-span-5, .db-span-6, .db-span-7 { grid-column: span 12; } }
+
+    /* Chart-card header: title left + download (and optional dropdown) right. */
+    .db-cardhead { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .db-cardhead h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--gv-bo-primary); }
+    .db-cardhead__tools { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--gv-cool-grey-500); }
+    .db-cardhead__tools .gv-icon { width: 16px; height: 16px; }
+    .db-bignum { font-size: 14px; color: var(--gv-text-secondary); margin: 2px 0 4px; }
+    .db-bignum b { font-size: 15px; color: var(--gv-bo-primary); }
+    .db-statline { display: flex; gap: 36px; flex-wrap: wrap; margin: 6px 0 10px; }
+    .db-stat__num { font-size: 22px; font-weight: 700; color: var(--gv-bo-primary); }
+    .db-stat__lbl { font-size: 12px; color: var(--gv-text-secondary); }
+
+    /* CSS horizontal bar chart. */
+    .ch-h { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .ch-hrow { display: grid; grid-template-columns: 150px 1fr 28px; align-items: center; gap: 10px; font-size: 12px; }
+    .ch-hlabel { color: var(--gv-text-secondary); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ch-htrack { background: var(--gv-grey-100); border-radius: 2px; height: 16px; }
+    .ch-hbar { display: block; height: 100%; border-radius: 2px; background: var(--gv-blue-500); min-width: 1px; }
+    .ch-hval { color: var(--gv-bo-primary); font-weight: 600; }
+    /* CSS vertical bar chart. */
+    .ch-v { display: flex; align-items: flex-end; gap: 10px; height: 170px; padding-top: 10px; border-bottom: 1px solid var(--gv-grey-300); }
+    .ch-vcol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+    .ch-vbar { width: 60%; max-width: 46px; background: var(--gv-blue-500); border-radius: 2px 2px 0 0; min-height: 2px; }
+    .ch-vnum { font-size: 11px; color: var(--gv-text-secondary); }
+    .ch-vlabels { display: flex; gap: 10px; margin-top: 6px; }
+    .ch-vlabels span { flex: 1; text-align: center; font-size: 11px; color: var(--gv-text-secondary); }
+    /* Legend. */
+    .ch-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; color: var(--gv-text-secondary); justify-content: center; }
+    .ch-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .ch-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+    .db-line { width: 100%; height: 120px; display: block; }
+    .db-donutwrap { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+    .db-donut__center { text-align: center; }
+    .db-donut__pct { font-size: 22px; font-weight: 700; color: var(--gv-bo-primary); }
+    .db-pie { display: flex; align-items: center; gap: 20px; }
+    .db-empty-illus { width: 280px; height: 150px; opacity: .25; }
   </style>
 </head>
 <body class="gv-bo">
   <div class="gv-bo-shell">
-
-    <!-- ── Sidebar (shared BO chrome) ───────────────────────────────────── -->
     <nav class="gv-bo-side" aria-label="Admin" data-active="dashboard"></nav>
 
-    <!-- ── Main ─────────────────────────────────────────────────────────── -->
     <div class="gv-bo-main">
-
       <nav class="gv-bo-tabs gv-bo-tabs--top" aria-label="Dashboard sections">
         <a class="gv-bo-tab is-active" href="#" data-db="overview">Overview</a>
         <a class="gv-bo-tab" href="#" data-db="users">Users</a>
@@ -67,118 +87,177 @@
       <!-- ── Overview ─────────────────────────────────────────────────── -->
       <section class="gv-bo-section db-panel is-active" data-panel="overview">
         <div class="db-controls">
-          <select class="gv-bo-select" aria-label="Project filter">
-            <option>All projects</option>
-            <option>Let's Reimagine Dorothea Dix Park</option>
-            <option>2024 Budget priorities</option>
-            <option>Downtown mobility plan</option>
-          </select>
-          <select class="gv-bo-select" aria-label="Group filter">
-            <option>All groups</option>
-            <option>Newsletter subscribers</option>
-            <option>District 3 residents</option>
-          </select>
+          <select class="gv-bo-select" aria-label="Time range"><option>All Time</option><option>Last 30 days</option><option>Last year</option></select>
+          <div class="gv-bo-dateface" style="height:40px"><span data-gv-icon="calendar"></span>6/15/2026</div>
+          <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Type to search projects" aria-label="Search projects"><span class="gv-icon" data-gv-icon="search"></span></span>
           <div class="db-spacer"></div>
-          <select class="gv-bo-select" aria-label="Time range" style="max-width:180px">
-            <option>Last 30 days</option>
-            <option>Last 90 days</option>
-            <option selected>Last year</option>
-            <option>All time</option>
-          </select>
-          <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Export</span></button>
+          <span class="db-seg"><button>in Days</button><button>in Weeks</button><button class="is-active">in Months</button></span>
         </div>
 
-        <!-- KPI stat cards -->
-        <div class="db-grid" style="margin-bottom:16px">
-          <div class="db-span-3" id="kpis"></div>
+        <div class="db-grid">
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="9,8,7,6,5,4,4,3,3,2,1,2" data-title="Registrations" data-num="<b>9</b> Total registrations · Last 30 days 0" data-series="New registrations"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="2,1,3,2,5,2,6,3,8,5,12,20" data-title="Participants" data-num="<b>20</b> Total participants · Last 30 days 0" data-series="Participants"></div>
         </div>
 
-        <!-- Charts -->
+        <h2 class="db-sectionhead">Projects &amp; Participation</h2>
+        <div class="db-grid">
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,1,2,4,40,180,160,300,250,340,347" data-title="Inputs 347" data-num="<b>&gt;347</b>" data-series="Total · This month"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="barsH" data-title="Participation per project"
+               data-bars='[["First and last name…",4],["Mapping: Building Protected Bike Lanes",4],["Participatory Budget - District 1",3],["Participatory Budget - District 3",2],["Let&#39;s Reimagine Dorothea Dix Park",1]]' data-dropdown="Inputs"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,2,741,40,20,10,8,6,4,2" data-title="Comments 741" data-num="<b>&gt;741</b>" data-series="Total · This month"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="barsH" data-title="Participation per tag"
+               data-bars='[["Public spaces and buildings",7],["Health and welfare",6],["Sustainable development",5],["Culture, sports and events",5],["Mobility",4],["Public services",3],["Community development",3],["Education and youth",2],["Social inclusion",1]]' data-dropdown="Inputs"></div>
+          <div class="gv-bo-chartcard db-span-12" data-chart="line" data-points="0,2683,200,120,90,60,40,30,20,15,10,8" data-title="Reactions 2683" data-num="<b>&gt;2683</b>" data-series="Total · Likes · Dislikes"></div>
+        </div>
+
+        <h2 class="db-sectionhead">Management</h2>
         <div class="db-grid">
           <div class="gv-bo-chartcard db-span-6">
-            <h3 class="gv-bo-chartcard__title">Participants over time</h3>
-            <p class="gv-bo-chartcard__sub">New participants, by week · Last year</p>
-            <svg class="db-area" viewBox="0 0 600 220" preserveAspectRatio="none" role="img" aria-label="Area chart of participants over time">
-              <defs>
-                <linearGradient id="dbArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="var(--gv-teal-400)" stop-opacity="0.35" />
-                  <stop offset="100%" stop-color="var(--gv-teal-400)" stop-opacity="0.02" />
-                </linearGradient>
-              </defs>
-              <polyline points="0,180 60,165 120,150 180,120 240,135 300,95 360,80 420,55 480,70 540,40 600,30"
-                        fill="none" stroke="var(--gv-teal-400)" stroke-width="2.5" />
-              <polygon points="0,180 60,165 120,150 180,120 240,135 300,95 360,80 420,55 480,70 540,40 600,30 600,220 0,220"
-                       fill="url(#dbArea)" stroke="none" />
-            </svg>
-          </div>
-          <div class="gv-bo-chartcard db-span-6">
-            <h3 class="gv-bo-chartcard__title">Participation by method</h3>
-            <p class="gv-bo-chartcard__sub">Inputs collected, by participation method</p>
-            <svg class="db-bars" viewBox="0 0 600 220" role="img" aria-label="Bar chart of participation by method">
-              <g fill="var(--gv-teal-400)">
-                <rect x="20"  y="40"  width="60" height="150" rx="2" />
-                <rect x="110" y="95"  width="60" height="95"  rx="2" />
-                <rect x="200" y="70"  width="60" height="120" rx="2" />
-                <rect x="290" y="130" width="60" height="60"  rx="2" />
-                <rect x="380" y="150" width="60" height="40"  rx="2" />
-                <rect x="470" y="165" width="60" height="25"  rx="2" />
-              </g>
-              <g fill="var(--gv-text-secondary)" font-size="11" text-anchor="middle" font-family="var(--gv-font-family)">
-                <text x="50"  y="206">Ideation</text>
-                <text x="140" y="206">Survey</text>
-                <text x="230" y="206">Voting</text>
-                <text x="320" y="206">Proposals</text>
-                <text x="410" y="206">Volunteer</text>
-                <text x="500" y="206">Poll</text>
-              </g>
-            </svg>
-          </div>
-
-          <div class="gv-bo-chartcard db-span-6">
-            <h3 class="gv-bo-chartcard__title">Representation</h3>
-            <p class="gv-bo-chartcard__sub">Participants vs. community base data · Representation score</p>
-            <div class="db-rep">
-              <div class="db-rep__score">
-                <div class="db-rep__num">76%</div>
-                <div class="db-rep__cap">Representation<br>score</div>
+            <div class="db-cardhead"><h3>Input status</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
+            <div class="db-donutwrap">
+              <svg width="150" height="150" viewBox="0 0 42 42" aria-hidden="true">
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--gv-grey-200)" stroke-width="6"></circle>
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--gv-teal-400)" stroke-width="6" stroke-dasharray="4 96" stroke-dashoffset="25"></circle>
+                <text x="21" y="20" text-anchor="middle" font-size="6" font-weight="700" fill="var(--gv-bo-primary)" font-family="var(--gv-font-family)">4%</text>
+                <text x="21" y="26" text-anchor="middle" font-size="2.6" fill="var(--gv-text-secondary)" font-family="var(--gv-font-family)">Feedback given</text>
+              </svg>
+              <div>
+                <div class="db-bignum">Status changed <b>1.5%</b></div>
+                <div class="db-bignum">Official update <b>11.0%</b></div>
+                <div class="db-bignum">Avg. response time <b>279 days</b></div>
               </div>
-              <div class="db-rep__bars" id="repbars"></div>
+            </div>
+            <div class="ch-legend">
+              <span><i style="background:var(--gv-teal-400)"></i>Under consideration</span>
+              <span><i style="background:var(--gv-green-500)"></i>Implemented</span>
+              <span><i style="background:var(--gv-blue-400)"></i>Accepted</span>
+              <span><i style="background:var(--gv-red-500)"></i>Rejected</span>
+              <span><i style="background:var(--gv-cool-grey-400)"></i>Proposed</span>
+              <span><i style="background:var(--gv-grey-300)"></i>Viewed</span>
             </div>
           </div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,1,0,2,1,3,0,1,2,0,1,0" data-title="Emails" data-num="<b>5</b> Total emails sent · From 6 campaigns" data-series="Custom emails · Automated emails"></div>
           <div class="gv-bo-chartcard db-span-6">
-            <h3 class="gv-bo-chartcard__title">Registrations</h3>
-            <p class="gv-bo-chartcard__sub">Registered users vs. visits · conversion</p>
-            <svg class="db-area" viewBox="0 0 600 220" preserveAspectRatio="none" role="img" aria-label="Registrations over time">
-              <polyline points="0,170 60,160 120,150 180,140 240,118 300,120 360,96 420,90 480,72 540,66 600,48"
-                        fill="none" stroke="var(--gv-blue-400)" stroke-width="2.5" />
-              <polyline points="0,200 60,196 120,192 180,184 240,178 300,176 360,168 420,160 480,156 540,150 600,142"
-                        fill="none" stroke="var(--gv-cool-grey-400)" stroke-width="2" stroke-dasharray="4 4" />
-            </svg>
-            <div class="db-legend">
-              <span><i style="background:var(--gv-blue-400)"></i> Registrations</span>
-              <span><i style="background:var(--gv-cool-grey-400)"></i> Visits (× 100)</span>
-            </div>
+            <div class="db-cardhead"><h3>Invitations</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
+            <div class="db-statline"><div><div class="db-stat__num">0</div><div class="db-stat__lbl">Total invites sent · Last 30 days 0</div></div><div><div class="db-stat__num">0</div><div class="db-stat__lbl">Pending</div></div><div><div class="db-stat__num">0</div><div class="db-stat__lbl">Accepted</div></div></div>
+          </div>
+          <div class="gv-bo-chartcard db-span-6">
+            <div class="db-cardhead"><h3>Events</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
+            <div class="db-statline"><div><div class="db-stat__num">14</div><div class="db-stat__lbl">Total events added</div></div><div><div class="db-stat__num">0</div><div class="db-stat__lbl">Upcoming</div></div><div><div class="db-stat__num">14</div><div class="db-stat__lbl">Completed</div></div></div>
+          </div>
+          <div class="gv-bo-chartcard db-span-12">
+            <div class="db-cardhead"><h3>Internal adoption</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
+            <div class="db-statline"><div><div class="db-stat__num">0</div><div class="db-stat__lbl">Admins · Active last 30 days</div></div><div><div class="db-stat__num">1</div><div class="db-stat__lbl">PMs · Active last 30 days</div></div><div><div class="db-stat__num">1</div><div class="db-stat__lbl">Total · Active last 30 days</div></div></div>
+            <svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true"><polyline points="0,110 100,108 200,90 300,70 360,30 420,60 500,95 600,100" fill="none" stroke="var(--gv-teal-400)" stroke-width="2"/></svg>
           </div>
         </div>
-
-        <p class="db-note">Reference reconstruction — the demo tenant's Overview renders no data, so the metrics shown are illustrative. Layout + chrome are source-grounded; re-capture on a tenant with data to pin exact chart-card values.</p>
       </section>
 
-      <!-- ── Other tabs (stubs) ───────────────────────────────────────── -->
+      <!-- ── Users ────────────────────────────────────────────────────── -->
       <section class="gv-bo-section db-panel" data-panel="users">
-        <div class="gv-bo-card"><h3 class="gv-bo-chartcard__title">Users dashboard</h3><p class="gv-bo-chartcard__sub">Registrations, activity and demographic breakdowns of registered users.</p></div>
+        <div class="db-controls">
+          <select class="gv-bo-select" aria-label="Time range"><option>All Time</option></select>
+          <div class="gv-bo-dateface" style="height:40px"><span data-gv-icon="calendar"></span>6/15/2026</div>
+          <select class="gv-bo-select" aria-label="User group"><option>Select user group</option></select>
+        </div>
+        <div class="db-grid">
+          <div class="gv-bo-chartcard db-span-6" data-chart="barsH" data-title="Users by geographic area"
+               data-bars='[["unknown",6],["Chapel Hill",1],["Durham",1],["Raleigh",1],["Cary",0],["Other",0],["Somewhere else",0]]'></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="barsV" data-title="Users by age"
+               data-bars='[["0-9",0],["10-19",0],["20-29",0],["30-39",1],["40-49",1],["50-59",0],["60-69",0],["70-79",0],["80-89",0],["unknown",6]]'></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="barsV" data-title="Commuting Method"
+               data-bars='[["ACCESS / Vanpool",0],["GoTriangle Bus",3],["Uber/Lyft",0],["Walk",0],["unknown",6]]'></div>
+        </div>
       </section>
+
+      <!-- ── Visitors ─────────────────────────────────────────────────── -->
       <section class="gv-bo-section db-panel" data-panel="visitors">
-        <div class="gv-bo-card"><h3 class="gv-bo-chartcard__title">Visitors dashboard</h3><p class="gv-bo-chartcard__sub">Visitors vs. visits, traffic sources, and language breakdown.</p></div>
+        <div class="db-controls">
+          <select class="gv-bo-select" aria-label="Time range"><option>Custom</option></select>
+          <div class="gv-bo-dateface" style="height:40px"><span data-gv-icon="calendar"></span>11/24/2024 – 6/15/2026</div>
+          <div class="db-spacer"></div>
+          <span class="db-seg"><button>in Days</button><button>in Weeks</button><button class="is-active">in Months</button></span>
+        </div>
+        <div class="db-grid">
+          <div class="gv-bo-chartcard db-span-12">
+            <div class="db-cardhead"><h3>Visitors</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
+            <div class="db-statline">
+              <div><div class="db-stat__num">30</div><div class="db-stat__lbl">Visitors · Last 30 days: 8</div></div>
+              <div><div class="db-stat__num">167</div><div class="db-stat__lbl">Visits · Last 30 days: 30</div></div>
+              <div><div class="db-stat__num">00:01:05</div><div class="db-stat__lbl">Visit duration · Last 30 days: 00:01:09</div></div>
+              <div><div class="db-stat__num">4.52</div><div class="db-stat__lbl">Pageviews per visit · Last 30 days: 4.33</div></div>
+            </div>
+            <svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+              <polyline points="0,110 60,108 120,105 180,90 240,60 300,20 360,40 420,80 480,100 540,108 600,110" fill="none" stroke="var(--gv-blue-500)" stroke-width="2"/>
+              <polyline points="0,116 60,114 120,112 180,108 240,100 300,70 360,90 420,110 480,116 540,118 600,118" fill="none" stroke="var(--gv-red-500)" stroke-width="1.5"/>
+            </svg>
+            <div class="ch-legend"><span><i style="background:var(--gv-blue-500)"></i>Visitors</span><span><i style="background:var(--gv-red-500)"></i>Visits</span></div>
+          </div>
+          <div class="gv-bo-chartcard db-span-12" data-chart="pie" data-title="Traffic sources"
+               data-pie='[["Direct entry (100%)",100,"var(--gv-blue-500)"]]'></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,0,0,0,0,0,0,0,0,0" data-title="Registrations" data-num="<b>0</b> Total registrations · Last 30 days 0 · rate 0%" data-series="New registrations"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,1,1,2,3,4,5,6,7,9,10,11" data-title="Participants" data-num="<b>11</b> Total participants · rate 37%" data-series="Participants"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="pie" data-title="Language"
+               data-pie='[["EN (98%)",98,"var(--gv-blue-500)"],["ES-ES (2%)",2,"var(--gv-teal-400)"]]'></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="pie" data-title="Device Types"
+               data-pie='[["Desktop or Other (97%)",97,"var(--gv-blue-500)"],["Mobile (3%)",3,"var(--gv-teal-400)"]]'></div>
+        </div>
       </section>
+
+      <!-- ── Representativeness ───────────────────────────────────────── -->
       <section class="gv-bo-section db-panel" data-panel="representativeness">
-        <div class="gv-bo-card"><h3 class="gv-bo-chartcard__title">Representativeness</h3><p class="gv-bo-chartcard__sub">Compare participant demographics against the community base data.</p></div>
+        <h1 class="gv-bo-pagehead">Community representativeness</h1>
+        <p class="gv-bo-pagelede" style="margin:6px 0 16px">See how representative your platform users are compared to the total population - based on data collected during user registration.</p>
+        <div style="margin-bottom:16px"><select class="gv-bo-select" aria-label="Project"><option>Type to search projects</option></select></div>
+        <div class="gv-bo-card">
+          <div class="gv-bo-empty">
+            <h3 class="gv-bo-empty__title">Please provide a base dataset.</h3>
+            <p class="gv-bo-empty__text">This base dataset is required to calculate the representativeness of platform users compared to the total population.</p>
+            <button class="gv-btn admin-dark">Submit base data</button>
+            <svg class="db-empty-illus" viewBox="0 0 280 150" aria-hidden="true">
+              <g fill="var(--gv-cool-grey-400)">
+                <rect x="20" y="80" width="24" height="60"/><rect x="60" y="50" width="24" height="90"/><rect x="100" y="30" width="24" height="110"/>
+                <rect x="140" y="60" width="24" height="80"/><rect x="180" y="45" width="24" height="95"/><rect x="220" y="90" width="24" height="50"/>
+              </g>
+            </svg>
+          </div>
+        </div>
       </section>
+
+      <!-- ── Participation feed (moderation) ──────────────────────────── -->
       <section class="gv-bo-section db-panel" data-panel="participation">
-        <div class="gv-bo-card"><h3 class="gv-bo-chartcard__title">Participation feed</h3><p class="gv-bo-chartcard__sub">A live log of resident participation across the platform.</p></div>
+        <h1 class="gv-bo-pagehead" style="margin-bottom:14px">Feed <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--gv-red-500);vertical-align:middle"></span></h1>
+        <div class="db-controls">
+          <select class="gv-bo-select" aria-label="Seen"><option>Not seen</option><option>All</option></select>
+          <select class="gv-bo-select" aria-label="Warnings"><option>Content Warnings (2)</option></select>
+          <select class="gv-bo-select" aria-label="Type"><option>Type</option><option>Post</option><option>Comment</option></select>
+          <select class="gv-bo-select" aria-label="Project"><option>Project</option></select>
+          <div class="db-spacer"></div>
+          <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search feed"><span class="gv-icon" data-gv-icon="search"></span></span>
+        </div>
+        <div>
+          <table class="gv-bo-table is-bordered">
+            <thead><tr><th class="gv-bo-table__check"></th><th>Date</th><th>Type</th><th>Project</th><th>Content</th><th></th></tr></thead>
+            <tbody id="feed"></tbody>
+          </table>
+          <nav class="gv-bo-pager" aria-label="Pagination"><button disabled><span data-gv-icon="chevron-left"></span></button><button class="is-active">1</button><button>2</button><button>3</button><span>…</span><button>10</button><button><span data-gv-icon="chevron-right"></span></button></nav>
+        </div>
       </section>
+
+      <!-- ── Management feed ──────────────────────────────────────────── -->
       <section class="gv-bo-section db-panel" data-panel="management">
-        <div class="gv-bo-card"><h3 class="gv-bo-chartcard__title">Management feed</h3><p class="gv-bo-chartcard__sub">Created / modified / deleted events on inputs, phases, projects and folders (30-day window).</p></div>
+        <h1 class="gv-bo-pagehead" style="margin-bottom:14px">Management feed</h1>
+        <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-outline"></span>Experimental feature: A minimal list of selected actions performed by admins or managers in the last 30 days. Not all actions are included.</div>
+        <div class="db-controls">
+          <select class="gv-bo-select" aria-label="Project"><option>Project</option></select>
+          <select class="gv-bo-select" aria-label="User" style="max-width:320px"><option>Select a user</option></select>
+        </div>
+        <div>
+          <table class="gv-bo-table is-list">
+            <thead><tr><th>Date</th><th>User</th><th>Item</th><th>Action</th></tr></thead>
+            <tbody id="mgmt"></tbody>
+          </table>
+        </div>
       </section>
 
     </div>
@@ -186,31 +265,89 @@
 
   <script src="bo-chrome.js"></script>
   <script>
-    // ── KPI stat cards (illustrative) ──────────────────────────────────────
-    const KPIS = [
-      ["Registered users", "8,412", "user-circle", "+312", true],
-      ["Participants", "3,190", "group", "+128", true],
-      ["Inputs", "1,047", "survey", "+54", true],
-      ["Comments", "2,386", "comment", "+90", true],
+    // ── Chart renderers ────────────────────────────────────────────────────
+    function cardHead(title, dropdown) {
+      const dd = dropdown ? `<select class="gv-bo-select" style="max-width:110px;height:30px;padding:2px 8px;font-size:13px"><option>${dropdown}</option></select>` : "";
+      return `<div class="db-cardhead"><h3>${title}</h3><span class="db-cardhead__tools">${dd}<span class="gv-icon" data-gv-icon="download"></span></span></div>`;
+    }
+    function lineSVG(points) {
+      const vals = points.split(",").map(Number);
+      const max = Math.max(...vals, 1), n = vals.length;
+      const pts = vals.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / max * 100).toFixed(1)}`).join(" ");
+      return `<svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+        <polyline points="${pts}" fill="none" stroke="var(--gv-blue-500)" stroke-width="2"/></svg>`;
+    }
+    function barsH(json) {
+      const items = JSON.parse(json);
+      const max = Math.max(...items.map(i => i[1]), 1);
+      return `<div class="ch-h">${items.map(([l, v]) =>
+        `<div class="ch-hrow"><span class="ch-hlabel" title="${l}">${l}</span><span class="ch-htrack"><span class="ch-hbar" style="width:${(v / max * 100).toFixed(1)}%"></span></span><span class="ch-hval">${v}</span></div>`).join("")}</div>`;
+    }
+    function barsV(json) {
+      const items = JSON.parse(json);
+      const max = Math.max(...items.map(i => i[1]), 1);
+      return `<div class="ch-v">${items.map(([l, v]) =>
+        `<div class="ch-vcol"><span class="ch-vnum">${v}</span><span class="ch-vbar" style="height:${(v / max * 100).toFixed(1)}%"></span></div>`).join("")}</div>
+        <div class="ch-vlabels">${items.map(([l]) => `<span>${l}</span>`).join("")}</div>`;
+    }
+    function pieSVG(json) {
+      const segs = JSON.parse(json);
+      let off = 25, circles = "";
+      segs.forEach(([, pct, color]) => {
+        circles += `<circle cx="21" cy="21" r="15.9" fill="none" stroke="${color}" stroke-width="9" stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="${off}"></circle>`;
+        off = (off - pct + 100) % 100;
+      });
+      const legend = segs.map(([l, , c]) => `<span><i style="background:${c}"></i>${l}</span>`).join("");
+      return `<div class="db-pie"><svg width="130" height="130" viewBox="0 0 42 42" aria-hidden="true">${circles}</svg>
+        <div class="ch-legend" style="justify-content:flex-start;flex-direction:column;align-items:flex-start">${legend}</div></div>`;
+    }
+    document.querySelectorAll(".gv-bo-chartcard[data-chart]").forEach(card => {
+      try {
+        const t = card.dataset.chart, title = card.dataset.title;
+        let body = "";
+        if (t === "line") body = `<div class="db-bignum">${card.dataset.num || ""}</div>${lineSVG(card.dataset.points)}<div class="ch-legend">${(card.dataset.series || "").split(" · ").map(s => `<span>${s}</span>`).join("")}</div>`;
+        else if (t === "barsH") body = barsH(card.dataset.bars);
+        else if (t === "barsV") body = barsV(card.dataset.bars);
+        else if (t === "pie") body = pieSVG(card.dataset.pie);
+        card.innerHTML = cardHead(title, card.dataset.dropdown) + body;
+      } catch (err) { console.error("chart render failed", card.dataset.title, err); }
+    });
+
+    // ── Participation feed rows ─────────────────────────────────────────────
+    const FEED = [
+      ["08/27/2024 9:34 AM", "Post", "Let's Reimagine Dorothea Dix Park", "This is my random idea!"],
+      ["08/26/2024 4:12 PM", "Post", "Let's Reimagine Dorothea Dix Park", "More trees along the riverside path would help everyone."],
+      ["08/25/2024 1:02 PM", "Comment", "Public Healthcare Options Survey", "Trying to gather feedback from residents and citizens to improve our public healthcare service."],
+      ["08/24/2024 6:48 PM", "Post", "Mapping: Building Protected Bike Lanes", "Traffic in the city is a real problem."],
+      ["08/23/2024 9:15 AM", "Comment", "Mapping: improve bicycle infrastructure", "Bikes get stolen in the city all the time."],
+      ["08/22/2024 5:51 PM", "Post", "Forest Gate Community Assemblies", "Build a green space to help with the air quality."],
+      ["08/21/2024 11:30 AM", "Comment", "2020-2025 budget", "Make crosswalks more visible."],
     ];
-    document.getElementById("kpis").outerHTML =
-      KPIS.map(([label, num, icon, delta, up]) => `
-        <div class="gv-bo-stat db-span-3">
-          <div class="gv-bo-stat__top"><span class="gv-bo-stat__label">${label}</span><span class="gv-bo-stat__icon gv-icon" data-gv-icon="${icon}"></span></div>
-          <div class="gv-bo-stat__num">${num}</div>
-          <div class="gv-bo-stat__delta"><b>${delta}</b> last 30 days</div>
-        </div>`).join("");
+    document.getElementById("feed").innerHTML = FEED.map(([date, type, proj, content]) => `
+      <tr>
+        <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+        <td style="white-space:nowrap;color:var(--gv-text-secondary)">${date}</td>
+        <td>${type}</td>
+        <td><a class="gv-bo-table__title" href="#">${proj}</a></td>
+        <td>${content}</td>
+        <td class="gv-bo-table__opts"><span data-gv-icon="eye"></span></td>
+      </tr>`).join("");
 
-    // ── Representation bars ────────────────────────────────────────────────
-    const REP = [["Age 18–34", 62], ["Age 35–54", 88], ["Age 55+", 71], ["Women", 84], ["District 1–3", 58]];
-    document.getElementById("repbars").innerHTML = REP.map(([label, pct]) => `
-      <div class="db-repbar__row">
-        <span style="color:var(--gv-text-secondary)">${label}</span>
-        <span class="db-repbar__track"><span class="db-repbar__fill" style="width:${pct}%"></span></span>
-        <span style="text-align:right;font-weight:600;color:var(--gv-bo-primary)">${pct}%</span>
-      </div>`).join("");
+    // ── Management feed rows ────────────────────────────────────────────────
+    const MGMT = [
+      ["5/22/2026 9:23 PM", "Go Vocal Admin", "Polis process", "Phase in project Test Polis", "Created", false],
+      ["5/22/2026 9:23 PM", "Go Vocal Admin", "Test Polis", "Project", "Modified", true],
+      ["5/22/2026 9:23 PM", "Go Vocal Admin", "Test Polis", "Project", "Created", false],
+    ];
+    document.getElementById("mgmt").innerHTML = MGMT.map(([date, user, item, sub, action, details]) => `
+      <tr>
+        <td style="white-space:nowrap;color:var(--gv-bo-link)">${date}</td>
+        <td><span class="gv-bo-table__person"><span class="gv-bo-table__avatar">GV</span><span class="gv-bo-table__name">${user}</span></span></td>
+        <td><a class="gv-bo-table__title" href="#">${item}</a><span class="gv-bo-table__sub">${sub}</span></td>
+        <td>${action}${details ? ` <span class="gv-bo-link" style="font-weight:400">View details <span class="gv-icon" data-gv-icon="chevron-down"></span></span>` : ""}</td>
+      </tr>`).join("");
 
-    // ── Tab switching ──────────────────────────────────────────────────────
+    // ── Tab switching ───────────────────────────────────────────────────────
     document.querySelectorAll(".gv-bo-tab[data-db]").forEach(tab => {
       tab.addEventListener("click", e => {
         e.preventDefault();
@@ -220,7 +357,6 @@
         document.querySelectorAll(".db-panel").forEach(p => p.classList.toggle("is-active", p.dataset.panel === key));
       });
     });
-
     if (window.GVIcons) window.GVIcons.render(document.body);
   </script>
 </body>
