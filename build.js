@@ -71,14 +71,10 @@ const IGNORED_TOPLEVEL = new Set([
 // "Pending" roadmap so the team sees what's coming. Remove a slug here once its
 // real page lands under pages/<slug>/. Slugs are kebab-case; titleCase() labels them.
 const PENDING_PAGES = [
-  "content-builder",
   "survey-builder",
-  "perspectives",
   "voting",
   "common-ground",
   "ideation",
-  "project-list",
-  "project-editor",
 ];
 
 // Source for the reference tabs (Primitives · Components · Pages).
