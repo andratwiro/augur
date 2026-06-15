@@ -1567,10 +1567,10 @@
   display: grid; place-items: center; color: var(--gv-grey-500); }
 .gv-voteresult__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gv-voteresult__thumb svg, .gv-voteresult__thumb .gv-icon { width: 40px; height: 40px; }
-/* rank badge — .dcvdmw : bg --gv-blue-500 (#044D6C), 3px radius, 4px 12px pad, white #N 21px/700 */
+/* rank badge — .dcvdmw : bg --gv-blue-500 (#044D6C), 3px radius, 4px 12px pad, white #N 14px/400/19.999px */
 .gv-voteresult__rank { position: absolute; top: 0; left: 0; background: var(--gv-blue-500);
   color: #fff; border-radius: var(--gv-radius); padding: 4px 12px;
-  font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.4; }
+  font-size: var(--gv-fs-s); font-weight: 400; line-height: 1.4; }
 .gv-voteresult__body { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1 1 auto; }
 /* option title — h5.jlDUZH : 16px/700/#474747 */
 .gv-voteresult__title { margin: 0; font-size: var(--gv-fs-base); font-weight: 700; line-height: 1.3; color: var(--gv-text-pagetitle); }
