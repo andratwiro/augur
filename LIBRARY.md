@@ -71,11 +71,14 @@ as a starting point for a prototype.
 
 | Page | Open | Source | What it is |
 |---|---|---|---|
-| ** Drafts** | `/pages/_drafts/` | `pages/_drafts/` | _(no description)_ |
 | **Bo Project Phase** | `/pages/bo-project-phase/` | `pages/bo-project-phase/` | Project configuration — GoVocal back office (reference) |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Homepage — GoVocal (reference) |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
-| **Project Page** | `/pages/project-page/` | `pages/project-page/` | Project page — GoVocal (reference) |
+| **Project Common Ground** | `/pages/project-common-ground/` | `pages/project-common-ground/` | Project page — Common Ground / Polis (reference) |
+| **Project Page** | `/pages/project-page/` | `pages/project-page/` | Project page — Ideation (reference) |
+| **Project Proposals** | `/pages/project-proposals/` | `pages/project-proposals/` | Project page — Proposals (reference) |
+| **Project Survey** | `/pages/project-survey/` | `pages/project-survey/` | Project page — Survey (reference) |
+| **Project Volunteering** | `/pages/project-volunteering/` | `pages/project-volunteering/` | Project page — Volunteering (reference) |
 
 ## Prototypes (existing — for reference & patterns) — `<opportunity>/prototypes/<name>/`
 

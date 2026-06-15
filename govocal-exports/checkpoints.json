@@ -208,6 +208,163 @@
       "map": { "div.sc-beqWaB.jDPsVV": "#panel-timeline .gv-bo-card" },
       "props": ["background-color", "padding"],
       "uses": [".gv-bo-card"]
+    },
+
+    {
+      "id": "fo-project/ideation-h1",
+      "built": "pages/project-page/index.html",
+      "against": "fo-project-ideation-list",
+      "map": { "main h1": ".gv-title.h1" },
+      "props": ["font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-title"]
+    },
+    {
+      "id": "fo-project/ideacard",
+      "built": "pages/project-page/index.html",
+      "against": "fo-project-ideation-list",
+      "map": { ".e2e-idea-card": ".gv-ideacard" },
+      "props": ["background-color", "border-radius", "box-shadow", "padding", "font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-ideacard"]
+    },
+    {
+      "id": "fo-project/ideacard-title",
+      "built": "pages/project-page/index.html",
+      "against": "fo-project-ideation-list",
+      "map": { ".e2e-idea-card-title": ".gv-ideacard__title" },
+      "props": ["font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-ideacard"]
+    },
+    {
+      "id": "fo-project/ideacard-author",
+      "built": "pages/project-page/index.html",
+      "against": "fo-project-ideation-list",
+      "map": { ".e2e-username": ".gv-ideacard__author" },
+      "props": ["font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-ideacard"]
+    },
+    {
+      "id": "fo-project/ideacard-comment-count",
+      "built": "pages/project-page/index.html",
+      "against": "fo-project-ideation-list",
+      "map": { ".e2e-ideacard-comment-count": ".gv-react__comment" },
+      "props": ["font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-react"]
+    },
+    {
+      "id": "fo-project/reaction-controls",
+      "built": "pages/project-page/index.html",
+      "against": "fo-project-ideation-feed",
+      "map": { ".e2e-reaction-controls": ".gv-react" },
+      "props": ["height"],
+      "uses": [".gv-react"]
+    },
+    {
+      "id": "fo-project/feed-count",
+      "built": "pages/project-page/index.html",
+      "against": "fo-project-ideation-feed",
+      "map": { "h2.iGgcgb": ".gv-feed__count" },
+      "props": ["font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-feed"]
+    },
+    {
+      "id": "fo-project/feed-sidebar",
+      "built": "pages/project-page/index.html",
+      "against": "fo-project-ideation-feed",
+      "map": { "#e2e-project-sidebar": "#e2e-project-sidebar" },
+      "props": ["width", "font-size", "font-weight", "line-height"],
+      "uses": [".gv-feedfilter"]
+    },
+    {
+      "id": "fo-project/viewseg",
+      "built": "pages/project-page/index.html",
+      "against": "fo-project-ideation-map",
+      "map": { ".e2e-list-map-viewbuttons": ".gv-viewseg" },
+      "props": ["background-color", "border-radius", "padding", "height"],
+      "uses": [".gv-viewseg"]
+    },
+
+    {
+      "id": "fo-project/proposals-card",
+      "built": "pages/project-proposals/index.html",
+      "against": "fo-project-proposals",
+      "map": { ".e2e-idea-card": ".gv-ideacard" },
+      "props": ["background-color", "border-radius", "box-shadow", "padding", "font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-ideacard"]
+    },
+    {
+      "id": "fo-project/proposals-title",
+      "built": "pages/project-proposals/index.html",
+      "against": "fo-project-proposals",
+      "map": { ".e2e-idea-card-title": ".gv-ideacard__title" },
+      "props": ["font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-ideacard"]
+    },
+    {
+      "id": "fo-project/proposals-threshold-count",
+      "built": "pages/project-proposals/index.html",
+      "against": "fo-project-proposals",
+      "map": { "p.cyVyPb": ".gv-threshold__count" },
+      "props": ["font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-threshold"]
+    },
+    {
+      "id": "fo-project/proposals-comment-count",
+      "built": "pages/project-proposals/index.html",
+      "against": "fo-project-proposals",
+      "map": { ".e2e-ideacard-comment-count": ".gv-react__comment" },
+      "props": ["font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-react"]
+    },
+
+    {
+      "id": "fo-project/survey-band",
+      "built": "pages/project-survey/index.html",
+      "against": "fo-project-survey",
+      "map": { "div.sc-beqWaB.fAJdnP": ".gv-surveyband__inner" },
+      "props": ["padding", "font-size", "font-weight", "line-height"],
+      "uses": [".gv-surveyband"]
+    },
+    {
+      "id": "fo-project/survey-band-status",
+      "built": "pages/project-survey/index.html",
+      "against": "fo-project-survey",
+      "map": { "span.sc-crPCXo.cjdBYi": ".gv-surveyband__status" },
+      "props": ["color", "font-size", "font-weight", "line-height"],
+      "uses": [".gv-surveyband"]
+    },
+
+    {
+      "id": "fo-project/volunteer-desc",
+      "built": "pages/project-volunteering/index.html",
+      "against": "fo-project-volunteering",
+      "map": { ".sc-jYvNne": ".gv-cause__desc" },
+      "props": ["color", "font-size", "font-weight", "line-height"],
+      "uses": [".gv-cause"]
+    },
+    {
+      "id": "fo-project/volunteer-btn",
+      "built": "pages/project-volunteering/index.html",
+      "against": "fo-project-volunteering",
+      "map": { ".button.primary": ".gv-btn.volunteer" },
+      "props": ["color", "font-size", "line-height", "border-radius", "padding"],
+      "uses": [".gv-btn"]
+    },
+
+    {
+      "id": "fo-project/common-ground-panel",
+      "built": "pages/project-common-ground/index.html",
+      "against": "fo-project-common-ground",
+      "map": { "div.sc-beqWaB.kBEbkK": "#methodCard" },
+      "props": ["background-color", "border-radius"],
+      "uses": [".gv-phasepanel"]
+    },
+    {
+      "id": "fo-project/common-ground-title",
+      "built": "pages/project-common-ground/index.html",
+      "against": "fo-project-common-ground",
+      "map": { "h3.e2e-phase-title": ".e2e-phase-title" },
+      "props": ["font-size", "font-weight", "line-height", "color"],
+      "uses": [".gv-title"]
     }
   ]
 }

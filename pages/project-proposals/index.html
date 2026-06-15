@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Project page — Proposals (reference)</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <!--
+    Reference rebuild — PROPOSALS method panel body on a project page. Source capture:
+    fo-project-proposals (City of Raleigh, tenant primary green rgb(8,131,58)). The
+    proposal cards (.gv-ideacard), signature threshold (.gv-threshold), status pill
+    (.gv-statuspill) and view toggle (.gv-viewseg) are canonical. Page-local pp-*
+    classes carry only the sidebar/layout. Picker OFF (Pages rule).
+  -->
+  <style>
+    body { margin: 0; background: var(--gv-background); }
+    /* layout-only (no colour/elevation/type authored) */
+    .pp-frame { max-width: 1150px; margin: 0 auto; padding: 28px 24px 48px; }
+    .pp-head { display: flex; align-items: center; margin: 22px 0 14px; }
+    .pp-head__count { margin-left: 0; }
+    .pp-layout { display: grid; grid-template-columns: 1fr 300px; gap: 30px; align-items: start; }
+    .pp-sidebar > * + * { margin-top: 18px; }
+    .pp-search { position: relative; }
+    .pp-search input { width: 100%; box-sizing: border-box; padding-right: 38px; }
+    .pp-search .gv-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--gv-cool-grey-600); }
+    .pp-box__list { list-style: none; margin: 0; padding: 0; }
+    .pp-box__list li a { display: flex; align-items: center; gap: 10px; padding: 9px 4px; color: var(--gv-grey-800); text-decoration: none; }
+    .pp-box__list li a:hover { color: var(--gv-tenant-primary); }
+    .pp-box__list li a .count { margin-left: auto; color: var(--gv-cool-grey-600); }
+    .pp-box__label { margin: 0 0 8px; font-weight: 700; color: var(--gv-grey-800); }
+    @media (max-width: 860px) { .pp-layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="gv-root gv-shell" data-gv-theme-picker="off">
+
+  <!-- ════════ Header — logged-in ════════ -->
+  <header class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Go Vocal — Home"></a>
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#">Home</a></li>
+          <li><a class="gv-nav__link" href="#">All projects</a></li>
+          <li><a class="gv-nav__link" href="#" aria-current="page">Proposals</a></li>
+          <li><a class="gv-nav__link" href="#">Events</a></li>
+        </ul>
+      </nav>
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
+        <button class="gv-iconbtn" aria-label="Notifications"><span data-gv-icon="notification"></span></button>
+        <button class="gv-account gv-desktop-only" aria-label="Account menu"><span>Rob</span><span class="gv-avatar">R</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="pp-frame">
+
+    <!-- Title -->
+    <h1 class="gv-title h1" style="margin:0 0 20px;">Proposals</h1>
+
+    <!-- Action band (open for participation) -->
+    <div class="gv-surveyband" style="border-radius:var(--gv-radius);overflow:hidden;">
+      <div class="gv-surveyband__inner" style="max-width:none;">
+        <span class="gv-surveyband__status"><span class="gv-surveyband__dot" aria-hidden="true"></span> Open for participation</span>
+        <a class="gv-btn on-color size-s gv-surveyband__cta" href="#">Add a proposal <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+      </div>
+    </div>
+
+    <!-- List header (count + List/Map toggle) -->
+    <div class="pp-head">
+      <span class="gv-feed__count pp-head__count">8 proposals</span>
+      <div class="gv-viewseg" role="tablist" aria-label="View" style="margin-left:auto;">
+        <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span> List</button>
+        <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span> Map</button>
+      </div>
+    </div>
+
+    <div class="pp-layout">
+      <!-- Proposals list -->
+      <div class="gv-idealist" id="e2e-ideas-list">
+
+        <article class="gv-ideacard e2e-idea-card">
+          <div class="gv-ideacard__thumb"><img src="https://images.unsplash.com/photo-1597762470488-3877b1f538c6?w=320&h=320&fit=crop" alt="" /></div>
+          <div class="gv-ideacard__body">
+            <h3 class="gv-ideacard__title e2e-idea-card-title"><a href="#">Make crosswalks more visible</a></h3>
+            <div class="gv-ideacard__meta"><span class="gv-ideacard__author">Steven Sanford</span><span class="gv-ideacard__sep" aria-hidden="true">&bull;</span><span class="gv-ideacard__time">3 years ago</span></div>
+            <p class="gv-ideacard__excerpt">Some crosswalks are hardly visible and car drivers often don't drive carefully enough around them, creating dangerous situations.</p>
+            <div class="gv-ideacard__foot">
+              <div class="gv-threshold">
+                <span class="gv-threshold__icon" data-gv-icon="vote-up" aria-hidden="true"></span>
+                <span class="gv-threshold__count"><b>132</b> / 300</span>
+                <span class="gv-threshold__bar" role="progressbar" aria-valuenow="132" aria-valuemin="0" aria-valuemax="300" aria-label="132 votes out of 300"><span class="gv-threshold__fill" style="width:44%"></span></span>
+              </div>
+              <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments" aria-hidden="true"></span> 4</span>
+              <span class="gv-statuspill expired" style="margin-left:auto;">Expired</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="gv-ideacard e2e-idea-card">
+          <div class="gv-ideacard__thumb"><img src="https://images.unsplash.com/photo-1486718448742-163732cd1544?w=320&h=320&fit=crop" alt="" /></div>
+          <div class="gv-ideacard__body">
+            <h3 class="gv-ideacard__title e2e-idea-card-title"><a href="#">Preserve the historical building at the Schuman Square</a></h3>
+            <div class="gv-ideacard__meta"><span class="gv-ideacard__author">Luís Grilho</span><span class="gv-ideacard__sep" aria-hidden="true">&bull;</span><span class="gv-ideacard__time">3 years ago</span></div>
+            <p class="gv-ideacard__excerpt">The historical building is at the threshold of being demolished. We propose preserving it and turning it into a cultural centre.</p>
+            <div class="gv-ideacard__foot">
+              <div class="gv-threshold">
+                <span class="gv-threshold__icon" data-gv-icon="vote-up" aria-hidden="true"></span>
+                <span class="gv-threshold__count"><b>301</b> / 300</span>
+                <span class="gv-threshold__bar" role="progressbar" aria-valuenow="300" aria-valuemin="0" aria-valuemax="300" aria-label="301 votes out of 300"><span class="gv-threshold__fill" style="width:100%"></span></span>
+              </div>
+              <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments" aria-hidden="true"></span> 6</span>
+              <span class="gv-statuspill open" style="margin-left:auto;">Threshold reached</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="gv-ideacard e2e-idea-card">
+          <div class="gv-ideacard__thumb"><img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=320&h=320&fit=crop" alt="" /></div>
+          <div class="gv-ideacard__body">
+            <h3 class="gv-ideacard__title e2e-idea-card-title"><a href="#">Save the trees on Washington Boulevard</a></h3>
+            <div class="gv-ideacard__meta"><span class="gv-ideacard__author">Gerry Camillery</span><span class="gv-ideacard__sep" aria-hidden="true">&bull;</span><span class="gv-ideacard__time">3 years ago</span></div>
+            <p class="gv-ideacard__excerpt">The trees are set to be cut down to widen the road. We propose an alternative plan that keeps the green canopy intact.</p>
+            <div class="gv-ideacard__foot">
+              <div class="gv-threshold">
+                <span class="gv-threshold__icon" data-gv-icon="vote-up" aria-hidden="true"></span>
+                <span class="gv-threshold__count"><b>88</b> / 300</span>
+                <span class="gv-threshold__bar" role="progressbar" aria-valuenow="88" aria-valuemin="0" aria-valuemax="300" aria-label="88 votes out of 300"><span class="gv-threshold__fill" style="width:29%"></span></span>
+              </div>
+              <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments" aria-hidden="true"></span> 2</span>
+              <span class="gv-statuspill open" style="margin-left:auto;">Open</span>
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+      <!-- Sidebar -->
+      <aside class="pp-sidebar" id="e2e-project-sidebar">
+        <div class="pp-search">
+          <input class="gv-input" type="search" placeholder="Search posts" aria-label="Search posts" />
+          <span class="gv-icon" data-gv-icon="search" aria-hidden="true"></span>
+        </div>
+        <div>
+          <p class="pp-box__label">Sort by</p>
+          <ul class="pp-box__list">
+            <li><a href="#"><span data-gv-icon="vote-up" aria-hidden="true"></span> Most liked</a></li>
+            <li><a href="#"><span data-gv-icon="comments" aria-hidden="true"></span> Most discussed</a></li>
+            <li><a href="#"><span data-gv-icon="clock" aria-hidden="true"></span> New</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="pp-box__label">Topics</p>
+          <ul class="pp-box__list">
+            <li><a href="#">Public spaces and buildings <span class="count">4</span></a></li>
+            <li><a href="#">Health and welfare <span class="count">3</span></a></li>
+            <li><a href="#">Sustainable development <span class="count">2</span></a></li>
+            <li><a href="#">Mobility <span class="count">2</span></a></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+  </main>
+</body>
+</html>

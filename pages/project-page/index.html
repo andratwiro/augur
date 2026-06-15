@@ -4,224 +4,208 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Project page — GoVocal (reference)</title>
+  <title>Project page — Ideation (reference)</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
   <!--
-    REFERENCE REBUILD of a GoVocal Project page, composed from the govocal-ui system.
-    Source: internal.govocal.com ("2025 Betting Table(s)"), example source2. A project
-    page = stable shell (header · action bar · banner · title/description/participants ·
-    accordion · PHASES TIMELINE · footer) + a swappable phase-content slot. Here the slot
-    renders an information/announcement phase; ideation/voting/report phases get their own
-    pages and slot in the same way.
-    Theming: colours + logo come from govocal-themes.js (?theme=); picker is OFF (Pages
-    rule). NOT a prototype → no cookie banner. Illustration is a CSS/SVG placeholder.
+    FLAGSHIP reference rebuild of a GoVocal IDEATION project page, composed from the
+    govocal-ui system. Source: uxusertesting.govocal.com (City of Raleigh, "Let's
+    Reimagine Dorothea Dix Park"). Captured → fo-project-ideation-list / -feed / -map.
+    A project page = shell (header · manager controls · banner photo · title block
+    with CTA stack + participants · phase ribbon) + a method PANEL BODY. Here the body
+    is the ideation feed (idea cards + filter sidebar) with a List/Map view toggle.
+    Pure assembly: every component class is canonical .gv-* (govocal-ui.css). The only
+    page-local classes carry layout (the two-col title block / feed sidebar wiring).
+    Picker OFF (Pages rule).
   -->
   <style>
-    /* Pure assembly: layout only. All component styling lives in canonical
-       govocal-ui.css (projbar, banner, projhead, accordion, phasebody…). */
-    body { margin: 0; background: #fff; font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+    body { margin: 0; background: #fff; }
     main { padding-bottom: 8px; }
+    /* layout-only (no colour/elevation/type authored here) */
+    .pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
+    .pp-banner { aspect-ratio: 1150 / 300; min-height: 200px; border-radius: 0; overflow: hidden; margin-top: 8px; }
+    .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pp-title { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 10px 40px; align-items: start; padding: 30px 0 6px; }
+    .pp-title h1 { grid-column: 1; }
+    .pp-cta { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 10px; }
+    .pp-cta .gv-btn { justify-content: center; }
+    .pp-desc { grid-column: 1; }
+    @media (max-width: 760px) { .pp-title { grid-template-columns: 1fr; } .pp-title h1, .pp-cta, .pp-desc { grid-column: 1; } .pp-cta { grid-row: auto; } }
   </style>
 </head>
 <body class="gv-root gv-shell" data-gv-theme-picker="off">
 
-  <!-- ════════ Header — logged-in state of the header-nav component ════════ -->
+  <!-- ════════ Header — logged-in ════════ -->
   <header class="gv-header sticky">
     <div class="gv-header__inner">
-      <!-- logo slot: govocal-themes.js fills it with the active theme's mark (swaps with ?theme=) -->
-      <a class="gv-brand" href="#" data-gv-logo aria-label="Go Vocal — Home" aria-current="page"></a>
-
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Go Vocal — Home"></a>
       <nav class="gv-nav" aria-label="Primary">
         <ul class="gv-nav__list">
-          <li><a class="gv-nav__link" href="#" aria-current="page">Home</a></li>
+          <li><a class="gv-nav__link" href="#">Home</a></li>
           <li>
             <details class="gv-nav__dd">
               <summary class="gv-nav__link">All projects
                 <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </summary>
               <div class="gv-nav__menu">
-                <a href="#">All projects</a>
-                <a href="#">Open projects</a>
-                <a href="#">Archived projects</a>
+                <a href="#">All projects</a><a href="#">Open projects</a><a href="#">Archived projects</a>
               </div>
             </details>
           </li>
-          <li><a class="gv-nav__link" href="#">All input</a></li>
+          <li><a class="gv-nav__link" href="#">Proposals</a></li>
+          <li><a class="gv-nav__link" href="#">Events</a></li>
         </ul>
       </nav>
-
       <div class="gv-header__actions">
         <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
-        <button class="gv-iconbtn" aria-label="Notifications, 2 unviewed">
-          <span data-gv-icon="notification"></span>
-          <span class="gv-iconbtn__badge" aria-hidden="true">2</span>
+        <button class="gv-iconbtn" aria-label="Notifications, 9 unviewed">
+          <span data-gv-icon="notification"></span><span class="gv-iconbtn__badge" aria-hidden="true">9</span>
         </button>
-        <button class="gv-account gv-desktop-only" aria-label="Account menu — Rob" aria-haspopup="menu">
-          <span>Rob</span>
-          <span class="gv-avatar">R</span>
+        <button class="gv-account gv-desktop-only" aria-label="Account menu" aria-haspopup="menu">
+          <span>Rob</span><span class="gv-avatar">R</span>
         </button>
         <details class="gv-nav-m">
           <summary aria-label="Show mobile navigation menu">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
           </summary>
           <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
-            <a href="#" aria-current="page">Home</a>
-            <a href="#">All projects</a>
-            <a href="#">All input</a>
-            <a href="#">Search</a>
-            <a href="#">Rob — account</a>
+            <a href="#">Home</a><a href="#">All projects</a><a href="#">Proposals</a><a href="#">Events</a>
           </nav>
         </details>
       </div>
     </div>
   </header>
 
-  <!-- ════════ Project action bar (manager view) ════════ -->
-  <div class="gv-projbar">
-    <div class="gv-projbar__inner">
-      <button class="gv-back"><span class="gv-back__ic"><span data-gv-icon="arrow-left" aria-hidden="true"></span></span> Back to folder</button>
-      <span class="gv-projbar__spacer"></span>
-      <a class="gv-btn gv-edit size-s" href="#"><span data-gv-icon="edit" aria-hidden="true"></span> Edit project</a>
-      <button class="gv-btn primary size-s" id="followBtn" aria-pressed="true">
-        <span data-gv-icon="notification" aria-hidden="true"></span> <span id="followLabel">Unfollow (31)</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- ════════ Banner ════════ -->
-  <section class="gv-banner" aria-label="Project banner">
-    <div class="gv-banner__art">
-      <svg viewBox="0 0 1150 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Illustration of people celebrating around a lightbulb">
-        <!-- faint notebook grid -->
-        <defs>
-          <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse">
-            <path d="M34 0H0V34" fill="none" stroke="#fff" stroke-opacity="0.16" stroke-width="1"/>
-          </pattern>
-        </defs>
-        <rect width="1150" height="300" fill="url(#grid)"/>
-        <!-- sunburst -->
-        <g transform="translate(575 120)" stroke="#ffe14d" stroke-width="7" stroke-linecap="round">
-          <g fill="none">
-            <line x1="0" y1="-58" x2="0" y2="-86"/><line x1="41" y1="-41" x2="61" y2="-61"/>
-            <line x1="58" y1="0" x2="86" y2="0"/><line x1="41" y1="41" x2="61" y2="61"/>
-            <line x1="-41" y1="-41" x2="-61" y2="-61"/><line x1="-58" y1="0" x2="-86" y2="0"/>
-          </g>
-          <circle r="40" fill="#ffe14d" stroke="none"/>
-        </g>
-        <!-- celebrating figures (loose white line art) -->
-        <g fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-          <!-- figure 1 -->
-          <g transform="translate(360 150)"><circle cx="0" cy="-44" r="15" fill="#fff" stroke="none"/><path d="M0 -28V18"/><path d="M0 -14L-26 -36M0 -14L26 -36"/><path d="M0 18L-16 56M0 18L16 56"/></g>
-          <!-- figure 2 -->
-          <g transform="translate(470 168)"><circle cx="0" cy="-44" r="15" fill="#fff" stroke="none"/><path d="M0 -28V18"/><path d="M0 -12L-28 -28M0 -12L28 -28"/><path d="M0 18L-18 54M0 18L18 54"/></g>
-          <!-- figure 3 -->
-          <g transform="translate(690 168)"><circle cx="0" cy="-44" r="15" fill="#fff" stroke="none"/><path d="M0 -28V18"/><path d="M0 -12L-28 -30M0 -12L28 -30"/><path d="M0 18L-18 54M0 18L18 54"/></g>
-          <!-- figure 4 -->
-          <g transform="translate(795 150)"><circle cx="0" cy="-44" r="15" fill="#fff" stroke="none"/><path d="M0 -28V18"/><path d="M0 -14L-26 -36M0 -14L26 -36"/><path d="M0 18L-16 56M0 18L16 56"/></g>
-        </g>
-        <!-- lightbulb -->
-        <g transform="translate(940 120)">
-          <circle cx="0" cy="0" r="34" fill="#ffe14d"/>
-          <path d="M-12 30h24M-9 42h18" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
-          <path d="M0 -16v16M0 0l-9 9M0 0l9 9" stroke="#1a8a93" stroke-width="5" stroke-linecap="round" fill="none"/>
-        </g>
-      </svg>
-      <span class="gv-banner__sticker">LET'S CHAT!</span>
-    </div>
-  </section>
-
   <main>
    <div class="gv-wrap">
 
-    <!-- ════════ Title + description + participants ════════ -->
-    <div class="gv-projhead">
-      <div class="gv-projhead__title">
-        <h1>🧠 2025 Betting Table(s) 🧠</h1>
-      </div>
-      <div class="gv-projdesc">
-        <p>💭 It's that time of our planning cycle again! We're about to wrap four development tandems and are working on short-listing the priorities for the next cycle.</p>
-        <p>The objective is simple: we want to <strong>hear from you about what you perceive as the number-one problem blocking our impact or revenue opportunities.</strong> Alternatively, you might see this as an opportunity waiting to be seized. Whether it's an obstacle or a potential goldmine, your perspective is crucial.</p>
-      </div>
-      <div class="gv-participants">
-        <span class="gv-avatars on-light" aria-hidden="true">
-          <span class="av" style="background:linear-gradient(135deg,#b6a290,#cdbfae)"></span>
-          <span class="av" style="background:linear-gradient(135deg,#8fa3b8,#b3c0cd)"></span>
-          <span class="av" style="background:linear-gradient(135deg,#a8927f,#c4b3a3)"></span>
-        </span>
-        <span class="gv-pcount">34 participants</span>
-        <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="You're viewing real-time data; counts update continuously for administrators."></span>
-      </div>
+    <!-- ════════ Manager controls (right-aligned, above banner) ════════ -->
+    <div class="pp-managers">
+      <a class="gv-btn secondary-outlined size-s" href="#"><span data-gv-icon="edit" aria-hidden="true"></span> Edit project</a>
+      <button class="gv-btn primary size-s" id="followBtn" aria-pressed="true">
+        <span data-gv-icon="notification" aria-hidden="true"></span> <span id="followLabel">Unfollow (9)</span>
+      </button>
     </div>
 
-    <!-- ════════ Accordion ════════ -->
-    <div class="gv-accordion">
-      <details class="gv-acc__item">
-        <summary class="gv-acc__head">
-          <span class="gv-acc__q">🗿 What should my submission include?</span>
-          <span class="gv-acc__chev gv-icon" data-gv-icon="chevron-right" aria-hidden="true"></span>
-        </summary>
-        <div class="gv-acc__body">
-          <p>Name the single problem or opportunity you think we should focus on next cycle, and why it matters. One clear idea per submission works best.</p>
-          <p>Concrete examples — a customer quote, a lost deal, a recurring support theme — make your case far stronger than an abstract statement.</p>
-        </div>
-      </details>
-      <details class="gv-acc__item">
-        <summary class="gv-acc__head">
-          <span class="gv-acc__q">🐈 What context do I need to be aware of?</span>
-          <span class="gv-acc__chev gv-icon" data-gv-icon="chevron-right" aria-hidden="true"></span>
-        </summary>
-        <div class="gv-acc__body">
-          <p>We're optimising for impact and revenue this cycle. Ideas that unlock a new use case, remove a blocker for a big market, or measurably improve retention are especially welcome.</p>
-        </div>
-      </details>
-      <details class="gv-acc__item">
-        <summary class="gv-acc__head">
-          <span class="gv-acc__q">🦔 What happens after I submit my idea?</span>
-          <span class="gv-acc__chev gv-icon" data-gv-icon="chevron-right" aria-hidden="true"></span>
-        </summary>
-        <div class="gv-acc__body">
-          <p>Submissions are consolidated, prioritised together with the community, and reviewed by the Product Circle. The shortlist is then announced as the development plan for the cycle.</p>
-        </div>
-      </details>
-    </div>
-   </div><!-- /.gv-wrap (white top) -->
+    <!-- ════════ Banner (real full-bleed photo within page container) ════════ -->
+    <section class="pp-banner gv-pcard__thumb--forest" aria-label="Project banner">
+      <img src="https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=1400&h=400&fit=crop" alt="" />
+    </section>
 
-   <!-- ════════ Method band (grey) — phases + the active phase's method content ════════ -->
+    <!-- ════════ Title block — h1 + description (left) · CTA stack + participants (right) ════════ -->
+    <div class="pp-title">
+      <h1 class="gv-title h1" style="margin:20px 0 16px;line-height:39px;">Let's Reimagine Dorothea Dix Park</h1>
+      <div class="pp-cta">
+        <a class="gv-btn primary" href="#ideas">Submit your idea</a>
+        <a class="gv-btn primary-outlined" href="#ideas">See the ideas</a>
+        <div class="gv-participants" style="margin-top:4px;">
+          <span class="gv-avatars on-light" aria-hidden="true">
+            <span class="av" style="background:linear-gradient(135deg,#b6a290,#cdbfae)"></span>
+            <span class="av" style="background:linear-gradient(135deg,#8fa3b8,#b3c0cd)"></span>
+            <span class="av" style="background:linear-gradient(135deg,#a8927f,#c4b3a3)"></span>
+          </span>
+          <span class="gv-pcount">170 participants</span>
+          <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time participant count."></span>
+        </div>
+      </div>
+      <div class="gv-projdesc pp-desc">
+        <p>As part of the 2024 Master Planning process, Raleigh is <strong>redesigning many of the city's most iconic and well-known public spaces, including Dorothea Dix Park.</strong> Tell us what you and your community would like to see in the Park.</p>
+      </div>
+    </div>
+   </div><!-- /.gv-wrap -->
+
+   <!-- ════════ Method band (grey) — phase ribbon + ideation feed body ════════ -->
    <div class="gv-methodband">
     <div class="gv-wrap">
-    <!-- ════════ Phases timeline ════════ -->
     <section class="gv-phases" aria-labelledby="phasesTitle">
       <div class="gv-phases__bar">
         <h2 id="phasesTitle">Phases</h2>
         <div class="gv-phases__nav">
-          <button class="gv-pnav" id="phasePrev" aria-label="Previous phase"><span data-gv-icon="chevron-left"></span></button>
-          <button class="gv-pnav" id="phaseCurrent" aria-label="Go to current phase"><span class="gv-dotmark"></span></button>
-          <button class="gv-pnav" id="phaseNext" aria-label="Next phase"><span data-gv-icon="chevron-right"></span></button>
+          <button class="gv-pnav" aria-label="Previous phase"><span data-gv-icon="chevron-left"></span></button>
+          <button class="gv-pnav" aria-label="Go to current phase"><span class="gv-dotmark"></span></button>
+          <button class="gv-pnav" aria-label="Next phase"><span data-gv-icon="chevron-right"></span></button>
         </div>
       </div>
-      <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"><!-- injected --></div>
+      <div class="gv-stepper" role="tablist" aria-label="Project phases">
+        <button class="gv-phase" role="tab" aria-selected="false"><span class="gv-pstep">1</span><span class="gv-phase__label">Submit your ideas</span></button>
+        <button class="gv-phase" role="tab" aria-selected="false"><span class="gv-pstep">2</span><span class="gv-phase__label">Consolidation</span></button>
+        <button class="gv-phase" role="tab" aria-selected="false"><span class="gv-pstep">3</span><span class="gv-phase__label">Prioritization</span></button>
+        <button class="gv-phase" role="tab" aria-selected="false"><span class="gv-pstep">4</span><span class="gv-phase__label">Review</span></button>
+        <button class="gv-phase current" role="tab" aria-selected="true"><span class="gv-pstep"><span class="gv-pstep__dot"></span>5</span><span class="gv-phase__label">New ideas!</span></button>
+      </div>
 
-      <div class="gv-phasepanel" role="tabpanel" aria-labelledby="phasePanelName">
+      <div class="gv-phasepanel" role="tabpanel" id="ideas">
         <div class="gv-phasepanel__head">
-          <span class="gv-phasepanel__num" id="phaseNum" aria-hidden="true">10</span>
+          <span class="gv-phasepanel__num" aria-hidden="true">5</span>
           <div>
-            <h3 class="gv-phasepanel__name" id="phasePanelName">Development plan is announced</h3>
-            <p class="gv-phasepanel__date" id="phaseDate">October 6, 2025 12:00 AM – No end date</p>
+            <h3 class="gv-phasepanel__name">New ideas!</h3>
+            <p class="gv-phasepanel__date">August 14, 2024 – No end date</p>
           </div>
         </div>
-        <div class="gv-phasebody clamped" id="phaseBody"><!-- injected --></div>
-        <button class="gv-readmore" id="readMore" aria-expanded="false">Read more <span data-gv-icon="arrow-right" aria-hidden="true"></span></button>
+
+        <!-- ── Ideation FEED panel body (idea cards + filter sidebar) ── -->
+        <div class="gv-phasebody gv-phasebody--full">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
+            <h2 class="gv-feed__count">4 ideas</h2>
+            <div class="gv-viewseg" role="tablist" aria-label="View ideas as">
+              <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
+              <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
+            </div>
+          </div>
+          <div class="gv-feed">
+            <div class="gv-feed__col" id="feedCol"><!-- cards injected --></div>
+
+            <aside class="gv-feedfilter" id="e2e-project-sidebar" aria-label="Filter ideas">
+              <div>
+                <p class="gv-feedfilter__label">Search posts</p>
+                <input class="gv-input" type="search" placeholder="Search" aria-label="Search posts" />
+              </div>
+              <div>
+                <p class="gv-feedfilter__label">SORT BY</p>
+                <div class="gv-feedfilter__group">
+                  <button class="gv-feedfilter__btn is-active" type="button">Most liked</button>
+                  <button class="gv-feedfilter__btn" type="button">Most discussed</button>
+                  <button class="gv-feedfilter__btn" type="button">Trending</button>
+                  <button class="gv-feedfilter__btn" type="button">Newest</button>
+                </div>
+              </div>
+              <div>
+                <p class="gv-feedfilter__label">STATUS</p>
+                <div class="gv-feedfilter__group">
+                  <button class="gv-feedfilter__btn is-active" type="button">All <span class="gv-feedfilter__count">44</span></button>
+                  <button class="gv-feedfilter__btn" type="button">Under consideration <span class="gv-feedfilter__count">2</span></button>
+                  <button class="gv-feedfilter__btn" type="button">Accepted <span class="gv-feedfilter__count">1</span></button>
+                </div>
+              </div>
+              <div>
+                <p class="gv-feedfilter__label">TOPICS</p>
+                <div class="gv-feedfilter__group">
+                  <button class="gv-feedfilter__btn" type="button">Recreation <span class="gv-feedfilter__count">8</span></button>
+                  <button class="gv-feedfilter__btn" type="button">Nature &amp; environment <span class="gv-feedfilter__count">12</span></button>
+                  <button class="gv-feedfilter__btn" type="button">Mobility <span class="gv-feedfilter__count">6</span></button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
       </div>
     </section>
     </div>
    </div><!-- /.gv-methodband -->
   </main>
 
+  <!-- ════════ Sticky participation bar ════════ -->
+  <div class="gv-partbar">
+    <div class="gv-partbar__inner">
+      <span class="gv-partbar__status">Open for participation</span>
+      <a class="gv-btn on-color" href="#ideas">Submit your idea <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+    </div>
+  </div>
+
   <!-- ════════ Footer ════════ -->
-  <footer class="gv-footer" style="margin-top:48px">
+  <footer class="gv-footer">
     <div class="gv-footer__inner">
       <nav class="gv-footer__links" aria-label="Legal">
         <ul>
@@ -230,12 +214,11 @@
           <li><a href="#">Cookie policy</a></li>
           <li><a href="#">Accessibility statement</a></li>
           <li><button type="button">Cookie settings</button></li>
-          <li><a href="#">Site Map</a></li>
         </ul>
       </nav>
       <div class="gv-footer__powered">
         <span>Powered by</span>
-        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal (formerly CitizenLab)">
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal">
           <img class="gv-powered-logo" src="../../skills/govocal-ui/govocal-logo.svg" alt="Go Vocal" />
         </a>
       </div>
@@ -243,88 +226,63 @@
   </footer>
 
   <script>
-    // Phases — the source project's real 10-phase cycle; current = phase 10.
-    const ANNOUNCE = `
-      <p>👋 Hola hola! It's been some busy weeks! BUT: we have bets! The development priorities for the next 8 weeks are the following 👇</p>
-      <p><strong>1. Tandem 1: Optional, lazy registration</strong> — making it easier for people to participate without mandatory account creation.</p>
-      <p><strong>2. Tandem 2: Project / method dashboards</strong> — unlocking method-level dashboarding and insights to better demonstrate consultation impact and drive stickiness of our product amongst joiners and admins.</p>
-      <p><strong>3. Tandem 3:</strong></p>
-      <ul>
-        <li>Part 1: a 2-week sprint on issue reporting / <a href="#">Mängelmelder</a> to unlock an MVP for this new use case and validate potential in DACH and other markets in Q4.</li>
-        <li>Part 2: Deliberation for America 1 — building out deliberation capabilities specifically to support the A1 process.</li>
-      </ul>
-      <p><strong>4. Quality Quest</strong> — continuing our focus on product quality and stability, with allocated time for small improvements around platform <a href="#">accessibility</a>.</p>
-      <p>Dev kick-off is <strong>Wednesday</strong> 🚀</p>
-      <p>cc <a href="#">@dev-people</a> <a href="#">@product-people</a> <a href="#">@govsuccess-people</a> <a href="#">@sales-people</a> <a href="#">@marketing-people</a></p>
-      <p>Ps. Product roadmap slide and more detail on upcoming work will come next week. Thanks everyone for engaging 💙</p>`;
-    const CYCLE = [
-      ["The one problem we should work on", "<p>We opened the floor: what is the single biggest problem or opportunity we should tackle this cycle? Contributors posted one idea each, with the context that makes the case.</p>"],
-      ["Idea consolidation", "<p>Similar submissions were merged and sharpened so the community could compare a clean shortlist instead of dozens of near-duplicates.</p>"],
-      ["Community prioritization", "<p>Everyone weighed in on the consolidated list to surface what matters most — the signal the Product Circle takes into its review.</p>"],
-      ["Product Circle meets", "<p>The Product Circle reviewed the prioritised problems against impact, revenue and feasibility, and shaped the bets for the cycle.</p>"],
-      ["Development plan is announced", "<p>The shortlist becomes the development plan for the cycle, announced to everyone who took part.</p>"],
-    ];
-    const DATES = ["May 5 – May 19, 2025","May 19 – Jun 2, 2025","Jun 2 – Jun 23, 2025","Jun 23 – Jul 7, 2025","Jul 7 – Jul 21, 2025","Jul 21 – Aug 11, 2025","Aug 11 – Sep 1, 2025","Sep 1 – Sep 22, 2025","Sep 22 – Oct 6, 2025","October 6, 2025 12:00 AM – No end date"];
-    const PHASES = Array.from({ length: 10 }, (_, i) => {
-      const c = CYCLE[i % 5], current = i === 9;
-      return { n: i + 1, label: c[0], date: DATES[i], current, body: current ? ANNOUNCE : c[1] };
-    });
-
-    const stepper = document.getElementById("stepper");
-    const currentIdx = PHASES.findIndex(p => p.current);
-    let active = currentIdx;
-
-    PHASES.forEach((p, i) => {
-      const b = document.createElement("button");
-      b.className = "gv-phase" + (p.current ? " current" : "");
-      b.setAttribute("role", "tab");
-      b.setAttribute("aria-selected", i === active ? "true" : "false");
-      b.setAttribute("aria-label", `Phase ${p.n}: ${p.label}` + (p.current ? " (current phase)" : ""));
-      const num = p.current ? `<span class="gv-pstep__dot"></span>${p.n}` : p.n;
-      b.innerHTML = `<span class="gv-pstep">${num}</span><span class="gv-phase__label">${p.label}</span>`;
-      b.addEventListener("click", () => select(i));
-      stepper.appendChild(b);
-    });
-
-    function render() {
-      const p = PHASES[active];
-      document.getElementById("phaseNum").textContent = p.n;
-      document.getElementById("phasePanelName").textContent = p.label;
-      document.getElementById("phaseDate").textContent = p.date;
-      document.querySelector(".gv-phasepanel__head").classList.toggle("muted", !p.current);
-      const body = document.getElementById("phaseBody");
-      body.innerHTML = p.body;
-      body.classList.add("clamped");
-      const rm = document.getElementById("readMore");
-      rm.setAttribute("aria-expanded", "false");
-      rm.firstChild.textContent = "Read more ";
-      requestAnimationFrame(() => { rm.style.display = body.scrollHeight > body.clientHeight + 4 ? "" : "none"; });
-      document.querySelectorAll(".gv-phase").forEach((el, i) => el.setAttribute("aria-selected", i === active ? "true" : "false"));
-      if (window.GVIcons) window.GVIcons.render();
-    }
-    function select(i) {
-      active = Math.max(0, Math.min(PHASES.length - 1, i));
-      render();
-      stepper.children[active].scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
-    }
-    document.getElementById("phasePrev").addEventListener("click", () => select(active - 1));
-    document.getElementById("phaseNext").addEventListener("click", () => select(active + 1));
-    document.getElementById("phaseCurrent").addEventListener("click", () => select(currentIdx));
-    document.getElementById("readMore").addEventListener("click", (e) => {
-      const body = document.getElementById("phaseBody");
-      const open = body.classList.toggle("clamped") === false;
-      e.currentTarget.setAttribute("aria-expanded", String(open));
-      e.currentTarget.firstChild.textContent = open ? "Show less " : "Read more ";
-    });
-
-    let following = true, count = 31;
+    let following = true, count = 9;
     document.getElementById("followBtn").addEventListener("click", (e) => {
       following = !following; count += following ? 1 : -1;
       document.getElementById("followLabel").textContent = following ? `Unfollow (${count})` : `Follow (${count})`;
       e.currentTarget.setAttribute("aria-pressed", String(following));
     });
 
-    render();
+    const IDEAS = [
+      { title: 'Basketball Court', author: 'Nilsa Heidenreich', time: '3 years ago',
+        excerpt: 'The park desperately needs basketball courts. There are no courts anywhere in the community, and my kids would use them all the time.',
+        likes: 124, dislikes: 4, comments: 1, img: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=320&h=320&fit=crop' },
+      { title: 'Calisthenics fitness park', author: 'Kaitlin Bednar', time: '3 years ago',
+        excerpt: 'Calisthenics equipment would let people of all fitness levels work out for free in the open air — pull-up bars, dip stations and parallel bars.',
+        likes: 88, dislikes: 2, comments: 3, img: 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=320&h=320&fit=crop' },
+      { title: 'This is my random idea!', author: 'Rob And', time: '2 years ago',
+        excerpt: 'This is my random idea to test the ideation flow end-to-end before launch.',
+        likes: 5, dislikes: 0, comments: 0, img: '' },
+      { title: 'Cycle route network', author: 'Eddy Walker', time: '2 years ago',
+        excerpt: 'Connect the park to the existing bike lanes with a safe, separated cycle route so families can ride here without using busy roads.',
+        likes: 47, dislikes: 3, comments: 3, img: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=320&h=320&fit=crop' }
+    ];
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    function cardHTML(d) {
+      const thumb = d.img
+        ? `<div class="gv-ideacard__thumb"><img src="${d.img}" alt="" loading="lazy" /></div>`
+        : `<div class="gv-ideacard__thumb"><span data-gv-icon="vote-up" aria-hidden="true"></span></div>`;
+      const initials = d.author.split(' ').map((w) => w[0]).slice(0, 2).join('');
+      return `
+        <article class="gv-ideacard e2e-idea-card">
+          ${thumb}
+          <div class="gv-ideacard__body">
+            <h3 class="gv-ideacard__title e2e-idea-card-title"><a href="#">${esc(d.title)}</a></h3>
+            <div class="gv-ideacard__head">
+              <span class="gv-ideacard__avatar" aria-hidden="true">${esc(initials)}</span>
+              <div>
+                <div class="gv-ideacard__meta">
+                  <span class="gv-ideacard__author e2e-username">${esc(d.author)}</span>
+                  <span class="gv-ideacard__sep" aria-hidden="true">&bull;</span>
+                  <span class="gv-ideacard__time">${esc(d.time)}</span>
+                </div>
+                <p class="gv-ideacard__excerpt">${esc(d.excerpt)}</p>
+              </div>
+            </div>
+            <footer class="gv-ideacard__foot">
+              <div class="gv-react e2e-reaction-controls">
+                <button class="gv-react__btn" aria-label="Like"><span data-gv-icon="vote-up"></span></button>
+                <span class="gv-react__count">${d.likes}</span>
+                <button class="gv-react__btn" aria-label="Dislike"><span data-gv-icon="vote-down"></span></button>
+                <span class="gv-react__count">${d.dislikes}</span>
+              </div>
+              <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments"></span>${d.comments}</span>
+            </footer>
+          </div>
+        </article>`;
+    }
+    document.getElementById('feedCol').innerHTML = IDEAS.map(cardHTML).join('');
+    if (window.GVIcons) window.GVIcons.render();
   </script>
 </body>
 </html>

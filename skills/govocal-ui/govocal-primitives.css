@@ -89,6 +89,17 @@ body.gv-root {
 .gv-btn.delete:hover     { filter: brightness(0.88); }
 .gv-btn.success          { background: var(--gv-green-600); color: #fff; }
 .gv-btn.success:hover    { filter: brightness(0.92); }
+/* White button sitting ON a coloured band (survey participation band, sticky
+   participation bar). Source: button.Button.primary inside the green band —
+   bg #fff, dark text, 6px 12px. Distinct from .white (which carries a shadow). */
+.gv-btn.on-color         { background: #fff; color: var(--gv-text-primary); padding: 6px 12px; }
+.gv-btn.on-color:hover   { background: var(--gv-grey-100); }
+/* Volunteer sign-up button — fills with the TENANT primary and uses the real,
+   intentional dark text (rgba(0,0,0,.87)). #08833A on the live capture is the
+   Raleigh tenant primary, NOT a fixed green, so it re-themes via the token. */
+.gv-btn.volunteer        { background: var(--gv-tenant-primary); color: rgba(0,0,0,.87); padding: 6px 12px; font-size: var(--gv-fs-s); line-height: 16.1px; }
+.gv-btn.volunteer:hover  { filter: brightness(0.93); }
+.gv-btn.volunteer.is-in  { background: #fff; color: var(--gv-text-secondary); border-color: var(--gv-cool-grey-500); }
 
 .gv-btn:disabled, .gv-btn.disabled, .gv-btn[aria-disabled='true'] {
   opacity: 0.37; cursor: not-allowed; filter: none; pointer-events: none;

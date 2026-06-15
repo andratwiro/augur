@@ -693,6 +693,100 @@ numbered circle. The stepper is `role="tablist"`, each phase a `role="tab"`.
 ```
 - Switching phases (click a tab / prev-next) is JS in the page; the component is the markup + `.gv-*` styling. Current = green (`--gv-green-500`); chevrons via `clip-path`.
 
+## FO project method bodies — `.gv-ideacard` / `.gv-feed` / `.gv-cause` … (`pages/project-*`)
+
+The per-method content that renders inside `.gv-phasebody` on a project page. All
+source-grounded on the live FO captures (City of Raleigh ideation/proposals, Ostend
+volunteering) and verified via the `fo-project/*` checkpoints. Wide method bodies opt
+out of the 720px text clamp with `.gv-phasebody--full`.
+
+**Idea card** — ONE horizontal media card shared by ideation list/feed AND proposals
+(162×162 thumb). With circular reaction controls:
+```html
+<article class="gv-ideacard">
+  <div class="gv-ideacard__thumb"><img src="…" alt="" /></div>
+  <div class="gv-ideacard__body">
+    <h3 class="gv-ideacard__title"><a href="#">Basketball Court</a></h3>
+    <div class="gv-ideacard__head">
+      <span class="gv-ideacard__avatar">NH</span>
+      <div>
+        <div class="gv-ideacard__meta">
+          <span class="gv-ideacard__author">Nilsa Heidenreich</span>
+          <span class="gv-ideacard__sep">•</span><span class="gv-ideacard__time">3 years ago</span>
+        </div>
+        <p class="gv-ideacard__excerpt">The park desperately needs basketball courts…</p>
+      </div>
+    </div>
+    <footer class="gv-ideacard__foot">
+      <div class="gv-react">
+        <button class="gv-react__btn" aria-label="Like"><span data-gv-icon="vote-up"></span></button>
+        <span class="gv-react__count">124</span>
+        <button class="gv-react__btn" aria-label="Dislike"><span data-gv-icon="vote-down"></span></button>
+        <span class="gv-react__count">4</span>
+      </div>
+      <span class="gv-react__comment"><span data-gv-icon="comments"></span>1</span>
+    </footer>
+  </div>
+</article>
+```
+**Feed layout + filter sidebar** — `.gv-feed` = idea column + 310px `.gv-feedfilter`:
+```html
+<div class="gv-feed">
+  <div class="gv-feed__col"><!-- .gv-ideacard × N --></div>
+  <aside class="gv-feedfilter">
+    <div><p class="gv-feedfilter__label">STATUS</p>
+      <div class="gv-feedfilter__group">
+        <button class="gv-feedfilter__btn is-active">All <span class="gv-feedfilter__count">44</span></button>
+        <button class="gv-feedfilter__btn">Accepted <span class="gv-feedfilter__count">1</span></button>
+      </div></div>
+  </aside>
+</div>
+```
+**List/Map toggle** — `<div class="gv-viewseg" role="tablist"><button class="gv-viewseg__tab" aria-selected="true">…List</button><button class="gv-viewseg__tab">…Map</button></div>` (active = tenant-primary + white).
+
+**Proposal threshold + status pill** (inside `.gv-ideacard__foot`):
+```html
+<div class="gv-threshold">
+  <span class="gv-threshold__icon" data-gv-icon="vote-up"></span>
+  <span class="gv-threshold__count"><b>132</b> / 300</span>
+  <span class="gv-threshold__bar"><span class="gv-threshold__fill" style="width:44%"></span></span>
+</div>
+<span class="gv-statuspill expired">Expired</span>   <!-- or .open -->
+```
+**Volunteering cause card** — `.gv-cause` with the green dark-text sign-up button:
+```html
+<article class="gv-cause">
+  <div class="gv-cause__media"><img class="gv-cause__img" src="…" alt="" />
+    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>3 participants</span></div>
+  <div class="gv-cause__body">
+    <h3 class="gv-cause__title">Volunteers for the Bicycle Taxi</h3>
+    <span class="gv-cause__count">3 participants</span>
+    <div class="gv-cause__desc"><p>…</p></div>
+  </div>
+  <div class="gv-cause__cta"><button class="gv-btn volunteer"><span data-gv-icon="volunteer"></span>I want to participate</button></div>
+</article>
+```
+The `.gv-btn.volunteer` green is the **tenant primary** (re-themes), and the dark text
+(`rgba(0,0,0,.87)`) is the real, intentional product treatment — not a new fixed green.
+
+**Survey participation band** (`.gv-surveyband`) + **sticky participation bar**
+(`.gv-partbar`) — full-width tenant-primary strips with a white-on-colour CTA
+(`.gv-btn.on-color`). An open single-method survey shows **no** phase stepper.
+```html
+<div class="gv-surveyband"><div class="gv-surveyband__inner">
+  <span class="gv-surveyband__status"><span class="gv-surveyband__dot"></span> Open for participation</span>
+  <a class="gv-btn on-color gv-surveyband__cta" href="#">Take the survey <span data-gv-icon="arrow-right"></span></a>
+</div></div>
+
+<div class="gv-partbar"><div class="gv-partbar__inner">
+  <span class="gv-partbar__status">Open for participation</span>
+  <a class="gv-btn on-color" href="#">Submit your idea <span data-gv-icon="arrow-right"></span></a>
+</div></div>
+```
+- **Common Ground (Polis)** renders an external `pol.is` iframe inside a white method
+  panel — GoVocal renders none of the voting UI, so the demo reconstructs it as
+  page-local non-`gv-` markup (not grounded).
+
 ## Survey fields — `govocal-survey.css` + `govocal-survey.js` (`components/survey-fields/`)
 
 The input-form / survey question types, as ONE shared, themeable kit (its own

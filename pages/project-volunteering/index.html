@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Project page — Volunteering (reference)</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <!--
+    Reference rebuild — VOLUNTEERING method panel body. Source: fo-project-volunteering
+    (City of Ostend "Showroom"). The cause cards (.gv-cause) and the green sign-up
+    button (.gv-btn.volunteer, dark text — faithful, lower-contrast product treatment)
+    are canonical. The panel runs full method-band width (.gv-phasebody--full).
+    Picker OFF (Pages rule).
+  -->
+  <style>
+    body { margin: 0; background: #fff; }
+    main { padding-bottom: 8px; }
+  </style>
+</head>
+<body class="gv-root gv-shell" data-gv-theme-picker="off">
+
+  <!-- ════════ Header — logged-in ════════ -->
+  <header class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Home" aria-current="page"></a>
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#" aria-current="page">Home</a></li>
+          <li><a class="gv-nav__link" href="#">All projects</a></li>
+        </ul>
+      </nav>
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
+        <button class="gv-iconbtn" aria-label="Notifications"><span data-gv-icon="notification"></span><span class="gv-iconbtn__badge" aria-hidden="true">2</span></button>
+        <button class="gv-account gv-desktop-only" aria-label="Account menu"><span>Rob</span><span class="gv-avatar">RB</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main id="e2e-project-page">
+
+    <!-- Title + description -->
+    <div class="gv-wrap">
+      <div class="gv-projhead"><div class="gv-projhead__title"><h1>Showroom</h1></div></div>
+      <div class="gv-phasebody">
+        <p>Are you itching to start working as a volunteer at the City of Ostend? Then be sure to keep an eye on this page. All actions that require volunteers are listed here.</p>
+        <p>You can simply register by clicking on the &lsquo;I want to participate&rsquo; button for the volunteer work of your preference. Afterwards you will receive an email with more information.</p>
+      </div>
+    </div>
+
+    <!-- Method band: phase timeline + VOLUNTEERING panel body -->
+    <div class="gv-methodband">
+      <div class="gv-wrap">
+        <section class="gv-phases" aria-labelledby="phasesTitle">
+          <div class="gv-phases__bar"><h2 id="phasesTitle">Timeline</h2></div>
+          <div class="gv-stepper" role="tablist" aria-label="Project phases">
+            <button class="gv-phase current" role="tab" aria-selected="true">
+              <span class="gv-pstep"><span class="gv-pstep__dot"></span>1</span>
+              <span class="gv-phase__label">Volunteering</span>
+            </button>
+          </div>
+
+          <div class="gv-phasepanel" role="tabpanel">
+            <div class="gv-phasepanel__head">
+              <span class="gv-phasepanel__num" aria-hidden="true">1</span>
+              <div>
+                <h3 class="gv-phasepanel__name">Volunteering</h3>
+                <p class="gv-phasepanel__date">No end date</p>
+              </div>
+            </div>
+
+            <!-- the method-specific PANEL BODY (full width) -->
+            <div class="gv-phasebody gv-phasebody--full">
+              <div class="gv-idealist">
+
+                <article class="gv-cause">
+                  <div class="gv-cause__media">
+                    <img class="gv-cause__img" alt="" src="https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=600&h=300&fit=crop" />
+                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>1 participant</span>
+                  </div>
+                  <div class="gv-cause__body">
+                    <h3 class="gv-cause__title">Volunteer residential care centers 'Out and about with residents'</h3>
+                    <span class="gv-cause__count">1 participant</span>
+                    <div class="gv-cause__desc">
+                      <p>You take the residents of the residential care center outside for a walk or do some shopping together.</p>
+                      <p><strong>WHAT DO WE EXPECT?</strong></p>
+                      <p>Do you like being outside and can you drive a wheelchair? And do you have a socially sensitive heart for older people?</p>
+                    </div>
+                  </div>
+                  <div class="gv-cause__cta">
+                    <button class="gv-btn volunteer" type="button"><span data-gv-icon="volunteer"></span>I want to participate</button>
+                  </div>
+                </article>
+
+                <article class="gv-cause">
+                  <div class="gv-cause__media">
+                    <img class="gv-cause__img" alt="" src="https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=600&h=300&fit=crop" />
+                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>3 participants</span>
+                  </div>
+                  <div class="gv-cause__body">
+                    <h3 class="gv-cause__title">Volunteers for the Bicycle Taxi</h3>
+                    <span class="gv-cause__count">3 participants</span>
+                    <div class="gv-cause__desc">
+                      <p>Would training renters in Ostend bike-style be your thing? Then bring your bicycle taxi licence and take residents who are no longer mobile out for trips around town.</p>
+                      <p><strong>WHAT DO WE OFFER?</strong></p>
+                      <p>You can count on a volunteer allowance.</p>
+                    </div>
+                  </div>
+                  <div class="gv-cause__cta">
+                    <button class="gv-btn volunteer" type="button"><span data-gv-icon="volunteer"></span>I want to participate</button>
+                  </div>
+                </article>
+
+                <article class="gv-cause">
+                  <div class="gv-cause__media">
+                    <img class="gv-cause__img" alt="" src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=600&h=300&fit=crop" />
+                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>2 participants</span>
+                  </div>
+                  <div class="gv-cause__body">
+                    <h3 class="gv-cause__title">Volunteer - Reader for the Book Visit project</h3>
+                    <span class="gv-cause__count">2 participants</span>
+                    <div class="gv-cause__desc">
+                      <p>You are 18 years old and have good Dutch reading and storytelling skills. You love reading and want to have a positive impact on the lives of your reading family.</p>
+                    </div>
+                  </div>
+                  <div class="gv-cause__cta">
+                    <button class="gv-btn volunteer" type="button"><span data-gv-icon="volunteer"></span>I want to participate</button>
+                  </div>
+                </article>
+
+                <article class="gv-cause">
+                  <div class="gv-cause__media">
+                    <img class="gv-cause__img" alt="" src="https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=600&h=300&fit=crop" />
+                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>4 participants</span>
+                  </div>
+                  <div class="gv-cause__body">
+                    <h3 class="gv-cause__title">Volunteer for cycling lessons to adults</h3>
+                    <span class="gv-cause__count">4 participants</span>
+                    <div class="gv-cause__desc">
+                      <p>Do you have a warm heart and a love for the bicycle? Do you want to teach others to cycle? And that near you? We are always looking for socially committed volunteers.</p>
+                    </div>
+                  </div>
+                  <div class="gv-cause__cta">
+                    <button class="gv-btn volunteer is-in" type="button"><span data-gv-icon="volunteer"></span>I withdraw my offer to volunteer</button>
+                  </div>
+                </article>
+
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    document.querySelectorAll('.gv-btn.volunteer').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const inNow = btn.classList.toggle('is-in');
+        const icon = btn.querySelector('[data-gv-icon]');
+        btn.textContent = '';
+        if (icon) btn.appendChild(icon);
+        btn.append(inNow ? 'I withdraw my offer to volunteer' : 'I want to participate');
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Project page — Common Ground / Polis (reference)</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <!--
+    Reference rebuild — COMMON GROUND (Polis) phase. Source: fo-project-common-ground
+    ("Test Polis"). GoVocal renders the native SHELL, phase card and the white method
+    panel; the phase body itself is an EMBEDDED, CROSS-ORIGIN POLIS WIDGET
+    (<iframe src=pol.is/…>). The polis-* classes below reconstruct that third-party
+    widget purely so the phase reads correctly — they are NOT grounded in styles.json
+    (cross-origin) and are clearly marked non-canonical. Everything GoVocal renders
+    uses canonical .gv-* and is grounded against the capture digest. Picker OFF.
+  -->
+  <style>
+    body { margin: 0; background: #fff; }
+    /* canvas the method content floats on (grounded: section bg --gv-background, pad 60px 0 80px) */
+    .cg-canvas { background: var(--gv-background); padding: 60px 0 80px; }
+    .cg-stack { max-width: 1166px; margin: 0 auto; padding: 0 24px; display: grid; gap: 20px; }
+    .cg-phasecard { display: flex; gap: 11px; align-items: flex-start; }
+    .cg-num { width: 39px; height: 39px; flex: none; }
+
+    /* ── Polis embed reconstruction (NON-GROUNDED, pol.is third-party widget) ── */
+    .polis { background: #fff; }
+    .polis__remaining { float: right; font-style: italic; font-size: 13px; color: #777; }
+    .polis-card { border: 1px solid #e0e0e0; border-radius: 4px; padding: 18px 20px 16px; max-width: 380px; margin: 0 auto; }
+    .polis-card__author { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555; margin-bottom: 8px; }
+    .polis-card__avatar { width: 24px; height: 24px; border-radius: 3px; background: #e8e8e8; display: grid; place-items: center; color: #bbb; flex: none; }
+    .polis-card__avatar svg { width: 16px; height: 16px; }
+    .polis-card__statement { font-size: 15px; line-height: 1.5; color: #222; margin: 0 0 16px; }
+    .polis-card__votes { display: flex; justify-content: space-between; align-items: center; }
+    .polis-vote { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 4px; font-size: 13px; color: #333; cursor: pointer; }
+    .polis-vote svg { width: 18px; height: 18px; }
+    .polis-vote--agree { color: #2a7d4f; }
+    .polis-vote--disagree { color: #c0392b; }
+    .polis-vote--pass { color: #555; }
+    .polis-vote:focus-visible { outline: 2px solid #2a7d4f; outline-offset: 2px; border-radius: 3px; }
+    .polis__addprompt { font-style: italic; font-size: 13px; color: #444; max-width: 380px; margin: 18px auto 0; text-align: left; }
+    .polis__addrow { display: flex; align-items: flex-start; gap: 8px; max-width: 380px; margin: 10px auto 0; }
+    .polis__addrow .polis-card__avatar { border: 1px solid #2f6fde; }
+    .polis__field { flex: 1; border: 1px solid #ccc; border-radius: 3px; padding: 8px 10px; font-size: 13px; }
+    .polis__submitwrap { max-width: 380px; margin: 10px auto 0; text-align: right; }
+    .polis__submit { background: #2f6fde; color: #fff; border: 0; border-radius: 3px; padding: 7px 16px; font-size: 13px; cursor: pointer; }
+    .polis__groups { max-width: 380px; margin: 22px auto 0; font-weight: 600; font-size: 14px; }
+    .polis__brand { text-align: center; margin: 40px auto 0; color: #999; }
+    .polis__hex { width: 64px; height: 70px; margin: 0 auto 8px; display: block; }
+    .polis__legal { font-size: 11px; letter-spacing: 0.18em; color: #aaa; }
+    .polis__credit { font-style: italic; font-size: 12px; color: #444; margin-top: 12px; }
+    .polis__credit a { color: #2f6fde; }
+  </style>
+</head>
+<body class="gv-root gv-shell" data-gv-theme-picker="off">
+
+  <!-- ════════ Header ════════ -->
+  <header class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Go Vocal — Home"></a>
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#" aria-current="page">Home</a></li>
+          <li><a class="gv-nav__link" href="#">All projects</a></li>
+          <li><a class="gv-nav__link" href="#">Proposals</a></li>
+          <li><a class="gv-nav__link" href="#">Events</a></li>
+        </ul>
+      </nav>
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn" aria-label="Search"><span data-gv-icon="search"></span></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Project header band (white) -->
+  <div class="gv-wrap" style="padding: 28px 24px 36px;">
+    <h1 class="gv-title h1" style="margin:0;">Test Polis</h1>
+  </div>
+
+  <!-- ════════ METHOD BAND — the canvas + the two cards ════════ -->
+  <main class="cg-canvas">
+    <div class="cg-stack">
+
+      <!-- Phases timeline (single phase) -->
+      <section class="gv-phases" aria-labelledby="phasesTitle" style="margin:0;">
+        <div class="gv-phases__bar"><h2 id="phasesTitle">Phases</h2></div>
+        <div class="gv-stepper" role="tablist" aria-label="Project phases">
+          <button class="gv-phase current" role="tab" aria-selected="true">
+            <span class="gv-pstep"><span class="gv-pstep__dot"></span>1</span>
+            <span class="gv-phase__label">Polis process</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- CARD 1 — phase title card (grounded: white/3px/--gv-shadow, number circle green-500) -->
+      <div class="gv-phasepanel cg-phasecard" id="phaseCard">
+        <span class="gv-phasepanel__num cg-num" aria-hidden="true">1</span>
+        <div>
+          <!-- Polis phase-card title renders at h3 size (21px), green in the live
+               product (green-500). Colour is the one ungroundable-via-class bit
+               for this surface; size/weight/line-height are canonical .gv-title.h3. -->
+          <h3 class="gv-title h3 e2e-phase-title" style="color:var(--gv-green-500);margin:0;">Polis process</h3>
+          <p class="gv-phasepanel__date">May 1, 2026 12:00 AM – June 30, 2026 11:59 PM</p>
+        </div>
+      </div>
+
+      <!-- CARD 2 — the method panel that HOSTS the Polis embed (grounded: white/3px/--gv-shadow/30px).
+           In the real product its only child is <iframe src="https://pol.is/…">. -->
+      <div class="gv-phasepanel" id="methodCard" style="margin-top:0;">
+        <!-- ⚠ NON-GROUNDED below: reconstruction of the cross-origin Polis widget -->
+        <div class="polis">
+          <div class="polis-card">
+            <span class="polis__remaining">19 remaining</span>
+            <div class="polis-card__author">
+              <span class="polis-card__avatar"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z"/></svg></span>
+              <span>Anonymous wrote:</span>
+            </div>
+            <p class="polis-card__statement">Before launching these features, users should clearly know when AI is involved and what it's doing.</p>
+            <div class="polis-card__votes">
+              <button class="polis-vote polis-vote--agree"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6" stroke-linecap="round" stroke-linejoin="round"/></svg> Agree</button>
+              <button class="polis-vote polis-vote--disagree"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="m8 16 8-8" stroke-linecap="round"/></svg> Disagree</button>
+              <button class="polis-vote polis-vote--pass">Pass / Unsure</button>
+            </div>
+          </div>
+
+          <p class="polis__addprompt">Are your perspectives or experiences missing from the conversation? If so, add them in the box below — one at a time.</p>
+          <div class="polis__addrow">
+            <span class="polis-card__avatar"><svg viewBox="0 0 24 24" fill="#2f6fde" aria-hidden="true"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5Z"/></svg></span>
+            <input class="polis__field" placeholder="Share your perspective (you are not replying — submit a stand-alone statement)" />
+          </div>
+          <div class="polis__submitwrap"><button class="polis__submit">Submit</button></div>
+
+          <div class="polis__groups">Opinion Groups</div>
+
+          <div class="polis__brand">
+            <svg class="polis__hex" viewBox="0 0 64 70" aria-hidden="true">
+              <path d="M32 2 60 18v34L32 68 4 52V18Z" fill="#2f8fd6"/>
+              <text x="32" y="44" text-anchor="middle" font-size="30" font-weight="700" fill="#fff" font-family="Georgia,serif">p.</text>
+            </svg>
+            <div class="polis__legal">PRIVACY&nbsp;&nbsp;TOS</div>
+            <p class="polis__credit">Polis is powered by support from people like you. Contribute <a href="#">here</a>.</p>
+          </div>
+        </div>
+        <!-- ⚠ END non-grounded Polis reconstruction -->
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="gv-footer">
+    <div class="gv-footer__inner">
+      <nav class="gv-footer__links" aria-label="Footer">
+        <ul>
+          <li><a href="#">Terms and conditions</a></li>
+          <li><a href="#">Privacy policy</a></li>
+          <li><a href="#">Cookie policy</a></li>
+          <li><a href="#">Accessibility statement</a></li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+
+</body>
+</html>
