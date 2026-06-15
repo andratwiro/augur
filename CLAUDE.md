@@ -14,6 +14,21 @@ command below calls for it. Don't front-load it.
 These are cheap facts and guardrails — they cost no context and a couple of them
 prevent leaking internal material. Everything else is opt-in.
 
+### What GoVocal is (always know this much)
+
+**GoVocal** (formerly **CitizenLab**) is a digital-democracy / community-engagement
+SaaS used by 500+ governments, mostly municipalities. A city runs a branded
+**platform** where **residents** participate in **projects**; staff configure and
+analyze from a **back office**. The whole product hangs off one spine:
+**Folder → Project → Phase → Participation method** — each phase runs exactly **one**
+method (survey, ideation, voting, …). Every prototype is one of **two surfaces**:
+**front office** (resident-facing, public, branded — gets the cookie banner) or
+**back office** (staff config/moderation/analytics — no cookie banner). An **"input"**
+is the generic word for anything a resident submits. Direction is heavily **AI**
+(sensemaking, auto-theming, OCR). _That's the whole standing summary — for depth
+(vocabulary, the 8 methods, roles, URLs, data model) read **`GOVOCAL.md`** at the repo
+root; never auto-load it, re-call on a real product doubt._
+
 ### Folder convention
 
 Each top-level folder is an **opportunity** (a problem space / project area):
