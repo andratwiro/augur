@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Input Form (survey) — GoVocal (reference)</title>
+  <title>A square for everyone — share your idea — Westmere</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-survey.css" />
@@ -27,6 +27,15 @@
   <style>
     /* Page-specific only: the survey field/runner CSS lives in govocal-survey.css. */
     body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    /* Dress the intro cover with a real Market Square / Old Town photo instead of the
+       default placeholder gradient. Page-local override — no .gv-/.sv- redefinition,
+       just a real background image + a soft scrim so any caption text stays legible. */
+    .sv-intro__media {
+      background:
+        linear-gradient(180deg, rgba(26,43,43,0) 40%, rgba(26,43,43,0.45) 100%),
+        url('../../skills/govocal-ui/img/westmere/square.webp') center/cover no-repeat;
+      height: 240px;
+    }
   </style>
 </head>
 <body class="gv-root" data-gv-theme-picker="off">
@@ -39,88 +48,89 @@
      ════════════════════════════════════════════════════════════════════════ */
   const FORM = {
     pages: [
-      { kind:'intro', title:"We're renovating Coffman Park!", media:"COFFMAN PARK\nRENOVATION",
-        desc:"In 2025 we've decided to do a renovation of the Coffman Park in order to build a more enjoyable recreation area for residents. Please explore the plan in the following survey and respond to questions about the proposal. Thank you!" },
+      { kind:'intro', title:"A square for everyone", media:" ",
+        desc:"Help shape the redesign of Market Square in the Old Town. We're gathering residents' ideas for a square that works for everyone — for the weekly market, for sitting in the sun, for getting through on foot or by bike. Share your idea below; it joins the 122 contributions already on the project. Thank you for taking part." },
 
-      { emoji:'👋', title:'About you', desc:'Help us understand who is participating in this survey so we can design a park that meets the needs of the community.',
+      { emoji:'👋', title:'About you', desc:'A few details about you so we can understand who the square should work for. Nothing here is published with your idea.',
         fields:[
           { type:'select', label:'Which age group do you belong to?', desc:'Choose one',
             options:['Under 18','18–24','25–34','35–44','45–54','55–64','65+'] },
-          { type:'number', label:'How many people in your household typically visit Coffman Park?' },
+          { type:'select', label:'Which Westmere district do you live in?', desc:'Choose one',
+            options:['Old Town','Harbour','Northgate','Riverside','Westside','Lakeshore','I live outside Westmere'] },
         ] },
 
-      { emoji:'🌿', title:'How you use Coffman Park today', desc:'Tell us how often you visit the park and what you currently do there.',
+      { emoji:'🧭', title:'How you use Market Square today', desc:'Tell us how the square fits into your week, so we can build on what already works.',
         fields:[
-          { type:'select', label:'Do you live within 15 minute walking distance of Coffman park?', options:['Yes','No'] },
-          { type:'select', label:'How often do you visit the park?', options:['Daily','A few times a week','Weekly','A few times a month','Rarely','Never'] },
-          { type:'text', label:'What’s the first word that comes to mind when you think of Coffman Park?' },
-          { type:'multiselect', label:'What activities do you currently enjoy in the park?', desc:'Select all that apply',
-            options:['Walking or running','Picnicking','Playing sports','Reading or relaxing','Letting kids play','Dog walking','Birdwatching','Attending events','Other'] },
-          { type:'rating', label:'How would you rate your current overall experience with Coffman Park?', desc:'(1 = very poor, 5 = excellent)', max:5, gate:true },
+          { type:'select', label:'How often do you spend time on Market Square?', options:['Daily','A few times a week','Weekly','A few times a month','Rarely','Never'] },
+          { type:'multiselect', label:'What do you mainly come to the square for?', desc:'Select all that apply',
+            options:['The weekly market','Meeting friends','Sitting and relaxing','Passing through on foot','Cycling through','Cafés and terraces','Events and festivals','Shopping nearby','Other'] },
+          { type:'text', label:'What’s the first word that comes to mind when you picture Market Square today?' },
+          { type:'rating', label:'How would you rate the square as a place to spend time right now?', desc:'(1 = very poor, 5 = excellent)', max:5, gate:true },
         ] },
 
-      { emoji:'🧠', title:'Ideas & improvements', desc:'Let’s improve together. Share your ideas and help us prioritize what matters most.',
+      { emoji:'💡', title:'Your idea for the square', desc:'This is the heart of it. Give your idea a clear title and tell us what you’d change — it’s published to the project for others to read and support.',
         fields:[
-          { type:'multiline_text', label:'What improvements would make Coffman Park more useful or enjoyable for you?' },
-          { type:'ranking', label:'Rank the following features in order of importance for the redesigned park.', desc:'(1 = most important)',
-            options:['Nature and biodiversity','Play and recreation','Accessibility for all ages and abilities','Community gathering spaces','Art and cultural installations','Safety and lighting','Public restrooms'] },
-          { type:'linear_scale', label:'How important is environmental sustainability in the park redesign?', desc:'(1 = not important, 7 = extremely important)', max:7, minLabel:'not important', maxLabel:'extremely important', gate:true },
-          { type:'sentiment', label:'How do you feel about the current safety in Coffman Park?', desc:'(from very unsafe to very safe)',
+          { type:'text', label:'Give your idea a title', desc:'A short, clear headline — e.g. “More shade and seating along the south side”' },
+          { type:'multiline_text', label:'Describe your idea', desc:'What would you change, and why does it matter? The more concrete, the better.' },
+          { type:'multiselect', label:'Which themes does your idea touch on?', desc:'Select all that apply — these become the tags on your contribution',
+            options:['Greenery & planting','Seating & shade','Walking & access','Cycling','The weekly market','Play for children','Events & culture','Lighting & safety','Heritage & character'] },
+          { type:'ranking', label:'For you, what should the redesign prioritise? Rank these from most to least important.', desc:'(1 = most important)',
+            options:['Greenery and shade','Room for the weekly market','Comfortable seating','Space for events','Easy walking and accessibility','Calmer traffic and cycling','Keeping the square’s historic character'] },
+          { type:'linear_scale', label:'How important is keeping the Old Town’s historic character in the redesign?', desc:'(1 = not important, 7 = essential)', max:7, minLabel:'not important', maxLabel:'essential', gate:true },
+          { type:'sentiment', label:'How do you feel about how safe and welcoming the square feels in the evening?', desc:'(from very poor to very good)',
             faces:['😣','🙁','😐','🙂','😄'], labels:['Very bad','Bad','Ok','Good','Very good'], gate:true },
         ] },
 
-      { emoji:'🎨', title:'Design preferences', desc:'We’d love to know what you’d like to see in terms of look, feel, and features.',
+      { emoji:'🎨', title:'Look & feel', desc:'We’re exploring different characters for the square. Which direction speaks to you most?',
         fields:[
-          { type:'multiselect_image', label:'Which type of playground style do you prefer for the new design?', desc:'(Select one image)',
+          { type:'multiselect_image', label:'Which look would you most like for the redesigned Market Square?', desc:'(Select one image)',
             images:[
-              { src:'img/playground-wooden.jpeg',    label:'Natural wooden play structures' },
-              { src:'img/playground-modern.jpeg',    label:'Colorful rubberized modern sets' },
-              { src:'img/playground-adventure.png',  label:'Adventure playground with climbing nets' },
-              { src:'img/playground-splash.jpeg',    label:'Water-based splash zone' },
+              { src:'../../skills/govocal-ui/img/westmere/square.webp',            label:'An open civic square — room to gather and move' },
+              { src:'../../skills/govocal-ui/img/westmere/oldtown.webp',           label:'Heritage cobbles — leaning into the Old Town character' },
+              { src:'../../skills/govocal-ui/img/westmere/park.webp',              label:'A greener square — trees, planting and shade' },
+              { src:'../../skills/govocal-ui/img/westmere/street-townhouses.webp', label:'Café terraces — life spilling onto the square' },
             ] },
-          { type:'matrix', label:'Please rate the following aspects of Coffman Park.', gate:true,
+          { type:'matrix', label:'How much do you agree with the following trade-offs?', gate:true,
             scale:['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'],
             statements:[
-              'I prefer fewer features in the park if it means lower maintenance costs.',
-              'The park should prioritize quiet natural areas, even if it means fewer activities.',
-              'It’s more important to add security features than to keep the park feeling open.',
-              'The park should host community events, even if it means more noise.',
-              'I would accept fewer trees if it meant better lighting and visibility.',
-              'I’d rather have more native plants than large lawn areas.',
-              'I’d prefer a fenced playground for safety, even if it feels less open.',
-              'I support water features (like fountains) even if they raise maintenance.',
-              'The park should offer Wi-Fi access, even if it means installing more infrastructure.',
+              'I’d accept fewer parking spaces on the square in exchange for more greenery and seating.',
+              'The square should prioritise pedestrians, even if it means slowing down through-traffic.',
+              'Keeping room for the weekly market matters more to me than adding permanent features.',
+              'I’d welcome more evening lighting, even if it changes the square’s quiet character.',
+              'The square should host more events, even if that means occasional noise.',
+              'I’d rather have native trees and planting than large areas of paving.',
+              'I’d support café terraces spreading onto the square, even if it reduces open space.',
             ] },
-          { type:'file_upload', label:'Do you have any documents, photos, or past proposals related to the park to share?', desc:'Upload files here' },
+          { type:'file_upload', label:'Have a sketch, photo or reference for your idea? Add it here.', desc:'Upload files here (optional)' },
         ] },
 
-      { emoji:'🚧', title:"Let's zoom in on the Recreation Features demolition",
-        desc:"Due to the skate park and courts being largely unused, we've decided to demolish them and replace them with something the community wants more.",
+      { emoji:'🚦', title:'Traffic on the square',
+        desc:"One of the bigger choices in this redesign is how much through-traffic the square should carry. We'd like to hear where you stand.",
         fields:[
-          { type:'linear_scale', label:'Do you think demolishing these features is the right choice?', desc:'(1 = Strongly disagree, 5 = Strongly agree)', max:5, minLabel:'Strongly disagree', maxLabel:'Strongly agree', gate:true },
+          { type:'linear_scale', label:'Should we reduce car traffic crossing Market Square?', desc:'(1 = Strongly disagree, 5 = Strongly agree)', max:5, minLabel:'Strongly disagree', maxLabel:'Strongly agree', gate:true },
           { type:'text', label:'Why?' },
-          { type:'select', label:'What features would you like to see here instead?', options:['Community garden','Splash pad','Playground','Botanical garden and greenhouse','Grass field','Other'] },
+          { type:'select', label:'If through-traffic were reduced, what would you most like in the space it freed up?', options:['Seating and terraces','Trees and planting','A bigger market area','A play area for children','An open flexible space for events','Other'] },
         ] },
 
-      { emoji:'🗺️', title:'Spatial feedback', desc:'Let us know where improvements are most needed using the interactive map tools.',
+      { emoji:'🗺️', title:'Show us on the map', desc:'Use the map tools to point to the exact spots on and around Market Square your idea is about.',
         fields:[
-          { type:'map', shape:'line', label:'What route do you most often walk in Coffman Park?', desc:'Draw the usual path you take when walking through the park.' },
-          { type:'map', shape:'polygon', label:'Where would you like to see more parking along your walking route?', desc:'Highlight a specific area in the park that you believe needs the most improvement.' },
-          { type:'map', shape:'point', label:'Where would you most like to see new bicycle storage in Coffman Park?', desc:'Highlight a specific area in the park that you believe needs the most improvement.' },
+          { type:'map', shape:'line', label:'Which route through the square matters most to you?', desc:'Draw the way you usually move through Market Square — on foot or by bike.' },
+          { type:'map', shape:'polygon', label:'Which part of the square would you most like to see changed?', desc:'Outline the area on the square your idea focuses on.' },
+          { type:'map', shape:'point', label:'Where on the square would you place new seating or greenery?', desc:'Drop a pin where you’d most like to see it.' },
         ] },
 
-      { emoji:'👷', title:'Are you a planner or GIS professional with an idea for the park development?',
-        desc:'If you are a planner or GIS professional with ideas for the redevelopment, we invite you to share spatial data with us.',
+      { emoji:'📐', title:'Are you an architect, planner or designer?',
+        desc:'If you’re working with spatial data and have a proposal for the square, you’re welcome to share it with the engagement team.',
         fields:[
-          { type:'shapefile_upload', label:'Upload your Esri shapefile containing park redevelopment ideas here.', desc:'Are you part of a community group or planner with GIS data? Upload shapefiles here.' },
+          { type:'shapefile_upload', label:'Upload an Esri shapefile with your proposal for Market Square.', desc:'For planners and designers working with GIS data — upload shapefiles here.' },
         ] },
 
-      { emoji:'✅', title:'Final Thoughts', desc:'Thanks for your participation—your feedback is shaping the future of the Coffman Park!',
+      { emoji:'✅', title:'Anything else?', desc:'Thank you — your idea is shaping the future of Market Square in the Old Town.',
         fields:[
-          { type:'multiline_text', label:'Do you have any additional thoughts to share with us on the redesigning of Coffman Park?' },
+          { type:'multiline_text', label:'Anything else you’d like the engagement team to know about the redesign?' },
         ] },
 
-      { kind:'thankyou', title:'Thank you for sharing your input!', desc:'Your input has been successfully submitted.' },
+      { kind:'thankyou', title:'Thanks — your idea is in!', desc:'Your contribution has been added to “A square for everyone”. The Westmere engagement team reads every idea; you’ll be able to follow how the redesign takes shape on the project page.' },
     ]
   };
 

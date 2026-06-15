@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="gv-surface" content="front-office" />
-  <title>Perspectives — in-timeline phase entry (reference)</title>
+  <title>The Big Westmere Conversation — Perspectives — Westmere</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
@@ -31,7 +31,7 @@
     this page authors layout + content only. Re-skins per city via ?theme=.
   -->
   <style>
-    body { margin: 0; background: #fff; }
+    body { margin: 0; background: var(--gv-white); }
     main { padding-bottom: 8px; }
     /* layout-only (no colour/elevation/type authored here) */
     .pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
@@ -65,7 +65,7 @@
                 <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </summary>
               <div class="gv-nav__menu">
-                <a href="#">The Big Conversation</a>
+                <a href="#">The Big Westmere Conversation</a>
                 <a href="#">A square for everyone</a>
                 <a href="#">The future of Station Road</a>
                 <a href="#">Participatory budget 2026</a>
@@ -83,8 +83,8 @@
           </button>
           <details class="gv-nav__dd right gv-account-dd">
             <summary class="gv-account">
-              <span class="gv-account__name">Go Vocal</span>
-              <span class="gv-avatar">GV</span>
+              <span class="gv-account__name">Sofie Maes</span>
+              <span class="gv-avatar">SM</span>
               <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </summary>
             <div class="gv-nav__menu gv-nav__menu--account">
@@ -122,13 +122,13 @@
     </div>
 
     <!-- ════════ Banner ════════ -->
-    <section class="pp-banner gv-pcard__thumb--forest" aria-label="Project banner">
-      <img src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1400&h=400&fit=crop" alt="" />
+    <section class="pp-banner" aria-label="Project banner">
+      <img src="../../skills/govocal-ui/img/westmere/hero-waterfront.webp" loading="lazy" alt="Westmere's waterfront and harbour seen across the water on a bright day" />
     </section>
 
     <!-- ════════ Title block ════════ -->
     <div class="pp-title">
-      <h1 class="gv-title h1" style="margin:20px 0 16px;line-height:39px;">The Big Conversation</h1>
+      <h1 class="gv-title h1" style="margin:20px 0 16px;line-height:39px;">The Big Westmere Conversation</h1>
       <div class="pp-cta">
         <a class="gv-btn primary" href="#ideas">What needs fixing?</a>
         <a class="gv-btn primary-outlined" href="#ideas">See the perspectives</a>
@@ -141,8 +141,8 @@
         </div>
       </div>
       <div class="gv-projdesc pp-desc">
-        <p>We’re creating a new way for community members of Greenville to <strong>speak up about what we want to fix in our region.</strong></p>
-        <p>Everywhere you look in Greenville you are confronted with a choice: accept things as they are, or have a say in making them better. The Big Conversation is your chance to set the agenda.</p>
+        <p>We’re opening up a new way for the people of Westmere to <strong>say what matters most across our city — from the harbour to the Old Town.</strong></p>
+        <p>Whether it’s the Mere, Station Road, housing, parks or the climate teams, this is your chance to set the agenda. Share a perspective, react to your neighbours, and help us see where Westmere agrees.</p>
       </div>
     </div>
    </div><!-- /.gv-wrap -->
@@ -150,8 +150,8 @@
     <!-- ════════ Participation bar ════════ -->
     <div class="gv-partbar">
       <div class="gv-partbar__inner">
-        <span class="gv-partbar__status">6 weeks left</span>
-        <a class="gv-btn on-color" href="#ideas">Volunteer <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+        <span class="gv-partbar__status">5 weeks left</span>
+        <a class="gv-btn on-color" href="#ideas">Share your perspective <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
       </div>
     </div>
 
@@ -207,39 +207,39 @@
 
     /* ════════ PHASES — the project's real 5-phase Perspectives timeline ════════ */
     const PHASES = [
-      { name: 'Issue Mapping', method: 'perspectives', dates: 'April 9, 2026 12:00 AM - May 14, 2026 11:59 PM', status: 'current',
-        description: 'If Greenville and its residents could solve one problem in our region, what should it be? Share your perspective and react to what your neighbours across the state are saying.' },
-      { name: 'Issue Voting', method: 'voting', dates: 'May 15 – June 18, 2026', status: 'upcoming',
-        description: 'Residents get a budget of points to spend across the issues raised in mapping, surfacing the region’s shared priorities.' },
-      { name: 'Issue Reporting', method: 'information', dates: 'June 19 – July 9, 2026', status: 'upcoming',
-        description: 'The project team reports back on the most-supported issues and how they were grouped.' },
-      { name: 'Discussion Workshop', method: 'information', dates: 'July 10 – July 30, 2026', status: 'upcoming',
-        description: 'In-person and online workshops to turn the top issues into concrete recommendations.' },
-      { name: 'Recommendations: Civic Assembly', method: 'results', dates: 'August 1 – August 31, 2026', status: 'upcoming',
-        description: 'A representative civic assembly deliberates on the recommendations and reports its conclusions.' },
+      { name: 'Issue Mapping', method: 'perspectives', dates: 'May 18, 2026 12:00 AM - June 22, 2026 11:59 PM', status: 'current',
+        description: 'If Westmere could put one thing right across the city, what should it be? Share your perspective and react to what your neighbours from the Harbour to Lakeshore are saying.' },
+      { name: 'Issue Voting', method: 'voting', dates: 'June 23 – July 20, 2026', status: 'upcoming',
+        description: 'Residents get a budget of points to spend across the issues raised in mapping, surfacing the city’s shared priorities.' },
+      { name: 'Issue Reporting', method: 'information', dates: 'July 21 – August 10, 2026', status: 'upcoming',
+        description: 'The Engagement team reports back on the most-supported issues and how they were grouped.' },
+      { name: 'Discussion Workshop', method: 'information', dates: 'August 11 – August 31, 2026', status: 'upcoming',
+        description: 'In-person and online workshops across the districts to turn the top issues into concrete recommendations.' },
+      { name: 'Recommendations: Civic Assembly', method: 'results', dates: 'September 1 – September 30, 2026', status: 'upcoming',
+        description: 'A representative panel of Westmere residents deliberates on the recommendations and reports its conclusions to the council.' },
     ];
     const CURRENT = PHASES.findIndex((p) => p.status === 'current');
 
     /* ════════ Perspective ideas — pastel sticky notes / list cards ════════ */
     const IDEAS = [
-      { author: 'Jonathan Kongstad', emoji: '🚧', color: 'mint', likes: 17, dislikes: 0, time: '2 weeks ago',
-        title: 'Infrastructure has not kept pace with overall development',
-        excerpt: 'Everywhere you look in Greenville you are confronted with congestion and ageing roads. Infrastructure has not kept pace with our population growth, and public transit barely reaches the new neighbourhoods.' },
-      { author: 'Prof. Jean-Christophe Coe', emoji: '📚', color: 'lavender', likes: 13, dislikes: 1, time: '3 weeks ago',
-        title: 'Decline in education',
-        excerpt: 'One of the biggest issues we face is the steady decline in the quality of our public schools — funding gaps, teacher retention, and unequal access to a good education for every child in the region.' },
-      { author: 'Polina Luu', emoji: '🗳️', color: 'mint', likes: 22, dislikes: 2, time: '3 weeks ago',
-        title: 'Voters need to have more confidence in our voting',
-        excerpt: 'Distrust in the process keeps people home on election day. We need transparent, well-run local elections and clear communication so residents know their vote counts.' },
-      { author: 'Marisol Reyes', emoji: '🏠', color: 'grey', likes: 19, dislikes: 0, time: '1 week ago',
-        title: 'Rent is outpacing wages',
-        excerpt: 'Young families can’t afford to stay in the neighbourhoods they grew up in. We need more affordable housing and protections against rapid rent increases.' },
-      { author: 'Anonymous', emoji: '🩺', color: 'pink', likes: 14, dislikes: 0, time: '5 days ago',
-        title: 'Mental-health support gaps',
-        excerpt: 'There aren’t enough affordable counselling and crisis services in our area. People wait weeks for an appointment when they need help right away.' },
-      { author: 'Bill Berman', emoji: '🌱', color: 'lavender', likes: 11, dislikes: 1, time: '4 days ago',
-        title: 'Protect our green spaces',
-        excerpt: 'As the region grows we keep losing parks and tree cover to development. We should set aside protected green space now, before it’s gone for good.' },
+      { author: 'Daan Verhoeven', emoji: '⚓', color: 'mint', likes: 24, dislikes: 1, time: '2 weeks ago',
+        title: 'The harbour and the Mere should be ours to enjoy',
+        excerpt: 'The working harbour is wonderful, but residents have almost no clean, safe waterfront to walk or swim. Let’s reclaim more of the quayside and the Mere for people, not just for through-traffic and parking.' },
+      { author: 'Aisha Karimi', emoji: '🚲', color: 'lavender', likes: 18, dislikes: 2, time: '3 weeks ago',
+        title: 'Station Road is hostile to anyone not in a car',
+        excerpt: 'Crossing Station Road on foot or by bike in Northgate feels dangerous. Narrower lanes, proper crossings and a continuous cycle path would make the whole route safer for school runs and commuters.' },
+      { author: 'Tom Bekker', emoji: '🏛️', color: 'mint', likes: 21, dislikes: 0, time: '3 weeks ago',
+        title: 'Finish what we started in the Old Town',
+        excerpt: 'The Old Town renewal report is ready, but residents want to see it through — restored frontages, fewer empty shops, and a Market Square that works for markets again, not overflow parking.' },
+      { author: 'Marek Nowak', emoji: '🏠', color: 'grey', likes: 19, dislikes: 1, time: '1 week ago',
+        title: 'Rents are outpacing local wages',
+        excerpt: 'Young families can’t afford to stay in the neighbourhoods they grew up in. Westmere needs more genuinely affordable housing and protections against rapid rent increases, especially around Riverside.' },
+      { author: 'Anonymous', emoji: '💶', color: 'pink', likes: 15, dislikes: 0, time: '5 days ago',
+        title: 'Let residents decide where the budget goes',
+        excerpt: 'The participatory budget is a good start, but €1.2M is a fraction of what the city spends. Give neighbourhoods a real, recurring say over local spending so people can see their priorities funded.' },
+      { author: 'Lena Okonkwo', emoji: '🌳', color: 'lavender', likes: 13, dislikes: 1, time: '4 days ago',
+        title: 'Back the climate teams in every district',
+        excerpt: 'The Westside, Old Town and Riverside climate teams show what residents can do. Let’s protect tree cover and green space across the city before it’s lost to development, and fund the teams to keep going.' },
     ];
 
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
