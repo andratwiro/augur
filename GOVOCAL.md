@@ -570,5 +570,27 @@ Keep entries short, deduped, and dated when point-in-time. Newest at top.
   before the snapshot.** Real measured brand colours for the Raleigh demo tenant:
   primary `#08833a`, secondary `#830851`, text `#1e1e1e` (Settings → Branding).
 
+- _(2026-06-15, fidelity pass)_ **Per-page audit agents brought every BO tab/sub-tab to
+  screenshot-level accuracy** (compared each built panel to its capture's `styles.json`
+  digest, fixed page-locally). All page-local; canonical untouched; lint 0; 85 checkpoints
+  green. **Canonical-library backlog they surfaced** (worked around page-locally for now —
+  address in a future system-building pass so the workarounds can be deleted):
+  1. **Filled grey badge** — real "DEFAULT"/method tags are a *filled* grey pill
+     (`#EBEDEF` bg, `#596B7A`, 12px/700, no border); canonical `.gv-badge` is outlined.
+     Add a `.gv-badge.subtle` variant (wanted by pages-menu + inspiration-hub).
+  2. **Chart-card SVG sizing** — `.gv-bo-chartcard svg{width:100%}` blows up pie charts;
+     add a `.gv-bo-chartcard--pie`/fixed-size variant (dashboard worked around with `!important`).
+  3. **`.gv-bo-table__sub` needs `display:block`** — sublines render inline otherwise
+     (management feed item sub-line).
+  4. **`.gv-bo-listrow` padding** is `18px 0`; real BO list rows measure ~`10px 0`
+     (messaging/pages-menu rows are denser) — consider tightening.
+  5. **Section-page title scale** — section pages (Projects/Reporting/Tools/Community
+     monitor) use a **30px/700** page title; `.gv-bo-pagehead` is 28px/600. Settings/Branding
+     heads are **25px/500** (that's `.gv-bo-pagetitle`, not `.gv-bo-formhead` 21/700). Settings
+     field labels are `#596B7A/400`, not the project-editor's `#044D6C/500`. Consider explicit
+     variants so section pages don't override locally.
+  6. **Icon set gap** — no vertical drag-handle/grip glyph (BO reorder lists use one); only
+     `dots-horizontal` exists. Add `drag-handle`.
+
 <!-- Add new learnings above this line. Format: - _(YYYY-MM-DD)_ <fact / decision / preference>. -->
 
