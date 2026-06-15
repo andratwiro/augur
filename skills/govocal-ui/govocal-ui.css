@@ -1054,6 +1054,13 @@
   .gv-feedfilter { display: none; order: -1; }   /* opened panel sits above the cards */
   .gv-feedfilter.is-open { display: flex; }
 }
+/* Mobile: the live ideation feed shows the Filters trigger as a FULL-WIDTH button
+   on its own row above the idea list (sliders icon, centred), not an inline chip
+   beside the List/Map toggle. Grounded by fo-project-ideation-feed-m. Appended as a
+   refinement over the base inline rule above — do not reflow that block. */
+@media (max-width: 860px) {
+  .gv-filters-btn { flex: 1 0 100%; width: 100%; order: -1; justify-content: center; }
+}
 /* Each filter SECTION (label + its options) is grouped on its own white panel —
    the background sits on the group, not the individual option buttons. */
 .gv-feedfilter > div { background: #fff; border-radius: var(--gv-radius); padding: 14px 16px; }

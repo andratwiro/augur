@@ -31,9 +31,15 @@
       <!-- ===== COMPONENT (copy from here) ===== -->
       <div class="feed-head">
         <h2 class="gv-feed__count">3 ideas</h2>
-        <div class="gv-viewseg" role="tablist" aria-label="View ideas as">
-          <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
-          <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="gv-filters-btn" type="button" aria-expanded="false" aria-controls="e2e-project-sidebar">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            Filters
+          </button>
+          <div class="gv-viewseg" role="tablist" aria-label="View ideas as">
+            <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
+            <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
+          </div>
         </div>
       </div>
       <div class="gv-feed">
@@ -152,8 +158,22 @@
       <p><strong>Filters:</strong> each group is a <code>.gv-feedfilter__label</code> heading over a
       <code>.gv-feedfilter__group</code> of <code>.gv-feedfilter__btn</code> chips, some carrying a
       <code>.gv-feedfilter__count</code> badge; <code>.is-active</code> marks the current selection.</p>
+      <p><strong>Mobile:</strong> below 860px the sidebar collapses behind a full-width
+      <code>.gv-filters-btn</code> (sliders icon) shown above the list; tapping it toggles
+      <code>.is-open</code> on <code>.gv-feedfilter</code> to reveal the panel inline.</p>
     </div>
   </div>
+  <script>
+    /* Mobile "Filters" toggle — shows/hides the filter panel (CSS gates it to
+       mobile; desktop keeps the sidebar visible and the button hidden). */
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.gv-filters-btn');
+      if (!btn) return;
+      const aside = document.getElementById(btn.getAttribute('aria-controls'));
+      if (!aside) return;
+      btn.setAttribute('aria-expanded', String(aside.classList.toggle('is-open')));
+    });
+  </script>
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
 </body>
