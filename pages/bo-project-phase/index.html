@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Project configuration (phase) — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <link rel="stylesheet" href="govocal-bo.css" />
+  <script src="govocal-icons.js" defer></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { background: #fff; font-family: var(--gv-font-family); }
+    /* the ribbon sits inside the white canvas, edge-to-edge under the tabs */
+    .gv-bo-section .gv-phases { box-shadow: none; border: 0; padding: 0; background: transparent; margin: 0 0 4px; }
+    .gv-bo-section .gv-stepper { display: flex; flex-wrap: wrap; gap: 2px; }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+
+    <!-- ── Sidebar ──────────────────────────────────────────────── -->
+    <nav class="gv-bo-side" aria-label="Admin">
+      <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo"><span data-gv-icon="arrow-left" style="color:#fff;font-size:14px"></span></span> To platform</a>
+      <div class="gv-bo-nav">
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="home"></span>Dashboard</a>
+        <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="survey"></span>Projects</a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="comments"></span>Input manager</a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="group"></span>Users</a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="email"></span>Messaging</a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="trend-up"></span>Reporting</a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="eye"></span>Community monitor</a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="idea"></span>Inspiration hub</a>
+      </div>
+      <div class="gv-bo-nav gv-bo-nav--bottom">
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="settings"></span>Tools</a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="menu"></span>Pages &amp; menu</a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="settings"></span>Settings</a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="notification"></span>Notifications<span class="gv-bo-count">29</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="user-circle"></span><span>Go Vocal Admin<span class="gv-bo-nav__sub" style="display:block">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="info-outline"></span>Support<span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+      </div>
+    </nav>
+
+    <!-- ── Main ─────────────────────────────────────────────────── -->
+    <div class="gv-bo-main">
+
+      <header class="gv-bo-topbar">
+        <div class="gv-bo-topbar__row">
+          <div>
+            <h1 class="gv-bo-topbar__title">Let's Reimagine Dorothea Dix Park</h1>
+            <div class="gv-bo-meta">
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="lock"></span>Everyone</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="eye"></span>Public</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="group"></span>170 project participants</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Published · Active</span>
+            </div>
+          </div>
+          <div class="gv-bo-topbar__actions">
+            <button class="gv-iconbtn" aria-label="Preview project"><span data-gv-icon="eye"></span></button>
+            <button class="gv-btn secondary-outlined"><span data-gv-icon="share"></span><span class="gv-btn__label">Share</span></button>
+            <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
+          </div>
+        </div>
+        <nav class="gv-bo-tabs" aria-label="Project">
+          <a class="gv-bo-tab" href="#">General</a>
+          <a class="gv-bo-tab is-active" href="#">Timeline</a>
+          <a class="gv-bo-tab" href="#">Audience</a>
+          <a class="gv-bo-tab" href="#">Messaging</a>
+          <a class="gv-bo-tab" href="#">Events</a>
+          <a class="gv-bo-tab" href="#">360 Input<span class="gv-bo-tab__new">NEW</span></a>
+        </nav>
+      </header>
+
+      <div class="gv-bo-section">
+
+        <!-- Phase ribbon (reuses .gv-phases / .gv-stepper) -->
+        <section class="gv-phases" aria-label="Project phases">
+          <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"></div>
+        </section>
+
+        <!-- Phase header -->
+        <div class="gv-bo-phasehead">
+          <div>
+            <h2 class="gv-bo-phasehead__title">New ideas!</h2>
+            <div class="gv-bo-phasehead__meta">
+              <span>Ideation phase</span>
+              <span><span class="gv-icon" data-gv-icon="calendar-range"></span>June 2, 2024 12:00 AM → No end date</span>
+              <span><span class="gv-icon" data-gv-icon="eye"></span>Mixed rights</span>
+            </div>
+          </div>
+          <div class="gv-bo-phasehead__actions">
+            <button class="gv-iconbtn" aria-label="Phase options"><span data-gv-icon="dots-horizontal"></span></button>
+          </div>
+        </div>
+
+        <!-- Phase sub-tabs -->
+        <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Phase">
+          <a class="gv-bo-tab is-active" href="#">Setup</a>
+          <a class="gv-bo-tab" href="#">Description</a>
+          <a class="gv-bo-tab" href="#">Input manager</a>
+          <a class="gv-bo-tab" href="#">Input form</a>
+          <a class="gv-bo-tab" href="#">Map</a>
+          <a class="gv-bo-tab" href="#">Insights</a>
+          <a class="gv-bo-tab" href="#">Phase access and user data</a>
+          <a class="gv-bo-tab" href="#">Notifications</a>
+        </nav>
+
+        <!-- Setup panel -->
+        <div style="padding-top:24px; max-width:600px;">
+          <h3 class="gv-title h3" style="margin:0 0 20px; color:var(--gv-bo-primary)">Edit Phase</h3>
+
+          <div class="gv-bo-field">
+            <span class="gv-label">Phase name</span>
+            <div class="gv-bo-multiloc">
+              <button type="button" class="is-active">EN</button>
+              <button type="button"><span class="miss"></span>ES-ES</button>
+            </div>
+            <input class="gv-input" type="text" value="New ideas!" />
+          </div>
+
+          <div class="gv-bo-field">
+            <span class="gv-label">Dates</span>
+            <div class="gv-bo-dateface">
+              <span>06/02/2024 12:00 AM</span>
+              <span class="sep">›</span>
+              <span>Open ended</span>
+              <span class="gv-icon" data-gv-icon="calendar"></span>
+            </div>
+          </div>
+
+          <button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Phase ribbon — back office: 5 phases, current = "New ideas!" (#5), + New phase.
+    const LABELS = ["Submit your ideas", "Vote", "Winners announcement", "Implementation of projects", "New ideas!"];
+    const CURRENT = 4;
+    const stepper = document.getElementById("stepper");
+    LABELS.forEach((label, i) => {
+      const b = document.createElement("button");
+      b.className = "gv-phase" + (i === CURRENT ? " current" : "");
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-selected", i === CURRENT ? "true" : "false");
+      const num = i === CURRENT ? `<span class="gv-pstep__dot"></span>${i + 1}` : (i + 1);
+      b.innerHTML = `<span class="gv-pstep">${num}</span><span class="gv-phase__label">${label}</span>`;
+      stepper.appendChild(b);
+    });
+    const add = document.createElement("button");
+    add.className = "gv-bo-addphase";
+    add.innerHTML = `<span data-gv-icon="plus"></span> New phase`;
+    stepper.appendChild(add);
+    if (window.GVIcons) window.GVIcons.render(stepper);
+  </script>
+</body>
+</html>

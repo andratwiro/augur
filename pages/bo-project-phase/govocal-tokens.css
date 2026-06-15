@@ -1,0 +1,146 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   GoVocal design tokens
+   Transcribed verbatim from the product source:
+     CitizenLabDotCo/citizenlab @ 5d67730
+     front/app/component-library/utils/styleUtils.ts
+   Refresh procedure + provenance: see skills/govocal-ui/SKILL.md.
+
+   Usage: include this file FIRST, then govocal-ui.css. Override
+   --gv-tenant-primary per city to re-theme (the product does this per tenant).
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Base ─────────────────────────────────────────────────────────────── */
+  --gv-black: #000000;
+  --gv-white: #ffffff;
+
+  /* ── Grey ─────────────────────────────────────────────────────────────── */
+  --gv-grey-800: #333333; /* text */
+  --gv-grey-700: #767676; /* border / grey */
+  --gv-grey-600: #999999; /* placeholder */
+  --gv-grey-500: #BDBDBD; /* disabled */
+  --gv-grey-400: #CBCBCB; /* light border */
+  --gv-grey-300: #E0E0E0; /* divider */
+  --gv-grey-200: #EBEDEF;
+  --gv-grey-100: #F4F6F8;
+  --gv-grey-50:  #FCFCFC;
+  --gv-cool-grey-700: #43515D;
+  --gv-cool-grey-600: #596B7A; /* secondary text / label */
+  --gv-cool-grey-500: #84939E;
+  --gv-cool-grey-300: #B8C5D0;
+
+  /* ── Blue ─────────────────────────────────────────────────────────────── */
+  --gv-blue-700: #022331;
+  --gv-blue-500: #044D6C; /* admin text / "primary" semantic */
+  --gv-blue-400: #00577C;
+  --gv-blue-10:  #E6EEF1;
+
+  /* ── Teal ─────────────────────────────────────────────────────────────── */
+  --gv-teal-700: #0A5159;
+  --gv-teal-500: #147985; /* "teal" semantic */
+  --gv-teal-400: #01A1B1;
+  --gv-teal-300: #40B8C5;
+  --gv-teal-200: #80CFD8;
+  --gv-teal-100: #BEE7EB; /* tealLight */
+  --gv-teal-50:  #EDF8FA;
+
+  /* ── Red ──────────────────────────────────────────────────────────────── */
+  --gv-red-100: #fde9e8; /* errorLight */
+  --gv-red-400: #FC3C2D;
+  --gv-red-500: #E52516; /* error */
+  --gv-red-600: #D61607; /* error border (inputs) */
+  --gv-red-800: #9B1005;
+
+  /* ── Green ────────────────────────────────────────────────────────────── */
+  --gv-green-700: #024D2B;
+  --gv-green-500: #04884C; /* success (also default checked checkbox/toggle) */
+  --gv-green-400: #32B67A;
+  --gv-green-300: #62C462;
+  --gv-green-100: #e4f7ef; /* successLight */
+
+  /* ── Orange ───────────────────────────────────────────────────────────── */
+  --gv-orange-100: #FFECE6;
+  --gv-orange-500: #FF672F;
+
+  /* ── Other ────────────────────────────────────────────────────────────── */
+  --gv-brown: #8C680D;
+
+  /* ── Semantic aliases (semanticColors) ────────────────────────────────── */
+  --gv-text-primary:   var(--gv-grey-800);
+  --gv-text-secondary: var(--gv-cool-grey-600);
+  --gv-border-dark:    var(--gv-grey-700);
+  --gv-border-light:   var(--gv-grey-400);
+  --gv-placeholder:    var(--gv-grey-600);
+  --gv-disabled:       var(--gv-grey-500);
+  --gv-divider:        var(--gv-grey-300);
+  --gv-primary:        var(--gv-blue-500);
+  --gv-error:          var(--gv-red-500);
+  --gv-error-light:    var(--gv-red-100);
+  --gv-success:        var(--gv-green-500);
+  --gv-success-light:  var(--gv-green-100);
+  --gv-background:     #EDEFF0;
+
+  /* ── Tenant (per-city) colours ────────────────────────────────────────── */
+  /* The product themes these per tenant. Override --gv-tenant-primary on :root
+     (or a [data-city] scope) to re-skin.
+     DEFAULT GoVocal combination = deep teal + warm coral (replaces the old hot-pink
+     #E10069 / black, which read poorly and barely cleared AA). Teal #0E7C86 gives
+     4.95:1 for white button text (comfortable WCAG AA); coral is a warm brand accent
+     (use dark/large text if filled — ~3.5:1 white-on-coral). Real city tenants keep
+     their own brand colours via the ?theme= switcher (govocal-themes.js). */
+  --gv-tenant-primary:   #0E7C86; /* deep teal — AA-safe (4.95:1 white-on-primary) */
+  --gv-tenant-secondary: #E2603A; /* warm coral accent */
+  --gv-tenant-text:      #333333;
+  /* Lightened tenant-primary tints (product: tenantPrimaryLighten75/90/95).
+     Derived with color-mix so they re-theme automatically with the primary. */
+  --gv-tenant-primary-lighten75: color-mix(in srgb, var(--gv-tenant-primary) 25%, transparent);
+  --gv-tenant-primary-lighten90: color-mix(in srgb, var(--gv-tenant-primary) 10%, transparent);
+  --gv-tenant-primary-lighten95: color-mix(in srgb, var(--gv-tenant-primary) 5%,  transparent);
+
+  /* ── Back-office surface (GoVocal's OWN theme — NOT city-themed) ──────────
+     GoVocal has ~two UIs: the front office is themed per city (--gv-tenant-*);
+     the back office uses a fixed GoVocal teal/navy palette. Same type, radius,
+     spacing and primitives — only the colour layer differs. Measured live from
+     the demo platform (uxusertesting.govocal.com, City of Raleigh back office).
+     Apply by scoping markup under `.gv-bo`, which remaps the tenant vars below. */
+  --gv-bo-sidebar-bg:     #003349;                    /* dark teal/navy left nav */
+  --gv-bo-sidebar-text:   rgba(255,255,255,0.78);     /* nav labels */
+  --gv-bo-sidebar-active: rgba(0,0,0,0.30);           /* active/hover cell on the navy */
+  --gv-bo-primary:        var(--gv-blue-500);          /* #044D6C — fills, headings, table text */
+  --gv-bo-link:           #4183C4;                     /* link/anchor blue */
+  --gv-bo-canvas:         var(--gv-white);             /* content background */
+  --gv-bo-row-alt:        var(--gv-grey-50);           /* #FCFCFC — alt table row / hover */
+  --gv-bo-border:         var(--gv-cool-grey-600);     /* #596B7A — outline-button border */
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  --gv-font-family: 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --gv-fs-xs:     12px;
+  --gv-fs-s:      14px;
+  --gv-fs-base:   16px;
+  --gv-fs-m:      16px;
+  --gv-fs-l:      18px;
+  --gv-fs-xl:     21px;
+  --gv-fs-xxl:    25px;
+  --gv-fs-xxxl:   30px;
+  --gv-fs-xxxxl:  34px;
+  --gv-fs-xxxxxl: 42px;
+
+  /* ── Radius, sizing, layout (stylingConsts) ───────────────────────────── */
+  --gv-radius: 3px;
+  --gv-input-height: 48px;
+  --gv-input-padding: 12px;
+  --gv-max-page-width: 952px;
+  --gv-page-width: 1150px;
+  --gv-text-width: 720px;
+  --gv-menu-height: 78px;
+
+  /* ── Elevation (defaultStyles) ────────────────────────────────────────── */
+  --gv-shadow:           0px 2px 4px -1px rgba(0,0,0,0.06);
+  --gv-shadow-hover-sm:  0px 2px 4px -1px rgba(0,0,0,0.2);
+  --gv-shadow-hover-lg:  0px 4px 12px -1px rgba(0,0,0,0.12);
+  --gv-shadow-error:     0 0 0 3px rgba(214,22,7,0.35); /* transparentize(.65, red600) */
+
+  /* ── Focus ────────────────────────────────────────────────────────────── */
+  /* defaultOutline: 2px solid tenantPrimary */
+  --gv-focus-outline: 2px solid var(--gv-tenant-primary);
+}

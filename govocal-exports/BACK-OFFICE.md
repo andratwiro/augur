@@ -46,14 +46,18 @@ the `.gv-bo` scope remaps `--gv-tenant-*` so primitives need no BO-specific code
 Pipeline per piece: probe exact values → build from existing primitives → render +
 screenshot + compare to capture → fix → store (govocal-bo.css + components.md + manifest + `npm run index`).
 
-- [x] **bo-app-shell** — sidebar + project top-bar + project tabs. ✅ built & verified.
-- [ ] **bo-phase-ribbon** — the green interlocking chevron phase stepper + Prev/Current/Next + "New phase". (FO already has `.gv-phases`; reconcile/extend for BO.)
-- [ ] **bo-sub-tabs** — phase sub-tab row (Setup/Description/Input manager/…). May just be `.gv-bo-tabs--sub` + a phase header block (green numbered circle + name + date).
-- [ ] **bo-table** — the posts/data table (checkbox, sortable headers, status meta, row actions, pagination dots) + the left filter rail (Timeline/Tags/Status, phase list w/ counts).
-- [ ] **bo-filter-bar** — "Any administrator" dropdown + toggle + Exports + Search (reused atop tables).
-- [ ] **bo-stat-cards** — Insights metric cards (label, big number, 7-day change, icon). Tag **shared** (also used in reporting/FO dashboards). Charts come after.
-- [ ] **bo-ai-banner** — the teal "Explore AI-powered summaries" promo row.
-- [ ] **bo-form** — Edit-phase form patterns: section headings, **multiloc language tabs** (EN / ES-ES), labelled inputs, date-range picker, Save bar.
-- [ ] **bo-import-cards** — input-form import sources (Paper/OCR, Spreadsheet) row cards.
+**Focus (set 2026-06-15): the project-configuration editor** — `/admin/projects/<id>/…`
+(phases, Setup, Input manager, etc.). Build these screens out deeply first.
 
-Then assemble a **Pages**-tier `bo-project-phase` reference screen from these legos.
+- [x] **bo-app-shell** — sidebar + project top-bar + project tabs. ✅ built & verified.
+- [x] **bo-phase-ribbon** — REUSED FO `.gv-phases`/`.gv-stepper` under `.gv-bo` + a flat `.gv-bo-addphase` "+ New phase" cell. ✅
+- [x] **bo-sub-tabs + phase header** — `.gv-bo-tabs--sub` + `.gv-bo-phasehead` (title · meta · ⋯). ✅
+- [x] **bo-form (Setup)** — `.gv-bo-field`, `.gv-bo-multiloc` (EN/ES-ES lang tabs), `.gv-bo-dateface`, reused `.gv-input`/`.gv-btn`. ✅
+- [x] **Pages tier: `pages/bo-project-phase/`** — full clickable Setup screen assembled from the above. ✅ verified vs `bo-phase-setup`.
+- [ ] **Input manager tab** — the posts/data table (checkbox, sortable headers, status meta, row actions, pagination dots) + left filter rail (Timeline/Tags/Status, phase list w/ counts) + filter bar ("Any administrator" dropdown, toggle, Exports, Search) + AI banner. (capture: `bo-project-ideas`)
+- [ ] **Input form tab** — `.gv-bo-import-cards` (Paper/OCR, Spreadsheet sources) + "Edit input form" entry. (capture: `bo-input-form-builder`)
+- [ ] **Insights tab** — `bo-stat-cards` (label · big number · 7-day change · icon; tag **shared**) + charts. (capture: `bo-phase-insights`)
+- [ ] **General / Description / Map / Phase access / Notifications** tabs — capture as needed, build per pattern.
+- [ ] **Project tabs** beyond Timeline: General (project settings), Audience, Messaging, Events.
+
+Site: `/pages/` index is split **Back office / Front office** (build.js, via `<meta name="gv-surface">` / `bo-` prefix). New BO pages auto-group under Back office.

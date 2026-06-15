@@ -69,7 +69,8 @@ as a starting point for a prototype.
 
 | Page | Open | Source | What it is |
 |---|---|---|---|
-| **Homepage** | `/pages/homepage/` | `pages/homepage/` | Wien mitgestalten — GoVocal homepage (reference) |
+| **Bo Project Phase** | `/pages/bo-project-phase/` | `pages/bo-project-phase/` | Project configuration (phase) — GoVocal back office (reference) |
+| **Homepage** | `/pages/homepage/` | `pages/homepage/` | Homepage — GoVocal (reference) |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | Input Form (survey) — GoVocal (reference) |
 | **Project Page** | `/pages/project-page/` | `pages/project-page/` | Project page — GoVocal (reference) |
 

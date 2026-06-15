@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.15";
+const UI_VERSION = "0.16";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -268,7 +268,15 @@ async function scanPages() {
     const dir = path.join(PAGES_SRC, e.name);
     const latest = await copyDir(dir, path.join(DIST, "pages", e.name));
     const { href, file } = await entryPoint(e.name, dir);
-    pages.push({ name: e.name, href, file, mtimeMs: modifiedTime(dir, latest) });
+    // Surface = back-office (GoVocal's own theme) or front-office (city-themed).
+    // Base it on a bo-/fo- name prefix, then let <meta name="gv-surface"> override.
+    let surface = /^bo-/.test(e.name) ? "back-office" : "front-office";
+    try {
+      const html = await fs.readFile(file, "utf8");
+      const m = html.match(/<meta\s+name=["']gv-surface["']\s+content=["']([^"']+)["']/i);
+      if (m) surface = /back/i.test(m[1]) ? "back-office" : "front-office";
+    } catch {}
+    pages.push({ name: e.name, href, file, surface, mtimeMs: modifiedTime(dir, latest) });
   }
   pages.sort(byRecency);
   return pages;
@@ -1197,9 +1205,7 @@ function renderPagesIndex(pages) {
   }
 
   // Pages are a designer reference — Open only, no HTML download.
-  const cards = pages
-    .map((p) => {
-      return `
+  const pageCard = (p) => `
         <div class="card-proto">
           <div class="preview">
             <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
@@ -1210,8 +1216,20 @@ function renderPagesIndex(pages) {
             <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
           </div>
         </div>`;
-    })
-    .join("");
+
+  // Split by surface: back-office (GoVocal's own theme) vs front-office (city-themed).
+  const back = pages.filter((p) => p.surface === "back-office");
+  const front = pages.filter((p) => p.surface !== "back-office");
+  const group = (label, list) =>
+    list.length
+      ? `<p class="section-eyebrow">${label} &middot; ${list.length}</p><div class="page-grid">${list.map(pageCard).join("")}</div>`
+      : "";
+  // Back office first (the current focus); fall back to a single ungrouped list only
+  // if every page is the same surface and grouping would add no signal.
+  const cards =
+    back.length && front.length
+      ? group("Back office", back) + group("Front office", front)
+      : `<p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${pages.map(pageCard).join("")}</div>`;
 
   // Planned reference pages not built yet — shown as a roadmap of pending work.
   const builtSlugs = new Set(pages.map((p) => p.name));
@@ -1235,7 +1253,7 @@ function renderPagesIndex(pages) {
   return shell({
     title: "Pages",
     activeTab: "pages",
-    body: `<p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${cards}</div>${pendingSection}`,
+    body: `${cards}${pendingSection}`,
   });
 }
 
