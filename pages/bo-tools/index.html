@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Tools — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    .tl-list { display: flex; flex-direction: column; gap: 16px; max-width: 880px; }
+    .tl-card { display: flex; gap: 28px; background: #fff; border-radius: 3px; box-shadow: var(--gv-shadow); padding: 20px; align-items: center; }
+    .tl-card__media { flex: none; width: 260px; height: 130px; border-radius: 3px; display: grid; place-items: center; color: #fff; }
+    .tl-card__media .gv-icon { width: 48px; height: 48px; opacity: .92; }
+    .tl-card__body { min-width: 0; flex: 1 1 auto; }
+    .tl-card__title { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: var(--gv-bo-link); }
+    .tl-card__desc { margin: 0 0 14px; font-size: 14px; color: var(--gv-text-secondary); line-height: 1.5; max-width: 460px; }
+    .tl-card__actions { display: flex; align-items: center; gap: 16px; }
+    .tl-locked { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 3px; border: 0; background: var(--gv-cool-grey-300); color: var(--gv-cool-grey-600); font-size: 14px; font-family: var(--gv-font-family); cursor: not-allowed; }
+    .tl-locked .gv-icon { width: 14px; height: 14px; }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+    <nav class="gv-bo-side" aria-label="Admin" data-active="tools"></nav>
+
+    <div class="gv-bo-main">
+      <section class="gv-bo-section">
+        <h1 class="gv-bo-pagehead" style="margin-bottom:18px">Tools</h1>
+        <div class="tl-list" id="tools"></div>
+      </section>
+    </div>
+  </div>
+
+  <script src="bo-chrome.js"></script>
+  <script>
+    // [title, desc, mediaColor, mediaIcon, actionLabel, actionIcon, locked, secondaryLink]
+    const TOOLS = [
+      ["Online deliberation workshops", "Hold live video meetings, facilitate simultaneous group discussions and debates. Gather input, vote and reach consensus, just like you would offline.", "var(--gv-teal-500)", "comments", "Manage workshops", "arrow-right", false, "Learn more"],
+      ["Esri integration", "Connect your Esri account and import data from ArcGIS Online directly into your mapping projects.", "var(--gv-teal-300)", "map", "Enable Esri", "arrow-right", false, ""],
+      ["Widget", "You can create a widget, customize it and add it to your own website to attract people to this platform.", "var(--gv-teal-400)", "open-in-new", "Manage widget", "arrow-right", false, ""],
+      ["Public API Access", "Manage the credentials to create custom integrations on our public API.", "#C7A9E0", "key", "Manage API Keys", "", true, ""],
+      ["Webhooks", "Configure webhooks to receive real-time notifications when events occur on your platform.", "#E3D2A0", "send", "Manage webhooks", "", true, ""],
+      ["Power BI", "Use our plug & play Power BI Templates to access Go Vocal data in your Microsoft Power BI Workspace.", "var(--gv-teal-600, #0d5b65)", "trend-up", "Download templates", "", true, ""],
+    ];
+    document.getElementById("tools").innerHTML = TOOLS.map(t => {
+      const [title, desc, color, micon, alabel, aicon, locked, secondary] = t;
+      const action = locked
+        ? `<button class="tl-locked">${alabel} <span data-gv-icon="lock"></span></button>`
+        : `<button class="gv-btn admin-dark"><span class="gv-btn__label">${alabel}</span>${aicon ? `<span data-gv-icon="${aicon}"></span>` : ""}</button>`;
+      const sec = secondary ? `<a class="gv-bo-link" href="#">${secondary}</a>` : "";
+      return `<div class="tl-card">
+        <div class="tl-card__media" style="background:${color}"><span data-gv-icon="${micon}"></span></div>
+        <div class="tl-card__body">
+          <h3 class="tl-card__title">${title}</h3>
+          <p class="tl-card__desc">${desc}</p>
+          <div class="tl-card__actions">${action}${sec}</div>
+        </div>
+      </div>`;
+    }).join("");
+    if (window.GVIcons) window.GVIcons.render(document.body);
+  </script>
+</body>
+</html>
+</content>
