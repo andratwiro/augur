@@ -1276,7 +1276,7 @@ async function main() {
   // whitelist above): e.g. avatars/ — the bundled face set govocal-avatars.js
   // drops into every .av bubble. Copied wholesale so the faces resolve on the
   // shipped site exactly as they do locally (file://).
-  const SHARED_ASSET_DIRS = ["avatars"];
+  const SHARED_ASSET_DIRS = ["avatars", "img"];
   for (const d of SHARED_ASSET_DIRS) {
     if (await isDir(path.join(UI_SKILL, d))) {
       await copyDir(path.join(UI_SKILL, d), path.join(sharedDir, d));
