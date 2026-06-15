@@ -175,9 +175,8 @@ a co-worker's commit can't sweep half-finished state.
 > **Parked backlog** (build only when this mode is active): refine the existing
 > `.gv-*` primitives (`header-nav`, `footer`, `project-card`, `hero`) vs the real
 > product, and build the remaining reference Pages one at a time — Content Builder,
-> Survey Builder, Perspectives, Voting, Common Ground, Ideation, Project List,
-> Project Editor. Also still open: real prototypes for the `departments/` opportunity
-> (currently hello-world placeholders).
+> Survey Builder, Perspectives, Voting, Common Ground, Ideation, Project List.
+> (The project-configuration editor is already built — `pages/bo-project-phase/`.)
 
 ### Future modes (not built yet — don't assume them)
 

@@ -157,7 +157,7 @@ Filled status pill; set the background via `--bg`.
 ## Icons — `govocal-icons.js` (`components/Icon`)
 
 The real GoVocal icon set (Material-Design-derived paths), transcribed verbatim from
-`components/Icon/index.tsx`. Curated 67-icon subset of what the product UI actually uses.
+`components/Icon/index.tsx`. Curated 81-icon subset of what the product UI actually uses.
 
 ```html
 <script src="govocal-icons.js" defer></script>
@@ -172,7 +172,7 @@ The real GoVocal icon set (Material-Design-derived paths), transcribed verbatim 
   `font-size`/`color` and the icon follows (so it re-themes with `--gv-tenant-*`).
 - **API:** `window.GVIcons.svg("search")` → markup string; `.names` → sorted list;
   `.render(root)` → rescan after injecting new `[data-gv-icon]` nodes.
-- **Names (67):** navigation/UI — `search close menu dots-horizontal plus minus check
+- **Names (81):** navigation/UI — `search close menu dots-horizontal plus minus check
   edit delete settings filter refresh link open-in-new download send share
   chevron-{up,down,left,right} arrow-{up,down,left,right}`; participation — `vote-up
   vote-down idea comment comments basket basket-plus survey initiatives volunteer flag
@@ -180,8 +180,9 @@ The real GoVocal icon set (Material-Design-derived paths), transcribed verbatim 
   calendar-range clock location-simple gps map info-outline info-solid alert-circle
   check-circle lock key email notification home trend-up money-bag timeline pen label`;
   account menu (transcribed live from the user dropdown) — `shield` (Manage platform)
-  `cogs` (My settings) `power` (Sign out).
-- **More icons exist** in the repo (~130 total incl. SSO/sidebar glyphs); extend
+  `cogs` (My settings) `power` (Sign out); admin sidebar (live `#sidebar` glyphs) —
+  `admin-{dashboard,projects,input,community,inspiration,messaging,reporting,users,pages,tools,settings,notifications,support,back}`.
+- **More icons exist** in the repo (~130 total incl. SSO + other specialized glyphs); extend
   `govocal-icons.js` from `Icon/index.tsx` @ `5d67730` following the same discipline.
 
 ---
@@ -738,7 +739,7 @@ Templates ship as **real city tenants** (researched from each one's official bra
 |---|---|---|---|
 | `0` | GoVocal (default) | `#0E7C86` + `#E2603A` | Public Sans |
 | `1` | Københavns Kommune | `#000C2E` (KBH Blå) | KBH → Archivo |
-| `2` | Stadt Wien | `#FF5A64` (softened Wien-Rot) | WienerMelange → Libre Franklin |
+| `2` | Stadt Wien | `#FF5A64` (softened Wien-Rot) | WienerMelange → Mulish |
 | `3` | Engaged California | `#1C2745` + `#E79450` | Noto Sans |
 
 - On-screen picker (bottom-right swatches) switches live and updates the URL.
@@ -757,7 +758,7 @@ fonts (WienerMelange, KBH) fall back to Public Sans exactly as the live sites do
 
 **Contrast caveat (faithful-but-flagged):** real brand colours are kept even when
 they miss WCAG AA. Stadt Wien's in-product `#FF5A64` (a softened Wien-Rot) is only
-~4:1 white-on-primary and the audit flags it — kept faithful. The GoVocal default is
+~3.4:1 white-on-primary and the audit flags it — kept faithful. The GoVocal default is
 an AA-safe **deep teal `#0E7C86`** (4.95:1) + warm coral `#E2603A` accent, chosen over
 the literal product pink (`#E10069`/`#ef0071`, which barely cleared AA). On the real
 platform a light primary would take dark button text.
