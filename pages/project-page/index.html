@@ -136,7 +136,7 @@
         <button class="gv-phase current" role="tab" aria-selected="true"><span class="gv-pstep"><span class="gv-pstep__dot"></span>5</span><span class="gv-phase__label">New ideas!</span></button>
       </div>
 
-      <div class="gv-phasepanel" role="tabpanel" id="ideas">
+      <div class="gv-phasepanel">
         <div class="gv-phasepanel__head">
           <span class="gv-phasepanel__num" aria-hidden="true">5</span>
           <div>
@@ -144,9 +144,10 @@
             <p class="gv-phasepanel__date">August 14, 2024 – No end date</p>
           </div>
         </div>
+      </div>
 
-        <!-- ── Ideation FEED panel body (idea cards + filter sidebar) ── -->
-        <div class="gv-phasebody gv-phasebody--full">
+      <!-- ── Ideation FEED method body — separate from the phase-title module, sits on the grey band ── -->
+      <div class="gv-phasebody gv-phasebody--full" role="tabpanel" id="ideas">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
             <h2 class="gv-feed__count">4 ideas</h2>
             <div class="gv-viewseg" role="tablist" aria-label="View ideas as">
@@ -190,7 +191,6 @@
             </aside>
           </div>
         </div>
-      </div>
     </section>
     </div>
    </div><!-- /.gv-methodband -->
