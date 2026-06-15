@@ -46,6 +46,12 @@ Design tokens (`--gv-*`) + base `.gv-*` classes. **Live demo:** `skills/govocal-
 - Spinner
 - Card & Divider
 - Icons
+- Avatar & avatar stack
+- Progress bar
+- Tabs
+- Filter control
+- Segmented toggle
+- Search field
 
 ## Components (blocks) — `components/<name>/`
 
@@ -58,15 +64,27 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
 | **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
 | **Community Monitor** | `/components/community-monitor/` | `components/community-monitor/` | The “City at a glance” satisfaction module — an ongoing survey that surfaces as a top modal/banner on the homepage and asks how residents feel about governance… |
+| **Event Card** | `/components/event-card/` | `components/event-card/` | Event card with a two-tone date chip pinned over the media, clock / location / link / registrant rows and a Register CTA, laid out in the events grid with its… |
 | **Footer** | `/components/footer/` | `components/footer/` | Source-grounded on GoVocal’s real <footer id="hook-footer"> : a secondary-nav row of legal links — one is the Cookie-Einstellungen button — plus the “Ermöglich… |
 | **Header Nav** | `/components/header-nav/` | `components/header-nav/` | Responsive site chrome — 78px bar, logo slot, dropdown + “Mehr ···” overflow, search, primary CTA. Collapses to a hamburger drawer on narrow screens. CSS-only… |
 | **Hero** | `/components/hero/` | `components/hero/` | Full-bleed banner with a tenant-tinted overlay, title + lead, an avatar stack with participant count, and a primary CTA. Image-agnostic — set a photo or leave… |
 | **Homepage Featured Row** | `/components/homepage-featured-row/` | `components/homepage-featured-row/` | The homepage "We want to hear from you" row — three large, image-led featured project cards that sit above the regular project grid. Source-grounded on wietsed… |
 | **Homepage Survey Band** | `/components/homepage-survey-band/` | `components/homepage-survey-band/` | The full-width homepage banner promoting the ongoing community-monitor survey — the SISTER surface of the community-monitor modal (in-page band vs. pop-up moda… |
+| **Idea Card** | `/components/idea-card/` | `components/idea-card/` | The shared idea/proposal card — thumbnail, author meta, excerpt and a footer of circular like/dislike reaction controls with a comment count, used across proje… |
+| **Idea Feed** | `/components/idea-feed/` | `components/idea-feed/` | The ideation feed layout — a count + List/Map segmented toggle above a two-column grid pairing the idea list with a 310px filter sidebar of sort, status and to… |
+| **Issue Canvas** | `/components/issue-canvas/` | `components/issue-canvas/` | Dotted-grid Perspectives canvas that floats pastel sticky-note ideas in a masonry pile, with a floating "Add an idea" button. |
 | **Login Modal** | `/components/login-modal/` | `components/login-modal/` | The reusable modal abstraction (overlay → dialog card → title header + top-right close + scrollable body), shown via GoVocal’s real “Before you participate” au… |
+| **Participation Bar** | `/components/participation-bar/` | `components/participation-bar/` | The sticky project-page action bar — a participation status on the left and a primary on-color CTA on the right that pins as residents scroll the phase. |
 | **Phase Timeline** | `/components/phase-timeline/` | `components/phase-timeline/` | Phase timeline — GoVocal component |
+| **Poll** | `/components/poll/` | `components/poll/` | Poll method body — GoVocal component |
 | **Project Card** | `/components/project-card/` | `components/project-card/` | The participation-project card (thumb, title, meta with status icon, CTA) and the horizontal scroll rail. The whole card is clickable via a stretched title lin… |
+| **Proposal Threshold** | `/components/proposal-threshold/` | `components/proposal-threshold/` | The proposals signature progress bar — vote icon, count over target, and a tenant-tinted fill — paired with an open or expired status pill. |
+| **Spotlight** | `/components/spotlight/` | `components/spotlight/` | Homepage spotlight block — copy column (eyebrow, title, lead, action plus an avatar-bubble participant count) beside a media tile, with a placeholder when no i… |
+| **Sticky Note** | `/components/sticky-note/` | `components/sticky-note/` | Pastel Perspectives idea card with author, emoji, title, excerpt and up/down react counts; comes in resting, raised, and four pastel variants. |
+| **Survey Band** | `/components/survey-band/` | `components/survey-band/` | The tenant-primary "Take the survey" strip on a project page survey phase — a status with a live dot on the left and an on-color CTA on the right. |
 | **Survey Fields** | `/components/survey-fields/` | `components/survey-fields/` | The GoVocal input-form / survey field widgets — every question type, themeable via --gv-* . One shared source: govocal-survey.css + govocal-survey.js . Rendere… |
+| **Theme Card** | `/components/theme-card/` | `components/theme-card/` | Ranked Perspectives category card with an emoji swatch, name, response count and a mini share bar; the first one shows the active selection. |
+| **Volunteer Cause** | `/components/volunteer-cause/` | `components/volunteer-cause/` | A volunteering opportunity card — photo with a participant badge, title, count, description, and a green sign-up button that toggles to a withdraw state. |
 | **Voting** | `/components/voting/` | `components/voting/` | The Upcoming and ongoing events + Past events sections a project page renders below the phase body (on the project's own content column). Source-grounded on wi… |
 
 ## Pages (screens) — `pages/<name>/`
