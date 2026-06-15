@@ -1054,6 +1054,41 @@
       "uses": [
         ".gv-eventdetail__datestylized"
       ]
+    },
+    {
+      "id": "fo-perspectives/sticky-card",
+      "built": "pages/perspectives-feed/index.html",
+      "against": "fo-perspectives-feed",
+      "map": {
+        "[data-cy=e2e-sticky-note]": ".gv-sticky.is-raised"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "border-radius",
+        "padding",
+        "width"
+      ],
+      "uses": [
+        ".gv-sticky"
+      ]
+    },
+    {
+      "id": "fo-perspectives/like-button",
+      "built": "pages/perspectives-feed/index.html",
+      "against": "fo-perspectives-feed",
+      "map": {
+        ".e2e-ideacard-like-button": ".e2e-ideacard-like-button"
+      },
+      "props": [
+        "display",
+        "align-items",
+        "margin",
+        "padding"
+      ],
+      "uses": [
+        ".gv-sticky__reactbtn"
+      ]
     }
   ]
 }

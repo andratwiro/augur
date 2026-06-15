@@ -1143,3 +1143,123 @@
 @media (max-width: 860px) {
   .gv-eventdetail { grid-template-columns: 1fr; gap: 24px; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PERSPECTIVES — Issue-Mapping feed  (page: pages/perspectives-feed/)
+   Source-grounded on wietsedemo.govocal.com … /ideas-feed (capture fo-perspectives-feed).
+   The dedicated full-bleed Issue-Mapping screen: a 30% left RAIL (Back · title ·
+   participant bubbles · question + intro prose · ranked theme/category cards) beside
+   a 70% dotted-grid CANVAS that floats sticky-note idea cards. All values below come
+   from the styles.json DIGEST (exact computed colours/borders/shadows/fonts/padding).
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* The split shell. Fills the viewport below the header (full-bleed, no page gutter). */
+.gv-issuefeed { display: grid; grid-template-columns: minmax(320px, 30%) 1fr;
+  align-items: stretch; min-height: calc(100vh - 78px); background: #fff; }
+
+/* ── Left rail ── scrollable column of meta + ranked theme cards (.e2e-ideas-feed-sidebar) */
+.gv-issuefeed__rail { display: flex; flex-direction: column; padding: 24px 24px 32px;
+  overflow-y: auto; border-right: 1px solid var(--gv-grey-200); }
+/* "Back" link — live span = 16px/400/#333 next to a chevron, top-left of the rail. */
+.gv-issuefeed__back { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  margin-bottom: 14px; padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: var(--gv-fs-m); line-height: 26px; color: var(--gv-text-primary); }
+.gv-issuefeed__back svg { width: 18px; height: 18px; }
+/* "Issue Mapping" — live span = 25px / 700 / #333. */
+.gv-issuefeed__title { margin: 0 0 12px; font-size: 25px; font-weight: 700; line-height: 32.5px;
+  color: var(--gv-text-primary); }
+/* participant bubbles row reuses .gv-bubbles (sm). */
+.gv-issuefeed__participants { margin-bottom: 8px; }
+/* question — live h3 = 18.72px / 600 / #333, line-height 28.08, margin 18.72 vertical. */
+.gv-issuefeed__question { margin: 18px 0; font-size: 18.72px; font-weight: 600; line-height: 28.08px;
+  color: var(--gv-text-primary); }
+/* intro prose uses the shared .gv-prose (16px/400/24px #333) but flush-left, no max-width. */
+.gv-issuefeed__rail .gv-prose { max-width: none; margin: 0; padding: 0; }
+.gv-issuefeed__themelist { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; }
+
+/* ── Theme / category card ── ranked clickable card in the rail.
+   Live button.bIgPWV = 1px solid #596B7A, radius 3px, padding 9px 18px, left-aligned. */
+.gv-themecard { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start;
+  width: 100%; text-align: left; padding: 14px 16px; background: #fff; cursor: pointer;
+  border: 1px solid var(--gv-cool-grey-600); border-radius: var(--gv-radius);
+  font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+.gv-themecard:hover { box-shadow: var(--gv-shadow-hover-sm); }
+.gv-themecard.is-active { border-color: var(--gv-tenant-primary); box-shadow: var(--gv-shadow); }
+/* Round emoji swatch — live 40px circle, pastel fill per theme (set inline via --gv-themecard-swatch). */
+.gv-themecard__swatch { width: 40px; height: 40px; border-radius: 50%; display: inline-flex;
+  align-items: center; justify-content: center; font-size: var(--gv-fs-m); line-height: 26px;
+  background: var(--gv-themecard-swatch, var(--gv-grey-100)); color: var(--gv-cool-grey-600); }
+.gv-themecard__main { min-width: 0; }
+/* header row: title + count. Title live p = 18px/700/27px #333; count = 14px/700/21px #333. */
+.gv-themecard__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.gv-themecard__name { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; line-height: 27px;
+  color: var(--gv-text-primary); }
+.gv-themecard__count { font-size: var(--gv-fs-s); font-weight: 700; line-height: 21px;
+  color: var(--gv-text-primary); flex: 0 0 auto; }
+/* excerpt — cool-grey body, clamped. */
+.gv-themecard__desc { margin: 6px 0 0; font-size: var(--gv-fs-s); line-height: 21px;
+  color: var(--gv-text-secondary); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; }
+/* mini share bar — live track div.gdJIUf = 1px solid #e0e0e0, radius 4px, height 8px;
+   fill is a coloured segment (set width + colour inline via --gv-themecard-bar). */
+.gv-themecard__bar { margin-top: 10px; height: 8px; border: 1px solid var(--gv-grey-200);
+  border-radius: 4px; overflow: hidden; }
+.gv-themecard__bar > i { display: block; height: 100%; background: var(--gv-themecard-bar, var(--gv-cool-grey-600)); }
+
+/* ── Dotted-grid canvas ── floats sticky-note idea cards.
+   Live bg = white + tiled inline-svg dot (circle r1.5 #e5e5e5) at 20×20. */
+.gv-issuecanvas { position: relative; overflow: auto; background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23e5e5e5'/%3E%3C/svg%3E");
+  background-size: 20px 20px; padding: 40px; display: flex; align-items: center; justify-content: center; }
+/* the masonry "pile" of sticky notes (no idea selected). */
+.gv-issuecanvas__pile { display: flex; flex-wrap: wrap; gap: 20px; align-content: flex-start;
+  justify-content: center; align-items: flex-start; max-width: 1000px; }
+.gv-issuecanvas__pile[hidden], .gv-issuecanvas__view[hidden] { display: none; }
+.gv-issuecanvas.is-detail { align-items: flex-start; }
+
+/* ── Sticky-note idea card ── live button = 320px, padding 20px, radius 3px, pastel bg.
+   Resting shadow + (.is-raised) the selected/floating detail shadow. Variants set bg. */
+.gv-sticky { position: relative; box-sizing: border-box; width: 320px; padding: 20px;
+  border: 0; border-radius: var(--gv-radius); text-align: left; cursor: pointer;
+  font-family: var(--gv-font-family); color: var(--gv-text-primary);
+  background: var(--gv-sticky-bg, rgb(240, 240, 252)); display: flex; flex-direction: column;
+  box-shadow: rgba(0,0,0,0.1) 0px 4px 6px 0px, rgba(0,0,0,0.08) 0px 1px 3px 0px; }
+.gv-sticky:hover { box-shadow: rgba(0,0,0,0.15) 0px 8px 12px 0px, rgba(0,0,0,0.1) 0px 2px 4px 0px; }
+/* the selected / floating-detail card sits raised. */
+.gv-sticky.is-raised { box-shadow: rgba(0,0,0,0.15) 0px 8px 12px 0px, rgba(0,0,0,0.1) 0px 2px 4px 0px; }
+/* pastel variants — exact digest backgrounds. */
+.gv-sticky.lavender { --gv-sticky-bg: rgb(221, 226, 243); }
+.gv-sticky.mint     { --gv-sticky-bg: rgb(197, 232, 237); }
+.gv-sticky.pink     { --gv-sticky-bg: rgb(255, 214, 242); }
+.gv-sticky.grey     { --gv-sticky-bg: rgb(240, 240, 252); }
+/* author chip — 32px avatar + 14px/600 name + emoji. */
+.gv-sticky__author { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.gv-sticky__author .av { width: 32px; height: 32px; border-radius: 50%; flex: 0 0 auto;
+  border: 2px solid #fff; background: var(--gv-grey-200) center/cover; }
+.gv-sticky__authorname { font-size: var(--gv-fs-s); font-weight: 600; line-height: 21px;
+  color: var(--gv-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gv-sticky__emoji { margin-left: auto; font-size: var(--gv-fs-m); line-height: 1; }
+/* card title — live p = 21px / 700 / 31.5px #333 (detail). */
+.gv-sticky__title { margin: 0 0 8px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 31.5px;
+  color: var(--gv-text-primary); }
+/* excerpt — live p = 14px / 400 / 21px #333, clamped within the fixed card height. */
+.gv-sticky__excerpt { margin: 0; font-size: var(--gv-fs-s); font-weight: 400; line-height: 21px;
+  color: var(--gv-text-primary); overflow: hidden; }
+/* reaction controls — live .e2e-reaction-controls = flex row-reverse, 14px, dislike then like. */
+.gv-sticky__react { display: flex; flex-direction: row-reverse; align-items: center;
+  justify-content: flex-end; gap: 14px; margin-top: auto; padding-top: 16px; }
+.gv-sticky__reactbtn { display: flex; align-items: center; gap: 5px; margin: 0 4px 0 0; padding: 0;
+  border: 0; background: none; cursor: pointer; font-size: var(--gv-fs-s); line-height: 16.1px;
+  color: var(--gv-text-primary); font-family: var(--gv-font-family); }
+.gv-sticky__reactbtn svg { width: 18px; height: 18px; }
+.gv-sticky__reactbtn .gv-sr-only + span,
+.gv-sticky__reactbtn b { font-weight: 400; }
+
+/* Floating bottom-right "Add an idea" — live primary CTA pinned to the canvas corner. */
+.gv-issuecanvas__add { position: absolute; right: 24px; bottom: 24px; z-index: 5; }
+
+@media (max-width: 860px) {
+  .gv-issuefeed { grid-template-columns: 1fr; min-height: 0; }
+  .gv-issuefeed__rail { border-right: 0; border-bottom: 1px solid var(--gv-grey-200); }
+  .gv-issuecanvas { min-height: 420px; }
+}

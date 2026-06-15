@@ -953,6 +953,76 @@ themeable via `--gv-tenant-primary`.
 
 ---
 
+## Perspectives — Issue-Mapping feed — `.gv-issuefeed` / `.gv-themecard` / `.gv-sticky` (`pages/perspectives-feed/`)
+
+The dedicated full-bleed **Issue-Mapping / Perspectives** screen, source-grounded on
+wietsedemo `…/ideas-feed` (capture `fo-perspectives-feed`). A two-column split:
+a **30% rail** (Back · "Issue Mapping" title · participant `.gv-bubbles` · question
+`h3` + intro `.gv-prose` · ranked `.gv-themecard` category cards) beside a **70%
+dotted-grid canvas** (`.gv-issuecanvas`, tiled inline-SVG dot at 20×20) that floats
+pastel **sticky-note** idea cards (`.gv-sticky`). Two canvas states: one raised
+**detail** card, or the masonry **pile** — toggled by the Back link / clicking a note.
+Verified via `fo-perspectives/{sticky-card,like-button}`.
+
+Grounded values: sticky note = **320px / padding 20px / radius 3px**, pastel bg
+(lavender `rgb(221,226,243)` · mint `rgb(197,232,237)` · pink `rgb(255,214,242)` ·
+grey `rgb(240,240,252)`), resting shadow `rgba(0,0,0,.1) 0 4px 6px, rgba(0,0,0,.08) 0
+1px 3px` and raised `rgba(0,0,0,.15) 0 8px 12px, rgba(0,0,0,.1) 0 2px 4px`; title
+21px/700, excerpt 14px/400/21px, author chip = 32px avatar + 14px/600 name + emoji;
+reactions are a **row-reverse** dislike-then-like row (`.e2e-reaction-controls`).
+Theme card = 1px `--gv-cool-grey-600` border, radius 3px, 40px emoji swatch (pastel,
+set inline via `--gv-themecard-swatch`), title 18px/700 + 14px/700 count, clamped
+desc, and a mini share-bar (track 1px `--gv-grey-200` radius 4px h8; fill width +
+colour set inline via `--gv-themecard-bar`).
+
+```html
+<main class="gv-issuefeed">
+  <div class="gv-issuefeed__rail e2e-ideas-feed-sidebar">
+    <button class="gv-issuefeed__back" id="e2e-go-back-button"><svg …/>Back</button>
+    <h1 class="gv-issuefeed__title">Issue Mapping</h1>
+    <div class="gv-bubbles sm gv-issuefeed__participants"> … <span class="count">+210</span>
+      <span class="gv-bubbles__label">213 participants</span></div>
+    <h3 class="gv-issuefeed__question">If … could solve one problem … what should it be?</h3>
+    <div class="gv-prose"><p>…intro…</p></div>
+    <div class="gv-issuefeed__themelist">
+      <button class="gv-themecard is-active" style="--gv-themecard-swatch: rgb(255,212,216)">
+        <span class="gv-themecard__swatch">🚧</span>
+        <span class="gv-themecard__main">
+          <span class="gv-themecard__head">
+            <span class="gv-themecard__name">Infrastructure &amp; Transportation</span>
+            <span class="gv-themecard__count">57</span></span>
+          <span class="gv-themecard__desc">Concerns about road conditions…</span>
+          <span class="gv-themecard__bar"><i style="width:85%;--gv-themecard-bar: rgb(229,147,156)"></i></span>
+        </span>
+      </button>
+    </div>
+  </div>
+  <div class="gv-issuecanvas is-detail">
+    <div class="gv-issuecanvas__view">
+      <button class="gv-sticky is-raised lavender" data-cy="e2e-sticky-note">
+        <span class="gv-sticky__author"><span class="av"></span>
+          <span class="gv-sticky__authorname">Anonymous</span><span class="gv-sticky__emoji">🌱</span></span>
+        <span class="gv-sticky__title">Reproductive Healthcare Access</span>
+        <span class="gv-sticky__excerpt">We should solve women's reproductive rights…</span>
+        <span class="gv-sticky__react e2e-reaction-controls neutral">
+          <button class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down"></span><b>0</b></button>
+          <button class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up"></span><b>13</b></button>
+        </span>
+      </button>
+    </div>
+    <div class="gv-issuecanvas__pile" hidden> … resting .gv-sticky notes … </div>
+    <div class="gv-issuecanvas__add"><button class="gv-btn primary">+ Add an idea</button></div>
+  </div>
+</main>
+```
+
+Pure assembly: reuses `.gv-bubbles` (faces via `govocal-avatars.js`), `.gv-prose`,
+`.gv-btn`, icons. Re-skins per `?theme=` (`is-active` theme card + focus use
+`--gv-tenant-primary`). Variants (`.lavender/.mint/.pink/.grey`) and the raised state
+are **new variants**, not mutations of any base.
+
+---
+
 ## City theming (`govocal-themes.js`)
 
 The product themes **primary, secondary, text colours + a custom font** per tenant

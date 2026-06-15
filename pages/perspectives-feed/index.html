@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="gv-surface" content="front-office" />
+  <title>Perspectives — Issue Mapping (reference)</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+  <!--
+    REFERENCE REBUILD of the dedicated full-bleed PERSPECTIVES / Issue-Mapping feed,
+    source-grounded on wietsedemo.govocal.com … /ideas-feed (capture:
+    govocal-exports/fo-perspectives-feed). Anatomy: header → a two-column SPLIT —
+    left 30% RAIL (Back · "Issue Mapping" title · participant avatar bubbles + count ·
+    question h3 + intro prose · ranked theme/category cards) beside a right 70%
+    dotted-grid CANVAS that floats pastel sticky-note idea cards (two states: one
+    raised DETAIL card, or the masonry PILE) with a floating "Add an idea" CTA.
+    Pure assembly: every colour/border/shadow/type lives in canonical govocal-ui.css
+    (.gv-issuefeed / .gv-themecard / .gv-sticky); this page authors layout + content
+    only. Header/footer dragged in; re-skins per city via the ?theme= switcher.
+  -->
+  <style>
+    /* Page-level layout only — all colour/elevation/type lives in canonical CSS. */
+    body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
+  </style>
+</head>
+<body class="gv-root" data-auth="in">
+
+  <!-- ════════════════════════ Header / nav (dragged in) ════════════════════════ -->
+  <header id="e2e-navbar" class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Home"></a>
+
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#">Home</a></li>
+          <li>
+            <details class="gv-nav__dd">
+              <summary class="gv-nav__link">All projects
+                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">Greenville's largest community dialogue</a>
+                <a href="#">A square for everyone</a>
+                <a href="#">The future of Station Road</a>
+                <a href="#">Participatory budget 2026</a>
+              </div>
+            </details>
+          </li>
+          <li><a class="gv-nav__link" href="#" aria-current="page">Perspectives</a></li>
+          <li><a class="gv-nav__link" href="#">Events</a></li>
+          <li>
+            <details class="gv-nav__dd right">
+              <summary class="gv-nav__link">More
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">About the platform</a>
+                <a href="#">FAQ</a>
+                <a href="#">Contact</a>
+              </div>
+            </details>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search">
+          <span data-gv-icon="search"></span>
+        </button>
+
+        <span class="gv-auth-out gv-desktop-only">
+          <button class="gv-btn primary" data-auth-set="in">Sign in</button>
+        </span>
+
+        <span class="gv-auth-in gv-desktop-only">
+          <button class="gv-iconbtn" aria-label="Notifications, 3 unread">
+            <span data-gv-icon="notification"></span>
+            <span class="gv-iconbtn__badge">3</span>
+          </button>
+          <details class="gv-nav__dd right gv-account-dd">
+            <summary class="gv-account">
+              <span class="gv-account__name">Go Vocal</span>
+              <span class="gv-avatar">GV</span>
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu gv-nav__menu--account">
+              <a href="#">Manage platform <span data-gv-icon="shield"></span></a>
+              <a href="#">My activity <span data-gv-icon="user-circle"></span></a>
+              <a href="#">My settings <span data-gv-icon="cogs"></span></a>
+              <button type="button" data-auth-set="out">Sign out <span data-gv-icon="power"></span></button>
+            </div>
+          </details>
+          <details class="gv-nav__dd right">
+            <summary class="gv-lang">EN
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu">
+              <a href="#">English</a>
+              <a href="#">Español</a>
+              <a href="#">Français</a>
+            </div>
+          </details>
+        </span>
+
+        <details class="gv-nav-m">
+          <summary aria-label="Show mobile navigation menu">
+            <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+            <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
+            <a href="#">Home</a>
+            <a href="#">All projects</a>
+            <a href="#" aria-current="page">Perspectives</a>
+            <a href="#">Events</a>
+            <a href="#">More</a>
+            <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Search</a>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═════════════════════════ Issue-Mapping split ═════════════════════════ -->
+  <main id="main-content" class="gv-issuefeed">
+
+    <!-- ════ Left rail ════ -->
+    <div class="gv-issuefeed__rail e2e-ideas-feed-sidebar">
+
+      <button type="button" class="gv-issuefeed__back" id="e2e-go-back-button">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Back
+      </button>
+
+      <h1 class="gv-issuefeed__title">Issue Mapping</h1>
+
+      <!-- participant bubbles + count (reuses .gv-bubbles, faces filled by govocal-avatars.js) -->
+      <div class="gv-bubbles sm gv-issuefeed__participants">
+        <span class="av"></span>
+        <span class="av"></span>
+        <span class="av"></span>
+        <span class="count">+210</span>
+        <span class="gv-bubbles__label">213 participants</span>
+      </div>
+
+      <!-- the framing question -->
+      <h3 class="gv-issuefeed__question">If Greenville and its residents could solve one problem in our region, what should it be?</h3>
+
+      <!-- intro prose (shared .gv-prose, flush-left in the rail) -->
+      <div class="gv-prose">
+        <p>The Greenville Forum empowers us to set the agenda on what we most want to fix in our region. Your voice matters!</p>
+        <p>Respond to the question and see what other community members are saying! To contribute, please create an account so your input is saved and the process remains secure and credible. You can submit more than one response.</p>
+      </div>
+
+      <!-- ranked theme / category cards -->
+      <div class="gv-issuefeed__themelist">
+
+        <button type="button" class="gv-themecard is-active" data-cy="e2e-topic-item"
+          style="--gv-themecard-swatch: rgb(255, 212, 216)">
+          <span class="gv-themecard__swatch" aria-hidden="true">🚧</span>
+          <span class="gv-themecard__main">
+            <span class="gv-themecard__head">
+              <span class="gv-themecard__name">Infrastructure &amp; Transportation</span>
+              <span class="gv-themecard__count">57</span>
+            </span>
+            <span class="gv-themecard__desc">Concerns about road conditions, traffic congestion, public transit, and the inability of existing infrastructure to keep pace with population growth and development.</span>
+            <span class="gv-themecard__bar"><i style="width: 85%; --gv-themecard-bar: rgb(229, 147, 156)"></i></span>
+          </span>
+        </button>
+
+        <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
+          style="--gv-themecard-swatch: rgb(255, 235, 214)">
+          <span class="gv-themecard__swatch" aria-hidden="true">💼</span>
+          <span class="gv-themecard__main">
+            <span class="gv-themecard__head">
+              <span class="gv-themecard__name">Economic Opportunity &amp; Wages</span>
+              <span class="gv-themecard__count">32</span>
+            </span>
+            <span class="gv-themecard__desc">Issues around low wages, lack of well-paying jobs, economic inequality, workforce development, and the need for better economic investment in communities.</span>
+            <span class="gv-themecard__bar"><i style="width: 56%; --gv-themecard-bar: rgb(229, 184, 140)"></i></span>
+          </span>
+        </button>
+
+        <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
+          style="--gv-themecard-swatch: rgb(221, 226, 243)">
+          <span class="gv-themecard__swatch" aria-hidden="true">🏠</span>
+          <span class="gv-themecard__main">
+            <span class="gv-themecard__head">
+              <span class="gv-themecard__name">Housing &amp; Cost of Living</span>
+              <span class="gv-themecard__count">27</span>
+            </span>
+            <span class="gv-themecard__desc">Challenges related to rising housing costs, affordability, availability of homes, and the broader cost-of-living pressures facing residents.</span>
+            <span class="gv-themecard__bar"><i style="width: 48%; --gv-themecard-bar: rgb(163, 172, 207)"></i></span>
+          </span>
+        </button>
+
+        <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
+          style="--gv-themecard-swatch: rgb(255, 240, 209)">
+          <span class="gv-themecard__swatch" aria-hidden="true">🗳️</span>
+          <span class="gv-themecard__main">
+            <span class="gv-themecard__head">
+              <span class="gv-themecard__name">Civic Participation &amp; Voting</span>
+              <span class="gv-themecard__count">24</span>
+            </span>
+            <span class="gv-themecard__desc">Getting voters to the polls, improving turnout, and broadening how residents take part in local decision-making.</span>
+            <span class="gv-themecard__bar"><i style="width: 42%; --gv-themecard-bar: rgb(229, 199, 140)"></i></span>
+          </span>
+        </button>
+
+        <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
+          style="--gv-themecard-swatch: rgb(208, 243, 231)">
+          <span class="gv-themecard__swatch" aria-hidden="true">🩺</span>
+          <span class="gv-themecard__main">
+            <span class="gv-themecard__head">
+              <span class="gv-themecard__name">Healthcare &amp; Public Health</span>
+              <span class="gv-themecard__count">21</span>
+            </span>
+            <span class="gv-themecard__desc">Access to affordable healthcare, reproductive services, mental-health support, and stronger public-health provision across the region.</span>
+            <span class="gv-themecard__bar"><i style="width: 38%; --gv-themecard-bar: rgb(139, 207, 181)"></i></span>
+          </span>
+        </button>
+
+        <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
+          style="--gv-themecard-swatch: rgb(197, 232, 237)">
+          <span class="gv-themecard__swatch" aria-hidden="true">📚</span>
+          <span class="gv-themecard__main">
+            <span class="gv-themecard__head">
+              <span class="gv-themecard__name">Education &amp; Schools</span>
+              <span class="gv-themecard__count">16</span>
+            </span>
+            <span class="gv-themecard__desc">Quality of local schools, funding, teacher retention, and equitable access to good education for every child in the region.</span>
+            <span class="gv-themecard__bar"><i style="width: 28%; --gv-themecard-bar: rgb(92, 184, 194)"></i></span>
+          </span>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- ════ Right canvas ════ -->
+    <div class="gv-issuecanvas is-detail" id="issueCanvas">
+
+      <!-- DETAIL state — one raised floating sticky note (the initial_idea_id card). -->
+      <div class="gv-issuecanvas__view" id="canvasDetail">
+        <button type="button" class="gv-sticky is-raised lavender" data-cy="e2e-sticky-note" style="min-height: 400px">
+          <span class="gv-sticky__author">
+            <span class="av"></span>
+            <span class="gv-sticky__authorname">Anonymous</span>
+            <span class="gv-sticky__emoji" aria-hidden="true">🌱</span>
+          </span>
+          <span class="gv-sticky__title">Reproductive Healthcare Access</span>
+          <span class="gv-sticky__excerpt">We should solve women's reproductive rights. I work in women's health and have friends who've needed services &amp; medical care that is banned. People in our region deserve safe, legal access close to home — not a long, expensive trip to another state when they're already in a difficult situation.</span>
+          <span class="gv-sticky__react e2e-reaction-controls neutral">
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button">
+              <span data-gv-icon="vote-down" aria-hidden="true"></span>
+              <span class="gv-sr-only">Dislike</span><b>0</b>
+            </button>
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button">
+              <span data-gv-icon="vote-up" aria-hidden="true"></span>
+              <span class="gv-sr-only">Like</span><b>13</b>
+            </button>
+          </span>
+        </button>
+      </div>
+
+      <!-- PILE state — the masonry of resting sticky notes (no idea selected). Hidden until Back. -->
+      <div class="gv-issuecanvas__pile" id="canvasPile" hidden>
+
+        <button type="button" class="gv-sticky lavender" data-cy="e2e-sticky-note" style="height: 290px">
+          <span class="gv-sticky__author">
+            <span class="av"></span>
+            <span class="gv-sticky__authorname">Anonymous</span>
+            <span class="gv-sticky__emoji" aria-hidden="true">🌱</span>
+          </span>
+          <span class="gv-sticky__title">Reproductive Healthcare Access</span>
+          <span class="gv-sticky__excerpt">We should solve women's reproductive rights. I work in women's health and have friends who've needed services and medical care that is banned.</span>
+          <span class="gv-sticky__react e2e-reaction-controls neutral">
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>13</b></button>
+          </span>
+        </button>
+
+        <button type="button" class="gv-sticky mint" data-cy="e2e-sticky-note" style="height: 310px">
+          <span class="gv-sticky__author">
+            <span class="av"></span>
+            <span class="gv-sticky__authorname">Jonathan Kongstad</span>
+            <span class="gv-sticky__emoji" aria-hidden="true">🚧</span>
+          </span>
+          <span class="gv-sticky__title">Roads &amp; transit can't keep up</span>
+          <span class="gv-sticky__excerpt">Infrastructure has not kept pace with overall population growth. Congestion is getting worse every year and public transit barely reaches the new neighbourhoods on the edge of town.</span>
+          <span class="gv-sticky__react e2e-reaction-controls neutral">
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>17</b></button>
+          </span>
+        </button>
+
+        <button type="button" class="gv-sticky pink" data-cy="e2e-sticky-note" style="height: 300px">
+          <span class="gv-sticky__author">
+            <span class="av"></span>
+            <span class="gv-sticky__authorname">Bill Berman</span>
+            <span class="gv-sticky__emoji" aria-hidden="true">📚</span>
+          </span>
+          <span class="gv-sticky__title">Black history and its erasure</span>
+          <span class="gv-sticky__excerpt">I take issue with how local history is taught — important parts of our community's story are being left out of the curriculum. We owe the next generation an honest, complete account.</span>
+          <span class="gv-sticky__react e2e-reaction-controls neutral">
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>18</b></button>
+          </span>
+        </button>
+
+        <button type="button" class="gv-sticky grey" data-cy="e2e-sticky-note" style="height: 280px">
+          <span class="gv-sticky__author">
+            <span class="av"></span>
+            <span class="gv-sticky__authorname">Lise Dawson</span>
+            <span class="gv-sticky__emoji" aria-hidden="true">🗳️</span>
+          </span>
+          <span class="gv-sticky__title">Getting voters to the polls</span>
+          <span class="gv-sticky__excerpt">Since people are able to vote by mail now, turnout should be higher than it is. We need to make registration easier and remind residents that local elections are the ones that affect them most.</span>
+          <span class="gv-sticky__react e2e-reaction-controls neutral">
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>17</b></button>
+          </span>
+        </button>
+
+        <button type="button" class="gv-sticky mint" data-cy="e2e-sticky-note" style="height: 270px">
+          <span class="gv-sticky__author">
+            <span class="av"></span>
+            <span class="gv-sticky__authorname">Marisol Reyes</span>
+            <span class="gv-sticky__emoji" aria-hidden="true">🏠</span>
+          </span>
+          <span class="gv-sticky__title">Rent is outpacing wages</span>
+          <span class="gv-sticky__excerpt">Young families can't afford to stay in the neighbourhoods they grew up in. We need more affordable housing and protections against rapid rent increases.</span>
+          <span class="gv-sticky__react e2e-reaction-controls neutral">
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>22</b></button>
+          </span>
+        </button>
+
+        <button type="button" class="gv-sticky lavender" data-cy="e2e-sticky-note" style="height: 300px">
+          <span class="gv-sticky__author">
+            <span class="av"></span>
+            <span class="gv-sticky__authorname">Anonymous</span>
+            <span class="gv-sticky__emoji" aria-hidden="true">🩺</span>
+          </span>
+          <span class="gv-sticky__title">Mental-health support gaps</span>
+          <span class="gv-sticky__excerpt">There aren't enough affordable counselling and crisis services in our area. People wait weeks for an appointment when they need help right away.</span>
+          <span class="gv-sticky__react e2e-reaction-controls neutral">
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
+            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>14</b></button>
+          </span>
+        </button>
+
+      </div>
+
+      <!-- floating bottom-right CTA -->
+      <div class="gv-issuecanvas__add">
+        <button type="button" class="gv-btn primary"><span data-gv-icon="plus" aria-hidden="true"></span> Add an idea</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- demo-only signed-in toggle -->
+  <button class="auth-toggle" id="authToggle" aria-pressed="true"
+    style="position:fixed;left:16px;bottom:16px;z-index:1200;display:inline-flex;align-items:center;gap:8px;padding:9px 15px;background:var(--gv-grey-800);color:#fff;border:0;border-radius:999px;cursor:pointer;font:600 13px/1 var(--gv-font-family)">Signed in</button>
+
+  <script>
+    (function () {
+      var body = document.body, t = document.getElementById('authToggle');
+      function set(s) { body.dataset.auth = s; t.textContent = s === 'in' ? 'Signed in' : 'Signed out'; t.setAttribute('aria-pressed', s === 'in'); }
+      t.addEventListener('click', function () { set(body.dataset.auth === 'in' ? 'out' : 'in'); });
+      document.addEventListener('click', function (e) {
+        var el = e.target.closest('[data-auth-set]');
+        if (el) { e.preventDefault(); set(el.getAttribute('data-auth-set')); document.querySelectorAll('.gv-nav__dd[open]').forEach(function (d) { d.open = false; }); }
+      });
+
+      // Canvas state: detail (one raised card) ⇄ pile (masonry). Back toggles to the pile.
+      var canvas = document.getElementById('issueCanvas');
+      var detail = document.getElementById('canvasDetail');
+      var pile = document.getElementById('canvasPile');
+      var back = document.getElementById('e2e-go-back-button');
+      function showPile() { detail.hidden = true; pile.hidden = false; canvas.classList.remove('is-detail'); }
+      function showDetail() { detail.hidden = false; pile.hidden = true; canvas.classList.add('is-detail'); }
+      back.addEventListener('click', showPile);
+      // Clicking a sticky note in the pile opens it as a detail card.
+      pile.addEventListener('click', function (e) {
+        if (e.target.closest('.gv-sticky__reactbtn')) return;   // let reactions click through
+        if (e.target.closest('.gv-sticky')) showDetail();
+      });
+      // Theme cards: single active selection.
+      document.querySelectorAll('.gv-themecard').forEach(function (c) {
+        c.addEventListener('click', function () {
+          document.querySelectorAll('.gv-themecard').forEach(function (x) { x.classList.remove('is-active'); });
+          c.classList.add('is-active');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
