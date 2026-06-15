@@ -1551,6 +1551,24 @@
         ".gv-poll",
         ".gv-btn"
       ]
+    },
+    {
+      "id": "bo-users/people-header",
+      "built": "pages/bo-users/index.html",
+      "against": "bo-users",
+      "map": {
+        "th.dmRxby": ".gv-bo-table.is-people thead th.is-sorted"
+      },
+      "props": [
+        "background-color",
+        "color",
+        "font-size",
+        "font-weight",
+        "height"
+      ],
+      "uses": [
+        ".gv-bo-table"
+      ]
     }
   ]
 }

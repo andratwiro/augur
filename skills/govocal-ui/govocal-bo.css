@@ -431,6 +431,17 @@
 .gv-bo-table.is-list tbody td { padding: 10px 12px; }
 .gv-bo-table.is-list tbody tr { background: #fff; }
 .gv-bo-table.is-list tbody tr:nth-child(even) { background: var(--gv-bo-row-alt); }
+/* "People" table treatment (Users / Admins lists): measured live (table.dlEprZ on
+   /admin/users). A grey header BAND (#EBEDEF / grey-200, 65px, rounded ends, 14px/700
+   admin-blue) over tall 84px rows with no striping — a person cell (38px round avatar +
+   name link + email) on the left. Distinct from .is-list (striped, white header). */
+.gv-bo-table.is-people thead th { background: var(--gv-grey-200); height: 65px; border-bottom: 0; }
+.gv-bo-table.is-people thead th:first-child { border-top-left-radius: var(--gv-radius); border-bottom-left-radius: var(--gv-radius); }
+.gv-bo-table.is-people thead th:last-child { border-top-right-radius: var(--gv-radius); border-bottom-right-radius: var(--gv-radius); }
+.gv-bo-table.is-people tbody td { height: 84px; border-bottom: 1px solid var(--gv-divider); }
+.gv-bo-table.is-people tbody tr:last-child td { border-bottom: 0; }
+.gv-bo-table.is-people .gv-bo-table__avatar { width: 38px; height: 38px; }
+
 /* Small publication-status marker: a coloured dot + label, with an optional
    muted sub-line (visibility). Measured: Published = green, Draft = cool grey. */
 .gv-bo-status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }

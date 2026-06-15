@@ -54,6 +54,27 @@
     .pl-vis__status { font-size: 14px; color: #333; }
     .pl-vis__who { display: block; font-size: 12px; color: var(--gv-text-secondary); line-height: 18px; }
     .pl-foot { text-align: center; padding: 18px; color: var(--gv-text-secondary); font-size: 16px; }
+    /* Sub-nav views. */
+    .pl-view { display: none; }
+    .pl-view.is-active { display: block; }
+    /* Folders view: Manager/Status/Spaces filter pills. */
+    .pl-pills { display: flex; gap: 10px; margin-bottom: 18px; }
+    .pl-pill { padding: 10px 16px; border: 1px solid var(--gv-border-dark); border-radius: 3px; background: #fff; color: var(--gv-bo-primary); font-size: 14px; cursor: pointer; font-family: var(--gv-font-family); }
+    .pl-pill:hover { border-color: var(--gv-bo-primary); }
+    .pl-folder { display: flex; align-items: center; gap: 12px; }
+    .pl-folder__thumb { width: 28px; height: 28px; border-radius: 4px; flex: none; display: grid; place-items: center; background: var(--gv-grey-200); color: var(--gv-cool-grey-500); overflow: hidden; }
+    .pl-folder__thumb .gv-icon { width: 15px; height: 15px; }
+    .pl-folder__name { color: #333; font-size: 14px; }
+    .pl-folder__sub { display: block; font-size: 12px; color: var(--gv-text-secondary); margin-top: 2px; }
+    /* Calendar view: feature-promo empty state. */
+    .pl-calendar { display: flex; gap: 40px; align-items: flex-start; padding: 10px 0; max-width: 900px; }
+    .pl-calendar__copy { max-width: 360px; }
+    .pl-calendar__title { margin: 0 0 12px; font-size: 25px; font-weight: 700; line-height: 1.25; color: var(--gv-bo-primary); }
+    .pl-calendar__desc { margin: 0 0 20px; font-size: 16px; color: var(--gv-text-secondary); line-height: 1.5; }
+    .pl-calendar__actions { display: flex; align-items: center; gap: 18px; }
+    .pl-calendar__btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border: 0; border-radius: 3px; background: var(--gv-green-200, #BDE3CB); color: #fff; font-size: 16px; font-family: var(--gv-font-family); cursor: not-allowed; }
+    .pl-calendar__illus { flex: 1 1 auto; min-width: 0; }
+    .pl-calendar__illus svg { width: 100%; height: auto; border-radius: 4px; box-shadow: var(--gv-shadow); }
   </style>
 </head>
 <body class="gv-bo">
@@ -72,12 +93,14 @@
         </div>
 
         <nav class="pl-subnav" aria-label="Project views">
-          <a class="is-active" href="#"><span data-gv-icon="admin-projects"></span>Projects</a>
-          <a href="#"><span data-gv-icon="label"></span>Folders</a>
-          <a href="#"><span data-gv-icon="calendar"></span>Calendar</a>
-          <a href="#"><span data-gv-icon="menu"></span>Arrange projects</a>
+          <a class="is-active" href="#" data-pv="projects"><span data-gv-icon="admin-projects"></span>Projects</a>
+          <a href="#" data-pv="folders"><span data-gv-icon="label"></span>Folders</a>
+          <a href="#" data-pv="calendar"><span data-gv-icon="calendar"></span>Calendar</a>
+          <a href="#" data-pv="arrange"><span data-gv-icon="menu"></span>Arrange projects</a>
         </nav>
 
+        <!-- ── Projects view ──────────────────────────────────────────── -->
+        <div class="pl-view is-active" data-view="projects">
         <div class="pl-filters">
           <select class="gv-bo-select" aria-label="Sort"><option>Recently viewed</option><option>A–Z</option><option>Newest</option></select>
           <select class="gv-bo-select" aria-label="Approval"><option>Pending approval</option><option>All</option><option>Approved</option></select>
@@ -104,6 +127,60 @@
             <tbody id="rows"></tbody>
           </table>
           <div class="pl-foot">Scroll down to load more</div>
+        </div>
+        </div><!-- /projects view -->
+
+        <!-- ── Folders view ───────────────────────────────────────────── -->
+        <div class="pl-view" data-view="folders">
+          <div class="pl-pills">
+            <button class="pl-pill">Manager</button>
+            <button class="pl-pill">Status</button>
+            <button class="pl-pill">Spaces</button>
+          </div>
+          <div>
+            <table class="gv-bo-table is-list">
+              <thead><tr><th>Folder</th><th>Managers</th><th>Status</th><th></th></tr></thead>
+              <tbody id="folderrows"></tbody>
+            </table>
+            <div class="pl-foot">All folders have been loaded</div>
+          </div>
+        </div>
+
+        <!-- ── Calendar view ──────────────────────────────────────────── -->
+        <div class="pl-view" data-view="calendar">
+          <div class="pl-calendar">
+            <div class="pl-calendar__copy">
+              <h2 class="pl-calendar__title">Understand what is happening and when</h2>
+              <p class="pl-calendar__desc">Get a visual overview of your project timelines in our calendar view. Quickly identify which projects and phases are starting or ending soon and require action.</p>
+              <div class="pl-calendar__actions">
+                <button class="pl-calendar__btn"><span data-gv-icon="lock"></span>Enable calendar view</button>
+                <a class="gv-bo-link" href="#">Learn more</a>
+              </div>
+            </div>
+            <div class="pl-calendar__illus">
+              <svg viewBox="0 0 460 200" aria-hidden="true">
+                <rect x="0" y="0" width="460" height="200" fill="#fff"/>
+                <line x1="120" y1="20" x2="120" y2="190" stroke="var(--gv-grey-200)"/>
+                <g font-family="var(--gv-font-family)" font-size="7" fill="var(--gv-text-secondary)">
+                  <text x="8" y="16">Project</text><text x="150" y="16">October</text><text x="250" y="16">November</text><text x="360" y="16">December</text>
+                  <text x="8" y="44">Yearly Community Survey</text><text x="8" y="74">Safety Strategy</text><text x="8" y="104">Submit your proposal</text><text x="8" y="134">Feedback on Strategic Plan</text><text x="8" y="164">The Big Launch</text>
+                </g>
+                <g opacity="0.85">
+                  <rect x="130" y="38" width="120" height="10" rx="2" fill="var(--gv-teal-400)"/>
+                  <rect x="160" y="68" width="90" height="10" rx="2" fill="var(--gv-blue-400)"/>
+                  <rect x="200" y="98" width="70" height="10" rx="2" fill="var(--gv-teal-500)"/>
+                  <rect x="240" y="128" width="110" height="10" rx="2" fill="var(--gv-green-500)"/>
+                  <rect x="330" y="158" width="90" height="10" rx="2" fill="var(--gv-orange-500)"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Arrange view ───────────────────────────────────────────── -->
+        <div class="pl-view" data-view="arrange">
+          <p class="gv-bo-help" style="margin:8px 0 16px;max-width:620px">Drag projects and folders to reorder how they appear on the homepage and in the projects overview.</p>
+          <div><table class="gv-bo-table is-list"><thead><tr><th></th><th>Project</th><th>Status</th></tr></thead><tbody id="arrangerows"></tbody></table></div>
         </div>
 
       </section>
@@ -150,6 +227,42 @@
         <td style="white-space:nowrap">${end || "—"}</td>
         <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>`;
     }).join("");
+
+    // ── Folders view ────────────────────────────────────────────────────────
+    // [name, count, manager, status, icon]
+    const FOLDERS = [
+      ["Testing", 0, "Not assigned", "draft", "label"],
+      ["Participation Garage", 2, "Not assigned", "published", "label"],
+      ["Discover Our Voting Methods", 4, "Not assigned", "published", "vote-up"],
+      ["Participatory Budgeting: 100K for Your District's Community Projects", 5, "Not assigned", "published", "money-bag"],
+    ];
+    document.getElementById("folderrows").innerHTML = FOLDERS.map(([name, count, mgr, status, icon]) => `
+      <tr>
+        <td><span class="pl-folder"><span class="pl-folder__thumb"><span data-gv-icon="${icon}"></span></span>
+          <span><span class="pl-folder__name">${name}</span><span class="pl-folder__sub">${count} projects</span></span></span></td>
+        <td><span class="pl-unassigned"><span class="pl-noavatar"></span>Not assigned</span></td>
+        <td><span class="pl-vis is-${status}"><span class="pl-vis__bar"></span><span class="pl-vis__status">${statusLabel[status]}</span></span></td>
+        <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>`).join("");
+
+    // ── Arrange view (reuse the first few projects) ───────────────────────────
+    document.getElementById("arrangerows").innerHTML = PROJECTS.slice(0, 8).map(p => {
+      const [name, , , , , status] = p;
+      return `<tr>
+        <td class="gv-bo-table__check" style="width:1%"><span class="gv-bo-listrow__handle" data-gv-icon="dots-horizontal"></span></td>
+        <td><span class="pl-proj__name">${name}</span></td>
+        <td><span class="pl-vis is-${status}"><span class="pl-vis__bar"></span><span class="pl-vis__status">${statusLabel[status]}</span></span></td>`;
+    }).join("");
+
+    // ── Sub-nav tab switching ─────────────────────────────────────────────────
+    document.querySelectorAll(".pl-subnav a[data-pv]").forEach(tab => {
+      tab.addEventListener("click", e => {
+        e.preventDefault();
+        document.querySelectorAll(".pl-subnav a[data-pv]").forEach(t => t.classList.remove("is-active"));
+        tab.classList.add("is-active");
+        const k = tab.dataset.pv;
+        document.querySelectorAll(".pl-view").forEach(v => v.classList.toggle("is-active", v.dataset.view === k));
+      });
+    });
 
     if (window.GVIcons) window.GVIcons.render(document.body);
   </script>
