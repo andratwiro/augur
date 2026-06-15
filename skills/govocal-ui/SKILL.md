@@ -79,8 +79,9 @@ the required front-end skill set in `CLAUDE.md` (design, a11y, webapp-testing).
 
 ## How to use it in a prototype
 
-Prototypes are self-contained, so **copy the three asset files into the prototype
-folder** and reference them locally:
+Prototypes are self-contained, so **copy the asset files into the prototype
+folder** and reference them locally (`govocal-ui.css` `@import`s `govocal-primitives.css`,
+so copy both):
 
 ```bash
 cp skills/govocal-ui/{govocal-tokens.css,govocal-primitives.css,govocal-ui.css,govocal-themes.js,govocal-icons.js} \
@@ -154,33 +155,36 @@ the **contract for growing it** — the source-grounded pipeline that turns a li
 GoVocal screen into a verified, reusable primitive/component/page. Follow it
 whenever System-building mode is active; don't eyeball screens into approximate CSS.
 
-The four tools (all `npm` scripts; full docs in `govocal-exports/BACK-OFFICE.md`):
+This section is the authoritative pipeline. BO build queue + live captures:
+`govocal-exports/BACK-OFFICE.md`. The discovery-phase working agreement (how strict
+the guards are, when to tokenize): **CLAUDE.md** (System-building). The `npm` scripts:
 
 | Step | Command | What it does |
 |---|---|---|
 | **1. Capture** | `npm run capture -- <url> --name <slug> --probe "<real selectors>"` | Logs into the demo platform, dumps `page.png` · `dom.html` · `styles.json` · `meta.json`. `styles.json.digest` = every distinct visual treatment with **exact computed values** (read these, never eyeball the PNG); `--probe` pins selectors into `styles.json.probed` as verify checkpoints. |
 | **2. Build** | — | Assemble from existing `.gv-*` primitives; map digest values to `--gv-*` **tokens** (don't hardcode a hex you can alias). New visual? decide *new variant vs base fix* — extend, don't mutate the base out from under existing users. |
 | **3. Verify** | `npm run verify -- <built.html> --against <slug> --map "realSel=mineSel|…"` | Renders your build and **numerically diffs** computed styles vs the capture's probed checkpoints. Loop until ✓. Replaces "compare to the screenshot by eye." |
-| **4. Register (ratchet)** | add to `govocal-exports/checkpoints.json`, then `npm run verify:all` | Once green, pin the checkpoint so it's guarded forever. After ANY change to shared CSS (`govocal-ui.css`/`govocal-bo.css`/`govocal-tokens.css`) run `verify:all` — green = real improvement, red = you regressed a dependent. `--changed .gv-btn` runs only a primitive's blast radius. |
+| **4. Register (ratchet)** | add to `govocal-exports/checkpoints.json`, then `npm run verify:all` | Once verified, pin the checkpoint. After a shared-CSS change run `verify:all` to see the blast radius (`--changed .gv-btn` scopes it). **Advisory during discovery** — red = review + re-capture, not a hard stop. |
+| **5. Lint** | `npm run lint` | Must pass before you store. Enforces the hardwired layering: no library tier copies an asset, links locally, or redefines a `.gv-*`. |
 
-Then store: snippet in `components.md`, row in `components/manifest.md` (+ `govocal-bo.css`
-for back-office chrome), and `npm run index` to refresh `LIBRARY.md`.
+Then store: snippet in `components.md`, row in `components/manifest.md`, and
+`npm run index` to refresh `LIBRARY.md`. Put new styles in the right canonical file —
+shared atoms → `govocal-primitives.css`, FO → `govocal-ui.css`, BO → `govocal-bo.css`.
 
-**Why the ratchet matters:** primitives are *meant* to improve on each capture, but a
-refinement that matches one screen can overfit and silently break the components
-already using it. `verify:all` is what makes shared CSS monotonic — improvements
-only, no regressions. Register a checkpoint for every piece you build so the guard
-has teeth (e.g. it catches the back-office shell and the standalone sidebar drifting
-apart). **Pages stay pure assembly** (components + tokens, no local colour/border/
-shadow values) so primitive gains flow into them automatically.
+**Why the guards matter:** the layering is hardwired (one source of truth per layer, no
+copies — `lint` keeps it that way), and primitives are *meant* to improve as you learn
+the real UI. The ratchet (`verify:all`) shows you when a primitive change moved another
+checkpoint so you change atoms knowingly. **Pages stay pure assembly** (components dragged
+in, no page-authored colour/border/shadow) so primitive gains flow into them automatically.
 
 ## Refreshing from source (when GoVocal's design system moves)
 
 1. Find the new commit SHA on `master` and update the pin here + in file headers.
 2. Re-pull `front/app/component-library/utils/styleUtils.ts` and diff the token
    values into `govocal-tokens.css`.
-3. Re-pull changed `components/<Name>/index.tsx` and reconcile `govocal-ui.css`.
-4. Re-copy the three assets into any prototype that uses them.
+3. Re-pull changed `components/<Name>/index.tsx` and reconcile the right canonical
+   file (`govocal-primitives.css` for atoms, `govocal-ui.css`/`govocal-bo.css` for components).
+4. Re-copy the assets into any prototype that uses them (library demos auto-update).
 5. Open `gallery.html`, screenshot it (webapp-testing), and `npm run audit`.
 
 ## Scope

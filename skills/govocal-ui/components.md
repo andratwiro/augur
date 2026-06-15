@@ -16,12 +16,15 @@ source folder; run the library's Storybook locally to compare pixel-for-pixel.
 
 ## Setup
 
-Copy the three asset files into the prototype folder (prototypes must be
-self-contained), then:
+A **prototype** copies the assets in (it's self-contained). A **library demo**
+(`components/`, `pages/`) instead references canonical via `../../skills/govocal-ui/`
+— never copy there. For a prototype, copy `govocal-tokens.css`,
+`govocal-primitives.css`, `govocal-ui.css`, `govocal-themes.js` (+ `govocal-bo.css`
+for back-office), then:
 
 ```html
 <link rel="stylesheet" href="govocal-tokens.css" />
-<link rel="stylesheet" href="govocal-ui.css" />
+<link rel="stylesheet" href="govocal-ui.css" />   <!-- @imports govocal-primitives.css -->
 <script src="govocal-themes.js" defer></script>   <!-- ?theme= switcher + picker -->
 <body class="gv-root"> … </body>
 ```
@@ -633,8 +636,8 @@ The input-form / survey question types, as ONE shared, themeable kit (its own
 stylesheet + JS engine on top of the gv-* primitives — not folded into govocal-ui.css).
 Demo: `components/survey-fields/`; the whole runner powers the **Input Form** page.
 
-Copy `govocal-tokens.css`, `govocal-ui.css`, `govocal-survey.css`, `govocal-survey.js`
-into the prototype, then:
+Copy `govocal-tokens.css`, `govocal-primitives.css`, `govocal-ui.css`,
+`govocal-survey.css`, `govocal-survey.js` into the prototype, then:
 
 ```html
 <link rel="stylesheet" href="govocal-survey.css" />

@@ -38,11 +38,9 @@ GoVocal's **real admin glyphs** transcribed from `#sidebar` (each `<a>`'s svg; v
 24×24, 14×12, 16×16), rendered **24×20**, with per-state colour: inactive **`#00577C`**
 (`--gv-blue-400`), **active item → `#01A1B1`** (`--gv-teal-400`), **Support → `#32B67A`**
 (`--gv-green-400`). Notification badge red, overlaps the bell when collapsed. Driven by `.is-rail`
-(matchMedia at 1200px — product is JS-driven). NOTE: as of the hardwiring refactor,
-bo-app-shell / bo-project-phase **reference canonical `govocal-bo.css` directly** (no
-per-folder copy), so the sidebar can no longer drift — edit canonical and both update.
-Earlier wrong guesses now corrected: icon colour was not `#4183C4`, glyphs were generic Material,
-labels were 14px — all fixed against the live capture.
+(matchMedia at 1200px — product is JS-driven). All BO demos reference canonical
+`govocal-bo.css` directly (no per-folder copy), so the sidebar can't drift — edit
+canonical and every consumer updates.
 
 ## Measured BO theme (live `getComputedStyle`)
 
@@ -66,26 +64,20 @@ the `.gv-bo` scope remaps `--gv-tenant-*` so primitives need no BO-specific code
 - Components get a surface in the manifest: front-office / back-office / **shared**
   (charts, stat cards, tables likely cross over — tag `shared`, theme by scope).
 
-## Component queue (build from the captures above, one at a time, verify-loop each)
+## Building (pipeline + guards)
 
-Pipeline per piece:
-1. **Capture with checkpoints** — `npm run capture -- <url> --name <slug> --probe "<the real selectors you'll rebuild>"`. (digest is automatic; `--probe` pins the verify targets.)
-2. **Build from exact values** — read `styles.json` `digest`, assemble from existing `.gv-*` primitives, map values to `--gv-*` tokens (never eyeball / hardcode).
-3. **Verify numerically** — `npm run verify -- <built.html> --against <slug> --map "realSel=mineSel|…"`. Fix every mismatch it prints; loop until it exits ✓. This replaces "eyeball the screenshot".
-4. **Register the checkpoint (ratchet)** — once green, add an entry to `govocal-exports/checkpoints.json` (`id` · `built` · `against` · `map`). It's now guarded forever.
-5. **Store** — govocal-bo.css + components.md + manifest + `npm run index`.
+The full workflow and the discovery-phase working agreement live in **CLAUDE.md**
+(System-building) and **`skills/govocal-ui/SKILL.md`** ("Building & extending") — the
+single source; don't restate them here. In short, per piece: capture (with `--probe`)
+→ build from the `styles.json` digest → `npm run verify` + eyeball → register a
+checkpoint → `npm run lint` → store. `npm run verify:all` is the ratchet (advisory
+while we're still matching the UI: red = review + re-capture, not a hard stop).
 
-**The ratchet — primitives improve without regressing.** Primitives are *meant* to
-get better on each capture, but a "refinement" of a shared class (`.gv-btn`,
-`.gv-bo-side`, …) to match one screen can overfit and silently break the components
-already using it. So after ANY change to shared CSS (`govocal-ui.css` /
-`govocal-bo.css` / `govocal-tokens.css`) run **`npm run verify:all`** — it
-re-renders every registered checkpoint and re-diffs it against its live capture.
-Green = real improvement; red = you regressed a dependent (fix or back it out).
-`npm run verify:all -- --changed .gv-btn` runs only the checkpoints whose built
-file uses that class (deps auto-derived from the markup), so you can check just a
-primitive's blast radius. (This is what catches drift like the bo-app-shell /
-bo-sidebar copies diverging — register both, and a re-sync that misses one goes red.)
+**BO-specifics:** BO chrome → `govocal-bo.css`; shared atoms → `govocal-primitives.css`;
+the `.gv-bo` scope remaps `--gv-tenant-*` so primitives need no BO-specific code. Tag
+cross-surface pieces (tables, stat cards) **shared** in the manifest.
+
+## Component queue (build from the captures above, one at a time)
 
 **Focus (set 2026-06-15): the project-configuration editor** — `/admin/projects/<id>/…`
 (phases, Setup, Input manager, etc.). Build these screens out deeply first.
@@ -103,7 +95,10 @@ bo-sidebar copies diverging — register both, and a re-sync that misses one goe
 - [ ] **Input manager tab** — the posts/data table (checkbox, sortable headers, status meta, row actions, pagination dots) + left filter rail (Timeline/Tags/Status, phase list w/ counts) + filter bar ("Any administrator" dropdown, toggle, Exports, Search) + AI banner. (capture: `bo-project-ideas`)
 - [ ] **Input form tab** — `.gv-bo-import-cards` (Paper/OCR, Spreadsheet sources) + "Edit input form" entry. (capture: `bo-input-form-builder`)
 - [ ] **Insights tab** — `bo-stat-cards` (label · big number · 7-day change · icon; tag **shared**) + charts. (capture: `bo-phase-insights`)
-- [ ] **General / Description / Map / Phase access / Notifications** tabs — capture as needed, build per pattern.
-- [ ] **Project tabs** beyond Timeline: General (project settings), Audience, Messaging, Events.
+- [ ] **Phase sub-tabs** beyond Setup: Description / Map / Phase access / Notifications — capture as needed, build per pattern.
+
+**Known fixups (surfaced by tooling):**
+- [ ] `bo-app-shell` markup still uses *generic* icons — swap to the real admin glyphs (it now loads the real icon set via canonical).
+- [ ] `general-input` checkpoint is red — re-capture `bo-project-general` with `--probe "input"` to fix.
 
 Site: `/pages/` index is split **Back office / Front office** (build.js, via `<meta name="gv-surface">` / `bo-` prefix). New BO pages auto-group under Back office.

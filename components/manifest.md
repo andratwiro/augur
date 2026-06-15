@@ -3,12 +3,16 @@
 > **Internal / never ships.** This file is the *lightweight index* of the composed
 > component library. When building a prototype, scan this table, then open the one
 > component file you need (don't load them all). Snippets live in
-> `skills/govocal-ui/components.md`; the styling is in `skills/govocal-ui/govocal-ui.css`
-> (the `.gv-*` classes). Live demos are shipped under `/components/<name>/` (Components tab).
+> `skills/govocal-ui/components.md`; the `.gv-*` styling lives in canonical
+> `govocal-primitives.css` (atoms) + `govocal-ui.css` (FO) / `govocal-bo.css` (BO).
+> Live demos are shipped under `/components/<name>/` (Components tab).
 
-Each component is a self-contained demo folder under `components/<name>/` (same
-convention as `pages/` and prototypes — copies the shared assets locally). The
-shared CSS source of truth is `skills/govocal-ui/govocal-ui.css`; never fork it.
+Each component is a demo folder under `components/<name>/` that **references the
+canonical assets directly** (`../../skills/govocal-ui/<asset>`) — it never copies or
+forks them, so it always reflects the live source. Canonical CSS = `govocal-tokens.css`
+→ `govocal-primitives.css` (shared atoms) → `govocal-ui.css` (FO) / `govocal-bo.css` (BO).
+Edit those; `npm run lint` enforces that no demo copies or redefines them. (Only
+*prototypes* copy assets — they're the tier allowed to fork.)
 
 | Component | Folder | Key classes | What it is |
 |---|---|---|---|
@@ -26,18 +30,22 @@ shared CSS source of truth is `skills/govocal-ui/govocal-ui.css`; never fork it.
 
 ## How to reuse in a prototype
 
-1. Copy the shared assets into the prototype folder (prototypes are self-contained):
-   `govocal-tokens.css`, `govocal-ui.css`, `govocal-themes.js` (+ `govocal-logo.svg`
-   if you use the footer, + `govocal-cookies.js` on resident-facing prototypes).
-   **Back-office (staff) UI:** also copy `govocal-bo.css` and scope markup under
-   `.gv-bo` — that surface uses GoVocal's fixed teal/navy theme, not `?theme=`.
-2. Grab the component markup from `skills/govocal-ui/components.md` (or the demo
-   `index.html`) and theme via `--gv-tenant-primary|secondary|text` — never hardcode brand hex.
+A **prototype** (unlike a library demo) IS self-contained — copy the assets in:
+1. Copy `govocal-tokens.css`, `govocal-primitives.css`, `govocal-ui.css`,
+   `govocal-themes.js` (+ `govocal-logo.svg` if you use the footer, + `govocal-cookies.js`
+   on resident-facing prototypes). `govocal-ui.css` `@import`s primitives, so copy both.
+   **Back-office UI:** also copy `govocal-bo.css` and scope markup under `.gv-bo` (fixed
+   teal/navy theme, not `?theme=`).
+2. Grab the markup from `skills/govocal-ui/components.md` (or a demo `index.html`) and
+   theme via `--gv-tenant-primary|secondary|text` — never hardcode brand hex.
 3. Cities can also override `--gv-font-family` (e.g. Vienna ships `WienerMelange_W_Rg`).
 
 ## Adding a component
 
-1. `components/<name>/index.html` — self-contained demo (copy the asset files in).
-2. Add its `.gv-*` styles to `skills/govocal-ui/govocal-ui.css` (shared source of truth).
+1. `components/<name>/index.html` — demo that **references canonical** via
+   `../../skills/govocal-ui/<asset>` (don't copy assets in).
+2. Add its styles to the right canonical file: shared atoms → `govocal-primitives.css`,
+   FO → `govocal-ui.css`, BO chrome → `govocal-bo.css`. The demo must only **use** `.gv-*`,
+   never define them.
 3. Add a snippet to `skills/govocal-ui/components.md` and a row to this table.
-4. Rebuild — `build.js` auto-discovers `components/<name>/` and lists it on the Components tab.
+4. `npm run lint` (must pass) → `npm run build` — `build.js` auto-discovers the folder.
