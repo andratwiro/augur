@@ -123,44 +123,36 @@
      (gv-partbar-pulse in govocal-ui.css) — no prototype-local animation needed. */
 
   /* ── Preview FRAME variants ─────────────────────────────────────────────────
-     The phone interior (.pp-screen) is always the same scaled GoVocal FO page;
-     each variant only changes the *frame* around it — bezel weight, size, and
-     device honesty. --pz is tuned per variant so the logical content width stays
-     ~410px (a real phone viewport) no matter the outer frame size, so the page
-     never reads as a stretched mobile layout. Toggled by the FRAME chip. */
+     Two minimal artboards (Phone / Window), same quiet 1px-outline treatment. The
+     interior is the scaled GoVocal FO page; Phone shows the mobile layout, Window
+     re-flows the same content to a desktop layout. --pz keeps the content reading at
+     a real viewport width per frame. Toggled by the FRAME chip. */
 
-  /* 1 · CLAY — frameless soft screen: no bezel, no notch, big radius, soft float */
-  .phone.frame-clay {
-    width: 340px; height: 668px;
-    border: 0; border-radius: 40px;
-    box-shadow: 0 40px 80px rgba(20,25,40,.22), 0 12px 28px rgba(20,25,40,.10),
-                inset 0 0 0 1px rgba(20,25,40,.06);
-    --pz: 0.829;
-  }
-  .frame-clay .notch { display: none; }
-
-  /* 2 · LINE — minimal artboard: 1px outline, flat, square-ish; editor-native */
-  .phone.frame-line {
-    width: 332px; height: 640px;
-    border: 1.5px solid var(--gv-grey-300, #d4d9e2); border-radius: 22px;
+  /* Shared minimal treatment for both frames — a thin 1px outline + flat shadow, no
+     device hardware (no notch, no browser chrome). The frame is just a quiet artboard
+     edge; the GoVocal content carries the screen. */
+  .phone.frame-phone, .phone.frame-window {
+    border: 1.5px solid var(--gv-grey-300, #d4d9e2);
     box-shadow: 0 10px 30px rgba(20,25,40,.07);
+  }
+  .frame-phone .notch, .frame-window .notch { display: none; }
+
+  /* 1 · PHONE — minimal portrait artboard (mobile FO layout). */
+  .phone.frame-phone {
+    width: 332px; height: 640px; border-radius: 22px;
     --pz: 0.806;
   }
-  .frame-line .notch { display: none; }
 
-  /* 3 · WINDOW — non-phone contrast: a browser window showing the DESKTOP layout.
-     The same FO content is re-flowed to a desktop page — white canvas, full-bleed
-     hero, a centred desktop-width content measure, and side-by-side CTAs — so it
-     reads as a real desktop view, not a phone column floating on grey. (Single
-     column: the prototype only carries the mobile FO markup; a true two-column
-     desktop project page with a participate rail would be a separate build.) */
+  /* 2 · WINDOW — same minimal artboard, landscape, showing the DESKTOP layout: the
+     same FO content re-flowed to a desktop page (white canvas, full-bleed hero, a
+     centred desktop-width content measure, side-by-side CTAs). Single column — the
+     prototype only carries the mobile FO markup; a true two-column desktop page with
+     a participate rail would be a separate build. */
   .phone.frame-window {
-    width: 820px; height: 560px;
-    border: 1px solid var(--gv-grey-200, #e2e6ee); border-radius: 12px;
-    box-shadow: 0 30px 64px rgba(20,25,40,.18), 0 8px 20px rgba(20,25,40,.07);
+    width: 820px; height: 560px; border-radius: 16px;
     --pz: 0.62;
   }
-  .frame-window .pp-screen { top: 36px; height: calc((100% - 36px) / var(--pz)); background: #fff; }
+  .frame-window .pp-screen { background: #fff; }
   /* hero spans the full window; everything else sits in a centred desktop column */
   .frame-window .pp-fo__banner { height: 300px; }
   .frame-window .pp-fo__pad { max-width: 860px; margin: 0 auto; padding: 34px 40px 0; }
@@ -169,17 +161,6 @@
   .frame-window .pp-fo__cta { flex-direction: row; flex-wrap: wrap; gap: 12px; }
   .frame-window .pp-fo__cta .gv-btn { width: auto; }
   .frame-window .pp-phone-header { border-bottom: 1px solid var(--gv-grey-200); }
-  /* the .notch element is repurposed as the window title bar with traffic lights */
-  .frame-window .notch {
-    top: 0; left: 0; transform: none; width: 100%; height: 36px;
-    background: #f1f3f7; border-radius: 12px 12px 0 0;
-    box-shadow: inset 0 -1px 0 var(--gv-grey-200, #e2e6ee);
-  }
-  .frame-window .notch::before {
-    content: ""; position: absolute; top: 13px; left: 16px;
-    width: 10px; height: 10px; border-radius: 50%; background: #ff5f57;
-    box-shadow: 17px 0 0 #febc2e, 34px 0 0 #28c840;
-  }
 
   .rail-btn { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; color: rgba(255,255,255,.55); }
   .rail-btn:hover { color: #fff; }
@@ -1653,7 +1634,7 @@
       <!-- ====== VIEW: Project page preview ====== -->
       <div id="view-project" class="preview-stage flex-1 flex items-start justify-center pt-8 pb-6 relative overflow-y-auto">
 
-        <div id="phone" class="phone frame-line" style="cursor: pointer;" onclick="maybeOpenBuilder(event)">
+        <div id="phone" class="phone frame-phone" style="cursor: pointer;" onclick="maybeOpenBuilder(event)">
           <div class="notch"></div>
 
           <!-- .pp-screen = the whole phone interior, built from REAL full-size GoVocal
@@ -2201,8 +2182,7 @@
 <!-- ============ Frame switcher chip ============ -->
 <div class="state-chip frame-chip">
   <span class="label">FRAME</span>
-  <button data-frame="line" class="on" onclick="setFrame('line', this)">Line</button>
-  <button data-frame="clay" onclick="setFrame('clay', this)">Clay</button>
+  <button data-frame="phone" class="on" onclick="setFrame('phone', this)">Phone</button>
   <button data-frame="window" onclick="setFrame('window', this)">Window</button>
 </div>
 
@@ -2374,13 +2354,23 @@
     const bar = sc.querySelector('.pp-fo__partbar');
     const anchor = sc.querySelector('.pp-fo__partbar-anchor');
     if (!bar || !anchor) return;
-    const anchorTop = anchor.offsetTop;           // inline position of the bar (stable)
+    // Cache the bar's in-flow height from the un-stuck state (offsetHeight is unreliable
+    // once it's position:fixed) so the dock threshold stays stable.
+    if (!bar.classList.contains('is-stuck')) sc._barH = bar.offsetHeight;
+    const barH = sc._barH || bar.offsetHeight;
+    const anchorTop = anchor.offsetTop;             // inline TOP of the module (stable)
+    const moduleBottom = anchorTop + barH;          // inline BOTTOM of the module
+    const viewportBottom = sc.scrollTop + sc.clientHeight;
     const scrollable = sc.scrollHeight - sc.clientHeight > 4;
-    // Inline (above the timeline) until the user scrolls down to/past it; then it docks to
-    // the footer and stays there through the timeline + events.
-    const stick = scrollable && sc.scrollTop >= anchorTop - 8;
+    // Dock the instant the BOTTOM of the screen makes contact with the BOTTOM of the
+    // module; once docked it stays pinned through the timeline + events, and releases
+    // back to its inline home (above the timeline) when the user scrolls back above it.
+    const stick = scrollable && viewportBottom >= moduleBottom - 4;
     bar.classList.toggle('is-stuck', stick);
-    sc.classList.toggle('has-stuck-bar', stick);  // adds bottom padding so content clears
+    // Reserve the bar's space at its inline home while docked so the content below
+    // doesn't jump up when it detaches from the flow.
+    anchor.style.height = stick ? barH + 'px' : '0px';
+    sc.classList.toggle('has-stuck-bar', stick);    // adds bottom padding so content clears
   }
 
   function setProjectState(state, btn) {
