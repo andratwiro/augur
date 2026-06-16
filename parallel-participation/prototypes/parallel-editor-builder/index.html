@@ -2464,7 +2464,7 @@
       el("div",{style:"flex:1"}),
       el("div",{style:"font-size:12px;color:var(--ink-3);border:1px solid var(--border);border-radius:6px;padding:5px 10px;"},"EN ▾"),
       el("div",{style:"font-size:12px;color:var(--ink-2);"},"Preview"),
-      el("button",{style:"background:var(--navy);color:#fff;font-size:13px;font-weight:600;padding:7px 16px;border-radius:7px;"},"Save"),
+      el("button",{style:"background:var(--navy);color:#fff;font-size:13px;font-weight:600;padding:7px 16px;border-radius:7px;cursor:pointer;",onclick:()=>window.closeBuilder&&window.closeBuilder()},"Save"),
     );
   }
 
