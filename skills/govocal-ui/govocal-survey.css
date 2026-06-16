@@ -333,8 +333,13 @@
     .sv-optcard { align-items: flex-start; }
 
     /* ── Question-label weight fidelity (shared-fix survey-question-label-weight) ──
-       Real survey question label (span.diOXeU 'Your question') = 16px / weight 600 /
-       rgb(30,30,30). The base rule above shipped weight 700; the runner uses semibold
-       600, not bold. The '(optional)' suffix stays 16px / 400 / cool grey (our
-       .sv-q__optional already matches). Append-only override so every consumer updates. */
-    .sv-q__label { font-weight: 600; }
+       Real survey question label (span.sc-uJiQo.diOXeU 'Your question') = 16px /
+       weight 600 / rgb(30,30,30) (fo-survey-runner digest). The base rule (line 49)
+       shipped weight 700 AND color var(--gv-text-primary) (= #333 / rgb(51,51,51)) —
+       one weight step heavy and a lighter grey than the runner's semibold near-black.
+       Set weight to 600 and colour to the measured rgb(30,30,30) = #1E1E1E. That value
+       is already a token: --gv-text-heading-strong (#1E1E1E). NOTE: --gv-text-heading
+       is #474747, NOT #1E1E1E, so the strong variant is the correct alias here. The
+       '(optional)' suffix stays 16px / 400 / cool grey (.sv-q__optional already matches).
+       Append-only override so every consumer updates. */
+    .sv-q__label { font-weight: 600; color: var(--gv-text-heading-strong); }
