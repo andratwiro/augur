@@ -508,6 +508,7 @@ closed) before numeric build. Highest-value FO target once the session is restor
 - wake 2 (00:18): survey kit `date` field type added (S3); S4/S5 were false findings (already present). lint 0 · verify:all 127 green.
 - wake 3 (00:42): adversarial re-pass on live FO homepage — folder avatar pile was 3px squares; real is circular (50%) + 2px white ring. Fixed `.gv-pcard__fpile img`; +checkpoint fo-homepage/folder-avatar. verify:all 128 green.
 - wake 4 (01:07): added `.gv-pcard__fmore` "+N" overflow bubble (cool-grey-600, circular, 2px white ring) from fo-home-raleigh digest; wired into folder-card demo; +checkpoint fo-homepage/folder-more-bubble. verify:all 129 green.
+- wake 5 (01:28): VERIFIED (no fix) — the wake-3 "card CTA should be a button" finding only applies to BOXED cards, which already use `.gv-btn.primary-outlined` (checkpoint homepage-card-cta green). The `.gv-pcard__cta` text link is scoped to UNBOXED rail cards (Wien style) — a separate variant; whether real Wien rail cards use a text link vs button is UNVERIFIED (needs a live mitgestalten.wien.gv.at homepage capture). Rule 0: left unchanged. NEXT: capture Wien homepage, ground the unboxed rail-card CTA.
 
 ## FINAL REPORT — Run 6 (overnight deep fidelity audit)
 
