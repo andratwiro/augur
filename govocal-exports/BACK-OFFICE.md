@@ -506,6 +506,7 @@ closed) before numeric build. Highest-value FO target once the session is restor
 ### Loop run log
 - wake 1 (00:03): resolved session reality (FO live, BO-admin blocked) + operating note.
 - wake 2 (00:18): survey kit `date` field type added (S3); S4/S5 were false findings (already present). lint 0 · verify:all 127 green.
+- wake 3 (00:42): adversarial re-pass on live FO homepage — folder avatar pile was 3px squares; real is circular (50%) + 2px white ring. Fixed `.gv-pcard__fpile img`; +checkpoint fo-homepage/folder-avatar. verify:all 128 green.
 
 ## FINAL REPORT — Run 6 (overnight deep fidelity audit)
 

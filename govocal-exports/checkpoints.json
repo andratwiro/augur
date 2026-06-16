@@ -3,8 +3,8 @@
   "$fields": {
     "id": "short unique name shown in the report",
     "built": "path to YOUR rendered file (component demo or page index.html), repo-relative",
-    "against": "capture folder under govocal-exports/ — must have a `probed` block (captured with --probe)",
-    "map": "object of { realSelector: yourSelector } pinning what to diff (or a 'real=mine|…' string). Omit to pair identical selector strings.",
+    "against": "capture folder under govocal-exports/ \u2014 must have a `probed` block (captured with --probe)",
+    "map": "object of { realSelector: yourSelector } pinning what to diff (or a 'real=mine|\u2026' string). Omit to pair identical selector strings.",
     "viewport": "optional WxH; defaults to the capture's own viewport",
     "tol": "optional px tolerance (default 1)",
     "props": "optional list of CSS props to diff (default: the visually-salient set). Narrow it when only specific values are grounded for a selector.",
@@ -2345,6 +2345,23 @@
       ],
       "uses": [
         ".gv-bo-templatecard"
+      ]
+    },
+    {
+      "id": "fo-homepage/folder-avatar",
+      "built": "components/folder-card/index.html",
+      "against": "fo-home-raleigh",
+      "map": {
+        "img.sc-idHGMI.kndFYO": ".gv-pcard__fpile .gv-pcard__fthumb"
+      },
+      "props": [
+        "border-radius",
+        "border",
+        "width",
+        "height"
+      ],
+      "uses": [
+        ".gv-pcard"
       ]
     }
   ]

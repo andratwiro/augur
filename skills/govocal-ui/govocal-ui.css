@@ -830,8 +830,10 @@
   -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 /* Child-project avatar previews stacked below (live renders 36px thumbs). */
 .gv-pcard__fpile { display: flex; gap: 8px; padding: 16px 30px 0; }
+/* Folder avatar pile — real avatars (r7-fo-home digest img.sc-idHGMI) are CIRCULAR
+   (50%) with a 2px white ring, not 3px squares. */
 .gv-pcard__fpile img, .gv-pcard__fpile .gv-pcard__fthumb { width: 36px; height: 36px;
-  border-radius: var(--gv-radius); background: var(--gv-grey-300); object-fit: cover; }
+  border-radius: 50%; border: 2px solid var(--gv-white); background: var(--gv-grey-300); object-fit: cover; }
 
 /* "Finished/archived" status label tone (StatusLabel primitive, neutral grey) */
 .gv-status-label.finished { background: var(--gv-grey-200); color: var(--gv-grey-800); }
