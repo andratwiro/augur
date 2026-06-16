@@ -114,11 +114,13 @@ async function login(browser) {
   //   1) #email  → "Continue"  2) #e2e-password-input → "Log in"
   try {
     await page.locator('#email').fill(ENV.GOVOCAL_USER, { timeout: 10000 });
-    await page.getByRole('button', { name: 'Continue' }).click({ timeout: 8000 });
+    // exact:true — accessible-name matching is substring by default, so a bare
+    // "Continue" also matches SSO buttons like "Continue with Fake SSO".
+    await page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 8000 });
     const pw = page.locator('#e2e-password-input');
     await pw.waitFor({ state: 'visible', timeout: 10000 });
     await pw.fill(ENV.GOVOCAL_PASS);
-    await page.getByRole('button', { name: 'Log in' }).click({ timeout: 8000 });
+    await page.getByRole('button', { name: 'Log in', exact: true }).first().click({ timeout: 8000 });
     // Success = the auth modal's password field goes away.
     await pw.waitFor({ state: 'detached', timeout: 20000 }).catch(() => {});
     await page.waitForLoadState('networkidle').catch(() => {});
