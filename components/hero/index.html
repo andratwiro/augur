@@ -17,6 +17,17 @@
     .stage { border-radius: var(--gv-radius); overflow: hidden; box-shadow: var(--gv-shadow); }
     .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
     .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    /* Demo switcher chrome (showcase only — not part of the component). */
+    .hero-switch { display: flex; flex-wrap: wrap; gap: 22px; margin: 6px 0 14px; }
+    .hero-switch__label { display: block; margin-bottom: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; }
+    .hero-switch__row { display: inline-flex; gap: 4px; }
+    .hero-switch__btn { appearance: none; cursor: pointer; padding: 7px 13px; border: 1px solid var(--gv-grey-300); border-radius: 999px; background: var(--gv-white); color: var(--gv-text-primary); font: 600 13px/1 var(--gv-font-family); }
+    .hero-switch__btn[aria-pressed="true"] { background: var(--gv-grey-800); color: var(--gv-white); border-color: var(--gv-grey-800); }
+    /* The live banner shows the non-registered OR registered content per the stage's
+       data-auth; display:contents keeps the visible set in the hero's centered grid. */
+    .banner-content { display: contents; }
+    #heroStage[data-auth="out"] .banner-content[data-when="in"]  { display: none; }
+    #heroStage[data-auth="in"]  .banner-content[data-when="out"] { display: none; }
   </style>
 </head>
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
@@ -58,53 +69,51 @@
       </section>
     </div>
 
-    <p class="eyebrow">Homepage-banner layouts — full-width · two-row · fixed-ratio</p>
-    <p class="sub">The admin <strong>Homepage banner</strong> widget (Pages &amp; menu → Homepage
-      builder) renders the banner in one of three layouts, for a signed-out (non-registered) or
-      signed-in (registered) visitor. The base <code>.gv-hero.signed-out</code> is the full-width
-      layout; add <code>.layout-tworow</code> or <code>.layout-fixed</code> for the other two. The
-      <code>pages/homepage/</code> reference wires a live toggle across all three × both visitors.</p>
+    <p class="eyebrow">Homepage-banner switcher — 3 layouts × signed-out / signed-in</p>
+    <p class="sub">The admin <strong>Homepage banner</strong> widget (Pages &amp; menu → Homepage builder)
+      renders the banner in one of three layouts, for a non-registered (signed-out) or registered
+      (signed-in) visitor. Flip the live banner through every state — this switcher lives with the
+      component; a page just drops in one configured state (the homepage uses full-width + signed-out).</p>
 
-    <p class="eyebrow">Full-width banner (<code>.gv-hero.signed-out.centered</code>)</p>
-    <div class="stage">
-      <section class="gv-hero signed-out centered" data-testid="full-width-banner-layout"
-               style="--gv-hero-image:url('https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60')">
-        <div class="gv-hero__inner">
-          <h1 class="gv-hero__title">Wien mitgestalten</h1>
-          <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
-          <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
-            <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
-            <span class="count">15.4k</span>
-          </div>
-          <div class="gv-hero__actions"><button type="button" class="gv-btn primary-inverse">Registrieren</button></div>
+    <div class="hero-switch" role="group" aria-label="Banner state">
+      <div>
+        <span class="hero-switch__label">Layout</span>
+        <div class="hero-switch__row" id="layoutSwitch">
+          <button type="button" class="hero-switch__btn" data-layout="full" aria-pressed="true">Full width</button>
+          <button type="button" class="hero-switch__btn" data-layout="tworow" aria-pressed="false">Two rows</button>
+          <button type="button" class="hero-switch__btn" data-layout="fixed" aria-pressed="false">Fixed ratio</button>
         </div>
-      </section>
+      </div>
+      <div>
+        <span class="hero-switch__label">Visitor</span>
+        <div class="hero-switch__row" id="authSwitch">
+          <button type="button" class="hero-switch__btn" data-auth="out" aria-pressed="true">Signed out</button>
+          <button type="button" class="hero-switch__btn" data-auth="in" aria-pressed="false">Signed in</button>
+        </div>
+      </div>
     </div>
 
-    <p class="eyebrow">Two rows (<code>.layout-tworow</code>) — image row + white text band</p>
-    <div class="stage">
-      <section class="gv-hero signed-out centered layout-tworow" data-testid="two-row-layout">
+    <div class="stage" id="heroStage" data-auth="out">
+      <section class="gv-hero signed-out centered layout-full" id="switchHero" data-testid="full-width-banner-layout"
+               style="--gv-hero-image:url('https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60')">
         <div class="gv-hero__media"><img src="https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60" alt="" /></div>
         <div class="gv-hero__inner">
-          <h1 class="gv-hero__title">Wien mitgestalten</h1>
-          <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
-          <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
-            <span class="av"></span><span class="av"></span><span class="av"></span>
-            <span class="count">15.4k</span>
+          <!-- non-registered: avatars + sign-up -->
+          <div class="banner-content" data-when="out">
+            <h1 class="gv-hero__title">Wien mitgestalten</h1>
+            <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
+            <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
+              <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
+              <span class="count">15.4k</span>
+            </div>
+            <div class="gv-hero__actions"><button type="button" class="gv-btn primary-inverse">Registrieren</button></div>
           </div>
-          <div class="gv-hero__actions"><button type="button" class="gv-btn primary-inverse">Registrieren</button></div>
-        </div>
-      </section>
-    </div>
-
-    <p class="eyebrow">Fixed-ratio banner (<code>.layout-fixed</code>) — a shorter overlaid strip</p>
-    <div class="stage">
-      <section class="gv-hero signed-out centered layout-fixed" data-testid="fixed-ratio-layout"
-               style="--gv-hero-image:url('https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60')">
-        <div class="gv-hero__inner">
-          <h1 class="gv-hero__title">Wien mitgestalten</h1>
-          <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
-          <div class="gv-hero__actions"><button type="button" class="gv-btn primary-inverse">Registrieren</button></div>
+          <!-- registered: no avatars, own CTA -->
+          <div class="banner-content" data-when="in">
+            <h1 class="gv-hero__title">Willkommen zurück, Robin</h1>
+            <p class="gv-hero__lead">Ihre gefolgten Projekte haben Neuigkeiten.</p>
+            <div class="gv-hero__actions"><button type="button" class="gv-btn primary-inverse">Zum Hafen-Masterplan</button></div>
+          </div>
         </div>
       </section>
     </div>
@@ -117,8 +126,8 @@
       <em>filled</em> primary CTA. <code>.layout-fixed</code> keeps the overlaid full-width look at a
       shorter fixed aspect ratio.</p>
       <p><strong>Signed-out vs signed-in:</strong> the non-registered banner shows the avatar cluster
-      and a sign-up / custom CTA; the registered banner drops the avatars and uses its own CTA. Drive
-      it however the page likes (the homepage reference toggles <code>body[data-auth]</code>).</p>
+      and a sign-up / custom CTA; the registered banner drops the avatars and uses its own CTA. A page
+      drops in whichever single state it's configured for — the homepage uses full-width + signed-out.</p>
       <p><strong>Overlay:</strong> <code>.gv-hero::before</code> tints the banner with
       <code>--gv-tenant-primary</code> (multiply, 0.62) so it re-skins per city and keeps white text legible.</p>
       <p><strong>Photo:</strong> set <code>style="--gv-hero-image:url(…)"</code>. With no image a
@@ -128,5 +137,30 @@
     </div>
   </div>
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script>
+    // Live banner switcher — flip layout (.layout-*) + visitor (stage data-auth).
+    (function () {
+      var stage = document.getElementById('heroStage');
+      var hero = document.getElementById('switchHero');
+      var LAYOUTS = { full: 'full-width-banner-layout', tworow: 'two-row-layout', fixed: 'fixed-ratio-layout' };
+      function press(row, attr, val) {
+        row.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute(attr) === val)); });
+      }
+      document.getElementById('layoutSwitch').addEventListener('click', function (e) {
+        var el = e.target.closest('[data-layout]'); if (!el) return;
+        var k = el.getAttribute('data-layout');
+        hero.classList.remove('layout-full', 'layout-tworow', 'layout-fixed');
+        hero.classList.add('layout-' + k);
+        hero.setAttribute('data-testid', LAYOUTS[k]);
+        press(this, 'data-layout', k);
+      });
+      document.getElementById('authSwitch').addEventListener('click', function (e) {
+        var el = e.target.closest('[data-auth]'); if (!el) return;
+        var v = el.getAttribute('data-auth');
+        stage.setAttribute('data-auth', v);
+        press(this, 'data-auth', v);
+      });
+    })();
+  </script>
 </body>
 </html>
