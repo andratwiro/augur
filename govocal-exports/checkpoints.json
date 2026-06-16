@@ -2211,6 +2211,56 @@
       "uses": [
         ".gv-bubbles"
       ]
+    },
+    {
+      "id": "fo-stlouis-twocol-accordion/section-h2",
+      "built": "components/twocol-accordion/index.html",
+      "against": "fo-stlouis-twocol-accordion",
+      "map": {
+        ".e2e-text-box h2": ".gv-prose h2"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-cb-frame",
+        ".gv-prose"
+      ]
+    },
+    {
+      "id": "fo-stlouis-twocol-accordion/accordion-head",
+      "built": "components/twocol-accordion/index.html",
+      "against": "fo-stlouis-twocol-accordion",
+      "map": {
+        "h3.sc-beqWaB.sc-hAtEyd": ".gv-prose .gv-acc__head"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-accordion",
+        ".gv-prose"
+      ]
+    },
+    {
+      "id": "fo-stlouis-twocol-accordion/intro-p",
+      "built": "components/twocol-accordion/index.html",
+      "against": "fo-stlouis-twocol-accordion",
+      "map": {
+        ".e2e-text-box p": ".gv-prose>p"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-prose"
+      ]
     }
   ]
 }

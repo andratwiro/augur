@@ -101,6 +101,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Survey Band** | `/components/survey-band/` | `components/survey-band/` | The tenant-primary "Take the survey" strip on a project page survey phase — a status with a live dot on the left and an on-color CTA on the right. |
 | **Survey Fields** | `/components/survey-fields/` | `components/survey-fields/` | The GoVocal input-form / survey field widgets — every question type, themeable via --gv-* . One shared source: govocal-survey.css + govocal-survey.js . Rendere… |
 | **Theme Card** | `/components/theme-card/` | `components/theme-card/` | Ranked Perspectives category card with an emoji swatch, name, response count and a mini share bar; the first one shows the active selection. |
+| **Twocol Accordion** | `/components/twocol-accordion/` | `components/twocol-accordion/` | Two-column image + text + accordion (CB about + FAQ) — GoVocal component |
 | **Volunteer Cause** | `/components/volunteer-cause/` | `components/volunteer-cause/` | A volunteering opportunity card — photo with a participant badge, title, count, description, and a green sign-up button that toggles to a withdraw state. |
 | **Voting** | `/components/voting/` | `components/voting/` | The Upcoming and ongoing events + Past events sections a project page renders below the phase body (on the project's own content column). Source-grounded on wi… |
 

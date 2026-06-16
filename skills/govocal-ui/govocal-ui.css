@@ -1201,6 +1201,12 @@
 .gv-acc__body { padding: 0 0 20px; max-width: var(--gv-text-width); }
 .gv-acc__body p { margin: 0 0 10px; font-size: var(--gv-fs-base); line-height: 1.6; color: var(--gv-text-primary); }
 .gv-acc__body p:last-child { margin-bottom: 0; }
+/* An accordion mounted inside a Content-Builder rich-text column (.gv-prose, the
+   homepage "about + FAQ" two-column section) steps its question heads up to the
+   measured St Louis 21px/700/27.3 — a sibling of the .gv-projdesc 18px step-up
+   above, scoped to the prose context. Source: fo-stlouis-twocol-accordion h3 #10. */
+.gv-prose .gv-acc__head { font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; }
+.gv-prose .gv-acc__body p { font-size: var(--gv-fs-m); }
 
 /* Phase method band + phase body + read-more (rendered inside the phase panel) */
 .gv-methodband { background: var(--gv-background); margin-top: 0; padding: 60px 0 80px; }  /* live phase content sits on the page grey (#EDEFF0); measured 60/80 vertical rhythm */

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Two-column image + text + accordion (CB about + FAQ) — GoVocal component</title>
+  <!-- References canonical assets directly — never copies or redefines a .gv-* class. -->
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    /* Demo chrome only. The component is pure assembly of canonical primitives:
+       .gv-cb-frame / .gv-cb-row.cols-2 / .gv-cb-col / .gv-cb-image / .gv-cb-textbox
+       + .gv-prose + .gv-accordion. NO .gv-* class is defined or overridden here. */
+    body { margin: 0; padding: 40px 0 80px; background: var(--gv-white); font-family: var(--gv-font-family); }
+    .demo-label { max-width: 1200px; margin: 0 auto 12px; padding: 0 24px;
+      font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-cool-grey-600); text-transform: uppercase; letter-spacing: .04em; }
+    /* a flat photo stand-in for the left image cell (no real asset in the demo) */
+    .ph { background: var(--gv-grey-200); border-radius: var(--gv-radius); aspect-ratio: 4/3;
+      display: flex; align-items: center; justify-content: center; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-s); }
+  </style>
+</head>
+<body class="gv-root" data-gv-theme="4">
+
+  <p class="demo-label">CB section · cols-2 · image left + (h2 + intro + FAQ accordion) right — St Louis homepage "about + FAQ"</p>
+
+  <!-- ============ TWO-COLUMN IMAGE + TEXT + ACCORDION (copy from here) ============
+       A Content-Builder two-column row: an image cell beside a rich-text column that
+       carries the section heading, an intro paragraph, and an FAQ accordion. The
+       accordion heads step up to 21px/700 inside .gv-prose (the measured St Louis
+       step-up, a sibling of the .gv-projdesc step-up). Pure assembly. -->
+  <div class="gv-cb-frame">
+    <div class="gv-cb-row cols-2">
+
+      <!-- LEFT: image cell -->
+      <div class="gv-cb-col">
+        <div class="gv-cb-image"><div class="ph">Image</div></div>
+      </div>
+
+      <!-- RIGHT: rich-text column (heading + intro + accordion) -->
+      <div class="gv-cb-col">
+        <div class="gv-cb-textbox">
+          <div class="gv-prose">
+            <h2>The Board of Aldermen is listening!</h2>
+            <p>The Board of Aldermen's public engagement platform makes it easier for residents to share ideas with elected officials, connect with other residents, and stay up-to-date on policies and projects taking shape in St.&nbsp;Louis.</p>
+
+            <div class="gv-accordion">
+              <details class="gv-acc__item" open>
+                <summary class="gv-acc__head"><span class="gv-acc__q">What is Speak Up, St.&nbsp;Louis?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+                <div class="gv-acc__body"><p>Speak Up is where residents and the Board of Aldermen meet online. Browse active projects, react to and comment on ideas, take part in surveys, and follow the policies moving through City Hall — all in one place.</p></div>
+              </details>
+              <details class="gv-acc__item">
+                <summary class="gv-acc__head"><span class="gv-acc__q">Who can take part?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+                <div class="gv-acc__body"><p>Anyone can read along. To post an idea, react, or answer a survey you'll be asked to create a free account so the team knows your contribution comes from a real resident.</p></div>
+              </details>
+              <details class="gv-acc__item">
+                <summary class="gv-acc__head"><span class="gv-acc__q">What happens to my contribution?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+                <div class="gv-acc__body"><p>Every contribution is read by the project team and grouped with similar input. Aldermen use what's shared here to shape the policies and projects they bring forward, and project updates are posted back to participants as each phase opens.</p></div>
+              </details>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- ============ /TWO-COLUMN IMAGE + TEXT + ACCORDION ============ -->
+
+</body>
+</html>

@@ -1847,6 +1847,49 @@ Reference page assembling a full Copenhagen-style CB homepage: `pages/fo-cph-cb-
 
 ---
 
+## Two-column image + text + accordion (CB "about + FAQ") — `.gv-cb-row.cols-2` + `.gv-prose` + `.gv-accordion` (`components/twocol-accordion/`)
+
+The Content-Builder homepage **"about + FAQ" section**: a two-column CB row with an
+**image cell** on the left and a **rich-text column** on the right carrying the
+section heading (`h2` 25/700/32.5), an **intro paragraph** (16/400/24), and an FAQ
+**accordion** whose question heads step up to **21px/700/27.3** inside `.gv-prose`.
+**Pure assembly** — every piece already exists (`.gv-cb-frame`/`.gv-cb-row.cols-2`/
+`.gv-cb-col`/`.gv-cb-image`/`.gv-cb-textbox` + `.gv-prose` + `.gv-accordion`); the only
+net-new is a `.gv-prose .gv-acc__head` / `.gv-prose .gv-acc__body p` **step-up** (a
+sibling of the existing `.gv-projdesc` 18px step-up, scoped to the prose context).
+Source-grounded on St Louis (`stlouis.govocal.com`, capture `fo-stlouis-twocol-accordion`,
+tenant-primary `#033D8B`), verified via `fo-stlouis-twocol-accordion/{section-h2,
+accordion-head,intro-p}` (the structural type-scale; St Louis additionally configures
+`--gv-tenant-text` to its brand navy + Public Sans — that's tenant skin, re-themes per
+`?theme=`). The accordion auto-rotates the chevron on `[open]` (canonical, no JS).
+
+```html
+<div class="gv-cb-frame">
+  <div class="gv-cb-row cols-2">
+    <div class="gv-cb-col">
+      <div class="gv-cb-image"><img src="…" alt="" /></div>
+    </div>
+    <div class="gv-cb-col">
+      <div class="gv-cb-textbox">
+        <div class="gv-prose">
+          <h2>The Board of Aldermen is listening!</h2>
+          <p>The Board of Aldermen's public engagement platform makes it easier…</p>
+          <div class="gv-accordion">
+            <details class="gv-acc__item" open>
+              <summary class="gv-acc__head"><span class="gv-acc__q">What is Speak Up, St. Louis?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+              <div class="gv-acc__body"><p>Speak Up is where residents and the Board of Aldermen meet online…</p></div>
+            </details>
+            <!-- more .gv-acc__item … -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+---
+
 ## City theming (`govocal-themes.js`)
 
 The product themes **primary, secondary, text colours + a custom font** per tenant
