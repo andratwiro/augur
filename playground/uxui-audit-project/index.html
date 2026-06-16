@@ -697,7 +697,7 @@
       <div class="slide-inner">
         <p class="eyebrow">Hypothesis-led · prototype-as-probe</p>
         <h1>We're not starting from zero.<br>We have a point of view — and<br>a plan to be <span class="accent">wrong fast.</span></h1>
-        <p class="lead">Four big bosses the audit has to beat — three priors from hundreds of admin conversations and live resident sessions, plus one I'd add. Held with conviction, written to be falsifiable, tested with real prototypes in front of real people — in two weeks.</p>
+        <p class="lead">Five big bosses the audit has to beat — three priors from hundreds of admin conversations and live resident sessions, one I'd add, and one Irene's architecture map surfaced. Held with conviction, written to be falsifiable, tested with real prototypes in front of real people — in two weeks.</p>
       </div>
     </section>
 
@@ -716,13 +716,14 @@
     <section class="slide">
       <div class="slide-inner">
         <p class="eyebrow">What the audit is really fighting</p>
-        <h2>Four bosses — not a hundred nits.</h2>
+        <h2>Five bosses — not a hundred nits.</h2>
         <p class="lead">Usability fixes are the small enemies. These are the structural ones a real redesign has to beat — each gets a bet, held with conviction, built to be wrong fast.</p>
         <div class="grid g2">
           <div class="card"><span class="num">BOSS 1 · FRONT OFFICE</span><h3>The Wall of Everything</h3><p>Every method crammed onto one scroll — map, vote, survey embedded mid-page. Nothing gets the resident's full attention, and parallel participation makes it impossible.</p></div>
           <div class="card"><span class="num">BOSS 2 · BACK OFFICE</span><h3>The Vienna Paradox</h3><p>The configurability that wins a capital city drowns the town that just wants a survey. The moat is also the onboarding poison.</p></div>
           <div class="card"><span class="num">BOSS 3 · BACK OFFICE</span><h3>The Form, in an Agent World</h3><p>Config-by-form is dying. With MCP coming, the admin's job shifts from filling fields to supervising an agent.</p></div>
           <div class="card"><span class="num">BOSS 4 · THE MISSION</span><h3>Participation Theater</h3><p>We can make input frictionless and still fail — if residents never see the loop close, and the people who show up aren't the city.</p></div>
+          <div class="card"><span class="num">BOSS 5 · BACK OFFICE</span><h3>The Sprawl</h3><p>One project's work scatters across 11 destinations — configure in Projects, moderate in Input Manager, report in Reporting, email in Messaging. No single home, so the infrequent PM re-learns the tool each visit. <span style="color:var(--faint)">Surfaced by Irene's architecture map.</span></p></div>
         </div>
       </div>
     </section>
@@ -782,20 +783,32 @@
 
     <section class="slide">
       <div class="slide-inner">
+        <p class="eyebrow">Boss 5 · the Sprawl — surfaced by Irene's architecture map</p>
+        <p class="claim">Give every project a single home. The work shouldn't scatter across <span class="accent">eleven destinations and a global-vs-project split.</span></p>
+        <div class="grid g3">
+          <div class="card"><span class="lab">Why I believe it</span><p>Irene's map: the same task lives in two places — Input Manager is a sidebar destination <em>and</em> a phase tab; tags and access-rights sit in Settings <em>and</em> in the project. A PM who runs one project a quarter rebuilds the map of where everything lives, every time — the loudest adoption complaint.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>Maybe the split is real division of labour — the moderator lives in Input Manager, the analyst in Reporting — and a forced single home just adds a layer. And consolidation can collide with Boss 2: pull everything into one project view and you risk re-creating the wall. So the bet is a project-scoped <em>home base</em> that links out, not a merge.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>A project home base that surfaces <em>this</em> project's pending work across surfaces → Diane (infrequent PM) returning to a project she set up weeks ago.</p></div>
+        </div>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · most structural</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
         <p class="eyebrow">Cross-check · an independent read of the architecture</p>
-        <h2>A second map backs three bets — and bends one.</h2>
-        <p class="lead">Irene mapped the real back-office architecture from the admin code, blind to these bets. I treat it as <em>more context, not a verdict</em>: where it converges, conviction goes up; where it diverges, the probe gets sharper. It doesn't move my priors — it tells me which to test first.</p>
+        <h2>A second map backs two bets, bends one, and added the fifth.</h2>
+        <p class="lead">Irene mapped the real back-office architecture from the admin code, blind to these bets. I treat it as <em>more context, not a verdict</em>: where it converges, conviction goes up; where it diverges, the probe gets sharper. It doesn't move my priors — it tells me which to test first, and it handed me Boss 5 outright.</p>
         <div class="twocol">
-          <div><h3 class="tealtext">It backs three</h3>
+          <div><h3 class="tealtext">It backs two</h3>
             <ul class="clean">
               <li><b>Boss 2 · the depth is structural.</b> The Project→Phase→Method model is projected onto 11 destinations, config six levels down, settings in two worlds — polish alone can't remove it.</li>
-              <li><b>Boss 2 · the breadth too.</b> No single home for "my project's work" — Input Manager is both a sidebar destination <em>and</em> a phase tab; that's why infrequent PMs re-learn the tool each visit.</li>
               <li><b>Boss 4 · closure is load-bearing.</b> The map independently flags closure and representativeness as the assumptions a redesign rests on.</li>
             </ul></div>
-          <div><h3 class="accent">It bends one</h3>
+          <div><h3 class="accent">It bends one, adds one</h3>
             <ul class="clean">
-              <li><b>Boss 3 · timing.</b> Her near-term bet is simplify in-product <em>first</em>; agents later, and for power users — right destination, possibly wrong sprint.</li>
-              <li><b>The fork to resolve Friday:</b> is the near-term probe the agent checkpoint, or the simplified fast-lane the agent later subsumes? Boss 3 stays a bet — its <em>sprint</em> is what's in question.</li>
+              <li><b>Boss 3 · timing.</b> Her near-term bet is simplify in-product <em>first</em>; agents later, and for power users — right destination, possibly wrong sprint. The fork to resolve Friday: agent checkpoint now, or the simplified fast-lane the agent later subsumes?</li>
+              <li><b>Boss 5 · the Sprawl.</b> The map surfaced it outright — no single home for a project's work — now a bet of its own.</li>
             </ul></div>
         </div>
         <div class="seam">Newly on the table from her map: <b>Microsoft / SharePoint integration</b> as an adoption unlocker, and <b>sunsetting</b> features (folders / spaces) that no longer earn their place — pending usage data. Above the redesign, but they move its scope.</div>
@@ -807,7 +820,7 @@
       <div class="slide-inner">
         <p class="eyebrow">The keystone · one pattern, three payoffs</p>
         <h2>Build one thing well: the focused surface.</h2>
-        <p class="lead">Three of the four bosses fall to the same artifact — a full-screen, one-job, outcome-first surface. Build that pattern once:</p>
+        <p class="lead">Three of the five bosses fall to the same artifact — a full-screen, one-job, outcome-first surface. (Boss 2 and Boss 5 are the structural back-office pair, fought elsewhere.) Build that pattern once:</p>
         <ul class="clean">
           <li><b>Resident participates</b> → the focused method surface <span style="color:var(--faint)">· Boss 1</span></li>
           <li><b>Resident sees the loop close</b> → the same surface, showing the outcome <span style="color:var(--faint)">· Boss 4</span></li>
