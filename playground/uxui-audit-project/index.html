@@ -4,719 +4,538 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>UX/UI Audit — The Participation Loop · GoVocal</title>
+  <title>UX/UI Audit — three approaches · GoVocal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" />
   <link rel="stylesheet" href="../govocal-tokens.css" />
   <style>
-    :root{
-      --paper:#f5f4f1; --paper-2:#efede8; --card:#fcfbf9;
-      --ink:#17171a; --ink-soft:#6c6a65; --faint:#9a978f;
-      --teal:var(--gv-tenant-primary,#0E7C86); --coral:#C8472A;
-      --teal-deep:#0A5159; --wash:#efede8; --wash-2:#e8efee; --line:#e0ddd6; --line-2:#cfccc3;
-      --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; --maxw:940px;
+    /* ── palette via vars; each mode swaps them and everything reskins ──────── */
+    body{
+      --bg:#f5f4f1; --bg2:#efede8; --panel:#fcfbf9; --ink:#17171a; --muted:#6c6a65;
+      --faint:#9a978f; --line:#e0ddd6; --line2:#cfccc3; --teal:#0E7C86; --teal-deep:#0A5159;
+      --accent:#C8472A; --accent-soft:#f4e3dc;
+      --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+      --sans:'Public Sans','Helvetica Neue',Helvetica,Arial,sans-serif;
+    }
+    body[data-mode="evidence"]{
+      --bg:#0c1517; --bg2:#0f1c1d; --panel:#13211f; --ink:#ECEAE3; --muted:#9fb0ad;
+      --faint:#677976; --line:#21332f; --line2:#2c423d; --teal:#41bccb; --teal-deep:#2a8f99;
+      --accent:#EE7A4E; --accent-soft:#2a1f1a;
     }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%}
-    body{font-family:'Public Sans','Helvetica Neue',Helvetica,Arial,sans-serif;color:var(--ink);background:#08272d;-webkit-font-smoothing:antialiased;overflow:hidden}
+    body{font-family:var(--sans);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;overflow:hidden;transition:background .4s}
 
-    .progress{position:fixed;top:0;left:0;height:3px;background:var(--coral);width:0;z-index:50;transition:width .35s cubic-bezier(.4,0,.2,1)}
-    .chrome{position:fixed;z-index:40;font-size:13px;font-weight:600;letter-spacing:.01em}
-    .chrome.count{bottom:20px;right:24px;color:rgba(255,255,255,.7)} .chrome.count b{color:#fff}
-    .brandmark{position:fixed;top:18px;left:24px;z-index:40;display:flex;align-items:center;gap:9px;color:#fff}
-    .brandmark .dot{width:22px;height:22px;border-radius:6px;background:var(--coral);display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px}
-    .brandmark span{font-weight:700;font-size:13px;letter-spacing:.01em;opacity:.9}
-    .phasetag{position:fixed;top:19px;right:24px;z-index:40;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55)}
-    .nav{position:fixed;bottom:16px;left:24px;z-index:40;display:flex;gap:8px}
-    .nav button{width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#fff;font-size:16px;cursor:pointer;line-height:1;transition:.15s}
-    .nav button:hover{background:rgba(255,255,255,.18)} .nav button:disabled{opacity:.3;cursor:default}
-    body.on-light .brandmark span{color:var(--ink-soft);opacity:1}
-    body.on-light .phasetag{color:var(--teal)}
-    body.on-light .chrome.count{color:var(--faint)} body.on-light .chrome.count b{color:var(--ink)}
-    body.on-light .nav button{border-color:var(--line);background:#fff;color:var(--ink-soft)}
-    body.on-light .nav button:hover{background:var(--wash)}
+    /* ── toggle (pinned top) ────────────────────────────────────────────────── */
+    .switch{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:60;display:flex;
+      gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:4px;
+      box-shadow:0 4px 18px rgba(0,0,0,.06)}
+    body[data-mode="evidence"] .switch{box-shadow:0 4px 22px rgba(0,0,0,.4)}
+    .switch button{appearance:none;border:0;background:transparent;cursor:pointer;border-radius:9px;
+      padding:7px 15px 8px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;color:var(--muted);transition:.15s}
+    .switch button .t{font-size:13.5px;font-weight:700;letter-spacing:-.01em;line-height:1.1}
+    .switch button .s{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+    .switch button:hover{color:var(--ink)}
+    .switch button.on{background:var(--ink);color:var(--bg)}
+    .switch button.on .s{color:var(--bg);opacity:.6}
 
-    .slide{position:fixed;inset:0;display:none;overflow-y:auto;padding:68px 56px;background:#fff}
+    /* ── chrome ─────────────────────────────────────────────────────────────── */
+    .progress{position:fixed;top:0;left:0;height:3px;background:var(--accent);width:0;z-index:50;transition:width .35s cubic-bezier(.4,0,.2,1)}
+    .brand{position:fixed;bottom:20px;left:24px;z-index:40;font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--faint)}
+    .count{position:fixed;bottom:20px;right:24px;z-index:40;font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--faint)}
+    .count b{color:var(--ink)}
+    .nav{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:40;display:flex;gap:8px}
+    .nav button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line2);background:var(--panel);color:var(--ink);cursor:pointer;font-size:15px;display:grid;place-items:center;transition:.15s}
+    .nav button:hover{border-color:var(--ink)} .nav button:disabled{opacity:.3;cursor:default}
+
+    /* ── decks & slides ─────────────────────────────────────────────────────── */
+    .deck{display:none} .deck.on{display:block}
+    .slide{position:fixed;inset:0;display:none;overflow-y:auto;padding:84px 56px 64px;background:var(--bg)}
+    body[data-mode="evidence"] .slide{background:radial-gradient(120% 130% at 80% -10%,#163a3a 0%,#0a1416 70%)}
     .slide.active{display:flex}
-    .slide-inner{max-width:var(--maxw);margin:auto;width:100%}
-    .slide.active .slide-inner{animation:rise .5s cubic-bezier(.2,.7,.2,1) both}
-    @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-    .slide.dark{background:radial-gradient(120% 120% at 78% 0%,#0e5c66 0%,#08272d 72%);color:#fff}
-    .slide.teal{background:linear-gradient(135deg,var(--teal) 0%,var(--teal-deep) 100%);color:#fff}
-    .slide.wash{background:var(--wash)}
+    .slide-inner{max-width:1020px;margin:auto;width:100%}
+    .slide.active .slide-inner{animation:rise .45s cubic-bezier(.2,.7,.2,1) both}
+    @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 
-    .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin:0 0 18px}
-    .slide.dark .eyebrow,.slide.teal .eyebrow{color:var(--coral)}
-    .eyebrow::before{content:"";width:26px;height:2px;background:currentColor;border-radius:2px}
+    /* ── shared content atoms ───────────────────────────────────────────────── */
+    .eyebrow{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin:0 0 18px}
+    h1{font-size:clamp(34px,5vw,58px);line-height:1.03;letter-spacing:-.03em;font-weight:680;margin:0 0 18px}
+    h2{font-size:clamp(25px,3.4vw,40px);line-height:1.07;letter-spacing:-.022em;font-weight:660;margin:0 0 16px}
+    h3{font-size:17px;font-weight:680;margin:0 0 6px;letter-spacing:-.01em}
+    .lead{font-size:clamp(16px,1.8vw,20px);line-height:1.5;color:var(--muted);max-width:760px;margin:0}
+    .lead.ink{color:var(--ink)}
+    p{line-height:1.55} strong{font-weight:680;color:var(--ink)} .accent{color:var(--accent)} .tealtext{color:var(--teal)}
 
-    h1{font-size:clamp(34px,5vw,58px);line-height:1.04;letter-spacing:-.02em;font-weight:800;margin:0 0 18px}
-    h2{font-size:clamp(25px,3.3vw,38px);line-height:1.1;letter-spacing:-.018em;font-weight:800;margin:0 0 18px}
-    h3{font-size:18px;font-weight:700;margin:0 0 7px;letter-spacing:-.01em}
-    .lead{font-size:clamp(16px,1.8vw,20px);line-height:1.5;color:var(--ink-soft);max-width:780px;margin:0 0 8px}
-    .slide.dark .lead,.slide.teal .lead{color:rgba(255,255,255,.82)}
-    p{line-height:1.55} .accent{color:var(--coral)} .tealtext{color:var(--teal)} strong{font-weight:700}
-    .big-q{font-size:clamp(22px,2.7vw,30px);line-height:1.28;font-weight:700;letter-spacing:-.015em;max-width:880px;margin:0}
-    .big-q em{font-style:normal;color:var(--coral)}
+    .meta{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:30px;font-size:14px}
+    .meta div{display:flex;flex-direction:column;gap:2px}
+    .meta .k{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:500}
+    .meta .v{font-weight:600;color:var(--ink)}
 
-    .title-meta{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:32px;font-size:14px}
-    .title-meta div{display:flex;flex-direction:column;gap:2px}
-    .title-meta .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.5);font-weight:700}
-    .title-meta .v{font-weight:600;color:#fff}
+    .grid{display:grid;gap:15px;margin-top:22px}
+    .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:19px 19px 17px}
+    .card .num{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.07em;color:var(--accent);margin-bottom:8px;display:block}
+    .card h3{margin-bottom:5px} .card p{font-size:14px;line-height:1.46;color:var(--muted);margin:0}
+    .card .src{font-size:11px;color:var(--faint);margin-top:8px;font-family:var(--mono)}
 
-    .grid{display:grid;gap:16px;margin-top:24px}
-    .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
-    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 20px 18px;position:relative}
-    .slide.dark .card,.slide.teal .card{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16)}
-    .card .num{font-size:12.5px;font-weight:800;color:var(--coral);margin-bottom:9px;display:block}
-    .card h3{margin-bottom:5px} .card p{font-size:14px;line-height:1.48;color:var(--ink-soft);margin:0}
-    .slide.dark .card p,.slide.teal .card p{color:rgba(255,255,255,.78)}
-    .card .ic{font-size:21px;margin-bottom:10px;display:block}
-    .card .src{font-size:11.5px;color:var(--faint);margin-top:9px}
-    .slide.dark .card .src{color:rgba(255,255,255,.5)}
-
-    ul.clean{list-style:none;padding:0;margin:18px 0 0}
-    ul.clean li{position:relative;padding:10px 0 10px 28px;border-bottom:1px solid var(--line);font-size:15.5px;line-height:1.45}
+    ul.clean{list-style:none;padding:0;margin:16px 0 0}
+    ul.clean li{position:relative;padding:9px 0 9px 26px;border-bottom:1px solid var(--line);font-size:15px;line-height:1.45;color:var(--muted)}
     ul.clean li:last-child{border-bottom:0}
-    ul.clean li::before{content:"";position:absolute;left:2px;top:17px;width:9px;height:9px;border-radius:3px;background:var(--teal)}
-    ul.clean li b{font-weight:700}
-    .slide.dark ul.clean li{border-color:rgba(255,255,255,.12)}
+    ul.clean li::before{content:"";position:absolute;left:2px;top:16px;width:8px;height:8px;border-radius:3px;background:var(--teal)}
+    ul.clean li b{font-weight:680;color:var(--ink)}
 
-    table{width:100%;border-collapse:collapse;margin-top:20px;font-size:14px}
-    th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.4}
-    th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:700}
-    tr td:first-child{font-weight:700;color:var(--ink);white-space:nowrap}
-    .slide.dark th,.slide.dark td{border-color:rgba(255,255,255,.14)} .slide.dark tr td:first-child{color:#fff}
-    .pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--wash-2);color:var(--teal-deep)}
-    .pill.coral{background:#fbe7df;color:#b5431f}
+    ol.steps{list-style:none;counter-reset:n;padding:0;margin:8px 0 0;display:grid;gap:18px}
+    ol.steps li{counter-increment:n;position:relative;padding-left:52px;font-size:clamp(16px,1.9vw,21px);line-height:1.4;color:var(--ink);max-width:34em}
+    ol.steps li span{color:var(--muted);font-size:.82em}
+    ol.steps li::before{content:counter(n);position:absolute;left:0;top:-2px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent);background:var(--accent-soft);border:1px solid var(--line)}
 
-    /* loop diagram */
-    .loop{display:grid;grid-template-columns:1fr 92px 1fr;gap:0;align-items:center;margin-top:26px}
-    .loop .lane{border-radius:16px;padding:20px 18px}
-    .loop .lane.fo{background:rgba(255,255,255,.08);border:1px solid rgba(226,96,58,.5)}
-    .loop .lane.bo{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22)}
-    .loop .lane h3{color:#fff;display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;text-transform:uppercase;letter-spacing:.05em}
-    .loop .lane .tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px}
-    .loop .lane.fo .tag{background:var(--coral);color:#fff} .loop .lane.bo .tag{background:rgba(255,255,255,.9);color:var(--teal-deep)}
-    .loop .step{display:flex;align-items:center;gap:10px;padding:8px 0;color:rgba(255,255,255,.92);font-size:14.5px;font-weight:600}
-    .loop .step span{width:23px;height:23px;border-radius:7px;display:grid;place-items:center;font-size:12px;background:rgba(255,255,255,.12);flex:none}
-    .loop .arrows{display:flex;flex-direction:column;align-items:center;gap:9px;color:var(--coral);font-size:28px;font-weight:800}
-    .loop .arrows .lbl{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.55);text-align:center;line-height:1.3}
-    .seam{margin-top:20px;border-radius:12px;padding:13px 17px;font-size:14px;line-height:1.5}
-    .slide.dark .seam{background:rgba(226,96,58,.14);border:1px solid rgba(226,96,58,.4);color:#fff}
-    .seam b{color:var(--coral)}
+    table{width:100%;border-collapse:collapse;margin-top:18px;font-size:14px}
+    th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.4;color:var(--muted)}
+    th{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:500}
+    tr td:first-child{font-weight:680;color:var(--ink);white-space:nowrap}
+    .pill{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--bg2);color:var(--teal-deep)}
+    body[data-mode="evidence"] .pill{color:var(--teal)}
 
-    /* double diamond spine */
-    .diamond{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:26px}
-    .diamond .ph{background:#fff;border:1px solid var(--line);border-radius:13px;padding:16px 15px;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+    .stat b{display:block;font-size:40px;font-weight:700;color:var(--teal);line-height:1;letter-spacing:-.02em}
+    .stat .sx{font-size:13.5px;color:var(--muted);line-height:1.4;margin-top:8px}
+    .twocol{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:20px}
+    .src-line{margin-top:20px;font-family:var(--mono);font-size:11px;color:var(--faint);line-height:1.5}
+
+    /* loop diagram (full) */
+    .loop{display:grid;grid-template-columns:1fr 88px 1fr;align-items:center;margin-top:24px}
+    .loop .lane{border-radius:15px;padding:18px 17px;background:var(--panel);border:1px solid var(--line)}
+    .loop .lane.fo{border-color:#e7cdc3} body[data-mode="evidence"] .loop .lane.fo{border-color:#5a3326}
+    .loop .lane h3{display:flex;align-items:center;gap:8px;margin-bottom:11px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink)}
+    .loop .tag{font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px}
+    .loop .lane.fo .tag{background:var(--accent);color:#fff} .loop .lane.bo .tag{background:var(--teal);color:#fff}
+    .loop .step{display:flex;align-items:center;gap:10px;padding:7px 0;color:var(--ink);font-size:14px;font-weight:600}
+    .loop .step span{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:12px;background:var(--bg2);color:var(--muted);flex:none;font-family:var(--mono)}
+    .loop .arrows{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--accent);font-size:26px;font-weight:700}
+    .loop .arrows .lbl{font-family:var(--mono);font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);text-align:center;line-height:1.3}
+    .seam{margin-top:18px;border-radius:11px;padding:13px 16px;font-size:14px;line-height:1.5;background:var(--accent-soft);border:1px solid var(--line);color:var(--ink)}
+    .seam b{color:var(--accent)}
+
+    /* diamond (full) */
+    .diamond{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-top:22px}
+    .diamond .ph{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 14px;position:relative;overflow:hidden}
     .diamond .ph::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--teal)}
-    .diamond .ph:nth-child(2)::before{background:var(--teal-deep)} .diamond .ph:nth-child(3)::before{background:var(--coral)} .diamond .ph:nth-child(4)::before{background:#b5431f}
-    .diamond .ph .shape{font-size:20px;color:var(--teal)} .diamond .ph:nth-child(3) .shape,.diamond .ph:nth-child(4) .shape{color:var(--coral)}
-    .diamond .ph .w{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
-    .diamond .ph .t{font-size:16px;font-weight:800;letter-spacing:-.01em}
-    .diamond .ph .d{font-size:12.5px;color:var(--ink-soft);line-height:1.4}
+    .diamond .ph:nth-child(3)::before,.diamond .ph:nth-child(4)::before{background:var(--accent)}
+    .diamond .ph .w{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+    .diamond .ph .t{font-size:16px;font-weight:700;letter-spacing:-.01em;margin:4px 0}
+    .diamond .ph .d{font-size:12.5px;color:var(--muted);line-height:1.4}
 
-    /* stat / number blocks */
-    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
-    .stat{padding:4px 0}
-    .stat b{display:block;font-size:38px;font-weight:800;color:var(--teal);line-height:1;letter-spacing:-.02em}
-    .slide.dark .stat b,.slide.teal .stat b{color:var(--coral)}
-    .stat .sx{font-size:13.5px;color:var(--ink-soft);line-height:1.4;margin-top:8px}
-    .slide.dark .stat .sx,.slide.teal .stat .sx{color:rgba(255,255,255,.8)}
-    .stat .ss{font-size:11px;color:var(--faint);margin-top:5px}
-    .slide.dark .stat .ss{color:rgba(255,255,255,.5)}
+    /* data bars (evidence) */
+    .bars{display:grid;gap:9px;margin-top:22px}
+    .bar{display:grid;grid-template-columns:210px 1fr 54px;align-items:center;gap:14px;font-size:14px}
+    .bar .bl{color:var(--ink);font-weight:600} .bar .bl small{color:var(--faint);font-weight:400}
+    .bar .bt{height:24px;border-radius:5px;background:var(--accent);min-width:3px}
+    .bar.teal .bt{background:var(--teal)}
+    .bar .bv{font-family:var(--mono);color:var(--muted);font-weight:700;font-size:13px}
 
-    .kpi{display:flex;gap:13px;align-items:baseline;padding:12px 0;border-bottom:1px solid var(--line)}
-    .kpi b{font-size:25px;font-weight:800;color:var(--teal);line-height:1;min-width:128px}
-    .slide.dark .kpi b{color:var(--coral)}
-    .kpi .kx{font-size:14px;color:var(--ink-soft);line-height:1.4}
-    .slide.dark .kpi{border-color:rgba(255,255,255,.14)} .slide.dark .kpi .kx{color:rgba(255,255,255,.8)}
+    /* lean: bigger, sparser */
+    body[data-mode="lean"] .slide{padding:96px 60px 70px}
+    body[data-mode="lean"] h1{font-size:clamp(40px,7.4vw,86px);font-weight:680;line-height:1.0}
+    body[data-mode="lean"] h2{font-size:clamp(30px,4.6vw,52px);max-width:16em}
+    body[data-mode="lean"] .lead{font-size:clamp(18px,2.1vw,24px);max-width:30em}
+    body[data-mode="lean"] .kicker{font-size:clamp(28px,4.4vw,52px);font-weight:660;letter-spacing:-.025em;line-height:1.07;max-width:15em;margin:0}
+    body[data-mode="lean"] .kicker em{font-style:normal;color:var(--accent)}
 
-    .twocol{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:22px}
-    .src-line{margin-top:22px;font-size:11.5px;color:var(--faint);line-height:1.5}
-    .slide.dark .src-line{color:rgba(255,255,255,.45)}
-    .ask{display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;margin-top:22px}
-    .ask .item{display:flex;gap:11px;align-items:flex-start;font-size:15px;line-height:1.45}
-    .ask .item .c{color:var(--coral);font-weight:800;font-size:17px;flex:none;line-height:1.25}
-    .two-q{display:grid;grid-template-columns:auto 1fr;gap:13px 17px;margin-top:22px;align-items:start}
-    .two-q .qn{font-size:28px;font-weight:800;color:var(--coral);line-height:1}
-    .two-q .qt{font-size:17px;font-weight:700;line-height:1.3} .two-q .qd{font-size:13.5px;color:var(--ink-soft);line-height:1.45;margin-top:3px}
-
-    .lede-stakes{display:flex;gap:26px;margin-top:30px;flex-wrap:wrap}
-    .lede-stakes div{font-size:14px;color:rgba(255,255,255,.8);max-width:230px;line-height:1.45}
-    .lede-stakes b{color:#fff;display:block;font-size:15px;margin-bottom:3px}
-
-    @media (max-width:880px){
-      .slide{padding:58px 20px 92px}
-      h1{font-size:32px} h2{font-size:24px} .big-q{font-size:21px}
-      .g2,.g3,.g4,.twocol,.ask,.stats,.diamond{grid-template-columns:1fr}
+    @media (max-width:860px){
+      .slide{padding:96px 20px 92px}
+      .switch{top:10px} .switch button .s{display:none} .switch button{padding:8px 12px}
+      .g2,.g3,.twocol,.stats,.diamond{grid-template-columns:1fr}
       .loop{grid-template-columns:1fr} .loop .arrows{flex-direction:row;padding:6px 0}
-      .phasetag{display:none}
+      .bar{grid-template-columns:130px 1fr 40px;gap:8px}
+      table{font-size:12.5px} th,td{padding:8px 7px}
     }
-
-    /* ── RIOT restyle: warm paper, mono labels, lighter type, one calm canvas ── */
-    body{background:var(--paper)}
-    .slide{background:var(--paper)}
-    .slide.dark,.slide.teal{background:var(--paper-2);color:var(--ink)}
-    .slide.wash{background:var(--paper-2)}
-    /* mono, understated eyebrows — no leading bar */
-    .eyebrow{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.13em;color:var(--faint);gap:9px}
-    .eyebrow::before{display:none}
-    .slide.dark .eyebrow,.slide.teal .eyebrow{color:var(--faint)}
-    /* lighter, tighter headlines */
-    h1{font-weight:680;letter-spacing:-.03em;line-height:1.02}
-    h2{font-weight:660;letter-spacing:-.022em;line-height:1.06}
-    h3{font-weight:640}
-    .big-q{font-weight:600;color:var(--ink)} .big-q em{color:var(--coral)}
-    strong{font-weight:640;color:var(--ink)}
-    /* body text stays ink/muted on the single canvas */
-    .slide.dark .lead,.slide.teal .lead{color:var(--ink-soft)}
-    /* cards = warm off-white everywhere */
-    .card{background:var(--card);border-color:var(--line)}
-    .slide.dark .card,.slide.teal .card{background:var(--card);border-color:var(--line)}
-    .slide.dark .card p,.slide.teal .card p{color:var(--ink-soft)}
-    .card .num{font-family:var(--mono);font-weight:600;letter-spacing:.07em;color:var(--coral)}
-    .card .src,.slide.dark .card .src{color:var(--faint)}
-    .slide.dark th,.slide.dark td{border-color:var(--line)} .slide.dark tr td:first-child{color:var(--ink)}
-    .slide.dark ul.clean li{border-color:var(--line)}
-    .pill{background:var(--wash-2);color:var(--teal-deep)}
-    /* loop diagram on paper */
-    .loop .lane.fo{background:var(--card);border:1px solid #e7cdc3}
-    .loop .lane.bo{background:var(--card);border:1px solid var(--line)}
-    .loop .lane h3{color:var(--ink)}
-    .loop .lane.bo .tag{background:var(--teal);color:#fff}
-    .loop .step{color:var(--ink)} .loop .step span{background:var(--paper-2);color:var(--ink-soft)}
-    .loop .arrows .lbl{color:var(--faint)}
-    .slide.dark .seam{background:#f4e3dc;border:1px solid #e7cdc3;color:var(--ink)}
-    /* diamond / stats / kpi / meta on paper */
-    .diamond .ph{background:var(--card)}
-    .diamond .ph .w{font-family:var(--mono);font-weight:600;letter-spacing:.06em}
-    .slide.dark .stat b,.slide.teal .stat b{color:var(--coral)}
-    .slide.dark .stat .sx,.slide.teal .stat .sx{color:var(--ink-soft)}
-    .slide.dark .stat .ss{color:var(--faint)}
-    .slide.dark .kpi b{color:var(--coral)} .slide.dark .kpi{border-color:var(--line)} .slide.dark .kpi .kx{color:var(--ink-soft)}
-    .slide.dark .src-line{color:var(--faint)}
-    .lede-stakes div{color:var(--ink-soft)} .lede-stakes b{color:var(--ink)}
-    .title-meta .k{color:var(--faint);font-family:var(--mono);font-weight:500;letter-spacing:.07em}
-    .title-meta .v{color:var(--ink)}
-    /* lighter numeric weights (RIOT register, not 800) */
-    .stat b,.kpi b,.two-q .qn,.ask .item .c,.diamond .ph .t,.loop .arrows{font-weight:700}
-    /* calm mono chrome on paper */
-    .progress{background:var(--coral)}
-    .brandmark{color:var(--ink)}
-    .brandmark span{color:var(--ink-soft);opacity:1;font-family:var(--mono);font-weight:500;letter-spacing:.05em;font-size:11.5px}
-    .brandmark .dot{background:var(--coral)}
-    .phasetag{font-family:var(--mono);font-weight:600;letter-spacing:.12em;color:var(--faint)}
-    .chrome.count{font-family:var(--mono);color:var(--faint)} .chrome.count b{color:var(--ink)}
-    .nav button{border:1px solid var(--line-2);background:var(--card);color:var(--ink)}
-    .nav button:hover{background:#fff;border-color:var(--ink)}
   </style>
 </head>
-<body>
+<body data-mode="full">
+
+  <nav class="switch" id="switch">
+    <button data-m="lean"><span class="t">Lean</span><span class="s">2 weeks · what matters</span></button>
+    <button data-m="full" class="on"><span class="t">Full</span><span class="s">6-week studio audit</span></button>
+    <button data-m="evidence"><span class="t">Evidence</span><span class="s">let the data argue</span></button>
+  </nav>
   <div class="progress" id="progress"></div>
-  <div class="brandmark"><span class="dot">G</span><span>GoVocal · Product Design</span></div>
-  <div class="phasetag" id="phasetag"></div>
 
-  <main class="deck" id="deck">
+  <!-- ════════════════════════════ LEAN ════════════════════════════ -->
+  <div class="deck" data-deck="lean">
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">The lean cut · if time and money are tight</p>
+        <h1>The smallest audit<br>that still moves<br>the number.</h1>
+        <p class="lead ink">Two weeks. One designer. We don't plan the perfect study — we go find the worst, cheapest-to-prove problem and bring back a fix list.</p>
+      </div>
+    </section>
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">The one bet</p>
+        <h2>Half the product is unaudited — the half residents actually touch.</h2>
+        <p class="lead">We prove it's broken, on a real phone, before anyone signs up for six weeks. If it's fine, we've spent two weeks and saved a quarter.</p>
+      </div>
+    </section>
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">What we'd actually do</p>
+        <ol class="steps">
+          <li>Watch <b>5 residents</b> try to take part on their phone — find, understand, finish. <span>That's the unaudited half.</span></li>
+          <li>Heuristic-sweep the <b>3 back-office flows the tickets already name</b> — reporting, AI-ignores-filter, project setup. <span>No new research; the backlog points the way.</span></li>
+          <li>Write one <b>ranked quick-wins list</b> + a go / no-go on the full audit. <span>Decisions, not a report.</span></li>
+        </ol>
+      </div>
+    </section>
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">What you get</p>
+        <h2>One page of quick wins, and a clear call on the bigger audit.</h2>
+        <p class="lead">Evidence-backed, ranked by impact × effort. Enough to ship something next sprint and decide whether the deep audit is worth funding.</p>
+      </div>
+    </section>
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">The ask</p>
+        <p class="kicker">One designer, <em>two weeks,</em> five residents, a Maze seat.</p>
+        <p class="lead" style="margin-top:22px">Decision needed: start Monday.</p>
+      </div>
+    </section>
+  </div>
 
-    <!-- 1 · TITLE -->
-    <section class="slide dark active" data-phase="">
+  <!-- ════════════════════════════ FULL ════════════════════════════ -->
+  <div class="deck on" data-deck="full">
+    <section class="slide">
       <div class="slide-inner">
         <p class="eyebrow">UX/UI audit · research &amp; design plan · June 2026</p>
-        <h1>We've perfected the half<br>that builds a consultation.<br>We've never watched the half<br>that <span class="accent">decides if it works.</span></h1>
-        <p class="lead">A studio-grade audit of the <strong style="color:var(--ink)">whole participation loop</strong> — the resident front office and the staff back office, as one service. Six weeks to fix where the experience actually breaks.</p>
-        <div class="title-meta">
+        <h1>We've perfected the half that builds a consultation.<br>We've never watched the half that <span class="accent">decides if it works.</span></h1>
+        <p class="lead">A studio-grade audit of the whole participation loop — the resident front office and the staff back office, as one service. Six weeks to fix where the experience actually breaks.</p>
+        <div class="meta">
           <div><span class="k">Owners</span><span class="v">Rob &amp; Irene · Product</span></div>
           <div><span class="k">Sign-off</span><span class="v">Wietse · CEO</span></div>
-          <div><span class="k">Technical scope</span><span class="v">Koen · CTO &amp; James</span></div>
+          <div><span class="k">Tech scope</span><span class="v">Koen · CTO &amp; James</span></div>
           <div><span class="k">Window</span><span class="v">6 weeks · starts now</span></div>
         </div>
       </div>
     </section>
-
-    <!-- 1b · EVIDENCE — 2026 dispatch tickets -->
-    <section class="slide" data-phase="Frame">
+    <section class="slide">
       <div class="slide-inner">
         <p class="eyebrow">Evidence · 2026 dispatch tickets</p>
         <h2>The support backlog already names the audit.</h2>
-        <p class="lead">393 tickets this year, 68 still open — we read every open one. The themes aren't random. They cluster on exactly the surfaces this audit covers.</p>
+        <p class="lead">393 tickets this year, 68 still open — we read every open one. They cluster on exactly the surfaces this audit covers.</p>
         <div class="stats">
-          <div class="stat"><b>11</b><div class="sx"><strong>"Numbers clients can't trust"</strong> — reporting is the single biggest open-bug family.</div></div>
-          <div class="stat"><b>6</b><div class="sx"><strong>"AI ignores the active filter &amp; context"</strong> — the second family, straight at the AI bet.</div></div>
-          <div class="stat"><b>34%</b><div class="sx">of open tickets have <strong>no tenant recorded</strong> — literally nobody to close the loop with.</div></div>
+          <div class="stat"><b>11</b><div class="sx"><strong>"Numbers clients can't trust"</strong> — the biggest open-bug family.</div></div>
+          <div class="stat"><b>6</b><div class="sx"><strong>"AI ignores the active filter"</strong> — second family, straight at the AI bet.</div></div>
+          <div class="stat"><b>34%</b><div class="sx">of open tickets have <strong>no tenant</strong> — nobody to close the loop with.</div></div>
         </div>
-        <div class="twocol" style="margin-top:26px">
-          <div>
-            <h3 class="tealtext">Where the open backlog clusters</h3>
-            <ul class="clean">
-              <li><b>Reporting trust</b> 11 · <b>Email pipeline</b> 8 · <b>Admin back-office bugs</b> 8</li>
-              <li><b>AI ignores filters</b> 6 · <b>Accessibility</b> ~70 sub-tickets · <b>Compliance</b> 5</li>
-            </ul>
-          </div>
-          <div>
-            <h3 class="accent">Product hotspots, by ticket</h3>
-            <ul class="clean">
-              <li><b>Survey Form</b> 12 · <b>AI analysis</b> 11 · <b>Report Builder</b> 9 (4 open)</li>
-              <li><b>Registration</b> 9 · <b>Automatic emails</b> 7 · <b>Ideation</b> 6</li>
-            </ul>
-          </div>
-        </div>
-        <p class="src-line">Internal 2026 dispatch-ticket analysis — 393 tickets, 68 open backlog (client / product-tag / content-theme views). One strategic account, Engaged California, drives 10 tickets (6 open) on its own.</p>
+        <p class="src-line">Internal 2026 dispatch-ticket analysis. Hotspots: Survey Form 12 · AI analysis 11 · Report Builder 9 · Registration 9 · Ideation 6.</p>
       </div>
     </section>
-
-    <!-- 2 · THE REFRAME + NORTH STAR (one Frame slide) -->
-    <section class="slide dark" data-phase="Frame">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">The reframe · and the one number it gives us</p>
-        <p class="big-q">Most residents who arrive never reach the point of contributing — and most staff who launch a project never see whether they could. We've been auditing how the product is <em>built</em>, not whether anyone can <em>finish</em> using it.</p>
-        <h2 style="margin-top:30px">So the audit moves one number: <span class="accent">completed, representative participation per project.</span></h2>
-        <p class="lead">Every recommendation has to ladder up to it — so priority is judged by how much it moves this, not by taste. The same number on both surfaces: a resident who finishes <em>is</em> a usable input for staff.</p>
-        <div class="stats">
-          <div class="stat"><b>Reach</b><div class="sx">Residents who <strong>start</strong> a task — discovery is already won; the drop happens after arrival.</div><div class="ss">FO analytics, by project</div></div>
-          <div class="stat"><b>×&nbsp;Finish</b><div class="sx">Of those, the share who <strong>complete</strong> and see the loop close.</div><div class="ss">Completion + return rate</div></div>
-          <div class="stat"><b>×&nbsp;Mirror</b><div class="sx">How well finishers <strong>mirror the population</strong> — not raw volume. (56% of EU adults have only basic digital skills.)</div><div class="ss">Representativeness vs census · Eurostat 2023</div></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 4 · THE LOOP -->
-    <section class="slide dark" data-phase="Define">
-      <div class="slide-inner">
-        <p class="eyebrow">One participation loop</p>
-        <h2>Eight steps, two surfaces, one service.</h2>
+        <p class="eyebrow">The reframe · audit the service, not the screens</p>
+        <h2>One participation loop.</h2>
         <div class="loop">
-          <div class="lane fo">
-            <h3><span class="tag">Front office</span> residents</h3>
+          <div class="lane fo"><h3><span class="tag">Front office</span> residents</h3>
             <div class="step"><span>1</span> Discover a project</div>
             <div class="step"><span>2</span> Understand &amp; trust it</div>
             <div class="step"><span>3</span> Participate · idea, vote, survey</div>
-            <div class="step"><span>4</span> See the loop close</div>
-          </div>
-          <div class="arrows"><span>→</span><div class="lbl">input to<br>staff</div><span>←</span><div class="lbl">outcome to<br>residents</div></div>
-          <div class="lane bo">
-            <h3><span class="tag">Back office</span> staff</h3>
+            <div class="step"><span>4</span> See the loop close</div></div>
+          <div class="arrows"><span>→</span><div class="lbl">input</div><span>←</span><div class="lbl">outcome</div></div>
+          <div class="lane bo"><h3><span class="tag">Back office</span> staff</h3>
             <div class="step"><span>A</span> Set up the project</div>
             <div class="step"><span>B</span> Configure the method</div>
             <div class="step"><span>C</span> Moderate &amp; manage</div>
-            <div class="step"><span>D</span> Make sense &amp; report</div>
-          </div>
+            <div class="step"><span>D</span> Make sense &amp; report</div></div>
         </div>
-        <div class="seam">The worst failures sit <b>in the seams between the two surfaces</b> — exactly where a surface-by-surface audit can't look. So we map it as a <b>service blueprint</b> (next slide): behind the curtain, not just on the screen.</div>
+        <div class="seam">The worst failures sit <b>in the seams between the two surfaces</b> — where a surface-by-surface audit can't look. We map it as a service blueprint: behind the curtain, not just on the screen.</div>
       </div>
     </section>
-
-    <!-- 5 · SERVICE BLUEPRINT — IDEATION (the artifact, made concrete) -->
-    <section class="slide" data-phase="Define">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">The artifact · service blueprint, worked example</p>
-        <h2>One method, top to bottom: ideation.</h2>
-        <p class="lead">What "map it as a service" produces. One journey — <em>"Help shape the riverside park"</em> — each column reads down the full stack: what the resident does, sees, what staff do unseen, what powers it. The <strong class="accent">line of visibility</strong> is the one residents never cross.</p>
-        <table style="margin-top:18px">
-          <thead><tr><th style="width:128px"></th><th>Discover</th><th>Explore</th><th>Submit idea</th><th>React &amp; discuss</th><th>Get response</th><th>See outcome</th></tr></thead>
-          <tbody>
-            <tr><td>Resident does</td><td>Finds project via link, QR, social</td><td>Browses ideas — list / map / feed</td><td>Writes title + body, adds pin &amp; photo</td><td>Votes, comments, follows</td><td>Reads status change + reply</td><td>Sees which ideas advanced</td></tr>
-            <tr><td>Sees <span class="pill coral">frontstage</span></td><td>Project page, phase banner, "Add idea"</td><td>Idea feed, filters, map</td><td>Input form, preview, success toast</td><td>Reaction buttons, comment thread</td><td><strong class="accent">Status badge + official-feedback box</strong></td><td>Results view, winning ideas</td></tr>
-            <tr style="border-top:2px dashed var(--coral)"><td>Staff do <span class="pill">backstage</span></td><td>PM publishes phase, sets dates &amp; rights</td><td>Pre-screening &amp; sort rules apply</td><td>Auto-assign to PM; NLP content check</td><td>Moderate flags; cluster in Input Manager</td><td>PM writes feedback, changes status, notifies</td><td>Analyse in Insights; feed next phase</td></tr>
-            <tr><td>Powered by</td><td>Project config, theming, access control</td><td>Query + sort engine, map tiles</td><td>Auth/SSO, spam throttle, image store</td><td>NLP filter, notification service</td><td>Email, status webhooks, Management Feed</td><td>AI sensemaking, Report Builder, export</td></tr>
-          </tbody>
-        </table>
-        <div class="seam" style="background:var(--wash-2);border:1px solid var(--line);color:var(--ink-soft);margin-top:18px">The dashed rule is the <b style="color:var(--coral)">line of visibility</b> — everything below it (auto-assign, NLP checks, the moderation queue) is invisible to the resident. The <b style="color:var(--coral)">status badge + red official-feedback box</b> in <em>Get response</em> is the single load-bearing piece of evidence: it's the city closing the loop — and today on mobile it links to nothing.</div>
-        <p class="src-line">Blueprint structure: Shostack / NN/g five-lane model. Ideation specifics grounded in the real GoVocal method — three views, required title, auto-assign, NLP screening, status + official-feedback box, Management Feed audit log.</p>
-      </div>
-    </section>
-
-    <!-- 6 · STUDIO SPINE / DOUBLE DIAMOND -->
-    <section class="slide wash" data-phase="Approach">
-      <div class="slide-inner">
-        <p class="eyebrow">How a studio runs this</p>
+        <p class="eyebrow">How a studio runs it</p>
         <h2>One spine, four moves — the Double Diamond.</h2>
-        <p class="lead">Diverge to explore, converge to decide — twice. We spend real time understanding the problem before we design, so we don't invest build effort on instinct. Deliver converges everything into one prioritized call.</p>
+        <p class="lead">Diverge to explore, converge to decide — twice. We understand the problem before we design, so we don't spend build effort on instinct.</p>
         <div class="diamond">
-          <div class="ph"><span class="shape">◣◢</span><span class="w">Wk 1–2 · Discover</span><span class="t">Explore</span><span class="d">Heuristic + agentic sweep, analytics, real screens across the whole loop.</span></div>
-          <div class="ph"><span class="shape">◥◤</span><span class="w">Wk 2–3 · Define</span><span class="t">Reframe</span><span class="d">Cluster into a friction inventory + service blueprint; pick the segment.</span></div>
-          <div class="ph"><span class="shape">◣◢</span><span class="w">Wk 3–5 · Develop</span><span class="t">Test &amp; sketch</span><span class="d">Resident tests <strong>on real phones</strong>, benchmark, first-pass redesign vision.</span></div>
-          <div class="ph"><span class="shape">◥◤</span><span class="w">Wk 5–6 · Deliver</span><span class="t">Prioritise</span><span class="d">Impact × effort 2×2, Now/Next/Later roadmap, quick wins, exec readout.</span></div>
+          <div class="ph"><span class="w">Wk 1–2 · Discover</span><div class="t">Explore</div><div class="d">Heuristic + agentic sweep, analytics, real screens — both surfaces.</div></div>
+          <div class="ph"><span class="w">Wk 2–3 · Define</span><div class="t">Reframe</div><div class="d">Friction inventory + service blueprint; pick the segment.</div></div>
+          <div class="ph"><span class="w">Wk 3–5 · Develop</span><div class="t">Test</div><div class="d">5-user resident tests, benchmark, first-pass redesign vision.</div></div>
+          <div class="ph"><span class="w">Wk 5–6 · Deliver</span><div class="t">Prioritise</div><div class="d">Impact × effort 2×2, roadmap, quick wins, exec readout.</div></div>
         </div>
-        <p class="src-line">Design Council Double Diamond · Clearleft / frog / NN/g discovery practice.</p>
       </div>
     </section>
-
-    <!-- 7 · METHOD → QUESTION -->
-    <section class="slide" data-phase="Approach">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Method → the question → the sample</p>
-        <h2>Size the method to the claim.</h2>
-        <p class="lead">Qual finds <em>what's</em> broken, quant measures <em>how much</em> — never the same n for both jobs.</p>
+        <p class="eyebrow">Method → the question it answers</p>
+        <h2>We pick the method for the question — and triangulate.</h2>
         <table>
-          <thead><tr><th>Question</th><th>Method</th><th>n</th><th>Why this n</th></tr></thead>
+          <thead><tr><th>Question</th><th>Method</th></tr></thead>
           <tbody>
-            <tr><td>Does it break basic usability?</td><td>Heuristic + agentic audit</td><td>—</td><td>Expert pass, evidence-tagged; the method proven in May.</td></tr>
-            <tr><td>Can each user do the core jobs?</td><td>Moderated JTBD sessions</td><td><strong>5 / segment</strong></td><td>5 finds ~80–85% of issues <em>within one segment</em> — never pooled.</td></tr>
-            <tr><td>Is the structure findable?</td><td>Tree test + first-click</td><td><strong>50+</strong></td><td>Quant findability needs high n; runs unmoderated.</td></tr>
-            <tr><td>Is it measurably better?</td><td>Benchmark study</td><td><strong>see plan →</strong></td><td>Baselined tasks, sized to the design. Next two slides.</td></tr>
+            <tr><td>Breaks basic usability?</td><td>Heuristic + agentic audit on real screens</td></tr>
+            <tr><td>Can users do the core jobs?</td><td>JTBD scripts + 5-user tests (~3 / segment)</td></tr>
+            <tr><td>Is the structure findable?</td><td>Tree test + first-click</td></tr>
+            <tr><td>Where &amp; how often is friction?</td><td>Analytics funnel + session replay</td></tr>
+            <tr><td>Did we actually improve?</td><td>Benchmark — baseline → re-measure same tasks</td></tr>
           </tbody>
         </table>
-        <p class="src-line">Qual (small n) finds <em>what's broken</em>; quant measures <em>how much</em> — we triangulate, never present an n=5 finding as a percentage. The benchmark study is specified next. NN/g sample-size · MeasuringU · Optimal Workshop.</p>
+        <p class="src-line">Analytics shows what &amp; where; testing shows why. NN/g · Optimal Workshop · MeasuringU.</p>
       </div>
     </section>
-
-    <!-- 8 · WHO + SAMPLING & RECRUITMENT -->
-    <section class="slide dark" data-phase="Approach">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Who we audit for · sampling &amp; recruitment</p>
-        <h2>Five people, two audiences, two recruiting funnels — never one pooled "5."</h2>
-        <p class="lead">Back office — <strong style="color:var(--ink)">Joan</strong> (power user, slowed by hidden state) and <strong style="color:var(--ink)">Diane</strong> (low savviness, stranded by the empty-shell create flow). Front office, on a phone — the <strong style="color:var(--ink)">rare participant</strong>, <strong style="color:var(--ink)">engaged resident</strong> and <strong style="color:var(--ink)">skeptic</strong>. Two <strong style="color:var(--ink)">separate research streams</strong> — different pools, effort, incentives; each segment gets its own n; over-recruit 20–30% for no-shows.</p>
-        <div class="twocol" style="margin-top:18px">
-          <div>
-            <h3 style="color:var(--ink)">Back office · staff (B2B)</h3>
-            <ul class="clean" style="margin-top:10px">
-              <li><b>Moderated-heavy</b>, small qualified pool — we sit with them to probe the <em>why</em>. Qual: <b>5 / segment</b> (Joan, Diane), counted separately.</li>
-              <li><b>Benchmark = within-subjects pre/post</b>, so n is feasible: <b>target 20, floor 15</b>. Pairing is what buys the power with scarce admins.</li>
-              <li><b>Screen on tasks, not titles</b> — projects run, methods configured. 2–4 wk lead time.</li>
-            </ul>
-          </div>
-          <div>
-            <h3 class="accent">Front office · residents</h3>
-            <ul class="clean" style="margin-top:10px">
-              <li><b>Benchmark = between-subjects A/B</b>, so it needs ~2× the BO n: <b>target 40 / arm</b> for usable CIs (±15pp success, 5-pt SUS). Tree test 50+. Budget-limited → run 5–8/arm as <em>formative</em> and say so.</li>
-              <li><b>Hard-to-reach residents</b> — seniors, low digital skill, non-native: <em>panels under-represent them.</em> Recruit via NGOs, libraries, community orgs; in-person + on-site support.</li>
-              <li><b>Higher, concrete incentives</b> — cash, transit/childcare cover. Match the session to real tech comfort, not default Zoom.</li>
-            </ul>
-          </div>
+        <p class="eyebrow">Who we audit for · and how we sample</p>
+        <h2>Five people, two audiences, two recruiting funnels.</h2>
+        <div class="twocol">
+          <div><h3 class="tealtext">Staff · back office</h3>
+            <ul class="clean">
+              <li><b>Joan</b> — high savviness, optimises for speed</li>
+              <li><b>Diane</b> — low savviness, relies on the UI to guide her</li>
+            </ul></div>
+          <div><h3 class="accent">Residents · front office</h3>
+            <ul class="clean">
+              <li><b>Rare participant</b> — low confidence, mobile, 30-sec patience</li>
+              <li><b>Engaged resident</b> — wants outcomes; returns only if the loop closed</li>
+              <li><b>Skeptic</b> — needs trust &amp; impact obvious up front</li>
+            </ul></div>
         </div>
-        <div class="seam">Civic platforms <b>fail the very people panels miss.</b> If our sample skews tech-confident, the audit certifies an experience the actual residents can't use — and the north-star's <b>representative</b> half quietly fails.</div>
+        <p class="src-line">~3 users per distinct group (never one pooled "5"); residents recruited early — it's the long pole.</p>
       </div>
     </section>
-
-    <!-- 9 · ACCESSIBILITY — LAW + STANDARD -->
-    <section class="slide" data-phase="Depth">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Dimension 1 · accessibility · what binds us, what we test to</p>
-        <h2>Cities owe WCAG 2.1 AA today. We audit to 2.2 AA.</h2>
-        <p class="lead">It's a procurement gate, so get the standard exactly right. The legally operative floor in the EU <em>now</em> is <strong>WCAG 2.1 AA</strong>, via the harmonised <strong>EN 301 549 v3.2.1</strong>. Auditing to <strong>2.2 AA</strong> satisfies 2.1 AA, fixes the nine criteria new in 2.2 (target size, dragging, accessible auth, focus-not-obscured…), and front-runs the next EN 301 549 / WCAG 2.2 harmonisation — the low-regret move.</p>
+        <p class="eyebrow">Depth 1 · accessibility = law + reach</p>
+        <h2>For a platform selling to governments, this is revenue risk.</h2>
         <div class="stats">
-          <div class="stat"><b>WAD</b><div class="sx"><strong>The binding path.</strong> Every public-body client must meet EN 301 549 / WCAG 2.1 AA and publish an accessibility statement. It flows to us through procurement — a city can't buy a non-conformant platform.</div><div class="ss">Directive (EU) 2016/2102</div></div>
-          <div class="stat"><b>EAA</b><div class="sx"><strong>Convergent pressure.</strong> In force Jun 2025 for consumer services. Its reach over pure-B2B municipal SaaS is genuinely contested — we don't lean on it, but it raises the same EN 301 549 bar market-wide.</div><div class="ss">Directive (EU) 2019/882</div></div>
-          <div class="stat"><b>Output</b><div class="sx">A <strong>flagged-issue list mapped to SC + level</strong> — not a certification — plus real content for each city's own accessibility statement (conformance level, known gaps, feedback channel).</div><div class="ss">Caveat: confirm OJ-cited EN 301 549 version at audit time</div></div>
+          <div class="stat"><b>WCAG AA</b><div class="sx">Owed today by every EU public-sector client under the Web Accessibility Directive.</div></div>
+          <div class="stat"><b>EN 301 549</b><div class="sx">The procurement bar — non-conformance is a disqualifier and shared liability.</div></div>
+          <div class="stat"><b>56%</b><div class="sx">of EU adults have basic digital skills — inclusion is the product, not a checkbox.</div></div>
         </div>
+        <p class="src-line">We run a scoped WCAG 2.2 AA check (automated + keyboard + screen-reader) on representative templates — a flagged list, not a certification.</p>
       </div>
     </section>
-
-    <!-- 10 · ACCESSIBILITY — THE CHECKS WE ACTUALLY RUN -->
-    <section class="slide wash" data-phase="Depth">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Dimension 1 · the checks we actually run</p>
-        <h2>Automated catches a third. The criteria that bite are manual.</h2>
-        <p class="lead">axe-core / Lighthouse / Pa11y sweep every template first — they reliably catch missing labels, contrast, ARIA misuse and <code>autocomplete</code>, but only ~30–40% of the SC. The rest — errors, focus management, target size, redundant entry — we test by hand on representative templates: a <strong>form</strong>, a <strong>multi-step flow</strong>, an <strong>interactive map</strong>, a content page.</p>
+        <p class="eyebrow">Depth 2 · AI we can trust</p>
+        <h2>The AI bet only pays off if residents trust it.</h2>
+        <p class="lead">We audit Perspectives, Sensemaking and FormSync against the established AI-UX frameworks on three axes:</p>
         <div class="grid g3">
-          <div class="card"><span class="num">FORMS · the "input"</span><h3>Label, error, target, auth</h3><p>Programmatic <code>&lt;label&gt;</code>/fieldset, <code>autocomplete</code> tokens (1.3.5), errors named + suggested + focus-moved (3.3.1/.3), targets ≥24px (2.5.8), and login with <strong>no cognitive-test CAPTCHA</strong>, paste allowed (3.3.8).</p><span class="src">1.3.1 · 3.3.1–.4 · 2.5.8 · 3.3.8</span></div>
-          <div class="card"><span class="num">MULTI-STEP FLOWS</span><h3>Focus, persistence, status</h3><p>Focus moves to each step's heading and to the first error; data survives Back (3.3.7, no re-keying); progress is "Step 2 of 5" in text not colour; <strong>sticky bars don't hide the focused field</strong> (2.4.11) — our own scroll-overlay bug; a review step before any irreversible submit (3.3.4).</p><span class="src">2.4.3 · 2.4.11 · 3.3.7 · 4.1.3</span></div>
-          <div class="card"><span class="num">MAPS · hardest, most-failed</span><h3>Keyboard + a non-map path</h3><p>Pan / zoom / pin all keyboard-operable (2.1.1); every drag has a single-pointer alternative (2.5.7); "skip map" bypass (2.4.1); markers ≥24px, ≥3:1, not colour-coded alone. <strong>Pattern: pair every map with a list view + address input</strong> — that one move discharges 1.1.1, 2.1.1, 2.5.7 and 2.5.1 at once.</p><span class="src">1.1.1 · 2.1.1 · 2.5.7 · 2.4.1</span></div>
+          <div class="card"><h3>Explainability</h3><p>Show sources and calibrated confidence — so people can understand and challenge a result.</p><span class="src">Google PAIR · MS HAX</span></div>
+          <div class="card"><h3>Human oversight</h3><p>Every summary, cluster and tag editable and overridable in place — required for high-risk public use.</p><span class="src">EU AI Act Art. 14</span></div>
+          <div class="card"><h3>Representativeness</h3><p>AI must not silence minority voices — a risk now measured at ~34× random in opinion-aggregation.</p><span class="src">Stanford/MIT/Toronto</span></div>
         </div>
-        <div class="seam" style="background:#fbe7df;border:1px solid rgba(226,96,58,.3);color:var(--ink-soft);margin-top:18px">Our 2-day skim already surfaced these failures by name: the <b style="color:#b5431f">postage-stamp map with no drop-pin</b> (2.5.7 + 2.1.1), <b style="color:#b5431f">colliding sticky CTAs over the form</b> (2.4.11), <b style="color:#b5431f">tiny low-contrast status pills</b> (1.4.3), and <b style="color:#b5431f">colour-only green toggles</b> in back-office config (1.4.1). The audit confirms and counts them.</div>
       </div>
     </section>
-
-    <!-- 11 · AI TRUST · FRAME -->
-    <section class="slide dark" data-phase="Depth">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Dimension 2 · AI we can trust</p>
-        <h2>An AI summary becomes what the city believes residents said.</h2>
-        <p class="lead">Sensemaking, Perspectives and FormSync turn raw input into the read officials act on — so the bar isn't "is it clever," it's <strong style="color:var(--ink)">calibrated trust</strong>: residents and staff should trust each result <em>exactly</em> as much as it has earned. We audit on four axes, then walk each feature against them on the next slide.</p>
-        <div class="grid g4">
-          <div class="card"><h3>Trust</h3><p>Provenance + honest confidence, coverage disclosed ("380 of 412 inputs"), data-use stated. No decorative percentages.</p><span class="src">PAIR calibrated-trust</span></div>
-          <div class="card"><h3>Explainability</h3><p>Every claim, cluster and tag traces in one click to its source input, quote or image region.</p><span class="src">MS HAX G11</span></div>
-          <div class="card"><h3>Human override</h3><p>All output editable in place; re-running warns before clobbering edits; nothing reaches residents without a human gate.</p><span class="src">EU AI Act Art. 14 · HAX G9/G14</span></div>
-          <div class="card"><h3>Representativeness</h3><p>Minority &amp; non-English views surfaced, not thresholded away — LLM aggregation has been shown to skew toward majority positions.</p><span class="src">Stanford/MIT/Toronto 2025</span></div>
-        </div>
-        <div class="seam">For a civic tool the two highest-severity axes are <b>human-override</b> and <b>representativeness</b>: a failure there removes accountability or distorts democratic input. We treat any miss in those two as a <b>blocker</b>, not a nice-to-have.</div>
-      </div>
-    </section>
-
-    <!-- 12 · AI TRUST · CHECKLIST BY FEATURE -->
-    <section class="slide wash" data-phase="Depth">
-      <div class="slide-inner">
-        <p class="eyebrow">Dimension 2 · the checks, per feature</p>
-        <h2>Three features, three different failure modes.</h2>
-        <p class="lead">Each AI feature does a distinct job — summarise, cluster, transcribe — so each fails differently. We walk every one against the four axes with concrete pass/fail checks grounded in HAX 18 + PAIR.</p>
-        <table style="margin-top:18px">
-          <thead><tr><th style="width:128px"></th><th>Sensemaking · summarise</th><th>Auto-theming · cluster</th><th>FormSync · OCR</th></tr></thead>
-          <tbody>
-            <tr><td>Trust</td><td>States coverage &amp; what it dropped (off-topic, other-language); flags non-determinism</td><td>Per-cluster cohesion shown honestly; small clusters not hidden below a count</td><td>Per-field confidence; low reads flagged for human, never invented</td></tr>
-            <tr><td>Explainability</td><td>Each sentence links to the inputs it came from</td><td>Cluster exposes the shared terms / quotes that defined it — plain language</td><td>Shows the source image region beside each extracted value</td></tr>
-            <tr><td>Human override</td><td>Summary editable inline; re-run diffs, never silently overwrites</td><td>Move / rename / split / merge clusters; "needs review" bucket for the uncertain</td><td>Every field editable with the scan side-by-side; original always kept</td></tr>
-            <tr><td>Representativeness</td><td>Explicit minority / dissent section; volume ≠ validity</td><td>Outliers preserved, not merged away; multilingual input weighted in</td><td>Accuracy tested across scripts/handwriting — paper voices skew older residents</td></tr>
-          </tbody>
-        </table>
-        <div class="seam" style="background:#fbe7df;border:1px solid rgba(226,96,58,.3);color:var(--ink-soft);margin-top:18px">First question per feature (PAIR): <b style="color:#b5431f">should this be AI at all</b>, and is there a non-AI fallback? Already visible in the live product — <b style="color:#b5431f">Perspectives shows a bare 13-vs-0 with no rules or consequence</b> (appendix), the exact "volume = validity" trap this checklist is built to catch.</div>
-        <p class="src-line">Microsoft HAX — Guidelines for Human-AI Interaction (Amershi et al., CHI 2019) · Google PAIR People + AI Guidebook (Explainability + Trust, Errors + Graceful Failure, Feedback + Control).</p>
-      </div>
-    </section>
-
-    <!-- 13 · BENCHMARK · WHO WE COMPARE TO -->
-    <section class="slide wash" data-phase="Depth">
-      <div class="slide-inner">
-        <p class="eyebrow">Dimension 3 · benchmark, don't guess</p>
+        <p class="eyebrow">Depth 3 · benchmark, don't guess</p>
         <h2>Compare against the best — for what they're best at.</h2>
         <div class="grid g3">
-          <div class="card"><span class="num">DELIBERATION</span><h3>vs Polis</h3><p>One-tap agree/disagree + a live consensus map. Lowest-friction contribution and richest deliberation at once — our biggest experience gap.</p></div>
-          <div class="card"><span class="num">BACK OFFICE</span><h3>vs EngagementHQ</h3><p>Project templating / cloning and layered site→project→tool reporting. Worth matching for staff efficiency.</p></div>
-          <div class="card"><span class="num">CLOSING THE LOOP</span><h3>vs Decidim</h3><p>Follow a proposal through visible implementation stages — closure as a data model, not a marketing page. The #1 trust failure sector-wide.</p></div>
+          <div class="card"><span class="num">DELIBERATION</span><h3>vs Polis</h3><p>One-tap agree/disagree + a live consensus map. Lowest-friction contribution and richest deliberation at once — our biggest gap.</p></div>
+          <div class="card"><span class="num">BACK OFFICE</span><h3>vs EngagementHQ</h3><p>Project templating/cloning and layered reporting. Worth matching for staff efficiency.</p></div>
+          <div class="card"><span class="num">CLOSING THE LOOP</span><h3>vs Decidim</h3><p>Follow a proposal through visible stages — closure as a data model. The #1 trust failure sector-wide.</p></div>
         </div>
-        <p class="src-line">compdemocracy.org · granicus.com · docs.decidim.org. Turnout reality: Decide Madrid reached ~90k active of a 3.2M city — the front-office experience <em>is</em> the participation rate.</p>
       </div>
     </section>
-
-    <!-- 14 · BENCHMARK DESIGN + TASKS + DECISION RULE -->
-    <section class="slide" data-phase="Outcomes">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">The benchmark study · design + the win condition</p>
-        <h2>A baseline is only proof if the rule is set <em class="accent" style="font-style:normal">before</em> we test.</h2>
-        <p class="lead">A benchmark measures the redesign against today's product to show a delta. We pick the design per surface, lock 5–7 top-task scenarios with observable success states, and pre-register the ship rule — all before a single session.</p>
-        <div class="twocol" style="margin-top:18px">
-          <div>
-            <h3 class="tealtext">The two designs we'll run</h3>
-            <div class="kpi"><b>FO · A/B</b><span class="kx"><strong>Between-subjects.</strong> Today's UI vs redesign, different residents per arm. Tasks are short and repetitive, and we can recruit volume. Cleanest causal claim.</span></div>
-            <div class="kpi"><b>BO · pre/post</b><span class="kx"><strong>Within-subjects.</strong> Same admin runs a config task on baseline then redesign, counterbalanced. Admins are scarce; pairing buys the power.</span></div>
-          </div>
-          <div>
-            <h3 class="accent">The benchmarked tasks (locked wk 3)</h3>
-            <ul class="clean" style="margin-top:10px">
-              <li><b>FO:</b> find &amp; open a project · submit an input · budget/prioritise a vote · find when a phase closes</li>
-              <li><b>BO:</b> create a project with a working phase + method · add a survey question · find the top input &amp; change its status</li>
-              <li>Each gets a <b>pre-registered success rubric + time-out</b> (4 min FO / 6 min BO); wording never names a UI element.</li>
-            </ul>
-          </div>
+        <p class="eyebrow">How we'll measure · and the timeline</p>
+        <h2>Every fix lands on a number we baseline today.</h2>
+        <div class="twocol">
+          <div><h3 class="tealtext">Baselined now, re-measured after</h3>
+            <ul class="clean">
+              <li><b>SUS ≈ 68</b> · system usability — beat the average</li>
+              <li><b>SEQ ≈ 5.5</b> · per-task ease — find the hard tasks</li>
+              <li><b>~78%</b> · task-success benchmark; &lt;70% = trouble</li>
+            </ul></div>
+          <div><h3 class="accent">Six weeks, with gates</h3>
+            <ul class="clean">
+              <li><b>Wk 1</b> kickoff w/ Wietse · <b>Wk 2</b> Friday w/ Irene</li>
+              <li><b>Wk 4</b> insight share · <b>Wk 5</b> feasibility w/ Koen &amp; James</li>
+              <li><b>Wk 6</b> readout &amp; buy-in</li>
+            </ul></div>
         </div>
-        <div class="seam" style="background:var(--wash-2);border:1px solid var(--line);color:var(--ink-soft)">The win condition, pre-registered: <b style="color:var(--coral)">ship if redesign SUS ≥ baseline + 5 points AND no task's success rate regresses beyond its confidence interval.</b> Set today, so the result can't be argued after the fact. The numbers it produces are the defensible ROI claim behind every "high-impact" call on the roadmap.</div>
-        <p class="src-line">Instruments per task: task success (rate + adjusted-Wald 95% CI), time-on-task (median + geometric mean), SEQ after each task, SUS at session end, errors/assists. Between- vs within-subjects design · Sauro &amp; Lewis (MeasuringU) · NN/g benchmarking · Google HEART.</p>
+        <p class="src-line">Baseline → redesign → re-measure the same tasks = the defensible ROI claim. You co-author at every gate — never a big reveal.</p>
       </div>
     </section>
-
-    <!-- 15 · PRIORITIZATION · THE 2×2 HERO -->
-    <section class="slide" data-phase="Outcomes">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">From findings to a call · the prioritization instrument</p>
-        <h2>Every finding lands in one of four boxes — including the one we drop.</h2>
-        <p class="lead">In Deliver, each recommendation is plotted on <strong>impact (pull on the north star) × effort</strong>. The picture sets priority before we explain it — and naming the box we <em>won't</em> touch is the senior move, not enthusiasm.</p>
-        <div class="grid g2" style="margin-top:18px">
-          <div class="card" style="border-color:var(--coral)"><span class="num">↖ QUICK WINS · high impact, low effort</span><h3>Do now — they fund the rest</h3><p>The dead-ends from the skim: 404s on valid routes, the stale <em>citizenlab.co</em> reply-to, the self-disclaiming audit log, broken "(&gt;347)" deltas. Cheap, visible, trust-buying — shipped while the big work is still being designed.</p></div>
-          <div class="card"><span class="num">↗ BIG BETS · high impact, high effort</span><h3>Plan &amp; resource</h3><p>The method-aware create flow, the visible closure model ("we did" that links to outcomes), the map+list pattern. These move the north star most — and the quick wins buy the credibility to fund them.</p></div>
-          <div class="card"><span class="num">↙ FILL-INS · low impact, low effort</span><h3>Do if there's spare capacity</h3><p>Copy polish, icon tidy-ups, micro-label fixes. Real, but they don't earn a roadmap slot — they ride along with adjacent work.</p></div>
-          <div class="card" style="opacity:.72"><span class="num">↘ NOT NOW · low impact, high effort</span><h3>We say no, out loud</h3><p>A full Perspectives gamification layer, bespoke per-method dashboards, exotic chart types. Defensible to defer — and saying so on your behalf is part of the service.</p></div>
-        </div>
-        <div class="seam" style="background:var(--wash-2);border:1px solid var(--line);color:var(--ink-soft)">The 2×2 is the fast-alignment picture. Where two items share a box, we rank them with a <b style="color:var(--coral)">RICE score — Reach × Impact × Confidence ÷ Effort</b> — kept in the appendix table and brought out only when a ranking is challenged. Rigor on tap, not on stage.</div>
-      </div>
-    </section>
-
-    <!-- 16 · PRIORITIZATION · NOW / NEXT / LATER ROADMAP -->
-    <section class="slide wash" data-phase="Outcomes">
-      <div class="slide-inner">
-        <p class="eyebrow">The roadmap · priority without dates you can't honor</p>
-        <h2>Now, Next, Later — quick wins first, each tied to the north star.</h2>
-        <p class="lead">Every item is a <strong>decision, not a topic</strong>: an action, a rough size (S/M/L), and the north-star outcome it moves. We cap the top tier — a list of twenty equal recommendations is why good work doesn't get acted on.</p>
-        <div class="grid g3" style="margin-top:18px">
-          <div class="card" style="border-color:var(--coral)">
-            <span class="num">NOW · weeks, quick wins</span>
-            <h3>Buy trust on day one</h3>
-            <ul class="clean" style="margin-top:6px">
-              <li><b>Fix the dead ends</b> (S) — 404s, citizenlab.co reply-to, broken deltas → <em>removes "abandoned platform" signal</em></li>
-              <li><b>Surface status &amp; rights at rest</b> (S) — show the value, not "Mixed" → <em>visibility, both surfaces</em></li>
-              <li><b>Tame the cookie wall on mobile</b> (S) → <em>value reaches the resident first → Reach</em></li>
-            </ul>
-          </div>
-          <div class="card">
-            <span class="num">NEXT · scoped, big bets begin</span>
-            <h3>Repair the loop's spine</h3>
-            <ul class="clean" style="margin-top:6px">
-              <li><b>Method-aware create flow</b> (L) — pick a phase + method inline → <em>Diane ships a real project → Finish</em></li>
-              <li><b>Map + list + address pattern</b> (M) → <em>discharges 4 SC, fixes precision → Finish + Mirror</em></li>
-              <li><b>Survey commitment preview + progress</b> (M) → <em>fewer abandons → Finish</em></li>
-            </ul>
-          </div>
-          <div class="card" style="opacity:.85">
-            <span class="num">LATER · directional</span>
-            <h3>Close &amp; deepen the loop</h3>
-            <ul class="clean" style="margin-top:6px">
-              <li><b>Visible closure model</b> (L) — "we did" links to real outcomes → <em>return rate → Reach</em></li>
-              <li><b>Input Manager triage + preview pane</b> (L) → <em>staff sensemaking</em></li>
-              <li><b>Deliberation pattern vs Polis</b> (L) → <em>low-friction contribution</em></li>
-            </ul>
-          </div>
-        </div>
-        <div class="seam" style="background:#fbe7df;border:1px solid rgba(226,96,58,.3);color:var(--ink-soft)"><b style="color:#b5431f">The sequencing is the argument:</b> three day-one quick wins earn the credibility to fund the big bets. All quick wins reads as timid; all big bets, unfundable. The mix is the message.</div>
-      </div>
-    </section>
-
-    <!-- 17 · TIMELINE -->
-    <section class="slide wash" data-phase="Outcomes">
-      <div class="slide-inner">
-        <p class="eyebrow">Timeline · 6 weeks, mapped to the diamond</p>
-        <h2>You co-author the findings at every gate — never a big reveal.</h2>
-        <p class="lead">Recruiting is the long pole — it starts day 1 and runs in parallel through every phase. Qual runs first to define the tasks we later measure; nothing unmoderated scales without a pilot.</p>
-        <table>
-          <thead><tr><th>Phase</th><th>Weeks</th><th>Work</th><th>Gate · who</th></tr></thead>
-          <tbody>
-            <tr><td>Discover</td><td>1–2</td><td>Heuristic + agentic sweep, analytics. <strong>Kick off recruiting both streams + pilot the tasks.</strong></td><td><span class="pill">Kickoff · Wietse</span></td></tr>
-            <tr><td>Define</td><td>2–3</td><td>Friction inventory + service blueprint; choose segments; <strong>pre-register the benchmark</strong> — design, tasks, success rubric, win condition.</td><td><span class="pill">Friday · Irene</span></td></tr>
-            <tr><td>Develop</td><td>3–5</td><td>Moderated qual (5/segment) → run the benchmark: FO A/B (40/arm), BO pre/post (~20), tree test 50+.</td><td><span class="pill">Insight share</span></td></tr>
-            <tr><td>Deliver</td><td>5–6</td><td>Triangulate qual + quant with CIs; plot the 2×2, rank with RICE, build the Now/Next/Later roadmap + exec summary.</td><td><span class="pill coral">Feasibility · Koen + James → Buy-in · Wietse</span></td></tr>
-          </tbody>
-        </table>
-        <p class="src-line">Recruiting runs continuously from wk 1 (B2B 2–4 wk lead, hard-to-reach via community partners). Irene co-runs · Sales &amp; Gov Success side-review.</p>
-      </div>
-    </section>
-
-    <!-- 18 · DELIVERABLES + ASK + FIRST MOVE -->
-    <section class="slide teal" data-phase="Outcomes">
-      <div class="slide-inner">
-        <p class="eyebrow">What you get · what we need · the first move</p>
+        <p class="eyebrow">What you get · what we need</p>
         <h2>A north star, a ranked roadmap, and quick wins you can ship now.</h2>
         <div class="twocol">
-          <div>
-            <h3 style="color:var(--ink)">Deliverables</h3>
-            <ul class="clean" style="margin-top:12px">
+          <div><h3 class="tealtext">Deliverables</h3>
+            <ul class="clean">
               <li>Friction inventory + service blueprint — both surfaces</li>
               <li>First-pass redesign vision (annotated low-fi)</li>
-              <li>Impact × effort 2×2 + Now/Next/Later roadmap (RICE appendix)</li>
-              <li>Baselined metrics &amp; exec summary for the org</li>
-            </ul>
-          </div>
-          <div>
-            <h3 style="color:var(--ink)">The ask</h3>
-            <div class="ask" style="grid-template-columns:1fr">
-              <div class="item"><span class="c">✓</span><div>~6 weeks of Rob + Irene, with design support</div></div>
-              <div class="item"><span class="c">✓</span><div>Data: Intercom, analytics by client, demo accounts</div></div>
-              <div class="item"><span class="c">✓</span><div>Maze license + small resident-incentive budget</div></div>
-              <div class="item"><span class="c">✓</span><div>30 min each from CS, Sales &amp; Gov Success; a wk-5 slot with Koen &amp; James</div></div>
-            </div>
-          </div>
+              <li>Impact × effort roadmap: Now / Next / Later</li>
+              <li>Baselined metrics + exec summary</li>
+            </ul></div>
+          <div><h3 class="accent">The ask</h3>
+            <ul class="clean">
+              <li>~6 weeks of Rob + Irene, with design support</li>
+              <li>Intercom + analytics by client + demo accounts</li>
+              <li>Maze license + small resident-incentive budget</li>
+              <li>A wk-5 feasibility slot with Koen &amp; James</li>
+            </ul></div>
         </div>
-        <div class="seam" style="background:var(--paper-2);border:1px solid var(--line-2);color:var(--ink)">Don't buy six weeks today — buy <b style="color:var(--ink)">two.</b> Lock scope with Irene this Friday, then a 2-week Discover sweep puts the front-office evidence — and a first cut of the quick-wins column — in front of you before any further commitment. <b style="color:var(--ink)">Decision needed:</b> green-light the 2-week probe + the access &amp; recruitment asks.</div>
       </div>
     </section>
-
-    <!-- 19 · PRE-AUDIT DIVIDER -->
-    <section class="slide dark" data-phase="Pre-audit">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Experimental · pre-audit</p>
-        <h1>What we already see —<br>before the audit<br>even <span class="accent">starts.</span></h1>
-        <p class="lead">A quick, evidence-based preliminary read on the <strong style="color:var(--ink)">live product</strong> — grounded in real back-office and mobile front-office screens with the Joan / Diane / resident personas. Not the full audit: a directional preview of where the friction concentrates, and the raw material for the quick-wins column.</p>
+        <p class="eyebrow">Pre-audit · what we already see on the real product</p>
+        <h2>This isn't speculative — the screens already show it.</h2>
+        <div class="twocol">
+          <div><h3 class="tealtext">Back office · Joan / Diane</h3>
+            <ul class="clean">
+              <li><b>"Create a project" makes an empty shell</b> — no orientation (Diane)</li>
+              <li><b>8 methods, no order or grouping</b>; config in one long scroll</li>
+              <li><b>Publish is active on an empty project</b> — no readiness check</li>
+            </ul></div>
+          <div><h3 class="accent">Front office mobile · residents</h3>
+            <ul class="clean">
+              <li><b>On a 390px screen, value never reaches the resident first</b></li>
+              <li><b>The loop is asserted, never shown</b> — no "you said / we did"</li>
+              <li><b>Closure &amp; sensemaking are thin</b> on the phone</li>
+            </ul></div>
+        </div>
+        <p class="src-line">36 findings from a pre-audit of the live product (Raleigh demo + real tenants). Preliminary — to validate in the audit.</p>
       </div>
     </section>
+  </div>
 
-    <!-- 20 · BACK OFFICE — SETUP & CONFIG -->
-    <section class="slide" data-phase="Pre-audit">
+  <!-- ════════════════════════════ EVIDENCE ════════════════════════════ -->
+  <div class="deck" data-deck="evidence">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Pre-audit · back office · setup &amp; method config</p>
+        <p class="eyebrow">Dossier · the case for the audit</p>
+        <h1>The case is<br>already made.</h1>
+        <p class="lead ink">Forget the plan for a second. Look at what the product is already telling us — in the tickets, on the screens, on the phone. The audit just turns it into a fix list.</p>
+      </div>
+    </section>
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Exhibit A · the tickets</p>
+        <h2>The open backlog points at the experience.</h2>
+        <div class="bars">
+          <div class="bar"><div class="bl">Numbers / reporting trust</div><div class="bt" style="width:100%"></div><div class="bv">11</div></div>
+          <div class="bar"><div class="bl">Email pipeline failures</div><div class="bt" style="width:73%"></div><div class="bv">8</div></div>
+          <div class="bar"><div class="bl">Admin back-office bugs</div><div class="bt" style="width:73%"></div><div class="bv">8</div></div>
+          <div class="bar teal"><div class="bl">Internal eng / design chores</div><div class="bt" style="width:55%"></div><div class="bv">6</div></div>
+          <div class="bar"><div class="bl">AI ignores filters &amp; context</div><div class="bt" style="width:55%"></div><div class="bv">6</div></div>
+          <div class="bar teal"><div class="bl">Accessibility <small>(~70 sub-tickets)</small></div><div class="bt" style="width:45%"></div><div class="bv">5</div></div>
+          <div class="bar"><div class="bl">Compliance &amp; governance</div><div class="bt" style="width:45%"></div><div class="bv">5</div></div>
+        </div>
+        <p class="src-line">393 dispatch tickets in 2026, 68 open. Themes read from ticket bodies, not titles. Internal analysis.</p>
+      </div>
+    </section>
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Exhibit B · the back office</p>
         <h2>The core spine is invisible at the moment staff need it.</h2>
         <div class="grid g2">
-          <div class="card"><span class="num">CREATE FLOW · DIANE</span><h3>"Create a project" makes an empty shell</h3><p>The whole create form is packaging — title, tags, area, images. <strong>Nothing picks a phase or one of the 8 methods.</strong> Diane Saves a "finished" project residents can't do anything in; the method hides on a separate Timeline tab.</p><span class="src">r1-pe-project-new vs proj-timeline · Match to real world (#2)</span></div>
-          <div class="card"><span class="num">PHASE STRIP · JOAN/DIANE</span><h3>8 peer sub-tabs, no order or grouping</h3><p>Setup / Description / Input manager / Input form / Map / Insights / Access / Notifications sit on one flat row — config, content, live-data and analytics undifferentiated. No signal of what's required vs post-launch.</p><span class="src">r1-pe-proj-timeline · Recognition over recall (#6)</span></div>
-          <div class="card"><span class="num">SETUP TAB · JOAN/DIANE</span><h3>Every method buries config in one long scroll</h3><p>~12 equally-weighted control blocks, no sections, no anchors, and the only Save sits above the fold. The 8-method picker re-renders on every visit — even on locked live phases — inviting Diane to "switch" a method.</p><span class="src">r1-pe-ideation-setup / pb-active-setup · Minimalist design (#8)</span></div>
-          <div class="card"><span class="num">RULE FIELDS · DIANE</span><h3>Naked thresholds, no guidance or defaults</h3><p>"Similarity threshold 0.3 / 0.4" with no scale legend, likes/dislikes limits, colour-only green toggles. Diane has no basis to choose; a mis-set value silently mis-merges ideas — a failure she only finds after residents post.</p><span class="src">r1-pe-ideation-setup · Help &amp; docs / Error prevention (#10, #5)</span></div>
+          <div class="card"><span class="num">CREATE · DIANE</span><h3>An empty shell</h3><p>"Create a project" is a form of title, tags, images — residents can't do anything in it; the method hides on a separate tab.</p></div>
+          <div class="card"><span class="num">PHASE · JOAN/DIANE</span><h3>8 methods, no order</h3><p>Eight peer sub-tabs, no grouping, no signal of what's required vs post-launch. Config is one long scroll.</p></div>
+          <div class="card"><span class="num">PUBLISH · BOTH</span><h3>Live on empty</h3><p>Publish is active on an unconfigured project — no readiness check, no pre-flight.</p></div>
+          <div class="card"><span class="num">RIGHTS · DIANE</span><h3>Unexplained jargon</h3><p>"Who is responsible for processing the posts?" — legal language, no default, on a high-stakes screen.</p></div>
         </div>
+        <p class="src-line">Real screens, Raleigh demo. Persona-tagged, heuristic-tagged.</p>
       </div>
     </section>
-
-    <!-- 21 · BACK OFFICE — ACCESS, MODERATE, ANALYSE -->
-    <section class="slide wash" data-phase="Pre-audit">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Pre-audit · back office · access, moderate, analyse</p>
-        <h2>The high-stakes screens hide their own state.</h2>
+        <p class="eyebrow">Exhibit C · the phone</p>
+        <h2>On a 390px screen, value never reaches the resident first.</h2>
         <div class="grid g2">
-          <div class="card"><span class="num">ACCESS · DIANE</span><h3>Rights buried per-phase, blank at rest</h3><p>Four collapsed accordion rows show <strong>no current value</strong>; the timeline summarises them as an unexplained "Mixed rights" badge with no tooltip. The highest-trust setting in the product is invisible without spelunking — and edits to a "Published · 170 participants" project apply live, with no draft boundary.</p><span class="src">r2-access-rights / proj-timeline · Visibility of status / Error prevention (#1, #5)</span></div>
-          <div class="card"><span class="num">INPUT MANAGER · JOAN</span><h3>Forces a project pick, then hides triage</h3><p>359 mixed inputs under a flat list of ~60 ambiguous project names. Every row reads "Unassigned"; no status, age, flag or "assigned to me". The empty right two-thirds offers no preview pane — so reading one input means leaving the queue and losing your place.</p><span class="src">/admin/ideas · Match to real world / Flexibility (#7)</span></div>
-          <div class="card"><span class="num">DASHBOARD · READER/JOAN</span><h3>Reports activity, never meaning</h3><p>~14 equal-weight tiles, no target, no benchmark; delta labels broken ("Inputs 347 (&gt;347)"). Results split across a per-phase tab and a separate Reporting section that never cross-link — and a finished PB phase's results <strong>404s</strong>.</p><span class="src">r1-an-dash-overview / voting-results · Minimalist design (#8)</span></div>
-          <div class="card"><span class="num">DEAD ENDS · JOAN</span><h3>Counted nav that 404s, audit log that disclaims itself</h3><p>The "29" Notifications badge opens "Page not found." Compose-email shows no recipient count and a stale <em>citizenlab.co</em> reply-to. The Management feed leads with "Experimental… not all actions are included" — gutting the one screen meant to assure accountability.</p><span class="src">/admin/notifications / dash-management · Error recovery / Trust (#9, #1)</span></div>
+          <div class="card"><span class="num">DISCOVER</span><h3>Hard to find the right project</h3><p>The rare participant lands and scans — the thing to do isn't first, isn't obvious, isn't thumb-reachable.</p></div>
+          <div class="card"><span class="num">PARTICIPATE</span><h3>Long forms, no save</h3><p>Surveys can't go back a page; logic only on some types; abandonment is invisible to staff.</p></div>
+          <div class="card"><span class="num">CLOSURE</span><h3>The loop is never shown</h3><p>No "you said / we did" on the phone — the engaged resident has no reason to return.</p></div>
+          <div class="card"><span class="num">TRUST</span><h3>Nothing reassures the skeptic</h3><p>No visible impact, no sign anyone is listening — the hardest persona gets the least.</p></div>
         </div>
       </div>
     </section>
-
-    <!-- 22 · FRONT OFFICE MOBILE — DISCOVER & PARTICIPATE -->
-    <section class="slide" data-phase="Pre-audit">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Pre-audit · front office · mobile · discover &amp; participate</p>
-        <h2>On a 390px screen, value never gets to the resident first.</h2>
-        <div class="grid g2">
-          <div class="card"><span class="num">DISCOVER · RARE PARTICIPANT</span><h3>Cookie wall hijacks the whole first screen</h3><p>At 390px the consent banner paints over the hero on both Raleigh and Wien — friction before any value. Below it, an unsorted feed mixes "Test", "Test Polls" and real projects, telling the skeptic the platform is abandoned before they reach live content.</p><span class="src">fo-homepage-m / fo-homepage-wien-m · Minimalist design (#8)</span></div>
-          <div class="card"><span class="num">CARDS · SKEPTIC</span><h3>Status is the key fact and the weakest signal</h3><p>The phase/status pill is tiny and low-contrast — rows of "Finished" given equal weight, with no sense of the method or deadline. A wall of "Finished" reads as "this council closes everything before residents notice." Follow / sign-in is buried behind an unlabelled hamburger.</p><span class="src">fo-projects-list-m / account-dropdown-m · Visibility of status (#1)</span></div>
-          <div class="card"><span class="num">SURVEY/POLL · FINISHER</span><h3>No commitment preview, no progress, blind dead grey block</h3><p>No question count, duration or progress; surveys can't page back, and rating fields silently gate Next. Redundant sticky "Take the survey/poll" CTAs collide with already-visible forms and clip the footer — the finisher can't budget the task or trust the button.</p><span class="src">fo-project-survey-m / fo-poll-m · Visibility of status / Match (#1, #2)</span></div>
-          <div class="card"><span class="num">VOTING &amp; MAP · FINISHER</span><h3>Closed phases look live; mapping is a postage stamp</h3><p>Voting pages open on a closed phase with options that look choosable and a numbered-chevron stepper with no labels until tapped. The mapping task — where precision <em>is</em> the point — renders a tiny map plus a pin list, with no thumb-friendly drop-pin flow.</p><span class="src">fo-voting-m / fo-approval-voting-m / map-real-mapview-m · Match to real world (#2)</span></div>
+        <p class="eyebrow">The pattern</p>
+        <h2>It all converges on one thing: <span class="accent">the loop never closes.</span></h2>
+        <div class="stats">
+          <div class="stat"><b>34%</b><div class="sx">of open tickets have no tenant — nobody recorded to close the loop with.</div></div>
+          <div class="stat"><b>0</b><div class="sx">front-office surfaces that show a resident their input changed anything.</div></div>
+          <div class="stat"><b>1</b><div class="sx">product, two disconnected halves — built as surfaces, not as a service.</div></div>
         </div>
+        <p class="lead" style="margin-top:24px">The product can't close the loop because the loop was never designed as one. That's the thread the tickets, the screens and the phone all pull on.</p>
       </div>
     </section>
-
-    <!-- 23 · FRONT OFFICE MOBILE — TRUST & CLOSURE -->
-    <section class="slide wash" data-phase="Pre-audit">
+    <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Pre-audit · front office · mobile · trust &amp; closure</p>
-        <h2>The loop is asserted, never shown.</h2>
-        <div class="grid g3">
-          <div class="card"><span class="num">PERSPECTIVES · ENGAGED</span><h3>A swipe game with no map of the whole</h3><p>Full-screen one-card-at-a-time feed, a coachmark to dismiss before you can read, no count, no position, no overview. AI themes are buried behind "Explore tags" instead of framing the feed.</p><span class="src">fo-perspectives-feed-m · Visibility of status (#1)</span></div>
-          <div class="card"><span class="num">EVENTS · ENGAGED</span><h3>Decision-incomplete dead end</h3><p>No RSVP, no location, no description — the loudest element is "Share on Facebook," and the date (Apr 2024) is two years past with no Past/Cancelled label. Reads as a neglected platform.</p><span class="src">fo-event-detail-m · Match to real world (#2)</span></div>
-          <div class="card"><span class="num">CLOSURE · SKEPTIC</span><h3>"We asked, you said, we did" links to nothing</h3><p>The closure promise is just another card row — no outcome shown, no link to what changed. Meanwhile two satisfaction asks compete up top, extracting fresh input before proving the last loop mattered.</p><span class="src">fo-community-monitor-m · Visibility of status (#1)</span></div>
-        </div>
-        <div class="seam" style="background:var(--wash-2);border:1px solid var(--line);color:var(--ink-soft)">Reaction-as-vote in Perspectives shows a bare <b>13-vs-0</b> with no rules, no auth signal, no consequence — to the skeptic it reads as a gameable leaderboard, not legitimate deliberative input.</div>
-      </div>
-    </section>
-
-    <!-- 24 · WHAT THIS SIGNALS -->
-    <section class="slide dark" data-phase="Pre-audit">
-      <div class="slide-inner">
-        <p class="eyebrow">Pre-audit · the read</p>
-        <h2>What this signals for the plan.</h2>
-        <p class="lead">A two-day skim of the real product already validates the reframe — and pre-sorts the findings into the roadmap's columns.</p>
-        <ul class="clean" style="max-width:860px">
-          <li><b>The seam is the story.</b> The worst failures sit between surfaces — a created project with no method, a "we did" card linking to nothing. A surface-by-surface audit would miss exactly these; the <span class="accent">service-blueprint lens is the right one</span>.</li>
-          <li><b>Mobile front office is the priority, not a footnote.</b> Cookie walls, postage-stamp maps, colliding sticky CTAs and a swipe-only Perspectives feed all degrade where most residents actually are — yet it's the half no prior pass watched.</li>
-          <li><b>Status &amp; trust are the common thread</b> (the spine of the reframe). Both surfaces hide their own state — "Mixed rights", "Unassigned", broken deltas, stale dates, 404s on real routes. Visibility-of-system-status is the heuristic to lead with.</li>
-          <li><b>Dead ends are the day-one quick wins.</b> 404s on valid routes, the citizenlab.co reply-to and the self-disclaiming audit log are concrete, low-effort fixes — they populate the roadmap's <span class="accent">Now</span> column and buy the trust to fund the big bets.</li>
+        <p class="eyebrow">The minimal move</p>
+        <h2>Turn standing evidence into a ranked, costed fix list.</h2>
+        <p class="lead">We don't need to be convinced the experience is broken — we need to size it. A focused audit triages the backlog, watches 5 residents, sweeps the worst flows, and hands back priorities.</p>
+        <ul class="clean">
+          <li><b>Triage the 68 open tickets</b> into the participation-loop stages they break</li>
+          <li><b>5 residents on a phone</b> + a heuristic sweep of the 3 worst back-office flows</li>
+          <li><b>An impact × effort list</b> — what to fix first, and what it's worth</li>
         </ul>
-        <p class="src-line">Preliminary, evidence-grounded read on the live product · Joan / Diane (BO) + resident personas (FO mobile). Not a substitute for the full audit.</p>
       </div>
     </section>
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Decision</p>
+        <h2>The evidence is in. <span class="accent">Green-light the look.</span></h2>
+        <p class="lead">Six weeks for the full service audit, or two for the lean cut — either way, we stop guessing and start closing the loop. Review with Irene this Friday.</p>
+      </div>
+    </section>
+  </div>
 
-  </main>
-
-  <div class="nav"><button id="prev" aria-label="Previous slide">‹</button><button id="next" aria-label="Next slide">›</button></div>
-  <div class="chrome count"><b id="cur">1</b> / <span id="total">23</span></div><!-- total set dynamically by JS -->
+  <div class="brand" id="brand">GoVocal · Product Design</div>
+  <div class="count"><b id="cur">1</b> / <span id="tot">1</span></div>
+  <div class="nav"><button id="prev" aria-label="Previous">‹</button><button id="next" aria-label="Next">›</button></div>
 
   <script>
-    const slides = Array.from(document.querySelectorAll('.slide'));
-    const total = slides.length; let i = 0;
-    const prog = document.getElementById('progress'), cur = document.getElementById('cur'), ptag = document.getElementById('phasetag');
-    document.getElementById('total').textContent = total;
+    const decks = {};
+    document.querySelectorAll('.deck').forEach(d => decks[d.dataset.deck] = [...d.querySelectorAll('.slide')]);
+    const idx = { lean:0, full:0, evidence:0 };
+    let mode = 'full';
+    const prog = document.getElementById('progress'), cur = document.getElementById('cur'), tot = document.getElementById('tot');
     const prevB = document.getElementById('prev'), nextB = document.getElementById('next');
-    function show(n){
-      i = Math.max(0, Math.min(total - 1, n));
-      slides.forEach((s, x) => s.classList.toggle('active', x === i));
-      const dark = slides[i].classList.contains('dark') || slides[i].classList.contains('teal');
-      document.body.classList.toggle('on-light', !dark);
-      ptag.textContent = slides[i].dataset.phase || '';
-      prog.style.width = (i / (total - 1) * 100) + '%';
-      cur.textContent = i + 1;
-      prevB.disabled = i === 0; nextB.disabled = i === total - 1;
-      slides[i].scrollTop = 0; location.hash = (i + 1);
+    const switchEl = document.getElementById('switch');
+
+    function render(){
+      document.body.dataset.mode = mode;
+      document.querySelectorAll('.deck').forEach(d => d.classList.toggle('on', d.dataset.deck === mode));
+      switchEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === mode));
+      const s = decks[mode], i = idx[mode];
+      s.forEach((sl, k) => sl.classList.toggle('active', k === i));
+      cur.textContent = i + 1; tot.textContent = s.length;
+      prog.style.width = (s.length < 2 ? 100 : i / (s.length - 1) * 100) + '%';
+      prevB.disabled = i === 0; nextB.disabled = i === s.length - 1;
+      s[i].scrollTop = 0;
+      location.hash = mode + (i + 1);
     }
-    function go(d){ show(i + d); }
+    function go(d){ idx[mode] = Math.max(0, Math.min(decks[mode].length - 1, idx[mode] + d)); render(); }
+    function setMode(m){ if (decks[m]) { mode = m; render(); } }
+
+    switchEl.addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); });
     nextB.onclick = () => go(1); prevB.onclick = () => go(-1);
     document.addEventListener('keydown', e => {
       if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); go(1); }
       else if (['ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); go(-1); }
-      else if (e.key === 'Home') show(0); else if (e.key === 'End') show(total - 1);
+      else if (e.key === 'Home') { idx[mode] = 0; render(); }
+      else if (e.key === 'End') { idx[mode] = decks[mode].length - 1; render(); }
+      else if (e.key === '1') setMode('lean');
+      else if (e.key === '2') setMode('full');
+      else if (e.key === '3') setMode('evidence');
     });
-    document.getElementById('deck').addEventListener('click', e => {
+    document.querySelectorAll('.deck').forEach(d => d.addEventListener('click', e => {
       if (e.target.closest('a,button')) return;
       const x = e.clientX / window.innerWidth;
       if (x > 0.72) go(1); else if (x < 0.16) go(-1);
-    });
+    }));
     let tx = 0;
     addEventListener('touchstart', e => tx = e.touches[0].clientX, {passive:true});
     addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); }, {passive:true});
-    const start = parseInt(location.hash.slice(1));
-    show(Number.isFinite(start) && start ? start - 1 : 0);
+
+    const h = (location.hash || '').replace('#','').match(/^(lean|full|evidence)(\d+)?$/);
+    if (h) { mode = h[1]; idx[mode] = h[2] ? Math.max(0, +h[2] - 1) : 0; }
+    render();
   </script>
 </body>
 </html>
