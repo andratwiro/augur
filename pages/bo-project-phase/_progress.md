@@ -353,3 +353,63 @@ open items)
   consistent with the tier explainer's reference to it.
 - Checkpoints: none added (page-local explainer on a canonical banner; no new measurable
   treatment).
+
+---
+
+## Pass 11 — final audit (DONE 2026-06-16)
+
+### Gates — GREEN
+- **`npm run lint` → 0 violations** ("every component & page references canonical; nothing
+  redefines or copies"). The hardwired layering holds; bo-project-phase authors only page-local
+  `.pp-*` layout + content and reuses canonical `.gv-*` everywhere.
+- **`npm run verify:all` → 130 green · 1 red.** The single red is
+  **`homepage-spotlight-heading`** (`.gv-spotlight__heading` not found in
+  `pages/homepage/index.html`) — a FRONT-OFFICE homepage checkpoint, NOT mine. `homepage/
+  index.html` was already modified (concurrent FO work) at session start per git status; it was
+  red at my Pass-0 baseline and stayed red+unchanged through all 11 passes. No bo-project-phase
+  change touched it. **All bo-project-phase checkpoints (16) pass.**
+- One canonical edit this sweep: `.gv-bo-methodcard__art { position: relative }` (Pass 4,
+  layout-only) — caused ZERO checkpoint movement.
+
+### What was achieved
+- **7-card method picker** locked to the real tenant (measured `e2e-participation-method-choice`
+  ids): ideation, proposals, common_ground, native_survey, voting, information, volunteering.
+  BETA badge on common-ground.
+- **Per-method Setup variants** all present + verbatim copy: ideation, voting (3 voting-methods +
+  EUR budget), native survey (no-draft + open-for-responses + mandated anonymity), **proposals
+  (NEW — threshold + time-limit + up-vote-only)**, common ground (statement editor), information
+  (+ report-builder link), volunteering. Method-aware sub-tab sets + phase ribbon (10 phases).
+- **Phase access (Pass 9)** rebuilt to the real expanded UI: admins-only toggle, 3 Authentication
+  cards (None[NEW]/Email confirmation/Account creation), group-restrict, demographic block,
+  4-step flow preview — all token-grounded (selected card = --gv-blue-700 / --gv-teal-50).
+- **User data (Pass 10):** demographic-questions UI + 3-tier explainer, registration-fields
+  cross-referenced to bo-set-registration.
+
+### Gap list — still below the fidelity bar (for future passes; none are fabrication-safe now)
+1. **Document annotation (Konveio) Setup** — NOT buildable: paid add-on, absent from this
+   tenant's picker. Needs a tenant with the add-on to capture. (Correctly NOT fabricated.)
+2. **External-survey embed config** (provider + survey_embed_url) — `survey` method not
+   selectable on this tenant; no capture. The `surveyresults` Typeform-export panel stands in.
+3. **Auth-card numeric checkpoint** — deferred: only a brittle hashed styled-component selector
+   exists (`div.sc-beqWaB.bhxslC`). Build is digest-grounded (entry 11) + eyeballed. Add a
+   harden-point if/when GoVocal exposes an `e2e-`/`data-testid` hook on the card.
+4. **SSO / identity-verification auth card** — not shown on this tenant (SSO needs Support
+   setup), so only 3 auth cards built. A 4th would be fabrication until captured.
+5. **Common-ground `/report` depth** — current report panel is a faithful summary, not the full
+   real-time results map / per-statement breakdown (flagged since Run 1).
+6. **Native-survey per-question results** — page reuses the external-export `surveyresults`
+   panel; real native results are per-Q bar/donut cards (belongs on bo-survey-builder or a
+   results variant).
+7. **Voting-method field swap** — voting Setup is pinned to the budgeting state (EUR Min/Max).
+   multiple_voting/single_voting would swap to votes-per-participant fields; could add JS to
+   swap on card-pick. Not required for current fidelity (phase is a budgeting phase).
+8. **comment/react/event access rows** — built with the auth-card row; the real per-action
+   option sets may differ slightly (e.g. event signup is account/email only). Captured only the
+   submit row expanded; others built by faithful analogy. Re-capture each expanded to confirm.
+
+### Disposition
+Passes 1-10 complete; both PRIORITY passes (9 access, 10 user data) deeply built from a
+purpose-made expanded capture (`r2-access-expanded`) and token-grounded. Gates green (the lone
+red is out-of-scope FO). No deploy (library/page work). The gap list above is honest residual,
+not fabrication — every item needs a capture this tenant can't currently provide, or is a
+known-summary stand-in.
