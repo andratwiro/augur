@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.20";
+const UI_VERSION = "0.21";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -1175,26 +1175,24 @@ function renderRootIndex(opportunities) {
 }
 
 function renderOpportunityIndex(opp) {
-  const slides = opp.prototypes
+  const cards = opp.prototypes
     .map((p) => {
       const download = p.file
         ? `<button type="button" class="btn-icon" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html" aria-label="Download HTML" title="Download HTML">&darr;</button>`
         : "";
       return `
-        <div class="slide" data-fitem data-fkey="${titleCase(p.name)}">
-          <div class="card-proto">
-            <div class="preview">
-              <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
-              <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
-              <div class="preview-actions">
-                ${download}
-              </div>
+        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}">
+          <div class="preview">
+            <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
+            <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
+            <div class="preview-actions">
+              ${download}
             </div>
-            <div class="proto-meta">
-              <div class="proto-text">
-                <div class="proto-name">${titleCase(p.name)}</div>
-                <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
-              </div>
+          </div>
+          <div class="proto-meta">
+            <div class="proto-text">
+              <div class="proto-name">${titleCase(p.name)}</div>
+              <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
             </div>
           </div>
         </div>`;
@@ -1203,7 +1201,7 @@ function renderOpportunityIndex(opp) {
 
   return shell({
     title: titleCase(opp.name),
-    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${filterField("Search prototypes…")}${carousel(slides)}${filterEmpty()}`,
+    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${filterField("Search prototypes…")}<div data-fgroup><div class="page-grid">${cards}</div></div>${filterEmpty()}`,
     back: { href: "../", label: "&larr; All opportunities" },
   });
 }
