@@ -268,3 +268,12 @@ Loop 4 fixed flagship a11y. Not touched again after the steer.
   for new user direction and only ship further changes that are genuinely worth it.
 - User is committing concurrently (front-office folder-avatar work) — no new direction for
   the sms-verification scope.
+
+### Loop 15 (wake) — 2026-06-17 ~05:10 · idle check, no-op
+- Checked git log/status: no new direction within sms-verification. User's concurrent
+  commits are all front-office/parallel-participation (folder avatars, LIBRARY.md,
+  parallel-project teardown) — out of my scope, left untouched.
+- Re-assessed access-rights-simple: complete and polished; no genuine improvement found
+  that's worth the regression risk on a deployed deliverable. Per loop guidance, made NO
+  marginal edits. Pacing down to a 1-hour heartbeat; will wind the loop down if the
+  sms-verification scope stays quiet another cycle or two.
