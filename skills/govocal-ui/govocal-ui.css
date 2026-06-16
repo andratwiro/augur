@@ -1242,6 +1242,12 @@
   font-size: var(--gv-fs-s); font-weight: 400; line-height: 21px; }
 .gv-surveyband__dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; flex: none; }
 .gv-surveyband__cta { margin-left: auto; }
+/* Mobile (≤768px): the band stacks into a pinned-action layout — status on its
+   own line, then a full-width on-colour CTA. Live wietsedemo project-survey-m. */
+@media (max-width: 768px) {
+  .gv-surveyband__inner { flex-direction: column; align-items: stretch; }
+  .gv-surveyband__cta { margin-left: 0; width: 100%; justify-content: center; }
+}
 
 /* ── Sticky participation bar — pinned bottom band: tenant-primary, white status
    left, white-on-colour button right (the shell-authority "participate" footer). ─ */
