@@ -1237,53 +1237,32 @@
   <div class="gv-bo-main">
 <div class="flex flex-col w-full overflow-hidden" style="height:100vh;">
 
-  <!-- ============ Unified top bar ============ -->
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="topbar-back" title="Back">
-        <svg class="nav-icon" style="width:16px;height:16px;color:#fff;" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-    </div>
-    <div class="topbar-main">
-      <!-- left: title + meta -->
-      <div class="flex flex-col justify-center">
-        <h1 class="text-[20px] font-bold tracking-tight leading-tight">Reimagine Meridian 2030</h1>
-        <div class="flex items-center gap-2 mt-0.5 text-[12.5px] text-gray-500">
-          <span class="inline-flex items-center gap-1">
-            <svg class="nav-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-            Groups
-          </span>
-          <span class="text-gray-300">·</span>
-          <span class="inline-flex items-center gap-1">
-            <svg class="nav-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/></svg>
-            Public
-          </span>
-          <span class="text-gray-300">·</span>
-          <span class="inline-flex items-center gap-1">
-            <svg class="nav-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/></svg>
-            38 project participants
-          </span>
+  <!-- ============ Real GoVocal project top bar ============ -->
+  <header class="gv-bo-topbar">
+    <div class="gv-bo-topbar__row">
+      <div>
+        <h1 class="gv-bo-topbar__title">Reimagine Meridian 2030</h1>
+        <div class="gv-bo-meta">
+          <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="lock"></span>Groups</span>
+          <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="eye"></span>Public</span>
+          <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="group"></span>38 project participants</span>
+          <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Published · Active</span>
         </div>
       </div>
-
-      <!-- right: status + actions + edit project + settings -->
-      <div class="flex items-center gap-3">
-        <button class="icon-btn" title="View published">
-          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-        <button class="ghost-btn flex items-center gap-2">
-          <span class="top-status-pill" style="padding:3px 10px 3px 8px; border:0; background:transparent;">
-            <span class="dot"></span>
-            Published — Active
-          </span>
-          <svg class="nav-icon" style="width:13px;height:13px;color:#7a8294;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <button class="share-btn">
-          <svg class="nav-icon" style="color:#fff;width:15px;height:15px;" viewBox="0 0 24 24"><path d="M12 16V4"/><polyline points="7 9 12 4 17 9"/><path d="M5 20h14"/></svg>
-          Share
-        </button>
+      <div class="gv-bo-topbar__actions">
+        <button class="gv-iconbtn" aria-label="Preview project"><span data-gv-icon="eye"></span></button>
+        <button class="gv-btn secondary-outlined"><span data-gv-icon="share"></span><span class="gv-btn__label">Share</span></button>
+        <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
       </div>
     </div>
+    <nav class="gv-bo-tabs" aria-label="Project">
+      <a class="gv-bo-tab" href="#">General</a>
+      <a class="gv-bo-tab is-active" href="#">Timeline</a>
+      <a class="gv-bo-tab" href="#">Audience</a>
+      <a class="gv-bo-tab" href="#">Messaging</a>
+      <a class="gv-bo-tab" href="#">Events</a>
+      <a class="gv-bo-tab" href="#">360 Input<span class="gv-bo-tab__new">NEW</span></a>
+    </nav>
   </header>
 
   <!-- ============ Body: 3 columns ============ -->
