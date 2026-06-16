@@ -439,6 +439,42 @@ fix the panel to 260px and host `.gv-bo-notifflyout__item` rows (24px `__icon` +
 <span class="gv-badge is-count">29</span>
 ```
 
+## Back-office project-template card + facet rail — `.gv-bo-templatecard` / `.gv-bo-facetgroup` (`components/bo-templatecard/`)
+
+The two pieces of the new-project **"From a template"** gallery
+(`/admin/projects/new`). `.gv-bo-templatecard` is the grey-blue template tile —
+**`#F2F4F5` bg / 1px `#EAEAEA` / 3px radius / 16px pad** (measured, kept literal;
+the source `admin_project_templates` hardcodes them too) — **distinct** from the
+white floating `.gv-bo-card`. It stacks a `__img` (118px, background-image), a
+`__title` (21/500 navy), a `__desc` (14/400 `#808080`), and a `__actions` column of
+two `.gv-btn` (`.secondary-outlined` "Use template" / `.admin-dark` "More details").
+`.gv-bo-facetgroup` is the collapsible filter disclosure that fills the gallery's
+left rail: a `__head` button (16/400 navy, space-between) + `__chev` that rotates on
+`aria-expanded="true"` over a `__body`. Render under the `.gv-bo` scope. Source-grounded
+on `r1-px-projects-new-template` (Raleigh); verified via `bo-newproject/{templatecard,card-desc}`.
+
+```html
+<!-- Template tile -->
+<div class="gv-bo-templatecard">
+  <div class="gv-bo-templatecard__img" style="background-image:url('…')"></div>
+  <h3 class="gv-bo-templatecard__title">Spatial plan</h3>
+  <p class="gv-bo-templatecard__desc">Collect contributions regarding your new spacial plan…</p>
+  <div class="gv-bo-templatecard__actions">
+    <button class="gv-btn secondary-outlined">Use template</button>
+    <button class="gv-btn admin-dark">More details</button>
+  </div>
+</div>
+
+<!-- Facet filter group (collapsible) -->
+<div class="gv-bo-facetgroup">
+  <button class="gv-bo-facetgroup__head" aria-expanded="true">
+    <span>Departments</span>
+    <span class="gv-bo-facetgroup__chev" data-gv-icon="chevron-down"></span>
+  </button>
+  <div class="gv-bo-facetgroup__body"><!-- options… --></div>
+</div>
+```
+
 ## Back-office config forms — `.gv-bo-*` (`pages/bo-project-phase/`)
 
 The deep project-configuration editor (`/admin/projects/<id>/…`). All values

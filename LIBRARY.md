@@ -72,6 +72,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
 | **Bo Menu** | `/components/bo-menu/` | `components/bo-menu/` | One canonical dropdown surface — .gv-bo-menu — shared by the Input-manager Exports menu and the bell Notification flyout (the product uses the same <Dropdown>… |
 | **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
+| **Bo Templatecard** | `/components/bo-templatecard/` | `components/bo-templatecard/` | The two pieces of the back-office "From a template" gallery ( /admin/projects/new ). .gv-bo-templatecard is the grey-blue bordered template tile — measured bg… |
 | **Community Monitor** | `/components/community-monitor/` | `components/community-monitor/` | The “City at a glance” satisfaction module — an ongoing survey that surfaces as a top modal/banner on the homepage and asks how residents feel about governance… |
 | **Content Builder Render** | `/components/content-builder-render/` | `components/content-builder-render/` | Content-Builder render layer — GoVocal component |
 | **Cookie Modal** | `/components/cookie-modal/` | `components/cookie-modal/` | The global cookie blocker rendered as the standard GoVocal dialog — a content variant on the .gv-modal shell. Source-grounded on Stadt Wien ( .modalcontent / #… |
@@ -121,6 +122,7 @@ as a starting point for a prototype.
 | **Bo Messaging** | `/pages/bo-messaging/` | `pages/bo-messaging/` | Messaging — GoVocal back office (reference) |
 | **Bo Notifications** | `/pages/bo-notifications/` | `pages/bo-notifications/` | Notifications — GoVocal back office (reference) |
 | **Bo Pages Menu** | `/pages/bo-pages-menu/` | `pages/bo-pages-menu/` | Pages & menu — GoVocal back office (reference) |
+| **Bo Project New** | `/pages/bo-project-new/` | `pages/bo-project-new/` | Create a project — GoVocal back office (reference) |
 | **Bo Project Phase** | `/pages/bo-project-phase/` | `pages/bo-project-phase/` | Project configuration — GoVocal back office (reference) |
 | **Bo Projects** | `/pages/bo-projects/` | `pages/bo-projects/` | Projects — GoVocal back office (reference) |
 | **Bo Report Builder** | `/pages/bo-report-builder/` | `pages/bo-report-builder/` | Report builder — GoVocal back office (reference) |

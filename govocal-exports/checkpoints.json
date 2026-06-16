@@ -2312,6 +2312,40 @@
       "uses": [
         ".gv-bo-menu"
       ]
+    },
+    {
+      "id": "bo-newproject/templatecard",
+      "built": "components/bo-templatecard/index.html",
+      "against": "r1-px-projects-new-template",
+      "map": {
+        "div.sc-djpCmO.iocjJM": ".gv-bo-templatecard"
+      },
+      "props": [
+        "background-color",
+        "border",
+        "border-radius",
+        "padding"
+      ],
+      "uses": [
+        ".gv-bo-templatecard"
+      ]
+    },
+    {
+      "id": "bo-newproject/card-desc",
+      "built": "components/bo-templatecard/index.html",
+      "against": "r1-px-projects-new-template",
+      "map": {
+        "div.sc-kSRYMe.dcQKtp": ".gv-bo-templatecard__desc"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-bo-templatecard"
+      ]
     }
   ]
 }

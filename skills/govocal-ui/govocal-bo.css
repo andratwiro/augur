@@ -910,3 +910,31 @@
 .gv-bo-notifflyout__item.is-unread { font-weight: 700; }
 .gv-bo-notifflyout__icon { flex: none; width: 24px; height: 24px; color: var(--gv-text-primary); }
 .gv-bo-notifflyout__time { display: block; margin-top: 2px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-xs); }
+
+/* ── Template card — new-project "from a template" gallery (r1-px-projects-new-template)
+   A grey-blue bordered card, DISTINCT from the white floating .gv-bo-card: measured
+   bg #F2F4F5, 1px #EAEAEA, 3px radius, 16px pad (source admin_project_templates hardcodes
+   these literals too — kept literal, not systemic). Title 21px/500 navy; desc 14px/400 #808080. */
+.gv-bo-templatecard {
+  background: #F2F4F5; border: 1px solid #EAEAEA; border-radius: var(--gv-radius);
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+}
+.gv-bo-templatecard__img {
+  width: 100%; height: 118px; border-radius: var(--gv-radius); flex: none;
+  background-size: cover; background-position: center;
+}
+.gv-bo-templatecard__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 500; color: var(--gv-bo-primary); line-height: 1.3; }
+.gv-bo-templatecard__desc { margin: 0; font-size: var(--gv-fs-s); font-weight: 400; line-height: 1.43; color: #808080; }
+.gv-bo-templatecard__actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+
+/* ── Facet group — collapsible filter disclosure in the template-gallery rail
+   (component-library FilterSelector). Head 16px/400 navy; chevron rotates on aria-expanded. */
+.gv-bo-facetgroup { border-bottom: 1px solid var(--gv-divider); }
+.gv-bo-facetgroup__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  padding: 14px 0; background: transparent; border: 0; cursor: pointer; text-align: left;
+  font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-bo-primary);
+}
+.gv-bo-facetgroup__chev { flex: none; width: 16px; height: 16px; transition: transform .15s ease; }
+.gv-bo-facetgroup__head[aria-expanded="true"] .gv-bo-facetgroup__chev { transform: rotate(180deg); }
+.gv-bo-facetgroup__body { padding: 0 0 14px; }
