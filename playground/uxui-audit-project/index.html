@@ -4,244 +4,231 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>UX/UI Audit — The Participation Loop</title>
+  <title>UX/UI Audit — The Participation Loop · GoVocal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" />
   <link rel="stylesheet" href="../govocal-tokens.css" />
   <style>
-    /* ── Deck shell ─────────────────────────────────────────────────────── */
     :root{
-      --ink:#1c2b33; --ink-soft:#51626c; --faint:#8497a2;
+      --ink:#16242b; --ink-soft:#4d5e68; --faint:#8497a2;
       --teal:var(--gv-tenant-primary,#0E7C86); --coral:var(--gv-tenant-secondary,#E2603A);
-      --teal-deep:#0A5159; --wash:#f3f7f8; --wash-2:#eaf2f3; --line:#dde7e9;
-      --maxw:1040px;
+      --teal-deep:#0A5159; --wash:#f2f7f8; --wash-2:#e7f1f2; --line:#dbe6e8; --maxw:1060px;
     }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%}
-    body{
-      font-family:'Public Sans','Helvetica Neue',Helvetica,Arial,sans-serif;
-      color:var(--ink); background:#0a3138;
-      -webkit-font-smoothing:antialiased; overflow:hidden;
-    }
-    /* progress + chrome */
+    body{font-family:'Public Sans','Helvetica Neue',Helvetica,Arial,sans-serif;color:var(--ink);background:#08272d;-webkit-font-smoothing:antialiased;overflow:hidden}
+
     .progress{position:fixed;top:0;left:0;height:3px;background:var(--coral);width:0;z-index:50;transition:width .35s cubic-bezier(.4,0,.2,1)}
-    .chrome{position:fixed;z-index:40;color:#fff;font-size:13px;font-weight:600;letter-spacing:.01em}
-    .chrome.count{bottom:20px;right:24px;color:rgba(255,255,255,.75)}
-    .chrome.count b{color:#fff}
+    .chrome{position:fixed;z-index:40;font-size:13px;font-weight:600;letter-spacing:.01em}
+    .chrome.count{bottom:20px;right:24px;color:rgba(255,255,255,.7)} .chrome.count b{color:#fff}
     .brandmark{position:fixed;top:18px;left:24px;z-index:40;display:flex;align-items:center;gap:9px;color:#fff}
     .brandmark .dot{width:22px;height:22px;border-radius:6px;background:var(--coral);display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px}
-    .brandmark span{font-weight:700;font-size:13.5px;letter-spacing:.01em;opacity:.92}
+    .brandmark span{font-weight:700;font-size:13px;letter-spacing:.01em;opacity:.9}
+    .phasetag{position:fixed;top:19px;right:24px;z-index:40;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55)}
     .nav{position:fixed;bottom:16px;left:24px;z-index:40;display:flex;gap:8px}
-    .nav button{width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.28);
-      background:rgba(255,255,255,.08);color:#fff;font-size:16px;cursor:pointer;line-height:1;transition:.15s}
-    .nav button:hover{background:rgba(255,255,255,.18)}
-    .nav button:disabled{opacity:.3;cursor:default}
-    .hint{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:40;color:rgba(255,255,255,.5);font-size:11.5px;letter-spacing:.04em;text-transform:uppercase}
-    /* chrome adapts to light slides (brandmark/nav/counter would otherwise be white-on-white) */
+    .nav button{width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#fff;font-size:16px;cursor:pointer;line-height:1;transition:.15s}
+    .nav button:hover{background:rgba(255,255,255,.18)} .nav button:disabled{opacity:.3;cursor:default}
     body.on-light .brandmark span{color:var(--ink-soft);opacity:1}
-    body.on-light .chrome.count{color:var(--faint)}
-    body.on-light .chrome.count b{color:var(--ink)}
+    body.on-light .phasetag{color:var(--teal)}
+    body.on-light .chrome.count{color:var(--faint)} body.on-light .chrome.count b{color:var(--ink)}
     body.on-light .nav button{border-color:var(--line);background:#fff;color:var(--ink-soft)}
     body.on-light .nav button:hover{background:var(--wash)}
-    body.on-light .hint{color:var(--faint)}
 
-    /* ── Slides ─────────────────────────────────────────────────────────── */
-    .deck{height:100%;width:100%}
-    .slide{position:fixed;inset:0;display:none;overflow-y:auto;
-      padding:72px 56px;background:#fff;}
+    .slide{position:fixed;inset:0;display:none;overflow-y:auto;padding:68px 56px;background:#fff}
     .slide.active{display:flex}
     .slide-inner{max-width:var(--maxw);margin:auto;width:100%}
     .slide.active .slide-inner{animation:rise .5s cubic-bezier(.2,.7,.2,1) both}
     @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-
-    /* dark / accent slide variants */
-    .slide.dark{background:radial-gradient(120% 120% at 80% 0%,#0e5c66 0%,#0a3138 70%);color:#fff}
+    .slide.dark{background:radial-gradient(120% 120% at 78% 0%,#0e5c66 0%,#08272d 72%);color:#fff}
     .slide.teal{background:linear-gradient(135deg,var(--teal) 0%,var(--teal-deep) 100%);color:#fff}
     .slide.wash{background:var(--wash)}
 
-    .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;
-      letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin:0 0 20px}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);margin:0 0 18px}
     .slide.dark .eyebrow,.slide.teal .eyebrow{color:var(--coral)}
     .eyebrow::before{content:"";width:26px;height:2px;background:currentColor;border-radius:2px}
 
-    h1{font-size:clamp(34px,5vw,60px);line-height:1.04;letter-spacing:-.02em;font-weight:800;margin:0 0 18px}
-    h2{font-size:clamp(26px,3.4vw,40px);line-height:1.1;letter-spacing:-.018em;font-weight:800;margin:0 0 22px}
-    h3{font-size:19px;font-weight:700;margin:0 0 8px;letter-spacing:-.01em}
-    .lead{font-size:clamp(17px,1.9vw,21px);line-height:1.5;color:var(--ink-soft);max-width:760px;margin:0 0 8px}
+    h1{font-size:clamp(34px,5vw,58px);line-height:1.04;letter-spacing:-.02em;font-weight:800;margin:0 0 18px}
+    h2{font-size:clamp(25px,3.3vw,38px);line-height:1.1;letter-spacing:-.018em;font-weight:800;margin:0 0 18px}
+    h3{font-size:18px;font-weight:700;margin:0 0 7px;letter-spacing:-.01em}
+    .lead{font-size:clamp(16px,1.8vw,20px);line-height:1.5;color:var(--ink-soft);max-width:780px;margin:0 0 8px}
     .slide.dark .lead,.slide.teal .lead{color:rgba(255,255,255,.82)}
-    p{line-height:1.55}
-    .accent{color:var(--coral)} .tealtext{color:var(--teal)}
-    strong{font-weight:700}
+    p{line-height:1.55} .accent{color:var(--coral)} .tealtext{color:var(--teal)} strong{font-weight:700}
+    .big-q{font-size:clamp(22px,2.7vw,30px);line-height:1.28;font-weight:700;letter-spacing:-.015em;max-width:880px;margin:0}
+    .big-q em{font-style:normal;color:var(--coral)}
 
-    /* title slide */
-    .title-meta{display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:34px;font-size:14.5px}
+    .title-meta{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:32px;font-size:14px}
     .title-meta div{display:flex;flex-direction:column;gap:2px}
-    .title-meta .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.5);font-weight:700}
+    .title-meta .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.5);font-weight:700}
     .title-meta .v{font-weight:600;color:#fff}
 
-    /* card grids */
-    .grid{display:grid;gap:18px;margin-top:28px}
+    .grid{display:grid;gap:16px;margin-top:24px}
     .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
-    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 22px 20px;position:relative}
-    .slide.wash .card{background:#fff}
+    .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 20px 18px;position:relative}
     .slide.dark .card,.slide.teal .card{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16)}
-    .card .num{font-size:13px;font-weight:800;color:var(--coral);margin-bottom:10px;display:block}
-    .card h3{margin-bottom:6px} .card p{font-size:14.5px;line-height:1.5;color:var(--ink-soft);margin:0}
+    .card .num{font-size:12.5px;font-weight:800;color:var(--coral);margin-bottom:9px;display:block}
+    .card h3{margin-bottom:5px} .card p{font-size:14px;line-height:1.48;color:var(--ink-soft);margin:0}
     .slide.dark .card p,.slide.teal .card p{color:rgba(255,255,255,.78)}
-    .card .ic{font-size:22px;margin-bottom:12px;display:block}
+    .card .ic{font-size:21px;margin-bottom:10px;display:block}
+    .card .src{font-size:11.5px;color:var(--faint);margin-top:9px}
+    .slide.dark .card .src{color:rgba(255,255,255,.5)}
 
-    ul.clean{list-style:none;padding:0;margin:20px 0 0}
-    ul.clean li{position:relative;padding:11px 0 11px 30px;border-bottom:1px solid var(--line);font-size:16px;line-height:1.45}
+    ul.clean{list-style:none;padding:0;margin:18px 0 0}
+    ul.clean li{position:relative;padding:10px 0 10px 28px;border-bottom:1px solid var(--line);font-size:15.5px;line-height:1.45}
     ul.clean li:last-child{border-bottom:0}
-    ul.clean li::before{content:"";position:absolute;left:2px;top:18px;width:9px;height:9px;border-radius:3px;background:var(--teal)}
+    ul.clean li::before{content:"";position:absolute;left:2px;top:17px;width:9px;height:9px;border-radius:3px;background:var(--teal)}
     ul.clean li b{font-weight:700}
     .slide.dark ul.clean li{border-color:rgba(255,255,255,.12)}
 
-    /* tables */
-    table{width:100%;border-collapse:collapse;margin-top:24px;font-size:14.5px}
-    th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.4}
-    th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:700}
+    table{width:100%;border-collapse:collapse;margin-top:20px;font-size:14px}
+    th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.4}
+    th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:700}
     tr td:first-child{font-weight:700;color:var(--ink);white-space:nowrap}
-    .slide.dark th,.slide.dark td{border-color:rgba(255,255,255,.14)}
-    .slide.dark tr td:first-child{color:#fff}
-    .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--wash-2);color:var(--teal-deep)}
+    .slide.dark th,.slide.dark td{border-color:rgba(255,255,255,.14)} .slide.dark tr td:first-child{color:#fff}
+    .pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--wash-2);color:var(--teal-deep)}
     .pill.coral{background:#fbe7df;color:#b5431f}
 
-    /* the loop diagram */
-    .loop{display:grid;grid-template-columns:1fr 96px 1fr;gap:0;align-items:center;margin-top:30px}
-    .loop .lane{border-radius:16px;padding:22px 20px}
+    /* loop diagram */
+    .loop{display:grid;grid-template-columns:1fr 92px 1fr;gap:0;align-items:center;margin-top:26px}
+    .loop .lane{border-radius:16px;padding:20px 18px}
     .loop .lane.fo{background:rgba(255,255,255,.08);border:1px solid rgba(226,96,58,.5)}
     .loop .lane.bo{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22)}
-    .loop .lane h3{color:#fff;display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:15px;text-transform:uppercase;letter-spacing:.05em}
-    .loop .lane .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
-    .loop .lane.fo .tag{background:var(--coral);color:#fff}
-    .loop .lane.bo .tag{background:rgba(255,255,255,.9);color:var(--teal-deep)}
-    .loop .step{display:flex;align-items:center;gap:10px;padding:9px 0;color:rgba(255,255,255,.9);font-size:15px;font-weight:600}
-    .loop .step span{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:13px;background:rgba(255,255,255,.12);flex:none}
-    .loop .arrows{display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--coral);font-size:30px;font-weight:800}
-    .loop .arrows .lbl{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.55);text-align:center;line-height:1.3}
-    .seam{margin-top:22px;background:rgba(226,96,58,.14);border:1px solid rgba(226,96,58,.4);border-radius:12px;padding:14px 18px;font-size:14.5px;color:#fff;line-height:1.5}
+    .loop .lane h3{color:#fff;display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;text-transform:uppercase;letter-spacing:.05em}
+    .loop .lane .tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:6px}
+    .loop .lane.fo .tag{background:var(--coral);color:#fff} .loop .lane.bo .tag{background:rgba(255,255,255,.9);color:var(--teal-deep)}
+    .loop .step{display:flex;align-items:center;gap:10px;padding:8px 0;color:rgba(255,255,255,.92);font-size:14.5px;font-weight:600}
+    .loop .step span{width:23px;height:23px;border-radius:7px;display:grid;place-items:center;font-size:12px;background:rgba(255,255,255,.12);flex:none}
+    .loop .arrows{display:flex;flex-direction:column;align-items:center;gap:9px;color:var(--coral);font-size:28px;font-weight:800}
+    .loop .arrows .lbl{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.55);text-align:center;line-height:1.3}
+    .seam{margin-top:20px;border-radius:12px;padding:13px 17px;font-size:14px;line-height:1.5}
+    .slide.dark .seam{background:rgba(226,96,58,.14);border:1px solid rgba(226,96,58,.4);color:#fff}
     .seam b{color:var(--coral)}
 
-    /* timeline */
-    .tl{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:26px}
-    .tl .wk{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 13px;display:flex;flex-direction:column;gap:7px}
-    .tl .wk .w{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--teal)}
-    .tl .wk .t{font-size:13.5px;font-weight:700;line-height:1.25}
-    .tl .wk .d{font-size:12px;color:var(--ink-soft);line-height:1.4}
-    .tl .wk .gate{margin-top:auto;font-size:10.5px;font-weight:700;color:var(--coral);display:flex;align-items:center;gap:5px}
-    .twocol{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:24px}
+    /* double diamond spine */
+    .diamond{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:26px}
+    .diamond .ph{background:#fff;border:1px solid var(--line);border-radius:13px;padding:16px 15px;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden}
+    .diamond .ph::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--teal)}
+    .diamond .ph:nth-child(2)::before{background:var(--teal-deep)} .diamond .ph:nth-child(3)::before{background:var(--coral)} .diamond .ph:nth-child(4)::before{background:#b5431f}
+    .diamond .ph .shape{font-size:20px;color:var(--teal)} .diamond .ph:nth-child(3) .shape,.diamond .ph:nth-child(4) .shape{color:var(--coral)}
+    .diamond .ph .w{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+    .diamond .ph .t{font-size:16px;font-weight:800;letter-spacing:-.01em}
+    .diamond .ph .d{font-size:12.5px;color:var(--ink-soft);line-height:1.4}
 
-    .kpi{display:flex;gap:14px;align-items:baseline;padding:14px 0;border-bottom:1px solid var(--line)}
-    .kpi b{font-size:30px;font-weight:800;color:var(--teal);line-height:1;min-width:118px}
+    /* stat / number blocks */
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+    .stat{padding:4px 0}
+    .stat b{display:block;font-size:38px;font-weight:800;color:var(--teal);line-height:1;letter-spacing:-.02em}
+    .slide.dark .stat b,.slide.teal .stat b{color:var(--coral)}
+    .stat .sx{font-size:13.5px;color:var(--ink-soft);line-height:1.4;margin-top:8px}
+    .slide.dark .stat .sx,.slide.teal .stat .sx{color:rgba(255,255,255,.8)}
+    .stat .ss{font-size:11px;color:var(--faint);margin-top:5px}
+    .slide.dark .stat .ss{color:rgba(255,255,255,.5)}
+
+    .kpi{display:flex;gap:13px;align-items:baseline;padding:12px 0;border-bottom:1px solid var(--line)}
+    .kpi b{font-size:25px;font-weight:800;color:var(--teal);line-height:1;min-width:128px}
     .slide.dark .kpi b{color:var(--coral)}
-    .kpi .kx{font-size:14.5px;color:var(--ink-soft);line-height:1.4}
+    .kpi .kx{font-size:14px;color:var(--ink-soft);line-height:1.4}
     .slide.dark .kpi{border-color:rgba(255,255,255,.14)} .slide.dark .kpi .kx{color:rgba(255,255,255,.8)}
 
-    .src{margin-top:26px;font-size:12px;color:var(--faint);line-height:1.5}
-    .ask{display:grid;grid-template-columns:1fr 1fr;gap:14px 34px;margin-top:24px}
-    .ask .item{display:flex;gap:12px;align-items:flex-start;font-size:15.5px;line-height:1.45}
-    .ask .item .c{color:var(--coral);font-weight:800;font-size:18px;flex:none;line-height:1.2}
+    .twocol{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:22px}
+    .src-line{margin-top:22px;font-size:11.5px;color:var(--faint);line-height:1.5}
+    .slide.dark .src-line{color:rgba(255,255,255,.45)}
+    .ask{display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;margin-top:22px}
+    .ask .item{display:flex;gap:11px;align-items:flex-start;font-size:15px;line-height:1.45}
+    .ask .item .c{color:var(--coral);font-weight:800;font-size:17px;flex:none;line-height:1.25}
+    .two-q{display:grid;grid-template-columns:auto 1fr;gap:13px 17px;margin-top:22px;align-items:start}
+    .two-q .qn{font-size:28px;font-weight:800;color:var(--coral);line-height:1}
+    .two-q .qt{font-size:17px;font-weight:700;line-height:1.3} .two-q .qd{font-size:13.5px;color:var(--ink-soft);line-height:1.45;margin-top:3px}
 
-    .two-q{display:grid;grid-template-columns:auto 1fr;gap:14px 18px;margin-top:26px;align-items:start}
-    .two-q .qn{font-size:30px;font-weight:800;color:var(--coral);line-height:1}
-    .two-q .qt{font-size:18px;font-weight:700;line-height:1.3}
-    .two-q .qd{font-size:14px;color:var(--ink-soft);line-height:1.45;margin-top:3px}
-    .slide.wash .two-q .qd{color:var(--ink-soft)}
+    .lede-stakes{display:flex;gap:26px;margin-top:30px;flex-wrap:wrap}
+    .lede-stakes div{font-size:14px;color:rgba(255,255,255,.8);max-width:230px;line-height:1.45}
+    .lede-stakes b{color:#fff;display:block;font-size:15px;margin-bottom:3px}
 
     @media (max-width:880px){
-      .slide{padding:60px 22px 92px}
-      h1{font-size:33px} h2{font-size:25px}
-      .hint{display:none}
-      .g2,.g3,.g4,.twocol,.ask{grid-template-columns:1fr}
-      .loop{grid-template-columns:1fr}
-      .loop .arrows{flex-direction:row;padding:8px 0}
-      .tl{grid-template-columns:1fr 1fr}
-      .two-q{grid-template-columns:1fr}
+      .slide{padding:58px 20px 92px}
+      h1{font-size:32px} h2{font-size:24px} .big-q{font-size:21px}
+      .g2,.g3,.g4,.twocol,.ask,.stats,.diamond{grid-template-columns:1fr}
+      .loop{grid-template-columns:1fr} .loop .arrows{flex-direction:row;padding:6px 0}
+      .phasetag{display:none}
     }
   </style>
 </head>
 <body>
   <div class="progress" id="progress"></div>
   <div class="brandmark"><span class="dot">G</span><span>GoVocal · Product Design</span></div>
+  <div class="phasetag" id="phasetag"></div>
 
   <main class="deck" id="deck">
 
     <!-- 1 · TITLE -->
-    <section class="slide dark active">
+    <section class="slide dark active" data-phase="">
       <div class="slide-inner">
-        <p class="eyebrow">Research &amp; design plan · June 2026</p>
-        <h1>Restarting the<br>UX/UI&nbsp;audit.</h1>
-        <p class="lead">This time we audit the <strong style="color:#fff">whole participation loop</strong> — the resident's front-office experience <em>and</em> the staff back office — as one connected journey, not two backlogs.</p>
+        <p class="eyebrow">UX/UI audit · research &amp; design plan · June 2026</p>
+        <h1>We've audited how staff<br>build a consultation.<br>Not whether residents<br>can <span class="accent">use one.</span></h1>
+        <p class="lead">A studio-grade audit of the <strong style="color:#fff">whole participation loop</strong> — the resident front office and the staff back office, as one service — to fix the half that decides whether any of it works.</p>
         <div class="title-meta">
-          <div><span class="k">Owner</span><span class="v">Rob &amp; Irene (Product)</span></div>
-          <div><span class="k">For sign-off</span><span class="v">Wietse (CEO)</span></div>
-          <div><span class="k">Technical scope</span><span class="v">Koen (CTO) · James</span></div>
-          <div><span class="k">Window</span><span class="v">~6 weeks · starts now</span></div>
+          <div><span class="k">Owners</span><span class="v">Rob &amp; Irene · Product</span></div>
+          <div><span class="k">Sign-off</span><span class="v">Wietse · CEO</span></div>
+          <div><span class="k">Technical scope</span><span class="v">Koen · CTO &amp; James</span></div>
+          <div><span class="k">Window</span><span class="v">6 weeks · starts now</span></div>
         </div>
       </div>
     </section>
 
-    <!-- 2 · WHY NOW -->
-    <section class="slide">
+    <!-- 2 · THE OPPORTUNITY -->
+    <section class="slide" data-phase="Frame">
       <div class="slide-inner">
-        <p class="eyebrow">Why now</p>
-        <h2>Three risks the experience is creating today.</h2>
-        <p class="lead">Our Q1 2026 Intercom analysis surfaced a consistent pattern: a meaningful share of client friction and support load traces back to the core flows — users hitting basic orientation questions <em>mid-task</em>, while actively building or running a consultation.</p>
-        <div class="grid g3">
-          <div class="card"><span class="ic">🚀</span><h3>Activation &amp; time-to-value</h3><p>Setup complexity slows "I need a consultation" → "I'm live." Slower activation, weaker always-on engagement.</p></div>
-          <div class="card"><span class="ic">💬</span><h3>Support cost</h3><p>Repeat Intercom load tied to avoidable UX confusion — overhead that a clear interface should remove, not absorb.</p></div>
-          <div class="card"><span class="ic">📈</span><h3>Growth ceiling</h3><p>Complexity becomes a blocker in deals and a drag on retention as we scale across 500+ governments.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 3 · WHAT WE KNOW -->
-    <section class="slide wash">
-      <div class="slide-inner">
-        <p class="eyebrow">We're not starting from zero</p>
-        <h2>We've already audited one half — well.</h2>
-        <p class="lead">Two prior passes mapped the back-office project-creation flow and proved a repeatable method. This restart <strong>widens the lens</strong>; it doesn't discard that work.</p>
-        <div class="grid g3">
-          <div class="card"><span class="num">APR 2026</span><h3>Heuristic pass</h3><p>Nielsen walkthrough of create → configure → go-live → manage → results, with real user-test notes from 5 internal sessions.</p></div>
-          <div class="card"><span class="num">MAY 2026</span><h3>Agentic audit</h3><p>Claude-in-Chrome ran scripted persona sessions and logged <strong>24 evidence-tagged findings</strong> against a 12-principle framework.</p></div>
-          <div class="card"><span class="num">JUN 2026</span><h3>Evidence layer</h3><p>Segmentation + 24-month support synthesis + a behavioural test plan — and the open question that triggered this: <em>"where do residents enter?"</em></p></div>
-        </div>
-        <p class="src">Sources: Project-creation audit (Irene, Apr) · Agentic UX/UI audit + findings log F01–F24 (Irene, May) · UX/UI Research Audit (Tali, Jun).</p>
-      </div>
-    </section>
-
-    <!-- 4 · THE BLIND SPOT -->
-    <section class="slide">
-      <div class="slide-inner">
-        <p class="eyebrow">The blind spot</p>
-        <h2>Every pass so far stopped at the back office.</h2>
-        <p class="lead">Nobody has audited the <strong class="accent">front office</strong> — the resident's actual participation experience. That's the public, branded half of the product, and it's the half that decides whether the back-office work even matters.</p>
-        <ul class="clean">
-          <li>A perfectly configured project that residents <b>can't discover, understand, or finish</b> is still a failed project.</li>
-          <li>The 24 findings tell us how staff <b>build</b> a consultation — nothing about how residents <b>experience</b> it.</li>
-          <li>The two surfaces aren't separate products. They're <b>one loop</b>, and the friction lives in the handoffs between them.</li>
+        <p class="eyebrow">The opportunity</p>
+        <p class="big-q">Three prior passes mapped the back-office build flow in detail. None has watched a resident try to <em>discover, understand, and finish</em> a contribution — or asked whether the back office and front office add up to one coherent service.</p>
+        <ul class="clean" style="max-width:820px">
+          <li><b>The product is one loop, not two backlogs.</b> A flawless project residents can't use is a failed project; a low completion rate becomes thin analysis.</li>
+          <li><b>The friction lives in the seams</b> between the two surfaces — exactly what surface-by-surface audits miss.</li>
+          <li><b>The timing forces it now</b> — cost, competition and compliance are converging (next slide).</li>
         </ul>
       </div>
     </section>
 
-    <!-- 5 · THE REFRAME / LOOP -->
-    <section class="slide dark">
+    <!-- 3 · WHY NOW -->
+    <section class="slide dark" data-phase="Frame">
       <div class="slide-inner">
-        <p class="eyebrow">The reframe</p>
-        <h2>Audit the whole participation loop.</h2>
+        <p class="eyebrow">Why now — three forces converging</p>
+        <h2>This stopped being a polish job.</h2>
+        <div class="grid g3">
+          <div class="card"><span class="ic">💸</span><h3>Cost &amp; activation</h3><p>Q1 Intercom analysis ties a consistent share of support load to mid-task confusion in the core flows — slower time-to-launch, avoidable tickets, a drag on retention.</p><span class="src">Internal · Q1 2026</span></div>
+          <div class="card"><span class="ic">⚔️</span><h3>Competition</h3><p>Civic peers set new bars — Polis-style one-tap deliberation, EngagementHQ's back-office maturity. We have 8 methods but gaps in the experience around them.</p><span class="src">Competitive scan</span></div>
+          <div class="card"><span class="ic">⚖️</span><h3>Compliance</h3><p>The <strong>European Accessibility Act is in force (Jun 2025)</strong>; every gov client already owes WCAG&nbsp;AA under the Web Accessibility Directive. Accessibility is now a <strong>procurement gate</strong>, not a nicety.</p><span class="src">EAA 2019/882 · WAD 2016/2102</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · WHAT WE KNOW -->
+    <section class="slide wash" data-phase="Frame">
+      <div class="slide-inner">
+        <p class="eyebrow">We build on it — we don't restart it</p>
+        <h2>One half is already well mapped.</h2>
+        <p class="lead">Two prior passes proved a repeatable method and produced real findings on the back-office build flow. This audit widens the lens to the whole service and goes deeper on evidence.</p>
+        <div class="grid g3">
+          <div class="card"><span class="num">APR · HEURISTIC</span><h3>Expert walkthrough</h3><p>Nielsen pass across create → configure → go-live → manage → results, with notes from 5 internal sessions.</p></div>
+          <div class="card"><span class="num">MAY · AGENTIC</span><h3>24 logged findings</h3><p>Claude-in-Chrome ran scripted persona sessions and logged evidence-tagged findings (F01–F24) against a 12-principle framework.</p></div>
+          <div class="card"><span class="num">JUN · EVIDENCE</span><h3>The trigger</h3><p>Segmentation + 24-month support synthesis — and the open question that started this: <em>"where do residents enter?"</em></p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · THE REFRAME / LOOP -->
+    <section class="slide dark" data-phase="Define">
+      <div class="slide-inner">
+        <p class="eyebrow">The reframe · audit the service, not the screens</p>
+        <h2>One participation loop.</h2>
         <div class="loop">
           <div class="lane fo">
             <h3><span class="tag">Front office</span> residents</h3>
             <div class="step"><span>1</span> Discover a project</div>
             <div class="step"><span>2</span> Understand &amp; trust it</div>
-            <div class="step"><span>3</span> Participate (idea · vote · survey)</div>
+            <div class="step"><span>3</span> Participate · idea, vote, survey</div>
             <div class="step"><span>4</span> See the loop close</div>
           </div>
-          <div class="arrows">
-            <span>→</span><div class="lbl">input flows<br>to staff</div><span>←</span><div class="lbl">outcome flows<br>to residents</div>
-          </div>
+          <div class="arrows"><span>→</span><div class="lbl">input to<br>staff</div><span>←</span><div class="lbl">outcome to<br>residents</div></div>
           <div class="lane bo">
             <h3><span class="tag">Back office</span> staff</h3>
             <div class="step"><span>A</span> Set up the project</div>
@@ -250,141 +237,190 @@
             <div class="step"><span>D</span> Make sense &amp; report</div>
           </div>
         </div>
-        <div class="seam"><b>Friction compounds at the seams.</b> Unclear access-rights config (finding F12) becomes an unexpected login wall for a resident. A confusing survey builder becomes a low completion rate becomes thin analysis. Auditing the halves separately misses exactly these joins.</div>
+        <div class="seam">We'll map it as a <b>service blueprint</b> — frontstage (what the resident sees) over backstage (what staff and the system do) — so we expose where the experience breaks <b>behind the curtain</b>, not just on the screen.</div>
       </div>
     </section>
 
-    <!-- 6 · FOUR QUESTIONS -->
-    <section class="slide wash">
+    <!-- 6 · GROUNDED IN REAL PRODUCT -->
+    <section class="slide" data-phase="Define">
       <div class="slide-inner">
-        <p class="eyebrow">What we're answering</p>
-        <h2>Four questions — across both surfaces.</h2>
-        <div class="two-q">
-          <div class="qn">1</div><div><div class="qt">Who are our users?</div><div class="qd">Staff (dedicated officers, high &amp; low savviness) <em>and</em> residents (low-literacy, engaged, skeptical first-timer). Which segment do we optimise for?</div></div>
-          <div class="qn">2</div><div><div class="qt">Where does the loop break?</div><div class="qd">A friction inventory across every BO and FO stage, each finding tagged to a usability principle and backed by evidence.</div></div>
-          <div class="qn">3</div><div><div class="qt">Which breaks matter most?</div><div class="qd">Severity (0–4) × frequency × business impact — activation, support cost, participation, trust. Mapped on an impact/effort 2×2.</div></div>
-          <div class="qn">4</div><div><div class="qt">What improves when we fix them?</div><div class="qd">A target metric per surface, so every recommendation lands on a number this room already owns.</div></div>
+        <p class="eyebrow">Grounded in the real product</p>
+        <h2>We audit the live GoVocal — and friction is already visible.</h2>
+        <p class="lead">Findings come from the actual screens, tagged to a heuristic and to evidence — never from an opinion about a mock. A sample of what the back-office pass already surfaced:</p>
+        <div class="twocol" style="margin-top:16px">
+          <div>
+            <h3 class="tealtext">Back office · seen on real screens</h3>
+            <ul class="clean">
+              <li><b>8 methods, no guidance</b> at phase creation (F15)</li>
+              <li><b>7 hidden sub-tabs</b> of phase config, unsignalled (F19)</li>
+              <li><b>Publish active on an empty project</b> — no readiness check (F08/F24)</li>
+              <li><b>Access-rights jargon</b> — "who processes the posts?" (F13)</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="accent">Front office · the unaudited half</h3>
+            <ul class="clean">
+              <li><b>Discovery</b> — can a resident even find the right project?</li>
+              <li><b>Survey can't go back a page</b>; logic only on some types</li>
+              <li><b>Mobile web</b> — where most residents actually are</li>
+              <li><b>Closure</b> — does "you said / we did" ever reach them?</li>
+            </ul>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- 7 · METHOD -->
-    <section class="slide">
+    <!-- 7 · STUDIO SPINE / DOUBLE DIAMOND -->
+    <section class="slide wash" data-phase="Approach">
       <div class="slide-inner">
-        <p class="eyebrow">How we'll answer them</p>
-        <h2>A layered method — fast, evidence-tagged, repeatable.</h2>
+        <p class="eyebrow">How a studio runs this</p>
+        <h2>One spine, four moves — the Double Diamond.</h2>
+        <p class="lead">Diverge to explore, converge to decide — twice. We spend real time understanding the problem before we design, so we don't invest build effort on instinct.</p>
+        <div class="diamond">
+          <div class="ph"><span class="shape">◣◢</span><span class="w">Wk 1–2 · Discover</span><span class="t">Explore</span><span class="d">Heuristic + agentic sweep, analytics, real screens across the whole loop.</span></div>
+          <div class="ph"><span class="shape">◥◤</span><span class="w">Wk 2–3 · Define</span><span class="t">Reframe</span><span class="d">Cluster into a friction inventory + service blueprint; pick the segment.</span></div>
+          <div class="ph"><span class="shape">◣◢</span><span class="w">Wk 3–5 · Develop</span><span class="t">Test &amp; sketch</span><span class="d">Resident tests, benchmark, first-pass redesign vision.</span></div>
+          <div class="ph"><span class="shape">◥◤</span><span class="w">Wk 5–6 · Deliver</span><span class="t">Prioritise</span><span class="d">Impact × effort 2×2, roadmap, quick wins, exec readout.</span></div>
+        </div>
+        <p class="src-line">Design Council Double Diamond · Clearleft / frog / NN/g discovery practice.</p>
+      </div>
+    </section>
+
+    <!-- 8 · METHOD → QUESTION -->
+    <section class="slide" data-phase="Approach">
+      <div class="slide-inner">
+        <p class="eyebrow">Method → the question it answers</p>
+        <h2>We pick the method for the question — and triangulate.</h2>
         <table>
-          <thead><tr><th>Layer</th><th>What we do</th><th>Grounded in</th></tr></thead>
+          <thead><tr><th>Question</th><th>Method</th><th>Why</th></tr></thead>
           <tbody>
-            <tr><td>Heuristic evaluation</td><td>Score live BO + FO against Nielsen's 10, plus Shneiderman's <em>closure</em> &amp; <em>internal locus of control</em>; 3+ evaluators, then affinity-cluster.</td><td><span class="pill">NN/g · IxDF</span></td></tr>
-            <tr><td>Agentic audit</td><td>Claude-in-Chrome runs scripted persona task-flows and logs evidence-tagged findings — the method already proven in May.</td><td><span class="pill">Our May pass</span></td></tr>
-            <tr><td>JTBD task scripts</td><td>Job-story scenarios + cognitive-walkthrough's four step-checks at every screen.</td><td><span class="pill">NN/g</span></td></tr>
-            <tr><td>Resident testing</td><td><strong>Lightweight 5-user</strong> rounds — ~3 residents per group (low-literacy vs engaged), unmoderated remote + a little guerrilla.</td><td><span class="pill">NN/g 5-user</span></td></tr>
-            <tr><td>Comparative scan</td><td>2–3 reference flows — Airtable's live-preview wizard, HubSpot checklists; GOV.UK service standard for FO.</td><td><span class="pill">Benchmark</span></td></tr>
+            <tr><td>Does it break basic usability?</td><td>Heuristic + agentic audit</td><td>Fast, evidence-tagged; the method proven in May.</td></tr>
+            <tr><td>Can users do the core jobs?</td><td>JTBD scripts + 5-user tests</td><td>~3 residents per group; moderated for the murky BO flows.</td></tr>
+            <tr><td>Is the structure findable?</td><td>Tree test + first-click</td><td>First click ~doubles task success; cheap to run.</td></tr>
+            <tr><td>Where &amp; how often is friction?</td><td>Analytics funnel + session replay</td><td>Quantifies the drop-offs the audit should target.</td></tr>
+            <tr><td>Which tasks even matter?</td><td>Top-tasks analysis</td><td>Scopes the audit to the vital few, not the trivial many.</td></tr>
+            <tr><td>Did we actually improve?</td><td>Benchmark (baseline → re-measure)</td><td>Same tasks, before and after — the credible ROI proof.</td></tr>
+          </tbody>
+        </table>
+        <p class="src-line">Triangulate qual + quant: analytics shows <em>what</em>, testing shows <em>why</em>. NN/g · Optimal Workshop · McGovern · MeasuringU.</p>
+      </div>
+    </section>
+
+    <!-- 9 · PERSONAS -->
+    <section class="slide wash" data-phase="Approach">
+      <div class="slide-inner">
+        <p class="eyebrow">Who we audit for</p>
+        <h2>Both sides of the loop — five people.</h2>
+        <div class="twocol">
+          <div>
+            <h3 class="tealtext" style="margin-bottom:12px">Back office · staff</h3>
+            <div class="grid" style="margin-top:0;gap:11px">
+              <div class="card"><h3>Joan · high savviness</h3><p>Weekly user, 15+ projects, own shortcuts. Benchmark is speed; skips help text.</p></div>
+              <div class="card"><h3>Diane · low savviness</h3><p>Small municipality, minimal training. Hesitates, re-reads, relies on the UI to say what's next.</p></div>
+            </div>
+          </div>
+          <div>
+            <h3 class="accent" style="margin-bottom:12px">Front office · residents</h3>
+            <div class="grid" style="margin-top:0;gap:11px">
+              <div class="card"><h3>The rare participant</h3><p>Low digital confidence. First 30 seconds decide everything; jargon or a login wall loses them.</p></div>
+              <div class="card"><h3>The engaged resident</h3><p>Wants depth and outcomes. Returns only if the last loop visibly closed.</p></div>
+              <div class="card"><h3>The skeptic</h3><p>Doubts it's worth it. Needs trust and impact obvious up front.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 · ACCESSIBILITY -->
+    <section class="slide" data-phase="Depth">
+      <div class="slide-inner">
+        <p class="eyebrow">Dimension 1 · accessibility = law + reach</p>
+        <h2>For a platform selling to governments, this is revenue risk.</h2>
+        <div class="stats">
+          <div class="stat"><b>Jun 2025</b><div class="sx">European Accessibility Act in force — accessibility is now a hard procurement requirement.</div><div class="ss">EAA · Directive (EU) 2019/882</div></div>
+          <div class="stat"><b>WCAG&nbsp;AA</b><div class="sx">Already owed by every EU public-sector client under the Web Accessibility Directive.</div><div class="ss">EN 301 549 · WAD 2016/2102</div></div>
+          <div class="stat"><b>56%</b><div class="sx">of EU adults have basic digital skills (vs the 80%-by-2030 target) — inclusion is the product.</div><div class="ss">Eurostat 2023</div></div>
+        </div>
+        <p class="lead" style="margin-top:24px">We'll run a scoped <strong>WCAG 2.2 AA check</strong> (automated + keyboard + screen-reader spot-checks) on representative templates — forms, a multi-step flow, a map, a content page — focusing on the criteria that bite: <strong>target size, dragging alternatives, accessible authentication, focus not obscured</strong>. A flagged issue list, not a certification.</p>
+      </div>
+    </section>
+
+    <!-- 11 · AI TRUST -->
+    <section class="slide dark" data-phase="Depth">
+      <div class="slide-inner">
+        <p class="eyebrow">Dimension 2 · AI we can trust</p>
+        <h2>The AI bet only pays off if residents trust it.</h2>
+        <p class="lead">Perspectives, AI Sensemaking, Common Ground and FormSync are central to the roadmap. We'll audit them against the established AI-UX frameworks on three axes:</p>
+        <div class="grid g3">
+          <div class="card"><h3>Explainability</h3><p>Show sources and calibrated confidence — so staff and residents can understand and challenge a result.</p><span class="src">Google PAIR · MS HAX</span></div>
+          <div class="card"><h3>Human oversight</h3><p>Every AI summary, cluster and tag must be editable and overridable in place — legally required for high-risk public use.</p><span class="src">EU AI Act Art. 14</span></div>
+          <div class="card"><h3>Representativeness</h3><p>AI must not silence minority voices — a risk now <strong>measured at 34× random</strong> in LLM opinion-aggregation. The whole sensemaking promise rests here.</p><span class="src">Stanford/MIT/Toronto 2025</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12 · BENCHMARK -->
+    <section class="slide wash" data-phase="Depth">
+      <div class="slide-inner">
+        <p class="eyebrow">Dimension 3 · benchmark, don't guess</p>
+        <h2>Compare against the best — for what they're best at.</h2>
+        <div class="grid g3">
+          <div class="card"><span class="num">DELIBERATION</span><h3>vs Polis</h3><p>One-tap agree/disagree + a live consensus map. Lowest-friction contribution and richest deliberation at once — our biggest experience gap.</p></div>
+          <div class="card"><span class="num">BACK OFFICE</span><h3>vs EngagementHQ</h3><p>Project templating / cloning and layered site→project→tool reporting. Worth matching for staff efficiency.</p></div>
+          <div class="card"><span class="num">CLOSING THE LOOP</span><h3>vs Decidim</h3><p>Follow a proposal through visible implementation stages — closure as a data model, not a marketing page. The #1 trust failure sector-wide.</p></div>
+        </div>
+        <p class="src-line">compdemocracy.org · granicus.com · docs.decidim.org. Turnout reality: Decide Madrid reached ~90k active of a 3.2M city — the front-office experience <em>is</em> the participation rate.</p>
+      </div>
+    </section>
+
+    <!-- 13 · MEASUREMENT -->
+    <section class="slide" data-phase="Outcomes">
+      <div class="slide-inner">
+        <p class="eyebrow">How we'll measure — and prove it</p>
+        <h2>Every fix lands on a number we baseline today.</h2>
+        <div class="twocol">
+          <div>
+            <h3 class="tealtext">Standard, benchmarkable</h3>
+            <div class="kpi"><b>SUS ≈ 68</b><span class="kx">System Usability Scale — measure now, beat the industry average.</span></div>
+            <div class="kpi"><b>SEQ ≈ 5.5</b><span class="kx">Single Ease Question per task — pinpoints which tasks are hard.</span></div>
+            <div class="kpi"><b>~78%</b><span class="kx">Task-success benchmark — below ~70% signals serious trouble.</span></div>
+          </div>
+          <div>
+            <h3 class="accent">Civic &amp; business</h3>
+            <div class="kpi"><b>Launch&nbsp;↓</b><span class="kx">Time-to-launch and support-ticket deflection (Intercom).</span></div>
+            <div class="kpi"><b>Complete</b><span class="kx">FO completion + return rate — repeat participation.</span></div>
+            <div class="kpi"><b>Who</b><span class="kx">Representativeness vs population — not raw volume.</span></div>
+          </div>
+        </div>
+        <p class="src-line">Baseline → redesign → re-measure the same tasks = the defensible ROI claim. MeasuringU / Sauro · Google HEART. Benchmarks are industry averages, to be re-based on our own data.</p>
+      </div>
+    </section>
+
+    <!-- 14 · TIMELINE -->
+    <section class="slide wash" data-phase="Outcomes">
+      <div class="slide-inner">
+        <p class="eyebrow">Timeline · 6 weeks, mapped to the diamond</p>
+        <h2>Stakeholders built in — never a big reveal.</h2>
+        <table>
+          <thead><tr><th>Phase</th><th>Weeks</th><th>Work</th><th>Gate</th></tr></thead>
+          <tbody>
+            <tr><td>Discover</td><td>1–2</td><td>Heuristic + agentic sweep, analytics, real-screen pass across BO &amp; FO.</td><td><span class="pill">Kickoff · Wietse</span></td></tr>
+            <tr><td>Define</td><td>2–3</td><td>Friction inventory + service blueprint; choose the focus segment; design tests.</td><td><span class="pill">Friday · Irene</span></td></tr>
+            <tr><td>Develop</td><td>3–5</td><td>5-user resident tests, comparative benchmark, first-pass redesign vision.</td><td><span class="pill">Insight share</span></td></tr>
+            <tr><td>Deliver</td><td>5–6</td><td>Impact × effort 2×2, roadmap, quick wins, exec summary.</td><td><span class="pill coral">Feasibility · Koen + James → Buy-in · Wietse</span></td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
-    <!-- 8 · PERSONAS -->
-    <section class="slide wash">
-      <div class="slide-inner">
-        <p class="eyebrow">Who we audit for</p>
-        <h2>Two sides of the loop, five people.</h2>
-        <div class="twocol">
-          <div>
-            <h3 class="tealtext" style="margin-bottom:14px">Back office · staff</h3>
-            <div class="grid" style="margin-top:0;gap:12px">
-              <div class="card"><h3>Joan — high savviness</h3><p>Uses GoVocal weekly, 15+ projects, has her own shortcuts. Benchmark is speed; rarely reads help.</p></div>
-              <div class="card"><h3>Diane — low savviness</h3><p>Small municipality, minimal training. Hesitates, re-reads labels, relies on the UI to tell her what's next.</p></div>
-            </div>
-          </div>
-          <div>
-            <h3 class="accent" style="margin-bottom:14px">Front office · residents</h3>
-            <div class="grid" style="margin-top:0;gap:12px">
-              <div class="card"><h3>The rare participant</h3><p>Low digital confidence. First 30 seconds decide everything; jargon or a login wall loses them.</p></div>
-              <div class="card"><h3>The engaged resident</h3><p>Wants depth and to see outcomes. Returns only if the last loop visibly closed.</p></div>
-              <div class="card"><h3>The skeptic</h3><p>Doubts it's worth it. Won't participate unless trust and impact are obvious up front.</p></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 9 · STAGE BY STAGE -->
-    <section class="slide">
-      <div class="slide-inner">
-        <p class="eyebrow">Coverage</p>
-        <h2>The loop, audited stage by stage.</h2>
-        <p class="lead">Mapped to GoVocal's spine — Folder → Project → Phase → method. We go end-to-end on 2–3 representative methods (ideation, survey, voting), not all eight exhaustively.</p>
-        <div class="twocol" style="margin-top:18px">
-          <div>
-            <h3 class="accent">Front office</h3>
-            <ul class="clean">
-              <li><b>Discover</b> — homepage, project list, search, "follow by interest"</li>
-              <li><b>Understand</b> — project page, phases, what's being asked &amp; why</li>
-              <li><b>Participate</b> — input form, voting, survey, map, mobile web</li>
-              <li><b>Closure</b> — statuses, official feedback, "you said / we did"</li>
-            </ul>
-          </div>
-          <div>
-            <h3 class="tealtext">Back office</h3>
-            <ul class="clean">
-              <li><b>Set up</b> — entry point, identity, access rights, timeline</li>
-              <li><b>Configure</b> — method choice, form / input / voting builders</li>
-              <li><b>Moderate</b> — Input Manager, statuses, internal collaboration</li>
-              <li><b>Make sense</b> — Insights, AI analysis, Report Builder, close loop</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 10 · METRICS -->
-    <section class="slide dark">
-      <div class="slide-inner">
-        <p class="eyebrow">What "good" looks like</p>
-        <h2>Every fix lands on a metric.</h2>
-        <div class="twocol">
-          <div>
-            <div class="kpi"><b>Time&#8209;to&#8209;launch</b><span class="kx">Back office — faster activation, fewer setup steps to "live."</span></div>
-            <div class="kpi"><b>Ticket&nbsp;↓</b><span class="kx">Support deflection — Intercom volume from the audited flows.</span></div>
-            <div class="kpi"><b>Task&nbsp;success</b><span class="kx">Staff complete configuration without error or backtracking.</span></div>
-          </div>
-          <div>
-            <div class="kpi"><b>Completion</b><span class="kx">Front office — residents who start a contribution and finish it.</span></div>
-            <div class="kpi"><b>Return&nbsp;rate</b><span class="kx">Repeat participation — driven by visibly closing the loop.</span></div>
-            <div class="kpi"><b>Who</b><span class="kx">Representativeness vs population — a high count from a narrow slice is a failure, not a win.</span></div>
-          </div>
-        </div>
-        <div class="seam" style="margin-top:24px;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2)">The sharpest civic storyline: <b style="color:#fff">closing the loop → public trust → repeat participation</b>. It's also the metric most often gamed by raw volume — so we always segment by who actually showed up.</div>
-      </div>
-    </section>
-
-    <!-- 11 · TIMELINE -->
-    <section class="slide wash">
-      <div class="slide-inner">
-        <p class="eyebrow">Timeline · ~6 weeks from now</p>
-        <h2>Phased, with stakeholders built in — not a big reveal at the end.</h2>
-        <div class="tl">
-          <div class="wk"><span class="w">Week 1</span><span class="t">Kickoff + sweep</span><span class="d">Align scope; heuristic + agentic sweep across BO &amp; FO.</span><span class="gate">◆ Kickoff w/ Wietse</span></div>
-          <div class="wk"><span class="w">Week 2</span><span class="t">Synthesis</span><span class="d">Cluster findings; pick the focus segment; design resident tests.</span><span class="gate">◆ Friday w/ Irene</span></div>
-          <div class="wk"><span class="w">Week 3</span><span class="t">Deep dive + test</span><span class="d">End-to-end on key methods; run 5-user resident sessions.</span></div>
-          <div class="wk"><span class="w">Week 4</span><span class="t">Test + benchmark</span><span class="d">Second test round; comparative scan; first redesign sketches.</span><span class="gate">◆ Insight share</span></div>
-          <div class="wk"><span class="w">Week 5</span><span class="t">Vision + 2×2</span><span class="d">Redesign vision; prioritise impact × effort.</span><span class="gate">◆ Feasibility: Koen + James</span></div>
-          <div class="wk"><span class="w">Week 6</span><span class="t">Readout</span><span class="d">Friction inventory, roadmap, exec summary.</span><span class="gate">◆ Buy-in: Wietse</span></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 12 · STAKEHOLDERS -->
-    <section class="slide">
+    <!-- 15 · STAKEHOLDERS -->
+    <section class="slide" data-phase="Outcomes">
       <div class="slide-inner">
         <p class="eyebrow">Bringing you along</p>
         <h2>You co-author the findings — you don't receive them.</h2>
-        <p class="lead">The single biggest research failure mode is the "big reveal." We tell the story <strong>repeatedly</strong>, at decision gates, so by week 6 there are no surprises — only a decision.</p>
+        <p class="lead">The biggest research failure mode is the end-of-project reveal. We tell the story <strong>repeatedly</strong>, at decision gates, so week 6 holds a decision, not a surprise.</p>
         <table>
-          <thead><tr><th>Who</th><th>Role</th><th>What they decide</th><th>When</th></tr></thead>
+          <thead><tr><th>Who</th><th>Role</th><th>Owns</th><th>When</th></tr></thead>
           <tbody>
             <tr><td>Wietse</td><td>CEO</td><td>Final buy-in &amp; vision sign-off</td><td><span class="pill">Kickoff + readout</span></td></tr>
             <tr><td>Koen</td><td>CTO, cofounder</td><td>Technical scope &amp; feasibility</td><td><span class="pill">Wk-5 gate</span></td></tr>
@@ -396,83 +432,52 @@
       </div>
     </section>
 
-    <!-- 13 · SCOPE -->
-    <section class="slide wash">
+    <!-- 16 · DELIVERABLES + ASK -->
+    <section class="slide teal" data-phase="Outcomes">
       <div class="slide-inner">
-        <p class="eyebrow">Scope guardrails</p>
-        <h2>What's in — and what protects the timeline.</h2>
+        <p class="eyebrow">What you get · what we need</p>
+        <h2>A north star, a roadmap, and quick wins.</h2>
         <div class="twocol">
           <div>
-            <h3 class="tealtext">In scope</h3>
-            <ul class="clean">
-              <li>The whole loop — both surfaces, the handoffs between them</li>
-              <li>2–3 methods end-to-end (ideation, survey, voting)</li>
-              <li>FO <b>mobile web</b> — residents are mobile-first</li>
-              <li>A WCAG 2.2 AA <b>check</b> (flag, don't certify)</li>
+            <h3 style="color:#fff">Deliverables</h3>
+            <ul class="clean" style="margin-top:12px">
+              <li>Friction inventory + service blueprint — both surfaces</li>
+              <li>First-pass redesign vision (annotated low-fi)</li>
+              <li>Prioritised impact × effort roadmap + quick wins</li>
+              <li>Baselined metrics &amp; exec summary for the org</li>
             </ul>
           </div>
           <div>
-            <h3 class="accent">Out of scope</h3>
-            <ul class="clean">
-              <li>Full redesign <b>execution</b> — this is a vision + priorities, not production design</li>
-              <li>Full accessibility certification</li>
-              <li>Native mobile app internals</li>
-              <li>Exhaustive coverage of all 8 methods</li>
-            </ul>
+            <h3 style="color:#fff">The ask</h3>
+            <div class="ask" style="grid-template-columns:1fr">
+              <div class="item"><span class="c">✓</span><div>~6 weeks of Rob + Irene, with design support</div></div>
+              <div class="item"><span class="c">✓</span><div>Data: Intercom, analytics by client, demo accounts</div></div>
+              <div class="item"><span class="c">✓</span><div>Maze license + small resident-incentive budget</div></div>
+              <div class="item"><span class="c">✓</span><div>30 min each from CS, Sales &amp; Gov Success; a wk-5 slot with Koen &amp; James</div></div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 14 · DELIVERABLES -->
-    <section class="slide">
-      <div class="slide-inner">
-        <p class="eyebrow">What you get</p>
-        <h2>Five deliverables, decision-ready.</h2>
-        <div class="grid g3">
-          <div class="card"><span class="num">01</span><h3>Friction inventory</h3><p>Severity-scored, evidence-tagged, organised by loop stage — both surfaces.</p></div>
-          <div class="card"><span class="num">02</span><h3>Live findings log</h3><p>The running record you can watch fill up, not a final-week document drop.</p></div>
-          <div class="card"><span class="num">03</span><h3>Redesign vision</h3><p>Annotated low-fi sketches for the highest-impact BO and FO moments.</p></div>
-          <div class="card"><span class="num">04</span><h3>Prioritised roadmap</h3><p>Impact × effort 2×2 → quick wins, big bets, and a clear place to start.</p></div>
-          <div class="card"><span class="num">05</span><h3>Exec summary</h3><p>Business-first narrative for Wietse + cross-team, friction tied to KPIs.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 15 · THE ASK -->
-    <section class="slide teal">
-      <div class="slide-inner">
-        <p class="eyebrow">The ask</p>
-        <h2>What we need to start.</h2>
-        <div class="ask">
-          <div class="item"><span class="c">✓</span><div><strong>Go-ahead</strong> for ~6 weeks of Rob + Irene, with design support.</div></div>
-          <div class="item"><span class="c">✓</span><div><strong>Data access</strong> — Intercom (connected), product analytics by client, account/revenue data.</div></div>
-          <div class="item"><span class="c">✓</span><div><strong>Testing tools</strong> — Maze license; demo accounts seeded with live-like projects.</div></div>
-          <div class="item"><span class="c">✓</span><div><strong>Resident recruitment</strong> + a small incentive budget for 5-user rounds.</div></div>
-          <div class="item"><span class="c">✓</span><div><strong>30 minutes each</strong> from CS, Sales &amp; Government Success.</div></div>
-          <div class="item"><span class="c">✓</span><div><strong>A week-5 feasibility slot</strong> with Koen &amp; James.</div></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 16 · RISKS + NEXT -->
-    <section class="slide dark">
+    <!-- 17 · RISKS + NEXT -->
+    <section class="slide dark" data-phase="Outcomes">
       <div class="slide-inner">
         <p class="eyebrow">Risks &amp; next step</p>
         <h2>Eyes open — and a clear first move.</h2>
         <div class="twocol">
           <div>
-            <h3 style="color:#fff">Risks we're managing</h3>
+            <h3 style="color:#fff">Managed risks</h3>
             <ul class="clean">
-              <li>Resident recruitment can slip — start it in week 1, hold a buffer</li>
-              <li>Hypotheses may not survive the data — scope can shift mid-audit</li>
-              <li>Both surfaces in 6 weeks is tight — we go deep on representative methods, not all eight</li>
+              <li>Resident recruitment can slip — start week 1, hold a buffer</li>
+              <li>Findings may reshape scope — that's the point of Discover</li>
+              <li>Both surfaces in 6 weeks is tight — depth on 2–3 representative methods, not all eight</li>
             </ul>
           </div>
           <div>
             <h3 style="color:#fff">Next step</h3>
-            <p class="lead" style="color:rgba(255,255,255,.85)">Review this with <strong style="color:#fff">Irene on Friday</strong> to lock scope and the focus segment, then open with the kickoff alignment.</p>
-            <p style="margin-top:14px"><span class="pill coral">Decision needed</span> <span style="color:rgba(255,255,255,.8);font-size:15px">Green-light + the access &amp; recruitment asks above.</span></p>
+            <p class="lead" style="color:rgba(255,255,255,.85)">Review with <strong style="color:#fff">Irene this Friday</strong> to lock scope and the focus segment, then open with the kickoff alignment.</p>
+            <p style="margin-top:14px"><span class="pill coral">Decision needed</span> <span style="color:rgba(255,255,255,.82);font-size:15px">Green-light + the access &amp; recruitment asks.</span></p>
           </div>
         </div>
       </div>
@@ -480,58 +485,41 @@
 
   </main>
 
-  <div class="nav">
-    <button id="prev" aria-label="Previous slide">‹</button>
-    <button id="next" aria-label="Next slide">›</button>
-  </div>
-  <div class="hint">← → or space to navigate</div>
-  <div class="chrome count"><b id="cur">1</b> / <span id="total">16</span></div>
+  <div class="nav"><button id="prev" aria-label="Previous slide">‹</button><button id="next" aria-label="Next slide">›</button></div>
+  <div class="chrome count"><b id="cur">1</b> / <span id="total">17</span></div>
 
   <script>
     const slides = Array.from(document.querySelectorAll('.slide'));
-    const total = slides.length;
-    let i = 0;
-    const prog = document.getElementById('progress');
-    const cur = document.getElementById('cur');
+    const total = slides.length; let i = 0;
+    const prog = document.getElementById('progress'), cur = document.getElementById('cur'), ptag = document.getElementById('phasetag');
     document.getElementById('total').textContent = total;
     const prevB = document.getElementById('prev'), nextB = document.getElementById('next');
-
     function show(n){
       i = Math.max(0, Math.min(total - 1, n));
       slides.forEach((s, x) => s.classList.toggle('active', x === i));
       const dark = slides[i].classList.contains('dark') || slides[i].classList.contains('teal');
       document.body.classList.toggle('on-light', !dark);
-      prog.style.width = ((i) / (total - 1) * 100) + '%';
+      ptag.textContent = slides[i].dataset.phase || '';
+      prog.style.width = (i / (total - 1) * 100) + '%';
       cur.textContent = i + 1;
       prevB.disabled = i === 0; nextB.disabled = i === total - 1;
-      // reset scroll of the active slide
-      slides[i].scrollTop = 0;
-      location.hash = (i + 1);
+      slides[i].scrollTop = 0; location.hash = (i + 1);
     }
     function go(d){ show(i + d); }
-
-    nextB.onclick = () => go(1);
-    prevB.onclick = () => go(-1);
+    nextB.onclick = () => go(1); prevB.onclick = () => go(-1);
     document.addEventListener('keydown', e => {
       if (['ArrowRight','PageDown',' '].includes(e.key)) { e.preventDefault(); go(1); }
       else if (['ArrowLeft','PageUp'].includes(e.key)) { e.preventDefault(); go(-1); }
-      else if (e.key === 'Home') show(0);
-      else if (e.key === 'End') show(total - 1);
+      else if (e.key === 'Home') show(0); else if (e.key === 'End') show(total - 1);
     });
-    // click left/right thirds to navigate (but not on links/buttons)
     document.getElementById('deck').addEventListener('click', e => {
       if (e.target.closest('a,button')) return;
       const x = e.clientX / window.innerWidth;
-      if (x > 0.7) go(1); else if (x < 0.18) go(-1);
+      if (x > 0.72) go(1); else if (x < 0.16) go(-1);
     });
-    // touch swipe
     let tx = 0;
     addEventListener('touchstart', e => tx = e.touches[0].clientX, {passive:true});
-    addEventListener('touchend', e => {
-      const dx = e.changedTouches[0].clientX - tx;
-      if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
-    }, {passive:true});
-
+    addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); }, {passive:true});
     const start = parseInt(location.hash.slice(1));
     show(Number.isFinite(start) && start ? start - 1 : 0);
   </script>
