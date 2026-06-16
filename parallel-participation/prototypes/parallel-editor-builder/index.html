@@ -30,7 +30,7 @@
     --rail-dark: #f0f2f5;
     --ink: #1a1f2c;
     --ink-2: #4b5563;
-    --ink-3: #7a8294;
+    --ink-3: #5b6573;
     --border: #e5e7eb;
     --accent: #1a1f2c;
     --select: #eef2ff;
@@ -202,7 +202,7 @@
   .phase-row { display:flex; align-items:center; gap:14px; padding:11px 12px; border-radius:8px; font-size:13.5px; cursor:pointer; }
   .phase-row:hover { background:#eef0f4; }
   .phase-row.active { background:#e8ecf3; font-weight:600; }
-  .phase-num { color:#9aa3b2; font-variant-numeric: tabular-nums; font-size:12.5px; min-width: 18px; }
+  .phase-num { color:#656e7d; font-variant-numeric: tabular-nums; font-size:12.5px; min-width: 18px; }
 
   /* Rich phase rows (with status + dates) */
   .phase-row-rich {
@@ -232,8 +232,8 @@
     width: 16px; height: 16px;
   }
   .phase-name { font-size: 13.5px; color: #1a1f2c; line-height: 1.3; }
-  .phase-dates { font-size: 11.5px; color: #7a8294; margin-top: 2px; line-height: 1.3; }
-  .phase-status-text { color: #7a8294; }
+  .phase-dates { font-size: 11.5px; color: #5b6573; margin-top: 2px; line-height: 1.3; }
+  .phase-status-text { color: #5b6573; }
   .phase-status-text.live-text { color: #1e7c3a; font-weight: 600; }
 
   /* Timeline group — visually connects sequential engagements */
@@ -249,7 +249,7 @@
     top: 24px;
     bottom: 38px;
     width: 2px;
-    background: #9aa3b2;
+    background: #656e7d;
     z-index: 0;
     border-radius: 1px;
     transform: translateX(-50%);
@@ -269,14 +269,14 @@
   }
   /* Past phase: muted name */
   .phase-name-past {
-    color: #7a8294;
+    color: #5b6573;
     text-decoration: line-through;
     text-decoration-color: #cbd5e1;
     text-decoration-thickness: 1px;
   }
   /* Past phase dot - filled grey */
   .phase-status-dot.completed {
-    background: #9aa3b2;
+    background: #656e7d;
   }
 
   /* small spacing breath before Add engagement */
@@ -350,7 +350,7 @@
   }
 
   .compose-card { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid var(--border); border-radius:10px; background:#fff; }
-  .compose-card .plus { width: 28px; height: 28px; border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#7a8294; }
+  .compose-card .plus { width: 28px; height: 28px; border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#5b6573; }
   .compose-card:hover { border-color:#cfd5df; }
   .phase-card {
     display:flex; align-items:center; gap:12px; padding:14px 14px; border:1px solid var(--border); border-radius:12px; background:#fff;
@@ -359,7 +359,7 @@
   .phase-card .icon-wrap { width: 28px; height: 28px; border-radius:6px; background:#f1f3f7; display:flex; align-items:center; justify-content:center; color:#4b5563; }
   .phase-card.selected { border-color:#1a1f2c; box-shadow: 0 0 0 1px #1a1f2c; }
   .phase-card.done .icon-wrap { background:#e6f4ea; color:#1e7c3a; }
-  .phase-card .chev { margin-left:auto; color:#9aa3b2; }
+  .phase-card .chev { margin-left:auto; color:#656e7d; }
 
   /* Phase chevron arrows (citizen-side timeline visual, matches current product) */
   .phase-arrow {
@@ -418,7 +418,7 @@
     font-size:12px; color:#1a1f2c;
     box-shadow: 0 2px 8px rgba(0,0,0,.04);
   }
-  .demo-state .label { padding: 0 8px; color:#7a8294; letter-spacing:.06em; font-size:11px; font-weight:600; }
+  .demo-state .label { padding: 0 8px; color:#5b6573; letter-spacing:.06em; font-size:11px; font-weight:600; }
   .demo-state button { padding: 5px 12px; border-radius:999px; color:#4b5563; }
   .demo-state button.on { background:#1a1f2c; color:#fff; font-weight:600; }
   .hint-box {
@@ -474,7 +474,7 @@
   .top-status-pill .dot { width:8px; height:8px; border-radius:999px; background:#22a455; }
   .top-divider { width: 1px; height: 28px; background: var(--border); margin: 0 4px; }
   .top-edit-label {
-    font-size: 10.5px; letter-spacing: .08em; color: #7a8294; font-weight: 600;
+    font-size: 10.5px; letter-spacing: .08em; color: #5b6573; font-weight: 600;
     text-transform: uppercase;
   }
   .top-edit-title {
@@ -890,7 +890,7 @@
   }
   .eng-add-cta:hover {
     background: #fff;
-    border-color: #9aa3b2;
+    border-color: #656e7d;
     color: #1a1f2c;
   }
 
@@ -919,7 +919,7 @@
     margin-bottom: 6px;
   }
   .sec-sub {
-    font-size: 12.5px; color: #8a92a0;
+    font-size: 12.5px; color: #656e7d;
     padding: 0 4px;
     margin: -2px 0 10px;
     line-height: 1.35;
@@ -941,7 +941,7 @@
      doesn't compete with the primary New-phase button. */
   .sec-add.muted { background: transparent; }
   /* Muted variant — the quiet "Add a survey outside the timeline" in empty state */
-  .sec-add.muted { color: #7a8294; font-weight: 500; }
+  .sec-add.muted { color: #5b6573; font-weight: 500; }
   .sec-add.muted:hover { background: #f4f6fa; color: #4b5563; }
   /* Reposition timeline line for the boxless section layout */
   .panel-section .timeline-group::before {
@@ -952,7 +952,7 @@
 
   /* Empty-state method pills (illustrative) */
   .method-hint {
-    font-size: 12.5px; color: #9aa3b2;
+    font-size: 12.5px; color: #656e7d;
     padding: 0 4px; margin: 8px 0 9px;
   }
   .method-pills {
@@ -968,7 +968,7 @@
 
   /* ============ Empty-state worked example ============ */
   .tl-example-intro {
-    font-size: 12.5px; color: #9aa3b2;
+    font-size: 12.5px; color: #656e7d;
     padding: 0 4px; margin: 4px 0 8px;
     line-height: 1.45;
   }
@@ -976,7 +976,7 @@
   .tl-example .phase-row-rich { cursor: default; padding: 7px 12px; }
   .tl-example .phase-row-rich:hover { background: transparent; }
   .tl-example .phase-name {
-    font-style: italic; font-size: 13px; color: #8a92a0;
+    font-style: italic; font-size: 13px; color: #656e7d;
   }
   .tl-example .phase-status-dot { background: #d1d5db; box-shadow: 0 0 0 3px #fff; }
   /* Lighter, shorter connector tuned for single-line example rows */
@@ -997,7 +997,7 @@
   }
   .tl-start-cta svg { width: 17px; height: 17px; stroke-width: 2.2; flex-shrink: 0; }
   .tl-start-help {
-    font-size: 12.5px; color: #9aa3b2;
+    font-size: 12.5px; color: #656e7d;
     margin-top: 7px; line-height: 1.45;
   }
 
@@ -1019,7 +1019,7 @@
   }
   .state-chip .label {
     padding: 0 8px;
-    color: #7a8294;
+    color: #5b6573;
     letter-spacing: .06em;
     font-size: 10.5px;
     font-weight: 700;
@@ -1046,7 +1046,7 @@
     border: 1.5px dashed #cbd5e1;
     background: #fafbfc;
     border-radius: 8px;
-    color: #7a8294;
+    color: #5b6573;
     font-size: 13px;
     display: flex;
     align-items: center;
@@ -1139,7 +1139,7 @@
     transition: border-color .12s ease, box-shadow .12s ease;
     display: flex; flex-direction: column; gap: 10px;
   }
-  .method-card:hover { border-color: #9aa3b2; }
+  .method-card:hover { border-color: #656e7d; }
   .method-card.selected {
     border-color: #2c6e7d;
     background: #eef6f7;
@@ -1155,7 +1155,7 @@
   }
   .method-card.disabled h4,
   .method-card.disabled p {
-    color: #9aa3b2;
+    color: #656e7d;
   }
   .method-card.disabled .method-visual {
     background: #eef0f4;
@@ -1166,7 +1166,7 @@
     background: #f4f6fa;
     border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
-    color: #9aa3b2;
+    color: #656e7d;
   }
   .method-card.selected .method-visual {
     background: #d6eef0;
@@ -1227,7 +1227,7 @@
     display: flex; flex-direction: column;
   }
   .eng-type-card:hover {
-    border-color: #9aa3b2;
+    border-color: #656e7d;
     transform: translateY(-1px);
   }
   .eng-type-card.selected {
@@ -1273,7 +1273,7 @@
   }
   .visual-timeline .vt-dot {
     width: 16px; height: 16px; border-radius: 999px;
-    background: #fff; border: 2px solid #9aa3b2;
+    background: #fff; border: 2px solid #656e7d;
     position: relative; z-index: 2; flex-shrink: 0;
   }
   .visual-timeline .vt-dot.live {
@@ -1281,7 +1281,7 @@
     box-shadow: 0 0 0 3px rgba(34,164,85,.2);
   }
   .visual-timeline .vt-line {
-    flex: 1; height: 2px; background: #9aa3b2;
+    flex: 1; height: 2px; background: #656e7d;
   }
 
   /* Visual: standalone (floating dots) */
@@ -1295,7 +1295,7 @@
     box-shadow: 0 0 0 3px rgba(34,164,85,.2);
   }
   .visual-standalone .vs-dot.dim {
-    background: #fff; border-color: #9aa3b2; box-shadow: none;
+    background: #fff; border-color: #656e7d; box-shadow: none;
   }
 
   .new-eng-foot {
@@ -1602,7 +1602,7 @@
         <div class="side-item active" data-view="project" onclick="setView('project', this)">
           <span class="side-ic" data-gv-icon="home" aria-hidden="true"></span>
           <span class="flex-1">Project page</span>
-          <svg id="project-chevron" class="nav-icon" style="width:14px;height:14px;color:#7a8294;transition:transform .15s ease;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg id="project-chevron" class="nav-icon" style="width:14px;height:14px;color:#5b6573;transition:transform .15s ease;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
 
         <!-- Project utilities — hidden on phase view (original side nav) -->
@@ -2641,7 +2641,7 @@
         <div class="phase-row-rich" data-view="phase" data-phase="schools" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>
           <div class="flex-1 min-w-0"><div class="phase-name">School survey</div>
             <div class="phase-dates">20 May–5 Jun</div></div>
-          <svg class="nav-icon" style="width:14px;height:14px;color:#9aa3b2;flex-shrink:0;" viewBox="0 0 24 24"><title>Hidden from participants</title><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
+          <svg class="nav-icon" style="width:14px;height:14px;color:#656e7d;flex-shrink:0;" viewBox="0 0 24 24"><title>Hidden from participants</title><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
         <div class="phase-row-rich"><div class="phase-status-dot upcoming"></div>
           <div class="flex-1 min-w-0"><div class="phase-name">Market-day poll</div>
             <div class="phase-dates">15–17 Aug</div></div></div>
@@ -2860,9 +2860,9 @@
               <div class="flex-1">
                 <div class="font-semibold text-[14.5px]">Selection</div>
                 <div class="flex items-center gap-2 mt-3">
-                  <div class="form-input flex items-center justify-between" style="flex:1;color:#9aa3b2;cursor:pointer;">
+                  <div class="form-input flex items-center justify-between" style="flex:1;color:#656e7d;cursor:pointer;">
                     <span>Select one or more groups</span>
-                    <svg class="nav-icon" style="width:14px;height:14px;color:#7a8294;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                    <svg class="nav-icon" style="width:14px;height:14px;color:#5b6573;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
                   </div>
                   <button class="btn-primary" style="display:inline-flex;align-items:center;gap:5px;padding:9px 14px;">
                     <svg class="nav-icon" style="width:13px;height:13px;color:#fff;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
