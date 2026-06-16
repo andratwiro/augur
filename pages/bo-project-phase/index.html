@@ -24,6 +24,11 @@
        (via .gv-bo-field max-width), but the method/view grids run full width. */
     .pp-setup__thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 520px; margin-top: 12px; }
     .pp-setup__thresholds .gv-bo-caption { margin-bottom: 4px; }
+    /* Phase-setup section descriptions: the real product renders the helper line
+       under each subhead at 16px cool-grey (digest fs=16px fw=400 rgb(89,107,122)),
+       not the 14px of the generic .gv-bo-help. Page-local lede class. */
+    .pp-lede { margin: 0 0 12px; font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); }
+    .pp-lede a { color: var(--gv-blue-500); }
     /* small info-dot icon next to a label/heading (page-local) */
     .pp-infodot { width: 16px; height: 16px; vertical-align: -3px; color: var(--gv-cool-grey-600); }
     /* Access-rights accordion now uses the canonical .gv-bo-accordion (govocal-bo.css). */
@@ -284,7 +289,7 @@
 
             <!-- Participation method -->
             <h4 class="gv-bo-subhead">What do you want to do?</h4>
-            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <p class="pp-lede">Each phase runs exactly one participation method.</p>
             <div class="gv-bo-methods">
               <button class="gv-bo-methodcard is-selected"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="comments"></span></span><span class="gv-bo-methodcard__title">Collect input and feedback</span><span class="gv-bo-methodcard__desc">Gather ideas, comments and reactions from participants.</span></button>
               <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="group"></span></span><span class="gv-bo-methodcard__title">Find common ground</span><span class="gv-bo-methodcard__desc">Surface where people agree and disagree on statements.</span></button>
@@ -394,22 +399,20 @@
 
             <!-- Participation method (Voting / prioritization selected) -->
             <h4 class="gv-bo-subhead">What do you want to do?</h4>
-            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <p class="pp-lede">Each phase runs exactly one participation method.</p>
             <div class="gv-bo-methods">
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="comments"></span></span><span class="gv-bo-methodcard__title">Collect input and feedback</span><span class="gv-bo-methodcard__desc">Gather ideas, comments and reactions from participants.</span></button>
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="group"></span></span><span class="gv-bo-methodcard__title">Find common ground</span><span class="gv-bo-methodcard__desc">Surface where people agree and disagree on statements.</span></button>
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="survey"></span></span><span class="gv-bo-methodcard__title">Conduct a survey</span><span class="gv-bo-methodcard__desc">Build a structured questionnaire with many field types.</span></button>
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="check-circle"></span></span><span class="gv-bo-methodcard__title">Create a poll</span><span class="gv-bo-methodcard__desc">Ask a quick single- or multiple-choice question.</span></button>
-              <button class="gv-bo-methodcard is-selected"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="vote-up"></span></span><span class="gv-bo-methodcard__title">Run a voting or prioritization exercise</span><span class="gv-bo-methodcard__desc">Let people allocate votes or a budget across options.</span></button>
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="volunteer"></span></span><span class="gv-bo-methodcard__title">Recruit volunteers</span><span class="gv-bo-methodcard__desc">Offer causes people can sign up to support.</span></button>
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="info-outline"></span></span><span class="gv-bo-methodcard__title">Share information</span><span class="gv-bo-methodcard__desc">A read-only phase with no participation.</span></button>
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="open-in-new"></span></span><span class="gv-bo-methodcard__title">Externally hosted survey</span><span class="gv-bo-methodcard__desc">Embed a Typeform, Google Form or other tool.</span></button>
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="edit"></span></span><span class="gv-bo-methodcard__title">Document annotation</span><span class="gv-bo-methodcard__desc">Collect comments on a hosted PDF document.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="comments"></span></span><span class="gv-bo-methodcard__title">Collect input and feedback in public</span><span class="gv-bo-methodcard__desc">Tap into your users' collective intelligence. Invite them to submit, discuss ideas, and/or provide feedback in a public space.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="vote-up"></span></span><span class="gv-bo-methodcard__title">Proposals, petitions or initiatives</span><span class="gv-bo-methodcard__desc">Allow participants to upload ideas with a time and vote limit.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="group"></span></span><span class="gv-bo-methodcard__title">Find common ground</span><span class="gv-bo-methodcard__desc">Help participants surface agreement and disagreement, one idea at a time.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="survey"></span></span><span class="gv-bo-methodcard__title">Create a survey</span><span class="gv-bo-methodcard__desc">Understand your users' needs and thinking via a wide range of private question types.</span></button>
+              <button class="gv-bo-methodcard is-selected"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="trend-up"></span></span><span class="gv-bo-methodcard__title">Conduct a voting or prioritization exercise</span><span class="gv-bo-methodcard__desc">Select a voting method, and have users prioritise between a few different options.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="info-outline"></span></span><span class="gv-bo-methodcard__title">Share information</span><span class="gv-bo-methodcard__desc">Provide information to users, visualise results from other phases and create data rich reports.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="volunteer"></span></span><span class="gv-bo-methodcard__title">Recruit participants or volunteers</span><span class="gv-bo-methodcard__desc">Ask users to volunteer for activities and causes or find participants for a panel.</span></button>
             </div>
 
             <!-- Voting method -->
             <h4 class="gv-bo-subhead">Voting method</h4>
-            <p class="gv-bo-help" style="margin-bottom:12px">Each voting method has different pre-configurations</p>
+            <p class="pp-lede">Each voting method has different pre-configurations</p>
             <div class="gv-bo-methods" style="grid-template-columns:repeat(3,1fr)">
               <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="check-circle"></span></span><span class="gv-bo-methodcard__title">One vote per option</span><span class="gv-bo-methodcard__desc">Users can chose to approve any of the options</span></button>
               <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="vote-up"></span></span><span class="gv-bo-methodcard__title">Multiple votes per option</span><span class="gv-bo-methodcard__desc">Users are given an amount of tokens to distribute between options</span></button>
@@ -420,7 +423,7 @@
 
             <!-- Options to vote on -->
             <h4 class="gv-bo-subhead">Options to vote on</h4>
-            <p class="gv-bo-help" style="margin-bottom:12px">Configure the voting options in the <a href="#">Input Manager tab</a>.</p>
+            <p class="pp-lede">Configure the voting options in the <a href="#">Input Manager tab</a>.</p>
 
             <!-- Total budget (Min / Max EUR) -->
             <h4 class="gv-bo-subhead">Total budget</h4>
@@ -431,10 +434,10 @@
 
             <!-- Actions for users -->
             <h4 class="gv-bo-subhead">Actions for users</h4>
-            <p class="gv-bo-help" style="margin-bottom:8px">Select what additional actions users can take.</p>
+            <p class="pp-lede" style="margin-bottom:8px">Select what additional actions users can take.</p>
             <div class="gv-bo-togglerow">
               <div><div class="gv-bo-togglerow__title">Commenting on posts</div>
-                <p class="gv-bo-help">Allowing users to comment can bias the voting process.</p></div>
+                <p class="pp-lede" style="margin-bottom:0">Allowing users to comment can bias the voting process.</p></div>
               <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
             </div>
 
@@ -449,7 +452,7 @@
             <h4 class="gv-bo-subhead">Result sharing</h4>
             <div class="gv-bo-togglerow">
               <div><div class="gv-bo-togglerow__title">Auto-share results</div>
-                <p class="gv-bo-help">Voting results are shared on the platform and via email to participants when the phase ends. This ensures transparency by default. <a href="#">Read more about how auto-sharing works in this article.</a></p></div>
+                <p class="pp-lede" style="margin-bottom:0">Voting results are shared on the platform and via email to participants when the phase ends. This ensures transparency by default. <a href="#">Read more about how auto-sharing works in this article.</a></p></div>
               <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
             </div>
 
@@ -493,7 +496,7 @@
             </div>
             <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
             <h4 class="gv-bo-subhead">What do you want to do?</h4>
-            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <p class="pp-lede">Each phase runs exactly one participation method.</p>
             <div class="gv-bo-methods pp-methodgrid" data-method="poll"></div>
             <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>Configure the poll questions and answer options in the <a href="#">Poll tab</a>.</div></div>
             <h4 class="gv-bo-subhead">Anonymous polling</h4>
@@ -519,7 +522,7 @@
             </div>
             <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
             <h4 class="gv-bo-subhead">What do you want to do?</h4>
-            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <p class="pp-lede">Each phase runs exactly one participation method.</p>
             <div class="gv-bo-methods pp-methodgrid" data-method="volunteering"></div>
             <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>Set up the causes people can volunteer for in the <a href="#">Volunteering tab</a>.</div></div>
             <label class="gv-bo-qlabel">Upload attachments</label>
@@ -541,7 +544,7 @@
             </div>
             <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
             <h4 class="gv-bo-subhead">What do you want to do?</h4>
-            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <p class="pp-lede">Each phase runs exactly one participation method.</p>
             <div class="gv-bo-methods pp-methodgrid" data-method="commonground"></div>
 
             <!-- Statement list editor -->
@@ -584,7 +587,7 @@
             </div>
             <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
             <h4 class="gv-bo-subhead">What do you want to do?</h4>
-            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <p class="pp-lede">Each phase runs exactly one participation method.</p>
             <div class="gv-bo-methods pp-methodgrid" data-method="information"></div>
             <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>This is a read-only phase — participants can't submit, comment or react. Use the <a href="#">Description</a> tab to share updates, images and embeds.</div></div>
             <label class="gv-bo-qlabel">Upload attachments</label>
@@ -594,8 +597,8 @@
 
           <!-- ════ ACCESS RIGHTS sub-panel (Phase access and user data) ════ -->
           <div class="pp-sub" data-sub="access">
-            <h3 class="gv-bo-formhead" style="margin-bottom:8px">Phase access and user data</h3>
-            <p class="gv-bo-help" style="max-width:680px;margin:0 0 22px">You can specify who can take each action, and ask additional questions to participants to collect more information.</p>
+            <h3 class="gv-bo-pagetitle" style="margin-bottom:8px">Phase access and user data</h3>
+            <p class="gv-bo-help" style="max-width:680px;margin:0 0 22px;font-size:var(--gv-fs-base)">You can specify who can take each action, and ask additional questions to participants to collect more information.</p>
 
             <div class="gv-bo-accordion">
               <div class="gv-bo-accordion__row">
@@ -1253,15 +1256,13 @@
     // card named by data-method pre-selected. (Mirrors the hardcoded grids in the
     // ideation/voting Setup panels.)
     const METHODS = [
-      ["collect", "comments",      "Collect input and feedback",            "Gather ideas, comments and reactions from participants."],
-      ["commonground", "group",    "Find common ground",                    "Surface where people agree and disagree on statements."],
-      ["survey", "survey",         "Conduct a survey",                      "Build a structured questionnaire with many field types."],
-      ["poll", "check-circle",     "Create a poll",                         "Ask a quick single- or multiple-choice question."],
-      ["voting", "vote-up",        "Run a voting or prioritization exercise","Let people allocate votes or a budget across options."],
-      ["volunteering", "volunteer","Recruit volunteers",                    "Offer causes people can sign up to support."],
-      ["information", "info-outline","Share information",                   "A read-only phase with no participation."],
-      ["external", "open-in-new",  "Externally hosted survey",              "Embed a Typeform, Google Form or other tool."],
-      ["annotation", "edit",       "Document annotation",                   "Collect comments on a hosted PDF document."],
+      ["collect", "comments",       "Collect input and feedback in public",     "Tap into your users' collective intelligence. Invite them to submit, discuss ideas, and/or provide feedback in a public space."],
+      ["proposals", "vote-up",      "Proposals, petitions or initiatives",      "Allow participants to upload ideas with a time and vote limit."],
+      ["commonground", "group",     "Find common ground",                       "Help participants surface agreement and disagreement, one idea at a time."],
+      ["survey", "survey",          "Create a survey",                          "Understand your users' needs and thinking via a wide range of private question types."],
+      ["voting", "trend-up",        "Conduct a voting or prioritization exercise","Select a voting method, and have users prioritise between a few different options."],
+      ["information", "info-outline","Share information",                        "Provide information to users, visualise results from other phases and create data rich reports."],
+      ["volunteering", "volunteer", "Recruit participants or volunteers",       "Ask users to volunteer for activities and causes or find participants for a panel."],
     ];
     document.querySelectorAll(".pp-methodgrid").forEach(grid => {
       const sel = grid.dataset.method;

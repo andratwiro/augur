@@ -44,6 +44,7 @@
     .us-assigned { display: inline-flex; align-items: center; gap: 4px; color: var(--gv-text-secondary); font-size: var(--gv-fs-13); cursor: pointer; margin-top: 2px; }
     .us-assigned .gv-icon { width: 13px; height: 13px; }
 
+
     /* ── Sub-view view-swapping: only the active state shows ──────────── */
     .us-view { display: none; }
     .us-view.is-active { display: block; }
@@ -91,8 +92,15 @@
 
     /* ── Add-group modal choice cards (mounted in canonical .gv-modal__body) ── */
     .us-choices { display: flex; gap: 16px; }
-    .us-choice { flex: 1 1 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 28px 22px; background: var(--gv-grey-100); border-radius: var(--gv-radius); }
-    .us-choice__icon { width: 40px; height: 40px; color: var(--gv-bo-primary); }
+    /* Choice cards: 325px each, bg #EBEDEF = var(--gv-grey-200) (measured groupmodal). */
+    .us-choice { flex: 1 1 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 28px 22px; background: var(--gv-grey-200); border-radius: var(--gv-radius); }
+    /* 62px circular tinted icon backdrop — Manual navy 10%, Smart orange 10% (measured). */
+    .us-choice__disc { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; flex: none; margin-bottom: 4px; }
+    .us-choice__disc.is-manual { background: rgba(4, 77, 108, 0.1); }
+    .us-choice__disc.is-smart { background: rgba(255, 103, 47, 0.1); }
+    .us-choice__icon { width: 28px; height: 28px; }
+    .us-choice__disc.is-manual .us-choice__icon { color: var(--gv-bo-primary); }
+    .us-choice__disc.is-smart .us-choice__icon { color: var(--gv-orange-500); }
     .us-choice__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 600; color: var(--gv-bo-primary); }
     .us-choice__text { margin: 0; flex: 1 1 auto; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); line-height: 1.5; }
     .us-choice__link { color: var(--gv-teal-500); font-size: var(--gv-fs-s); text-decoration: none; }
@@ -157,10 +165,10 @@
               <thead>
                 <tr>
                   <th class="gv-bo-table__check"></th>
-                  <th>NAME</th>
+                  <th class="gv-bo-th--sort is-sorted">NAME</th>
                   <th>ROLE</th>
                   <th>LAST ACTIVE</th>
-                  <th class="gv-bo-th--sort is-sorted">JOINED <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th class="gv-bo-th--sort">JOINED <span class="gv-icon" data-gv-icon="chevron-up"></span></th>
                   <th>OPTIONS</th>
                 </tr>
               </thead>
@@ -296,10 +304,10 @@
               <thead>
                 <tr>
                   <th class="gv-bo-table__check"></th>
-                  <th>NAME</th>
+                  <th class="gv-bo-th--sort is-sorted">NAME</th>
                   <th>ROLE</th>
                   <th>LAST ACTIVE</th>
-                  <th class="gv-bo-th--sort is-sorted">JOINED <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th class="gv-bo-th--sort">JOINED <span class="gv-icon" data-gv-icon="chevron-up"></span></th>
                   <th>OPTIONS</th>
                 </tr>
               </thead>
@@ -327,14 +335,14 @@
       <div class="gv-modal__body">
         <div class="us-choices">
           <div class="us-choice">
-            <span class="us-choice__icon gv-icon" data-gv-icon="group"></span>
+            <span class="us-choice__disc is-manual"><span class="us-choice__icon gv-icon" data-gv-icon="group"></span></span>
             <h2 class="us-choice__title">Manual group</h2>
             <p class="us-choice__text">You can select users from the overview and add them to this group.</p>
             <a class="us-choice__link" href="#">Learn more about groups</a>
             <button class="gv-btn primary" type="button"><span class="gv-btn__label">Create a manual group</span></button>
           </div>
           <div class="us-choice">
-            <span class="us-choice__icon gv-icon" data-gv-icon="filter"></span>
+            <span class="us-choice__disc is-smart"><span class="us-choice__icon gv-icon" data-gv-icon="stars"></span></span>
             <h2 class="us-choice__title">Smart group</h2>
             <p class="us-choice__text">You can define conditions and users who meet the conditions are automatically added to this group.</p>
             <a class="us-choice__link" href="#">Learn more about groups</a>

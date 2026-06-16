@@ -306,7 +306,7 @@
 .gv-bo-pagetitle { margin: 0 0 4px; font-size: var(--gv-fs-xxl); font-weight: 500; color: var(--gv-bo-primary); }
 .gv-bo-pagelede { margin: 0 0 24px; font-size: var(--gv-fs-base); color: var(--gv-text-secondary); }
 /* Sub-section heading (h4, "What do you want to do?"): 18px/700 admin blue. */
-.gv-bo-subhead { margin: 28px 0 4px; font-size: 18px; font-weight: 700; color: var(--gv-bo-primary); }
+.gv-bo-subhead { margin: 28px 0 4px; font-size: var(--gv-fs-l); font-weight: 500; color: var(--gv-bo-primary); }
 /* Small grouping caption (h6, e.g. method-section labels): 14px/700 cool grey. */
 .gv-bo-caption { margin: 0 0 8px; font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-cool-grey-500); }
 /* Helper/description line under a control: 14px cool-grey-600. */
@@ -847,7 +847,7 @@
 .gv-bo-fieldrow.is-selected { background: var(--gv-teal-50); box-shadow: inset 3px 0 0 var(--gv-teal-500); }
 .gv-bo-fieldrow__grip { color: var(--gv-cool-grey-500); display: inline-flex; cursor: grab; flex: none; }
 .gv-bo-fieldrow__grip svg { width: 14px; height: 14px; }
-.gv-bo-fieldrow__qno { font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-teal-500); flex: none; }
+.gv-bo-fieldrow__qno { font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-teal-400); flex: none; }
 .gv-bo-fieldrow__title { font-size: var(--gv-fs-base); color: var(--gv-grey-800); flex: 1 1 auto; }
 .gv-bo-fieldrow__title.is-empty { color: var(--gv-cool-grey-500); font-style: italic; }
 .gv-bo-fieldrow__badges { display: flex; align-items: center; gap: 10px; flex: none; }

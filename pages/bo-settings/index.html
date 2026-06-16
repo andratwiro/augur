@@ -34,7 +34,8 @@
     .st-subtabs a.is-active { color: var(--gv-bo-primary); border-color: var(--gv-bo-primary); font-weight: 600; }
     .st-new-pill { margin-left: 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em; background: var(--gv-teal-100); color: var(--gv-teal-700); padding: 1px 5px; border-radius: 3px; }
     /* Collapsible row (Policies, Terminology). */
-    .st-collapse { display: flex; align-items: center; gap: 8px; padding: 14px 0; border-top: 1px solid var(--gv-divider); color: var(--gv-bo-primary); cursor: pointer; }
+    /* Collapse-row labels (Terms/Privacy, Terminology) are 16px/500/#596B7A in real. */
+    .st-collapse { display: flex; align-items: center; gap: 8px; padding: 14px 0; border-top: 1px solid var(--gv-divider); color: var(--gv-cool-grey-600); font-weight: 500; cursor: pointer; }
     .st-collapse:first-of-type { border-top: 0; }
     .st-collapse .gv-icon { color: var(--gv-cool-grey-500); }
     .st-swatch { width: 24px; height: 24px; border-radius: 3px; flex: none; }
@@ -69,9 +70,12 @@
     /* Inner add-form views (swapped in place of the list view). */
     .st-view { display: none; }
     .st-view.is-active { display: block; }
-    /* "Go back" link above an add-form (real product). */
-    .st-goback { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-bo-link); font-size: var(--gv-fs-base); background: none; border: 0; padding: 0; cursor: pointer; margin-bottom: 18px; }
-    .st-goback .gv-icon, .st-goback svg { width: 16px; height: 16px; }
+    /* "Go back" link above an add-form. Real: 16px/#596B7A (cool-grey-600) + dark arrow. */
+    .st-goback { display: inline-flex; align-items: center; gap: 8px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-base); background: none; border: 0; padding: 0; cursor: pointer; margin-bottom: 14px; }
+    .st-goback:hover { color: var(--gv-bo-primary); }
+    .st-goback .gv-icon, .st-goback svg { width: 18px; height: 18px; }
+    /* Inner bordered card wrapping an add-form (real: 1px #E0E0E0, 3px radius). */
+    .st-innercard { border: 1px solid var(--gv-divider); border-radius: 3px; padding: 28px 32px; max-width: 1052px; }
     /* Answer-format radio list (Add demographic question). Real rows are
        cool-grey 16px/400, generous vertical rhythm. */
     .st-radiolist { margin: 0 0 8px; max-width: 540px; }
@@ -163,10 +167,10 @@
             <h2 class="gv-bo-formhead st-head">Registration</h2>
             <h3 class="gv-bo-subhead st-sub" style="margin-top:0">Registration and login helper text</h3>
             <p class="gv-bo-help" style="margin-bottom:18px">Add short descriptions for the top of the sign-up and login forms.</p>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Enter email step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Enter password step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">'Complete your profile' step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Demographic questions<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text" value="Can't sign up? Use this test account: pemeta9222@jucatyo.com, p"></div>
+            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Enter email step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
+            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Enter password step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
+            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">'Complete your profile' step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
+            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Demographic questions<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text" value="Can't sign up? Use this test account: pemeta9222@jucatyo.com, p"></div>
             <button class="gv-btn admin-dark st-btn-disabled" disabled>Save</button>
 
             <hr class="st-divider">
@@ -191,33 +195,36 @@
 
            <!-- Add a new demographic question (route/full-page form) -->
            <div class="st-view" data-view="reg-add">
-            <button class="st-goback" data-back="reg-list"><span data-gv-icon="chevron-left"></span>Go back</button>
+            <button class="st-goback" data-back="reg-list"><span data-gv-icon="arrow-left"></span>Go back</button>
             <h2 class="gv-bo-formhead st-head" style="margin-top:0">Add a new demographic question</h2>
+            <div class="st-innercard">
             <div class="gv-bo-field">
               <span class="st-lbl">Answer format</span>
-              <div class="st-radiolist">
-                <label class="gv-radio"><input type="radio" name="ansfmt" checked><span class="circle"></span>Multiple choice (select one)</label>
-                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Multiple choice (select multiple)</label>
-                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Yes-no (checkbox)</label>
-                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Short answer</label>
-                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Long answer</label>
-                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Numeric value</label>
-                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Date</label>
-              </div>
+              <select class="gv-bo-select">
+                <option value="" selected></option>
+                <option>Multiple choice (select one)</option>
+                <option>Multiple choice (select multiple)</option>
+                <option>Yes-no (checkbox)</option>
+                <option>Short answer</option>
+                <option>Long answer</option>
+                <option>Numeric value</option>
+                <option>Date</option>
+              </select>
             </div>
             <div class="gv-bo-field">
-              <div class="st-fieldrow"><span class="st-lbl">Question name</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div>
+              <div class="st-fieldrow"><span class="st-lbl">Question name</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>en</button><button type="button"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>es-ES</button></div></div>
               <input class="gv-input" type="text">
             </div>
             <div class="gv-bo-field">
-              <div class="st-fieldrow"><span class="st-lbl">Description</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div>
+              <div class="st-fieldrow"><span class="st-lbl">Description</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>en</button><button type="button"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>es-ES</button></div></div>
               <input class="gv-input" type="text">
             </div>
             <div class="st-togglerow" style="margin-bottom:18px">
               <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
               <div><div class="st-togglerow__title">Make answering this question required?</div></div>
             </div>
-            <button class="gv-btn admin-dark">Save question</button>
+            <button class="gv-btn success">Save question</button>
+            </div>
            </div>
           </div>
 
@@ -242,13 +249,13 @@
 
            <!-- Add a geographic area (route/full-page form, NOT a modal) -->
            <div class="st-view" data-view="areas-add">
-            <button class="st-goback" data-back="areas-list"><span data-gv-icon="chevron-left"></span>Go back</button>
+            <button class="st-goback" data-back="areas-list"><span data-gv-icon="arrow-left"></span>Go back</button>
             <h2 class="gv-bo-formhead st-head" style="margin-top:0">Add a geographic area</h2>
             <div class="gv-bo-field">
-              <div class="st-fieldrow"><span class="st-lbl">Area name</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div>
+              <div class="st-fieldrow"><span class="st-lbl">Area name</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>en</button><button type="button"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>es-ES</button></div></div>
               <input class="gv-input" type="text">
             </div>
-            <button class="gv-btn admin-dark">Save area</button>
+            <button class="gv-btn success">Save area</button>
            </div>
           </div>
 
@@ -329,8 +336,8 @@
     // Proposal statuses: distinct lifecycle (proposed / threshold reached / expired /
     // answered / ineligible). Colours measured from r1-cf-set-statuses-proposal digest.
     const PROPOSAL_STATUSES = [
-      ["screening", "#4b4b4b", true], ["proposed", "#057abe", true], ["threshold reached", "#008300", false],
-      ["expired", "#b22222", false], ["answered", "#1e3a8a", false], ["ineligible", "#8b0000", false],
+      ["screening", "#4b4b4b", true], ["proposed", "#057abe", true], ["threshold reached", "#008300", true],
+      ["expired", "#b22222", true], ["answered", "#1e3a8a", false], ["ineligible", "#8b0000", false],
     ];
     function renderStatuses(rows) {
       document.getElementById("statusrows").innerHTML = rows.map(([name, color, locked]) => `

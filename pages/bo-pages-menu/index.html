@@ -54,6 +54,9 @@
        16px, teal underline). Page-local — only one tab in this flow. */
     .pm-tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--gv-grey-300); margin: 16px 0 28px; }
     .pm-tab { padding: 0 0 12px; font-size: var(--gv-fs-base); font-weight: 500; color: var(--gv-bo-primary); border-bottom: 2px solid var(--gv-bo-primary); }
+    /* Create-page form labels are the lighter variant: 16px/400/#596B7A (digest),
+       not the navy 18px/500 used elsewhere in the editor. Page-local override. */
+    #pm-view-form .gv-bo-field > .gv-label { font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); }
     /* Field label + tooltip glyph row (Linked projects has a help icon). */
     .pm-fieldlabel { display: flex; align-items: center; gap: 6px; }
     .pm-fieldlabel .pm-tip { display: inline-flex; color: var(--gv-cool-grey-500); cursor: help; }
@@ -126,7 +129,6 @@
 
             <div class="pm-formfoot">
               <button type="submit" class="gv-btn admin-dark"><span class="gv-btn__label">Save custom page</span></button>
-              <button type="button" class="gv-btn secondary-outlined" id="pm-cancel"><span class="gv-btn__label">Go back</span></button>
             </div>
           </form>
         </div>
@@ -182,7 +184,6 @@
       window.scrollTo(0, 0);
     }
     document.getElementById("pm-create-btn").addEventListener("click", () => showForm(true));
-    document.getElementById("pm-cancel").addEventListener("click", () => showForm(false));
     document.getElementById("pm-crumb-back").addEventListener("click", () => showForm(false));
 
     // ── Segmented "Linked projects" toggle (single-select tablist) ───────────

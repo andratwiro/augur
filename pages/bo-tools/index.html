@@ -57,6 +57,12 @@
     /* Settings section labels: "Dimensions"/"Style"/"Header & Button" — 16px/400/#596B7A
        with a hairline rule under, matching the divider colour #E0E0E0. */
     .tl-sec { margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid #E0E0E0; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); }
+    /* Real "Settings" heading above the accordion: 16px/600/#044D6C. */
+    .tl-settings-head { margin: 0 0 4px; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-bo-primary); }
+    /* Accordion section titles read at 16px/#596B7A here (not the 21px phase head); soften. */
+    .tl-wb .gv-bo-accordion__title { font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); }
+    .tl-wb .gv-bo-accordion__head { padding: 14px 2px; }
+    .tl-wb .gv-bo-accordion__chev { width: 18px; height: 18px; color: var(--gv-cool-grey-600); }
     .tl-sec + .tl-grid, .tl-sec + .tl-stack { margin-bottom: 28px; }
     .tl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
     .tl-stack { display: flex; flex-direction: column; gap: 16px; }
@@ -117,15 +123,22 @@
         <h1 class="tl-title tl-title--l">Widget</h1>
         <p class="tl-intro">You can create a widget, customize it and add it to your own website to attract people to this platform.</p>
 
-        <div class="gv-bo-tabs gv-bo-tabs--sub" role="tablist">
-          <button class="gv-bo-tab is-active" role="tab" data-wtab="ideas">Ideas</button>
-          <button class="gv-bo-tab" role="tab" data-wtab="projects">Projects</button>
+        <div class="gv-bo-segmented" role="tablist">
+          <button class="gv-bo-segmented__btn is-active" role="tab" data-wtab="ideas">Ideas</button>
+          <button class="gv-bo-segmented__btn" role="tab" data-wtab="projects">Projects</button>
         </div>
 
         <div class="gv-bo-card tl-wb">
-          <!-- Settings form -->
+          <!-- Settings form: collapsible accordion sections -->
           <form class="tl-form" id="wb-form" onsubmit="return false">
-            <h2 class="tl-sec">Dimensions</h2>
+            <h2 class="tl-settings-head">Settings</h2>
+            <div class="gv-bo-accordion">
+            <div class="gv-bo-accordion__row">
+              <button type="button" class="gv-bo-accordion__head" aria-expanded="false" data-acc>
+                <span class="gv-bo-accordion__title">Dimensions</span>
+                <span class="gv-bo-accordion__chev" data-gv-icon="chevron-right"></span>
+              </button>
+              <div class="gv-bo-accordion__body" hidden>
             <div class="tl-grid">
               <div class="gv-bo-field">
                 <label class="gv-label" for="wb-w">Width</label>
@@ -140,8 +153,14 @@
                 <input class="gv-input" id="wb-fs" type="number" value="14" data-wv="fontSize">
               </div>
             </div>
-
-            <h2 class="tl-sec">Style</h2>
+              </div>
+            </div>
+            <div class="gv-bo-accordion__row">
+              <button type="button" class="gv-bo-accordion__head" aria-expanded="false" data-acc>
+                <span class="gv-bo-accordion__title">Style</span>
+                <span class="gv-bo-accordion__chev" data-gv-icon="chevron-right"></span>
+              </button>
+              <div class="gv-bo-accordion__body" hidden>
             <div class="tl-stack">
               <div class="gv-bo-field">
                 <label class="gv-label">Site background color</label>
@@ -177,8 +196,14 @@
                 <p class="tl-help">This must be an existing font name from <a href="https://fonts.google.com/" target="_blank" rel="noopener">Google Fonts</a>.</p>
               </div>
             </div>
-
-            <h2 class="tl-sec">Header &amp; Button</h2>
+              </div>
+            </div>
+            <div class="gv-bo-accordion__row">
+              <button type="button" class="gv-bo-accordion__head" aria-expanded="false" data-acc>
+                <span class="gv-bo-accordion__title">Header &amp; Button</span>
+                <span class="gv-bo-accordion__chev" data-gv-icon="chevron-right"></span>
+              </button>
+              <div class="gv-bo-accordion__body" hidden>
             <div class="tl-stack">
               <div class="tl-togglerow">
                 <span class="label">Show header</span>
@@ -204,6 +229,32 @@
                 <label class="gv-label" for="wb-btn">Button text</label>
                 <input class="gv-input" id="wb-btn" value="Participate" data-wv="buttonText">
               </div>
+            </div>
+              </div>
+            </div>
+            <div class="gv-bo-accordion__row">
+              <button type="button" class="gv-bo-accordion__head" aria-expanded="false" data-acc>
+                <span class="gv-bo-accordion__title">Content</span>
+                <span class="gv-bo-accordion__chev" data-gv-icon="chevron-right"></span>
+              </button>
+              <div class="gv-bo-accordion__body" hidden>
+            <div class="tl-stack">
+              <div class="gv-bo-field">
+                <label class="gv-label" for="wb-sort">Sort by</label>
+                <select class="gv-input gv-select" id="wb-sort">
+                  <option>Trending</option>
+                  <option>Most reacted</option>
+                  <option>Newest</option>
+                  <option>Random</option>
+                </select>
+              </div>
+              <div class="gv-bo-field">
+                <label class="gv-label" for="wb-num">Number of inputs</label>
+                <input class="gv-input" id="wb-num" type="number" value="3">
+              </div>
+            </div>
+              </div>
+            </div>
             </div>
           </form>
 
@@ -236,7 +287,7 @@
       <section class="gv-bo-section tl-view" id="view-esri" hidden>
         <button class="tl-back" data-back type="button"><span data-gv-icon="arrow-left"></span>Go back</button>
         <h1 class="tl-title tl-title--xl">Esri Maps</h1>
-        <p class="tl-intro">Add your Esri API key to allow importing data from ArcGIS Online directly into your mapping projects.</p>
+        <p class="tl-intro">Add your Esri API key to allow importing your map layers from ArcGIS Online in the map tabs in projects.</p>
         <div class="gv-bo-card tl-esri-card">
           <div class="gv-bo-field" style="max-width:400px">
             <label class="gv-label" for="esri-key">Esri API key</label>
@@ -336,6 +387,15 @@
     }
     document.getElementById("wb-form").addEventListener("input", renderWidget);
     renderWidget();
+
+    // ── Settings accordion (collapsed by default, like the real builder) ──
+    document.querySelectorAll("[data-acc]").forEach(head => {
+      head.addEventListener("click", () => {
+        const open = head.getAttribute("aria-expanded") === "true";
+        head.setAttribute("aria-expanded", String(!open));
+        head.nextElementSibling.hidden = open;
+      });
+    });
   </script>
 </body>
 </html>

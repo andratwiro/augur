@@ -62,22 +62,32 @@
     /* ── Centre canvas — the white survey FORM card on the #EDEFF0 app canvas ── */
     .sb-formcard {
       max-width: 1168px; margin: 0 auto; background: var(--gv-white);
-      border-radius: 3px; box-shadow: 0 2px 4px rgba(0,0,0,.06); overflow: hidden;
+      border: 1px solid var(--gv-grey-300); padding: 24px 30px 100px;
     }
+    /* Vertical rhythm between the stacked banners / notes at the top of the card. */
+    .sb-formcard > .sb-hint + .sb-hint,
+    .sb-formcard > .sb-hint + #sb-pages,
+    .sb-formcard > #sb-pages + .sb-note,
+    .sb-formcard > .sb-note + .sb-ending { margin-top: 14px; }
 
-    /* Banners stacked at the top of the card. The drag-hint is the teal info band
-       (bg captured rgb(190,231,235) ≈ teal tint), the submissions warning is muted. */
+    /* Banners stacked at the top of the card. Both the drag-hint and the
+       submissions warning are the GoVocal teal Warning box: bg teal-100
+       (captured rgb(190,231,235)), text teal-700 (captured rgb(10,81,89)) at
+       16px. The demographic line is NOT a tinted box — it's an italic grey
+       inline note (captured rgb(118,118,118)=grey-700, font-size 16px). */
     .sb-hint {
-      display: flex; align-items: flex-start; gap: 10px; padding: 14px 18px;
-      background: #BEE7EB; color: var(--gv-teal-700); font-size: var(--gv-fs-s); line-height: 1.45;
+      display: flex; align-items: center; gap: 10px; padding: 14px;
+      background: var(--gv-teal-100); color: var(--gv-teal-700);
+      font-size: var(--gv-fs-base); line-height: 1.45; border-radius: var(--gv-radius);
     }
-    .sb-hint .gv-icon { flex: none; margin-top: 1px; color: var(--gv-teal-700); }
+    .sb-hint .gv-icon { flex: none; color: var(--gv-teal-700); }
+    .sb-hint a { color: var(--gv-blue-500); }
     .sb-note {
-      display: flex; align-items: flex-start; gap: 10px; padding: 12px 18px;
-      background: var(--gv-grey-100); color: var(--gv-cool-grey-600);
-      font-size: var(--gv-fs-s); line-height: 1.45; border-bottom: 1px solid var(--gv-grey-300);
+      display: flex; align-items: flex-start; gap: 10px; padding: 14px 18px;
+      color: var(--gv-grey-700); font-style: italic;
+      font-size: var(--gv-fs-base); line-height: 1.45;
     }
-    .sb-note .gv-icon { flex: none; margin-top: 1px; }
+    .sb-note .gv-icon { flex: none; margin-top: 1px; color: var(--gv-grey-700); }
     .sb-note a { color: var(--gv-blue-500); }
 
     /* Page group header — navy bold "Page N", with a "Continues to ⋯" sub-line.
@@ -94,8 +104,8 @@
       display: flex; align-items: center; gap: 6px; padding: 0 18px 12px 42px;
       font-size: var(--gv-fs-s); color: var(--gv-cool-grey-500);
     }
-    .sb-page__logic .sb-logic-link { color: var(--gv-cool-grey-600); }
-    .sb-page__logic .sb-logic-target { color: var(--gv-cool-grey-600); }
+    .sb-page__logic .sb-logic-link { color: var(--gv-cool-grey-500); }
+    .sb-page__logic .sb-logic-target { color: var(--gv-cool-grey-500); }
 
     /* Field row + type/required meta badges now use the canonical
        .gv-bo-fieldrow / .gv-bo-typebadge (govocal-bo.css). The ⋯ more-actions
@@ -123,9 +133,9 @@
     }
     /* The small AI badge on the AI-assisted field types (captured 12px/500 on teal). */
     .sb-ai {
-      display: inline-flex; align-items: center; padding: 1px 5px; border-radius: 3px;
+      display: inline-flex; align-items: center; padding: 1px 6px; border-radius: var(--gv-radius);
       font-size: var(--gv-fs-xs); font-weight: 500; color: var(--gv-white);
-      background: var(--gv-teal-500); margin-left: auto;
+      background: var(--gv-teal-500); margin-left: auto; text-transform: uppercase;
     }
     /* Palette items reuse .gv-bo-cb-item; this just lets the AI badge push right. */
     #sb-root .gv-bo-cb-item { position: relative; }
@@ -221,7 +231,7 @@
             <span class="gv-icon" data-gv-icon="info-solid"></span>
             <span>To add questions to the form, drag and drop a field type from the left, or click it to append it to the last page.</span>
           </div>
-          <div class="sb-note">
+          <div class="sb-hint">
             <span class="gv-icon" data-gv-icon="info-outline"></span>
             <span>Submissions to this survey have started — changing or deleting questions may result in incomplete data in the exported files.</span>
           </div>
@@ -229,7 +239,7 @@
           <!-- Pages + fields are rendered here by JS -->
           <div id="sb-pages"></div>
 
-          <div class="sb-note" style="border-top:1px solid var(--gv-grey-300);border-bottom:0;">
+          <div class="sb-note">
             <span class="gv-icon" data-gv-icon="info-outline"></span>
             <span>‘Demographic fields in survey form’ is enabled. When the survey form is displayed any configured demographic questions will be added on a new page immediately before the end of the survey. These questions can be changed in the <a href="#">access rights settings for this survey</a>.</span>
           </div>
