@@ -43,11 +43,13 @@
     .pp-desc { grid-column: 1; }
     @media (max-width: 760px) { .pp-title { grid-template-columns: 1fr; } .pp-title h1, .pp-cta, .pp-desc { grid-column: 1; } .pp-cta { grid-row: auto; } }
 
-    /* ── Ideation MAP view (page-local; faithful to fo-project-ideation-map capture) ──
-       Replaces the idea-card column with a REAL Leaflet + OpenStreetMap map; keeps the
-       .gv-feedfilter sidebar. Markers (one per idea) are drawn by Leaflet; on top sits a
-       floating overlay card (Filters + compact idea list) + an admin info banner.
-       Colours/sizes via --gv-* tokens; no .gv-* class is redefined; .leaflet-* is external. */
+    /* ── Ideation MAP view (page-local; faithful to map-real-mapview capture) ──
+       Desktop: a FULL-WIDTH Leaflet + OpenStreetMap map with a LEFT white overlay panel
+       (a "Filters" pill on top, then a scrollable column of compact idea cards). There is
+       NO right .gv-feedfilter sidebar in MAP view (that's the LIST view only). Mobile: the
+       map is full-width on top with the Filters pill above it, and the idea cards stack
+       vertically BELOW the map. Colours/sizes via --gv-* tokens; no .gv-* class is
+       redefined; .leaflet-* is external (the CDN lib). */
     .pp-map { position: relative; min-height: 560px; height: 560px; border-radius: var(--gv-radius); overflow: hidden;
       border: 1px solid var(--gv-grey-200); background-color: #e8ede4; }
     /* the Leaflet canvas fills the container; rounded to match the column */
@@ -60,38 +62,52 @@
     .pp-popstats { display: flex; align-items: center; gap: 16px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); }
     .pp-popstats span { display: inline-flex; align-items: center; gap: 6px; }
     .pp-popstats svg { width: 15px; height: 15px; }
-    /* tenant-coloured teardrop marker (Leaflet divIcon content) */
-    .pp-marker { width: 28px; height: 28px; color: var(--gv-tenant-primary);
-      filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); cursor: pointer; }
-    .pp-marker svg { width: 100%; height: 100%; display: block; }
-    .pp-marker.is-active { color: var(--gv-tenant-secondary, var(--gv-tenant-primary)); }
-    /* floating overlay card (the list panel that sits on top of the map) */
-    .pp-mapcard { position: absolute; top: 18px; left: 18px; width: 320px; max-height: calc(100% - 36px);
-      display: flex; flex-direction: column; gap: 12px; background: transparent; z-index: 1000;
-      pointer-events: none; }
-    .pp-mapcard__filters, .pp-mapcard__list { pointer-events: auto; }
-    .pp-mapcard__filters { align-self: flex-start; }
-    .pp-mapcard__list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 2px; }
+    /* tenant-coloured circular NUMBERED marker (Leaflet divIcon content), echoing the real
+       map's teal/green numbered circles. The active state pops to the secondary token. */
+    .pp-marker { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+      border-radius: 50%; background: var(--gv-tenant-primary); color: var(--gv-white); font-size: var(--gv-fs-s);
+      font-weight: 700; line-height: 1; border: 2px solid var(--gv-white);
+      box-shadow: 0 1px 4px rgba(0,0,0,.4); cursor: pointer; }
+    .pp-marker.is-active { background: var(--gv-tenant-secondary, var(--gv-tenant-primary)); transform: scale(1.12); }
+    /* Desktop: the map fills the wrapper; the overlay panel is a SINGLE solid white column
+       flush to the map's left edge — a Filters pill pinned at top (with a divider under it),
+       then a scrollable column of idea cards. (Matches the real map-view left overlay.) */
+    .pp-mapwrap { position: relative; }
+    .pp-mappanel { position: absolute; top: 0; left: 0; bottom: 0; width: 360px; z-index: 1000;
+      display: flex; flex-direction: column; background: #fff; box-shadow: rgba(0,0,0,.12) 0 0 8px 0; }
+    .pp-mappanel__top { padding: 16px; border-bottom: 1px solid var(--gv-grey-200); }
+    .pp-mapcard__filters { width: 100%; justify-content: center; box-sizing: border-box; }
+    .pp-mapcard__list { flex: 1 1 auto; min-height: 0; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 12px; padding: 16px; }
     /* compact idea item — values measured off the capture digest (white card, #ccc 1px,
        radius 3px, soft shadow, title 18/600/#1e1e1e, counts 15px/#596b7a) */
     .pp-mapidea { background: #fff; border: 1px solid #ccc; border-radius: var(--gv-radius);
       box-shadow: rgba(0,0,0,.06) 0 2px 4px -1px; padding: 16px 18px; cursor: pointer; }
     .pp-mapidea.is-active { border-color: var(--gv-tenant-primary); box-shadow: rgba(0,0,0,.12) 0 3px 8px -1px; }
-    .pp-mapidea__title { margin: 0 0 10px; font-size: var(--gv-fs-l); font-weight: 600; line-height: 23px;
+    .pp-mapidea__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 600; line-height: 23px;
       color: var(--gv-text-heading-strong); }
-    .pp-mapidea__stats { display: flex; align-items: center; gap: 16px; color: var(--gv-cool-grey-600); font-size: 15px; }
+    .pp-mapidea__stats { display: flex; align-items: center; gap: 16px; margin-top: 10px;
+      color: var(--gv-cool-grey-600); font-size: 15px; }
     .pp-mapidea__stat { display: inline-flex; align-items: center; gap: 6px; }
     .pp-mapidea__stat .gv-icon, .pp-mapidea__stat svg { width: 16px; height: 16px; }
-    /* admin info banner (top-right of the map, as in the capture) */
-    .pp-mapnote { position: absolute; top: 18px; right: 18px; max-width: 230px; z-index: 1000;
-      display: flex; gap: 8px; padding: 10px 12px; border-radius: var(--gv-radius);
-      background: #e6f0f7; color: var(--gv-cool-grey-700); font-size: var(--gv-fs-s); line-height: 1.4;
-      box-shadow: rgba(0,0,0,.06) 0 2px 4px -1px; }
-    .pp-mapnote .gv-icon { flex: none; width: 18px; height: 18px; color: var(--gv-tenant-primary); }
-    /* map-mode feed: map column + the same filter sidebar on the right */
-    .gv-feed.is-map .gv-feed__col { display: none; }
+    /* MAP-mode feed: collapse the grid to a single column, hide the list column AND the
+       right filter sidebar (the idea list lives in the left overlay; Filters is the pill). */
+    .gv-feed.is-map { grid-template-columns: minmax(0, 1fr); }
+    .gv-feed.is-map .gv-feed__col, .gv-feed.is-map .gv-feedfilter { display: none; }
     .gv-feed.is-map .pp-map { grid-column: 1; }
-    @media (max-width: 860px) { .pp-mapcard { width: calc(100% - 36px); } .pp-map { min-height: 460px; } }
+    /* In MAP mode the toolbar shows only the count + List/Map toggle — the Filters control
+       moves into the map overlay, so hide the toolbar Filters button. */
+    .pp-toolbar.is-map .pp-toolbar__filters { display: none; }
+    /* ── Mobile (≤860px): Filters pill on top, full-width map, idea cards stacked below ──
+       The panel un-pins from the map: its Filters block sits above the map, its card list
+       below — order set so it reads top-to-bottom like the real mobile capture. */
+    @media (max-width: 860px) {
+      .pp-mapwrap { display: flex; flex-direction: column; gap: 14px; }
+      .pp-map { min-height: 360px; height: 360px; order: 2; }
+      .pp-mappanel { display: contents; }
+      .pp-mappanel__top { order: 1; padding: 0; border: 0; }
+      .pp-mapcard__list { order: 3; overflow: visible; padding: 0; gap: 14px; }
+    }
 </style>
 </head>
 <body class="gv-root gv-shell" data-gv-theme-picker="off">
@@ -383,8 +399,6 @@
     /* Idea-feed view mode (list | map). Module-level so it survives feed re-renders
        when the phase/method switches; toggled by the .gv-viewseg tabs. */
     let ideaView = 'list';
-    /* Leaflet marker glyph (teardrop) injected as a divIcon so it inherits --gv-* colour. */
-    const PIN_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
     /* Leaflet instance + markers — module-level so we init once and re-show on tab toggle. */
     let ppMap = null;
     let ppMarkers = [];
@@ -398,17 +412,19 @@
           </div>
         </article>`).join('');
       return `
-        <div class="pp-map" role="region" aria-label="Map of Market Square with ${IDEAS.length} idea locations">
-          <div class="pp-map__canvas" id="pp-map-canvas"></div>
-          <div class="pp-mapcard">
-            <button class="gv-filters-btn pp-mapcard__filters" type="button" aria-expanded="false" aria-controls="e2e-project-sidebar">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              Filters
-            </button>
+        <div class="pp-mapwrap">
+          <div class="pp-map" role="region" aria-label="Map of Market Square with ${IDEAS.length} idea locations">
+            <div class="pp-map__canvas" id="pp-map-canvas"></div>
+          </div>
+          <div class="pp-mappanel">
+            <div class="pp-mappanel__top">
+              <button class="gv-btn secondary-outlined size-s pp-mapcard__filters" type="button" aria-expanded="false">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:16px;height:16px"><path d="M4 5h16M7 12h10M10 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Filters
+              </button>
+            </div>
             <div class="pp-mapcard__list">${items}</div>
           </div>
-          <div class="pp-mapnote"><span class="gv-icon" data-gv-icon="info-solid" aria-hidden="true"></span>
-            <span>As an admin, you can click on the map to place an input, even if this phase is not active.</span></div>
         </div>`;
     }
     /* Build the popup body for an idea — title + like/comment counts (reuses idea data). */
@@ -426,22 +442,26 @@
       const el = document.getElementById('pp-map-canvas');
       if (!el || typeof L === 'undefined') return;
       if (ppMap) { ppMap.invalidateSize(); return; }   // already built — just re-measure
-      ppMap = L.map(el, { scrollWheelZoom: false, attributionControl: true });
+      ppMap = L.map(el, { scrollWheelZoom: false, attributionControl: true, zoomControl: false });
+      // zoom control top-right so it never collides with the left overlay panel (as in real)
+      L.control.zoom({ position: 'topright' }).addTo(ppMap);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(ppMap);
       ppMarkers = IDEAS.map((d, i) => {
         const icon = L.divIcon({
-          className: '', html: `<span class="pp-marker" data-pin="${i}">${PIN_SVG}</span>`,
-          iconSize: [28, 28], iconAnchor: [14, 28], popupAnchor: [0, -26]
+          className: '', html: `<span class="pp-marker" data-pin="${i}">${i + 1}</span>`,
+          iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -16]
         });
         const m = L.marker([d.lat, d.lng], { icon, title: d.title }).addTo(ppMap);
         m.bindPopup(ppPopupHTML(d), { closeButton: true });
         return m;
       });
       const bounds = L.latLngBounds(IDEAS.map((d) => [d.lat, d.lng]));
-      ppMap.fitBounds(bounds, { padding: [70, 70], maxZoom: 16 });
+      // pad extra on the left on desktop so markers clear the 340px overlay panel
+      const leftPad = window.matchMedia('(max-width: 860px)').matches ? 60 : 380;
+      ppMap.fitBounds(bounds, { paddingTopLeft: [leftPad, 70], paddingBottomRight: [70, 70], maxZoom: 16 });
       // Leaflet measured the container at init; re-measure on next frame in case it was
       // revealed in the same tick as the tab switch.
       requestAnimationFrame(() => ppMap && ppMap.invalidateSize());
@@ -450,10 +470,10 @@
       ideation() {
         const isMap = ideaView === 'map';
         return `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
+          <div class="pp-toolbar${isMap ? ' is-map' : ''}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
             <h2 class="gv-feed__count">${IDEAS.length} ideas</h2>
             <div style="display:flex;align-items:center;gap:10px;">
-              <button class="gv-filters-btn" type="button" aria-expanded="false" aria-controls="e2e-project-sidebar">
+              <button class="gv-filters-btn pp-toolbar__filters" type="button" aria-expanded="false" aria-controls="e2e-project-sidebar">
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 Filters
               </button>
