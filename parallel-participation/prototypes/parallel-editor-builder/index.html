@@ -2437,10 +2437,10 @@
     // back to its inline home (above the timeline) when the user scrolls back above it.
     const stick = scrollable && viewportBottom >= moduleBottom - 4;
     bar.classList.toggle('is-stuck', stick);
-    // Reserve the bar's space at its inline home while docked so the content below
-    // doesn't jump up when it detaches from the flow.
-    anchor.style.height = stick ? barH + 'px' : '0px';
-    sc.classList.toggle('has-stuck-bar', stick);    // adds bottom padding so content clears
+    // No space reserved at the bar's inline home — the content below it is off-screen
+    // at the dock moment, so letting it collapse leaves no visible gap. Bottom padding
+    // (has-stuck-bar) only clears the LAST content from under the docked footer.
+    sc.classList.toggle('has-stuck-bar', stick);
   }
 
   function setProjectState(state, btn) {

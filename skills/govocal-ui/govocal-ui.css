@@ -1562,15 +1562,17 @@
   .gv-surveyband__cta { margin-left: 0; width: 100%; justify-content: center; }
 }
 
-/* ── Sticky participation bar — pinned bottom band: tenant-primary, white status
-   left, white-on-colour button right (the shell-authority "participate" footer). ─ */
-/* Sits above the grey method band; sticks below the header on desktop, to the
-   bottom of the viewport on mobile (matches the live project page). */
-.gv-partbar { position: sticky; top: var(--gv-menu-height, 78px); z-index: 30; background: var(--gv-tenant-primary); color: #fff; }
+/* ── Participation bar — tenant-primary band: white status left, white-on-colour
+   button right (the shell-authority "participate" footer). ─ */
+/* Lives INLINE in the page flow; govocal-partbar.js docks it to the footer the
+   moment the bottom of the viewport contacts the bottom of the bar, and releases it
+   when scrolled back above. .is-docked is the docked (fixed) state the script sets —
+   no space is reserved at its home, so detaching leaves no gap. (Pages must include
+   govocal-partbar.js; without it the bar simply stays inline.) */
+.gv-partbar { position: relative; z-index: 30; background: var(--gv-tenant-primary); color: #fff; }
+.gv-partbar.is-docked { position: fixed; left: 0; right: 0; bottom: 0; top: auto; box-shadow: 0 -2px 12px rgba(0,0,0,0.14); }
 @media (max-width: 760px) {
-  /* sticks to the BOTTOM of the viewport on mobile; status stacks above a
-     full-width CTA (live ideation project behaviour). */
-  .gv-partbar { top: auto; bottom: 0; box-shadow: 0 -2px 12px rgba(0,0,0,0.14); }
+  /* status stacks above a full-width CTA (live ideation project behaviour) */
   .gv-partbar__inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 20px; }
   .gv-partbar .gv-btn { margin-left: 0; width: 100%; justify-content: center; }
 }
