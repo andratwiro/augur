@@ -1853,6 +1853,72 @@
   .ax-pstep--done { background:#eafaf2; }
   .ax-pstep--done .ax-pstep__n { background:var(--ax-green); }
   .ax-pcount { text-align:center; font-size:13px; font-weight:700; color:var(--ax-muted); margin-top:10px; }
+
+  /* ── full-complexity additions (per-action, stacking checks, groups, collect) ── */
+  .ax-note { display:flex; gap:8px; align-items:flex-start; padding:11px 13px; background:#fff7e8;
+    border:1px solid #f0dcae; border-radius:11px; font-size:13px; color:#7a5b16; margin:14px 0; line-height:1.45; }
+  .ax-note b { color:#5d4410; }
+  .ax-block { margin-top:20px; }
+  .ax-block__h { font-size:12px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--ax-muted); margin:0 0 10px; }
+  /* per-action tabs */
+  .ax-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+  .ax-tab { display:flex; flex-direction:column; gap:2px; align-items:flex-start; padding:9px 14px; border-radius:12px;
+    border:1.5px solid var(--ax-line); background:#fff; cursor:pointer; font:inherit; min-width:120px; }
+  .ax-tab.is-on { border-color:var(--ax-accent); background:var(--ax-accent-soft); }
+  .ax-tab__t { font-weight:800; font-size:14px; }
+  .ax-tab__s { font-size:11.5px; color:var(--ax-muted); }
+  /* override list (merge versions) */
+  .ax-ovr { border:1px solid var(--ax-line); border-radius:13px; background:#fff; overflow:hidden; margin-top:12px; }
+  .ax-ovr__row { display:flex; align-items:center; gap:12px; padding:13px 16px; border-top:1px solid var(--ax-line); cursor:pointer; }
+  .ax-ovr__row:first-child { border-top:0; }
+  .ax-ovr__t { font-weight:700; font-size:15px; }
+  .ax-ovr__s { margin-left:auto; font-size:13px; color:var(--ax-muted); }
+  .ax-ovr__edit { color:var(--ax-accent); font-weight:700; font-size:13px; }
+  /* method multi-chips (stacking) */
+  .ax-methods { display:flex; gap:9px; flex-wrap:wrap; }
+  .ax-mchip { display:inline-flex; align-items:center; gap:8px; padding:9px 14px; border-radius:12px; border:1.5px solid var(--ax-line);
+    background:#fff; cursor:pointer; font:inherit; font-size:14px; font-weight:600; }
+  .ax-mchip.is-on { border-color:var(--ax-green); background:#eafaf2; }
+  .ax-mchip__c { width:17px;height:17px;border-radius:5px;border:1.5px solid #c3ccd8; display:grid;place-items:center; font-size:11px; color:#fff; }
+  .ax-mchip.is-on .ax-mchip__c { background:var(--ax-green); border-color:var(--ax-green); }
+  .ax-subrow { display:flex; align-items:center; gap:9px; margin:12px 0 0 4px; padding:8px 12px; border-left:3px solid var(--ax-line);
+    font-size:13.5px; color:var(--ax-ink); }
+  /* groups */
+  .ax-grp { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .ax-gchip { display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border-radius:999px; background:var(--ax-accent-soft);
+    color:var(--ax-accent); font-weight:700; font-size:13px; }
+  .ax-gchip button { border:0; background:none; cursor:pointer; color:inherit; font-size:13px; }
+  .ax-add { border:1.5px dashed #c9d0dc; background:#fff; border-radius:999px; padding:6px 13px; cursor:pointer; font:inherit; font-weight:700; font-size:13px; color:var(--ax-muted); }
+  .ax-inlinelink { background:none; border:0; color:var(--ax-accent); font:inherit; font-weight:700; cursor:pointer; padding:0; font-size:13.5px; }
+  /* collect rows */
+  .ax-crow { display:flex; align-items:center; gap:12px; padding:12px 14px; background:#fff; border:1px solid var(--ax-line); border-radius:12px; margin-bottom:9px; }
+  .ax-crow__t { font-weight:700; font-size:15px; }
+  .ax-crow__d { font-size:13px; color:var(--ax-muted); }
+  .ax-radio { display:flex; align-items:center; gap:9px; font-size:14.5px; padding:6px 0; cursor:pointer; }
+  /* mini sliders (E3) */
+  .ax-mini { display:grid; grid-template-columns:130px 1fr 150px; gap:16px 18px; align-items:center; }
+  .ax-mini__lab { font-weight:800; font-size:14px; }
+  .ax-mini__lab small { display:block; font-weight:500; color:var(--ax-muted); font-size:11.5px; }
+  .ax-mini__track { position:relative; height:10px; border-radius:999px; background:linear-gradient(90deg,#1ea672,#e8a33d,#e25555); }
+  .ax-mini__range { -webkit-appearance:none; appearance:none; width:100%; background:transparent; position:absolute; top:-10px; height:30px; margin:0; cursor:pointer; }
+  .ax-mini__range::-webkit-slider-thumb { -webkit-appearance:none; width:28px; height:28px; border-radius:50%; background:#fff; border:3px solid var(--ax-ink); box-shadow:0 3px 8px rgba(0,0,0,.22); cursor:grab; }
+  .ax-mini__range::-moz-range-thumb { width:24px; height:24px; border-radius:50%; background:#fff; border:3px solid var(--ax-ink); cursor:grab; }
+  .ax-mini__val { font-size:13px; color:var(--ax-muted); font-weight:600; }
+  /* modal */
+  .ax-modal { position:fixed; inset:0; z-index:1100; display:flex; align-items:flex-start; justify-content:center; }
+  .ax-modal__bd { position:absolute; inset:0; background:rgba(13,20,32,.5); }
+  .ax-modal__card { position:relative; margin-top:80px; width:440px; max-width:calc(100vw - 32px); background:#fff; border-radius:18px; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+  .ax-modal__h { display:flex; align-items:center; justify-content:space-between; padding:18px 20px 8px; font-size:19px; font-weight:800; }
+  .ax-modal__x { border:0; background:none; font-size:17px; cursor:pointer; color:var(--ax-muted); }
+  .ax-modal__c { padding:0 20px 20px; }
+  .ax-ta { width:100%; min-height:84px; border:1px solid var(--ax-line); border-radius:10px; padding:10px; font:inherit; font-size:14px; resize:vertical; }
+  .ax-langs { display:flex; gap:7px; margin:4px 0 12px; }
+  .ax-lang { padding:4px 11px; border-radius:8px; border:0; background:#eef0f4; font-weight:800; font-size:12px; cursor:pointer; }
+  .ax-lang.is-on { background:var(--ax-accent); color:#fff; }
+  .ax-checkrow { display:flex; align-items:center; gap:10px; padding:11px 2px; font-size:15px; border-top:1px solid var(--ax-line); cursor:pointer; }
+  .ax-checkrow:first-of-type { border-top:0; }
+  .ax-btn { background:var(--ax-accent); color:#fff; border:0; border-radius:10px; padding:9px 18px; font:inherit; font-weight:700; cursor:pointer; }
+  .ax-pchip { display:inline-block; margin-left:8px; padding:2px 9px; border-radius:999px; background:var(--ax-bg); font-size:12px; font-weight:700; color:var(--ax-muted); }
 </style>
 
 <!-- ═══════════════ ACCESS RIGHTS EXPLORATIONS — behaviour ═══════════════ -->
@@ -1860,313 +1926,445 @@
 (function(){
   const stage = document.getElementById('axStage');
   if (!stage) return;
-  const el = (html) => { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstElementChild; };
+  const el = (h)=>{ const d=document.createElement('div'); d.innerHTML=h.trim(); return d.firstElementChild; };
+  let _idc=0; const newId=()=>'c'+(++_idc);
 
-  // ── shared plain-language vocabulary (each take uses what it needs) ──
-  const WHO = {
-    open:     { em:'🌍', t:'Anyone',           d:'No sign-up needed' },
-    signin:   { em:'🔑', t:'Anyone signed in', d:'They just need an account' },
-    verified: { em:'🏡', t:'Verified locals',  d:'We confirm they live here' },
-    staff:    { em:'🔒', t:'Only our team',    d:'Admins & managers' },
+  /* ───────── shared model (faithful to Luuc's tab) ───────── */
+  const ACTIONS = [
+    { key:'submit',  label:'Submit ideas',  verb:'submit ideas',       em:'💡', levels:['open','signin','admins'] },
+    { key:'comment', label:'Comment',       verb:'comment',            em:'💬', levels:['signin','admins'] },
+    { key:'react',   label:'React / vote',  verb:'react and vote',     em:'👍', levels:['signin','admins'] },
+    { key:'attend',  label:'Attend events', verb:'sign up for events', em:'🎟️', levels:['signin','admins'] },
+  ];
+  const LEVELS = {
+    open:   { em:'🌍', t:'Anyone',          d:'No account needed' },
+    signin: { em:'🔑', t:'Require sign-in', d:'They prove who they are' },
+    admins: { em:'🔒', t:'Team only',       d:'Admins & managers' },
   };
-  const CHECK = {
-    none:  { em:'🙂', t:'Nothing',     chip:'nothing',      d:"Don't ask them to prove anything" },
-    email: { em:'✉️', t:'Their email', chip:'their email',  d:'Confirm with a one-time code' },
-    phone: { em:'📱', t:'A text code', chip:'a text code',  d:'Send an SMS code to their phone' },
-    id:    { em:'🪪', t:'A photo ID',  chip:'a photo ID',   d:'Check an official document' },
+  const METHODS = {
+    email:{ em:'✉️', t:'Email code', d:'One-time code by email' },
+    sms:  { em:'📱', t:'Text code',  d:'One-time code by SMS' },
+    id:   { em:'🪪', t:'Photo ID',   d:'Check an official document' },
   };
-  const COLLECT = {
-    none:      { em:'🚫', t:'Nothing',                chip:'nothing' },
-    name:      { em:'🙋', t:'Their name',             chip:'their name' },
-    questions: { em:'📋', t:'Name + a few questions', chip:'their name & a few quick questions' },
-  };
+  const GROUPS = ['Verified residents','Homeowners','Over 18','Newsletter list'];
+  const DEMOS  = ['Gender','Year of birth','Place of residence'];
 
-  /* ══════════ E1 — say it in a sentence ══════════ */
+  function defCfg(level){
+    return { _id:newId(), level:level||'signin', methods:{email:true,sms:false,id:false}, recent:false,
+      groups:[], msg:'', collect:{name:true,password:true,demo:false}, demoTiming:'before',
+      demoOn:{'Gender':false,'Year of birth':false,'Place of residence':false},
+      _ui:{groups:false,msg:false,demoq:false} };
+  }
+  const clone = (c)=>JSON.parse(JSON.stringify(Object.assign({},c,{_id:newId()})));
+  const methodList = (c)=>Object.keys(c.methods).filter(k=>c.methods[k]);
+  function summary(c){
+    if(c.level==='open')   return 'Anyone — no checks';
+    if(c.level==='admins') return 'Team only';
+    const m = methodList(c).map(k=>METHODS[k].t.toLowerCase());
+    let s = m.length ? m.join(' + ') : 'just an account';
+    if(c.recent && c.methods.id) s += ' (recent)';
+    if(c.groups.length) s += ' · '+c.groups.length+' group'+(c.groups.length>1?'s':'');
+    if(c.collect.demo) s += ' · +questions';
+    return s;
+  }
+
+  /* ───────── single modal host (used only to hold a full editor) ───────── */
+  let _m=null;
+  const closeM=()=>{ if(_m){_m.remove();_m=null;} };
+  function openM(title, content){
+    closeM();
+    const ov = el('<div class="ax-modal"><div class="ax-modal__bd"></div><div class="ax-modal__card"><div class="ax-modal__h"><span>'+title+'</span><button class="ax-modal__x">✕</button></div><div class="ax-modal__c"></div></div></div>');
+    ov.querySelector('.ax-modal__c').appendChild(content);
+    ov.addEventListener('click',(e)=>{ if(e.target.classList.contains('ax-modal__bd')||e.target.closest('.ax-modal__x')) closeM(); });
+    document.body.appendChild(ov); _m=ov;
+  }
+
+  /* ───────── the one complete editor (all dimensions, inline, "light") ─────────
+     Renders level → stacking methods (+recency) → groups (+message) → collect
+     (name/password/demographics +timing +question picker). No nested modals. */
+  function editorHTML(c){
+    const v = c.level==='signin', col = c.level!=='admins';
+    let h = `
+      <div class="ax-block"><p class="ax-block__h">Who can do this</p>
+        <div class="ax-methods">${Object.keys(LEVELS).map(k=>`
+          <button class="ax-mchip ${c.level===k?'is-on':''}" data-ed="level" data-v="${k}"><span>${LEVELS[k].em}</span> ${LEVELS[k].t}</button>`).join('')}</div></div>`;
+    if(v){
+      h += `<div class="ax-block"><p class="ax-block__h">How they prove it <span style="text-transform:none;font-weight:600;color:var(--ax-muted)">· tick any — they stack</span></p>
+        <div class="ax-methods">${Object.keys(METHODS).map(k=>`
+          <button class="ax-mchip ${c.methods[k]?'is-on':''}" data-ed="method" data-v="${k}"><span class="ax-mchip__c">${c.methods[k]?'✓':''}</span><span>${METHODS[k].em} ${METHODS[k].t}</span></button>`).join('')}</div>
+        ${c.methods.id?`<label class="ax-subrow"><input type="checkbox" data-ed="recent" ${c.recent?'checked':''}> Re-check their ID every phase <span class="ax-pchip">recent verification</span></label>`:''}
+      </div>`;
+      h += `<div class="ax-block"><p class="ax-block__h">Limit to groups <span style="text-transform:none;font-weight:600;color:var(--ax-muted)">· optional</span></p>
+        <div class="ax-grp">${c.groups.map(g=>`<span class="ax-gchip">${g}<button data-ed="ungroup" data-v="${g}">✕</button></span>`).join('')}
+          <button class="ax-add" data-ed="togGroups">${c._ui.groups?'Done':'+ '+(c.groups.length?'edit':'add a group')}</button>
+          ${c.groups.length?`<button class="ax-inlinelink" data-ed="togMsg">✏️ ${c.msg?'edit message':'customize message'}</button>`:''}</div>
+        ${c._ui.groups?`<div class="ax-subrow" style="display:block">${GROUPS.map(g=>`<label class="ax-checkrow" style="border:0;padding:7px 0"><input type="checkbox" data-ed="group" data-v="${g}" ${c.groups.includes(g)?'checked':''}> ${g}</label>`).join('')}</div>`:''}
+        ${c._ui.msg&&c.groups.length?`<div class="ax-subrow" style="display:block">
+          <div class="ax-langs"><button class="ax-lang is-on" type="button">EN</button><button class="ax-lang" type="button">NL</button><button class="ax-lang" type="button">FR</button></div>
+          <textarea class="ax-ta" data-ed="msg" placeholder="Sorry, you can’t take part because…">${c.msg||''}</textarea>
+          <p class="ax-note" style="margin:8px 0 0">Shown to anyone who doesn’t meet the rules. Blank = default message.</p></div>`:''}
+      </div>`;
+    }
+    if(col){
+      h += `<div class="ax-block"><p class="ax-block__h">What we collect</p>
+        <div class="ax-crow"><span>🙋</span><span><div class="ax-crow__t">Their name</div><div class="ax-crow__d">First and last</div></span><button class="ax-tog ${c.collect.name?'is-on':''}" data-ed="cname"></button></div>
+        <div class="ax-crow"><span>🔑</span><span><div class="ax-crow__t">A password</div><div class="ax-crow__d">Creates a full account</div></span><button class="ax-tog ${c.collect.password?'is-on':''}" data-ed="cpass"></button></div>
+        <div class="ax-crow"><span>📋</span><span><div class="ax-crow__t">A few questions</div><div class="ax-crow__d">${Object.keys(c.demoOn).filter(k=>c.demoOn[k]).join(', ')||'Age, gender, where they live…'}</div></span><button class="ax-tog ${c.collect.demo?'is-on':''}" data-ed="cdemo"></button></div>
+        ${c.collect.demo?`<div class="ax-subrow" style="display:block">
+          <label class="ax-radio"><input type="radio" name="dt-${c._id}" data-ed="dt" data-v="before" ${c.demoTiming==='before'?'checked':''}> Ask before they take part</label>
+          <label class="ax-radio"><input type="radio" name="dt-${c._id}" data-ed="dt" data-v="end" ${c.demoTiming==='end'?'checked':''}> Ask on a page at the end</label>
+          <button class="ax-inlinelink" data-ed="togDemoq" style="margin-top:6px">⚙️ ${c._ui.demoq?'Done':'Choose the questions'}</button>
+          ${c._ui.demoq?`<div style="margin-top:8px">${DEMOS.map(q=>`<label class="ax-checkrow"><input type="checkbox" data-ed="demoq" data-v="${q}" ${c.demoOn[q]?'checked':''}> ${q}</label>`).join('')}<p class="ax-note" style="margin-top:8px">The questions themselves live in <b>Registration settings</b>. Here you just pick which to ask in this phase.</p></div>`:''}
+        </div>`:''}
+      </div>`;
+    }
+    return h;
+  }
+  function bindEditor(container, c, redraw){
+    container.addEventListener('click',(e)=>{
+      const b=e.target.closest('[data-ed]'); if(!b) return;
+      const k=b.dataset.ed, val=b.dataset.v;
+      if(b.classList.contains('ax-lang')){ container.querySelectorAll('.ax-lang').forEach(x=>x.classList.remove('is-on')); b.classList.add('is-on'); return; }
+      if(k==='level'){ c.level=val; }
+      else if(k==='method'){ c.methods[val]=!c.methods[val]; }
+      else if(k==='ungroup'){ c.groups=c.groups.filter(x=>x!==val); }
+      else if(k==='togGroups'){ c._ui.groups=!c._ui.groups; }
+      else if(k==='togMsg'){ c._ui.msg=!c._ui.msg; }
+      else if(k==='cname'){ c.collect.name=!c.collect.name; }
+      else if(k==='cpass'){ c.collect.password=!c.collect.password; }
+      else if(k==='cdemo'){ c.collect.demo=!c.collect.demo; }
+      else if(k==='togDemoq'){ c._ui.demoq=!c._ui.demoq; }
+      else return;
+      redraw();
+    });
+    container.addEventListener('change',(e)=>{
+      const b=e.target.closest('[data-ed]'); if(!b) return;
+      const k=b.dataset.ed, val=b.dataset.v;
+      if(k==='recent'){ c.recent=e.target.checked; redraw(); }
+      else if(k==='group'){ if(e.target.checked){ if(!c.groups.includes(val)) c.groups.push(val);} else { c.groups=c.groups.filter(x=>x!==val);} redraw(); }
+      else if(k==='dt'){ c.demoTiming=val; redraw(); }
+      else if(k==='demoq'){ c.demoOn[val]=e.target.checked; /* no redraw: keep checkboxes focusable */ }
+    });
+    container.addEventListener('input',(e)=>{ const b=e.target.closest('[data-ed="msg"]'); if(b) c.msg=e.target.value; });
+  }
+  // open the full editor for one action's cfg in the single modal
+  function openEditor(title, c, after){
+    const body=el('<div></div>');
+    const draw=()=>{ body.innerHTML=editorHTML(c); };
+    bindEditor(body,c,()=>{ draw(); after&&after(); });
+    draw(); openM(title, body);
+  }
+
+  /* ════════════════ E1 — SENTENCE (merge + per-action overrides) ════════════════ */
   function renderSentence(){
-    const s = { who:'open', check:'email', collect:'name', open:null };
+    const master = defCfg('open');
+    const ovr = {}; // action.key -> cfg (override) or undefined
+    const s = { open:null, showOvr:false };
     const root = el('<div></div>');
-    const chip = (k, label) => `<span class="ax-chip" data-chip="${k}">${label}<span class="ax-chip__car">▾</span></span>`;
-    function popFor(k){
-      const map = { who:WHO, check:CHECK, collect:COLLECT };
-      const cur = s[k]; const src = map[k];
-      const opts = Object.keys(src).map(o => `
-        <div class="ax-pop__o ${o===cur?'is-on':''}" data-set="${k}" data-val="${o}">
-          <span class="ax-pop__em">${src[o].em}</span>
-          <span><span class="ax-pop__x">${src[o].t}</span><span class="ax-pop__d">${src[o].d||''}</span></span>
-        </div>`).join('');
-      return `<div class="ax-pop">${opts}</div>`;
-    }
-    function summary(){
-      let who = WHO[s.who].t.toLowerCase();
-      let bits = [];
-      if (s.who==='staff') bits.push('Only your team can take part.');
-      else {
-        bits.push(`${WHO[s.who].t} can take part.`);
-        bits.push(s.check==='none' ? 'No proof required.' : `They confirm ${CHECK[s.check].chip} first.`);
+    const chip=(k,label)=>`<span class="ax-chip" data-chip="${k}">${label}<span class="ax-chip__car">▾</span></span>`;
+
+    function popHTML(){
+      if(s.open==='who'){
+        return `<div class="ax-pop">${Object.keys(LEVELS).map(k=>`<div class="ax-pop__o ${master.level===k?'is-on':''}" data-set="level" data-v="${k}"><span class="ax-pop__em">${LEVELS[k].em}</span><span><span class="ax-pop__x">${LEVELS[k].t}</span><span class="ax-pop__d">${LEVELS[k].d}</span></span></div>`).join('')}</div>`;
       }
-      if (s.collect!=='none') bits.push(`You collect ${COLLECT[s.collect].chip}.`);
-      return bits.join(' ');
+      if(s.open==='check'){
+        return `<div class="ax-pop">${Object.keys(METHODS).map(k=>`<div class="ax-pop__o ${master.methods[k]?'is-on':''}" data-tog="method" data-v="${k}"><span class="ax-pop__em">${master.methods[k]?'☑':'☐'}</span><span><span class="ax-pop__x">${METHODS[k].em} ${METHODS[k].t}</span><span class="ax-pop__d">${METHODS[k].d}</span></span></div>`).join('')}${master.methods.id?`<div class="ax-pop__o ${master.recent?'is-on':''}" data-tog="recent"><span class="ax-pop__em">${master.recent?'☑':'☐'}</span><span><span class="ax-pop__x">Recent ID only</span><span class="ax-pop__d">Re-check every phase</span></span></div>`:''}</div>`;
+      }
+      if(s.open==='collect'){
+        return `<div class="ax-pop">
+          <div class="ax-pop__o ${master.collect.name?'is-on':''}" data-tog="cname"><span class="ax-pop__em">${master.collect.name?'☑':'☐'}</span><span><span class="ax-pop__x">🙋 Their name</span></span></div>
+          <div class="ax-pop__o ${master.collect.password?'is-on':''}" data-tog="cpass"><span class="ax-pop__em">${master.collect.password?'☑':'☐'}</span><span><span class="ax-pop__x">🔑 A password</span></span></div>
+          <div class="ax-pop__o ${master.collect.demo?'is-on':''}" data-tog="cdemo"><span class="ax-pop__em">${master.collect.demo?'☑':'☐'}</span><span><span class="ax-pop__x">📋 A few questions</span></span></div></div>`;
+      }
+      return '';
     }
+    function checkLabel(){ const m=methodList(master); return m.length?m.map(k=>METHODS[k].t.toLowerCase()).join(' + '):'just an account'; }
+    function collectLabel(){ const c=master.collect; const a=[]; if(c.name)a.push('their name'); if(c.password)a.push('a password'); if(c.demo)a.push('a few questions'); return a.length?a.join(', '):'nothing'; }
+
     function draw(){
-      let sentence = `${chip('who', WHO[s.who].t)} can take part.`;
-      if (s.who!=='staff') sentence += s.check==='none'
-        ? ` They ${chip('check','don’t prove anything')}`.replace('don', '<span class="ax-chip" data-chip="check">don') + '' // fallthrough handled below
-        : ` First, they give us ${chip('check', CHECK[s.check].chip)}.`;
-      // simpler, robust check clause:
-      if (s.who!=='staff') {
-        sentence = `${chip('who', WHO[s.who].t)} can take part.`;
-        sentence += s.check==='none'
-          ? ` We ${chip('check','ask for nothing')} to prove it.`
-          : ` First, they give us ${chip('check', CHECK[s.check].chip)}.`;
-      } else {
-        sentence = `${chip('who', WHO[s.who].t)} can take part.`;
-      }
-      if (s.collect!=='none') sentence += ` We also collect ${chip('collect', COLLECT[s.collect].chip)}.`;
-      else sentence += ` We collect ${chip('collect','nothing')} extra.`;
+      let sent = `${chip('who',LEVELS[master.level].t)} can take part.`;
+      if(master.level==='signin') sent += ` First they give us ${chip('check',checkLabel())}.`;
+      if(master.level!=='admins') sent += ` We collect ${chip('collect',collectLabel())}.`;
+      const advanced = master.level==='signin' ? `<button class="ax-inlinelink" data-more style="margin-top:14px">⚙️ Groups, custom message & question wording →</button>` : '';
 
       root.innerHTML = `
         <p class="ax-eyebrow">Exploration 1 · Plain sentence</p>
-        <h2 class="ax-h">Set the rules by writing a sentence.</h2>
-        <p class="ax-sub">Tap any underlined word to change it. No menus, no jargon — it reads like you'd say it out loud.</p>
-        <p class="ax-sent">${sentence}</p>
-        <div class="ax-result"><span class="ax-result__ic">👀</span><div><p class="ax-result__t">What this means</p><p class="ax-result__b">${summary()}</p></div></div>`;
-      if (s.open){
-        const c = root.querySelector(`.ax-chip[data-chip="${s.open}"]`);
-        if (c){ c.style.position='relative'; c.insertAdjacentHTML('beforeend', popFor(s.open)); }
-      }
+        <h2 class="ax-h">Write the rule like a sentence.</h2>
+        <p class="ax-sub">Tap any underlined word. These rules cover everything — then add exceptions below if you need them.</p>
+        <p class="ax-sent">${sent}</p>
+        ${advanced}
+        <div id="ax-more"></div>
+        <div class="ax-block"><p class="ax-block__h">Different rules for some actions?</p>
+          <button class="ax-inlinelink" data-toggle-ovr>${s.showOvr?'▾ hide':'▸ set per-action exceptions'}</button>
+          ${s.showOvr?`<div class="ax-ovr">${ACTIONS.map(a=>{ const c=ovr[a.key]; return `
+            <div class="ax-ovr__row" data-ovr="${a.key}"><span>${a.em}</span><span class="ax-ovr__t">${a.label}</span>
+              <span class="ax-ovr__s">${c?summary(c):'Same as above'}</span><span class="ax-ovr__edit">${c?'Edit':'Override'}</span></div>`;}).join('')}</div>`:''}
+        </div>
+        <div class="ax-result"><span class="ax-result__ic">👀</span><div><p class="ax-result__t">In plain words</p><p class="ax-result__b">${summary(master)}. ${Object.keys(ovr).length?'Some actions have their own rules.':'Same for commenting, reacting and attending.'}</p></div></div>`;
+
+      // open chip popover
+      if(s.open){ const c=root.querySelector(`.ax-chip[data-chip="${s.open}"]`); if(c){ c.style.position='relative'; c.insertAdjacentHTML('beforeend', popHTML()); } }
+      // inline "more" editor (groups/message/questions live here for the master)
+      if(s._more){ const mount=root.querySelector('#ax-more'); const box=el('<div class="ax-block"></div>'); box.innerHTML=editorHTML(master); mount.appendChild(box); }
     }
-    root.addEventListener('click', (e)=>{
-      const set = e.target.closest('[data-set]');
-      if (set){ s[set.dataset.set] = set.dataset.val; s.open=null; draw(); return; }
-      const c = e.target.closest('.ax-chip');
-      if (c){ s.open = s.open===c.dataset.chip ? null : c.dataset.chip; draw(); return; }
+    root.addEventListener('click',(e)=>{
+      const set=e.target.closest('[data-set]'); if(set){ master[set.dataset.ed||'level']=set.dataset.v; if(set.dataset.set==='level') master.level=set.dataset.v; s.open=null; draw(); return; }
+      const tog=e.target.closest('[data-tog]'); if(tog){ const k=tog.dataset.tog,v=tog.dataset.v;
+        if(k==='method') master.methods[v]=!master.methods[v];
+        else if(k==='recent') master.recent=!master.recent;
+        else if(k==='cname') master.collect.name=!master.collect.name;
+        else if(k==='cpass') master.collect.password=!master.collect.password;
+        else if(k==='cdemo') master.collect.demo=!master.collect.demo;
+        draw(); return; }
+      const chipEl=e.target.closest('.ax-chip'); if(chipEl){ s.open = s.open===chipEl.dataset.chip?null:chipEl.dataset.chip; draw(); return; }
+      if(e.target.closest('[data-more]')){ s._more=!s._more; draw(); return; }
+      if(e.target.closest('[data-toggle-ovr]')){ s.showOvr=!s.showOvr; draw(); return; }
+      const o=e.target.closest('[data-ovr]'); if(o){ const key=o.dataset.ovr; if(!ovr[key]) ovr[key]=clone(master); openEditor(ACTIONS.find(a=>a.key===key).label+' — its own rules', ovr[key], ()=>{}); _m&&_m.addEventListener('click',(ev)=>{ if(ev.target.classList.contains('ax-modal__bd')||ev.target.closest('.ax-modal__x')) draw(); }); return; }
     });
-    document.addEventListener('click', (e)=>{
-      if (!s.open) return;
-      // NB: the chip is detached by the redraw before this fires, so closest() on
-      // the (still-intact) detached node tells us the click came from a chip/pop.
-      if (e.target.closest && (e.target.closest('.ax-chip') || e.target.closest('.ax-pop'))) return;
-      s.open = null; draw();
-    });
+    // master "more" editor edits (delegated): reuse bindEditor on root for master
+    bindEditor(root, master, ()=>{ if(s._more) draw(); });
+    document.addEventListener('click',(e)=>{ if(!s.open) return; if(e.target.closest&&(e.target.closest('.ax-chip')||e.target.closest('.ax-pop'))) return; s.open=null; draw(); });
     draw();
     return root;
   }
 
-  /* ══════════ E2 — pick a setup (presets + fine-tune) ══════════ */
+  /* ════════════════ E2 — PRESETS (merge + fine-tune + per-action matrix) ════════════════ */
   function renderPresets(){
     const PRESETS = [
-      { id:'open',   em:'🌍', t:'Wide open',   d:'Anyone can jump in. No sign-up.',        who:'Anyone gets in',        set:{email:false,phone:false,id:false,name:false} },
-      { id:'email',  em:'✉️', t:'Quick check', d:'They confirm an email. Stops bots.',      who:'Anyone with an email',  set:{email:true, phone:false,id:false,name:true } },
-      { id:'locals', em:'🏡', t:'Locals only', d:'Prove they live here, by text or ID.',    who:'Verified residents',    set:{email:true, phone:true, id:false,name:true } },
-      { id:'team',   em:'🔒', t:'Team only',   d:'Just your admins and managers.',          who:'Staff only',            set:{email:false,phone:false,id:false,name:false} },
+      { id:'open',   em:'🌍', t:'Wide open',   d:'Anyone joins. No sign-up.',          who:'Anyone',           build:()=>defCfg('open') },
+      { id:'email',  em:'✉️', t:'Quick check', d:'Confirm an email. Stops bots.',       who:'Anyone with email', build:()=>{const c=defCfg('signin');c.methods={email:true,sms:false,id:false};return c;} },
+      { id:'locals', em:'🏡', t:'Locals only', d:'Prove they live here (text or ID).',  who:'Verified locals',   build:()=>{const c=defCfg('signin');c.methods={email:true,sms:true,id:false};c.groups=['Verified residents'];return c;} },
+      { id:'team',   em:'🔒', t:'Team only',   d:'Just admins & managers.',             who:'Staff',             build:()=>defCfg('admins') },
     ];
-    const s = { sel:'email', open:false, checks:{email:true,phone:false,id:false,name:true} };
+    const s = { sel:'email', tune:false, perAction:false };
+    let master = PRESETS[1].build();
+    const cfgs = {}; ACTIONS.forEach(a=>cfgs[a.key]=clone(master));
     const root = el('<div></div>');
-    const TUNE = [
-      { k:'email', em:'✉️', t:'Confirm an email', d:'One-time code by email' },
-      { k:'phone', em:'📱', t:'Text a code (SMS)', d:'One-time code to their phone' },
-      { k:'id',    em:'🪪', t:'Verify an ID',      d:'Check an official document' },
-      { k:'name',  em:'🙋', t:'Ask for their name', d:'First and last name' },
-    ];
-    function resultText(){
-      if (s.sel==='open') return 'Anyone can take part right away — nothing to fill in.';
-      if (s.sel==='team') return "Only your team can take part. Residents can't.";
-      const checks = ['email','phone','id'].filter(k=>s.checks[k]).map(k=>({email:'a confirmed email',phone:'a phone (text code)',id:'a photo ID'})[k]);
-      const need = checks.length ? 'We check '+checks.join(' and ')+'.' : "We don't check anything.";
-      return need + (s.checks.name ? ' We also ask for their name.' : '');
-    }
+    function applyMaster(){ ACTIONS.forEach(a=>{ cfgs[a.key]=clone(master); if(!a.levels.includes(cfgs[a.key].level)) cfgs[a.key].level='signin'; }); }
     function draw(){
       root.innerHTML = `
         <p class="ax-eyebrow">Exploration 2 · Ready-made setups</p>
-        <h2 class="ax-h">Pick the setup that fits. Tweak only if you want.</h2>
-        <p class="ax-sub">Four common choices, in plain words. Most people pick one and move on.</p>
-        <div class="ax-presets">${PRESETS.map(p=>`
-          <button class="ax-preset ${s.sel===p.id?'is-on':''}" data-preset="${p.id}">
-            <div class="ax-preset__em">${p.em}</div>
-            <div class="ax-preset__t">${p.t}</div>
-            <div class="ax-preset__d">${p.d}</div>
-            <div class="ax-preset__who">→ ${p.who}</div>
-          </button>`).join('')}</div>
-        <div class="ax-result"><span class="ax-result__ic">✅</span><div><p class="ax-result__t">When someone wants to join</p><p class="ax-result__b">${resultText()}</p></div></div>
-        <div class="ax-tune">
-          <button class="ax-tune__btn" data-tune>${s.open?'▾':'▸'} Fine-tune the details</button>
-          ${s.open?`<div class="ax-tune__body">${TUNE.map(r=>`
-            <div class="ax-trow"><span class="ax-trow__em">${r.em}</span>
-              <span><div class="ax-trow__t">${r.t}</div><div class="ax-trow__d">${r.d}</div></span>
-              <button class="ax-tog ${s.checks[r.k]?'is-on':''}" data-check="${r.k}" aria-label="${r.t}"></button>
-            </div>`).join('')}</div>`:''}
-        </div>`;
+        <h2 class="ax-h">Pick a setup. Tweak only if you want.</h2>
+        <p class="ax-sub">One choice covers the whole phase. Open “fine-tune” for the details, or set different rules per action.</p>
+        <div class="ax-presets">${PRESETS.map(p=>`<button class="ax-preset ${s.sel===p.id?'is-on':''}" data-preset="${p.id}"><div class="ax-preset__em">${p.em}</div><div class="ax-preset__t">${p.t}</div><div class="ax-preset__d">${p.d}</div><div class="ax-preset__who">→ ${p.who}</div></button>`).join('')}</div>
+        <div class="ax-result"><span class="ax-result__ic">✅</span><div><p class="ax-result__t">Everywhere in this phase</p><p class="ax-result__b">${summary(master)}.</p></div></div>
+        <div class="ax-block"><button class="ax-inlinelink" data-tune>${s.tune?'▾ hide fine-tune':'▸ Fine-tune the details'}</button><div id="ax-tunebox"></div></div>
+        <div class="ax-block"><button class="ax-inlinelink" data-pa>${s.perAction?'▾ one rule again':'▸ Set different rules per action'}</button>
+          ${s.perAction?`<div class="ax-ovr">${ACTIONS.map(a=>`<div class="ax-ovr__row" data-cell="${a.key}"><span>${a.em}</span><span class="ax-ovr__t">${a.label}</span><span class="ax-ovr__s">${summary(cfgs[a.key])}</span><span class="ax-ovr__edit">Edit</span></div>`).join('')}</div>
+          <p class="ax-note">Per-action rules override the setup above — exactly like Luuc’s tab, just hidden until you need it.</p>`:''}</div>`;
+      if(s.tune){ const mount=root.querySelector('#ax-tunebox'); mount.innerHTML=editorHTML(master); }
     }
-    root.addEventListener('click', (e)=>{
-      const p = e.target.closest('[data-preset]');
-      if (p){ const pre = PRESETS.find(x=>x.id===p.dataset.preset); s.sel=pre.id; s.checks={...pre.set}; draw(); return; }
-      if (e.target.closest('[data-tune]')){ s.open=!s.open; draw(); return; }
-      const t = e.target.closest('[data-check]');
-      if (t){ const k=t.dataset.check; s.checks[k]=!s.checks[k]; s.sel='custom'; draw(); return; }
+    root.addEventListener('click',(e)=>{
+      const p=e.target.closest('[data-preset]'); if(p){ const pre=PRESETS.find(x=>x.id===p.dataset.preset); s.sel=pre.id; master=pre.build(); applyMaster(); draw(); return; }
+      if(e.target.closest('[data-tune]')){ s.tune=!s.tune; draw(); return; }
+      if(e.target.closest('[data-pa]')){ s.perAction=!s.perAction; draw(); return; }
+      const cell=e.target.closest('[data-cell]'); if(cell){ const a=ACTIONS.find(x=>x.key===cell.dataset.cell); openEditor(a.label+' — rules', cfgs[a.key]); _m&&_m.addEventListener('click',(ev)=>{ if(ev.target.classList.contains('ax-modal__bd')||ev.target.closest('.ax-modal__x')) draw(); }); s.sel='custom'; return; }
     });
+    bindEditor(root, master, ()=>{ s.sel='custom'; if(s.tune) draw(); });
     draw();
     return root;
   }
 
-  /* ══════════ E3 — slide to set the bar ══════════ */
+  /* ════════════════ E3 — SLIDER (per-action first-class; collection shared) ════════════════ */
   function renderSlider(){
-    const LV = [
-      { tick:'Open',  lvl:'Open to everyone',   desc:'No checks at all. Anyone can jump straight in.',           pct:96, col:'var(--ax-green)', steps:[['🙌','Take part']] },
-      { tick:'Email', lvl:'Confirm an email',   desc:'A quick code by email. Stops bots and duplicate accounts.', pct:82, col:'var(--ax-green)', steps:[['✉️','Enter your email'],['🔢','Type the code'],['🙌','Take part']] },
-      { tick:'Text',  lvl:'Verify by text',     desc:'A code texted to their phone (SMS). Much harder to fake.',  pct:58, col:'var(--ax-amber)', steps:[['📱','Enter your phone'],['🔢','Type the texted code'],['🙌','Take part']] },
-      { tick:'ID',    lvl:'Verify a photo ID',  desc:'Check an official ID. The most certain — and most effort.', pct:30, col:'var(--ax-red)',   steps:[['🪪','Upload your ID'],['⏳','Wait for a check'],['🙌','Take part']] },
+    // slider stop → access config (a deliberate "escalating bar" simplification of stacking)
+    const STOPS = [
+      { t:'Open',  apply:(c)=>{c.level='open';} },
+      { t:'Email', apply:(c)=>{c.level='signin';c.methods={email:true,sms:false,id:false};c.recent=false;} },
+      { t:'Text',  apply:(c)=>{c.level='signin';c.methods={email:true,sms:true,id:false};c.recent=false;} },
+      { t:'ID',    apply:(c)=>{c.level='signin';c.methods={email:true,sms:false,id:true};} },
     ];
-    const s = { v:1 };
+    const val = {}; ACTIONS.forEach(a=>val[a.key]=a.key==='submit'?1:1);
+    const cfgs = {}; ACTIONS.forEach(a=>{ cfgs[a.key]=defCfg(); STOPS[val[a.key]].apply(cfgs[a.key]); });
+    const shared = defCfg('signin'); // collection + groups applied to all (noted)
     const root = el('<div></div>');
     function draw(){
-      const L = LV[s.v];
       root.innerHTML = `
-        <p class="ax-eyebrow">Exploration 3 · One slider</p>
-        <h2 class="ax-h">Slide to set the bar.</h2>
-        <p class="ax-sub">Left = easy for everyone. Right = harder to fake. Watch what changes for your residents.</p>
-        <div class="ax-slider">
-          <div class="ax-track"><input class="ax-range" type="range" min="0" max="3" step="1" value="${s.v}" aria-label="Verification level"></div>
-          <div class="ax-ticks">${LV.map((x,i)=>`<span class="${i===s.v?'is-on':''}">${x.tick}</span>`).join('')}</div>
-          <div class="ax-spec">
-            <div class="ax-spec__card">
-              <p class="ax-spec__lvl">${L.lvl}</p>
-              <p class="ax-spec__desc">${L.desc}</p>
-              <div class="ax-meter">
-                <div class="ax-meter__lab"><span>How many can get in</span><span>${L.pct>75?'Most people':L.pct>50?'Lots of people':L.pct>40?'Fewer people':'The committed few'}</span></div>
-                <div class="ax-meter__bar"><div class="ax-meter__fill" style="width:${L.pct}%;background:${L.col}"></div></div>
-              </div>
-            </div>
-            <div class="ax-spec__card">
-              <p class="ax-result__t" style="margin-bottom:12px">What a resident does</p>
-              <ul class="ax-stepslist">${L.steps.map(([em,t],i)=>`<li><span class="em">${em}</span> ${t}</li>`).join('')}</ul>
-            </div>
-          </div>
+        <p class="ax-eyebrow">Exploration 3 · One slider per action</p>
+        <h2 class="ax-h">Slide to set the bar — for each thing people do.</h2>
+        <p class="ax-sub">Left = easy for everyone, right = harder to fake. Comments can be looser than submitting, if you like.</p>
+        <div class="ax-mini">${ACTIONS.map(a=>{ const i=val[a.key]; return `
+          <div class="ax-mini__lab">${a.em} ${a.label}</div>
+          <div class="ax-mini__track"><input class="ax-mini__range" type="range" min="0" max="3" step="1" value="${i}" data-act="${a.key}"></div>
+          <div class="ax-mini__val">${STOPS[i].t} — ${summary(cfgs[a.key])}</div>`;}).join('')}</div>
+        <div style="display:flex;justify-content:space-between;max-width:420px;margin:6px 0 0 148px;font-size:12px;font-weight:700;color:var(--ax-muted)"><span>Open</span><span>Email</span><span>Text</span><span>ID</span></div>
+        <div class="ax-block"><p class="ax-block__h">What everyone who joins gives you</p>
+          <div id="ax-shared"></div>
+          <p class="ax-note">For simplicity this <b>data &amp; groups</b> block is set once for the whole phase. In Luuc’s tab it’s per-action — if that matters, this version trades it away for the slider’s clarity. (The per-action <b>access</b> bar above is fully kept.)</p>
         </div>`;
-      root.querySelector('.ax-range').addEventListener('input', (e)=>{ s.v=+e.target.value; draw(); });
+      root.querySelector('#ax-shared').innerHTML = editorSharedHTML(shared);
     }
+    // a trimmed editor: just groups + collect (no level/methods — those are the sliders)
+    function editorSharedHTML(c){
+      return `<div class="ax-crow"><span>🙋</span><span><div class="ax-crow__t">Their name</div></span><button class="ax-tog ${c.collect.name?'is-on':''}" data-sh="cname"></button></div>
+        <div class="ax-crow"><span>🔑</span><span><div class="ax-crow__t">A password</div></span><button class="ax-tog ${c.collect.password?'is-on':''}" data-sh="cpass"></button></div>
+        <div class="ax-crow"><span>📋</span><span><div class="ax-crow__t">A few questions</div><div class="ax-crow__d">${Object.keys(c.demoOn).filter(k=>c.demoOn[k]).join(', ')||'Age, gender…'}</div></span><button class="ax-tog ${c.collect.demo?'is-on':''}" data-sh="cdemo"></button></div>
+        ${c.collect.demo?`<div class="ax-subrow" style="display:block"><label class="ax-radio"><input type="radio" name="sdt" data-sh="dt" data-v="before" ${c.demoTiming==='before'?'checked':''}> Ask before</label><label class="ax-radio"><input type="radio" name="sdt" data-sh="dt" data-v="end" ${c.demoTiming==='end'?'checked':''}> Ask at the end</label></div>`:''}
+        <div class="ax-grp" style="margin-top:10px">${c.groups.map(g=>`<span class="ax-gchip">${g}<button data-sh="ungroup" data-v="${g}">✕</button></span>`).join('')}<button class="ax-add" data-sh="togGroups">${c._ui.groups?'Done':'+ limit to a group'}</button></div>
+        ${c._ui.groups?`<div class="ax-subrow" style="display:block">${GROUPS.map(g=>`<label class="ax-checkrow" style="border:0;padding:7px 0"><input type="checkbox" data-sh="group" data-v="${g}" ${c.groups.includes(g)?'checked':''}> ${g}</label>`).join('')}</div>`:''}`;
+    }
+    root.addEventListener('input',(e)=>{ const r=e.target.closest('[data-act]'); if(r){ const k=r.dataset.act; val[k]=+r.value; cfgs[k]=defCfg(); STOPS[val[k]].apply(cfgs[k]); draw(); } });
+    root.addEventListener('click',(e)=>{ const b=e.target.closest('[data-sh]'); if(!b)return; const k=b.dataset.sh,v=b.dataset.v;
+      if(k==='cname')shared.collect.name=!shared.collect.name; else if(k==='cpass')shared.collect.password=!shared.collect.password; else if(k==='cdemo')shared.collect.demo=!shared.collect.demo; else if(k==='togGroups')shared._ui.groups=!shared._ui.groups; else if(k==='ungroup')shared.groups=shared.groups.filter(x=>x!==v); else return; draw(); });
+    root.addEventListener('change',(e)=>{ const b=e.target.closest('[data-sh]'); if(!b)return; const k=b.dataset.sh,v=b.dataset.v;
+      if(k==='dt')shared.demoTiming=v; else if(k==='group'){ if(e.target.checked){if(!shared.groups.includes(v))shared.groups.push(v);}else shared.groups=shared.groups.filter(x=>x!==v);} else return; draw(); });
     draw();
     return root;
   }
 
-  /* ══════════ E4 — answer 2 questions (wizard) ══════════ */
+  /* ════════════════ E4 — WIZARD (merge + branch, covers all dimensions) ════════════════ */
   function renderWizard(){
-    const s = { step:1, who:null, check:null };
+    const master = defCfg('open');
+    const ovr = {}; const strict = {}; // action.key->bool stricter
+    const s = { step:1 };
     const root = el('<div></div>');
-    function dots(){
-      const total = s.who==='verified' ? 3 : 2;
-      const cur = s.step==='done' ? total : s.step;
-      return `<div class="ax-dots">${Array.from({length:total},(_,i)=>`<i class="${i<cur?'is-on':''}"></i>`).join('')}</div>`;
-    }
+    const STEPS = ['who','prove','collect','peraction','done'];
+    function curIndex(){ return STEPS.indexOf(s.step); }
     function draw(){
       let body='';
-      if (s.step===1){
-        body = `<p class="ax-q">Who is this phase for?</p>
+      if(s.step==='who'||s.step===1){
+        body=`<p class="ax-q">Who is this phase for?</p><div class="ax-opts">
+          <button class="ax-opt" data-who="open"><span class="ax-opt__em">🌍</span><span><div class="ax-opt__t">Everyone</div><div class="ax-opt__d">Anyone takes part, no sign-up</div></span><span class="ax-opt__go">→</span></button>
+          <button class="ax-opt" data-who="signin"><span class="ax-opt__em">🔑</span><span><div class="ax-opt__t">People who sign in</div><div class="ax-opt__d">We make sure they’re real</div></span><span class="ax-opt__go">→</span></button>
+          <button class="ax-opt" data-who="admins"><span class="ax-opt__em">🔒</span><span><div class="ax-opt__t">Just our team</div><div class="ax-opt__d">Admins and managers only</div></span><span class="ax-opt__go">→</span></button></div>`;
+      } else if(s.step==='prove'){
+        body=`<button class="ax-link" data-back>← back</button><p class="ax-q">How should they prove who they are?</p><p class="ax-sub" style="margin-top:-10px">Tick any — they add up.</p>
+          <div class="ax-methods" style="margin-bottom:14px">${Object.keys(METHODS).map(k=>`<button class="ax-mchip ${master.methods[k]?'is-on':''}" data-m="${k}"><span class="ax-mchip__c">${master.methods[k]?'✓':''}</span><span>${METHODS[k].em} ${METHODS[k].t}</span></button>`).join('')}</div>
+          ${master.methods.id?`<label class="ax-subrow"><input type="checkbox" data-recent ${master.recent?'checked':''}> Re-check their ID every phase</label>`:''}
+          <div style="margin-top:16px"><button class="ax-add" data-grp>${master.groups.length?'Groups: '+master.groups.join(', '):'+ Limit to a group (optional)'}</button>
+            ${master._ui.groups?`<div class="ax-subrow" style="display:block;margin-top:8px">${GROUPS.map(g=>`<label class="ax-checkrow" style="border:0;padding:6px 0"><input type="checkbox" data-grpv="${g}" ${master.groups.includes(g)?'checked':''}> ${g}</label>`).join('')}</div>`:''}</div>
+          <div style="margin-top:20px"><button class="ax-btn" data-next="collect">Next →</button></div>`;
+      } else if(s.step==='collect'){
+        body=`<button class="ax-link" data-back>← back</button><p class="ax-q">What do you need to know about them?</p>
+          <div class="ax-crow"><span>🙋</span><span><div class="ax-crow__t">Their name</div></span><button class="ax-tog ${master.collect.name?'is-on':''}" data-c="name"></button></div>
+          <div class="ax-crow"><span>🔑</span><span><div class="ax-crow__t">A password</div></span><button class="ax-tog ${master.collect.password?'is-on':''}" data-c="password"></button></div>
+          <div class="ax-crow"><span>📋</span><span><div class="ax-crow__t">A few questions (age, area…)</div></span><button class="ax-tog ${master.collect.demo?'is-on':''}" data-c="demo"></button></div>
+          ${master.collect.demo?`<div class="ax-subrow" style="display:block"><label class="ax-radio"><input type="radio" name="wdt" data-wdt="before" ${master.demoTiming==='before'?'checked':''}> Ask before they take part</label><label class="ax-radio"><input type="radio" name="wdt" data-wdt="end" ${master.demoTiming==='end'?'checked':''}> Ask at the end</label><p class="ax-note">Question wording lives in Registration settings.</p></div>`:''}
+          <div style="margin-top:18px"><button class="ax-btn" data-next="peraction">Next →</button></div>`;
+      } else if(s.step==='peraction'){
+        body=`<button class="ax-link" data-back>← back</button><p class="ax-q">Same rules for everything?</p>
           <div class="ax-opts">
-            <button class="ax-opt" data-who="open"><span class="ax-opt__em">🌍</span><span><div class="ax-opt__t">Everyone</div><div class="ax-opt__d">Anyone can take part, no sign-up</div></span><span class="ax-opt__go">→</span></button>
-            <button class="ax-opt" data-who="verified"><span class="ax-opt__em">🏡</span><span><div class="ax-opt__t">People who live here</div><div class="ax-opt__d">We'll make sure they're local</div></span><span class="ax-opt__go">→</span></button>
-            <button class="ax-opt" data-who="staff"><span class="ax-opt__em">🔒</span><span><div class="ax-opt__t">Just our team</div><div class="ax-opt__d">Admins and managers only</div></span><span class="ax-opt__go">→</span></button>
-          </div>`;
-      } else if (s.step===2){
-        body = `<button class="ax-link" data-back style="margin-bottom:14px">← back</button>
-          <p class="ax-q">How should we check they live here?</p>
-          <div class="ax-opts">
-            <button class="ax-opt" data-check="phone"><span class="ax-opt__em">📱</span><span><div class="ax-opt__t">A text message</div><div class="ax-opt__d">We text a code to their phone</div></span><span class="ax-opt__go">→</span></button>
-            <button class="ax-opt" data-check="id"><span class="ax-opt__em">🪪</span><span><div class="ax-opt__t">A photo ID</div><div class="ax-opt__d">They upload an official document</div></span><span class="ax-opt__go">→</span></button>
-            <button class="ax-opt" data-check="email"><span class="ax-opt__em">✉️</span><span><div class="ax-opt__t">An email is enough</div><div class="ax-opt__d">They confirm an email address</div></span><span class="ax-opt__go">→</span></button>
-          </div>`;
+            <button class="ax-opt" data-same="1"><span class="ax-opt__em">✅</span><span><div class="ax-opt__t">Yes — same everywhere</div><div class="ax-opt__d">${summary(master)}</div></span><span class="ax-opt__go">→</span></button>
+            <button class="ax-opt" data-same="0"><span class="ax-opt__em">🎚️</span><span><div class="ax-opt__t">No — stricter for some</div><div class="ax-opt__d">Pick which actions need more</div></span><span class="ax-opt__go">→</span></button></div>`;
+      } else if(s.step==='tighten'){
+        body=`<button class="ax-link" data-back>← back</button><p class="ax-q">Turn up the checks where you need to.</p>
+          <p class="ax-sub" style="margin-top:-10px">Each action starts from your main rule. Tick extra checks per action.</p>
+          ${ACTIONS.map(a=>{ const c=ovr[a.key]; return `<div style="margin:0 0 16px"><div style="font-weight:800;margin-bottom:8px">${a.em} ${a.label}</div>
+            <div class="ax-methods">${Object.keys(METHODS).map(k=>`<button class="ax-mchip ${c.methods[k]?'is-on':''}" data-tight="${a.key}" data-m="${k}"><span class="ax-mchip__c">${c.methods[k]?'✓':''}</span><span>${METHODS[k].em} ${METHODS[k].t}</span></button>`).join('')}</div></div>`; }).join('')}
+          <div style="margin-top:8px"><button class="ax-btn" data-next="done">Done →</button></div>`;
       } else {
-        const whoTxt = { open:'Everyone can take part', verified:'Only verified locals can take part', staff:'Only your team can take part' }[s.who];
-        const whoEm  = { open:'🌍', verified:'🏡', staff:'🔒' }[s.who];
-        const checkTxt = s.check ? { phone:'We verify them with a text code', id:'We verify them with a photo ID', email:'They confirm an email' }[s.check] : 'No checks needed';
-        const checkEm  = s.check ? { phone:'📱', id:'🪪', email:'✉️' }[s.check] : '🙂';
-        body = `<div class="ax-summary">
-            <p class="ax-summary__big">🎉 All set! Here's your setup:</p>
-            <div class="ax-sumrow"><span class="em">${whoEm}</span> ${whoTxt}</div>
-            <div class="ax-sumrow"><span class="em">${checkEm}</span> ${checkTxt}</div>
-            <div style="margin-top:18px"><button class="ax-link" data-restart>↺ Start over</button></div>
-          </div>`;
+        const rows = ACTIONS.map(a=>{ const c=ovr[a.key]||master; return `<div class="ax-sumrow"><span class="em">${a.em}</span> <b>${a.label}:</b>&nbsp; ${summary(c)}</div>`; }).join('');
+        body=`<div class="ax-summary"><p class="ax-summary__big">🎉 All set! Here’s your phase:</p>${rows}<div style="margin-top:18px"><button class="ax-link" data-restart>↺ Start over</button></div></div>`;
       }
-      root.innerHTML = `
-        <p class="ax-eyebrow">Exploration 4 · Quick setup</p>
-        <h2 class="ax-h">Answer a question or two.</h2>
-        <p class="ax-sub">We ask in plain words and set everything up for you.</p>
-        <div class="ax-wiz">${dots()}${body}</div>`;
+      const total = 5;
+      const idx = ({who:1,prove:2,collect:3,peraction:4,tighten:5,done:5})[s.step] || 1;
+      root.innerHTML = `<p class="ax-eyebrow">Exploration 4 · Quick setup</p><h2 class="ax-h">Answer a few plain questions.</h2><p class="ax-sub">We set every detail up for you — including different rules per action.</p>
+        <div class="ax-wiz"><div class="ax-dots">${Array.from({length:total},(_,i)=>`<i class="${i<idx?'is-on':''}"></i>`).join('')}</div>${body}</div>`;
     }
-    root.addEventListener('click', (e)=>{
-      const w = e.target.closest('[data-who]');
-      if (w){ s.who=w.dataset.who; if (s.who==='verified'){ s.step=2; s.check=null; } else { s.check=null; s.step='done'; } draw(); return; }
-      const c = e.target.closest('[data-check]');
-      if (c){ s.check=c.dataset.check; s.step='done'; draw(); return; }
-      if (e.target.closest('[data-back]')){ s.step=1; draw(); return; }
-      if (e.target.closest('[data-restart]')){ s.step=1; s.who=null; s.check=null; draw(); return; }
+    root.addEventListener('click',(e)=>{
+      const w=e.target.closest('[data-who]'); if(w){ master.level=w.dataset.who; if(master.level==='signin'){ s.step='prove'; } else if(master.level==='open'){ master.methods={email:false,sms:false,id:false}; s.step='collect'; } else { s.step='peraction'; } draw(); return; }
+      const m=e.target.closest('[data-m]'); if(m && !e.target.closest('[data-tight]')){ master.methods[m.dataset.m]=!master.methods[m.dataset.m]; draw(); return; }
+      if(e.target.closest('[data-recent]')){ /* handled on change */ }
+      if(e.target.closest('[data-grp]')){ master._ui.groups=!master._ui.groups; draw(); return; }
+      const nx=e.target.closest('[data-next]'); if(nx){ s.step=nx.dataset.next; draw(); return; }
+      const c=e.target.closest('[data-c]'); if(c){ master.collect[c.dataset.c]=!master.collect[c.dataset.c]; draw(); return; }
+      if(e.target.closest('[data-back]')){ s.step = s.step==='tighten'?'peraction':s.step==='prove'?'who':s.step==='collect'?(master.level==='signin'?'prove':'who'):'collect'; if(s.step==='who')s.step=1; draw(); return; }
+      const same=e.target.closest('[data-same]'); if(same){ if(same.dataset.same==='1'){ Object.keys(ovr).forEach(k=>delete ovr[k]); s.step='done'; } else { ACTIONS.forEach(a=>{ ovr[a.key]=clone(master); if(ovr[a.key].level==='open'){ ovr[a.key].level='signin'; } }); s.step='tighten'; } draw(); return; }
+      const tt=e.target.closest('[data-tight]'); if(tt){ const c=ovr[tt.dataset.tight]; c.methods[tt.dataset.m]=!c.methods[tt.dataset.m]; draw(); return; }
+      if(e.target.closest('[data-restart]')){ s.step=1; master.level='open'; master.methods={email:true,sms:false,id:false}; Object.keys(ovr).forEach(k=>delete ovr[k]); draw(); return; }
     });
-    draw();
+    root.addEventListener('change',(e)=>{
+      if(e.target.closest('[data-recent]')){ master.recent=e.target.checked; draw(); }
+      const gv=e.target.closest('[data-grpv]'); if(gv){ const g=gv.dataset.grpv; if(e.target.checked){if(!master.groups.includes(g))master.groups.push(g);}else master.groups=master.groups.filter(x=>x!==g); draw(); }
+      const wdt=e.target.closest('[data-wdt]'); if(wdt){ master.demoTiming=wdt.dataset.wdt; draw(); }
+    });
+    s.step=1; draw();
     return root;
   }
 
-  /* ══════════ E5 — watch them walk in (live preview) ══════════ */
+  /* ════════════════ E5 — LIVE (per-action tabs + gates + phone preview) ════════════════ */
   function renderDoorway(){
-    const GATES = [
-      { k:'signin', em:'🔑', t:'Sign in',        d:'They log in or make an account', step:'Log in or sign up' },
-      { k:'email',  em:'✉️', t:'Confirm email',  d:'Code sent to their inbox',        step:'Confirm your email' },
-      { k:'phone',  em:'📱', t:'Text a code',    d:'SMS code to their phone',         step:'Enter the code we text you' },
-      { k:'id',     em:'🪪', t:'Show ID',        d:'Upload an official document',     step:'Upload your ID' },
-      { k:'name',   em:'🙋', t:'Ask their name', d:'First and last name',             step:'Tell us your name' },
-    ];
-    const s = { on:{ signin:true, email:true, phone:false, id:false, name:false } };
-    const root = el('<div></div>');
+    const cfgs={}; ACTIONS.forEach(a=>{ cfgs[a.key]=defCfg(a.key==='submit'?'open':'signin'); });
+    const s={ act:'submit' };
+    const root=el('<div></div>');
+    function phoneSteps(c){
+      const steps=[];
+      if(c.level==='admins') return ['🔒 Only staff can do this — residents don’t see it.'];
+      if(c.level==='signin'){ steps.push('Log in or create an account');
+        if(c.methods.email) steps.push('Confirm your email with a code');
+        if(c.methods.sms) steps.push('Enter the code we text you');
+        if(c.methods.id) steps.push('Upload your ID'+(c.recent?' (each phase)':''));
+        if(c.groups.length) steps.push('We check you’re in: '+c.groups.join(', '));
+        if(c.collect.name) steps.push('Tell us your name');
+        if(c.collect.password) steps.push('Set a password');
+        if(c.collect.demo) steps.push('Answer a few questions'+(c.demoTiming==='end'?' (at the end)':''));
+      } else {
+        if(c.collect.demo) steps.push('Answer a few questions');
+      }
+      return steps;
+    }
     function draw(){
-      const active = GATES.filter(g=>s.on[g.k]);
-      const steps = active.map((g,i)=>`
-        <div class="ax-pstep"><span class="ax-pstep__n">${i+1}</span><span class="ax-pstep__t">${g.step}</span></div>`).join('');
-      root.innerHTML = `
+      const c=cfgs[s.act]; const act=ACTIONS.find(a=>a.key===s.act);
+      const steps=phoneSteps(c);
+      const gates = c.level==='admins' ? '' : `
+        ${ c.level==='signin' ? `
+        <p class="ax-block__h" style="margin-top:18px">Checks at the door</p>
+        ${Object.keys(METHODS).map(k=>`<div class="ax-gate"><span class="ax-gate__em">${METHODS[k].em}</span><span><div class="ax-gate__t">${METHODS[k].t}</div><div class="ax-gate__d">${METHODS[k].d}</div></span><button class="ax-tog ${c.methods[k]?'is-on':''}" data-g="m:${k}"></button></div>`).join('')}
+        ${c.methods.id?`<label class="ax-subrow"><input type="checkbox" data-recent ${c.recent?'checked':''}> Re-check ID every phase</label>`:''}
+        <div class="ax-gate"><span class="ax-gate__em">👥</span><span><div class="ax-gate__t">Limit to groups</div><div class="ax-gate__d">${c.groups.length?c.groups.join(', '):'Anyone signed in'}</div></span><button class="ax-tog ${c.groups.length?'is-on':''}" data-g="grp"></button></div>
+        ${c._ui.groups?`<div class="ax-subrow" style="display:block">${GROUPS.map(g=>`<label class="ax-checkrow" style="border:0;padding:6px 0"><input type="checkbox" data-grpv="${g}" ${c.groups.includes(g)?'checked':''}> ${g}</label>`).join('')}</div>`:''}
+        `:''}
+        <p class="ax-block__h" style="margin-top:18px">What we collect</p>
+        <div class="ax-gate"><span class="ax-gate__em">🙋</span><span><div class="ax-gate__t">Their name</div></span><button class="ax-tog ${c.collect.name?'is-on':''}" data-g="c:name"></button></div>
+        <div class="ax-gate"><span class="ax-gate__em">🔑</span><span><div class="ax-gate__t">A password</div></span><button class="ax-tog ${c.collect.password?'is-on':''}" data-g="c:password"></button></div>
+        <div class="ax-gate"><span class="ax-gate__em">📋</span><span><div class="ax-gate__t">A few questions</div></span><button class="ax-tog ${c.collect.demo?'is-on':''}" data-g="c:demo"></button></div>`;
+      root.innerHTML=`
         <p class="ax-eyebrow">Exploration 5 · See it live</p>
-        <h2 class="ax-h">Flip the checks. Watch what your resident sees.</h2>
-        <p class="ax-sub">Each switch is a step at the door. The phone shows their real experience as you go.</p>
+        <h2 class="ax-h">Set each action. Watch what your resident sees.</h2>
+        <p class="ax-sub">Pick what people are doing, flip the checks, and the phone shows their real experience for that action.</p>
+        <div class="ax-tabs">${ACTIONS.map(a=>`<button class="ax-tab ${s.act===a.key?'is-on':''}" data-tab="${a.key}"><span class="ax-tab__t">${a.em} ${a.label}</span><span class="ax-tab__s">${summary(cfgs[a.key])}</span></button>`).join('')}</div>
         <div class="ax-door">
-          <div class="ax-gates">${GATES.map(g=>`
-            <div class="ax-gate"><span class="ax-gate__em">${g.em}</span>
-              <span><div class="ax-gate__t">${g.t}</div><div class="ax-gate__d">${g.d}</div></span>
-              <button class="ax-tog ${s.on[g.k]?'is-on':''}" data-gate="${g.k}" aria-label="${g.t}"></button>
-            </div>`).join('')}</div>
-          <div class="ax-phone"><div class="ax-phone__scr">
-            <p class="ax-phone__note">what your resident sees</p>
-            ${steps || '<div class="ax-pstep"><span class="ax-pstep__t" style="color:#9aa6b6">No steps — they jump straight in.</span></div>'}
-            <div class="ax-pstep ax-pstep--done"><span class="ax-pstep__n">✓</span><span class="ax-pstep__t">You're in — take part!</span></div>
-            <p class="ax-pcount">${active.length} step${active.length===1?'':'s'} before they can join</p>
+          <div>
+            <p class="ax-block__h">Who can ${act.verb}</p>
+            <div class="ax-methods">${act.levels.map(k=>`<button class="ax-mchip ${c.level===k?'is-on':''}" data-lv="${k}"><span>${LEVELS[k].em}</span> ${LEVELS[k].t}</button>`).join('')}</div>
+            <div class="ax-gates">${gates}</div>
+          </div>
+          <div class="ax-phone"><div class="ax-phone__scr"><p class="ax-phone__note">what your resident sees · ${act.label.toLowerCase()}</p>
+            ${steps.length?steps.map((t,i)=>`<div class="ax-pstep"><span class="ax-pstep__n">${i+1}</span><span class="ax-pstep__t">${t}</span></div>`).join(''):'<div class="ax-pstep"><span class="ax-pstep__t" style="color:#9aa6b6">They jump straight in.</span></div>'}
+            ${c.level!=='admins'?`<div class="ax-pstep ax-pstep--done"><span class="ax-pstep__n">✓</span><span class="ax-pstep__t">You’re in — ${act.verb}!</span></div><p class="ax-pcount">${steps.length} step${steps.length===1?'':'s'} for them</p>`:''}
           </div></div>
         </div>`;
     }
-    root.addEventListener('click', (e)=>{
-      const g = e.target.closest('[data-gate]');
-      if (g){ const k=g.dataset.gate; s.on[k]=!s.on[k]; draw(); }
+    root.addEventListener('click',(e)=>{
+      const t=e.target.closest('[data-tab]'); if(t){ s.act=t.dataset.tab; draw(); return; }
+      const lv=e.target.closest('[data-lv]'); if(lv){ cfgs[s.act].level=lv.dataset.v||lv.dataset.lv; draw(); return; }
+      const g=e.target.closest('[data-g]'); if(g){ const c=cfgs[s.act]; const v=g.dataset.g;
+        if(v.startsWith('m:')) c.methods[v.slice(2)]=!c.methods[v.slice(2)];
+        else if(v==='grp'){ if(c.groups.length){ c.groups=[]; c._ui.groups=false; } else { c._ui.groups=!c._ui.groups; } }
+        else if(v.startsWith('c:')) c.collect[v.slice(2)]=!c.collect[v.slice(2)];
+        draw(); return; }
+    });
+    root.addEventListener('change',(e)=>{ const c=cfgs[s.act];
+      if(e.target.closest('[data-recent]')){ c.recent=e.target.checked; draw(); }
+      const gv=e.target.closest('[data-grpv]'); if(gv){ const g=gv.dataset.grpv; if(e.target.checked){if(!c.groups.includes(g))c.groups.push(g);}else c.groups=c.groups.filter(x=>x!==g); draw(); }
     });
     draw();
     return root;
   }
 
-  // ── registry + floating switcher ──
+  /* ───────── registry + floating switcher ───────── */
   const TAKES = [
     { n:'Sentence', tag:'Say it in a sentence',  r:renderSentence },
     { n:'Presets',  tag:'Pick a setup',          r:renderPresets },
-    { n:'Slider',   tag:'Slide to set the bar',  r:renderSlider },
-    { n:'Wizard',   tag:'Answer a question',     r:renderWizard },
-    { n:'Live',     tag:'Watch them walk in',    r:renderDoorway },
+    { n:'Slider',   tag:'A bar per action',      r:renderSlider },
+    { n:'Wizard',   tag:'Answer a few questions',r:renderWizard },
+    { n:'Live',     tag:'Per action, see it live',r:renderDoorway },
   ];
-  let cur = 0;
-  const sw = el(`<div class="ax-switch">
-    <span class="ax-switch__cap"></span>
-    <div class="ax-switch__dots">${TAKES.map((t,i)=>`<button class="ax-switch__btn" data-go="${i}" title="${t.tag}">${i+1}</button>`).join('')}</div>
-  </div>`);
+  let cur=0;
+  const sw = el('<div class="ax-switch"><span class="ax-switch__cap"></span><div class="ax-switch__dots">'+TAKES.map((t,i)=>'<button class="ax-switch__btn" data-go="'+i+'" title="'+t.tag+'">'+(i+1)+'</button>').join('')+'</div></div>');
   document.body.appendChild(sw);
-  function mount(i){
-    cur = i;
-    stage.innerHTML = '';
-    stage.appendChild(TAKES[i].r());
-    sw.querySelectorAll('.ax-switch__btn').forEach((b,j)=>b.classList.toggle('is-on', j===i));
-    sw.querySelector('.ax-switch__cap').textContent = `${i+1}/5 · ${TAKES[i].tag}`;
-  }
-  sw.addEventListener('click', (e)=>{ const b=e.target.closest('[data-go]'); if (b) mount(+b.dataset.go); });
+  function mount(i){ cur=i; closeM(); stage.innerHTML=''; stage.appendChild(TAKES[i].r()); sw.querySelectorAll('.ax-switch__btn').forEach((b,j)=>b.classList.toggle('is-on',j===i)); sw.querySelector('.ax-switch__cap').textContent=(i+1)+'/5 · '+TAKES[i].tag; }
+  sw.addEventListener('click',(e)=>{ const b=e.target.closest('[data-go]'); if(b) mount(+b.dataset.go); });
   mount(0);
 })();
 </script>

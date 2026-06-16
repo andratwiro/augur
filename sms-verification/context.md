@@ -20,6 +20,15 @@ _One-paragraph framing of the SMS verification opportunity._
   steps), **4 Wizard** (1–2 plain questions → summary), **5 Live** (toggle door
   checks, watch the resident's phone update). All fully clickable; SMS is one
   verification option among email/ID. Pattern research in `research.md`.
+  **Now carries the FULL model** (per Luuc's tab): per-action rules (submit /
+  comment / react / attend), **stacking** verification methods (email/SMS/ID +
+  recency), limit-to-groups (+ inline customize-message), and data collection
+  (name / password / demographics + timing + question picker that notes the
+  questions live in Registration settings). Bar = reachable + clickable, deep
+  editors light. Per-action treatment is **mixed**: E1 Sentence, E2 Presets,
+  E4 Wizard = one rule + per-action overrides; E3 Slider & E5 Live = per-action
+  first-class. E3 deliberately trades per-action *data/groups* to a phase-level
+  block (slider keeps per-action *access*) — flagged in an in-prototype note.
 - `phase-access-permissions/` — the **Project Editor back office** (duplicated from
   `pages/bo-project-phase/`, self-contained) focused on **Timeline → Phase →
   "Phase access and user data"**. The access tab is rebuilt to mirror the *current
