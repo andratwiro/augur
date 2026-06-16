@@ -392,3 +392,64 @@ when a 2nd consumer lands: `.gv-bo-rte`/`charcount`, `.gv-bo-scalebar`, colour-p
 field, seat-summary card, choice-card, automated-row. Register numeric checkpoints for
 the new components (accordion/fieldrow/segmented/report-sheet) — deferred to keep the
 green ratchet stable; builds are digest-grounded + eyeball-verified.
+
+---
+
+# RUN 6 — Overnight deep fidelity audit (started 2026-06-16)
+
+Goal: recurse both surfaces, find Component/Primitive/Page drift vs the REAL product
+(digest- and source-grounded, never eyeballed), fix the small details, build the
+remaining long-tail. Method: read-only audit subagents capture+diff each screen and
+return structured gap registers; the lead serializes canonical CSS edits, verifies,
+pins checkpoints, commits per unit. Sweep captures prefixed `r6-*` (load-bearing ones
+promoted to canonical names). Baseline at start: lint 0 · verify:all **121 green / 0 red**.
+
+## Wave 1 — audit (4 read-only agents) → findings
+
+**FO common-ground (`pages/project-common-ground`):** the 36 page-authored hex lint
+flags are a **false positive** — every GoVocal-*rendered* surface (phase green
+`#04884C`, number circle, panel shadow `--gv-shadow`, canvas `#EDEFF0`, head band) is
+already correctly tokenized. The flagged literals are (a) the **cross-origin pol.is
+iframe** reconstruction and (b) a **bespoke Westmere results panel with no real-DOM
+equivalent** (the real phase body is just `<iframe src="pol.is/…">`). Verdict: promote
+nothing. NOTE: the A1 agent claimed `var(--gv-border,#e0e4e4)` fallbacks were "dead" —
+**they are NOT**: `--gv-border` is undefined (only `-dark`/`-light`), so the literal is
+live. Left untouched. (Lesson: verify a token exists before "cleaning up" its fallback.)
+
+**FO project page (`pages/project-page` + `govocal-ui.css`):** real SYSTEM drift found
+and FIXED (commit `a49414b`), grounded on two tenants (uxusertesting + Wien, byte-identical):
+- `.gv-phasepanel` padding `30px 30px` → **`30px 30px 35px`** (real `div.sc-ezPzSr`).
+- `.gv-phasepanel__name` line-height `1.2` → **`1.3`** (21px×1.3 = 27.3px real).
+- `.gv-phases__bar h2`: dropped **fabricated `letter-spacing:-0.01em`** (real = normal).
+- project-page `h1`: dropped redundant inline `line-height:39px` (primitive 1.3 yields it).
+- Pinned checkpoint `fo-project/phasepanel-name` vs new canonical capture `fo-projpage-wien`
+  (props font-size/weight/line-height; font-family is themed → excluded). verify:all 122 green.
+- Left page-local one-offs alone (Leaflet map block `.pp-*`): correctly scoped, not systemic.
+
+## Wave 2 — build the two specced long-tail pieces
+
+**BO Exports menu + bell notif flyout** (was unbuilt). Source-confirmed both are the SAME
+component-library `<Dropdown>`. Canonical added (lead): token **`--gv-shadow-menu`**
+`0 0 12px rgba(0,0,0,.18)`; **`.gv-bo-menu`/`__item`/`.is-flyout`** (260px) in govocal-bo.css;
+**`.gv-badge.is-count`** (red `#E52516`, radius 2px, pad 0 4px) in primitives. All values
+re-verified by the lead against `r1-px-input-manager-exports` + `r1-px-notif-flyout` digests.
+Demo `components/bo-menu/` + checkpoints in progress.
+
+**BO New-project flow** (scratch / template gallery) — SPEC ready (`r1-px-projects-new-template`
++ source `admin_project_templates`): mostly REUSE (`.gv-bo-segmented` toggle, `.gv-input`
+search, `.gv-btn` variants, `.gv-bo-empty`); NEW `.gv-bo-templatecard` (grey-blue bordered,
+21px/500 navy title, `#808080` desc) + `.gv-bo-facetgroup` (collapsible `FilterSelector`
+disclosure). Page `pages/bo-project-new/`, linked from bo-projects "+ New project". Queued.
+
+## Tooling finding (worth fixing)
+`scripts/capture/grab.mjs --click` passes the raw string to Playwright's **default CSS
+engine**, so `text=`/`:has-text()`/role selectors silently no-op — menu/flyout *reveal*
+captures fail. Add a `text=`/role-aware click mode (or accept a JS-eval click) so future
+sweeps can capture opened menus directly instead of falling back to older r1 captures.
+
+## Next-wave targets (deeper, uncovered)
+- FO methods as a resident, deep: voting/budgeting cast-vote, native survey runner page-by-page,
+  poll, volunteering sign-up, proposals detail+threshold, idea/proposal comments + reactions.
+- BO phase sub-tabs still unbuilt: Description (Content Builder), Map, Phase access (re-capture
+  with working reveal), Notifications/emails depth.
+- Re-pass "done" BO pages adversarially (states: hover/active/focus/checked; type hierarchy).
