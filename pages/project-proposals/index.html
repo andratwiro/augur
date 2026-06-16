@@ -21,18 +21,9 @@
     body { margin: 0; background: var(--gv-background); }
     /* layout-only (no colour/elevation/type authored) */
     .pp-frame { max-width: 1150px; margin: 0 auto; padding: 28px 24px 48px; }
+    /* list header — aligned to the cards column of the 2-col feed */
     .pp-head { display: flex; align-items: center; margin: 22px 0 14px; }
     .pp-head__count { margin-left: 0; }
-    .pp-layout { display: grid; grid-template-columns: 1fr 300px; gap: 30px; align-items: start; }
-    .pp-sidebar > * + * { margin-top: 18px; }
-    .pp-search { position: relative; }
-    .pp-search input { width: 100%; box-sizing: border-box; padding-right: 38px; }
-    .pp-search .gv-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--gv-cool-grey-600); }
-    .pp-box__list { list-style: none; margin: 0; padding: 0; }
-    .pp-box__list li a { display: flex; align-items: center; gap: 10px; padding: 9px 4px; color: var(--gv-grey-800); text-decoration: none; }
-    .pp-box__list li a:hover { color: var(--gv-tenant-primary); }
-    .pp-box__list li a .count { margin-left: auto; color: var(--gv-cool-grey-600); }
-    .pp-box__label { margin: 0 0 8px; font-weight: 700; color: var(--gv-grey-800); }
     /* project-header region (layout-only — reuses canonical .gv-* components; same
        structure as pages/project-page) */
     .pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
@@ -45,7 +36,6 @@
     .pp-cta .gv-participants { display: flex; justify-content: center; }
     .pp-desc { grid-column: 1; }
     .pp-manager-row { display: flex; align-items: center; gap: 10px; }
-    @media (max-width: 860px) { .pp-layout { grid-template-columns: 1fr; } }
     @media (max-width: 760px) { .pp-title { grid-template-columns: 1fr; } .pp-title h1, .pp-cta, .pp-desc { grid-column: 1; } .pp-cta { grid-row: auto; } }
   </style>
 </head>
@@ -137,16 +127,23 @@
       </div>
     </section>
 
-    <!-- List header (count + List/Map toggle) -->
-    <div class="pp-head">
-      <span class="gv-feed__count pp-head__count">5 proposals</span>
-      <div class="gv-viewseg" role="tablist" aria-label="View" style="margin-left:auto;">
-        <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span> List</button>
-        <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span> Map</button>
-      </div>
-    </div>
+    <!-- ════════ Proposals feed — canonical 2-col grid (.gv-feed): cards column on
+         the left, the canonical filter sidebar (.gv-feedfilter / #e2e-project-sidebar,
+         same component the ideation project-page ships) on the right. The list header
+         (count + List/Map toggle) aligns to the cards column; Search + Sort + Tags
+         live in the sidebar, matching the real proposals page. ════════ -->
+    <div class="gv-feed">
+      <div class="gv-feed__col">
 
-    <div>
+      <!-- List header (count + List/Map toggle), aligned to the cards column -->
+      <div class="pp-head">
+        <span class="gv-feed__count pp-head__count">5 proposals</span>
+        <div class="gv-viewseg" role="tablist" aria-label="View" style="margin-left:auto;">
+          <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span> List</button>
+          <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span> Map</button>
+        </div>
+      </div>
+
       <!-- Proposals list -->
       <div class="gv-idealist" id="e2e-ideas-list">
 
@@ -250,8 +247,28 @@
           </div>
         </article>
 
-      </div>
-    </div>
+      </div><!-- /.gv-idealist -->
+      </div><!-- /.gv-feed__col -->
+
+      <!-- Canonical filter sidebar — search + sort + tag facets with counts -->
+      <aside class="gv-feedfilter" id="e2e-project-sidebar" aria-label="Filter proposals">
+        <div><p class="gv-feedfilter__label">Search posts</p><input class="gv-input" type="search" placeholder="Search" aria-label="Search posts" /></div>
+        <div><p class="gv-feedfilter__label">SORT BY</p><div class="gv-feedfilter__group gv-feedfilter__group--sort">
+          <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="idea" aria-hidden="true"></span>Most liked</button>
+          <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="comments" aria-hidden="true"></span>Most discussed</button>
+          <button class="gv-feedfilter__btn is-active" type="button"><span class="gv-feedfilter__icon" data-gv-icon="trend-up" aria-hidden="true"></span>Trending</button>
+          <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="refresh" aria-hidden="true"></span>Random</button>
+          <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="clock" aria-hidden="true"></span>New</button>
+          <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="clock-solid" aria-hidden="true"></span>Old</button></div></div>
+        <div><p class="gv-feedfilter__label">TAGS</p><div class="gv-feedfilter__group">
+          <button class="gv-feedfilter__btn" type="button">Public spaces and buildings <span class="gv-feedfilter__count">4</span></button>
+          <button class="gv-feedfilter__btn" type="button">Health and welfare <span class="gv-feedfilter__count">2</span></button>
+          <button class="gv-feedfilter__btn" type="button">Sustainable development <span class="gv-feedfilter__count">2</span></button>
+          <button class="gv-feedfilter__btn" type="button">Mobility <span class="gv-feedfilter__count">2</span></button>
+          <button class="gv-feedfilter__btn" type="button">Culture, sports and networks <span class="gv-feedfilter__count">1</span></button></div></div>
+      </aside>
+
+    </div><!-- /.gv-feed -->
 
   </main>
 
