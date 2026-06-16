@@ -33,8 +33,11 @@
     .infopage { padding: 0 0 50px; }
     /* Constrained white content column — live div.jzXQxe: white, padding 50px 30px (digest #25). */
     .infopage__col { max-width: 1000px; margin: 0 auto; background: #fff; padding: 50px 30px; }
-    /* The attachments region sits in the same white column — padding 0 20px 50px (digest #26). */
-    .infopage__files { max-width: 1000px; margin: 0 auto; background: #fff; padding: 0 20px 50px; }
+    /* The attachments block is a sibling white column (real DOM: shares the base
+       sc-ecdDTd cIqFkc with the prose block — same width + horizontal padding, only
+       the vertical padding differs). Match .infopage__col's 30px sides so the
+       attachment rows align flush under the prose. */
+    .infopage__files { max-width: 1000px; margin: 0 auto; background: #fff; padding: 0 30px 50px; }
     /* the prose runs flush-left (NOT the centered .gv-prose default) and fills the column */
     .infopage__col .gv-prose { max-width: none; margin: 0; padding: 0; }
     .infopage__files .gv-attachments { max-width: none; }
