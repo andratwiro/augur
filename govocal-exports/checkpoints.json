@@ -1936,6 +1936,58 @@
       ]
     },
     {
+      "id": "fo-stlouis-folder/card",
+      "built": "components/folder-card/index.html",
+      "against": "fo-stlouis-folder",
+      "map": {
+        ".e2e-folder-card": ".gv-pcard.boxed.folder"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "border",
+        "border-radius",
+        "padding",
+        "min-height"
+      ],
+      "uses": [
+        ".gv-pcard"
+      ]
+    },
+    {
+      "id": "fo-stlouis-folder/count",
+      "built": "components/folder-card/index.html",
+      "against": "fo-stlouis-folder",
+      "map": {
+        ".e2e-folder-card-numberofprojects": ".e2e-folder-card-numberofprojects"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight"
+      ],
+      "uses": [
+        ".gv-pcard"
+      ]
+    },
+    {
+      "id": "fo-stlouis-folder/description",
+      "built": "components/folder-card/index.html",
+      "against": "fo-stlouis-folder",
+      "map": {
+        ".e2e-folder-card-folder-description-preview": ".gv-pcard__fdesc"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "margin"
+      ],
+      "uses": [
+        ".gv-pcard"
+      ]
+    },
+    {
       "id": "phase-timeline/segment-inactive",
       "built": "components/phase-timeline/index.html",
       "against": "fo-perspectives-entry",

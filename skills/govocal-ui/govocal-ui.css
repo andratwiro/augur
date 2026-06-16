@@ -597,7 +597,7 @@
    normal-case); the project name sits below it. Collapses to one column ≤820px. */
 .gv-spotlight { background: #fff; }
 .gv-spotlight__inner {
-  max-width: var(--gv-shell-w, 1200px); margin: 0 auto; padding: 56px 0;  /* live .e2e-spotlight-widget = 56px 0; content column 1200px, page gutter lives on the shell */
+  max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 56px 24px;  /* aligns to .gv-section width + 24px gutter so the spotlight matches every other module */
   display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
 }
 /* Spotlight section heading: live 'Currently working on' [data-testid=currently-working-on-text]
@@ -788,11 +788,45 @@
   .gv-pcard.boxed.horizontal.feature .gv-pcard__body { padding: 22px 22px 24px; }
 }
 
-/* Folder card: a "N projects" count badge pinned over the thumb */
-.gv-pcard__count { position: absolute; top: 12px; left: 12px; z-index: 1;
-  display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px;
-  background: rgba(0,0,0,0.62); color: #fff; font-size: var(--gv-fs-xs); font-weight: 600; }
-.gv-pcard__count svg, .gv-pcard__count .gv-icon { width: 14px; height: 14px; }
+/* ── Folder card ──────────────────────────────────────────────────────────────
+   Re-grounded on the live St Louis folder card (.e2e-folder-card,
+   stlouis.govocal.com/projects). STRUCTURE (cross-tenant, the "system"): a white
+   3px-radius card on the soft --gv-shadow, padding 18px 0 25px, margin-bottom 25px,
+   min-height 540px (it grows ~583px stacking child-project previews). Anatomy top
+   to bottom: a project HERO image with the project-COUNT badge (folder glyph + "N
+   projects") pinned TOP-RIGHT over a dark image overlay; then the folder title; then
+   a description preview; then small child-project avatar previews. The card has 0
+   horizontal padding, so the title/description carry their own ~30px inset via
+   .gv-pcard__fbody. SKIN (per-tenant): count colour (--gv-folder-count), font,
+   palette, imagery. */
+.gv-pcard.boxed.folder { position: relative; padding: 18px 0 25px; margin-bottom: 25px;
+  min-height: 540px; font-size: var(--gv-fs-s); line-height: 19.999px;
+  color: var(--gv-text-body); border: 0; }  /* borderless — soft --gv-shadow is the elevation */
+/* Hero image with a dark overlay so the count badge reads on any photo. */
+.gv-pcard.boxed.folder .gv-pcard__fmedia { position: relative; margin: -18px 0 0;
+  aspect-ratio: 16 / 9; overflow: hidden; background: var(--gv-grey-300); }
+.gv-pcard.boxed.folder .gv-pcard__fmedia img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-pcard.boxed.folder .gv-pcard__fmedia::after { content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,0) 45%); }
+/* Project-COUNT badge — folder glyph + the .e2e-folder-card-numberofprojects number
+   (tenant success-green --gv-folder-count, 14px/700) + " projects", pinned top-right
+   over the hero image overlay. */
+.gv-pcard__count { position: absolute; top: 12px; right: 12px; z-index: 1;
+  display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-s);
+  font-weight: 700; color: var(--gv-folder-count); }
+.gv-pcard__count svg, .gv-pcard__count .gv-icon { width: 16px; height: 16px; color: var(--gv-folder-count); }
+/* Title + description sit below the image with the card's own horizontal inset. */
+.gv-pcard.boxed.folder .gv-pcard__fbody { padding: 18px 30px 0; }
+.gv-pcard.boxed.folder .gv-pcard__title { margin: 0; font-size: var(--gv-fs-xl); }
+/* Folder description preview — live .e2e-folder-card-folder-description-preview:
+   16px/300 cool-grey (#596B7A), margin-top 15px, clamped to ~3 lines. */
+.gv-pcard__fdesc { margin: 15px 0 0; font-size: var(--gv-fs-base); font-weight: 300;
+  line-height: normal; color: var(--gv-text-secondary); display: -webkit-box;
+  -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* Child-project avatar previews stacked below (live renders 36px thumbs). */
+.gv-pcard__fpile { display: flex; gap: 8px; padding: 16px 30px 0; }
+.gv-pcard__fpile img, .gv-pcard__fpile .gv-pcard__fthumb { width: 36px; height: 36px;
+  border-radius: var(--gv-radius); background: var(--gv-grey-300); object-fit: cover; }
 
 /* "Finished/archived" status label tone (StatusLabel primitive, neutral grey) */
 .gv-status-label.finished { background: var(--gv-grey-200); color: var(--gv-grey-800); }

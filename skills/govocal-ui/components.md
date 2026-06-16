@@ -817,16 +817,46 @@ secondary cool-grey text). Add `.closed` for the muted finished state. Source:
     </div>
   </article>
 
-  <!-- folder card: count badge pinned over the thumb -->
-  <article class="gv-pcard boxed">
-    <div class="gv-pcard__thumb">
-      <span class="gv-pcard__count"><svg viewBox="0 0 24 24" fill="currentColor"><!--folder--></svg> 3 Projekte</span>
-    </div>
-    <div class="gv-pcard__body">
-      <h3 class="gv-pcard__title"><a href="#">Wiener Klimateam</a></h3> …
-    </div>
-  </article>
+  <!-- folder card → use the .folder variant (see below) -->
 </div>
+```
+
+## Folder card — `.gv-pcard.boxed.folder` (`components/folder-card/`)
+
+The projects-list **folder card**, re-grounded on the live St Louis card
+(`.e2e-folder-card`, `stlouis.govocal.com/projects`), verified via
+`fo-stlouis-folder/{card,count,description}`. STRUCTURE (cross-tenant system): a white
+**borderless** 3px-radius card on the soft `--gv-shadow`, padding `18px 0 25px`,
+margin-bottom 25px, **min-height 540px** (it grows ~583px stacking child-project
+previews). Anatomy top→bottom: a project **hero image** with the project-**count badge**
+(folder glyph + `N projects`) pinned **top-right** over a dark overlay; the folder
+**title**; a 16px/300 cool-grey **description preview** (`--gv-text-secondary`); then
+small child-project avatar previews. The card has 0 horizontal padding, so title +
+description carry their own ~30px inset via `.gv-pcard__fbody`. SKIN (per-tenant): the
+count NUMBER colour is the tenant success-green via **`--gv-folder-count`** (St Louis
+`#358545`), so it re-themes with `?theme=`; font/palette/imagery are the skin too. Net-new
+= the `.gv-pcard.boxed.folder` variant + `.gv-pcard__fmedia`/`__fbody`/`__fdesc`/`__fpile`/
+`__fthumb` and the re-grounded `.gv-pcard__count` (`govocal-ui.css`) + the
+`--gv-folder-count` token (`govocal-tokens.css`) — base `.gv-pcard.boxed` untouched.
+Pure assembly.
+
+```html
+<article class="gv-pcard boxed folder">
+  <div class="gv-pcard__fmedia">
+    <img src="folder-hero.webp" alt="" />
+    <span class="gv-pcard__count" aria-label="2 projects in this folder">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
+      <span class="e2e-folder-card-numberofprojects">2</span>&nbsp;projects
+    </span>
+  </div>
+  <div class="gv-pcard__fbody">
+    <h3 class="gv-pcard__title"><a href="#">BOA President's Office</a></h3>
+    <div class="gv-pcard__fdesc">The projects in this folder are city-wide …</div>
+  </div>
+  <div class="gv-pcard__fpile" aria-hidden="true">
+    <span class="gv-pcard__fthumb"></span><span class="gv-pcard__fthumb"></span>
+  </div>
+</article>
 ```
 
 ## Project carousel — `.gv-carousel` (`components/spotlight-carousel/`)

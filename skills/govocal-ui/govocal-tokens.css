@@ -189,6 +189,14 @@
      a cross-tenant structural frame distinct from the borderless wietsedemo card. */
   --gv-event-card-border: #CCC;              /* bordered EventsWidget <li> frame */
 
+  /* ── Folder card project-count (measured live: stlouis.govocal.com /projects) ──
+     The folder card's "N projects" line renders its number in the platform's
+     positive/success green (St Louis = srgb(53,133,69) = #358545, probed on
+     .e2e-folder-card-numberofprojects, 14px/700). This is the SKIN (each tenant's
+     success-green), not a cross-tenant structural value — aliased so a tenant can
+     re-theme the count colour without forking the folder-card structure. */
+  --gv-folder-count: #358545;                /* folder-card "N projects" number */
+
   /* ── Phase timeline: SELECTED (viewed, non-current) segment fill ──────────
      The live wietsedemo phase-ribbon selected segment was sampled srgb(89,107,122)
      = #596B7A (matches the live .e2e-phase-title colour). Our earlier slate aliased

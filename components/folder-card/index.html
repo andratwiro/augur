@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="gv-surface" content="front-office" />
+  <title>Folder card — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* St Louis ships no custom font (themes.js font:null) → it renders the Public Sans
+       stack live. Pin --gv-font-family to that stack so the source-grounded font matches
+       (overrides the default GoVocal LentiaNova stack for this St-Louis-skinned demo). */
+    body { --gv-font-family: "Public Sans", "Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { background: var(--gv-background); padding: 8px 0; }
+    /* a 3-up grid like the live /projects page */
+    .fgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    @media (max-width: 860px) { .fgrid { grid-template-columns: 1fr; } }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme="4" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Folder card</h1>
+    <p class="sub">The projects-list <strong>folder card</strong> — a white card carrying a green
+      project-count line, the folder title, a description preview, and a stack of child-project
+      previews that grow the card to ~583px. Source-grounded on St&nbsp;Louis
+      (<code>stlouis.govocal.com/projects</code>).</p>
+
+    <p class="eyebrow">Folder cards — the live /projects grid</p>
+    <div class="stage">
+      <div class="fgrid">
+
+        <!-- ============ FOLDER CARD (re-grounded on .e2e-folder-card) ============
+             White boxed card, 3px radius, soft --gv-shadow, padding 18px 0 25px.
+             Top → bottom: a project HERO image with the COUNT badge (folder glyph +
+             "N projects") pinned top-right over a dark overlay; then the folder
+             title; then a description preview; then child-project avatar previews.
+             The count NUMBER is the tenant success-green (--gv-folder-count). Pure
+             assembly of canonical .gv-pcard.boxed.folder. -->
+        <article class="gv-pcard boxed folder">
+          <div class="gv-pcard__fmedia">
+            <div class="gv-pcard__thumb--ocean" style="width:100%;height:100%"></div>
+            <span class="gv-pcard__count" aria-label="2 projects in this folder">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
+              <span class="e2e-folder-card-numberofprojects">2</span>&nbsp;projects
+            </span>
+          </div>
+          <div class="gv-pcard__fbody">
+            <h3 class="gv-pcard__title"><a href="#">BOA President's Office</a></h3>
+            <div class="gv-pcard__fdesc">The projects in this folder are city-wide or have been
+              proposed by the President of the Board of Aldermen—Megan E. Green.</div>
+          </div>
+          <div class="gv-pcard__fpile" aria-hidden="true">
+            <span class="gv-pcard__fthumb"></span>
+            <span class="gv-pcard__fthumb"></span>
+          </div>
+        </article>
+
+        <article class="gv-pcard boxed folder">
+          <div class="gv-pcard__fmedia">
+            <div class="gv-pcard__thumb--clay" style="width:100%;height:100%"></div>
+            <span class="gv-pcard__count" aria-label="55 projects in this folder">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
+              <span class="e2e-folder-card-numberofprojects">55</span>&nbsp;projects
+            </span>
+          </div>
+          <div class="gv-pcard__fbody">
+            <h3 class="gv-pcard__title"><a href="#">Rams Settlement Fund</a></h3>
+            <div class="gv-pcard__fdesc">The goal of this project is to invest the Rams Settlement Fund
+              in ways that benefit the residents of the City of St.&nbsp;Louis for generations to come.</div>
+          </div>
+          <div class="gv-pcard__fpile" aria-hidden="true">
+            <span class="gv-pcard__fthumb"></span>
+            <span class="gv-pcard__fthumb"></span>
+            <span class="gv-pcard__fthumb"></span>
+          </div>
+        </article>
+
+        <article class="gv-pcard boxed folder">
+          <div class="gv-pcard__fmedia">
+            <div class="gv-pcard__thumb--sage" style="width:100%;height:100%"></div>
+            <span class="gv-pcard__count" aria-label="8 projects in this folder">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
+              <span class="e2e-folder-card-numberofprojects">8</span>&nbsp;projects
+            </span>
+          </div>
+          <div class="gv-pcard__fbody">
+            <h3 class="gv-pcard__title"><a href="#">Tornado recovery</a></h3>
+            <div class="gv-pcard__fdesc">Recovery planning and resident input for the neighborhoods most
+              affected by the May tornado.</div>
+          </div>
+          <div class="gv-pcard__fpile" aria-hidden="true">
+            <span class="gv-pcard__fthumb"></span>
+            <span class="gv-pcard__fthumb"></span>
+          </div>
+        </article>
+
+      </div>
+    </div>
+
+    <p class="notes">
+      <strong>System vs skin.</strong> The card geometry is the cross-tenant SYSTEM and maps to
+      tokens: white fill, <code>--gv-radius</code> (3px), <code>--gv-shadow</code>
+      (<code>0 2px 4px -1px rgba(0,0,0,.06)</code>), padding <code>18px 0 25px</code>, the 16px/300
+      <code>--gv-text-secondary</code> description preview. The project-count NUMBER is the SKIN —
+      each tenant's success-green via <code>--gv-folder-count</code> (St&nbsp;Louis
+      <code>#358545</code>), so it re-themes with <code>?theme=</code>. Reuses
+      <code>.gv-pcard.boxed</code> wholesale.
+    </p>
+  </div>
+  <script src="../../skills/govocal-ui/govocal-themes.js"></script>
+</body>
+</html>
