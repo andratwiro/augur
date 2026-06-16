@@ -1164,48 +1164,7 @@
   .builder-overlay.open { display: flex; animation: builderFade .18s ease; }
   @keyframes builderFade { from { opacity: 0; } to { opacity: 1; } }
 
-  /* ===================== Rich content builder (scoped to #view-builder) ===================== */
-  #view-builder {
-    --bg:#f5f6f8; --panel:#ffffff; --ink:#1a1f2c; --ink-2:#4b5563; --ink-3:#7a8294;
-    --border:#e5e7eb; --navy:#1b2a4a; --select:#eef2ff; --select-border:#c9d4f0;
-    --ring:#7ea8e8; --locked:#fff7ed; --locked-border:#fed7aa; --teal:#2c6e7d;
-  }
-  #view-builder {background:var(--bg); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
-  #view-builder .canvas-scroll::-webkit-scrollbar {width:10px;}
-  #view-builder .canvas-scroll::-webkit-scrollbar-thumb {background:#d1d5db; border-radius:6px;}
-  #view-builder .block {position:relative; border:1px dashed transparent; border-radius:6px; cursor:pointer; transition:all .12s;}
-  #view-builder .block:hover {border-color:#cbd5e1; background:rgba(126,168,232,.05);}
-  #view-builder .block.sel {border:1px solid var(--ring); background:rgba(126,168,232,.08); box-shadow:0 0 0 3px rgba(126,168,232,.18);}
-  #view-builder .block .tag {position:absolute; top:-9px; left:8px; font-size:10px; font-weight:600; padding:1px 7px;
-    background:var(--navy); color:#fff; border-radius:4px; opacity:0; transition:opacity .12s; letter-spacing:.02em; z-index:3;}
-  #view-builder .block:hover .tag, #view-builder .block.sel .tag {opacity:1;}
-  #view-builder .block .handle {position:absolute; top:50%; left:-20px; transform:translateY(-50%); color:#9ca3af; font-size:14px; opacity:0; cursor:grab; transition:opacity .12s;}
-  #view-builder .block:hover .handle {opacity:1;}
-  #view-builder .block.locked:hover {border-color:var(--locked-border); background:var(--locked);}
-  #view-builder .block.locked .tag {background:#b45309;}
-  #view-builder .block.locked.sel {border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.2);}
-  #view-builder .palette-item {display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--border);
-    border-radius:8px; background:#fff; cursor:grab; font-size:13px; color:var(--ink-2); transition:all .12s; user-select:none;}
-  #view-builder .palette-item:hover {border-color:#c9d4f0; background:#fafbff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.05);}
-  #view-builder .palette-item:active {cursor:grabbing;}
-  #view-builder .palette-item .ic {width:18px; text-align:center; flex-shrink:0; white-space:nowrap; font-size:11px; line-height:1;}
-  #view-builder .palette-new {border-color:#bfdbfe; background:#f0f7ff;}
-  #view-builder .palette-new:hover {background:#e6f1ff;}
-  #view-builder .seg {font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); padding:0 4px; margin:14px 0 8px;}
-  #view-builder .field-lbl {font-size:11px; font-weight:600; color:var(--ink-2); margin-bottom:5px; display:block;}
-  #view-builder .field {width:100%; border:1px solid var(--border); border-radius:7px; padding:8px 10px; font-size:13px; color:var(--ink); background:#fff;}
-  #view-builder .field:focus {outline:none; border-color:var(--ring); box-shadow:0 0 0 3px rgba(126,168,232,.18);}
-  #view-builder .drop-line {height:12px; position:relative; transition:height .1s;}
-  #view-builder .drop-line.active {height:36px;}
-  #view-builder .drop-line::before {content:""; position:absolute; left:0; right:0; top:50%; height:2px; transform:translateY(-50%); background:transparent; border-radius:2px; transition:background .1s;}
-  #view-builder .drop-line.active::before {background:var(--ring);}
-  #view-builder .drop-line.active::after {content:"Drop here"; position:absolute; inset:4px 0; border:2px dashed var(--ring);
-    border-radius:6px; background:rgba(126,168,232,.08); display:flex; align-items:center; justify-content:center;
-    font-size:11px; color:#3b6fc4; font-weight:600; pointer-events:none;}
-  #view-builder .toggle {width:38px;height:22px;border-radius:11px;background:#d1d5db;position:relative;cursor:pointer;flex-shrink:0;transition:background .15s;}
-  #view-builder .toggle.on {background:var(--teal);}
-  #view-builder .toggle::after {content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s;}
-  #view-builder .toggle.on::after {left:18px;}
+  /* (bespoke rich builder CSS removed — replaced by real GoVocal content builder) */
 
   /* ===== Ported phase view (bo-project-phase helpers) ===== */
   .pp-phaseview { height:100%; overflow-y:auto; background:var(--gv-bo-canvas); }
@@ -1217,6 +1176,150 @@
   .pp-lede { margin:0 0 12px; font-size:var(--gv-fs-base); font-weight:400; color:var(--gv-cool-grey-600); }
   .pp-lede a { color:var(--gv-blue-500); }
   .pp-infodot { width:16px; height:16px; vertical-align:-3px; color:var(--gv-cool-grey-600); }
+</style>
+<style id="cb-style">
+
+    /* Page-local layout + interaction-state CSS only. No gv-* class is DEFINED
+       here (the chrome lives in canonical govocal-bo.css as .gv-bo-cb-*); these
+       page-local cb-* classes carry literal layout values the lint ignores. */
+    html, body { margin: 0; height: 100%; }
+    body { font-family: var(--gv-font-family); }
+
+    /* The settings panel is a fixed right overlay; the canvas reserves room for it
+       so a selected block isn't hidden underneath. (All page-local layout state is
+       scoped under #cb-root so it never redefines a library .gv-* class.) */
+    #cb-root .gv-bo-cb-canvas { transition: padding-right .12s ease; }
+    #cb-root.cb-has-panel .gv-bo-cb-canvas { padding-right: 400px; }
+
+    /* Preview mode hides editor chrome (palette + settings), removes block outlines. */
+    #cb-root.cb-preview .gv-bo-cb-palette,
+    #cb-root.cb-preview .gv-bo-cb-settings { display: none; }
+    #cb-root.cb-preview.cb-has-panel .gv-bo-cb-canvas,
+    #cb-root.cb-preview .gv-bo-cb-canvas { padding-right: 0; }
+    #cb-root.cb-preview .gv-bo-cb-block { cursor: default; }
+    #cb-root.cb-preview .gv-bo-cb-block:hover { border-color: transparent; }
+
+    /* Settings panel shows only when a node is selected. */
+    #cb-root .gv-bo-cb-settings { display: none; }
+    #cb-root.cb-has-panel .gv-bo-cb-settings { display: block; }
+
+    /* ── Review-pin fixes (page-local overrides; canonical untouched) ───────────
+       Bound the shell to the viewport so the CANVAS scrolls internally instead of
+       the whole page — otherwise the tall page lets the palette scroll away and
+       the icons disappear under the fixed top bar. */
+    #cb-root { height: 100vh; overflow: hidden; }
+    /* Eye / view-project glyph: the real button's icon PATH is filled grey-800 (the
+       blue is only currentColor, which the path overrides) — so it renders grey. */
+    #cb-root .gv-bo-cb-topbar__view { color: var(--gv-grey-800); }
+    /* Text blocks mirror the real editor's TWO levels: the .gv-bo-cb-block__body
+       wrapper keeps the captured 14px chrome value (checkpoint), while the VISIBLE
+       text renders in an inner .cb-richtext at the real 16px / heading colour (lh 24) —
+       same size the resident sees on the project page. */
+    #cb-root .cb-richtext { font-size: var(--gv-fs-base); color: var(--gv-text-heading); line-height: 24px; outline: none; }
+    /* A clear border between the fixed top bar and the right settings panel. */
+    #cb-root .gv-bo-cb-settings { border-top: 1px solid var(--gv-grey-500); }
+    /* RTE editor line-height matches the real Quill container (≈20px, not 24px) —
+       the 24px made the typed text read too loose. */
+    #cb-root .gv-bo-cb-rte__editor { line-height: 20px; }
+
+    /* Block content presentation (page content, not gv chrome) ----------------- */
+    .cb-h { margin: 0 0 8px; line-height: 1.3; }
+    .cb-p { margin: 0; }
+    .cb-img { width: 100%; display: block; border-radius: 3px; }
+    .cb-imgph {
+      width: 100%; height: 220px; display: flex; align-items: center; justify-content: center;
+      gap: 8px; background: var(--gv-grey-100); color: var(--gv-cool-grey-500); border: 1px dashed #cbd4dc;
+    }
+    .cb-btnblock { display: flex; }
+    .cb-btnblock .cb-fakebtn {
+      display: inline-flex; align-items: center; padding: 10px 20px; border-radius: 3px;
+      background: var(--gv-tenant-primary); color: var(--gv-white); font-weight: 600; font-size: var(--gv-fs-s);
+    }
+    .cb-cols { display: grid; gap: 16px; }
+    .cb-cols.cb-cols-2 { grid-template-columns: 1fr 1fr; }
+    .cb-cols.cb-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    /* A column is now a real nested DROP ZONE: flex container, min-height, dashed
+       frame. Direct block children stack vertically inside it. */
+    .cb-col { min-width: 0; min-height: 64px; padding: 10px; background: #f8fafb; border: 1px dashed #d6dde3; border-radius: 3px; display: flex; flex-direction: column; gap: 8px; }
+    .cb-ws { height: 40px; }
+    .cb-accordion { border: 1px solid var(--gv-grey-300); border-radius: 3px; }
+    .cb-accordion__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; font-weight: 600; color: var(--gv-grey-800); cursor: pointer; }
+    .cb-accordion__title { flex: 1; }
+    .cb-accordion__body { padding: 12px 16px 14px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); display: flex; flex-direction: column; gap: 8px; }
+    .cb-accordion__text { color: var(--gv-cool-grey-600); }
+    .cb-accordion:not(.cb-accordion--open) .cb-accordion__body { display: none; }
+    .cb-accordion__head .gv-icon { transition: transform .15s ease; }
+    .cb-accordion--open .cb-accordion__head .gv-icon { transform: rotate(180deg); }
+    .cb-iframe { height: 200px; background: #1b1f23; color: #cfd6dc; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: monospace; border-radius: 3px; }
+    .cb-iframe__cap { font-size: var(--gv-fs-xs); opacity: .85; }
+
+    /* ── Nested drop-zone affordances (page-local) ──────────────────────────── */
+    #cb-root .cb-zone--over { background: var(--gv-teal-50); border-color: var(--gv-teal-500); }
+    .cb-zone__ph { display: none; align-items: center; justify-content: center; min-height: 48px; border: 1px dashed #cbd4dc; border-radius: 3px; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-13); text-align: center; padding: 6px; }
+    #cb-root .cb-zone--empty > .cb-zone__ph { display: flex; }
+    .cb-dropline--x { width: 2px; height: auto; min-height: 24px; margin: 0 2px; align-self: stretch; }
+
+    /* ── Participation Box (about-box) — faithful resident-facing card ──────── */
+    /* Participation Box (about-box) — a MIRROR of the front-office project
+       participation widget the resident sees: a primary CTA, a secondary
+       "Upcoming events" button, and an avatar row + participant count. Config is
+       just whether to show the buttons and the avatars (toggles, scoped per card). */
+    /* Participation box uses the SAME front-office components as the project page:
+       .gv-btn (primary + primary-outlined), .gv-avatars/.av, .gv-pcount. Page-local
+       CSS only stacks them + drives the show/hide toggles. */
+    .cb-pbox { display: flex; flex-direction: column; gap: 16px; }
+    .cb-pbox__actions { display: flex; flex-direction: column; gap: 12px; }   /* full-width gv-btns stack */
+    .cb-pbox--nobtns .cb-pbox__actions { display: none; }
+    .cb-pbox--nopeople .cb-pbox__people { display: none; }
+
+    /* ── Locked top blocks (hero image + title) — pinned, editable, not movable ── */
+    #cb-root .gv-bo-cb-block.cb-locked { cursor: default; }
+    .cb-lockmark { display: inline-flex; vertical-align: middle; opacity: .8; }
+    .cb-lockmark .gv-icon { width: 12px; height: 12px; }
+    .cb-lockednote { display: flex; align-items: center; gap: 7px; margin: 14px 0 0; padding: 10px 12px; background: var(--gv-grey-100); border-radius: 4px; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
+    .cb-lockednote .gv-icon { width: 14px; height: 14px; flex: none; }
+    .cb-hero { border-radius: 4px; overflow: hidden; }
+    .cb-hero__img { display: block; width: 100%; height: 240px; object-fit: cover; }
+    .cb-title { margin: 4px 0 0; outline: none; }
+
+    /* ── Timeline + Events blocks (canonical .gv-phases / .gv-event-card) ──────── */
+    .cb-timeline { margin: 0; }
+    .cb-events { display: block; }
+    /* auto-FIT (not the canonical auto-fill) so 2 event cards stretch to the full
+       container width instead of leaving an empty 3rd track narrower than the
+       content above. */
+    #cb-root .cb-events .gv-events__grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+
+    /* ── Button style variants (page-local) ────────────────────────────────── */
+    .cb-fakebtn.cb-fakebtn--secondary { background: var(--gv-white); color: var(--gv-tenant-primary); border: 1px solid var(--gv-tenant-primary); }
+    .cb-fakebtn.cb-fakebtn--link { background: transparent; color: var(--gv-tenant-primary); padding-left: 0; padding-right: 0; text-decoration: underline; }
+
+    .cb-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .cb-cards[data-n="2"] { grid-template-columns: 1fr 1fr; }
+    .cb-cards[data-n="4"] { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .cb-card { border: 1px solid var(--gv-grey-300); border-radius: 3px; overflow: hidden; }
+    .cb-card__img { height: 90px; background: #e9eef2; }
+    .cb-card__cap { padding: 10px 12px; font-size: var(--gv-fs-13); color: var(--gv-grey-800); }
+    .cb-file { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--gv-grey-300); border-radius: 3px; }
+    .cb-file__info { display: flex; flex-direction: column; }
+    .cb-file__name { font-size: var(--gv-fs-s); color: var(--gv-blue-500); }
+    .cb-file__meta { font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+
+    /* Drop indicator helper visible only mid-drag (the line element is gv chrome). */
+    .cb-toast {
+      position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+      background: var(--gv-grey-800); color: var(--gv-white); padding: 8px 14px; border-radius: 4px;
+      font-size: var(--gv-fs-13); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 100000;
+    }
+    .cb-toast.is-show { opacity: .94; }
+  
+    /* Extra surveys widget (parallel-participation new component) */
+    #cb-root .cb-extra__list { display:flex; flex-direction:column; gap:8px; }
+    #cb-root .cb-survey-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid var(--gv-grey-300); border-radius:var(--gv-radius); background:#fff; }
+    #cb-root .cb-survey-row__info { display:flex; flex-direction:column; }
+    #cb-root .cb-survey-row__name { font-weight:600; color:var(--gv-text-primary); }
+    #cb-root .cb-survey-row__meta { font-size:var(--gv-fs-s); color:var(--gv-cool-grey-600); }
+
 </style>
 </head>
 <body class="gv-bo min-h-screen">
@@ -1795,14 +1898,192 @@
 </div><!-- /gv-bo-shell -->
 
 <!-- ============ Content builder overlay (rich canvas) ============ -->
-<div id="view-builder" class="builder-overlay"></div>
+<div id="view-builder" class="builder-overlay gv-bo">
+<div class="gv-bo-cb" id="cb-root">
+
+    <!-- ══════════ TOP BAR ══════════ -->
+    <header class="gv-bo-cb-topbar">
+      <button class="gv-bo-cb-topbar__back" type="button" id="e2e-go-back-button" data-testid="goBackButton" aria-label="Go back">
+        <span class="gv-icon" data-gv-icon="arrow-left"></span>
+      </button>
+      <div class="gv-bo-cb-topbar__titles">
+        <h1 class="gv-bo-cb-topbar__title">Project page</h1>
+        <p class="gv-bo-cb-topbar__sub">Reimagine Meridian 2030</p>
+      </div>
+
+      <div class="gv-bo-cb-topbar__actions">
+        <div class="gv-bo-cb-locale">
+          <select id="e2e-locale-select" aria-label="Content language">
+            <option value="en">EN</option>
+            <option value="es-ES">ES-ES</option>
+          </select>
+        </div>
+
+        <label class="gv-bo-cb-preview" for="e2e-preview-toggle">
+          <span class="gv-toggle">
+            <input type="checkbox" id="e2e-preview-toggle" />
+            <span class="track"></span>
+          </span>
+          <span class="gv-bo-cb-preview__label">Preview</span>
+        </label>
+
+        <a class="gv-btn secondary-outlined gv-bo-cb-topbar__view" id="e2e-view-project-button" href="#" target="_blank" rel="noopener" aria-label="View project">
+          <span class="gv-icon" data-gv-icon="eye"></span>
+        </a>
+
+        <div class="gv-bo-cb-save-wrap" id="e2e-content-builder-topbar-save" data-testid="contentBuilderTopBarSaveButton">
+          <button class="gv-btn primary gv-bo-cb-save" type="submit">Save</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="gv-bo-cb__body">
+
+      <!-- ══════════ LEFT PALETTE ══════════ -->
+      <aside class="gv-bo-cb-palette" aria-label="Content widgets">
+
+        <div class="gv-bo-cb-palette__group">
+          <div class="gv-bo-cb-item" id="e2e-draggable-image-text-cards" draggable="true" data-widget="image-text-cards">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="2.5" width="5" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="13.5" y="2.5" width="5" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="1.5" y="11.5" width="5" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="13.5" y="11.5" width="5" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Image &amp; text cards</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-info-accordions" draggable="true" data-widget="info-accordions">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><circle cx="4" cy="4" r="2.3" stroke="currentColor" stroke-width="1.4"/><line x1="9" y1="4" x2="18" y2="4" stroke="currentColor" stroke-width="1.4"/><line x1="2" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.4"/><line x1="2" y1="15" x2="18" y2="15" stroke="currentColor" stroke-width="1.4"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Info &amp; accordions</span>
+          </div>
+        </div>
+
+        <div class="gv-bo-cb-palette__group">
+          <div class="gv-bo-cb-item" id="e2e-draggable-two-column" draggable="true" data-widget="two-column">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="2.5" width="6" height="15" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="11.5" y="2.5" width="6" height="15" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">2 column</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-three-column" draggable="true" data-widget="three-column">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><rect x="1.5" y="2.5" width="4.3" height="15" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="7.85" y="2.5" width="4.3" height="15" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="14.2" y="2.5" width="4.3" height="15" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">3 column</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-white-space" draggable="true" data-widget="white-space">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 14" fill="none"><path d="M2 5V2h3M18 5V2h-3M2 9v3h3M18 9v3h-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">White space</span>
+          </div>
+        </div>
+
+        <div class="gv-bo-cb-palette__group">
+          <div class="gv-bo-cb-item" id="e2e-draggable-text" draggable="true" data-widget="text">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><path d="M4 4h12M10 4v12M7.5 16h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Text</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-button" draggable="true" data-widget="button">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="5.5" width="12" height="7" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M11 11l4 4 1.2-2.6 2.6-1.2-4-1.2z" fill="currentColor"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Button</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-file-attachment" draggable="true" data-widget="file-attachment">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><path d="M5 2.5h6l4 4v11H5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M11 2.5v4h4" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">File Attachment</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-image" draggable="true" data-widget="image">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="3.5" width="15" height="13" rx="1.5" stroke="currentColor" stroke-width="1.4"/><circle cx="7" cy="8" r="1.4" fill="currentColor"/><path d="M4 15l4.5-5 3 3 2-2L17 15" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Image</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-iframe" draggable="true" data-widget="iframe">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><path d="M7 6l-4 4 4 4M13 6l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Embed</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-about-box" draggable="true" data-widget="about-box">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 9v5M10 6.3v.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Participation Box</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-accordion" draggable="true" data-widget="accordion">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><rect x="2.5" y="3" width="15" height="4" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="2.5" y="9" width="15" height="4" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M14 11l1.4-1.4M14 5l1.4-1.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Accordion</span>
+          </div>
+        </div>
+        <div class="gv-bo-cb-palette__group">
+          <div class="gv-bo-cb-item" id="e2e-draggable-timeline" draggable="true" data-widget="timeline">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><circle cx="4" cy="10" r="2.2" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="10" r="2.2" fill="currentColor"/><circle cx="16" cy="10" r="2.2" stroke="currentColor" stroke-width="1.4"/><path d="M6.2 10h1.6M12.2 10h1.6" stroke="currentColor" stroke-width="1.4"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Timeline</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-events" draggable="true" data-widget="events">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="4.5" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M3 8h14M7 3v3M13 3v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Events</span>
+          </div>
+          <div class="gv-bo-cb-item" id="e2e-draggable-extra-surveys" draggable="true" data-widget="extra-surveys">
+            <span class="gv-bo-cb-item__icon">
+              <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 8h7M6.5 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            </span>
+            <span class="gv-bo-cb-item__label">Extra surveys</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ══════════ CENTRE CANVAS ══════════ -->
+      <main class="gv-bo-cb-canvas">
+        <div class="gv-bo-cb-frame" id="cb-frame">
+          <div class="gv-bo-cb-frame__empty">Drag a content element here to get started.</div>
+
+          <!-- Default Text block (selected on load mirrors the -settings capture) -->
+          <div class="gv-bo-cb-block" data-widget="text" data-label="Text" draggable="true">
+            <span class="gv-bo-cb-block__label">Text</span>
+            <div class="gv-bo-cb-block__body" id="e2e-content-builder-frame"><div class="cb-richtext" contenteditable="true">Help shape how we move, cycle and gather in <strong>Meridian</strong> over the next four years. Share your ideas — every one is read by the city team and feeds the mobility plan.</div></div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ══════════ RIGHT SETTINGS PANEL ══════════ -->
+      <aside class="gv-bo-cb-settings" id="e2e-content-builder-settings" aria-label="Block settings">
+        <button class="gv-bo-cb-settings__close" type="button" id="cb-settings-close" aria-label="Close settings panel">
+          <span class="gv-icon" data-gv-icon="close"></span>
+        </button>
+        <h2 class="gv-bo-cb-settings__title" id="cb-settings-title">Text</h2>
+
+        <!-- multiloc language switcher (reuses the canonical .gv-bo-multiloc primitive) -->
+        <div class="gv-bo-multiloc" id="cb-settings-locales">
+          <button type="button" class="is-active" data-loc="en"><span class="done"></span>EN</button>
+          <button type="button" data-loc="es-ES"><span class="miss"></span>ES-ES</button>
+        </div>
+
+        <!-- Per-block settings body, swapped by JS -->
+        <div id="cb-settings-body"></div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="cb-toast" id="cb-toast"></div>
+</div>
 
 <script>
   // ============ Content builder open/close ============
   function openBuilder() {
     const builder = document.getElementById('view-builder');
     if (!builder || builder.classList.contains('open')) return;
-    if (window.__richRender) window.__richRender();
     builder.classList.add('open');
   }
   function closeBuilder() {
@@ -1822,552 +2103,7 @@
   });
 </script>
 
-<script>
-// ===================== Rich content builder =====================
-
-(function(){
-  const el = (tag, props={}, ...kids)=>{
-    const n=document.createElement(tag);
-    for(const k in props){
-      if(k==="class") n.className=props[k];
-      else if(k==="html") n.innerHTML=props[k];
-      else if(k.startsWith("on")) n.addEventListener(k.slice(2).toLowerCase(),props[k]);
-      else if(k==="style") n.setAttribute("style",props[k]);
-      else n.setAttribute(k,props[k]);
-    }
-    kids.flat().forEach(c=>{ if(c==null)return; n.appendChild(typeof c==="string"?document.createTextNode(c):c); });
-    return n;
-  };
-
-  let selectedId = null;
-  let aboutAvatarsHidden = false;
-  // Active participation methods feeding the Participation Box.
-  // "source" = where it comes from (timeline phase vs parallel); "visible" = shown in box.
-  let pbMethods = [
-    {id:"m_phase",  source:"Timeline · current phase", method:"Collect ideas — share your idea", cta:"Submit your idea", visible:true},
-    {id:"m_survey", source:"Parallel · Extra surveys", method:"School survey",   cta:"Take the survey",  visible:true},
-    {id:"m_vote",   source:"Parallel · Voting",        method:"Community vote",  cta:"Vote",             visible:false},
-  ];
-
-  // body blocks: each has a render kind. Timeline/Events/About live in the flow as movable blocks.
-  // Top-level flow = ordered "zones". A zone is either:
-  //   {type:"block", block:{...}}              -> full-width block (Timeline, Events)
-  //   {type:"band", main:[...], side:[...]}     -> the single two-column band
-  // Column blocks (Text, Accordion, Participation Box) live ONLY inside the band.
-  const FULLWIDTH = new Set(["timeline","events"]);            // full-width kinds
-  const COLUMN    = new Set(["text","accordion","about","button","image","survey"]); // band kinds
-
-  let zones = [
-    {type:"band",
-      main:[
-        {id:"b1", kind:"text", label:"Text", preview:"🚲 Help shape how we move, cycle and gather in our city over the next four years. Your ideas feed directly into the plan we present to council in September.\n\nEvery contribution — whether a 30-second survey response or a full proposal at a workshop — is read by the city team and tagged into the working themes. Tell us what's working, what isn't, and what you'd change."},
-        {id:"b3", kind:"accordion", label:"Info & accordions", preview:"🪨 What should my submission include?  ·  🐕 What context do I need to be aware of?  ·  🦔 What happens after I submit my idea?"},
-      ],
-      side:[
-        {id:"about", kind:"about", label:"Participation Box"},
-      ]
-    },
-    {type:"block", block:{id:"tl", kind:"timeline", label:"Timeline"}},
-    {type:"block", block:{id:"ev", kind:"events", label:"Events"}},
-  ];
-
-  function kindFor(t){ return {"Timeline":"timeline","Events":"events","Extra surveys":"survey","Participation Box":"about","Text":"text","Button":"button","Accordion":"accordion","Image":"image","Image & text cards":"text","Info & accordions":"accordion"}[t]||"text"; }
-  function findBlock(id){
-    for(const z of zones){
-      if(z.type==="block" && z.block.id===id) return {zone:z, where:"block"};
-      if(z.type==="band"){
-        let mi=z.main.findIndex(b=>b.id===id); if(mi>=0) return {zone:z, where:"main", idx:mi};
-        let si=z.side.findIndex(b=>b.id===id); if(si>=0) return {zone:z, where:"side", idx:si};
-      }
-    }
-    return null;
-  }
-  function removeBlock(id){
-    for(const z of zones){
-      if(z.type==="band"){
-        let mi=z.main.findIndex(b=>b.id===id); if(mi>=0){ const [b]=z.main.splice(mi,1); return b; }
-        let si=z.side.findIndex(b=>b.id===id); if(si>=0){ const [b]=z.side.splice(si,1); return b; }
-      }
-    }
-    // full-width block zone
-    let zi=zones.findIndex(z=>z.type==="block" && z.block.id===id);
-    if(zi>=0){ const b=zones[zi].block; zones.splice(zi,1); return b; }
-    return null;
-  }
-  function theBand(){ return zones.find(z=>z.type==="band"); }
-
-  const lockedBlocks = {
-    hero:{label:"Hero banner"},
-    title:{label:"Title"},
-  };
-
-  let dragType=null, dragId=null, dropIndex=null;
-
-  const palette = [
-    {seg:"Layout"},
-    {t:"Image & text cards", ic:"▤"},
-    {t:"Info & accordions", ic:"≣"},
-    {t:"2 column", ic:"▥"},
-    {t:"3 column", ic:"▦"},
-    {t:"White space", ic:"⬚"},
-    {seg:"Structured", isNew:true},
-    {t:"Timeline", ic:"▭▭", isNew:true},
-    {t:"Events", ic:"📅", isNew:true},
-    {t:"Extra surveys", ic:"📣", isNew:true},
-    {seg:"Content"},
-    {t:"Text", ic:"T"},
-    {t:"Button", ic:"⬛"},
-    {t:"File Attachment", ic:"📎"},
-    {t:"Image", ic:"🖼"},
-    {t:"Embed", ic:"</>"},
-    {t:"Participation Box", ic:"ⓘ"},
-    {t:"Accordion", ic:"≡"},
-  ];
-
-  function select(kind,id){ selectedId=kind+":"+id; render(); }
-
-  // ---------- SIDEBAR ----------
-  function Sidebar(){
-    const items = palette.map(p=>{
-      if(p.seg) return el("div",{class:"seg", style:p.isNew?"color:#2563eb":""}, p.seg + (p.isNew?" · new":""));
-      return el("div",{
-        class:"palette-item"+(p.isNew?" palette-new":""),
-        draggable:"true",
-        ondragstart:(e)=>{ dragType=p.t; dragId=null; e.dataTransfer.effectAllowed="copy"; },
-        ondragend:()=>{ dragType=null; dropIndex=null; render(); },
-      }, el("span",{class:"ic"},p.ic), p.t, p.isNew?el("span",{style:"margin-left:auto;font-size:9px;font-weight:700;color:#2563eb"},"NEW"):null);
-    });
-    return el("div",{style:"width:236px;flex-shrink:0;background:#fff;border-right:1px solid var(--border);height:100%;overflow-y:auto;"},
-      el("div",{style:"padding:14px 16px;border-bottom:1px solid var(--border);"},
-        el("div",{style:"font-size:13px;font-weight:700;"},"Add to page"),
-        el("div",{style:"font-size:11px;color:var(--ink-3);margin-top:2px;"},"Drag a block onto the canvas"),
-      ),
-      el("div",{style:"padding:6px 14px 24px;"}, items)
-    );
-  }
-
-  // ---------- BODY BLOCK RENDERERS ----------
-  function renderInner(b){
-    if(b.kind==="survey"){
-      // available surveys (mock)
-      const surveys={ "weekly":{name:"School survey", range:"20 May — 5 Jun, 2026", desc:"Help us understand how students travel to school. Your answers shape the safe-routes plan.", left:"4 days left"} };
-      // unconfigured: prompt to pick a survey
-      if(!b.survey){
-        return el("div",{style:"padding:16px;"},
-          el("div",{style:"border:2px dashed var(--border);border-radius:8px;padding:22px;text-align:center;background:#fafbfc;"},
-            el("div",{style:"font-size:13px;font-weight:600;color:var(--ink-2);"},"📣 Extra survey"),
-            el("div",{style:"font-size:12px;color:var(--ink-3);margin-top:6px;line-height:1.5;"},"Select a survey to link in the right panel.")
-          )
-        );
-      }
-      const s=surveys[b.survey]||surveys.weekly;
-      const btn=(label)=>el("div",{style:"background:var(--navy);color:#fff;text-align:center;font-weight:600;font-size:14px;padding:12px;border-radius:7px;"},label);
-
-      if(b.variant==="simple"){
-        return el("div",{style:"padding:14px;"}, btn("Take the survey"));
-      }
-      if(b.variant==="timeleft"){
-        return el("div",{style:"padding:14px;"},
-          el("div",{style:"border:1px solid var(--border);border-radius:8px;padding:12px;"},
-            el("div",{style:"display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px;"},
-              el("span",{style:"width:8px;height:8px;border-radius:50%;background:var(--teal);display:inline-block;"}),
-              s.left.toUpperCase()),
-            btn("Take the survey")
-          )
-        );
-      }
-      // card
-      return el("div",{style:"padding:14px;"},
-        el("div",{style:"border:1px solid var(--border);border-radius:10px;padding:18px;"},
-          el("div",{style:"font-size:11px;font-weight:700;letter-spacing:.08em;color:#d6336c;"},"SURVEY · ONGOING"),
-          el("div",{style:"font-size:19px;font-weight:700;color:var(--navy);margin-top:8px;"},s.name),
-          el("div",{style:"font-size:13px;color:var(--ink-2);margin-top:3px;"},s.range),
-          el("div",{style:"font-size:13px;color:var(--ink);line-height:1.5;margin-top:12px;"},s.desc),
-          el("div",{style:"margin-top:16px;"}, btn("📣 Take the survey"))
-        )
-      );
-    }
-    if(b.kind==="accordion"){
-      const rows=["🪨 What should my submission include?","🐕 What context do I need to be aware of?","🦔 What happens after I submit my idea?"];
-      return el("div",{style:"padding:8px 14px;"},
-        rows.map((r,i)=>el("div",{style:`display:flex;justify-content:space-between;align-items:center;padding:13px 2px;${i<rows.length-1?'border-bottom:1px solid var(--border);':''}`},
-          el("div",{style:"font-size:14px;font-weight:600;color:var(--ink);"},r),
-          el("div",{style:"color:var(--ink-3);"},"›")
-        ))
-      );
-    }
-    if(b.kind==="about"){
-      const vis = pbMethods.filter(m=>m.visible);
-      const navyBtn=(label)=>el("div",{style:"background:var(--navy);color:#fff;text-align:center;padding:11px;border-radius:4px;font-size:14px;font-weight:600;"},label);
-      const outlineBtn=(label)=>el("div",{style:"border:1px solid var(--border);text-align:center;padding:11px;border-radius:4px;font-size:14px;margin-top:8px;color:var(--ink);font-weight:600;"},label);
-
-      let ctaArea;
-      if(vis.length===0){
-        ctaArea = el("div",{style:"border:1px dashed var(--border);border-radius:4px;text-align:center;padding:14px;font-size:12px;color:var(--ink-3);"},"No active methods");
-      } else if(vis.length===1){
-        ctaArea = navyBtn(vis[0].cta);
-      } else if(vis.length===2){
-        ctaArea = el("div",{}, navyBtn(vis[0].cta), outlineBtn(vis[1].cta));
-      } else {
-        ctaArea = navyBtn("Participate");
-      }
-
-      return el("div",{style:"padding:12px;"},
-        ctaArea,
-        aboutAvatarsHidden?null:el("div",{style:"display:flex;align-items:center;gap:8px;margin-top:12px;justify-content:center;"},
-          el("div",{style:"display:flex;"},
-            el("div",{style:"width:26px;height:26px;border-radius:50%;background:#d4a5a5;border:2px solid #fff;"}),
-            el("div",{style:"width:26px;height:26px;border-radius:50%;background:#7da5b0;border:2px solid #fff;margin-left:-8px;"}),
-            el("div",{style:"width:26px;height:26px;border-radius:50%;background:#b0a07d;border:2px solid #fff;margin-left:-8px;"}),
-          ),
-          el("span",{style:"font-size:13px;color:var(--ink-2);"},"+35 participants")
-        )
-      );
-    }
-    if(b.kind==="timeline"){
-      const phases=[["1","Pre-survey"],["2","Collect ideas"],["3","What we heard"],["4","Community vote"],["5","Find common ground"]];
-      const active=1;
-      return el("div",{style:"padding:16px 14px;"},
-        el("div",{style:"font-size:17px;font-weight:700;margin-bottom:12px;"},"Phases"),
-        // chevron strip
-        el("div",{style:"display:flex;gap:2px;margin-bottom:14px;"},
-          phases.map((p,i)=>{
-            const on=i===active, done=i<active;
-            const bg=on?"#1f8a4c":(done?"#cdd3da":"#e4e8ed");
-            const fg=on?"#fff":(done?"#5b6573":"#5b6573");
-            return el("div",{style:`flex:1;position:relative;background:${bg};color:${fg};padding:8px 6px 9px;font-size:11px;text-align:center;`+
-              `clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%, 9px 50%);${i===0?'clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%);':''}`},
-              el("div",{style:`font-weight:700;font-size:12px;${on?'':'opacity:.8'}`},p[0]),
-              el("div",{style:"margin-top:2px;line-height:1.15;"},p[1])
-            );
-          })
-        ),
-        // detail card for active phase
-        el("div",{style:"border:1px solid var(--border);border-radius:8px;padding:14px;background:#fff;"},
-          el("div",{style:"display:flex;gap:10px;align-items:center;"},
-            el("div",{style:"width:28px;height:28px;border-radius:50%;background:#1f8a4c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;"},"2"),
-            el("div",{},
-              el("div",{style:"font-size:15px;font-weight:700;color:#1f8a4c;"},"Collect ideas"),
-              el("div",{style:"font-size:11px;color:var(--ink-3);"},"20 May 2026 → 10 Jun 2026")
-            )
-          ),
-          el("div",{style:"font-size:13px;color:var(--ink-2);line-height:1.5;margin-top:10px;"},"🚲 Share your ideas for how we move, cycle and gather. Your suggestions will be reviewed by the city team and shape what comes next 👇"),
-          el("div",{style:"font-size:12px;color:var(--ink);font-weight:600;margin-top:8px;"},"Read more ↓")
-        )
-      );
-    }
-    if(b.kind==="events"){
-      const evs=[
-        {banner:"#f2d33b", tag:"Town hall", title:"Mobility town hall", m:"JUN",d:"14",time:"7:00 – 8:30 PM", loc:"Central Library", cta:"Read more"},
-        {banner:"#1b2a4a", tag:"Site walk", title:"Cycling infrastructure walk", m:"JUN",d:"22",time:"10:00 – 11:30 AM", loc:"Riverside Park", cta:"Read more"},
-        {banner:"#2c6e7d", tag:"Workshop", title:"Neighbourhood design workshop", m:"JUL",d:"02",time:"6:00 – 8:00 PM", loc:"Meridian Civic Hall", cta:"Register"},
-      ];
-      const card=(e)=>el("div",{style:"border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff;display:flex;flex-direction:column;"},
-        el("div",{style:`height:54px;background:${e.banner};display:flex;align-items:center;padding:0 10px;`},
-          el("div",{style:`font-size:11px;font-weight:700;color:${e.banner==='#f2d33b'?'#1a1f2c':'#fff'};`},e.tag)),
-        el("div",{style:"padding:10px;flex:1;display:flex;flex-direction:column;"},
-          el("div",{style:"display:flex;gap:8px;align-items:flex-start;"},
-            el("div",{style:"font-size:12px;font-weight:600;line-height:1.25;flex:1;"},e.title),
-            el("div",{style:"border:1px solid var(--border);border-radius:5px;text-align:center;padding:3px 6px;flex-shrink:0;"},
-              el("div",{style:"font-size:9px;font-weight:700;color:var(--ink-2);"},e.m),
-              el("div",{style:"font-size:14px;font-weight:700;line-height:1;"},e.d),
-              el("div",{style:"font-size:8px;color:var(--ink-3);"},"2026"))
-          ),
-          el("div",{style:"font-size:10px;color:var(--ink-3);margin-top:8px;"},"🕐 "+e.time),
-          el("div",{style:"font-size:10px;color:var(--ink-3);margin-top:3px;"},"📍 "+e.loc),
-          el("div",{style:"flex:1"}),
-          el("div",{style:`margin-top:10px;text-align:center;font-size:11px;font-weight:600;padding:7px;border-radius:6px;${e.cta==='Register'?'background:var(--navy);color:#fff;':'border:1px solid var(--border);color:var(--ink-2);'}`},e.cta)
-        )
-      );
-      return el("div",{style:"padding:14px;"},
-        el("div",{style:"display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"},
-          el("div",{style:"font-size:17px;font-weight:700;"},"Upcoming and ongoing events"),
-          el("div",{style:"font-size:11px;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--ink-2);"},"Date ▾")),
-        el("div",{style:"display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;"}, evs.map(card))
-      );
-    }
-    // default text-like
-    return el("div",{style:"padding:12px 14px;"},
-      el("div",{style:"font-size:13px;color:var(--ink);line-height:1.55;white-space:pre-wrap;"}, b.preview)
-    );
-  }
-
-  function blockEl(b){
-    const sel = selectedId==="body:"+b.id;
-    let dragged=false;
-    const node = el("div",{
-      class:"block"+(sel?" sel":""),
-      draggable:"true",
-      ondragstart:(e)=>{ dragId=b.id; dragType=null; dragged=true; e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",b.id); setTimeout(()=>node.style.opacity=".4",0); },
-      ondragend:()=>{ node.style.opacity="1"; dragId=null; setTimeout(()=>{dragged=false;},50); render(); },
-      onclick:()=>{ if(dragged) return; select("body",b.id); }
-    },
-      el("span",{class:"handle"},"⋮⋮"),
-      el("span",{class:"tag"}, b.label),
-      renderInner(b)
-    );
-    return node;
-  }
-
-  // does the currently-dragged thing belong in a column? (vs full-width)
-  function draggedKind(){
-    if(dragType) return kindFor(dragType);
-    if(dragId){ const f=findBlock(dragId); if(f) return f.zone.type==="block"?f.zone.block.kind:(f.where==="main"?theBand().main[f.idx].kind:theBand().side[f.idx].kind); }
-    return null;
-  }
-  function dragIsColumn(){ const k=draggedKind(); return k?COLUMN.has(k):false; }
-  function dragIsFull(){ const k=draggedKind(); return k?FULLWIDTH.has(k):false; }
-
-  // Top-level drop target between zones — accepts FULL-WIDTH blocks only.
-  function zoneDrop(zi){
-    const line=el("div",{class:"drop-line",
-      ondragenter:(e)=>{ if(!dragIsFull())return; e.preventDefault(); line.classList.add("active"); },
-      ondragover:(e)=>{ if(!dragIsFull())return; e.preventDefault(); e.dataTransfer.dropEffect=dragType?"copy":"move"; line.classList.add("active"); },
-      ondragleave:()=>line.classList.remove("active"),
-      ondrop:(e)=>{ if(!dragIsFull()){return;} e.preventDefault(); line.classList.remove("active");
-        if(dragType){ const k=kindFor(dragType); const id="b"+Date.now();
-          zones.splice(zi,0,{type:"block", block:{id,kind:k,label:dragType}}); selectedId="body:"+id;
-        } else if(dragId){
-          const fromZi=zones.findIndex(z=>z.type==="block" && z.block.id===dragId);
-          const b=removeBlock(dragId);
-          let idx = (fromZi>=0 && fromZi<zi) ? zi-1 : zi;
-          if(idx>zones.length) idx=zones.length;
-          if(idx<0) idx=0;
-          zones.splice(idx,0,{type:"block", block:b});
-        }
-        dragType=null; dragId=null; render();
-      }
-    });
-    return line;
-  }
-
-  // Column drop target inside the band — accepts COLUMN blocks only.
-  function colDrop(column, idx){
-    const line=el("div",{class:"drop-line",
-      ondragenter:(e)=>{ if(!dragIsColumn())return; e.preventDefault(); line.classList.add("active"); },
-      ondragover:(e)=>{ if(!dragIsColumn())return; e.preventDefault(); e.dataTransfer.dropEffect=dragType?"copy":"move"; line.classList.add("active"); },
-      ondragleave:()=>line.classList.remove("active"),
-      ondrop:(e)=>{ if(!dragIsColumn()){return;} e.preventDefault(); line.classList.remove("active");
-        const band=theBand(); const arr=band[column];
-        if(dragType){ const k=kindFor(dragType); const id="b"+Date.now();
-          const block={id,kind:k,label:dragType,preview:"New "+dragType+" block"};
-          if(k==="survey"){ block.survey=null; block.variant="simple"; }
-          arr.splice(idx,0,block); selectedId="body:"+id;
-        } else if(dragId){
-          const fromSame = band[column].findIndex(b=>b.id===dragId);
-          const b=removeBlock(dragId);
-          let ins=idx;
-          if(fromSame>=0 && idx>fromSame) ins=idx-1;
-          band[column].splice(ins,0,b);
-        }
-        dragType=null; dragId=null; render();
-      }
-    });
-    return line;
-  }
-
-  function lockedRegion(key, inner){
-    const sel = selectedId==="locked:"+key;
-    return el("div",{class:"block locked"+(sel?" sel":""), onclick:()=>select("locked",key)},
-      el("span",{class:"tag"}, lockedBlocks[key].label + " · fixed position"),
-      inner
-    );
-  }
-
-  // ---------- CANVAS ----------
-  function Canvas(){
-    const hero = lockedRegion("hero",
-      el("div",{style:"height:130px;border-radius:6px;overflow:hidden;background:linear-gradient(120deg,#1b2a4a,#2c6e7d);display:flex;align-items:center;justify-content:center;position:relative;"},
-        el("div",{style:"color:#fff;font-size:12px;opacity:.8;text-align:center;"},
-          el("div",{style:"font-weight:600;"},"Hero image"),
-          el("div",{style:"font-size:10px;margin-top:2px;opacity:.85;"},"2400 × 600 px · 4:1")
-        ))
-    );
-    const title = lockedRegion("title",
-      el("div",{style:"padding:18px 14px 10px;"},
-        el("div",{style:"font-size:24px;font-weight:700;line-height:1.2;"},"Reimagine Meridian 2030")
-      )
-    );
-
-    function columnFlow(column){
-      const band=theBand(); const arr=band[column];
-      const wrap=el("div",{});
-      wrap.appendChild(colDrop(column,0));
-      arr.forEach((b,i)=>{ wrap.appendChild(blockEl(b)); wrap.appendChild(colDrop(column,i+1)); });
-      if(arr.length===0){
-        wrap.appendChild(el("div",{style:"border:1px dashed var(--border);border-radius:8px;padding:18px;text-align:center;font-size:11px;color:var(--ink-3);background:#fafbfc;"}, column==="side"?"Sidebar — drop here":"Drop content here"));
-      }
-      return wrap;
-    }
-
-    function bandEl(){
-      const mainCol=el("div",{style:"flex:0 0 calc(66.666% - 10px);min-width:0;"}, columnFlow("main"));
-      const sideCol=el("div",{style:"flex:0 0 calc(33.333% - 10px);min-width:0;"}, columnFlow("side"));
-      return el("div",{style:"display:flex;gap:20px;align-items:flex-start;border:1px dashed #d8dee8;border-radius:10px;padding:10px;background:#fcfcfd;"}, mainCol, sideCol);
-    }
-
-    // top-level zone flow
-    const flow=el("div",{});
-    flow.appendChild(zoneDrop(0));
-    zones.forEach((z,zi)=>{
-      if(z.type==="band") flow.appendChild(bandEl());
-      else flow.appendChild(blockEl(z.block));
-      flow.appendChild(zoneDrop(zi+1));
-    });
-
-    const sheet = el("div",{style:"background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 14px 14px 26px;box-shadow:0 1px 3px rgba(0,0,0,.04);"},
-      hero, title, flow
-    );
-    return el("div",{id:"canvasScroll", class:"canvas-scroll", style:"flex:1;overflow-y:auto;padding:24px;background:var(--bg);", ondragover:(e)=>e.preventDefault()},
-      el("div",{style:"max-width:840px;margin:0 auto;"}, sheet)
-    );
-  }
-
-  // ---------- PANEL ----------
-  function Panel(){
-    let title="Nothing selected", body=[], close=false;
-    if(!selectedId){
-      body=[el("div",{style:"font-size:13px;color:var(--ink-3);line-height:1.6;"},"Click a block on the canvas to edit it, or drag a new block from the left.")];
-    } else {
-      close=true;
-      const [kind,id]=selectedId.split(":");
-      if(kind==="locked"){
-        if(id==="hero"){
-          title="Hero banner";
-          body=[
-            el("div",{style:"font-size:11px;color:#b45309;background:var(--locked);border:1px solid var(--locked-border);border-radius:7px;padding:8px 10px;margin-bottom:14px;font-weight:500;"},"Editable, but its position on the page is fixed."),
-            el("button",{style:"width:100%;border:1px dashed var(--border);border-radius:8px;padding:18px;font-size:13px;color:var(--ink-2);background:#fafafa;"},"⬆ Replace image"),
-            el("div",{style:"font-size:11px;color:var(--ink-3);line-height:1.6;margin-top:12px;"},
-              el("div",{},"Dimensions: 2400 × 600 px"),
-              el("div",{},"Aspect ratio: 4:1"),
-              el("div",{},"On mobile: crops to approx. 3:1")
-            ),
-          ];
-        } else {
-          title="Title";
-          body=[
-            el("div",{style:"font-size:11px;color:#b45309;background:var(--locked);border:1px solid var(--locked-border);border-radius:7px;padding:8px 10px;margin-bottom:14px;font-weight:500;"},"Editable, but its position on the page is fixed."),
-            el("label",{class:"field-lbl"},"Title"), el("input",{class:"field",value:"Reimagine Meridian 2030"}),
-          ];
-        }
-      } else {
-        const f=findBlock(id);
-        const b = f ? (f.zone.type==="block"?f.zone.block:(f.where==="main"?theBand().main[f.idx]:theBand().side[f.idx])) : null;
-        if(!b){ selectedId=null; }
-        title=b?b.label:"";
-        const del=el("button",{style:"margin-top:18px;border:1px solid #fecaca;color:#dc2626;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:7px;",
-          onclick:()=>{ removeBlock(id); selectedId=null; render(); }},"🗑 Delete");
-
-        if(b.kind==="about"){
-          const visCount = pbMethods.filter(m=>m.visible).length;
-          const ctaNote = visCount===0 ? "No CTA shown."
-            : visCount===1 ? "Shows one CTA: " + pbMethods.find(m=>m.visible).cta + "."
-            : visCount===2 ? "Shows a primary + secondary button."
-            : "Shows a single \u201cParticipate\u201d button aggregating all.";
-          body=[
-            el("div",{style:"display:flex;align-items:center;gap:12px;"},
-              el("div",{class:"toggle"+(aboutAvatarsHidden?" on":""), onclick:()=>{aboutAvatarsHidden=!aboutAvatarsHidden; render();}}),
-              el("div",{style:"font-size:14px;color:var(--ink);"},"Hide participation avatars")
-            ),
-            el("div",{class:"seg",style:"margin-top:20px;"},"Active methods"),
-            el("div",{style:"display:flex;flex-direction:column;gap:8px;"},
-              pbMethods.map(m=>el("div",{style:`border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;${m.visible?'':'opacity:.6;'}`},
-                el("div",{style:"flex:1;min-width:0;"},
-                  el("div",{style:"font-size:13px;font-weight:600;color:var(--ink);"},m.method),
-                  el("div",{style:"font-size:11px;color:var(--ink-3);margin-top:1px;"},m.source)
-                ),
-                el("div",{class:"toggle"+(m.visible?" on":""), onclick:()=>{m.visible=!m.visible; render();}})
-              ))
-            ),
-            el("div",{style:"font-size:11px;color:var(--ink-3);line-height:1.5;margin-top:10px;"}, ctaNote),
-            del
-          ];
-        } else if(b.kind==="survey"){
-          const variants=[["simple","Simple button","Just a button linking to the survey."],
-                          ["timeleft","Button + time left","Shows how long until the survey closes."],
-                          ["card","Full card","Title, dates, description and button."]];
-          body=[
-            el("label",{class:"field-lbl"},"Linked survey"),
-            el("select",{class:"field", onchange:(e)=>{ b.survey = e.target.value||null; render(); }},
-              el("option",{value:""}, b.survey?"School survey":"Select a survey…"),
-              el("option",{value:"weekly", ...(b.survey==="weekly"?{selected:"selected"}:{})}, "School survey")
-            ),
-            !b.survey ? el("div",{style:"font-size:11px;color:var(--ink-3);margin-top:8px;line-height:1.5;"},"Pick a survey to choose how it appears on the page.") : null,
-            b.survey ? el("div",{},
-              el("label",{class:"field-lbl",style:"margin-top:16px;"},"Layout"),
-              el("div",{style:"display:flex;flex-direction:column;gap:8px;"},
-                variants.map(v=>{
-                  const on=b.variant===v[0];
-                  return el("div",{
-                    style:`border:1px solid ${on?'var(--ring)':'var(--border)'};border-radius:8px;padding:10px 12px;cursor:pointer;background:${on?'rgba(126,168,232,.08)':'#fff'};`,
-                    onclick:()=>{ b.variant=v[0]; render(); }
-                  },
-                    el("div",{style:"display:flex;align-items:center;gap:8px;"},
-                      el("span",{style:`width:14px;height:14px;border-radius:50%;border:2px solid ${on?'var(--ring)':'#cbd2dc'};background:${on?'var(--ring)':'#fff'};flex-shrink:0;`}),
-                      el("span",{style:"font-size:13px;font-weight:600;color:var(--ink);"},v[1])),
-                    el("div",{style:"font-size:11px;color:var(--ink-3);margin-top:4px;margin-left:22px;line-height:1.4;"},v[2])
-                  );
-                })
-              )
-            ) : null,
-            del
-          ];
-        } else if(b.kind==="timeline" || b.kind==="events"){
-          body=[
-            el("div",{style:"font-size:13px;color:var(--ink-3);line-height:1.6;margin-bottom:4px;"},
-              "This block has no configuration. It pulls its content automatically from the project's "+(b.kind==="timeline"?"phases":"events")+"."),
-            del
-          ];
-        } else {
-          body=[
-            el("label",{class:"field-lbl"},"Content"),
-            el("textarea",{class:"field",rows:"5"}, b.preview),
-            del
-          ];
-        }
-      }
-    }
-    return el("div",{style:"width:300px;flex-shrink:0;background:#fff;border-left:1px solid var(--border);height:100%;overflow-y:auto;"},
-      el("div",{style:"padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"},
-        el("div",{style:"font-size:15px;font-weight:700;"},title),
-        close?el("button",{style:"color:var(--ink-3);font-size:18px;line-height:1;",onclick:()=>{selectedId=null;render();}},"×"):null
-      ),
-      el("div",{style:"padding:16px;"}, body)
-    );
-  }
-
-  function Topbar(){
-    return el("div",{style:"height:54px;flex-shrink:0;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:14px;"},
-      el("button",{style:"color:var(--ink-3);font-size:18px;cursor:pointer;",onclick:()=>window.closeBuilder&&window.closeBuilder()},"←"),
-      el("div",{},
-        el("div",{style:"font-size:14px;font-weight:700;"},"Project page"),
-        el("div",{style:"font-size:11px;color:var(--ink-3);"},"Reimagine Meridian 2030"),
-      ),
-      el("div",{style:"flex:1"}),
-      el("div",{style:"font-size:12px;color:var(--ink-3);border:1px solid var(--border);border-radius:6px;padding:5px 10px;"},"EN ▾"),
-      el("div",{style:"font-size:12px;color:var(--ink-2);"},"Preview"),
-      el("button",{style:"background:var(--navy);color:#fff;font-size:13px;font-weight:600;padding:7px 16px;border-radius:7px;cursor:pointer;",onclick:()=>window.closeBuilder&&window.closeBuilder()},"Save"),
-    );
-  }
-
-  function render(){
-    const root=document.getElementById("view-builder");
-    const prev=document.getElementById("canvasScroll");
-    const savedScroll = prev ? prev.scrollTop : 0;
-    root.innerHTML="";
-    root.appendChild(
-      el("div",{style:"height:100vh;display:flex;flex-direction:column;"},
-        Topbar(),
-        el("div",{style:"flex:1;display:flex;min-height:0;"}, Sidebar(), Canvas(), Panel())
-      )
-    );
-    const next=document.getElementById("canvasScroll");
-    if(next) next.scrollTop = savedScroll;
-  }
-  window.__richRender = render;
-  render();
-})();
-</script>
+<!-- (bespoke rich builder JS removed — replaced by real GoVocal content builder below) -->
 
 <script>
   function setView(view, el) {
@@ -3197,5 +2933,856 @@
 })();
 </script>
 
+
+<script id="cb-script">
+(function () {
+    var root    = document.getElementById('cb-root');
+    var frame   = document.getElementById('cb-frame');
+    var panel   = document.getElementById('e2e-content-builder-settings');
+    var sTitle  = document.getElementById('cb-settings-title');
+    var sBody   = document.getElementById('cb-settings-body');
+    var toastEl = document.getElementById('cb-toast');
+    var uid = 1;
+
+    // ── widget catalogue: label + the default content markup it drops ──────────
+    var WIDGETS = {
+      'text':            { label: 'Text',              make: function () { return '<div class="gv-bo-cb-block__body"><div class="cb-richtext cb-p" contenteditable="true">This is some text. You can edit and format it by using the editor in the panel on the right.</div></div>'; } },
+      'button':          { label: 'Button',            make: function () { return '<div class="cb-btnblock"><span class="cb-fakebtn">Take the survey</span></div>'; } },
+      'image':           { label: 'Image',             make: function () { return '<div class="cb-imgph"><span class="gv-icon" data-gv-icon="eye"></span> Click to upload an image</div>'; } },
+      'two-column':      { label: '2 column',          make: function () { return '<div class="cb-cols cb-cols-2"><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
+      'three-column':    { label: '3 column',          make: function () { return '<div class="cb-cols cb-cols-3"><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
+      'white-space':     { label: 'White space',       make: function () { return '<div class="cb-ws"></div>'; } },
+      'accordion':       { label: 'Accordion',         make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">Accordion title</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">Hidden panel content the resident can expand.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
+      'iframe':          { label: 'Embed',             make: function () { return '<div class="cb-iframe">&lt;/&gt; Embedded content<span class="cb-iframe__cap">Paste a URL to embed</span></div>'; } },
+      'about-box':       { label: 'Participation Box',  make: function () { return '' +
+        '<div class="cb-pbox">' +
+          '<div class="cb-pbox__actions">' +
+            '<a class="gv-btn primary" data-pbox="cta" href="#">' + cbCurrentCTA() + '</a>' +
+            '<a class="gv-btn primary-outlined" data-pbox="events" href="#">Upcoming events</a>' +
+          '</div>' +
+          '<div class="gv-participants cb-pbox__people">' +
+            '<span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>' +
+            '<span class="gv-pcount"><span data-pbox="count">2,435</span> participants</span>' +
+          '</div>' +
+        '</div>'; } },
+      'file-attachment': { label: 'File Attachment',    make: function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__info"><span class="cb-file__name">project-brief.pdf</span><span class="cb-file__meta">PDF · 1.2 MB</span></span></div>'; } },
+      'image-text-cards':{ label: 'Image & text cards', make: function () { return '<div class="cb-cards" data-n="3"><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card one</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card two</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card three</div></div></div>'; } },
+      'info-accordions': { label: 'Info & accordions',  make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">How will my input be used?</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">An explanation of the process.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
+      // ── project-page components (this is the project's content builder) ──────
+      'timeline':        { label: 'Timeline',           make: function () { return cbTimelineHTML(); } },
+      'events':          { label: 'Events',             make: function () { return cbEventsHTML(2); } },
+      'extra-surveys':   { label: 'Extra surveys',      make: function () { return cbExtraSurveysHTML(); } },
+      // locked top blocks (never in the palette; created via makeLockedBlock)
+      'hero':            { label: 'Project image' },
+      'title':           { label: 'Project title' }
+    };
+
+    // The project's phase timeline = the canonical .gv-phases / .gv-stepper ribbon
+    // (the same component the resident sees on the project page).
+    var CB_PHASES = [
+      { name: 'Pre-survey',         method: 'survey',      dates: '1 – 15 May 2026',   desc: 'A short survey to set the scene before ideation opens.' },
+      { name: 'Collect ideas',      method: 'ideation',    dates: '20 May – 10 Jun 2026', desc: 'Share your ideas for how we move, cycle and gather.' },
+      { name: 'What we heard',      method: 'information', dates: '11 – 25 Jun 2026',  desc: 'We share back the themes from your ideas.' },
+      { name: 'Community vote',     method: 'voting',      dates: '26 Jun – 12 Jul 2026', desc: 'Help prioritise the shortlisted ideas.' },
+      { name: 'Find common ground', method: 'information', dates: '13 – 27 Jul 2026',  desc: 'Surface where the community agrees and disagrees.' }
+    ];
+    var CB_CURRENT = 1;
+    // The participation box CTA mirrors the action available in the CURRENT phase.
+    var CB_METHOD_CTA = { information: 'Learn more', survey: 'Take the survey', ideation: 'Submit your idea', voting: 'Cast your vote', proposals: 'Submit a proposal' };
+    function cbCurrentCTA() { var p = CB_PHASES[CB_CURRENT] || {}; return CB_METHOD_CTA[p.method] || 'Take part'; }
+    // Keep every participation box's primary CTA in sync with the current phase,
+    // unless an editor has manually overridden it (data-cta-custom).
+    function syncParticipationCTAs() {
+      var ctas = document.querySelectorAll('#cb-frame .cb-pbox [data-pbox="cta"]');
+      for (var i = 0; i < ctas.length; i++) if (!ctas[i].hasAttribute('data-cta-custom')) ctas[i].textContent = cbCurrentCTA();
+    }
+    function cbPhasePanel(i) {
+      var p = CB_PHASES[i], muted = i === CB_CURRENT ? '' : ' muted';
+      return '<div class="gv-phasepanel__head' + muted + '">' +
+          '<span class="gv-phasepanel__num" aria-hidden="true">' + (i + 1) + '</span>' +
+          '<div><h3 class="gv-phasepanel__name">' + p.name + '</h3>' +
+          '<p class="gv-phasepanel__date">' + p.dates + '</p></div></div>' +
+        '<div class="gv-phasepanel__desc"><p>' + p.desc + '</p></div>';
+    }
+    function cbTimelineHTML() {
+      var steps = CB_PHASES.map(function (p, i) {
+        var cur = i === CB_CURRENT, dot = cur ? '<span class="gv-pstep__dot"></span>' : '';
+        return '<button class="gv-phase' + (cur ? ' current' : '') + '" type="button" role="tab" data-i="' + i + '" aria-selected="' + (i === CB_CURRENT) + '">' +
+          '<span class="gv-pstep">' + dot + (i + 1) + '</span><span class="gv-phase__label">' + p.name + '</span></button>';
+      }).join('');
+      return '<section class="gv-phases cb-timeline">' +
+        '<div class="gv-phases__bar"><h2>Phases</h2></div>' +
+        '<div class="gv-stepper" role="tablist" aria-label="Project phases">' + steps + '</div>' +
+        '<div class="gv-phasepanel cb-timeline__panel">' + cbPhasePanel(CB_CURRENT) + '</div></section>';
+    }
+    function cbEventCard(ev) {
+      return '<article class="gv-event-card">' +
+        '<div class="gv-event-card__media" aria-hidden="true">' +
+          '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+          '<span class="gv-event-card__date"><span class="m">' + ev.m + '</span><span class="d">' + ev.d + '</span><span class="y">' + ev.y + '</span></span></div>' +
+        '<div class="gv-event-card__body"><h3 class="gv-event-card__title"><a href="#">' + ev.title + '</a></h3>' +
+          '<div class="gv-event-card__meta">' +
+            '<p class="gv-event-card__row"><span data-gv-icon="clock"></span> ' + ev.when + '</p>' +
+            '<p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> ' + ev.where + '</p>' +
+            '<p class="gv-event-card__row"><span data-gv-icon="user"></span> ' + ev.regs + ' registrants</p></div>' +
+          '<a class="gv-btn primary full" href="#">Register</a></div></article>';
+    }
+    var CB_EVENTS = [
+      { m: 'Jun', d: '14', y: '2026', title: 'Mobility town hall', when: '14 Jun 2026 · 19:00 – 20:30', where: 'Central Library, Meridian', regs: '41' },
+      { m: 'Jun', d: '22', y: '2026', title: 'Cycling infrastructure walk', when: '22 Jun 2026 · 10:00 – 11:30', where: 'Riverside Park', regs: '23' },
+      { m: 'Jul', d: '02', y: '2026', title: 'Neighbourhood design workshop', when: '2 Jul 2026 · 18:00 – 20:00', where: 'Meridian Civic Hall', regs: '57' }
+    ];
+    function cbEventsHTML(n) {
+      var cards = CB_EVENTS.slice(0, n).map(cbEventCard).join('');
+      return '<section class="cb-events"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Events</h2>' +
+        '<a class="gv-btn text" href="#">View all events</a></div>' +
+        '<div class="gv-events__grid">' + cards + '</div></section>';
+    }
+    var CB_SURVEYS = [
+      { name: 'School survey',  meta: 'Open until 5 Jun · ~3 min', cta: 'Take the survey' },
+      { name: 'Market-day poll', meta: '15 – 17 Aug', cta: 'Notify me' }
+    ];
+    function cbExtraSurveysHTML() {
+      var rows = CB_SURVEYS.map(function (s) {
+        return '<div class="cb-survey-row"><div class="cb-survey-row__info"><span class="cb-survey-row__name">' + s.name + '</span><span class="cb-survey-row__meta">' + s.meta + '</span></div><a class="gv-btn primary-outlined size-s" href="#">' + s.cta + '</a></div>';
+      }).join('');
+      return '<section class="cb-extra"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Extra surveys</h2></div><div class="cb-extra__list">' + rows + '</div></section>';
+    }
+
+    function toast(msg) {
+      toastEl.textContent = msg; toastEl.classList.add('is-show');
+      clearTimeout(toast._t); toast._t = setTimeout(function () { toastEl.classList.remove('is-show'); }, 1400);
+    }
+
+    // ── settings panel bodies per widget type ─────────────────────────────────
+    function rteToolbar() {
+      return '' +
+        '<div class="gv-bo-cb-rte__toolbar">' +
+          '<span class="gv-bo-cb-rte__group"><select class="gv-bo-cb-rte__select"><option>Normal</option><option>Title</option><option>Subtitle</option></select></span>' +
+          '<span class="gv-bo-cb-rte__group">' +
+            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Bold" data-fmt="bold"><b>B</b></button>' +
+            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Italic" data-fmt="italic"><i>i</i></button>' +
+            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Add link" data-fmt="link"><span class="gv-icon" data-gv-icon="link"></span></button>' +
+          '</span>' +
+          '<span class="gv-bo-cb-rte__group">' +
+            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Align left" data-fmt="left">▤</button>' +
+            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Center text" data-fmt="center">▥</button>' +
+            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Align right" data-fmt="right">▤</button>' +
+          '</span>' +
+          '<span class="gv-bo-cb-rte__group">' +
+            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Ordered list" data-fmt="ol">1.</button>' +
+            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Unordered list" data-fmt="ul">•</button>' +
+          '</span>' +
+          '<span class="gv-bo-cb-rte__group">' +
+            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Remove formatting" data-fmt="clean">T<sub>x</sub></button>' +
+          '</span>' +
+        '</div>';
+    }
+
+    function settingsRow(label, control) {
+      return '<div class="gv-bo-cb-settings__row"><span class="gv-bo-cb-settings__rowlabel">' + label + '</span>' + control + '</div>';
+    }
+
+    function bodyFor(widget, block) {
+      if (widget === 'text') {
+        return rteToolbar() +
+          '<div class="gv-bo-cb-rte__editor" id="cb-rte-editor" contenteditable="true"></div>';
+      }
+      if (widget === 'button') {
+        return settingsRow('Button text', '<input class="gv-input" id="cb-f-btnlabel" value="Take the survey">') +
+               settingsRow('Link URL', '<input class="gv-input" id="cb-f-btnurl" value="/projects/dix-park/survey">') +
+               settingsRow('Style', '<select class="gv-bo-select" id="cb-f-btnstyle"><option value="primary">Primary</option><option value="secondary">Secondary</option><option value="link">Text link</option></select>');
+      }
+      if (widget === 'image') {
+        return settingsRow('Image', '<input class="gv-input" type="file" id="cb-f-imgfile" accept="image/*">') +
+               settingsRow('Or paste URL', '<input class="gv-input" id="cb-f-imgurl" placeholder="https://…">') +
+               settingsRow('Alt text', '<input class="gv-input" id="cb-f-imgalt" placeholder="Describe the image">');
+      }
+      if (widget === 'two-column' || widget === 'three-column') {
+        var threeOpts = widget === 'three-column'
+          ? '<option value="equal">Equal</option><option value="wide-center">Wide centre</option>'
+          : '<option value="equal">Equal</option><option value="wide-narrow">Wide / narrow</option><option value="narrow-wide">Narrow / wide</option>';
+        return settingsRow('Column layout', '<select class="gv-bo-select" id="cb-f-collayout">' + threeOpts + '</select>');
+      }
+      if (widget === 'white-space') {
+        return settingsRow('Height', '<select class="gv-bo-select" id="cb-f-wsheight"><option value="24">Small</option><option value="40" selected>Medium</option><option value="80">Large</option></select>');
+      }
+      if (widget === 'accordion' || widget === 'info-accordions') {
+        return settingsRow('Title', '<input class="gv-input" id="cb-f-acctitle" value="Accordion title">') +
+               settingsRow('Content', '<textarea class="gv-input" id="cb-f-acccontent" rows="4">Hidden panel content the resident can expand.</textarea>');
+      }
+      if (widget === 'iframe') {
+        return settingsRow('Embed URL', '<input class="gv-input" id="cb-f-embedurl" placeholder="https://…">');
+      }
+      if (widget === 'about-box') {
+        return settingsRow('Action label', '<input class="gv-input" data-set="cta" id="cb-f-cta" value="Take the survey">') +
+          settingsRow('Events label', '<input class="gv-input" data-set="events" id="cb-f-events" value="Upcoming events">') +
+          settingsRow('Participants', '<input class="gv-input" data-set="count" id="cb-f-count" value="2,435">') +
+          settingsRow('Show buttons', '<label class="gv-toggle"><input type="checkbox" data-set="btns" id="cb-f-btns" checked><span class="track"></span></label>') +
+          settingsRow('Show participants', '<label class="gv-toggle"><input type="checkbox" data-set="people" id="cb-f-people" checked><span class="track"></span></label>');
+      }
+      if (widget === 'file-attachment') {
+        return settingsRow('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') +
+               settingsRow('File', '<input class="gv-input" type="file" id="cb-f-filefile">');
+      }
+      if (widget === 'image-text-cards') {
+        return settingsRow('Number of cards', '<select class="gv-bo-select" id="cb-f-cardcount"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>') +
+               '<div id="cb-f-cardcaps"></div>';
+      }
+      if (widget === 'timeline') {
+        var opts = CB_PHASES.map(function (p, i) { return '<option value="' + i + '"' + (i === CB_CURRENT ? ' selected' : '') + '>' + p.name + '</option>'; }).join('');
+        return settingsRow('Current phase', '<select class="gv-bo-select" id="cb-f-curphase">' + opts + '</select>') +
+               settingsRow('', '<p class="cb-p" style="color:var(--gv-cool-grey-600);font-size:var(--gv-fs-13)">The phase timeline mirrors the project’s phases. Residents see the same component.</p>');
+      }
+      if (widget === 'events') {
+        return settingsRow('Events shown', '<select class="gv-bo-select" id="cb-f-eventcount"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>');
+      }
+      if (widget === 'extra-surveys') {
+        return settingsRow('Heading', '<input class="gv-input" value="Extra surveys">') +
+               settingsRow('', '<p class="cb-p" style="color:var(--gv-cool-grey-600);font-size:var(--gv-fs-13)">Surveys that run in parallel to the timeline, pulled from the project\'s extra surveys.</p>');
+      }
+      if (widget === 'hero') {
+        return settingsRow('Replace image', '<input class="gv-input" type="file" id="cb-f-herofile" accept="image/*">') +
+               settingsRow('Image URL', '<input class="gv-input" id="cb-f-herourl" placeholder="https://…">');
+      }
+      if (widget === 'title') {
+        return settingsRow('Project title', '<input class="gv-input" id="cb-f-ptitle" value="Reimagine Meridian 2030">');
+      }
+      return settingsRow('Settings', '<div class="cb-p">No additional settings for this element.</div>');
+    }
+
+    // ── selection ─────────────────────────────────────────────────────────────
+    var selected = null;
+    var syncing = false; // single loop-guard for two-way text binding
+
+    // Which DOM node inside a block the RTE mirrors (or null).
+    function textTargetOf(block) {
+      var w = block.getAttribute('data-widget');
+      if (w === 'text') return block.querySelector('.cb-richtext') || block.querySelector('.gv-bo-cb-block__body, .cb-p');
+      return null;
+    }
+
+    function deselect() {
+      if (selected) selected.classList.remove('is-selected');
+      selected = null;
+      root.classList.remove('cb-has-panel');
+    }
+    function select(block) {
+      if (selected) selected.classList.remove('is-selected');
+      selected = block;
+      block.classList.add('is-selected');
+      root.classList.add('cb-has-panel');
+      var widget = block.getAttribute('data-widget');
+      var label  = block.getAttribute('data-label') || (WIDGETS[widget] && WIDGETS[widget].label) || 'Block';
+      sTitle.textContent = label;
+      sBody.innerHTML = bodyFor(widget, block);
+      if (window.GVIcons) window.GVIcons.render(panel);
+      bindTextBinding(block, widget);
+      bindRteButtons();
+      wireBody(widget, block);
+      // Locked blocks (hero / title) can't be deleted — show a pinned note instead of Delete.
+      if (block.classList.contains('cb-locked')) {
+        var note = document.createElement('p');
+        note.className = 'cb-lockednote';
+        note.innerHTML = '<span class="gv-icon" data-gv-icon="lock"></span> Pinned to the top of the page — editable, but can’t be moved or removed.';
+        sBody.appendChild(note);
+        if (window.GVIcons) window.GVIcons.render(note);
+        return;
+      }
+      var delBtn = document.createElement('button');
+      delBtn.className = 'gv-bo-cb-delete';
+      delBtn.type = 'button';
+      delBtn.id = 'e2e-delete-button';
+      delBtn.innerHTML = '<span class="gv-icon" data-gv-icon="delete"></span>Delete';
+      sBody.appendChild(delBtn);
+      if (window.GVIcons) window.GVIcons.render(delBtn);
+      delBtn.addEventListener('click', function () {
+        if (!selected) return;
+        var b = selected; deselect(); b.parentNode.removeChild(b); reflectEmptyAll();
+        toast('Element deleted');
+      });
+    }
+
+    // ── live two-way text binding (RTE <-> block, simple fields) ──────────────
+    function bindTextBinding(block, widget) {
+      if (widget === 'text') {
+        var ed = document.getElementById('cb-rte-editor');
+        var tgt = textTargetOf(block);
+        if (ed && tgt) {
+          syncing = true; ed.innerHTML = tgt.innerHTML; syncing = false;
+          ed.addEventListener('input', function () {
+            if (syncing) return; syncing = true; tgt.innerHTML = ed.innerHTML; syncing = false;
+          });
+          if (tgt._cbSync) tgt.removeEventListener('input', tgt._cbSync);
+          tgt._cbSync = function () {
+            if (syncing) return; syncing = true; ed.innerHTML = tgt.innerHTML; syncing = false;
+          };
+          tgt.addEventListener('input', tgt._cbSync);
+          bindHeadingSelect(ed);
+        }
+      }
+    }
+
+    function bindHeadingSelect(ed) {
+      var sel = panel.querySelector('.gv-bo-cb-rte__select');
+      if (!sel || !ed) return;
+      sel.addEventListener('change', function () {
+        ed.focus();
+        var tag = sel.value === 'Title' ? 'H2' : sel.value === 'Subtitle' ? 'H3' : 'P';
+        document.execCommand('formatBlock', false, tag);
+        var tgt = selected && textTargetOf(selected);
+        if (tgt) { syncing = true; tgt.innerHTML = ed.innerHTML; syncing = false; }
+      });
+    }
+
+    function bindRteButtons() {
+      var ed = document.getElementById('cb-rte-editor');
+      var btns = panel.querySelectorAll('.gv-bo-cb-rte__btn');
+      var CMD = { bold: 'bold', italic: 'italic', left: 'justifyLeft', center: 'justifyCenter', right: 'justifyRight', ol: 'insertOrderedList', ul: 'insertUnorderedList', clean: 'removeFormat' };
+      for (var i = 0; i < btns.length; i++) {
+        (function (btn) {
+          btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+          btn.addEventListener('click', function () {
+            if (!ed) { btn.classList.toggle('is-on'); return; }
+            var fmt = btn.getAttribute('data-fmt');
+            ed.focus();
+            if (fmt === 'link') { var url = prompt('Link URL', 'https://'); if (url) document.execCommand('createLink', false, url); }
+            else if (CMD[fmt]) document.execCommand(CMD[fmt], false, null);
+            if (fmt === 'bold' || fmt === 'italic') btn.classList.toggle('is-on');
+            var tgt = selected && textTargetOf(selected);
+            if (tgt) { syncing = true; tgt.innerHTML = ed.innerHTML; syncing = false; }
+          });
+        })(btns[i]);
+      }
+    }
+
+    // ── per-widget live binding: settings controls -> rendered block ──────────
+    function wireBody(widget, block) {
+      function pv(id) { return document.getElementById(id); }   // panel control
+      function bq(sel) { return block.querySelector(sel); }     // block content node
+
+      if (widget === 'button') {
+        var lbl = pv('cb-f-btnlabel'), sty = pv('cb-f-btnstyle'), url = pv('cb-f-btnurl');
+        var btn = bq('.cb-fakebtn');
+        if (lbl && btn) { lbl.value = (btn.textContent || '').trim(); lbl.addEventListener('input', function () { btn.textContent = lbl.value || 'Button'; }); }
+        if (sty && btn) sty.addEventListener('change', function () {
+          btn.classList.remove('cb-fakebtn--secondary', 'cb-fakebtn--link');
+          if (sty.value === 'secondary') btn.classList.add('cb-fakebtn--secondary');
+          else if (sty.value === 'link') btn.classList.add('cb-fakebtn--link');
+        });
+        if (url && btn) url.addEventListener('input', function () { btn.setAttribute('data-href', url.value); });
+        return;
+      }
+
+      if (widget === 'white-space') {
+        var ws = bq('.cb-ws'), hs = pv('cb-f-wsheight');
+        if (ws && hs) hs.addEventListener('change', function () { ws.style.height = hs.value + 'px'; });
+        return;
+      }
+
+      if (widget === 'image') {
+        var ph = bq('.cb-imgph'), img = bq('.cb-img'), fileIn = pv('cb-f-imgfile'), urlIn = pv('cb-f-imgurl'), altIn = pv('cb-f-imgalt');
+        function setSrc(src) {
+          var node = block.querySelector('.cb-img');
+          if (!node) {
+            node = document.createElement('img'); node.className = 'cb-img';
+            var slot = block.querySelector('.cb-imgph');
+            if (slot) slot.parentNode.replaceChild(node, slot);
+            else block.appendChild(node);
+          }
+          node.src = src;
+          if (altIn) node.alt = altIn.value || '';
+        }
+        if (fileIn) fileIn.addEventListener('change', function () {
+          if (fileIn.files && fileIn.files[0]) setSrc(URL.createObjectURL(fileIn.files[0]));
+        });
+        if (urlIn) urlIn.addEventListener('input', function () { if (urlIn.value) setSrc(urlIn.value); });
+        if (altIn) altIn.addEventListener('input', function () { var n = block.querySelector('.cb-img'); if (n) n.alt = altIn.value; });
+        return;
+      }
+
+      if (widget === 'iframe') {
+        var cap = bq('.cb-iframe__cap'), embed = pv('cb-f-embedurl');
+        if (cap && embed) embed.addEventListener('input', function () {
+          var v = embed.value.trim();
+          if (!v) { cap.textContent = 'Paste a URL to embed'; return; }
+          var host = v.replace(/^https?:\/\//, '').split('/')[0];
+          var type = /youtu/.test(v) ? 'embedded video' : /vimeo/.test(v) ? 'embedded video' : /maps|google\.[a-z]+\/maps/.test(v) ? 'embedded map' : 'embedded content';
+          cap.textContent = host + ' — ' + type;
+        });
+        return;
+      }
+
+      if (widget === 'two-column' || widget === 'three-column') {
+        var cols = bq('.cb-cols'), lay = pv('cb-f-collayout');
+        var map3 = { equal: '1fr 1fr 1fr', 'wide-center': '1fr 2fr 1fr' };
+        var map2 = { equal: '1fr 1fr', 'wide-narrow': '2fr 1fr', 'narrow-wide': '1fr 2fr' };
+        var m = widget === 'three-column' ? map3 : map2;
+        if (cols && lay) {
+          lay.value = cols.getAttribute('data-collayout') || 'equal';   // reflect the block's current layout on (re)select
+          lay.addEventListener('change', function () {
+            cols.setAttribute('data-collayout', lay.value);
+            cols.style.gridTemplateColumns = m[lay.value] || m.equal;
+          });
+        }
+        return;
+      }
+
+      if (widget === 'accordion' || widget === 'info-accordions') {
+        var head = bq('.cb-accordion__title'), textNode = bq('.cb-accordion__text');
+        var tIn = pv('cb-f-acctitle'), cIn = pv('cb-f-acccontent');
+        if (head && tIn) { tIn.value = (head.textContent || '').trim(); tIn.addEventListener('input', function () { head.textContent = tIn.value; }); }
+        if (textNode && cIn) { cIn.value = (textNode.textContent || '').trim(); cIn.addEventListener('input', function () { textNode.textContent = cIn.value; }); }
+        return;
+      }
+
+      if (widget === 'file-attachment') {
+        var nameNode = bq('.cb-file__name'), metaNode = bq('.cb-file__meta');
+        var nIn = pv('cb-f-filename'), fIn = pv('cb-f-filefile');
+        if (nameNode && nIn) { nIn.value = (nameNode.textContent || '').trim(); nIn.addEventListener('input', function () { nameNode.textContent = nIn.value; }); }
+        if (fIn) fIn.addEventListener('change', function () {
+          if (!fIn.files || !fIn.files[0]) return;
+          var f = fIn.files[0];
+          if (nameNode) nameNode.textContent = f.name;
+          if (nIn) nIn.value = f.name;
+          if (metaNode) {
+            var ext = (f.name.split('.').pop() || '').toUpperCase();
+            var size = f.size < 1024 * 1024 ? (Math.max(1, Math.round(f.size / 1024)) + ' KB') : ((f.size / 1024 / 1024).toFixed(1) + ' MB');
+            metaNode.textContent = ext + ' · ' + size;
+          }
+        });
+        return;
+      }
+
+      if (widget === 'image-text-cards') {
+        var grid = bq('.cb-cards'), countSel = pv('cb-f-cardcount'), capsHost = pv('cb-f-cardcaps');
+        function renderCaps() {
+          if (!capsHost || !grid) return;
+          var caps = grid.querySelectorAll('.cb-card__cap');
+          var html = '';
+          for (var c = 0; c < caps.length; c++) html += settingsRow('Card ' + (c + 1), '<input class="gv-input" data-cardcap="' + c + '" value="' + (caps[c].textContent || '').replace(/"/g, '&quot;') + '">');
+          capsHost.innerHTML = html;
+          var capIns = capsHost.querySelectorAll('[data-cardcap]');
+          for (var d = 0; d < capIns.length; d++) (function (inp) {
+            inp.addEventListener('input', function () {
+              var idx = +inp.getAttribute('data-cardcap');
+              var node = grid.querySelectorAll('.cb-card__cap')[idx];
+              if (node) node.textContent = inp.value;
+            });
+          })(capIns[d]);
+        }
+        if (countSel && grid) countSel.addEventListener('change', function () {
+          var n = +countSel.value;
+          var cur = grid.querySelectorAll('.cb-card').length;
+          while (grid.querySelectorAll('.cb-card').length > n) grid.removeChild(grid.lastElementChild);
+          var idx = cur;
+          while (grid.querySelectorAll('.cb-card').length < n) {
+            idx = grid.querySelectorAll('.cb-card').length;
+            var card = document.createElement('div'); card.className = 'cb-card';
+            card.innerHTML = '<div class="cb-card__img"></div><div class="cb-card__cap">Card ' + (idx + 1) + '</div>';
+            grid.appendChild(card);
+          }
+          grid.setAttribute('data-n', String(n));
+          renderCaps();
+        });
+        renderCaps();
+        return;
+      }
+
+      if (widget === 'timeline') {
+        var curSel = pv('cb-f-curphase');
+        if (curSel) curSel.addEventListener('change', function () {
+          CB_CURRENT = +curSel.value;
+          var sec = bq('.cb-timeline');
+          if (!sec) return;
+          // re-render this timeline's stepper + panel for the new current phase
+          var steps = CB_PHASES.map(function (p, i) {
+            var cur = i === CB_CURRENT, dot = cur ? '<span class="gv-pstep__dot"></span>' : '';
+            return '<button class="gv-phase' + (cur ? ' current' : '') + '" type="button" role="tab" data-i="' + i + '" aria-selected="' + (i === CB_CURRENT) + '"><span class="gv-pstep">' + dot + (i + 1) + '</span><span class="gv-phase__label">' + p.name + '</span></button>';
+          }).join('');
+          sec.querySelector('.gv-stepper').innerHTML = steps;
+          sec.querySelector('.cb-timeline__panel').innerHTML = cbPhasePanel(CB_CURRENT);
+          wireTimeline(block);
+          if (window.GVIcons) window.GVIcons.render(sec);
+          syncParticipationCTAs();   // participation box CTA mirrors the current phase
+        });
+        return;
+      }
+
+      if (widget === 'events') {
+        var evGrid = bq('.gv-events__grid'), evCount = pv('cb-f-eventcount');
+        if (evGrid && evCount) evCount.addEventListener('change', function () {
+          evGrid.innerHTML = CB_EVENTS.slice(0, +evCount.value).map(cbEventCard).join('');
+          if (window.GVIcons) window.GVIcons.render(evGrid);
+        });
+        return;
+      }
+
+      if (widget === 'extra-surveys') {
+        return settingsRow('Heading', '<input class="gv-input" value="Extra surveys">') +
+               settingsRow('', '<p class="cb-p" style="color:var(--gv-cool-grey-600);font-size:var(--gv-fs-13)">Surveys that run in parallel to the timeline, pulled from the project\'s extra surveys.</p>');
+      }
+      if (widget === 'hero') {
+        var heroImg = bq('.cb-hero__img'), hf = pv('cb-f-herofile'), hu = pv('cb-f-herourl');
+        if (hf && heroImg) hf.addEventListener('change', function () { if (hf.files && hf.files[0]) heroImg.src = URL.createObjectURL(hf.files[0]); });
+        if (hu && heroImg) hu.addEventListener('input', function () { if (hu.value) heroImg.src = hu.value; });
+        return;
+      }
+
+      if (widget === 'title') {
+        var h1 = bq('.cb-title'), tIn2 = pv('cb-f-ptitle');
+        if (h1 && tIn2) { tIn2.value = (h1.textContent || '').trim(); tIn2.addEventListener('input', function () { h1.textContent = tIn2.value; }); }
+        return;
+      }
+
+      if (widget === 'about-box') { bindAboutBox(block); return; }
+    }
+
+    function bindAboutBox(block) {
+      var card = block.querySelector('.cb-pbox');
+      function q(sel) { return panel.querySelector('[data-set="' + sel + '"]'); }
+      function r(sel) { return card ? card.querySelector('[data-pbox="' + sel + '"]') : null; }
+      var ctaIn = q('cta'), eventsIn = q('events'), countIn = q('count'), btnsTgl = q('btns'), peopleTgl = q('people');
+      // reflect the card's current state back into the panel on (re)select
+      if (btnsTgl) btnsTgl.checked = !card.classList.contains('cb-pbox--nobtns');
+      if (peopleTgl) peopleTgl.checked = !card.classList.contains('cb-pbox--nopeople');
+      var ctaNode = r('cta'); if (ctaIn && ctaNode) ctaIn.value = (ctaNode.textContent || '').trim();   // CTA mirrors the current phase action
+      if (ctaIn) ctaIn.addEventListener('input', function () { var c = r('cta'); if (c) { c.textContent = this.value || 'Take part'; c.setAttribute('data-cta-custom', ''); } });
+      if (eventsIn) eventsIn.addEventListener('input', function () { var e = r('events'); if (e) e.textContent = this.value || 'Upcoming events'; });
+      if (countIn) countIn.addEventListener('input', function () { var c = r('count'); if (c) c.textContent = this.value || '0'; });
+      if (btnsTgl) btnsTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--nobtns', !this.checked); });
+      if (peopleTgl) peopleTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--nopeople', !this.checked); });
+    }
+
+    // ── block factory + wiring ────────────────────────────────────────────────
+    function makeBlock(widget) {
+      var def = WIDGETS[widget] || WIDGETS.text;
+      var block = document.createElement('div');
+      block.className = 'gv-bo-cb-block';
+      block.setAttribute('data-widget', widget);
+      block.setAttribute('data-label', def.label);
+      block.setAttribute('draggable', 'true');
+      block.id = 'cb-block-' + (uid++);
+      var tab = document.createElement('span');
+      tab.className = 'gv-bo-cb-block__label';
+      tab.textContent = def.label;
+      block.appendChild(tab);
+      var content = document.createElement('div');
+      content.innerHTML = def.make();
+      while (content.firstChild) block.appendChild(content.firstChild);
+      wireBlock(block);
+      // Activate any nested drop zones this block introduces (columns / accordion).
+      var zones = block.querySelectorAll('[data-cb-zone]');
+      for (var z = 0; z < zones.length; z++) makeDropZone(zones[z], 'y');
+      // Accordion head toggles expand/collapse on the canvas.
+      wireAccordion(block);
+      wireTimeline(block);
+      if (window.GVIcons) window.GVIcons.render(block);
+      if (window.GVAvatars) window.GVAvatars.fill(block);   // random faces in any avatar bubble (e.g. Participation Box)
+      return block;
+    }
+
+    // Locked top blocks: the project hero image + title. Editable, but pinned to
+    // the top — not draggable, not deletable, not reorderable.
+    function makeLockedBlock(kind) {
+      var def = WIDGETS[kind] || {};
+      var block = document.createElement('div');
+      block.className = 'gv-bo-cb-block cb-locked';
+      block.setAttribute('data-widget', kind);
+      block.setAttribute('data-label', def.label || kind);
+      block.setAttribute('draggable', 'false');
+      block.id = 'cb-block-' + (uid++);
+      var tab = document.createElement('span');
+      tab.className = 'gv-bo-cb-block__label';
+      tab.innerHTML = (def.label || kind) + ' <span class="cb-lockmark" aria-hidden="true"><span class="gv-icon" data-gv-icon="lock"></span></span>';
+      block.appendChild(tab);
+      var content = document.createElement('div');
+      if (kind === 'hero') {
+        content.innerHTML = '<div class="cb-hero"><img class="cb-hero__img" src="https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=1400&h=400&fit=crop" alt="Project banner"></div>';
+      } else {
+        content.innerHTML = '<h1 class="gv-title h1 cb-title" contenteditable="true">Reimagine Meridian 2030</h1>';
+      }
+      while (content.firstChild) block.appendChild(content.firstChild);
+      wireBlock(block);
+      if (window.GVIcons) window.GVIcons.render(block);
+      return block;
+    }
+
+    // Timeline phase switching (the .gv-stepper ribbon) — works in edit + preview.
+    function wireTimeline(block) {
+      var steppers = block.querySelectorAll('.cb-timeline .gv-stepper');
+      for (var s = 0; s < steppers.length; s++) {
+        (function (stepper) {
+          var section = stepper.closest('.cb-timeline');
+          var panel = section ? section.querySelector('.cb-timeline__panel') : null;
+          stepper.querySelectorAll('.gv-phase').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var i = +btn.dataset.i;
+              stepper.querySelectorAll('.gv-phase').forEach(function (b) { b.setAttribute('aria-selected', String(+b.dataset.i === i)); });
+              if (panel) { panel.innerHTML = cbPhasePanel(i); if (window.GVIcons) window.GVIcons.render(panel); }
+            });
+          });
+        })(steppers[s]);
+      }
+    }
+
+    function wireAccordion(block) {
+      var heads = block.querySelectorAll('.cb-accordion__head');
+      for (var i = 0; i < heads.length; i++) {
+        (function (head) {
+          head.addEventListener('click', function (e) {
+            var acc = head.closest('.cb-accordion');
+            if (root.classList.contains('cb-preview')) {
+              // resident behaviour: expand/collapse, don't select
+              if (acc) acc.classList.toggle('cb-accordion--open');
+              return;
+            }
+            // edit mode: chevron toggles; elsewhere bubbles up to select the block
+            if (e.target.closest('.gv-icon')) {
+              e.stopPropagation();
+              if (acc) acc.classList.toggle('cb-accordion--open');
+            }
+          });
+        })(heads[i]);
+      }
+    }
+
+    function wireBlock(block) {
+      block.addEventListener('click', function (e) {
+        if (root.classList.contains('cb-preview')) return;
+        if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') { e.stopPropagation(); select(block); return; }
+        e.stopPropagation();
+        select(block);
+      });
+      // Locked blocks (hero image / title) are pinned to the top: editable but not draggable.
+      if (block.classList.contains('cb-locked')) { block.setAttribute('draggable', 'false'); return; }
+      // reorder within the canvas
+      block.addEventListener('dragstart', function (e) {
+        if (root.classList.contains('cb-preview')) { e.preventDefault(); return; }
+        e.stopPropagation();
+        clearLine();
+        dragData = { mode: 'move', el: block };
+        block.classList.add('is-dragging');
+        try { e.dataTransfer.setData('text/plain', 'move'); } catch (x) {}
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      block.addEventListener('dragend', function () { block.classList.remove('is-dragging'); clearLine(); });
+    }
+
+    // ── drag state + a single GLOBAL clear that delegates to the active zone ───
+    var dragData = null;
+    var activeZone = null;
+    function clearLine() {
+      if (activeZone && activeZone._cbZone) activeZone._cbZone.clear();
+      activeZone = null;
+    }
+
+    // Direct-child .gv-bo-cb-block before which to insert (or null = append).
+    function zoneChildUnder(zoneEl, axis, x, y) {
+      var kids = zoneEl.children;
+      for (var i = 0; i < kids.length; i++) {
+        var child = kids[i];
+        if (!child.classList || !child.classList.contains('gv-bo-cb-block')) continue;
+        if (child.classList.contains('cb-locked')) continue;   // locked header pins the top; never insert above it
+        var r = child.getBoundingClientRect();
+        if (axis === 'x') { if (x < r.left + r.width / 2) return child; }
+        else { if (y < r.top + r.height / 2) return child; }
+      }
+      return null;
+    }
+
+    // Generic, reusable drop zone applied to the frame AND every nested zone.
+    function makeDropZone(zoneEl, axis) {
+      if (zoneEl._cbZone) return;            // already wired
+      var line = document.createElement('div');
+      line.className = 'gv-bo-cb-dropline cb-dropline--' + axis;
+      function clear() {
+        if (line.parentNode) line.parentNode.removeChild(line);
+        zoneEl.classList.remove('cb-zone--over', 'is-dragover');
+      }
+      zoneEl._cbZone = { line: line, clear: clear };
+
+      zoneEl.addEventListener('dragover', function (e) {
+        if (!dragData) return;
+        if (root.classList.contains('cb-preview')) return;
+        // Never drop a container into its own descendant.
+        if (dragData.mode === 'move' && (dragData.el === zoneEl || dragData.el.contains(zoneEl))) {
+          e.dataTransfer.dropEffect = 'none';
+          e.stopPropagation();               // swallow so the parent frame can't treat it as a valid drop
+          return;                            // no preventDefault -> no-drop cursor, drop won't fire here
+        }
+        e.preventDefault();
+        e.stopPropagation();                 // inner zone reacts; parent frame does not
+        e.dataTransfer.dropEffect = dragData.mode === 'move' ? 'move' : 'copy';
+        if (activeZone && activeZone !== zoneEl && activeZone._cbZone) activeZone._cbZone.clear();
+        activeZone = zoneEl;
+        zoneEl.classList.add('cb-zone--over', 'is-dragover');
+        var before = zoneChildUnder(zoneEl, axis, e.clientX, e.clientY);
+        if (before && before === dragData.el) { clear(); zoneEl.classList.add('cb-zone--over'); return; }
+        if (before) zoneEl.insertBefore(line, before);
+        else zoneEl.appendChild(line);
+      });
+
+      zoneEl.addEventListener('dragleave', function (e) {
+        if (e.target === zoneEl && !zoneEl.contains(e.relatedTarget)) clear();
+      });
+
+      zoneEl.addEventListener('drop', function (e) {
+        if (!dragData) return;
+        if (root.classList.contains('cb-preview')) return;
+        if (dragData.mode === 'move' && (dragData.el === zoneEl || dragData.el.contains(zoneEl))) {
+          e.preventDefault(); e.stopPropagation(); return;   // no-op drop; never bubble to frame (no self-nest reorder)
+        }
+        e.preventDefault();
+        e.stopPropagation();                 // stop the parent frame's drop from also firing
+        var ref = line.parentNode ? line : zoneChildUnder(zoneEl, axis, e.clientX, e.clientY);
+        if (dragData.mode === 'add') {
+          var block = makeBlock(dragData.widget);
+          if (line.parentNode) zoneEl.insertBefore(block, line);
+          else if (ref) zoneEl.insertBefore(block, ref);
+          else zoneEl.appendChild(block);
+          select(block);
+          toast('Added: ' + (WIDGETS[dragData.widget] ? WIDGETS[dragData.widget].label : dragData.widget));
+        } else if (dragData.mode === 'move' && dragData.el) {
+          if (line.parentNode) line.parentNode.insertBefore(dragData.el, line);
+          else if (ref) zoneEl.insertBefore(dragData.el, ref);
+          else zoneEl.appendChild(dragData.el);
+          toast('Element moved');
+        }
+        clear(); activeZone = null; dragData = null; reflectEmptyAll();
+      });
+    }
+
+    // Empty-state reflection across the frame AND every nested zone.
+    function reflectEmptyAll() {
+      var n = directBlockCount(frame);
+      frame.classList.toggle('is-empty', n === 0);
+      if (n === 0) deselect();
+      var zones = document.querySelectorAll('#cb-frame [data-cb-zone]');
+      for (var i = 0; i < zones.length; i++) {
+        zones[i].classList.toggle('cb-zone--empty', zoneIsEmpty(zones[i]));
+      }
+    }
+    // A zone is "empty" (shows the drop placeholder) only when it holds no nested
+    // blocks AND no meaningful default content — accordion bodies ship default text.
+    function zoneIsEmpty(zone) {
+      if (directBlockCount(zone) > 0) return false;
+      if (zone.querySelector('.cb-accordion__text')) return false;
+      return true;
+    }
+    function directBlockCount(el) {
+      var n = 0, kids = el.children;
+      for (var i = 0; i < kids.length; i++) if (kids[i].classList && kids[i].classList.contains('gv-bo-cb-block')) n++;
+      return n;
+    }
+    // Back-compat alias (now direct-child aware).
+    function reflectEmpty() { reflectEmptyAll(); }
+
+    // ── wire the frame as the primary drop zone (axis y), and the default block ─
+    makeDropZone(frame, 'y');
+    var first = frame.querySelector('.gv-bo-cb-block');
+    if (first) wireBlock(first);
+    // Robustness: activate any nested zones already present in the static DOM.
+    var initialZones = document.querySelectorAll('#cb-frame [data-cb-zone]');
+    for (var iz = 0; iz < initialZones.length; iz++) makeDropZone(initialZones[iz], 'y');
+
+    // ── drag from palette ─────────────────────────────────────────────────────
+    var items = document.querySelectorAll('.gv-bo-cb-item');
+    for (var i = 0; i < items.length; i++) {
+      (function (item) {
+        item.addEventListener('dragstart', function (e) {
+          clearLine();
+          dragData = { mode: 'add', widget: item.getAttribute('data-widget') };
+          item.classList.add('is-dragging');
+          try { e.dataTransfer.setData('text/plain', item.getAttribute('data-widget')); } catch (x) {}
+          e.dataTransfer.effectAllowed = 'copy';
+        });
+        item.addEventListener('dragend', function () { item.classList.remove('is-dragging'); clearLine(); });
+      })(items[i]);
+    }
+
+    // click empty canvas area to deselect
+    document.querySelector('.gv-bo-cb-canvas').addEventListener('click', function (e) {
+      if (e.target === this || e.target === frame) deselect();
+    });
+
+    // ── settings close, multiloc, preview toggle ──────────────────────────────
+    document.getElementById('cb-settings-close').addEventListener('click', deselect);
+
+    var locBtns = document.querySelectorAll('#cb-settings-locales button');
+    for (var k = 0; k < locBtns.length; k++) {
+      (function (b) {
+        b.addEventListener('click', function () {
+          for (var j = 0; j < locBtns.length; j++) locBtns[j].classList.remove('is-active');
+          b.classList.add('is-active');
+          toast('Editing ' + b.getAttribute('data-loc').toUpperCase());
+        });
+      })(locBtns[k]);
+    }
+
+    document.getElementById('e2e-preview-toggle').addEventListener('change', function () {
+      root.classList.toggle('cb-preview', this.checked);
+      if (this.checked) deselect();
+      toast(this.checked ? 'Preview mode' : 'Editing mode');
+    });
+
+    document.getElementById('e2e-locale-select').addEventListener('change', function () {
+      toast('Language: ' + this.value.toUpperCase());
+    });
+
+    // Save / view buttons are inert in the reference page.
+    document.getElementById('e2e-content-builder-topbar-save').addEventListener('click', function () { toast('Saved'); });
+
+    // ── seed a fuller default layout (built via makeBlock so it's fully wired) ──
+    function seedBlock(widget, html) {
+      var b = makeBlock(widget);
+      if (html != null) {
+        var body = b.querySelector('.cb-richtext') || b.querySelector('.gv-bo-cb-block__body') || b.querySelector('.cb-p');
+        if (body) body.innerHTML = html;
+      }
+      return b;
+    }
+    function seedDefault() {
+      // Mirror of the resident-facing PROJECT PAGE (the content this builder edits):
+      //   locked hero + title · wide/narrow 2-column (description text + accordions
+      //   on the left, participation box on the right) · then timeline · then events.
+      frame.insertBefore(makeLockedBlock('hero'), first);
+      frame.insertBefore(makeLockedBlock('title'), first);
+      // Wide/narrow 2-column.
+      var two = makeBlock('two-column');
+      frame.appendChild(two);
+      var grid = two.querySelector('.cb-cols');
+      grid.setAttribute('data-collayout', 'wide-narrow');
+      grid.style.gridTemplateColumns = '2fr 1fr';
+      var cols = two.querySelectorAll('.cb-col');
+      if (cols[0]) {
+        // Left (wide): the project description text (= 'first', carries the frame
+        // checkpoint id) followed by info accordions.
+        cols[0].appendChild(first);
+        cols[0].appendChild(makeBlock('info-accordions'));
+        cols[0].appendChild(makeBlock('accordion'));
+      }
+      // Right (narrow): the participation box.
+      if (cols[1]) cols[1].appendChild(makeBlock('about-box'));
+      // Out of the column, below: timeline, then events.
+      frame.appendChild(makeBlock('timeline'));
+      frame.appendChild(makeBlock('events'));
+      frame.appendChild(makeBlock('extra-surveys'));
+      reflectEmptyAll();
+    }
+    seedDefault();
+
+    // open the panel for the default block to mirror the -settings capture
+    if (first) select(first);
+  })();
+</script>
+<script>
+(function(){
+  var back = document.getElementById("e2e-go-back-button");
+  if(back) back.addEventListener("click", function(e){ e.preventDefault(); window.closeBuilder && window.closeBuilder(); });
+  var save = document.getElementById("e2e-content-builder-topbar-save");
+  if(save) save.addEventListener("click", function(){ setTimeout(function(){ window.closeBuilder && window.closeBuilder(); }, 380); });
+})();
+</script>
 </body>
 </html>
