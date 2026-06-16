@@ -1558,7 +1558,7 @@ colour set inline via `--gv-themecard-bar`).
     <div class="gv-prose"><p>…intro…</p></div>
     <div class="gv-issuefeed__themelist">
       <button class="gv-themecard is-active" style="--gv-themecard-swatch: rgb(255,212,216)">
-        <span class="gv-themecard__swatch">🚧</span>
+        <span class="gv-themecard__emoji">🚧</span>
         <span class="gv-themecard__main">
           <span class="gv-themecard__head">
             <span class="gv-themecard__name">Infrastructure &amp; Transportation</span>
