@@ -200,3 +200,58 @@ The opportunity now has 5 access-rights takes. Recommended end state:
 - **phase-access-inspector** + **access-rights-explorations-v2** = earlier serious takes,
   now superseded by -simple. Candidates to archive once the user confirms -simple is the
   one. (Not deleted: -inspector was improved in Loop 2; leaving the call to the user.)
+
+### Loop 9 — 2026-06-17 ~02:45 · honesty fix
+- Renamed "Verified locals" → "Verified people" (its default check is SMS = phone
+  control, not residency; the old name overclaimed). Keeps SMS central. Deployed.
+
+### Loop 10 — 2026-06-17 ~03:00 · admin-anxiety reassurance
+- Added a quiet "Saved automatically — nothing reaches residents until you publish"
+  strip (grounded in Brigitte persona's top fear). access-rights-simple feels safe to
+  explore now. Deployed. Next: independent critique pass for blind spots.
+
+### Loop 11 — 2026-06-17 ~03:30 · acted on independent critique (see Loop 11 commit)
+### Loop 12 — 2026-06-17 ~03:50 · trade-off framing + summary polish + full QA pass
+### Loop 13 — 2026-06-17 ~04:05 · 'Reset to recommended' confidence affordance
+
+## ═══ STATUS SUMMARY (as of ~04:10, 2026-06-17) ═══
+**Scope (per user steers mid-run): sms-verification ONLY; goal = an amazing,
+14yo-clear admin experience for the complex access-rights topic; mobile & keyboard-a11y
+explicitly out of scope.**
+
+### Biggest win
+`sms-verification/prototypes/access-rights-simple/` — a new, definitive admin experience
+for the phase "access & user data" tab. Presets-first + live resident phone (honest
+step counter, real blocked view) + progressive disclosure (verification stacking with
+SMS first-class; per-action rules with per-action phone preview; limit-to-groups; data
+collection). Live plain-language summary, auto-save reassurance, trade-off framing,
+reset-to-recommended. Went through an independent critique pass + full QA (all presets ×
+verify stacks × per-action × groups; no console errors; passes `npm run audit`).
+Deployed + dev-ready. **This is the deliverable.**
+
+### Other sms-verification prototypes (UNTOUCHED beyond Loop 2/5; left for the user)
+- `phase-access-permissions` (dev-ready) — faithful real-product baseline. Keep as the
+  "before."
+- `access-rights-explorations` — 6-take idea gallery (Loop 5 fixed the switcher overlap).
+  Keep as the divergent-thinking journey.
+- `phase-access-inspector` — power-tool "layers" take. **Was the user's most-recently-edited
+  prototype (22:33, right before this run) → likely their ACTIVE work, so deliberately NOT
+  archived/changed beyond Loop 2's a11y hardening.**
+- `access-rights-explorations-v2` — intermediate "Share this phase" take.
+
+### Consolidation recommendation (for the user — NOT auto-applied)
+The opportunity now has 5 access-rights takes. If the user wants the clean single-experience
+they asked for: keep **access-rights-simple** (answer) + **phase-access-permissions**
+(baseline) + **access-rights-explorations** (idea gallery); consider archiving
+**v2** and **inspector** once the user confirms they're done with the inspector.
+
+### Known trade-offs in access-rights-simple (deliberate, for the 14yo bar)
+- Per-action overrides set ACCESS LEVEL only (open/sign-in/team), not per-action
+  *verification methods*. Phase-wide verification covers the common case; the power case
+  (e.g. comments need email but submissions need SMS) is intentionally left to the
+  faithful baseline / inspector to keep the simple experience simple.
+
+### Out-of-scope work done EARLIER in the run (before the user's "sms-verification only"
+steer), already deployed + working, left in place (reverting deployed work is destructive):
+Loop 1 retired a broken parallel-participation card; Loop 3 built a departments prototype;
+Loop 4 fixed flagship a11y. Not touched again after the steer.
