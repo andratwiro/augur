@@ -437,6 +437,20 @@
 /* the phase you're VIEWING (if it isn't the current one) fills dark charcoal */
 .gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-cool-grey-700); color: #fff; }
 .gv-phase[aria-selected="true"]:not(.current) .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
+/* FO shared (stepper-responsive): on the live wietsedemo mobile (390px) the whole
+   phase ribbon fits the viewport with NO horizontal scroll — segments collapse to
+   number-only chips and the per-segment text label is hidden (only the number
+   remains). Our default keeps .gv-phase min-width 92px + .gv-stepper overflow-x auto,
+   so on a phone only ~4 segments fit and the rest scroll off. Drop the min-width,
+   stop the horizontal scroll, and hide the label below the mobile breakpoint so all
+   phases sit inside the viewport as compact number chips (matches /tmp/m-timeline).
+   Appended as an override — the base .gv-stepper / .gv-phase / .gv-phase__label rules
+   above stay intact for desktop. */
+@media (max-width: 640px) {
+  .gv-stepper { overflow-x: visible; }
+  .gv-phase { min-width: 0; }
+  .gv-phase__label { display: none; }
+}
 /* content panel: big green numbered circle + green name + date */
 .gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 30px 30px; margin-top: 22px; }
 .gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
