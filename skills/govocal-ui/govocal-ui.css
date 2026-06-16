@@ -1204,8 +1204,10 @@
 .gv-feed__count { font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-heading-strong); line-height: 20.8px; margin: 0 0 14px; }
 .gv-feed__col { display: flex; flex-direction: column; gap: 16px; }
 @media (max-width: 860px) { .gv-feed { grid-template-columns: minmax(0, 1fr); } }
-/* filter sidebar — live container computes 14px/lh19.999 (not the 16px FO base) */
-.gv-feedfilter { display: flex; flex-direction: column; gap: 14px; font-size: var(--gv-fs-s); line-height: 19.999px; }
+/* filter sidebar — live container computes 14px/lh19.999 (not the 16px FO base);
+   base inherited text colour matches the real product's rgba(0,0,0,.87) (not the
+   #333 grey token), per fo-project-ideation-feed #e2e-project-sidebar. */
+.gv-feedfilter { display: flex; flex-direction: column; gap: 14px; font-size: var(--gv-fs-s); line-height: 19.999px; color: rgba(0, 0, 0, 0.87); }
 /* On mobile the live ideation feed hides the filter panel behind a "Filters"
    button (govocal-filters.js / page wiring toggles .is-open). Desktop: button
    hidden, panel always shown in the sidebar column. */

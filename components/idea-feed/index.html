@@ -16,6 +16,10 @@
     .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
     .stage { }
     .feed-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    /* Default ideation feed has NO List/Map toggle (matches the real product: map view
+       is config-dependent). Reveal it only on a map-enabled phase via data-map-enabled
+       on .feed-head. Page-local gate — does not touch the canonical .gv-viewseg. */
+    .feed-head:not([data-map-enabled]) .gv-viewseg { display: none; }
     .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
     .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
   </style>
@@ -23,12 +27,16 @@
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
   <div class="demo">
     <h1>Idea feed</h1>
-    <p class="sub">The ideation feed layout — a count + List/Map segmented toggle above a two-column
-      grid pairing the idea list with a 310px filter sidebar of sort, status and topic controls.</p>
+    <p class="sub">The ideation feed layout — a result count above a two-column grid pairing the idea
+      list with a 310px filter sidebar of sort, status and topic controls. The List/Map segmented
+      toggle is optional (map-enabled phases only) and off by default, matching the real product.</p>
 
     <p class="eyebrow">Feed layout (list + filter sidebar)</p>
     <div class="stage">
       <!-- ===== COMPONENT (copy from here) ===== -->
+      <!-- Default ideation feed: count left-aligned, NO List/Map toggle (matches the
+           real product — map view is config-dependent). Add data-map-enabled to the
+           .feed-head to reveal the optional .gv-viewseg toggle for map-enabled phases. -->
       <div class="feed-head">
         <h2 class="gv-feed__count">3 ideas</h2>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -152,8 +160,10 @@
       <p><strong>Grid:</strong> <code>.gv-feed</code> is the two-column shell — <code>.gv-feed__col</code>
       holds the list, <code>.gv-feedfilter</code> is the fixed 310px sidebar. Cards sit in a flat
       <code>.gv-idealist</code> container.</p>
-      <p><strong>Toggle:</strong> <code>.gv-viewseg</code> with two <code>.gv-viewseg__tab</code> buttons
-      switches List / Map; <code>.gv-feed__count</code> shows the result total.</p>
+      <p><strong>Toggle (optional):</strong> the default feed shows only the
+      <code>.gv-feed__count</code> total — the real product hides the view switcher unless the phase
+      has map view enabled. Add <code>data-map-enabled</code> to <code>.feed-head</code> to reveal the
+      <code>.gv-viewseg</code> toggle (two <code>.gv-viewseg__tab</code> buttons switching List / Map).</p>
       <p><strong>Status badge:</strong> each card foot carries a right-aligned
       <code>.gv-ideacard__status</code> — an uppercase, semantic-coloured outline pill
       (<code>.is-implemented</code> / <code>.is-considered</code> / <code>.is-rejected</code>,
