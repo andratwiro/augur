@@ -187,16 +187,35 @@ function byRecency(a, b) {
   return b.mtimeMs - a.mtimeMs || a.name.localeCompare(b.name);
 }
 
-/** Recursively copy a directory. Returns the latest mtime (ms) seen within it. */
-async function copyDir(src, dest) {
+// Internal-only entries that must NEVER be copied into dist, even from a folder
+// (like playground/) that otherwise ships verbatim. Mirrors the repo guardrail:
+// research/context material stays on the machine, never deployed.
+function isInternalOnly(name) {
+  return (
+    name === "research" ||
+    name === "context" ||
+    name === "research.md" ||
+    name === "context.md" ||
+    name === ".DS_Store" ||
+    name.endsWith(".zip")
+  );
+}
+
+/**
+ * Recursively copy a directory. Returns the latest mtime (ms) seen within it.
+ * `exclude(name)` → true skips an entry (used to keep internal material out of
+ * dist when copying a ship-verbatim folder like playground/).
+ */
+async function copyDir(src, dest, exclude) {
   await fs.mkdir(dest, { recursive: true });
   let latest = 0;
   const entries = await fs.readdir(src, { withFileTypes: true });
   for (const entry of entries) {
+    if (exclude && exclude(entry.name)) continue;
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
     if (entry.isDirectory()) {
-      latest = Math.max(latest, await copyDir(srcPath, destPath));
+      latest = Math.max(latest, await copyDir(srcPath, destPath, exclude));
     } else if (entry.isFile()) {
       if (entry.name.endsWith(".html")) {
         const html = await fs.readFile(srcPath, "utf8");
@@ -1435,7 +1454,7 @@ async function main() {
   // then overwrite its index.html with a generated folder browser of the subfolders.
   let playground = [];
   if (await isDir(path.join(ROOT, "playground"))) {
-    await copyDir(path.join(ROOT, "playground"), path.join(DIST, "playground"));
+    await copyDir(path.join(ROOT, "playground"), path.join(DIST, "playground"), isInternalOnly);
     playground = await scanPlayground();
     await fs.writeFile(
       path.join(DIST, "playground", "index.html"),

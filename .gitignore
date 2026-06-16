@@ -21,3 +21,8 @@ review-comments.local.md
 
 # scratch: image curation workspace (internal)
 .imgwork/
+
+# Internal research notes — per opportunity OR per prototype, always named "research"
+# (research.md or a research/ folder), always ignored. build.js also excludes them from dist.
+research/
+research.md
