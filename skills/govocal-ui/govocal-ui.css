@@ -274,6 +274,14 @@
   .gv-footer__inner { flex-direction: column; justify-content: center; text-align: center; gap: 22px; }
   .gv-footer__links ul { justify-content: center; }
 }
+/* FO shared (footer-background): the real Wien tenant footer is TRANSPARENT
+   (background-color rgba(0,0,0,0)) sitting on the page's grey #edeff0 backdrop, not a
+   painted white bar. On a white page this reads identically, but transparent is the
+   grounded treatment and lets a tinted page surface show through. The legal links keep
+   their own --gv-cool-grey-600 colour, so dropping the container fill is purely
+   treatment-level. Appended as an override so the base rule above stays intact. */
+.gv-footer { background: transparent; }
+
 /* The go·vocal "powered by" wordmark (govocal-logo.svg) — GoVocal's own brand mark,
    shown in its muted footer grey; it does NOT re-theme per city. Rendered as a plain
    <img> so it works when a prototype is opened directly via file:// (a CSS mask to an
