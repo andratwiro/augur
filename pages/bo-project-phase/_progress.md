@@ -329,3 +329,27 @@ open items)
   GoVocal adds an `e2e-`/`data-testid` hook.
 - Pass 10 (user data) is now LARGELY DONE here — the demographic-tier UI lives in this same
   accordion. Pass 10 will add the explicit 3-tier framing + registration-fields cross-ref.
+
+### Pass 10 — User data (PRIORITY, DONE 2026-06-16)
+- The bulk of user-data UI (demographic-questions block: Add-a-question, ask-before/collect-at-
+  end radios, the 3 question rows w/ "Enabled in global registration flow") was already built in
+  Pass 9 — on the real product it lives INSIDE the same expanded "Who can submit?" accordion,
+  not a separate sub-tab. Confirmed there is **no separate user-data-tier widget** in the real
+  UI (scanned the full `r2-access-expanded` DOM): the 3 tiers are a conceptual OUTCOME of
+  auth-flow + the Setup anonymity toggle + whether demographics are asked, per GOVOCAL.md §3.
+- **Registration-fields cross-ref:** the demographic questions ("Place of residence / Year of
+  birth / Commuting Method") are sourced from Settings → Registration (default Gender / Year of
+  birth / Place of residence) — confirmed against the `bo-set-registration` capture. The phase
+  panel correctly labels them "Optional · Enabled in global registration flow".
+- **BUILD:** to make the 3 tiers VISIBLE (brief requirement) WITHOUT fabricating a control the
+  product lacks, added a `.gv-bo-banner` **"Resulting user data" explainer** below the flow
+  stepper: states the current config = full PII + demographics (tier 1), and how None /
+  anonymous / full-anonymity drop to tiers 2-3 (incl. "full anonymity removes demographics too
+  and disables demographic reporting", GOVOCAL.md §3 + constraint line 271). Clearly an
+  explainer, canonical banner, no invented form control.
+- VERIFY: `lint` 0; screenshot eyeballed (explainer reads correctly, sits under the demographic
+  block); `verify:all` 130 green · 1 red UNCHANGED.
+- RECHECK: Setup anonymity toggle (the PII lever) still present on every method Setup panel —
+  consistent with the tier explainer's reference to it.
+- Checkpoints: none added (page-local explainer on a canonical banner; no new measurable
+  treatment).
