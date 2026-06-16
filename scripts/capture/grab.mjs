@@ -183,7 +183,21 @@ async function finish(page) {
     await page.waitForTimeout(300);
   }
   if (waitSel) await page.waitForSelector(waitSel, { timeout: 15000 }).catch(() => console.warn('· --wait selector not found:', waitSel));
-  if (clickSel) await page.click(clickSel, { timeout: 8000 }).catch(() => console.warn('· --click selector not found:', clickSel));
+  // --click reveals a menu/flyout/modal. Wait for it to be visible (SPA menus render
+  // late), scroll it into view, then click. Supports Playwright engines: a CSS selector,
+  // or `text=Exports` / `role=button[name="Exports"]` for text/role-based triggers.
+  if (clickSel) {
+    try {
+      const loc = page.locator(clickSel).first();
+      await loc.waitFor({ state: 'visible', timeout: 8000 });
+      await loc.scrollIntoViewIfNeeded().catch(() => {});
+      await loc.click({ timeout: 8000 });
+      await page.waitForTimeout(400); // let the revealed layer paint before settle
+      console.log('· clicked:', clickSel);
+    } catch (e) {
+      console.warn('· --click did not fire (' + clickSel + '):', e.message.split('\n')[0]);
+    }
+  }
   await page.waitForTimeout(settle);
 
   const outDir = path.join(ROOT, 'govocal-exports', name);
