@@ -10,6 +10,16 @@ _One-paragraph framing of the SMS verification opportunity._
 ## Prototypes in this folder
 
 - `hello-world/` — scaffold placeholder. Replace with the first real flow.
+- `access-rights-explorations/` — **5 radically simpler takes** on the phase
+  access-rights tab, in one prototype with a **floating switcher** (bottom-center,
+  1–5). Keeps the GoVocal editor frame for context; the tab content goes wild and
+  is intentionally **off the GoVocal design system** (own `.ax-*` namespace, plain
+  language, a 15-year-old should get it). The five: **1 Sentence** (tap words in a
+  natural-language sentence), **2 Presets** (4 plain cards + fine-tune disclosure),
+  **3 Slider** (open↔strict spectrum with a live "who gets in" meter + resident
+  steps), **4 Wizard** (1–2 plain questions → summary), **5 Live** (toggle door
+  checks, watch the resident's phone update). All fully clickable; SMS is one
+  verification option among email/ID. Pattern research in `research.md`.
 - `phase-access-permissions/` — the **Project Editor back office** (duplicated from
   `pages/bo-project-phase/`, self-contained) focused on **Timeline → Phase →
   "Phase access and user data"**. The access tab is rebuilt to mirror the *current
