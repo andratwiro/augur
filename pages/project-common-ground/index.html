@@ -55,20 +55,13 @@
     .polis__credit a { color: #2f6fde; }
 
     /* ── Page-local Westmere dressing (non-gv, page-only) ── */
-    .cg-cover { position: relative; min-height: 320px; display: flex; align-items: flex-end;
-      background-size: cover; background-position: center 60%; }
-    .cg-cover::after { content: ""; position: absolute; inset: 0;
-      background: linear-gradient(180deg, rgba(14,43,43,.10) 0%, rgba(14,43,43,.72) 100%); }
-    .cg-cover__inner { position: relative; z-index: 1; max-width: 1166px; width: 100%;
-      margin: 0 auto; padding: 0 24px 30px; color: var(--gv-white); }
-    .cg-cover__eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-13);
-      font-weight: 600; letter-spacing: .02em; background: rgba(255,255,255,.16);
-      backdrop-filter: blur(2px); border-radius: 999px; padding: 5px 12px; margin: 0 0 14px; }
-    .cg-cover__dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
-    .cg-cover h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.12; margin: 0 0 10px;
-      text-shadow: 0 1px 2px rgba(0,0,0,.25); }
-    .cg-cover__meta { display: flex; flex-wrap: wrap; gap: 18px; font-size: var(--gv-fs-s); opacity: .95; }
-    .cg-cover__meta b { font-weight: 700; }
+    /* White project-title band between the header and the grey canvas
+       (grounded: div.sc-cimVjy.kMbzMy — bg #fff, padding 30px 0 65px). Inner column
+       matches the .cg-stack 1166px width below; title reuses .gv-title.h1. */
+    .cg-head { background: var(--gv-white); padding: 30px 0 65px; }
+    .cg-head__inner { max-width: 1166px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .cg-head h1 { margin: 0; }
 
     .cg-intro { max-width: 760px; font-size: var(--gv-fs-base); line-height: 1.6; color: #3a4a4a; margin: 0 0 4px; }
     .cg-intro--lead { font-size: 17px; color: #1A2B2B; }
@@ -186,6 +179,19 @@
     </div>
   </header>
 
+  <!-- ════════ Project-title band — white full-width, above the grey canvas ════════
+       Grounded: div.sc-cimVjy.kMbzMy (bg #fff, padding 30px 0 65px). Title = .gv-title.h1
+       (30px/700/39px, var(--gv-text-primary)); resident-facing Follow on the right
+       (the admin-only 'Edit project' affordance is omitted on this resident view). -->
+  <section class="cg-head">
+    <div class="cg-head__inner">
+      <h1 class="gv-title h1" style="line-height:39px;">Cleaner Harbour, healthier Mere</h1>
+      <button class="gv-btn primary" id="cgFollow" aria-pressed="false">
+        <span data-gv-icon="notification" aria-hidden="true"></span> <span id="cgFollowLabel">Follow</span>
+      </button>
+    </div>
+  </section>
+
   <!-- ════════ METHOD BAND — the canvas + the two cards ════════ -->
   <main class="cg-canvas">
     <div class="cg-stack">
@@ -256,6 +262,20 @@
 
     </div>
   </main>
+
+  <script>
+    /* Follow toggle (resident affordance in the project-title band) */
+    (function () {
+      const btn = document.getElementById('cgFollow');
+      const label = document.getElementById('cgFollowLabel');
+      let following = false;
+      btn.addEventListener('click', () => {
+        following = !following;
+        label.textContent = following ? 'Following' : 'Follow';
+        btn.setAttribute('aria-pressed', String(following));
+      });
+    })();
+  </script>
 
 </body>
 </html>
