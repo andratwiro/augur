@@ -25,7 +25,9 @@
   font-size: var(--gv-fs-s);             /* 14px chrome baseline; .gv-nav__link overrides to --gv-fs-base */
   line-height: 1.43;                     /* 14px × 1.43 ≈ 19.999px (matches real) */
 }
-.gv-header.sticky { position: sticky; top: 0; }
+/* z-index above the sticky participation bar (.gv-partbar = 30) and any in-page
+   overlay (e.g. a map's idea panel) so the header always stays on top when scrolling. */
+.gv-header.sticky { position: sticky; top: 0; z-index: 50; }
 /* Full-width bar: logo flush-left, actions flush-right (matches the live product —
    the navbar spans the viewport even when the page CONTENT below is capped at
    --gv-shell-w). Only the side gutter is fixed. */

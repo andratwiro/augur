@@ -72,7 +72,10 @@
     /* Desktop: the map fills the wrapper; the overlay panel is a SINGLE solid white column
        flush to the map's left edge — a Filters pill pinned at top (with a divider under it),
        then a scrollable column of idea cards. (Matches the real map-view left overlay.) */
-    .pp-mapwrap { position: relative; }
+    /* Isolate the map's stacking context so the overlay panel's high z-index (needed
+       to sit above Leaflet panes) stays LOCAL and can't paint over the sticky header
+       or participation bar as the page scrolls. */
+    .pp-mapwrap { position: relative; isolation: isolate; }
     .pp-mappanel { position: absolute; top: 0; left: 0; bottom: 0; width: 360px; z-index: 1000;
       display: flex; flex-direction: column; background: #fff; box-shadow: rgba(0,0,0,.12) 0 0 8px 0; }
     .pp-mappanel__top { padding: 16px; border-bottom: 1px solid var(--gv-grey-200); }
