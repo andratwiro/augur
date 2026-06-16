@@ -129,3 +129,20 @@ open items)
 - Checkpoints: none added (copy fidelity, not new measurable style).
 - Open: confirm whether poll & external-survey picker cards appear under a feature flag
   (defer to pass 8).
+
+### Pass 2 — Voting / prioritization (DONE 2026-06-16, no build change needed)
+- Capture: `r1-pe-pb-ph1-setup` (Participatory Budget – District 2, budgeting phase). Digest
+  99 entries, no probes.
+- State: the `votingsetup` panel was already fully faithful. **3 voting-method cards verified
+  verbatim vs DOM**: "One vote per option" (single_voting/approval — "Users can chose [sic] to
+  approve any of the options"), "Multiple votes per option" (multiple_voting/cumulative —
+  "Users are given an amount of tokens to distribute between options"), "Budget allocation"
+  (budgeting — exact long desc match incl. the product's real typo "chose"). EUR Total-budget
+  Min/Max row, comment/filter/auto-share toggles, similar-input detection, List/Map views,
+  attachments all present and on-token.
+- GOVOCAL.md A3 cross-check: budgeting state shows Min/Max total (correct). multiple_voting
+  would swap to votes-per-participant/votes-per-option fields — panel is pinned to the
+  budgeting state so current fields are right. (Future: could add JS to swap the budget row
+  when a different voting-method card is picked — noted, not required for fidelity.)
+- VERIFY: card copy grep-matched vs `r1-pe-pb-ph1-setup/dom.html`; `lint` 0 violations.
+- Checkpoints: none added (no measurable-style change this pass).
