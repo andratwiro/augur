@@ -74,13 +74,15 @@
 
   /* ── Phone FO project page (real gv-* components, sized for the 360px mobile view) ── */
   .phone .pp-fo { font-family: var(--gv-font-family); color: var(--gv-text-primary, #1a1f2c); }
-  .phone .pp-fo__banner { height: 132px; background: linear-gradient(135deg, #6b8f71, #3f5d52 58%, #2b3b3a); }
+  .phone .pp-fo__banner { height: 132px; overflow: hidden; }
+  .phone .pp-fo__banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .phone .pp-fo__pad { padding: 14px 16px 10px; }
   .phone .pp-fo__cat { display: block; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; font-weight: 700; color: var(--gv-text-secondary, #596B7A); margin-bottom: 5px; }
   .phone .pp-fo__title.gv-title { font-size: 20px; line-height: 1.2; margin: 0 0 10px; }
   .phone .pp-fo__parts { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
   .phone .pp-fo__parts .gv-pcount { font-size: 12px; }
-  .phone .pp-fo__cta.gv-btn { width: 100%; justify-content: center; margin: 0 0 14px; }
+  .phone .pp-fo__cta { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
+  .phone .pp-fo__cta .gv-btn { width: 100%; justify-content: center; }
   .phone .pp-fo__desc { font-size: 13px; line-height: 1.5; margin: 0 0 14px; color: var(--gv-grey-800, #43515D); }
   .phone .pp-fo__acc { margin: 0 0 16px; }
   .phone .pp-fo .gv-acc__q { font-size: 13px; }
@@ -88,7 +90,8 @@
   .phone .pp-fo__h2 { font-size: 15px; font-weight: 700; margin: 4px 0 10px; }
   .phone .pp-fo__stepper { margin: 0 0 18px; }
   .phone .pp-fo .gv-event-card { margin: 0 0 12px; }
-  .phone .pp-fo__evmedia { height: 96px; background: linear-gradient(135deg, #8aa0b8, #51698a); position: relative; }
+  .phone .pp-fo__evmedia { height: 96px; position: relative; overflow: hidden; }
+  .phone .pp-fo__evmedia img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .phone .pp-fo .gv-event-card__title { font-size: 14px; }
   .phone .pp-fo .gv-event-card__row { font-size: 12px; }
   .rail-btn { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; color: rgba(255,255,255,.55); }
@@ -2101,8 +2104,9 @@
         <summary class="gv-acc__head"><span class="gv-acc__q">${q}</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
         <div class="gv-acc__body"><p>${a}</p></div>
       </details>`;
-    const ev = (m, d, title, time, place, icon, regs) => `<article class="gv-event-card pp-fo__event">
+    const ev = (m, d, title, time, place, icon, regs, img) => `<article class="gv-event-card pp-fo__event">
         <div class="gv-event-card__media pp-fo__evmedia">
+          <img src="assets/img/${img}" alt="" loading="lazy" />
           <span class="gv-event-card__date"><span class="m">${m}</span><span class="d">${d}</span><span class="y">2026</span></span>
         </div>
         <div class="gv-event-card__body">
@@ -2124,7 +2128,7 @@
 
     return `
       <div class="pp-fo">
-        <div class="pp-fo__banner"></div>
+        <div class="pp-fo__banner"><img src="assets/img/${complex ? 'square' : 'street-trees'}.webp" alt="" loading="lazy" /></div>
         <div class="pp-fo__pad">
           <span class="pp-fo__cat">Mobility · 2026</span>
           <h1 class="gv-title pp-fo__title">${complex ? 'Reimagine Meridian 2030' : 'A greener Station Road'}</h1>
@@ -2132,7 +2136,10 @@
             <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
             <span class="gv-pcount">${complex ? '342' : '38'} participants</span>
           </div>
-          <a class="gv-btn primary full pp-fo__cta" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'}</a>
+          <div class="pp-fo__cta">
+            <a class="gv-btn primary full" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'}</a>
+            <a class="gv-btn secondary-outlined full" href="#">See the ideas</a>
+          </div>
           <p class="gv-projdesc pp-fo__desc">Help shape how we move, cycle and gather in our city${complex ? ' over the next four years — your ideas feed the mobility plan that goes to the council.' : '. Your ideas feed directly into the plan.'}</p>
           <div class="gv-accordion pp-fo__acc">
             ${acc('How will my idea be used?', 'Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.', true)}
@@ -2142,11 +2149,26 @@
           <h2 class="pp-fo__h2">Timeline</h2>
           <div class="gv-stepper pp-fo__stepper">${stepper}</div>
           <h2 class="pp-fo__h2">Upcoming events</h2>
-          ${ev('Jun', '14', 'Mobility town hall', '14 Jun · 19:00', 'Central Library', 'location-simple', '41')}
-          ${complex ? ev('Jul', '02', 'Neighbourhood design workshop', '2 Jul · 18:00', 'Meridian Civic Hall', 'location-simple', '57') : ''}
+          ${ev('Jun', '14', 'Mobility town hall', '14 Jun · 19:00', 'Central Library', 'location-simple', '41', 'meeting.webp')}
+          ${complex ? ev('Jul', '02', 'Neighbourhood design workshop', '2 Jul · 18:00', 'Meridian Civic Hall', 'location-simple', '57', 'workshop.webp') : ''}
         </div>
       </div>`;
   }
+
+  // The FO phone preview lives inside the .gv-bo body, which remaps --gv-tenant-* to the
+  // fixed back-office teal. Re-point the phone's tenant vars to the real CITY colours (set
+  // on :root by the theme switcher) so the FO preview themes per ?theme= like a real project
+  // — its CTAs, links and phase accents follow the tenant, while the BO chrome stays teal.
+  function syncPhoneTheme() {
+    const phone = document.getElementById('phone');
+    if (!phone) return;
+    const root = getComputedStyle(document.documentElement);
+    ['primary', 'secondary', 'text'].forEach((k) => {
+      const v = root.getPropertyValue('--gv-tenant-' + k).trim();
+      if (v) phone.style.setProperty('--gv-tenant-' + k, v);
+    });
+  }
+  window.addEventListener('load', syncPhoneTheme);
 
   function renderPhone(state) {
     const sc = document.getElementById('phone-scroller');
