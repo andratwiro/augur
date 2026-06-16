@@ -260,3 +260,30 @@ open items)
   Delete · Edit) all match the capture screenshot verbatim.
 - VERIFY: screenshot eyeballed vs `r1-pe-volunteering/viewport.png`; `lint` 0.
 - Checkpoints: none added.
+
+### Pass 8 — Document annotation (paid) + Poll + External survey (DONE 2026-06-16)
+- **DEFINITIVE 7-vs-8 resolution (measured from the live picker `id`s):** the real method
+  picker on this tenant has EXACTLY 7 cards —
+  `ideation · proposals · common_ground · native_survey · voting · information · volunteering`
+  (confirmed via `e2e-participation-method-choice-<key>` ids in BOTH `r2-proposals-setup` and
+  `r1-pe-survey-external-setup`). **Document annotation (Konveio) is NOT in the picker** (paid
+  add-on, not provisioned here); **there is NO separate poll or external-survey card** —
+  poll/external-survey are configured via other routes, not as phase-method cards on this
+  tenant. Internal key for native survey is `native_survey` (not `survey`); the `survey` key
+  (thin external embed) does not appear.
+- **ANTI-FABRICATION:** since doc annotation cannot be captured (no add-on), I did NOT invent
+  its Setup UI. Pass 1 already removed the previously-fabricated poll/external/doc-annotation
+  picker cards, so the page is now correct (7 cards).
+- **Poll — verified at fidelity** vs `r1-pe-poll` (Forest Gate Community Assemblies, "Voting
+  on Top 3 Priorities" poll phase): the `poll` panel matches verbatim — "Polls settings and
+  results" head, "Export the poll results" top-right, the long help paragraph, question rows
+  w/ "Edit answer options · Delete · Edit question", "Add a poll question" admin-dark+plus.
+  Sub-tab set Setup·Description·Poll·Insights·Access·Notifications matches the page's poll phase.
+- **External survey** — `r1-pe-survey-external-setup` is actually a NATIVE survey phase
+  (Run-1 misnomer); no embed-URL/provider fields exist on this tenant. The `surveyresults`
+  panel (Typeform export) covers the external-results case faithfully.
+- VERIFY: `lint` 0; no page change this pass (correctness was already achieved in Pass 1).
+- Checkpoints: none added.
+- Open: if a future tenant has the Konveio add-on, capture `document_annotation` Setup (one
+  PDF/phase) and add an 8th picker card + a doc-annotation Setup panel. NOT buildable now
+  without the add-on (would be fabrication).
