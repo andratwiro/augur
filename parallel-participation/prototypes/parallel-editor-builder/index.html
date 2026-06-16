@@ -1962,9 +1962,9 @@
   // Active participation methods feeding the Participation Box.
   // "source" = where it comes from (timeline phase vs parallel); "visible" = shown in box.
   let pbMethods = [
-    {id:"m_phase",  source:"Timeline · current phase", method:"Upload your idea for the neighbourhood park", cta:"Submit your idea", visible:true},
+    {id:"m_phase",  source:"Timeline · current phase", method:"Collect ideas — share your idea", cta:"Submit your idea", visible:true},
     {id:"m_survey", source:"Parallel · Extra surveys", method:"School survey",   cta:"Take the survey",  visible:true},
-    {id:"m_vote",   source:"Parallel · Voting",        method:"Budget voting",   cta:"Vote",             visible:false},
+    {id:"m_vote",   source:"Parallel · Voting",        method:"Community vote",  cta:"Vote",             visible:false},
   ];
 
   // body blocks: each has a render kind. Timeline/Events/About live in the flow as movable blocks.
@@ -1978,7 +1978,7 @@
   let zones = [
     {type:"band",
       main:[
-        {id:"b1", kind:"text", label:"Text", preview:"💬 It's that time of our planning cycle again! We are about to wrap 4 development tandems and are working on short-listing the priorities for the next cycle.\n\nThe objective is simple: we want to hear from you about what you perceive as the number one problem blocking our impact or revenue opportunities. Whether it's an obstacle or a potential goldmine, your perspective is crucial."},
+        {id:"b1", kind:"text", label:"Text", preview:"🚲 Help shape how we move, cycle and gather in our city over the next four years. Your ideas feed directly into the plan we present to council in September.\n\nEvery contribution — whether a 30-second survey response or a full proposal at a workshop — is read by the city team and tagged into the working themes. Tell us what's working, what isn't, and what you'd change."},
         {id:"b3", kind:"accordion", label:"Info & accordions", preview:"🪨 What should my submission include?  ·  🐕 What context do I need to be aware of?  ·  🦔 What happens after I submit my idea?"},
       ],
       side:[
@@ -2068,7 +2068,7 @@
   function renderInner(b){
     if(b.kind==="survey"){
       // available surveys (mock)
-      const surveys={ "weekly":{name:"Weekly question", range:"March 1 — March 8, 2026", desc:"Provide your feedback on the Buildings & Energy Action Plan by taking the survey below.", left:"1 day left"} };
+      const surveys={ "weekly":{name:"School survey", range:"20 May — 5 Jun, 2026", desc:"Help us understand how students travel to school. Your answers shape the safe-routes plan.", left:"4 days left"} };
       // unconfigured: prompt to pick a survey
       if(!b.survey){
         return el("div",{style:"padding:16px;"},
@@ -2143,8 +2143,8 @@
       );
     }
     if(b.kind==="timeline"){
-      const phases=[["1","The one problem"],["2","Idea consolidation"],["3","Community prioritization"],["4","Product Circle meets"],["5","Dev plan announced"]];
-      const active=4;
+      const phases=[["1","Pre-survey"],["2","Collect ideas"],["3","What we heard"],["4","Community vote"],["5","Find common ground"]];
+      const active=1;
       return el("div",{style:"padding:16px 14px;"},
         el("div",{style:"font-size:17px;font-weight:700;margin-bottom:12px;"},"Phases"),
         // chevron strip
@@ -2163,22 +2163,22 @@
         // detail card for active phase
         el("div",{style:"border:1px solid var(--border);border-radius:8px;padding:14px;background:#fff;"},
           el("div",{style:"display:flex;gap:10px;align-items:center;"},
-            el("div",{style:"width:28px;height:28px;border-radius:50%;background:#1f8a4c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;"},"5"),
+            el("div",{style:"width:28px;height:28px;border-radius:50%;background:#1f8a4c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;"},"2"),
             el("div",{},
-              el("div",{style:"font-size:15px;font-weight:700;color:#1f8a4c;"},"Development plan is announced"),
-              el("div",{style:"font-size:11px;color:var(--ink-3);"},"October 6, 2025 12:00 AM – No end date")
+              el("div",{style:"font-size:15px;font-weight:700;color:#1f8a4c;"},"Collect ideas"),
+              el("div",{style:"font-size:11px;color:var(--ink-3);"},"20 May 2026 → 10 Jun 2026")
             )
           ),
-          el("div",{style:"font-size:13px;color:var(--ink-2);line-height:1.5;margin-top:10px;"},"👋 Hola hola! It's been some busy weeks! BUT: we have bets! The development priorities for the next 8 weeks are the following 👇"),
+          el("div",{style:"font-size:13px;color:var(--ink-2);line-height:1.5;margin-top:10px;"},"🚲 Share your ideas for how we move, cycle and gather. Your suggestions will be reviewed by the city team and shape what comes next 👇"),
           el("div",{style:"font-size:12px;color:var(--ink);font-weight:600;margin-top:8px;"},"Read more ↓")
         )
       );
     }
     if(b.kind==="events"){
       const evs=[
-        {banner:"#f2d33b", tag:"CityLAB", title:"Spremberg im Dialog: Bürger als Schlüssel", m:"JUN",d:"03",time:"12:00 – 12:30 PM CEST", loc:"Umweltforum", cta:"Read more"},
-        {banner:"#1b2a4a", tag:"Data Week", title:"Künstliche Intelligenz in Beteiligung", m:"JUN",d:"04",time:"1:30 – 3:00 PM CEST", loc:"Neues Rathaus Leipzig", cta:"Read more"},
-        {banner:"#2c6e7d", tag:"Berlin Institut", title:"Fachtagung 2026 der Allianz", m:"JUN",d:"08",time:"11:00 – 6:00 PM CEST", loc:"Tagungszentrum Berlin", cta:"Register"},
+        {banner:"#f2d33b", tag:"Town hall", title:"Mobility town hall", m:"JUN",d:"14",time:"7:00 – 8:30 PM", loc:"Central Library", cta:"Read more"},
+        {banner:"#1b2a4a", tag:"Site walk", title:"Cycling infrastructure walk", m:"JUN",d:"22",time:"10:00 – 11:30 AM", loc:"Riverside Park", cta:"Read more"},
+        {banner:"#2c6e7d", tag:"Workshop", title:"Neighbourhood design workshop", m:"JUL",d:"02",time:"6:00 – 8:00 PM", loc:"Meridian Civic Hall", cta:"Register"},
       ];
       const card=(e)=>el("div",{style:"border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff;display:flex;flex-direction:column;"},
         el("div",{style:`height:54px;background:${e.banner};display:flex;align-items:center;padding:0 10px;`},
@@ -2303,7 +2303,7 @@
     );
     const title = lockedRegion("title",
       el("div",{style:"padding:18px 14px 10px;"},
-        el("div",{style:"font-size:24px;font-weight:700;line-height:1.2;"},"🧠 2025 Betting Table(s) 🧠")
+        el("div",{style:"font-size:24px;font-weight:700;line-height:1.2;"},"Reimagine Meridian 2030")
       )
     );
 
@@ -2365,7 +2365,7 @@
           title="Title";
           body=[
             el("div",{style:"font-size:11px;color:#b45309;background:var(--locked);border:1px solid var(--locked-border);border-radius:7px;padding:8px 10px;margin-bottom:14px;font-weight:500;"},"Editable, but its position on the page is fixed."),
-            el("label",{class:"field-lbl"},"Title"), el("input",{class:"field",value:"🧠 2025 Betting Table(s) 🧠"}),
+            el("label",{class:"field-lbl"},"Title"), el("input",{class:"field",value:"Reimagine Meridian 2030"}),
           ];
         }
       } else {
@@ -2407,8 +2407,8 @@
           body=[
             el("label",{class:"field-lbl"},"Linked survey"),
             el("select",{class:"field", onchange:(e)=>{ b.survey = e.target.value||null; render(); }},
-              el("option",{value:""}, b.survey?"Weekly question":"Select a survey…"),
-              el("option",{value:"weekly", ...(b.survey==="weekly"?{selected:"selected"}:{})}, "Weekly question")
+              el("option",{value:""}, b.survey?"School survey":"Select a survey…"),
+              el("option",{value:"weekly", ...(b.survey==="weekly"?{selected:"selected"}:{})}, "School survey")
             ),
             !b.survey ? el("div",{style:"font-size:11px;color:var(--ink-3);margin-top:8px;line-height:1.5;"},"Pick a survey to choose how it appears on the page.") : null,
             b.survey ? el("div",{},
@@ -2813,7 +2813,7 @@
 
           <div class="field-group">
             <label class="form-label">Homepage description <span class="hint">Shown as a short tagline on cards and lists.</span></label>
-            <textarea class="form-textarea">The Employee Advisory Board (EAB) represents employees and formulates advice to management, mainly on governance.</textarea>
+            <textarea class="form-textarea">Help shape how we move, cycle and gather in our city over the next four years. Your ideas feed directly into the mobility plan we present to council in September.</textarea>
           </div>
 
           <div class="modal-section-divider"></div>
