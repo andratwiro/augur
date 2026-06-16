@@ -38,7 +38,63 @@
     .pp-cta .gv-participants { display: flex; justify-content: center; }
     .pp-desc { grid-column: 1; }
     @media (max-width: 760px) { .pp-title { grid-template-columns: 1fr; } .pp-title h1, .pp-cta, .pp-desc { grid-column: 1; } .pp-cta { grid-row: auto; } }
-  </style>
+
+    /* ── Ideation MAP view (page-local; faithful to fo-project-ideation-map capture) ──
+       Replaces the idea-card column with a map surface; keeps the .gv-feedfilter sidebar.
+       The map column holds a styled (static) map surface with idea pins + a floating
+       overlay card (Filters + compact idea list) + an admin info banner — colours/sizes
+       via --gv-* tokens; no .gv-* class is redefined. */
+    .pp-map { position: relative; min-height: 560px; border-radius: var(--gv-radius); overflow: hidden;
+      border: 1px solid var(--gv-grey-200);
+      /* OSM-style tile wash: soft green/grey landmass with a faint road grid */
+      background-color: #e8ede4;
+      background-image:
+        radial-gradient(circle at 70% 30%, #dfe7da 0 22%, transparent 22%),
+        radial-gradient(circle at 25% 75%, #e4ebe0 0 26%, transparent 26%),
+        linear-gradient(rgba(255,255,255,.55) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px),
+        linear-gradient(rgba(0,0,0,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,.04) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px, 132px 132px, 132px 132px;
+    }
+    /* a couple of faint "waterway / main road" diagonals to read as a real map */
+    .pp-map::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+      background:
+        linear-gradient(115deg, transparent 38%, rgba(167,202,237,.55) 38%, rgba(167,202,237,.55) 41%, transparent 41%),
+        linear-gradient(60deg, transparent 60%, rgba(247,224,178,.7) 60%, rgba(247,224,178,.7) 62.5%, transparent 62.5%); }
+    .pp-map__attr { position: absolute; right: 6px; bottom: 4px; font-size: 10px; color: var(--gv-cool-grey-600);
+      background: rgba(255,255,255,.7); padding: 1px 5px; border-radius: 2px; }
+    /* idea pins */
+    .pp-pin { position: absolute; width: 26px; height: 26px; transform: translate(-50%, -100%); color: var(--gv-tenant-primary);
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); cursor: pointer; }
+    .pp-pin svg { width: 100%; height: 100%; display: block; }
+    .pp-pin.is-active { color: var(--gv-tenant-secondary, var(--gv-tenant-primary)); z-index: 3; }
+    /* floating overlay card (the list panel that sits on top of the map) */
+    .pp-mapcard { position: absolute; top: 18px; left: 18px; width: 320px; max-height: calc(100% - 36px);
+      display: flex; flex-direction: column; gap: 12px; background: transparent; z-index: 2; }
+    .pp-mapcard__filters { align-self: flex-start; }
+    .pp-mapcard__list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 2px; }
+    /* compact idea item — values measured off the capture digest (white card, #ccc 1px,
+       radius 3px, soft shadow, title 18/600/#1e1e1e, counts 15px/#596b7a) */
+    .pp-mapidea { background: #fff; border: 1px solid #ccc; border-radius: var(--gv-radius);
+      box-shadow: rgba(0,0,0,.06) 0 2px 4px -1px; padding: 16px 18px; cursor: pointer; }
+    .pp-mapidea.is-active { border-color: var(--gv-tenant-primary); box-shadow: rgba(0,0,0,.12) 0 3px 8px -1px; }
+    .pp-mapidea__title { margin: 0 0 10px; font-size: var(--gv-fs-l); font-weight: 600; line-height: 23px;
+      color: var(--gv-text-heading-strong); }
+    .pp-mapidea__stats { display: flex; align-items: center; gap: 16px; color: var(--gv-cool-grey-600); font-size: 15px; }
+    .pp-mapidea__stat { display: inline-flex; align-items: center; gap: 6px; }
+    .pp-mapidea__stat .gv-icon, .pp-mapidea__stat svg { width: 16px; height: 16px; }
+    /* admin info banner (top-right of the map, as in the capture) */
+    .pp-mapnote { position: absolute; top: 18px; right: 18px; max-width: 230px; z-index: 2;
+      display: flex; gap: 8px; padding: 10px 12px; border-radius: var(--gv-radius);
+      background: #e6f0f7; color: var(--gv-cool-grey-700); font-size: var(--gv-fs-s); line-height: 1.4;
+      box-shadow: rgba(0,0,0,.06) 0 2px 4px -1px; }
+    .pp-mapnote .gv-icon { flex: none; width: 18px; height: 18px; color: var(--gv-tenant-primary); }
+    /* map-mode feed: map column + the same filter sidebar on the right */
+    .gv-feed.is-map .gv-feed__col { display: none; }
+    .gv-feed.is-map .pp-map { grid-column: 1; }
+    @media (max-width: 860px) { .pp-mapcard { width: calc(100% - 36px); } .pp-map { min-height: 460px; } }
+</style>
 </head>
 <body class="gv-root gv-shell" data-gv-theme-picker="off">
 
@@ -326,8 +382,43 @@
     }
     /* ════════ Method-panel registry — each renders a phase BODY from canonical
        .gv-* components. Add a method by adding a renderer here. ════════ */
+    /* Idea-feed view mode (list | map). Module-level so it survives feed re-renders
+       when the phase/method switches; toggled by the .gv-viewseg tabs. */
+    let ideaView = 'list';
+    /* Static pin coordinates (% of the map surface) — one per IDEAS entry. */
+    const PIN_POS = [ { x: 44, y: 52 }, { x: 62, y: 38 }, { x: 33, y: 70 }, { x: 71, y: 64 } ];
+    const PIN_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
+    function mapViewHTML() {
+      const pins = IDEAS.map((d, i) => {
+        const p = PIN_POS[i] || { x: 50, y: 50 };
+        return `<span class="pp-pin" data-pin="${i}" style="left:${p.x}%;top:${p.y}%;" title="${esc(d.title)}">${PIN_SVG}</span>`;
+      }).join('');
+      const items = IDEAS.map((d, i) => `
+        <article class="pp-mapidea" data-pin="${i}">
+          <h3 class="pp-mapidea__title">${esc(d.title)}</h3>
+          <div class="pp-mapidea__stats">
+            <span class="pp-mapidea__stat"><span data-gv-icon="vote-up" aria-hidden="true"></span>${d.likes}</span>
+            <span class="pp-mapidea__stat"><span data-gv-icon="comments" aria-hidden="true"></span>${d.comments}</span>
+          </div>
+        </article>`).join('');
+      return `
+        <div class="pp-map" role="img" aria-label="Map of Market Square with ${IDEAS.length} idea locations">
+          ${pins}
+          <div class="pp-mapcard">
+            <button class="gv-filters-btn pp-mapcard__filters" type="button" aria-expanded="false" aria-controls="e2e-project-sidebar">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              Filters
+            </button>
+            <div class="pp-mapcard__list">${items}</div>
+          </div>
+          <div class="pp-mapnote"><span class="gv-icon" data-gv-icon="info-solid" aria-hidden="true"></span>
+            <span>As an admin, you can click on the map to place an input, even if this phase is not active.</span></div>
+          <span class="pp-map__attr">© MapTiler © OpenStreetMap contributors</span>
+        </div>`;
+    }
     const METHODS = {
       ideation() {
+        const isMap = ideaView === 'map';
         return `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
             <h2 class="gv-feed__count">${IDEAS.length} ideas</h2>
@@ -337,13 +428,13 @@
                 Filters
               </button>
               <div class="gv-viewseg" role="tablist" aria-label="View ideas as">
-                <button class="gv-viewseg__tab" role="tab" aria-selected="true"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
-                <button class="gv-viewseg__tab" role="tab" aria-selected="false"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
+                <button class="gv-viewseg__tab" role="tab" data-view="list" aria-selected="${!isMap}"><span data-gv-icon="menu" aria-hidden="true"></span>List</button>
+                <button class="gv-viewseg__tab" role="tab" data-view="map" aria-selected="${isMap}"><span data-gv-icon="map" aria-hidden="true"></span>Map</button>
               </div>
             </div>
           </div>
-          <div class="gv-feed">
-            <div class="gv-feed__col">${IDEAS.map(cardHTML).join('')}</div>
+          <div class="gv-feed${isMap ? ' is-map' : ''}">
+            ${isMap ? mapViewHTML() : `<div class="gv-feed__col">${IDEAS.map(cardHTML).join('')}</div>`}
             <aside class="gv-feedfilter" id="e2e-project-sidebar" aria-label="Filter ideas">
               <div><p class="gv-feedfilter__label">Search posts</p><input class="gv-input" type="search" placeholder="Search" aria-label="Search posts" /></div>
               <div><p class="gv-feedfilter__label">SORT BY</p><div class="gv-feedfilter__group gv-feedfilter__group--sort">
@@ -429,6 +520,31 @@
       const aside = document.getElementById(btn.getAttribute('aria-controls'));
       if (!aside) return;
       btn.setAttribute('aria-expanded', String(aside.classList.toggle('is-open')));
+    });
+
+    /* List/Map view toggle — delegated so it survives feed re-renders. Switching the
+       view re-renders the active (ideation) method body via setPhase. */
+    document.addEventListener('click', (e) => {
+      const tab = e.target.closest('.gv-viewseg__tab[data-view]');
+      if (!tab) return;
+      const next = tab.dataset.view;
+      if (next === ideaView) return;
+      ideaView = next;
+      setPhase(active);
+    });
+
+    /* Pin ↔ list-item highlight on the map view (page-local affordance). */
+    document.addEventListener('mouseover', (e) => {
+      const t = e.target.closest('[data-pin]');
+      if (!t || !bodyEl.contains(t)) return;
+      const i = t.dataset.pin;
+      bodyEl.querySelectorAll(`[data-pin="${i}"]`).forEach((el) => el.classList.add('is-active'));
+    });
+    document.addEventListener('mouseout', (e) => {
+      const t = e.target.closest('[data-pin]');
+      if (!t || !bodyEl.contains(t)) return;
+      const i = t.dataset.pin;
+      bodyEl.querySelectorAll(`[data-pin="${i}"]`).forEach((el) => el.classList.remove('is-active'));
     });
 
     renderStepper();
