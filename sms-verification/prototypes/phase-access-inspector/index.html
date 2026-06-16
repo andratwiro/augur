@@ -539,13 +539,15 @@
 
   function renderRail(){
     const rail=el('<div class="pai-rail"></div>');
-    const h=el('<div class="pai-rail__h"><span>Actions</span><button class="pai-rail__all">Select all</button></div>');
-    h.querySelector('button').onclick=()=>{ sel=ACTIONS.map(a=>a.key); render(); };
+    const allSel = sel.length===ACTIONS.length;
+    const h=el('<div class="pai-rail__h"><span>Actions</span><button class="pai-rail__all">'+(allSel?'Clear':'Select all')+'</button></div>');
+    h.querySelector('button').onclick=()=>{ sel = allSel ? ['submit'] : ACTIONS.map(a=>a.key); render(); };
     rail.appendChild(h);
+    rail.appendChild(el('<div style="font-size:11px;color:#4b5763;padding:2px 10px 6px;line-height:1.45">Click an action to edit it · <b>⌘/Ctrl-click</b> to pick several</div>'));
     ACTIONS.forEach(act=>{
       const a=state.actions[act.key], on=sel.includes(act.key);
       const meta = a.level==='signin' ? proofText(a) : LEVEL[a.level].short;
-      const ly=el('<button class="pai-layer'+(on?' sel':'')+(a.level==='staff'?' locked':'')+'">'
+      const ly=el('<button class="pai-layer'+(on?' sel':'')+(a.level==='staff'?' locked':'')+'" aria-pressed="'+on+'">'
         +'<span class="pai-layer__ic">'+icon(act.icon)+'</span>'
         +'<span class="pai-layer__t">'+act.label+'</span>'
         +'<span class="pai-layer__meta">'+meta+'</span></button>');
@@ -587,7 +589,7 @@
     const seg=el('<div class="pai-seg"></div>');
     [['anyone','Anyone','group'],['signin','Require sign-in','user'],['staff','Staff only','lock']].forEach(([v,lab,ic])=>{
       const dis=(v==='anyone'&&!okAnyone);
-      const b=el('<button'+(lvl===v?' class="on"':'')+(dis?' disabled':'')+'>'+icon(ic)+lab+'</button>');
+      const b=el('<button'+(lvl===v?' class="on"':'')+(dis?' disabled':'')+' aria-pressed="'+(lvl===v)+'"'+(dis?' title="Anyone is not available for this action"':'')+'>'+icon(ic)+lab+'</button>');
       if(!dis) b.onclick=()=>{ sel.forEach(k=>state.actions[k].level=v); commit(); };
       seg.appendChild(b);
     });
