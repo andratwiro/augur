@@ -140,7 +140,10 @@
   border-bottom: 0;
   border-radius: var(--gv-radius) var(--gv-radius) 0 0;
   box-shadow: var(--gv-shadow);
-  padding: 16px 24px 0;
+  /* Bottom padding: the canonical topbar zeroes this because a tab strip sits flush
+     below it. This editor has no topbar tabs (nav lives in the side panel), so the
+     meta row needs breathing room above the header's bottom edge. */
+  padding: 16px 24px 16px;
 }
 .gv-bo-topbar__row { display: flex; align-items: flex-start; gap: 16px; }
 .gv-bo-topbar__title {

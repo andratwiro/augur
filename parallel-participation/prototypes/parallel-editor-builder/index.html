@@ -19,6 +19,9 @@
 <link rel="stylesheet" href="assets/govocal-bo.css" />
 <script src="assets/govocal-icons.js" defer></script>
 <script src="assets/govocal-avatars.js" defer></script>
+<!-- City theme switcher: drives --gv-tenant-* + renders [data-gv-logo]. The on-screen
+     picker (bottom-right) re-themes the phone preview live across cities. -->
+<script src="assets/govocal-themes.js" defer></script>
 <style>
   :root {
     --bg: #f5f6f8;
@@ -55,6 +58,19 @@
     z-index: 2;
   }
   .nav-icon { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ── Phone mobile navbar: force the canonical .gv-header into MOBILE mode inside the
+        fixed-width phone (the real switch is viewport-driven), compact it for 360px, and
+        contain the full-screen .gv-nav-m menu overlay to the phone instead of the editor. */
+  /* header static (not relative) so the absolute menu panel below resolves against the
+     phone, not the 52px header; notch (z:2) then stays visible above the header bg. */
+  .phone .pp-phone-header { position: static; box-shadow: none; border-bottom: 1px solid var(--gv-grey-200); }
+  .phone .pp-phone-header .gv-header__inner { height: 52px; padding: 0 16px; }
+  .phone .gv-brand img, .phone .gv-brand svg { height: 26px; width: auto; }
+  .phone .gv-nav { display: none !important; }            /* desktop nav off inside the phone */
+  .phone .gv-nav-m { display: block !important; }          /* hamburger on */
+  .phone .gv-nav-m > summary { width: 38px; height: 38px; }
+  .phone .gv-nav-m__panel { position: absolute; }          /* inset:0 → fills the phone (relative), not the 1440px viewport */
   .rail-btn { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; color: rgba(255,255,255,.55); }
   .rail-btn:hover { color: #fff; }
   .rail-btn.active { background: rgba(0,0,0,.25); color: #fff; }
@@ -76,6 +92,10 @@
   }
 
   .side-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; font-size:13.5px; color:#1a1f2c; cursor:pointer; }
+  /* GoVocal icons render at 1em w/ currentColor — size them to the old 18px nav-icon footprint */
+  .side-ic { font-size:18px; line-height:0; flex:0 0 auto; display:inline-flex; color:#4b5563; }
+  .side-item.active .side-ic { color:#1a1f2c; }
+  .sec-add-ic { font-size:16px; line-height:0; flex:0 0 auto; display:inline-flex; }
   .side-item:hover { background:#eef0f4; }
   .side-item.active { background:#e8ecf3; font-weight:600; }
   .phase-row { display:flex; align-items:center; gap:14px; padding:11px 12px; border-radius:8px; font-size:13.5px; cursor:pointer; }
@@ -1362,7 +1382,7 @@
 
   <!-- ── Real GoVocal back-office sidebar (collapsed icon rail) ──── -->
   <nav class="gv-bo-side is-rail" aria-label="Admin">
-    <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo"><span data-gv-icon="admin-back" style="color:var(--gv-white)"></span></span> To platform</a>
+    <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo"><span data-gv-icon="admin-back" style="color:var(--gv-white)"></span></span><span class="gv-bo-side__brandtext">To platform</span></a>
     <div class="gv-bo-nav">
       <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-dashboard"></span><span class="gv-bo-nav__label">Dashboard</span></a>
       <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-projects"></span><span class="gv-bo-nav__label">Projects</span></a>
@@ -1417,7 +1437,7 @@
 
         <!-- Project page — always shown (acts as "back to project" when on a phase) -->
         <div class="side-item active" data-view="project" onclick="setView('project', this)">
-          <svg class="nav-icon" viewBox="0 0 24 24" style="color:#1a1f2c;"><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>
+          <span class="side-ic" data-gv-icon="home" aria-hidden="true"></span>
           <span class="flex-1">Project page</span>
           <svg id="project-chevron" class="nav-icon" style="width:14px;height:14px;color:#7a8294;transition:transform .15s ease;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
@@ -1425,24 +1445,24 @@
         <!-- Project utilities — hidden on phase view (original side nav) -->
         <div id="project-utilities">
           <div id="audience-nav" class="side-item">
-            <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/></svg>
+            <span class="side-ic" data-gv-icon="group" aria-hidden="true"></span>
             Audience
           </div>
           <div class="side-item">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg>
+            <span class="side-ic" data-gv-icon="email" aria-hidden="true"></span>
             Messaging
           </div>
           <div class="side-item">
-            <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span class="side-ic" data-gv-icon="calendar" aria-hidden="true"></span>
             Events
             <span class="badge-2 ml-auto">2</span>
           </div>
           <div class="side-item">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="side-ic" data-gv-icon="comments" aria-hidden="true"></span>
             Input 360
           </div>
           <div class="side-item" onclick="document.getElementById('settingsModal').style.display='flex'">
-            <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+            <span class="side-ic" data-gv-icon="cogs" aria-hidden="true"></span>
             Settings
           </div>
         </div>
@@ -1468,7 +1488,7 @@
             </div>
           </div>
           <button class="sec-add" onclick="setView('add-phase')">
-            <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span class="sec-add-ic" data-gv-icon="plus" aria-hidden="true"></span>
             New phase
           </button>
         </div>
@@ -1477,7 +1497,7 @@
         <div id="activities-card" class="panel-section">
           <hr class="panel-divider" />
           <button class="sec-add muted" onclick="setView('add-survey')">
-            <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span class="sec-add-ic" data-gv-icon="plus" aria-hidden="true"></span>
             New survey outside the timeline
           </button>
         </div>
@@ -1496,24 +1516,40 @@
           Click any section of the page to edit it
         </div>
 
-        <div id="phone" class="phone" style="height: 700px; cursor: pointer;" onclick="maybeOpenBuilder(event)">
+        <div id="phone" class="phone" style="height: 700px; cursor: pointer; display:flex; flex-direction:column;" onclick="maybeOpenBuilder(event)">
           <div class="notch"></div>
 
-          <!-- phone content -->
-          <div id="phone-scroller" class="px-4 pt-9 pb-5 h-full overflow-y-auto">
-            <!-- top nav -->
-            <div class="flex items-center justify-between py-2 editable">
-              <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-md bg-[#1f3b6d] text-white flex items-center justify-center text-[11px] font-bold tracking-wide">GV</div>
-                <span class="font-semibold text-[15px]">City of Meridian</span>
-              </div>
-              <div class="flex items-center gap-3 text-[13px]">
-                <span class="text-gray-700">EN</span>
-                <button class="text-gray-800 font-medium">Log in</button>
-                <svg class="nav-icon" style="width:18px;height:18px;" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
-              </div>
+          <!-- Real GoVocal FO mobile navbar — themed [data-gv-logo] + hamburger drawer.
+               The canonical .gv-header/.gv-nav-m switch to mobile via a viewport media
+               query; the phone is a fixed 360px box on a 1440px viewport, so the .phone
+               scoped overrides in <style> force the mobile layout and contain the
+               full-screen menu overlay to the phone. stopPropagation keeps nav clicks
+               from triggering the "click to edit" builder on the phone. -->
+          <header class="gv-header pp-phone-header" onclick="event.stopPropagation()">
+            <div class="gv-header__inner">
+              <a class="gv-brand" href="#" data-gv-logo aria-label="City home"></a>
+              <span style="flex:1 1 auto"></span>
+              <details class="gv-nav-m">
+                <summary aria-label="Show navigation menu">
+                  <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+                  <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+                </summary>
+                <nav class="gv-nav-m__panel" aria-label="Mobile navigation">
+                  <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
+                  <a href="#">Home</a>
+                  <a href="#">Projects</a>
+                  <a href="#" aria-current="page">Reimagine Meridian 2030</a>
+                  <a href="#">Events</a>
+                  <a href="#">About</a>
+                  <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Search</a>
+                  <button class="gv-btn primary full">Log in</button>
+                </nav>
+              </details>
             </div>
+          </header>
 
+          <!-- phone content -->
+          <div id="phone-scroller" class="px-4 pt-3 pb-5 overflow-y-auto" style="flex:1 1 auto; min-height:0;">
             <!-- hero image -->
             <div id="phone-hero" class="preview-hero mt-2 editable"></div>
             <div id="phone-hero-empty" class="mt-2 ghost-slot tall" style="display:none;">
