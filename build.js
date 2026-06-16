@@ -1424,7 +1424,7 @@ async function main() {
   const SHARED_ASSETS = [
     "govocal-tokens.css", "govocal-primitives.css", "govocal-ui.css", "govocal-bo.css",
     "govocal-themes.js", "govocal-cookies.js", "govocal-icons.js",
-    "govocal-avatars.js", "govocal-rail.js",
+    "govocal-avatars.js", "govocal-rail.js", "govocal-partbar.js",
     "govocal-survey.css", "govocal-survey.js", "govocal-logo.svg",
   ];
   const sharedDir = path.join(DIST, "skills", "govocal-ui");
