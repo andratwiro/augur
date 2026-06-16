@@ -588,6 +588,15 @@
             <p class="pp-lede">Each phase runs exactly one participation method.</p>
             <div class="gv-bo-methods pp-methodgrid" data-method="information"></div>
             <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>This is a read-only phase — participants can't submit, comment or react. Use the <a href="#">Description</a> tab to share updates, images and embeds.</div></div>
+
+            <h4 class="gv-bo-subhead">Report</h4>
+            <p class="pp-lede">Build a report for this phase, or link one from the in-platform report builder, to visualise results from other phases.</p>
+            <div class="gv-bo-togglerow">
+              <div><div class="gv-bo-togglerow__title">Link with in-platform report builder</div>
+                <p class="gv-bo-help">Show a report built in the Reporting tool on this phase's page.</p></div>
+              <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+            </div>
+
             <label class="gv-bo-qlabel">Upload attachments</label>
             <button class="gv-bo-dropzone"><span class="gv-icon" data-gv-icon="download"></span>Select a file</button>
             <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
@@ -1224,7 +1233,7 @@
       { label: "Budget allocation",              title: "Budget allocation",   method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
       { label: "Poll the priorities",            title: "Voting on Top 3 Priorities", method: "Poll phase",  dates: "March 21, 2023 12:00 AM → April 3, 2023 12:00 AM", setup: "pollsetup",         tabs: ["setup","description","poll","insights","access","notifications"] },
       { label: "Submit a proposal",              title: "Submit a proposal",   method: "Proposals phase",    dates: "June 2, 2024 12:00 AM → No end date",             setup: "proposalssetup",    tabs: ["setup","description","inputmgr","inputform","insights","access","notifications"] },
-      { label: "Community survey",               title: "Community Survey",    method: "Survey phase",       dates: "May 6, 2024 12:00 AM → No end date",              setup: "surveysetup",       tabs: ["setup","description","surveyform","surveyresults","access","notifications"] },
+      { label: "Community survey",               title: "Community Survey",    method: "In platform survey phase", dates: "May 6, 2024 12:00 AM → No end date",        setup: "surveysetup",       tabs: ["setup","description","surveyform","insights","surveyresults","access","notifications"] },
       { label: "Find common ground",             title: "Polis process",       method: "Common ground phase", dates: "May 1, 2026 12:00 AM → June 30, 2026 11:59 PM",   setup: "commongroundsetup", tabs: ["setup","description","report","access","notifications"] },
       { label: "Find volunteers",                title: "Find volunteers",     method: "Volunteering phase", dates: "November 29, 2021 12:00 AM → No end date",         setup: "volunteeringsetup", tabs: ["setup","description","volunteering","insights","access","notifications"] },
       { label: "Import paper inputs",            title: "Import paper inputs", method: "Ideation phase",     dates: "June 2, 2024 12:00 AM → No end date",             setup: "setup",             tabs: ["setup","description","inputmgr","inputimporter","inputform","insights","access","notifications"] },

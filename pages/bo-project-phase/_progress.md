@@ -226,3 +226,26 @@ open items)
 - Open: common-ground `/report` *depth* (real-time results map, per-statement breakdown) is
   still backlog (flagged since Run 1) — current report panel is a faithful summary, not the
   full results map. Future enhancement.
+
+### Pass 6 — Information (DONE 2026-06-16)
+- Captures: `r1-pe-information-setup` + NEW `r2-information-setup` (info phase c8502d40). NOTE
+  the **SPA active-phase trap**: both captures default-render the project's FIRST phase
+  (Initial Survey) regardless of the phase ID in the URL — the info phase is phase 2 and needs
+  a ribbon click to load. So the info-Setup screenshot actually shows the SURVEY phase. Useful
+  side-effect: it confirmed the real **survey sub-tab set = Setup · Description · Survey form ·
+  Insights · Phase access and user data · Notifications** and method label **"In platform
+  survey phase"**.
+- **BUILD (info):** the "Share information" method card lists "Link with in-platform report
+  builder" as a feature (found in the card description DOM). Added a **Report** section to the
+  `informationsetup` panel with a "Link with in-platform report builder" toggle (the real
+  distinguishing info-phase feature). Kept the info sub-tab set minimal (setup·description·
+  access·notifications) — deliberately did NOT add a Report sub-tab, because the only `report`
+  panel is common-ground-consensus-specific and reusing it for info would misrepresent.
+- **BUILD (survey, corrected from Pass 3):** changed the survey phase method label to "In
+  platform survey phase" and added **Insights** to its sub-tab set
+  (setup·description·surveyform·insights·surveyresults·access·notifications) per the capture.
+- VERIFY: `lint` 0; screenshot eyeballed (info panel: read-only banner, report-builder toggle,
+  minimal sub-tabs, picker on Share information w/ BETA pill on common-ground); `verify:all`
+  130 green · 1 red UNCHANGED.
+- RECHECK: survey + proposals panels intact.
+- Checkpoints: none added.
