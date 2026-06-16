@@ -354,7 +354,7 @@
    placeholder shows otherwise. Overlay uses tenant-primary so it re-themes. */
 .gv-hero {
   position: relative; display: grid; place-items: center; text-align: center;
-  min-height: 340px; color: #fff; overflow: hidden;
+  min-height: 200px; color: #fff; overflow: hidden;  /* live homepage banner band (uxusertesting.govocal.com div.sc-MIkZJ.diuxHP) = 1440×200px short wide strip */
   background-image: var(--gv-hero-image, linear-gradient(120deg, #6f4a34, #b07a4f 55%, #7a5238));
   background-size: cover; background-position: center;
 }
@@ -362,14 +362,14 @@
   content: ""; position: absolute; inset: 0;
   background: var(--gv-tenant-primary); opacity: 0.62; mix-blend-mode: multiply;
 }
-.gv-hero__inner { position: relative; z-index: 1; padding: 100px 24px; max-width: 720px; }  /* live Wien banner module ≈450px tall — generous top/bottom spacing */
+.gv-hero__inner { position: relative; z-index: 1; padding: 40px 24px; max-width: 720px; }  /* keep content height near the measured 200px banner strip (was 100px → tall 440px banner) */
 /* Live homepage banner H1 (uxusertesting.govocal.com) computes to 25px/700/32.5px. */
 .gv-hero__title { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; margin: 0 0 10px; }
 /* Live banner subtitle (mitgestalten.wien.gv.at / community.govocal.com h2) = 18px/400/23.4px. */
 .gv-hero__lead { font-size: var(--gv-fs-l); font-weight: 400; line-height: 1.3; margin: 0 0 22px; opacity: 0.97; }
 .gv-hero__credit { position: absolute; left: 24px; bottom: 10px; z-index: 1; font-size: 11px; opacity: 0.85; }
 /* .gv-avatars (hero stack) → moved to govocal-primitives.css (cross-surface atom). */
-@media (max-width: 600px) { .gv-hero { min-height: 280px; } .gv-hero__inner { padding: 56px 20px; } }
+@media (max-width: 600px) { .gv-hero { min-height: 180px; } .gv-hero__inner { padding: 32px 20px; } }
 
 /* ── Section heading + content rhythm for composed pages ─────────────────────── */
 .gv-section { padding: 38px 0 4px; }
