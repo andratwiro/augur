@@ -34,6 +34,17 @@
     .auth-toggle::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
     [data-auth="in"] .auth-toggle::before { background: var(--gv-green-400); }
 
+    /* Layout-only: the live e2e-spotlight-widget gives the media tile roughly equal
+       visual weight to the copy column (a tall near-square video-poster panel). The
+       canonical .gv-spotlight__media defaults to a wide 16/10 poster, which reads
+       narrower than the copy column here — so on the homepage only, make the media a
+       taller ~4/3 tile so the two columns balance. Page-local layout class (no gv-
+       redefinition). Desktop only — the canonical ≤820px rule keeps the wide stacked
+       banner. */
+    @media (min-width: 821px) {
+      .spotlight-media--balanced { aspect-ratio: 4 / 3; }
+    }
+
     /* Layout-only: fix each climate-team card width inside the .gv-rail scroller so
        the horizontal carousel has a stable track (no colour/border/type authored).
        ~376px ≈ 3 cards across the content width, matching the live Wien Klimateam row. */
@@ -184,7 +195,7 @@
             <span class="gv-bubbles__label">145 participants</span>
           </div>
         </div>
-        <div class="gv-spotlight__media"><img src="img/spotlight.webp" alt="A leafy, tree-lined stretch of Station Road with people walking and cycling" loading="lazy" /></div>
+        <div class="gv-spotlight__media spotlight-media--balanced"><img src="img/spotlight.webp" alt="A leafy, tree-lined stretch of Station Road with people walking and cycling" loading="lazy" /></div>
       </div>
     </section>
 
