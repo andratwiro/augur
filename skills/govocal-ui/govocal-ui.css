@@ -1158,6 +1158,23 @@
 .gv-threshold__bar { flex: 1 1 auto; height: 6px; border-radius: var(--gv-radius); background: var(--gv-grey-200); overflow: hidden; min-width: 90px; }
 .gv-threshold__fill { height: 100%; background: var(--gv-tenant-primary); }
 
+/* ── threshold-foot-wrap (mobile) — at narrow proposal-card width the real product
+   stacks the threshold inside the card instead of overflowing: icon + count sit on
+   one row and the progress bar drops to its own full-width row below, and the status
+   pill wraps rather than getting clipped off the right edge (OPEN→'OPE' etc.). The
+   base .gv-threshold min-width:280px forces the overflow on a 390px card, so we drop
+   it here and let .gv-threshold become a 2-row flex (icon+count row, bar row). The
+   foot also wraps so the status pill can fall to a new line. Grounded in the real
+   mobile DOM (fo-project-proposals-m): the bar (.sc-jgWArk…ldyffd) is a sibling block
+   UNDER the icon+count row (.LryTj), both inside the threshold block. New responsive
+   override only — base desktop layout (single non-wrapping row) is untouched. */
+@media (max-width: 560px) {
+  .gv-ideacard__foot { flex-wrap: wrap; row-gap: 12px; }
+  .gv-threshold { flex-wrap: wrap; min-width: 0; flex: 1 1 100%; column-gap: 8px; }
+  .gv-threshold__bar { flex: 1 1 100%; min-width: 0; }
+  .gv-ideacard__foot .gv-statuspill[style*="margin-left"] { margin-left: 0; }
+}
+
 /* ── Status pill — proposals. EXPIRED : firebrick #b22222 (a literal one-off,
    not a token); OPEN/threshold : tenant-primary. 12px/600, 5px 8px, uppercase. ── */
 .gv-statuspill { display: inline-flex; align-items: center; font-size: var(--gv-fs-xs); font-weight: 600; line-height: 1;
