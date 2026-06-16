@@ -862,6 +862,36 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
 <!-- Empty-state variant (no events) -->
 <div class="gv-events__empty"><svg><!--calendar--></svg><p class="gv-text bodyM">Derzeit sind keine … geplant.</p></div>
 
+<!-- BORDERED EventsWidget variant — shared by Copenhagen / Linz / Falkirk
+     (source-grounded on kobenhavntaler.kk.dk, capture fo-cph-events-card).
+     Add .bordered → white card 1px #CCC / 6px radius. The date chip is a 3-tier
+     STACKED variant (.gv-event-datechip--stacked): grey __top tier holds __day +
+     uppercase __month (tenant-primary text) over a tenant-primary __year band. The
+     date/time · location · attendance rows sit on the #F4F6F8 .gv-event-info-panel.
+     ADDITIVE classes — the base card + .m/.d/.y overlay chip are untouched; re-skins
+     per ?theme= (CPH #000C2E / Linz #604596 / Falkirk #198754). Built demo:
+     components/event-card-bordered/. -->
+<article class="gv-event-card bordered">  <!-- + .is-imageless if no photo (omit __media) -->
+  <div class="gv-event-card__media" aria-hidden="true"><span data-gv-icon="calendar"></span></div>
+  <div class="gv-event-card__body">
+    <div class="gv-event-card__titlerow">
+      <h3 class="gv-event-card__title"><a href="#">Test din idé …</a></h3>
+      <span class="gv-event-datechip--stacked" aria-hidden="true">
+        <span class="gv-event-datechip__top">
+          <span class="gv-event-datechip__day">18</span><span class="gv-event-datechip__month">jun</span>
+        </span>
+        <span class="gv-event-datechip__year">2026</span>
+      </span>
+    </div>
+    <div class="gv-event-info-panel">                         <!-- #F4F6F8 "Date & time" panel -->
+      <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 18 Jun 2026 · 17:00 – 18:00</p>
+      <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online møde</a></p>
+      <p class="gv-event-card__row"><span data-gv-icon="user"></span> 24 tilmeldte</p>
+    </div>
+    <a class="gv-btn primary full" href="#">Registrer dig</a>  <!-- aria-disabled="true" if closed -->
+  </div>
+</article>
+
 <!-- Events PAGE (/events) — title block, section headers, FO filter-pill bar.
      Source-grounded on wietsedemo.govocal.com/en/events. Reuses the event-card /
      grid / empty-state atoms above; net-new here = the huge tenant-primary page

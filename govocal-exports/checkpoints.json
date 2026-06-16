@@ -1045,6 +1045,23 @@
       ]
     },
     {
+      "id": "fo-cph-events-card/bordered-frame",
+      "built": "components/event-card-bordered/index.html",
+      "against": "fo-cph-events-card",
+      "map": {
+        "li.sc-jIXSKn": ".gv-event-card.bordered"
+      },
+      "props": [
+        "background-color",
+        "border",
+        "border-radius",
+        "box-shadow"
+      ],
+      "uses": [
+        ".gv-event-card"
+      ]
+    },
+    {
       "id": "fo-events/event-card-title",
       "built": "components/event-card/index.html",
       "against": "fo-events",

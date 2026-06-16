@@ -1001,6 +1001,47 @@
 /* On the panel layout the card body gaps collapse to 0 (the panel owns its margin). */
 .gv-event-card.has-panel .gv-event-card__body { gap: 0; }
 
+/* ── Event card — BORDERED EventsWidget variant (Copenhagen / Linz / Falkirk) ──
+   Source-grounded on Copenhagen kobenhavntaler.kk.dk (capture fo-cph-events-card).
+   The shared EventsWidget code (used by CPH/Linz/Falkirk) wraps each event in a
+   BORDERED <li> (li.sc-jIXSKn digest #15): white, 1px #CCC, 6px radius — a
+   STRUCTURAL frame, distinct from the borderless wietsedemo .gv-event-card. The
+   skin re-themes per tenant (CPH primary #000C2E, Linz #604596, Falkirk #198754).
+   These are ADDITIVE variant classes — they do NOT mutate the base card or the
+   base two-tone .gv-event-card__date chip used+verified on the homepage. */
+.gv-event-card.bordered { background: #fff; border: 1px solid var(--gv-event-card-border);
+  border-radius: 6px; overflow: hidden; }
+
+/* 3-tier STACKED date chip (digest #17 grey top tier + #20 primary year band):
+   grey #F5F6F7 top cell holds DAY (14px/400) + MONTH (14px/500 uppercase), both in
+   tenant-primary text, radius 3px 3px 0 0; the tenant-primary YEAR band sits below,
+   white text, radius 0 0 3px 3px. Width 75px (spec). A NEW VARIANT of the chip —
+   the base .m/.d/.y two-tone overlay chip is untouched. */
+.gv-event-datechip--stacked { width: 75px; text-align: center; line-height: 1.05;
+  border-radius: var(--gv-radius); overflow: hidden; box-shadow: none; }
+.gv-event-datechip--stacked .gv-event-datechip__top { padding: 6px 0;
+  background: var(--gv-event-chip-grey); border-radius: 3px 3px 0 0; }
+.gv-event-datechip--stacked .gv-event-datechip__day { display: block;
+  color: var(--gv-tenant-primary); font-size: var(--gv-fs-s); font-weight: 400; }
+.gv-event-datechip--stacked .gv-event-datechip__month { display: block;
+  color: var(--gv-tenant-primary); font-size: var(--gv-fs-s); font-weight: 500; text-transform: uppercase; }
+.gv-event-datechip--stacked .gv-event-datechip__year { display: block; padding: 6px 0;
+  background: var(--gv-tenant-primary); color: #fff;
+  font-size: var(--gv-fs-s); font-weight: 400; border-radius: 0 0 3px 3px; }
+
+/* #F4F6F8 "Date & time" a11y INFO PANEL (digest #22 div.kjzjNu): the date/time ·
+   location · attendance rows grouped on a tinted #F4F6F8 band, pad 12px 16px 4px.
+   Mirrors the grounded .has-panel meta panel but exposed as its own named class so
+   the bordered EventsWidget can mount it standalone. */
+.gv-event-info-panel { background: var(--gv-event-meta-tint); border-radius: 0;
+  padding: 12px 16px 4px; display: flex; flex-direction: column; gap: 6px; }
+
+/* Imageless degrade (Falkirk fo-falkirk-events-widget) — when an event has no
+   media, the bordered card simply omits the __media block; the title row leads.
+   (Disabled/closed Register reuses the canonical .gv-btn[aria-disabled] state.) */
+.gv-event-card.bordered .gv-event-card__body { padding: 16px; }
+.gv-event-card.bordered.is-imageless .gv-event-card__body { padding-top: 16px; }
+
 /* CTA band (proposals / generic call to action) ────────────────────────────── */
 /* Live proposals CTA sits on the plain page background (no tinted band on the
    captured tenant) — the primary button carries the colour. */

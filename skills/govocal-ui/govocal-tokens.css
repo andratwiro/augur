@@ -184,6 +184,10 @@
      token; the year band reuses --gv-tenant-primary. */
   --gv-event-meta-tint: var(--gv-grey-100);  /* #F4F6F8 meta panel */
   --gv-event-chip-grey: #F5F6F7;             /* date chip month/day cell */
+  /* The shared EventsWidget (Copenhagen/Linz/Falkirk, capture fo-cph-events-card)
+     renders each event in a BORDERED <li> (li.sc-jIXSKn): 1px #CCC, 6px radius —
+     a cross-tenant structural frame distinct from the borderless wietsedemo card. */
+  --gv-event-card-border: #CCC;              /* bordered EventsWidget <li> frame */
 
   /* ── Phase timeline: SELECTED (viewed, non-current) segment fill ──────────
      The live wietsedemo phase-ribbon selected segment was sampled srgb(89,107,122)
