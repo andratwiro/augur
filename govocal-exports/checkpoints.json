@@ -1722,6 +1722,40 @@
       "uses": [
         ".gv-bo-table"
       ]
+    },
+    {
+      "id": "phase-timeline/segment-inactive",
+      "built": "components/phase-timeline/index.html",
+      "against": "fo-perspectives-entry",
+      "map": {
+        ".intercom-project-timeline-phase-2": ".gv-phase:nth-child(2) .gv-pstep"
+      },
+      "props": [
+        "background-color",
+        "color",
+        "height"
+      ],
+      "uses": [
+        ".gv-phase",
+        ".gv-pstep"
+      ]
+    },
+    {
+      "id": "phase-timeline/segment-selected",
+      "built": "components/phase-timeline/index.html",
+      "against": "fo-perspectives-entry",
+      "map": {
+        "#phase-tab-1": ".gv-phase:nth-child(7) .gv-pstep"
+      },
+      "props": [
+        "background-color",
+        "color",
+        "height"
+      ],
+      "uses": [
+        ".gv-phase",
+        ".gv-pstep"
+      ]
     }
   ]
 }
