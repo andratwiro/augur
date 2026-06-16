@@ -28,6 +28,11 @@
       --faint:#9aa6b4; --line:#e4e9ee; --line2:#d3dbe3; --teal:#0E7C86; --teal-deep:#0c5b64;
       --accent:#C8472A; --accent-soft:#f3e6e0;
     }
+    body[data-mode="bets"]{
+      --bg:#f4f1ea; --bg2:#ece6da; --panel:#fffdf8; --ink:#1b1a16; --muted:#5f5a50;
+      --faint:#9a9385; --line:#e6e1d5; --line2:#d7d0c1; --teal:#0E7C86; --teal-deep:#0a5159;
+      --accent:#C8472A; --accent-soft:#f4e4da;
+    }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%}
     body{font-family:var(--sans);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;overflow:hidden;transition:background .4s}
@@ -163,6 +168,15 @@
     .phase li::before{content:"–";position:absolute;left:0;color:var(--faint)}
     .phase li.gate{color:var(--accent);font-weight:600}
     .phase li.gate::before{content:"◆";font-size:8px;top:2px}
+    /* bets: the wager deck */
+    .claim{font-size:clamp(23px,2.8vw,34px);font-weight:680;letter-spacing:-.022em;line-height:1.16;margin:0;color:var(--ink)}
+    .claim .accent{color:var(--accent)}
+    .card .lab{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:600;display:block;margin-bottom:7px}
+    .card.kill{border-color:var(--accent);background:var(--accent-soft)}
+    .conv{display:inline-flex;align-items:center;gap:9px;margin-top:18px;font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+    .conv .dots{display:inline-flex;gap:4px}
+    .conv i{width:8px;height:8px;border-radius:50%;background:var(--line2)}
+    .conv i.on{background:var(--accent)}
     @media (max-width:860px){
       .phases{grid-template-columns:1fr}
       .slide{padding:96px 20px 92px}
@@ -174,13 +188,14 @@
     }
   </style>
 </head>
-<body data-mode="brief">
+<body data-mode="bets">
 
   <nav class="switch" id="switch">
     <button data-m="lean"><span class="t">Lean</span><span class="s">2 weeks · what matters</span></button>
     <button data-m="full"><span class="t">Full</span><span class="s">6-week studio audit</span></button>
     <button data-m="evidence"><span class="t">Evidence</span><span class="s">let the data argue</span></button>
-    <button data-m="brief" class="on"><span class="t">Brief</span><span class="s">the research plan</span></button>
+    <button data-m="brief"><span class="t">Brief</span><span class="s">the research plan</span></button>
+    <button data-m="bets" class="on"><span class="t">Bets</span><span class="s">priors, tested fast</span></button>
   </nav>
   <div class="progress" id="progress"></div>
 
@@ -509,7 +524,7 @@
   </div>
 
   <!-- ════════════════════════════ BRIEF (the research plan) ════════════════════════════ -->
-  <div class="deck on" data-deck="brief">
+  <div class="deck" data-deck="brief">
     <section class="slide">
       <div class="slide-inner">
         <p class="eyebrow">Research plan · prepared for Irene · the restart</p>
@@ -676,6 +691,123 @@
     </section>
   </div>
 
+  <!-- ════════════════════════════ BETS (hypothesis-led) ════════════════════════════ -->
+  <div class="deck on" data-deck="bets">
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Hypothesis-led · prototype-as-probe</p>
+        <h1>We're not starting from zero.<br>We have a point of view — and<br>a plan to be <span class="accent">wrong fast.</span></h1>
+        <p class="lead">Three strong priors, from hundreds of admin conversations and live resident sessions. Held with conviction, written to be falsifiable, and tested with real prototypes in front of real people — in two weeks.</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Why this shape</p>
+        <h2>This isn't research vs. build. It's two risks.</h2>
+        <div class="twocol">
+          <div class="card"><span class="lab">If we only build</span><h3>Momentum decay</h3><p>A head full of pattern, spent down into a redesign nobody pressure-tested — fast, and possibly confidently wrong.</p></div>
+          <div class="card"><span class="lab">If we only research</span><h3>Confident wrongness</h3><p>The same context hardens into a prior we stop questioning — six weeks of extraction that just ratifies the gut.</p></div>
+        </div>
+        <div class="seam">The synthesis: <b>name the priors as falsifiable bets, then build prototypes as the instrument that tests them.</b> We move now and stay honest — and the bets become the agenda, not the answer.</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Hypothesis 1 · front office</p>
+        <p class="claim">Residents want an app, not a website — <span class="accent">full-screen, mobile, one action at a time.</span></p>
+        <div class="grid g3">
+          <div class="card"><span class="lab">Why I believe it</span><p>Residents are mobile-first and low-patience. Completion leaks wherever a form sprawls; the <em>doing</em> should feel like one clean tap-through, not a webpage to parse.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>Civic isn't a checkout. Discovery, trust and closure are non-linear — the skeptic needs a reason, not a wizard. Maybe we app-ify <em>participation</em> only.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>A clickable app-style participate flow (survey + vote) → 5 residents, on their own phones, thinking aloud.</p></div>
+        </div>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Hypothesis 2 · back office</p>
+        <p class="claim">Cities don't need less power. They just <span class="accent">shouldn't see it until they do.</span></p>
+        <div class="grid g3">
+          <div class="card"><span class="lab">Why I believe it</span><p>The tool can run a Vienna-sized city — that configurability is the moat. But the survey-only town drowns in it, and the dispatch backlog is full of setup overload.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>The open question is <em>hide by what?</em> — tenant size, role, the task in hand, or account maturity. If there's no clean axis to hide along, adaptive complexity won't hold.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>A "simple mode vs full mode" setup concept → Diane (low-savviness) and a Vienna-scale power user.</p></div>
+        </div>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Hypothesis 3 · the agent — highest stakes</p>
+        <p class="claim">Admins will hand the complexity to an LLM. The back office becomes <span class="accent">where they check its work.</span></p>
+        <div class="grid g3">
+          <div class="card"><span class="lab">Why I believe it</span><p>We're building full MCP access — delegation is coming. Config-by-conversation beats config-by-form for most cities; the UI's job shifts to oversight.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>Do admins trust it — and what will they refuse to delegate? If they won't supervise an agent, the manual revamp stays primary. We must resolve <em>operate-with-guidance vs supervise-the-agent</em> before we draw screens.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>An MCP verify-checkpoint concept — diff, "why", rollback → admins react to delegating, then checking.</p></div>
+        </div>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i></i></span> medium · highest leverage</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">The method</p>
+        <h2>We build to learn. The prototype is the instrument, not the deliverable.</h2>
+        <ul class="clean">
+          <li>Each bet becomes <b>one rough, real, clickable probe</b> — enough to react to, not to ship.</li>
+          <li>Put in front of <b>5 residents and a handful of admins</b> — including the personas we'd otherwise never hear from.</li>
+          <li>Every session ends with a verdict: <b>confirmed, killed, or reshaped.</b></li>
+        </ul>
+        <p class="src-line">You learn more from one person using a tangible thing than from ten describing what they think they'd want.</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">For Irene · why this is more rigorous, not less</p>
+        <h2>Named bets + real stimuli beat abstract interviews.</h2>
+        <div class="twocol">
+          <div class="card"><span class="lab">It's still extraction</span><p>Falsifiable hypotheses, structured and scored — a defensible initial picture, just reached faster and with something to point at.</p></div>
+          <div class="card"><span class="lab">And a better buy-in artifact</span><p>A resident visibly struggling with a real flow convinces Wietse more than a quote in a report ever will.</p></div>
+        </div>
+        <div class="seam">My context is a superpower <b>and</b> a bias — I've met the admins who stayed and the residents who showed up. The probes are insurance on the ones who churned and the silent majority.</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">The play · two weeks</p>
+        <h2>Build, probe, decide — then go big if it's worth it.</h2>
+        <div class="twocol">
+          <div><h3 class="tealtext">Week 1 — build &amp; recruit</h3>
+            <ul class="clean">
+              <li>Two probes: app-style FO flow · simple/full + MCP checkpoint BO</li>
+              <li>Recruit 5 residents + a few admins (Diane + a power user)</li>
+              <li><b>Kickoff</b> to align everyone on the three bets</li>
+            </ul></div>
+          <div><h3 class="accent">Week 2 — probe &amp; resolve</h3>
+            <ul class="clean">
+              <li>Run the sessions; verdict each bet</li>
+              <li>Resolve the MCP fork — guidance vs supervision</li>
+              <li><b>Friday with Irene</b>; then go / no-go on the deep audit</li>
+            </ul></div>
+        </div>
+        <p class="src-line">Output: confirmed / killed bets · a prioritised prototype direction · a defensible call on the full audit.</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">The ask</p>
+        <h2>Green-light a two-week probe sprint.</h2>
+        <p class="lead">The three bets are the agenda for Friday with Irene. We hold them with conviction, and we go looking for the evidence that kills them. Either way, we're building Monday and learning by week two.</p>
+      </div>
+    </section>
+  </div>
+
   <div class="brand" id="brand">GoVocal · Product Design</div>
   <div class="count"><b id="cur">1</b> / <span id="tot">1</span></div>
   <div class="nav"><button id="prev" aria-label="Previous">‹</button><button id="next" aria-label="Next">›</button></div>
@@ -684,7 +816,7 @@
     const decks = {};
     document.querySelectorAll('.deck').forEach(d => decks[d.dataset.deck] = [...d.querySelectorAll('.slide')]);
     const idx = {}; Object.keys(decks).forEach(k => idx[k] = 0);
-    let mode = 'brief';
+    let mode = 'bets';
     const prog = document.getElementById('progress'), cur = document.getElementById('cur'), tot = document.getElementById('tot');
     const prevB = document.getElementById('prev'), nextB = document.getElementById('next');
     const switchEl = document.getElementById('switch');
@@ -715,6 +847,7 @@
       else if (e.key === '2') setMode('full');
       else if (e.key === '3') setMode('evidence');
       else if (e.key === '4') setMode('brief');
+      else if (e.key === '5') setMode('bets');
     });
     document.querySelectorAll('.deck').forEach(d => d.addEventListener('click', e => {
       if (e.target.closest('a,button')) return;
@@ -725,7 +858,7 @@
     addEventListener('touchstart', e => tx = e.touches[0].clientX, {passive:true});
     addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); }, {passive:true});
 
-    const h = (location.hash || '').replace('#','').match(/^(lean|full|evidence|brief)(\d+)?$/);
+    const h = (location.hash || '').replace('#','').match(/^(lean|full|evidence|brief|bets)(\d+)?$/);
     if (h) { mode = h[1]; idx[mode] = h[2] ? Math.max(0, +h[2] - 1) : 0; }
     render();
   </script>
