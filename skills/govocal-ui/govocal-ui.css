@@ -334,7 +334,7 @@
 .gv-pcard__title a:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
 .gv-pcard__desc { font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-grey-800); margin: 0; }
 /* meta row: icon + label. Variant colours via modifier. */
-.gv-pcard__meta { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-s); color: var(--gv-grey-800); }  /* live "2 weeks left" = #333 */
+.gv-pcard__meta { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-s); color: var(--gv-text-body); }  /* live "2 weeks left" time-remaining probes to rgba(0,0,0,0.87) — the FO body-text colour (near-identical to #333) */
 .gv-pcard__meta svg { flex: 0 0 auto; }
 .gv-pcard__meta.time svg, .gv-pcard__meta.people svg { color: var(--gv-tenant-primary); }
 .gv-pcard__meta.done { color: var(--gv-success); }
