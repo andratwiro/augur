@@ -1689,6 +1689,23 @@
       "uses": []
     },
     {
+      "id": "hero/title",
+      "built": "components/hero/index.html",
+      "against": "fo-homepage",
+      "map": {
+        "h1": ".gv-hero__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-hero"
+      ]
+    },
+    {
       "id": "bo-users/people-header",
       "built": "pages/bo-users/index.html",
       "against": "bo-users",
