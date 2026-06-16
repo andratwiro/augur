@@ -17,17 +17,74 @@
     .ms-head__main { min-width: 0; }
     .ms-head__actions { margin-left: auto; flex: none; }
     .ms-title { margin: 0 0 4px; font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 1.3; color: var(--gv-bo-primary); }
-    /* Automated-emails panel (alt tab) groups. */
-    .ms-auto { display: none; }
-    .ms-auto.is-active { display: block; }
-    .ms-custom.is-hidden { display: none; }
-    .ms-grouphead { margin: 4px 0 6px; font-size: var(--gv-fs-s); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gv-cool-grey-500); }
-    /* Manage button = real product default-size outlined button: 14px/300, 9px 18px, ~45px tall. */
+
+    /* Panel swapping. */
+    .ms-panel { display: none; }
+    .ms-panel.is-active { display: block; }
+
+    /* ── Automated registry ──────────────────────────────────────────────
+       Real layout: an outer audience header ("To registered users", a
+       .gv-bo-formhead 21px/700 navy), then sub-group headers (Surveys,
+       General, Events …) at 16px/700 navy, each followed by rows. Each row =
+       toggle on the LEFT, name (16px/#333) + meta line, View/Edit on right. */
+    .ms-grouphead { margin: 4px 0 8px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-bo-primary); }
+    .ms-arow { display: flex; align-items: center; gap: 16px; padding: 10px 0; border-top: 1px solid var(--gv-divider); }
+    .ms-arow:first-of-type { border-top: 0; }
+    .ms-arow .gv-toggle { flex: none; }
+    .ms-arow__main { min-width: 0; flex: 1 1 auto; }
+    .ms-arow__name { margin: 0; font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-text-primary); line-height: 24px; }
+    /* Trigger/audience meta line: 14px/400 cool-grey-600, icon + text · icon + text. */
+    .ms-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 2px; font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-cool-grey-600); }
+    .ms-meta .ms-bit { display: inline-flex; align-items: center; gap: 5px; }
+    .ms-meta [data-gv-icon] svg, .ms-meta svg { width: 14px; height: 14px; flex: none; }
+    .ms-meta .ms-dot { color: var(--gv-cool-grey-400); }
+    .ms-arow__actions { display: flex; gap: 8px; flex: none; }
+    /* View/Edit: secondary-outlined, default size (14px/400, 9px 18px, ~45px). */
+    .ms-arow__actions .gv-btn { font-size: var(--gv-fs-s); font-weight: 400; line-height: 16px; }
+    .ms-arow__actions .gv-btn [data-gv-icon] svg { width: 16px; height: 16px; }
+
+    /* Manage button (custom rows) = default-size outlined: 14px/300. */
     .ms-manage { font-size: var(--gv-fs-s); font-weight: 300; line-height: 20px; }
     .ms-manage [data-gv-icon] svg { width: 16px; height: 16px; }
-    /* Real custom-email rows are denser than the canonical .gv-bo-listrow (18px 0):
-       probed e2e-admin-list-row = padding 10px 0, height ~82px. Match page-local. */
-    .ms-custom .gv-bo-listrow { padding: 10px 0; }
+    /* Real custom-email rows are denser (probed padding 10px 0, ~82px). */
+    [data-panel="custom"] .gv-bo-listrow { padding: 10px 0; }
+
+    /* ── Compose view ────────────────────────────────────────────────────── */
+    .ms-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 24px; background: none; border: 0; padding: 0; cursor: pointer; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); font-family: var(--gv-font-family); }
+    .ms-back svg { width: 18px; height: 18px; }
+    /* Sender/Email-Content group headings: 21px/500 navy (measured). */
+    .ms-section { margin: 0 0 16px; font-size: var(--gv-fs-xl); font-weight: 500; color: var(--gv-bo-primary); }
+    .ms-section--space { margin-top: 36px; }
+    /* Field labels in compose are lighter than .gv-bo-field default:
+       16px/400 cool-grey-600 (From, To, Email Subject — measured). */
+    .ms-flabel { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); }
+    .ms-flabel svg, .ms-flabel [data-gv-icon] svg { width: 15px; height: 15px; opacity: .8; }
+    .ms-fieldtop { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+    .ms-input { width: 100%; max-width: 540px; box-sizing: border-box; height: var(--gv-input-height); padding: 12px; border: 1px solid var(--gv-border-dark); border-radius: var(--gv-radius); background: #fff; color: var(--gv-text-primary); font-size: var(--gv-fs-base); font-family: var(--gv-font-family); }
+    .ms-input::placeholder { color: var(--gv-grey-500); }
+
+    /* Char counter "0/80" — 14px/400 cool-grey-600, sits inside the subject
+       field's trailing padding. PROMOTION CANDIDATE → .gv-bo-charcount */
+    .ms-subjectwrap { position: relative; max-width: 540px; }
+    .ms-subjectwrap .ms-input { padding-right: 62px; }
+    .ms-charcount { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-cool-grey-600); pointer-events: none; }
+
+    /* Rich-text toolbar — bg #F8F8F8, 8px pad, 41px tall, 3px 3px 0 0, on top
+       of a bordered editor area. PROMOTION CANDIDATE → .gv-bo-rte */
+    .ms-rte { max-width: 540px; }
+    .ms-rte__bar { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; box-sizing: border-box; min-height: 41px; padding: 6px 8px; background: #F8F8F8; border: 1px solid var(--gv-border-dark); border-bottom: 0; border-radius: var(--gv-radius) var(--gv-radius) 0 0; }
+    .ms-rte__sel { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 6px 0 8px; margin-right: 4px; border: 0; background: none; color: #444; font-family: var(--gv-font-family); font-size: var(--gv-fs-s); font-weight: 500; cursor: pointer; }
+    .ms-rte__sel svg { width: 14px; height: 14px; }
+    .ms-rte__div { width: 1px; align-self: stretch; margin: 4px 4px; background: var(--gv-divider); }
+    .ms-rte__btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--gv-radius); background: none; color: #444; cursor: pointer; }
+    .ms-rte__btn:hover { background: var(--gv-grey-200); }
+    .ms-rte__btn svg, .ms-rte__btn [data-gv-icon] svg { width: 16px; height: 16px; }
+    .ms-rte__area { box-sizing: border-box; min-height: 302px; padding: 12px 15px; border: 1px solid #808080; border-radius: 0 0 var(--gv-radius) var(--gv-radius); background: #fff; font-size: var(--gv-fs-13); color: var(--gv-text-primary); outline: none; }
+    .ms-rte__area:empty::before { content: ''; }
+
+    .ms-actions { margin-top: 28px; display: flex; gap: 12px; }
+    /* Save as draft = primary admin fill (green in this tenant via --gv-primary
+       theming; the captured Raleigh tenant measured #08833a = --gv-green-save). */
   </style>
 </head>
 <body class="gv-bo">
@@ -42,14 +99,14 @@
 
       <section class="gv-bo-section">
         <!-- ── Custom emails ──────────────────────────────────────────── -->
-        <div class="ms-custom" data-panel="custom">
+        <div class="ms-panel is-active" data-panel="custom">
           <div class="ms-head">
             <div class="ms-head__main">
               <h1 class="ms-title">Custom emails</h1>
               <p class="gv-bo-pagelede" style="margin:0">Send out custom emails and check statistics.</p>
             </div>
             <div class="ms-head__actions">
-              <button class="gv-btn admin-dark"><svg class="ms-plus-circle" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#fff"/><path d="M10 5.5v9M5.5 10h9" stroke="var(--gv-primary)" stroke-width="2" stroke-linecap="round"/></svg><span class="gv-btn__label">Create email</span></button>
+              <button class="gv-btn admin-dark" data-ms-compose><svg class="ms-plus-circle" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="#fff"/><path d="M10 5.5v9M5.5 10h9" stroke="var(--gv-primary)" stroke-width="2" stroke-linecap="round"/></svg><span class="gv-btn__label">Create email</span></button>
             </div>
           </div>
 
@@ -78,21 +135,216 @@
           </div>
         </div>
 
-        <!-- ── Automated emails (alt tab) ─────────────────────────────── -->
-        <div class="ms-auto" data-panel="automated">
+        <!-- ── Automated emails — grouped trigger registry ────────────── -->
+        <div class="ms-panel" data-panel="automated">
           <div class="ms-head">
             <div class="ms-head__main">
               <h1 class="ms-title">Automated emails</h1>
-              <p class="gv-bo-pagelede" style="margin:0">These emails are sent automatically. You can disable non-essential ones platform-wide.</p>
+              <p class="gv-bo-pagelede" style="margin:0">Automated emails are automatically sent out and are triggered by a user's actions. You can turn some of them off for all users of your platform. The other automated emails can not be turned off because they are required for the proper functioning of your platform.</p>
             </div>
           </div>
+
           <div class="gv-bo-card">
-            <p class="ms-grouphead">For all users</p>
-            <div class="gv-bo-listrow"><div class="gv-bo-listrow__main"><h3 class="gv-bo-listrow__title">Welcome email</h3><div class="gv-bo-listrow__sub">Sent when a user completes registration.</div></div><div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" checked aria-label="Welcome email enabled"><span class="track"></span></span></div></div>
-            <div class="gv-bo-listrow"><div class="gv-bo-listrow__main"><h3 class="gv-bo-listrow__title">Password reset</h3><div class="gv-bo-listrow__sub">Essential — cannot be disabled.</div></div><div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" checked disabled aria-label="Password reset (essential)"><span class="track"></span></span></div></div>
-            <p class="ms-grouphead" style="margin-top:22px">For admins &amp; managers</p>
-            <div class="gv-bo-listrow"><div class="gv-bo-listrow__main"><h3 class="gv-bo-listrow__title">New input published</h3><div class="gv-bo-listrow__sub">Notifies project managers when a resident posts an input.</div></div><div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" checked aria-label="New input published enabled"><span class="track"></span></span></div></div>
-            <div class="gv-bo-listrow"><div class="gv-bo-listrow__main"><h3 class="gv-bo-listrow__title">Weekly assignment reminder</h3><div class="gv-bo-listrow__sub">A weekly digest of inputs assigned to you.</div></div><div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" aria-label="Weekly assignment reminder"><span class="track"></span></span></div></div>
+            <h2 class="gv-bo-formhead" style="margin-bottom:16px">To registered users</h2>
+
+            <h3 class="ms-grouphead">Surveys</h3>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" checked aria-label="Survey not submitted enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">Survey not submitted</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>User who has started but not submitted their survey</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>1 day after user last saved the survey in draft</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+
+            <h3 class="ms-grouphead" style="margin-top:22px">General</h3>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" checked aria-label="After registration enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">After registration</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>User who registers</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>User registers for the first time</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" checked aria-label="Weekly overview enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">Weekly overview</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>All users</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>Weekly, on Thursdays at 1 PM</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" checked aria-label="Invitation reminder enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">Invitation reminder</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>User who was invited</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>7 days after invite is sent</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" aria-label="Invitation enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">Invitation</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>User who was invited</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>User is invited to platform</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+
+            <h3 class="ms-grouphead" style="margin-top:22px">Events</h3>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" checked aria-label="Event registration confirmation enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">Event registration confirmation</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>Newly registered user</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>Registration to an event</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+
+            <h3 class="ms-grouphead" style="margin-top:22px">Inputs</h3>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" checked aria-label="Publication of my input enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">Publication of my input</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>User who published the input</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>Input is published</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" checked aria-label="Status change of an input that you follow enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">Status change of an input that you follow</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>Users who follow the input</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>Input status changes</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+
+            <h3 class="ms-grouphead" style="margin-top:22px">Voting</h3>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" checked aria-label="Last chance to vote enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">Last chance to vote</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>Users who engaged with the project but have not voted</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>2 days before voting phase closes</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+
+            <h3 class="ms-grouphead" style="margin-top:22px">Proposals</h3>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" checked aria-label="Invitation to co-sponsor a proposal enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">Invitation to co-sponsor a proposal</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>User who is invited to co-sponsor a proposal</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>User is invited to co-sponsor a proposal</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+
+            <h3 class="ms-grouphead" style="margin-top:22px">Projects</h3>
+            <div class="ms-arow">
+              <span class="gv-toggle"><input type="checkbox" checked aria-label="New project phase with voting enabled"><span class="track"></span></span>
+              <div class="ms-arow__main">
+                <p class="ms-arow__name">New project phase with voting</p>
+                <div class="ms-meta"><span class="ms-bit"><span data-gv-icon="user"></span>Users who engaged with the project</span><span class="ms-dot">·</span><span class="ms-bit"><span data-gv-icon="clock"></span>Project phase changes</span></div>
+              </div>
+              <div class="ms-arow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Compose: Create a new email ────────────────────────────── -->
+        <div class="ms-panel" data-panel="compose">
+          <div class="gv-bo-card">
+            <button class="ms-back" data-ms-back>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Go back</span>
+            </button>
+
+            <h1 class="ms-title" style="font-size:var(--gv-fs-xxxl);margin-bottom:28px">Create a new email</h1>
+
+            <!-- Sender and recipients -->
+            <h2 class="ms-section">Sender and recipients</h2>
+            <div class="gv-bo-field">
+              <span class="ms-flabel">From <span data-gv-icon="info-outline"></span></span>
+              <select class="gv-bo-select">
+                <option>Go Vocal Admin</option>
+                <option>City of Raleigh</option>
+              </select>
+            </div>
+            <div class="gv-bo-field">
+              <span class="ms-flabel">To <span data-gv-icon="info-outline"></span></span>
+              <select class="gv-bo-select">
+                <option>Registered users</option>
+                <option>All users</option>
+                <option>A specific group</option>
+              </select>
+            </div>
+            <div class="gv-bo-field">
+              <span class="ms-flabel">Replies should go to <span data-gv-icon="info-outline"></span></span>
+              <input class="ms-input" type="email" value="moderator@citizenlab.co" />
+            </div>
+
+            <!-- Email Content -->
+            <h2 class="ms-section ms-section--space">Email Content</h2>
+
+            <div class="gv-bo-field">
+              <div class="ms-fieldtop">
+                <span class="ms-flabel" style="margin-bottom:0">Email Subject <span data-gv-icon="info-outline"></span></span>
+                <span class="gv-bo-multiloc">
+                  <button class="is-active" type="button">EN</button>
+                  <button type="button"><span class="miss"></span>ES-ES</button>
+                </span>
+              </div>
+              <div class="ms-subjectwrap" style="margin-top:8px">
+                <input class="ms-input" type="text" maxlength="80" placeholder="" aria-label="Email subject" />
+                <!-- PROMOTION CANDIDATE → .gv-bo-charcount -->
+                <span class="ms-charcount" data-ms-count>0/80</span>
+              </div>
+            </div>
+
+            <div class="gv-bo-field" style="max-width:540px">
+              <div class="ms-fieldtop">
+                <span class="ms-flabel" style="margin-bottom:0">Message <span data-gv-icon="info-outline"></span></span>
+                <span class="gv-bo-multiloc">
+                  <button class="is-active" type="button">EN</button>
+                  <button type="button"><span class="miss"></span>ES-ES</button>
+                </span>
+              </div>
+              <!-- PROMOTION CANDIDATE → .gv-bo-rte (rich-text toolbar + editor) -->
+              <div class="ms-rte" style="margin-top:8px">
+                <div class="ms-rte__bar" role="toolbar" aria-label="Formatting">
+                  <button class="ms-rte__sel" type="button">Normal
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <span class="ms-rte__div"></span>
+                  <button class="ms-rte__btn" type="button" title="Bold" aria-label="Bold">
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h7a4 4 0 0 1 0 8H6V4zm0 8h8a4 4 0 0 1 0 8H6v-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                  </button>
+                  <button class="ms-rte__btn" type="button" title="Italic" aria-label="Italic">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 4h8M6 20h8M14 4l-4 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  </button>
+                  <button class="ms-rte__btn" type="button" title="Add link" aria-label="Add link"><span data-gv-icon="link"></span></button>
+                  <span class="ms-rte__div"></span>
+                  <button class="ms-rte__btn" type="button" title="Ordered list" aria-label="Ordered list">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><text x="2" y="8" font-size="7" fill="currentColor" font-family="sans-serif">1</text><text x="2" y="14" font-size="7" fill="currentColor" font-family="sans-serif">2</text><text x="2" y="20" font-size="7" fill="currentColor" font-family="sans-serif">3</text></svg>
+                  </button>
+                  <button class="ms-rte__btn" type="button" title="Unordered list" aria-label="Unordered list">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6" r="1.6" fill="currentColor"/><circle cx="4" cy="12" r="1.6" fill="currentColor"/><circle cx="4" cy="18" r="1.6" fill="currentColor"/></svg>
+                  </button>
+                  <span class="ms-rte__div"></span>
+                  <button class="ms-rte__btn" type="button" title="Upload image" aria-label="Upload image">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/><circle cx="8.5" cy="9.5" r="1.5" fill="currentColor"/><path d="M5 18l5-5 4 4 3-3 2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </button>
+                  <button class="ms-rte__btn" type="button" title="Remove formatting" aria-label="Remove formatting">
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 5h12M9 5l-2 9M14 5l-1 4M5 19h6M17 14l5 5M22 14l-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  </button>
+                </div>
+                <div class="ms-rte__area" contenteditable="true" role="textbox" aria-label="Message body"></div>
+              </div>
+            </div>
+
+            <div class="ms-actions">
+              <button class="gv-btn admin-dark"><span class="gv-btn__label">Save as draft</span></button>
+            </div>
           </div>
         </div>
       </section>
@@ -101,18 +353,26 @@
 
   <script src="bo-chrome.js"></script>
   <script>
+    // Tab + compose panel swapping.
+    function showPanel(name) {
+      document.querySelectorAll(".ms-panel").forEach(p => p.classList.toggle("is-active", p.dataset.panel === name));
+      // The section tab strip stays on Custom/Automated; compose lives under Custom.
+      const tabKey = (name === "compose") ? "custom" : name;
+      document.querySelectorAll(".gv-bo-tab[data-ms]").forEach(t => t.classList.toggle("is-active", t.dataset.ms === tabKey));
+    }
     document.querySelectorAll(".gv-bo-tab[data-ms]").forEach(tab => {
-      tab.addEventListener("click", e => {
-        e.preventDefault();
-        document.querySelectorAll(".gv-bo-tab[data-ms]").forEach(t => t.classList.remove("is-active"));
-        tab.classList.add("is-active");
-        const k = tab.dataset.ms;
-        document.querySelector(".ms-custom").classList.toggle("is-hidden", k !== "custom");
-        document.querySelector(".ms-auto").classList.toggle("is-active", k === "automated");
-      });
+      tab.addEventListener("click", e => { e.preventDefault(); showPanel(tab.dataset.ms); });
     });
+    document.querySelectorAll("[data-ms-compose]").forEach(b => b.addEventListener("click", () => showPanel("compose")));
+    document.querySelectorAll("[data-ms-back]").forEach(b => b.addEventListener("click", () => showPanel("custom")));
+
+    // Live char counter on the subject field.
+    document.querySelectorAll(".ms-subjectwrap").forEach(w => {
+      const inp = w.querySelector(".ms-input"), out = w.querySelector("[data-ms-count]");
+      if (inp && out) inp.addEventListener("input", () => { out.textContent = inp.value.length + "/80"; });
+    });
+
     if (window.GVIcons) window.GVIcons.render(document.body);
   </script>
 </body>
 </html>
-</content>

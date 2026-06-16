@@ -43,6 +43,61 @@
     .us-email { display: block; color: var(--gv-text-secondary); font-size: var(--gv-fs-13); margin-top: 2px; }
     .us-assigned { display: inline-flex; align-items: center; gap: 4px; color: var(--gv-text-secondary); font-size: var(--gv-fs-13); cursor: pointer; margin-top: 2px; }
     .us-assigned .gv-icon { width: 13px; height: 13px; }
+
+    /* ── Sub-view view-swapping: only the active state shows ──────────── */
+    .us-view { display: none; }
+    .us-view.is-active { display: block; }
+
+    /* Seat-summary card (Admins/Managers sub-views): a teal-iconed inline summary
+       above an empty state. Measured icons fill #147985 = var(--gv-teal-500). */
+    .us-seatsummary { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; margin: 22px 0 6px; }
+    .us-seatsummary__item { display: inline-flex; align-items: center; gap: 8px; color: var(--gv-bo-primary); font-size: var(--gv-fs-base); }
+    .us-seatsummary__item .gv-icon { width: 22px; height: 22px; color: var(--gv-teal-500); flex: none; }
+    .us-seatsummary__link { display: inline-flex; align-items: center; gap: 4px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); text-decoration: none; }
+    .us-seatsummary__link:hover { text-decoration: underline; }
+
+    /* Banned-emails sub-view: a two-column summary panel on grey-50. */
+    .us-banned { display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; margin: 24px 0; padding: 24px 28px; background: var(--gv-grey-50); border-radius: var(--gv-radius); }
+    .us-banned__col { min-width: 240px; }
+    .us-banned__label { margin: 0 0 6px; font-weight: 700; color: var(--gv-text-primary); font-size: var(--gv-fs-base); }
+    .us-banned__count { margin: 0; font-size: var(--gv-fs-xl); font-weight: 400; color: var(--gv-text-primary); }
+    .us-banned__form { display: flex; gap: 10px; align-items: center; }
+    .us-banned__form .gv-input { width: 280px; }
+
+    /* Seats overview sub-view chrome. */
+    .us-seatshead { display: flex; flex-direction: column; gap: 10px; }
+    .us-goback { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-base); text-decoration: none; align-self: flex-start; }
+    .us-goback:hover { text-decoration: underline; }
+    .us-goback .gv-icon { width: 18px; height: 18px; }
+    .us-seatstitle { margin: 0; font-size: var(--gv-fs-xxxl); font-weight: 700; color: var(--gv-text-primary); }
+    .us-tabs { display: flex; gap: 0; margin: 18px 0 0; }
+    .us-tab { appearance: none; background: var(--gv-white); border: 1px solid var(--gv-divider); color: var(--gv-bo-primary); font-size: var(--gv-fs-base); padding: 9px 22px; cursor: pointer; }
+    .us-tab.first { border-radius: 3px 0 0 3px; }
+    .us-tab.last { border-radius: 0 3px 3px 0; border-left: 0; }
+    .us-tab.is-selected { background: var(--gv-bo-primary); color: var(--gv-white); border-color: var(--gv-bo-primary); }
+    /* The seat-count row inside seats overview sits in a 1px #CBCBCB outlined band. */
+    .us-seatband { display: flex; flex-wrap: wrap; gap: 28px; align-items: center; margin: 18px 0; padding: 16px 20px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); }
+    /* Seats table: header bg #FCFCFC = var(--gv-grey-50), 1px #E0E0E0 borders, navy text. */
+    .us-seatstable { width: 100%; border-collapse: collapse; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); border: 1px solid var(--gv-divider); }
+    .us-seatstable thead th { text-align: left; font-weight: 700; padding: 14px 16px; background: var(--gv-grey-50); border-bottom: 1px solid var(--gv-divider); }
+    .us-seatstable tbody td { padding: 14px 16px; border-bottom: 1px solid var(--gv-divider); vertical-align: middle; }
+    .us-seatstable tbody tr:last-child td { border-bottom: 0; }
+    .us-pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: var(--gv-fs-13); }
+    .us-pill.is-accepted { background: var(--gv-teal-100); color: var(--gv-teal-700); }
+    .us-pill.is-pending { background: var(--gv-grey-200); color: var(--gv-cool-grey-600); }
+
+    /* Group sub-view header actions. */
+    .us-groupactions { display: flex; gap: 10px; flex: none; margin-left: auto; }
+
+    /* ── Add-group modal choice cards (mounted in canonical .gv-modal__body) ── */
+    .us-choices { display: flex; gap: 16px; }
+    .us-choice { flex: 1 1 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 28px 22px; background: var(--gv-grey-100); border-radius: var(--gv-radius); }
+    .us-choice__icon { width: 40px; height: 40px; color: var(--gv-bo-primary); }
+    .us-choice__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 600; color: var(--gv-bo-primary); }
+    .us-choice__text { margin: 0; flex: 1 1 auto; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); line-height: 1.5; }
+    .us-choice__link { color: var(--gv-teal-500); font-size: var(--gv-fs-s); text-decoration: none; }
+    .us-choice__link:hover { text-decoration: underline; }
+    .us-choice .gv-btn { width: 100%; }
   </style>
 </head>
 <body class="gv-bo">
@@ -54,62 +109,238 @@
 
         <!-- ── Left rail (canvas grey) ─────────────────────────────── -->
         <aside class="us-rail">
-          <a class="us-railitem is-active" href="#">Registered users <span class="us-railitem__count">1214</span></a>
-          <a class="us-railitem" href="#">Admins <span class="us-railitem__count">0</span></a>
-          <a class="us-railitem" href="#">Folder managers <span class="us-railitem__count">0</span></a>
-          <a class="us-railitem" href="#">Project managers <span class="us-railitem__count">1</span></a>
-          <a class="us-railitem" href="#">Blocked users <span class="us-railitem__count">0</span></a>
-          <a class="us-railitem" href="#">Banned emails <span class="us-railitem__count">0</span></a>
+          <a class="us-railitem is-active" href="#" data-view="people">Registered users <span class="us-railitem__count">1214</span></a>
+          <a class="us-railitem" href="#" data-view="admins" data-label="Admins" data-count="0">Admins <span class="us-railitem__count">0</span></a>
+          <a class="us-railitem" href="#" data-view="admins" data-label="Folder managers" data-count="0">Folder managers <span class="us-railitem__count">0</span></a>
+          <a class="us-railitem" href="#" data-view="people" data-label="Project managers">Project managers <span class="us-railitem__count">1</span></a>
+          <a class="us-railitem" href="#" data-view="blocked">Blocked users <span class="us-railitem__count">0</span></a>
+          <a class="us-railitem" href="#" data-view="banned">Banned emails <span class="us-railitem__count">0</span></a>
 
           <div class="us-groupshead">
             <h2>Groups</h2>
-            <button class="us-addgroup" aria-label="Add a new group"><span data-gv-icon="plus"></span></button>
+            <button class="us-addgroup" aria-label="Add a new group" data-open-modal><span data-gv-icon="plus"></span></button>
           </div>
           <span class="gv-bo-search us-railsearch"><input class="gv-input" type="search" aria-label="Search groups"><span class="gv-icon" data-gv-icon="search"></span></span>
           <div class="us-projfilter"><select class="gv-bo-select" aria-label="Filter by project"><option>Filter by project</option><option>Dorothea Dix Park</option></select></div>
-          <a class="us-railitem" href="#">Department Directors <span class="us-railitem__count">17</span></a>
-          <a class="us-railitem" href="#">James Test #1 <span class="us-railitem__count">2</span></a>
-          <a class="us-railitem" href="#">Council Members <span class="us-railitem__count">7</span></a>
+          <a class="us-railitem" href="#" data-view="group" data-label="Department Directors" data-count="17">Department Directors <span class="us-railitem__count">17</span></a>
+          <a class="us-railitem" href="#" data-view="group" data-label="James  Test #1" data-count="2">James Test #1 <span class="us-railitem__count">2</span></a>
+          <a class="us-railitem" href="#" data-view="group" data-label="Council Members" data-count="7">Council Members <span class="us-railitem__count">7</span></a>
 
           <div class="us-invite"><button class="gv-btn success"><span data-gv-icon="email"></span><span class="gv-btn__label">Invite users</span></button></div>
         </aside>
 
         <!-- ── Right content (white) ───────────────────────────────── -->
         <section class="us-content">
-          <div class="us-head">
-            <div class="us-head__main">
-              <h1 class="gv-bo-pagehead">Registered users</h1>
-              <p class="gv-bo-pagelede" style="margin:6px 0 0">Get an overview of all the people and organisations that registered on the platform. Add a selection of users to Manual groups or Smart groups.</p>
+
+          <!-- ═══ VIEW: Registered users / Project managers (people table) ═══ -->
+          <div class="us-view is-active" data-view="people">
+            <div class="us-head">
+              <div class="us-head__main">
+                <h1 class="gv-bo-pagehead" id="people-title">Registered users</h1>
+                <p class="gv-bo-pagelede" style="margin:6px 0 0">Get an overview of all the people and organisations that registered on the platform. Add a selection of users to Manual groups or Smart groups.</p>
+              </div>
+              <div class="us-head__actions">
+                <button class="gv-btn success" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
+              </div>
             </div>
-            <div class="us-head__actions">
-              <button class="gv-btn success"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
-              <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
+
+            <div class="us-toolbar">
+              <label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label>
+              <span style="color:var(--gv-text-secondary)">Select</span>
+              <div class="us-spacer"></div>
+              <button class="gv-bo-link"><span data-gv-icon="download"></span>Export all</button>
+              <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search users"><span class="gv-icon" data-gv-icon="search"></span></span>
+            </div>
+
+            <table class="gv-bo-table is-people">
+              <thead>
+                <tr>
+                  <th class="gv-bo-table__check"></th>
+                  <th>NAME</th>
+                  <th>ROLE</th>
+                  <th>LAST ACTIVE</th>
+                  <th class="gv-bo-th--sort is-sorted">JOINED <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th>OPTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+
+          <!-- ═══ VIEW: Admins / Folder managers (seat summary + empty) ═══ -->
+          <div class="us-view" data-view="admins">
+            <div class="us-head">
+              <div class="us-head__main">
+                <h1 class="gv-bo-pagehead" id="admins-title">Admins</h1>
+                <p class="gv-bo-pagelede" style="margin:6px 0 0" id="admins-lede">Manage the people who can administer the platform.</p>
+              </div>
+              <div class="us-head__actions">
+                <button class="gv-btn success" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
+              </div>
+            </div>
+
+            <div class="us-seatsummary">
+              <span class="us-seatsummary__item"><span class="gv-icon" data-gv-icon="shield"></span>Total admin seats (1)</span>
+              <span class="us-seatsummary__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Assigned seats: 0</span>
+              <span class="us-seatsummary__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Available seats: 1</span>
+              <a class="us-seatsummary__link" href="#" data-view="seats">Go to seats overview <span class="gv-icon" data-gv-icon="chevron-right"></span></a>
+            </div>
+
+            <div class="gv-bo-empty">
+              <span class="gv-bo-empty__icon gv-icon" data-gv-icon="group"></span>
+              <h2 class="gv-bo-empty__title">There is no one in this group yet</h2>
             </div>
           </div>
 
-          <div class="us-toolbar">
-            <label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label>
-            <span style="color:var(--gv-text-secondary)">Select</span>
-            <div class="us-spacer"></div>
-            <button class="gv-bo-link"><span data-gv-icon="download"></span>Export all</button>
-            <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search users"><span class="gv-icon" data-gv-icon="search"></span></span>
+          <!-- ═══ VIEW: Blocked users (empty state) ═══ -->
+          <div class="us-view" data-view="blocked">
+            <div class="us-head">
+              <div class="us-head__main">
+                <h1 class="gv-bo-pagehead">Blocked users</h1>
+                <p class="gv-bo-pagelede" style="margin:6px 0 0">Manage blocked users.</p>
+              </div>
+              <div class="us-head__actions">
+                <button class="gv-btn success" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
+              </div>
+            </div>
+
+            <div class="gv-bo-empty">
+              <span class="gv-bo-empty__icon gv-icon" data-gv-icon="lock"></span>
+              <h2 class="gv-bo-empty__title">There is no one in this group yet</h2>
+            </div>
           </div>
 
-          <table class="gv-bo-table is-people">
-            <thead>
-              <tr>
-                <th class="gv-bo-table__check"></th>
-                <th>NAME</th>
-                <th>ROLE</th>
-                <th>LAST ACTIVE</th>
-                <th class="gv-bo-th--sort is-sorted">JOINED <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
-                <th>OPTIONS</th>
-              </tr>
-            </thead>
-            <tbody id="rows"></tbody>
-          </table>
+          <!-- ═══ VIEW: Banned emails (summary + checker) ═══ -->
+          <div class="us-view" data-view="banned">
+            <div class="us-head">
+              <div class="us-head__main">
+                <h1 class="gv-bo-pagehead">Banned emails</h1>
+                <p class="gv-bo-pagelede" style="margin:6px 0 0">Manage email addresses blocked from registration</p>
+              </div>
+              <div class="us-head__actions">
+                <button class="gv-btn success" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
+              </div>
+            </div>
+
+            <div class="us-banned">
+              <div class="us-banned__col">
+                <p class="us-banned__label">Total banned emails</p>
+                <p class="us-banned__count">0</p>
+              </div>
+              <div class="us-banned__col">
+                <p class="us-banned__label">Check if an email is banned</p>
+                <form class="us-banned__form" onsubmit="return false">
+                  <input class="gv-input" type="email" placeholder="Enter email address" aria-label="Email address to check">
+                  <button class="gv-btn primary" type="submit"><span class="gv-btn__label">Check</span></button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ VIEW: Seats overview (tabs + table) ═══ -->
+          <div class="us-view" data-view="seats">
+            <div class="us-seatshead">
+              <a class="us-goback" href="#" data-view="people"><span class="gv-icon" data-gv-icon="arrow-left"></span>Go back</a>
+              <h1 class="us-seatstitle">Seats Overview</h1>
+            </div>
+
+            <div class="us-tabs" role="tablist">
+              <button class="us-tab first is-selected" role="tab" aria-selected="true" data-seattab="admin">Admins</button>
+              <button class="us-tab last" role="tab" aria-selected="false" data-seattab="moderator">Managers</button>
+            </div>
+
+            <div class="us-seatband">
+              <span class="us-seatsummary__item"><span class="gv-icon" data-gv-icon="shield"></span>Total admin seats (1)</span>
+              <span class="us-seatsummary__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Assigned seats: 0</span>
+              <span class="us-seatsummary__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Available seats: 1</span>
+            </div>
+
+            <table class="us-seatstable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Invite status</th>
+                  <th>Options</th>
+                </tr>
+              </thead>
+              <tbody id="seatrows"></tbody>
+            </table>
+          </div>
+
+          <!-- ═══ VIEW: Single group (members table) ═══ -->
+          <div class="us-view" data-view="group">
+            <div class="us-head">
+              <div class="us-head__main">
+                <h1 class="gv-bo-pagehead" id="group-title">James Test #1</h1>
+              </div>
+              <div class="us-groupactions">
+                <button class="gv-btn secondary-outlined"><span class="gv-btn__label">Edit Group</span></button>
+                <button class="gv-bo-link"><span data-gv-icon="delete"></span>Delete Group</button>
+              </div>
+            </div>
+
+            <div class="us-toolbar">
+              <label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label>
+              <span style="color:var(--gv-text-secondary)">Select</span>
+              <div class="us-spacer"></div>
+              <button class="gv-bo-link"><span data-gv-icon="download"></span>Export users in group</button>
+              <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search members"><span class="gv-icon" data-gv-icon="search"></span></span>
+            </div>
+
+            <table class="gv-bo-table is-people">
+              <thead>
+                <tr>
+                  <th class="gv-bo-table__check"></th>
+                  <th>NAME</th>
+                  <th>ROLE</th>
+                  <th>LAST ACTIVE</th>
+                  <th class="gv-bo-th--sort is-sorted">JOINED <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th>OPTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="grouprows"></tbody>
+            </table>
+          </div>
+
         </section>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ Add-group modal — canonical .gv-modal primitive (650px default width) ════ -->
+  <div class="gv-modal-overlay" id="group-overlay" data-modal-overlay>
+    <div class="gv-modal" role="dialog" aria-modal="true" aria-labelledby="group-modal-heading">
+      <div class="gv-modal__header">
+        <h1 class="gv-modal__title" id="group-modal-heading">What type of group do you need?</h1>
+      </div>
+      <button class="gv-modal__close" type="button" aria-label="Close window" data-close-modal>
+        <svg viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L13.41,12L19,6.41Z"></path>
+        </svg>
+      </button>
+      <div class="gv-modal__body">
+        <div class="us-choices">
+          <div class="us-choice">
+            <span class="us-choice__icon gv-icon" data-gv-icon="group"></span>
+            <h2 class="us-choice__title">Manual group</h2>
+            <p class="us-choice__text">You can select users from the overview and add them to this group.</p>
+            <a class="us-choice__link" href="#">Learn more about groups</a>
+            <button class="gv-btn primary" type="button"><span class="gv-btn__label">Create a manual group</span></button>
+          </div>
+          <div class="us-choice">
+            <span class="us-choice__icon gv-icon" data-gv-icon="filter"></span>
+            <h2 class="us-choice__title">Smart group</h2>
+            <p class="us-choice__text">You can define conditions and users who meet the conditions are automatically added to this group.</p>
+            <a class="us-choice__link" href="#">Learn more about groups</a>
+            <button class="gv-btn primary" type="button"><span class="gv-btn__label">Create a smart group</span></button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -130,7 +361,7 @@
       ["Philip Stein", "steinhein@gmail.com", "Registered user", false, "", "September 27, 2023", 10],
       ["Mary Noel", "marynoel@gmail.com", "Registered user", false, "", "September 27, 2023", 1],
     ];
-    document.getElementById("rows").innerHTML = USERS.map(u => {
+    function personRow(u) {
       const [name, email, role, pm, last, joined, face] = u;
       const f = String(face).padStart(2, "0");
       const roleCell = pm
@@ -142,11 +373,96 @@
         <td>${roleCell}</td>
         <td style="color:var(--gv-bo-primary)">${last || ""}</td>
         <td style="white-space:nowrap">${joined}</td>
-        <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>`;
+        <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td></tr>`;
+    }
+    document.getElementById("rows").innerHTML = USERS.map(personRow).join("");
+
+    // Group members (single manual-group view, e.g. "James Test #1" with 2 members).
+    const GROUP_MEMBERS = [
+      ["Ralph Murray", "leta@macejkovic.info", "Registered user", false, "", "September 21, 2023", 4],
+      ["Leta Hudson", "ralph@bechtelar.org", "Registered user", false, "", "September 21, 2023", 6],
+    ];
+    document.getElementById("grouprows").innerHTML = GROUP_MEMBERS.map(personRow).join("");
+
+    // Seats overview table — Admins tab (one admin seat assigned to the account owner).
+    const SEATS = [
+      ["Go Vocal Admin", "admin@govocal.com", "Administrator", "accepted", 8],
+    ];
+    document.getElementById("seatrows").innerHTML = SEATS.map(s => {
+      const [name, email, role, status, face] = s;
+      const f = String(face).padStart(2, "0");
+      const pill = status === "accepted"
+        ? `<span class="us-pill is-accepted">Accepted</span>`
+        : `<span class="us-pill is-pending">Pending</span>`;
+      return `<tr>
+        <td><span class="us-person"><img class="gv-bo-table__avatar" src="../../skills/govocal-ui/avatars/face-${f}.jpg" alt=""><span><span class="us-name">${name}</span><span class="us-email">${email}</span></span></span></td>
+        <td>${role}</td>
+        <td>${pill}</td>
+        <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td></tr>`;
     }).join("");
+
+    // ── View switching from rail items + in-page actions ──────────────
+    (function () {
+      const views = document.querySelectorAll(".us-view");
+      const railItems = document.querySelectorAll(".us-railitem");
+      function show(view, opts) {
+        views.forEach(v => v.classList.toggle("is-active", v.dataset.view === view));
+        // Adjust dynamic labels for shared views.
+        if (view === "admins" && opts && opts.label) {
+          document.getElementById("admins-title").textContent = opts.label;
+        }
+        if (view === "people" && opts && opts.label === "Project managers") {
+          document.getElementById("people-title").textContent = "Project managers";
+        } else if (view === "people") {
+          document.getElementById("people-title").textContent = "Registered users";
+        }
+        if (view === "group" && opts && opts.label) {
+          document.getElementById("group-title").textContent = opts.label.replace(/\s+/g, " ").trim();
+        }
+        window.scrollTo(0, 0);
+      }
+      railItems.forEach(item => {
+        item.addEventListener("click", (e) => {
+          e.preventDefault();
+          railItems.forEach(i => i.classList.remove("is-active"));
+          item.classList.add("is-active");
+          show(item.dataset.view, { label: item.dataset.label });
+        });
+      });
+      // In-page buttons/links that switch views (Seats overview, Go to seats, Go back).
+      // Scope to controls only — the .us-view containers also carry data-view, and a
+      // handler on them would catch the bubbled click and revert the switch.
+      document.querySelectorAll("button[data-view], a[data-view]:not(.us-railitem)").forEach(el => {
+        el.addEventListener("click", (e) => {
+          e.preventDefault();
+          show(el.dataset.view, {});
+        });
+      });
+      // Seats tabs.
+      document.querySelectorAll("[data-seattab]").forEach(tab => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll("[data-seattab]").forEach(t => {
+            t.classList.remove("is-selected");
+            t.setAttribute("aria-selected", "false");
+          });
+          tab.classList.add("is-selected");
+          tab.setAttribute("aria-selected", "true");
+        });
+      });
+    })();
+
+    // ── Add-group modal open/close (canonical .gv-modal-overlay .is-open) ──
+    (function () {
+      const overlay = document.getElementById("group-overlay");
+      const open = () => overlay.classList.add("is-open");
+      const close = () => overlay.classList.remove("is-open");
+      document.querySelectorAll("[data-open-modal]").forEach(b => b.addEventListener("click", open));
+      document.querySelectorAll("[data-close-modal]").forEach(b => b.addEventListener("click", close));
+      overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape" && overlay.classList.contains("is-open")) close(); });
+    })();
 
     if (window.GVIcons) window.GVIcons.render(document.body);
   </script>
 </body>
 </html>
-</content>

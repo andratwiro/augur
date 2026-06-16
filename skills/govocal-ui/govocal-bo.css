@@ -476,6 +476,9 @@
 /* Empty state (Messaging "Send your first email"). */
 .gv-bo-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 48px 24px; }
 .gv-bo-empty__icon { width: 56px; height: 56px; color: var(--gv-teal-200); }
+/* The icon renderer stamps width/height="1em" on the <svg>; override so the empty
+   glyph fills its 56px slot instead of shrinking to text size. */
+.gv-bo-empty__icon svg { width: 100%; height: 100%; }
 .gv-bo-empty__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-empty__text { margin: 0; max-width: 360px; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); line-height: 1.5; }
 

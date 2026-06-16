@@ -84,7 +84,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Phase Timeline** | `/components/phase-timeline/` | `components/phase-timeline/` | Phase timeline — GoVocal component |
 | **Poll** | `/components/poll/` | `components/poll/` | Poll method body — GoVocal component |
 | **Project Card** | `/components/project-card/` | `components/project-card/` | The participation-project card (thumb, title, meta with status icon, CTA) and the horizontal scroll rail. The whole card is clickable via a stretched title lin… |
-| **Proposal Threshold** | `/components/proposal-threshold/` | `components/proposal-threshold/` | The proposals signature progress bar — vote icon, count over target, and a tenant-tinted fill — paired with an open or expired status pill. |
+| **Proposal Threshold** | `/components/proposal-threshold/` | `components/proposal-threshold/` | The proposals signature progress bar — vote icon and count over target on one row, with a tenant-tinted fill bar on its own row beneath, exactly as the real pr… |
 | **Spotlight** | `/components/spotlight/` | `components/spotlight/` | Homepage spotlight block — copy column (eyebrow, title, lead, action plus an avatar-bubble participant count) beside a media tile, with a placeholder when no i… |
 | **Sticky Note** | `/components/sticky-note/` | `components/sticky-note/` | Pastel Perspectives idea card with author, emoji, title, excerpt and up/down react counts; comes in resting, raised, and four pastel variants. |
 | **Survey Band** | `/components/survey-band/` | `components/survey-band/` | The tenant-primary "Take the survey" strip on a project page survey phase — a status with a live dot on the left and an on-color CTA on the right. |
@@ -110,6 +110,7 @@ as a starting point for a prototype.
 | **Bo Pages Menu** | `/pages/bo-pages-menu/` | `pages/bo-pages-menu/` | Pages & menu — GoVocal back office (reference) |
 | **Bo Project Phase** | `/pages/bo-project-phase/` | `pages/bo-project-phase/` | Project configuration — GoVocal back office (reference) |
 | **Bo Projects** | `/pages/bo-projects/` | `pages/bo-projects/` | Projects — GoVocal back office (reference) |
+| **Bo Report Builder** | `/pages/bo-report-builder/` | `pages/bo-report-builder/` | Report builder — GoVocal back office (reference) |
 | **Bo Reporting** | `/pages/bo-reporting/` | `pages/bo-reporting/` | Reporting — GoVocal back office (reference) |
 | **Bo Settings** | `/pages/bo-settings/` | `pages/bo-settings/` | Settings — GoVocal back office (reference) |
 | **Bo Survey Builder** | `/pages/bo-survey-builder/` | `pages/bo-survey-builder/` | Survey form builder — GoVocal back office (reference) |

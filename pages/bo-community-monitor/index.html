@@ -14,12 +14,13 @@
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
     .cm-head { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
-    .cm-head__title { font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 1.3; }
+    .cm-head__title { font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 1.3; color: var(--gv-bo-primary); }
     .cm-head__ctrls { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-    /* Quarter selector: three separate bordered controls. */
-    .cm-qbtn { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 30px; padding: 0; border: 1px solid var(--gv-bo-border); border-radius: 3px; background: var(--gv-white); color: var(--gv-bo-primary); cursor: pointer; }
+    /* Quarter navigator: stepper (two arrow buttons flanking a bordered label) + View. */
+    .cm-qnav { display: inline-flex; align-items: center; gap: 8px; }
+    .cm-qbtn { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 31px; padding: 0; border: 1px solid var(--gv-bo-border); border-radius: 3px; background: var(--gv-white); color: var(--gv-bo-primary); cursor: pointer; }
     .cm-qbtn svg, .cm-qbtn .gv-icon { width: 16px; height: 16px; }
-    .cm-qlabel { display: inline-flex; align-items: center; height: 31px; padding: 0 9px; border: 1px solid var(--gv-cool-grey-500); border-radius: 3px; background: var(--gv-white); font-size: var(--gv-fs-s); color: var(--gv-grey-800); white-space: nowrap; }
+    .cm-qlabel { display: inline-flex; align-items: center; height: 31px; padding: 0 11px; border: 1px solid var(--gv-bo-border); border-radius: 3px; background: var(--gv-white); font-size: var(--gv-fs-s); color: var(--gv-grey-800); white-space: nowrap; }
     .cm-view { display: inline-flex; align-items: center; gap: 6px; height: 35px; padding: 0 14px; border: 0; border-radius: 3px; background: var(--gv-bo-primary); color: var(--gv-white); font-size: var(--gv-fs-base); font-family: inherit; cursor: pointer; }
     .cm-view svg, .cm-view .gv-icon { width: 16px; height: 16px; }
     /* Health score card. */
@@ -38,17 +39,52 @@
     .cm-legend span > u { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
     .cm-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
     .cm-legend b { font-weight: 600; color: var(--gv-grey-800); font-size: var(--gv-fs-base); }
-    /* Category groups + question cards. */
+    /* Category groups + question cards (scale-bar row pattern). */
     .cm-cat { display: flex; align-items: center; gap: 8px; margin: 22px 0 10px; font-size: var(--gv-fs-l); font-weight: 700; color: var(--gv-grey-800); }
     .cm-cat i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
     .cm-q { display: flex; align-items: center; gap: 20px; background: var(--gv-white); border: 1px solid var(--gv-grey-400); border-radius: 4px; padding: 16px; margin-bottom: 8px; }
     .cm-q__main { min-width: 0; flex: 1 1 auto; }
     .cm-q__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; color: var(--gv-grey-800); line-height: 1.3; }
     .cm-q__sub { margin: 4px 0 0; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
-    .cm-q__score { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 160px; }
-    .cm-q__num { font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-grey-800); white-space: nowrap; }
-    .cm-q__num small { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-grey-700); }
-    .cm-q__bar { width: 160px; height: 8px; border-radius: 3px; background: var(--gv-grey-300); }
+    /* .cm-scalebar — the recurring sentiment row: n/5 value + grey track + fill.
+       Promotion candidate (see report). Track 160x8, radius 3, grey-300 base. */
+    .cm-scalebar { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 160px; }
+    .cm-scalebar__num { font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-grey-800); white-space: nowrap; }
+    .cm-scalebar__num small { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-grey-700); }
+    .cm-scalebar__track { position: relative; width: 160px; height: 8px; border-radius: 3px; background: var(--gv-grey-300); overflow: hidden; }
+    .cm-scalebar__fill { position: absolute; inset: 0 auto 0 0; height: 100%; border-radius: 3px; background: var(--gv-bo-primary); width: 0; }
+    /* Panels. */
+    .cm-panel[hidden] { display: none; }
+    /* Participants sub-tab. */
+    .cm-period { margin-bottom: 18px; }
+    .cm-period__label { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); margin: 0 0 6px; }
+    .cm-period__picker { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--gv-bo-border); border-radius: 3px; background: var(--gv-white); font-size: var(--gv-fs-s); color: var(--gv-grey-800); }
+    .cm-period__picker .gv-icon, .cm-period__picker svg { width: 16px; height: 16px; color: var(--gv-text-secondary); }
+    .cm-demo__head { margin: 0 0 4px; font-size: var(--gv-fs-l); font-weight: 700; color: var(--gv-grey-800); }
+    .cm-demo__note { margin: 0 0 24px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+    .cm-demo__group { margin: 0 0 6px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-grey-800); padding-top: 18px; }
+    .cm-demo__row { padding: 8px 0; }
+    .cm-demo__rowlabel { font-size: var(--gv-fs-base); color: var(--gv-grey-800); margin: 0 0 6px; }
+    .cm-demo__bar { height: 16px; border: 1px solid var(--gv-grey-400); border-radius: 3px; background: var(--gv-white); }
+    .cm-demo__empty { text-align: center; margin: 36px 0 0; font-size: var(--gv-fs-base); color: var(--gv-bo-primary); }
+    /* Settings sub-tab. */
+    .cm-set__head { margin: 0 0 18px; font-size: var(--gv-fs-xxxl); font-weight: 700; color: var(--gv-bo-primary); }
+    .cm-survey { display: flex; align-items: center; gap: 20px; margin-top: 8px; }
+    .cm-survey__name { font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-bo-primary); }
+    .cm-survey__toggle { display: inline-flex; align-items: center; gap: 10px; margin-left: 8px; }
+    .cm-survey__togglelabel { font-size: var(--gv-fs-base); color: var(--gv-grey-800); }
+    .cm-survey__actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .cm-survey__actions .gv-btn .gv-icon, .cm-survey__actions .gv-btn svg { width: 16px; height: 16px; }
+    .cm-survey__more { background: none; border: 0; cursor: pointer; color: var(--gv-text-secondary); font-size: var(--gv-fs-xxl); line-height: 1; padding: 0 4px; }
+    /* Popup settings. */
+    .cm-pop__head { display: inline-flex; align-items: center; gap: 12px; margin: 0 0 14px; }
+    .cm-pop__title { font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-grey-800); }
+    .cm-pop__preview { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 3px; background: var(--gv-teal-500); color: var(--gv-white); font-size: var(--gv-fs-s); font-weight: 600; }
+    .cm-pop p { font-size: var(--gv-fs-base); color: var(--gv-grey-800); line-height: 1.5; margin: 0 0 12px; max-width: 720px; }
+    .cm-pop__cond { font-weight: 700; color: var(--gv-bo-primary); }
+    .cm-pop ul { margin: 0 0 20px; padding-left: 20px; font-size: var(--gv-fs-base); color: var(--gv-grey-800); line-height: 1.7; max-width: 720px; }
+    .cm-pop__freqlabel { font-size: var(--gv-fs-base); color: var(--gv-grey-800); margin: 0 0 6px; }
+    .cm-pop__freq { width: 140px; height: 38px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--gv-bo-border); border-radius: 3px; font-size: var(--gv-fs-base); font-family: inherit; color: var(--gv-grey-800); }
   </style>
 </head>
 <body class="gv-bo">
@@ -56,20 +92,23 @@
     <nav class="gv-bo-side" aria-label="Admin" data-active="community"></nav>
 
     <div class="gv-bo-main">
-      <nav class="gv-bo-tabs gv-bo-tabs--top" aria-label="Community monitor sections">
-        <a class="gv-bo-tab is-active" href="#">Live monitor</a>
-        <a class="gv-bo-tab" href="#">Participants</a>
-        <a class="gv-bo-tab" href="#">Reports</a>
-        <a class="gv-bo-tab" href="#">Settings</a>
+      <nav class="gv-bo-tabs gv-bo-tabs--top" aria-label="Community monitor sections" id="cm-tabs">
+        <a class="gv-bo-tab is-active" href="#" data-panel="live">Live monitor</a>
+        <a class="gv-bo-tab" href="#" data-panel="participants">Participants</a>
+        <a class="gv-bo-tab" href="#" data-panel="reports">Reports</a>
+        <a class="gv-bo-tab" href="#" data-panel="settings">Settings</a>
       </nav>
 
-      <section class="gv-bo-section">
+      <!-- ============ LIVE MONITOR ============ -->
+      <section class="gv-bo-section cm-panel" data-panel="live">
         <div class="cm-head">
-          <h1 class="gv-bo-pagehead cm-head__title">Community monitor</h1>
+          <h1 class="cm-head__title">Community monitor</h1>
           <div class="cm-head__ctrls">
-            <button class="cm-qbtn" aria-label="Previous quarter"><span data-gv-icon="arrow-left"></span></button>
-            <span class="cm-qlabel">Q2 2026</span>
-            <button class="cm-qbtn" aria-label="Next quarter"><span data-gv-icon="arrow-right"></span></button>
+            <div class="cm-qnav">
+              <button class="cm-qbtn" aria-label="Previous quarter"><span data-gv-icon="arrow-left"></span></button>
+              <span class="cm-qlabel">Q2 2026</span>
+              <button class="cm-qbtn" aria-label="Next quarter"><span data-gv-icon="arrow-right"></span></button>
+            </div>
             <button class="cm-view"><span data-gv-icon="eye"></span>View</button>
           </div>
         </div>
@@ -86,28 +125,112 @@
             </div>
           </div>
           <div class="cm-legend">
-            <span><u><i style="background:var(--gv-blue-500)"></i> Quality of life</u><b>– /5</b></span>
-            <span><u><i style="background:var(--gv-teal-400)"></i> Service delivery</u><b>– /5</b></span>
+            <span><u><i style="background:var(--gv-teal-700)"></i> Quality of life</u><b>– /5</b></span>
+            <span><u><i style="background:var(--gv-teal-300)"></i> Service delivery</u><b>– /5</b></span>
             <span><u><i style="background:var(--gv-brown)"></i> Governance and trust</u><b>– /5</b></span>
           </div>
         </div>
 
         <div id="cats"></div>
       </section>
+
+      <!-- ============ PARTICIPANTS ============ -->
+      <section class="gv-bo-section cm-panel" data-panel="participants" hidden>
+        <div class="cm-period">
+          <p class="cm-period__label">Select period</p>
+          <span class="cm-period__picker">5/5/2025 <span data-gv-icon="chevron-right" style="width:13px;height:13px"></span> Select date <span data-gv-icon="calendar"></span></span>
+        </div>
+        <div class="gv-bo-card" id="cm-demo">
+          <h2 class="cm-demo__head">Participants timeline</h2>
+          <p class="cm-demo__note">There is no data available for the filters you have selected.</p>
+          <div id="cm-demogroups"></div>
+          <p class="cm-demo__empty">No data available with the current filters.</p>
+        </div>
+      </section>
+
+      <!-- ============ REPORTS ============ -->
+      <section class="gv-bo-section cm-panel" data-panel="reports" hidden>
+        <h1 class="cm-head__title" style="margin-bottom:18px">Report builder</h1>
+        <div class="gv-bo-card">
+          <div class="gv-bo-empty">
+            <span class="gv-bo-empty__icon" data-gv-icon="admin-reporting" style="width:56px;height:56px;color:var(--gv-teal-200)"></span>
+            <h2 class="gv-bo-empty__title">Create your first report</h2>
+            <p class="gv-bo-empty__text">Customise your report and share it with internal stakeholders or community as a PDF file.</p>
+            <button class="gv-btn admin-dark size-m" style="margin-top:4px"><span data-gv-icon="plus" style="width:16px;height:16px;margin-right:6px"></span>Create a report</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SETTINGS ============ -->
+      <section class="gv-bo-section cm-panel" data-panel="settings" hidden>
+        <div class="gv-bo-card">
+          <h1 class="cm-set__head">Settings</h1>
+          <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Settings sections" id="cm-settabs" style="margin:0 -40px 24px; padding:0 40px">
+            <a class="gv-bo-tab is-active" href="#" data-sub="general">General settings</a>
+            <a class="gv-bo-tab" href="#" data-sub="popup">Popup settings</a>
+            <a class="gv-bo-tab" href="#" data-sub="access">Access and user data</a>
+            <a class="gv-bo-tab" href="#" data-sub="management">Management</a>
+          </nav>
+
+          <div class="cm-subpanel" data-sub="general">
+            <div class="cm-survey">
+              <span class="cm-survey__name">Survey</span>
+              <span class="cm-survey__toggle">
+                <label class="gv-toggle"><input type="checkbox" checked aria-label="Open for responses"><span class="track"></span></label>
+                <span class="cm-survey__togglelabel">Open for responses</span>
+              </span>
+              <span class="cm-survey__actions">
+                <button class="gv-btn admin-dark-outlined size-s"><span data-gv-icon="document"></span> Import</button>
+                <button class="gv-btn admin-dark-outlined size-s"><span data-gv-icon="eye"></span> View</button>
+                <button class="gv-btn admin-dark size-s"><span data-gv-icon="edit"></span> Edit</button>
+                <button class="cm-survey__more" aria-label="More options">…</button>
+              </span>
+            </div>
+          </div>
+
+          <div class="cm-subpanel cm-pop" data-sub="popup" hidden>
+            <div class="cm-pop__head">
+              <span class="cm-pop__title">Popup</span>
+              <span class="cm-pop__preview">Preview</span>
+            </div>
+            <p>A popup is periodically displayed to users encouraging them to complete the Community Monitor Survey. You can adjust the frequency which determines the percentage of users who will randomly see the popup when the conditions outlined below are met.</p>
+            <p>The default frequency value is 100%.</p>
+            <p class="cm-pop__cond">Under what conditions can the popup appear for users?</p>
+            <ul>
+              <li>Community Monitor Survey is accepting submissions.</li>
+              <li>User has not already seen the popup in the previous 3 months.</li>
+              <li>User has not already filled out the survey in the previous 3 months.</li>
+              <li>Upon loading the Homepage or a Custom Page.</li>
+              <li>After a user registers an event attendance, submits a vote, or returns to a project page after submitting a survey.</li>
+            </ul>
+            <p class="cm-pop__freqlabel">Popup frequency (0 to 100)</p>
+            <input class="cm-pop__freq" type="number" value="100" min="0" max="100" />
+            <div><button class="gv-btn admin-dark size-s" style="margin-top:18px">Save</button></div>
+          </div>
+
+          <div class="cm-subpanel" data-sub="access" hidden>
+            <p style="font-size:var(--gv-fs-base);color:var(--gv-text-secondary)">Access and user-data controls.</p>
+          </div>
+          <div class="cm-subpanel" data-sub="management" hidden>
+            <p style="font-size:var(--gv-fs-base);color:var(--gv-text-secondary)">Management controls.</p>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 
   <script src="bo-chrome.js"></script>
   <script>
+    /* ---- Live monitor: 3 dimensions, 11 grouped sentiment-scale rows ---- */
     const CATS = [
-      ["Quality of life", "var(--gv-blue-500)", [
+      ["Quality of life", "var(--gv-teal-700)", [
         "City as a place to live",
         "Overall sense of safety",
         "Access to parks, green spaces, and recreational opportunities",
         "Availability of affordable housing",
         "Employment and economic advancement opportunities",
       ]],
-      ["Service delivery", "var(--gv-teal-400)", [
+      ["Service delivery", "var(--gv-teal-300)", [
         "Overall quality of services provided by the city",
         "Overall value you receive for your city taxes and fees",
         "Overall cleanliness and maintenance of streets and public spaces",
@@ -127,10 +250,42 @@
             <h3 class="cm-q__title">${++n}. ${q}</h3>
             <p class="cm-q__sub">0/0 · Sentiment linear scale · optional</p>
           </div>
-          <div class="cm-q__score"><span class="cm-q__num">–<small> /5</small></span><span class="cm-q__bar"></span></div>
+          <div class="cm-scalebar"><span class="cm-scalebar__num">–<small> /5</small></span><span class="cm-scalebar__track"><span class="cm-scalebar__fill"></span></span></div>
         </div>`).join("")}`).join("");
+
+    /* ---- Participants: demographic groups, empty bars (no data) ---- */
+    const DEMO = [
+      ["Place of residence", ["Cary","Chapel Hill","Durham","Raleigh","Other","Somewhere else"]],
+      ["Gender", ["Male","Female","Unspecified"]],
+      ["Education", ["Lower secondary education","Upper secondary education","Post-secondary non-tertiary education","Short-cycle tertiary education","Bachelor or equivalent","Master or equivalent","Doctoral or equivalent"]],
+      ["Year of birth", []],
+    ];
+    document.getElementById("cm-demogroups").innerHTML = DEMO.map(([g, rows]) => `
+      <div class="cm-demo__group">${g}</div>
+      ${rows.map(r => `<div class="cm-demo__row"><p class="cm-demo__rowlabel">${r}</p><div class="cm-demo__bar"></div></div>`).join("")}`).join("");
+
+    /* ---- Section tab strip swap ---- */
+    const tabs = document.getElementById("cm-tabs");
+    const panels = document.querySelectorAll(".cm-panel");
+    tabs.addEventListener("click", (e) => {
+      const a = e.target.closest("[data-panel]"); if (!a) return;
+      e.preventDefault();
+      tabs.querySelectorAll(".gv-bo-tab").forEach(t => t.classList.toggle("is-active", t === a));
+      const key = a.dataset.panel;
+      panels.forEach(p => p.hidden = p.dataset.panel !== key);
+    });
+
+    /* ---- Settings sub-tab swap ---- */
+    const settabs = document.getElementById("cm-settabs");
+    settabs.addEventListener("click", (e) => {
+      const a = e.target.closest("[data-sub]"); if (!a) return;
+      e.preventDefault();
+      settabs.querySelectorAll(".gv-bo-tab").forEach(t => t.classList.toggle("is-active", t === a));
+      const key = a.dataset.sub;
+      document.querySelectorAll(".cm-subpanel").forEach(p => p.hidden = p.dataset.sub !== key);
+    });
+
     if (window.GVIcons) window.GVIcons.render(document.body);
   </script>
 </body>
 </html>
-</content>

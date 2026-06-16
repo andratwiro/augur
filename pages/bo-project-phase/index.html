@@ -27,6 +27,35 @@
     /* small info-dot icon next to a label/heading (page-local) */
     .pp-infodot { width: 16px; height: 16px; vertical-align: -3px; color: var(--gv-cool-grey-600); }
     /* Access-rights accordion now uses the canonical .gv-bo-accordion (govocal-bo.css). */
+
+    /* ── Method panels (poll / volunteering / phase-emails) ──────────────────
+       These reuse the canonical .gv-bo-listrow (handle / main / title / sub /
+       actions) — the real product renders all three as the same admin-list-row.
+       Page-local .pp-* only adds layout the primitive doesn't cover. */
+    /* A full-width dark "add" button that sits under a list (Add a poll question). */
+    .pp-addrow { width: 100%; justify-content: center; margin-top: 8px; }
+    /* Poll single/multiple-choice badge on a question row (page-local label). */
+    .pp-choicebadge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-text-secondary);
+    }
+    /* Statement-editor rows (common ground): a counted input + a fixed 3-way
+       agree/unsure/disagree affordance shown as read-only chips. */
+    .pp-stmt { gap: 12px; }
+    .pp-stmt__count { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); white-space: nowrap; }
+    .pp-stance { display: inline-flex; gap: 6px; }
+    .pp-stance span {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 12px; font-size: var(--gv-fs-s);
+      border: 1px solid var(--gv-divider); color: var(--gv-text-secondary);
+    }
+    .pp-stance .agree   { color: var(--gv-green-600); border-color: var(--gv-green-600); }
+    .pp-stance .disagree{ color: var(--gv-teal-500); border-color: var(--gv-teal-500); }
+    /* Phase-email toggle rows: title + recipient·trigger meta sub-line + toggle.
+       Reuses .gv-bo-listrow; the toggle sits in the actions slot. */
+    .pp-emailrow .gv-bo-listrow__title { font-size: var(--gv-fs-base); font-weight: 400; }
+    .pp-emailrow .gv-bo-listrow__sub .dot { color: var(--gv-divider); }
+    /* Input-importer rows: reuse .gv-bo-importcard (govocal-bo.css). */
 </style>
 </head>
 <body class="gv-bo">
@@ -221,12 +250,16 @@
             <a class="gv-bo-tab" href="#" data-tabkey="description">Description</a>
             <a class="gv-bo-tab" href="#" data-sub="inputmgr" data-tabkey="inputmgr">Input manager</a>
             <a class="gv-bo-tab" href="#" data-sub="inputform" data-tabkey="inputform">Input form</a>
+            <a class="gv-bo-tab" href="#" data-sub="inputimporter" data-tabkey="inputimporter">Input importer</a>
             <a class="gv-bo-tab" href="../bo-survey-builder/" data-tabkey="surveyform">Survey form</a>
+            <a class="gv-bo-tab" href="#" data-sub="poll" data-tabkey="poll">Poll</a>
+            <a class="gv-bo-tab" href="#" data-sub="volunteering" data-tabkey="volunteering">Volunteering</a>
             <a class="gv-bo-tab" href="#" data-tabkey="map">Map</a>
             <a class="gv-bo-tab" href="#" data-sub="insights" data-tabkey="insights">Insights</a>
             <a class="gv-bo-tab" href="#" data-sub="surveyresults" data-tabkey="surveyresults">Survey Results</a>
-            <a class="gv-bo-tab" href="#" data-sub="access" data-tabkey="access">Access rights</a>
-            <a class="gv-bo-tab" href="#" data-tabkey="notifications">Notifications</a>
+            <a class="gv-bo-tab" href="#" data-sub="report" data-tabkey="report">Report</a>
+            <a class="gv-bo-tab" href="#" data-sub="access" data-tabkey="access">Phase access and user data</a>
+            <a class="gv-bo-tab" href="#" data-sub="notifications" data-tabkey="notifications">Notifications</a>
           </nav>
 
           <div class="gv-bo-card">
@@ -446,6 +479,119 @@
             <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
           </div>
 
+          <!-- ════ POLL Setup sub-panel ════ -->
+          <div class="pp-setup pp-sub" data-sub="pollsetup">
+            <h3 class="gv-bo-formhead">Edit Phase</h3>
+            <div class="gv-bo-field">
+              <span class="gv-label">Phase name</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="Voting on Top 3 Priorities" />
+            </div>
+            <div class="gv-bo-field">
+              <span class="gv-label">Dates</span>
+              <div class="gv-bo-dateface"><span>03/21/2023 12:00 AM</span><span class="sep">›</span><span>04/03/2023 12:00 AM</span><span class="gv-icon" data-gv-icon="calendar"></span></div>
+            </div>
+            <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
+            <h4 class="gv-bo-subhead">What do you want to do?</h4>
+            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <div class="gv-bo-methods pp-methodgrid" data-method="poll"></div>
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>Configure the poll questions and answer options in the <a href="#">Poll tab</a>.</div></div>
+            <h4 class="gv-bo-subhead">Anonymous polling</h4>
+            <div class="gv-bo-togglerow">
+              <div><div class="gv-bo-togglerow__title">Make answers anonymous</div>
+                <p class="gv-bo-help">Poll responses won't be linked to a participant's identity.</p></div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+            <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
+          </div>
+
+          <!-- ════ VOLUNTEERING Setup sub-panel ════ -->
+          <div class="pp-setup pp-sub" data-sub="volunteeringsetup">
+            <h3 class="gv-bo-formhead">Edit Phase</h3>
+            <div class="gv-bo-field">
+              <span class="gv-label">Phase name</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="Find volunteers" />
+            </div>
+            <div class="gv-bo-field">
+              <span class="gv-label">Dates</span>
+              <div class="gv-bo-dateface"><span>11/29/2021 12:00 AM</span><span class="sep">›</span><span>Open ended</span><span class="gv-icon" data-gv-icon="calendar"></span></div>
+            </div>
+            <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
+            <h4 class="gv-bo-subhead">What do you want to do?</h4>
+            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <div class="gv-bo-methods pp-methodgrid" data-method="volunteering"></div>
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>Set up the causes people can volunteer for in the <a href="#">Volunteering tab</a>.</div></div>
+            <label class="gv-bo-qlabel">Upload attachments</label>
+            <button class="gv-bo-dropzone"><span class="gv-icon" data-gv-icon="download"></span>Select a file</button>
+            <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
+          </div>
+
+          <!-- ════ COMMON GROUND Setup sub-panel ════ -->
+          <div class="pp-setup pp-sub" data-sub="commongroundsetup">
+            <h3 class="gv-bo-formhead">Edit Phase</h3>
+            <div class="gv-bo-field">
+              <span class="gv-label">Phase name</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="Polis process" />
+            </div>
+            <div class="gv-bo-field">
+              <span class="gv-label">Dates</span>
+              <div class="gv-bo-dateface"><span>05/01/2026 12:00 AM</span><span class="sep">›</span><span>06/30/2026 11:59 PM</span><span class="gv-icon" data-gv-icon="calendar"></span></div>
+            </div>
+            <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
+            <h4 class="gv-bo-subhead">What do you want to do?</h4>
+            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <div class="gv-bo-methods pp-methodgrid" data-method="commonground"></div>
+
+            <!-- Statement list editor -->
+            <h4 class="gv-bo-subhead">Statements</h4>
+            <p class="gv-bo-help" style="margin-bottom:12px">Add short statements (max 120 characters). Participants react to each one with agree, unsure or disagree.</p>
+            <div class="gv-bo-listrow pp-stmt">
+              <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="dots-horizontal" aria-hidden="true"></span>
+              <div class="gv-bo-listrow__main">
+                <input class="gv-input" type="text" maxlength="120" value="The square needs more shaded seating for warm afternoons." />
+                <div class="gv-bo-listrow__sub"><span class="pp-stmt__count">56 / 120</span></div>
+              </div>
+              <span class="pp-stance"><span class="agree">Agree</span><span>Unsure</span><span class="disagree">Disagree</span></span>
+              <div class="gv-bo-listrow__actions"><button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span></button></div>
+            </div>
+            <div class="gv-bo-listrow pp-stmt">
+              <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="dots-horizontal" aria-hidden="true"></span>
+              <div class="gv-bo-listrow__main">
+                <input class="gv-input" type="text" maxlength="120" value="Weekend markets bring too much traffic to the side streets." />
+                <div class="gv-bo-listrow__sub"><span class="pp-stmt__count">58 / 120</span></div>
+              </div>
+              <span class="pp-stance"><span class="agree">Agree</span><span>Unsure</span><span class="disagree">Disagree</span></span>
+              <div class="gv-bo-listrow__actions"><button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span></button></div>
+            </div>
+            <button class="gv-btn admin-dark pp-addrow" style="margin-top:16px"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add a statement</span></button>
+
+            <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
+          </div>
+
+          <!-- ════ INFORMATION Setup sub-panel (one-way, read-only phase) ════ -->
+          <div class="pp-setup pp-sub" data-sub="informationsetup">
+            <h3 class="gv-bo-formhead">Edit Phase</h3>
+            <div class="gv-bo-field">
+              <span class="gv-label">Phase name</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="Implementation of the selected ideas" />
+            </div>
+            <div class="gv-bo-field">
+              <span class="gv-label">Dates</span>
+              <div class="gv-bo-dateface"><span>06/14/2024 12:00 AM</span><span class="sep">›</span><span>Open ended</span><span class="gv-icon" data-gv-icon="calendar"></span></div>
+            </div>
+            <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
+            <h4 class="gv-bo-subhead">What do you want to do?</h4>
+            <p class="gv-bo-help" style="margin-bottom:12px">Each phase runs exactly one participation method.</p>
+            <div class="gv-bo-methods pp-methodgrid" data-method="information"></div>
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>This is a read-only phase — participants can't submit, comment or react. Use the <a href="#">Description</a> tab to share updates, images and embeds.</div></div>
+            <label class="gv-bo-qlabel">Upload attachments</label>
+            <button class="gv-bo-dropzone"><span class="gv-icon" data-gv-icon="download"></span>Select a file</button>
+            <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
+          </div>
+
           <!-- ════ ACCESS RIGHTS sub-panel (Phase access and user data) ════ -->
           <div class="pp-sub" data-sub="access">
             <h3 class="gv-bo-formhead" style="margin-bottom:8px">Phase access and user data</h3>
@@ -511,6 +657,159 @@
 
             <p class="gv-bo-caption">Community Survey</p>
             <button class="gv-bo-dropzone" style="max-width:380px"><span class="gv-icon" data-gv-icon="download"></span>Export the survey results (.xlsx)</button>
+          </div>
+
+          <!-- ════ POLL sub-panel (Polls settings and results) ════ -->
+          <div class="pp-sub" data-sub="poll">
+            <div class="gv-bo-headrow">
+              <h3 class="gv-bo-headrow__title">Polls settings and results</h3>
+              <div class="gv-bo-headrow__actions">
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Export the poll results</span></button>
+              </div>
+            </div>
+            <p class="gv-bo-help" style="max-width:760px;margin:6px 0 18px">Here you can create poll questions, set the answer choices for participants to choose from for each question, decide whether you want participants to only be able to select one answer choice (single choice) or multiple answer choices (multiple choice), and export the poll results. You can create multiple poll questions within one poll.</p>
+
+            <div class="gv-bo-listrow">
+              <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="dots-horizontal" aria-hidden="true"></span>
+              <div class="gv-bo-listrow__main">
+                <p class="gv-bo-listrow__title">Please vote on 3 priorities that you would like set for the Forest Gate neighbourhood.</p>
+                <div class="gv-bo-listrow__sub"><span class="pp-choicebadge"><span class="gv-icon" data-gv-icon="check-circle"></span>Multiple choice · 6 answer options</span></div>
+              </div>
+              <div class="gv-bo-listrow__actions">
+                <button class="gv-btn admin-dark-text size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit answer options</span></button>
+                <button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit question</span></button>
+              </div>
+            </div>
+            <div class="gv-bo-listrow">
+              <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="dots-horizontal" aria-hidden="true"></span>
+              <div class="gv-bo-listrow__main">
+                <p class="gv-bo-listrow__title">How often do you visit the neighbourhood square?</p>
+                <div class="gv-bo-listrow__sub"><span class="pp-choicebadge"><span class="gv-icon" data-gv-icon="vote-up"></span>Single choice · 4 answer options</span></div>
+              </div>
+              <div class="gv-bo-listrow__actions">
+                <button class="gv-btn admin-dark-text size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit answer options</span></button>
+                <button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit question</span></button>
+              </div>
+            </div>
+
+            <button class="gv-btn admin-dark pp-addrow" style="margin-top:16px"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add a poll question</span></button>
+          </div>
+
+          <!-- ════ VOLUNTEERING sub-panel (causes list — "Find volunteers") ════ -->
+          <div class="pp-sub" data-sub="volunteering">
+            <div class="gv-bo-headrow">
+              <h3 class="gv-bo-headrow__title">Volunteering</h3>
+              <div class="gv-bo-headrow__actions">
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Export volunteers</span></button>
+              </div>
+            </div>
+            <p class="gv-bo-help" style="margin:6px 0 16px">Here, you can set up the causes users can volunteer for and download the volunteers.</p>
+            <button class="gv-btn admin-dark" style="margin-bottom:8px"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add cause</span></button>
+
+            <div class="gv-bo-listrow">
+              <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="dots-horizontal" aria-hidden="true"></span>
+              <div class="gv-bo-listrow__main">
+                <p class="gv-bo-listrow__title"><a href="#">Volunteer residential care centers 'Out and about with residents'</a></p>
+              </div>
+              <div class="gv-bo-eventrow__count" style="width:auto;margin-right:8px">1 participant</div>
+              <div class="gv-bo-listrow__actions">
+                <button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+              </div>
+            </div>
+            <div class="gv-bo-listrow">
+              <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="dots-horizontal" aria-hidden="true"></span>
+              <div class="gv-bo-listrow__main">
+                <p class="gv-bo-listrow__title"><a href="#">Volunteers for the Bicycle Taxi</a></p>
+              </div>
+              <div class="gv-bo-eventrow__count" style="width:auto;margin-right:8px">3 participants</div>
+              <div class="gv-bo-listrow__actions">
+                <button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+              </div>
+            </div>
+            <div class="gv-bo-listrow">
+              <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="dots-horizontal" aria-hidden="true"></span>
+              <div class="gv-bo-listrow__main">
+                <p class="gv-bo-listrow__title"><a href="#">Volunteer - Reader for the Book Visit project</a></p>
+              </div>
+              <div class="gv-bo-eventrow__count" style="width:auto;margin-right:8px">4 participants</div>
+              <div class="gv-bo-listrow__actions">
+                <button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                <button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ════ REPORT sub-panel (common-ground results summary) ════ -->
+          <div class="pp-sub" data-sub="report">
+            <h3 class="gv-bo-formhead" style="margin-bottom:8px">Report</h3>
+            <p class="gv-bo-help" style="max-width:680px;margin:0 0 22px">A summary of where participants agreed and disagreed across the statements in this phase.</p>
+
+            <div class="gv-bo-statgrid" style="margin-bottom:22px">
+              <div class="gv-bo-stat"><div class="gv-bo-stat__top"><span class="gv-bo-stat__label">Statements</span><span class="gv-bo-stat__icon gv-icon" data-gv-icon="comment"></span></div><div class="gv-bo-stat__num">12</div><div class="gv-bo-stat__delta"><b>0%</b> 7-day change</div></div>
+              <div class="gv-bo-stat"><div class="gv-bo-stat__top"><span class="gv-bo-stat__label">Participants</span><span class="gv-bo-stat__icon gv-icon" data-gv-icon="group"></span></div><div class="gv-bo-stat__num">48</div><div class="gv-bo-stat__delta"><b>0%</b> 7-day change</div></div>
+              <div class="gv-bo-stat"><div class="gv-bo-stat__top"><span class="gv-bo-stat__label">Votes cast</span><span class="gv-bo-stat__icon gv-icon" data-gv-icon="vote-up"></span></div><div class="gv-bo-stat__num">312</div><div class="gv-bo-stat__delta"><b>0%</b> 7-day change</div></div>
+            </div>
+
+            <h4 class="gv-bo-subhead">Most consensus</h4>
+            <div class="gv-bo-listrow pp-stmt">
+              <div class="gv-bo-listrow__main">
+                <p class="gv-bo-listrow__title" style="font-size:var(--gv-fs-base);font-weight:400">The square needs more shaded seating for warm afternoons.</p>
+              </div>
+              <span class="pp-stance"><span class="agree">86% agree</span></span>
+            </div>
+            <div class="gv-bo-listrow pp-stmt">
+              <div class="gv-bo-listrow__main">
+                <p class="gv-bo-listrow__title" style="font-size:var(--gv-fs-base);font-weight:400">Weekend markets bring too much traffic to the side streets.</p>
+              </div>
+              <span class="pp-stance"><span class="disagree">71% disagree</span></span>
+            </div>
+          </div>
+
+          <!-- ════ NOTIFICATIONS sub-panel (per-phase automated emails) ════ -->
+          <div class="pp-sub" data-sub="notifications">
+            <p class="gv-bo-help" style="margin:0 0 18px">You can configure emails triggered on a phase level.</p>
+            <div id="phase-emails"></div>
+          </div>
+
+          <!-- ════ INPUT IMPORTER sub-panel (Excel / form import) ════ -->
+          <div class="pp-sub" data-sub="inputimporter">
+            <div class="gv-bo-headrow">
+              <h3 class="gv-bo-headrow__title">Input importer</h3>
+              <div class="gv-bo-headrow__actions">
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Import file</span></button>
+                <button class="gv-btn admin-dark"><span data-gv-icon="open-in-new"></span><span class="gv-btn__label">Import scans</span></button>
+              </div>
+            </div>
+            <p class="gv-bo-help" style="max-width:760px;margin:6px 0 18px">Nothing to review yet. Import a PDF file containing scanned input forms or an Excel file containing inputs to continue.</p>
+
+            <div class="gv-bo-importlist">
+              <div class="gv-bo-importcard">
+                <span class="gv-bo-importcard__icon"><span class="gv-icon" data-gv-icon="survey"></span></span>
+                <div class="gv-bo-importcard__main">
+                  <div class="gv-bo-importcard__title">Paper forms OCR</div>
+                  <div class="gv-bo-importcard__desc">Print form, collect on paper, scan responses back</div>
+                </div>
+                <div class="gv-bo-importcard__actions">
+                  <a class="gv-bo-link" href="#"><span data-gv-icon="download"></span>Download PDF</a>
+                  <button class="gv-btn admin-dark size-s"><span data-gv-icon="open-in-new"></span><span class="gv-btn__label">Import scans</span></button>
+                </div>
+              </div>
+              <div class="gv-bo-importcard">
+                <span class="gv-bo-importcard__icon"><span class="gv-icon" data-gv-icon="menu"></span></span>
+                <div class="gv-bo-importcard__main">
+                  <div class="gv-bo-importcard__title">Spreadsheet</div>
+                  <div class="gv-bo-importcard__desc">Import response data from Excel or CSV</div>
+                </div>
+                <div class="gv-bo-importcard__actions">
+                  <a class="gv-bo-link" href="#"><span data-gv-icon="download"></span>Template <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></a>
+                  <a class="gv-bo-link" href="#"><span data-gv-icon="open-in-new"></span>Import file</a>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- ════ Input manager sub-panel ════ -->
@@ -823,10 +1122,14 @@
     // Each phase carries the metadata that drives the phase header + which Setup
     // variant and sub-tab set show when it's selected.
     const PHASES = [
-      { label: "Submit your ideas",              title: "Submit your ideas",   method: "Ideation phase",     dates: "June 2, 2024 12:00 AM → No end date",            setup: "setup",       tabs: ["setup","description","inputmgr","inputform","surveyform","map","insights","surveyresults","access","notifications"] },
-      { label: "Vote",                           title: "Vote",                method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup", tabs: ["setup","description","inputmgr","insights","access","notifications"] },
-      { label: "Budget allocation",              title: "Budget allocation",   method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup", tabs: ["setup","description","inputmgr","insights","access","notifications"] },
-      { label: "Implementation of the selected ideas", title: "Implementation", method: "Information phase", dates: "June 14, 2024 12:00 AM → No end date",             setup: "setup",       tabs: ["setup","description","access","notifications"] },
+      { label: "Submit your ideas",              title: "Submit your ideas",   method: "Ideation phase",     dates: "June 2, 2024 12:00 AM → No end date",            setup: "setup",             tabs: ["setup","description","inputmgr","inputform","surveyform","map","insights","surveyresults","access","notifications"] },
+      { label: "Vote",                           title: "Vote",                method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
+      { label: "Budget allocation",              title: "Budget allocation",   method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
+      { label: "Poll the priorities",            title: "Voting on Top 3 Priorities", method: "Poll phase",  dates: "March 21, 2023 12:00 AM → April 3, 2023 12:00 AM", setup: "pollsetup",         tabs: ["setup","description","poll","insights","access","notifications"] },
+      { label: "Find common ground",             title: "Polis process",       method: "Common ground phase", dates: "May 1, 2026 12:00 AM → June 30, 2026 11:59 PM",   setup: "commongroundsetup", tabs: ["setup","description","report","access","notifications"] },
+      { label: "Find volunteers",                title: "Find volunteers",     method: "Volunteering phase", dates: "November 29, 2021 12:00 AM → No end date",         setup: "volunteeringsetup", tabs: ["setup","description","volunteering","insights","access","notifications"] },
+      { label: "Import paper inputs",            title: "Import paper inputs", method: "Ideation phase",     dates: "June 2, 2024 12:00 AM → No end date",             setup: "setup",             tabs: ["setup","description","inputmgr","inputimporter","inputform","insights","access","notifications"] },
+      { label: "Implementation of the selected ideas", title: "Implementation", method: "Information phase", dates: "June 14, 2024 12:00 AM → No end date",            setup: "informationsetup",  tabs: ["setup","description","access","notifications"] },
     ];
     const CURRENT = 2;
     const stepper = document.getElementById("stepper");
@@ -944,6 +1247,59 @@
         <td>${when}</td>`;
       ideasBody.appendChild(tr);
     });
+
+    // ── Method-picker grids for the new Setup variants ────────────────────
+    // The 9 participation-method cards, rendered into any .pp-methodgrid with the
+    // card named by data-method pre-selected. (Mirrors the hardcoded grids in the
+    // ideation/voting Setup panels.)
+    const METHODS = [
+      ["collect", "comments",      "Collect input and feedback",            "Gather ideas, comments and reactions from participants."],
+      ["commonground", "group",    "Find common ground",                    "Surface where people agree and disagree on statements."],
+      ["survey", "survey",         "Conduct a survey",                      "Build a structured questionnaire with many field types."],
+      ["poll", "check-circle",     "Create a poll",                         "Ask a quick single- or multiple-choice question."],
+      ["voting", "vote-up",        "Run a voting or prioritization exercise","Let people allocate votes or a budget across options."],
+      ["volunteering", "volunteer","Recruit volunteers",                    "Offer causes people can sign up to support."],
+      ["information", "info-outline","Share information",                   "A read-only phase with no participation."],
+      ["external", "open-in-new",  "Externally hosted survey",              "Embed a Typeform, Google Form or other tool."],
+      ["annotation", "edit",       "Document annotation",                   "Collect comments on a hosted PDF document."],
+    ];
+    document.querySelectorAll(".pp-methodgrid").forEach(grid => {
+      const sel = grid.dataset.method;
+      grid.innerHTML = METHODS.map(([key, icon, title, desc]) =>
+        `<button class="gv-bo-methodcard${key === sel ? " is-selected" : ""}">
+           <span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="${icon}"></span></span>
+           <span class="gv-bo-methodcard__title">${title}</span>
+           <span class="gv-bo-methodcard__desc">${desc}</span>
+         </button>`).join("");
+      // re-bind single-select within this freshly built grid
+      grid.querySelectorAll(".gv-bo-methodcard").forEach(c => c.addEventListener("click", () => {
+        grid.querySelectorAll(".gv-bo-methodcard").forEach(x => x.classList.remove("is-selected"));
+        c.classList.add("is-selected");
+      }));
+    });
+
+    // ── Per-phase automated emails (Notifications sub-tab) ─────────────────
+    const EMAILS = [
+      ["Deletion of my comment",              "User who commented · Comment is deleted",                          false],
+      ["A comment on an idea that you follow", "Users who follow the input · User comments",                       true],
+      ["A reply on my comment",               "User who commented · User replies to comment",                     true],
+      ["Publication of my input",             "User who published the input · Input is published",                true],
+      ["Mention in an update",                "User who is mentioned · User is mentioned",                        false],
+      ["Update on an input that you follow",  "Users who follow the input · Input receives official feedback",    true],
+      ["New project phase",                   "Users who follow the project or have participated · Project phase changes", true],
+    ];
+    const emailsEl = document.getElementById("phase-emails");
+    if (emailsEl) emailsEl.innerHTML = EMAILS.map(([title, meta, on]) => {
+      const [who, trigger] = meta.split(" · ");
+      return `<div class="gv-bo-listrow pp-emailrow">
+        <label class="gv-toggle" style="flex:none"><input type="checkbox"${on ? " checked" : ""}><span class="track"></span></label>
+        <div class="gv-bo-listrow__main">
+          <p class="gv-bo-listrow__title">${title}</p>
+          <div class="gv-bo-listrow__sub"><span>${who}</span><span class="dot">·</span><span>${trigger}</span></div>
+        </div>
+        <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button></div>
+      </div>`;
+    }).join("");
 
     // ── Insights stat cards ───────────────────────────────────────────────
     const STATS = [
