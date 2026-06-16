@@ -691,6 +691,37 @@ card. Source-grounded on wietsedemo `/en`: the tinted card `.fGrxMq`
   standing in for the live `/SentimentQuestionPreview.png`, which isn't redistributable.
   Verified via `fo-homepage-survey-band/{card,title,cta}`.
 
+## CTA banner — `.gv-cta-banner` (`components/cta-banner/`)
+
+A thin, full-bleed coloured strip carrying ONE centered CTA button — the
+Content-Builder "CTA banner" block. Source-grounded on St Louis
+(`stlouis.govocal.com`, capture `fo-stlouis-cta-banner`, tenant-primary `#033D8B`).
+Mounts as a `.gv-cb-row.cols-1` cell inside a `.gv-cb-frame`.
+
+```html
+<section class="gv-cta-banner" aria-label="Call to action">
+  <div class="gv-cta-banner__inner">
+    <div class="gv-cta-banner__cta">
+      <a class="gv-btn primary-inverse" href="#">Take the survey</a>
+    </div>
+  </div>
+</section>
+```
+
+- **`.gv-cta-banner`** = the full-width band; fill = `--gv-cta-banner-bg`, default
+  `var(--gv-tenant-primary)` (St Louis `#033D8B`), so `?theme=` re-skins it. Override
+  `--gv-cta-banner-bg` for a one-off colour.
+- **`__inner`** = the centered flex content row, capped at the CB content measure
+  (`--gv-cb-measure`, 1200) with a thin `22px 24px` strip padding; carries the measured
+  baseline text treatment (14px / 19.999 / `rgba(0,0,0,.87)`).
+- **`__cta`** = the transparent centered flex wrapper around the real button (mirrors the
+  live `e2e-cta-banner-button` container). The button is a base `.gv-btn` as an `<a>`
+  (digest: 9px 18px / radius 3px / 45px tall) — here `.primary-inverse` (white) so it
+  reads on the coloured fill; `.white` for a shadowed variant.
+- **Distinct from** `.gv-ctaband` (transparent centered title+lead+CTA) and
+  `.gv-monitorband` (tinted 3-zone text/media/CTA card). This is the bare coloured strip
+  whose only content is the button. Verified via `fo-stlouis-cta-banner/button-wrap`.
+
 ## Featured 3-up spotlight row — `.gv-featured-row` / `.gv-pcard.featured` (`components/homepage-featured-row/`)
 
 The homepage **"We want to hear from you"** row: three large, image-led featured project

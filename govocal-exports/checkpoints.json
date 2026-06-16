@@ -1916,6 +1916,26 @@
       ]
     },
     {
+      "id": "fo-stlouis-cta-banner/button-wrap",
+      "built": "components/cta-banner/index.html",
+      "against": "fo-stlouis-cta-banner",
+      "map": {
+        "[data-cy=e2e-cta-banner-button]": "[data-cy=e2e-cta-banner-button]"
+      },
+      "props": [
+        "color",
+        "font-family",
+        "font-size",
+        "line-height",
+        "display",
+        "align-items",
+        "justify-content"
+      ],
+      "uses": [
+        ".gv-cta-banner"
+      ]
+    },
+    {
       "id": "phase-timeline/segment-inactive",
       "built": "components/phase-timeline/index.html",
       "against": "fo-perspectives-entry",

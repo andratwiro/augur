@@ -2470,6 +2470,12 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
   display: flex;
   align-items: center;
   justify-content: center;
+  /* baseline text treatment (measured: 14px / 19.999 / rgba(0,0,0,.87)) — the
+     button overrides its own, this just pins the strip's intrinsic baseline */
+  color: var(--gv-text-body);
+  font-family: var(--gv-font-family);
+  font-size: var(--gv-fs-s);
+  line-height: 19.999px;
 }
 /* The CTA wrapper mirrors the live e2e-cta-banner-button container — a
    transparent centered flex box around the real <a> button. */
