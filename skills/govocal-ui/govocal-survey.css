@@ -309,6 +309,20 @@
        (was 16px 18px — slightly tighter). Append-only override so every consumer updates. */
     .sv-optcard { border-color: var(--gv-border-dark); padding: 20px 20px 8px; }
 
+    /* ── Bordered field-box fidelity (shared-fix option-card-border, 87/93) ──────
+       The same dark control grey rgb(118,118,118) = #767676 (--gv-border-dark /
+       grey-700) the option card uses must apply to EVERY bordered field box in the
+       kit — the linear-scale buttons, the ranking li + its rank <select>, and the
+       image cards all shipped the lighter grey-400 (#CBCBCB) hairline, which reads
+       too faint against the product's heavier #767676 outline. Grounded in
+       fo-survey-runner digest (div.sc-eNCGxt / sibling controls: border 1px solid
+       rgb(118,118,118)). #767676 already exists as a token; no new value. Append-only
+       override of border-COLOUR only (widths/radii unchanged) so every consumer updates. */
+    .sv-scale label,
+    .sv-rank li,
+    .sv-rank__select,
+    .sv-imgcard { border-color: var(--gv-border-dark); }
+
     /* ── Question-label weight fidelity (shared-fix survey-question-label-weight) ──
        Real survey question label (span.diOXeU 'Your question') = 16px / weight 600 /
        rgb(30,30,30). The base rule above shipped weight 700; the runner uses semibold
