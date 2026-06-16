@@ -1851,7 +1851,7 @@
   .ax-gate__d { font-size:13px; color:var(--ax-muted); }
   .ax-phone { background:#111722; border-radius:34px; padding:12px; box-shadow:0 20px 50px rgba(10,16,30,.3); position:sticky; top:10px; }
   .ax-phone__scr { background:#fff; border-radius:24px; padding:20px 16px 26px; min-height:430px; }
-  .ax-phone__note { text-align:center; font-size:12px; color:#9aa6b6; margin:6px 0 10px; font-weight:600; }
+  .ax-phone__note { text-align:center; font-size:12px; color:#6b7682; margin:6px 0 10px; font-weight:600; }
   .ax-pstep { display:flex; align-items:center; gap:11px; padding:13px 13px; border-radius:13px; background:var(--ax-bg); margin-bottom:9px;
     animation: axPop .2s ease; }
   @keyframes axPop { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
@@ -1878,6 +1878,7 @@
   .ax-ovr { border:1px solid var(--ax-line); border-radius:13px; background:#fff; overflow:hidden; margin-top:12px; }
   .ax-ovr__row { display:flex; align-items:center; gap:12px; padding:13px 16px; border-top:1px solid var(--ax-line); cursor:pointer; }
   .ax-ovr__row:first-child { border-top:0; }
+  .ax-ovr__row.is-sel { background:var(--ax-accent-soft); }
   .ax-ovr__t { font-weight:700; font-size:15px; }
   .ax-ovr__s { margin-left:auto; font-size:13px; color:var(--ax-muted); }
   .ax-ovr__edit { color:var(--ax-accent); font-weight:700; font-size:13px; }
@@ -2028,10 +2029,11 @@
     }
     return h;
   }
-  function bindEditor(container, c, redraw){
+  function bindEditor(container, cArg, redraw){
+    const C = ()=> (typeof cArg==='function' ? cArg() : cArg); // supports a live getter (focused action)
     container.addEventListener('click',(e)=>{
       const b=e.target.closest('[data-ed]'); if(!b) return;
-      const k=b.dataset.ed, val=b.dataset.v;
+      const c=C(); const k=b.dataset.ed, val=b.dataset.v;
       if(b.classList.contains('ax-lang')){ container.querySelectorAll('.ax-lang').forEach(x=>x.classList.remove('is-on')); b.classList.add('is-on'); return; }
       if(k==='level'){ c.level=val; }
       else if(k==='method'){ c.methods[val]=!c.methods[val]; }
@@ -2047,13 +2049,13 @@
     });
     container.addEventListener('change',(e)=>{
       const b=e.target.closest('[data-ed]'); if(!b) return;
-      const k=b.dataset.ed, val=b.dataset.v;
+      const c=C(); const k=b.dataset.ed, val=b.dataset.v;
       if(k==='recent'){ c.recent=e.target.checked; redraw(); }
       else if(k==='group'){ if(e.target.checked){ if(!c.groups.includes(val)) c.groups.push(val);} else { c.groups=c.groups.filter(x=>x!==val);} redraw(); }
       else if(k==='dt'){ c.demoTiming=val; redraw(); }
-      else if(k==='demoq'){ c.demoOn[val]=e.target.checked; /* no redraw: keep checkboxes focusable */ }
+      else if(k==='demoq'){ C().demoOn[val]=e.target.checked; /* no redraw: keep checkboxes focusable */ }
     });
-    container.addEventListener('input',(e)=>{ const b=e.target.closest('[data-ed="msg"]'); if(b) c.msg=e.target.value; });
+    container.addEventListener('input',(e)=>{ const b=e.target.closest('[data-ed="msg"]'); if(b) C().msg=e.target.value; });
   }
   // open the full editor for one action's cfg in the single modal
   function openEditor(title, c, after){
@@ -2343,7 +2345,7 @@
             <div class="ax-gates">${gates}</div>
           </div>
           <div class="ax-phone"><div class="ax-phone__scr"><p class="ax-phone__note">what your resident sees · ${act.label.toLowerCase()}</p>
-            ${steps.length?steps.map((t,i)=>`<div class="ax-pstep"><span class="ax-pstep__n">${i+1}</span><span class="ax-pstep__t">${t}</span></div>`).join(''):'<div class="ax-pstep"><span class="ax-pstep__t" style="color:#9aa6b6">They jump straight in.</span></div>'}
+            ${steps.length?steps.map((t,i)=>`<div class="ax-pstep"><span class="ax-pstep__n">${i+1}</span><span class="ax-pstep__t">${t}</span></div>`).join(''):'<div class="ax-pstep"><span class="ax-pstep__t" style="color:#6b7682">They jump straight in.</span></div>'}
             ${c.level!=='admins'?`<div class="ax-pstep ax-pstep--done"><span class="ax-pstep__n">✓</span><span class="ax-pstep__t">You’re in — ${act.verb}!</span></div><p class="ax-pcount">${steps.length} step${steps.length===1?'':'s'} for them</p>`:''}
           </div></div>
         </div>`;
@@ -2365,8 +2367,68 @@
     return root;
   }
 
+  /* ════════════════ E6 — RECOMMENDED (E2 presets/matrix × E5 live preview) ════════════════
+     The synthesis from the persona pass: preset for the quick decision (Brigitte/Tom),
+     a per-action matrix for full depth (Sofia), and the live resident phone pinned
+     beside it so you always SEE what you're configuring. */
+  function renderRecommended(){
+    const PRESETS=[
+      { id:'open',   em:'🌍', t:'Wide open',   d:'Anyone joins. No sign-up.',         build:()=>defCfg('open') },
+      { id:'email',  em:'✉️', t:'Quick check', d:'Confirm an email. Stops bots.',      build:()=>{const c=defCfg('signin');c.methods={email:true,sms:false,id:false};return c;} },
+      { id:'locals', em:'🏡', t:'Locals only', d:'Prove they live here (text or ID).', build:()=>{const c=defCfg('signin');c.methods={email:true,sms:true,id:false};c.groups=['Verified residents'];return c;} },
+      { id:'team',   em:'🔒', t:'Team only',   d:'Just admins & managers.',            build:()=>defCfg('admins') },
+    ];
+    const cfgs={}; const s={ sel:'submit', preset:'email' };
+    function applyPreset(p){ ACTIONS.forEach(a=>{ cfgs[a.key]=p.build(); if(!a.levels.includes(cfgs[a.key].level)) cfgs[a.key].level='signin'; }); }
+    applyPreset(PRESETS.find(p=>p.id==='email'));
+    const root=el('<div></div>');
+    function phoneSteps(c){
+      const steps=[];
+      if(c.level==='admins') return ['🔒 Only staff can do this — residents don’t see it.'];
+      if(c.level==='signin'){ steps.push('Log in or create an account');
+        if(c.methods.email) steps.push('Confirm your email with a code');
+        if(c.methods.sms) steps.push('Enter the code we text you');
+        if(c.methods.id) steps.push('Upload your ID'+(c.recent?' (each phase)':''));
+        if(c.groups.length) steps.push('We check you’re in: '+c.groups.join(', '));
+        if(c.collect.name) steps.push('Tell us your name');
+        if(c.collect.password) steps.push('Set a password');
+        if(c.collect.demo) steps.push('Answer a few questions'+(c.demoTiming==='end'?' (at the end)':''));
+      } else if(c.collect.demo) steps.push('Answer a few questions');
+      return steps;
+    }
+    function draw(){
+      const c=cfgs[s.sel], act=ACTIONS.find(a=>a.key===s.sel), steps=phoneSteps(c);
+      root.innerHTML=`
+        <p class="ax-eyebrow">★ Recommended · setup + live preview</p>
+        <h2 class="ax-h">Pick a setup. See exactly what residents get.</h2>
+        <p class="ax-sub">Start from a setup (covers everything), then click any action to fine-tune it. The phone always shows the action you’re editing.</p>
+        <div class="ax-presets">${PRESETS.map(p=>`<button class="ax-preset ${s.preset===p.id?'is-on':''}" data-preset="${p.id}"><div class="ax-preset__em">${p.em}</div><div class="ax-preset__t">${p.t}</div><div class="ax-preset__d">${p.d}</div></button>`).join('')}</div>
+        <div class="ax-door" style="margin-top:22px">
+          <div>
+            <p class="ax-block__h">Each action — click one to fine-tune</p>
+            <div class="ax-ovr">${ACTIONS.map(a=>`<div class="ax-ovr__row ${s.sel===a.key?'is-sel':''}" data-focus="${a.key}"><span>${a.em}</span><span class="ax-ovr__t">${a.label}</span><span class="ax-ovr__s">${summary(cfgs[a.key])}</span><span class="ax-ovr__edit">${s.sel===a.key?'▾ editing':'edit'}</span></div>`).join('')}</div>
+            <div class="ax-editwrap"><p class="ax-block__h" style="margin-top:22px">Fine-tuning: ${act.em} ${act.label}</p><div id="ax-ed"></div></div>
+          </div>
+          <div class="ax-phone"><div class="ax-phone__scr">
+            <p class="ax-phone__note">what your resident sees · ${act.label.toLowerCase()}</p>
+            ${steps.length?steps.map((t,i)=>`<div class="ax-pstep"><span class="ax-pstep__n">${i+1}</span><span class="ax-pstep__t">${t}</span></div>`).join(''):'<div class="ax-pstep"><span class="ax-pstep__t" style="color:#6b7682">They jump straight in.</span></div>'}
+            ${c.level!=='admins'?`<div class="ax-pstep ax-pstep--done"><span class="ax-pstep__n">✓</span><span class="ax-pstep__t">You’re in — ${act.verb}!</span></div><p class="ax-pcount">${steps.length} step${steps.length===1?'':'s'} for them</p>`:''}
+          </div></div>
+        </div>`;
+      root.querySelector('#ax-ed').innerHTML=editorHTML(c);
+    }
+    root.addEventListener('click',(e)=>{
+      const p=e.target.closest('[data-preset]'); if(p){ s.preset=p.dataset.preset; applyPreset(PRESETS.find(x=>x.id===p.dataset.preset)); draw(); return; }
+      const f=e.target.closest('[data-focus]'); if(f){ s.sel=f.dataset.focus; draw(); return; }
+    });
+    bindEditor(root, ()=>cfgs[s.sel], ()=>{ s.preset='custom'; draw(); });
+    draw();
+    return root;
+  }
+
   /* ───────── registry + floating switcher ───────── */
   const TAKES = [
+    { n:'Recommended', tag:'Recommended · setup + live', r:renderRecommended },
     { n:'Sentence', tag:'Say it in a sentence',  r:renderSentence },
     { n:'Presets',  tag:'Pick a setup',          r:renderPresets },
     { n:'Slider',   tag:'A bar per action',      r:renderSlider },
@@ -2376,7 +2438,7 @@
   let cur=0;
   const sw = el('<div class="ax-switch"><span class="ax-switch__cap"></span><div class="ax-switch__dots">'+TAKES.map((t,i)=>'<button class="ax-switch__btn" data-go="'+i+'" title="'+t.tag+'">'+(i+1)+'</button>').join('')+'</div></div>');
   document.body.appendChild(sw);
-  function mount(i){ cur=i; closeM(); stage.innerHTML=''; stage.appendChild(TAKES[i].r()); sw.querySelectorAll('.ax-switch__btn').forEach((b,j)=>b.classList.toggle('is-on',j===i)); sw.querySelector('.ax-switch__cap').textContent=(i+1)+'/5 · '+TAKES[i].tag; }
+  function mount(i){ cur=i; closeM(); stage.innerHTML=''; stage.appendChild(TAKES[i].r()); sw.querySelectorAll('.ax-switch__btn').forEach((b,j)=>b.classList.toggle('is-on',j===i)); sw.querySelector('.ax-switch__cap').textContent=(i+1)+'/'+TAKES.length+' · '+TAKES[i].tag; }
   sw.addEventListener('click',(e)=>{ const b=e.target.closest('[data-go]'); if(b) mount(+b.dataset.go); });
   mount(0);
 })();

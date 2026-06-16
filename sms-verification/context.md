@@ -34,6 +34,13 @@ _One-paragraph framing of the SMS verification opportunity._
   anonymous demographic questions (no account = nothing to collect). E1 now
   defaults to the epic's real default (sign-in + email) with grammatical
   subject phrasing. Passes `npm run audit` (darkened `--ax-muted` for contrast).
+  **Round 3 (persona pass — Brigitte/Sofia/Tom):** moved the floating switcher
+  out of the content column, added a draft/"saves as you go, nothing live until
+  publish" reassurance strip (Brigitte's top fear), and added a **6th
+  "Recommended" exploration** = the E2×E5 synthesis (preset cards + per-action
+  matrix spine with the live resident phone pinned beside the focused action).
+  It's now the default landing. Mobile remains desktop-primary (inherited BO
+  shell doesn't reflow) — known limitation. Full findings in chat / git history.
 - `phase-access-permissions/` — the **Project Editor back office** (duplicated from
   `pages/bo-project-phase/`, self-contained) focused on **Timeline → Phase →
   "Phase access and user data"**. The access tab is rebuilt to mirror the *current
