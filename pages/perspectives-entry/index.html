@@ -48,7 +48,10 @@
     #e2e-ideas-container { display: flex; flex-direction: column; }
     .pp-ideashead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
     .pp-ideashead .gv-feed__count { margin: 0; }
-  </style>
+    /* centered CTA into the full feed, directly under the clipped pile */
+    .pp-seeall { display: flex; justify-content: center; margin-top: 24px; }
+    .pp-seeall[hidden] { display: none; }
+</style>
 </head>
 <body class="gv-root gv-shell" data-auth="in">
 
@@ -327,12 +330,18 @@
               </div>
             </div>
 
-            <!-- Perspective view (default) — masonry pile of sticky notes, inline -->
+            <!-- Perspective view (default) — clipped scatter pile of sticky notes, inline -->
             <div class="gv-issuecanvas has-scatter" id="perspectiveView">
               <div class="gv-issuecanvas__pile is-scatter" data-cy="e2e-sticky-notes-pile">${pile}</div>
             </div>
 
-            <!-- List view — same ideas flattened -->
+            <!-- Centered tenant-primary CTA into the full feed (replaces dumping the
+                 flat list inline). The List state is reached only via the List tab. -->
+            <div class="pp-seeall" id="perspectiveSeeAll">
+              <a class="gv-btn primary" href="../perspectives-feed/index.html">See all 178 ideas</a>
+            </div>
+
+            <!-- List view — same ideas flattened; hidden until the List tab is chosen -->
             <div class="gv-idealist" id="listView" hidden>${list}</div>
           </div>`;
       },
@@ -386,6 +395,7 @@
       const toggle = bodyEl.querySelector('.gv-pviewtoggle');
       if (!toggle) return;
       const persp = bodyEl.querySelector('#perspectiveView');
+      const seeAll = bodyEl.querySelector('#perspectiveSeeAll');
       const list = bodyEl.querySelector('#listView');
       toggle.querySelectorAll('.gv-pviewtoggle__btn').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -393,6 +403,7 @@
           btn.classList.add('is-active'); btn.setAttribute('aria-selected', 'true');
           const isList = btn.dataset.view === 'list';
           list.hidden = !isList; persp.hidden = isList;
+          if (seeAll) seeAll.hidden = isList; /* the See-all CTA belongs to the Perspective view */
         });
       });
     }

@@ -1678,6 +1678,12 @@
 .gv-issuecanvas__pile { display: flex; flex-wrap: wrap; gap: 20px; align-content: flex-start;
   justify-content: center; align-items: flex-start; max-width: 1000px; }
 .gv-issuecanvas__pile[hidden], .gv-issuecanvas__view[hidden] { display: none; }
+/* canvas-hidden guard: .gv-issuecanvas sets display:flex, which beats the UA
+   [hidden]{display:none}. So a consumer that toggles the WHOLE canvas via the
+   hidden attribute (e.g. the perspectives-entry List/Perspective view swap, where
+   the Perspective canvas is hidden when List is chosen) needs an explicit override
+   — same pattern as the .gv-idealist[hidden] guard below. */
+.gv-issuecanvas[hidden] { display: none; }
 .gv-issuecanvas.is-detail { align-items: flex-start; }
 
 /* ── Scatter pile (fix 27/93) ── the DEFINING Perspective layout: a fixed-height
