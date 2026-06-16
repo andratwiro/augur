@@ -745,10 +745,11 @@
         <p class="eyebrow">Boss 2 · the Vienna Paradox</p>
         <p class="claim">Cities don't need less power. They just <span class="accent">shouldn't see it until they do.</span></p>
         <div class="grid g3">
-          <div class="card"><span class="lab">Why I believe it</span><p>The tool can run a Vienna-sized city — that's the moat. But the survey-only town drowns in it, and the dispatch backlog is thick with setup overload.</p></div>
+          <div class="card"><span class="lab">Why I believe it</span><p>The tool can run a Vienna-sized city — that's the moat. But the survey-only town drowns in it: <b>11 top-level destinations</b>, the same setting (tags, access-rights) configured in two worlds, a survey edit six URL levels below <code>/admin</code>. The dispatch backlog is thick with setup overload.</p></div>
           <div class="card kill"><span class="lab">What would prove me wrong</span><p>The tempting fix — let admins pre-set what to hide — is config-to-kill-config, and breeds "my admin turned it off, now I can't find it." So the bet is <em>just-in-time</em> disclosure by task, not a setup ritual. And if the complexity is conceptual (what even is a "phase"?), hiding controls won't be enough.</p></div>
           <div class="card"><span class="lab">How we probe it</span><p>A survey-only fast lane that reveals advanced on demand → Diane (low-savviness) + a Vienna-scale power user.</p></div>
         </div>
+        <p class="src-line">Architecture from the real admin code (Irene's BO map): the complexity <em>is</em> the Project→Phase→Method model projected onto the screen — so visual polish alone can't remove it; the model has to be re-surfaced, not just re-styled.</p>
         <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high</div>
       </div>
     </section>
@@ -759,7 +760,7 @@
         <p class="claim">Admins will hand the complexity to an LLM. The back office becomes <span class="accent">where they check its work.</span></p>
         <div class="grid g3">
           <div class="card"><span class="lab">Why I believe it</span><p>MCP-first is the trajectory — config-by-conversation (even an audio note from your phone) beats config-by-form for most cities. This eventually eats Boss 2.</p></div>
-          <div class="card kill"><span class="lab">What would prove me wrong</span><p>I'm an MCP power user; Diane and the publicly-accountable officer aren't — right trajectory, uncertain timing. And civic config is unskimmable when a missed error ships to residents, so review must be by <em>outcome</em>, not a config diff.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>I'm an MCP power user; Diane and the publicly-accountable officer aren't — right trajectory, uncertain timing. <b>Irene's counter-prior:</b> simplify in-product <em>first</em> (templates, 1–3 clicks to 80% of the output), agents later and for power users — making this the right destination, wrong sprint. And civic config is unskimmable when a missed error ships to residents, so review must be by <em>outcome</em>, not a config diff.</p></div>
           <div class="card"><span class="lab">How we probe it</span><p>A verify-by-outcome checkpoint: "here's exactly what your residents will get — approve, or tell me what's wrong." → admins delegate, then check.</p></div>
         </div>
         <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i></i></span> medium · highest leverage</div>
@@ -776,6 +777,29 @@
           <div class="card"><span class="lab">How we probe it</span><p>Show residents a "you said / we did" outcome surface + a result nudge; measure willingness to return. Instrument representativeness — who showed up vs the city — from day one.</p></div>
         </div>
         <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · most under-owned</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Cross-check · an independent read of the architecture</p>
+        <h2>A second map backs three bets — and bends one.</h2>
+        <p class="lead">Irene mapped the real back-office architecture from the admin code, blind to these bets. I treat it as <em>more context, not a verdict</em>: where it converges, conviction goes up; where it diverges, the probe gets sharper. It doesn't move my priors — it tells me which to test first.</p>
+        <div class="twocol">
+          <div><h3 class="tealtext">It backs three</h3>
+            <ul class="clean">
+              <li><b>Boss 2 · the depth is structural.</b> The Project→Phase→Method model is projected onto 11 destinations, config six levels down, settings in two worlds — polish alone can't remove it.</li>
+              <li><b>Boss 2 · the breadth too.</b> No single home for "my project's work" — Input Manager is both a sidebar destination <em>and</em> a phase tab; that's why infrequent PMs re-learn the tool each visit.</li>
+              <li><b>Boss 4 · closure is load-bearing.</b> The map independently flags closure and representativeness as the assumptions a redesign rests on.</li>
+            </ul></div>
+          <div><h3 class="accent">It bends one</h3>
+            <ul class="clean">
+              <li><b>Boss 3 · timing.</b> Her near-term bet is simplify in-product <em>first</em>; agents later, and for power users — right destination, possibly wrong sprint.</li>
+              <li><b>The fork to resolve Friday:</b> is the near-term probe the agent checkpoint, or the simplified fast-lane the agent later subsumes? Boss 3 stays a bet — its <em>sprint</em> is what's in question.</li>
+            </ul></div>
+        </div>
+        <div class="seam">Newly on the table from her map: <b>Microsoft / SharePoint integration</b> as an adoption unlocker, and <b>sunsetting</b> features (folders / spaces) that no longer earn their place — pending usage data. Above the redesign, but they move its scope.</div>
+        <p class="src-line">Source: Irene's "Back office — current architectural state &amp; future design constraints," grounded in the CitizenLab admin code. Context to test the bets against — not a rewrite of them.</p>
       </div>
     </section>
 

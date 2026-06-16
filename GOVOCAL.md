@@ -592,5 +592,41 @@ Keep entries short, deduped, and dated when point-in-time. Newest at top.
   6. **Icon set gap** — no vertical drag-handle/grip glyph (BO reorder lists use one); only
      `dots-horizontal` exists. Add `drag-handle`.
 
+- _(2026-06-16)_ **Back-office architecture map (Irene's "current architectural state"
+  doc, grounded in the real `citizenlab` admin code) — three nav layers + the
+  complexity story.** Durable structure beyond the URL list in §A6:
+  - **Layer 1 — sidebar = 11 top-level destinations:** 8 "top" (Dashboard, Projects,
+    Input Manager, Users, Messaging, **Reporting** [flagged], Community Monitor,
+    Inspiration Hub) + 3 "bottom" (**Tools** [module], Pages & Menu, Settings).
+    Several appear/disappear by **feature flag / commercial module**. Wider than the
+    nav shows: Invitations, Project Importer, Description Builder, Favicon, Spaces are
+    reachable by URL/deep-link only.
+  - **Layer 2 — project tabs:** **General · Timeline · Audience · Messaging · Events ·
+    360 Input (NEW)**. Timeline is where the **phases** live. General holds Set-up /
+    Input tags / Access rights / Data; Audience holds Participants / Demographics /
+    Traffic. **Analysis** and **Files** are routes but *not* primary tabs — Analysis
+    opens via an "Open AI analysis" button inside a phase. (This project-tab layer is
+    newer than / sits above the per-phase edit tabs already listed in §A6.)
+  - **Layer 3 — per-phase config** changes by participation method (the heart of the
+    "too many configs" complexity). Deepest screens ~**6 URL levels** below `/admin`
+    (e.g. `…/projects/{id}/phases/{phaseId}/survey-form/edit`). 🟡 URL depth exact
+    from code; actual *click* depth may be lower where direct links exist.
+  - **Duplication = a core "where do I set this?" confusion:** **Input Manager** is
+    *both* a sidebar destination *and* a tab inside an ideation phase; **tags** and
+    **access rights** exist in *both* Settings and inside projects/phases. Settings is
+    a parallel config world: General · Branding · Registration · Tags (code: *topics*)
+    · Areas · Statuses (Ideation/Proposals split) · Policies.
+  - **The complexity thesis (for redesign work):** the BO *feels* complex because the
+    **Project→Phase→Method model is expressive and projected directly onto the screen**
+    — so it can't be fixed by visual design alone (flattening nav just hides depth).
+    Lever = **progressive disclosure + templates**: rich model underneath, short path
+    (1–3 clicks → ~80% of outputs) for the common case. Sits behind the
+    `uxui-audit-project` deck's "Vienna Paradox" bet. Irene's near-term product prior:
+    **simplify in-product first; agents/MCP later and for power users** (an assumption
+    she wants validated, not a settled call). Open strategic questions she's raised:
+    Microsoft/SharePoint integration as a multi-department adoption unlocker;
+    sunsetting low-usage features (folders/spaces) pending usage data; what the
+    reporting layer becomes once ~90% of queries can go through MCP.
+
 <!-- Add new learnings above this line. Format: - _(YYYY-MM-DD)_ <fact / decision / preference>. -->
 
