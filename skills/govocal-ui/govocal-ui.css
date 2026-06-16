@@ -261,6 +261,8 @@
 .gv-footer__links ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; font-size: var(--gv-fs-s); }
 .gv-footer__links li { display: inline-flex; align-items: center; }
 .gv-footer__links a, .gv-footer__links button { color: var(--gv-cool-grey-600); text-decoration: none; padding: 2px 0; font: inherit; background: none; border: 0; cursor: pointer; }
+/* FO shared: real footer link line-height is 21px (1.5 × 14px) — looser vertical rhythm, matters most on the wrapping mobile link block. */
+.gv-footer__links a, .gv-footer__links button { line-height: 1.5; }
 .gv-footer__links a:hover, .gv-footer__links button:hover { color: var(--gv-tenant-primary); text-decoration: underline; }
 .gv-footer__links li:not(:first-child)::before { content: "·"; color: var(--gv-grey-500); margin: 0 14px; display: inline-block; }
 .gv-footer__powered { display: inline-flex; align-items: center; gap: 10px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); white-space: nowrap; }
