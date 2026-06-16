@@ -619,6 +619,12 @@
 .gv-pcard__body { display: flex; flex-direction: column; flex: 1 1 auto; padding: 18px 22px 22px; }
 .gv-pcard.boxed .gv-pcard__title { margin: 0 0 8px; font-size: var(--gv-fs-xl); }  /* live card title = 21px/700 */
 .gv-pcard.boxed .gv-pcard__desc { color: var(--gv-text-secondary); }              /* live card desc = cool-grey #596B7A */
+/* SHARED FIX card-text-scale: the live .e2e-project-card sets its card text to
+   14px and lets meta/CTA/body inherit it — our boxed card otherwise inherits the
+   FO 16px base. Pin the boxed card's container scale to --gv-fs-s (14px) so the
+   card runs at the real product's denser scale. Title stays larger via the
+   explicit --gv-fs-xl override above; the rail (non-boxed) variant is untouched. */
+.gv-pcard.boxed { font-size: var(--gv-fs-s); }
 .gv-pcard__spacer { flex: 1 1 auto; min-height: 8px; }
 .gv-pcard__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
 /* the boxed-card CTA is a real outline button; keep it above the stretched link.
