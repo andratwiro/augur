@@ -19,8 +19,8 @@
 <link rel="stylesheet" href="assets/govocal-bo.css" />
 <script src="assets/govocal-icons.js" defer></script>
 <script src="assets/govocal-avatars.js" defer></script>
-<!-- City theme switcher: drives --gv-tenant-* + renders [data-gv-logo]. The on-screen
-     picker (bottom-right) re-themes the phone preview live across cities. -->
+<!-- City theme switcher: drives --gv-tenant-* + renders [data-gv-logo]. On-screen picker
+     disabled (body data-gv-theme-picker="off"); switch cities via the ?theme= URL param. -->
 <script src="assets/govocal-themes.js" defer></script>
 <style>
   :root {
@@ -1381,7 +1381,7 @@
     #cb-settings-body .cb-varcard__d { display:block; font-size:11px; color:var(--gv-cool-grey-600); margin-top:3px; }
 </style>
 </head>
-<body class="gv-bo min-h-screen">
+<body class="gv-bo min-h-screen" data-gv-theme-picker="off">
 <div class="gv-bo-shell is-rail">
 
   <!-- ── Real GoVocal back-office sidebar (collapsed icon rail) ──── -->
