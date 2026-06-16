@@ -1,0 +1,3261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440, initial-scale=1" />
+<title>Parallel Participation — Project editor + content builder</title>
+<script>
+  // Silence Tailwind Play CDN's "don't use in production" console warning
+  const _origWarn = console.warn;
+  console.warn = function(...args) {
+    if (typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) return;
+    _origWarn.apply(console, args);
+  };
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --rail: #ffffff;
+    --rail-dark: #f0f2f5;
+    --ink: #1a1f2c;
+    --ink-2: #4b5563;
+    --ink-3: #7a8294;
+    --border: #e5e7eb;
+    --accent: #1a1f2c;
+    --select: #eef2ff;
+    --select-border: #c9d4f0;
+    --pill-bg: #e6f4ea;
+    --pill-ink: #1e7c3a;
+    --teal: #2c6e7d;
+    --teal-dark: #245a66;
+  }
+  html, body { background: var(--bg); color: var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; }
+  .ttl { font-family: ui-serif, Georgia, "Times New Roman", serif; }
+  .phone {
+    width: 360px;
+    border: 12px solid #111418;
+    border-radius: 44px;
+    background: #fff;
+    box-shadow: 0 30px 60px rgba(20, 25, 40, 0.18), 0 8px 20px rgba(20,25,40,.08);
+    position: relative;
+    overflow: hidden;
+  }
+  .notch {
+    position: absolute;
+    top: 8px; left: 50%; transform: translateX(-50%);
+    width: 110px; height: 22px; background: #111418; border-radius: 14px;
+    z-index: 2;
+  }
+  .nav-icon { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .rail-btn { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; color: rgba(255,255,255,.55); }
+  .rail-btn:hover { color: #fff; }
+  .rail-btn.active { background: rgba(0,0,0,.25); color: #fff; }
+  .rail-btn.help-highlight {
+    border: 1.5px solid #22a455;
+    color: #22a455;
+  }
+  .rail-btn.help-highlight:hover { color: #22a455; background: rgba(34,164,85,.08); }
+  /* Project utilities collapse/expand animation */
+  #project-utilities {
+    overflow: hidden;
+    transition: max-height .25s ease, opacity .2s ease;
+    max-height: 300px;
+    opacity: 1;
+  }
+  #project-utilities.collapsed {
+    max-height: 0;
+    opacity: 0;
+  }
+
+  .side-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; font-size:13.5px; color:#1a1f2c; cursor:pointer; }
+  .side-item:hover { background:#eef0f4; }
+  .side-item.active { background:#e8ecf3; font-weight:600; }
+  .phase-row { display:flex; align-items:center; gap:14px; padding:11px 12px; border-radius:8px; font-size:13.5px; cursor:pointer; }
+  .phase-row:hover { background:#eef0f4; }
+  .phase-row.active { background:#e8ecf3; font-weight:600; }
+  .phase-num { color:#9aa3b2; font-variant-numeric: tabular-nums; font-size:12.5px; min-width: 18px; }
+
+  /* Rich phase rows (with status + dates) */
+  .phase-row-rich {
+    display:flex; align-items:center; gap:11px;
+    padding:9px 12px; border-radius:8px;
+    cursor:pointer;
+  }
+  .phase-row-rich:hover { background:#eef0f4; }
+  .phase-row-rich.active { background:#e8ecf3; }
+  .phase-row-rich.active .phase-name { font-weight:600; }
+  .phase-status-dot {
+    width: 10px; height: 10px; border-radius: 999px;
+    background: #d1d5db; flex-shrink: 0;
+    margin-top: 2px;
+    align-self: flex-start;
+  }
+  .phase-status-dot.live {
+    background: #22a455;
+    box-shadow: 0 0 0 3px rgba(34, 164, 85, .18);
+  }
+  .phase-status-dot.upcoming {
+    background: #fff; border: 1.5px solid #cbd5e1;
+  }
+  .phase-status-dot.add {
+    background: #f1f3f7; border: 1px dashed #cbd5e1;
+    display: flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px;
+  }
+  .phase-name { font-size: 13.5px; color: #1a1f2c; line-height: 1.3; }
+  .phase-dates { font-size: 11.5px; color: #7a8294; margin-top: 2px; line-height: 1.3; }
+  .phase-status-text { color: #7a8294; }
+  .phase-status-text.live-text { color: #1e7c3a; font-weight: 600; }
+
+  /* Timeline group — visually connects sequential engagements */
+  .timeline-group {
+    position: relative;
+    margin-bottom: 10px;
+  }
+  /* Line spans from center of first dot to center of last dot */
+  .timeline-group::before {
+    content: "";
+    position: absolute;
+    left: 17px;
+    top: 24px;
+    bottom: 38px;
+    width: 2px;
+    background: #9aa3b2;
+    z-index: 0;
+    border-radius: 1px;
+    transform: translateX(-50%);
+  }
+  .timeline-item {
+    position: relative;
+    z-index: 1;
+  }
+  .timeline-item .phase-status-dot {
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 0 0 3px #fff;
+  }
+  .timeline-item.active .phase-status-dot,
+  .timeline-item:hover .phase-status-dot {
+    box-shadow: 0 0 0 3px #e8ecf3;
+  }
+  /* Past phase: muted name */
+  .phase-name-past {
+    color: #7a8294;
+    text-decoration: line-through;
+    text-decoration-color: #cbd5e1;
+    text-decoration-thickness: 1px;
+  }
+  /* Past phase dot - filled grey */
+  .phase-status-dot.completed {
+    background: #9aa3b2;
+  }
+
+  /* small spacing breath before Add engagement */
+  .add-engagement {
+    margin-top: 4px;
+  }
+
+  /* ============ Click-to-edit affordance ============ */
+  .edit-banner {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    background: #1a1f2c; color: #fff;
+    padding: 9px 16px 9px 14px;
+    border-radius: 999px;
+    font-size: 13px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.15);
+    z-index: 10;
+    white-space: nowrap;
+  }
+  .edit-banner svg { color: #fff; }
+  /* Editable hover state on phone content sections */
+  .editable {
+    cursor: pointer;
+    border-radius: 6px;
+    transition: outline-color .12s ease, background-color .12s ease;
+    outline: 2px solid transparent;
+    outline-offset: 3px;
+    position: relative;
+  }
+  .editable:hover {
+    outline-color: #2c6e7d;
+    background: rgba(44, 110, 125, .05);
+  }
+  .editable:hover::after {
+    content: "";
+    position: absolute; top: -8px; right: -8px;
+    width: 22px; height: 22px; border-radius: 999px;
+    background: #2c6e7d; color: #fff;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 20h9'/><path d='M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z'/></svg>");
+    background-repeat: no-repeat; background-position: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    z-index: 5;
+  }
+  .compose-card { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid var(--border); border-radius:10px; background:#fff; }
+  .compose-card .plus { width: 28px; height: 28px; border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#7a8294; }
+  .compose-card:hover { border-color:#cfd5df; }
+  .phase-card {
+    display:flex; align-items:center; gap:12px; padding:14px 14px; border:1px solid var(--border); border-radius:12px; background:#fff;
+    margin-bottom: 10px;
+  }
+  .phase-card .icon-wrap { width: 28px; height: 28px; border-radius:6px; background:#f1f3f7; display:flex; align-items:center; justify-content:center; color:#4b5563; }
+  .phase-card.selected { border-color:#1a1f2c; box-shadow: 0 0 0 1px #1a1f2c; }
+  .phase-card.done .icon-wrap { background:#e6f4ea; color:#1e7c3a; }
+  .phase-card .chev { margin-left:auto; color:#9aa3b2; }
+
+  /* Phase chevron arrows (citizen-side timeline visual, matches current product) */
+  .phase-arrow {
+    width: 28px; height: 28px; border-radius: 6px;
+    border: 1px solid var(--border); background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--ink-2);
+  }
+  .phase-arrow:hover { background: #f7f8fa; }
+  .phase-chevrons {
+    display: flex; align-items: stretch; gap: 0;
+  }
+  .phase-chevron {
+    flex: 1;
+    height: 30px;
+    background: #e5e7eb;
+    color: #4b5563;
+    font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%);
+    margin-left: -8px;
+  }
+  .phase-chevron:first-child {
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
+    margin-left: 0;
+  }
+  .phase-chevron:last-child {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%);
+  }
+  .phase-chevron:only-child {
+    clip-path: none;
+  }
+  .phase-chevron.active {
+    background: #1e7c3a;
+    color: #fff;
+  }
+  .top-pill {
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 6px 12px; border-radius: 999px;
+    background:#e6f4ea; color:#1e7c3a; font-size:13px; font-weight:500;
+    border:1px solid #cfe6d6;
+  }
+  .top-pill .dot { width:7px; height:7px; border-radius:999px; background:#22a455; }
+  .ghost-btn { border:1px solid var(--border); background:#fff; padding: 7px 10px; border-radius:8px; color:#1a1f2c; }
+  .ghost-btn:hover { background:#f7f8fa; }
+  .share-btn { background:#1a1f2c; color:#fff; padding:8px 14px; border-radius:8px; font-weight:600; display:inline-flex; align-items:center; gap:6px; }
+  .share-btn:hover { background:#000; }
+  .preview-hero {
+    height: 150px; border-radius: 4px; background-size: cover; background-position: center;
+    background-image: linear-gradient(to bottom, rgba(0,0,0,0) 60%, rgba(0,0,0,.05)), url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'><defs><linearGradient id='g' x1='0' x2='0' y1='0' y2='1'><stop offset='0' stop-color='%23f4b16b'/><stop offset='0.45' stop-color='%23c98c5b'/><stop offset='0.55' stop-color='%23806071'/><stop offset='1' stop-color='%23394760'/></linearGradient></defs><rect width='400' height='200' fill='url(%23g)'/><rect x='0' y='70' width='400' height='40' fill='%231a2233' opacity='.55'/><g fill='%231a2233' opacity='.7'><rect x='30' y='55' width='14' height='25'/><rect x='50' y='48' width='10' height='32'/><rect x='66' y='52' width='16' height='28'/><rect x='88' y='45' width='12' height='35'/><rect x='106' y='50' width='18' height='30'/><rect x='130' y='42' width='12' height='38'/><rect x='148' y='48' width='14' height='32'/><rect x='170' y='44' width='16' height='36'/><rect x='192' y='50' width='12' height='30'/><rect x='210' y='46' width='18' height='34'/><rect x='234' y='52' width='14' height='28'/><rect x='254' y='44' width='12' height='36'/><rect x='272' y='48' width='16' height='32'/><rect x='294' y='52' width='14' height='28'/><rect x='314' y='46' width='12' height='34'/><rect x='332' y='50' width='16' height='30'/><rect x='354' y='48' width='12' height='32'/></g><rect x='0' y='110' width='400' height='90' fill='%237d6e7a' opacity='.55'/><g opacity='.35' fill='%23ffffff'><rect x='0' y='112' width='400' height='2'/><rect x='40' y='118' width='80' height='1'/><rect x='160' y='122' width='90' height='1'/><rect x='280' y='118' width='70' height='1'/></g></svg>");
+  }
+  .demo-state {
+    display:inline-flex; align-items:center; gap:8px;
+    background:#fff; border:1px solid var(--border); border-radius:999px; padding:4px 6px;
+    font-size:12px; color:#1a1f2c;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+  }
+  .demo-state .label { padding: 0 8px; color:#7a8294; letter-spacing:.06em; font-size:11px; font-weight:600; }
+  .demo-state button { padding: 5px 12px; border-radius:999px; color:#4b5563; }
+  .demo-state button.on { background:#1a1f2c; color:#fff; font-weight:600; }
+  .hint-box {
+    border: 1.5px dashed #cfd5df; border-radius: 10px; padding: 14px 16px;
+    color:#4b5563; font-size: 13px; background: transparent;
+  }
+  .badge-2 { background:#1a1f2c; color:#fff; font-size:11px; padding: 2px 7px; border-radius: 999px; min-width: 20px; text-align:center; font-weight:600; }
+  .preview-stage {
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(0,0,0,.04) 1px, transparent 0);
+    background-size: 18px 18px;
+  }
+
+  /* ============ Topbar (one-thing) ============ */
+  .topbar {
+    height: 64px;
+    background: #fff;
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-left {
+    background: #0f2f3e;
+    color: #fff;
+    width: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .topbar-back {
+    width: 32px; height: 32px; border-radius: 999px;
+    background: rgba(255,255,255,.18);
+    display:flex; align-items:center; justify-content:center;
+    color: #fff;
+  }
+  .topbar-back:hover { background: rgba(255,255,255,.28); }
+  .topbar-main {
+    flex: 1;
+    background: #fff;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px 0 24px;
+  }
+  .top-status-pill {
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 6px 12px 6px 10px; border-radius: 999px;
+    background:#e6f4ea; color:#1e7c3a; font-size:13px; font-weight:500;
+    border:1px solid #cfe6d6;
+  }
+  .top-status-pill .dot { width:8px; height:8px; border-radius:999px; background:#22a455; }
+  .top-divider { width: 1px; height: 28px; background: var(--border); margin: 0 4px; }
+  .top-edit-label {
+    font-size: 10.5px; letter-spacing: .08em; color: #7a8294; font-weight: 600;
+    text-transform: uppercase;
+  }
+  .top-edit-title {
+    font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.2;
+  }
+  .top-settings-btn {
+    display:inline-flex; align-items:center; gap:7px;
+    padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--border); color: var(--ink);
+    font-size: 12.5px; font-weight: 600; letter-spacing: .04em;
+    background:#fff;
+  }
+  .top-settings-btn:hover { background: #f7f8fa; }
+  .icon-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    width: 38px; height: 38px; border-radius: 8px;
+    border:1px solid var(--border); color: var(--ink); background:#fff;
+  }
+  .icon-btn:hover { background: #f7f8fa; }
+
+  /* ============ Floating Settings button ============ */
+  .floating-settings-btn {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 14px;
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(20,25,40,.06), 0 1px 2px rgba(20,25,40,.04);
+    transition: all .15s ease;
+  }
+  .floating-settings-btn:hover {
+    background: #f7f8fa;
+    box-shadow: 0 4px 10px rgba(20,25,40,.10), 0 1px 2px rgba(20,25,40,.04);
+    transform: translateY(-1px);
+  }
+
+  /* ============ Modal ============ */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(17, 20, 24, 0.45);
+    display:flex; align-items:center; justify-content:center; z-index: 50;
+    backdrop-filter: blur(2px);
+  }
+  .modal-card {
+    width: 880px; max-width: 92vw;
+    height: 86vh;
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 40px 80px rgba(20,25,40,.25);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-head { padding: 22px 26px 16px; display:flex; align-items:flex-start; justify-content:space-between; }
+  .modal-body { display: flex; flex: 1; overflow: hidden; }
+  .modal-side {
+    width: 220px; padding: 4px 12px 16px; flex-shrink: 0;
+    border-right: 1px solid var(--border);
+  }
+  .modal-side-item {
+    display:flex; align-items:center; gap:10px;
+    padding: 10px 12px; border-radius:8px; font-size: 13.5px;
+    color: var(--ink-2); cursor:pointer; margin-bottom: 2px;
+  }
+  .modal-side-item:hover { background:#f4f6fa; }
+  .modal-side-item.active {
+    background: #eef2ff; color: #1f3b6d; font-weight: 600;
+  }
+  .modal-content { flex: 1; overflow-y: auto; padding: 16px 28px 24px; }
+  .opt-card {
+    display:flex; align-items:flex-start; gap: 14px;
+    padding: 16px 18px; border:1px solid var(--border); border-radius: 12px;
+    margin-bottom: 12px; cursor:pointer; background:#fff;
+  }
+  .opt-card:hover { border-color: #cfd5df; }
+  .opt-card.selected { border-color: #1f3b6d; background: #f5f8ff; box-shadow: inset 0 0 0 1px #1f3b6d; }
+  .radio {
+    width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid #b6becc;
+    flex-shrink: 0; margin-top: 1px; position: relative;
+  }
+  .radio.on { border-color: #1f3b6d; }
+  .radio.on::after {
+    content: ""; position: absolute; inset: 3px; border-radius: 999px; background: #1f3b6d;
+  }
+  .modal-foot {
+    padding: 16px 26px; display:flex; align-items:center; justify-content:flex-end; gap:10px;
+    border-top: 1px solid var(--border); background: #fafbfc;
+  }
+  .btn-primary { background:#1f3b6d; color:#fff; padding: 9px 18px; border-radius:8px; font-weight:600; font-size:13.5px; }
+  .btn-primary:hover { background:#162d54; }
+  .btn-secondary { background:#fff; color:var(--ink); padding: 9px 18px; border-radius:8px; font-weight:500; font-size:13.5px; border:1px solid var(--border); }
+  .btn-secondary:hover { background:#f4f6fa; }
+
+  /* ============ Phase config view ============ */
+  .phase-stage {
+    background: var(--bg);
+    flex: 1; overflow-y: auto;
+    padding: 24px 32px 24px 32px;
+    padding-right: 32px;
+  }
+  .phase-card-outer {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .phase-head {
+    padding: 22px 26px 0; display:flex; align-items:flex-start; justify-content:space-between; gap: 16px;
+  }
+  .phase-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  .phase-head .meta { display:flex; align-items:center; gap:10px; margin-top: 6px; color:#6b7280; font-size: 13px; }
+  .phase-head .meta .sep { color: #d1d5db; }
+  .phase-tabs {
+    display:flex; align-items:flex-end; gap: 4px;
+    padding: 18px 26px 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .phase-tab {
+    padding: 10px 14px 14px;
+    font-size: 13.5px; color: #6b7280;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .phase-tab:hover { color: #1a1f2c; }
+  .phase-tab.active {
+    color: #1a1f2c; font-weight: 600; border-bottom-color: #2c6e7d;
+  }
+  .phase-tab.disabled {
+    color: #cbd5e1; cursor: not-allowed;
+  }
+  .phase-tab.disabled:hover { color: #cbd5e1; }
+  .badge-new {
+    display:inline-block; padding: 1px 6px; font-size: 9.5px; font-weight: 700;
+    border-radius: 4px; border: 1px solid #1a1f2c; color: #1a1f2c; letter-spacing:.04em;
+  }
+  .info-banner {
+    margin: 22px 26px 0;
+    background: #d6eef0; border-radius: 10px; padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .info-banner .left { display:flex; align-items:center; gap:10px; font-size: 13.5px; color: #1a1f2c; }
+  .info-banner .sparkle { color: #2c6e7d; }
+  .open-link { color:#1a1f2c; font-weight: 600; font-size: 13.5px; display: inline-flex; align-items:center; gap: 6px; }
+  .open-link:hover { color: #2c6e7d; }
+  .section-head {
+    padding: 22px 26px 4px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .section-head h3 { font-size: 18px; font-weight: 700; }
+  .section-head p { font-size: 13px; color: #6b7280; margin-top: 2px; }
+  .section-actions { display:flex; gap: 8px; }
+  .btn-import {
+    display:inline-flex; align-items:center; gap:6px; padding: 8px 12px;
+    border:1px solid var(--border); background:#fff; border-radius:8px;
+    font-size: 13px; font-weight: 500;
+  }
+  .btn-import:hover { background: #f7f8fa; }
+  .btn-new-idea {
+    display:inline-flex; align-items:center; gap:6px; padding: 8px 14px;
+    background:#1a1f2c; color: #fff; border-radius:8px;
+    font-size: 13px; font-weight: 600;
+  }
+  .btn-new-idea:hover { background: #000; }
+  .filter-row {
+    padding: 14px 26px 0; display:flex; align-items:center; justify-content:space-between; gap: 16px;
+  }
+  .select-pill {
+    display:inline-flex; align-items:center; gap: 10px;
+    padding: 8px 12px; border:1px solid var(--border); border-radius: 8px;
+    background:#fff; font-size: 13px; min-width: 200px; justify-content: space-between;
+  }
+  .toggle-row { display:flex; align-items:center; gap: 10px; font-size: 13px; color: #4b5563; }
+  .toggle { width: 32px; height: 18px; border-radius: 999px; background: #d1d5db; position: relative; }
+  .toggle::after { content:""; position: absolute; top:2px; left:2px; width:14px; height:14px; border-radius:999px; background:#fff; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .search-box {
+    display:flex; align-items:center; gap: 8px; padding: 7px 12px;
+    border:1px solid var(--border); border-radius: 8px; background: #fff; font-size: 13px;
+    min-width: 220px;
+  }
+  .search-box input { flex:1; outline: none; background: transparent; font-size: 13px; }
+  .exports-link { display:inline-flex; align-items:center; gap:6px; color: #1a1f2c; font-size: 13px; font-weight: 500; }
+  .post-table {
+    margin: 14px 26px 26px;
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    background: #fff;
+  }
+  .post-tabs {
+    display: flex; align-items: center; padding: 12px 16px 0; gap: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .post-tab {
+    padding: 8px 12px 12px; font-size: 13px; color: #6b7280; cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .post-tab.active { color: #2c6e7d; font-weight: 600; border-bottom-color: #2c6e7d; }
+  .table-head {
+    display: grid; grid-template-columns: 24px 2fr 1.4fr 1fr 0.7fr 0.7fr 1fr;
+    align-items: center; gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: #fafbfc;
+    font-size: 12.5px; color: #4b5563; font-weight: 600;
+  }
+  .table-row {
+    display: grid; grid-template-columns: 24px 2fr 1.4fr 1fr 0.7fr 0.7fr 1fr;
+    align-items: center; gap: 8px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .table-row:last-child { border-bottom: 0; }
+  .row-check { width: 16px; height: 16px; border: 1.5px solid #cbd5e1; border-radius: 4px; }
+  .assignee-pill {
+    display:inline-flex; align-items:center; gap: 8px;
+    padding: 5px 10px; border:1px solid var(--border); border-radius: 6px;
+    background: #fff; font-size: 12.5px; color: #6b7280; min-width: 130px; justify-content: space-between;
+  }
+  .reaction { display:inline-flex; align-items:center; gap: 4px; color: #4b5563; font-size: 12.5px; }
+  .pane-tabs-side {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 12px;
+    border-right: 1px solid var(--border);
+    background: #fafbfc;
+    min-width: 200px;
+  }
+  .pane-tab-item {
+    padding: 9px 12px; font-size: 13px; border-radius: 8px; cursor: pointer;
+    display:flex; align-items:center; gap: 8px;
+  }
+  .pane-tab-item.active { background: #fff; color: #2c6e7d; font-weight: 600; box-shadow: inset 0 0 0 1px #cfe6e9; }
+  .pane-tab-item:hover:not(.active) { background: #eef0f4; }
+  .info-icon-circle {
+    width: 16px; height: 16px; border-radius: 999px; background: #2c6e7d; color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+  }
+
+  /* ============ Modal form elements ============ */
+  .form-label {
+    display: block; font-size: 13.5px; font-weight: 600; color: var(--ink); margin-bottom: 6px;
+  }
+  .form-label .hint {
+    font-weight: 400; color: var(--ink-3); font-size: 12.5px; margin-left: 6px;
+  }
+  .form-help {
+    font-size: 12.5px; color: var(--ink-3); margin-top: 5px;
+  }
+  .form-input {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13.5px; color: var(--ink); background: #fff; outline: none;
+  }
+  .form-input:focus { border-color: #1f3b6d; box-shadow: 0 0 0 3px rgba(31,59,109,.10); }
+  .form-textarea {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13.5px; color: var(--ink); background: #fff; outline: none;
+    min-height: 80px; resize: vertical; font-family: inherit;
+  }
+  .form-textarea:focus { border-color: #1f3b6d; box-shadow: 0 0 0 3px rgba(31,59,109,.10); }
+  .url-preview {
+    font-size: 12.5px; color: var(--ink-3); margin-top: 6px;
+    padding: 8px 12px; background: #f4f6fa; border-radius: 6px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    word-break: break-all;
+  }
+  .url-preview .slug { color: var(--ink); font-weight: 600; }
+
+  /* Tags */
+  .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px; font-size: 12.5px; color: var(--ink);
+    border: 1px solid var(--border); border-radius: 999px; background: #fff; cursor: pointer;
+  }
+  .tag-chip:hover { border-color: #1f3b6d; color: #1f3b6d; }
+  .tag-chip.selected { background: #eef2ff; border-color: #1f3b6d; color: #1f3b6d; font-weight: 500; }
+
+  .field-group { margin-bottom: 22px; }
+  .field-group h4 {
+    font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 12px;
+    padding-top: 4px;
+  }
+
+  /* Informational nudges (Formsync, Inspiration hub) — light teal callouts */
+  .nudge {
+    display: flex; align-items: center; gap: 14px;
+    background: #d8e9ee;
+    border-radius: 10px;
+    padding: 13px 18px;
+    margin-bottom: 10px;
+  }
+  .nudge:last-child { margin-bottom: 0; }
+  .nudge-icon {
+    width: 20px; height: 20px;
+    color: #2b6776;
+    flex-shrink: 0;
+    stroke-width: 1.8;
+  }
+  .nudge-text {
+    flex: 1;
+    font-size: 13.5px;
+    color: #1f3b45;
+    line-height: 1.45;
+  }
+  .nudge-text strong { font-weight: 700; color: #1f3b45; }
+  .nudge-link {
+    color: #1f3b45;
+    font-size: 13.5px;
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .nudge-link:hover { text-decoration: underline; }
+  .nudge-inline-link {
+    color: #2b6776;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .nudge-inline-link:hover { text-decoration: underline; }
+  .nudge-stack { margin-top: 4px; }
+
+  /* Section divider in modal */
+  .modal-section-divider {
+    border-top: 1px solid var(--border); margin: 24px 0 20px;
+  }
+
+  /* Danger zone */
+  .danger-zone {
+    border: 1px solid #fecaca; background: #fef2f2; border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .danger-zone h4 { color: #991b1b; font-size: 14.5px; font-weight: 700; margin-bottom: 6px; }
+  .danger-zone p { font-size: 13px; color: #7f1d1d; margin-bottom: 12px; line-height: 1.5; }
+  .btn-danger {
+    background: #dc2626; color: #fff; padding: 8px 16px; border-radius: 8px;
+    font-weight: 600; font-size: 13px;
+  }
+  .btn-danger:hover { background: #b91c1c; }
+
+  /* Toggle switch */
+  .switch { position: relative; display: inline-block; width: 38px; height: 22px; flex-shrink: 0; }
+  .switch input { display: none; }
+  .switch .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #d1d5db; border-radius: 999px; transition: .2s;
+  }
+  .switch .slider::before {
+    content: ""; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px;
+    background: #fff; border-radius: 999px; transition: .2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,.15);
+  }
+  .switch input:checked + .slider { background: #1f7c3a; }
+  .switch input:checked + .slider::before { transform: translateX(16px); }
+
+  /* Input tag row */
+  .tag-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; border-top: 1px solid var(--border);
+    font-size: 13.5px;
+  }
+  .tag-row:first-of-type { border-top: 0; }
+  .tag-row-actions { display: flex; align-items: center; gap: 6px; }
+  .tag-action-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 12px; font-weight: 500; color: var(--ink-2); background: #fff;
+  }
+  .tag-action-btn:hover { border-color: #1f3b6d; color: #1f3b6d; }
+  .tag-action-btn.disabled { color: #cbd5e1; border-color: #e5e7eb; cursor: not-allowed; }
+  .tag-action-btn.disabled:hover { border-color: #e5e7eb; color: #cbd5e1; }
+
+  /* AI hint banner */
+  .ai-hint {
+    background: #d6eef0; border-radius: 10px; padding: 14px 16px;
+    font-size: 13px; color: #1a1f2c; display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 18px;
+  }
+  .ai-hint .ai-icon { color: #2c6e7d; flex-shrink: 0; margin-top: 1px; }
+
+  /* ============ Engagement sub-cards (Typeform-inspired) ============ */
+  .eng-card {
+    background: #f6f8fa;
+    border-radius: 12px;
+    padding: 14px 10px 10px;
+    margin-bottom: 12px;
+    border: 1px solid #eaecef;
+  }
+  .eng-card-header {
+    font-size: 12px; font-weight: 600;
+    color: #4b5563;
+    letter-spacing: .02em;
+    padding: 0 6px 8px;
+  }
+  .eng-add-cta {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    margin-top: 6px;
+    background: transparent;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 8px;
+    color: #6b7280;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    transition: background .12s ease, border-color .12s ease, color .12s ease;
+  }
+  .eng-add-cta:hover {
+    background: #fff;
+    border-color: #9aa3b2;
+    color: #1a1f2c;
+  }
+
+  /* Adjust phase row spacing inside cards */
+  .eng-card .phase-row-rich {
+    padding: 8px 10px;
+  }
+  /* Reposition timeline line for the new card padding */
+  .eng-card .timeline-group::before {
+    left: 17px;
+    top: 22px;
+    bottom: 30px;
+  }
+
+  /* ============ Panel sections (boxless — Timeline / Extras) ============ */
+  .panel-section { padding: 0; }
+  .panel-divider {
+    border: none;
+    border-top: 1px solid #e9ebef;
+    margin: 16px 0;
+  }
+  .sec-head {
+    font-size: 14px; font-weight: 600;
+    color: #374151;
+    padding: 0 4px;
+    margin-bottom: 6px;
+  }
+  .sec-sub {
+    font-size: 12.5px; color: #8a92a0;
+    padding: 0 4px;
+    margin: -2px 0 10px;
+    line-height: 1.35;
+  }
+  /* Green add link (New phase / New survey) — no box, like the mock */
+  .sec-add {
+    display: flex; align-items: center; gap: 9px;
+    width: 100%;
+    padding: 9px 4px;
+    background: transparent; border: none;
+    color: #1e7c3a; font-size: 14px; font-weight: 600;
+    cursor: pointer; border-radius: 8px; text-align: left;
+    transition: background .12s ease, color .12s ease;
+  }
+  .sec-add svg { width: 16px; height: 16px; stroke-width: 2.2; flex-shrink: 0; }
+  .sec-add:hover { background: #f1f7f3; }
+  /* Muted variant — the quiet "Add a survey outside the timeline" in empty state */
+  .sec-add.muted { color: #7a8294; font-weight: 500; }
+  .sec-add.muted:hover { background: #f4f6fa; color: #4b5563; }
+  /* Reposition timeline line for the boxless section layout */
+  .panel-section .timeline-group::before {
+    left: 17px;
+    top: 23px;
+    bottom: 34px;
+  }
+
+  /* Empty-state method pills (illustrative) */
+  .method-hint {
+    font-size: 12.5px; color: #9aa3b2;
+    padding: 0 4px; margin: 8px 0 9px;
+  }
+  .method-pills {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 0 4px;
+  }
+  .method-pill {
+    font-size: 12.5px; color: #4b5563;
+    border: 1px solid #d8dce3; border-radius: 8px;
+    padding: 5px 11px; background: #fff;
+    white-space: nowrap;
+  }
+
+  /* ============ Empty-state worked example ============ */
+  .tl-example-intro {
+    font-size: 12.5px; color: #9aa3b2;
+    padding: 0 4px; margin: 4px 0 8px;
+    line-height: 1.45;
+  }
+  /* Ghosted, non-interactive example phases */
+  .tl-example .phase-row-rich { cursor: default; padding: 7px 12px; }
+  .tl-example .phase-row-rich:hover { background: transparent; }
+  .tl-example .phase-name {
+    font-style: italic; font-size: 13px; color: #8a92a0;
+  }
+  .tl-example .phase-status-dot { background: #d1d5db; box-shadow: 0 0 0 3px #fff; }
+  /* Lighter, shorter connector tuned for single-line example rows */
+  .tl-example .timeline-group::before {
+    background: #dcdfe6;
+    top: 14px; bottom: 17px;
+  }
+  /* "Start with a phase" CTA card */
+  .tl-start-card {
+    border: 1px solid #d8dce3; border-radius: 12px;
+    padding: 14px 14px 13px; margin: 6px 4px 0;
+  }
+  .tl-start-cta {
+    display: flex; align-items: center; gap: 9px;
+    background: transparent; border: none; padding: 0;
+    color: #1e7c3a; font-size: 14.5px; font-weight: 600;
+    cursor: pointer; text-align: left;
+  }
+  .tl-start-cta svg { width: 17px; height: 17px; stroke-width: 2.2; flex-shrink: 0; }
+  .tl-start-help {
+    font-size: 12.5px; color: #9aa3b2;
+    margin-top: 7px; line-height: 1.45;
+  }
+
+  /* ============ State switcher chip ============ */
+  .state-chip {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 11.5px;
+    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04);
+  }
+  .state-chip .label {
+    padding: 0 8px;
+    color: #7a8294;
+    letter-spacing: .06em;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .state-chip button {
+    padding: 6px 11px;
+    border-radius: 999px;
+    color: #4b5563;
+    font-weight: 500;
+    transition: background .12s ease, color .12s ease;
+  }
+  .state-chip button:hover { background: #f4f6fa; }
+  .state-chip button.on {
+    background: #1a1f2c;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  /* ============ Empty state ghost placeholders ============ */
+  .ghost-slot {
+    border: 1.5px dashed #cbd5e1;
+    background: #fafbfc;
+    border-radius: 8px;
+    color: #7a8294;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: border-color .12s ease, color .12s ease, background .12s ease;
+    padding: 12px 14px;
+  }
+  .ghost-slot:hover {
+    border-color: #2c6e7d;
+    color: #2c6e7d;
+    background: #fff;
+  }
+  .ghost-slot svg { color: currentColor; }
+  .ghost-slot.tall {
+    height: 150px;
+  }
+
+  .empty-add-prompt {
+    margin-top: 14px;
+    padding: 14px 16px;
+    background: #f4f6fa;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 12px;
+    text-align: center;
+    color: #4b5563;
+    font-size: 13px;
+  }
+  .empty-add-prompt strong { color: #1a1f2c; font-weight: 600; }
+
+  /* Bullet list */
+  .bullet-list { list-style: disc; padding-left: 22px; margin-top: 6px; }
+  .bullet-list li { font-size: 12.5px; color: var(--ink-3); margin-bottom: 3px; }
+
+  /* ============ New phase/survey creation forms (canvas-level, like phase view) ============ */
+  .creation-stage {
+    background: var(--bg);
+    flex: 1; overflow-y: auto;
+    padding: 24px 32px;
+  }
+  .creation-card {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; max-width: 880px; margin: 0 auto;
+  }
+  .creation-head {
+    padding: 24px 32px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .creation-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  .creation-head p { color: var(--ink-3); font-size: 13.5px; margin-top: 4px; }
+
+  .creation-body {
+    padding: 24px 32px 8px;
+  }
+
+  .creation-foot {
+    padding: 18px 32px;
+    border-top: 1px solid var(--border);
+    background: #fafbfc;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  /* Inline contextual note */
+  .activity-note {
+    background: #eef6f7;
+    border: 1px solid #cfe6e9;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #1a1f2c;
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .activity-note svg { color: #2c6e7d; flex-shrink: 0; margin-top: 1px; }
+
+  /* Method picker grid (mirrors today's product) */
+  .method-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    margin-top: 8px;
+  }
+  .method-card {
+    border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 14px;
+    cursor: pointer;
+    background: #fff;
+    transition: border-color .12s ease, box-shadow .12s ease;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .method-card:hover { border-color: #9aa3b2; }
+  .method-card.selected {
+    border-color: #2c6e7d;
+    background: #eef6f7;
+    box-shadow: 0 0 0 1px #2c6e7d;
+  }
+  .method-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #fafbfc;
+  }
+  .method-card.disabled:hover {
+    border-color: var(--border);
+  }
+  .method-card.disabled h4,
+  .method-card.disabled p {
+    color: #9aa3b2;
+  }
+  .method-card.disabled .method-visual {
+    background: #eef0f4;
+    color: #cbd5e1;
+  }
+  .method-card .method-visual {
+    height: 70px;
+    background: #f4f6fa;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    color: #9aa3b2;
+  }
+  .method-card.selected .method-visual {
+    background: #d6eef0;
+    color: #2c6e7d;
+  }
+  .method-card h4 {
+    font-size: 13.5px; font-weight: 700; color: var(--ink);
+  }
+  .method-card p {
+    font-size: 12px; color: var(--ink-3); line-height: 1.45;
+  }
+  .method-card .beta {
+    display: inline-block; padding: 1px 5px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .04em;
+    border-radius: 3px; background: #fff;
+    border: 1px solid #cbd5e1; color: #6b7280;
+    margin-left: 6px; vertical-align: middle;
+  }
+
+  /* ============ New engagement modal — Step 1 (When does this happen?) ============ */
+  .new-eng-modal {
+    width: 760px; max-width: 92vw;
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 40px 80px rgba(20,25,40,.25);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .new-eng-head {
+    padding: 22px 28px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .new-eng-head .step-label {
+    font-size: 11px; letter-spacing: .08em; color: var(--ink-3);
+    font-weight: 600; text-transform: uppercase;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .new-eng-head h2 {
+    font-size: 22px; font-weight: 700; letter-spacing: -.01em;
+    margin-top: 6px;
+  }
+  .new-eng-head p {
+    color: var(--ink-3); font-size: 13.5px; margin-top: 4px;
+  }
+  .step-dot { width: 6px; height: 6px; border-radius: 999px; background: #cbd5e1; }
+  .step-dot.active { background: #1a1f2c; }
+  .new-eng-body {
+    padding: 24px 28px;
+  }
+  .eng-type-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  }
+  .eng-type-card {
+    border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 18px 18px 16px;
+    cursor: pointer;
+    background: #fff;
+    transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+    display: flex; flex-direction: column;
+  }
+  .eng-type-card:hover {
+    border-color: #9aa3b2;
+    transform: translateY(-1px);
+  }
+  .eng-type-card.selected {
+    border-color: #1f3b6d;
+    box-shadow: 0 0 0 1px #1f3b6d, 0 4px 14px rgba(31,59,109,.08);
+  }
+  .eng-type-card .visual {
+    height: 96px; border-radius: 8px;
+    background: #f4f6fa;
+    margin-bottom: 14px;
+    overflow: hidden;
+    position: relative;
+  }
+  .eng-type-card h4 {
+    font-size: 15px; font-weight: 700; color: var(--ink);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .eng-type-card .radio-mini {
+    width: 16px; height: 16px; border-radius: 999px;
+    border: 1.5px solid #cbd5e1; flex-shrink: 0; position: relative;
+  }
+  .eng-type-card.selected .radio-mini { border-color: #1f3b6d; }
+  .eng-type-card.selected .radio-mini::after {
+    content: ""; position: absolute; inset: 2.5px; border-radius: 999px; background: #1f3b6d;
+  }
+  .eng-type-card p {
+    font-size: 13px; color: var(--ink-2); line-height: 1.5; margin-top: 6px;
+  }
+  .eng-type-card .footnote {
+    margin-top: auto; padding-top: 10px;
+    font-size: 12px; color: var(--ink-3);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .eng-type-card .badge-soon {
+    display: inline-block; padding: 2px 7px; font-size: 10.5px; font-weight: 600;
+    border-radius: 4px; background: #eef2ff; color: #1f3b6d; letter-spacing:.02em;
+  }
+
+  /* Visual: timeline (connected dots) */
+  .visual-timeline {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; gap: 0; padding: 0 18px;
+  }
+  .visual-timeline .vt-dot {
+    width: 16px; height: 16px; border-radius: 999px;
+    background: #fff; border: 2px solid #9aa3b2;
+    position: relative; z-index: 2; flex-shrink: 0;
+  }
+  .visual-timeline .vt-dot.live {
+    background: #22a455; border-color: #22a455;
+    box-shadow: 0 0 0 3px rgba(34,164,85,.2);
+  }
+  .visual-timeline .vt-line {
+    flex: 1; height: 2px; background: #9aa3b2;
+  }
+
+  /* Visual: standalone (floating dots) */
+  .visual-standalone {
+    display: flex; align-items: center; justify-content: center;
+    height: 100%; gap: 22px;
+  }
+  .visual-standalone .vs-dot {
+    width: 16px; height: 16px; border-radius: 999px;
+    background: #22a455; border: 2px solid #22a455;
+    box-shadow: 0 0 0 3px rgba(34,164,85,.2);
+  }
+  .visual-standalone .vs-dot.dim {
+    background: #fff; border-color: #9aa3b2; box-shadow: none;
+  }
+
+  .new-eng-foot {
+    padding: 16px 28px;
+    border-top: 1px solid var(--border);
+    background: #fafbfc;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .new-eng-foot .help-link {
+    font-size: 12.5px; color: var(--ink-3);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .new-eng-foot .help-link svg { color: var(--ink-3); }
+
+  /* ============ Content builder overlay ============ */
+  .builder-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: #fff;
+    display: none;
+    flex-direction: column;
+  }
+  .builder-overlay.open { display: flex; }
+
+  .builder-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: #fff;
+  }
+  .builder-topbar-left { display: flex; align-items: center; gap: 12px; }
+  .builder-topbar-back {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px; color: #4b5563;
+  }
+  .builder-topbar-back:hover { background: #f1f3f7; color: #1a1f2c; }
+  .builder-topbar-title { font-size: 15.5px; font-weight: 700; line-height: 1.15; color: #1a1f2c; }
+  .builder-topbar-sub { font-size: 12.5px; color: #7a8294; line-height: 1.2; margin-top: 1px; }
+  .builder-topbar-actions { display: flex; align-items: center; gap: 10px; }
+  .builder-topbar-actions .preview-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4b5563; }
+  .builder-save-btn {
+    background: #1f3b6d; color: #fff;
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+  }
+  .builder-save-btn:hover { background: #15294e; }
+
+  .builder-body { flex: 1; display: flex; min-height: 0; }
+
+  .builder-left-rail {
+    width: 240px; flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    padding: 14px 8px;
+    overflow-y: auto;
+    background: #fff;
+  }
+  .builder-section { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #f1f3f7; }
+  .builder-section:last-child { border-bottom: none; }
+  .builder-widget {
+    display: flex; align-items: center; gap: 11px;
+    padding: 8px 10px; border-radius: 8px;
+    font-size: 13.5px; color: #1a1f2c;
+    cursor: grab;
+  }
+  .builder-widget:hover { background: #f4f6fa; }
+  .builder-widget svg { width: 16px; height: 16px; color: #4b5563; flex-shrink: 0; stroke-width: 1.7; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+
+  .builder-canvas {
+    flex: 1; min-width: 0;
+    background: #f4f6fa;
+    overflow-y: auto;
+    padding: 36px 20px 60px;
+    display: flex; align-items: flex-start; justify-content: center;
+  }
+  /* Suppress the click-to-edit hover affordance once we're already inside the builder */
+  .builder-canvas .editable:hover { outline-color: transparent; background: transparent; }
+  .builder-canvas .editable:hover::after { display: none; }
+
+  .builder-right-rail {
+    width: 320px; flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: #fff;
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .builder-right-rail-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .builder-right-rail-header h3 { font-size: 16px; font-weight: 700; color: #1a1f2c; }
+  .builder-right-rail-header .close-btn {
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; color: #7a8294;
+  }
+  .builder-right-rail-header .close-btn:hover { background: #f1f3f7; color: #1a1f2c; }
+  .builder-right-rail-body { padding: 16px 18px; flex: 1; }
+
+  .builder-rte-toolbar {
+    display: flex; align-items: center; gap: 2px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 8px 8px 0 0;
+    border-bottom: none;
+    background: #fafbfc;
+    flex-wrap: wrap;
+  }
+  .builder-rte-toolbar button {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #4b5563;
+    font-size: 13px;
+  }
+  .builder-rte-toolbar button:hover { background: #fff; color: #1a1f2c; }
+  .builder-rte-toolbar select {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    background: #fff;
+    border: 1px solid var(--border);
+    color: #1a1f2c;
+  }
+  .builder-rte-toolbar .sep {
+    width: 1px; height: 16px; background: var(--border); margin: 0 4px;
+  }
+  .builder-rte-content {
+    border: 1px solid var(--border);
+    border-radius: 0 0 8px 8px;
+    padding: 12px;
+    min-height: 180px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: #1a1f2c;
+    outline: none;
+  }
+  .builder-rte-content:focus { border-color: #9aa3b2; }
+  .builder-rte-content p { margin-bottom: 10px; }
+  .builder-rte-content p:last-child { margin-bottom: 0; }
+
+  .builder-delete-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid #fda4a8;
+    background: #fff;
+    border-radius: 8px;
+    color: #dc2626;
+    font-weight: 500;
+    font-size: 13px;
+    margin-top: 18px;
+  }
+  .builder-delete-btn:hover { background: #fef2f2; }
+  .builder-delete-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+
+  /* Drag-and-drop affordances */
+  .builder-widget.draggable-widget { cursor: grab; }
+  .builder-widget.draggable-widget:active { cursor: grabbing; }
+  .builder-widget.draggable-widget .drag-handle {
+    margin-left: auto;
+    color: #cbd5e1;
+    flex-shrink: 0;
+  }
+  body.is-dragging .builder-canvas { background: #ecf2f4; }
+  body.is-dragging #phone-scroller { box-shadow: inset 0 0 0 2px rgba(44, 110, 125, 0.35); }
+  .drop-indicator {
+    height: 0;
+    border-top: 2px solid #2c6e7d;
+    margin: 4px 0;
+    position: relative;
+    pointer-events: none;
+  }
+  .drop-indicator::before {
+    content: '';
+    position: absolute;
+    left: -3px; top: -5px;
+    width: 8px; height: 8px;
+    border-radius: 999px;
+    background: #2c6e7d;
+  }
+  /* Style for the newly dropped Surveys widget */
+  .dropped-activities {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 14px;
+    background: #fff;
+    margin-top: 16px;
+    position: relative;
+  }
+  .dropped-activities::after {
+    content: 'Just added';
+    position: absolute;
+    top: -8px; right: 12px;
+    background: #2c6e7d;
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    animation: fadeJustAdded 2.4s ease forwards;
+  }
+  @keyframes fadeJustAdded {
+    0% { opacity: 0; transform: translateY(-3px); }
+    15% { opacity: 1; transform: translateY(0); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* ===================== Rich content builder (scoped to #view-builder) ===================== */
+  #view-builder {
+    --bg:#f5f6f8; --panel:#ffffff; --ink:#1a1f2c; --ink-2:#4b5563; --ink-3:#7a8294;
+    --border:#e5e7eb; --navy:#1b2a4a; --select:#eef2ff; --select-border:#c9d4f0;
+    --ring:#7ea8e8; --locked:#fff7ed; --locked-border:#fed7aa; --teal:#2c6e7d;
+  }
+  #view-builder {background:var(--bg); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;}
+  #view-builder .canvas-scroll::-webkit-scrollbar {width:10px;}
+  #view-builder .canvas-scroll::-webkit-scrollbar-thumb {background:#d1d5db; border-radius:6px;}
+  #view-builder .block {position:relative; border:1px dashed transparent; border-radius:6px; cursor:pointer; transition:all .12s;}
+  #view-builder .block:hover {border-color:#cbd5e1; background:rgba(126,168,232,.05);}
+  #view-builder .block.sel {border:1px solid var(--ring); background:rgba(126,168,232,.08); box-shadow:0 0 0 3px rgba(126,168,232,.18);}
+  #view-builder .block .tag {position:absolute; top:-9px; left:8px; font-size:10px; font-weight:600; padding:1px 7px;
+    background:var(--navy); color:#fff; border-radius:4px; opacity:0; transition:opacity .12s; letter-spacing:.02em; z-index:3;}
+  #view-builder .block:hover .tag, #view-builder .block.sel .tag {opacity:1;}
+  #view-builder .block .handle {position:absolute; top:50%; left:-20px; transform:translateY(-50%); color:#9ca3af; font-size:14px; opacity:0; cursor:grab; transition:opacity .12s;}
+  #view-builder .block:hover .handle {opacity:1;}
+  #view-builder .block.locked:hover {border-color:var(--locked-border); background:var(--locked);}
+  #view-builder .block.locked .tag {background:#b45309;}
+  #view-builder .block.locked.sel {border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.2);}
+  #view-builder .palette-item {display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--border);
+    border-radius:8px; background:#fff; cursor:grab; font-size:13px; color:var(--ink-2); transition:all .12s; user-select:none;}
+  #view-builder .palette-item:hover {border-color:#c9d4f0; background:#fafbff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.05);}
+  #view-builder .palette-item:active {cursor:grabbing;}
+  #view-builder .palette-item .ic {width:18px; text-align:center; flex-shrink:0; white-space:nowrap; font-size:11px; line-height:1;}
+  #view-builder .palette-new {border-color:#bfdbfe; background:#f0f7ff;}
+  #view-builder .palette-new:hover {background:#e6f1ff;}
+  #view-builder .seg {font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); padding:0 4px; margin:14px 0 8px;}
+  #view-builder .field-lbl {font-size:11px; font-weight:600; color:var(--ink-2); margin-bottom:5px; display:block;}
+  #view-builder .field {width:100%; border:1px solid var(--border); border-radius:7px; padding:8px 10px; font-size:13px; color:var(--ink); background:#fff;}
+  #view-builder .field:focus {outline:none; border-color:var(--ring); box-shadow:0 0 0 3px rgba(126,168,232,.18);}
+  #view-builder .drop-line {height:12px; position:relative; transition:height .1s;}
+  #view-builder .drop-line.active {height:36px;}
+  #view-builder .drop-line::before {content:""; position:absolute; left:0; right:0; top:50%; height:2px; transform:translateY(-50%); background:transparent; border-radius:2px; transition:background .1s;}
+  #view-builder .drop-line.active::before {background:var(--ring);}
+  #view-builder .drop-line.active::after {content:"Drop here"; position:absolute; inset:4px 0; border:2px dashed var(--ring);
+    border-radius:6px; background:rgba(126,168,232,.08); display:flex; align-items:center; justify-content:center;
+    font-size:11px; color:#3b6fc4; font-weight:600; pointer-events:none;}
+  #view-builder .toggle {width:38px;height:22px;border-radius:11px;background:#d1d5db;position:relative;cursor:pointer;flex-shrink:0;transition:background .15s;}
+  #view-builder .toggle.on {background:var(--teal);}
+  #view-builder .toggle::after {content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s;}
+  #view-builder .toggle.on::after {left:18px;}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="flex flex-col w-full h-screen overflow-hidden">
+
+  <!-- ============ Unified top bar ============ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="topbar-back" title="Back">
+        <svg class="nav-icon" style="width:16px;height:16px;color:#fff;" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+    </div>
+    <div class="topbar-main">
+      <!-- left: title + meta -->
+      <div class="flex flex-col justify-center">
+        <h1 class="text-[20px] font-bold tracking-tight leading-tight">Reimagine Meridian 2030</h1>
+        <div class="flex items-center gap-2 mt-0.5 text-[12.5px] text-gray-500">
+          <span class="inline-flex items-center gap-1">
+            <svg class="nav-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+            Groups
+          </span>
+          <span class="text-gray-300">·</span>
+          <span class="inline-flex items-center gap-1">
+            <svg class="nav-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/></svg>
+            Public
+          </span>
+          <span class="text-gray-300">·</span>
+          <span class="inline-flex items-center gap-1">
+            <svg class="nav-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/></svg>
+            38 project participants
+          </span>
+        </div>
+      </div>
+
+      <!-- right: status + actions + edit project + settings -->
+      <div class="flex items-center gap-3">
+        <button class="icon-btn" title="View published">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+        <button class="ghost-btn flex items-center gap-2">
+          <span class="top-status-pill" style="padding:3px 10px 3px 8px; border:0; background:transparent;">
+            <span class="dot"></span>
+            Published — Active
+          </span>
+          <svg class="nav-icon" style="width:13px;height:13px;color:#7a8294;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <button class="share-btn">
+          <svg class="nav-icon" style="color:#fff;width:15px;height:15px;" viewBox="0 0 24 24"><path d="M12 16V4"/><polyline points="7 9 12 4 17 9"/><path d="M5 20h14"/></svg>
+          Share
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ Body: 3 columns ============ -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Far-left vertical rail -->
+    <aside class="flex flex-col items-center justify-between py-4" style="width:60px;background:#0f2f3e;">
+      <div class="flex flex-col items-center gap-1.5">
+        <!-- Dashboard -->
+        <button class="rail-btn" title="Dashboard">
+          <svg class="nav-icon" viewBox="0 0 24 24"><polyline points="3 12 7 12 10 5 14 19 17 12 21 12"/></svg>
+        </button>
+        <!-- Projects (active) -->
+        <button class="rail-btn active" title="Projects">
+          <svg class="nav-icon" viewBox="0 0 24 24"><rect x="4" y="9" width="6" height="11" rx="1"/><rect x="14" y="5" width="6" height="15" rx="1"/><line x1="4" y1="20" x2="20" y2="20"/></svg>
+        </button>
+        <!-- Input manager -->
+        <button class="rail-btn" title="Input manager">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M3 13l3-9h12l3 9"/><path d="M3 13v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6"/><path d="M3 13h5l1 2h6l1-2h5"/></svg>
+        </button>
+        <!-- Sustainability / Inspiration -->
+        <button class="rail-btn" title="Inspiration hub">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.2 2c1 1.5 1.6 4.3 1.6 6.2 0 4.4-3.5 7.8-7.8 7.8H11z"/><path d="M2 22s.5-5 5-7"/></svg>
+        </button>
+        <!-- Users -->
+        <button class="rail-btn" title="Users">
+          <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M15 20c0-2 2-3.5 4-3.5"/></svg>
+        </button>
+        <!-- Messaging -->
+        <button class="rail-btn" title="Messaging">
+          <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3 7 12 13 21 7"/></svg>
+        </button>
+        <!-- Reporting -->
+        <button class="rail-btn" title="Reporting">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="8" y1="13" x2="13" y2="13"/><line x1="8" y1="16" x2="11" y2="16"/></svg>
+        </button>
+        <!-- Apps / Community monitor -->
+        <button class="rail-btn" title="Community monitor">
+          <svg class="nav-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
+        </button>
+      </div>
+      <div class="flex flex-col items-center gap-1.5">
+        <!-- Pages & menu -->
+        <button class="rail-btn" title="Pages & menu">
+          <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="12" y2="13"/><line x1="12" y1="13" x2="5" y2="17"/><line x1="12" y1="13" x2="19" y2="17"/></svg>
+        </button>
+        <!-- Settings -->
+        <button class="rail-btn" title="Settings">
+          <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+        <!-- Help (highlighted green ring) -->
+        <button class="rail-btn help-highlight" title="Help">
+          <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6V14"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+        </button>
+        <!-- Notifications -->
+        <button class="rail-btn" title="Notifications">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+        </button>
+        <!-- Avatar -->
+        <div class="w-7 h-7 rounded-full mt-1" style="background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%);"></div>
+      </div>
+    </aside>
+
+    <!-- Left side panel: project + phases -->
+    <section class="flex flex-col bg-white border-r border-gray-200" style="width:280px;">
+      <!-- nav -->
+      <div class="flex-1 overflow-y-auto px-3 py-4">
+
+        <!-- Project page — always shown (acts as "back to project" when on a phase) -->
+        <div class="side-item active" data-view="project" onclick="setView('project', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24" style="color:#1a1f2c;"><path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>
+          <span class="flex-1">Project page</span>
+          <svg id="project-chevron" class="nav-icon" style="width:14px;height:14px;color:#7a8294;transition:transform .15s ease;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+
+        <!-- Project utilities — hidden on phase view -->
+        <div id="project-utilities">
+          <div id="audience-nav" class="side-item">
+            <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/></svg>
+            Audience
+          </div>
+          <div class="side-item">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg>
+            Messaging
+          </div>
+          <div class="side-item">
+            <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Events
+            <span class="badge-2 ml-auto">2</span>
+          </div>
+          <div class="side-item">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Input 360
+          </div>
+          <div class="side-item" onclick="document.getElementById('settingsModal').style.display='flex'">
+            <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+            Settings
+          </div>
+        </div>
+
+        <!-- TIMELINE section (boxless) — opens in empty state -->
+        <div id="timeline-card" class="panel-section">
+          <hr class="panel-divider" />
+          <div class="sec-head">Timeline</div>
+          <div class="tl-example-intro">Phases are the steps people move through — for example:</div>
+          <div class="tl-example">
+            <div class="timeline-group">
+              <div class="phase-row-rich timeline-item">
+                <div class="phase-status-dot"></div>
+                <div class="flex-1 min-w-0"><div class="phase-name">Collect ideas · Ideation</div></div>
+              </div>
+              <div class="phase-row-rich timeline-item">
+                <div class="phase-status-dot"></div>
+                <div class="flex-1 min-w-0"><div class="phase-name">Vote on the shortlist · Voting</div></div>
+              </div>
+              <div class="phase-row-rich timeline-item">
+                <div class="phase-status-dot"></div>
+                <div class="flex-1 min-w-0"><div class="phase-name">Share what we heard · Information</div></div>
+              </div>
+            </div>
+          </div>
+          <button class="sec-add" onclick="setView('add-phase')">
+            <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New phase
+          </button>
+        </div>
+
+        <!-- EXTRAS section (boxless) — empty: just the quiet add link -->
+        <div id="activities-card" class="panel-section">
+          <hr class="panel-divider" />
+          <button class="sec-add muted" onclick="setView('add-survey')">
+            <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New survey outside the timeline
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Center stage -->
+    <main class="flex-1 flex flex-col relative">
+
+      <!-- ====== VIEW: Project page preview ====== -->
+      <div id="view-project" class="preview-stage flex-1 flex items-start justify-center pt-20 pb-6 relative overflow-y-auto">
+
+        <!-- Prominent edit banner -->
+        <div class="edit-banner" style="cursor:pointer;" onclick="openBuilder()">
+          <svg class="nav-icon" style="width:15px;height:15px;" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          Click any section of the page to edit it
+        </div>
+
+        <div id="phone" class="phone" style="height: 700px; cursor: pointer;" onclick="maybeOpenBuilder(event)">
+          <div class="notch"></div>
+
+          <!-- phone content -->
+          <div id="phone-scroller" class="px-4 pt-9 pb-5 h-full overflow-y-auto">
+            <!-- top nav -->
+            <div class="flex items-center justify-between py-2 editable">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-md bg-[#1f3b6d] text-white flex items-center justify-center text-[11px] font-bold tracking-wide">GV</div>
+                <span class="font-semibold text-[15px]">City of Meridian</span>
+              </div>
+              <div class="flex items-center gap-3 text-[13px]">
+                <span class="text-gray-700">EN</span>
+                <button class="text-gray-800 font-medium">Log in</button>
+                <svg class="nav-icon" style="width:18px;height:18px;" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+              </div>
+            </div>
+
+            <!-- hero image -->
+            <div id="phone-hero" class="preview-hero mt-2 editable"></div>
+            <div id="phone-hero-empty" class="mt-2 ghost-slot tall" style="display:none;">
+              <svg class="nav-icon" style="width:18px;height:18px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Add a header image
+            </div>
+
+            <!-- meta + title group -->
+            <div id="phone-titleblock" class="editable mt-4 pt-1">
+              <div class="text-[11px] tracking-widest text-gray-500 font-semibold">MOBILITY · 2026</div>
+              <h2 class="ttl text-[22px] font-bold leading-tight mt-1">Reimagine Meridian 2030</h2>
+            </div>
+            <div id="phone-titleblock-empty" class="mt-4 pt-1" style="display:none;">
+              <div class="ghost-slot" style="justify-content:flex-start;padding:14px;font-size:15px;font-weight:600;">
+                <svg class="nav-icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add project title
+              </div>
+            </div>
+
+            <!-- avatars + caption -->
+            <div id="phone-avatars" class="flex items-center gap-2 mt-2">
+              <div class="flex -space-x-1.5">
+                <div class="w-5 h-5 rounded-full border border-white" style="background:linear-gradient(135deg,#fcd34d,#f59e0b);"></div>
+                <div class="w-5 h-5 rounded-full border border-white" style="background:linear-gradient(135deg,#5eead4,#0d9488);"></div>
+                <div class="w-5 h-5 rounded-full border border-white" style="background:linear-gradient(135deg,#fda4af,#e11d48);"></div>
+                <div class="w-5 h-5 rounded-full border border-white" style="background:linear-gradient(135deg,#c4b5fd,#7c3aed);"></div>
+              </div>
+              <span class="text-[12.5px] text-gray-500">38 participants</span>
+            </div>
+
+            <!-- description -->
+            <p id="phone-description" class="text-[13.5px] text-gray-700 leading-relaxed mt-3 editable">
+              Help shape how we move, cycle and gather in our city over the next four years. Your ideas feed directly into the plan.
+            </p>
+            <div id="phone-description-empty" class="ghost-slot mt-3" style="display:none;justify-content:flex-start;padding:14px;text-align:left;min-height:60px;">
+              <svg class="nav-icon" style="width:14px;height:14px;flex-shrink:0;align-self:flex-start;margin-top:1px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span style="flex:1;">Add a short description explaining what this project is about</span>
+            </div>
+
+            <!-- Upcoming events module (sits between description and Phases) -->
+            <div id="phone-events" class="mt-5 editable">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-[17px] font-bold">Upcoming events</h3>
+                <button class="text-[12.5px] text-gray-500 hover:text-gray-700">See all</button>
+              </div>
+              <div class="space-y-2">
+                <div class="flex gap-3 p-2.5 border rounded-lg" style="border-color:#e5e7eb;background:#fff;">
+                  <div class="flex-shrink-0 w-11 text-center" style="padding-top:2px;">
+                    <div class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Jun</div>
+                    <div class="text-[18px] font-bold leading-tight text-gray-900">14</div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[13px] font-semibold text-gray-900 leading-tight">Mobility town hall</div>
+                    <div class="text-[11.5px] text-gray-500 mt-0.5">7:00 PM · Central Library</div>
+                  </div>
+                </div>
+                <div class="flex gap-3 p-2.5 border rounded-lg" style="border-color:#e5e7eb;background:#fff;">
+                  <div class="flex-shrink-0 w-11 text-center" style="padding-top:2px;">
+                    <div class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Jun</div>
+                    <div class="text-[18px] font-bold leading-tight text-gray-900">22</div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[13px] font-semibold text-gray-900 leading-tight">Cycling infrastructure walk</div>
+                    <div class="text-[11.5px] text-gray-500 mt-0.5">10:00 AM · Riverside Park</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Phases module (citizen-side timeline visual) -->
+            <div id="phone-phases" class="mt-5 editable">
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-[17px] font-bold">Phases</h3>
+                <div class="flex items-center gap-1">
+                  <button class="phase-arrow"><svg class="nav-icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+                  <div class="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center"><span class="w-1.5 h-1.5 rounded-full bg-[#22a455]"></span></div>
+                  <button class="phase-arrow"><svg class="nav-icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+                </div>
+              </div>
+
+              <!-- Chevron arrows showing phase sequence -->
+              <div class="phase-chevrons">
+                <div class="phase-chevron">1</div>
+                <div class="phase-chevron active">2</div>
+                <div class="phase-chevron">3</div>
+                <div class="phase-chevron">4</div>
+              </div>
+
+              <!-- Active phase detail -->
+              <div class="mt-4">
+                <div class="text-[15px] font-bold text-[#1e7c3a]">2. Collect ideas</div>
+                <div class="flex items-center gap-2 mt-1 text-[12.5px] text-gray-600">
+                  <span>31 May</span>
+                  <span class="w-3 h-px bg-gray-400"></span>
+                  <span>5 Jul</span>
+                </div>
+                <p class="text-[12.5px] text-gray-700 leading-relaxed mt-3">
+                  Share your ideas for how we move, cycle and gather. Your suggestions will be reviewed by the city team and shape what comes next.
+                </p>
+              </div>
+            </div>
+
+            <div class="h-6"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- demo state toggle -->
+
+      <!-- ====== VIEW: Phase config ====== -->
+      <div id="view-phase" class="phase-stage" style="display:none;">
+        <div class="phase-card-outer">
+
+          <!-- Header -->
+          <div class="phase-head">
+            <div class="flex-1">
+              <h2 id="phase-title">Submit topics</h2>
+              <div class="meta">
+                <span id="phase-kind">Ideation phase</span>
+                <span class="sep">·</span>
+                <span class="inline-flex items-center gap-1.5">
+                  <svg class="nav-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span id="phase-dates">October 1, 2023 → No end date</span>
+                </span>
+                <span class="sep">·</span>
+                <span class="inline-flex items-center gap-1.5">
+                  <svg class="nav-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+                  Mixed rights
+                </span>
+              </div>
+            </div>
+            <button class="top-settings-btn" style="margin-top:2px;" onclick="document.getElementById('phaseSettingsModal').style.display='flex'">
+              <svg class="nav-icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+              SETTINGS
+            </button>
+          </div>
+
+          <!-- Tabs (only Description is clickable for now — rest are disabled placeholders. Phase access + Notifications moved to Settings.) -->
+          <div class="phase-tabs">
+            <div class="phase-tab disabled">Setup</div>
+            <div class="phase-tab active">Description</div>
+            <div class="phase-tab disabled">Input manager</div>
+            <div class="phase-tab disabled">Input form</div>
+            <div class="phase-tab disabled">Map</div>
+            <div class="phase-tab disabled">Insights <span class="badge-new">NEW</span></div>
+          </div>
+
+          <!-- Description content -->
+          <div class="section-head">
+            <div>
+              <h3>Description</h3>
+              <p>What citizens see explaining this phase.</p>
+            </div>
+          </div>
+
+          <div style="padding: 4px 26px 32px;">
+            <textarea class="form-textarea" style="min-height: 140px; font-size: 14px; line-height: 1.6;">Share your ideas for how we move, cycle and gather in our city over the next four years. Submissions will be reviewed by the city team and inform the next phase, where we share back what we heard from you.</textarea>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ====== VIEW: Add phase (mirrors today's full form) ====== -->
+      <div id="view-add-phase" class="creation-stage" style="display:none;">
+        <div class="creation-card">
+          <div class="creation-head">
+            <h2>New phase</h2>
+            <p>Add a new phase to your project's timeline.</p>
+          </div>
+
+          <div class="creation-body">
+            <div class="field-group">
+              <label class="form-label">Phase name</label>
+              <input class="form-input" type="text" placeholder="New phase" />
+            </div>
+
+            <div class="field-group">
+              <label class="form-label">Dates</label>
+              <div class="flex items-center gap-2">
+                <input class="form-input" type="text" placeholder="Select date" style="flex:1;" />
+                <svg class="nav-icon" style="width:14px;height:14px;color:#7a8294;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                <input class="form-input" type="text" placeholder="Select date" style="flex:1;" />
+              </div>
+            </div>
+
+            <div class="modal-section-divider"></div>
+
+            <div class="field-group">
+              <h4>What do you want to do?</h4>
+              <p class="form-help" style="margin-top:-6px;margin-bottom:14px;">Pick a method for this phase.</p>
+              <div class="method-grid">
+                <div class="method-card">
+                  <div class="method-visual">
+                    <svg class="nav-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-3.5 10.9V17a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-3.1A6 6 0 0 0 12 3z"/><line x1="10" y1="21" x2="14" y2="21"/></svg>
+                  </div>
+                  <h4>Collect input and feedback in public</h4>
+                  <p>Tap into your users' collective intelligence. Invite them to submit, discuss ideas, and/or provide feedback in a public forum.</p>
+                </div>
+                <div class="method-card">
+                  <div class="method-visual">
+                    <svg class="nav-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+                  </div>
+                  <h4>Proposals, petitions or initiatives</h4>
+                  <p>Allow participants to upload ideas with a time and vote limit.</p>
+                </div>
+                <div class="method-card">
+                  <div class="method-visual">
+                    <svg class="nav-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/></svg>
+                  </div>
+                  <h4>Find common ground <span class="beta">BETA</span></h4>
+                  <p>Help participants surface agreement and disagreement, one idea at a time.</p>
+                </div>
+                <div class="method-card">
+                  <div class="method-visual">
+                    <svg class="nav-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
+                  </div>
+                  <h4>Create a survey</h4>
+                  <p>Understand your users' needs and thinking via a wide range of private question types.</p>
+                </div>
+                <div class="method-card">
+                  <div class="method-visual">
+                    <svg class="nav-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <h4>Conduct a voting or prioritization exercise</h4>
+                  <p>Select a voting method and have users prioritise between a few different options.</p>
+                </div>
+                <div class="method-card">
+                  <div class="method-visual">
+                    <svg class="nav-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="12" x2="16" y2="14"/></svg>
+                  </div>
+                  <h4>Share information</h4>
+                  <p>Provide information to users, visualise results from other phases and create data-rich reports.</p>
+                </div>
+                <div class="method-card">
+                  <div class="method-visual">
+                    <svg class="nav-icon" style="width:28px;height:28px;" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><line x1="18" y1="8" x2="18" y2="14"/><line x1="15" y1="11" x2="21" y2="11"/></svg>
+                  </div>
+                  <h4>Recruit participants or volunteers</h4>
+                  <p>Ask users to volunteer for causes or find participants for a panel.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="creation-foot">
+            <button class="btn-secondary" onclick="setView('project', document.querySelector('[data-view=project]'))">Cancel</button>
+            <button class="btn-primary" onclick="commitCreation()">Create phase</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== VIEW: Add survey (outside the timeline) ====== -->
+      <div id="view-add-survey" class="creation-stage" style="display:none;">
+        <div class="creation-card">
+          <div class="creation-head">
+            <h2>New survey</h2>
+            <p>Surveys here run outside your project's timeline.</p>
+          </div>
+
+          <div class="creation-body">
+
+            <div class="field-group">
+              <label class="form-label">Survey title</label>
+              <input class="form-input" type="text" placeholder="New survey" />
+            </div>
+
+            <div class="field-group">
+              <label class="form-label">Dates <span class="hint">Leave end date empty for an ongoing survey.</span></label>
+              <div class="flex items-center gap-2">
+                <input class="form-input" type="text" placeholder="Start date" style="flex:1;" />
+                <svg class="nav-icon" style="width:14px;height:14px;color:#7a8294;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                <input class="form-input" type="text" placeholder="End date (optional)" style="flex:1;" />
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label class="form-label">Button text</label>
+              <input class="form-input" type="text" value="Take the survey" />
+            </div>
+
+            <div class="nudge-stack">
+              <div class="nudge">
+                <svg class="nudge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                <div class="nudge-text"><strong>Collect responses on paper:</strong> Print, distribute, and scan forms back. AI reads handwriting automatically.</div>
+                <a class="nudge-link">Learn more</a>
+              </div>
+              <div class="nudge">
+                <svg class="nudge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <div class="nudge-text"><strong>Need inspiration?</strong> Explore similar projects from other cities in the <a class="nudge-inline-link">Inspiration hub</a></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="creation-foot">
+            <button class="btn-secondary" onclick="setView('project', document.querySelector('[data-view=project]'))">Cancel</button>
+            <button class="btn-primary" onclick="commitCreation()">Create survey</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<!-- ============ Content builder overlay (rich canvas) ============ -->
+<div id="view-builder" class="builder-overlay"></div>
+
+<script>
+  // ============ Content builder open/close ============
+  function openBuilder() {
+    const builder = document.getElementById('view-builder');
+    if (!builder || builder.classList.contains('open')) return;
+    if (window.__richRender) window.__richRender();
+    builder.classList.add('open');
+  }
+  function closeBuilder() {
+    const builder = document.getElementById('view-builder');
+    if (builder) builder.classList.remove('open');
+  }
+  function maybeOpenBuilder(e) {
+    const handler = e.target.closest('[onclick]');
+    if (handler && handler !== e.currentTarget) return;
+    openBuilder();
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const builder = document.getElementById('view-builder');
+      if (builder && builder.classList.contains('open')) closeBuilder();
+    }
+  });
+</script>
+
+<script>
+// ===================== Rich content builder =====================
+
+(function(){
+  const el = (tag, props={}, ...kids)=>{
+    const n=document.createElement(tag);
+    for(const k in props){
+      if(k==="class") n.className=props[k];
+      else if(k==="html") n.innerHTML=props[k];
+      else if(k.startsWith("on")) n.addEventListener(k.slice(2).toLowerCase(),props[k]);
+      else if(k==="style") n.setAttribute("style",props[k]);
+      else n.setAttribute(k,props[k]);
+    }
+    kids.flat().forEach(c=>{ if(c==null)return; n.appendChild(typeof c==="string"?document.createTextNode(c):c); });
+    return n;
+  };
+
+  let selectedId = null;
+  let aboutAvatarsHidden = false;
+  // Active participation methods feeding the Participation Box.
+  // "source" = where it comes from (timeline phase vs parallel); "visible" = shown in box.
+  let pbMethods = [
+    {id:"m_phase",  source:"Timeline · current phase", method:"Upload your idea for the neighbourhood park", cta:"Submit your idea", visible:true},
+    {id:"m_survey", source:"Parallel · Extra surveys", method:"School survey",   cta:"Take the survey",  visible:true},
+    {id:"m_vote",   source:"Parallel · Voting",        method:"Budget voting",   cta:"Vote",             visible:false},
+  ];
+
+  // body blocks: each has a render kind. Timeline/Events/About live in the flow as movable blocks.
+  // Top-level flow = ordered "zones". A zone is either:
+  //   {type:"block", block:{...}}              -> full-width block (Timeline, Events)
+  //   {type:"band", main:[...], side:[...]}     -> the single two-column band
+  // Column blocks (Text, Accordion, Participation Box) live ONLY inside the band.
+  const FULLWIDTH = new Set(["timeline","events"]);            // full-width kinds
+  const COLUMN    = new Set(["text","accordion","about","button","image","survey"]); // band kinds
+
+  let zones = [
+    {type:"band",
+      main:[
+        {id:"b1", kind:"text", label:"Text", preview:"💬 It's that time of our planning cycle again! We are about to wrap 4 development tandems and are working on short-listing the priorities for the next cycle.\n\nThe objective is simple: we want to hear from you about what you perceive as the number one problem blocking our impact or revenue opportunities. Whether it's an obstacle or a potential goldmine, your perspective is crucial."},
+        {id:"b3", kind:"accordion", label:"Info & accordions", preview:"🪨 What should my submission include?  ·  🐕 What context do I need to be aware of?  ·  🦔 What happens after I submit my idea?"},
+      ],
+      side:[
+        {id:"about", kind:"about", label:"Participation Box"},
+      ]
+    },
+    {type:"block", block:{id:"tl", kind:"timeline", label:"Timeline"}},
+    {type:"block", block:{id:"ev", kind:"events", label:"Events"}},
+  ];
+
+  function kindFor(t){ return {"Timeline":"timeline","Events":"events","Extra surveys":"survey","Participation Box":"about","Text":"text","Button":"button","Accordion":"accordion","Image":"image","Image & text cards":"text","Info & accordions":"accordion"}[t]||"text"; }
+  function findBlock(id){
+    for(const z of zones){
+      if(z.type==="block" && z.block.id===id) return {zone:z, where:"block"};
+      if(z.type==="band"){
+        let mi=z.main.findIndex(b=>b.id===id); if(mi>=0) return {zone:z, where:"main", idx:mi};
+        let si=z.side.findIndex(b=>b.id===id); if(si>=0) return {zone:z, where:"side", idx:si};
+      }
+    }
+    return null;
+  }
+  function removeBlock(id){
+    for(const z of zones){
+      if(z.type==="band"){
+        let mi=z.main.findIndex(b=>b.id===id); if(mi>=0){ const [b]=z.main.splice(mi,1); return b; }
+        let si=z.side.findIndex(b=>b.id===id); if(si>=0){ const [b]=z.side.splice(si,1); return b; }
+      }
+    }
+    // full-width block zone
+    let zi=zones.findIndex(z=>z.type==="block" && z.block.id===id);
+    if(zi>=0){ const b=zones[zi].block; zones.splice(zi,1); return b; }
+    return null;
+  }
+  function theBand(){ return zones.find(z=>z.type==="band"); }
+
+  const lockedBlocks = {
+    hero:{label:"Hero banner"},
+    title:{label:"Title"},
+  };
+
+  let dragType=null, dragId=null, dropIndex=null;
+
+  const palette = [
+    {seg:"Layout"},
+    {t:"Image & text cards", ic:"▤"},
+    {t:"Info & accordions", ic:"≣"},
+    {t:"2 column", ic:"▥"},
+    {t:"3 column", ic:"▦"},
+    {t:"White space", ic:"⬚"},
+    {seg:"Structured", isNew:true},
+    {t:"Timeline", ic:"▭▭", isNew:true},
+    {t:"Events", ic:"📅", isNew:true},
+    {t:"Extra surveys", ic:"📣", isNew:true},
+    {seg:"Content"},
+    {t:"Text", ic:"T"},
+    {t:"Button", ic:"⬛"},
+    {t:"File Attachment", ic:"📎"},
+    {t:"Image", ic:"🖼"},
+    {t:"Embed", ic:"</>"},
+    {t:"Participation Box", ic:"ⓘ"},
+    {t:"Accordion", ic:"≡"},
+  ];
+
+  function select(kind,id){ selectedId=kind+":"+id; render(); }
+
+  // ---------- SIDEBAR ----------
+  function Sidebar(){
+    const items = palette.map(p=>{
+      if(p.seg) return el("div",{class:"seg", style:p.isNew?"color:#2563eb":""}, p.seg + (p.isNew?" · new":""));
+      return el("div",{
+        class:"palette-item"+(p.isNew?" palette-new":""),
+        draggable:"true",
+        ondragstart:(e)=>{ dragType=p.t; dragId=null; e.dataTransfer.effectAllowed="copy"; },
+        ondragend:()=>{ dragType=null; dropIndex=null; render(); },
+      }, el("span",{class:"ic"},p.ic), p.t, p.isNew?el("span",{style:"margin-left:auto;font-size:9px;font-weight:700;color:#2563eb"},"NEW"):null);
+    });
+    return el("div",{style:"width:236px;flex-shrink:0;background:#fff;border-right:1px solid var(--border);height:100%;overflow-y:auto;"},
+      el("div",{style:"padding:14px 16px;border-bottom:1px solid var(--border);"},
+        el("div",{style:"font-size:13px;font-weight:700;"},"Add to page"),
+        el("div",{style:"font-size:11px;color:var(--ink-3);margin-top:2px;"},"Drag a block onto the canvas"),
+      ),
+      el("div",{style:"padding:6px 14px 24px;"}, items)
+    );
+  }
+
+  // ---------- BODY BLOCK RENDERERS ----------
+  function renderInner(b){
+    if(b.kind==="survey"){
+      // available surveys (mock)
+      const surveys={ "weekly":{name:"Weekly question", range:"March 1 — March 8, 2026", desc:"Provide your feedback on the Buildings & Energy Action Plan by taking the survey below.", left:"1 day left"} };
+      // unconfigured: prompt to pick a survey
+      if(!b.survey){
+        return el("div",{style:"padding:16px;"},
+          el("div",{style:"border:2px dashed var(--border);border-radius:8px;padding:22px;text-align:center;background:#fafbfc;"},
+            el("div",{style:"font-size:13px;font-weight:600;color:var(--ink-2);"},"📣 Extra survey"),
+            el("div",{style:"font-size:12px;color:var(--ink-3);margin-top:6px;line-height:1.5;"},"Select a survey to link in the right panel.")
+          )
+        );
+      }
+      const s=surveys[b.survey]||surveys.weekly;
+      const btn=(label)=>el("div",{style:"background:var(--navy);color:#fff;text-align:center;font-weight:600;font-size:14px;padding:12px;border-radius:7px;"},label);
+
+      if(b.variant==="simple"){
+        return el("div",{style:"padding:14px;"}, btn("Take the survey"));
+      }
+      if(b.variant==="timeleft"){
+        return el("div",{style:"padding:14px;"},
+          el("div",{style:"border:1px solid var(--border);border-radius:8px;padding:12px;"},
+            el("div",{style:"display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px;"},
+              el("span",{style:"width:8px;height:8px;border-radius:50%;background:var(--teal);display:inline-block;"}),
+              s.left.toUpperCase()),
+            btn("Take the survey")
+          )
+        );
+      }
+      // card
+      return el("div",{style:"padding:14px;"},
+        el("div",{style:"border:1px solid var(--border);border-radius:10px;padding:18px;"},
+          el("div",{style:"font-size:11px;font-weight:700;letter-spacing:.08em;color:#d6336c;"},"SURVEY · ONGOING"),
+          el("div",{style:"font-size:19px;font-weight:700;color:var(--navy);margin-top:8px;"},s.name),
+          el("div",{style:"font-size:13px;color:var(--ink-2);margin-top:3px;"},s.range),
+          el("div",{style:"font-size:13px;color:var(--ink);line-height:1.5;margin-top:12px;"},s.desc),
+          el("div",{style:"margin-top:16px;"}, btn("📣 Take the survey"))
+        )
+      );
+    }
+    if(b.kind==="accordion"){
+      const rows=["🪨 What should my submission include?","🐕 What context do I need to be aware of?","🦔 What happens after I submit my idea?"];
+      return el("div",{style:"padding:8px 14px;"},
+        rows.map((r,i)=>el("div",{style:`display:flex;justify-content:space-between;align-items:center;padding:13px 2px;${i<rows.length-1?'border-bottom:1px solid var(--border);':''}`},
+          el("div",{style:"font-size:14px;font-weight:600;color:var(--ink);"},r),
+          el("div",{style:"color:var(--ink-3);"},"›")
+        ))
+      );
+    }
+    if(b.kind==="about"){
+      const vis = pbMethods.filter(m=>m.visible);
+      const navyBtn=(label)=>el("div",{style:"background:var(--navy);color:#fff;text-align:center;padding:11px;border-radius:4px;font-size:14px;font-weight:600;"},label);
+      const outlineBtn=(label)=>el("div",{style:"border:1px solid var(--border);text-align:center;padding:11px;border-radius:4px;font-size:14px;margin-top:8px;color:var(--ink);font-weight:600;"},label);
+
+      let ctaArea;
+      if(vis.length===0){
+        ctaArea = el("div",{style:"border:1px dashed var(--border);border-radius:4px;text-align:center;padding:14px;font-size:12px;color:var(--ink-3);"},"No active methods");
+      } else if(vis.length===1){
+        ctaArea = navyBtn(vis[0].cta);
+      } else if(vis.length===2){
+        ctaArea = el("div",{}, navyBtn(vis[0].cta), outlineBtn(vis[1].cta));
+      } else {
+        ctaArea = navyBtn("Participate");
+      }
+
+      return el("div",{style:"padding:12px;"},
+        ctaArea,
+        aboutAvatarsHidden?null:el("div",{style:"display:flex;align-items:center;gap:8px;margin-top:12px;justify-content:center;"},
+          el("div",{style:"display:flex;"},
+            el("div",{style:"width:26px;height:26px;border-radius:50%;background:#d4a5a5;border:2px solid #fff;"}),
+            el("div",{style:"width:26px;height:26px;border-radius:50%;background:#7da5b0;border:2px solid #fff;margin-left:-8px;"}),
+            el("div",{style:"width:26px;height:26px;border-radius:50%;background:#b0a07d;border:2px solid #fff;margin-left:-8px;"}),
+          ),
+          el("span",{style:"font-size:13px;color:var(--ink-2);"},"+35 participants")
+        )
+      );
+    }
+    if(b.kind==="timeline"){
+      const phases=[["1","The one problem"],["2","Idea consolidation"],["3","Community prioritization"],["4","Product Circle meets"],["5","Dev plan announced"]];
+      const active=4;
+      return el("div",{style:"padding:16px 14px;"},
+        el("div",{style:"font-size:17px;font-weight:700;margin-bottom:12px;"},"Phases"),
+        // chevron strip
+        el("div",{style:"display:flex;gap:2px;margin-bottom:14px;"},
+          phases.map((p,i)=>{
+            const on=i===active, done=i<active;
+            const bg=on?"#1f8a4c":(done?"#cdd3da":"#e4e8ed");
+            const fg=on?"#fff":(done?"#5b6573":"#5b6573");
+            return el("div",{style:`flex:1;position:relative;background:${bg};color:${fg};padding:8px 6px 9px;font-size:11px;text-align:center;`+
+              `clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%, 9px 50%);${i===0?'clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%);':''}`},
+              el("div",{style:`font-weight:700;font-size:12px;${on?'':'opacity:.8'}`},p[0]),
+              el("div",{style:"margin-top:2px;line-height:1.15;"},p[1])
+            );
+          })
+        ),
+        // detail card for active phase
+        el("div",{style:"border:1px solid var(--border);border-radius:8px;padding:14px;background:#fff;"},
+          el("div",{style:"display:flex;gap:10px;align-items:center;"},
+            el("div",{style:"width:28px;height:28px;border-radius:50%;background:#1f8a4c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;"},"5"),
+            el("div",{},
+              el("div",{style:"font-size:15px;font-weight:700;color:#1f8a4c;"},"Development plan is announced"),
+              el("div",{style:"font-size:11px;color:var(--ink-3);"},"October 6, 2025 12:00 AM – No end date")
+            )
+          ),
+          el("div",{style:"font-size:13px;color:var(--ink-2);line-height:1.5;margin-top:10px;"},"👋 Hola hola! It's been some busy weeks! BUT: we have bets! The development priorities for the next 8 weeks are the following 👇"),
+          el("div",{style:"font-size:12px;color:var(--ink);font-weight:600;margin-top:8px;"},"Read more ↓")
+        )
+      );
+    }
+    if(b.kind==="events"){
+      const evs=[
+        {banner:"#f2d33b", tag:"CityLAB", title:"Spremberg im Dialog: Bürger als Schlüssel", m:"JUN",d:"03",time:"12:00 – 12:30 PM CEST", loc:"Umweltforum", cta:"Read more"},
+        {banner:"#1b2a4a", tag:"Data Week", title:"Künstliche Intelligenz in Beteiligung", m:"JUN",d:"04",time:"1:30 – 3:00 PM CEST", loc:"Neues Rathaus Leipzig", cta:"Read more"},
+        {banner:"#2c6e7d", tag:"Berlin Institut", title:"Fachtagung 2026 der Allianz", m:"JUN",d:"08",time:"11:00 – 6:00 PM CEST", loc:"Tagungszentrum Berlin", cta:"Register"},
+      ];
+      const card=(e)=>el("div",{style:"border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#fff;display:flex;flex-direction:column;"},
+        el("div",{style:`height:54px;background:${e.banner};display:flex;align-items:center;padding:0 10px;`},
+          el("div",{style:`font-size:11px;font-weight:700;color:${e.banner==='#f2d33b'?'#1a1f2c':'#fff'};`},e.tag)),
+        el("div",{style:"padding:10px;flex:1;display:flex;flex-direction:column;"},
+          el("div",{style:"display:flex;gap:8px;align-items:flex-start;"},
+            el("div",{style:"font-size:12px;font-weight:600;line-height:1.25;flex:1;"},e.title),
+            el("div",{style:"border:1px solid var(--border);border-radius:5px;text-align:center;padding:3px 6px;flex-shrink:0;"},
+              el("div",{style:"font-size:9px;font-weight:700;color:var(--ink-2);"},e.m),
+              el("div",{style:"font-size:14px;font-weight:700;line-height:1;"},e.d),
+              el("div",{style:"font-size:8px;color:var(--ink-3);"},"2026"))
+          ),
+          el("div",{style:"font-size:10px;color:var(--ink-3);margin-top:8px;"},"🕐 "+e.time),
+          el("div",{style:"font-size:10px;color:var(--ink-3);margin-top:3px;"},"📍 "+e.loc),
+          el("div",{style:"flex:1"}),
+          el("div",{style:`margin-top:10px;text-align:center;font-size:11px;font-weight:600;padding:7px;border-radius:6px;${e.cta==='Register'?'background:var(--navy);color:#fff;':'border:1px solid var(--border);color:var(--ink-2);'}`},e.cta)
+        )
+      );
+      return el("div",{style:"padding:14px;"},
+        el("div",{style:"display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"},
+          el("div",{style:"font-size:17px;font-weight:700;"},"Upcoming and ongoing events"),
+          el("div",{style:"font-size:11px;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--ink-2);"},"Date ▾")),
+        el("div",{style:"display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;"}, evs.map(card))
+      );
+    }
+    // default text-like
+    return el("div",{style:"padding:12px 14px;"},
+      el("div",{style:"font-size:13px;color:var(--ink);line-height:1.55;white-space:pre-wrap;"}, b.preview)
+    );
+  }
+
+  function blockEl(b){
+    const sel = selectedId==="body:"+b.id;
+    let dragged=false;
+    const node = el("div",{
+      class:"block"+(sel?" sel":""),
+      draggable:"true",
+      ondragstart:(e)=>{ dragId=b.id; dragType=null; dragged=true; e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",b.id); setTimeout(()=>node.style.opacity=".4",0); },
+      ondragend:()=>{ node.style.opacity="1"; dragId=null; setTimeout(()=>{dragged=false;},50); render(); },
+      onclick:()=>{ if(dragged) return; select("body",b.id); }
+    },
+      el("span",{class:"handle"},"⋮⋮"),
+      el("span",{class:"tag"}, b.label),
+      renderInner(b)
+    );
+    return node;
+  }
+
+  // does the currently-dragged thing belong in a column? (vs full-width)
+  function draggedKind(){
+    if(dragType) return kindFor(dragType);
+    if(dragId){ const f=findBlock(dragId); if(f) return f.zone.type==="block"?f.zone.block.kind:(f.where==="main"?theBand().main[f.idx].kind:theBand().side[f.idx].kind); }
+    return null;
+  }
+  function dragIsColumn(){ const k=draggedKind(); return k?COLUMN.has(k):false; }
+  function dragIsFull(){ const k=draggedKind(); return k?FULLWIDTH.has(k):false; }
+
+  // Top-level drop target between zones — accepts FULL-WIDTH blocks only.
+  function zoneDrop(zi){
+    const line=el("div",{class:"drop-line",
+      ondragenter:(e)=>{ if(!dragIsFull())return; e.preventDefault(); line.classList.add("active"); },
+      ondragover:(e)=>{ if(!dragIsFull())return; e.preventDefault(); e.dataTransfer.dropEffect=dragType?"copy":"move"; line.classList.add("active"); },
+      ondragleave:()=>line.classList.remove("active"),
+      ondrop:(e)=>{ if(!dragIsFull()){return;} e.preventDefault(); line.classList.remove("active");
+        if(dragType){ const k=kindFor(dragType); const id="b"+Date.now();
+          zones.splice(zi,0,{type:"block", block:{id,kind:k,label:dragType}}); selectedId="body:"+id;
+        } else if(dragId){
+          const fromZi=zones.findIndex(z=>z.type==="block" && z.block.id===dragId);
+          const b=removeBlock(dragId);
+          let idx = (fromZi>=0 && fromZi<zi) ? zi-1 : zi;
+          if(idx>zones.length) idx=zones.length;
+          if(idx<0) idx=0;
+          zones.splice(idx,0,{type:"block", block:b});
+        }
+        dragType=null; dragId=null; render();
+      }
+    });
+    return line;
+  }
+
+  // Column drop target inside the band — accepts COLUMN blocks only.
+  function colDrop(column, idx){
+    const line=el("div",{class:"drop-line",
+      ondragenter:(e)=>{ if(!dragIsColumn())return; e.preventDefault(); line.classList.add("active"); },
+      ondragover:(e)=>{ if(!dragIsColumn())return; e.preventDefault(); e.dataTransfer.dropEffect=dragType?"copy":"move"; line.classList.add("active"); },
+      ondragleave:()=>line.classList.remove("active"),
+      ondrop:(e)=>{ if(!dragIsColumn()){return;} e.preventDefault(); line.classList.remove("active");
+        const band=theBand(); const arr=band[column];
+        if(dragType){ const k=kindFor(dragType); const id="b"+Date.now();
+          const block={id,kind:k,label:dragType,preview:"New "+dragType+" block"};
+          if(k==="survey"){ block.survey=null; block.variant="simple"; }
+          arr.splice(idx,0,block); selectedId="body:"+id;
+        } else if(dragId){
+          const fromSame = band[column].findIndex(b=>b.id===dragId);
+          const b=removeBlock(dragId);
+          let ins=idx;
+          if(fromSame>=0 && idx>fromSame) ins=idx-1;
+          band[column].splice(ins,0,b);
+        }
+        dragType=null; dragId=null; render();
+      }
+    });
+    return line;
+  }
+
+  function lockedRegion(key, inner){
+    const sel = selectedId==="locked:"+key;
+    return el("div",{class:"block locked"+(sel?" sel":""), onclick:()=>select("locked",key)},
+      el("span",{class:"tag"}, lockedBlocks[key].label + " · fixed position"),
+      inner
+    );
+  }
+
+  // ---------- CANVAS ----------
+  function Canvas(){
+    const hero = lockedRegion("hero",
+      el("div",{style:"height:130px;border-radius:6px;overflow:hidden;background:linear-gradient(120deg,#1b2a4a,#2c6e7d);display:flex;align-items:center;justify-content:center;position:relative;"},
+        el("div",{style:"color:#fff;font-size:12px;opacity:.8;text-align:center;"},
+          el("div",{style:"font-weight:600;"},"Hero image"),
+          el("div",{style:"font-size:10px;margin-top:2px;opacity:.85;"},"2400 × 600 px · 4:1")
+        ))
+    );
+    const title = lockedRegion("title",
+      el("div",{style:"padding:18px 14px 10px;"},
+        el("div",{style:"font-size:24px;font-weight:700;line-height:1.2;"},"🧠 2025 Betting Table(s) 🧠")
+      )
+    );
+
+    function columnFlow(column){
+      const band=theBand(); const arr=band[column];
+      const wrap=el("div",{});
+      wrap.appendChild(colDrop(column,0));
+      arr.forEach((b,i)=>{ wrap.appendChild(blockEl(b)); wrap.appendChild(colDrop(column,i+1)); });
+      if(arr.length===0){
+        wrap.appendChild(el("div",{style:"border:1px dashed var(--border);border-radius:8px;padding:18px;text-align:center;font-size:11px;color:var(--ink-3);background:#fafbfc;"}, column==="side"?"Sidebar — drop here":"Drop content here"));
+      }
+      return wrap;
+    }
+
+    function bandEl(){
+      const mainCol=el("div",{style:"flex:0 0 calc(66.666% - 10px);min-width:0;"}, columnFlow("main"));
+      const sideCol=el("div",{style:"flex:0 0 calc(33.333% - 10px);min-width:0;"}, columnFlow("side"));
+      return el("div",{style:"display:flex;gap:20px;align-items:flex-start;border:1px dashed #d8dee8;border-radius:10px;padding:10px;background:#fcfcfd;"}, mainCol, sideCol);
+    }
+
+    // top-level zone flow
+    const flow=el("div",{});
+    flow.appendChild(zoneDrop(0));
+    zones.forEach((z,zi)=>{
+      if(z.type==="band") flow.appendChild(bandEl());
+      else flow.appendChild(blockEl(z.block));
+      flow.appendChild(zoneDrop(zi+1));
+    });
+
+    const sheet = el("div",{style:"background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 14px 14px 26px;box-shadow:0 1px 3px rgba(0,0,0,.04);"},
+      hero, title, flow
+    );
+    return el("div",{id:"canvasScroll", class:"canvas-scroll", style:"flex:1;overflow-y:auto;padding:24px;background:var(--bg);", ondragover:(e)=>e.preventDefault()},
+      el("div",{style:"max-width:840px;margin:0 auto;"}, sheet)
+    );
+  }
+
+  // ---------- PANEL ----------
+  function Panel(){
+    let title="Nothing selected", body=[], close=false;
+    if(!selectedId){
+      body=[el("div",{style:"font-size:13px;color:var(--ink-3);line-height:1.6;"},"Click a block on the canvas to edit it, or drag a new block from the left.")];
+    } else {
+      close=true;
+      const [kind,id]=selectedId.split(":");
+      if(kind==="locked"){
+        if(id==="hero"){
+          title="Hero banner";
+          body=[
+            el("div",{style:"font-size:11px;color:#b45309;background:var(--locked);border:1px solid var(--locked-border);border-radius:7px;padding:8px 10px;margin-bottom:14px;font-weight:500;"},"Editable, but its position on the page is fixed."),
+            el("button",{style:"width:100%;border:1px dashed var(--border);border-radius:8px;padding:18px;font-size:13px;color:var(--ink-2);background:#fafafa;"},"⬆ Replace image"),
+            el("div",{style:"font-size:11px;color:var(--ink-3);line-height:1.6;margin-top:12px;"},
+              el("div",{},"Dimensions: 2400 × 600 px"),
+              el("div",{},"Aspect ratio: 4:1"),
+              el("div",{},"On mobile: crops to approx. 3:1")
+            ),
+          ];
+        } else {
+          title="Title";
+          body=[
+            el("div",{style:"font-size:11px;color:#b45309;background:var(--locked);border:1px solid var(--locked-border);border-radius:7px;padding:8px 10px;margin-bottom:14px;font-weight:500;"},"Editable, but its position on the page is fixed."),
+            el("label",{class:"field-lbl"},"Title"), el("input",{class:"field",value:"🧠 2025 Betting Table(s) 🧠"}),
+          ];
+        }
+      } else {
+        const f=findBlock(id);
+        const b = f ? (f.zone.type==="block"?f.zone.block:(f.where==="main"?theBand().main[f.idx]:theBand().side[f.idx])) : null;
+        if(!b){ selectedId=null; }
+        title=b?b.label:"";
+        const del=el("button",{style:"margin-top:18px;border:1px solid #fecaca;color:#dc2626;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:7px;",
+          onclick:()=>{ removeBlock(id); selectedId=null; render(); }},"🗑 Delete");
+
+        if(b.kind==="about"){
+          const visCount = pbMethods.filter(m=>m.visible).length;
+          const ctaNote = visCount===0 ? "No CTA shown."
+            : visCount===1 ? "Shows one CTA: " + pbMethods.find(m=>m.visible).cta + "."
+            : visCount===2 ? "Shows a primary + secondary button."
+            : "Shows a single \u201cParticipate\u201d button aggregating all.";
+          body=[
+            el("div",{style:"display:flex;align-items:center;gap:12px;"},
+              el("div",{class:"toggle"+(aboutAvatarsHidden?" on":""), onclick:()=>{aboutAvatarsHidden=!aboutAvatarsHidden; render();}}),
+              el("div",{style:"font-size:14px;color:var(--ink);"},"Hide participation avatars")
+            ),
+            el("div",{class:"seg",style:"margin-top:20px;"},"Active methods"),
+            el("div",{style:"display:flex;flex-direction:column;gap:8px;"},
+              pbMethods.map(m=>el("div",{style:`border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;${m.visible?'':'opacity:.6;'}`},
+                el("div",{style:"flex:1;min-width:0;"},
+                  el("div",{style:"font-size:13px;font-weight:600;color:var(--ink);"},m.method),
+                  el("div",{style:"font-size:11px;color:var(--ink-3);margin-top:1px;"},m.source)
+                ),
+                el("div",{class:"toggle"+(m.visible?" on":""), onclick:()=>{m.visible=!m.visible; render();}})
+              ))
+            ),
+            el("div",{style:"font-size:11px;color:var(--ink-3);line-height:1.5;margin-top:10px;"}, ctaNote),
+            del
+          ];
+        } else if(b.kind==="survey"){
+          const variants=[["simple","Simple button","Just a button linking to the survey."],
+                          ["timeleft","Button + time left","Shows how long until the survey closes."],
+                          ["card","Full card","Title, dates, description and button."]];
+          body=[
+            el("label",{class:"field-lbl"},"Linked survey"),
+            el("select",{class:"field", onchange:(e)=>{ b.survey = e.target.value||null; render(); }},
+              el("option",{value:""}, b.survey?"Weekly question":"Select a survey…"),
+              el("option",{value:"weekly", ...(b.survey==="weekly"?{selected:"selected"}:{})}, "Weekly question")
+            ),
+            !b.survey ? el("div",{style:"font-size:11px;color:var(--ink-3);margin-top:8px;line-height:1.5;"},"Pick a survey to choose how it appears on the page.") : null,
+            b.survey ? el("div",{},
+              el("label",{class:"field-lbl",style:"margin-top:16px;"},"Layout"),
+              el("div",{style:"display:flex;flex-direction:column;gap:8px;"},
+                variants.map(v=>{
+                  const on=b.variant===v[0];
+                  return el("div",{
+                    style:`border:1px solid ${on?'var(--ring)':'var(--border)'};border-radius:8px;padding:10px 12px;cursor:pointer;background:${on?'rgba(126,168,232,.08)':'#fff'};`,
+                    onclick:()=>{ b.variant=v[0]; render(); }
+                  },
+                    el("div",{style:"display:flex;align-items:center;gap:8px;"},
+                      el("span",{style:`width:14px;height:14px;border-radius:50%;border:2px solid ${on?'var(--ring)':'#cbd2dc'};background:${on?'var(--ring)':'#fff'};flex-shrink:0;`}),
+                      el("span",{style:"font-size:13px;font-weight:600;color:var(--ink);"},v[1])),
+                    el("div",{style:"font-size:11px;color:var(--ink-3);margin-top:4px;margin-left:22px;line-height:1.4;"},v[2])
+                  );
+                })
+              )
+            ) : null,
+            del
+          ];
+        } else if(b.kind==="timeline" || b.kind==="events"){
+          body=[
+            el("div",{style:"font-size:13px;color:var(--ink-3);line-height:1.6;margin-bottom:4px;"},
+              "This block has no configuration. It pulls its content automatically from the project's "+(b.kind==="timeline"?"phases":"events")+"."),
+            del
+          ];
+        } else {
+          body=[
+            el("label",{class:"field-lbl"},"Content"),
+            el("textarea",{class:"field",rows:"5"}, b.preview),
+            del
+          ];
+        }
+      }
+    }
+    return el("div",{style:"width:300px;flex-shrink:0;background:#fff;border-left:1px solid var(--border);height:100%;overflow-y:auto;"},
+      el("div",{style:"padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;"},
+        el("div",{style:"font-size:15px;font-weight:700;"},title),
+        close?el("button",{style:"color:var(--ink-3);font-size:18px;line-height:1;",onclick:()=>{selectedId=null;render();}},"×"):null
+      ),
+      el("div",{style:"padding:16px;"}, body)
+    );
+  }
+
+  function Topbar(){
+    return el("div",{style:"height:54px;flex-shrink:0;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:14px;"},
+      el("button",{style:"color:var(--ink-3);font-size:18px;cursor:pointer;",onclick:()=>window.closeBuilder&&window.closeBuilder()},"←"),
+      el("div",{},
+        el("div",{style:"font-size:14px;font-weight:700;"},"Content builder"),
+        el("div",{style:"font-size:11px;color:var(--ink-3);"},"Submit your topics to the EAB"),
+      ),
+      el("div",{style:"flex:1"}),
+      el("div",{style:"font-size:12px;color:var(--ink-3);border:1px solid var(--border);border-radius:6px;padding:5px 10px;"},"EN ▾"),
+      el("div",{style:"font-size:12px;color:var(--ink-2);"},"Preview"),
+      el("button",{style:"background:var(--navy);color:#fff;font-size:13px;font-weight:600;padding:7px 16px;border-radius:7px;"},"Save"),
+    );
+  }
+
+  function render(){
+    const root=document.getElementById("view-builder");
+    const prev=document.getElementById("canvasScroll");
+    const savedScroll = prev ? prev.scrollTop : 0;
+    root.innerHTML="";
+    root.appendChild(
+      el("div",{style:"height:100vh;display:flex;flex-direction:column;"},
+        Topbar(),
+        el("div",{style:"flex:1;display:flex;min-height:0;"}, Sidebar(), Canvas(), Panel())
+      )
+    );
+    const next=document.getElementById("canvasScroll");
+    if(next) next.scrollTop = savedScroll;
+  }
+  window.__richRender = render;
+  render();
+})();
+</script>
+
+<script>
+  function setView(view, el) {
+    // Remove active state from all nav items
+    document.querySelectorAll('[data-view]').forEach(n => n.classList.remove('active'));
+    if (el) el.classList.add('active');
+
+    const projectView = document.getElementById('view-project');
+    const phaseView = document.getElementById('view-phase');
+    const addPhaseView = document.getElementById('view-add-phase');
+    const addSurveyView = document.getElementById('view-add-survey');
+    const projectUtilities = document.getElementById('project-utilities');
+    const projectChevron = document.getElementById('project-chevron');
+    const phaseTitle = document.getElementById('phase-title');
+    const phaseKind = document.getElementById('phase-kind');
+    const phaseDates = document.getElementById('phase-dates');
+
+    // Hide all views by default
+    projectView.style.display = 'none';
+    phaseView.style.display = 'none';
+    addPhaseView.style.display = 'none';
+    addSurveyView.style.display = 'none';
+
+    if (view === 'project') {
+      projectView.style.display = 'flex';
+      projectUtilities.classList.remove('collapsed');
+      projectChevron.style.transform = 'rotate(0deg)';
+    } else if (view === 'phase') {
+      phaseView.style.display = 'block';
+      projectUtilities.classList.add('collapsed');
+      projectChevron.style.transform = 'rotate(-90deg)';
+
+      const phase = el ? el.getAttribute('data-phase') : 'collect';
+      const phases = {
+        presurvey:   { title: 'Pre-survey',             kind: 'Survey phase',      dates: '1 May 2026 → 15 May 2026' },
+        collect:     { title: 'Collect ideas',          kind: 'Ideation phase',    dates: '20 May 2026 → 10 Jun 2026' },
+        heard:       { title: 'What we heard',          kind: 'Information phase', dates: '11 Jun 2026 → 25 Jun 2026' },
+        vote:        { title: 'Community vote',         kind: 'Voting phase',      dates: '26 Jun 2026 → 12 Jul 2026' },
+        commonground:{ title: 'Find common ground',     kind: 'Common ground phase', dates: '13 Jul 2026 → 27 Jul 2026' },
+        prioritize:  { title: 'Community prioritization', kind: 'Voting phase',    dates: '20 Jul 2026 → 30 Aug 2026' },
+        workshops:   { title: 'Neighborhood workshops', kind: 'In-person engagement', dates: '7 Jun 2026 → 21 Jun 2026' },
+        portal:      { title: 'Open ideas portal',      kind: 'Ideation phase',    dates: 'Ongoing · no end date' },
+        askus:       { title: 'Ask us anything',        kind: 'Survey outside the timeline · Q&A', dates: 'Ongoing · no end date' },
+        schools:     { title: 'School survey',          kind: 'Survey outside the timeline', dates: '20 May 2026 → 5 Jun 2026 · Hidden from participants' }
+      };
+      const p = phases[phase] || phases.collect;
+      phaseTitle.textContent = p.title;
+      phaseKind.textContent = p.kind;
+      phaseDates.textContent = p.dates;
+    } else if (view === 'add-phase') {
+      addPhaseView.style.display = 'block';
+      projectUtilities.classList.add('collapsed');
+      projectChevron.style.transform = 'rotate(-90deg)';
+    } else if (view === 'add-survey') {
+      addSurveyView.style.display = 'block';
+      projectUtilities.classList.add('collapsed');
+      projectChevron.style.transform = 'rotate(-90deg)';
+    }
+  }
+</script>
+
+
+<script>
+  // Delegated handler so all Add CTAs (static or dynamically injected) work
+  document.body.addEventListener('click', function(e) {
+    const btn = e.target.closest('.eng-add-cta');
+    if (!btn) return;
+    if (btn.hasAttribute('onclick')) return; // static buttons already handled
+    const txt = (btn.textContent || '').trim().toLowerCase();
+    if (txt.includes('phase')) setView('add-phase');
+    else if (txt.includes('survey')) setView('add-survey');
+  });
+</script>
+
+<!-- ============ State switcher chip ============ -->
+<div class="state-chip">
+  <span class="label">STATE</span>
+  <button data-state="empty" class="on" onclick="setProjectState('empty', this)">Empty</button>
+  <button data-state="few" onclick="setProjectState('few', this)">Few</button>
+  <button data-state="complex" onclick="setProjectState('complex', this)">Complex</button>
+</div>
+
+<script>
+  const _timelineCardOriginal = null;
+  const _activitiesCardOriginal = null;
+
+  function setProjectState(state, btn) {
+    document.querySelectorAll('.state-chip button').forEach(b => b.classList.remove('on'));
+    if (btn) btn.classList.add('on');
+
+    const audienceNav = document.getElementById('audience-nav');
+    const timelineCard = document.getElementById('timeline-card');
+    const activitiesCard = document.getElementById('activities-card');
+    const phoneHero = document.getElementById('phone-hero');
+    const phoneHeroEmpty = document.getElementById('phone-hero-empty');
+    const phoneTitle = document.getElementById('phone-titleblock');
+    const phoneTitleEmpty = document.getElementById('phone-titleblock-empty');
+    const phoneAvatars = document.getElementById('phone-avatars');
+    const phoneDesc = document.getElementById('phone-description');
+    const phoneDescEmpty = document.getElementById('phone-description-empty');
+    const phonePhases = document.getElementById('phone-phases');
+    const phoneAskus = null;
+    const phoneEvents = document.getElementById('phone-events');
+
+    // Reset audience visibility
+    audienceNav.style.display = '';
+
+    // Reset phone fills vs skeletons
+    phoneHero.style.display = '';
+    phoneHeroEmpty.style.display = 'none';
+    phoneTitle.style.display = '';
+    phoneTitleEmpty.style.display = 'none';
+    phoneAvatars.style.display = '';
+    phoneDesc.style.display = '';
+    phoneDescEmpty.style.display = 'none';
+    phonePhases.style.display = '';
+    phoneEvents.style.display = '';
+
+    if (state === 'empty') {
+      // Hide audience until participants exist
+      audienceNav.style.display = 'none';
+
+      // Phone goes to ghost-placeholder mode
+      phoneHero.style.display = 'none';
+      phoneHeroEmpty.style.display = 'flex';
+      phoneTitle.style.display = 'none';
+      phoneTitleEmpty.style.display = 'block';
+      phoneAvatars.style.display = 'none';
+      phoneDesc.style.display = 'none';
+      phoneDescEmpty.style.display = 'block';
+      phonePhases.style.display = 'none';
+      phoneEvents.style.display = 'none';
+
+      // Empty Timeline section — worked example previewing 3 phases
+      timelineCard.innerHTML = `
+        <hr class="panel-divider" />
+        <div class="sec-head">Timeline</div>
+        <div class="tl-example-intro">Phases are the steps people move through — for example:</div>
+        <div class="tl-example">
+          <div class="timeline-group">
+            <div class="phase-row-rich timeline-item">
+              <div class="phase-status-dot"></div>
+              <div class="flex-1 min-w-0"><div class="phase-name">Collect ideas · Ideation</div></div>
+            </div>
+            <div class="phase-row-rich timeline-item">
+              <div class="phase-status-dot"></div>
+              <div class="flex-1 min-w-0"><div class="phase-name">Vote on the shortlist · Voting</div></div>
+            </div>
+            <div class="phase-row-rich timeline-item">
+              <div class="phase-status-dot"></div>
+              <div class="flex-1 min-w-0"><div class="phase-name">Share what we heard · Information</div></div>
+            </div>
+          </div>
+        </div>
+        <button class="sec-add" onclick="setView(&#39;add-phase&#39;)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New phase
+        </button>
+      `;
+
+      // Empty Extras — just the quiet add link (no header until a survey exists)
+      activitiesCard.innerHTML = `
+        <hr class="panel-divider" />
+        <button class="sec-add muted" onclick="setView(&#39;add-survey&#39;)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New survey outside the timeline
+        </button>
+      `;
+
+    } else if (state === 'few') {
+      // A simple project: 2 timeline phases + 1 survey in Extras
+      timelineCard.innerHTML = `
+        <hr class="panel-divider" />
+        <div class="sec-head">Timeline</div>
+        <div class="timeline-group">
+          <div class="phase-row-rich timeline-item" data-view="phase" data-phase="collect" onclick="setView('phase', this)">
+            <div class="phase-status-dot live"></div>
+            <div class="flex-1 min-w-0">
+              <div class="phase-name">Collect ideas</div>
+              <div class="phase-dates">20 May–10 Jun · Ideation</div>
+            </div>
+          </div>
+          <div class="phase-row-rich timeline-item" data-view="phase" data-phase="heard" onclick="setView('phase', this)">
+            <div class="phase-status-dot upcoming"></div>
+            <div class="flex-1 min-w-0">
+              <div class="phase-name">What we heard</div>
+              <div class="phase-dates">11–25 Jun · Information</div>
+            </div>
+          </div>
+        </div>
+        <button class="sec-add" onclick="setView('add-phase')">
+          <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New phase
+        </button>
+      `;
+
+      activitiesCard.innerHTML = `
+        <hr class="panel-divider" />
+        <div class="sec-head">Extras</div>
+        <div class="sec-sub">Surveys that run outside your timeline</div>
+        <div class="phase-row-rich" data-view="phase" data-phase="askus" onclick="setView('phase', this)">
+          <div class="phase-status-dot live"></div>
+          <div class="flex-1 min-w-0">
+            <div class="phase-name">Ask us anything</div>
+            <div class="phase-dates">Ongoing</div>
+          </div>
+        </div>
+        <button class="sec-add" onclick="setView('add-survey')">
+          <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New survey
+        </button>
+      `;
+
+    } else if (state === 'complex') {
+      // Complex project: 5 timeline phases + 4 surveys in Extras
+      timelineCard.innerHTML = `
+        <hr class="panel-divider" />
+        <div class="sec-head">Timeline</div>
+        <div class="timeline-group">
+          <div class="phase-row-rich timeline-item" data-view="phase" data-phase="presurvey" onclick="setView('phase', this)"><div class="phase-status-dot completed"></div>
+            <div class="flex-1 min-w-0"><div class="phase-name phase-name-past">Pre-survey</div>
+              <div class="phase-dates">1–15 May · Survey</div></div></div>
+          <div class="phase-row-rich timeline-item" data-view="phase" data-phase="collect" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>
+            <div class="flex-1 min-w-0"><div class="phase-name">Collect ideas</div>
+              <div class="phase-dates">20 May–10 Jun · Ideation</div></div></div>
+          <div class="phase-row-rich timeline-item" data-view="phase" data-phase="heard" onclick="setView('phase', this)"><div class="phase-status-dot upcoming"></div>
+            <div class="flex-1 min-w-0"><div class="phase-name">What we heard</div>
+              <div class="phase-dates">11–25 Jun · Information</div></div></div>
+          <div class="phase-row-rich timeline-item" data-view="phase" data-phase="vote" onclick="setView('phase', this)"><div class="phase-status-dot upcoming"></div>
+            <div class="flex-1 min-w-0"><div class="phase-name">Community vote</div>
+              <div class="phase-dates">26 Jun–12 Jul · Voting</div></div></div>
+          <div class="phase-row-rich timeline-item" data-view="phase" data-phase="commonground" onclick="setView('phase', this)"><div class="phase-status-dot upcoming"></div>
+            <div class="flex-1 min-w-0"><div class="phase-name">Find common ground</div>
+              <div class="phase-dates">13–27 Jul · Common ground</div></div></div>
+        </div>
+        <button class="sec-add" onclick="setView('add-phase')">
+          <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New phase
+        </button>
+      `;
+
+      activitiesCard.innerHTML = `
+        <hr class="panel-divider" />
+        <div class="sec-head">Extras</div>
+        <div class="sec-sub">Surveys that run outside your timeline</div>
+        <div class="phase-row-rich" data-view="phase" data-phase="askus" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>
+          <div class="flex-1 min-w-0"><div class="phase-name">Ask us anything</div>
+            <div class="phase-dates">Ongoing</div></div></div>
+        <div class="phase-row-rich" data-view="phase" data-phase="schools" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>
+          <div class="flex-1 min-w-0"><div class="phase-name">School survey</div>
+            <div class="phase-dates">20 May–5 Jun</div></div>
+          <svg class="nav-icon" style="width:14px;height:14px;color:#9aa3b2;flex-shrink:0;" viewBox="0 0 24 24"><title>Hidden from participants</title><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
+        <div class="phase-row-rich"><div class="phase-status-dot upcoming"></div>
+          <div class="flex-1 min-w-0"><div class="phase-name">Market-day poll</div>
+            <div class="phase-dates">15–17 Aug</div></div></div>
+        <div class="phase-row-rich"><div class="phase-status-dot completed"></div>
+          <div class="flex-1 min-w-0"><div class="phase-name phase-name-past">Pop-up kiosk survey</div>
+            <div class="phase-dates">2–4 May</div></div></div>
+        <button class="sec-add" onclick="setView('add-survey')">
+          <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New survey
+        </button>
+      `;
+    }
+  }
+
+  // After "Create" in a demo, jump from empty to the populated "few" state.
+  function commitCreation() {
+    setProjectState('few', document.querySelector('.state-chip button[data-state="few"]'));
+    setView('project', document.querySelector('[data-view="project"]'));
+  }
+
+  // Open in the empty state by default (panel + phone preview).
+  setProjectState('empty', document.querySelector('.state-chip button[data-state="empty"]'));
+</script>
+
+<!-- ============ Settings Modal ============ -->
+<div id="settingsModal" class="modal-backdrop" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="text-[11px] tracking-widest text-gray-400 font-semibold">PROJECT SETTINGS</div>
+        <div class="text-[14px] text-gray-500 mt-1">Settings apply to the whole project</div>
+      </div>
+      <button class="text-gray-400 hover:text-gray-700" onclick="document.getElementById('settingsModal').style.display='none'">
+        <svg class="nav-icon" style="width:20px;height:20px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- side nav -->
+      <div class="modal-side">
+        <div class="modal-side-item active" data-section="setup" onclick="setModalSection('setup', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3"/></svg>
+          General
+        </div>
+        <div class="modal-side-item" data-section="access" onclick="setModalSection('access', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          Access
+        </div>
+        <div class="modal-side-item" data-section="tags" onclick="setModalSection('tags', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          Tagging
+        </div>
+        <div class="modal-side-item" data-section="data" onclick="setModalSection('data', this)" style="color:#991b1b;">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Data
+        </div>
+      </div>
+
+      <!-- content -->
+      <div class="modal-content">
+
+        <!-- ============ SECTION: General ============ -->
+        <div id="section-setup" class="modal-section">
+          <div class="mb-5">
+            <h3 class="text-[18px] font-bold">General</h3>
+            <p class="text-[13.5px] text-gray-500 mt-1">Project name, URL, tags, and where it appears.</p>
+          </div>
+
+          <div class="field-group">
+            <label class="form-label">Project name</label>
+            <input class="form-input" type="text" value="Reimagine Meridian 2030" />
+          </div>
+
+          <div class="field-group">
+            <label class="form-label">Homepage description <span class="hint">Shown as a short tagline on cards and lists.</span></label>
+            <textarea class="form-textarea">The Employee Advisory Board (EAB) represents employees and formulates advice to management, mainly on governance.</textarea>
+          </div>
+
+          <div class="modal-section-divider"></div>
+
+          <div class="field-group">
+            <label class="form-label">URL slug</label>
+            <input class="form-input" type="text" value="reimagine-meridian-2030" />
+            <div class="url-preview">
+              <span class="text-gray-500">https://internal.govocal.com/en/projects/</span><span class="slug">reimagine-meridian-2030</span>
+            </div>
+          </div>
+
+          <div class="modal-section-divider"></div>
+
+          <div class="field-group">
+            <label class="form-label">Tags <span class="hint">Help citizens find projects by theme.</span></label>
+            <div class="tag-cloud">
+              <button class="tag-chip selected">Mobility</button>
+              <button class="tag-chip selected">Climate</button>
+              <button class="tag-chip selected">Public spaces</button>
+              <button class="tag-chip">Housing</button>
+              <button class="tag-chip">Safety</button>
+              <button class="tag-chip">Culture &amp; events</button>
+              <button class="tag-chip">Health &amp; welfare</button>
+              <button class="tag-chip">Inclusion</button>
+              <button class="tag-chip">Energy</button>
+            </div>
+          </div>
+
+          <div class="modal-section-divider"></div>
+
+          <div class="field-group">
+            <h4>Area filter</h4>
+            <p class="form-help" style="margin-top:-6px;margin-bottom:10px;">Controls how this project surfaces in area filters across the platform.</p>
+            <div class="opt-card selected">
+              <div class="radio on"></div>
+              <div>
+                <div class="font-semibold text-[14px]">No specific area</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">The project will not show when filtering by area.</div>
+              </div>
+            </div>
+            <div class="opt-card">
+              <div class="radio"></div>
+              <div>
+                <div class="font-semibold text-[14px]">All areas</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">The project will show on every area filter.</div>
+              </div>
+            </div>
+            <div class="opt-card">
+              <div class="radio"></div>
+              <div>
+                <div class="font-semibold text-[14px]">Selected areas</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">The project will show on selected area filter(s).</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section-divider"></div>
+
+          <div class="field-group">
+            <h4>Project context</h4>
+            <p class="form-help" style="margin-top:-6px;margin-bottom:10px;">Where this project lives in your folder structure.</p>
+            <div class="opt-card">
+              <div class="radio"></div>
+              <div>
+                <div class="font-semibold text-[14px]">Inside a folder</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">Group this project with related ones.</div>
+              </div>
+            </div>
+            <div class="opt-card selected">
+              <div class="radio on"></div>
+              <div>
+                <div class="font-semibold text-[14px]">Standalone</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">The project is not in a folder.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section-divider"></div>
+
+          <div class="field-group">
+            <label class="form-label">Attachments <span class="hint">Max 50MB per file.</span></label>
+            <button class="btn-secondary" style="display:inline-flex;align-items:center;gap:8px;">
+              <svg class="nav-icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              Select a file
+            </button>
+          </div>
+        </div>
+
+        <!-- ============ SECTION: Access ============ -->
+        <div id="section-access" class="modal-section" style="display:none;">
+          <div class="mb-5">
+            <h3 class="text-[18px] font-bold">Access</h3>
+            <p class="text-[13.5px] text-gray-500 mt-1">Control who can find and see this project.</p>
+          </div>
+
+          <div class="field-group">
+            <h4>Who can find this project?</h4>
+            <p class="form-help" style="margin-top:-6px;margin-bottom:10px;">Select how discoverable this project is.</p>
+            <div class="opt-card selected">
+              <div class="radio on"></div>
+              <div>
+                <div class="font-semibold text-[14.5px]">Listed</div>
+                <div class="text-[13px] text-gray-500 mt-0.5">This project is visible to everyone who has access, and will appear on the homepage and in the widgets.</div>
+              </div>
+            </div>
+            <div class="opt-card">
+              <div class="radio"></div>
+              <div>
+                <div class="font-semibold text-[14.5px]">Unlisted</div>
+                <div class="text-[13px] text-gray-500 mt-0.5">This project will be hidden from the wider public, and will only be visible to those who have the link.</div>
+                <ul class="bullet-list">
+                  <li>Not visible on the homepage or widgets</li>
+                  <li>Not indexed by search engines</li>
+                  <li>Email notifications only sent to participants</li>
+                  <li>Only accessible via direct URL</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section-divider"></div>
+
+          <div class="field-group">
+            <h4>Who can see this project?</h4>
+            <div class="opt-card">
+              <div class="radio"></div>
+              <div>
+                <div class="font-semibold text-[14.5px]">Anyone</div>
+              </div>
+            </div>
+            <div class="opt-card">
+              <div class="radio"></div>
+              <div>
+                <div class="font-semibold text-[14.5px]">Administrators and the managers of this project</div>
+              </div>
+            </div>
+            <div class="opt-card selected">
+              <div class="radio on"></div>
+              <div class="flex-1">
+                <div class="font-semibold text-[14.5px]">Selection</div>
+                <div class="flex items-center gap-2 mt-3">
+                  <div class="form-input flex items-center justify-between" style="flex:1;color:#9aa3b2;cursor:pointer;">
+                    <span>Select one or more groups</span>
+                    <svg class="nav-icon" style="width:14px;height:14px;color:#7a8294;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <button class="btn-primary" style="display:inline-flex;align-items:center;gap:5px;padding:9px 14px;">
+                    <svg class="nav-icon" style="width:13px;height:13px;color:#fff;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ SECTION: Tagging ============ -->
+        <div id="section-tags" class="modal-section" style="display:none;">
+          <div class="mb-5">
+            <h3 class="text-[18px] font-bold">Tagging</h3>
+            <p class="text-[13.5px] text-gray-500 mt-1">Tags citizens use to categorize their inputs in this project.</p>
+          </div>
+
+          <div class="ai-hint">
+            <svg class="nav-icon ai-icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/></svg>
+            <div>
+              <div class="flex items-center gap-2">
+                <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+                <span class="font-semibold">Perspectives</span>
+                <span class="badge-new">NEW</span>
+              </div>
+              <p class="mt-1.5 text-[12.5px]">AI-powered tagging overrides your manual tag definitions. Tags will be created, updated, and assigned automatically.</p>
+            </div>
+          </div>
+
+          <button class="btn-primary" style="display:inline-flex;align-items:center;gap:6px;">
+            <svg class="nav-icon" style="width:14px;height:14px;color:#fff;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add input tag
+          </button>
+
+          <div class="ai-hint" style="background:#f0f9ff;margin-top:18px;">
+            <svg class="nav-icon" style="width:16px;height:16px;color:#1f3b6d;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <p>At least one tag is required. If you do not wish to use tags, the 'Tags' item can be deleted from any phase's input form.</p>
+          </div>
+
+          <div style="border:1px solid var(--border); border-radius: 10px; margin-top: 14px; background: #fff;">
+            <div class="tag-row">
+              <div class="flex items-center gap-3">
+                <svg class="nav-icon text-gray-400" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+                <span class="font-medium">Mobility &amp; transport</span>
+              </div>
+              <div class="tag-row-actions">
+                <button class="tag-action-btn">+ Add subtag</button>
+                <button class="tag-action-btn">
+                  <svg class="nav-icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                  Edit
+                </button>
+                <button class="tag-action-btn">
+                  <svg class="nav-icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                  Delete
+                </button>
+              </div>
+            </div>
+            <div class="tag-row">
+              <div class="flex items-center gap-3">
+                <svg class="nav-icon text-gray-400" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+                <span class="font-medium">Public spaces</span>
+              </div>
+              <div class="tag-row-actions">
+                <button class="tag-action-btn">+ Add subtag</button>
+                <button class="tag-action-btn">Edit</button>
+                <button class="tag-action-btn">Delete</button>
+              </div>
+            </div>
+            <div class="tag-row">
+              <div class="flex items-center gap-3">
+                <svg class="nav-icon text-gray-400" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+                <span class="font-medium">Other</span>
+              </div>
+              <div class="tag-row-actions">
+                <button class="tag-action-btn">+ Add subtag</button>
+                <button class="tag-action-btn">Edit</button>
+                <button class="tag-action-btn disabled">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ SECTION: Data ============ -->
+        <div id="section-data" class="modal-section" style="display:none;">
+          <div class="mb-5">
+            <h3 class="text-[18px] font-bold">Data</h3>
+            <p class="text-[13.5px] text-gray-500 mt-1">Manage participation data and project state.</p>
+          </div>
+
+          <div class="danger-zone">
+            <h4>Clear all participation data</h4>
+            <p>
+              Removes all ideas, comments, votes, reactions, survey responses, poll responses, volunteers, and event registrants from this project.
+              For voting phases, votes are cleared but options remain.
+            </p>
+            <p class="font-semibold" style="color:#7f1d1d;">This action cannot be undone.</p>
+            <button class="btn-danger mt-1">Reset all participation data</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn-secondary" onclick="document.getElementById('settingsModal').style.display='none'">Cancel</button>
+      <button class="btn-primary" onclick="document.getElementById('settingsModal').style.display='none'">Save changes</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============ Phase Settings Modal ============ -->
+<div id="phaseSettingsModal" class="modal-backdrop" style="display:none;">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="text-[11px] tracking-widest text-gray-400 font-semibold">PHASE SETTINGS</div>
+        <div class="text-[14px] text-gray-500 mt-1">Settings apply to this phase only</div>
+      </div>
+      <button class="text-gray-400 hover:text-gray-700" onclick="document.getElementById('phaseSettingsModal').style.display='none'">
+        <svg class="nav-icon" style="width:20px;height:20px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- side nav -->
+      <div class="modal-side">
+        <div class="modal-side-item active" data-phase-section="access" onclick="setPhaseModalSection('access', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+          Access &amp; data
+        </div>
+        <div class="modal-side-item" data-phase-section="notifications" onclick="setPhaseModalSection('notifications', this)">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+          Notifications
+        </div>
+        <div class="modal-side-item" data-phase-section="data" onclick="setPhaseModalSection('data', this)" style="color:#991b1b;">
+          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Data
+        </div>
+      </div>
+
+      <!-- content -->
+      <div class="modal-content">
+
+        <!-- ============ SECTION: Access & data ============ -->
+        <div id="phase-section-access" class="phase-modal-section">
+          <div class="mb-5">
+            <h3 class="text-[18px] font-bold">Access &amp; data</h3>
+            <p class="text-[13.5px] text-gray-500 mt-1">Who can participate in this phase and what data you collect about them.</p>
+          </div>
+
+          <div class="field-group">
+            <h4>Who can participate</h4>
+            <p class="form-help" style="margin-top:-6px;margin-bottom:10px;">Eligibility for this phase. Inherits from project settings unless overridden.</p>
+            <div class="opt-card selected">
+              <div class="radio on"></div>
+              <div>
+                <div class="font-semibold text-[14.5px]">Same as project</div>
+                <div class="text-[13px] text-gray-500 mt-0.5">Anyone who can access the project can participate in this phase.</div>
+              </div>
+            </div>
+            <div class="opt-card">
+              <div class="radio"></div>
+              <div>
+                <div class="font-semibold text-[14.5px]">Restricted to groups</div>
+                <div class="text-[13px] text-gray-500 mt-0.5">Only members of selected groups can participate in this phase.</div>
+              </div>
+            </div>
+            <div class="opt-card">
+              <div class="radio"></div>
+              <div>
+                <div class="font-semibold text-[14.5px]">Verified residents only</div>
+                <div class="text-[13px] text-gray-500 mt-0.5">Residents must verify their address before participating in this phase.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-section-divider"></div>
+
+          <div class="field-group">
+            <h4>Demographic questions</h4>
+            <p class="form-help" style="margin-top:-6px;margin-bottom:10px;">Ask participants for demographic info before they take part.</p>
+            <div class="flex items-center justify-between py-3 border-b border-gray-200">
+              <div>
+                <div class="font-semibold text-[14px]">Age</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">Ask participants for their age group.</div>
+              </div>
+              <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+            </div>
+            <div class="flex items-center justify-between py-3 border-b border-gray-200">
+              <div>
+                <div class="font-semibold text-[14px]">Neighborhood</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">Ask which neighborhood the participant lives in.</div>
+              </div>
+              <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+            </div>
+            <div class="flex items-center justify-between py-3 border-b border-gray-200">
+              <div>
+                <div class="font-semibold text-[14px]">Gender</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">Ask participants for their gender.</div>
+              </div>
+              <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+            </div>
+            <div class="flex items-center justify-between py-3">
+              <div>
+                <div class="font-semibold text-[14px]">Custom question</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">Add a custom demographic question.</div>
+              </div>
+              <button class="btn-secondary" style="padding:6px 12px;font-size:12.5px;">+ Add</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ SECTION: Notifications ============ -->
+        <div id="phase-section-notifications" class="phase-modal-section" style="display:none;">
+          <div class="mb-5">
+            <h3 class="text-[18px] font-bold">Notifications</h3>
+            <p class="text-[13.5px] text-gray-500 mt-1">Emails sent for activity in this phase.</p>
+          </div>
+
+          <div class="field-group">
+            <div class="flex items-center justify-between py-3 border-b border-gray-200">
+              <div>
+                <div class="font-semibold text-[14px]">New input submitted</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">Email moderators when a citizen submits an idea or comment.</div>
+              </div>
+              <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+            </div>
+            <div class="flex items-center justify-between py-3 border-b border-gray-200">
+              <div>
+                <div class="font-semibold text-[14px]">Input flagged for review</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">Email when a post is flagged by a citizen.</div>
+              </div>
+              <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+            </div>
+            <div class="flex items-center justify-between py-3 border-b border-gray-200">
+              <div>
+                <div class="font-semibold text-[14px]">Phase start reminder</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">Notify participants the day before this phase starts.</div>
+              </div>
+              <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+            </div>
+            <div class="flex items-center justify-between py-3">
+              <div>
+                <div class="font-semibold text-[14px]">Phase ending soon</div>
+                <div class="text-[12.5px] text-gray-500 mt-0.5">Notify participants 48 hours before this phase ends.</div>
+              </div>
+              <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============ SECTION: Data ============ -->
+        <div id="phase-section-data" class="phase-modal-section" style="display:none;">
+          <div class="mb-5">
+            <h3 class="text-[18px] font-bold">Data</h3>
+            <p class="text-[13.5px] text-gray-500 mt-1">Manage this phase.</p>
+          </div>
+
+          <div class="danger-zone">
+            <h4>Delete this phase</h4>
+            <p>
+              Permanently removes this phase and all its data, including inputs, comments, votes, and reactions.
+            </p>
+            <p class="font-semibold" style="color:#7f1d1d;">This action cannot be undone.</p>
+            <button class="btn-danger mt-1">Delete phase</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn-secondary" onclick="document.getElementById('phaseSettingsModal').style.display='none'">Cancel</button>
+      <button class="btn-primary" onclick="document.getElementById('phaseSettingsModal').style.display='none'">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setModalSection(section, el) {
+    document.querySelectorAll('.modal-side-item').forEach(n => n.classList.remove('active'));
+    if (el) el.classList.add('active');
+    document.querySelectorAll('.modal-section').forEach(s => s.style.display = 'none');
+    document.getElementById('section-' + section).style.display = 'block';
+    // Scroll modal content to top when switching sections
+    document.querySelector('.modal-content').scrollTop = 0;
+  }
+
+  function setPhaseModalSection(section, el) {
+    document.querySelectorAll('#phaseSettingsModal .modal-side-item').forEach(n => n.classList.remove('active'));
+    if (el) el.classList.add('active');
+    document.querySelectorAll('.phase-modal-section').forEach(s => s.style.display = 'none');
+    document.getElementById('phase-section-' + section).style.display = 'block';
+    document.querySelector('#phaseSettingsModal .modal-content').scrollTop = 0;
+  }
+</script>
+</body>
+</html>
