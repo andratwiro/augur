@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Phase access, made simple — GoVocal (prototype)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="./govocal-tokens.css" />
+  <link rel="stylesheet" href="./govocal-ui.css" />
+  <link rel="stylesheet" href="./govocal-bo.css" />
+  <script src="./govocal-icons.js" defer></script>
+  <style>
+    /* ════════════════════════════════════════════════════════════════════════
+       Phase access & user data — "made simple".
+       Bar: an admin (even a 14-year-old) instantly understands a genuinely complex
+       topic. Strategy = PRESETS FIRST (one plain choice covers 90%) + a LIVE PHONE
+       showing exactly what the resident experiences + PROGRESSIVE DISCLOSURE
+       (per-action rules, verification stacking, data collection stay hidden until
+       asked for). Plain language everywhere; jargon only as a quiet subtitle.
+       Real GoVocal BO chrome (.gv-bo-*, tokens, icons); experience is page-local ar-*.
+       ──────────────────────────────────────────────────────────────────────── */
+    html, body { margin: 0; height: 100%; }
+    body { background: #fff; font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+
+    /* live plain-language summary banner */
+    .ar-summary { display: flex; gap: 12px; align-items: center; background: var(--gv-teal-50, #eef7f8);
+      border: 1px solid var(--gv-teal-200, #b9dfe3); border-radius: 12px; padding: 14px 16px; margin: 0 0 22px; }
+    .ar-summary__ic { width: 34px; height: 34px; flex: none; border-radius: 9px; background: var(--gv-bo-primary, #044d6c); color: #fff; display: grid; place-items: center; }
+    .ar-summary__ic .gv-icon { width: 19px; height: 19px; }
+    .ar-summary__t { font-size: 16px; line-height: 1.5; }
+    .ar-summary__t b { font-weight: 700; color: var(--gv-bo-primary, #044d6c); }
+
+    .ar-grid { display: grid; grid-template-columns: 1fr 360px; gap: 32px; align-items: start; }
+    @media (max-width: 1180px) { .ar-grid { grid-template-columns: 1fr 320px; gap: 22px; } }
+
+    .ar-step { margin-bottom: 26px; }
+    .ar-step__n { display: inline-flex; align-items: center; gap: 9px; margin: 0 0 4px; }
+    .ar-step__badge { width: 24px; height: 24px; border-radius: 50%; background: var(--gv-bo-primary, #044d6c); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; flex: none; }
+    .ar-step__q { font-size: 19px; font-weight: 700; letter-spacing: -.2px; }
+    .ar-step__sub { font-size: 14px; color: var(--gv-text-secondary); margin: 2px 0 14px 33px; line-height: 1.5; }
+
+    /* preset cards */
+    .ar-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .ar-preset { position: relative; text-align: left; background: #fff; border: 1.5px solid var(--gv-grey-300); border-radius: 12px;
+      padding: 16px 16px 16px 16px; cursor: pointer; font: inherit; transition: border-color .12s, box-shadow .12s, background .12s; display: flex; gap: 13px; }
+    .ar-preset:hover { border-color: var(--gv-cool-grey-400, #9fb0bb); box-shadow: 0 3px 12px rgba(16,30,54,.07); }
+    .ar-preset.on { border-color: var(--gv-bo-primary, #044d6c); background: var(--gv-teal-50, #eef7f8); box-shadow: 0 0 0 1px var(--gv-bo-primary, #044d6c) inset; }
+    .ar-preset__ic { width: 40px; height: 40px; flex: none; border-radius: 10px; display: grid; place-items: center; color: #fff; }
+    .ar-preset__ic .gv-icon { width: 21px; height: 21px; }
+    .ar-preset__t { font-size: 15.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .ar-preset__d { font-size: 13px; color: var(--gv-cool-grey-700, #51606b); line-height: 1.45; margin-top: 3px; }
+    .ar-preset__rec { font-size: 10.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: #1a6b37; background: #e6f4ea; border-radius: 20px; padding: 2px 7px; }
+    .ar-preset__check { position: absolute; top: 12px; right: 12px; width: 20px; height: 20px; border-radius: 50%; background: var(--gv-bo-primary, #044d6c); color: #fff; display: none; place-items: center; }
+    .ar-preset.on .ar-preset__check { display: grid; }
+    .ar-preset__check .gv-icon { width: 12px; height: 12px; }
+
+    /* verification stacking chips */
+    .ar-verify { display: flex; flex-direction: column; gap: 10px; }
+    .ar-vrow { display: flex; gap: 13px; align-items: center; border: 1.5px solid var(--gv-grey-300); border-radius: 11px; padding: 13px 15px; cursor: pointer; transition: border-color .12s, background .12s; }
+    .ar-vrow:hover { border-color: var(--gv-cool-grey-400, #9fb0bb); }
+    .ar-vrow.on { border-color: var(--gv-bo-primary, #044d6c); background: var(--gv-teal-50, #eef7f8); }
+    .ar-vrow.sms.on { border-color: #6d28d9; background: #f5f1fe; }
+    .ar-vrow__ic { width: 36px; height: 36px; flex: none; border-radius: 9px; background: var(--gv-grey-100); color: var(--gv-cool-grey-700, #51606b); display: grid; place-items: center; }
+    .ar-vrow.on .ar-vrow__ic { background: var(--gv-bo-primary, #044d6c); color: #fff; }
+    .ar-vrow.sms.on .ar-vrow__ic { background: #6d28d9; }
+    .ar-vrow__ic .gv-icon { width: 19px; height: 19px; }
+    .ar-vrow__t { font-size: 14.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .ar-vrow__d { font-size: 12.5px; color: var(--gv-cool-grey-700, #51606b); margin-top: 2px; line-height: 1.4; }
+    .ar-vrow__tag { font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; }
+    .ar-vrow__tag.default { background: var(--gv-grey-200); color: var(--gv-cool-grey-700, #51606b); }
+    .ar-vrow__tag.sms { background: #ede5fc; color: #5b21b6; }
+    .ar-check { width: 24px; height: 24px; flex: none; margin-left: auto; border-radius: 7px; border: 2px solid var(--gv-grey-400); display: grid; place-items: center; color: #fff; }
+    .ar-vrow.on .ar-check { background: var(--gv-bo-primary, #044d6c); border-color: var(--gv-bo-primary, #044d6c); }
+    .ar-vrow.sms.on .ar-check { background: #6d28d9; border-color: #6d28d9; }
+    .ar-check .gv-icon { width: 13px; height: 13px; opacity: 0; }
+    .ar-vrow.on .ar-check .gv-icon { opacity: 1; }
+    .ar-stepnote { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--gv-cool-grey-700, #51606b); margin: 12px 0 0 2px; }
+    .ar-stepnote .gv-icon { width: 15px; height: 15px; color: var(--gv-bo-primary, #044d6c); }
+
+    /* advanced expander */
+    .ar-adv { border: 1px solid var(--gv-grey-300); border-radius: 12px; overflow: hidden; margin-top: 6px; }
+    .ar-adv__head { display: flex; align-items: center; gap: 12px; padding: 15px 16px; cursor: pointer; background: #fff; width: 100%; border: 0; font: inherit; text-align: left; }
+    .ar-adv__head:hover { background: var(--gv-grey-50, #f7f8f9); }
+    .ar-adv__ic { width: 32px; height: 32px; flex: none; border-radius: 8px; background: var(--gv-grey-100); color: var(--gv-cool-grey-700, #51606b); display: grid; place-items: center; }
+    .ar-adv__ic .gv-icon { width: 17px; height: 17px; }
+    .ar-adv__t { font-size: 14.5px; font-weight: 600; }
+    .ar-adv__d { font-size: 12.5px; color: var(--gv-text-secondary); margin-top: 1px; }
+    .ar-adv__chev { margin-left: auto; color: var(--gv-cool-grey-600); transition: transform .18s; }
+    .ar-adv.open .ar-adv__chev { transform: rotate(180deg); }
+    .ar-adv__body { display: none; padding: 4px 16px 18px; border-top: 1px solid var(--gv-grey-200); }
+    .ar-adv.open .ar-adv__body { display: block; }
+    .ar-sub { font-size: 13px; color: var(--gv-cool-grey-700, #51606b); line-height: 1.5; margin: 12px 0 12px; }
+
+    /* per-action mini list */
+    .ar-acts { display: flex; flex-direction: column; gap: 8px; }
+    .ar-act { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border: 1px solid var(--gv-grey-200); border-radius: 10px; }
+    .ar-act__ic { width: 30px; height: 30px; flex: none; border-radius: 8px; background: var(--gv-grey-100); color: var(--gv-cool-grey-700, #51606b); display: grid; place-items: center; }
+    .ar-act__ic .gv-icon { width: 16px; height: 16px; }
+    .ar-act__t { font-size: 13.5px; font-weight: 600; }
+    .ar-act__d { font-size: 12px; color: var(--gv-text-secondary); margin-top: 1px; }
+    .ar-act__sel { margin-left: auto; }
+    .ar-mini { height: 36px; border: 1px solid var(--gv-grey-300); border-radius: 8px; padding: 0 30px 0 11px; font: 13.5px var(--gv-font-family); background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2351606b' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 9px center; -webkit-appearance: none; appearance: none; color: var(--gv-text-primary); cursor: pointer; }
+
+    /* collect toggles */
+    .ar-coll { display: flex; flex-direction: column; gap: 4px; }
+    .ar-collrow { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-top: 1px solid var(--gv-grey-200); }
+    .ar-collrow:first-child { border-top: 0; }
+    .ar-collrow__t { font-size: 14px; font-weight: 600; }
+    .ar-collrow__d { font-size: 12.5px; color: var(--gv-text-secondary); margin-top: 1px; line-height: 1.4; }
+    .ar-tog { position: relative; width: 42px; height: 24px; flex: none; margin-left: auto; cursor: pointer; display: inline-block; }
+    .ar-tog input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+    .ar-tog .tk { position: absolute; inset: 0; border-radius: 20px; background: var(--gv-grey-400); transition: background .15s; }
+    .ar-tog .tk::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+    .ar-tog input:checked + .tk { background: var(--gv-green-500, #1a7a3f); }
+    .ar-tog input:checked + .tk::after { transform: translateX(18px); }
+    .ar-collnote { display:flex; gap:8px; align-items:flex-start; font-size: 12.5px; color: #9a4708; background: #fff7ed; border:1px solid #fde2c2; border-radius:9px; padding:10px 12px; margin-top:12px; line-height:1.45; }
+    .ar-collnote .gv-icon { width:15px; height:15px; flex:none; margin-top:1px; color:#b45309; }
+
+    /* ── the live resident phone ─────────────────────────────────────────── */
+    .ar-phonewrap { position: sticky; top: 16px; }
+    .ar-phonecap { font-size: 12px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--gv-cool-grey-600, #5a6b7a); margin: 0 0 10px; display: flex; align-items: center; gap: 7px; }
+    .ar-phonecap .gv-icon { width: 15px; height: 15px; }
+    .ar-phone { background: #0f1722; border-radius: 36px; padding: 11px; box-shadow: 0 24px 60px rgba(10,16,30,.34); }
+    .ar-phone__scr { background: #f4f7f9; border-radius: 26px; overflow: hidden; min-height: 480px; display: flex; flex-direction: column; }
+    .ar-phone__bar { background: #fff; padding: 13px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e9edf1; }
+    .ar-phone__logo { width: 22px; height: 22px; border-radius: 5px; background: var(--gv-bo-primary, #044d6c); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+    .ar-phone__city { font-size: 12.5px; font-weight: 700; }
+    .ar-phone__body { padding: 16px 15px 18px; flex: 1; }
+    .ar-phone__h { font-size: 15px; font-weight: 700; line-height: 1.3; }
+    .ar-phone__sub { font-size: 12px; color: #5a6b7a; margin: 3px 0 14px; line-height: 1.4; }
+
+    .ar-flowcount { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--gv-bo-primary, #044d6c); background: #fff; border: 1px solid var(--gv-teal-200, #b9dfe3); border-radius: 20px; padding: 3px 10px; margin-bottom: 14px; }
+    .ar-flowcount.blocked { color: #9a4708; border-color: #fde2c2; background: #fff7ed; }
+    .ar-flowcount.zero { color: #1a6b37; border-color: #bfe3cc; background: #ecf7f0; }
+
+    .ar-flow { display: flex; flex-direction: column; gap: 0; }
+    .ar-fstep { display: flex; gap: 12px; padding-bottom: 16px; position: relative; }
+    .ar-fstep:last-child { padding-bottom: 0; }
+    .ar-fstep::before { content: ""; position: absolute; left: 13px; top: 28px; bottom: -2px; width: 2px; background: #d7dee4; }
+    .ar-fstep:last-child::before { display: none; }
+    .ar-fdot { width: 28px; height: 28px; flex: none; border-radius: 50%; background: #fff; border: 2px solid #c6d0d8; color: #5a6b7a; font-size: 12px; font-weight: 700; display: grid; place-items: center; z-index: 1; }
+    .ar-fstep.sms .ar-fdot { border-color: #6d28d9; color: #6d28d9; }
+    .ar-fstep.win .ar-fdot { background: var(--gv-green-500, #1a7a3f); border-color: var(--gv-green-500, #1a7a3f); color: #fff; }
+    .ar-fstep.block .ar-fdot { background: #b45309; border-color: #b45309; color: #fff; }
+    .ar-fdot .gv-icon { width: 14px; height: 14px; }
+    .ar-fmain { padding-top: 3px; }
+    .ar-ft { font-size: 13.5px; font-weight: 600; line-height: 1.3; }
+    .ar-fd { font-size: 11.5px; color: #5a6b7a; margin-top: 2px; line-height: 1.4; }
+    .ar-fstep.sms .ar-ft { color: #5b21b6; }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+
+    <!-- ── Sidebar (real BO chrome — context frame) ─────────────────────── -->
+    <nav class="gv-bo-side" aria-label="Admin">
+      <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo"><span data-gv-icon="admin-back" style="color:var(--gv-white)"></span></span> To platform</a>
+      <div class="gv-bo-nav">
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-dashboard"></span><span class="gv-bo-nav__label">Dashboard</span></a>
+        <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-projects"></span><span class="gv-bo-nav__label">Projects</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-input"></span><span class="gv-bo-nav__label">Input manager</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-users"></span><span class="gv-bo-nav__label">Users</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-messaging"></span><span class="gv-bo-nav__label">Messaging</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-reporting"></span><span class="gv-bo-nav__label">Reporting</span></a>
+      </div>
+      <div class="gv-bo-nav gv-bo-nav--bottom">
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-settings"></span><span class="gv-bo-nav__label">Settings</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-avatar" data-gv-icon="user"></span><span class="gv-bo-nav__label">Go Vocal Admin<span class="gv-bo-nav__sub">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+      </div>
+    </nav>
+
+    <div class="gv-bo-main">
+      <header class="gv-bo-topbar">
+        <div class="gv-bo-topbar__row">
+          <div>
+            <h1 class="gv-bo-topbar__title">Let's Reimagine Dorothea Dix Park</h1>
+            <div class="gv-bo-meta">
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="lock"></span>Everyone</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="eye"></span>Public</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="group"></span>170 project participants</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Published · Active</span>
+            </div>
+          </div>
+          <div class="gv-bo-topbar__actions">
+            <button class="gv-iconbtn" aria-label="Preview project"><span data-gv-icon="eye"></span></button>
+            <button class="gv-btn secondary-outlined"><span data-gv-icon="share"></span><span class="gv-btn__label">Share</span></button>
+            <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
+          </div>
+        </div>
+        <nav class="gv-bo-tabs" aria-label="Project">
+          <a class="gv-bo-tab" href="#">General</a>
+          <a class="gv-bo-tab is-active" href="#">Timeline</a>
+          <a class="gv-bo-tab" href="#">Audience</a>
+          <a class="gv-bo-tab" href="#">Messaging</a>
+          <a class="gv-bo-tab" href="#">Events</a>
+        </nav>
+      </header>
+
+      <section class="gv-bo-section">
+        <div class="gv-bo-content">
+          <section class="gv-phases" aria-label="Project phases">
+            <div class="gv-stepper" role="tablist">
+              <button class="gv-phase" role="tab"><span class="gv-pstep">1</span><span class="gv-phase__label">Information</span></button>
+              <button class="gv-phase current" role="tab" aria-selected="true"><span class="gv-pstep"><span class="gv-pstep__dot"></span>2</span><span class="gv-phase__label">New ideas!</span></button>
+              <button class="gv-phase" role="tab"><span class="gv-pstep">3</span><span class="gv-phase__label">Voting</span></button>
+              <button class="gv-bo-addphase"><span data-gv-icon="plus"></span> New phase</button>
+            </div>
+          </section>
+
+          <div class="gv-bo-phasehead">
+            <div>
+              <h2 class="gv-bo-phasehead__title">New ideas!</h2>
+              <div class="gv-bo-phasehead__meta">
+                <span>Ideation phase</span>
+                <span><span class="gv-icon" data-gv-icon="calendar-range"></span>June 2, 2024 → No end date</span>
+                <span><span class="gv-icon" data-gv-icon="eye"></span><span id="rightsMeta">Sign-in required</span></span>
+              </div>
+            </div>
+          </div>
+
+          <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Phase">
+            <a class="gv-bo-tab" href="#">Setup</a>
+            <a class="gv-bo-tab" href="#">Input manager</a>
+            <a class="gv-bo-tab" href="#">Input form</a>
+            <a class="gv-bo-tab is-active" href="#">Phase access and user data</a>
+            <a class="gv-bo-tab" href="#">Insights</a>
+            <a class="gv-bo-tab" href="#">Notifications</a>
+          </nav>
+
+          <div class="gv-bo-card">
+            <!-- live plain-language summary -->
+            <div class="ar-summary">
+              <span class="ar-summary__ic"><span class="gv-icon" data-gv-icon="group"></span></span>
+              <div class="ar-summary__t" id="summary"></div>
+            </div>
+
+            <div class="ar-grid">
+              <div class="ar-controls" id="controls"></div>
+              <div class="ar-phonewrap">
+                <div class="ar-phonecap"><span class="gv-icon" data-gv-icon="eye"></span> What a resident sees</div>
+                <div class="ar-phone"><div class="ar-phone__scr" id="phone"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    "use strict";
+    var $ = function(s,r){ return (r||document).querySelector(s); };
+    function icon(n){ return '<span class="gv-icon" data-gv-icon="'+n+'"></span>'; }
+
+    /* ── model ── */
+    var PRESETS = {
+      open:     { t:'Open to everyone', ic:'group',  color:'#1a7a3f', d:'No sign-up. Anyone can take part, even without an account.' },
+      signin:   { t:'Sign in first',   ic:'user',    color:'#044d6c', d:'People make a quick account so you know they’re a real person.', rec:true },
+      verified: { t:'Verified locals', ic:'shield',  color:'#6d28d9', d:'We check they actually live in your area before they join.' },
+      team:     { t:'Just the team',   ic:'lock',    color:'#51606b', d:'Only your staff. The public can’t see or take part.' }
+    };
+    var VERIFY = {
+      email: { t:'Email code',       ic:'email',        d:'A 6-digit code to their inbox. The usual default.', tag:'Default' },
+      sms:   { t:'Text-message code',ic:'notification', d:'A code to their phone. Harder to fake than email.', tag:'SMS' },
+      id:    { t:'Photo ID',         ic:'shield',       d:'Match a government ID or national eID. Strongest, but more effort.' }
+    };
+    var ACTIONS = [
+      { key:'submit', t:'Submit an idea', d:'Post their own idea', ic:'idea' },
+      { key:'comment',t:'Comment',        d:'Reply to others',     ic:'comments' },
+      { key:'react',  t:'Like / react',   d:'Up or down vote',     ic:'vote-up' },
+      { key:'attend', t:'Attend events',  d:'Sign up to come',     ic:'calendar' }
+    ];
+
+    var state = {
+      preset: 'signin',
+      verify: { email:true, sms:false, id:false },
+      perAction: false,
+      actions: { submit:'all', comment:'all', react:'all', attend:'all' }, // all = same as phase
+      collect: { name:false, password:false, questions:false },
+      advOpen: false
+    };
+
+    function needsVerify(){ return state.preset==='signin' || state.preset==='verified'; }
+    function methodsOn(){ return ['email','sms','id'].filter(function(m){ return state.verify[m]; }); }
+
+    /* ── render: controls ── */
+    function render(){
+      renderSummary();
+      renderControls();
+      renderPhone();
+      $('#rightsMeta').textContent = state.preset==='open' ? 'Open to everyone'
+        : state.preset==='team' ? 'Staff only'
+        : state.preset==='verified' ? 'Verified residents' : 'Sign-in required';
+      if(window.GVIcons) GVIcons.render(document.body);
+    }
+
+    function renderSummary(){
+      var s;
+      if(state.preset==='open') s = '<b>Anyone</b> can take part — no account, no sign-in needed.';
+      else if(state.preset==='team') s = 'Only <b>your staff</b> can take part. Residents can’t see this phase.';
+      else {
+        var m = methodsOn();
+        var proof = m.length ? ('sign in and confirm with <b>'+ m.map(function(k){return VERIFY[k].t.toLowerCase();}).join(' + ') +'</b>') : 'just <b>sign in</b>';
+        var who = state.preset==='verified' ? 'a verified resident' : 'anyone';
+        s = 'Right now, '+who+' who can '+proof+' is able to <b>take part</b>'
+          + (state.perAction ? ', with a few actions set differently.' : '.');
+      }
+      $('#summary').innerHTML = s;
+    }
+
+    function renderControls(){
+      var c = $('#controls'); c.innerHTML='';
+
+      /* STEP 1 — presets */
+      var step1 = '<div class="ar-step">'
+        + '<div class="ar-step__n"><span class="ar-step__badge">1</span><span class="ar-step__q">How open is this phase?</span></div>'
+        + '<div class="ar-step__sub">Pick the closest fit. You can fine-tune below — but most phases just need one of these.</div>'
+        + '<div class="ar-presets">'
+        + Object.keys(PRESETS).map(function(k){
+            var p = PRESETS[k], on = state.preset===k;
+            return '<button class="ar-preset'+(on?' on':'')+'" data-preset="'+k+'">'
+              + '<span class="ar-preset__check">'+icon('check')+'</span>'
+              + '<span class="ar-preset__ic" style="background:'+p.color+'">'+icon(p.ic)+'</span>'
+              + '<span><span class="ar-preset__t">'+p.t+(p.rec?' <span class="ar-preset__rec">Recommended</span>':'')+'</span>'
+              + '<span class="ar-preset__d">'+p.d+'</span></span></button>';
+          }).join('')
+        + '</div></div>';
+      c.insertAdjacentHTML('beforeend', step1);
+
+      /* STEP 2 — verification (only when sign-in/verified) */
+      if(needsVerify()){
+        var step2 = '<div class="ar-step">'
+          + '<div class="ar-step__n"><span class="ar-step__badge">2</span><span class="ar-step__q">How do they prove who they are?</span></div>'
+          + '<div class="ar-step__sub">Add one or more checks. Each one is more proof for you — and one more step for the resident.</div>'
+          + '<div class="ar-verify">'
+          + ['email','sms','id'].map(function(m){
+              var v = VERIFY[m], on = state.verify[m];
+              var tag = v.tag ? ('<span class="ar-vrow__tag '+(m==='sms'?'sms':'default')+'">'+v.tag+'</span>') : '';
+              return '<div class="ar-vrow'+(m==='sms'?' sms':'')+(on?' on':'')+'" data-verify="'+m+'">'
+                + '<span class="ar-vrow__ic">'+icon(v.ic)+'</span>'
+                + '<span><span class="ar-vrow__t">'+v.t+' '+tag+'</span><span class="ar-vrow__d">'+v.d+'</span></span>'
+                + '<span class="ar-check">'+icon('check')+'</span></div>';
+            }).join('')
+          + '</div>'
+          + '<div class="ar-stepnote">'+icon('arrow-right')+'<span>Watch the resident’s journey on the right grow with each check you add.</span></div>'
+          + '</div>';
+        c.insertAdjacentHTML('beforeend', step2);
+      }
+
+      /* ADVANCED — progressive disclosure */
+      if(state.preset!=='team'){
+        var adv = document.createElement('div');
+        adv.className = 'ar-adv' + (state.advOpen?' open':'');
+        adv.innerHTML =
+          '<button class="ar-adv__head" id="advHead">'
+          + '<span class="ar-adv__ic">'+icon('settings')+'</span>'
+          + '<span><span class="ar-adv__t">Need finer control?</span><span class="ar-adv__d">Different rules per action, specific groups, and what you ask people for.</span></span>'
+          + '<span class="ar-adv__chev">'+icon('chevron-down')+'</span></button>'
+          + '<div class="ar-adv__body">'
+            /* per-action */
+          + '<div class="ar-sub"><b>Different rules for different things?</b> By default every action uses the setup above. Turn this on only if, say, anyone can comment but only signed-in people can submit.</div>'
+          + '<div class="ar-collrow" style="border-top:0;padding-top:0"><div><div class="ar-collrow__t">Set rules per action</div><div class="ar-collrow__d">Submit, comment, like, attend — separately</div></div>'
+          + '<label class="ar-tog"><input type="checkbox" id="perActionTog"'+(state.perAction?' checked':'')+'><span class="tk"></span></label></div>'
+          + (state.perAction ? perActionList() : '')
+            /* what we collect */
+          + '<div class="ar-sub" style="margin-top:18px"><b>What do we ask people for?</b> Only available when they sign in. Asking for less means more people finish.</div>'
+          + collectList()
+          + '</div>';
+        c.appendChild(adv);
+      }
+
+      bind();
+    }
+
+    function perActionList(){
+      return '<div class="ar-acts" style="margin-top:10px">'
+        + ACTIONS.map(function(a){
+            var val = state.actions[a.key];
+            return '<div class="ar-act"><span class="ar-act__ic">'+icon(a.ic)+'</span>'
+              + '<span><span class="ar-act__t">'+a.t+'</span><span class="ar-act__d">'+a.d+'</span></span>'
+              + '<span class="ar-act__sel"><select class="ar-mini" data-act="'+a.key+'">'
+              + '<option value="all"'+(val==='all'?' selected':'')+'>Same as phase</option>'
+              + '<option value="open"'+(val==='open'?' selected':'')+'>Open to everyone</option>'
+              + '<option value="signin"'+(val==='signin'?' selected':'')+'>Must sign in</option>'
+              + '<option value="team"'+(val==='team'?' selected':'')+'>Staff only</option>'
+              + '</select></span></div>';
+          }).join('')
+        + '</div>';
+    }
+
+    function collectList(){
+      var locked = state.preset==='open';
+      var rows = [
+        ['name','Their name','First and last name'],
+        ['password','A password','Creates a full account, not just an email check'],
+        ['questions','A few questions','Age, area, etc. — can be anonymous']
+      ];
+      var html = '<div class="ar-coll">'
+        + rows.map(function(r){
+            var on = state.collect[r[0]];
+            // questions can be asked even when open (anonymous); name/password need sign-in
+            var disabled = locked && r[0]!=='questions';
+            return '<div class="ar-collrow" style="'+(disabled?'opacity:.5':'')+'">'
+              + '<div><div class="ar-collrow__t">'+r[1]+'</div><div class="ar-collrow__d">'+r[2]+'</div></div>'
+              + '<label class="ar-tog"><input type="checkbox" data-collect="'+r[0]+'"'+(on?' checked':'')+(disabled?' disabled':'')+'><span class="tk"></span></label></div>';
+          }).join('')
+        + '</div>';
+      if(locked) html += '<div class="ar-collnote">'+icon('info-outline')+'<span>People aren’t signing in, so there’s no name or account to collect. You can still ask anonymous questions.</span></div>';
+      return html;
+    }
+
+    /* ── render: live phone ── */
+    function flowSteps(){
+      if(state.preset==='team'){
+        return { blocked:true, steps:[ {t:'Staff only', d:'This phase isn’t open to residents.', cls:'block', ic:'lock'} ] };
+      }
+      // steps = the HURDLES a resident crosses before they're in (not the entry tap)
+      var steps = [];
+      if(state.preset!=='open'){
+        steps.push({ t:'Enter their email', d:'To make a quick account' });
+        if(state.verify.email) steps.push({ t:'Type the email code', d:'6 digits from their inbox' });
+        if(state.verify.sms)   steps.push({ t:'Enter their phone', d:'Then type the text-message code', cls:'sms', ic:'notification' });
+        if(state.verify.id)    steps.push({ t:'Scan their ID', d:'Government ID or national eID' });
+      } else {
+        if(state.collect.questions) steps.push({ t:'Answer a few questions', d:'Anonymous — optional' });
+      }
+      var winText = (state.preset==='open' && steps.length===0) ? 'They’re straight in! 🎉' : 'They’re in! 🎉';
+      steps.push({ t:winText, d:'Ready to submit an idea', cls:'win', ic:'check' });
+      return { blocked:false, steps:steps };
+    }
+
+    function renderPhone(){
+      var f = flowSteps();
+      var realSteps = f.blocked ? 0 : f.steps.filter(function(s){ return s.cls!=='win'; }).length;
+      var count;
+      if(f.blocked) count = '<div class="ar-flowcount blocked">'+icon('lock')+'Residents can’t take part</div>';
+      else if(realSteps===0) count = '<div class="ar-flowcount zero">'+icon('check')+'0 steps — instant</div>';
+      else count = '<div class="ar-flowcount">'+icon('clock')+realSteps+' step'+(realSteps>1?'s':'')+' before they take part</div>';
+
+      var body = '<div class="ar-phone__bar"><span class="ar-phone__logo">DX</span><span class="ar-phone__city">City of Dorothea Dix</span></div>'
+        + '<div class="ar-phone__body">'
+        + '<div class="ar-phone__h">New ideas!</div>'
+        + '<div class="ar-phone__sub">Help shape the future of the park.</div>'
+        + count
+        + '<div class="ar-flow">'
+        + f.steps.map(function(s,i){
+            var cls = s.cls ? (' '+s.cls) : '';
+            var dot = s.ic ? icon(s.ic) : (s.cls==='win'?icon('check'):(i+1));
+            return '<div class="ar-fstep'+cls+'"><span class="ar-fdot">'+dot+'</span>'
+              + '<span class="ar-fmain"><span class="ar-ft">'+s.t+'</span><span class="ar-fd">'+(s.d||'')+'</span></span></div>';
+          }).join('')
+        + '</div></div>';
+      $('#phone').innerHTML = body;
+    }
+
+    /* ── bindings ── */
+    function bind(){
+      document.querySelectorAll('[data-preset]').forEach(function(b){
+        b.onclick = function(){
+          var k = b.getAttribute('data-preset');
+          state.preset = k;
+          // sensible defaults per preset
+          if(k==='open') state.verify = { email:false, sms:false, id:false };
+          else if(k==='signin') state.verify = { email:true, sms:false, id:false };
+          else if(k==='verified') state.verify = { email:true, sms:true, id:false };
+          render();
+        };
+      });
+      document.querySelectorAll('[data-verify]').forEach(function(r){
+        r.onclick = function(){
+          var m = r.getAttribute('data-verify');
+          state.verify[m] = !state.verify[m];
+          render();
+        };
+      });
+      var ah = $('#advHead'); if(ah) ah.onclick = function(){ state.advOpen = !state.advOpen; render(); };
+      var pat = $('#perActionTog'); if(pat) pat.onchange = function(){ state.perAction = pat.checked; render(); };
+      document.querySelectorAll('[data-act]').forEach(function(s){
+        s.onchange = function(){ state.actions[s.getAttribute('data-act')] = s.value; renderSummary(); };
+      });
+      document.querySelectorAll('[data-collect]').forEach(function(t){
+        t.onchange = function(){ state.collect[t.getAttribute('data-collect')] = t.checked; render(); };
+      });
+    }
+
+    render();
+  })();
+  </script>
+</body>
+</html>
