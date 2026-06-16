@@ -257,7 +257,7 @@
        rgb(30,30,30)). The base rule above set it to 18px / 600 / secondary grey; we
        override to the measured values. Append-only so every consumer updates.
        The near-black is a measured one-off (not --gv-text-primary #333), kept literal. */
-    .sv-titlebar h1 { font-size: var(--gv-fs-base); font-weight: 400; color: rgb(30, 30, 30); }
+    .sv-titlebar h1 { font-size: var(--gv-fs-base); font-weight: 400; line-height: 24px; color: rgb(30, 30, 30); }
     /* Real header also carries an 'Edit survey' OUTLINE button (admin-preview affordance)
        to the left of the close ✕: white bg, 1px solid border, 3px radius, 9px 18px pad,
        16px text. Structural fidelity only — the renderer can opt to emit it. */

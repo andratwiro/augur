@@ -1586,6 +1586,33 @@
       ]
     },
     {
+      "id": "fo-input-form/runner-title",
+      "built": "pages/input-form/index.html",
+      "against": "fo-survey-runner",
+      "map": {
+        "p.sc-ktEKTO": ".sv-titlebar h1"
+      },
+      "props": [
+        "font-size",
+        "line-height"
+      ],
+      "uses": []
+    },
+    {
+      "id": "fo-input-form/runner-footer",
+      "built": "pages/input-form/index.html",
+      "against": "fo-survey-runner",
+      "map": {
+        "div.Wgsme": ".sv-foot__row"
+      },
+      "props": [
+        "padding",
+        "display",
+        "align-items"
+      ],
+      "uses": []
+    },
+    {
       "id": "bo-users/people-header",
       "built": "pages/bo-users/index.html",
       "against": "bo-users",

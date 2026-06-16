@@ -88,6 +88,7 @@
   --gv-success:        var(--gv-green-500);
   --gv-success-light:  var(--gv-green-100);
   --gv-background:     #EDEFF0;
+  --gv-survey-canvas:  #F4F6F8;  /* survey-runner route page bg (div.cwzUZm) — a lighter blue-grey than the generic app canvas; measured live */
 
   /* ── Tenant (per-city) colours ────────────────────────────────────────── */
   /* The product themes these per tenant. Override --gv-tenant-primary on :root
