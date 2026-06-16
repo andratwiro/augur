@@ -535,3 +535,17 @@ expired mid-run; unattended can't re-auth):**
 
 **To resume:** run `npm run capture -- "<any /admin url>" --login` once to refresh
 `scripts/capture/.auth/state.json`, then the backlog above is unblocked in priority order.
+
+## LOOP OPERATING NOTE (set 2026-06-17, read every wake)
+
+Live-capture reality with the current `.env.capture` account:
+- **Front office = LIVE.** Public pages (homepages, project pages, resident method flows)
+  capture fine on any tenant — no auth needed. Do live FO extraction freely (r7-* prefix).
+- **Back office admin = BLOCKED.** `--login` authenticates into `7868.epic.govocal.com`
+  FO but the account has **no admin rights**; every `/admin/*` (epic AND uxusertesting)
+  redirects to the public FO shell ("Welcome to", FO title, 0 admin-sidebar links). So a
+  fresh `/admin` capture is NOT usable. For all BO work, ground on the **existing ~70 authed
+  `r1-*` / `r2-*` admin captures + `bo-*` canonical captures + GitHub source @5d67730** — the
+  same basis that produced every Run-6 BO build. (To unblock live BO: the user must put an
+  **admin** account in `.env.capture` or do a headed admin login.)
+- Session-check each wake stays valid: if `/admin` renders admin chrome, live BO is back on.
