@@ -1531,6 +1531,15 @@
 .gv-themecard__main { display: block; width: 100%; }
 .gv-themecard__bar { display: block; width: 100%; }
 
+/* ── Theme card · share-bar fill height (fix 70/93 → themecard-share-bar-fill-height) ──
+   Grounded against fo-perspectives-board digest: the track (div.gdJIUf) is 8px tall
+   (1px solid #e0e0e0, radius 4px) but the coloured fill (div.elgHSk) is only 6px tall
+   (bg rgb(229,147,156), no border, no radius). Earlier passes collapsed the track to 6px
+   and let the fill stretch to 100%, erasing the hairline gutter. Restore the 8px track and
+   sit a 6px fill inside it, vertically centred — leaving the ~1px gutter above/below. */
+.gv-themecard__bar { height: 8px; display: flex; align-items: center; }
+.gv-themecard__bar > i { height: 6px; }
+
 /* ── Dotted-grid canvas ── floats sticky-note idea cards.
    Live bg = white + tiled inline-svg dot (circle r1.5 #e5e5e5) at 20×20. */
 .gv-issuecanvas { position: relative; overflow: auto; background-color: #fff;
