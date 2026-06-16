@@ -7,6 +7,10 @@
   <title>A square for everyone — Westmere</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <!-- Leaflet (open-source maps) + OpenStreetMap tiles — CDN, pinned to 1.9.4. External
+       lib: its .leaflet-* classes/CSS are not part of the .gv-* system. -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
@@ -40,38 +44,32 @@
     @media (max-width: 760px) { .pp-title { grid-template-columns: 1fr; } .pp-title h1, .pp-cta, .pp-desc { grid-column: 1; } .pp-cta { grid-row: auto; } }
 
     /* ── Ideation MAP view (page-local; faithful to fo-project-ideation-map capture) ──
-       Replaces the idea-card column with a map surface; keeps the .gv-feedfilter sidebar.
-       The map column holds a styled (static) map surface with idea pins + a floating
-       overlay card (Filters + compact idea list) + an admin info banner — colours/sizes
-       via --gv-* tokens; no .gv-* class is redefined. */
-    .pp-map { position: relative; min-height: 560px; border-radius: var(--gv-radius); overflow: hidden;
-      border: 1px solid var(--gv-grey-200);
-      /* OSM-style tile wash: soft green/grey landmass with a faint road grid */
-      background-color: #e8ede4;
-      background-image:
-        radial-gradient(circle at 70% 30%, #dfe7da 0 22%, transparent 22%),
-        radial-gradient(circle at 25% 75%, #e4ebe0 0 26%, transparent 26%),
-        linear-gradient(rgba(255,255,255,.55) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px),
-        linear-gradient(rgba(0,0,0,.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,0,0,.04) 1px, transparent 1px);
-      background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px, 132px 132px, 132px 132px;
-    }
-    /* a couple of faint "waterway / main road" diagonals to read as a real map */
-    .pp-map::before { content: ""; position: absolute; inset: 0; pointer-events: none;
-      background:
-        linear-gradient(115deg, transparent 38%, rgba(167,202,237,.55) 38%, rgba(167,202,237,.55) 41%, transparent 41%),
-        linear-gradient(60deg, transparent 60%, rgba(247,224,178,.7) 60%, rgba(247,224,178,.7) 62.5%, transparent 62.5%); }
-    .pp-map__attr { position: absolute; right: 6px; bottom: 4px; font-size: 10px; color: var(--gv-cool-grey-600);
-      background: rgba(255,255,255,.7); padding: 1px 5px; border-radius: 2px; }
-    /* idea pins */
-    .pp-pin { position: absolute; width: 26px; height: 26px; transform: translate(-50%, -100%); color: var(--gv-tenant-primary);
+       Replaces the idea-card column with a REAL Leaflet + OpenStreetMap map; keeps the
+       .gv-feedfilter sidebar. Markers (one per idea) are drawn by Leaflet; on top sits a
+       floating overlay card (Filters + compact idea list) + an admin info banner.
+       Colours/sizes via --gv-* tokens; no .gv-* class is redefined; .leaflet-* is external. */
+    .pp-map { position: relative; min-height: 560px; height: 560px; border-radius: var(--gv-radius); overflow: hidden;
+      border: 1px solid var(--gv-grey-200); background-color: #e8ede4; }
+    /* the Leaflet canvas fills the container; rounded to match the column */
+    .pp-map__canvas { position: absolute; inset: 0; border-radius: var(--gv-radius); z-index: 0; }
+    /* keep Leaflet's controls/popups below our overlay card but above the tiles */
+    .pp-map .leaflet-pane, .pp-map .leaflet-top, .pp-map .leaflet-bottom { z-index: 1; }
+    /* a Leaflet popup styled to echo the idea-card type scale (page-local, .pp- namespace) */
+    .pp-poptitle { margin: 0 0 8px; font-size: var(--gv-fs-l); font-weight: 600; line-height: 1.25;
+      color: var(--gv-text-heading-strong); }
+    .pp-popstats { display: flex; align-items: center; gap: 16px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); }
+    .pp-popstats span { display: inline-flex; align-items: center; gap: 6px; }
+    .pp-popstats svg { width: 15px; height: 15px; }
+    /* tenant-coloured teardrop marker (Leaflet divIcon content) */
+    .pp-marker { width: 28px; height: 28px; color: var(--gv-tenant-primary);
       filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); cursor: pointer; }
-    .pp-pin svg { width: 100%; height: 100%; display: block; }
-    .pp-pin.is-active { color: var(--gv-tenant-secondary, var(--gv-tenant-primary)); z-index: 3; }
+    .pp-marker svg { width: 100%; height: 100%; display: block; }
+    .pp-marker.is-active { color: var(--gv-tenant-secondary, var(--gv-tenant-primary)); }
     /* floating overlay card (the list panel that sits on top of the map) */
     .pp-mapcard { position: absolute; top: 18px; left: 18px; width: 320px; max-height: calc(100% - 36px);
-      display: flex; flex-direction: column; gap: 12px; background: transparent; z-index: 2; }
+      display: flex; flex-direction: column; gap: 12px; background: transparent; z-index: 1000;
+      pointer-events: none; }
+    .pp-mapcard__filters, .pp-mapcard__list { pointer-events: auto; }
     .pp-mapcard__filters { align-self: flex-start; }
     .pp-mapcard__list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 2px; }
     /* compact idea item — values measured off the capture digest (white card, #ccc 1px,
@@ -85,7 +83,7 @@
     .pp-mapidea__stat { display: inline-flex; align-items: center; gap: 6px; }
     .pp-mapidea__stat .gv-icon, .pp-mapidea__stat svg { width: 16px; height: 16px; }
     /* admin info banner (top-right of the map, as in the capture) */
-    .pp-mapnote { position: absolute; top: 18px; right: 18px; max-width: 230px; z-index: 2;
+    .pp-mapnote { position: absolute; top: 18px; right: 18px; max-width: 230px; z-index: 1000;
       display: flex; gap: 8px; padding: 10px 12px; border-radius: var(--gv-radius);
       background: #e6f0f7; color: var(--gv-cool-grey-700); font-size: var(--gv-fs-s); line-height: 1.4;
       box-shadow: rgba(0,0,0,.06) 0 2px 4px -1px; }
@@ -330,16 +328,16 @@
     const IDEAS = [
       { title: 'More trees and seating, less parking', author: 'Sofie Maes', time: '2 months ago',
         excerpt: 'Replace the car park in the middle of the square with a row of trees and proper benches. Right now there’s nowhere shady to sit on market day, and the cars dominate everything.',
-        likes: 96, dislikes: 5, comments: 7, status: 'accepted', img: '../../skills/govocal-ui/img/westmere/park-people.webp' },
+        likes: 96, dislikes: 5, comments: 7, status: 'accepted', img: '../../skills/govocal-ui/img/westmere/park-people.webp', lat: 51.0512, lng: -1.3098 },
       { title: 'Keep room for the weekly market', author: 'Daan Verhoeven', time: '2 months ago',
         excerpt: 'Whatever we do, the Saturday market has to stay. Let’s design the paving and power points so stalls can set up easily, and keep a clear open space for them.',
-        likes: 74, dislikes: 3, comments: 9, status: 'under consideration', img: '../../skills/govocal-ui/img/westmere/community.webp' },
+        likes: 74, dislikes: 3, comments: 9, status: 'under consideration', img: '../../skills/govocal-ui/img/westmere/community.webp', lat: 51.0521, lng: -1.3079 },
       { title: 'A safe crossing for the school run', author: 'Aisha Karimi', time: '7 weeks ago',
         excerpt: 'So many children cross the square to get to the Old Town school. A raised crossing and slower traffic on the north side would make the morning walk much safer.',
-        likes: 52, dislikes: 1, comments: 4, status: 'implemented', img: '../../skills/govocal-ui/img/westmere/street-trees.webp' },
+        likes: 52, dislikes: 1, comments: 4, status: 'implemented', img: '../../skills/govocal-ui/img/westmere/street-trees.webp', lat: 51.0529, lng: -1.3112 },
       { title: 'Cycle parking by the café terraces', author: 'Marek Nowak', time: '6 weeks ago',
         excerpt: 'Add covered cycle parking near the cafés so people can ride in, lock up and stay a while. At the moment bikes end up chained to every railing on the square.',
-        likes: 38, dislikes: 4, comments: 3, status: 'proposed', img: '../../skills/govocal-ui/img/westmere/group.webp' }
+        likes: 38, dislikes: 4, comments: 3, status: 'proposed', img: '../../skills/govocal-ui/img/westmere/group.webp', lat: 51.0506, lng: -1.3065 }
     ];
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     function cardHTML(d) {
@@ -385,14 +383,12 @@
     /* Idea-feed view mode (list | map). Module-level so it survives feed re-renders
        when the phase/method switches; toggled by the .gv-viewseg tabs. */
     let ideaView = 'list';
-    /* Static pin coordinates (% of the map surface) — one per IDEAS entry. */
-    const PIN_POS = [ { x: 44, y: 52 }, { x: 62, y: 38 }, { x: 33, y: 70 }, { x: 71, y: 64 } ];
+    /* Leaflet marker glyph (teardrop) injected as a divIcon so it inherits --gv-* colour. */
     const PIN_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
+    /* Leaflet instance + markers — module-level so we init once and re-show on tab toggle. */
+    let ppMap = null;
+    let ppMarkers = [];
     function mapViewHTML() {
-      const pins = IDEAS.map((d, i) => {
-        const p = PIN_POS[i] || { x: 50, y: 50 };
-        return `<span class="pp-pin" data-pin="${i}" style="left:${p.x}%;top:${p.y}%;" title="${esc(d.title)}">${PIN_SVG}</span>`;
-      }).join('');
       const items = IDEAS.map((d, i) => `
         <article class="pp-mapidea" data-pin="${i}">
           <h3 class="pp-mapidea__title">${esc(d.title)}</h3>
@@ -402,8 +398,8 @@
           </div>
         </article>`).join('');
       return `
-        <div class="pp-map" role="img" aria-label="Map of Market Square with ${IDEAS.length} idea locations">
-          ${pins}
+        <div class="pp-map" role="region" aria-label="Map of Market Square with ${IDEAS.length} idea locations">
+          <div class="pp-map__canvas" id="pp-map-canvas"></div>
           <div class="pp-mapcard">
             <button class="gv-filters-btn pp-mapcard__filters" type="button" aria-expanded="false" aria-controls="e2e-project-sidebar">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -413,8 +409,42 @@
           </div>
           <div class="pp-mapnote"><span class="gv-icon" data-gv-icon="info-solid" aria-hidden="true"></span>
             <span>As an admin, you can click on the map to place an input, even if this phase is not active.</span></div>
-          <span class="pp-map__attr">© MapTiler © OpenStreetMap contributors</span>
         </div>`;
+    }
+    /* Build the popup body for an idea — title + like/comment counts (reuses idea data). */
+    function ppPopupHTML(d) {
+      return `
+        <h3 class="pp-poptitle">${esc(d.title)}</h3>
+        <div class="pp-popstats">
+          <span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 21h2V9H2v12zm20-11a2 2 0 0 0-2-2h-6.31l.95-4.57.03-.32a1.5 1.5 0 0 0-.44-1.06L13.17 1 6.59 7.59A2 2 0 0 0 6 9v10a2 2 0 0 0 2 2h9a2 2 0 0 0 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>${d.likes}</span>
+          <span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>${d.comments}</span>
+        </div>`;
+    }
+    /* Initialise the Leaflet map lazily — only when the Map tab is first shown and the
+       container exists + is sized. Guards against double-init and a missing Leaflet lib. */
+    function ppInitMap() {
+      const el = document.getElementById('pp-map-canvas');
+      if (!el || typeof L === 'undefined') return;
+      if (ppMap) { ppMap.invalidateSize(); return; }   // already built — just re-measure
+      ppMap = L.map(el, { scrollWheelZoom: false, attributionControl: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(ppMap);
+      ppMarkers = IDEAS.map((d, i) => {
+        const icon = L.divIcon({
+          className: '', html: `<span class="pp-marker" data-pin="${i}">${PIN_SVG}</span>`,
+          iconSize: [28, 28], iconAnchor: [14, 28], popupAnchor: [0, -26]
+        });
+        const m = L.marker([d.lat, d.lng], { icon, title: d.title }).addTo(ppMap);
+        m.bindPopup(ppPopupHTML(d), { closeButton: true });
+        return m;
+      });
+      const bounds = L.latLngBounds(IDEAS.map((d) => [d.lat, d.lng]));
+      ppMap.fitBounds(bounds, { padding: [70, 70], maxZoom: 16 });
+      // Leaflet measured the container at init; re-measure on next frame in case it was
+      // revealed in the same tick as the tab switch.
+      requestAnimationFrame(() => ppMap && ppMap.invalidateSize());
     }
     const METHODS = {
       ideation() {
@@ -505,8 +535,14 @@
           </div>
         </div>
         <div class="gv-phasepanel__desc"><p>${p.description}</p></div>`;
+      // Re-rendering bodyEl destroys any prior map node; drop the stale instance so the
+      // next map view builds fresh against the live container.
+      if (ppMap) { ppMap.remove(); ppMap = null; ppMarkers = []; }
       bodyEl.innerHTML = (METHODS[p.method] ? METHODS[p.method](p) : placeholderHTML(p));
       if (window.GVIcons) window.GVIcons.render();
+      // Init the real Leaflet map only when the Map tab is the active idea view and the
+      // container is now in the DOM (Leaflet needs a visible, sized element).
+      if (p.method === 'ideation' && ideaView === 'map') ppInitMap();
     }
     document.getElementById('ppPrev').addEventListener('click', () => setPhase(Math.max(0, active - 1)));
     document.getElementById('ppNext').addEventListener('click', () => setPhase(Math.min(PHASES.length - 1, active + 1)));
@@ -531,6 +567,16 @@
       if (next === ideaView) return;
       ideaView = next;
       setPhase(active);
+    });
+
+    /* Click a compact list item → fly to + open that idea's marker popup on the map. */
+    document.addEventListener('click', (e) => {
+      const item = e.target.closest('.pp-mapidea[data-pin]');
+      if (!item || !bodyEl.contains(item) || !ppMap) return;
+      const m = ppMarkers[+item.dataset.pin];
+      if (!m) return;
+      ppMap.panTo(m.getLatLng());
+      m.openPopup();
     });
 
     /* Pin ↔ list-item highlight on the map view (page-local affordance). */
