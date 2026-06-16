@@ -593,6 +593,45 @@
             <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
           </div>
 
+          <!-- ════ NATIVE SURVEY Setup sub-panel (form-builder survey) ════ -->
+          <div class="pp-setup pp-sub" data-sub="surveysetup">
+            <h3 class="gv-bo-formhead">Edit Phase</h3>
+            <div class="gv-bo-field">
+              <span class="gv-label">Phase name</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="Community Survey" />
+            </div>
+            <div class="gv-bo-field">
+              <span class="gv-label">Dates</span>
+              <div class="gv-bo-dateface"><span>05/06/2024 12:00 AM</span><span class="sep">›</span><span>Open ended</span><span class="gv-icon" data-gv-icon="calendar"></span></div>
+            </div>
+            <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
+
+            <h4 class="gv-bo-subhead">What do you want to do?</h4>
+            <p class="pp-lede">Each phase runs exactly one participation method.</p>
+            <div class="gv-bo-methods pp-methodgrid" data-method="survey"></div>
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>A survey has no draft phase — it goes live as soon as the phase starts. Toggle <b>Open for responses</b> off to pause it instead.</div></div>
+
+            <h4 class="gv-bo-subhead">Survey form</h4>
+            <p class="pp-lede">Build the questions and pages of your survey in the <a href="../bo-survey-builder/">Survey form tab</a>.</p>
+
+            <h4 class="gv-bo-subhead">Open for responses</h4>
+            <div class="gv-bo-togglerow">
+              <div><div class="gv-bo-togglerow__title">Accept new responses</div>
+                <p class="gv-bo-help">When off, participants can no longer submit the survey, but you keep all collected responses.</p></div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+
+            <h4 class="gv-bo-subhead">User anonymity</h4>
+            <div class="gv-bo-togglerow">
+              <div><div class="gv-bo-togglerow__title">Survey responses are anonymous</div>
+                <p class="gv-bo-help">Surveys are anonymous by default — responses aren't linked to a participant's profile.</p></div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+
+            <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
+          </div>
+
           <!-- ════ ACCESS RIGHTS sub-panel (Phase access and user data) ════ -->
           <div class="pp-sub" data-sub="access">
             <h3 class="gv-bo-pagetitle" style="margin-bottom:8px">Phase access and user data</h3>
@@ -1127,6 +1166,7 @@
       { label: "Vote",                           title: "Vote",                method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
       { label: "Budget allocation",              title: "Budget allocation",   method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
       { label: "Poll the priorities",            title: "Voting on Top 3 Priorities", method: "Poll phase",  dates: "March 21, 2023 12:00 AM → April 3, 2023 12:00 AM", setup: "pollsetup",         tabs: ["setup","description","poll","insights","access","notifications"] },
+      { label: "Community survey",               title: "Community Survey",    method: "Survey phase",       dates: "May 6, 2024 12:00 AM → No end date",              setup: "surveysetup",       tabs: ["setup","description","surveyform","surveyresults","access","notifications"] },
       { label: "Find common ground",             title: "Polis process",       method: "Common ground phase", dates: "May 1, 2026 12:00 AM → June 30, 2026 11:59 PM",   setup: "commongroundsetup", tabs: ["setup","description","report","access","notifications"] },
       { label: "Find volunteers",                title: "Find volunteers",     method: "Volunteering phase", dates: "November 29, 2021 12:00 AM → No end date",         setup: "volunteeringsetup", tabs: ["setup","description","volunteering","insights","access","notifications"] },
       { label: "Import paper inputs",            title: "Import paper inputs", method: "Ideation phase",     dates: "June 2, 2024 12:00 AM → No end date",             setup: "setup",             tabs: ["setup","description","inputmgr","inputimporter","inputform","insights","access","notifications"] },
@@ -1254,7 +1294,7 @@
     // card named by data-method pre-selected. (Mirrors the hardcoded grids in the
     // ideation/voting Setup panels.)
     const METHODS = [
-      ["collect", "comments",       "Collect input and feedback in public",     "Tap into your users' collective intelligence. Invite them to submit, discuss ideas, and/or provide feedback in a public space."],
+      ["collect", "comments",       "Collect input and feedback in public",     "Tap into your users' collective intelligence. Invite them to submit, discuss ideas, and/or provide feedback in a public forum."],
       ["proposals", "vote-up",      "Proposals, petitions or initiatives",      "Allow participants to upload ideas with a time and vote limit."],
       ["commonground", "group",     "Find common ground",                       "Help participants surface agreement and disagreement, one idea at a time."],
       ["survey", "survey",          "Create a survey",                          "Understand your users' needs and thinking via a wide range of private question types."],

@@ -146,3 +146,31 @@ open items)
   when a different voting-method card is picked — noted, not required for fidelity.)
 - VERIFY: card copy grep-matched vs `r1-pe-pb-ph1-setup/dom.html`; `lint` 0 violations.
 - Checkpoints: none added (no measurable-style change this pass).
+
+### Pass 3 — Native survey (DONE 2026-06-16)
+- Captures: `r1-pe-survey-external-setup` (actually the native "Public Healthcare Opinions
+  Survey" phase Setup), `r1-pe-survey-form-edit` (form builder — already its own page
+  `bo-survey-builder`), `r1-pe-survey-results`.
+- **GAP found:** no native-survey Setup variant existed. The page had a `surveyform` tab
+  (links to bo-survey-builder) and a `surveyresults` panel, but no `surveysetup` and no
+  survey phase in the ribbon — so the survey method's per-method Setup differences weren't
+  visible.
+- **BUILD:** added `data-sub="surveysetup"` panel (minimal pattern, `pp-methodgrid`
+  data-method="survey", all canonical `.gv-*`): Edit-Phase header, 7-card picker w/ "Create
+  a survey" selected, **no-draft banner** ("goes live as soon as the phase starts — toggle
+  Open for responses off to pause"), Survey-form link, **Open for responses** toggle,
+  **mandated/anonymous-by-default** toggle (GOVOCAL.md §3 + §4: surveys default mandated
+  anonymity). Added a **Community survey** phase to the PHASES ribbon (method "Survey phase",
+  sub-tabs setup·description·surveyform·surveyresults·access·notifications — correctly NO
+  input-manager/form/poll). Also fixed the shared `METHODS[collect]` description "public
+  space"→"public forum" to match the real DOM (flows to all minimal-grid panels).
+- VERIFY: `lint` 0; screenshot eyeballed (panel renders w/ correct chrome, ribbon, sub-tab
+  set, picker selection, toggles); `verify:all` 130 green · 1 red (UNCHANGED from baseline —
+  the red is the same pre-existing non-bo-project-phase FO checkpoint, not mine).
+- RECHECK: information + voting setup panels intact (only shared-array string + additive
+  panel/phase touched).
+- Checkpoints: none added (panel reuses already-checkpointed primitives; no new measurable
+  style — survey capture has no probes).
+- Open: native survey *results* are per-question charts in the real product; the page reuses
+  the external-export `surveyresults` panel for both. Acceptable for now; deeper per-Q survey
+  results = future (would belong on bo-survey-builder or a results variant).
