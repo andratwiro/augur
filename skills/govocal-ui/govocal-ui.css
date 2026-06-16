@@ -122,6 +122,11 @@
   border-radius: 5px; background: var(--gv-red-500); color: #fff;       /* live badge is a red rounded SQUARE, not a pill */
   font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; border: 2px solid #fff;
 }
+/* Grounded fidelity (fo-account-dropdown digest, badge text "29"): the real notification
+   badge is a red rounded SQUARE with radius ~3px, regular weight 400, font-size 12px. The
+   background (red-500) and rounded-square shape were already right; only the numerics drift.
+   Append override so every consumer (header-nav + all FO pages) picks it up. */
+.gv-iconbtn__badge { border-radius: 3px; font-weight: 400; font-size: 12px; }
 .gv-account {
   display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 4px 5px 4px 12px;
   background: none; border: 0; border-radius: 999px; cursor: pointer; font-family: inherit;
