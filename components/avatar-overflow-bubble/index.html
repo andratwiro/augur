@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Avatar overflow-count bubble — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { padding: 18px 0; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Avatar overflow-count bubble</h1>
+    <p class="sub">The participant-overflow count rendered AS a solid cool-grey circle capping the
+      avatar overlap stack — grounded on Falkirk, the same treatment seen on Linz / St&nbsp;Louis /
+      Copenhagen (one product, re-skinned). The <code>.count.bubble</code> modifier caps the stack;
+      the bare <code>.count</code> stays adjacent text.</p>
+
+    <p class="eyebrow">Overflow bubble — large (hero/banner, 38px)</p>
+    <div class="stage">
+      <!-- ===== COMPONENT (copy from here) ===== -->
+      <div class="gv-bubbles">
+        <span class="av"></span>
+        <span class="av"></span>
+        <span class="av"></span>
+        <span class="av"></span>
+        <span class="count bubble" data-testid="userCountBubbleInner">19.8k</span>
+        <span class="gv-bubbles__label">19,813 users</span>
+      </div>
+      <!-- ===== /COMPONENT ===== -->
+    </div>
+
+    <p class="eyebrow">Numeric overflow (no abbreviation)</p>
+    <div class="stage">
+      <div class="gv-bubbles">
+        <span class="av"></span>
+        <span class="av"></span>
+        <span class="av"></span>
+        <span class="count bubble">7443</span>
+      </div>
+    </div>
+
+    <p class="eyebrow">Small (card stack, 28px)</p>
+    <div class="stage">
+      <div class="gv-bubbles sm">
+        <span class="av"></span>
+        <span class="av"></span>
+        <span class="av"></span>
+        <span class="count bubble">+24</span>
+      </div>
+    </div>
+
+    <p class="eyebrow">Extra-small (Wien row, 20px)</p>
+    <div class="stage">
+      <div class="gv-bubbles xs">
+        <span class="av"></span>
+        <span class="av"></span>
+        <span class="count bubble">+9</span>
+        <span class="gv-bubbles__label">59 participants</span>
+      </div>
+    </div>
+
+    <div class="notes">
+      <p><strong>Build:</strong> append <code>.count.bubble</code> after the avatars in a
+        <code>.gv-bubbles</code> stack. The base <code>.count</code> already paints the
+        <code>--gv-cool-grey-600</code> circle (38px, 2px white border, radius 50%); the
+        <code>.bubble</code> modifier normalises the abbreviated text to the measured
+        <strong>11px / 400</strong>. <code>.sm</code>/<code>.xs</code> scale the circle and text
+        with the rest of the stack. Cross-tenant SYSTEM — re-skins per <code>?theme=</code>.</p>
+    </div>
+  </div>
+</body>
+</html>

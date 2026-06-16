@@ -206,6 +206,15 @@ by the hero, project cards, spotlight, perspectives and more.
   <span class="av"></span><span class="av"></span><span class="av"></span>
   <span class="gv-bubbles__label">145 participants</span>
 </div>
+
+<!-- Overflow-count bubble: a solid cool-grey circle that CAPS the overlap stack
+     (Falkirk/Linz/StL/CPH). Add .bubble to .count; it normalises the abbreviated
+     text to the measured 11px/400. .sm / .xs scale the whole stack. -->
+<div class="gv-bubbles" aria-label="19,813 users">
+  <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
+  <span class="count bubble">19.8k</span>
+  <span class="gv-bubbles__label">19,813 users</span>
+</div>
 ```
 
 ## Progress bar — `.gv-progress` (`govocal-primitives.css`)

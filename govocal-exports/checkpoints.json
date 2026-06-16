@@ -2105,6 +2105,24 @@
         "background-color",
         "padding"
       ]
+    },
+    {
+      "id": "fo-falkirk-bubbles-overflow/count-circle",
+      "built": "components/avatar-overflow-bubble/index.html",
+      "against": "fo-falkirk-bubbles-overflow",
+      "map": {
+        "div.sc-beqWaB.uItlk": ".gv-bubbles .count.bubble"
+      },
+      "props": [
+        "background-color",
+        "border",
+        "border-radius",
+        "width",
+        "height"
+      ],
+      "uses": [
+        ".gv-bubbles"
+      ]
     }
   ]
 }
