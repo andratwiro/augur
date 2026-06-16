@@ -143,8 +143,17 @@
     .ar-ptab:hover { border-color: var(--gv-cool-grey-400, #9fb0bb); }
     .ar-ptab.on { background: var(--gv-bo-primary, #044d6c); border-color: var(--gv-bo-primary, #044d6c); color: #fff; }
     .ar-ptab .gv-icon { width: 13px; height: 13px; }
-    .ar-ptab__diff { width: 6px; height: 6px; border-radius: 50%; background: #e2603a; }
-    .ar-ptab.on .ar-ptab__diff { background: #fff; }
+    .ar-ptab__diff { font-size: 9.5px; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; color: #b45309; background: #fff1e4; border-radius: 4px; padding: 1px 4px; }
+    .ar-ptab.on .ar-ptab__diff { color: #fff; background: rgba(255,255,255,.28); }
+    .ar-phint { display: flex; align-items: flex-start; gap: 7px; font-size: 11.5px; color: var(--gv-cool-grey-700, #51606b); margin: 0 0 10px; line-height: 1.4; }
+    .ar-phint .gv-icon { width: 14px; height: 14px; flex: none; margin-top: 1px; color: var(--gv-bo-primary, #044d6c); }
+
+    /* blocked resident view (staff-only) */
+    .ar-blocked { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px 22px; gap: 12px; }
+    .ar-blocked__ic { width: 52px; height: 52px; border-radius: 50%; background: #fff1e4; color: #9a4708; display: grid; place-items: center; }
+    .ar-blocked__ic .gv-icon { width: 26px; height: 26px; }
+    .ar-blocked__t { font-size: 15px; font-weight: 700; }
+    .ar-blocked__d { font-size: 12.5px; color: #5a6b7a; line-height: 1.5; max-width: 220px; }
     .ar-phone { background: #0f1722; border-radius: 36px; padding: 11px; box-shadow: 0 24px 60px rgba(10,16,30,.34); }
     .ar-phone__scr { background: #f4f7f9; border-radius: 26px; overflow: hidden; min-height: 480px; display: flex; flex-direction: column; }
     .ar-phone__bar { background: #fff; padding: 13px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e9edf1; }
@@ -283,6 +292,7 @@
     "use strict";
     var $ = function(s,r){ return (r||document).querySelector(s); };
     function icon(n){ return '<span class="gv-icon" data-gv-icon="'+n+'"></span>'; }
+    function joinList(a){ return a.length<=1 ? (a[0]||'') : a.slice(0,-1).join(', ') + ' and ' + a[a.length-1]; }
 
     /* ── model ── */
     var PRESETS = {
@@ -338,10 +348,11 @@
         var m = methodsOn();
         var proof = m.length ? ('sign in and confirm with <b>'+ m.map(function(k){return VERIFY[k].t.toLowerCase();}).join(' + ') +'</b>') : 'just <b>sign in</b>';
         var who = state.preset==='verified' ? 'a verified person' : 'anyone';
-        var diffs = state.perAction ? ACTIONS.filter(function(a){ return state.actions[a.key] !== 'all'; }).length : 0;
+        var diffNames = state.perAction ? ACTIONS.filter(function(a){ return state.actions[a.key] !== 'all'; }).map(function(a){ return a.t.toLowerCase(); }) : [];
         s = 'Right now, '+who+' who can '+proof+' is able to <b>take part</b>'
-          + (diffs ? ', with <b>'+diffs+' action'+(diffs>1?'s':'')+'</b> set differently' : '')
-          + ((state.limitGroups && state.groups.length) ? ' — limited to <b>'+ state.groups.join(', ') +'</b>.' : '.');
+          + ((state.limitGroups && state.groups.length) ? ' — limited to <b>'+ state.groups.join(', ') +'</b>' : '')
+          + '.'
+          + (diffNames.length ? ' <span style="opacity:.85">Set differently: <b>'+ joinList(diffNames) +'</b>.</span>' : '');
       }
       $('#summary').innerHTML = s;
     }
@@ -422,7 +433,7 @@
             return '<div class="ar-act"><span class="ar-act__ic">'+icon(a.ic)+'</span>'
               + '<span><span class="ar-act__t">'+a.t+'</span><span class="ar-act__d">'+a.d+'</span></span>'
               + '<span class="ar-act__sel"><select class="ar-mini" data-act="'+a.key+'">'
-              + '<option value="all"'+(val==='all'?' selected':'')+'>Same as phase</option>'
+              + '<option value="all"'+(val==='all'?' selected':'')+'>Same as everyone ('+PRESETS[state.preset].t+')</option>'
               + '<option value="open"'+(val==='open'?' selected':'')+'>Open to everyone</option>'
               + '<option value="signin"'+(val==='signin'?' selected':'')+'>Must sign in</option>'
               + '<option value="team"'+(val==='team'?' selected':'')+'>Staff only</option>'
@@ -498,33 +509,43 @@
       else if(realSteps===0) count = '<div class="ar-flowcount zero">'+icon('check')+'0 steps — instant</div>';
       else count = '<div class="ar-flowcount">'+icon('clock')+realSteps+' step'+(realSteps>1?'s':'')+' before they take part</div>';
 
-      // per-action preview tabs — only when per-action rules are on
-      var tabs = '';
+      // per-action preview tabs + discovery hint — only when per-action rules are on
+      var tabs = '', hint = '';
       if(state.perAction){
         tabs = '<div class="ar-ptabs">'
           + ACTIONS.map(function(a){
               var differs = state.actions[a.key] && state.actions[a.key] !== 'all';
               return '<button class="ar-ptab'+(state.focusAction===a.key?' on':'')+'" data-focus="'+a.key+'">'
-                + a.t + (differs ? '<span class="ar-ptab__diff" title="Different from the phase default"></span>' : '') + '</button>';
+                + a.t + (differs ? ' <span class="ar-ptab__diff">changed</span>' : '') + '</button>';
             }).join('')
           + '</div>';
+        hint = '<div class="ar-phint">'+icon('info-outline')+'<span>The journey changes depending on what they do — tap an action to compare.</span></div>';
       }
-      var subline = state.perAction ? ('Showing what happens when someone tries to <b>'+ (VERBS[focus]) +'</b>.') : 'Help shape the future of the park.';
+      var subline = state.perAction ? ('Trying to <b>'+ (VERBS[focus]) +'</b>') : 'Help shape the future of the park.';
 
-      var body = '<div class="ar-phone__bar"><span class="ar-phone__logo">DX</span><span class="ar-phone__city">City of Dorothea Dix</span></div>'
-        + '<div class="ar-phone__body">'
-        + tabs
-        + '<div class="ar-phone__h">New ideas!</div>'
-        + '<div class="ar-phone__sub">'+subline+'</div>'
-        + count
-        + '<div class="ar-flow">'
-        + f.steps.map(function(s,i){
-            var cls = s.cls ? (' '+s.cls) : '';
-            var dot = s.ic ? icon(s.ic) : (s.cls==='win'?icon('check'):(i+1));
-            return '<div class="ar-fstep'+cls+'" style="animation-delay:'+(i*55)+'ms"><span class="ar-fdot">'+dot+'</span>'
-              + '<span class="ar-fmain"><span class="ar-ft">'+s.t+'</span><span class="ar-fd">'+(s.d||'')+'</span></span></div>';
-          }).join('')
-        + '</div></div>';
+      var inner;
+      if(f.blocked){
+        // show the resident's REAL view, not an admin status read-out
+        inner = '<div class="ar-blocked"><span class="ar-blocked__ic">'+icon('lock')+'</span>'
+          + '<span class="ar-blocked__t">Just for staff right now</span>'
+          + '<span class="ar-blocked__d">Residents don’t see this phase in the project — there’s nothing for them to open or take part in.</span></div>';
+      } else {
+        inner = '<div class="ar-phone__body">'
+          + tabs + hint
+          + '<div class="ar-phone__h">New ideas!</div>'
+          + '<div class="ar-phone__sub">'+subline+'</div>'
+          + count
+          + '<div class="ar-flow">'
+          + f.steps.map(function(s,i){
+              var cls = s.cls ? (' '+s.cls) : '';
+              var dot = s.ic ? icon(s.ic) : (s.cls==='win'?icon('check'):(i+1));
+              return '<div class="ar-fstep'+cls+'" style="animation-delay:'+(i*55)+'ms"><span class="ar-fdot">'+dot+'</span>'
+                + '<span class="ar-fmain"><span class="ar-ft">'+s.t+'</span><span class="ar-fd">'+(s.d||'')+'</span></span></div>';
+            }).join('')
+          + '</div></div>';
+      }
+
+      var body = '<div class="ar-phone__bar"><span class="ar-phone__logo">DX</span><span class="ar-phone__city">City of Dorothea Dix</span></div>' + inner;
       $('#phone').innerHTML = body;
       $('#phone').querySelectorAll('[data-focus]').forEach(function(b){
         b.onclick = function(){ state.focusAction = b.getAttribute('data-focus'); renderPhone(); if(window.GVIcons) GVIcons.render($('#phone')); };
