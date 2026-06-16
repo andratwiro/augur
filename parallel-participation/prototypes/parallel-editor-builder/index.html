@@ -1370,14 +1370,6 @@
         <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
       </div>
     </div>
-    <nav class="gv-bo-tabs" aria-label="Project">
-      <a class="gv-bo-tab" href="#">General</a>
-      <a class="gv-bo-tab is-active" href="#">Timeline</a>
-      <a class="gv-bo-tab" href="#">Audience</a>
-      <a class="gv-bo-tab" href="#">Messaging</a>
-      <a class="gv-bo-tab" href="#">Events</a>
-      <a class="gv-bo-tab" href="#">360 Input<span class="gv-bo-tab__new">NEW</span></a>
-    </nav>
   </header>
 
   <!-- ============ Body: 3 columns ============ -->
@@ -1396,11 +1388,28 @@
           <svg id="project-chevron" class="nav-icon" style="width:14px;height:14px;color:#7a8294;transition:transform .15s ease;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
 
-        <!-- Project utilities — hidden on phase view -->
+        <!-- Project utilities — hidden on phase view (original side nav) -->
         <div id="project-utilities">
+          <div id="audience-nav" class="side-item">
+            <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.5"/></svg>
+            Audience
+          </div>
+          <div class="side-item">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg>
+            Messaging
+          </div>
+          <div class="side-item">
+            <svg class="nav-icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Events
+            <span class="badge-2 ml-auto">2</span>
+          </div>
+          <div class="side-item">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Input 360
+          </div>
           <div class="side-item" onclick="document.getElementById('settingsModal').style.display='flex'">
             <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-            Project settings
+            Settings
           </div>
         </div>
         <!-- TIMELINE section (boxless) — opens in empty state -->
@@ -1584,10 +1593,7 @@
       <div id="view-phase" class="pp-phaseview" style="display:none;">
         <div class="gv-bo-section">
 
-          <!-- Phase ribbon -->
-          <section class="gv-phases" aria-label="Project phases">
-            <div class="gv-stepper" role="tablist" aria-label="Project phases" id="ppStepper"></div>
-          </section>
+          <!-- Phase ribbon intentionally omitted — the left sidebar IS the timeline navigator -->
 
           <!-- Phase header -->
           <div class="gv-bo-phasehead">
@@ -2794,11 +2800,11 @@
   const headTitle = document.querySelector('#view-phase .gv-bo-phasehead__title');
   const headMeta  = document.querySelector('#view-phase .gv-bo-phasehead__meta');
   const subPanels = document.querySelectorAll('#view-phase .pp-sub');
-  if(!stepper) return;
+  if(!subtabs) return;
 
   window.ppSelectPhase = function(i){
     const ph = PP_PHASES[i]; if(!ph) return;
-    stepper.querySelectorAll('.gv-phase').forEach((el,j)=>{
+    if(stepper) stepper.querySelectorAll('.gv-phase').forEach((el,j)=>{
       el.classList.toggle('current', j===i);
       el.setAttribute('aria-selected', j===i?'true':'false');
       const step = el.querySelector('.gv-pstep');
@@ -2814,19 +2820,21 @@
     if(window.GVIcons) window.GVIcons.render(headMeta);
   };
 
-  PP_PHASES.forEach((ph,i)=>{
-    const b=document.createElement('button');
-    b.className='gv-phase'+(i===CURRENT?' current':'');
-    b.setAttribute('role','tab');
-    b.setAttribute('aria-selected', i===CURRENT?'true':'false');
-    b.innerHTML = '<span class="gv-pstep">'+(i===CURRENT?'<span class="gv-pstep__dot"></span>':'')+(i+1)+'</span><span class="gv-phase__label">'+ph.label+'</span>';
-    b.addEventListener('click', ()=>window.ppSelectPhase(i));
-    stepper.appendChild(b);
-  });
-  const add=document.createElement('button'); add.className='gv-bo-addphase';
-  add.innerHTML='<span data-gv-icon="plus"></span> New phase';
-  add.addEventListener('click', ()=>setView('add-phase'));
-  stepper.appendChild(add);
+  if(stepper){
+    PP_PHASES.forEach((ph,i)=>{
+      const b=document.createElement('button');
+      b.className='gv-phase'+(i===CURRENT?' current':'');
+      b.setAttribute('role','tab');
+      b.setAttribute('aria-selected', i===CURRENT?'true':'false');
+      b.innerHTML = '<span class="gv-pstep">'+(i===CURRENT?'<span class="gv-pstep__dot"></span>':'')+(i+1)+'</span><span class="gv-phase__label">'+ph.label+'</span>';
+      b.addEventListener('click', ()=>window.ppSelectPhase(i));
+      stepper.appendChild(b);
+    });
+    const add=document.createElement('button'); add.className='gv-bo-addphase';
+    add.innerHTML='<span data-gv-icon="plus"></span> New phase';
+    add.addEventListener('click', ()=>setView('add-phase'));
+    stepper.appendChild(add);
+  }
 
   subtabs.querySelectorAll('.gv-bo-tab').forEach(t=>t.addEventListener('click', e=>{
     e.preventDefault();
