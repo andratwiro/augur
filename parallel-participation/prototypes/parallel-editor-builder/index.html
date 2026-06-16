@@ -2269,15 +2269,22 @@
     return `
       <div class="pp-fo">
         <div class="pp-fo__banner pp-edit" data-edit="hero"><img src="assets/img/${complex ? 'square' : 'street-trees'}.webp" alt="" loading="lazy" /></div>
-        <div class="pp-fo__pad pp-edit" data-edit="title">
-          <span class="pp-fo__cat">Mobility · 2026</span>
-          <h1 class="gv-title h1 pp-fo__title">${complex ? 'Reimagine Meridian 2030' : 'A greener Station Road'}</h1>
-          <p class="pp-fo__lead">${complex
-            ? 'Help shape how we move, cycle and gather across the city over the next four years. We\'re collecting ideas right now — add yours below, then back the ones you like best. The team reads every suggestion, groups similar ones, and the most-supported move to a community vote and into the final plan.'
-            : 'Help shape how we move, cycle and gather on Station Road. Take the short survey to tell us what works, what doesn\'t, and what you\'d change. Your answers go straight to the project team and shape the proposals we bring back to the neighbourhood.'}</p>
+        <div class="pp-fo__pad">
+          <!-- Edit zones mirror the content-builder WIDGETS one-to-one (data-edit =
+               the builder's data-widget): Title · Text · Participation/About box ·
+               Info & accordions. No invented "category" eyebrow — the real title has
+               no subtitle and there's no such widget. -->
+          <div class="pp-edit" data-edit="title">
+            <h1 class="gv-title h1 pp-fo__title">${complex ? 'Reimagine Meridian 2030' : 'A greener Station Road'}</h1>
+          </div>
+          <div class="pp-edit" data-edit="text">
+            <p class="pp-fo__lead">${complex
+              ? 'Help shape how we move, cycle and gather across the city over the next four years. We\'re collecting ideas right now — add yours below, then back the ones you like best. The team reads every suggestion, groups similar ones, and the most-supported move to a community vote and into the final plan.'
+              : 'Help shape how we move, cycle and gather on Station Road. Take the short survey to tell us what works, what doesn\'t, and what you\'d change. Your answers go straight to the project team and shape the proposals we bring back to the neighbourhood.'}</p>
+          </div>
           <!-- Participation box: CTA(s) first, participant avatars ALWAYS at the bottom
                (same contract as the content-builder .cb-pbox = actions then people). -->
-          <div class="pp-fo__pbox">
+          <div class="pp-fo__pbox pp-edit" data-edit="about-box">
             <div class="pp-fo__cta">
               <a class="gv-btn primary full" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'}</a>
               <a class="gv-btn secondary-outlined full" href="#">See the ideas</a>
@@ -2287,11 +2294,11 @@
               <span class="gv-pcount">${complex ? '342' : '38'} participants</span>
             </div>
           </div>
-          <div class="gv-accordion pp-fo__acc">
+          <div class="pp-edit" data-edit="info-accordions"><div class="gv-accordion pp-fo__acc">
             ${acc('How will my idea be used?', 'Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.', true)}
             ${complex ? acc('What can I suggest?', 'Anything within scope — seating, planting, traffic calming, lighting, cycle parking or how the space is used.', false) : ''}
             ${complex ? acc('Who is running this project?', 'The City of Meridian engagement team, together with the mobility department.', false) : ''}
-          </div>
+          </div></div>
         </div><!-- /.pp-fo__pad (top) -->
 
         <!-- Participation bar HOME = above the timeline, in the content flow. The 0-height
