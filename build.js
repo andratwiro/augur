@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.19";
+const UI_VERSION = "0.20";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -374,7 +374,7 @@ async function scanPlayground() {
 
 // Slug words that should render fully upper-cased (acronyms) rather than
 // Capitalized — so `sms-verification` reads "SMS Verification", not "Sms …".
-const ACRONYMS = new Set(["sms", "ui", "ux", "uxui", "api", "url", "faq", "sso", "cta", "pdf", "csv"]);
+const ACRONYMS = new Set(["sms", "ui", "ux", "uxui", "api", "url", "faq", "sso", "cta", "pdf", "csv", "riot"]);
 
 function titleCase(slug) {
   return slug
