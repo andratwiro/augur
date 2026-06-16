@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.18";
+const UI_VERSION = "0.19";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -164,6 +164,18 @@ function gitMtime(absPath) {
  */
 function modifiedTime(srcDir, fsLatest) {
   return gitMtime(srcDir) || fsLatest;
+}
+
+/** Latest filesystem mtime (ms) of any file within a directory tree. */
+async function latestMtime(dir) {
+  let latest = 0;
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const e of entries) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) latest = Math.max(latest, await latestMtime(p));
+    else if (e.isFile()) latest = Math.max(latest, (await fs.stat(p)).mtimeMs);
+  }
+  return latest;
 }
 
 /**
@@ -318,9 +330,32 @@ async function scanComponents() {
   return components;
 }
 
+/**
+ * Scan playground/<project>/ subfolders. Playground is "a folder, just outside"
+ * the opportunities: a pinned scratch container the user drops project folders
+ * into. Each subfolder is a self-contained prototype (its own index.html). The
+ * whole playground/ tree is copied verbatim elsewhere (copyDir) — this only reads
+ * the subfolders to render the Playground landing, so adding a folder = it appears.
+ * hrefs are relative to dist/playground/index.html.
+ */
+async function scanPlayground() {
+  const root = path.join(ROOT, "playground");
+  if (!(await isDir(root))) return [];
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  const projects = [];
+  for (const e of entries) {
+    if (!e.isDirectory() || e.name.startsWith(".")) continue;
+    const dir = path.join(root, e.name);
+    const { href, file } = await entryPoint(e.name, dir);
+    projects.push({ name: e.name, href, file, mtimeMs: modifiedTime(dir, await latestMtime(dir)) });
+  }
+  projects.sort(byRecency);
+  return projects;
+}
+
 // Slug words that should render fully upper-cased (acronyms) rather than
 // Capitalized — so `sms-verification` reads "SMS Verification", not "Sms …".
-const ACRONYMS = new Set(["sms", "ui", "ux", "api", "url", "faq", "sso", "cta", "pdf", "csv"]);
+const ACRONYMS = new Set(["sms", "ui", "ux", "uxui", "api", "url", "faq", "sso", "cta", "pdf", "csv"]);
 
 function titleCase(slug) {
   return slug
@@ -1154,6 +1189,41 @@ function renderOpportunityIndex(opp) {
   });
 }
 
+function renderPlaygroundIndex(projects) {
+  if (!projects.length) {
+    return shell({
+      title: "Playground",
+      body: `<p class="section-eyebrow">Playground 🛝</p>
+        <p class="empty">No projects yet. Add one under
+        <code>playground/&lt;project&gt;/</code> and rebuild.</p>`,
+      back: { href: "/", label: "&larr; All prototypes" },
+    });
+  }
+
+  // Folder cards — each project is a self-contained subfolder, same look as the
+  // opportunity cards on the root so Playground reads as a sibling folder browser.
+  const cards = projects
+    .map((p) => {
+      const folder = `${encodeURIComponent(p.name)}/`;
+      return `
+        <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}">
+          <a class="card-cover-link" href="${folder}" aria-label="Open ${titleCase(p.name)}"></a>
+          ${preview(p.href)}
+          <div class="opp-meta">
+            <div class="proto-name">${titleCase(p.name)}</div>
+            <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  return shell({
+    title: "Playground",
+    body: `<p class="section-eyebrow">Playground 🛝 &middot; ${plural(projects.length, "project")}</p>${filterField("Search projects…")}<div data-fgroup><div class="opp-grid">${cards}</div></div>${filterEmpty()}`,
+    back: { href: "/", label: "&larr; All prototypes" },
+  });
+}
+
 function renderPagesIndex(pages) {
   if (!pages.length) {
     return shell({
@@ -1360,12 +1430,20 @@ async function main() {
     "utf8"
   );
 
-  // ── Playground → standalone scratch prototype, copied to /playground/.
-  let hasPlayground = false;
+  // ── Playground → a folder that acts like an opportunity but stays pinned in the
+  // root sidebar. Copy the whole tree verbatim (shared assets + project subfolders),
+  // then overwrite its index.html with a generated folder browser of the subfolders.
+  let playground = [];
   if (await isDir(path.join(ROOT, "playground"))) {
     await copyDir(path.join(ROOT, "playground"), path.join(DIST, "playground"));
-    hasPlayground = true;
+    playground = await scanPlayground();
+    await fs.writeFile(
+      path.join(DIST, "playground", "index.html"),
+      renderPlaygroundIndex(playground),
+      "utf8"
+    );
   }
+  const hasPlayground = playground.length >= 0 && (await isDir(path.join(DIST, "playground")));
 
   // Edge auth gate. Inject the list of PUBLIC prototype path-prefixes so the
   // password gate covers only the internal site — published prototypes stay open.
@@ -1397,7 +1475,10 @@ async function main() {
     console.log(`  ${opp.name}/`);
     for (const p of opp.prototypes) console.log(`    - ${p.name}`);
   }
-  if (hasPlayground) console.log(`  playground/  (scratch prototype)`);
+  if (hasPlayground) {
+    console.log(`  playground/  — ${plural(playground.length, "project")}`);
+    for (const p of playground) console.log(`    - ${p.name}`);
+  }
   console.log(`  primitives/  (Primitives gallery)`);
   console.log(`  pages/  — ${plural(pages.length, "reference page")}`);
   for (const p of pages) console.log(`    - ${p.name}`);
