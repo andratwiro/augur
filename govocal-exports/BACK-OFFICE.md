@@ -323,3 +323,34 @@ consumed them + deleted page-local fakes. `npm run lint` 0 violations; `verify:a
 - Deferred (promote when a 2nd consumer lands in Run 4): `.gv-bo-segmented`,
   `.gv-bo-menu` dropdown, `.gv-bo-rte`, `.gv-bo-scalebar`, `.gv-bo-radiocard`,
   templatecard/facetgroup, automatedrow, notifflyout, quarter navigator, color-picker.
+
+## Run 4 — Long-tail screens (DONE, two waves; lint 0 / verify:all 92 green)
+
+Wave 1 (5 agents): **NEW `pages/bo-report-builder`** (Content-Builder report editor:
+Widgets/AI rail, 17 widget tiles, A4 report sheet, no-data placeholders) ·
+**bo-community-monitor** deepened (Live monitor Health Score + quarter navigator + 3
+sentiment dimensions × 11 scale-bar rows; Participants/Reports/Settings/Popup) ·
+**bo-users** (Admins/seats summary, Blocked, Banned-emails checker, Seats table,
+single-group, **add-group modal consuming canonical `.gv-modal`**) · **bo-messaging**
+(Custom/Automated tabs + grouped trigger registry + compose editor w/ multiloc 0/80
+counter + rich-text toolbar) · **bo-project-phase** (poll / volunteering /
+common-ground / information Setup variants + phase-emails + input-importer; ribbon now
+8 method phases). Canonical fix: `.gv-bo-empty__icon svg` 1em-attr override.
+
+Wave 2 (5 agents): **bo-tools** (Widget builder + Esri config) · **bo-settings**
+(add-question / add-area forms, Proposal-statuses tab) · **bo-pages-menu**
+(create-custom-page form) · **bo-reporting** (All/Progress tabs, rows → report editor)
+· **bo-dashboard** (faithful date-range control cluster). Promotion: **`.gv-bo-segmented`**
+(3 agents independently flagged it) added to govocal-bo.css w/ a11y focus ring;
+dashboard + pages-menu consume it (page-local toggles deleted).
+
+### Remaining backlog (flagged, not yet built — for future runs)
+- Projects: **New project** flow (scratch/template gallery + facet rail), Calendar
+  "enable" empty-state, Folder detail/new. Captures: `r1-px-projects-new{,-template}`,
+  `r1-px-projects-calendar`, `r1-pe-project-new`.
+- Input manager: **Exports dropdown** + **bell notif flyout**. `r1-px-input-manager-exports`, `r1-px-notif-flyout`.
+- Project editor: common-ground **/report** view depth; external-survey provider embed
+  config; 360-Input tab content; phase **Description** (Content Builder reuse).
+- Canonical candidates still page-local (promote if a 2nd consumer appears):
+  `.gv-bo-rte`+`.gv-bo-charcount` (messaging), `.gv-bo-scalebar` (community-monitor),
+  colour-picker field (tools+branding), seat-summary card, automated-row, choice-card.
