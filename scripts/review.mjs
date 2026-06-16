@@ -13,9 +13,13 @@
  * Usage:
  *   node scripts/review.mjs                 # list every thread (rich: anchor, view, position, messages)
  *   node scripts/review.mjs --open          # only unresolved threads
- *   node scripts/review.mjs resolve <path> <id>   # mark one thread resolved
+ *   node scripts/review.mjs resolve <path> <id> ["note"]  # mark resolved (+ optional reply explaining the fix)
+ *   node scripts/review.mjs reply   <path> <id> "note"    # post a reply without resolving
  *   node scripts/review.mjs reopen  <path> <id>   # mark it open again
  *   node scripts/review.mjs delete  <path> <id>   # remove a thread
+ *
+ * Convention: when resolving, pass a very brief note saying HOW it was fixed — it
+ * posts as a "Claude" reply on the thread so the reviewer sees the resolution inline.
  */
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -49,26 +53,39 @@ async function main() {
     process.exit(1);
   }
   const exportUrl = `${base}/__review/api/export?key=${encodeURIComponent(key)}`;
-  const [cmd, argPath, argId] = process.argv.slice(2).filter((a) => a !== "--open");
+  const [cmd, argPath, argId, argNote] = process.argv.slice(2).filter((a) => a !== "--open");
   const openOnly = process.argv.includes("--open");
 
-  // ---- moderation ops (resolve / reopen / delete) ----
-  if (cmd === "resolve" || cmd === "reopen" || cmd === "delete") {
-    if (!argPath || (cmd !== "delete" && !argId) || (cmd === "delete" && !argId)) {
-      console.error(`Usage: node scripts/review.mjs ${cmd} <path> <id>`);
-      process.exit(1);
-    }
-    const op = cmd === "delete"
-      ? { path: argPath, op: "delete", id: argId }
-      : { path: argPath, op: "resolve", id: argId, resolved: cmd === "resolve" };
+  const postOp = async (op) => {
     const res = await fetch(exportUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(op),
     });
     if (!res.ok) { console.error(`Failed: ${res.status} ${res.statusText}`); process.exit(1); }
-    const data = await res.json();
-    console.log(`✓ ${cmd} ${argId} on ${argPath} — ${(data.threads || []).length} thread(s) remain on that page.`);
+    return res.json();
+  };
+
+  // ---- moderation ops (resolve / reopen / delete / reply) ----
+  if (cmd === "resolve" || cmd === "reopen" || cmd === "delete" || cmd === "reply") {
+    if (!argPath || !argId || (cmd === "reply" && !argNote)) {
+      console.error(`Usage: node scripts/review.mjs ${cmd} <path> <id>${cmd === "reply" ? ' "note"' : cmd === "resolve" ? ' ["note"]' : ""}`);
+      process.exit(1);
+    }
+    // Post the explanation reply first (resolve w/ note, or a bare reply).
+    if ((cmd === "resolve" || cmd === "reply") && argNote) {
+      await postOp({ path: argPath, op: "reply", id: argId,
+        message: { author: "Claude", body: argNote, at: new Date().toISOString() } });
+    }
+    if (cmd === "reply") {
+      console.log(`✓ replied on ${argId} (${argPath}).`);
+      return;
+    }
+    const op = cmd === "delete"
+      ? { path: argPath, op: "delete", id: argId }
+      : { path: argPath, op: "resolve", id: argId, resolved: cmd === "resolve" };
+    const data = await postOp(op);
+    console.log(`✓ ${cmd} ${argId} on ${argPath}${argNote ? " (+note)" : ""} — ${(data.threads || []).length} thread(s) remain on that page.`);
     return;
   }
 
