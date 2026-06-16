@@ -94,6 +94,16 @@
 
     .note{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:24px;line-height:1.5;border-left:2px solid var(--line-2);padding-left:14px;max-width:42em;}
 
+    /* next steps */
+    .next{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:4px;}
+    .nblock{border:1px solid var(--line);border-radius:13px;background:#fcfbf9;padding:24px 22px;}
+    .nblock .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:16px;}
+    .people{display:flex;flex-wrap:wrap;gap:8px;}
+    .pill{background:#fff;border:1px solid var(--line-2);border-radius:999px;padding:8px 14px;font-size:14.5px;font-weight:600;color:var(--ink);}
+    .pill em{font-style:normal;color:var(--faint);font-weight:400;}
+    .nsub{margin:16px 0 0;font-size:13.5px;color:var(--muted);line-height:1.45;}
+    .ntext{margin:0;font-size:15.5px;color:var(--muted);line-height:1.5;}
+
     .kicker{font-size:clamp(30px,4.6vw,56px);line-height:1.06;letter-spacing:-.025em;font-weight:660;max-width:15em;margin:0 0 24px;}
     .kicker em{font-style:normal;color:var(--live);}
 
@@ -107,7 +117,7 @@
     .nav button:hover{background:#fff;border-color:var(--ink);}
     .nav button:disabled{opacity:.32;cursor:default;}
     @media(max-width:760px){
-      .cards,.split{grid-template-columns:1fr;}
+      .cards,.split,.next{grid-template-columns:1fr;}
       .split .pane.pol{border-left:none;border-top:1px solid var(--line);}
       .maprow{grid-template-columns:1fr;gap:4px;}
       .maprow .arr{display:none;}
@@ -242,7 +252,32 @@
       </div>
     </section>
 
-    <!-- 8 — Close -->
+    <!-- 8 — Next steps -->
+    <section class="slide">
+      <div class="inner">
+        <p class="eyebrow">Next steps</p>
+        <h2>Show it around — make it real.</h2>
+        <div class="next">
+          <div class="nblock">
+            <div class="k">Show a few people</div>
+            <div class="people">
+              <span class="pill">Wietse</span>
+              <span class="pill">Koen</span>
+              <span class="pill">André <em>· Oslo</em></span>
+              <span class="pill">Gent</span>
+            </div>
+            <p class="nsub">Wietse can point to who else would be interesting.</p>
+          </div>
+          <div class="nblock">
+            <div class="k">Make it tangible</div>
+            <p class="ntext">Build a quick demo on each one's own council — a fun way to float the idea and test the water.</p>
+          </div>
+        </div>
+        <p class="note">The real question: is this crazy — and how do heads of participation departments react to it?</p>
+      </div>
+    </section>
+
+    <!-- 9 — Close -->
     <section class="slide">
       <div class="inner">
         <p class="eyebrow">In one line</p>
@@ -254,7 +289,7 @@
   </div>
 
   <div class="meta">The council, live — Go Vocal concept</div>
-  <div class="counter"><b id="cur">1</b> / <span id="tot">8</span></div>
+  <div class="counter"><b id="cur">1</b> / <span id="tot">9</span></div>
   <div class="nav">
     <button id="prev" aria-label="Previous">←</button>
     <button id="next" aria-label="Next">→</button>
