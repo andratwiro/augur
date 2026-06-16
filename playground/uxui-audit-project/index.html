@@ -474,6 +474,8 @@
           <div class="card"><span class="num">PHASE · JOAN/DIANE</span><h3>8 methods, no order</h3><p>Eight peer sub-tabs, no grouping, no signal of what's required vs post-launch. Config is one long scroll.</p></div>
           <div class="card"><span class="num">PUBLISH · BOTH</span><h3>Live on empty</h3><p>Publish is active on an unconfigured project — no readiness check, no pre-flight.</p></div>
           <div class="card"><span class="num">RIGHTS · DIANE</span><h3>Same setting, two homes</h3><p>Access-rights lives at project-general <em>and</em> per-phase — "where do I set this?" (The old GDPR jargon is gone: the live screen now reads "Who can submit / comment / react?" — a fix to benchmark <em>from</em>, not against.)</p></div>
+          <div class="card"><span class="num">REPORT · JOAN</span><h3>"No data" with no reason</h3><p>One live report renders <em>"no data available for the filters you have selected"</em> three times on a page, silently. This is Exhibit A's #1 bar — reporting-trust (11) — caught on screen. <span style="color:var(--faint)">→ Boss 7.</span></p></div>
+          <div class="card"><span class="num">EMAILS · DIANE</span><h3>Two places to send</h3><p>Emails configure in a 60-toggle global "Automated emails" list <em>and</em> a per-phase "Notifications" tab — the split behind 15 email-pipeline tickets. <span style="color:var(--faint)">→ Boss 5.</span></p></div>
         </div>
         <p class="src-line">Real screens — June '26 live captures, epic + Raleigh tenants. Persona-tagged, heuristic-tagged. We benchmark the newest UI, not retired screens.</p>
       </div>
@@ -697,7 +699,7 @@
       <div class="slide-inner">
         <p class="eyebrow">Hypothesis-led · prototype-as-probe</p>
         <h1>We're not starting from zero.<br>We have a point of view — and<br>a plan to be <span class="accent">wrong fast.</span></h1>
-        <p class="lead">The big bosses the audit has to beat — three priors from hundreds of admin conversations and live resident sessions, one I'd add, one Irene's architecture map surfaced, and a sixth a live walk of the product just turned up. Held with conviction, written to be falsifiable, tested with real prototypes in front of real people — in two weeks.</p>
+        <p class="lead">The big bosses the audit has to beat — three priors from hundreds of admin conversations and live resident sessions, one I'd add, one Irene's architecture map surfaced, and two the live walk turned up. The newest one is the loudest in the support data and none of the others owned it. Held with conviction, written to be falsifiable, tested with real prototypes in front of real people — in two weeks.</p>
       </div>
     </section>
 
@@ -716,15 +718,16 @@
     <section class="slide">
       <div class="slide-inner">
         <p class="eyebrow">What the audit is really fighting</p>
-        <h2>Five bosses — plus a sixth the live audit turned up.</h2>
-        <p class="lead">Usability fixes are the small enemies. These are the structural ones a real redesign has to beat — each gets a bet, held with conviction, built to be wrong fast. The fifth came from Irene's map; the sixth from reproducing the others on the live product.</p>
+        <h2>Five bosses — plus two the live audit turned up.</h2>
+        <p class="lead">Usability fixes are the small enemies. These are the structural ones a real redesign has to beat — each gets a bet, held with conviction, built to be wrong fast. The fifth came from Irene's map; the sixth and seventh from triangulating the live product against the 2026 dispatch backlog. Boss 7 is the loudest theme in the support data — and it's the one the other six were quietly missing.</p>
         <div class="grid g2">
           <div class="card"><span class="num">BOSS 1 · FRONT OFFICE</span><h3>The Wall of Everything</h3><p>The method is <em>embedded mid-page</em>, not launched — on a live multi-phase project the resident scrolls a phase navigator, the active method, and events as one stack. Nothing gets full attention, and parallel participation makes it impossible.</p></div>
           <div class="card"><span class="num">BOSS 2 · BACK OFFICE</span><h3>The Vienna Paradox</h3><p>The configurability that wins a capital city drowns the town that just wants a survey. The moat is also the onboarding poison.</p></div>
           <div class="card"><span class="num">BOSS 3 · BACK OFFICE</span><h3>The Form, in an Agent World</h3><p>Config-by-form is dying. With MCP coming, the admin's job shifts from filling fields to supervising an agent.</p></div>
           <div class="card"><span class="num">BOSS 4 · THE MISSION</span><h3>Participation Theater</h3><p>We can make input frictionless and still fail — if residents never see the loop close, and the people who show up aren't the city.</p></div>
-          <div class="card"><span class="num">BOSS 5 · BACK OFFICE</span><h3>The Sprawl</h3><p>One project's work scatters across 11 destinations — configure in Projects, moderate in Input Manager, report in Reporting, email in Messaging. No single home, so the infrequent PM re-learns the tool each visit. <span style="color:var(--faint)">Surfaced by Irene's architecture map.</span></p></div>
-          <div class="card"><span class="num">BOSS 6 · BACK OFFICE · candidate</span><h3>The Shifting Ground</h3><p>How you save changes is different on every tab. Some phase screens have a "Save changes" button; others ("emails," "access rights") have none and behave differently; the builders are separate "Save" micro-apps. The infrequent PM never trusts that a change stuck. <span style="color:var(--faint)">Net-new — reproduced across tabs this round; held at medium conviction.</span></p></div>
+          <div class="card"><span class="num">BOSS 5 · BACK OFFICE</span><h3>The Sprawl</h3><p>One project's work scatters across 11 destinations — configure in Projects, moderate in Input Manager, report in Reporting, email in <em>two</em> places (global Automated emails <em>and</em> a per-phase Notifications tab). No single home, so the infrequent PM re-learns the tool each visit. <span style="color:var(--faint)">Surfaced by Irene's map; the email split was reproduced live this round.</span></p></div>
+          <div class="card"><span class="num">BOSS 6 · BACK OFFICE · candidate</span><h3>The Shifting Ground</h3><p>How you save changes is different on every tab. Some phase screens have a "Save changes" button; others (emails, access rights) have none at all; the builders are separate "Save" micro-apps. The infrequent PM never trusts that a change stuck. <span style="color:var(--faint)">Net-new — reproduced across tabs; held at medium conviction.</span></p></div>
+          <div class="card"><span class="num">BOSS 7 · BACK OFFICE · candidate</span><h3>The Untrusted Output</h3><p>The output layer fails silently. Reports show "no data available for the filters" with no reason; AI summaries ignore the active filter; automated emails don't arrive. The officer can't trust the numbers they present or the message they send — so the loop can't close from their side. <span style="color:var(--faint)">Net-new — the loudest cluster in the 2026 dispatch backlog (reporting-trust 11 · AI-ignores-filter 6 · email-pipeline 15). No other boss owned it.</span></p></div>
         </div>
       </div>
     </section>
@@ -738,7 +741,8 @@
           <div class="card kill"><span class="lab">What would prove me wrong</span><p><b>Already half-true — and inconsistent — on the live FO:</b> a single-method page is reasonably focused, and a native survey on the epic tenant <em>already launches</em> into its own full-screen surface ("Take the survey" → splash → form). But on another tenant the same method is embedded inline under "Phases," and multi-phase projects still stack navigator + method + events. So this isn't "every method on one scroll" — it's <em>launched vs embedded, applied inconsistently</em>. And the gate trades away serendipity: today you stumble into the map and start dropping pins.</p></div>
           <div class="card"><span class="lab">How we probe it</span><p>One <em>multi-phase</em> project: build the hub + one method full-screen → test entry → focus → return with 5 residents, on their phones. The single-method case is the control. The real bet isn't "make it full-screen" — it's <em>make launch-vs-embed consistent and legible</em>.</p></div>
         </div>
-        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · reproduced on two tenants (epic launches, wietsedemo embeds)</div>
+        <p class="src-line"><b>Triangulation flag (round 3):</b> this boss is <em>observation-led, not ticket-corroborated</em>. The 2026 dispatch backlog is almost entirely back-office; the resident-side scroll barely registers in support volume. So conviction here rests on two-tenant reproduction + the parallel-participation argument, not on user pain we can count. Treated as a <em>design bet</em>, and the probe is built to prove it moves resident behaviour or drop it.</p>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i></i></span> medium-high · reproduced on two tenants, but observation-only — feedback doesn't name it</div>
       </div>
     </section>
 
@@ -751,8 +755,8 @@
           <div class="card kill"><span class="lab">What would prove me wrong</span><p>The tempting fix — let admins pre-set what to hide — is config-to-kill-config, and breeds "my admin turned it off, now I can't find it." So the bet is <em>just-in-time</em> disclosure by task, not a setup ritual. And if the complexity is conceptual (what even is a "phase"?), hiding controls won't be enough.</p></div>
           <div class="card"><span class="lab">How we probe it</span><p>A survey-only fast lane that reveals advanced on demand → Diane (low-savviness) + a Vienna-scale power user.</p></div>
         </div>
-        <p class="src-line">Confirmed live on the epic tenant (June '26): four nav layers to reach method config — sidebar (11) → project tabs (6) → phase strip → <b>eight</b> per-phase sub-tabs. Architecture from the real admin code (Irene's BO map): the complexity <em>is</em> the Project→Phase→Method model projected onto the screen — visual polish alone can't remove it; the model has to be re-surfaced, not just re-styled.</p>
-        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high</div>
+        <p class="src-line">Confirmed live on the epic tenant (June '26): four nav layers to reach method config — sidebar (11) → project tabs (6) → phase strip → <b>eight</b> per-phase sub-tabs. <b>Triangulated (round 3):</b> the config surfaces this drowns people in are exactly the dispatch backlog's busiest product hotspots — <b>Survey Form 12 tickets</b> (the single biggest), Registration/Demographics 9, Ideation 6 — and prior findings F02 / F15 / F16 (overload at create + method setup). Architecture from the real admin code (Irene's BO map): the complexity <em>is</em> the Project→Phase→Method model projected onto the screen — polish alone can't remove it; the model has to be re-surfaced, not just re-styled.</p>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · corroborated by tickets + findings + the architecture map</div>
       </div>
     </section>
 
@@ -778,7 +782,8 @@
           <div class="card kill"><span class="lab">What would prove me wrong</span><p>Maybe most consultations are genuinely one-shot and residents won't return regardless — or cities won't commit to visible outcomes. If closure doesn't move return-rate, it isn't the lever.</p></div>
           <div class="card"><span class="lab">How we probe it</span><p>Show residents a "you said / we did" outcome surface + a result nudge; measure willingness to return. Instrument representativeness — who showed up vs the city — from day one.</p></div>
         </div>
-        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · most under-owned</div>
+        <p class="src-line"><b>Triangulation (round 3) — this boss has a back-office twin.</b> The resident never sees the loop close (this boss) partly <em>because the officer can't trust the output that would close it</em> (Boss 7): the report says "no data available," the AI summary ignored the filter, the closing email didn't send. Closure is one problem with two faces — resident-facing (Boss 4) and officer-facing (Boss 7). The 34%-no-tenant gap and the reporting-trust theme sit across both.</p>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · most under-owned · paired with Boss 7</div>
       </div>
     </section>
 
@@ -787,11 +792,12 @@
         <p class="eyebrow">Boss 5 · the Sprawl — surfaced by Irene's architecture map</p>
         <p class="claim">Give every project a single home. The work shouldn't scatter across <span class="accent">eleven destinations and a global-vs-project split.</span></p>
         <div class="grid g3">
-          <div class="card"><span class="lab">Why I believe it</span><p>Seen on one live screen: <b>"Input Manager" is a sidebar destination AND a sub-tab inside the phase, at the same time;</b> access-rights lives at project-general <em>and</em> per-phase. Plus three creation entities (project / folder / space). A PM who runs one project a quarter rebuilds the map of where everything lives, every time — the loudest adoption complaint.</p></div>
+          <div class="card"><span class="lab">Why I believe it</span><p>Seen on live screens: <b>"Input Manager" is a sidebar destination AND a sub-tab inside the phase, at the same time;</b> access-rights lives at project-general <em>and</em> per-phase; and — reproduced this round — <b>email config has two homes too:</b> a global "Automated emails" list (60+ toggles) under Messaging <em>and</em> a per-phase "Notifications" tab. Plus three creation entities (project / folder / space). A PM who runs one project a quarter rebuilds the map of where everything lives, every time — the loudest adoption complaint.</p></div>
           <div class="card kill"><span class="lab">What would prove me wrong</span><p>Maybe the split is real division of labour — the moderator lives in Input Manager, the analyst in Reporting — and a forced single home just adds a layer. And consolidation can collide with Boss 2: pull everything into one project view and you risk re-creating the wall. So the bet is a project-scoped <em>home base</em> that links out, not a merge.</p></div>
           <div class="card"><span class="lab">How we probe it</span><p>A project home base that surfaces <em>this</em> project's pending work across surfaces → Diane (infrequent PM) returning to a project she set up weeks ago.</p></div>
         </div>
-        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · most structural</div>
+        <p class="src-line"><b>Triangulation (round 3):</b> the email split isn't cosmetic — it's where the support load concentrates. <b>Email-pipeline failures (15 dispatch tickets: 8 pipeline + 7 Automatic Emails)</b> are the #2 backlog theme, and a config spread across a global list and a per-phase tab is exactly the "did this even send, and from where?" confusion that generates them. Corroborated by Irene's map (choice D, global-vs-project duplication) + F06/F18/F20 (no single home / orientation).</p>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · most structural · email-split reproduced live + 15 tickets</div>
       </div>
     </section>
 
@@ -806,6 +812,20 @@
         </div>
         <p class="src-line">Reproduced on the epic + Raleigh tenants this round — three+ tabs with three different save behaviours. Held as a <b>candidate</b>: net-new structural thread, medium conviction, may yet merge into Boss 5.</p>
         <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i></i></span> medium · candidate, reproduced live</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Boss 7 · the Untrusted Output — what the support data was actually shouting</p>
+        <p class="claim">The job isn't done when the input arrives. It's done when the officer can <span class="accent">trust what the tool tells them and sends.</span> Today they can't.</p>
+        <div class="grid g3">
+          <div class="card"><span class="lab">Why I believe it</span><p>This is the <b>loudest cluster in the 2026 dispatch backlog</b>, and no other boss owned it: <b>numbers/reporting trust 11</b> · <b>AI ignores filters &amp; context 6</b> · email-pipeline failures 15 (8 + 7). Report Builder keeps 4 of 9 tickets open, AI analysis 3 of 11. Reproduced live: one report renders <b>"no data available for the filters you have selected" three times on a single page</b> with no reason given; the report is a separate "Save" micro-app, an island from the data it reports on.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>Maybe these are <em>engineering</em> bugs (a broken query, a flaky email queue), not a UX boss — fixable without a redesign. The counter: the pattern is <em>silent</em> failure — empty widgets and unsent mail with no signal of <em>why</em> or <em>what to do</em>, which is a design-of-trust problem on top of the bug. If a reliability sprint alone makes the tickets vanish, this folds back into normal triage and isn't a boss.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>Take the worst-offending report and AI summary; show officers the empty/filtered state and ask "do you trust this enough to present it?" Prototype an output that <em>explains itself</em> — why a widget is empty, what filter the AI applied, whether the email went out — and re-test trust.</p></div>
+        </div>
+        <p class="src-line">Net-new (round 3), from triangulating live captures against the dispatch backlog. It is the <b>back-office twin of Boss 4</b>: closure fails on the resident side because it first fails on the officer's — they can't trust the output that would close the loop. Held as a <b>candidate</b> at medium-high conviction: massively feedback-corroborated, but partly entangled with engineering reliability, so kept honest until we separate the UX failure from the bug.</p>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i></i></span> medium-high · candidate · the loudest in the support data</div>
       </div>
     </section>
 
@@ -833,15 +853,16 @@
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">The keystone · one pattern, three payoffs</p>
-        <h2>Build one thing well: the focused surface.</h2>
-        <p class="lead">Three of the five bosses fall to the same artifact — a full-screen, one-job, outcome-first surface. (Boss 2 and Boss 5 are the structural back-office pair, fought elsewhere.) Build that pattern once:</p>
+        <p class="eyebrow">The keystone · one pattern, one theme</p>
+        <h2>Build one thing well: the outcome-first surface.</h2>
+        <p class="lead">Four of the seven bosses fall to the same instinct — a focused, one-job surface where the <em>outcome</em>, not the form or the raw number, is the hero. (Boss 2 and Boss 5 are the structural back-office pair; Boss 6 the save model — fought elsewhere.) Build that pattern once:</p>
         <ul class="clean">
           <li><b>Resident participates</b> → the focused method surface <span style="color:var(--faint)">· Boss 1</span></li>
           <li><b>Resident sees the loop close</b> → the same surface, showing the outcome <span style="color:var(--faint)">· Boss 4</span></li>
+          <li><b>Officer trusts the output</b> → a report / AI summary / email that explains itself instead of failing silently <span style="color:var(--faint)">· Boss 7</span></li>
           <li><b>Admin reviews the agent</b> → the same surface, config applied — review by outcome, not diff <span style="color:var(--faint)">· Boss 3</span></li>
         </ul>
-        <div class="seam">Three bosses, <b>one surface.</b> That's where the build starts — and what the very first probe should be.</div>
+        <div class="seam">Four bosses, <b>one instinct: make the outcome legible.</b> Bosses 4 and 7 are the same loop seen from both sides — that's where the build starts, and what the very first probe should be.</div>
       </div>
     </section>
 
