@@ -602,12 +602,12 @@
   max-width: calc(var(--gv-shell-w, 1150px) - 48px); margin: 0 auto; padding: 56px 0;  /* keep the live 56px 0 padding (gutter on the shell); cap to the section CONTENT width (shell − 2×24px) so the flush content lines up with every other module */
   display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
 }
-/* Spotlight section heading: live 'Currently working on' [data-testid=currently-working-on-text]
-   is an <h2> rendered at 25px/700, line-height 32.5px, normal-case (NOT an uppercase eyebrow). */
-.gv-spotlight__heading { margin: 0 0 6px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }
+/* Spotlight anatomy: a small uppercase eyebrow kicker ('Currently working on'),
+   then the single project TITLE (h2 — the one heading size), then a lead description.
+   One title size only — the eyebrow is a label, not a competing heading. */
 .gv-spotlight__eyebrow { margin: 0 0 12px; font-size: var(--gv-fs-s); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.04em; color: var(--gv-text-secondary); }
-.gv-spotlight__title { margin: 0 0 14px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }  /* project name = secondary line under the 25px h2 heading */
+.gv-spotlight__title { margin: 0 0 14px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }  /* the project name = the spotlight's single title */
 .gv-spotlight__lead { margin: 0 0 24px; font-size: var(--gv-fs-m); line-height: 1.55; color: var(--gv-grey-800); }
 .gv-spotlight__actions { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
 .gv-spotlight__media { aspect-ratio: 16 / 10; border-radius: var(--gv-radius); overflow: hidden;
@@ -626,17 +626,15 @@
 
 /* .gv-bubbles (avatar stack + count) → moved to govocal-primitives.css (cross-surface atom). */
 
-/* ── Post / contribution count ("142 Beiträge" · "open to participation") ──────
-   The status meta GoVocal shows on a live project card: a success-green dot + a
-   count, in the cool-grey secondary text. Green = the live "open" colour
-   (#04884C, getComputedStyle on mitgestalten.wien.gv.at). Use .closed for the
-   muted finished state. */
+/* ── Post / contribution count ("142 Beiträge" · "1,204 votes") ───────────────
+   The count meta GoVocal shows on a live project card: just the bold number + a
+   label, in cool-grey secondary text — NO leading status dot (verified against the
+   Wien / Falkirk / default homepage cards, which render an avatar pile + plain
+   "N participants/contributions"). Use .closed for the muted finished state. */
 .gv-poststat { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-m);
   line-height: 1.4; color: var(--gv-text-secondary); }
-.gv-poststat::before { content: ""; width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto;
-  background: var(--gv-poststat-dot, var(--gv-success)); }   /* #04884C — live "open" green */
 .gv-poststat b { color: var(--gv-grey-800); font-weight: 700; }
-.gv-poststat.closed { --gv-poststat-dot: var(--gv-grey-500); }
+.gv-poststat.closed, .gv-poststat.closed b { color: var(--gv-grey-500); }
 
 /* .gv-progress (time-remaining bar) → moved to govocal-primitives.css (cross-surface atom). */
 
@@ -762,7 +760,10 @@
 .gv-pcard__topprog .gv-pcard__meta { margin: 0; }
 .gv-pcard__top .gv-btn { flex: 0 0 auto; margin-left: auto; }
 .gv-pcard__top .gv-status-label { margin: 0; }
-.gv-pcard__topicon { margin-left: auto; color: var(--gv-text-secondary); display: inline-flex; flex: 0 0 auto; }
+/* Folder glyph (top-right folder badge on a project-folder card) — the live folder
+   identity colour is the SYSTEM folder green (--gv-folder-count #358545, common across
+   tenants), NOT a per-tenant primary/secondary. Matches the canonical .gv-pcard__count. */
+.gv-pcard__topicon { margin-left: auto; color: var(--gv-folder-count); display: inline-flex; flex: 0 0 auto; }
 .gv-pcard__topicon svg, .gv-pcard__topicon .gv-icon { width: 22px; height: 22px; }
 .gv-pcard.boxed.horizontal .gv-pcard__top { margin: -32px -36px 22px; padding: 16px 36px; }
 .gv-pcard.boxed.horizontal .gv-pcard__body { justify-content: flex-start; }

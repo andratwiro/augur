@@ -926,10 +926,11 @@ runs flush to the edges; content lives in `.gv-pcard__body`; `__spacer` pushes t
   </article>
 ```
 
-**Contribution count** (`.gv-poststat`) — the green-dot "X Beiträge / contributions"
-status meta the live product shows on an open project card (dot `#04884C`,
-secondary cool-grey text). Add `.closed` for the muted finished state. Source:
-`getComputedStyle` on mitgestalten.wien.gv.at.
+**Contribution count** (`.gv-poststat`) — the "X Beiträge / contributions / votes"
+count meta the live product shows on a project card: bold number + label in
+secondary cool-grey text, **no leading status dot** (the live Wien / Falkirk /
+default homepage cards render an avatar pile + plain count — there is no dot).
+Add `.closed` for the muted finished state.
 
 ```html
 <span class="gv-poststat"><b>122</b>&nbsp;contributions</span>

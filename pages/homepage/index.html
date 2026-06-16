@@ -192,8 +192,9 @@
     <section class="gv-spotlight" aria-labelledby="spot-heading">
       <div class="gv-spotlight__inner">
         <div>
-          <h2 class="gv-spotlight__heading" id="spot-heading">Currently working on</h2>
-          <p class="gv-spotlight__title">A greener Station Road</p>
+          <p class="gv-spotlight__eyebrow">Currently working on</p>
+          <h2 class="gv-spotlight__title" id="spot-heading">A greener Station Road</h2>
+          <p class="gv-spotlight__lead">We're redesigning Station Road to make space for trees, wider pavements and safer cycling. Take the survey to tell us what matters most on your daily journey.</p>
           <div class="gv-spotlight__actions">
             <a class="gv-btn primary size-m" href="#">Take the survey</a>
           </div>
@@ -298,27 +299,36 @@
       </div>
     </section>
 
-    <!-- ════════ Completed projects — LIGHT cards + status line + "Learn more" ════════
-         Source-grounded on the Stadt Wien "Abgeschlossene Projekte" row: borderless
-         cards, a poster/photo thumb, title, a status line (tenant-primary clock +
-         "No end date", or a green check + "N weeks ago" for finished), and a quiet
-         "Learn more" link. Uses .gv-pcard.light + .gv-pcard__status(.done). -->
-    <section class="gv-section" aria-labelledby="done-title">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="done-title">Completed projects</h2></div>
+    <!-- ════════ Open to participation — LIGHT cards + clock status + "Learn more" ════════
+         A SEPARATE component from "Completed projects" below: these are live projects a
+         resident can take part in NOW. Status line = tenant-primary FILLED clock + a
+         time-remaining label, and cards are ordered by URGENCY (soonest to close first:
+         2 days → 5 days → 1 week → 2 months → no end date) so the most time-critical
+         participation surfaces first. Same .gv-pcard.light.compact in a .gv-rail. -->
+    <section class="gv-section" aria-labelledby="open-title">
+      <div class="gv-section__head"><h2 class="gv-title h2" id="open-title">Open to participation</h2></div>
       <div class="gv-section__body">
-        <!-- Completed-project cards are the COMPACT light variant in a horizontal
-             carousel (left-aligned, overflows right with white edge fades, scrolls on
-             mobile) — the live Wien "Abgeschlossene Projekte" row scrolls horizontally,
-             same as the climate-teams row above. Uses the canonical .gv-rail scroller. -->
-        <div class="gv-rail" tabindex="0" role="group" aria-label="Completed projects, scroll for more">
+        <div class="gv-rail" tabindex="0" role="group" aria-label="Projects open to participation, scroll for more">
 
           <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="img/done-oldtown.webp" alt="A restored cobbled street in the Old Town" loading="lazy" /></div>
+            <div class="gv-pcard__thumb"><img src="img/street.webp" alt="A quiet tree-lined road along the Riverside path" loading="lazy" /></div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Old Town as new</a></h3>
+              <h3 class="gv-pcard__title"><a href="#">Riverside path study</a></h3>
               <span class="gv-pcard__status">
                 <span data-gv-icon="clock-solid" aria-hidden="true"></span>
-                No end date
+                2 days left
+              </span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="img/climate-harbour.webp" alt="The harbour waterfront with moored boats" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Harbour cycle network</a></h3>
+              <span class="gv-pcard__status">
+                <span data-gv-icon="clock-solid" aria-hidden="true"></span>
+                5 days left
               </span>
               <span class="gv-pcard__more">Learn more</span>
             </div>
@@ -330,11 +340,54 @@
               <h3 class="gv-pcard__title"><a href="#">Redesigning Market Square</a></h3>
               <span class="gv-pcard__status">
                 <span data-gv-icon="clock-solid" aria-hidden="true"></span>
+                1 week left
+              </span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="img/climate-northgate.webp" alt="A leafy residential street in Northgate" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Northgate green corridor</a></h3>
+              <span class="gv-pcard__status">
+                <span data-gv-icon="clock-solid" aria-hidden="true"></span>
+                2 months left
+              </span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="img/feat-downtown.webp" alt="A busy downtown street with shops and pedestrians" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#">Downtown mobility plan</a></h3>
+              <span class="gv-pcard__status">
+                <span data-gv-icon="clock-solid" aria-hidden="true"></span>
                 No end date
               </span>
               <span class="gv-pcard__more">Learn more</span>
             </div>
           </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ Completed projects — LIGHT cards + green-check status + "Learn more" ════════
+         Source-grounded on the Stadt Wien "Abgeschlossene Projekte" row: borderless
+         cards, a poster/photo thumb, title, a green-check status line ("N weeks ago"),
+         and a quiet "Learn more" link. FINISHED projects only — anything still open to
+         participation lives in the "Open to participation" row above. Uses
+         .gv-pcard.light + .gv-pcard__status.done. -->
+    <section class="gv-section" aria-labelledby="done-title">
+      <div class="gv-section__head"><h2 class="gv-title h2" id="done-title">Completed projects</h2></div>
+      <div class="gv-section__body">
+        <!-- Completed-project cards are the COMPACT light variant in a horizontal
+             carousel (left-aligned, overflows right with white edge fades, scrolls on
+             mobile) — the live Wien "Abgeschlossene Projekte" row scrolls horizontally,
+             same as the climate-teams row above. Uses the canonical .gv-rail scroller. -->
+        <div class="gv-rail" tabindex="0" role="group" aria-label="Completed projects, scroll for more">
 
           <article class="gv-pcard light compact">
             <div class="gv-pcard__thumb"><img src="img/done-youth.webp" alt="Young residents taking part in a community workshop" loading="lazy" /></div>
@@ -361,12 +414,12 @@
           </article>
 
           <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="img/street.webp" alt="A quiet tree-lined road along the Riverside path" loading="lazy" /></div>
+            <div class="gv-pcard__thumb"><img src="img/done-oldtown.webp" alt="A restored cobbled street in the Old Town" loading="lazy" /></div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#">Riverside path study</a></h3>
-              <span class="gv-pcard__status">
-                <span data-gv-icon="clock-solid" aria-hidden="true"></span>
-                No end date
+              <h3 class="gv-pcard__title"><a href="#">Old Town as new</a></h3>
+              <span class="gv-pcard__status done">
+                <span data-gv-icon="check-circle" aria-hidden="true"></span>
+                5 months ago
               </span>
               <span class="gv-pcard__more">Learn more</span>
             </div>
