@@ -86,7 +86,17 @@
   .phone .gv-nav-m__panel { position: absolute; }          /* inset:0 → fills the phone, not the viewport */
 
   /* ── Phone FO project page — REAL components; only LAYOUT here, no type-size hacks ── */
-  .phone .pp-fo { font-family: var(--gv-font-family); color: var(--gv-text-primary, #1a1f2c); padding-bottom: 8px; }
+  .phone .pp-fo { font-family: var(--gv-font-family); color: var(--gv-text-primary, #1a1f2c); padding-bottom: 0; }
+  /* The timeline → events → ideas band sits on the page grey (#EDEFF0) like the real
+     project page's .gv-methodband — white project context above, grey method band below. */
+  .phone .pp-fo__pad--grey { background: var(--gv-background, #edeff0); padding-top: 24px; padding-bottom: 28px; }
+  .phone .pp-fo__ideas { margin-top: 4px; }
+  .phone .pp-fo__ideas .gv-pcount { color: var(--gv-text-secondary, #596B7A); font-weight: 600; }
+  /* Inside the PHONE frame the idea cards stack like real mobile (the canonical
+     max-width:560px breakpoint can't fire — the real viewport is wide). Window keeps
+     the desktop row layout. */
+  .phone.frame-phone .gv-ideacard { flex-direction: column; align-items: stretch; gap: 14px; }
+  .phone.frame-phone .gv-ideacard__thumb { flex: none; width: 100%; height: auto; aspect-ratio: 16 / 9; }
   .phone .pp-fo__banner { height: 180px; overflow: hidden; }
   .phone .pp-fo__banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .phone .pp-fo__pad { padding: 20px 22px 0; }
@@ -2258,6 +2268,44 @@
           <a class="gv-btn primary full" href="#">Register</a>
         </div>
       </article>`;
+    // Idea card = canonical .gv-ideacard with the ideation reaction foot (vote up/down +
+    // comments), same markup as the real project-page ideation feed.
+    const idea = (title, author, time, excerpt, up, down, comments, img) => {
+      const initials = author.split(' ').map((w) => w[0]).slice(0, 2).join('');
+      const thumb = img
+        ? `<div class="gv-ideacard__thumb"><img src="assets/img/${img}" alt="" loading="lazy" /></div>`
+        : `<div class="gv-ideacard__thumb"><span data-gv-icon="vote-up" aria-hidden="true"></span></div>`;
+      return `<article class="gv-ideacard e2e-idea-card">
+        ${thumb}
+        <div class="gv-ideacard__body">
+          <h3 class="gv-ideacard__title"><a href="#" onclick="event.stopPropagation()">${title}</a></h3>
+          <div class="gv-ideacard__head">
+            <span class="gv-ideacard__avatar" aria-hidden="true">${initials}</span>
+            <div>
+              <div class="gv-ideacard__meta"><span class="gv-ideacard__author">${author}</span><span class="gv-ideacard__sep" aria-hidden="true">&bull;</span><span class="gv-ideacard__time">${time}</span></div>
+              <p class="gv-ideacard__excerpt">${excerpt}</p>
+            </div>
+          </div>
+          <footer class="gv-ideacard__foot">
+            <div class="gv-react">
+              <button class="gv-react__btn" type="button" aria-label="Like" onclick="event.stopPropagation()"><span data-gv-icon="vote-up" aria-hidden="true"></span></button>
+              <span class="gv-react__count">${up}</span>
+              <button class="gv-react__btn" type="button" aria-label="Dislike" onclick="event.stopPropagation()"><span data-gv-icon="vote-down" aria-hidden="true"></span></button>
+              <span class="gv-react__count">${down}</span>
+            </div>
+            <span class="gv-react__comment"><span data-gv-icon="comments" aria-hidden="true"></span> ${comments}</span>
+          </footer>
+        </div>
+      </article>`;
+    };
+    const ideas = [
+      idea('Protected cycle lane the length of Meridian Avenue', 'Daan Verhoeven', '2 days ago', 'The painted lane just stops at the junction and it feels unsafe. A kerb-separated lane would let kids ride to school.', 312, 18, 24, 'street-trees.webp'),
+      idea('Shade and benches in Market Square', 'Amara Okonkwo', '4 days ago', 'The square bakes in summer with nowhere to sit. A few trees and benches would make it usable again.', 287, 9, 16, 'square.webp'),
+      idea('Drop the limit to 30 around all schools', 'Liam Fitzgerald', '5 days ago', 'Cars still take the school streets too fast at pickup. A consistent 30 zone with clear signs would help.', 264, 31, 41, ''),
+      idea('Late-night buses on the western routes', 'Sofia Marchetti', '1 week ago', 'Shift workers and students have no way home after 23:00. Even an hourly night service would change that.', 198, 12, 19, ''),
+      idea('Secure covered bike parking at the station', 'Noah Bergström', '1 week ago', 'People won\'t cycle to the station if their bikes get stripped. Lockable, covered racks would fix it.', 176, 7, 11, 'meeting.webp'),
+      idea('Pedestrianise the old town on weekends', 'Priya Nair', '2 weeks ago', 'Saturday markets and café terraces would thrive without through-traffic. Trial it for a summer first.', 154, 28, 33, 'workshop.webp'),
+    ].join('');
     const phaseData = complex
       ? [['Pre-survey', '1–15 May', 'Survey'], ['Collect ideas', '20 May – 10 Jun', 'Ideation'], ['What we heard', '11–25 Jun', 'Information'], ['Community vote', '26 Jun – 12 Jul', 'Voting'], ['Common ground', '13–27 Jul', 'Common ground']]
       : [['Collect ideas', '20 May – 10 Jun', 'Ideation'], ['What we heard', '11–25 Jun', 'Information']];
@@ -2312,7 +2360,7 @@
           </div>
         </div>
 
-        <div class="pp-fo__pad">
+        <div class="pp-fo__pad pp-fo__pad--grey">
           <div class="pp-edit" data-edit="timeline">
             <h2 class="gv-title h3 pp-fo__h2">Timeline</h2>
             <div class="gv-stepper pp-fo__stepper">${stepper}</div>
@@ -2323,6 +2371,12 @@
               <p class="pp-fo__phasecard-desc">Share your ideas for how we move, cycle and gather. Every suggestion is reviewed by the city team and shapes what comes next.</p>
             </div>
           </div>
+          <!-- Ideas collected this phase (Ideation method output). Canonical .gv-idealist
+               / .gv-ideacard — display content, not a builder widget, so no edit zone. -->
+          ${complex ? `<div class="pp-fo__ideas">
+            <h2 class="gv-title h3 pp-fo__h2">Ideas <span class="gv-pcount">6</span></h2>
+            <div class="gv-idealist">${ideas}</div>
+          </div>` : ''}
           <div class="pp-edit" data-edit="events">
             <h2 class="gv-title h3 pp-fo__h2">Upcoming events</h2>
             ${ev('Jun', '14', 'Mobility town hall', '14 Jun · 19:00', 'Central Library', 'location-simple', '41', 'meeting.webp')}
