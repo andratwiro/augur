@@ -794,18 +794,22 @@
     margin: -2px 0 10px;
     line-height: 1.35;
   }
-  /* Green add link (New phase / New survey) — no box, like the mock */
+  /* New phase = the real GoVocal back-office "New phase" button: a filled light-grey
+     button (#D4D9DD bg / #43515D cool-grey text / weight 500 + plus icon — probed on
+     bo-phase-setup), NOT the off-brand green ghost link. Inline, not full-width. */
   .sec-add {
-    display: flex; align-items: center; gap: 9px;
-    width: 100%;
-    padding: 9px 4px;
-    background: transparent; border: none;
-    color: #1e7c3a; font-size: 14px; font-weight: 600;
-    cursor: pointer; border-radius: 8px; text-align: left;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: #D4D9DD; border: none;
+    color: #43515D; font-size: 14px; font-weight: 500;
+    cursor: pointer; border-radius: var(--gv-radius, 3px); text-align: left;
     transition: background .12s ease, color .12s ease;
   }
   .sec-add svg { width: 16px; height: 16px; stroke-width: 2.2; flex-shrink: 0; }
-  .sec-add:hover { background: #f1f7f3; }
+  .sec-add:hover { background: #C7CED3; }
+  /* Secondary "New survey outside the timeline" stays a quiet text link (no fill) so it
+     doesn't compete with the primary New-phase button. */
+  .sec-add.muted { background: transparent; }
   /* Muted variant — the quiet "Add a survey outside the timeline" in empty state */
   .sec-add.muted { color: #7a8294; font-weight: 500; }
   .sec-add.muted:hover { background: #f4f6fa; color: #4b5563; }
