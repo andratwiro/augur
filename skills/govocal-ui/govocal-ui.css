@@ -1679,6 +1679,21 @@
   .gv-issuecanvas { min-height: 420px; }
 }
 
+/* SHARED FIX 67/93 — sticky-note-width. The base .gv-sticky is hard-pinned to
+   width: 320px (the grounded desktop pile tile). In the real MOBILE perspectives
+   capture the RAISED detail card (.gv-sticky.is-raised, hosted directly in
+   .gv-issuecanvas__view, NOT in a width-constraining pile) stretches to nearly the
+   full viewport width (~340px+ on a 390px viewport) — its width is driven by the
+   hosting canvas column, but the primitive's unconditional 320px prevents it
+   widening. So on mobile let the raised detail card FILL its column: width 100% /
+   max-width none, with the canvas padding tightened so the card reaches ~340px+.
+   Layout-only, scoped to .is-raised on mobile — the resting pile (uniform 320×400
+   desktop tiles + the scatter pile's own 300px mobile override) is left untouched. */
+@media (max-width: 860px) {
+  .gv-issuecanvas.is-detail { padding: 20px; }
+  .gv-sticky.is-raised { width: 100%; max-width: 100%; }
+}
+
 /* ── Homepage "We want to hear from you" featured 3-up spotlight row ──────────
    Source-grounded on wietsedemo /en (capture fo-homepage-featured-row): a row of
    large, image-led featured project cards that sit ABOVE the regular project grid,
