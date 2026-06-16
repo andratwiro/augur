@@ -249,3 +249,14 @@ open items)
   130 green · 1 red UNCHANGED.
 - RECHECK: survey + proposals panels intact.
 - Checkpoints: none added.
+
+### Pass 7 — Volunteering (DONE 2026-06-16, no build change needed)
+- Capture: `r1-pe-volunteering` (Showroom / Participation Garage, "Find volunteers" phase).
+- State: both panels already faithful. **Sub-tab set confirmed: Setup · Description ·
+  Volunteering · Insights · Phase access and user data · Notifications** — matches the page's
+  volunteering phase. `volunteeringsetup` (picker w/ volunteering selected, banner →
+  Volunteering tab, attachments) + the `volunteering` causes panel (Export volunteers
+  top-right, "Add cause" admin-dark+plus, cause rows = teal-link title · N participants ·
+  Delete · Edit) all match the capture screenshot verbatim.
+- VERIFY: screenshot eyeballed vs `r1-pe-volunteering/viewport.png`; `lint` 0.
+- Checkpoints: none added.
