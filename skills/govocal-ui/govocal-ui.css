@@ -961,16 +961,28 @@
   padding: 32px;
   border-radius: 16px;
   background: var(--gv-tenant-primary-lighten90);   /* live = rgba(primary, .1) */
+  font-size: var(--gv-fs-s); line-height: 1.43; color: var(--gv-text-body);   /* live .fGrxMq baseline = 14px/19.999px/rgba(0,0,0,.87); title/lead override their own type */
 }
 .gv-monitorband__text { flex: 1 1 auto; min-width: 0; }
 .gv-monitorband__title { margin: 0 0 16px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; color: var(--gv-grey-800); }  /* live 25px/700/32.5px/#333 */
 .gv-monitorband__lead { margin: 0; font-size: var(--gv-fs-m); font-weight: 400; line-height: 1.5; color: var(--gv-grey-800); }            /* live 16px/400/24px/#333 */
 .gv-monitorband__media { flex: 0 0 auto; }
 .gv-monitorband__media img { display: block; width: 240px; height: auto; }       /* live img width:240px */
-.gv-monitorband__cta { flex: 0 0 auto; }
+/* CTA zone is a 2-row column: primary button + a duration sub-label (clock +
+   "Takes N minutes") in tenant-primary — a recurring GoVocal survey-affordance.
+   Desktop: right-aligned under the button (live band). */
+.gv-monitorband__cta { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.gv-monitorband__ctameta { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-s); font-weight: 600; line-height: 1.43; color: var(--gv-tenant-primary); }  /* live "Takes 2 minutes" — 14px, tenant-primary #112D7E */
+.gv-monitorband__ctameta svg { flex: 0 0 auto; }
 @media (max-width: 980px) {
   .gv-monitorband { margin: 0 24px; }
   .gv-monitorband__inner { flex-wrap: wrap; }
+  /* Stacked mobile band: button stretches edge-to-edge inside the card padding,
+     media + sub-label centre (live 390px band). */
+  .gv-monitorband__cta { width: 100%; align-items: stretch; }
+  .gv-monitorband__cta .gv-btn { width: 100%; }
+  .gv-monitorband__ctameta { justify-content: center; }
+  .gv-monitorband__media { margin-left: auto; margin-right: auto; align-self: center; }
 }
 
 /* ── Rich-text / prose block ───────────────────────────────────────────────── */
