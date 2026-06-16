@@ -1041,7 +1041,6 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
 <section class="gv-spotlight">
   <div class="gv-spotlight__inner">
     <div>
-      <p class="gv-spotlight__eyebrow">Aktuell in Bearbeitung</p>
       <h2 class="gv-spotlight__title">Gesunde Blindengasse</h2>
       <p class="gv-spotlight__lead">…</p>
       <div class="gv-spotlight__actions">
