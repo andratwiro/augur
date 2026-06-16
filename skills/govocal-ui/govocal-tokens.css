@@ -183,4 +183,13 @@
      token; the year band reuses --gv-tenant-primary. */
   --gv-event-meta-tint: var(--gv-grey-100);  /* #F4F6F8 meta panel */
   --gv-event-chip-grey: #F5F6F7;             /* date chip month/day cell */
+
+  /* ── Phase timeline: SELECTED (viewed, non-current) segment fill ──────────
+     The live wietsedemo phase-ribbon selected segment was sampled srgb(89,107,122)
+     = #596B7A (matches the live .e2e-phase-title colour). Our earlier slate aliased
+     --gv-cool-grey-700 (#43515D) which reads noticeably darker/greyer than ground
+     truth. This is exactly --gv-cool-grey-600 (#596B7A); aliased semantically so the
+     selected-ribbon intent is explicit and can't drift the cool-grey-700 atom (still
+     used by event-card meta + nav hover). */
+  --gv-phase-selected-fill: var(--gv-cool-grey-600);  /* #596B7A blue-slate */
 }

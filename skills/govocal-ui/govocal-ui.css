@@ -434,8 +434,11 @@
 .gv-phase.current .gv-phase__label { color: var(--gv-green-600); font-weight: 600; }
 .gv-phase:hover .gv-pstep { filter: brightness(0.97); }
 .gv-phase:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
-/* the phase you're VIEWING (if it isn't the current one) fills dark charcoal */
-.gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-cool-grey-700); color: #fff; }
+/* the phase you're VIEWING (if it isn't the current one) fills blue-slate.
+   FO shared (selected-slate-color fidelity): live selected segment sampled
+   srgb(89,107,122) #596B7A — aliased via --gv-phase-selected-fill; the old
+   --gv-cool-grey-700 #43515D read too dark/grey vs ground truth. */
+.gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-phase-selected-fill); color: #fff; }
 .gv-phase[aria-selected="true"]:not(.current) .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
 /* FO shared (current-phase-fill fidelity): the live wietsedemo/perspectives-entry
    CURRENT segment is NOT a solid dark-green ribbon with white text. Sampled live
@@ -479,7 +482,7 @@
    Appended as an override — the base .gv-phase.current (448) and the :not(.current) slate
    rule (438) stay intact; this is just the higher-specificity orthogonal overlay. */
 .gv-phase[aria-selected="true"].current .gv-pstep {
-  background: var(--gv-cool-grey-700); color: #fff; box-shadow: none;
+  background: var(--gv-phase-selected-fill); color: #fff; box-shadow: none;
 }
 .gv-phase[aria-selected="true"].current .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
 /* content panel: big green numbered circle + green name + date */
