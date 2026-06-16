@@ -1,0 +1,1101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Access Rights Explorations v2 — five product-grounded takes</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="./govocal-tokens.css" />
+  <link rel="stylesheet" href="./govocal-ui.css" />
+  <link rel="stylesheet" href="./govocal-bo.css" />
+  <script src="./govocal-icons.js" defer></script>
+  <script src="./govocal-avatars.js" defer></script>
+  <style>
+    html, body { margin: 0; height: 100%; }
+    body { background: #fff; font-family: var(--gv-font-family); }
+    .gv-bo-section .gv-phases { margin: 0 0 14px; }
+    .pp-sub { display: none; }
+    .pp-sub.is-active { display: block; }
+    .pp-lede { margin: 0 0 12px; font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); }
+    .pp-placeholder { padding: 60px 20px; text-align: center; color: var(--gv-cool-grey-600); font-size: 15px; }
+
+    /* ── auto-save toast (addresses "did I just make this public?") ─────────── */
+    .v2-save { position: fixed; top: 18px; left: 50%; transform: translateX(-50%) translateY(-14px);
+      z-index: 1200; display:flex; align-items:center; gap:8px; padding:9px 16px; border-radius:999px;
+      background:#0f1b14; color:#cdeed5; font:600 13px/1 system-ui,-apple-system,sans-serif;
+      box-shadow:0 10px 30px rgba(10,30,16,.3); opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; }
+    .v2-save.show { opacity:1; transform: translateX(-50%) translateY(0); }
+
+    /* ── reassurance strip above the stage ─────────────────────────────────── */
+    .v2-reassure { display:flex; align-items:center; gap:9px; margin-bottom:14px; padding:9px 14px;
+      background:#eef6ef; border:1px solid #cfe6d3; border-radius:10px;
+      font-family: system-ui,-apple-system,sans-serif; font-size:13px; color:#2f5d3a; }
+    .v2-reassure b { color:#234a2c; }
+
+    /* ════════════════════════ shared stage shell ═══════════════════════════ */
+    .v2-stage { border-radius:16px; min-height:600px; overflow:hidden;
+      -webkit-font-smoothing:antialiased; }
+    .v2-stage *, .v2-stage *::before, .v2-stage *::after { box-sizing:border-box; }
+    .v2-pad { padding: 30px 32px 70px; }
+
+    /* take intro header (shared shape, recoloured per take) */
+    .v2-intro { margin:0 0 22px; }
+    .v2-intro h2 { font-size:27px; line-height:1.1; font-weight:800; letter-spacing:-.02em; margin:0 0 6px; }
+    .v2-intro p { font-size:15px; margin:0; max-width:560px; line-height:1.5; }
+    .v2-credit { display:inline-flex; align-items:center; gap:7px; margin-bottom:14px;
+      padding:5px 11px; border-radius:999px; font:600 12px/1 system-ui,-apple-system,sans-serif; }
+    .v2-credit b { font-weight:800; }
+    .v2-foot { margin-top:30px; padding-top:16px; border-top:1px dashed; font-size:12.5px; line-height:1.5; }
+    .v2-foot b { font-weight:700; }
+
+    /* generic toggle reused across takes (recoloured via --on) */
+    .v2-tog { flex:none; width:44px; height:26px; border-radius:999px; background:#d3d8e2;
+      position:relative; cursor:pointer; border:0; transition:background .15s; }
+    .v2-tog::after { content:""; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%;
+      background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .15s; }
+    .v2-tog.on { background: var(--on,#1ea672); }
+    .v2-tog.on::after { transform:translateX(18px); }
+
+    /* ───────────────────────── floating switcher ───────────────────────────── */
+    .v2-switch { position:fixed; bottom:20px; right:20px; z-index:900;
+      display:flex; align-items:center; gap:6px; padding:8px 10px; border-radius:999px;
+      background:#111722; color:#fff; box-shadow:0 12px 34px rgba(10,16,30,.42);
+      font-family:system-ui,-apple-system,sans-serif; }
+    .v2-switch__cap { font-size:12px; font-weight:600; opacity:.85; white-space:nowrap; padding:0 8px 0 6px; max-width:230px; }
+    .v2-switch__dots { display:flex; gap:6px; }
+    .v2-switch__btn { width:30px; height:30px; border-radius:50%; border:0; cursor:pointer;
+      background:rgba(255,255,255,.14); color:#fff; font-size:13px; font-weight:800; }
+    .v2-switch__btn.on { background:#fff; color:#111722; }
+    .v2-switch__btn:hover { background:rgba(255,255,255,.3); }
+    .v2-switch__btn.on:hover { background:#fff; }
+
+    /* ───────────────────────── shared modal ───────────────────────────────── */
+    .v2-modal { position:fixed; inset:0; z-index:1100; display:none; }
+    .v2-modal.open { display:block; }
+    .v2-modal__bd { position:absolute; inset:0; background:rgba(15,21,34,.45); }
+    .v2-modal__card { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:min(560px,92vw); max-height:86vh; overflow:auto; background:#fff; border-radius:18px;
+      box-shadow:0 30px 80px rgba(10,16,30,.4); font-family:system-ui,-apple-system,sans-serif; }
+    .v2-modal__h { display:flex; align-items:center; justify-content:space-between; padding:20px 22px 14px; }
+    .v2-modal__h h3 { margin:0; font-size:18px; font-weight:800; }
+    .v2-modal__x { border:0; background:#f0f1f5; width:30px; height:30px; border-radius:8px; cursor:pointer; font-size:15px; color:#444; }
+    .v2-modal__c { padding:0 22px 22px; }
+
+    /* language tabs (custom message modal) */
+    .v2-langtabs { display:flex; gap:4px; margin:6px 0 12px; flex-wrap:wrap; }
+    .v2-langtabs button { border:1px solid #e2e5ee; background:#fff; border-radius:8px; padding:6px 12px;
+      font:600 13px/1 system-ui; cursor:pointer; color:#5b6472; }
+    .v2-langtabs button.on { background:#19212e; color:#fff; border-color:#19212e; }
+    .v2-msgta { width:100%; min-height:90px; border:1px solid #d8dce6; border-radius:12px; padding:12px 14px;
+      font:15px/1.5 system-ui; resize:vertical; }
+    .v2-pickrow { display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid #e6e9f1;
+      border-radius:12px; margin-bottom:8px; cursor:pointer; }
+    .v2-pickrow.on { border-color:#1f8ded; background:#eef6ff; }
+    .v2-pickrow__t { font-weight:600; font-size:15px; }
+    .v2-pickrow__check { margin-left:auto; width:22px; height:22px; border-radius:6px; border:2px solid #cfd5e0; display:grid; place-items:center; color:#fff; font-size:13px; }
+    .v2-pickrow.on .v2-pickrow__check { background:#1f8ded; border-color:#1f8ded; }
+    .v2-modalbtns { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+    .v2-mbtn { border:0; border-radius:10px; padding:10px 18px; font:700 14px/1 system-ui; cursor:pointer; }
+    .v2-mbtn.primary { background:#19212e; color:#fff; }
+    .v2-mbtn.ghost { background:#f0f1f5; color:#333; }
+
+    /* ════════════════════════ T1 · SHARE MENU ══════════════════════════════ */
+    .t1 { font-family:"Google Sans",system-ui,-apple-system,Roboto,sans-serif; --t1:#1a73e8; --t1soft:#e8f0fe; color:#202124; }
+    .t1 .v2-credit { background:var(--t1soft); color:#174ea6; }
+    .t1 .v2-intro h2 { color:#202124; } .t1 .v2-intro p { color:#5f6368; }
+    .t1 .v2-foot { border-color:#dadce0; color:#5f6368; }
+    .t1-panel { background:#fff; border:1px solid #dadce0; border-radius:16px; max-width:620px; box-shadow:0 1px 3px rgba(60,64,67,.1); }
+    .t1-gen { display:flex; align-items:center; gap:14px; padding:16px 20px; border-bottom:1px solid #ecedef; }
+    .t1-gen__ic { width:40px; height:40px; border-radius:50%; background:var(--t1soft); display:grid; place-items:center; font-size:19px; flex:none; }
+    .t1-gen__main { flex:1; min-width:0; }
+    .t1-gen__t { font-weight:600; font-size:15px; }
+    .t1-gen__d { font-size:13px; color:#5f6368; margin-top:1px; }
+    .t1-sec { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#5f6368; padding:14px 20px 4px; }
+    .t1-row { display:flex; align-items:center; gap:14px; padding:11px 20px; }
+    .t1-row__ic { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; font-size:18px; flex:none; background:#f1f3f4; }
+    .t1-row__main { flex:1; min-width:0; }
+    .t1-row__t { font-weight:600; font-size:15px; }
+    .t1-row__d { font-size:13px; color:#5f6368; margin-top:1px; }
+    .t1-detail { margin:2px 20px 12px 74px; padding:14px 16px; background:#f8f9fb; border:1px solid #ecedef; border-radius:12px; }
+    .t1-detail h4 { margin:0 0 8px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#5f6368; }
+    .t1-detail h4:not(:first-child) { margin-top:16px; }
+    .t1-chiprow { display:flex; flex-wrap:wrap; gap:8px; }
+    .t1-vchip { display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border-radius:999px; border:1px solid #dadce0;
+      background:#fff; cursor:pointer; font:600 13px/1 inherit; color:#3c4043; }
+    .t1-vchip.on { background:var(--t1); border-color:var(--t1); color:#fff; }
+    .t1-link { background:none; border:0; color:#1558b0; font:600 13px/1 inherit; cursor:pointer; padding:0; }
+    .t1-sub { display:flex; align-items:center; gap:8px; margin-top:9px; font-size:13px; color:#3c4043; }
+    .t1-collect { margin-top:18px; max-width:620px; background:#fff; border:1px solid #dadce0; border-radius:16px; overflow:hidden; }
+    .t1-collect__h { padding:14px 20px; border-bottom:1px solid #ecedef; font-weight:600; font-size:15px; display:flex; align-items:center; gap:9px; }
+    .t1-crow { display:flex; align-items:center; gap:14px; padding:13px 20px; }
+    .t1-crow + .t1-crow { border-top:1px solid #f1f3f4; }
+    .t1-crow__t { font-weight:600; font-size:14px; } .t1-crow__d { font-size:12.5px; color:#5f6368; }
+    .t1-when { display:inline-flex; gap:4px; background:#f1f3f4; border-radius:8px; padding:3px; }
+    .t1-when button { border:0; background:none; padding:5px 11px; border-radius:6px; font:600 12.5px/1 inherit; color:#5f6368; cursor:pointer; }
+    .t1-when button.on { background:#fff; color:var(--t1); box-shadow:0 1px 2px rgba(0,0,0,.12); }
+    .t1-demochips { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; padding:0 20px 16px; }
+
+    /* role dropdown (shared by T1) */
+    .v2-dd { position:relative; }
+    .v2-dd__btn { display:inline-flex; align-items:center; gap:7px; border:1px solid #dadce0; background:#fff; border-radius:8px;
+      padding:8px 12px; font:600 13px/1 inherit; color:#3c4043; cursor:pointer; }
+    .v2-dd__btn:hover { background:#f8f9fb; }
+    .v2-dd__btn svg, .v2-dd__btn .car { font-size:11px; opacity:.6; }
+    .v2-pop { position:absolute; top:calc(100% + 6px); right:0; z-index:60; min-width:260px; background:#fff;
+      border:1px solid #e2e5ee; border-radius:12px; box-shadow:0 16px 40px rgba(10,16,30,.18); padding:6px; }
+    .v2-pop__o { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:8px; cursor:pointer; }
+    .v2-pop__o:hover { background:#f4f6fa; }
+    .v2-pop__o .em { font-size:17px; line-height:1.2; }
+    .v2-pop__o .x { font-weight:600; font-size:14px; display:block; }
+    .v2-pop__o .d { font-size:12px; color:#5f6368; display:block; margin-top:1px; }
+    .v2-pop__o .ck { margin-left:auto; color:var(--t1,#1a73e8); font-weight:800; opacity:0; }
+    .v2-pop__o.on .ck { opacity:1; }
+
+    /* ════════════════════════ T2 · FIGMA INSPECTOR ═════════════════════════ */
+    .t2 { font-family:"Inter",system-ui,-apple-system,sans-serif; --t2:#0d99ff; --t2text:#0a6cb8; color:#1e1e1e; background:#f5f5f5; }
+    .t2 .v2-credit { background:#e5f4ff; color:#0a6cb8; }
+    .t2 .v2-intro h2 { color:#1e1e1e; } .t2 .v2-intro p { color:#5b5b5b; }
+    .t2 .v2-foot { border-color:#e0e0e0; color:#5b5b5b; }
+    .t2-app { display:grid; grid-template-columns:230px 1fr; gap:0; border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; background:#fff; max-width:760px; }
+    .t2-rail { background:#fafafa; border-right:1px solid #ececec; padding:8px; }
+    .t2-rail__h { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6b6b6b; padding:8px 8px 4px; display:flex; justify-content:space-between; align-items:center; }
+    .t2-rail__all { border:0; background:none; color:var(--t2text); font:600 11px/1 inherit; cursor:pointer; }
+    .t2-layer { display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:7px; cursor:pointer; font-size:13px; font-weight:500; color:#333; }
+    .t2-layer:hover { background:#f0f0f0; }
+    .t2-layer.sel { background:#e5f4ff; color:#0a6cb8; }
+    .t2-layer .em { font-size:15px; }
+    .t2-layer .meta { margin-left:auto; font-size:11px; color:#6e6e6e; font-weight:500; }
+    .t2-layer.sel .meta { color:#0a6cb8; }
+    .t2-insp { padding:4px 0; min-height:440px; }
+    .t2-selhd { padding:14px 16px 10px; font-size:13px; font-weight:700; border-bottom:1px solid #f0f0f0; display:flex; align-items:center; gap:8px; }
+    .t2-isec { border-bottom:1px solid #f3f3f3; padding:13px 16px; }
+    .t2-isec__h { display:flex; align-items:center; justify-content:space-between; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#6b6b6b; margin-bottom:10px; }
+    .t2-add { border:0; background:none; cursor:pointer; color:#5b5b5b; font-size:16px; width:22px; height:22px; border-radius:5px; line-height:1; }
+    .t2-add:hover { background:#efefef; color:var(--t2text); }
+    .t2-seg { display:flex; background:#f0f0f0; border-radius:7px; padding:2px; }
+    .t2-seg button { flex:1; border:0; background:none; padding:7px 6px; border-radius:5px; font:600 12px/1 inherit; color:#666; cursor:pointer; }
+    .t2-seg button.on { background:#fff; color:#1e1e1e; box-shadow:0 1px 2px rgba(0,0,0,.12); }
+    .t2-seg button:disabled { color:#c2c2c2; cursor:not-allowed; }
+    .t2-mixed { font-size:12px; color:#9a6b00; background:#fff7e6; border:1px solid #ffe3a3; border-radius:7px; padding:8px 10px; display:flex; align-items:center; gap:7px; }
+    .t2-mixed button { margin-left:auto; border:0; background:#ffce6b; border-radius:5px; padding:4px 9px; font:700 11px/1 inherit; cursor:pointer; color:#5a4200; }
+    .t2-frow { display:flex; align-items:center; gap:9px; padding:7px 0; }
+    .t2-frow__sw { width:20px; height:20px; border-radius:5px; flex:none; display:grid; place-items:center; font-size:12px; background:#f0f0f0; }
+    .t2-frow__t { font-size:13px; font-weight:500; flex:1; }
+    .t2-frow__sub { font-size:11px; color:#6e6e6e; }
+    .t2-eye, .t2-min { border:0; background:none; cursor:pointer; color:#aaa; font-size:13px; width:22px; height:22px; border-radius:5px; }
+    .t2-eye:hover,.t2-min:hover { background:#efefef; color:#1e1e1e; }
+    .t2-eye.off { color:#d2d2d2; }
+    .t2-chip2 { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:6px; background:#f0f0f0; font:500 12px/1 inherit; margin:0 6px 6px 0; }
+    .t2-chip2 button { border:0; background:none; cursor:pointer; color:#999; font-size:12px; }
+    .t2-empty { font-size:12px; color:#6e6e6e; padding:4px 0; }
+    .t2-link { background:none; border:0; color:var(--t2text); font:600 12px/1 inherit; cursor:pointer; padding:0; margin-top:8px; }
+
+    /* ════════════════════════ T3 · GITHUB PROTECTION ═══════════════════════ */
+    .t3 { font-family:-apple-system,"Segoe UI",system-ui,sans-serif; --t3:#1f883d; --t3b:#0969da; color:#1f2328; background:#f6f8fa; }
+    .t3 .v2-credit { background:#dafbe1; color:#1a7f37; }
+    .t3 .v2-intro h2 { color:#1f2328; } .t3 .v2-intro p { color:#59636e; }
+    .t3 .v2-foot { border-color:#d1d9e0; color:#59636e; }
+    .t3-card { background:#fff; border:1px solid #d1d9e0; border-radius:8px; margin-bottom:14px; max-width:720px; overflow:hidden; }
+    .t3-card__h { display:flex; align-items:center; gap:11px; padding:14px 16px; border-bottom:1px solid #eaeef2; }
+    .t3-card__ic { width:30px; height:30px; border-radius:7px; background:#f6f8fa; border:1px solid #eaeef2; display:grid; place-items:center; font-size:15px; }
+    .t3-card__t { font-weight:600; font-size:15px; }
+    .t3-card__sub { font-size:12.5px; color:#59636e; margin-top:1px; }
+    .t3-badge { margin-left:auto; display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font:600 12px/1 inherit; }
+    .t3-badge.open { background:#fff8c5; color:#7d4e00; }
+    .t3-badge.prot { background:#dafbe1; color:#1a7f37; }
+    .t3-body { padding:6px 16px 16px; }
+    .t3-radios { display:flex; flex-direction:column; gap:0; margin:8px 0 4px; }
+    .t3-radio { display:flex; align-items:flex-start; gap:10px; padding:9px 0; cursor:pointer; font-size:14px; }
+    .t3-radio input { margin-top:2px; accent-color:var(--t3b); width:16px; height:16px; }
+    .t3-radio .d { font-size:12.5px; color:#59636e; }
+    .t3-checks { margin:6px 0 0; padding:14px 0 0; border-top:1px solid #eaeef2; }
+    .t3-chk { display:flex; align-items:flex-start; gap:10px; padding:7px 0; cursor:pointer; font-size:14px; }
+    .t3-chk input { margin-top:2px; accent-color:var(--t3); width:16px; height:16px; flex:none; }
+    .t3-chk.locked { opacity:.65; cursor:default; }
+    .t3-chk .d { font-size:12.5px; color:#59636e; display:block; }
+    .t3-indent { margin-left:26px; padding-left:14px; border-left:2px solid #eaeef2; }
+    .t3-link { background:none; border:0; color:var(--t3b); font:inherit; font-size:13px; cursor:pointer; padding:0; }
+    .t3-grpbox { margin-top:8px; }
+    .t3-chip3 { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; background:#ddf4ff; color:#0969da; font:600 12px/1 inherit; margin:0 6px 6px 0; }
+    .t3-chip3 button { border:0; background:none; color:#0969da; cursor:pointer; font-size:12px; }
+    .t3-addchip { border:1px dashed #d1d9e0; background:#fff; border-radius:999px; padding:5px 11px; font:600 12px/1 inherit; cursor:pointer; color:#59636e; }
+    .t3-lock { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:#8c959f; }
+
+    /* ════════════════════════ T4 · APPLE PRIVACY LABEL ═════════════════════ */
+    .t4 { font-family:-apple-system,"SF Pro Text","Helvetica Neue",system-ui,sans-serif; --t4:#007aff; --t4text:#0062cc; color:#1d1d1f; background:#f2f2f7; }
+    .t4 .v2-credit { background:#e3f0ff; color:#0062cc; }
+    .t4 .v2-intro h2 { color:#1d1d1f; } .t4 .v2-intro p { color:#6e6e73; }
+    .t4 .v2-foot { border-color:#d7d7dc; color:#6e6e73; }
+    .t4-grid { display:grid; grid-template-columns:1fr 360px; gap:20px; align-items:start; }
+    .t4-ctrl { background:#fff; border-radius:18px; padding:6px 0; box-shadow:0 1px 4px rgba(0,0,0,.05); }
+    .t4-actbar { display:flex; gap:6px; padding:14px 16px 10px; flex-wrap:wrap; }
+    .t4-actbar button { border:0; background:#f2f2f7; border-radius:999px; padding:7px 14px; font:600 13px/1 inherit; color:#6e6e73; cursor:pointer; }
+    .t4-actbar button.on { background:var(--t4text); color:#fff; }
+    .t4-grp { padding:4px 16px 8px; }
+    .t4-grp__h { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:#6b6b70; padding:14px 0 6px; }
+    .t4-seg4 { display:flex; background:#f2f2f7; border-radius:10px; padding:2px; }
+    .t4-seg4 button { flex:1; border:0; background:none; padding:9px 6px; border-radius:8px; font:600 13px/1 inherit; color:#3c3c43; cursor:pointer; }
+    .t4-seg4 button.on { background:#fff; color:#000; box-shadow:0 1px 3px rgba(0,0,0,.14); }
+    .t4-seg4 button:disabled { color:#c2c2c7; cursor:not-allowed; }
+    .t4-trow { display:flex; align-items:center; gap:12px; padding:12px 0; border-top:1px solid #f0f0f2; }
+    .t4-trow:first-of-type { border-top:0; }
+    .t4-trow__em { font-size:19px; width:26px; text-align:center; }
+    .t4-trow__t { font-size:14.5px; font-weight:500; flex:1; }
+    .t4-trow__d { font-size:12px; color:#6b6b70; }
+    .t4-link { background:none; border:0; color:var(--t4text); font:inherit; font-size:14px; cursor:pointer; padding:0; }
+    /* the privacy label card */
+    .t4-label { background:#fff; border-radius:18px; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.06); position:sticky; top:10px; }
+    .t4-label__top { font-size:13px; color:#6e6e73; margin:0 0 4px; }
+    .t4-label__ttl { font-size:19px; font-weight:700; margin:0 0 16px; }
+    .t4-lsec { padding:14px 0; border-top:1px solid #ececef; }
+    .t4-lsec:first-of-type { border-top:0; padding-top:0; }
+    .t4-lsec__h { display:flex; align-items:center; gap:9px; font-size:14px; font-weight:700; margin-bottom:4px; }
+    .t4-lsec__d { font-size:12px; color:#6b6b70; margin:0 0 10px; }
+    .t4-cats { display:flex; flex-wrap:wrap; gap:8px 12px; }
+    .t4-cat { display:flex; flex-direction:column; align-items:center; gap:4px; width:62px; text-align:center; }
+    .t4-cat__ic { width:38px; height:38px; border-radius:10px; background:#f2f2f7; display:grid; place-items:center; font-size:18px; }
+    .t4-cat__t { font-size:10.5px; color:#3c3c43; line-height:1.15; }
+    .t4-none { font-size:12.5px; color:#6b6b70; }
+    .t4-track { color:#1a7a36; font-weight:700; }
+    /* iOS consent sheet */
+    .t4-sheet { margin-top:16px; background:rgba(250,250,250,.96); border:1px solid #e2e2e6; border-radius:16px; padding:18px; text-align:center; }
+    .t4-sheet__app { font-size:15px; font-weight:700; margin:0 0 6px; }
+    .t4-sheet__body { font-size:12.5px; color:#3c3c43; line-height:1.45; margin:0 0 14px; }
+    .t4-sheet__steps { text-align:left; display:inline-block; margin:0 auto 14px; font-size:12.5px; color:#1d1d1f; }
+    .t4-sheet__steps div { padding:3px 0; }
+    .t4-sheet__btns { display:flex; flex-direction:column; gap:8px; }
+    .t4-sheet__btns button { border:0; border-radius:11px; padding:11px; font:600 14px/1 inherit; cursor:pointer; }
+    .t4-sheet__btns .go { background:var(--t4text); color:#fff; }
+    .t4-sheet__btns .no { background:#e8e8ed; color:var(--t4text); }
+
+    /* ════════════════════════ T5 · AUDIENCE BUILDER ════════════════════════ */
+    .t5 { font-family:"Inter",system-ui,-apple-system,sans-serif; --t5:#1f8ded; --t5text:#0d63b0; --t5d:#15324a; color:#15324a; background:#f7f9fc; }
+    .t5 .v2-credit { background:#e4f1ff; color:#0d63b0; }
+    .t5 .v2-intro h2 { color:#15324a; } .t5 .v2-intro p { color:#5b6b7d; }
+    .t5 .v2-foot { border-color:#dde4ee; color:#5b6b7d; }
+    .t5-actbar { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+    .t5-actbar button { border:1px solid #dde4ee; background:#fff; border-radius:10px; padding:9px 14px; font:600 13px/1 inherit; color:#5b6b7d; cursor:pointer; display:flex; align-items:center; gap:8px; }
+    .t5-actbar button.on { background:var(--t5d); color:#fff; border-color:var(--t5d); }
+    .t5-actbar button .em { font-size:14px; }
+    .t5-build { display:grid; grid-template-columns:1fr 300px; gap:18px; align-items:start; }
+    .t5-card { background:#fff; border:1px solid #e3e9f2; border-radius:14px; padding:18px 20px; }
+    .t5-matchln { font-size:15px; color:#15324a; margin-bottom:14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .t5-inlinedd { display:inline-flex; }
+    .t5-inlinedd select, .t5-sel { border:1px solid #cdd7e5; background:#fff; border-radius:8px; padding:7px 10px; font:600 13px/1 inherit; color:#15324a; cursor:pointer; }
+    .t5-rule { display:flex; align-items:center; gap:8px; padding:10px; border:1px solid #e3e9f2; border-radius:10px; margin-bottom:8px; background:#fbfcfe; flex-wrap:wrap; }
+    .t5-rule__attr { font-weight:600; }
+    .t5-rule .t5-sel { flex:0 1 auto; }
+    .t5-del { margin-left:auto; border:0; background:none; color:#9aa7b8; cursor:pointer; font-size:15px; width:26px; height:26px; border-radius:6px; }
+    .t5-del:hover { background:#f0f3f8; color:#d6455d; }
+    .t5-addrule { border:1px dashed #b9c6d8; background:#fff; border-radius:10px; padding:10px 14px; font:600 13px/1 inherit; color:var(--t5text); cursor:pointer; width:100%; text-align:left; }
+    .t5-andtag { font-size:11px; font-weight:700; color:#5f6f80; text-transform:uppercase; letter-spacing:.05em; padding:2px 0 6px; }
+    .t5-count { background:var(--t5d); color:#fff; border-radius:14px; padding:20px; position:sticky; top:10px; }
+    .t5-count__big { font-size:34px; font-weight:800; letter-spacing:-.02em; }
+    .t5-count__lab { font-size:13px; color:#cdd9e6; margin-top:2px; }
+    .t5-bar { height:8px; border-radius:999px; background:rgba(255,255,255,.18); margin:16px 0 6px; overflow:hidden; }
+    .t5-bar__f { height:100%; border-radius:999px; background:var(--t5); transition:width .3s; }
+    .t5-count__sub { font-size:12px; color:#b6c4d4; }
+    .t5-extra { margin-top:14px; }
+    .t5-extra h4 { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#5f6f80; margin:0 0 10px; }
+    .t5-erow { display:flex; align-items:center; gap:11px; padding:11px 14px; border:1px solid #e3e9f2; border-radius:11px; margin-bottom:8px; background:#fff; }
+    .t5-erow__t { font-weight:600; font-size:14px; } .t5-erow__d { font-size:12px; color:#5b6b7d; }
+    .t5-when { display:inline-flex; gap:4px; background:#eef2f8; border-radius:8px; padding:3px; }
+    .t5-when button { border:0; background:none; padding:5px 10px; border-radius:6px; font:600 12px/1 inherit; color:#5b6b7d; cursor:pointer; }
+    .t5-when button.on { background:#fff; color:var(--t5text); box-shadow:0 1px 2px rgba(0,0,0,.1); }
+    .t5-link { background:none; border:0; color:var(--t5text); font:600 13px/1 inherit; cursor:pointer; padding:0; }
+
+    @media (max-width:880px){
+      .t4-grid,.t5-build { grid-template-columns:1fr; }
+      .t2-app { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+
+    <!-- ── Sidebar (frame for context) ─────────────────────────────── -->
+    <nav class="gv-bo-side" aria-label="Admin">
+      <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo"><span data-gv-icon="admin-back" style="color:var(--gv-white)"></span></span> To platform</a>
+      <div class="gv-bo-nav">
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-dashboard"></span><span class="gv-bo-nav__label">Dashboard</span></a>
+        <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-projects"></span><span class="gv-bo-nav__label">Projects</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-input"></span><span class="gv-bo-nav__label">Input manager</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-users"></span><span class="gv-bo-nav__label">Users</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-messaging"></span><span class="gv-bo-nav__label">Messaging</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-reporting"></span><span class="gv-bo-nav__label">Reporting</span></a>
+      </div>
+      <div class="gv-bo-nav gv-bo-nav--bottom">
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-settings"></span><span class="gv-bo-nav__label">Settings</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-avatar" data-gv-icon="user"></span><span class="gv-bo-nav__label">Go Vocal Admin<span class="gv-bo-nav__sub">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+      </div>
+    </nav>
+
+    <div class="gv-bo-main">
+      <header class="gv-bo-topbar">
+        <div class="gv-bo-topbar__row">
+          <div>
+            <h1 class="gv-bo-topbar__title">Let's Reimagine Dorothea Dix Park</h1>
+            <div class="gv-bo-meta">
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="lock"></span>Everyone</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="eye"></span>Public</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="group"></span>170 project participants</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Published · Active</span>
+            </div>
+          </div>
+          <div class="gv-bo-topbar__actions">
+            <button class="gv-iconbtn" aria-label="Preview project"><span data-gv-icon="eye"></span></button>
+            <button class="gv-btn secondary-outlined"><span data-gv-icon="share"></span><span class="gv-btn__label">Share</span></button>
+            <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
+          </div>
+        </div>
+        <nav class="gv-bo-tabs" aria-label="Project">
+          <a class="gv-bo-tab" href="#">General</a>
+          <a class="gv-bo-tab is-active" href="#">Timeline</a>
+          <a class="gv-bo-tab" href="#">Audience</a>
+          <a class="gv-bo-tab" href="#">Messaging</a>
+          <a class="gv-bo-tab" href="#">Events</a>
+        </nav>
+      </header>
+
+      <section class="gv-bo-section">
+        <div class="gv-bo-content">
+          <!-- static phase ribbon (frame for context) -->
+          <section class="gv-phases" aria-label="Project phases">
+            <div class="gv-stepper" role="tablist">
+              <button class="gv-phase" role="tab"><span class="gv-pstep">1</span><span class="gv-phase__label">Information</span></button>
+              <button class="gv-phase current" role="tab" aria-selected="true"><span class="gv-pstep"><span class="gv-pstep__dot"></span>2</span><span class="gv-phase__label">New ideas!</span></button>
+              <button class="gv-phase" role="tab"><span class="gv-pstep">3</span><span class="gv-phase__label">Voting</span></button>
+              <button class="gv-bo-addphase"><span data-gv-icon="plus"></span> New phase</button>
+            </div>
+          </section>
+
+          <div class="gv-bo-phasehead">
+            <div>
+              <h2 class="gv-bo-phasehead__title">New ideas!</h2>
+              <div class="gv-bo-phasehead__meta">
+                <span>Ideation phase</span>
+                <span><span class="gv-icon" data-gv-icon="calendar-range"></span>June 2, 2024 → No end date</span>
+                <span><span class="gv-icon" data-gv-icon="eye"></span>Mixed rights</span>
+              </div>
+            </div>
+            <div class="gv-bo-phasehead__actions">
+              <button class="gv-iconbtn" aria-label="Phase options"><span data-gv-icon="dots-horizontal"></span></button>
+            </div>
+          </div>
+
+          <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Phase" id="subtabs">
+            <a class="gv-bo-tab" href="#" data-sub="setup">Setup</a>
+            <a class="gv-bo-tab" href="#" data-sub="inputmgr">Input manager</a>
+            <a class="gv-bo-tab" href="#" data-sub="inputform">Input form</a>
+            <a class="gv-bo-tab is-active" href="#" data-sub="access">Phase access and user data</a>
+            <a class="gv-bo-tab" href="#" data-sub="insights">Insights</a>
+            <a class="gv-bo-tab" href="#" data-sub="notifications">Notifications</a>
+          </nav>
+
+          <div class="gv-bo-card">
+            <!-- other sub-tabs: placeholder (out of scope for this exploration) -->
+            <div class="pp-sub" data-sub="other">
+              <div class="pp-placeholder">This tab isn't part of the access-rights exploration.<br>Switch back to <b>Phase access and user data</b>.</div>
+            </div>
+
+            <!-- ════ ACCESS sub-panel ════ -->
+            <div class="pp-sub is-active" data-sub="access">
+              <div class="v2-reassure">💾 <span><b>Changes save as you go</b> — nothing reaches residents until you publish the phase. You're editing a draft.</span></div>
+              <div class="v2-stage" id="stage"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- shared modal mount -->
+  <div class="v2-modal" id="modal"><div class="v2-modal__bd" data-close></div>
+    <div class="v2-modal__card"><div class="v2-modal__h"><h3 id="modalTitle"></h3><button class="v2-modal__x" data-close>✕</button></div>
+    <div class="v2-modal__c" id="modalBody"></div></div></div>
+
+  <div class="v2-save" id="saveToast">✓ Saved</div>
+
+<script>
+(function(){
+  "use strict";
+  const stage = document.getElementById('stage');
+  const $ = (s,r)=> (r||document).querySelector(s);
+
+  /* ───────────────────────── shared model ───────────────────────── */
+  const ACTIONS = [
+    {key:'submit',  label:'Submit ideas',  verb:'submit an idea',     em:'💡', allowAnyone:true},
+    {key:'comment', label:'Comment',       verb:'comment',            em:'💬', allowAnyone:false},
+    {key:'react',   label:'React / vote',  verb:'react or vote',      em:'👍', allowAnyone:false},
+    {key:'attend',  label:'Attend events', verb:'sign up to attend',  em:'📅', allowAnyone:false},
+  ];
+  const ACT = {}; ACTIONS.forEach(a=>ACT[a.key]=a);
+  const METHODS = {
+    email:{label:'Confirmed email', short:'Email', em:'✉️', desc:'A one-time code to their inbox.'},
+    sms:  {label:'Text-message code', short:'SMS', em:'📱', desc:'A one-time code to their phone.'},
+    id:   {label:'ID verification', short:'ID', em:'🪪', desc:'Proven through an official register.'},
+  };
+  const MORDER = ['email','sms','id'];
+  const GROUPS = ['Verified residents','Homeowners','Youth council','Neighbourhood reps'];
+  const DEMOQ  = ['Gender','Year of birth','Place of residence','Preferred language','Household size'];
+  const LANGS  = ['EN','NL-BE','NL-NL','FR-BE'];
+  const POOL   = 12400;
+
+  function freshAction(level){ return {level:level, verify:{email:true,sms:false,id:false,idRecent:false}, groups:[]}; }
+  const state = {
+    actions:{ submit:freshAction('signin'), comment:freshAction('signin'), react:freshAction('signin'), attend:freshAction('signin') },
+    collect:{ name:false, password:false, demoWhen:'before', demo:['Year of birth'] },
+    msg:{ EN:'You do not meet the requirements to participate in this process.' },
+  };
+
+  /* ───────────────────────── helpers ───────────────────────── */
+  const LEVEL = {
+    anyone:{t:'Anyone', d:'No account needed.', em:'🌍'},
+    signin:{t:'Signed-in residents', d:'They must prove who they are first.', em:'🔑'},
+    staff: {t:'Only staff', d:'Admins & managers only.', em:'🔒'},
+  };
+  function el(html){ const d=document.createElement('div'); d.innerHTML=html.trim(); return d.firstElementChild; }
+  function anySignin(){ return ACTIONS.some(a=>state.actions[a.key].level==='signin'); }
+  function methodsOf(a){ return MORDER.filter(m=>a.verify[m]); }
+  function proofText(a){ if(a.level!=='signin') return ''; const m=methodsOf(a); return m.length? m.map(k=>METHODS[k].short).join(' + ') : 'account only'; }
+  function estimate(a){
+    if(a.level==='staff') return 9;
+    if(a.level==='anyone') return POOL;
+    let n=POOL*0.62; // have accounts
+    if(a.verify.sms) n*=0.84;
+    if(a.verify.id)  n*= a.verify.idRecent?0.34:0.46;
+    if(a.groups.length) n*= Math.max(0.12, 0.34 - 0.05*(a.groups.length-1));
+    return Math.round(n);
+  }
+  function fmt(n){ return n>=1000? (n/1000).toFixed(1).replace('.0','')+'k' : ''+n; }
+
+  /* save toast (auto-save reassurance) */
+  let toastT=null; const toast=$('#saveToast');
+  function commit(){ render(); toast.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>toast.classList.remove('show'),1100); }
+
+  /* ───────────────────────── modal ───────────────────────── */
+  const modal=$('#modal'), modalBody=$('#modalBody'), modalTitle=$('#modalTitle');
+  function openModal(title, node){ modalTitle.textContent=title; modalBody.innerHTML=''; modalBody.appendChild(node); modal.classList.add('open'); }
+  function closeModal(){ modal.classList.remove('open'); }
+  modal.addEventListener('click', e=>{ if(e.target.hasAttribute('data-close')) closeModal(); });
+
+  function customMsgModal(){
+    let lang='EN';
+    const wrap=el('<div></div>');
+    function draw(){
+      wrap.innerHTML='';
+      const p=el('<p style="font-size:13.5px;color:#5b6472;margin:0 0 12px">Shown to residents who don\'t meet the requirements. You can write it in each language your platform supports.</p>');
+      const tabs=el('<div class="v2-langtabs"></div>');
+      LANGS.forEach(L=>{ const b=el('<button'+(L===lang?' class="on"':'')+'>'+L+'</button>'); b.onclick=()=>{lang=L;draw();}; tabs.appendChild(b); });
+      const ta=el('<textarea class="v2-msgta"></textarea>'); ta.value=state.msg[lang]||''; ta.placeholder=(lang==='EN'?'':'Add the '+lang+' translation…');
+      ta.oninput=()=>{ state.msg[lang]=ta.value; };
+      const btns=el('<div class="v2-modalbtns"></div>');
+      const done=el('<button class="v2-mbtn primary">Done</button>'); done.onclick=()=>{closeModal();commit();};
+      btns.appendChild(done);
+      wrap.append(p,tabs,ta,btns);
+    }
+    draw(); return wrap;
+  }
+
+  function demoModal(){
+    const wrap=el('<div></div>');
+    const p=el('<p style="font-size:13.5px;color:#5b6472;margin:0 0 14px">Pick which questions to ask in this phase. The exact wording is authored once in <b>Settings → Registration</b> — here you only choose which to use.</p>');
+    wrap.appendChild(p);
+    DEMOQ.forEach(q=>{
+      const on=state.collect.demo.includes(q);
+      const row=el('<div class="v2-pickrow'+(on?' on':'')+'"><span class="v2-pickrow__t">'+q+'</span><span class="v2-pickrow__check">✓</span></div>');
+      row.onclick=()=>{ const i=state.collect.demo.indexOf(q); if(i<0) state.collect.demo.push(q); else state.collect.demo.splice(i,1); row.classList.toggle('on'); };
+      wrap.appendChild(row);
+    });
+    const note=el('<button class="t1-link" style="margin-top:6px">+ Create a new question (opens Settings)</button>');
+    const btns=el('<div class="v2-modalbtns"></div>');
+    const done=el('<button class="v2-mbtn primary">Done</button>'); done.onclick=()=>{closeModal();commit();};
+    btns.appendChild(done);
+    wrap.append(note,btns); return wrap;
+  }
+
+  function groupModal(actionKey){
+    const a=state.actions[actionKey];
+    const wrap=el('<div></div>');
+    wrap.appendChild(el('<p style="font-size:13.5px;color:#5b6472;margin:0 0 14px">Only members of the groups you pick can '+ACT[actionKey].verb+'. Leave empty to allow everyone who signs in.</p>'));
+    GROUPS.forEach(g=>{
+      const on=a.groups.includes(g);
+      const row=el('<div class="v2-pickrow'+(on?' on':'')+'"><span class="v2-pickrow__t">'+g+'</span><span class="v2-pickrow__check">✓</span></div>');
+      row.onclick=()=>{ const i=a.groups.indexOf(g); if(i<0) a.groups.push(g); else a.groups.splice(i,1); row.classList.toggle('on'); };
+      wrap.appendChild(row);
+    });
+    const btns=el('<div class="v2-modalbtns"></div>');
+    const done=el('<button class="v2-mbtn primary">Done</button>'); done.onclick=()=>{closeModal();commit();};
+    btns.appendChild(done); wrap.appendChild(btns); return wrap;
+  }
+
+  /* shared role popover for T1 */
+  let openPop=null;
+  function closePop(){ if(openPop){ openPop.remove(); openPop=null; document.removeEventListener('click',onDocPop,true);} }
+  function onDocPop(e){ if(openPop && !openPop.contains(e.target) && !e.target.closest('[data-popbtn]')) closePop(); }
+  function rolePopover(btn, actionKey){
+    closePop();
+    const a=state.actions[actionKey], opts=['anyone','signin','staff'].filter(l=> l!=='anyone' || ACT[actionKey].allowAnyone);
+    const pop=el('<div class="v2-pop"></div>');
+    opts.forEach(l=>{
+      const o=el('<div class="v2-pop__o'+(a.level===l?' on':'')+'"><span class="em">'+LEVEL[l].em+'</span><span><span class="x">'+LEVEL[l].t+'</span><span class="d">'+LEVEL[l].d+'</span></span><span class="ck">✓</span></div>');
+      o.onclick=()=>{ a.level=l; closePop(); commit(); };
+      pop.appendChild(o);
+    });
+    btn.parentElement.appendChild(pop); openPop=pop;
+    setTimeout(()=>document.addEventListener('click',onDocPop,true),0);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     TAKE 1 — SHARE MENU  (Google Docs / Notion)
+     ════════════════════════════════════════════════════════════════════════ */
+  let t1open=null;
+  function renderT1(){
+    const root=el('<div class="t1 v2-pad"></div>');
+    root.appendChild(el('<span class="v2-credit">◆ Modeled on <b>Google&nbsp;Docs / Notion → Share menu</b></span>'));
+    root.appendChild(el('<div class="v2-intro"><h2>Share this phase</h2><p>Set who can take part the same way you\'d share a doc — pick a role per action, open one for finer rules.</p></div>'));
+
+    const panel=el('<div class="t1-panel"></div>');
+
+    // General access (like Google's "Anyone with the link")
+    const genLevel = ACTIONS.every(a=>state.actions[a.key].level===state.actions.submit.level) ? state.actions.submit.level : 'mixed';
+    const gd = genLevel==='mixed' ? 'Different rules per action (set below).' : LEVEL[genLevel].d;
+    const gen=el('<div class="t1-gen"><div class="t1-gen__ic">'+(genLevel==='mixed'?'🎛️':LEVEL[genLevel].em)+'</div><div class="t1-gen__main"><div class="t1-gen__t">General access</div><div class="t1-gen__d">'+gd+'</div></div></div>');
+    const genDD=el('<div class="v2-dd"><button class="v2-dd__btn" data-popbtn><span>'+(genLevel==='mixed'?'Mixed':LEVEL[genLevel].t)+'</span><span class="car">▾</span></button></div>');
+    genDD.querySelector('button').onclick=(e)=>{ e.stopPropagation(); closePop(); const a=genDD.querySelector('button');
+      const pop=el('<div class="v2-pop"></div>');
+      ['anyone','signin','staff'].forEach(l=>{ const o=el('<div class="v2-pop__o"><span class="em">'+LEVEL[l].em+'</span><span><span class="x">'+LEVEL[l].t+'</span><span class="d">Applies to every action'+(l==='anyone'?' that allows it':'')+'</span></span></div>');
+        o.onclick=()=>{ ACTIONS.forEach(ac=>{ state.actions[ac.key].level = (l==='anyone'&&!ac.allowAnyone)?'signin':l; }); closePop(); commit(); }; pop.appendChild(o); });
+      a.parentElement.appendChild(pop); openPop=pop; setTimeout(()=>document.addEventListener('click',onDocPop,true),0); };
+    gen.appendChild(genDD);
+    panel.appendChild(gen);
+
+    panel.appendChild(el('<div class="t1-sec">What people can do</div>'));
+    ACTIONS.forEach(act=>{
+      const a=state.actions[act.key];
+      const summ = a.level==='signin' ? ('Signed-in · '+proofText(a)+(a.groups.length?' · '+a.groups.length+' group'+(a.groups.length>1?'s':''):'')) : LEVEL[a.level].t;
+      const row=el('<div class="t1-row"><div class="t1-row__ic">'+act.em+'</div><div class="t1-row__main"><div class="t1-row__t">'+act.label+'</div><div class="t1-row__d">'+summ+'</div></div></div>');
+      const dd=el('<div class="v2-dd"><button class="v2-dd__btn" data-popbtn><span>'+LEVEL[a.level].t+'</span><span class="car">▾</span></button></div>');
+      dd.querySelector('button').onclick=(e)=>{ e.stopPropagation(); rolePopover(dd.querySelector('button'), act.key); };
+      row.appendChild(dd);
+      panel.appendChild(row);
+
+      if(a.level==='signin'){
+        const open = t1open===act.key;
+        const tog=el('<div style="margin:-4px 20px 6px 74px"><button class="t1-link">'+(open?'– Hide rules':'+ Verification, groups & message')+'</button></div>');
+        tog.querySelector('button').onclick=()=>{ t1open = open?null:act.key; render(); };
+        panel.appendChild(tog);
+        if(open) panel.appendChild(t1Detail(act.key));
+      }
+    });
+    root.appendChild(panel);
+
+    // What we collect (phase level, gated by sign-in)
+    if(anySignin()){
+      const c=el('<div class="t1-collect"></div>');
+      c.appendChild(el('<div class="t1-collect__h">📋 When people join, we collect…</div>'));
+      c.appendChild(t1Crow('name','Full name','First and last name.', state.collect.name));
+      c.appendChild(t1Crow('password','A password','Creates a full account instead of a quick email-only one.', state.collect.password));
+      // demographics
+      const dh=el('<div class="t1-crow"><div class="t1-crow__t" style="flex:1">Demographic questions<div class="t1-crow__d">Optional profile questions. Can be anonymous.</div></div></div>');
+      const when=el('<div class="t1-when"><button data-w="before"'+(state.collect.demoWhen==='before'?' class="on"':'')+'>Before they start</button><button data-w="after"'+(state.collect.demoWhen==='after'?' class="on"':'')+'>At the end</button></div>');
+      when.querySelectorAll('button').forEach(b=>b.onclick=()=>{ state.collect.demoWhen=b.dataset.w; commit(); });
+      dh.appendChild(when); c.appendChild(dh);
+      const chips=el('<div class="t1-demochips"></div>');
+      state.collect.demo.forEach(q=> chips.appendChild(el('<span class="t1-vchip on">'+q+'</span>')) );
+      const add=el('<button class="t1-vchip">+ Add question</button>'); add.onclick=()=>openModal('Demographic questions', demoModal());
+      chips.appendChild(add); c.appendChild(chips);
+      root.appendChild(c);
+    }
+
+    root.appendChild(el('<div class="v2-foot"><b>Per-action:</b> each row carries its own role + rules. <b>Stacking:</b> proof is a chip set (Email + SMS + ID), not one choice. <b>Groups & message:</b> inside a row\'s rules. <b>Collection:</b> the "when people join" card — gated by sign-in. <b>Out-of-tab:</b> demographic <i>wording</i> is authored in Settings → Registration (as in the real product); this tab only picks which to ask.</div>'));
+    return root;
+  }
+  function t1Crow(field,t,d,on){
+    const row=el('<div class="t1-crow"><div style="flex:1"><div class="t1-crow__t">'+t+'</div><div class="t1-crow__d">'+d+'</div></div></div>');
+    const tg=el('<button class="v2-tog'+(on?' on':'')+'" style="--on:#1a73e8"></button>'); tg.onclick=()=>{ state.collect[field]=!state.collect[field]; commit(); };
+    row.appendChild(tg); return row;
+  }
+  function t1Detail(key){
+    const a=state.actions[key];
+    const d=el('<div class="t1-detail"></div>');
+    d.appendChild(el('<h4>They prove who they are with</h4>'));
+    const chips=el('<div class="t1-chiprow"></div>');
+    MORDER.forEach(m=>{ const on=a.verify[m]; const c=el('<button class="t1-vchip'+(on?' on':'')+'"><span>'+METHODS[m].em+'</span>'+METHODS[m].label+'</button>');
+      c.onclick=()=>{ a.verify[m]=!a.verify[m]; if(m==='id'&&!a.verify.id) a.verify.idRecent=false; commit(); }; chips.appendChild(c); });
+    d.appendChild(chips);
+    if(a.verify.id){
+      const sub=el('<div class="t1-sub"><button class="v2-tog'+(a.verify.idRecent?' on':'')+'" style="--on:#1a73e8;width:38px;height:22px"></button> Re-check identity each phase <button class="t1-link" style="margin-left:8px">See which fields this returns</button></div>');
+      sub.querySelector('.v2-tog').onclick=()=>{ a.verify.idRecent=!a.verify.idRecent; commit(); };
+      d.appendChild(sub);
+    }
+    d.appendChild(el('<h4>Only these groups</h4>'));
+    const g=el('<div class="t1-chiprow"></div>');
+    a.groups.forEach(gr=> g.appendChild(el('<span class="t1-vchip on">'+gr+'</span>')) );
+    const ga=el('<button class="t1-vchip">+ Limit to groups</button>'); ga.onclick=()=>openModal('Limit to groups', groupModal(key)); g.appendChild(ga);
+    d.appendChild(g);
+    const m=el('<div style="margin-top:9px"><button class="t1-link">✎ Customize the "not allowed" message'+(Object.keys(state.msg).length>1?' (translated)':'')+'</button></div>');
+    m.querySelector('button').onclick=()=>openModal('Customize message', customMsgModal());
+    d.appendChild(m);
+    return d;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     TAKE 2 — FIGMA INSPECTOR  (layers + multi-select + Mixed)
+     ════════════════════════════════════════════════════════════════════════ */
+  let t2sel=['submit'];
+  function t2vals(field){ // returns 'mixed' or common value across selection
+    const get={ level:a=>a.level };
+    const vals=t2sel.map(k=>state.actions[k].level);
+    return vals.every(v=>v===vals[0]) ? vals[0] : 'mixed';
+  }
+  function t2methodMixed(m){ const vals=t2sel.map(k=>state.actions[k].verify[m]); return vals.every(v=>v===vals[0])?vals[0]:'mixed'; }
+  function renderT2(){
+    const root=el('<div class="t2 v2-pad"></div>');
+    root.appendChild(el('<span class="v2-credit">◆ Modeled on <b>Figma → Properties inspector</b></span>'));
+    root.appendChild(el('<div class="v2-intro"><h2>Select an action, set its properties</h2><p>Actions are like layers. Pick one — or shift-click several — and edit shared properties on the right. Different values show as <b>Mixed</b>.</p></div>'));
+
+    const app=el('<div class="t2-app"></div>');
+    // rail
+    const rail=el('<div class="t2-rail"></div>');
+    const rh=el('<div class="t2-rail__h"><span>Actions</span><button class="t2-rail__all">Select all</button></div>');
+    rh.querySelector('button').onclick=()=>{ t2sel=ACTIONS.map(a=>a.key); render(); };
+    rail.appendChild(rh);
+    ACTIONS.forEach(act=>{
+      const a=state.actions[act.key], sel=t2sel.includes(act.key);
+      const meta = a.level==='signin'? proofText(a) : LEVEL[a.level].t;
+      const ly=el('<div class="t2-layer'+(sel?' sel':'')+'"><span class="em">'+act.em+'</span><span>'+act.label+'</span><span class="meta">'+meta+'</span></div>');
+      ly.onclick=(e)=>{ if(e.shiftKey||e.metaKey||e.ctrlKey){ const i=t2sel.indexOf(act.key); if(i<0)t2sel.push(act.key); else if(t2sel.length>1)t2sel.splice(i,1); } else { t2sel=[act.key]; } render(); };
+      rail.appendChild(ly);
+    });
+    app.appendChild(rail);
+
+    // inspector
+    const insp=el('<div class="t2-insp"></div>');
+    const selName = t2sel.length===1 ? ACT[t2sel[0]].label : t2sel.length+' actions selected';
+    insp.appendChild(el('<div class="t2-selhd"><span>🎚️</span>'+selName+'</div>'));
+
+    // Access section
+    const acc=el('<div class="t2-isec"></div>');
+    acc.appendChild(el('<div class="t2-isec__h"><span>Access</span></div>'));
+    const lvl=t2vals('level');
+    const canAnyone=t2sel.every(k=>ACT[k].allowAnyone);
+    const seg=el('<div class="t2-seg"></div>');
+    [['anyone','Anyone'],['signin','Sign-in'],['staff','Staff']].forEach(([v,lab])=>{
+      const b=el('<button'+(lvl===v?' class="on"':'')+(v==='anyone'&&!canAnyone?' disabled':'')+'>'+lab+'</button>');
+      if(!(v==='anyone'&&!canAnyone)) b.onclick=()=>{ t2sel.forEach(k=>state.actions[k].level=v); commit(); };
+      seg.appendChild(b);
+    });
+    acc.appendChild(seg);
+    if(lvl==='mixed') acc.appendChild(el('<div class="t2-mixed" style="margin-top:9px"><span>⚠︎ Mixed across selection</span></div>'));
+    insp.appendChild(acc);
+
+    // Verification section (only when all selected are signin)
+    const allSignin=t2sel.every(k=>state.actions[k].level==='signin');
+    if(allSignin){
+      const ver=el('<div class="t2-isec"></div>');
+      const vh=el('<div class="t2-isec__h"><span>Verification</span><button class="t2-add" title="Add a check">+</button></div>');
+      vh.querySelector('button').onclick=()=>{ // add first inactive method to all
+        const m=MORDER.find(mm=> t2sel.some(k=>!state.actions[k].verify[mm])); if(m){ t2sel.forEach(k=>state.actions[k].verify[m]=true); commit(); } };
+      ver.appendChild(vh);
+      let anyRow=false;
+      MORDER.forEach(m=>{
+        const mv=t2methodMixed(m);
+        const anyOn=t2sel.some(k=>state.actions[k].verify[m]);
+        if(mv==='mixed'){
+          anyRow=true;
+          const r=el('<div class="t2-mixed"><span>'+METHODS[m].short+': Mixed</span><button>Set for all</button></div>');
+          r.querySelector('button').onclick=()=>{ t2sel.forEach(k=>state.actions[k].verify[m]=true); commit(); };
+          ver.appendChild(r);
+        } else if(mv===true){
+          anyRow=true;
+          const r=el('<div class="t2-frow"><span class="t2-frow__sw">'+METHODS[m].em+'</span><span class="t2-frow__t">'+METHODS[m].label+'</span></div>');
+          const eye=el('<button class="t2-eye" title="toggle">👁</button>'); const min=el('<button class="t2-min" title="remove">－</button>');
+          min.onclick=()=>{ t2sel.forEach(k=>{ state.actions[k].verify[m]=false; if(m==='id') state.actions[k].verify.idRecent=false; }); commit(); };
+          eye.onclick=min.onclick;
+          r.append(eye,min); ver.appendChild(r);
+          if(m==='id'){ const rec=t2sel.every(k=>state.actions[k].verify.idRecent); const recMix=t2methodMixedRec();
+            const sub=el('<div class="t2-frow" style="padding-left:29px"><span class="t2-frow__t" style="font-size:12px;color:#666">Require recent check'+(recMix==='mixed'?' (Mixed)':'')+'</span></div>');
+            const tg=el('<button class="v2-tog'+(rec&&recMix!=='mixed'?' on':'')+'" style="--on:#0d99ff;width:36px;height:20px"></button>');
+            tg.onclick=()=>{ const nv=!(rec&&recMix!=='mixed'); t2sel.forEach(k=>state.actions[k].verify.idRecent=nv); commit(); };
+            sub.appendChild(tg); ver.appendChild(sub);
+            const lk=el('<button class="t2-link">See which fields ID returns</button>'); ver.appendChild(lk);
+          }
+        }
+      });
+      if(!anyRow) ver.appendChild(el('<div class="t2-empty">Account only — click + to require email, SMS or ID.</div>'));
+      insp.appendChild(ver);
+
+      // Audience (groups)
+      const aud=el('<div class="t2-isec"></div>');
+      aud.appendChild(el('<div class="t2-isec__h"><span>Audience</span></div>'));
+      if(t2sel.length===1){
+        const a=state.actions[t2sel[0]];
+        if(a.groups.length){ const wrap=el('<div></div>'); a.groups.forEach(g=>{ const c=el('<span class="t2-chip2">'+g+'<button>✕</button></span>'); c.querySelector('button').onclick=()=>{ a.groups.splice(a.groups.indexOf(g),1); commit(); }; wrap.appendChild(c); }); aud.appendChild(wrap); }
+        const add=el('<button class="t2-link">+ Limit to groups</button>'); add.onclick=()=>openModal('Limit to groups', groupModal(t2sel[0])); aud.appendChild(add);
+        const msg=el('<div><button class="t2-link" style="margin-top:6px">Customize "not allowed" message</button></div>'); msg.querySelector('button').onclick=()=>openModal('Customize message', customMsgModal()); aud.appendChild(msg);
+      } else {
+        aud.appendChild(el('<div class="t2-empty">Select a single action to edit its groups & message.</div>'));
+      }
+      insp.appendChild(aud);
+    }
+
+    // Data collected (phase-level)
+    const data=el('<div class="t2-isec"></div>');
+    data.appendChild(el('<div class="t2-isec__h"><span>Data collected · whole phase</span></div>'));
+    if(anySignin()){
+      data.appendChild(t2drow('name','🙋','Full name'));
+      data.appendChild(t2drow('password','🔑','Password (full account)'));
+    } else {
+      data.appendChild(el('<div class="t2-empty">No sign-in required, so nothing personal is stored. Demographic questions can still be asked anonymously:</div>'));
+    }
+    const dq=el('<div class="t2-frow"><span class="t2-frow__sw">📋</span><span class="t2-frow__t">Demographic questions <span class="t2-frow__sub">'+state.collect.demo.length+' selected · '+(state.collect.demoWhen==='before'?'before start':'at end')+'</span></span></div>');
+    const dqedit=el('<button class="t2-add">+</button>'); dqedit.onclick=()=>openModal('Demographic questions', demoModal()); dq.appendChild(dqedit);
+    data.appendChild(dq);
+    insp.appendChild(data);
+
+    app.appendChild(insp);
+    root.appendChild(app);
+    root.appendChild(el('<div class="v2-foot"><b>The beginner/expert answer:</b> select all four and set one rule (Mixed disappears); select one to override. <b>Stacking</b> = multiple verification rows like Figma\'s multiple fills. <b>Groups & message</b> live in Audience (single-select). <b>Collection</b> is a phase-wide section. <b>Out-of-tab:</b> question wording → Settings → Registration.</div>'));
+    return root;
+  }
+  function t2methodMixedRec(){ const vals=t2sel.map(k=>state.actions[k].verify.idRecent); return vals.every(v=>v===vals[0])?vals[0]:'mixed'; }
+  function t2drow(field,em,t){
+    const on=state.collect[field];
+    const r=el('<div class="t2-frow"><span class="t2-frow__sw">'+em+'</span><span class="t2-frow__t">'+t+'</span></div>');
+    const tg=el('<button class="v2-tog'+(on?' on':'')+'" style="--on:#0d99ff;width:36px;height:20px"></button>'); tg.onclick=()=>{ state.collect[field]=!state.collect[field]; commit(); };
+    r.appendChild(tg); return r;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     TAKE 3 — GITHUB BRANCH PROTECTION  (gates + stacked requirement checks)
+     ════════════════════════════════════════════════════════════════════════ */
+  function renderT3(){
+    const root=el('<div class="t3 v2-pad"></div>');
+    root.appendChild(el('<span class="v2-credit">◆ Modeled on <b>GitHub → Branch protection rules</b></span>'));
+    root.appendChild(el('<div class="v2-intro"><h2>Protect each action with rules</h2><p>Every action is open by default. Add requirements to protect it — stack as many as you need. The more you add, the stronger the gate.</p></div>'));
+
+    ACTIONS.forEach(act=>{
+      const a=state.actions[act.key];
+      const protectedN = a.level==='signin' ? (1+methodsOf(a).length+(a.groups.length?1:0)) : 0;
+      const isProt = a.level==='signin' || a.level==='staff';
+      const card=el('<div class="t3-card"></div>');
+      const head=el('<div class="t3-card__h"><div class="t3-card__ic">'+act.em+'</div><div><div class="t3-card__t">'+act.label+'</div><div class="t3-card__sub">'+(a.level==='anyone'?'Open to anyone — no rules':(a.level==='staff'?'Locked to staff':methodsOf(a).map(m=>METHODS[m].short).join(' + ')+(a.groups.length?' · '+a.groups.length+' group'+(a.groups.length>1?'s':''):'')||'sign-in only'))+'</div></div></div>');
+      head.appendChild(el('<span class="t3-badge '+(isProt?'prot':'open')+'">'+(isProt? (a.level==='staff'?'🔒 Staff only':'🛡 Protected'):'🌍 Open')+'</span>'));
+      card.appendChild(head);
+
+      const body=el('<div class="t3-body"></div>');
+      // who-can radios
+      const radios=el('<div class="t3-radios"></div>');
+      const opts=[['anyone','Anyone can do this','No account, no checks.'],['signin','Require sign-in','Then add the checks below.'],['staff','Only staff','Residents can\'t do this at all.']]
+        .filter(([v])=> v!=='anyone' || act.allowAnyone);
+      opts.forEach(([v,t,d])=>{ const r=el('<label class="t3-radio"><input type="radio" name="t3-'+act.key+'"'+(a.level===v?' checked':'')+'><span>'+t+'<span class="d">'+d+'</span></span></label>');
+        r.querySelector('input').onchange=()=>{ a.level=v; commit(); }; radios.appendChild(r); });
+      body.appendChild(radios);
+
+      if(a.level==='signin'){
+        const checks=el('<div class="t3-checks"></div>');
+        checks.appendChild(el('<div style="font-size:12px;font-weight:700;color:#59636e;margin-bottom:4px">REQUIRE BEFORE THEY CAN '+act.verb.toUpperCase()+'</div>'));
+        // email/sms always optional checks; sign-in itself is implied
+        ['email','sms','id'].forEach(m=>{
+          const on=a.verify[m];
+          const c=el('<label class="t3-chk"><input type="checkbox"'+(on?' checked':'')+'><span>Require '+METHODS[m].label.toLowerCase()+'<span class="d">'+METHODS[m].desc+'</span></span></label>');
+          c.querySelector('input').onchange=()=>{ a.verify[m]=!a.verify[m]; if(m==='id'&&!a.verify.id)a.verify.idRecent=false; commit(); };
+          checks.appendChild(c);
+          if(m==='id'&&on){ const ind=el('<div class="t3-indent"></div>');
+            const rc=el('<label class="t3-chk"><input type="checkbox"'+(a.verify.idRecent?' checked':'')+'><span>Require <b>recent</b> verification<span class="d">Re-check each phase, not once-ever.</span></span></label>');
+            rc.querySelector('input').onchange=()=>{ a.verify.idRecent=!a.verify.idRecent; commit(); }; ind.appendChild(rc);
+            ind.appendChild(el('<button class="t3-link">See which fields this returns →</button>')); checks.appendChild(ind); }
+        });
+        // restrict who can push = groups
+        const gOn=a.groups.length>0;
+        const gc=el('<label class="t3-chk"><input type="checkbox"'+(gOn?' checked':'')+'><span>Restrict who can participate to specific groups<span class="d">Only members of the groups you pick.</span></span></label>');
+        gc.querySelector('input').onchange=()=>{ if(gOn){ a.groups=[]; commit(); } else openModal('Restrict to groups', groupModal(act.key)); };
+        checks.appendChild(gc);
+        if(gOn){ const gi=el('<div class="t3-indent t3-grpbox"></div>');
+          a.groups.forEach(g=>{ const ch=el('<span class="t3-chip3">'+g+'<button>✕</button></span>'); ch.querySelector('button').onclick=()=>{ a.groups.splice(a.groups.indexOf(g),1); commit(); }; gi.appendChild(ch); });
+          const add=el('<button class="t3-addchip">+ Add group</button>'); add.onclick=()=>openModal('Restrict to groups', groupModal(act.key)); gi.appendChild(add);
+          const msg=el('<div style="margin-top:8px"><button class="t3-link">Customize the message people see</button></div>'); msg.querySelector('button').onclick=()=>openModal('Customize message', customMsgModal()); gi.appendChild(msg);
+          checks.appendChild(gi);
+        }
+        body.appendChild(checks);
+      }
+      card.appendChild(body);
+      root.appendChild(card);
+    });
+
+    // collection card
+    const cc=el('<div class="t3-card"></div>');
+    cc.appendChild(el('<div class="t3-card__h"><div class="t3-card__ic">📋</div><div><div class="t3-card__t">Collect personal &amp; demographic data</div><div class="t3-card__sub">Applies whenever sign-in is required.</div></div></div>'));
+    const cb=el('<div class="t3-body"></div>');
+    if(anySignin()){
+      cb.appendChild(t3chk('name','Collect full name','First and last name.', state.collect.name, ()=>{state.collect.name=!state.collect.name;}));
+      cb.appendChild(t3chk('password','Require a password','Creates a full account vs a quick email-only one.', state.collect.password, ()=>{state.collect.password=!state.collect.password;}));
+    } else {
+      cb.appendChild(el('<div class="t3-card__sub" style="padding:4px 0">No action requires sign-in, so no personal data is stored. Demographic questions can still be asked anonymously.</div>'));
+    }
+    const dq=el('<label class="t3-chk"><input type="checkbox"'+(state.collect.demo.length?' checked':'')+'><span>Ask demographic questions<span class="d">'+(state.collect.demo.length? state.collect.demo.join(', ')+' · '+(state.collect.demoWhen==='before'?'before they start':'at the end'):'Age, gender, area — optional & anonymous.')+'</span></span></label>');
+    dq.querySelector('input').onchange=()=>{ if(state.collect.demo.length){ state.collect.demo=[]; commit(); } else openModal('Demographic questions', demoModal()); };
+    cb.appendChild(dq);
+    if(state.collect.demo.length){ const ind=el('<div class="t3-indent"></div>');
+      const when=el('<div style="display:flex;gap:8px;align-items:center;font-size:13px"><span>Ask</span><div class="t1-when"><button data-w="before"'+(state.collect.demoWhen==='before'?' class="on"':'')+'>before start</button><button data-w="after"'+(state.collect.demoWhen==='after'?' class="on"':'')+'>at the end</button></div></div>');
+      when.querySelectorAll('button').forEach(b=>b.onclick=()=>{ state.collect.demoWhen=b.dataset.w; commit(); });
+      ind.appendChild(when); ind.appendChild(el('<div style="margin-top:8px"><button class="t3-link" id="t3editq">Edit questions →</button></div>'));
+      cb.appendChild(ind); }
+    cc.appendChild(cb); root.appendChild(cc);
+    const eq=$('#t3editq'); // bound after attach via delegation fallback
+    root.querySelectorAll('.t3-link').forEach(l=>{ if(l.textContent.indexOf('Edit questions')>=0) l.onclick=()=>openModal('Demographic questions', demoModal()); });
+
+    root.appendChild(el('<div class="v2-foot"><b>Per-action:</b> one protected gate per action — comment/react/attend can\'t be "Anyone". <b>Stacking</b> = ticking multiple required checks (email + SMS + ID), exactly like requiring several status checks. <b>Groups</b> = "Restrict who can participate" + custom message. <b>Collection</b> in its own card. <b>Out-of-tab:</b> question wording → Settings → Registration.</div>'));
+    return root;
+  }
+  function t3chk(field,t,d,on,fn){
+    const c=el('<label class="t3-chk"><input type="checkbox"'+(on?' checked':'')+'><span>'+t+'<span class="d">'+d+'</span></span></label>');
+    c.querySelector('input').onchange=()=>{ fn(); commit(); }; return c;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     TAKE 4 — APPLE APP PRIVACY LABEL  (transparency-first authoring)
+     ════════════════════════════════════════════════════════════════════════ */
+  let t4act='submit';
+  function renderT4(){
+    const root=el('<div class="t4 v2-pad"></div>');
+    root.appendChild(el('<span class="v2-credit">◆ Modeled on <b>Apple → App&nbsp;Store privacy label</b></span>'));
+    root.appendChild(el('<div class="v2-intro"><h2>Your phase\'s privacy label</h2><p>Set the rules on the left; the right shows the plain-English <b>data label</b> residents get — like the App Store nutrition label. (Not a phone mock — it\'s the published promise about their data.)</p></div>'));
+
+    const grid=el('<div class="t4-grid"></div>');
+
+    // LEFT controls
+    const ctrl=el('<div class="t4-ctrl"></div>');
+    const bar=el('<div class="t4-actbar"></div>');
+    ACTIONS.forEach(act=>{ const b=el('<button'+(t4act===act.key?' class="on"':'')+'>'+act.em+' '+act.label+'</button>'); b.onclick=()=>{ t4act=act.key; render(); }; bar.appendChild(b); });
+    ctrl.appendChild(bar);
+    const a=state.actions[t4act];
+
+    const g1=el('<div class="t4-grp"></div>');
+    g1.appendChild(el('<div class="t4-grp__h">Who can '+ACT[t4act].verb+'</div>'));
+    const seg=el('<div class="t4-seg4"></div>');
+    [['anyone','Anyone'],['signin','Sign-in'],['staff','Staff']].forEach(([v,lab])=>{ const b=el('<button'+(a.level===v?' class="on"':'')+(v==='anyone'&&!ACT[t4act].allowAnyone?' disabled':'')+'>'+lab+'</button>');
+      if(!(v==='anyone'&&!ACT[t4act].allowAnyone)) b.onclick=()=>{ a.level=v; commit(); }; seg.appendChild(b); });
+    g1.appendChild(seg); ctrl.appendChild(g1);
+
+    if(a.level==='signin'){
+      const g2=el('<div class="t4-grp"></div>');
+      g2.appendChild(el('<div class="t4-grp__h">Identity checks required</div>'));
+      MORDER.forEach(m=>{ const r=el('<div class="t4-trow"><span class="t4-trow__em">'+METHODS[m].em+'</span><span class="t4-trow__t">'+METHODS[m].label+'<span class="t4-trow__d"> '+METHODS[m].desc+'</span></span></div>');
+        const tg=el('<button class="v2-tog'+(a.verify[m]?' on':'')+'" style="--on:#007aff"></button>'); tg.onclick=()=>{ a.verify[m]=!a.verify[m]; if(m==='id'&&!a.verify.id)a.verify.idRecent=false; commit(); }; r.appendChild(tg); g2.appendChild(r);
+        if(m==='id'&&a.verify.id){ const sub=el('<div class="t4-trow" style="padding-left:38px"><span class="t4-trow__t" style="font-size:13px">Re-check each phase</span></div>'); const t2=el('<button class="v2-tog'+(a.verify.idRecent?' on':'')+'" style="--on:#007aff;width:38px;height:22px"></button>'); t2.onclick=()=>{ a.verify.idRecent=!a.verify.idRecent; commit(); }; sub.appendChild(t2); g2.appendChild(sub);
+          g2.appendChild(el('<div style="padding:0 0 6px"><button class="t4-link">See which fields ID returns</button></div>')); }
+      });
+      ctrl.appendChild(g2);
+
+      const g3=el('<div class="t4-grp"></div>');
+      g3.appendChild(el('<div class="t4-grp__h">Limit to groups</div>'));
+      const gr=el('<div class="t4-trow" style="border:0"><span class="t4-trow__t">'+(a.groups.length? a.groups.join(', ') : 'Everyone who signs in')+'</span></div>');
+      const ed=el('<button class="t4-link">Edit</button>'); ed.onclick=()=>openModal('Limit to groups', groupModal(t4act)); gr.appendChild(ed); g3.appendChild(gr);
+      g3.appendChild(el('<div style="padding:0 0 8px"><button class="t4-link" id="t4msg">Customize "not allowed" message</button></div>'));
+      ctrl.appendChild(g3);
+    }
+
+    // collection
+    const g4=el('<div class="t4-grp"></div>');
+    g4.appendChild(el('<div class="t4-grp__h">Data we collect (whole phase)</div>'));
+    if(anySignin()){
+      g4.appendChild(t4drow('name','🙋','Full name'));
+      g4.appendChild(t4drow('password','🔑','Password / full account'));
+    } else g4.appendChild(el('<div class="t4-trow" style="border:0"><span class="t4-trow__d">No sign-in → nothing personal stored. Anonymous questions only:</span></div>'));
+    const dq=el('<div class="t4-trow"><span class="t4-trow__em">📋</span><span class="t4-trow__t">Demographic questions<span class="t4-trow__d"> '+state.collect.demo.length+' · '+(state.collect.demoWhen==='before'?'before start':'at end')+'</span></span></div>');
+    const dqe=el('<button class="t4-link">Edit</button>'); dqe.onclick=()=>openModal('Demographic questions', demoModal()); dq.appendChild(dqe); g4.appendChild(dq);
+    ctrl.appendChild(g4);
+    grid.appendChild(ctrl);
+
+    // RIGHT: privacy label + consent sheet
+    const right=el('<div></div>');
+    right.appendChild(t4Label());
+    right.appendChild(t4Sheet());
+    grid.appendChild(right);
+
+    root.appendChild(grid);
+    root.appendChild(el('<div class="v2-foot"><b>Per-action:</b> switch action with the pills; each gets its own checks. <b>Stacking</b> = multiple identity checks. <b>Groups & message</b> in the controls. <b>Collection</b> aggregates into the label. <b>Why this model:</b> it puts the resident\'s data front-and-centre — answering "what does this actually collect?" <b>Out-of-tab:</b> question wording → Settings → Registration.</div>'));
+    const m4=root.querySelector('#t4msg'); if(m4) m4.onclick=()=>openModal('Customize message', customMsgModal());
+    return root;
+  }
+  function t4drow(field,em,t){ const on=state.collect[field]; const r=el('<div class="t4-trow"><span class="t4-trow__em">'+em+'</span><span class="t4-trow__t">'+t+'</span></div>'); const tg=el('<button class="v2-tog'+(on?' on':'')+'" style="--on:#007aff"></button>'); tg.onclick=()=>{ state.collect[field]=!state.collect[field]; commit(); }; r.appendChild(tg); return r; }
+  function t4Label(){
+    // aggregate collected data across phase
+    const linked=[];
+    const anyEmail=ACTIONS.some(x=>state.actions[x.key].level==='signin'); // email-ish
+    if(anySignin()) linked.push(['✉️','Contact Info']);
+    if(ACTIONS.some(x=>state.actions[x.key].verify.sms)) linked.push(['📞','Phone']);
+    if(ACTIONS.some(x=>state.actions[x.key].verify.id)) linked.push(['🪪','Identity']);
+    if(state.collect.name) linked.push(['🙋','Name']);
+    if(state.collect.password) linked.push(['🔑','Account']);
+    if(state.collect.demo.length) linked.push(['📊','Demographics']);
+    const allPoss=['Contact Info','Phone','Identity','Name','Account','Demographics'];
+    const have=linked.map(x=>x[1]);
+    const notColl=allPoss.filter(x=>!have.includes(x));
+    const card=el('<div class="t4-label"></div>');
+    card.appendChild(el('<p class="t4-label__top">App Store-style summary</p>'));
+    card.appendChild(el('<h3 class="t4-label__ttl">Data this phase collects</h3>'));
+    // tracking
+    const s0=el('<div class="t4-lsec"><div class="t4-lsec__h">🛡 Used to Track You</div><p class="t4-lsec__d">Across other companies\' apps & sites.</p><div class="t4-none"><span class="t4-track">None.</span> GoVocal never tracks residents.</div></div>');
+    card.appendChild(s0);
+    const s1=el('<div class="t4-lsec"><div class="t4-lsec__h">🔗 Linked to You</div><p class="t4-lsec__d">Tied to a resident\'s identity.</p></div>');
+    if(linked.length){ const cats=el('<div class="t4-cats"></div>'); linked.forEach(([e,t])=> cats.appendChild(el('<div class="t4-cat"><div class="t4-cat__ic">'+e+'</div><div class="t4-cat__t">'+t+'</div></div>')) ); s1.appendChild(cats); }
+    else s1.appendChild(el('<div class="t4-none">Nothing — participation is anonymous.</div>'));
+    card.appendChild(s1);
+    const s2=el('<div class="t4-lsec"><div class="t4-lsec__h">🚫 Not Collected</div></div>');
+    s2.appendChild(el('<div class="t4-none">'+(notColl.length? notColl.join(' · '):'—')+'</div>'));
+    card.appendChild(s2);
+    return card;
+  }
+  function t4Sheet(){
+    const a=state.actions[t4act];
+    const sheet=el('<div class="t4-sheet"></div>');
+    if(a.level==='staff'){ sheet.appendChild(el('<p class="t4-sheet__app">🔒 Staff only</p><p class="t4-sheet__body">Residents don\'t see this action.</p>')); return sheet; }
+    if(a.level==='anyone'){ sheet.appendChild(el('<p class="t4-sheet__app">No sign-in needed</p>'));
+      sheet.appendChild(el('<p class="t4-sheet__body">A resident can '+ACT[t4act].verb+' straight away.</p>'));
+    } else {
+      sheet.appendChild(el('<p class="t4-sheet__app">"Westmere" needs to confirm it\'s you</p>'));
+      sheet.appendChild(el('<p class="t4-sheet__body">To '+ACT[t4act].verb+', a resident completes:</p>'));
+      const steps=el('<div class="t4-sheet__steps"></div>');
+      const ms=methodsOf(a); if(!ms.length) steps.appendChild(el('<div>• Create a quick account</div>'));
+      ms.forEach(m=> steps.appendChild(el('<div>• '+METHODS[m].label+(m==='id'&&a.verify.idRecent?' (recent)':'')+'</div>')) );
+      if(state.collect.name) steps.appendChild(el('<div>• Give their name</div>'));
+      if(a.groups.length) steps.appendChild(el('<div>• Be in: '+a.groups.join(', ')+'</div>'));
+      sheet.appendChild(steps);
+    }
+    const btns=el('<div class="t4-sheet__btns"><button class="go">Continue</button><button class="no">Not now</button></div>'); sheet.appendChild(btns);
+    return sheet;
+  }
+
+  /* ════════════════════════════════════════════════════════════════════════
+     TAKE 5 — AUDIENCE BUILDER  (Intercom segment / Stripe Radar rules)
+     ════════════════════════════════════════════════════════════════════════ */
+  let t5act='submit';
+  function renderT5(){
+    const root=el('<div class="t5 v2-pad"></div>');
+    root.appendChild(el('<span class="v2-credit">◆ Modeled on <b>Intercom → Audience builder</b> · Stripe Radar rules</span>'));
+    root.appendChild(el('<div class="v2-intro"><h2>Build who\'s allowed</h2><p>For each action, allow people who match a set of rules — and watch how many residents that lets in, live.</p></div>'));
+
+    const bar=el('<div class="t5-actbar"></div>');
+    ACTIONS.forEach(act=>{ const a=state.actions[act.key]; const n=estimate(a);
+      const b=el('<button'+(t5act===act.key?' class="on"':'')+'><span class="em">'+act.em+'</span>'+act.label+' <span style="font-weight:500">·&nbsp;'+(a.level==='staff'?'staff':fmt(n))+'</span></button>');
+      b.onclick=()=>{ t5act=act.key; render(); }; bar.appendChild(b); });
+    root.appendChild(bar);
+
+    const a=state.actions[t5act];
+    const build=el('<div class="t5-build"></div>');
+
+    // rules card
+    const card=el('<div class="t5-card"></div>');
+    // ALL/ANY line
+    const match=el('<div class="t5-matchln">Let people <b>&nbsp;'+ACT[t5act].verb+'&nbsp;</b> if they match</div>');
+    const dd=el('<select class="t5-sel"><option>ALL</option><option>ANY</option></select>');
+    match.appendChild(dd); match.appendChild(el('<span>of these rules:</span>')); card.appendChild(match);
+
+    // base rule: sign-in / anyone / staff
+    const baseSel=el('<div class="t5-rule"><span class="t5-rule__attr">Account</span></div>');
+    const bs=el('<select class="t5-sel"></select>');
+    [['anyone','no account needed'],['signin','must be signed in'],['staff','must be staff']].filter(([v])=>v!=='anyone'||ACT[t5act].allowAnyone).forEach(([v,l])=>{ const o=document.createElement('option'); o.value=v; o.textContent=l; if(a.level===v)o.selected=true; bs.appendChild(o); });
+    bs.onchange=()=>{ a.level=bs.value; commit(); }; baseSel.appendChild(bs); card.appendChild(baseSel);
+
+    if(a.level==='signin'){
+      card.appendChild(el('<div class="t5-andtag">and</div>'));
+      // verification rules (each active method = a rule)
+      MORDER.forEach(m=>{ if(!a.verify[m]) return;
+        const r=el('<div class="t5-rule"><span class="t5-rule__attr">'+METHODS[m].short+'</span><span>is</span></div>');
+        if(m==='id'){ const sel=el('<select class="t5-sel"><option>verified</option><option>recently verified</option></select>'); sel.value=a.verify.idRecent?'recently verified':'verified'; sel.onchange=()=>{ a.verify.idRecent=(sel.value==='recently verified'); commit(); }; r.appendChild(sel); }
+        else r.appendChild(el('<span style="font-weight:600">confirmed</span>'));
+        const del=el('<button class="t5-del" title="remove rule">✕</button>'); del.onclick=()=>{ a.verify[m]=false; if(m==='id')a.verify.idRecent=false; commit(); }; r.appendChild(del);
+        card.appendChild(r);
+      });
+      // group rules
+      if(a.groups.length){ const r=el('<div class="t5-rule"><span class="t5-rule__attr">Group</span><span>is one of</span></div>');
+        const wrap=el('<span style="display:flex;gap:6px;flex-wrap:wrap">'+a.groups.map(g=>'<b>'+g+'</b>').join('<span style="opacity:.4">or</span>')+'</span>'); r.appendChild(wrap);
+        const del=el('<button class="t5-del">✕</button>'); del.onclick=()=>{ a.groups=[]; commit(); }; r.appendChild(del); card.appendChild(r);
+      }
+      // add rule
+      const add=el('<button class="t5-addrule">+ Add rule</button>');
+      add.onclick=(e)=>{ e.stopPropagation(); t5AddMenu(add, t5act); };
+      card.appendChild(add);
+      // not-matched message
+      card.appendChild(el('<div style="margin-top:14px;padding-top:12px;border-top:1px solid #eef2f8;font-size:13px;color:#5b6b7d;display:flex;align-items:center;gap:8px;flex-wrap:wrap">If they don\'t match, show: <button class="t5-link" id="t5msg">edit message →</button></div>'));
+    }
+    build.appendChild(card);
+
+    // count card
+    const n=estimate(a); const pct=Math.max(2,Math.min(100,Math.round(n/POOL*100)));
+    const cnt=el('<div class="t5-count"></div>');
+    if(a.level==='staff'){ cnt.appendChild(el('<div class="t5-count__big">Staff</div><div class="t5-count__lab">Residents can\'t '+ACT[t5act].verb+'</div>')); }
+    else { cnt.appendChild(el('<div class="t5-count__big">≈ '+fmt(n)+'</div><div class="t5-count__lab">residents can '+ACT[t5act].verb+'</div>'));
+      cnt.appendChild(el('<div class="t5-bar"><div class="t5-bar__f" style="width:'+pct+'%"></div></div>'));
+      cnt.appendChild(el('<div class="t5-count__sub">'+pct+'% of ~'+fmt(POOL)+' known residents'+(pct<25?' — quite restrictive':pct>80?' — wide open':'')+'</div>')); }
+    build.appendChild(cnt);
+    root.appendChild(build);
+
+    // collection block
+    const ex=el('<div class="t5-extra"></div>');
+    ex.appendChild(el('<h4>When they take part, also collect</h4>'));
+    if(anySignin()){
+      ex.appendChild(t5erow('name','Full name','First and last name', state.collect.name, ()=>state.collect.name=!state.collect.name));
+      ex.appendChild(t5erow('password','Password','Creates a full account', state.collect.password, ()=>state.collect.password=!state.collect.password));
+    } else ex.appendChild(el('<div style="font-size:13px;color:#5b6b7d;margin-bottom:8px">No sign-in → only anonymous questions can be asked.</div>'));
+    const dq=el('<div class="t5-erow"><div style="flex:1"><div class="t5-erow__t">Demographic questions</div><div class="t5-erow__d">'+(state.collect.demo.length?state.collect.demo.join(', '):'none yet')+'</div></div></div>');
+    const when=el('<div class="t5-when"><button data-w="before"'+(state.collect.demoWhen==='before'?' class="on"':'')+'>before</button><button data-w="after"'+(state.collect.demoWhen==='after'?' class="on"':'')+'>at end</button></div>');
+    when.querySelectorAll('button').forEach(b=>b.onclick=()=>{ state.collect.demoWhen=b.dataset.w; commit(); }); dq.appendChild(when);
+    const dqe=el('<button class="t5-link" style="margin-left:10px">edit</button>'); dqe.onclick=()=>openModal('Demographic questions', demoModal()); dq.appendChild(dqe);
+    ex.appendChild(dq);
+    root.appendChild(ex);
+
+    root.appendChild(el('<div class="v2-foot"><b>Per-action:</b> each pill holds its own rule set. <b>Stacking</b> = ALL + multiple "is confirmed/verified" rules (AND). <b>Groups</b> = a "Group is one of" rule. <b>Message</b> = "if they don\'t match". <b>The win:</b> the live count answers "how many people does this exclude?" — invisible in the real tab. <b>Out-of-tab:</b> question wording → Settings → Registration.</div>'));
+    const m5=root.querySelector('#t5msg'); if(m5) m5.onclick=()=>openModal('Customize message', customMsgModal());
+    return root;
+  }
+  function t5erow(field,t,d,on,fn){ const r=el('<div class="t5-erow"><div style="flex:1"><div class="t5-erow__t">'+t+'</div><div class="t5-erow__d">'+d+'</div></div></div>'); const tg=el('<button class="v2-tog'+(on?' on':'')+'" style="--on:#1f8ded"></button>'); tg.onclick=()=>{ fn(); commit(); }; r.appendChild(tg); return r; }
+  let t5pop=null;
+  function t5AddMenu(btn, key){
+    if(t5pop){ t5pop.remove(); t5pop=null; }
+    const a=state.actions[key];
+    const avail=[];
+    MORDER.forEach(m=>{ if(!a.verify[m]) avail.push([m, METHODS[m].short+' is confirmed']); });
+    if(!a.groups.length) avail.push(['group','Group is one of…']);
+    if(!avail.length) return;
+    const pop=el('<div class="v2-pop" style="right:auto;left:0;min-width:220px"></div>');
+    avail.forEach(([k,lab])=>{ const o=el('<div class="v2-pop__o"><span><span class="x">'+lab+'</span></span></div>');
+      o.onclick=()=>{ if(k==='group'){ pop.remove(); t5pop=null; openModal('Group rule', groupModal(key)); } else { a.verify[k]=true; pop.remove(); t5pop=null; commit(); } };
+      pop.appendChild(o); });
+    btn.parentElement.style.position='relative'; btn.parentElement.appendChild(pop); t5pop=pop;
+    setTimeout(()=>document.addEventListener('click',function h(e){ if(t5pop && !t5pop.contains(e.target)){ t5pop.remove(); t5pop=null; document.removeEventListener('click',h,true);} },true),0);
+  }
+
+  /* ───────────────────────── registry + switcher ───────────────────────── */
+  const TAKES=[
+    {n:'Share menu', tag:'Share menu · Google Docs / Notion', r:renderT1},
+    {n:'Inspector',  tag:'Properties inspector · Figma',      r:renderT2},
+    {n:'Protection', tag:'Branch protection · GitHub',         r:renderT3},
+    {n:'Privacy label', tag:'App privacy label · Apple',       r:renderT4},
+    {n:'Audience',   tag:'Audience builder · Intercom',        r:renderT5},
+  ];
+  let cur=0;
+  function render(){ closePop(); if(t5pop){t5pop.remove();t5pop=null;} stage.innerHTML=''; stage.appendChild(TAKES[cur].r()); if(window.GVIcons) window.GVIcons.render(stage); }
+
+  const sw=el('<div class="v2-switch"><span class="v2-switch__cap"></span><div class="v2-switch__dots">'+TAKES.map((t,i)=>'<button class="v2-switch__btn" data-go="'+i+'" title="'+t.tag+'">'+(i+1)+'</button>').join('')+'</div></div>');
+  document.body.appendChild(sw);
+  function mount(i){ cur=i; t1open=null; t2sel=['submit']; t4act='submit'; t5act='submit'; render(); sw.querySelectorAll('.v2-switch__btn').forEach((b,j)=>b.classList.toggle('on',j===i)); sw.querySelector('.v2-switch__cap').textContent=(i+1)+'/'+TAKES.length+' · '+TAKES[i].tag; }
+  sw.addEventListener('click',e=>{ const b=e.target.closest('[data-go]'); if(b) mount(+b.dataset.go); });
+
+  // sub-tab switching in the frame
+  document.querySelectorAll('#subtabs .gv-bo-tab').forEach(t=>{ t.addEventListener('click',e=>{ e.preventDefault();
+    document.querySelectorAll('#subtabs .gv-bo-tab').forEach(x=>x.classList.remove('is-active')); t.classList.add('is-active');
+    const isAccess=t.dataset.sub==='access';
+    document.querySelector('[data-sub="access"]').classList.toggle('is-active', isAccess);
+    document.querySelector('[data-sub="other"]').classList.toggle('is-active', !isAccess);
+  }); });
+
+  mount(0);
+})();
+</script>
+</body>
+</html>
