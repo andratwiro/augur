@@ -1973,6 +1973,20 @@
   .gv-issuefeed.is-feed .gv-issuefeed__tags svg { width: 20px; height: 20px; }
 }
 
+/* PAGE FIX 19/32 — standalone issue-canvas mobile CTA placement.
+   Grounded on fo-perspectives-feed-m (390×844): the real mobile Perspectives view
+   pins the dark "Add an idea" CTA to the TOP-RIGHT of the near-full-bleed canvas
+   (not bottom-right as on desktop). The full-page .is-feed variant already handles
+   this with its own fixed top bar (.gv-issuefeed__mtop) and HIDES .gv-issuecanvas__add
+   on mobile — so this rule is scoped to the BASE standalone canvas only
+   (:not(.is-feed)) so the page variant is untouched. Layout-only: re-pins the
+   floating CTA to top-right under the mobile breakpoint. */
+@media (max-width: 860px) {
+  .gv-issuecanvas:not(.is-feed) .gv-issuecanvas__add {
+    top: 16px; right: 16px; bottom: auto;
+  }
+}
+
 /* ── Homepage "We want to hear from you" featured 3-up spotlight row ──────────
    Source-grounded on wietsedemo /en (capture fo-homepage-featured-row): a row of
    large, image-led featured project cards that sit ABOVE the regular project grid,

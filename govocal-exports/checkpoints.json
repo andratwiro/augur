@@ -1091,6 +1091,24 @@
       ]
     },
     {
+      "id": "issue-canvas/sticky-card",
+      "built": "components/issue-canvas/index.html",
+      "against": "fo-perspectives-feed",
+      "map": {
+        "[data-cy=e2e-sticky-note]": ".gv-sticky.is-raised"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "border-radius",
+        "padding",
+        "width"
+      ],
+      "uses": [
+        ".gv-sticky"
+      ]
+    },
+    {
       "id": "fo-perspectives-entry/view-toggle",
       "built": "pages/perspectives-entry/index.html",
       "against": "fo-perspectives-entry",
