@@ -98,10 +98,13 @@ body.gv-root {
    bg #fff, dark text, 6px 12px. Distinct from .white (which carries a shadow). */
 .gv-btn.on-color         { background: #fff; color: var(--gv-text-primary); padding: 6px 12px; }
 .gv-btn.on-color:hover   { background: var(--gv-grey-100); }
-/* Volunteer sign-up button — fills with the TENANT primary and uses the real,
-   intentional dark text (rgba(0,0,0,.87)). #08833A on the live capture is the
-   Raleigh tenant primary, NOT a fixed green, so it re-themes via the token. */
-.gv-btn.volunteer        { background: var(--gv-tenant-primary); color: rgba(0,0,0,.87); padding: 6px 12px; font-size: var(--gv-fs-s); line-height: 16.1px; }
+/* Volunteer cause CTA ("I want to participate") — fills with the TENANT primary
+   and uses the real dark label (rgb(30,30,30) = --gv-text-heading-strong). Grounded
+   on the live cause button (.sc-elIugc .button.primary): padding 9px 18px, 14px,
+   line-height 16.1px, 3px radius. The bg #08833A on the live capture is that
+   tenant's primary, NOT a fixed green, so it re-themes via the token. Distinct from
+   the 39px header Unfollow/Volunteer button which is the SAME class in the source. */
+.gv-btn.volunteer        { background: var(--gv-tenant-primary); color: var(--gv-text-heading-strong); padding: 9px 18px; font-size: var(--gv-fs-s); line-height: 16.1px; }
 .gv-btn.volunteer:hover  { filter: brightness(0.93); }
 .gv-btn.volunteer.is-in  { background: #fff; color: var(--gv-text-secondary); border-color: var(--gv-cool-grey-500); }
 
