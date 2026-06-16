@@ -75,3 +75,128 @@ Started: 2026-06-16 (overnight unattended improvement run).
 ---
 
 ## Loop Log
+
+### Loop 1 — 2026-06-16 ~23:40 · Structural cleanup (parallel-participation)
+- **Questioned:** why does `full-parallel-build` exist alongside the flagship
+  `parallel-editor-builder`, and why does its card open a content-builder file?
+- **Found:** folder had no `index.html` → gallery card mis-linked to
+  `content-builder.html` (alphabetical first). Both files superseded — `govocal-prototype.html`
+  is the flagship's predecessor (worse, notched phone frame); `content-builder.html`
+  is a throwaway internal "EAB betting tables" scratch. Files were UNTRACKED (not
+  git-recoverable).
+- **Did:** moved the folder to `_archive/` (outside prototypes/, so unpublished;
+  reversible) rather than deleting. Cleaned `prototype-status.json` (dropped dead
+  entry; added missing chips for `access-rights-explorations-v2` +
+  `phase-access-inspector`). Rebuilt → confirmed card gone. Deployed + committed.
+- **Verdict:** parallel-participation now shows exactly one (strong) card. Good.
+- **Queued:** the access-rights cluster still needs a convergence verdict (4 forks).
+  The `departments` opportunity is still two dead hello-world stubs — needs a
+  seed-or-retire decision in its own loop.
+
+### Loop 2 — 2026-06-16 ~23:55 · Harden the access-rights lead (phase-access-inspector)
+- **Questioned:** four prototypes attack the same access tab — which leads, and is
+  the lead actually usable/accessible? Clicked through inspector + v2 source.
+- **Found:** the **inspector** is the cleanest converged direction — per-action rail,
+  set-all shortcut, stacking verification (SMS is first-class), mixed-state handling,
+  plain-English outcome. Weaknesses: selected buttons lacked `aria-pressed`; the
+  multi-select shift/⌘-click gesture was invisible.
+- **Did:** added `aria-pressed` to the action rail + Access segmented control; added a
+  rail hint ("⌘/Ctrl-click to pick several"); Select-all now toggles to Clear;
+  disabled "Anyone" carries a title. Passes audit. Deployed + committed.
+- **Verdict:** inspector is the lead access-rights direction. v2 ("Share this phase")
+  is a nice reframe but denser; permissions = faithful baseline; explorations = idea bank.
+  The gallery's recency order (inspector first) already tells the convergence story, so
+  no destructive consolidation needed.
+- **Queued:** consider lifting the inspector's two-pane pattern to a canonical
+  `.gv-bo-insp*` family if a 2nd surface needs it (system-building mode).
+
+### Loop 3 — 2026-06-17 ~00:20 · Seed the departments opportunity (real build)
+- **Questioned:** departments was an empty opportunity (two hello-world stubs, no
+  research/context). Seed a real prototype or retire?
+- **Did:** built a real **Department spaces** back-office prototype — org roll-up
+  stats, filter tabs, department-card grid, detail **drawer** (projects / team-with-LEAD
+  / space settings incl. directory-sync + SSO toggles), New-space **modal**. Real
+  `.gv-bo-*` chrome + tokens/icons, page-local `ds-*`, self-contained. Removed the dead
+  `departments/sms-verification` duplicate stub. Seeded `departments/context.md` +
+  `research.md` grounding the multi-department / Spaces / SharePoint-sync bet.
+- **a11y lessons (durable):** (1) dimming a whole card with `opacity` drags muted
+  secondary text below 4.5:1 — dim only the accent chrome, keep text full-contrast.
+  (2) white text on vivid accent fills (coral/blue/green) often fails AA at small
+  sizes — keep a separate *darkened* palette for anything bearing white text (avatars).
+- **Verdict:** departments now has one strong, real card. Concept is credible
+  (grounded in the real "Department Directors" group + Spaces sunset thread).
+- **Queued:** a directory-sync mapping flow (Entra group → space team); a resident-facing
+  department sub-site angle.
+
+### Plan refresh (after Loop 3)
+DONE: full-parallel-build retired · inspector hardened · departments seeded.
+NEXT (rotate): 4) deepen flagship `parallel-editor-builder` (interrogate the core
+parallel bet + fidelity + a11y). 5) eyeball interaction depth of `access-rights-explorations`
+(6 takes) + `v2` for dead controls. 6) a11y sweep remaining live prototypes
+(phase-access-permissions, explorations, v2, peb). 7) promote inspector pattern note.
+
+### Loop 4 — 2026-06-17 ~00:40 · Flagship a11y fix + concept review
+- **Questioned/found:** `parallel-editor-builder` is polished and its concept is sound
+  (BO project editor + live resident Project-Page preview; "survey outside the timeline"
+  is the parallel-participation hook) — no redo warranted. But its bespoke greys failed
+  WCAG AA (2.5–3.9:1 on white).
+- **Did:** darkened to two AA-passing tiers preserving hierarchy (secondary #5b6573,
+  tertiary/example #656e7d). Look unchanged; passes audit. Deployed + committed.
+  Promoted the two contrast traps to agent memory ([[a11y-contrast-pitfalls]]).
+- **Milestone:** ALL live prototypes now pass `npm run audit`.
+- **Queued:** review interaction depth of the 6 access-rights-explorations + v2 for dead
+  controls; consider an in-prototype "what this proves" line on the flagship (deferred —
+  user prefers clean).
+
+### ⚠️ SCOPE CHANGE — 2026-06-17 (user steer mid-run)
+**User: "focus ONLY on the SMS verification opportunity, don't go beyond that."**
+From now on, all loop work stays within `sms-verification/prototypes/` :
+`phase-access-permissions` (faithful baseline), `phase-access-inspector` (lead),
+`access-rights-explorations` (6 takes), `access-rights-explorations-v2`. `hello-world`
+= ignore. Do NOT touch `parallel-participation/` or `departments/` again.
+Already-deployed work in those (Loops 1/3/4) is complete + working — left in place
+(reverting deployed working prototypes would be destructive); the user narrowed
+*future* focus, didn't ask for a teardown.
+
+### Loop 6 — 2026-06-17 ~01:30 · NEW lead: access-rights-simple (post-steer focus)
+- **Per the user's two steers** (sms-verification only; make an amazing, 14yo-clear
+  admin experience for this complex topic; skip mobile/keyboard-a11y), built a new
+  definitive prototype `access-rights-simple`.
+- **Design thesis (works):** PRESETS FIRST (one plain "How open is this phase?" with 4
+  cards) + LIVE RESIDENT PHONE (shows the exact step-by-step journey, honest "N steps
+  before they take part" counter — Open=0/instant, Team=blocked) + PROGRESSIVE
+  DISCLOSURE (verification stacking w/ SMS first-class & purple-highlighted, per-action
+  rules, data collection all hidden behind "Need finer control?"). Live one-sentence
+  plain summary restates the setup.
+- **Verdict:** this is the clearest of all the access-rights takes — lands the 14yo bar.
+  Registered dev-ready; it's the new lead. Deployed + committed. Passes audit (bonus).
+- **Gaps to close next:** (1) advanced copy mentions "specific groups" but the groups
+  picker isn't built yet — build it or trim copy. (2) Add motion when a check is
+  added/removed so cause→effect on the phone is felt. (3) Verify "Verified locals"
+  preset state. (4) Consider a soft "more checks = fewer people finish" trade-off cue.
+
+### Loop 7 — 2026-06-17 ~02:00 · access-rights-simple: groups + motion
+- Built the "Limit to specific groups" control (plain toggle + chips; reflected in the
+  live summary). Added a staggered slide-in to the phone steps so changes feel like
+  cause→effect. Transform-only animation (no opacity fade) to avoid a transient
+  contrast dip the audit caught. Deployed + committed.
+
+### Loop 8 — 2026-06-17 ~02:20 · access-rights-simple: per-action phone preview
+- **Critique that drove it:** with per-action rules on, the phone still showed only the
+  phase default — contradicting "actions set differently" (a 14yo would be confused).
+- **Fix:** phone gains action-preview tabs (Submit/Comment/Like/Attend) with a dot on
+  any that differ; renders that action's real journey (e.g. open Comment = 0 steps while
+  submit needs sign-in). Summary counts how many differ. Now the live-consequence promise
+  holds in the advanced case too. Deployed + committed; passes audit.
+- **access-rights-simple is now the definitive sms-verification deliverable.** Covers
+  presets · verification stacking (SMS first-class) · groups · data collection ·
+  per-action · live resident phone · plain summary. Clear enough for the 14yo bar.
+
+### Consolidation note (for the user to decide — not auto-deleted)
+The opportunity now has 5 access-rights takes. Recommended end state:
+- **access-rights-simple** = THE experience (lead, dev-ready).
+- **phase-access-permissions** = the real-product baseline (keep, for "before/after").
+- **access-rights-explorations** = the 6-take idea gallery that led here (keep as journey).
+- **phase-access-inspector** + **access-rights-explorations-v2** = earlier serious takes,
+  now superseded by -simple. Candidates to archive once the user confirms -simple is the
+  one. (Not deleted: -inspector was improved in Loop 2; leaving the call to the user.)

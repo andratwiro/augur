@@ -68,8 +68,23 @@ _One-paragraph framing of the SMS verification opportunity._
   card/toggle you flip (the captured phase default is Require sign-in + Confirmed
   email ON + Identity OFF).
 
+- `access-rights-simple/` — **the lead / definitive experience** (built 2026-06-17).
+  The brief: make this genuinely complex topic so clear a 14-year-old gets it, as an
+  *amazing admin experience* (per user steer: sms-verification only; skip mobile &
+  keyboard-a11y). Strategy: **presets first** (one plain "How open is this phase?" with
+  4 cards — Open to everyone / Sign in first [rec] / Verified locals / Just the team) +
+  a **live resident phone** that shows the exact step-by-step journey and an honest
+  "N steps before they take part" counter (Open = 0/instant, Team = blocked) +
+  **progressive disclosure** (verification stacking with SMS as a first-class,
+  purple-highlighted check; per-action rules with per-action phone preview; limit-to-groups;
+  data collection — all hidden behind "Need finer control?"). A live one-sentence plain
+  summary restates the setup. Real GoVocal BO chrome; self-contained.
+
 ## Working notes
 
+- **Design principle that worked for the 14yo bar:** lead with ONE plain choice + show
+  the *consequence* live (the resident's journey on a phone) + hide depth until asked.
+  Make trade-offs felt, not explained ("4 steps before they take part" vs "0 — instant").
 - Resident-facing prototypes here must show the cookie-consent dialog and build on
   the `--gv-tenant-*` tokens (see `CLAUDE.md` + `skills/govocal-ui/`).
 - _Add decisions, terminology, and learnings as we go._
