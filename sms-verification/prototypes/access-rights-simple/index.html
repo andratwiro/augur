@@ -140,6 +140,8 @@
     .ar-phonewrap { position: sticky; top: 16px; }
     .ar-phonecap { font-size: 12px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--gv-cool-grey-600, #5a6b7a); margin: 0 0 10px; display: flex; align-items: center; gap: 7px; }
     .ar-phonecap .gv-icon { width: 15px; height: 15px; }
+    .ar-phonefoot { display: flex; align-items: center; gap: 6px; justify-content: center; margin: 12px 0 0; font-size: 11.5px; color: var(--gv-cool-grey-700, #51606b); }
+    .ar-phonefoot .gv-icon { width: 13px; height: 13px; color: var(--gv-green-600, #1a7a3f); }
     /* per-action preview tabs (only shown when per-action rules are on) */
     .ar-ptabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
     .ar-ptab { font: 600 12px var(--gv-font-family); border: 1px solid var(--gv-grey-300); background: #fff; color: var(--gv-cool-grey-700, #51606b); border-radius: 20px; padding: 5px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
@@ -282,6 +284,7 @@
               <div class="ar-phonewrap">
                 <div class="ar-phonecap"><span class="gv-icon" data-gv-icon="eye"></span> What a resident sees</div>
                 <div class="ar-phone"><div class="ar-phone__scr" id="phone"></div></div>
+                <div class="ar-phonefoot"><span class="gv-icon" data-gv-icon="check-circle"></span> Live preview — updates instantly as you change the rules.</div>
               </div>
             </div>
           </div>
