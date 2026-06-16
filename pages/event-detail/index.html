@@ -17,8 +17,10 @@
     govocal-exports/fo-event-detail, Cultuurconnect tenant). Anatomy:
     header → neutral grey "Go back" text link (cool-grey label + filled grey
     circle-arrow) → two-column body:
-      • main: "From <project>" eyebrow + "Go to the project" link + event H1
-        (30px/700) + rich-text .gv-prose description (no cover photo)
+      • main: OPTIONAL full-width event banner IMAGE (real GoVocal events carry an
+        image via the useEventImage hook — og:image is 1440×360, a 4:1 banner that
+        sits above the title; this event HAS one) + "From <project>" eyebrow +
+        "Go to the project" link + event H1 (30px/700) + rich-text .gv-prose desc
       • side (350px): TWO-LAYER date card — a grey app-canvas panel (#EDEFF0, 20px)
         wrapping an elevated WHITE inner card (the centered day 34px / month / time
         stack), then a hairline divider + calendar meta row + "Add to calendar" text
@@ -31,6 +33,13 @@
     /* Page-level layout only — all colour/elevation/type lives in canonical CSS. */
     body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
     .eventdetail-backbar { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 20px 24px 0; }
+    /* Event banner image — full-width 4:1 cover above the title, grounded on the real
+       GoVocal event image (og:image 1440×360). Page-local layout only: ratio + crop +
+       radius via the canonical --gv-radius token; no colour/type. (No canonical
+       .gv-eventdetail image atom exists yet — see report.) */
+    .eventdetail-banner { margin: 0 0 24px; border-radius: var(--gv-radius); overflow: hidden;
+      aspect-ratio: 4 / 1; background: var(--gv-grey-300); }
+    .eventdetail-banner img { display: block; width: 100%; height: 100%; object-fit: cover; }
   </style>
 </head>
 <body class="gv-root" data-auth="in">
@@ -156,10 +165,16 @@
 
   <main id="main-content" class="gv-eventdetail">
 
-    <!-- ════ Main column: eyebrow · project link · title · description ════
-         (Per the captured skeleton: no cover photo — the title sits at the top of a
-          sparse main column.) -->
+    <!-- ════ Main column: banner image · eyebrow · project link · title · description ════
+         Real GoVocal events carry an image (useEventImage); when present it renders as a
+         full-width banner (4:1, matching the live og:image 1440×360) at the top of the main
+         column, above the eyebrow/title. This event has one — reusing the Station Road walk
+         photo (same event as the matching /events card). -->
     <div class="gv-eventdetail__main">
+
+      <figure class="eventdetail-banner">
+        <img src="img/event-walk.webp" alt="Residents gathered outdoors on Station Road to view the plans" />
+      </figure>
 
       <p class="gv-eventdetail__from">From "The future of Station Road"</p>
       <a class="gv-eventdetail__projlink" href="#">
