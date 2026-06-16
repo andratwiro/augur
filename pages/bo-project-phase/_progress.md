@@ -287,3 +287,45 @@ open items)
 - Open: if a future tenant has the Konveio add-on, capture `document_annotation` Setup (one
   PDF/phase) and add an 8th picker card + a doc-annotation Setup panel. NOT buildable now
   without the add-on (would be fabrication).
+
+### Pass 9 — Phase access (PRIORITY, DONE 2026-06-16) — biggest fidelity gain
+- **NEW CAPTURES:** `r2-access-rights` (collapsed, confirmed title + 4 accordion rows) and
+  **`r2-access-expanded`** — captured with `--click "text=Who can submit inputs?" --settle 2800
+  --viewport 1440x2200` to expand the accordion and reveal the FULL real UI (the SPA lazy-loads
+  it). This single screen turned out to cover BOTH Pass 9 (auth) AND Pass 10 (user data).
+- **Real expanded "Who can submit inputs?" structure (measured + copy verbatim):**
+  1. Toggle **"Admins and collaborators only"** (i) — the admins-only escape hatch.
+  2. **Authentication** heading + AUTH-FLOW CARDS (NOT radios as I previously had): **None**
+     [NEW badge] ("Anyone can participate without signing up or logging in.") · **Email
+     confirmation** ("...confirm their email with a one-time code.") · **Account creation**
+     [selected] ("...create a full account with their name, confirmed email and password.").
+     Only 3 cards on this tenant — **no SSO/verification card** (SSO needs Support setup).
+  3. **Restrict participation to user group(s)** — "Select group(s)" dropdown + "Customize
+     error message" input (i).
+  4. **Demographic questions asked to users** + green **Add a question** btn; radios "Ask
+     demographic questions before user participates" [sel] / "Collect demographic questions by
+     adding a new page to the end of the form"; question rows (Place of residence / Year of
+     birth / Commuting Method, each "Optional · Enabled in global registration flow" + Edit +
+     delete) with drag handles.
+  5. A 4-step participant-flow preview: 1 Enter your email · 2 Confirm your email · 3 Enter
+     name, last name, and password · 4 Complete the demographic questions above · ✓.
+- **MEASURED auth-card values (digest entry 11, NOT eyeballed):** selected card = `1px solid
+  rgb(2,35,49)` = **`--gv-blue-700`** on `rgb(237,248,250)` = **`--gv-teal-50`**, radius 3px,
+  pad 16px. Both already tokens — mapped, not hardcoded.
+- **BUILD:** replaced the old 4-radio accordion bodies with the real UI. Added page-local
+  `.pp-auth*`/`.pp-restrict`/`.pp-demo*`/`.pp-flow*` CSS (all values via `--gv-*` tokens; only
+  this page consumes it — PROMOTE to a `.gv-bo-authcard` primitive when a 2nd consumer lands).
+  Submit row gets the full UI; comment/react rows get the auth-card row (admins-toggle +
+  3 cards). Auth cards single-select via JS (mirrors method-card binding). The NEW badge uses
+  canonical `.gv-bo-typebadge.is-type`; green Add-a-question uses `.gv-btn.success`.
+- VERIFY: `lint` 0; screenshot eyeballed — near-exact match to `r2-access-expanded/viewport.png`
+  (toggle, 3 auth cards w/ correct selected styling, group-restrict, demographic block,
+  flow stepper); `verify:all` **130 green · 1 red UNCHANGED** (page-local + page-HTML only, no
+  canonical edit).
+- RECHECK: surveyresults + poll panels (adjacent sub-tabs) intact.
+- Checkpoints: **deferred** — the auth cards' only stable selector is a hashed styled-component
+  class (`div.sc-beqWaB.bhxslC`), too brittle for a durable harden-point; build is
+  digest-grounded (entry 11) + eyeball-verified per the discovery-phase agreement. Revisit if
+  GoVocal adds an `e2e-`/`data-testid` hook.
+- Pass 10 (user data) is now LARGELY DONE here — the demographic-tier UI lives in this same
+  accordion. Pass 10 will add the explicit 3-tier framing + registration-fields cross-ref.

@@ -61,6 +61,44 @@
     .pp-emailrow .gv-bo-listrow__title { font-size: var(--gv-fs-base); font-weight: 400; }
     .pp-emailrow .gv-bo-listrow__sub .dot { color: var(--gv-divider); }
     /* Input-importer rows: reuse .gv-bo-importcard (govocal-bo.css). */
+
+    /* ── Phase-access: authentication selection cards ────────────────────────
+       Real "Who can submit?" expands to a row of auth-flow cards (None / Email
+       confirmation / Account creation). Measured r2-access-expanded: selected
+       card = 1px solid --gv-blue-700 (#022331) on --gv-teal-50 (#EDF8FA), 3px,
+       16px pad; unselected = 1px --gv-divider on #fff. Page-local for now (only
+       this page consumes it; promote to a .gv-bo-* primitive when a 2nd lands). */
+    .pp-authgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 10px 0 4px; }
+    .pp-authcard {
+      text-align: left; cursor: pointer; padding: 16px;
+      background: #fff; border: 1px solid var(--gv-divider); border-radius: var(--gv-radius);
+      display: flex; flex-direction: column; gap: 8px; font: inherit;
+    }
+    .pp-authcard.is-selected { border-color: var(--gv-blue-700); background: var(--gv-teal-50); }
+    .pp-authcard__icon { width: 26px; height: 26px; color: var(--gv-teal-400); }
+    .pp-authcard__title { font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-bo-primary); display: flex; align-items: center; gap: 6px; }
+    .pp-authcard__desc { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); line-height: 18px; }
+    .pp-adminsonly { display: flex; align-items: center; gap: 10px; margin: 4px 0 18px; }
+    .pp-adminsonly__label { font-size: var(--gv-fs-base); color: var(--gv-bo-primary); display: flex; align-items: center; gap: 6px; }
+    .pp-authsub { font-size: var(--gv-fs-base); font-weight: 500; color: var(--gv-bo-primary); margin: 18px 0 4px; }
+
+    /* group-restrict + demographic block */
+    .pp-restrict { display: flex; flex-direction: column; gap: 8px; max-width: 420px; margin: 16px 0 8px; }
+    .pp-demohead { display: flex; align-items: center; gap: 12px; margin: 22px 0 10px; }
+    .pp-demohead__title { font-size: var(--gv-fs-base); font-weight: 500; color: var(--gv-bo-primary); display: flex; align-items: center; gap: 6px; }
+    .pp-demorow .gv-bo-listrow__title { font-size: var(--gv-fs-base); font-weight: 400; }
+    .pp-demorow .gv-bo-listrow__sub { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
+
+    /* the 4-step auth flow stepper at the bottom of an expanded action */
+    .pp-flow { display: flex; align-items: stretch; gap: 8px; margin: 18px 0 6px; flex-wrap: wrap; }
+    .pp-flow__step {
+      flex: 1 1 0; min-width: 150px; padding: 12px 14px;
+      background: var(--gv-teal-50); border: 1px solid var(--gv-teal-100); border-radius: var(--gv-radius);
+      font-size: var(--gv-fs-s); color: var(--gv-bo-primary);
+    }
+    .pp-flow__num { font-weight: 700; display: block; margin-bottom: 4px; }
+    .pp-flow__done { align-self: center; width: 34px; height: 34px; flex: none; display: grid; place-items: center;
+      border: 2px solid var(--gv-green-500); border-radius: 50%; color: var(--gv-green-500); }
 </style>
 </head>
 <body class="gv-bo">
@@ -710,12 +748,61 @@
                   <span class="gv-bo-accordion__chev gv-icon" data-gv-icon="chevron-right"></span>
                 </button>
                 <div class="gv-bo-accordion__body">
-                  <label class="gv-bo-qlabel" style="margin-top:0">Who can perform this action?</label>
-                  <label class="gv-radio"><input type="radio" name="acc-submit"><span class="circle"></span>Administrators and project managers</label><br>
-                  <label class="gv-radio"><input type="radio" name="acc-submit" checked><span class="circle"></span>Anyone, including unregistered users</label><br>
-                  <label class="gv-radio"><input type="radio" name="acc-submit"><span class="circle"></span>Anyone who confirms their email</label><br>
-                  <label class="gv-radio"><input type="radio" name="acc-submit"><span class="circle"></span>Anyone with an account</label><br>
-                  <label class="gv-radio"><input type="radio" name="acc-submit"><span class="circle"></span>Anyone who verifies their identity (SSO)</label>
+                  <!-- Admins-only escape hatch -->
+                  <div class="pp-adminsonly">
+                    <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+                    <span class="pp-adminsonly__label">Admins and collaborators only <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></span>
+                  </div>
+
+                  <!-- Authentication flow (cards, not radios) -->
+                  <p class="pp-authsub" style="margin-top:0">Authentication</p>
+                  <div class="pp-authgrid">
+                    <button class="pp-authcard"><span class="pp-authcard__icon gv-icon" data-gv-icon="user"></span><span class="pp-authcard__title">None <span class="gv-bo-typebadge is-type">NEW</span></span><span class="pp-authcard__desc">Anyone can participate without signing up or logging in.</span></button>
+                    <button class="pp-authcard"><span class="pp-authcard__icon gv-icon" data-gv-icon="email"></span><span class="pp-authcard__title">Email confirmation</span><span class="pp-authcard__desc">Participants need to confirm their email with a one-time code.</span></button>
+                    <button class="pp-authcard is-selected"><span class="pp-authcard__icon gv-icon" data-gv-icon="user"></span><span class="pp-authcard__title">Account creation</span><span class="pp-authcard__desc">Participants need to create a full account with their name, confirmed email and password.</span></button>
+                  </div>
+
+                  <!-- Restrict to user groups -->
+                  <p class="pp-authsub">Restrict participation to user group(s)</p>
+                  <div class="pp-restrict">
+                    <select class="gv-bo-select"><option value="" disabled selected>Select group(s)</option><option>Residents</option><option>Verified residents</option><option>Newsletter subscribers</option></select>
+                    <div style="display:flex;align-items:center;gap:6px"><input class="gv-input" type="text" placeholder="Customize error message" style="flex:1"><span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></div>
+                  </div>
+
+                  <!-- Demographic questions (user-data tier — Pass 10 content lives here) -->
+                  <div class="pp-demohead">
+                    <span class="pp-demohead__title">Demographic questions asked to users <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></span>
+                    <button class="gv-btn success size-s"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add a question</span></button>
+                  </div>
+                  <label class="gv-radio"><input type="radio" name="acc-demo" checked><span class="circle"></span>Ask demographic questions before user participates <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></label><br>
+                  <label class="gv-radio"><input type="radio" name="acc-demo"><span class="circle"></span>Collect demographic questions by adding a new page to the end of the form <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></label>
+
+                  <div style="margin-top:14px">
+                    <div class="gv-bo-listrow pp-demorow">
+                      <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="drag-handle" aria-hidden="true"></span>
+                      <div class="gv-bo-listrow__main"><p class="gv-bo-listrow__title">Place of residence</p><div class="gv-bo-listrow__sub">Optional · Enabled in global registration flow <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></div></div>
+                      <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button><button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span></button></div>
+                    </div>
+                    <div class="gv-bo-listrow pp-demorow">
+                      <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="drag-handle" aria-hidden="true"></span>
+                      <div class="gv-bo-listrow__main"><p class="gv-bo-listrow__title">Year of birth</p><div class="gv-bo-listrow__sub">Optional · Enabled in global registration flow <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></div></div>
+                      <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button><button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span></button></div>
+                    </div>
+                    <div class="gv-bo-listrow pp-demorow">
+                      <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="drag-handle" aria-hidden="true"></span>
+                      <div class="gv-bo-listrow__main"><p class="gv-bo-listrow__title">Commuting Method</p><div class="gv-bo-listrow__sub">Optional · Enabled in global registration flow <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></div></div>
+                      <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined size-s"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button><button class="gv-btn admin-dark-text size-s"><span data-gv-icon="delete"></span></button></div>
+                    </div>
+                  </div>
+
+                  <!-- Resulting participant flow preview -->
+                  <div class="pp-flow">
+                    <div class="pp-flow__step"><span class="pp-flow__num">1</span>Enter your email</div>
+                    <div class="pp-flow__step"><span class="pp-flow__num">2</span>Confirm your email</div>
+                    <div class="pp-flow__step"><span class="pp-flow__num">3</span>Enter name, last name, and password</div>
+                    <div class="pp-flow__step"><span class="pp-flow__num">4</span>Complete the demographic questions above</div>
+                    <span class="pp-flow__done gv-icon" data-gv-icon="check"></span>
+                  </div>
                 </div>
               </div>
               <div class="gv-bo-accordion__row">
@@ -724,10 +811,16 @@
                   <span class="gv-bo-accordion__chev gv-icon" data-gv-icon="chevron-right"></span>
                 </button>
                 <div class="gv-bo-accordion__body" hidden>
-                  <label class="gv-bo-qlabel" style="margin-top:0">Who can perform this action?</label>
-                  <label class="gv-radio"><input type="radio" name="acc-comment"><span class="circle"></span>Administrators and project managers</label><br>
-                  <label class="gv-radio"><input type="radio" name="acc-comment" checked><span class="circle"></span>Anyone with an account</label><br>
-                  <label class="gv-radio"><input type="radio" name="acc-comment"><span class="circle"></span>Anyone who verifies their identity (SSO)</label>
+                  <div class="pp-adminsonly">
+                    <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+                    <span class="pp-adminsonly__label">Admins and collaborators only <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></span>
+                  </div>
+                  <p class="pp-authsub" style="margin-top:0">Authentication</p>
+                  <div class="pp-authgrid">
+                    <button class="pp-authcard"><span class="pp-authcard__icon gv-icon" data-gv-icon="user"></span><span class="pp-authcard__title">None <span class="gv-bo-typebadge is-type">NEW</span></span><span class="pp-authcard__desc">Anyone can participate without signing up or logging in.</span></button>
+                    <button class="pp-authcard"><span class="pp-authcard__icon gv-icon" data-gv-icon="email"></span><span class="pp-authcard__title">Email confirmation</span><span class="pp-authcard__desc">Participants need to confirm their email with a one-time code.</span></button>
+                    <button class="pp-authcard is-selected"><span class="pp-authcard__icon gv-icon" data-gv-icon="user"></span><span class="pp-authcard__title">Account creation</span><span class="pp-authcard__desc">Participants need to create a full account with their name, confirmed email and password.</span></button>
+                  </div>
                 </div>
               </div>
               <div class="gv-bo-accordion__row">
@@ -736,10 +829,16 @@
                   <span class="gv-bo-accordion__chev gv-icon" data-gv-icon="chevron-right"></span>
                 </button>
                 <div class="gv-bo-accordion__body" hidden>
-                  <label class="gv-bo-qlabel" style="margin-top:0">Who can perform this action?</label>
-                  <label class="gv-radio"><input type="radio" name="acc-react"><span class="circle"></span>Administrators and project managers</label><br>
-                  <label class="gv-radio"><input type="radio" name="acc-react" checked><span class="circle"></span>Anyone with an account</label><br>
-                  <label class="gv-radio"><input type="radio" name="acc-react"><span class="circle"></span>Anyone who verifies their identity (SSO)</label>
+                  <div class="pp-adminsonly">
+                    <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+                    <span class="pp-adminsonly__label">Admins and collaborators only <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></span>
+                  </div>
+                  <p class="pp-authsub" style="margin-top:0">Authentication</p>
+                  <div class="pp-authgrid">
+                    <button class="pp-authcard"><span class="pp-authcard__icon gv-icon" data-gv-icon="user"></span><span class="pp-authcard__title">None <span class="gv-bo-typebadge is-type">NEW</span></span><span class="pp-authcard__desc">Anyone can participate without signing up or logging in.</span></button>
+                    <button class="pp-authcard"><span class="pp-authcard__icon gv-icon" data-gv-icon="email"></span><span class="pp-authcard__title">Email confirmation</span><span class="pp-authcard__desc">Participants need to confirm their email with a one-time code.</span></button>
+                    <button class="pp-authcard is-selected"><span class="pp-authcard__icon gv-icon" data-gv-icon="user"></span><span class="pp-authcard__title">Account creation</span><span class="pp-authcard__desc">Participants need to create a full account with their name, confirmed email and password.</span></button>
+                  </div>
                 </div>
               </div>
               <div class="gv-bo-accordion__row">
@@ -1380,6 +1479,14 @@
       // re-bind single-select within this freshly built grid
       grid.querySelectorAll(".gv-bo-methodcard").forEach(c => c.addEventListener("click", () => {
         grid.querySelectorAll(".gv-bo-methodcard").forEach(x => x.classList.remove("is-selected"));
+        c.classList.add("is-selected");
+      }));
+    });
+
+    // ── Phase-access authentication cards: single-select within each grid ──
+    document.querySelectorAll(".pp-authgrid").forEach(grid => {
+      grid.querySelectorAll(".pp-authcard").forEach(c => c.addEventListener("click", () => {
+        grid.querySelectorAll(".pp-authcard").forEach(x => x.classList.remove("is-selected"));
         c.classList.add("is-selected");
       }));
     });
