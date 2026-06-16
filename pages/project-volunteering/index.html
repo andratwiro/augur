@@ -10,11 +10,14 @@
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
   <!--
-    Reference rebuild — VOLUNTEERING method panel body. Source: fo-project-volunteering
-    (City of Ostend "Showroom"). The cause cards (.gv-cause) and the green sign-up
-    button (.gv-btn.volunteer, dark text — faithful, lower-contrast product treatment)
-    are canonical. The panel runs full method-band width (.gv-phasebody--full).
-    Picker OFF (Pages rule).
+    Reference rebuild — single-phase VOLUNTEERING project. Source: fo-project-volunteering
+    (City of Raleigh "Showroom"). Top-to-bottom skeleton matches the live page:
+    "Back to folder" breadcrumb → project hero (h1 + description + participants + Unfollow)
+    → green participation band ("Open for participation" + Volunteer CTA) → cause cards on
+    the grey band. A single-phase volunteering project renders NO timeline/stepper/phase-panel
+    head (the stepper is suppressed); causes sit directly on the grey band as a .gv-idealist.
+    Cause cards (.gv-cause) + the green sign-up button (.gv-btn.volunteer, dark text — faithful
+    lower-contrast product treatment) are canonical. Picker OFF (Pages rule).
   -->
   <style>
     body { margin: 0; background: #fff; }
@@ -43,36 +46,62 @@
 
   <main id="e2e-project-page">
 
-    <!-- Method band: phase timeline + VOLUNTEERING panel body -->
-    <div class="gv-methodband">
+   <!-- ════════ Back-to-folder breadcrumb (live: text button + arrow-left) ════════ -->
+   <div class="gv-wrap">
+     <button class="gv-backlink" type="button"><span data-gv-icon="arrow-left" aria-hidden="true"></span>Back to folder</button>
+   </div>
+
+   <!-- ════════ White project hero — h1 + description (left) · admin/CTA + participants (right) ════════
+        Reuses the proven .gv-surveyhead grid (project-survey). Single-phase project, so the title
+        block carries the whole project context (no separate banner module on this reference). -->
+   <div class="gv-surveyhead">
+    <div class="gv-wrap gv-surveyhead__grid">
+      <div class="gv-surveyhead__main">
+        <h1 class="gv-title h1" style="margin:0 0 16px;">Tree-planting volunteers</h1>
+        <div class="gv-projdesc">
+          <p>Are you itching to help green the streets of Westmere? Across the city there are causes that need volunteers — from planting young trees on Station Road to keeping the harbour and riverside paths clear. Pick a cause below, read what's involved, and sign up.</p>
+          <p>Every cause is run with a local team. We supply the tools and a friendly welcome; you bring sturdy boots and a few hours of your time.</p>
+        </div>
+      </div>
+
+      <div class="gv-surveyhead__action">
+        <div class="gv-surveyhead__admin">
+          <a class="gv-btn primary-outlined size-s" href="#"><span data-gv-icon="edit" aria-hidden="true"></span> Edit project</a>
+          <a class="gv-btn primary size-s" href="#"><span data-gv-icon="notification" aria-hidden="true"></span> Unfollow (8)</a>
+        </div>
+        <div class="gv-participants">
+          <span class="gv-avatars on-light" aria-hidden="true">
+            <span class="av"></span>
+            <span class="av"></span>
+            <span class="av"></span>
+          </span>
+          <span class="gv-pcount">8 participants</span>
+          <span class="gv-pinfo" data-gv-icon="info" aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+   </div><!-- /.gv-surveyhead -->
+
+   <!-- ════════ Green participation band — full-width tenant-primary strip ════════ -->
+   <div class="gv-surveyband">
+     <div class="gv-surveyband__inner">
+       <span class="gv-surveyband__status"><span class="gv-surveyband__dot" aria-hidden="true"></span>Open for participation</span>
+       <a class="gv-btn on-color gv-surveyband__cta" href="#causes">Volunteer <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+     </div>
+   </div>
+
+    <!-- ════════ Grey method band — cause cards directly on the grey, no stepper/phase-panel
+         (single-phase volunteering: the timeline/stepper is suppressed) ════════ -->
+    <div class="gv-methodband" id="causes">
       <div class="gv-wrap">
-        <section class="gv-phases" aria-labelledby="phasesTitle">
-          <div class="gv-phases__bar"><h2 id="phasesTitle">Timeline</h2></div>
-          <div class="gv-stepper" role="tablist" aria-label="Project phases">
-            <button class="gv-phase current" role="tab" aria-selected="true">
-              <span class="gv-pstep"><span class="gv-pstep__dot"></span>1</span>
-              <span class="gv-phase__label">Method: Volunteering</span>
-            </button>
-          </div>
-
-          <div class="gv-phasepanel">
-            <div class="gv-phasepanel__head">
-              <span class="gv-phasepanel__num" aria-hidden="true">1</span>
-              <div>
-                <h3 class="gv-phasepanel__name">Volunteering &middot; 18 spots open</h3>
-                <p class="gv-phasepanel__date">Open &middot; no end date</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- VOLUNTEERING method body — separate from the phase-title module, on the grey band -->
+        <section class="gv-phases" aria-label="Volunteering causes">
           <div class="gv-phasebody gv-phasebody--full" role="tabpanel">
               <div class="gv-idealist">
 
                 <article class="gv-cause">
                   <div class="gv-cause__media">
                     <img class="gv-cause__img" loading="lazy" alt="Volunteers planting young tree saplings in dark soil" src="img/planting.webp" />
-                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>12 of 20 spots filled</span>
+                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>12 participants</span>
                   </div>
                   <div class="gv-cause__body">
                     <h3 class="gv-cause__title">Plant trees on Station Road</h3>
@@ -90,7 +119,7 @@
                 <article class="gv-cause">
                   <div class="gv-cause__media">
                     <img class="gv-cause__img" loading="lazy" alt="Working harbour full of boats below a hillside town" src="../../skills/govocal-ui/img/westmere/harbour.webp" />
-                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>9 of 16 spots filled</span>
+                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>9 participants</span>
                   </div>
                   <div class="gv-cause__body">
                     <h3 class="gv-cause__title">Harbour clean-up crew</h3>
@@ -108,7 +137,7 @@
                 <article class="gv-cause">
                   <div class="gv-cause__media">
                     <img class="gv-cause__img" loading="lazy" alt="Green park path lined with trees" src="../../skills/govocal-ui/img/westmere/park.webp" />
-                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>7 of 15 spots filled</span>
+                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>7 participants</span>
                   </div>
                   <div class="gv-cause__body">
                     <h3 class="gv-cause__title">Greening the schoolyards</h3>
@@ -126,7 +155,7 @@
                 <article class="gv-cause">
                   <div class="gv-cause__media">
                     <img class="gv-cause__img" loading="lazy" alt="Civic square with cyclists in Westmere Old Town" src="../../skills/govocal-ui/img/westmere/square.webp" />
-                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>4 of 10 spots filled</span>
+                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>4 participants</span>
                   </div>
                   <div class="gv-cause__body">
                     <h3 class="gv-cause__title">Market Square stewards</h3>
@@ -144,7 +173,7 @@
                 <article class="gv-cause">
                   <div class="gv-cause__media">
                     <img class="gv-cause__img" loading="lazy" alt="Three smiling volunteers in white t-shirts holding brooms on a sunny street" src="img/cleanup.webp" />
-                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>6 of 12 spots filled</span>
+                    <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>6 participants</span>
                   </div>
                   <div class="gv-cause__body">
                     <h3 class="gv-cause__title">Riverside path wardens</h3>

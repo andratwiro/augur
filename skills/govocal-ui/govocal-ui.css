@@ -2136,3 +2136,12 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 /* Grey content section below the participation band (live: section, bg #EDEFF0,
    padding 60px 0 80px). Reuses .gv-projdesc body copy; band-padding only here. */
 .gv-surveycontent { background: var(--gv-background); padding: 60px 0 80px; }
+
+/* "Back to folder" breadcrumb — text-button link with a leading arrow-left icon,
+   sitting above the project hero on single-project pages (live: project-volunteering
+   "Showroom" top of page). Secondary text colour, no chrome; aligns to the page wrap. */
+.gv-backlink { display: inline-flex; align-items: center; gap: 6px; padding: 18px 0 0;
+  background: none; border: 0; cursor: pointer; font: inherit;
+  font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+.gv-backlink:hover { color: var(--gv-text-primary); text-decoration: underline; }
+.gv-backlink [data-gv-icon] { width: 18px; height: 18px; display: inline-flex; }

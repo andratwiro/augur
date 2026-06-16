@@ -164,7 +164,7 @@ const PAGE_LOCAL = new Set([
   // survey-landing page composition (project-survey header band + grey content section)
   'gv-surveyhead', 'gv-surveycontent',
   // inline link / control utilities
-  'gv-back', 'gv-readmore', 'gv-edit',
+  'gv-back', 'gv-backlink', 'gv-readmore', 'gv-edit',
   // root / a11y helpers
   'gv-root', 'gv-sr-only',
 ]);
