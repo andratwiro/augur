@@ -11,9 +11,11 @@
   <link rel="stylesheet" href="../govocal-tokens.css" />
   <style>
     :root{
-      --ink:#16242b; --ink-soft:#4d5e68; --faint:#8497a2;
-      --teal:var(--gv-tenant-primary,#0E7C86); --coral:var(--gv-tenant-secondary,#E2603A);
-      --teal-deep:#0A5159; --wash:#f2f7f8; --wash-2:#e7f1f2; --line:#dbe6e8; --maxw:1060px;
+      --paper:#f5f4f1; --paper-2:#efede8; --card:#fcfbf9;
+      --ink:#17171a; --ink-soft:#6c6a65; --faint:#9a978f;
+      --teal:var(--gv-tenant-primary,#0E7C86); --coral:#C8472A;
+      --teal-deep:#0A5159; --wash:#efede8; --wash-2:#e8efee; --line:#e0ddd6; --line-2:#cfccc3;
+      --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; --maxw:940px;
     }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%}
@@ -151,6 +153,63 @@
       .loop{grid-template-columns:1fr} .loop .arrows{flex-direction:row;padding:6px 0}
       .phasetag{display:none}
     }
+
+    /* ── RIOT restyle: warm paper, mono labels, lighter type, one calm canvas ── */
+    body{background:var(--paper)}
+    .slide{background:var(--paper)}
+    .slide.dark,.slide.teal{background:var(--paper-2);color:var(--ink)}
+    .slide.wash{background:var(--paper-2)}
+    /* mono, understated eyebrows — no leading bar */
+    .eyebrow{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.13em;color:var(--faint);gap:9px}
+    .eyebrow::before{display:none}
+    .slide.dark .eyebrow,.slide.teal .eyebrow{color:var(--faint)}
+    /* lighter, tighter headlines */
+    h1{font-weight:680;letter-spacing:-.03em;line-height:1.02}
+    h2{font-weight:660;letter-spacing:-.022em;line-height:1.06}
+    h3{font-weight:640}
+    .big-q{font-weight:600;color:var(--ink)} .big-q em{color:var(--coral)}
+    strong{font-weight:640;color:var(--ink)}
+    /* body text stays ink/muted on the single canvas */
+    .slide.dark .lead,.slide.teal .lead{color:var(--ink-soft)}
+    /* cards = warm off-white everywhere */
+    .card{background:var(--card);border-color:var(--line)}
+    .slide.dark .card,.slide.teal .card{background:var(--card);border-color:var(--line)}
+    .slide.dark .card p,.slide.teal .card p{color:var(--ink-soft)}
+    .card .num{font-family:var(--mono);font-weight:600;letter-spacing:.07em;color:var(--coral)}
+    .card .src,.slide.dark .card .src{color:var(--faint)}
+    .slide.dark th,.slide.dark td{border-color:var(--line)} .slide.dark tr td:first-child{color:var(--ink)}
+    .slide.dark ul.clean li{border-color:var(--line)}
+    .pill{background:var(--wash-2);color:var(--teal-deep)}
+    /* loop diagram on paper */
+    .loop .lane.fo{background:var(--card);border:1px solid #e7cdc3}
+    .loop .lane.bo{background:var(--card);border:1px solid var(--line)}
+    .loop .lane h3{color:var(--ink)}
+    .loop .lane.bo .tag{background:var(--teal);color:#fff}
+    .loop .step{color:var(--ink)} .loop .step span{background:var(--paper-2);color:var(--ink-soft)}
+    .loop .arrows .lbl{color:var(--faint)}
+    .slide.dark .seam{background:#f4e3dc;border:1px solid #e7cdc3;color:var(--ink)}
+    /* diamond / stats / kpi / meta on paper */
+    .diamond .ph{background:var(--card)}
+    .diamond .ph .w{font-family:var(--mono);font-weight:600;letter-spacing:.06em}
+    .slide.dark .stat b,.slide.teal .stat b{color:var(--coral)}
+    .slide.dark .stat .sx,.slide.teal .stat .sx{color:var(--ink-soft)}
+    .slide.dark .stat .ss{color:var(--faint)}
+    .slide.dark .kpi b{color:var(--coral)} .slide.dark .kpi{border-color:var(--line)} .slide.dark .kpi .kx{color:var(--ink-soft)}
+    .slide.dark .src-line{color:var(--faint)}
+    .lede-stakes div{color:var(--ink-soft)} .lede-stakes b{color:var(--ink)}
+    .title-meta .k{color:var(--faint);font-family:var(--mono);font-weight:500;letter-spacing:.07em}
+    .title-meta .v{color:var(--ink)}
+    /* lighter numeric weights (RIOT register, not 800) */
+    .stat b,.kpi b,.two-q .qn,.ask .item .c,.diamond .ph .t,.loop .arrows{font-weight:700}
+    /* calm mono chrome on paper */
+    .progress{background:var(--coral)}
+    .brandmark{color:var(--ink)}
+    .brandmark span{color:var(--ink-soft);opacity:1;font-family:var(--mono);font-weight:500;letter-spacing:.05em;font-size:11.5px}
+    .brandmark .dot{background:var(--coral)}
+    .phasetag{font-family:var(--mono);font-weight:600;letter-spacing:.12em;color:var(--faint)}
+    .chrome.count{font-family:var(--mono);color:var(--faint)} .chrome.count b{color:var(--ink)}
+    .nav button{border:1px solid var(--line-2);background:var(--card);color:var(--ink)}
+    .nav button:hover{background:#fff;border-color:var(--ink)}
   </style>
 </head>
 <body>
@@ -165,7 +224,7 @@
       <div class="slide-inner">
         <p class="eyebrow">UX/UI audit · research &amp; design plan · June 2026</p>
         <h1>We've perfected the half<br>that builds a consultation.<br>We've never watched the half<br>that <span class="accent">decides if it works.</span></h1>
-        <p class="lead">A studio-grade audit of the <strong style="color:#fff">whole participation loop</strong> — the resident front office and the staff back office, as one service. Six weeks to fix where the experience actually breaks.</p>
+        <p class="lead">A studio-grade audit of the <strong style="color:var(--ink)">whole participation loop</strong> — the resident front office and the staff back office, as one service. Six weeks to fix where the experience actually breaks.</p>
         <div class="title-meta">
           <div><span class="k">Owners</span><span class="v">Rob &amp; Irene · Product</span></div>
           <div><span class="k">Sign-off</span><span class="v">Wietse · CEO</span></div>
@@ -175,22 +234,25 @@
       </div>
     </section>
 
-    <!-- 2 · THE INSIGHT (single reframe) -->
-    <section class="slide teal" data-phase="Frame">
+    <!-- 2 · THE REFRAME + NORTH STAR (one Frame slide) -->
+    <section class="slide dark" data-phase="Frame">
       <div class="slide-inner">
-        <p class="eyebrow">The insight</p>
-        <p class="big-q">Our participation rates aren't a marketing problem. <em>Most residents who arrive never reach the point of contributing</em> — and most staff who launch a project never see whether they could. We've been auditing how the product is built, not whether anyone can finish using it.</p>
-        <div class="lede-stakes">
-          <div><b>The product is one loop, not two backlogs.</b>A project residents can't finish is a failed project — and a low completion rate becomes thin, unrepresentative analysis for the city.</div>
-          <div><b>The friction lives in the seams.</b>Between the two surfaces — exactly the gap a surface-by-surface audit is built to miss.</div>
+        <p class="eyebrow">The reframe · and the one number it gives us</p>
+        <p class="big-q">Most residents who arrive never reach the point of contributing — and most staff who launch a project never see whether they could. We've been auditing how the product is <em>built</em>, not whether anyone can <em>finish</em> using it.</p>
+        <h2 style="margin-top:30px">So the audit moves one number: <span class="accent">completed, representative participation per project.</span></h2>
+        <p class="lead">Every recommendation has to ladder up to it — so priority is judged by how much it moves this, not by taste. The same number on both surfaces: a resident who finishes <em>is</em> a usable input for staff.</p>
+        <div class="stats">
+          <div class="stat"><b>Reach</b><div class="sx">Residents who <strong>start</strong> a task — discovery is already won; the drop happens after arrival.</div><div class="ss">FO analytics, by project</div></div>
+          <div class="stat"><b>×&nbsp;Finish</b><div class="sx">Of those, the share who <strong>complete</strong> and see the loop close.</div><div class="ss">Completion + return rate</div></div>
+          <div class="stat"><b>×&nbsp;Mirror</b><div class="sx">How well finishers <strong>mirror the population</strong> — not raw volume. (56% of EU adults have only basic digital skills.)</div><div class="ss">Representativeness vs census · Eurostat 2023</div></div>
         </div>
       </div>
     </section>
 
-    <!-- 6 · THE REFRAME / LOOP -->
+    <!-- 4 · THE LOOP -->
     <section class="slide dark" data-phase="Define">
       <div class="slide-inner">
-        <p class="eyebrow">The reframe · one participation loop</p>
+        <p class="eyebrow">One participation loop</p>
         <h2>Eight steps, two surfaces, one service.</h2>
         <div class="loop">
           <div class="lane fo">
@@ -209,11 +271,11 @@
             <div class="step"><span>D</span> Make sense &amp; report</div>
           </div>
         </div>
-        <div class="seam">One pattern already runs end to end: <b>every screen hides its own state</b> — and the worst failures sit in the seams between the two surfaces, exactly where a surface-by-surface audit can't look. The fix is to map it as a <b>service blueprint</b> (next slide), behind the curtain, not just on the screen.</div>
+        <div class="seam">The worst failures sit <b>in the seams between the two surfaces</b> — exactly where a surface-by-surface audit can't look. So we map it as a <b>service blueprint</b> (next slide): behind the curtain, not just on the screen.</div>
       </div>
     </section>
 
-    <!-- 7 · SERVICE BLUEPRINT — IDEATION (the artifact, made concrete) -->
+    <!-- 5 · SERVICE BLUEPRINT — IDEATION (the artifact, made concrete) -->
     <section class="slide" data-phase="Define">
       <div class="slide-inner">
         <p class="eyebrow">The artifact · service blueprint, worked example</p>
@@ -233,27 +295,28 @@
       </div>
     </section>
 
-    <!-- 8 · STUDIO SPINE / DOUBLE DIAMOND -->
+    <!-- 6 · STUDIO SPINE / DOUBLE DIAMOND -->
     <section class="slide wash" data-phase="Approach">
       <div class="slide-inner">
         <p class="eyebrow">How a studio runs this</p>
         <h2>One spine, four moves — the Double Diamond.</h2>
-        <p class="lead">Diverge to explore, converge to decide — twice. We spend real time understanding the problem before we design, so we don't invest build effort on instinct.</p>
+        <p class="lead">Diverge to explore, converge to decide — twice. We spend real time understanding the problem before we design, so we don't invest build effort on instinct. Deliver converges everything into one prioritized call.</p>
         <div class="diamond">
           <div class="ph"><span class="shape">◣◢</span><span class="w">Wk 1–2 · Discover</span><span class="t">Explore</span><span class="d">Heuristic + agentic sweep, analytics, real screens across the whole loop.</span></div>
           <div class="ph"><span class="shape">◥◤</span><span class="w">Wk 2–3 · Define</span><span class="t">Reframe</span><span class="d">Cluster into a friction inventory + service blueprint; pick the segment.</span></div>
           <div class="ph"><span class="shape">◣◢</span><span class="w">Wk 3–5 · Develop</span><span class="t">Test &amp; sketch</span><span class="d">Resident tests <strong>on real phones</strong>, benchmark, first-pass redesign vision.</span></div>
-          <div class="ph"><span class="shape">◥◤</span><span class="w">Wk 5–6 · Deliver</span><span class="t">Prioritise</span><span class="d">Impact × effort 2×2, roadmap, quick wins, exec readout.</span></div>
+          <div class="ph"><span class="shape">◥◤</span><span class="w">Wk 5–6 · Deliver</span><span class="t">Prioritise</span><span class="d">Impact × effort 2×2, Now/Next/Later roadmap, quick wins, exec readout.</span></div>
         </div>
         <p class="src-line">Design Council Double Diamond · Clearleft / frog / NN/g discovery practice.</p>
       </div>
     </section>
 
-    <!-- 9 · METHOD → QUESTION -->
+    <!-- 7 · METHOD → QUESTION -->
     <section class="slide" data-phase="Approach">
       <div class="slide-inner">
         <p class="eyebrow">Method → the question → the sample</p>
-        <h2>We size the method to the claim — qual finds problems, quant measures them.</h2>
+        <h2>Size the method to the claim.</h2>
+        <p class="lead">Qual finds <em>what's</em> broken, quant measures <em>how much</em> — never the same n for both jobs.</p>
         <table>
           <thead><tr><th>Question</th><th>Method</th><th>n</th><th>Why this n</th></tr></thead>
           <tbody>
@@ -267,15 +330,15 @@
       </div>
     </section>
 
-    <!-- 10 · WHO + SAMPLING & RECRUITMENT -->
+    <!-- 8 · WHO + SAMPLING & RECRUITMENT -->
     <section class="slide dark" data-phase="Approach">
       <div class="slide-inner">
         <p class="eyebrow">Who we audit for · sampling &amp; recruitment</p>
         <h2>Five people, two audiences, two recruiting funnels — never one pooled "5."</h2>
-        <p class="lead">Back office — <strong style="color:#fff">Joan</strong> (power user, slowed by hidden state) and <strong style="color:#fff">Diane</strong> (low savviness, stranded by the empty-shell create flow). Front office, on a phone — the <strong style="color:#fff">rare participant</strong>, <strong style="color:#fff">engaged resident</strong> and <strong style="color:#fff">skeptic</strong>. Two <strong style="color:#fff">separate research streams</strong> — different pools, effort, incentives; each segment gets its own n; over-recruit 20–30% for no-shows.</p>
+        <p class="lead">Back office — <strong style="color:var(--ink)">Joan</strong> (power user, slowed by hidden state) and <strong style="color:var(--ink)">Diane</strong> (low savviness, stranded by the empty-shell create flow). Front office, on a phone — the <strong style="color:var(--ink)">rare participant</strong>, <strong style="color:var(--ink)">engaged resident</strong> and <strong style="color:var(--ink)">skeptic</strong>. Two <strong style="color:var(--ink)">separate research streams</strong> — different pools, effort, incentives; each segment gets its own n; over-recruit 20–30% for no-shows.</p>
         <div class="twocol" style="margin-top:18px">
           <div>
-            <h3 style="color:#fff">Back office · staff (B2B)</h3>
+            <h3 style="color:var(--ink)">Back office · staff (B2B)</h3>
             <ul class="clean" style="margin-top:10px">
               <li><b>Moderated-heavy</b>, small qualified pool — we sit with them to probe the <em>why</em>. Qual: <b>5 / segment</b> (Joan, Diane), counted separately.</li>
               <li><b>Benchmark = within-subjects pre/post</b>, so n is feasible: <b>target 20, floor 15</b>. Pairing is what buys the power with scarce admins.</li>
@@ -291,26 +354,25 @@
             </ul>
           </div>
         </div>
-        <div class="seam">Civic platforms <b>fail the very people panels miss</b> — 56% of EU adults have only basic digital skills. If our sample skews tech-confident, the audit certifies an experience the actual residents can't use.</div>
+        <div class="seam">Civic platforms <b>fail the very people panels miss.</b> If our sample skews tech-confident, the audit certifies an experience the actual residents can't use — and the north-star's <b>representative</b> half quietly fails.</div>
       </div>
     </section>
 
-    <!-- 11 · ACCESSIBILITY — LAW + STANDARD -->
+    <!-- 9 · ACCESSIBILITY — LAW + STANDARD -->
     <section class="slide" data-phase="Depth">
       <div class="slide-inner">
         <p class="eyebrow">Dimension 1 · accessibility · what binds us, what we test to</p>
-        <h2>The cities owe WCAG 2.1 AA today. We build to 2.2 AA — that's the low-regret move.</h2>
-        <p class="lead">Get the standard exactly right, because it's a procurement gate. The legally operative floor in the EU <em>now</em> is <strong>WCAG 2.1 AA</strong>, via the harmonised <strong>EN 301 549 v3.2.1</strong>. Auditing to <strong>2.2 AA</strong> satisfies 2.1 AA, fixes the nine criteria new in 2.2 (target size, dragging, accessible auth, focus-not-obscured…), and front-runs <strong>EN 301 549 v4 / WCAG 2.2</strong>, expected to harmonise ~2026.</p>
+        <h2>Cities owe WCAG 2.1 AA today. We audit to 2.2 AA.</h2>
+        <p class="lead">It's a procurement gate, so get the standard exactly right. The legally operative floor in the EU <em>now</em> is <strong>WCAG 2.1 AA</strong>, via the harmonised <strong>EN 301 549 v3.2.1</strong>. Auditing to <strong>2.2 AA</strong> satisfies 2.1 AA, fixes the nine criteria new in 2.2 (target size, dragging, accessible auth, focus-not-obscured…), and front-runs the next EN 301 549 / WCAG 2.2 harmonisation — the low-regret move.</p>
         <div class="stats">
           <div class="stat"><b>WAD</b><div class="sx"><strong>The binding path.</strong> Every public-body client must meet EN 301 549 / WCAG 2.1 AA and publish an accessibility statement. It flows to us through procurement — a city can't buy a non-conformant platform.</div><div class="ss">Directive (EU) 2016/2102</div></div>
           <div class="stat"><b>EAA</b><div class="sx"><strong>Convergent pressure.</strong> In force Jun 2025 for consumer services. Its reach over pure-B2B municipal SaaS is genuinely contested — we don't lean on it, but it raises the same EN 301 549 bar market-wide.</div><div class="ss">Directive (EU) 2019/882</div></div>
-          <div class="stat"><b>56%</b><div class="sx">of EU adults have only basic digital skills (vs the 80%-by-2030 target). Accessibility isn't a compliance tax here — inclusion <em>is</em> the participation rate.</div><div class="ss">Eurostat 2023</div></div>
+          <div class="stat"><b>Output</b><div class="sx">A <strong>flagged-issue list mapped to SC + level</strong> — not a certification — plus real content for each city's own accessibility statement (conformance level, known gaps, feedback channel).</div><div class="ss">Caveat: confirm OJ-cited EN 301 549 version at audit time</div></div>
         </div>
-        <div class="seam" style="background:var(--wash-2);border:1px solid var(--line);color:var(--ink-soft);margin-top:22px">We produce a <b style="color:var(--coral)">flagged-issue list mapped to SC + level</b>, not a certification — and we give each city real content for <em>its own</em> accessibility statement (conformance level, known gaps, feedback channel). Caveat we'll restate at handoff: confirm the OJ-cited EN 301 549 version at audit time.</div>
       </div>
     </section>
 
-    <!-- 11b · ACCESSIBILITY — THE CHECKS WE ACTUALLY RUN -->
+    <!-- 10 · ACCESSIBILITY — THE CHECKS WE ACTUALLY RUN -->
     <section class="slide wash" data-phase="Depth">
       <div class="slide-inner">
         <p class="eyebrow">Dimension 1 · the checks we actually run</p>
@@ -325,23 +387,23 @@
       </div>
     </section>
 
-    <!-- 12 · AI TRUST · FRAME -->
+    <!-- 11 · AI TRUST · FRAME -->
     <section class="slide dark" data-phase="Depth">
       <div class="slide-inner">
         <p class="eyebrow">Dimension 2 · AI we can trust</p>
         <h2>An AI summary becomes what the city believes residents said.</h2>
-        <p class="lead">Sensemaking, Perspectives and FormSync turn raw input into the read officials act on — so the bar isn't "is it clever," it's <strong style="color:#fff">calibrated trust</strong>: residents and staff should trust each result <em>exactly</em> as much as it has earned. We audit on four axes, then walk each feature against them on the next slide.</p>
+        <p class="lead">Sensemaking, Perspectives and FormSync turn raw input into the read officials act on — so the bar isn't "is it clever," it's <strong style="color:var(--ink)">calibrated trust</strong>: residents and staff should trust each result <em>exactly</em> as much as it has earned. We audit on four axes, then walk each feature against them on the next slide.</p>
         <div class="grid g4">
           <div class="card"><h3>Trust</h3><p>Provenance + honest confidence, coverage disclosed ("380 of 412 inputs"), data-use stated. No decorative percentages.</p><span class="src">PAIR calibrated-trust</span></div>
           <div class="card"><h3>Explainability</h3><p>Every claim, cluster and tag traces in one click to its source input, quote or image region.</p><span class="src">MS HAX G11</span></div>
           <div class="card"><h3>Human override</h3><p>All output editable in place; re-running warns before clobbering edits; nothing reaches residents without a human gate.</p><span class="src">EU AI Act Art. 14 · HAX G9/G14</span></div>
-          <div class="card"><h3>Representativeness</h3><p>Minority &amp; non-English views surfaced, not thresholded away — a bias measured at <strong>34× random</strong> in LLM aggregation.</p><span class="src">Stanford/MIT/Toronto 2025</span></div>
+          <div class="card"><h3>Representativeness</h3><p>Minority &amp; non-English views surfaced, not thresholded away — LLM aggregation has been shown to skew toward majority positions.</p><span class="src">Stanford/MIT/Toronto 2025</span></div>
         </div>
         <div class="seam">For a civic tool the two highest-severity axes are <b>human-override</b> and <b>representativeness</b>: a failure there removes accountability or distorts democratic input. We treat any miss in those two as a <b>blocker</b>, not a nice-to-have.</div>
       </div>
     </section>
 
-    <!-- 12b · AI TRUST · CHECKLIST BY FEATURE -->
+    <!-- 12 · AI TRUST · CHECKLIST BY FEATURE -->
     <section class="slide wash" data-phase="Depth">
       <div class="slide-inner">
         <p class="eyebrow">Dimension 2 · the checks, per feature</p>
@@ -361,7 +423,7 @@
       </div>
     </section>
 
-    <!-- 13 · BENCHMARK -->
+    <!-- 13 · BENCHMARK · WHO WE COMPARE TO -->
     <section class="slide wash" data-phase="Depth">
       <div class="slide-inner">
         <p class="eyebrow">Dimension 3 · benchmark, don't guess</p>
@@ -378,14 +440,14 @@
     <!-- 14 · BENCHMARK DESIGN + TASKS + DECISION RULE -->
     <section class="slide" data-phase="Outcomes">
       <div class="slide-inner">
-        <p class="eyebrow">The benchmark study · design</p>
+        <p class="eyebrow">The benchmark study · design + the win condition</p>
         <h2>A baseline is only proof if the rule is set <em class="accent" style="font-style:normal">before</em> we test.</h2>
         <p class="lead">A benchmark measures the redesign against today's product to show a delta. We pick the design per surface, lock 5–7 top-task scenarios with observable success states, and pre-register the ship rule — all before a single session.</p>
         <div class="twocol" style="margin-top:18px">
           <div>
             <h3 class="tealtext">The two designs we'll run</h3>
-            <div class="kpi"><b>FO · A/B</b><span class="kx"><strong>Between-subjects.</strong> Today's UI vs redesign, different residents per arm. Tasks are short and repetitive (learning effects are real), and we can recruit volume. Cleanest causal claim.</span></div>
-            <div class="kpi"><b>BO · pre/post</b><span class="kx"><strong>Within-subjects.</strong> The same admin runs a config task on baseline then redesign, order counterbalanced. Admins are scarce; pairing buys the power.</span></div>
+            <div class="kpi"><b>FO · A/B</b><span class="kx"><strong>Between-subjects.</strong> Today's UI vs redesign, different residents per arm. Tasks are short and repetitive, and we can recruit volume. Cleanest causal claim.</span></div>
+            <div class="kpi"><b>BO · pre/post</b><span class="kx"><strong>Within-subjects.</strong> Same admin runs a config task on baseline then redesign, counterbalanced. Admins are scarce; pairing buys the power.</span></div>
           </div>
           <div>
             <h3 class="accent">The benchmarked tasks (locked wk 3)</h3>
@@ -396,32 +458,67 @@
             </ul>
           </div>
         </div>
-        <div class="seam" style="background:var(--wash-2);border:1px solid var(--line);color:var(--ink-soft)">The win condition, pre-registered: <b style="color:var(--coral)">ship if redesign SUS ≥ baseline + 5 points AND no task's success rate regresses beyond its confidence interval.</b> Set today, so the result can't be argued after the fact.</div>
-        <p class="src-line">Between- vs within-subjects benchmark design · pre-registered success rubric + time-out · Sauro &amp; Lewis (MeasuringU) · NN/g benchmarking.</p>
+        <div class="seam" style="background:var(--wash-2);border:1px solid var(--line);color:var(--ink-soft)">The win condition, pre-registered: <b style="color:var(--coral)">ship if redesign SUS ≥ baseline + 5 points AND no task's success rate regresses beyond its confidence interval.</b> Set today, so the result can't be argued after the fact. The numbers it produces are the defensible ROI claim behind every "high-impact" call on the roadmap.</div>
+        <p class="src-line">Instruments per task: task success (rate + adjusted-Wald 95% CI), time-on-task (median + geometric mean), SEQ after each task, SUS at session end, errors/assists. Between- vs within-subjects design · Sauro &amp; Lewis (MeasuringU) · NN/g benchmarking · Google HEART.</p>
       </div>
     </section>
 
-    <!-- 14b · ENDPOINTS, INSTRUMENTS, ANALYSIS -->
+    <!-- 15 · PRIORITIZATION · THE 2×2 HERO -->
+    <section class="slide" data-phase="Outcomes">
+      <div class="slide-inner">
+        <p class="eyebrow">From findings to a call · the prioritization instrument</p>
+        <h2>Every finding lands in one of four boxes — including the one we drop.</h2>
+        <p class="lead">In Deliver, each recommendation is plotted on <strong>impact (pull on the north star) × effort</strong>. The picture sets priority before we explain it — and naming the box we <em>won't</em> touch is the senior move, not enthusiasm.</p>
+        <div class="grid g2" style="margin-top:18px">
+          <div class="card" style="border-color:var(--coral)"><span class="num">↖ QUICK WINS · high impact, low effort</span><h3>Do now — they fund the rest</h3><p>The dead-ends from the skim: 404s on valid routes, the stale <em>citizenlab.co</em> reply-to, the self-disclaiming audit log, broken "(&gt;347)" deltas. Cheap, visible, trust-buying — shipped while the big work is still being designed.</p></div>
+          <div class="card"><span class="num">↗ BIG BETS · high impact, high effort</span><h3>Plan &amp; resource</h3><p>The method-aware create flow, the visible closure model ("we did" that links to outcomes), the map+list pattern. These move the north star most — and the quick wins buy the credibility to fund them.</p></div>
+          <div class="card"><span class="num">↙ FILL-INS · low impact, low effort</span><h3>Do if there's spare capacity</h3><p>Copy polish, icon tidy-ups, micro-label fixes. Real, but they don't earn a roadmap slot — they ride along with adjacent work.</p></div>
+          <div class="card" style="opacity:.72"><span class="num">↘ NOT NOW · low impact, high effort</span><h3>We say no, out loud</h3><p>A full Perspectives gamification layer, bespoke per-method dashboards, exotic chart types. Defensible to defer — and saying so on your behalf is part of the service.</p></div>
+        </div>
+        <div class="seam" style="background:var(--wash-2);border:1px solid var(--line);color:var(--ink-soft)">The 2×2 is the fast-alignment picture. Where two items share a box, we rank them with a <b style="color:var(--coral)">RICE score — Reach × Impact × Confidence ÷ Effort</b> — kept in the appendix table and brought out only when a ranking is challenged. Rigor on tap, not on stage.</div>
+      </div>
+    </section>
+
+    <!-- 16 · PRIORITIZATION · NOW / NEXT / LATER ROADMAP -->
     <section class="slide wash" data-phase="Outcomes">
       <div class="slide-inner">
-        <p class="eyebrow">The benchmark study · what we capture &amp; how we read it</p>
-        <h2>One instrument per task, one overall score, every number with a CI.</h2>
-        <table style="margin-top:18px">
-          <thead><tr><th>Instrument</th><th>Measures</th><th>When</th><th>Read it as</th></tr></thead>
-          <tbody>
-            <tr><td>Task success</td><td>Effectiveness — the headline</td><td>Per task, scored live</td><td>Rate + adjusted-Wald 95% CI; 2-proportion (A/B) or McNemar (pre/post)</td></tr>
-            <tr><td>Time on task</td><td>Efficiency</td><td>Successful attempts</td><td>Skewed → <strong>median + geometric mean</strong>, never plain mean</td></tr>
-            <tr><td>SEQ (1–7)</td><td>Per-task difficulty</td><td><strong>Right after each task</strong></td><td>Pinpoints the hard task; Mann-Whitney / Wilcoxon</td></tr>
-            <tr><td>SUS (10-item)</td><td>Overall usability</td><td><strong>End of session</strong></td><td>0–100 + percentile; t-test (A/B) or paired (pre/post)</td></tr>
-            <tr><td>Errors / assists</td><td>Where it breaks</td><td>Per task</td><td>Moderator help = a failure in scoring</td></tr>
-          </tbody>
-        </table>
-        <p class="lead" style="margin-top:20px">These benchmark numbers are the <strong>defensible ROI claim</strong>. Alongside them we pull the civic signals from product data — <strong class="tealtext">time-to-launch &amp; ticket deflection</strong> (Intercom), <strong class="tealtext">FO completion &amp; return rate</strong>, and <strong class="tealtext">representativeness vs population</strong> (who participates, not raw volume).</p>
-        <p class="src-line">Reference bands for sanity, not targets: SUS 68 = average, aim 80+ · SEQ ≈ 5.5 · industry task-success ≈ 78%. We baseline our own values first. SEQ/SUS · MeasuringU / Sauro · Google HEART.</p>
+        <p class="eyebrow">The roadmap · priority without dates you can't honor</p>
+        <h2>Now, Next, Later — quick wins first, each tied to the north star.</h2>
+        <p class="lead">Every item is a <strong>decision, not a topic</strong>: an action, a rough size (S/M/L), and the north-star outcome it moves. We cap the top tier — a list of twenty equal recommendations is why good work doesn't get acted on.</p>
+        <div class="grid g3" style="margin-top:18px">
+          <div class="card" style="border-color:var(--coral)">
+            <span class="num">NOW · weeks, quick wins</span>
+            <h3>Buy trust on day one</h3>
+            <ul class="clean" style="margin-top:6px">
+              <li><b>Fix the dead ends</b> (S) — 404s, citizenlab.co reply-to, broken deltas → <em>removes "abandoned platform" signal</em></li>
+              <li><b>Surface status &amp; rights at rest</b> (S) — show the value, not "Mixed" → <em>visibility, both surfaces</em></li>
+              <li><b>Tame the cookie wall on mobile</b> (S) → <em>value reaches the resident first → Reach</em></li>
+            </ul>
+          </div>
+          <div class="card">
+            <span class="num">NEXT · scoped, big bets begin</span>
+            <h3>Repair the loop's spine</h3>
+            <ul class="clean" style="margin-top:6px">
+              <li><b>Method-aware create flow</b> (L) — pick a phase + method inline → <em>Diane ships a real project → Finish</em></li>
+              <li><b>Map + list + address pattern</b> (M) → <em>discharges 4 SC, fixes precision → Finish + Mirror</em></li>
+              <li><b>Survey commitment preview + progress</b> (M) → <em>fewer abandons → Finish</em></li>
+            </ul>
+          </div>
+          <div class="card" style="opacity:.85">
+            <span class="num">LATER · directional</span>
+            <h3>Close &amp; deepen the loop</h3>
+            <ul class="clean" style="margin-top:6px">
+              <li><b>Visible closure model</b> (L) — "we did" links to real outcomes → <em>return rate → Reach</em></li>
+              <li><b>Input Manager triage + preview pane</b> (L) → <em>staff sensemaking</em></li>
+              <li><b>Deliberation pattern vs Polis</b> (L) → <em>low-friction contribution</em></li>
+            </ul>
+          </div>
+        </div>
+        <div class="seam" style="background:#fbe7df;border:1px solid rgba(226,96,58,.3);color:var(--ink-soft)"><b style="color:#b5431f">The sequencing is the argument:</b> three day-one quick wins earn the credibility to fund the big bets. All quick wins reads as timid; all big bets, unfundable. The mix is the message.</div>
       </div>
     </section>
 
-    <!-- 15 · TIMELINE -->
+    <!-- 17 · TIMELINE -->
     <section class="slide wash" data-phase="Outcomes">
       <div class="slide-inner">
         <p class="eyebrow">Timeline · 6 weeks, mapped to the diamond</p>
@@ -433,30 +530,30 @@
             <tr><td>Discover</td><td>1–2</td><td>Heuristic + agentic sweep, analytics. <strong>Kick off recruiting both streams + pilot the tasks.</strong></td><td><span class="pill">Kickoff · Wietse</span></td></tr>
             <tr><td>Define</td><td>2–3</td><td>Friction inventory + service blueprint; choose segments; <strong>pre-register the benchmark</strong> — design, tasks, success rubric, win condition.</td><td><span class="pill">Friday · Irene</span></td></tr>
             <tr><td>Develop</td><td>3–5</td><td>Moderated qual (5/segment) → run the benchmark: FO A/B (40/arm), BO pre/post (~20), tree test 50+.</td><td><span class="pill">Insight share</span></td></tr>
-            <tr><td>Deliver</td><td>5–6</td><td>Triangulate qual + quant with CIs; impact × effort 2×2, roadmap, exec summary.</td><td><span class="pill coral">Feasibility · Koen + James → Buy-in · Wietse</span></td></tr>
+            <tr><td>Deliver</td><td>5–6</td><td>Triangulate qual + quant with CIs; plot the 2×2, rank with RICE, build the Now/Next/Later roadmap + exec summary.</td><td><span class="pill coral">Feasibility · Koen + James → Buy-in · Wietse</span></td></tr>
           </tbody>
         </table>
         <p class="src-line">Recruiting runs continuously from wk 1 (B2B 2–4 wk lead, hard-to-reach via community partners). Irene co-runs · Sales &amp; Gov Success side-review.</p>
       </div>
     </section>
 
-    <!-- 17 · DELIVERABLES + ASK -->
+    <!-- 18 · DELIVERABLES + ASK + FIRST MOVE -->
     <section class="slide teal" data-phase="Outcomes">
       <div class="slide-inner">
-        <p class="eyebrow">What you get · what we need</p>
-        <h2>A north star, a roadmap, and quick wins.</h2>
+        <p class="eyebrow">What you get · what we need · the first move</p>
+        <h2>A north star, a ranked roadmap, and quick wins you can ship now.</h2>
         <div class="twocol">
           <div>
-            <h3 style="color:#fff">Deliverables</h3>
+            <h3 style="color:var(--ink)">Deliverables</h3>
             <ul class="clean" style="margin-top:12px">
               <li>Friction inventory + service blueprint — both surfaces</li>
               <li>First-pass redesign vision (annotated low-fi)</li>
-              <li>Prioritised impact × effort roadmap + quick wins</li>
+              <li>Impact × effort 2×2 + Now/Next/Later roadmap (RICE appendix)</li>
               <li>Baselined metrics &amp; exec summary for the org</li>
             </ul>
           </div>
           <div>
-            <h3 style="color:#fff">The ask</h3>
+            <h3 style="color:var(--ink)">The ask</h3>
             <div class="ask" style="grid-template-columns:1fr">
               <div class="item"><span class="c">✓</span><div>~6 weeks of Rob + Irene, with design support</div></div>
               <div class="item"><span class="c">✓</span><div>Data: Intercom, analytics by client, demo accounts</div></div>
@@ -465,29 +562,7 @@
             </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- 18 · RISKS + NEXT -->
-    <section class="slide dark" data-phase="Outcomes">
-      <div class="slide-inner">
-        <p class="eyebrow">Risks &amp; next step</p>
-        <h2>Eyes open — and a clear first move.</h2>
-        <div class="twocol">
-          <div>
-            <h3 style="color:#fff">Managed risks</h3>
-            <ul class="clean">
-              <li>Hard-to-reach residents are slow to recruit — start day 1, go through community partners, over-recruit 20–30%</li>
-              <li>Thin B2B pool may force relaxed criteria — screen on tasks not titles, accept wider quant margins</li>
-              <li>Both surfaces in 6 weeks is tight — depth on 2–3 representative methods, not all eight</li>
-            </ul>
-          </div>
-          <div>
-            <h3 style="color:#fff">The first small move</h3>
-            <p class="lead" style="color:rgba(255,255,255,.85)">Don't buy the six weeks today — buy <strong style="color:#fff">two</strong>. Lock scope with Irene this Friday, then a 2-week Discover sweep that puts the front-office evidence in front of you before any further commitment.</p>
-            <p style="margin-top:14px"><span class="pill coral">Decision needed</span> <span style="color:rgba(255,255,255,.82);font-size:15px">Green-light the 2-week probe + the access &amp; recruitment asks.</span></p>
-          </div>
-        </div>
+        <div class="seam" style="background:var(--paper-2);border:1px solid var(--line-2);color:var(--ink)">Don't buy six weeks today — buy <b style="color:var(--ink)">two.</b> Lock scope with Irene this Friday, then a 2-week Discover sweep puts the front-office evidence — and a first cut of the quick-wins column — in front of you before any further commitment. <b style="color:var(--ink)">Decision needed:</b> green-light the 2-week probe + the access &amp; recruitment asks.</div>
       </div>
     </section>
 
@@ -496,7 +571,7 @@
       <div class="slide-inner">
         <p class="eyebrow">Experimental · pre-audit</p>
         <h1>What we already see —<br>before the audit<br>even <span class="accent">starts.</span></h1>
-        <p class="lead">A quick, evidence-based preliminary read on the <strong style="color:#fff">live product</strong> — grounded in real back-office and mobile front-office screens with the Joan / Diane / resident personas. Not the full audit: a directional preview of where the friction concentrates.</p>
+        <p class="lead">A quick, evidence-based preliminary read on the <strong style="color:var(--ink)">live product</strong> — grounded in real back-office and mobile front-office screens with the Joan / Diane / resident personas. Not the full audit: a directional preview of where the friction concentrates, and the raw material for the quick-wins column.</p>
       </div>
     </section>
 
@@ -561,12 +636,12 @@
       <div class="slide-inner">
         <p class="eyebrow">Pre-audit · the read</p>
         <h2>What this signals for the plan.</h2>
-        <p class="lead">A two-day skim of the real product already validates the reframe — and sharpens where the six weeks should bite.</p>
+        <p class="lead">A two-day skim of the real product already validates the reframe — and pre-sorts the findings into the roadmap's columns.</p>
         <ul class="clean" style="max-width:860px">
           <li><b>The seam is the story.</b> The worst failures sit between surfaces — a created project with no method, a "we did" card linking to nothing. A surface-by-surface audit would miss exactly these; the <span class="accent">service-blueprint lens is the right one</span>.</li>
           <li><b>Mobile front office is the priority, not a footnote.</b> Cookie walls, postage-stamp maps, colliding sticky CTAs and a swipe-only Perspectives feed all degrade where most residents actually are — yet it's the half no prior pass watched.</li>
-          <li><b>Status &amp; trust are the common thread</b> (the spine of slide 6). Both surfaces hide their own state — "Mixed rights", "Unassigned", broken deltas, stale dates, 404s on real routes. Visibility-of-system-status is the heuristic to lead with.</li>
-          <li><b>Dead ends are cheap quick wins.</b> 404s on valid routes, the citizenlab.co reply-to and the self-disclaiming audit log are concrete, low-effort fixes that buy trust on day one — proof the roadmap delivers early.</li>
+          <li><b>Status &amp; trust are the common thread</b> (the spine of the reframe). Both surfaces hide their own state — "Mixed rights", "Unassigned", broken deltas, stale dates, 404s on real routes. Visibility-of-system-status is the heuristic to lead with.</li>
+          <li><b>Dead ends are the day-one quick wins.</b> 404s on valid routes, the citizenlab.co reply-to and the self-disclaiming audit log are concrete, low-effort fixes — they populate the roadmap's <span class="accent">Now</span> column and buy the trust to fund the big bets.</li>
         </ul>
         <p class="src-line">Preliminary, evidence-grounded read on the live product · Joan / Diane (BO) + resident personas (FO mobile). Not a substitute for the full audit.</p>
       </div>
@@ -575,7 +650,7 @@
   </main>
 
   <div class="nav"><button id="prev" aria-label="Previous slide">‹</button><button id="next" aria-label="Next slide">›</button></div>
-  <div class="chrome count"><b id="cur">1</b> / <span id="total">23</span></div><!-- total set dynamically by JS (23) -->
+  <div class="chrome count"><b id="cur">1</b> / <span id="total">23</span></div><!-- total set dynamically by JS -->
 
   <script>
     const slides = Array.from(document.querySelectorAll('.slide'));
