@@ -56,7 +56,7 @@
     .tl-wb { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 24px; align-items: start; max-width: 1114px; }
     /* Settings section labels: "Dimensions"/"Style"/"Header & Button" — 16px/400/#596B7A
        with a hairline rule under, matching the divider colour #E0E0E0. */
-    .tl-sec { margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid #E0E0E0; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); }
+    .tl-sec { margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--gv-divider); font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); }
     /* Real "Settings" heading above the accordion: 16px/600/#044D6C. */
     .tl-settings-head { margin: 0 0 4px; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-bo-primary); }
     /* Accordion section titles read at 16px/#596B7A here (not the 21px phase head); soften. */
@@ -74,7 +74,7 @@
        canonical primitive. Real input: 1px solid #767676, 3px radius, 12px pad, 48px tall;
        the swatch reads as a square chip aligned to the input height. */
     .tl-colorfield { display: flex; align-items: stretch; gap: 8px; }
-    .tl-colorfield .tl-swatch { flex: none; width: 48px; height: 48px; border-radius: 3px; border: 1px solid #E0E0E0; padding: 0; cursor: pointer; background: none; }
+    .tl-colorfield .tl-swatch { flex: none; width: 48px; height: 48px; border-radius: 3px; border: 1px solid var(--gv-grey-300); padding: 0; cursor: pointer; background: none; }
     .tl-colorfield .tl-swatch::-webkit-color-swatch-wrapper { padding: 3px; }
     .tl-colorfield .tl-swatch::-webkit-color-swatch { border: 0; border-radius: 2px; }
     .tl-colorfield .tl-swatch::-moz-color-swatch { border: 0; border-radius: 2px; }
@@ -88,7 +88,7 @@
     /* Preview pane: sticky white card, grey-50 inner frame holding the live widget. */
     .tl-preview { position: sticky; top: 16px; }
     .tl-preview__label { margin: 0 0 12px; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); }
-    .tl-frame { background: #FCFCFC; border: 1px solid #E0E0E0; border-radius: 3px; padding: 20px; }
+    .tl-frame { background: var(--gv-grey-50); border: 1px solid var(--gv-grey-300); border-radius: 3px; padding: 20px; }
     /* The rendered widget itself — driven by the form values via inline style vars. */
     .tl-widget { border-radius: 6px; padding: 16px; }
     .tl-widget__head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
