@@ -22,18 +22,19 @@
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
   <div class="demo">
     <h1>Proposal threshold</h1>
-    <p class="sub">The proposals signature progress bar — vote icon, count over target, and a tenant-tinted fill — paired with an open or expired status pill.</p>
+    <p class="sub">The proposals signature progress bar — vote icon and count over target on one row, with a tenant-tinted fill bar on its own row beneath, exactly as the real proposal card stacks them.</p>
 
     <p class="eyebrow">Open (below threshold)</p>
     <div class="stage">
       <!-- ===== COMPONENT (copy from here) ===== -->
       <div class="gv-ideacard__foot">
         <div class="gv-threshold">
-          <span class="gv-threshold__icon" data-gv-icon="vote-up" aria-hidden="true"></span>
-          <span class="gv-threshold__count"><b>132</b> / 300</span>
+          <div class="gv-threshold__head">
+            <span class="gv-threshold__icon" data-gv-icon="vote-up" aria-hidden="true"></span>
+            <span class="gv-threshold__count"><b>132</b> / 300</span>
+          </div>
           <span class="gv-threshold__bar" role="progressbar" aria-valuenow="132" aria-valuemin="0" aria-valuemax="300" aria-label="132 votes out of 300"><span class="gv-threshold__fill" style="width:44%"></span></span>
         </div>
-        <span class="gv-statuspill open" style="margin-left:auto;">Open</span>
       </div>
       <!-- ===== /COMPONENT ===== -->
     </div>
@@ -42,11 +43,12 @@
     <div class="stage">
       <div class="gv-ideacard__foot">
         <div class="gv-threshold">
-          <span class="gv-threshold__icon" data-gv-icon="vote-up" aria-hidden="true"></span>
-          <span class="gv-threshold__count"><b>301</b> / 300</span>
+          <div class="gv-threshold__head">
+            <span class="gv-threshold__icon" data-gv-icon="vote-up" aria-hidden="true"></span>
+            <span class="gv-threshold__count"><b>301</b> / 300</span>
+          </div>
           <span class="gv-threshold__bar" role="progressbar" aria-valuenow="300" aria-valuemin="0" aria-valuemax="300" aria-label="301 votes out of 300"><span class="gv-threshold__fill" style="width:100%"></span></span>
         </div>
-        <span class="gv-statuspill open" style="margin-left:auto;">Threshold reached</span>
       </div>
     </div>
 
@@ -54,17 +56,18 @@
     <div class="stage">
       <div class="gv-ideacard__foot">
         <div class="gv-threshold">
-          <span class="gv-threshold__icon" data-gv-icon="vote-up" aria-hidden="true"></span>
-          <span class="gv-threshold__count"><b>88</b> / 300</span>
+          <div class="gv-threshold__head">
+            <span class="gv-threshold__icon" data-gv-icon="vote-up" aria-hidden="true"></span>
+            <span class="gv-threshold__count"><b>88</b> / 300</span>
+          </div>
           <span class="gv-threshold__bar" role="progressbar" aria-valuenow="88" aria-valuemin="0" aria-valuemax="300" aria-label="88 votes out of 300"><span class="gv-threshold__fill" style="width:29%"></span></span>
         </div>
-        <span class="gv-statuspill expired" style="margin-left:auto;">Expired</span>
       </div>
     </div>
 
     <div class="notes">
+      <p><strong>Layout:</strong> <code>.gv-threshold</code> is a column — <code>.gv-threshold__head</code> holds the vote icon + count inline, and <code>.gv-threshold__bar</code> sits on its own full-width row beneath, matching the real proposal card.</p>
       <p><strong>Fill:</strong> the <code>.gv-threshold__fill</code> width is set inline as a percent; the fill tints with <code>--gv-tenant-primary</code> so it re-skins per city.</p>
-      <p><strong>Status pill:</strong> <code>.gv-statuspill.open</code> for live proposals, <code>.gv-statuspill.expired</code> once voting has closed.</p>
     </div>
   </div>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>

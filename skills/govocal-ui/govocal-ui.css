@@ -1158,6 +1158,19 @@
 .gv-threshold__bar { flex: 1 1 auto; height: 6px; border-radius: var(--gv-radius); background: var(--gv-grey-200); overflow: hidden; min-width: 90px; }
 .gv-threshold__fill { height: 100%; background: var(--gv-tenant-primary); }
 
+/* ── threshold-bar-layout — grounded in the real proposals DOM (fo-project-proposals
+   dom.html, container .bOa-DQu): the icon+count row (.LryTj) and the progress-bar
+   block (.ckpJTL) are SIBLING BLOCKS — the bar is its own row UNDER the icon+count,
+   not an inline element stretched across the row to a trailing pill. So .gv-threshold
+   is a column: row 1 = .gv-threshold__head (icon + count, inline), row 2 = the bar at
+   full width. Overrides the base inline `display:flex;align-items:center` above (append,
+   no reflow). The real proposal card shows count/bar with NO adjacent open/expired pill
+   on this surface — the demo's trailing inline pill is a component-demo invention. This
+   also removes the source of the narrow-card clipping. */
+.gv-threshold { flex-direction: column; align-items: stretch; gap: 8px; }
+.gv-threshold__head { display: flex; align-items: center; gap: 10px; }
+.gv-threshold__bar { flex: 0 0 auto; width: 100%; min-width: 0; }
+
 /* ── threshold-foot-wrap (mobile) — at narrow proposal-card width the real product
    stacks the threshold inside the card instead of overflowing: icon + count sit on
    one row and the progress bar drops to its own full-width row below, and the status
