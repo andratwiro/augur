@@ -1206,6 +1206,17 @@
   #view-builder .toggle.on {background:var(--teal);}
   #view-builder .toggle::after {content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s;}
   #view-builder .toggle.on::after {left:18px;}
+
+  /* ===== Ported phase view (bo-project-phase helpers) ===== */
+  .pp-phaseview { height:100%; overflow-y:auto; background:var(--gv-bo-canvas); }
+  #view-phase .pp-sub { display:none; }
+  #view-phase .pp-sub.is-active { display:block; }
+  .gv-bo-section .gv-phases { margin:0 0 14px; }
+  .pp-setup__thresholds { display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:520px; margin-top:12px; }
+  .pp-setup__thresholds .gv-bo-caption { margin-bottom:4px; }
+  .pp-lede { margin:0 0 12px; font-size:var(--gv-fs-base); font-weight:400; color:var(--gv-cool-grey-600); }
+  .pp-lede a { color:var(--gv-blue-500); }
+  .pp-infodot { width:16px; height:16px; vertical-align:-3px; color:var(--gv-cool-grey-600); }
 </style>
 </head>
 <body class="gv-bo min-h-screen">
@@ -1483,56 +1494,159 @@
 
       <!-- demo state toggle -->
 
-      <!-- ====== VIEW: Phase config ====== -->
-      <div id="view-phase" class="phase-stage" style="display:none;">
-        <div class="phase-card-outer">
+      <!-- ====== VIEW: Phase config (ported to real GoVocal bo-project-phase) ====== -->
+      <div id="view-phase" class="pp-phaseview" style="display:none;">
+        <div class="gv-bo-section">
 
-          <!-- Header -->
-          <div class="phase-head">
-            <div class="flex-1">
-              <h2 id="phase-title">Submit topics</h2>
-              <div class="meta">
-                <span id="phase-kind">Ideation phase</span>
-                <span class="sep">·</span>
-                <span class="inline-flex items-center gap-1.5">
-                  <svg class="nav-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                  <span id="phase-dates">October 1, 2023 → No end date</span>
-                </span>
-                <span class="sep">·</span>
-                <span class="inline-flex items-center gap-1.5">
-                  <svg class="nav-icon" style="width:13px;height:13px;" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-                  Mixed rights
-                </span>
-              </div>
-            </div>
-            <button class="top-settings-btn" style="margin-top:2px;" onclick="document.getElementById('phaseSettingsModal').style.display='flex'">
-              <svg class="nav-icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
-              SETTINGS
-            </button>
-          </div>
+          <!-- Phase ribbon -->
+          <section class="gv-phases" aria-label="Project phases">
+            <div class="gv-stepper" role="tablist" aria-label="Project phases" id="ppStepper"></div>
+          </section>
 
-          <!-- Tabs (only Description is clickable for now — rest are disabled placeholders. Phase access + Notifications moved to Settings.) -->
-          <div class="phase-tabs">
-            <div class="phase-tab disabled">Setup</div>
-            <div class="phase-tab active">Description</div>
-            <div class="phase-tab disabled">Input manager</div>
-            <div class="phase-tab disabled">Input form</div>
-            <div class="phase-tab disabled">Map</div>
-            <div class="phase-tab disabled">Insights <span class="badge-new">NEW</span></div>
-          </div>
-
-          <!-- Description content -->
-          <div class="section-head">
+          <!-- Phase header -->
+          <div class="gv-bo-phasehead">
             <div>
-              <h3>Description</h3>
-              <p>What citizens see explaining this phase.</p>
+              <h2 class="gv-bo-phasehead__title">Collect ideas</h2>
+              <div class="gv-bo-phasehead__meta"></div>
+            </div>
+            <div class="gv-bo-phasehead__actions">
+              <button class="gv-iconbtn" aria-label="Phase options"><span data-gv-icon="dots-horizontal"></span></button>
             </div>
           </div>
 
-          <div style="padding: 4px 26px 32px;">
-            <textarea class="form-textarea" style="min-height: 140px; font-size: 14px; line-height: 1.6;">Share your ideas for how we move, cycle and gather in our city over the next four years. Submissions will be reviewed by the city team and inform the next phase, where we share back what we heard from you.</textarea>
-          </div>
+          <!-- Phase sub-tabs -->
+          <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Phase" id="ppSubtabs">
+            <a class="gv-bo-tab is-active" href="#" data-sub="setup" data-tabkey="setup">Setup</a>
+            <a class="gv-bo-tab" href="#" data-sub="description" data-tabkey="description">Description</a>
+            <a class="gv-bo-tab" href="#" data-sub="inputmgr" data-tabkey="inputmgr">Input manager</a>
+            <a class="gv-bo-tab" href="#" data-sub="inputform" data-tabkey="inputform">Input form</a>
+            <a class="gv-bo-tab" href="#" data-sub="map" data-tabkey="map">Map</a>
+            <a class="gv-bo-tab" href="#" data-sub="insights" data-tabkey="insights">Insights</a>
+            <a class="gv-bo-tab" href="#" data-sub="access" data-tabkey="access">Phase access and user data</a>
+            <a class="gv-bo-tab" href="#" data-sub="notifications" data-tabkey="notifications">Notifications</a>
+          </nav>
 
+          <div class="gv-bo-card">
+<div class="pp-setup pp-sub is-active" data-sub="setup">
+            <h3 class="gv-bo-formhead">Edit Phase</h3>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Phase name</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="Collect ideas" />
+            </div>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Dates</span>
+              <div class="gv-bo-dateface"><span>05/20/2026 12:00 AM</span><span class="sep">›</span><span>06/10/2026 11:59 PM</span><span class="gv-icon" data-gv-icon="calendar"></span></div>
+            </div>
+
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>Participants can submit ideas the whole time this phase is running. Submissions feed the next phase, where the city shares back what it heard.</div></div>
+
+            <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
+
+            <!-- Participation method -->
+            <h4 class="gv-bo-subhead">What do you want to do?</h4>
+            <p class="pp-lede">Each phase runs exactly one participation method.</p>
+            <div class="gv-bo-methods">
+              <button class="gv-bo-methodcard is-selected"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="comments"></span></span><span class="gv-bo-methodcard__title">Collect input and feedback in public</span><span class="gv-bo-methodcard__desc">Tap into your users' collective intelligence. Invite them to submit, discuss ideas, and/or provide feedback in a public forum.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="vote-up"></span></span><span class="gv-bo-methodcard__title">Proposals, petitions or initiatives</span><span class="gv-bo-methodcard__desc">Allow participants to upload ideas with a time and vote limit.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="group"></span></span><span class="gv-bo-methodcard__title">Find common ground</span><span class="gv-bo-methodcard__desc">Help participants surface agreement and disagreement, one idea at a time.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="survey"></span></span><span class="gv-bo-methodcard__title">Create a survey</span><span class="gv-bo-methodcard__desc">Understand your users' needs and thinking via a wide range of private question types.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="trend-up"></span></span><span class="gv-bo-methodcard__title">Conduct a voting or prioritization exercise</span><span class="gv-bo-methodcard__desc">Select a voting method, and have users prioritise between a few different options.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="info-outline"></span></span><span class="gv-bo-methodcard__title">Share information</span><span class="gv-bo-methodcard__desc">Provide information to users, visualise results from other phases and create data rich reports.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="volunteer"></span></span><span class="gv-bo-methodcard__title">Recruit participants or volunteers</span><span class="gv-bo-methodcard__desc">Ask users to volunteer for activities and causes or find participants for a panel.</span></button>
+            </div>
+
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>Collect responses on paper or imported from other tools, and add them later from the Input manager.</div></div>
+
+            <!-- User anonymity -->
+            <h4 class="gv-bo-subhead">User anonymity</h4>
+            <div class="gv-bo-togglerow">
+              <div><div class="gv-bo-togglerow__title">Allow users to participate anonymously</div>
+                <p class="gv-bo-help">Users won't be able to track their identity from their input; project managers won't see who submitted what.</p></div>
+              <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+            </div>
+
+            <!-- Naming -->
+            <label class="gv-bo-qlabel">What should we call inputs?</label>
+            <select class="gv-bo-select"><option>Idea</option><option>Contribution</option><option>Comment</option><option>Issue</option><option>Project</option><option>Question</option></select>
+
+            <!-- Actions -->
+            <h4 class="gv-bo-subhead">Actions for users</h4>
+            <div class="gv-bo-togglerow is-action">
+              <div class="gv-bo-togglerow__title">Submitting posts</div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+            <div class="gv-bo-togglerow is-action">
+              <div class="gv-bo-togglerow__title">Commenting on posts</div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+            <div class="gv-bo-togglerow is-action">
+              <div class="gv-bo-togglerow__title">Reacting to inputs</div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+
+            <!-- Likes -->
+            <label class="gv-bo-qlabel">Number of likes per participant</label>
+            <label class="gv-radio"><input type="radio" name="likes" checked><span class="circle"></span>Unlimited</label><br>
+            <label class="gv-radio"><input type="radio" name="likes"><span class="circle"></span>Limited</label>
+
+            <label class="gv-bo-qlabel">Enable disliking</label>
+            <label class="gv-radio"><input type="radio" name="dislike" checked><span class="circle"></span>Enabled</label><br>
+            <label class="gv-radio"><input type="radio" name="dislike"><span class="circle"></span>Disabled</label>
+
+            <label class="gv-bo-qlabel">Number of dislikes per participant</label>
+            <label class="gv-radio"><input type="radio" name="dislikes" checked><span class="circle"></span>Unlimited</label><br>
+            <label class="gv-radio"><input type="radio" name="dislikes"><span class="circle"></span>Limited</label>
+
+            <!-- Similar input detection -->
+            <h4 class="gv-bo-subhead">Similar input detection</h4>
+            <div class="gv-bo-togglerow">
+              <div><div class="gv-bo-togglerow__title">Enable similar input detection</div>
+                <p class="gv-bo-help">Warn participants when their input looks like one that already exists.</p></div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+            <div class="pp-setup__thresholds">
+              <div><p class="gv-bo-caption">Similarity threshold (title)</p><input class="gv-input" type="text" value="0.3" /></div>
+              <div><p class="gv-bo-caption">Similarity threshold (body)</p><input class="gv-input" type="text" value="0.5" /></div>
+            </div>
+
+            <!-- Available views -->
+            <h4 class="gv-bo-subhead">Available views</h4>
+            <div class="gv-bo-methods" style="grid-template-columns:repeat(3,1fr)">
+              <button class="gv-bo-methodcard is-selected"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="menu"></span></span><span class="gv-bo-methodcard__title">List view</span><span class="gv-bo-methodcard__desc">Inputs shown as a sortable, filterable list.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="map"></span></span><span class="gv-bo-methodcard__title">Map view</span><span class="gv-bo-methodcard__desc">Inputs placed on a map by location.</span></button>
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="stars"></span></span><span class="gv-bo-methodcard__title">Perspectives view</span><span class="gv-bo-methodcard__desc">AI-grouped themes across the inputs.</span></button>
+            </div>
+
+            <!-- Sorting -->
+            <label class="gv-bo-qlabel">Default sorting of inputs</label>
+            <label class="gv-radio"><input type="radio" name="sort" checked><span class="circle"></span>Trending</label><br>
+            <label class="gv-radio"><input type="radio" name="sort"><span class="circle"></span>Most discussed</label><br>
+            <label class="gv-radio"><input type="radio" name="sort"><span class="circle"></span>Random</label><br>
+            <label class="gv-radio"><input type="radio" name="sort"><span class="circle"></span>Most reacted</label><br>
+            <label class="gv-radio"><input type="radio" name="sort"><span class="circle"></span>Newest</label><br>
+            <label class="gv-radio"><input type="radio" name="sort"><span class="circle"></span>Oldest</label>
+
+            <!-- Attachments -->
+            <label class="gv-bo-qlabel">Upload attachments</label>
+            <button class="gv-bo-dropzone"><span class="gv-icon" data-gv-icon="download"></span>Select a file</button>
+
+            <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
+          </div>
+            <div class="pp-sub" data-sub="description">
+              <h3 class="gv-bo-formhead">Description</h3>
+              <p class="pp-lede">What participants see explaining this phase. The rich page content is edited in the content builder.</p>
+              <button class="gv-btn admin-dark" onclick="openBuilder()"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit in the content builder</span></button>
+            </div>
+            <div class="pp-sub" data-sub="inputmgr"><div class="gv-bo-empty"><span class="gv-bo-empty__icon" data-gv-icon="menu"></span><h3 class="gv-bo-empty__title">Input manager</h3><p class="gv-bo-empty__text">Submitted ideas appear here once the phase is live.</p></div></div>
+            <div class="pp-sub" data-sub="inputform"><div class="gv-bo-empty"><span class="gv-bo-empty__icon" data-gv-icon="survey"></span><h3 class="gv-bo-empty__title">Input form</h3><p class="gv-bo-empty__text">Configure the fields participants fill in when they submit an idea.</p></div></div>
+            <div class="pp-sub" data-sub="map"><div class="gv-bo-empty"><span class="gv-bo-empty__icon" data-gv-icon="map"></span><h3 class="gv-bo-empty__title">Map</h3><p class="gv-bo-empty__text">Show inputs on a map by location.</p></div></div>
+            <div class="pp-sub" data-sub="insights"><div class="gv-bo-empty"><span class="gv-bo-empty__icon" data-gv-icon="stars"></span><h3 class="gv-bo-empty__title">Insights</h3><p class="gv-bo-empty__text">AI analysis and participation stats appear here.</p></div></div>
+            <div class="pp-sub" data-sub="access"><div class="gv-bo-empty"><span class="gv-bo-empty__icon" data-gv-icon="lock"></span><h3 class="gv-bo-empty__title">Phase access and user data</h3><p class="gv-bo-empty__text">Control who can participate and what data you collect.</p></div></div>
+            <div class="pp-sub" data-sub="notifications"><div class="gv-bo-empty"><span class="gv-bo-empty__icon" data-gv-icon="admin-notifications"></span><h3 class="gv-bo-empty__title">Notifications</h3><p class="gv-bo-empty__text">Automated emails sent during this phase.</p></div></div>
+          </div>
         </div>
       </div>
 
@@ -2287,22 +2401,8 @@
       projectChevron.style.transform = 'rotate(-90deg)';
 
       const phase = el ? el.getAttribute('data-phase') : 'collect';
-      const phases = {
-        presurvey:   { title: 'Pre-survey',             kind: 'Survey phase',      dates: '1 May 2026 → 15 May 2026' },
-        collect:     { title: 'Collect ideas',          kind: 'Ideation phase',    dates: '20 May 2026 → 10 Jun 2026' },
-        heard:       { title: 'What we heard',          kind: 'Information phase', dates: '11 Jun 2026 → 25 Jun 2026' },
-        vote:        { title: 'Community vote',         kind: 'Voting phase',      dates: '26 Jun 2026 → 12 Jul 2026' },
-        commonground:{ title: 'Find common ground',     kind: 'Common ground phase', dates: '13 Jul 2026 → 27 Jul 2026' },
-        prioritize:  { title: 'Community prioritization', kind: 'Voting phase',    dates: '20 Jul 2026 → 30 Aug 2026' },
-        workshops:   { title: 'Neighborhood workshops', kind: 'In-person engagement', dates: '7 Jun 2026 → 21 Jun 2026' },
-        portal:      { title: 'Open ideas portal',      kind: 'Ideation phase',    dates: 'Ongoing · no end date' },
-        askus:       { title: 'Ask us anything',        kind: 'Survey outside the timeline · Q&A', dates: 'Ongoing · no end date' },
-        schools:     { title: 'School survey',          kind: 'Survey outside the timeline', dates: '20 May 2026 → 5 Jun 2026 · Hidden from participants' }
-      };
-      const p = phases[phase] || phases.collect;
-      phaseTitle.textContent = p.title;
-      phaseKind.textContent = p.kind;
-      phaseDates.textContent = p.dates;
+      const idx = { presurvey:0, collect:1, heard:2, vote:3, commonground:4 };
+      if (window.ppSelectPhase) window.ppSelectPhase(idx[phase] != null ? idx[phase] : 1);
     } else if (view === 'add-phase') {
       addPhaseView.style.display = 'block';
       projectUtilities.classList.add('collapsed');
@@ -3025,5 +3125,77 @@
     document.querySelector('#phaseSettingsModal .modal-content').scrollTop = 0;
   }
 </script>
+
+<script>
+// ===================== Phase ribbon + config (real GoVocal bo-project-phase) =====================
+(function(){
+  const PP_PHASES = [
+    {label:"Pre-survey",         title:"Pre-survey",         method:"Survey phase",        dates:"May 1, 2026 12:00 AM → May 15, 2026 11:59 PM"},
+    {label:"Collect ideas",      title:"Collect ideas",      method:"Ideation phase",      dates:"May 20, 2026 12:00 AM → June 10, 2026 11:59 PM"},
+    {label:"What we heard",      title:"What we heard",      method:"Information phase",   dates:"June 11, 2026 12:00 AM → June 25, 2026 11:59 PM"},
+    {label:"Community vote",     title:"Community vote",     method:"Voting phase",        dates:"June 26, 2026 12:00 AM → July 12, 2026 11:59 PM"},
+    {label:"Find common ground", title:"Find common ground", method:"Common ground phase", dates:"July 13, 2026 12:00 AM → July 27, 2026 11:59 PM"},
+  ];
+  const CURRENT = 1;
+  const stepper = document.getElementById('ppStepper');
+  const subtabs = document.getElementById('ppSubtabs');
+  const headTitle = document.querySelector('#view-phase .gv-bo-phasehead__title');
+  const headMeta  = document.querySelector('#view-phase .gv-bo-phasehead__meta');
+  const subPanels = document.querySelectorAll('#view-phase .pp-sub');
+  if(!stepper) return;
+
+  window.ppSelectPhase = function(i){
+    const ph = PP_PHASES[i]; if(!ph) return;
+    stepper.querySelectorAll('.gv-phase').forEach((el,j)=>{
+      el.classList.toggle('current', j===i);
+      el.setAttribute('aria-selected', j===i?'true':'false');
+      const step = el.querySelector('.gv-pstep');
+      step.innerHTML = (j===i?'<span class="gv-pstep__dot"></span>':'') + (j+1);
+    });
+    headTitle.textContent = ph.title;
+    headMeta.innerHTML = '<span>'+ph.method+'</span>'
+      + '<span><span class="gv-icon" data-gv-icon="calendar-range"></span>'+ph.dates+'</span>'
+      + '<span><span class="gv-icon" data-gv-icon="eye"></span>Mixed rights</span>';
+    subtabs.querySelectorAll('.gv-bo-tab').forEach(x=>x.classList.remove('is-active'));
+    const setupTab = subtabs.querySelector('[data-tabkey="setup"]'); setupTab.classList.add('is-active');
+    subPanels.forEach(p=>p.classList.toggle('is-active', p.dataset.sub==='setup'));
+    if(window.GVIcons) window.GVIcons.render(headMeta);
+  };
+
+  PP_PHASES.forEach((ph,i)=>{
+    const b=document.createElement('button');
+    b.className='gv-phase'+(i===CURRENT?' current':'');
+    b.setAttribute('role','tab');
+    b.setAttribute('aria-selected', i===CURRENT?'true':'false');
+    b.innerHTML = '<span class="gv-pstep">'+(i===CURRENT?'<span class="gv-pstep__dot"></span>':'')+(i+1)+'</span><span class="gv-phase__label">'+ph.label+'</span>';
+    b.addEventListener('click', ()=>window.ppSelectPhase(i));
+    stepper.appendChild(b);
+  });
+  const add=document.createElement('button'); add.className='gv-bo-addphase';
+  add.innerHTML='<span data-gv-icon="plus"></span> New phase';
+  add.addEventListener('click', ()=>setView('add-phase'));
+  stepper.appendChild(add);
+
+  subtabs.querySelectorAll('.gv-bo-tab').forEach(t=>t.addEventListener('click', e=>{
+    e.preventDefault();
+    subtabs.querySelectorAll('.gv-bo-tab').forEach(x=>x.classList.remove('is-active'));
+    t.classList.add('is-active');
+    const sub=t.dataset.sub;
+    if(sub) subPanels.forEach(p=>p.classList.toggle('is-active', p.dataset.sub===sub));
+  }));
+
+  document.querySelectorAll('#view-phase .gv-bo-methods').forEach(grid=>{
+    grid.querySelectorAll('.gv-bo-methodcard').forEach(c=>c.addEventListener('click', ()=>{
+      grid.querySelectorAll('.gv-bo-methodcard').forEach(x=>x.classList.remove('is-selected'));
+      c.classList.add('is-selected');
+    }));
+  });
+
+  // set initial phasehead meta + render glyphs in the phase view
+  window.ppSelectPhase(CURRENT);
+  if(window.GVIcons) window.GVIcons.render(document.getElementById('view-phase'));
+})();
+</script>
+
 </body>
 </html>
