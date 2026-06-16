@@ -1724,6 +1724,92 @@
       ]
     },
     {
+      "id": "fo-cph-cb-home/frame",
+      "built": "pages/fo-cph-cb-home/index.html",
+      "against": "fo-cph-cb-home",
+      "map": {
+        "#e2e-content-builder-frame": ".gv-cb-frame"
+      },
+      "props": [
+        "display",
+        "width",
+        "margin",
+        "padding",
+        "background-color",
+        "border-radius"
+      ],
+      "uses": [
+        ".gv-cb-frame"
+      ]
+    },
+    {
+      "id": "fo-cph-cb-home/textbox",
+      "built": "pages/fo-cph-cb-home/index.html",
+      "against": "fo-cph-cb-home",
+      "map": {
+        ".e2e-text-box": ".gv-cb-textbox"
+      },
+      "props": [
+        "display",
+        "max-width",
+        "margin",
+        "padding",
+        "min-height"
+      ],
+      "uses": [
+        ".gv-cb-textbox"
+      ]
+    },
+    {
+      "id": "fo-cph-cb-home/single-column",
+      "built": "pages/fo-cph-cb-home/index.html",
+      "against": "fo-cph-cb-home",
+      "map": {
+        ".e2e-single-column": ".gv-cb-col"
+      },
+      "props": [
+        "display",
+        "width",
+        "min-height"
+      ],
+      "uses": [
+        ".gv-cb-col"
+      ]
+    },
+    {
+      "id": "fo-cph-cb-home/image",
+      "built": "pages/fo-cph-cb-home/index.html",
+      "against": "fo-cph-cb-home",
+      "map": {
+        ".e2e-image": ".gv-cb-image"
+      },
+      "props": [
+        "display",
+        "width",
+        "max-width",
+        "min-height"
+      ],
+      "uses": [
+        ".gv-cb-image"
+      ]
+    },
+    {
+      "id": "fo-cph-cb-home/white-space",
+      "built": "pages/fo-cph-cb-home/index.html",
+      "against": "fo-cph-cb-home",
+      "map": {
+        ".e2e-white-space": ".gv-cb-whitespace.is-small"
+      },
+      "props": [
+        "display",
+        "width",
+        "padding"
+      ],
+      "uses": [
+        ".gv-cb-whitespace"
+      ]
+    },
+    {
       "id": "phase-timeline/segment-inactive",
       "built": "components/phase-timeline/index.html",
       "against": "fo-perspectives-entry",

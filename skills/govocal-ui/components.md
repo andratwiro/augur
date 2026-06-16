@@ -1517,6 +1517,47 @@ the existing `.gv-partbar` — net-new is only the poll question/option scaffold
 
 ---
 
+## Content-Builder render layer — `.gv-cb-frame` / `.gv-cb-row` / cells (`components/content-builder-render/`)
+
+What the back-office Content Builder **outputs** onto a live front-office homepage or
+custom page — the generic-cell scaffold every other FO widget mounts INTO. NOT the
+editor chrome (that's `.gv-bo-cb-*` in `govocal-bo.css`). A full-width `.gv-cb-frame`
+holds a vertical stack of `.gv-cb-row`s; each row is **1, 2 or 3** columns
+(`.cols-1/2/3`) of `.gv-cb-col`s; cells are `.gv-cb-textbox`, `.gv-cb-image`, or
+`.gv-cb-whitespace`. Source-grounded on Copenhagen (`fo-cph-cb-home`, verified):
+single-column 588, multi-column rows constrained to the **1200** content measure with a
+**24px** gap (588+24+588), text-box padding `24px 0`, white-space `12px 0` (small) /
+`24px 0`. Cross-tenant STRUCTURE; the skin (font, colours) re-themes per `?theme=`.
+
+```html
+<div class="gv-cb-frame">
+  <!-- full-width text-box (centres to 1200), supports ql-align-center/right/justify -->
+  <div class="gv-cb-row cols-1">
+    <div class="gv-cb-textbox"><div class="ql-align-center"><h2>…</h2><p>…</p></div></div>
+  </div>
+
+  <!-- spacer: .is-small (12px 0) · default/.is-medium (24px 0) -->
+  <div class="gv-cb-row cols-1"><div class="gv-cb-whitespace is-small"></div></div>
+
+  <!-- two columns: image + text (588 + 24 gap + 588) -->
+  <div class="gv-cb-row cols-2">
+    <div class="gv-cb-col"><div class="gv-cb-image"><img src="…" alt="…"></div></div>
+    <div class="gv-cb-col"><div class="gv-cb-textbox"><p>…</p></div></div>
+  </div>
+
+  <!-- three equal columns -->
+  <div class="gv-cb-row cols-3">
+    <div class="gv-cb-col">…</div>
+    <div class="gv-cb-col">…</div>
+    <div class="gv-cb-col">…</div>
+  </div>
+</div>
+```
+
+Reference page assembling a full Copenhagen-style CB homepage: `pages/fo-cph-cb-home/`.
+
+---
+
 ## City theming (`govocal-themes.js`)
 
 The product themes **primary, secondary, text colours + a custom font** per tenant

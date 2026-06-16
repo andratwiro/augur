@@ -70,6 +70,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
 | **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
 | **Community Monitor** | `/components/community-monitor/` | `components/community-monitor/` | The “City at a glance” satisfaction module — an ongoing survey that surfaces as a top modal/banner on the homepage and asks how residents feel about governance… |
+| **Content Builder Render** | `/components/content-builder-render/` | `components/content-builder-render/` | Content-Builder render layer — GoVocal component |
 | **Event Card** | `/components/event-card/` | `components/event-card/` | Event card with a two-tone date chip pinned over the media, clock / location / link / registrant rows and a Register CTA, laid out in the events grid with its… |
 | **Footer** | `/components/footer/` | `components/footer/` | Source-grounded on GoVocal’s real <footer id="hook-footer"> : a secondary-nav row of legal links — one is the Cookie-Einstellungen button — plus the “Ermöglich… |
 | **Header Nav** | `/components/header-nav/` | `components/header-nav/` | Responsive site chrome — 78px bar, logo slot, dropdown + “Mehr ···” overflow, search, primary CTA. Collapses to a hamburger drawer on narrow screens. CSS-only… |
@@ -118,6 +119,7 @@ as a starting point for a prototype.
 | **Bo Users** | `/pages/bo-users/` | `pages/bo-users/` | Users — GoVocal back office (reference) |
 | **Event Detail** | `/pages/event-detail/` | `pages/event-detail/` | Station Road walk & talk: see the plans on site — Westmere |
 | **Events** | `/pages/events/` | `pages/events/` | Events — Westmere |
+| **Fo Cph Cb Home** | `/pages/fo-cph-cb-home/` | `pages/fo-cph-cb-home/` | København taler — Content-Builder homepage (reference) |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Westmere — Have your say |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | A square for everyone — share your idea — Westmere |
 | **Perspectives Entry** | `/pages/perspectives-entry/` | `pages/perspectives-entry/` | The Big Westmere Conversation — Perspectives — Westmere |

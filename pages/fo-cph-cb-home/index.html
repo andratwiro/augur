@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="gv-surface" content="front-office" />
+  <title>København taler — Content-Builder homepage (reference)</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <!--
+    REFERENCE for the FRONT-OFFICE Content-Builder RENDER LAYER (.gv-cb-frame +
+    .gv-cb-row .cols-1/2/3 + .gv-cb-col + .gv-cb-textbox / .gv-cb-image /
+    .gv-cb-whitespace). This is what the back-office Content Builder OUTPUTS onto a
+    live homepage / custom page — the generic-cell scaffold everything else in the
+    library mounts INTO. Distinct from the editor chrome (.gv-bo-cb-* in govocal-bo.css).
+
+    Source-grounded on Copenhagen (kobenhavntaler.kk.dk/da-DK, capture fo-cph-cb-home).
+    STRUCTURE is cross-tenant: a full-width frame holds a vertical stack of rows, each
+    1/2/3 columns of cells. The SKIN (font KBH-Regular → --gv-font-family, brand
+    colours) re-themes per city via ?theme= — nothing brand is hardcoded here.
+
+    Pure assembly: header/footer + homepage widgets dragged in; the only net-new tier
+    is the .gv-cb-* render scaffold (canonical, govocal-ui.css). Photos are CSS
+    placeholders. Verified via fo-cph-cb-home/* checkpoints.
+  -->
+  <style>
+    /* Page-level layout only — colour/type/elevation live in canonical CSS. */
+    body { margin: 0; background: var(--gv-white); font-family: var(--gv-font-family); }
+
+    /* Demo placeholder art for image cells (no real photos in a static prototype) —
+       a tinted tile, tokens only, no page-authored brand hex. */
+    .ph { background: var(--gv-grey-100); border-radius: var(--gv-radius);
+      aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center;
+      color: var(--gv-cool-grey-500); font-size: var(--gv-fs-s); }
+
+    /* The CB text-box renders editor rich-text; in this reference its headings/copy
+       reuse the canonical type tokens so it matches the live render (16px/400 body). */
+    .gv-cb-textbox h2 { margin: 0 0 8px; font-size: var(--gv-fs-xxl); font-weight: 700;
+      line-height: 32.5px; color: var(--gv-text-primary); }
+    .gv-cb-textbox p { margin: 0 0 12px; font-size: var(--gv-fs-base); font-weight: 400;
+      line-height: 24px; color: var(--gv-grey-800); }
+    .gv-cb-textbox p:last-child { margin-bottom: 0; }
+    .gv-cb-textbox a { color: var(--gv-tenant-primary); }
+  </style>
+</head>
+<body class="gv-root">
+
+  <!-- ── Site header (dragged in) ───────────────────────────────────────── -->
+  <header id="e2e-navbar" class="gv-header" data-auth="out">
+    <div class="gv-header__inner">
+      <a class="gv-header__brand" href="#" data-gv-logo aria-label="København taler"></a>
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link is-active" href="#">Forside</a></li>
+          <li><a class="gv-nav__link" href="#">Projekter</a></li>
+          <li><a class="gv-nav__link" href="#">Begivenheder</a></li>
+          <li><a class="gv-nav__link" href="#">Forslag</a></li>
+        </ul>
+      </nav>
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn" aria-label="Søg"><span data-gv-icon="search"></span></button>
+        <a class="gv-btn primary" href="#">Registrer dig</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ══ THE CONTENT-BUILDER RENDER FRAME ══════════════════════════════════
+         A full-width container holding a vertical stack of rows. This is the
+         scaffold the editor writes into and the live homepage renders. -->
+    <div class="gv-cb-frame" id="cb-frame">
+
+      <!-- ROW 1 — full-width text-box (centred 1200 measure, padding 24 0) -->
+      <div class="gv-cb-row cols-1">
+        <div class="gv-cb-textbox">
+          <div class="ql-align-center">
+            <h2>Støt aktuelle københavnerforslag</h2>
+            <p>Lige nu er der 7 aktive københavnerforslag, der mangler din underskrift.
+               Få indflydelse på, hvordan København bliver en endnu bedre by at leve i.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 2 — white-space spacer (small, 12px 0) -->
+      <div class="gv-cb-row cols-1">
+        <div class="gv-cb-whitespace is-small"></div>
+      </div>
+
+      <!-- ROW 3 — TWO columns: image cell + text-box cell (588 + 24 gap + 588) -->
+      <div class="gv-cb-row cols-2">
+        <div class="gv-cb-col">
+          <div class="gv-cb-image"><div class="ph" style="aspect-ratio:1/1">Billede</div></div>
+        </div>
+        <div class="gv-cb-col">
+          <div class="gv-cb-textbox">
+            <p><a href="#">Før Den Grønne Sti til Valby Idrætspark og Valbyparken!</a></p>
+            <p><a href="#">Bedre forhold for cykler</a></p>
+            <p><a href="#">Tryg hverdag</a></p>
+            <p><a href="#">Anti-fjendtlig arkitektur</a></p>
+            <p><a href="#">Bedre og billigere offentlig transport</a></p>
+            <p><a href="#">Mødetid kl. 09.00 i Københavnske folkeskoler</a></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 4 — white-space spacer (medium, 24px 0) -->
+      <div class="gv-cb-row cols-1">
+        <div class="gv-cb-whitespace is-medium"></div>
+      </div>
+
+      <!-- ROW 5 — THREE columns (the cross-tenant three-col: flex gap 24 max 1200) -->
+      <div class="gv-cb-row cols-3">
+        <div class="gv-cb-col">
+          <div class="gv-cb-image"><div class="ph">Billede</div></div>
+          <div class="gv-cb-textbox"><h2 style="font-size:var(--gv-fs-l)">Idéer</h2><p>Del dine idéer til byen.</p></div>
+        </div>
+        <div class="gv-cb-col">
+          <div class="gv-cb-image"><div class="ph">Billede</div></div>
+          <div class="gv-cb-textbox"><h2 style="font-size:var(--gv-fs-l)">Afstemninger</h2><p>Stem på de bedste forslag.</p></div>
+        </div>
+        <div class="gv-cb-col">
+          <div class="gv-cb-image"><div class="ph">Billede</div></div>
+          <div class="gv-cb-textbox"><h2 style="font-size:var(--gv-fs-l)">Begivenheder</h2><p>Mød op og bliv hørt.</p></div>
+        </div>
+      </div>
+
+      <!-- ROW 6 — white-space spacer (default) -->
+      <div class="gv-cb-row cols-1"><div class="gv-cb-whitespace"></div></div>
+
+      <!-- ROW 7 — full-width image banner -->
+      <div class="gv-cb-row cols-1">
+        <div class="gv-cb-image"><div class="ph" style="aspect-ratio:1200/300">Banner</div></div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── Footer (dragged in) ────────────────────────────────────────────── -->
+  <footer id="hook-footer" class="gv-footer">
+    <ul class="gv-footer__links">
+      <li><a href="#">Tilgængelighed</a></li>
+      <li><a href="#">Privatlivspolitik</a></li>
+      <li><button type="button">Cookie-indstillinger</button></li>
+    </ul>
+    <a class="gv-powered-logo" href="https://www.govocal.com" aria-label="Ermöglicht durch go·vocal">
+      <img src="../../skills/govocal-ui/govocal-logo.svg" alt="go·vocal" />
+    </a>
+  </footer>
+
+</body>
+</html>

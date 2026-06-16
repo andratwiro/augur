@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Content-Builder render layer — GoVocal component</title>
+  <!-- References canonical assets directly — never copies or redefines them. -->
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    body { margin: 0; padding: 32px 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); }
+    .demo-label { max-width: 1200px; margin: 0 auto 8px; padding: 0 24px;
+      font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-cool-grey-600); text-transform: uppercase; letter-spacing: .04em; }
+    .demo-frame { background: var(--gv-white); margin-bottom: 32px; }
+    .ph { background: var(--gv-grey-200); border-radius: var(--gv-radius); aspect-ratio: 16/9;
+      display: flex; align-items: center; justify-content: center; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-s); }
+    .gv-cb-textbox h2 { margin: 0 0 8px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px; color: var(--gv-text-primary); }
+    .gv-cb-textbox p { margin: 0 0 12px; font-size: var(--gv-fs-base); line-height: 24px; color: var(--gv-grey-800); }
+  </style>
+</head>
+<body>
+
+  <!-- The FRONT-OFFICE Content-Builder render layer: a .gv-cb-frame holding a stack of
+       .gv-cb-row (cols-1/2/3) of generic cells — .gv-cb-textbox / .gv-cb-image /
+       .gv-cb-whitespace. This is what the back-office editor OUTPUTS onto a live page;
+       every other FO widget mounts INTO these cells. Source-grounded on Copenhagen. -->
+
+  <p class="demo-label">cols-1 · full-width text-box (ql-align-center) + white-space</p>
+  <div class="gv-cb-frame demo-frame">
+    <div class="gv-cb-row cols-1">
+      <div class="gv-cb-textbox">
+        <div class="ql-align-center">
+          <h2>A centred full-width text block</h2>
+          <p>The text-box self-centres to the 1200px content measure (margin 0 auto), with 24px 0 padding.</p>
+        </div>
+      </div>
+    </div>
+    <div class="gv-cb-row cols-1"><div class="gv-cb-whitespace is-small"></div></div>
+  </div>
+
+  <p class="demo-label">cols-2 · image + text-box (588 + 24 gap + 588)</p>
+  <div class="gv-cb-frame demo-frame">
+    <div class="gv-cb-row cols-2">
+      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph" style="aspect-ratio:1/1">Image</div></div></div>
+      <div class="gv-cb-col"><div class="gv-cb-textbox"><h2 style="font-size:var(--gv-fs-l)">A two-column row</h2><p>Two columns share the 1200 measure with a 24px gap, rendering 588px each.</p></div></div>
+    </div>
+  </div>
+
+  <p class="demo-label">cols-3 · three equal columns (flex gap 24, max 1200)</p>
+  <div class="gv-cb-frame demo-frame">
+    <div class="gv-cb-row cols-3">
+      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><p>Column one.</p></div></div>
+      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><p>Column two.</p></div></div>
+      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><p>Column three.</p></div></div>
+    </div>
+  </div>
+
+</body>
+</html>

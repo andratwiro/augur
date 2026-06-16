@@ -2238,3 +2238,62 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
   font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
 .gv-backlink:hover { color: var(--gv-text-primary); text-decoration: underline; }
 .gv-backlink [data-gv-icon] { width: 18px; height: 18px; display: inline-flex; }
+
+/* ── Content-Builder RENDER layer (FO) ──────────────────────────────────────
+   What the back-office Content Builder OUTPUTS onto a live front-office homepage
+   or custom page (NOT the editor chrome — that's .gv-bo-cb-* in govocal-bo.css).
+   Source-grounded on Copenhagen (kobenhavntaler.kk.dk, capture fo-cph-cb-home):
+   a full-width frame holds a vertical stack of rows; each row is 1/2/3 columns of
+   generic cells (text-box · image · white-space). Cross-tenant STRUCTURE — the skin
+   (font KBH-Regular→--gv-font-family, colours) re-themes per city. Measured:
+   frame width 1440 (page) · single-column 588 · text-box full-width 1200/max 1200,
+   margin 0 120 · in-column text-box width 588 margin 0 · white-space pad 12/24px 0.
+   1200 − (588×2) = 24px column gap → row gap:24px, max-width:1200. */
+
+.gv-cb-frame {                       /* render container — full page width, no chrome */
+  display: block; width: 100%; margin: 0; padding: 0;
+  font-family: var(--gv-font-family); color: var(--gv-text-primary);
+}
+
+/* A layout row = a full-width flow container; it spans the frame and lays its cells
+   out left→right with a 24px gap (588+24+588 = 1200). The 1200 content MEASURE +
+   centring live on the CELLS, not the row, exactly as the live render (a top-level
+   text-box self-centres with max-width:1200 + margin:0 120 on a 1440 page; a
+   white-space spacer spans the full 1440). cols-1 is plain block flow. */
+.gv-cb-row {
+  display: flex; flex-wrap: wrap; gap: 24px;
+  width: 100%; margin: 0; padding: 0;
+}
+.gv-cb-row.cols-1 { display: block; }                 /* single full cell, no gap */
+/* Multi-column rows are constrained + centred to the 1200 content measure, so two
+   columns + a 24px gap render 588 each (588+24+588 = 1200); three render ~384. */
+.gv-cb-row.cols-2,
+.gv-cb-row.cols-3 { max-width: var(--gv-cb-measure, 1200px); margin: 0 auto; }
+.gv-cb-col { flex: 1 1 0; min-width: 0; min-height: 40px; display: block; }
+
+/* Every cell carries the 1200 content measure. As a top-level (full-width) cell it
+   self-centres to 1200 on a wider page; inside a .gv-cb-col the column constrains
+   its rendered width (588 in a 2-col row) while the cap stays 1200 — matching live. */
+.gv-cb-textbox,
+.gv-cb-image { max-width: var(--gv-cb-measure, 1200px); margin-left: auto; margin-right: auto; }
+
+/* Text-box cell — a rich-text block. Padding 24px 0 (measured).
+   Quill alignment classes (ql-align-center/right/justify) come through from the editor. */
+.gv-cb-textbox { display: block; width: 100%; padding: 24px 0; min-height: 26px; }
+.gv-cb-textbox > * { font-family: var(--gv-font-family); }
+.gv-cb-textbox .ql-align-center  { text-align: center; }
+.gv-cb-textbox .ql-align-right   { text-align: right; }
+.gv-cb-textbox .ql-align-justify { text-align: justify; }
+
+/* Image cell — flex container so the <img> fills the cell width (live: display:flex). */
+.gv-cb-image { display: flex; width: 100%; min-height: 26px; }
+.gv-cb-image img { display: block; width: 100%; height: auto; }
+
+/* White-space spacer — vertical padding only, no content. Two measured steps. */
+.gv-cb-whitespace { display: block; width: 100%; padding: 24px 0; min-height: 0; }
+.gv-cb-whitespace.is-small  { padding: 12px 0; }
+.gv-cb-whitespace.is-medium { padding: 24px 0; }
+
+@media (max-width: 760px) {
+  .gv-cb-row { flex-direction: column; gap: 16px; padding: 0 16px; }
+}
