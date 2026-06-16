@@ -74,6 +74,7 @@
   --gv-text-heading:   #474747;   /* live heading colour (h1–h3 / card titles compute to rgb(71,71,71)) — wietsedemo FO */
   --gv-text-heading-strong: #1E1E1E;  /* darker heading treatment grounded on FO project pages (ideation H1, idea-card author/title, feed count, cause desc compute to rgb(30,30,30)) */
   --gv-text-pagetitle: #474747;   /* FO list/index page H1 ("Projects" 34px/500 → rgb(71,71,71)) */
+  --gv-header-text:    rgba(0,0,0,0.87);  /* FO site <header> root inherited text colour (wietsedemo #e2e-navbar computes to rgba(0,0,0,0.87)); nav links override to --gv-black */
   --gv-border-dark:    var(--gv-grey-700);
   --gv-border-light:   var(--gv-grey-400);
   --gv-placeholder:    var(--gv-grey-600);

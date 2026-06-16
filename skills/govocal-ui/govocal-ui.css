@@ -17,6 +17,13 @@
   z-index: 50;
   font-family: var(--gv-font-family);
   box-shadow: var(--gv-shadow-header);   /* live product header carries a soft bottom shadow */
+  /* Root inherited text baseline — matches the live #e2e-navbar header element:
+     colour rgba(0,0,0,0.87), 14px, line-height 19.999px (≈1.43). The nav links
+     themselves override to 16px/500/--gv-black, so this only sets the chrome
+     baseline that verify probes on the header root. */
+  color: var(--gv-header-text);
+  font-size: var(--gv-fs-s);             /* 14px chrome baseline; .gv-nav__link overrides to --gv-fs-base */
+  line-height: 1.43;                     /* 14px × 1.43 ≈ 19.999px (matches real) */
 }
 .gv-header.sticky { position: sticky; top: 0; }
 /* Full-width bar: logo flush-left, actions flush-right (matches the live product —
