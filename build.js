@@ -32,6 +32,34 @@ const DIST = path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
 const SRC_REVIEW = path.join(ROOT, "src", "review", "comments.js");
 
+// Dev-facing prototype status. Source of truth is the committed prototype-status.json
+// (keyed "<opportunity>/<prototype>"), rendered as a static chip at build time — no
+// KV, no runtime cost. Internal file: it lives outside any prototypes/ folder, so it
+// is never copied to dist. See STATUS_META for the allowed values.
+const STATUS_FILE = path.join(ROOT, "prototype-status.json");
+const STATUS_META = {
+  "in-progress": { label: "In progress", cls: "is-wip" },
+  "dev-ready": { label: "Dev ready", cls: "is-ready" },
+  ignore: { label: "Ignore", cls: "is-ignore" },
+};
+
+async function loadStatusMap() {
+  try {
+    const raw = await fs.readFile(STATUS_FILE, "utf8");
+    const obj = JSON.parse(raw);
+    const map = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (k.startsWith("_")) continue; // skip _comment etc.
+      if (STATUS_META[v]) map[k] = v;
+      else if (v) console.warn(`build: unknown status "${v}" for ${k} — ignored`);
+    }
+    return map;
+  } catch (err) {
+    if (err.code !== "ENOENT") console.warn(`build: could not read ${STATUS_FILE}: ${err.message}`);
+    return {};
+  }
+}
+
 // Marker-wrapped tag injected into every prototype's HTML. Dormant until the
 // reviewer hits Shift+C; the markers let the Download HTML button strip it so
 // devs get a clean file. Absolute path => served from /dist root by the worker.
@@ -50,7 +78,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.22";
+const UI_VERSION = "0.23";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -253,6 +281,7 @@ async function entryPoint(prototype, protoDir) {
 async function scan() {
   const opportunities = [];
   const topEntries = await fs.readdir(ROOT, { withFileTypes: true });
+  const statusMap = await loadStatusMap();
 
   for (const top of topEntries) {
     if (!top.isDirectory()) continue;
@@ -278,6 +307,7 @@ async function scan() {
         href,
         file,
         mtimeMs: modifiedTime(protoDir, latest),
+        status: statusMap[`${top.name}/${proto.name}`] || null,
       });
     }
 
@@ -598,6 +628,25 @@ const PAGE_CSS = `
       flex: none; font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase;
       color: var(--faint); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 9px;
     }
+
+    /* ---- Dev-status chip (static, from prototype-status.json) ---- */
+    /* Label + colour together (never colour alone, WCAG 1.4.1). */
+    .status-chip {
+      flex: none; align-self: center; font-size: 11px; font-weight: 600; letter-spacing: .02em;
+      border-radius: 999px; padding: 3px 9px; border: 1px solid transparent; white-space: nowrap;
+    }
+    .status-chip.is-wip {
+      color: #92500a; background: #fff6e8; border-color: rgba(146,80,10,0.22);
+    }
+    .status-chip.is-ready {
+      color: #0a6b3c; background: #e9f7ef; border-color: rgba(10,107,60,0.22);
+    }
+    .status-chip.is-ignore {
+      color: var(--faint); background: var(--bg-2); border-color: var(--line-2);
+    }
+    /* "Ignore" dims its card so it recedes without disappearing. */
+    .card-proto:has(.status-chip.is-ignore) { opacity: .55; }
+    .card-proto:has(.status-chip.is-ignore):hover { opacity: 1; }
 
     /* ---- Components table (small preview per row) ---- */
     .comp-table { width: 100%; border-collapse: collapse; }
@@ -1051,6 +1100,14 @@ function renderRootIndex(opportunities) {
   });
 }
 
+// Static dev-status chip for an opportunity card. Carries a text label (not colour
+// alone, WCAG 1.4.1); returns "" when the prototype has no status set.
+function statusChip(status) {
+  const meta = STATUS_META[status];
+  if (!meta) return "";
+  return `<span class="status-chip ${meta.cls}">${meta.label}</span>`;
+}
+
 function renderOpportunityIndex(opp) {
   const cards = opp.prototypes
     .map((p) => {
@@ -1071,6 +1128,7 @@ function renderOpportunityIndex(opp) {
               <div class="proto-name">${titleCase(p.name)}</div>
               <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
             </div>
+            ${statusChip(p.status)}
           </div>
         </div>`;
     })
