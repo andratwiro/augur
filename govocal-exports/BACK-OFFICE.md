@@ -453,3 +453,49 @@ sweeps can capture opened menus directly instead of falling back to older r1 cap
 - BO phase sub-tabs still unbuilt: Description (Content Builder), Map, Phase access (re-capture
   with working reveal), Notifications/emails depth.
 - Re-pass "done" BO pages adversarially (states: hover/active/focus/checked; type hierarchy).
+
+## Wave 3 — deep FO methods + BO phase sub-tabs (audit + build)
+
+**⚠ Capture session expired mid-Wave-3** (`scripts/capture/.auth/state.json` → 848 bytes;
+fresh grabs of authed/private/closed pages redirect to the public FO shell). Unattended
+`--login` can't run, so from here all work is grounded on the **448 existing captures +
+source**, not new live grabs. Two agents independently hit this (empty survey/phase
+captures). All COMMITTED Run-6 work used pre-existing authed captures, so it's unaffected.
+
+**FO survey runner — faithful where covered; fixes + gaps:**
+- **S1 FIXED** (commit after this log): `.sv-optcard:has(input:checked)` ring was
+  tenant-primary; real (fo-survey-runner digest) is a **neutral `#767676`** ring (border +
+  outer 1px), same as resting — selection shows via the themed radio dot inside, not the
+  card hue. Now `--gv-border-dark`. (`.sv-imgcard` selected ring still themed — ungrounded, left.)
+- **V3 checked, already correct:** `.gv-voteresult__track` already = `color-mix(primary 25%)`
+  + 1px primary border + 4px radius (matches `rgba(17,45,126,.25)` real); fill aliases the token.
+- **Gaps (build backlog):** survey kit MISSING **text / long-text (S4)**, **date (S3)**,
+  **number (S5)** field widgets (source CustomFieldsForm/* confirms they exist; most-used
+  field type uncovered). Reuse `.gv-input`/`.gv-textarea` in an `.sv-q__control`.
+
+**FO voting/budgeting — a HOLE, not a drift:** we only model the closed/results state
+(`.gv-voteoption`/`.gv-voteresult`). Interactive cast-vote is entirely missing: **V1
+AddToBasketBox** (Add→Added button is SYSTEM green/success, NOT themed) and **V2 sticky
+VotingCTABar** (budget-remaining counter + primary-inverse Submit w/ pulse). Source-grounded
+structure only — **needs a live OPEN budgeting-phase capture** (all our voting projects are
+closed) before numeric build. Highest-value FO target once the session is restored.
+
+**BO phase sub-tabs — mostly already built; one genuine gap building now:**
+- **Label corrections:** real tabs are **"Phase access and user data"** (not "Access rights")
+  and **"Notifications"** (not "Emails"). Order: Setup·Description·Input manager·Input form·
+  Map·Insights·Phase access and user data·Notifications.
+- **Access + Notifications: ALREADY BUILT & faithful** in `pages/bo-project-phase/` (vs
+  r2-access-expanded / r1-pe-phase-emails). No build work; optional checkpoint pinning.
+- **Description: DEAD TAB (real gap) — BUILDING.** Correction: it's NOT the Content Builder,
+  it's a **multiloc Quill RTE form** (Title + Subtitle + ql-toolbar + green Save). 100% reuse
+  (`.gv-bo-multiloc`/`.gv-bo-field`/`.gv-input`/`.gv-bo-cb-rte`/`.gv-btn.success`), grounded in
+  authed `r1-pe-phase-description`. Adding the missing `data-sub="description"` panel.
+- **Map: DEAD TAB (real gap) — DEFERRED.** Source-grounded structure (CustomMapConfigPage:
+  520px config column + layer list + lat/long/zoom + Import GeoJSON/Esri), but exact values
+  **unverifiable until the session is re-authed and `r6-pe-map` re-captured.** Don't invent.
+
+### Run-6 next actions (when session is restored via interactive --login)
+1. Re-capture an OPEN voting/budgeting phase → build V1 AddToBasketBox + V2 VotingCTABar.
+2. Re-capture `r6-pe-map` authed → build the Map config panel.
+3. Build survey kit text/long-text/date/number field widgets (S3–S5).
+4. Pin optional checkpoints on the already-faithful Access/Notifications panels.
