@@ -29,6 +29,11 @@ _One-paragraph framing of the SMS verification opportunity._
   E4 Wizard = one rule + per-action overrides; E3 Slider & E5 Live = per-action
   first-class. E3 deliberately trades per-action *data/groups* to a phase-level
   block (slider keeps per-action *access*) — flagged in an in-prototype note.
+  **Review round 2:** fixed the collect logic to match the epic — personal info
+  (name/password) only when sign-in is required; "Anyone" can only be asked
+  anonymous demographic questions (no account = nothing to collect). E1 now
+  defaults to the epic's real default (sign-in + email) with grammatical
+  subject phrasing. Passes `npm run audit` (darkened `--ax-muted` for contrast).
 - `phase-access-permissions/` — the **Project Editor back office** (duplicated from
   `pages/bo-project-phase/`, self-contained) focused on **Timeline → Phase →
   "Phase access and user data"**. The access tab is rebuilt to mirror the *current

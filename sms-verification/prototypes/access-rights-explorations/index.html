@@ -1714,7 +1714,7 @@
 <!-- ═══════════════ ACCESS RIGHTS EXPLORATIONS — styles ═══════════════ -->
 <style>
   .ax-stage {
-    --ax-ink:#19212e; --ax-muted:#697585; --ax-bg:#f6f7fb; --ax-card:#fff;
+    --ax-ink:#19212e; --ax-muted:#586472; --ax-bg:#f6f7fb; --ax-card:#fff;
     --ax-line:#e7eaf1; --ax-accent:#3b59ff; --ax-accent-soft:#eef1ff;
     --ax-green:#1ea672; --ax-amber:#e8a33d; --ax-red:#e25555; --ax-teal:#10a4b0;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -1958,8 +1958,8 @@
   const clone = (c)=>JSON.parse(JSON.stringify(Object.assign({},c,{_id:newId()})));
   const methodList = (c)=>Object.keys(c.methods).filter(k=>c.methods[k]);
   function summary(c){
-    if(c.level==='open')   return 'Anyone — no checks';
     if(c.level==='admins') return 'Team only';
+    if(c.level==='open')   return c.collect.demo ? 'Anyone · a few questions' : 'Anyone — no checks';
     const m = methodList(c).map(k=>METHODS[k].t.toLowerCase());
     let s = m.length ? m.join(' + ') : 'just an account';
     if(c.recent && c.methods.id) s += ' (recent)';
@@ -2007,9 +2007,10 @@
     }
     if(col){
       h += `<div class="ax-block"><p class="ax-block__h">What we collect</p>
-        <div class="ax-crow"><span>🙋</span><span><div class="ax-crow__t">Their name</div><div class="ax-crow__d">First and last</div></span><button class="ax-tog ${c.collect.name?'is-on':''}" data-ed="cname"></button></div>
-        <div class="ax-crow"><span>🔑</span><span><div class="ax-crow__t">A password</div><div class="ax-crow__d">Creates a full account</div></span><button class="ax-tog ${c.collect.password?'is-on':''}" data-ed="cpass"></button></div>
+        ${v?`<div class="ax-crow"><span>🙋</span><span><div class="ax-crow__t">Their name</div><div class="ax-crow__d">First and last</div></span><button class="ax-tog ${c.collect.name?'is-on':''}" data-ed="cname"></button></div>
+        <div class="ax-crow"><span>🔑</span><span><div class="ax-crow__t">A password</div><div class="ax-crow__d">Creates a full account</div></span><button class="ax-tog ${c.collect.password?'is-on':''}" data-ed="cpass"></button></div>`:''}
         <div class="ax-crow"><span>📋</span><span><div class="ax-crow__t">A few questions</div><div class="ax-crow__d">${Object.keys(c.demoOn).filter(k=>c.demoOn[k]).join(', ')||'Age, gender, where they live…'}</div></span><button class="ax-tog ${c.collect.demo?'is-on':''}" data-ed="cdemo"></button></div>
+        ${!v?`<p class="ax-note" style="margin-top:10px">No sign-in means no account — so you can only ask anonymous questions, not a name or password.</p>`:''}
         ${c.collect.demo?`<div class="ax-subrow" style="display:block">
           <label class="ax-radio"><input type="radio" name="dt-${c._id}" data-ed="dt" data-v="before" ${c.demoTiming==='before'?'checked':''}> Ask before they take part</label>
           <label class="ax-radio"><input type="radio" name="dt-${c._id}" data-ed="dt" data-v="end" ${c.demoTiming==='end'?'checked':''}> Ask on a page at the end</label>
@@ -2057,9 +2058,10 @@
 
   /* ════════════════ E1 — SENTENCE (merge + per-action overrides) ════════════════ */
   function renderSentence(){
-    const master = defCfg('open');
+    const master = defCfg('signin'); // epic default: require sign-in + email
     const ovr = {}; // action.key -> cfg (override) or undefined
     const s = { open:null, showOvr:false };
+    const SUBJ = { open:'Anyone', signin:'Anyone who signs in', admins:'Only your team' };
     const root = el('<div></div>');
     const chip=(k,label)=>`<span class="ax-chip" data-chip="${k}">${label}<span class="ax-chip__car">▾</span></span>`;
 
@@ -2071,18 +2073,20 @@
         return `<div class="ax-pop">${Object.keys(METHODS).map(k=>`<div class="ax-pop__o ${master.methods[k]?'is-on':''}" data-tog="method" data-v="${k}"><span class="ax-pop__em">${master.methods[k]?'☑':'☐'}</span><span><span class="ax-pop__x">${METHODS[k].em} ${METHODS[k].t}</span><span class="ax-pop__d">${METHODS[k].d}</span></span></div>`).join('')}${master.methods.id?`<div class="ax-pop__o ${master.recent?'is-on':''}" data-tog="recent"><span class="ax-pop__em">${master.recent?'☑':'☐'}</span><span><span class="ax-pop__x">Recent ID only</span><span class="ax-pop__d">Re-check every phase</span></span></div>`:''}</div>`;
       }
       if(s.open==='collect'){
+        const signedIn = master.level==='signin';
         return `<div class="ax-pop">
-          <div class="ax-pop__o ${master.collect.name?'is-on':''}" data-tog="cname"><span class="ax-pop__em">${master.collect.name?'☑':'☐'}</span><span><span class="ax-pop__x">🙋 Their name</span></span></div>
-          <div class="ax-pop__o ${master.collect.password?'is-on':''}" data-tog="cpass"><span class="ax-pop__em">${master.collect.password?'☑':'☐'}</span><span><span class="ax-pop__x">🔑 A password</span></span></div>
-          <div class="ax-pop__o ${master.collect.demo?'is-on':''}" data-tog="cdemo"><span class="ax-pop__em">${master.collect.demo?'☑':'☐'}</span><span><span class="ax-pop__x">📋 A few questions</span></span></div></div>`;
+          ${signedIn?`<div class="ax-pop__o ${master.collect.name?'is-on':''}" data-tog="cname"><span class="ax-pop__em">${master.collect.name?'☑':'☐'}</span><span><span class="ax-pop__x">🙋 Their name</span></span></div>
+          <div class="ax-pop__o ${master.collect.password?'is-on':''}" data-tog="cpass"><span class="ax-pop__em">${master.collect.password?'☑':'☐'}</span><span><span class="ax-pop__x">🔑 A password</span></span></div>`:''}
+          <div class="ax-pop__o ${master.collect.demo?'is-on':''}" data-tog="cdemo"><span class="ax-pop__em">${master.collect.demo?'☑':'☐'}</span><span><span class="ax-pop__x">📋 A few questions</span></span></div>
+          ${signedIn?'':'<div class="ax-pop__d" style="padding:8px 12px">No account, so just anonymous questions.</div>'}</div>`;
       }
       return '';
     }
     function checkLabel(){ const m=methodList(master); return m.length?m.map(k=>METHODS[k].t.toLowerCase()).join(' + '):'just an account'; }
-    function collectLabel(){ const c=master.collect; const a=[]; if(c.name)a.push('their name'); if(c.password)a.push('a password'); if(c.demo)a.push('a few questions'); return a.length?a.join(', '):'nothing'; }
+    function collectLabel(){ const c=master.collect; const a=[]; if(master.level==='signin'){ if(c.name)a.push('their name'); if(c.password)a.push('a password'); } if(c.demo)a.push('a few questions'); return a.length?a.join(', '):'nothing extra'; }
 
     function draw(){
-      let sent = `${chip('who',LEVELS[master.level].t)} can take part.`;
+      let sent = `${chip('who',SUBJ[master.level])} can take part.`;
       if(master.level==='signin') sent += ` First they give us ${chip('check',checkLabel())}.`;
       if(master.level!=='admins') sent += ` We collect ${chip('collect',collectLabel())}.`;
       const advanced = master.level==='signin' ? `<button class="ax-inlinelink" data-more style="margin-top:14px">⚙️ Groups, custom message & question wording →</button>` : '';
@@ -2236,9 +2240,10 @@
           <div style="margin-top:20px"><button class="ax-btn" data-next="collect">Next →</button></div>`;
       } else if(s.step==='collect'){
         body=`<button class="ax-link" data-back>← back</button><p class="ax-q">What do you need to know about them?</p>
-          <div class="ax-crow"><span>🙋</span><span><div class="ax-crow__t">Their name</div></span><button class="ax-tog ${master.collect.name?'is-on':''}" data-c="name"></button></div>
-          <div class="ax-crow"><span>🔑</span><span><div class="ax-crow__t">A password</div></span><button class="ax-tog ${master.collect.password?'is-on':''}" data-c="password"></button></div>
+          ${master.level==='signin'?`<div class="ax-crow"><span>🙋</span><span><div class="ax-crow__t">Their name</div></span><button class="ax-tog ${master.collect.name?'is-on':''}" data-c="name"></button></div>
+          <div class="ax-crow"><span>🔑</span><span><div class="ax-crow__t">A password</div></span><button class="ax-tog ${master.collect.password?'is-on':''}" data-c="password"></button></div>`:''}
           <div class="ax-crow"><span>📋</span><span><div class="ax-crow__t">A few questions (age, area…)</div></span><button class="ax-tog ${master.collect.demo?'is-on':''}" data-c="demo"></button></div>
+          ${master.level!=='signin'?`<p class="ax-note">No sign-in, so no name or password — only anonymous questions.</p>`:''}
           ${master.collect.demo?`<div class="ax-subrow" style="display:block"><label class="ax-radio"><input type="radio" name="wdt" data-wdt="before" ${master.demoTiming==='before'?'checked':''}> Ask before they take part</label><label class="ax-radio"><input type="radio" name="wdt" data-wdt="end" ${master.demoTiming==='end'?'checked':''}> Ask at the end</label><p class="ax-note">Question wording lives in Registration settings.</p></div>`:''}
           <div style="margin-top:18px"><button class="ax-btn" data-next="peraction">Next →</button></div>`;
       } else if(s.step==='peraction'){
@@ -2315,8 +2320,8 @@
         ${c._ui.groups?`<div class="ax-subrow" style="display:block">${GROUPS.map(g=>`<label class="ax-checkrow" style="border:0;padding:6px 0"><input type="checkbox" data-grpv="${g}" ${c.groups.includes(g)?'checked':''}> ${g}</label>`).join('')}</div>`:''}
         `:''}
         <p class="ax-block__h" style="margin-top:18px">What we collect</p>
-        <div class="ax-gate"><span class="ax-gate__em">🙋</span><span><div class="ax-gate__t">Their name</div></span><button class="ax-tog ${c.collect.name?'is-on':''}" data-g="c:name"></button></div>
-        <div class="ax-gate"><span class="ax-gate__em">🔑</span><span><div class="ax-gate__t">A password</div></span><button class="ax-tog ${c.collect.password?'is-on':''}" data-g="c:password"></button></div>
+        ${c.level==='signin'?`<div class="ax-gate"><span class="ax-gate__em">🙋</span><span><div class="ax-gate__t">Their name</div></span><button class="ax-tog ${c.collect.name?'is-on':''}" data-g="c:name"></button></div>
+        <div class="ax-gate"><span class="ax-gate__em">🔑</span><span><div class="ax-gate__t">A password</div></span><button class="ax-tog ${c.collect.password?'is-on':''}" data-g="c:password"></button></div>`:''}
         <div class="ax-gate"><span class="ax-gate__em">📋</span><span><div class="ax-gate__t">A few questions</div></span><button class="ax-tog ${c.collect.demo?'is-on':''}" data-g="c:demo"></button></div>`;
       root.innerHTML=`
         <p class="ax-eyebrow">Exploration 5 · See it live</p>
