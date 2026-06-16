@@ -852,7 +852,7 @@ info page (terms / privacy / about / archive). Source-grounded on St Louis
 - **Custom-page rich text:** the body is a `.gv-prose` block (now also styling embedded
   `h2`/`h3` sub-headings + `strong`) with an inline CTA `<a class="gv-cta-inline">`
   (tenant-primary fill, white, 3px / `10px 18px` — the live `a.custom-button`, digest #10).
-  Full page assembly: `pages/fo-stlouis-infopage/`.
+  Full page assembly: `pages/custom-page/`.
 
 ## Featured 3-up spotlight row — `.gv-featured-row` / `.gv-pcard.featured` (`components/homepage-featured-row/`)
 
@@ -1125,7 +1125,7 @@ Compose with the boxed grid card above. All themeable via `--gv-tenant-*`.
      Source-grounded on wietsedemo.govocal.com/en/events. Reuses the event-card /
      grid / empty-state atoms above; net-new here = the huge tenant-primary page
      title (80px, --gv-fs-display), the 25px section h2s, and the FO filter pills.
-     Built page: pages/events/index.html. -->
+     Built page: pages/events-page/index.html. -->
 <h1 class="gv-events-page__title">Events</h1>                 <!-- 80px / 700 / tenant-primary -->
 <section>
   <div class="gv-events-page__sectionhead">
@@ -1842,8 +1842,6 @@ single-column 588, multi-column rows constrained to the **1200** content measure
   </div>
 </div>
 ```
-
-Reference page assembling a full Copenhagen-style CB homepage: `pages/fo-cph-cb-home/`.
 
 ---
 

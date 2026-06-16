@@ -128,10 +128,9 @@ as a starting point for a prototype.
 | **Bo Survey Builder** | `/pages/bo-survey-builder/` | `pages/bo-survey-builder/` | Survey form builder — GoVocal back office (reference) |
 | **Bo Tools** | `/pages/bo-tools/` | `pages/bo-tools/` | Tools — GoVocal back office (reference) |
 | **Bo Users** | `/pages/bo-users/` | `pages/bo-users/` | Users — GoVocal back office (reference) |
+| **Custom Page** | `/pages/custom-page/` | `pages/custom-page/` | Policy Memo Archive — GoVocal (reference) |
 | **Event Detail** | `/pages/event-detail/` | `pages/event-detail/` | Station Road walk & talk: see the plans on site — Westmere |
-| **Events** | `/pages/events/` | `pages/events/` | Events — Westmere |
-| **Fo Cph Cb Home** | `/pages/fo-cph-cb-home/` | `pages/fo-cph-cb-home/` | København taler — Content-Builder homepage (reference) |
-| **Fo Stlouis Infopage** | `/pages/fo-stlouis-infopage/` | `pages/fo-stlouis-infopage/` | Policy Memo Archive — GoVocal (reference) |
+| **Events Page** | `/pages/events-page/` | `pages/events-page/` | Events — Westmere |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Westmere — Have your say |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | A square for everyone — share your idea — Westmere |
 | **Perspectives Entry** | `/pages/perspectives-entry/` | `pages/perspectives-entry/` | The Big Westmere Conversation — Perspectives — Westmere |
@@ -152,9 +151,8 @@ and reuse patterns. Prototypes are free to diverge from the library.
 |---|---|---|---|
 | **Department Spaces** | Departments | `departments/prototypes/department-spaces/` | Hello-world placeholder for the Department Spaces prototype. |
 | **Sms Verification** | Departments | `departments/prototypes/sms-verification/` | Hello-world placeholder for the SMS Verification prototype. |
-| **Counter** | Parallel Participation | `parallel-participation/prototypes/counter/` | Counter — GoVocal Prototype |
-| **Greeting** | Parallel Participation | `parallel-participation/prototypes/greeting/` | Greeting — GoVocal Prototype |
-| **Hello World** | Parallel Participation | `parallel-participation/prototypes/hello-world/` | Self-contained static prototype for Parallel Participation . |
-| **Parallel Project** | Parallel Participation | `parallel-participation/prototypes/parallel-project/` | Greenfield mitmachen — Parallel participation (prototype) |
-| **Theme Switch** | Parallel Participation | `parallel-participation/prototypes/theme-switch/` | City Theme Preview — GoVocal Prototype |
+| **Full Parallel Build** | Parallel Participation | `parallel-participation/prototypes/full-parallel-build/` | Content Builder — full project canvas |
+| **Parallel Editor Builder** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder/` | Parallel Participation — Project editor + content builder |
+| **Access Rights Explorations** | Sms Verification | `sms-verification/prototypes/access-rights-explorations/` | Tap any underlined word. These rules cover everything — then add exceptions below if you need them. |
 | **Hello World** | Sms Verification | `sms-verification/prototypes/hello-world/` | Scaffold placeholder for the SMS Verification opportunity. |
+| **Phase Access Permissions** | Sms Verification | `sms-verification/prototypes/phase-access-permissions/` | Project configuration — GoVocal back office (reference) |
