@@ -1148,10 +1148,11 @@
 
 /* ── Signature / vote threshold — proposals. Count p.cyVyPb : #596B7A/14px;
    bold count .fBuzIc : tenant-primary/16px/700. Track : 6px, --gv-grey-200, 3px;
-   fill : tenant-primary. ─────────────────────────────────────────────────────── */
+   fill : tenant-primary. Vote icon : cool-grey-600 (#596B7A), 20x20 — structural
+   grey, NOT tenant-tinted; tenant-primary stays on the bold count + bar fill only. */
 .gv-threshold { display: flex; align-items: center; gap: 10px; min-width: 280px; }
-.gv-threshold__icon { color: var(--gv-tenant-primary); display: inline-flex; }
-.gv-threshold__icon .gv-icon, .gv-threshold__icon svg { width: 18px; height: 18px; }
+.gv-threshold__icon { color: var(--gv-cool-grey-600); display: inline-flex; }
+.gv-threshold__icon .gv-icon, .gv-threshold__icon svg { width: 20px; height: 20px; }
 .gv-threshold__count { font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-cool-grey-600); white-space: nowrap; }
 .gv-threshold__count b { font-size: var(--gv-fs-m); line-height: 24px; font-weight: 700; color: var(--gv-tenant-primary); }
 .gv-threshold__bar { flex: 1 1 auto; height: 6px; border-radius: var(--gv-radius); background: var(--gv-grey-200); overflow: hidden; min-width: 90px; }
