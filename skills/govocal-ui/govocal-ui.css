@@ -1240,6 +1240,23 @@
   .gv-partbar__status { align-self: flex-start; }
 }
 
+/* participation-bar-status-icon fidelity fix — the live CTA bar prefixes the status
+   text ("Open for participation") with a ~16px white status glyph (filled circle in a
+   16px box, fill #ffffff), not the small 9px CSS dot the base rule draws. Size the
+   ::before up to the live 16px footprint and render it as a filled-circle status icon
+   via a masked SVG so it reads as a proper leading glyph rather than a tiny bullet.
+   White fill matches the on-tenant bar (IGNORE the green tenant colour per the brief).
+   Appended as a refinement over the base ::before above — do not reflow it. */
+.gv-partbar__status::before {
+  width: 16px; height: 16px; border-radius: 0; background: #fff;
+  -webkit-mask: var(--gv-partbar-status-mask) center / 16px 16px no-repeat;
+          mask: var(--gv-partbar-status-mask) center / 16px 16px no-repeat;
+}
+:root {
+  /* filled circle + inner dot — a status/info style glyph in a 16px viewBox */
+  --gv-partbar-status-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23000' d='M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3.2a1.05 1.05 0 1 1 0 2.1 1.05 1.05 0 0 1 0-2.1zM9.2 11.6H6.8v-.95h.6V7.85h-.6V6.9h1.8v3.75h.6v.95z'/%3E%3C/svg%3E");
+}
+
 /* Modal base text colour — the real dialog card (.modalcontent) renders its body
    and the close X at rgba(0,0,0,0.87) (measured wietsedemo), the same near-black
    the idea-card body uses, NOT the global #333 body text. Scope it to the FO modal
