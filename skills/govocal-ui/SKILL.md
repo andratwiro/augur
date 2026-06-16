@@ -117,6 +117,18 @@ especially the three city-configurable ones:
 
 Never hardcode a hex for brand colour; that's what breaks city theming.
 
+> **THEMING CONTRACT (don't break this).** Per-city theming is EXACTLY four
+> variables — `--gv-tenant-primary` / `-secondary` / `-text` + `--gv-font-family` —
+> common to every component, and the only things `?theme=` / `govocal-themes.js`
+> swap per city (tints/focus/states derive via `color-mix`). Therefore:
+> 1. Components reference `var(--gv-tenant-*)` / `var(--gv-font-family)`, never a literal city hex.
+> 2. **Never invent a new per-city token** (e.g. a frozen city green). If a value varies by
+>    city it must BE one of the four; if it's the same across cities it's SYSTEM — use the
+>    shared palette (`--gv-green-*`, `--gv-success`, greys, radii, type), which `?theme=` never touches.
+> 3. A city hex may appear only in a source comment or a `govocal-themes.js` theme definition.
+>
+> The canonical statement lives at the top of the tenant block in `govocal-tokens.css`.
+
 ## City theming — `?theme=`
 
 Each GoVocal city configures primary/secondary/text. The switcher lets you preview

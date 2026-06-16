@@ -90,6 +90,24 @@
   --gv-background:     #EDEFF0;
   --gv-survey-canvas:  #F4F6F8;  /* survey-runner route page bg (div.cwzUZm) — a lighter blue-grey than the generic app canvas; measured live */
 
+  /* ╔══════════════════════════════════════════════════════════════════════╗
+     ║ THEMING CONTRACT — READ THIS BEFORE ADDING ANY COLOUR/FONT TOKEN.      ║
+     ║ Per-city theming is EXACTLY four variables, common to EVERY component: ║
+     ║   --gv-tenant-primary · --gv-tenant-secondary · --gv-tenant-text       ║
+     ║   --gv-font-family                                                     ║
+     ║ Cities differ ONLY in these four values. The theme switcher            ║
+     ║ (govocal-themes.js / ?theme=) sets ONLY these per city; tints, focus   ║
+     ║ and component states DERIVE from them (color-mix). Therefore:          ║
+     ║  1. Components must reference var(--gv-tenant-*) / var(--gv-font-       ║
+     ║     family) — never a literal city hex as a property value.            ║
+     ║  2. NEVER invent a new per-city token (e.g. a city-specific green).     ║
+     ║     • If a value varies by city, it must BE one of the four above.     ║
+     ║     • If it's the same across cities, it is SYSTEM — use the shared     ║
+     ║       palette (--gv-green-*, --gv-success, greys, radii, type, etc.),   ║
+     ║       which is common to all tenants and is NOT touched by the switcher.║
+     ║  3. A city hex may appear ONLY as a source comment, or inside a         ║
+     ║     govocal-themes.js theme definition — nowhere else.                  ║
+     ╚══════════════════════════════════════════════════════════════════════╝ */
   /* ── Tenant (per-city) colours ────────────────────────────────────────── */
   /* The product themes these per tenant. Override --gv-tenant-primary on :root
      (or a [data-city] scope) to re-skin.
@@ -189,13 +207,15 @@
      a cross-tenant structural frame distinct from the borderless wietsedemo card. */
   --gv-event-card-border: #CCC;              /* bordered EventsWidget <li> frame */
 
-  /* ── Folder card project-count (measured live: stlouis.govocal.com /projects) ──
-     The folder card's "N projects" line renders its number in the platform's
-     positive/success green (St Louis = srgb(53,133,69) = #358545, probed on
-     .e2e-folder-card-numberofprojects, 14px/700). This is the SKIN (each tenant's
-     success-green), not a cross-tenant structural value — aliased so a tenant can
-     re-theme the count colour without forking the folder-card structure. */
-  --gv-folder-count: #358545;                /* folder-card "N projects" number */
+  /* ── Folder card project-count green (measured live: stlouis.govocal.com) ──
+     The "N projects" number renders in GoVocal's positive/count green — a SYSTEM
+     semantic, COMMON across tenants, NOT per-city skin. Probed #358545 = srgb
+     (53,133,69) on .e2e-folder-card-numberofprojects (14px/700); distinct from
+     --gv-success #04884C (used elsewhere, e.g. the nav projects dropdown). It is a
+     literal SYSTEM value like the rest of the --gv-green-* palette, so the theme
+     switcher correctly never touches it. NOT a per-tenant colour — per-city theming
+     is ONLY the four THEMING-CONTRACT vars above; don't reframe this as skin. */
+  --gv-folder-count: #358545;                /* system positive/count green (common across tenants) */
 
   /* ── Attachment download-row border (measured live: stlouis.govocal.com /pages/memos) ──
      The Content-Builder "file attachment" widget frames each downloadable file in a
