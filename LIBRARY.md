@@ -154,7 +154,6 @@ and reuse patterns. Prototypes are free to diverge from the library.
 |---|---|---|---|
 | **Department Spaces** | Departments | `departments/prototypes/department-spaces/` | Hello-world placeholder for the Department Spaces prototype. |
 | **Sms Verification** | Departments | `departments/prototypes/sms-verification/` | Hello-world placeholder for the SMS Verification prototype. |
-| **Full Parallel Build** | Parallel Participation | `parallel-participation/prototypes/full-parallel-build/` | Content Builder — full project canvas |
 | **Parallel Editor Builder** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder/` | Parallel Participation — Project editor + content builder |
 | **Access Rights Explorations** | Sms Verification | `sms-verification/prototypes/access-rights-explorations/` | Tap any underlined word. These rules cover everything — then add exceptions below if you need them. |
 | **Access Rights Explorations V2** | Sms Verification | `sms-verification/prototypes/access-rights-explorations-v2/` | Access Rights Explorations v2 — five product-grounded takes |

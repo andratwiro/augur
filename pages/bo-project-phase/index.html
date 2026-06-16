@@ -295,7 +295,7 @@
           <!-- Phase sub-tabs (the set shown adapts to the selected phase's method) -->
           <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Phase" id="subtabs">
             <a class="gv-bo-tab is-active" href="#" data-sub="setup" data-tabkey="setup">Setup</a>
-            <a class="gv-bo-tab" href="#" data-tabkey="description">Description</a>
+            <a class="gv-bo-tab" href="#" data-sub="description" data-tabkey="description">Description</a>
             <a class="gv-bo-tab" href="#" data-sub="inputmgr" data-tabkey="inputmgr">Input manager</a>
             <a class="gv-bo-tab" href="#" data-sub="inputform" data-tabkey="inputform">Input form</a>
             <a class="gv-bo-tab" href="#" data-sub="inputimporter" data-tabkey="inputimporter">Input importer</a>
@@ -1008,6 +1008,57 @@
           <div class="pp-sub" data-sub="notifications">
             <p class="gv-bo-help" style="margin:0 0 18px">You can configure emails triggered on a phase level.</p>
             <div id="phase-emails"></div>
+          </div>
+
+          <!-- ════ DESCRIPTION sub-panel (AdminPhaseDescription — multiloc Quill RTE form) ════ -->
+          <div class="pp-sub" data-sub="description">
+            <h3 class="gv-bo-formhead" style="margin-bottom:8px">Phase description</h3>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Title</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="Submit your ideas" />
+            </div>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Subtitle (optional)</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="Help shape the future of the central square" />
+            </div>
+
+            <div class="gv-bo-field">
+              <span class="gv-label">Body</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <div class="gv-bo-cb-rte__toolbar">
+                <span class="gv-bo-cb-rte__group"><select class="gv-bo-cb-rte__select"><option>Normal</option><option>Title</option><option>Subtitle</option></select></span>
+                <span class="gv-bo-cb-rte__group">
+                  <button class="gv-bo-cb-rte__btn" type="button" aria-label="Bold" data-fmt="bold"><b>B</b></button>
+                  <button class="gv-bo-cb-rte__btn" type="button" aria-label="Italic" data-fmt="italic"><i>i</i></button>
+                </span>
+                <span class="gv-bo-cb-rte__group">
+                  <button class="gv-bo-cb-rte__btn" type="button" aria-label="Align left" data-fmt="left">▤</button>
+                  <button class="gv-bo-cb-rte__btn" type="button" aria-label="Center text" data-fmt="center">▥</button>
+                  <button class="gv-bo-cb-rte__btn" type="button" aria-label="Align right" data-fmt="right">▤</button>
+                </span>
+                <span class="gv-bo-cb-rte__group">
+                  <button class="gv-bo-cb-rte__btn" type="button" aria-label="Ordered list" data-fmt="ol">1.</button>
+                  <button class="gv-bo-cb-rte__btn" type="button" aria-label="Unordered list" data-fmt="ul">•</button>
+                </span>
+                <span class="gv-bo-cb-rte__group">
+                  <button class="gv-bo-cb-rte__btn" type="button" aria-label="Upload image" data-fmt="image">▦</button>
+                  <button class="gv-bo-cb-rte__btn" type="button" aria-label="Add video" data-fmt="video">▶</button>
+                </span>
+                <span class="gv-bo-cb-rte__group">
+                  <button class="gv-bo-cb-rte__btn" type="button" aria-label="Remove formatting" data-fmt="clean">T<sub>x</sub></button>
+                </span>
+              </div>
+              <div class="gv-bo-cb-rte__editor" contenteditable="true">
+                <p>The central square is the heart of our neighbourhood, and it's time to imagine what it could become. Over the next weeks we're collecting ideas from everyone who lives, works and spends time here.</p>
+                <p>Tell us what would make the square more welcoming, greener, or easier to use. Every submission is read, grouped with similar ideas, and shared back with the whole community before we move to the voting phase.</p>
+              </div>
+            </div>
+
+            <button class="gv-btn success"><span class="gv-btn__label">Save</span></button>
           </div>
 
           <!-- ════ INPUT IMPORTER sub-panel (Excel / form import) ════ -->
