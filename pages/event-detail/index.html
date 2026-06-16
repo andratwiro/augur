@@ -15,11 +15,14 @@
     REFERENCE REBUILD of a single GoVocal event detail page (/events/:id),
     source-grounded on wietsedemo.govocal.com/en/events/<id> (capture:
     govocal-exports/fo-event-detail, Cultuurconnect tenant). Anatomy:
-    header → "Go back" tenant-primary text link → two-column body:
+    header → neutral grey "Go back" text link (cool-grey label + filled grey
+    circle-arrow) → two-column body:
       • main: "From <project>" eyebrow + "Go to the project" link + event H1
-        (30px/700) + rich-text .gv-prose description
-      • side (350px): stylized date block on the grey app-canvas panel (day 34px,
-        month, time) + "Add to calendar" text button + "Share this event"
+        (30px/700) + rich-text .gv-prose description (no cover photo)
+      • side (350px): TWO-LAYER date card — a grey app-canvas panel (#EDEFF0, 20px)
+        wrapping an elevated WHITE inner card (the centered day 34px / month / time
+        stack), then a hairline divider + calendar meta row + "Add to calendar" text
+        button → "Share this event" = 4 square coloured social targets + Copy link
     → footer. Pure assembly: every colour/border/type lives in canonical
     govocal-ui.css / govocal-primitives.css; this page authors layout + content
     only. Re-skins per city via the ?theme= switcher.
@@ -28,24 +31,6 @@
     /* Page-level layout only — all colour/elevation/type lives in canonical CSS. */
     body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
     .eventdetail-backbar { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 20px 24px 0; }
-    /* Event cover photo — page-local frame; canonical owns no event-cover atom, so
-       layout/radius here, no .gv-* redefinition. */
-    .eventdetail-cover { margin: 0 0 22px; border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 7; background: var(--gv-grey-100); }
-    .eventdetail-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    /* Organiser + attendees blocks on the sidebar panel. Avatar faces are filled by
-       canonical govocal-avatars.js into .av bubbles — no per-page portrait assets. */
-    .eventdetail-organiser { display: flex; align-items: center; gap: 12px; margin-top: 18px;
-      padding-top: 18px; border-top: 1px solid var(--gv-grey-300); }
-    .eventdetail-organiser .av { width: 42px; height: 42px; border-radius: 50%; flex: none;
-      background-size: cover; background-position: center; }
-    .eventdetail-organiser__name { font-size: var(--gv-fs-m); font-weight: 600; color: var(--gv-text-primary); line-height: 1.25; }
-    .eventdetail-organiser__role { font-size: var(--gv-fs-s); color: var(--gv-grey-700); }
-    .eventdetail-attendees { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--gv-grey-300); }
-    .eventdetail-attendees__count { display: block; margin-bottom: 10px; font-size: var(--gv-fs-s); color: var(--gv-grey-700); }
-    .eventdetail-attendees__count strong { color: var(--gv-text-primary); font-weight: 700; }
-    /* Related events section */
-    .eventdetail-related { max-width: var(--gv-shell-w, 1150px); margin: 8px auto 0; padding: 0 24px; }
-    .eventdetail-related > h2 { font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-text-primary); margin: 8px 0 18px; }
   </style>
 </head>
 <body class="gv-root" data-auth="in">
@@ -158,24 +143,23 @@
 
   <!-- ═════════════════════════════════ Page ═════════════════════════════════ -->
 
-  <!-- "Go back" tenant-primary text link (live #e2e-go-back-link) -->
+  <!-- Neutral "Go back" text link (live #e2e-go-back-link): cool-grey label + filled
+       grey circle-arrow — a neutral colour TREATMENT, not the tenant-primary brand link. -->
   <div class="eventdetail-backbar">
-    <a id="e2e-go-back-link" class="gv-btn primary-text" href="../events/">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="m12 16 1.4-1.4-1.6-1.6H16v-2h-4.2l1.6-1.6L12 8l-4 4Zm0 6q-2.075 0-3.9-.788-1.825-.787-3.175-2.137-1.35-1.35-2.137-3.175Q2 14.075 2 12t.788-3.9q.787-1.825 2.137-3.175 1.35-1.35 3.175-2.138Q9.925 2 12 2t3.9.787q1.825.788 3.175 2.138 1.35 1.35 2.137 3.175Q22 9.925 22 12t-.787 3.9q-.788 1.825-2.138 3.175-1.35 1.35-3.175 2.137Q14.075 22 12 22Z"/></svg>
+    <a id="e2e-go-back-link" class="gv-eventdetail__back" href="../events/">
+      <span class="gv-eventdetail__backcircle" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20Z"/></svg>
+      </span>
       Go back
     </a>
   </div>
 
   <main id="main-content" class="gv-eventdetail">
 
-    <!-- ════ Main column: cover · eyebrow · project link · title · description ════ -->
+    <!-- ════ Main column: eyebrow · project link · title · description ════
+         (Per the captured skeleton: no cover photo — the title sits at the top of a
+          sparse main column.) -->
     <div class="gv-eventdetail__main">
-
-      <!-- Event cover photo (Station Road, a quiet tree-lined road in Northgate) -->
-      <figure class="eventdetail-cover">
-        <img src="../../skills/govocal-ui/img/westmere/street-trees.webp" loading="lazy"
-          alt="Station Road in Northgate — a quiet, tree-lined road where the new plans will be staked out on site." />
-      </figure>
 
       <p class="gv-eventdetail__from">From "The future of Station Road"</p>
       <a class="gv-eventdetail__projlink" href="#">
@@ -206,114 +190,60 @@
       </div>
     </div>
 
-    <!-- ════ Sidebar: stylized date block · Add to calendar · Share ════ -->
+    <!-- ════ Sidebar: two-layer date card · Add to calendar · Share ════
+         Per the captured skeleton: a grey app-canvas panel WRAPPING an elevated white
+         inner card (the centered date stack), then a divider + calendar meta row +
+         "Add to calendar". No organiser/attendees blocks (net-new — dropped to match
+         the reference). -->
     <aside class="gv-eventdetail__side">
       <div class="gv-eventdetail__datecard">
-        <div id="e2e-event-date-stylized" class="gv-eventdetail__datestylized">
-          <span class="gv-sr-only">Event date: 25 June 2026 from 5:30 PM to 7:00 PM. Meet outside Northgate station, Station Road, Northgate.</span>
-          <div class="gv-eventdetail__date" aria-hidden="true">
-            <span class="d">25</span>
-            <span class="m">Jun 2026</span>
-            <span class="t">5:30 PM - 7:00 PM CEST</span>
+        <div class="gv-eventdetail__datecardinner">
+          <div id="e2e-event-date-stylized" class="gv-eventdetail__datestylized">
+            <span class="gv-sr-only">Event date: 25 June 2026 from 5:30 PM to 7:00 PM.</span>
+            <div class="gv-eventdetail__date" aria-hidden="true">
+              <span class="d">25</span>
+              <span class="m">Jun</span>
+              <span class="t">5:30 PM - 7:00 PM CEST</span>
+            </div>
           </div>
         </div>
-        <div class="gv-eventdetail__actions">
-          <button type="button" class="gv-btn primary-text size-s">Add to calendar</button>
-        </div>
 
-        <p class="gv-eventdetail__row" style="display:flex;align-items:flex-start;gap:9px;margin:18px 0 0;font-size:var(--gv-fs-s);color:var(--gv-grey-700)">
-          <span data-gv-icon="location" aria-hidden="true" style="flex:none;width:16px;height:16px;color:var(--gv-tenant-primary)"></span>
-          Meet outside Northgate station, Station Road, Northgate
+        <hr class="gv-eventdetail__datedivider" aria-hidden="true" />
+
+        <p class="gv-eventdetail__datemeta">
+          <span data-gv-icon="calendar" aria-hidden="true"></span>
+          June 25, 2026 · 5:30 PM – 7:00 PM CEST
         </p>
 
-        <!-- Organiser -->
-        <div class="eventdetail-organiser">
-          <span class="av" aria-hidden="true"></span>
-          <span>
-            <span class="eventdetail-organiser__name">Hanne Vos</span><br />
-            <span class="eventdetail-organiser__role">Organiser · City of Westmere</span>
-          </span>
-        </div>
-
-        <!-- Attendees -->
-        <div class="eventdetail-attendees">
-          <span class="eventdetail-attendees__count"><strong>41 people</strong> are going</span>
-          <div class="gv-bubbles sm" aria-hidden="true">
-            <span class="av"></span><span class="av"></span><span class="av"></span>
-            <span class="av"></span><span class="av"></span><span class="av"></span>
-          </div>
+        <div class="gv-eventdetail__actions">
+          <button type="button" class="gv-btn primary-text size-s">Add to calendar</button>
         </div>
       </div>
 
       <section class="gv-eventdetail__share">
         <h2>Share this event</h2>
+        <!-- Four square coloured social-share targets (brand SVGs page-local; the
+             square treatment + colours live in canonical .gv-eventdetail__sharesq). -->
         <div class="gv-eventdetail__sharebtns">
-          <button class="gv-iconbtn" aria-label="Share this event"><span data-gv-icon="share"></span></button>
+          <button class="gv-eventdetail__sharesq facebook" type="button" aria-label="Share on Facebook">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12Z"/></svg>
+          </button>
+          <button class="gv-eventdetail__sharesq whatsapp" type="button" aria-label="Share on WhatsApp">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2c-5.46 0-9.9 4.44-9.9 9.9 0 1.75.46 3.45 1.32 4.95L2 22l5.3-1.39a9.86 9.86 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.44 9.9-9.9 0-2.65-1.03-5.13-2.9-7C17.18 3.03 14.69 2 12.04 2Zm0 1.8c2.17 0 4.2.85 5.74 2.38a8.06 8.06 0 0 1 2.37 5.72c0 4.47-3.64 8.1-8.12 8.1h-.01a8.1 8.1 0 0 1-4.12-1.13l-.3-.18-3.06.8.82-2.99-.2-.31a8.05 8.05 0 0 1-1.24-4.29c0-4.47 3.64-8.1 8.12-8.1Zm-2.95 4.36c-.14 0-.36.05-.55.26-.19.21-.72.7-.72 1.71 0 1.01.74 1.98.84 2.12.1.14 1.44 2.2 3.49 3.08.49.21.87.34 1.17.43.49.16.94.13 1.29.08.39-.06 1.21-.49 1.38-.97.17-.48.17-.89.12-.97-.05-.08-.19-.14-.4-.24-.21-.11-1.21-.6-1.4-.66-.19-.07-.32-.1-.46.1-.14.21-.53.66-.65.8-.12.14-.24.16-.45.05-.21-.1-.88-.32-1.68-1.03-.62-.55-1.04-1.24-1.16-1.45-.12-.21-.01-.32.09-.42.09-.09.21-.24.31-.36.1-.12.14-.21.21-.35.07-.14.03-.26-.02-.36-.05-.11-.46-1.13-.64-1.55-.17-.41-.34-.35-.46-.36-.12 0-.26-.01-.4-.01Z"/></svg>
+          </button>
+          <button class="gv-eventdetail__sharesq x" type="button" aria-label="Share on X">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.96 6.82H1.07l7.73-8.84L.65 2.25h6.83l4.71 6.23 5.46-6.23Zm-1.16 17.52h1.83L7.01 4.13H5.04l12.04 15.64Z"/></svg>
+          </button>
+          <button class="gv-eventdetail__sharesq email" type="button" aria-label="Share by email">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5-8-5V6l8 5 8-5v2Z"/></svg>
+          </button>
+          <span class="gv-eventdetail__shareor">or</span>
           <a class="gv-btn primary-outlined size-s" href="#"><span data-gv-icon="link"></span> Copy link</a>
         </div>
       </section>
     </aside>
 
   </main>
-
-  <!-- ════ Related events — reuses canonical .gv-event-card / .gv-events__grid ════ -->
-  <section class="eventdetail-related" aria-labelledby="related-events-h">
-    <h2 id="related-events-h">Other upcoming events</h2>
-    <div class="gv-events__grid">
-
-      <article class="gv-event-card">
-        <div class="gv-event-card__media">
-          <img src="../../skills/govocal-ui/img/westmere/workshop.webp" loading="lazy"
-            alt="Residents and staff around screens at a community session" />
-          <span class="gv-event-card__date"><span class="m">Jun</span><span class="d">18</span><span class="y">2026</span></span>
-        </div>
-        <div class="gv-event-card__body">
-          <h3 class="gv-event-card__title"><a href="#">Community session: bringing online &amp; offline participation together</a></h3>
-          <div class="gv-event-card__meta">
-            <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 18 Jun 2026 · 11:00 – 12:00</p>
-            <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online meeting</a></p>
-            <p class="gv-event-card__row"><span data-gv-icon="user"></span> 2 registrants</p>
-          </div>
-          <a class="gv-btn primary-outlined full" href="#">View event</a>
-        </div>
-      </article>
-
-      <article class="gv-event-card">
-        <div class="gv-event-card__media">
-          <img src="../../skills/govocal-ui/img/westmere/meeting.webp" loading="lazy"
-            alt="Public meeting with a resident raising a hand to speak" />
-          <span class="gv-event-card__date"><span class="m">Jul</span><span class="d">02</span><span class="y">2026</span></span>
-        </div>
-        <div class="gv-event-card__body">
-          <h3 class="gv-event-card__title"><a href="#">Participatory budget: info &amp; Q&amp;A session</a></h3>
-          <div class="gv-event-card__meta">
-            <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 2 Jul 2026 · 18:30 – 19:30</p>
-            <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online meeting</a></p>
-            <p class="gv-event-card__row"><span data-gv-icon="user"></span> 7 registrants</p>
-          </div>
-          <a class="gv-btn primary-outlined full" href="#">View event</a>
-        </div>
-      </article>
-
-      <article class="gv-event-card">
-        <div class="gv-event-card__media">
-          <img src="../../skills/govocal-ui/img/westmere/community.webp" loading="lazy"
-            alt="Busy community open house with a mixed crowd of residents" />
-          <span class="gv-event-card__date"><span class="m">Jul</span><span class="d">09</span><span class="y">2026</span></span>
-        </div>
-        <div class="gv-event-card__body">
-          <h3 class="gv-event-card__title"><a href="#">Old Town renewal — neighbourhood open house</a></h3>
-          <div class="gv-event-card__meta">
-            <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 9 Jul 2026 · 16:00 – 19:00</p>
-            <p class="gv-event-card__row"><span data-gv-icon="location"></span> Old Town Hall, Market Square</p>
-            <p class="gv-event-card__row"><span data-gv-icon="user"></span> 33 registrants</p>
-          </div>
-          <a class="gv-btn primary-outlined full" href="#">View event</a>
-        </div>
-      </article>
-
-    </div>
-  </section>
 
   <!-- ════════════════════════════════ Footer ════════════════════════════════ -->
   <footer class="gv-footer" style="margin-top:48px">

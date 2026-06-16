@@ -1551,8 +1551,19 @@
    is the per-event heading, smaller than the /events page display title. */
 .gv-eventdetail__title { margin: 0 0 16px; font-size: 30px; font-weight: 700; line-height: 39px; color: var(--gv-text-primary); }
 
-/* Stylized date block — live `.jaafFe`: grey app-canvas panel #EDEFF0, 3px radius. */
-.gv-eventdetail__datecard { background: var(--gv-background); border-radius: var(--gv-radius); padding: 24px; }
+/* Stylized date block — live `.jaafFe`: grey app-canvas panel #EDEFF0, 20px pad,
+   3px radius. TWO-LAYER: this outer grey panel WRAPS an elevated white inner card
+   (live `.ebYKxp`, bg #fff) that holds the centered date stack; below the inner card,
+   still on the grey, sit a hairline divider + a calendar meta row + "Add to calendar". */
+.gv-eventdetail__datecard { background: var(--gv-background); border-radius: var(--gv-radius); padding: 20px; }
+/* Elevated white inner card around the date stack (the second layer). */
+.gv-eventdetail__datecardinner { background: var(--gv-white); box-shadow: var(--gv-shadow);
+  border-radius: var(--gv-radius); padding: 24px; }
+/* Hairline divider + calendar meta row between the white inner card and Add-to-calendar. */
+.gv-eventdetail__datedivider { height: 1px; background: var(--gv-grey-300); margin: 18px 0 14px; border: 0; }
+.gv-eventdetail__datemeta { display: flex; align-items: flex-start; gap: 9px; margin: 0;
+  font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: var(--gv-grey-700); }
+.gv-eventdetail__datemeta svg, .gv-eventdetail__datemeta .gv-icon { flex: none; width: 16px; height: 16px; color: var(--gv-grey-700); }
 /* The probed container itself (live `.lgwDnG`) is plain body text — 14px / 400 /
    rgba(0,0,0,.87) / lh 20px — wrapping the sr-only sentence + the visible stack. */
 .gv-eventdetail__datestylized { font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: rgba(0, 0, 0, 0.87); }
@@ -1562,12 +1573,31 @@
 .gv-eventdetail__date .m { display: block; font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-grey-700); }  /* live p.kwLlLs — 16px #767676 */
 .gv-eventdetail__date .t { display: block; margin-top: 8px; font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary); }  /* live p.dwwqWS — 18px/600 */
 /* sidebar action group under the date block */
-.gv-eventdetail__actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 16px; }
+.gv-eventdetail__actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; }
 
 /* "Share this event" block — live h2 span: 21px / 700 / #333. */
 .gv-eventdetail__share { margin-top: 28px; }
 .gv-eventdetail__share h2 { margin: 0 0 12px; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-text-primary); }
 .gv-eventdetail__sharebtns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Four square coloured social-share targets — live `.kZhvwV`: 40px squares, 3px radius
+   (Facebook #3b5998, WhatsApp #04884c, X #000, email #112d7e from the digest). */
+.gv-eventdetail__sharesq { display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--gv-radius); border: 0; cursor: pointer; color: #fff; }
+.gv-eventdetail__sharesq svg, .gv-eventdetail__sharesq .gv-icon { width: 20px; height: 20px; color: #fff; }
+.gv-eventdetail__sharesq.facebook { background: #3b5998; }
+.gv-eventdetail__sharesq.whatsapp { background: #04884c; }
+.gv-eventdetail__sharesq.x        { background: #000; }
+.gv-eventdetail__sharesq.email    { background: #112d7e; }
+.gv-eventdetail__shareor { font-size: var(--gv-fs-s); color: var(--gv-grey-700); }
+
+/* Neutral "Go back" text link — live `.bILJQM` span: 16px / 400 / cool-grey #596B7A,
+   with a filled grey circle holding a white left-arrow (NOT the tenant-primary brand link). */
+.gv-eventdetail__back { display: inline-flex; align-items: center; gap: 8px;
+  font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-text-secondary); text-decoration: none; }
+.gv-eventdetail__back:hover { text-decoration: underline; }
+.gv-eventdetail__back .gv-eventdetail__backcircle { display: inline-flex; align-items: center; justify-content: center;
+  flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--gv-grey-700); }
+.gv-eventdetail__back .gv-eventdetail__backcircle svg { width: 18px; height: 18px; color: #fff; }
 
 @media (max-width: 860px) {
   .gv-eventdetail { grid-template-columns: 1fr; gap: 24px; }
