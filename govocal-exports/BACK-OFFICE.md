@@ -497,8 +497,15 @@ closed) before numeric build. Highest-value FO target once the session is restor
 ### Run-6 next actions (when session is restored via interactive --login)
 1. Re-capture an OPEN voting/budgeting phase → build V1 AddToBasketBox + V2 VotingCTABar.
 2. Re-capture `r6-pe-map` authed → build the Map config panel.
-3. Build survey kit text/long-text/date/number field widgets (S3–S5).
+3. ~~Build survey kit text/long-text/date/number field widgets (S3–S5).~~ DONE/CORRECTED
+   (loop wake 2): S4/S5 were a FALSE audit finding — the kit's RENDER map already had
+   `rText`/`rMultiline`/`rNumber` (reusing `.gv-input`/`.gv-textarea`). Only `date` (S3) was
+   genuinely missing; added `rDate` (`.gv-input type=date`) + `date:` in RENDER + demo row.
 4. Pin optional checkpoints on the already-faithful Access/Notifications panels.
+
+### Loop run log
+- wake 1 (00:03): resolved session reality (FO live, BO-admin blocked) + operating note.
+- wake 2 (00:18): survey kit `date` field type added (S3); S4/S5 were false findings (already present). lint 0 · verify:all 127 green.
 
 ## FINAL REPORT — Run 6 (overnight deep fidelity audit)
 

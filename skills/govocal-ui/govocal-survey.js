@@ -26,7 +26,7 @@
      GVSurvey.page(pageObj)              → HTML for one page's fields.
 
    FIELD object shapes (field.type):
-     text · multiline_text · number               — { label, desc?, required? }
+     text · multiline_text · number · date        — { label, desc?, required? }
      select · multiselect                          — { …, options:[..] }
      rating        — { …, max:5, gate:true }
      linear_scale  — { …, max:7, minLabel?, maxLabel?, gate:true }
@@ -58,6 +58,7 @@
   function rText(f) { return qShell(f, '<input class="gv-input" type="text" placeholder="Type your answer" />'); }
   function rMultiline(f) { return qShell(f, '<textarea class="gv-textarea" placeholder="Type your answer"></textarea>'); }
   function rNumber(f) { return qShell(f, '<input class="gv-input" type="number" inputmode="numeric" placeholder="0" style="max-width:160px" />'); }
+  function rDate(f) { return qShell(f, '<input class="gv-input" type="date" style="max-width:200px" />'); }
 
   function rSelect(f) {
     var n = nid();
@@ -169,7 +170,7 @@
   }
 
   var RENDER = {
-    text: rText, multiline_text: rMultiline, number: rNumber, select: rSelect, multiselect: rMultiselect,
+    text: rText, multiline_text: rMultiline, number: rNumber, date: rDate, select: rSelect, multiselect: rMultiselect,
     rating: rRating, linear_scale: rScale, sentiment: rSentiment, ranking: rRanking,
     multiselect_image: rImages, matrix: rMatrix, map: rMap,
     file_upload: function (f) { return rDrop(f, false); }, shapefile_upload: function (f) { return rDrop(f, true); }
