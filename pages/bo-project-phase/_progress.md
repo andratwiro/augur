@@ -413,3 +413,94 @@ purpose-made expanded capture (`r2-access-expanded`) and token-grounded. Gates g
 red is out-of-scope FO). No deploy (library/page work). The gap list above is honest residual,
 not fabrication — every item needs a capture this tenant can't currently provide, or is a
 known-summary stand-in.
+
+---
+
+# SWEEP 2 — INTERACTIONS & CONDITIONAL LOGIC (DONE 2026-06-16)
+
+Sweep 1 brought the page to **static visual fidelity**. This sweep made it **BEHAVE** like
+the real product: method selection branches the whole config, the access settings cascade,
+toggles reveal/hide dependent fields, and save/dirty/validation states work. All page-local
+JS + `.pp-*` classes; no canonical CSS edit; no new brittle checkpoints.
+
+### Auth note (capture environment)
+The deep SPA route `…/phases/<id>/access-rights` **bounces to "Log in"** on direct navigation
+in this session (the saved session authenticates shallow `/admin/projects` — 72 treatments —
+but the deep phase route redirects to sign-in; two retries with 5s settle both returned the
+"Log in" DOM, 0 product markers). This is the documented auth-bounce trap. Per the
+anti-fabrication rule I did **NOT** invent states off a bounced capture. The cascade *logic*
+(which fields appear per auth choice, the flow-preview steps, the user-data tiers) is
+**documented product behavior** (GOVOCAL.md §3 access-rights lines 104-115 + Anonymous
+participation; the already-on-disk authoritative `r2-access-expanded` capture for the
+Account-creation end-state). To re-capture the None/Email *visual* states, run:
+`npm run capture -- "https://uxusertesting.govocal.com/en/admin/projects/dbfa9b1a-7625-4480-bd9a-344e65154ec6/phases/0fd4b191-dc32-4bf8-a42d-40aca0ec168d/access-rights" --name r3-access-none --click "<auth-card-sel>" --settle 3000 --viewport 1440x2200 --login --headed`
+(needs an interactive `--login --headed` re-auth; left bounced probe dirs `r3-access-none/`,
+`r3-access-probe/` untracked, NOT staged).
+
+### Round-by-round (logic wired)
+- **R1 — Method-selection branching.** Picking a participation-method card in ANY Setup picker
+  (`.pp-picker`, incl. the rendered `.pp-methodgrid`) now rebuilds the config like the real
+  flow: swaps to that method's Setup variant AND its method-aware sub-tab set (same branch the
+  phase ribbon does). `TITLE_TO_KEY` maps verbatim card titles → method key; `METHOD_BRANCH`
+  → {setup variant, sub-tabs}. Verified in headed browser: Survey→surveysetup (+surveyform/
+  surveyresults tabs), Common ground→commongroundsetup (+report), Ideation→setup (+inputmgr/
+  inputform/map), Voting→votingsetup. Branching marks the form dirty (you changed the method).
+- **R2 — Phase access cascade (PRIORITY).** Each "Who can …" body now cascades: the
+  **admins-only toggle** collapses the entire Authentication/group-restrict/demographic/flow
+  block below it (verified all 7 child blocks → hidden). The **3 Authentication cards** rebuild
+  the participant-flow preview live: None=[demographics only] · Email confirmation=[email→confirm
+  →demographics] · Account creation=[email→confirm→name/password→demographics] (AUTH_FLOW map,
+  GOVOCAL.md §3). **CSS bug found + fixed:** `[hidden]` was overridden by `.pp-authgrid{display:grid}`
+  etc.; added page-local `[hidden]{display:none!important}`.
+- **R3 — User-data tiers (PRIORITY).** The tier explainer (`.pp-tierbanner`) now **live-reflects**
+  auth + Setup-anonymity: Account+demographics→tier 1 (full PII+demographics); None *or*
+  anonymity→tier 2 (no PII, keep demographics, reporting still works); None **and** anonymity→
+  tier 3 (full anonymity, no demographics, reporting disabled). The Setup anonymity toggle is
+  wired to re-run the cascade across all access bodies.
+- **R4 — Per-method Setup conditionals.** Voting sub-method swap (`.pp-votegrid`): approval /
+  cumulative / budgeting each reveal a different field group (`.pp-votefields`: budgeting=Total
+  budget EUR Min/Max [real], cumulative=votes-per-participant + max-per-option, approval=max
+  votes per participant) + the helper banner copy updates. Ideation **Available views**: picking
+  Map reveals the "needs a location field" note (`.pp-mapnote`). Ideation **Enable disliking**=
+  Disabled hides the dislikes-per-participant field. **Similar-input-detection** toggle hides its
+  threshold fields when off.
+- **R5 — Cross-cutting + validation/dirty/save.** Tab/sub-tab switching + accordion expand
+  already worked (sweep 1) — kept. Added: any form edit marks the active Setup panel **dirty**
+  and enables its (previously always-disabled) **Save changes** button; clicking Save **validates**
+  the required Phase-name (empty → `.pp-invalid` red border + `.pp-fielderror` message + focus),
+  typing clears the error, a valid save flashes **"Saved ✓"** then disables Save again and reverts
+  the label after 1.6s.
+
+### Verify (interaction) — all green, 0 JS errors
+Drove the built page in headless Chromium and asserted every transition end-state
+programmatically + eyeballed screenshots (`/tmp/r1-*`, `r2-email-flow`, `r2-adminsonly3`,
+`r2-none3`, `r4-cumulative`): branch swaps correct, auth flows correct, admins-only collapse
+correct, tier text correct, voting field swap correct, validation/dirty/save correct. **Zero
+pageerror/console errors** across the full walkthrough.
+
+### Gates
+- **`npm run lint` → 0 violations.** The bo-project-phase advisory line is `0 hex, 1 box-shadow,
+  0 non-token font-size` — the 1 box-shadow is the page-local `.pp-invalid` validation ring
+  (color via `--gv-red-500` token, no hardcoded hex); a genuine page-local state one-off, which
+  lint explicitly permits.
+- **`npm run verify:all` → 130 green · 1 red** (UNCHANGED). All 16 `bo-project-phase/*`
+  checkpoints green; the lone red is `homepage-spotlight-heading` (FO concurrent work, confirmed
+  not mine). No canonical CSS touched this sweep, so zero blast radius.
+- **Checkpoints added: none.** Following the established sweep-1 discipline — the new behaviors
+  are dynamic DOM toggles, not new measurable static treatments; the auth cards still expose only
+  a brittle hashed styled-component selector. Builds are digest-/doc-grounded + drive-verified.
+
+### Updated gap list (interaction residual)
+1. **None/Email auth-card *visual* states uncaptured** — wired from documented logic + the
+   Account-creation capture; the bounced deep route blocks a fresh capture without interactive
+   `--login --headed` (command recorded above). Re-capture to pin the exact reveal/hide pixels.
+2. **comment/react/event access rows** — only the *submit* row carries the full cascade
+   (admins-only + 3 auth cards + flow + tiers); comment/react have the auth-card row but no flow/
+   demographic block; event row is a simpler 2-radio set. Matches the real product's lighter
+   secondary-action UI, but each expanded state is built by analogy, not captured — confirm.
+3. **Group-restrict downstream** — selecting a user group doesn't yet gate anything visually
+   (the real product would, e.g., show the custom error-message field as the only dependent).
+   Low value; deferred.
+4. **Carry-over from sweep 1** (unchanged, all capture-blocked or known stand-ins): doc-annotation
+   Konveio Setup, external-survey embed config, SSO auth card, common-ground /report depth,
+   native-survey per-Q results, auth-card numeric checkpoint.

@@ -1321,6 +1321,40 @@
     #cb-root .cb-survey-row__name { font-weight:600; color:var(--gv-text-primary); }
     #cb-root .cb-survey-row__meta { font-size:var(--gv-fs-s); color:var(--gv-cool-grey-600); }
 
+
+    /* ── Participation Box (unlinked: multi-method CTA states) ── */
+    #cb-root .cb-pbox__actions { display:flex; flex-direction:column; gap:8px; }
+    #cb-root .cb-pbox .gv-btn.full { width:100%; justify-content:center; }
+    #cb-root .cb-pbox__empty { border:1px dashed var(--gv-grey-400); border-radius:var(--gv-radius); text-align:center; padding:14px; font-size:var(--gv-fs-13); color:var(--gv-cool-grey-600); }
+    #cb-root .cb-pbox__people { display:flex; align-items:center; gap:8px; margin-top:12px; justify-content:center; }
+    #cb-root .cb-setseg { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--gv-cool-grey-600); margin:18px 0 8px; }
+    #cb-root .cb-pbox-note { color:var(--gv-cool-grey-600); font-size:var(--gv-fs-13); margin-top:10px; }
+    #cb-settings-body .cb-method { display:flex; align-items:center; gap:10px; border:1px solid var(--gv-grey-300); border-radius:8px; padding:9px 11px; margin-bottom:8px; }
+    #cb-settings-body .cb-method.is-off { opacity:.6; }
+    #cb-settings-body .cb-method__info { flex:1; min-width:0; }
+    #cb-settings-body .cb-method__name { font-size:13px; font-weight:600; color:var(--gv-text-primary); }
+    #cb-settings-body .cb-method__src { font-size:11px; color:var(--gv-cool-grey-600); margin-top:1px; }
+    /* ── Extra surveys (single linked survey, 3 layouts) ── */
+    #cb-root .cb-survey .gv-btn.full { width:100%; justify-content:center; }
+    #cb-root .cb-survey--box { border:1px solid var(--gv-grey-300); border-radius:8px; padding:12px; }
+    #cb-root .cb-survey__left { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--gv-text-primary); margin-bottom:10px; }
+    #cb-root .cb-survey__dot { width:8px; height:8px; border-radius:50%; background:var(--gv-teal-500); display:inline-block; }
+    #cb-root .cb-survey--card { border:1px solid var(--gv-grey-300); border-radius:10px; padding:18px; }
+    #cb-root .cb-survey__eyebrow { font-size:11px; font-weight:700; letter-spacing:.08em; color:#d6336c; }
+    #cb-root .cb-survey__name { font-size:19px; font-weight:700; color:var(--gv-bo-primary); margin:8px 0 3px; }
+    #cb-root .cb-survey__range { font-size:13px; color:var(--gv-text-secondary); margin:0; }
+    #cb-root .cb-survey__desc { font-size:13px; color:var(--gv-text-primary); line-height:1.5; margin:12px 0 16px; }
+    #cb-root .cb-survey-empty { border:2px dashed var(--gv-grey-400); border-radius:8px; padding:22px; text-align:center; background:var(--gv-grey-50); }
+    #cb-root .cb-survey-empty__t { font-size:13px; font-weight:600; color:var(--gv-text-secondary); }
+    #cb-root .cb-survey-empty__s { font-size:12px; color:var(--gv-cool-grey-600); margin-top:6px; }
+    /* layout variant picker cards (settings panel) */
+    #cb-settings-body .cb-varlist { display:flex; flex-direction:column; gap:8px; }
+    #cb-settings-body .cb-varcard { display:flex; align-items:flex-start; gap:8px; text-align:left; border:1px solid var(--gv-grey-300); border-radius:8px; padding:10px 12px; background:#fff; cursor:pointer; width:100%; }
+    #cb-settings-body .cb-varcard.is-selected { border-color:var(--gv-teal-500); background:var(--gv-teal-50,#e8f3f4); }
+    #cb-settings-body .cb-varcard__radio { width:14px; height:14px; border-radius:50%; border:2px solid var(--gv-grey-400); flex:none; margin-top:2px; }
+    #cb-settings-body .cb-varcard.is-selected .cb-varcard__radio { border-color:var(--gv-teal-500); background:var(--gv-teal-500); }
+    #cb-settings-body .cb-varcard__t { display:block; font-size:13px; font-weight:600; color:var(--gv-text-primary); }
+    #cb-settings-body .cb-varcard__d { display:block; font-size:11px; color:var(--gv-cool-grey-600); margin-top:3px; }
 </style>
 </head>
 <body class="gv-bo min-h-screen">
@@ -2878,24 +2912,14 @@
       'white-space':     { label: 'White space',       make: function () { return '<div class="cb-ws"></div>'; } },
       'accordion':       { label: 'Accordion',         make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">Accordion title</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">Hidden panel content the resident can expand.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
       'iframe':          { label: 'Embed',             make: function () { return '<div class="cb-iframe">&lt;/&gt; Embedded content<span class="cb-iframe__cap">Paste a URL to embed</span></div>'; } },
-      'about-box':       { label: 'Participation Box',  make: function () { return '' +
-        '<div class="cb-pbox">' +
-          '<div class="cb-pbox__actions">' +
-            '<a class="gv-btn primary" data-pbox="cta" href="#">' + cbCurrentCTA() + '</a>' +
-            '<a class="gv-btn primary-outlined" data-pbox="events" href="#">Upcoming events</a>' +
-          '</div>' +
-          '<div class="gv-participants cb-pbox__people">' +
-            '<span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>' +
-            '<span class="gv-pcount"><span data-pbox="count">2,435</span> participants</span>' +
-          '</div>' +
-        '</div>'; } },
+      'about-box':       { label: 'Participation Box',  make: function () { return cbPboxBodyHTML(cbPboxDefault()); } },
       'file-attachment': { label: 'File Attachment',    make: function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__info"><span class="cb-file__name">project-brief.pdf</span><span class="cb-file__meta">PDF · 1.2 MB</span></span></div>'; } },
       'image-text-cards':{ label: 'Image & text cards', make: function () { return '<div class="cb-cards" data-n="3"><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card one</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card two</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card three</div></div></div>'; } },
       'info-accordions': { label: 'Info & accordions',  make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">How will my input be used?</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">An explanation of the process.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
       // ── project-page components (this is the project's content builder) ──────
       'timeline':        { label: 'Timeline',           make: function () { return cbTimelineHTML(); } },
       'events':          { label: 'Events',             make: function () { return cbEventsHTML(2); } },
-      'extra-surveys':   { label: 'Extra surveys',      make: function () { return cbExtraSurveysHTML(); } },
+      'extra-surveys':   { label: 'Extra surveys',      make: function () { return cbSurveyHTML('school','card'); } },
       // locked top blocks (never in the palette; created via makeLockedBlock)
       'hero':            { label: 'Project image' },
       'title':           { label: 'Project title' }
@@ -2978,6 +3002,60 @@
       clearTimeout(toast._t); toast._t = setTimeout(function () { toastEl.classList.remove('is-show'); }, 1400);
     }
 
+    // ══════════ Participation Box + Extra surveys — original-prototype behaviour ══════════
+    // Replace a block's body (everything after its .gv-bo-cb-block__label) with new HTML.
+    function cbSetBody(block, html) {
+      var label = block.querySelector('.gv-bo-cb-block__label');
+      while (block.lastChild && block.lastChild !== label) block.removeChild(block.lastChild);
+      var tmp = document.createElement('div'); tmp.innerHTML = html;
+      while (tmp.firstChild) block.appendChild(tmp.firstChild);
+      if (window.GVIcons) window.GVIcons.render(block);
+      if (window.GVAvatars) window.GVAvatars.fill(block);
+    }
+
+    // ── Participation Box: aggregates the project's active participation methods ──
+    var PBOX_STATE = {};
+    function cbPboxDefault() {
+      return { hideAvatars: false, methods: [
+        { id:'m_phase',  source:'Timeline · current phase', method:'Collect ideas — share your idea', cta:'Submit your idea', visible:true  },
+        { id:'m_survey', source:'Parallel · Extra surveys', method:'School survey',                   cta:'Take the survey',  visible:true  },
+        { id:'m_vote',   source:'Parallel · Voting',        method:'Community vote',                  cta:'Vote',             visible:false }
+      ] };
+    }
+    function cbPboxState(block) { if (!PBOX_STATE[block.id]) PBOX_STATE[block.id] = cbPboxDefault(); return PBOX_STATE[block.id]; }
+    function cbPboxBodyHTML(st) {
+      var vis = st.methods.filter(function (m) { return m.visible; });
+      var cta;
+      if (vis.length === 0)      cta = '<div class="cb-pbox__empty">No active methods</div>';
+      else if (vis.length === 1) cta = '<a class="gv-btn primary full" href="#">' + vis[0].cta + '</a>';
+      else if (vis.length === 2) cta = '<a class="gv-btn primary full" href="#">' + vis[0].cta + '</a>' +
+                                       '<a class="gv-btn primary-outlined full" href="#">' + vis[1].cta + '</a>';
+      else                       cta = '<a class="gv-btn primary full" href="#">Participate</a>';
+      var people = st.hideAvatars ? '' :
+        '<div class="gv-participants cb-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+35 participants</span></div>';
+      return '<div class="cb-pbox"><div class="cb-pbox__actions">' + cta + '</div>' + people + '</div>';
+    }
+    function cbPboxNote(st) {
+      var vis = st.methods.filter(function (m) { return m.visible; });
+      return vis.length === 0 ? 'No CTA shown.'
+        : vis.length === 1 ? 'Shows one CTA: ' + vis[0].cta + '.'
+        : vis.length === 2 ? 'Shows a primary + secondary button.'
+        : 'Shows a single “Participate” button aggregating all active methods.';
+    }
+
+    // ── Extra surveys: a single linked survey, rendered in one of three layouts ──
+    var SURVEY_STATE = {};
+    var SURVEY_DATA = { school: { name:'School survey', range:'20 May — 5 Jun, 2026',
+      desc:'Help us understand how students travel to school. Your answers shape the safe-routes plan.', left:'4 days left' } };
+    function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'school', variant:'card' }; return SURVEY_STATE[block.id]; }
+    function cbSurveyHTML(survey, variant) {
+      if (!survey) return '<div class="cb-survey-empty"><div class="cb-survey-empty__t">📣 Extra survey</div><div class="cb-survey-empty__s">Select a survey to link in the panel on the right.</div></div>';
+      var s = SURVEY_DATA[survey] || SURVEY_DATA.school;
+      if (variant === 'simple')   return '<div class="cb-survey"><a class="gv-btn primary full" href="#">Take the survey</a></div>';
+      if (variant === 'timeleft') return '<div class="cb-survey cb-survey--box"><div class="cb-survey__left"><span class="cb-survey__dot"></span>' + s.left.toUpperCase() + '</div><a class="gv-btn primary full" href="#">Take the survey</a></div>';
+      return '<div class="cb-survey cb-survey--card"><span class="cb-survey__eyebrow">SURVEY · ONGOING</span><h3 class="cb-survey__name">' + s.name + '</h3><p class="cb-survey__range">' + s.range + '</p><p class="cb-survey__desc">' + s.desc + '</p><a class="gv-btn primary full" href="#">Take the survey</a></div>';
+    }
+
     // ── settings panel bodies per widget type ─────────────────────────────────
     function rteToolbar() {
       return '' +
@@ -3039,11 +3117,10 @@
         return settingsRow('Embed URL', '<input class="gv-input" id="cb-f-embedurl" placeholder="https://…">');
       }
       if (widget === 'about-box') {
-        return settingsRow('Action label', '<input class="gv-input" data-set="cta" id="cb-f-cta" value="Take the survey">') +
-          settingsRow('Events label', '<input class="gv-input" data-set="events" id="cb-f-events" value="Upcoming events">') +
-          settingsRow('Participants', '<input class="gv-input" data-set="count" id="cb-f-count" value="2,435">') +
-          settingsRow('Show buttons', '<label class="gv-toggle"><input type="checkbox" data-set="btns" id="cb-f-btns" checked><span class="track"></span></label>') +
-          settingsRow('Show participants', '<label class="gv-toggle"><input type="checkbox" data-set="people" id="cb-f-people" checked><span class="track"></span></label>');
+        return '<div class="gv-bo-cb-settings__row"><span class="gv-bo-cb-settings__rowlabel">Hide participation avatars</span><label class="gv-toggle"><input type="checkbox" data-set="hideav"><span class="track"></span></label></div>' +
+          '<div class="cb-setseg">Active methods</div>' +
+          '<div id="cb-pbox-methods"></div>' +
+          '<p class="cb-p cb-pbox-note" id="cb-pbox-note"></p>';
       }
       if (widget === 'file-attachment') {
         return settingsRow('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') +
@@ -3062,8 +3139,10 @@
         return settingsRow('Events shown', '<select class="gv-bo-select" id="cb-f-eventcount"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>');
       }
       if (widget === 'extra-surveys') {
-        return settingsRow('Heading', '<input class="gv-input" value="Extra surveys">') +
-               settingsRow('', '<p class="cb-p" style="color:var(--gv-cool-grey-600);font-size:var(--gv-fs-13)">Surveys that run in parallel to the timeline, pulled from the project\'s extra surveys.</p>');
+        var vc = function (v, t, d) { return '<button type="button" class="cb-varcard" data-variant="' + v + '"><span class="cb-varcard__radio"></span><span class="cb-varcard__txt"><span class="cb-varcard__t">' + t + '</span><span class="cb-varcard__d">' + d + '</span></span></button>'; };
+        return settingsRow('Linked survey', '<select class="gv-bo-select" data-set="survey"><option value="">Select a survey\u2026</option><option value="school">School survey</option></select>') +
+          '<div class="cb-setseg">Layout</div>' +
+          '<div class="cb-varlist">' + vc('simple','Simple button','Just a button linking to the survey.') + vc('timeleft','Button + time left','Shows how long until the survey closes.') + vc('card','Full card','Title, dates, description and button.') + '</div>';
       }
       if (widget === 'hero') {
         return settingsRow('Replace image', '<input class="gv-input" type="file" id="cb-f-herofile" accept="image/*">') +
@@ -3342,10 +3421,6 @@
         return;
       }
 
-      if (widget === 'extra-surveys') {
-        return settingsRow('Heading', '<input class="gv-input" value="Extra surveys">') +
-               settingsRow('', '<p class="cb-p" style="color:var(--gv-cool-grey-600);font-size:var(--gv-fs-13)">Surveys that run in parallel to the timeline, pulled from the project\'s extra surveys.</p>');
-      }
       if (widget === 'hero') {
         var heroImg = bq('.cb-hero__img'), hf = pv('cb-f-herofile'), hu = pv('cb-f-herourl');
         if (hf && heroImg) hf.addEventListener('change', function () { if (hf.files && hf.files[0]) heroImg.src = URL.createObjectURL(hf.files[0]); });
@@ -3359,23 +3434,45 @@
         return;
       }
 
+      if (widget === 'extra-surveys') { bindExtraSurveys(block); return; }
       if (widget === 'about-box') { bindAboutBox(block); return; }
     }
 
     function bindAboutBox(block) {
-      var card = block.querySelector('.cb-pbox');
-      function q(sel) { return panel.querySelector('[data-set="' + sel + '"]'); }
-      function r(sel) { return card ? card.querySelector('[data-pbox="' + sel + '"]') : null; }
-      var ctaIn = q('cta'), eventsIn = q('events'), countIn = q('count'), btnsTgl = q('btns'), peopleTgl = q('people');
-      // reflect the card's current state back into the panel on (re)select
-      if (btnsTgl) btnsTgl.checked = !card.classList.contains('cb-pbox--nobtns');
-      if (peopleTgl) peopleTgl.checked = !card.classList.contains('cb-pbox--nopeople');
-      var ctaNode = r('cta'); if (ctaIn && ctaNode) ctaIn.value = (ctaNode.textContent || '').trim();   // CTA mirrors the current phase action
-      if (ctaIn) ctaIn.addEventListener('input', function () { var c = r('cta'); if (c) { c.textContent = this.value || 'Take part'; c.setAttribute('data-cta-custom', ''); } });
-      if (eventsIn) eventsIn.addEventListener('input', function () { var e = r('events'); if (e) e.textContent = this.value || 'Upcoming events'; });
-      if (countIn) countIn.addEventListener('input', function () { var c = r('count'); if (c) c.textContent = this.value || '0'; });
-      if (btnsTgl) btnsTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--nobtns', !this.checked); });
-      if (peopleTgl) peopleTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--nopeople', !this.checked); });
+      var st = cbPboxState(block);
+      function rerender() { cbSetBody(block, cbPboxBodyHTML(st)); var n = panel.querySelector('#cb-pbox-note'); if (n) n.textContent = cbPboxNote(st); }
+      var hide = panel.querySelector('[data-set="hideav"]');
+      if (hide) { hide.checked = st.hideAvatars; hide.addEventListener('change', function () { st.hideAvatars = this.checked; rerender(); }); }
+      var list = panel.querySelector('#cb-pbox-methods');
+      if (list) {
+        list.innerHTML = st.methods.map(function (m, i) {
+          return '<div class="cb-method' + (m.visible ? '' : ' is-off') + '"><div class="cb-method__info"><div class="cb-method__name">' + m.method + '</div><div class="cb-method__src">' + m.source + '</div></div><label class="gv-toggle"><input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + '><span class="track"></span></label></div>';
+        }).join('');
+        list.querySelectorAll('input[data-mi]').forEach(function (inp) {
+          inp.addEventListener('change', function () {
+            st.methods[+this.dataset.mi].visible = this.checked;
+            var row = this.closest('.cb-method'); if (row) row.classList.toggle('is-off', !this.checked);
+            rerender();
+          });
+        });
+      }
+      var note = panel.querySelector('#cb-pbox-note'); if (note) note.textContent = cbPboxNote(st);
+    }
+
+    function bindExtraSurveys(block) {
+      var st = cbSurveyState(block);
+      function rerender() { cbSetBody(block, cbSurveyHTML(st.survey, st.variant)); }
+      var sel = panel.querySelector('[data-set="survey"]');
+      if (sel) { sel.value = st.survey || ''; sel.addEventListener('change', function () { st.survey = this.value || null; rerender(); }); }
+      panel.querySelectorAll('.cb-varcard').forEach(function (c) {
+        c.classList.toggle('is-selected', c.dataset.variant === st.variant);
+        c.addEventListener('click', function () {
+          st.variant = this.dataset.variant;
+          panel.querySelectorAll('.cb-varcard').forEach(function (x) { x.classList.remove('is-selected'); });
+          this.classList.add('is-selected');
+          rerender();
+        });
+      });
     }
 
     // ── block factory + wiring ────────────────────────────────────────────────

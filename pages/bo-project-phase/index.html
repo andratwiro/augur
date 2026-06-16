@@ -20,6 +20,8 @@
        the .gv-bo-card wrapper supplies the padding, so panels add none of their own */
     .pp-sub { display: none; }
     .pp-sub.is-active { display: block; }
+    /* honour the [hidden] attribute even on flex/grid pp-* blocks (cascade/branch toggles) */
+    [hidden] { display: none !important; }
     /* The Setup form spans the full card; individual text fields stay constrained
        (via .gv-bo-field max-width), but the method/view grids run full width. */
     .pp-setup__thresholds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 520px; margin-top: 12px; }
@@ -99,6 +101,9 @@
     .pp-flow__num { font-weight: 700; display: block; margin-bottom: 4px; }
     .pp-flow__done { align-self: center; width: 34px; height: 34px; flex: none; display: grid; place-items: center;
       border: 2px solid var(--gv-green-500); border-radius: 50%; color: var(--gv-green-500); }
+    /* Round 5 — validation / dirty states (page-local; token-grounded) */
+    .pp-invalid { border-color: var(--gv-red-500) !important; box-shadow: 0 0 0 1px var(--gv-red-500); }
+    .pp-fielderror { color: var(--gv-red-500); font-size: var(--gv-fs-s); margin: 6px 0 0; }
 </style>
 </head>
 <body class="gv-bo">
@@ -328,7 +333,7 @@
             <!-- Participation method -->
             <h4 class="gv-bo-subhead">What do you want to do?</h4>
             <p class="pp-lede">Each phase runs exactly one participation method.</p>
-            <div class="gv-bo-methods">
+            <div class="gv-bo-methods pp-picker">
               <button class="gv-bo-methodcard is-selected"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="comments"></span></span><span class="gv-bo-methodcard__title">Collect input and feedback in public</span><span class="gv-bo-methodcard__desc">Tap into your users' collective intelligence. Invite them to submit, discuss ideas, and/or provide feedback in a public forum.</span></button>
               <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="vote-up"></span></span><span class="gv-bo-methodcard__title">Proposals, petitions or initiatives</span><span class="gv-bo-methodcard__desc">Allow participants to upload ideas with a time and vote limit.</span></button>
               <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="group"></span></span><span class="gv-bo-methodcard__title">Find common ground</span><span class="gv-bo-methodcard__desc">Help participants surface agreement and disagreement, one idea at a time.</span></button>
@@ -394,11 +399,13 @@
 
             <!-- Available views -->
             <h4 class="gv-bo-subhead">Available views</h4>
-            <div class="gv-bo-methods" style="grid-template-columns:repeat(3,1fr)">
-              <button class="gv-bo-methodcard is-selected"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="menu"></span></span><span class="gv-bo-methodcard__title">List view</span><span class="gv-bo-methodcard__desc">Inputs shown as a sortable, filterable list.</span></button>
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="map"></span></span><span class="gv-bo-methodcard__title">Map view</span><span class="gv-bo-methodcard__desc">Inputs placed on a map by location.</span></button>
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="stars"></span></span><span class="gv-bo-methodcard__title">Perspectives view</span><span class="gv-bo-methodcard__desc">AI-grouped themes across the inputs.</span></button>
+            <div class="gv-bo-methods pp-viewgrid" style="grid-template-columns:repeat(3,1fr)">
+              <button class="gv-bo-methodcard is-selected" data-view="list"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="menu"></span></span><span class="gv-bo-methodcard__title">List view</span><span class="gv-bo-methodcard__desc">Inputs shown as a sortable, filterable list.</span></button>
+              <button class="gv-bo-methodcard" data-view="map"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="map"></span></span><span class="gv-bo-methodcard__title">Map view</span><span class="gv-bo-methodcard__desc">Inputs placed on a map by location.</span></button>
+              <button class="gv-bo-methodcard" data-view="feed"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="stars"></span></span><span class="gv-bo-methodcard__title">Perspectives view</span><span class="gv-bo-methodcard__desc">AI-grouped themes across the inputs.</span></button>
             </div>
+            <!-- map-view dependency: a location field is required (revealed when Map picked) -->
+            <div class="gv-bo-banner pp-mapnote" hidden><span class="gv-icon" data-gv-icon="info-solid"></span><div>Map view needs a <b>location</b> question on the input form. Add one in the <a href="#">Input form</a> tab so participants can drop a pin.</div></div>
 
             <!-- Sorting -->
             <label class="gv-bo-qlabel">Default sorting of inputs</label>
@@ -436,8 +443,8 @@
             <!-- Participation method (Voting / prioritization selected) -->
             <h4 class="gv-bo-subhead">What do you want to do?</h4>
             <p class="pp-lede">Each phase runs exactly one participation method.</p>
-            <div class="gv-bo-methods">
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="comments"></span></span><span class="gv-bo-methodcard__title">Collect input and feedback in public</span><span class="gv-bo-methodcard__desc">Tap into your users' collective intelligence. Invite them to submit, discuss ideas, and/or provide feedback in a public space.</span></button>
+            <div class="gv-bo-methods pp-picker">
+              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="comments"></span></span><span class="gv-bo-methodcard__title">Collect input and feedback in public</span><span class="gv-bo-methodcard__desc">Tap into your users' collective intelligence. Invite them to submit, discuss ideas, and/or provide feedback in a public forum.</span></button>
               <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="vote-up"></span></span><span class="gv-bo-methodcard__title">Proposals, petitions or initiatives</span><span class="gv-bo-methodcard__desc">Allow participants to upload ideas with a time and vote limit.</span></button>
               <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="group"></span></span><span class="gv-bo-methodcard__title">Find common ground</span><span class="gv-bo-methodcard__desc">Help participants surface agreement and disagreement, one idea at a time.</span></button>
               <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="survey"></span></span><span class="gv-bo-methodcard__title">Create a survey</span><span class="gv-bo-methodcard__desc">Understand your users' needs and thinking via a wide range of private question types.</span></button>
@@ -449,23 +456,41 @@
             <!-- Voting method -->
             <h4 class="gv-bo-subhead">Voting method</h4>
             <p class="pp-lede">Each voting method has different pre-configurations</p>
-            <div class="gv-bo-methods" style="grid-template-columns:repeat(3,1fr)">
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="check-circle"></span></span><span class="gv-bo-methodcard__title">One vote per option</span><span class="gv-bo-methodcard__desc">Users can chose to approve any of the options</span></button>
-              <button class="gv-bo-methodcard"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="vote-up"></span></span><span class="gv-bo-methodcard__title">Multiple votes per option</span><span class="gv-bo-methodcard__desc">Users are given an amount of tokens to distribute between options</span></button>
-              <button class="gv-bo-methodcard is-selected"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="trend-up"></span></span><span class="gv-bo-methodcard__title">Budget allocation</span><span class="gv-bo-methodcard__desc">Assign a budget to options and ask participants to select their preferred options that fit within a total budget.</span></button>
+            <div class="gv-bo-methods pp-votegrid" style="grid-template-columns:repeat(3,1fr)">
+              <button class="gv-bo-methodcard" data-vmethod="approval"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="check-circle"></span></span><span class="gv-bo-methodcard__title">One vote per option</span><span class="gv-bo-methodcard__desc">Users can chose to approve any of the options</span></button>
+              <button class="gv-bo-methodcard" data-vmethod="cumulative"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="vote-up"></span></span><span class="gv-bo-methodcard__title">Multiple votes per option</span><span class="gv-bo-methodcard__desc">Users are given an amount of tokens to distribute between options</span></button>
+              <button class="gv-bo-methodcard is-selected" data-vmethod="budgeting"><span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="trend-up"></span></span><span class="gv-bo-methodcard__title">Budget allocation</span><span class="gv-bo-methodcard__desc">Assign a budget to options and ask participants to select their preferred options that fit within a total budget.</span></button>
             </div>
 
-            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>Learn more about when to use <b>budget allocation</b> in our <a href="#">Option analysis overview</a>.</div></div>
+            <div class="gv-bo-banner pp-votebanner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>Learn more about when to use <b>budget allocation</b> in our <a href="#">Option analysis overview</a>.</div></div>
 
             <!-- Options to vote on -->
             <h4 class="gv-bo-subhead">Options to vote on</h4>
             <p class="pp-lede">Configure the voting options in the <a href="#">Input Manager tab</a>.</p>
 
-            <!-- Total budget (Min / Max EUR) -->
-            <h4 class="gv-bo-subhead">Total budget</h4>
-            <div class="pp-setup__thresholds">
-              <div><p class="gv-bo-caption" style="font-weight:400;color:var(--gv-cool-grey-600);text-transform:none;font-size:var(--gv-fs-base)">Minimum&nbsp;(EUR) <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p><input class="gv-input" type="number" min="0" value="0" /></div>
-              <div><p class="gv-bo-caption" style="font-weight:400;color:var(--gv-cool-grey-600);text-transform:none;font-size:var(--gv-fs-base)">Maximum&nbsp;(EUR) <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p><input class="gv-input" type="number" min="1" value="100000" /></div>
+            <!-- Voting-method-specific fields (swap on card pick) -->
+            <!-- budgeting: total budget Min/Max EUR -->
+            <div class="pp-votefields" data-vfields="budgeting">
+              <h4 class="gv-bo-subhead">Total budget</h4>
+              <div class="pp-setup__thresholds">
+                <div><p class="gv-bo-caption" style="font-weight:400;color:var(--gv-cool-grey-600);text-transform:none;font-size:var(--gv-fs-base)">Minimum&nbsp;(EUR) <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p><input class="gv-input" type="number" min="0" value="0" /></div>
+                <div><p class="gv-bo-caption" style="font-weight:400;color:var(--gv-cool-grey-600);text-transform:none;font-size:var(--gv-fs-base)">Maximum&nbsp;(EUR) <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p><input class="gv-input" type="number" min="1" value="100000" /></div>
+              </div>
+            </div>
+            <!-- cumulative: votes-per-participant + max-per-option -->
+            <div class="pp-votefields" data-vfields="cumulative" hidden>
+              <h4 class="gv-bo-subhead">Number of votes</h4>
+              <div class="pp-setup__thresholds">
+                <div><p class="gv-bo-caption" style="font-weight:400;color:var(--gv-cool-grey-600);text-transform:none;font-size:var(--gv-fs-base)">Votes per participant <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p><input class="gv-input" type="number" min="1" value="5" /></div>
+                <div><p class="gv-bo-caption" style="font-weight:400;color:var(--gv-cool-grey-600);text-transform:none;font-size:var(--gv-fs-base)">Maximum votes per option <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p><input class="gv-input" type="number" min="1" value="5" /></div>
+              </div>
+            </div>
+            <!-- approval: votes-per-participant only -->
+            <div class="pp-votefields" data-vfields="approval" hidden>
+              <h4 class="gv-bo-subhead">Number of votes</h4>
+              <div class="pp-setup__thresholds" style="grid-template-columns:1fr">
+                <div><p class="gv-bo-caption" style="font-weight:400;color:var(--gv-cool-grey-600);text-transform:none;font-size:var(--gv-fs-base)">Maximum votes per participant <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p><input class="gv-input" type="number" min="1" value="10" /></div>
+              </div>
             </div>
 
             <!-- Actions for users -->
@@ -774,10 +799,12 @@
                     <span class="pp-demohead__title">Demographic questions asked to users <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></span>
                     <button class="gv-btn success size-s"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add a question</span></button>
                   </div>
-                  <label class="gv-radio"><input type="radio" name="acc-demo" checked><span class="circle"></span>Ask demographic questions before user participates <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></label><br>
-                  <label class="gv-radio"><input type="radio" name="acc-demo"><span class="circle"></span>Collect demographic questions by adding a new page to the end of the form <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></label>
+                  <div class="pp-demoradios">
+                    <label class="gv-radio"><input type="radio" name="acc-demo" checked><span class="circle"></span>Ask demographic questions before user participates <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></label><br>
+                    <label class="gv-radio"><input type="radio" name="acc-demo"><span class="circle"></span>Collect demographic questions by adding a new page to the end of the form <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></label>
+                  </div>
 
-                  <div style="margin-top:14px">
+                  <div class="pp-demolist" style="margin-top:14px">
                     <div class="gv-bo-listrow pp-demorow">
                       <span class="gv-bo-listrow__handle gv-icon" data-gv-icon="drag-handle" aria-hidden="true"></span>
                       <div class="gv-bo-listrow__main"><p class="gv-bo-listrow__title">Place of residence</p><div class="gv-bo-listrow__sub">Optional · Enabled in global registration flow <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></div></div>
@@ -804,8 +831,8 @@
                     <span class="pp-flow__done gv-icon" data-gv-icon="check"></span>
                   </div>
 
-                  <!-- Resulting user-data tier (explainer; reflects the auth + demographic config above) -->
-                  <div class="gv-bo-banner" style="margin-top:16px"><span class="gv-icon" data-gv-icon="info-solid"></span><div>With <b>Account creation</b> selected and demographic questions asked, you collect <b>full personal data and demographics</b> (tier 1). Switch to <b>None</b> or enable anonymous participation in Setup to drop PII; full anonymity removes demographics too — and disables demographic reporting.</div></div>
+                  <!-- Resulting user-data tier (explainer; live-reflects auth + anonymity above) -->
+                  <div class="gv-bo-banner pp-tierbanner" style="margin-top:16px"><span class="gv-icon" data-gv-icon="info-solid"></span><div>With <b>Account creation</b> selected and demographic questions asked, you collect <b>full personal data and demographics</b> (tier 1). Switch to <b>None</b> or enable anonymous participation in Setup to drop PII.</div></div>
                 </div>
               </div>
               <div class="gv-bo-accordion__row">
@@ -1315,8 +1342,13 @@
       }));
     });
 
-    // Method cards & view cards: single-select within their grid.
+    // Generic method/view card single-select (used by NON-branching grids:
+    // available-views, voting-method sub-cards — those have their own handlers
+    // below). The participation-method PICKER (.pp-picker) and the rendered
+    // .pp-methodgrid are wired by the branch logic further down, so skip them here.
     document.querySelectorAll('.gv-bo-methods').forEach(grid => {
+      if (grid.classList.contains('pp-picker') || grid.classList.contains('pp-methodgrid')
+          || grid.classList.contains('pp-votegrid') || grid.classList.contains('pp-viewgrid')) return;
       grid.querySelectorAll('.gv-bo-methodcard').forEach(c => c.addEventListener('click', () => {
         grid.querySelectorAll('.gv-bo-methodcard').forEach(x => x.classList.remove('is-selected'));
         c.classList.add('is-selected');
@@ -1473,25 +1505,286 @@
     ];
     document.querySelectorAll(".pp-methodgrid").forEach(grid => {
       const sel = grid.dataset.method;
+      grid.classList.add("pp-picker");           // branch logic owns selection
       grid.innerHTML = METHODS.map(([key, icon, title, desc, beta]) =>
-        `<button class="gv-bo-methodcard${key === sel ? " is-selected" : ""}">
+        `<button class="gv-bo-methodcard${key === sel ? " is-selected" : ""}" data-mkey="${key}">
            <span class="gv-bo-methodcard__art">${beta ? '<span class="gv-bo-typebadge is-type" style="position:absolute;top:8px;left:8px">BETA</span>' : ""}<span class="gv-bo-methodcard__icon" data-gv-icon="${icon}"></span></span>
            <span class="gv-bo-methodcard__title">${title}</span>
            <span class="gv-bo-methodcard__desc">${desc}</span>
          </button>`).join("");
-      // re-bind single-select within this freshly built grid
+    });
+    if (window.GVIcons) document.querySelectorAll(".pp-methodgrid").forEach(g => window.GVIcons.render(g));
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ROUND 1 — Method-selection BRANCHING
+    // Picking a participation-method card in ANY Setup picker rebuilds the whole
+    // config: it swaps to that method's Setup variant AND its method-aware sub-tab
+    // set (the same branch the phase ribbon performs). Maps the verbatim card
+    // titles → the method key → the setup/tabs already declared on PHASES.
+    // ════════════════════════════════════════════════════════════════════════
+    const TITLE_TO_KEY = {
+      "Collect input and feedback in public": "collect",
+      "Proposals, petitions or initiatives": "proposals",
+      "Find common ground": "commonground",
+      "Create a survey": "survey",
+      "Conduct a voting or prioritization exercise": "voting",
+      "Share information": "information",
+      "Recruit participants or volunteers": "volunteering"
+    };
+    // method key → { setup variant, sub-tab set } — the branch target.
+    const METHOD_BRANCH = {
+      collect:       { setup: "setup",             tabs: ["setup","description","inputmgr","inputform","map","insights","access","notifications"] },
+      voting:        { setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
+      survey:        { setup: "surveysetup",       tabs: ["setup","description","surveyform","insights","surveyresults","access","notifications"] },
+      proposals:     { setup: "proposalssetup",    tabs: ["setup","description","inputmgr","inputform","insights","access","notifications"] },
+      commonground:  { setup: "commongroundsetup", tabs: ["setup","description","report","access","notifications"] },
+      information:   { setup: "informationsetup",  tabs: ["setup","description","access","notifications"] },
+      volunteering:  { setup: "volunteeringsetup", tabs: ["setup","description","volunteering","insights","access","notifications"] }
+    };
+    function keyForCard(card) {
+      if (card.dataset.mkey) return card.dataset.mkey;
+      const t = (card.querySelector(".gv-bo-methodcard__title") || {}).textContent || "";
+      return TITLE_TO_KEY[t.trim()] || null;
+    }
+    function branchToMethod(key) {
+      const b = METHOD_BRANCH[key];
+      if (!b) return;
+      // select the matching card in EVERY picker so the branch is consistent
+      document.querySelectorAll(".pp-picker").forEach(grid => {
+        grid.querySelectorAll(".gv-bo-methodcard").forEach(c =>
+          c.classList.toggle("is-selected", keyForCard(c) === key));
+      });
+      // swap sub-tab set
+      subtabs.querySelectorAll(".gv-bo-tab").forEach(t =>
+        t.style.display = b.tabs.includes(t.dataset.tabkey) ? "" : "none");
+      // point Setup tab at this method's variant, activate it, show the panel
+      const setupTab = subtabs.querySelector('[data-tabkey="setup"]');
+      setupTab.dataset.sub = b.setup;
+      subtabs.querySelectorAll(".gv-bo-tab").forEach(x => x.classList.remove("is-active"));
+      setupTab.classList.add("is-active");
+      subPanels.forEach(p => p.classList.toggle("is-active", p.dataset.sub === b.setup));
+      markDirty();
+    }
+    document.querySelectorAll(".pp-picker").forEach(grid => {
+      grid.addEventListener("click", e => {
+        const card = e.target.closest(".gv-bo-methodcard");
+        if (!card) return;
+        const key = keyForCard(card);
+        if (key) branchToMethod(key);
+      });
+    });
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ROUND 2 + 3 — Phase-access CASCADE + user-data logic
+    // For each "Who can …" accordion body: the admins-only toggle hides everything
+    // below it; the 3 Authentication cards each reveal/hide group-restrict +
+    // demographic block and rebuild the participant-flow preview; the Setup
+    // anonymity toggle drops PII (tier) and full anonymity removes demographics.
+    // ════════════════════════════════════════════════════════════════════════
+    // participant-flow steps per auth choice (None has no email/account steps).
+    const AUTH_FLOW = {
+      none:    [],
+      email:   ["Enter your email", "Confirm your email"],
+      account: ["Enter your email", "Confirm your email", "Enter name, last name, and password"]
+    };
+    function authKeyOf(card) {
+      const t = (card.querySelector(".pp-authcard__title") || {}).textContent || "";
+      if (/^None/i.test(t.trim())) return "none";
+      if (/Email/i.test(t)) return "email";
+      return "account";
+    }
+    // is voluntary/mandated anonymity on? (Setup anonymity toggle, per active method)
+    function anonymityOn() {
+      const active = document.querySelector(".pp-setup.is-active");
+      if (!active) return false;
+      // first toggle inside a "User anonymity" / anonymous block
+      const t = active.querySelector('.gv-bo-togglerow input[type="checkbox"]');
+      // only the anonymity row counts — match by nearby label text
+      const rows = active.querySelectorAll(".gv-bo-togglerow");
+      for (const r of rows) {
+        if (/anonymous/i.test(r.textContent)) {
+          const cb = r.querySelector('input[type="checkbox"]');
+          if (cb) return cb.checked;
+        }
+      }
+      return false;
+    }
+    function refreshAccessBody(body) {
+      const adminsOnly = body.querySelector('.pp-adminsonly input[type="checkbox"]');
+      const selCard = body.querySelector(".pp-authcard.is-selected");
+      const auth = selCard ? authKeyOf(selCard) : "account";
+      const anon = anonymityOn();
+      // 1. admins-only collapses everything below the toggle
+      const below = body.querySelectorAll(".pp-authsub, .pp-authgrid, .pp-restrict, .pp-demohead, .pp-demoradios, .pp-demolist, .pp-flow, .pp-tierbanner");
+      const hideAll = adminsOnly && adminsOnly.checked;
+      below.forEach(el => el.hidden = hideAll);
+      if (hideAll) return;
+      // 2. group-restrict + demographics only when there IS an auth (always, here)
+      //    but the "None" flow shows no email/account steps.
+      const flow = body.querySelector(".pp-flow");
+      if (flow) {
+        const steps = AUTH_FLOW[auth].slice();
+        // demographics step appended only when demographics are asked AND not full-anon
+        const demoAsked = !!body.querySelector(".pp-demolist .pp-demorow");
+        const fullAnon = anon && auth === "none";
+        if (demoAsked && !fullAnon) steps.push("Complete the demographic questions above");
+        flow.innerHTML = steps.map((s, i) =>
+          `<div class="pp-flow__step"><span class="pp-flow__num">${i + 1}</span>${s}</div>`).join("")
+          + `<span class="pp-flow__done gv-icon" data-gv-icon="check"></span>`;
+        if (window.GVIcons) window.GVIcons.render(flow);
+      }
+      // 3. demographic reporting note + tier explainer reflect auth + anonymity
+      const banner = body.querySelector(".pp-tierbanner");
+      if (banner) {
+        let html;
+        if (auth === "none" && anon) {
+          html = `<span class="gv-icon" data-gv-icon="info-solid"></span><div>With <b>None</b> + anonymous participation, you reach <b>full anonymity</b> (tier 3): <b>no PII and no demographics</b> — demographic reporting is disabled and users can't see their own submissions.</div>`;
+        } else if (auth === "none" || anon) {
+          html = `<span class="gv-icon" data-gv-icon="info-solid"></span><div>This config <b>excludes personal data</b> (tier 2) but <b>keeps demographics</b> — demographic reporting still works. Add anonymity <i>and</i> None together for full anonymity.</div>`;
+        } else {
+          html = `<span class="gv-icon" data-gv-icon="info-solid"></span><div>With <b>${selCard ? selCard.querySelector(".pp-authcard__title").textContent.replace(/NEW/,"").trim() : "Account creation"}</b> and demographic questions asked, you collect <b>full personal data and demographics</b> (tier 1). Switch to <b>None</b> or enable anonymous participation in Setup to drop PII.</div>`;
+        }
+        banner.innerHTML = html;
+        if (window.GVIcons) window.GVIcons.render(banner);
+      }
+    }
+    function wireAccessBody(body) {
+      const adminsOnly = body.querySelector('.pp-adminsonly input[type="checkbox"]');
+      if (adminsOnly) adminsOnly.addEventListener("change", () => refreshAccessBody(body));
+      // auth-card single-select → cascade
+      const grid = body.querySelector(".pp-authgrid");
+      if (grid) grid.querySelectorAll(".pp-authcard").forEach(c =>
+        c.addEventListener("click", () => {
+          grid.querySelectorAll(".pp-authcard").forEach(x => x.classList.remove("is-selected"));
+          c.classList.add("is-selected");
+          refreshAccessBody(body);
+          markDirty();
+        }));
+      refreshAccessBody(body);
+    }
+    document.querySelectorAll(".gv-bo-accordion__body").forEach(b => {
+      if (b.querySelector(".pp-authgrid")) wireAccessBody(b);
+    });
+    // Re-run the cascade when the Setup anonymity toggle changes (affects tiers).
+    document.querySelectorAll(".pp-setup .gv-bo-togglerow input[type='checkbox']").forEach(cb => {
+      cb.addEventListener("change", () => {
+        document.querySelectorAll(".gv-bo-accordion__body").forEach(b => {
+          if (b.querySelector(".pp-authgrid")) refreshAccessBody(b);
+        });
+      });
+    });
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ROUND 4 — Per-method Setup conditional logic
+    // ════════════════════════════════════════════════════════════════════════
+    // Voting sub-method: swap the method-specific fields + the helper banner.
+    const VOTE_COPY = {
+      approval:   ['<span class="gv-icon" data-gv-icon="info-solid"></span><div>Learn more about when to use <b>approval voting</b> in our <a href="#">Option analysis overview</a>.</div>'],
+      cumulative: ['<span class="gv-icon" data-gv-icon="info-solid"></span><div>Learn more about when to use <b>cumulative (multiple) voting</b> in our <a href="#">Option analysis overview</a>.</div>'],
+      budgeting:  ['<span class="gv-icon" data-gv-icon="info-solid"></span><div>Learn more about when to use <b>budget allocation</b> in our <a href="#">Option analysis overview</a>.</div>']
+    };
+    document.querySelectorAll(".pp-votegrid").forEach(grid => {
+      const panel = grid.closest(".pp-setup");
       grid.querySelectorAll(".gv-bo-methodcard").forEach(c => c.addEventListener("click", () => {
         grid.querySelectorAll(".gv-bo-methodcard").forEach(x => x.classList.remove("is-selected"));
         c.classList.add("is-selected");
+        const vm = c.dataset.vmethod;
+        panel.querySelectorAll(".pp-votefields").forEach(f => f.hidden = f.dataset.vfields !== vm);
+        const banner = panel.querySelector(".pp-votebanner");
+        if (banner && VOTE_COPY[vm]) { banner.innerHTML = VOTE_COPY[vm][0]; if (window.GVIcons) window.GVIcons.render(banner); }
+        markDirty();
       }));
     });
-
-    // ── Phase-access authentication cards: single-select within each grid ──
-    document.querySelectorAll(".pp-authgrid").forEach(grid => {
-      grid.querySelectorAll(".pp-authcard").forEach(c => c.addEventListener("click", () => {
-        grid.querySelectorAll(".pp-authcard").forEach(x => x.classList.remove("is-selected"));
+    // Ideation Available-views: Map view reveals the "needs a location field" note.
+    document.querySelectorAll(".pp-viewgrid").forEach(grid => {
+      const panel = grid.closest(".pp-setup");
+      grid.querySelectorAll(".gv-bo-methodcard").forEach(c => c.addEventListener("click", () => {
+        grid.querySelectorAll(".gv-bo-methodcard").forEach(x => x.classList.remove("is-selected"));
         c.classList.add("is-selected");
+        const note = panel.querySelector(".pp-mapnote");
+        if (note) note.hidden = c.dataset.view !== "map";
+        markDirty();
       }));
+    });
+    // Ideation "Enable disliking" → disabled hides the dislikes-per-participant field.
+    document.querySelectorAll('input[name="dislike"]').forEach(r => r.addEventListener("change", () => {
+      const panel = r.closest(".pp-setup");
+      const disabled = panel.querySelector('input[name="dislike"]:not(:checked)');
+      // find the "Number of dislikes per participant" group (label + radios)
+      const lbls = panel.querySelectorAll(".gv-bo-qlabel");
+      lbls.forEach(l => {
+        if (/dislikes per participant/i.test(l.textContent)) {
+          const enabled = panel.querySelector('input[name="dislike"]:checked')?.parentElement.textContent.match(/Enabled/i);
+          const hide = !enabled;
+          l.hidden = hide;
+          // hide following radios up to next label/subhead
+          let n = l.nextElementSibling;
+          while (n && !n.classList.contains("gv-bo-qlabel") && !n.classList.contains("gv-bo-subhead")) {
+            n.hidden = hide; n = n.nextElementSibling;
+          }
+        }
+      });
+      markDirty();
+    }));
+    // Similar-input-detection toggle hides its threshold fields when off.
+    document.querySelectorAll(".pp-setup .gv-bo-togglerow input[type='checkbox']").forEach(cb => {
+      const row = cb.closest(".gv-bo-togglerow");
+      if (row && /similar input detection/i.test(row.textContent)) {
+        const fields = row.parentElement.querySelector(".pp-setup__thresholds") || row.nextElementSibling;
+        cb.addEventListener("change", () => { if (fields) fields.hidden = !cb.checked; markDirty(); });
+      }
+    });
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ROUND 5 — Cross-cutting interaction + validation / dirty / save states
+    // ════════════════════════════════════════════════════════════════════════
+    // Dirty tracking: any edit enables the (disabled) Save buttons in the active
+    // Setup panel; saving clears dirty and flashes a saved confirmation.
+    function markDirty() {
+      const active = document.querySelector(".pp-setup.is-active") || document.querySelector(".pp-sub.is-active");
+      if (!active) return;
+      active.querySelectorAll(".gv-btn.admin-dark").forEach(btn => {
+        if (/save/i.test(btn.textContent)) { btn.disabled = false; btn.dataset.dirty = "1"; }
+      });
+    }
+    // form edits mark dirty
+    document.querySelectorAll(".pp-setup").forEach(panel => {
+      panel.addEventListener("input", e => { if (e.target.matches("input,select,textarea")) markDirty(); });
+      panel.addEventListener("change", e => { if (e.target.matches("input,select,textarea")) markDirty(); });
+    });
+    // Save buttons: validate required phase-name, then "save" (clear dirty + toast).
+    document.querySelectorAll(".pp-setup .gv-btn.admin-dark").forEach(btn => {
+      if (!/save/i.test(btn.textContent)) return;
+      btn.addEventListener("click", e => {
+        e.preventDefault();
+        const panel = btn.closest(".pp-setup");
+        const nameField = panel.querySelector('.gv-bo-field .gv-input[type="text"]');
+        // validation: phase name required
+        if (nameField && !nameField.value.trim()) {
+          nameField.classList.add("pp-invalid");
+          let err = nameField.parentElement.querySelector(".pp-fielderror");
+          if (!err) { err = document.createElement("p"); err.className = "pp-fielderror"; err.textContent = "Phase name can't be empty."; nameField.parentElement.appendChild(err); }
+          nameField.focus();
+          return;
+        }
+        // success: clear dirty, disable saves, flash saved
+        panel.querySelectorAll(".gv-btn.admin-dark").forEach(b => {
+          if (/save/i.test(b.textContent)) { b.disabled = true; delete b.dataset.dirty; }
+        });
+        const lbl = btn.querySelector(".gv-btn__label");
+        const orig = lbl ? lbl.textContent : "";
+        if (lbl) { lbl.textContent = "Saved ✓"; setTimeout(() => { lbl.textContent = orig; }, 1600); }
+      });
+    });
+    // clear field error as soon as the name is typed
+    document.querySelectorAll('.pp-setup .gv-bo-field .gv-input[type="text"]').forEach(inp => {
+      inp.addEventListener("input", () => {
+        if (inp.value.trim()) {
+          inp.classList.remove("pp-invalid");
+          const err = inp.parentElement.querySelector(".pp-fielderror");
+          if (err) err.remove();
+        }
+      });
     });
 
     // ── Per-phase automated emails (Notifications sub-tab) ─────────────────
