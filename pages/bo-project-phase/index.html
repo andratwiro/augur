@@ -593,6 +593,63 @@
             <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
           </div>
 
+          <!-- ════ PROPOSALS Setup sub-panel (proposals / petitions / initiatives) ════
+               Proposals = specialised ideation: up-vote only (no dislike), with a vote
+               threshold + a time limit. Fields measured from r2-proposals-setup. -->
+          <div class="pp-setup pp-sub" data-sub="proposalssetup">
+            <h3 class="gv-bo-formhead">Edit Phase</h3>
+            <div class="gv-bo-field">
+              <span class="gv-label">Phase name</span>
+              <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+              <input class="gv-input" type="text" value="Submit a proposal" />
+            </div>
+            <div class="gv-bo-field">
+              <span class="gv-label">Dates</span>
+              <div class="gv-bo-dateface"><span>06/02/2024 12:00 AM</span><span class="sep">›</span><span>Open ended</span><span class="gv-icon" data-gv-icon="calendar"></span></div>
+            </div>
+            <button class="gv-btn admin-dark" disabled style="margin-bottom:8px"><span class="gv-btn__label">Save changes</span></button>
+
+            <h4 class="gv-bo-subhead">What do you want to do?</h4>
+            <p class="pp-lede">Each phase runs exactly one participation method.</p>
+            <div class="gv-bo-methods pp-methodgrid" data-method="proposals"></div>
+
+            <!-- Proposal threshold + time limit (proposal-specific) -->
+            <h4 class="gv-bo-subhead">Proposal requirements</h4>
+            <label class="gv-bo-qlabel">Minimum number of votes to be considered</label>
+            <input class="gv-input" type="number" min="1" value="300" style="max-width:240px" />
+            <label class="gv-bo-qlabel">Number of days to reach minimum number of votes</label>
+            <input class="gv-input" type="number" min="1" value="90" style="max-width:240px" />
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>Proposals that reach the minimum number of votes within the time limit are marked <b>Threshold reached</b> and receive an official response; the rest expire.</div></div>
+
+            <!-- User anonymity -->
+            <h4 class="gv-bo-subhead">User anonymity</h4>
+            <div class="gv-bo-togglerow">
+              <div><div class="gv-bo-togglerow__title">Allow users to participate anonymously</div>
+                <p class="gv-bo-help">Users won't be able to track their identity from their input; project managers won't see who submitted what.</p></div>
+              <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+            </div>
+
+            <!-- Naming (defaults to Proposal; Initiative / Petition available) -->
+            <label class="gv-bo-qlabel">What should we call inputs?</label>
+            <select class="gv-bo-select"><option selected>Proposal</option><option>Initiative</option><option>Petition</option><option>Idea</option><option>Contribution</option><option>Issue</option><option>Option</option><option>Project</option><option>Question</option></select>
+
+            <!-- Actions for users — proposals are up-vote only (no disliking field) -->
+            <h4 class="gv-bo-subhead">Actions for users</h4>
+            <div class="gv-bo-togglerow is-action">
+              <div class="gv-bo-togglerow__title">Commenting on posts</div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+            <div class="gv-bo-togglerow is-action">
+              <div class="gv-bo-togglerow__title">Reacting to inputs</div>
+              <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+            </div>
+            <label class="gv-bo-qlabel">Number of likes per participant</label>
+            <label class="gv-radio"><input type="radio" name="plikes" checked><span class="circle"></span>Unlimited</label><br>
+            <label class="gv-radio"><input type="radio" name="plikes"><span class="circle"></span>Limited</label>
+
+            <div style="margin-top:28px"><button class="gv-btn admin-dark" disabled><span class="gv-btn__label">Save changes</span></button></div>
+          </div>
+
           <!-- ════ NATIVE SURVEY Setup sub-panel (form-builder survey) ════ -->
           <div class="pp-setup pp-sub" data-sub="surveysetup">
             <h3 class="gv-bo-formhead">Edit Phase</h3>
@@ -1166,6 +1223,7 @@
       { label: "Vote",                           title: "Vote",                method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
       { label: "Budget allocation",              title: "Budget allocation",   method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
       { label: "Poll the priorities",            title: "Voting on Top 3 Priorities", method: "Poll phase",  dates: "March 21, 2023 12:00 AM → April 3, 2023 12:00 AM", setup: "pollsetup",         tabs: ["setup","description","poll","insights","access","notifications"] },
+      { label: "Submit a proposal",              title: "Submit a proposal",   method: "Proposals phase",    dates: "June 2, 2024 12:00 AM → No end date",             setup: "proposalssetup",    tabs: ["setup","description","inputmgr","inputform","insights","access","notifications"] },
       { label: "Community survey",               title: "Community Survey",    method: "Survey phase",       dates: "May 6, 2024 12:00 AM → No end date",              setup: "surveysetup",       tabs: ["setup","description","surveyform","surveyresults","access","notifications"] },
       { label: "Find common ground",             title: "Polis process",       method: "Common ground phase", dates: "May 1, 2026 12:00 AM → June 30, 2026 11:59 PM",   setup: "commongroundsetup", tabs: ["setup","description","report","access","notifications"] },
       { label: "Find volunteers",                title: "Find volunteers",     method: "Volunteering phase", dates: "November 29, 2021 12:00 AM → No end date",         setup: "volunteeringsetup", tabs: ["setup","description","volunteering","insights","access","notifications"] },
@@ -1296,7 +1354,7 @@
     const METHODS = [
       ["collect", "comments",       "Collect input and feedback in public",     "Tap into your users' collective intelligence. Invite them to submit, discuss ideas, and/or provide feedback in a public forum."],
       ["proposals", "vote-up",      "Proposals, petitions or initiatives",      "Allow participants to upload ideas with a time and vote limit."],
-      ["commonground", "group",     "Find common ground",                       "Help participants surface agreement and disagreement, one idea at a time."],
+      ["commonground", "group",     "Find common ground",                       "Help participants surface agreement and disagreement, one idea at a time.", true],
       ["survey", "survey",          "Create a survey",                          "Understand your users' needs and thinking via a wide range of private question types."],
       ["voting", "trend-up",        "Conduct a voting or prioritization exercise","Select a voting method, and have users prioritise between a few different options."],
       ["information", "info-outline","Share information",                        "Provide information to users, visualise results from other phases and create data rich reports."],
@@ -1304,9 +1362,9 @@
     ];
     document.querySelectorAll(".pp-methodgrid").forEach(grid => {
       const sel = grid.dataset.method;
-      grid.innerHTML = METHODS.map(([key, icon, title, desc]) =>
+      grid.innerHTML = METHODS.map(([key, icon, title, desc, beta]) =>
         `<button class="gv-bo-methodcard${key === sel ? " is-selected" : ""}">
-           <span class="gv-bo-methodcard__art"><span class="gv-bo-methodcard__icon" data-gv-icon="${icon}"></span></span>
+           <span class="gv-bo-methodcard__art">${beta ? '<span class="gv-bo-typebadge is-type" style="position:absolute;top:8px;left:8px">BETA</span>' : ""}<span class="gv-bo-methodcard__icon" data-gv-icon="${icon}"></span></span>
            <span class="gv-bo-methodcard__title">${title}</span>
            <span class="gv-bo-methodcard__desc">${desc}</span>
          </button>`).join("");

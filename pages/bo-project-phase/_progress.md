@@ -174,3 +174,38 @@ open items)
 - Open: native survey *results* are per-question charts in the real product; the page reuses
   the external-export `surveyresults` panel for both. Acceptable for now; deeper per-Q survey
   results = future (would belong on bo-survey-builder or a results variant).
+
+### Pass 4 — Proposals / petitions / initiatives (DONE 2026-06-16)
+- **NEW CAPTURE:** `r2-proposals-setup` — captured the live new-phase form with
+  `--click "#e2e-participation-method-choice-proposals"` to reveal proposal-specific fields
+  (the SPA renders them only after selecting the card). Confirmed authenticated (0 signed-out
+  markers, 7 `e2e-participation-method-choice-*` present, admin chrome). NOTE: method cards
+  are `id="e2e-participation-method-choice-<key>"` (ids, not classes).
+- **Real proposal-specific fields (measured, not guessed):** "Minimum number of votes to be
+  considered" (threshold) + "Number of days to reach minimum number of votes" (time limit).
+  Naming dropdown defaults to **Proposal** and adds **Initiative / Petition** (full option
+  list captured). No "Submitting posts" toggle and no disliking field — proposals are
+  **up-vote only** (matches GOVOCAL.md A1: proposals = ideation minus dislike).
+- **BUILD:** added `data-sub="proposalssetup"` panel (all canonical `.gv-*`): Edit-Phase
+  header, picker w/ proposals selected, **Proposal requirements** (min-votes 300 + days 90 +
+  threshold-reached info banner), anonymity, naming→Proposal, Actions (comment/react + likes,
+  NO dislike). Added a **Submit a proposal** phase to the ribbon (Proposals phase; sub-tabs
+  setup·description·inputmgr·inputform·insights·access·notifications — proposals DO have an
+  Input manager + statuses).
+- **Also:** added the real **BETA badge** to the Find-common-ground method card (seen in the
+  capture screenshot). Required a 1-line primitive add: `.gv-bo-methodcard__art { position:
+  relative }` in `govocal-bo.css` to anchor the pill (layout-only, harmless to all consumers).
+  Rendered the badge as canonical `.gv-bo-typebadge.is-type`.
+- VERIFY: `lint` 0; screenshot eyeballed (panel + ribbon + sub-tabs + min-votes/days +
+  up-vote-only actions + BETA pill all correct vs capture); `verify:all` **130 green · 1 red
+  UNCHANGED** — the primitive `position:relative` add caused ZERO regression (layout-only,
+  no probed computed-style moved).
+- RECHECK: ideation + survey setup panels intact (additive panel/phase + 1 layout-only
+  primitive prop).
+- Checkpoints: none added (no new measurable computed-style treatment; threshold inputs reuse
+  the already-checkpointed `.gv-input`).
+- NOTE: a sibling agent (spawned in parallel on the same plan) independently re-confirmed
+  Pass-1 selected-card fidelity (`--gv-teal-75` bg / `--gv-bo-primary` 1px border / 3px / 16px
+  pad) and left an extra untracked capture `govocal-exports/p1-ideation-setup/` — harmless,
+  not staged by me. The sibling correctly detected the collision and stopped; I remain the
+  sole driver.

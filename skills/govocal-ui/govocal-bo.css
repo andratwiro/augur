@@ -351,6 +351,7 @@
    product artwork, so this is a faithful placeholder: a tinted banner with the
    method glyph centred, matching the card's structure + proportions. */
 .gv-bo-methodcard__art {
+  position: relative; /* anchors an optional BETA pill on beta methods (e.g. Common ground) */
   width: 100%; height: 78px; display: grid; place-items: center; flex: none;
   background: var(--gv-teal-50); border-radius: var(--gv-radius); margin-bottom: 4px;
   color: var(--gv-teal-300);
