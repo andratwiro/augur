@@ -1959,6 +1959,11 @@
 .gv-projlist__title { margin: 0 0 24px; text-align: center;
   font-family: var(--gv-font-family); font-size: 34px; font-weight: 500;
   line-height: 1.2; color: var(--gv-text-pagetitle); }
+/* Mobile: real /projects left-aligns the page title (flush with the search field),
+   keeping it centered at desktop. Append-only — mirrors real responsive behavior. */
+@media (max-width: 640px) {
+  .gv-projlist__title { text-align: left; }
+}
 
 /* .gv-searchfield → moved to govocal-primitives.css (cross-surface atom). */
 

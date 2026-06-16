@@ -28,6 +28,15 @@
     body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
     .projlist-page { padding: 40px 0 64px; }
 
+    /* Mobile: real /projects paints a light-grey band (~#EDEFF0, aliased to the
+       grey-200 token) behind the title→search→tabs zone, fading to white at the
+       card grid. Desktop background stays white. Page-level dressing only. */
+    @media (max-width: 640px) {
+      .projlist-page {
+        background: linear-gradient(var(--gv-grey-200) 0, var(--gv-grey-200) 220px, #fff 360px);
+      }
+    }
+
     /* Demo-only floating auth toggle (sets data-auth on <body>; no real auth). */
     .auth-toggle { position: fixed; left: 16px; bottom: 16px; z-index: 1200;
       display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px;
