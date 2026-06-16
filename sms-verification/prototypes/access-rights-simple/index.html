@@ -278,7 +278,7 @@
     var PRESETS = {
       open:     { t:'Open to everyone', ic:'group',  color:'#1a7a3f', d:'No sign-up. Anyone can take part, even without an account.' },
       signin:   { t:'Sign in first',   ic:'user',    color:'#044d6c', d:'People make a quick account so you know they’re a real person.', rec:true },
-      verified: { t:'Verified locals', ic:'shield',  color:'#6d28d9', d:'We check they actually live in your area before they join.' },
+      verified: { t:'Verified people', ic:'shield',  color:'#6d28d9', d:'Make extra sure each person is real and unique — a code to their phone, or a photo ID.' },
       team:     { t:'Just the team',   ic:'lock',    color:'#51606b', d:'Only your staff. The public can’t see or take part.' }
     };
     var VERIFY = {
@@ -316,7 +316,7 @@
       renderPhone();
       $('#rightsMeta').textContent = state.preset==='open' ? 'Open to everyone'
         : state.preset==='team' ? 'Staff only'
-        : state.preset==='verified' ? 'Verified residents' : 'Sign-in required';
+        : state.preset==='verified' ? 'Verified people' : 'Sign-in required';
       if(window.GVIcons) GVIcons.render(document.body);
     }
 
@@ -327,7 +327,7 @@
       else {
         var m = methodsOn();
         var proof = m.length ? ('sign in and confirm with <b>'+ m.map(function(k){return VERIFY[k].t.toLowerCase();}).join(' + ') +'</b>') : 'just <b>sign in</b>';
-        var who = state.preset==='verified' ? 'a verified resident' : 'anyone';
+        var who = state.preset==='verified' ? 'a verified person' : 'anyone';
         var diffs = state.perAction ? ACTIONS.filter(function(a){ return state.actions[a.key] !== 'all'; }).length : 0;
         s = 'Right now, '+who+' who can '+proof+' is able to <b>take part</b>'
           + (diffs ? ', with <b>'+diffs+' action'+(diffs>1?'s':'')+'</b> set differently' : '')
