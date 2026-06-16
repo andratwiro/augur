@@ -161,6 +161,8 @@ const PAGE_LOCAL = new Set([
   // single-page composition fragments (project-page header, event-detail layout, …)
   'gv-eventdetail', 'gv-projbar', 'gv-projhead', 'gv-projdesc', 'gv-pinfo',
   'gv-participants', 'gv-pcount', 'gv-poststat', 'gv-thumb-cap',
+  // survey-landing page composition (project-survey header band + grey content section)
+  'gv-surveyhead', 'gv-surveycontent',
   // inline link / control utilities
   'gv-back', 'gv-readmore', 'gv-edit',
   // root / a11y helpers

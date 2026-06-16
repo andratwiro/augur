@@ -2110,3 +2110,29 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
    treatment the base rule carried. Override so the reaction count matches the
    comment count and the real product. */
 .gv-react__count { font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-cool-grey-600); }
+
+/* ── Survey-landing header band (open single-method survey project page) ────────
+   Live: div.sc-eIoBCF.jfrhiw — WHITE band, padding 30px 0 65px. Project H1 sits on
+   the LEFT; a right-aligned action column holds the Edit/Follow admin row, a large
+   primary "Take the survey" CTA, then a participant avatar+count line. No phase
+   stepper / Timeline heading for an open single phase. Layout-only variant on top of
+   the canonical .gv-title/.gv-btn/.gv-participants atoms — no colour/type re-authored.
+   Source: fo-project-survey. ───────────────────────────────────────────────────── */
+.gv-surveyhead { background: #fff; padding: 30px 0 65px; }
+.gv-surveyhead__grid { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px 56px; align-items: start; }
+.gv-surveyhead__main { padding-top: 40px; }   /* title baseline sits below the admin row, matching the live left/right offset */
+.gv-surveyhead__action { display: flex; flex-direction: column; align-items: flex-end; gap: 18px; min-width: 320px; }
+.gv-surveyhead__admin { display: inline-flex; align-items: center; gap: 12px; }
+.gv-surveyhead__cta { width: 100%; justify-content: center; padding: 13px 22px; font-size: var(--gv-fs-base); font-weight: 600; line-height: 22px; }
+.gv-surveyhead__action .gv-participants { padding-top: 0; }
+@media (max-width: 760px) {
+  .gv-surveyhead { padding: 24px 0 36px; }
+  .gv-surveyhead__grid { grid-template-columns: 1fr; }
+  .gv-surveyhead__main { padding-top: 0; }
+  .gv-surveyhead__action { align-items: stretch; min-width: 0; }
+  .gv-surveyhead__admin { justify-content: flex-start; }
+}
+
+/* Grey content section below the participation band (live: section, bg #EDEFF0,
+   padding 60px 0 80px). Reuses .gv-projdesc body copy; band-padding only here. */
+.gv-surveycontent { background: var(--gv-background); padding: 60px 0 80px; }
