@@ -1367,8 +1367,23 @@ async function main() {
     hasPlayground = true;
   }
 
-  // Edge auth gate.
-  await fs.copyFile(SRC_WORKER, path.join(DIST, "_worker.js"));
+  // Edge auth gate. Inject the list of PUBLIC prototype path-prefixes so the
+  // password gate covers only the internal site — published prototypes stay open.
+  // (Derived from what actually shipped above, so the gate can never drift.)
+  const publicPrefixes = opportunities.flatMap((opp) =>
+    opp.prototypes.map(
+      (p) => `/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`
+    )
+  );
+  const workerSrc = await fs.readFile(SRC_WORKER, "utf8");
+  const gatedWorker = workerSrc.replace(
+    "const PUBLIC_PREFIXES = [];",
+    `const PUBLIC_PREFIXES = ${JSON.stringify(publicPrefixes)};`
+  );
+  if (gatedWorker === workerSrc) {
+    throw new Error("build: PUBLIC_PREFIXES placeholder not found in src/_worker.js");
+  }
+  await fs.writeFile(path.join(DIST, "_worker.js"), gatedWorker, "utf8");
 
   // Review overlay asset (shared by every injected prototype).
   await fs.mkdir(path.join(DIST, "__review"), { recursive: true });

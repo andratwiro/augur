@@ -1,16 +1,38 @@
 // Source for dist/_worker.js — copied verbatim by build.js into the deploy dir.
 // Cloudflare Pages Advanced Mode: this Worker runs in front of every request.
 //
-// When the SITE_PASSWORD env var/secret is set on the Pages project, the whole
+// When the SITE_PASSWORD env var/secret is set on the Pages project, the INTERNAL
 // site is gated behind a single custom password page (no username). A correct
 // password sets a cookie whose value is SHA-256("gv:" + password) — so the raw
 // password is never stored in the cookie — and the Worker checks that cookie on
 // every request. If SITE_PASSWORD is unset (e.g. local builds), the site is open.
 //
+// Published prototypes (`/<opportunity>/<prototype>/…`) are PUBLIC even when the
+// password is set — only the internal surface (root index, per-opportunity
+// indexes, /pages, /components, /primitives, /playground, /skills) is gated. See
+// PUBLIC_PREFIXES / isPublicPath below.
+//
 // Casual shared-password gate against link leakage — NOT Zero Trust.
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+
+// PUBLIC prototype path-prefixes — served WITHOUT the password. build.js replaces
+// the array below with the real list of `/<opportunity>/<prototype>/` prefixes at
+// build time, so it can never drift from what actually ships. Left empty here so a
+// raw/local copy of this file gates nothing differently (local builds have no
+// password anyway).
+const PUBLIC_PREFIXES = [];
+
+// A request is public if it lands inside a published prototype folder (the index
+// page or any asset it loads), or is the dormant review-overlay script that every
+// prototype embeds. Everything else falls through to the password gate.
+function isPublicPath(pathname) {
+  if (pathname === "/__review/comments.js") return true;
+  return PUBLIC_PREFIXES.some(
+    (p) => pathname === p || pathname === p.slice(0, -1) || pathname.startsWith(p)
+  );
+}
 
 async function tokenFor(secret) {
   const data = new TextEncoder().encode("gv:" + secret);
@@ -293,6 +315,9 @@ export default {
       }
       return htmlResponse(loginPage(redirect, true), 401);
     }
+
+    // Published prototypes are public — never gated, regardless of the cookie.
+    if (isPublicPath(url.pathname)) return env.ASSETS.fetch(request);
 
     // Already authenticated?
     const cookies = request.headers.get("Cookie") || "";
