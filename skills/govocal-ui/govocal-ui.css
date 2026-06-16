@@ -1521,6 +1521,16 @@
    markup needs only `.gv-themecard`. */
 .gv-themecard--grounded { grid-template-columns: 1fr; }
 
+/* ── Theme card · desc/bar full-width (fix 69/93 → themecard-desc-full-width) ──
+   Follow-on to fix 68/93: with the 40px swatch column gone, __main is a single
+   full-width grid cell, so __desc/__bar must align to the card's left padding edge
+   (under the emoji, NOT indented under the title). __main is block-flow full width;
+   the share-bar track is authored as <span> and defaults to display:inline, which
+   collapses it to ~1px — force it to a full-width block so it fills the card width
+   like the real wietsedemo card (track div.gdJIUf spans the full card). */
+.gv-themecard__main { display: block; width: 100%; }
+.gv-themecard__bar { display: block; width: 100%; }
+
 /* ── Dotted-grid canvas ── floats sticky-note idea cards.
    Live bg = white + tiled inline-svg dot (circle r1.5 #e5e5e5) at 20×20. */
 .gv-issuecanvas { position: relative; overflow: auto; background-color: #fff;
