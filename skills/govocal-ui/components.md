@@ -537,6 +537,15 @@ links flow into the drawer grid.
 - Account menu items are `.gv-nav__menu a` / `button` (flex, trailing icon, `.gv-menu-sep`
   divider before Sign out) — source-grounded on the live user menu (Manage platform · My
   activity · My settings · Sign out).
+- **Signed-in mobile (`.gv-mobile-inline`):** the real signed-in mobile header
+  (`fo-account-dropdown-m`) keeps **language (EN) + bell + badge + avatar inline** on the
+  right and folds only the primary nav links into the drawer — it does **not** hide the
+  account/bell/lang behind the hamburger. Add `.gv-mobile-inline` next to `gv-desktop-only`
+  on the bell, the `.gv-account-dd` and the language `<details>` to keep them inline below
+  860px (the account control collapses to the 38px avatar puck; the username label drops).
+  Leave the search button as plain `gv-desktop-only` — the real mobile header has no search
+  icon. Base (no opt-in) behaviour is unchanged: everything still collapses to the
+  hamburger.
 
 ## Footer — `.gv-footer` (`components/footer/`)
 

@@ -225,6 +225,24 @@
   .gv-nav-m { display: block; }
 }
 
+/* Signed-in mobile header fidelity (fo-account-dropdown-m digest:
+   "EN29 unviewed notifications29 … Show mobile navigation" — the real signed-in
+   mobile header keeps language (EN), bell + badge and the avatar INLINE on the
+   right, and folds ONLY the primary nav links into the drawer; it does NOT hide
+   the account/bell/lang behind the hamburger). New opt-in variant — add
+   `.gv-mobile-inline` alongside `gv-desktop-only` on the bell / account / language
+   controls to keep them inline at mobile. Base behaviour is unchanged for anything
+   that doesn't opt in (e.g. the search button stays collapsed — no "Search" in the
+   real mobile digest). On the account control, collapse to the avatar only (the
+   38px avatar stands in for the full name+chevron control, matching the live
+   signed-in mobile header where the username label is dropped). */
+@media (max-width: 860px) {
+  .gv-header__actions .gv-desktop-only.gv-mobile-inline { display: inline-flex; }
+  /* account control collapses to the avatar puck on mobile */
+  .gv-account-dd.gv-mobile-inline > summary.gv-account { padding: 0; gap: 0; }
+  .gv-account-dd.gv-mobile-inline > summary.gv-account .gv-account__name { display: none; }
+}
+
 /* ── Footer ──────────────────────────────────────────────────────────────────
    Source-grounded on GoVocal's real <footer id="hook-footer">: a secondary-nav row
    of legal links (one is the Cookie-Einstellungen *button*) + the "Ermöglicht durch
