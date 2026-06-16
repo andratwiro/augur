@@ -354,3 +354,41 @@ dashboard + pages-menu consume it (page-local toggles deleted).
 - Canonical candidates still page-local (promote if a 2nd consumer appears):
   `.gv-bo-rte`+`.gv-bo-charcount` (messaging), `.gv-bo-scalebar` (community-monitor),
   colour-picker field (tools+branding), seat-summary card, automated-row, choice-card.
+
+## Run 5 — Adversarial fidelity pass + deploy (DONE)
+
+4 agents did region-by-region screenshot-vs-capture comparison across all 11 BO pages
+and fixed residuals page-locally (type hierarchy, method-picker copy, banner/label
+colours, modal choice-card icon backdrops, sort-header placement, add-form controls →
+selects + green save + grey go-back, widget-builder accordion structure, report-sheet
+type tiers). Orchestrator canonical tweaks from their findings: **`.gv-bo-subhead`
+18px/500** (was /700), **`.gv-bo-fieldrow__qno` teal-400** (was teal-500), added
+**`plus-circle`** icon. Reverted a page-local sort-header fake back to canonical
+`.is-sorted` (kept the checkpoint green). Final gate: **lint 0 violations · verify:all
+92 green / 0 red**. Built + deployed to Cloudflare Pages (`npm run deploy`).
+
+## FINAL REPORT — BO reconstruction sweep (5 runs)
+
+**Reproduced (route → page → key captures):** Dashboard (6 tabs + date controls),
+Projects (list/folders/calendar/arrange), Input manager, Users (+admins/seats/blocked/
+banned/groups + add-group modal), Messaging (custom/automated/compose), Reporting
+(list tabs + **report-builder editor** NEW), Community monitor (live/participants/
+reports/settings/popup), Inspiration hub, Tools (+widget builder + esri), Pages & menu
+(+create-page), Settings (7 tabs + add-question/add-area/proposal-statuses), and the
+**project-configuration editor** across methods: ideation, voting/**budgeting**, poll,
+volunteering, common-ground, information, native-**survey form builder** (NEW page) +
+survey-results, plus cross-method access-rights, phase-emails, input-importer, Timeline
+& 360-Input top-tabs. New pages: `bo-survey-builder`, `bo-report-builder`.
+
+**Canonical promotions this sweep:** icons `drag-handle`, `plus-circle`;
+`.gv-badge.is-filled` (DEFAULT/category); `.gv-bo-accordion`; `.gv-bo-fieldrow` +
+`.gv-bo-typebadge`; `.gv-bo-segmented` (+a11y focus); `.gv-bo-empty__icon svg` fix;
+`.gv-bo-subhead`/`fieldrow__qno` measured corrections. Confirmed `.gv-modal` pre-exists.
+
+**Prioritized remaining backlog:** New-project scratch/template gallery; input-manager
+Exports dropdown + bell notif flyout; common-ground `/report` depth; external-survey
+embed config; 360-Input content; phase Description (Content Builder reuse). Promote
+when a 2nd consumer lands: `.gv-bo-rte`/`charcount`, `.gv-bo-scalebar`, colour-picker
+field, seat-summary card, choice-card, automated-row. Register numeric checkpoints for
+the new components (accordion/fieldrow/segmented/report-sheet) — deferred to keep the
+green ratchet stable; builds are digest-grounded + eyeball-verified.
