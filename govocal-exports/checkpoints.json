@@ -827,7 +827,8 @@
         "font-size",
         "line-height",
         "border-radius",
-        "padding"
+        "padding",
+        "height"
       ],
       "uses": [
         ".gv-btn"

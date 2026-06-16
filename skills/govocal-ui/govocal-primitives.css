@@ -107,6 +107,10 @@ body.gv-root {
 .gv-btn.volunteer        { background: var(--gv-tenant-primary); color: var(--gv-text-heading-strong); padding: 9px 18px; font-size: var(--gv-fs-s); line-height: 16.1px; }
 .gv-btn.volunteer:hover  { filter: brightness(0.93); }
 .gv-btn.volunteer.is-in  { background: #fff; color: var(--gv-text-secondary); border-color: var(--gv-cool-grey-500); }
+/* The live cause CTA measures 45px tall (the source icon sits ~27px in the
+   16.1px line-box). Pin the grounded height so the button matches regardless of
+   how our local volunteer glyph renders. */
+.gv-btn.volunteer        { min-height: 45px; }
 
 .gv-btn:disabled, .gv-btn.disabled, .gv-btn[aria-disabled='true'] {
   opacity: 0.37; cursor: not-allowed; filter: none; pointer-events: none;
