@@ -1981,7 +1981,28 @@
 .gv-pcard.featured .gv-bubbles { margin-top: 8px; }
 
 @media (max-width: 860px) {
-  .gv-featured-row { grid-template-columns: 1fr; gap: 28px; }
+  /* Mobile = the live wietsedemo HORIZONTAL CAROUSEL feel: cards keep a fixed
+     card-width and the track scrolls horizontally with scroll-snap, so the next
+     card peeks on the right edge (live holds card 1 at ~290px with card 2
+     peeking). Replaces the old full-bleed vertical stack. The carousel's JS
+     swipe/skip affordance is intentionally out of scope for the static
+     component — this gives the same scroll-snap mechanic via native overflow. */
+  .gv-featured-row {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 86%;
+    gap: 16px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-left: 20px;
+    /* let the peeking card bleed to the viewport edge */
+    margin-inline: -20px;
+    padding-inline: 20px;
+    scrollbar-width: none;
+  }
+  .gv-featured-row::-webkit-scrollbar { display: none; }
+  .gv-featured-row > .gv-pcard.featured { scroll-snap-align: start; }
 }
 
 /* ── Projects & folders LIST page (FO /projects) ─────────────────────────────
