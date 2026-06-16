@@ -1641,6 +1641,14 @@
    (author chip → title → excerpt → reactions). No image; excerpt clamps to fit. */
 .gv-sticky { height: 400px; }
 
+/* SHARED FIX 66/93 — sticky-note-height. Grounded: every probed [data-cy=e2e-sticky-note]
+   in the perspectives feed is a uniform 320×400 tile (the pile is a grid of equal-height
+   400px tiles, NOT variable-height notes). Make the canonical .gv-sticky the masonry
+   default: a fixed 400px tile that clips overflow, so consumers never need per-card inline
+   heights. The resting pile is uniform; .is-raised stays free to grow (min-height only). */
+.gv-sticky { overflow: hidden; }
+.gv-sticky.is-raised { height: auto; min-height: 400px; overflow: visible; }
+
 /* SHARED FIX 49/93 — sticky-note category emoji is a TOP-RIGHT CORNER CHIP, not an
    inline glyph on the author line. In both real captures the emoji sits in its own
    small ~32px grey rounded-square chip pinned to the card's top-right corner, visible
