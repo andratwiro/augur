@@ -50,7 +50,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.21";
+const UI_VERSION = "0.22";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -423,7 +423,7 @@ const PAGE_CSS = `
       background: var(--bg); color: var(--fg);
       -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
       letter-spacing: -0.011em;
-      overflow-x: clip; /* the full-bleed carousel breaks out to 100vw — never let that add a horizontal scrollbar */
+      overflow-x: clip; /* guard against any full-bleed element adding a horizontal scrollbar */
     }
     /* Signature: a faint indigo wash behind the hero, fixed so it doesn't scroll. */
     body::before {
@@ -498,12 +498,6 @@ const PAGE_CSS = `
     .pfilter kbd[hidden], .pfilter__clear[hidden] { display: none; }
     .is-fhidden { display: none !important; }
     .filter-empty { color: var(--muted); font-size: 14.5px; margin: 6px 0 0; }
-    /* While a query is active, collapse the full-bleed carousel into a plain wrapped
-       grid so matches lay out simply (the scroll/arrows/dots make no sense filtered). */
-    html.is-filtering .carousel { width: auto; margin-left: 0; }
-    html.is-filtering .carousel .cbtn, html.is-filtering .carousel .dots { display: none; }
-    html.is-filtering .track { overflow: visible; flex-wrap: wrap; padding: 8px 0; }
-    html.is-filtering .slide { flex: 0 1 300px; }
     .playground {
       display: flex; align-items: center; gap: 18px; margin-top: 18px; padding: 18px 20px;
       background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
@@ -523,46 +517,6 @@ const PAGE_CSS = `
     .playground:hover .playground__go { color: var(--fg); transform: translateX(2px); }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
     footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
-
-    /* ---- Carousel (full-bleed: breaks out of the column to span the viewport) ----
-       --gutter aligns the first card's left edge with the page content; the track
-       scrolls edge-to-edge so the rail reads as full-width, with a peek of the next. */
-    .carousel { position: relative; width: 100vw; margin-left: calc(50% - 50vw); --gutter: max(24px, calc(50vw - 516px)); }
-    .carousel.single .cbtn, .carousel.single .dots { display: none; }
-    .track {
-      display: flex; gap: 18px; overflow-x: auto; scroll-snap-type: x mandatory;
-      scroll-behavior: smooth; padding: 8px var(--gutter); scroll-padding-inline: var(--gutter);
-      scrollbar-width: none; -webkit-overflow-scrolling: touch;
-    }
-    .track::-webkit-scrollbar { display: none; }
-    .slide { flex: 0 0 86%; scroll-snap-align: start; }
-    @media (min-width: 680px) { .slide { flex: 0 0 52%; } }
-    @media (min-width: 1000px) { .slide { flex: 0 0 42%; } }
-    @media (min-width: 1400px) { .slide { flex: 0 0 36%; } }
-    .cbtn {
-      position: absolute; top: calc(50% - 28px); transform: translateY(-50%); z-index: 5;
-      width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-2);
-      background: rgba(255,255,255,0.86); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-      color: var(--fg); font-size: 18px; line-height: 1;
-      cursor: pointer; box-shadow: 0 4px 16px rgba(16,24,40,0.14);
-      transition: opacity .15s ease, background .15s ease, border-color .15s ease; display: grid; place-items: center;
-    }
-    .cbtn:hover { background: var(--card-hover); border-color: var(--accent); }
-    .cbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .cbtn[disabled] { opacity: 0; pointer-events: none; }
-    .cbtn.prev { left: 16px; } .cbtn.next { right: 16px; }
-    .dots { display: flex; gap: 2px; justify-content: center; margin-top: 12px; }
-    .dot {
-      width: 24px; height: 24px; padding: 0; border: 0; background: transparent;
-      cursor: pointer; display: inline-grid; place-items: center;
-    }
-    .dot::before {
-      content: ""; width: 6px; height: 6px; border-radius: 50%;
-      background: var(--line-2); transition: background .15s, width .15s;
-    }
-    .dot:hover::before { background: var(--muted); }
-    .dot.on::before { background: var(--accent); width: 18px; border-radius: 3px; }
-    .dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-radius: 6px; }
 
     /* ---- Cards & live previews ---- */
     .card-opp, .card-proto {
@@ -719,13 +673,11 @@ const PAGE_CSS = `
 
     /* ── Phones ───────────────────────────────────────────────────────────────
        Tighter gutters under the 52px bar, a smaller hero, and full-width actions
-       so cards never overflow or cramp. The carousel gutter follows .wrap padding
-       so the first slide still lines up with the page content. */
+       so cards never overflow or cramp. */
     @media (max-width: 600px) {
       .wrap { padding: 30px 16px 80px; }
       h1 { font-size: 30px; }
       .subtitle { font-size: 15px; }
-      .carousel { --gutter: 16px; }
       .proto-meta { padding: 14px 16px; }
       .playground { gap: 14px; padding: 16px; }
       .playground__go { display: none; }
@@ -767,68 +719,6 @@ const CAROUSEL_JS = `
         window.addEventListener('resize', function () { previews.forEach(fit); });
         previews.forEach(fit);
       }
-
-      [].forEach.call(document.querySelectorAll('[data-carousel]'), function (c) {
-        var track = c.querySelector('[data-track]');
-        var prev = c.querySelector('[data-prev]');
-        var next = c.querySelector('[data-next]');
-        var dotsWrap = c.querySelector('[data-dots]');
-        // Read slides live so the count is never cached.
-        function slides() { return [].slice.call(track.children); }
-        function step() { var s = slides(); return s.length > 1 ? s[1].offsetLeft - s[0].offsetLeft : track.clientWidth; }
-        function active() { return Math.round(track.scrollLeft / step()); }
-        function goTo(i) { track.scrollTo({ left: i * step(), behavior: 'smooth' }); }
-
-        var dots = [];
-        function buildDots() {
-          dotsWrap.innerHTML = ''; dots = [];
-          var s = slides();
-          c.classList.toggle('single', s.length <= 1);
-          if (s.length > 1) {
-            s.forEach(function (sl, i) {
-              var d = document.createElement('button');
-              d.className = 'dot';
-              d.setAttribute('aria-label', 'Go to item ' + (i + 1));
-              d.addEventListener('click', function () { goTo(i); });
-              dotsWrap.appendChild(d); dots.push(d);
-            });
-          }
-        }
-
-        function update() {
-          var a = active();
-          dots.forEach(function (d, i) { d.classList.toggle('on', i === a); });
-          if (prev) prev.disabled = a <= 0;
-          if (next) next.disabled = a >= slides().length - 1;
-        }
-        if (prev) prev.addEventListener('click', function () { goTo(active() - 1); });
-        if (next) next.addEventListener('click', function () { goTo(active() + 1); });
-        // A preview iframe can autofocus an element after it lazy-loads, which makes the
-        // browser scroll our horizontal track to reveal it — landing the carousel on the
-        // wrong slide. Until the user genuinely interacts, snap any such drift back to the
-        // start (instantly, no animation). Real gestures fire pointerdown/keydown/wheel/
-        // touchstart (capture) before any scroll, so they flip the flag off first.
-        var userMoved = false;
-        ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) {
-          c.addEventListener(ev, function () { userMoved = true; }, { passive: true, capture: true });
-        });
-        track.addEventListener('scroll', function () {
-          if (!userMoved && track.scrollLeft !== 0) {
-            var sb = track.style.scrollBehavior;
-            track.style.scrollBehavior = 'auto';
-            track.scrollLeft = 0;
-            track.style.scrollBehavior = sb;
-          }
-          requestAnimationFrame(update);
-        }, { passive: true });
-        c.addEventListener('keydown', function (e) {
-          if (e.key === 'ArrowLeft') { goTo(active() - 1); e.preventDefault(); }
-          if (e.key === 'ArrowRight') { goTo(active() + 1); e.preventDefault(); }
-        });
-
-        buildDots();
-        update();
-      });
     })();`;
 
 // Top-right tab nav for the site's chrome/reference pages (Prototypes · Primitives ·
@@ -987,8 +877,6 @@ function chromeScript() {
       if(emptyMsg) emptyMsg.hidden = shown !== 0;
       if(clear) clear.hidden = !raw;
       if(kbd) kbd.hidden = !!raw;
-      // Collapse the full-bleed carousel to a plain wrapped grid while searching.
-      document.documentElement.classList.toggle('is-filtering', !!raw);
     }
     input.addEventListener('input', apply);
     input.addEventListener('keydown', function(e){ if(e.key === 'Escape' && input.value){ e.preventDefault(); e.stopPropagation(); input.value=''; apply(); } });
@@ -1100,17 +988,6 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
 /** A live, scaled-down, non-interactive preview of a page (iframe). */
 function preview(src) {
   return `<div class="preview"><iframe src="${src}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe></div>`;
-}
-
-/** Wrap slide markup in the shared carousel chrome (arrows + dots). */
-function carousel(slidesHtml) {
-  return `<div class="carousel" data-carousel tabindex="0">
-      <button class="cbtn prev" type="button" aria-label="Previous" data-prev>&lsaquo;</button>
-      <div class="track" data-track>${slidesHtml}
-      </div>
-      <button class="cbtn next" type="button" aria-label="Next" data-next>&rsaquo;</button>
-      <div class="dots" data-dots></div>
-    </div>`;
 }
 
 function renderRootIndex(opportunities) {
