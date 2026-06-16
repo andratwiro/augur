@@ -473,8 +473,8 @@
 .gv-pnav:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
 .gv-pnav[disabled] { color: var(--gv-grey-500); cursor: not-allowed; }
 .gv-pnav .gv-dotmark { width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
-.gv-stepper { display: flex; gap: 2px; overflow-x: auto; padding-bottom: 4px; }
-.gv-phase { flex: 1 1 0; min-width: 92px; background: none; border: 0; padding: 0; cursor: pointer;
+.gv-stepper { display: flex; flex-wrap: nowrap; gap: 2px; padding-bottom: 4px; }
+.gv-phase { flex: 1 1 0; min-width: 0; background: none; border: 0; padding: 0; cursor: pointer;
   font-family: inherit; display: flex; flex-direction: column; align-items: stretch; }
 /* Measured live (fo-project-ideation): segments are 23px tall, grey-track #D4D9DD,
    current phase green-600 #096F03; the FINAL segment ends FLAT (rounded right), not

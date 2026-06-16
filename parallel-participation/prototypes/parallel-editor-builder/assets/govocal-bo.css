@@ -234,7 +234,7 @@
    "+ New phase" cell at the end of the chevron row. In the BO the ribbon sits
    bare on the canvas, so strip the front-office card chrome off .gv-phases. */
 .gv-bo .gv-phases { box-shadow: none; border: 0; padding: 0; background: transparent; }
-.gv-bo .gv-stepper { align-items: flex-start; display: flex; flex-wrap: wrap; gap: 2px; }
+.gv-bo .gv-stepper { align-items: flex-start; display: flex; flex-wrap: nowrap; gap: 2px; }
 /* Phase ribbon chevrons measured live: a 23px-tall grey (#D4D9DD) track with
    cool-grey-700 numbers/labels; the current phase fills green-600 (#096F03).
    Scoped to .gv-bo so the front-office ribbon (shared primitive) is untouched. */
