@@ -104,6 +104,11 @@
     .nsub{margin:16px 0 0;font-size:13.5px;color:var(--muted);line-height:1.45;}
     .ntext{margin:0;font-size:15.5px;color:var(--muted);line-height:1.5;}
 
+    /* contrast (today vs this) */
+    .duo{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:4px;}
+    .nblock.accent{background:var(--gv-soft);border-color:#cfe5e5;}
+    .nblock.accent .k{color:var(--gv);}
+
     .kicker{font-size:clamp(30px,4.6vw,56px);line-height:1.06;letter-spacing:-.025em;font-weight:660;max-width:15em;margin:0 0 24px;}
     .kicker em{font-style:normal;color:var(--live);}
 
@@ -117,7 +122,7 @@
     .nav button:hover{background:#fff;border-color:var(--ink);}
     .nav button:disabled{opacity:.32;cursor:default;}
     @media(max-width:760px){
-      .cards,.split,.next{grid-template-columns:1fr;}
+      .cards,.split,.next,.duo{grid-template-columns:1fr;}
       .split .pane.pol{border-left:none;border-top:1px solid var(--line);}
       .maprow{grid-template-columns:1fr;gap:4px;}
       .maprow .arr{display:none;}
@@ -196,7 +201,26 @@
       </div>
     </section>
 
-    <!-- 4 — Most already ships -->
+    <!-- 4 — Why it's different for us -->
+    <section class="slide">
+      <div class="inner">
+        <p class="eyebrow">Why it's different for us</p>
+        <h2>An engine, not a service.</h2>
+        <div class="duo">
+          <div class="nblock">
+            <div class="k">Go Vocal today</div>
+            <p class="ntext">Every project runs on city resources — staff to organise, strategise, moderate, win buy-in. Powerful, but labour-heavy.</p>
+          </div>
+          <div class="nblock accent">
+            <div class="k">This</div>
+            <p class="ntext">An automated engine that turns a council's existing flow into a space residents can join. No moderation. It runs itself.</p>
+          </div>
+        </div>
+        <p class="note">For us: a product that scales without per-project labour — the work is one-time, retouching how a flow becomes a space. Politically bolder, too: automated, unmoderated, real decisions in the open.</p>
+      </div>
+    </section>
+
+    <!-- 5 — Most already ships -->
     <section class="slide">
       <div class="inner">
         <p class="eyebrow">How much is new</p>
@@ -289,7 +313,7 @@
   </div>
 
   <div class="meta">The council, live — Go Vocal concept</div>
-  <div class="counter"><b id="cur">1</b> / <span id="tot">9</span></div>
+  <div class="counter"><b id="cur">1</b> / <span id="tot">10</span></div>
   <div class="nav">
     <button id="prev" aria-label="Previous">←</button>
     <button id="next" aria-label="Next">→</button>
