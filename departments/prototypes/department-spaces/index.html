@@ -4,23 +4,441 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Department Spaces — GoVocal Prototype</title>
-  <link rel="stylesheet" href="govocal-tokens.css" />
-  <link rel="stylesheet" href="govocal-ui.css" />
+  <title>Department spaces — GoVocal back office (prototype)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="./govocal-tokens.css" />
+  <link rel="stylesheet" href="./govocal-ui.css" />
+  <link rel="stylesheet" href="./govocal-bo.css" />
+  <script src="./govocal-icons.js" defer></script>
   <style>
-    body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--gv-background); padding:24px; }
-    .card { max-width:440px; width:100%; text-align:center; }
-    .card p.sub { color:var(--gv-text-secondary); margin:0 0 24px; }
-    a.back { display:inline-block; margin-top:24px; color:var(--gv-tenant-primary); text-decoration:none; font-size:var(--gv-fs-s); font-weight:600; }
-    a.back:hover { text-decoration:underline; }
+    /* ════════════════════════════════════════════════════════════════════════
+       Department spaces — a back-office overview for a multi-department city org.
+       Concept bet: a large org runs GoVocal across many departments (Parks,
+       Mobility, Housing…). Today they only have flat Folders + Groups. A
+       "Department space" is a scoped workspace — its own managers, projects, and
+       a roll-up so platform admins see the whole org at a glance.
+
+       Built in GoVocal's real back-office language (canonical .gv-bo-* chrome,
+       real --gv-* tokens, real icons). Screen-specific layout is page-local
+       (ds-*). Self-contained: assets copied in, opens from file://.
+       ──────────────────────────────────────────────────────────────────────── */
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--gv-bo-canvas, #f6f7f8); font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+
+    .ds-wrap { max-width: 1180px; padding: 0 4px; }
+
+    /* page head */
+    .ds-head { display: flex; align-items: flex-start; gap: 16px; margin: 0 0 6px; }
+    .ds-head__main { min-width: 0; }
+    .ds-title { font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 1.2; margin: 0; }
+    .ds-lede { margin: 6px 0 0; max-width: 640px; color: var(--gv-text-secondary); font-size: var(--gv-fs-base); line-height: 1.5; }
+    .ds-head__actions { margin-left: auto; display: flex; gap: 10px; flex: none; }
+
+    /* roll-up stat strip */
+    .ds-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 20px 0 22px; }
+    .ds-stat { background: #fff; border: 1px solid var(--gv-grey-300); border-radius: 10px; padding: 16px 18px; }
+    .ds-stat__n { font-size: 26px; font-weight: 700; line-height: 1.1; letter-spacing: -0.4px; }
+    .ds-stat__l { margin-top: 4px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+    .ds-stat__d { margin-top: 8px; font-size: var(--gv-fs-xs); color: var(--gv-green-600, #1a7a3f); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+    .ds-stat__d .gv-icon { width: 13px; height: 13px; }
+
+    /* subnav filter */
+    .ds-subnav { display: flex; gap: 26px; border-bottom: 1px solid var(--gv-divider, #e3e6e9); margin: 0 0 18px; }
+    .ds-subnav button { appearance: none; background: none; border: 0; cursor: pointer; padding: 8px 0 12px; margin-bottom: -1px;
+      font: var(--gv-fs-base)/1 var(--gv-font-family); color: var(--gv-text-secondary); border-bottom: 2px solid transparent; display: inline-flex; gap: 7px; align-items: center; }
+    .ds-subnav button .ds-pill { background: var(--gv-grey-200); color: var(--gv-cool-grey-700, #51606b); border-radius: 20px; font-size: 11px; font-weight: 700; padding: 1px 7px; }
+    .ds-subnav button.on { color: var(--gv-bo-primary, #044d6c); border-color: var(--gv-bo-primary, #044d6c); font-weight: 600; }
+    .ds-subnav button.on .ds-pill { background: var(--gv-bo-primary, #044d6c); color: #fff; }
+
+    /* department grid */
+    .ds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+    .ds-card { background: #fff; border: 1px solid var(--gv-grey-300); border-radius: 12px; overflow: hidden; cursor: pointer;
+      transition: box-shadow .12s ease, border-color .12s ease, transform .12s ease; display: flex; flex-direction: column; text-align: left; padding: 0; font: inherit; }
+    .ds-card:hover { box-shadow: 0 6px 20px rgba(16,30,54,.10); border-color: var(--gv-grey-400); transform: translateY(-1px); }
+    .ds-card:focus-visible { outline: 2px solid var(--gv-bo-primary, #044d6c); outline-offset: 2px; }
+    .ds-card.is-archived { background: var(--gv-grey-50, #f7f8f9); }
+    .ds-card.is-archived .ds-card__bar, .ds-card.is-archived .ds-tile { filter: grayscale(.55); opacity: .8; }
+    .ds-card__bar { height: 6px; background: var(--ac, #0E7C86); }
+    .ds-card__body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+    .ds-card__top { display: flex; gap: 12px; align-items: flex-start; }
+    .ds-tile { width: 42px; height: 42px; border-radius: 10px; flex: none; display: grid; place-items: center; color: #fff; background: var(--ac, #0E7C86); }
+    .ds-tile .gv-icon { width: 22px; height: 22px; }
+    .ds-card__name { display: block; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.25; }
+    .ds-card__tag { display: block; margin-top: 2px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); line-height: 1.4; }
+    .ds-card__opts { margin-left: auto; flex: none; color: var(--gv-cool-grey-500, #7a8b97); }
+    .ds-card__opts .gv-icon { width: 18px; height: 18px; }
+
+    .ds-meta { display: flex; gap: 18px; flex-wrap: wrap; }
+    .ds-meta__item { display: flex; flex-direction: column; gap: 1px; }
+    .ds-meta__n { font-size: var(--gv-fs-base); font-weight: 700; }
+    .ds-meta__l { font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); }
+
+    .ds-card__foot { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--gv-grey-200); }
+    .ds-avatars { display: flex; }
+    .ds-av { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; border: 2px solid #fff; margin-left: -7px; }
+    .ds-av:first-child { margin-left: 0; }
+    .ds-av.more { background: var(--gv-grey-300); color: var(--gv-cool-grey-700, #51606b); }
+    .ds-lead { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+    .ds-lead b { color: var(--gv-text-primary); font-weight: 600; }
+
+    .ds-status { margin-left: auto; flex: none; font-size: 11px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px; }
+    .ds-status.active { background: #e6f4ea; color: #1a6b37; }
+    .ds-status.setup { background: #fff1e4; color: #9a4708; }
+    .ds-status.archived { background: var(--gv-grey-200); color: var(--gv-cool-grey-700, #51606b); }
+    .ds-status .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+    /* "new space" ghost card */
+    .ds-new { border: 1.5px dashed var(--gv-grey-400); background: #fcfcfd; min-height: 180px; border-radius: 12px; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--gv-bo-primary, #044d6c); font: inherit; }
+    .ds-new:hover { background: var(--gv-teal-50, #eef7f8); border-color: var(--gv-bo-primary, #044d6c); }
+    .ds-new .gv-icon { width: 26px; height: 26px; }
+    .ds-new__t { font-weight: 600; font-size: var(--gv-fs-base); }
+    .ds-new__d { font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); }
+
+    /* ── drawer (department detail) ─────────────────────────────────────── */
+    .ds-scrim { position: fixed; inset: 0; background: rgba(16,30,54,.34); opacity: 0; visibility: hidden; transition: opacity .18s ease; z-index: 40; }
+    .ds-scrim.open { opacity: 1; visibility: visible; }
+    .ds-drawer { position: fixed; top: 0; right: 0; height: 100%; width: 460px; max-width: 94vw; background: #fff; z-index: 41;
+      transform: translateX(100%); transition: transform .22s cubic-bezier(.4,0,.2,1); display: flex; flex-direction: column; box-shadow: -8px 0 30px rgba(16,30,54,.18); }
+    .ds-drawer.open { transform: none; }
+    .ds-dr__head { padding: 18px 20px; border-bottom: 1px solid var(--gv-grey-200); }
+    .ds-dr__topbar { display: flex; align-items: center; gap: 10px; }
+    .ds-dr__topbar .ds-tile { width: 38px; height: 38px; }
+    .ds-dr__name { font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.2; }
+    .ds-dr__x { margin-left: auto; appearance: none; border: 0; background: none; cursor: pointer; color: var(--gv-cool-grey-600); padding: 6px; border-radius: 6px; flex: none; }
+    .ds-dr__x:hover { background: var(--gv-grey-100); }
+    .ds-dr__x .gv-icon { width: 18px; height: 18px; }
+    .ds-dr__body { padding: 18px 20px 24px; overflow-y: auto; flex: 1; }
+    .ds-sec { margin-bottom: 22px; }
+    .ds-sec__h { font-size: var(--gv-fs-xs); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--gv-cool-grey-600, #5a6b7a); margin: 0 0 10px; }
+    .ds-prow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--gv-grey-200); }
+    .ds-prow:first-of-type { border-top: 0; }
+    .ds-prow__main { min-width: 0; }
+    .ds-prow__t { font-size: var(--gv-fs-s); font-weight: 600; }
+    .ds-prow__d { font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); margin-top: 1px; }
+    .ds-prow__r { margin-left: auto; flex: none; text-align: right; font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); }
+    .ds-method { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 5px; background: var(--gv-grey-200); color: var(--gv-cool-grey-700, #51606b); }
+    .ds-people { display: flex; flex-direction: column; gap: 8px; }
+    .ds-person { display: flex; align-items: center; gap: 10px; }
+    .ds-person__n { font-size: var(--gv-fs-s); font-weight: 600; }
+    .ds-person__r { font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); }
+    .ds-person__lead { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--ac, #0E7C86); }
+
+    .ds-setrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--gv-grey-200); }
+    .ds-setrow:first-of-type { border-top: 0; }
+    .ds-setrow__main { min-width: 0; }
+    .ds-setrow__t { font-size: var(--gv-fs-s); font-weight: 600; }
+    .ds-setrow__d { font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); margin-top: 1px; line-height: 1.4; }
+    .ds-setrow__c { margin-left: auto; flex: none; }
+    .ds-toggle { position: relative; width: 38px; height: 22px; flex: none; cursor: pointer; display: inline-block; }
+    .ds-toggle input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+    .ds-toggle .tk { position: absolute; inset: 0; border-radius: 20px; background: var(--gv-grey-400); transition: background .15s; }
+    .ds-toggle .tk::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; }
+    .ds-toggle input:checked + .tk { background: var(--gv-green-500, #1a7a3f); }
+    .ds-toggle input:checked + .tk::after { transform: translateX(16px); }
+    .ds-toggle input:focus-visible + .tk { outline: 2px solid var(--gv-bo-primary, #044d6c); outline-offset: 2px; }
+    .ds-dr__foot { padding: 14px 20px; border-top: 1px solid var(--gv-grey-200); display: flex; gap: 10px; }
+    .ds-dr__foot .gv-btn { flex: 1; justify-content: center; }
+
+    /* new-space modal */
+    .ds-modal { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; padding: 24px; }
+    .ds-modal.open { display: flex; }
+    .ds-modal__card { background: #fff; border-radius: 14px; width: 480px; max-width: 100%; box-shadow: 0 24px 60px rgba(16,30,54,.28); overflow: hidden; position: relative; z-index: 1; }
+    .ds-modal__h { padding: 18px 22px; border-bottom: 1px solid var(--gv-grey-200); }
+    .ds-modal__h h3 { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; }
+    .ds-modal__b { padding: 20px 22px; }
+    .ds-field { margin-bottom: 16px; }
+    .ds-field label { display: block; font-size: var(--gv-fs-s); font-weight: 600; margin-bottom: 6px; }
+    .ds-field input, .ds-field select { width: 100%; height: 44px; border: 1px solid var(--gv-grey-400); border-radius: 8px; padding: 0 12px; font: var(--gv-fs-base)/1 var(--gv-font-family); box-sizing: border-box; background: #fff; color: var(--gv-text-primary); }
+    .ds-field input:focus, .ds-field select:focus { outline: 2px solid var(--gv-bo-primary, #044d6c); outline-offset: -1px; border-color: var(--gv-bo-primary, #044d6c); }
+    .ds-swatches { display: flex; gap: 10px; }
+    .ds-swatch { width: 30px; height: 30px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; padding: 0; }
+    .ds-swatch.on { border-color: var(--gv-text-primary); box-shadow: 0 0 0 2px #fff inset; }
+    .ds-modal__f { padding: 16px 22px; border-top: 1px solid var(--gv-grey-200); display: flex; gap: 10px; justify-content: flex-end; }
+
+    .ds-banner { display: flex; gap: 12px; align-items: flex-start; background: var(--gv-teal-50, #eef7f8); border: 1px solid var(--gv-teal-200, #b9dfe3); border-radius: 10px; padding: 12px 14px; margin: 0 0 20px; font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-cool-grey-700, #3f4d57); }
+    .ds-banner .gv-icon { width: 18px; height: 18px; flex: none; color: var(--gv-bo-primary, #044d6c); margin-top: 1px; }
+    .ds-banner b { color: var(--gv-text-primary); }
+
+    @media (max-width: 720px) { .ds-stats { grid-template-columns: repeat(2,1fr); } }
   </style>
 </head>
-<body data-gv-theme-picker="off" class="gv-root">
-  <main class="card gv-card">
-    <h1 class="gv-title h2" style="margin-bottom:8px">Department Spaces 👋</h1>
-    <p class="gv-text bodyM sub">Hello-world placeholder for the <strong>Department Spaces</strong> prototype.</p>
-    <a class="back" href="../">← All prototypes</a>
-  </main>
-  <script src="govocal-themes.js" defer></script>
+<body class="gv-bo">
+  <div class="gv-bo-shell">
+    <!-- sidebar (inline so we can add the new "Department spaces" destination) -->
+    <nav class="gv-bo-side" aria-label="Admin">
+      <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo"><span data-gv-icon="admin-back" style="color:#fff"></span></span> To platform</a>
+      <div class="gv-bo-nav">
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-dashboard"></span><span class="gv-bo-nav__label">Dashboard</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-projects"></span><span class="gv-bo-nav__label">Projects</span></a>
+        <a class="gv-bo-nav__item is-active" href="#" aria-current="page"><span class="gv-bo-nav__icon" data-gv-icon="home"></span><span class="gv-bo-nav__label">Department spaces</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-input"></span><span class="gv-bo-nav__label">Input manager</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-users"></span><span class="gv-bo-nav__label">Users</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-messaging"></span><span class="gv-bo-nav__label">Messaging</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-reporting"></span><span class="gv-bo-nav__label">Reporting</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-community"></span><span class="gv-bo-nav__label">Community monitor</span></a>
+      </div>
+      <div class="gv-bo-nav gv-bo-nav--bottom">
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-settings"></span><span class="gv-bo-nav__label">Settings</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-avatar" data-gv-icon="user"></span><span class="gv-bo-nav__label">Go Vocal Admin<span class="gv-bo-nav__sub">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+      </div>
+    </nav>
+
+    <div class="gv-bo-main">
+      <section class="gv-bo-section">
+        <div class="gv-bo-content ds-wrap">
+
+          <div class="ds-head">
+            <div class="ds-head__main">
+              <h1 class="ds-title">Department spaces</h1>
+              <p class="ds-lede">Each department gets its own scoped workspace — its team, its projects, its branding — while you keep a single roll-up of engagement across the whole organisation.</p>
+            </div>
+            <div class="ds-head__actions">
+              <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">Org report</span></button>
+              <button class="gv-btn admin-dark" id="newBtn"><span data-gv-icon="plus"></span><span class="gv-btn__label">New space</span></button>
+            </div>
+          </div>
+
+          <div class="ds-banner">
+            <span class="gv-icon" data-gv-icon="info-solid"></span>
+            <div><b>Spaces replace flat folders for large orgs.</b> A folder only groups projects; a space also scopes managers, audiences and branding to a department, and can sync its team from your directory (e.g. Microsoft Entra / SharePoint). Folders still work inside a space.</div>
+          </div>
+
+          <div class="ds-stats" id="stats"></div>
+
+          <nav class="ds-subnav" id="subnav" aria-label="Filter spaces">
+            <button data-f="all" class="on">All spaces <span class="ds-pill" data-count="all"></span></button>
+            <button data-f="active">Active <span class="ds-pill" data-count="active"></span></button>
+            <button data-f="setup">Setup pending <span class="ds-pill" data-count="setup"></span></button>
+            <button data-f="archived">Archived <span class="ds-pill" data-count="archived"></span></button>
+          </nav>
+
+          <div class="ds-grid" id="grid"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- drawer -->
+  <div class="ds-scrim" id="scrim"></div>
+  <aside class="ds-drawer" id="drawer" aria-label="Department detail" role="dialog" aria-modal="true"></aside>
+
+  <!-- new-space modal -->
+  <div class="ds-modal" id="modal" role="dialog" aria-modal="true" aria-label="New department space">
+    <div class="ds-scrim" style="position:absolute" data-mclose></div>
+    <div class="ds-modal__card">
+      <div class="ds-modal__h"><h3>New department space</h3></div>
+      <div class="ds-modal__b">
+        <div class="ds-field"><label for="m-name">Department name</label><input id="m-name" type="text" placeholder="e.g. Sport &amp; Leisure" /></div>
+        <div class="ds-field"><label for="m-lead">Department lead</label>
+          <select id="m-lead"><option>Choose a manager…</option><option>Amara Okafor</option><option>Lena Vasquez</option><option>Tom De Smet</option><option>Priya Nair</option></select></div>
+        <div class="ds-field"><label>Accent colour</label><div class="ds-swatches" id="m-swatches"></div></div>
+        <div class="ds-field"><label for="m-template">Start from</label>
+          <select id="m-template"><option>Empty space</option><option>Copy structure from Parks &amp; Recreation</option><option>Standard consultation template</option></select></div>
+      </div>
+      <div class="ds-modal__f">
+        <button class="gv-btn secondary-outlined" data-mclose><span class="gv-btn__label">Cancel</span></button>
+        <button class="gv-btn admin-dark" id="m-create"><span class="gv-btn__label">Create space</span></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    "use strict";
+    var $ = function(s,r){ return (r||document).querySelector(s); };
+    function icon(n){ return '<span class="gv-icon" data-gv-icon="'+n+'"></span>'; }
+    function el(h){ var d=document.createElement('div'); d.innerHTML=h.trim(); return d.firstElementChild; }
+    function initials(name){ return name.split(/\s+/).map(function(w){return w[0];}).slice(0,2).join('').toUpperCase(); }
+    /* avatar palette — all clear AA (white text ≥4.5:1) since initials are small bold text */
+    function avColor(name){ var p=['#0E6B74','#1557B0','#4F46E5','#157347','#6D28D9','#92400E','#B91C1C','#BE123C']; var s=0; for(var i=0;i<name.length;i++)s+=name.charCodeAt(i); return p[s%p.length]; }
+
+    var SWATCHES = ['#0E7C86','#1A73E8','#4F46E5','#198754','#6D28D9','#B45309','#BE123C','#0F766E'];
+
+    var DEPTS = [
+      { name:'Parks & Recreation', ac:'#0E7C86', icon:'home', tag:'Green spaces, playgrounds, sport facilities', status:'active',
+        active:4, total:6, participants:3120, last:'2 days ago', visibility:'Public', sync:true, sso:true,
+        team:[['Amara Okafor','Department lead',true],['Jonas Maes','Project manager',false],['Ruth Bekele','Project manager',false]],
+        projects:[['Reimagine Dorothea Dix Park','Ideation','Collecting ideas',1730],['Skate park location vote','Voting','Open',940],['Summer events programme','Information','Published',450]] },
+      { name:'Mobility & Transport', ac:'#1A73E8', icon:'map', tag:'Streets, cycling, public transit, parking', status:'active',
+        active:3, total:5, participants:5410, last:'today', visibility:'Public', sync:true, sso:true,
+        team:[['Lena Vasquez','Department lead',true],['Karim Haddad','Project manager',false],['Sofie Janssens','Folder manager',false],['Marco Rossi','Project manager',false]],
+        projects:[['Low-traffic neighbourhood trial','Common ground','Live',2200],['Cycle network priorities','Voting','Open',1860],['Night-bus consultation','Survey','Open',1350]] },
+      { name:'Housing & Urban Planning', ac:'#4F46E5', icon:'home', tag:'Zoning, development, affordable housing', status:'active',
+        active:2, total:5, participants:2740, last:'5 days ago', visibility:'Groups', sync:false, sso:true,
+        team:[['Priya Nair','Department lead',true],['Daniel Ofori','Project manager',false]],
+        projects:[['Riverside masterplan feedback','Document','Live',1640],['Affordable housing proposals','Proposals','Open',1100]] },
+      { name:'Climate & Environment', ac:'#198754', icon:'stars', tag:'Sustainability, energy, waste, biodiversity', status:'active',
+        active:3, total:3, participants:1980, last:'yesterday', visibility:'Public', sync:true, sso:false,
+        team:[['Noah Williams','Department lead',true],['Greta Lindholm','Project manager',false],['Yusuf Demir','Project manager',false]],
+        projects:[['Net-zero 2040 roadmap','Ideation','Collecting ideas',980],['Tree-planting locations','Voting','Open',600],['Climate citizens’ panel','Volunteering','Recruiting',400]] },
+      { name:'Culture & Community', ac:'#6D28D9', icon:'group', tag:'Events, libraries, heritage, grants', status:'active',
+        active:2, total:4, participants:1240, last:'1 week ago', visibility:'Public', sync:false, sso:false,
+        team:[['Eva Novak','Department lead',true],['Hassan Ali','Project manager',false]],
+        projects:[['Community grants 2026','Voting','Open',820],['Library opening hours','Survey','Open',420]] },
+      { name:'Public Works', ac:'#B45309', icon:'admin-projects', tag:'Maintenance, utilities, infrastructure', status:'setup',
+        active:0, total:1, participants:0, last:'never', visibility:'Draft', sync:true, sso:true,
+        team:[['Tom De Smet','Department lead',true]],
+        projects:[['Pothole reporting pilot','Ideation','Draft',0]] },
+      { name:'Health & Social Services', ac:'#BE123C', icon:'group', tag:'Wellbeing, ageing, youth, care', status:'active',
+        active:2, total:3, participants:1610, last:'3 days ago', visibility:'Groups', sync:false, sso:true,
+        team:[['Maria Santos','Department lead',true],['Ibrahim Sow','Project manager',false]],
+        projects:[['Youth services review','Survey','Open',900],['Ageing-well strategy','Ideation','Collecting ideas',710]] },
+      { name:'Finance & Budget', ac:'#51606b', icon:'admin-reporting', tag:'Participatory budgeting, tax, transparency', status:'archived',
+        active:0, total:2, participants:4200, last:'4 months ago', visibility:'Public', sync:false, sso:false,
+        team:[['Robert Kim','Department lead',true]],
+        projects:[['Participatory budget 2025','Voting','Finished',4200],['Budget transparency portal','Information','Archived',0]] }
+    ];
+
+    var filter = 'all';
+
+    /* ── roll-up stats ── */
+    function renderStats(){
+      var active = DEPTS.filter(function(d){return d.status==='active';}).length;
+      var projects = DEPTS.reduce(function(a,d){return a+d.active;},0);
+      var participants = DEPTS.reduce(function(a,d){return a+d.participants;},0);
+      var managers = DEPTS.reduce(function(a,d){return a+d.team.length;},0);
+      $('#stats').innerHTML = ''
+        + stat(DEPTS.length, 'Department spaces', active+' active')
+        + stat(projects, 'Active projects', 'across the org')
+        + stat(participants.toLocaleString(), 'Participants reached', '+8% this quarter')
+        + stat(managers, 'Team members', 'managers & folder leads');
+    }
+    function stat(n,l,d){ return '<div class="ds-stat"><div class="ds-stat__n">'+n+'</div><div class="ds-stat__l">'+l+'</div><div class="ds-stat__d">'+icon('trend-up')+d+'</div></div>'; }
+
+    /* ── subnav counts ── */
+    function renderCounts(){
+      var c = { all:DEPTS.length, active:0, setup:0, archived:0 };
+      DEPTS.forEach(function(d){ c[d.status]++; });
+      document.querySelectorAll('#subnav .ds-pill').forEach(function(p){ p.textContent = c[p.getAttribute('data-count')]; });
+    }
+
+    /* ── grid ── */
+    function renderGrid(){
+      var grid = $('#grid'); grid.innerHTML='';
+      DEPTS.forEach(function(d, i){
+        if(filter!=='all' && d.status!==filter) return;
+        var lead = d.team.filter(function(t){return t[2];})[0] || d.team[0];
+        var avatars = d.team.slice(0,3).map(function(t){
+          return '<span class="ds-av" style="background:'+avColor(t[0])+'" title="'+t[0]+'">'+initials(t[0])+'</span>';
+        }).join('');
+        if(d.team.length>3) avatars += '<span class="ds-av more">+'+(d.team.length-3)+'</span>';
+        var card = el(
+          '<button class="ds-card'+(d.status==='archived'?' is-archived':'')+'" style="--ac:'+d.ac+'" data-i="'+i+'">'
+          + '<span class="ds-card__bar"></span>'
+          + '<span class="ds-card__body">'
+          +   '<span class="ds-card__top">'
+          +     '<span class="ds-tile">'+icon(d.icon)+'</span>'
+          +     '<span style="min-width:0"><span class="ds-card__name">'+d.name+'</span><span class="ds-card__tag">'+d.tag+'</span></span>'
+          +     '<span class="ds-card__opts">'+icon('dots-horizontal')+'</span>'
+          +   '</span>'
+          +   '<span class="ds-meta">'
+          +     metaItem(d.active, 'Active projects')
+          +     metaItem(d.total, 'Total projects')
+          +     metaItem(d.participants.toLocaleString(), 'Participants')
+          +   '</span>'
+          +   '<span class="ds-card__foot">'
+          +     '<span class="ds-avatars">'+avatars+'</span>'
+          +     '<span class="ds-lead">Led by <b>'+lead[0].split(' ')[0]+'</b></span>'
+          +     statusChip(d.status)
+          +   '</span>'
+          + '</span>'
+          + '</button>');
+        card.addEventListener('click', function(){ openDrawer(i); });
+        grid.appendChild(card);
+      });
+      if(filter==='all' || filter==='active'){
+        var ghost = el('<button class="ds-new">'+icon('plus-circle')+'<span class="ds-new__t">New department space</span><span class="ds-new__d">Scope a team, projects and branding</span></button>');
+        ghost.addEventListener('click', openModal);
+        grid.appendChild(ghost);
+      }
+      if(window.GVIcons) GVIcons.render(grid);
+    }
+    function metaItem(n,l){ return '<span class="ds-meta__item"><span class="ds-meta__n">'+n+'</span><span class="ds-meta__l">'+l+'</span></span>'; }
+    function statusChip(s){
+      var label = s==='active'?'Active':s==='setup'?'Setup':'Archived';
+      return '<span class="ds-status '+s+'"><span class="dot"></span>'+label+'</span>';
+    }
+
+    /* ── drawer ── */
+    var scrim=$('#scrim'), drawer=$('#drawer');
+    function openDrawer(i){
+      var d = DEPTS[i];
+      drawer.style.setProperty('--ac', d.ac);
+      drawer.innerHTML =
+        '<div class="ds-dr__head"><div class="ds-dr__topbar">'
+        +  '<span class="ds-tile" style="--ac:'+d.ac+'">'+icon(d.icon)+'</span>'
+        +  '<div style="min-width:0"><div class="ds-dr__name">'+d.name+'</div><div class="ds-card__tag">'+d.tag+'</div></div>'
+        +  '<button class="ds-dr__x" id="drX" aria-label="Close">'+icon('close')+'</button>'
+        + '</div></div>'
+        + '<div class="ds-dr__body">'
+        +   '<div class="ds-sec"><div class="ds-meta" style="gap:26px">'
+        +      metaItem(d.active, 'Active') + metaItem(d.total, 'Total projects') + metaItem(d.participants.toLocaleString(), 'Participants') + metaItem(d.last, 'Last activity')
+        +   '</div></div>'
+        +   '<div class="ds-sec"><h4 class="ds-sec__h">Projects in this space</h4>'+ (d.projects.length? d.projects.map(projRow).join('') : '<div class="ds-prow__d">No projects yet — this space is still being set up.</div>') +'</div>'
+        +   '<div class="ds-sec"><h4 class="ds-sec__h">Team ('+d.team.length+')</h4><div class="ds-people">'+ d.team.map(personRow).join('') +'</div></div>'
+        +   '<div class="ds-sec"><h4 class="ds-sec__h">Space settings</h4>'
+        +      setRow('Visibility', 'Who sees this space in the platform', '<span class="ds-method">'+d.visibility+'</span>')
+        +      toggleRow('Sync team from directory', 'Pull managers from Microsoft Entra / SharePoint groups', d.sync)
+        +      toggleRow('Single sign-on for this department', 'Staff sign in with the org account', d.sso)
+        +   '</div>'
+        + '</div>'
+        + '<div class="ds-dr__foot">'
+        +   '<button class="gv-btn secondary-outlined"><span class="gv-btn__label">Space settings</span></button>'
+        +   '<button class="gv-btn admin-dark"><span data-gv-icon="arrow-right"></span><span class="gv-btn__label">Open space</span></button>'
+        + '</div>';
+      $('#drX', drawer).addEventListener('click', closeDrawer);
+      if(window.GVIcons) GVIcons.render(drawer);
+      scrim.classList.add('open'); drawer.classList.add('open');
+    }
+    function projRow(p){
+      return '<div class="ds-prow"><div class="ds-prow__main"><div class="ds-prow__t">'+p[0]+'</div><div class="ds-prow__d">'+p[2]+'</div></div>'
+        +'<div class="ds-prow__r"><span class="ds-method">'+p[1]+'</span><div style="margin-top:4px">'+(p[3]?p[3].toLocaleString()+' participants':'—')+'</div></div></div>';
+    }
+    function personRow(t){
+      return '<div class="ds-person"><span class="ds-av" style="background:'+avColor(t[0])+'">'+initials(t[0])+'</span>'
+        +'<div><div class="ds-person__n">'+t[0]+'</div><div class="ds-person__r">'+t[1]+'</div></div>'
+        +(t[2]?'<span class="ds-person__lead">LEAD</span>':'')+'</div>';
+    }
+    function setRow(t,d,right){ return '<div class="ds-setrow"><div class="ds-setrow__main"><div class="ds-setrow__t">'+t+'</div><div class="ds-setrow__d">'+d+'</div></div><div class="ds-setrow__c">'+right+'</div></div>'; }
+    function toggleRow(t,d,on){ return '<div class="ds-setrow"><div class="ds-setrow__main"><div class="ds-setrow__t">'+t+'</div><div class="ds-setrow__d">'+d+'</div></div><div class="ds-setrow__c"><label class="ds-toggle"><input type="checkbox"'+(on?' checked':'')+'><span class="tk"></span></label></div></div>'; }
+    function closeDrawer(){ scrim.classList.remove('open'); drawer.classList.remove('open'); }
+    scrim.addEventListener('click', closeDrawer);
+
+    /* ── new-space modal ── */
+    var modal=$('#modal');
+    function openModal(){ modal.classList.add('open'); var n=$('#m-name'); if(n) n.focus(); }
+    function closeModal(){ modal.classList.remove('open'); }
+    $('#newBtn').addEventListener('click', openModal);
+    modal.querySelectorAll('[data-mclose]').forEach(function(b){ b.addEventListener('click', closeModal); });
+    var sw=$('#m-swatches'); var chosen=SWATCHES[0];
+    SWATCHES.forEach(function(c,i){ var b=el('<button class="ds-swatch'+(i===0?' on':'')+'" style="background:'+c+'" aria-label="Accent colour '+(i+1)+'"></button>');
+      b.addEventListener('click', function(){ chosen=c; sw.querySelectorAll('.ds-swatch').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); }); sw.appendChild(b); });
+    $('#m-create').addEventListener('click', function(){
+      var name = ($('#m-name').value||'').trim() || 'New department';
+      var lead = $('#m-lead').value; lead = (lead && lead.indexOf('Choose')<0)? lead : 'Unassigned lead';
+      DEPTS.unshift({ name:name, ac:chosen, icon:'home', tag:'New department workspace', status:'setup',
+        active:0, total:0, participants:0, last:'just now', visibility:'Draft', sync:false, sso:false,
+        team:[[lead,'Department lead',true]], projects:[] });
+      filter='all'; document.querySelectorAll('#subnav button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-f')==='all'); });
+      $('#m-name').value=''; closeModal(); renderStats(); renderCounts(); renderGrid();
+    });
+
+    /* ── subnav ── */
+    document.querySelectorAll('#subnav button').forEach(function(b){
+      b.addEventListener('click', function(){
+        filter = b.getAttribute('data-f');
+        document.querySelectorAll('#subnav button').forEach(function(x){ x.classList.remove('on'); });
+        b.classList.add('on'); renderGrid();
+      });
+    });
+
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ closeDrawer(); closeModal(); } });
+
+    renderStats(); renderCounts(); renderGrid();
+    if(window.GVIcons) GVIcons.render(document.body);
+  })();
+  </script>
 </body>
 </html>
