@@ -73,6 +73,9 @@
     display: flex; flex-direction: column; background: #fff;
   }
   .phone #phone-scroller { flex: 1 1 auto; min-height: 0; }
+  /* Scroll still works — just hide the visible scrollbar so the preview reads clean. */
+  .phone #phone-scroller { scrollbar-width: none; -ms-overflow-style: none; }
+  .phone #phone-scroller::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
   /* Navbar: force the canonical .gv-header to MOBILE inside the phone + contain the
      full-screen menu overlay to the phone. Real sizes (scaled by .pp-screen). Header
@@ -126,28 +129,7 @@
      ~410px (a real phone viewport) no matter the outer frame size, so the page
      never reads as a stretched mobile layout. Toggled by the FRAME chip. */
 
-  /* 1 · COMPACT — small device, slightly heavier bezel. Edge-to-edge, NO notch/
-     cutout — a generic portrait-screen silhouette that won't date to one phone. */
-  .phone.frame-compact {
-    width: 300px; height: 600px;
-    border: 12px solid #15181d; border-radius: 42px;
-    box-shadow: 0 22px 48px rgba(20,25,40,.16), 0 6px 16px rgba(20,25,40,.07);
-    --pz: 0.667;
-  }
-
-  /* 2 · TALL — large phone: thin uniform bezel, full-bleed, NO notch. The
-     future-proof "handheld portrait screen" — no camera cutout to tie it to an era. */
-  .phone.frame-tall {
-    width: 366px; height: 690px;
-    border: 13px solid #15181d; border-radius: 56px;
-    box-shadow: 0 34px 70px rgba(20,25,40,.20), 0 10px 24px rgba(20,25,40,.09);
-    --pz: 0.815;
-  }
-
-  /* No notch/island on the bezeled phones — that detail is what dates a mockup. */
-  .frame-compact .notch, .frame-tall .notch { display: none; }
-
-  /* 3 · CLAY — frameless soft screen: no bezel, no notch, big radius, soft float */
+  /* 1 · CLAY — frameless soft screen: no bezel, no notch, big radius, soft float */
   .phone.frame-clay {
     width: 340px; height: 668px;
     border: 0; border-radius: 40px;
@@ -157,7 +139,7 @@
   }
   .frame-clay .notch { display: none; }
 
-  /* 4 · LINE — minimal artboard: 1px outline, flat, square-ish; editor-native */
+  /* 2 · LINE — minimal artboard: 1px outline, flat, square-ish; editor-native */
   .phone.frame-line {
     width: 332px; height: 640px;
     border: 1.5px solid var(--gv-grey-300, #d4d9e2); border-radius: 22px;
@@ -166,7 +148,7 @@
   }
   .frame-line .notch { display: none; }
 
-  /* 5 · WINDOW — non-phone contrast: a browser window showing the DESKTOP layout.
+  /* 3 · WINDOW — non-phone contrast: a browser window showing the DESKTOP layout.
      The same FO content is re-flowed to a desktop page — white canvas, full-bleed
      hero, a centred desktop-width content measure, and side-by-side CTAs — so it
      reads as a real desktop view, not a phone column floating on grey. (Single
@@ -1671,7 +1653,7 @@
       <!-- ====== VIEW: Project page preview ====== -->
       <div id="view-project" class="preview-stage flex-1 flex items-start justify-center pt-8 pb-6 relative overflow-y-auto">
 
-        <div id="phone" class="phone frame-tall" style="cursor: pointer;" onclick="maybeOpenBuilder(event)">
+        <div id="phone" class="phone frame-line" style="cursor: pointer;" onclick="maybeOpenBuilder(event)">
           <div class="notch"></div>
 
           <!-- .pp-screen = the whole phone interior, built from REAL full-size GoVocal
@@ -2219,10 +2201,8 @@
 <!-- ============ Frame switcher chip ============ -->
 <div class="state-chip frame-chip">
   <span class="label">FRAME</span>
-  <button data-frame="compact" onclick="setFrame('compact', this)">Compact</button>
-  <button data-frame="tall" class="on" onclick="setFrame('tall', this)">Tall</button>
+  <button data-frame="line" class="on" onclick="setFrame('line', this)">Line</button>
   <button data-frame="clay" onclick="setFrame('clay', this)">Clay</button>
-  <button data-frame="line" onclick="setFrame('line', this)">Line</button>
   <button data-frame="window" onclick="setFrame('window', this)">Window</button>
 </div>
 
