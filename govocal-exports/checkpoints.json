@@ -2363,6 +2363,22 @@
       "uses": [
         ".gv-pcard"
       ]
+    },
+    {
+      "id": "fo-homepage/folder-more-bubble",
+      "built": "components/folder-card/index.html",
+      "against": "fo-home-raleigh",
+      "map": {
+        "div.sc-beqWaB.uItlk": ".gv-pcard__fmore"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "border"
+      ],
+      "uses": [
+        ".gv-pcard"
+      ]
     }
   ]
 }

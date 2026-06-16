@@ -507,6 +507,7 @@ closed) before numeric build. Highest-value FO target once the session is restor
 - wake 1 (00:03): resolved session reality (FO live, BO-admin blocked) + operating note.
 - wake 2 (00:18): survey kit `date` field type added (S3); S4/S5 were false findings (already present). lint 0 · verify:all 127 green.
 - wake 3 (00:42): adversarial re-pass on live FO homepage — folder avatar pile was 3px squares; real is circular (50%) + 2px white ring. Fixed `.gv-pcard__fpile img`; +checkpoint fo-homepage/folder-avatar. verify:all 128 green.
+- wake 4 (01:07): added `.gv-pcard__fmore` "+N" overflow bubble (cool-grey-600, circular, 2px white ring) from fo-home-raleigh digest; wired into folder-card demo; +checkpoint fo-homepage/folder-more-bubble. verify:all 129 green.
 
 ## FINAL REPORT — Run 6 (overnight deep fidelity audit)
 

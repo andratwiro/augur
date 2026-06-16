@@ -834,6 +834,12 @@
    (50%) with a 2px white ring, not 3px squares. */
 .gv-pcard__fpile img, .gv-pcard__fpile .gv-pcard__fthumb { width: 36px; height: 36px;
   border-radius: 50%; border: 2px solid var(--gv-white); background: var(--gv-grey-300); object-fit: cover; }
+/* "+N" overflow bubble (real: fo-home-raleigh div.sc-beqWaB.uItlk — cool-grey-600,
+   circular, 2px white ring, 14px dark text). Size kept at the pile's 36px for a uniform row. */
+.gv-pcard__fmore { display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex: none; border-radius: 50%; border: 2px solid var(--gv-white);
+  background: var(--gv-cool-grey-600); color: var(--gv-text-primary);
+  font-size: var(--gv-fs-s); font-weight: 400; }
 
 /* "Finished/archived" status label tone (StatusLabel primitive, neutral grey) */
 .gv-status-label.finished { background: var(--gv-grey-200); color: var(--gv-grey-800); }
