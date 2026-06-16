@@ -107,3 +107,25 @@ do not; survey defaults to mandated anonymity).
 ## Per-pass log
 (append one entry per completed pass: facet, captures used, checkpoints added, surprises,
 open items)
+
+### Pass 1 — Ideation (DONE 2026-06-16)
+- Capture: `r1-pe-ideation-setup` (on disk). Digest confirmed established tokens — navy
+  `#044D6C` labels 18/500, green toggle `#04884C`, meta `#84939E`, cool-grey `#43515D`; all
+  already aliased to `--gv-*`, no new tokens.
+- **SURPRISE / 7-vs-8 refined:** the live method picker on THIS tenant shows **7 cards, not 8**.
+  Document annotation (Konveio, paid) is NOT provisioned here; poll / external-survey are NOT
+  separate picker cards on this capture. Real 7 cards (exact DOM order + copy): Collect input
+  and feedback in public · Proposals, petitions or initiatives · Find common ground · Create a
+  survey · Conduct a voting or prioritization exercise · Share information · Recruit participants
+  or volunteers. The 8th (doc annotation) appears only when the add-on is enabled.
+- **BUILD:** ideation `setup` panel previously had 8 paraphrased cards (incl. fabricated
+  poll / external-survey / doc-annotation cards + wrong copy "public space"). Replaced with the
+  exact real 7-card set + verbatim copy ("public forum"), matching the `votingsetup` set. Rest
+  of the panel (anonymity, naming, actions, likes/dislikes, similar-input thresholds, views,
+  sorting, attachments) already faithful — kept.
+- VERIFY: `lint` 0 violations. Ideation capture has no `probed` selectors → numeric coverage
+  stays on `bo-phase-setup` (setup-input/select, unaffected by copy-only change). Picker copy
+  verified by exact grep vs `r1-pe-ideation-setup/dom.html`.
+- Checkpoints: none added (copy fidelity, not new measurable style).
+- Open: confirm whether poll & external-survey picker cards appear under a feature flag
+  (defer to pass 8).
