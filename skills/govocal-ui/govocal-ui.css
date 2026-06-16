@@ -1599,21 +1599,22 @@
   .gv-partbar__status { align-self: flex-start; }
 }
 
-/* participation-bar-status-icon fidelity fix — the live CTA bar prefixes the status
-   text ("Open for participation") with a ~16px white status glyph (filled circle in a
-   16px box, fill #ffffff), not the small 9px CSS dot the base rule draws. Size the
-   ::before up to the live 16px footprint and render it as a filled-circle status icon
-   via a masked SVG so it reads as a proper leading glyph rather than a tiny bullet.
-   White fill matches the on-tenant bar (IGNORE the green tenant colour per the brief).
-   Appended as a refinement over the base ::before above — do not reflow it. */
+/* participation-bar-status-icon — the live "open" status reads as a small filled
+   white dot that BLINKS, signalling the project is actively open to participation
+   (intentional design choice — supersedes the earlier static info glyph). Round 10px
+   white dot + a soft pulse ring. Appended as a refinement over the base ::before above
+   — do not reflow it. Motion is disabled under prefers-reduced-motion. */
 .gv-partbar__status::before {
-  width: 16px; height: 16px; border-radius: 0; background: #fff;
-  -webkit-mask: var(--gv-partbar-status-mask) center / 16px 16px no-repeat;
-          mask: var(--gv-partbar-status-mask) center / 16px 16px no-repeat;
+  width: 10px; height: 10px; border-radius: 50%; background: #fff;
+  -webkit-mask: none; mask: none;
+  animation: gv-partbar-pulse 1.6s ease-in-out infinite;
 }
-:root {
-  /* filled circle + inner dot — a status/info style glyph in a 16px viewBox */
-  --gv-partbar-status-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23000' d='M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3.2a1.05 1.05 0 1 1 0 2.1 1.05 1.05 0 0 1 0-2.1zM9.2 11.6H6.8v-.95h.6V7.85h-.6V6.9h1.8v3.75h.6v.95z'/%3E%3C/svg%3E");
+@keyframes gv-partbar-pulse {
+  0%, 100% { opacity: 1;   box-shadow: 0 0 0 0   rgba(255,255,255,0.55); }
+  50%      { opacity: 0.5; box-shadow: 0 0 0 5px rgba(255,255,255,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gv-partbar__status::before { animation: none; }
 }
 
 /* Modal base text colour — the real dialog card (.modalcontent) renders its body
