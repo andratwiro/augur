@@ -2107,6 +2107,41 @@
       ]
     },
     {
+      "id": "fo-wien-cookie-modal/card",
+      "built": "components/cookie-modal/index.html",
+      "against": "fo-wien-cookie-modal",
+      "map": {
+        "#e2e-modal-container .modalcontent": ".gv-modal"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "width",
+        "font-size",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-modal"
+      ]
+    },
+    {
+      "id": "fo-wien-cookie-modal/title",
+      "built": "components/cookie-modal/index.html",
+      "against": "fo-wien-cookie-modal",
+      "map": {
+        "#e2e-modal-container [role=dialog] h1": ".gv-cookie__title"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-modal"
+      ]
+    },
+    {
       "id": "fo-falkirk-bubbles-overflow/count-circle",
       "built": "components/avatar-overflow-bubble/index.html",
       "against": "fo-falkirk-bubbles-overflow",

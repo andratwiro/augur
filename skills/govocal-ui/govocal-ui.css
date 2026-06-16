@@ -2579,3 +2579,52 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 }
 .gv-prose .gv-cta-inline:hover { filter: brightness(0.92); }
 .gv-prose .gv-cta-inline:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+
+/* ── Cookie-consent modal — CONTENT variant on the .gv-modal shell ───────────
+   Source-grounded on Stadt Wien (mitgestalten.wien.gv.at, capture
+   fo-wien-cookie-modal): the global cookie blocker rendered as the standard
+   GoVocal dialog. NOT a new shell — it reuses .gv-modal-overlay + .gv-modal
+   (scrim rgba(0,0,0,.75), white 650px card, radius 3px, top-aligned). What's
+   new here is the CONTENT layout: a tenant-tinted product cookie icon leading
+   a title + body + policy link (padding 30px — capture div.ipfQaK), and a
+   3-action footer (pad 16px 28px — capture div.fHwGJs): Manage (ghost
+   .gv-btn.text) / Reject / Accept (tenant-filled .gv-btn.primary). Cross-tenant
+   SYSTEM — every tenant routes its consent prompt through this one dialog;
+   the SKIN (icon tint = --gv-tenant-primary, font, language) re-themes per
+   ?theme=. No base mutated; the footer row is reusable by any .gv-modal. */
+.gv-cookie__content { padding: 30px; }              /* div.sc-beqWaB.ipfQaK */
+.gv-cookie__icon {
+  width: 24px; height: 24px; display: block;
+  margin: 0 0 4px;
+  color: var(--gv-tenant-primary);                  /* real fill="#ff5a64" → tenant-tinted */
+}
+.gv-cookie__icon svg { display: block; width: 24px; height: 24px; fill: currentColor; }
+.gv-cookie__title {                                 /* h1#cookie-modal-title: 21/700/27.3/#333 */
+  margin: 14px 0 16px;
+  font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px;
+  color: var(--gv-text-primary);
+}
+.gv-cookie__body {                                  /* p.sc-ktEKTO: 16/400/24/#333 */
+  margin: 0;
+  font-size: var(--gv-fs-base); font-weight: 400; line-height: 24px;
+  color: var(--gv-text-primary);
+}
+.gv-cookie__link {                                  /* a.sc-hdDbdj: tenant-primary policy link */
+  color: var(--gv-tenant-primary); text-decoration: underline;
+}
+.gv-cookie__link:hover { filter: brightness(0.88); }
+.gv-cookie__link:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+/* 3-action footer — reusable on any .gv-modal (div.sc-jFJHMl.fHwGJs) */
+.gv-modal__footer {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 8px;
+  padding: 16px 28px;
+}
+.gv-modal__footer .gv-btn { white-space: nowrap; }
+/* Manage sits left, Reject/Accept push to the right */
+.gv-modal__footer .gv-cookie__manage { margin-right: auto; }
+@media (max-width: 520px) {
+  .gv-cookie__content { padding: 20px; }
+  .gv-modal__footer { flex-wrap: wrap; padding: 12px 20px 16px; }
+  .gv-modal__footer .gv-cookie__manage { margin-right: 0; order: 3; flex: 1 1 100%; }
+}

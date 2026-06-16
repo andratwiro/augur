@@ -617,6 +617,41 @@ scrollable body. The **card** is the dialog — put the ARIA on it, not the over
 - The `.gv-or` rule/label/rule divider is a standalone primitive — reuse it anywhere you
   split two choices.
 
+## Cookie-consent modal — `.gv-cookie*` content variant (`components/cookie-modal/`)
+
+The global cookie blocker rendered as the standard GoVocal dialog — a **content
+variant on the `.gv-modal` shell** (no new shell). Source-grounded on Stadt Wien
+(`mitgestalten.wien.gv.at`, capture `fo-wien-cookie-modal`), verified via
+`fo-wien-cookie-modal/{card,title}`. Reuses `.gv-modal-overlay` + `.gv-modal`
+(scrim `rgba(0,0,0,.75)`, white **650px** card, **3px** radius, top-aligned). New = the
+content layout: a tenant-tinted product **cookie icon** + `__title` (21/700/27.3/#333) +
+`__body` (16/400/24/#333) with a tenant-primary `__link`, in a 30px-pad `__content`; and a
+**3-action footer** (`.gv-modal__footer`, pad `16px 28px`, reusable on any modal) —
+**Manage** (`.gv-btn.text` ghost, pushed left via `.gv-cookie__manage`), **Reject**, **Accept**
+(`.gv-btn.primary`, tenant-filled). No top-right close — a consent prompt blocks until answered.
+
+```html
+<div class="gv-modal-overlay is-open">                <!-- scrim .75; toggle .is-open -->
+  <div class="gv-modal" role="dialog" aria-modal="true" aria-labelledby="cookie-modal-title">
+    <div class="gv-cookie__content">                  <!-- 30px pad -->
+      <span class="gv-cookie__icon" data-gv-icon="cookie"></span>   <!-- tenant-tinted -->
+      <h1 class="gv-cookie__title" id="cookie-modal-title">Your cookie settings</h1>
+      <p class="gv-cookie__body">Accepting cookies helps us improve this platform.
+        <a class="gv-cookie__link" href="#">Read our cookie policy</a>.</p>
+    </div>
+    <div class="gv-modal__footer">                     <!-- 3-action row -->
+      <button class="gv-btn text gv-cookie__manage" type="button">Manage preferences</button>
+      <button class="gv-btn primary" type="button">Reject</button>
+      <button class="gv-btn primary" type="button">Accept</button>
+    </div>
+  </div>
+</div>
+```
+- Icon tint, font, language are the **SKIN** — re-themes per `?theme=`; the geometry (650px
+  card, 3px radius, footer padding) is the cross-tenant **SYSTEM**. Needs `govocal-icons.js`
+  for the `cookie` glyph. Distinct from `govocal-cookies.js` (the bottom-bar mechanic) — this
+  is the reusable `.gv-*` dialog content variant.
+
 ## Community Monitor — `.gv-monitor` / `.gv-sentiment-scale` (`components/community-monitor/`)
 
 The "City at a glance" satisfaction module: an ongoing survey that surfaces as a top

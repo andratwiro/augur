@@ -298,6 +298,9 @@ body.gv-root {
   max-height: 85vh;
   display: flex; flex-direction: column;
   background: #fff; border-radius: var(--gv-radius);
+  /* The dialog card sets the modal's base text (real .modalcontent: 14px/19.999) —
+     section content (titles/body) overrides with its own scale. */
+  font-size: var(--gv-fs-s); line-height: 19.999px;
 }
 .gv-modal.size-s { --gv-modal-w: 500px; }
 .gv-modal.size-l { --gv-modal-w: 820px; }

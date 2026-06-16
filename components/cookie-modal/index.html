@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="gv-surface" content="front-office" />
+  <title>Cookie-consent modal — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed to the captured Stadt Wien tenant (primary #FF5A64 — the measured
+       cookie-icon fill + .button.primary fill). Swap this one var, or use ?theme=,
+       and the whole dialog re-themes — nothing brand is hardcoded. */
+    :root { --gv-tenant-primary: #FF5A64; }
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); background: #fff; padding: 26px; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Cookie-consent modal</h1>
+    <p class="sub">The global cookie blocker rendered as the standard GoVocal dialog — a
+      content variant on the <code>.gv-modal</code> shell. Source-grounded on Stadt Wien
+      (<code>.modalcontent</code> / <code>#cookie-modal-title</code> /
+      <code>data-cy=e2e-accept-cookies-btn</code>): leading product cookie icon
+      (tenant-tinted), title + body + policy link, and a 3-action footer
+      (Manage / Reject / Accept).</p>
+
+    <div class="eyebrow">Demo</div>
+    <div class="stage">
+      <button class="gv-btn primary" type="button" data-open-modal>Open the cookie prompt</button>
+    </div>
+
+    <!-- ============ COOKIE-CONSENT MODAL (copy from here) ============ -->
+    <!-- Shell = the reusable .gv-modal abstraction (scrim .75, white 650px card,
+         radius 3px, top-aligned). Content = .gv-cookie__* + the .gv-modal__footer
+         3-action row. No top-right close: a consent prompt blocks until answered. -->
+    <div class="gv-modal-overlay is-open" id="cookie-overlay" data-modal-overlay>
+      <div class="gv-modal" role="dialog" aria-modal="true" aria-labelledby="cookie-modal-title">
+        <div class="gv-cookie__content">
+          <span class="gv-cookie__icon" data-gv-icon="cookie"></span>
+          <h1 class="gv-cookie__title" id="cookie-modal-title">Your cookie settings</h1>
+          <p class="gv-cookie__body">Accepting cookies helps us improve this platform.
+            <a class="gv-cookie__link" href="#" target="_blank" rel="noopener">Read our cookie policy</a>.</p>
+        </div>
+        <div class="gv-modal__footer">
+          <button class="gv-btn text gv-cookie__manage" type="button" data-cy="e2e-manage-preferences-btn" data-close-modal>Manage preferences</button>
+          <button class="gv-btn primary" type="button" data-close-modal>Reject</button>
+          <button class="gv-btn primary" type="button" data-cy="e2e-accept-cookies-btn" data-close-modal>Accept</button>
+        </div>
+      </div>
+    </div>
+    <!-- ============ /COOKIE-CONSENT MODAL ============ -->
+
+    <div class="notes">
+      <p><strong>Reuse:</strong> the shell is the standard
+      <code>.gv-modal-overlay</code> → <code>.gv-modal</code> (650px card, 3px radius,
+      <code>rgba(0,0,0,.75)</code> scrim, top-aligned) — unchanged. The cookie prompt
+      only adds the <strong>content</strong>: <code>.gv-cookie__content</code> (30px pad)
+      holding a tenant-tinted <code>.gv-cookie__icon</code> (the
+      <code>cookie</code> glyph, real <code>fill="#ff5a64"</code> → <code>--gv-tenant-primary</code>),
+      a <code>__title</code> (21/700/#333), a <code>__body</code> (16/400/24/#333) with a
+      tenant-primary <code>__link</code>.</p>
+      <p><strong>3-action footer:</strong> <code>.gv-modal__footer</code> (pad
+      <code>16px 28px</code>, reusable on any modal) — <strong>Manage</strong>
+      (<code>.gv-btn.text</code> ghost, pushed left via <code>.gv-cookie__manage</code>),
+      then <strong>Reject</strong> + <strong>Accept</strong>
+      (<code>.gv-btn.primary</code>, tenant-filled). No top-right close — a consent
+      prompt blocks the surface until the resident answers. Cross-tenant SYSTEM: every
+      tenant routes its consent prompt through this dialog; the skin (icon tint, font,
+      language) re-themes per <code>?theme=</code>.</p>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const overlay = document.getElementById('cookie-overlay');
+      const open = () => { overlay.classList.add('is-open'); overlay.querySelector('.gv-modal').focus?.(); };
+      const close = () => overlay.classList.remove('is-open');
+      document.querySelectorAll('[data-open-modal]').forEach((b) => b.addEventListener('click', open));
+      document.querySelectorAll('[data-close-modal]').forEach((b) => b.addEventListener('click', close));
+    })();
+  </script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script>
+    // Pin the captured Stadt Wien skin (primary #FF5A64, WienerMelange) so the dialog
+    // renders in its real tenant colours. Any city re-themes the same way via these vars.
+    window.addEventListener('DOMContentLoaded', function () {
+      var r = document.documentElement.style;
+      r.setProperty('--gv-tenant-primary', '#FF5A64');
+      r.setProperty('--gv-font-family', 'WienerMelange_W_Rg, "Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif');
+    });
+  </script>
+</body>
+</html>
