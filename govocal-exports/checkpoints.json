@@ -1020,6 +1020,39 @@
       ]
     },
     {
+      "id": "fo-events/event-card-title",
+      "built": "components/event-card/index.html",
+      "against": "fo-events",
+      "map": {
+        ".e2e-event-card h3": ".gv-event-card__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-event-card"
+      ]
+    },
+    {
+      "id": "fo-events/event-card-meta",
+      "built": "components/event-card/index.html",
+      "against": "fo-events",
+      "map": {
+        ".e2e-event-card p.sc-ktEKTO": ".gv-event-card__row"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-event-card"
+      ]
+    },
+    {
       "id": "fo-event-detail/title",
       "built": "pages/event-detail/index.html",
       "against": "fo-event-detail",

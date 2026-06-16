@@ -836,7 +836,7 @@
 .gv-event-card__title a:hover { color: var(--gv-tenant-primary); }
 .gv-event-card__title a::after { content: ""; position: absolute; inset: 0; }
 .gv-event-card__title a:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
-.gv-event-card__row { display: flex; align-items: center; gap: 9px; margin: 0; font-size: var(--gv-fs-s); color: var(--gv-cool-grey-700); }  /* live meta text = #43515D */
+.gv-event-card__row { display: flex; align-items: center; gap: 9px; margin: 0; font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-cool-grey-700); }  /* live meta text = #43515D, lh 21px (1.5×14) */
 .gv-event-card__row svg, .gv-event-card__row .gv-icon { flex: 0 0 auto; width: 16px; height: 16px; color: var(--gv-cool-grey-700); }
 .gv-event-card__row a { position: relative; z-index: 1; color: var(--gv-tenant-primary); text-decoration: underline; }
 .gv-event-card__body .gv-btn { position: relative; z-index: 1; margin-top: auto; }
