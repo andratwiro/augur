@@ -1402,6 +1402,33 @@
     #cb-settings-body .cb-varcard.is-selected .cb-varcard__radio { border-color:var(--gv-teal-500); background:var(--gv-teal-500); }
     #cb-settings-body .cb-varcard__t { display:block; font-size:13px; font-weight:600; color:var(--gv-text-primary); }
     #cb-settings-body .cb-varcard__d { display:block; font-size:11px; color:var(--gv-cool-grey-600); margin-top:3px; }
+
+    /* ── Participation Box (spec: current-phase filled tenant-red, others outlined) ── */
+    #cb-root { --pp-tenant: #E8505B; }
+    #cb-root .cb-pbox__actions { display:flex; flex-direction:column; gap:8px; }
+    #cb-root .cb-pbtn { display:block; width:100%; box-sizing:border-box; text-align:center; padding:11px 14px; border-radius:3px; font-weight:700; font-size:14px; text-decoration:none; cursor:pointer; }
+    #cb-root .cb-pbtn--primary { background:var(--pp-tenant); color:#fff; border:1px solid var(--pp-tenant); }
+    #cb-root .cb-pbtn--outline { background:#fff; color:var(--gv-text-primary); border:1px solid var(--gv-grey-400); }
+    #cb-root .cb-pbox__people { display:flex; align-items:center; gap:8px; margin-top:12px; }
+    #cb-root .cb-pbox__info { width:14px; height:14px; color:var(--gv-cool-grey-500); vertical-align:-2px; }
+    #cb-root .cb-pbox__empty { border:1px dashed var(--gv-grey-400); border-radius:3px; text-align:center; padding:14px; font-size:var(--gv-fs-13); color:var(--gv-cool-grey-600); }
+    #cb-settings-body .cb-pbox-help { font-size:var(--gv-fs-13); color:var(--gv-cool-grey-600); line-height:1.5; margin:0 0 14px; }
+    #cb-settings-body .cb-toggrow { display:flex; align-items:center; gap:10px; margin:8px 0; font-size:14px; color:var(--gv-text-primary); }
+    #cb-settings-body .cb-setseg { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--gv-cool-grey-600); margin:18px 0 8px; }
+    #cb-settings-body .cb-mcheck { display:flex; gap:10px; align-items:flex-start; padding:7px 0; font-size:13px; color:var(--gv-text-primary); cursor:pointer; }
+    #cb-settings-body .cb-mcheck input { accent-color:var(--gv-green-600); margin-top:1px; flex:none; width:16px; height:16px; }
+    /* ── Extra survey (Button/Card view x Primary/Secondary; GoVocal navy / soft-teal) ── */
+    #cb-root .cb-svbtn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; box-sizing:border-box; padding:11px 14px; border-radius:3px; font-weight:700; font-size:14px; text-decoration:none; cursor:pointer; }
+    #cb-root .cb-svbtn--primary { background:var(--gv-bo-primary,#044D6C); color:#fff; border:1px solid var(--gv-bo-primary,#044D6C); }
+    #cb-root .cb-svbtn--secondary { background:var(--gv-teal-50,#e6f3f5); color:var(--gv-teal-500,#147985); border:1px solid transparent; }
+    #cb-root .cb-survey--card { border:1px solid var(--gv-grey-300); border-radius:3px; padding:18px; background:#fff; box-shadow:var(--gv-shadow,0 2px 4px -1px rgba(0,0,0,.06)); }
+    #cb-root .cb-survey__eyebrow { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--gv-teal-500,#147985); background:var(--gv-teal-50,#e6f3f5); padding:3px 8px; border-radius:3px; }
+    #cb-root .cb-survey__name { font-size:20px; font-weight:700; color:var(--gv-text-primary); margin:10px 0 4px; }
+    #cb-root .cb-survey__range { font-size:12.5px; color:var(--gv-text-secondary); margin:0; }
+    #cb-root .cb-survey__desc { font-size:13.5px; color:var(--gv-text-primary); line-height:1.5; margin:12px 0 16px; }
+    #cb-root .cb-survey-empty { border:2px dashed var(--gv-grey-400); border-radius:3px; padding:22px; text-align:center; background:var(--gv-grey-50); }
+    #cb-root .cb-survey-empty__t { font-size:13px; font-weight:600; color:var(--gv-text-secondary); }
+    #cb-root .cb-survey-empty__s { font-size:12px; color:var(--gv-cool-grey-600); margin-top:6px; }
 </style>
 </head>
 <body class="gv-bo min-h-screen" data-gv-theme-picker="off">
@@ -2957,7 +2984,7 @@
       // ── project-page components (this is the project's content builder) ──────
       'timeline':        { label: 'Timeline',           make: function () { return cbTimelineHTML(); } },
       'events':          { label: 'Events',             make: function () { return cbEventsHTML(2); } },
-      'extra-surveys':   { label: 'Extra surveys',      make: function () { return cbSurveyHTML('school','card'); } },
+      'extra-surveys':   { label: 'Extra surveys',      make: function () { return cbSurveyHTML('mobility','card','secondary'); } },
       // locked top blocks (never in the palette; created via makeLockedBlock)
       'hero':            { label: 'Project image' },
       'title':           { label: 'Project title' }
@@ -3051,47 +3078,51 @@
       if (window.GVAvatars) window.GVAvatars.fill(block);
     }
 
-    // ── Participation Box: aggregates the project's active participation methods ──
+    // ── Participation Box: aggregates the project's ACTIVE participation methods ──
+    // Filled (tenant-brand) button = the current-phase method; parallel/extra methods
+    // are outlined. >2 visible methods collapse into one editable "Participate" button.
     var PBOX_STATE = {};
     function cbPboxDefault() {
-      return { hideAvatars: false, methods: [
-        { id:'m_phase',  source:'Timeline · current phase', method:'Collect ideas — share your idea', cta:'Submit your idea', visible:true  },
-        { id:'m_survey', source:'Parallel · Extra surveys', method:'School survey',                   cta:'Take the survey',  visible:true  },
-        { id:'m_vote',   source:'Parallel · Voting',        method:'Community vote',                  cta:'Vote',             visible:false }
+      return { showParticipants: true, aggTitle: 'Participate · 3 ways', methods: [
+        { id:'m_idea',    label:'Upload your idea for the neighbourhood park', cta:'View 82 proposals',            current:true,  visible:true  },
+        { id:'m_school',  label:'School survey',                               cta:'School survey',                current:false, visible:false },
+        { id:'m_budget',  label:'Ask the budget team anything',               cta:'Ask the budget team anything', current:false, visible:true  },
+        { id:'m_offline', label:'Offline test',                               cta:'Offline test',                 current:false, visible:false }
       ] };
     }
     function cbPboxState(block) { if (!PBOX_STATE[block.id]) PBOX_STATE[block.id] = cbPboxDefault(); return PBOX_STATE[block.id]; }
     function cbPboxBodyHTML(st) {
       var vis = st.methods.filter(function (m) { return m.visible; });
-      var cta;
-      if (vis.length === 0)      cta = '<div class="cb-pbox__empty">No active methods</div>';
-      else if (vis.length === 1) cta = '<a class="gv-btn primary full" href="#">' + vis[0].cta + '</a>';
-      else if (vis.length === 2) cta = '<a class="gv-btn primary full" href="#">' + vis[0].cta + '</a>' +
-                                       '<a class="gv-btn primary-outlined full" href="#">' + vis[1].cta + '</a>';
-      else                       cta = '<a class="gv-btn primary full" href="#">Participate</a>';
-      var people = st.hideAvatars ? '' :
-        '<div class="gv-participants cb-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+35 participants</span></div>';
-      return '<div class="cb-pbox"><div class="cb-pbox__actions">' + cta + '</div>' + people + '</div>';
-    }
-    function cbPboxNote(st) {
-      var vis = st.methods.filter(function (m) { return m.visible; });
-      return vis.length === 0 ? 'No CTA shown.'
-        : vis.length === 1 ? 'Shows one CTA: ' + vis[0].cta + '.'
-        : vis.length === 2 ? 'Shows a primary + secondary button.'
-        : 'Shows a single “Participate” button aggregating all active methods.';
+      vis = vis.slice().sort(function (a, b) { return (b.current ? 1 : 0) - (a.current ? 1 : 0); });
+      var cta = '';
+      if (vis.length === 0) cta = '';
+      else if (vis.length <= 2) {
+        cta = vis.map(function (m) {
+          return '<a class="cb-pbtn ' + (m.current ? 'cb-pbtn--primary' : 'cb-pbtn--outline') + '" href="#">' + m.cta + '</a>';
+        }).join('');
+      } else {
+        cta = '<a class="cb-pbtn cb-pbtn--primary" href="#">' + (st.aggTitle || 'Participate') + '</a>';
+      }
+      var people = st.showParticipants
+        ? '<div class="gv-participants cb-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+19 participants <span class="cb-pbox__info" data-gv-icon="info-solid"></span></span></div>'
+        : '';
+      var inner = (cta ? '<div class="cb-pbox__actions">' + cta + '</div>' : '') + people;
+      if (!inner) inner = '<div class="cb-pbox__empty">No active methods</div>';
+      return '<div class="cb-pbox">' + inner + '</div>';
     }
 
-    // ── Extra surveys: a single linked survey, rendered in one of three layouts ──
+    // ── Extra survey: a linked survey rendered as a button or a full card,
+    //    in GoVocal primary (navy) or secondary (soft teal) style. ──
     var SURVEY_STATE = {};
-    var SURVEY_DATA = { school: { name:'School survey', range:'20 May — 5 Jun, 2026',
-      desc:'Help us understand how students travel to school. Your answers shape the safe-routes plan.', left:'4 days left' } };
-    function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'school', variant:'card' }; return SURVEY_STATE[block.id]; }
-    function cbSurveyHTML(survey, variant) {
-      if (!survey) return '<div class="cb-survey-empty"><div class="cb-survey-empty__t">📣 Extra survey</div><div class="cb-survey-empty__s">Select a survey to link in the panel on the right.</div></div>';
-      var s = SURVEY_DATA[survey] || SURVEY_DATA.school;
-      if (variant === 'simple')   return '<div class="cb-survey"><a class="gv-btn primary full" href="#">Take the survey</a></div>';
-      if (variant === 'timeleft') return '<div class="cb-survey cb-survey--box"><div class="cb-survey__left"><span class="cb-survey__dot"></span>' + s.left.toUpperCase() + '</div><a class="gv-btn primary full" href="#">Take the survey</a></div>';
-      return '<div class="cb-survey cb-survey--card"><span class="cb-survey__eyebrow">SURVEY · ONGOING</span><h3 class="cb-survey__name">' + s.name + '</h3><p class="cb-survey__range">' + s.range + '</p><p class="cb-survey__desc">' + s.desc + '</p><a class="gv-btn primary full" href="#">Take the survey</a></div>';
+    var SURVEY_DATA = { mobility: { name:'Mobility check-in', range:'1 – 15 Jun 2026 · Ongoing',
+      desc:'A 2-minute survey on how you move around the city this month — your answers feed the mobility plan.', cta:'Take the survey' } };
+    function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'mobility', format:'card', style:'secondary' }; return SURVEY_STATE[block.id]; }
+    function cbSurveyHTML(survey, format, style) {
+      if (!survey) return '<div class="cb-survey-empty"><div class="cb-survey-empty__t">📣 Survey</div><div class="cb-survey-empty__s">Select a survey to link in the panel on the right.</div></div>';
+      var s = SURVEY_DATA[survey] || SURVEY_DATA.mobility;
+      var bcls = 'cb-svbtn ' + (style === 'primary' ? 'cb-svbtn--primary' : 'cb-svbtn--secondary');
+      if (format === 'button') return '<div class="cb-survey"><a class="' + bcls + '" href="#">' + s.cta + '</a></div>';
+      return '<div class="cb-survey cb-survey--card"><span class="cb-survey__eyebrow">SURVEY</span><h3 class="cb-survey__name">' + s.name + '</h3><p class="cb-survey__range">' + s.range + '</p><p class="cb-survey__desc">' + s.desc + '</p><a class="' + bcls + '" href="#">' + s.cta + '</a></div>';
     }
 
     // ── settings panel bodies per widget type ─────────────────────────────────
@@ -3155,10 +3186,11 @@
         return settingsRow('Embed URL', '<input class="gv-input" id="cb-f-embedurl" placeholder="https://…">');
       }
       if (widget === 'about-box') {
-        return '<div class="gv-bo-cb-settings__row"><span class="gv-bo-cb-settings__rowlabel">Hide participation avatars</span><label class="gv-toggle"><input type="checkbox" data-set="hideav"><span class="track"></span></label></div>' +
-          '<div class="cb-setseg">Active methods</div>' +
+        return '<p class="cb-pbox-help">You can select below only methods that are active at the moment. They will disappear once they finish.</p>' +
+          '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="showppl"><span class="track"></span></label><span>Show all project participants</span></div>' +
+          '<div class="cb-setseg">Select visible methods</div>' +
           '<div id="cb-pbox-methods"></div>' +
-          '<p class="cb-p cb-pbox-note" id="cb-pbox-note"></p>';
+          '<div id="cb-pbox-title"></div>';
       }
       if (widget === 'file-attachment') {
         return settingsRow('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') +
@@ -3177,10 +3209,13 @@
         return settingsRow('Events shown', '<select class="gv-bo-select" id="cb-f-eventcount"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>');
       }
       if (widget === 'extra-surveys') {
-        var vc = function (v, t, d) { return '<button type="button" class="cb-varcard" data-variant="' + v + '"><span class="cb-varcard__radio"></span><span class="cb-varcard__txt"><span class="cb-varcard__t">' + t + '</span><span class="cb-varcard__d">' + d + '</span></span></button>'; };
-        return settingsRow('Linked survey', '<select class="gv-bo-select" data-set="survey"><option value="">Select a survey\u2026</option><option value="school">School survey</option></select>') +
-          '<div class="cb-setseg">Layout</div>' +
-          '<div class="cb-varlist">' + vc('simple','Simple button','Just a button linking to the survey.') + vc('timeleft','Button + time left','Shows how long until the survey closes.') + vc('card','Full card','Title, dates, description and button.') + '</div>';
+        return settingsRow('Survey', '<select class="gv-bo-select" data-set="survey"><option value="">Select a survey\u2026</option><option value="mobility">Mobility check-in</option></select>') +
+          '<div class="cb-setseg">Survey button format</div>' +
+          '<label class="gv-radio"><input type="radio" name="cb-svfmt" data-fmt="button"><span class="circle"></span>Button</label>' +
+          '<label class="gv-radio"><input type="radio" name="cb-svfmt" data-fmt="card"><span class="circle"></span>Card view</label>' +
+          '<div class="cb-setseg">Button style</div>' +
+          '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="primary"><span class="circle"></span>Primary</label>' +
+          '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="secondary"><span class="circle"></span>Secondary</label>';
       }
       if (widget === 'hero') {
         return settingsRow('Replace image', '<input class="gv-input" type="file" id="cb-f-herofile" accept="image/*">') +
@@ -3478,38 +3513,47 @@
 
     function bindAboutBox(block) {
       var st = cbPboxState(block);
-      function rerender() { cbSetBody(block, cbPboxBodyHTML(st)); var n = panel.querySelector('#cb-pbox-note'); if (n) n.textContent = cbPboxNote(st); }
-      var hide = panel.querySelector('[data-set="hideav"]');
-      if (hide) { hide.checked = st.hideAvatars; hide.addEventListener('change', function () { st.hideAvatars = this.checked; rerender(); }); }
+      function render() { cbSetBody(block, cbPboxBodyHTML(st)); }
+      function titleField() {
+        var host = panel.querySelector('#cb-pbox-title'); if (!host) return;
+        var n = st.methods.filter(function (m) { return m.visible; }).length;
+        if (n > 2) {
+          host.innerHTML = '<div class="cb-setseg">Button title</div>' +
+            '<div class="gv-bo-multiloc" style="margin-bottom:8px"><button type="button" class="is-active"><span class="miss"></span>EN</button><button type="button"><span class="miss"></span>NL-BE</button></div>' +
+            '<input class="gv-input" data-set="aggtitle">';
+          var inp = host.querySelector('[data-set="aggtitle"]'); inp.value = st.aggTitle || '';
+          inp.addEventListener('input', function () { st.aggTitle = this.value; render(); });
+          host.querySelectorAll('.gv-bo-multiloc button').forEach(function (b) {
+            b.addEventListener('click', function () { host.querySelectorAll('.gv-bo-multiloc button').forEach(function (x) { x.classList.remove('is-active'); }); b.classList.add('is-active'); });
+          });
+        } else { host.innerHTML = ''; }
+      }
+      var show = panel.querySelector('[data-set="showppl"]');
+      if (show) { show.checked = st.showParticipants; show.addEventListener('change', function () { st.showParticipants = this.checked; render(); }); }
       var list = panel.querySelector('#cb-pbox-methods');
       if (list) {
         list.innerHTML = st.methods.map(function (m, i) {
-          return '<div class="cb-method' + (m.visible ? '' : ' is-off') + '"><div class="cb-method__info"><div class="cb-method__name">' + m.method + '</div><div class="cb-method__src">' + m.source + '</div></div><label class="gv-toggle"><input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + '><span class="track"></span></label></div>';
+          return '<label class="cb-mcheck"><input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + '><span>' + m.label + '</span></label>';
         }).join('');
         list.querySelectorAll('input[data-mi]').forEach(function (inp) {
-          inp.addEventListener('change', function () {
-            st.methods[+this.dataset.mi].visible = this.checked;
-            var row = this.closest('.cb-method'); if (row) row.classList.toggle('is-off', !this.checked);
-            rerender();
-          });
+          inp.addEventListener('change', function () { st.methods[+this.dataset.mi].visible = this.checked; render(); titleField(); });
         });
       }
-      var note = panel.querySelector('#cb-pbox-note'); if (note) note.textContent = cbPboxNote(st);
+      titleField();
     }
 
     function bindExtraSurveys(block) {
       var st = cbSurveyState(block);
-      function rerender() { cbSetBody(block, cbSurveyHTML(st.survey, st.variant)); }
+      function render() { cbSetBody(block, cbSurveyHTML(st.survey, st.format, st.style)); }
       var sel = panel.querySelector('[data-set="survey"]');
-      if (sel) { sel.value = st.survey || ''; sel.addEventListener('change', function () { st.survey = this.value || null; rerender(); }); }
-      panel.querySelectorAll('.cb-varcard').forEach(function (c) {
-        c.classList.toggle('is-selected', c.dataset.variant === st.variant);
-        c.addEventListener('click', function () {
-          st.variant = this.dataset.variant;
-          panel.querySelectorAll('.cb-varcard').forEach(function (x) { x.classList.remove('is-selected'); });
-          this.classList.add('is-selected');
-          rerender();
-        });
+      if (sel) { sel.value = st.survey || ''; sel.addEventListener('change', function () { st.survey = this.value || null; render(); }); }
+      panel.querySelectorAll('input[data-fmt]').forEach(function (r) {
+        r.checked = (r.dataset.fmt === st.format);
+        r.addEventListener('change', function () { if (this.checked) { st.format = this.dataset.fmt; render(); } });
+      });
+      panel.querySelectorAll('input[data-sty]').forEach(function (r) {
+        r.checked = (r.dataset.sty === st.style);
+        r.addEventListener('change', function () { if (this.checked) { st.style = this.dataset.sty; render(); } });
       });
     }
 
