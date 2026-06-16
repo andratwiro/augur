@@ -209,3 +209,20 @@ open items)
   pad) and left an extra untracked capture `govocal-exports/p1-ideation-setup/` — harmless,
   not staged by me. The sibling correctly detected the collision and stopped; I remain the
   sole driver.
+
+### Pass 5 — Common ground (DONE 2026-06-16, no build change needed)
+- Capture: `r1-pe-commonground-setup` (Test Polis, "Polis process" phase). Screenshot
+  confirms the real **sub-tab set: Setup · Description · Report · Phase access and user data ·
+  Notifications** — exactly what the page's commonground phase declares. (Header shows
+  "Information phase" — the SPA active-phase trap from Run 1; my "Common ground phase" label
+  is more correct.)
+- State: `commongroundsetup` panel already faithful — Edit-Phase header, picker w/
+  common-ground selected (now also showing the BETA pill from Pass 4), **Statements editor**
+  (max-120-char inputs w/ live N/120 count, agree/unsure/disagree stance chips, drag handle,
+  delete, Add-a-statement) matching GOVOCAL.md §4.5. The `report` panel (consensus stats +
+  most-consensus rows) also present.
+- VERIFY: `lint` 0; screenshot eyeballed vs capture (sub-tab set + form structure match).
+- Checkpoints: none added.
+- Open: common-ground `/report` *depth* (real-time results map, per-statement breakdown) is
+  still backlog (flagged since Run 1) — current report panel is a faithful summary, not the
+  full results map. Future enhancement.
