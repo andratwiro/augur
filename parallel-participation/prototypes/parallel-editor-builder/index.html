@@ -108,10 +108,20 @@
   .phone .pp-fo .gv-event-card { margin: 0 0 14px; }
   .phone .pp-fo__evmedia { height: 150px; position: relative; overflow: hidden; }
   .phone .pp-fo__evmedia img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  /* Fixed "Open to participation" bar — sticks to the bottom of the phone like the live mobile FO. */
-  .phone .pp-fo__partbar { position: sticky; bottom: 0; z-index: 5; margin-top: 4px; }
+  /* "Open to participation" bar: lives INLINE above the timeline; .is-stuck pins it to the
+     phone footer (fixed within the scaled .pp-screen) once the user scrolls down to it. */
+  .phone .pp-fo__partbar-anchor { height: 0; }
+  .phone .pp-fo__partbar { position: relative; z-index: 5; }
+  .phone .pp-fo__partbar.is-stuck { position: fixed; left: 0; right: 0; bottom: 0; top: auto; }
+  .phone #phone-scroller.has-stuck-bar .pp-fo { padding-bottom: 64px; }
   .phone .pp-fo__partbar .gv-partbar__inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 20px; max-width: none; }
   .phone .pp-fo__partbar .gv-btn { width: 100%; justify-content: center; margin: 0; }
+  /* Live "open" status dot — a blinking/pulsing dot (was reading as a static info dot). */
+  .phone .pp-fo__partbar .gv-partbar__status::before { animation: pp-pulse 1.6s ease-in-out infinite; }
+  @keyframes pp-pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255,255,255,0.55); }
+    50%      { opacity: 0.5; box-shadow: 0 0 0 5px rgba(255,255,255,0); }
+  }
   .rail-btn { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; color: rgba(255,255,255,.55); }
   .rail-btn:hover { color: #fff; }
   .rail-btn.active { background: rgba(0,0,0,.25); color: #fff; }
@@ -2196,6 +2206,20 @@
             ${complex ? acc('What can I suggest?', 'Anything within scope — seating, planting, traffic calming, lighting, cycle parking or how the space is used.', false) : ''}
             ${complex ? acc('Who is running this project?', 'The City of Meridian engagement team, together with the mobility department.', false) : ''}
           </div>
+        </div><!-- /.pp-fo__pad (top) -->
+
+        <!-- Participation bar HOME = above the timeline, in the content flow. The 0-height
+             anchor marks its inline position; updateStickyBar() pins the bar to the phone
+             footer once the user scrolls down to it, and releases it back inline at the top. -->
+        <div class="pp-fo__partbar-anchor" aria-hidden="true"></div>
+        <div class="gv-partbar pp-fo__partbar">
+          <div class="gv-partbar__inner">
+            <span class="gv-partbar__status">Open for participation</span>
+            <a class="gv-btn on-color" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'} <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+          </div>
+        </div>
+
+        <div class="pp-fo__pad">
           <h2 class="gv-title h3 pp-fo__h2">Timeline</h2>
           <div class="gv-stepper pp-fo__stepper">${stepper}</div>
           <div class="pp-fo__phasecard">
@@ -2207,12 +2231,6 @@
           <h2 class="gv-title h3 pp-fo__h2">Upcoming events</h2>
           ${ev('Jun', '14', 'Mobility town hall', '14 Jun · 19:00', 'Central Library', 'location-simple', '41', 'meeting.webp')}
           ${complex ? ev('Jul', '02', 'Neighbourhood design workshop', '2 Jul · 18:00', 'Meridian Civic Hall', 'location-simple', '57', 'workshop.webp') : ''}
-        </div>
-        <div class="gv-partbar pp-fo__partbar">
-          <div class="gv-partbar__inner">
-            <span class="gv-partbar__status">Open for participation</span>
-            <a class="gv-btn on-color" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'} <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
-          </div>
         </div>
       </div>`;
   }
@@ -2258,6 +2276,27 @@
     }
     if (window.GVIcons && GVIcons.render) GVIcons.render(sc);
     if (window.GVAvatars && GVAvatars.fill) GVAvatars.fill(sc);
+    // Wire the sticky participation bar (idempotent listener) + set its initial state.
+    if (!sc._stickyWired) { sc.addEventListener('scroll', updateStickyBar, { passive: true }); sc._stickyWired = true; }
+    requestAnimationFrame(updateStickyBar);
+  }
+
+  // Participation bar: lives inline above the timeline, and sticks to the phone footer
+  // ONLY once the user scrolls down far enough to reach it (then stays stuck through the
+  // timeline/events). Above that point it sits inline in the flow (or below the fold).
+  function updateStickyBar() {
+    const sc = document.getElementById('phone-scroller');
+    if (!sc) return;
+    const bar = sc.querySelector('.pp-fo__partbar');
+    const anchor = sc.querySelector('.pp-fo__partbar-anchor');
+    if (!bar || !anchor) return;
+    const anchorTop = anchor.offsetTop;           // inline position of the bar (stable)
+    const scrollable = sc.scrollHeight - sc.clientHeight > 4;
+    // Inline (above the timeline) until the user scrolls down to/past it; then it docks to
+    // the footer and stays there through the timeline + events.
+    const stick = scrollable && sc.scrollTop >= anchorTop - 8;
+    bar.classList.toggle('is-stuck', stick);
+    sc.classList.toggle('has-stuck-bar', stick);  // adds bottom padding so content clears
   }
 
   function setProjectState(state, btn) {
