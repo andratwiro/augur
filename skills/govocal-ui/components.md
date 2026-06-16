@@ -769,6 +769,28 @@ card. Source-grounded on wietsedemo `/en`: the tinted card `.fGrxMq`
 - The demo's preview artwork is a page-local reconstruction (no gv-* class, no brand hex)
   standing in for the live `/SentimentQuestionPreview.png`, which isn't redistributable.
   Verified via `fo-homepage-survey-band/{card,title,cta}`.
+- **Optional duration meta line** — `.gv-monitorband__ctameta` (clock + tenant-primary
+  text) sits under the CTA inside `__cta`; the **`--duration`** modifier
+  (`.gv-monitorband__ctameta--duration`) is the Linz "Dauer 2 Minuten" treatment —
+  same affordance, measured weight 400 / tight 14px line-height (base is weight 600
+  "Takes N minutes"). Additive, base untouched. Cross-tenant confirm: the Linz band
+  (`partizipation.linz.at`, tenant-primary `#604596`) is the identical formula
+  (tint @10%, pad 32, gap 16, radius 16). Verified via `fo-linz-monitorband/band`
+  (demo `components/fo-linz-monitorband/`). That capture also confirms the bordered
+  EventsWidget **stacked date-chip** year band (`#604596` fill / white / radius
+  `0 0 3px 3px` / pad 6px) — no change to `.gv-event-datechip--stacked` was needed.
+
+```html
+<div class="gv-monitorband__cta">
+  <button class="gv-btn primary" type="button">An der Umfrage teilnehmen</button>
+  <p class="gv-monitorband__ctameta gv-monitorband__ctameta--duration">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm.75 4.5v5.55l3.7 2.2-.76 1.28-4.44-2.64V6.5h1.5Z"/>
+    </svg>
+    <span>Dauer 2 Minuten</span>
+  </p>
+</div>
+```
 
 ## CTA banner — `.gv-cta-banner` (`components/cta-banner/`)
 

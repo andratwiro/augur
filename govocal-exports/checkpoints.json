@@ -1317,6 +1317,24 @@
       ]
     },
     {
+      "id": "fo-linz-monitorband/band",
+      "built": "components/fo-linz-monitorband/index.html",
+      "against": "fo-linz-monitorband",
+      "map": {
+        ".sc-beqWaB.lhezhc": ".gv-monitorband__inner"
+      },
+      "props": [
+        "padding",
+        "gap",
+        "border-radius",
+        "font-family",
+        "display"
+      ],
+      "uses": [
+        ".gv-monitorband"
+      ]
+    },
+    {
       "id": "fo-homepage-survey-band/title",
       "built": "components/homepage-survey-band/index.html",
       "against": "fo-homepage-survey-band",
