@@ -61,7 +61,10 @@
       transition: border-color 100ms ease-out, box-shadow 100ms ease-out;
     }
     .sv-optcard:hover { border-color: var(--gv-black); }
-    .sv-optcard:has(input:checked) { border-color: var(--gv-tenant-primary); box-shadow: inset 0 0 0 1px var(--gv-tenant-primary); }
+    /* Selected card = neutral grey ring (real: border + outer 1px #767676, same as
+       resting); selection is signalled by the themed radio/checkbox dot inside, not the
+       card hue (matches fo-survey-runner digest + is better a11y). */
+    .sv-optcard:has(input:checked) { border-color: var(--gv-border-dark); box-shadow: 0 0 0 1px var(--gv-border-dark); }
     .sv-optcard:has(input:focus-visible) { outline: var(--gv-focus-outline); outline-offset: 2px; }
     .sv-optcard__txt { font-size: var(--gv-fs-base); color: var(--gv-text-primary); }
     /* keep the inner gv-radio/gv-checkbox from adding its own bottom margin here */
