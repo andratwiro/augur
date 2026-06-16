@@ -41,7 +41,10 @@
     @media (max-width: 1180px) { .ar-grid { grid-template-columns: 1fr 320px; gap: 22px; } }
 
     .ar-step { margin-bottom: 26px; }
-    .ar-step__n { display: inline-flex; align-items: center; gap: 9px; margin: 0 0 4px; }
+    .ar-step__n { display: flex; align-items: center; gap: 9px; margin: 0 0 4px; }
+    .ar-reset { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--gv-grey-300); background: #fff; color: var(--gv-cool-grey-700, #51606b); border-radius: 20px; padding: 5px 12px; font: 600 12.5px var(--gv-font-family); cursor: pointer; }
+    .ar-reset:hover { border-color: var(--gv-bo-primary, #044d6c); color: var(--gv-bo-primary, #044d6c); }
+    .ar-reset .gv-icon { width: 13px; height: 13px; }
     .ar-step__badge { width: 24px; height: 24px; border-radius: 50%; background: var(--gv-bo-primary, #044d6c); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; flex: none; }
     .ar-step__q { font-size: 19px; font-weight: 700; letter-spacing: -.2px; }
     .ar-step__sub { font-size: 14px; color: var(--gv-text-secondary); margin: 2px 0 14px 33px; line-height: 1.5; }
@@ -326,6 +329,17 @@
     };
     var GROUPS = ['Verified residents', 'Homeowners', 'Youth council', 'Neighbourhood reps'];
 
+    // the safe recommended default = sign-in + email only, nothing fancy
+    function isDefault(){
+      return state.preset==='signin' && state.verify.email && !state.verify.sms && !state.verify.id
+        && !state.perAction && !state.limitGroups && !state.collect.name && !state.collect.password && !state.collect.questions;
+    }
+    function resetToRecommended(){
+      state.preset='signin'; state.verify={email:true,sms:false,id:false};
+      state.perAction=false; state.actions={submit:'all',comment:'all',react:'all',attend:'all'};
+      state.limitGroups=false; state.groups=[]; state.collect={name:false,password:false,questions:false};
+      render();
+    }
     function needsVerify(){ return state.preset==='signin' || state.preset==='verified'; }
     function methodsOn(){ return ['email','sms','id'].filter(function(m){ return state.verify[m]; }); }
 
@@ -363,7 +377,9 @@
 
       /* STEP 1 — presets */
       var step1 = '<div class="ar-step">'
-        + '<div class="ar-step__n"><span class="ar-step__badge">1</span><span class="ar-step__q">How open is this phase?</span></div>'
+        + '<div class="ar-step__n"><span class="ar-step__badge">1</span><span class="ar-step__q">How open is this phase?</span>'
+        + (isDefault() ? '' : '<button class="ar-reset" id="resetBtn">'+icon('arrow-left')+'Reset to recommended</button>')
+        + '</div>'
         + '<div class="ar-step__sub">More checks mean more trust — but more steps for residents. Watch the phone on the right to see the trade-off. Most phases just need one of these.</div>'
         + '<div class="ar-presets">'
         + Object.keys(PRESETS).map(function(k){
@@ -574,6 +590,7 @@
           render();
         };
       });
+      var rb = $('#resetBtn'); if(rb) rb.onclick = resetToRecommended;
       var ah = $('#advHead'); if(ah) ah.onclick = function(){ state.advOpen = !state.advOpen; render(); };
       var pat = $('#perActionTog'); if(pat) pat.onchange = function(){ state.perAction = pat.checked; render(); };
       var lgt = $('#limitGroupsTog'); if(lgt) lgt.onchange = function(){ state.limitGroups = lgt.checked; render(); };
