@@ -23,6 +23,11 @@
       --faint:#677976; --line:#21332f; --line2:#2c423d; --teal:#41bccb; --teal-deep:#2a8f99;
       --accent:#EE7A4E; --accent-soft:#2a1f1a;
     }
+    body[data-mode="brief"]{
+      --bg:#f5f7f9; --bg2:#eaeef2; --panel:#ffffff; --ink:#19222e; --muted:#586573;
+      --faint:#9aa6b4; --line:#e4e9ee; --line2:#d3dbe3; --teal:#0E7C86; --teal-deep:#0c5b64;
+      --accent:#C8472A; --accent-soft:#f3e6e0;
+    }
     *{box-sizing:border-box}
     html,body{margin:0;height:100%}
     body{font-family:var(--sans);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;overflow:hidden;transition:background .4s}
@@ -142,7 +147,24 @@
     body[data-mode="lean"] .kicker{font-size:clamp(28px,4.4vw,52px);font-weight:660;letter-spacing:-.025em;line-height:1.07;max-width:15em;margin:0}
     body[data-mode="lean"] .kicker em{font-style:normal;color:var(--accent)}
 
+    /* brief: structured research-plan document */
+    .index{display:grid;gap:0;margin-top:24px;max-width:680px}
+    .index div{display:flex;gap:16px;align-items:baseline;padding:11px 0;border-bottom:1px solid var(--line)}
+    .index .n{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:700;width:26px}
+    .index .l{font-size:16.5px;font-weight:600;color:var(--ink)}
+    .index .d{font-size:12px;color:var(--faint);margin-left:auto;font-family:var(--mono);letter-spacing:.03em}
+    .phases{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:18px}
+    .phase{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px 16px}
+    .phase .ph-h{display:flex;align-items:baseline;gap:9px;margin-bottom:9px}
+    .phase .ph-n{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--teal)}
+    .phase .ph-t{font-size:15px;font-weight:700;color:var(--ink)}
+    .phase ul{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+    .phase li{font-size:12.5px;line-height:1.4;color:var(--muted);padding-left:15px;position:relative}
+    .phase li::before{content:"–";position:absolute;left:0;color:var(--faint)}
+    .phase li.gate{color:var(--accent);font-weight:600}
+    .phase li.gate::before{content:"◆";font-size:8px;top:2px}
     @media (max-width:860px){
+      .phases{grid-template-columns:1fr}
       .slide{padding:96px 20px 92px}
       .switch{top:10px} .switch button .s{display:none} .switch button{padding:8px 12px}
       .g2,.g3,.twocol,.stats,.diamond{grid-template-columns:1fr}
@@ -152,12 +174,13 @@
     }
   </style>
 </head>
-<body data-mode="full">
+<body data-mode="brief">
 
   <nav class="switch" id="switch">
     <button data-m="lean"><span class="t">Lean</span><span class="s">2 weeks · what matters</span></button>
-    <button data-m="full" class="on"><span class="t">Full</span><span class="s">6-week studio audit</span></button>
+    <button data-m="full"><span class="t">Full</span><span class="s">6-week studio audit</span></button>
     <button data-m="evidence"><span class="t">Evidence</span><span class="s">let the data argue</span></button>
+    <button data-m="brief" class="on"><span class="t">Brief</span><span class="s">the research plan</span></button>
   </nav>
   <div class="progress" id="progress"></div>
 
@@ -204,7 +227,7 @@
   </div>
 
   <!-- ════════════════════════════ FULL ════════════════════════════ -->
-  <div class="deck on" data-deck="full">
+  <div class="deck" data-deck="full">
     <section class="slide">
       <div class="slide-inner">
         <p class="eyebrow">UX/UI audit · research &amp; design plan · June 2026</p>
@@ -485,6 +508,174 @@
     </section>
   </div>
 
+  <!-- ════════════════════════════ BRIEF (the research plan) ════════════════════════════ -->
+  <div class="deck on" data-deck="brief">
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Research plan · prepared for Irene · the restart</p>
+        <h1>Restart the UX/UI audit — <span class="accent">as one service.</span></h1>
+        <p class="lead">The earlier docs audited only back-office project creation. This plan covers both surfaces — back office <em>and</em> front office — point by point, and keeps the principle-and-persona structure that made the agentic audit defensible for buy-in.</p>
+        <div class="index">
+          <div><span class="n">01</span><span class="l">The questions</span><span class="d">what we answer</span></div>
+          <div><span class="n">02</span><span class="l">The framework</span><span class="d">principles + personas</span></div>
+          <div><span class="n">03</span><span class="l">The methods</span><span class="d">question → method</span></div>
+          <div><span class="n">04</span><span class="l">Outcomes &amp; outputs</span><span class="d">deliverable × audience</span></div>
+          <div><span class="n">05</span><span class="l">Timeline</span><span class="d">steps · substeps · gates</span></div>
+          <div><span class="n">06</span><span class="l">Stakeholders</span><span class="d">bringing you along</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">01 · the questions</p>
+        <h2>Five questions — across both surfaces.</h2>
+        <ul class="clean">
+          <li><b>Who do we optimise for?</b> Which staff segment, and which resident segment — we can't serve all equally.</li>
+          <li><b>Where does the loop break?</b> A friction inventory across every back-office and front-office stage, tagged to a principle and to evidence.</li>
+          <li><b>Which breaks matter most?</b> Severity × frequency × business impact — anchored to the 68 open dispatch tickets.</li>
+          <li><b>What does "good" look like?</b> A target metric per surface, baselined now so improvement is provable.</li>
+          <li><b>Will the fixes hold up with real people?</b> Validated with staff and with residents — especially on mobile.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">02 · the framework — the structured process you liked</p>
+        <h2>Twelve principles, two personas a side, scored the same way every time.</h2>
+        <div class="twocol">
+          <div><h3 class="tealtext">Principles &amp; scoring</h3>
+            <ul class="clean">
+              <li><b>Nielsen's 10</b> + Shneiderman's <b>closure</b> &amp; <b>internal locus of control</b> — every finding tagged to one</li>
+              <li><b>Severity 0–4 × frequency</b> → one priority score, comparable across the whole audit</li>
+              <li>3+ evaluators, then affinity-clustered — defensible, not opinion</li>
+            </ul></div>
+          <div><h3 class="accent">Personas, both sides</h3>
+            <ul class="clean">
+              <li><b>Staff:</b> Joan (high savviness) · Diane (low savviness)</li>
+              <li><b>Residents:</b> rare participant · engaged resident · skeptic</li>
+              <li>Each session run twice — once per persona lens</li>
+            </ul></div>
+        </div>
+        <p class="src-line">This is the agentic-audit backbone, extended to residents — what makes findings comparable and recommendations easy to defend in the room.</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">03 · the methods</p>
+        <h2>The method is chosen for the question — and triangulated.</h2>
+        <table>
+          <thead><tr><th>Question</th><th>Method</th><th>Lens</th></tr></thead>
+          <tbody>
+            <tr><td>Breaks basic usability?</td><td>Heuristic + agentic audit on real screens</td><td><span class="pill">12 principles</span></td></tr>
+            <tr><td>Can users do the core jobs?</td><td>JTBD task scripts + 5-user tests</td><td><span class="pill">per persona</span></td></tr>
+            <tr><td>Is the structure findable?</td><td>Tree test + first-click</td><td><span class="pill">IA</span></td></tr>
+            <tr><td>Where &amp; how often?</td><td>Analytics funnel + session replay + ticket triage</td><td><span class="pill">quant</span></td></tr>
+            <tr><td>Did we improve?</td><td>Benchmark — baseline → re-measure same tasks</td><td><span class="pill">SUS · SEQ</span></td></tr>
+          </tbody>
+        </table>
+        <p class="src-line">Qual explains why, quant shows where &amp; how often — we only trust a finding both surface.</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">04 · expected outcomes &amp; outputs</p>
+        <h2>Five outputs — each aimed at someone who has to act.</h2>
+        <table>
+          <thead><tr><th>Output</th><th>What it is</th><th>For</th></tr></thead>
+          <tbody>
+            <tr><td>Friction inventory + blueprint</td><td>Severity-scored, evidence-tagged, both surfaces</td><td>Irene · Rob · devs</td></tr>
+            <tr><td>Redesign vision</td><td>Annotated low-fi for the highest-impact moments</td><td>Rob · design</td></tr>
+            <tr><td>Prioritised roadmap</td><td>Impact × effort 2×2 → Now / Next / Later</td><td>Koen · James · Circle</td></tr>
+            <tr><td>Cycle recommendation</td><td>Where to start building next cycle</td><td>Wietse · Circle</td></tr>
+            <tr><td>Executive summary</td><td>Business-first narrative, friction tied to KPIs</td><td>Wietse · cross-team</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">05 · timeline — key steps, substeps &amp; gates</p>
+        <h2>Six weeks, four phases, stakeholders built into each.</h2>
+        <div class="phases">
+          <div class="phase"><div class="ph-h"><span class="ph-n">WK 1–2</span><span class="ph-t">Discover</span></div>
+            <ul>
+              <li class="gate">◆ Kickoff &amp; alignment — Wietse, Koen, James, Irene</li>
+              <li>Heuristic + agentic sweep, both surfaces (12 principles × 2 personas)</li>
+              <li>Analytics + triage the 68 open dispatch tickets</li>
+              <li>→ raw friction log</li>
+            </ul></div>
+          <div class="phase"><div class="ph-h"><span class="ph-n">WK 2–3</span><span class="ph-t">Define</span></div>
+            <ul>
+              <li>Affinity-cluster → friction inventory + service blueprint</li>
+              <li>Severity × frequency scoring; choose the focus segment</li>
+              <li class="gate">◆ Friday checkpoint — Irene (scope lock)</li>
+              <li>→ ranked friction map</li>
+            </ul></div>
+          <div class="phase"><div class="ph-h"><span class="ph-n">WK 3–5</span><span class="ph-t">Develop</span></div>
+            <ul>
+              <li>Recruit + run 5-user resident tests (mobile) + staff sessions</li>
+              <li>Comparative benchmark; first-pass redesign vision</li>
+              <li class="gate">◆ Mid-point insight share — all (no surprises later)</li>
+              <li>→ tested vision</li>
+            </ul></div>
+          <div class="phase"><div class="ph-h"><span class="ph-n">WK 5–6</span><span class="ph-t">Deliver</span></div>
+            <ul>
+              <li>Impact × effort 2×2; Now / Next / Later roadmap</li>
+              <li class="gate">◆ Feasibility gate — Koen &amp; James</li>
+              <li class="gate">◆ Exec readout &amp; buy-in — Wietse + cross-team</li>
+              <li>→ final report + roadmap</li>
+            </ul></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">06 · stakeholders — bringing you along</p>
+        <h2>You co-author the findings at every gate — never a big reveal.</h2>
+        <p class="lead">Initial insights are shared as they emerge, so by week 6 there are no surprises — only a decision.</p>
+        <table>
+          <thead><tr><th>Touchpoint</th><th>Who</th><th>What they shape</th></tr></thead>
+          <tbody>
+            <tr><td>Kickoff · Wk 1</td><td>Wietse, Koen, James, Irene</td><td>Scope, success metric, the plan itself</td></tr>
+            <tr><td>Checkpoint · Wk 2</td><td>Irene</td><td>Scope lock + focus segment</td></tr>
+            <tr><td>Insight share · Wk 4</td><td>All + Sales &amp; Gov Success</td><td>Early findings; deal-blockers &amp; churn drivers</td></tr>
+            <tr><td>Feasibility · Wk 5</td><td>Koen &amp; James</td><td>Technical scope of the vision</td></tr>
+            <tr><td>Readout · Wk 6</td><td>Wietse + cross-team</td><td>Buy-in on the recommendations</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">07 · what we need · next step</p>
+        <h2>Green-light, a little access, and a Friday.</h2>
+        <div class="twocol">
+          <div><h3 class="tealtext">The ask</h3>
+            <ul class="clean">
+              <li>~6 weeks of Rob + Irene, with design support</li>
+              <li>Intercom + analytics by client + demo accounts</li>
+              <li>Maze license + a small resident-incentive budget</li>
+              <li>30 min each from CS, Sales &amp; Gov Success; a wk-5 slot with Koen &amp; James</li>
+            </ul></div>
+          <div><h3 class="accent">Risks we manage</h3>
+            <ul class="clean">
+              <li>Resident recruitment is the long pole — start it in week 1</li>
+              <li>Findings may reshape scope — that's the point of Discover</li>
+              <li>Both surfaces in 6 weeks is tight — depth on 2–3 methods, not all eight</li>
+            </ul></div>
+        </div>
+        <p class="src-line">Next step: review this with Irene this Friday to lock scope and the focus segment, then open with the kickoff.</p>
+      </div>
+    </section>
+  </div>
+
   <div class="brand" id="brand">GoVocal · Product Design</div>
   <div class="count"><b id="cur">1</b> / <span id="tot">1</span></div>
   <div class="nav"><button id="prev" aria-label="Previous">‹</button><button id="next" aria-label="Next">›</button></div>
@@ -492,8 +683,8 @@
   <script>
     const decks = {};
     document.querySelectorAll('.deck').forEach(d => decks[d.dataset.deck] = [...d.querySelectorAll('.slide')]);
-    const idx = { lean:0, full:0, evidence:0 };
-    let mode = 'full';
+    const idx = {}; Object.keys(decks).forEach(k => idx[k] = 0);
+    let mode = 'brief';
     const prog = document.getElementById('progress'), cur = document.getElementById('cur'), tot = document.getElementById('tot');
     const prevB = document.getElementById('prev'), nextB = document.getElementById('next');
     const switchEl = document.getElementById('switch');
@@ -523,6 +714,7 @@
       else if (e.key === '1') setMode('lean');
       else if (e.key === '2') setMode('full');
       else if (e.key === '3') setMode('evidence');
+      else if (e.key === '4') setMode('brief');
     });
     document.querySelectorAll('.deck').forEach(d => d.addEventListener('click', e => {
       if (e.target.closest('a,button')) return;
@@ -533,7 +725,7 @@
     addEventListener('touchstart', e => tx = e.touches[0].clientX, {passive:true});
     addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1); }, {passive:true});
 
-    const h = (location.hash || '').replace('#','').match(/^(lean|full|evidence)(\d+)?$/);
+    const h = (location.hash || '').replace('#','').match(/^(lean|full|evidence|brief)(\d+)?$/);
     if (h) { mode = h[1]; idx[mode] = h[2] ? Math.max(0, +h[2] - 1) : 0; }
     render();
   </script>
