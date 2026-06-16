@@ -71,6 +71,26 @@
   .phone .gv-nav-m { display: block !important; }          /* hamburger on */
   .phone .gv-nav-m > summary { width: 38px; height: 38px; }
   .phone .gv-nav-m__panel { position: absolute; }          /* inset:0 → fills the phone (relative), not the 1440px viewport */
+
+  /* ── Phone FO project page (real gv-* components, sized for the 360px mobile view) ── */
+  .phone .pp-fo { font-family: var(--gv-font-family); color: var(--gv-text-primary, #1a1f2c); }
+  .phone .pp-fo__banner { height: 132px; background: linear-gradient(135deg, #6b8f71, #3f5d52 58%, #2b3b3a); }
+  .phone .pp-fo__pad { padding: 14px 16px 10px; }
+  .phone .pp-fo__cat { display: block; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; font-weight: 700; color: var(--gv-text-secondary, #596B7A); margin-bottom: 5px; }
+  .phone .pp-fo__title.gv-title { font-size: 20px; line-height: 1.2; margin: 0 0 10px; }
+  .phone .pp-fo__parts { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+  .phone .pp-fo__parts .gv-pcount { font-size: 12px; }
+  .phone .pp-fo__cta.gv-btn { width: 100%; justify-content: center; margin: 0 0 14px; }
+  .phone .pp-fo__desc { font-size: 13px; line-height: 1.5; margin: 0 0 14px; color: var(--gv-grey-800, #43515D); }
+  .phone .pp-fo__acc { margin: 0 0 16px; }
+  .phone .pp-fo .gv-acc__q { font-size: 13px; }
+  .phone .pp-fo .gv-acc__body p { font-size: 12.5px; line-height: 1.5; }
+  .phone .pp-fo__h2 { font-size: 15px; font-weight: 700; margin: 4px 0 10px; }
+  .phone .pp-fo__stepper { margin: 0 0 18px; }
+  .phone .pp-fo .gv-event-card { margin: 0 0 12px; }
+  .phone .pp-fo__evmedia { height: 96px; background: linear-gradient(135deg, #8aa0b8, #51698a); position: relative; }
+  .phone .pp-fo .gv-event-card__title { font-size: 14px; }
+  .phone .pp-fo .gv-event-card__row { font-size: 12px; }
   .rail-btn { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; color: rgba(255,255,255,.55); }
   .rail-btn:hover { color: #fff; }
   .rail-btn.active { background: rgba(0,0,0,.25); color: #fff; }
@@ -1553,110 +1573,9 @@
           </header>
 
           <!-- phone content -->
-          <div id="phone-scroller" class="px-4 pt-3 pb-5 overflow-y-auto" style="flex:1 1 auto; min-height:0;">
-            <!-- hero image -->
-            <div id="phone-hero" class="preview-hero mt-2 editable"></div>
-            <div id="phone-hero-empty" class="mt-2 ghost-slot tall" style="display:none;">
-              <svg class="nav-icon" style="width:18px;height:18px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              Add a header image
-            </div>
-
-            <!-- meta + title group -->
-            <div id="phone-titleblock" class="editable mt-4 pt-1">
-              <div class="text-[11px] tracking-widest text-gray-500 font-semibold">MOBILITY · 2026</div>
-              <h2 class="ttl text-[22px] font-bold leading-tight mt-1">Reimagine Meridian 2030</h2>
-            </div>
-            <div id="phone-titleblock-empty" class="mt-4 pt-1" style="display:none;">
-              <div class="ghost-slot" style="justify-content:flex-start;padding:14px;font-size:15px;font-weight:600;">
-                <svg class="nav-icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Add project title
-              </div>
-            </div>
-
-            <!-- avatars + caption -->
-            <div id="phone-avatars" class="flex items-center gap-2 mt-2">
-              <div class="flex -space-x-1.5">
-                <div class="w-5 h-5 rounded-full border border-white" style="background:linear-gradient(135deg,#fcd34d,#f59e0b);"></div>
-                <div class="w-5 h-5 rounded-full border border-white" style="background:linear-gradient(135deg,#5eead4,#0d9488);"></div>
-                <div class="w-5 h-5 rounded-full border border-white" style="background:linear-gradient(135deg,#fda4af,#e11d48);"></div>
-                <div class="w-5 h-5 rounded-full border border-white" style="background:linear-gradient(135deg,#c4b5fd,#7c3aed);"></div>
-              </div>
-              <span class="text-[12.5px] text-gray-500">38 participants</span>
-            </div>
-
-            <!-- description -->
-            <p id="phone-description" class="text-[13.5px] text-gray-700 leading-relaxed mt-3 editable">
-              Help shape how we move, cycle and gather in our city over the next four years. Your ideas feed directly into the plan.
-            </p>
-            <div id="phone-description-empty" class="ghost-slot mt-3" style="display:none;justify-content:flex-start;padding:14px;text-align:left;min-height:60px;">
-              <svg class="nav-icon" style="width:14px;height:14px;flex-shrink:0;align-self:flex-start;margin-top:1px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              <span style="flex:1;">Add a short description explaining what this project is about</span>
-            </div>
-
-            <!-- Upcoming events module (sits between description and Phases) -->
-            <div id="phone-events" class="mt-5 editable">
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="text-[17px] font-bold">Upcoming events</h3>
-                <button class="text-[12.5px] text-gray-500 hover:text-gray-700">See all</button>
-              </div>
-              <div class="space-y-2">
-                <div class="flex gap-3 p-2.5 border rounded-lg" style="border-color:#e5e7eb;background:#fff;">
-                  <div class="flex-shrink-0 w-11 text-center" style="padding-top:2px;">
-                    <div class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Jun</div>
-                    <div class="text-[18px] font-bold leading-tight text-gray-900">14</div>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="text-[13px] font-semibold text-gray-900 leading-tight">Mobility town hall</div>
-                    <div class="text-[11.5px] text-gray-500 mt-0.5">7:00 PM · Central Library</div>
-                  </div>
-                </div>
-                <div class="flex gap-3 p-2.5 border rounded-lg" style="border-color:#e5e7eb;background:#fff;">
-                  <div class="flex-shrink-0 w-11 text-center" style="padding-top:2px;">
-                    <div class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Jun</div>
-                    <div class="text-[18px] font-bold leading-tight text-gray-900">22</div>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="text-[13px] font-semibold text-gray-900 leading-tight">Cycling infrastructure walk</div>
-                    <div class="text-[11.5px] text-gray-500 mt-0.5">10:00 AM · Riverside Park</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Phases module (citizen-side timeline visual) -->
-            <div id="phone-phases" class="mt-5 editable">
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="text-[17px] font-bold">Phases</h3>
-                <div class="flex items-center gap-1">
-                  <button class="phase-arrow"><svg class="nav-icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
-                  <div class="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center"><span class="w-1.5 h-1.5 rounded-full bg-[#22a455]"></span></div>
-                  <button class="phase-arrow"><svg class="nav-icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
-                </div>
-              </div>
-
-              <!-- Chevron arrows showing phase sequence -->
-              <div class="phase-chevrons">
-                <div class="phase-chevron">1</div>
-                <div class="phase-chevron active">2</div>
-                <div class="phase-chevron">3</div>
-                <div class="phase-chevron">4</div>
-              </div>
-
-              <!-- Active phase detail -->
-              <div class="mt-4">
-                <div class="text-[15px] font-bold text-[#1e7c3a]">2. Collect ideas</div>
-                <div class="flex items-center gap-2 mt-1 text-[12.5px] text-gray-600">
-                  <span>31 May</span>
-                  <span class="w-3 h-px bg-gray-400"></span>
-                  <span>5 Jul</span>
-                </div>
-                <p class="text-[12.5px] text-gray-700 leading-relaxed mt-3">
-                  Share your ideas for how we move, cycle and gather. Your suggestions will be reviewed by the city team and shape what comes next.
-                </p>
-              </div>
-            </div>
-
-            <div class="h-6"></div>
+          <div id="phone-scroller" class="overflow-y-auto" style="flex:1 1 auto; min-height:0;">
+            <!-- Filled by renderPhone(state): ghost placeholders in the 'empty' state, or a
+                 real GoVocal mobile FO project page built from gv-* components in few/complex. -->
           </div>
         </div>
       </div>
@@ -2172,6 +2091,91 @@
   const _timelineCardOriginal = null;
   const _activitiesCardOriginal = null;
 
+  // ── Phone preview = a real GoVocal mobile FRONT-OFFICE project page, built from the
+  //    canonical gv-* components (hero, gv-title, gv-participants/gv-avatars, gv-btn CTA,
+  //    gv-projdesc, gv-accordion, gv-stepper phases, gv-event-card), themed via ?theme=.
+  //    'empty' = ghost build-it placeholders; 'few'/'complex' = light vs rich real project.
+  function phoneFO(state) {
+    const complex = state === 'complex';
+    const acc = (q, a, open) => `<details class="gv-acc__item"${open ? ' open' : ''} onclick="event.stopPropagation()">
+        <summary class="gv-acc__head"><span class="gv-acc__q">${q}</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
+        <div class="gv-acc__body"><p>${a}</p></div>
+      </details>`;
+    const ev = (m, d, title, time, place, icon, regs) => `<article class="gv-event-card pp-fo__event">
+        <div class="gv-event-card__media pp-fo__evmedia">
+          <span class="gv-event-card__date"><span class="m">${m}</span><span class="d">${d}</span><span class="y">2026</span></span>
+        </div>
+        <div class="gv-event-card__body">
+          <h3 class="gv-event-card__title"><a href="#">${title}</a></h3>
+          <div class="gv-event-card__meta">
+            <p class="gv-event-card__row"><span data-gv-icon="clock" aria-hidden="true"></span> ${time}</p>
+            <p class="gv-event-card__row"><span data-gv-icon="${icon}" aria-hidden="true"></span> ${place}</p>
+            <p class="gv-event-card__row"><span data-gv-icon="user" aria-hidden="true"></span> ${regs} registrants</p>
+          </div>
+          <a class="gv-btn primary full" href="#">Register</a>
+        </div>
+      </article>`;
+    const phases = complex
+      ? ['Pre-survey', 'Collect ideas', 'What we heard', 'Community vote', 'Common ground']
+      : ['Collect ideas', 'What we heard'];
+    const current = complex ? 1 : 0;
+    const stepper = phases.map((p, i) =>
+      `<button class="gv-phase${i === current ? ' current' : ''}" type="button"><span class="gv-pstep">${i + 1}</span><span class="gv-phase__label">${p}</span></button>`).join('');
+
+    return `
+      <div class="pp-fo">
+        <div class="pp-fo__banner"></div>
+        <div class="pp-fo__pad">
+          <span class="pp-fo__cat">Mobility · 2026</span>
+          <h1 class="gv-title pp-fo__title">${complex ? 'Reimagine Meridian 2030' : 'A greener Station Road'}</h1>
+          <div class="gv-participants pp-fo__parts">
+            <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
+            <span class="gv-pcount">${complex ? '342' : '38'} participants</span>
+          </div>
+          <a class="gv-btn primary full pp-fo__cta" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'}</a>
+          <p class="gv-projdesc pp-fo__desc">Help shape how we move, cycle and gather in our city${complex ? ' over the next four years — your ideas feed the mobility plan that goes to the council.' : '. Your ideas feed directly into the plan.'}</p>
+          <div class="gv-accordion pp-fo__acc">
+            ${acc('How will my idea be used?', 'Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.', true)}
+            ${complex ? acc('What can I suggest?', 'Anything within scope — seating, planting, traffic calming, lighting, cycle parking or how the space is used.', false) : ''}
+            ${complex ? acc('Who is running this project?', 'The City of Meridian engagement team, together with the mobility department.', false) : ''}
+          </div>
+          <h2 class="pp-fo__h2">Timeline</h2>
+          <div class="gv-stepper pp-fo__stepper">${stepper}</div>
+          <h2 class="pp-fo__h2">Upcoming events</h2>
+          ${ev('Jun', '14', 'Mobility town hall', '14 Jun · 19:00', 'Central Library', 'location-simple', '41')}
+          ${complex ? ev('Jul', '02', 'Neighbourhood design workshop', '2 Jul · 18:00', 'Meridian Civic Hall', 'location-simple', '57') : ''}
+        </div>
+      </div>`;
+  }
+
+  function renderPhone(state) {
+    const sc = document.getElementById('phone-scroller');
+    if (!sc) return;
+    if (state === 'empty') {
+      sc.innerHTML = `
+        <div class="px-4 pt-3 pb-5">
+          <div class="mt-2 ghost-slot tall">
+            <svg class="nav-icon" style="width:18px;height:18px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Add a header image
+          </div>
+          <div class="mt-4 pt-1">
+            <div class="ghost-slot" style="justify-content:flex-start;padding:14px;font-size:15px;font-weight:600;">
+              <svg class="nav-icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add project title
+            </div>
+          </div>
+          <div class="ghost-slot mt-3" style="justify-content:flex-start;padding:14px;text-align:left;min-height:60px;">
+            <svg class="nav-icon" style="width:14px;height:14px;flex-shrink:0;align-self:flex-start;margin-top:1px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span style="flex:1;">Add a short description explaining what this project is about</span>
+          </div>
+        </div>`;
+    } else {
+      sc.innerHTML = phoneFO(state);
+    }
+    if (window.GVIcons && GVIcons.render) GVIcons.render(sc);
+    if (window.GVAvatars && GVAvatars.fill) GVAvatars.fill(sc);
+  }
+
   function setProjectState(state, btn) {
     document.querySelectorAll('.state-chip button').forEach(b => b.classList.remove('on'));
     if (btn) btn.classList.add('on');
@@ -2179,45 +2183,17 @@
     const audienceNav = document.getElementById('audience-nav');
     const timelineCard = document.getElementById('timeline-card');
     const activitiesCard = document.getElementById('activities-card');
-    const phoneHero = document.getElementById('phone-hero');
-    const phoneHeroEmpty = document.getElementById('phone-hero-empty');
-    const phoneTitle = document.getElementById('phone-titleblock');
-    const phoneTitleEmpty = document.getElementById('phone-titleblock-empty');
-    const phoneAvatars = document.getElementById('phone-avatars');
-    const phoneDesc = document.getElementById('phone-description');
-    const phoneDescEmpty = document.getElementById('phone-description-empty');
-    const phonePhases = document.getElementById('phone-phases');
-    const phoneAskus = null;
-    const phoneEvents = document.getElementById('phone-events');
 
     // Reset audience visibility
     if (audienceNav) audienceNav.style.display = '';
 
-    // Reset phone fills vs skeletons
-    phoneHero.style.display = '';
-    phoneHeroEmpty.style.display = 'none';
-    phoneTitle.style.display = '';
-    phoneTitleEmpty.style.display = 'none';
-    phoneAvatars.style.display = '';
-    phoneDesc.style.display = '';
-    phoneDescEmpty.style.display = 'none';
-    phonePhases.style.display = '';
-    phoneEvents.style.display = '';
+    // Phone preview content is rebuilt per state: ghost placeholders for 'empty',
+    // a real GoVocal mobile FO project page (gv-* components) for 'few' / 'complex'.
+    renderPhone(state);
 
     if (state === 'empty') {
       // Hide audience until participants exist
       if (audienceNav) audienceNav.style.display = 'none';
-
-      // Phone goes to ghost-placeholder mode
-      phoneHero.style.display = 'none';
-      phoneHeroEmpty.style.display = 'flex';
-      phoneTitle.style.display = 'none';
-      phoneTitleEmpty.style.display = 'block';
-      phoneAvatars.style.display = 'none';
-      phoneDesc.style.display = 'none';
-      phoneDescEmpty.style.display = 'block';
-      phonePhases.style.display = 'none';
-      phoneEvents.style.display = 'none';
 
       // Empty Timeline section — worked example previewing 3 phases
       timelineCard.innerHTML = `
