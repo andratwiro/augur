@@ -1303,6 +1303,9 @@
 .gv-threshold__icon .gv-icon, .gv-threshold__icon svg { width: 20px; height: 20px; }
 .gv-threshold__count { font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-cool-grey-600); white-space: nowrap; }
 .gv-threshold__count b { font-size: var(--gv-fs-m); line-height: 24px; font-weight: 700; color: var(--gv-tenant-primary); }
+/* division-bar: the ' / ' separator is a dedicated span (real DOM .division-bar) carrying
+   its own surrounding spaces; inherits the regular count type — NOT the bold tenant colour. */
+.gv-threshold__sep { font-weight: 400; color: inherit; }
 .gv-threshold__bar { flex: 1 1 auto; height: 6px; border-radius: var(--gv-radius); background: var(--gv-grey-200); overflow: hidden; min-width: 90px; }
 .gv-threshold__fill { height: 100%; background: var(--gv-tenant-primary); }
 
