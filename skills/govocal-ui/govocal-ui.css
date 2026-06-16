@@ -1222,6 +1222,15 @@
    (and over-space every ideation feed), scope the +4px to lists that actually
    hold cause cards, leaving ideation/proposals on the source-true 16px. */
 .gv-idealist:has(.gv-cause) { gap: 20px; }
+/* Cause-card CTA placement — grounded fix (fo-project-volunteering dom.html).
+   In the real Raleigh/wietsedemo capture the sign-up button is NOT a third
+   top-level flex sibling pinned to the card's top-right; it is the LAST element
+   inside the body column, after the full description block (title -> count ->
+   all desc paragraphs -> button), left-aligned. So .gv-cause is a 2-column flex
+   (media + body) and .gv-cause__cta is a body child. These overrides take the
+   cta out of any column treatment and keep it left-aligned; the body's 10px gap
+   supplies the space above it. (Append-only override of the base rule above.) */
+.gv-cause__body > .gv-cause__cta { flex: 0 0 auto; align-self: flex-start; margin-top: 2px; }
 
 /* ── Survey participation band — full-width tenant-primary strip framing a survey
    CTA on the project page (div.sc-beqWaB.fAJdnP : bg tenant-primary, 20px pad,
