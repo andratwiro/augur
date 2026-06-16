@@ -40,10 +40,7 @@
     <!-- Shell = the reusable .gv-modal abstraction; .size-monitor pins the 460px card.
          Body = .gv-monitor intro + the new horizontal .gv-sentiment-scale. -->
     <div class="gv-modal-overlay is-open" id="monitor-overlay" data-modal-overlay>
-      <div class="gv-modal size-monitor" role="dialog" aria-modal="true" aria-labelledby="monitor-title">
-        <div class="gv-modal__header">
-          <h1 class="gv-modal__title" id="monitor-title">City at a glance</h1>
-        </div>
+      <div class="gv-modal size-monitor" role="dialog" aria-modal="true" aria-labelledby="monitor-q">
         <button class="gv-modal__close round" type="button" aria-label="Close window" data-close-modal>
           <svg viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
             <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L13.41,12L19,6.41Z"></path>
@@ -51,8 +48,6 @@
         </button>
 
         <div class="gv-modal__body">
-          <p class="gv-monitor__intro">This ongoing survey tracks how you feel about
-            governance and public services.</p>
           <p class="gv-monitor__question" id="monitor-q">City as a place to live</p>
 
           <div class="gv-sentiment-scale" role="group" aria-labelledby="monitor-q" data-monitor-scale>
@@ -71,11 +66,11 @@
               <span class="gv-sentiment-scale__cap">Poor</span>
             </button>
             <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
-                    aria-label="3 out of 5, Neither">
+                    aria-label="3 out of 5, Fair">
               <span class="gv-sentiment-scale__face is-emoji">
                 <span class="gv-sentiment-scale__glyph" aria-hidden="true">&#128528;</span>
               </span>
-              <span class="gv-sentiment-scale__cap">Neither</span>
+              <span class="gv-sentiment-scale__cap">Fair</span>
             </button>
             <button class="gv-sentiment-scale__opt" type="button" aria-pressed="false"
                     aria-label="4 out of 5, Good">
@@ -93,8 +88,16 @@
             </button>
           </div>
 
+          <p class="gv-monitor__intro">This ongoing survey tracks how you feel about
+            governance and public services.</p>
+
           <div class="gv-monitor__footer">
-            <span class="gv-monitor__count">195 participants</span>
+            <span class="gv-monitor__duration">
+              <svg viewBox="0 0 14 14" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                <path d="M7 13.667a6.492 6.492 0 0 1-2.6-.525 6.732 6.732 0 0 1-2.117-1.425A6.732 6.732 0 0 1 .857 9.6 6.492 6.492 0 0 1 .332 7c0-.922.175-1.789.525-2.6a6.732 6.732 0 0 1 1.425-2.117c.6-.6 1.306-1.075 2.117-1.425a6.492 6.492 0 0 1 2.6-.525c.922 0 1.789.175 2.6.525.81.35 1.516.825 2.116 1.425.6.6 1.075 1.306 1.425 2.117.35.811.525 1.678.525 2.6 0 .922-.175 1.789-.525 2.6a6.732 6.732 0 0 1-1.425 2.117c-.6.6-1.305 1.075-2.116 1.425a6.492 6.492 0 0 1-2.6.525Zm.633-7.184V3.667a.633.633 0 0 0-.184-.467A.633.633 0 0 0 7 3a.633.633 0 0 0-.466.2.633.633 0 0 0-.184.467V6.75c0 .089.017.172.05.25.034.078.084.15.15.217l2.134 2.133a.616.616 0 0 0 .458.183.642.642 0 0 0 .458-.183.633.633 0 0 0 .184-.467.633.633 0 0 0-.184-.466L7.633 6.483Z"/>
+              </svg>
+              <span>Takes 2 minutes</span>
+            </span>
           </div>
         </div>
       </div>

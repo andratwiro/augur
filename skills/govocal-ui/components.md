@@ -618,20 +618,22 @@ services as a **5-point emoji sentiment** linear scale. Grounded on wietsedemo
 
 ```html
 <div class="gv-modal-overlay is-open">
-  <div class="gv-modal size-monitor" role="dialog" aria-modal="true" aria-labelledby="cm-title">  <!-- 460px card -->
-    <div class="gv-modal__header"><h1 class="gv-modal__title" id="cm-title">City at a glance</h1></div>
+  <div class="gv-modal size-monitor" role="dialog" aria-modal="true" aria-labelledby="cm-q">  <!-- 460px card -->
+    <!-- No header title in the real modal — only the round close X. aria-labelledby → the question. -->
     <button class="gv-modal__close round" aria-label="Close window"><svg viewBox="0 0 24 24">…X…</svg></button>  <!-- round 46px variant -->
     <div class="gv-modal__body">
-      <p class="gv-monitor__intro">This ongoing survey tracks how you feel about governance and public services.</p>
-      <p class="gv-monitor__question" id="cm-q">City as a place to live</p>
+      <p class="gv-monitor__question" id="cm-q">City as a place to live</p>           <!-- heading, first -->
       <div class="gv-sentiment-scale" role="group" aria-labelledby="cm-q">
         <button class="gv-sentiment-scale__opt" aria-pressed="false" aria-label="1 out of 5, Very poor">
           <span class="gv-sentiment-scale__face"><svg viewBox="0 0 40 40">…face…</svg></span>
           <span class="gv-sentiment-scale__cap">Very poor</span>
         </button>
-        …options 2–5 (Poor / Neither / Good / Excellent)…
+        …options 2–5 (Poor / Fair / Good / Excellent)…
       </div>
-      <div class="gv-monitor__footer"><span class="gv-monitor__count">195 participants</span></div>
+      <p class="gv-monitor__intro">This ongoing survey tracks how you feel about governance and public services.</p>  <!-- intro below the scale -->
+      <div class="gv-monitor__footer">
+        <span class="gv-monitor__duration"><svg viewBox="0 0 14 14">…clock…</svg><span>Takes 2 minutes</span></span>
+      </div>
     </div>
   </div>
 </div>
