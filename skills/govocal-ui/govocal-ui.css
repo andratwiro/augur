@@ -874,7 +874,9 @@
    wrapper renders 369×123 (object-fit:cover, padding-top box) = exactly 3 / 1. */
 .gv-event-card__media { position: relative; aspect-ratio: 3 / 1; background: var(--gv-grey-300); color: #fff;
   display: grid; place-items: center; }
-.gv-event-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Absolute-fill so a portrait/odd source can't feed its intrinsic height into the
+   grid track and override aspect-ratio:3/1 — every card image crops to the same box. */
+.gv-event-card__media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .gv-event-card__media svg, .gv-event-card__media .gv-icon { width: 40px; height: 40px; }
 /* two-tone date chip, pinned top-right over the media */
 /* Grounded on fo-events digest (div.sc-lilDSw grey month/day + div.sc-jtdBMk
@@ -2441,4 +2443,39 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 
 @media (prefers-reduced-motion: reduce) {
   .gv-carousel__scroll { transition: none; }
+}
+
+/* ── CTA banner — full-width Content-Builder strip ──────────────────────────
+   A thin, full-bleed coloured strip carrying ONE centered call-to-action
+   button. Source-grounded on St Louis (stlouis.govocal.com, capture
+   fo-stlouis-cta-banner, tenant-primary #033D8B): the strip fill = the city's
+   --gv-tenant-primary; the CTA is GoVocal's real "Button" rendered as an <a>
+   (digest: bg #033D8B, padding 9px 18px, radius 3px, 14px/400, height 45px),
+   here a white .gv-btn.primary-inverse so it reads on the coloured fill.
+   Mounts as a CB block inside a .gv-cb-frame / .gv-cb-row.cols-1 cell.
+
+   DISTINCT from .gv-ctaband (transparent, centered title+lead+CTA, 720
+   measure) and .gv-monitorband (tinted 3-zone text/media/CTA flex card).
+   This is the bare coloured band whose only content is the button. Re-skins
+   per ?theme= via --gv-tenant-primary; override --gv-cta-banner-bg to pin a
+   one-off fill. */
+.gv-cta-banner {
+  width: 100%;
+  background: var(--gv-cta-banner-bg, var(--gv-tenant-primary));
+}
+.gv-cta-banner__inner {
+  max-width: var(--gv-cb-measure, 1200px);   /* same content measure as CB cells */
+  margin: 0 auto;
+  padding: 22px 24px;                          /* thin strip */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* The CTA wrapper mirrors the live e2e-cta-banner-button container — a
+   transparent centered flex box around the real <a> button. */
+.gv-cta-banner__cta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
 }
