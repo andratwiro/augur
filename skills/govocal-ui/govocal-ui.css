@@ -134,6 +134,11 @@
 .gv-account:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
 .gv-account .gv-nav__chev { width: 14px; height: 14px; color: var(--gv-grey-700); }
 /* .gv-avatar → moved to govocal-primitives.css (cross-surface atom). */
+/* Grounded (fo-account-dropdown digest, img.avatarImage = 38x38, border-radius 50%):
+   the header account avatar uses the .lg footprint. Reference it here so the account
+   control gets the 38px diameter without bumping the 32px base atom for everyone, and
+   without editing every page's markup. */
+.gv-account .gv-avatar { width: 38px; height: 38px; font-size: 15px; }
 
 /* Account control as a CSS-only dropdown: <details class="gv-nav__dd right
    gv-account-dd"> with a <summary class="gv-account"> (avatar + name + chevron)

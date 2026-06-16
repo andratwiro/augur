@@ -438,6 +438,10 @@ body.gv-root {
 }
 .gv-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gv-avatar.sm { width: 26px; height: 26px; font-size: 11px; }
+/* GROUNDED (fo-account-dropdown digest, img.avatarImage): the real signed-in header
+   avatar is 38x38px, border-radius 50%. .lg is that header footprint — a new size
+   variant, the 32px base atom is unchanged so existing consumers keep their size. */
+.gv-avatar.lg { width: 38px; height: 38px; font-size: 15px; }
 
 /* ── Avatar stack + count bubble ───────────────────────────────────────────────
    live banner: 38px avatars, the overflow count is a PERFECT CIRCLE the same size
