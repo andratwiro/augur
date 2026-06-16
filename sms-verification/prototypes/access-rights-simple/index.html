@@ -102,6 +102,16 @@
     .ar-act__sel { margin-left: auto; }
     .ar-mini { height: 36px; border: 1px solid var(--gv-grey-300); border-radius: 8px; padding: 0 30px 0 11px; font: 13.5px var(--gv-font-family); background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2351606b' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>") no-repeat right 9px center; -webkit-appearance: none; appearance: none; color: var(--gv-text-primary); cursor: pointer; }
 
+    /* group chips */
+    .ar-groups { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .ar-gchip { display: inline-flex; align-items: center; gap: 7px; border: 1.5px solid var(--gv-grey-300); border-radius: 20px; padding: 7px 13px 7px 11px; font-size: 13px; cursor: pointer; background: #fff; transition: border-color .12s, background .12s; }
+    .ar-gchip:hover { border-color: var(--gv-cool-grey-400, #9fb0bb); }
+    .ar-gchip.on { border-color: var(--gv-bo-primary, #044d6c); background: var(--gv-teal-50, #eef7f8); color: var(--gv-bo-primary, #044d6c); font-weight: 600; }
+    .ar-gchip__b { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--gv-grey-400); display: grid; place-items: center; color: #fff; }
+    .ar-gchip.on .ar-gchip__b { background: var(--gv-bo-primary, #044d6c); border-color: var(--gv-bo-primary, #044d6c); }
+    .ar-gchip__b .gv-icon { width: 11px; height: 11px; opacity: 0; }
+    .ar-gchip.on .ar-gchip__b .gv-icon { opacity: 1; }
+
     /* collect toggles */
     .ar-coll { display: flex; flex-direction: column; gap: 4px; }
     .ar-collrow { display: flex; align-items: center; gap: 12px; padding: 12px 2px; border-top: 1px solid var(--gv-grey-200); }
@@ -135,7 +145,9 @@
     .ar-flowcount.zero { color: #1a6b37; border-color: #bfe3cc; background: #ecf7f0; }
 
     .ar-flow { display: flex; flex-direction: column; gap: 0; }
-    .ar-fstep { display: flex; gap: 12px; padding-bottom: 16px; position: relative; }
+    .ar-fstep { display: flex; gap: 12px; padding-bottom: 16px; position: relative; animation: arStepIn .3s ease both; }
+    /* transform-only (no opacity fade) so step text never dips below contrast mid-animation */
+    @keyframes arStepIn { from { transform: translateY(6px); } to { transform: none; } }
     .ar-fstep:last-child { padding-bottom: 0; }
     .ar-fstep::before { content: ""; position: absolute; left: 13px; top: 28px; bottom: -2px; width: 2px; background: #d7dee4; }
     .ar-fstep:last-child::before { display: none; }
@@ -146,7 +158,7 @@
     .ar-fdot .gv-icon { width: 14px; height: 14px; }
     .ar-fmain { padding-top: 3px; }
     .ar-ft { font-size: 13.5px; font-weight: 600; line-height: 1.3; }
-    .ar-fd { font-size: 11.5px; color: #5a6b7a; margin-top: 2px; line-height: 1.4; }
+    .ar-fd { font-size: 11.5px; color: #51606b; margin-top: 2px; line-height: 1.4; }
     .ar-fstep.sms .ar-ft { color: #5b21b6; }
   </style>
 </head>
@@ -279,8 +291,11 @@
       perAction: false,
       actions: { submit:'all', comment:'all', react:'all', attend:'all' }, // all = same as phase
       collect: { name:false, password:false, questions:false },
+      limitGroups: false,
+      groups: [],
       advOpen: false
     };
+    var GROUPS = ['Verified residents', 'Homeowners', 'Youth council', 'Neighbourhood reps'];
 
     function needsVerify(){ return state.preset==='signin' || state.preset==='verified'; }
     function methodsOn(){ return ['email','sms','id'].filter(function(m){ return state.verify[m]; }); }
@@ -305,7 +320,8 @@
         var proof = m.length ? ('sign in and confirm with <b>'+ m.map(function(k){return VERIFY[k].t.toLowerCase();}).join(' + ') +'</b>') : 'just <b>sign in</b>';
         var who = state.preset==='verified' ? 'a verified resident' : 'anyone';
         s = 'Right now, '+who+' who can '+proof+' is able to <b>take part</b>'
-          + (state.perAction ? ', with a few actions set differently.' : '.');
+          + (state.perAction ? ', with a few actions set differently' : '')
+          + ((state.limitGroups && state.groups.length) ? ' — limited to <b>'+ state.groups.join(', ') +'</b>.' : '.');
       }
       $('#summary').innerHTML = s;
     }
@@ -364,6 +380,11 @@
           + '<div class="ar-collrow" style="border-top:0;padding-top:0"><div><div class="ar-collrow__t">Set rules per action</div><div class="ar-collrow__d">Submit, comment, like, attend — separately</div></div>'
           + '<label class="ar-tog"><input type="checkbox" id="perActionTog"'+(state.perAction?' checked':'')+'><span class="tk"></span></label></div>'
           + (state.perAction ? perActionList() : '')
+            /* limit to groups */
+          + '<div class="ar-sub" style="margin-top:18px"><b>Only certain people?</b> Normally everyone who meets the rules above can join. Limit it to specific groups (e.g. a verified-residents list) if this phase is invite-only.</div>'
+          + '<div class="ar-collrow" style="border-top:0;padding-top:0"><div><div class="ar-collrow__t">Limit to specific groups</div><div class="ar-collrow__d">Only listed groups can take part</div></div>'
+          + '<label class="ar-tog"><input type="checkbox" id="limitGroupsTog"'+(state.limitGroups?' checked':'')+'><span class="tk"></span></label></div>'
+          + (state.limitGroups ? groupsList() : '')
             /* what we collect */
           + '<div class="ar-sub" style="margin-top:18px"><b>What do we ask people for?</b> Only available when they sign in. Asking for less means more people finish.</div>'
           + collectList()
@@ -386,6 +407,15 @@
               + '<option value="signin"'+(val==='signin'?' selected':'')+'>Must sign in</option>'
               + '<option value="team"'+(val==='team'?' selected':'')+'>Staff only</option>'
               + '</select></span></div>';
+          }).join('')
+        + '</div>';
+    }
+
+    function groupsList(){
+      return '<div class="ar-groups">'
+        + GROUPS.map(function(g){
+            var on = state.groups.indexOf(g) >= 0;
+            return '<button class="ar-gchip'+(on?' on':'')+'" data-group="'+g+'"><span class="ar-gchip__b">'+icon('check')+'</span>'+g+'</button>';
           }).join('')
         + '</div>';
     }
@@ -448,7 +478,7 @@
         + f.steps.map(function(s,i){
             var cls = s.cls ? (' '+s.cls) : '';
             var dot = s.ic ? icon(s.ic) : (s.cls==='win'?icon('check'):(i+1));
-            return '<div class="ar-fstep'+cls+'"><span class="ar-fdot">'+dot+'</span>'
+            return '<div class="ar-fstep'+cls+'" style="animation-delay:'+(i*55)+'ms"><span class="ar-fdot">'+dot+'</span>'
               + '<span class="ar-fmain"><span class="ar-ft">'+s.t+'</span><span class="ar-fd">'+(s.d||'')+'</span></span></div>';
           }).join('')
         + '</div></div>';
@@ -477,6 +507,11 @@
       });
       var ah = $('#advHead'); if(ah) ah.onclick = function(){ state.advOpen = !state.advOpen; render(); };
       var pat = $('#perActionTog'); if(pat) pat.onchange = function(){ state.perAction = pat.checked; render(); };
+      var lgt = $('#limitGroupsTog'); if(lgt) lgt.onchange = function(){ state.limitGroups = lgt.checked; render(); };
+      document.querySelectorAll('[data-group]').forEach(function(b){
+        b.onclick = function(){ var g = b.getAttribute('data-group'); var i = state.groups.indexOf(g);
+          if(i<0) state.groups.push(g); else state.groups.splice(i,1); render(); };
+      });
       document.querySelectorAll('[data-act]').forEach(function(s){
         s.onchange = function(){ state.actions[s.getAttribute('data-act')] = s.value; renderSummary(); };
       });
