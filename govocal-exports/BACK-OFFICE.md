@@ -499,3 +499,39 @@ closed) before numeric build. Highest-value FO target once the session is restor
 2. Re-capture `r6-pe-map` authed → build the Map config panel.
 3. Build survey kit text/long-text/date/number field widgets (S3–S5).
 4. Pin optional checkpoints on the already-faithful Access/Notifications panels.
+
+## FINAL REPORT — Run 6 (overnight deep fidelity audit)
+
+Ended at a clean gate: **lint 0 · verify:all 127 green / 0 red** · deployed. Started 121
+green; +6 new checkpoints, 0 regressions. Every value digest- or source-grounded; nothing
+eyeballed. The loop self-corrected three times (false "dead" `--gv-border` fallback; the
+`--click` misattribution; the Description-tab "Content Builder" assumption).
+
+**Shipped & deployed (commits):**
+- `a49414b` FO phase-panel fidelity — `.gv-phasepanel` pad `30px 30px 35px`, `__name` lh 1.3,
+  dropped fabricated `letter-spacing:-0.01em` + redundant inline lh. +checkpoint phasepanel-name.
+- `f6b1e22` **NEW** BO Exports menu + bell notif flyout — `--gv-shadow-menu`, `.gv-bo-menu`/
+  `__item`/`.is-flyout`, `.gv-bo-notifflyout__*`, `.gv-badge.is-count`. +3 checkpoints.
+- `9005cb1` **NEW** BO new-project flow (`pages/bo-project-new/`) — `.gv-bo-templatecard` +
+  `.gv-bo-facetgroup`, template gallery + scratch reuse, wired from bo-projects. +2 checkpoints.
+- `9b1ca33` survey option-card selected ring → neutral `#767676` (S1; better a11y, real).
+- `9b...`/`748461d` hardened capture `--click` (wait-for-visible, text=/role=, graceful miss).
+- Description sub-tab built (was dead) — multiloc Quill RTE form, 100% reuse.
+
+**Confirmed already-faithful (no work needed, validated this run):** FO common-ground (the
+"36 hex" lint flag is a false positive — pol.is iframe + bespoke results panel); FO voting
+RESULTS bar (`color-mix` 25% + primary border, correctly themed); BO Phase-access-and-user-data
++ Notifications panels; survey kit across the 9 field types it covers.
+
+**Genuine gaps remaining (all BLOCKED on interactive `npm run capture -- … --login` — session
+expired mid-run; unattended can't re-auth):**
+- FO **voting cast-vote** — AddToBasketBox (V1) + sticky VotingCTABar (V2). Source-grounded
+  structure ready; needs a live OPEN budgeting-phase capture for numeric values. Highest value.
+- BO phase **Map** sub-tab (dead tab) — CustomMapConfigPage structure from source; values need authed capture.
+- Survey kit **text / long-text / date / number** field widgets (S3–S5) — buildable on reuse,
+  lower-grounded without a real field-type digest; do alongside a fresh survey-runner capture.
+- Minor: add `image` + `video` glyphs to `govocal-icons.js` (flagged by the RTE build).
+- Optional hardening: pin checkpoints on the already-faithful Access/Notifications panels.
+
+**To resume:** run `npm run capture -- "<any /admin url>" --login` once to refresh
+`scripts/capture/.auth/state.json`, then the backlog above is unblocked in priority order.
