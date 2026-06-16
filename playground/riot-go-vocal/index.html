@@ -14,9 +14,9 @@
       --faint:#9a978f;
       --line:#e0ddd6;
       --line-2:#cfccc3;
-      --gv:#0E7C86;        /* Go Vocal — teal */
+      --gv:#0E7C86;        /* Go Vocal — teal (residents) */
       --gv-soft:#e3efef;
-      --live:#D8492B;      /* live / now — coral-red */
+      --live:#D8492B;      /* live / now (council) */
       --live-soft:#f7e6e0;
       --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
       --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
@@ -24,82 +24,56 @@
     }
     *{box-sizing:border-box;}
     html,body{height:100%;}
-    body{
-      margin:0;background:var(--paper);color:var(--ink);
-      font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden;
-    }
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden;}
     .deck{position:fixed;inset:0;}
-    .slide{
-      position:absolute;inset:0;display:none;
-      padding:clamp(40px,7vh,88px) clamp(28px,7vw,96px);opacity:0;
-      animation:fade .42s ease both;
-    }
+    .slide{position:absolute;inset:0;display:none;padding:clamp(40px,7vh,88px) clamp(28px,7vw,96px);opacity:0;animation:fade .42s ease both;}
     .slide.active{display:flex;flex-direction:column;justify-content:center;opacity:1;}
     @keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
     .inner{width:100%;max-width:var(--maxw);margin:0 auto;}
 
     .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:0 0 22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
     .eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--line-2);}
-    h1{font-size:clamp(36px,6vw,72px);line-height:1;letter-spacing:-.03em;margin:0 0 24px;font-weight:680;}
-    h2{font-size:clamp(27px,4vw,46px);line-height:1.06;letter-spacing:-.02em;margin:0 0 24px;font-weight:660;}
-    .lead{font-size:clamp(17px,2vw,22px);line-height:1.5;color:var(--muted);margin:0 0 16px;max-width:40em;}
+    h1{font-size:clamp(38px,6.2vw,76px);line-height:1;letter-spacing:-.03em;margin:0 0 26px;font-weight:680;}
+    h2{font-size:clamp(28px,4vw,46px);line-height:1.06;letter-spacing:-.02em;margin:0 0 26px;font-weight:660;}
+    .lead{font-size:clamp(18px,2.1vw,23px);line-height:1.45;color:var(--muted);margin:0;max-width:32em;}
     .lead.ink{color:var(--ink);}
     strong{font-weight:640;color:var(--ink);}
-    .gv-w{color:var(--gv);font-weight:640;}
-    .live-w{color:var(--live);font-weight:640;}
-    .big{font-size:clamp(23px,3vw,34px);line-height:1.26;letter-spacing:-.015em;font-weight:480;color:var(--ink);max-width:22em;}
-    .big em{font-style:normal;color:var(--live);font-weight:640;}
-    .big .gvem{color:var(--gv);font-weight:640;}
-
-    /* bullets */
-    ul.points{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:18px;}
-    ul.points li{position:relative;padding-left:30px;font-size:clamp(15px,1.7vw,18px);line-height:1.5;color:var(--muted);max-width:40em;}
-    ul.points li::before{content:"";position:absolute;left:2px;top:.62em;width:8px;height:8px;border:1.5px solid var(--line-2);border-radius:50%;}
-    ul.points li b{display:block;color:var(--ink);font-weight:620;font-size:1.02em;margin-bottom:3px;}
-
-    ol.num{list-style:none;counter-reset:n;padding:0;margin:10px 0 0;display:grid;gap:18px;}
-    ol.num li{counter-increment:n;position:relative;padding-left:46px;font-size:clamp(15px,1.7vw,18px);line-height:1.45;color:var(--muted);max-width:40em;}
-    ol.num li::before{content:counter(n);position:absolute;left:0;top:-3px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);}
-    ol.num li b{color:var(--ink);font-weight:620;}
 
     /* three-state cards */
-    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;}
-    .card{background:#fcfbf9;border:1px solid var(--line);border-radius:13px;padding:22px 20px;}
-    .card .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:6px;}
+    .card{background:#fcfbf9;border:1px solid var(--line);border-radius:13px;padding:24px 22px;}
+    .card .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:14px;display:flex;align-items:center;gap:7px;}
     .card.now{background:var(--live-soft);border-color:#eccdc3;}
     .card.now .k{color:var(--live);}
-    .card h3{margin:0 0 8px;font-size:18px;letter-spacing:-.01em;font-weight:640;}
-    .card p{margin:0;font-size:14.5px;line-height:1.48;color:var(--muted);}
+    .card h3{margin:0 0 9px;font-size:19px;letter-spacing:-.01em;font-weight:640;}
+    .card p{margin:0;font-size:15px;line-height:1.45;color:var(--muted);}
     .livedot{width:7px;height:7px;border-radius:50%;background:var(--live);animation:pulse 1.6s ease-in-out infinite;}
     @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.35;transform:scale(.8);}}
 
-    /* split screen — the live moment */
-    .split{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden;}
-    .split .pane{padding:24px 24px;}
+    /* the live moment — split */
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:8px;border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+    .split .pane{padding:26px 26px;}
     .split .pane.res{background:var(--gv-soft);}
     .split .pane.pol{background:#fff;border-left:1px solid var(--line);}
     .split .who{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
     .split .res .who{color:var(--gv);}
     .split .pol .who{color:var(--live);}
-    .split h3{margin:0 0 12px;font-size:18px;letter-spacing:-.01em;}
-    .split p{margin:0;font-size:14.5px;line-height:1.48;color:var(--muted);}
-    /* reaction chips */
-    .chips{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+    .split h3{margin:0 0 8px;font-size:20px;letter-spacing:-.01em;font-weight:640;}
+    .split p{margin:0;font-size:14.5px;line-height:1.45;color:var(--muted);}
+    .chips{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
     .chip{background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:8px;}
     .chip .v{font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;}
     .chip .v.for{background:var(--gv-soft);color:var(--gv);}
     .chip .v.no{background:var(--live-soft);color:var(--live);}
-    /* pulse gauge */
-    .gauge{margin-top:16px;}
+    .gauge{margin-top:18px;}
     .gauge .lbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--faint);margin-bottom:7px;}
     .bar{height:34px;border-radius:8px;overflow:hidden;display:flex;border:1px solid var(--line);}
     .bar .seg{display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;}
     .bar .for{background:var(--gv);} .bar .uns{background:#c8c5bd;color:#5a584f;} .bar .ag{background:var(--live);}
-    .gauge .cap{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.4;}
 
     /* concept → feature mapping */
-    .map{display:grid;gap:11px;margin-top:6px;}
-    .maprow{display:grid;grid-template-columns:1fr auto 1.2fr;align-items:center;gap:14px;border:1px solid var(--line);border-radius:10px;background:#fcfbf9;padding:13px 16px;}
+    .map{display:grid;gap:11px;margin-top:4px;}
+    .maprow{display:grid;grid-template-columns:1fr auto 1.2fr;align-items:center;gap:14px;border:1px solid var(--line);border-radius:10px;background:#fcfbf9;padding:14px 16px;}
     .maprow .c{font-size:15px;font-weight:600;color:var(--ink);}
     .maprow .arr{color:var(--line-2);font-size:15px;}
     .maprow .f{font-size:14px;color:var(--gv);font-weight:600;}
@@ -107,19 +81,20 @@
     .maprow.new{background:var(--live-soft);border-color:#eccdc3;}
     .maprow.new .f{color:var(--live);}
 
-    /* two-sided */
-    .two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px;}
-    .side{border:1px solid var(--line);border-radius:13px;padding:24px 22px;background:#fcfbf9;}
-    .side.pol{background:var(--live-soft);border-color:#eccdc3;}
-    .side .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:12px;}
-    .side.pol .k{color:var(--live);}
-    .side.res .k{color:var(--gv);}
-    .side h3{margin:0 0 10px;font-size:20px;letter-spacing:-.01em;}
-    .side p{margin:0;font-size:15px;line-height:1.5;color:var(--muted);}
+    /* bullets */
+    ul.points{list-style:none;padding:0;margin:6px 0 0;display:grid;gap:18px;}
+    ul.points li{position:relative;padding-left:30px;font-size:clamp(15px,1.7vw,18px);line-height:1.45;color:var(--muted);max-width:38em;}
+    ul.points li::before{content:"";position:absolute;left:2px;top:.6em;width:8px;height:8px;border:1.5px solid var(--line-2);border-radius:50%;}
+    ul.points li b{color:var(--ink);font-weight:620;}
+    ul.points li code{font-family:var(--mono);font-size:.85em;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:4px;}
 
-    .note{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:22px;line-height:1.5;border-left:2px solid var(--line-2);padding-left:14px;max-width:44em;}
+    ol.num{list-style:none;counter-reset:n;padding:0;margin:6px 0 0;display:grid;gap:20px;}
+    ol.num li{counter-increment:n;position:relative;padding-left:46px;font-size:clamp(15px,1.7vw,19px);line-height:1.4;color:var(--ink);max-width:38em;}
+    ol.num li::before{content:counter(n);position:absolute;left:0;top:-3px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);}
 
-    .kicker{font-size:clamp(28px,4.4vw,54px);line-height:1.07;letter-spacing:-.025em;font-weight:660;max-width:16em;margin:0 0 24px;}
+    .note{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:24px;line-height:1.5;border-left:2px solid var(--line-2);padding-left:14px;max-width:42em;}
+
+    .kicker{font-size:clamp(30px,4.6vw,56px);line-height:1.06;letter-spacing:-.025em;font-weight:660;max-width:15em;margin:0 0 24px;}
     .kicker em{font-style:normal;color:var(--live);}
 
     /* chrome */
@@ -132,9 +107,9 @@
     .nav button:hover{background:#fff;border-color:var(--ink);}
     .nav button:disabled{opacity:.32;cursor:default;}
     @media(max-width:760px){
-      .cards,.two,.split{grid-template-columns:1fr;}
+      .cards,.split{grid-template-columns:1fr;}
       .split .pane.pol{border-left:none;border-top:1px solid var(--line);}
-      .maprow{grid-template-columns:1fr;gap:4px;text-align:left;}
+      .maprow{grid-template-columns:1fr;gap:4px;}
       .maprow .arr{display:none;}
       .nav,.meta{display:none;}
     }
@@ -144,24 +119,16 @@
   <div class="progress" id="progress"></div>
   <div class="deck" id="deck">
 
-    <!-- 1 — Title -->
+    <!-- 1 — Title + thesis -->
     <section class="slide active">
       <div class="inner">
         <p class="eyebrow">A concept sketch <span class="dot"></span> for Irene <span class="dot"></span> June 2026</p>
-        <h1>The council,<br>live.</h1>
-        <p class="lead ink" style="max-width:33em;">A new destination in Go Vocal that plugs residents straight into their council — catch up on what was decided, shape what's being decided right now, and see what's next.</p>
+        <h1>The council, live.</h1>
+        <p class="lead ink">One place that connects residents to their council — and lets the room hear the city while it votes.</p>
       </div>
     </section>
 
-    <!-- 2 — The idea -->
-    <section class="slide">
-      <div class="inner">
-        <p class="eyebrow">The whole idea</p>
-        <p class="big">One place where residents and their council meet — and where, for the first time, the room can hear the city <em>while it votes.</em></p>
-      </div>
-    </section>
-
-    <!-- 3 — Three states -->
+    <!-- 2 — Past / Live / Upcoming -->
     <section class="slide">
       <div class="inner">
         <p class="eyebrow">What residents get</p>
@@ -170,32 +137,32 @@
           <div class="card">
             <div class="k">Past</div>
             <h3>Catch up</h3>
-            <p>Plain-language summaries of every past session. What was decided, the gist of the debate, linked to the record.</p>
+            <p>Plain-language recaps of past sessions, linked to the record.</p>
           </div>
           <div class="card now">
             <div class="k"><span class="livedot"></span> Live now</div>
             <h3>Have your say</h3>
-            <p>The session happening right now. React as it unfolds — your voice counts while the vote is still open.</p>
+            <p>The session happening now. Weigh in while the vote's still open.</p>
           </div>
           <div class="card">
             <div class="k">Upcoming</div>
             <h3>Know what's next</h3>
-            <p>The next sessions and what's on the agenda. Follow a topic, get a reminder, show up.</p>
+            <p>What's on the agenda. Follow it, get reminded.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 4 — The live moment -->
+    <!-- 3 — The live moment -->
     <section class="slide">
       <div class="inner">
         <p class="eyebrow">The powerful part</p>
-        <h2>The room hears the city, in real time.</h2>
+        <h2>The room hears the city — as it votes.</h2>
         <div class="split">
           <div class="pane res">
             <div class="who">▲ Residents · at home</div>
-            <h3>React as it's debated</h3>
-            <p>As the plenary discusses an item, verified residents weigh in live — for, against, with a reason.</p>
+            <h3>A real voice, while it counts</h3>
+            <p>As the plenary debates, verified residents weigh in live.</p>
             <div class="chips">
               <div class="chip"><span class="v for">FOR</span> “Finally — fix the night buses.”</div>
               <div class="chip"><span class="v no">AGAINST</span> “Not at this cost.”</div>
@@ -204,100 +171,78 @@
           </div>
           <div class="pane pol">
             <div class="who"><span class="livedot"></span> On the bench · live</div>
-            <h3>Read the city's pulse</h3>
-            <p>Councillors see where the city stands on the item in front of them — at the moment they vote.</p>
+            <h3>The pulse, as you vote</h3>
+            <p>Councillors see where the city stands on the item in front of them.</p>
             <div class="gauge">
               <div class="lbl"><span>LIVE · 2,140 residents</span><span>agenda item 4</span></div>
               <div class="bar">
-                <div class="seg for" style="width:58%">58%</div>
+                <div class="seg for" style="width:58%">For 58%</div>
                 <div class="seg uns" style="width:13%">13</div>
                 <div class="seg ag" style="width:29%">29%</div>
               </div>
-              <div class="cap">For · Unsure · Against — updating as the debate runs.</div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 5 — Two-sided value -->
+    <!-- 4 — Most already ships -->
     <section class="slide">
       <div class="inner">
-        <p class="eyebrow">Why it matters</p>
-        <h2>Two things at once.</h2>
-        <div class="two">
-          <div class="side res">
-            <div class="k">For residents</div>
-            <h3>A real voice, while it counts</h3>
-            <p>A legitimate, verified way to be heard <strong>while the decision is still open</strong> — not a survey weeks later. Taking to the streets, digitally.</p>
-          </div>
-          <div class="side pol">
-            <div class="k">For councillors</div>
-            <h3>The pulse, as you vote</h3>
-            <p>A real-time read of the people you serve, at the exact moment it matters. A live feel for the room beyond it.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 6 — It mostly exists -->
-    <section class="slide">
-      <div class="inner">
-        <p class="eyebrow">How much is actually new</p>
-        <h2>Most of the parts already ship.</h2>
+        <p class="eyebrow">How much is new</p>
+        <h2>Most of it already ships.</h2>
         <div class="map">
-          <div class="maprow"><div class="c">Population pulse</div><div class="arr">→</div><div class="f">Community Monitor <span>· Health Score, Live Monitor — today quarterly, we make it live</span></div></div>
-          <div class="maprow"><div class="c">Live participation</div><div class="arr">→</div><div class="f">Online Workshop + Common Ground <span>· real-time, quick agree/disagree</span></div></div>
+          <div class="maprow"><div class="c">Population pulse</div><div class="arr">→</div><div class="f">Community Monitor <span>· today quarterly — we make it live</span></div></div>
+          <div class="maprow"><div class="c">Live participation</div><div class="arr">→</div><div class="f">Online Workshop + Common Ground</div></div>
           <div class="maprow"><div class="c">Past-session recaps</div><div class="arr">→</div><div class="f">AI Sensemaking <span>· plain language, source-linked</span></div></div>
-          <div class="maprow"><div class="c">One resident, one voice</div><div class="arr">→</div><div class="f">Verified identity <span>· FranceConnect, ID Austria, BOSA…</span></div></div>
-          <div class="maprow"><div class="c">Sessions</div><div class="arr">→</div><div class="f">Events <span>· dates, RSVP, reminders, a public page</span></div></div>
-          <div class="maprow new"><div class="c">The live, bench-side view</div><div class="arr">→</div><div class="f">Genuinely new — no councillor surface exists today</div></div>
+          <div class="maprow"><div class="c">One resident, one voice</div><div class="arr">→</div><div class="f">Verified identity <span>· FranceConnect, ID Austria…</span></div></div>
+          <div class="maprow"><div class="c">Sessions</div><div class="arr">→</div><div class="f">Events <span>· dates, RSVP, reminders</span></div></div>
+          <div class="maprow new"><div class="c">The live, bench-side view</div><div class="arr">→</div><div class="f">Genuinely new — no councillor surface today</div></div>
         </div>
       </div>
     </section>
 
-    <!-- 7 — Where it lives -->
+    <!-- 5 — Where it lives -->
     <section class="slide">
       <div class="inner">
         <p class="eyebrow">In the product</p>
-        <h2>A new destination — not a project.</h2>
+        <h2>A destination, not a project.</h2>
         <ul class="points">
-          <li><b>A “Council” item in the navbar.</b> Its own standing page at <code>/council</code> — not a project, not a phase. A place that's always there.</li>
-          <li><b>Each plenary is an Event.</b> Date, agenda, a public page, reminders — reusing what Go Vocal already does for events.</li>
-          <li><b>Verified sign-in gates the live vote.</b> Real residents, one voice each — the identity stack already guarantees it.</li>
+          <li><b>A “Council” item in the navbar</b>, at <code>/council</code> — always there.</li>
+          <li><b>Each plenary is an Event</b> — date, agenda, reminders.</li>
+          <li><b>Verified sign-in gates the live vote</b> — one resident, one voice.</li>
         </ul>
-        <p class="note">Note: “Space” is already an internal Go Vocal term (an admin feature in development), so I'd name this resident-facing thing “Council,” not a “space.”</p>
+        <p class="note">“Space” is already taken in Go Vocal (an admin feature in development) — so this is the “Council,” not a space.</p>
       </div>
     </section>
 
-    <!-- 8 — Honest hard parts -->
+    <!-- 6 — What's hard -->
     <section class="slide">
       <div class="inner">
         <p class="eyebrow">Clear-eyed</p>
         <h2>What's actually hard.</h2>
         <ul class="points">
-          <li><b>True real-time at plenary scale is a build.</b> Today only Online Workshop is genuinely live; the rest refresh. Live-while-voting needs real infrastructure.</li>
-          <li><b>No councillor role exists yet.</b> Go Vocal has admins and managers — not elected officials. The bench-side view is net-new.</li>
-          <li><b>Connecting each council is real work.</b> Agenda, record, calendar — wired per chamber, not per tenant.</li>
+          <li><b>Real-time at scale is a build.</b> Only Online Workshop is truly live today; the rest refresh.</li>
+          <li><b>No councillor role exists.</b> The bench-side view is net-new.</li>
+          <li><b>Each council is wired by hand</b> — agenda, record, calendar.</li>
         </ul>
       </div>
     </section>
 
-    <!-- 9 — Where to start -->
+    <!-- 7 — Where to start -->
     <section class="slide">
       <div class="inner">
         <p class="eyebrow">The first test</p>
         <h2>One council, one live session.</h2>
         <ol class="num">
-          <li>Pick a council already on Go Vocal with a public agenda and record.</li>
-          <li>Ship the destination: past summaries, one live session, what's upcoming.</li>
-          <li>Put a tablet on the bench — give councillors the live pulse during one real plenary.</li>
-          <li>Ask: did being heard in real time change anything — for residents, for the vote?</li>
+          <li>Pick a council already on Go Vocal with a public agenda.</li>
+          <li>Ship it: past recaps, one live session, what's upcoming.</li>
+          <li>Put a tablet on the bench for one real plenary — and watch what changes.</li>
         </ol>
       </div>
     </section>
 
-    <!-- 10 — Close -->
+    <!-- 8 — Close -->
     <section class="slide">
       <div class="inner">
         <p class="eyebrow">In one line</p>
@@ -309,7 +254,7 @@
   </div>
 
   <div class="meta">The council, live — Go Vocal concept</div>
-  <div class="counter"><b id="cur">1</b> / <span id="tot">10</span></div>
+  <div class="counter"><b id="cur">1</b> / <span id="tot">8</span></div>
   <div class="nav">
     <button id="prev" aria-label="Previous">←</button>
     <button id="next" aria-label="Next">→</button>
