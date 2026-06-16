@@ -145,6 +145,12 @@
 .gv-account-dd > summary.gv-account::-webkit-details-marker { display: none; }
 .gv-account-dd[open] > summary.gv-account { background: var(--gv-grey-100); }
 .gv-account-dd[open] > summary .gv-nav__chev { transform: rotate(180deg); }
+/* Grounded fidelity (fo-account-dropdown dom: button.intercom-user-menu-button =
+   username SPAN + avatar IMG, no caret). The live user-menu toggle carries NO
+   visible chevron; the caret lives only on the separate language switcher (.gv-lang).
+   Hide it canonically so every FO consumer's account summary matches — markup may
+   still carry the .gv-nav__chev svg, this just removes it from the account control. */
+.gv-account .gv-nav__chev { display: none; }
 
 /* Language switcher — compact text button (EN ▾) opening a dropdown */
 .gv-lang {
