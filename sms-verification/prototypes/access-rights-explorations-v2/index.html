@@ -305,6 +305,23 @@
     .t5-when button.on { background:#fff; color:var(--t5text); box-shadow:0 1px 2px rgba(0,0,0,.1); }
     .t5-link { background:none; border:0; color:var(--t5text); font:600 13px/1 inherit; cursor:pointer; padding:0; }
 
+    /* ── persona-critique improvements ─────────────────────────────────── */
+    .t2-setall { display:block; width:calc(100% - 32px); margin:12px 16px 4px; padding:11px; border:0; border-radius:9px;
+      background:#e5f4ff; color:#0a6cb8; font:700 13px/1 inherit; cursor:pointer; text-align:center; }
+    .t2-setall:hover { background:#d3ecff; }
+    .t2-tip { margin:12px 16px 4px; padding:10px 12px; background:#f0fbf2; border:1px solid #cdebd3; border-radius:9px; font-size:12px; color:#1a7a36; line-height:1.45; }
+    .t3-tip { max-width:720px; margin:-10px 0 18px; font-size:13px; color:#59636e; background:#f6f8fa; border:1px solid #eaeef2; border-radius:8px; padding:10px 13px; }
+    .t4-glance { display:flex; flex-wrap:wrap; gap:6px; padding:0 16px 12px; }
+    .t4-glance span { font-size:11px; color:#6b6b70; background:#f2f2f7; border-radius:6px; padding:4px 9px; cursor:pointer; }
+    .t4-glance span.on { background:var(--t4text); color:#fff; }
+    .t4-glance b { font-weight:600; }
+    .t5-plain { margin:2px 0 14px; padding:11px 13px; background:#eef6ff; border:1px solid #cfe4fb; border-radius:10px; font-size:13.5px; color:#15324a; line-height:1.45; }
+    .t5-plain b { color:#0d63b0; font-weight:700; }
+    /* switcher rank medals */
+    .v2-switch__btn { position:relative; }
+    .v2-switch__btn .medal { position:absolute; top:-8px; right:-6px; font-size:12px; line-height:1; filter:drop-shadow(0 1px 1px rgba(0,0,0,.45)); }
+    .v2-switch__btn.ranked { box-shadow:0 0 0 2px #f5c451; }
+
     @media (max-width:880px){
       .t4-grid,.t5-build { grid-template-columns:1fr; }
       .t2-app { grid-template-columns:1fr; }
@@ -675,6 +692,8 @@
     const insp=el('<div class="t2-insp"></div>');
     const selName = t2sel.length===1 ? ACT[t2sel[0]].label : t2sel.length+' actions selected';
     insp.appendChild(el('<div class="t2-selhd"><span>🎚️</span>'+selName+'</div>'));
+    if(t2sel.length<4){ const ba=el('<button class="t2-setall">▸ Set one rule for all 4 actions at once</button>'); ba.onclick=()=>{ t2sel=ACTIONS.map(a=>a.key); render(); }; insp.appendChild(ba); }
+    else insp.appendChild(el('<div class="t2-tip">✓ Editing all 4 — change one thing and it applies everywhere. Click a single action on the left to fine-tune just that one.</div>'));
 
     // Access section
     const acc=el('<div class="t2-isec"></div>');
@@ -774,7 +793,8 @@
   function renderT3(){
     const root=el('<div class="t3 v2-pad"></div>');
     root.appendChild(el('<span class="v2-credit">◆ Modeled on <b>GitHub → Branch protection rules</b></span>'));
-    root.appendChild(el('<div class="v2-intro"><h2>Protect each action with rules</h2><p>Every action is open by default. Add requirements to protect it — stack as many as you need. The more you add, the stronger the gate.</p></div>'));
+    root.appendChild(el('<div class="v2-intro"><h2>Protect each action with rules</h2><p>Every action is open by default. Add requirements to protect it — stack as many as you need.</p></div>'));
+    root.appendChild(el('<div class="t3-tip">💡 Think of each card as a checklist: tick what someone must do before they\'re allowed in. Nothing ticked = open to anyone.</div>'));
 
     ACTIONS.forEach(act=>{
       const a=state.actions[act.key];
@@ -796,7 +816,7 @@
 
       if(a.level==='signin'){
         const checks=el('<div class="t3-checks"></div>');
-        checks.appendChild(el('<div style="font-size:12px;font-weight:700;color:#59636e;margin-bottom:4px">REQUIRE BEFORE THEY CAN '+act.verb.toUpperCase()+'</div>'));
+        checks.appendChild(el('<div style="font-size:13px;font-weight:600;color:#1f2328;margin-bottom:6px">Before someone can '+act.verb+', they must…</div>'));
         // email/sms always optional checks; sign-in itself is implied
         ['email','sms','id'].forEach(m=>{
           const on=a.verify[m];
@@ -871,6 +891,10 @@
     const bar=el('<div class="t4-actbar"></div>');
     ACTIONS.forEach(act=>{ const b=el('<button'+(t4act===act.key?' class="on"':'')+'>'+act.em+' '+act.label+'</button>'); b.onclick=()=>{ t4act=act.key; render(); }; bar.appendChild(b); });
     ctrl.appendChild(bar);
+    const glance=el('<div class="t4-glance"></div>');
+    ACTIONS.forEach(act=>{ const av=state.actions[act.key]; const lab= av.level==='signin'?(proofText(av)||'sign-in'):LEVEL[av.level].t;
+      const g=el('<span'+(t4act===act.key?' class="on"':'')+'><b>'+act.em+' '+act.label+'</b> · '+lab+'</span>'); g.onclick=()=>{ t4act=act.key; render(); }; glance.appendChild(g); });
+    ctrl.appendChild(glance);
     const a=state.actions[t4act];
 
     const g1=el('<div class="t4-grp"></div>');
@@ -974,6 +998,15 @@
      TAKE 5 — AUDIENCE BUILDER  (Intercom segment / Stripe Radar rules)
      ════════════════════════════════════════════════════════════════════════ */
   let t5act='submit';
+  function t5plain(a){
+    if(a.level==='staff') return 'only staff can '+ACT[t5act].verb+' — residents can\'t.';
+    if(a.level==='anyone') return 'anyone can '+ACT[t5act].verb+', no account needed.';
+    const m=methodsOf(a); const bits=[];
+    m.forEach(k=> bits.push(k==='id'?(a.verify.idRecent?'a recent ID check':'an ID check'):METHODS[k].short.toLowerCase()+' confirmed'));
+    let s='a signed-in resident'+(bits.length?' with '+bits.join(' and '):'');
+    if(a.groups.length) s+=', who is in '+a.groups.join(' or ');
+    return s+' can '+ACT[t5act].verb+'.';
+  }
   function renderT5(){
     const root=el('<div class="t5 v2-pad"></div>');
     root.appendChild(el('<span class="v2-credit">◆ Modeled on <b>Intercom → Audience builder</b> · Stripe Radar rules</span>'));
@@ -994,6 +1027,7 @@
     const match=el('<div class="t5-matchln">Let people <b>&nbsp;'+ACT[t5act].verb+'&nbsp;</b> if they match</div>');
     const dd=el('<select class="t5-sel"><option>ALL</option><option>ANY</option></select>');
     match.appendChild(dd); match.appendChild(el('<span>of these rules:</span>')); card.appendChild(match);
+    card.appendChild(el('<div class="t5-plain"><b>In plain words:</b> '+t5plain(a)+'</div>'));
 
     // base rule: sign-in / anyone / staff
     const baseSel=el('<div class="t5-rule"><span class="t5-rule__attr">Account</span></div>');
@@ -1072,18 +1106,19 @@
 
   /* ───────────────────────── registry + switcher ───────────────────────── */
   const TAKES=[
-    {n:'Share menu', tag:'Share menu · Google Docs / Notion', r:renderT1},
-    {n:'Inspector',  tag:'Properties inspector · Figma',      r:renderT2},
+    {n:'Share menu', tag:'Share menu · Google Docs / Notion', r:renderT1, rank:2},
+    {n:'Inspector',  tag:'Properties inspector · Figma',      r:renderT2, rank:1},
     {n:'Protection', tag:'Branch protection · GitHub',         r:renderT3},
     {n:'Privacy label', tag:'App privacy label · Apple',       r:renderT4},
-    {n:'Audience',   tag:'Audience builder · Intercom',        r:renderT5},
+    {n:'Audience',   tag:'Audience builder · Intercom',        r:renderT5, rank:3},
   ];
+  const MEDAL={1:'🥇',2:'🥈',3:'🥉'};
   let cur=0;
   function render(){ closePop(); if(t5pop){t5pop.remove();t5pop=null;} stage.innerHTML=''; stage.appendChild(TAKES[cur].r()); if(window.GVIcons) window.GVIcons.render(stage); }
 
-  const sw=el('<div class="v2-switch"><span class="v2-switch__cap"></span><div class="v2-switch__dots">'+TAKES.map((t,i)=>'<button class="v2-switch__btn" data-go="'+i+'" title="'+t.tag+'">'+(i+1)+'</button>').join('')+'</div></div>');
+  const sw=el('<div class="v2-switch"><span class="v2-switch__cap"></span><div class="v2-switch__dots">'+TAKES.map((t,i)=>'<button class="v2-switch__btn'+(t.rank?' ranked':'')+'" data-go="'+i+'" title="'+t.tag+(t.rank?' · ranked #'+t.rank:'')+'">'+(i+1)+(t.rank?'<span class="medal">'+MEDAL[t.rank]+'</span>':'')+'</button>').join('')+'</div></div>');
   document.body.appendChild(sw);
-  function mount(i){ cur=i; t1open=null; t2sel=['submit']; t4act='submit'; t5act='submit'; render(); sw.querySelectorAll('.v2-switch__btn').forEach((b,j)=>b.classList.toggle('on',j===i)); sw.querySelector('.v2-switch__cap').textContent=(i+1)+'/'+TAKES.length+' · '+TAKES[i].tag; }
+  function mount(i){ cur=i; t1open=null; t2sel=['submit']; t4act='submit'; t5act='submit'; render(); sw.querySelectorAll('.v2-switch__btn').forEach((b,j)=>b.classList.toggle('on',j===i)); sw.querySelector('.v2-switch__cap').textContent=(i+1)+'/'+TAKES.length+' · '+TAKES[i].tag+(TAKES[i].rank?'  '+MEDAL[TAKES[i].rank]+' #'+TAKES[i].rank+' pick':''); }
   sw.addEventListener('click',e=>{ const b=e.target.closest('[data-go]'); if(b) mount(+b.dataset.go); });
 
   // sub-tab switching in the frame
