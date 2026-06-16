@@ -1242,10 +1242,17 @@
   font-size: var(--gv-fs-s); font-weight: 400; line-height: 21px; }
 .gv-surveyband__dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; flex: none; }
 .gv-surveyband__cta { margin-left: auto; }
+/* surveyband-inner-layout fidelity fix — the real band inner (div.sc-beqWaB.fAJdnP)
+   is full-bleed (width:1440px, max-width:none) and distributes status/CTA via
+   justify-content:space-around (gap:normal), NOT a 1150px shell cap with the CTA
+   pushed by margin-left:auto. Override here so status/CTA aren't hard-pinned to the
+   band edges; matches the probed digest. (Padding/type already verify green.) */
+.gv-surveyband__inner { max-width: none; justify-content: space-around; gap: normal; }
+.gv-surveyband__cta { margin-left: 0; }
 /* Mobile (≤768px): the band stacks into a pinned-action layout — status on its
    own line, then a full-width on-colour CTA. Live wietsedemo project-survey-m. */
 @media (max-width: 768px) {
-  .gv-surveyband__inner { flex-direction: column; align-items: stretch; }
+  .gv-surveyband__inner { flex-direction: column; align-items: stretch; justify-content: flex-start; }
   .gv-surveyband__cta { margin-left: 0; width: 100%; justify-content: center; }
 }
 
