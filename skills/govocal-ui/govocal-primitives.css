@@ -237,6 +237,14 @@ body.gv-root {
   border: none; background-color: var(--gv-grey-200); color: var(--gv-cool-grey-600);
   font-weight: 700; padding: 1px 6px;
 }
+/* .is-count = numeric notification count (measured r1-px-notif-flyout "29":
+   red #E52516, radius 2px, pad 0 4px, white, not uppercase). Distinct from the
+   3px status/category pills — this is the bell/sidebar count chip. */
+.gv-badge.is-count {
+  border: none; background-color: var(--gv-red-500); color: var(--gv-white);
+  border-radius: 2px; padding: 0 4px; font-weight: 400; text-transform: none;
+  min-width: 18px; height: 18px; line-height: 18px;
+}
 
 /* ── StatusLabel (filled status pill; set --bg per status) ──────────────────── */
 .gv-status-label {

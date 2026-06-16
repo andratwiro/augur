@@ -70,6 +70,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Avatar Overflow Bubble** | `/components/avatar-overflow-bubble/` | `components/avatar-overflow-bubble/` | The participant-overflow count rendered AS a solid cool-grey circle capping the avatar overlap stack — grounded on Falkirk, the same treatment seen on Linz / S… |
 | **Banner** | `/components/banner/` | `components/banner/` | Image-only project hero: a full-width teal gradient art panel (1150×300) with an optional rotated campaign sticker. Drop an illustration <svg> inside __art . |
 | **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
+| **Bo Menu** | `/components/bo-menu/` | `components/bo-menu/` | One canonical dropdown surface — .gv-bo-menu — shared by the Input-manager Exports menu and the bell Notification flyout (the product uses the same <Dropdown>… |
 | **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
 | **Community Monitor** | `/components/community-monitor/` | `components/community-monitor/` | The “City at a glance” satisfaction module — an ongoing survey that surfaces as a top modal/banner on the homepage and asks how residents feel about governance… |
 | **Content Builder Render** | `/components/content-builder-render/` | `components/content-builder-render/` | Content-Builder render layer — GoVocal component |
@@ -154,5 +155,7 @@ and reuse patterns. Prototypes are free to diverge from the library.
 | **Full Parallel Build** | Parallel Participation | `parallel-participation/prototypes/full-parallel-build/` | Content Builder — full project canvas |
 | **Parallel Editor Builder** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder/` | Parallel Participation — Project editor + content builder |
 | **Access Rights Explorations** | Sms Verification | `sms-verification/prototypes/access-rights-explorations/` | Tap any underlined word. These rules cover everything — then add exceptions below if you need them. |
+| **Access Rights Explorations V2** | Sms Verification | `sms-verification/prototypes/access-rights-explorations-v2/` | Access Rights Explorations v2 — five product-grounded takes |
 | **Hello World** | Sms Verification | `sms-verification/prototypes/hello-world/` | Scaffold placeholder for the SMS Verification opportunity. |
+| **Phase Access Inspector** | Sms Verification | `sms-verification/prototypes/phase-access-inspector/` | Phase access & user data — Properties inspector (GoVocal back office) |
 | **Phase Access Permissions** | Sms Verification | `sms-verification/prototypes/phase-access-permissions/` | Project configuration — GoVocal back office (reference) |

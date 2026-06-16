@@ -409,6 +409,36 @@ whole app under `.gv-bo`; mount the page in `.gv-bo-main`. Reuses `.gv-btn.admin
 
 ---
 
+## Back-office menu / dropdown + notification flyout — `.gv-bo-menu` (`components/bo-menu/`)
+
+One canonical BO dropdown surface (`.gv-bo-menu`: #fff, 3px radius, `--gv-shadow-menu`
+soft 12px shadow, `5px 0` pad) shared by the Input-manager **Exports** menu and the bell
+**Notification flyout**. Rows are `.gv-bo-menu__item` (icon + label). Add `.is-flyout` to
+fix the panel to 260px and host `.gv-bo-notifflyout__item` rows (24px `__icon` + body +
+12px `__time`); mark the latest unread `.is-unread` (700). The bell trigger carries the red
+`.gv-badge.is-count` chip. Render under the `.gv-bo` scope.
+
+```html
+<!-- Exports dropdown -->
+<div class="gv-bo-menu" role="menu" aria-label="Export">
+  <a class="gv-bo-menu__item" role="menuitem" href="#" download>
+    <span class="gv-bo-menu__icon" data-gv-icon="download"></span>Export all posts (.xslx)</a>
+  <a class="gv-bo-menu__item" role="menuitem" href="#" download>
+    <span class="gv-bo-menu__icon" data-gv-icon="download"></span>Export all comments (.xslx)</a>
+</div>
+
+<!-- Notification flyout (260px) -->
+<div class="gv-bo-menu is-flyout" role="menu" aria-label="Notifications">
+  <a class="gv-bo-notifflyout__item is-unread" href="#">
+    <span class="gv-bo-notifflyout__icon" data-gv-icon="survey"></span>
+    <span><i>Survey</i> will enter a new phase on 5/8/2025<span class="gv-bo-notifflyout__time">1 year ago</span></span></a>
+  <!-- …more rows… -->
+</div>
+
+<!-- Unread count badge (on the bell trigger) -->
+<span class="gv-badge is-count">29</span>
+```
+
 ## Back-office config forms — `.gv-bo-*` (`pages/bo-project-phase/`)
 
 The deep project-configuration editor (`/admin/projects/<id>/…`). All values

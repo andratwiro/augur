@@ -878,3 +878,35 @@
   background: var(--gv-bo-primary); border-color: var(--gv-bo-primary); color: var(--gv-white);
   position: relative; z-index: 1;
 }
+
+/* ── Menu / dropdown surface — component-library <Dropdown> ─────────────────────
+   ONE canonical surface shared by the Input-manager Exports menu and the bell
+   notification flyout (source-confirmed same component). Measured r1-px-input-
+   manager-exports + r1-px-notif-flyout: #fff, radius 3px, shadow --gv-shadow-menu
+   (0 0 12px rgba(0,0,0,.18)), max-height 320px then scroll. The .is-flyout variant
+   fixes width to the Dropdown's 260px default. */
+.gv-bo-menu {
+  background: var(--gv-white); border-radius: var(--gv-radius); box-shadow: var(--gv-shadow-menu);
+  padding: 5px 0; min-width: 180px; max-height: 320px; overflow-y: auto;
+}
+.gv-bo-menu__item {
+  display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box;
+  padding: 9px 15px; background: transparent; border: 0; border-radius: var(--gv-radius);
+  font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-bo-primary); line-height: 1.3;
+  text-align: left; text-decoration: none; cursor: pointer;
+}
+.gv-bo-menu__item:hover { background: var(--gv-grey-50); }
+.gv-bo-menu.is-flyout { width: 260px; min-width: 260px; padding: 0; }
+
+/* Notification-flyout rows (content inside .gv-bo-menu.is-flyout) — measured
+   r1-px-notif-flyout: <a> rows pad 10px 10px 10px 15px, body 14/400 #333,
+   relative-time 12px cool-grey, 24px leading icon tile; unread = 700. */
+.gv-bo-notifflyout__item {
+  display: flex; align-items: flex-start; gap: 12px; padding: 10px 10px 10px 15px;
+  border-radius: var(--gv-radius); color: var(--gv-text-primary); text-decoration: none;
+  font-size: var(--gv-fs-s); font-weight: 400; line-height: 1.3;
+}
+.gv-bo-notifflyout__item:hover { background: var(--gv-grey-50); }
+.gv-bo-notifflyout__item.is-unread { font-weight: 700; }
+.gv-bo-notifflyout__icon { flex: none; width: 24px; height: 24px; color: var(--gv-text-primary); }
+.gv-bo-notifflyout__time { display: block; margin-top: 2px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-xs); }

@@ -2264,6 +2264,54 @@
       "uses": [
         ".gv-prose"
       ]
+    },
+    {
+      "id": "bo-menu/exports-panel",
+      "built": "components/bo-menu/index.html",
+      "against": "r1-px-input-manager-exports",
+      "map": {
+        "div.sc-jegxcv.jKyqSJ": ".gv-bo-menu"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "box-shadow"
+      ],
+      "uses": [
+        ".gv-bo-menu"
+      ]
+    },
+    {
+      "id": "bo-menu/notif-badge",
+      "built": "components/bo-menu/index.html",
+      "against": "r1-px-notif-flyout",
+      "map": {
+        "div.sc-beqWaB.eSkSJO": ".gv-badge.is-count"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "padding"
+      ],
+      "uses": [
+        ".gv-badge"
+      ]
+    },
+    {
+      "id": "bo-menu/flyout-panel",
+      "built": "components/bo-menu/index.html",
+      "against": "r1-px-notif-flyout",
+      "map": {
+        "div.sc-jegxcv.cvQpJp": ".gv-bo-menu.is-flyout"
+      },
+      "props": [
+        "width",
+        "border-radius",
+        "box-shadow"
+      ],
+      "uses": [
+        ".gv-bo-menu"
+      ]
     }
   ]
 }
