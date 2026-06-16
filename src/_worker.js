@@ -228,6 +228,38 @@ async function reviewApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Dev-status API (KV-backed, single key) ---------------------------------
+// The ENTIRE status map lives under one key ("statuses"), so a page load is one
+// kv.get and a click is one kv.put — NO kv.list (the small-bucket call that burned
+// quota in the old badge system). Default status is "ignore"; the build-time chip
+// baseline comes from the committed prototype-status.json, and this overlays live
+// edits on top. Values: in-progress | dev-ready | ignore.
+const STATUS_KEY = "statuses";
+const VALID_STATUS = { "in-progress": 1, "dev-ready": 1, ignore: 1 };
+
+async function statusApi(request, url, env) {
+  const kv = env.COMMENTS;
+  if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
+
+  if (request.method === "GET") {
+    const raw = await kv.get(STATUS_KEY);
+    return jsonResponse({ map: raw ? JSON.parse(raw) : {} });
+  }
+  if (request.method === "POST") {
+    let op;
+    try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const key = clamp(op && op.key, 300);
+    const status = clamp(op && op.status, 40);
+    if (!key || !VALID_STATUS[status]) return jsonResponse({ error: "bad-input" }, 400);
+    const raw = await kv.get(STATUS_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    map[key] = status;
+    await kv.put(STATUS_KEY, JSON.stringify(map));
+    return jsonResponse({ map });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
 // /__review/api/export?key=<REVIEW_EXPORT_KEY> — all comment threads.
 // Secret-guarded so tooling can read review data WITHOUT the site password.
 //   GET  → { pages, generatedAt }
@@ -297,6 +329,17 @@ export default {
         if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
       }
       return reviewApi(request, url, env);
+    }
+
+    // Dev-status read/write: gated by the site password (cookie) when set.
+    if (url.pathname === "/__status") {
+      if (expected) {
+        const token = await tokenFor(expected);
+        const cookies = request.headers.get("Cookie") || "";
+        const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
+        if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      return statusApi(request, url, env);
     }
 
     if (!expected) return env.ASSETS.fetch(request); // open when no password configured

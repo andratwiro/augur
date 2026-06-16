@@ -629,12 +629,19 @@ const PAGE_CSS = `
       color: var(--faint); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 9px;
     }
 
-    /* ---- Dev-status chip (static, from prototype-status.json) ---- */
+    /* ---- Dev-status chip (clickable; baseline from prototype-status.json,
+       live edits overlaid from KV by STATUS_JS) ---- */
     /* Label + colour together (never colour alone, WCAG 1.4.1). */
     .status-chip {
-      flex: none; align-self: center; font-size: 11px; font-weight: 600; letter-spacing: .02em;
-      border-radius: 999px; padding: 3px 9px; border: 1px solid transparent; white-space: nowrap;
+      flex: none; align-self: center; font: inherit; font-size: 11px; font-weight: 600;
+      letter-spacing: .02em; line-height: 1.4; border-radius: 999px; padding: 3px 9px;
+      border: 1px solid transparent; white-space: nowrap; cursor: pointer;
+      transition: filter .12s ease, box-shadow .12s ease, opacity .12s ease;
     }
+    .status-chip:hover { filter: brightness(0.97); }
+    .status-chip:active { transform: translateY(0.5px); }
+    .status-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .status-chip[disabled] { opacity: .6; cursor: progress; }
     .status-chip.is-wip {
       color: #92500a; background: #fff6e8; border-color: rgba(146,80,10,0.22);
     }
@@ -644,9 +651,11 @@ const PAGE_CSS = `
     .status-chip.is-ignore {
       color: var(--faint); background: var(--bg-2); border-color: var(--line-2);
     }
-    /* "Ignore" dims its card so it recedes without disappearing. */
+    /* "Ignore" dims its card so it recedes without disappearing. The :has reacts
+       live to the class STATUS_JS sets, so a click updates the dim instantly. */
     .card-proto:has(.status-chip.is-ignore) { opacity: .55; }
     .card-proto:has(.status-chip.is-ignore):hover { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) { .status-chip { transition: none; } }
 
     /* ---- Components table (small preview per row) ---- */
     .comp-table { width: 100%; border-collapse: collapse; }
@@ -1001,6 +1010,71 @@ function injectPrimitives(html) {
   return withNav.replace(/<\/head>/i, `  <style>${PRIMITIVES_SKIN}</style>\n</head>`);
 }
 
+// Client for the clickable dev-status chips. KV-frugal: reads the whole map from
+// one endpoint AT MOST ONCE PER SESSION (cached in sessionStorage), writes only on
+// an actual click. Pages without chips never fetch (the early return). Default
+// state is "ignore"; clicking cycles ignore → in-progress → dev-ready → ignore.
+const STATUS_JS = `
+(function(){
+  var chips = Array.prototype.slice.call(document.querySelectorAll('[data-status-key]'));
+  if(!chips.length) return;
+  var ORDER = ['ignore','in-progress','dev-ready'];
+  var META = {
+    'ignore':      {label:'Ignore',      cls:'is-ignore'},
+    'in-progress': {label:'In progress', cls:'is-wip'},
+    'dev-ready':   {label:'Dev ready',   cls:'is-ready'}
+  };
+  var CACHE = 'gv_status_map';
+  function paint(chip, status){
+    if(!META[status]) status = 'ignore';
+    var m = META[status];
+    chip.className = 'status-chip ' + m.cls;
+    chip.textContent = m.label;
+    chip.setAttribute('data-status', status);
+    chip.setAttribute('aria-label', 'Status: ' + m.label + '. Click to change.');
+    chip.setAttribute('title', 'Status: ' + m.label + '. Click to change.');
+  }
+  function applyMap(map){
+    chips.forEach(function(chip){
+      var k = chip.getAttribute('data-status-key');
+      if(map && Object.prototype.hasOwnProperty.call(map, k)) paint(chip, map[k] || 'ignore');
+    });
+  }
+  // First paint from the per-session cache if we have it — skips the network read.
+  var cached = null;
+  try { cached = JSON.parse(sessionStorage.getItem(CACHE) || 'null'); } catch(e){}
+  if(cached){ applyMap(cached); }
+  else {
+    fetch('/__status', {headers:{'Accept':'application/json'}})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var map = (d && d.map) || {};
+        try { sessionStorage.setItem(CACHE, JSON.stringify(map)); } catch(e){}
+        applyMap(map);
+      }).catch(function(){});
+  }
+  chips.forEach(function(chip){
+    chip.addEventListener('click', function(){
+      var cur = chip.getAttribute('data-status') || 'ignore';
+      var next = ORDER[(ORDER.indexOf(cur) + 1 + ORDER.length) % ORDER.length];
+      paint(chip, next);
+      chip.disabled = true;
+      fetch('/__status', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ key: chip.getAttribute('data-status-key'), status: next })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if(d && d.map){
+          try { sessionStorage.setItem(CACHE, JSON.stringify(d.map)); } catch(e){}
+          var k = chip.getAttribute('data-status-key');
+          paint(chip, d.map[k] || 'ignore');
+        }
+      }).catch(function(){ paint(chip, cur); }).then(function(){ chip.disabled = false; });
+    });
+  });
+})();
+`;
+
 function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) {
   const backLink = back
     ? `<a class="back" href="${back.href}">${back.label}</a>`
@@ -1028,6 +1102,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <script>${CAROUSEL_JS}
   </script>
   <script>${chromeScript()}
+  </script>
+  <script>${STATUS_JS}
   </script>
 </body>
 </html>
@@ -1100,12 +1176,15 @@ function renderRootIndex(opportunities) {
   });
 }
 
-// Static dev-status chip for an opportunity card. Carries a text label (not colour
-// alone, WCAG 1.4.1); returns "" when the prototype has no status set.
-function statusChip(status) {
-  const meta = STATUS_META[status];
-  if (!meta) return "";
-  return `<span class="status-chip ${meta.cls}">${meta.label}</span>`;
+// Clickable dev-status chip for a prototype card. Build-time state comes from
+// prototype-status.json (the baseline); STATUS_JS overlays any live KV value and
+// cycles it on click (Ignore → In progress → Dev ready → Ignore). Default is
+// "ignore". Carries a text label, not colour alone (WCAG 1.4.1).
+function statusChip(status, key) {
+  const cur = STATUS_META[status] ? status : "ignore";
+  const meta = STATUS_META[cur];
+  const aria = `Status: ${meta.label}. Click to change.`;
+  return `<button type="button" class="status-chip ${meta.cls}" data-status-key="${key}" data-status="${cur}" aria-label="${aria}" title="${aria}">${meta.label}</button>`;
 }
 
 function renderOpportunityIndex(opp) {
@@ -1128,7 +1207,7 @@ function renderOpportunityIndex(opp) {
               <div class="proto-name">${titleCase(p.name)}</div>
               <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
             </div>
-            ${statusChip(p.status)}
+            ${statusChip(p.status, opp.name + "/" + p.name)}
           </div>
         </div>`;
     })
