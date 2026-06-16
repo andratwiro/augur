@@ -58,7 +58,67 @@
       </section>
     </div>
 
+    <p class="eyebrow">Homepage-banner layouts — full-width · two-row · fixed-ratio</p>
+    <p class="sub">The admin <strong>Homepage banner</strong> widget (Pages &amp; menu → Homepage
+      builder) renders the banner in one of three layouts, for a signed-out (non-registered) or
+      signed-in (registered) visitor. The base <code>.gv-hero.signed-out</code> is the full-width
+      layout; add <code>.layout-tworow</code> or <code>.layout-fixed</code> for the other two. The
+      <code>pages/homepage/</code> reference wires a live toggle across all three × both visitors.</p>
+
+    <p class="eyebrow">Full-width banner (<code>.gv-hero.signed-out.centered</code>)</p>
+    <div class="stage">
+      <section class="gv-hero signed-out centered" data-testid="full-width-banner-layout"
+               style="--gv-hero-image:url('https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60')">
+        <div class="gv-hero__inner">
+          <h1 class="gv-hero__title">Wien mitgestalten</h1>
+          <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
+          <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
+            <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
+            <span class="count">15.4k</span>
+          </div>
+          <div class="gv-hero__actions"><button type="button" class="gv-btn primary-inverse">Registrieren</button></div>
+        </div>
+      </section>
+    </div>
+
+    <p class="eyebrow">Two rows (<code>.layout-tworow</code>) — image row + white text band</p>
+    <div class="stage">
+      <section class="gv-hero signed-out centered layout-tworow" data-testid="two-row-layout">
+        <div class="gv-hero__media"><img src="https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60" alt="" /></div>
+        <div class="gv-hero__inner">
+          <h1 class="gv-hero__title">Wien mitgestalten</h1>
+          <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
+          <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
+            <span class="av"></span><span class="av"></span><span class="av"></span>
+            <span class="count">15.4k</span>
+          </div>
+          <div class="gv-hero__actions"><button type="button" class="gv-btn primary-inverse">Registrieren</button></div>
+        </div>
+      </section>
+    </div>
+
+    <p class="eyebrow">Fixed-ratio banner (<code>.layout-fixed</code>) — a shorter overlaid strip</p>
+    <div class="stage">
+      <section class="gv-hero signed-out centered layout-fixed" data-testid="fixed-ratio-layout"
+               style="--gv-hero-image:url('https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60')">
+        <div class="gv-hero__inner">
+          <h1 class="gv-hero__title">Wien mitgestalten</h1>
+          <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
+          <div class="gv-hero__actions"><button type="button" class="gv-btn primary-inverse">Registrieren</button></div>
+        </div>
+      </section>
+    </div>
+
     <div class="notes">
+      <p><strong>Layouts:</strong> the homepage banner has three (live testids
+      <code>full-width-banner-layout</code> / <code>two-row-layout</code> / <code>fixed-ratio-layout</code>).
+      <code>.layout-tworow</code> shows the photo as its own top row (needs a <code>.gv-hero__media</code>
+      child) with the content in a white band below — tenant-primary title, secondary subtitle, a
+      <em>filled</em> primary CTA. <code>.layout-fixed</code> keeps the overlaid full-width look at a
+      shorter fixed aspect ratio.</p>
+      <p><strong>Signed-out vs signed-in:</strong> the non-registered banner shows the avatar cluster
+      and a sign-up / custom CTA; the registered banner drops the avatars and uses its own CTA. Drive
+      it however the page likes (the homepage reference toggles <code>body[data-auth]</code>).</p>
       <p><strong>Overlay:</strong> <code>.gv-hero::before</code> tints the banner with
       <code>--gv-tenant-primary</code> (multiply, 0.62) so it re-skins per city and keeps white text legible.</p>
       <p><strong>Photo:</strong> set <code>style="--gv-hero-image:url(…)"</code>. With no image a

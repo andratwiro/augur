@@ -24,15 +24,35 @@
        govocal-ui.css (this page is pure assembly). */
     body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
 
-    /* Demo-only: a quick toggle to flip the header between signed-out / signed-in
-       (it just sets data-auth on <body> — no real auth). Not part of the component;
-       styled from tokens only (no page-authored hex/shadow). */
-    .auth-toggle { position: fixed; left: 16px; bottom: 16px; z-index: 1200;
-      display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px;
-      background: var(--gv-grey-800); color: var(--gv-white); border: 0; border-radius: 999px; cursor: pointer;
+    /* Demo-only banner-state control (NOT the real product UI): mirrors the admin
+       "Homepage banner" widget — flip the banner between the three Layout options
+       (Full-width / Two rows / Fixed-ratio) and the Visitor state (signed-out =
+       non-registered / signed-in = registered). Signed-in/out also flips the header
+       via the shared body[data-auth]. Tokens only; font shorthand (no font-size
+       literal) keeps it out of the page-authored-visuals check. */
+    .banner-ctrl { position: fixed; left: 16px; bottom: 16px; z-index: 1200;
+      display: grid; gap: 9px; padding: 12px 14px; border-radius: 14px;
+      background: var(--gv-grey-800); color: var(--gv-white); box-shadow: var(--gv-shadow-hover-sm);
       font: 600 13px/1 var(--gv-font-family); }
-    .auth-toggle::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
-    [data-auth="in"] .auth-toggle::before { background: var(--gv-green-400); }
+    .banner-ctrl__label { display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .06em;
+      opacity: .65; font: 700 10px/1 var(--gv-font-family); }
+    .banner-ctrl__row { display: inline-flex; gap: 4px; }
+    .banner-ctrl__btn { appearance: none; border: 0; cursor: pointer; padding: 6px 11px; border-radius: 999px;
+      background: rgba(255, 255, 255, .12); color: var(--gv-white); font: 600 12.5px/1 var(--gv-font-family); }
+    .banner-ctrl__btn:hover { background: rgba(255, 255, 255, .22); }
+    .banner-ctrl__btn[aria-pressed="true"] { background: var(--gv-white); color: var(--gv-grey-800); }
+
+    /* The banner shows the non-registered OR registered content per body[data-auth];
+       display:contents lets the visible set keep the hero's centered grid. */
+    .banner-content { display: contents; }
+    [data-auth="out"] .banner-content[data-when="in"]  { display: none; }
+    [data-auth="in"]  .banner-content[data-when="out"] { display: none; }
+    /* The image-credit caption only makes sense over a photo (full-width / fixed),
+       not on the white two-row text band. */
+    .gv-hero.layout-tworow .gv-hero__credit { display: none; }
+    /* The live Raleigh homepage banner H1 measures 25px (fo-homepage capture); the
+       canonical .signed-out default is the St-Louis 30px. Match our tenant via token. */
+    #homeBanner .gv-hero__title { font-size: var(--gv-fs-xxl); }
 
     /* Layout-only: the live e2e-spotlight-widget gives the media tile roughly equal
        visual weight to the copy column (a tall near-square video-poster panel). The
@@ -164,19 +184,39 @@
 
   <main id="main-content">
 
-    <!-- ════════ Hero / full-width banner (+ overlaid CTA) ════════ -->
-    <section class="gv-hero" style="background-image:url('img/hero.webp')">
+    <!-- ════════ Homepage banner ════════
+         The real GoVocal "Homepage banner" widget: one of three Layouts (Full-width /
+         Two rows / Fixed-ratio) rendered for a signed-out (non-registered) OR signed-in
+         (registered) visitor. Default here = full-width + signed-out (the live default).
+         The bottom-left control flips between states. Layout = the .layout-* class on
+         the section; visitor = body[data-auth] swaps the .banner-content blocks. -->
+    <section class="gv-hero signed-out centered layout-full" id="homeBanner"
+             data-testid="full-width-banner-layout"
+             style="background-image:url('img/hero.webp')">
+      <!-- Image row — only rendered by the two-row layout (full-width/fixed use the bg). -->
+      <div class="gv-hero__media"><img src="img/hero.webp" alt="" /></div>
       <div class="gv-hero__inner">
-        <h1 class="gv-hero__title">Help shape the future of Westmere</h1>
-        <p class="gv-hero__lead">Have your say on the projects and decisions shaping our city — from the harbour to your own street.</p>
-        <div class="gv-avatars" aria-label="15.4 thousand participants">
-          <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
-          <span class="count">15.4k</span>
+        <!-- Non-registered visitor: headline + subtitle + avatar cluster + CTA -->
+        <div class="banner-content" data-when="out">
+          <h1 class="gv-hero__title">Help shape the future of Westmere</h1>
+          <p class="gv-hero__lead">Have your say on the projects and decisions shaping our city — from the harbour to your own street.</p>
+          <div class="gv-avatars" aria-label="15.4 thousand participants">
+            <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
+            <span class="count">15.4k</span>
+          </div>
+          <div class="gv-hero__actions">
+            <a class="gv-btn primary-inverse" href="#spot-title">A greener Station Road — share your ideas</a>
+          </div>
+        </div>
+        <!-- Registered visitor: no avatars, a personalised headline + their own CTA -->
+        <div class="banner-content" data-when="in">
+          <h1 class="gv-hero__title">Welcome back, Robin</h1>
+          <p class="gv-hero__lead">Your followed projects have new updates — pick up where you left off.</p>
+          <div class="gv-hero__actions">
+            <a class="gv-btn primary-inverse" href="#spot-title">Get your say on the harbour masterplan</a>
+          </div>
         </div>
       </div>
-      <a class="gv-hero__cta" href="#spot-title">A greener Station Road — share your ideas
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </a>
       <span class="gv-hero__credit">Banner: © City of Westmere — the harbour at Mereside</span>
     </section>
 
@@ -648,25 +688,56 @@
   <!-- No cookie banner here: the cookie-consent rule applies to interactive
        PROTOTYPES, not to the Pages-tab reference reproductions. -->
 
-  <!-- Demo toggle: flip the header between signed-out and signed-in states -->
-  <button class="auth-toggle" id="authToggle" aria-pressed="false">Signed out</button>
+  <!-- Demo control: flip the homepage banner between the 3 layouts + visitor states -->
+  <div class="banner-ctrl" role="group" aria-label="Homepage banner preview state">
+    <div>
+      <span class="banner-ctrl__label">Banner layout</span>
+      <div class="banner-ctrl__row" id="layoutCtrl">
+        <button type="button" class="banner-ctrl__btn" data-layout="full" aria-pressed="true">Full width</button>
+        <button type="button" class="banner-ctrl__btn" data-layout="tworow" aria-pressed="false">Two rows</button>
+        <button type="button" class="banner-ctrl__btn" data-layout="fixed" aria-pressed="false">Fixed ratio</button>
+      </div>
+    </div>
+    <div>
+      <span class="banner-ctrl__label">Visitor</span>
+      <div class="banner-ctrl__row">
+        <button type="button" class="banner-ctrl__btn" data-auth-set="out" aria-pressed="true">Signed out</button>
+        <button type="button" class="banner-ctrl__btn" data-auth-set="in" aria-pressed="false">Signed in</button>
+      </div>
+    </div>
+  </div>
   <script>
     (function () {
-      var body = document.body, t = document.getElementById('authToggle');
-      function set(s) {
+      var body = document.body;
+      var banner = document.getElementById('homeBanner');
+      var LAYOUTS = { full: 'full-width-banner-layout', tworow: 'two-row-layout', fixed: 'fixed-ratio-layout' };
+
+      // Visitor state — shared with the header (body[data-auth]); swaps banner content.
+      function setAuth(s) {
         body.dataset.auth = s;
-        t.textContent = s === 'in' ? 'Signed in' : 'Signed out';
-        t.setAttribute('aria-pressed', s === 'in');
+        document.querySelectorAll('[data-auth-set]').forEach(function (b) {
+          b.setAttribute('aria-pressed', String(b.getAttribute('data-auth-set') === s));
+        });
       }
-      // the floating demo toggle
-      t.addEventListener('click', function () { set(body.dataset.auth === 'in' ? 'out' : 'in'); });
-      // in-header "Sign in" / "Sign out" buttons flip the state too
+      // Banner layout — full-width / two-row / fixed-ratio.
+      function setLayout(key) {
+        banner.classList.remove('layout-full', 'layout-tworow', 'layout-fixed');
+        banner.classList.add('layout-' + key);
+        banner.setAttribute('data-testid', LAYOUTS[key] || LAYOUTS.full);
+        document.querySelectorAll('#layoutCtrl [data-layout]').forEach(function (b) {
+          b.setAttribute('aria-pressed', String(b.getAttribute('data-layout') === key));
+        });
+      }
+      document.getElementById('layoutCtrl').addEventListener('click', function (e) {
+        var el = e.target.closest('[data-layout]');
+        if (el) setLayout(el.getAttribute('data-layout'));
+      });
+      // Visitor buttons + in-header "Sign in / Sign out" links both flip the state.
       document.addEventListener('click', function (e) {
         var el = e.target.closest('[data-auth-set]');
         if (!el) return;
         e.preventDefault();
-        set(el.getAttribute('data-auth-set'));
-        // close any open dropdown (the account/lang <details>) after the action
+        setAuth(el.getAttribute('data-auth-set'));
         document.querySelectorAll('.gv-nav__dd[open]').forEach(function (d) { d.open = false; });
       });
     })();

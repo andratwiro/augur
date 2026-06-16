@@ -84,7 +84,44 @@
       </section>
     </div>
 
+    <p class="eyebrow">Two-row layout (<code>.layout-tworow</code>) — image row + white text row</p>
+    <div class="stage">
+      <section class="gv-hero signed-out centered layout-tworow" data-testid="two-row-layout">
+        <div class="gv-hero__media"><img src="https://images.unsplash.com/photo-1569959220744-ff553533f492?w=1600&q=60" alt="" /></div>
+        <div class="gv-hero__inner">
+          <h1 class="gv-hero__title">Welcome to our participation platform</h1>
+          <p class="gv-hero__lead">Scroll below to see the projects we're working on.</p>
+          <div class="gv-avatars" aria-label="1,200+ participants">
+            <span class="av"></span><span class="av"></span><span class="av"></span>
+            <span class="count">1.2k</span>
+          </div>
+          <div class="gv-hero__actions">
+            <button type="button" class="gv-btn primary-inverse">Sign up</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="eyebrow">Fixed-ratio layout (<code>.layout-fixed</code>) — a shorter fixed-ratio strip</p>
+    <div class="stage">
+      <section class="gv-hero signed-out centered layout-fixed" data-testid="fixed-ratio-layout"
+               style="--gv-hero-image:url('https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1600&q=60')">
+        <div class="gv-hero__inner">
+          <h1 class="gv-hero__title">Have your say on what happens in your city</h1>
+          <p class="gv-hero__lead">Join the conversation and shape local decisions.</p>
+          <div class="gv-hero__actions">
+            <button type="button" class="gv-btn primary-inverse">Sign up</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <div class="notes">
+      <p><strong>Layouts:</strong> the admin "Homepage banner" widget offers three —
+      <code>full-width-banner</code> (base <code>.gv-hero.signed-out</code>),
+      <code>.layout-tworow</code> (image row + white text band: tenant-primary title, filled
+      CTA), and <code>.layout-fixed</code> (a shorter fixed-ratio overlaid strip). Two-row needs
+      a <code>.gv-hero__media</code> child for its image row.</p>
       <p><strong>Banner:</strong> <code>.gv-hero.signed-out</code> = a fixed 450px full-bleed strip;
       the fallback canvas <code>#EDEFF0</code> (<code>--gv-bo-canvas</code>) shows when no
       <code>--gv-hero-image</code> is set — matching the live fallback.</p>

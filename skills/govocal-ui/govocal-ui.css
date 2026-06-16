@@ -2399,3 +2399,43 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 @media (max-width: 760px) {
   .gv-cb-row { flex-direction: column; gap: 16px; padding: 0 16px; }
 }
+
+/* ── Project carousel ─────────────────────────────────────────────────────────
+   The product-default homepage "project row" presentation (Falkirk + St Louis):
+   a section title + prev/next scroll controls over a paged horizontal rail of
+   cards. STRUCTURALLY COMMON across tenants (one product, re-skinned), so this is
+   a thin COMPONENT wrapper around the existing .gv-rail atom — the rail keeps all
+   the scroll/snap/fade mechanics; the carousel only adds the header + controls +
+   the a11y scaffolding (role=region + aria-roledescription=carousel + the sr-only
+   "Press escape to skip carousel" button the live product renders).
+   The scroll buttons are transparent flex wrappers around a 24px chevron (live
+   class .e2e-event-previews-scroll-{left,right}; left .disabled at start). */
+.gv-carousel { display: block; }
+.gv-carousel__head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; margin-bottom: 14px; padding-right: 4px;
+}
+.gv-carousel__title { margin: 0; }  /* host a .gv-title.h2 (live = 25px/700/lh32.5) */
+.gv-carousel__controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+/* Scroll button = transparent wrapper, 24px chevron, tenant-text tint (live inner
+   .button.Button.text). Disabled at a rail end: aria-disabled dims + un-clicks it. */
+.gv-carousel__scroll {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--gv-text-primary); cursor: pointer;
+  font: inherit; -webkit-appearance: none; appearance: none;
+}
+.gv-carousel__scroll .gv-icon { width: 24px; height: 24px; }
+.gv-carousel__scroll:hover { background: var(--gv-grey-100); }
+.gv-carousel__scroll:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-carousel__scroll[aria-disabled="true"],
+.gv-carousel__scroll.disabled { opacity: .35; pointer-events: none; cursor: default; }
+/* The sr-only skip button is keyboard-reachable but visually hidden until focused
+   (extends the .gv-sr-only atom — show it on focus so the focus ring is visible). */
+.gv-carousel__skip { display: block; }
+.gv-carousel__skip:focus { position: static; width: auto; height: auto; margin: 0 0 8px; clip: auto; white-space: normal;
+  background: var(--gv-grey-100); border-radius: var(--gv-radius); padding: 6px 10px; font: inherit; border: 0; cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-carousel__scroll { transition: none; }
+}
