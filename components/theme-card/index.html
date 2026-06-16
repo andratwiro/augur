@@ -29,10 +29,9 @@
       <!-- ===== COMPONENT (copy from here) ===== -->
       <button type="button" class="gv-themecard is-active" data-cy="e2e-topic-item"
         style="--gv-themecard-swatch: rgb(255, 212, 216)">
-        <span class="gv-themecard__swatch" aria-hidden="true">🚧</span>
         <span class="gv-themecard__main">
           <span class="gv-themecard__head">
-            <span class="gv-themecard__name">Infrastructure &amp; Transportation</span>
+            <span class="gv-themecard__name"><span class="gv-themecard__emoji" aria-hidden="true">🚧</span>Infrastructure &amp; Transportation</span>
             <span class="gv-themecard__count">57</span>
           </span>
           <span class="gv-themecard__desc">Concerns about road conditions, traffic congestion, public transit, and the inability of existing infrastructure to keep pace with population growth and development.</span>
@@ -43,10 +42,9 @@
 
       <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
         style="--gv-themecard-swatch: rgb(255, 235, 214)">
-        <span class="gv-themecard__swatch" aria-hidden="true">💼</span>
         <span class="gv-themecard__main">
           <span class="gv-themecard__head">
-            <span class="gv-themecard__name">Economic Opportunity &amp; Wages</span>
+            <span class="gv-themecard__name"><span class="gv-themecard__emoji" aria-hidden="true">💼</span>Economic Opportunity &amp; Wages</span>
             <span class="gv-themecard__count">32</span>
           </span>
           <span class="gv-themecard__desc">Issues around low wages, lack of well-paying jobs, economic inequality, workforce development, and the need for better economic investment in communities.</span>
@@ -56,10 +54,9 @@
 
       <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
         style="--gv-themecard-swatch: rgb(221, 226, 243)">
-        <span class="gv-themecard__swatch" aria-hidden="true">🏠</span>
         <span class="gv-themecard__main">
           <span class="gv-themecard__head">
-            <span class="gv-themecard__name">Housing &amp; Cost of Living</span>
+            <span class="gv-themecard__name"><span class="gv-themecard__emoji" aria-hidden="true">🏠</span>Housing &amp; Cost of Living</span>
             <span class="gv-themecard__count">27</span>
           </span>
           <span class="gv-themecard__desc">Challenges related to rising housing costs, affordability, availability of homes, and the broader cost-of-living pressures facing residents.</span>
@@ -69,10 +66,9 @@
 
       <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
         style="--gv-themecard-swatch: rgb(208, 243, 231)">
-        <span class="gv-themecard__swatch" aria-hidden="true">🩺</span>
         <span class="gv-themecard__main">
           <span class="gv-themecard__head">
-            <span class="gv-themecard__name">Healthcare &amp; Public Health</span>
+            <span class="gv-themecard__name"><span class="gv-themecard__emoji" aria-hidden="true">🩺</span>Healthcare &amp; Public Health</span>
             <span class="gv-themecard__count">21</span>
           </span>
           <span class="gv-themecard__desc">Access to affordable healthcare, reproductive services, mental-health support, and stronger public-health provision across the region.</span>
@@ -83,7 +79,7 @@
 
     <div class="notes">
       <p><strong>Selection:</strong> add <code>.is-active</code> to mark the chosen category; only one card carries it at a time.</p>
-      <p><strong>Swatch tint:</strong> set <code>style="--gv-themecard-swatch: rgb(…)"</code> on the card to colour the emoji chip per theme.</p>
+      <p><strong>Count circle tint:</strong> set <code>style="--gv-themecard-swatch: rgb(…)"</code> on the card to colour the pastel round count badge (right side) per theme. The emoji is a small inline glyph (<code>.gv-themecard__emoji</code>) before the title — no background.</p>
       <p><strong>Share bar:</strong> the <code>__bar</code> inner <code>&lt;i&gt;</code> takes a <code>width:%</code> and its own
       <code>--gv-themecard-bar</code> fill colour to show each theme's share of responses.</p>
     </div>

@@ -1479,53 +1479,47 @@
 
 /* ── Theme / category card ── ranked clickable card in the rail.
    Live button.bIgPWV = 1px solid #596B7A, radius 3px, padding 9px 18px, left-aligned. */
-.gv-themecard { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start;
+/* Base structure (grounded to live wietsedemo rail, fix 68/93 — swatch/count inverted):
+   single-column body, NO 40px left swatch column. Emoji is a small inline glyph
+   immediately left of the title (real DOM div.htgTKl = span.krAyOU[emoji] + p[title]);
+   the pastel round 40×40 circle (real div.ifTotU = 40×40, radius 50%, bg pastel e.g.
+   rgb(255,212,216)) sits on the RIGHT of the head row and holds the COUNT. */
+.gv-themecard { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start;
   width: 100%; text-align: left; padding: 14px 16px; background: #fff; cursor: pointer;
   border: 1px solid var(--gv-cool-grey-600); border-radius: var(--gv-radius);
   font-family: var(--gv-font-family); color: var(--gv-text-primary); }
 .gv-themecard:hover { box-shadow: var(--gv-shadow-hover-sm); }
 .gv-themecard.is-active { border-color: var(--gv-tenant-primary); box-shadow: var(--gv-shadow); }
-/* Round emoji swatch — live 40px circle, pastel fill per theme (set inline via --gv-themecard-swatch). */
-.gv-themecard__swatch { width: 40px; height: 40px; border-radius: 50%; display: inline-flex;
-  align-items: center; justify-content: center; font-size: var(--gv-fs-m); line-height: 26px;
-  background: var(--gv-themecard-swatch, var(--gv-grey-100)); color: var(--gv-cool-grey-600); }
 .gv-themecard__main { min-width: 0; }
-/* header row: title + count. Title live p = 18px/700/27px #333; count = 14px/700/21px #333. */
-.gv-themecard__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+/* head row: [emoji + title] on the left, pastel count circle on the right. */
+.gv-themecard__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* title (emoji rides inline at the start). Live p = 18px/700/27px #333. */
 .gv-themecard__name { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; line-height: 27px;
   color: var(--gv-text-primary); }
-.gv-themecard__count { font-size: var(--gv-fs-s); font-weight: 700; line-height: 21px;
-  color: var(--gv-text-primary); flex: 0 0 auto; }
+/* small inline emoji glyph, no background, sits immediately left of the title. */
+.gv-themecard__emoji { margin-right: 6px; }
+/* count → pastel round 40×40 circle on the RIGHT; pastel fill via --gv-themecard-swatch
+   (live div.ifTotU = 40×40, radius 50%, bg rgb(255,212,216)). Count = 14px/700 slate. */
+.gv-themecard__count { display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--gv-themecard-swatch, var(--gv-grey-100));
+  font-size: var(--gv-fs-s); font-weight: 700; line-height: 21px; color: var(--gv-text-primary); }
 /* excerpt — cool-grey body, clamped. */
 .gv-themecard__desc { margin: 6px 0 0; font-size: var(--gv-fs-s); line-height: 21px;
   color: var(--gv-text-secondary); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
   overflow: hidden; }
-/* mini share bar — live track div.gdJIUf = 1px solid #e0e0e0, radius 4px, height 8px;
+/* mini share bar — live track div.gdJIUf = 1px solid #e0e0e0, radius 4px, height 6px;
    fill is a coloured segment (set width + colour inline via --gv-themecard-bar). */
-.gv-themecard__bar { margin-top: 10px; height: 8px; border: 1px solid var(--gv-grey-200);
+.gv-themecard__bar { margin-top: 10px; height: 6px; border: 1px solid var(--gv-grey-200);
   border-radius: 4px; overflow: hidden; }
 .gv-themecard__bar > i { display: block; height: 100%; background: var(--gv-themecard-bar, var(--gv-cool-grey-600)); }
 
-/* ── Theme card · grounded structure (fix 24/93) ── matches the live wietsedemo rail:
-   single-column body (no left swatch); emoji is INLINE before the name (18px/700);
-   the COUNT sits in a 40×40 circular pastel badge on the RIGHT (live div.ifTotU =
-   40×40, radius 50%, bg pastel e.g. rgb(255,212,216), count 14px/700 slate);
-   progress bar is 6px tall (live div.elgHSk height 6px). Opt-in variant so the base
-   above stays intact for any other consumer. */
+/* ── Theme card · --grounded (fix 24/93 → folded into the base in fix 68/93) ──
+   The grounded structure IS now the base above, so this modifier is a no-op
+   backward-compatible alias kept only so existing consumers that still carry
+   `gv-themecard--grounded` (e.g. pages/perspectives-feed) don't break. New
+   markup needs only `.gv-themecard`. */
 .gv-themecard--grounded { grid-template-columns: 1fr; }
-/* head: title (emoji inline) on the left, count badge on the right. */
-.gv-themecard--grounded .gv-themecard__head { align-items: center; }
-.gv-themecard--grounded .gv-themecard__name { font-size: var(--gv-fs-l); font-weight: 700;
-  line-height: 27px; }
-/* emoji rides inline at the start of the title text. */
-.gv-themecard--grounded .gv-themecard__emoji { margin-right: 6px; }
-/* count → 40×40 circular pastel badge on the right; pastel fill reuses --gv-themecard-swatch. */
-.gv-themecard--grounded .gv-themecard__count { display: inline-flex; align-items: center;
-  justify-content: center; width: 40px; height: 40px; border-radius: 50%;
-  background: var(--gv-themecard-swatch, var(--gv-grey-100)); font-size: var(--gv-fs-s);
-  font-weight: 700; line-height: 21px; color: var(--gv-text-primary); }
-/* grounded share bar is 6px tall (vs the 8px base). */
-.gv-themecard--grounded .gv-themecard__bar { height: 6px; }
 
 /* ── Dotted-grid canvas ── floats sticky-note idea cards.
    Live bg = white + tiled inline-svg dot (circle r1.5 #e5e5e5) at 20×20. */
