@@ -43,14 +43,32 @@
     .pm-card .gv-bo-listrow__actions { gap: 10px; }
     /* DEFAULT badge now uses canonical .gv-badge.is-filled; just position it. */
     .pm-card .gv-badge.is-filled { margin-left: 15px; }
-  </style>
+
+    /* ── Create-custom-page form panel (swap view) ────────────────────────── */
+    /* Breadcrumb trail above the form title (real: 16px/400, #596B7A links + grey slash). */
+    .pm-crumbs { display: flex; gap: 6px; align-items: center; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); margin-bottom: 14px; }
+    .pm-crumbs a { color: var(--gv-cool-grey-600); text-decoration: none; cursor: pointer; }
+    .pm-crumbs a:hover { text-decoration: underline; }
+    .pm-crumbs .sep { color: var(--gv-cool-grey-600); }
+    /* Resource tab strip under the form title (real: single active "Page settings" tab,
+       16px, teal underline). Page-local — only one tab in this flow. */
+    .pm-tabs { display: flex; gap: 24px; border-bottom: 1px solid var(--gv-grey-300); margin: 16px 0 28px; }
+    .pm-tab { padding: 0 0 12px; font-size: var(--gv-fs-base); font-weight: 500; color: var(--gv-bo-primary); border-bottom: 2px solid var(--gv-bo-primary); }
+    /* Field label + tooltip glyph row (Linked projects has a help icon). */
+    .pm-fieldlabel { display: flex; align-items: center; gap: 6px; }
+    .pm-fieldlabel .pm-tip { display: inline-flex; color: var(--gv-cool-grey-500); cursor: help; }
+    /* Sticky-ish save footer (real: full-bleed bar, bg #FCFCFC, 78px tall). */
+    .pm-formfoot { display: flex; align-items: center; gap: 16px; background: var(--gv-bo-canvas); margin: 32px -40px -40px; padding: 16px 40px; border-top: 1px solid var(--gv-grey-300); }
+    /* Hide whichever view isn't active. */
+    [hidden] { display: none !important; }
+</style>
 </head>
 <body class="gv-bo">
   <div class="gv-bo-shell">
     <nav class="gv-bo-side" aria-label="Admin" data-active="pages"></nav>
 
     <div class="gv-bo-main">
-      <section class="gv-bo-section">
+      <section class="gv-bo-section" id="pm-view-list">
         <div class="pm-head">
           <div class="pm-head__main">
             <h1 class="pm-title">Pages &amp; menu</h1>
@@ -58,7 +76,7 @@
           </div>
           <div class="pm-head__actions">
             <span class="pm-add-disabled"><span data-gv-icon="link"></span>Add project or folder to navbar</span>
-            <button class="gv-btn admin-dark"><span data-gv-icon="plus"></span><span class="gv-btn__label">Create custom page</span></button>
+            <button class="gv-btn admin-dark" id="pm-create-btn"><span data-gv-icon="plus"></span><span class="gv-btn__label">Create custom page</span></button>
           </div>
         </div>
 
@@ -70,6 +88,47 @@
         <div class="gv-bo-card pm-card">
           <h3 class="pm-cardtitle">Other available pages</h3>
           <div id="otherrows"></div>
+        </div>
+      </section>
+
+      <section class="gv-bo-section" id="pm-view-form" hidden>
+        <nav class="pm-crumbs" aria-label="Breadcrumb">
+          <a id="pm-crumb-back">Pages &amp; menu</a>
+          <span class="sep">/</span>
+          <span>Create custom page</span>
+        </nav>
+        <h1 class="pm-title">Create custom page</h1>
+        <div class="pm-tabs"><span class="pm-tab" aria-current="page">Page settings</span></div>
+
+        <div class="gv-bo-card pm-card">
+          <form data-testid="customPageSettingsForm" onsubmit="return false">
+            <!-- Title: canonical .gv-bo-field label + .gv-bo-multiloc locale switcher + .gv-input -->
+            <div class="gv-bo-field">
+              <label class="gv-label" for="pm-title">Title</label>
+              <div class="gv-bo-multiloc" role="group" aria-label="Title languages">
+                <button type="button" class="is-active"><span class="miss"></span>en</button>
+                <button type="button"><span class="miss"></span>es-ES</button>
+              </div>
+              <input class="gv-input" id="pm-title" type="text" placeholder="" />
+            </div>
+
+            <!-- Linked projects: real control is a segmented tab group (role=tablist) -->
+            <div class="gv-bo-field">
+              <span class="gv-label pm-fieldlabel">Linked projects
+                <span class="pm-tip" data-gv-icon="alert-circle" aria-hidden="true"></span>
+              </span>
+              <div class="gv-bo-segmented" role="tablist" aria-label="Linked projects">
+                <button type="button" class="gv-bo-segmented__btn is-active" role="tab" aria-selected="true">None</button>
+                <button type="button" class="gv-bo-segmented__btn" role="tab" aria-selected="false">By tag(s)</button>
+                <button type="button" class="gv-bo-segmented__btn" role="tab" aria-selected="false">By area</button>
+              </div>
+            </div>
+
+            <div class="pm-formfoot">
+              <button type="submit" class="gv-btn admin-dark"><span class="gv-btn__label">Save custom page</span></button>
+              <button type="button" class="gv-btn secondary-outlined" id="pm-cancel"><span class="gv-btn__label">Go back</span></button>
+            </div>
+          </form>
         </div>
       </section>
     </div>
@@ -113,6 +172,39 @@
         <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title"><a href="#">${name}</a></h4></div>
         <div class="gv-bo-listrow__actions">${actionBtn("Edit","pen")}${actionBtn("View","eye")}${actionBtn("Delete","delete")}${actionBtn("Add to navbar","plus",true)}</div>
       </div>`).join("");
+
+    // ── View swap: list ⇄ create-page form ──────────────────────────────────
+    const listView = document.getElementById("pm-view-list");
+    const formView = document.getElementById("pm-view-form");
+    function showForm(on) {
+      listView.hidden = on;
+      formView.hidden = !on;
+      window.scrollTo(0, 0);
+    }
+    document.getElementById("pm-create-btn").addEventListener("click", () => showForm(true));
+    document.getElementById("pm-cancel").addEventListener("click", () => showForm(false));
+    document.getElementById("pm-crumb-back").addEventListener("click", () => showForm(false));
+
+    // ── Segmented "Linked projects" toggle (single-select tablist) ───────────
+    document.querySelectorAll(".gv-bo-segmented[role=tablist]").forEach(seg => {
+      seg.addEventListener("click", e => {
+        const btn = e.target.closest(".gv-bo-segmented__btn");
+        if (!btn) return;
+        seg.querySelectorAll(".gv-bo-segmented__btn").forEach(b => {
+          b.setAttribute("aria-selected", b === btn);
+          b.classList.toggle("is-active", b === btn);
+        });
+      });
+    });
+
+    // ── Multiloc locale switcher (visual only) ──────────────────────────────
+    document.querySelectorAll(".gv-bo-multiloc").forEach(ml => {
+      ml.addEventListener("click", e => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        ml.querySelectorAll("button").forEach(b => b.classList.toggle("is-active", b === btn));
+      });
+    });
 
     if (window.GVIcons) window.GVIcons.render(document.body);
   </script>

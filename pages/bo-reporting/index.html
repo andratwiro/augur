@@ -56,10 +56,10 @@
         <span class="gv-bo-search" style="display:inline-block"><input class="gv-input" type="search" placeholder="Search reports" aria-label="Search reports" style="max-width:280px"><span class="gv-icon" data-gv-icon="search"></span></span>
 
         <div class="rp-card">
-          <nav class="rp-tabs" aria-label="Report views">
-            <a href="#">Your reports (10)</a>
-            <a class="is-active" href="#">All reports (17)</a>
-            <a href="#">Progress reports (10)</a>
+          <nav class="rp-tabs" aria-label="Report views" id="rp-tabs">
+            <a href="#" data-tab="your">Your reports (10)</a>
+            <a class="is-active" href="#" data-tab="all">All reports (17)</a>
+            <a href="#" data-tab="progress">Progress reports (10)</a>
           </nav>
           <div class="rp-list" id="reports"></div>
         </div>
@@ -69,8 +69,9 @@
 
   <script src="bo-chrome.js"></script>
   <script>
-    // [title, date, modifiedDays]
-    const REPORTS = [
+    // [title, date, modifiedDays] — captured rows per tab.
+    // "All reports" = r1-an-reporting-builder (17 rows).
+    const ALL = [
       ["Issues on public health care service", "18/09/2024", 727],
       ["Ideation report demo", "26/09/2023", 993],
       ["Survey report 3", "26/09/2023", 993],
@@ -89,18 +90,61 @@
       ["City park - report", "24/09/2023", 995],
       ["Survey report", "24/09/2023", 995],
     ];
-    document.getElementById("reports").innerHTML = REPORTS.map(([title, date, days]) => `
+    // "Progress reports" (URL ?tab=service-reports) = r1-an-reporting-service (10 rows).
+    const PROGRESS = [
+      ["Survey report 3", "26/09/2023", 993],
+      ["Test", "25/09/2023", 994],
+      ["Enquête", "25/09/2023", 994],
+      ["Survey report", "25/09/2023", 994],
+      ["Community survey", "24/09/2023", 995],
+      ["Survey Results", "24/09/2023", 995],
+      ["Ideation project report", "24/09/2023", 995],
+      ["Park project", "24/09/2023", 995],
+      ["Survey results", "24/09/2023", 995],
+      ["Survey report", "24/09/2023", 995],
+    ];
+    // "Your reports" = the user's own saved reports (subset of All); rows open the editor.
+    const YOURS = ALL.slice(0, 10);
+
+    const TABS = { your: YOURS, all: ALL, progress: PROGRESS };
+    const EDITOR = "../bo-report-builder/"; // editor page (Run 4)
+
+    function row([title, date, days], openInEditor) {
+      const titleEl = openInEditor
+        ? `<a href="${EDITOR}">${title}</a>`
+        : `<a href="#">${title}</a>`;
+      return `
       <div class="gv-bo-listrow">
         <div class="gv-bo-listrow__main">
-          <div class="rp-title"><a href="#">${title}</a></div>
+          <div class="rp-title">${titleEl}</div>
           <div class="gv-bo-listrow__sub rp-meta">${date} • <span class="av rp-avatar" aria-hidden="true"></span> Modified ${days} days ago</div>
         </div>
         <div class="gv-bo-listrow__actions rp-actions">
           <button class="gv-btn rp-del"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
           <button class="gv-btn secondary-outlined"><span data-gv-icon="open-in-new"></span><span class="gv-btn__label">Duplicate</span></button>
-          <button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+          <a class="gv-btn secondary-outlined" href="${EDITOR}"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></a>
         </div>
-      </div>`).join("");
+      </div>`;
+    }
+
+    function renderTab(tab) {
+      const openInEditor = tab === "your";
+      document.getElementById("reports").innerHTML =
+        TABS[tab].map((r) => row(r, openInEditor)).join("");
+      if (window.GVIcons) window.GVIcons.render(document.getElementById("reports"));
+      if (window.GVAvatars) window.GVAvatars.fill(document.getElementById("reports"));
+    }
+
+    document.getElementById("rp-tabs").addEventListener("click", (e) => {
+      const a = e.target.closest("a[data-tab]");
+      if (!a) return;
+      e.preventDefault();
+      document.querySelectorAll("#rp-tabs a").forEach((x) => x.classList.remove("is-active"));
+      a.classList.add("is-active");
+      renderTab(a.dataset.tab);
+    });
+
+    renderTab("all"); // default active tab matches markup
     if (window.GVIcons) window.GVIcons.render(document.body);
     if (window.GVAvatars) window.GVAvatars.fill(document.body);
   </script>

@@ -23,11 +23,27 @@
     .db-controls .gv-bo-select { max-width: 150px; height: 40px; padding: 8px 12px; width: auto; }
     .db-controls .gv-bo-search input { max-width: 280px; }
     .db-controls .db-spacer { margin-left: auto; }
-    /* Days/Weeks/Months segmented toggle. */
-    .db-seg { display: inline-flex; border: 1px solid var(--gv-border-dark); border-radius: 3px; overflow: hidden; }
-    .db-seg button { border: 0; background: var(--gv-white); color: var(--gv-bo-primary); padding: 9px 16px; font-size: var(--gv-fs-s); cursor: pointer; font-family: var(--gv-font-family); border-left: 1px solid var(--gv-grey-300); }
-    .db-seg button:first-child { border-left: 0; }
-    .db-seg button.is-active { background: var(--gv-bo-primary); color: var(--gv-white); }
+
+    /* Date-range control: borderless "All Time ▾" select joined to a bordered
+       date-range picker face (Select date ▸ 6/15/2026 📅). Measured: select text
+       cool-grey-600/16px; picker face 48px, 1px #767676 (var --gv-border-dark),
+       radius 3px, white. */
+    .db-daterange { display: inline-flex; align-items: center; gap: 12px; }
+    .db-rangeselect { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; cursor: pointer; font-family: var(--gv-font-family); font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); padding: 0; }
+    .db-rangeselect .gv-icon { width: 18px; height: 18px; color: var(--gv-cool-grey-600); }
+    .db-rangeface { display: inline-flex; align-items: center; gap: 8px; height: var(--gv-input-height); padding: 0 10px 0 8px; border: 1px solid var(--gv-border-dark); border-radius: var(--gv-radius); background: var(--gv-white); font-size: var(--gv-fs-base); color: var(--gv-text); }
+    .db-rangeface .db-rangebtn { border: 0; background: transparent; cursor: pointer; font-family: var(--gv-font-family); font-size: var(--gv-fs-base); color: var(--gv-text); padding: 4px 8px; white-space: nowrap; }
+    .db-rangeface .db-rangesep { color: var(--gv-cool-grey-500); display: inline-flex; }
+    .db-rangeface .db-rangesep .gv-icon { width: 18px; height: 18px; }
+    .db-rangeface .db-rangecal { margin-left: 2px; color: var(--gv-bo-primary); display: inline-flex; }
+    .db-rangeface .db-rangecal .gv-icon { width: 18px; height: 18px; }
+
+    /* Project combobox: bordered placeholder field with trailing chevron. Measured:
+       48px, 1px #767676, white, placeholder grey-600/14px. */
+    .db-combo { display: inline-flex; align-items: center; gap: 6px; height: var(--gv-input-height); padding: 0 10px; border: 1px solid var(--gv-border-dark); border-radius: var(--gv-radius); background: var(--gv-white); min-width: 210px; }
+    .db-combo input { flex: 1; min-width: 0; border: 0; background: transparent; outline: 0; font-family: var(--gv-font-family); font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
+    .db-combo input::placeholder { color: var(--gv-grey-600); }
+    .db-combo .gv-icon { width: 18px; height: 18px; color: var(--gv-cool-grey-600); flex: none; }
 
     .db-sectionhead { margin: 28px 0 12px; font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-bo-primary); }
     .db-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; align-items: start; }
@@ -144,11 +160,18 @@
       <!-- ── Overview ─────────────────────────────────────────────────── -->
       <section class="gv-bo-section db-panel is-active" data-panel="overview">
         <div class="db-controls">
-          <select class="gv-bo-select" aria-label="Time range"><option>All Time</option><option>Last 30 days</option><option>Last year</option></select>
-          <div class="gv-bo-dateface" style="height:40px"><span data-gv-icon="calendar"></span>6/15/2026</div>
-          <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Type to search projects" aria-label="Search projects"><span class="gv-icon" data-gv-icon="search"></span></span>
+          <div class="db-daterange">
+            <button class="db-rangeselect" type="button" aria-label="Time range">All Time<span class="gv-icon" data-gv-icon="chevron-down"></span></button>
+            <div class="db-rangeface">
+              <button class="db-rangebtn" type="button">Select date</button>
+              <span class="db-rangesep"><span class="gv-icon" data-gv-icon="chevron-right"></span></span>
+              <button class="db-rangebtn" type="button">6/15/2026</button>
+              <span class="db-rangecal"><span class="gv-icon" data-gv-icon="calendar"></span></span>
+            </div>
+          </div>
+          <div class="db-combo"><input type="search" placeholder="Type to search projects" aria-label="Search projects"><span class="gv-icon" data-gv-icon="chevron-down"></span></div>
           <div class="db-spacer"></div>
-          <span class="db-seg"><button>in Days</button><button>in Weeks</button><button class="is-active">in Months</button></span>
+          <span class="gv-bo-segmented"><button class="gv-bo-segmented__btn">in Days</button><button class="gv-bo-segmented__btn">in Weeks</button><button class="gv-bo-segmented__btn is-active">in Months</button></span>
         </div>
 
         <div class="db-grid">
@@ -240,8 +263,15 @@
       <!-- ── Users ────────────────────────────────────────────────────── -->
       <section class="gv-bo-section db-panel" data-panel="users">
         <div class="db-controls">
-          <select class="gv-bo-select" aria-label="Time range"><option>All Time</option></select>
-          <div class="gv-bo-dateface" style="height:40px"><span data-gv-icon="calendar"></span>6/15/2026</div>
+          <div class="db-daterange">
+            <button class="db-rangeselect" type="button" aria-label="Time range">All Time<span class="gv-icon" data-gv-icon="chevron-down"></span></button>
+            <div class="db-rangeface">
+              <button class="db-rangebtn" type="button">Select date</button>
+              <span class="db-rangesep"><span class="gv-icon" data-gv-icon="chevron-right"></span></span>
+              <button class="db-rangebtn" type="button">6/15/2026</button>
+              <span class="db-rangecal"><span class="gv-icon" data-gv-icon="calendar"></span></span>
+            </div>
+          </div>
           <select class="gv-bo-select" aria-label="User group"><option>Select user group</option></select>
         </div>
         <div class="db-grid">
@@ -257,10 +287,17 @@
       <!-- ── Visitors ─────────────────────────────────────────────────── -->
       <section class="gv-bo-section db-panel" data-panel="visitors">
         <div class="db-controls">
-          <select class="gv-bo-select" aria-label="Time range"><option>Custom</option></select>
-          <div class="gv-bo-dateface" style="height:40px"><span data-gv-icon="calendar"></span>11/24/2024 – 6/15/2026</div>
+          <div class="db-daterange">
+            <button class="db-rangeselect" type="button" aria-label="Time range">Custom<span class="gv-icon" data-gv-icon="chevron-down"></span></button>
+            <div class="db-rangeface">
+              <button class="db-rangebtn" type="button">11/24/2024</button>
+              <span class="db-rangesep"><span class="gv-icon" data-gv-icon="chevron-right"></span></span>
+              <button class="db-rangebtn" type="button">6/15/2026</button>
+              <span class="db-rangecal"><span class="gv-icon" data-gv-icon="calendar"></span></span>
+            </div>
+          </div>
           <div class="db-spacer"></div>
-          <span class="db-seg"><button>in Days</button><button>in Weeks</button><button class="is-active">in Months</button></span>
+          <span class="gv-bo-segmented"><button class="gv-bo-segmented__btn">in Days</button><button class="gv-bo-segmented__btn">in Weeks</button><button class="gv-bo-segmented__btn is-active">in Months</button></span>
         </div>
         <div class="db-grid">
           <div class="gv-bo-chartcard db-span-12">
@@ -327,7 +364,7 @@
       <section class="gv-bo-section db-panel" data-panel="participation">
         <h1 class="gv-bo-pagehead" style="margin-bottom:14px">Feed <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--gv-cool-grey-400);vertical-align:middle"></span></h1>
         <div class="db-controls">
-          <span class="db-seg"><button class="is-active">Not seen</button><button>Seen</button><button>Content Warnings (0)</button></span>
+          <span class="gv-bo-segmented"><button class="gv-bo-segmented__btn is-active">Not seen</button><button class="gv-bo-segmented__btn">Seen</button><button class="gv-bo-segmented__btn">Content Warnings (0)</button></span>
           <button class="db-ddbtn">Type <span class="gv-icon" data-gv-icon="chevron-down"></span></button>
           <button class="db-ddbtn">Project <span class="gv-icon" data-gv-icon="chevron-down"></span></button>
           <div class="db-spacer"></div>

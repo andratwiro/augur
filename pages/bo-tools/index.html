@@ -38,6 +38,66 @@
     /* Real locked button: grey fill + lock icon, not-allowed. */
     .tl-locked { display: inline-flex; align-items: center; gap: 10px; padding: 9px 18px; border-radius: 3px; border: 0; background: var(--gv-cool-grey-300); color: var(--gv-white); font-size: var(--gv-fs-base); line-height: 26px; font-family: var(--gv-font-family); cursor: not-allowed; }
     .tl-locked .gv-icon { width: 16px; height: 16px; }
+
+    /* ── Config sub-views (Widget builder, Esri) ───────────────────────────── */
+    .tl-view[hidden] { display: none; }
+    /* Real "Go back": span 16px/400/#596B7A (cool-grey-600) preceded by a left chevron. */
+    .tl-back { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0; margin: 4px 0 0; font-family: var(--gv-font-family); font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); cursor: pointer; }
+    .tl-back:hover { color: var(--gv-bo-primary); }
+    .tl-back .gv-icon { width: 18px; height: 18px; }
+    /* Real page title in builder: "Widget" 25px/500/#044D6C; Esri H1 30px/600. */
+    .tl-title { margin: 12px 0 0; font-weight: 500; color: var(--gv-bo-primary); line-height: 1.3; }
+    .tl-title--xl { font-size: var(--gv-fs-xxxl); font-weight: 600; }
+    .tl-title--l  { font-size: var(--gv-fs-xxl); }
+    /* Intro line: 16px/400/#596B7A, 24px line-height. */
+    .tl-intro { margin: 12px 0 24px; max-width: 720px; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); line-height: 24px; }
+
+    /* Widget builder two-column: settings card + sticky preview. */
+    .tl-wb { display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: 24px; align-items: start; max-width: 1114px; }
+    /* Settings section labels: "Dimensions"/"Style"/"Header & Button" — 16px/400/#596B7A
+       with a hairline rule under, matching the divider colour #E0E0E0. */
+    .tl-sec { margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid #E0E0E0; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); }
+    .tl-sec + .tl-grid, .tl-sec + .tl-stack { margin-bottom: 28px; }
+    .tl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .tl-stack { display: flex; flex-direction: column; gap: 16px; }
+    .tl-stack .gv-bo-field, .tl-grid .gv-bo-field { margin-bottom: 0; max-width: none; }
+    .tl-help { margin: 6px 0 0; font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
+    .tl-help a { color: var(--gv-bo-link); }
+
+    /* Colour field: swatch + hex input on one row. RECURS WITH BRANDING — candidate
+       canonical primitive. Real input: 1px solid #767676, 3px radius, 12px pad, 48px tall;
+       the swatch reads as a square chip aligned to the input height. */
+    .tl-colorfield { display: flex; align-items: stretch; gap: 8px; }
+    .tl-colorfield .tl-swatch { flex: none; width: 48px; height: 48px; border-radius: 3px; border: 1px solid #E0E0E0; padding: 0; cursor: pointer; background: none; }
+    .tl-colorfield .tl-swatch::-webkit-color-swatch-wrapper { padding: 3px; }
+    .tl-colorfield .tl-swatch::-webkit-color-swatch { border: 0; border-radius: 2px; }
+    .tl-colorfield .tl-swatch::-moz-color-swatch { border: 0; border-radius: 2px; }
+    .tl-colorfield .gv-input { flex: 1 1 auto; min-width: 0; }
+
+    /* Toggle row inside the Header & Button section (label left, toggle right). */
+    .tl-togglerow { display: flex; align-items: center; gap: 16px; padding: 10px 0; }
+    .tl-togglerow .label { font-size: var(--gv-fs-base); color: var(--gv-bo-primary); }
+    .tl-togglerow .gv-toggle { margin-left: auto; flex: none; }
+
+    /* Preview pane: sticky white card, grey-50 inner frame holding the live widget. */
+    .tl-preview { position: sticky; top: 16px; }
+    .tl-preview__label { margin: 0 0 12px; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); }
+    .tl-frame { background: #FCFCFC; border: 1px solid #E0E0E0; border-radius: 3px; padding: 20px; }
+    /* The rendered widget itself — driven by the form values via inline style vars. */
+    .tl-widget { border-radius: 6px; padding: 16px; }
+    .tl-widget__head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .tl-widget__logo { width: 28px; height: 28px; border-radius: 4px; background: currentColor; opacity: .85; flex: none; }
+    .tl-widget__title { margin: 0; font-weight: 700; font-size: var(--gv-fs-l); line-height: 1.2; }
+    .tl-widget__sub { margin: 2px 0 0; font-size: var(--gv-fs-13); opacity: .8; }
+    .tl-widget__item { padding: 10px 0; border-top: 1px solid rgba(0,0,0,.08); }
+    .tl-widget__item:first-child { border-top: 0; }
+    .tl-widget__btn { display: inline-block; margin-top: 12px; padding: 8px 16px; border-radius: 4px; font-weight: 600; font-size: var(--gv-fs-s); color: var(--gv-white); }
+
+    /* Esri card body. */
+    .tl-esri-card { max-width: 1114px; }
+    .tl-esri-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+    .tl-esri-row .gv-bo-field { margin-bottom: 0; }
+    .tl-esri-row .gv-input { width: 400px; max-width: 100%; }
   </style>
 </head>
 <body class="gv-bo">
@@ -45,30 +105,166 @@
     <nav class="gv-bo-side" aria-label="Admin" data-active="tools"></nav>
 
     <div class="gv-bo-main">
-      <section class="gv-bo-section">
+      <!-- Landing: integration cards -->
+      <section class="gv-bo-section tl-view" id="view-landing">
         <h1 class="tl-head">Tools</h1>
         <div class="tl-list" id="tools"></div>
+      </section>
+
+      <!-- Widget builder -->
+      <section class="gv-bo-section tl-view" id="view-widget" hidden>
+        <button class="tl-back" data-back type="button"><span data-gv-icon="arrow-left"></span>Go back</button>
+        <h1 class="tl-title tl-title--l">Widget</h1>
+        <p class="tl-intro">You can create a widget, customize it and add it to your own website to attract people to this platform.</p>
+
+        <div class="gv-bo-tabs gv-bo-tabs--sub" role="tablist">
+          <button class="gv-bo-tab is-active" role="tab" data-wtab="ideas">Ideas</button>
+          <button class="gv-bo-tab" role="tab" data-wtab="projects">Projects</button>
+        </div>
+
+        <div class="gv-bo-card tl-wb">
+          <!-- Settings form -->
+          <form class="tl-form" id="wb-form" onsubmit="return false">
+            <h2 class="tl-sec">Dimensions</h2>
+            <div class="tl-grid">
+              <div class="gv-bo-field">
+                <label class="gv-label" for="wb-w">Width</label>
+                <input class="gv-input" id="wb-w" type="number" value="320" data-wv="width">
+              </div>
+              <div class="gv-bo-field">
+                <label class="gv-label" for="wb-h">Height (px)</label>
+                <input class="gv-input" id="wb-h" type="number" value="400" data-wv="height">
+              </div>
+              <div class="gv-bo-field">
+                <label class="gv-label" for="wb-fs">Font size (px)</label>
+                <input class="gv-input" id="wb-fs" type="number" value="14" data-wv="fontSize">
+              </div>
+            </div>
+
+            <h2 class="tl-sec">Style</h2>
+            <div class="tl-stack">
+              <div class="gv-bo-field">
+                <label class="gv-label">Site background color</label>
+                <div class="tl-colorfield">
+                  <input class="tl-swatch" type="color" value="#ffffff" data-sync="wb-sitebg" aria-label="Site background colour">
+                  <input class="gv-input" id="wb-sitebg" value="#ffffff" data-wv="siteBg" data-sync="wb-sitebg-swatch">
+                </div>
+              </div>
+              <div class="gv-bo-field">
+                <label class="gv-label">Widget background color</label>
+                <div class="tl-colorfield">
+                  <input class="tl-swatch" type="color" value="#f4f6f7" data-sync="wb-widgetbg" aria-label="Widget background colour">
+                  <input class="gv-input" id="wb-widgetbg" value="#f4f6f7" data-wv="widgetBg" data-sync="wb-widgetbg-swatch">
+                </div>
+              </div>
+              <div class="gv-bo-field">
+                <label class="gv-label">Text color</label>
+                <div class="tl-colorfield">
+                  <input class="tl-swatch" type="color" value="#044d6c" data-sync="wb-text" aria-label="Text colour">
+                  <input class="gv-input" id="wb-text" value="#044d6c" data-wv="text" data-sync="wb-text-swatch">
+                </div>
+              </div>
+              <div class="gv-bo-field">
+                <label class="gv-label">Accent color</label>
+                <div class="tl-colorfield">
+                  <input class="tl-swatch" type="color" value="#147985" data-sync="wb-accent" aria-label="Accent colour">
+                  <input class="gv-input" id="wb-accent" value="#147985" data-wv="accent" data-sync="wb-accent-swatch">
+                </div>
+              </div>
+              <div class="gv-bo-field">
+                <label class="gv-label" for="wb-font">Font</label>
+                <input class="gv-input" id="wb-font" value="Public Sans" data-wv="font">
+                <p class="tl-help">This must be an existing font name from <a href="https://fonts.google.com/" target="_blank" rel="noopener">Google Fonts</a>.</p>
+              </div>
+            </div>
+
+            <h2 class="tl-sec">Header &amp; Button</h2>
+            <div class="tl-stack">
+              <div class="tl-togglerow">
+                <span class="label">Show header</span>
+                <label class="gv-toggle"><input type="checkbox" checked data-wv="showHeader"><span class="track"></span></label>
+              </div>
+              <div class="tl-togglerow">
+                <span class="label">Show logo</span>
+                <label class="gv-toggle"><input type="checkbox" checked data-wv="showLogo"><span class="track"></span></label>
+              </div>
+              <div class="gv-bo-field">
+                <label class="gv-label" for="wb-htitle">Header title</label>
+                <input class="gv-input" id="wb-htitle" value="Have your say" data-wv="headerTitle">
+              </div>
+              <div class="gv-bo-field">
+                <label class="gv-label" for="wb-hsub">Header subtitle</label>
+                <input class="gv-input" id="wb-hsub" value="Help shape your city" data-wv="headerSub">
+              </div>
+              <div class="tl-togglerow">
+                <span class="label">Show button</span>
+                <label class="gv-toggle"><input type="checkbox" checked data-wv="showButton"><span class="track"></span></label>
+              </div>
+              <div class="gv-bo-field">
+                <label class="gv-label" for="wb-btn">Button text</label>
+                <input class="gv-input" id="wb-btn" value="Participate" data-wv="buttonText">
+              </div>
+            </div>
+          </form>
+
+          <!-- Live preview -->
+          <div class="tl-preview">
+            <p class="tl-preview__label">Preview</p>
+            <div class="tl-frame">
+              <div class="tl-widget" id="wb-widget">
+                <div class="tl-widget__head" data-part="head">
+                  <span class="tl-widget__logo" data-part="logo"></span>
+                  <div>
+                    <p class="tl-widget__title" data-part="title">Have your say</p>
+                    <p class="tl-widget__sub" data-part="sub">Help shape your city</p>
+                  </div>
+                </div>
+                <div class="tl-widget__item">Redesigning the Main Square</div>
+                <div class="tl-widget__item">Mapping: Building Protected Bike Lanes</div>
+                <div class="tl-widget__item">Sustainability Survey: A Greener Future</div>
+                <a class="tl-widget__btn" data-part="btn">Participate</a>
+              </div>
+            </div>
+            <div style="margin-top:16px">
+              <button class="gv-btn admin-dark" style="width:320px;max-width:100%;justify-content:center" type="button">Copy the HTML code</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Esri integration -->
+      <section class="gv-bo-section tl-view" id="view-esri" hidden>
+        <button class="tl-back" data-back type="button"><span data-gv-icon="arrow-left"></span>Go back</button>
+        <h1 class="tl-title tl-title--xl">Esri Maps</h1>
+        <p class="tl-intro">Add your Esri API key to allow importing data from ArcGIS Online directly into your mapping projects.</p>
+        <div class="gv-bo-card tl-esri-card">
+          <div class="gv-bo-field" style="max-width:400px">
+            <label class="gv-label" for="esri-key">Esri API key</label>
+            <input class="gv-input" id="esri-key" type="text" placeholder="Paste API key here" autocomplete="off">
+          </div>
+          <button class="gv-btn admin-dark" type="button">Save key</button>
+        </div>
       </section>
     </div>
   </div>
 
   <script src="bo-chrome.js"></script>
   <script>
-    // [title, desc, mediaColor, mediaIcon, actionLabel, actionIcon, locked, secondaryLink]
+    // [title, desc, mediaColor, mediaIcon, actionLabel, actionIcon, locked, secondaryLink, view]
     const TOOLS = [
       // mediaColor values from styles.json digest: Esri rgb(128,207,216)=#80CFD8, Widget rgb(20,121,133)=teal-500, PowerBI darker teal #1A6E78.
-      ["Online deliberation workshops", "Hold live video meetings, facilitate simultaneous group discussions and debates. Gather input, vote and reach consensus, just like you would offline.", "var(--gv-teal-500)", "comments", "Manage workshops", "arrow-right", false, "Learn more"],
-      ["Esri integration", "Connect your Esri account and import data from ArcGIS Online directly into your mapping projects.", "var(--gv-teal-200)", "map", "Enable Esri", "arrow-right", false, ""],
-      ["Widget", "You can create a widget, customize it and add it to your own website to attract people to this platform.", "var(--gv-teal-500)", "open-in-new", "Manage widget", "arrow-right", false, ""],
-      ["Public API Access", "Manage the credentials to create custom integrations on our public API.", "#C7A9E0", "key", "Manage API Keys", "", true, ""],
-      ["Webhooks", "Configure webhooks to receive real-time notifications when events occur on your platform.", "#E3D2A0", "send", "Manage webhooks", "", true, ""],
-      ["Power BI", "Use our plug & play Power BI Templates to access Go Vocal data in your Microsoft Power BI Workspace.", "#1A6E78", "trend-up", "Download templates", "", true, ""],
+      ["Online deliberation workshops", "Hold live video meetings, facilitate simultaneous group discussions and debates. Gather input, vote and reach consensus, just like you would offline.", "var(--gv-teal-500)", "comments", "Manage workshops", "arrow-right", false, "Learn more", ""],
+      ["Esri integration", "Connect your Esri account and import data from ArcGIS Online directly into your mapping projects.", "var(--gv-teal-200)", "map", "Enable Esri", "arrow-right", false, "", "esri"],
+      ["Widget", "You can create a widget, customize it and add it to your own website to attract people to this platform.", "var(--gv-teal-500)", "open-in-new", "Manage widget", "arrow-right", false, "", "widget"],
+      ["Public API Access", "Manage the credentials to create custom integrations on our public API.", "#C7A9E0", "key", "Manage API Keys", "", true, "", ""],
+      ["Webhooks", "Configure webhooks to receive real-time notifications when events occur on your platform.", "#E3D2A0", "send", "Manage webhooks", "", true, "", ""],
+      ["Power BI", "Use our plug & play Power BI Templates to access Go Vocal data in your Microsoft Power BI Workspace.", "#1A6E78", "trend-up", "Download templates", "", true, "", ""],
     ];
     document.getElementById("tools").innerHTML = TOOLS.map(t => {
-      const [title, desc, color, micon, alabel, aicon, locked, secondary] = t;
+      const [title, desc, color, micon, alabel, aicon, locked, secondary, view] = t;
       const action = locked
         ? `<button class="tl-locked">${alabel} <span data-gv-icon="lock"></span></button>`
-        : `<button class="tl-btn">${alabel}${aicon ? `<span data-gv-icon="${aicon}"></span>` : ""}</button>`;
+        : `<button class="tl-btn"${view ? ` data-open="${view}"` : ""}>${alabel}${aicon ? `<span data-gv-icon="${aicon}"></span>` : ""}</button>`;
       const sec = secondary ? `<a class="tl-link" href="#">${secondary}</a>` : "";
       return `<div class="tl-card">
         <div class="tl-card__media" style="background:${color}"><span class="tl-card__frame" style="color:${color}"><span data-gv-icon="${micon}"></span></span></div>
@@ -80,6 +276,66 @@
       </div>`;
     }).join("");
     if (window.GVIcons) window.GVIcons.render(document.body);
+
+    // ── View switching (landing ⇄ config) ────────────────────────────────
+    const VIEWS = { landing: "view-landing", widget: "view-widget", esri: "view-esri" };
+    function show(view) {
+      Object.entries(VIEWS).forEach(([k, id]) => {
+        document.getElementById(id).hidden = (k !== view);
+      });
+      window.scrollTo(0, 0);
+    }
+    document.querySelectorAll("[data-open]").forEach(b =>
+      b.addEventListener("click", () => show(b.dataset.open)));
+    document.querySelectorAll("[data-back]").forEach(b =>
+      b.addEventListener("click", () => show("landing")));
+
+    // ── Ideas / Projects sub-tabs (visual toggle only) ───────────────────
+    document.querySelectorAll("[data-wtab]").forEach(tab =>
+      tab.addEventListener("click", () => {
+        document.querySelectorAll("[data-wtab]").forEach(t => t.classList.toggle("is-active", t === tab));
+      }));
+
+    // ── Colour swatch ⇄ hex sync ─────────────────────────────────────────
+    function pair(swatchSel, hexId) {
+      const sw = document.querySelector(swatchSel);
+      const hex = document.getElementById(hexId);
+      if (!sw || !hex) return;
+      sw.addEventListener("input", () => { hex.value = sw.value; renderWidget(); });
+      hex.addEventListener("input", () => {
+        if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) sw.value = hex.value;
+        renderWidget();
+      });
+    }
+    pair('[data-sync="wb-sitebg"]', "wb-sitebg");
+    pair('[data-sync="wb-widgetbg"]', "wb-widgetbg");
+    pair('[data-sync="wb-text"]', "wb-text");
+    pair('[data-sync="wb-accent"]', "wb-accent");
+
+    // ── Live widget preview ──────────────────────────────────────────────
+    function val(name) { return document.querySelector(`[data-wv="${name}"]`); }
+    function renderWidget() {
+      const w = document.getElementById("wb-widget");
+      const frame = w.parentElement;
+      frame.style.background = val("siteBg").value;
+      w.style.background = val("widgetBg").value;
+      w.style.color = val("text").value;
+      w.style.fontFamily = val("font").value + ", " + getComputedStyle(document.body).fontFamily;
+      w.style.fontSize = (val("fontSize").value || 14) + "px";
+      w.style.width = Math.min(360, Math.max(160, +val("width").value || 320)) + "px";
+      const head = w.querySelector('[data-part="head"]');
+      const logo = w.querySelector('[data-part="logo"]');
+      const btn  = w.querySelector('[data-part="btn"]');
+      head.style.display = val("showHeader").checked ? "" : "none";
+      logo.style.display = val("showLogo").checked ? "" : "none";
+      w.querySelector('[data-part="title"]').textContent = val("headerTitle").value;
+      w.querySelector('[data-part="sub"]').textContent = val("headerSub").value;
+      btn.style.display = val("showButton").checked ? "" : "none";
+      btn.style.background = val("accent").value;
+      btn.textContent = val("buttonText").value;
+    }
+    document.getElementById("wb-form").addEventListener("input", renderWidget);
+    renderWidget();
   </script>
 </body>
 </html>

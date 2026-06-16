@@ -856,3 +856,24 @@
 .gv-bo-typebadge.is-type { background: var(--gv-grey-100); color: var(--gv-cool-grey-600); border-radius: var(--gv-radius); padding: 2px 7px; }
 .gv-bo-typebadge.is-type svg { width: 14px; height: 14px; }
 .gv-bo-typebadge.is-required { color: var(--gv-teal-500); }
+
+/* ── BO segmented toggle ────────────────────────────────────────────────────
+   GoVocal's standard joined toggle group: white buttons with navy text + a 1px
+   dark border, collapsed shared edges, the active button filled navy/white. Used
+   by the dashboard date controls (Days/Weeks/Months), Tools widget Ideas/Projects,
+   Pages-menu Linked-projects, the participation-feed filter — anywhere a 2–4 way
+   switch sits on the BO chrome. Source: r1-an-dash-daterange-open / r1-cf-pages-new. */
+.gv-bo-segmented { display: inline-flex; }
+.gv-bo-segmented__btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--gv-white); color: var(--gv-bo-primary); border: 1px solid var(--gv-border-dark);
+  height: var(--gv-input-height); padding: 11px 18px; margin-left: -1px; border-radius: 0;
+  font-family: var(--gv-font-family); font-size: var(--gv-fs-s); line-height: 1; cursor: pointer;
+}
+.gv-bo-segmented__btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; z-index: 2; }
+.gv-bo-segmented__btn:first-child { margin-left: 0; border-radius: var(--gv-radius) 0 0 var(--gv-radius); }
+.gv-bo-segmented__btn:last-child { border-radius: 0 var(--gv-radius) var(--gv-radius) 0; }
+.gv-bo-segmented__btn.is-active {
+  background: var(--gv-bo-primary); border-color: var(--gv-bo-primary); color: var(--gv-white);
+  position: relative; z-index: 1;
+}

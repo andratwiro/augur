@@ -66,6 +66,16 @@
     .st-sub-blue { color: var(--gv-bo-primary) !important; font-weight: 300; }
     /* Disabled Save button (no pending changes) — muted teal, matches real. */
     .st-btn-disabled { background: var(--gv-bo-primary) !important; opacity: .4; cursor: not-allowed; }
+    /* Inner add-form views (swapped in place of the list view). */
+    .st-view { display: none; }
+    .st-view.is-active { display: block; }
+    /* "Go back" link above an add-form (real product). */
+    .st-goback { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-bo-link); font-size: var(--gv-fs-base); background: none; border: 0; padding: 0; cursor: pointer; margin-bottom: 18px; }
+    .st-goback .gv-icon, .st-goback svg { width: 16px; height: 16px; }
+    /* Answer-format radio list (Add demographic question). Real rows are
+       cool-grey 16px/400, generous vertical rhythm. */
+    .st-radiolist { margin: 0 0 8px; max-width: 540px; }
+    .st-radiolist .gv-radio { display: flex; color: var(--gv-text-primary); font-size: var(--gv-fs-base); margin-bottom: 16px; }
   </style>
 </head>
 <body class="gv-bo">
@@ -149,6 +159,7 @@
 
           <!-- ── Registration ────────────────────────────────────────── -->
           <div class="st-panel" data-panel="registration">
+           <div class="st-view is-active" data-view="reg-list">
             <h2 class="gv-bo-formhead st-head">Registration</h2>
             <h3 class="gv-bo-subhead st-sub" style="margin-top:0">Registration and login helper text</h3>
             <p class="gv-bo-help" style="margin-bottom:18px">Add short descriptions for the top of the sign-up and login forms.</p>
@@ -175,7 +186,39 @@
             <p class="gv-bo-help" style="margin:0 0 18px;max-width:680px">The same applies to the "required" setting that you see when you click "Edit" on a question.</p>
             <h3 class="gv-bo-subhead st-sub" style="margin-top:0;margin-bottom:14px">Questions<span class="st-lbl-info" data-gv-icon="info-outline"></span></h3>
             <div id="regq"></div>
-            <button class="gv-btn admin-dark st-fullbtn"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add question</span></button>
+            <button class="gv-btn admin-dark st-fullbtn" data-open="reg-add"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add question</span></button>
+           </div>
+
+           <!-- Add a new demographic question (route/full-page form) -->
+           <div class="st-view" data-view="reg-add">
+            <button class="st-goback" data-back="reg-list"><span data-gv-icon="chevron-left"></span>Go back</button>
+            <h2 class="gv-bo-formhead st-head" style="margin-top:0">Add a new demographic question</h2>
+            <div class="gv-bo-field">
+              <span class="st-lbl">Answer format</span>
+              <div class="st-radiolist">
+                <label class="gv-radio"><input type="radio" name="ansfmt" checked><span class="circle"></span>Multiple choice (select one)</label>
+                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Multiple choice (select multiple)</label>
+                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Yes-no (checkbox)</label>
+                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Short answer</label>
+                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Long answer</label>
+                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Numeric value</label>
+                <label class="gv-radio"><input type="radio" name="ansfmt"><span class="circle"></span>Date</label>
+              </div>
+            </div>
+            <div class="gv-bo-field">
+              <div class="st-fieldrow"><span class="st-lbl">Question name</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div>
+              <input class="gv-input" type="text">
+            </div>
+            <div class="gv-bo-field">
+              <div class="st-fieldrow"><span class="st-lbl">Description</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div>
+              <input class="gv-input" type="text">
+            </div>
+            <div class="st-togglerow" style="margin-bottom:18px">
+              <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+              <div><div class="st-togglerow__title">Make answering this question required?</div></div>
+            </div>
+            <button class="gv-btn admin-dark">Save question</button>
+           </div>
           </div>
 
           <!-- ── Tags ─────────────────────────────────────────────────── -->
@@ -189,18 +232,33 @@
 
           <!-- ── Areas ────────────────────────────────────────────────── -->
           <div class="st-panel" data-panel="areas">
+           <div class="st-view is-active" data-view="areas-list">
             <h2 class="gv-bo-formhead st-head">Geographic areas</h2>
             <p class="gv-bo-help" style="margin-bottom:12px;max-width:680px">Define the geographic areas that you would like to use for your platform, such as neighborhoods, boroughs or districts. You can associate these geographic areas with projects (filterable on the landing page) or ask participants to select their area of residence as a registration field to create Smart Groups and define access rights.</p>
             <div class="st-collapse" style="border:0;padding:8px 0"><span data-gv-icon="chevron-right"></span>Terminology <span class="gv-icon" data-gv-icon="info-outline"></span></div>
-            <button class="gv-btn admin-dark st-addbtn"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add a geographic area</span></button>
+            <button class="gv-btn admin-dark st-addbtn" data-open="areas-add"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add a geographic area</span></button>
             <div id="arearows"></div>
+           </div>
+
+           <!-- Add a geographic area (route/full-page form, NOT a modal) -->
+           <div class="st-view" data-view="areas-add">
+            <button class="st-goback" data-back="areas-list"><span data-gv-icon="chevron-left"></span>Go back</button>
+            <h2 class="gv-bo-formhead st-head" style="margin-top:0">Add a geographic area</h2>
+            <div class="gv-bo-field">
+              <div class="st-fieldrow"><span class="st-lbl">Area name</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="miss"></span>es-ES</button></div></div>
+              <input class="gv-input" type="text">
+            </div>
+            <button class="gv-btn admin-dark">Save area</button>
+           </div>
           </div>
 
           <!-- ── Statuses ─────────────────────────────────────────────── -->
           <div class="st-panel" data-panel="statuses">
-            <div class="st-subtabs"><a class="is-active" href="#">Input statuses</a><a href="#">Proposal statuses</a></div>
-            <h2 class="gv-bo-formhead st-head">Edit input statuses</h2>
-            <p class="gv-bo-help" style="margin-bottom:16px;max-width:680px">Manage the status that can be assigned to participant input within a project. The status is publicly visible and helps in keeping participants informed.</p>
+            <div class="st-subtabs"><a class="is-active" href="#" data-stat="input">Input statuses</a><a href="#" data-stat="proposal">Proposal statuses</a></div>
+            <h2 class="gv-bo-formhead st-head" data-stat-head="input">Edit input statuses</h2>
+            <h2 class="gv-bo-formhead st-head" data-stat-head="proposal" style="display:none">Edit proposal statuses</h2>
+            <p class="gv-bo-help" data-stat-help="input" style="margin-bottom:16px;max-width:680px">Manage the status that can be assigned to participant input within a project. The status is publicly visible and helps in keeping participants informed.</p>
+            <p class="gv-bo-help" data-stat-help="proposal" style="margin-bottom:16px;max-width:680px;display:none">Manage the status that can be assigned to proposals within a project. The status is publicly visible and helps in keeping participants informed.</p>
             <button class="gv-btn admin-dark st-addbtn"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add status</span></button>
             <div id="statusrows"></div>
           </div>
@@ -268,13 +326,23 @@
       ["under consideration", "#0080a5", false], ["accepted", "#04884c", false],
       ["rejected", "#e52516", false], ["implemented", "#0e7b3e", false],
     ];
-    document.getElementById("statusrows").innerHTML = STATUSES.map(([name, color, locked]) => `
+    // Proposal statuses: distinct lifecycle (proposed / threshold reached / expired /
+    // answered / ineligible). Colours measured from r1-cf-set-statuses-proposal digest.
+    const PROPOSAL_STATUSES = [
+      ["screening", "#4b4b4b", true], ["proposed", "#057abe", true], ["threshold reached", "#008300", false],
+      ["expired", "#b22222", false], ["answered", "#1e3a8a", false], ["ineligible", "#8b0000", false],
+    ];
+    function renderStatuses(rows) {
+      document.getElementById("statusrows").innerHTML = rows.map(([name, color, locked]) => `
       <div class="gv-bo-listrow">
         <span class="gv-bo-listrow__handle" data-gv-icon="${locked ? "lock" : "drag-handle"}"></span>
         <span class="st-swatch" style="background:${color}"></span>
         <div class="gv-bo-listrow__main"><h4 class="gv-bo-listrow__title" style="font-size:var(--gv-fs-base)"><a href="#">${name}</a></h4></div>
         <div class="gv-bo-listrow__actions">${smallBtn("Delete", "delete", true)}${smallBtn("Edit", "pen")}</div>
       </div>`).join("");
+      if (window.GVIcons) window.GVIcons.render(document.getElementById("statusrows"));
+    }
+    renderStatuses(STATUSES);
 
     // Tab switching
     document.querySelectorAll(".gv-bo-tab[data-st]").forEach(tab => {
@@ -286,6 +354,30 @@
         document.querySelectorAll(".st-panel").forEach(p => p.classList.toggle("is-active", p.dataset.panel === k));
       });
     });
+    // Add-form view swapping (Registration "Add question", Areas "Add a geographic area").
+    function showView(panel, viewName) {
+      panel.querySelectorAll(":scope > .st-view").forEach(v =>
+        v.classList.toggle("is-active", v.dataset.view === viewName));
+    }
+    document.querySelectorAll("[data-open]").forEach(btn => {
+      btn.addEventListener("click", e => { e.preventDefault(); showView(btn.closest(".st-panel"), btn.dataset.open); });
+    });
+    document.querySelectorAll("[data-back]").forEach(btn => {
+      btn.addEventListener("click", e => { e.preventDefault(); showView(btn.closest(".st-panel"), btn.dataset.back); });
+    });
+
+    // Statuses Input/Proposal sub-tab — swaps the status list dataset + heading/help.
+    document.querySelectorAll(".st-subtabs a[data-stat]").forEach(a => {
+      a.addEventListener("click", e => {
+        e.preventDefault();
+        const k = a.dataset.stat;
+        document.querySelectorAll(".st-subtabs a[data-stat]").forEach(x => x.classList.toggle("is-active", x === a));
+        document.querySelectorAll("[data-stat-head]").forEach(h => h.style.display = h.dataset.statHead === k ? "" : "none");
+        document.querySelectorAll("[data-stat-help]").forEach(h => h.style.display = h.dataset.statHelp === k ? "" : "none");
+        renderStatuses(k === "proposal" ? PROPOSAL_STATUSES : STATUSES);
+      });
+    });
+
     if (window.GVIcons) window.GVIcons.render(document.body);
   </script>
 </body>
