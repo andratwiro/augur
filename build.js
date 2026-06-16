@@ -642,6 +642,13 @@ const PAGE_CSS = `
     .status-chip:active { transform: translateY(0.5px); }
     .status-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .status-chip[disabled] { opacity: .6; cursor: progress; }
+    /* Overlaid on the preview, bottom-left — above the cover link so it stays
+       clickable, with a shadow to read over any screenshot. Sits in the preview
+       so it never adds to card height. */
+    .preview .status-chip {
+      position: absolute; left: 8px; bottom: 8px; z-index: 3;
+      box-shadow: 0 2px 8px -2px rgba(16,24,40,0.35); backdrop-filter: blur(4px);
+    }
     .status-chip.is-wip {
       color: #92500a; background: #fff6e8; border-color: rgba(146,80,10,0.22);
     }
@@ -1201,13 +1208,13 @@ function renderOpportunityIndex(opp) {
             <div class="preview-actions">
               ${download}
             </div>
+            ${statusChip(p.status, opp.name + "/" + p.name)}
           </div>
           <div class="proto-meta">
             <div class="proto-text">
               <div class="proto-name">${titleCase(p.name)}</div>
               <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
             </div>
-            ${statusChip(p.status, opp.name + "/" + p.name)}
           </div>
         </div>`;
     })
