@@ -127,8 +127,6 @@ function loginPage(redirect, error) {
   <div>
     <main class="card">
       <div class="mark" aria-hidden="true">P</div>
-      <h1>Product Prototypes</h1>
-      <p class="sub">Private — enter the password to continue.</p>
       <form method="POST" action="/__auth">
         <input type="hidden" name="redirect" value="${safeRedirect}" />
         <input class="visually-hidden" type="text" name="username" value="govocal"
@@ -142,7 +140,6 @@ function loginPage(redirect, error) {
         </p>
       </form>
     </main>
-    <p class="foot">Do not share outside the team.</p>
   </div>
 </body>
 </html>`;
@@ -277,6 +274,15 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    // Blanket "don't crawl anything" — the public prototypes are for link-sharing,
+    // not search discovery, and the rest is password-gated. Served openly so robots
+    // can actually read it (a gated robots.txt would just return the login page).
+    if (url.pathname === "/robots.txt") {
+      return new Response("User-agent: *\nDisallow: /\n", {
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
     // Review export bypasses the password gate (its own secret guards it).
     if (url.pathname === "/__review/api/export") return reviewExport(request, url, env);
 
@@ -317,7 +323,14 @@ export default {
     }
 
     // Published prototypes are public — never gated, regardless of the cookie.
-    if (isPublicPath(url.pathname)) return env.ASSETS.fetch(request);
+    // The open door is for easy link-sharing, NOT public discovery, so tag every
+    // public response as non-indexable (covers HTML and assets alike).
+    if (isPublicPath(url.pathname)) {
+      const res = await env.ASSETS.fetch(request);
+      const out = new Response(res.body, res);
+      out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+      return out;
+    }
 
     // Already authenticated?
     const cookies = request.headers.get("Cookie") || "";
