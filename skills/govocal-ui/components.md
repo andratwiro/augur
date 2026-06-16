@@ -586,6 +586,41 @@ links flow into the drawer grid.
 - Copy `govocal-logo.svg` into the prototype folder. The go·vocal mark is GoVocal’s brand
   (muted grey) — it doesn’t theme per city.
 
+## Footer logo band + dual-auth header + brand-tinted nav (config variants) — `.gv-footer__logos` / `.gv-nav.tinted` / `.gv-auth-dual` (`components/footer-logos/`)
+
+Three optional **configuration variants** on the shared header/footer, source-grounded on
+Luxembourg (`zesumme-vereinfachen.lu`, capture `fo-lux-footer-logos`), cross-checked vs Linz.
+
+```html
+<!-- 1. Footer LOGO BAND — optional white centered strip, SIBLING above <footer> -->
+<div class="gv-footer__logos row">          <!-- .row = multiple marks side-by-side -->
+  <a href="#" aria-label="Home" data-gv-logo></a>
+  <img class="gv-footer__logos-cap" src="government-logo.svg" alt="Government" />
+</div>
+<footer class="gv-footer"> … </footer>      <!-- .gv-footer__powered is OPTIONAL -->
+
+<!-- 2. Brand-tinted nav — labels in --gv-tenant-primary (only delta vs base nav) -->
+<nav class="gv-nav tinted" aria-label="Primary"> … </nav>
+
+<!-- 3. Dual signed-out auth CTAs — filled log-in + inverse register -->
+<div class="gv-auth-dual">
+  <button class="gv-btn primary">Se connecter</button>
+  <button class="gv-btn primary-inverse">S'inscrire</button>
+</div>
+```
+- **`.gv-footer__logos`** (`govocal-ui.css`): white, centered, `padding 50px 20px 20px`,
+  logos `height:100px` (measured `#hook-footer-logo`). Default column (single tenant logo,
+  Linz); add **`.row`** for tenant + partner/government marks; **`.gv-footer__logos-cap`**
+  shrinks partner logos. Tenant logo is a `data-gv-logo` slot → re-themes per `?theme=`.
+- **`.gv-nav.tinted`**: nav labels take `var(--gv-tenant-primary)` instead of near-black;
+  base `.gv-nav` (weight 500 / 16px / active+hover states) is otherwise untouched.
+- **`.gv-auth-dual`**: composes the existing `.gv-btn.primary` + `.gv-btn.primary-inverse`
+  (both pre-exist) and re-tints the inverse register label to the brand colour. Pair with the
+  signed-out `.gv-lang` switcher.
+- **Powered-by is optional**: keep `.gv-footer__powered` for tenants that show it (Lux shows
+  "Généré par Go Vocal"), omit for tenants that suppress it. SYSTEM = the band/nav/CTA
+  geometry (token-aliased); SKIN = logos / brand hue / language, re-themed per `?theme=`.
+
 ## Modal + login — `.gv-modal` (`components/login-modal/`)
 
 The reusable dialog abstraction (mirrors GoVocal’s `#modal-portal` → `.modalcontent`):

@@ -2628,3 +2628,61 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
   .gv-modal__footer { flex-wrap: wrap; padding: 12px 20px 16px; }
   .gv-modal__footer .gv-cookie__manage { margin-right: 0; order: 3; flex: 1 1 100%; }
 }
+
+/* ── Footer logo band (optional, config variant) ─────────────────────────────
+   Some tenants enable an upper "logo band" ABOVE the legal-link row of the footer
+   — a white, centered strip that carries the tenant logo (and optionally one or
+   more partner / government logos). Source-grounded on Luxembourg
+   (zesumme-vereinfachen.lu, capture fo-lux-footer-logos): #hook-footer-logo =
+   white bg, padding 50px 20px 20px, flex column centered, ≈190px tall; the logo
+   <img> is height 100, margin-bottom 20. Cross-checked Linz (#hook-footer-logo =
+   single tenant logo). OPTIONAL: a tenant that doesn't configure it simply omits
+   the band. SYSTEM = the band geometry (all token-aliased); SKIN = which logos,
+   re-themed per ?theme=. Distinct from the header logo and from the small
+   .gv-footer__logo inline slot. Mount the band as a SIBLING above <footer>. */
+.gv-footer__logos {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 24px 40px;
+  background: #fff;
+  padding: 50px 20px 20px;            /* measured #hook-footer-logo */
+  font-family: var(--gv-font-family);
+}
+.gv-footer__logos.row { flex-direction: row; }   /* multiple logos side-by-side */
+/* Each logo is a link; the band's last/only logo carries the 20px bottom gutter
+   (measured margin 0 0 20px on the img). */
+.gv-footer__logos a { display: inline-flex; align-items: center; }
+.gv-footer__logos img, .gv-footer__logos svg { display: block; height: 100px; width: auto; max-width: 100%; }
+.gv-footer__logos .gv-footer__logos-cap { height: 64px; }   /* smaller partner/government marks */
+@media (max-width: 720px) {
+  .gv-footer__logos { padding: 36px 20px 16px; }
+  .gv-footer__logos.row { flex-direction: column; }
+  .gv-footer__logos img, .gv-footer__logos svg { height: 72px; }
+}
+
+/* ── Brand-tinted nav (config variant) ───────────────────────────────────────
+   A header configuration some tenants use: the primary-nav LABELS render in the
+   tenant brand colour rather than near-black. Source-grounded on Luxembourg
+   (nav.sc-PdSgz labels = rgb(27,94,125) = the Lux --gv-tenant-primary, 16px/500).
+   The base nav keeps weight 500 / --gv-fs-base; the only delta is the label
+   colour, so this is a thin .tinted modifier — base .gv-nav untouched. Active /
+   hover / dropdown-open states already use --gv-tenant-primary, so they remain
+   consistent. */
+.gv-nav.tinted .gv-nav__link { color: var(--gv-tenant-primary); }
+.gv-nav.tinted .gv-nav__link[aria-current="page"] { color: var(--gv-tenant-primary); }
+
+/* ── Dual signed-out auth CTAs (config variant) ──────────────────────────────
+   Some tenants expose BOTH a "Log in" and a "Register" call-to-action in the
+   signed-out header, instead of a single sign-in button. Source-grounded on
+   Luxembourg: a filled .gv-btn.primary "Se connecter" (tenant-primary fill, white
+   16px label, 9px 18px, radius 3, 45px tall) + an inverse .gv-btn.primary-inverse
+   "S'inscrire" (white fill, tenant-primary 16px/500 label, radius 3). Both button
+   variants ALREADY exist — this group only lays them out (gap) and re-tints the
+   inverse register button's label to the tenant brand (the live treatment) without
+   mutating the base .gv-btn.primary-inverse (which keeps its near-black label for
+   the on-hero use). */
+.gv-auth-dual { display: inline-flex; align-items: center; gap: 10px; }
+.gv-auth-dual .gv-btn.primary { font-size: var(--gv-fs-base); line-height: 16.1px; padding: 9px 18px; }
+.gv-auth-dual .gv-btn.primary-inverse {
+  color: var(--gv-tenant-primary); font-weight: 500;
+  font-size: var(--gv-fs-base); line-height: 16.1px; padding: 9px 18px;
+}

@@ -2142,6 +2142,41 @@
       ]
     },
     {
+      "id": "fo-lux-footer-logos/logo-band",
+      "built": "components/footer-logos/index.html",
+      "against": "fo-lux-footer-logos",
+      "map": {
+        "#hook-footer-logo": "#cp-logo-band"
+      },
+      "props": [
+        "padding",
+        "display",
+        "flex-direction",
+        "align-items",
+        "justify-content",
+        "background-color"
+      ],
+      "uses": [
+        ".gv-footer"
+      ]
+    },
+    {
+      "id": "fo-lux-footer-logos/header-chrome",
+      "built": "components/footer-logos/index.html",
+      "against": "fo-lux-footer-logos",
+      "map": {
+        "header.sc-kplVBS": ".gv-header"
+      },
+      "props": [
+        "background-color",
+        "box-shadow",
+        "height"
+      ],
+      "uses": [
+        ".gv-header"
+      ]
+    },
+    {
       "id": "fo-falkirk-bubbles-overflow/count-circle",
       "built": "components/avatar-overflow-bubble/index.html",
       "against": "fo-falkirk-bubbles-overflow",
