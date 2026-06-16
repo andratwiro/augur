@@ -310,6 +310,35 @@
     box-shadow: 0 2px 6px rgba(0,0,0,.2);
     z-index: 5;
   }
+
+  /* ── Preview "click to edit" zones ──────────────────────────────────────────
+     Hover affordance over the 4 logical sections of the FO preview (hero, main
+     content, timeline, events) so the page reads as editable. Purely additive and
+     scoped to .phone: it lives on the prototype's own .pp-fo__* wrappers, NEVER on
+     the .gv-* components. Uses an INSET outline (outline-offset:-2) so nothing
+     grows the box (no reflow) and nothing gets clipped by the phone's rounded
+     overflow — the editor teal reads as chrome, not tenant content. */
+  .phone .pp-edit {
+    position: relative; cursor: pointer; border-radius: 8px;
+    outline: 2px solid transparent; outline-offset: -2px;
+    transition: outline-color .12s ease, background-color .12s ease;
+  }
+  .phone .pp-edit:hover { outline-color: #2c6e7d; background: rgba(44,110,125,.06); }
+  .phone .pp-edit::after {
+    content: ""; position: absolute; top: 8px; right: 8px;
+    width: 24px; height: 24px; border-radius: 999px; background: #2c6e7d;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 20h9'/><path d='M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z'/></svg>");
+    background-repeat: no-repeat; background-position: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,.2); z-index: 6; pointer-events: none;
+    opacity: 0; transform: scale(.8); transform-origin: center;
+    transition: opacity .12s ease, transform .12s ease;
+  }
+  .phone .pp-edit:hover::after { opacity: 1; transform: scale(1); }
+  @media (prefers-reduced-motion: reduce) {
+    .phone .pp-edit::after { transition: opacity .12s ease; transform: none; }
+    .phone .pp-edit:hover::after { transform: none; }
+  }
+
   .compose-card { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid var(--border); border-radius:10px; background:#fff; }
   .compose-card .plus { width: 28px; height: 28px; border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#7a8294; }
   .compose-card:hover { border-color:#cfd5df; }
@@ -2109,6 +2138,11 @@
     const handler = e.target.closest('[onclick]');
     if (handler && handler !== e.currentTarget) return;
     openBuilder();
+    // Deep-link: if the click landed in a preview edit-zone, open the builder with
+    // that block selected (hero/title/timeline/events). Bridge lives in the builder.
+    const zone = e.target.closest('.pp-edit');
+    const widget = zone && zone.getAttribute('data-edit');
+    if (widget && window.cbFocusWidget) requestAnimationFrame(() => window.cbFocusWidget(widget));
   }
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -2234,8 +2268,8 @@
 
     return `
       <div class="pp-fo">
-        <div class="pp-fo__banner"><img src="assets/img/${complex ? 'square' : 'street-trees'}.webp" alt="" loading="lazy" /></div>
-        <div class="pp-fo__pad">
+        <div class="pp-fo__banner pp-edit" data-edit="hero"><img src="assets/img/${complex ? 'square' : 'street-trees'}.webp" alt="" loading="lazy" /></div>
+        <div class="pp-fo__pad pp-edit" data-edit="title">
           <span class="pp-fo__cat">Mobility · 2026</span>
           <h1 class="gv-title h1 pp-fo__title">${complex ? 'Reimagine Meridian 2030' : 'A greener Station Road'}</h1>
           <p class="pp-fo__lead">${complex
@@ -2272,17 +2306,21 @@
         </div>
 
         <div class="pp-fo__pad">
-          <h2 class="gv-title h3 pp-fo__h2">Timeline</h2>
-          <div class="gv-stepper pp-fo__stepper">${stepper}</div>
-          <div class="pp-fo__phasecard">
-            <div class="pp-fo__phasecard-eyebrow">Current phase · ${current + 1} of ${phaseData.length}</div>
-            <h3 class="pp-fo__phasecard-title">${cur[0]}</h3>
-            <div class="pp-fo__phasecard-dates"><span data-gv-icon="clock" aria-hidden="true"></span> ${cur[1]} · ${cur[2]}</div>
-            <p class="pp-fo__phasecard-desc">Share your ideas for how we move, cycle and gather. Every suggestion is reviewed by the city team and shapes what comes next.</p>
+          <div class="pp-edit" data-edit="timeline">
+            <h2 class="gv-title h3 pp-fo__h2">Timeline</h2>
+            <div class="gv-stepper pp-fo__stepper">${stepper}</div>
+            <div class="pp-fo__phasecard">
+              <div class="pp-fo__phasecard-eyebrow">Current phase · ${current + 1} of ${phaseData.length}</div>
+              <h3 class="pp-fo__phasecard-title">${cur[0]}</h3>
+              <div class="pp-fo__phasecard-dates"><span data-gv-icon="clock" aria-hidden="true"></span> ${cur[1]} · ${cur[2]}</div>
+              <p class="pp-fo__phasecard-desc">Share your ideas for how we move, cycle and gather. Every suggestion is reviewed by the city team and shapes what comes next.</p>
+            </div>
           </div>
-          <h2 class="gv-title h3 pp-fo__h2">Upcoming events</h2>
-          ${ev('Jun', '14', 'Mobility town hall', '14 Jun · 19:00', 'Central Library', 'location-simple', '41', 'meeting.webp')}
-          ${complex ? ev('Jul', '02', 'Neighbourhood design workshop', '2 Jul · 18:00', 'Meridian Civic Hall', 'location-simple', '57', 'workshop.webp') : ''}
+          <div class="pp-edit" data-edit="events">
+            <h2 class="gv-title h3 pp-fo__h2">Upcoming events</h2>
+            ${ev('Jun', '14', 'Mobility town hall', '14 Jun · 19:00', 'Central Library', 'location-simple', '41', 'meeting.webp')}
+            ${complex ? ev('Jul', '02', 'Neighbourhood design workshop', '2 Jul · 18:00', 'Meridian Civic Hall', 'location-simple', '57', 'workshop.webp') : ''}
+          </div>
         </div>
       </div>`;
   }
@@ -4057,6 +4095,15 @@
 
     // open the panel for the default block to mirror the -settings capture
     if (first) select(first);
+
+    // Bridge for the preview's "click to edit" zones: select the matching block
+    // (by data-widget) and bring it into view. Called from maybeOpenBuilder().
+    window.cbFocusWidget = function (widget) {
+      var block = frame.querySelector('[data-widget="' + widget + '"]');
+      if (!block) return;
+      select(block);
+      if (block.scrollIntoView) block.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    };
   })();
 </script>
 <script>
