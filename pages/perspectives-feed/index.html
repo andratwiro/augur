@@ -14,122 +14,46 @@
   <!--
     REFERENCE REBUILD of the dedicated full-bleed PERSPECTIVES / Issue-Mapping feed,
     source-grounded on wietsedemo.govocal.com … /ideas-feed (capture:
-    govocal-exports/fo-perspectives-feed). Anatomy: header → a two-column SPLIT —
-    left 30% RAIL (Back · "Issue Mapping" title · participant avatar bubbles + count ·
-    question h3 + intro prose · ranked theme/category cards) beside a right 70%
-    dotted-grid CANVAS that floats pastel sticky-note idea cards (two states: one
-    raised DETAIL card, or the masonry PILE) with a floating "Add an idea" CTA.
-    Pure assembly: every colour/border/shadow/type lives in canonical govocal-ui.css
-    (.gv-issuefeed / .gv-themecard / .gv-sticky); this page authors layout + content
-    only. Header/footer dragged in; re-skins per city via the ?theme= switcher.
+    govocal-exports/fo-perspectives-feed + a live multi-scroll Playwright probe).
+    The real UI is a TIKTOK-STYLE VERTICAL SNAP FEED: a full-bleed FIXED takeover
+    (NO global site header), a two-column SPLIT — left 30% RAIL that stays FIXED
+    (Back · "Issue Mapping" title · participant bubbles + count · question + intro ·
+    ranked theme cards) beside a right 70% dotted-grid CANVAS that is a single
+    scroll-snap column: each idea card sits centred in a ~700px snap band, one card
+    per screen, the next peeking below. Grounded measurements: snap container
+    overflow-y:auto + scroll-snap-type:y mandatory, height = viewport (900px),
+    scrollHeight ~8500px (≈10 bands); each band 700px / scroll-snap-align:center;
+    card 320×400 absolute-centred. MOBILE is a distinct composition: rail hidden,
+    card near full-width on the dots, top Back+Add-idea bar, fixed bottom "Explore
+    tags" trigger. Pure assembly: colour/elevation/type live in canonical
+    govocal-ui.css (.gv-issuefeed.is-feed / .gv-issuecanvas.is-feed / .gv-sticky-band
+    / .gv-themecard / .gv-sticky); this page authors layout + content only.
   -->
   <style>
     /* Page-level layout only — all colour/elevation/type lives in canonical CSS. */
-    body { margin: 0; background: #fff; font-family: var(--gv-font-family); }
+    html, body { margin: 0; height: 100%; background: #fff; font-family: var(--gv-font-family); }
+    /* This method is a full-screen takeover: the page itself does not scroll. */
+    body { overflow: hidden; }
   </style>
 </head>
 <body class="gv-root" data-auth="in">
 
-  <!-- ════════════════════════ Header / nav (dragged in) ════════════════════════ -->
-  <header id="e2e-navbar" class="gv-header sticky">
-    <div class="gv-header__inner">
-      <a class="gv-brand" href="#" data-gv-logo aria-label="Home"></a>
+  <!-- ═════════════════════════ Issue-Mapping snap feed ═════════════════════════
+       Method-specific FULL-SCREEN takeover: NO global site header — the only nav
+       affordance is the rail's Back button (desktop) / top bar (mobile). The whole
+       window is occupied by .gv-issuefeed.is-feed (fixed, inset:0); the page body
+       does not scroll — only the inner .gv-issuecanvas.is-feed snap-scrolls.        -->
+  <main id="main-content" class="gv-issuefeed is-feed">
 
-      <nav class="gv-nav" aria-label="Primary">
-        <ul class="gv-nav__list">
-          <li><a class="gv-nav__link" href="#">Home</a></li>
-          <li>
-            <details class="gv-nav__dd">
-              <summary class="gv-nav__link">All projects
-                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </summary>
-              <div class="gv-nav__menu">
-                <a href="#">The big downtown survey</a>
-                <a href="#">A square for everyone</a>
-                <a href="#">The future of Station Road</a>
-                <a href="#">Participatory budget 2026</a>
-              </div>
-            </details>
-          </li>
-          <li><a class="gv-nav__link" href="#" aria-current="page">Perspectives</a></li>
-          <li><a class="gv-nav__link" href="#">Events</a></li>
-          <li>
-            <details class="gv-nav__dd right">
-              <summary class="gv-nav__link">More
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-              </summary>
-              <div class="gv-nav__menu">
-                <a href="#">About the platform</a>
-                <a href="#">FAQ</a>
-                <a href="#">Contact</a>
-              </div>
-            </details>
-          </li>
-        </ul>
-      </nav>
-
-      <div class="gv-header__actions">
-        <button class="gv-iconbtn gv-desktop-only" aria-label="Search">
-          <span data-gv-icon="search"></span>
-        </button>
-
-        <span class="gv-auth-out gv-desktop-only">
-          <button class="gv-btn primary" data-auth-set="in">Sign in</button>
-        </span>
-
-        <span class="gv-auth-in gv-desktop-only">
-          <button class="gv-iconbtn" aria-label="Notifications, 3 unread">
-            <span data-gv-icon="notification"></span>
-            <span class="gv-iconbtn__badge">3</span>
-          </button>
-          <details class="gv-nav__dd right gv-account-dd">
-            <summary class="gv-account">
-              <span class="gv-account__name">Sofie Maes</span>
-              <span class="gv-avatar">SM</span>
-              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </summary>
-            <div class="gv-nav__menu gv-nav__menu--account">
-              <a href="#">Manage platform <span data-gv-icon="shield"></span></a>
-              <a href="#">My activity <span data-gv-icon="user-circle"></span></a>
-              <a href="#">My settings <span data-gv-icon="cogs"></span></a>
-              <button type="button" data-auth-set="out">Sign out <span data-gv-icon="power"></span></button>
-            </div>
-          </details>
-          <details class="gv-nav__dd right">
-            <summary class="gv-lang">EN
-              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </summary>
-            <div class="gv-nav__menu">
-              <a href="#">English</a>
-              <a href="#">Español</a>
-              <a href="#">Français</a>
-            </div>
-          </details>
-        </span>
-
-        <details class="gv-nav-m">
-          <summary aria-label="Show mobile navigation menu">
-            <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
-            <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
-          </summary>
-          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
-            <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
-            <a href="#">Home</a>
-            <a href="#">All projects</a>
-            <a href="#" aria-current="page">Perspectives</a>
-            <a href="#">Events</a>
-            <a href="#">More</a>
-            <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Search</a>
-          </nav>
-        </details>
-      </div>
+    <!-- ════ Mobile top bar ════ (Back arrow + Add-idea CTA; replaces rail/header on small screens) -->
+    <div class="gv-issuefeed__mtop" aria-hidden="false">
+      <button type="button" class="gv-issuefeed__mback" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="gv-btn primary gv-issuefeed__madd"><span data-gv-icon="plus" aria-hidden="true"></span> Add an idea</button>
     </div>
-  </header>
 
-  <!-- ═════════════════════════ Issue-Mapping split ═════════════════════════ -->
-  <main id="main-content" class="gv-issuefeed">
-
-    <!-- ════ Left rail ════ -->
+    <!-- ════ Left rail ════ (FIXED — does not scroll with the card feed) -->
     <div class="gv-issuefeed__rail e2e-ideas-feed-sidebar">
 
       <button type="button" class="gv-issuefeed__back" id="e2e-go-back-button">
@@ -137,7 +61,7 @@
         Back
       </button>
 
-      <h1 class="gv-issuefeed__title">Perspectives</h1>
+      <h1 class="gv-issuefeed__title">Issue Mapping</h1>
 
       <!-- participant bubbles + count (reuses .gv-bubbles, faces filled by govocal-avatars.js) -->
       <div class="gv-bubbles sm gv-issuefeed__participants">
@@ -235,12 +159,15 @@
       </div>
     </div>
 
-    <!-- ════ Right canvas ════ -->
-    <div class="gv-issuecanvas is-detail" id="issueCanvas">
+    <!-- ════ Right canvas ════ — a SINGLE scroll-snap column (TikTok-style vertical
+         feed). overflow-y:auto + scroll-snap-type:y mandatory; one card per ~700px
+         band, centred, the next card peeking below. This is the only scrolling
+         region on the page; the rail stays fixed. -->
+    <div class="gv-issuecanvas is-feed" id="issueCanvas">
 
-      <!-- DETAIL state — one raised floating sticky note (the initial_idea_id card). -->
-      <div class="gv-issuecanvas__view" id="canvasDetail">
-        <button type="button" class="gv-sticky is-raised lavender" data-cy="e2e-sticky-note">
+      <!-- Each .gv-sticky-band is a 700px snap band that centres a 320×400 raised card. -->
+      <div class="gv-sticky-band">
+        <article class="gv-sticky is-raised lavender" data-cy="e2e-sticky-note">
           <span class="gv-sticky__author">
             <span class="av"></span>
             <span class="gv-sticky__authorname">Daan Verhoeven</span>
@@ -258,27 +185,11 @@
               <span class="gv-sr-only">Like</span><b>41</b>
             </button>
           </span>
-        </button>
+        </article>
       </div>
 
-      <!-- PILE state — the masonry of resting sticky notes (no idea selected). Hidden until Back. -->
-      <div class="gv-issuecanvas__pile" id="canvasPile" hidden>
-
-        <button type="button" class="gv-sticky lavender" data-cy="e2e-sticky-note">
-          <span class="gv-sticky__author">
-            <span class="av"></span>
-            <span class="gv-sticky__authorname">Daan Verhoeven</span>
-            <button type="button" class="gv-sticky__share" aria-label="Share idea" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="18" cy="5" r="2.4" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="12" r="2.4" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="19" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M8.1 10.9l7.8-4.6M8.1 13.1l7.8 4.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
-          </span>
-          <span class="gv-sticky__title">Let us get back to the water</span>
-          <span class="gv-sticky__excerpt">Most of the quayside is still fenced off. I'd love a continuous walkway from the Harbour district round to Riverside — somewhere families can stroll and watch the boats.</span>
-          <span class="gv-sticky__react e2e-reaction-controls neutral">
-            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>1</b></button>
-            <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>41</b></button>
-          </span>
-        </button>
-
-        <button type="button" class="gv-sticky mint" data-cy="e2e-sticky-note">
+      <div class="gv-sticky-band">
+        <article class="gv-sticky is-raised mint" data-cy="e2e-sticky-note">
           <span class="gv-sticky__author">
             <span class="av"></span>
             <span class="gv-sticky__authorname">Tom Bekker</span>
@@ -290,9 +201,11 @@
             <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
             <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>33</b></button>
           </span>
-        </button>
+        </article>
+      </div>
 
-        <button type="button" class="gv-sticky pink" data-cy="e2e-sticky-note">
+      <div class="gv-sticky-band">
+        <article class="gv-sticky is-raised pink" data-cy="e2e-sticky-note">
           <span class="gv-sticky__author">
             <span class="av"></span>
             <span class="gv-sticky__authorname">Clara Janssen</span>
@@ -304,9 +217,11 @@
             <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>2</b></button>
             <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>29</b></button>
           </span>
-        </button>
+        </article>
+      </div>
 
-        <button type="button" class="gv-sticky grey" data-cy="e2e-sticky-note">
+      <div class="gv-sticky-band">
+        <article class="gv-sticky is-raised grey" data-cy="e2e-sticky-note">
           <span class="gv-sticky__author">
             <span class="av"></span>
             <span class="gv-sticky__authorname">Marek Nowak</span>
@@ -318,9 +233,11 @@
             <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
             <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>24</b></button>
           </span>
-        </button>
+        </article>
+      </div>
 
-        <button type="button" class="gv-sticky mint" data-cy="e2e-sticky-note">
+      <div class="gv-sticky-band">
+        <article class="gv-sticky is-raised mint" data-cy="e2e-sticky-note">
           <span class="gv-sticky__author">
             <span class="av"></span>
             <span class="gv-sticky__authorname">Aisha Karimi</span>
@@ -332,9 +249,11 @@
             <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
             <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>27</b></button>
           </span>
-        </button>
+        </article>
+      </div>
 
-        <button type="button" class="gv-sticky lavender" data-cy="e2e-sticky-note">
+      <div class="gv-sticky-band">
+        <article class="gv-sticky is-raised lavender" data-cy="e2e-sticky-note">
           <span class="gv-sticky__author">
             <span class="av"></span>
             <span class="gv-sticky__authorname">Lena Okonkwo</span>
@@ -346,15 +265,19 @@
             <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>1</b></button>
             <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>22</b></button>
           </span>
-        </button>
-
+        </article>
       </div>
 
-      <!-- floating bottom-right CTA -->
+      <!-- floating bottom-right CTA (desktop). On mobile the Add-idea moves to the top bar. -->
       <div class="gv-issuecanvas__add">
-        <button type="button" class="gv-btn primary"><span data-gv-icon="plus" aria-hidden="true"></span> Add your perspective</button>
+        <button type="button" class="gv-btn primary"><span data-gv-icon="plus" aria-hidden="true"></span> Add an idea</button>
       </div>
     </div>
+
+    <!-- ════ Mobile bottom "Explore tags" trigger ════ (opens the theme list as a sheet) -->
+    <button type="button" class="gv-issuefeed__tags" aria-label="Explore tags">
+      <span data-gv-icon="search" aria-hidden="true"></span> Explore tags
+    </button>
 
   </main>
 
@@ -372,19 +295,6 @@
         if (el) { e.preventDefault(); set(el.getAttribute('data-auth-set')); document.querySelectorAll('.gv-nav__dd[open]').forEach(function (d) { d.open = false; }); }
       });
 
-      // Canvas state: detail (one raised card) ⇄ pile (masonry). Back toggles to the pile.
-      var canvas = document.getElementById('issueCanvas');
-      var detail = document.getElementById('canvasDetail');
-      var pile = document.getElementById('canvasPile');
-      var back = document.getElementById('e2e-go-back-button');
-      function showPile() { detail.hidden = true; pile.hidden = false; canvas.classList.remove('is-detail'); }
-      function showDetail() { detail.hidden = false; pile.hidden = true; canvas.classList.add('is-detail'); }
-      back.addEventListener('click', showPile);
-      // Clicking a sticky note in the pile opens it as a detail card.
-      pile.addEventListener('click', function (e) {
-        if (e.target.closest('.gv-sticky__reactbtn')) return;   // let reactions click through
-        if (e.target.closest('.gv-sticky')) showDetail();
-      });
       // Theme cards: single active selection.
       document.querySelectorAll('.gv-themecard').forEach(function (c) {
         c.addEventListener('click', function () {

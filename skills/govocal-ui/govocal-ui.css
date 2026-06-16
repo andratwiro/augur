@@ -1836,6 +1836,87 @@
   .gv-sticky.is-raised { width: 100%; max-width: 100%; }
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   ── Issue-Mapping SNAP FEED variant (.is-feed) — the DEFINING Perspective UX ──
+   Source-grounded on a live multi-scroll Playwright probe of wietsedemo
+   /ideas-feed (2026-06): the real method is a TikTok-style vertical scroll-snap
+   feed, NOT a single static card or a masonry pile. Measured facts:
+   • The whole experience is a FULL-SCREEN FIXED takeover with NO global site
+     header — the outer wrapper is position:fixed, inset:0, full-viewport height,
+     overflow:hidden; the page body does not scroll.
+   • The LEFT RAIL stays fixed (Back · "Issue Mapping" · participants · question ·
+     intro · ranked theme cards do not scroll).
+   • The RIGHT CANVAS is the ONLY scroller: a single column with
+     overflow-y:auto + scroll-snap-type:y mandatory, height = viewport (≈900px),
+     scrollHeight ≈8500px (≈10 card-screens).
+   • Each card lives centred in a ~700px snap band (scroll-snap-align centre);
+     the 320×400 card is centred, and the NEXT card peeks at the bottom edge.
+   New variant on the existing components — the base .gv-issuefeed / .gv-issuecanvas
+   (header-below split + masonry/scatter pile) is untouched for other consumers. */
+
+/* Full-screen fixed takeover: pins the rail and lets only the canvas snap-scroll. */
+.gv-issuefeed.is-feed { position: fixed; inset: 0; height: 100vh; min-height: 0;
+  overflow: hidden; background: #fff; }
+/* the rail no longer scrolls the page — it's a fixed column inside the fixed shell.
+   Internal overflow guard only (rail content fits the viewport on desktop). */
+.gv-issuefeed.is-feed .gv-issuefeed__rail { height: 100vh; overflow-y: auto; }
+
+/* The canvas becomes the single snap container (replaces the centred flex box). */
+.gv-issuecanvas.is-feed { display: block; height: 100vh; overflow-y: auto; overflow-x: hidden;
+  padding: 0; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch;
+  align-items: stretch; justify-content: stretch; }
+
+/* Snap band — each card sits in a ~700px band that centres it; the next band's
+   card peeks below as you scroll. Grounded band height = 700px, snap-align centre. */
+.gv-sticky-band { box-sizing: border-box; display: flex; align-items: center;
+  justify-content: center; width: 100%; height: 700px; scroll-snap-align: center; }
+/* inside the snap feed every card is the uniform raised 320×400 tile, centred.
+   flex:0 0 auto so the band's flex centring can't shrink the card below 320px. */
+.gv-issuecanvas.is-feed .gv-sticky.is-raised { flex: 0 0 auto; width: 320px; max-width: 320px;
+  height: 400px; min-height: 400px; overflow: hidden; margin: 0; }
+
+/* ── Mobile composition (≤860px) — a DISTINCT layout, not stacked desktop ──
+   Grounded on fo-perspectives-feed-m: rail hidden; the card fills almost the whole
+   screen on the dotted background (full-bleed swipe feed); a top bar shows only a
+   Back arrow (left) + "Add an idea" CTA (right); the theme list collapses behind a
+   fixed bottom "Explore tags" bar. No global site header. */
+/* desktop: hide the mobile-only chrome. */
+.gv-issuefeed__mtop, .gv-issuefeed__tags { display: none; }
+/* mobile Back arrow button in the top bar. */
+.gv-issuefeed__mback { display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--gv-text-primary); }
+.gv-issuefeed__mback svg { width: 24px; height: 24px; }
+
+@media (max-width: 860px) {
+  /* the feed shell collapses to one column; the rail is removed from the flow. */
+  .gv-issuefeed.is-feed { display: block; }
+  .gv-issuefeed.is-feed .gv-issuefeed__rail { display: none; }
+
+  /* top bar: Back (left) + Add-idea CTA (right), floating over the dotted canvas. */
+  .gv-issuefeed.is-feed .gv-issuefeed__mtop { position: fixed; top: 0; left: 0; right: 0;
+    z-index: 20; display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; pointer-events: none; }
+  .gv-issuefeed.is-feed .gv-issuefeed__mtop > * { pointer-events: auto; }
+  .gv-issuefeed__madd { display: inline-flex; }
+
+  /* canvas fills the screen; bands shrink so the near-full-width card dominates. */
+  .gv-issuecanvas.is-feed { height: 100vh; padding: 0; }
+  .gv-issuecanvas.is-feed .gv-sticky-band { height: 100vh; padding: 0 16px; }
+  .gv-issuecanvas.is-feed .gv-sticky.is-raised { width: 100%; max-width: 100%;
+    height: auto; min-height: 360px; }
+  /* the desktop floating CTA is replaced by the top-bar Add-idea on mobile. */
+  .gv-issuefeed.is-feed .gv-issuecanvas__add { display: none; }
+
+  /* fixed bottom "Explore tags" trigger — opens the theme/category sheet. */
+  .gv-issuefeed.is-feed .gv-issuefeed__tags { position: fixed; left: 0; right: 0; bottom: 0;
+    z-index: 20; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 18px 16px; border: 0; border-top: 1px solid var(--gv-grey-200);
+    background: #fff; cursor: pointer; font-family: var(--gv-font-family);
+    font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary); }
+  .gv-issuefeed.is-feed .gv-issuefeed__tags svg { width: 20px; height: 20px; }
+}
+
 /* ── Homepage "We want to hear from you" featured 3-up spotlight row ──────────
    Source-grounded on wietsedemo /en (capture fo-homepage-featured-row): a row of
    large, image-led featured project cards that sit ABOVE the regular project grid,
