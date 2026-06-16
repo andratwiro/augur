@@ -43,7 +43,7 @@
   html, body { background: var(--bg); color: var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; }
   .ttl { font-family: ui-serif, Georgia, "Times New Roman", serif; }
   .phone {
-    width: 360px;
+    width: 320px;
     border: 12px solid #111418;
     border-radius: 44px;
     background: #fff;
@@ -67,7 +67,8 @@
   .phone { --pz: 0.72; }
   .phone .pp-screen {
     position: absolute; top: 0; left: 0;
-    width: calc(336px / var(--pz)); height: calc(676px / var(--pz));
+    /* logical box = phone interior ÷ scale, so it fills whatever size the frame is */
+    width: calc(100% / var(--pz)); height: calc(100% / var(--pz));
     transform: scale(var(--pz)); transform-origin: top left;
     display: flex; flex-direction: column; background: #fff;
   }
@@ -89,10 +90,12 @@
   .phone .pp-fo__cat { display: block; font-size: var(--gv-fs-s); letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--gv-text-secondary, #596B7A); margin-bottom: 8px; }
   .phone .pp-fo__title { margin: 0 0 12px; }
   .phone .pp-fo__lead { margin: 0 0 18px; font-size: var(--gv-fs-base); line-height: 1.55; color: var(--gv-grey-800, #43515D); }
-  .phone .pp-fo__parts { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; }
-  .phone .pp-fo__parts .gv-avatars { margin: 0; }
-  .phone .pp-fo__cta { display: flex; flex-direction: column; gap: 10px; margin: 0 0 24px; }
+  /* Participation box: CTAs, then avatars ALWAYS at the bottom (component contract). */
+  .phone .pp-fo__pbox { margin: 0 0 24px; }
+  .phone .pp-fo__cta { display: flex; flex-direction: column; gap: 10px; margin: 0 0 14px; }
   .phone .pp-fo__cta .gv-btn { width: 100%; justify-content: center; }
+  .phone .pp-fo__parts { display: flex; align-items: center; gap: 12px; margin: 0; }
+  .phone .pp-fo__parts .gv-avatars { margin: 0; }
   .phone .pp-fo__acc { margin: 0 0 24px; }
   .phone .pp-fo__h2 { margin: 0 0 14px; }
   .phone .pp-fo__stepper { margin: 0 0 16px; }
@@ -1577,15 +1580,9 @@
     <main class="flex-1 flex flex-col relative">
 
       <!-- ====== VIEW: Project page preview ====== -->
-      <div id="view-project" class="preview-stage flex-1 flex items-start justify-center pt-20 pb-6 relative overflow-y-auto">
+      <div id="view-project" class="preview-stage flex-1 flex items-start justify-center pt-8 pb-6 relative overflow-y-auto">
 
-        <!-- Prominent edit banner -->
-        <div class="edit-banner" style="cursor:pointer;" onclick="openBuilder()">
-          <svg class="nav-icon" style="width:15px;height:15px;" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-          Click any section of the page to edit it
-        </div>
-
-        <div id="phone" class="phone" style="height: 700px; cursor: pointer;" onclick="maybeOpenBuilder(event)">
+        <div id="phone" class="phone" style="height: 620px; cursor: pointer;" onclick="maybeOpenBuilder(event)">
           <div class="notch"></div>
 
           <!-- .pp-screen = the whole phone interior, built from REAL full-size GoVocal
@@ -2182,13 +2179,17 @@
           <span class="pp-fo__cat">Mobility · 2026</span>
           <h1 class="gv-title h1 pp-fo__title">${complex ? 'Reimagine Meridian 2030' : 'A greener Station Road'}</h1>
           <p class="pp-fo__lead">Help shape how we move, cycle and gather${complex ? ' across the city over the next four years.' : ' on Station Road.'}</p>
-          <div class="gv-participants pp-fo__parts">
-            <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
-            <span class="gv-pcount">${complex ? '342' : '38'} participants</span>
-          </div>
-          <div class="pp-fo__cta">
-            <a class="gv-btn primary full" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'}</a>
-            <a class="gv-btn secondary-outlined full" href="#">See the ideas</a>
+          <!-- Participation box: CTA(s) first, participant avatars ALWAYS at the bottom
+               (same contract as the content-builder .cb-pbox = actions then people). -->
+          <div class="pp-fo__pbox">
+            <div class="pp-fo__cta">
+              <a class="gv-btn primary full" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'}</a>
+              <a class="gv-btn secondary-outlined full" href="#">See the ideas</a>
+            </div>
+            <div class="gv-participants pp-fo__parts">
+              <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
+              <span class="gv-pcount">${complex ? '342' : '38'} participants</span>
+            </div>
           </div>
           <div class="gv-accordion pp-fo__acc">
             ${acc('How will my idea be used?', 'Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.', true)}
