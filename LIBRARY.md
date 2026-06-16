@@ -66,6 +66,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 |---|---|---|---|
 | **Accordion** | `/components/accordion/` | `components/accordion/` | CSS-only <details> accordion — collapsed by default, chevron rotates on open. Used for FAQs in a project description. |
 | **Approval Voting** | `/components/approval-voting/` | `components/approval-voting/` | The per-method panel that renders inside .gv-phasebody for a voting phase. Two parts: a collapsible .gv-voteoptions accordion of vote options, and the .gv-tall… |
+| **Attachment** | `/components/attachment/` | `components/attachment/` | The Content-Builder "file attachment" widget — a downloadable-file row on a custom / info page (terms / about / archive). Source-grounded on St Louis ( stlouis… |
 | **Banner** | `/components/banner/` | `components/banner/` | Image-only project hero: a full-width teal gradient art panel (1150×300) with an optional rotated campaign sticker. Drop an illustration <svg> inside __art . |
 | **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
 | **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
@@ -125,6 +126,7 @@ as a starting point for a prototype.
 | **Event Detail** | `/pages/event-detail/` | `pages/event-detail/` | Station Road walk & talk: see the plans on site — Westmere |
 | **Events** | `/pages/events/` | `pages/events/` | Events — Westmere |
 | **Fo Cph Cb Home** | `/pages/fo-cph-cb-home/` | `pages/fo-cph-cb-home/` | København taler — Content-Builder homepage (reference) |
+| **Fo Stlouis Infopage** | `/pages/fo-stlouis-infopage/` | `pages/fo-stlouis-infopage/` | Policy Memo Archive — GoVocal (reference) |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Westmere — Have your say |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | A square for everyone — share your idea — Westmere |
 | **Perspectives Entry** | `/pages/perspectives-entry/` | `pages/perspectives-entry/` | The Big Westmere Conversation — Perspectives — Westmere |

@@ -2519,3 +2519,63 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
   align-items: center;
   justify-content: center;
 }
+
+/* ── File-attachment download row ────────────────────────────────────────────
+   The Content-Builder "file attachment" widget — a downloadable-file row on a
+   custom/info page (terms / about / archive pages). Source-grounded on St Louis
+   (stlouis.govocal.com/pages/memos, capture fo-stlouis-infopage): each file is an
+   outlined row (div.keappF, digest #11) — 1px solid #C8D0D7 (--gv-attachment-border),
+   3px radius, padding 10px 20px — holding a 24px paperclip glyph, the file-name <a>
+   link, and a "(NNN KB)" size span (a.esoZGW + span.isWOjc, digest #12/#13: both
+   16px/400/--gv-cool-grey-600, line-height 24px). A cross-tenant STRUCTURAL widget
+   (same on every tenant's custom pages); the SKIN (font/colours) re-themes per ?theme=.
+   Stack rows in a .gv-attachments list. Net-new block; reuses tokens only. */
+.gv-attachment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border: 1px solid var(--gv-attachment-border);
+  border-radius: var(--gv-radius);
+  color: var(--gv-cool-grey-600);
+  font-size: var(--gv-fs-base);
+  line-height: 24px;
+}
+.gv-attachment + .gv-attachment { margin-top: 8px; }
+.gv-attachment__icon { flex: 0 0 auto; width: 24px; height: 24px; color: var(--gv-cool-grey-600); }
+.gv-attachment__icon .gv-icon { width: 24px; height: 24px; }
+.gv-attachment__name {
+  color: var(--gv-cool-grey-600);
+  font-weight: 400;
+  text-decoration: underline;
+  word-break: break-word;
+}
+.gv-attachment__name:hover { text-decoration: none; }
+.gv-attachment__name:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-attachment__size { flex: 0 0 auto; color: var(--gv-cool-grey-600); }
+.gv-attachments { display: block; }
+
+/* ── Custom / info page rich-text headings & inline CTA ───────────────────────
+   On a custom/info page the Quill body is a .gv-prose block, but it also carries
+   sub-headings (the live page-title "Policy Memo Archive" renders as an embedded
+   <h2>, digest #4: 25px/700/32.5px/#333 = --gv-fs-xxl) and an inline "custom-button"
+   CTA (digest #10: a.custom-button — tenant-primary fill, white, 3px radius, pad
+   10px 18px). These extend the shared .gv-prose without forking it. */
+.gv-prose h2 { margin: 0 0 16px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px; color: var(--gv-text-primary); }
+.gv-prose h3 { margin: 24px 0 12px; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.4; color: var(--gv-text-primary); }
+.gv-prose strong { font-weight: 700; }
+/* Inline CTA button mounted inside Content-Builder rich text (a.custom-button). */
+.gv-prose .gv-cta-inline {
+  display: inline-block;
+  margin: 4px 0;
+  padding: 10px 18px;
+  border-radius: var(--gv-radius);
+  background: var(--gv-tenant-primary);
+  color: #fff;
+  font-size: var(--gv-fs-base);
+  font-weight: 400;
+  line-height: normal;
+  text-decoration: none;
+}
+.gv-prose .gv-cta-inline:hover { filter: brightness(0.92); }
+.gv-prose .gv-cta-inline:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }

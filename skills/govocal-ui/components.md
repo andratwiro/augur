@@ -722,6 +722,37 @@ Mounts as a `.gv-cb-row.cols-1` cell inside a `.gv-cb-frame`.
   `.gv-monitorband` (tinted 3-zone text/media/CTA card). This is the bare coloured strip
   whose only content is the button. Verified via `fo-stlouis-cta-banner/button-wrap`.
 
+## File attachment — download row — `.gv-attachment` (`components/attachment/`)
+
+The Content-Builder "file attachment" widget — a downloadable-file row on a custom /
+info page (terms / privacy / about / archive). Source-grounded on St Louis
+(`stlouis.govocal.com/pages/memos`, capture `fo-stlouis-infopage`). Stack rows in a
+`.gv-attachments` list.
+
+```html
+<div class="gv-attachments">
+  <div class="gv-attachment">
+    <span class="gv-attachment__icon" data-gv-icon="paperclip" aria-hidden="true"></span>
+    <a class="gv-attachment__name" href="memo.pdf" download>10_7_25 - Policy Memo - Opening Reflection.pdf</a>
+    <span class="gv-attachment__size">(663.3 KB)</span>
+  </div>
+  <!-- repeat .gv-attachment per file -->
+</div>
+```
+
+- **`.gv-attachment`** = the outlined row — 1px `--gv-attachment-border` (`#C8D0D7`),
+  3px radius, padding `10px 20px`, flex/center (digest #11). Rows stack with an 8px gap.
+- **`__icon`** = the 24px **paperclip** glyph (`data-gv-icon="paperclip"`, new in
+  `govocal-icons.js`), cool-grey.
+- **`__name`** = the file-name `<a download>` (underlined, `--gv-cool-grey-600`,
+  16px/400/24px — digest #12); **`__size`** = the `(NNN KB)` span (same type — digest #13).
+- Cross-tenant STRUCTURE (same widget on every tenant's custom pages); the SKIN
+  (font/colours) re-skins per `?theme=`. Verified via `fo-stlouis-infopage/attachment-{row,name,size}`.
+- **Custom-page rich text:** the body is a `.gv-prose` block (now also styling embedded
+  `h2`/`h3` sub-headings + `strong`) with an inline CTA `<a class="gv-cta-inline">`
+  (tenant-primary fill, white, 3px / `10px 18px` — the live `a.custom-button`, digest #10).
+  Full page assembly: `pages/fo-stlouis-infopage/`.
+
 ## Featured 3-up spotlight row — `.gv-featured-row` / `.gv-pcard.featured` (`components/homepage-featured-row/`)
 
 The homepage **"We want to hear from you"** row: three large, image-led featured project

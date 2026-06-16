@@ -2020,6 +2020,91 @@
         ".gv-phase",
         ".gv-pstep"
       ]
+    },
+    {
+      "id": "fo-stlouis-infopage/attachment-row",
+      "built": "components/attachment/index.html",
+      "against": "fo-stlouis-infopage",
+      "map": {
+        ".keappF": ".gv-attachment"
+      },
+      "props": [
+        "color",
+        "background-color",
+        "border",
+        "border-radius",
+        "padding",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-attachment"
+      ]
+    },
+    {
+      "id": "fo-stlouis-infopage/attachment-name",
+      "built": "components/attachment/index.html",
+      "against": "fo-stlouis-infopage",
+      "map": {
+        ".keappF a": ".gv-attachment__name"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-attachment"
+      ]
+    },
+    {
+      "id": "fo-stlouis-infopage/attachment-size",
+      "built": "components/attachment/index.html",
+      "against": "fo-stlouis-infopage",
+      "map": {
+        ".keappF span": ".gv-attachment__size"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-attachment"
+      ]
+    },
+    {
+      "id": "fo-stlouis-infopage/inline-cta",
+      "built": "pages/fo-stlouis-infopage/index.html",
+      "against": "fo-stlouis-infopage",
+      "map": {
+        "a.custom-button": ".gv-cta-inline"
+      },
+      "props": [
+        "color",
+        "border-radius",
+        "padding",
+        "font-size",
+        "font-weight"
+      ],
+      "uses": [
+        ".gv-prose"
+      ]
+    },
+    {
+      "id": "fo-stlouis-infopage/content-col",
+      "built": "pages/fo-stlouis-infopage/index.html",
+      "against": "fo-stlouis-infopage",
+      "map": {
+        ".jzXQxe": ".infopage__col"
+      },
+      "props": [
+        "background-color",
+        "padding"
+      ]
     }
   ]
 }

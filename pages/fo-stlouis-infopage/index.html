@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="gv-surface" content="front-office" />
+  <title>Policy Memo Archive — GoVocal (reference)</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <!--
+    REFERENCE REBUILD of the GoVocal CUSTOM / INFO PAGE layout — the single route
+    (/pages/<slug>) every tenant uses for terms / privacy / cookie / accessibility /
+    sitemap / about / faq AND ad-hoc Content-Builder pages. Source-grounded on
+    St Louis (stlouis.govocal.com/en/pages/memos, capture govocal-exports/fo-stlouis-infopage).
+
+    Cross-tenant STRUCTURE: global chrome (header/footer dragged in) + a left-aligned
+    rich-text body (.gv-prose) inside a constrained white content column on the light
+    --gv-bo-canvas (#EDEFF0) page background — NO hero. The body is Content-Builder
+    Quill output: an <h2> page sub-heading (25/700/#333), <p> paragraphs (16/400/24/#333),
+    an inline CTA (.gv-cta-inline → a.custom-button, tenant-primary fill), and a
+    file-ATTACHMENT download list (.gv-attachment rows — paperclip + name link + "(NNN KB)"
+    size, 1px #C8D0D7 outline, digest #11/#12/#13). Pure assembly: every colour/border/
+    type lives in canonical govocal-tokens/ui.css; this page authors layout + content only.
+    Re-skins per city via the ?theme= switcher.
+  -->
+  <style>
+    /* Page-level layout only — all colour/elevation/type lives in canonical CSS. */
+    body { margin: 0; background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    /* The page canvas behind the white content column (digest #20, #EDEFF0). */
+    .infopage { padding: 0 0 50px; }
+    /* Constrained white content column — live div.jzXQxe: white, padding 50px 30px (digest #25). */
+    .infopage__col { max-width: 1000px; margin: 0 auto; background: #fff; padding: 50px 30px; }
+    /* The attachments region sits in the same white column — padding 0 20px 50px (digest #26). */
+    .infopage__files { max-width: 1000px; margin: 0 auto; background: #fff; padding: 0 20px 50px; }
+    /* the prose runs flush-left (NOT the centered .gv-prose default) and fills the column */
+    .infopage__col .gv-prose { max-width: none; margin: 0; padding: 0; }
+    .infopage__files .gv-attachments { max-width: none; }
+  </style>
+</head>
+<body class="gv-root" data-auth="out">
+
+  <!-- ════════════════════════ Header / nav (dragged in) ════════════════════════ -->
+  <header id="e2e-navbar" class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Home"></a>
+
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#">Home</a></li>
+          <li><a class="gv-nav__link" href="#">Projects</a></li>
+          <li><a class="gv-nav__link" href="#">Share Your Policy Ideas!</a></li>
+          <li><a class="gv-nav__link" href="#" aria-current="page">Policy Memo Archive</a></li>
+          <li>
+            <details class="gv-nav__dd right">
+              <summary class="gv-nav__link">More
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              </summary>
+              <div class="gv-nav__menu">
+                <a href="#">About the platform</a>
+                <a href="#">FAQ</a>
+                <a href="#">Contact</a>
+              </div>
+            </details>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search">
+          <span data-gv-icon="search"></span>
+        </button>
+
+        <span class="gv-auth-out gv-desktop-only">
+          <button class="gv-btn primary" data-auth-set="in">Log in</button>
+        </span>
+
+        <span class="gv-auth-in gv-desktop-only">
+          <button class="gv-iconbtn" aria-label="Notifications, 3 unread">
+            <span data-gv-icon="notification"></span>
+            <span class="gv-iconbtn__badge">3</span>
+          </button>
+          <details class="gv-nav__dd right gv-account-dd">
+            <summary class="gv-account">
+              <span class="gv-account__name">Alex Rivera</span>
+              <span class="gv-avatar">AR</span>
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu gv-nav__menu--account">
+              <a href="#">Manage platform <span data-gv-icon="shield"></span></a>
+              <a href="#">My activity <span data-gv-icon="user-circle"></span></a>
+              <a href="#">My settings <span data-gv-icon="cogs"></span></a>
+              <button type="button" data-auth-set="out">Sign out <span data-gv-icon="power"></span></button>
+            </div>
+          </details>
+          <details class="gv-nav__dd right">
+            <summary class="gv-lang">EN
+              <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="gv-nav__menu">
+              <a href="#">English</a>
+              <a href="#">Español</a>
+            </div>
+          </details>
+        </span>
+
+        <details class="gv-nav-m">
+          <summary aria-label="Show mobile navigation menu">
+            <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+            <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
+            <a href="#">Home</a>
+            <a href="#">Projects</a>
+            <a href="#">Share Your Policy Ideas!</a>
+            <a href="#" aria-current="page">Policy Memo Archive</a>
+            <a href="#">More</a>
+            <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Search</a>
+            <span class="gv-auth-out">
+              <button class="gv-btn primary full" data-auth-set="in">Log in</button>
+            </span>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═════════════════════════════════ Page ═════════════════════════════════ -->
+  <main id="main-content" class="infopage e2e-page-memos">
+
+    <!-- Constrained white content column — left-aligned Content-Builder rich text.
+         The page TITLE is an embedded <h2> in the Quill body (NOT a hero), per the
+         live custom-page pattern. -->
+    <div class="infopage__col">
+      <div class="gv-prose">
+        <h2>Policy Memo Archive</h2>
+        <p>This page features memos from the President’s Office related to
+          <a href="#">resident-submitted policy ideas</a> that have met the threshold
+          for consideration.</p>
+        <p>When reviewing these proposals, the President’s Policy Team looks at existing
+          ordinances, feasibility, legal requirements, and other factors to provide
+          helpful context and analysis.</p>
+        <p>If you have a policy idea you’d like the President’s Office to consider, click
+          or tap the button below to share it with our team and fellow residents.</p>
+        <p><a class="gv-cta-inline" href="#">Share Your Policy Ideas!</a></p>
+      </div>
+    </div>
+
+    <!-- File-attachment download list — the .gv-attachment rows (paperclip + name + size). -->
+    <div class="infopage__files">
+      <div class="gv-attachments">
+
+        <div class="gv-attachment">
+          <span class="gv-attachment__icon" data-gv-icon="paperclip" aria-hidden="true"></span>
+          <a class="gv-attachment__name" href="#" download>10_7_25 - Policy Memo - Opening Reflection or Prayer.pdf</a>
+          <span class="gv-attachment__size">(663.3 KB)</span>
+        </div>
+
+        <div class="gv-attachment">
+          <span class="gv-attachment__icon" data-gv-icon="paperclip" aria-hidden="true"></span>
+          <a class="gv-attachment__name" href="#" download>10_14_25 - Policy Memo - Sidewalk Repair Cost-Sharing.pdf</a>
+          <span class="gv-attachment__size">(412.8 KB)</span>
+        </div>
+
+        <div class="gv-attachment">
+          <span class="gv-attachment__icon" data-gv-icon="paperclip" aria-hidden="true"></span>
+          <a class="gv-attachment__name" href="#" download>10_21_25 - Policy Memo - Neighborhood Traffic Calming.pdf</a>
+          <span class="gv-attachment__size">(1.2 MB)</span>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ════════════════════════════════ Footer ════════════════════════════════ -->
+  <footer class="gv-footer">
+    <div class="gv-footer__inner">
+      <div class="gv-footer__logo" data-gv-logo></div>
+      <nav class="gv-footer__links" aria-label="Legal">
+        <ul>
+          <li><a href="#">Terms and conditions</a></li>
+          <li><a href="#">Privacy policy</a></li>
+          <li><a href="#">Cookie policy</a></li>
+          <li><a href="#">Accessibility statement</a></li>
+          <li><button type="button">Cookie settings</button></li>
+          <li><a href="#">Site map</a></li>
+        </ul>
+      </nav>
+      <div class="gv-footer__powered">
+        <span>Powered by</span>
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal (formerly CitizenLab)">
+          <img class="gv-powered-logo" src="../../skills/govocal-ui/govocal-logo.svg" alt="Go Vocal" />
+        </a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

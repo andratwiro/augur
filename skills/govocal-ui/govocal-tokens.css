@@ -197,6 +197,13 @@
      re-theme the count colour without forking the folder-card structure. */
   --gv-folder-count: #358545;                /* folder-card "N projects" number */
 
+  /* ── Attachment download-row border (measured live: stlouis.govocal.com /pages/memos) ──
+     The Content-Builder "file attachment" widget frames each downloadable file in a
+     1px cool-grey outlined row (div.keappF: 1px solid rgb(200,208,215) = #C8D0D7,
+     3px radius — digest #11). A cross-tenant STRUCTURAL frame (same widget on every
+     tenant's custom/info page); aliased so the neutral outline is one source of truth. */
+  --gv-attachment-border: #C8D0D7;           /* .gv-attachment download-row outline */
+
   /* ── Phase timeline: SELECTED (viewed, non-current) segment fill ──────────
      The live wietsedemo phase-ribbon selected segment was sampled srgb(89,107,122)
      = #596B7A (matches the live .e2e-phase-title colour). Our earlier slate aliased
