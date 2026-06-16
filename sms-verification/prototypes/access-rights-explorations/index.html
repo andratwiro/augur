@@ -845,6 +845,7 @@
                  the access-tab CONTENT below is replaced by 5 wild, ultra-simple takes
                  on who-can-do-what + what-we-check. A floating switcher (end of body)
                  flips between them. All .ax-* and intentionally off the GoVocal DS. -->
+            <div class="ax-reassure">💾 <span><b>Changes save as you go</b> — nothing is live until you publish the phase. Residents only meet these rules then.</span></div>
             <div class="ax-stage" id="axStage"></div>
           </div>
 
@@ -1731,11 +1732,17 @@
     background:#fff; border:1px solid var(--ax-line); font-size:14px; font-weight:600; }
 
   /* ── floating switcher ─────────────────────────────────────────── */
-  .ax-switch { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 900;
-    display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:999px;
+  .ax-switch { position: fixed; bottom: 20px; right: 20px; z-index: 900;
+    display:flex; align-items:center; gap:10px; padding:8px 11px; border-radius:999px;
     background: #111722; color:#fff; box-shadow: 0 12px 34px rgba(10,16,30,.4);
     font-family: system-ui, -apple-system, sans-serif; }
-  .ax-switch__cap { font-size:13px; font-weight:600; opacity:.85; white-space:nowrap; padding:0 6px 0 4px; min-width:150px; }
+  .ax-switch__cap { font-size:12px; font-weight:600; opacity:.8; white-space:nowrap; padding:0 4px 0 6px; }
+
+  /* draft/live reassurance strip (sits above the explorations, addresses "is this public?") */
+  .ax-reassure { display:flex; align-items:center; gap:8px; margin-bottom:14px; padding:9px 14px;
+    background:#eef6ef; border:1px solid #cfe6d3; border-radius:10px;
+    font-family: system-ui, -apple-system, sans-serif; font-size:13px; color:#2f5d3a; }
+  .ax-reassure b { color:#234a2c; }
   .ax-switch__dots { display:flex; gap:6px; }
   .ax-switch__btn { width:30px; height:30px; border-radius:50%; border:0; cursor:pointer;
     background: rgba(255,255,255,.14); color:#fff; font-size:13px; font-weight:800; }
@@ -2200,8 +2207,9 @@
     }
     // a trimmed editor: just groups + collect (no level/methods — those are the sliders)
     function editorSharedHTML(c){
-      return `<div class="ax-crow"><span>🙋</span><span><div class="ax-crow__t">Their name</div></span><button class="ax-tog ${c.collect.name?'is-on':''}" data-sh="cname"></button></div>
-        <div class="ax-crow"><span>🔑</span><span><div class="ax-crow__t">A password</div></span><button class="ax-tog ${c.collect.password?'is-on':''}" data-sh="cpass"></button></div>
+      const anySignin = ACTIONS.some(a=>cfgs[a.key].level==='signin');
+      return `${anySignin?`<div class="ax-crow"><span>🙋</span><span><div class="ax-crow__t">Their name</div></span><button class="ax-tog ${c.collect.name?'is-on':''}" data-sh="cname"></button></div>
+        <div class="ax-crow"><span>🔑</span><span><div class="ax-crow__t">A password</div></span><button class="ax-tog ${c.collect.password?'is-on':''}" data-sh="cpass"></button></div>`:'<p class="ax-note" style="margin-top:0">Every action is open, so there’s no account — you can only ask anonymous questions.</p>'}
         <div class="ax-crow"><span>📋</span><span><div class="ax-crow__t">A few questions</div><div class="ax-crow__d">${Object.keys(c.demoOn).filter(k=>c.demoOn[k]).join(', ')||'Age, gender…'}</div></span><button class="ax-tog ${c.collect.demo?'is-on':''}" data-sh="cdemo"></button></div>
         ${c.collect.demo?`<div class="ax-subrow" style="display:block"><label class="ax-radio"><input type="radio" name="sdt" data-sh="dt" data-v="before" ${c.demoTiming==='before'?'checked':''}> Ask before</label><label class="ax-radio"><input type="radio" name="sdt" data-sh="dt" data-v="end" ${c.demoTiming==='end'?'checked':''}> Ask at the end</label></div>`:''}
         <div class="ax-grp" style="margin-top:10px">${c.groups.map(g=>`<span class="ax-gchip">${g}<button data-sh="ungroup" data-v="${g}">✕</button></span>`).join('')}<button class="ax-add" data-sh="togGroups">${c._ui.groups?'Done':'+ limit to a group'}</button></div>
