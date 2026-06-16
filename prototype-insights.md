@@ -255,3 +255,16 @@ they asked for: keep **access-rights-simple** (answer) + **phase-access-permissi
 steer), already deployed + working, left in place (reverting deployed work is destructive):
 Loop 1 retired a broken parallel-participation card; Loop 3 built a departments prototype;
 Loop 4 fixed flagship a11y. Not touched again after the steer.
+
+### Loop 14 — 2026-06-17 ~04:40 · access-rights-simple: "live preview" label
+- Re-examined access-rights-simple fresh; it's mature/complete. Made one genuine small
+  clarity win: caption under the resident phone ("Live preview — updates instantly as you
+  change the rules") so the interactive nature is explicit to a first-time/hesitant admin.
+  Deployed + committed; passes audit.
+- **Confirmed strong diminishing returns** within the narrowed scope (sms-verification
+  only; access-rights-simple is the deliverable; can't touch the user's active inspector;
+  other opportunities off-limits). Avoiding marginal changes that risk regressing a
+  polished, deployed deliverable. Pacing the loop down to a long heartbeat; will re-check
+  for new user direction and only ship further changes that are genuinely worth it.
+- User is committing concurrently (front-office folder-avatar work) — no new direction for
+  the sms-verification scope.
