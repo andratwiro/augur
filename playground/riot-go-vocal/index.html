@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>RIOT, inside Go Vocal — a research sketch</title>
+  <title>The council, live — a Go Vocal concept</title>
   <style>
     :root{
       --paper:#f5f4f1;
@@ -16,148 +16,127 @@
       --line-2:#cfccc3;
       --gv:#0E7C86;        /* Go Vocal — teal */
       --gv-soft:#e3efef;
-      --riot:#D8492B;      /* RIOT — coral/red */
-      --riot-soft:#f7e6e0;
+      --live:#D8492B;      /* live / now — coral-red */
+      --live-soft:#f7e6e0;
       --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
       --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-      --maxw:920px;
+      --maxw:940px;
     }
     *{box-sizing:border-box;}
     html,body{height:100%;}
     body{
       margin:0;background:var(--paper);color:var(--ink);
-      font-family:var(--sans);-webkit-font-smoothing:antialiased;
-      overflow:hidden;
+      font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow:hidden;
     }
-
-    /* ---- deck frame ---- */
     .deck{position:fixed;inset:0;}
     .slide{
-      position:absolute;inset:0;
-      display:none;
-      padding:clamp(40px,7vh,88px) clamp(28px,7vw,96px);
-      opacity:0;
+      position:absolute;inset:0;display:none;
+      padding:clamp(40px,7vh,88px) clamp(28px,7vw,96px);opacity:0;
       animation:fade .42s ease both;
     }
     .slide.active{display:flex;flex-direction:column;justify-content:center;opacity:1;}
     @keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
     .inner{width:100%;max-width:var(--maxw);margin:0 auto;}
 
-    /* ---- type ---- */
-    .eyebrow{
-      font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
-      color:var(--faint);margin:0 0 22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
-    }
+    .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:0 0 22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
     .eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--line-2);}
-    h1{font-size:clamp(34px,5.6vw,68px);line-height:1.02;letter-spacing:-.025em;margin:0 0 24px;font-weight:680;}
-    h2{font-size:clamp(26px,3.8vw,44px);line-height:1.08;letter-spacing:-.02em;margin:0 0 24px;font-weight:660;}
-    .lead{font-size:clamp(17px,2vw,22px);line-height:1.5;color:var(--muted);margin:0 0 18px;max-width:42em;}
+    h1{font-size:clamp(36px,6vw,72px);line-height:1;letter-spacing:-.03em;margin:0 0 24px;font-weight:680;}
+    h2{font-size:clamp(27px,4vw,46px);line-height:1.06;letter-spacing:-.02em;margin:0 0 24px;font-weight:660;}
+    .lead{font-size:clamp(17px,2vw,22px);line-height:1.5;color:var(--muted);margin:0 0 16px;max-width:40em;}
     .lead.ink{color:var(--ink);}
-    p{margin:0 0 16px;}
     strong{font-weight:640;color:var(--ink);}
     .gv-w{color:var(--gv);font-weight:640;}
-    .riot-w{color:var(--riot);font-weight:640;}
-    .big{font-size:clamp(22px,2.8vw,30px);line-height:1.32;letter-spacing:-.01em;font-weight:480;color:var(--ink);max-width:24em;}
-    .big em{font-style:normal;color:var(--riot);font-weight:640;}
+    .live-w{color:var(--live);font-weight:640;}
+    .big{font-size:clamp(23px,3vw,34px);line-height:1.26;letter-spacing:-.015em;font-weight:480;color:var(--ink);max-width:22em;}
+    .big em{font-style:normal;color:var(--live);font-weight:640;}
     .big .gvem{color:var(--gv);font-weight:640;}
 
-    /* ---- lists ---- */
+    /* bullets */
     ul.points{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:18px;}
     ul.points li{position:relative;padding-left:30px;font-size:clamp(15px,1.7vw,18px);line-height:1.5;color:var(--muted);max-width:40em;}
     ul.points li::before{content:"";position:absolute;left:2px;top:.62em;width:8px;height:8px;border:1.5px solid var(--line-2);border-radius:50%;}
     ul.points li b{display:block;color:var(--ink);font-weight:620;font-size:1.02em;margin-bottom:3px;}
 
-    /* numbered */
-    ol.num{list-style:none;counter-reset:n;padding:0;margin:10px 0 0;display:grid;gap:20px;}
-    ol.num li{counter-increment:n;position:relative;padding-left:48px;font-size:clamp(15px,1.7vw,18px);line-height:1.5;color:var(--muted);max-width:40em;}
-    ol.num li::before{
-      content:counter(n);position:absolute;left:0;top:-2px;width:30px;height:30px;border-radius:50%;
-      display:grid;place-items:center;font-family:var(--mono);font-size:13px;color:var(--ink);
-      background:var(--paper-2);border:1px solid var(--line);
-    }
+    ol.num{list-style:none;counter-reset:n;padding:0;margin:10px 0 0;display:grid;gap:18px;}
+    ol.num li{counter-increment:n;position:relative;padding-left:46px;font-size:clamp(15px,1.7vw,18px);line-height:1.45;color:var(--muted);max-width:40em;}
+    ol.num li::before{content:counter(n);position:absolute;left:0;top:-3px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);}
     ol.num li b{color:var(--ink);font-weight:620;}
 
-    /* ---- cards row ---- */
-    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:10px;}
-    .card{background:#fcfbf9;border:1px solid var(--line);border-radius:12px;padding:22px 20px;}
-    .card .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:12px;}
+    /* three-state cards */
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;}
+    .card{background:#fcfbf9;border:1px solid var(--line);border-radius:13px;padding:22px 20px;}
+    .card .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+    .card.now{background:var(--live-soft);border-color:#eccdc3;}
+    .card.now .k{color:var(--live);}
     .card h3{margin:0 0 8px;font-size:18px;letter-spacing:-.01em;font-weight:640;}
-    .card p{margin:0;font-size:14.5px;line-height:1.5;color:var(--muted);}
+    .card p{margin:0;font-size:14.5px;line-height:1.48;color:var(--muted);}
+    .livedot{width:7px;height:7px;border-radius:50%;background:var(--live);animation:pulse 1.6s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.35;transform:scale(.8);}}
 
-    /* ---- the asymmetry diagram ---- */
-    .asym{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;gap:0;margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden;}
-    .asym .col{padding:26px 26px;}
-    .asym .col.gv{background:var(--gv-soft);}
-    .asym .col.riot{background:var(--riot-soft);}
-    .asym .mid{width:1px;background:var(--line);}
-    .asym .arrow{font-family:var(--mono);font-size:13px;letter-spacing:.08em;display:flex;align-items:center;gap:8px;margin-bottom:10px;}
-    .asym .gv .arrow{color:var(--gv);}
-    .asym .riot .arrow{color:var(--riot);}
-    .asym h3{margin:0 0 8px;font-size:19px;letter-spacing:-.01em;}
-    .asym p{margin:0;font-size:14.5px;line-height:1.48;color:var(--muted);}
-    .asym .who{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:14px;}
+    /* split screen — the live moment */
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+    .split .pane{padding:24px 24px;}
+    .split .pane.res{background:var(--gv-soft);}
+    .split .pane.pol{background:#fff;border-left:1px solid var(--line);}
+    .split .who{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+    .split .res .who{color:var(--gv);}
+    .split .pol .who{color:var(--live);}
+    .split h3{margin:0 0 12px;font-size:18px;letter-spacing:-.01em;}
+    .split p{margin:0;font-size:14.5px;line-height:1.48;color:var(--muted);}
+    /* reaction chips */
+    .chips{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+    .chip{background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:8px;}
+    .chip .v{font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;}
+    .chip .v.for{background:var(--gv-soft);color:var(--gv);}
+    .chip .v.no{background:var(--live-soft);color:var(--live);}
+    /* pulse gauge */
+    .gauge{margin-top:16px;}
+    .gauge .lbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--faint);margin-bottom:7px;}
+    .bar{height:34px;border-radius:8px;overflow:hidden;display:flex;border:1px solid var(--line);}
+    .bar .seg{display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;}
+    .bar .for{background:var(--gv);} .bar .uns{background:#c8c5bd;color:#5a584f;} .bar .ag{background:var(--live);}
+    .gauge .cap{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.4;}
 
-    /* ---- flow diagram (slide 7) ---- */
-    .flow{display:flex;align-items:center;gap:0;flex-wrap:wrap;margin-top:18px;}
-    .node{background:#fcfbf9;border:1px solid var(--line);border-radius:11px;padding:16px 18px;min-width:0;flex:1;text-align:center;}
-    .node .t{font-size:14.5px;font-weight:620;line-height:1.3;}
-    .node .s{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:6px;}
-    .node.gv{background:var(--gv-soft);border-color:#cfe5e5;}
-    .node.riot{background:var(--riot-soft);border-color:#eccdc3;}
-    .flow .conn{flex:0 0 36px;text-align:center;color:var(--line-2);font-size:20px;}
-    .flow-note{margin-top:18px;font-size:15px;color:var(--muted);line-height:1.5;max-width:44em;}
+    /* concept → feature mapping */
+    .map{display:grid;gap:11px;margin-top:6px;}
+    .maprow{display:grid;grid-template-columns:1fr auto 1.2fr;align-items:center;gap:14px;border:1px solid var(--line);border-radius:10px;background:#fcfbf9;padding:13px 16px;}
+    .maprow .c{font-size:15px;font-weight:600;color:var(--ink);}
+    .maprow .arr{color:var(--line-2);font-size:15px;}
+    .maprow .f{font-size:14px;color:var(--gv);font-weight:600;}
+    .maprow .f span{color:var(--muted);font-weight:400;}
+    .maprow.new{background:var(--live-soft);border-color:#eccdc3;}
+    .maprow.new .f{color:var(--live);}
 
-    /* ---- structural altitude (slide 6) ---- */
-    .alt{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px;align-items:start;}
-    .ladder{display:grid;gap:10px;}
-    .rung{border:1px solid var(--line);border-radius:10px;padding:13px 16px;background:#fcfbf9;font-size:14.5px;}
-    .rung .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:3px;}
-    .rung b{font-weight:620;}
-    .rung.new{background:var(--riot-soft);border-color:#eccdc3;}
-    .rung.new .lab{color:var(--riot);}
+    /* two-sided */
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px;}
+    .side{border:1px solid var(--line);border-radius:13px;padding:24px 22px;background:#fcfbf9;}
+    .side.pol{background:var(--live-soft);border-color:#eccdc3;}
+    .side .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:12px;}
+    .side.pol .k{color:var(--live);}
+    .side.res .k{color:var(--gv);}
+    .side h3{margin:0 0 10px;font-size:20px;letter-spacing:-.01em;}
+    .side p{margin:0;font-size:15px;line-height:1.5;color:var(--muted);}
 
-    /* ---- townhall card mock (slide 11) ---- */
-    .mock{margin-top:8px;display:grid;grid-template-columns:340px 1fr;gap:34px;align-items:center;}
-    .rcard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:24px 22px;box-shadow:0 18px 40px -28px rgba(0,0,0,.35);}
-    .rcard .tag{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--riot);background:var(--riot-soft);padding:5px 10px;border-radius:999px;margin-bottom:16px;}
-    .rcard .tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--riot);}
-    .rcard .src{font-family:var(--mono);font-size:11px;color:var(--faint);margin-bottom:8px;}
-    .rcard .hl{font-size:21px;line-height:1.22;letter-spacing:-.01em;font-weight:640;margin:0 0 20px;}
-    .rcard .votes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-    .vbtn{border:1px solid var(--line-2);border-radius:10px;padding:11px 0;text-align:center;font-size:13px;font-weight:600;color:var(--muted);}
-    .vbtn.for{border-color:var(--gv);color:var(--gv);}
-    .vbtn.against{border-color:var(--riot);color:var(--riot);}
-    .mock .steps{display:grid;gap:14px;}
-    .mock .steps .st{font-size:15.5px;line-height:1.45;color:var(--muted);padding-left:26px;position:relative;}
-    .mock .steps .st b{color:var(--ink);font-weight:620;}
-    .mock .steps .st::before{content:counter(s);counter-increment:s;position:absolute;left:0;top:0;font-family:var(--mono);font-size:12px;color:var(--riot);font-weight:600;}
-    .mock .steps{counter-reset:s;}
+    .note{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:22px;line-height:1.5;border-left:2px solid var(--line-2);padding-left:14px;max-width:44em;}
 
-    /* closing */
-    .kicker{font-size:clamp(28px,4.2vw,52px);line-height:1.08;letter-spacing:-.02em;font-weight:660;max-width:18em;margin:0 0 26px;}
-    .kicker .gv-w{color:var(--gv);} .kicker .riot-w{color:var(--riot);}
+    .kicker{font-size:clamp(28px,4.4vw,54px);line-height:1.07;letter-spacing:-.025em;font-weight:660;max-width:16em;margin:0 0 24px;}
+    .kicker em{font-style:normal;color:var(--live);}
 
-    /* ---- chrome ---- */
-    .progress{position:fixed;top:0;left:0;height:3px;background:var(--riot);z-index:30;transition:width .42s ease;}
+    /* chrome */
+    .progress{position:fixed;top:0;left:0;height:3px;background:var(--live);z-index:30;transition:width .42s ease;}
     .meta{position:fixed;bottom:22px;left:clamp(28px,7vw,96px);font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--faint);z-index:20;}
     .counter{position:fixed;bottom:22px;right:clamp(28px,7vw,96px);font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--faint);z-index:20;}
     .counter b{color:var(--ink);}
-    .nav{position:fixed;bottom:16px;right:50%;transform:translateX(50%);display:flex;gap:8px;z-index:20;}
-    .nav button{
-      width:34px;height:34px;border-radius:50%;border:1px solid var(--line-2);background:#fcfbf9;
-      color:var(--ink);cursor:pointer;font-size:15px;display:grid;place-items:center;transition:.15s;
-    }
+    .nav{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:20;}
+    .nav button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line-2);background:#fcfbf9;color:var(--ink);cursor:pointer;font-size:15px;display:grid;place-items:center;transition:.15s;}
     .nav button:hover{background:#fff;border-color:var(--ink);}
     .nav button:disabled{opacity:.32;cursor:default;}
-    .hint{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:10.5px;color:var(--faint);z-index:10;opacity:.7;}
     @media(max-width:760px){
-      .cards,.alt,.mock{grid-template-columns:1fr;}
-      .asym{grid-template-columns:1fr;}
-      .asym .mid{display:none;}
-      .flow .conn{flex-basis:100%;transform:rotate(90deg);padding:6px 0;}
-      .node{flex-basis:100%;}
-      .nav{display:none;}
-      .meta{display:none;}
+      .cards,.two,.split{grid-template-columns:1fr;}
+      .split .pane.pol{border-left:none;border-top:1px solid var(--line);}
+      .maprow{grid-template-columns:1fr;gap:4px;text-align:left;}
+      .maprow .arr{display:none;}
+      .nav,.meta{display:none;}
     }
   </style>
 </head>
@@ -168,279 +147,199 @@
     <!-- 1 — Title -->
     <section class="slide active">
       <div class="inner">
-        <p class="eyebrow">A research sketch <span class="dot"></span> for Irene <span class="dot"></span> June 2026</p>
-        <h1>RIOT,<br>inside Go Vocal.</h1>
-        <p class="lead ink" style="max-width:34em;">You asked how I'd integrate RIOT into the product. Here's my honest thinking — built around one claim: it isn't a feature you bolt onto a phase. It's a new kind of space.</p>
+        <p class="eyebrow">A concept sketch <span class="dot"></span> for Irene <span class="dot"></span> June 2026</p>
+        <h1>The council,<br>live.</h1>
+        <p class="lead ink" style="max-width:33em;">A new destination in Go Vocal that plugs residents straight into their council — catch up on what was decided, shape what's being decided right now, and see what's next.</p>
       </div>
     </section>
 
-    <!-- 2 — The answer up front -->
+    <!-- 2 — The idea -->
     <section class="slide">
       <div class="inner">
-        <p class="eyebrow">The short answer</p>
-        <p class="big">Not a 9th participation method.<br>
-        A new object — <em>same altitude as a project</em> — that connects a governing body's record and <span class="gvem">spawns participation automatically</span> as decisions happen.</p>
-        <p class="lead" style="margin-top:30px;">The rest of this deck is me showing my work.</p>
+        <p class="eyebrow">The whole idea</p>
+        <p class="big">One place where residents and their council meet — and where, for the first time, the room can hear the city <em>while it votes.</em></p>
       </div>
     </section>
 
-    <!-- 3 — What RIOT is -->
+    <!-- 3 — Three states -->
     <section class="slide">
       <div class="inner">
-        <p class="eyebrow">What RIOT is <span class="dot"></span> in one breath</p>
-        <h2>It makes political representation <span class="riot-w">falsifiable</span>.</h2>
-        <p class="lead ink">It takes the real decisions a body makes — a council, a parliament — and turns each one into a plain-language card a 12-year-old can vote.</p>
-        <ul class="points" style="margin-top:24px;">
-          <li><b>Vote it blind.</b> For / abstain / against — before any party position or outcome is shown. No anchoring.</li>
-          <li><b>Then reveal.</b> How each party actually voted, always linked back to the source minutes.</li>
-          <li><b>See the distance.</b> Your % affinity with each party, and where you sit on the map.</li>
-        </ul>
-        <p class="lead" style="margin-top:22px;">Representation stops being a vibe and becomes a measurable hit-rate.</p>
-      </div>
-    </section>
-
-    <!-- 4 — The asymmetry -->
-    <section class="slide">
-      <div class="inner">
-        <p class="eyebrow">Why the two fit together</p>
-        <h2>Go Vocal listens up. RIOT reports back.</h2>
-        <div class="asym">
-          <div class="col gv">
-            <div class="who">Go Vocal · today</div>
-            <div class="arrow">▲ &nbsp;INPUT</div>
-            <h3>What citizens want</h3>
-            <p>The whole spine — ideation, surveys, voting, common ground — is built to gather what residents think. World-class at collecting input.</p>
-          </div>
-          <div class="mid"></div>
-          <div class="col riot">
-            <div class="who">RIOT · the missing half</div>
-            <div class="arrow">▼ &nbsp;OUTPUT</div>
-            <h3>What power did</h3>
-            <p>The outputs of the chamber — what was actually decided — made legible, votable and checkable against your own view.</p>
-          </div>
-        </div>
-        <p class="lead" style="margin-top:24px;">GV gathers the input half. RIOT closes the loop with the output half.</p>
-      </div>
-    </section>
-
-    <!-- 5 — Why not a participation method -->
-    <section class="slide">
-      <div class="inner">
-        <p class="eyebrow">Ruling out the obvious move</p>
-        <h2>Why it isn't another phase method.</h2>
-        <p class="lead">The reflex is to make RIOT the 9th method — a phase you configure. It doesn't fit, three ways:</p>
-        <ul class="points" style="margin-top:18px;">
-          <li><b>It's a different object.</b> A phase <em>aggregates input</em>. RIOT <em>surfaces decisions</em>. Forcing the outputs of power into one-method-per-phase misrepresents what it is.</li>
-          <li><b>It's cross-project by nature.</b> RIOT spans a body's whole record, over time — you look back and forth across it. A project is one time-bounded engagement; this is a standing surface.</li>
-          <li><b>It's automated, not configured.</b> Staff don't author RIOT cards. The pipeline does, as decisions land. Configuration is one connection, not a setup form.</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- 6 — The thesis: altitude -->
-    <section class="slide">
-      <div class="inner">
-        <p class="eyebrow">The thesis</p>
-        <h2>RIOT lives at the <span class="riot-w">altitude of a project</span> — not inside one.</h2>
-        <div class="alt">
-          <div class="ladder">
-            <div class="rung"><div class="lab">Container</div><b>Folder</b> — grouping</div>
-            <div class="rung"><div class="lab">Engagement</div><b>Project</b> → Phase → one method</div>
-            <div class="rung new"><div class="lab">New · sibling object</div><b>RIOT space</b> — bound to a governing body</div>
-          </div>
-          <div>
-            <p class="lead ink" style="margin-top:0;">You connect the body once. From then on it runs itself:</p>
-            <ul class="points">
-              <li>the pipeline ingests new decisions as they're published</li>
-              <li>AI compresses each into a votable, source-linked card</li>
-              <li>verified residents are invited to vote it — blind — while it's still fresh</li>
-            </ul>
-            <p class="lead">It's the council's living record, made participable.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 7 — How it spawns participation -->
-    <section class="slide">
-      <div class="inner">
-        <p class="eyebrow">How it spawns participation</p>
-        <h2>The chamber feeds it. RIOT does the rest.</h2>
-        <div class="flow">
-          <div class="node"><div class="t">Governing body record</div><div class="s">council · parliament</div></div>
-          <div class="conn">→</div>
-          <div class="node riot"><div class="t">Pipeline + AI</div><div class="s">ingest · compress · gate</div></div>
-          <div class="conn">→</div>
-          <div class="node riot"><div class="t">Votable cards</div><div class="s">source-linked</div></div>
-          <div class="conn">→</div>
-          <div class="node gv"><div class="t">Invite residents</div><div class="s">vote blind</div></div>
-        </div>
-        <p class="flow-note">And where a decision runs hot, the RIOT space can <strong>spin up a deliberation around it — reusing GV's existing methods in parallel</strong> (ideation, common ground, a quick survey) on the very same card. RIOT brings the trigger and the decision; <span class="gv-w">Go Vocal brings the deliberation it already owns.</span></p>
-      </div>
-    </section>
-
-    <!-- 8 — What only GV brings -->
-    <section class="slide">
-      <div class="inner">
-        <p class="eyebrow">Why Go Vocal, specifically</p>
-        <h2>Three unlocks RIOT can't get alone.</h2>
+        <p class="eyebrow">What residents get</p>
+        <h2>Past, live, and next — in one place.</h2>
         <div class="cards">
           <div class="card">
-            <div class="k">01 · Humanity</div>
-            <h3>The identity stack</h3>
-            <p>FranceConnect, DigiD, Clave Única and the rest already solve RIOT's hardest problem — real residents, one voice each — for free.</p>
+            <div class="k">Past</div>
+            <h3>Catch up</h3>
+            <p>Plain-language summaries of every past session. What was decided, the gist of the debate, linked to the record.</p>
+          </div>
+          <div class="card now">
+            <div class="k"><span class="livedot"></span> Live now</div>
+            <h3>Have your say</h3>
+            <p>The session happening right now. React as it unfolds — your voice counts while the vote is still open.</p>
           </div>
           <div class="card">
-            <div class="k">02 · Depth</div>
-            <h3>Deliberation</h3>
-            <p>The methods, and the GSMs and strategists who run them, are the depth that comes after the For/Against vote.</p>
-          </div>
-          <div class="card">
-            <div class="k">03 · Reach</div>
-            <h3>Distribution &amp; trust</h3>
-            <p>The installed base of cities and years of council trust are the only realistic path into a chamber. Copenhagen already runs on GV.</p>
+            <div class="k">Upcoming</div>
+            <h3>Know what's next</h3>
+            <p>The next sessions and what's on the agenda. Follow a topic, get a reminder, show up.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 9 — GHOST reframed -->
+    <!-- 4 — The live moment -->
     <section class="slide">
       <div class="inner">
-        <p class="eyebrow">The GHOST, honestly</p>
-        <h2><span class="riot-w">Triage</span>, not representation.</h2>
-        <p class="lead ink">RIOT's boldest piece is the GHOST — an AI proxy that votes your deck blind and predicts you. I would not sell it as representation. No AI represents you, and the proof today rests on one ballot.</p>
-        <p class="lead">Sell it as <strong>triage</strong>. Nobody can follow every body that governs them. The GHOST is a copilot you can <strong>MCP into the council's record</strong>:</p>
-        <p class="big" style="margin-top:14px;">“Where is this? What changed? <em>What would I likely think?</em>” — it reads the minutes and hands you a reasoned lean. The vote stays yours.</p>
-        <p class="lead" style="margin-top:22px;">That framing dodges the legitimacy minefield — and it's the more honest product anyway.</p>
-      </div>
-    </section>
-
-    <!-- 10 — Integrity rules -->
-    <section class="slide">
-      <div class="inner">
-        <p class="eyebrow">The rules that can't bend</p>
-        <h2>Drop one and it keeps the UI, loses the point.</h2>
-        <div class="cards" style="grid-template-columns:repeat(3,1fr);gap:14px;">
-          <div class="card"><h3>Blind voting</h3><p>You decide before you see parties or outcome.</p></div>
-          <div class="card"><h3>Contested-filter</h3><p>Only score genuinely divisive decisions — unanimous votes inflate everyone.</p></div>
-          <div class="card"><h3>Source-traceable</h3><p>Every card links to the minutes. No exceptions.</p></div>
-          <div class="card"><h3>Same neutral facts</h3><p>Human and AI read the same dossier; opinion lives only in the human layers.</p></div>
-          <div class="card"><h3>Privacy by construction</h3><p>The values profile never leaves the resident.</p></div>
-          <div class="card"><h3>Non-partisan framing</h3><p>Name systemic forces, never sides.</p></div>
-        </div>
-        <p class="lead" style="margin-top:22px;">For GV these aren't RIOT's quirks — they're what keeps a city's trust intact.</p>
-      </div>
-    </section>
-
-    <!-- 11 — Resident view -->
-    <section class="slide">
-      <div class="inner">
-        <p class="eyebrow">The resident's view</p>
-        <h2>Five minutes at the townhall.</h2>
-        <div class="mock">
-          <div class="rcard">
-            <span class="tag">This week · contested</span>
-            <div class="src">Brussels-Capital Parliament · plenary 12 Jun</div>
-            <p class="hl">Cap short-term rental nights at 90 per year across the region?</p>
-            <div class="votes">
-              <div class="vbtn for">For</div>
-              <div class="vbtn">Abstain</div>
-              <div class="vbtn against">Against</div>
+        <p class="eyebrow">The powerful part</p>
+        <h2>The room hears the city, in real time.</h2>
+        <div class="split">
+          <div class="pane res">
+            <div class="who">▲ Residents · at home</div>
+            <h3>React as it's debated</h3>
+            <p>As the plenary discusses an item, verified residents weigh in live — for, against, with a reason.</p>
+            <div class="chips">
+              <div class="chip"><span class="v for">FOR</span> “Finally — fix the night buses.”</div>
+              <div class="chip"><span class="v no">AGAINST</span> “Not at this cost.”</div>
+              <div class="chip"><span class="v for">FOR</span> “My street needs this.”</div>
             </div>
           </div>
-          <div class="steps">
-            <div class="st"><b>Open the townhall.</b> A small recurring ritual, not a campaign.</div>
-            <div class="st"><b>Swipe the week's real decisions.</b> Vote each one blind.</div>
-            <div class="st"><b>See where your council landed</b> — and how close you are.</div>
-            <div class="st"><b>Step into the deliberation</b> on the one that matters to you.</div>
+          <div class="pane pol">
+            <div class="who"><span class="livedot"></span> On the bench · live</div>
+            <h3>Read the city's pulse</h3>
+            <p>Councillors see where the city stands on the item in front of them — at the moment they vote.</p>
+            <div class="gauge">
+              <div class="lbl"><span>LIVE · 2,140 residents</span><span>agenda item 4</span></div>
+              <div class="bar">
+                <div class="seg for" style="width:58%">58%</div>
+                <div class="seg uns" style="width:13%">13</div>
+                <div class="seg ag" style="width:29%">29%</div>
+              </div>
+              <div class="cap">For · Unsure · Against — updating as the debate runs.</div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 12 — Honest hard parts -->
+    <!-- 5 — Two-sided value -->
     <section class="slide">
       <div class="inner">
-        <p class="eyebrow">The honest hard parts</p>
-        <h2>What I'd want us clear-eyed about.</h2>
-        <ul class="points" style="margin-top:14px;">
-          <li><b>Pipeline cost per chamber.</b> Ingesting each council's records is real engineering plus human curation. Only Reus &amp; Brussels are real today. This scales per-city, not per-tenant.</li>
-          <li><b>Outputs-of-power is new turf.</b> GV's whole muscle is collecting input, not surfacing decisions. This asks the org to do something genuinely adjacent to its core.</li>
-          <li><b>GHOST discipline.</b> The triage framing only holds if we hold it. The moment it's pitched as “AI represents you,” both the legitimacy and the one-ballot proof wobble.</li>
+        <p class="eyebrow">Why it matters</p>
+        <h2>Two things at once.</h2>
+        <div class="two">
+          <div class="side res">
+            <div class="k">For residents</div>
+            <h3>A real voice, while it counts</h3>
+            <p>A legitimate, verified way to be heard <strong>while the decision is still open</strong> — not a survey weeks later. Taking to the streets, digitally.</p>
+          </div>
+          <div class="side pol">
+            <div class="k">For councillors</div>
+            <h3>The pulse, as you vote</h3>
+            <p>A real-time read of the people you serve, at the exact moment it matters. A live feel for the room beyond it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 — It mostly exists -->
+    <section class="slide">
+      <div class="inner">
+        <p class="eyebrow">How much is actually new</p>
+        <h2>Most of the parts already ship.</h2>
+        <div class="map">
+          <div class="maprow"><div class="c">Population pulse</div><div class="arr">→</div><div class="f">Community Monitor <span>· Health Score, Live Monitor — today quarterly, we make it live</span></div></div>
+          <div class="maprow"><div class="c">Live participation</div><div class="arr">→</div><div class="f">Online Workshop + Common Ground <span>· real-time, quick agree/disagree</span></div></div>
+          <div class="maprow"><div class="c">Past-session recaps</div><div class="arr">→</div><div class="f">AI Sensemaking <span>· plain language, source-linked</span></div></div>
+          <div class="maprow"><div class="c">One resident, one voice</div><div class="arr">→</div><div class="f">Verified identity <span>· FranceConnect, ID Austria, BOSA…</span></div></div>
+          <div class="maprow"><div class="c">Sessions</div><div class="arr">→</div><div class="f">Events <span>· dates, RSVP, reminders, a public page</span></div></div>
+          <div class="maprow new"><div class="c">The live, bench-side view</div><div class="arr">→</div><div class="f">Genuinely new — no councillor surface exists today</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 — Where it lives -->
+    <section class="slide">
+      <div class="inner">
+        <p class="eyebrow">In the product</p>
+        <h2>A new destination — not a project.</h2>
+        <ul class="points">
+          <li><b>A “Council” item in the navbar.</b> Its own standing page at <code>/council</code> — not a project, not a phase. A place that's always there.</li>
+          <li><b>Each plenary is an Event.</b> Date, agenda, a public page, reminders — reusing what Go Vocal already does for events.</li>
+          <li><b>Verified sign-in gates the live vote.</b> Real residents, one voice each — the identity stack already guarantees it.</li>
+        </ul>
+        <p class="note">Note: “Space” is already an internal Go Vocal term (an admin feature in development), so I'd name this resident-facing thing “Council,” not a “space.”</p>
+      </div>
+    </section>
+
+    <!-- 8 — Honest hard parts -->
+    <section class="slide">
+      <div class="inner">
+        <p class="eyebrow">Clear-eyed</p>
+        <h2>What's actually hard.</h2>
+        <ul class="points">
+          <li><b>True real-time at plenary scale is a build.</b> Today only Online Workshop is genuinely live; the rest refresh. Live-while-voting needs real infrastructure.</li>
+          <li><b>No councillor role exists yet.</b> Go Vocal has admins and managers — not elected officials. The bench-side view is net-new.</li>
+          <li><b>Connecting each council is real work.</b> Agenda, record, calendar — wired per chamber, not per tenant.</li>
         </ul>
       </div>
     </section>
 
-    <!-- 13 — Where I'd start -->
+    <!-- 9 — Where to start -->
     <section class="slide">
       <div class="inner">
-        <p class="eyebrow">Where I'd start</p>
-        <h2>The smallest real test half-exists.</h2>
+        <p class="eyebrow">The first test</p>
+        <h2>One council, one live session.</h2>
         <ol class="num">
-          <li><b>Pick the chamber that's already real.</b> Brussels has a live pipeline; Copenhagen runs on GV. The two ends almost meet.</li>
-          <li><b>Ship the townhall module.</b> One chamber, GV identity for humanity, contested-filter on, the GHOST shipped triage-only.</li>
-          <li><b>Answer the gating question first:</b> which GV cities have machine-readable council records, and can a GSM run the curation loop?</li>
-          <li><b>Then watch for habit.</b> Is “five minutes at the townhall” something a city will pay to keep?</li>
+          <li>Pick a council already on Go Vocal with a public agenda and record.</li>
+          <li>Ship the destination: past summaries, one live session, what's upcoming.</li>
+          <li>Put a tablet on the bench — give councillors the live pulse during one real plenary.</li>
+          <li>Ask: did being heard in real time change anything — for residents, for the vote?</li>
         </ol>
       </div>
     </section>
 
-    <!-- 14 — Close -->
+    <!-- 10 — Close -->
     <section class="slide">
       <div class="inner">
         <p class="eyebrow">In one line</p>
-        <p class="kicker">Not a feature. A new altitude.</p>
-        <p class="big"><span class="gvem">Go Vocal gathers what citizens want.</span> <em>RIOT shows what power did</em> — and lets them check the distance.</p>
-        <p class="lead" style="margin-top:26px;">The bet is that closing that loop is worth five minutes a week.</p>
+        <p class="kicker">Today the city speaks before and after. This lets it speak <em>during.</em></p>
+        <p class="lead">That's the whole bet.</p>
       </div>
     </section>
 
   </div>
 
-  <!-- chrome -->
-  <div class="meta">RIOT × Go Vocal — integration sketch</div>
-  <div class="counter"><b id="cur">1</b> / <span id="tot">14</span></div>
+  <div class="meta">The council, live — Go Vocal concept</div>
+  <div class="counter"><b id="cur">1</b> / <span id="tot">10</span></div>
   <div class="nav">
     <button id="prev" aria-label="Previous">←</button>
     <button id="next" aria-label="Next">→</button>
   </div>
-  <div class="hint">← → or space to navigate</div>
 
   <script>
     const slides=[...document.querySelectorAll('.slide')];
     const tot=slides.length;
     let i=0;
-    const cur=document.getElementById('cur');
-    const totEl=document.getElementById('tot');
-    const prog=document.getElementById('progress');
-    const prev=document.getElementById('prev');
-    const next=document.getElementById('next');
+    const cur=document.getElementById('cur'),totEl=document.getElementById('tot');
+    const prog=document.getElementById('progress'),prev=document.getElementById('prev'),next=document.getElementById('next');
     totEl.textContent=tot;
     function show(n){
       i=Math.max(0,Math.min(tot-1,n));
       slides.forEach((s,k)=>s.classList.toggle('active',k===i));
-      cur.textContent=i+1;
-      prog.style.width=((i+1)/tot*100)+'%';
-      prev.disabled=i===0;next.disabled=i===tot-1;
-      location.hash=i+1;
+      cur.textContent=i+1;prog.style.width=((i+1)/tot*100)+'%';
+      prev.disabled=i===0;next.disabled=i===tot-1;location.hash=i+1;
     }
-    function go(d){show(i+d);}
-    next.onclick=()=>go(1);
-    prev.onclick=()=>go(-1);
+    const go=d=>show(i+d);
+    next.onclick=()=>go(1);prev.onclick=()=>go(-1);
     document.addEventListener('keydown',e=>{
       if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();go(1);}
       else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(-1);}
-      else if(e.key==='Home'){show(0);}
-      else if(e.key==='End'){show(tot-1);}
+      else if(e.key==='Home')show(0);else if(e.key==='End')show(tot-1);
     });
-    // click right/left thirds to navigate (ignore interactive)
     document.getElementById('deck').addEventListener('click',e=>{
       if(e.target.closest('button,a'))return;
-      go(e.clientX > window.innerWidth*0.5 ? 1 : -1);
+      go(e.clientX>window.innerWidth*0.5?1:-1);
     });
-    const start=parseInt(location.hash.replace('#',''))||1;
-    show(start-1);
+    show((parseInt(location.hash.replace('#',''))||1)-1);
   </script>
 </body>
 </html>
