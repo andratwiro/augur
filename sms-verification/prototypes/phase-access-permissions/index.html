@@ -127,13 +127,15 @@
       font-size: var(--gv-fs-xs); font-weight: 700; letter-spacing: 0.48px; line-height: 18px;
       text-transform: uppercase; color: var(--gv-cool-grey-600); }
 
-    /* participation cards (Anyone / Require sign-in / Admins & managers only) */
+    /* participation cards (Anyone / Require sign-in / Admins & managers only).
+       Measured: horizontal — icon left, title+desc stacked right (flex row, gap 8px). */
     .sms-pcards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
     .sms-pcard { text-align: left; cursor: pointer; padding: 12px; background: #fff;
       border: 1px solid var(--gv-grey-400); border-radius: 8px;
-      display: flex; flex-direction: column; gap: 8px; font: inherit; color: var(--gv-blue-500); }
+      display: flex; flex-direction: row; align-items: flex-start; gap: 8px; font: inherit; color: var(--gv-blue-500); }
     .sms-pcard.is-selected { border-color: var(--gv-teal-400); background: var(--gv-teal-50); }
-    .sms-pcard__icon { width: 20px; height: 20px; color: var(--gv-blue-500); }
+    .sms-pcard__icon { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--gv-blue-500); }
+    .sms-pcard__body { display: flex; flex-direction: column; gap: 3px; }
     .sms-pcard__title { font-size: var(--gv-fs-s); font-weight: 700; }
     .sms-pcard__desc { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); line-height: 16px; }
 
@@ -172,6 +174,34 @@
       background: var(--gv-grey-200, #f1f1f1); color: var(--gv-text-primary); font-size: var(--gv-fs-s); }
     .sms-ms__x { cursor: pointer; width: 14px; height: 14px; color: var(--gv-cool-grey-600); }
     .sms-ms__caret { margin-left: auto; width: 18px; height: 18px; color: var(--gv-cool-grey-600); }
+
+    /* "+ Require recent verification" link (appears when Identity verification is on) */
+    .sms-addlink { display: inline-block; margin-top: 6px; font-size: var(--gv-fs-s); color: var(--gv-teal-400); cursor: pointer; }
+
+    /* modals (Customize error message · Add demographic questions) */
+    .sms-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-start; justify-content: center; }
+    .sms-modal[hidden] { display: none; }
+    .sms-modal__backdrop { position: absolute; inset: 0; background: rgba(13, 30, 40, .55); }
+    .sms-modal__card { position: relative; margin-top: 64px; width: 460px; max-width: calc(100vw - 32px);
+      background: #fff; border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+    .sms-modal__head { display: flex; align-items: center; gap: 12px; padding: 18px 22px 6px; }
+    .sms-modal__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; color: var(--gv-blue-500); }
+    .sms-modal__x { margin-left: auto; width: 18px; height: 18px; color: var(--gv-cool-grey-600); background: none; border: 0; cursor: pointer; flex: none; }
+    .sms-modal__body { padding: 6px 22px 18px; }
+    .sms-modal__body--list { padding-top: 14px; }
+    .sms-modal__foot { display: flex; justify-content: flex-end; padding: 0 22px 20px; }
+    .sms-quote { margin: 10px 0; font-size: var(--gv-fs-s); font-style: italic; font-weight: 600; color: var(--gv-teal-400); }
+    /* language pills (EN / NL-BE / NL-NL / FR-BE) */
+    .sms-langs { display: flex; gap: 8px; margin: 6px 0 12px; flex-wrap: wrap; }
+    .sms-lang { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 4px;
+      border: 0; background: var(--gv-grey-200, #eef0f2); color: var(--gv-blue-500); font-size: var(--gv-fs-xs); font-weight: 700; cursor: pointer; }
+    .sms-lang.is-active { background: var(--gv-teal-400); color: #fff; }
+    .sms-lang__dot { width: 6px; height: 6px; border-radius: 50%; background: #e1503e; }
+    /* default-question rows in the Add-demographic modal */
+    .sms-qrow { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--gv-divider); }
+    .sms-qrow:first-child { border-top: 0; }
+    .sms-qrow__name { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-blue-500); }
+    .sms-qrow__tag { margin-left: auto; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
 </style>
 </head>
 <body class="gv-bo">
@@ -814,162 +844,55 @@
             <h3 class="gv-bo-pagetitle" style="margin-bottom:8px">Phase access and user data</h3>
             <p class="gv-bo-help" style="max-width:680px;margin:0 0 22px;font-size:var(--gv-fs-base)">You can specify who can take each action, and ask additional questions to participants to collect more information.</p>
 
-            <!-- New epic design (7868.epic.govocal.com). The SMS-verification option
-                 will be added among the verification toggles below; we simplify next. -->
-            <div class="sms-acc">
+            <!-- New epic design (7868.epic.govocal.com), rebuilt data-driven from 5
+                 capture passes (states + interactions) →
+                 govocal-exports/fo-sms-access-rights/states/. Card choice drives what
+                 shows; sub-sections collapse; identity reveals recency; the two
+                 modals are real. SMS verification will join the toggles; simplify next. -->
+            <div class="sms-acc" id="smsAcc"></div>
 
-              <!-- ── Who can submit inputs? (expanded) ───────────────────────── -->
-              <div class="sms-acc__row">
-                <button class="sms-acc__head" aria-expanded="true">
-                  <span class="sms-acc__chev gv-icon" data-gv-icon="chevron-right"></span>
-                  <span class="sms-acc__title">Who can submit inputs?</span>
-                </button>
-                <div class="sms-acc__body">
-
-                  <p class="sms-seclabel">Who can participate <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p>
-                  <div class="sms-pcards">
-                    <button class="sms-pcard"><span class="sms-pcard__icon gv-icon" data-gv-icon="user"></span><span class="sms-pcard__title">Anyone</span><span class="sms-pcard__desc">No account needed.</span></button>
-                    <button class="sms-pcard is-selected"><span class="sms-pcard__icon gv-icon" data-gv-icon="shield"></span><span class="sms-pcard__title">Require sign-in</span><span class="sms-pcard__desc">Must prove who they are first.</span></button>
-                    <button class="sms-pcard"><span class="sms-pcard__icon gv-icon" data-gv-icon="group"></span><span class="sms-pcard__title">Admins &amp; managers only</span><span class="sms-pcard__desc">Restricted to staff.</span></button>
+            <!-- Modal: Customize error message (from Limit to groups) -->
+            <div class="sms-modal" id="smsModalError" hidden>
+              <div class="sms-modal__backdrop" data-close></div>
+              <div class="sms-modal__card" role="dialog" aria-modal="true" aria-label="Customize error message">
+                <div class="sms-modal__head">
+                  <h4 class="sms-modal__title">Customize error message</h4>
+                  <button class="sms-modal__x gv-icon" data-gv-icon="close" data-close aria-label="Close window"></button>
+                </div>
+                <div class="sms-modal__body">
+                  <p class="sms-help" style="margin-top:0">This is shown to people who try to take the action but don't meet the requirements. By default they see:</p>
+                  <p class="sms-quote">"You do not meet the requirements to participate in this process."</p>
+                  <p class="sms-help">Override it below for any language. Leave a language empty to keep the default for it.</p>
+                  <label class="sms-fieldlabel" style="margin-top:6px">Custom message</label>
+                  <div class="sms-langs">
+                    <button class="sms-lang is-active">EN</button>
+                    <button class="sms-lang"><span class="sms-lang__dot"></span>NL-BE</button>
+                    <button class="sms-lang"><span class="sms-lang__dot"></span>NL-NL</button>
+                    <button class="sms-lang"><span class="sms-lang__dot"></span>FR-BE</button>
                   </div>
-
-                  <!-- verification methods (SMS verification will join these) -->
-                  <div class="sms-vrow">
-                    <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
-                    <div class="sms-vrow__main">
-                      <p class="sms-vrow__title"><span class="sms-vrow__ic gv-icon" data-gv-icon="email"></span>Confirmed email <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p>
-                      <p class="sms-vrow__desc">Participant confirms an email address with a one-time code.</p>
-                    </div>
-                  </div>
-                  <div class="sms-vrow">
-                    <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
-                    <div class="sms-vrow__main">
-                      <p class="sms-vrow__title"><span class="sms-vrow__ic gv-icon" data-gv-icon="shield"></span>Identity verification</p>
-                      <p class="sms-vrow__desc">Participant proves their identity through an external register.</p>
-                      <a class="sms-link" href="#">See which fields this returns</a>
-                    </div>
-                  </div>
-
-                  <!-- Limit to groups (nested accordion, expanded) -->
-                  <div class="sms-sub">
-                    <button class="sms-sub__head" aria-expanded="true">
-                      <span class="sms-sub__chev gv-icon" data-gv-icon="chevron-right"></span>
-                      <span class="sms-sub__ic gv-icon" data-gv-icon="group"></span>
-                      <span class="sms-sub__title">Limit to groups</span>
-                      <span class="sms-sub__meta">1 group</span>
-                    </button>
-                    <div class="sms-sub__body">
-                      <p class="sms-help">Participant must be in any one of the selected groups.</p>
-                      <div class="sms-ms">
-                        <span class="sms-ms__chip">Verified <span class="sms-ms__x gv-icon" data-gv-icon="close"></span></span>
-                        <span class="sms-ms__caret gv-icon" data-gv-icon="chevron-down"></span>
-                      </div>
-                      <button class="gv-btn secondary-outlined sms-fullbtn"><span data-gv-icon="pen"></span><span class="gv-btn__label">Customize error message</span></button>
-                    </div>
-                  </div>
-
-                  <p class="sms-seclabel">What we collect <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p>
-
-                  <!-- Personal info (nested accordion, expanded) -->
-                  <div class="sms-sub">
-                    <button class="sms-sub__head" aria-expanded="true">
-                      <span class="sms-sub__chev gv-icon" data-gv-icon="chevron-right"></span>
-                      <span class="sms-sub__ic gv-icon" data-gv-icon="user"></span>
-                      <span class="sms-sub__title">Personal info</span>
-                      <span class="sms-sub__meta">Name · Password</span>
-                    </button>
-                    <div class="sms-sub__body">
-                      <div class="sms-vrow">
-                        <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
-                        <div class="sms-vrow__main">
-                          <p class="sms-vrow__title"><span class="sms-vrow__ic gv-icon" data-gv-icon="user"></span>Full name <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p>
-                          <p class="sms-vrow__desc">Ask for first and last name.</p>
-                        </div>
-                      </div>
-                      <div class="sms-vrow">
-                        <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
-                        <div class="sms-vrow__main">
-                          <p class="sms-vrow__title"><span class="sms-vrow__ic gv-icon" data-gv-icon="lock"></span>Password</p>
-                          <p class="sms-vrow__desc">Require a password on the account.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Demographic questions (nested accordion, expanded) -->
-                  <div class="sms-sub">
-                    <button class="sms-sub__head" aria-expanded="true">
-                      <span class="sms-sub__chev gv-icon" data-gv-icon="chevron-right"></span>
-                      <span class="sms-sub__ic gv-icon" data-gv-icon="comments"></span>
-                      <span class="sms-sub__title">Demographic questions</span>
-                      <span class="sms-sub__meta">None</span>
-                    </button>
-                    <div class="sms-sub__body">
-                      <p class="sms-fieldlabel">When to ask</p>
-                      <div class="sms-radios">
-                        <label class="gv-radio"><input type="radio" name="sms-demo" checked><span class="circle"></span>Ask demographic questions before the user participates</label>
-                        <label class="gv-radio"><input type="radio" name="sms-demo"><span class="circle"></span>Collect demographics by adding a new page to the end of the form</label>
-                      </div>
-                      <p class="sms-fieldlabel">Questions</p>
-                      <p class="sms-help">No demographic questions asked.</p>
-                      <button class="gv-btn secondary-outlined sms-fullbtn"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add a demographic question</span></button>
-                    </div>
-                  </div>
-
-                  <a class="sms-resetlink" href="#">Reset demographic questions and groups</a>
+                  <input class="gv-input" type="text" style="width:100%" placeholder="">
+                </div>
+                <div class="sms-modal__foot">
+                  <button class="gv-btn admin-dark" data-close><span class="gv-btn__label">Done</span></button>
                 </div>
               </div>
+            </div>
 
-              <!-- ── Who can comment on inputs? (collapsed) ──────────────────── -->
-              <div class="sms-acc__row">
-                <button class="sms-acc__head" aria-expanded="false">
-                  <span class="sms-acc__chev gv-icon" data-gv-icon="chevron-right"></span>
-                  <span class="sms-acc__title">Who can comment on inputs?</span>
-                  <span class="sms-acc__chips">
-                    <span class="sms-chip"><span class="gv-icon" data-gv-icon="email"></span>Confirmed email</span>
-                    <span class="sms-chip"><span class="gv-icon" data-gv-icon="group"></span>1 group</span>
-                    <span class="sms-chip">Name</span>
-                    <span class="sms-chip"><span class="gv-icon" data-gv-icon="lock"></span>Password</span>
-                  </span>
-                </button>
-                <div class="sms-acc__body">
-                  <p class="sms-help">Configure who can comment, which verification they pass, and what you collect — same controls as above.</p>
+            <!-- Modal: Add demographic questions (from Demographic questions) -->
+            <div class="sms-modal" id="smsModalDemo" hidden>
+              <div class="sms-modal__backdrop" data-close></div>
+              <div class="sms-modal__card" role="dialog" aria-modal="true" aria-label="Add demographic questions">
+                <div class="sms-modal__head">
+                  <h4 class="sms-modal__title">Add demographic questions</h4>
+                  <button class="sms-modal__x gv-icon" data-gv-icon="close" data-close aria-label="Close window"></button>
+                </div>
+                <div class="sms-modal__body sms-modal__body--list">
+                  <div class="sms-qrow"><span class="sms-qrow__name">Gender</span><span class="sms-qrow__tag">Default question</span><button class="gv-btn admin-dark size-s"><span class="gv-btn__label">Select</span></button></div>
+                  <div class="sms-qrow"><span class="sms-qrow__name">Year of birth</span><span class="sms-qrow__tag">Default question</span><button class="gv-btn admin-dark size-s"><span class="gv-btn__label">Select</span></button></div>
+                  <div class="sms-qrow"><span class="sms-qrow__name">Place of residence</span><span class="sms-qrow__tag">Default question</span><button class="gv-btn admin-dark size-s"><span class="gv-btn__label">Select</span></button></div>
+                  <button class="gv-btn secondary-outlined sms-fullbtn" style="margin-top:14px"><span data-gv-icon="plus"></span><span class="gv-btn__label">Create a new question</span></button>
                 </div>
               </div>
-
-              <!-- ── Who can react to inputs? (collapsed) ────────────────────── -->
-              <div class="sms-acc__row">
-                <button class="sms-acc__head" aria-expanded="false">
-                  <span class="sms-acc__chev gv-icon" data-gv-icon="chevron-right"></span>
-                  <span class="sms-acc__title">Who can react to inputs?</span>
-                  <span class="sms-acc__chips">
-                    <span class="sms-chip"><span class="gv-icon" data-gv-icon="email"></span>Confirmed email</span>
-                    <span class="sms-chip"><span class="gv-icon" data-gv-icon="group"></span>1 group</span>
-                    <span class="sms-chip">Name</span>
-                    <span class="sms-chip"><span class="gv-icon" data-gv-icon="lock"></span>Password</span>
-                  </span>
-                </button>
-                <div class="sms-acc__body">
-                  <p class="sms-help">Configure who can react, which verification they pass, and what you collect — same controls as above.</p>
-                </div>
-              </div>
-
-              <!-- ── Who can sign up to attend an event? (collapsed) ─────────── -->
-              <div class="sms-acc__row">
-                <button class="sms-acc__head" aria-expanded="false">
-                  <span class="sms-acc__chev gv-icon" data-gv-icon="chevron-right"></span>
-                  <span class="sms-acc__title">Who can sign up to attend an event? <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></span>
-                  <span class="sms-acc__chips">
-                    <span class="sms-chip"><span class="gv-icon" data-gv-icon="email"></span>Confirmed email</span>
-                    <span class="sms-chip">Name</span>
-                    <span class="sms-chip"><span class="gv-icon" data-gv-icon="lock"></span>Password</span>
-                  </span>
-                </button>
-                <div class="sms-acc__body">
-                  <p class="sms-help">Configure who can register for events, which verification they pass, and what you collect — same controls as above.</p>
-                </div>
-              </div>
-
             </div>
           </div>
 
@@ -1610,19 +1533,178 @@
       }));
     });
 
-    // ── New phase-access (epic) accordions: chevron-left, expand/collapse ──
-    document.querySelectorAll(".sms-acc__head, .sms-sub__head").forEach(head => {
-      head.addEventListener("click", () => {
-        head.setAttribute("aria-expanded", head.getAttribute("aria-expanded") === "true" ? "false" : "true");
+    // ════ Phase access & permissions — data-driven from the 5 epic capture passes ══
+    // Card choice drives visibility (Anyone → demographics only; Require sign-in →
+    // full; Admins → nothing). Identity verification reveals "+ Require recent
+    // verification". Sub-sections are collapsed by default. Comment/react/event have
+    // only 2 cards (no "Anyone"); event's groups default = "Everyone who signs in".
+    const SMS_CARDS = {
+      anyone: { icon: "user",   title: "Anyone",                 desc: "No account needed." },
+      signin: { icon: "shield", title: "Require sign-in",        desc: "Must prove who they are first." },
+      admins: { icon: "group",  title: "Admins &amp; managers only", desc: "Restricted to staff." },
+    };
+    const SMS_ACTIONS = [
+      { key: "submit", title: "Who can submit inputs?",            cards: ["anyone","signin","admins"], expanded: true,  groups: "1 group" },
+      { key: "comment", title: "Who can comment on inputs?",        cards: ["signin","admins"],          expanded: false, groups: "1 group" },
+      { key: "react",   title: "Who can react to inputs?",          cards: ["signin","admins"],          expanded: false, groups: "1 group" },
+      { key: "event",   title: "Who can sign up to attend an event?", info: true, cards: ["signin","admins"], expanded: false, groups: "Everyone who signs in" },
+    ];
+    // mutable per-action state (mirrors what the real product persists)
+    const smsState = {};
+    SMS_ACTIONS.forEach(a => smsState[a.key] = { selected: "signin", confirmedEmail: true, identity: false, recent: false });
+
+    const sub = (icon, title, meta, bodyHtml) => `
+      <div class="sms-sub">
+        <button class="sms-sub__head" aria-expanded="false">
+          <span class="sms-sub__chev gv-icon" data-gv-icon="chevron-right"></span>
+          <span class="sms-sub__ic gv-icon" data-gv-icon="${icon}"></span>
+          <span class="sms-sub__title">${title}</span>
+          <span class="sms-sub__meta">${meta}</span>
+        </button>
+        <div class="sms-sub__body">${bodyHtml}</div>
+      </div>`;
+
+    function smsChips(a) {
+      // Header summary chips reflect sign-in requirements; Anyone/Admins show none.
+      const s = smsState[a.key];
+      if (s.selected !== "signin") return "";
+      const c = [];
+      if (s.confirmedEmail) c.push(`<span class="sms-chip"><span class="gv-icon" data-gv-icon="email"></span>Confirmed email</span>`);
+      if (s.identity)       c.push(`<span class="sms-chip"><span class="gv-icon" data-gv-icon="shield"></span>Identity</span>`);
+      if (a.groups === "1 group") c.push(`<span class="sms-chip"><span class="gv-icon" data-gv-icon="group"></span>1 group</span>`);
+      c.push(`<span class="sms-chip">Name</span>`);
+      c.push(`<span class="sms-chip"><span class="gv-icon" data-gv-icon="lock"></span>Password</span>`);
+      return c.join("");
+    }
+
+    function smsBody(a) {
+      const s = smsState[a.key];
+      const cards = a.cards.map(k => {
+        const d = SMS_CARDS[k];
+        return `<button class="sms-pcard${s.selected === k ? " is-selected" : ""}" data-card="${k}">
+            <span class="sms-pcard__icon gv-icon" data-gv-icon="${d.icon}"></span>
+            <span class="sms-pcard__body"><span class="sms-pcard__title">${d.title}</span><span class="sms-pcard__desc">${d.desc}</span></span>
+          </button>`;
+      }).join("");
+
+      let out = `<p class="sms-seclabel">Who can participate <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p>
+        <div class="sms-pcards" style="grid-template-columns:repeat(${a.cards.length},1fr)">${cards}</div>`;
+
+      if (s.selected === "signin") {
+        out += `
+          <div class="sms-vrow">
+            <label class="gv-toggle"><input type="checkbox" data-tog="confirmedEmail"${s.confirmedEmail ? " checked" : ""}><span class="track"></span></label>
+            <div class="sms-vrow__main">
+              <p class="sms-vrow__title"><span class="sms-vrow__ic gv-icon" data-gv-icon="email"></span>Confirmed email <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p>
+              <p class="sms-vrow__desc">Participant confirms an email address with a one-time code.</p>
+            </div>
+          </div>
+          <div class="sms-vrow">
+            <label class="gv-toggle"><input type="checkbox" data-tog="identity"${s.identity ? " checked" : ""}><span class="track"></span></label>
+            <div class="sms-vrow__main">
+              <p class="sms-vrow__title"><span class="sms-vrow__ic gv-icon" data-gv-icon="shield"></span>Identity verification</p>
+              <p class="sms-vrow__desc">Participant proves their identity through an external register.</p>
+              <a class="sms-link" href="#" data-act="seefields">See which fields this returns</a>
+              ${s.identity ? `<br><span class="sms-addlink" data-act="recent">+ Require recent verification</span>` : ""}
+            </div>
+          </div>
+          ${sub("group", "Limit to groups", a.groups,
+            `<p class="sms-help">Participant must be in any one of the selected groups.</p>
+             <div class="sms-ms"><span class="sms-ms__chip">Verified <span class="sms-ms__x gv-icon" data-gv-icon="close"></span></span><span class="sms-ms__caret gv-icon" data-gv-icon="chevron-down"></span></div>
+             <button class="gv-btn secondary-outlined sms-fullbtn" data-act="customize"><span data-gv-icon="pen"></span><span class="gv-btn__label">Customize error message</span></button>`)}`;
+      }
+
+      if (s.selected !== "admins") {
+        out += `<p class="sms-seclabel">What we collect <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p>`;
+        if (s.selected === "signin") {
+          out += sub("user", "Personal info", "Name · Password",
+            `<div class="sms-vrow">
+               <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+               <div class="sms-vrow__main"><p class="sms-vrow__title"><span class="sms-vrow__ic gv-icon" data-gv-icon="user"></span>Full name <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span></p><p class="sms-vrow__desc">Ask for first and last name.</p></div>
+             </div>
+             <div class="sms-vrow">
+               <label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label>
+               <div class="sms-vrow__main"><p class="sms-vrow__title"><span class="sms-vrow__ic gv-icon" data-gv-icon="lock"></span>Password</p><p class="sms-vrow__desc">Require a password on the account.</p></div>
+             </div>`);
+        }
+        out += sub("comments", "Demographic questions", "None",
+          `<p class="sms-fieldlabel">When to ask</p>
+           <div class="sms-radios">
+             <label class="gv-radio"><input type="radio" name="demo-${a.key}" checked><span class="circle"></span>Ask demographic questions before the user participates</label>
+             <label class="gv-radio"><input type="radio" name="demo-${a.key}"><span class="circle"></span>Collect demographics by adding a new page to the end of the form</label>
+           </div>
+           <p class="sms-fieldlabel">Questions</p>
+           <p class="sms-help">No demographic questions asked.</p>
+           <button class="gv-btn secondary-outlined sms-fullbtn" data-act="addq"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add a demographic question</span></button>`);
+      }
+
+      out += `<a class="sms-resetlink" href="#">Reset demographic questions and groups</a>`;
+      return out;
+    }
+
+    function smsRenderAction(a) {
+      const s = smsState[a.key];
+      return `<div class="sms-acc__row" data-action="${a.key}">
+          <button class="sms-acc__head" aria-expanded="${a.expanded ? "true" : "false"}">
+            <span class="sms-acc__chev gv-icon" data-gv-icon="chevron-right"></span>
+            <span class="sms-acc__title">${a.title}${a.info ? ' <span class="gv-icon pp-infodot" data-gv-icon="info-outline"></span>' : ""}</span>
+            <span class="sms-acc__chips">${smsChips(a)}</span>
+          </button>
+          <div class="sms-acc__body">${smsBody(a)}</div>
+        </div>`;
+    }
+
+    const smsAcc = document.getElementById("smsAcc");
+    function smsRebuildRow(a) {
+      const row = smsAcc.querySelector(`.sms-acc__row[data-action="${a.key}"]`);
+      const wasOpen = row.querySelector(".sms-acc__head").getAttribute("aria-expanded") === "true";
+      row.outerHTML = smsRenderAction(a);
+      const fresh = smsAcc.querySelector(`.sms-acc__row[data-action="${a.key}"]`);
+      fresh.querySelector(".sms-acc__head").setAttribute("aria-expanded", wasOpen ? "true" : "false");
+      if (window.GVIcons) window.GVIcons.render(fresh);
+    }
+
+    function smsOpenModal(id) { const m = document.getElementById(id); if (m) m.hidden = false; }
+    document.querySelectorAll(".sms-modal [data-close]").forEach(el =>
+      el.addEventListener("click", () => { el.closest(".sms-modal").hidden = true; }));
+    document.querySelectorAll(".sms-modal .sms-lang").forEach(p => p.addEventListener("click", () => {
+      const wrap = p.closest(".sms-langs"); wrap.querySelectorAll(".sms-lang").forEach(x => x.classList.remove("is-active")); p.classList.add("is-active");
+    }));
+
+    if (smsAcc) {
+      smsAcc.innerHTML = SMS_ACTIONS.map(smsRenderAction).join("");
+      smsAcc.addEventListener("click", (e) => {
+        const head = e.target.closest(".sms-acc__head");
+        if (head && !e.target.closest(".sms-pcard, .gv-toggle, a, .sms-addlink, .sms-chip, .sms-ms")) {
+          head.setAttribute("aria-expanded", head.getAttribute("aria-expanded") === "true" ? "false" : "true");
+          return;
+        }
+        const subHead = e.target.closest(".sms-sub__head");
+        if (subHead) { subHead.setAttribute("aria-expanded", subHead.getAttribute("aria-expanded") === "true" ? "false" : "true"); return; }
+        const card = e.target.closest(".sms-pcard");
+        if (card) {
+          const a = SMS_ACTIONS.find(x => x.key === card.closest(".sms-acc__row").dataset.action);
+          smsState[a.key].selected = card.dataset.card; smsRebuildRow(a); return;
+        }
+        const act = e.target.closest("[data-act]");
+        if (act) {
+          e.preventDefault();
+          const a = SMS_ACTIONS.find(x => x.key === act.closest(".sms-acc__row").dataset.action);
+          if (act.dataset.act === "customize") smsOpenModal("smsModalError");
+          else if (act.dataset.act === "addq")  smsOpenModal("smsModalDemo");
+          else if (act.dataset.act === "recent") { smsState[a.key].recent = !smsState[a.key].recent; }
+          return;
+        }
       });
-    });
-    // Participation cards (Anyone / Require sign-in / Admins & managers): single-select.
-    document.querySelectorAll(".sms-pcards").forEach(grid => {
-      grid.querySelectorAll(".sms-pcard").forEach(c => c.addEventListener("click", () => {
-        grid.querySelectorAll(".sms-pcard").forEach(x => x.classList.remove("is-selected"));
-        c.classList.add("is-selected");
-      }));
-    });
+      smsAcc.addEventListener("change", (e) => {
+        const tog = e.target.closest("[data-tog]");
+        if (!tog) return;
+        const a = SMS_ACTIONS.find(x => x.key === tog.closest(".sms-acc__row").dataset.action);
+        smsState[a.key][tog.dataset.tog] = tog.checked;
+        smsRebuildRow(a);
+      });
+      if (window.GVIcons) window.GVIcons.render(smsAcc);
+    }
 
     // ── Per-phase automated emails (Notifications sub-tab) ─────────────────
     const EMAILS = [
