@@ -131,6 +131,14 @@
     .ar-phonewrap { position: sticky; top: 16px; }
     .ar-phonecap { font-size: 12px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--gv-cool-grey-600, #5a6b7a); margin: 0 0 10px; display: flex; align-items: center; gap: 7px; }
     .ar-phonecap .gv-icon { width: 15px; height: 15px; }
+    /* per-action preview tabs (only shown when per-action rules are on) */
+    .ar-ptabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+    .ar-ptab { font: 600 12px var(--gv-font-family); border: 1px solid var(--gv-grey-300); background: #fff; color: var(--gv-cool-grey-700, #51606b); border-radius: 20px; padding: 5px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+    .ar-ptab:hover { border-color: var(--gv-cool-grey-400, #9fb0bb); }
+    .ar-ptab.on { background: var(--gv-bo-primary, #044d6c); border-color: var(--gv-bo-primary, #044d6c); color: #fff; }
+    .ar-ptab .gv-icon { width: 13px; height: 13px; }
+    .ar-ptab__diff { width: 6px; height: 6px; border-radius: 50%; background: #e2603a; }
+    .ar-ptab.on .ar-ptab__diff { background: #fff; }
     .ar-phone { background: #0f1722; border-radius: 36px; padding: 11px; box-shadow: 0 24px 60px rgba(10,16,30,.34); }
     .ar-phone__scr { background: #f4f7f9; border-radius: 26px; overflow: hidden; min-height: 480px; display: flex; flex-direction: column; }
     .ar-phone__bar { background: #fff; padding: 13px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e9edf1; }
@@ -293,6 +301,7 @@
       collect: { name:false, password:false, questions:false },
       limitGroups: false,
       groups: [],
+      focusAction: 'submit',
       advOpen: false
     };
     var GROUPS = ['Verified residents', 'Homeowners', 'Youth council', 'Neighbourhood reps'];
@@ -319,8 +328,9 @@
         var m = methodsOn();
         var proof = m.length ? ('sign in and confirm with <b>'+ m.map(function(k){return VERIFY[k].t.toLowerCase();}).join(' + ') +'</b>') : 'just <b>sign in</b>';
         var who = state.preset==='verified' ? 'a verified resident' : 'anyone';
+        var diffs = state.perAction ? ACTIONS.filter(function(a){ return state.actions[a.key] !== 'all'; }).length : 0;
         s = 'Right now, '+who+' who can '+proof+' is able to <b>take part</b>'
-          + (state.perAction ? ', with a few actions set differently' : '')
+          + (diffs ? ', with <b>'+diffs+' action'+(diffs>1?'s':'')+'</b> set differently' : '')
           + ((state.limitGroups && state.groups.length) ? ' — limited to <b>'+ state.groups.join(', ') +'</b>.' : '.');
       }
       $('#summary').innerHTML = s;
@@ -442,13 +452,21 @@
     }
 
     /* ── render: live phone ── */
-    function flowSteps(){
-      if(state.preset==='team'){
+    var VERBS = { submit:'submit an idea', comment:'comment', react:'like or react', attend:'attend the event' };
+    // effective access level shown on the phone (phase default, or the focused action's override)
+    function effectivePreset(){
+      if(state.perAction && state.actions[state.focusAction] && state.actions[state.focusAction] !== 'all') return state.actions[state.focusAction];
+      return state.preset;
+    }
+    function flowSteps(pre, verb){
+      pre = pre || effectivePreset();
+      verb = verb || 'take part';
+      if(pre==='team'){
         return { blocked:true, steps:[ {t:'Staff only', d:'This phase isn’t open to residents.', cls:'block', ic:'lock'} ] };
       }
       // steps = the HURDLES a resident crosses before they're in (not the entry tap)
       var steps = [];
-      if(state.preset!=='open'){
+      if(pre!=='open'){
         steps.push({ t:'Enter their email', d:'To make a quick account' });
         if(state.verify.email) steps.push({ t:'Type the email code', d:'6 digits from their inbox' });
         if(state.verify.sms)   steps.push({ t:'Enter their phone', d:'Then type the text-message code', cls:'sms', ic:'notification' });
@@ -456,23 +474,38 @@
       } else {
         if(state.collect.questions) steps.push({ t:'Answer a few questions', d:'Anonymous — optional' });
       }
-      var winText = (state.preset==='open' && steps.length===0) ? 'They’re straight in! 🎉' : 'They’re in! 🎉';
-      steps.push({ t:winText, d:'Ready to submit an idea', cls:'win', ic:'check' });
+      var winText = (pre==='open' && steps.length===0) ? 'They’re straight in! 🎉' : 'They’re in! 🎉';
+      steps.push({ t:winText, d:'Ready to '+verb, cls:'win', ic:'check' });
       return { blocked:false, steps:steps };
     }
 
     function renderPhone(){
-      var f = flowSteps();
+      var focus = state.perAction ? state.focusAction : 'submit';
+      var f = flowSteps(effectivePreset(), VERBS[focus]);
       var realSteps = f.blocked ? 0 : f.steps.filter(function(s){ return s.cls!=='win'; }).length;
       var count;
       if(f.blocked) count = '<div class="ar-flowcount blocked">'+icon('lock')+'Residents can’t take part</div>';
       else if(realSteps===0) count = '<div class="ar-flowcount zero">'+icon('check')+'0 steps — instant</div>';
       else count = '<div class="ar-flowcount">'+icon('clock')+realSteps+' step'+(realSteps>1?'s':'')+' before they take part</div>';
 
+      // per-action preview tabs — only when per-action rules are on
+      var tabs = '';
+      if(state.perAction){
+        tabs = '<div class="ar-ptabs">'
+          + ACTIONS.map(function(a){
+              var differs = state.actions[a.key] && state.actions[a.key] !== 'all';
+              return '<button class="ar-ptab'+(state.focusAction===a.key?' on':'')+'" data-focus="'+a.key+'">'
+                + a.t + (differs ? '<span class="ar-ptab__diff" title="Different from the phase default"></span>' : '') + '</button>';
+            }).join('')
+          + '</div>';
+      }
+      var subline = state.perAction ? ('Showing what happens when someone tries to <b>'+ (VERBS[focus]) +'</b>.') : 'Help shape the future of the park.';
+
       var body = '<div class="ar-phone__bar"><span class="ar-phone__logo">DX</span><span class="ar-phone__city">City of Dorothea Dix</span></div>'
         + '<div class="ar-phone__body">'
+        + tabs
         + '<div class="ar-phone__h">New ideas!</div>'
-        + '<div class="ar-phone__sub">Help shape the future of the park.</div>'
+        + '<div class="ar-phone__sub">'+subline+'</div>'
         + count
         + '<div class="ar-flow">'
         + f.steps.map(function(s,i){
@@ -483,6 +516,10 @@
           }).join('')
         + '</div></div>';
       $('#phone').innerHTML = body;
+      $('#phone').querySelectorAll('[data-focus]').forEach(function(b){
+        b.onclick = function(){ state.focusAction = b.getAttribute('data-focus'); renderPhone(); if(window.GVIcons) GVIcons.render($('#phone')); };
+      });
+      if(window.GVIcons) GVIcons.render($('#phone'));
     }
 
     /* ── bindings ── */
