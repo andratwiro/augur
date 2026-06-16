@@ -447,6 +447,10 @@ body.gv-root {
 .gv-avatars .av:first-child { margin-left: 0; }
 .gv-avatars .count { margin-left: -8px; width: 38px; height: 38px; padding: 0; border-radius: 50%; border: 2px solid #fff;
   background: var(--gv-cool-grey-600); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+/* GROUNDED-CORRECT (shared=true; consumers: spotlight, idea-card, featured-card, homepage,
+   event-detail, perspectives-feed, projects-list). Verified vs live: avatarImageBubble = 38x38
+   border-radius 50%; avatarBubblesContainer height 40px (38 + 2px borders); userCountBubbleInner
+   font-size 14px (= --gv-fs-s). No change needed — a future edit here is known to affect spotlight. */
 .gv-bubbles { display: inline-flex; align-items: center; }
 .gv-bubbles .av { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #fff; margin-left: -8px;
   background: linear-gradient(135deg, #cfd6dd, #9aa7b2); background-size: cover; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
