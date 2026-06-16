@@ -2379,6 +2379,22 @@
       "uses": [
         ".gv-pcard"
       ]
+    },
+    {
+      "id": "fo-card/rail-cta",
+      "built": "components/project-card/index.html",
+      "against": "fo-wien-home",
+      "map": {
+        "p.sc-beqWaB.sc-ktEKTO": ".gv-pcard:not(.boxed) .gv-pcard__cta"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight"
+      ],
+      "uses": [
+        ".gv-pcard"
+      ]
     }
   ]
 }

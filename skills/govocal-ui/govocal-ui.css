@@ -342,8 +342,11 @@
 .gv-pcard__meta.done { color: var(--gv-success); }
 .gv-pcard__meta + .gv-pcard__desc, .gv-pcard__meta + .gv-pcard__cta { margin-top: 8px; }
 /* secondary CTA must sit ABOVE the stretched title link to stay clickable */
+/* Unboxed rail-card CTA — real (r7-wien-home p.sc-ktEKTO "Umfrage ausfüllen") is a
+   MUTED affordance: cool-grey-600, 16px/400, no underline (the whole card is the click
+   target) — NOT a brand-primary bold link. */
 .gv-pcard__cta { position: relative; z-index: 1; align-self: flex-start; margin-top: 8px;
-  font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-tenant-primary); text-decoration: none; }
+  font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); text-decoration: none; }
 .gv-pcard__cta:hover { text-decoration: underline; }
 /* card width variants */
 .gv-pcard.wide { flex-basis: 360px; }
