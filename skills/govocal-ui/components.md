@@ -798,6 +798,42 @@ secondary cool-grey text). Add `.closed` for the muted finished state. Source:
 </div>
 ```
 
+## Project carousel — `.gv-carousel` (`components/spotlight-carousel/`)
+
+The product-default homepage "project row" presentation (Falkirk + St Louis): a section
+title + prev/next scroll controls over a **paged** horizontal rail of cards. Source-grounded
+on Falkirk; **structurally common across tenants** (one product, re-skinned), so `.gv-carousel`
+is a thin COMPONENT **wrapper around the existing `.gv-rail` atom** — the rail keeps all
+scroll/snap/fade mechanics; the carousel only adds the header (`.gv-title.h2` + `.gv-carousel__scroll`
+prev/next chevrons) and the live a11y scaffolding: `role="region"` + `aria-roledescription="carousel"`
++ the sr-only **"Press escape to skip carousel"** button (`.gv-carousel__skip`, an extension of the
+`.gv-sr-only` atom — visible only on focus). The left/prev control starts `.disabled` (rail at the
+start). Cards drop in **unchanged** — `.gv-pcard.light` here; any `.gv-pcard` works. Re-skins per `?theme=`.
+
+```html
+<section class="gv-carousel" role="region" aria-roledescription="carousel" aria-label="Open engagements">
+  <div class="gv-carousel__head">
+    <h2 class="gv-title h2 gv-carousel__title">Open engagements</h2>
+    <div class="gv-carousel__controls">
+      <button type="button" class="gv-carousel__scroll disabled" aria-disabled="true" aria-label="Scroll left">
+        <span data-gv-icon="chevron-left"></span>
+      </button>
+      <button type="button" class="gv-carousel__scroll" aria-label="Scroll right">
+        <span data-gv-icon="chevron-right"></span>
+      </button>
+    </div>
+  </div>
+  <button type="button" class="gv-sr-only gv-carousel__skip">Press escape to skip carousel</button>
+  <div class="gv-rail rail--fade-right" tabindex="0" role="group" aria-label="Open engagements, scroll for more">
+    <article class="gv-pcard light compact">…</article>   <!-- reuse any .gv-pcard wholesale -->
+    …
+  </div>
+</section>
+```
+
+Wire the prev/next buttons with a small page-local script (`scrollBy` + toggle `.disabled` /
+the rail's `rail--fade-left`/`rail--fade-right` classes on scroll) — no `.gv-*` is redefined.
+
 ## Homepage widgets — `.gv-spotlight` / `.gv-ptoolbar` / `.gv-ctaband` (`pages/homepage/`)
 
 The modern GoVocal landing-page anatomy (source-grounded on the live signed-in homepage).

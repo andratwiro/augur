@@ -2417,16 +2417,19 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 }
 .gv-carousel__title { margin: 0; }  /* host a .gv-title.h2 (live = 25px/700/lh32.5) */
 .gv-carousel__controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-/* Scroll button = transparent wrapper, 24px chevron, tenant-text tint (live inner
-   .button.Button.text). Disabled at a rail end: aria-disabled dims + un-clicks it. */
+/* Scroll button — matches the live .e2e-event-previews-scroll-{left,right}: a bare
+   transparent control (no own bg/border/radius/shadow), centered flex, inheriting
+   the surrounding text (14px on the real homepage); only the 24px chevron shows.
+   The 36px box is a touch target via padding, not a visible circle. Disabled at a
+   rail end: aria-disabled dims + un-clicks it (left starts .disabled). */
 .gv-carousel__scroll {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%;
+  width: 36px; height: 36px; padding: 6px; border: 0; border-radius: 0;
   background: transparent; color: var(--gv-text-primary); cursor: pointer;
-  font: inherit; -webkit-appearance: none; appearance: none;
+  font: inherit; line-height: inherit; -webkit-appearance: none; appearance: none;
 }
 .gv-carousel__scroll .gv-icon { width: 24px; height: 24px; }
-.gv-carousel__scroll:hover { background: var(--gv-grey-100); }
+.gv-carousel__scroll:hover { filter: brightness(.8); }
 .gv-carousel__scroll:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
 .gv-carousel__scroll[aria-disabled="true"],
 .gv-carousel__scroll.disabled { opacity: .35; pointer-events: none; cursor: default; }

@@ -1895,6 +1895,27 @@
       ]
     },
     {
+      "id": "fo-falkirk-spotlight-carousel/scroll-control",
+      "built": "components/spotlight-carousel/index.html",
+      "against": "fo-falkirk-spotlight-carousel",
+      "map": {
+        ".e2e-event-previews-scroll-left": ".gv-carousel__controls .gv-carousel__scroll.disabled"
+      },
+      "props": [
+        "display",
+        "align-items",
+        "justify-content",
+        "background-color",
+        "border-width",
+        "border-style",
+        "box-shadow",
+        "border-radius"
+      ],
+      "uses": [
+        ".gv-carousel"
+      ]
+    },
+    {
       "id": "phase-timeline/segment-inactive",
       "built": "components/phase-timeline/index.html",
       "against": "fo-perspectives-entry",
