@@ -437,6 +437,22 @@
 /* the phase you're VIEWING (if it isn't the current one) fills dark charcoal */
 .gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-cool-grey-700); color: #fff; }
 .gv-phase[aria-selected="true"]:not(.current) .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
+/* FO shared (current-phase-fill fidelity): the live wietsedemo/perspectives-entry
+   CURRENT segment is NOT a solid dark-green ribbon with white text. Sampled live
+   (fo-perspectives-entry, current phase 4 = /tmp/p4.png): light-mint fill
+   srgb(202,224,205) #CAE0CD with a DARK-GREEN number + DARK-GREEN dot (green-600,
+   not white), plus the same thin dark top edge the .gv-methodband segments carry.
+   Override the base solid-green rule (427) here so this is the FO default for every
+   consumer; the dot stays currentColor so it inherits the dark-green text. The
+   .gv-phase.current .gv-phase__label rule (434) already pins green-600 — matches. */
+.gv-phase.current .gv-pstep {
+  background: var(--gv-green-mint); color: var(--gv-green-600);
+  box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.22);
+}
+/* solid-green CURRENT as an opt-in variant (e.g. if a Wien-style tenant still wants
+   the old dark ribbon) — does NOT change the default above. */
+.gv-phase.current.solid .gv-pstep { background: var(--gv-green-600); color: #fff; box-shadow: none; }
+.gv-phase.current.solid .gv-phase__label { color: var(--gv-green-600); }
 /* FO shared (stepper-responsive): on the live wietsedemo mobile (390px) the whole
    phase ribbon fits the viewport with NO horizontal scroll — segments collapse to
    number-only chips and the per-segment text label is hidden (only the number

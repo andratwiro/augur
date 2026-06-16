@@ -60,6 +60,7 @@
   --gv-green-400: #32B67A;
   --gv-green-300: #62C462;
   --gv-green-100: #e4f7ef; /* successLight */
+  --gv-green-mint: #CAE0CD; /* phase-timeline CURRENT segment fill — sampled live fo-perspectives-entry current segment (srgb 202,224,205); distinct from successLight #e4f7ef so it can't drift it */
 
   /* ── Orange ───────────────────────────────────────────────────────────── */
   --gv-orange-100: #FFECE6;
