@@ -1632,7 +1632,7 @@
     <main class="flex-1 flex flex-col relative">
 
       <!-- ====== VIEW: Project page preview ====== -->
-      <div id="view-project" class="preview-stage flex-1 flex items-start justify-center pt-8 pb-6 relative overflow-y-auto">
+      <div id="view-project" class="preview-stage flex-1 flex items-center justify-center pt-8 pb-6 relative overflow-y-auto">
 
         <div id="phone" class="phone frame-phone" style="cursor: pointer;" onclick="maybeOpenBuilder(event)">
           <div class="notch"></div>
@@ -2144,6 +2144,7 @@
 
     if (view === 'project') {
       projectView.style.display = 'flex';
+      requestAnimationFrame(fitPreview);   // stage now has dimensions → size the frame
       projectUtilities.classList.remove('collapsed');
       projectChevron.style.transform = 'rotate(0deg)';
     } else if (view === 'phase') {
@@ -2299,19 +2300,50 @@
       if (v) phone.style.setProperty('--gv-tenant-' + k, v);
     });
   }
-  window.addEventListener('load', syncPhoneTheme);
+  window.addEventListener('load', () => { syncPhoneTheme(); fitPreview(); });
 
-  // Frame switcher: swaps only the device frame around the phone preview. The
-  // scaled GoVocal FO interior is untouched; each variant re-tunes the bezel,
-  // size and --pz (see the .frame-* CSS). Recompute the sticky bar since the
-  // frame height changes the scroll geometry.
+  // ── Fit-to-canvas sizing ──────────────────────────────────────────────────
+  // Each frame has a fixed LOGICAL viewport (the resident's real screen size — a
+  // phone width, or a desktop width). We scale that viewport to fill the editor
+  // stage minus a comfortable margin, capped at 100% (never upscale past real
+  // size). --pz IS that scale, so the page reads as large/legible as the canvas
+  // allows while keeping its true layout and aspect — and it re-fits on resize.
+  const FRAME_LOGICAL = {
+    phone:  { w: 400,  h: 800, border: 1.5 },
+    window: { w: 1280, h: 760, border: 1.5 },
+  };
+  function fitPreview() {
+    const phone = document.getElementById('phone');
+    const stage = document.getElementById('view-project');
+    if (!phone || !stage) return;
+    if (!stage.clientWidth || !stage.clientHeight) return;   // hidden → skip
+    const key = phone.classList.contains('frame-window') ? 'window' : 'phone';
+    const L = FRAME_LOGICAL[key];
+    const MARGIN_X = 48, MARGIN_Y = 32;                      // breathing room
+    const availW = Math.max(160, stage.clientWidth  - MARGIN_X * 2);
+    const availH = Math.max(160, stage.clientHeight - MARGIN_Y * 2);
+    const scale = Math.min(availW / L.w, availH / L.h, 1);   // fit, never upscale
+    phone.style.setProperty('--pz', scale.toFixed(4));
+    phone.style.width  = (L.w * scale + L.border * 2) + 'px';
+    phone.style.height = (L.h * scale + L.border * 2) + 'px';
+    requestAnimationFrame(updateStickyBar);
+  }
+  let _fitRaf;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(_fitRaf);
+    _fitRaf = requestAnimationFrame(fitPreview);
+  });
+
+  // Frame switcher: swaps the artboard (Phone ↔ Window) then re-fits it to the
+  // stage. The scaled GoVocal FO interior is untouched — fitPreview re-tunes its
+  // logical viewport + zoom for the new frame.
   function setFrame(name, btn) {
     const phone = document.getElementById('phone');
     if (!phone) return;
     phone.className = 'phone frame-' + name;
     document.querySelectorAll('.frame-chip button').forEach(b => b.classList.remove('on'));
     if (btn) btn.classList.add('on');
-    requestAnimationFrame(updateStickyBar);
+    fitPreview();
   }
 
   function renderPhone(state) {
