@@ -473,9 +473,9 @@
           <div class="card"><span class="num">CREATE · DIANE</span><h3>An empty shell</h3><p>"Create a project" is a form of title, tags, images — residents can't do anything in it; the method hides on a separate tab.</p></div>
           <div class="card"><span class="num">PHASE · JOAN/DIANE</span><h3>8 methods, no order</h3><p>Eight peer sub-tabs, no grouping, no signal of what's required vs post-launch. Config is one long scroll.</p></div>
           <div class="card"><span class="num">PUBLISH · BOTH</span><h3>Live on empty</h3><p>Publish is active on an unconfigured project — no readiness check, no pre-flight.</p></div>
-          <div class="card"><span class="num">RIGHTS · DIANE</span><h3>Unexplained jargon</h3><p>"Who is responsible for processing the posts?" — legal language, no default, on a high-stakes screen.</p></div>
+          <div class="card"><span class="num">RIGHTS · DIANE</span><h3>Same setting, two homes</h3><p>Access-rights lives at project-general <em>and</em> per-phase — "where do I set this?" (The old GDPR jargon is gone: the live screen now reads "Who can submit / comment / react?" — a fix to benchmark <em>from</em>, not against.)</p></div>
         </div>
-        <p class="src-line">Real screens, Raleigh demo. Persona-tagged, heuristic-tagged.</p>
+        <p class="src-line">Real screens — June '26 live captures, epic + Raleigh tenants. Persona-tagged, heuristic-tagged. We benchmark the newest UI, not retired screens.</p>
       </div>
     </section>
     <section class="slide">
@@ -697,7 +697,7 @@
       <div class="slide-inner">
         <p class="eyebrow">Hypothesis-led · prototype-as-probe</p>
         <h1>We're not starting from zero.<br>We have a point of view — and<br>a plan to be <span class="accent">wrong fast.</span></h1>
-        <p class="lead">Five big bosses the audit has to beat — three priors from hundreds of admin conversations and live resident sessions, one I'd add, and one Irene's architecture map surfaced. Held with conviction, written to be falsifiable, tested with real prototypes in front of real people — in two weeks.</p>
+        <p class="lead">The big bosses the audit has to beat — three priors from hundreds of admin conversations and live resident sessions, one I'd add, one Irene's architecture map surfaced, and a sixth a live walk of the product just turned up. Held with conviction, written to be falsifiable, tested with real prototypes in front of real people — in two weeks.</p>
       </div>
     </section>
 
@@ -716,14 +716,15 @@
     <section class="slide">
       <div class="slide-inner">
         <p class="eyebrow">What the audit is really fighting</p>
-        <h2>Five bosses — not a hundred nits.</h2>
-        <p class="lead">Usability fixes are the small enemies. These are the structural ones a real redesign has to beat — each gets a bet, held with conviction, built to be wrong fast.</p>
+        <h2>Five bosses — plus a sixth the live audit turned up.</h2>
+        <p class="lead">Usability fixes are the small enemies. These are the structural ones a real redesign has to beat — each gets a bet, held with conviction, built to be wrong fast. The fifth came from Irene's map; the sixth from reproducing the others on the live product.</p>
         <div class="grid g2">
           <div class="card"><span class="num">BOSS 1 · FRONT OFFICE</span><h3>The Wall of Everything</h3><p>The method is <em>embedded mid-page</em>, not launched — on a live multi-phase project the resident scrolls a phase navigator, the active method, and events as one stack. Nothing gets full attention, and parallel participation makes it impossible.</p></div>
           <div class="card"><span class="num">BOSS 2 · BACK OFFICE</span><h3>The Vienna Paradox</h3><p>The configurability that wins a capital city drowns the town that just wants a survey. The moat is also the onboarding poison.</p></div>
           <div class="card"><span class="num">BOSS 3 · BACK OFFICE</span><h3>The Form, in an Agent World</h3><p>Config-by-form is dying. With MCP coming, the admin's job shifts from filling fields to supervising an agent.</p></div>
           <div class="card"><span class="num">BOSS 4 · THE MISSION</span><h3>Participation Theater</h3><p>We can make input frictionless and still fail — if residents never see the loop close, and the people who show up aren't the city.</p></div>
           <div class="card"><span class="num">BOSS 5 · BACK OFFICE</span><h3>The Sprawl</h3><p>One project's work scatters across 11 destinations — configure in Projects, moderate in Input Manager, report in Reporting, email in Messaging. No single home, so the infrequent PM re-learns the tool each visit. <span style="color:var(--faint)">Surfaced by Irene's architecture map.</span></p></div>
+          <div class="card"><span class="num">BOSS 6 · BACK OFFICE · candidate</span><h3>The Shifting Ground</h3><p>How you save changes is different on every tab. Some phase screens have a "Save changes" button; others ("emails," "access rights") have none and behave differently; the builders are separate "Save" micro-apps. The infrequent PM never trusts that a change stuck. <span style="color:var(--faint)">Net-new — reproduced across tabs this round; held at medium conviction.</span></p></div>
         </div>
       </div>
     </section>
@@ -734,10 +735,10 @@
         <p class="claim">The project page is the hub. Each method opens into its own <span class="accent">focused, full-screen surface</span> — never piled on a scroll.</p>
         <div class="grid g3">
           <div class="card"><span class="lab">Why I believe it</span><p>Parallel participation makes the scroll impossible — you can't stack four live methods down one page. A preview that launches a focused surface is how the novice knows what's next.</p></div>
-          <div class="card kill"><span class="lab">What would prove me wrong</span><p><b>Already half-true on the live FO:</b> a single-method project page <em>is</em> reasonably focused — hero, one CTA, the inputs. The wall only appears on multi-phase projects and where a method is embedded inline (survey under "Phases"). So this isn't "every method on one scroll" — it's <em>embedded vs launched</em>. And the gate trades away serendipity: today you stumble into the map and start dropping pins.</p></div>
-          <div class="card"><span class="lab">How we probe it</span><p>One <em>multi-phase</em> project: build the hub + one method full-screen → test entry → focus → return with 5 residents, on their phones. The single-method case is the control.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p><b>Already half-true — and inconsistent — on the live FO:</b> a single-method page is reasonably focused, and a native survey on the epic tenant <em>already launches</em> into its own full-screen surface ("Take the survey" → splash → form). But on another tenant the same method is embedded inline under "Phases," and multi-phase projects still stack navigator + method + events. So this isn't "every method on one scroll" — it's <em>launched vs embedded, applied inconsistently</em>. And the gate trades away serendipity: today you stumble into the map and start dropping pins.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>One <em>multi-phase</em> project: build the hub + one method full-screen → test entry → focus → return with 5 residents, on their phones. The single-method case is the control. The real bet isn't "make it full-screen" — it's <em>make launch-vs-embed consistent and legible</em>.</p></div>
         </div>
-        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · claim sharpened on live screens</div>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · reproduced on two tenants (epic launches, wietsedemo embeds)</div>
       </div>
     </section>
 
@@ -791,6 +792,20 @@
           <div class="card"><span class="lab">How we probe it</span><p>A project home base that surfaces <em>this</em> project's pending work across surfaces → Diane (infrequent PM) returning to a project she set up weeks ago.</p></div>
         </div>
         <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · most structural</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Boss 6 · the Shifting Ground — the candidate the live audit found</p>
+        <p class="claim">Saving should mean the same thing everywhere. Today the back office <span class="accent">changes the rules tab by tab.</span></p>
+        <div class="grid g3">
+          <div class="card"><span class="lab">Why I believe it</span><p>Reproduced across live phase tabs (June '26): ideation, proposals and information setup carry a <b>"Save changes"</b> button; <b>phase emails and access-rights have none</b> and save differently; the form/survey/report builders are separate <b>"Save"</b> micro-apps. Corroborated by a prior finding (F14, "no save confirmation") and Rob's own note: <em>"saving approach not consistent across tabs — we need to solve this."</em></p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>Maybe auto-save is already silently universal and the buttons are vestigial — then this is a labelling tidy-up, not a boss. Or it folds into Boss 5 (sprawl): one consistent save model might just fall out of giving a project a single home. If it doesn't change whether a PM <em>trusts</em> the tool, it's a nit, not a boss — hence medium, not high.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>Watch Diane (infrequent PM) make a change on three different tabs and ask after each: "is that saved?" Count the hesitations. One consistent, legible save model is the cheapest trust fix in the BO.</p></div>
+        </div>
+        <p class="src-line">Reproduced on the epic + Raleigh tenants this round — three+ tabs with three different save behaviours. Held as a <b>candidate</b>: net-new structural thread, medium conviction, may yet merge into Boss 5.</p>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i></i></span> medium · candidate, reproduced live</div>
       </div>
     </section>
 
@@ -865,7 +880,7 @@
             <ul class="clean">
               <li>Two probes: app-style FO flow · simple/full + MCP checkpoint BO</li>
               <li>Recruit 5 residents + a few admins (Diane + a power user)</li>
-              <li><b>Kickoff</b> to align everyone on the four bosses</li>
+              <li><b>Kickoff</b> to align everyone on the bosses + the open fork</li>
             </ul></div>
           <div><h3 class="accent">Week 2 — probe &amp; resolve</h3>
             <ul class="clean">
@@ -882,7 +897,7 @@
       <div class="slide-inner">
         <p class="eyebrow">The ask</p>
         <h2>Green-light a two-week probe sprint.</h2>
-        <p class="lead">The four bosses are the agenda for Friday with Irene. We hold the bets with conviction, and we go looking for the evidence that kills them. Either way, we're building Monday and learning by week two.</p>
+        <p class="lead">The bosses are the agenda for Friday with Irene — five we hold with conviction, one candidate the live audit just turned up. We hold the bets, and we go looking for the evidence that kills them. Either way, we're building Monday and learning by week two.</p>
       </div>
     </section>
   </div>
