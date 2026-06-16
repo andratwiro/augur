@@ -697,7 +697,7 @@
       <div class="slide-inner">
         <p class="eyebrow">Hypothesis-led · prototype-as-probe</p>
         <h1>We're not starting from zero.<br>We have a point of view — and<br>a plan to be <span class="accent">wrong fast.</span></h1>
-        <p class="lead">Three strong priors, from hundreds of admin conversations and live resident sessions. Held with conviction, written to be falsifiable, and tested with real prototypes in front of real people — in two weeks.</p>
+        <p class="lead">Four big bosses the audit has to beat — three priors from hundreds of admin conversations and live resident sessions, plus one I'd add. Held with conviction, written to be falsifiable, tested with real prototypes in front of real people — in two weeks.</p>
       </div>
     </section>
 
@@ -715,12 +715,26 @@
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Hypothesis 1 · front office</p>
-        <p class="claim">Residents want an app, not a website — <span class="accent">full-screen, mobile, one action at a time.</span></p>
+        <p class="eyebrow">What the audit is really fighting</p>
+        <h2>Four bosses — not a hundred nits.</h2>
+        <p class="lead">Usability fixes are the small enemies. These are the structural ones a real redesign has to beat — each gets a bet, held with conviction, built to be wrong fast.</p>
+        <div class="grid g2">
+          <div class="card"><span class="num">BOSS 1 · FRONT OFFICE</span><h3>The Wall of Everything</h3><p>Every method crammed onto one scroll — map, vote, survey embedded mid-page. Nothing gets the resident's full attention, and parallel participation makes it impossible.</p></div>
+          <div class="card"><span class="num">BOSS 2 · BACK OFFICE</span><h3>The Vienna Paradox</h3><p>The configurability that wins a capital city drowns the town that just wants a survey. The moat is also the onboarding poison.</p></div>
+          <div class="card"><span class="num">BOSS 3 · BACK OFFICE</span><h3>The Form, in an Agent World</h3><p>Config-by-form is dying. With MCP coming, the admin's job shifts from filling fields to supervising an agent.</p></div>
+          <div class="card"><span class="num">BOSS 4 · THE MISSION</span><h3>Participation Theater</h3><p>We can make input frictionless and still fail — if residents never see the loop close, and the people who show up aren't the city.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Boss 1 · the Wall of Everything</p>
+        <p class="claim">The project page is the hub. Each method opens into its own <span class="accent">focused, full-screen surface</span> — never piled on a scroll.</p>
         <div class="grid g3">
-          <div class="card"><span class="lab">Why I believe it</span><p>Residents are mobile-first and low-patience. Completion leaks wherever a form sprawls; the <em>doing</em> should feel like one clean tap-through, not a webpage to parse.</p></div>
-          <div class="card kill"><span class="lab">What would prove me wrong</span><p>Civic isn't a checkout. Discovery, trust and closure are non-linear — the skeptic needs a reason, not a wizard. Maybe we app-ify <em>participation</em> only.</p></div>
-          <div class="card"><span class="lab">How we probe it</span><p>A clickable app-style participate flow (survey + vote) → 5 residents, on their own phones, thinking aloud.</p></div>
+          <div class="card"><span class="lab">Why I believe it</span><p>Parallel participation makes the scroll impossible — you can't stack four live methods down one page. A preview that launches a focused surface is how the novice knows what's next.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>The gate trades away serendipity — today you stumble into the map and start dropping pins. And the hub can become a launcher that loses "why care." Maybe single-method projects skip it and drop straight in.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>One parallel project: build the hub + one method full-screen → test entry → focus → return with 5 residents, on their phones.</p></div>
         </div>
         <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high</div>
       </div>
@@ -728,12 +742,12 @@
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Hypothesis 2 · back office</p>
+        <p class="eyebrow">Boss 2 · the Vienna Paradox</p>
         <p class="claim">Cities don't need less power. They just <span class="accent">shouldn't see it until they do.</span></p>
         <div class="grid g3">
-          <div class="card"><span class="lab">Why I believe it</span><p>The tool can run a Vienna-sized city — that configurability is the moat. But the survey-only town drowns in it, and the dispatch backlog is full of setup overload.</p></div>
-          <div class="card kill"><span class="lab">What would prove me wrong</span><p>The open question is <em>hide by what?</em> — tenant size, role, the task in hand, or account maturity. If there's no clean axis to hide along, adaptive complexity won't hold.</p></div>
-          <div class="card"><span class="lab">How we probe it</span><p>A "simple mode vs full mode" setup concept → Diane (low-savviness) and a Vienna-scale power user.</p></div>
+          <div class="card"><span class="lab">Why I believe it</span><p>The tool can run a Vienna-sized city — that's the moat. But the survey-only town drowns in it, and the dispatch backlog is thick with setup overload.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>The tempting fix — let admins pre-set what to hide — is config-to-kill-config, and breeds "my admin turned it off, now I can't find it." So the bet is <em>just-in-time</em> disclosure by task, not a setup ritual. And if the complexity is conceptual (what even is a "phase"?), hiding controls won't be enough.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>A survey-only fast lane that reveals advanced on demand → Diane (low-savviness) + a Vienna-scale power user.</p></div>
         </div>
         <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high</div>
       </div>
@@ -741,14 +755,41 @@
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">Hypothesis 3 · the agent — highest stakes</p>
+        <p class="eyebrow">Boss 3 · the Form, in an Agent World — highest stakes</p>
         <p class="claim">Admins will hand the complexity to an LLM. The back office becomes <span class="accent">where they check its work.</span></p>
         <div class="grid g3">
-          <div class="card"><span class="lab">Why I believe it</span><p>We're building full MCP access — delegation is coming. Config-by-conversation beats config-by-form for most cities; the UI's job shifts to oversight.</p></div>
-          <div class="card kill"><span class="lab">What would prove me wrong</span><p>Do admins trust it — and what will they refuse to delegate? If they won't supervise an agent, the manual revamp stays primary. We must resolve <em>operate-with-guidance vs supervise-the-agent</em> before we draw screens.</p></div>
-          <div class="card"><span class="lab">How we probe it</span><p>An MCP verify-checkpoint concept — diff, "why", rollback → admins react to delegating, then checking.</p></div>
+          <div class="card"><span class="lab">Why I believe it</span><p>MCP-first is the trajectory — config-by-conversation (even an audio note from your phone) beats config-by-form for most cities. This eventually eats Boss 2.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>I'm an MCP power user; Diane and the publicly-accountable officer aren't — right trajectory, uncertain timing. And civic config is unskimmable when a missed error ships to residents, so review must be by <em>outcome</em>, not a config diff.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>A verify-by-outcome checkpoint: "here's exactly what your residents will get — approve, or tell me what's wrong." → admins delegate, then check.</p></div>
         </div>
         <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i></i></span> medium · highest leverage</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">Boss 4 · Participation Theater — the bet I'd add</p>
+        <p class="claim">A frictionless front office can still be theater. Residents come back only when they see their input <span class="accent">changed something</span> — and only if the right people showed up.</p>
+        <div class="grid g3">
+          <div class="card"><span class="lab">Why I believe it</span><p>The backlog's loudest open theme is reporting/closure trust; 34% of open tickets have no tenant — nobody to close the loop with. The pre-audit found the loop "asserted, never shown." Not closing it is the sector's #1 trust failure; GoVocal's own Representation Dashboard concedes <em>who</em> participates is the real risk.</p></div>
+          <div class="card kill"><span class="lab">What would prove me wrong</span><p>Maybe most consultations are genuinely one-shot and residents won't return regardless — or cities won't commit to visible outcomes. If closure doesn't move return-rate, it isn't the lever.</p></div>
+          <div class="card"><span class="lab">How we probe it</span><p>Show residents a "you said / we did" outcome surface + a result nudge; measure willingness to return. Instrument representativeness — who showed up vs the city — from day one.</p></div>
+        </div>
+        <div class="conv">Conviction <span class="dots"><i class="on"></i><i class="on"></i><i class="on"></i></span> high · most under-owned</div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="slide-inner">
+        <p class="eyebrow">The keystone · one pattern, three payoffs</p>
+        <h2>Build one thing well: the focused surface.</h2>
+        <p class="lead">Three of the four bosses fall to the same artifact — a full-screen, one-job, outcome-first surface. Build that pattern once:</p>
+        <ul class="clean">
+          <li><b>Resident participates</b> → the focused method surface <span style="color:var(--faint)">· Boss 1</span></li>
+          <li><b>Resident sees the loop close</b> → the same surface, showing the outcome <span style="color:var(--faint)">· Boss 4</span></li>
+          <li><b>Admin reviews the agent</b> → the same surface, config applied — review by outcome, not diff <span style="color:var(--faint)">· Boss 3</span></li>
+        </ul>
+        <div class="seam">Three bosses, <b>one surface.</b> That's where the build starts — and what the very first probe should be.</div>
       </div>
     </section>
 
@@ -786,7 +827,7 @@
             <ul class="clean">
               <li>Two probes: app-style FO flow · simple/full + MCP checkpoint BO</li>
               <li>Recruit 5 residents + a few admins (Diane + a power user)</li>
-              <li><b>Kickoff</b> to align everyone on the three bets</li>
+              <li><b>Kickoff</b> to align everyone on the four bosses</li>
             </ul></div>
           <div><h3 class="accent">Week 2 — probe &amp; resolve</h3>
             <ul class="clean">
@@ -803,7 +844,7 @@
       <div class="slide-inner">
         <p class="eyebrow">The ask</p>
         <h2>Green-light a two-week probe sprint.</h2>
-        <p class="lead">The three bets are the agenda for Friday with Irene. We hold them with conviction, and we go looking for the evidence that kills them. Either way, we're building Monday and learning by week two.</p>
+        <p class="lead">The four bosses are the agenda for Friday with Irene. We hold the bets with conviction, and we go looking for the evidence that kills them. Either way, we're building Monday and learning by week two.</p>
       </div>
     </section>
   </div>
