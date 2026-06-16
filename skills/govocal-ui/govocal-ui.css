@@ -1230,6 +1230,16 @@
 .gv-partbar, .gv-partbar__inner { font-size: var(--gv-fs-s); line-height: 19.999px; }
 .gv-partbar__status { font-size: var(--gv-fs-s); line-height: 20px; }
 
+/* participation-bar-mobile-status-align fidelity fix — on mobile the column inner is
+   align-items: stretch, but .gv-partbar__status is display:inline-flex so it shrinks to
+   content (~180px) and gets centered. The live mobile bottom bar (#project-cta-bar-bottom)
+   left-aligns 'Open for participation' flush with the bar's left padding, above the
+   full-width CTA. Pin the status to the start so it sits left, not centered. Appended as a
+   refinement over the @media block above — do not reflow it. */
+@media (max-width: 760px) {
+  .gv-partbar__status { align-self: flex-start; }
+}
+
 /* Modal base text colour — the real dialog card (.modalcontent) renders its body
    and the close X at rgba(0,0,0,0.87) (measured wietsedemo), the same near-black
    the idea-card body uses, NOT the global #333 body text. Scope it to the FO modal
