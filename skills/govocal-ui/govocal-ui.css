@@ -388,6 +388,67 @@
 /* .gv-avatars (hero stack) → moved to govocal-primitives.css (cross-surface atom). */
 @media (max-width: 600px) { .gv-hero { min-height: 180px; } .gv-hero__inner { padding: 32px 20px; } }
 
+/* ── Signed-out full-width banner (.gv-hero.signed-out) ───────────────────────
+   The big home-page banner a VISITOR sees before signing in — a structural pattern
+   shared across tenants. Source-grounded on St Louis (stlouis.govocal.com →
+   .e2e-signed-out-header / #hook-header-content / .e2e-signed-out-header-subtitle /
+   .e2e-full-width-layout-header-image-overlay):
+   - banner is a fixed 450px-tall full-bleed strip; fallback canvas #EDEFF0 (--gv-bo-canvas)
+     shows when no --gv-hero-image is set (matches the live fallback bg).
+   - a full-bleed photo (--gv-hero-image) + an absolute tenant-primary overlay @ .6 opacity
+     (the live overlay is rgb(3,61,139)=St-Louis-blue @ .6 — i.e. tenant-primary, which the
+     base .gv-hero::before already paints, so it re-themes for free).
+   - content column #hook-header-content: max-width 1012, padding 50px 30px.
+   - H1 white 30px/700, subtitle (.gv-hero__lead) white 18px/400, an avatar cluster
+     (.gv-avatars + count) then a single .gv-btn.primary-inverse CTA.
+   .centered = the St-Louis/CPH/Lux centered layout (title·subtitle·avatars·CTA centered);
+   without it the band keeps the default upper-left .gv-hero alignment. */
+.gv-hero.signed-out { min-height: 450px; background-color: var(--gv-bo-canvas); align-content: center; }
+.gv-hero.signed-out .gv-hero__inner { max-width: 1012px; padding: 50px 30px; }
+.gv-hero.signed-out .gv-hero__title { font-size: var(--gv-fs-xxxl); margin: 0 0 8px; }
+.gv-hero.signed-out .gv-hero__lead  { margin: 0 0 18px; }
+.gv-hero.signed-out.centered { justify-items: center; text-align: center; }
+.gv-hero.signed-out.centered .gv-hero__inner { display: grid; justify-items: center; }
+.gv-hero.signed-out .gv-hero__actions { margin-top: 6px; }
+@media (max-width: 600px) {
+  .gv-hero.signed-out { min-height: 360px; }
+  .gv-hero.signed-out .gv-hero__inner { padding: 36px 22px; }
+  .gv-hero.signed-out .gv-hero__title { font-size: var(--gv-fs-xxl); }
+}
+
+/* ── Homepage-banner LAYOUT variants (.gv-hero.layout-*) ──────────────────────
+   The admin "Homepage banner" widget (Pages & menu → Homepage builder) offers three
+   layouts (live testids: full-width-banner-layout / two-row-layout / fixed-ratio-layout),
+   each rendered for a signed-out OR signed-in visitor. The base full-width layout is
+   .gv-hero.signed-out (image full-bleed @ 450px, tenant overlay, content overlaid).
+   These add the other two; all three share the same content column (title · subtitle ·
+   avatars · CTA), so the page just swaps the layout class + the signed-in/out content.
+   An optional .gv-hero__media child carries the <img> for the two-row layout (where the
+   image is its OWN row, not a backdrop). */
+.gv-hero__media { display: none; }
+
+/* two_row_layout — the banner image is a full-width row on TOP (no overlay), with
+   the content in a WHITE row beneath it: a tenant-primary title, a secondary-grey
+   subtitle, the avatar cluster, then a FILLED .gv-btn.primary CTA (the on-image
+   inverse CTA flips to a filled primary on the white band). Needs the .gv-hero__media
+   child. Source: live homepage builder "Two rows" layout. */
+.gv-hero.layout-tworow { display: block; min-height: 0; background-image: none; overflow: visible; color: var(--gv-text-primary); }
+.gv-hero.layout-tworow::before { display: none; }
+.gv-hero.layout-tworow .gv-hero__media { display: block; }
+.gv-hero.layout-tworow .gv-hero__media img { display: block; width: 100%; height: 300px; object-fit: cover; }
+.gv-hero.layout-tworow .gv-hero__inner { background: var(--gv-white); max-width: none; margin: 0; padding: 36px 30px; }
+.gv-hero.layout-tworow.centered .gv-hero__inner { display: grid; justify-items: center; text-align: center; }
+.gv-hero.layout-tworow .gv-hero__title { color: var(--gv-tenant-primary); }
+.gv-hero.layout-tworow .gv-hero__lead { color: var(--gv-text-secondary); opacity: 1; }
+.gv-hero.layout-tworow .gv-hero__actions .gv-btn { background: var(--gv-tenant-primary); color: #fff; }
+@media (max-width: 600px) { .gv-hero.layout-tworow .gv-hero__media img { height: 190px; } }
+
+/* fixed_ratio_layout — the image shown as a shorter fixed-ratio full-bleed strip
+   (a wide band rather than the tall 450px full-width crop), content + overlay
+   overlaid + centered like the full-width banner. */
+.gv-hero.layout-fixed { min-height: 0; aspect-ratio: 24 / 5; }
+@media (max-width: 600px) { .gv-hero.layout-fixed { aspect-ratio: 3 / 2; } }
+
 /* ── Section heading + content rhythm for composed pages ─────────────────────── */
 .gv-section { padding: 38px 0 4px; }
 .gv-section__head { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px; }

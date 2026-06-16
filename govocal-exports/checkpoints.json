@@ -1810,6 +1810,74 @@
       ]
     },
     {
+      "id": "fo-stlouis-home/banner",
+      "built": "components/signed-out-hero/index.html",
+      "against": "fo-stlouis-home",
+      "map": {
+        ".e2e-signed-out-header": "#cp-canvas"
+      },
+      "props": [
+        "background-color",
+        "height"
+      ],
+      "uses": [
+        ".gv-hero"
+      ]
+    },
+    {
+      "id": "fo-stlouis-home/content-col",
+      "built": "components/signed-out-hero/index.html",
+      "against": "fo-stlouis-home",
+      "map": {
+        "#hook-header-content": "#cp-inner"
+      },
+      "props": [
+        "padding",
+        "max-width"
+      ],
+      "uses": [
+        ".gv-hero"
+      ]
+    },
+    {
+      "id": "fo-stlouis-home/subtitle",
+      "built": "components/signed-out-hero/index.html",
+      "against": "fo-stlouis-home",
+      "map": {
+        ".e2e-signed-out-header-subtitle": ".gv-hero__lead"
+      },
+      "props": [
+        "color",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-hero"
+      ]
+    },
+    {
+      "id": "fo-stlouis-home/cta-inverse",
+      "built": "components/signed-out-hero/index.html",
+      "against": "fo-stlouis-home",
+      "map": {
+        "button.Button.primary-inverse": ".gv-btn.primary-inverse"
+      },
+      "props": [
+        "background-color",
+        "color",
+        "border",
+        "border-radius",
+        "padding",
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-btn"
+      ]
+    },
+    {
       "id": "phase-timeline/segment-inactive",
       "built": "components/phase-timeline/index.html",
       "against": "fo-perspectives-entry",

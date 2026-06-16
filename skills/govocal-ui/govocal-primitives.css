@@ -73,7 +73,14 @@ body.gv-root {
 .gv-btn.primary:hover    { filter: brightness(0.88); }
 .gv-btn.primary-outlined          { background: transparent; color: var(--gv-tenant-primary); border-color: var(--gv-tenant-primary); }
 .gv-btn.primary-outlined:hover    { background: color-mix(in srgb, var(--gv-tenant-primary) 5%, transparent); }
-.gv-btn.primary-inverse           { background: #fff; color: var(--gv-tenant-text); }
+/* Inverse CTA — white fill, near-black label, transparent 1px border. The signed-out
+   full-width banner's single CTA (St Louis e2e-signed-out-header → button.Button.primary-inverse:
+   bg #fff, color rgba(0,0,0,.87), 1px solid transparent, radius 3, pad 13px 22px). Pair with
+   .size-m for the live 13/22 padding; sits on the tinted hero overlay so it stays high-contrast
+   across tenants without using a brand hue. */
+.gv-btn.primary-inverse           { background: #fff; color: var(--gv-text-body);
+  font-size: var(--gv-fs-s); line-height: 16.1px; padding: 13px 22px; }
+.gv-btn.primary-inverse:hover     { filter: brightness(0.96); }
 .gv-btn.secondary, .gv-btn.secondary-outlined        { background: transparent; color: var(--gv-text-secondary); border-color: var(--gv-text-secondary); }
 .gv-btn.secondary:hover, .gv-btn.secondary-outlined:hover { background: color-mix(in srgb, var(--gv-text-secondary) 5%, transparent); }
 .gv-btn.white            { background: #fff; color: var(--gv-tenant-text); border-color: transparent; box-shadow: var(--gv-shadow); }

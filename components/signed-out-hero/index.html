@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="gv-surface" content="front-office" />
+  <title>Signed-out hero (full-width banner) — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=1 Copenhagen). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h2.demo-h { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); font-weight: 700; }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .stage { border-radius: var(--gv-radius); overflow: hidden; box-shadow: var(--gv-shadow); }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h2 class="demo-h">Signed-out hero — full-width banner</h2>
+    <p class="sub">The big home-page banner a visitor sees before signing in: a 450px full-bleed
+      photo + tenant-tinted overlay, centered title + subtitle, an avatar cluster with a numeric
+      overflow bubble, and a single <code>.gv-btn.primary-inverse</code> CTA. Source-grounded on
+      St Louis (<code>stlouis.govocal.com</code>). Re-skins per <code>?theme=</code>.</p>
+
+    <p class="eyebrow">St Louis — centered, with photo</p>
+    <div class="stage">
+      <!-- ============ SIGNED-OUT HERO (copy from here) ============ -->
+      <section class="gv-hero signed-out centered"
+               data-testid="full-width-banner-layout"
+               style="--gv-hero-image:url('https://images.unsplash.com/photo-1569959220744-ff553533f492?w=1600&q=60')">
+        <div class="gv-hero__inner">
+          <h1 class="gv-hero__title">Welcome to the St. Louis Board of Aldermen's public engagement page.</h1>
+          <p class="gv-hero__lead">Sign up and let your voice be heard!</p>
+          <div class="gv-avatars" aria-label="4,000+ participants">
+            <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
+            <span class="count">4k</span>
+          </div>
+          <div class="gv-hero__actions">
+            <button type="button" class="gv-btn primary-inverse">Sign up</button>
+          </div>
+        </div>
+      </section>
+      <!-- ============ /SIGNED-OUT HERO ============ -->
+    </div>
+
+    <p class="eyebrow">Fallback canvas (no photo) — #EDEFF0</p>
+    <div class="stage">
+      <section class="gv-hero signed-out centered" id="cp-canvas">
+        <div class="gv-hero__inner" id="cp-inner">
+          <h1 class="gv-hero__title">Have your say on what happens in your city</h1>
+          <p class="gv-hero__lead">Join the conversation and shape local decisions.</p>
+          <div class="gv-avatars" aria-label="1,200+ participants">
+            <span class="av"></span><span class="av"></span><span class="av"></span>
+            <span class="count">1.2k</span>
+          </div>
+          <div class="gv-hero__actions">
+            <button type="button" class="gv-btn primary-inverse">Sign up</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="eyebrow">Left-aligned (drop <code>.centered</code>) — photo</p>
+    <div class="stage">
+      <section class="gv-hero signed-out"
+               style="--gv-hero-image:url('https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1600&q=60')">
+        <div class="gv-hero__inner">
+          <h1 class="gv-hero__title">A platform for everyone</h1>
+          <p class="gv-hero__lead">Discover projects, share ideas, and follow what's happening.</p>
+          <div class="gv-avatars" aria-label="850+ participants">
+            <span class="av"></span><span class="av"></span><span class="av"></span>
+            <span class="count">850</span>
+          </div>
+          <div class="gv-hero__actions">
+            <button type="button" class="gv-btn primary-inverse">Sign up</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="notes">
+      <p><strong>Banner:</strong> <code>.gv-hero.signed-out</code> = a fixed 450px full-bleed strip;
+      the fallback canvas <code>#EDEFF0</code> (<code>--gv-bo-canvas</code>) shows when no
+      <code>--gv-hero-image</code> is set — matching the live fallback.</p>
+      <p><strong>Overlay:</strong> the base <code>.gv-hero::before</code> tints with
+      <code>--gv-tenant-primary</code> (the live overlay is St-Louis-blue @ .6 — i.e. the tenant
+      primary), so the dark wash and the white text re-theme automatically.</p>
+      <p><strong>Layout:</strong> content column <code>padding 50px 30px</code>, max-width 1012.
+      Add <code>.centered</code> for the St-Louis / Copenhagen centered layout, or drop it for the
+      default upper-left alignment.</p>
+      <p><strong>CTA:</strong> a single <code>.gv-btn.primary-inverse</code> (white fill,
+      <code>rgba(0,0,0,.87)</code> label, 14px, 13/22 padding baked into the variant) — a
+      brand-neutral high-contrast button that reads on any tenant overlay.</p>
+    </div>
+  </div>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+</body>
+</html>

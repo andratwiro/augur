@@ -1018,6 +1018,36 @@ title** and the **search field** wrapper. Verified via `fo-projects-list/{search
 ```
 - Overlay tints with `--gv-tenant-primary` (re-themes per city), keeping white text legible.
 
+## Signed-out hero (full-width banner) — `.gv-hero.signed-out` (`components/signed-out-hero/`)
+
+The big home-page banner a **visitor** sees before signing in — a structural pattern
+shared across tenants. Source-grounded on St Louis (`stlouis.govocal.com` →
+`.e2e-signed-out-header` / `#hook-header-content` / `.e2e-signed-out-header-subtitle` /
+`button.Button.primary-inverse`). A fixed **450px** full-bleed strip: photo +
+tenant-primary overlay @ .6, content column `padding 50px 30px` (max-width 1012), white
+H1 30/700 + subtitle 18/400, an avatar cluster with a **numeric overflow** bubble, and a
+single `.gv-btn.primary-inverse` CTA. Add `.centered` for the St-Louis/CPH centered
+layout; drop it for the default upper-left alignment. Fallback canvas `#EDEFF0`
+(`--gv-bo-canvas`) shows when no `--gv-hero-image` is set.
+
+```html
+<section class="gv-hero signed-out centered" style="--gv-hero-image:url('photo.jpg')">
+  <div class="gv-hero__inner">
+    <h1 class="gv-hero__title">Welcome to the … public engagement page.</h1>
+    <p class="gv-hero__lead">Sign up and let your voice be heard!</p>
+    <div class="gv-avatars" aria-label="4,000+ participants">
+      <span class="av"></span><span class="av"></span><span class="av"></span><span class="count">4k</span>
+    </div>
+    <div class="gv-hero__actions">
+      <button type="button" class="gv-btn primary-inverse">Sign up</button>
+    </div>
+  </div>
+</section>
+```
+- `.gv-btn.primary-inverse` = white fill, `rgba(0,0,0,.87)` label, 1px transparent border,
+  radius 3, **14px / 13px 22px** padding (baked into the variant) — a brand-neutral,
+  high-contrast CTA that reads on any tenant overlay. Verified via `fo-stlouis-home/*`.
+
 ## Banner — `.gv-banner` (`components/banner/`)
 
 Image-only project hero — distinct from `.gv-hero` (which carries title + CTA). A
