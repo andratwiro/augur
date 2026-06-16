@@ -59,41 +59,56 @@
   }
   .nav-icon { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
-  /* ── Phone mobile navbar: force the canonical .gv-header into MOBILE mode inside the
-        fixed-width phone (the real switch is viewport-driven), compact it for 360px, and
-        contain the full-screen .gv-nav-m menu overlay to the phone instead of the editor. */
-  /* header static (not relative) so the absolute menu panel below resolves against the
-     phone, not the 52px header; notch (z:2) then stays visible above the header bg. */
+  /* ── Phone interior = REAL full-size GoVocal components, uniformly scaled down ──
+        The whole interior (.pp-screen) is laid out at real product sizes in a larger
+        logical box, then transform:scale(--pz) shrinks it to the phone frame so it reads
+        as a smaller representation of the real thing (not a 1:1 iframe). The logical box
+        is interior-size ÷ scale so it fills the 336×676 frame interior exactly. */
+  .phone { --pz: 0.72; }
+  .phone .pp-screen {
+    position: absolute; top: 0; left: 0;
+    width: calc(336px / var(--pz)); height: calc(676px / var(--pz));
+    transform: scale(var(--pz)); transform-origin: top left;
+    display: flex; flex-direction: column; background: #fff;
+  }
+  .phone #phone-scroller { flex: 1 1 auto; min-height: 0; }
+
+  /* Navbar: force the canonical .gv-header to MOBILE inside the phone + contain the
+     full-screen menu overlay to the phone. Real sizes (scaled by .pp-screen). Header
+     static so the absolute menu panel resolves against the phone. */
   .phone .pp-phone-header { position: static; box-shadow: none; border-bottom: 1px solid var(--gv-grey-200); }
-  .phone .pp-phone-header .gv-header__inner { height: 52px; padding: 0 16px; }
-  .phone .gv-brand img, .phone .gv-brand svg { height: 26px; width: auto; }
   .phone .gv-nav { display: none !important; }            /* desktop nav off inside the phone */
   .phone .gv-nav-m { display: block !important; }          /* hamburger on */
-  .phone .gv-nav-m > summary { width: 38px; height: 38px; }
-  .phone .gv-nav-m__panel { position: absolute; }          /* inset:0 → fills the phone (relative), not the 1440px viewport */
+  .phone .gv-nav-m__panel { position: absolute; }          /* inset:0 → fills the phone, not the viewport */
 
-  /* ── Phone FO project page (real gv-* components, sized for the 360px mobile view) ── */
-  .phone .pp-fo { font-family: var(--gv-font-family); color: var(--gv-text-primary, #1a1f2c); }
-  .phone .pp-fo__banner { height: 132px; overflow: hidden; }
+  /* ── Phone FO project page — REAL components; only LAYOUT here, no type-size hacks ── */
+  .phone .pp-fo { font-family: var(--gv-font-family); color: var(--gv-text-primary, #1a1f2c); padding-bottom: 8px; }
+  .phone .pp-fo__banner { height: 180px; overflow: hidden; }
   .phone .pp-fo__banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .phone .pp-fo__pad { padding: 14px 16px 10px; }
-  .phone .pp-fo__cat { display: block; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; font-weight: 700; color: var(--gv-text-secondary, #596B7A); margin-bottom: 5px; }
-  .phone .pp-fo__title.gv-title { font-size: 20px; line-height: 1.2; margin: 0 0 10px; }
-  .phone .pp-fo__parts { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
-  .phone .pp-fo__parts .gv-pcount { font-size: 12px; }
-  .phone .pp-fo__cta { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
+  .phone .pp-fo__pad { padding: 20px 22px 0; }
+  .phone .pp-fo__cat { display: block; font-size: var(--gv-fs-s); letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--gv-text-secondary, #596B7A); margin-bottom: 8px; }
+  .phone .pp-fo__title { margin: 0 0 12px; }
+  .phone .pp-fo__lead { margin: 0 0 18px; font-size: var(--gv-fs-base); line-height: 1.55; color: var(--gv-grey-800, #43515D); }
+  .phone .pp-fo__parts { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; }
+  .phone .pp-fo__parts .gv-avatars { margin: 0; }
+  .phone .pp-fo__cta { display: flex; flex-direction: column; gap: 10px; margin: 0 0 24px; }
   .phone .pp-fo__cta .gv-btn { width: 100%; justify-content: center; }
-  .phone .pp-fo__desc { font-size: 13px; line-height: 1.5; margin: 0 0 14px; color: var(--gv-grey-800, #43515D); }
-  .phone .pp-fo__acc { margin: 0 0 16px; }
-  .phone .pp-fo .gv-acc__q { font-size: 13px; }
-  .phone .pp-fo .gv-acc__body p { font-size: 12.5px; line-height: 1.5; }
-  .phone .pp-fo__h2 { font-size: 15px; font-weight: 700; margin: 4px 0 10px; }
-  .phone .pp-fo__stepper { margin: 0 0 18px; }
-  .phone .pp-fo .gv-event-card { margin: 0 0 12px; }
-  .phone .pp-fo__evmedia { height: 96px; position: relative; overflow: hidden; }
+  .phone .pp-fo__acc { margin: 0 0 24px; }
+  .phone .pp-fo__h2 { margin: 0 0 14px; }
+  .phone .pp-fo__stepper { margin: 0 0 16px; }
+  /* Timeline white "current phase" module — the FO phase panel: number + name + dates + copy. */
+  .phone .pp-fo__phasecard { background: #fff; border: 1px solid var(--gv-grey-200); border-radius: var(--gv-radius); padding: 16px 18px; margin: 0 0 24px; }
+  .phone .pp-fo__phasecard-eyebrow { font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-green-600); margin-bottom: 4px; }
+  .phone .pp-fo__phasecard-title { margin: 0 0 4px; font-size: var(--gv-fs-l); font-weight: 700; }
+  .phone .pp-fo__phasecard-dates { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary, #596B7A); margin-bottom: 10px; }
+  .phone .pp-fo__phasecard-desc { margin: 0; font-size: var(--gv-fs-base); line-height: 1.55; color: var(--gv-grey-800, #43515D); }
+  .phone .pp-fo .gv-event-card { margin: 0 0 14px; }
+  .phone .pp-fo__evmedia { height: 150px; position: relative; overflow: hidden; }
   .phone .pp-fo__evmedia img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .phone .pp-fo .gv-event-card__title { font-size: 14px; }
-  .phone .pp-fo .gv-event-card__row { font-size: 12px; }
+  /* Fixed "Open to participation" bar — sticks to the bottom of the phone like the live mobile FO. */
+  .phone .pp-fo__partbar { position: sticky; bottom: 0; z-index: 5; margin-top: 4px; }
+  .phone .pp-fo__partbar .gv-partbar__inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 20px; max-width: none; }
+  .phone .pp-fo__partbar .gv-btn { width: 100%; justify-content: center; margin: 0; }
   .rail-btn { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; color: rgba(255,255,255,.55); }
   .rail-btn:hover { color: #fff; }
   .rail-btn.active { background: rgba(0,0,0,.25); color: #fff; }
@@ -1570,15 +1585,19 @@
           Click any section of the page to edit it
         </div>
 
-        <div id="phone" class="phone" style="height: 700px; cursor: pointer; display:flex; flex-direction:column;" onclick="maybeOpenBuilder(event)">
+        <div id="phone" class="phone" style="height: 700px; cursor: pointer;" onclick="maybeOpenBuilder(event)">
           <div class="notch"></div>
+
+          <!-- .pp-screen = the whole phone interior, built from REAL full-size GoVocal
+               components then uniformly scaled down (transform: scale(--pz)) so the phone
+               reads as a smaller representation of the real product, not a 1:1 iframe. -->
+          <div class="pp-screen">
 
           <!-- Real GoVocal FO mobile navbar — themed [data-gv-logo] + hamburger drawer.
                The canonical .gv-header/.gv-nav-m switch to mobile via a viewport media
-               query; the phone is a fixed 360px box on a 1440px viewport, so the .phone
-               scoped overrides in <style> force the mobile layout and contain the
-               full-screen menu overlay to the phone. stopPropagation keeps nav clicks
-               from triggering the "click to edit" builder on the phone. -->
+               query; the phone is a fixed box on a wide viewport, so the .phone scoped
+               overrides force the mobile layout and contain the full-screen menu overlay
+               to the phone. stopPropagation keeps nav clicks from triggering the builder. -->
           <header class="gv-header pp-phone-header" onclick="event.stopPropagation()">
             <div class="gv-header__inner">
               <a class="gv-brand" href="#" data-gv-logo aria-label="City home"></a>
@@ -1607,6 +1626,8 @@
             <!-- Filled by renderPhone(state): ghost placeholders in the 'empty' state, or a
                  real GoVocal mobile FO project page built from gv-* components in few/complex. -->
           </div>
+
+          </div><!-- /.pp-screen -->
         </div>
       </div>
 
@@ -2146,19 +2167,21 @@
           <a class="gv-btn primary full" href="#">Register</a>
         </div>
       </article>`;
-    const phases = complex
-      ? ['Pre-survey', 'Collect ideas', 'What we heard', 'Community vote', 'Common ground']
-      : ['Collect ideas', 'What we heard'];
+    const phaseData = complex
+      ? [['Pre-survey', '1–15 May', 'Survey'], ['Collect ideas', '20 May – 10 Jun', 'Ideation'], ['What we heard', '11–25 Jun', 'Information'], ['Community vote', '26 Jun – 12 Jul', 'Voting'], ['Common ground', '13–27 Jul', 'Common ground']]
+      : [['Collect ideas', '20 May – 10 Jun', 'Ideation'], ['What we heard', '11–25 Jun', 'Information']];
     const current = complex ? 1 : 0;
-    const stepper = phases.map((p, i) =>
-      `<button class="gv-phase${i === current ? ' current' : ''}" type="button"><span class="gv-pstep">${i + 1}</span><span class="gv-phase__label">${p}</span></button>`).join('');
+    const cur = phaseData[current];
+    const stepper = phaseData.map((p, i) =>
+      `<button class="gv-phase${i === current ? ' current' : ''}" type="button"><span class="gv-pstep">${i + 1}</span><span class="gv-phase__label">${p[0]}</span></button>`).join('');
 
     return `
       <div class="pp-fo">
         <div class="pp-fo__banner"><img src="assets/img/${complex ? 'square' : 'street-trees'}.webp" alt="" loading="lazy" /></div>
         <div class="pp-fo__pad">
           <span class="pp-fo__cat">Mobility · 2026</span>
-          <h1 class="gv-title pp-fo__title">${complex ? 'Reimagine Meridian 2030' : 'A greener Station Road'}</h1>
+          <h1 class="gv-title h1 pp-fo__title">${complex ? 'Reimagine Meridian 2030' : 'A greener Station Road'}</h1>
+          <p class="pp-fo__lead">Help shape how we move, cycle and gather${complex ? ' across the city over the next four years.' : ' on Station Road.'}</p>
           <div class="gv-participants pp-fo__parts">
             <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
             <span class="gv-pcount">${complex ? '342' : '38'} participants</span>
@@ -2167,17 +2190,28 @@
             <a class="gv-btn primary full" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'}</a>
             <a class="gv-btn secondary-outlined full" href="#">See the ideas</a>
           </div>
-          <p class="gv-projdesc pp-fo__desc">Help shape how we move, cycle and gather in our city${complex ? ' over the next four years — your ideas feed the mobility plan that goes to the council.' : '. Your ideas feed directly into the plan.'}</p>
           <div class="gv-accordion pp-fo__acc">
             ${acc('How will my idea be used?', 'Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.', true)}
             ${complex ? acc('What can I suggest?', 'Anything within scope — seating, planting, traffic calming, lighting, cycle parking or how the space is used.', false) : ''}
             ${complex ? acc('Who is running this project?', 'The City of Meridian engagement team, together with the mobility department.', false) : ''}
           </div>
-          <h2 class="pp-fo__h2">Timeline</h2>
+          <h2 class="gv-title h3 pp-fo__h2">Timeline</h2>
           <div class="gv-stepper pp-fo__stepper">${stepper}</div>
-          <h2 class="pp-fo__h2">Upcoming events</h2>
+          <div class="pp-fo__phasecard">
+            <div class="pp-fo__phasecard-eyebrow">Current phase · ${current + 1} of ${phaseData.length}</div>
+            <h3 class="pp-fo__phasecard-title">${cur[0]}</h3>
+            <div class="pp-fo__phasecard-dates"><span data-gv-icon="clock" aria-hidden="true"></span> ${cur[1]} · ${cur[2]}</div>
+            <p class="pp-fo__phasecard-desc">Share your ideas for how we move, cycle and gather. Every suggestion is reviewed by the city team and shapes what comes next.</p>
+          </div>
+          <h2 class="gv-title h3 pp-fo__h2">Upcoming events</h2>
           ${ev('Jun', '14', 'Mobility town hall', '14 Jun · 19:00', 'Central Library', 'location-simple', '41', 'meeting.webp')}
           ${complex ? ev('Jul', '02', 'Neighbourhood design workshop', '2 Jul · 18:00', 'Meridian Civic Hall', 'location-simple', '57', 'workshop.webp') : ''}
+        </div>
+        <div class="gv-partbar pp-fo__partbar">
+          <div class="gv-partbar__inner">
+            <span class="gv-partbar__status">Open for participation</span>
+            <a class="gv-btn on-color" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'} <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+          </div>
         </div>
       </div>`;
   }
