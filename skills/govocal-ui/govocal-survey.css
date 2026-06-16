@@ -323,6 +323,15 @@
     .sv-rank__select,
     .sv-imgcard { border-color: var(--gv-border-dark); }
 
+    /* ── Option-card vertical-alignment fidelity (shared-fix option-card-padding, 88/93) ──
+       The real option box (div.sc-eNCGxt) pads 20px 20px 8px — generous top/side,
+       tighter bottom — which seats the radio toward the TOP of the row rather than
+       vertically centred. The base rule shipped align-items: center (control centred);
+       with our matching 20px/8px asymmetric padding already in place (rule above), we
+       flip the cross-axis to flex-start so the radio aligns to the top edge like the
+       runner. Padding + gap unchanged. Append-only override so every consumer updates. */
+    .sv-optcard { align-items: flex-start; }
+
     /* ── Question-label weight fidelity (shared-fix survey-question-label-weight) ──
        Real survey question label (span.diOXeU 'Your question') = 16px / weight 600 /
        rgb(30,30,30). The base rule above shipped weight 700; the runner uses semibold
