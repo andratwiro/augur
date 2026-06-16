@@ -54,13 +54,16 @@
 
   <script>
     const LABELS = ["The one problem we should work on","Idea consolidation","Community prioritization","Product Circle meets","Development plan is announced","The one problem we should work on","Idea consolidation","Community prioritization","Product Circle meets","Development plan is announced"];
-    const CURRENT = 9; // index of current phase (10th)
+    const CURRENT = 9;  // index of the CURRENT phase (10th) — mint fill + dot, ALWAYS
+    const VIEWING = 6;  // index of the phase being VIEWED/selected — dark-slate overlay,
+                        // deliberately != CURRENT to exercise both orthogonal states
+                        // (other=grey, viewing=slate, current=mint+dot).
     const stepper = document.getElementById("stepper");
     LABELS.forEach((label, i) => {
       const b = document.createElement("button");
       b.className = "gv-phase" + (i === CURRENT ? " current" : "");
       b.setAttribute("role","tab");
-      b.setAttribute("aria-selected", i === CURRENT ? "true" : "false");
+      b.setAttribute("aria-selected", i === VIEWING ? "true" : "false");
       const num = i === CURRENT ? `<span class="gv-pstep__dot"></span>${i+1}` : (i+1);
       b.innerHTML = `<span class="gv-pstep">${num}</span><span class="gv-phase__label">${label}</span>`;
       stepper.appendChild(b);

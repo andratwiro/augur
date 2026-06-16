@@ -467,6 +467,21 @@
   .gv-phase { min-width: 0; }
   .gv-phase__label { display: none; }
 }
+/* FO shared (phase-state-model): decouple the CURRENT phase from the SELECTED/VIEWING
+   phase — on the live wietsedemo timeline these are two orthogonal states, NOT one
+   conflated green segment. Three-way treatment: other = grey track; current = mint
+   fill + dark-green number + dot (ALWAYS, even when not being viewed); viewing/selected
+   = dark-slate fill as an INDEPENDENT overlay that wins when its phase is being viewed.
+   The base rule at line 438 gated slate behind :not(.current), which made mint win over
+   a current+selected phase and tied "selected" to "current". Drop that coupling: let the
+   [aria-selected] slate overlay apply regardless of .current, so a current phase you are
+   ALSO viewing renders slate, while a current phase you are NOT viewing stays mint+dot.
+   Appended as an override — the base .gv-phase.current (448) and the :not(.current) slate
+   rule (438) stay intact; this is just the higher-specificity orthogonal overlay. */
+.gv-phase[aria-selected="true"].current .gv-pstep {
+  background: var(--gv-cool-grey-700); color: #fff; box-shadow: none;
+}
+.gv-phase[aria-selected="true"].current .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
 /* content panel: big green numbered circle + green name + date */
 .gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 30px 30px; margin-top: 22px; }
 .gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
