@@ -464,7 +464,7 @@
    big green numbered circle + green phase name + date. role=tablist on the stepper,
    role=tab per phase, role=tabpanel on the content. */
 .gv-phases__bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.gv-phases__bar h2 { margin: 0; font-size: var(--gv-fs-xxl); font-weight: 700; letter-spacing: -0.01em; }
+.gv-phases__bar h2 { margin: 0; font-size: var(--gv-fs-xxl); font-weight: 700; }
 .gv-phases__nav { margin-left: auto; display: inline-flex; gap: 6px; }
 .gv-pnav { width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
   background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); color: var(--gv-grey-700); }
@@ -553,13 +553,13 @@
 }
 .gv-phase[aria-selected="true"].current .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
 /* content panel: big green numbered circle + green name + date */
-.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 30px 30px; margin-top: 22px; }
+.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 30px 30px 35px; margin-top: 22px; }
 .gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
 /* Measured live (fo-project-ideation): the phase number sits in a 39px green-500
    circle (16px/400 white), and the phase name is 21px/700 green-500 — not larger. */
 .gv-phasepanel__num { width: 39px; height: 39px; border-radius: 50%; flex: none; display: grid; place-items: center;
   background: var(--gv-green-500); color: #fff; font-size: var(--gv-fs-base); font-weight: 400; }
-.gv-phasepanel__name { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-green-500); line-height: 1.2; }
+.gv-phasepanel__name { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-green-500); line-height: 1.3; }
 .gv-phasepanel__date { margin: 4px 0 0; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
 /* the phase description sits inside the panel card, under the head — part of the
    component (the real phase card always carries a few lines of phase description). */

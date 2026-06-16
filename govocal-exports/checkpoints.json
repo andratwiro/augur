@@ -629,6 +629,22 @@
       ]
     },
     {
+      "id": "fo-project/phasepanel-name",
+      "built": "pages/project-page/index.html",
+      "against": "fo-projpage-wien",
+      "map": {
+        ".e2e-phase-title": ".gv-phasepanel__name"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ],
+      "uses": [
+        ".gv-phasepanel"
+      ]
+    },
+    {
       "id": "fo-project/feed-count",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-feed",
