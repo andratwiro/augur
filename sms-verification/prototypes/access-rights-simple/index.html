@@ -23,6 +23,12 @@
     html, body { margin: 0; height: 100%; }
     body { background: #fff; font-family: var(--gv-font-family); color: var(--gv-text-primary); }
 
+    /* quiet auto-save reassurance strip */
+    .ar-saved { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--gv-cool-grey-700, #51606b); margin: 0 0 14px; }
+    .ar-saved b { color: var(--gv-text-primary); font-weight: 600; }
+    .ar-saved__ic { width: 20px; height: 20px; flex: none; border-radius: 50%; background: var(--gv-green-500, #1a7a3f); color: #fff; display: grid; place-items: center; }
+    .ar-saved__ic .gv-icon { width: 12px; height: 12px; }
+
     /* live plain-language summary banner */
     .ar-summary { display: flex; gap: 12px; align-items: center; background: var(--gv-teal-50, #eef7f8);
       border: 1px solid var(--gv-teal-200, #b9dfe3); border-radius: 12px; padding: 14px 16px; margin: 0 0 22px; }
@@ -249,6 +255,10 @@
           </nav>
 
           <div class="gv-bo-card">
+            <!-- quiet reassurance: nothing goes live by accident (Brigitte's fear) -->
+            <div class="ar-saved"><span class="ar-saved__ic"><span class="gv-icon" data-gv-icon="check"></span></span>
+              <span>Saved automatically as you go — <b>nothing reaches residents until you publish the phase.</b></span></div>
+
             <!-- live plain-language summary -->
             <div class="ar-summary">
               <span class="ar-summary__ic"><span class="gv-icon" data-gv-icon="group"></span></span>
