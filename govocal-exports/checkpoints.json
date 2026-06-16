@@ -12,6 +12,30 @@
   },
   "checkpoints": [
     {
+      "id": "homepage-spotlight-heading",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage",
+      "map": {
+        "[data-testid=currently-working-on-text]": ".gv-spotlight__heading"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height"
+      ]
+    },
+    {
+      "id": "homepage-spotlight-padding",
+      "built": "pages/homepage/index.html",
+      "against": "fo-homepage",
+      "map": {
+        ".e2e-spotlight-widget": ".gv-spotlight__inner"
+      },
+      "props": [
+        "padding"
+      ]
+    },
+    {
       "id": "homepage-header",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage-wien",

@@ -27,11 +27,11 @@
     <p class="eyebrow">Placeholder media + avatar bubbles</p>
     <div class="stage">
       <!-- ===== COMPONENT (copy from here) ===== -->
-      <section class="gv-spotlight" aria-labelledby="spot-title">
+      <section class="gv-spotlight" aria-labelledby="spot-heading">
         <div class="gv-spotlight__inner">
           <div>
-            <p class="gv-spotlight__eyebrow">Currently working on</p>
-            <h2 class="gv-spotlight__title" id="spot-title">A greener Main Street</h2>
+            <h2 class="gv-spotlight__heading" id="spot-heading">Currently working on</h2>
+            <p class="gv-spotlight__title">A greener Main Street</p>
             <p class="gv-spotlight__lead">How do we make Main Street cooler, greener and healthier? Share your ideas
               in our survey — participation closes in just a few days.</p>
             <div class="gv-spotlight__actions">
@@ -51,11 +51,11 @@
     <p class="eyebrow">Campaign chip over the media (+ time-elapsed progress)</p>
     <div class="stage">
       <!-- ===== COMPONENT (copy from here) ===== -->
-      <section class="gv-spotlight" aria-labelledby="spot-title-2">
+      <section class="gv-spotlight" aria-labelledby="spot-heading-2">
         <div class="gv-spotlight__inner">
           <div>
-            <p class="gv-spotlight__eyebrow">Currently working on</p>
-            <h2 class="gv-spotlight__title" id="spot-title-2">Participatory budget 2026</h2>
+            <h2 class="gv-spotlight__heading" id="spot-heading-2">Currently working on</h2>
+            <p class="gv-spotlight__title">Participatory budget 2026</p>
             <p class="gv-spotlight__lead">Decide how we spend €500,000 across the district. Submit a proposal and
               vote for the ideas you want to see funded.</p>
             <div class="gv-spotlight__actions">
@@ -78,7 +78,8 @@
     <div class="notes">
       <p><strong>Two columns:</strong> <code>.gv-spotlight__inner</code> is a 1fr / 1fr grid (copy +
       media) that collapses to one column with the media first ≤820px.</p>
-      <p><strong>Copy:</strong> <code>__eyebrow</code> → <code>__title</code> → <code>__lead</code> →
+      <p><strong>Copy:</strong> <code>__heading</code> ("Currently working on" — the live section
+      <code>h2</code>, 25px/700, normal-case) → <code>__title</code> (project name) → <code>__lead</code> →
       <code>__actions</code>. <strong>Media:</strong> <code>__media</code> takes an <code>img</code>;
       add <code>--placeholder</code> for the grey tile, or drop a <code>__chip</code> campaign bubble over it.</p>
       <p><strong>Adjacent atoms:</strong> <code>.gv-bubbles</code> (avatar <code>.av</code> stack +
