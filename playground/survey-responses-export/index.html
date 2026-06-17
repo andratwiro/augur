@@ -48,15 +48,17 @@
     .gv-bo-menu__sep { height: 1px; background: var(--gv-divider); margin: 5px 0; }
     .gv-bo-menu__lbl { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--gv-cool-grey-600); font-weight: 700; padding: 8px 15px 2px; }
 
-    /* CTA-mode visibility: A=grouped+overflow · B=grouped+phaseDelete · C=primary button */
-    [data-cta-show] { display: none !important; }
-    body[data-cta="A"] [data-cta-show~="A"],
-    body[data-cta="B"] [data-cta-show~="B"],
-    body[data-cta="C"] [data-cta-show~="C"] { display: inline-flex !important; }
-    [data-cta-item] { display: none !important; }
-    body[data-cta="A"] [data-cta-item~="A"],
-    body[data-cta="B"] [data-cta-item~="B"],
-    body[data-cta="C"] [data-cta-item~="C"] { display: flex !important; }
+    /* Delete-placement mode: phase ⋯ options vs in-context danger zone */
+    body:not([data-cta="phase"])  [data-when="phase"]  { display: none !important; }
+    body:not([data-cta="danger"]) [data-when="danger"] { display: none !important; }
+    /* in-context danger zone (GitHub-style) for the irreversible delete */
+    .sx-danger { margin: 26px 0 4px; border: 1px solid #f0c9c9; background: #fdf4f4; border-radius: 6px; padding: 15px 18px; display: flex; align-items: center; gap: 16px; max-width: 1000px; }
+    .sx-danger__main { flex: 1; }
+    .sx-danger__title { font-weight: 700; color: var(--gv-red-600, #b3261e); font-size: var(--gv-fs-base); }
+    .sx-danger__desc { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); margin-top: 2px; }
+    .sx-dangerbtn { flex: none; border: 1px solid var(--gv-red-500); color: var(--gv-red-500); background: #fff; border-radius: var(--gv-radius); padding: 8px 14px; font: inherit; font-size: var(--gv-fs-s); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
+    .sx-dangerbtn:hover { background: var(--gv-red-500); color: #fff; }
+    .sx-dangerbtn .gv-icon { width: 16px; height: 16px; }
 
     /* ── wide modal ──────────────────────────────────────────────────────────── */
     .sx-backdrop { position: fixed; inset: 0; background: rgba(7,26,43,.45); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 28px 16px; }
@@ -141,7 +143,7 @@
     .sx-switch__desc b { color: #fff; }
   </style>
 </head>
-<body class="gv-bo" data-gv-screen="survey-phase/insights" data-cta="A">
+<body class="gv-bo" data-gv-screen="survey-phase/insights" data-cta="phase">
   <div class="gv-bo-shell">
 
     <nav class="gv-bo-side" aria-label="Admin">
@@ -218,8 +220,8 @@
                 <div class="gv-bo-menu" hidden>
                   <button class="gv-bo-menu__item" data-act="toast" data-msg="Edit phase."><span class="gv-bo-menu__icon" data-gv-icon="edit"></span>Edit phase</button>
                   <button class="gv-bo-menu__item" data-act="toast" data-msg="Copy phase."><span class="gv-bo-menu__icon" data-gv-icon="paperclip"></span>Copy phase</button>
-                  <div class="gv-bo-menu__sep" data-cta-item="A"></div>
-                  <button class="gv-bo-menu__item is-danger" data-cta-item="A" data-act="toast" data-msg="Delete survey results?"><span class="gv-bo-menu__icon" data-gv-icon="delete"></span>Delete survey results</button>
+                  <div class="gv-bo-menu__sep" data-when="phase"></div>
+                  <button class="gv-bo-menu__item is-danger" data-when="phase" data-act="toast" data-msg="Delete survey results? (would confirm)"><span class="gv-bo-menu__icon" data-gv-icon="delete"></span>Delete survey results</button>
                   <div class="gv-bo-menu__sep"></div>
                   <button class="gv-bo-menu__item is-danger" data-act="toast" data-msg="Delete phase?"><span class="gv-bo-menu__icon" data-gv-icon="delete"></span>Delete phase</button>
                 </div>
@@ -244,53 +246,25 @@
                   <p class="gv-bo-help" style="margin:2px 0 0">Track engagement in real-time</p>
                 </div>
                 <div class="sx-actions">
-
-                  <!-- overflow ⋯ : holds aggregate downloads (B) + the destructive Delete (B, C) -->
-                  <div class="sx-menuwrap" data-cta-show="B C">
-                    <button class="gv-iconbtn" data-menu-trigger aria-label="More actions" aria-haspopup="true"><span data-gv-icon="dots-horizontal"></span></button>
-                    <div class="gv-bo-menu" hidden>
-                      <button class="gv-bo-menu__item" data-cta-item="B" data-act="toast" data-msg="Preparing .xlsx export…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Download survey results (.xlsx)</button>
-                      <button class="gv-bo-menu__item" data-cta-item="B" data-act="toast" data-msg="Preparing insights PDF…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Download insights as PDF</button>
-                      <button class="gv-bo-menu__item" data-cta-item="B" data-act="toast" data-msg="Preparing Word document…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Download as Word<span class="sx-betatag">BETA</span></button>
-                      <div class="gv-bo-menu__sep" data-cta-item="B"></div>
-                      <button class="gv-bo-menu__item is-danger" data-cta-item="B C" data-act="toast" data-msg="Delete survey results?"><span class="gv-bo-menu__icon" data-gv-icon="delete"></span>Delete survey results</button>
-                    </div>
-                  </div>
-
                   <label class="sx-openpill"><span class="gv-toggle"><input type="checkbox" checked><span class="track"></span></span>Open for responses</label>
                   <button class="sx-linkbtn" data-act="toast" data-msg="Add a submission on behalf of a participant.">New submission</button>
+                  <!-- collect (in) ▸ Import — paired with its symmetric counterpart, Export (out) -->
                   <button class="gv-btn secondary-outlined" data-act="toast" data-msg="Import responses from a file."><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></svg><span class="gv-btn__label">Import</span></button>
-
-                  <!-- option A: Export ▾ paired right after Import (secondary, mirrors Import) -->
-                  <div class="sx-menuwrap" data-cta-show="A">
+                  <!-- Export ▾ : one labelled menu, grouped by what you'd DO with the file -->
+                  <div class="sx-menuwrap">
                     <button class="gv-btn secondary-outlined" data-menu-trigger><span data-gv-icon="download"></span><span class="gv-btn__label">Export</span><span data-gv-icon="chevron-down"></span></button>
                     <div class="gv-bo-menu" hidden>
-                      <div class="gv-bo-menu__lbl">Individual responses</div>
-                      <button class="gv-bo-menu__item is-new" data-open-export><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Export individual responses (PDF)…<span class="sx-newtag">NEW</span></button>
-                      <div class="gv-bo-menu__lbl">Aggregate</div>
+                      <div class="gv-bo-menu__lbl">Per-respondent records</div>
+                      <button class="gv-bo-menu__item is-new" data-open-export><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Individual responses (PDF)…<span class="sx-newtag">NEW</span></button>
+                      <div class="gv-bo-menu__lbl">Raw data</div>
                       <button class="gv-bo-menu__item" data-act="toast" data-msg="Preparing .xlsx export…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Survey results (.xlsx)</button>
+                      <div class="gv-bo-menu__lbl">Summary report</div>
                       <button class="gv-bo-menu__item" data-act="toast" data-msg="Preparing insights PDF…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Insights summary (PDF)</button>
                       <button class="gv-bo-menu__item" data-act="toast" data-msg="Preparing Word document…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Insights summary (Word)<span class="sx-betatag">BETA</span></button>
                     </div>
                   </div>
-
-                  <button class="gv-btn success" data-act="toast" data-msg="Run AI analysis over the responses."><span data-gv-icon="stars"></span><span class="gv-btn__label">AI analysis</span></button>
-
-                  <!-- option B: the new export as a dedicated back-office-primary button, far right -->
-                  <button class="gv-btn admin-dark" data-open-export data-cta-show="B"><span data-gv-icon="download"></span><span class="gv-btn__label">Export responses</span></button>
-
-                  <!-- option C: labelled Export ▾ grouping ALL formats, far right -->
-                  <div class="sx-menuwrap" data-cta-show="C">
-                    <button class="gv-btn admin-dark" data-menu-trigger><span data-gv-icon="download"></span><span class="gv-btn__label">Export</span><span data-gv-icon="chevron-down"></span></button>
-                    <div class="gv-bo-menu" hidden>
-                      <div class="gv-bo-menu__lbl">Individual responses</div>
-                      <button class="gv-bo-menu__item is-new" data-open-export><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Export individual responses (PDF)…<span class="sx-newtag">NEW</span></button>
-                      <div class="gv-bo-menu__lbl">Aggregate</div>
-                      <button class="gv-bo-menu__item" data-act="toast" data-msg="Preparing .xlsx export…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Survey results (.xlsx)</button>
-                      <button class="gv-bo-menu__item" data-act="toast" data-msg="Preparing insights PDF…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Insights summary (PDF)</button>
-                      <button class="gv-bo-menu__item" data-act="toast" data-msg="Preparing Word document…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Insights summary (Word)<span class="sx-betatag">BETA</span></button>
-                    </div>
-                  </div>
+                  <!-- AI analysis : the single back-office-primary action, far right -->
+                  <button class="gv-btn admin-dark" data-act="toast" data-msg="Run AI analysis over the responses."><span data-gv-icon="stars"></span><span class="gv-btn__label">AI analysis</span></button>
                 </div>
               </div>
 
@@ -317,7 +291,16 @@
 
               <h4 class="gv-bo-subhead" style="margin-top:22px">Questions</h4>
               <p class="pp-lede">Total 204 responses · 7 questions across 1 page</p>
-              <div class="sx-note"><span class="gv-icon" data-gv-icon="info-solid" style="color:var(--gv-blue-500)"></span><div>Per-question result charts render here. Use the switcher (bottom-left) to compare how the export CTA — and the destructive “Delete survey results” — are organised in this header.</div></div>
+              <div class="sx-note"><span class="gv-icon" data-gv-icon="info-solid" style="color:var(--gv-blue-500)"></span><div>Per-question result charts render here. Use the switcher (bottom-left) to compare where the irreversible “Delete survey results” lives — phase ⋯ options vs an in-context danger zone.</div></div>
+
+              <!-- option: in-context danger zone for the irreversible delete -->
+              <div class="sx-danger" data-when="danger">
+                <div class="sx-danger__main">
+                  <div class="sx-danger__title">Delete survey results</div>
+                  <div class="sx-danger__desc">Permanently removes all 204 responses from this phase. Already-downloaded exports are unaffected. This can’t be undone.</div>
+                </div>
+                <button class="sx-dangerbtn" data-act="toast" data-msg="Delete survey results? (would confirm)"><span class="gv-icon" data-gv-icon="delete"></span>Delete survey results</button>
+              </div>
             </div>
           </div>
         </div>
@@ -396,11 +379,10 @@
 
   <!-- holistic CTA-organisation switcher -->
   <div class="sx-switch">
-    <span class="sx-switch__lab">Insights actions — organisation (demo)</span>
+    <span class="sx-switch__lab">Where “Delete survey results” lives (demo)</span>
     <div class="sx-switch__opts">
-      <button data-cta="A" class="is-on">Import | Export pair</button>
-      <button data-cta="B">Export primary, far right</button>
-      <button data-cta="C">Export menu, far right</button>
+      <button data-cta="phase" class="is-on">Phase ⋯ options</button>
+      <button data-cta="danger">Danger zone (bottom)</button>
     </div>
     <p class="sx-switch__desc" id="switchDesc"></p>
   </div>
@@ -434,9 +416,8 @@
     ];
     const TOTAL = 204;
     const DESC = {
-      A: '<b>Import</b> and <b>Export ▾</b> sit together as a symmetric in/out pair (the menu groups all four formats). <b>AI analysis</b> stays the primary action; the destructive <b>Delete survey results</b> moves up to the phase <b>⋯ options</b> (top-right). <b>Recommended.</b>',
-      B: 'The new export is a dedicated back-office-primary <b>Export responses</b> button at the far right. The aggregate downloads <i>and</i> <b>Delete</b> stay in a small Insights <b>⋯</b> — most prominent for the new feature, but two “export” entry points.',
-      C: 'A labelled <b>Export ▾</b> at the far right groups all four formats; a small <b>⋯</b> overflow keeps only <b>Delete survey results</b>.'
+      phase: 'Header is fixed: <b>Import</b> &amp; <b>Export ▾</b> as a symmetric in/out pair, <b>AI analysis</b> as the primary. The irreversible <b>Delete survey results</b> lives in the phase <b>⋯ options</b> (top-right) with <i>Delete phase</i> — destructive actions grouped, never beside a download. <b>Lighter, pattern-consistent.</b>',
+      danger: 'Same header. <b>Delete survey results</b> instead gets an explicit <b>danger zone</b> at the bottom of Insights — most discoverable on the results page, clearly marked, impossible to mistake for an export. <b>Safest.</b>'
     };
     const $ = (s,r)=>(r||document).querySelector(s), $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
     const esc = s => { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; };
@@ -462,7 +443,7 @@
       $$('.sx-switch button').forEach(x=>x.classList.toggle('is-on', x===b));
       setDesc(b.dataset.cta); closeMenus();
     }));
-    setDesc('A');
+    setDesc('phase');
 
     // ── field rows ──
     function badge(on){ return '<span class="sx-badge '+(on?'in':'ex')+'">'+(on?'INCLUDED':'EXCLUDED')+'</span>'; }
