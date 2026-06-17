@@ -1026,7 +1026,7 @@
     text-transform: uppercase;
   }
   .state-chip button {
-    padding: 6px 11px;
+    padding: 4px 9px;
     border-radius: 999px;
     color: #4b5563;
     font-weight: 500;
@@ -1038,8 +1038,34 @@
     color: #fff;
     font-weight: 600;
   }
-  /* FRAME chip stacks just above the STATE chip, same visual treatment */
-  .frame-chip { bottom: 64px; }
+  /* Compact STATE chip (label removed): smaller pill + tighter buttons. */
+  .state-chip { padding: 3px 4px; gap: 4px; font-size: 10.5px; }
+
+  /* FRAME switcher — icon-only toggle pinned to the top-right of the preview, just
+     below the back-office topbar. Same quiet pill treatment as the STATE chip. */
+  .frame-chip {
+    position: fixed;
+    top: 92px;
+    right: 24px;
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04);
+  }
+  .frame-chip button {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    color: #4b5563;
+    transition: background .12s ease, color .12s ease;
+  }
+  .frame-chip button:hover { background: #f4f6fa; color: #1a1f2c; }
+  .frame-chip button.on { background: #1a1f2c; color: #fff; }
 
   /* ============ Empty state ghost placeholders ============ */
   .ghost-slot {
@@ -1347,6 +1373,13 @@
        scoped under #cb-root so it never redefines a library .gv-* class.) */
     #cb-root .gv-bo-cb-canvas { transition: padding-right .12s ease; }
     #cb-root.cb-has-panel .gv-bo-cb-canvas { padding-right: 400px; }
+    /* When the 400px settings panel is open the canvas loses width; the frame is a
+       fixed 1000px so it used to overflow UNDER the panel, hiding the right half of
+       wide modules (the phases timeline, the 2-col events). Let the frame shrink to
+       the now-narrower canvas (still capped at 1000px on wide screens) so the whole
+       project page stays visible to the LEFT of the panel. Blocks already carry
+       max-width:100%, so they reflow with it. */
+    #cb-root.cb-has-panel .gv-bo-cb-frame { width: 100%; }
 
     /* Preview mode hides editor chrome (palette + settings), removes block outlines. */
     #cb-root.cb-preview .gv-bo-cb-palette,
@@ -1625,7 +1658,7 @@
             Input 360
           </div>
           <div class="side-item" onclick="document.getElementById('settingsModal').style.display='flex'">
-            <span class="side-ic" data-gv-icon="cogs" aria-hidden="true"></span>
+            <span class="side-ic" data-gv-icon="settings" aria-hidden="true"></span>
             Settings
           </div>
         </div>
@@ -2224,16 +2257,18 @@
   });
 </script>
 
-<!-- ============ Frame switcher chip ============ -->
-<div class="state-chip frame-chip">
-  <span class="label">FRAME</span>
-  <button data-frame="phone" class="on" onclick="setFrame('phone', this)">Phone</button>
-  <button data-frame="window" onclick="setFrame('window', this)">Window</button>
+<!-- ============ Frame switcher — icon-only, top-right of the preview ============ -->
+<div class="frame-chip" role="group" aria-label="Preview frame">
+  <button data-frame="phone" class="on" onclick="setFrame('phone', this)" aria-label="Phone preview" title="Phone">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2.5"/><line x1="10.5" y1="18" x2="13.5" y2="18"/></svg>
+  </button>
+  <button data-frame="window" onclick="setFrame('window', this)" aria-label="Window preview" title="Window">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+  </button>
 </div>
 
-<!-- ============ State switcher chip ============ -->
-<div class="state-chip">
-  <span class="label">STATE</span>
+<!-- ============ State switcher — compact, bottom-right ============ -->
+<div class="state-chip" role="group" aria-label="Project content state">
   <button data-state="empty" class="on" onclick="setProjectState('empty', this)">Empty</button>
   <button data-state="few" onclick="setProjectState('few', this)">Few</button>
   <button data-state="complex" onclick="setProjectState('complex', this)">Complex</button>
