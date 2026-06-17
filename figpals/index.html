@@ -55,6 +55,14 @@
   .sw:hover { transform:scale(1.12); }
   .sw.sel { box-shadow:0 0 0 3px var(--accent); transform:scale(1.12); }
 
+  /* hat picker — little chips, each showing the hat name */
+  .hats { display:flex; gap:8px; flex-wrap:wrap; }
+  .hat { font:inherit; font-size:13px; font-weight:700; cursor:pointer; border-radius:11px;
+         padding:8px 13px; background:#f6f1fb; color:var(--muted); border:2px solid transparent;
+         transition:transform .12s, border-color .12s, color .12s; }
+  .hat:hover { transform:translateY(-1px); }
+  .hat.sel { border-color:var(--accent); color:var(--accent); background:#fff; }
+
   .row { display:flex; gap:10px; margin-top:6px; }
   .btn { flex:1; font:inherit; font-weight:800; border:none; cursor:pointer; border-radius:14px;
          padding:13px; background:var(--accent); color:#fff; box-shadow:0 8px 18px -8px var(--accent);
@@ -89,6 +97,11 @@
       <div class="swatches" id="swatches"></div>
     </div>
 
+    <div class="field">
+      <label>Hat</label>
+      <div class="hats" id="hats"></div>
+    </div>
+
     <div class="row">
       <button class="btn ghost" id="surprise" title="Surprise me">🎲</button>
       <button class="btn" id="save">Save</button>
@@ -103,10 +116,12 @@
   const cfg = FigPal.loadConfig();
   const portrait = document.getElementById('portrait');
   const swatches = document.getElementById('swatches');
+  const hats = document.getElementById('hats');
   const nameInput = document.getElementById('name');
   nameInput.value = cfg.name === 'Pal' ? '' : cfg.name;
 
-  function drawPortrait() { portrait.innerHTML = FigPal.svg(cfg, { pose: 'up' }); }
+  // portrait shows the cat awake (eyes open) so customizing feels lively
+  function drawPortrait() { portrait.innerHTML = FigPal.svg(cfg, { awake: true }); }
 
   FigPal.PALETTE.forEach((p, i) => {
     const b = document.createElement('button');
@@ -117,18 +132,29 @@
     swatches.appendChild(b);
   });
 
-  // the live companion that walks the page (same engine as the site overlay)
-  const pet = FigPal.mount({ size: 84 });
+  FigPal.HATS.forEach((h) => {
+    const b = document.createElement('button');
+    b.className = 'hat' + (h.id === (cfg.hat || 'none') ? ' sel' : '');
+    b.textContent = h.label;
+    b.dataset.hat = h.id;
+    b.onclick = () => { cfg.hat = h.id; sync(); };
+    hats.appendChild(b);
+  });
+
+  // the live companion that walks the page (same engine as the site overlay, cursor-sized)
+  const pet = FigPal.mount({});
 
   function sync() {
     [...swatches.children].forEach((b, i) => b.classList.toggle('sel', i === cfg.furIdx));
+    [...hats.children].forEach((b) => b.classList.toggle('sel', b.dataset.hat === (cfg.hat || 'none')));
     drawPortrait();
-    pet.refresh(cfg);              // recolour the walking pal instantly (preview)
+    pet.refresh(cfg);              // recolour/re-hat the walking pal instantly (preview)
   }
   drawPortrait();
 
   document.getElementById('surprise').onclick = () => {
     cfg.furIdx = Math.floor(Math.random() * FigPal.PALETTE.length);
+    cfg.hat = FigPal.HATS[Math.floor(Math.random() * FigPal.HATS.length)].id;
     sync();
   };
 

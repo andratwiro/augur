@@ -3,140 +3,158 @@
    One source of truth, used by:
      • figpals/index.html        (adopt / customize page)
      • the prototypes-site shell  (build.js injects this file)
-   Visual language mirrors Figma's real FigPals: thick black
-   doodle outline, flat pastel fills, blush cheeks, a sleepy
-   pose when idle. No feeding / photobooth — just a friend.
-   Exposes window.FigPal = { PALETTE, svg, loadConfig, saveConfig, mount }.
+   The cat art is TRACED (potrace) from the real FigPal resting
+   pose — a loose, hand-drawn doodle, not regularised vector
+   geometry. The traced silhouette + outline are recoloured per
+   palette so the same iconic cat repaints into any hue.
+   Exposes window.FigPal =
+     { PALETTE, HATS, svg, loadConfig, saveConfig, mount, auto, reveal, hide }.
    ============================================================ */
 (function () {
-  const OUT = "#241d29";   // outline (warm near-black)
-  const SW  = 4.2;         // canonical chunky outline weight (uniform everywhere)
+  const OUT = "#241d29";   // outline (warm near-black) — stays dark in every palette
 
+  /* ---- traced paths (potrace, viewBox 0 0 1744 720, transform below) ----
+     sil      = full body silhouette (recoloured = fur)
+     outMain  = the hand-drawn outline + ear/tail/body line
+     eyeL/eyeR= the two closed sleepy-eye arcs
+     nose     = the little nose
+     Lighter belly, inner-ears, haunch stripes, heart-brow & blush are drawn
+     as recolourable overlays clipped to the silhouette (the source has no hard
+     belly edge — it's a single soft fur tone — so those are positioned shapes). */
+  const P = {
+    sil: "M3936 7022 c-45 -2 -66 -9 -87 -27 -16 -13 -42 -26 -59 -30 -16 -4 -42 -21 -57 -40 -16 -18 -53 -48 -83 -68 -61 -39 -121 -105 -143 -158 -8 -19 -36 -54 -62 -76 -25 -23 -44 -47 -40 -53 11 -18 -14 -75 -50 -110 -19 -18 -42 -55 -50 -81 -9 -27 -27 -63 -39 -82 -13 -19 -29 -50 -35 -70 -7 -20 -22 -51 -34 -69 -13 -18 -31 -54 -41 -80 -9 -26 -22 -50 -27 -53 -5 -4 -9 -19 -9 -34 0 -33 -34 -135 -55 -168 -8 -12 -15 -31 -15 -42 0 -24 -42 -171 -69 -246 -10 -27 -22 -77 -26 -110 -4 -33 -18 -93 -31 -133 -13 -40 -21 -79 -18 -86 3 -8 0 -34 -7 -57 -6 -24 -15 -87 -20 -139 -13 -138 -25 -221 -38 -254 -6 -16 -9 -36 -6 -45 3 -9 -2 -43 -10 -74 -8 -32 -15 -90 -15 -128 0 -51 -7 -88 -24 -132 -31 -78 -37 -191 -39 -742 -1 -389 5 -510 32 -578 6 -16 11 -42 11 -60 0 -42 19 -143 36 -190 19 -51 0 -98 -47 -117 -19 -8 -48 -26 -66 -41 -17 -15 -48 -33 -69 -39 -76 -25 -171 -100 -321 -251 -112 -114 -153 -162 -158 -186 -3 -18 -18 -49 -31 -69 -38 -55 -87 -166 -85 -190 1 -12 -5 -49 -13 -82 -37 -139 10 -348 110 -500 55 -82 265 -288 302 -297 16 -3 51 -19 76 -36 27 -17 60 -29 79 -29 18 0 59 -7 90 -15 80 -21 364 -21 444 0 31 8 80 15 108 15 34 0 66 8 100 26 34 17 59 23 78 20 29 -6 85 17 137 56 15 11 58 24 101 30 46 6 82 18 94 29 11 10 40 25 65 34 48 17 122 61 185 110 22 18 75 53 118 78 43 26 102 72 132 102 78 80 129 93 214 55 24 -11 57 -20 73 -20 52 0 201 -30 282 -56 61 -21 89 -25 127 -20 26 4 67 2 91 -4 50 -12 298 -29 588 -39 123 -5 222 -13 247 -22 37 -11 49 -11 90 4 61 21 535 27 572 7 26 -14 51 -67 51 -108 0 -16 7 -36 17 -43 9 -8 26 -36 38 -64 13 -27 32 -58 43 -69 12 -10 27 -35 33 -55 19 -58 55 -107 96 -132 47 -28 110 -80 171 -140 40 -40 54 -48 95 -52 26 -2 76 -18 110 -34 80 -38 175 -53 341 -53 l133 0 99 35 c54 19 115 35 135 35 21 0 47 9 62 20 34 27 101 50 146 50 24 0 49 9 71 25 18 13 49 30 69 36 43 14 107 52 162 96 21 17 56 37 77 44 20 6 75 37 122 67 46 31 105 64 131 73 26 10 68 31 94 48 25 16 70 35 98 41 29 7 59 19 67 26 31 26 94 46 159 48 43 1 75 8 93 20 77 51 473 54 606 6 20 -7 54 -10 82 -7 27 3 64 2 82 -4 18 -5 89 -12 158 -15 69 -3 138 -10 154 -15 16 -5 47 -9 70 -9 55 0 231 -62 264 -93 15 -13 51 -32 81 -42 29 -10 61 -25 71 -35 10 -10 32 -21 49 -25 17 -3 45 -16 63 -29 58 -38 179 -95 193 -89 19 7 138 -34 169 -58 13 -11 40 -19 60 -19 37 0 131 -33 156 -55 15 -13 55 -19 230 -34 52 -5 115 -16 140 -26 74 -29 158 -36 502 -41 l327 -5 30 22 c20 14 53 24 103 30 119 14 218 35 293 63 39 14 86 26 106 26 22 0 51 10 75 26 21 15 56 33 77 40 21 7 51 23 67 34 16 11 47 27 70 35 23 8 54 24 70 35 16 11 46 27 67 34 46 17 147 77 183 109 14 13 59 43 100 67 83 48 296 248 356 335 37 52 67 93 147 196 27 34 55 83 63 109 8 26 23 55 33 65 11 9 27 39 36 66 9 26 25 59 35 72 11 13 29 49 40 80 12 31 26 59 31 62 5 4 9 21 9 38 0 55 29 188 50 226 26 50 31 93 36 352 l5 226 -21 59 c-12 32 -26 91 -31 129 -18 138 -26 175 -41 192 -9 10 -26 42 -38 72 -11 30 -29 65 -40 78 -10 13 -24 41 -31 61 -6 20 -23 57 -38 82 -14 25 -33 57 -41 71 -35 61 -81 118 -176 218 -88 92 -103 112 -112 155 -6 27 -8 55 -5 62 3 8 -7 37 -21 66 -14 28 -26 69 -26 89 0 21 -5 50 -11 65 -5 16 -12 60 -14 98 -2 47 -10 84 -24 111 -12 21 -21 56 -21 77 0 26 -15 66 -45 124 -29 55 -45 98 -45 121 0 34 -76 209 -106 243 -7 9 -20 36 -29 60 -17 49 -66 131 -101 170 -12 14 -45 62 -72 108 -28 45 -63 97 -79 116 -15 19 -43 59 -61 90 -20 34 -46 63 -65 72 -18 9 -82 64 -144 123 -201 189 -236 218 -293 240 -34 13 -74 40 -110 74 -36 35 -70 58 -97 66 -23 6 -55 22 -70 35 -15 13 -51 31 -79 40 -29 9 -60 26 -69 36 -10 11 -23 20 -29 20 -6 0 -36 12 -66 27 -30 14 -61 25 -68 24 -21 -3 -124 29 -158 50 -17 10 -43 19 -56 19 -35 0 -138 37 -171 61 -23 17 -37 19 -76 14 -31 -4 -69 -1 -108 9 -107 28 -793 12 -844 -20 -15 -9 -112 -22 -294 -38 -92 -8 -164 -19 -187 -29 -21 -10 -57 -17 -80 -17 -24 0 -68 -7 -98 -15 -30 -8 -87 -15 -126 -15 -50 0 -85 -6 -117 -20 -25 -11 -65 -21 -89 -21 -23 -1 -68 -7 -99 -15 -31 -8 -85 -14 -120 -14 -44 0 -82 -8 -128 -26 -53 -22 -76 -25 -123 -21 -31 3 -74 0 -95 -5 -80 -21 -747 -49 -788 -32 -41 16 -90 70 -114 125 -12 26 -28 53 -38 60 -9 8 -27 39 -41 69 -45 102 -92 168 -142 199 -26 16 -57 43 -69 59 -12 18 -34 33 -53 37 -17 4 -51 25 -75 48 -50 46 -44 45 -281 53 l-163 6 -38 -27 c-25 -16 -63 -30 -107 -37 -38 -6 -85 -22 -104 -34 -19 -13 -50 -29 -68 -35 -89 -31 -179 -98 -316 -236 -169 -170 -222 -234 -239 -286 -9 -27 -29 -63 -45 -81 -16 -19 -43 -69 -61 -112 -18 -44 -36 -89 -41 -102 -24 -55 -123 -62 -230 -14 -39 17 -106 26 -315 43 -304 25 -547 10 -683 -40 -140 -52 -211 -36 -247 54 -11 28 -30 66 -42 85 -11 19 -26 54 -32 76 -6 23 -19 48 -28 55 -9 8 -25 34 -36 58 -10 24 -36 60 -56 80 -20 20 -49 60 -66 89 -45 79 -63 101 -104 122 -21 10 -44 26 -51 35 -8 9 -34 27 -59 40 -25 13 -66 44 -90 69 -29 29 -62 51 -92 61 -26 9 -60 25 -74 37 -16 12 -50 23 -89 28 -62 8 -88 17 -136 51 -26 18 -211 29 -354 21z",
+    outMain: "M3975 7030 c-16 -5 -39 -7 -51 -4 -13 3 -46 -8 -88 -30 -37 -20 -74 -36 -81 -36 -8 0 -23 -13 -34 -29 -12 -16 -43 -43 -69 -59 -69 -43 -140 -117 -153 -162 -7 -21 -29 -56 -50 -76 -32 -32 -39 -45 -39 -78 0 -34 -6 -45 -49 -85 -52 -49 -71 -78 -71 -109 0 -11 -13 -36 -30 -57 -16 -21 -35 -56 -41 -79 -6 -22 -19 -50 -29 -61 -25 -27 -73 -154 -65 -173 3 -9 -10 -48 -30 -87 -20 -39 -40 -95 -44 -125 -5 -30 -18 -73 -30 -95 -11 -21 -21 -54 -21 -72 0 -18 -12 -66 -26 -106 -27 -75 -49 -182 -63 -302 -4 -39 -14 -82 -21 -95 -8 -14 -20 -95 -27 -180 -20 -229 -27 -281 -46 -324 -10 -22 -17 -65 -17 -100 0 -33 -7 -88 -15 -121 -8 -34 -14 -110 -15 -173 0 -69 -5 -122 -12 -135 -42 -76 -47 -699 -7 -852 13 -50 25 -138 38 -278 7 -75 16 -121 30 -148 33 -63 20 -90 -48 -103 -18 -3 -51 -22 -72 -41 -22 -19 -45 -35 -52 -35 -75 -1 -474 -367 -496 -455 -6 -24 -21 -56 -34 -72 -29 -34 -66 -145 -65 -194 0 -20 -10 -55 -22 -79 -24 -46 -24 -37 0 -200 12 -79 57 -219 84 -260 13 -19 33 -51 44 -70 12 -19 72 -85 134 -147 l113 -112 90 -36 c144 -58 186 -65 420 -65 147 0 231 5 280 15 38 8 83 15 98 15 16 0 41 8 55 19 16 11 53 20 91 24 50 4 73 12 108 37 34 25 60 34 113 41 46 5 82 17 107 33 21 14 53 31 72 37 41 15 157 83 191 114 14 12 61 43 105 70 44 26 110 76 147 111 74 72 94 77 198 49 30 -8 73 -15 95 -15 22 0 62 -9 90 -19 65 -25 165 -42 290 -50 55 -3 106 -10 114 -15 7 -5 34 -10 60 -12 250 -19 331 -22 494 -23 139 -1 203 -5 242 -17 l54 -15 52 15 c42 13 106 16 304 16 l252 0 20 -22 c12 -14 23 -42 26 -70 3 -31 14 -61 31 -83 15 -19 32 -50 38 -68 6 -17 23 -45 37 -62 15 -16 43 -61 62 -99 23 -47 44 -75 63 -85 16 -9 46 -31 66 -49 21 -17 41 -32 45 -32 5 0 32 -23 61 -50 43 -41 58 -49 78 -44 16 4 39 -2 68 -19 54 -31 144 -61 163 -53 8 3 30 -1 49 -9 57 -24 338 -21 394 5 23 10 79 24 125 30 59 8 94 19 127 40 28 17 66 30 100 34 71 9 301 121 370 181 14 12 44 27 67 34 23 6 55 22 70 35 44 36 159 106 175 106 8 0 36 14 63 31 27 17 85 44 129 61 45 16 104 38 131 49 28 10 72 18 99 19 36 0 60 7 85 24 l36 25 155 6 c91 4 202 1 270 -5 63 -6 158 -15 210 -18 52 -4 101 -11 109 -16 16 -11 127 -24 266 -31 170 -9 271 -39 343 -101 21 -18 58 -37 83 -44 24 -6 55 -22 69 -35 14 -12 48 -30 77 -39 28 -10 57 -23 63 -31 18 -21 136 -65 177 -65 20 0 44 -6 52 -14 26 -23 119 -56 158 -56 20 0 44 -6 52 -14 26 -24 123 -56 167 -56 23 0 63 -9 89 -21 29 -13 85 -24 148 -30 156 -14 239 -26 275 -39 19 -7 56 -10 84 -8 29 3 75 -1 106 -9 107 -28 447 -6 512 33 26 16 58 23 125 27 63 4 109 13 153 30 34 14 104 32 156 41 66 10 104 22 131 40 20 14 51 30 69 34 17 5 48 21 69 35 21 14 54 31 74 38 20 6 57 25 82 40 25 16 51 29 59 29 17 0 121 62 177 106 22 17 76 53 120 80 55 34 114 85 196 169 165 170 176 184 284 342 19 28 39 54 44 58 5 3 17 29 25 58 9 30 25 62 36 72 11 10 27 41 35 69 8 27 24 59 34 70 26 28 61 123 61 166 0 32 10 68 61 220 10 30 16 65 13 76 -3 12 2 38 10 59 13 30 16 80 16 264 l0 226 -21 45 c-15 32 -24 78 -29 158 -6 87 -13 120 -29 145 -22 35 -30 50 -60 117 -11 25 -27 56 -35 70 -8 14 -24 45 -36 70 -11 25 -27 56 -35 70 -8 14 -22 41 -30 60 -27 61 -82 131 -179 230 -100 100 -116 126 -116 192 0 25 -8 51 -22 71 -17 24 -25 53 -30 112 -16 181 -24 224 -43 245 -13 15 -21 43 -26 89 -4 52 -13 78 -36 112 -21 31 -33 64 -40 114 -8 49 -20 86 -42 120 -17 27 -31 56 -31 64 0 9 -14 36 -30 61 -16 25 -35 61 -41 80 -14 41 -52 106 -94 159 -17 21 -51 71 -75 112 -24 41 -58 92 -75 114 -17 22 -48 68 -69 102 -21 35 -46 65 -59 69 -12 4 -72 56 -133 115 -62 60 -116 109 -120 109 -5 0 -39 29 -76 64 -50 47 -79 66 -113 75 -32 8 -61 26 -98 62 -54 53 -84 72 -129 83 -14 3 -39 17 -55 30 -15 12 -51 31 -79 40 -29 9 -59 25 -68 35 -21 23 -142 65 -163 57 -9 -4 -32 3 -51 15 -53 31 -133 59 -169 59 -17 0 -49 10 -70 22 -68 41 -123 55 -191 50 -49 -3 -73 0 -113 17 l-51 22 -231 -6 c-128 -3 -262 -5 -299 -5 -36 0 -79 -5 -95 -11 -36 -14 -123 -27 -308 -45 -241 -23 -288 -30 -327 -47 -22 -10 -63 -17 -100 -17 -35 0 -90 -7 -123 -15 -33 -8 -80 -15 -105 -15 -25 0 -65 -9 -89 -20 -25 -12 -65 -20 -95 -20 -28 0 -78 -5 -111 -11 -33 -6 -89 -14 -125 -18 -36 -5 -79 -15 -95 -23 -20 -10 -75 -17 -160 -21 -71 -3 -146 -11 -165 -17 -19 -5 -85 -10 -146 -10 -77 0 -123 -5 -147 -15 -28 -11 -78 -15 -209 -15 l-172 0 -49 53 c-27 28 -58 72 -68 96 -11 24 -33 59 -48 77 -16 18 -33 43 -37 56 -13 42 -88 160 -113 177 -13 9 -44 35 -70 58 -26 23 -60 45 -76 48 -17 4 -48 25 -70 45 -46 44 -53 45 -305 59 l-155 9 -39 -25 c-24 -16 -62 -28 -101 -33 -60 -7 -94 -19 -125 -45 -8 -6 -35 -19 -60 -28 -25 -10 -70 -34 -101 -55 -31 -20 -76 -50 -100 -67 -59 -39 -197 -173 -216 -209 -8 -16 -43 -59 -78 -96 -43 -46 -64 -77 -69 -103 -4 -20 -22 -54 -41 -77 -19 -23 -37 -58 -41 -78 -4 -20 -12 -44 -19 -52 -7 -8 -24 -40 -38 -71 -31 -71 -33 -71 -158 -43 -57 13 -126 23 -152 24 -28 0 -65 9 -90 21 l-42 22 -315 1 -315 1 -95 -34 c-173 -61 -263 -50 -290 36 -7 21 -23 56 -37 77 -14 22 -28 58 -30 80 -4 28 -16 52 -38 76 -18 19 -35 47 -39 62 -3 15 -22 42 -41 59 -19 18 -55 64 -79 103 -47 75 -148 166 -215 193 -20 8 -58 37 -86 63 -55 54 -145 96 -279 131 -43 11 -90 28 -104 37 -18 12 -58 19 -127 24 -55 3 -118 9 -140 12 -22 3 -53 1 -70 -4z m203 -389 c23 -5 59 -20 80 -34 20 -14 55 -30 78 -36 22 -6 49 -20 59 -31 10 -11 41 -27 68 -35 48 -14 106 -60 227 -179 72 -70 149 -185 176 -259 7 -21 23 -52 36 -69 12 -17 25 -53 29 -80 6 -37 25 -75 74 -148 79 -117 76 -115 140 -125 106 -18 356 3 388 32 37 35 63 43 130 43 35 0 86 7 113 15 63 19 214 19 277 0 29 -9 88 -14 145 -14 107 0 164 -10 234 -41 26 -11 83 -25 128 -31 45 -5 115 -23 156 -39 94 -38 116 -37 184 3 43 26 58 42 70 74 9 23 25 52 37 65 23 25 53 119 53 166 0 16 9 41 20 55 11 14 27 45 36 69 8 23 23 52 33 63 10 11 42 59 70 106 64 107 216 254 306 295 22 10 53 29 68 41 15 12 44 25 65 28 20 3 67 21 103 40 59 31 76 35 140 35 78 0 83 -2 170 -68 68 -52 219 -260 219 -302 0 -9 11 -31 25 -50 14 -19 34 -59 46 -89 11 -31 26 -63 34 -71 30 -35 55 -101 55 -148 0 -35 6 -57 24 -80 16 -22 26 -53 30 -96 5 -45 16 -75 37 -107 16 -24 29 -48 29 -54 0 -5 14 -38 32 -72 47 -93 117 -120 218 -85 l55 19 37 74 c44 86 47 121 13 171 -14 21 -29 62 -35 102 -6 36 -15 78 -21 93 -26 70 24 105 150 103 121 -2 513 19 545 30 16 6 46 10 67 10 20 0 61 9 91 20 35 13 102 23 198 30 214 16 242 20 275 44 25 18 50 22 155 28 190 10 241 18 273 42 24 18 49 22 150 28 141 7 259 22 278 34 51 32 643 56 794 33 39 -6 91 -12 117 -14 28 -2 60 -12 77 -24 42 -30 106 -51 156 -51 29 0 47 -6 59 -19 23 -26 99 -51 151 -51 29 0 47 -6 60 -20 10 -11 42 -27 71 -36 41 -12 63 -26 96 -63 46 -51 93 -81 127 -81 11 0 32 -11 47 -25 15 -14 51 -32 80 -42 48 -15 70 -34 221 -188 92 -94 178 -186 190 -205 53 -83 92 -136 112 -154 11 -11 21 -27 21 -37 0 -9 16 -36 35 -59 19 -23 35 -48 35 -55 0 -7 15 -33 33 -57 89 -121 100 -140 104 -192 6 -77 10 -90 41 -129 24 -29 31 -51 36 -107 6 -55 13 -77 34 -102 24 -28 28 -43 34 -127 4 -68 14 -116 34 -166 16 -42 30 -102 34 -150 5 -65 12 -89 38 -129 17 -27 37 -65 43 -84 21 -62 42 -90 214 -280 41 -46 75 -89 75 -96 0 -7 9 -21 20 -31 11 -10 28 -41 39 -70 11 -29 31 -69 45 -89 15 -23 27 -58 31 -94 4 -31 20 -90 36 -130 l29 -74 0 -240 0 -241 -41 -121 c-23 -67 -42 -142 -44 -168 -1 -29 -10 -57 -24 -74 -11 -14 -26 -45 -32 -67 -7 -25 -27 -56 -54 -83 -40 -38 -43 -46 -38 -77 4 -29 1 -40 -20 -59 -95 -88 -151 -145 -171 -174 -12 -18 -35 -43 -49 -55 -15 -11 -37 -39 -48 -61 -11 -22 -34 -47 -51 -56 -17 -9 -63 -46 -102 -81 -80 -72 -192 -147 -251 -169 -22 -9 -55 -26 -73 -40 -20 -14 -55 -27 -87 -31 -32 -5 -66 -17 -87 -32 -18 -14 -59 -31 -91 -38 -33 -7 -71 -24 -89 -39 -28 -24 -43 -28 -127 -33 -72 -5 -115 -14 -171 -37 l-76 -30 -154 -7 c-89 -4 -249 -2 -375 5 l-220 11 -55 25 c-35 16 -80 27 -123 30 -38 2 -77 9 -87 14 -10 6 -35 10 -55 10 -24 0 -47 8 -65 24 -21 17 -46 25 -96 30 -51 5 -77 14 -102 33 -25 18 -53 28 -108 34 -58 8 -85 17 -115 39 -22 16 -55 32 -72 35 -18 4 -43 17 -57 30 -14 12 -48 30 -75 39 -36 12 -67 32 -105 72 -41 41 -68 59 -106 70 -68 20 -378 315 -395 376 -5 21 -28 58 -49 84 -22 25 -40 53 -40 63 0 9 -11 32 -25 51 -13 18 -30 49 -36 69 -7 20 -24 54 -40 76 -19 28 -29 58 -34 102 -5 45 -15 75 -37 109 l-31 46 7 141 6 141 27 34 c43 56 160 172 174 172 8 0 39 16 71 35 62 39 166 55 260 41 71 -11 251 -159 279 -230 7 -17 21 -44 32 -59 10 -15 27 -51 38 -79 10 -28 28 -61 39 -73 14 -15 24 -45 30 -85 5 -34 10 -64 12 -65 171 -182 255 -257 304 -271 28 -8 60 -24 69 -34 10 -11 41 -27 69 -35 27 -8 59 -24 71 -35 26 -25 127 -60 172 -60 19 0 47 -10 63 -22 18 -13 55 -25 92 -30 35 -5 90 -13 123 -17 33 -5 87 -18 119 -30 l60 -22 195 5 c236 6 312 15 341 41 15 13 43 21 91 26 55 5 79 12 112 36 29 21 59 32 96 36 40 5 62 14 82 33 29 28 70 54 150 98 57 31 166 157 175 202 3 18 22 48 45 70 34 34 39 44 39 85 0 31 8 61 21 84 17 28 23 59 27 129 6 118 -11 180 -84 303 l-55 92 -50 16 -50 17 -61 -18 c-48 -15 -66 -26 -85 -54 -13 -19 -35 -50 -48 -69 -37 -50 -34 -65 21 -150 24 -36 37 -137 25 -193 -13 -58 -185 -258 -222 -258 -9 0 -34 -12 -55 -27 -92 -62 -309 -127 -419 -125 -135 3 -262 12 -312 22 -32 7 -83 10 -114 6 -48 -5 -61 -2 -84 15 -37 30 -118 59 -164 59 -23 0 -48 8 -64 21 -15 11 -46 27 -71 35 -24 8 -52 24 -62 35 -10 11 -41 26 -70 35 -72 21 -150 114 -189 225 -9 24 -22 51 -31 60 -8 9 -24 40 -35 69 -11 29 -31 67 -44 85 -15 18 -25 45 -25 64 0 50 -20 78 -127 182 -67 66 -110 99 -131 104 -18 4 -45 17 -60 30 -15 12 -47 29 -72 36 -25 7 -56 20 -70 28 -19 13 -64 17 -218 19 l-194 4 -36 -25 c-25 -16 -59 -26 -102 -30 -42 -5 -76 -15 -100 -31 -19 -13 -51 -33 -71 -44 -33 -20 -76 -64 -171 -175 -20 -23 -40 -56 -44 -72 -4 -17 -17 -43 -30 -58 -29 -35 -66 -151 -58 -182 3 -12 -1 -36 -9 -51 -11 -21 -16 -72 -18 -179 l-4 -150 23 -31 c16 -21 26 -53 32 -98 6 -47 16 -79 35 -106 18 -26 29 -59 35 -103 9 -71 48 -146 140 -267 79 -104 89 -147 44 -195 -30 -33 -79 -32 -156 4 -56 25 -231 32 -283 12 -20 -8 -77 -11 -170 -9 l-140 3 -29 -22 c-16 -13 -41 -23 -56 -23 -15 0 -49 -7 -76 -15 -27 -8 -66 -15 -87 -15 -22 0 -51 -8 -65 -18 -15 -11 -42 -24 -60 -30 -18 -6 -45 -20 -61 -31 -15 -11 -49 -28 -77 -39 -27 -10 -67 -31 -88 -45 -21 -15 -47 -27 -56 -27 -9 0 -35 -12 -56 -26 -21 -15 -56 -33 -78 -41 -22 -7 -61 -27 -86 -43 -26 -17 -53 -30 -60 -30 -16 0 -111 -53 -178 -101 -36 -25 -69 -39 -102 -44 -27 -4 -60 -15 -72 -25 -47 -36 -108 -60 -153 -60 -34 0 -55 -7 -79 -25 l-33 -25 -165 0 -165 0 -44 30 c-24 16 -61 35 -83 41 -106 29 -297 312 -299 444 0 45 40 134 81 178 15 15 33 47 42 69 10 29 29 52 60 74 25 18 65 50 90 72 25 22 70 52 100 66 30 14 62 30 70 35 8 5 33 18 55 29 22 10 58 28 80 40 22 12 60 30 85 41 25 12 59 32 75 45 l30 24 -2 75 c-1 86 -10 106 -59 143 -72 55 -242 42 -343 -26 -28 -19 -57 -30 -78 -30 -36 0 -103 -26 -103 -40 0 -4 -44 -34 -97 -66 -140 -85 -327 -272 -355 -355 -21 -62 -63 -108 -101 -110 -95 -5 -125 -9 -147 -17 -14 -5 -101 -7 -194 -5 l-168 4 -63 -22 -62 -23 -54 21 -54 21 -161 -6 c-111 -3 -172 -1 -195 7 -19 6 -106 14 -194 17 -88 2 -176 9 -195 14 -19 6 -54 10 -78 10 -24 0 -61 9 -84 21 -23 12 -76 25 -122 30 -171 19 -214 27 -242 42 -36 20 -144 47 -189 47 -19 0 -37 5 -41 11 -13 21 -109 59 -152 59 -28 0 -55 8 -80 24 -20 13 -53 29 -73 35 -19 6 -53 29 -74 51 -33 34 -45 40 -80 40 -35 0 -46 6 -91 52 -76 80 -151 136 -195 148 -35 10 -46 21 -89 88 -27 42 -76 109 -109 147 -81 93 -85 101 -100 165 -6 30 -24 74 -40 97 -18 27 -30 61 -34 96 -4 30 -16 76 -28 102 -12 26 -22 64 -24 84 -2 20 -8 90 -14 156 -13 149 -13 472 1 665 5 80 11 183 12 230 2 62 9 97 24 130 14 28 22 65 22 100 0 30 7 86 15 125 8 38 15 105 15 148 0 60 5 87 22 120 17 34 22 68 28 187 6 122 12 156 34 215 26 68 41 138 54 265 5 42 15 76 29 95 25 34 57 140 48 155 -4 6 4 27 17 48 34 54 66 135 93 236 20 75 31 97 65 131 33 33 40 48 40 79 0 34 7 44 54 88 44 40 57 59 66 98 6 27 20 56 31 66 11 10 29 33 40 51 66 106 208 161 347 134z m-1134 -4292 c14 -11 33 -33 40 -47 8 -15 87 -99 175 -187 148 -146 198 -187 301 -244 19 -10 44 -28 54 -40 11 -12 38 -26 60 -32 23 -6 61 -24 85 -40 25 -16 52 -29 62 -29 33 0 73 -44 66 -72 -7 -27 -108 -93 -175 -116 -19 -7 -49 -25 -67 -40 -19 -17 -50 -32 -74 -36 -24 -3 -54 -15 -69 -26 -47 -34 -202 -91 -296 -108 -110 -21 -380 -22 -476 -4 -110 22 -220 100 -248 175 -12 30 -32 70 -45 90 -49 72 -47 231 4 304 16 23 29 46 29 51 0 6 17 32 38 59 20 26 45 60 55 76 10 15 37 41 60 57 23 16 49 36 57 43 8 8 33 26 55 39 22 14 47 33 55 43 8 9 37 28 65 42 27 13 66 33 85 43 45 25 71 25 104 -1z",
+    eyeL: "M5070 3576 c-84 -53 -148 -97 -196 -138 -90 -76 -244 -86 -327 -23 -25 19 -54 35 -65 35 -27 0 -108 57 -138 96 -50 65 -147 72 -236 17 -68 -42 -74 -51 -84 -121 l-6 -51 42 -66 c60 -96 203 -232 258 -246 23 -6 58 -24 77 -39 l34 -27 118 -7 c65 -3 177 -2 249 2 l131 9 64 38 c35 21 93 67 129 101 36 35 77 68 93 73 15 6 32 23 38 38 6 16 25 43 42 61 28 29 32 39 31 90 -1 78 -10 109 -34 117 -11 3 -38 22 -61 41 -53 44 -88 44 -159 0z",
+    eyeR: "M7335 3567 c-73 -43 -101 -64 -180 -129 -75 -61 -228 -86 -297 -48 -18 10 -64 34 -103 53 -39 19 -93 56 -121 85 -41 40 -62 52 -106 62 l-55 13 -67 -38 c-75 -42 -82 -51 -91 -121 -9 -68 26 -127 153 -256 80 -81 102 -98 141 -108 25 -6 59 -23 74 -38 l28 -27 202 -7 c111 -4 225 -4 252 -1 64 7 157 63 242 143 35 33 74 66 88 72 14 6 36 31 50 55 14 23 30 43 34 43 17 0 34 62 32 117 -1 76 -6 88 -44 112 -18 12 -45 30 -62 41 -47 31 -91 25 -170 -23z",
+    nose: "M5730 2681 c-118 -6 -140 -13 -176 -53 -49 -53 -39 -108 29 -155 l40 -28 131 -3 c174 -5 196 2 236 76 30 56 34 102 8 102 -6 0 -32 13 -57 29 -58 37 -70 39 -211 32z",
+  };
+  // shared trace transform (potrace y-flip) — maps the path data into the 1744x720 frame
+  const TT = 'transform="translate(0,720) scale(0.1,-0.1)"';
+
+  /* ---- palette: per-colour fills (real-art anchored) ----
+     fur   = the main body (recolours the traced silhouette)
+     dark  = inner-ears / haunch stripes / brow-heart (a deeper shade of fur)
+     belly = the soft lighter chest/muzzle patch
+     cheek = the blush                                              */
   const PALETTE = [
-    { name: "Blossom",  fur: "#FBB6CE", dark: "#F48FB1", belly: "#FFE3EE", ear: "#F9A8C8", cheek: "#F2789F", paw: "#FFD4E4" },
-    { name: "Sky",      fur: "#A9D8FF", dark: "#7CBFF5", belly: "#E2F2FF", ear: "#8FC9FB", cheek: "#5BA8E8", paw: "#CDE9FF" },
-    { name: "Mint",     fur: "#A7E8CC", dark: "#73D3AA", belly: "#E0F8EE", ear: "#8FDFBC", cheek: "#46BE92", paw: "#C9F2E0" },
-    { name: "Butter",   fur: "#FFDD8A", dark: "#F5C45A", belly: "#FFF1C9", ear: "#FFD473", cheek: "#EBA52E", paw: "#FFE9AE" },
-    { name: "Lavender", fur: "#D2C2FF", dark: "#B49FF2", belly: "#EEE7FF", ear: "#C3AEFF", cheek: "#8E6BE8", paw: "#E1D6FF" },
-    { name: "Cocoa",    fur: "#D8A87A", dark: "#BD8857", belly: "#F0DCC6", ear: "#CD9A6C", cheek: "#9B6A42", paw: "#E6C9A8" },
-    { name: "Cloud",    fur: "#EEF1F7", dark: "#CDD4E2", belly: "#FBFCFF", ear: "#DCE2EE", cheek: "#F2A6BD", paw: "#F3F5FA" },
-    { name: "Shadow",   fur: "#6E6680", dark: "#544D63", belly: "#9C95AC", ear: "#7E7690", cheek: "#F48FB1", paw: "#857D97" },
+    { name: "Blossom",  fur: "#F9D6EE", dark: "#EF9BDA", belly: "#FEF5FB", cheek: "#EE7FC0" }, // pink (default)
+    { name: "Sunset",   fur: "#E79A41", dark: "#CE7E2A", belly: "#F6D7AE", cheek: "#E8632F" }, // orange (corgi anchor)
+    { name: "Ink",      fur: "#4F4A57", dark: "#6B6575", belly: "#827C8C", cheek: "#EE7FC0" }, // black (warm grey)
+    { name: "Sunbeam",  fur: "#F1D86D", dark: "#E0C047", belly: "#FBF1C4", cheek: "#EFA84E" }, // yellow
+    { name: "Meadow",   fur: "#A9C173", dark: "#8BA653", belly: "#E0EAC6", cheek: "#D88BC0" }, // olive
+    { name: "Sky",      fur: "#A6CADC", dark: "#82B0C8", belly: "#DCEDF4", cheek: "#EE7FC0" }, // blue
+    { name: "Iris",     fur: "#C39AE0", dark: "#A87BCC", belly: "#EBDDF6", cheek: "#E07BC4" }, // purple
+    { name: "Bubblegum",fur: "#E797D2", dark: "#D070B8", belly: "#F8E0F1", cheek: "#E0588F" }, // magenta
+    { name: "Pebble",   fur: "#B7B7B7", dark: "#999999", belly: "#E2E2E2", cheek: "#EE9CBE" }, // gray
   ];
 
-  // ---- the iconic heart marking ----
-  const heart = (cx, cy, s, fill) =>
-    `<path transform="translate(${cx},${cy}) scale(${s})"
-       d="M0 2.4 C-1.6 -0.4 -5 -0.2 -5 2.6 C-5 5 -2 6.6 0 8.4 C2 6.6 5 5 5 2.6 C5 -0.2 1.6 -0.4 0 2.4 Z"
-       fill="${fill}" stroke="${OUT}" stroke-width="1.1" stroke-linejoin="round"/>`;
-
-  /* Upright sitting cat. eyesClosed → content/blink. Faces right (flip with scaleX).
-     Built to the real FigPal language: one continuous chunky rounded silhouette,
-     rounded ear tips, flat pastel fill, lighter belly, soft stripe dabs, blush. */
-  function svgUpright(c, eyesClosed) {
-    const eyes = eyesClosed
-      ? `<path d="M35 41.5 q4.2 4 8.4 0" fill="none" stroke="${OUT}" stroke-width="2.8" stroke-linecap="round"/>
-         <path d="M56.6 41.5 q4.2 4 8.4 0" fill="none" stroke="${OUT}" stroke-width="2.8" stroke-linecap="round"/>`
-      : `<ellipse cx="39.4" cy="41.5" rx="3.5" ry="4.4" fill="${OUT}"/><circle cx="40.7" cy="39.7" r="1.25" fill="#fff"/>
-         <ellipse cx="60.6" cy="41.5" rx="3.5" ry="4.4" fill="${OUT}"/><circle cx="61.9" cy="39.7" r="1.25" fill="#fff"/>`;
-    return `
-    <g stroke="${OUT}" stroke-width="${SW}" stroke-linejoin="round" stroke-linecap="round">
-      <!-- tail: thick curl resting beside the haunch -->
-      <path d="M71 82 C90 84 92 60 78 56 C70 53.6 64.5 60 69 63.5 C76 66 75.5 75 67.5 75" fill="${c.fur}"/>
-      <!-- body: rounded sitting loaf -->
-      <path d="M26 85 C21.5 64 31 52 50 52 C69 52 78.5 64 74 85 C66.5 90.5 33.5 90.5 26 85 Z" fill="${c.fur}"/>
-      <!-- ears: rounded triangles -->
-      <path d="M33 24 C30 14 28.5 11 31 10 C33.5 9 41 15 45.5 20.5 Z" fill="${c.fur}"/>
-      <path d="M67 24 C70 14 71.5 11 69 10 C66.5 9 59 15 54.5 20.5 Z" fill="${c.fur}"/>
-      <!-- head -->
-      <circle cx="50" cy="40" r="22.5" fill="${c.fur}"/>
-    </g>
-    <!-- belly (lighter), tucked inside body -->
-    <path d="M41 87 C37 75 41 65 50 65 C59 65 63 75 59 87 Z" fill="${c.belly}" stroke="none"/>
-    <!-- feet -->
-    <g stroke="${OUT}" stroke-width="${SW}" stroke-linejoin="round" stroke-linecap="round">
-      <ellipse cx="39" cy="85.5" rx="8" ry="5.4" fill="${c.paw}"/>
-      <ellipse cx="61" cy="85.5" rx="8" ry="5.4" fill="${c.paw}"/>
-    </g>
-    <!-- inner ears -->
-    <path d="M34 22 C32 16 31 13.5 32.4 13 C34 12.5 39 16 42 20 Z" fill="${c.ear}"/>
-    <path d="M66 22 C68 16 69 13.5 67.6 13 C66 12.5 61 16 58 20 Z" fill="${c.ear}"/>
-    <!-- soft stripe dabs on the crown -->
-    <g fill="${c.dark}" stroke="none" opacity=".85">
-      <path d="M50 19.5 C52.3 21 52.3 25.5 50 28.5 C47.7 25.5 47.7 21 50 19.5 Z"/>
-      <path d="M41 21 C43 22.4 43 26 41 28.5 C39 26 39 22.4 41 21 Z"/>
-      <path d="M59 21 C61 22.4 61 26 59 28.5 C57 26 57 22.4 59 21 Z"/>
-    </g>
-    <!-- heart marking on the brow -->
-    ${heart(50, 26.5, 0.82, c.dark)}
-    <!-- cheeks -->
-    <ellipse cx="34.5" cy="47.5" rx="4.6" ry="3" fill="${c.cheek}" opacity=".6"/>
-    <ellipse cx="65.5" cy="47.5" rx="4.6" ry="3" fill="${c.cheek}" opacity=".6"/>
-    <!-- eyes -->
-    ${eyes}
-    <!-- nose + mouth (w-smile) -->
-    <path d="M47.4 45.4 L52.6 45.4 L50 48.6 Z" fill="${OUT}"/>
-    <path d="M50 48.6 q-3.8 3.6 -7.2 1.4 M50 48.6 q3.8 3.6 7.2 1.4" fill="none" stroke="${OUT}" stroke-width="2.1" stroke-linecap="round"/>`;
+  /* ---- hats (optional, selectable). Drawn in the 1744x720 trace frame, sitting
+     on the cat's head (the head is low-left in the resting pose). All are loose
+     doodles matching the real FigPal hat set; outline = OUT, stroke chunky. */
+  const HATS = [
+    { id: "none",   label: "None" },
+    { id: "tophat", label: "Top hat" },
+    { id: "wizard", label: "Wizard" },
+    { id: "beanie", label: "Beanie" },
+    { id: "party",  label: "Party" },
+  ];
+  function hatSVG(id) {
+    if (!id || id === "none") return "";
+    const S = 'stroke="' + OUT + '" stroke-width="28" stroke-linejoin="round" stroke-linecap="round"';
+    // The head crown sits low-left in the resting pose: ears ~x300 & ~x560, crown
+    // centred ~x430, top-of-head ~y200. Hats perch centred on x430, brim hugging y230.
+    if (id === "tophat") {
+      return '<g ' + S + '>' +
+        '<path d="M236 250 Q236 232 430 228 Q624 232 624 250 Q624 270 430 274 Q236 270 236 250 Z" fill="#2A2730"/>' +
+        '<path d="M300 250 Q296 120 312 48 Q430 22 548 50 Q564 122 560 250 Q430 266 300 250 Z" fill="#2A2730"/>' +
+        '<rect x="302" y="138" width="258" height="50" rx="8" fill="#D24A3F" stroke="none"/>' +
+        '</g>';
+    }
+    if (id === "wizard") {
+      return '<g ' + S + '>' +
+        '<path d="M236 258 Q236 238 430 234 Q624 238 624 258 Q624 278 430 282 Q236 278 236 258 Z" fill="#6E4FAE"/>' +
+        '<path d="M430 14 Q510 140 572 252 Q430 268 288 252 Q350 140 430 14 Z" fill="#7B5CC0"/>' +
+        '<path d="M404 104 l16 32 34 6 -25 24 6 35 -31 -17 -31 17 6 -35 -25 -24 34 -6z" fill="#F1D86D" stroke="none"/>' +
+        '</g>';
+    }
+    if (id === "beanie") {
+      return '<g ' + S + '>' +
+        '<path d="M278 222 Q286 86 430 82 Q574 86 582 222 Q430 238 278 222 Z" fill="#C0504A"/>' +
+        '<path d="M252 256 Q252 208 430 204 Q608 208 608 256 Q608 284 430 286 Q252 284 252 256 Z" fill="#E8E2DA"/>' +
+        '<circle cx="430" cy="64" r="30" fill="#E8E2DA"/>' +
+        '</g>';
+    }
+    if (id === "party") {
+      return '<g ' + S + '>' +
+        '<path d="M430 8 Q516 150 574 256 Q430 272 286 256 Q344 150 430 8 Z" fill="#C36ED0"/>' +
+        '<path d="M384 118 q46 14 92 0 M360 178 q70 18 140 0" fill="none" stroke="#F1D86D" stroke-width="22"/>' +
+        '<circle cx="430" cy="10" r="28" fill="#F1D86D"/>' +
+        '</g>';
+    }
+    return "";
   }
 
-  /* Lying / sleeping cat — THE iconic FigPal pose (ref 04): one long rounded loaf,
-     head resting low on the left atop tucked front paws, two ears up top, a thick
-     tail curling back over the right haunch, soft stripe rings, content closed eyes,
-     big blush, heart on the brow. Faces left. */
-  function svgSleep(c) {
-    return `
-    <g stroke="${OUT}" stroke-width="${SW}" stroke-linejoin="round" stroke-linecap="round">
-      <!-- thick tail curling up and over the right haunch -->
-      <path d="M70 67 C84 71 88 47 76 45 C66.5 43.2 63 53 70 55 C77 57 75 64 67 62.5" fill="${c.fur}"/>
-      <!-- resting body loaf (head bump on the left, rounded haunch on the right) -->
-      <path d="M22 70
-               C16 64 17 50 30 47
-               C40 45 47 49 50 55
-               C53 48.5 61 45.5 71 46.5
-               C84 47.5 87 62 79 69
-               C72 75 57 75 48 73
-               C40 75 28 75 22 70 Z" fill="${c.fur}"/>
-      <!-- ears on top of the resting head -->
-      <path d="M24 52 C21 44 20 41 22.5 40.5 C25 40 30 44.5 32.5 49 Z" fill="${c.fur}"/>
-      <path d="M44 52 C46.5 44.5 47.5 41.5 45 41 C42.5 40.5 38 44.5 36 49 Z" fill="${c.fur}"/>
-      <!-- tucked front paws under the chin -->
-      <ellipse cx="25" cy="72.5" rx="6.8" ry="4.4" fill="${c.paw}"/>
-      <ellipse cx="40" cy="73" rx="6.8" ry="4.4" fill="${c.paw}"/>
-    </g>
-    <!-- inner ears -->
-    <path d="M24.6 49 C22.6 43.5 22 41.5 23.6 41.2 C25.4 41 29 44 31 48 Z" fill="${c.ear}"/>
-    <path d="M43.4 49 C45.4 43.7 46 41.6 44.4 41.3 C42.6 41 39 44 37 48 Z" fill="${c.ear}"/>
-    <!-- soft stripe rings on the haunch -->
-    <g fill="none" stroke="${c.dark}" stroke-width="3.4" stroke-linecap="round" opacity=".8">
-      <path d="M58 50 C55 55 55 61 58 66"/>
-      <path d="M66 49.5 C63.5 54.5 63.5 60.5 66 65.5"/>
-      <path d="M74 50.5 C72 54.5 72 59.5 74 63.5"/>
-    </g>
-    <!-- heart marking on the brow -->
-    ${heart(34, 52, 0.6, c.dark)}
-    <!-- content closed eyes (gentle downward arcs) -->
-    <path d="M25.5 60 q4 3.4 8 0" fill="none" stroke="${OUT}" stroke-width="2.7" stroke-linecap="round"/>
-    <path d="M37 60 q4 3.4 8 0" fill="none" stroke="${OUT}" stroke-width="2.7" stroke-linecap="round"/>
-    <!-- cheeks + tiny nose -->
-    <ellipse cx="27" cy="65" rx="4" ry="2.6" fill="${c.cheek}" opacity=".6"/>
-    <ellipse cx="43" cy="65" rx="4" ry="2.6" fill="${c.cheek}" opacity=".6"/>
-    <path d="M32 65.6 L38 65.6 L35 68.6 Z" fill="${OUT}"/>`;
+  /* Build the resting cat in the 1744x720 trace frame.
+     awake → open round eyes (over the muzzle); else the traced sleepy arcs. */
+  let clipSeq = 0;
+  function catBody(c, awake, hat) {
+    const cid = "fpBody" + (++clipSeq);
+    const eyes = awake
+      ? '<g ' + TT + '><path d="' + P.eyeL + '" fill="' + c.fur + '"/><path d="' + P.eyeR + '" fill="' + c.fur + '"/></g>' +
+        '<ellipse cx="460" cy="385" rx="34" ry="40" fill="' + OUT + '"/><circle cx="472" cy="368" r="11" fill="#fff"/>' +
+        '<ellipse cx="660" cy="385" rx="34" ry="40" fill="' + OUT + '"/><circle cx="672" cy="368" r="11" fill="#fff"/>'
+      : '<g ' + TT + '><path d="' + P.eyeL + '" fill="' + OUT + '"/><path d="' + P.eyeR + '" fill="' + OUT + '"/></g>';
+
+    return (
+      // silhouette (fur)
+      '<g ' + TT + '><path d="' + P.sil + '" fill="' + c.fur + '"/></g>' +
+      // recolourable overlays, clipped to the body
+      '<clipPath id="' + cid + '"><g ' + TT + '><path d="' + P.sil + '"/></g></clipPath>' +
+      '<g clip-path="url(#' + cid + ')">' +
+        '<ellipse cx="430" cy="500" rx="180" ry="120" fill="' + c.belly + '" opacity=".6"/>' +
+        '<path d="M298 150 Q345 35 425 110 Q360 130 320 175 Z" fill="' + c.dark + '"/>' +
+        '<path d="M548 150 Q600 35 660 122 Q600 130 565 170 Z" fill="' + c.dark + '"/>' +
+        '<g fill="none" stroke="' + c.dark + '" stroke-width="30" stroke-linecap="round" opacity=".85">' +
+          '<path d="M1070 460 Q1035 530 1070 600"/>' +
+          '<path d="M1145 450 Q1110 525 1145 595"/>' +
+          '<path d="M1218 462 Q1188 525 1218 590"/>' +
+        '</g>' +
+        '<path transform="translate(516,205) scale(6.2)" d="M0 4 C-3 -1 -9 0 -9 5 C-9 9.5 -4 13 0 16 C4 13 9 9.5 9 5 C9 0 3 -1 0 4 Z" fill="' + c.dark + '"/>' +
+        '<ellipse cx="368" cy="432" rx="62" ry="38" fill="' + c.cheek + '" opacity=".5"/>' +
+        '<ellipse cx="602" cy="432" rx="62" ry="38" fill="' + c.cheek + '" opacity=".5"/>' +
+      '</g>' +
+      // outline on top (closed-eye arcs swapped for open when awake)
+      '<g ' + TT + '><path d="' + P.outMain + '" fill="' + OUT + '"/><path d="' + P.nose + '" fill="' + OUT + '"/></g>' +
+      eyes +
+      // hat last, perched on the head
+      hatSVG(hat)
+    );
   }
 
-  /* Build a full <svg> string. state: {pose:'up'|'sleep', eyesClosed:bool} */
+  /* Build a full <svg> string. config: {name, furIdx, hat}. state: {awake:bool}
+     The cat only exists in the resting pose (the iconic FigPal) — there is no
+     separate sitting pose; "awake" just opens the eyes. Faces LEFT (flip scaleX). */
   function svg(config, state) {
     const c = PALETTE[(config && config.furIdx) || 0] || PALETTE[0];
+    const hat = (config && config.hat) || "none";
     state = state || {};
-    const inner = state.pose === "sleep" ? svgSleep(c) : svgUpright(c, !!state.eyesClosed);
-    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" overflow="visible">
-      <ellipse class="fp-shadow" cx="50" cy="91" rx="24" ry="4.6" fill="rgba(60,30,55,.16)"/>
-      ${inner}
-    </svg>`;
+    // The traced art is ~1744 wide x ~720 tall (cat ~ y0..680). We fit it into a
+    // 100x100 viewBox: scale to width, centre vertically, and leave headroom so a
+    // tall hat isn't clipped (viewBox overflow:visible also lets it spill).
+    const scale = 100 / 1744;            // ~0.05734
+    const ty = (100 - 720 * scale) / 2 + 6;   // nudge down a touch; hats overflow up
+    return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" overflow="visible">' +
+      '<ellipse class="fp-shadow" cx="50" cy="84" rx="30" ry="5" fill="rgba(60,30,55,.16)"/>' +
+      '<g transform="translate(0,' + ty.toFixed(2) + ') scale(' + scale.toFixed(5) + ')">' +
+        catBody(c, !!state.awake, hat) +
+      '</g>' +
+    '</svg>';
   }
 
   // ---- config persistence ----
   function loadConfig() {
-    try { return Object.assign({ name: "Pal", furIdx: 0 }, JSON.parse(localStorage.getItem("figpal-config")) || {}); }
-    catch (e) { return { name: "Pal", furIdx: 0 }; }
+    try { return Object.assign({ name: "Pal", furIdx: 0, hat: "none" }, JSON.parse(localStorage.getItem("figpal-config")) || {}); }
+    catch (e) { return { name: "Pal", furIdx: 0, hat: "none" }; }
   }
   function saveConfig(cfg) { try { localStorage.setItem("figpal-config", JSON.stringify(cfg)); } catch (e) {} }
 
@@ -145,66 +163,61 @@
      opts.size (px), opts.start {x,y}. Returns a control handle.
      pointer-events are OFF so it never blocks the UI.
   ---------------------------------------------------------- */
+  const LIVE_SIZE = 48;   // cursor-sized companion (the live pal). Portrait passes its own.
+
   function mount(opts) {
     opts = opts || {};
     const cfg = loadConfig();
-    const size = opts.size || 76;
+    const size = opts.size || LIVE_SIZE;
 
     const el = document.createElement("div");
     el.className = "figpal-companion";
     el.setAttribute("aria-hidden", "true");
     el.style.cssText =
-      `position:fixed;left:0;top:0;width:${size}px;height:${size}px;z-index:2147483600;` +
-      `pointer-events:none;will-change:transform;`;
-    // two stacked sprites; we toggle which is visible by state
+      "position:fixed;left:0;top:0;width:" + size + "px;height:" + size + "px;z-index:2147483600;" +
+      "pointer-events:none;will-change:transform;";
+    // two stacked sprites: resting (sleepy eyes) and awake (open eyes); crossfade between them
     el.innerHTML =
-      `<div class="fp-sprite fp-up" style="opacity:1">${svg(cfg, { pose: "up" })}</div>` +
-      `<div class="fp-sprite fp-up-blink" style="opacity:0">${svg(cfg, { pose: "up", eyesClosed: true })}</div>` +
-      `<div class="fp-sprite fp-sleep" style="opacity:0">${svg(cfg, { pose: "sleep" })}</div>` +
-      `<div class="fp-zzz" aria-hidden="true">z</div>`;
+      '<div class="fp-sprite fp-rest" style="opacity:1">' + svg(cfg, {}) + '</div>' +
+      '<div class="fp-sprite fp-awake" style="opacity:0">' + svg(cfg, { awake: true }) + '</div>' +
+      '<div class="fp-zzz" aria-hidden="true">z</div>';
     document.body.appendChild(el);
 
     // styles (once)
     if (!document.getElementById("figpal-style")) {
       const st = document.createElement("style");
       st.id = "figpal-style";
-      st.textContent = `
-        .figpal-companion .fp-sprite{position:absolute;inset:0;transition:opacity .09s ease}
-        .figpal-companion .fp-sleep{transition:opacity .35s ease}
-        .figpal-companion svg{width:100%;height:100%;display:block;transform-origin:50% 88%}
-        .figpal-companion .fp-shadow{transition:rx .3s,opacity .3s}
-        /* trot: two springy steps per cycle — a small lift + slight squash, gentle tilt */
-        .figpal-companion.walk .fp-up svg{animation:fp-bob .46s ease-in-out infinite}
-        @keyframes fp-bob{
-          0%   {transform:translateY(0)     scaleY(1)    rotate(-1.5deg)}
-          25%  {transform:translateY(-9%)   scaleY(1.03) rotate(0deg)}
-          50%  {transform:translateY(0)     scaleY(.985) rotate(1.5deg)}
-          75%  {transform:translateY(-9%)   scaleY(1.03) rotate(0deg)}
-          100% {transform:translateY(0)     scaleY(1)    rotate(-1.5deg)}
-        }
-        .figpal-companion .fp-zzz{position:absolute;top:-6px;right:-2px;font:700 14px ui-rounded,system-ui,sans-serif;color:#9a8fb0;opacity:0}
-        .figpal-companion.sleep .fp-zzz{animation:fp-zzz 2.4s ease-out infinite}
-        @keyframes fp-zzz{0%{opacity:0;transform:translate(0,4px) scale(.6)}30%{opacity:.9}100%{opacity:0;transform:translate(8px,-16px) scale(1.1)}}
-        .figpal-bubble{position:fixed;z-index:2147483601;pointer-events:none;font-size:18px;opacity:0}
-        .figpal-bubble.go{animation:fp-float 1.1s ease-out forwards}
-        @keyframes fp-float{0%{opacity:0;transform:translateY(0) scale(.4)}25%{opacity:1;transform:translateY(-10px) scale(1)}100%{opacity:0;transform:translateY(-46px) scale(.9)}}
-        @media (prefers-reduced-motion: reduce){
-          .figpal-companion.walk .fp-up svg{animation:none}
-          .figpal-companion.sleep .fp-zzz{animation:none;opacity:.8}
-        }`;
+      st.textContent =
+        ".figpal-companion .fp-sprite{position:absolute;inset:0;transition:opacity .18s ease}" +
+        ".figpal-companion svg{width:100%;height:100%;display:block;overflow:visible;transform-origin:50% 80%}" +
+        ".figpal-companion .fp-shadow{transition:rx .3s,opacity .3s}" +
+        // gentle glide bob while travelling — a soft lift + slight squash, no hard steps (it's a curled cat)
+        ".figpal-companion.walk .fp-rest svg,.figpal-companion.walk .fp-awake svg{animation:fp-glide .9s ease-in-out infinite}" +
+        "@keyframes fp-glide{" +
+        "0%{transform:translateY(0) scaleY(1)}" +
+        "50%{transform:translateY(-7%) scaleY(1.02)}" +
+        "100%{transform:translateY(0) scaleY(1)}}" +
+        ".figpal-companion .fp-zzz{position:absolute;top:-4px;right:-2px;font:700 13px ui-rounded,system-ui,sans-serif;color:#9a8fb0;opacity:0}" +
+        ".figpal-companion.sleep .fp-zzz{animation:fp-zzz 2.6s ease-out infinite}" +
+        "@keyframes fp-zzz{0%{opacity:0;transform:translate(0,4px) scale(.6)}30%{opacity:.9}100%{opacity:0;transform:translate(8px,-16px) scale(1.1)}}" +
+        ".figpal-bubble{position:fixed;z-index:2147483601;pointer-events:none;font-size:16px;opacity:0}" +
+        ".figpal-bubble.go{animation:fp-float 1.1s ease-out forwards}" +
+        "@keyframes fp-float{0%{opacity:0;transform:translateY(0) scale(.4)}25%{opacity:1;transform:translateY(-10px) scale(1)}100%{opacity:0;transform:translateY(-44px) scale(.9)}}" +
+        "@media (prefers-reduced-motion: reduce){" +
+        ".figpal-companion.walk .fp-rest svg,.figpal-companion.walk .fp-awake svg{animation:none}" +
+        ".figpal-companion.sleep .fp-zzz{animation:none;opacity:.8}}";
       document.head.appendChild(st);
     }
 
-    const up = el.querySelector(".fp-up");
-    const blink = el.querySelector(".fp-up-blink");
-    const sleep = el.querySelector(".fp-sleep");
+    const rest = el.querySelector(".fp-rest");
+    const awake = el.querySelector(".fp-awake");
 
     const pos = { x: (opts.start && opts.start.x) || innerWidth * 0.5,
                   y: (opts.start && opts.start.y) || innerHeight * 0.72 };
     const mouse = { x: pos.x, y: pos.y };
     // facing: target ±1 (deadzoned); facingNow eases toward it for a smooth flip.
     let facing = 1, facingNow = 1, walking = false, lastFlip = 0;
-    let lastMove = now(), lastT = now(), raf = 0, blinkUntil = 0, nextBlink = now() + 3000, running = true;
+    let lastMove = now(), lastT = now(), raf = 0, running = true;
 
     function now() { return performance.now(); }
 
@@ -223,19 +236,15 @@
     }
     let nextHeart = now() + 6000;
 
-    // Crossfade between stacked sprites (opacity, not display) so pose changes —
-    // especially sit→sleep — settle gently instead of snapping.
-    let curPose = "up";
+    // Crossfade between the two stacked sprites (resting eyes vs open eyes).
+    let curPose = "rest";
     function setPose(p) {
       if (p === curPose) return;
       curPose = p;
-      const isSleep = p === "sleep";
-      sleep.style.opacity = isSleep ? "1" : "0";
-      up.style.opacity = (p === "up") ? "1" : "0";
-      blink.style.opacity = (p === "blink") ? "1" : "0";
-      // keep all stacked but let the hidden ones ignore layout cost
-      sleep.style.zIndex = isSleep ? "2" : "1";
-      el.classList.toggle("sleep", isSleep);
+      const isSleep = p === "rest" || p === "sleep";
+      rest.style.opacity = (p === "awake") ? "0" : "1";
+      awake.style.opacity = (p === "awake") ? "1" : "0";
+      el.classList.toggle("sleep", p === "sleep");
     }
 
     function frame() {
@@ -246,14 +255,13 @@
       const idle = t - lastMove;
 
       // Target: trail behind & a little below the cursor so it reads as "coming over".
-      // After a short pause, lock the target where it stands so it settles cleanly
-      // instead of creeping (kills the rubber-band wobble).
+      // After a short pause, lock the target so it settles cleanly (no rubber-band wobble).
       let tx, ty;
       if (idle > 650) {
         tx = pos.x; ty = pos.y;
       } else {
-        tx = mouse.x - facing * size * 0.60;
-        ty = mouse.y + size * 0.28;
+        tx = mouse.x - facing * size * 0.62;
+        ty = mouse.y + size * 0.30;
       }
       tx = Math.max(size * 0.5, Math.min(innerWidth - size * 0.5, tx));
       ty = Math.max(size * 0.5, Math.min(innerHeight - size * 0.4, ty));
@@ -262,20 +270,17 @@
       const dist = Math.hypot(dx, dy);
 
       // Time-based exponential ease toward the target (frame-rate independent).
-      const k = 1 - Math.pow(1 - 0.16, dt);   // ~0.16/frame at 60fps
+      const k = 1 - Math.pow(1 - 0.16, dt);
       pos.x += dx * k;
       pos.y += dy * (k * 1.25);
 
-      // Walk hysteresis: only start trotting past a clear distance, and only stop
-      // once truly arrived — prevents on/off vibration at the destination.
+      // Walk hysteresis: only start gliding past a clear distance; only stop once arrived.
       if (!walking && dist > 14) walking = true;
       else if (walking && dist < 4) walking = false;
       el.classList.toggle("walk", walking);
 
-      // Facing follows horizontal motion with a deadzone (ignore micro-jitter) AND a
-      // short commit window (≥320ms between flips) so it can't dither when the cursor
-      // wiggles around a vertical line. facingNow eases quickly toward the target — a
-      // brisk turn-around, kept fast so the scaleX never lingers collapsed at 0.
+      // Facing follows horizontal motion with a deadzone + a short commit window (≥320ms
+      // between flips) so it can't dither. facingNow eases toward the target for a smooth flip.
       const wantFacing = dx > 0 ? 1 : -1;
       if (walking && Math.abs(dx) > 10 && wantFacing !== facing && (t - lastFlip) > 320) {
         facing = wantFacing; lastFlip = t;
@@ -283,22 +288,18 @@
       facingNow += (facing - facingNow) * (1 - Math.pow(1 - 0.34, dt));
       if (Math.abs(facingNow - facing) < 0.02) facingNow = facing;
 
-      // state machine: walk → sit → (blink) → sleep
+      // state machine: travelling → eyes open; settled → resting; long idle → sleep w/ zzz
       if (walking) {
-        setPose("up");
-        blinkUntil = 0; nextBlink = t + 2500 + Math.random() * 3000;
+        setPose("awake");
       } else if (idle > 11000) {
         setPose("sleep");
       } else {
-        // sitting; blink occasionally, drift the odd heart
-        if (t > nextBlink && !blinkUntil) { blinkUntil = t + 160; }
-        if (blinkUntil && t < blinkUntil) setPose("blink");
-        else { if (blinkUntil) { blinkUntil = 0; nextBlink = t + 2500 + Math.random() * 3500; } setPose("up"); }
+        setPose("rest");
         if (t > nextHeart && idle > 1500 && idle < 10000) { heartBubble(); nextHeart = t + 7000 + Math.random() * 6000; }
       }
 
       el.style.transform =
-        `translate(${pos.x - size / 2}px, ${pos.y - size / 2}px) scaleX(${facingNow})`;
+        "translate(" + (pos.x - size / 2) + "px, " + (pos.y - size / 2) + "px) scaleX(" + facingNow + ")";
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
@@ -309,9 +310,8 @@
       // refresh(override) re-skins the live pal; pass a config for instant preview,
       // or omit to re-read whatever was last saved.
       refresh(override) { const ncfg = override || loadConfig();
-        up.innerHTML = svg(ncfg, { pose: "up" });
-        blink.innerHTML = svg(ncfg, { pose: "up", eyesClosed: true });
-        sleep.innerHTML = svg(ncfg, { pose: "sleep" }); },
+        rest.innerHTML = svg(ncfg, {});
+        awake.innerHTML = svg(ncfg, { awake: true }); },
     };
   }
 
@@ -350,5 +350,5 @@
     });
   }
 
-  window.FigPal = { PALETTE, svg, loadConfig, saveConfig, mount, auto, reveal, hide };
+  window.FigPal = { PALETTE, HATS, svg, loadConfig, saveConfig, mount, auto, reveal, hide };
 })();
