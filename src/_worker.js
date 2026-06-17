@@ -349,6 +349,38 @@ async function statusApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Pins API (KV-backed, single key) ---------------------------------------
+// User-pinned prototypes/projects for the sidebar. Whole map under one key ("pins")
+// — one kv.get per session, one kv.put per toggle (same frugal pattern as statuses).
+// Value: { "<path>": { label, href } }. POST { key, label, href, pinned } toggles.
+const PINS_KEY = "pins";
+
+async function pinsApi(request, url, env) {
+  const kv = env.COMMENTS;
+  if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
+
+  if (request.method === "GET") {
+    const raw = await kv.get(PINS_KEY);
+    return jsonResponse({ map: raw ? JSON.parse(raw) : {} });
+  }
+  if (request.method === "POST") {
+    let op;
+    try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const key = clamp(op && op.key, 300);
+    if (!key) return jsonResponse({ error: "bad-input" }, 400);
+    const raw = await kv.get(PINS_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    if (op && op.pinned === false) {
+      delete map[key];
+    } else {
+      map[key] = { label: clamp(op && op.label, 120) || key, href: clamp(op && op.href, 300) || key };
+    }
+    await kv.put(PINS_KEY, JSON.stringify(map));
+    return jsonResponse({ map });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
 // ---- Card display-name overrides (KV-backed, single key) --------------------
 // Same shape & cost profile as the dev-status map: the whole {key: name} map
 // lives under one KV key, so a card-list load is one kv.get and a rename is one
@@ -472,6 +504,17 @@ export default {
         if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
       }
       return statusApi(request, url, env);
+    }
+
+    // Sidebar pins read/write: gated by the site password (cookie) when set.
+    if (url.pathname === "/__pins") {
+      if (expected) {
+        const token = await tokenFor(expected);
+        const cookies = request.headers.get("Cookie") || "";
+        const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
+        if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      return pinsApi(request, url, env);
     }
 
     // Card display-name overrides: gated by the site password (cookie) when set.
