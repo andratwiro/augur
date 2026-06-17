@@ -113,10 +113,10 @@ function injectHead(html, pageUrl, hasOg) {
   const subtitle = title.split(/\s+[—–-]\s+/).slice(1).join(" — ").trim();
   const desc = (dm ? dm[1] : subtitle) || "Clickable design prototype · GoVocal";
   const img = hasOg
-    ? `\n  <meta property="og:image" content="${escAttr(pageUrl + "og.png")}" />` +
+    ? `\n  <meta property="og:image" content="${escAttr(pageUrl + "og.jpg")}" />` +
       `\n  <meta property="og:image:width" content="1200" />` +
       `\n  <meta property="og:image:height" content="630" />` +
-      `\n  <meta name="twitter:image" content="${escAttr(pageUrl + "og.png")}" />`
+      `\n  <meta name="twitter:image" content="${escAttr(pageUrl + "og.jpg")}" />`
     : "";
   const tags =
     `\n  <meta property="og:type" content="website" />` +
@@ -316,7 +316,7 @@ async function copyDir(src, dest, exclude) {
         if (entry.name === "index.html") {
           const rel = path.relative(DIST, dest).split(path.sep).map(encodeURIComponent).join("/");
           const pageUrl = `${SITE_ORIGIN}/${rel}${rel ? "/" : ""}`;
-          const hasOg = await exists(path.join(src, "og.png"));
+          const hasOg = await exists(path.join(src, "og.jpg"));
           html = injectHead(html, pageUrl, hasOg);
         }
         await fs.writeFile(destPath, addonHtml(injectReview(html)), "utf8");

@@ -14,10 +14,12 @@
     "lint": "node scripts/lint-architecture.mjs",
     "shoot": "node scripts/shoot.mjs",
     "shoot:stale": "node scripts/shoot.mjs --stale",
+    "og": "node scripts/og.mjs",
+    "og:stale": "node scripts/og.mjs --stale",
     "comments": "node review-comments.mjs",
     "review": "node scripts/review.mjs",
     "dev": "node scripts/build-index.mjs && node build.js && npx --yes serve dist",
-    "deploy": "set -a && . ./.env.deploy && set +a && node scripts/shoot.mjs --stale && node scripts/build-index.mjs && node build.js && npx wrangler pages deploy dist --project-name govocal-prototypes --branch main"
+    "deploy": "set -a && . ./.env.deploy && set +a && node scripts/shoot.mjs --stale && node scripts/og.mjs --stale && node scripts/build-index.mjs && node build.js && npx wrangler pages deploy dist --project-name govocal-prototypes --branch main"
   },
   "engines": {
     "node": ">=18"

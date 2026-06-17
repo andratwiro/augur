@@ -57,6 +57,9 @@ function isPublicPath(pathname) {
   // prototypes by absolute path, so they must bypass the gate too (else the
   // <script>/<link> fetches the login page instead of the asset).
   if (pathname === "/piti.js" || pathname.startsWith("/fonts/")) return true;
+  // Composed OG/unfurl card for any page — always fetchable so link-preview bots
+  // (Slack, iMessage, Twitter) can load the image even if its folder is gated.
+  if (pathname.endsWith("/og.jpg")) return true;
   return PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname === p.slice(0, -1) || pathname.startsWith(p)
   );
