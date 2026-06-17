@@ -1559,10 +1559,18 @@
     #cb-settings-body .cb-setseg { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--gv-cool-grey-600); margin:18px 0 8px; }
     #cb-settings-body .cb-mcheck { display:flex; gap:10px; align-items:flex-start; padding:7px 0; font-size:13px; color:var(--gv-text-primary); cursor:pointer; }
     #cb-settings-body .cb-mcheck input { accent-color:var(--gv-green-600); margin-top:1px; flex:none; width:16px; height:16px; }
-    /* ── Extra survey (Button/Card view x Primary/Secondary; GoVocal navy / soft-teal) ── */
-    #cb-root .cb-svbtn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; box-sizing:border-box; padding:11px 14px; border-radius:3px; font-weight:700; font-size:14px; text-decoration:none; cursor:pointer; }
-    #cb-root .cb-svbtn--primary { background:var(--gv-bo-primary,#044D6C); color:#fff; border:1px solid var(--gv-bo-primary,#044D6C); }
-    #cb-root .cb-svbtn--secondary { background:var(--gv-teal-50,#e6f3f5); color:var(--gv-teal-500,#147985); border:1px solid transparent; }
+    /* ── Extra survey (Button/Card view x Primary/Secondary) ──────────────────────
+       Real GoVocal buttons (.gv-btn primary / primary-outlined). Both follow the
+       tenant colour: this scope re-points --gv-tenant-primary (BO teal by default)
+       to the city colour so the FO preview reads like the real project. */
+    #cb-root .cb-survey { --gv-tenant-primary: var(--pp-tenant); }
+    #cb-root .cb-survey .gv-btn.full { width:100%; }
+    /* settings: stacked radio groups + per-field language switcher header */
+    #cb-root .cb-radiocol { display:flex; flex-direction:column; gap:2px; }
+    #cb-root .cb-radiocol .gv-radio { margin-bottom:0; }
+    #cb-root .cb-fieldhead { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:18px 0 8px; }
+    #cb-root .cb-fieldhead .gv-bo-cb-settings__rowlabel { margin:0; }
+    #cb-root .cb-fieldhead .gv-bo-multiloc { margin-bottom:0; }
     #cb-root .cb-survey--card { border:1px solid var(--gv-grey-300); border-radius:3px; padding:18px; background:#fff; box-shadow:var(--gv-shadow,0 2px 4px -1px rgba(0,0,0,.06)); }
     #cb-root .cb-survey__eyebrow { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--gv-teal-500,#147985); background:var(--gv-teal-50,#e6f3f5); padding:3px 8px; border-radius:3px; }
     #cb-root .cb-survey__name { font-size:20px; font-weight:700; color:var(--gv-text-primary); margin:10px 0 4px; }
@@ -3298,7 +3306,7 @@
       // ── project-page components (this is the project's content builder) ──────
       'timeline':        { label: 'Timeline',           make: function () { return cbTimelineHTML(); } },
       'events':          { label: 'Events',             make: function () { return cbEventsHTML(2); } },
-      'extra-surveys':   { label: 'Extra surveys',      make: function () { return cbSurveyHTML('mobility','card','secondary'); } },
+      'extra-surveys':   { label: 'Extra surveys',      make: function () { return cbSurveyHTML('mobility','card','primary',''); } },
       // locked top blocks (never in the palette; created via makeLockedBlock)
       'hero':            { label: 'Project image' },
       'title':           { label: 'Project title' }
@@ -3430,13 +3438,17 @@
     var SURVEY_STATE = {};
     var SURVEY_DATA = { mobility: { name:'Mobility check-in', range:'1 – 15 Jun 2026 · Ongoing',
       desc:'A 2-minute survey on how you move around the city this month — your answers feed the mobility plan.', cta:'Take the survey' } };
-    function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'mobility', format:'card', style:'secondary' }; return SURVEY_STATE[block.id]; }
-    function cbSurveyHTML(survey, format, style) {
+    function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'mobility', format:'card', style:'primary', label:'' }; return SURVEY_STATE[block.id]; }
+    function cbSurveyHTML(survey, format, style, label) {
       if (!survey) return '<div class="cb-survey-empty"><div class="cb-survey-empty__t">📣 Survey</div><div class="cb-survey-empty__s">Select a survey to link in the panel on the right.</div></div>';
       var s = SURVEY_DATA[survey] || SURVEY_DATA.mobility;
-      var bcls = 'cb-svbtn ' + (style === 'primary' ? 'cb-svbtn--primary' : 'cb-svbtn--secondary');
-      if (format === 'button') return '<div class="cb-survey"><a class="' + bcls + '" href="#">' + s.cta + '</a></div>';
-      return '<div class="cb-survey cb-survey--card"><span class="cb-survey__eyebrow">SURVEY</span><h3 class="cb-survey__name">' + s.name + '</h3><p class="cb-survey__range">' + s.range + '</p><p class="cb-survey__desc">' + s.desc + '</p><a class="' + bcls + '" href="#">' + s.cta + '</a></div>';
+      var cta = (label && label.trim()) || s.cta;
+      // Real GoVocal buttons, themed to the tenant: Primary = filled tenant colour,
+      // Secondary = the same tenant colour as an outline (.cb-survey remaps --gv-tenant-primary).
+      var bcls = 'gv-btn full ' + (style === 'secondary' ? 'primary-outlined' : 'primary');
+      var btn = '<a class="' + bcls + '" href="#"><span class="gv-btn__label">' + cta + '</span></a>';
+      if (format === 'button') return '<div class="cb-survey">' + btn + '</div>';
+      return '<div class="cb-survey cb-survey--card"><span class="cb-survey__eyebrow">SURVEY</span><h3 class="cb-survey__name">' + s.name + '</h3><p class="cb-survey__range">' + s.range + '</p><p class="cb-survey__desc">' + s.desc + '</p>' + btn + '</div>';
     }
 
     // ── settings panel bodies per widget type ─────────────────────────────────
@@ -3525,11 +3537,21 @@
       if (widget === 'extra-surveys') {
         return settingsRow('Survey', '<select class="gv-bo-select" data-set="survey"><option value="">Select a survey\u2026</option><option value="mobility">Mobility check-in</option></select>') +
           '<div class="cb-setseg">Survey button format</div>' +
-          '<label class="gv-radio"><input type="radio" name="cb-svfmt" data-fmt="button"><span class="circle"></span>Button</label>' +
-          '<label class="gv-radio"><input type="radio" name="cb-svfmt" data-fmt="card"><span class="circle"></span>Card view</label>' +
+          '<div class="cb-radiocol">' +
+            '<label class="gv-radio"><input type="radio" name="cb-svfmt" data-fmt="button"><span class="circle"></span>Button</label>' +
+            '<label class="gv-radio"><input type="radio" name="cb-svfmt" data-fmt="card"><span class="circle"></span>Card view</label>' +
+          '</div>' +
           '<div class="cb-setseg">Button style</div>' +
-          '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="primary"><span class="circle"></span>Primary</label>' +
-          '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="secondary"><span class="circle"></span>Secondary</label>';
+          '<div class="cb-radiocol">' +
+            '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="primary"><span class="circle"></span>Primary</label>' +
+            '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="secondary"><span class="circle"></span>Secondary</label>' +
+          '</div>' +
+          // Button label is translatable \u2014 the language switcher rides on this field (per-field, BO-only).
+          '<div class="cb-fieldhead">' +
+            '<span class="gv-bo-cb-settings__rowlabel">Button text</span>' +
+            '<div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>' +
+          '</div>' +
+          '<input class="gv-input" id="cb-f-svlabel" placeholder="Take the survey">';
       }
       if (widget === 'hero') {
         return settingsRow('Replace image', '<input class="gv-input" type="file" id="cb-f-herofile" accept="image/*">') +
@@ -3565,6 +3587,10 @@
       var widget = block.getAttribute('data-widget');
       var label  = block.getAttribute('data-label') || (WIDGETS[widget] && WIDGETS[widget].label) || 'Block';
       sTitle.textContent = label;
+      // Extra surveys carries its own per-field language switcher (on the Button text
+      // field), so hide the panel-level one for this widget.
+      var topLoc = document.getElementById('cb-settings-locales');
+      if (topLoc) topLoc.style.display = (widget === 'extra-surveys') ? 'none' : '';
       sBody.innerHTML = bodyFor(widget, block);
       if (window.GVIcons) window.GVIcons.render(panel);
       bindTextBinding(block, widget);
@@ -3858,7 +3884,7 @@
 
     function bindExtraSurveys(block) {
       var st = cbSurveyState(block);
-      function render() { cbSetBody(block, cbSurveyHTML(st.survey, st.format, st.style)); }
+      function render() { cbSetBody(block, cbSurveyHTML(st.survey, st.format, st.style, st.label)); }
       var sel = panel.querySelector('[data-set="survey"]');
       if (sel) { sel.value = st.survey || ''; sel.addEventListener('change', function () { st.survey = this.value || null; render(); }); }
       panel.querySelectorAll('input[data-fmt]').forEach(function (r) {
@@ -3868,6 +3894,20 @@
       panel.querySelectorAll('input[data-sty]').forEach(function (r) {
         r.checked = (r.dataset.sty === st.style);
         r.addEventListener('change', function () { if (this.checked) { st.style = this.dataset.sty; render(); } });
+      });
+      // Button text — renames what the resident sees on the CTA (per locale).
+      var lbl = panel.querySelector('#cb-f-svlabel');
+      if (lbl) {
+        lbl.value = st.label || '';
+        lbl.addEventListener('input', function () { st.label = this.value; render(); });
+      }
+      // Per-field language switcher (visual toggle only in this prototype).
+      panel.querySelectorAll('.cb-fieldhead .gv-bo-multiloc button').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var grp = b.parentNode;
+          grp.querySelectorAll('button').forEach(function (x) { x.classList.remove('is-active'); });
+          b.classList.add('is-active');
+        });
       });
     }
 
