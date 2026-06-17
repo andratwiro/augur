@@ -87,12 +87,57 @@ function injectReview(html) {
   return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
 }
 
+// Absolute origin used to build absolute og:image / og:url (unfurl bots need
+// absolute URLs). Update here if a custom domain replaces the pages.dev one.
+const SITE_ORIGIN = "https://govocal-prototypes.pages.dev";
+
+function escAttr(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * Inject Open Graph + Twitter card meta into a shareable page's <head> so links
+ * unfurl with a title and the composed og.png card (see scripts/og.mjs).
+ *   pageUrl  — absolute folder URL (the canonical share link)
+ *   hasOg    — whether an og.png sits next to this file (image tags only then)
+ * Skips if the page already declares its own og: tags, or has no <head>/<title>.
+ */
+function injectHead(html, pageUrl, hasOg) {
+  if (/property=["']og:/i.test(html)) return html; // page defines its own OG
+  const headClose = html.toLowerCase().indexOf("</head>");
+  if (headClose === -1) return html;
+  const tm = html.match(/<title>([^<]*)<\/title>/i);
+  const title = (tm ? tm[1] : "Product Prototype").trim();
+  const dm = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']*)["']/i);
+  // Description: explicit meta → the subtitle after the title's em-dash → tagline.
+  const subtitle = title.split(/\s+[—–-]\s+/).slice(1).join(" — ").trim();
+  const desc = (dm ? dm[1] : subtitle) || "Clickable design prototype · GoVocal";
+  const img = hasOg
+    ? `\n  <meta property="og:image" content="${escAttr(pageUrl + "og.png")}" />` +
+      `\n  <meta property="og:image:width" content="1200" />` +
+      `\n  <meta property="og:image:height" content="630" />` +
+      `\n  <meta name="twitter:image" content="${escAttr(pageUrl + "og.png")}" />`
+    : "";
+  const tags =
+    `\n  <meta property="og:type" content="website" />` +
+    `\n  <meta property="og:site_name" content="Product Prototypes" />` +
+    `\n  <meta property="og:title" content="${escAttr(title)}" />` +
+    `\n  <meta property="og:description" content="${escAttr(desc)}" />` +
+    `\n  <meta property="og:url" content="${escAttr(pageUrl)}" />` +
+    `\n  <meta name="twitter:card" content="${hasOg ? "summary_large_image" : "summary"}" />` +
+    `\n  <meta name="twitter:title" content="${escAttr(title)}" />` +
+    `\n  <meta name="twitter:description" content="${escAttr(desc)}" />` +
+    img +
+    `\n  `;
+  return html.slice(0, headClose) + tags + html.slice(headClose);
+}
+
 // Version of the PROTOTYPES SITE UI (the landing/shell pages this file generates),
 // shown in the footer. Bump this ONLY when the site UI changes — i.e. edits to
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.36";
+const UI_VERSION = "0.37";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -265,7 +310,15 @@ async function copyDir(src, dest, exclude) {
       latest = Math.max(latest, await copyDir(srcPath, destPath, exclude));
     } else if (entry.isFile()) {
       if (entry.name.endsWith(".html")) {
-        const html = await fs.readFile(srcPath, "utf8");
+        let html = await fs.readFile(srcPath, "utf8");
+        // OG/Twitter unfurl tags for the shareable entry page (index.html). The
+        // composed card (og.png, see scripts/og.mjs) sits beside it when shot.
+        if (entry.name === "index.html") {
+          const rel = path.relative(DIST, dest).split(path.sep).map(encodeURIComponent).join("/");
+          const pageUrl = `${SITE_ORIGIN}/${rel}${rel ? "/" : ""}`;
+          const hasOg = await exists(path.join(src, "og.png"));
+          html = injectHead(html, pageUrl, hasOg);
+        }
         await fs.writeFile(destPath, addonHtml(injectReview(html)), "utf8");
       } else {
         await fs.copyFile(srcPath, destPath);
@@ -959,7 +1012,7 @@ const NAV_CSS = `
       box-shadow: 0 18px 48px -16px rgba(16,24,40,0.34);
     }
     .orgsw__menu[hidden] { display: none; }
-    .orgsw__mlabel { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #8a909c; margin: 4px 8px 6px; }
+    .orgsw__mlabel { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6b7280; margin: 4px 8px 6px; }
     .orgsw__item, .orgsw__add {
       display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px;
       border: 0; background: transparent; border-radius: 8px; font: inherit; text-align: left;
@@ -974,7 +1027,7 @@ const NAV_CSS = `
 
     /* Nav groups + items. */
     .gvside__group { display: flex; flex-direction: column; gap: 1px; }
-    .gvside__label { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #8a909c; margin: 13px 9px 5px; }
+    .gvside__label { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6b7280; margin: 13px 9px 5px; }
     .gvside a {
       display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 8px;
       text-decoration: none; color: #43474f; font-weight: 500; font-size: 14px;
@@ -1087,7 +1140,7 @@ function appChrome(active) {
   return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>`;
 }
 
-/** Shared chrome script: real-time in-page filter + the mobile nav dropdown. */
+/** Shared chrome script: real-time in-page filter + the mobile rail drawer + org switcher. */
 function chromeScript() {
   return `(function(){
   // ── In-page real-time filter ─────────────────────────────────────────────
@@ -1357,36 +1410,20 @@ function renderRootIndex(opportunities) {
     })
     .join("");
 
-  // Sidebar nav rail: Playground locked on top, then a jump link per opportunity.
-  const sideLinks = opportunities
-    .map((opp) => `<a href="${encodeURIComponent(opp.name)}/">${titleCase(opp.name)}</a>`)
-    .join("");
-
-  const sidebar = `
-    <aside class="root-side">
-      <a class="side-pin" href="playground/">
-        <span class="side-pin__icon" aria-hidden="true">🛝</span>
-        <span>Playground</span>
-      </a>
-      <div class="side-divider"></div>
-      <p class="side-label">Opportunities</p>
-      <nav class="side-nav" aria-label="Opportunities">${sideLinks}</nav>
-    </aside>`;
-
-  const main = `
-    <div class="root-main">
-      ${filterField("Search opportunities…")}
-      <div data-fgroup>
-        <p class="section-eyebrow">${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}</p>
-        <div class="opp-grid">${cards}</div>
-      </div>
-      ${filterEmpty()}
-    </div>`;
+  // Nav (Playground + opportunities) now lives in the global left rail — the landing
+  // page is just a single wide column of opportunity cards.
+  const body = `
+    ${filterField("Search opportunities…")}
+    <div data-fgroup>
+      <p class="section-eyebrow">${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}</p>
+      <div class="opp-grid">${cards}</div>
+    </div>
+    ${filterEmpty()}`;
 
   return shell({
     title: "Product Prototypes",
-    wrapClass: "wrap--root",
-    body: sidebar + main,
+    wrapClass: "wrap--wide",
+    body,
   });
 }
 
@@ -1429,6 +1466,7 @@ function renderOpportunityIndex(opp) {
 
   return shell({
     title: titleCase(opp.name),
+    activeTab: opp.name,
     body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${filterField("Search prototypes…")}<div data-fgroup><div class="page-grid">${cards}</div></div>${filterEmpty()}`,
     back: { href: "../", label: "&larr; All opportunities" },
   });
@@ -1438,6 +1476,7 @@ function renderPlaygroundIndex(projects) {
   if (!projects.length) {
     return shell({
       title: "Playground",
+      activeTab: "playground",
       body: `<p class="section-eyebrow">Playground 🛝</p>
         <p class="empty">No projects yet. Add one under
         <code>playground/&lt;project&gt;/</code> and rebuild.</p>`,
@@ -1464,6 +1503,7 @@ function renderPlaygroundIndex(projects) {
 
   return shell({
     title: "Playground",
+    activeTab: "playground",
     body: `<p class="section-eyebrow">Playground 🛝 &middot; ${plural(projects.length, "project")}</p>${filterField("Search projects…")}<div data-fgroup><div class="opp-grid">${cards}</div></div>${filterEmpty()}`,
     back: { href: "/", label: "&larr; All prototypes" },
   });
@@ -1597,6 +1637,11 @@ async function main() {
   const opportunities = await scan();
   const components = await scanComponents();
   const pages = await scanPages();
+
+  // Publish the nav context BEFORE any render so the global left rail (org switcher +
+  // Prototypes/Playground + Opportunities + Library) is identical on every page.
+  NAV_STATE.opportunities = opportunities;
+  NAV_STATE.hasPlayground = await isDir(path.join(ROOT, "playground"));
 
   // Root index → opportunities.
   await fs.writeFile(path.join(DIST, "index.html"), renderRootIndex(opportunities), "utf8");
