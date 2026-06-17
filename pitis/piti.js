@@ -464,10 +464,8 @@
         ".piti-echo svg{width:100%;height:100%;display:block;overflow:visible}" +
         ".piti-echo.go{animation:pt-echo .34s ease-out forwards}" +
         "@keyframes pt-echo{0%{opacity:.4}100%{opacity:0}}" +
-        // the customizer opens as a real overlay modal — the site stays visible, dimmed
-        ".piti-modal-backdrop{position:fixed;inset:0;z-index:2147483640;background:rgba(34,27,38,.55);display:grid;place-items:center;padding:20px;animation:pt-fade .2s ease both}" +
-        "@keyframes pt-fade{from{opacity:0}to{opacity:1}}" +
-        ".piti-modal-frame{width:480px;max-width:100%;height:600px;max-height:92vh;border:none;background:transparent;border-radius:20px}" +
+        // (the customizer-modal CSS lives in ensureModalStyle(), injected by openModal()
+        //  so the paw works even when the pal was never summoned)
         // Figma-style cursor while the piti is active (text fields keep the I-beam)
         "html.piti-cursor,html.piti-cursor *{cursor:url('" + CURSOR_URI + "') 5 3,auto !important}" +
         "html.piti-cursor input,html.piti-cursor textarea,html.piti-cursor [contenteditable]{cursor:text !important}" +
@@ -666,9 +664,23 @@
   function refreshLive(override) { if (live) live.refresh(override); }
 
   // ---- the customizer as a real overlay modal (the site stays visible, dimmed) ----
+  // The backdrop/frame CSS used to live only in mount()'s <style> block, so the
+  // paw opened an unstyled, undimmed iframe whenever the pal hadn't been summoned.
+  // Inject it on demand (idempotent) so openModal() never depends on mount().
+  function ensureModalStyle() {
+    if (document.getElementById("piti-modal-style")) return;
+    const st = document.createElement("style");
+    st.id = "piti-modal-style";
+    st.textContent =
+      ".piti-modal-backdrop{position:fixed;inset:0;z-index:2147483640;background:rgba(34,27,38,.55);display:grid;place-items:center;padding:20px;animation:pt-fade .2s ease both}" +
+      "@keyframes pt-fade{from{opacity:0}to{opacity:1}}" +
+      ".piti-modal-frame{width:480px;max-width:100%;height:600px;max-height:92vh;border:none;background:transparent;border-radius:20px}";
+    document.head.appendChild(st);
+  }
   let modalEl = null;
   function openModal() {
     if (modalEl) return;
+    ensureModalStyle();
     modalEl = document.createElement("div");
     modalEl.className = "piti-modal-backdrop";
     modalEl.innerHTML = '<iframe class="piti-modal-frame" src="/pitis/" title="Customize your Piti"></iframe>';
