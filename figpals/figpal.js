@@ -66,37 +66,37 @@
   function hatSVG(id) {
     if (!id || id === "none") return "";
     const S = 'stroke="' + OUT + '" stroke-width="28" stroke-linejoin="round" stroke-linecap="round"';
-    // The head crown sits low-left in the resting pose: ears ~x300 & ~x560, crown
-    // centred ~x430, top-of-head ~y200. Hats perch centred on x430, brim hugging y230.
+    // Hats are authored around centre x430 / brim ~y250, then shifted by HAT_T to
+    // perch on the real crown: the two ear-tips sit at ~x380 & ~x690 (centre ~x535)
+    // and the dip between the ears is ~y150 (measured off a coordinate-grid render).
+    const HAT_T = 'transform="translate(140,-82)"';
+    let inner = "";
     if (id === "tophat") {
-      return '<g ' + S + '>' +
+      inner = '<g ' + S + '>' +
         '<path d="M236 250 Q236 232 430 228 Q624 232 624 250 Q624 270 430 274 Q236 270 236 250 Z" fill="#2A2730"/>' +
         '<path d="M300 250 Q296 120 312 48 Q430 22 548 50 Q564 122 560 250 Q430 266 300 250 Z" fill="#2A2730"/>' +
         '<rect x="302" y="138" width="258" height="50" rx="8" fill="#D24A3F" stroke="none"/>' +
         '</g>';
-    }
-    if (id === "wizard") {
-      return '<g ' + S + '>' +
+    } else if (id === "wizard") {
+      inner = '<g ' + S + '>' +
         '<path d="M236 258 Q236 238 430 234 Q624 238 624 258 Q624 278 430 282 Q236 278 236 258 Z" fill="#6E4FAE"/>' +
         '<path d="M430 14 Q510 140 572 252 Q430 268 288 252 Q350 140 430 14 Z" fill="#7B5CC0"/>' +
         '<path d="M404 104 l16 32 34 6 -25 24 6 35 -31 -17 -31 17 6 -35 -25 -24 34 -6z" fill="#F1D86D" stroke="none"/>' +
         '</g>';
-    }
-    if (id === "beanie") {
-      return '<g ' + S + '>' +
+    } else if (id === "beanie") {
+      inner = '<g ' + S + '>' +
         '<path d="M278 222 Q286 86 430 82 Q574 86 582 222 Q430 238 278 222 Z" fill="#C0504A"/>' +
         '<path d="M252 256 Q252 208 430 204 Q608 208 608 256 Q608 284 430 286 Q252 284 252 256 Z" fill="#E8E2DA"/>' +
         '<circle cx="430" cy="64" r="30" fill="#E8E2DA"/>' +
         '</g>';
-    }
-    if (id === "party") {
-      return '<g ' + S + '>' +
+    } else if (id === "party") {
+      inner = '<g ' + S + '>' +
         '<path d="M430 8 Q516 150 574 256 Q430 272 286 256 Q344 150 430 8 Z" fill="#C36ED0"/>' +
         '<path d="M384 118 q46 14 92 0 M360 178 q70 18 140 0" fill="none" stroke="#F1D86D" stroke-width="22"/>' +
         '<circle cx="430" cy="10" r="28" fill="#F1D86D"/>' +
         '</g>';
-    }
-    return "";
+    } else { return ""; }
+    return '<g ' + HAT_T + '>' + inner + '</g>';
   }
 
   /* ---- body markings, drawn inside the silhouette clip (1744x720 frame) ---- */
