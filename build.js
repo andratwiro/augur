@@ -79,7 +79,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.24";
+const UI_VERSION = "0.25";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -1139,6 +1139,10 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   </script>
   <script>${STATUS_JS}
   </script>
+  <!-- FigPal companion: trails the cursor on every internal page, but ONLY once
+       revealed (type "figpal" on the home page). Reads the pal you customized. -->
+  <script src="/figpal.js"></script>
+  <script>try{if(localStorage.getItem('figpal-revealed')==='1'&&window.FigPal)window.FigPal.mount();}catch(e){}</script>
 </body>
 </html>
 `;
@@ -1540,6 +1544,12 @@ async function main() {
     const skipFigInternal = (name) =>
       isInternalOnly(name) || name.endsWith(".md") || name === "reference";
     await copyDir(path.join(ROOT, "figpals"), path.join(DIST, "figpals"), skipFigInternal);
+    // Also expose the companion engine at the site root so every shell page can
+    // load it with a stable absolute path (/figpal.js) and have the pal trail the
+    // cursor while you browse the prototypes — gated by the reveal flag in shell().
+    if (await exists(path.join(ROOT, "figpals", "figpal.js"))) {
+      await fs.copyFile(path.join(ROOT, "figpals", "figpal.js"), path.join(DIST, "figpal.js"));
+    }
   }
 
   // Edge auth gate. Inject the list of PUBLIC prototype path-prefixes so the

@@ -3,657 +3,145 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FigPal 🐾</title>
+<title>Your FigPal 🐾</title>
 <style>
   :root {
-    /* The pal's outfit — recolorable */
-    --fur:        #FF8FB1;
-    --fur-dark:   #F26896;
-    --belly:      #FFD9E6;
-    --ear-inner:  #FFB8D2;
-    --cheek:      #FF5C8A;
-    --paw:        #FFC2D8;
-
-    --ink:        #2B2330;
-    --bg-1:       #FDF2F8;
-    --bg-2:       #EDE9FE;
-    --card:       #ffffff;
-    --line:       #efe6f2;
-    --muted:      #8b7e96;
-    --accent:     #7C5CFC;
+    --ink:#2B2330; --muted:#8b7e96; --card:#fff; --line:#efe6f2; --accent:#7C5CFC;
   }
-
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-  html, body {
-    margin: 0;
-    height: 100%;
-    overflow: hidden;
+  * { box-sizing:border-box; }
+  html,body { margin:0; min-height:100%; }
+  body {
+    min-height:100vh;
     font-family: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
     color: var(--ink);
     background:
-      radial-gradient(1200px 600px at 80% -10%, var(--bg-2), transparent 60%),
-      radial-gradient(900px 500px at 10% 110%, #fff6fb, transparent 55%),
-      linear-gradient(160deg, var(--bg-1), #fffdfe 70%);
-    cursor: none;
+      radial-gradient(1100px 560px at 82% -10%, #EDE9FE, transparent 60%),
+      radial-gradient(820px 460px at 8% 112%, #fff2f8, transparent 55%),
+      linear-gradient(160deg, #FDF2F8, #fffdfe 72%);
+    display:grid; place-items:center; padding:28px;
   }
+  .card {
+    background: var(--card); border:1px solid var(--line); border-radius:28px;
+    padding:30px 30px 26px; width:100%; max-width:400px;
+    box-shadow: 0 34px 70px -34px rgba(124,92,252,.4), 0 2px 0 #fff inset;
+    position:relative; z-index:2;
+  }
+  h1 { margin:0 0 3px; font-size:24px; letter-spacing:-.5px; text-align:center; }
+  .sub { margin:0 0 18px; color:var(--muted); font-size:14px; text-align:center; }
 
-  /* ---- decorative floaty background dots ---- */
-  .speck {
-    position: fixed;
-    border-radius: 50%;
-    background: #fff;
-    opacity: .55;
-    pointer-events: none;
-    animation: drift linear infinite;
-    z-index: 0;
+  .stage {
+    background: linear-gradient(170deg,#F7F1FF,#FDEFF6);
+    border-radius:20px; height:200px; display:grid; place-items:center;
+    margin-bottom:18px; position:relative; overflow:hidden;
   }
-  @keyframes drift {
-    from { transform: translateY(0) }
-    to   { transform: translateY(-110vh) }
-  }
+  .stage .portrait { width:150px; height:150px; }
+  .stage .portrait svg { width:100%; height:100%; display:block; }
+  .ground { position:absolute; bottom:30px; left:50%; transform:translateX(-50%);
+            width:120px; height:20px; border-radius:50%; background:rgba(120,80,140,.10); }
 
-  /* ---- intro / empty state ---- */
-  .hello {
-    position: fixed;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    text-align: center;
-    z-index: 5;
-    padding: 24px;
-  }
-  .hello-card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 28px;
-    padding: 38px 34px 30px;
-    max-width: 380px;
-    box-shadow: 0 30px 60px -30px rgba(124,92,252,.35), 0 2px 0 #fff inset;
-    animation: pop .5s cubic-bezier(.18,.9,.3,1.3) both;
-  }
-  @keyframes pop { from { transform: scale(.85); opacity:0 } to { transform: scale(1); opacity:1 } }
-  .hello h1 { margin: 14px 0 6px; font-size: 28px; letter-spacing: -.5px; }
-  .hello p  { margin: 0 0 22px; color: var(--muted); line-height: 1.5; font-size: 14.5px; }
-  .hello .field { margin-bottom: 14px; }
-
-  label { display:block; font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 0 7px; text-align:left; text-transform: uppercase; letter-spacing: .06em; }
+  label { display:block; font-size:11px; font-weight:800; color:var(--muted);
+          margin:0 0 8px; text-transform:uppercase; letter-spacing:.07em; }
+  .field { margin-bottom:16px; }
   input[type=text] {
-    width: 100%;
-    font: inherit;
-    font-size: 16px;
-    padding: 12px 14px;
-    border: 2px solid var(--line);
-    border-radius: 14px;
-    outline: none;
-    transition: border-color .15s, box-shadow .15s;
+    width:100%; font:inherit; font-size:16px; padding:12px 14px;
+    border:2px solid var(--line); border-radius:14px; outline:none;
+    transition:border-color .15s, box-shadow .15s;
   }
-  input[type=text]:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(124,92,252,.15); }
+  input[type=text]:focus { border-color:var(--accent); box-shadow:0 0 0 4px rgba(124,92,252,.15); }
 
-  .btn {
-    font: inherit;
-    font-weight: 800;
-    border: none;
-    cursor: pointer;
-    border-radius: 14px;
-    padding: 12px 18px;
-    background: var(--accent);
-    color: #fff;
-    box-shadow: 0 8px 18px -8px var(--accent);
-    transition: transform .12s, box-shadow .12s, filter .12s;
-  }
-  .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
-  .btn:active { transform: translateY(1px) scale(.99); }
-  .btn.full { width: 100%; }
-  .btn.ghost { background: #f6f1fb; color: var(--accent); box-shadow:none; }
+  .swatches { display:flex; gap:9px; flex-wrap:wrap; }
+  .sw { width:32px; height:32px; border-radius:50%; border:3px solid #fff; cursor:pointer;
+        box-shadow:0 0 0 1px var(--line), 0 4px 8px -4px rgba(0,0,0,.25); transition:transform .12s; }
+  .sw:hover { transform:scale(1.12); }
+  .sw.sel { box-shadow:0 0 0 3px var(--accent); transform:scale(1.12); }
 
-  /* swatches & hats pickers */
-  .row { display:flex; gap: 8px; flex-wrap: wrap; justify-content:center; margin-bottom: 4px; }
-  .swatch {
-    width: 30px; height: 30px; border-radius: 50%;
-    border: 3px solid #fff; cursor: pointer;
-    box-shadow: 0 0 0 1px var(--line), 0 4px 8px -4px rgba(0,0,0,.25);
-    transition: transform .12s;
-  }
-  .swatch:hover { transform: scale(1.12); }
-  .swatch.sel { box-shadow: 0 0 0 3px var(--accent); transform: scale(1.12); }
-  .chip {
-    font: inherit; font-size: 13px; font-weight:700;
-    border: 2px solid var(--line); background:#fff; color: var(--ink);
-    border-radius: 999px; padding: 7px 13px; cursor: pointer; transition: all .12s;
-  }
-  .chip:hover { border-color: var(--accent); }
-  .chip.sel { background: var(--accent); color:#fff; border-color: var(--accent); }
+  .row { display:flex; gap:10px; margin-top:6px; }
+  .btn { flex:1; font:inherit; font-weight:800; border:none; cursor:pointer; border-radius:14px;
+         padding:13px; background:var(--accent); color:#fff; box-shadow:0 8px 18px -8px var(--accent);
+         transition:transform .12s, filter .12s; }
+  .btn:hover { transform:translateY(-1px); filter:brightness(1.05); }
+  .btn:active { transform:translateY(1px) scale(.99); }
+  .btn.ghost { background:#f6f1fb; color:var(--accent); box-shadow:none; flex:0 0 auto; padding:13px 16px; }
 
-  /* ---- the pal ---- */
-  #pal {
-    position: fixed;
-    left: 0; top: 0;
-    width: 160px; height: 160px;
-    z-index: 4;
-    pointer-events: auto;
-    cursor: pointer;
-    will-change: transform;
-  }
-  #pal svg { width: 100%; height: 100%; overflow: visible; display:block; }
-  #pal .bob { transform-box: fill-box; transform-origin: 50% 100%; animation: bob 2.4s ease-in-out infinite; }
-  @keyframes bob {
-    0%,100% { transform: translateY(0) scaleY(1) }
-    50%     { transform: translateY(-6px) scaleY(1.02) }
-  }
-
-  /* squish reaction */
-  #pal.boop .bob { animation: boop .5s cubic-bezier(.2,.9,.25,1.4); }
-  @keyframes boop {
-    0%   { transform: translateY(0) scale(1,1) }
-    30%  { transform: translateY(2px) scale(1.18,.82) }
-    60%  { transform: translateY(-18px) scale(.9,1.12) }
-    100% { transform: translateY(0) scale(1,1) }
-  }
-
-  /* tail + ear idle wiggle */
-  .tail { transform-box: fill-box; transform-origin: 22% 80%; animation: wag 1.6s ease-in-out infinite; }
-  @keyframes wag { 0%,100%{transform:rotate(-6deg)} 50%{transform:rotate(12deg)} }
-
-  /* blink */
-  .eye { transform-box: fill-box; transform-origin: center; animation: blink 4.5s infinite; }
-  @keyframes blink {
-    0%,7%,100% { transform: scaleY(1) }
-    3.2%       { transform: scaleY(.08) }
-  }
-
-  /* heart bubble */
-  .bubble {
-    position: fixed; z-index: 6; pointer-events:none;
-    font-size: 26px; opacity: 0;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,.12));
-  }
-  .bubble.go { animation: floatup 1.2s ease-out forwards; }
-  @keyframes floatup {
-    0%   { opacity:0; transform: translateY(0) scale(.4) }
-    20%  { opacity:1; transform: translateY(-14px) scale(1.1) }
-    100% { opacity:0; transform: translateY(-70px) scale(.9) }
-  }
-
-  /* the custom cursor (a little paw / sparkle) */
-  #cursor {
-    position: fixed; z-index: 9; pointer-events:none;
-    width: 22px; height: 22px; margin: -11px 0 0 -11px;
-    transition: transform .08s ease-out;
-  }
-
-  /* ---- HUD ---- */
-  .hud {
-    position: fixed; left: 20px; top: 20px; z-index: 7;
-    background: rgba(255,255,255,.85);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    padding: 14px 16px;
-    width: 220px;
-    box-shadow: 0 20px 40px -24px rgba(124,92,252,.4);
-    display: none;
-  }
-  .hud.show { display:block; animation: pop .4s cubic-bezier(.18,.9,.3,1.3) both; }
-  .hud .name { font-weight: 900; font-size: 17px; display:flex; align-items:center; gap:6px; }
-  .hud .name small { font-weight:700; color: var(--muted); font-size: 11px; }
-  .meter { margin-top: 10px; }
-  .meter b { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing:.05em; }
-  .bar { height: 10px; border-radius: 999px; background: #f0eaf6; overflow: hidden; margin-top: 5px; }
-  .bar > i { display:block; height:100%; border-radius:999px; transition: width .5s cubic-bezier(.2,.9,.3,1); }
-  .fill-happy { background: linear-gradient(90deg,#FF8FB1,#FF5C8A); }
-  .fill-full  { background: linear-gradient(90deg,#FFC36B,#FF9F45); }
-  .hud .actions { display:flex; gap:8px; margin-top:14px; }
-  .hud .actions .btn { flex:1; padding: 10px 6px; font-size: 13px; border-radius: 12px; }
-  .hud .actions .btn.ghost { box-shadow:none; }
-  .hud .tip { margin-top: 10px; font-size: 11.5px; color: var(--muted); line-height:1.45; text-align:center; }
-
-  /* treat being thrown */
-  .treat { position: fixed; z-index: 5; font-size: 26px; pointer-events:none; will-change: transform; }
-
-  /* ---- photobooth ---- */
-  .booth {
-    position: fixed; inset:0; z-index: 20;
-    background: rgba(43,35,48,.55);
-    backdrop-filter: blur(6px);
-    display: none; place-items:center;
-    padding: 24px;
-  }
-  .booth.show { display:grid; animation: fade .25s ease both; }
-  @keyframes fade { from{opacity:0} to{opacity:1} }
-  .polaroid {
-    background:#fff; padding: 16px 16px 22px; border-radius: 10px;
-    box-shadow: 0 40px 80px -30px rgba(0,0,0,.6);
-    transform: rotate(-2deg);
-    animation: pop .45s cubic-bezier(.18,.9,.3,1.3) both;
-  }
-  .polaroid img { display:block; width: 320px; height: 320px; border-radius: 4px; background: var(--bg-1); }
-  .polaroid .cap { text-align:center; font-weight:800; margin-top: 12px; font-size: 18px; letter-spacing:-.3px; }
-  .booth .controls { position:absolute; bottom: 28px; display:flex; gap:10px; }
-
-  .hidden { display:none !important; }
-  .sr { position:absolute; left:-9999px; }
+  .saved { text-align:center; color:var(--accent); font-weight:700; font-size:13px;
+           height:18px; margin-top:12px; opacity:0; transition:opacity .2s; }
+  .saved.show { opacity:1; }
+  .hint { text-align:center; color:var(--muted); font-size:12px; margin-top:6px; line-height:1.5; }
 </style>
 </head>
 <body>
+  <div class="card">
+    <h1>Customize your FigPal</h1>
+    <p class="sub">A little friend to keep you company while you work 💕</p>
 
-<!-- onboarding / adopt screen -->
-<div class="hello" id="hello">
-  <div class="hello-card">
-    <div id="previewSlot" style="height:150px;margin:-6px auto 6px;"></div>
-    <h1>Adopt a FigPal</h1>
-    <p>A little friend to keep you company while you work. Name them, dress them up — they'll follow your cursor forever after. 💕</p>
+    <div class="stage">
+      <div class="ground"></div>
+      <div class="portrait" id="portrait"></div>
+    </div>
 
     <div class="field">
       <label>Name</label>
-      <input type="text" id="nameInput" maxlength="18" placeholder="e.g. Mochi" autocomplete="off" />
+      <input type="text" id="name" maxlength="18" placeholder="e.g. Mochi" autocomplete="off" />
     </div>
 
     <div class="field">
       <label>Colour</label>
-      <div class="row" id="furRow"></div>
+      <div class="swatches" id="swatches"></div>
     </div>
 
-    <div class="field">
-      <label>Hat</label>
-      <div class="row" id="hatRow"></div>
+    <div class="row">
+      <button class="btn ghost" id="surprise" title="Surprise me">🎲</button>
+      <button class="btn" id="save">Save</button>
     </div>
 
-    <button class="btn full" id="adoptBtn" style="margin-top:8px;">Adopt 🐾</button>
+    <div class="saved" id="saved">Saved! Your pal is following you 🐾</div>
+    <p class="hint">Your FigPal trails your cursor around the prototypes.<br>Type <b>figbye</b> on the home page to send it away.</p>
   </div>
-</div>
 
-<!-- HUD once adopted -->
-<div class="hud" id="hud">
-  <div class="name"><span id="hudName">Mochi</span> <small id="hudMood">is happy</small></div>
-  <div class="meter">
-    <b>Happiness</b>
-    <div class="bar"><i class="fill-happy" id="barHappy" style="width:80%"></i></div>
-  </div>
-  <div class="meter">
-    <b>Fullness</b>
-    <div class="bar"><i class="fill-full" id="barFull" style="width:60%"></i></div>
-  </div>
-  <div class="actions">
-    <button class="btn" id="feedBtn">Feed 🍪</button>
-    <button class="btn ghost" id="snapBtn">Snap 📸</button>
-  </div>
-  <div class="tip">Click your pal to boop · drag a treat to feed</div>
-  <button class="btn ghost" id="dressBtn" style="width:100%;margin-top:8px;font-size:12px;padding:8px;">Re-dress 🎀</button>
-</div>
-
-<!-- the pal lives here -->
-<div id="pal" aria-hidden="true"></div>
-
-<!-- custom cursor -->
-<svg id="cursor" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M12 21s-7-4.35-9.3-8.2C1.2 10.1 2.2 6.6 5.3 6c2-.4 3.7.8 4.7 2.3C11 6.8 12.7 5.6 14.7 6c3.1.6 4.1 4.1 2.6 6.8C19 16.65 12 21 12 21z" fill="#FF8FB1" stroke="#fff" stroke-width="1.6"/>
-</svg>
-
-<!-- photobooth -->
-<div class="booth" id="booth">
-  <div class="polaroid">
-    <img id="snapImg" alt="A photo of your FigPal" />
-    <div class="cap" id="snapCap">Mochi</div>
-  </div>
-  <div class="controls">
-    <button class="btn ghost" id="closeBooth">Close</button>
-    <button class="btn" id="saveBooth">Save photo 💾</button>
-  </div>
-</div>
-
+<script src="figpal.js"></script>
 <script>
-/* ============================================================
-   FigPal — a tiny self-contained companion.
-   Everything is inline: SVG sprite, behaviour, persistence.
-   ============================================================ */
+  const cfg = FigPal.loadConfig();
+  const portrait = document.getElementById('portrait');
+  const swatches = document.getElementById('swatches');
+  const nameInput = document.getElementById('name');
+  nameInput.value = cfg.name === 'Pal' ? '' : cfg.name;
 
-const FUR_PALETTE = [
-  { name:'Blossom', fur:'#FF8FB1', dark:'#F26896', belly:'#FFD9E6', ear:'#FFB8D2', cheek:'#FF5C8A', paw:'#FFC2D8' },
-  { name:'Sky',     fur:'#7FC8FF', dark:'#4FA8EE', belly:'#DAF0FF', ear:'#AEDDFF', cheek:'#5BB0F5', paw:'#C2E5FF' },
-  { name:'Mint',    fur:'#8FE3C2', dark:'#54C79C', belly:'#DFFAEF', ear:'#B6F0D9', cheek:'#43BE92', paw:'#C7F3E2' },
-  { name:'Butter',  fur:'#FFD66B', dark:'#F2B73C', belly:'#FFF3D0', ear:'#FFE6A6', cheek:'#F0A92E', paw:'#FFE9B0' },
-  { name:'Lavender',fur:'#C3AEFF', dark:'#9C7FF0', belly:'#EEE6FF', ear:'#D6C7FF', cheek:'#8A6BE8', paw:'#DDD2FF' },
-  { name:'Cocoa',   fur:'#C9966B', dark:'#A9784E', belly:'#F0DCC6', ear:'#DDB78F', cheek:'#9B6A42', paw:'#E2C6A8' },
-  { name:'Cloud',   fur:'#E9EDF5', dark:'#C3CADB', belly:'#FBFCFF', ear:'#D8DEEC', cheek:'#FF9FB8', paw:'#EFF2F8' },
-  { name:'Charcoal',fur:'#5C5570', dark:'#403a52', belly:'#8a829c', ear:'#736b88', cheek:'#FF8FB1', paw:'#7a7290' },
-];
+  function drawPortrait() { portrait.innerHTML = FigPal.svg(cfg, { pose: 'up' }); }
 
-const HATS = ['none','leaf','beanie','party','crown'];
-const HAT_LABEL = { none:'None', leaf:'Leaf 🍃', beanie:'Beanie', party:'Party 🎉', crown:'Crown 👑' };
+  FigPal.PALETTE.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.className = 'sw' + (i === cfg.furIdx ? ' sel' : '');
+    b.style.background = p.fur;
+    b.title = p.name;
+    b.onclick = () => { cfg.furIdx = i; sync(); };
+    swatches.appendChild(b);
+  });
 
-let state = {
-  name: '',
-  furIdx: 0,
-  hat: 'none',
-  happy: 0.8,
-  full: 0.6,
-  adopted: false,
-};
+  // the live companion that walks the page (same engine as the site overlay)
+  const pet = FigPal.mount({ size: 84 });
 
-/* -------- SVG sprite (recolored via attributes) -------- */
-function palSVG(opts) {
-  const c = FUR_PALETTE[opts.furIdx];
-  return `
-  <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-    <ellipse class="shadow" cx="80" cy="146" rx="34" ry="7" fill="rgba(80,40,90,.16)"/>
-    <g class="bob">
-      <!-- tail -->
-      <path class="tail" d="M48 116 C24 112 18 96 30 84 C36 78 44 80 44 90 C44 98 38 100 36 96"
-            fill="none" stroke="${c.dark}" stroke-width="11" stroke-linecap="round"/>
-      <!-- body -->
-      <path d="M44 96 C44 70 62 58 80 58 C98 58 116 70 116 96 C116 122 100 134 80 134 C60 134 44 122 44 96 Z" fill="${c.fur}"/>
-      <!-- belly -->
-      <ellipse cx="80" cy="104" rx="22" ry="24" fill="${c.belly}"/>
-      <!-- feet -->
-      <ellipse cx="66" cy="130" rx="11" ry="8" fill="${c.paw}"/>
-      <ellipse cx="94" cy="130" rx="11" ry="8" fill="${c.paw}"/>
-      <!-- ears -->
-      <path d="M52 58 L46 34 L70 50 Z" fill="${c.fur}"/>
-      <path d="M108 58 L114 34 L90 50 Z" fill="${c.fur}"/>
-      <path d="M54 52 L51 40 L64 49 Z" fill="${c.ear}"/>
-      <path d="M106 52 L109 40 L96 49 Z" fill="${c.ear}"/>
-      <!-- head -->
-      <circle cx="80" cy="66" r="30" fill="${c.fur}"/>
-      <!-- cheeks -->
-      <circle cx="62" cy="74" r="6.5" fill="${c.cheek}" opacity=".55"/>
-      <circle cx="98" cy="74" r="6.5" fill="${c.cheek}" opacity=".55"/>
-      <!-- eyes -->
-      <g class="eye"><circle cx="70" cy="64" r="4.6" fill="${c.fur==='#5C5570'?'#fff':'#2B2330'}"/><circle cx="71.4" cy="62.4" r="1.5" fill="#fff"/></g>
-      <g class="eye"><circle cx="90" cy="64" r="4.6" fill="${c.fur==='#5C5570'?'#fff':'#2B2330'}"/><circle cx="91.4" cy="62.4" r="1.5" fill="#fff"/></g>
-      <!-- nose + mouth -->
-      <path d="M77 71 h6 l-3 3 Z" fill="${c.dark}"/>
-      <path d="M80 74 q-4 5 -8 3 M80 74 q4 5 8 3" fill="none" stroke="${c.dark}" stroke-width="2" stroke-linecap="round"/>
-      <!-- whiskers -->
-      <g stroke="${c.dark}" stroke-width="1.6" stroke-linecap="round" opacity=".5">
-        <path d="M58 70 h-12 M58 75 h-13"/>
-        <path d="M102 70 h12 M102 75 h13"/>
-      </g>
-      ${hatSVG(opts.hat, c)}
-    </g>
-  </svg>`;
-}
-
-function hatSVG(hat, c) {
-  switch (hat) {
-    case 'leaf':
-      return `<g transform="translate(92,32) rotate(18)">
-        <path d="M0 0 C 18 -4 30 6 26 22 C 10 22 -2 12 0 0 Z" fill="#7CC36B"/>
-        <path d="M2 4 Q14 8 24 18" stroke="#4f9a3f" stroke-width="1.6" fill="none"/>
-      </g>`;
-    case 'beanie':
-      return `<g>
-        <path d="M50 48 C50 28 110 28 110 48 L110 52 C90 44 70 44 50 52 Z" fill="#7C5CFC"/>
-        <rect x="48" y="48" width="64" height="9" rx="4.5" fill="#5b3fe0"/>
-        <circle cx="80" cy="26" r="6" fill="#b9a6ff"/>
-      </g>`;
-    case 'party':
-      return `<g transform="translate(80,30)">
-        <path d="M0 -6 L13 26 L-13 26 Z" fill="#FF5C8A"/>
-        <path d="M-9 18 h18 M-11 26 h22" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-        <circle cx="0" cy="-8" r="5" fill="#FFD66B"/>
-      </g>`;
-    case 'crown':
-      return `<g transform="translate(80,40)">
-        <path d="M-22 6 L-22 -10 L-11 -2 L0 -14 L11 -2 L22 -10 L22 6 Z" fill="#FFD24A" stroke="#E0A92E" stroke-width="1.4"/>
-        <circle cx="-14" cy="-7" r="2.2" fill="#FF5C8A"/><circle cx="0" cy="-10" r="2.6" fill="#7FC8FF"/><circle cx="14" cy="-7" r="2.2" fill="#8FE3C2"/>
-      </g>`;
-    default: return '';
+  function sync() {
+    [...swatches.children].forEach((b, i) => b.classList.toggle('sel', i === cfg.furIdx));
+    drawPortrait();
+    pet.refresh(cfg);              // recolour the walking pal instantly (preview)
   }
-}
+  drawPortrait();
 
-/* -------- DOM refs -------- */
-const $ = s => document.querySelector(s);
-const pal = $('#pal'), hud = $('#hud'), hello = $('#hello');
-const cursor = $('#cursor'), booth = $('#booth');
-
-/* -------- pickers in the adopt screen -------- */
-const furRow = $('#furRow'), hatRow = $('#hatRow'), preview = $('#previewSlot');
-FUR_PALETTE.forEach((c,i) => {
-  const b = document.createElement('button');
-  b.className = 'swatch' + (i===0?' sel':'');
-  b.style.background = c.fur;
-  b.title = c.name;
-  b.onclick = () => { state.furIdx = i; refreshPickers(); };
-  furRow.appendChild(b);
-});
-HATS.forEach(h => {
-  const b = document.createElement('button');
-  b.className = 'chip' + (h==='none'?' sel':'');
-  b.textContent = HAT_LABEL[h];
-  b.dataset.hat = h;
-  b.onclick = () => { state.hat = h; refreshPickers(); };
-  hatRow.appendChild(b);
-});
-function refreshPickers() {
-  [...furRow.children].forEach((b,i)=> b.classList.toggle('sel', i===state.furIdx));
-  [...hatRow.children].forEach(b => b.classList.toggle('sel', b.dataset.hat===state.hat));
-  preview.innerHTML = palSVG(state);
-}
-refreshPickers();
-
-/* -------- adopt -------- */
-$('#adoptBtn').onclick = () => {
-  state.name = ($('#nameInput').value || 'Pal').trim().slice(0,18);
-  state.adopted = true;
-  save();
-  enterWorld();
-  celebrate();
-};
-$('#nameInput').addEventListener('keydown', e => { if (e.key==='Enter') $('#adoptBtn').click(); });
-
-$('#dressBtn').onclick = () => {
-  $('#nameInput').value = state.name;
-  refreshPickers();
-  hello.style.display = 'grid';
-  hud.classList.remove('show');
-};
-
-function enterWorld() {
-  hello.style.display = 'none';
-  pal.innerHTML = palSVG(state);
-  hud.classList.add('show');
-  $('#hudName').textContent = state.name;
-  $('#snapCap').textContent = state.name;
-  updateMeters();
-}
-
-/* ============================================================
-   Movement — the pal eases toward a point trailing the cursor
-   ============================================================ */
-let mouse = { x: innerWidth/2, y: innerHeight/2 };
-let pos   = { x: innerWidth/2, y: innerHeight*0.7 };
-let facing = 1;
-let lastMove = Date.now();
-
-addEventListener('pointermove', e => {
-  mouse.x = e.clientX; mouse.y = e.clientY;
-  lastMove = Date.now();
-  cursor.style.left = e.clientX + 'px';
-  cursor.style.top  = e.clientY + 'px';
-  cursor.style.transform = 'rotate(' + (Math.sin(e.clientX/40)*8) + 'deg)';
-});
-
-function tick() {
-  // target: a little below-and-behind the cursor, so it looks like it's trotting over
-  const idle = Date.now() - lastMove > 2600;
-  let tx, ty;
-  if (idle) {
-    // wander gently near current spot
-    const t = Date.now()/1000;
-    tx = pos.x + Math.cos(t*0.8)*0.6;
-    ty = pos.y + Math.sin(t*1.3)*0.4;
-  } else {
-    tx = mouse.x - facing*70;
-    ty = mouse.y + 40;
-  }
-  // keep on screen
-  tx = Math.max(40, Math.min(innerWidth-40, tx));
-  ty = Math.max(60, Math.min(innerHeight-30, ty));
-
-  const dx = tx - pos.x, dy = ty - pos.y;
-  if (Math.abs(dx) > 6) facing = dx > 0 ? 1 : -1;
-  pos.x += dx * 0.045;
-  pos.y += dy * 0.06;
-
-  // walking squish when moving fast
-  const speed = Math.hypot(dx, dy);
-  const squish = Math.min(0.06, speed/1400);
-
-  pal.style.transform =
-    `translate(${pos.x-80}px, ${pos.y-120}px) scaleX(${facing*(1-squish)}) scaleY(${1+squish})`;
-
-  requestAnimationFrame(tick);
-}
-tick();
-
-/* ============================================================
-   Interactions
-   ============================================================ */
-pal.addEventListener('click', () => {
-  pal.classList.remove('boop'); void pal.offsetWidth; pal.classList.add('boop');
-  heart(pos.x, pos.y-90);
-  bump('happy', 0.06);
-});
-
-function heart(x, y) {
-  const b = document.createElement('div');
-  b.className = 'bubble';
-  b.textContent = ['💕','💗','✨','🩷','💖'][Math.floor(Math.random()*5)];
-  b.style.left = (x-13) + 'px';
-  b.style.top  = (y-13) + 'px';
-  document.body.appendChild(b);
-  requestAnimationFrame(()=> b.classList.add('go'));
-  setTimeout(()=> b.remove(), 1300);
-}
-function celebrate() { for (let i=0;i<6;i++) setTimeout(()=> heart(pos.x+(Math.random()*80-40), pos.y-60), i*90); }
-
-/* ----- feeding ----- */
-$('#feedBtn').onclick = () => throwTreat(innerWidth-60, innerHeight-60);
-
-function throwTreat(fromX, fromY) {
-  const cookie = ['🍪','🍓','🐟','🧁','🍡'][Math.floor(Math.random()*5)];
-  const el = document.createElement('div');
-  el.className = 'treat';
-  el.textContent = cookie;
-  el.style.left = fromX+'px'; el.style.top = fromY+'px';
-  document.body.appendChild(el);
-
-  const start = performance.now(), dur = 650;
-  const sx = fromX, sy = fromY;
-  function fly(now) {
-    const t = Math.min(1, (now-start)/dur);
-    const ease = 1-Math.pow(1-t,3);
-    // target the pal's mouth (live)
-    const ex = pos.x, ey = pos.y-86;
-    const x = sx + (ex-sx)*ease;
-    const y = sy + (ey-sy)*ease - Math.sin(t*Math.PI)*120; // arc
-    el.style.transform = `translate(${x-sx}px, ${y-sy}px) rotate(${t*360}deg)`;
-    if (t < 1) requestAnimationFrame(fly);
-    else {
-      el.remove();
-      pal.classList.remove('boop'); void pal.offsetWidth; pal.classList.add('boop');
-      heart(pos.x, pos.y-90);
-      bump('full', 0.18); bump('happy', 0.05);
-    }
-  }
-  requestAnimationFrame(fly);
-}
-
-function bump(key, amt) {
-  state[key] = Math.max(0, Math.min(1, state[key]+amt));
-  updateMeters(); save();
-}
-
-function updateMeters() {
-  $('#barHappy').style.width = Math.round(state.happy*100)+'%';
-  $('#barFull').style.width  = Math.round(state.full*100)+'%';
-  const m = $('#hudMood');
-  if (state.full < 0.25) m.textContent = 'is hungry';
-  else if (state.happy > 0.75) m.textContent = 'is delighted';
-  else if (state.happy > 0.45) m.textContent = 'is content';
-  else m.textContent = 'wants a boop';
-}
-
-// gentle decay over time so there's something to care for
-setInterval(() => {
-  if (!state.adopted) return;
-  state.full  = Math.max(0, state.full  - 0.01);
-  state.happy = Math.max(0.15, state.happy - 0.006);
-  updateMeters(); save();
-}, 8000);
-
-/* ============================================================
-   Photobooth — render the live SVG to a framed canvas
-   ============================================================ */
-$('#snapBtn').onclick = takeSnap;
-
-function takeSnap() {
-  const size = 320;
-  const cv = document.createElement('canvas');
-  cv.width = size; cv.height = size;
-  const ctx = cv.getContext('2d');
-
-  // pastel backdrop
-  const g = ctx.createLinearGradient(0,0,size,size);
-  g.addColorStop(0,'#FDF2F8'); g.addColorStop(1,'#EDE9FE');
-  ctx.fillStyle = g; ctx.fillRect(0,0,size,size);
-  // confetti dots
-  const dots = [[40,60,'#FFD9E6'],[280,90,'#D6C7FF'],[60,250,'#B6F0D9'],[260,260,'#FFE6A6'],[160,30,'#AEDDFF']];
-  dots.forEach(([x,y,c])=>{ ctx.fillStyle=c; ctx.beginPath(); ctx.arc(x,y,10,0,7); ctx.fill(); });
-
-  const svgMarkup = palSVG(state).replace(/class="[^"]*"/g,''); // strip animated classes for a clean still
-  const blob = new Blob([svgMarkup], { type:'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  const img = new Image();
-  img.onload = () => {
-    ctx.drawImage(img, 40, 30, 240, 240);
-    URL.revokeObjectURL(url);
-    $('#snapImg').src = cv.toDataURL('image/png');
-    $('#snapCap').textContent = state.name;
-    booth.classList.add('show');
-    celebrate();
+  document.getElementById('surprise').onclick = () => {
+    cfg.furIdx = Math.floor(Math.random() * FigPal.PALETTE.length);
+    sync();
   };
-  img.src = url;
-}
 
-$('#closeBooth').onclick = () => booth.classList.remove('show');
-$('#saveBooth').onclick = () => {
-  const a = document.createElement('a');
-  a.href = $('#snapImg').src;
-  a.download = `${state.name}-figpal.png`;
-  a.click();
-};
-
-/* ============================================================
-   Persistence + background sparkles
-   ============================================================ */
-function save() { try { localStorage.setItem('figpal', JSON.stringify(state)); } catch(e){} }
-function load() {
-  try {
-    const s = JSON.parse(localStorage.getItem('figpal'));
-    if (s && s.adopted) { state = Object.assign(state, s); return true; }
-  } catch(e){}
-  return false;
-}
-
-// floaty background specks
-for (let i=0;i<14;i++) {
-  const s = document.createElement('div');
-  s.className = 'speck';
-  const sz = 4 + Math.random()*10;
-  s.style.width = s.style.height = sz+'px';
-  s.style.left = Math.random()*100+'vw';
-  s.style.top  = (100+Math.random()*20)+'vh';
-  s.style.animationDuration = (9+Math.random()*12)+'s';
-  s.style.animationDelay = (-Math.random()*12)+'s';
-  s.style.opacity = .3+Math.random()*.4;
-  document.body.appendChild(s);
-}
-
-// boot
-if (load()) { refreshPickers(); enterWorld(); }
-else { setTimeout(()=> $('#nameInput').focus(), 400); }
+  function doSave() {
+    cfg.name = (nameInput.value || 'Pal').trim().slice(0, 18);
+    FigPal.saveConfig(cfg);
+    try { localStorage.setItem('figpal-revealed', '1'); } catch (e) {}   // adopting reveals it site-wide
+    pet.refresh();
+    const s = document.getElementById('saved'); s.classList.add('show');
+    setTimeout(() => s.classList.remove('show'), 2200);
+  }
+  document.getElementById('save').onclick = doSave;
+  nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
 </script>
 </body>
 </html>
