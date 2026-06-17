@@ -18,6 +18,13 @@
  * comment auto-deletes. On a different screen it's just hidden from the canvas
  * but stays listed (and navigable) in the sidebar.
  *
+ * Annotations: open a thread and hit the cat toggle to promote it to an
+ * ANNOTATION — a delivery note for devs. Annotations (1) render even with review
+ * mode OFF, as the cat avatar instead of a numbered pin (hover/tap shows the
+ * note); (2) are exempt from the orphan auto-delete; (3) are skipped by the
+ * resolve-comments tooling (scripts/review.mjs). It's the inverse of a comment:
+ * comments are transient feedback, annotations are persistent always-on spec.
+ *
  * Shared via the worker's KV API (/__review/api); falls back to localStorage if
  * the API is unreachable. Completely inert inside the index-page preview iframes.
  */
@@ -35,6 +42,12 @@
   var LS_ACTIVE = "gv-review-active";
   var LS_SB = "gv-review-sb-collapsed";
   var SS_PENDING = "gv-review-pending-open";
+
+  // Annotations = comments promoted to always-on dev-delivery notes. They render
+  // even when review mode is off, are skipped by the resolve-comments tooling, and
+  // show as this avatar instead of a numbered pin. Data URI so the script stays
+  // self-contained (no asset to copy into each prototype).
+  var CAT = "data:image/webp;base64,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";
 
   var state = { threads: [], active: false, mode: "add", openId: null };
   var deleted = {};       // ids we've already issued a delete for
@@ -88,9 +101,11 @@
     else if (op.op === "move") {
       t = find(op.id);
       if (t) { t.sel = op.sel; t.fx = op.fx; t.fy = op.fy; t.px = op.px; t.py = op.py; t.view = op.view; }
-    } else if (op.op === "delete") state.threads = state.threads.filter(function (x) { return x.id !== op.id; });
+    } else if (op.op === "annotate") { t = find(op.id); if (t) t.annotation = !!op.annotation; }
+    else if (op.op === "delete") state.threads = state.threads.filter(function (x) { return x.id !== op.id; });
   }
   function find(id) { return state.threads.filter(function (t) { return t.id === id; })[0]; }
+  function isAnno(t) { return !!t.annotation; }
 
   /* ---------- views & anchoring ---------- */
 
@@ -176,6 +191,13 @@
     '.pin.resolved{background:#16a34a;}' +
     '.pin.active{outline:3px solid rgba(37,99,235,0.4);}' +
     '.pin.dragging{cursor:grabbing;opacity:0.85;}' +
+    /* annotation pin: cat avatar, centred on its anchor, always-on */
+    '.pin.anno{width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid #fff;padding:0;overflow:hidden;transform:translate(-50%,-50%);box-shadow:0 2px 8px rgba(0,0,0,0.32);cursor:pointer;}' +
+    '.pin.anno img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;pointer-events:none;}' +
+    '.pin.anno.active{outline:3px solid rgba(37,99,235,0.4);}' +
+    /* hover/sticky note bubble for annotation pins (delivery mode) */
+    '.atip{position:fixed;pointer-events:none;max-width:260px;background:#1a1a1a;color:#fff;padding:8px 11px;border-radius:10px;font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,0.28);transform:translate(-50%,-100%);opacity:0;transition:opacity .12s;white-space:pre-wrap;word-wrap:break-word;}' +
+    '.atip.show{opacity:0.97;}' +
     /* sidebar */
     '.sb{position:fixed;top:0;right:0;height:100vh;width:300px;max-width:85vw;pointer-events:auto;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-6px 0 24px rgba(0,0,0,0.10);display:flex;flex-direction:column;transition:transform .18s ease;}' +
     '.sb.collapsed{transform:translateX(100%);}' +
@@ -191,6 +213,8 @@
     '.sb .it.active{background:#eef2ff;}' +
     '.sb .it .num{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:#2563eb;color:#fff;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:1px;}' +
     '.sb .it.resolved .num{background:#16a34a;}' +
+    '.sb .it.anno .num{background:#fff;padding:0;overflow:hidden;}' +
+    '.sb .it.anno .num img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;}' +
     '.sb .it .txt{flex:1;min-width:0;}' +
     '.sb .it .body{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
     '.sb .it .meta{display:block;color:#9ca3af;font-size:11px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
@@ -201,6 +225,11 @@
     /* cards */
     '.card{position:fixed;pointer-events:auto;width:300px;max-width:calc(100vw - 24px);background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.22);padding:14px;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1a1a1a;}' +
     '.card h4{margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;}' +
+    '.card .chead{display:flex;align-items:center;gap:8px;margin:0 0 8px;}' +
+    '.card .chead h4{margin:0;flex:1;}' +
+    '.anno-toggle{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:2px solid #e5e7eb;background:#fff;padding:0;overflow:hidden;cursor:pointer;opacity:.4;filter:grayscale(1);transition:opacity .12s,filter .12s,border-color .12s;}' +
+    '.anno-toggle img{width:100%;height:100%;object-fit:cover;display:block;}' +
+    '.anno-toggle.on{opacity:1;filter:none;border-color:#f59e0b;}' +
     '.msg{padding:8px 0;border-top:1px solid #f0f0f0;}' +
     '.msg:first-of-type{border-top:0;}' +
     '.msg .who{font-weight:600;font-size:12px;}' +
@@ -240,13 +269,15 @@
     '  </aside>' +
     '  <button class="tab hidden">&#128172; <span class="cnt2"></span></button>' +
     '  <div class="cardholder"></div>' +
+    '  <div class="atip"></div>' +
     '  <div class="toast"></div>' +
     '</div>';
 
   var $ = function (s) { return root.querySelector(s); };
   var layer = $(".layer"), catcher = $(".catcher"), pinsEl = $(".pins"),
       sb = $(".sb"), listEl = $(".list"), cntEl = $(".cnt"), cnt2El = $(".cnt2"),
-      hintEl = $(".hint"), tabEl = $(".tab"), cardholder = $(".cardholder"), toastEl = $(".toast");
+      hintEl = $(".hint"), tabEl = $(".tab"), cardholder = $(".cardholder"),
+      tipEl = $(".atip"), toastEl = $(".toast");
 
   var sbCollapsed = false;
   try { sbCollapsed = localStorage.getItem(LS_SB) === "1"; } catch (e) {}
@@ -254,11 +285,15 @@
   /* ---------- rendering ---------- */
 
   function render() {
-    layer.classList.toggle("hidden", !state.active);
-    if (!state.active) { closeCard(); return; }
-    catcher.classList.toggle("hidden", state.mode !== "add");
+    // The layer itself is ALWAYS live — annotation pins must show with review off.
+    // Only the review chrome (catcher, sidebar, tab) is gated by state.active.
+    layer.classList.remove("hidden");
+    var on = state.active;
+    catcher.classList.toggle("hidden", !on || state.mode !== "add");
+    sb.classList.toggle("hidden", !on);
     sb.classList.toggle("collapsed", sbCollapsed);
-    tabEl.classList.toggle("hidden", !sbCollapsed);
+    tabEl.classList.toggle("hidden", !on || !sbCollapsed);
+    if (!on) { closeCard(); }
     hintEl.textContent = state.mode === "add"
       ? "Click anywhere to place a comment · Esc to browse"
       : "Drag a pin to move it · + for a new comment";
@@ -267,6 +302,8 @@
   }
 
   function listed() { return state.threads.filter(isListed); }
+  // Pins shown on the canvas: everything in review mode, only annotations when off.
+  function pinThreads() { return state.active ? listed() : listed().filter(isAnno); }
 
   function renderList() {
     var items = listed();
@@ -283,13 +320,19 @@
     }
     items.forEach(function (t, i) {
       var li = document.createElement("li");
-      li.className = "it" + (t.resolved ? " resolved" : "") + (state.openId === t.id ? " active" : "");
+      var anno = isAnno(t);
+      li.className = "it" + (t.resolved ? " resolved" : "") + (anno ? " anno" : "") + (state.openId === t.id ? " active" : "");
       var away = !resolvesHere(t);
       li.innerHTML = '<span class="num"></span><span class="txt"><span class="body"></span>' +
         '<span class="meta"></span></span>';
-      li.querySelector(".num").textContent = String(i + 1);
+      if (anno) {
+        var av = document.createElement("img"); av.src = CAT; av.alt = "";
+        var n = li.querySelector(".num"); n.textContent = ""; n.appendChild(av);
+      } else {
+        li.querySelector(".num").textContent = String(i + 1);
+      }
       li.querySelector(".body").textContent = (t.messages[0] && t.messages[0].body) || "(empty)";
-      li.querySelector(".meta").textContent = (t.messages[0] ? t.messages[0].author : "") +
+      li.querySelector(".meta").textContent = (anno ? "Annotation · " : "") + (t.messages[0] ? t.messages[0].author : "") +
         (away ? " · ↗ on another screen" : "") + (t.resolved ? " · resolved" : "");
       if (away) li.querySelector(".meta").className = "meta away";
       li.addEventListener("click", function () { openOrNavigate(t.id); });
@@ -299,43 +342,55 @@
 
   function renderPins() {
     pinsEl.textContent = "";
-    listed().forEach(function (t, i) {
+    // Number by position in the full listed() set so pin N matches sidebar item N.
+    var nums = {}; listed().forEach(function (t, i) { nums[t.id] = i + 1; });
+    pinThreads().forEach(function (t) {
       var xy = pinXY(t);
       if (!xy) return; // elsewhere → sidebar only
       var b = document.createElement("button");
-      b.className = "pin" + (t.resolved ? " resolved" : "") + (state.openId === t.id ? " active" : "");
+      var anno = isAnno(t);
+      b.className = "pin" + (anno ? " anno" : "") + (t.resolved ? " resolved" : "") + (state.openId === t.id ? " active" : "");
       b.style.left = xy.x + "px"; b.style.top = xy.y + "px";
-      b.textContent = String(i + 1);
-      b.title = (t.messages[0] && t.messages[0].body) || "";
+      if (anno) {
+        var av = document.createElement("img"); av.src = CAT; av.alt = "";
+        b.appendChild(av);
+        b.addEventListener("mouseenter", function () { showTip(b, t.id); });
+        b.addEventListener("mouseleave", hideTip);
+      } else {
+        b.textContent = String(nums[t.id] || "");
+        b.title = (t.messages[0] && t.messages[0].body) || "";
+      }
       attachPinDrag(b, t.id);
       pinsEl.appendChild(b);
     });
   }
 
   function reposition() {
-    if (!state.active) return;
-    var pins = pinsEl.children, items = listed().filter(function (t) { return pinXY(t); });
+    var pins = pinsEl.children, items = pinThreads().filter(function (t) { return pinXY(t); });
     for (var i = 0; i < pins.length && i < items.length; i++) {
       var xy = pinXY(items[i]);
       if (xy) { pins[i].style.left = xy.x + "px"; pins[i].style.top = xy.y + "px"; }
     }
     if (openCardAnchor) positionCard(openCardAnchor);
+    if (tipEl.classList.contains("show")) hideTip(true); // anchor moved → drop bubble
   }
 
   /* ---------- pin dragging ---------- */
 
   function attachPinDrag(btn, id) {
-    var sx, sy, moved, dragging;
+    var sx, sy, moved, dragging, canDrag;
     btn.addEventListener("pointerdown", function (e) {
-      // Draggable in any mode — pins paint above the add-mode catcher.
+      // Draggable only in review mode — pins paint above the add-mode catcher.
+      // With review off (delivery mode) a pin is read-only: tap toggles its note.
       e.preventDefault();
       e.stopPropagation();
       sx = e.clientX; sy = e.clientY; moved = false; dragging = true;
+      canDrag = state.active;
       btn.setPointerCapture(e.pointerId);
-      btn.classList.add("dragging");
+      if (canDrag) btn.classList.add("dragging");
     });
     btn.addEventListener("pointermove", function (e) {
-      if (!dragging) return;
+      if (!dragging || !canDrag) return;
       if (!moved && Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) < 4) return;
       moved = true;
       btn.style.left = e.clientX + "px"; btn.style.top = e.clientY + "px";
@@ -344,17 +399,38 @@
       if (!dragging) return;
       dragging = false; btn.classList.remove("dragging");
       try { btn.releasePointerCapture(e.pointerId); } catch (err) {}
-      if (!moved) { openThread(id); return; }
+      if (!moved) {
+        if (state.active) openThread(id);
+        else toggleTip(btn, id); // delivery mode: tap a cat to pin/unpin its note
+        return;
+      }
       var a = anchorAt(e.clientX, e.clientY);
       mutate({ op: "move", id: id, sel: a.sel, fx: a.fx, fy: a.fy, px: a.px, py: a.py, view: a.view });
       toast("Comment moved");
     });
   }
 
+  /* ---------- annotation note bubble (delivery mode hover/tap) ---------- */
+
+  var tipSticky = null;
+  function showTip(btn, id) {
+    var t = find(id); if (!t) return;
+    tipEl.textContent = (t.messages[0] && t.messages[0].body) || "";
+    var r = btn.getBoundingClientRect();
+    tipEl.style.left = (r.left + r.width / 2) + "px";
+    tipEl.style.top = (r.top - 8) + "px";
+    tipEl.classList.add("show");
+  }
+  function hideTip(force) { if (tipSticky && force !== true) return; tipSticky = null; tipEl.classList.remove("show"); }
+  function toggleTip(btn, id) {
+    if (tipSticky === id) { hideTip(true); return; }
+    tipSticky = id; showTip(btn, id);
+  }
+
   /* ---------- cards ---------- */
 
   var openCardAnchor = null;
-  function closeCard() { cardholder.textContent = ""; state.openId = null; openCardAnchor = null; if (state.active) { renderPins(); renderList(); } }
+  function closeCard() { cardholder.textContent = ""; state.openId = null; openCardAnchor = null; renderPins(); if (state.active) renderList(); }
   function positionCard(at) {
     var card = cardholder.firstElementChild; if (!card) return;
     var w = card.offsetWidth, h = card.offsetHeight;
@@ -395,7 +471,12 @@
     var xy = pinXY(t) || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     render();
     var card = makeCard(xy);
-    card.innerHTML = '<h4>Comment' + (t.resolved ? ' · resolved' : '') + '</h4><div class="msgs"></div>' +
+    card.innerHTML = '<div class="chead">' +
+      '<button class="anno-toggle' + (t.annotation ? ' on' : '') + '" title="' +
+      (t.annotation ? 'Annotation — always visible, skipped on resolve. Click to make it a normal comment.' : 'Make this an annotation — always-on dev note, skipped when resolving comments.') +
+      '"><img src="' + CAT + '" alt=""></button>' +
+      '<h4>' + (t.annotation ? 'Annotation' : 'Comment') + (t.resolved ? ' · resolved' : '') + '</h4></div>' +
+      '<div class="msgs"></div>' +
       '<textarea class="tx" placeholder="Reply…"></textarea>' +
       '<div class="row"><button class="del danger">Delete</button>' +
       '<button class="res link">' + (t.resolved ? 'Reopen' : 'Resolve') + '</button>' +
@@ -417,6 +498,13 @@
     });
     card.querySelector(".res").addEventListener("click", function () {
       mutate({ op: "resolve", id: id, resolved: !t.resolved }).then(closeCard);
+    });
+    card.querySelector(".anno-toggle").addEventListener("click", function () {
+      var willBe = !t.annotation;
+      mutate({ op: "annotate", id: id, annotation: willBe }).then(function () {
+        toast(willBe ? "Now an annotation · always-on for devs" : "Back to a comment");
+        openThread(id);
+      });
     });
     card.querySelector(".del").addEventListener("click", function () {
       if (!confirm("Delete this comment thread?")) return;
@@ -474,6 +562,7 @@
   function setActive(on) {
     state.active = on;
     try { sessionStorage.setItem(LS_ACTIVE, on ? "1" : "0"); } catch (e) {}
+    hideTip(true);
     if (on) { state.mode = "add"; } else { closeCard(); }
     render();
     if (on) toast("Review on · click to comment · Esc to browse");
@@ -528,6 +617,7 @@
     if (!settled) return;
     state.threads.forEach(function (t) {
       if (deleted[t.id]) return;
+      if (isAnno(t)) return; // annotations are delivery notes — never auto-delete
       if (isOrphan(t)) {
         if (!orphanTimers[t.id]) {
           orphanTimers[t.id] = setTimeout(function () {
@@ -548,7 +638,8 @@
   function scheduleRerender() {
     clearTimeout(reRenderT);
     reRenderT = setTimeout(function () {
-      if (state.active) { renderList(); renderPins(); }
+      if (state.active) renderList();
+      renderPins(); // annotation pins repaint even with review off
       orphanSweep();
     }, 200);
   }

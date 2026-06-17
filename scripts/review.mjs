@@ -96,25 +96,30 @@ async function main() {
   const pages = data.pages || {};
   const keys = Object.keys(pages).filter((p) => (pages[p] || []).length).sort();
   console.log(`Review comments — pulled ${fmt(data.generatedAt)} from ${base}\n`);
-  let total = 0, open = 0;
+  const isAnno = (t) => !!t.annotation;
+  let total = 0, open = 0, annos = 0;
   if (!keys.length) { console.log("No comments yet."); return; }
   for (const p of keys) {
-    const threads = (pages[p] || []).filter((t) => (openOnly ? !t.resolved : true));
+    // Annotations are always-on dev-delivery notes, not feedback — never list them
+    // as actionable. --open hides them; the full list shows them flagged.
+    const threads = (pages[p] || []).filter((t) => (openOnly ? (!t.resolved && !isAnno(t)) : true));
     if (!threads.length) continue;
     console.log(`══ ${p}`);
     threads.forEach((t) => {
-      total++; if (!t.resolved) open++;
+      total++;
+      if (isAnno(t)) annos++; else if (!t.resolved) open++;
       const pos = (t.fx || t.fy)
         ? `at ${Math.round(t.fx * 100)}%×${Math.round(t.fy * 100)}% of the element`
         : `page ${Math.round(t.px)},${Math.round(t.py)}`;
-      console.log(`  • ${t.resolved ? "✅" : "🟠"} id=${t.id}`);
+      const badge = isAnno(t) ? "📌 ANNOTATION (dev note — do NOT resolve)" : (t.resolved ? "✅" : "🟠");
+      console.log(`  • ${badge} id=${t.id}`);
       console.log(`      module: ${t.sel || "(page)"}`);
       console.log(`      view:   ${t.view || "(base)"}    pin: ${pos}`);
       (t.messages || []).forEach((m) => console.log(`      “${m.body}”  — ${m.author}, ${fmt(m.at)}`));
     });
     console.log("");
   }
-  console.log(`${total} thread(s)${openOnly ? "" : `, ${open} open`}.`);
+  console.log(`${total} thread(s)${openOnly ? "" : `, ${open} open comment(s), ${annos} annotation(s)`}.`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

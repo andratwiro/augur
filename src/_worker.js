@@ -183,6 +183,7 @@ function applyOp(threads, op) {
       fx: +t.fx || 0, fy: +t.fy || 0, px: +t.px || 0, py: +t.py || 0,
       view: clamp(t.view, 600) || null,
       resolved: false,
+      annotation: !!t.annotation,
       messages: (Array.isArray(t.messages) ? t.messages : []).slice(0, 1).map(sanitizeMsg),
     });
     if (threads.length > 500) threads = threads.slice(-500);
@@ -199,6 +200,9 @@ function applyOp(threads, op) {
   } else if (op.op === "resolve") {
     const t = threads.find((x) => x.id === op.id);
     if (t) t.resolved = !!op.resolved;
+  } else if (op.op === "annotate") {
+    const t = threads.find((x) => x.id === op.id);
+    if (t) t.annotation = !!op.annotation;
   } else if (op.op === "delete") {
     threads = threads.filter((x) => x.id !== op.id);
   }
