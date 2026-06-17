@@ -36,8 +36,9 @@
 
     /* ── action cluster ──────────────────────────────────────────────────────── */
     .sx-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-    .sx-openpill { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
-    .sx-linkbtn { background: none; border: 0; padding: 6px 4px; font: inherit; font-size: var(--gv-fs-s); color: var(--gv-blue-500); cursor: pointer; }
+    /* Open-for-responses dimmed to 30% — flagged as a candidate for removal */
+    .sx-openpill { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-base); color: var(--gv-bo-primary); opacity: .3; }
+    .sx-linkbtn { background: none; border: 0; padding: 6px 4px; font: inherit; font-size: var(--gv-fs-base); color: var(--gv-blue-500); cursor: pointer; }
     .sx-menuwrap { position: relative; }
     .sx-menuwrap .gv-bo-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; min-width: 322px; white-space: nowrap; }
     .gv-bo-menu__item { white-space: nowrap; }
