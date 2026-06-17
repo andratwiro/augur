@@ -31,6 +31,23 @@
   // shared trace transform (potrace y-flip) — maps the path data into the 1744x720 frame
   const TT = 'transform="translate(0,720) scale(0.1,-0.1)"';
 
+  /* ---- traced DOG paths (potrace, source frame 1256x984) ----
+     A real FigPal-style sleeping corgi: floppy pointed ears, closed sleepy eyes,
+     snout pointing left, curled body + little tail. Traced from the same pipeline
+     as the cat (pre-smooth → outline mask + full-silhouette mask → potrace) so the
+     two masks share one frame and the transform below maps both. Recoloured per
+     palette exactly like the cat: sil = fur, outMain = the hand-drawn outline,
+     eyeL/eyeR = closed sleepy arcs, nose = the muzzle nose. */
+  const DOG_P = {
+    sil: "M4495 6351 c-59 -17 -154 -72 -161 -94 -7 -23 -28 -53 -80 -115 -17 -20 -36 -52 -43 -71 -6 -19 -18 -42 -25 -50 -8 -9 -19 -36 -26 -61 -6 -25 -20 -54 -30 -65 -10 -11 -24 -42 -30 -68 -5 -26 -21 -65 -34 -85 -15 -23 -26 -59 -29 -96 -4 -41 -12 -65 -27 -81 -15 -16 -24 -43 -29 -84 -5 -44 -14 -68 -31 -86 -22 -23 -25 -38 -30 -126 -4 -85 -8 -103 -24 -115 -22 -15 -34 -82 -35 -193 -1 -56 -5 -69 -28 -93 l-26 -27 -4 -148 -5 -148 -25 -37 -24 -36 3 -265 c3 -235 5 -267 21 -284 33 -37 21 -58 -88 -165 -77 -75 -108 -112 -115 -138 -6 -20 -19 -45 -30 -55 -10 -9 -22 -37 -26 -60 -4 -27 -15 -51 -29 -64 -48 -41 -49 -239 -2 -289 15 -15 30 -43 33 -62 14 -74 42 -106 114 -134 25 -10 56 -28 70 -41 20 -18 41 -24 105 -30 l80 -6 45 29 c25 17 63 34 85 37 22 4 54 18 72 31 17 13 41 24 53 24 12 0 33 13 48 29 15 16 49 38 77 48 34 13 57 30 75 55 14 21 52 55 86 76 37 24 64 49 68 63 l6 24 15 -19 c8 -10 16 -24 18 -30 3 -8 118 -12 388 -14 387 -4 409 -6 409 -41 0 -14 42 -72 92 -127 10 -10 37 -40 60 -66 37 -41 48 -48 80 -48 29 0 46 -7 70 -30 l31 -30 98 0 99 0 27 30 26 30 67 0 c53 0 70 4 84 19 10 11 32 25 49 32 18 7 41 22 52 35 12 13 52 32 95 44 95 29 127 45 135 69 11 36 66 44 238 38 l160 -6 28 -27 27 -26 109 -9 c59 -4 127 -8 151 -8 37 -1 49 -8 102 -56 33 -30 65 -55 72 -55 6 0 22 -10 35 -21 13 -13 44 -25 74 -30 29 -5 61 -17 73 -27 26 -23 138 -57 160 -49 9 4 16 15 16 25 0 42 29 52 155 52 98 0 123 3 149 19 17 10 57 22 89 26 48 5 64 13 92 41 30 29 41 34 83 34 36 0 57 6 82 25 19 14 44 25 57 25 22 0 56 26 64 48 2 6 39 28 81 50 81 41 158 116 158 154 0 11 14 33 31 49 27 25 33 39 38 94 5 42 14 71 26 86 26 28 27 129 1 177 -24 47 -31 119 -31 343 l0 196 28 39 c15 23 27 54 27 71 0 19 10 43 25 61 15 18 28 49 32 77 3 29 16 59 31 77 32 38 42 145 34 381 l-5 158 -31 40 c-18 21 -49 54 -71 72 l-39 32 -111 3 -112 4 -30 -26 c-17 -14 -39 -26 -49 -26 -10 0 -46 -29 -80 -65 -70 -73 -84 -77 -134 -35 -19 17 -40 30 -48 30 -7 0 -30 17 -52 38 -58 56 -96 82 -119 82 -11 0 -36 14 -56 31 -19 17 -54 35 -76 40 -23 6 -53 19 -67 29 -18 14 -40 20 -78 20 -47 0 -59 4 -86 30 l-31 30 -169 0 c-173 0 -217 -8 -247 -43 -11 -14 -35 -17 -155 -17 l-141 0 -45 -24 c-40 -21 -63 -24 -220 -30 -149 -6 -179 -10 -201 -26 -23 -16 -40 -18 -118 -15 -103 4 -116 10 -126 63 -3 20 -18 49 -32 64 l-26 28 -6 102 c-5 72 -11 110 -23 128 -10 14 -22 48 -28 76 -7 31 -21 61 -35 74 -14 13 -28 39 -31 59 -10 53 -54 131 -79 141 -12 5 -31 21 -43 37 l-20 28 -154 3 -153 2 -87 -84 c-74 -70 -88 -88 -88 -114 0 -23 -7 -36 -25 -48 -15 -10 -29 -33 -36 -58 -6 -22 -19 -50 -29 -61 -10 -11 -22 -40 -27 -65 -6 -31 -15 -48 -30 -55 -22 -10 -43 -44 -43 -72 0 -9 -8 -34 -19 -57 -10 -23 -24 -53 -30 -68 l-11 -28 -113 0 c-160 0 -193 26 -147 115 31 60 29 264 -2 320 -18 31 -24 62 -28 144 l-5 103 -27 22 c-15 11 -35 43 -45 71 l-18 49 -71 37 c-76 40 -140 53 -189 40z",
+    outMain: "M4423 6226 c-19 -8 -51 -41 -77 -78 -25 -35 -54 -74 -64 -88 -11 -14 -24 -41 -31 -60 -6 -19 -22 -57 -36 -84 -14 -27 -25 -56 -25 -65 0 -8 -11 -31 -24 -50 -41 -60 -191 -529 -206 -646 -10 -75 -18 -106 -34 -123 -16 -18 -23 -43 -28 -105 -4 -45 -10 -116 -14 -157 -3 -41 -11 -81 -18 -89 -26 -33 -47 -605 -27 -736 15 -96 8 -114 -87 -213 -182 -193 -225 -294 -211 -494 9 -125 52 -198 144 -245 70 -37 267 -24 335 21 19 13 48 27 64 31 17 3 45 19 63 35 18 16 52 40 75 54 24 14 68 48 98 76 30 29 71 60 90 71 19 10 47 28 61 40 23 18 31 19 65 10 21 -6 60 -11 86 -11 30 0 60 -7 80 -20 l33 -20 292 0 c160 0 302 -4 315 -9 26 -10 74 -75 83 -114 9 -35 135 -154 171 -162 16 -4 45 -11 64 -16 109 -28 419 37 451 94 5 8 42 31 82 50 111 52 140 67 167 82 14 8 36 15 49 15 13 0 38 8 55 19 53 31 116 34 203 7 43 -13 128 -28 188 -34 71 -6 123 -16 145 -27 23 -12 65 -20 119 -23 l83 -5 46 -49 c88 -92 283 -159 380 -130 22 7 67 12 101 12 40 0 70 6 86 16 14 9 60 23 103 31 72 14 148 41 267 98 28 13 65 26 83 30 38 8 86 36 139 80 20 17 59 44 88 60 57 33 108 86 120 125 4 14 17 36 30 50 48 54 50 352 2 475 -25 63 -23 251 3 290 11 17 20 45 20 63 0 36 71 252 94 287 32 48 78 184 83 240 13 168 -31 365 -89 396 -12 7 -65 16 -117 20 -122 9 -151 -3 -251 -105 -53 -55 -84 -78 -108 -82 l-33 -6 -55 61 c-31 33 -61 61 -68 61 -7 0 -23 11 -36 25 -13 14 -28 25 -33 25 -6 0 -24 11 -41 24 -46 35 -230 121 -316 147 -120 38 -608 30 -653 -10 -19 -15 -48 -20 -277 -40 -52 -4 -112 -16 -133 -25 -30 -13 -83 -18 -250 -23 l-212 -6 -21 24 c-25 28 -49 107 -60 194 -3 33 -14 80 -24 105 -10 25 -20 66 -24 92 -4 27 -17 60 -29 75 -13 16 -28 50 -35 77 -7 27 -21 61 -31 75 -10 14 -24 43 -30 63 -9 28 -26 47 -65 73 l-53 35 -100 0 -100 0 -57 -57 c-31 -31 -73 -86 -93 -122 -20 -36 -46 -77 -58 -91 -13 -14 -26 -36 -30 -50 -4 -14 -18 -41 -31 -60 -13 -19 -24 -42 -24 -52 0 -9 -12 -31 -27 -48 -16 -20 -29 -51 -34 -82 -10 -60 -29 -92 -72 -119 l-32 -20 -147 3 -147 3 -23 23 -23 23 4 77 c21 376 -10 562 -113 661 l-35 34 -103 4 c-75 3 -112 0 -135 -11z m153 -130 c41 -29 71 -89 77 -151 4 -33 13 -80 22 -104 19 -55 19 -163 0 -227 -35 -115 -3 -282 57 -299 12 -3 46 -17 73 -30 l50 -23 184 9 c251 12 262 19 356 229 8 19 21 44 27 55 30 52 96 184 103 205 9 29 102 171 123 188 74 59 190 -48 242 -219 10 -35 25 -84 33 -109 51 -158 74 -312 86 -555 l6 -139 35 -7 c19 -4 51 -4 70 0 l35 7 5 92 c7 126 8 127 163 129 69 1 135 7 152 14 17 7 71 16 120 20 200 17 276 28 292 41 17 14 92 24 278 36 66 5 120 13 135 22 19 11 60 15 165 15 l140 0 95 -46 c52 -26 110 -52 128 -58 60 -19 175 -104 257 -188 78 -80 149 -123 203 -123 40 0 101 40 129 85 94 153 179 198 253 136 l35 -29 0 -133 -1 -134 -31 -57 c-17 -31 -36 -80 -43 -110 -7 -29 -20 -62 -30 -73 -73 -85 -142 -572 -94 -660 6 -11 14 -49 17 -85 3 -36 13 -84 21 -107 l15 -43 -19 -42 c-11 -24 -20 -54 -20 -67 0 -48 -122 -156 -246 -217 -61 -29 -114 -57 -118 -61 -14 -14 -173 -75 -231 -88 -33 -8 -82 -23 -110 -34 -27 -10 -76 -22 -107 -26 -32 -4 -62 -13 -69 -21 -27 -32 -78 -37 -117 -11 -20 14 -54 27 -75 30 -21 3 -53 19 -71 34 -31 27 -96 135 -96 161 0 26 51 111 70 117 11 3 33 17 49 31 l29 24 103 -2 c110 -2 247 13 289 30 56 23 108 100 95 141 -5 18 -84 84 -146 122 -74 47 -200 188 -230 259 l-30 71 7 67 c7 78 -8 108 -62 118 -26 5 -36 1 -58 -22 -76 -83 -57 -247 47 -399 15 -22 27 -44 27 -50 0 -13 59 -69 113 -109 76 -55 40 -96 -84 -96 -120 0 -179 -24 -256 -101 -65 -66 -71 -78 -72 -137 -1 -28 -8 -49 -22 -63 l-20 -20 -112 7 c-80 5 -117 11 -130 22 -11 10 -49 19 -100 23 -45 5 -131 13 -192 18 -164 16 -326 -28 -480 -128 -43 -28 -86 -51 -96 -51 -10 0 -33 -13 -52 -29 -42 -38 -157 -81 -211 -81 -75 1 -145 40 -198 109 l-48 62 0 54 c0 43 5 59 26 85 26 30 125 100 143 100 4 0 27 13 49 30 23 17 46 30 52 30 21 0 50 41 50 70 0 108 -128 108 -247 -1 -24 -22 -49 -39 -57 -39 -19 0 -89 -78 -105 -117 -7 -18 -25 -36 -40 -43 -34 -14 -659 -8 -736 8 -97 19 -190 44 -220 60 -16 9 -50 26 -75 39 -24 13 -53 32 -65 42 -11 10 -34 26 -52 35 -67 33 -233 223 -233 265 0 9 -7 26 -15 38 -17 24 -23 528 -7 560 5 10 12 52 15 95 3 42 10 85 16 96 6 12 11 47 11 79 0 36 6 67 15 80 14 20 39 190 36 242 0 13 8 38 19 56 11 18 20 50 20 71 0 22 9 56 20 76 10 20 26 67 35 105 17 76 72 237 91 268 7 11 18 40 24 64 6 25 23 61 36 80 13 20 24 41 24 47 0 6 12 29 26 50 15 21 33 59 40 85 10 33 28 60 64 93 52 49 73 55 106 32z m-582 -2506 c78 -77 108 -99 195 -145 49 -26 56 -34 59 -63 4 -35 -37 -83 -96 -113 -15 -7 -56 -40 -92 -71 -51 -46 -75 -60 -116 -68 -29 -6 -58 -18 -64 -26 -18 -20 -98 -18 -135 5 -43 26 -95 128 -95 185 0 48 33 122 75 166 13 14 30 41 38 61 15 37 121 139 145 139 8 0 46 -32 86 -70z",
+    eyeL: "M4749 4102 c-38 -40 -113 -82 -146 -82 -20 0 -56 18 -104 50 -89 61 -117 64 -143 15 -27 -50 -11 -99 46 -143 23 -17 45 -32 50 -32 5 0 26 -12 48 -26 49 -32 96 -30 206 11 60 22 79 35 113 77 51 62 52 87 6 127 -43 37 -43 37 -76 3z",
+    eyeR: "M5686 4103 c-20 -16 -53 -40 -73 -55 -21 -17 -48 -28 -67 -28 -32 0 -109 42 -135 73 -38 46 -128 -3 -115 -62 8 -32 82 -111 104 -111 9 0 34 -13 56 -30 73 -55 196 -33 289 51 73 67 82 106 34 155 -40 41 -46 42 -93 7z",
+    nose: "M5005 3900 c-11 -5 -50 -9 -87 -9 l-67 -1 -20 -29 c-25 -34 -26 -49 -7 -76 7 -11 19 -36 25 -55 7 -21 28 -47 52 -65 22 -16 57 -45 78 -62 70 -60 143 -54 176 14 11 23 28 50 37 60 34 37 63 137 49 171 -21 51 -165 82 -236 52z",
+  };
+  // dog trace transform (potrace y-flip) — maps the dog paths into a 1256x984 frame
+  const DTT = 'transform="translate(0,984) scale(0.1,-0.1)"';
+
   /* ---- palette: per-colour fills (real-art anchored) ----
      fur   = the main body (recolours the traced silhouette)
      dark  = inner-ears / haunch stripes / brow-heart (a deeper shade of fur)
@@ -63,13 +80,18 @@
     { id: "beanie", label: "Beanie" },
     { id: "party",  label: "Party" },
   ];
-  function hatSVG(id) {
+  // Per-species hat transform. Hats are authored around centre x430 / brim ~y250,
+  // then shifted onto the real crown:
+  //  • CAT (1744x720 frame): ear-tips ~x380 & ~x690, dip ~y150  → translate(140,-82)
+  //  • DOG (1256x984 frame): ear-tips ~x440 & ~x560, crown-top ~y365, dip ~y430
+  //    (measured off a coordinate-grid render) — brim authored y250 lands at the
+  //    crown when shifted +70x / +150y, sized to the dog's narrower head.
+  const HAT_T_CAT = 'transform="translate(140,-82)"';
+  const HAT_T_DOG = 'transform="translate(147,182) scale(0.82)"';
+  function hatSVG(id, species) {
     if (!id || id === "none") return "";
     const S = 'stroke="' + OUT + '" stroke-width="28" stroke-linejoin="round" stroke-linecap="round"';
-    // Hats are authored around centre x430 / brim ~y250, then shifted by HAT_T to
-    // perch on the real crown: the two ear-tips sit at ~x380 & ~x690 (centre ~x535)
-    // and the dip between the ears is ~y150 (measured off a coordinate-grid render).
-    const HAT_T = 'transform="translate(140,-82)"';
+    const HAT_T = species === "dog" ? HAT_T_DOG : HAT_T_CAT;
     let inner = "";
     if (id === "tophat") {
       inner = '<g ' + S + '>' +
@@ -140,30 +162,60 @@
     );
   }
 
-  /* Build the resting cat in the 1744x720 trace frame.
-     awake → open round eyes (over the muzzle); else the traced sleepy arcs. */
+  /* ---- DOG markings, drawn inside the silhouette clip (1256x984 frame) ----
+     Real corgi colouring: orange head-cap/ears/back-saddle over a white face/snout
+     + white chest/belly. We start from the flat fur fill then lay a lighter belly
+     "blaze" (the white muzzle + chest) and a couple of blush ovals on the cheeks.
+     Floppy-ear inner shading uses the darker tone. Bleeds past the silhouette so
+     the clip trims it flush. (No bicolor branch — that's the cat's Aslam pattern.) */
+  function dogMarks(c) {
+    return (
+      // white muzzle/face blaze + chest (the corgi's pale front). Sits low-left,
+      // sweeping under the head and across the lower body.
+      '<ellipse cx="540" cy="600" rx="300" ry="120" fill="' + c.belly + '" opacity=".85"/>' +
+      '<ellipse cx="470" cy="560" rx="95" ry="130" fill="' + c.belly + '" opacity=".85"/>' +
+      // inner-ear shading (the two floppy ears, tips up around x440 & x560 / y370)
+      '<path d="M415 470 Q430 385 470 440 Q450 470 430 500 Z" fill="' + c.dark + '" opacity=".7"/>' +
+      '<path d="M535 470 Q555 380 595 445 Q570 475 555 505 Z" fill="' + c.dark + '" opacity=".7"/>' +
+      // blush on the cheeks, flanking the snout
+      '<ellipse cx="455" cy="585" rx="52" ry="30" fill="' + c.cheek + '" opacity=".5"/>' +
+      '<ellipse cx="588" cy="585" rx="52" ry="30" fill="' + c.cheek + '" opacity=".5"/>'
+    );
+  }
+
+  /* Build the resting pet in its species trace frame.
+     awake → open round eyes (over the muzzle); else the traced sleepy arcs.
+     species 'cat' (1744x720, TT) or 'dog' (1256x984, DTT). */
   let clipSeq = 0;
-  function catBody(c, awake, hat) {
+  function petBody(species, c, awake, hat) {
     const cid = "fpBody" + (++clipSeq);
+    const isDog = species === "dog";
+    const A = isDog ? DOG_P : P;          // path set
+    const T = isDog ? DTT : TT;           // trace transform
+    // open-eye centres differ per species frame (measured off the traced muzzle):
+    const eyeGeo = isDog
+      ? { lx: 478, rx: 568, ey: 575, rx_: 30, ry_: 36, hl: 12 }
+      : { lx: 460, rx: 660, ey: 385, rx_: 34, ry_: 40, hl: 11 };
     const eyes = awake
-      ? '<g ' + TT + '><path d="' + P.eyeL + '" fill="' + c.fur + '"/><path d="' + P.eyeR + '" fill="' + c.fur + '"/></g>' +
-        '<ellipse cx="460" cy="385" rx="34" ry="40" fill="' + OUT + '"/><circle cx="472" cy="368" r="11" fill="#fff"/>' +
-        '<ellipse cx="660" cy="385" rx="34" ry="40" fill="' + OUT + '"/><circle cx="672" cy="368" r="11" fill="#fff"/>'
-      : '<g ' + TT + '><path d="' + P.eyeL + '" fill="' + OUT + '"/><path d="' + P.eyeR + '" fill="' + OUT + '"/></g>';
+      ? '<g ' + T + '><path d="' + A.eyeL + '" fill="' + c.fur + '"/><path d="' + A.eyeR + '" fill="' + c.fur + '"/></g>' +
+        '<ellipse cx="' + eyeGeo.lx + '" cy="' + eyeGeo.ey + '" rx="' + eyeGeo.rx_ + '" ry="' + eyeGeo.ry_ + '" fill="' + OUT + '"/><circle cx="' + (eyeGeo.lx + 12) + '" cy="' + (eyeGeo.ey - 17) + '" r="' + eyeGeo.hl + '" fill="#fff"/>' +
+        '<ellipse cx="' + eyeGeo.rx + '" cy="' + eyeGeo.ey + '" rx="' + eyeGeo.rx_ + '" ry="' + eyeGeo.ry_ + '" fill="' + OUT + '"/><circle cx="' + (eyeGeo.rx + 12) + '" cy="' + (eyeGeo.ey - 17) + '" r="' + eyeGeo.hl + '" fill="#fff"/>'
+      : '<g ' + T + '><path d="' + A.eyeL + '" fill="' + OUT + '"/><path d="' + A.eyeR + '" fill="' + OUT + '"/></g>';
+
+    const marks = isDog ? dogMarks(c)
+                        : (c.pattern === "bicolor" ? bicolorMarks(c) : normalMarks(c));
 
     return (
       // silhouette (fur)
-      '<g ' + TT + '><path d="' + P.sil + '" fill="' + c.fur + '"/></g>' +
+      '<g ' + T + '><path d="' + A.sil + '" fill="' + c.fur + '"/></g>' +
       // recolourable overlays, clipped to the body
-      '<clipPath id="' + cid + '"><path ' + TT + ' d="' + P.sil + '"/></clipPath>' +
-      '<g clip-path="url(#' + cid + ')">' +
-        (c.pattern === "bicolor" ? bicolorMarks(c) : normalMarks(c)) +
-      '</g>' +
+      '<clipPath id="' + cid + '"><path ' + T + ' d="' + A.sil + '"/></clipPath>' +
+      '<g clip-path="url(#' + cid + ')">' + marks + '</g>' +
       // outline on top (closed-eye arcs swapped for open when awake); nose can be tinted
-      '<g ' + TT + '><path d="' + P.outMain + '" fill="' + OUT + '"/><path d="' + P.nose + '" fill="' + (c.noseFill || OUT) + '"/></g>' +
+      '<g ' + T + '><path d="' + A.outMain + '" fill="' + OUT + '"/><path d="' + A.nose + '" fill="' + (c.noseFill || OUT) + '"/></g>' +
       eyes +
-      // hat last, perched on the head
-      hatSVG(hat)
+      // hat last, perched on the head (per-species crown offset)
+      hatSVG(hat, species)
     );
   }
 
@@ -173,24 +225,38 @@
   function svg(config, state) {
     const c = PALETTE[(config && config.furIdx) || 0] || PALETTE[0];
     const hat = (config && config.hat) || "none";
+    const species = (config && config.species) === "dog" ? "dog" : "cat";
     state = state || {};
-    // The traced art is ~1744 wide x ~720 tall (cat ~ y0..680). We fit it into a
-    // 100x100 viewBox: scale to width, centre vertically, and leave headroom so a
-    // tall hat isn't clipped (viewBox overflow:visible also lets it spill).
-    const scale = 100 / 1744;            // ~0.05734
-    const ty = (100 - 720 * scale) / 2 + 6;   // nudge down a touch; hats overflow up
+    // Fit the traced art into a 100x100 viewBox, vertically centred with hat headroom
+    // (overflow:visible lets a tall hat spill). Each species has its own trace frame,
+    // so each gets its own scale + offset chosen so the BODY lands at the same on-screen
+    // size + baseline — the dog drops cleanly into the cat's frame.
+    let inner, fit;
+    if (species === "dog") {
+      // dog frame 1256x984; body spans ~x350..870 / ~y355..690. Scale up and recentre
+      // so the dog reads at the same footprint as the cat and rests on the same baseline.
+      const scale = 100 / 1110;
+      const tx = -300 * scale;                 // pull the left margin in
+      const ty = (100 - 984 * scale) / 2 + 28;
+      fit = 'transform="translate(' + tx.toFixed(2) + ',' + ty.toFixed(2) + ') scale(' + scale.toFixed(5) + ')"';
+    } else {
+      const scale = 100 / 1744;                // ~0.05734
+      const ty = (100 - 720 * scale) / 2 + 6;  // nudge down a touch; hats overflow up
+      fit = 'transform="translate(0,' + ty.toFixed(2) + ') scale(' + scale.toFixed(5) + ')"';
+    }
     return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" overflow="visible">' +
       '<ellipse class="fp-shadow" cx="50" cy="84" rx="30" ry="5" fill="rgba(60,30,55,.16)"/>' +
-      '<g transform="translate(0,' + ty.toFixed(2) + ') scale(' + scale.toFixed(5) + ')">' +
-        catBody(c, !!state.awake, hat) +
+      '<g ' + fit + '>' +
+        petBody(species, c, !!state.awake, hat) +
       '</g>' +
     '</svg>';
   }
 
   // ---- config persistence ----
   function loadConfig() {
-    try { return Object.assign({ name: "Pal", furIdx: 0, hat: "none" }, JSON.parse(localStorage.getItem("figpal-config")) || {}); }
-    catch (e) { return { name: "Pal", furIdx: 0, hat: "none" }; }
+    const def = { name: "Pal", furIdx: 0, hat: "none", species: "cat" };
+    try { return Object.assign(def, JSON.parse(localStorage.getItem("figpal-config")) || {}); }
+    catch (e) { return Object.assign({}, def); }
   }
   function saveConfig(cfg) { try { localStorage.setItem("figpal-config", JSON.stringify(cfg)); } catch (e) {} }
 
