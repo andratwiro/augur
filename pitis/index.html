@@ -149,8 +149,9 @@
   };
   const SPECIES = [ { id:'cat', label:'Cat' }, { id:'dog', label:'Dog' } ];
 
-  // colours intentionally dropped from the picker
-  const HIDDEN_COLOURS = ['Sunset', 'Sunbeam', 'Meadow', 'Iris'];   // orange, yellow, green, purple
+  // colours intentionally dropped from the picker — only Aslam (ginger & white) and
+  // the grey remain (more real-pet colours coming: Pruna, Senda).
+  const HIDDEN_COLOURS = ['Sunset', 'Sunbeam', 'Meadow', 'Iris', 'Blossom', 'Ink', 'Sky', 'Bubblegum'];
 
   function draw() { petEl.innerHTML = Piti.svg(cfg, {}); }
 
@@ -160,6 +161,7 @@
       .map((p, i) => ({ p, i }))
       .filter(o => !HIDDEN_COLOURS.includes(o.p.name))                       // dropped colours
       .filter(o => !(o.p.pattern === 'bicolor' && cfg.species !== 'cat'))    // Aslam = cat-only
+      .sort((a, b) => (b.p.pattern === 'bicolor' ? 1 : 0) - (a.p.pattern === 'bicolor' ? 1 : 0)) // Aslam first
       .map(o => o.i);
   }
 
@@ -240,6 +242,8 @@
     persist();
   }
 
+  // if the saved colour was dropped from the picker, snap to the first visible one (Aslam)
+  if (!colourIndices().includes(cfg.furIdx)) cfg.furIdx = colourIndices()[0];
   buildSwatches();
   draw();
   nameInput.addEventListener('input', persist);
