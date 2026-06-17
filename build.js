@@ -92,7 +92,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.31";
+const UI_VERSION = "0.32";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -587,6 +587,27 @@ const PAGE_CSS = `
       position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0;
       transform-origin: top left; pointer-events: none;
     }
+    /* ---- Preview skeleton ----
+       Live previews are scaled-down iframes of real pages. While a page's external
+       CSS loads, its CSS-sized inline SVG icons briefly balloon (FOUC), and the
+       iframe's first paint shows that. So we hold the iframe at opacity:0 over a
+       shimmering skeleton and cross-fade to it once the iframe fires its load event
+       (by which point its CSS has applied). JS adds .is-loaded to the container. */
+    .preview iframe, .comp-thumb iframe { opacity: 0; transition: opacity .35s ease; }
+    .preview.is-loaded iframe, .comp-thumb.is-loaded iframe { opacity: 1; }
+    .preview:not(.preview--pending)::after, .comp-thumb::after {
+      content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      background: linear-gradient(90deg, var(--bg-2) 25%, #f8f9fc 50%, var(--bg-2) 75%);
+      background-size: 200% 100%;
+      animation: gv-skeleton 1.3s ease-in-out infinite;
+      transition: opacity .35s ease;
+    }
+    .preview.is-loaded::after, .comp-thumb.is-loaded::after { opacity: 0; }
+    @keyframes gv-skeleton { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .preview::after, .comp-thumb::after { animation: none; }
+      .preview iframe, .comp-thumb iframe { transition: none; }
+    }
     .preview-link { position: absolute; inset: 0; z-index: 2; }
     /* Download icon overlays the preview image, top-right, above the cover link.
        A translucent white backdrop keeps it legible over any screenshot. */
@@ -800,6 +821,19 @@ const CAROUSEL_JS = `
         if (f) f.style.transform = 'scale(' + (p.clientWidth / 1280) + ')';
       }
       var previews = [].slice.call(document.querySelectorAll('.preview, .comp-thumb'));
+
+      // Cross-fade each preview from its skeleton to the loaded iframe. Reveal on
+      // the iframe's load event; reveal immediately if it already finished (cached),
+      // and force-reveal after a few seconds so a stuck load can't shimmer forever.
+      previews.forEach(function (p) {
+        var f = p.querySelector('iframe');
+        if (!f) return;
+        var reveal = function () { p.classList.add('is-loaded'); };
+        f.addEventListener('load', reveal);
+        try { if (f.contentDocument && f.contentDocument.readyState === 'complete') reveal(); } catch (e) {}
+        setTimeout(reveal, 6000);
+      });
+
       if (window.ResizeObserver) {
         var ro = new ResizeObserver(function (es) { es.forEach(function (e) { fit(e.target); }); });
         previews.forEach(function (p) { ro.observe(p); fit(p); });
