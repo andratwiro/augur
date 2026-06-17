@@ -4879,13 +4879,15 @@
         cols[0].appendChild(makeBlock('info-accordions'));
         cols[0].appendChild(seedAccordion('What can I suggest?', 'Anything within scope — seating, planting, traffic calming, lighting, cycle parking or how the space is used.'));
         cols[0].appendChild(seedAccordion('Who is running this project?', 'The City of Meridian engagement team, together with the mobility department.'));
+        // …then the Extra-surveys widget (Accessibility / Easy-read variant), below all
+        // the text + accordions in the wide column — where extra content flows on the FO page.
+        cols[0].appendChild(makeBlock('extra-surveys'));
       }
       // Right (narrow): the participation box.
       if (cols[1]) cols[1].appendChild(makeBlock('about-box'));
       // Out of the column, below: timeline, then events.
       frame.appendChild(makeBlock('timeline'));
       frame.appendChild(makeBlock('events'));
-      frame.appendChild(makeBlock('extra-surveys'));
       reflectEmptyAll();
     }
     seedDefault();
