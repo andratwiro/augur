@@ -48,17 +48,6 @@
     .gv-bo-menu__sep { height: 1px; background: var(--gv-divider); margin: 5px 0; }
     .gv-bo-menu__lbl { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--gv-cool-grey-600); font-weight: 700; padding: 8px 15px 2px; }
 
-    /* Delete-placement mode: phase ⋯ options vs in-context danger zone */
-    body:not([data-cta="phase"])  [data-when="phase"]  { display: none !important; }
-    body:not([data-cta="danger"]) [data-when="danger"] { display: none !important; }
-    /* in-context danger zone (GitHub-style) for the irreversible delete */
-    .sx-danger { margin: 26px 0 4px; border: 1px solid #f0c9c9; background: #fdf4f4; border-radius: 6px; padding: 15px 18px; display: flex; align-items: center; gap: 16px; max-width: 1000px; }
-    .sx-danger__main { flex: 1; }
-    .sx-danger__title { font-weight: 700; color: var(--gv-red-600, #b3261e); font-size: var(--gv-fs-base); }
-    .sx-danger__desc { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); margin-top: 2px; }
-    .sx-dangerbtn { flex: none; border: 1px solid var(--gv-red-500); color: var(--gv-red-500); background: #fff; border-radius: var(--gv-radius); padding: 8px 14px; font: inherit; font-size: var(--gv-fs-s); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; }
-    .sx-dangerbtn:hover { background: var(--gv-red-500); color: #fff; }
-    .sx-dangerbtn .gv-icon { width: 16px; height: 16px; }
 
     /* ── wide modal ──────────────────────────────────────────────────────────── */
     .sx-backdrop { position: fixed; inset: 0; background: rgba(7,26,43,.45); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 28px 16px; }
@@ -132,18 +121,9 @@
 
     .sx-toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--gv-bo-primary); color: #fff; padding: 11px 18px; border-radius: 5px; font-size: var(--gv-fs-s); box-shadow: 0 8px 26px rgba(0,0,0,.3); opacity: 0; transition: all .2s; z-index: 400; pointer-events: none; }
     .sx-toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-    /* CTA-organization switcher (dev control for proposing to Amanda) */
-    .sx-switch { position: fixed; left: 18px; bottom: 18px; z-index: 150; background: #0d1b2a; color: #fff; border-radius: 9px; padding: 11px 13px; box-shadow: 0 8px 26px rgba(0,0,0,.35); font-size: 12px; max-width: 360px; }
-    .sx-switch__lab { display: block; opacity: .6; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 7px; }
-    .sx-switch__opts { display: flex; gap: 4px; }
-    .sx-switch button { background: rgba(255,255,255,.10); color: #fff; border: 0; border-radius: 6px; padding: 7px 11px; font: inherit; font-size: 12px; cursor: pointer; line-height: 1.2; }
-    .sx-switch button.is-on { background: var(--gv-teal-400); color: #06242a; font-weight: 700; }
-    .sx-switch__desc { margin: 9px 0 0; font-size: 12px; line-height: 1.45; color: #c4d0db; }
-    .sx-switch__desc b { color: #fff; }
   </style>
 </head>
-<body class="gv-bo" data-gv-screen="survey-phase/insights" data-cta="phase">
+<body class="gv-bo" data-gv-screen="survey-phase/insights">
   <div class="gv-bo-shell">
 
     <nav class="gv-bo-side" aria-label="Admin">
@@ -213,16 +193,15 @@
                 <span><span class="gv-icon" data-gv-icon="eye"></span>Mixed rights</span>
               </div>
             </div>
-            <!-- phase-level options ⋯ — in option B, Delete survey results relocates here -->
+            <!-- phase-level options ⋯ — home for the irreversible "Delete survey results" -->
             <div class="gv-bo-phasehead__actions">
               <div class="sx-menuwrap">
                 <button class="gv-iconbtn" data-menu-trigger aria-label="Phase options" aria-haspopup="true"><span data-gv-icon="dots-horizontal"></span></button>
                 <div class="gv-bo-menu" hidden>
                   <button class="gv-bo-menu__item" data-act="toast" data-msg="Edit phase."><span class="gv-bo-menu__icon" data-gv-icon="edit"></span>Edit phase</button>
                   <button class="gv-bo-menu__item" data-act="toast" data-msg="Copy phase."><span class="gv-bo-menu__icon" data-gv-icon="paperclip"></span>Copy phase</button>
-                  <div class="gv-bo-menu__sep" data-when="phase"></div>
-                  <button class="gv-bo-menu__item is-danger" data-when="phase" data-act="toast" data-msg="Delete survey results? (would confirm)"><span class="gv-bo-menu__icon" data-gv-icon="delete"></span>Delete survey results</button>
                   <div class="gv-bo-menu__sep"></div>
+                  <button class="gv-bo-menu__item is-danger" data-act="toast" data-msg="Delete survey results? (would confirm)"><span class="gv-bo-menu__icon" data-gv-icon="delete"></span>Delete survey results</button>
                   <button class="gv-bo-menu__item is-danger" data-act="toast" data-msg="Delete phase?"><span class="gv-bo-menu__icon" data-gv-icon="delete"></span>Delete phase</button>
                 </div>
               </div>
@@ -291,16 +270,7 @@
 
               <h4 class="gv-bo-subhead" style="margin-top:22px">Questions</h4>
               <p class="pp-lede">Total 204 responses · 7 questions across 1 page</p>
-              <div class="sx-note"><span class="gv-icon" data-gv-icon="info-solid" style="color:var(--gv-blue-500)"></span><div>Per-question result charts render here. Use the switcher (bottom-left) to compare where the irreversible “Delete survey results” lives — phase ⋯ options vs an in-context danger zone.</div></div>
-
-              <!-- option: in-context danger zone for the irreversible delete -->
-              <div class="sx-danger" data-when="danger">
-                <div class="sx-danger__main">
-                  <div class="sx-danger__title">Delete survey results</div>
-                  <div class="sx-danger__desc">Permanently removes all 204 responses from this phase. Already-downloaded exports are unaffected. This can’t be undone.</div>
-                </div>
-                <button class="sx-dangerbtn" data-act="toast" data-msg="Delete survey results? (would confirm)"><span class="gv-icon" data-gv-icon="delete"></span>Delete survey results</button>
-              </div>
+              <div class="sx-note"><span class="gv-icon" data-gv-icon="info-solid" style="color:var(--gv-blue-500)"></span><div>Per-question result charts render here. Exports live in the labelled <b>Export ▾</b> menu (paired with Import); the irreversible <b>Delete survey results</b> sits in the phase <b>⋯ options</b> (top-right), away from the downloads.</div></div>
             </div>
           </div>
         </div>
@@ -377,16 +347,6 @@
     <div class="sx-pdf__scroll"><div class="sx-doc" id="viewerDoc"></div></div>
   </div>
 
-  <!-- holistic CTA-organisation switcher -->
-  <div class="sx-switch">
-    <span class="sx-switch__lab">Where “Delete survey results” lives (demo)</span>
-    <div class="sx-switch__opts">
-      <button data-cta="phase" class="is-on">Phase ⋯ options</button>
-      <button data-cta="danger">Danger zone (bottom)</button>
-    </div>
-    <p class="sx-switch__desc" id="switchDesc"></p>
-  </div>
-
   <div class="sx-toast" id="toast"></div>
 
   <script>
@@ -415,10 +375,6 @@
       { when: '2026-06-13', a: { improve:'Better lighting', freq:'Daily', access:'5 / 5', rank:null, photos:null, pin:'Pinned — north meadow', more:null, name:'Priya Nair', email:'priya.n@example.com', gender:'Prefer not to say', yob:'1978', postcode:'NC 27610', official:'Yes — city council' } },
     ];
     const TOTAL = 204;
-    const DESC = {
-      phase: 'Header is fixed: <b>Import</b> &amp; <b>Export ▾</b> as a symmetric in/out pair, <b>AI analysis</b> as the primary. The irreversible <b>Delete survey results</b> lives in the phase <b>⋯ options</b> (top-right) with <i>Delete phase</i> — destructive actions grouped, never beside a download. <b>Lighter, pattern-consistent.</b>',
-      danger: 'Same header. <b>Delete survey results</b> instead gets an explicit <b>danger zone</b> at the bottom of Insights — most discoverable on the results page, clearly marked, impossible to mistake for an export. <b>Safest.</b>'
-    };
     const $ = (s,r)=>(r||document).querySelector(s), $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
     const esc = s => { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; };
 
@@ -435,15 +391,6 @@
     });
     $$('[data-act="toast"]').forEach(b=>b.addEventListener('click',()=>{ closeMenus(); toast(b.dataset.msg); }));
     $$('[data-open-export]').forEach(b=>b.addEventListener('click',()=>{ closeMenus(); openExport(); }));
-
-    // ── switcher ──
-    function setDesc(m){ $('#switchDesc').innerHTML = DESC[m]; }
-    $$('.sx-switch button').forEach(b=>b.addEventListener('click',()=>{
-      document.body.setAttribute('data-cta', b.dataset.cta);
-      $$('.sx-switch button').forEach(x=>x.classList.toggle('is-on', x===b));
-      setDesc(b.dataset.cta); closeMenus();
-    }));
-    setDesc('phase');
 
     // ── field rows ──
     function badge(on){ return '<span class="sx-badge '+(on?'in':'ex')+'">'+(on?'INCLUDED':'EXCLUDED')+'</span>'; }
