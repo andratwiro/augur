@@ -349,6 +349,38 @@ async function statusApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Card display-name overrides (KV-backed, single key) --------------------
+// Same shape & cost profile as the dev-status map: the whole {key: name} map
+// lives under one KV key, so a card-list load is one kv.get and a rename is one
+// kv.put — NO kv.list. These override ONLY the label shown on the index card;
+// the prototype's folder, URL and content are unaffected (a true rename is a repo
+// edit). An empty name clears the override (the card reverts to its build default).
+const NAMES_KEY = "names";
+
+async function nameApi(request, url, env) {
+  const kv = env.COMMENTS;
+  if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
+
+  if (request.method === "GET") {
+    const raw = await kv.get(NAMES_KEY);
+    return jsonResponse({ map: raw ? JSON.parse(raw) : {} });
+  }
+  if (request.method === "POST") {
+    let op;
+    try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const key = clamp(op && op.key, 300);
+    const name = clamp(op && op.name, 80);
+    if (!key) return jsonResponse({ error: "bad-input" }, 400);
+    const raw = await kv.get(NAMES_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    if (name) map[key] = name;
+    else delete map[key]; // empty → revert to the build-time default
+    await kv.put(NAMES_KEY, JSON.stringify(map));
+    return jsonResponse({ map });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
 // /__review/api/export?key=<REVIEW_EXPORT_KEY> — all comment threads.
 // Secret-guarded so tooling can read review data WITHOUT the site password.
 //   GET  → { pages, generatedAt }
@@ -440,6 +472,17 @@ export default {
         if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
       }
       return statusApi(request, url, env);
+    }
+
+    // Card display-name overrides: gated by the site password (cookie) when set.
+    if (url.pathname === "/__name") {
+      if (expected) {
+        const token = await tokenFor(expected);
+        const cookies = request.headers.get("Cookie") || "";
+        const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
+        if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      return nameApi(request, url, env);
     }
 
     if (!expected) return withAssetCache(withLiveReload(await env.ASSETS.fetch(request), url), url); // open when no password configured
