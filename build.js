@@ -51,6 +51,20 @@ const STATUS_META = {
   ignore: { label: "Ignore", cls: "is-ignore" },
 };
 
+// Status is shown as a small circular glyph (GitHub-Projects idiom), not a text
+// pill — colour AND shape both carry the meaning (WCAG 1.4.1; the accessible label
+// rides on aria-label/title). Dev ready = filled green check, In progress =
+// half-filled amber ring, Ignore = hollow grey ring with a dash. Same SVG strings
+// are reused client-side by STATUS_JS so a click repaints to match.
+const STATUS_ICONS = {
+  "dev-ready":
+    '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#17935a"/><path d="M5.8 10.4l2.7 2.7 5.7-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  "in-progress":
+    '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="#e08a1e" stroke-width="2.2"/><path d="M10 2.8a7.2 7.2 0 0 1 0 14.4z" fill="#e08a1e"/></svg>',
+  ignore:
+    '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="#aeb3bd" stroke-width="2.2"/><line x1="6.4" y1="10" x2="13.6" y2="10" stroke="#aeb3bd" stroke-width="2.2" stroke-linecap="round"/></svg>',
+};
+
 // Sort priority for prototype cards within an opportunity: Dev ready → In progress
 // → Ignore, recency breaking ties inside each group (see byStatusThenRecency).
 // Unset sorts with Ignore because statusChip() renders a missing status as an
@@ -150,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.42";
+const UI_VERSION = "0.43";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -612,6 +626,11 @@ const PAGE_CSS = `
       font-size: 12px; font-weight: 560; letter-spacing: .05em; text-transform: uppercase;
       color: var(--faint); margin: 0 0 14px;
     }
+    /* Folder heading — confident, not shouting. Title in full ink, count muted
+       beside it on the baseline (Figma-style). */
+    .page-head { display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; margin: 0 0 24px; }
+    .page-title { font-size: 23px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0; color: var(--fg); }
+    .page-count { font-size: 13px; color: var(--faint); }
     .empty { color: var(--muted); }
 
     /* ---- Collapsible Pages sections (native <details>) ---- */
@@ -781,35 +800,29 @@ const PAGE_CSS = `
       color: var(--faint); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 9px;
     }
 
-    /* ---- Dev-status chip (clickable; baseline from prototype-status.json,
+    /* ---- Dev-status glyph (clickable; baseline from prototype-status.json,
        live edits overlaid from KV by STATUS_JS) ---- */
-    /* Label + colour together (never colour alone, WCAG 1.4.1). */
+    /* A circular icon, not a text pill: shape AND colour both carry meaning
+       (never colour alone, WCAG 1.4.1); the label rides on aria-label/title. */
     .status-chip {
-      flex: none; align-self: center; font: inherit; font-size: 11px; font-weight: 600;
-      letter-spacing: .02em; line-height: 1.4; border-radius: 999px; padding: 3px 9px;
-      border: 1px solid transparent; white-space: nowrap; cursor: pointer;
-      transition: filter .12s ease, box-shadow .12s ease, opacity .12s ease;
+      flex: none; align-self: center; padding: 0; border: 0; background: none;
+      width: 24px; height: 24px; border-radius: 50%; cursor: pointer; line-height: 0;
+      display: inline-grid; place-items: center;
+      transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
     }
-    .status-chip:hover { filter: brightness(0.97); }
-    .status-chip:active { transform: translateY(0.5px); }
+    .status-chip svg { width: 20px; height: 20px; display: block; }
+    .status-chip:hover { transform: scale(1.1); }
+    .status-chip:active { transform: scale(0.94); }
     .status-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .status-chip[disabled] { opacity: .6; cursor: progress; }
+    .status-chip[disabled] { cursor: progress; }
     /* Overlaid on the preview, bottom-left — above the cover link so it stays
-       clickable, with a shadow to read over any screenshot. Sits in the preview
-       so it never adds to card height. */
+       clickable. A white disc + soft shadow lets the glyph read on any screenshot.
+       Sits in the preview so it never adds to card height. */
     .preview .status-chip {
       position: absolute; left: 8px; bottom: 8px; z-index: 3;
-      box-shadow: 0 2px 8px -2px rgba(16,24,40,0.35); backdrop-filter: blur(4px);
+      background: #fff; box-shadow: 0 2px 8px -1px rgba(16,24,40,0.32);
     }
-    .status-chip.is-wip {
-      color: #92500a; background: #fff6e8; border-color: rgba(146,80,10,0.22);
-    }
-    .status-chip.is-ready {
-      color: #0a6b3c; background: #e9f7ef; border-color: rgba(10,107,60,0.22);
-    }
-    .status-chip.is-ignore {
-      color: var(--faint); background: var(--bg-2); border-color: var(--line-2);
-    }
+    .preview .status-chip svg { width: 18px; height: 18px; }
     /* "Ignore" dims its card so it recedes without disappearing. The :has reacts
        live to the class STATUS_JS sets, so a click updates the dim instantly. */
     .card-proto:has(.status-chip.is-ignore) { opacity: .55; }
@@ -1533,12 +1546,13 @@ const STATUS_JS = `
     'in-progress': {label:'In progress', cls:'is-wip'},
     'dev-ready':   {label:'Dev ready',   cls:'is-ready'}
   };
+  var ICONS = ${JSON.stringify(STATUS_ICONS)};
   var CACHE = 'gv_status_map';
   function paint(chip, status){
     if(!META[status]) status = 'ignore';
     var m = META[status];
     chip.className = 'status-chip ' + m.cls;
-    chip.textContent = m.label;
+    chip.innerHTML = ICONS[status] || ICONS.ignore;
     chip.setAttribute('data-status', status);
     chip.setAttribute('aria-label', 'Status: ' + m.label + '. Click to change.');
     chip.setAttribute('title', 'Status: ' + m.label + '. Click to change.');
@@ -1786,14 +1800,17 @@ function statusChip(status, key) {
   const cur = STATUS_META[status] ? status : "ignore";
   const meta = STATUS_META[cur];
   const aria = `Status: ${meta.label}. Click to change.`;
-  return `<button type="button" class="status-chip ${meta.cls}" data-status-key="${key}" data-status="${cur}" aria-label="${aria}" title="${aria}">${meta.label}</button>`;
+  return `<button type="button" class="status-chip ${meta.cls}" data-status-key="${key}" data-status="${cur}" aria-label="${aria}" title="${aria}">${STATUS_ICONS[cur]}</button>`;
 }
 
 function renderOpportunityIndex(opp) {
   const cards = opp.prototypes
     .map((p) => {
+      // Hidden trigger only — the visible download button was removed (it dominated
+      // the card as a faux-primary action). Download now lives solely on the
+      // right-click menu, which fires this element via dlBtn(c).click().
       const download = p.file
-        ? `<button type="button" class="btn-icon" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html" aria-label="Download HTML" title="Download HTML">&darr;</button>`
+        ? `<button type="button" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html" aria-label="Download HTML" hidden></button>`
         : "";
       const pinKey = `/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`;
       const dname = protoName(p.name);
@@ -1821,7 +1838,7 @@ function renderOpportunityIndex(opp) {
   return shell({
     title: titleCase(opp.name),
     activeTab: opp.name,
-    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
+    body: `<header class="page-head"><h1 class="page-title">${titleCase(opp.name)}</h1><span class="page-count">${plural(opp.prototypes.length, "prototype")}</span></header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
   });
 }
 
