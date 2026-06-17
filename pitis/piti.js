@@ -53,6 +53,36 @@
   // dog trace transform (potrace y-flip) — maps the dog paths into a 1256x984 frame
   const DTT = 'transform="translate(0,984) scale(0.1,-0.1)"';
 
+  /* ---- MASTIFF paths (hand-authored doodle, source frame 1300x900) ----
+     Rob's Spanish mastiff "Senda": heavy curled body, head resting LEFT, long droopy
+     ear, jowly muzzle, front paws stretched forward (sploot). Authored directly in the
+     same chunky-outline style as the traced cat/dog (no potrace, so coords read top-down
+     — MMT below is identity, no y-flip). Unlike the recolourable cat/dog, the mastiff is
+     a fixed "Senda" look: fawn body, black mask over the muzzle, black droopy ear, a
+     darker saddle. Pieces are kept separate so the mask + ear stack correctly:
+       sil    = body+head silhouette (fur)
+       paws   = the stretched front paws (fur)
+       ear    = the long droopy ear (black, in front of the cheek)
+       earBack= the far ear's tip peeking behind the crown
+       mask   = the black muzzle mask (clipped to the body)
+       saddle = darker back shading (clipped)
+       belly  = lighter chest/underside (clipped)
+       eye    = the closed sleepy arc; nose = the blunt nose; cheek-blush positioned. */
+  const MASTIFF_P = {
+    sil: "M 470 305 C 600 270 760 262 900 272 C 1030 282 1140 320 1190 405 C 1222 475 1218 552 1180 608 C 1238 648 1255 712 1220 766 C 1178 824 1070 840 968 830 C 880 850 720 852 600 838 C 520 828 462 800 436 760 C 384 772 334 768 304 744 C 254 762 178 764 122 744 C 72 726 58 680 88 650 C 118 618 192 618 252 644 C 268 628 290 612 318 604 C 220 612 150 580 132 508 C 118 452 150 392 220 360 C 200 340 210 318 240 300 C 320 256 410 268 470 305 Z",
+    paws: "M 122 744 C 72 754 32 772 24 802 C 18 834 62 844 112 838 C 152 832 178 802 178 772 C 160 754 142 746 122 744 Z",
+    ear: "M 458 296 C 416 314 402 408 414 520 C 422 596 466 632 518 612 C 546 532 542 408 525 336 C 512 308 485 288 458 296 Z",
+    earBack: "M 510 290 C 553 302 573 356 567 420 C 549 386 523 344 499 322 Z",
+    mask: "M 140 470 C 118 506 122 564 165 600 C 230 648 345 638 392 582 C 422 546 415 486 374 458 C 330 428 256 432 212 458 C 182 462 156 462 140 470 Z",
+    saddle: "M 640 250 C 850 235 1040 255 1150 320 C 1200 400 1185 500 1120 560 C 980 585 800 588 680 560 C 620 460 600 340 640 250 Z",
+    belly: "M 480 720 C 640 760 880 758 1040 720 C 1080 780 980 820 820 822 C 640 824 500 800 460 760 Z",
+    eyeClosed: "M 312 420 C 332 404 364 404 382 420",
+    nose: { cx: 152, cy: 492, rx: 38, ry: 28 },
+    eyeOpen: { cx: 360, cy: 420, rx: 30, ry: 36, hl: 12 },
+    cheek: { cx: 382, cy: 466, rx: 38, ry: 21 },
+  };
+  // (the mastiff art is authored upright in a 1300x900 frame — no trace transform.)
+
   /* ---- palette: per-colour fills (real-art anchored) ----
      fur   = the main body (recolours the traced silhouette)
      dark  = inner-ears / haunch stripes / brow-heart (a deeper shade of fur)
@@ -73,6 +103,19 @@
     { name: "Ginger & white", fur: "#F7F2EA", dark: "#E3DCCF", belly: "#FFFFFF", cheek: "#EFA59B",
       pattern: "bicolor", patch: "#E89A4E", patchDark: "#CB7A2C", noseFill: "#E98DA1",
       swatch: "linear-gradient(135deg,#F7F2EA 0 47%,#E89A4E 53% 100%)" },
+    // Brown-grey mackerel tabby, modelled on Rob's cat Pruna: warm grey-brown base,
+    // darker mackerel stripes, cream belly/chest, tabby forehead "M", dark tail rings,
+    // pinkish nose. Cat-only pattern (like the bicolor). swatch = base + a stripe band.
+    { name: "Pruna", fur: "#9C8C76", dark: "#4A4038", belly: "#D9CDB6", cheek: "#C9A6A0",
+      pattern: "tabby", stripe: "#4A4038", noseFill: "#D98A8A",
+      swatch: "linear-gradient(135deg,#9C8C76 0 38%,#4A4038 44% 56%,#9C8C76 62% 100%)" },
+    // Fawn Spanish-mastiff look, modelled on Rob's dog Senda: fawn body, darker saddle,
+    // black mask + droopy ears. A fixed mastiff-only colour (the mastiff ignores the
+    // recolour palette and always uses this). swatch = fawn with a black mask band.
+    { name: "Senda", fur: "#C9A05A", dark: "#8A6A3A", belly: "#E2C68C", cheek: "#C98B7E",
+      saddle: "#8A6A3A", mask: "#2E2620", ear: "#241d29", noseFill: "#1E1812",
+      species: "mastiff",
+      swatch: "linear-gradient(135deg,#2E2620 0 30%,#C9A05A 38% 100%)" },
   ];
 
   /* ---- hats (optional, selectable). Drawn in the 1744x720 trace frame, sitting
@@ -96,10 +139,13 @@
   // up/out while staying seated on the crown. translate = crownPoint − 430*s , −··· − 250*s.
   const HAT_T_CAT = 'transform="translate(11,-157) scale(1.3)"';   // cat crown (570,168)
   const HAT_T_DOG = 'transform="translate(41,121) scale(1.066)"';  // dog crown (499.6,387)
+  // mastiff crown sits at ~(370,285) in the 1300x900 frame; hats authored around
+  // (430,250) scaled ~0.92 to the smaller head. translate = crown − 430*s , − 250*s.
+  const HAT_T_MASTIFF = 'transform="translate(74,55) scale(0.92)"'; // mastiff crown (469.6,285)
   function hatSVG(id, species) {
     if (!id || id === "none") return "";
     const S = 'stroke="' + OUT + '" stroke-width="28" stroke-linejoin="round" stroke-linecap="round"';
-    const HAT_T = species === "dog" ? HAT_T_DOG : HAT_T_CAT;
+    const HAT_T = species === "mastiff" ? HAT_T_MASTIFF : (species === "dog" ? HAT_T_DOG : HAT_T_CAT);
     let inner = "";
     if (id === "sprout") {
       // a hand-drawn seedling — two leaves + stem on the crown (traced from the snail pal)
@@ -178,6 +224,49 @@
       '<ellipse cx="600" cy="430" rx="56" ry="33" fill="' + c.cheek + '" opacity=".5"/>'
     );
   }
+  // Brown-grey mackerel tabby (Pruna). Base fur is already the warm grey-brown; on top
+  // we lay: a darker "saddle" of mackerel stripes ribbing the back/flank (roughly
+  // vertical bars), dark rings on the tail (far right ~x1500), a cream belly/chest
+  // patch sweeping under the head, the tabby forehead "M" + dark ear caps, and faint
+  // blush. Stripes bleed past the silhouette so the clip trims them flush.
+  function tabbyMarks(c) {
+    const st = c.stripe || c.dark;
+    return (
+      // cream chest/belly — sits low-left under the head, the pale front Pruna shows
+      '<ellipse cx="470" cy="540" rx="230" ry="150" fill="' + c.belly + '" opacity=".9"/>' +
+      '<ellipse cx="700" cy="600" rx="170" ry="110" fill="' + c.belly + '" opacity=".55"/>' +
+      // dark ear caps
+      '<path d="M298 150 Q345 30 425 110 Q360 130 320 175 Z" fill="' + st + '"/>' +
+      '<path d="M548 150 Q600 30 660 122 Q600 130 565 170 Z" fill="' + st + '"/>' +
+      // tabby forehead "M" — three short dark bars on the brow, above the eyes
+      '<g fill="none" stroke="' + st + '" stroke-width="24" stroke-linecap="round" opacity=".92">' +
+        '<path d="M430 232 L430 188"/>' +
+        '<path d="M384 244 Q396 205 408 196"/>' +
+        '<path d="M476 244 Q464 205 452 196"/>' +
+      '</g>' +
+      // mackerel stripes ribbing the back + flank (roughly vertical bars sweeping with
+      // the spine, denser toward the rump). They run from the back-line down the side.
+      '<g fill="none" stroke="' + st + '" stroke-width="40" stroke-linecap="round" opacity=".82">' +
+        '<path d="M760 150 Q745 320 800 470"/>' +
+        '<path d="M880 130 Q865 320 920 480"/>' +
+        '<path d="M1000 130 Q985 330 1045 490"/>' +
+        '<path d="M1120 140 Q1105 340 1170 500"/>' +
+        '<path d="M1240 160 Q1230 350 1300 510"/>' +
+        '<path d="M1360 190 Q1360 360 1430 510"/>' +
+      '</g>' +
+      // dark spine line down the back
+      '<path d="M720 120 Q1050 70 1400 150" fill="none" stroke="' + st + '" stroke-width="34" stroke-linecap="round" opacity=".5"/>' +
+      // dark tail rings (tail is the far-right lobe ~x1450-1720 / y300-560)
+      '<g fill="none" stroke="' + st + '" stroke-width="46" stroke-linecap="round" opacity=".88">' +
+        '<path d="M1500 230 Q1560 350 1500 470"/>' +
+        '<path d="M1590 250 Q1650 360 1590 470"/>' +
+        '<path d="M1680 290 Q1730 370 1680 450"/>' +
+      '</g>' +
+      // faint blush on the cheeks
+      '<ellipse cx="372" cy="445" rx="54" ry="32" fill="' + c.cheek + '" opacity=".45"/>' +
+      '<ellipse cx="600" cy="445" rx="54" ry="32" fill="' + c.cheek + '" opacity=".45"/>'
+    );
+  }
 
   /* ---- DOG markings, drawn inside the silhouette clip (1256x984 frame) ----
      Real corgi colouring: orange head-cap/ears/back-saddle over a white face/snout
@@ -203,8 +292,46 @@
   /* Build the resting pet in its species trace frame.
      awake → open round eyes (over the muzzle); else the traced sleepy arcs.
      species 'cat' (1744x720, TT) or 'dog' (1256x984, DTT). */
+  // Build the mastiff (Senda) — bespoke anatomy: fawn body, clipped saddle/belly/mask,
+  // a long droopy black ear in front + a far-ear tip behind, blunt nose, sleepy eye.
+  // Always uses the Senda palette colours (passed in c), ignoring the recolour hues.
+  function mastiffBody(c, awake, hat) {
+    const cid = "fpM" + (++clipSeq);
+    const fur = c.fur || "#C9A05A", saddle = c.saddle || "#8A6A3A",
+          belly = c.belly || "#E2C68C", mask = c.mask || "#2E2620",
+          ear = c.ear || OUT, nose = c.noseFill || "#1E1812", cheek = c.cheek || "#C98B7E";
+    const M = MASTIFF_P;
+    const stroke = 'stroke="' + OUT + '" stroke-width="15" stroke-linejoin="round"';
+    const eye = awake
+      ? '<ellipse cx="' + M.eyeOpen.cx + '" cy="' + M.eyeOpen.cy + '" rx="' + M.eyeOpen.rx + '" ry="' + M.eyeOpen.ry + '" fill="' + OUT + '"/>' +
+        '<circle cx="' + (M.eyeOpen.cx + 11) + '" cy="' + (M.eyeOpen.cy - 15) + '" r="' + M.eyeOpen.hl + '" fill="#fff"/>'
+      : '<path d="' + M.eyeClosed + '" fill="none" stroke="#0c0a08" stroke-width="12" stroke-linecap="round"/>';
+    return (
+      // far ear tip peeking behind the crown
+      '<path d="' + M.earBack + '" fill="#1b1610" opacity=".95"/>' +
+      // body silhouette + paws (fur)
+      '<path d="' + M.sil + '" fill="' + fur + '" ' + stroke + '/>' +
+      '<path d="' + M.paws + '" fill="' + fur + '" ' + stroke + '/>' +
+      // clipped overlays: saddle, belly, mask, cheek
+      '<clipPath id="' + cid + '"><path d="' + M.sil + '"/></clipPath>' +
+      '<g clip-path="url(#' + cid + ')">' +
+        '<path d="' + M.saddle + '" fill="' + saddle + '" opacity=".5"/>' +
+        '<path d="' + M.belly + '" fill="' + belly + '" opacity=".55"/>' +
+        '<path d="' + M.mask + '" fill="' + mask + '" opacity=".96"/>' +
+        '<ellipse cx="' + M.cheek.cx + '" cy="' + M.cheek.cy + '" rx="' + M.cheek.rx + '" ry="' + M.cheek.ry + '" fill="' + cheek + '" opacity=".4"/>' +
+      '</g>' +
+      // near droopy ear (black, in front of the cheek)
+      '<path d="' + M.ear + '" fill="' + ear + '" ' + stroke + '/>' +
+      // blunt nose at the muzzle tip
+      '<ellipse cx="' + M.nose.cx + '" cy="' + M.nose.cy + '" rx="' + M.nose.rx + '" ry="' + M.nose.ry + '" fill="' + nose + '"/>' +
+      eye +
+      hatSVG(hat, "mastiff")
+    );
+  }
+
   let clipSeq = 0;
   function petBody(species, c, awake, hat) {
+    if (species === "mastiff") return mastiffBody(c, awake, hat);
     const cid = "fpBody" + (++clipSeq);
     const isDog = species === "dog";
     const A = isDog ? DOG_P : P;          // path set
@@ -220,7 +347,8 @@
       : '<g ' + T + '><path d="' + A.eyeL + '" fill="' + OUT + '"/><path d="' + A.eyeR + '" fill="' + OUT + '"/></g>';
 
     const marks = isDog ? dogMarks(c)
-                        : (c.pattern === "bicolor" ? bicolorMarks(c) : normalMarks(c));
+                        : (c.pattern === "bicolor" ? bicolorMarks(c)
+                        : (c.pattern === "tabby" ? tabbyMarks(c) : normalMarks(c)));
 
     return (
       // silhouette (fur)
@@ -240,16 +368,32 @@
      The cat only exists in the resting pose (the iconic Piti) — there is no
      separate sitting pose; "awake" just opens the eyes. Faces LEFT (flip scaleX). */
   function svg(config, state) {
-    const c = PALETTE[(config && config.furIdx) || 0] || PALETTE[0];
+    let species = (config && config.species) || "cat";
+    if (species !== "dog" && species !== "mastiff") species = "cat";
+    // the mastiff (Senda) is a fixed look — always use its own palette entry.
+    let c;
+    if (species === "mastiff") {
+      c = PALETTE.find(function (p) { return p.species === "mastiff"; }) || PALETTE[0];
+    } else {
+      c = PALETTE[(config && config.furIdx) || 0] || PALETTE[0];
+    }
     const hat = (config && config.hat) || "none";
-    const species = (config && config.species) === "dog" ? "dog" : "cat";
     state = state || {};
     // Fit the traced art into a 100x100 viewBox, vertically centred with hat headroom
     // (overflow:visible lets a tall hat spill). Each species has its own trace frame,
     // so each gets its own scale + offset chosen so the BODY lands at the same on-screen
     // size + baseline — the dog drops cleanly into the cat's frame.
     let inner, fit;
-    if (species === "dog") {
+    if (species === "mastiff") {
+      // mastiff frame 1300x900; body spans ~x20..1255 / ~y262..845. Senda is a BIG dog —
+      // render her ~1.35x the cat's footprint (the brief asks ≥30% bigger). The art is
+      // authored upright (no flip). Centre on the body and rest on the cat's baseline.
+      const base = 100 / 1300;          // would fit the full frame width into 100
+      const scale = base * 1.35;        // ≥30% larger than the cat on screen
+      const tx = -40 * scale;           // pull in the left margin
+      const ty = (100 - 900 * scale) / 2 + 30;
+      fit = 'transform="translate(' + tx.toFixed(2) + ',' + ty.toFixed(2) + ') scale(' + scale.toFixed(5) + ')"';
+    } else if (species === "dog") {
       // dog frame 1256x984; body spans ~x350..870 / ~y355..690. Scale up and recentre
       // so the dog reads at the same footprint as the cat and rests on the same baseline.
       const scale = 100 / 1110;
