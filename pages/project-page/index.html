@@ -52,7 +52,15 @@
     .pp-intro { margin: 0; }
     /* Row 2 keeps the same wide/narrow tracks so the lower body text holds the SAME
        measure as the intro (nothing sits in the narrow column on desktop). */
-    @media (max-width: 760px) { .pp-row { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) {
+      .pp-row { grid-template-columns: 1fr; }
+      /* Stacked single-column, the participation box sits BETWEEN the intro and the
+         rest of the body copy. The 10px row-gap above keeps it grouped with the
+         intro it acts on; this bottom margin separates its avatar/contributions row
+         from the text that resumes below (body <p> carries no top margin, so the gap
+         was otherwise zero). */
+      .pp-cta { margin-bottom: 26px; }
+    }
 
     /* ── Ideation MAP view (page-local; faithful to map-real-mapview capture) ──
        Desktop: a FULL-WIDTH Leaflet + OpenStreetMap map with a LEFT white overlay panel
