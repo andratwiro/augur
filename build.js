@@ -64,14 +64,20 @@ async function loadStatusMap() {
 // Marker-wrapped tag injected into every prototype's HTML. Dormant until the
 // reviewer hits Shift+C; the markers let the Download HTML button strip it so
 // devs get a clean file. Absolute path => served from /dist root by the worker.
-const REVIEW_TAG =
-  '<!--gv-review-start--><script src="/__review/comments.js" defer></script><!--gv-review-end-->';
+// The ?v=UI_VERSION query cache-busts the overlay: bump UI_VERSION and every
+// browser refetches comments.js instead of running a stale copy. Lazy (function,
+// not const) so it reads UI_VERSION, which is declared further down.
+function reviewTag() {
+  return '<!--gv-review-start--><script src="/__review/comments.js?v=' + UI_VERSION +
+    '" defer></script><!--gv-review-end-->';
+}
 
 /** Inject the review overlay tag before </body> (or append if none). */
 function injectReview(html) {
   if (html.includes("gv-review-start")) return html; // already injected
+  const tag = reviewTag();
   const i = html.toLowerCase().lastIndexOf("</body>");
-  return i === -1 ? html + REVIEW_TAG : html.slice(0, i) + REVIEW_TAG + html.slice(i);
+  return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
 }
 
 // Version of the PROTOTYPES SITE UI (the landing/shell pages this file generates),

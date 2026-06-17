@@ -49,7 +49,7 @@
   // show as this avatar instead of a numbered pin. Served as a real same-origin
   // file (next to this script) rather than a data: URI — some privacy blockers
   // refuse to paint inline images, and a plain <img src> is bulletproof.
-  var CAT = "/__review/aslam.png";
+  var CAT = "/__review/aslam.png?v=1";
 
   var state = { threads: [], active: false, mode: "add", openId: null };
   var deleted = {};       // ids we've already issued a delete for
