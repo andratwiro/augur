@@ -1563,7 +1563,9 @@
        Real GoVocal buttons (.gv-btn primary / primary-outlined). Both follow the
        tenant colour: this scope re-points --gv-tenant-primary (BO teal by default)
        to the city colour so the FO preview reads like the real project. */
-    #cb-root .cb-survey { --gv-tenant-primary: var(--pp-tenant); --svc-tint: color-mix(in srgb, var(--pp-tenant) 9%, #fff); }
+    #cb-root .cb-survey { --gv-tenant-primary: var(--pp-tenant); --svc-tint: color-mix(in srgb, var(--pp-tenant) 9%, #fff);
+      /* AA-safe darkened tenant ink for text on the light tint (≥6:1 across all city themes) */
+      --svc-ink: color-mix(in srgb, var(--pp-tenant) 55%, #111); }
     #cb-root .cb-survey .gv-btn.full { width:100%; }
     /* settings: stacked radio groups + per-field language switcher header */
     #cb-root .cb-radiocol { display:flex; flex-direction:column; gap:2px; }
@@ -1588,7 +1590,8 @@
     #cb-root .svc-chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
     #cb-root .svc-chip { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:var(--gv-text-secondary); background:var(--gv-grey-100); border-radius:100px; padding:4px 10px; }
     #cb-root .svc-chip .gv-icon { width:13px; height:13px; }
-    #cb-root .svc-chip--accent { background:var(--svc-tint); color:var(--pp-tenant); }
+    #cb-root .svc-chip--accent { background:var(--svc-tint); color:var(--svc-ink); }
+    #cb-root .svc-chip--accent .gv-icon { color:var(--pp-tenant); }
     #cb-root .svc-dot { width:7px; height:7px; border-radius:50%; background:var(--gv-green-500); display:inline-block; }
     /* 4 · social */
     #cb-root .svc-social { display:flex; align-items:center; gap:10px; margin:6px 0 16px; }
@@ -1602,13 +1605,14 @@
     #cb-root .svc-accent__head .cb-survey__name { margin:6px 0 0; }
     /* 6 · banner */
     #cb-root .svc--banner { padding:0; overflow:hidden; }
-    #cb-root .svc-banner { display:flex; align-items:center; gap:8px; background:var(--svc-tint); color:var(--pp-tenant); font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:11px 18px; }
-    #cb-root .svc-banner .gv-icon { width:16px; height:16px; }
+    #cb-root .svc-banner { display:flex; align-items:center; gap:8px; background:var(--svc-tint); color:var(--svc-ink); font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:11px 18px; }
+    #cb-root .svc-banner .gv-icon { width:16px; height:16px; color:var(--pp-tenant); }
     #cb-root .svc-banner__body { padding:16px 18px 18px; }
     #cb-root .svc-banner__body .cb-survey__name { margin-top:0; }
     /* 7 · deadline */
     #cb-root .svc-toprow { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
-    #cb-root .svc-pill { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; color:var(--gv-orange-500); background:var(--gv-orange-100,#ffece6); border-radius:3px; padding:4px 8px; white-space:nowrap; }
+    /* darker orange text (#9A3412 ≈ 6.4:1 on orange-100) — orange-500 alone fails AA */
+    #cb-root .svc-pill { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:#9A3412; background:var(--gv-orange-100,#ffece6); border-radius:3px; padding:4px 8px; white-space:nowrap; }
     #cb-root .svc-pill .gv-icon { width:12px; height:12px; }
     #cb-root .svc-progress { height:6px; border-radius:100px; background:var(--gv-grey-200); overflow:hidden; margin:14px 0 6px; }
     #cb-root .svc-progress > span { display:block; height:100%; border-radius:100px; background:var(--pp-tenant); }
@@ -1629,6 +1633,17 @@
     #cb-root .svc-eyebrow-min { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--gv-text-secondary); }
     #cb-root .svc-eyebrow-min .gv-icon { width:14px; height:14px; }
     #cb-root .svc-title-min { font-size:18px; font-weight:700; color:var(--gv-text-primary); margin:8px 0 2px; }
+    /* 11 · easy read (accessible — for vulnerable audiences) */
+    #cb-root .svc--easy { padding:22px; }
+    #cb-root .svc-easy__tag { display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--svc-ink); }
+    #cb-root .svc-easy__tag .gv-icon { width:18px; height:18px; color:var(--pp-tenant); }
+    #cb-root .svc-easy__title { font-size:23px; font-weight:700; color:var(--gv-text-primary); line-height:1.25; margin:12px 0 8px; }
+    #cb-root .svc-easy__desc { font-size:16px; color:var(--gv-text-primary); line-height:1.6; margin:0 0 16px; }
+    #cb-root .svc-easy__time { display:flex; align-items:center; gap:9px; font-size:15px; font-weight:600; color:var(--gv-text-primary); margin:0 0 18px; }
+    #cb-root .svc-easy__time .gv-icon { width:19px; height:19px; color:var(--pp-tenant); flex:none; }
+    /* Large bold CTA: a ≥18.7px-bold label clears the WCAG large-text 3:1 bar even on a
+       light tenant fill, and gives Mara/Doris a big, unmistakable target (≥56px tall). */
+    #cb-root .svc--easy .gv-btn { font-size:19px; font-weight:700; padding:15px 22px; min-height:56px; line-height:24px; }
     #cb-root .cb-survey--card { border:1px solid var(--gv-grey-300); border-radius:3px; padding:18px; background:#fff; box-shadow:var(--gv-shadow,0 2px 4px -1px rgba(0,0,0,.06)); }
     #cb-root .cb-survey__eyebrow { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--gv-teal-500,#147985); background:var(--gv-teal-50,#e6f3f5); padding:3px 8px; border-radius:3px; }
     #cb-root .cb-survey__name { font-size:20px; font-weight:700; color:var(--gv-text-primary); margin:10px 0 4px; }
@@ -2500,7 +2515,22 @@
       if (v) phone.style.setProperty('--gv-tenant-' + k, v);
     });
   }
-  window.addEventListener('load', () => { syncPhoneTheme(); fitPreview(); });
+  // The builder CANVAS also renders FO content (the participation box + the survey
+  // card) inside the .gv-bo teal shell. Its resident-facing CTAs must follow the real
+  // CITY tenant colour — not the BO teal, and not a hardcoded red. Re-point --pp-tenant
+  // (used by the participation box, and by .cb-survey for the survey CTA) to the themed
+  // --gv-tenant-primary the switcher sets on :root, so ?theme=0 (Linz) reads purple, etc.
+  function syncCanvasTheme() {
+    const cb = document.getElementById('cb-root');
+    if (!cb) return;
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--gv-tenant-primary').trim();
+    if (v) cb.style.setProperty('--pp-tenant', v);
+  }
+  window.addEventListener('load', () => { syncPhoneTheme(); syncCanvasTheme(); fitPreview(); });
+  // Live re-theme: the on-screen city picker rewrites data-gv-theme on <html> on each
+  // switch — keep the phone preview and the builder canvas in sync with it.
+  new MutationObserver(() => { syncPhoneTheme(); syncCanvasTheme(); })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-gv-theme'] });
 
   // ── Fit-to-canvas sizing ──────────────────────────────────────────────────
   // Each frame has a fixed LOGICAL viewport (the resident's real screen size — a
@@ -3513,7 +3543,8 @@
       { id:'deadline',   name:'Deadline',         d:'Closing pill + time-elapsed progress bar.' },
       { id:'horizontal', name:'Icon beside text', d:'Large icon left, content right, CTA below.' },
       { id:'detailed',   name:'Detailed stats',   d:'Time / questions / responses stat tiles.' },
-      { id:'minimal',    name:'Minimal',          d:'Borderless and quiet — title, time, CTA only.' }
+      { id:'minimal',    name:'Minimal',          d:'Borderless and quiet — title, time, CTA only.' },
+      { id:'easy',       name:'Easy read · accessible', d:'Plain words, big text, one large high-contrast button. For vulnerable audiences.' }
     ];
     function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'mobility', format:'card', style:'primary', label:'', cardVariant:'standard' }; return SURVEY_STATE[block.id]; }
     function cbSurveyHTML(survey, format, style, label, variant) {
@@ -3587,6 +3618,16 @@
             '<span class="svc-eyebrow-min">' + ic('survey') + ' Survey</span>' +
             '<h3 class="svc-title-min">' + s.name + '</h3>' +
             '<p class="svc-meta">≈ ' + s.minutes + ' · ' + s.status + '</p>' + btn + close;
+        case 'easy':
+          // Built for vulnerable audiences (P1 Mara / P3 Doris): plain language, big legible
+          // type, one clear instruction, a large high-contrast button (large-text contrast),
+          // icon always paired with a word. GoVocal vocabulary throughout.
+          return open('easy') +
+            '<span class="svc-easy__tag">' + ic('survey') + ' Survey</span>' +
+            '<h3 class="svc-easy__title">' + s.name + '</h3>' +
+            '<p class="svc-easy__desc">' + s.desc + '</p>' +
+            '<p class="svc-easy__time">' + ic('clock') + ' Takes about ' + s.minutes + '. You can use your phone.</p>' +
+            btn + close;
         default: // standard
           return open('standard') + eyebrow + title + range + desc + btn + close;
       }
