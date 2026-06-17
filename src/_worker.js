@@ -293,6 +293,8 @@ function applyOp(threads, op) {
 }
 
 // GET/POST /__review/api?path=<page> — read or mutate one page's threads.
+// Reads are open (public prototypes embed the overlay: annotations show always-on,
+// comments show once a viewer presses Shift+C). Writes stay gated — see router.
 async function reviewApi(request, url, env) {
   const kv = env.COMMENTS;
   const path = clamp(url.searchParams.get("path") || "/", 600);
@@ -417,9 +419,10 @@ export default {
 
     const expected = env.SITE_PASSWORD;
 
-    // Comment read/write: gated by the site password (cookie) when set.
+    // Comments: reads are open so devs see annotations (always-on) and comments
+    // (via Shift+C) on public prototypes; writes need the password cookie.
     if (url.pathname === "/__review/api") {
-      if (expected) {
+      if (expected && request.method !== "GET") {
         const token = await tokenFor(expected);
         const cookies = request.headers.get("Cookie") || "";
         const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
