@@ -750,45 +750,12 @@ const PAGE_CSS = `
       .comp-thumb { max-width: 100%; width: 100%; }
     }
 
-    /* ---- Root layout: sticky sidebar + opportunity grid ----
-       The landing page swaps the single centered column for a two-column shell:
-       a thin nav rail (Playground pinned on top, then every opportunity) beside a
-       responsive card grid that grows columns with available width. */
-    .wrap--root { max-width: 1240px; display: grid; grid-template-columns: 212px minmax(0, 1fr); gap: 44px; align-items: start; }
-    .root-side { position: sticky; top: 72px; display: flex; flex-direction: column; gap: 4px; }
-    .side-pin {
-      display: flex; align-items: center; gap: 11px; padding: 11px 13px;
-      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
-      text-decoration: none; color: inherit; font-weight: 600; font-size: 14.5px;
-      transition: border-color .14s ease, background .14s ease, transform .14s ease;
-    }
-    .side-pin:hover { border-color: var(--line-2); background: var(--card-hover); transform: translateY(-1px); }
-    .side-pin__icon { font-size: 18px; line-height: 1; flex: none; }
-    .side-divider { height: 1px; background: var(--line); margin: 12px 2px; }
-    .side-label {
-      font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
-      color: var(--faint); margin: 0 0 8px 13px;
-    }
-    .side-nav { display: flex; flex-direction: column; gap: 1px; }
-    .side-nav a {
-      display: block; padding: 8px 13px; border-radius: 8px; text-decoration: none;
-      color: var(--muted); font-weight: 500; font-size: 14px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-      transition: background .12s ease, color .12s ease;
-    }
-    .side-nav a:hover { background: rgba(16,17,26,0.05); color: var(--fg); }
-    .side-pin:focus-visible, .side-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-    /* Figma-style auto-fill grid: as many ~260px columns as fit, no carousel. */
-    .opp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 22px; }
-
-    @media (max-width: 820px) {
-      .wrap--root { grid-template-columns: 1fr; gap: 26px; }
-      .root-side { position: static; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
-      .side-divider, .side-label { display: none; }
-      .side-nav { flex-direction: row; flex-wrap: wrap; gap: 6px; }
-      .side-nav a { border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; }
-    }
+    /* ---- Listing grid ----
+       The Figma-style global left rail (NAV_CSS) is the nav now; listing pages are a
+       single centered column. The wide variant gives the homepage card grid more room. */
+    .wrap--wide { max-width: 1280px; }
+    /* Figma-style auto-fill grid: as many ~248px columns as fit, no carousel. */
+    .opp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 22px; }
 
     /* Opportunity card = a stretched cover link: the whole card opens the folder. */
     .card-opp { position: relative; }
@@ -924,91 +891,116 @@ const CAROUSEL_JS = `
       }
     })();`;
 
-// Top-right tab nav for the site's chrome/reference pages (Prototypes · Primitives ·
-// Components · Pages). NOT injected into prototypes themselves. Styles are self-contained
-// so the same nav can be injected into the Primitives gallery, which doesn't use PAGE_CSS.
-// Root-relative hrefs => correct from any depth.
-// Full-width sticky top bar (Linear-style). Self-contained literal colours so the
-// same bar can be injected into the Primitives gallery (which doesn't load PAGE_CSS).
-// The 52px bar height is reserved via body padding so content never hides under it.
+// Figma-style global LEFT RAIL — the site's persistent chrome on every page
+// (org switcher on top, then Prototypes/Playground, the Opportunities list, and the
+// Library group: Primitives · Components · Pages). NOT injected into prototypes
+// themselves. Styles are self-contained literal colours so the same rail can be
+// injected into the Primitives gallery, which doesn't load PAGE_CSS. Root-relative
+// hrefs => correct from any depth. The 248px rail width is reserved via body
+// padding-left (desktop); below 860px it collapses to a slide-in drawer behind a
+// slim top bar (body padding-top instead). z-index sits below modals, above content.
 const NAV_CSS = `
-    body { padding-top: 52px; }
-    .gvhead {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 2147483100; height: 52px;
-      display: flex; align-items: center; justify-content: space-between; gap: 16px;
-      padding: 0 18px;
-      background: rgba(255,255,255,0.78); -webkit-backdrop-filter: blur(14px) saturate(180%); backdrop-filter: blur(14px) saturate(180%);
-      border-bottom: 1px solid rgba(16,17,26,0.09);
-      font: 500 13.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    .gvhead__brand { display: inline-flex; align-items: center; gap: 9px; min-width: 0; overflow: hidden; text-decoration: none; color: inherit; border-radius: 7px; transition: opacity .12s ease; }
-    .gvhead__brand:hover { opacity: .72; }
-    .gvhead__brand:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 3px; }
-    .gvhead__mark {
-      width: 22px; height: 22px; flex: none; border-radius: 6px;
-      background: linear-gradient(150deg, #828bf5, #5e6ad2 70%);
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.25) inset, 0 2px 8px rgba(94,106,210,0.4);
-      display: grid; place-items: center; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: -0.02em;
-    }
-    .gvhead__title { font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em; color: #16171a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    /* Only drop the wordmark on the very narrowest phones — the hamburger frees the
-       room the inline tabs used to eat, so the brand can stay visible far longer. */
-    @media (max-width: 400px) { .gvhead__title { display: none; } }
-    .gvnav { display: flex; align-items: center; gap: 1px; }
-    .gvnav a {
-      display: inline-flex; align-items: center; height: 30px; padding: 0 12px;
-      border-radius: 7px; text-decoration: none; color: #5b626e; white-space: nowrap; font-weight: 500;
-      transition: background .12s ease, color .12s ease;
-    }
-    .gvnav a:hover { background: rgba(16,17,26,0.05); color: #16171a; }
-    .gvnav a[aria-current="page"] { background: rgba(16,17,26,0.08); color: #16171a; }
-    .gvnav a:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    :root { --rail: 248px; }
+    body { padding-left: var(--rail); }
 
-    /* ── Mobile menu (hamburger) ──────────────────────────────────────────────
-       Below 720px the four inline tabs would crowd the search + brand, so they
-       collapse into a dropdown opened by the hamburger. Desktop is untouched. */
-    .gvnav-toggle {
-      display: none; width: 34px; height: 32px; flex: none; padding: 0;
-      align-items: center; justify-content: center; cursor: pointer;
-      border-radius: 8px; border: 1px solid rgba(16,17,26,0.12);
-      background: rgba(16,17,26,0.03); color: #16171a;
+    /* ── Slim top bar — only when the rail collapses (mobile) ─────────────────── */
+    .gvtop {
+      display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 2147483100; height: 52px;
+      align-items: center; gap: 12px; padding: 0 14px;
+      background: rgba(255,255,255,0.82); -webkit-backdrop-filter: blur(14px) saturate(180%); backdrop-filter: blur(14px) saturate(180%);
+      border-bottom: 1px solid rgba(16,17,26,0.09);
+      font: 600 14.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .gvtop__brand { display: inline-flex; align-items: center; gap: 9px; color: #16171a; text-decoration: none; letter-spacing: -0.01em; }
+    .gvtop__brand .orgsw__mark { width: 24px; height: 24px; }
+    .gvburger {
+      width: 36px; height: 34px; flex: none; padding: 0; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 9px; border: 1px solid rgba(16,17,26,0.12); background: rgba(16,17,26,0.03); color: #16171a;
       transition: background .12s ease, border-color .12s ease;
     }
-    .gvnav-toggle:hover { background: rgba(16,17,26,0.06); border-color: rgba(16,17,26,0.20); }
-    .gvnav-toggle:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvnav-toggle__bars { position: relative; display: block; width: 16px; height: 12px; }
-    .gvnav-toggle__bars span {
-      position: absolute; left: 0; right: 0; height: 2px; border-radius: 2px; background: currentColor;
-      transition: transform .18s ease, opacity .12s ease, top .18s ease;
-    }
-    .gvnav-toggle__bars span:nth-child(1) { top: 0; }
-    .gvnav-toggle__bars span:nth-child(2) { top: 5px; }
-    .gvnav-toggle__bars span:nth-child(3) { top: 10px; }
-    .gvnav-toggle[aria-expanded="true"] .gvnav-toggle__bars span:nth-child(1) { top: 5px; transform: rotate(45deg); }
-    .gvnav-toggle[aria-expanded="true"] .gvnav-toggle__bars span:nth-child(2) { opacity: 0; }
-    .gvnav-toggle[aria-expanded="true"] .gvnav-toggle__bars span:nth-child(3) { top: 5px; transform: rotate(-45deg); }
+    .gvburger:hover { background: rgba(16,17,26,0.06); border-color: rgba(16,17,26,0.20); }
+    .gvburger:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvburger__bars { position: relative; display: block; width: 16px; height: 12px; }
+    .gvburger__bars span { position: absolute; left: 0; right: 0; height: 2px; border-radius: 2px; background: currentColor; transition: transform .18s ease, opacity .12s ease, top .18s ease; }
+    .gvburger__bars span:nth-child(1) { top: 0; }
+    .gvburger__bars span:nth-child(2) { top: 5px; }
+    .gvburger__bars span:nth-child(3) { top: 10px; }
+    .gvburger[aria-expanded="true"] .gvburger__bars span:nth-child(1) { top: 5px; transform: rotate(45deg); }
+    .gvburger[aria-expanded="true"] .gvburger__bars span:nth-child(2) { opacity: 0; }
+    .gvburger[aria-expanded="true"] .gvburger__bars span:nth-child(3) { top: 5px; transform: rotate(-45deg); }
 
-    @media (max-width: 720px) {
-      .gvnav-toggle { display: inline-flex; }
-      .gvnav {
-        position: absolute; top: calc(100% + 7px); right: 10px; z-index: 5;
-        flex-direction: column; align-items: stretch; gap: 2px;
-        min-width: 200px; padding: 7px;
-        background: rgba(255,255,255,0.97); -webkit-backdrop-filter: blur(14px) saturate(180%); backdrop-filter: blur(14px) saturate(180%);
-        border: 1px solid rgba(16,17,26,0.10); border-radius: 12px;
-        box-shadow: 0 18px 48px -16px rgba(16,24,40,0.34);
-        opacity: 0; visibility: hidden; transform: translateY(-6px);
-        transition: opacity .15s ease, transform .15s ease, visibility .15s;
-      }
-      .gvnav.is-open { opacity: 1; visibility: visible; transform: translateY(0); }
-      .gvnav a { height: 42px; padding: 0 14px; border-radius: 8px; font-size: 14.5px; }
-      .gvnav a[aria-current="page"] { color: #3b43b0; }
+    /* ── The rail ─────────────────────────────────────────────────────────────── */
+    .gvside {
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 2147483100; width: var(--rail);
+      display: flex; flex-direction: column; gap: 1px;
+      padding: 13px 12px 18px; overflow-y: auto; overscroll-behavior: contain;
+      background: #fbfbfd; border-right: 1px solid rgba(16,17,26,0.09);
+      font: 500 14px/1.35 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Org switcher — the "top thingy" (Go Vocal + circular mark + caret). */
+    .gvside__org { position: relative; margin-bottom: 10px; }
+    .orgsw {
+      display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px;
+      background: transparent; border: 1px solid transparent; border-radius: 10px; cursor: pointer;
+      font: inherit; color: #16171a; text-align: left;
+      transition: background .12s ease, border-color .12s ease;
+    }
+    .orgsw:hover { background: rgba(16,17,26,0.05); }
+    .orgsw[aria-expanded="true"] { background: rgba(16,17,26,0.07); }
+    .orgsw:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .orgsw__mark { width: 28px; height: 28px; flex: none; display: block; }
+    .orgsw__name { flex: 1; min-width: 0; font-weight: 650; font-size: 14.5px; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .orgsw__caret { flex: none; color: #8a909c; font-size: 10px; }
+    .orgsw__menu {
+      position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 5; padding: 7px;
+      background: #fff; border: 1px solid rgba(16,17,26,0.10); border-radius: 12px;
+      box-shadow: 0 18px 48px -16px rgba(16,24,40,0.34);
+    }
+    .orgsw__menu[hidden] { display: none; }
+    .orgsw__mlabel { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #8a909c; margin: 4px 8px 6px; }
+    .orgsw__item, .orgsw__add {
+      display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px;
+      border: 0; background: transparent; border-radius: 8px; font: inherit; text-align: left;
+    }
+    .orgsw__item { color: #16171a; cursor: pointer; }
+    .orgsw__item:hover { background: rgba(16,17,26,0.05); }
+    .orgsw__item .orgsw__mark { width: 22px; height: 22px; }
+    .orgsw__check { margin-left: auto; color: #147985; font-weight: 700; }
+    .orgsw__div { height: 1px; background: rgba(16,17,26,0.08); margin: 6px 4px; }
+    .orgsw__add { color: #8a909c; cursor: not-allowed; font-weight: 500; }
+    .orgsw__add .gvic { width: 17px; height: 17px; }
+
+    /* Nav groups + items. */
+    .gvside__group { display: flex; flex-direction: column; gap: 1px; }
+    .gvside__label { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #8a909c; margin: 13px 9px 5px; }
+    .gvside a {
+      display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 8px;
+      text-decoration: none; color: #43474f; font-weight: 500; font-size: 14px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      transition: background .12s ease, color .12s ease;
+    }
+    .gvside a:hover { background: rgba(16,17,26,0.05); color: #16171a; }
+    .gvside a[aria-current="page"] { background: rgba(16,17,26,0.08); color: #16171a; font-weight: 600; }
+    .gvside a:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvside a > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .gvic { width: 17px; height: 17px; flex: none; color: #8b909b; }
+    .gvside a[aria-current="page"] .gvic { color: #16171a; }
+
+    /* Mobile drawer scrim. */
+    .gvscrim { display: none; position: fixed; inset: 0; z-index: 2147483099; background: rgba(16,17,26,0.34); opacity: 0; transition: opacity .2s ease; }
+
+    @media (max-width: 860px) {
+      body { padding-left: 0; padding-top: 52px; }
+      .gvtop { display: flex; }
+      .gvside { transform: translateX(-100%); transition: transform .22s ease; box-shadow: 0 24px 60px -20px rgba(16,24,40,0.40); }
+      .gvside.is-open { transform: translateX(0); }
+      .gvscrim.is-open { display: block; opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .gvnav, .gvnav-toggle__bars span { transition: none; }
-    }
-
-    .gvhead__actions { display: inline-flex; align-items: center; gap: 14px; min-width: 0; }`;
+      .gvside, .gvscrim, .gvburger__bars span { transition: none; }
+    }`;
 
 // Magnifier glyph reused by the trigger + the overlay input row.
 const SEARCH_ICON = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
@@ -1028,11 +1020,71 @@ function filterEmpty() {
   return `<p class="filter-empty" data-filter-empty hidden>No matches.</p>`;
 }
 
-function navBar(active) {
-  const tab = (href, label, key) =>
-    `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${label}</a>`;
-  const hamburger = `<button type="button" class="gvnav-toggle" data-nav-toggle aria-expanded="false" aria-controls="gvnav-menu" aria-label="Open menu"><span class="gvnav-toggle__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>`;
-  return `<header class="gvhead"><a class="gvhead__brand" href="/" aria-label="Product Prototypes — back to Prototypes"><span class="gvhead__mark" aria-hidden="true">P</span><span class="gvhead__title">Product Prototypes</span></a><div class="gvhead__actions">${hamburger}<nav class="gvnav" id="gvnav-menu" aria-label="Sections">${tab("/", "Prototypes", "prototypes")}${tab("/primitives/", "Primitives", "primitives")}${tab("/components/", "Components", "components")}${tab("/pages/", "Pages", "pages")}</nav></div></header>`;
+// GoVocal circular brand mark — pale-mint disc + coral "V"/check. Recreated as a
+// tiny inline SVG (the repo only ships the wordmark); colours sampled from the brand
+// app icon. Sized per context via the .orgsw__mark class.
+const GV_MARK = `<svg class="orgsw__mark" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="18" fill="#D2E8E1"/><path d="M10.5 14.2 16.8 24.4 25.7 9.6" fill="none" stroke="#EE5C66" stroke-width="4.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+// Rail item glyphs — 17px line icons (stroke = currentColor, tinted via .gvic).
+const IC_HOME = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.6"/><rect x="13" y="3" width="8" height="8" rx="1.6"/><rect x="3" y="13" width="8" height="8" rx="1.6"/><rect x="13" y="13" width="8" height="8" rx="1.6"/></svg>`;
+const IC_PLAY = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6.4l-4.6 7.6a2 2 0 0 0 1.7 3h9.8a2 2 0 0 0 1.7-3L14 9.4V3"/><path d="M7 14.5h10"/></svg>`;
+const IC_FOLDER = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h3.6l2 2.4H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>`;
+const IC_PRIM = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 21.5 12 12 21.5 2.5 12 12 2.5Z"/></svg>`;
+const IC_COMP = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><circle cx="17.25" cy="17.25" r="3.85"/></svg>`;
+const IC_PAGE = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h6l4 4v14H7V3Z"/><path d="M13 3v4h4"/><path d="M9.5 12.5h5M9.5 16h5"/></svg>`;
+const IC_PLUS = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
+
+// Nav context (opportunities + whether Playground shipped), set once in main() so the
+// same rail renders identically on every page without threading it through each call.
+const NAV_STATE = { opportunities: [], hasPlayground: false };
+
+// The persistent left rail: org switcher → Prototypes/Playground → Opportunities →
+// Library (Primitives/Components/Pages). `active` is a single key:
+// 'prototypes' | 'playground' | <opportunity name> | 'primitives' | 'components' | 'pages'.
+function sideRail(active) {
+  const item = (href, label, key, icon) =>
+    `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
+  const playground = NAV_STATE.hasPlayground ? item("/playground/", "Playground", "playground", IC_PLAY) : "";
+  const opps = (NAV_STATE.opportunities || [])
+    .map((o) => item(`/${encodeURIComponent(o.name)}/`, titleCase(o.name), o.name, IC_FOLDER))
+    .join("");
+  const oppSection = opps
+    ? `<p class="gvside__label">Opportunities</p><div class="gvside__group">${opps}</div>`
+    : "";
+  return `<aside class="gvside" id="gvside" aria-label="Go Vocal Prototypes">
+    <div class="gvside__org">
+      <button type="button" class="orgsw" data-orgsw aria-haspopup="true" aria-expanded="false" aria-controls="orgsw-menu">
+        ${GV_MARK}<span class="orgsw__name">Go Vocal</span><span class="orgsw__caret" aria-hidden="true">▾</span>
+      </button>
+      <div class="orgsw__menu" id="orgsw-menu" data-orgsw-menu hidden>
+        <p class="orgsw__mlabel">Organizations</p>
+        <button type="button" class="orgsw__item" aria-current="true">${GV_MARK}<span>Go Vocal</span><span class="orgsw__check" aria-hidden="true">✓</span></button>
+        <div class="orgsw__div"></div>
+        <button type="button" class="orgsw__add" disabled>${IC_PLUS}<span>Add organization</span></button>
+      </div>
+    </div>
+    <div class="gvside__group">
+      ${item("/", "Prototypes", "prototypes", IC_HOME)}
+      ${playground}
+    </div>
+    ${oppSection}
+    <p class="gvside__label">Library</p>
+    <div class="gvside__group">
+      ${item("/primitives/", "Primitives", "primitives", IC_PRIM)}
+      ${item("/components/", "Components", "components", IC_COMP)}
+      ${item("/pages/", "Pages", "pages", IC_PAGE)}
+    </div>
+  </aside>`;
+}
+
+// Full chrome injected at the top of <body>: slim mobile top bar + the rail + the
+// drawer scrim (the last two are off-canvas / hidden on desktop via CSS).
+function appChrome(active) {
+  const top = `<header class="gvtop">
+    <button type="button" class="gvburger" data-side-toggle aria-expanded="false" aria-controls="gvside" aria-label="Open navigation"><span class="gvburger__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
+    <a class="gvtop__brand" href="/">${GV_MARK}<span>Go Vocal</span></a>
+  </header>`;
+  return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>`;
 }
 
 /** Shared chrome script: real-time in-page filter + the mobile nav dropdown. */
@@ -1095,22 +1147,29 @@ function chromeScript() {
     apply();
   }
 
-  // ── Mobile nav dropdown (hamburger) ──────────────────────────────────────
-  var navToggle = document.querySelector('[data-nav-toggle]');
-  var nav = document.getElementById('gvnav-menu');
-  if(navToggle && nav){
-    function closeNav(){ navToggle.setAttribute('aria-expanded','false'); nav.classList.remove('is-open'); }
-    function openNav(){ navToggle.setAttribute('aria-expanded','true'); nav.classList.add('is-open'); }
-    navToggle.addEventListener('click', function(e){
-      e.stopPropagation();
-      nav.classList.contains('is-open') ? closeNav() : openNav();
-    });
-    nav.addEventListener('click', function(e){ if(e.target.closest('a')) closeNav(); });
-    document.addEventListener('click', function(e){
-      if(nav.classList.contains('is-open') && !nav.contains(e.target) && !navToggle.contains(e.target)) closeNav();
-    });
-    document.addEventListener('keydown', function(e){ if((e.key||'').toLowerCase() === 'escape') closeNav(); });
-    window.addEventListener('resize', function(){ if(window.innerWidth > 720) closeNav(); });
+  // ── Mobile rail drawer (hamburger + scrim) ───────────────────────────────
+  var sideToggle = document.querySelector('[data-side-toggle]');
+  var side = document.getElementById('gvside');
+  var scrim = document.querySelector('[data-side-scrim]');
+  if(sideToggle && side){
+    function closeSide(){ sideToggle.setAttribute('aria-expanded','false'); side.classList.remove('is-open'); if(scrim) scrim.classList.remove('is-open'); }
+    function openSide(){ sideToggle.setAttribute('aria-expanded','true'); side.classList.add('is-open'); if(scrim) scrim.classList.add('is-open'); }
+    sideToggle.addEventListener('click', function(e){ e.stopPropagation(); side.classList.contains('is-open') ? closeSide() : openSide(); });
+    if(scrim) scrim.addEventListener('click', closeSide);
+    side.addEventListener('click', function(e){ if(e.target.closest('a')) closeSide(); });
+    document.addEventListener('keydown', function(e){ if((e.key||'').toLowerCase() === 'escape') closeSide(); });
+    window.addEventListener('resize', function(){ if(window.innerWidth > 860) closeSide(); });
+  }
+
+  // ── Org switcher dropdown (structure only — one org for now) ──────────────
+  var orgBtn = document.querySelector('[data-orgsw]');
+  var orgMenu = document.querySelector('[data-orgsw-menu]');
+  if(orgBtn && orgMenu){
+    function closeOrg(){ orgBtn.setAttribute('aria-expanded','false'); orgMenu.hidden = true; }
+    function openOrg(){ orgBtn.setAttribute('aria-expanded','true'); orgMenu.hidden = false; }
+    orgBtn.addEventListener('click', function(e){ e.stopPropagation(); orgMenu.hidden ? openOrg() : closeOrg(); });
+    document.addEventListener('click', function(e){ if(!orgMenu.hidden && !orgMenu.contains(e.target) && !orgBtn.contains(e.target)) closeOrg(); });
+    document.addEventListener('keydown', function(e){ if((e.key||'').toLowerCase() === 'escape') closeOrg(); });
   }
 })();`;
 }
@@ -1121,19 +1180,19 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${navBar(active)}\n  <script>${chromeScript()}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>`
   );
 }
 
 // "Shell skin" for the Primitives gallery so it matches the light shell: the page
 // canvas takes the shell's near-white bg + faint indigo wash, and the gallery's white
 // .gv-card sections get a crisp hairline + soft shadow. The gallery owns its own
-// (side-nav) layout; the skin only harmonises colours and reserves the top-bar height.
-// Injected last so it wins over the gallery's own body rule (equal specificity).
+// (side-nav) layout; the skin only harmonises colours. The global left rail (NAV_CSS,
+// injected separately) handles the body offset via padding-left, so the skin no longer
+// reserves a top-bar height. Injected last so it wins over the gallery's own body rule.
 const PRIMITIVES_SKIN = `${FONT_CSS}
     body.gv-root {
       background: #fbfbfd !important;
-      padding-top: 76px !important;
     }
     body.gv-root::before {
       content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
@@ -1142,7 +1201,7 @@ const PRIMITIVES_SKIN = `${FONT_CSS}
         radial-gradient(700px 420px at 98% -6%, rgba(140,99,210,0.07), transparent 55%);
     }
     body.gv-root > .gv-gallery { position: relative; z-index: 1; }
-    body.gv-root .gv-sidenav { top: 72px; }
+    body.gv-root .gv-sidenav { top: 26px; }
     body.gv-root .gv-card {
       border: 1px solid rgba(16,17,26,0.07);
       box-shadow: 0 12px 30px -18px rgba(16,24,40,0.22);
@@ -1235,7 +1294,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   </style>
 </head>
 <body>
-  ${navBar(activeTab)}
+  ${appChrome(activeTab)}
   <div class="wrap${wrapClass ? " " + wrapClass : ""}">
     ${backLink}
     ${body}
@@ -1642,6 +1701,13 @@ async function main() {
       (p) => `/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`
     )
   );
+  // Playground projects ship verbatim and are public too — individual scratch
+  // prototypes are link-shareable. Only the prototype folders are opened; the
+  // /playground/ index listing itself stays gated (a shorter path that matches no
+  // prefix), so the scratch catalogue isn't exposed.
+  for (const pj of playground) {
+    publicPrefixes.push(`/playground/${encodeURIComponent(pj.name)}/`);
+  }
 
   // Per-page live-reload versions. Map each shipped folder's URL prefix → a token
   // that changes ONLY when that folder's content changes (its git/fs last-change
