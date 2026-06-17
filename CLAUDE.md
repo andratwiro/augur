@@ -206,9 +206,20 @@ None of these load by default. Reach for them when the task or the user calls fo
   failure (color-only state, low-contrast text, disabled zoom, tiny targets).
 - **Persona critique** — `skills/govocal-persona-critique/` to critique a flow in
   character (participant/admin personas).
-- **Review comments** — `npm run comments` pulls reviewer threads into a gitignored
-  `review-comments.local.md`. Needs `REVIEW_SITE_URL` + `REVIEW_EXPORT_KEY` in
-  `.env.deploy`; the export key is a secret — never paste it in chat.
+- **Review comments & annotations** — `npm run comments` pulls reviewer threads into a
+  gitignored `review-comments.local.md`. Needs `REVIEW_SITE_URL` + `REVIEW_EXPORT_KEY`
+  in `.env.deploy`; the export key is a secret — never paste it in chat. The review
+  overlay (`src/review/comments.js`, `Shift+C`) has two pin types: transient **comments**
+  and always-on **annotations** (a comment promoted via the Aslam toggle — dev-delivery
+  notes that render with review mode off and are **skipped on "resolve comments"**, so
+  use `node scripts/review.mjs --open` for the actionable list and never resolve an
+  annotation).
+  - **Gate rule (bit twice — don't get bit again):** any file the overlay loads from
+    `/__review/` (e.g. `comments.js`, `aslam.png`) **must be added to `isPublicPath()` in
+    `src/_worker.js`**, or the password gate returns the login HTML in place of the asset
+    (an `<img>` then silently fails). Same for any new asset embedded into public
+    prototypes. Also avoid inline `data:` images for overlay UI — some browsers/blockers
+    refuse to paint them; serve a real same-origin file instead.
 - **Dev-status pipeline** — each prototype card on its opportunity index carries a
   dev-facing status badge (Playground / In progress / Dev ready / Shipped / Parked),
   cycled by clicking on the live site, persisted to KV via `src/_worker.js`. When the
