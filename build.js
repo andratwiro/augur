@@ -141,7 +141,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.38";
+const UI_VERSION = "0.39";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -616,7 +616,6 @@ const PAGE_CSS = `
     .playground__go { margin-left: auto; font-size: 22px; color: var(--faint); flex: none; transition: color .15s, transform .15s; }
     .playground:hover .playground__go { color: var(--fg); transform: translateX(2px); }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
-    footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
 
     /* ---- Cards & live previews ---- */
     .card-opp, .card-proto {
@@ -969,10 +968,13 @@ const NAV_CSS = `
     .gvside {
       position: fixed; top: 0; left: 0; bottom: 0; z-index: 2147483100; width: var(--rail);
       display: flex; flex-direction: column; gap: 1px;
-      padding: 13px 12px 18px; overflow-y: auto; overscroll-behavior: contain;
+      padding: 13px 12px 14px; overflow: hidden;
       background: #fbfbfd; border-right: 1px solid rgba(16,17,26,0.09);
       font: 500 14px/1.35 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
+    /* Brand + search stay put; the nav list scrolls; the Library footer is pinned. */
+    .gvside__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 1px; }
+    .gvside__foot { flex: none; }
 
     /* Workspace brand — Go Vocal + circular mark, sitting in the SAME icon column as
        every nav row below it. No dropdown; the name just links home. */
@@ -1086,7 +1088,8 @@ const IC_PLAY = ic(`<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 2
 const IC_FOLDER = ic(`<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>`); // folder
 const IC_PRIM = ic(`<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>`); // shapes
 const IC_COMP = ic(`<path d="M15.536 11.293a1 1 0 0 0 0 1.414l2.376 2.377a1 1 0 0 0 1.414 0l2.377-2.377a1 1 0 0 0 0-1.414l-2.377-2.377a1 1 0 0 0-1.414 0z"/><path d="M2.297 11.293a1 1 0 0 0 0 1.414l2.377 2.377a1 1 0 0 0 1.414 0l2.377-2.377a1 1 0 0 0 0-1.414L6.088 8.916a1 1 0 0 0-1.414 0z"/><path d="M8.916 17.912a1 1 0 0 0 0 1.415l2.377 2.376a1 1 0 0 0 1.414 0l2.377-2.376a1 1 0 0 0 0-1.415l-2.377-2.376a1 1 0 0 0-1.414 0z"/><path d="M8.916 4.674a1 1 0 0 0 0 1.414l2.377 2.376a1 1 0 0 0 1.414 0l2.377-2.376a1 1 0 0 0 0-1.414l-2.377-2.377a1 1 0 0 0-1.414 0z"/>`); // component
-const IC_PAGE = ic(`<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>`); // file-text
+const IC_PAGE = ic(`<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/>`); // app-window (pages are websites, not paper)
+const IC_LIBRARY = ic(`<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`); // library
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
 
 // Nav context (opportunities + whether Playground shipped), set once in main() so the
@@ -1117,11 +1120,12 @@ function sideRail(active) {
   const pinned = opps
     ? `<p class="gvside__label">Pinned</p><div class="gvside__group">${opps}</div>`
     : "";
-  // Library is a collapsible section, collapsed by default — auto-open when you're on
-  // one of its pages so the active item is visible.
+  // Library is a collapsible section pinned to the BOTTOM of the rail; collapsed by
+  // default, auto-opens when you're on one of its pages. Its own icon leads; the
+  // disclosure chevron sits on the right.
   const libOpen = active === "primitives" || active === "components" || active === "pages";
   const library = `<details class="gvside__sect"${libOpen ? " open" : ""}>
-      <summary class="gvside__sum">${IC_CHEV}<span>Library</span></summary>
+      <summary class="gvside__sum">${IC_LIBRARY}<span>Library</span><span class="gvside__caret" aria-hidden="true">${IC_CHEV}</span></summary>
       <div class="gvside__group gvside__sub">
         ${item("/primitives/", "Primitives", "primitives", IC_PRIM)}
         ${item("/components/", "Components", "components", IC_COMP)}
@@ -1134,12 +1138,17 @@ function sideRail(active) {
     </a>
     ${railSearch()}
     <div class="gvside__rule"></div>
-    ${library}
-    <div class="gvside__group">
-      ${playground}
-      ${item("/", "Prototypes", "prototypes", IC_HOME)}
+    <div class="gvside__scroll">
+      <div class="gvside__group">
+        ${playground}
+        ${item("/", "Opportunities", "prototypes", IC_HOME)}
+      </div>
+      ${pinned}
     </div>
-    ${pinned}
+    <div class="gvside__foot">
+      <div class="gvside__rule"></div>
+      ${library}
+    </div>
   </aside>`;
 }
 
@@ -1354,8 +1363,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <div class="wrap${wrapClass ? " " + wrapClass : ""}">
     ${backLink}
     ${body}
-    <footer>Product Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}${addon ? addon.footerHtml() : ""}</footer>
   </div>
+  ${addon ? addon.cornerHtml() : ""}
   <script>${CAROUSEL_JS}
   </script>
   <script>${chromeScript()}

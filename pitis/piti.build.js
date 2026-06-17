@@ -8,7 +8,7 @@
 
    Hooks:
      css()                -> extra <style> appended to every shell page
-     footerHtml()         -> markup appended into the shell footer
+     cornerHtml()         -> markup appended before </body> on shell pages (fixed paw)
      bodyScripts()        -> <script> appended before </body> on shell pages
      transformHtml(h, v)  -> post-process for every COPIED prototype/page/demo
      emit(ctx)            -> copy the companion's own files into /dist
@@ -33,10 +33,11 @@ export function bodyScripts(version) {
     '<script>addEventListener("DOMContentLoaded",function(){try{window.Piti&&window.Piti.auto();}catch(e){}});</script>';
 }
 
-// A quiet, Linear-styled paw link tucked into the footer → opens the customizer.
+// A quiet paw tucked into the bottom-right corner → opens the customizer. Kept
+// barely-there until hover so it reads as an easter egg, not chrome.
 // (The companion itself is summoned/dismissed with Shift+Ñ, handled in piti.js.)
-export function footerHtml() {
-  return ' &middot; <a class="piti-paw" href="/pitis/" aria-label="Piti" title="Piti">' +
+export function cornerHtml() {
+  return '<a class="piti-paw" href="/pitis/" aria-label="Piti" title="Piti">' +
     '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
     '<ellipse cx="12" cy="16.5" rx="5" ry="4.2"/>' +
     '<ellipse cx="5.6" cy="11.2" rx="2" ry="2.7"/>' +
@@ -49,13 +50,16 @@ export function footerHtml() {
 export function css() {
   return `
     .piti-paw {
-      display: inline-flex; align-items: center; vertical-align: -2px;
-      margin-left: 8px; color: var(--faint); opacity: .5;
+      position: fixed; right: 14px; bottom: 12px; z-index: 50;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 8px;
+      color: var(--faint); opacity: .28;
       transition: color .15s ease, opacity .15s ease, transform .15s ease;
     }
-    .piti-paw svg { width: 14px; height: 14px; display: block; }
+    .piti-paw svg { width: 15px; height: 15px; display: block; }
     .piti-paw:hover { color: var(--accent); opacity: 1; transform: translateY(-1px); }
-    .piti-paw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; opacity: 1; }`;
+    .piti-paw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; opacity: 1; }
+    @media print { .piti-paw { display: none; } }`;
 }
 
 // Copy the companion's own files into /dist. ctx provides build.js helpers so we
