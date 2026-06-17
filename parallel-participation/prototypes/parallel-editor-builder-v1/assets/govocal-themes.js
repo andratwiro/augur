@@ -177,20 +177,14 @@
       'display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;' +
       'background:#fff;box-shadow:0 4px 12px -1px rgba(0,0,0,.18);' +
       "font-family:'Public Sans',system-ui,sans-serif;font-size:13px;color:#333}" +
-      '#gv-theme-picker .gv-tp-label{font-weight:600;color:#596B7A;white-space:nowrap}' +
       '#gv-theme-picker .gv-tp-swatches{display:flex;gap:6px}' +
       '#gv-theme-picker button.gv-tp-sw{width:24px;height:24px;border-radius:50%;border:2px solid transparent;' +
       'cursor:pointer;padding:0;outline-offset:2px}' +
       '#gv-theme-picker button.gv-tp-sw[aria-pressed="true"]{border-color:#333;box-shadow:0 0 0 2px #fff inset}' +
       '#gv-theme-picker button.gv-tp-sw:focus-visible{outline:2px solid #044D6C}' +
-      '#gv-theme-picker .gv-tp-name{min-width:54px;font-weight:600}' +
-      '@media (max-width:480px){#gv-theme-picker .gv-tp-name{display:none}}' +
       '</style>' +
-      '<span class="gv-tp-label">City</span>' +
-      '<span class="gv-tp-swatches"></span>' +
-      '<span class="gv-tp-name">' + active.name + '</span>';
+      '<span class="gv-tp-swatches"></span>';
     var sw = wrap.querySelector('.gv-tp-swatches');
-    var nameEl = wrap.querySelector('.gv-tp-name');
     GV_THEMES.forEach(function (t) {
       var b = document.createElement('button');
       b.type = 'button';
@@ -202,7 +196,6 @@
       b.addEventListener('click', function () {
         applyTheme(t);
         syncUrl(t);
-        nameEl.textContent = t.name;
         sw.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
         b.setAttribute('aria-pressed', 'true');
       });

@@ -164,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.47";
+const UI_VERSION = "0.48";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -502,14 +502,25 @@ async function scanPlayground() {
   const root = path.join(ROOT, "playground");
   if (!(await isDir(root))) return [];
   const entries = await fs.readdir(root, { withFileTypes: true });
+  const statusMap = await loadStatusMap();
   const projects = [];
   for (const e of entries) {
     if (!e.isDirectory() || e.name.startsWith(".")) continue;
     const dir = path.join(root, e.name);
     const { href, file } = await entryPoint(e.name, dir);
-    projects.push({ name: e.name, href, file, poster: await exists(path.join(dir, "preview.webp")), mtimeMs: modifiedTime(dir, await latestMtime(dir)) });
+    // Playground projects carry a dev-status chip like opportunity prototypes, but
+    // default to "in-progress" (not unset/ignore) — a scratch folder is presumed
+    // active work until marked otherwise. The committed JSON still overrides.
+    projects.push({
+      name: e.name,
+      href,
+      file,
+      poster: await exists(path.join(dir, "preview.webp")),
+      mtimeMs: modifiedTime(dir, await latestMtime(dir)),
+      status: statusMap[`playground/${e.name}`] || "in-progress",
+    });
   }
-  projects.sort(byRecency);
+  projects.sort(byStatusThenRecency);
   return projects;
 }
 
@@ -845,8 +856,10 @@ const PAGE_CSS = `
     .preview .status-chip svg { width: 18px; height: 18px; }
     /* "Ignore" dims its card so it recedes without disappearing. The :has reacts
        live to the class STATUS_JS sets, so a click updates the dim instantly. */
-    .card-proto:has(.status-chip.is-ignore) { opacity: .55; }
-    .card-proto:has(.status-chip.is-ignore):hover { opacity: 1; }
+    .card-proto:has(.status-chip.is-ignore),
+    .card-opp:has(.status-chip.is-ignore) { opacity: .55; }
+    .card-proto:has(.status-chip.is-ignore):hover,
+    .card-opp:has(.status-chip.is-ignore):hover { opacity: 1; }
     @media (prefers-reduced-motion: reduce) { .status-chip { transition: none; } }
 
     /* ---- Right-click card menu (Figma-style dark popover) ---- */
@@ -1593,7 +1606,7 @@ const STATUS_JS = `
   function resort(){
     var grids = [];
     chips.forEach(function(chip){
-      var card = chip.closest('.card-proto'); if(!card) return;
+      var card = chip.closest('.card-proto, .card-opp'); if(!card) return;
       var grid = card.parentElement; if(!grid) return;
       var g = null; for(var i=0;i<grids.length;i++){ if(grids[i].grid===grid){ g=grids[i]; break; } }
       if(!g){ g = {grid:grid, cards:[]}; grids.push(g); }
@@ -1944,7 +1957,10 @@ function renderPlaygroundIndex(projects) {
       return `
         <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="playground/${p.name}" data-default-name="${dname}">
           <a class="card-cover-link" href="${folder}" aria-label="Open ${titleCase(p.name)}"></a>
-          ${preview(p.href, p.poster)}
+          <div class="preview">
+            ${media(p.href, p.poster)}
+            ${statusChip(p.status, "playground/" + p.name)}
+          </div>
           <div class="preview-actions">${pinStar(pinKey, pinKey)}</div>
           <div class="opp-meta">
             <div class="proto-name">${dname}</div>
