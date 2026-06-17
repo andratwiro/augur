@@ -124,6 +124,7 @@
     return (
       // mostly WHITE body with discrete ginger patches (Aslam is white-dominant):
       '<ellipse cx="470" cy="150" rx="205" ry="170" fill="' + c.patch + '"/>' +     // ginger head cap + ears (white muzzle/chin below)
+      '<ellipse cx="452" cy="250" rx="46" ry="118" fill="' + (c.belly || "#fff") + '"/>' + // white forehead blaze splitting the cap
       '<ellipse cx="770" cy="300" rx="165" ry="150" fill="' + c.patch + '"/>' +     // shoulder patch
       '<ellipse cx="1245" cy="335" rx="255" ry="240" fill="' + c.patch + '"/>' +    // rump patch
       '<ellipse cx="1520" cy="430" rx="235" ry="185" fill="' + c.patch + '"/>' +    // ginger tail
