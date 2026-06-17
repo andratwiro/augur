@@ -17,6 +17,28 @@
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
+// Build id for the live-reload poller. build.js replaces "dev" with this build's
+// id; it's the FALLBACK version for any path not in VERSION_MAP (index/shell pages,
+// assets). "dev" in a raw/local copy just means a stable id.
+const BUILD_ID = "dev";
+
+// Per-page live-reload versions: URL-prefix → token that changes only when that
+// folder's content changes. build.js fills this in. Lets a tab reload only when ITS
+// own prototype changed, so unrelated deploys (e.g. another agent's prototype) don't
+// reload it. versionFor() returns the longest-prefix match, else BUILD_ID.
+const VERSION_MAP = {};
+
+function versionFor(pathname) {
+  let best = null, bestLen = -1;
+  for (const k in VERSION_MAP) {
+    if ((pathname === k || pathname === k.slice(0, -1) || pathname.startsWith(k)) && k.length > bestLen) {
+      best = VERSION_MAP[k];
+      bestLen = k.length;
+    }
+  }
+  return best == null ? BUILD_ID : best;
+}
+
 // PUBLIC prototype path-prefixes — served WITHOUT the password. build.js replaces
 // the array below with the real list of `/<opportunity>/<prototype>/` prefixes at
 // build time, so it can never drift from what actually ships. Left empty here so a
@@ -152,6 +174,40 @@ function htmlResponse(body, status) {
     status,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });
+}
+
+// ---- Live-reload injection (global) -----------------------------------------
+// Every HTML page served gets a tiny poller appended before </body>. It freezes
+// THIS page's version (versionFor(path)) at load time, then polls
+// /__version?path=<its own path>; when that page's version changes (i.e. ITS
+// prototype was redeployed), it reloads — so an unrelated deploy never reloads it.
+// Idle-gated: if the version changed while you're mid-interaction, it waits until
+// you've paused (≈4s of no input) so it never yanks you out of a flow; the next
+// tick reloads once idle. A reload is a full refresh (resets in-page JS state).
+// Done in the edge (not baked per file) so it's one definition covering every
+// current and future page. Skips:
+//   • non-HTML responses, • preview iframes (parent reloads them),
+//   • ?raw=1 fetches (the Download HTML button uses it to get a clean file).
+// Marker-wrapped so the Download button's strip also removes it as a fallback.
+function liveReloadSnippet(token) {
+  return '<!--gv-reload-start--><script>(function(){if(window.top!==window.self)return;' +
+    'var B=' + JSON.stringify(token) + ',last=0;' +
+    '["pointerdown","keydown","input","scroll","touchstart"].forEach(function(e){' +
+    'document.addEventListener(e,function(){last=Date.now()},{passive:true,capture:true})});' +
+    'function c(){fetch("/__version?path="+encodeURIComponent(location.pathname),{cache:"no-store"})' +
+    '.then(function(r){return r.ok?r.text():null})' +
+    '.then(function(t){if(t&&t.trim()&&t.trim()!==B&&Date.now()-last>4000)location.reload()})' +
+    '.catch(function(){})}' +
+    'setInterval(function(){if(!document.hidden)c()},10000);' +
+    'document.addEventListener("visibilitychange",function(){if(!document.hidden)c()});})();</script><!--gv-reload-end-->';
+}
+
+function withLiveReload(res, url) {
+  const ct = res.headers.get("Content-Type") || "";
+  if (!ct.includes("text/html") || url.searchParams.has("raw")) return res;
+  return new HTMLRewriter()
+    .on("body", { element(el) { el.append(liveReloadSnippet(versionFor(url.pathname)), { html: true }); } })
+    .transform(res);
 }
 
 // ---- Review comments API (KV-backed) ----------------------------------------
@@ -322,6 +378,16 @@ export default {
       });
     }
 
+    // Live-reload version probe — every page polls this with its own ?path=, and
+    // gets back that path's version (versionFor); no ?path → BUILD_ID. Public (before
+    // the gate) so public prototypes can poll it too; no-store so the id is never stale.
+    if (url.pathname === "/__version") {
+      const p = url.searchParams.get("path");
+      return new Response(p ? versionFor(p) : BUILD_ID, {
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+      });
+    }
+
     // Review export bypasses the password gate (its own secret guards it).
     if (url.pathname === "/__review/api/export") return reviewExport(request, url, env);
 
@@ -349,7 +415,7 @@ export default {
       return statusApi(request, url, env);
     }
 
-    if (!expected) return env.ASSETS.fetch(request); // open when no password configured
+    if (!expected) return withLiveReload(await env.ASSETS.fetch(request), url); // open when no password configured
 
     const expectedToken = await tokenFor(expected);
 
@@ -376,7 +442,7 @@ export default {
     // The open door is for easy link-sharing, NOT public discovery, so tag every
     // public response as non-indexable (covers HTML and assets alike).
     if (isPublicPath(url.pathname)) {
-      const res = await env.ASSETS.fetch(request);
+      const res = withLiveReload(await env.ASSETS.fetch(request), url);
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
@@ -385,7 +451,7 @@ export default {
     // Already authenticated?
     const cookies = request.headers.get("Cookie") || "";
     const authed = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${expectedToken}`);
-    if (authed) return env.ASSETS.fetch(request);
+    if (authed) return withLiveReload(await env.ASSETS.fetch(request), url);
 
     // Otherwise show the login page, remembering where they were headed.
     // 200 (not 401) so password managers treat it as a normal login page.

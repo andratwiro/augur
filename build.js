@@ -87,36 +87,17 @@ function injectReview(html) {
   return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
 }
 
-// Live-reload tag injected into EVERY built HTML page (prototypes + shell). It
-// bakes THIS build's id inline; a tiny poller compares it against /__version
-// (served by the worker, regenerated each deploy) and reloads the tab when they
-// differ — so an open tab auto-refreshes itself within ~10s of a deploy, no
-// manual reload. Skips polling inside preview iframes (the parent page reloads
-// them). Marker-wrapped so the Download HTML button can strip it for a clean file.
-// Lazy (function) so it reads BUILD_ID, declared just below.
-function reloadTag() {
-  return '<!--gv-reload-start--><script>(function(){if(window.top!==window.self)return;' +
-    'var B=' + JSON.stringify(BUILD_ID) + ';' +
-    'function c(){fetch("/__version",{cache:"no-store"}).then(function(r){return r.ok?r.text():null})' +
-    '.then(function(t){if(t&&t.trim()&&t.trim()!==B)location.reload()}).catch(function(){})}' +
-    'setInterval(function(){if(!document.hidden)c()},10000);' +
-    'document.addEventListener("visibilitychange",function(){if(!document.hidden)c()});})();</script><!--gv-reload-end-->';
-}
-
-/** Inject the live-reload tag before </body> (or append if none). */
-function injectReload(html) {
-  if (html.includes("gv-reload-start")) return html; // already injected
-  const tag = reloadTag();
-  const i = html.toLowerCase().lastIndexOf("</body>");
-  return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
-}
-
 // Version of the PROTOTYPES SITE UI (the landing/shell pages this file generates),
 // shown in the footer. Bump this ONLY when the site UI changes — i.e. edits to
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
 const UI_VERSION = "0.31";
+
+// One id per build (ms timestamp). Baked into every page's live-reload poller AND
+// into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
+// notice and reload. Same value across this whole build run.
+const BUILD_ID = String(Date.now());
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -792,14 +773,18 @@ const PAGE_CSS = `
 
 const CAROUSEL_JS = `
     (function () {
-      // Download HTML: fetch the prototype, strip the injected review tag so
-      // devs get a clean, self-contained file.
+      // Download HTML: fetch the prototype with ?raw=1 (the worker then skips the
+      // live-reload injection), and strip the baked-in review tag, so devs get a
+      // clean, self-contained file. The reload strip is a fallback for ?raw.
       document.addEventListener('click', function (e) {
         var b = e.target.closest && e.target.closest('[data-dl]');
         if (!b) return;
         e.preventDefault();
-        fetch(b.getAttribute('data-dl')).then(function (r) { return r.text(); }).then(function (t) {
-          t = t.replace(/<!--gv-review-start-->[\\s\\S]*?<!--gv-review-end-->/g, '');
+        var dl = b.getAttribute('data-dl');
+        dl += (dl.indexOf('?') < 0 ? '?raw=1' : '&raw=1');
+        fetch(dl).then(function (r) { return r.text(); }).then(function (t) {
+          t = t.replace(/<!--gv-review-start-->[\\s\\S]*?<!--gv-review-end-->/g, '')
+               .replace(/<!--gv-reload-start-->[\\s\\S]*?<!--gv-reload-end-->/g, '');
           var blob = new Blob([t], { type: 'text/html' });
           var a = document.createElement('a');
           a.href = URL.createObjectURL(blob);
@@ -1533,6 +1518,22 @@ async function main() {
       (p) => `/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`
     )
   );
+
+  // Per-page live-reload versions. Map each shipped folder's URL prefix → a token
+  // that changes ONLY when that folder's content changes (its git/fs last-change
+  // time). The worker injects the matching token into each page and serves it from
+  // /__version?path=…; a tab reloads only when ITS token changes — so a deploy that
+  // touched a different prototype never reloads an unrelated open tab. Anything not
+  // matched (index/shell pages, assets) falls back to BUILD_ID (reload every deploy,
+  // which is fine for the listings — they're meant to show the latest).
+  const versionMap = {};
+  for (const opp of opportunities)
+    for (const p of opp.prototypes)
+      versionMap[`/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`] = String(p.mtimeMs);
+  for (const c of components) versionMap[`/components/${encodeURIComponent(c.name)}/`] = String(c.mtimeMs);
+  for (const pg of pages) versionMap[`/pages/${encodeURIComponent(pg.name)}/`] = String(pg.mtimeMs);
+  for (const pj of playground) versionMap[`/playground/${encodeURIComponent(pj.name)}/`] = String(pj.mtimeMs);
+
   const workerSrc = await fs.readFile(SRC_WORKER, "utf8");
   const gatedWorker = workerSrc.replace(
     "const PUBLIC_PREFIXES = [];",
@@ -1541,7 +1542,13 @@ async function main() {
   if (gatedWorker === workerSrc) {
     throw new Error("build: PUBLIC_PREFIXES placeholder not found in src/_worker.js");
   }
-  await fs.writeFile(path.join(DIST, "_worker.js"), gatedWorker, "utf8");
+  const stampedWorker = gatedWorker
+    .replace('const BUILD_ID = "dev";', `const BUILD_ID = ${JSON.stringify(BUILD_ID)};`)
+    .replace("const VERSION_MAP = {};", `const VERSION_MAP = ${JSON.stringify(versionMap)};`);
+  if (stampedWorker === gatedWorker) {
+    throw new Error("build: BUILD_ID / VERSION_MAP placeholder not found in src/_worker.js");
+  }
+  await fs.writeFile(path.join(DIST, "_worker.js"), stampedWorker, "utf8");
 
   // Review overlay asset (shared by every injected prototype).
   await fs.mkdir(path.join(DIST, "__review"), { recursive: true });
