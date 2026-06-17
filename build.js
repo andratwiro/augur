@@ -92,7 +92,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.32";
+const UI_VERSION = "0.33";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -830,8 +830,11 @@ const CAROUSEL_JS = `
         if (!f) return;
         var reveal = function () { p.classList.add('is-loaded'); };
         f.addEventListener('load', reveal);
-        try { if (f.contentDocument && f.contentDocument.readyState === 'complete') reveal(); } catch (e) {}
-        setTimeout(reveal, 6000);
+        // NB: a lazy iframe sits at about:blank with readyState 'complete' BEFORE it
+        // navigates to its real src — so we must NOT reveal on readyState alone, or we
+        // unmask the page exactly as its FOUC paints. The load event is the only
+        // reliable "real src finished" signal; the timeout is just a stuck-load backstop.
+        setTimeout(reveal, 8000);
       });
 
       if (window.ResizeObserver) {
