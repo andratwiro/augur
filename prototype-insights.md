@@ -277,3 +277,35 @@ Loop 4 fixed flagship a11y. Not touched again after the steer.
   that's worth the regression risk on a deployed deliverable. Per loop guidance, made NO
   marginal edits. Pacing down to a 1-hour heartbeat; will wind the loop down if the
   sms-verification scope stays quiet another cycle or two.
+
+## ═══ FINAL SUMMARY — loop wound down 2026-06-17 ~05:45 ═══
+Third consecutive idle cycle with no new in-scope (sms-verification) direction and the
+deliverable complete → winding the loop down (no further wakeup scheduled).
+
+### What the night produced (sms-verification focus, per the user's mid-run steers)
+**Lead deliverable — `sms-verification/prototypes/access-rights-simple/` (dev-ready, deployed):**
+an admin experience for the complex phase "access & user data" tab, built to the bar
+"a 14-year-old instantly gets it." Final feature set:
+- Presets-first ("How open is this phase?" → Open to everyone / Sign in first [rec] /
+  Verified people / Just the team) with a "Reset to recommended" escape hatch.
+- Live resident phone: real step-by-step journey, honest "N steps before they take part"
+  counter (Open = 0/instant; Team = a real blocked resident view), labelled as a live preview.
+- Progressive disclosure: verification stacking (email / SMS first-class & purple-highlighted /
+  photo ID), per-action rules with per-action phone preview + "changed" tags, limit-to-groups,
+  data collection — all behind "Need finer control?".
+- Live plain-language summary (names which actions differ), auto-save/publish reassurance,
+  up-front trade-off framing. Survived an independent UX critique + full QA; passes `npm run audit`.
+
+### State of the other sms-verification prototypes (left as-is)
+- `phase-access-permissions` — faithful real-product baseline (the "before"). Keep.
+- `access-rights-explorations` — 6-take idea gallery; Loop 5 fixed the switcher overlap. Keep.
+- `phase-access-inspector` — the user's active work; only Loop 2 a11y hardening, otherwise untouched.
+- `access-rights-explorations-v2` — earlier "Share this phase" take.
+
+### Recommendation for the user
+Consolidate to three: **access-rights-simple** (the answer) + **phase-access-permissions**
+(baseline) + **access-rights-explorations** (journey). Consider archiving **v2** and, once
+you're done with it, **inspector**. Nothing was auto-deleted.
+
+### To restart the loop
+Re-run `/loop` with the same continuation prompt; it reads this file for full state.
