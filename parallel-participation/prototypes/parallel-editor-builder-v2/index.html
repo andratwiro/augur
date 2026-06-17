@@ -1352,6 +1352,12 @@
   .pp-phaseview { height:100%; overflow-y:auto; background:var(--gv-bo-canvas); }
   #view-phase .pp-sub { display:none; }
   #view-phase .pp-sub.is-active { display:block; }
+  #view-settings .set-sub { display:none; }
+  #view-settings .set-sub.is-active { display:block; }
+  /* Settings form sections: a thin rule between grouped fields (matches the modal's rhythm) */
+  #view-settings .set-divider { height:1px; background:var(--gv-grey-300); margin:22px 0; }
+  #view-settings .opt-card + .opt-card { margin-top:10px; }
+  #view-settings .gv-bo-tags { margin-top:8px; }
   .gv-bo-section .gv-phases { margin:0 0 14px; }
   .pp-setup__thresholds { display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:520px; margin-top:12px; }
   .pp-setup__thresholds .gv-bo-caption { margin-bottom:4px; }
@@ -1639,8 +1645,10 @@
     #cb-root .svc-easy__tag .gv-icon { width:18px; height:18px; color:var(--pp-tenant); }
     #cb-root .svc-easy__title { font-size:23px; font-weight:700; color:var(--gv-text-primary); line-height:1.25; margin:12px 0 8px; }
     #cb-root .svc-easy__desc { font-size:16px; color:var(--gv-text-primary); line-height:1.6; margin:0 0 16px; }
-    #cb-root .svc-easy__time { display:flex; align-items:center; gap:9px; font-size:15px; font-weight:600; color:var(--gv-text-primary); margin:0 0 18px; }
-    #cb-root .svc-easy__time .gv-icon { width:19px; height:19px; color:var(--pp-tenant); flex:none; }
+    /* "≈ 2 min" cue, borrowed from the Quick-poll chip but scaled up to the easy-read type */
+    #cb-root .svc--easy .svc-chips { margin:0 0 18px; }
+    #cb-root .svc--easy .svc-chip { font-size:14px; padding:6px 12px; }
+    #cb-root .svc--easy .svc-chip .gv-icon { width:15px; height:15px; }
     /* CTA matches the participation-box button (.cb-pbtn: 14px/700, 11px 14px) so the
        page reads consistently. Still a big, unmistakable target — full-width + ≥44px tall
        clears WCAG 2.5.5; white-on-tenant is the same fill the participation CTA uses. */
@@ -1740,7 +1748,7 @@
             <span class="side-ic" data-gv-icon="comments" aria-hidden="true"></span>
             Input 360
           </div>
-          <div class="side-item" onclick="document.getElementById('settingsModal').style.display='flex'">
+          <div class="side-item" data-view="settings" onclick="setView('settings', this)">
             <span class="side-ic" data-gv-icon="settings" aria-hidden="true"></span>
             Settings
           </div>
@@ -2060,6 +2068,211 @@
           </div>
         </div>
       </div>
+
+      <!-- ====== VIEW: Project settings (real GoVocal General page — replaces the old modal) ====== -->
+      <div id="view-settings" class="pp-phaseview" style="display:none;">
+        <div class="gv-bo-section">
+
+          <!-- Header card (matches the phase view's rhythm) -->
+          <div class="gv-bo-phasehead">
+            <div>
+              <h2 class="gv-bo-phasehead__title">Settings</h2>
+              <div class="gv-bo-phasehead__meta"><span>These settings apply to the whole project</span></div>
+            </div>
+          </div>
+
+          <!-- Sub-tabs (real product labels) -->
+          <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Project settings">
+            <a class="gv-bo-tab is-active" href="#" data-set="setup">Set up</a>
+            <a class="gv-bo-tab" href="#" data-set="tags">Input tags</a>
+            <a class="gv-bo-tab" href="#" data-set="access">Access rights</a>
+            <a class="gv-bo-tab" href="#" data-set="data">Data</a>
+          </nav>
+
+          <div class="gv-bo-card">
+
+            <!-- ───────── SET UP ───────── -->
+            <div class="set-sub is-active" data-set="setup">
+              <h3 class="gv-bo-formhead">General settings for the project</h3>
+              <p class="pp-lede">Set up and personalize your project.</p>
+
+              <div class="gv-bo-field">
+                <span class="gv-label">Project name</span>
+                <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+                <input class="gv-input" type="text" value="Reimagine Meridian 2030" />
+              </div>
+
+              <div class="gv-bo-field">
+                <span class="gv-label">Homepage description</span>
+                <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
+                <p class="gv-bo-help" style="margin:0 0 6px">Shown as a short tagline on cards and lists.</p>
+                <textarea class="gv-textarea" rows="3">Help shape how we move, cycle and gather in our city over the next four years. Your ideas feed directly into the mobility plan we present to council in September.</textarea>
+              </div>
+
+              <div class="set-divider"></div>
+
+              <label class="gv-bo-qlabel">URL slug</label>
+              <input class="gv-input" type="text" value="reimagine-meridian-2030" />
+              <div class="url-preview">
+                <span class="text-gray-500">https://internal.govocal.com/en/projects/</span><span class="slug">reimagine-meridian-2030</span>
+              </div>
+
+              <div class="set-divider"></div>
+
+              <label class="gv-bo-qlabel">Tags</label>
+              <p class="gv-bo-help" style="margin:0">Help residents find projects by theme.</p>
+              <div class="gv-bo-tags">
+                <button type="button" class="gv-bo-tag is-selected">Mobility</button>
+                <button type="button" class="gv-bo-tag is-selected">Climate</button>
+                <button type="button" class="gv-bo-tag is-selected">Public spaces</button>
+                <button type="button" class="gv-bo-tag">Housing</button>
+                <button type="button" class="gv-bo-tag">Safety</button>
+                <button type="button" class="gv-bo-tag">Culture &amp; events</button>
+                <button type="button" class="gv-bo-tag">Health &amp; welfare</button>
+                <button type="button" class="gv-bo-tag">Inclusion</button>
+                <button type="button" class="gv-bo-tag">Energy</button>
+              </div>
+
+              <div class="set-divider"></div>
+
+              <h4 class="gv-bo-subhead">Area filter</h4>
+              <p class="gv-bo-help" style="margin:0 0 10px">Controls how this project surfaces in area filters across the platform.</p>
+              <div data-optgroup>
+                <div class="opt-card selected">
+                  <div class="radio on"></div>
+                  <div><div class="font-semibold text-[14px]">No specific area</div><div class="text-[12.5px] text-gray-500 mt-0.5">The project will not show when filtering by area.</div></div>
+                </div>
+                <div class="opt-card">
+                  <div class="radio"></div>
+                  <div><div class="font-semibold text-[14px]">All areas</div><div class="text-[12.5px] text-gray-500 mt-0.5">The project will show on every area filter.</div></div>
+                </div>
+                <div class="opt-card">
+                  <div class="radio"></div>
+                  <div><div class="font-semibold text-[14px]">Selected areas</div><div class="text-[12.5px] text-gray-500 mt-0.5">The project will show on selected area filter(s).</div></div>
+                </div>
+              </div>
+
+              <div class="set-divider"></div>
+
+              <h4 class="gv-bo-subhead">Project context</h4>
+              <p class="gv-bo-help" style="margin:0 0 10px">Where this project lives in your folder structure.</p>
+              <div data-optgroup>
+                <div class="opt-card">
+                  <div class="radio"></div>
+                  <div><div class="font-semibold text-[14px]">Inside a folder</div><div class="text-[12.5px] text-gray-500 mt-0.5">Group this project with related ones.</div></div>
+                </div>
+                <div class="opt-card selected">
+                  <div class="radio on"></div>
+                  <div><div class="font-semibold text-[14px]">Standalone</div><div class="text-[12.5px] text-gray-500 mt-0.5">The project is not in a folder.</div></div>
+                </div>
+              </div>
+
+              <div class="set-divider"></div>
+
+              <label class="gv-bo-qlabel">Attachments</label>
+              <p class="gv-bo-help" style="margin:0 0 8px">Max 50MB per file.</p>
+              <button class="gv-bo-dropzone"><span class="gv-icon" data-gv-icon="download"></span>Select a file</button>
+
+              <div style="margin-top:28px"><button class="gv-btn admin-dark"><span class="gv-btn__label">Save changes</span></button></div>
+            </div>
+
+            <!-- ───────── INPUT TAGS ───────── -->
+            <div class="set-sub" data-set="tags">
+              <h3 class="gv-bo-formhead">Input tags</h3>
+              <p class="pp-lede">Tags residents use to categorize their inputs in this project.</p>
+
+              <div class="gv-bo-togglerow">
+                <div>
+                  <div class="gv-bo-togglerow__title">Perspectives <span class="badge-new">NEW</span></div>
+                  <p class="gv-bo-help">AI-powered tagging overrides your manual tag definitions. Tags will be created, updated, and assigned automatically.</p>
+                </div>
+                <label class="gv-toggle"><input type="checkbox"><span class="track"></span></label>
+              </div>
+
+              <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-solid"></span><div>At least one tag is required. If you do not wish to use tags, the 'Tags' item can be deleted from any phase's input form.</div></div>
+
+              <button class="gv-btn secondary-outlined size-s" style="margin-bottom:14px"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add input tag</span></button>
+
+              <div style="border:1px solid var(--gv-grey-300); border-radius:8px; background:#fff;">
+                <div class="tag-row">
+                  <div class="flex items-center gap-3"><span class="gv-icon text-gray-400" data-gv-icon="chevron-right"></span><span class="font-medium">Mobility &amp; transport</span></div>
+                  <div class="tag-row-actions"><button class="tag-action-btn">+ Add subtag</button><button class="tag-action-btn">Edit</button><button class="tag-action-btn">Delete</button></div>
+                </div>
+                <div class="tag-row">
+                  <div class="flex items-center gap-3"><span class="gv-icon text-gray-400" data-gv-icon="chevron-right"></span><span class="font-medium">Public spaces</span></div>
+                  <div class="tag-row-actions"><button class="tag-action-btn">+ Add subtag</button><button class="tag-action-btn">Edit</button><button class="tag-action-btn">Delete</button></div>
+                </div>
+                <div class="tag-row">
+                  <div class="flex items-center gap-3"><span class="gv-icon text-gray-400" data-gv-icon="chevron-right"></span><span class="font-medium">Other</span></div>
+                  <div class="tag-row-actions"><button class="tag-action-btn">+ Add subtag</button><button class="tag-action-btn">Edit</button><button class="tag-action-btn disabled">Delete</button></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ───────── ACCESS RIGHTS ───────── -->
+            <div class="set-sub" data-set="access">
+              <h3 class="gv-bo-formhead">Access rights</h3>
+              <p class="pp-lede">Control who can find and see this project.</p>
+
+              <h4 class="gv-bo-subhead">Who can find this project?</h4>
+              <p class="gv-bo-help" style="margin:0 0 10px">Select how discoverable this project is.</p>
+              <div data-optgroup>
+                <div class="opt-card selected">
+                  <div class="radio on"></div>
+                  <div><div class="font-semibold text-[14.5px]">Listed</div><div class="text-[13px] text-gray-500 mt-0.5">This project is visible to everyone who has access, and will appear on the homepage and in the widgets.</div></div>
+                </div>
+                <div class="opt-card">
+                  <div class="radio"></div>
+                  <div>
+                    <div class="font-semibold text-[14.5px]">Unlisted</div>
+                    <div class="text-[13px] text-gray-500 mt-0.5">This project will be hidden from the wider public, and will only be visible to those who have the link.</div>
+                    <ul class="bullet-list">
+                      <li>Not visible on the homepage or widgets</li>
+                      <li>Not indexed by search engines</li>
+                      <li>Email notifications only sent to participants</li>
+                      <li>Only accessible via direct URL</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="set-divider"></div>
+
+              <h4 class="gv-bo-subhead">Who can see this project?</h4>
+              <div data-optgroup>
+                <div class="opt-card"><div class="radio"></div><div><div class="font-semibold text-[14.5px]">Anyone</div></div></div>
+                <div class="opt-card"><div class="radio"></div><div><div class="font-semibold text-[14.5px]">Administrators and the managers of this project</div></div></div>
+                <div class="opt-card selected">
+                  <div class="radio on"></div>
+                  <div class="flex-1">
+                    <div class="font-semibold text-[14.5px]">Selection</div>
+                    <div class="flex items-center gap-2 mt-3">
+                      <div class="gv-input flex items-center justify-between" style="flex:1;color:#656e7d;cursor:pointer;"><span>Select one or more groups</span><span class="gv-icon" data-gv-icon="chevron-down" style="width:14px;height:14px;"></span></div>
+                      <button class="gv-btn admin-dark size-s"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add</span></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top:28px"><button class="gv-btn admin-dark"><span class="gv-btn__label">Save changes</span></button></div>
+            </div>
+
+            <!-- ───────── DATA ───────── -->
+            <div class="set-sub" data-set="data">
+              <h3 class="gv-bo-formhead">Data</h3>
+              <p class="pp-lede">Manage participation data and project state.</p>
+
+              <div class="danger-zone">
+                <h4>Clear all participation data</h4>
+                <p>Removes all ideas, comments, votes, reactions, survey responses, poll responses, volunteers, and event registrants from this project. For voting phases, votes are cleared but options remain.</p>
+                <p class="font-semibold" style="color:#7f1d1d;">This action cannot be undone.</p>
+                <button class="btn-danger mt-1">Reset all participation data</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
     </main>
 
   </div>
@@ -2290,6 +2503,7 @@
     const phaseView = document.getElementById('view-phase');
     const addPhaseView = document.getElementById('view-add-phase');
     const addSurveyView = document.getElementById('view-add-survey');
+    const settingsView = document.getElementById('view-settings');
     const projectUtilities = document.getElementById('project-utilities');
     const projectChevron = document.getElementById('project-chevron');
     const phaseTitle = document.getElementById('phase-title');
@@ -2301,6 +2515,7 @@
     phaseView.style.display = 'none';
     addPhaseView.style.display = 'none';
     addSurveyView.style.display = 'none';
+    if (settingsView) settingsView.style.display = 'none';
 
     if (view === 'project') {
       projectView.style.display = 'flex';
@@ -2323,6 +2538,11 @@
       addSurveyView.style.display = 'block';
       projectUtilities.classList.add('collapsed');
       projectChevron.style.transform = 'rotate(-90deg)';
+    } else if (view === 'settings') {
+      // Settings is a project-level utility: keep the left nav fully expanded.
+      settingsView.style.display = 'block';
+      projectUtilities.classList.remove('collapsed');
+      projectChevron.style.transform = 'rotate(0deg)';
     }
   }
 </script>
@@ -2799,315 +3019,6 @@
   setProjectState('empty', document.querySelector('.state-chip button[data-state="empty"]'));
 </script>
 
-<!-- ============ Settings Modal ============ -->
-<div id="settingsModal" class="modal-backdrop" style="display:none;">
-  <div class="modal-card">
-    <div class="modal-head">
-      <div>
-        <div class="text-[11px] tracking-widest text-gray-400 font-semibold">PROJECT SETTINGS</div>
-        <div class="text-[14px] text-gray-500 mt-1">Settings apply to the whole project</div>
-      </div>
-      <button class="text-gray-400 hover:text-gray-700" onclick="document.getElementById('settingsModal').style.display='none'">
-        <svg class="nav-icon" style="width:20px;height:20px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-
-    <div class="modal-body">
-      <!-- side nav -->
-      <div class="modal-side">
-        <div class="modal-side-item active" data-section="setup" onclick="setModalSection('setup', this)">
-          <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3"/></svg>
-          General
-        </div>
-        <div class="modal-side-item" data-section="access" onclick="setModalSection('access', this)">
-          <svg class="nav-icon" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-          Access
-        </div>
-        <div class="modal-side-item" data-section="tags" onclick="setModalSection('tags', this)">
-          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          Tagging
-        </div>
-        <div class="modal-side-item" data-section="data" onclick="setModalSection('data', this)" style="color:#991b1b;">
-          <svg class="nav-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          Data
-        </div>
-      </div>
-
-      <!-- content -->
-      <div class="modal-content">
-
-        <!-- ============ SECTION: General ============ -->
-        <div id="section-setup" class="modal-section">
-          <div class="mb-5">
-            <h3 class="text-[18px] font-bold">General</h3>
-            <p class="text-[13.5px] text-gray-500 mt-1">Project name, URL, tags, and where it appears.</p>
-          </div>
-
-          <div class="field-group">
-            <label class="form-label">Project name</label>
-            <input class="form-input" type="text" value="Reimagine Meridian 2030" />
-          </div>
-
-          <div class="field-group">
-            <label class="form-label">Homepage description <span class="hint">Shown as a short tagline on cards and lists.</span></label>
-            <textarea class="form-textarea">Help shape how we move, cycle and gather in our city over the next four years. Your ideas feed directly into the mobility plan we present to council in September.</textarea>
-          </div>
-
-          <div class="modal-section-divider"></div>
-
-          <div class="field-group">
-            <label class="form-label">URL slug</label>
-            <input class="form-input" type="text" value="reimagine-meridian-2030" />
-            <div class="url-preview">
-              <span class="text-gray-500">https://internal.govocal.com/en/projects/</span><span class="slug">reimagine-meridian-2030</span>
-            </div>
-          </div>
-
-          <div class="modal-section-divider"></div>
-
-          <div class="field-group">
-            <label class="form-label">Tags <span class="hint">Help citizens find projects by theme.</span></label>
-            <div class="tag-cloud">
-              <button class="tag-chip selected">Mobility</button>
-              <button class="tag-chip selected">Climate</button>
-              <button class="tag-chip selected">Public spaces</button>
-              <button class="tag-chip">Housing</button>
-              <button class="tag-chip">Safety</button>
-              <button class="tag-chip">Culture &amp; events</button>
-              <button class="tag-chip">Health &amp; welfare</button>
-              <button class="tag-chip">Inclusion</button>
-              <button class="tag-chip">Energy</button>
-            </div>
-          </div>
-
-          <div class="modal-section-divider"></div>
-
-          <div class="field-group">
-            <h4>Area filter</h4>
-            <p class="form-help" style="margin-top:-6px;margin-bottom:10px;">Controls how this project surfaces in area filters across the platform.</p>
-            <div class="opt-card selected">
-              <div class="radio on"></div>
-              <div>
-                <div class="font-semibold text-[14px]">No specific area</div>
-                <div class="text-[12.5px] text-gray-500 mt-0.5">The project will not show when filtering by area.</div>
-              </div>
-            </div>
-            <div class="opt-card">
-              <div class="radio"></div>
-              <div>
-                <div class="font-semibold text-[14px]">All areas</div>
-                <div class="text-[12.5px] text-gray-500 mt-0.5">The project will show on every area filter.</div>
-              </div>
-            </div>
-            <div class="opt-card">
-              <div class="radio"></div>
-              <div>
-                <div class="font-semibold text-[14px]">Selected areas</div>
-                <div class="text-[12.5px] text-gray-500 mt-0.5">The project will show on selected area filter(s).</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-section-divider"></div>
-
-          <div class="field-group">
-            <h4>Project context</h4>
-            <p class="form-help" style="margin-top:-6px;margin-bottom:10px;">Where this project lives in your folder structure.</p>
-            <div class="opt-card">
-              <div class="radio"></div>
-              <div>
-                <div class="font-semibold text-[14px]">Inside a folder</div>
-                <div class="text-[12.5px] text-gray-500 mt-0.5">Group this project with related ones.</div>
-              </div>
-            </div>
-            <div class="opt-card selected">
-              <div class="radio on"></div>
-              <div>
-                <div class="font-semibold text-[14px]">Standalone</div>
-                <div class="text-[12.5px] text-gray-500 mt-0.5">The project is not in a folder.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-section-divider"></div>
-
-          <div class="field-group">
-            <label class="form-label">Attachments <span class="hint">Max 50MB per file.</span></label>
-            <button class="btn-secondary" style="display:inline-flex;align-items:center;gap:8px;">
-              <svg class="nav-icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              Select a file
-            </button>
-          </div>
-        </div>
-
-        <!-- ============ SECTION: Access ============ -->
-        <div id="section-access" class="modal-section" style="display:none;">
-          <div class="mb-5">
-            <h3 class="text-[18px] font-bold">Access</h3>
-            <p class="text-[13.5px] text-gray-500 mt-1">Control who can find and see this project.</p>
-          </div>
-
-          <div class="field-group">
-            <h4>Who can find this project?</h4>
-            <p class="form-help" style="margin-top:-6px;margin-bottom:10px;">Select how discoverable this project is.</p>
-            <div class="opt-card selected">
-              <div class="radio on"></div>
-              <div>
-                <div class="font-semibold text-[14.5px]">Listed</div>
-                <div class="text-[13px] text-gray-500 mt-0.5">This project is visible to everyone who has access, and will appear on the homepage and in the widgets.</div>
-              </div>
-            </div>
-            <div class="opt-card">
-              <div class="radio"></div>
-              <div>
-                <div class="font-semibold text-[14.5px]">Unlisted</div>
-                <div class="text-[13px] text-gray-500 mt-0.5">This project will be hidden from the wider public, and will only be visible to those who have the link.</div>
-                <ul class="bullet-list">
-                  <li>Not visible on the homepage or widgets</li>
-                  <li>Not indexed by search engines</li>
-                  <li>Email notifications only sent to participants</li>
-                  <li>Only accessible via direct URL</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-section-divider"></div>
-
-          <div class="field-group">
-            <h4>Who can see this project?</h4>
-            <div class="opt-card">
-              <div class="radio"></div>
-              <div>
-                <div class="font-semibold text-[14.5px]">Anyone</div>
-              </div>
-            </div>
-            <div class="opt-card">
-              <div class="radio"></div>
-              <div>
-                <div class="font-semibold text-[14.5px]">Administrators and the managers of this project</div>
-              </div>
-            </div>
-            <div class="opt-card selected">
-              <div class="radio on"></div>
-              <div class="flex-1">
-                <div class="font-semibold text-[14.5px]">Selection</div>
-                <div class="flex items-center gap-2 mt-3">
-                  <div class="form-input flex items-center justify-between" style="flex:1;color:#656e7d;cursor:pointer;">
-                    <span>Select one or more groups</span>
-                    <svg class="nav-icon" style="width:14px;height:14px;color:#5b6573;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-                  </div>
-                  <button class="btn-primary" style="display:inline-flex;align-items:center;gap:5px;padding:9px 14px;">
-                    <svg class="nav-icon" style="width:13px;height:13px;color:#fff;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Add
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ============ SECTION: Tagging ============ -->
-        <div id="section-tags" class="modal-section" style="display:none;">
-          <div class="mb-5">
-            <h3 class="text-[18px] font-bold">Tagging</h3>
-            <p class="text-[13.5px] text-gray-500 mt-1">Tags citizens use to categorize their inputs in this project.</p>
-          </div>
-
-          <div class="ai-hint">
-            <svg class="nav-icon ai-icon" style="width:16px;height:16px;" viewBox="0 0 24 24"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/></svg>
-            <div>
-              <div class="flex items-center gap-2">
-                <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
-                <span class="font-semibold">Perspectives</span>
-                <span class="badge-new">NEW</span>
-              </div>
-              <p class="mt-1.5 text-[12.5px]">AI-powered tagging overrides your manual tag definitions. Tags will be created, updated, and assigned automatically.</p>
-            </div>
-          </div>
-
-          <button class="btn-primary" style="display:inline-flex;align-items:center;gap:6px;">
-            <svg class="nav-icon" style="width:14px;height:14px;color:#fff;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add input tag
-          </button>
-
-          <div class="ai-hint" style="background:#f0f9ff;margin-top:18px;">
-            <svg class="nav-icon" style="width:16px;height:16px;color:#1f3b6d;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <p>At least one tag is required. If you do not wish to use tags, the 'Tags' item can be deleted from any phase's input form.</p>
-          </div>
-
-          <div style="border:1px solid var(--border); border-radius: 10px; margin-top: 14px; background: #fff;">
-            <div class="tag-row">
-              <div class="flex items-center gap-3">
-                <svg class="nav-icon text-gray-400" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
-                <span class="font-medium">Mobility &amp; transport</span>
-              </div>
-              <div class="tag-row-actions">
-                <button class="tag-action-btn">+ Add subtag</button>
-                <button class="tag-action-btn">
-                  <svg class="nav-icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-                  Edit
-                </button>
-                <button class="tag-action-btn">
-                  <svg class="nav-icon" style="width:12px;height:12px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                  Delete
-                </button>
-              </div>
-            </div>
-            <div class="tag-row">
-              <div class="flex items-center gap-3">
-                <svg class="nav-icon text-gray-400" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
-                <span class="font-medium">Public spaces</span>
-              </div>
-              <div class="tag-row-actions">
-                <button class="tag-action-btn">+ Add subtag</button>
-                <button class="tag-action-btn">Edit</button>
-                <button class="tag-action-btn">Delete</button>
-              </div>
-            </div>
-            <div class="tag-row">
-              <div class="flex items-center gap-3">
-                <svg class="nav-icon text-gray-400" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
-                <span class="font-medium">Other</span>
-              </div>
-              <div class="tag-row-actions">
-                <button class="tag-action-btn">+ Add subtag</button>
-                <button class="tag-action-btn">Edit</button>
-                <button class="tag-action-btn disabled">Delete</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ============ SECTION: Data ============ -->
-        <div id="section-data" class="modal-section" style="display:none;">
-          <div class="mb-5">
-            <h3 class="text-[18px] font-bold">Data</h3>
-            <p class="text-[13.5px] text-gray-500 mt-1">Manage participation data and project state.</p>
-          </div>
-
-          <div class="danger-zone">
-            <h4>Clear all participation data</h4>
-            <p>
-              Removes all ideas, comments, votes, reactions, survey responses, poll responses, volunteers, and event registrants from this project.
-              For voting phases, votes are cleared but options remain.
-            </p>
-            <p class="font-semibold" style="color:#7f1d1d;">This action cannot be undone.</p>
-            <button class="btn-danger mt-1">Reset all participation data</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <div class="modal-foot">
-      <button class="btn-secondary" onclick="document.getElementById('settingsModal').style.display='none'">Cancel</button>
-      <button class="btn-primary" onclick="document.getElementById('settingsModal').style.display='none'">Save changes</button>
-    </div>
-  </div>
-</div>
-
-
 <!-- ============ Phase Settings Modal ============ -->
 <div id="phaseSettingsModal" class="modal-backdrop" style="display:none;">
   <div class="modal-card">
@@ -3277,14 +3188,32 @@
 </div>
 
 <script>
-  function setModalSection(section, el) {
-    document.querySelectorAll('.modal-side-item').forEach(n => n.classList.remove('active'));
-    if (el) el.classList.add('active');
-    document.querySelectorAll('.modal-section').forEach(s => s.style.display = 'none');
-    document.getElementById('section-' + section).style.display = 'block';
-    // Scroll modal content to top when switching sections
-    document.querySelector('.modal-content').scrollTop = 0;
-  }
+  // ===== Project Settings view: sub-tabs + lightweight interactions =====
+  (function(){
+    const root = document.getElementById('view-settings');
+    if (!root) return;
+    const tabs = root.querySelectorAll('.gv-bo-tabs--sub .gv-bo-tab');
+    const panels = root.querySelectorAll('.set-sub');
+    const card = root.querySelector('.gv-bo-card');
+    tabs.forEach(t => t.addEventListener('click', e => {
+      e.preventDefault();
+      tabs.forEach(x => x.classList.remove('is-active'));
+      t.classList.add('is-active');
+      const k = t.dataset.set;
+      panels.forEach(p => p.classList.toggle('is-active', p.dataset.set === k));
+      if (card) card.scrollTop = 0;
+    }));
+    // radio-style option cards
+    root.querySelectorAll('[data-optgroup]').forEach(g => {
+      g.querySelectorAll('.opt-card').forEach(c => c.addEventListener('click', () => {
+        g.querySelectorAll('.opt-card').forEach(x => { x.classList.remove('selected'); const r = x.querySelector('.radio'); if (r) r.classList.remove('on'); });
+        c.classList.add('selected'); const r = c.querySelector('.radio'); if (r) r.classList.add('on');
+      }));
+    });
+    // theme tag chips
+    root.querySelectorAll('.gv-bo-tags .gv-bo-tag').forEach(chip => chip.addEventListener('click', () => chip.classList.toggle('is-selected')));
+    if (window.GVIcons) window.GVIcons.render(root);
+  })();
 
   function setPhaseModalSection(section, el) {
     document.querySelectorAll('#phaseSettingsModal .modal-side-item').forEach(n => n.classList.remove('active'));
@@ -3628,7 +3557,7 @@
             '<span class="svc-easy__tag">' + ic('survey') + ' Survey</span>' +
             '<h3 class="svc-easy__title">' + s.name + '</h3>' +
             '<p class="svc-easy__desc">' + s.desc + '</p>' +
-            '<p class="svc-easy__time">' + ic('clock') + ' Takes about ' + s.minutes + '. You can use your phone.</p>' +
+            '<div class="svc-chips"><span class="svc-chip svc-chip--accent">' + ic('clock') + s.minutes + '</span></div>' +
             btn + close;
         default: // standard
           return open('standard') + eyebrow + title + range + desc + btn + close;
