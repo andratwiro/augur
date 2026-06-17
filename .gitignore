@@ -26,3 +26,7 @@ review-comments.local.md
 # (research.md or a research/ folder), always ignored. build.js also excludes them from dist.
 research/
 research.md
+
+# FigPal research imagery — downloaded third-party (Figma) reference assets,
+# kept on-machine only. build.js also excludes figpals/reference/ from dist.
+figpals/reference/

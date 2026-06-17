@@ -1534,8 +1534,11 @@ async function main() {
   // never added to PUBLIC_PREFIXES), and the homepage paw only reveals itself once
   // you type the secret (see renderRootIndex) — so in practice it's "yours".
   if (await isDir(path.join(ROOT, "figpals"))) {
-    const skipFigDocs = (name) => isInternalOnly(name) || name === "README.md";
-    await copyDir(path.join(ROOT, "figpals"), path.join(DIST, "figpals"), skipFigDocs);
+    // Ship ONLY the playable app — never the internal docs or the downloaded
+    // research imagery in reference/ (Figma's own assets, kept on-machine only).
+    const skipFigInternal = (name) =>
+      isInternalOnly(name) || name.endsWith(".md") || name === "reference";
+    await copyDir(path.join(ROOT, "figpals"), path.join(DIST, "figpals"), skipFigInternal);
   }
 
   // Edge auth gate. Inject the list of PUBLIC prototype path-prefixes so the
