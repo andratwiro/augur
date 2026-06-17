@@ -122,16 +122,17 @@
   // the clip trims them flush to the outline (no white rim along the back).
   function bicolorMarks(c) {
     return (
-      '<ellipse cx="455" cy="170" rx="232" ry="190" fill="' + c.patch + '"/>' +     // head cap + ears
-      '<ellipse cx="1085" cy="320" rx="440" ry="330" fill="' + c.patch + '"/>' +    // saddle (back + rump)
-      '<ellipse cx="1505" cy="425" rx="250" ry="200" fill="' + c.patch + '"/>' +    // tail
-      '<g fill="none" stroke="' + c.patchDark + '" stroke-width="28" stroke-linecap="round" opacity=".65">' +
-        '<path d="M880 200 Q850 285 880 370"/>' +
-        '<path d="M990 185 Q960 275 990 365"/>' +
-        '<path d="M1100 185 Q1070 275 1100 365"/>' +
-        '<path d="M1210 195 Q1180 280 1210 370"/>' +
-        '<path d="M430 60 Q412 120 430 188"/>' +
-        '<path d="M512 70 Q494 128 512 196"/>' +
+      // mostly WHITE body with discrete ginger patches (Aslam is white-dominant):
+      '<ellipse cx="470" cy="150" rx="205" ry="170" fill="' + c.patch + '"/>' +     // ginger head cap + ears (white muzzle/chin below)
+      '<ellipse cx="770" cy="300" rx="165" ry="150" fill="' + c.patch + '"/>' +     // shoulder patch
+      '<ellipse cx="1245" cy="335" rx="255" ry="240" fill="' + c.patch + '"/>' +    // rump patch
+      '<ellipse cx="1520" cy="430" rx="235" ry="185" fill="' + c.patch + '"/>' +    // ginger tail
+      '<g fill="none" stroke="' + c.patchDark + '" stroke-width="26" stroke-linecap="round" opacity=".6">' +
+        '<path d="M1150 215 Q1120 300 1150 385"/>' +     // tabby ticks on the rump
+        '<path d="M1260 205 Q1230 295 1260 385"/>' +
+        '<path d="M1370 215 Q1340 300 1370 385"/>' +
+        '<path d="M470 55 Q452 115 470 180"/>' +         // a couple on the head cap
+        '<path d="M548 70 Q530 128 548 196"/>' +
       '</g>' +
       '<ellipse cx="372" cy="430" rx="56" ry="33" fill="' + c.cheek + '" opacity=".5"/>' +
       '<ellipse cx="600" cy="430" rx="56" ry="33" fill="' + c.cheek + '" opacity=".5"/>'
