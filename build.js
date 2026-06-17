@@ -51,6 +51,12 @@ const STATUS_META = {
   ignore: { label: "Ignore", cls: "is-ignore" },
 };
 
+// Sort priority for prototype cards within an opportunity: Dev ready first, then
+// In progress, then unset (no chip), then Ignore at the bottom. Recency breaks
+// ties inside each group (see byStatusThenRecency).
+const STATUS_RANK = { "dev-ready": 0, "in-progress": 1, ignore: 3 };
+const STATUS_RANK_UNSET = 2;
+
 async function loadStatusMap() {
   try {
     const raw = await fs.readFile(STATUS_FILE, "utf8");
@@ -141,7 +147,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.39";
+const UI_VERSION = "0.40";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -283,6 +289,14 @@ function byRecency(a, b) {
   return b.mtimeMs - a.mtimeMs || a.name.localeCompare(b.name);
 }
 
+// Order prototype cards by dev status (Dev ready → In progress → unset → Ignore),
+// falling back to recency within a status group.
+function byStatusThenRecency(a, b) {
+  const ra = a.status in STATUS_RANK ? STATUS_RANK[a.status] : STATUS_RANK_UNSET;
+  const rb = b.status in STATUS_RANK ? STATUS_RANK[b.status] : STATUS_RANK_UNSET;
+  return ra - rb || byRecency(a, b);
+}
+
 // Internal-only entries that must NEVER be copied into dist, even from a folder
 // (like playground/) that otherwise ships verbatim. Mirrors the repo guardrail:
 // research/context material stays on the machine, never deployed.
@@ -392,7 +406,7 @@ async function scan() {
 
     if (prototypes.length === 0) continue;
 
-    prototypes.sort(byRecency);
+    prototypes.sort(byStatusThenRecency);
     opportunities.push({
       name: top.name,
       prototypes,
@@ -757,6 +771,44 @@ const PAGE_CSS = `
     .card-proto:has(.status-chip.is-ignore) { opacity: .55; }
     .card-proto:has(.status-chip.is-ignore):hover { opacity: 1; }
     @media (prefers-reduced-motion: reduce) { .status-chip { transition: none; } }
+
+    /* ---- Right-click card menu (Figma-style dark popover) ---- */
+    .gv-ctx {
+      position: fixed; z-index: 2147483200; min-width: 204px;
+      background: #1c1c1f; color: #f3f3f4;
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 6px;
+      box-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+      font-size: 13.5px; letter-spacing: -0.006em; user-select: none;
+      animation: gv-ctx-in .12s ease both;
+    }
+    @keyframes gv-ctx-in { from { opacity: 0; transform: translateY(-4px) scale(.985); } to { opacity: 1; transform: none; } }
+    .gv-ctx button {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 8px 10px; border: 0; background: none; border-radius: 7px;
+      font: inherit; color: inherit; text-align: left; cursor: pointer; white-space: nowrap;
+    }
+    .gv-ctx button:hover, .gv-ctx button:focus-visible { background: #3a6df0; color: #fff; outline: none; }
+    .gv-ctx button .ic { width: 15px; height: 15px; flex: none; opacity: .85; }
+    .gv-ctx hr { border: 0; border-top: 1px solid rgba(255,255,255,0.09); margin: 6px 4px; }
+    .gv-ctx .gv-ctx-danger { color: #ff7a7a; }
+    .gv-ctx .gv-ctx-danger:hover, .gv-ctx .gv-ctx-danger:focus-visible { background: #c0392b; color: #fff; }
+    .gv-ctx .gv-ctx-danger .ic { opacity: 1; }
+    /* Inline rename field — rises above any full-card cover link while editing. */
+    .proto-name[contenteditable] {
+      position: relative; z-index: 4;
+      outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px;
+      background: var(--card); cursor: text; white-space: nowrap; overflow: hidden;
+    }
+    /* Transient "Link copied" / delete-hint toast. */
+    .gv-toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(8px);
+      z-index: 2147483205; background: #1c1c1f; color: #fff;
+      padding: 9px 15px; border-radius: 9px; font-size: 13px; font-weight: 500; max-width: 80vw;
+      box-shadow: 0 10px 30px -6px rgba(0,0,0,0.45);
+      opacity: 0; transition: opacity .16s ease, transform .16s ease; pointer-events: none;
+    }
+    .gv-toast.show { opacity: 1; transform: translateX(-50%); }
+    @media (prefers-reduced-motion: reduce) { .gv-ctx, .gv-toast { animation: none; transition: none; } }
 
     /* ---- Components table (small preview per row) ---- */
     .comp-table { width: 100%; border-collapse: collapse; }
@@ -1278,6 +1330,125 @@ function injectPrimitives(html) {
   return withNav.replace(/<\/head>/i, `  <style>${PRIMITIVES_SKIN}</style>\n</head>`);
 }
 
+// Right-click menu for prototype cards (Figma-style). Acts on any card carrying
+// data-rename-key. Items: Open · Copy link · Download HTML (when a [data-dl] button
+// exists) · Rename (inline, persisted to the /__name KV map) · Delete (confirm →
+// removes the card from view; the real file removal is a repo edit — see CLAUDE.md).
+// KV-frugal like STATUS_JS: the name map is read once per session (sessionStorage),
+// written only on an actual rename.
+const CARD_MENU_JS = `
+(function(){
+  var cards = Array.prototype.slice.call(document.querySelectorAll('[data-rename-key]'));
+  if(!cards.length) return;
+  var NCACHE='gv_names_map';
+  function linkOf(c){ return c.querySelector('a.preview-link, a.card-cover-link, a[href]'); }
+  function nameEl(c){ return c.querySelector('.proto-name'); }
+  function dlBtn(c){ return c.querySelector('[data-dl]'); }
+
+  // ---- persisted display-name overrides ----
+  function applyNames(map){
+    cards.forEach(function(c){
+      var k=c.getAttribute('data-rename-key'), el=nameEl(c); if(!el) return;
+      if(map && Object.prototype.hasOwnProperty.call(map,k) && map[k]){ el.textContent=map[k]; c.setAttribute('data-fkey',map[k]); }
+    });
+  }
+  var cached=null; try{ cached=JSON.parse(sessionStorage.getItem(NCACHE)||'null'); }catch(e){}
+  if(cached) applyNames(cached);
+  else fetch('/__name',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();})
+    .then(function(d){ var m=(d&&d.map)||{}; try{sessionStorage.setItem(NCACHE,JSON.stringify(m));}catch(e){} applyNames(m); }).catch(function(){});
+  function persistName(key,name){
+    fetch('/__name',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,name:name})})
+      .then(function(r){return r.json();}).then(function(d){ if(d&&d.map){ try{sessionStorage.setItem(NCACHE,JSON.stringify(d.map));}catch(e){} } }).catch(function(){});
+  }
+
+  // ---- toast ----
+  var toast;
+  function showToast(msg){ if(!toast){toast=document.createElement('div');toast.className='gv-toast';document.body.appendChild(toast);} toast.textContent=msg; toast.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(function(){toast.classList.remove('show');},1900); }
+
+  // ---- actions ----
+  function openCard(c){ var a=linkOf(c); if(a) window.location.href=a.getAttribute('href'); }
+  function fallbackCopy(url){ var t=document.createElement('textarea'); t.value=url; t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.focus(); t.select(); try{document.execCommand('copy'); showToast('Link copied');}catch(e){showToast('Copy failed');} t.remove(); }
+  function copyLink(c){ var a=linkOf(c); if(!a) return; var url=new URL(a.getAttribute('href'),location.href).href;
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function(){showToast('Link copied');},function(){fallbackCopy(url);});
+    else fallbackCopy(url); }
+  function downloadCard(c){ var b=dlBtn(c); if(b) b.click(); }
+  function deleteCard(c){
+    var nm=((nameEl(c)&&nameEl(c).textContent)||'this prototype').trim();
+    if(!confirm('Delete "'+nm+'" for good?\\n\\nThis can\\'t be undone from here. The card is removed from view now; ask Claude to delete the files to finalize.')) return;
+    c.style.transition='opacity .15s ease'; c.style.opacity='0';
+    setTimeout(function(){ c.remove(); },160);
+    showToast('Removed — tell Claude: delete "'+nm+'"');
+  }
+
+  // ---- inline rename (highlight the label, type over it) ----
+  function startRename(c){
+    var el=nameEl(c); if(!el||el.isContentEditable) return;
+    var key=c.getAttribute('data-rename-key'), def=c.getAttribute('data-default-name')||el.textContent, prev=el.textContent, done=false;
+    el.setAttribute('contenteditable','true'); el.spellcheck=false; el.focus();
+    var rg=document.createRange(); rg.selectNodeContents(el); var sl=getSelection(); sl.removeAllRanges(); sl.addRange(rg);
+    function onKey(e){ if(e.key==='Enter'){e.preventDefault();finish(true);} else if(e.key==='Escape'){e.preventDefault();finish(false);} }
+    function onBlur(){ finish(true); }
+    function finish(commit){
+      if(done) return; done=true;
+      el.removeEventListener('keydown',onKey); el.removeEventListener('blur',onBlur); el.removeAttribute('contenteditable');
+      var val=(el.textContent||'').replace(/\\s+/g,' ').trim().slice(0,80);
+      if(!commit){ el.textContent=prev; }
+      else if(!val||val===def){ el.textContent=def; c.setAttribute('data-fkey',def); if(prev!==def) persistName(key,''); }
+      else { el.textContent=val; c.setAttribute('data-fkey',val); persistName(key,val); }
+      var s=getSelection(); if(s) s.removeAllRanges();
+    }
+    el.addEventListener('keydown',onKey); el.addEventListener('blur',onBlur);
+  }
+
+  // ---- menu ----
+  var ICON={
+    open:'<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
+    copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+    dl:'<path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/>',
+    rename:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    del:'<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
+  };
+  function item(act,label,icon,danger){ return '<button type="button" role="menuitem" data-act="'+act+'"'+(danger?' class="gv-ctx-danger"':'')+'><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+icon+'</svg>'+label+'</button>'; }
+  var menu=null;
+  function closeMenu(){ if(menu){ menu.remove(); menu=null; document.removeEventListener('keydown',onMenuKey,true); } }
+  function onMenuKey(e){
+    if(!menu) return;
+    if(e.key==='Escape'){ e.preventDefault(); closeMenu(); return; }
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault();
+      var btns=Array.prototype.slice.call(menu.querySelectorAll('button')); var i=btns.indexOf(document.activeElement);
+      i=(i+(e.key==='ArrowDown'?1:-1)+btns.length)%btns.length; btns[i].focus(); }
+  }
+  function openMenu(x,y,c){
+    closeMenu();
+    menu=document.createElement('div'); menu.className='gv-ctx'; menu.setAttribute('role','menu');
+    var html=item('open','Open',ICON.open);
+    html+='<hr>'+item('copy','Copy link',ICON.copy);
+    if(dlBtn(c)) html+=item('download','Download HTML',ICON.dl);
+    html+='<hr>'+item('rename','Rename',ICON.rename);
+    html+='<hr>'+item('delete','Delete',ICON.del,true);
+    menu.innerHTML=html; document.body.appendChild(menu);
+    var r=menu.getBoundingClientRect();
+    menu.style.left=Math.max(8,Math.min(x, innerWidth-r.width-8))+'px';
+    menu.style.top=Math.max(8,Math.min(y, innerHeight-r.height-8))+'px';
+    menu.addEventListener('click',function(e){
+      var b=e.target.closest('button'); if(!b) return; var act=b.getAttribute('data-act'); closeMenu();
+      if(act==='open') openCard(c); else if(act==='copy') copyLink(c); else if(act==='download') downloadCard(c);
+      else if(act==='rename') startRename(c); else if(act==='delete') deleteCard(c);
+    });
+    var f=menu.querySelector('button'); if(f) f.focus();
+    document.addEventListener('keydown',onMenuKey,true);
+  }
+  document.addEventListener('contextmenu',function(e){
+    var c=e.target.closest&&e.target.closest('[data-rename-key]'); if(!c) return;
+    if(e.target.isContentEditable) return;
+    e.preventDefault(); openMenu(e.clientX,e.clientY,c);
+  });
+  document.addEventListener('pointerdown',function(e){ if(menu&&!menu.contains(e.target)) closeMenu(); },true);
+  window.addEventListener('blur',closeMenu);
+  document.addEventListener('scroll',function(){ closeMenu(); },true);
+})();
+`;
+
 // Client for the clickable dev-status chips. KV-frugal: reads the whole map from
 // one endpoint AT MOST ONCE PER SESSION (cached in sessionStorage), writes only on
 // an actual click. Pages without chips never fetch (the early return). Default
@@ -1372,6 +1543,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   </script>
   <script>${STATUS_JS}
   </script>
+  <script>${CARD_MENU_JS}
+  </script>
   ${addon ? addon.bodyScripts(UI_VERSION) : ""}
   ${SPECULATION_RULES}
 </body>
@@ -1457,7 +1630,7 @@ function renderOpportunityIndex(opp) {
         ? `<button type="button" class="btn-icon" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html" aria-label="Download HTML" title="Download HTML">&darr;</button>`
         : "";
       return `
-        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}">
+        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${opp.name}/${p.name}" data-default-name="${titleCase(p.name)}">
           <div class="preview">
             ${media(p.href, p.poster)}
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
@@ -1500,7 +1673,7 @@ function renderPlaygroundIndex(projects) {
     .map((p) => {
       const folder = `${encodeURIComponent(p.name)}/`;
       return `
-        <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}">
+        <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="playground/${p.name}" data-default-name="${titleCase(p.name)}">
           <a class="card-cover-link" href="${folder}" aria-label="Open ${titleCase(p.name)}"></a>
           ${preview(p.href, p.poster)}
           <div class="opp-meta">
@@ -1531,7 +1704,7 @@ function renderPagesIndex(pages) {
 
   // Pages are a designer reference — Open only, no HTML download.
   const pageCard = (p) => `
-        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}">
+        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="pages/${p.name}" data-default-name="${titleCase(p.name)}">
           <div class="preview">
             ${media(p.href, p.poster)}
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
