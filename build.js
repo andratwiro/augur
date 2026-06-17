@@ -80,12 +80,29 @@ function injectReview(html) {
   return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
 }
 
+// FigPal companion loader, injected into every copied prototype/page/demo so the
+// pal trails the cursor INSIDE prototypes too — not just the nav shell. auto()
+// skips inside iframes, so previews never spawn a pal; only the real top-level
+// prototype view does. Absolute /figpal.js => served from the dist root.
+function figpalTag() {
+  return '<!--gv-figpal-start--><script src="/figpal.js?v=' + UI_VERSION +
+    '"></script><script>try{window.FigPal&&window.FigPal.auto()}catch(e){}</script><!--gv-figpal-end-->';
+}
+function injectFigpal(html) {
+  // skip if already injected, or if the page already loads figpal.js itself
+  // (the FigPal customizer manages its own companion).
+  if (html.includes("gv-figpal-start") || html.includes("figpal.js")) return html;
+  const tag = figpalTag();
+  const i = html.toLowerCase().lastIndexOf("</body>");
+  return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
+}
+
 // Version of the PROTOTYPES SITE UI (the landing/shell pages this file generates),
 // shown in the footer. Bump this ONLY when the site UI changes — i.e. edits to
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.29";
+const UI_VERSION = "0.30";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -254,7 +271,7 @@ async function copyDir(src, dest, exclude) {
     } else if (entry.isFile()) {
       if (entry.name.endsWith(".html")) {
         const html = await fs.readFile(srcPath, "utf8");
-        await fs.writeFile(destPath, injectReview(html), "utf8");
+        await fs.writeFile(destPath, injectFigpal(injectReview(html)), "utf8");
       } else {
         await fs.copyFile(srcPath, destPath);
       }
@@ -555,31 +572,17 @@ const PAGE_CSS = `
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
     footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
 
-    /* ---- FigPal 🐾 paw — a private little easter-egg trigger, hidden until you
-       type the secret ("figpal") on the homepage. Then it stays revealed on this
-       browser (localStorage). Bottom-right, gentle bob, soft pink. ---- */
+    /* ---- FigPal paw — a quiet easter-egg link in the footer (opens the FigPal
+       customizer). Muted to match the shell; brightens on hover. The companion
+       itself is summoned/dismissed with Shift+Ñ (handled in figpal.js). ---- */
     .figpal-paw {
-      position: fixed; right: 22px; bottom: 22px; z-index: 50;
-      width: 50px; height: 50px; border-radius: 50%;
-      display: none; place-items: center; text-decoration: none;
-      font-size: 24px; line-height: 1;
-      background: linear-gradient(150deg, #ffb3cd, #ff7fa8);
-      box-shadow: 0 10px 24px -8px rgba(255,90,140,.6), 0 0 0 1px rgba(255,255,255,.4) inset;
-      animation: figpaw-bob 2.6s ease-in-out infinite;
-      transition: transform .15s ease, box-shadow .15s ease;
+      display: inline-flex; align-items: center; vertical-align: -2px;
+      margin-left: 8px; color: var(--faint); opacity: .5;
+      transition: color .15s ease, opacity .15s ease, transform .15s ease;
     }
-    .figpal-paw.is-on { display: grid; }
-    .figpal-paw:hover { transform: translateY(-3px) scale(1.06) rotate(-6deg); box-shadow: 0 16px 30px -8px rgba(255,90,140,.7); }
-    .figpal-paw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-    .figpal-paw::after {
-      content: "Your FigPal"; position: absolute; right: 60px; white-space: nowrap;
-      background: #2B2330; color: #fff; font-size: 12px; font-weight: 600;
-      padding: 6px 10px; border-radius: 8px; opacity: 0; transform: translateX(6px);
-      transition: opacity .15s, transform .15s; pointer-events: none;
-    }
-    .figpal-paw:hover::after { opacity: 1; transform: translateX(0); }
-    @keyframes figpaw-bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
-    @media (prefers-reduced-motion: reduce) { .figpal-paw { animation: none; } }
+    .figpal-paw svg { width: 14px; height: 14px; display: block; }
+    .figpal-paw:hover { color: var(--accent); opacity: 1; transform: translateY(-1px); }
+    .figpal-paw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; opacity: 1; }
 
     /* ---- Cards & live previews ---- */
     .card-opp, .card-proto {
@@ -1115,6 +1118,20 @@ const STATUS_JS = `
 })();
 `;
 
+// Quiet paw link in the footer → opens the FigPal customizer. Subtle by design
+// (the pal itself is summoned/dismissed with Shift+Ñ). Absolute href so it resolves
+// from any folder depth on the deployed site.
+function figpalPaw() {
+  return ` &middot; <a class="figpal-paw" href="/figpals/" aria-label="FigPal" title="FigPal">` +
+    `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">` +
+    `<ellipse cx="12" cy="16.5" rx="5" ry="4.2"/>` +
+    `<ellipse cx="5.6" cy="11.2" rx="2" ry="2.7"/>` +
+    `<ellipse cx="9.8" cy="8.2" rx="2.1" ry="2.9"/>` +
+    `<ellipse cx="14.2" cy="8.2" rx="2.1" ry="2.9"/>` +
+    `<ellipse cx="18.4" cy="11.2" rx="2" ry="2.7"/>` +
+    `</svg></a>`;
+}
+
 function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) {
   const backLink = back
     ? `<a class="back" href="${back.href}">${back.label}</a>`
@@ -1137,7 +1154,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <div class="wrap${wrapClass ? " " + wrapClass : ""}">
     ${backLink}
     ${body}
-    <footer>Product Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}</footer>
+    <footer>Product Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}${figpalPaw()}</footer>
   </div>
   <script>${CAROUSEL_JS}
   </script>
@@ -1145,8 +1162,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   </script>
   <script>${STATUS_JS}
   </script>
-  <!-- FigPal companion: trails the cursor on every internal page, but ONLY once
-       revealed (type "figpal" on the home page). Reads the pal you customized. -->
+  <!-- FigPal companion: trails the cursor on every internal page. Summon/dismiss
+       with Shift+Ñ; only shows on browsers where you've toggled it on. -->
   <script src="/figpal.js"></script>
   <script>try{window.FigPal&&window.FigPal.auto();}catch(e){}</script>
 </body>
@@ -1213,18 +1230,10 @@ function renderRootIndex(opportunities) {
       ${filterEmpty()}
     </div>`;
 
-  // FigPal 🐾 — private easter egg. Just the paw shortcut to the customize page;
-  // its visibility + the summon/dismiss secret words ("figpal" / "figbye") are
-  // managed site-wide by FigPal.auto() (figpal.js), so the pal can be sent away
-  // from ANY page, live. Lightweight "only-you" gate; a real per-user gate can
-  // come later in _worker.js.
-  const figpal = `
-    <a class="figpal-paw" id="figpalPaw" href="figpals/" aria-label="Customize your FigPal">🐾</a>`;
-
   return shell({
     title: "Product Prototypes",
     wrapClass: "wrap--root",
-    body: sidebar + main + figpal,
+    body: sidebar + main,
   });
 }
 

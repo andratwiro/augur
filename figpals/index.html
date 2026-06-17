@@ -5,9 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Your FigPal 🐾</title>
 <style>
-  :root {
-    --ink:#2B2330; --muted:#8b7e96; --card:#fff; --line:#efe6f2; --accent:#7C5CFC;
-  }
+  :root { --ink:#2B2330; --muted:#8b7e96; --card:#fff; --line:#ece3f0; --accent:#7C5CFC;
+          --stage:#DCE6C4; --grass:#46B14A; }
   * { box-sizing:border-box; }
   html,body { margin:0; min-height:100%; }
   body {
@@ -18,63 +17,69 @@
       radial-gradient(1100px 560px at 82% -10%, #EDE9FE, transparent 60%),
       radial-gradient(820px 460px at 8% 112%, #fff2f8, transparent 55%),
       linear-gradient(160deg, #FDF2F8, #fffdfe 72%);
-    display:grid; place-items:center; padding:28px;
+    display:grid; place-items:center; padding:26px;
   }
   .card {
-    background: var(--card); border:1px solid var(--line); border-radius:28px;
-    padding:30px 30px 26px; width:100%; max-width:400px;
+    background: var(--card); border:1px solid var(--line); border-radius:26px;
+    padding:24px 24px 22px; width:100%; max-width:440px;
     box-shadow: 0 34px 70px -34px rgba(124,92,252,.4), 0 2px 0 #fff inset;
     position:relative; z-index:2;
   }
-  h1 { margin:0 0 3px; font-size:24px; letter-spacing:-.5px; text-align:center; }
-  .sub { margin:0 0 18px; color:var(--muted); font-size:14px; text-align:center; }
+  h1 { margin:0 0 3px; font-size:23px; letter-spacing:-.5px; text-align:center; }
+  .sub { margin:0 0 16px; color:var(--muted); font-size:13.5px; text-align:center; }
 
+  /* top row — HAT picker, styled like the FigPal creator's category pill */
+  .hatpill {
+    display:flex; gap:2px; justify-content:center; align-items:center;
+    background:#f3eef9; border:1px solid var(--line); border-radius:14px;
+    padding:4px; width:max-content; margin:0 auto 14px;
+  }
+  .hatpill button {
+    width:46px; height:38px; border:none; background:transparent; border-radius:10px;
+    cursor:pointer; display:grid; place-items:center; color:#6f6780;
+    transition:background .12s, box-shadow .12s, transform .12s;
+  }
+  .hatpill button svg { width:24px; height:24px; display:block; }
+  .hatpill button:hover { transform:translateY(-1px); }
+  .hatpill button.sel { background:#fff; box-shadow:0 2px 6px -2px rgba(40,30,60,.25); color:var(--ink); }
+
+  /* stage — green panel + grass oval, like the creator preview */
   .stage {
-    background: linear-gradient(170deg,#F7F1FF,#FDEFF6);
-    border-radius:20px; height:200px; display:grid; place-items:center;
-    margin-bottom:18px; position:relative; overflow:hidden;
+    position:relative; background:var(--stage); border-radius:18px;
+    height:236px; margin-bottom:16px; overflow:hidden; display:grid; place-items:center;
   }
-  .stage .portrait { width:150px; height:150px; }
-  .stage .portrait svg { width:100%; height:100%; display:block; }
-  .ground { position:absolute; bottom:30px; left:50%; transform:translateX(-50%);
-            width:120px; height:20px; border-radius:50%; background:rgba(120,80,140,.10); }
+  .grass { position:absolute; bottom:42px; left:50%; transform:translateX(-50%);
+           width:186px; height:40px; border-radius:50%; background:var(--grass);
+           box-shadow:0 6px 0 -2px rgba(0,0,0,.06); }
+  .cat { position:relative; width:168px; height:168px; margin-bottom:8px; }
+  .cat svg { width:100%; height:100%; display:block; }
 
-  label { display:block; font-size:11px; font-weight:800; color:var(--muted);
-          margin:0 0 8px; text-transform:uppercase; letter-spacing:.07em; }
-  .field { margin-bottom:16px; }
-  input[type=text] {
-    width:100%; font:inherit; font-size:16px; padding:12px 14px;
-    border:2px solid var(--line); border-radius:14px; outline:none;
-    transition:border-color .15s, box-shadow .15s;
-  }
-  input[type=text]:focus { border-color:var(--accent); box-shadow:0 0 0 4px rgba(124,92,252,.15); }
+  /* bottom row — COLOUR swatches, selected = purple ring (creator style) */
+  .swatches { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; }
+  .sw { width:34px; height:34px; border-radius:50%; border:3px solid #fff; cursor:pointer;
+        box-shadow:0 0 0 1px var(--line), 0 3px 7px -3px rgba(0,0,0,.3); transition:transform .12s; }
+  .sw:hover { transform:scale(1.1); }
+  .sw.sel { box-shadow:0 0 0 3px var(--accent); transform:scale(1.1); }
 
-  .swatches { display:flex; gap:9px; flex-wrap:wrap; }
-  .sw { width:32px; height:32px; border-radius:50%; border:3px solid #fff; cursor:pointer;
-        box-shadow:0 0 0 1px var(--line), 0 4px 8px -4px rgba(0,0,0,.25); transition:transform .12s; }
-  .sw:hover { transform:scale(1.12); }
-  .sw.sel { box-shadow:0 0 0 3px var(--accent); transform:scale(1.12); }
+  /* name box, like the "FigPal 199" field */
+  .namebox { width:100%; font:inherit; font-size:16px; font-weight:600; text-align:center;
+    padding:12px 14px; border:1px solid var(--line); border-radius:13px; outline:none;
+    color:var(--ink); background:#faf8fd; transition:border-color .15s, box-shadow .15s; }
+  .namebox::placeholder { color:#b6acc2; font-weight:500; }
+  .namebox:focus { border-color:var(--accent); box-shadow:0 0 0 4px rgba(124,92,252,.15); background:#fff; }
 
-  /* hat picker — little chips, each showing the hat name */
-  .hats { display:flex; gap:8px; flex-wrap:wrap; }
-  .hat { font:inherit; font-size:13px; font-weight:700; cursor:pointer; border-radius:11px;
-         padding:8px 13px; background:#f6f1fb; color:var(--muted); border:2px solid transparent;
-         transition:transform .12s, border-color .12s, color .12s; }
-  .hat:hover { transform:translateY(-1px); }
-  .hat.sel { border-color:var(--accent); color:var(--accent); background:#fff; }
-
-  .row { display:flex; gap:10px; margin-top:6px; }
-  .btn { flex:1; font:inherit; font-weight:800; border:none; cursor:pointer; border-radius:14px;
-         padding:13px; background:var(--accent); color:#fff; box-shadow:0 8px 18px -8px var(--accent);
-         transition:transform .12s, filter .12s; }
+  .btn { width:100%; margin-top:12px; font:inherit; font-weight:800; border:none; cursor:pointer;
+         border-radius:13px; padding:13px; background:var(--accent); color:#fff;
+         box-shadow:0 8px 18px -8px var(--accent); transition:transform .12s, filter .12s; }
   .btn:hover { transform:translateY(-1px); filter:brightness(1.05); }
   .btn:active { transform:translateY(1px) scale(.99); }
-  .btn.ghost { background:#f6f1fb; color:var(--accent); box-shadow:none; flex:0 0 auto; padding:13px 16px; }
 
   .saved { text-align:center; color:var(--accent); font-weight:700; font-size:13px;
-           height:18px; margin-top:12px; opacity:0; transition:opacity .2s; }
+           height:18px; margin-top:10px; opacity:0; transition:opacity .2s; }
   .saved.show { opacity:1; }
-  .hint { text-align:center; color:var(--muted); font-size:12px; margin-top:6px; line-height:1.5; }
+  .hint { text-align:center; color:var(--muted); font-size:12px; margin-top:8px; line-height:1.5; }
+  kbd { font:inherit; font-size:11px; font-weight:700; background:#f3eef9; border:1px solid var(--line);
+        border-radius:6px; padding:1px 6px; color:var(--ink); }
 </style>
 </head>
 <body>
@@ -82,92 +87,85 @@
     <h1>Customize your FigPal</h1>
     <p class="sub">A little friend to keep you company while you work 💕</p>
 
+    <div class="hatpill" id="hatpill" role="group" aria-label="Hat"></div>
+
     <div class="stage">
-      <div class="ground"></div>
-      <div class="portrait" id="portrait"></div>
+      <div class="grass"></div>
+      <div class="cat" id="cat"></div>
     </div>
 
-    <div class="field">
-      <label>Name</label>
-      <input type="text" id="name" maxlength="18" placeholder="e.g. Mochi" autocomplete="off" />
-    </div>
+    <div class="swatches" id="swatches" role="group" aria-label="Colour"></div>
 
-    <div class="field">
-      <label>Colour</label>
-      <div class="swatches" id="swatches"></div>
-    </div>
+    <input type="text" id="name" class="namebox" maxlength="18" placeholder="Name your pal" autocomplete="off" />
+    <button class="btn" id="save">Save</button>
 
-    <div class="field">
-      <label>Hat</label>
-      <div class="hats" id="hats"></div>
-    </div>
-
-    <div class="row">
-      <button class="btn ghost" id="surprise" title="Surprise me">🎲</button>
-      <button class="btn" id="save">Save</button>
-    </div>
-
-    <div class="saved" id="saved">Saved! Your pal is following you 🐾</div>
-    <p class="hint">Your FigPal trails your cursor around the prototypes.<br>Type <b>figbye</b> anywhere to send it away · <b>figpal</b> to bring it back.</p>
+    <div class="saved" id="saved">Saved! 🐾</div>
+    <p class="hint">Press <kbd>Shift</kbd>+<kbd>Ñ</kbd> anywhere to summon or dismiss your FigPal.</p>
   </div>
 
 <script src="figpal.js"></script>
 <script>
   const cfg = FigPal.loadConfig();
-  const portrait = document.getElementById('portrait');
-  const swatches = document.getElementById('swatches');
-  const hats = document.getElementById('hats');
+  const catEl = document.getElementById('cat');
   const nameInput = document.getElementById('name');
   nameInput.value = cfg.name === 'Pal' ? '' : cfg.name;
 
-  // portrait shows the cat awake (eyes open) so customizing feels lively
-  function drawPortrait() { portrait.innerHTML = FigPal.svg(cfg, { awake: true }); }
+  // small standalone hat icons for the top pill (separate from the head-positioned ones)
+  const HAT_ICON = {
+    none:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><line x1="6.5" y1="17.5" x2="17.5" y2="6.5"/></svg>',
+    tophat: '<svg viewBox="0 0 24 24"><rect x="3" y="17" width="18" height="3.2" rx="1.6" fill="#2A2730"/><rect x="7" y="4" width="10" height="14" rx="1.6" fill="#2A2730"/><rect x="7" y="9" width="10" height="3" fill="#D24A3F"/></svg>',
+    wizard: '<svg viewBox="0 0 24 24"><path d="M12 3 L18.5 19 H5.5 Z" fill="#7B5CC0"/><path d="M12 8 l1.1 2.3 2.5.4-1.8 1.8.4 2.5L12 14.2l-2.2 1.2.4-2.5-1.8-1.8 2.5-.4z" fill="#F1D86D"/></svg>',
+    beanie: '<svg viewBox="0 0 24 24"><path d="M5 15 a7 7 0 0 1 14 0 z" fill="#C0504A"/><rect x="3.5" y="14.5" width="17" height="4.2" rx="2.1" fill="#E8E2DA"/><circle cx="12" cy="5.5" r="2.1" fill="#E8E2DA"/></svg>',
+    party:  '<svg viewBox="0 0 24 24"><path d="M12 3 L18.5 19 H5.5 Z" fill="#C36ED0"/><circle cx="12" cy="3.4" r="1.9" fill="#F1D86D"/><path d="M9 13 q3 1 6 0 M8 17 q4 1.4 8 0" stroke="#fff" stroke-width="1.5" fill="none"/></svg>',
+  };
 
+  function draw() { catEl.innerHTML = FigPal.svg(cfg, { awake: true }); }
+
+  // top row: hats
+  const hatpill = document.getElementById('hatpill');
+  FigPal.HATS.forEach((h) => {
+    const b = document.createElement('button');
+    b.className = (h.id === (cfg.hat || 'none')) ? 'sel' : '';
+    b.innerHTML = HAT_ICON[h.id] || h.label;
+    b.title = h.label; b.setAttribute('aria-label', h.label);
+    b.dataset.hat = h.id;
+    b.onclick = () => { cfg.hat = h.id; sync(); };
+    hatpill.appendChild(b);
+  });
+
+  // bottom row: colours
+  const swatches = document.getElementById('swatches');
   FigPal.PALETTE.forEach((p, i) => {
     const b = document.createElement('button');
     b.className = 'sw' + (i === cfg.furIdx ? ' sel' : '');
     b.style.background = p.swatch || p.fur;
-    b.title = p.name;
+    b.title = p.name; b.setAttribute('aria-label', p.name);
     b.onclick = () => { cfg.furIdx = i; sync(); };
     swatches.appendChild(b);
   });
 
-  FigPal.HATS.forEach((h) => {
-    const b = document.createElement('button');
-    b.className = 'hat' + (h.id === (cfg.hat || 'none') ? ' sel' : '');
-    b.textContent = h.label;
-    b.dataset.hat = h.id;
-    b.onclick = () => { cfg.hat = h.id; sync(); };
-    hats.appendChild(b);
-  });
-
-  // the live companion that walks the page (same engine as the site overlay, cursor-sized)
-  const pet = FigPal.mount({});
-
   function sync() {
+    [...hatpill.children].forEach((b) => b.classList.toggle('sel', b.dataset.hat === (cfg.hat || 'none')));
     [...swatches.children].forEach((b, i) => b.classList.toggle('sel', i === cfg.furIdx));
-    [...hats.children].forEach((b) => b.classList.toggle('sel', b.dataset.hat === (cfg.hat || 'none')));
-    drawPortrait();
-    pet.refresh(cfg);              // recolour/re-hat the walking pal instantly (preview)
+    draw();
+    FigPal.refreshLive(cfg);     // live-preview on the trailing companion, if it's out
   }
-  drawPortrait();
-
-  document.getElementById('surprise').onclick = () => {
-    cfg.furIdx = Math.floor(Math.random() * FigPal.PALETTE.length);
-    cfg.hat = FigPal.HATS[Math.floor(Math.random() * FigPal.HATS.length)].id;
-    sync();
-  };
+  draw();
 
   function doSave() {
     cfg.name = (nameInput.value || 'Pal').trim().slice(0, 18);
     FigPal.saveConfig(cfg);
-    try { localStorage.setItem('figpal-revealed', '1'); } catch (e) {}   // adopting reveals it site-wide
-    pet.refresh();
+    try { localStorage.setItem('figpal-revealed', '1'); } catch (e) {}   // adopting summons it site-wide
+    FigPal.auto();              // ensure the companion is live…
+    FigPal.refreshLive(cfg);    // …and wearing the latest look
     const s = document.getElementById('saved'); s.classList.add('show');
-    setTimeout(() => s.classList.remove('show'), 2200);
+    setTimeout(() => s.classList.remove('show'), 2000);
   }
   document.getElementById('save').onclick = doSave;
   nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
+
+  // keep the companion consistent on this page too (mounts if already revealed)
+  FigPal.auto();
 </script>
 </body>
 </html>

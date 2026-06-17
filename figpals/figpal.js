@@ -201,6 +201,12 @@
   ---------------------------------------------------------- */
   const LIVE_SIZE = 48;   // cursor-sized companion (the live pal). Portrait passes its own.
 
+  // little blue sweat-drop shown near the head when the pal is hustling to keep up
+  const SWEAT_SVG =
+    '<svg viewBox="0 0 12 16" width="100%" height="100%">' +
+    '<path d="M6 0 C9 6 11 9 11 11 a5 5 0 0 1-10 0 C1 9 3 6 6 0 Z" fill="#8FD0FF" stroke="#3F90D0" stroke-width="0.7"/>' +
+    '<ellipse cx="4.4" cy="9.5" rx="1.3" ry="2" fill="#CDEBFF" opacity=".8"/></svg>';
+
   function mount(opts) {
     opts = opts || {};
     const cfg = loadConfig();
@@ -212,10 +218,14 @@
     el.style.cssText =
       "position:fixed;left:0;top:0;width:" + size + "px;height:" + size + "px;z-index:2147483600;" +
       "pointer-events:none;will-change:transform;";
-    // two stacked sprites: resting (sleepy eyes) and awake (open eyes); crossfade between them
+    // fp-inner carries the pop-in / hop motion; inside it, two stacked sprites
+    // (resting sleepy eyes / awake open eyes) crossfade, plus a sweat-drop emote.
     el.innerHTML =
-      '<div class="fp-sprite fp-rest" style="opacity:1">' + svg(cfg, {}) + '</div>' +
-      '<div class="fp-sprite fp-awake" style="opacity:0">' + svg(cfg, { awake: true }) + '</div>' +
+      '<div class="fp-inner">' +
+        '<div class="fp-sprite fp-rest" style="opacity:1">' + svg(cfg, {}) + '</div>' +
+        '<div class="fp-sprite fp-awake" style="opacity:0">' + svg(cfg, { awake: true }) + '</div>' +
+        '<div class="fp-sweat" aria-hidden="true">' + SWEAT_SVG + '</div>' +
+      '</div>' +
       '<div class="fp-zzz" aria-hidden="true">z</div>';
     document.body.appendChild(el);
 
@@ -224,53 +234,93 @@
       const st = document.createElement("style");
       st.id = "figpal-style";
       st.textContent =
+        ".figpal-companion .fp-inner{position:absolute;inset:0;transform-origin:50% 82%}" +
         ".figpal-companion .fp-sprite{position:absolute;inset:0;transition:opacity .18s ease}" +
         ".figpal-companion svg{width:100%;height:100%;display:block;overflow:visible;transform-origin:50% 80%}" +
         ".figpal-companion .fp-shadow{transition:rx .3s,opacity .3s}" +
         // gentle glide bob while travelling — a soft lift + slight squash, no hard steps (it's a curled cat)
         ".figpal-companion.walk .fp-rest svg,.figpal-companion.walk .fp-awake svg{animation:fp-glide .9s ease-in-out infinite}" +
+        ".figpal-companion.run .fp-rest svg,.figpal-companion.run .fp-awake svg{animation-duration:.5s}" +
         "@keyframes fp-glide{" +
         "0%{transform:translateY(0) scaleY(1)}" +
         "50%{transform:translateY(-7%) scaleY(1.02)}" +
         "100%{transform:translateY(0) scaleY(1)}}" +
+        // pop-in when summoned, and a startled hop on surprise
+        ".figpal-companion .fp-inner.pin{animation:fp-pop .46s cubic-bezier(.2,.9,.3,1.5)}" +
+        "@keyframes fp-pop{0%{transform:scale(.2);opacity:0}55%{opacity:1}100%{transform:scale(1)}}" +
+        ".figpal-companion .fp-inner.hop{animation:fp-hop .52s cubic-bezier(.2,.9,.25,1.4)}" +
+        "@keyframes fp-hop{0%{transform:translateY(0) scale(1,1)}20%{transform:translateY(6%) scale(1.14,.84)}52%{transform:translateY(-32%) scale(.9,1.12)}100%{transform:translateY(0) scale(1,1)}}" +
+        // sweat-drop near the head when hustling to keep up
+        ".figpal-companion .fp-sweat{position:absolute;left:9%;top:6%;width:17%;height:21%;opacity:0}" +
+        ".figpal-companion.run .fp-sweat{animation:fp-sweat .85s ease-in-out infinite}" +
+        "@keyframes fp-sweat{0%{opacity:0;transform:translateY(-8%) scale(.85)}35%{opacity:.95}100%{opacity:0;transform:translateY(40%) scale(1)}}" +
         ".figpal-companion .fp-zzz{position:absolute;top:-4px;right:-2px;font:700 13px ui-rounded,system-ui,sans-serif;color:#9a8fb0;opacity:0}" +
         ".figpal-companion.sleep .fp-zzz{animation:fp-zzz 2.6s ease-out infinite}" +
         "@keyframes fp-zzz{0%{opacity:0;transform:translate(0,4px) scale(.6)}30%{opacity:.9}100%{opacity:0;transform:translate(8px,-16px) scale(1.1)}}" +
         ".figpal-bubble{position:fixed;z-index:2147483601;pointer-events:none;font-size:16px;opacity:0}" +
         ".figpal-bubble.go{animation:fp-float 1.1s ease-out forwards}" +
+        ".figpal-bubble.pop{font-size:19px}" +
+        ".figpal-bubble.pop.go{animation:fp-bpop .8s cubic-bezier(.2,.9,.3,1.4) forwards}" +
         "@keyframes fp-float{0%{opacity:0;transform:translateY(0) scale(.4)}25%{opacity:1;transform:translateY(-10px) scale(1)}100%{opacity:0;transform:translateY(-44px) scale(.9)}}" +
+        "@keyframes fp-bpop{0%{opacity:0;transform:translateY(0) scale(.2)}30%{opacity:1;transform:translateY(-12px) scale(1.15)}70%{opacity:1;transform:translateY(-16px) scale(1)}100%{opacity:0;transform:translateY(-22px) scale(.95)}}" +
         "@media (prefers-reduced-motion: reduce){" +
         ".figpal-companion.walk .fp-rest svg,.figpal-companion.walk .fp-awake svg{animation:none}" +
+        ".figpal-companion .fp-inner.pin,.figpal-companion .fp-inner.hop{animation:none}" +
+        ".figpal-companion.run .fp-sweat{animation:none;opacity:.9}" +
         ".figpal-companion.sleep .fp-zzz{animation:none;opacity:.8}}";
       document.head.appendChild(st);
     }
 
     const rest = el.querySelector(".fp-rest");
     const awake = el.querySelector(".fp-awake");
+    const inner = el.querySelector(".fp-inner");
 
     const pos = { x: (opts.start && opts.start.x) || innerWidth * 0.5,
                   y: (opts.start && opts.start.y) || innerHeight * 0.72 };
     const mouse = { x: pos.x, y: pos.y };
     // facing: target ±1 (deadzoned); facingNow eases toward it for a smooth flip.
-    let facing = 1, facingNow = 1, walking = false, lastFlip = 0;
+    let facing = 1, facingNow = 1, walking = false, lastFlip = 0, runningHard = false;
     let lastMove = now(), lastT = now(), raf = 0, running = true;
+    let emoteUntil = 0, lastSurprise = 0;
 
     function now() { return performance.now(); }
 
     function onMove(e) { mouse.x = e.clientX; mouse.y = e.clientY; lastMove = now(); }
     addEventListener("pointermove", onMove, { passive: true });
 
-    function heartBubble() {
+    function bubble(glyph, cls) {
       const b = document.createElement("div");
-      b.className = "figpal-bubble";
-      b.textContent = ["💕", "💗", "✨", "🩷"][Math.floor((now() / 137) % 4)];
-      b.style.left = (pos.x + size * 0.32) + "px";
-      b.style.top = (pos.y - size * 0.1) + "px";
+      b.className = "figpal-bubble" + (cls ? " " + cls : "");
+      b.textContent = glyph;
+      b.style.left = (pos.x + size * 0.30) + "px";
+      b.style.top = (pos.y - size * (cls === "pop" ? 0.30 : 0.10)) + "px";
       document.body.appendChild(b);
       requestAnimationFrame(() => b.classList.add("go"));
       setTimeout(() => b.remove(), 1200);
     }
+    function heartBubble() { bubble(["💕", "💗", "✨", "🩷"][Math.floor((now() / 137) % 4)]); }
     let nextHeart = now() + 6000;
+
+    // startled "pop": a little hop + an exclaim bubble + eyes briefly open. Fired by
+    // clicks on links/cards (a spiritual port of the FigPal detach-component surprise).
+    function surprise() {
+      emoteUntil = now() + 750;
+      inner.classList.remove("hop"); void inner.offsetWidth; inner.classList.add("hop");
+      bubble("❗", "pop");
+    }
+    function onDown(e) {
+      if (!el || (e.target && el.contains(e.target))) return;
+      const hit = e.target && e.target.closest &&
+        e.target.closest("a,button,[role=button],summary,.card-opp,.card-proto,.status-chip,.side-pin,.preview-link,.figpal-paw");
+      if (!hit) return;
+      const t = now();
+      if (t - lastSurprise < 850) return;
+      lastSurprise = t; surprise();
+    }
+    addEventListener("pointerdown", onDown, true);
+
+    // pop-in when it first appears
+    requestAnimationFrame(function () { inner.classList.add("pin"); setTimeout(function () { inner.classList.remove("pin"); }, 540); });
 
     // Crossfade between the two stacked sprites (resting eyes vs open eyes).
     let curPose = "rest";
@@ -306,14 +356,22 @@
       const dist = Math.hypot(dx, dy);
 
       // Time-based exponential ease toward the target (frame-rate independent).
-      const k = 1 - Math.pow(1 - 0.16, dt);
+      // Catch up a little faster the further behind it is, so a fast flick of the
+      // cursor doesn't leave it crawling — but it still arrives and settles smoothly.
+      const kBase = 0.15 + Math.min(0.13, dist / 1400);
+      const k = 1 - Math.pow(1 - kBase, dt);
       pos.x += dx * k;
-      pos.y += dy * (k * 1.25);
+      pos.y += dy * (k * 1.18);
 
       // Walk hysteresis: only start gliding past a clear distance; only stop once arrived.
       if (!walking && dist > 14) walking = true;
       else if (walking && dist < 4) walking = false;
       el.classList.toggle("walk", walking);
+
+      // Running hard (sweat) when it's lagging well behind the cursor; clears once close.
+      if (!runningHard && dist > 64) runningHard = true;
+      else if (runningHard && dist < 26) runningHard = false;
+      el.classList.toggle("run", runningHard && walking);
 
       // Facing follows horizontal motion with a deadzone + a short commit window (≥320ms
       // between flips) so it can't dither. facingNow eases toward the target for a smooth flip.
@@ -324,8 +382,11 @@
       facingNow += (facing - facingNow) * (1 - Math.pow(1 - 0.34, dt));
       if (Math.abs(facingNow - facing) < 0.02) facingNow = facing;
 
-      // state machine: travelling → eyes open; settled → resting; long idle → sleep w/ zzz
-      if (walking) {
+      // state machine: surprised → eyes open (held); travelling → eyes open;
+      // settled → resting; long idle → sleep w/ zzz
+      if (t < emoteUntil) {
+        setPose("awake");
+      } else if (walking) {
         setPose("awake");
       } else if (idle > 11000) {
         setPose("sleep");
@@ -342,7 +403,7 @@
 
     return {
       el,
-      destroy() { running = false; cancelAnimationFrame(raf); removeEventListener("pointermove", onMove); el.remove(); },
+      destroy() { running = false; cancelAnimationFrame(raf); removeEventListener("pointermove", onMove); removeEventListener("pointerdown", onDown, true); el.remove(); },
       // refresh(override) re-skins the live pal; pass a config for instant preview,
       // or omit to re-read whatever was last saved.
       refresh(override) { const ncfg = override || loadConfig();
@@ -353,38 +414,39 @@
 
   /* ----------------------------------------------------------
      auto(): the site-wide manager. Mounts ONE companion when
-     revealed, and wires a global secret-word listener so the pal
-     can be summoned ("figpal") or sent away ("figbye") from ANY
-     page — instantly, no reload. Optionally toggles a #figpalPaw.
+     revealed, and wires a global hotkey — Shift + Ñ — to summon
+     or dismiss the pal from ANY page, instantly, no reload.
+     Skips inside iframes so prototype PREVIEWS never spawn a pal
+     (only the real top-level prototype view does).
   ---------------------------------------------------------- */
   let live = null, autoWired = false, autoOpts = {};
 
+  function inIframe() { try { return window.top !== window.self; } catch (e) { return true; } }
   function isRevealed() { try { return localStorage.getItem("figpal-revealed") === "1"; } catch (e) { return false; } }
-  function setPaw(on) { const p = document.getElementById("figpalPaw"); if (p) p.classList.toggle("is-on", !!on); }
   function ensureMounted() { if (!live) live = mount(autoOpts); return live; }
 
-  function reveal() { try { localStorage.setItem("figpal-revealed", "1"); } catch (e) {} ensureMounted(); setPaw(true); }
+  function reveal() { try { localStorage.setItem("figpal-revealed", "1"); } catch (e) {} ensureMounted(); }
   function hide() {
     try { localStorage.removeItem("figpal-revealed"); } catch (e) {}
     if (live) { live.destroy(); live = null; }
-    setPaw(false);
   }
+  function toggle() { isRevealed() ? hide() : reveal(); }
+  // re-skin the live companion (if any) — pass a config for instant preview, else re-read saved
+  function refreshLive(override) { if (live) live.refresh(override); }
 
   function auto(opts) {
     autoOpts = opts || {};
-    setPaw(isRevealed());
+    if (inIframe()) return;               // never run inside preview iframes
     if (isRevealed()) ensureMounted();
     if (autoWired) return; autoWired = true;
-    let buf = "";
+    // Shift + Ñ toggles the pal. Don't hijack it while typing in a field.
     addEventListener("keydown", function (e) {
       const t = e.target;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return; // don't hijack typing
-      if (!e.key || e.key.length !== 1) return;
-      buf = (buf + e.key.toLowerCase()).slice(-6);
-      if (buf.endsWith("figpal")) reveal();
-      else if (buf.endsWith("figbye")) hide();
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const isEnye = e.key === "Ñ" || e.key === "ñ" || e.code === "Semicolon"; // ñ key (Spanish layout)
+      if (e.shiftKey && isEnye) { e.preventDefault(); toggle(); }
     });
   }
 
-  window.FigPal = { PALETTE, HATS, svg, loadConfig, saveConfig, mount, auto, reveal, hide };
+  window.FigPal = { PALETTE, HATS, svg, loadConfig, saveConfig, mount, auto, reveal, hide, toggle, refreshLive };
 })();
