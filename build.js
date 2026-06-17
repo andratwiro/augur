@@ -1142,7 +1142,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <!-- FigPal companion: trails the cursor on every internal page, but ONLY once
        revealed (type "figpal" on the home page). Reads the pal you customized. -->
   <script src="/figpal.js"></script>
-  <script>try{if(localStorage.getItem('figpal-revealed')==='1'&&window.FigPal)window.FigPal.mount();}catch(e){}</script>
+  <script>try{window.FigPal&&window.FigPal.auto();}catch(e){}</script>
 </body>
 </html>
 `;
@@ -1207,24 +1207,13 @@ function renderRootIndex(opportunities) {
       ${filterEmpty()}
     </div>`;
 
-  // FigPal 🐾 — private easter egg. The paw is hidden until you type the secret
-  // word "figpal" anywhere on the homepage; then it's remembered on this browser.
-  // (Type "figbye" to hide it again.) Lightweight "only-you" gate; a real per-user
-  // gate can come later in _worker.js.
+  // FigPal 🐾 — private easter egg. Just the paw shortcut to the customize page;
+  // its visibility + the summon/dismiss secret words ("figpal" / "figbye") are
+  // managed site-wide by FigPal.auto() (figpal.js), so the pal can be sent away
+  // from ANY page, live. Lightweight "only-you" gate; a real per-user gate can
+  // come later in _worker.js.
   const figpal = `
-    <a class="figpal-paw" id="figpalPaw" href="figpals/" aria-label="Open your FigPal">🐾</a>
-    <script>(function(){
-      var paw = document.getElementById('figpalPaw');
-      var KEY = 'figpal-revealed';
-      if (localStorage.getItem(KEY) === '1') paw.classList.add('is-on');
-      var buf = '';
-      addEventListener('keydown', function(e){
-        if (e.key.length !== 1) return;
-        buf = (buf + e.key.toLowerCase()).slice(-6);
-        if (buf.endsWith('figpal')) { paw.classList.add('is-on'); localStorage.setItem(KEY,'1'); }
-        if (buf.endsWith('figbye')) { paw.classList.remove('is-on'); localStorage.removeItem(KEY); }
-      });
-    })();</script>`;
+    <a class="figpal-paw" id="figpalPaw" href="figpals/" aria-label="Customize your FigPal">🐾</a>`;
 
   return shell({
     title: "Product Prototypes",

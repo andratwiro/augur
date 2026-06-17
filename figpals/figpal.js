@@ -273,5 +273,40 @@
     };
   }
 
-  window.FigPal = { PALETTE, svg, loadConfig, saveConfig, mount };
+  /* ----------------------------------------------------------
+     auto(): the site-wide manager. Mounts ONE companion when
+     revealed, and wires a global secret-word listener so the pal
+     can be summoned ("figpal") or sent away ("figbye") from ANY
+     page — instantly, no reload. Optionally toggles a #figpalPaw.
+  ---------------------------------------------------------- */
+  let live = null, autoWired = false, autoOpts = {};
+
+  function isRevealed() { try { return localStorage.getItem("figpal-revealed") === "1"; } catch (e) { return false; } }
+  function setPaw(on) { const p = document.getElementById("figpalPaw"); if (p) p.classList.toggle("is-on", !!on); }
+  function ensureMounted() { if (!live) live = mount(autoOpts); return live; }
+
+  function reveal() { try { localStorage.setItem("figpal-revealed", "1"); } catch (e) {} ensureMounted(); setPaw(true); }
+  function hide() {
+    try { localStorage.removeItem("figpal-revealed"); } catch (e) {}
+    if (live) { live.destroy(); live = null; }
+    setPaw(false);
+  }
+
+  function auto(opts) {
+    autoOpts = opts || {};
+    setPaw(isRevealed());
+    if (isRevealed()) ensureMounted();
+    if (autoWired) return; autoWired = true;
+    let buf = "";
+    addEventListener("keydown", function (e) {
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return; // don't hijack typing
+      if (!e.key || e.key.length !== 1) return;
+      buf = (buf + e.key.toLowerCase()).slice(-6);
+      if (buf.endsWith("figpal")) reveal();
+      else if (buf.endsWith("figbye")) hide();
+    });
+  }
+
+  window.FigPal = { PALETTE, svg, loadConfig, saveConfig, mount, auto, reveal, hide };
 })();
