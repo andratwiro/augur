@@ -21,15 +21,16 @@ export function transformHtml(html, version) {
   if (html.includes("gv-piti-start") || html.includes("piti.js")) return html; // already has it / is the customizer
   const tag =
     '<!--gv-piti-start--><script src="/piti.js?v=' + (version || "") +
-    '"></script><script>try{window.Piti&&window.Piti.auto()}catch(e){}</script><!--gv-piti-end-->';
+    '" defer></script><script>addEventListener("DOMContentLoaded",function(){try{window.Piti&&window.Piti.auto()}catch(e){}})</script><!--gv-piti-end-->';
   const i = html.toLowerCase().lastIndexOf("</body>");
   return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
 }
 
 // Scripts for the generated shell pages (which aren't passed through transformHtml).
-export function bodyScripts() {
-  return '<script src="/piti.js"></script>' +
-    '<script>try{window.Piti&&window.Piti.auto();}catch(e){}</script>';
+export function bodyScripts(version) {
+  const v = version ? "?v=" + version : "";
+  return '<script src="/piti.js' + v + '" defer></script>' +
+    '<script>addEventListener("DOMContentLoaded",function(){try{window.Piti&&window.Piti.auto();}catch(e){}});</script>';
 }
 
 // A quiet, Linear-styled paw link tucked into the footer → opens the customizer.

@@ -53,6 +53,10 @@ function isPublicPath(pathname) {
   // The dormant review overlay + its avatar asset — both embedded into public
   // prototypes, so both must bypass the gate (else the <img> gets the login page).
   if (pathname === "/__review/comments.js" || pathname === "/__review/aslam.png") return true;
+  // The cursor companion engine + self-hosted fonts are embedded into public
+  // prototypes by absolute path, so they must bypass the gate too (else the
+  // <script>/<link> fetches the login page instead of the asset).
+  if (pathname === "/piti.js" || pathname.startsWith("/fonts/")) return true;
   return PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname === p.slice(0, -1) || pathname.startsWith(p)
   );
@@ -199,7 +203,24 @@ function liveReloadSnippet(token) {
     '.then(function(t){if(t&&t.trim()&&t.trim()!==B&&Date.now()-last>4000)location.reload()})' +
     '.catch(function(){})}' +
     'setInterval(function(){if(!document.hidden)c()},10000);' +
-    'document.addEventListener("visibilitychange",function(){if(!document.hidden)c()});})();</script><!--gv-reload-end-->';
+    'document.addEventListener("visibilitychange",function(){if(!document.hidden)c()});' +
+    // bfcache restore (back/forward): re-check version immediately so a page restored
+    // after a deploy refreshes, while normal restores stay instant.
+    'addEventListener("pageshow",function(e){if(e.persisted)c()});})();</script><!--gv-reload-end-->';
+}
+
+// Long-cache versioned/static assets so repeat navigations cost zero revalidation.
+// Cloudflare's default for assets is `max-age=0, must-revalidate` (a 304 round-trip
+// every visit); we override to a year + immutable, but ONLY for assets whose URL
+// changes when their content does — anything carrying a ?v= cache-buster, or fonts
+// (served from versioned /fonts/ paths). HTML and un-versioned assets (posters,
+// per-prototype CSS) are left on the default so they still revalidate via ETag/304.
+function withAssetCache(res, url) {
+  const versioned = url.searchParams.has("v") || /\.(woff2?|ttf|otf)$/.test(url.pathname);
+  if (!versioned) return res;
+  const out = new Response(res.body, res);
+  out.headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  return out;
 }
 
 function withLiveReload(res, url) {
@@ -415,7 +436,7 @@ export default {
       return statusApi(request, url, env);
     }
 
-    if (!expected) return withLiveReload(await env.ASSETS.fetch(request), url); // open when no password configured
+    if (!expected) return withAssetCache(withLiveReload(await env.ASSETS.fetch(request), url), url); // open when no password configured
 
     const expectedToken = await tokenFor(expected);
 
@@ -442,7 +463,7 @@ export default {
     // The open door is for easy link-sharing, NOT public discovery, so tag every
     // public response as non-indexable (covers HTML and assets alike).
     if (isPublicPath(url.pathname)) {
-      const res = withLiveReload(await env.ASSETS.fetch(request), url);
+      const res = withAssetCache(withLiveReload(await env.ASSETS.fetch(request), url), url);
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
@@ -451,7 +472,7 @@ export default {
     // Already authenticated?
     const cookies = request.headers.get("Cookie") || "";
     const authed = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${expectedToken}`);
-    if (authed) return withLiveReload(await env.ASSETS.fetch(request), url);
+    if (authed) return withAssetCache(withLiveReload(await env.ASSETS.fetch(request), url), url);
 
     // Otherwise show the login page, remembering where they were headed.
     // 200 (not 401) so password managers treat it as a normal login page.

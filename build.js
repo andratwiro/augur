@@ -92,7 +92,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.34";
+const UI_VERSION = "0.35";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -797,7 +797,36 @@ const PAGE_CSS = `
     @media (max-width: 380px) {
       h1 { font-size: 26px; }
       .page-grid { grid-template-columns: 1fr; }
-    }`;
+    }
+
+    /* ---- Cross-document View Transitions ----
+       Pure-CSS opt-in: same-origin shell→shell navigations animate instead of
+       flashing. Progressive (Chrome/Edge 126+, Safari 18.2+; others just navigate).
+       Disabled under reduced-motion. */
+    @view-transition { navigation: auto; }
+    @media (prefers-reduced-motion: reduce) { @view-transition { navigation: none; } }
+
+    /* ---- Off-screen render skipping ----
+       Long card grids: let the browser skip layout/style/paint for cards not near
+       the viewport. contain-intrinsic-size supplies a placeholder so the scrollbar
+       stays stable; the 'auto' keyword remembers each card's real size once rendered. */
+    .opp-grid .card-opp { content-visibility: auto; contain-intrinsic-size: auto 230px; }
+    .page-grid .card-proto { content-visibility: auto; contain-intrinsic-size: auto 200px; }`;
+
+// Speculation Rules: native, library-free instant forward navigation. `moderate`
+// eagerness triggers a document prefetch on hover / viewport entry (quicklink-style)
+// for same-origin links, excluding the /__ internal endpoints. Prefetch downloads
+// only the destination document (not its subresources) and — unlike <link rel=prefetch>
+// — is not blocked by cache headers. Chromium-only; other browsers ignore the block,
+// so it's a pure progressive enhancement.
+const SPECULATION_RULES = `<script type="speculationrules">${JSON.stringify({
+  prefetch: [
+    {
+      where: { and: [{ href_matches: "/*" }, { not: { href_matches: "/__*" } }] },
+      eagerness: "moderate",
+    },
+  ],
+})}</script>`;
 
 const CAROUSEL_JS = `
     (function () {
@@ -1209,7 +1238,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   </script>
   <script>${STATUS_JS}
   </script>
-  ${addon ? addon.bodyScripts() : ""}
+  ${addon ? addon.bodyScripts(UI_VERSION) : ""}
+  ${SPECULATION_RULES}
 </body>
 </html>
 `;
