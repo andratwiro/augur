@@ -1641,9 +1641,10 @@
     #cb-root .svc-easy__desc { font-size:16px; color:var(--gv-text-primary); line-height:1.6; margin:0 0 16px; }
     #cb-root .svc-easy__time { display:flex; align-items:center; gap:9px; font-size:15px; font-weight:600; color:var(--gv-text-primary); margin:0 0 18px; }
     #cb-root .svc-easy__time .gv-icon { width:19px; height:19px; color:var(--pp-tenant); flex:none; }
-    /* Large bold CTA: a ≥18.7px-bold label clears the WCAG large-text 3:1 bar even on a
-       light tenant fill, and gives Mara/Doris a big, unmistakable target (≥56px tall). */
-    #cb-root .svc--easy .gv-btn { font-size:19px; font-weight:700; padding:15px 22px; min-height:56px; line-height:24px; }
+    /* CTA matches the participation-box button (.cb-pbtn: 14px/700, 11px 14px) so the
+       page reads consistently. Still a big, unmistakable target — full-width + ≥44px tall
+       clears WCAG 2.5.5; white-on-tenant is the same fill the participation CTA uses. */
+    #cb-root .svc--easy .gv-btn { font-size:14px; font-weight:700; padding:11px 14px; min-height:44px; line-height:20px; }
     #cb-root .cb-survey--card { border:1px solid var(--gv-grey-300); border-radius:3px; padding:18px; background:#fff; box-shadow:var(--gv-shadow,0 2px 4px -1px rgba(0,0,0,.06)); }
     /* SURVEY tag — themed to the tenant (tint bg + AA-safe darkened tenant ink), not the fixed teal */
     #cb-root .cb-survey__eyebrow { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--svc-ink); background:var(--svc-tint); padding:3px 8px; border-radius:3px; }
