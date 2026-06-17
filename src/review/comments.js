@@ -206,9 +206,11 @@
     '.pin.anno:hover{transform:translate(-50%,-50%) rotate(0deg) scale(1.16);box-shadow:0 7px 20px rgba(0,0,0,0.42);z-index:2;}' +
     '.pin.anno.active{outline:3px solid rgba(61,116,244,0.45);}' +
     /* note bubble (delivery mode), styled like Figma cursor-chat: blue pill + tail */
-    '.atip{position:fixed;pointer-events:none;max-width:260px;background:#3d74f4;color:#fff;padding:9px 13px;border-radius:16px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 8px 22px rgba(61,116,244,0.42);transform:translate(-50%,-100%) scale(.9);transform-origin:50% 110%;opacity:0;transition:opacity .14s ease,transform .2s cubic-bezier(.34,1.56,.64,1);white-space:pre-wrap;word-wrap:break-word;}' +
-    '.atip::after{content:"";position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:#3d74f4;transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;}' +
-    '.atip.show{opacity:1;transform:translate(-50%,-100%) scale(1);}' +
+    '.atip{position:fixed;pointer-events:none;max-width:260px;background:#3d74f4;color:#fff;padding:9px 13px;border-radius:16px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 8px 22px rgba(61,116,244,0.42);transform:translate(-50%,var(--ty,-100%)) scale(.9);transform-origin:50% 110%;opacity:0;transition:opacity .14s ease,transform .2s cubic-bezier(.34,1.56,.64,1);white-space:pre-wrap;word-wrap:break-word;}' +
+    '.atip::after{content:"";position:absolute;left:var(--tail-x,50%);bottom:-4px;width:9px;height:9px;background:#3d74f4;transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;}' +
+    '.atip.below{--ty:0;transform-origin:50% -10%;}' +
+    '.atip.below::after{bottom:auto;top:-4px;border-radius:3px 0 0 0;}' +
+    '.atip.show{opacity:1;transform:translate(-50%,var(--ty,-100%)) scale(1);}' +
     /* sidebar */
     '.sb{position:fixed;top:0;right:0;height:100vh;width:300px;max-width:85vw;pointer-events:auto;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-6px 0 24px rgba(0,0,0,0.10);display:flex;flex-direction:column;transition:transform .18s ease;}' +
     '.sb.collapsed{transform:translateX(100%);}' +
@@ -430,10 +432,22 @@
   function showTip(btn, id) {
     var t = find(id); if (!t) return;
     tipEl.textContent = (t.messages[0] && t.messages[0].body) || "";
+    tipEl.classList.add("show"); // show first so offsetWidth/Height are measurable
     var r = btn.getBoundingClientRect();
-    tipEl.style.left = (r.left + r.width / 2) + "px";
-    tipEl.style.top = (r.top - 10) + "px";
-    tipEl.classList.add("show");
+    var vw = window.innerWidth, vh = window.innerHeight, m = 8;
+    var w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    var pinCx = r.left + r.width / 2, half = w / 2;
+    // Clamp the (centre-anchored) bubble so neither edge leaves the viewport.
+    var cx = pinCx;
+    if (w + 2 * m <= vw) cx = Math.max(m + half, Math.min(pinCx, vw - m - half));
+    // Sit above the pin, but flip below if that would clip the top edge.
+    var below = (r.top - 10 - h) < m && (r.bottom + 10 + h) <= vh - m;
+    tipEl.classList.toggle("below", below);
+    tipEl.style.left = cx + "px";
+    tipEl.style.top = (below ? r.bottom + 10 : r.top - 10) + "px";
+    // Keep the tail pointing at the pin even after the body was nudged inward.
+    var tailX = Math.max(12, Math.min(w - 12, pinCx - (cx - half)));
+    tipEl.style.setProperty("--tail-x", tailX + "px");
   }
   function hideTip(force) { if (tipSticky && force !== true) return; tipSticky = null; tipEl.classList.remove("show"); }
   function toggleTip(btn, id) {
