@@ -30,6 +30,13 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
+
+// Optional, self-contained build addon. If present it can post-process copied HTML,
+// add footer/style/script snippets to shell pages, and emit its own dist files via
+// generic hooks (see its source). The site builds identically without it.
+let addon = null;
+try { addon = await import("./pitis/piti.build.js"); } catch (e) { addon = null; }
+const addonHtml = (html) => (addon ? addon.transformHtml(html, UI_VERSION) : html);
 const SRC_REVIEW = path.join(ROOT, "src", "review", "comments.js");
 const SRC_REVIEW_CAT = path.join(ROOT, "src", "review", "aslam.png");
 
@@ -76,23 +83,6 @@ function reviewTag() {
 function injectReview(html) {
   if (html.includes("gv-review-start")) return html; // already injected
   const tag = reviewTag();
-  const i = html.toLowerCase().lastIndexOf("</body>");
-  return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
-}
-
-// FigPal companion loader, injected into every copied prototype/page/demo so the
-// pal trails the cursor INSIDE prototypes too — not just the nav shell. auto()
-// skips inside iframes, so previews never spawn a pal; only the real top-level
-// prototype view does. Absolute /figpal.js => served from the dist root.
-function figpalTag() {
-  return '<!--gv-figpal-start--><script src="/figpal.js?v=' + UI_VERSION +
-    '"></script><script>try{window.FigPal&&window.FigPal.auto()}catch(e){}</script><!--gv-figpal-end-->';
-}
-function injectFigpal(html) {
-  // skip if already injected, or if the page already loads figpal.js itself
-  // (the FigPal customizer manages its own companion).
-  if (html.includes("gv-figpal-start") || html.includes("figpal.js")) return html;
-  const tag = figpalTag();
   const i = html.toLowerCase().lastIndexOf("</body>");
   return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
 }
@@ -271,7 +261,7 @@ async function copyDir(src, dest, exclude) {
     } else if (entry.isFile()) {
       if (entry.name.endsWith(".html")) {
         const html = await fs.readFile(srcPath, "utf8");
-        await fs.writeFile(destPath, injectFigpal(injectReview(html)), "utf8");
+        await fs.writeFile(destPath, addonHtml(injectReview(html)), "utf8");
       } else {
         await fs.copyFile(srcPath, destPath);
       }
@@ -571,18 +561,6 @@ const PAGE_CSS = `
     .playground:hover .playground__go { color: var(--fg); transform: translateX(2px); }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
     footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
-
-    /* ---- FigPal paw — a quiet easter-egg link in the footer (opens the FigPal
-       customizer). Muted to match the shell; brightens on hover. The companion
-       itself is summoned/dismissed with Shift+Ñ (handled in figpal.js). ---- */
-    .figpal-paw {
-      display: inline-flex; align-items: center; vertical-align: -2px;
-      margin-left: 8px; color: var(--faint); opacity: .5;
-      transition: color .15s ease, opacity .15s ease, transform .15s ease;
-    }
-    .figpal-paw svg { width: 14px; height: 14px; display: block; }
-    .figpal-paw:hover { color: var(--accent); opacity: 1; transform: translateY(-1px); }
-    .figpal-paw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; opacity: 1; }
 
     /* ---- Cards & live previews ---- */
     .card-opp, .card-proto {
@@ -1118,20 +1096,6 @@ const STATUS_JS = `
 })();
 `;
 
-// Quiet paw link in the footer → opens the FigPal customizer. Subtle by design
-// (the pal itself is summoned/dismissed with Shift+Ñ). Absolute href so it resolves
-// from any folder depth on the deployed site.
-function figpalPaw() {
-  return ` &middot; <a class="figpal-paw" href="/figpals/" aria-label="FigPal" title="FigPal">` +
-    `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">` +
-    `<ellipse cx="12" cy="16.5" rx="5" ry="4.2"/>` +
-    `<ellipse cx="5.6" cy="11.2" rx="2" ry="2.7"/>` +
-    `<ellipse cx="9.8" cy="8.2" rx="2.1" ry="2.9"/>` +
-    `<ellipse cx="14.2" cy="8.2" rx="2.1" ry="2.9"/>` +
-    `<ellipse cx="18.4" cy="11.2" rx="2" ry="2.7"/>` +
-    `</svg></a>`;
-}
-
 function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) {
   const backLink = back
     ? `<a class="back" href="${back.href}">${back.label}</a>`
@@ -1146,7 +1110,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-  <style>${PAGE_CSS}${NAV_CSS}
+  <style>${PAGE_CSS}${NAV_CSS}${addon ? addon.css() : ""}
   </style>
 </head>
 <body>
@@ -1154,7 +1118,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <div class="wrap${wrapClass ? " " + wrapClass : ""}">
     ${backLink}
     ${body}
-    <footer>Product Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}${figpalPaw()}</footer>
+    <footer>Product Prototypes &middot; v${UI_VERSION} &middot; ${fmtDate(Date.now())}${addon ? addon.footerHtml() : ""}</footer>
   </div>
   <script>${CAROUSEL_JS}
   </script>
@@ -1162,10 +1126,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   </script>
   <script>${STATUS_JS}
   </script>
-  <!-- FigPal companion: trails the cursor on every internal page. Summon/dismiss
-       with Shift+Ñ; only shows on browsers where you've toggled it on. -->
-  <script src="/figpal.js"></script>
-  <script>try{window.FigPal&&window.FigPal.auto();}catch(e){}</script>
+  ${addon ? addon.bodyScripts() : ""}
 </body>
 </html>
 `;
@@ -1537,24 +1498,8 @@ async function main() {
   }
   const hasPlayground = playground.length >= 0 && (await isDir(path.join(DIST, "playground")));
 
-  // ── FigPal 🐾 — a private little companion, not a prototype. Lives OUTSIDE any
-  // prototypes/ folder so it never ships as a public link; copied here only so the
-  // homepage easter-egg trigger can reach it. Stays behind the password gate (it is
-  // never added to PUBLIC_PREFIXES), and the homepage paw only reveals itself once
-  // you type the secret (see renderRootIndex) — so in practice it's "yours".
-  if (await isDir(path.join(ROOT, "figpals"))) {
-    // Ship ONLY the playable app — never the internal docs or the downloaded
-    // research imagery in reference/ (Figma's own assets, kept on-machine only).
-    const skipFigInternal = (name) =>
-      isInternalOnly(name) || name.endsWith(".md") || name === "reference";
-    await copyDir(path.join(ROOT, "figpals"), path.join(DIST, "figpals"), skipFigInternal);
-    // Also expose the companion engine at the site root so every shell page can
-    // load it with a stable absolute path (/figpal.js) and have the pal trail the
-    // cursor while you browse the prototypes — gated by the reveal flag in shell().
-    if (await exists(path.join(ROOT, "figpals", "figpal.js"))) {
-      await fs.copyFile(path.join(ROOT, "figpals", "figpal.js"), path.join(DIST, "figpal.js"));
-    }
-  }
+  // Optional self-contained build addon emits its own dist files (if present).
+  if (addon) await addon.emit({ ROOT, DIST, fs, path, copyDir, isInternalOnly, exists });
 
   // Edge auth gate. Inject the list of PUBLIC prototype path-prefixes so the
   // password gate covers only the internal site — published prototypes stay open.

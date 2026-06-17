@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Your FigPal 🐾</title>
+<title>Your Piti 🐾</title>
 <style>
   :root { --ink:#2B2330; --muted:#8b7e96; --card:#fff; --line:#ece3f0; --accent:#7C5CFC;
           --stage:#DCE6C4; --grass:#46B14A; --chev:#6f6780; }
@@ -128,12 +128,12 @@
     <button class="btn" id="save">Save</button>
 
     <div class="saved" id="saved">Saved! 🐾</div>
-    <p class="hint">Press <kbd>Shift</kbd>+<kbd>Ñ</kbd> anywhere to summon or dismiss your FigPal.</p>
+    <p class="hint">Press <kbd>Shift</kbd>+<kbd>Ñ</kbd> anywhere to summon or dismiss your Piti.</p>
   </div>
 
-<script src="figpal.js"></script>
+<script src="piti.js"></script>
 <script>
-  const cfg = FigPal.loadConfig();
+  const cfg = Piti.loadConfig();
   const petEl = document.getElementById('pet');
   const nameInput = document.getElementById('name');
   nameInput.value = cfg.name === 'Pal' ? '' : cfg.name;
@@ -153,11 +153,11 @@
   };
   const SPECIES = [ { id:'cat', label:'Cat' }, { id:'dog', label:'Dog' } ];
 
-  function draw() { petEl.innerHTML = FigPal.svg(cfg, {}); }
+  function draw() { petEl.innerHTML = Piti.svg(cfg, {}); }
 
   // Aslam's two-tone "Ginger & white" swatch is a CAT pattern — hidden for the dog.
   function colourIndices() {
-    return FigPal.PALETTE
+    return Piti.PALETTE
       .map((p, i) => ({ p, i }))
       .filter(o => !(o.p.pattern === 'bicolor' && cfg.species !== 'cat'))
       .map(o => o.i);
@@ -186,7 +186,7 @@
   function buildSwatches() {
     swatchesEl.innerHTML = '';
     colourIndices().forEach(i => {
-      const p = FigPal.PALETTE[i];
+      const p = Piti.PALETTE[i];
       const b = document.createElement('button');
       b.className = 'sw' + (i === cfg.furIdx ? ' sel' : '');
       b.style.background = p.swatch || p.fur;
@@ -199,10 +199,10 @@
 
   // chevrons: top pair cycles HAT, bottom pair cycles COLOUR (wrap-around)
   function cycleHat(dir) {
-    const n = FigPal.HATS.length;
-    let cur = FigPal.HATS.findIndex(h => h.id === (cfg.hat || 'none'));
+    const n = Piti.HATS.length;
+    let cur = Piti.HATS.findIndex(h => h.id === (cfg.hat || 'none'));
     if (cur < 0) cur = 0;
-    cfg.hat = FigPal.HATS[(cur + dir + n) % n].id;
+    cfg.hat = Piti.HATS[(cur + dir + n) % n].id;
     sync();
   }
   function cycleColour(dir) {
@@ -221,7 +221,7 @@
     [...speciesEl.children].forEach(b => b.classList.toggle('sel', b.dataset.species === cfg.species));
     [...swatchesEl.children].forEach(b => b.classList.toggle('sel', +b.dataset.idx === cfg.furIdx));
     draw();
-    FigPal.refreshLive(cfg);     // live-preview on the trailing companion, if it's out
+    Piti.refreshLive(cfg);     // live-preview on the trailing companion, if it's out
   }
 
   buildSwatches();
@@ -229,10 +229,10 @@
 
   function doSave() {
     cfg.name = (nameInput.value || 'Pal').trim().slice(0, 18);
-    FigPal.saveConfig(cfg);
-    try { localStorage.setItem('figpal-revealed', '1'); } catch (e) {}   // adopting summons it site-wide
-    FigPal.auto();              // ensure the companion is live…
-    FigPal.refreshLive(cfg);    // …and wearing the latest look
+    Piti.saveConfig(cfg);
+    try { localStorage.setItem('piti-revealed', '1'); } catch (e) {}   // adopting summons it site-wide
+    Piti.auto();              // ensure the companion is live…
+    Piti.refreshLive(cfg);    // …and wearing the latest look
     const s = document.getElementById('saved'); s.classList.add('show');
     setTimeout(() => s.classList.remove('show'), 2000);
   }
@@ -240,7 +240,7 @@
   nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
 
   // keep the companion consistent on this page too (mounts if already revealed)
-  FigPal.auto();
+  Piti.auto();
 </script>
 </body>
 </html>

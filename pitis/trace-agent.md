@@ -29,7 +29,7 @@ artwork** (private, password-gated homage — never published) instead of redraw
 Identical-dimension masks → identical potrace `transform`, so you can nest each
 `<g transform=...>` (recoloured) in one shared-viewBox `<svg>`, darkest LAST (on top).
 
-## Source captures (all in `figpals/reference/`)
+## Source captures (all in `pitis/reference/`)
 - **`cat-sleep-heart-hi.png` (436×400) — PRIMARY trace target**: the iconic resting
   pink cat (+ heart bubble). Cleanest, highest-res.
 - `04-pink-cat-heart-photobooth.png` — alt clean source of the same cat.
@@ -85,13 +85,13 @@ larger-than-cursor friend: target **~46–50px** (make it one constant). The cus
 page portrait can be larger (~130–150px). Confirm by eye against the video.
 
 ## Implementation (don't break the contract)
-Edit `figpals/figpal.js` and `figpals/index.html`. Keep intact:
-- `window.FigPal = { PALETTE, svg, loadConfig, saveConfig, mount, auto, reveal, hide }`
+Edit `pitis/piti.js` and `pitis/index.html`. Keep intact:
+- `window.Piti = { PALETTE, svg, loadConfig, saveConfig, mount, auto, reveal, hide }`
   and `mount()`'s handle `{ el, destroy, refresh(override) }`.
 - `svg(config, state)` still returns an SVG string. `config` now carries
   `{ name, furIdx, hat }`. `PALETTE` entries carry the per-colour fills.
 - Wrapper stays `pointer-events:none`; keep `prefers-reduced-motion` + `auto()` gating.
-- `build.js` injects `/figpal.js` already — don't change the wiring. `node build.js`
+- `build.js` injects `/piti.js` already — don't change the wiring. `node build.js`
   must stay green.
 Behaviour: the resting cat trails the cursor with a gentle glide + soft bob; faces
 travel direction (source faces LEFT — flip scaleX for right) with a smooth flip (no
@@ -108,7 +108,7 @@ recolours correctly to orange & black, hats sit right, motion is smooth, build g
 
 ## Done
 - `node build.js`, `npm run deploy`, capture the URL.
-- Commit ONLY your paths (`figpals/figpal.js`, `figpals/index.html`; `build.js` only
+- Commit ONLY your paths (`pitis/piti.js`, `pitis/index.html`; `build.js` only
   if touched) to `main`, clear message + trailer
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`.
   Never `git add -A` (shared checkout). `reference/` is gitignored — leave scratch there.

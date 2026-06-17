@@ -1,13 +1,13 @@
 /* ============================================================
-   FigPal — a tiny companion that trails your cursor.
+   Piti — a tiny companion that trails your cursor.
    One source of truth, used by:
-     • figpals/index.html        (adopt / customize page)
+     • pitis/index.html        (adopt / customize page)
      • the prototypes-site shell  (build.js injects this file)
-   The cat art is TRACED (potrace) from the real FigPal resting
+   The cat art is TRACED (potrace) from the real Piti resting
    pose — a loose, hand-drawn doodle, not regularised vector
    geometry. The traced silhouette + outline are recoloured per
    palette so the same iconic cat repaints into any hue.
-   Exposes window.FigPal =
+   Exposes window.Piti =
      { PALETTE, HATS, svg, loadConfig, saveConfig, mount, auto, reveal, hide }.
    ============================================================ */
 (function () {
@@ -32,7 +32,7 @@
   const TT = 'transform="translate(0,720) scale(0.1,-0.1)"';
 
   /* ---- traced DOG paths (potrace, source frame 1256x984) ----
-     A real FigPal-style sleeping corgi: floppy pointed ears, closed sleepy eyes,
+     A real Piti-style sleeping corgi: floppy pointed ears, closed sleepy eyes,
      snout pointing left, curled body + little tail. Traced from the same pipeline
      as the cat (pre-smooth → outline mask + full-silhouette mask → potrace) so the
      two masks share one frame and the transform below maps both. Recoloured per
@@ -72,7 +72,7 @@
 
   /* ---- hats (optional, selectable). Drawn in the 1744x720 trace frame, sitting
      on the cat's head (the head is low-left in the resting pose). All are loose
-     doodles matching the real FigPal hat set; outline = OUT, stroke chunky. */
+     doodles matching the real Piti hat set; outline = OUT, stroke chunky. */
   const HATS = [
     { id: "none",   label: "None" },
     { id: "tophat", label: "Top hat" },
@@ -220,7 +220,7 @@
   }
 
   /* Build a full <svg> string. config: {name, furIdx, hat}. state: {awake:bool}
-     The cat only exists in the resting pose (the iconic FigPal) — there is no
+     The cat only exists in the resting pose (the iconic Piti) — there is no
      separate sitting pose; "awake" just opens the eyes. Faces LEFT (flip scaleX). */
   function svg(config, state) {
     const c = PALETTE[(config && config.furIdx) || 0] || PALETTE[0];
@@ -245,7 +245,7 @@
       fit = 'transform="translate(0,' + ty.toFixed(2) + ') scale(' + scale.toFixed(5) + ')"';
     }
     return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" overflow="visible">' +
-      '<ellipse class="fp-shadow" cx="50" cy="84" rx="30" ry="5" fill="rgba(60,30,55,.16)"/>' +
+      '<ellipse class="pt-shadow" cx="50" cy="84" rx="30" ry="5" fill="rgba(60,30,55,.16)"/>' +
       '<g ' + fit + '>' +
         petBody(species, c, !!state.awake, hat) +
       '</g>' +
@@ -255,10 +255,10 @@
   // ---- config persistence ----
   function loadConfig() {
     const def = { name: "Pal", furIdx: 0, hat: "none", species: "cat" };
-    try { return Object.assign(def, JSON.parse(localStorage.getItem("figpal-config")) || {}); }
+    try { return Object.assign(def, JSON.parse(localStorage.getItem("piti-config")) || {}); }
     catch (e) { return Object.assign({}, def); }
   }
-  function saveConfig(cfg) { try { localStorage.setItem("figpal-config", JSON.stringify(cfg)); } catch (e) {} }
+  function saveConfig(cfg) { try { localStorage.setItem("piti-config", JSON.stringify(cfg)); } catch (e) {} }
 
   /* ----------------------------------------------------------
      mount(): create the trailing companion overlay on a page.
@@ -279,67 +279,67 @@
     const size = opts.size || LIVE_SIZE;
 
     const el = document.createElement("div");
-    el.className = "figpal-companion";
+    el.className = "piti-companion";
     el.setAttribute("aria-hidden", "true");
     el.style.cssText =
       "position:fixed;left:0;top:0;width:" + size + "px;height:" + size + "px;z-index:2147483600;" +
       "pointer-events:none;will-change:transform;";
-    // fp-inner carries the pop-in / hop motion; inside it, two stacked sprites
+    // pt-inner carries the pop-in / hop motion; inside it, two stacked sprites
     // (resting sleepy eyes / awake open eyes) crossfade, plus a sweat-drop emote.
     el.innerHTML =
-      '<div class="fp-inner">' +
-        '<div class="fp-sprite fp-rest" style="opacity:1">' + svg(cfg, {}) + '</div>' +
-        '<div class="fp-sprite fp-awake" style="opacity:0">' + svg(cfg, { awake: true }) + '</div>' +
-        '<div class="fp-sweat" aria-hidden="true">' + SWEAT_SVG + '</div>' +
+      '<div class="pt-inner">' +
+        '<div class="pt-sprite pt-rest" style="opacity:1">' + svg(cfg, {}) + '</div>' +
+        '<div class="pt-sprite pt-awake" style="opacity:0">' + svg(cfg, { awake: true }) + '</div>' +
+        '<div class="pt-sweat" aria-hidden="true">' + SWEAT_SVG + '</div>' +
       '</div>' +
-      '<div class="fp-zzz" aria-hidden="true">z</div>';
+      '<div class="pt-zzz" aria-hidden="true">z</div>';
     document.body.appendChild(el);
 
     // styles (once)
-    if (!document.getElementById("figpal-style")) {
+    if (!document.getElementById("piti-style")) {
       const st = document.createElement("style");
-      st.id = "figpal-style";
+      st.id = "piti-style";
       st.textContent =
-        ".figpal-companion .fp-inner{position:absolute;inset:0;transform-origin:50% 82%}" +
-        ".figpal-companion .fp-sprite{position:absolute;inset:0;transition:opacity .18s ease}" +
-        ".figpal-companion svg{width:100%;height:100%;display:block;overflow:visible;transform-origin:50% 80%}" +
-        ".figpal-companion .fp-shadow{transition:rx .3s,opacity .3s}" +
+        ".piti-companion .pt-inner{position:absolute;inset:0;transform-origin:50% 82%}" +
+        ".piti-companion .pt-sprite{position:absolute;inset:0;transition:opacity .18s ease}" +
+        ".piti-companion svg{width:100%;height:100%;display:block;overflow:visible;transform-origin:50% 80%}" +
+        ".piti-companion .pt-shadow{transition:rx .3s,opacity .3s}" +
         // gentle glide bob while travelling — a soft lift + slight squash, no hard steps (it's a curled cat)
-        ".figpal-companion.walk .fp-rest svg,.figpal-companion.walk .fp-awake svg{animation:fp-glide .9s ease-in-out infinite}" +
-        ".figpal-companion.run .fp-rest svg,.figpal-companion.run .fp-awake svg{animation-duration:.5s}" +
-        "@keyframes fp-glide{" +
+        ".piti-companion.walk .pt-rest svg,.piti-companion.walk .pt-awake svg{animation:pt-glide .9s ease-in-out infinite}" +
+        ".piti-companion.run .pt-rest svg,.piti-companion.run .pt-awake svg{animation-duration:.5s}" +
+        "@keyframes pt-glide{" +
         "0%{transform:translateY(0) scaleY(1)}" +
         "50%{transform:translateY(-7%) scaleY(1.02)}" +
         "100%{transform:translateY(0) scaleY(1)}}" +
         // pop-in when summoned, and a startled hop on surprise
-        ".figpal-companion .fp-inner.pin{animation:fp-pop .46s cubic-bezier(.2,.9,.3,1.5)}" +
-        "@keyframes fp-pop{0%{transform:scale(.2);opacity:0}55%{opacity:1}100%{transform:scale(1)}}" +
-        ".figpal-companion .fp-inner.hop{animation:fp-hop .52s cubic-bezier(.2,.9,.25,1.4)}" +
-        "@keyframes fp-hop{0%{transform:translateY(0) scale(1,1)}20%{transform:translateY(6%) scale(1.14,.84)}52%{transform:translateY(-32%) scale(.9,1.12)}100%{transform:translateY(0) scale(1,1)}}" +
+        ".piti-companion .pt-inner.pin{animation:pt-pop .46s cubic-bezier(.2,.9,.3,1.5)}" +
+        "@keyframes pt-pop{0%{transform:scale(.2);opacity:0}55%{opacity:1}100%{transform:scale(1)}}" +
+        ".piti-companion .pt-inner.hop{animation:pt-hop .52s cubic-bezier(.2,.9,.25,1.4)}" +
+        "@keyframes pt-hop{0%{transform:translateY(0) scale(1,1)}20%{transform:translateY(6%) scale(1.14,.84)}52%{transform:translateY(-32%) scale(.9,1.12)}100%{transform:translateY(0) scale(1,1)}}" +
         // sweat-drop near the head when hustling to keep up
-        ".figpal-companion .fp-sweat{position:absolute;left:9%;top:6%;width:17%;height:21%;opacity:0}" +
-        ".figpal-companion.run .fp-sweat{animation:fp-sweat .85s ease-in-out infinite}" +
-        "@keyframes fp-sweat{0%{opacity:0;transform:translateY(-8%) scale(.85)}35%{opacity:.95}100%{opacity:0;transform:translateY(40%) scale(1)}}" +
-        ".figpal-companion .fp-zzz{position:absolute;top:-4px;right:-2px;font:700 13px ui-rounded,system-ui,sans-serif;color:#9a8fb0;opacity:0}" +
-        ".figpal-companion.sleep .fp-zzz{animation:fp-zzz 2.6s ease-out infinite}" +
-        "@keyframes fp-zzz{0%{opacity:0;transform:translate(0,4px) scale(.6)}30%{opacity:.9}100%{opacity:0;transform:translate(8px,-16px) scale(1.1)}}" +
-        ".figpal-bubble{position:fixed;z-index:2147483601;pointer-events:none;font-size:16px;opacity:0}" +
-        ".figpal-bubble.go{animation:fp-float 1.1s ease-out forwards}" +
-        ".figpal-bubble.pop{font-size:19px}" +
-        ".figpal-bubble.pop.go{animation:fp-bpop .8s cubic-bezier(.2,.9,.3,1.4) forwards}" +
-        "@keyframes fp-float{0%{opacity:0;transform:translateY(0) scale(.4)}25%{opacity:1;transform:translateY(-10px) scale(1)}100%{opacity:0;transform:translateY(-44px) scale(.9)}}" +
-        "@keyframes fp-bpop{0%{opacity:0;transform:translateY(0) scale(.2)}30%{opacity:1;transform:translateY(-12px) scale(1.15)}70%{opacity:1;transform:translateY(-16px) scale(1)}100%{opacity:0;transform:translateY(-22px) scale(.95)}}" +
+        ".piti-companion .pt-sweat{position:absolute;left:9%;top:6%;width:17%;height:21%;opacity:0}" +
+        ".piti-companion.run .pt-sweat{animation:pt-sweat .85s ease-in-out infinite}" +
+        "@keyframes pt-sweat{0%{opacity:0;transform:translateY(-8%) scale(.85)}35%{opacity:.95}100%{opacity:0;transform:translateY(40%) scale(1)}}" +
+        ".piti-companion .pt-zzz{position:absolute;top:-4px;right:-2px;font:700 13px ui-rounded,system-ui,sans-serif;color:#9a8fb0;opacity:0}" +
+        ".piti-companion.sleep .pt-zzz{animation:pt-zzz 2.6s ease-out infinite}" +
+        "@keyframes pt-zzz{0%{opacity:0;transform:translate(0,4px) scale(.6)}30%{opacity:.9}100%{opacity:0;transform:translate(8px,-16px) scale(1.1)}}" +
+        ".piti-bubble{position:fixed;z-index:2147483601;pointer-events:none;font-size:16px;opacity:0}" +
+        ".piti-bubble.go{animation:pt-float 1.1s ease-out forwards}" +
+        ".piti-bubble.pop{font-size:19px}" +
+        ".piti-bubble.pop.go{animation:pt-bpop .8s cubic-bezier(.2,.9,.3,1.4) forwards}" +
+        "@keyframes pt-float{0%{opacity:0;transform:translateY(0) scale(.4)}25%{opacity:1;transform:translateY(-10px) scale(1)}100%{opacity:0;transform:translateY(-44px) scale(.9)}}" +
+        "@keyframes pt-bpop{0%{opacity:0;transform:translateY(0) scale(.2)}30%{opacity:1;transform:translateY(-12px) scale(1.15)}70%{opacity:1;transform:translateY(-16px) scale(1)}100%{opacity:0;transform:translateY(-22px) scale(.95)}}" +
         "@media (prefers-reduced-motion: reduce){" +
-        ".figpal-companion.walk .fp-rest svg,.figpal-companion.walk .fp-awake svg{animation:none}" +
-        ".figpal-companion .fp-inner.pin,.figpal-companion .fp-inner.hop{animation:none}" +
-        ".figpal-companion.run .fp-sweat{animation:none;opacity:.9}" +
-        ".figpal-companion.sleep .fp-zzz{animation:none;opacity:.8}}";
+        ".piti-companion.walk .pt-rest svg,.piti-companion.walk .pt-awake svg{animation:none}" +
+        ".piti-companion .pt-inner.pin,.piti-companion .pt-inner.hop{animation:none}" +
+        ".piti-companion.run .pt-sweat{animation:none;opacity:.9}" +
+        ".piti-companion.sleep .pt-zzz{animation:none;opacity:.8}}";
       document.head.appendChild(st);
     }
 
-    const rest = el.querySelector(".fp-rest");
-    const awake = el.querySelector(".fp-awake");
-    const inner = el.querySelector(".fp-inner");
+    const rest = el.querySelector(".pt-rest");
+    const awake = el.querySelector(".pt-awake");
+    const inner = el.querySelector(".pt-inner");
 
     const pos = { x: (opts.start && opts.start.x) || innerWidth * 0.5,
                   y: (opts.start && opts.start.y) || innerHeight * 0.72 };
@@ -356,7 +356,7 @@
 
     function bubble(glyph, cls) {
       const b = document.createElement("div");
-      b.className = "figpal-bubble" + (cls ? " " + cls : "");
+      b.className = "piti-bubble" + (cls ? " " + cls : "");
       b.textContent = glyph;
       b.style.left = (pos.x + size * 0.30) + "px";
       b.style.top = (pos.y - size * (cls === "pop" ? 0.30 : 0.10)) + "px";
@@ -368,7 +368,7 @@
     let nextHeart = now() + 6000;
 
     // startled "pop": a little hop + an exclaim bubble + eyes briefly open. Fired by
-    // clicks on links/cards (a spiritual port of the FigPal detach-component surprise).
+    // clicks on links/cards (a spiritual port of the Piti detach-component surprise).
     function surprise() {
       emoteUntil = now() + 750;
       inner.classList.remove("hop"); void inner.offsetWidth; inner.classList.add("hop");
@@ -377,7 +377,7 @@
     function onDown(e) {
       if (!el || (e.target && el.contains(e.target))) return;
       const hit = e.target && e.target.closest &&
-        e.target.closest("a,button,[role=button],summary,.card-opp,.card-proto,.status-chip,.side-pin,.preview-link,.figpal-paw");
+        e.target.closest("a,button,[role=button],summary,.card-opp,.card-proto,.status-chip,.side-pin,.preview-link,.piti-paw");
       if (!hit) return;
       const t = now();
       if (t - lastSurprise < 850) return;
@@ -488,12 +488,12 @@
   let live = null, autoWired = false, autoOpts = {};
 
   function inIframe() { try { return window.top !== window.self; } catch (e) { return true; } }
-  function isRevealed() { try { return localStorage.getItem("figpal-revealed") === "1"; } catch (e) { return false; } }
+  function isRevealed() { try { return localStorage.getItem("piti-revealed") === "1"; } catch (e) { return false; } }
   function ensureMounted() { if (!live) live = mount(autoOpts); return live; }
 
-  function reveal() { try { localStorage.setItem("figpal-revealed", "1"); } catch (e) {} ensureMounted(); }
+  function reveal() { try { localStorage.setItem("piti-revealed", "1"); } catch (e) {} ensureMounted(); }
   function hide() {
-    try { localStorage.removeItem("figpal-revealed"); } catch (e) {}
+    try { localStorage.removeItem("piti-revealed"); } catch (e) {}
     if (live) { live.destroy(); live = null; }
   }
   function toggle() { isRevealed() ? hide() : reveal(); }
@@ -514,5 +514,5 @@
     });
   }
 
-  window.FigPal = { PALETTE, HATS, svg, loadConfig, saveConfig, mount, auto, reveal, hide, toggle, refreshLive };
+  window.Piti = { PALETTE, HATS, svg, loadConfig, saveConfig, mount, auto, reveal, hide, toggle, refreshLive };
 })();

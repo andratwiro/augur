@@ -6,13 +6,13 @@ cycle hats (top pair) and colour (bottom pair)**. Internal doc; never ships.
 
 ## Repo + tooling
 Work in `/Users/rob/Documents/go-vocal-prototypes`. `potrace` + `magick` + headless
-Chrome are installed. Engine = `figpals/figpal.js`; customizer = `figpals/index.html`.
+Chrome are installed. Engine = `pitis/piti.js`; customizer = `pitis/index.html`.
 `node build.js` must stay green. Commit only your paths to `main` with the
 `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>` trailer; never
 `git add -A` (shared checkout). After finishing, `npm run deploy` and report the URL.
-`figpals/reference/` is gitignored — scratch renders there are fine.
+`pitis/reference/` is gitignored — scratch renders there are fine.
 
-## How the cat works today (your template — study figpal.js first)
+## How the cat works today (your template — study piti.js first)
 - `const P = { sil, outMain, eyeL, eyeR, nose }` are **potrace paths** (viewBox-ish
   1744×720) drawn via `TT = translate(0,720) scale(0.1,-0.1)`. `sil` = recoloured
   silhouette (fur); `outMain` = the hand-drawn outline; eyes/nose on top.
@@ -27,9 +27,9 @@ Chrome are installed. Engine = `figpals/figpal.js`; customizer = `figpals/index.
 - The pal trails the cursor in the RESTING pose; `awake` just opens the eyes.
 
 ## Task 1 — trace the DOG (resting pose, recolourable)
-Source: **`figpals/reference/corgi-sleep.png`** — a real FigPal-style sleeping dog
+Source: **`pitis/reference/corgi-sleep.png`** — a real FigPal-style sleeping dog
 (orange/white, head resting left, same orientation as the cat). Follow the same
-pipeline that built the cat (it's documented in `figpals/trace-agent.md`):
+pipeline that built the cat (it's documented in `pitis/trace-agent.md`):
 crop → pre-smooth (`-filter Catrom -resize 400% -median 2 -blur 0x0.4`) → threshold
 into an **outline** mask + a **full-silhouette** mask → `potrace` each (same frame so
 transforms match) → assemble a recolourable dog: silhouette=`c.fur`, outline dark,
@@ -52,24 +52,24 @@ sit at the same scale/baseline as the cat so it drops into the same frame.
   coordinate-grid render (like the cat) and give the dog its own hat transform
   (e.g. `HAT_T_DOG`); `hatSVG` should accept/lookup the per-species offset.
 - Keep the public API intact and ADD nothing breaking:
-  `window.FigPal = { PALETTE, HATS, svg, loadConfig, saveConfig, mount, auto, reveal,
+  `window.Piti = { PALETTE, HATS, svg, loadConfig, saveConfig, mount, auto, reveal,
   hide, toggle, refreshLive }`. `loadConfig` must default `species:'cat'`. `mount()`'s
   handle `{el, destroy, refresh}` and the `pointer-events:none` / reduced-motion /
   `auto()` iframe-skip behaviour must all stay.
 
-## Task 3 — revise the customizer (`figpals/index.html`) to match the creator
+## Task 3 — revise the customizer (`pitis/index.html`) to match the creator
 Reference: the real FigPal creator (grass stage, 4 chevrons, swatch row, name box).
 - **Top pill = species**: cat / dog tabs (draw small cat & dog face icons), selected =
-  white/raised. Switching species re-renders + `FigPal.refreshLive(cfg)`.
+  white/raised. Switching species re-renders + `Piti.refreshLive(cfg)`.
 - **Stage**: the pet on the green grass oval, with **four chevron buttons** (‹ › top,
   ‹ › bottom) like the reference. **Top pair cycles HAT** (prev/next through
-  `FigPal.HATS`, wrap-around); **bottom pair cycles COLOUR** (prev/next through
-  `FigPal.PALETTE`, wrap-around).
+  `Piti.HATS`, wrap-around); **bottom pair cycles COLOUR** (prev/next through
+  `Piti.PALETTE`, wrap-around).
 - Keep the **colour swatch row** below (direct pick; selected = purple ring; Aslam's
   two-tone gradient swatch only shows when species=cat, since it's a cat pattern).
-- Keep the **name box** + **Save** (Save persists, sets `figpal-revealed`, calls
-  `FigPal.auto()` + `FigPal.refreshLive(cfg)`). Keep the Shift+Ñ hint line.
-- The page loads its own `figpal.js` (so build's injector skips it — don't add a
+- Keep the **name box** + **Save** (Save persists, sets `piti-revealed`, calls
+  `Piti.auto()` + `Piti.refreshLive(cfg)`). Keep the Shift+Ñ hint line.
+- The page loads its own `piti.js` (so build's injector skips it — don't add a
   second loader).
 - **No title, no subtitle** — remove the "Customize your FigPal" heading and the
   "A little friend…" subtitle. Just the creator itself (pill → stage → swatches →
@@ -81,5 +81,5 @@ fix the named gap → repeat. Done when: the dog reads as a faithful FigPal dog 
 resting pose, recolours across all `PALETTE` hues, wears all hats correctly (measured,
 not guessed); the cat is unchanged; the picker matches the creator (species tabs +
 chevrons cycling hat/colour + swatches + name + Save); `node build.js` green; deployed;
-committed (figpal.js + index.html only). Report before/after, per-pass fixes, fidelity
+committed (piti.js + index.html only). Report before/after, per-pass fixes, fidelity
 estimate for the dog, the deploy URL, and anything still short.

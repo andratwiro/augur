@@ -27,6 +27,6 @@ review-comments.local.md
 research/
 research.md
 
-# FigPal research imagery — downloaded third-party (Figma) reference assets,
-# kept on-machine only. build.js also excludes figpals/reference/ from dist.
-figpals/reference/
+# Piti research imagery — downloaded third-party (Figma) reference assets,
+# kept on-machine only. build.js also excludes pitis/reference/ from dist.
+pitis/reference/
