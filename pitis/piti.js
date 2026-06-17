@@ -53,35 +53,39 @@
   // dog trace transform (potrace y-flip) — maps the dog paths into a 1256x984 frame
   const DTT = 'transform="translate(0,984) scale(0.1,-0.1)"';
 
-  /* ---- MASTIFF paths (hand-authored doodle, source frame 1300x900) ----
+  /* ---- MASTIFF paths (TRACED — potrace, source frame 2360x1120) ----
      Rob's Spanish mastiff "Senda": heavy curled body, head resting LEFT, long droopy
-     ear, jowly muzzle, front paws stretched forward (sploot). Authored directly in the
-     same chunky-outline style as the traced cat/dog (no potrace, so coords read top-down
-     — MMT below is identity, no y-flip). Unlike the recolourable cat/dog, the mastiff is
-     a fixed "Senda" look: fawn body, black mask over the muzzle, black droopy ear, a
-     darker saddle. Pieces are kept separate so the mask + ear stack correctly:
-       sil    = body+head silhouette (fur)
-       paws   = the stretched front paws (fur)
-       ear    = the long droopy ear (black, in front of the cheek)
-       earBack= the far ear's tip peeking behind the crown
-       mask   = the black muzzle mask (clipped to the body)
-       saddle = darker back shading (clipped)
-       belly  = lighter chest/underside (clipped)
-       eye    = the closed sleepy arc; nose = the blunt nose; cheek-blush positioned. */
+     ears, jowly muzzle, front paws stretched forward (sploot). The SILHOUETTE is traced
+     from her real photo (reference/senda-1.png, flipped head-left) via the same
+     potrace pipeline that built the cat/dog — pre-smooth → clean guide-mask → potrace —
+     so the body line is the loose organic doodle, not regularised geometry. It lives in
+     the potrace y-flipped frame (MTT below). Unlike the recolourable cat/dog, the mastiff
+     is a fixed "Senda" look: fawn body, black mask over the muzzle, black droopy ears, a
+     darker saddle. The dark regions (mask/ears/saddle/belly) have no hard threshold edge
+     in the photo (matching terracotta floor, soft fur), so — exactly as the cat's belly/
+     inner-ears/blush are positioned shapes — they're authored UPRIGHT in the same 2360x1120
+     frame (no y-flip) and clipped to the traced silhouette:
+       sil     = body+head silhouette (fur) — TRACED, drawn under MTT
+       earFar  = the far ear, a dark lobe draping the right of the head (clipped)
+       earNear = the long droopy near ear hanging down the left, in front of the cheek
+       mask    = the black muzzle mask (clipped); saddle = darker back (clipped);
+       belly   = lighter chest/underside (clipped); eyeClosed = sleepy arc;
+       nose = blunt nose; eyeOpen / cheek = positioned. */
   const MASTIFF_P = {
-    sil: "M 470 305 C 600 270 760 262 900 272 C 1030 282 1140 320 1190 405 C 1222 475 1218 552 1180 608 C 1238 648 1255 712 1220 766 C 1178 824 1070 840 968 830 C 880 850 720 852 600 838 C 520 828 462 800 436 760 C 384 772 334 768 304 744 C 254 762 178 764 122 744 C 72 726 58 680 88 650 C 118 618 192 618 252 644 C 268 628 290 612 318 604 C 220 612 150 580 132 508 C 118 452 150 392 220 360 C 200 340 210 318 240 300 C 320 256 410 268 470 305 Z",
-    paws: "M 122 744 C 72 754 32 772 24 802 C 18 834 62 844 112 838 C 152 832 178 802 178 772 C 160 754 142 746 122 744 Z",
-    ear: "M 458 296 C 416 314 402 408 414 520 C 422 596 466 632 518 612 C 546 532 542 408 525 336 C 512 308 485 288 458 296 Z",
-    earBack: "M 510 290 C 553 302 573 356 567 420 C 549 386 523 344 499 322 Z",
-    mask: "M 140 470 C 118 506 122 564 165 600 C 230 648 345 638 392 582 C 422 546 415 486 374 458 C 330 428 256 432 212 458 C 182 462 156 462 140 470 Z",
-    saddle: "M 640 250 C 850 235 1040 255 1150 320 C 1200 400 1185 500 1120 560 C 980 585 800 588 680 560 C 620 460 600 340 640 250 Z",
-    belly: "M 480 720 C 640 760 880 758 1040 720 C 1080 780 980 820 820 822 C 640 824 500 800 460 760 Z",
-    eyeClosed: "M 312 420 C 332 404 364 404 382 420",
-    nose: { cx: 152, cy: 492, rx: 38, ry: 28 },
-    eyeOpen: { cx: 360, cy: 420, rx: 30, ry: 36, hl: 12 },
-    cheek: { cx: 382, cy: 466, rx: 38, ry: 21 },
+    sil: "M4685 10228 c-480 -71 -957 -286 -1420 -638 -163 -123 -214 -168 -393 -345 -235 -230 -344 -362 -534 -650 -264 -400 -374 -645 -447 -1003 -16 -77 -14 -334 3 -412 85 -388 357 -654 821 -805 61 -19 124 -40 141 -45 17 -6 40 -10 51 -10 25 0 73 -36 73 -56 0 -8 20 -58 45 -111 235 -502 774 -866 1500 -1011 94 -19 142 -27 338 -52 105 -14 647 -13 741 1 98 15 123 8 131 -33 28 -148 84 -345 195 -678 134 -404 190 -593 180 -604 -3 -2 -84 22 -180 54 -202 68 -437 130 -605 159 -155 26 -186 31 -275 41 -460 50 -823 37 -1180 -41 -109 -25 -142 -34 -255 -71 -611 -201 -963 -642 -855 -1073 95 -378 475 -666 1105 -835 529 -143 1280 -214 1924 -181 506 25 964 81 1321 162 25 6 63 14 85 19 142 31 384 95 460 122 l31 10 64 -42 c134 -87 392 -199 555 -241 17 -4 55 -14 85 -22 30 -8 84 -20 120 -26 36 -7 85 -16 110 -21 55 -10 160 -25 300 -41 139 -17 737 -17 890 0 328 35 499 60 699 103 l55 12 30 -39 c345 -444 985 -770 1876 -955 30 -7 73 -16 95 -20 72 -15 247 -44 360 -60 44 -6 107 -15 140 -20 1406 -204 3973 -227 5540 -48 139 16 271 16 405 -1 931 -112 2009 -100 2595 29 22 5 65 14 95 21 404 88 736 249 880 428 75 93 136 205 171 313 l33 103 -1 130 c-1 294 -139 539 -410 731 -51 37 -93 69 -93 73 0 4 31 25 69 45 248 137 448 361 549 616 27 67 40 114 72 257 13 57 13 378 -1 445 -43 215 -87 354 -155 490 -95 190 -190 315 -374 498 -456 452 -1161 813 -2165 1110 -88 26 -384 101 -470 120 -33 7 -73 16 -90 20 -16 4 -57 13 -90 20 -33 6 -78 15 -100 20 -22 5 -69 14 -105 20 -36 6 -85 15 -110 20 -25 5 -79 13 -120 20 -41 6 -100 15 -130 20 -106 17 -309 43 -470 59 -1048 108 -2158 90 -4150 -69 -191 -15 -737 -39 -900 -40 -276 0 -1035 -41 -1325 -71 -671 -69 -973 -174 -1044 -363 -102 -274 -623 -607 -1261 -808 -112 -35 -115 -36 -290 -81 -257 -65 -384 -87 -710 -127 -103 -12 -237 -13 -244 -1 -3 4 60 65 139 136 437 386 737 852 895 1395 12 41 26 86 31 100 16 46 79 291 98 385 65 310 91 530 91 774 0 162 -5 223 -31 381 -71 425 -285 710 -639 850 -208 83 -380 131 -565 159 -38 6 -100 15 -136 21 -85 13 -513 13 -598 0 -149 -23 -200 -32 -281 -52 -193 -46 -383 -124 -520 -212 -40 -26 -79 -46 -87 -44 -9 2 -30 48 -53 113 -223 644 -676 1118 -1270 1333 -168 61 -280 86 -527 122 -86 12 -443 11 -528 -2z",
+    // upright overlays (2360x1120 frame, no y-flip)
+    earFar:  "M 760 240 C 950 230 1010 380 970 540 C 900 560 820 520 790 420 C 765 340 750 290 760 240 Z",
+    earNear: "M 300 150 C 252 176 230 290 240 426 C 247 552 292 628 358 614 C 424 598 438 466 424 340 C 414 252 396 186 358 160 C 338 147 318 143 300 150 Z",
+    mask:    "M 130 410 C 120 340 175 295 295 295 C 440 295 515 350 508 432 C 500 505 415 545 300 540 C 200 535 140 478 130 410 Z",
+    saddle:  "M 700 300 C 1100 250 1700 270 2150 360 C 2250 520 2200 640 2050 700 C 1500 720 1000 700 760 600 C 680 460 660 380 700 300 Z",
+    belly:   "M 700 820 C 1100 920 1800 920 2200 840 C 2240 960 2000 1010 1600 1010 C 1000 1010 760 940 700 860 Z",
+    eyeClosed: "M 515 280 C 555 254 620 254 658 282",
+    nose:    { cx: 160, cy: 392, rx: 74, ry: 58 },
+    eyeOpen: { cx: 586, cy: 268, rx: 50, ry: 60, hl: 20 },
+    cheek:   { cx: 640, cy: 500, rx: 95, ry: 54 },
   };
-  // (the mastiff art is authored upright in a 1300x900 frame — no trace transform.)
+  // mastiff trace transform (potrace y-flip) — maps the SILHOUETTE into the 2360x1120 frame
+  const MTT = 'transform="translate(0,1120) scale(0.1,-0.1)"';
 
   /* ---- palette: per-colour fills (real-art anchored) ----
      fur   = the main body (recolours the traced silhouette)
@@ -139,9 +143,10 @@
   // up/out while staying seated on the crown. translate = crownPoint − 430*s , −··· − 250*s.
   const HAT_T_CAT = 'transform="translate(11,-157) scale(1.3)"';   // cat crown (570,168)
   const HAT_T_DOG = 'transform="translate(41,121) scale(1.066)"';  // dog crown (499.6,387)
-  // mastiff crown sits at ~(370,285) in the 1300x900 frame; hats authored around
-  // (430,250) scaled ~0.92 to the smaller head. translate = crown − 430*s , − 250*s.
-  const HAT_T_MASTIFF = 'transform="translate(74,55) scale(0.92)"'; // mastiff crown (469.6,285)
+  // mastiff TRACED frame 2360x1120; the visible head crown (top, between the ears)
+  // sits at ~(560,115) measured off a coordinate-grid render. Hats authored around
+  // (430,250) scaled 1.5 to the big head. translate = crown − 430*s , − 250*s.
+  const HAT_T_MASTIFF = 'transform="translate(-85,-260) scale(1.5)"'; // mastiff crown (560,115)
   function hatSVG(id, species) {
     if (!id || id === "none") return "";
     const S = 'stroke="' + OUT + '" stroke-width="28" stroke-linejoin="round" stroke-linecap="round"';
@@ -301,27 +306,29 @@
           belly = c.belly || "#E2C68C", mask = c.mask || "#2E2620",
           ear = c.ear || OUT, nose = c.noseFill || "#1E1812", cheek = c.cheek || "#C98B7E";
     const M = MASTIFF_P;
-    const stroke = 'stroke="' + OUT + '" stroke-width="15" stroke-linejoin="round"';
+    // chunky doodle line, matching the cat/dog outline weight (drawn in the 2360 frame)
+    const stroke = 'stroke="' + OUT + '" stroke-width="22" stroke-linejoin="round" stroke-linecap="round"';
     const eye = awake
       ? '<ellipse cx="' + M.eyeOpen.cx + '" cy="' + M.eyeOpen.cy + '" rx="' + M.eyeOpen.rx + '" ry="' + M.eyeOpen.ry + '" fill="' + OUT + '"/>' +
-        '<circle cx="' + (M.eyeOpen.cx + 11) + '" cy="' + (M.eyeOpen.cy - 15) + '" r="' + M.eyeOpen.hl + '" fill="#fff"/>'
-      : '<path d="' + M.eyeClosed + '" fill="none" stroke="#0c0a08" stroke-width="12" stroke-linecap="round"/>';
+        '<circle cx="' + (M.eyeOpen.cx + 18) + '" cy="' + (M.eyeOpen.cy - 24) + '" r="' + M.eyeOpen.hl + '" fill="#fff"/>'
+      : '<path d="' + M.eyeClosed + '" fill="none" stroke="#0c0a08" stroke-width="24" stroke-linecap="round"/>';
     return (
-      // far ear tip peeking behind the crown
-      '<path d="' + M.earBack + '" fill="#1b1610" opacity=".95"/>' +
-      // body silhouette + paws (fur)
-      '<path d="' + M.sil + '" fill="' + fur + '" ' + stroke + '/>' +
-      '<path d="' + M.paws + '" fill="' + fur + '" ' + stroke + '/>' +
-      // clipped overlays: saddle, belly, mask, cheek
-      '<clipPath id="' + cid + '"><path d="' + M.sil + '"/></clipPath>' +
+      // traced body silhouette (fur), drawn under the potrace y-flip transform, with a
+      // chunky doodle outline (stroke) — same loose line as the cat/dog
+      '<g ' + MTT + '><path d="' + M.sil + '" fill="' + fur + '" stroke="' + OUT + '" stroke-width="220" stroke-linejoin="round" stroke-linecap="round"/></g>' +
+      // clipped overlays — authored UPRIGHT in the same frame (outside MTT), clipped to
+      // the traced silhouette. CLIP GOTCHA: the transform goes on the <path> in the
+      // clipPath, never a wrapping <g>.
+      '<clipPath id="' + cid + '"><path ' + MTT + ' d="' + M.sil + '"/></clipPath>' +
       '<g clip-path="url(#' + cid + ')">' +
         '<path d="' + M.saddle + '" fill="' + saddle + '" opacity=".5"/>' +
         '<path d="' + M.belly + '" fill="' + belly + '" opacity=".55"/>' +
+        '<path d="' + M.earFar + '" fill="#241712" opacity=".9"/>' +
         '<path d="' + M.mask + '" fill="' + mask + '" opacity=".96"/>' +
-        '<ellipse cx="' + M.cheek.cx + '" cy="' + M.cheek.cy + '" rx="' + M.cheek.rx + '" ry="' + M.cheek.ry + '" fill="' + cheek + '" opacity=".4"/>' +
+        '<ellipse cx="' + M.cheek.cx + '" cy="' + M.cheek.cy + '" rx="' + M.cheek.rx + '" ry="' + M.cheek.ry + '" fill="' + cheek + '" opacity=".36"/>' +
       '</g>' +
-      // near droopy ear (black, in front of the cheek)
-      '<path d="' + M.ear + '" fill="' + ear + '" ' + stroke + '/>' +
+      // near droopy ear (black, hanging down the left in front of the cheek)
+      '<path d="' + M.earNear + '" fill="' + ear + '" ' + stroke + '/>' +
       // blunt nose at the muzzle tip
       '<ellipse cx="' + M.nose.cx + '" cy="' + M.nose.cy + '" rx="' + M.nose.rx + '" ry="' + M.nose.ry + '" fill="' + nose + '"/>' +
       eye +
@@ -385,13 +392,14 @@
     // size + baseline — the dog drops cleanly into the cat's frame.
     let inner, fit;
     if (species === "mastiff") {
-      // mastiff frame 1300x900; body spans ~x20..1255 / ~y262..845. Senda is a BIG dog —
-      // render her ~1.35x the cat's footprint (the brief asks ≥30% bigger). The art is
-      // authored upright (no flip). Centre on the body and rest on the cat's baseline.
-      const base = 100 / 1300;          // would fit the full frame width into 100
-      const scale = base * 1.35;        // ≥30% larger than the cat on screen
-      const tx = -40 * scale;           // pull in the left margin
-      const ty = (100 - 900 * scale) / 2 + 30;
+      // mastiff TRACED frame 2360x1120; the body occupies ~x188..2299 / ~y96..1061.
+      // Senda is a BIG dog — render her ~1.4x the cat's on-screen footprint (the brief
+      // asks ≥30% bigger). Scale so the ~2110-wide body fills the frame, then a touch
+      // more; centre on the body bbox and rest on the cat's baseline.
+      const scale = (100 / 2360) * 1.34;   // ≥30% larger than the cat on screen
+      // centre the body bbox (x ~188..2299, mid ~1244) on x50, then nudge left a hair
+      const tx = 50 - 1244 * scale - 2;
+      const ty = (100 - 1120 * scale) / 2 + 10;  // rest low, hats overflow up
       fit = 'transform="translate(' + tx.toFixed(2) + ',' + ty.toFixed(2) + ') scale(' + scale.toFixed(5) + ')"';
     } else if (species === "dog") {
       // dog frame 1256x984; body spans ~x350..870 / ~y355..690. Scale up and recentre
@@ -520,13 +528,13 @@
     const mouse = { x: pos.x, y: pos.y };
     // facing: target ±1 (deadzoned); facingNow eases toward it for a smooth flip.
     let facing = 1, facingNow = 1, walking = false, lastFlip = 0, runningHard = false;
-    let lastMove = now(), lastT = now(), raf = 0, running = true;
+    let lastMove = now(), lastT = now(), raf = 0, running = true, parked = false;
     let emoteUntil = 0, lastSurprise = 0, lastEcho = 0;
     const reduceMotion = (() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } })();
 
     function now() { return performance.now(); }
 
-    function onMove(e) { mouse.x = e.clientX; mouse.y = e.clientY; lastMove = now(); }
+    function onMove(e) { mouse.x = e.clientX; mouse.y = e.clientY; lastMove = now(); wake(); }
     addEventListener("pointermove", onMove, { passive: true });
 
     // motion after-image: drop a faint, fading ghost of the current sprite at the
@@ -569,7 +577,7 @@
       if (!hit) return;
       const t = now();
       if (t - lastSurprise < 850) return;
-      lastSurprise = t; surprise();
+      lastSurprise = t; surprise(); wake();
     }
     addEventListener("pointerdown", onDown, true);
 
@@ -655,8 +663,13 @@
 
       el.style.transform =
         "translate(" + (pos.x - size / 2) + "px, " + (pos.y - size / 2) + "px) scaleX(" + facingNow + ")";
+      // Park the 60fps loop once fully asleep and settled — re-writing an identical
+      // transform every frame is wasted main-thread work. pointermove/clicks wake it.
+      if (curPose === "sleep" && !walking && dist < 0.5 && t >= emoteUntil) { parked = true; raf = 0; return; }
       raf = requestAnimationFrame(frame);
     }
+    // Restart the loop after it parks (called from pointermove / click handlers).
+    function wake() { if (running && parked) { parked = false; lastT = now(); raf = requestAnimationFrame(frame); } }
     raf = requestAnimationFrame(frame);
 
     return {

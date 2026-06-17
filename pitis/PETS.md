@@ -29,7 +29,16 @@ Internal — never ships. Companion engine lives entirely in `pitis/` (see READM
   jowly. Lying/sploot. Refs: `reference/senda-1.png`, `reference/senda-2.png`.
 - **Piti:** new species **`mastiff`** in the resting pose (head left), fawn body +
   black mask + droopy ears + jowls. **≥30% bigger than the cat.** Third species tab;
-  wears hats via `HAT_T_MASTIFF`.
+  wears hats via `HAT_T_MASTIFF`. **Her silhouette is TRACED (potrace) from `senda-1.png`**
+  (flipped head-left) just like the cat/dog — the photo's terracotta floor matches her
+  fawn fur so an auto-threshold can't separate figure/ground, so the body was traced from
+  a clean *guide-mask* (painted over the photo, then potraced for the organic doodle line)
+  rather than thresholded; `MASTIFF_P.sil` lives in the potrace y-flip frame (2360×1120,
+  `MTT`). The dark regions (black **mask**, **near/far ears**, **saddle**, lighter
+  **belly**) have no hard photo edge, so — exactly as the cat's belly/blush — they're
+  authored UPRIGHT in the same frame and **clipped to the traced silhouette**. (Earlier
+  she was a hand-authored blob; that was the bug — now she's traced.) Fixed "Senda" look
+  (ignores the recolour palette).
 
 ### Originals still present
 - **Cat** (default species) — the traced FigPal sleeping cat; default colour is now
