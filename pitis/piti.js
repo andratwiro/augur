@@ -16,9 +16,9 @@
   // Figma-style pointer (dark arrow, white outline) shown site-wide while the piti
   // is active (Shift+Ñ on). Hotspot at the tip. Built as a cursor data-URI.
   const CURSOR_SVG =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">' +
-    '<path d="M7 4 L7 25 L12.6 19.4 L16.4 26 L19.8 24.1 L16 17.6 L23.5 17.6 Z" ' +
-    'fill="#2f2c34" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">' +
+    '<path d="M5.5 3 L20.5 12 L12 16.5 L7.8 22 Z" ' +
+    'fill="#333" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>';
   const CURSOR_URI = "data:image/svg+xml," + encodeURIComponent(CURSOR_SVG);
 
   /* ---- traced paths (potrace, viewBox 0 0 1744 720, transform below) ----
@@ -360,7 +360,7 @@
         "@keyframes pt-fade{from{opacity:0}to{opacity:1}}" +
         ".piti-modal-frame{width:480px;max-width:100%;height:600px;max-height:92vh;border:none;background:transparent;border-radius:20px}" +
         // Figma-style cursor while the piti is active (text fields keep the I-beam)
-        "html.piti-cursor,html.piti-cursor *{cursor:url('" + CURSOR_URI + "') 7 4,auto !important}" +
+        "html.piti-cursor,html.piti-cursor *{cursor:url('" + CURSOR_URI + "') 5 3,auto !important}" +
         "html.piti-cursor input,html.piti-cursor textarea,html.piti-cursor [contenteditable]{cursor:text !important}" +
         "@media (prefers-reduced-motion: reduce){" +
         ".piti-companion.walk .pt-rest svg,.piti-companion.walk .pt-awake svg{animation:none}" +
