@@ -84,12 +84,14 @@
     { name: "Ginger & white", fur: "#F7F2EA", dark: "#E3DCCF", belly: "#FFFFFF", cheek: "#EFA59B",
       pattern: "bicolor", patch: "#E89A4E", patchDark: "#CB7A2C", noseFill: "#E98DA1",
       swatch: "linear-gradient(135deg,#F7F2EA 0 47%,#E89A4E 53% 100%)" },
-    // Brown-grey mackerel tabby, modelled on Rob's cat Pruna: warm grey-brown base,
-    // darker mackerel stripes, cream belly/chest, tabby forehead "M", dark tail rings,
-    // pinkish nose. Cat-only pattern (like the bicolor). swatch = base + a stripe band.
-    { name: "Pruna", fur: "#9C8C76", dark: "#4A4038", belly: "#D9CDB6", cheek: "#C9A6A0",
-      pattern: "tabby", stripe: "#4A4038", noseFill: "#D98A8A",
-      swatch: "linear-gradient(135deg,#9C8C76 0 38%,#4A4038 44% 56%,#9C8C76 62% 100%)" },
+    // Brown-&-white mackerel tabby, re-anchored off a clean FigPal reference of Pruna:
+    // warm milk-chocolate base (#A2805A), dark-espresso mackerel stripes (#48331C), a
+    // WHITE face mask + white chest/bib + white front paws + white tail-tip, tabby
+    // forehead "M", dark tail rings, mauve-pink nose, rosy blush. Cat-only pattern.
+    // swatch = brown base · espresso stripe band · white corner.
+    { name: "Pruna", fur: "#A2805A", dark: "#48331C", belly: "#FCFBF7", cheek: "#EFA6AF",
+      pattern: "tabby", stripe: "#48331C", noseFill: "#C97F88",
+      swatch: "linear-gradient(135deg,#A2805A 0 30%,#48331C 36% 50%,#A2805A 56% 72%,#FCFBF7 80% 100%)" },
     // Fawn Spanish-mastiff look, modelled on Rob's dog Senda — hues sampled off the
     // reference (senda-figpal.png): fawn body, dark-brown mask+ears, salmon blush, the
     // chunky near-black line. A fixed mastiff-only colour (the mastiff ignores the
@@ -204,47 +206,60 @@
       '<ellipse cx="600" cy="430" rx="56" ry="33" fill="' + c.cheek + '" opacity=".5"/>'
     );
   }
-  // Brown-grey mackerel tabby (Pruna). Base fur is already the warm grey-brown; on top
-  // we lay: a darker "saddle" of mackerel stripes ribbing the back/flank (roughly
-  // vertical bars), dark rings on the tail (far right ~x1500), a cream belly/chest
-  // patch sweeping under the head, the tabby forehead "M" + dark ear caps, and faint
-  // blush. Stripes bleed past the silhouette so the clip trims them flush.
+  // Brown-&-white mackerel tabby (Pruna), re-anchored off a clean FigPal reference.
+  // Base fur is the warm milk-chocolate brown; clipped to the silhouette we lay, in
+  // order: a solid WHITE face-mask (muzzle + chin + cheeks + a blaze poking up into the
+  // brown cap) + white chest/bib + white front paws + a white tail-tip; espresso
+  // mackerel stripes ribbing the back/flank; dark tail rings; the tabby forehead "M" +
+  // a couple of cap bars on the brown crown; dark inner-ears with a faint pink; and a
+  // rosy blush on each white cheek. Shapes bleed past the outline so the clip trims them.
   function tabbyMarks(c) {
     const st = c.stripe || c.dark;
+    const W = c.belly || "#fff";
     return (
-      // cream chest/belly — sits low-left under the head, the pale front Pruna shows
-      '<ellipse cx="470" cy="540" rx="230" ry="150" fill="' + c.belly + '" opacity=".9"/>' +
-      '<ellipse cx="700" cy="600" rx="170" ry="110" fill="' + c.belly + '" opacity=".55"/>' +
-      // dark ear caps
-      '<path d="M298 150 Q345 30 425 110 Q360 130 320 175 Z" fill="' + st + '"/>' +
-      '<path d="M548 150 Q600 30 660 122 Q600 130 565 170 Z" fill="' + st + '"/>' +
-      // tabby forehead "M" — three short dark bars on the brow, above the eyes
-      '<g fill="none" stroke="' + st + '" stroke-width="24" stroke-linecap="round" opacity=".92">' +
-        '<path d="M430 232 L430 188"/>' +
-        '<path d="M384 244 Q396 205 408 196"/>' +
-        '<path d="M476 244 Q464 205 452 196"/>' +
+      // --- WHITE markings (face mask, chest, paws, tail tip) ---
+      '<g fill="' + W + '">' +
+        '<ellipse cx="510" cy="478" rx="245" ry="150"/>' +   // muzzle / lower-face mask
+        '<ellipse cx="560" cy="330" rx="74" ry="150"/>' +    // blaze poking up between the eyes
+        '<ellipse cx="455" cy="565" rx="240" ry="135"/>' +   // chest / bib
+        '<ellipse cx="275" cy="600" rx="140" ry="98"/>' +    // left front paw (toe tuck)
+        '<ellipse cx="650" cy="605" rx="140" ry="90"/>' +    // right front paw
+        '<ellipse cx="1320" cy="470" rx="95" ry="105"/>' +   // white tail tip
       '</g>' +
-      // mackerel stripes ribbing the back + flank (roughly vertical bars sweeping with
-      // the spine, denser toward the rump). They run from the back-line down the side.
-      '<g fill="none" stroke="' + st + '" stroke-width="40" stroke-linecap="round" opacity=".82">' +
-        '<path d="M760 150 Q745 320 800 470"/>' +
-        '<path d="M880 130 Q865 320 920 480"/>' +
-        '<path d="M1000 130 Q985 330 1045 490"/>' +
-        '<path d="M1120 140 Q1105 340 1170 500"/>' +
-        '<path d="M1240 160 Q1230 350 1300 510"/>' +
-        '<path d="M1360 190 Q1360 360 1430 510"/>' +
+      // --- espresso mackerel stripes ribbing the back + flank (vertical ribs sweeping
+      // with the spine, denser toward the rump), drawn on the brown ---
+      '<g fill="none" stroke="' + st + '" stroke-width="44" stroke-linecap="round" opacity=".9">' +
+        '<path d="M745 140 Q732 320 778 470"/>' +
+        '<path d="M850 120 Q838 322 892 482"/>' +
+        '<path d="M955 112 Q945 330 1008 492"/>' +
+        '<path d="M1062 118 Q1056 336 1126 496"/>' +
+        '<path d="M1168 132 Q1166 346 1238 500"/>' +
+        '<path d="M1272 158 Q1282 360 1348 498"/>' +
+        '<path d="M1372 200 Q1392 358 1450 478"/>' +
       '</g>' +
-      // dark spine line down the back
-      '<path d="M720 120 Q1050 70 1400 150" fill="none" stroke="' + st + '" stroke-width="34" stroke-linecap="round" opacity=".5"/>' +
-      // dark tail rings (tail is the far-right lobe ~x1450-1720 / y300-560)
-      '<g fill="none" stroke="' + st + '" stroke-width="46" stroke-linecap="round" opacity=".88">' +
-        '<path d="M1500 230 Q1560 350 1500 470"/>' +
-        '<path d="M1590 250 Q1650 360 1590 470"/>' +
-        '<path d="M1680 290 Q1730 370 1680 450"/>' +
+      // --- dark tail rings on the curled tail (~x1150-1450), white tip drawn above ---
+      '<g fill="none" stroke="' + st + '" stroke-width="48" stroke-linecap="round" opacity=".92">' +
+        '<path d="M1185 408 Q1232 478 1198 548"/>' +
+        '<path d="M1262 402 Q1312 476 1278 550"/>' +
+        '<path d="M1342 410 Q1392 476 1356 548"/>' +
       '</g>' +
-      // faint blush on the cheeks
-      '<ellipse cx="372" cy="445" rx="54" ry="32" fill="' + c.cheek + '" opacity=".45"/>' +
-      '<ellipse cx="600" cy="445" rx="54" ry="32" fill="' + c.cheek + '" opacity=".45"/>'
+      '<ellipse cx="1322" cy="470" rx="92" ry="102" fill="' + W + '"/>' + // white tail tip on top of the last ring
+      // --- tidy tabby head striping framing the blaze (two thin strokes each side,
+      // flowing up the brown cap toward the ears — the classic forehead "M") ---
+      '<g fill="none" stroke="' + st + '" stroke-width="20" stroke-linecap="round" opacity=".82">' +
+        '<path d="M432 270 Q452 202 470 152"/>' +   // left inner
+        '<path d="M374 262 Q394 192 416 140"/>' +   // left outer (toward ear)
+        '<path d="M662 270 Q640 202 622 152"/>' +   // right inner
+        '<path d="M720 262 Q700 192 678 140"/>' +   // right outer (toward ear)
+      '</g>' +
+      // --- dark inner-ears with a faint pink, on the brown cap ---
+      '<path d="M300 150 Q350 32 432 112 Q368 132 326 178 Z" fill="' + st + '"/>' +
+      '<path d="M576 150 Q636 30 700 124 Q636 134 600 172 Z" fill="' + st + '"/>' +
+      '<path d="M340 140 Q372 78 418 124 Q374 138 350 168 Z" fill="#E6A6AD" opacity=".75"/>' +
+      '<path d="M608 140 Q644 80 686 128 Q642 140 620 166 Z" fill="#E6A6AD" opacity=".75"/>' +
+      // --- rosy blush on each white cheek ---
+      '<ellipse cx="400" cy="468" rx="62" ry="36" fill="' + c.cheek + '" opacity=".7"/>' +
+      '<ellipse cx="652" cy="470" rx="62" ry="36" fill="' + c.cheek + '" opacity=".7"/>'
     );
   }
 
