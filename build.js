@@ -92,7 +92,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.35";
+const UI_VERSION = "0.36";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -448,6 +448,18 @@ function fmtDate(ms) {
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
+
+// Self-hosted Inter (one variable woff2, all weights) — replaces the render-blocking
+// Google Fonts link. font-display:swap shows the system fallback until it loads (no
+// FOIT). Shared by the shell pages and the injected Primitives-gallery skin.
+const FONT_CSS = `
+    @font-face {
+      font-family: "Inter";
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
+    }`;
 
 const PAGE_CSS = `
     /* Linear-style shell — light edition: near-white canvas, indigo accent, Inter type.
@@ -1118,8 +1130,7 @@ function injectNav(html, active) {
 // .gv-card sections get a crisp hairline + soft shadow. The gallery owns its own
 // (side-nav) layout; the skin only harmonises colours and reserves the top-bar height.
 // Injected last so it wins over the gallery's own body rule (equal specificity).
-const PRIMITIVES_SKIN = `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+const PRIMITIVES_SKIN = `${FONT_CSS}
     body.gv-root {
       background: #fbfbfd !important;
       padding-top: 76px !important;
@@ -1219,10 +1230,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <title>${title}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-  <style>${PAGE_CSS}${NAV_CSS}${addon ? addon.css() : ""}
+  <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <style>${FONT_CSS}${PAGE_CSS}${NAV_CSS}${addon ? addon.css() : ""}
   </style>
 </head>
 <body>
@@ -1669,6 +1678,12 @@ async function main() {
   await fs.mkdir(path.join(DIST, "__review"), { recursive: true });
   await fs.copyFile(SRC_REVIEW, path.join(DIST, "__review", "comments.js"));
   await fs.copyFile(SRC_REVIEW_CAT, path.join(DIST, "__review", "aslam.png"));
+
+  // Self-hosted fonts → /fonts/ (served immutable + public by the worker). Replaces
+  // the render-blocking Google Fonts link; one variable woff2 covers every weight.
+  if (await isDir(path.join(ROOT, "fonts"))) {
+    await copyDir(path.join(ROOT, "fonts"), path.join(DIST, "fonts"));
+  }
 
   const protoCount = opportunities.reduce((n, o) => n + o.prototypes.length, 0);
   console.log(
