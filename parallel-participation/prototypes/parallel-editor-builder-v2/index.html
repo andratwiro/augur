@@ -17,6 +17,9 @@
 <link rel="stylesheet" href="assets/govocal-tokens.css" />
 <link rel="stylesheet" href="assets/govocal-ui.css" />
 <link rel="stylesheet" href="assets/govocal-bo.css" />
+<!-- Leaflet (open-source maps) — only used by the hooked FO project page's ideation MAP view -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script src="assets/govocal-icons.js" defer></script>
 <script src="assets/govocal-avatars.js" defer></script>
 <!-- City theme switcher: drives --gv-tenant-* + renders [data-gv-logo]. On-screen picker
@@ -2283,125 +2286,458 @@
 <!-- ============ Content builder overlay (rich canvas) ============ -->
 <!-- ══════════════════════════════════════════════════════════════════════════
      VIEW: Full FRONT-OFFICE project page. Opened by the top-bar / content-builder
-     Eye icon. Renders the SAME phoneFO(state) body as the editor's phone preview —
-     one source of truth, so preview content === front-office content. Lives OUTSIDE
-     the .gv-bo teal remap so it themes to the real city tenant (syncFOTheme re-points
-     --gv-tenant-* to the :root city colours). "Edit project" returns to the editor.
+     Eye icon. This is the REAL GoVocal project page (ported from the canonical
+     pages/project-page) — shell + data-driven phase ribbon + per-method bodies
+     (ideation feed/map, information, …) — but DRIVEN BY THE EDITOR'S project
+     (window.ppState → Meridian content + phases), so editor ⇄ FO stay in step.
+     Lives OUTSIDE the .gv-bo teal remap so it themes to the real city tenant
+     (syncFOTheme re-points --gv-tenant-*). The manager-bar "Edit project" returns.
+     Page-local CSS below is layout-only, copied from the canonical page; every
+     visual class is canonical .gv-*. The "extra surveys" block (.fo-extra) is the
+     content-builder's Extras promoted into the page, prototype-local.
      ════════════════════════════════════════════════════════════════════════ -->
 <style>
-  #view-fo { position: fixed; inset: 0; z-index: 60; background: var(--gv-background, #edeff0); display: none; flex-direction: column; overflow: hidden; }
-
-  /* Admin "you are previewing" strip — stays in the BO teal context (the admin chrome),
-     with a button back into the editor. */
-  #view-fo .foview-adminbar { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 22px; background: var(--gv-bo-primary, #044d57); color: #fff; font-family: var(--gv-font-family); }
-  #view-fo .foview-adminbar__txt { display: inline-flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 500; }
-  #view-fo .foview-adminbar__txt .gv-icon { width: 15px; height: 15px; }
-  #view-fo .foview-adminbar .gv-btn { background: #fff; color: var(--gv-bo-primary, #044d57); border: 0; }
-  #view-fo .foview-adminbar .gv-btn:hover { background: var(--gv-grey-100, #eef0f2); }
-
-  /* Real city header — canonical .gv-header/.gv-nav, desktop only inside this view. */
+  #view-fo { position: fixed; inset: 0; z-index: 60; background: #fff; display: none; flex-direction: column; overflow: hidden; }
   #view-fo .foview-header { flex: 0 0 auto; }
   #view-fo .foview-header .gv-nav-m { display: none !important; }
-  #view-fo .foview-header .gv-header__cta { display: inline-flex; }
+  #view-fo .foview-scroller { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; }
+  #view-fo .foview-doc { min-height: 100%; display: flex; flex-direction: column; }
+  #view-fo main { flex: 1 0 auto; padding-bottom: 8px; }
 
-  #view-fo .foview-scroller { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-  #view-fo .foview-doc { min-height: 100%; display: flex; flex-direction: column; background: #fff; }
-  #view-fo #fo-body { flex: 1 0 auto; }
+  /* ── layout-only, ported from canonical pages/project-page ───────────────── */
+  #view-fo .pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
+  #view-fo .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
+  #view-fo .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #view-fo .pp-head { padding: 36px 0 44px; }
+  #view-fo .pp-head h1 { margin: 20px 0 16px; }
+  #view-fo .pp-row { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 10px 40px; align-items: start; }
+  #view-fo .pp-cta { display: flex; flex-direction: column; gap: 10px; }
+  #view-fo .pp-cta .gv-btn { justify-content: center; }
+  #view-fo .pp-cta .gv-participants { display: flex; justify-content: center; }
+  #view-fo .pp-intro { margin: 0; }
+  @media (max-width: 760px) {
+    #view-fo .pp-row { grid-template-columns: 1fr; }
+    #view-fo .pp-ctacell { margin-bottom: 26px; }
+  }
 
-  /* phoneFO() body, laid out for a desktop reading (the phone preview = the same markup
-     scaled; here it reflows wide). */
-  #view-fo .pp-fo { font-family: var(--gv-font-family); color: var(--gv-text-primary, #1a1f2c); background: #fff; }
-  #view-fo .pp-fo__banner { height: 360px; overflow: hidden; }
-  #view-fo .pp-fo__banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  #view-fo .pp-fo__pad { max-width: 820px; margin: 0 auto; padding: 40px 28px 0; }
-  #view-fo .pp-fo__title { margin: 0 0 16px; }
-  #view-fo .pp-fo__lead { margin: 0 0 26px; font-size: 1.0625rem; line-height: 1.62; color: var(--gv-grey-800, #43515D); max-width: 68ch; }
-  #view-fo .pp-fo__pbox { margin: 0 0 32px; border: 1px solid var(--gv-grey-200, #e1e4e8); border-radius: var(--gv-radius, 3px); background: #fff; padding: 22px 24px; box-shadow: var(--gv-shadow, 0 2px 6px rgba(0,0,0,.05)); }
-  #view-fo .pp-fo__cta { display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px; margin: 0 0 16px; }
-  #view-fo .pp-fo__cta .gv-btn { flex: 1 1 auto; justify-content: center; min-width: 220px; }
-  #view-fo .pp-fo__parts { display: flex; align-items: center; gap: 12px; margin: 0; }
-  #view-fo .pp-fo__acc { margin: 0 0 32px; }
-  #view-fo .pp-fo__h2 { margin: 0 0 16px; }
-  #view-fo .pp-fo__stepper { margin: 0 0 20px; }
-  #view-fo .pp-fo__phasecard { background: #fff; border: 1px solid var(--gv-grey-200, #e1e4e8); border-radius: var(--gv-radius, 3px); padding: 18px 20px; margin: 0 0 28px; }
-  #view-fo .pp-fo__phasecard-eyebrow { font-size: 12px; font-weight: 700; color: var(--gv-green-600, #1f8a4c); margin-bottom: 4px; }
-  #view-fo .pp-fo__phasecard-title { margin: 0 0 6px; font-size: 1.25rem; font-weight: 700; }
-  #view-fo .pp-fo__phasecard-dates { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--gv-text-secondary, #596B7A); margin-bottom: 12px; }
-  #view-fo .pp-fo__phasecard-dates .gv-icon { width: 14px; height: 14px; }
-  #view-fo .pp-fo__phasecard-desc { margin: 0; line-height: 1.6; color: var(--gv-grey-800, #43515D); }
+  /* Participation bar — header lives outside the scroller, so stick to top:0. */
+  #view-fo .gv-partbar { top: 0; }
 
-  /* Lower section: full-bleed grey, content recentred to the same column. */
-  #view-fo .pp-fo__pad--grey { max-width: none; background: var(--gv-background, #edeff0); padding: 40px 0 56px; }
-  #view-fo .pp-fo__pad--grey > * { max-width: 820px; margin: 0 auto; padding: 0 28px; }
-  #view-fo .pp-fo__ideas { margin: 0 auto 36px; }
-  #view-fo .pp-fo__ideas .gv-pcount { color: var(--gv-text-secondary, #596B7A); font-weight: 600; }
-  #view-fo .gv-idealist { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  /* ── Ideation MAP view (page-local, ported from canonical) ───────────────── */
+  #view-fo .pp-map { position: relative; min-height: 560px; height: 560px; border-radius: var(--gv-radius); overflow: hidden; border: 1px solid var(--gv-grey-200); background-color: #e8ede4; }
+  #view-fo .pp-map__canvas { position: absolute; inset: 0; border-radius: var(--gv-radius); z-index: 0; }
+  #view-fo .pp-map .leaflet-pane, #view-fo .pp-map .leaflet-top, #view-fo .pp-map .leaflet-bottom { z-index: 1; }
+  #view-fo .pp-poptitle { margin: 0 0 8px; font-size: var(--gv-fs-l); font-weight: 600; line-height: 1.25; color: var(--gv-text-heading-strong); }
+  #view-fo .pp-popstats { display: flex; align-items: center; gap: 16px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); }
+  #view-fo .pp-popstats span { display: inline-flex; align-items: center; gap: 6px; }
+  #view-fo .pp-popstats svg { width: 15px; height: 15px; }
+  #view-fo .pp-marker { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--gv-tenant-primary); color: var(--gv-white); font-size: var(--gv-fs-s); font-weight: 700; line-height: 1; border: 2px solid var(--gv-white); box-shadow: 0 1px 4px rgba(0,0,0,.4); cursor: pointer; }
+  #view-fo .pp-marker.is-active { background: var(--gv-tenant-secondary, var(--gv-tenant-primary)); transform: scale(1.12); }
+  #view-fo .pp-mapwrap { position: relative; isolation: isolate; }
+  #view-fo .pp-mappanel { position: absolute; top: 0; left: 0; bottom: 0; width: 360px; z-index: 1000; display: flex; flex-direction: column; background: #fff; box-shadow: rgba(0,0,0,.12) 0 0 8px 0; }
+  #view-fo .pp-mappanel__top { padding: 16px; border-bottom: 1px solid var(--gv-grey-200); }
+  #view-fo .pp-mapcard__filters { width: 100%; justify-content: center; box-sizing: border-box; }
+  #view-fo .pp-mapcard__list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+  #view-fo .pp-mapidea { background: #fff; border: 1px solid #ccc; border-radius: var(--gv-radius); box-shadow: rgba(0,0,0,.06) 0 2px 4px -1px; padding: 16px 18px; cursor: pointer; }
+  #view-fo .pp-mapidea.is-active { border-color: var(--gv-tenant-primary); box-shadow: rgba(0,0,0,.12) 0 3px 8px -1px; }
+  #view-fo .pp-mapidea__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 600; line-height: 23px; color: var(--gv-text-heading-strong); }
+  #view-fo .pp-mapidea__stats { display: flex; align-items: center; gap: 16px; margin-top: 10px; color: var(--gv-cool-grey-600); font-size: 15px; }
+  #view-fo .pp-mapidea__stat { display: inline-flex; align-items: center; gap: 6px; }
+  #view-fo .pp-mapidea__stat .gv-icon, #view-fo .pp-mapidea__stat svg { width: 16px; height: 16px; }
+  #view-fo .gv-feed.is-map { grid-template-columns: minmax(0, 1fr); }
+  #view-fo .gv-feed.is-map .gv-feed__col, #view-fo .gv-feed.is-map .gv-feedfilter { display: none; }
+  #view-fo .gv-feed.is-map .pp-map { grid-column: 1; }
+  #view-fo .pp-toolbar.is-map .pp-toolbar__filters { display: none; }
+  @media (max-width: 860px) {
+    #view-fo .pp-mapwrap { display: flex; flex-direction: column; gap: 14px; }
+    #view-fo .pp-map { min-height: 360px; height: 360px; order: 2; }
+    #view-fo .pp-mappanel { display: contents; }
+    #view-fo .pp-mappanel__top { order: 1; padding: 0; border: 0; }
+    #view-fo .pp-mapcard__list { order: 3; overflow: visible; padding: 0; gap: 14px; }
+  }
 
-  /* Events: 2-up grid, heading spans the row. */
-  #view-fo .pp-fo [data-edit="events"] { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-  #view-fo .pp-fo [data-edit="events"] .pp-fo__h2 { grid-column: 1 / -1; }
-  #view-fo .pp-fo [data-edit="events"] .gv-event-card { margin: 0; }
-
-  /* Participation bar — sticks just under the fixed header as the page scrolls (the
-     header lives outside the scroller, so override the canonical top:78px to 0). */
-  #view-fo .pp-fo__partbar-anchor { display: none; }
-  #view-fo .pp-fo__partbar { top: 0; }
-  #view-fo .pp-fo__partbar .gv-partbar__inner { max-width: 820px; margin: 0 auto; padding: 16px 28px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
+  /* ── Extra surveys — the content-builder's "Extras" promoted onto the page,
+       in the narrow participation column. Prototype-local (.fo-*). ─────────── */
+  #view-fo .fo-extra { margin-top: 18px; border: 1px solid var(--gv-grey-200); border-radius: var(--gv-radius); background: #fff; padding: 16px; }
+  #view-fo .fo-extra__title { margin: 0 0 2px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-text-primary); }
+  #view-fo .fo-extra__sub { margin: 0 0 12px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+  #view-fo .fo-extra__list { display: flex; flex-direction: column; gap: 8px; }
+  #view-fo .fo-survey-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--gv-grey-200); border-radius: var(--gv-radius); background: #fff; text-decoration: none; }
+  #view-fo .fo-survey-row:hover { border-color: var(--gv-tenant-primary); }
+  #view-fo .fo-survey-row__info { display: flex; flex-direction: column; min-width: 0; }
+  #view-fo .fo-survey-row__name { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary); }
+  #view-fo .fo-survey-row__meta { font-size: 12px; color: var(--gv-text-secondary); }
+  #view-fo .fo-survey-row__go { flex: none; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-tenant-primary); white-space: nowrap; }
 
   /* Empty project → nothing to preview yet. */
   #view-fo .foview-empty { max-width: 560px; margin: 96px auto; text-align: center; padding: 0 24px; color: var(--gv-text-secondary, #596B7A); }
   #view-fo .foview-empty h2 { font-size: 1.25rem; color: var(--gv-text-primary, #1a1f2c); margin: 0 0 10px; }
   #view-fo .foview-empty p { margin: 0; line-height: 1.6; }
-
-  @media (max-width: 720px) {
-    #view-fo .gv-idealist,
-    #view-fo .pp-fo [data-edit="events"] { grid-template-columns: 1fr; }
-    #view-fo .pp-fo__banner { height: 220px; }
-  }
 </style>
 
 <div id="view-fo">
-  <div class="foview-adminbar">
-    <span class="foview-adminbar__txt"><span class="gv-icon" data-gv-icon="eye"></span> Preview — this is the live project page residents see.</span>
-    <button class="gv-btn" type="button" onclick="closeFO()"><span class="gv-icon" data-gv-icon="edit"></span><span class="gv-btn__label">Edit project</span></button>
-  </div>
-
+  <!-- Real GoVocal FO header (logged-in) -->
   <header class="gv-header foview-header">
     <div class="gv-header__inner">
       <a class="gv-brand" href="#" data-gv-logo aria-label="City home"></a>
       <nav class="gv-nav" aria-label="Primary">
         <ul class="gv-nav__list">
           <li><a class="gv-nav__link" href="#">Home</a></li>
-          <li><a class="gv-nav__link" href="#" aria-current="page">Projects</a></li>
+          <li><a class="gv-nav__link" href="#" aria-current="page">All projects</a></li>
           <li><a class="gv-nav__link" href="#">Events</a></li>
-          <li><a class="gv-nav__link" href="#">About</a></li>
         </ul>
       </nav>
       <span style="flex:1 1 auto"></span>
-      <a class="gv-btn secondary-outlined gv-header__cta" href="#"><span class="gv-btn__label">Log in</span></a>
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
+        <button class="gv-iconbtn" aria-label="Notifications, 9 unviewed"><span data-gv-icon="notification"></span><span class="gv-iconbtn__badge" aria-hidden="true">9</span></button>
+        <button class="gv-account gv-desktop-only" aria-label="Account menu" aria-haspopup="menu"><span>Rob</span><span class="gv-avatar">R</span></button>
+      </div>
     </div>
   </header>
 
   <div class="foview-scroller">
     <div class="foview-doc">
-      <div id="fo-body"><!-- filled by openFO(): phoneFO(state) --></div>
+
+      <!-- Empty project state -->
+      <div id="fo-empty" class="foview-empty" hidden>
+        <h2>Nothing to preview yet</h2>
+        <p>This project has no published content. Add a title, description and content blocks in the editor, then preview the page residents will see.</p>
+      </div>
+
+      <main id="fo-page">
+        <div class="gv-wrap">
+          <!-- Manager controls (admins only) — "Edit project" returns to the editor -->
+          <div class="pp-managers">
+            <a class="gv-btn secondary-outlined size-s" href="#" onclick="closeFO();return false;"><span data-gv-icon="edit" aria-hidden="true"></span> Edit project</a>
+            <button class="gv-btn primary size-s" id="fo-followBtn" type="button" aria-pressed="true">Following (9)</button>
+          </div>
+
+          <section class="pp-banner" aria-label="Project banner"><img id="fo-banner" src="" alt="" /></section>
+
+          <!-- Project header — two stacked wide/narrow rows (Content-Builder default) -->
+          <div class="pp-head">
+            <h1 class="gv-title h1" id="fo-title"></h1>
+            <div class="pp-row">
+              <div class="gv-projdesc pp-intro" id="fo-intro"></div>
+              <div class="pp-ctacell">
+                <div class="pp-cta" id="fo-cta"></div>
+                <div class="fo-extra" id="fo-extra" hidden></div>
+              </div>
+            </div>
+            <div class="pp-row" style="margin-top:18px;">
+              <div class="gv-projdesc pp-desc" id="fo-desc"></div>
+              <div aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Participation bar -->
+        <div class="gv-partbar"><div class="gv-partbar__inner" id="fo-partbar"></div></div>
+
+        <!-- Method band — phase ribbon + active method body (data-driven) -->
+        <div class="gv-methodband">
+          <div class="gv-wrap">
+            <section class="gv-phases" aria-labelledby="fo-phasesTitle">
+              <div class="gv-phases__bar">
+                <h2 id="fo-phasesTitle">Phases</h2>
+                <div class="gv-phases__nav">
+                  <button class="gv-pnav" id="fo-ppPrev" type="button" aria-label="Previous phase"><span data-gv-icon="chevron-left"></span></button>
+                  <button class="gv-pnav" id="fo-ppCur" type="button" aria-label="Go to current phase"><span class="gv-dotmark"></span></button>
+                  <button class="gv-pnav" id="fo-ppNext" type="button" aria-label="Next phase"><span data-gv-icon="chevron-right"></span></button>
+                </div>
+              </div>
+              <div class="gv-stepper" role="tablist" aria-label="Project phases" id="fo-stepper"></div>
+              <div class="gv-phasepanel" id="fo-phasepanel"></div>
+              <div class="gv-phasebody gv-phasebody--full" role="tabpanel" id="fo-phasebody"></div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Events -->
+        <div class="gv-wrap">
+          <section class="gv-section" aria-labelledby="fo-events-title" style="padding-top:40px;">
+            <div class="gv-events__head">
+              <h2 class="gv-title h2" id="fo-events-title" style="margin:0">Events</h2>
+              <a class="gv-btn text" href="#">View all events</a>
+            </div>
+            <div class="gv-events__grid" id="fo-events"></div>
+          </section>
+        </div>
+      </main>
+
       <footer class="gv-footer">
         <div class="gv-footer__inner">
-          <span data-gv-logo aria-hidden="true" style="display:inline-flex;height:26px"></span>
-          <div class="gv-footer__links">
+          <nav class="gv-footer__links" aria-label="Legal">
             <ul>
-              <li><a href="#">About</a></li>
-              <li><a href="#">Projects</a></li>
-              <li><a href="#">Events</a></li>
+              <li><a href="#">Terms and conditions</a></li>
               <li><a href="#">Privacy policy</a></li>
-              <li><a href="#">Accessibility</a></li>
+              <li><a href="#">Cookie policy</a></li>
+              <li><a href="#">Accessibility statement</a></li>
             </ul>
+          </nav>
+          <div class="gv-footer__powered">
+            <span>Powered by</span>
+            <a href="#" aria-label="Go Vocal"><img class="gv-powered-logo" src="assets/govocal-logo.svg" alt="Go Vocal" /></a>
           </div>
         </div>
       </footer>
+
     </div>
   </div>
 </div>
+
+<!-- ════════ FO project-page engine — ports the canonical pages/project-page JS
+     (PHASES → ribbon/stepper/panel → METHODS body, ideation feed + Leaflet map),
+     but the DATA is built from the editor's current state (window.ppState). ════ -->
+<script>
+(function () {
+  const $ = (s, r) => (r || document).querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* ── editor state → project-page data ─────────────────────────────────── */
+  const ACC = (extra) => `
+    <div class="gv-accordion" style="margin-top:20px">
+      <details class="gv-acc__item" open><summary class="gv-acc__head"><span class="gv-acc__q">How will my idea be used?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary><div class="gv-acc__body"><p>Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.</p></div></details>
+      ${extra ? `<details class="gv-acc__item"><summary class="gv-acc__head"><span class="gv-acc__q">What can I suggest?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary><div class="gv-acc__body"><p>Anything within scope — seating, planting, traffic calming, lighting, cycle parking or how the space is used.</p></div></details>
+      <details class="gv-acc__item"><summary class="gv-acc__head"><span class="gv-acc__q">Who is running this project?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary><div class="gv-acc__body"><p>The City of Meridian engagement team, together with the mobility department.</p></div></details>` : ''}
+    </div>`;
+  const CTA = (primary, count) => `
+    <a class="gv-btn primary" href="#">${primary}</a>
+    <a class="gv-btn primary-outlined" href="#">See the ideas</a>
+    <div class="gv-participants" style="margin-top:4px;">
+      <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
+      <span class="gv-pcount">${count} contributions</span>
+      <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
+    </div>`;
+  const PARTBAR = (cta) => `<span class="gv-partbar__status">Open for participation</span><a class="gv-btn on-color" href="#">${cta} <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>`;
+  const EXTRA = (title, sub, rows) => ({ title, sub, rows });
+
+  const MERIDIAN_IDEAS = [
+    { title: 'Protected cycle lane the length of Meridian Avenue', author: 'Daan Verhoeven', time: '2 days ago', excerpt: 'The painted lane just stops at the junction and it feels unsafe. A kerb-separated lane would let kids ride to school.', likes: 312, dislikes: 18, comments: 24, status: 'under consideration', img: 'assets/img/street-trees.webp', lat: 52.0915, lng: 5.1180 },
+    { title: 'Shade and benches in Market Square', author: 'Amara Okonkwo', time: '4 days ago', excerpt: 'The square bakes in summer with nowhere to sit. A few trees and benches would make it usable again.', likes: 287, dislikes: 9, comments: 16, status: 'accepted', img: 'assets/img/square.webp', lat: 52.0901, lng: 5.1224 },
+    { title: 'Drop the limit to 30 around all schools', author: 'Liam Fitzgerald', time: '5 days ago', excerpt: 'Cars still take the school streets too fast at pickup. A consistent 30 zone with clear signs would help.', likes: 264, dislikes: 31, comments: 41, status: 'implemented', img: '', lat: 52.0933, lng: 5.1156 },
+    { title: 'Late-night buses on the western routes', author: 'Sofia Marchetti', time: '1 week ago', excerpt: 'Shift workers and students have no way home after 23:00. Even an hourly night service would change that.', likes: 198, dislikes: 12, comments: 19, status: 'proposed', img: '', lat: 52.0872, lng: 5.1098 },
+    { title: 'Secure covered bike parking at the station', author: 'Noah Bergström', time: '1 week ago', excerpt: 'People won\'t cycle to the station if their bikes get stripped. Lockable, covered racks would fix it.', likes: 176, dislikes: 7, comments: 11, status: 'under consideration', img: 'assets/img/meeting.webp', lat: 52.0889, lng: 5.1267 },
+    { title: 'Pedestrianise the old town on weekends', author: 'Priya Nair', time: '2 weeks ago', excerpt: 'Saturday markets and café terraces would thrive without through-traffic. Trial it for a summer first.', likes: 154, dislikes: 28, comments: 33, status: 'proposed', img: 'assets/img/workshop.webp', lat: 52.0948, lng: 5.1209 }
+  ];
+  const EVENT = (m, d, title, when, where, whereIcon, regs, img) => `
+    <article class="gv-event-card bordered">
+      <div class="gv-event-card__media"><img src="assets/img/${img}" alt="" loading="lazy" />
+        <span class="gv-event-card__date is-beside"><span class="m">${m}</span><span class="d">${d}</span><span class="y">2026</span></span></div>
+      <div class="gv-event-card__body">
+        <div class="gv-event-card__titlerow"><h3 class="gv-event-card__title"><a href="#">${title}</a></h3></div>
+        <div class="gv-event-card__meta">
+          <p class="gv-event-card__row"><span data-gv-icon="clock"></span> ${when}</p>
+          <p class="gv-event-card__row"><span data-gv-icon="${whereIcon}"></span> ${where}</p>
+          <p class="gv-event-card__row"><span data-gv-icon="user"></span> ${regs} registrants</p>
+        </div>
+        <a class="gv-btn primary full" href="#">Register</a>
+      </div>
+    </article>`;
+
+  const DATA = {
+    complex: {
+      title: 'Reimagine Meridian 2030',
+      banner: 'assets/img/square.webp',
+      intro: '<p>Help shape how we move, cycle and gather across the city over the next four years. We\'re collecting ideas right now — add yours below, then back the ones you like best.</p>',
+      desc: '<p>The team reads every suggestion, groups similar ones, and the most-supported move to a community vote and into the final plan. Everything you share here is public and helps shape the shortlist that goes to the next phase.</p>' + ACC(true),
+      cta: CTA('Submit your idea', '342'),
+      partbar: PARTBAR('Submit your idea'),
+      extra: EXTRA('Other ways to take part', 'Surveys running outside the timeline', [
+        { name: 'Ask us anything', meta: 'Ongoing', go: 'Open' },
+        { name: 'School survey', meta: '20 May – 5 Jun · ~3 min', go: 'Take the survey' },
+        { name: 'Market-day poll', meta: '15 – 17 Aug', go: 'Notify me' },
+        { name: 'Pop-up kiosk survey', meta: 'Closed · 2 – 4 May', go: 'View results' }
+      ]),
+      ideas: MERIDIAN_IDEAS,
+      events: EVENT('Jun', '14', 'Mobility town hall', '14 Jun 2026 · 19:00', 'Central Library, Meridian', 'location-simple', '41', 'meeting.webp')
+            + EVENT('Jul', '02', 'Neighbourhood design workshop', '2 Jul 2026 · 18:00', 'Meridian Civic Hall', 'location-simple', '57', 'workshop.webp'),
+      phases: [
+        { name: 'Pre-survey', method: 'survey', dates: '1 – 15 May 2026', status: 'past', description: 'A short survey set the scene before ideation opened.' },
+        { name: 'Collect ideas', method: 'ideation', dates: '20 May – 10 Jun 2026', status: 'current', description: 'Share your ideas for how we move, cycle and gather. Every suggestion is reviewed by the city team and shapes what comes next.' },
+        { name: 'What we heard', method: 'information', dates: '11 – 25 Jun 2026', status: 'upcoming', description: 'We group similar ideas and share back the themes from your suggestions.' },
+        { name: 'Community vote', method: 'voting', dates: '26 Jun – 12 Jul 2026', status: 'upcoming', description: 'Help prioritise the shortlisted ideas with a budget of points.' },
+        { name: 'Find common ground', method: 'information', dates: '13 – 27 Jul 2026', status: 'upcoming', description: 'Surface where the community agrees and disagrees before the final plan.' }
+      ]
+    },
+    few: {
+      title: 'A greener Station Road',
+      banner: 'assets/img/street-trees.webp',
+      intro: '<p>Help shape how we move, cycle and gather on Station Road. Add your idea below, then back the ones you like best.</p>',
+      desc: '<p>Your ideas go straight to the project team and shape the proposals we bring back to the neighbourhood.</p>' + ACC(false),
+      cta: CTA('Submit your idea', '38'),
+      partbar: PARTBAR('Submit your idea'),
+      extra: EXTRA('Other ways to take part', 'Surveys running outside the timeline', [
+        { name: 'Ask us anything', meta: 'Ongoing', go: 'Open' }
+      ]),
+      ideas: MERIDIAN_IDEAS.slice(0, 3),
+      events: EVENT('Jun', '14', 'Mobility town hall', '14 Jun 2026 · 19:00', 'Central Library, Meridian', 'location-simple', '41', 'meeting.webp'),
+      phases: [
+        { name: 'Collect ideas', method: 'ideation', dates: '20 May – 10 Jun 2026', status: 'current', description: 'Share your ideas for a greener Station Road.' },
+        { name: 'What we heard', method: 'information', dates: '11 – 25 Jun 2026', status: 'upcoming', description: 'We share back the themes from your ideas.' }
+      ]
+    }
+  };
+
+  /* ── method bodies (ported from canonical) ────────────────────────────── */
+  let ideaView = 'list', ppMap = null, ppMarkers = [], IDEAS = [], PHASES = [], CURRENT = 0, active = 0;
+
+  function cardHTML(d) {
+    const thumb = d.img
+      ? `<div class="gv-ideacard__thumb"><img src="${d.img}" alt="" loading="lazy" /></div>`
+      : `<div class="gv-ideacard__thumb"><span data-gv-icon="vote-up" aria-hidden="true"></span></div>`;
+    const initials = d.author.split(' ').map((w) => w[0]).slice(0, 2).join('');
+    const SC = { 'accepted': '', 'implemented': 'is-implemented', 'under consideration': 'is-considered', 'rejected': 'is-rejected', 'proposed': 'is-proposed' };
+    const pill = d.status ? `<span class="gv-ideacard__status ${SC[d.status] ?? ''}">${esc(d.status)}</span>` : '';
+    return `<article class="gv-ideacard e2e-idea-card">${thumb}
+      <div class="gv-ideacard__body">
+        <h3 class="gv-ideacard__title"><a href="#">${esc(d.title)}</a></h3>
+        <div class="gv-ideacard__head"><span class="gv-ideacard__avatar" aria-hidden="true">${esc(initials)}</span>
+          <div><div class="gv-ideacard__meta"><span class="gv-ideacard__author">${esc(d.author)}</span><span class="gv-ideacard__sep" aria-hidden="true">&bull;</span><span class="gv-ideacard__time">${esc(d.time)}</span></div>
+          <p class="gv-ideacard__excerpt">${esc(d.excerpt)}</p></div></div>
+        <footer class="gv-ideacard__foot"><div class="gv-react"><button class="gv-react__btn" aria-label="Like"><span data-gv-icon="vote-up"></span></button><span class="gv-react__count">${d.likes}</span><button class="gv-react__btn" aria-label="Dislike"><span data-gv-icon="vote-down"></span></button><span class="gv-react__count">${d.dislikes}</span></div>
+        <span class="gv-react__comment"><span data-gv-icon="comments"></span>${d.comments}</span>${pill}</footer>
+      </div></article>`;
+  }
+  function mapViewHTML() {
+    const items = IDEAS.map((d, i) => `<article class="pp-mapidea" data-pin="${i}"><h3 class="pp-mapidea__title">${esc(d.title)}</h3><div class="pp-mapidea__stats"><span class="pp-mapidea__stat"><span data-gv-icon="vote-up" aria-hidden="true"></span>${d.likes}</span><span class="pp-mapidea__stat"><span data-gv-icon="comments" aria-hidden="true"></span>${d.comments}</span></div></article>`).join('');
+    return `<div class="pp-mapwrap"><div class="pp-map" role="region" aria-label="Map of idea locations"><div class="pp-map__canvas" id="pp-map-canvas"></div></div><div class="pp-mappanel"><div class="pp-mappanel__top"><button class="gv-btn secondary-outlined size-s pp-mapcard__filters" type="button">Filters</button></div><div class="pp-mapcard__list">${items}</div></div></div>`;
+  }
+  function ppPopupHTML(d) {
+    return `<h3 class="pp-poptitle">${esc(d.title)}</h3><div class="pp-popstats"><span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 21h2V9H2v12zm20-11a2 2 0 0 0-2-2h-6.31l.95-4.57.03-.32a1.5 1.5 0 0 0-.44-1.06L13.17 1 6.59 7.59A2 2 0 0 0 6 9v10a2 2 0 0 0 2 2h9a2 2 0 0 0 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>${d.likes}</span><span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>${d.comments}</span></div>`;
+  }
+  function ppInitMap() {
+    const el = document.getElementById('pp-map-canvas');
+    if (!el || typeof L === 'undefined') return;
+    if (ppMap) { ppMap.invalidateSize(); return; }
+    ppMap = L.map(el, { scrollWheelZoom: false, zoomControl: false });
+    L.control.zoom({ position: 'topright' }).addTo(ppMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(ppMap);
+    ppMarkers = IDEAS.map((d, i) => {
+      const icon = L.divIcon({ className: '', html: `<span class="pp-marker" data-pin="${i}">${i + 1}</span>`, iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -16] });
+      const m = L.marker([d.lat, d.lng], { icon, title: d.title }).addTo(ppMap);
+      m.bindPopup(ppPopupHTML(d), { closeButton: true });
+      return m;
+    });
+    const bounds = L.latLngBounds(IDEAS.map((d) => [d.lat, d.lng]));
+    const leftPad = window.matchMedia('(max-width: 860px)').matches ? 60 : 380;
+    ppMap.fitBounds(bounds, { paddingTopLeft: [leftPad, 70], paddingBottomRight: [70, 70], maxZoom: 16 });
+    requestAnimationFrame(() => ppMap && ppMap.invalidateSize());
+  }
+  const METHODS = {
+    ideation() {
+      const isMap = ideaView === 'map';
+      return `<div class="pp-toolbar${isMap ? ' is-map' : ''}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
+          <h2 class="gv-feed__count">${IDEAS.length} ideas</h2>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button class="gv-filters-btn pp-toolbar__filters" type="button" aria-expanded="false" aria-controls="fo-project-sidebar"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:18px;height:18px"><path d="M4 5h16M7 12h10M10 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Filters</button>
+            <div class="gv-viewseg" role="tablist" aria-label="View ideas as"><button class="gv-viewseg__tab" role="tab" data-view="list" aria-selected="${!isMap}"><span data-gv-icon="menu" aria-hidden="true"></span>List</button><button class="gv-viewseg__tab" role="tab" data-view="map" aria-selected="${isMap}"><span data-gv-icon="map" aria-hidden="true"></span>Map</button></div>
+          </div></div>
+        <div class="gv-feed${isMap ? ' is-map' : ''}">
+          ${isMap ? mapViewHTML() : `<div class="gv-feed__col">${IDEAS.map(cardHTML).join('')}</div>`}
+          <aside class="gv-feedfilter" id="fo-project-sidebar" aria-label="Filter ideas">
+            <div><p class="gv-feedfilter__label">Search posts</p><input class="gv-input" type="search" placeholder="Search" aria-label="Search posts" /></div>
+            <div><p class="gv-feedfilter__label">SORT BY</p><div class="gv-feedfilter__group gv-feedfilter__group--sort">
+              <button class="gv-feedfilter__btn is-active" type="button"><span class="gv-feedfilter__icon" data-gv-icon="idea" aria-hidden="true"></span>Most liked</button>
+              <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="comments" aria-hidden="true"></span>Most discussed</button>
+              <button class="gv-feedfilter__btn" type="button"><span class="gv-feedfilter__icon" data-gv-icon="clock" aria-hidden="true"></span>New</button></div></div>
+            <div><p class="gv-feedfilter__label">STATUS</p><div class="gv-feedfilter__group">
+              <button class="gv-feedfilter__btn is-active" type="button">All <span class="gv-feedfilter__count">${IDEAS.length}</span></button>
+              <button class="gv-feedfilter__btn" type="button">Under consideration <span class="gv-feedfilter__count">2</span></button>
+              <button class="gv-feedfilter__btn" type="button">Accepted <span class="gv-feedfilter__count">1</span></button></div></div>
+            <div><p class="gv-feedfilter__label">TOPICS</p><div class="gv-feedfilter__group">
+              <button class="gv-feedfilter__btn" type="button">Cycling <span class="gv-feedfilter__count">2</span></button>
+              <button class="gv-feedfilter__btn" type="button">Green &amp; seating <span class="gv-feedfilter__count">2</span></button>
+              <button class="gv-feedfilter__btn" type="button">Traffic <span class="gv-feedfilter__count">2</span></button></div></div>
+          </aside>
+        </div>`;
+    },
+    information() {
+      const acc = (q, p) => `<details class="gv-acc__item"><summary class="gv-acc__head"><span class="gv-acc__q">${q}</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary><div class="gv-acc__body"><p>${p}</p></div></details>`;
+      return `<div class="gv-prose" style="margin:0;padding:0;"><p>During this phase we read every contribution, removed duplicates, and grouped the remaining ideas into themes. The shortlist moves forward to the community vote, where you'll help decide which ideas go into the final mobility plan.</p></div>
+        <div class="gv-accordion">${acc('How were ideas grouped?', 'Ideas were clustered by theme (cycling, green &amp; seating, traffic calming, public transport) and by where in the city they sit. Near-identical ideas were merged, keeping the original authors credited.')}${acc('When can I vote?', 'The community vote opens on 26 June. Followers of this project get a notification when voting starts.')}</div>`;
+    }
+  };
+  function placeholderHTML(p) {
+    const icon = { voting: 'vote-up', results: 'trend-up', survey: 'survey', information: 'info-outline' }[p.method] || 'info-outline';
+    return `<div style="display:flex;gap:14px;align-items:flex-start;max-width:640px;"><span class="gv-icon" data-gv-icon="${icon}" style="color:var(--gv-tenant-primary);width:28px;height:28px;flex:none;"></span><div><p style="margin:0 0 6px;font-weight:600;color:var(--gv-text-primary);">${esc(p.name)} — ${esc(p.method)} phase</p><p style="margin:0;color:var(--gv-text-secondary);">This phase hasn't opened yet. Its ${esc(p.method)} panel will appear here when it goes live.</p></div></div>`;
+  }
+
+  /* ── render + phase switching ─────────────────────────────────────────── */
+  function renderStepper() {
+    const stepperEl = $('#fo-stepper');
+    stepperEl.innerHTML = PHASES.map((p, i) => {
+      const isCurrent = i === CURRENT, dot = isCurrent ? '<span class="gv-pstep__dot"></span>' : '';
+      return `<button class="gv-phase${isCurrent ? ' current' : ''}" role="tab" data-i="${i}" aria-selected="${i === active}"><span class="gv-pstep">${dot}${i + 1}</span><span class="gv-phase__label">${esc(p.name)}</span></button>`;
+    }).join('');
+    stepperEl.querySelectorAll('.gv-phase').forEach((b) => b.addEventListener('click', () => setPhase(+b.dataset.i)));
+  }
+  function setPhase(i) {
+    active = i;
+    const p = PHASES[i], isCurrent = i === CURRENT;
+    $('#fo-stepper').querySelectorAll('.gv-phase').forEach((b) => b.setAttribute('aria-selected', String(+b.dataset.i === i)));
+    $('#fo-phasepanel').innerHTML = `<div class="gv-phasepanel__head${isCurrent ? '' : ' muted'}"><span class="gv-phasepanel__num" aria-hidden="true">${i + 1}</span><div><h3 class="gv-phasepanel__name">${esc(p.name)}</h3><p class="gv-phasepanel__date">${esc(p.dates)}</p></div></div><div class="gv-phasepanel__desc"><p>${esc(p.description)}</p></div>`;
+    if (ppMap) { ppMap.remove(); ppMap = null; ppMarkers = []; }
+    $('#fo-phasebody').innerHTML = (METHODS[p.method] ? METHODS[p.method](p) : placeholderHTML(p));
+    if (window.GVIcons) window.GVIcons.render($('#view-fo'));
+    if (p.method === 'ideation' && ideaView === 'map') ppInitMap();
+  }
+
+  /* ── delegated handlers (bound once, scoped to the FO view) ────────────── */
+  let wired = false;
+  function wireOnce() {
+    if (wired) return; wired = true;
+    const view = $('#view-fo'), bodyEl = $('#fo-phasebody');
+    $('#fo-ppPrev').addEventListener('click', () => setPhase(Math.max(0, active - 1)));
+    $('#fo-ppNext').addEventListener('click', () => setPhase(Math.min(PHASES.length - 1, active + 1)));
+    $('#fo-ppCur').addEventListener('click', () => setPhase(CURRENT));
+    const fb = $('#fo-followBtn');
+    fb.addEventListener('click', () => { const on = fb.getAttribute('aria-pressed') !== 'true'; fb.setAttribute('aria-pressed', String(on)); fb.textContent = on ? 'Following (9)' : 'Follow (8)'; });
+    view.addEventListener('click', (e) => {
+      const fbtn = e.target.closest('.gv-filters-btn');
+      if (fbtn) { const a = document.getElementById(fbtn.getAttribute('aria-controls')); if (a) fbtn.setAttribute('aria-expanded', String(a.classList.toggle('is-open'))); return; }
+      const tab = e.target.closest('.gv-viewseg__tab[data-view]');
+      if (tab) { if (tab.dataset.view !== ideaView) { ideaView = tab.dataset.view; setPhase(active); } return; }
+      const item = e.target.closest('.pp-mapidea[data-pin]');
+      if (item && bodyEl.contains(item) && ppMap) { const m = ppMarkers[+item.dataset.pin]; if (m) { ppMap.panTo(m.getLatLng()); m.openPopup(); } }
+    });
+    const hov = (on) => (e) => { const t = e.target.closest('[data-pin]'); if (!t || !bodyEl.contains(t)) return; bodyEl.querySelectorAll(`[data-pin="${t.dataset.pin}"]`).forEach((el) => el.classList.toggle('is-active', on)); };
+    view.addEventListener('mouseover', hov(true));
+    view.addEventListener('mouseout', hov(false));
+  }
+
+  window.FO = {
+    render(state) {
+      const d = DATA[state];
+      const page = $('#fo-page'), empty = $('#fo-empty');
+      if (!d) { page.hidden = true; empty.hidden = false; return; }
+      empty.hidden = true; page.hidden = false;
+      IDEAS = d.ideas; PHASES = d.phases;
+      CURRENT = d.phases.findIndex((p) => p.status === 'current'); if (CURRENT < 0) CURRENT = 0;
+      ideaView = 'list';
+      if (ppMap) { ppMap.remove(); ppMap = null; ppMarkers = []; }
+      $('#fo-banner').src = d.banner;
+      $('#fo-title').textContent = d.title;
+      $('#fo-intro').innerHTML = d.intro;
+      $('#fo-desc').innerHTML = d.desc;
+      $('#fo-cta').innerHTML = d.cta;
+      $('#fo-partbar').innerHTML = d.partbar;
+      $('#fo-events').innerHTML = d.events;
+      const ex = $('#fo-extra');
+      if (d.extra && d.extra.rows.length) {
+        ex.hidden = false;
+        ex.innerHTML = `<p class="fo-extra__title">${esc(d.extra.title)}</p><p class="fo-extra__sub">${esc(d.extra.sub)}</p><div class="fo-extra__list">${d.extra.rows.map((r) => `<a class="fo-survey-row" href="#"><span class="fo-survey-row__info"><span class="fo-survey-row__name">${esc(r.name)}</span><span class="fo-survey-row__meta">${esc(r.meta)}</span></span><span class="fo-survey-row__go">${esc(r.go)}</span></a>`).join('')}</div>`;
+      } else { ex.hidden = true; ex.innerHTML = ''; }
+      wireOnce();
+      renderStepper();
+      setPhase(CURRENT);
+      if (window.GVIcons) window.GVIcons.render($('#view-fo'));
+      if (window.GVAvatars) window.GVAvatars.fill($('#view-fo'));
+    }
+  };
+})();
+</script>
 
 <div id="view-builder" class="builder-overlay gv-bo">
 <div class="gv-bo-cb" id="cb-root">
@@ -3156,19 +3492,10 @@
   }
   function openFO() {
     const v = document.getElementById('view-fo');
-    const body = document.getElementById('fo-body');
-    if (!v || !body) return;
+    if (!v) return;
     const state = window.ppState || 'empty';
-    if (state === 'empty') {
-      body.innerHTML = `<div class="foview-empty">
-        <h2>Nothing to preview yet</h2>
-        <p>This project has no published content. Add a title, description and content blocks in the editor, then preview the page residents will see.</p>
-      </div>`;
-    } else {
-      body.innerHTML = phoneFO(state);
-    }
-    if (window.GVIcons && GVIcons.render) GVIcons.render(v);
-    if (window.GVAvatars && GVAvatars.fill) GVAvatars.fill(v);
+    // The real GoVocal project page (ported engine), driven by the editor's state.
+    if (window.FO && window.FO.render) window.FO.render(state);
     syncFOTheme();
     v.style.display = 'flex';
     const sc = v.querySelector('.foview-scroller');
