@@ -78,7 +78,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.23";
+const UI_VERSION = "0.24";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([
@@ -547,6 +547,32 @@ const PAGE_CSS = `
     .playground:hover .playground__go { color: var(--fg); transform: translateX(2px); }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
     footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12.5px; }
+
+    /* ---- FigPal 🐾 paw — a private little easter-egg trigger, hidden until you
+       type the secret ("figpal") on the homepage. Then it stays revealed on this
+       browser (localStorage). Bottom-right, gentle bob, soft pink. ---- */
+    .figpal-paw {
+      position: fixed; right: 22px; bottom: 22px; z-index: 50;
+      width: 50px; height: 50px; border-radius: 50%;
+      display: none; place-items: center; text-decoration: none;
+      font-size: 24px; line-height: 1;
+      background: linear-gradient(150deg, #ffb3cd, #ff7fa8);
+      box-shadow: 0 10px 24px -8px rgba(255,90,140,.6), 0 0 0 1px rgba(255,255,255,.4) inset;
+      animation: figpaw-bob 2.6s ease-in-out infinite;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .figpal-paw.is-on { display: grid; }
+    .figpal-paw:hover { transform: translateY(-3px) scale(1.06) rotate(-6deg); box-shadow: 0 16px 30px -8px rgba(255,90,140,.7); }
+    .figpal-paw:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .figpal-paw::after {
+      content: "Your FigPal"; position: absolute; right: 60px; white-space: nowrap;
+      background: #2B2330; color: #fff; font-size: 12px; font-weight: 600;
+      padding: 6px 10px; border-radius: 8px; opacity: 0; transform: translateX(6px);
+      transition: opacity .15s, transform .15s; pointer-events: none;
+    }
+    .figpal-paw:hover::after { opacity: 1; transform: translateX(0); }
+    @keyframes figpaw-bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
+    @media (prefers-reduced-motion: reduce) { .figpal-paw { animation: none; } }
 
     /* ---- Cards & live previews ---- */
     .card-opp, .card-proto {
@@ -1176,10 +1202,29 @@ function renderRootIndex(opportunities) {
       ${filterEmpty()}
     </div>`;
 
+  // FigPal 🐾 — private easter egg. The paw is hidden until you type the secret
+  // word "figpal" anywhere on the homepage; then it's remembered on this browser.
+  // (Type "figbye" to hide it again.) Lightweight "only-you" gate; a real per-user
+  // gate can come later in _worker.js.
+  const figpal = `
+    <a class="figpal-paw" id="figpalPaw" href="figpals/" aria-label="Open your FigPal">🐾</a>
+    <script>(function(){
+      var paw = document.getElementById('figpalPaw');
+      var KEY = 'figpal-revealed';
+      if (localStorage.getItem(KEY) === '1') paw.classList.add('is-on');
+      var buf = '';
+      addEventListener('keydown', function(e){
+        if (e.key.length !== 1) return;
+        buf = (buf + e.key.toLowerCase()).slice(-6);
+        if (buf.endsWith('figpal')) { paw.classList.add('is-on'); localStorage.setItem(KEY,'1'); }
+        if (buf.endsWith('figbye')) { paw.classList.remove('is-on'); localStorage.removeItem(KEY); }
+      });
+    })();</script>`;
+
   return shell({
     title: "Product Prototypes",
     wrapClass: "wrap--root",
-    body: sidebar + main,
+    body: sidebar + main + figpal,
   });
 }
 
@@ -1482,6 +1527,16 @@ async function main() {
     );
   }
   const hasPlayground = playground.length >= 0 && (await isDir(path.join(DIST, "playground")));
+
+  // ── FigPal 🐾 — a private little companion, not a prototype. Lives OUTSIDE any
+  // prototypes/ folder so it never ships as a public link; copied here only so the
+  // homepage easter-egg trigger can reach it. Stays behind the password gate (it is
+  // never added to PUBLIC_PREFIXES), and the homepage paw only reveals itself once
+  // you type the secret (see renderRootIndex) — so in practice it's "yours".
+  if (await isDir(path.join(ROOT, "figpals"))) {
+    const skipFigDocs = (name) => isInternalOnly(name) || name === "README.md";
+    await copyDir(path.join(ROOT, "figpals"), path.join(DIST, "figpals"), skipFigDocs);
+  }
 
   // Edge auth gate. Inject the list of PUBLIC prototype path-prefixes so the
   // password gate covers only the internal site — published prototypes stay open.
