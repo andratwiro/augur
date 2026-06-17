@@ -23,22 +23,32 @@ Internal — never ships. Companion engine lives entirely in `pitis/` (see READM
   grey**. Second in the cat picker (after Aslam). Anchors used: fur ~`#9C8C76`,
   stripe ~`#4A4038`, belly ~`#D9CDB6`. (Confirm exact values in `piti.js`.)
 
-### Senda — Spanish mastiff  ·  SPECIES `mastiff`  *(added by the Senda+Pruna agent)*
-- **Real:** big fawn/tan mastiff. **Black mask over the muzzle/face, black droopy
-  ears, dark "saddle" shading along the back**, lighter tan chest/legs, dark nose,
-  jowly. Lying/sploot. Refs: `reference/senda-1.png`, `reference/senda-2.png`.
-- **Piti:** new species **`mastiff`** in the resting pose (head left), fawn body +
-  black mask + droopy ears + jowls. **≥30% bigger than the cat.** Third species tab;
-  wears hats via `HAT_T_MASTIFF`. **Her silhouette is TRACED (potrace) from `senda-1.png`**
-  (flipped head-left) just like the cat/dog — the photo's terracotta floor matches her
-  fawn fur so an auto-threshold can't separate figure/ground, so the body was traced from
-  a clean *guide-mask* (painted over the photo, then potraced for the organic doodle line)
-  rather than thresholded; `MASTIFF_P.sil` lives in the potrace y-flip frame (2360×1120,
-  `MTT`). The dark regions (black **mask**, **near/far ears**, **saddle**, lighter
-  **belly**) have no hard photo edge, so — exactly as the cat's belly/blush — they're
-  authored UPRIGHT in the same frame and **clipped to the traced silhouette**. (Earlier
-  she was a hand-authored blob; that was the bug — now she's traced.) Fixed "Senda" look
-  (ignores the recolour palette).
+### Senda — Spanish mastiff  ·  SPECIES `mastiff`  *(re-traced from a clean FigPal illustration)*
+- **Real:** big fawn/tan mastiff, curled tightly asleep. Dark-brown muzzle **mask**,
+  droopy dark-brown **ears**, furrowed **brow**, closed sleepy eyes, dark nose, pink
+  **blush** cheeks, faint tabby **stripe ticks** on the haunch, and a **black harness**
+  strap with a loop across the shoulder. Compact curl (head low-left on the front paws,
+  body curving up-right, tail curling back along the bottom).
+- **Ref:** **`reference/senda-figpal.png` (756×534)** — a CLEAN flat-tone FigPal-style
+  illustration (not a photo). Because the tones are flat/separable, the proper
+  **layered-potrace pipeline works** (no guide-mask hack — that was the previous, weaker
+  attempt, now replaced).
+- **Piti:** species **`mastiff`** in the resting curl. **≥30% bigger than the cat**
+  (~1.35×). Third species tab; wears hats via `HAT_T_MASTIFF`. **Three TRACED layers**
+  in one shared potrace frame **3024×2136** (`MTT = translate(0,2136) scale(0.1,-0.1)`),
+  all from `senda-figpal.png` with the green grass oval dropped (the stage draws its own):
+  `MASTIFF_P.sil` = full body silhouette → fawn fur; `MASTIFF_P.brown` = dark-brown
+  mask + droopy ears + brow ridge + haunch stripe ticks (clipped to sil); `MASTIFF_P.outline`
+  = the chunky near-black hand-drawn line — body contour, **closed-eye arcs + nose + brow
+  furrow** (baked in), the **black harness** strap + loop, paw lines — drawn on top.
+  The pink **blush** has no hard edge so it's positioned (`blushL/R` ovals, upright frame,
+  clipped to sil). **Awake** = fawn lids painted over the eye area + open round eyes
+  (`eyeL/R`). Pipeline: flood-fill the grass → silhouette mask; threshold bands
+  (<13% black harness/nose, 13–55% brown mask/ears, <30% the outline line-art) → potrace
+  each at the SAME dims so one transform maps them. **CLIP GOTCHA:** transform on the
+  `<path>` inside `<clipPath>`, never a wrapping `<g>`. Fixed "Senda" look (ignores the
+  recolour palette; `PALETTE` "Senda" carries fur `#CE9D66`, brown mask `#5F4F40`,
+  blush `#E4AC93`, line `OUT`). Scratch trace harnesses live in `reference/_*` (gitignored).
 
 ### Originals still present
 - **Cat** (default species) — the traced FigPal sleeping cat; default colour is now
