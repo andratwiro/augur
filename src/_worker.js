@@ -286,6 +286,15 @@ function applyOp(threads, op) {
   } else if (op.op === "annotate") {
     const t = threads.find((x) => x.id === op.id);
     if (t) t.annotation = !!op.annotation;
+  } else if (op.op === "delmsg") {
+    // Delete one message by index. Deleting the root message (0) deletes the thread.
+    const idx = +op.index;
+    if (idx === 0) {
+      threads = threads.filter((x) => x.id !== op.id);
+    } else {
+      const t = threads.find((x) => x.id === op.id);
+      if (t && Array.isArray(t.messages)) t.messages = t.messages.filter((_, i) => i !== idx);
+    }
   } else if (op.op === "delete") {
     threads = threads.filter((x) => x.id !== op.id);
   }

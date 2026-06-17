@@ -104,6 +104,13 @@
       t = find(op.id);
       if (t) { t.sel = op.sel; t.fx = op.fx; t.fy = op.fy; t.px = op.px; t.py = op.py; t.view = op.view; }
     } else if (op.op === "annotate") { t = find(op.id); if (t) t.annotation = !!op.annotation; }
+    else if (op.op === "delmsg") {
+      t = find(op.id);
+      if (t) {
+        if (op.index === 0) state.threads = state.threads.filter(function (x) { return x.id !== op.id; });
+        else if (t.messages) t.messages = t.messages.filter(function (_, i) { return i !== op.index; });
+      }
+    }
     else if (op.op === "delete") state.threads = state.threads.filter(function (x) { return x.id !== op.id; });
   }
   function find(id) { return state.threads.filter(function (t) { return t.id === id; })[0]; }
@@ -279,17 +286,63 @@
     '.card button.danger{border:0;background:0;color:#dc2626;padding:8px 4px;}' +
     '.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);pointer-events:none;background:#1a1a1a;color:#fff;padding:8px 14px;border-radius:999px;font:13px -apple-system,BlinkMacSystemFont,sans-serif;opacity:0;transition:opacity .2s;}' +
     '.toast.show{opacity:0.95;}' +
-    '@media (prefers-color-scheme: dark){' +
-    '.sb,.card{background:#161619;color:#f3f4f6;border-color:#26262b;}' +
-    '.sb header,.sb .hint{border-color:#26262b;}' +
-    '.sb header button{background:#161619;color:#f3f4f6;border-color:#26262b;}' +
-    '.sb header button:hover,.sb .it:hover{background:#26262b;}' +
-    '.sb .it.active{background:#1e2740;}' +
-    '.card input,.card textarea{background:#0d0d0f;color:#f3f4f6;border-color:#26262b;}' +
-    '.card button{background:#161619;color:#f3f4f6;border-color:#26262b;}' +
-    '.card button.primary{background:#60a5fa;color:#0d0d0f;}' +
-    '.msg{border-color:#26262b;}.msg:first-of-type{border-top:0;}' +
-    '}' +
+    /* ===== Figma-style compose + thread (see src/review/COMMENTING-UX.md) ===== */
+    /* progressive compose: a pin glyph + a field that reads as a grey pill when
+       idle and a white box once focused/typed-in. one textarea throughout so the
+       caret never jumps; auto-grown in JS. */
+    '.compose{position:fixed;pointer-events:auto;display:flex;align-items:flex-start;gap:9px;width:332px;max-width:calc(100vw - 24px);}' +
+    '.compose .cpin{flex:0 0 auto;width:26px;height:26px;border-radius:50% 50% 50% 2px;background:#2563eb;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);margin-top:2px;}' +
+    '.cfield{position:relative;flex:1;min-width:0;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.22);padding:6px;transition:border-radius .14s ease;}' +
+    '.cfield .nm{display:block;width:100%;font:inherit;font-size:13px;padding:7px 10px;border:0;border-bottom:1px solid #f0f0f0;border-radius:0;background:0;color:#1a1a1a;margin:0 0 2px;}' +
+    '.cfield .nm:focus{outline:0;}' +
+    '.cfield textarea{display:block;width:100%;border:0;outline:0;resize:none;font:inherit;color:#1a1a1a;background:0;margin:0;padding:8px 44px 8px 10px;min-height:0;max-height:180px;overflow-y:auto;line-height:1.45;}' +
+    '.cfield textarea::placeholder{color:#9ca3af;}' +
+    /* send arrow — disabled grey, enabled blue; pinned bottom-right of the field */
+    /* .send/.ico are scoped to win over the legacy ".card button" rule (0,1,1) */
+    '.compose .send,.card .send{position:absolute;right:8px;bottom:8px;width:30px;height:30px;border-radius:50%;border:0;padding:0;display:flex;align-items:center;justify-content:center;background:#e5e7eb;color:#fff;cursor:default;transition:background .12s ease;}' +
+    '.send svg{width:16px;height:16px;display:block;}' +
+    '.send.on{background:#2563eb;cursor:pointer;}' +
+    /* collapsed pill look: no shadow/border box, grey rounded bar */
+    '.cfield.idle{box-shadow:none;border-color:transparent;background:#f0f1f3;border-radius:999px;}' +
+    '.cfield.idle textarea{padding-top:7px;padding-bottom:7px;}' +
+    '.cfield.idle .send{background:transparent;color:#9ca3af;}' +
+    '.cfield.idle .send svg{stroke:#9ca3af;}' +
+    /* thread card header: title + right-aligned icon cluster */
+    '.thead{display:flex;align-items:center;gap:2px;margin:-2px 0 10px;}' +
+    '.thead strong{font-size:15px;font-weight:600;flex:1;}' +
+    '.card .ico{flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:0;background:0;padding:0;display:flex;align-items:center;justify-content:center;color:#5b626e;cursor:pointer;}' +
+    '.ico:hover{background:#f0f1f3;}' +
+    '.ico svg{width:18px;height:18px;display:block;}' +
+    '.ico.res.done{color:#16a34a;}' +
+    /* the cat annotation toggle in the header */
+    '.ico.cat{overflow:hidden;opacity:.4;filter:grayscale(1);}' +
+    '.ico.cat img{width:22px;height:22px;border-radius:50%;object-fit:cover;display:block;}' +
+    '.ico.cat:hover{background:#f0f1f3;}' +
+    '.ico.cat.on{opacity:1;filter:none;}' +
+    /* messages */
+    '.msg .mhead{display:flex;align-items:baseline;gap:7px;}' +
+    '.msg .mhead .who{font-weight:600;font-size:14px;}' +
+    '.msg .mhead .when{color:#9ca3af;font-size:13px;flex:1;}' +
+    '.msg .mhead .mdel{flex:0 0 auto;width:24px;height:24px;border-radius:50%;border:0;background:0;color:#9ca3af;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s;}' +
+    '.msg:hover .mhead .mdel{opacity:1;}' +
+    '.msg .mhead .mdel:hover{background:#f0f1f3;color:#1a1a1a;}' +
+    '.msg .mhead .mdel svg{width:16px;height:16px;}' +
+    '.msg .body .mention{color:#2563eb;}' +
+    /* override the legacy separators — Figma stacks messages cleanly, no rules */
+    '.msgs .msg{border-top:0;padding:7px 0;}' +
+    '.msgs .msg:first-of-type{padding-top:0;}' +
+    '.msgs .msg .body{margin-top:3px;font-size:14px;line-height:1.5;}' +
+    /* reply bar: same pill→box behaviour as compose */
+    '.replybar{margin-top:6px;}' +
+    /* hover preview card — unfurls out of the pin, left edge → right */
+    '.preview{position:fixed;pointer-events:none;width:280px;max-width:calc(100vw - 24px);background:#fff;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,0.22);padding:13px 15px;opacity:0;transform:scaleX(.2);transform-origin:left center;transition:opacity .12s ease,transform .18s cubic-bezier(.34,1.56,.64,1);}' +
+    '.preview.left{transform-origin:right center;}' +
+    '.preview.show{opacity:1;transform:scaleX(1);}' +
+    '.preview .phead{display:flex;align-items:baseline;gap:7px;margin-bottom:3px;}' +
+    '.preview .who{font-weight:600;font-size:14px;}' +
+    '.preview .when{color:#9ca3af;font-size:13px;}' +
+    '.preview .body{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}' +
+    '.preview .body .mention{color:#2563eb;}' +
     '</style>' +
     '<div class="layer hidden">' +
     '  <div class="catcher hidden"></div>' +
@@ -304,6 +357,7 @@
     '  <button class="tab hidden">&#128172; <span class="cnt2"></span></button>' +
     '  <div class="cardholder"></div>' +
     '  <div class="atip"></div>' +
+    '  <div class="preview"></div>' +
     '  <div class="toast"></div>' +
     '</div>';
 
@@ -311,7 +365,15 @@
   var layer = $(".layer"), catcher = $(".catcher"), pinsEl = $(".pins"),
       sb = $(".sb"), listEl = $(".list"), cntEl = $(".cnt"), cnt2El = $(".cnt2"),
       hintEl = $(".hint"), tabEl = $(".tab"), cardholder = $(".cardholder"),
-      tipEl = $(".atip"), toastEl = $(".toast");
+      tipEl = $(".atip"), previewEl = $(".preview"), toastEl = $(".toast");
+
+  // Shared SVG glyphs for the Figma-style chrome.
+  var SVG = {
+    send: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 19V5M12 5l-6 6M12 5l6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M8.5 12.2l2.4 2.4 4.6-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+  };
 
   var sbCollapsed = false;
   try { sbCollapsed = localStorage.getItem(LS_SB) === "1"; } catch (e) {}
@@ -393,7 +455,15 @@
         b.addEventListener("mouseleave", hideTip);
       } else {
         b.textContent = String(nums[t.id] || "");
-        b.title = (t.messages[0] && t.messages[0].body) || "";
+        // Hover preview card that unfurls out of the pin (review mode only).
+        (function (btn, tid) {
+          btn.addEventListener("mouseenter", function () {
+            if (state.openId === tid) return;
+            clearTimeout(previewTimer);
+            previewTimer = setTimeout(function () { showPreview(btn, tid); }, 150);
+          });
+          btn.addEventListener("mouseleave", hidePreview);
+        })(b, t.id);
       }
       attachPinDrag(b, t.id);
       pinsEl.appendChild(b);
@@ -408,6 +478,7 @@
     }
     if (openCardAnchor) positionCard(openCardAnchor);
     if (tipEl.classList.contains("show")) hideTip(true); // anchor moved → drop bubble
+    if (previewEl.classList.contains("show")) hidePreview();
   }
 
   /* ---------- pin dragging ---------- */
@@ -419,6 +490,7 @@
       // With review off (delivery mode) a pin is read-only: tap toggles its note.
       e.preventDefault();
       e.stopPropagation();
+      hidePreview();
       sx = e.clientX; sy = e.clientY; moved = false; dragging = true;
       canDrag = state.active;
       btn.setPointerCapture(e.pointerId);
@@ -487,90 +559,157 @@
   }
   function makeCard(at) { cardholder.textContent = ""; var c = document.createElement("div"); c.className = "card"; cardholder.appendChild(c); openCardAnchor = at; return c; }
 
-  function composeNew(loc) {
-    state.openId = null; renderPins(); renderList();
-    var card = makeCard({ x: loc.px - window.scrollX, y: loc.py - window.scrollY });
-    var needName = !getName();
-    card.innerHTML = '<div class="chead">' +
-      '<button class="anno-toggle" title="Make this an annotation — always-on dev note, skipped when resolving comments."><img src="' + CAT + '" alt=""></button>' +
-      '<h4>New comment</h4></div>' +
-      (needName ? '<input class="nm" placeholder="Your name" />' : '') +
-      '<textarea class="tx" placeholder="What\'s your feedback?"></textarea>' +
-      '<div class="row"><button class="cancel link">Cancel</button>' +
-      '<button class="save primary">Comment</button></div>';
-    positionCard(openCardAnchor);
-    var tx = card.querySelector(".tx"), nm = card.querySelector(".nm");
-    var toggleBtn = card.querySelector(".anno-toggle"), headEl = card.querySelector("h4"),
-        saveBtn = card.querySelector(".save");
-    var anno = false;
-    function reflect() {
-      toggleBtn.classList.toggle("on", anno);
-      headEl.textContent = anno ? "New annotation" : "New comment";
-      saveBtn.textContent = anno ? "Annotate" : "Comment";
-      tx.placeholder = anno ? "Note for devs…" : "What's your feedback?";
+  // Render a message body, highlighting @mentions as accent tokens. Builds nodes
+  // from split text (never innerHTML of user input) so it's injection-safe.
+  function renderBody(el, text) {
+    el.textContent = "";
+    String(text == null ? "" : text).split(/(@[\w-]+)/g).forEach(function (p) {
+      if (!p) return;
+      if (/^@[\w-]+$/.test(p)) {
+        var s = document.createElement("span"); s.className = "mention"; s.textContent = p; el.appendChild(s);
+      } else el.appendChild(document.createTextNode(p));
+    });
+  }
+
+  // Wire one `.cfield` (a textarea + send button, optional name input) with the
+  // shared compose behaviour: grey pill when idle, white box when focused/typed-in,
+  // auto-grow, ⏎ to send / Shift+⏎ newline, send enabled only with text.
+  function wireField(cfield, onSubmit) {
+    var tx = cfield.querySelector(".tx"), send = cfield.querySelector(".send"), nm = cfield.querySelector(".nm");
+    var focused = false;
+    function grow() { tx.style.height = "auto"; tx.style.height = Math.min(tx.scrollHeight, 180) + "px"; }
+    function look() {
+      cfield.classList.toggle("idle", !focused && !tx.value.trim() && !(nm && nm.value.trim()));
+      send.classList.toggle("on", !!tx.value.trim());
     }
-    toggleBtn.addEventListener("click", function () { anno = !anno; reflect(); tx.focus(); });
-    (nm || tx).focus();
-    card.querySelector(".cancel").addEventListener("click", closeCard);
-    saveBtn.addEventListener("click", function () {
-      var name = (nm ? nm.value.trim() : getName()) || "Anonymous";
+    function fire() {
       var text = tx.value.trim(); if (!text) { tx.focus(); return; }
-      if (nm) setName(name);
+      onSubmit(text, nm ? nm.value.trim() : "");
+    }
+    tx.addEventListener("input", function () { grow(); look(); });
+    tx.addEventListener("focus", function () { focused = true; look(); });
+    tx.addEventListener("blur", function () { focused = false; look(); });
+    if (nm) {
+      nm.addEventListener("focus", function () { focused = true; look(); });
+      nm.addEventListener("blur", function () { focused = false; look(); });
+    }
+    tx.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); fire(); }
+    });
+    send.addEventListener("click", fire);
+    grow(); look();
+    return { focus: function () { (nm || tx).focus(); } };
+  }
+
+  function composeNew(loc) {
+    hidePreview();
+    state.openId = null; renderPins(); renderList();
+    cardholder.textContent = "";
+    var wrap = document.createElement("div");
+    wrap.className = "compose";
+    var needName = !getName();
+    wrap.innerHTML = '<span class="cpin"></span>' +
+      '<div class="cfield idle">' +
+      (needName ? '<input class="nm" placeholder="Your name" />' : '') +
+      '<textarea class="tx" rows="1" placeholder="Add a comment"></textarea>' +
+      '<button class="send" title="Send">' + SVG.send + '</button>' +
+      '</div>';
+    cardholder.appendChild(wrap);
+    openCardAnchor = { x: loc.px - window.scrollX, y: loc.py - window.scrollY };
+    positionCard(openCardAnchor);
+    var api = wireField(wrap.querySelector(".cfield"), function (text, name) {
+      name = name || getName() || "Anonymous";
+      if (wrap.querySelector(".nm")) setName(name);
       var thread = { id: uid(), sel: loc.sel, fx: loc.fx, fy: loc.fy, px: loc.px, py: loc.py,
-        view: loc.view, screen: loc.screen, resolved: false, annotation: anno, messages: [{ author: name, body: text, at: nowIso() }] };
+        view: loc.view, screen: loc.screen, resolved: false, annotation: false,
+        messages: [{ author: name, body: text, at: nowIso() }] };
       closeCard();
       mutate({ op: "add", thread: thread });
-      toast(anno ? "Annotation added" : "Comment added");
+      toast("Comment added");
     });
+    api.focus();
+  }
+
+  function delThread(id) {
+    if (!confirm("Delete this comment thread?")) return;
+    deleted[id] = 1;
+    mutate({ op: "delete", id: id }).then(closeCard);
+  }
+  function delMsg(id, index) {
+    if (index === 0) { delThread(id); return; }   // root message = whole thread
+    if (!confirm("Delete this reply?")) return;
+    mutate({ op: "delmsg", id: id, index: index }).then(function () { openThread(id); });
   }
 
   function openThread(id) {
     var t = find(id); if (!t) return;
+    hidePreview();
     state.mode = "browse"; state.openId = id;
     var xy = pinXY(t) || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     render();
     var card = makeCard(xy);
-    card.innerHTML = '<div class="chead">' +
-      '<button class="anno-toggle' + (t.annotation ? ' on' : '') + '" title="' +
-      (t.annotation ? 'Annotation — always visible, skipped on resolve. Click to make it a normal comment.' : 'Make this an annotation — always-on dev note, skipped when resolving comments.') +
+    // Header: title + icon cluster — ⋯ delete · cat annotate · ✓ resolve · ✕ close.
+    card.innerHTML = '<div class="thead"><strong>' + (t.annotation ? 'Annotation' : 'Comment') + '</strong>' +
+      '<button class="ico del" title="Delete">' + SVG.dots + '</button>' +
+      '<button class="ico cat' + (t.annotation ? ' on' : '') + '" title="' +
+      (t.annotation ? 'Annotation — always-on, skipped on resolve. Click to make it a normal comment.' : 'Make this an annotation — always-on dev note, skipped when resolving comments.') +
       '"><img src="' + CAT + '" alt=""></button>' +
-      '<h4>' + (t.annotation ? 'Annotation' : 'Comment') + (t.resolved ? ' · resolved' : '') + '</h4></div>' +
+      '<button class="ico res' + (t.resolved ? ' done' : '') + '" title="' + (t.resolved ? 'Reopen' : 'Resolve') + '">' + SVG.check + '</button>' +
+      '<button class="ico close" title="Close">' + SVG.close + '</button></div>' +
       '<div class="msgs"></div>' +
-      '<textarea class="tx" placeholder="Reply…"></textarea>' +
-      '<div class="row"><button class="del danger">Delete</button>' +
-      '<button class="res link">' + (t.resolved ? 'Reopen' : 'Resolve') + '</button>' +
-      '<span class="spacer"></span><button class="reply primary">Reply</button></div>';
+      '<div class="replybar"><div class="cfield idle">' +
+      '<textarea class="tx" rows="1" placeholder="Reply"></textarea>' +
+      '<button class="send" title="Send">' + SVG.send + '</button></div></div>';
     var msgs = card.querySelector(".msgs");
-    t.messages.forEach(function (m) {
+    t.messages.forEach(function (m, i) {
       var d = document.createElement("div"); d.className = "msg";
-      d.innerHTML = '<span class="who"></span><span class="when"></span><div class="body"></div>';
+      d.innerHTML = '<div class="mhead"><span class="who"></span><span class="when" data-iso=""></span>' +
+        '<button class="mdel" title="Delete">' + SVG.dots + '</button></div><div class="body"></div>';
       d.querySelector(".who").textContent = m.author;
-      d.querySelector(".when").textContent = fmt(m.at);
-      d.querySelector(".body").textContent = m.body;
+      var w = d.querySelector(".when"); w.textContent = fmt(m.at); w.setAttribute("data-iso", m.at || "");
+      renderBody(d.querySelector(".body"), m.body);
+      d.querySelector(".mdel").addEventListener("click", function () { delMsg(id, i); });
       msgs.appendChild(d);
     });
     positionCard(xy);
-    card.querySelector(".reply").addEventListener("click", function () {
-      var tx = card.querySelector(".tx"), text = tx.value.trim(); if (!text) { tx.focus(); return; }
+    wireField(card.querySelector(".replybar .cfield"), function (text) {
       mutate({ op: "reply", id: id, message: { author: getName() || "Anonymous", body: text, at: nowIso() } })
         .then(function () { openThread(id); });
     });
     card.querySelector(".res").addEventListener("click", function () {
       mutate({ op: "resolve", id: id, resolved: !t.resolved }).then(closeCard);
     });
-    card.querySelector(".anno-toggle").addEventListener("click", function () {
+    card.querySelector(".close").addEventListener("click", closeCard);
+    card.querySelector(".cat").addEventListener("click", function () {
       var willBe = !t.annotation;
       mutate({ op: "annotate", id: id, annotation: willBe }).then(function () {
         toast(willBe ? "Now an annotation · always-on for devs" : "Back to a comment");
         openThread(id);
       });
     });
-    card.querySelector(".del").addEventListener("click", function () {
-      if (!confirm("Delete this comment thread?")) return;
-      deleted[id] = 1;
-      mutate({ op: "delete", id: id }).then(closeCard);
-    });
+    card.querySelector(".del").addEventListener("click", function () { delThread(id); });
   }
+
+  /* ---------- hover preview (grows out of the pin, left → right) ---------- */
+
+  var previewTimer = null;
+  function showPreview(btn, id) {
+    var t = find(id); if (!t) return;
+    var m = t.messages[0] || {};
+    previewEl.innerHTML = '<div class="phead"><span class="who"></span><span class="when" data-iso=""></span></div><div class="body"></div>';
+    previewEl.querySelector(".who").textContent = m.author || "";
+    var w = previewEl.querySelector(".when"); w.textContent = fmt(m.at); w.setAttribute("data-iso", m.at || "");
+    renderBody(previewEl.querySelector(".body"), m.body);
+    previewEl.classList.add("show"); // show first so width/height are measurable
+    var r = btn.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight, gap = 10, m2 = 8;
+    var pw = previewEl.offsetWidth, ph = previewEl.offsetHeight;
+    var left = r.right + gap, useLeft = false;
+    if (left + pw > vw - m2) { left = r.left - pw - gap; useLeft = true; } // flip to the left edge
+    previewEl.classList.toggle("left", useLeft);
+    previewEl.style.left = Math.max(m2, left) + "px";
+    previewEl.style.top = Math.max(m2, Math.min(r.top - 6, vh - ph - m2)) + "px";
+  }
+  function hidePreview() { clearTimeout(previewTimer); previewEl.classList.remove("show"); }
 
   // Open a thread; if it lives on another screen, navigate there first.
   function openOrNavigate(id) {
@@ -608,13 +747,30 @@
     })();
   }
 
+  // Relative time, Figma-style: "Just now" → "1 minute ago" → "N min. ago" → hours
+  // → date. Open cards carry data-iso on each .when so the ticker can re-age them.
   function fmt(iso) {
     try {
-      var d = new Date(iso);
-      return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " +
-        d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      var s = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (isNaN(s)) return "";
+      if (s < 45) return "Just now";
+      if (s < 90) return "1 minute ago";
+      if (s < 3600) return Math.round(s / 60) + " min. ago";
+      if (s < 5400) return "1 hour ago";
+      if (s < 86400) return Math.round(s / 3600) + " hours ago";
+      if (s < 172800) return "Yesterday";
+      return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
     } catch (e) { return ""; }
   }
+  // Re-age every visible relative timestamp (open card + preview) so "Just now"
+  // becomes "1 minute ago" without needing a re-render.
+  setInterval(function () {
+    var els = root.querySelectorAll(".when[data-iso]");
+    for (var i = 0; i < els.length; i++) {
+      var iso = els[i].getAttribute("data-iso");
+      if (iso) els[i].textContent = fmt(iso);
+    }
+  }, 30000);
 
   /* ---------- modes ---------- */
 
