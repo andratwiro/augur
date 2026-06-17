@@ -4464,12 +4464,18 @@
   /* GoVocal review-overlay screen contract — publish the current visible screen
      on <body data-gv-screen> so comments/annotations scope to the screen they were
      made on (the overlay reads this; URL never changes in this SPA). Every visible-
-     state change = a distinct screen, composed from view + frame + state + phase +
-     any open modal. Re-synced after any click (deferred past the page's handlers)
-     and on load; only writes when the key actually changes. */
+     state change = a distinct screen. The content builder (#view-builder.open) is a
+     full-screen overlay that sits OVER the still-visible project view, so it must be
+     checked first and short-circuit. Re-synced after any click and Escape (deferred
+     past the page's own handlers) and on load; only writes when the key changes. */
   (function () {
     function vis(el) { return el && getComputedStyle(el).display !== "none"; }
     function gvScreen() {
+      var builder = document.getElementById("view-builder");
+      if (vis(builder)) {
+        var settings = document.getElementById("e2e-content-builder-settings");
+        return ["builder", settings && vis(settings) ? "settings" : ""].filter(Boolean).join("|");
+      }
       var view = ["project", "phase", "add-phase", "add-survey"]
         .filter(function (v) { return vis(document.getElementById("view-" + v)); })[0] || "project";
       var fr = document.querySelector(".frame-chip button.on");
@@ -4489,6 +4495,7 @@
       if (document.body.getAttribute("data-gv-screen") !== s) document.body.setAttribute("data-gv-screen", s);
     }
     document.addEventListener("click", function () { setTimeout(sync, 0); }, true);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") setTimeout(sync, 0); }, true);
     if (document.readyState !== "loading") sync();
     else document.addEventListener("DOMContentLoaded", sync);
     setTimeout(sync, 400);
