@@ -10,6 +10,7 @@
    ============================================================ */
 (function () {
   const OUT = "#241d29";   // outline (warm near-black)
+  const SW  = 4.2;         // canonical chunky outline weight (uniform everywhere)
 
   const PALETTE = [
     { name: "Blossom",  fur: "#FBB6CE", dark: "#F48FB1", belly: "#FFE3EE", ear: "#F9A8C8", cheek: "#F2789F", paw: "#FFD4E4" },
@@ -28,92 +29,97 @@
        d="M0 2.4 C-1.6 -0.4 -5 -0.2 -5 2.6 C-5 5 -2 6.6 0 8.4 C2 6.6 5 5 5 2.6 C5 -0.2 1.6 -0.4 0 2.4 Z"
        fill="${fill}" stroke="${OUT}" stroke-width="1.1" stroke-linejoin="round"/>`;
 
-  /* Upright sitting cat. eyesClosed → content/blink. Faces right (flip with scaleX). */
+  /* Upright sitting cat. eyesClosed → content/blink. Faces right (flip with scaleX).
+     Built to the real FigPal language: one continuous chunky rounded silhouette,
+     rounded ear tips, flat pastel fill, lighter belly, soft stripe dabs, blush. */
   function svgUpright(c, eyesClosed) {
     const eyes = eyesClosed
-      ? `<path d="M34 41 q4 4 8 0" fill="none" stroke="${OUT}" stroke-width="2.4" stroke-linecap="round"/>
-         <path d="M58 41 q4 4 8 0" fill="none" stroke="${OUT}" stroke-width="2.4" stroke-linecap="round"/>`
-      : `<g><ellipse cx="39" cy="41" rx="3.4" ry="4.2" fill="${OUT}"/><circle cx="40.3" cy="39.4" r="1.2" fill="#fff"/></g>
-         <g><ellipse cx="61" cy="41" rx="3.4" ry="4.2" fill="${OUT}"/><circle cx="62.3" cy="39.4" r="1.2" fill="#fff"/></g>`;
+      ? `<path d="M35 41.5 q4.2 4 8.4 0" fill="none" stroke="${OUT}" stroke-width="2.8" stroke-linecap="round"/>
+         <path d="M56.6 41.5 q4.2 4 8.4 0" fill="none" stroke="${OUT}" stroke-width="2.8" stroke-linecap="round"/>`
+      : `<ellipse cx="39.4" cy="41.5" rx="3.5" ry="4.4" fill="${OUT}"/><circle cx="40.7" cy="39.7" r="1.25" fill="#fff"/>
+         <ellipse cx="60.6" cy="41.5" rx="3.5" ry="4.4" fill="${OUT}"/><circle cx="61.9" cy="39.7" r="1.25" fill="#fff"/>`;
     return `
-    <g stroke="${OUT}" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
-      <!-- tail (behind) -->
-      <path d="M70 80 C88 80 90 58 76 54 C70 52.5 66 58 70 61 C77 63 76 73 67 73"
-            fill="${c.fur}"/>
-      <!-- body -->
-      <path d="M27 84 C23 64 32 53 50 53 C68 53 77 64 73 84 C66 90 34 90 27 84 Z" fill="${c.fur}"/>
-      <!-- belly -->
-      <path d="M40 86 C36 74 40 64 50 64 C60 64 64 74 60 86 Z" fill="${c.belly}" stroke="none"/>
-      <!-- feet -->
-      <ellipse cx="39" cy="85" rx="7.5" ry="5.2" fill="${c.paw}"/>
-      <ellipse cx="61" cy="85" rx="7.5" ry="5.2" fill="${c.paw}"/>
-      <!-- ears -->
-      <path d="M32 26 L27 9 L46 21 Z" fill="${c.fur}"/>
-      <path d="M68 26 L73 9 L54 21 Z" fill="${c.fur}"/>
+    <g stroke="${OUT}" stroke-width="${SW}" stroke-linejoin="round" stroke-linecap="round">
+      <!-- tail: thick curl resting beside the haunch -->
+      <path d="M71 82 C90 84 92 60 78 56 C70 53.6 64.5 60 69 63.5 C76 66 75.5 75 67.5 75" fill="${c.fur}"/>
+      <!-- body: rounded sitting loaf -->
+      <path d="M26 85 C21.5 64 31 52 50 52 C69 52 78.5 64 74 85 C66.5 90.5 33.5 90.5 26 85 Z" fill="${c.fur}"/>
+      <!-- ears: rounded triangles -->
+      <path d="M33 24 C30 14 28.5 11 31 10 C33.5 9 41 15 45.5 20.5 Z" fill="${c.fur}"/>
+      <path d="M67 24 C70 14 71.5 11 69 10 C66.5 9 59 15 54.5 20.5 Z" fill="${c.fur}"/>
       <!-- head -->
-      <circle cx="50" cy="40" r="22" fill="${c.fur}"/>
+      <circle cx="50" cy="40" r="22.5" fill="${c.fur}"/>
+    </g>
+    <!-- belly (lighter), tucked inside body -->
+    <path d="M41 87 C37 75 41 65 50 65 C59 65 63 75 59 87 Z" fill="${c.belly}" stroke="none"/>
+    <!-- feet -->
+    <g stroke="${OUT}" stroke-width="${SW}" stroke-linejoin="round" stroke-linecap="round">
+      <ellipse cx="39" cy="85.5" rx="8" ry="5.4" fill="${c.paw}"/>
+      <ellipse cx="61" cy="85.5" rx="8" ry="5.4" fill="${c.paw}"/>
     </g>
     <!-- inner ears -->
-    <path d="M34 23 L31 14 L43 21 Z" fill="${c.ear}"/>
-    <path d="M66 23 L69 14 L57 21 Z" fill="${c.ear}"/>
-    <!-- stripes -->
-    <g fill="${c.dark}" stroke="none" opacity=".9">
-      <path d="M50 19 q3 5 0 9 q-3 -4 0 -9 Z"/>
-      <path d="M41 20 q2 4 0 8 q-3 -4 0 -8 Z"/>
-      <path d="M59 20 q-2 4 0 8 q3 -4 0 -8 Z"/>
-    </g>
-    <!-- heart marking -->
-    ${heart(50, 26, 0.85, c.dark)}
-    <!-- cheeks -->
-    <ellipse cx="35" cy="47" rx="4.4" ry="2.8" fill="${c.cheek}" opacity=".7"/>
-    <ellipse cx="65" cy="47" rx="4.4" ry="2.8" fill="${c.cheek}" opacity=".7"/>
-    <!-- eyes -->
-    ${eyes}
-    <!-- nose + mouth -->
-    <path d="M47 45 L53 45 L50 48.5 Z" fill="${OUT}"/>
-    <path d="M50 48.5 q-4 4 -7.5 1.5 M50 48.5 q4 4 7.5 1.5" fill="none" stroke="${OUT}" stroke-width="2" stroke-linecap="round"/>
-    <!-- whiskers -->
-    <g stroke="${OUT}" stroke-width="1.5" stroke-linecap="round" opacity=".55">
-      <path d="M33 45 H22 M33 49 H21"/>
-      <path d="M67 45 H78 M67 49 H79"/>
-    </g>`;
-  }
-
-  /* Lying / sleeping cat — the iconic content pose (head resting on tucked paws,
-     curled tail, closed smiling eyes, heart on the brow). Faces left. */
-  function svgSleep(c) {
-    return `
-    <g stroke="${OUT}" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
-      <!-- curled tail over the back -->
-      <path d="M82 64 C95 58 92 44 80 47 C73 49 74 58 81 56" fill="${c.fur}"/>
-      <!-- body (rounded loaf) -->
-      <path d="M20 72 C15 56 30 47 50 47 C72 47 87 55 84 69 C82 78 62 80 47 80 C33 80 24 79 20 72 Z" fill="${c.fur}"/>
-      <!-- ears -->
-      <path d="M22 55 L18 43 L33 52 Z" fill="${c.fur}"/>
-      <path d="M45 54 L50 43 L37 51 Z" fill="${c.fur}"/>
-      <!-- head resting low on the left -->
-      <circle cx="33" cy="65" r="16" fill="${c.fur}"/>
-      <!-- tucked front paws under the chin -->
-      <ellipse cx="26" cy="78" rx="6.5" ry="4.2" fill="${c.paw}"/>
-      <ellipse cx="40" cy="78.5" rx="6.5" ry="4.2" fill="${c.paw}"/>
-    </g>
-    <!-- inner ears -->
-    <path d="M23 52 L21 45 L30 51 Z" fill="${c.ear}"/>
-    <path d="M44 52 L48 45 L39 50 Z" fill="${c.ear}"/>
-    <!-- gentle back stripes -->
-    <g fill="${c.dark}" stroke="none" opacity=".8">
-      <path d="M58 49 q3 8 0 15 q-3 -7 0 -15 Z"/>
-      <path d="M68 51 q3 7 0 13 q-3 -6 0 -13 Z"/>
+    <path d="M34 22 C32 16 31 13.5 32.4 13 C34 12.5 39 16 42 20 Z" fill="${c.ear}"/>
+    <path d="M66 22 C68 16 69 13.5 67.6 13 C66 12.5 61 16 58 20 Z" fill="${c.ear}"/>
+    <!-- soft stripe dabs on the crown -->
+    <g fill="${c.dark}" stroke="none" opacity=".85">
+      <path d="M50 19.5 C52.3 21 52.3 25.5 50 28.5 C47.7 25.5 47.7 21 50 19.5 Z"/>
+      <path d="M41 21 C43 22.4 43 26 41 28.5 C39 26 39 22.4 41 21 Z"/>
+      <path d="M59 21 C61 22.4 61 26 59 28.5 C57 26 57 22.4 59 21 Z"/>
     </g>
     <!-- heart marking on the brow -->
-    ${heart(33, 53, 0.62, c.dark)}
-    <!-- content closed eyes (smiling) -->
-    <path d="M24 64 q3.5 3 7 0" fill="none" stroke="${OUT}" stroke-width="2.3" stroke-linecap="round"/>
-    <path d="M36 64 q3.5 3 7 0" fill="none" stroke="${OUT}" stroke-width="2.3" stroke-linecap="round"/>
-    <!-- cheeks + tiny nose/smile -->
-    <ellipse cx="26" cy="69" rx="3.6" ry="2.2" fill="${c.cheek}" opacity=".7"/>
-    <ellipse cx="41" cy="69" rx="3.6" ry="2.2" fill="${c.cheek}" opacity=".7"/>
-    <path d="M31.5 70 L36.5 70 L34 72.5 Z" fill="${OUT}"/>`;
+    ${heart(50, 26.5, 0.82, c.dark)}
+    <!-- cheeks -->
+    <ellipse cx="34.5" cy="47.5" rx="4.6" ry="3" fill="${c.cheek}" opacity=".6"/>
+    <ellipse cx="65.5" cy="47.5" rx="4.6" ry="3" fill="${c.cheek}" opacity=".6"/>
+    <!-- eyes -->
+    ${eyes}
+    <!-- nose + mouth (w-smile) -->
+    <path d="M47.4 45.4 L52.6 45.4 L50 48.6 Z" fill="${OUT}"/>
+    <path d="M50 48.6 q-3.8 3.6 -7.2 1.4 M50 48.6 q3.8 3.6 7.2 1.4" fill="none" stroke="${OUT}" stroke-width="2.1" stroke-linecap="round"/>`;
+  }
+
+  /* Lying / sleeping cat — THE iconic FigPal pose (ref 04): one long rounded loaf,
+     head resting low on the left atop tucked front paws, two ears up top, a thick
+     tail curling back over the right haunch, soft stripe rings, content closed eyes,
+     big blush, heart on the brow. Faces left. */
+  function svgSleep(c) {
+    return `
+    <g stroke="${OUT}" stroke-width="${SW}" stroke-linejoin="round" stroke-linecap="round">
+      <!-- thick tail curling up and over the right haunch -->
+      <path d="M70 67 C84 71 88 47 76 45 C66.5 43.2 63 53 70 55 C77 57 75 64 67 62.5" fill="${c.fur}"/>
+      <!-- resting body loaf (head bump on the left, rounded haunch on the right) -->
+      <path d="M22 70
+               C16 64 17 50 30 47
+               C40 45 47 49 50 55
+               C53 48.5 61 45.5 71 46.5
+               C84 47.5 87 62 79 69
+               C72 75 57 75 48 73
+               C40 75 28 75 22 70 Z" fill="${c.fur}"/>
+      <!-- ears on top of the resting head -->
+      <path d="M24 52 C21 44 20 41 22.5 40.5 C25 40 30 44.5 32.5 49 Z" fill="${c.fur}"/>
+      <path d="M44 52 C46.5 44.5 47.5 41.5 45 41 C42.5 40.5 38 44.5 36 49 Z" fill="${c.fur}"/>
+      <!-- tucked front paws under the chin -->
+      <ellipse cx="25" cy="72.5" rx="6.8" ry="4.4" fill="${c.paw}"/>
+      <ellipse cx="40" cy="73" rx="6.8" ry="4.4" fill="${c.paw}"/>
+    </g>
+    <!-- inner ears -->
+    <path d="M24.6 49 C22.6 43.5 22 41.5 23.6 41.2 C25.4 41 29 44 31 48 Z" fill="${c.ear}"/>
+    <path d="M43.4 49 C45.4 43.7 46 41.6 44.4 41.3 C42.6 41 39 44 37 48 Z" fill="${c.ear}"/>
+    <!-- soft stripe rings on the haunch -->
+    <g fill="none" stroke="${c.dark}" stroke-width="3.4" stroke-linecap="round" opacity=".8">
+      <path d="M58 50 C55 55 55 61 58 66"/>
+      <path d="M66 49.5 C63.5 54.5 63.5 60.5 66 65.5"/>
+      <path d="M74 50.5 C72 54.5 72 59.5 74 63.5"/>
+    </g>
+    <!-- heart marking on the brow -->
+    ${heart(34, 52, 0.6, c.dark)}
+    <!-- content closed eyes (gentle downward arcs) -->
+    <path d="M25.5 60 q4 3.4 8 0" fill="none" stroke="${OUT}" stroke-width="2.7" stroke-linecap="round"/>
+    <path d="M37 60 q4 3.4 8 0" fill="none" stroke="${OUT}" stroke-width="2.7" stroke-linecap="round"/>
+    <!-- cheeks + tiny nose -->
+    <ellipse cx="27" cy="65" rx="4" ry="2.6" fill="${c.cheek}" opacity=".6"/>
+    <ellipse cx="43" cy="65" rx="4" ry="2.6" fill="${c.cheek}" opacity=".6"/>
+    <path d="M32 65.6 L38 65.6 L35 68.6 Z" fill="${OUT}"/>`;
   }
 
   /* Build a full <svg> string. state: {pose:'up'|'sleep', eyesClosed:bool} */
@@ -152,9 +158,9 @@
       `pointer-events:none;will-change:transform;`;
     // two stacked sprites; we toggle which is visible by state
     el.innerHTML =
-      `<div class="fp-sprite fp-up">${svg(cfg, { pose: "up" })}</div>` +
-      `<div class="fp-sprite fp-up-blink" style="display:none">${svg(cfg, { pose: "up", eyesClosed: true })}</div>` +
-      `<div class="fp-sprite fp-sleep" style="display:none">${svg(cfg, { pose: "sleep" })}</div>` +
+      `<div class="fp-sprite fp-up" style="opacity:1">${svg(cfg, { pose: "up" })}</div>` +
+      `<div class="fp-sprite fp-up-blink" style="opacity:0">${svg(cfg, { pose: "up", eyesClosed: true })}</div>` +
+      `<div class="fp-sprite fp-sleep" style="opacity:0">${svg(cfg, { pose: "sleep" })}</div>` +
       `<div class="fp-zzz" aria-hidden="true">z</div>`;
     document.body.appendChild(el);
 
@@ -163,11 +169,19 @@
       const st = document.createElement("style");
       st.id = "figpal-style";
       st.textContent = `
-        .figpal-companion .fp-sprite{position:absolute;inset:0}
-        .figpal-companion svg{width:100%;height:100%;display:block}
+        .figpal-companion .fp-sprite{position:absolute;inset:0;transition:opacity .09s ease}
+        .figpal-companion .fp-sleep{transition:opacity .35s ease}
+        .figpal-companion svg{width:100%;height:100%;display:block;transform-origin:50% 88%}
         .figpal-companion .fp-shadow{transition:rx .3s,opacity .3s}
-        .figpal-companion.walk .fp-up svg{animation:fp-bob .42s ease-in-out infinite}
-        @keyframes fp-bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-7%) rotate(2deg)}}
+        /* trot: two springy steps per cycle — a small lift + slight squash, gentle tilt */
+        .figpal-companion.walk .fp-up svg{animation:fp-bob .46s ease-in-out infinite}
+        @keyframes fp-bob{
+          0%   {transform:translateY(0)     scaleY(1)    rotate(-1.5deg)}
+          25%  {transform:translateY(-9%)   scaleY(1.03) rotate(0deg)}
+          50%  {transform:translateY(0)     scaleY(.985) rotate(1.5deg)}
+          75%  {transform:translateY(-9%)   scaleY(1.03) rotate(0deg)}
+          100% {transform:translateY(0)     scaleY(1)    rotate(-1.5deg)}
+        }
         .figpal-companion .fp-zzz{position:absolute;top:-6px;right:-2px;font:700 14px ui-rounded,system-ui,sans-serif;color:#9a8fb0;opacity:0}
         .figpal-companion.sleep .fp-zzz{animation:fp-zzz 2.4s ease-out infinite}
         @keyframes fp-zzz{0%{opacity:0;transform:translate(0,4px) scale(.6)}30%{opacity:.9}100%{opacity:0;transform:translate(8px,-16px) scale(1.1)}}
@@ -188,7 +202,9 @@
     const pos = { x: (opts.start && opts.start.x) || innerWidth * 0.5,
                   y: (opts.start && opts.start.y) || innerHeight * 0.72 };
     const mouse = { x: pos.x, y: pos.y };
-    let facing = 1, lastMove = now(), raf = 0, blinkUntil = 0, nextBlink = now() + 3000, running = true;
+    // facing: target ±1 (deadzoned); facingNow eases toward it for a smooth flip.
+    let facing = 1, facingNow = 1, walking = false, lastFlip = 0;
+    let lastMove = now(), lastT = now(), raf = 0, blinkUntil = 0, nextBlink = now() + 3000, running = true;
 
     function now() { return performance.now(); }
 
@@ -207,39 +223,65 @@
     }
     let nextHeart = now() + 6000;
 
+    // Crossfade between stacked sprites (opacity, not display) so pose changes —
+    // especially sit→sleep — settle gently instead of snapping.
+    let curPose = "up";
     function setPose(p) {
+      if (p === curPose) return;
+      curPose = p;
       const isSleep = p === "sleep";
-      sleep.style.display = isSleep ? "block" : "none";
-      up.style.display = isSleep ? "none" : (p === "blink" ? "none" : "block");
-      blink.style.display = p === "blink" ? "block" : "none";
+      sleep.style.opacity = isSleep ? "1" : "0";
+      up.style.opacity = (p === "up") ? "1" : "0";
+      blink.style.opacity = (p === "blink") ? "1" : "0";
+      // keep all stacked but let the hidden ones ignore layout cost
+      sleep.style.zIndex = isSleep ? "2" : "1";
       el.classList.toggle("sleep", isSleep);
     }
 
     function frame() {
       if (!running) return;
       const t = now();
+      // dt normalised to 60fps so the lerp feels identical on any refresh rate.
+      const dt = Math.min(3, (t - lastT) / 16.667); lastT = t;
       const idle = t - lastMove;
 
-      // target trails a bit behind/below the cursor so it looks like it's coming over
-      const moving = idle < 220;
+      // Target: trail behind & a little below the cursor so it reads as "coming over".
+      // After a short pause, lock the target where it stands so it settles cleanly
+      // instead of creeping (kills the rubber-band wobble).
       let tx, ty;
-      if (idle > 900) {            // settle near where it last walked to
+      if (idle > 650) {
         tx = pos.x; ty = pos.y;
       } else {
-        tx = mouse.x - facing * size * 0.62;
-        ty = mouse.y + size * 0.30;
+        tx = mouse.x - facing * size * 0.60;
+        ty = mouse.y + size * 0.28;
       }
       tx = Math.max(size * 0.5, Math.min(innerWidth - size * 0.5, tx));
       ty = Math.max(size * 0.5, Math.min(innerHeight - size * 0.4, ty));
 
       const dx = tx - pos.x, dy = ty - pos.y;
       const dist = Math.hypot(dx, dy);
-      if (Math.abs(dx) > 8) facing = dx > 0 ? 1 : -1;
-      pos.x += dx * 0.05;
-      pos.y += dy * 0.07;
 
-      const walking = dist > 3;
+      // Time-based exponential ease toward the target (frame-rate independent).
+      const k = 1 - Math.pow(1 - 0.16, dt);   // ~0.16/frame at 60fps
+      pos.x += dx * k;
+      pos.y += dy * (k * 1.25);
+
+      // Walk hysteresis: only start trotting past a clear distance, and only stop
+      // once truly arrived — prevents on/off vibration at the destination.
+      if (!walking && dist > 14) walking = true;
+      else if (walking && dist < 4) walking = false;
       el.classList.toggle("walk", walking);
+
+      // Facing follows horizontal motion with a deadzone (ignore micro-jitter) AND a
+      // short commit window (≥320ms between flips) so it can't dither when the cursor
+      // wiggles around a vertical line. facingNow eases quickly toward the target — a
+      // brisk turn-around, kept fast so the scaleX never lingers collapsed at 0.
+      const wantFacing = dx > 0 ? 1 : -1;
+      if (walking && Math.abs(dx) > 10 && wantFacing !== facing && (t - lastFlip) > 320) {
+        facing = wantFacing; lastFlip = t;
+      }
+      facingNow += (facing - facingNow) * (1 - Math.pow(1 - 0.34, dt));
+      if (Math.abs(facingNow - facing) < 0.02) facingNow = facing;
 
       // state machine: walk → sit → (blink) → sleep
       if (walking) {
@@ -256,7 +298,7 @@
       }
 
       el.style.transform =
-        `translate(${pos.x - size / 2}px, ${pos.y - size / 2}px) scaleX(${facing})`;
+        `translate(${pos.x - size / 2}px, ${pos.y - size / 2}px) scaleX(${facingNow})`;
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
