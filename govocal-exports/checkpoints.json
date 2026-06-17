@@ -581,23 +581,6 @@
       ]
     },
     {
-      "id": "fo-project/ideacard-author",
-      "built": "pages/project-page/index.html",
-      "against": "fo-project-ideation-list",
-      "map": {
-        ".e2e-username": ".gv-ideacard__author"
-      },
-      "props": [
-        "font-size",
-        "font-weight",
-        "line-height",
-        "color"
-      ],
-      "uses": [
-        ".gv-ideacard"
-      ]
-    },
-    {
       "id": "fo-project/ideacard-comment-count",
       "built": "pages/project-page/index.html",
       "against": "fo-project-ideation-list",
@@ -1017,7 +1000,7 @@
     },
     {
       "id": "fo-events/title",
-      "built": "pages/events/index.html",
+      "built": "pages/events-page/index.html",
       "against": "fo-events",
       "map": {
         "h1": ".gv-events-page__title"
@@ -1033,7 +1016,7 @@
     },
     {
       "id": "fo-events/section",
-      "built": "pages/events/index.html",
+      "built": "pages/events-page/index.html",
       "against": "fo-events",
       "map": {
         "h2.sc-hAtEyd": ".gv-events-page__section"
@@ -1763,7 +1746,7 @@
     },
     {
       "id": "fo-cph-cb-home/frame",
-      "built": "pages/fo-cph-cb-home/index.html",
+      "built": "components/content-builder-render/index.html",
       "against": "fo-cph-cb-home",
       "map": {
         "#e2e-content-builder-frame": ".gv-cb-frame"
@@ -1782,7 +1765,7 @@
     },
     {
       "id": "fo-cph-cb-home/textbox",
-      "built": "pages/fo-cph-cb-home/index.html",
+      "built": "components/content-builder-render/index.html",
       "against": "fo-cph-cb-home",
       "map": {
         ".e2e-text-box": ".gv-cb-textbox"
@@ -1800,7 +1783,7 @@
     },
     {
       "id": "fo-cph-cb-home/single-column",
-      "built": "pages/fo-cph-cb-home/index.html",
+      "built": "components/content-builder-render/index.html",
       "against": "fo-cph-cb-home",
       "map": {
         ".e2e-single-column": ".gv-cb-col"
@@ -1816,7 +1799,7 @@
     },
     {
       "id": "fo-cph-cb-home/image",
-      "built": "pages/fo-cph-cb-home/index.html",
+      "built": "components/content-builder-render/index.html",
       "against": "fo-cph-cb-home",
       "map": {
         ".e2e-image": ".gv-cb-image"
@@ -1833,7 +1816,7 @@
     },
     {
       "id": "fo-cph-cb-home/white-space",
-      "built": "pages/fo-cph-cb-home/index.html",
+      "built": "components/content-builder-render/index.html",
       "against": "fo-cph-cb-home",
       "map": {
         ".e2e-white-space": ".gv-cb-whitespace.is-small"
@@ -2099,7 +2082,7 @@
     },
     {
       "id": "fo-stlouis-infopage/inline-cta",
-      "built": "pages/fo-stlouis-infopage/index.html",
+      "built": "pages/custom-page/index.html",
       "against": "fo-stlouis-infopage",
       "map": {
         "a.custom-button": ".gv-cta-inline"
@@ -2117,7 +2100,7 @@
     },
     {
       "id": "fo-stlouis-infopage/content-col",
-      "built": "pages/fo-stlouis-infopage/index.html",
+      "built": "pages/custom-page/index.html",
       "against": "fo-stlouis-infopage",
       "map": {
         ".jzXQxe": ".infopage__col"
@@ -2394,6 +2377,39 @@
       ],
       "uses": [
         ".gv-pcard"
+      ]
+    },
+    {
+      "id": "fo-idea/author",
+      "built": "components/idea-card/index.html",
+      "against": "fo-ideas-raleigh",
+      "map": {
+        ".e2e-username": ".gv-ideacard__author"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "line-height",
+        "color"
+      ],
+      "uses": [
+        ".gv-ideacard"
+      ]
+    },
+    {
+      "id": "fo-idea/title-margin",
+      "built": "components/idea-card/index.html",
+      "against": "fo-ideas-raleigh",
+      "map": {
+        ".e2e-idea-card-title": ".gv-ideacard__title"
+      },
+      "props": [
+        "margin",
+        "font-size",
+        "font-weight"
+      ],
+      "uses": [
+        ".gv-ideacard"
       ]
     }
   ]

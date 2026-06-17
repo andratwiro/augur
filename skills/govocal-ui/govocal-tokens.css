@@ -132,8 +132,8 @@
      the demo platform (uxusertesting.govocal.com, City of Raleigh back office).
      Apply by scoping markup under `.gv-bo`, which remaps the tenant vars below. */
   --gv-bo-sidebar-bg:     #003349;                    /* dark teal/navy left nav */
-  --gv-bo-sidebar-text:   rgba(255,255,255,0.78);     /* nav labels */
-  --gv-bo-sidebar-active: rgba(0,0,0,0.30);           /* active/hover cell on the navy */
+  --gv-bo-sidebar-text:   #fff;                       /* nav labels (digest: solid white) */
+  --gv-bo-sidebar-active: rgba(0,0,0,0.7);            /* active cell on the navy (digest n=22; hover is rgba(255,255,255,.07)) */
   --gv-bo-primary:        var(--gv-blue-500);          /* #044D6C — fills, headings, table text */
   --gv-bo-link:           #4183C4;                     /* link/anchor blue */
   --gv-bo-canvas:         #EDEFF0;                     /* app canvas behind content (measured live, light blue-grey) */

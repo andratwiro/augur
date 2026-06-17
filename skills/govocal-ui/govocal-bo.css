@@ -82,10 +82,10 @@
   display: flex; align-items: center; gap: 12px;
   height: 40px; padding: 0 8px 0 16px;
   border-radius: var(--gv-radius);
-  color: #fff; text-decoration: none; cursor: pointer;
+  color: var(--gv-bo-sidebar-text); text-decoration: none; cursor: pointer;
 }
 .gv-bo-nav__item:hover { background: rgba(255, 255, 255, 0.07); }
-.gv-bo-nav__item.is-active { background: rgba(0, 0, 0, 0.7); }
+.gv-bo-nav__item.is-active { background: var(--gv-bo-sidebar-active); }
 /* Icons: subtle blue-400 inactive; active item goes teal-400 (Support is green). */
 .gv-bo-nav__icon { width: 24px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--gv-blue-400); }
 .gv-bo-nav__icon svg { width: 24px; height: 20px; fill: currentColor; }
@@ -922,6 +922,7 @@
   text-align: left; text-decoration: none; cursor: pointer;
 }
 .gv-bo-menu__item:hover { background: var(--gv-grey-50); }
+.gv-bo-menu__icon { width: 24px; height: 24px; display: inline-flex; flex: none; }
 .gv-bo-menu.is-flyout { width: 260px; min-width: 260px; padding: 0; }
 
 /* Notification-flyout rows (content inside .gv-bo-menu.is-flyout) — measured

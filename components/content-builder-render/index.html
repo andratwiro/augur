@@ -15,8 +15,6 @@
     .demo-frame { background: var(--gv-white); margin-bottom: 32px; }
     .ph { background: var(--gv-grey-200); border-radius: var(--gv-radius); aspect-ratio: 16/9;
       display: flex; align-items: center; justify-content: center; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-s); }
-    .gv-cb-textbox h2 { margin: 0 0 8px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px; color: var(--gv-text-primary); }
-    .gv-cb-textbox p { margin: 0 0 12px; font-size: var(--gv-fs-base); line-height: 24px; color: var(--gv-grey-800); }
   </style>
 </head>
 <body>
@@ -27,34 +25,34 @@
        every other FO widget mounts INTO these cells. Source-grounded on Copenhagen. -->
 
   <p class="demo-label">cols-1 · full-width text-box (ql-align-center) + white-space</p>
-  <div class="gv-cb-frame demo-frame">
+  <div class="demo-frame"><div class="gv-cb-frame">
     <div class="gv-cb-row cols-1">
       <div class="gv-cb-textbox">
-        <div class="ql-align-center">
+        <div class="gv-prose ql-align-center">
           <h2>A centred full-width text block</h2>
           <p>The text-box self-centres to the 1200px content measure (margin 0 auto), with 24px 0 padding.</p>
         </div>
       </div>
     </div>
     <div class="gv-cb-row cols-1"><div class="gv-cb-whitespace is-small"></div></div>
-  </div>
+  </div></div>
 
   <p class="demo-label">cols-2 · image + text-box (588 + 24 gap + 588)</p>
-  <div class="gv-cb-frame demo-frame">
+  <div class="demo-frame"><div class="gv-cb-frame">
     <div class="gv-cb-row cols-2">
       <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph" style="aspect-ratio:1/1">Image</div></div></div>
-      <div class="gv-cb-col"><div class="gv-cb-textbox"><h2 style="font-size:var(--gv-fs-l)">A two-column row</h2><p>Two columns share the 1200 measure with a 24px gap, rendering 588px each.</p></div></div>
+      <div class="gv-cb-col"><div class="gv-cb-textbox"><div class="gv-prose"><h2 style="font-size:var(--gv-fs-l)">A two-column row</h2><p>Two columns share the 1200 measure with a 24px gap, rendering 588px each.</p></div></div></div>
     </div>
-  </div>
+  </div></div>
 
   <p class="demo-label">cols-3 · three equal columns (flex gap 24, max 1200)</p>
-  <div class="gv-cb-frame demo-frame">
+  <div class="demo-frame"><div class="gv-cb-frame">
     <div class="gv-cb-row cols-3">
-      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><p>Column one.</p></div></div>
-      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><p>Column two.</p></div></div>
-      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><p>Column three.</p></div></div>
+      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><div class="gv-prose"><p>Column one.</p></div></div></div>
+      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><div class="gv-prose"><p>Column two.</p></div></div></div>
+      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><div class="gv-prose"><p>Column three.</p></div></div></div>
     </div>
-  </div>
+  </div></div>
 
 </body>
 </html>
