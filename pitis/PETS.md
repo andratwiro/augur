@@ -42,19 +42,24 @@ Internal — never ships. Companion engine lives entirely in `pitis/` (see READM
 
 ### Originals still present
 - **Cat** (default species) — the traced FigPal sleeping cat; default colour is now
-  Aslam. **Dog** (corgi) — traced sleeping corgi; the plain **grey** is dog-only now.
+  Aslam. Cat picker holds **two cats**: Aslam (bicolor) then Pruna (tabby).
+- **The corgi/dog species was removed** — **Senda replaces it**, so the whole lineup
+  is now just **the two cats + Senda the mastiff**. The traced corgi paths (`DOG_P`),
+  `dogMarks`, `DTT` and `HAT_T_DOG` are gone from `piti.js`; `loadConfig` migrates any
+  saved `species:'dog'` config to `'mastiff'` so old adopters land on Senda. The corgi
+  reference/brief (`corgi-sleep.png`, `dog-agent.md`) stay as history.
 
 ## Architecture (how a piti is made)
 - **`piti.js`** = the whole engine. `window.Piti = { PALETTE, HATS, svg, loadConfig,
   saveConfig, mount, auto, reveal, hide, toggle, refreshLive }`. `config = {name,
-  furIdx, hat, species}`. Traced potrace paths per species (`P` cat, `DOG_P` dog,
-  mastiff paths). `petBody(species,…)` assembles; `svg(config,state)` renders.
+  furIdx, hat, species}`. Traced potrace paths per species (`P` cat, `MASTIFF_P`
+  mastiff). `petBody(species,…)` assembles; `svg(config,state)` renders.
   Markings = `normalMarks` / `bicolorMarks` (Aslam) / `tabbyMarks` (Pruna), drawn
   **clipped to the silhouette**. **CLIP GOTCHA:** put the transform on the `<path>`
   inside `<clipPath>`, never a wrapping `<g>` (Chrome silently mis-clips otherwise).
 - **Per-pet patterns are cat-only**, guarded in `petBody` + filtered in the
   customizer's `colourIndices()` (`index.html`). Aslam sorts first.
-- **Hats:** `HAT_T_CAT` / `HAT_T_DOG` / `HAT_T_MASTIFF` place hats on each crown
+- **Hats:** `HAT_T_CAT` / `HAT_T_MASTIFF` place hats on each crown
   (measured off coordinate-grid renders). 5 hats: sprout, top hat, wizard, beanie, party.
 - **Behaviours:** eased cursor-follow + catch-up; idle→sit→sleep("z"); pop-in;
   startled hop + "!" on clicking links/cards; sweat "running" + **after-image trail**

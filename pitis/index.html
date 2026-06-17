@@ -37,7 +37,7 @@
   .modal-x:hover { background:#f3eef9; color:var(--ink); }
   .modal-body { padding:24px 24px 24px; }
 
-  /* top pill — SPECIES tabs (cat / dog), small, selected = white/raised */
+  /* top pill — SPECIES tabs (cat / mastiff), small, selected = white/raised */
   .species {
     display:flex; gap:3px; justify-content:center; align-items:center;
     background:#f3eef9; border:1px solid var(--line); border-radius:13px;
@@ -142,30 +142,25 @@
   document.getElementById('colPrev').innerHTML = CHEV_L;
   document.getElementById('colNext').innerHTML = CHEV_R;
 
-  // species tab icons (Lucide cat / dog + a hand-drawn droopy-eared mastiff face)
+  // species tab icons (Lucide cat + a hand-drawn droopy-eared mastiff face)
   const FACE = {
     cat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5c.67 0 1.35.09 2 .26 1.78-2 5.03-2.84 6.42-2.26 1.4.58-.42 7-.42 7 .57 1.07 1 2.24 1 3.44C21 17.9 16.97 21 12 21s-9-3.1-9-7.56c0-1.25.5-2.4 1-3.44 0 0-1.89-6.42-.5-7 1.39-.58 4.72.23 6.5 2.23A9.04 9.04 0 0 1 12 5Z"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5L12 17l-.75-.75Z"/></svg>',
-    dog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.855-1.45 2.467-2.5M14 6.172C14 4.782 15.577 3.679 17.5 4c2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.467-2.5"/><path d="M8 14v.5M16 14v.5"/><path d="M11.25 16.25h1.5L12 17z"/><path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0 1 12 5c.78 0 1.5.108 2.161.306"/></svg>',
     // mastiff: a broad jowly head with long droopy ears hanging down the sides
     mastiff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5c-1.6 0-2.6 1.4-2.6 3.4 0 3 .8 6.4 2.4 8.2M18 5c1.6 0 2.6 1.4 2.6 3.4 0 3-.8 6.4-2.4 8.2"/><path d="M6.4 7.5C7.4 6 9.4 5 12 5s4.6 1 5.6 2.5c1 1.5 1.4 3.4 1.4 5.5 0 4-3 7-7 7s-7-3-7-7c0-2.1.4-4 1.4-5.5Z"/><path d="M9.5 12.5v.5M14.5 12.5v.5"/><path d="M10.5 16h3l-1.5 1.5z"/></svg>',
   };
-  const SPECIES = [ { id:'cat', label:'Cat' }, { id:'dog', label:'Dog' }, { id:'mastiff', label:'Mastiff' } ];
+  const SPECIES = [ { id:'cat', label:'Cat' }, { id:'mastiff', label:'Mastiff' } ];
 
   // Per-species swatch sets, explicit and ordered:
-  //  • cat     → Aslam (ginger & white) FIRST, then Pruna (the tabby). Plain grey dropped.
-  //  • dog     → the plain recolour hues (the corgi has no real-pet pattern yet) + grey.
+  //  • cat     → Aslam (ginger & white) FIRST, then Pruna (the tabby).
   //  • mastiff → a single fixed "Senda" look (fawn + black mask) — no recolour.
   const CAT_COLOURS = ['Ginger & white', 'Pruna'];                 // Aslam first, then Pruna
-  const DOG_COLOURS = ['Sunset', 'Pebble'];                        // a couple of recolour hues
   const MASTIFF_COLOURS = ['Senda'];
 
   function draw() { petEl.innerHTML = Piti.svg(cfg, {}); }
 
   // map the current species to its ordered list of palette indices
   function colourIndices() {
-    const names = cfg.species === 'mastiff' ? MASTIFF_COLOURS
-                : cfg.species === 'dog'     ? DOG_COLOURS
-                :                             CAT_COLOURS;
+    const names = cfg.species === 'mastiff' ? MASTIFF_COLOURS : CAT_COLOURS;
     return names
       .map(n => Piti.PALETTE.findIndex(p => p.name === n))
       .filter(i => i >= 0);
@@ -181,7 +176,7 @@
     b.dataset.species = s.id;
     b.onclick = () => {
       cfg.species = s.id;
-      // if the current colour is now invalid (bicolor on a dog), snap to the first valid one
+      // if the current colour is now invalid (a cat pattern on the mastiff), snap to the first valid one
       if (!colourIndices().includes(cfg.furIdx)) cfg.furIdx = colourIndices()[0];
       buildSwatches();
       sync();
