@@ -51,10 +51,13 @@ const STATUS_META = {
   ignore: { label: "Ignore", cls: "is-ignore" },
 };
 
-// Sort priority for prototype cards within an opportunity: Dev ready first, then
-// In progress, then unset (no chip), then Ignore at the bottom. Recency breaks
-// ties inside each group (see byStatusThenRecency).
-const STATUS_RANK = { "dev-ready": 0, "in-progress": 1, ignore: 3 };
+// Sort priority for prototype cards within an opportunity: Dev ready → In progress
+// → Ignore, recency breaking ties inside each group (see byStatusThenRecency).
+// Unset sorts with Ignore because statusChip() renders a missing status as an
+// "Ignore" chip — so the no-JS / first-paint order matches what the chip shows.
+// NOTE: the live source of truth is KV, not this JSON baseline; STATUS_JS re-sorts
+// the cards client-side once the KV statuses are applied (resort()).
+const STATUS_RANK = { "dev-ready": 0, "in-progress": 1, ignore: 2 };
 const STATUS_RANK_UNSET = 2;
 
 async function loadStatusMap() {
@@ -147,7 +150,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.41";
+const UI_VERSION = "0.42";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -707,6 +710,20 @@ const PAGE_CSS = `
       box-shadow: 0 2px 8px -2px rgba(16,24,40,0.30); backdrop-filter: blur(4px);
     }
     .preview-actions .btn-icon:hover { background: #fff; border-color: var(--accent); }
+    /* Star toggle — white rounded square; outline-grey unpinned, gold-filled pinned. */
+    .pin-btn {
+      width: 34px; height: 34px; min-width: 34px; padding: 0; cursor: pointer;
+      display: inline-grid; place-items: center; border-radius: 9px;
+      background: rgba(255,255,255,0.94); border: 1px solid rgba(16,24,40,0.14); color: #9aa0aa;
+      box-shadow: 0 2px 8px -2px rgba(16,24,40,0.30); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+      transition: background .12s ease, border-color .12s ease, color .12s ease, transform .12s ease;
+    }
+    .pin-btn:hover { background: #fff; color: #6b7280; transform: translateY(-1px); }
+    .pin-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .pin-btn .pin-star { width: 18px; height: 18px; display: block; }
+    .pin-btn.is-pinned { color: #f4b740; border-color: rgba(244,183,64,0.55); background: #fff; }
+    .pin-btn.is-pinned .pin-star { fill: #f4b740; }
+    @media (prefers-reduced-motion: reduce) { .pin-btn { transition: none; } }
     .opp-meta, .proto-meta { padding: 16px 18px; }
     .proto-meta {
       display: flex; align-items: flex-start; justify-content: space-between;
@@ -869,7 +886,9 @@ const PAGE_CSS = `
        single centered column. The wide variant gives the homepage card grid more room. */
     .wrap--wide { max-width: 1280px; }
     /* Figma-style auto-fill grid: as many ~248px columns as fit, no carousel. */
-    .opp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 22px; }
+    .opp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+    @media (max-width: 760px) { .opp-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .opp-grid { grid-template-columns: 1fr; } }
 
     /* Opportunity card = a stretched cover link: the whole card opens the folder. */
     .card-opp { position: relative; }
@@ -1114,6 +1133,9 @@ const NAV_CSS = `
     .gvside a > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .gvic { width: 18px; height: 18px; flex: none; color: #565a63; }
     .gvside a[aria-current="page"] .gvic { color: #16171a; }
+    /* Pinned rows: the leading emoji sits in the same slot a nav icon would. */
+    .gvpin-ic { width: 18px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }
+    .gvside__pinhint { color: #6b7280; font-size: 12.5px; line-height: 1.45; margin: 2px 9px 2px; }
 
     /* Collapsible section (Library) — a clickable summary row + indented children. */
     .gvside__sect { display: block; }
@@ -1172,6 +1194,29 @@ const IC_PAGE = ic(`<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M1
 const IC_LIBRARY = ic(`<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`); // library
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
 
+// Star toggle on cards — Lucide 'star'. Outline (grey) when unpinned, gold-filled
+// when pinned (PINS_JS toggles .is-pinned). Its own class so CSS can flip the fill.
+const IC_STAR = `<svg class="pin-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>`;
+
+// A "pin to sidebar" star button for a pinnable card. PINS_JS reads/sets state.
+function pinStar(key, href) {
+  return `<button type="button" class="pin-btn" data-pin-key="${key}" data-pin-href="${href}" aria-pressed="false" aria-label="Pin to sidebar" title="Pin to sidebar">${IC_STAR}</button>`;
+}
+
+// Test emojis for prototypes/projects (the user will rename to real ones later). A
+// stable hash off the slug picks from a varied pool so each card gets a distinct
+// leading emoji — the rail promotes that emoji into the Pinned row's icon slot.
+const EMOJI_POOL = ["🗳️","🏛️","📊","🧭","🛰️","🧩","🪧","🌳","🚲","📣","🗺️","🧪","💡","🔭","🪟","🧱","🎛️","🛣️","🧰","📐","🧮","🗂️","🔔","🏘️","🌍","💬","📝","🚏","🏙️","🌿","🎚️","🧷"];
+function protoEmoji(slug) {
+  let h = 0;
+  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) >>> 0;
+  return EMOJI_POOL[h % EMOJI_POOL.length];
+}
+// Display name for a pinnable card = test emoji + title (until the user renames it).
+function protoName(slug) {
+  return `${protoEmoji(slug)} ${titleCase(slug)}`;
+}
+
 // Nav context (opportunities + whether Playground shipped), set once in main() so the
 // same rail renders identically on every page without threading it through each call.
 const NAV_STATE = { opportunities: [], hasPlayground: false };
@@ -1185,21 +1230,19 @@ function railSearch() {
     `<kbd data-filter-kbd>/</kbd></div>`;
 }
 
-// The persistent left rail: brand → omni search → Library (collapsible, on top) →
-// Playground → Prototypes → Pinned (opportunities, until real pinning exists). `active`
-// is a single key: 'prototypes' | 'playground' | <opportunity name> | 'primitives' |
-// 'components' | 'pages'.
+// The persistent left rail: brand → omni search → Playground → Opportunities → Pinned
+// (the user's starred prototypes/projects, rendered client-side by PINS_JS) → Library
+// (collapsible, pinned to the bottom). `active` is a single key: 'prototypes' |
+// 'playground' | <opportunity name> | 'primitives' | 'components' | 'pages'.
 function sideRail(active) {
   const item = (href, label, key, icon) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
   const playground = NAV_STATE.hasPlayground ? item("/playground/", "Playground", "playground", IC_PLAY) : "";
-  const opps = (NAV_STATE.opportunities || [])
-    .map((o) => item(`/${encodeURIComponent(o.name)}/`, titleCase(o.name), o.name, IC_FOLDER))
-    .join("");
-  // "Pinned" = every opportunity for now; real per-item pinning is a future step.
-  const pinned = opps
-    ? `<p class="gvside__label">Pinned</p><div class="gvside__group">${opps}</div>`
-    : "";
+  // Pinned is rendered live from the KV pins map (PINS_JS fills [data-pinned-list] and
+  // toggles the empty hint); nothing is server-rendered here.
+  const pinned = `<p class="gvside__label">Pinned</p>
+      <div class="gvside__group" data-pinned-list></div>
+      <p class="gvside__pinhint" data-pinned-empty hidden>Star a prototype to pin it here.</p>`;
   // Library is a collapsible section pinned to the BOTTOM of the rail; collapsed by
   // default, auto-opens when you're on one of its pages. Its own icon leads; the
   // disclosure chevron sits on the right.
@@ -1324,7 +1367,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${PINS_JS}</script>`
   );
 }
 
@@ -1506,17 +1549,43 @@ const STATUS_JS = `
       if(map && Object.prototype.hasOwnProperty.call(map, k)) paint(chip, map[k] || 'ignore');
     });
   }
+  // Re-order cards to match the LIVE statuses (KV), since the build-time order only
+  // knows the JSON baseline. Dev ready → In progress → Ignore; the build-time order
+  // (recency) is preserved within each bucket because the sort is stable. Grouped by
+  // grid container so multiple grids on a page sort independently.
+  var RANK = { 'dev-ready':0, 'in-progress':1, 'ignore':2 };
+  function resort(){
+    var grids = [];
+    chips.forEach(function(chip){
+      var card = chip.closest('.card-proto'); if(!card) return;
+      var grid = card.parentElement; if(!grid) return;
+      var g = null; for(var i=0;i<grids.length;i++){ if(grids[i].grid===grid){ g=grids[i]; break; } }
+      if(!g){ g = {grid:grid, cards:[]}; grids.push(g); }
+      g.cards.push(card);
+    });
+    grids.forEach(function(g){
+      g.cards
+        .map(function(card, i){
+          var chip = card.querySelector('[data-status-key]');
+          var s = chip && chip.getAttribute('data-status');
+          var r = Object.prototype.hasOwnProperty.call(RANK, s) ? RANK[s] : RANK.ignore;
+          return { card: card, r: r, i: i };
+        })
+        .sort(function(a, b){ return a.r - b.r || a.i - b.i; })
+        .forEach(function(o){ g.grid.appendChild(o.card); });
+    });
+  }
   // First paint from the per-session cache if we have it — skips the network read.
   var cached = null;
   try { cached = JSON.parse(sessionStorage.getItem(CACHE) || 'null'); } catch(e){}
-  if(cached){ applyMap(cached); }
+  if(cached){ applyMap(cached); resort(); }
   else {
     fetch('/__status', {headers:{'Accept':'application/json'}})
       .then(function(r){ return r.json(); })
       .then(function(d){
         var map = (d && d.map) || {};
         try { sessionStorage.setItem(CACHE, JSON.stringify(map)); } catch(e){}
-        applyMap(map);
+        applyMap(map); resort();
       }).catch(function(){});
   }
   chips.forEach(function(chip){
@@ -1524,6 +1593,7 @@ const STATUS_JS = `
       var cur = chip.getAttribute('data-status') || 'ignore';
       var next = ORDER[(ORDER.indexOf(cur) + 1 + ORDER.length) % ORDER.length];
       paint(chip, next);
+      resort();
       chip.disabled = true;
       fetch('/__status', {
         method:'POST',
@@ -1534,10 +1604,77 @@ const STATUS_JS = `
           try { sessionStorage.setItem(CACHE, JSON.stringify(d.map)); } catch(e){}
           var k = chip.getAttribute('data-status-key');
           paint(chip, d.map[k] || 'ignore');
+          resort();
         }
-      }).catch(function(){ paint(chip, cur); }).then(function(){ chip.disabled = false; });
+      }).catch(function(){ paint(chip, cur); resort(); }).then(function(){ chip.disabled = false; });
     });
   });
+})();
+`;
+
+// Pins client. KV-frugal like STATUS_JS/CARD_MENU_JS: reads the whole pins map once
+// per session (sessionStorage), writes only on a star click. Runs on every shell page
+// to (a) render the rail's Pinned list from the map and (b) wire any star buttons on
+// the current page. A pinned row's icon is the leading emoji of its label (the test
+// emoji we prefix to prototype names), promoted into the icon slot.
+const PINS_JS = `
+(function(){
+  var listEl = document.querySelector('[data-pinned-list]');
+  var emptyEl = document.querySelector('[data-pinned-empty]');
+  var btns = Array.prototype.slice.call(document.querySelectorAll('[data-pin-key]'));
+  if(!listEl && !btns.length) return;
+  var PCACHE = 'gv_pins_map';
+  var EMO = /^(\\p{Extended_Pictographic}(\\uFE0F)?(\\u200D\\p{Extended_Pictographic}(\\uFE0F)?)*)\\s*/u;
+  var map = {};
+  function splitEmoji(s){ s = s || ''; var m; try { m = s.match(EMO); } catch(e){ m = null; } return m ? [m[1], s.slice(m[0].length)] : ['', s]; }
+  function esc(s){ return (s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function renderList(){
+    if(!listEl) return;
+    var keys = Object.keys(map);
+    listEl.innerHTML = keys.map(function(k){
+      var it = map[k] || {}; var parts = splitEmoji(it.label || k);
+      var glyph = parts[0] || '📌';
+      var txt = esc(parts[1] || it.label || k);
+      var cur = (it.href === location.pathname) ? ' aria-current="page"' : '';
+      return '<a href="'+esc(it.href||k)+'"'+cur+'><span class="gvpin-ic" aria-hidden="true">'+esc(glyph)+'</span><span>'+txt+'</span></a>';
+    }).join('');
+    if(emptyEl) emptyEl.hidden = keys.length > 0;
+  }
+  function paintBtns(){
+    btns.forEach(function(b){
+      var on = Object.prototype.hasOwnProperty.call(map, b.getAttribute('data-pin-key'));
+      b.classList.toggle('is-pinned', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.setAttribute('aria-label', on ? 'Unpin from sidebar' : 'Pin to sidebar');
+      b.setAttribute('title', on ? 'Pinned — click to remove' : 'Pin to sidebar');
+    });
+  }
+  function apply(m){ map = m || {}; renderList(); paintBtns(); }
+  var cached = null; try { cached = JSON.parse(sessionStorage.getItem(PCACHE) || 'null'); } catch(e){}
+  if(cached){ apply(cached); }
+  else fetch('/__pins', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
+    .then(function(d){ var m = (d && d.map) || {}; try { sessionStorage.setItem(PCACHE, JSON.stringify(m)); } catch(e){} apply(m); })
+    .catch(function(){ apply({}); });
+  function labelFor(b){
+    var card = b.closest('[data-rename-key]') || b.closest('.card-proto, .card-opp');
+    var nm = card && card.querySelector('.proto-name');
+    return (nm && nm.textContent.trim()) || b.getAttribute('data-pin-key');
+  }
+  btns.forEach(function(b){
+    b.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      var key = b.getAttribute('data-pin-key'), href = b.getAttribute('data-pin-href') || key;
+      var on = Object.prototype.hasOwnProperty.call(map, key);
+      if(on){ delete map[key]; } else { map[key] = { label: labelFor(b), href: href }; }
+      try { sessionStorage.setItem(PCACHE, JSON.stringify(map)); } catch(e){}
+      renderList(); paintBtns();
+      fetch('/__pins', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ key: key, href: href, label: (map[key] && map[key].label) || '', pinned: !on }) })
+        .then(function(r){ return r.json(); }).then(function(d){ if(d && d.map){ try { sessionStorage.setItem(PCACHE, JSON.stringify(d.map)); } catch(e){} apply(d.map); } })
+        .catch(function(){});
+    });
+  });
+  window.addEventListener('storage', function(e){ if(e.key === PCACHE){ try { apply(JSON.parse(e.newValue || '{}')); } catch(_){} } });
 })();
 `;
 
@@ -1571,6 +1708,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <script>${STATUS_JS}
   </script>
   <script>${CARD_MENU_JS}
+  </script>
+  <script>${PINS_JS}
   </script>
   ${addon ? addon.bodyScripts(UI_VERSION) : ""}
   ${SPECULATION_RULES}
@@ -1656,19 +1795,22 @@ function renderOpportunityIndex(opp) {
       const download = p.file
         ? `<button type="button" class="btn-icon" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html" aria-label="Download HTML" title="Download HTML">&darr;</button>`
         : "";
+      const pinKey = `/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`;
+      const dname = protoName(p.name);
       return `
-        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${opp.name}/${p.name}" data-default-name="${titleCase(p.name)}">
+        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${opp.name}/${p.name}" data-default-name="${dname}">
           <div class="preview">
             ${media(p.href, p.poster)}
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
             <div class="preview-actions">
               ${download}
+              ${pinStar(pinKey, pinKey)}
             </div>
             ${statusChip(p.status, opp.name + "/" + p.name)}
           </div>
           <div class="proto-meta">
             <div class="proto-text">
-              <div class="proto-name">${titleCase(p.name)}</div>
+              <div class="proto-name">${dname}</div>
               <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
             </div>
           </div>
@@ -1699,12 +1841,15 @@ function renderPlaygroundIndex(projects) {
   const cards = projects
     .map((p) => {
       const folder = `${encodeURIComponent(p.name)}/`;
+      const pinKey = `/playground/${encodeURIComponent(p.name)}/`;
+      const dname = protoName(p.name);
       return `
-        <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="playground/${p.name}" data-default-name="${titleCase(p.name)}">
+        <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="playground/${p.name}" data-default-name="${dname}">
           <a class="card-cover-link" href="${folder}" aria-label="Open ${titleCase(p.name)}"></a>
           ${preview(p.href, p.poster)}
+          <div class="preview-actions">${pinStar(pinKey, pinKey)}</div>
           <div class="opp-meta">
-            <div class="proto-name">${titleCase(p.name)}</div>
+            <div class="proto-name">${dname}</div>
             <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
           </div>
         </div>`;
