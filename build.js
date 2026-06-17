@@ -92,7 +92,7 @@ function injectReview(html) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.33";
+const UI_VERSION = "0.34";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -318,13 +318,16 @@ async function scan() {
 
       // Copy ONLY the prototype folder into dist.
       const destDir = path.join(DIST, top.name, proto.name);
-      const latest = await copyDir(protoDir, destDir);
+      // Exclude internal material (research/ + context/ folders, *.zip, .DS_Store)
+      // that sometimes sits inside a prototype folder — it must never reach dist.
+      const latest = await copyDir(protoDir, destDir, isInternalOnly);
 
       const { href, file } = await entryPoint(proto.name, protoDir);
       prototypes.push({
         name: proto.name,
         href,
         file,
+        poster: await exists(path.join(protoDir, "preview.webp")),
         mtimeMs: modifiedTime(protoDir, latest),
         status: statusMap[`${top.name}/${proto.name}`] || null,
       });
@@ -356,7 +359,7 @@ async function scanPages() {
   for (const e of entries) {
     if (!e.isDirectory()) continue;
     const dir = path.join(PAGES_SRC, e.name);
-    const latest = await copyDir(dir, path.join(DIST, "pages", e.name));
+    const latest = await copyDir(dir, path.join(DIST, "pages", e.name), isInternalOnly);
     const { href, file } = await entryPoint(e.name, dir);
     // Surface = back-office (GoVocal's own theme), front-office (city-themed), or
     // method (a front-office participation-method runner — its own Pages group).
@@ -372,7 +375,7 @@ async function scanPages() {
         surface = /back/.test(v) ? "back-office" : /method/.test(v) ? "method" : "front-office";
       }
     } catch {}
-    pages.push({ name: e.name, href, file, surface, mtimeMs: modifiedTime(dir, latest) });
+    pages.push({ name: e.name, href, file, surface, poster: await exists(path.join(dir, "preview.webp")), mtimeMs: modifiedTime(dir, latest) });
   }
   pages.sort(byRecency);
   return pages;
@@ -390,9 +393,9 @@ async function scanComponents() {
   for (const e of entries) {
     if (!e.isDirectory()) continue;
     const dir = path.join(COMPONENTS_SRC, e.name);
-    const latest = await copyDir(dir, path.join(DIST, "components", e.name));
+    const latest = await copyDir(dir, path.join(DIST, "components", e.name), isInternalOnly);
     const { href, file } = await entryPoint(e.name, dir);
-    components.push({ name: e.name, href, file, mtimeMs: modifiedTime(dir, latest) });
+    components.push({ name: e.name, href, file, poster: await exists(path.join(dir, "preview.webp")), mtimeMs: modifiedTime(dir, latest) });
   }
   components.sort(byRecency);
   return components;
@@ -415,7 +418,7 @@ async function scanPlayground() {
     if (!e.isDirectory() || e.name.startsWith(".")) continue;
     const dir = path.join(root, e.name);
     const { href, file } = await entryPoint(e.name, dir);
-    projects.push({ name: e.name, href, file, mtimeMs: modifiedTime(dir, await latestMtime(dir)) });
+    projects.push({ name: e.name, href, file, poster: await exists(path.join(dir, "preview.webp")), mtimeMs: modifiedTime(dir, await latestMtime(dir)) });
   }
   projects.sort(byRecency);
   return projects;
@@ -587,14 +590,18 @@ const PAGE_CSS = `
       position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0;
       transform-origin: top left; pointer-events: none;
     }
+    /* Poster image (the fast path): a pre-rendered WebP that fills the 16:10 tile.
+       Same source aspect as the box, so object-fit: cover is an exact, crop-free fit. */
+    .preview-img, .comp-thumb img {
+      position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
+      object-fit: cover; object-position: top center; pointer-events: none;
+    }
     /* ---- Preview skeleton ----
-       Live previews are scaled-down iframes of real pages. While a page's external
-       CSS loads, its CSS-sized inline SVG icons briefly balloon (FOUC), and the
-       iframe's first paint shows that. So we hold the iframe at opacity:0 over a
-       shimmering skeleton and cross-fade to it once the iframe fires its load event
-       (by which point its CSS has applied). JS adds .is-loaded to the container. */
-    .preview iframe, .comp-thumb iframe { opacity: 0; transition: opacity .35s ease; }
-    .preview.is-loaded iframe, .comp-thumb.is-loaded iframe { opacity: 1; }
+       Previews start hidden over a shimmering skeleton and cross-fade in once their
+       media fires its load event (JS adds .is-loaded). For live iframes this also
+       hides the brief external-CSS FOUC; for posters it's just a tidy fade-in. */
+    .preview iframe, .preview-img, .comp-thumb iframe, .comp-thumb img { opacity: 0; transition: opacity .35s ease; }
+    .preview.is-loaded iframe, .preview.is-loaded .preview-img, .comp-thumb.is-loaded iframe, .comp-thumb.is-loaded img { opacity: 1; }
     .preview:not(.preview--pending)::after, .comp-thumb::after {
       content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
       background: linear-gradient(90deg, var(--bg-2) 25%, #f8f9fc 50%, var(--bg-2) 75%);
@@ -606,7 +613,7 @@ const PAGE_CSS = `
     @keyframes gv-skeleton { from { background-position: 200% 0; } to { background-position: -200% 0; } }
     @media (prefers-reduced-motion: reduce) {
       .preview::after, .comp-thumb::after { animation: none; }
-      .preview iframe, .comp-thumb iframe { transition: none; }
+      .preview iframe, .preview-img, .comp-thumb iframe, .comp-thumb img { transition: none; }
     }
     .preview-link { position: absolute; inset: 0; z-index: 2; }
     /* Download icon overlays the preview image, top-right, above the cover link.
@@ -821,48 +828,58 @@ const CAROUSEL_JS = `
         if (f) f.style.transform = 'scale(' + (p.clientWidth / 1280) + ')';
       }
       var previews = [].slice.call(document.querySelectorAll('.preview, .comp-thumb'));
+      var reveal = function (p) { p.classList.add('is-loaded'); };
 
-      // Kick off a preview's real load: point the iframe at its data-src and wire the
-      // skeleton→iframe cross-fade. Called only when the card nears the viewport (see
-      // the IntersectionObserver below), so off-screen previews never load at all.
-      // The stuck-load backstop is timed from THIS moment, not page load, so a preview
-      // far down the page still gets its full grace period once it starts loading.
-      function load(p) {
+      // Poster images (the fast path): cheap and natively lazy, so no gating needed —
+      // just cross-fade each in once it decodes (or immediately if already cached).
+      previews.forEach(function (p) {
+        var img = p.querySelector('.preview-img');
+        if (!img) return;
+        if (img.complete && img.naturalWidth) reveal(p);
+        else { img.addEventListener('load', function () { reveal(p); }); img.addEventListener('error', function () { reveal(p); }); }
+      });
+
+      // Live iframe fallback (only for prototypes without a poster yet): point the
+      // iframe at its data-src and cross-fade on load. Called only when the card nears
+      // the viewport (IntersectionObserver below). The stuck-load backstop is timed
+      // from THIS moment, not page load, so a far-down preview keeps its full grace.
+      function loadFrame(p) {
         var f = p.querySelector('iframe');
         if (!f || f.dataset.gvLoaded) return;
         f.dataset.gvLoaded = '1';
-        var reveal = function () { p.classList.add('is-loaded'); };
-        f.addEventListener('load', reveal);
+        f.addEventListener('load', function () { reveal(p); });
         var src = f.getAttribute('data-src');
         if (src) f.src = src; // navigates the iframe to the real page
         // NB: an iframe sits at about:blank with readyState 'complete' BEFORE it
         // navigates to its real src — so we must NOT reveal on readyState alone, or we
         // unmask the page exactly as its FOUC paints. The load event is the only
         // reliable "real src finished" signal; the timeout is just a stuck-load backstop.
-        setTimeout(reveal, 8000);
+        setTimeout(function () { reveal(p); }, 8000);
       }
 
-      // Only load previews as they approach the viewport. Off-screen previews (dozens
-      // on the Components/Pages tabs) stay unloaded, and on-screen ones stagger in
-      // instead of all firing at once — this is the real cross-browser lazy gate
-      // (iframe loading="lazy" is unreliable in Safari and has no concurrency cap).
+      var frames = previews.filter(function (p) { return p.querySelector('iframe'); });
+      // Only load iframe previews as they approach the viewport (Safari-safe lazy gate
+      // with a real concurrency stagger — iframe loading="lazy" is patchy and uncapped).
       if (window.IntersectionObserver) {
         var io = new IntersectionObserver(function (entries) {
           entries.forEach(function (e) {
-            if (e.isIntersecting) { load(e.target); io.unobserve(e.target); }
+            if (e.isIntersecting) { loadFrame(e.target); io.unobserve(e.target); }
           });
         }, { rootMargin: '400px 0px' });
-        previews.forEach(function (p) { io.observe(p); });
+        frames.forEach(function (p) { io.observe(p); });
       } else {
-        previews.forEach(load);
+        frames.forEach(loadFrame);
       }
 
-      if (window.ResizeObserver) {
-        var ro = new ResizeObserver(function (es) { es.forEach(function (e) { fit(e.target); }); });
-        previews.forEach(function (p) { ro.observe(p); fit(p); });
-      } else {
-        window.addEventListener('resize', function () { previews.forEach(fit); });
-        previews.forEach(fit);
+      // Only iframe previews need JS scaling; posters fill via object-fit.
+      if (frames.length) {
+        if (window.ResizeObserver) {
+          var ro = new ResizeObserver(function (es) { es.forEach(function (e) { fit(e.target); }); });
+          frames.forEach(function (p) { ro.observe(p); fit(p); });
+        } else {
+          window.addEventListener('resize', function () { frames.forEach(fit); });
+          frames.forEach(fit);
+        }
       }
     })();`;
 
@@ -1198,9 +1215,20 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
 `;
 }
 
-/** A live, scaled-down, non-interactive preview of a page (iframe). */
-function preview(src) {
-  return `<div class="preview"><iframe data-src="${src}" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe></div>`;
+// The preview media for a card. Prefer a static, hyper-optimized WebP poster
+// (one cached image, ~zero render cost) captured by `npm run shoot`; fall back to
+// a live, scaled-down iframe (IntersectionObserver-gated) when a prototype has no
+// poster yet. `href` is the folder href (ends with "/"), so the poster sits at
+// `${href}preview.webp`.
+function media(href, hasPoster) {
+  return hasPoster
+    ? `<img class="preview-img" src="${href}preview.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" width="768" height="480" />`
+    : `<iframe data-src="${href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>`;
+}
+
+/** A preview tile (poster image, or live iframe fallback) wrapped for a card. */
+function preview(href, hasPoster) {
+  return `<div class="preview">${media(href, hasPoster)}</div>`;
 }
 
 function renderRootIndex(opportunities) {
@@ -1222,7 +1250,7 @@ function renderRootIndex(opportunities) {
       return `
         <div class="card-opp" data-fitem data-fkey="${titleCase(opp.name)}">
           <a class="card-cover-link" href="${oppPath}" aria-label="Open ${titleCase(opp.name)}"></a>
-          ${preview(coverSrc)}
+          ${preview(coverSrc, cover && cover.poster)}
           <div class="opp-meta">
             <div class="proto-name">${titleCase(opp.name)}</div>
             <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; ${fmtDate(opp.mtimeMs)}</div>
@@ -1284,7 +1312,7 @@ function renderOpportunityIndex(opp) {
       return `
         <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}">
           <div class="preview">
-            <iframe data-src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
+            ${media(p.href, p.poster)}
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
             <div class="preview-actions">
               ${download}
@@ -1327,7 +1355,7 @@ function renderPlaygroundIndex(projects) {
       return `
         <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}">
           <a class="card-cover-link" href="${folder}" aria-label="Open ${titleCase(p.name)}"></a>
-          ${preview(p.href)}
+          ${preview(p.href, p.poster)}
           <div class="opp-meta">
             <div class="proto-name">${titleCase(p.name)}</div>
             <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
@@ -1358,7 +1386,7 @@ function renderPagesIndex(pages) {
   const pageCard = (p) => `
         <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}">
           <div class="preview">
-            <iframe data-src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
+            ${media(p.href, p.poster)}
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
           </div>
           <div class="proto-meta">
@@ -1443,7 +1471,7 @@ function renderComponentsIndex(components) {
         <tr data-fitem data-fkey="${fkey}">
           <td>
             <a class="comp-thumb" href="${c.href}" aria-label="Open ${titleCase(c.name)}">
-              <iframe data-src="${c.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
+              ${media(c.href, c.poster)}
             </a>
           </td>
           <td><div class="comp-name">${titleCase(c.name)}${classes}</div></td>

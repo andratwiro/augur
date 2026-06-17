@@ -1,0 +1,139 @@
+#!/usr/bin/env node
+// shoot.mjs — capture optimized WebP poster screenshots for prototype/page/component
+// cards. Renders each entry index.html headlessly and writes preview.webp into its
+// folder (OVERWRITING any old one), optimized via cwebp. build.js then renders an
+// <img> poster instead of a live <iframe> preview — far cheaper — and falls back to
+// a live iframe for anything without a poster yet.
+//
+// Rendered from source over file:// so the injected companion/review overlay are
+// absent (their absolute /piti.js, /__review paths simply don't resolve) and the
+// poster is a clean shot of the prototype itself.
+//
+// Usage:
+//   npm run shoot                       # (re)shoot every card target
+//   npm run shoot -- --stale            # only targets whose source changed (or no poster)
+//   npm run shoot -- <path/to/folder>   # just one folder (must hold an entry .html)
+//
+// `--stale` is what runs automatically on `npm run deploy`: it compares each folder's
+// newest source file against its preview.webp and reshoots only what actually changed,
+// so a normal deploy refreshes just-edited prototypes for free and skips the rest.
+//
+// Requires: playwright (devDep) + cwebp on PATH (`brew install webp`).
+
+import { chromium } from "playwright";
+import { promises as fs } from "node:fs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import path from "node:path";
+import os from "node:os";
+import { fileURLToPath } from "node:url";
+
+const execFileP = promisify(execFile);
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const VIEWPORT = { width: 1280, height: 800 }; // 16:10 — matches the card aspect ratio
+const WEBP_W = 768; // shown at ≤260px; 768px covers 2–3× DPR crisply
+const WEBP_Q = 72;
+
+async function exists(p) { try { await fs.access(p); return true; } catch { return false; } }
+async function isDir(p) { try { return (await fs.stat(p)).isDirectory(); } catch { return false; } }
+
+// Entry HTML for a folder: index.html, else the first .html.
+async function entry(dir) {
+  if (await exists(path.join(dir, "index.html"))) return path.join(dir, "index.html");
+  const es = await fs.readdir(dir, { withFileTypes: true });
+  const h = es.find((e) => e.isFile() && e.name.endsWith(".html"));
+  return h ? path.join(dir, h.name) : null;
+}
+
+// Top-level folders that never hold card targets (mirrors build.js IGNORED_TOPLEVEL).
+const IGNORE = new Set(["dist", "node_modules", "skills", "src", "references", "govocal-exports", "pitis", ".git", ".github"]);
+
+// Every folder that appears as a card on a shell page: each opportunity's prototypes,
+// plus the pages/, components/, playground/ groups.
+async function targets() {
+  const out = [];
+  for (const t of await fs.readdir(ROOT, { withFileTypes: true })) {
+    if (!t.isDirectory() || IGNORE.has(t.name) || t.name.startsWith(".")) continue;
+    const pp = path.join(ROOT, t.name, "prototypes");
+    if (await isDir(pp)) {
+      for (const p of await fs.readdir(pp, { withFileTypes: true })) {
+        if (p.isDirectory()) out.push(path.join(pp, p.name));
+      }
+    }
+  }
+  for (const group of ["pages", "components", "playground"]) {
+    const g = path.join(ROOT, group);
+    if (await isDir(g)) {
+      for (const e of await fs.readdir(g, { withFileTypes: true })) {
+        if (e.isDirectory() && !e.name.startsWith(".")) out.push(path.join(g, e.name));
+      }
+    }
+  }
+  return out;
+}
+
+// Newest mtime (ms) of any file in a folder tree, ignoring the poster itself.
+async function newestMtime(dir, ignore) {
+  let latest = 0;
+  for (const e of await fs.readdir(dir, { withFileTypes: true })) {
+    if (e.name === ignore) continue;
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) latest = Math.max(latest, await newestMtime(p, ignore));
+    else if (e.isFile()) latest = Math.max(latest, (await fs.stat(p)).mtimeMs);
+  }
+  return latest;
+}
+
+// A folder needs reshooting when it has no poster, or its source is newer than one.
+async function needsShoot(dir) {
+  const poster = path.join(dir, "preview.webp");
+  if (!(await exists(poster))) return true;
+  return (await newestMtime(dir, "preview.webp")) > (await fs.stat(poster)).mtimeMs;
+}
+
+async function shoot(browser, dir) {
+  const file = await entry(dir);
+  const rel = path.relative(ROOT, dir);
+  if (!file) { console.log("· skip (no html):", rel); return false; }
+  const page = await browser.newPage({ viewport: VIEWPORT });
+  const tmp = path.join(os.tmpdir(), "shoot-" + rel.replace(/[^a-z0-9]+/gi, "-") + ".png");
+  try {
+    await page.goto("file://" + file, { waitUntil: "load", timeout: 20000 });
+    await page.waitForTimeout(900); // let fonts/layout settle
+    await page.screenshot({ path: tmp, clip: { x: 0, y: 0, ...VIEWPORT } });
+  } catch (e) {
+    console.log("✗ FAIL", rel, "—", e.message.split("\n")[0]);
+    await page.close();
+    return false;
+  }
+  await page.close();
+  const outWebp = path.join(dir, "preview.webp");
+  await execFileP("cwebp", ["-quiet", "-q", String(WEBP_Q), "-resize", String(WEBP_W), "0", tmp, "-o", outWebp]);
+  await fs.unlink(tmp).catch(() => {});
+  const kb = Math.round((await fs.stat(outWebp)).size / 1024);
+  console.log("✓", rel + "/preview.webp", kb + "KB");
+  return true;
+}
+
+const argv = process.argv.slice(2);
+const staleOnly = argv.includes("--stale");
+const pathArg = argv.find((a) => !a.startsWith("--"));
+let list = pathArg ? [path.resolve(pathArg)] : await targets();
+
+if (staleOnly) {
+  const fresh = [];
+  for (const d of list) if (await needsShoot(d)) fresh.push(d);
+  const skipped = list.length - fresh.length;
+  if (skipped) console.log(`stale: ${skipped} poster(s) up to date · ${fresh.length} to (re)shoot`);
+  list = fresh;
+}
+
+if (!list.length) {
+  console.log("nothing to shoot — all posters current");
+} else {
+  const browser = await chromium.launch();
+  let ok = 0;
+  for (const d of list) if (await shoot(browser, d)) ok++;
+  await browser.close();
+  console.log(`\nshot ${ok}/${list.length} posters`);
+}
