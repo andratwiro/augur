@@ -37,7 +37,10 @@ Internal — never ships. Companion engine lives entirely in `pitis/` (see READM
   (~1.35×). Third species tab; wears hats via `HAT_T_MASTIFF`. **Three TRACED layers**
   in one shared potrace frame **3024×2136** (`MTT = translate(0,2136) scale(0.1,-0.1)`),
   all from `senda-figpal.png` with the green grass oval dropped (the stage draws its own):
-  `MASTIFF_P.sil` = full body silhouette → fawn fur; `MASTIFF_P.brown` = dark-brown
+  `MASTIFF_P.sil` = full body silhouette → fawn fur (derived by **flood-filling the
+  interior of the outline line-art**, NOT by tone-thresholding — a threshold mask let the
+  grass-oval footprint leak in as a fawn "floor" slab under the dog; filling the closed
+  outline excludes the grass by construction); `MASTIFF_P.brown` = dark-brown
   mask + droopy ears + brow ridge + haunch stripe ticks (clipped to sil); `MASTIFF_P.outline`
   = the chunky near-black hand-drawn line — body contour, **closed-eye arcs + nose + brow
   furrow** (baked in), the **black harness** strap + loop, paw lines — drawn on top.
