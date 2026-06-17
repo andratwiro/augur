@@ -126,7 +126,7 @@
   FigPal.PALETTE.forEach((p, i) => {
     const b = document.createElement('button');
     b.className = 'sw' + (i === cfg.furIdx ? ' sel' : '');
-    b.style.background = p.fur;
+    b.style.background = p.swatch || p.fur;
     b.title = p.name;
     b.onclick = () => { cfg.furIdx = i; sync(); };
     swatches.appendChild(b);

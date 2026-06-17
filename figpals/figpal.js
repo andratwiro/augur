@@ -46,6 +46,11 @@
     { name: "Iris",     fur: "#C39AE0", dark: "#A87BCC", belly: "#EBDDF6", cheek: "#E07BC4" }, // purple
     { name: "Bubblegum",fur: "#E797D2", dark: "#D070B8", belly: "#F8E0F1", cheek: "#E0588F" }, // magenta
     { name: "Pebble",   fur: "#B7B7B7", dark: "#999999", belly: "#E2E2E2", cheek: "#EE9CBE" }, // gray
+    // Ginger-&-white bicolor, modelled on Rob's cat: white fur + ginger patches,
+    // tabby ticks on the orange, pink nose. swatch shows the two tones.
+    { name: "Ginger & white", fur: "#F7F2EA", dark: "#E3DCCF", belly: "#FFFFFF", cheek: "#EFA59B",
+      pattern: "bicolor", patch: "#E89A4E", patchDark: "#CB7A2C", noseFill: "#E98DA1",
+      swatch: "linear-gradient(135deg,#F7F2EA 0 47%,#E89A4E 53% 100%)" },
   ];
 
   /* ---- hats (optional, selectable). Drawn in the 1744x720 trace frame, sitting
@@ -94,6 +99,45 @@
     return "";
   }
 
+  /* ---- body markings, drawn inside the silhouette clip (1744x720 frame) ---- */
+  // Default markings: soft belly, dark inner-ears, haunch stripes, heart brow, blush.
+  function normalMarks(c) {
+    return (
+      '<ellipse cx="430" cy="500" rx="180" ry="120" fill="' + c.belly + '" opacity=".6"/>' +
+      '<path d="M298 150 Q345 35 425 110 Q360 130 320 175 Z" fill="' + c.dark + '"/>' +
+      '<path d="M548 150 Q600 35 660 122 Q600 130 565 170 Z" fill="' + c.dark + '"/>' +
+      '<g fill="none" stroke="' + c.dark + '" stroke-width="30" stroke-linecap="round" opacity=".85">' +
+        '<path d="M1070 460 Q1035 530 1070 600"/>' +
+        '<path d="M1145 450 Q1110 525 1145 595"/>' +
+        '<path d="M1218 462 Q1188 525 1218 590"/>' +
+      '</g>' +
+      '<path transform="translate(516,205) scale(6.2)" d="M0 4 C-3 -1 -9 0 -9 5 C-9 9.5 -4 13 0 16 C4 13 9 9.5 9 5 C9 0 3 -1 0 4 Z" fill="' + c.dark + '"/>' +
+      '<ellipse cx="368" cy="432" rx="62" ry="38" fill="' + c.cheek + '" opacity=".5"/>' +
+      '<ellipse cx="602" cy="432" rx="62" ry="38" fill="' + c.cheek + '" opacity=".5"/>'
+    );
+  }
+  // Bicolor (ginger-&-white) markings modelled on Rob's cat: white base fur with
+  // ginger patches over the head-cap+ears, the back/saddle, and the tail; subtle
+  // tabby ticks on the orange; faint blush. Ellipses bleed past the silhouette so
+  // the clip trims them flush to the outline (no white rim along the back).
+  function bicolorMarks(c) {
+    return (
+      '<ellipse cx="455" cy="170" rx="232" ry="190" fill="' + c.patch + '"/>' +     // head cap + ears
+      '<ellipse cx="1085" cy="320" rx="440" ry="330" fill="' + c.patch + '"/>' +    // saddle (back + rump)
+      '<ellipse cx="1505" cy="425" rx="250" ry="200" fill="' + c.patch + '"/>' +    // tail
+      '<g fill="none" stroke="' + c.patchDark + '" stroke-width="28" stroke-linecap="round" opacity=".65">' +
+        '<path d="M880 200 Q850 285 880 370"/>' +
+        '<path d="M990 185 Q960 275 990 365"/>' +
+        '<path d="M1100 185 Q1070 275 1100 365"/>' +
+        '<path d="M1210 195 Q1180 280 1210 370"/>' +
+        '<path d="M430 60 Q412 120 430 188"/>' +
+        '<path d="M512 70 Q494 128 512 196"/>' +
+      '</g>' +
+      '<ellipse cx="372" cy="430" rx="56" ry="33" fill="' + c.cheek + '" opacity=".5"/>' +
+      '<ellipse cx="600" cy="430" rx="56" ry="33" fill="' + c.cheek + '" opacity=".5"/>'
+    );
+  }
+
   /* Build the resting cat in the 1744x720 trace frame.
      awake → open round eyes (over the muzzle); else the traced sleepy arcs. */
   let clipSeq = 0;
@@ -109,22 +153,12 @@
       // silhouette (fur)
       '<g ' + TT + '><path d="' + P.sil + '" fill="' + c.fur + '"/></g>' +
       // recolourable overlays, clipped to the body
-      '<clipPath id="' + cid + '"><g ' + TT + '><path d="' + P.sil + '"/></g></clipPath>' +
+      '<clipPath id="' + cid + '"><path ' + TT + ' d="' + P.sil + '"/></clipPath>' +
       '<g clip-path="url(#' + cid + ')">' +
-        '<ellipse cx="430" cy="500" rx="180" ry="120" fill="' + c.belly + '" opacity=".6"/>' +
-        '<path d="M298 150 Q345 35 425 110 Q360 130 320 175 Z" fill="' + c.dark + '"/>' +
-        '<path d="M548 150 Q600 35 660 122 Q600 130 565 170 Z" fill="' + c.dark + '"/>' +
-        '<g fill="none" stroke="' + c.dark + '" stroke-width="30" stroke-linecap="round" opacity=".85">' +
-          '<path d="M1070 460 Q1035 530 1070 600"/>' +
-          '<path d="M1145 450 Q1110 525 1145 595"/>' +
-          '<path d="M1218 462 Q1188 525 1218 590"/>' +
-        '</g>' +
-        '<path transform="translate(516,205) scale(6.2)" d="M0 4 C-3 -1 -9 0 -9 5 C-9 9.5 -4 13 0 16 C4 13 9 9.5 9 5 C9 0 3 -1 0 4 Z" fill="' + c.dark + '"/>' +
-        '<ellipse cx="368" cy="432" rx="62" ry="38" fill="' + c.cheek + '" opacity=".5"/>' +
-        '<ellipse cx="602" cy="432" rx="62" ry="38" fill="' + c.cheek + '" opacity=".5"/>' +
+        (c.pattern === "bicolor" ? bicolorMarks(c) : normalMarks(c)) +
       '</g>' +
-      // outline on top (closed-eye arcs swapped for open when awake)
-      '<g ' + TT + '><path d="' + P.outMain + '" fill="' + OUT + '"/><path d="' + P.nose + '" fill="' + OUT + '"/></g>' +
+      // outline on top (closed-eye arcs swapped for open when awake); nose can be tinted
+      '<g ' + TT + '><path d="' + P.outMain + '" fill="' + OUT + '"/><path d="' + P.nose + '" fill="' + (c.noseFill || OUT) + '"/></g>' +
       eyes +
       // hat last, perched on the head
       hatSVG(hat)
