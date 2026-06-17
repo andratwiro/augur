@@ -229,9 +229,11 @@
     '.card h4{margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;}' +
     '.card .chead{display:flex;align-items:center;gap:8px;margin:0 0 8px;}' +
     '.card .chead h4{margin:0;flex:1;}' +
-    '.anno-toggle{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:2px solid #e5e7eb;background:#fff;padding:0;overflow:hidden;cursor:pointer;opacity:.4;filter:grayscale(1);transition:opacity .12s,filter .12s,border-color .12s;}' +
-    '.anno-toggle img{width:100%;height:100%;object-fit:cover;display:block;}' +
-    '.anno-toggle.on{opacity:1;filter:none;border-color:#f59e0b;}' +
+    /* scoped under .card so these beat the generic ".card button" (0,1,1) rule —
+       otherwise its padding/border-radius crushes the avatar to a 0-width box */
+    '.card .anno-toggle{flex:0 0 auto;width:26px;height:26px;min-width:0;border-radius:50%;border:2px solid #e5e7eb;background:#fff;padding:0;overflow:hidden;cursor:pointer;opacity:.4;filter:grayscale(1);transition:opacity .12s,filter .12s,border-color .12s;}' +
+    '.card .anno-toggle img{width:100%;height:100%;object-fit:cover;display:block;}' +
+    '.card .anno-toggle.on{opacity:1;filter:none;border-color:#f59e0b;}' +
     '.msg{padding:8px 0;border-top:1px solid #f0f0f0;}' +
     '.msg:first-of-type{border-top:0;}' +
     '.msg .who{font-weight:600;font-size:12px;}' +
