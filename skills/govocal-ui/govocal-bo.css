@@ -264,27 +264,53 @@
 .gv-bo-phasehead__meta .gv-icon { width: 14px; height: 14px; }
 .gv-bo-phasehead__actions { margin-left: auto; }
 
-/* Multiloc language tabs (EN / ES-ES) above a translatable field. Measured live
-   (button.sc-hVkBjg): 14px/500, no border, 7px 8px padding; inactive = grey-200
-   fill + admin-blue text, active = admin-blue fill + white text. A 9px status
-   dot leads the label — green when translated, red when a translation is missing. */
-.gv-bo-multiloc { display: inline-flex; gap: 4px; margin-bottom: 8px; }
+/* ── Per-field language switcher (multiloc) ──────────────────────────────────
+   A BACK-OFFICE-ONLY control that rides on a single translatable TEXT field
+   (title, description, rich-text, content-builder text…). It is NOT a form-level
+   switcher and NEVER appears in the front office, nor on non-text controls
+   (selects, toggles, segmented groups, dates, numbers). Each switcher is
+   INDEPENDENT — flipping one field's locale doesn't move any other field.
+
+   It lives RIGHT-ALIGNED in the field's header row (see .gv-bo-field__head),
+   opposite the label. Measured live (button.sc-hVkBjg): 14px/500, no border,
+   7px 8px padding; inactive = grey-200 fill + admin-blue text, active =
+   admin-blue fill + white text. Locale codes render uppercase (EN / ES-ES). A
+   9px status dot leads the label — green when that locale has content (.done),
+   red when its translation is missing (.miss). */
+.gv-bo-multiloc { display: inline-flex; gap: 4px; flex: 0 0 auto; }
 .gv-bo-multiloc button {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 7px 8px; border-radius: var(--gv-radius);
   border: 0; background: var(--gv-grey-200);
   color: var(--gv-bo-primary); font-size: var(--gv-fs-s); font-weight: 500; cursor: pointer;
+  text-transform: uppercase;   /* normalize en / es-ES → EN / ES-ES centrally */
 }
 .gv-bo-multiloc button.is-active { background: var(--gv-bo-primary); color: #fff; }
 .gv-bo-multiloc .miss,
-.gv-bo-multiloc .done { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.gv-bo-multiloc .done { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
 .gv-bo-multiloc .miss { background: var(--gv-red-500); }
 .gv-bo-multiloc .done { background: var(--gv-green-500); }
 
 /* Field grouping inside config forms. Measured live: the field label ("Phase name")
    is 18px / weight 500 / admin-blue — larger and lighter than a generic label. */
 .gv-bo-field { margin-bottom: 22px; max-width: 540px; }
-.gv-bo-field > .gv-label { display: block; margin-bottom: 8px; font-size: var(--gv-fs-l); font-weight: 500; color: var(--gv-bo-primary); }
+.gv-bo-field > .gv-label,
+.gv-bo-field__head > .gv-label { display: block; font-size: var(--gv-fs-l); font-weight: 500; color: var(--gv-bo-primary); }
+.gv-bo-field > .gv-label { margin-bottom: 8px; }
+
+/* Field header row — label (left) ←→ per-field language switcher (right), on one
+   line, with the input below. The head owns the 8px gap down to the control, so
+   the label's own bottom margin collapses to 0 here. Wraps on narrow widths so a
+   long label + switcher never collide. When a field has NO label, the lone
+   switcher still sits flush-right (justify-content keeps it at the end). */
+.gv-bo-field__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px 16px; flex-wrap: wrap; margin-bottom: 8px;
+}
+/* The head owns the vertical rhythm, so any child's own margin (canonical .gv-label,
+   a page-local field label, or a panel title h2) collapses to 0 inside it. */
+.gv-bo-field__head > * { margin: 0; }
+.gv-bo-field__head.is-switcher-only { justify-content: flex-end; }
 
 /* Read-only/date input shell with a trailing icon (date-range picker face). */
 .gv-bo-dateface {

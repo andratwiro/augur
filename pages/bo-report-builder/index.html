@@ -205,10 +205,16 @@
         <button class="gv-bo-cb-settings__close" type="button" id="rb-settings-close" aria-label="Close settings panel">
           <span class="gv-icon" data-gv-icon="close"></span>
         </button>
-        <h2 class="gv-bo-cb-settings__title" id="rb-settings-title">Widget</h2>
-        <div class="gv-bo-multiloc" id="rb-settings-locales">
-          <button type="button" class="is-active" data-loc="en"><span class="done"></span>EN</button>
-          <button type="button" data-loc="es-ES"><span class="miss"></span>ES-ES</button>
+        <!-- Panel header = field-header row: the selected widget's type (label, left)
+             and its per-field language switcher (right). Shown only for widgets with
+             translatable text (a title / body); hidden for white-space, columns,
+             embeds and raw images. -->
+        <div class="gv-bo-field__head">
+          <h2 class="gv-bo-cb-settings__title" id="rb-settings-title">Widget</h2>
+          <div class="gv-bo-multiloc" id="rb-settings-locales">
+            <button type="button" class="is-active" data-loc="en"><span class="done"></span>EN</button>
+            <button type="button" data-loc="es-ES"><span class="miss"></span>ES-ES</button>
+          </div>
         </div>
         <div id="rb-settings-body"></div>
       </aside>
@@ -354,6 +360,11 @@
       var key = block.getAttribute('data-widget');
       var def = WIDGETS[key] || {};
       sTitle.textContent = def.label || 'Widget';
+      // Per-field switcher: only widgets with translatable text (a title / body) show
+      // it. Layout/embeds/raw images have nothing to translate.
+      var NON_TX = { 'white-space':1, 'two-column':1, 'embed':1, 'image':1 };
+      var sLoc = document.getElementById('rb-settings-locales');
+      if (sLoc) sLoc.style.display = NON_TX[key] ? 'none' : '';
       sBody.innerHTML = bodyFor(key);
       var del = document.createElement('button');
       del.className = 'gv-bo-cb-delete'; del.type = 'button';

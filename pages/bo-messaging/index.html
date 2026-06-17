@@ -59,7 +59,7 @@
        16px/400 cool-grey-600 (From, To, Email Subject — measured). */
     .ms-flabel { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); }
     .ms-flabel svg, .ms-flabel [data-gv-icon] svg { width: 15px; height: 15px; opacity: .8; }
-    .ms-fieldtop { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+    /* field header (label + per-field language switcher) = canonical .gv-bo-field__head */
     .ms-input { width: 100%; max-width: 540px; box-sizing: border-box; height: var(--gv-input-height); padding: 12px; border: 1px solid var(--gv-border-dark); border-radius: var(--gv-radius); background: #fff; color: var(--gv-text-primary); font-size: var(--gv-fs-base); font-family: var(--gv-font-family); }
     .ms-input::placeholder { color: var(--gv-grey-500); }
 
@@ -288,7 +288,7 @@
             <h2 class="ms-section ms-section--space">Email Content</h2>
 
             <div class="gv-bo-field">
-              <div class="ms-fieldtop">
+              <div class="gv-bo-field__head">
                 <span class="ms-flabel" style="margin-bottom:0">Email Subject <span data-gv-icon="info-outline"></span></span>
                 <span class="gv-bo-multiloc">
                   <button class="is-active" type="button">EN</button>
@@ -303,7 +303,7 @@
             </div>
 
             <div class="gv-bo-field" style="max-width:540px">
-              <div class="ms-fieldtop">
+              <div class="gv-bo-field__head">
                 <span class="ms-flabel" style="margin-bottom:0">Message <span data-gv-icon="info-outline"></span></span>
                 <span class="gv-bo-multiloc">
                   <button class="is-active" type="button">EN</button>

@@ -107,10 +107,12 @@
           <form data-testid="customPageSettingsForm" onsubmit="return false">
             <!-- Title: canonical .gv-bo-field label + .gv-bo-multiloc locale switcher + .gv-input -->
             <div class="gv-bo-field">
-              <label class="gv-label" for="pm-title">Title</label>
-              <div class="gv-bo-multiloc" role="group" aria-label="Title languages">
-                <button type="button" class="is-active"><span class="miss"></span>en</button>
-                <button type="button"><span class="miss"></span>es-ES</button>
+              <div class="gv-bo-field__head">
+                <label class="gv-label" for="pm-title">Title</label>
+                <div class="gv-bo-multiloc" role="group" aria-label="Title languages">
+                  <button type="button" class="is-active"><span class="miss"></span>en</button>
+                  <button type="button"><span class="miss"></span>es-ES</button>
+                </div>
               </div>
               <input class="gv-input" id="pm-title" type="text" placeholder="" />
             </div>

@@ -257,12 +257,15 @@
         <button class="gv-bo-cb-settings__close" type="button" id="sb-settings-close" aria-label="Close settings panel">
           <span class="gv-icon" data-gv-icon="close"></span>
         </button>
-        <h2 class="gv-bo-cb-settings__title" id="sb-settings-title">Question</h2>
-
-        <!-- multiloc language switcher (canonical .gv-bo-multiloc primitive) -->
-        <div class="gv-bo-multiloc" id="sb-settings-locales">
-          <button type="button" class="is-active" data-loc="en"><span class="done"></span>EN</button>
-          <button type="button" data-loc="nb-NO"><span class="miss"></span>NB-NO</button>
+        <!-- Panel header = field-header row: the selected question's type (label, left)
+             and its per-field language switcher (right). Every survey field carries a
+             translatable title/description, so the switcher always applies here. -->
+        <div class="gv-bo-field__head">
+          <h2 class="gv-bo-cb-settings__title" id="sb-settings-title">Question</h2>
+          <div class="gv-bo-multiloc" id="sb-settings-locales">
+            <button type="button" class="is-active" data-loc="en"><span class="done"></span>EN</button>
+            <button type="button" data-loc="nb-NO"><span class="miss"></span>NB-NO</button>
+          </div>
         </div>
 
         <div id="sb-settings-body"></div>

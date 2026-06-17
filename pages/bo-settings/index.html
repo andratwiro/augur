@@ -42,20 +42,14 @@
     .st-addbtn { margin-bottom: 6px; }
     .st-fullbtn { width: 100%; margin-top: 14px; }
     .st-warn { color: var(--gv-red-500); }
-    /* Field row: label left, multiloc switcher right (matches real). */
-    .st-fieldrow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; max-width: 540px; }
-    .st-fieldrow .gv-label { margin-bottom: 0; }
-    /* Real field labels are cool-grey 16px/400, not blue/500. Self-sufficient so
-       it beats the canonical `.gv-bo-field > .gv-label` blue/500 rule. */
+    /* Field labels here are cool-grey 16px/400, not the canonical blue/500. Self-
+       sufficient so it beats the canonical field-label rule. The header row,
+       uppercase locale codes and status dots all come from the canonical
+       field-header + language-switcher primitives now (no page-local copies). */
     .st-lbl { display: inline-block; margin-bottom: 8px; font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); }
     .gv-bo-field > .st-lbl { display: block; }
-    /* Multiloc locale codes render uppercase in the real product (source text is lowercase). */
-    .st-ml button { text-transform: uppercase; }
     .st-lbl-info { color: var(--gv-cool-grey-500); display: inline-flex; vertical-align: middle; margin-left: 5px; }
     .st-lbl-info svg, .st-lbl-info .gv-icon { width: 14px; height: 14px; }
-    /* Multiloc: lowercase locale labels, filled dot. */
-    .st-ml-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-    .st-ml-dot.done { background: var(--gv-green-500); }
     /* Toggle rows where the toggle sits on the LEFT (real layout). */
     .st-togglerow { display: flex; align-items: flex-start; gap: 12px; padding: 6px 0; max-width: 640px; }
     .st-togglerow .gv-toggle { flex: none; margin-top: 2px; }
@@ -106,9 +100,9 @@
             <h3 class="gv-bo-subhead st-sub" style="margin-top:0">Platform configuration</h3>
             <p class="gv-bo-help" style="margin-bottom:22px">Choose how people will see your organization name, select the languages of your platform and link to your website.</p>
             <div class="gv-bo-field">
-              <div class="st-fieldrow">
+              <div class="gv-bo-field__head">
                 <span class="st-lbl">Name of city or organization</span>
-                <div class="gv-bo-multiloc st-ml"><button type="button" class="is-active">en</button><button type="button"><span class="st-ml-dot done"></span>es-ES</button></div>
+                <div class="gv-bo-multiloc"><button type="button" class="is-active">en</button><button type="button"><span class="done"></span>es-ES</button></div>
               </div>
               <input class="gv-input" type="text" value="City of Raleigh">
             </div>
@@ -167,10 +161,10 @@
             <h2 class="gv-bo-formhead st-head">Registration</h2>
             <h3 class="gv-bo-subhead st-sub" style="margin-top:0">Registration and login helper text</h3>
             <p class="gv-bo-help" style="margin-bottom:18px">Add short descriptions for the top of the sign-up and login forms.</p>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Enter email step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Enter password step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">'Complete your profile' step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
-            <div class="gv-bo-field"><div class="st-fieldrow"><span class="st-lbl">Demographic questions<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text" value="Can't sign up? Use this test account: pemeta9222@jucatyo.com, p"></div>
+            <div class="gv-bo-field"><div class="gv-bo-field__head"><span class="st-lbl">Enter email step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
+            <div class="gv-bo-field"><div class="gv-bo-field__head"><span class="st-lbl">Enter password step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
+            <div class="gv-bo-field"><div class="gv-bo-field__head"><span class="st-lbl">'Complete your profile' step<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text"></div>
+            <div class="gv-bo-field"><div class="gv-bo-field__head"><span class="st-lbl">Demographic questions<span class="st-lbl-info" data-gv-icon="info-outline"></span></span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div><input class="gv-input" type="text" value="Can't sign up? Use this test account: pemeta9222@jucatyo.com, p"></div>
             <button class="gv-btn admin-dark st-btn-disabled" disabled>Save</button>
 
             <hr class="st-divider">
@@ -212,11 +206,11 @@
               </select>
             </div>
             <div class="gv-bo-field">
-              <div class="st-fieldrow"><span class="st-lbl">Question name</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>en</button><button type="button"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>es-ES</button></div></div>
+              <div class="gv-bo-field__head"><span class="st-lbl">Question name</span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div>
               <input class="gv-input" type="text">
             </div>
             <div class="gv-bo-field">
-              <div class="st-fieldrow"><span class="st-lbl">Description</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>en</button><button type="button"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>es-ES</button></div></div>
+              <div class="gv-bo-field__head"><span class="st-lbl">Description</span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div>
               <input class="gv-input" type="text">
             </div>
             <div class="st-togglerow" style="margin-bottom:18px">
@@ -252,7 +246,7 @@
             <button class="st-goback" data-back="areas-list"><span data-gv-icon="arrow-left"></span>Go back</button>
             <h2 class="gv-bo-formhead st-head" style="margin-top:0">Add a geographic area</h2>
             <div class="gv-bo-field">
-              <div class="st-fieldrow"><span class="st-lbl">Area name</span><div class="gv-bo-multiloc st-ml"><button type="button" class="is-active"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>en</button><button type="button"><span class="st-ml-dot done" style="background:var(--gv-red-500)"></span>es-ES</button></div></div>
+              <div class="gv-bo-field__head"><span class="st-lbl">Area name</span><div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="miss"></span>en</button><button type="button"><span class="miss"></span>es-ES</button></div></div>
               <input class="gv-input" type="text">
             </div>
             <button class="gv-btn success">Save area</button>
