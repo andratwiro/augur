@@ -822,20 +822,40 @@ const CAROUSEL_JS = `
       }
       var previews = [].slice.call(document.querySelectorAll('.preview, .comp-thumb'));
 
-      // Cross-fade each preview from its skeleton to the loaded iframe. Reveal on
-      // the iframe's load event; reveal immediately if it already finished (cached),
-      // and force-reveal after a few seconds so a stuck load can't shimmer forever.
-      previews.forEach(function (p) {
+      // Kick off a preview's real load: point the iframe at its data-src and wire the
+      // skeleton→iframe cross-fade. Called only when the card nears the viewport (see
+      // the IntersectionObserver below), so off-screen previews never load at all.
+      // The stuck-load backstop is timed from THIS moment, not page load, so a preview
+      // far down the page still gets its full grace period once it starts loading.
+      function load(p) {
         var f = p.querySelector('iframe');
-        if (!f) return;
+        if (!f || f.dataset.gvLoaded) return;
+        f.dataset.gvLoaded = '1';
         var reveal = function () { p.classList.add('is-loaded'); };
         f.addEventListener('load', reveal);
-        // NB: a lazy iframe sits at about:blank with readyState 'complete' BEFORE it
+        var src = f.getAttribute('data-src');
+        if (src) f.src = src; // navigates the iframe to the real page
+        // NB: an iframe sits at about:blank with readyState 'complete' BEFORE it
         // navigates to its real src — so we must NOT reveal on readyState alone, or we
         // unmask the page exactly as its FOUC paints. The load event is the only
         // reliable "real src finished" signal; the timeout is just a stuck-load backstop.
         setTimeout(reveal, 8000);
-      });
+      }
+
+      // Only load previews as they approach the viewport. Off-screen previews (dozens
+      // on the Components/Pages tabs) stay unloaded, and on-screen ones stagger in
+      // instead of all firing at once — this is the real cross-browser lazy gate
+      // (iframe loading="lazy" is unreliable in Safari and has no concurrency cap).
+      if (window.IntersectionObserver) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) { load(e.target); io.unobserve(e.target); }
+          });
+        }, { rootMargin: '400px 0px' });
+        previews.forEach(function (p) { io.observe(p); });
+      } else {
+        previews.forEach(load);
+      }
 
       if (window.ResizeObserver) {
         var ro = new ResizeObserver(function (es) { es.forEach(function (e) { fit(e.target); }); });
@@ -1180,7 +1200,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
 
 /** A live, scaled-down, non-interactive preview of a page (iframe). */
 function preview(src) {
-  return `<div class="preview"><iframe src="${src}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe></div>`;
+  return `<div class="preview"><iframe data-src="${src}" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe></div>`;
 }
 
 function renderRootIndex(opportunities) {
@@ -1264,7 +1284,7 @@ function renderOpportunityIndex(opp) {
       return `
         <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}">
           <div class="preview">
-            <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
+            <iframe data-src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
             <div class="preview-actions">
               ${download}
@@ -1338,7 +1358,7 @@ function renderPagesIndex(pages) {
   const pageCard = (p) => `
         <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}">
           <div class="preview">
-            <iframe src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
+            <iframe data-src="${p.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
           </div>
           <div class="proto-meta">
@@ -1423,7 +1443,7 @@ function renderComponentsIndex(components) {
         <tr data-fitem data-fkey="${fkey}">
           <td>
             <a class="comp-thumb" href="${c.href}" aria-label="Open ${titleCase(c.name)}">
-              <iframe src="${c.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" loading="lazy" sandbox="allow-scripts allow-same-origin"></iframe>
+              <iframe data-src="${c.href}" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
             </a>
           </td>
           <td><div class="comp-name">${titleCase(c.name)}${classes}</div></td>
