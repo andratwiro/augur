@@ -1589,6 +1589,16 @@
    govocal-partbar.js; without it the bar simply stays inline.) */
 .gv-partbar { position: relative; z-index: 30; background: var(--gv-tenant-primary); color: #fff; }
 .gv-partbar.is-docked { position: fixed; left: 0; right: 0; bottom: 0; top: auto; box-shadow: 0 -2px 12px rgba(0,0,0,0.14); }
+/* Responsive dock direction (mirrors the live product — govocal-partbar.js drives it):
+   • MOBILE (≤760px): JS docks the bar to the BOTTOM on scroll (.is-docked above).
+   • DESKTOP (>760px): the bar sticks to the TOP, just under the sticky header, once it
+     reaches the upper edge of the viewport. position:sticky pins it natively and
+     reserves its own space (no JS/spacer needed); .is-stuck adds the drop shadow only
+     while pinned. Appended as a refinement over the base block — do not reflow it. */
+@media (min-width: 761px) {
+  .gv-partbar { position: sticky; top: var(--gv-menu-height); }
+  .gv-partbar.is-stuck { box-shadow: 0 2px 12px rgba(0,0,0,0.14); }
+}
 @media (max-width: 760px) {
   /* status stacks above a full-width CTA (live ideation project behaviour) */
   .gv-partbar__inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 20px; }
