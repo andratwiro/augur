@@ -444,24 +444,36 @@
     state.openId = null; renderPins(); renderList();
     var card = makeCard({ x: loc.px - window.scrollX, y: loc.py - window.scrollY });
     var needName = !getName();
-    card.innerHTML = '<h4>New comment</h4>' +
+    card.innerHTML = '<div class="chead">' +
+      '<button class="anno-toggle" title="Make this an annotation — always-on dev note, skipped when resolving comments."><img src="' + CAT + '" alt=""></button>' +
+      '<h4>New comment</h4></div>' +
       (needName ? '<input class="nm" placeholder="Your name" />' : '') +
       '<textarea class="tx" placeholder="What\'s your feedback?"></textarea>' +
       '<div class="row"><button class="cancel link">Cancel</button>' +
       '<button class="save primary">Comment</button></div>';
     positionCard(openCardAnchor);
     var tx = card.querySelector(".tx"), nm = card.querySelector(".nm");
+    var toggleBtn = card.querySelector(".anno-toggle"), headEl = card.querySelector("h4"),
+        saveBtn = card.querySelector(".save");
+    var anno = false;
+    function reflect() {
+      toggleBtn.classList.toggle("on", anno);
+      headEl.textContent = anno ? "New annotation" : "New comment";
+      saveBtn.textContent = anno ? "Annotate" : "Comment";
+      tx.placeholder = anno ? "Note for devs…" : "What's your feedback?";
+    }
+    toggleBtn.addEventListener("click", function () { anno = !anno; reflect(); tx.focus(); });
     (nm || tx).focus();
     card.querySelector(".cancel").addEventListener("click", closeCard);
-    card.querySelector(".save").addEventListener("click", function () {
+    saveBtn.addEventListener("click", function () {
       var name = (nm ? nm.value.trim() : getName()) || "Anonymous";
       var text = tx.value.trim(); if (!text) { tx.focus(); return; }
       if (nm) setName(name);
       var thread = { id: uid(), sel: loc.sel, fx: loc.fx, fy: loc.fy, px: loc.px, py: loc.py,
-        view: loc.view, resolved: false, messages: [{ author: name, body: text, at: nowIso() }] };
+        view: loc.view, resolved: false, annotation: anno, messages: [{ author: name, body: text, at: nowIso() }] };
       closeCard();
       mutate({ op: "add", thread: thread });
-      toast("Comment added");
+      toast(anno ? "Annotation added" : "Comment added");
     });
   }
 
