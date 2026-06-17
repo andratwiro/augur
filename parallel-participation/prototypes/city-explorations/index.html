@@ -308,7 +308,7 @@
         { name: 'Shape the proposals', method: 'ideation', dates: 'Jul 15 – Aug 15, 2026', status: 'upcoming', description: 'Add and react to ideas for the changes you want to see in the centre.' }
       ],
       about: { mode: 'single', primary: 'Take the survey', secondary: 'See the results so far', participants: true, count: '1,204', label: 'responses' },
-      surveys: { layout: 'one', format: 'card', variant: 'standard', style: 'secondary', survey: 'mobility', heading: 'Another way to take part' },
+      surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'secondary', survey: 'mobility', heading: '' },
       events: [['Jun', '18', 'Drop-in: help with the survey', '18 Jun · 17:30 – 19:00', 'Central Library', '26', 'oldtown']]
     },
     {
@@ -486,7 +486,8 @@
         : surveyCard(s, cfg.variant, cfg.style);
       body = `<div class="pv-surveys__one">${one}</div>`;
     }
-    return `<section class="pv-surveys"><div class="pv-surveys__head"><h2 class="gv-title h3">${cfg.heading || 'Extra surveys'}</h2></div>${body}</section>`;
+    const head = cfg.heading === '' ? '' : `<div class="pv-surveys__head"><h2 class="gv-title h3">${cfg.heading || 'Extra surveys'}</h2></div>`;
+    return `<section class="pv-surveys">${head}${body}</section>`;
   }
 
   /* ════════════════════════ Method-body renderers ════════════════════════ */
