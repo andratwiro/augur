@@ -164,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.44";
+const UI_VERSION = "0.45";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -744,22 +744,24 @@ const PAGE_CSS = `
     /* Star toggle — small white rounded square. Hidden until the card is hovered
        (or focused) when UNpinned; once pinned, it stays visible with a gold star and
        a plain neutral border (no yellow ring). */
+    /* Matched footprint with the status glyph (24px white disc, same shadow) so the
+       two card-corner controls read as a pair, not two unrelated widgets. */
     .pin-btn {
-      width: 30px; height: 30px; min-width: 30px; padding: 0; cursor: pointer;
-      display: inline-grid; place-items: center; border-radius: 8px;
-      background: rgba(255,255,255,0.94); border: 1px solid rgba(16,24,40,0.14); color: #9aa0aa;
-      box-shadow: 0 2px 7px -2px rgba(16,24,40,0.28); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-      opacity: 0; transition: opacity .12s ease, background .12s ease, color .12s ease;
+      width: 24px; height: 24px; min-width: 24px; padding: 0; cursor: pointer;
+      display: inline-grid; place-items: center; border-radius: 50%;
+      background: #fff; border: 0; color: #9aa0aa;
+      box-shadow: 0 2px 8px -1px rgba(16,24,40,0.32);
+      opacity: 0; transition: opacity .12s ease, color .12s ease, transform .12s ease;
     }
     .card-proto:hover .pin-btn, .card-opp:hover .pin-btn,
     .pin-btn:focus-visible, .pin-btn.is-pinned { opacity: 1; }
     @media (hover: none) { .pin-btn { opacity: 1; } }
-    .pin-btn:hover { background: #fff; color: #6b7280; }
+    .pin-btn:hover { color: #6b7280; transform: scale(1.1); }
     .pin-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .pin-btn .pin-star { width: 16px; height: 16px; display: block; }
+    .pin-btn .pin-star { width: 14px; height: 14px; display: block; }
     .pin-btn.is-pinned .pin-star { fill: #f4b740; color: #f4b740; }
     @media (prefers-reduced-motion: reduce) { .pin-btn { transition: none; } }
-    .opp-meta, .proto-meta { padding: 16px 18px; }
+    .opp-meta, .proto-meta { padding: 12px 14px; }
     .proto-meta {
       display: flex; align-items: flex-start; justify-content: space-between;
       gap: 12px; flex-wrap: wrap;
@@ -848,21 +850,21 @@ const PAGE_CSS = `
 
     /* ---- Right-click card menu (Figma-style dark popover) ---- */
     .gv-ctx {
-      position: fixed; z-index: 2147483200; min-width: 204px;
+      position: fixed; z-index: 2147483200; min-width: 192px;
       background: #1c1c1f; color: #f3f3f4;
       border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 6px;
       box-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
-      font-size: 13.5px; letter-spacing: -0.006em; user-select: none;
+      font-size: 13px; letter-spacing: -0.006em; user-select: none;
       animation: gv-ctx-in .12s ease both;
     }
     @keyframes gv-ctx-in { from { opacity: 0; transform: translateY(-4px) scale(.985); } to { opacity: 1; transform: none; } }
     .gv-ctx button {
-      display: flex; align-items: center; gap: 10px; width: 100%;
-      padding: 8px 10px; border: 0; background: none; border-radius: 7px;
+      display: flex; align-items: center; gap: 9px; width: 100%;
+      padding: 7px 10px; border: 0; background: none; border-radius: 7px;
       font: inherit; color: inherit; text-align: left; cursor: pointer; white-space: nowrap;
     }
     .gv-ctx button:hover, .gv-ctx button:focus-visible { background: #3a6df0; color: #fff; outline: none; }
-    .gv-ctx button .ic { width: 15px; height: 15px; flex: none; opacity: .85; }
+    .gv-ctx button .ic { width: 14px; height: 14px; flex: none; opacity: .85; }
     .gv-ctx hr { border: 0; border-top: 1px solid rgba(255,255,255,0.09); margin: 6px 4px; }
     .gv-ctx .gv-ctx-danger { color: #ff7a7a; }
     .gv-ctx .gv-ctx-danger:hover, .gv-ctx .gv-ctx-danger:focus-visible { background: #c0392b; color: #fff; }
@@ -1834,8 +1836,8 @@ function renderRootIndex(opportunities) {
   // Nav (Playground + opportunities) now lives in the global left rail — the landing
   // page is just a single wide column of opportunity cards.
   const body = `
+    <header class="folderbar"><h1 class="folderbar__title">Opportunities</h1><span class="folderbar__count">${opportunities.length}</span><span class="folderbar__rule"></span></header>
     <div data-fgroup>
-      <p class="section-eyebrow">${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}</p>
       <div class="opp-grid">${cards}</div>
     </div>
     ${filterEmpty()}`;
@@ -1931,7 +1933,7 @@ function renderPlaygroundIndex(projects) {
   return shell({
     title: "Playground",
     activeTab: "playground",
-    body: `<p class="section-eyebrow">Playground 🛝 &middot; ${plural(projects.length, "project")}</p><div data-fgroup><div class="opp-grid">${cards}</div></div>${filterEmpty()}`,
+    body: `<header class="folderbar"><h1 class="folderbar__title">Playground</h1><span class="folderbar__count">${projects.length}</span><span class="folderbar__rule"></span></header><div data-fgroup><div class="opp-grid">${cards}</div></div>${filterEmpty()}`,
   });
 }
 
