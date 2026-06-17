@@ -1048,8 +1048,9 @@ const NAV_CSS = `
     .gvside__sum::marker { content: ""; }
     .gvside__sum:hover { background: rgba(16,17,26,0.05); color: #0e0f12; }
     .gvside__sum:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvside__sum .gvic { transition: transform .15s ease; }
-    .gvside__sect[open] > .gvside__sum .gvic { transform: rotate(90deg); }
+    .gvside__caret { margin-left: auto; display: inline-flex; align-items: center; color: #8b909b; transition: transform .15s ease; }
+    .gvside__caret .gvic { width: 16px; height: 16px; color: inherit; }
+    .gvside__sect[open] > .gvside__sum .gvside__caret { transform: rotate(90deg); }
     .gvside__sub { margin: 2px 0 4px 13px; padding-left: 8px; border-left: 1px solid rgba(16,17,26,0.08); }
 
     /* Mobile drawer scrim. */
@@ -1063,7 +1064,7 @@ const NAV_CSS = `
       .gvscrim.is-open { display: block; opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .gvside, .gvscrim, .gvburger__bars span, .gvside__sum .gvic { transition: none; }
+      .gvside, .gvscrim, .gvburger__bars span, .gvside__caret { transition: none; }
     }`;
 
 // Magnifier glyph — used by the rail's omni-search field (railSearch).
