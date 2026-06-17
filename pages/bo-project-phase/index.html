@@ -310,7 +310,6 @@
             <a class="gv-bo-tab" href="#" data-sub="volunteering" data-tabkey="volunteering">Volunteering</a>
             <a class="gv-bo-tab" href="#" data-tabkey="map">Map</a>
             <a class="gv-bo-tab" href="#" data-sub="insights" data-tabkey="insights">Insights</a>
-            <a class="gv-bo-tab" href="#" data-sub="surveyresults" data-tabkey="surveyresults">Survey Results</a>
             <a class="gv-bo-tab" href="#" data-sub="report" data-tabkey="report">Report</a>
             <a class="gv-bo-tab" href="#" data-sub="access" data-tabkey="access">Phase access and user data</a>
             <a class="gv-bo-tab" href="#" data-sub="notifications" data-tabkey="notifications">Notifications</a>
@@ -907,15 +906,6 @@
             </div>
           </div>
 
-          <!-- ════ SURVEY RESULTS sub-panel (external survey export) ════ -->
-          <div class="pp-sub" data-sub="surveyresults">
-            <h3 class="gv-bo-formhead" style="margin-bottom:8px">Consult the survey answers</h3>
-            <p class="gv-bo-help" style="max-width:680px;margin:0 0 26px">Here, you can download the results of the Typeform survey(s) within this project as an Excel file.</p>
-
-            <p class="gv-bo-caption">Community Survey</p>
-            <button class="gv-bo-dropzone" style="max-width:380px"><span class="gv-icon" data-gv-icon="download"></span>Export the survey results (.xlsx)</button>
-          </div>
-
           <!-- ════ POLL sub-panel (Polls settings and results) ════ -->
           <div class="pp-sub" data-sub="poll">
             <div class="gv-bo-headrow">
@@ -1441,12 +1431,12 @@
     // Each phase carries the metadata that drives the phase header + which Setup
     // variant and sub-tab set show when it's selected.
     const PHASES = [
-      { label: "Submit your ideas",              title: "Submit your ideas",   method: "Ideation phase",     dates: "June 2, 2024 12:00 AM → No end date",            setup: "setup",             tabs: ["setup","description","inputmgr","inputform","surveyform","map","insights","surveyresults","access","notifications"] },
+      { label: "Submit your ideas",              title: "Submit your ideas",   method: "Ideation phase",     dates: "June 2, 2024 12:00 AM → No end date",            setup: "setup",             tabs: ["setup","description","inputmgr","inputform","surveyform","map","insights","access","notifications"] },
       { label: "Vote",                           title: "Vote",                method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
       { label: "Budget allocation",              title: "Budget allocation",   method: "Voting phase",       dates: "March 14, 2024 12:00 AM → June 14, 2024 12:00 AM", setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
       { label: "Poll the priorities",            title: "Voting on Top 3 Priorities", method: "Poll phase",  dates: "March 21, 2023 12:00 AM → April 3, 2023 12:00 AM", setup: "pollsetup",         tabs: ["setup","description","poll","insights","access","notifications"] },
       { label: "Submit a proposal",              title: "Submit a proposal",   method: "Proposals phase",    dates: "June 2, 2024 12:00 AM → No end date",             setup: "proposalssetup",    tabs: ["setup","description","inputmgr","inputform","insights","access","notifications"] },
-      { label: "Community survey",               title: "Community Survey",    method: "In platform survey phase", dates: "May 6, 2024 12:00 AM → No end date",        setup: "surveysetup",       tabs: ["setup","description","surveyform","insights","surveyresults","access","notifications"] },
+      { label: "Community survey",               title: "Community Survey",    method: "In platform survey phase", dates: "May 6, 2024 12:00 AM → No end date",        setup: "surveysetup",       tabs: ["setup","description","surveyform","insights","access","notifications"] },
       { label: "Find common ground",             title: "Polis process",       method: "Common ground phase", dates: "May 1, 2026 12:00 AM → June 30, 2026 11:59 PM",   setup: "commongroundsetup", tabs: ["setup","description","report","access","notifications"] },
       { label: "Find volunteers",                title: "Find volunteers",     method: "Volunteering phase", dates: "November 29, 2021 12:00 AM → No end date",         setup: "volunteeringsetup", tabs: ["setup","description","volunteering","insights","access","notifications"] },
       { label: "Import paper inputs",            title: "Import paper inputs", method: "Ideation phase",     dates: "June 2, 2024 12:00 AM → No end date",             setup: "setup",             tabs: ["setup","description","inputmgr","inputimporter","inputform","insights","access","notifications"] },
@@ -1614,7 +1604,7 @@
     const METHOD_BRANCH = {
       collect:       { setup: "setup",             tabs: ["setup","description","inputmgr","inputform","map","insights","access","notifications"] },
       voting:        { setup: "votingsetup",       tabs: ["setup","description","inputmgr","insights","access","notifications"] },
-      survey:        { setup: "surveysetup",       tabs: ["setup","description","surveyform","insights","surveyresults","access","notifications"] },
+      survey:        { setup: "surveysetup",       tabs: ["setup","description","surveyform","insights","access","notifications"] },
       proposals:     { setup: "proposalssetup",    tabs: ["setup","description","inputmgr","inputform","insights","access","notifications"] },
       commonground:  { setup: "commongroundsetup", tabs: ["setup","description","report","access","notifications"] },
       information:   { setup: "informationsetup",  tabs: ["setup","description","access","notifications"] },
