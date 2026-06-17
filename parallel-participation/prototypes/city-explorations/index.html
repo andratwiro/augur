@@ -420,13 +420,13 @@
     if (a.mode === 'multi') {
       const vis = a.methods.slice().sort((x, y) => (y.current ? 1 : 0) - (x.current ? 1 : 0));
       if (vis.length <= 2) {
-        actions = vis.map((m) => `<a class="cb-pbtn ${m.current ? 'cb-pbtn--primary' : 'cb-pbtn--outline'}" href="#">${m.cta}</a>`).join('');
+        actions = vis.map((m) => `<a class="gv-btn full ${m.current ? 'primary' : 'primary-outlined'}" href="#"><span class="gv-btn__label">${m.cta}</span></a>`).join('');
       } else {
-        actions = `<a class="cb-pbtn cb-pbtn--primary" href="#">${a.aggTitle || 'Participate'}</a>`;
+        actions = `<a class="gv-btn full primary" href="#"><span class="gv-btn__label">${a.aggTitle || 'Participate'}</span></a>`;
       }
     } else {
-      if (a.primary) actions += `<a class="cb-pbtn cb-pbtn--primary" href="#">${a.primary}</a>`;
-      if (a.secondary) actions += `<a class="cb-pbtn cb-pbtn--outline" href="#">${a.secondary}</a>`;
+      if (a.primary) actions += `<a class="gv-btn full primary" href="#"><span class="gv-btn__label">${a.primary}</span></a>`;
+      if (a.secondary) actions += `<a class="gv-btn full primary-outlined" href="#"><span class="gv-btn__label">${a.secondary}</span></a>`;
     }
     const people = a.participants
       ? `<div class="gv-participants pv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">${a.count} ${a.label} <span class="pv-pbox__info" data-gv-icon="info-solid" title="Real-time count."></span></span></div>`
