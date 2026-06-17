@@ -14,9 +14,11 @@ general repo files (CLAUDE.md, build.js logic, shared CSS, agent memory, etc.).
 
 ## Summon / dismiss
 - **Shift + Ñ** anywhere toggles the piti on/off. Remembered per-browser via
-  `localStorage['piti-revealed']` (there is **no** typed secret).
+  `localStorage['piti-revealed']` (there is **no** typed secret). While active, the
+  whole page uses a **Figma-style cursor** (dark arrow + white outline; `html.piti-cursor`).
 - A quiet, Linear-styled **paw in the site footer** (the addon's `footerHtml()`) opens
-  the **customizer** at `/pitis/`.
+  the **customizer** as an in-page **overlay modal** over the dimmed site (piti.js
+  `openModal()` loads `/pitis/` in an iframe). Direct `/pitis/` visits work standalone.
 - "Only-you" is lightweight: it only shows on browsers where you've toggled it.
   Prototypes are **public**, so a visitor who presses Shift+Ñ on a shared prototype
   also gets one (harmless easter egg). A real per-user gate (Cloudflare Access / login
@@ -62,8 +64,9 @@ No feeding and no photobooth — both were prototyped early and removed.
   else in `build.js` mentions piti.
 - **`index.html`** — the customizer, mirroring the real FigPals creator: **species
   tabs (cat/dog)** on top, the piti on a grass stage with **four chevrons (top pair
-  cycles hat, bottom pair cycles colour)**, a colour swatch row, name box, Save. No
-  title/subtitle. Loads its own `piti.js`.
+  cycles hat, bottom pair cycles colour)**, a colour swatch row, name box. No title,
+  no Save (every change **auto-saves** + summons the piti), closes by **clicking
+  outside** (or Esc). Loads its own `piti.js`.
 - **`research.md`** — research on the real FigPals: look, the full **interaction
   catalogue**, and an ours-vs-real comparison. Internal (gitignored).
 - **`reference/`** — source imagery, **gitignored & never shipped**: official FigPals

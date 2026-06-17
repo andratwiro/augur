@@ -35,7 +35,7 @@
     display:grid; place-items:center; transition:background .12s, color .12s;
   }
   .modal-x:hover { background:#f3eef9; color:var(--ink); }
-  .modal-body { padding:2px 24px 22px; }
+  .modal-body { padding:24px 24px 24px; }
 
   /* top pill — SPECIES tabs (cat / dog), small, selected = white/raised */
   .species {
@@ -65,17 +65,16 @@
   .pet svg { width:100%; height:100%; display:block; }
 
   /* four chevron buttons — top pair = HAT, bottom pair = COLOUR.
-     Chunky, pressable, cartoonish: thick rounded glyph + a soft 3D bottom edge. */
+     Simple flat light-grey squares, like the real FigPal creator. */
   .chev {
     position:absolute; width:48px; height:46px; border:none; cursor:pointer;
-    background:#fff; border-radius:16px; display:grid; place-items:center;
-    color:var(--ink);
-    box-shadow:0 4px 0 0 rgba(108,82,148,.22), 0 4px 10px -3px rgba(40,30,60,.35);
-    transition:transform .1s ease, box-shadow .1s ease;
+    background:#ececef; border-radius:13px; display:grid; place-items:center;
+    color:#2B2330; box-shadow:0 1px 2px rgba(40,30,60,.12);
+    transition:background .12s, transform .1s;
   }
-  .chev:hover { transform:translateY(-1px); box-shadow:0 5px 0 0 rgba(108,82,148,.24), 0 7px 14px -4px rgba(40,30,60,.4); }
-  .chev:active { transform:translateY(3px); box-shadow:0 1px 0 0 rgba(108,82,148,.22); }
-  .chev svg { width:26px; height:26px; display:block; }
+  .chev:hover { background:#e2e2e8; }
+  .chev:active { transform:scale(.94); }
+  .chev svg { width:24px; height:24px; display:block; }
   .chev.tl { left:14px;  top:34px; }
   .chev.tr { right:14px; top:34px; }
   .chev.bl { left:14px;  bottom:34px; }
@@ -101,25 +100,10 @@
   .namebox::placeholder { color:#b6acc2; font-weight:500; }
   .namebox:focus { border-color:var(--accent); box-shadow:0 0 0 4px rgba(124,92,252,.15); background:#fff; }
 
-  .btn { width:100%; margin-top:12px; font:inherit; font-weight:800; border:none; cursor:pointer;
-         border-radius:13px; padding:13px; background:var(--accent); color:#fff;
-         box-shadow:0 8px 18px -8px var(--accent); transition:transform .12s, filter .12s; }
-  .btn:hover { transform:translateY(-1px); filter:brightness(1.05); }
-  .btn:active { transform:translateY(1px) scale(.99); }
-
-  .saved { text-align:center; color:var(--accent); font-weight:700; font-size:13px;
-           height:18px; margin-top:10px; opacity:0; transition:opacity .2s; }
-  .saved.show { opacity:1; }
-  .hint { text-align:center; color:var(--muted); font-size:12px; margin-top:8px; line-height:1.5; }
-  kbd { font:inherit; font-size:11px; font-weight:700; background:#f3eef9; border:1px solid var(--line);
-        border-radius:6px; padding:1px 6px; color:var(--ink); }
 </style>
 </head>
 <body>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Customize your Piti">
-    <div class="modal-head">
-      <button class="modal-x" id="close" aria-label="Close" title="Close">&times;</button>
-    </div>
     <div class="modal-body">
 
     <!-- SPECIES tabs -->
@@ -140,10 +124,6 @@
     <div class="swatches" id="swatches" role="group" aria-label="Colour"></div>
 
     <input type="text" id="name" class="namebox" maxlength="18" placeholder="Name your pal" autocomplete="off" />
-    <button class="btn" id="save">Save</button>
-
-    <div class="saved" id="saved">Saved! 🐾</div>
-    <p class="hint">Press <kbd>Shift</kbd>+<kbd>Ñ</kbd> anywhere to summon or dismiss your Piti.</p>
     </div>
   </div>
 
@@ -154,9 +134,9 @@
   const nameInput = document.getElementById('name');
   nameInput.value = cfg.name === 'Pal' ? '' : cfg.name;
 
-  // chunky, cartoonish chevron glyphs (left / right)
-  const CHEV_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4.5 L8.5 12 L15 19.5"/></svg>';
-  const CHEV_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5 L15.5 12 L9 19.5"/></svg>';
+  // simple chevron glyphs (left / right), like the real FigPal creator
+  const CHEV_L = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 L8 12 L15 19"/></svg>';
+  const CHEV_R = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5 L16 12 L9 19"/></svg>';
   document.getElementById('hatPrev').innerHTML = CHEV_L;
   document.getElementById('hatNext').innerHTML = CHEV_R;
   document.getElementById('colPrev').innerHTML = CHEV_L;
@@ -237,45 +217,44 @@
   document.getElementById('colPrev').onclick = () => cycleColour(-1);
   document.getElementById('colNext').onclick = () => cycleColour(1);
 
-  function sync() {
-    [...speciesEl.children].forEach(b => b.classList.toggle('sel', b.dataset.species === cfg.species));
-    [...swatchesEl.children].forEach(b => b.classList.toggle('sel', +b.dataset.idx === cfg.furIdx));
-    draw();
-    Piti.refreshLive(cfg);     // live-preview on the trailing companion, if it's out
-  }
-
-  buildSwatches();
-  draw();
-
   // when shown inside the overlay iframe, the parent paints the dim backdrop, so the
   // page itself is transparent and the parent owns close/refresh via postMessage.
   const inFrame = (function(){ try { return window.top !== window.self; } catch(e){ return true; } })();
   if (inFrame) document.documentElement.style.background = document.body.style.background = 'transparent';
   function notify(msg) { if (inFrame) { try { parent.postMessage({ piti: msg }, '*'); } catch (e) {} } }
 
-  function doSave() {
+  // No Save button — every change persists automatically and summons the piti.
+  function persist() {
     cfg.name = (nameInput.value || 'Pal').trim().slice(0, 18);
     Piti.saveConfig(cfg);
-    try { localStorage.setItem('piti-revealed', '1'); } catch (e) {}   // adopting summons it site-wide
-    Piti.auto();              // ensure the companion is live (standalone view)…
-    Piti.refreshLive(cfg);    // …and wearing the latest look
-    notify('saved');          // …and tell the parent page to update its companion
-    const s = document.getElementById('saved'); s.classList.add('show');
-    setTimeout(() => s.classList.remove('show'), 2000);
+    try { localStorage.setItem('piti-revealed', '1'); } catch (e) {}
+    Piti.auto();                // ensure the companion is live (standalone view)
+    Piti.refreshLive(cfg);      // …wearing the latest look
+    notify('saved');            // …and tell the parent page to update its companion
   }
-  document.getElementById('save').onclick = doSave;
-  nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSave(); });
+
+  function sync() {
+    [...speciesEl.children].forEach(b => b.classList.toggle('sel', b.dataset.species === cfg.species));
+    [...swatchesEl.children].forEach(b => b.classList.toggle('sel', +b.dataset.idx === cfg.furIdx));
+    draw();
+    persist();
+  }
+
+  buildSwatches();
+  draw();
+  nameInput.addEventListener('input', persist);
 
   // keep the companion consistent on this page too (mounts if already revealed; no-op in iframe)
   Piti.auto();
 
-  // close — tell the parent to dismiss the overlay (or, standalone, go back / home)
+  // close — only by clicking outside the card (or Esc). Tells the parent to dismiss
+  // the overlay; standalone visits fall back to going back / home.
   function closeModal() {
     if (inFrame) notify('close');
     else if (history.length > 1) history.back();
     else location.href = '/';
   }
-  document.getElementById('close').onclick = closeModal;
+  addEventListener('click', e => { if (!e.target.closest('.modal')) closeModal(); });
   addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 </script>
 </body>

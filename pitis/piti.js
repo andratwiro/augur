@@ -13,6 +13,14 @@
 (function () {
   const OUT = "#241d29";   // outline (warm near-black) — stays dark in every palette
 
+  // Figma-style pointer (dark arrow, white outline) shown site-wide while the piti
+  // is active (Shift+Ñ on). Hotspot at the tip. Built as a cursor data-URI.
+  const CURSOR_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">' +
+    '<path d="M7 4 L7 25 L12.6 19.4 L16.4 26 L19.8 24.1 L16 17.6 L23.5 17.6 Z" ' +
+    'fill="#2f2c34" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  const CURSOR_URI = "data:image/svg+xml," + encodeURIComponent(CURSOR_SVG);
+
   /* ---- traced paths (potrace, viewBox 0 0 1744 720, transform below) ----
      sil      = full body silhouette (recoloured = fur)
      outMain  = the hand-drawn outline + ear/tail/body line
@@ -306,6 +314,7 @@
       '</div>' +
       '<div class="pt-zzz" aria-hidden="true">z</div>';
     document.body.appendChild(el);
+    document.documentElement.classList.add("piti-cursor");   // Figma-style cursor while active
 
     // styles (once)
     if (!document.getElementById("piti-style")) {
@@ -349,7 +358,10 @@
         // the customizer opens as a real overlay modal — the site stays visible, dimmed
         ".piti-modal-backdrop{position:fixed;inset:0;z-index:2147483640;background:rgba(34,27,38,.55);display:grid;place-items:center;padding:20px;animation:pt-fade .2s ease both}" +
         "@keyframes pt-fade{from{opacity:0}to{opacity:1}}" +
-        ".piti-modal-frame{width:480px;max-width:100%;height:680px;max-height:92vh;border:none;background:transparent;border-radius:20px}" +
+        ".piti-modal-frame{width:480px;max-width:100%;height:600px;max-height:92vh;border:none;background:transparent;border-radius:20px}" +
+        // Figma-style cursor while the piti is active (text fields keep the I-beam)
+        "html.piti-cursor,html.piti-cursor *{cursor:url('" + CURSOR_URI + "') 7 4,auto !important}" +
+        "html.piti-cursor input,html.piti-cursor textarea,html.piti-cursor [contenteditable]{cursor:text !important}" +
         "@media (prefers-reduced-motion: reduce){" +
         ".piti-companion.walk .pt-rest svg,.piti-companion.walk .pt-awake svg{animation:none}" +
         ".piti-companion .pt-inner.pin,.piti-companion .pt-inner.hop{animation:none}" +
@@ -508,7 +520,7 @@
 
     return {
       el,
-      destroy() { running = false; cancelAnimationFrame(raf); removeEventListener("pointermove", onMove); removeEventListener("pointerdown", onDown, true); el.remove(); },
+      destroy() { running = false; cancelAnimationFrame(raf); removeEventListener("pointermove", onMove); removeEventListener("pointerdown", onDown, true); el.remove(); document.documentElement.classList.remove("piti-cursor"); },
       // refresh(override) re-skins the live pal; pass a config for instant preview,
       // or omit to re-read whatever was last saved.
       refresh(override) { const ncfg = override || loadConfig();
