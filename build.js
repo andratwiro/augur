@@ -141,7 +141,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.37";
+const UI_VERSION = "0.38";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -595,28 +595,7 @@ const PAGE_CSS = `
     }
     details.fsection[open] > summary .fsection__caret { transform: rotate(90deg); }
 
-    /* ---- In-page real-time filter field ---- */
-    .pfilter {
-      display: flex; align-items: center; gap: 9px; width: min(420px, 100%); height: 40px;
-      padding: 0 10px 0 12px; margin: 0 0 28px; box-sizing: border-box;
-      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
-      transition: border-color .12s ease, box-shadow .12s ease;
-    }
-    .pfilter:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(94,106,210,0.14); }
-    .pfilter svg { width: 16px; height: 16px; flex: none; color: var(--faint); }
-    .pfilter input { flex: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--fg); font: inherit; font-size: 14px; }
-    .pfilter input::placeholder { color: var(--faint); }
-    .pfilter kbd {
-      flex: none; font: inherit; font-size: 11px; line-height: 1; padding: 3px 6px; border-radius: 5px;
-      background: var(--bg-2); border: 1px solid var(--line); color: var(--muted);
-    }
-    .pfilter__clear {
-      flex: none; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; cursor: pointer;
-      display: grid; place-items: center; background: var(--bg-2); color: var(--muted); font-size: 16px; line-height: 1;
-      transition: background .12s ease, color .12s ease;
-    }
-    .pfilter__clear:hover { background: var(--line); color: var(--fg); }
-    .pfilter kbd[hidden], .pfilter__clear[hidden] { display: none; }
+    /* ---- In-page real-time filter (driven by the rail's omni search) ---- */
     .is-fhidden { display: none !important; }
     .filter-empty { color: var(--muted); font-size: 14.5px; margin: 6px 0 0; }
     .playground {
@@ -969,7 +948,6 @@ const NAV_CSS = `
       font: 600 14.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     .gvtop__brand { display: inline-flex; align-items: center; gap: 9px; color: #16171a; text-decoration: none; letter-spacing: -0.01em; }
-    .gvtop__brand .orgsw__mark { width: 24px; height: 24px; }
     .gvburger {
       width: 36px; height: 34px; flex: none; padding: 0; cursor: pointer;
       display: inline-flex; align-items: center; justify-content: center;
@@ -996,54 +974,81 @@ const NAV_CSS = `
       font: 500 14px/1.35 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    /* Org switcher — the "top thingy" (Go Vocal + circular mark + caret). */
-    .gvside__org { position: relative; margin-bottom: 10px; }
-    .orgsw {
-      display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px;
-      background: transparent; border: 1px solid transparent; border-radius: 10px; cursor: pointer;
-      font: inherit; color: #16171a; text-align: left;
-      transition: background .12s ease, border-color .12s ease;
+    /* Workspace brand — Go Vocal + circular mark, sitting in the SAME icon column as
+       every nav row below it. No dropdown; the name just links home. */
+    .gvside__brand {
+      display: flex; align-items: center; gap: 11px; padding: 8px 9px; margin-bottom: 4px;
+      border-radius: 9px; text-decoration: none; color: #16171a;
+      transition: background .12s ease;
     }
-    .orgsw:hover { background: rgba(16,17,26,0.05); }
-    .orgsw[aria-expanded="true"] { background: rgba(16,17,26,0.07); }
-    .orgsw:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .orgsw__mark { width: 28px; height: 28px; flex: none; display: block; }
-    .orgsw__name { flex: 1; min-width: 0; font-weight: 650; font-size: 14.5px; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .orgsw__caret { flex: none; color: #8a909c; font-size: 10px; }
-    .orgsw__menu {
-      position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 5; padding: 7px;
-      background: #fff; border: 1px solid rgba(16,17,26,0.10); border-radius: 12px;
-      box-shadow: 0 18px 48px -16px rgba(16,24,40,0.34);
-    }
-    .orgsw__menu[hidden] { display: none; }
-    .orgsw__mlabel { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6b7280; margin: 4px 8px 6px; }
-    .orgsw__item, .orgsw__add {
-      display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px;
-      border: 0; background: transparent; border-radius: 8px; font: inherit; text-align: left;
-    }
-    .orgsw__item { color: #16171a; cursor: pointer; }
-    .orgsw__item:hover { background: rgba(16,17,26,0.05); }
-    .orgsw__item .orgsw__mark { width: 22px; height: 22px; }
-    .orgsw__check { margin-left: auto; color: #147985; font-weight: 700; }
-    .orgsw__div { height: 1px; background: rgba(16,17,26,0.08); margin: 6px 4px; }
-    .orgsw__add { color: #8a909c; cursor: not-allowed; font-weight: 500; }
-    .orgsw__add .gvic { width: 17px; height: 17px; }
+    .gvside__brand:hover { background: rgba(16,17,26,0.05); }
+    .gvside__brand:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvside__brandname { font-weight: 650; font-size: 15px; letter-spacing: -0.012em; }
+    .gvmark { display: block; flex: none; object-fit: contain; border-radius: 50%; }
+    .gvside__brand .gvmark { width: 18px; height: 18px; }
+    .gvtop__brand .gvmark { width: 24px; height: 24px; }
 
-    /* Nav groups + items. */
+    /* Omni search — one field, filters whatever cards are on the right. Figma-style
+       filled input that brightens to white on focus. */
+    .gvsearch { position: relative; margin: 2px 1px 8px; }
+    .gvsearch > svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #8a9098; pointer-events: none; }
+    .gvsearch input {
+      width: 100%; height: 36px; padding: 0 32px 0 35px; border-radius: 9px;
+      border: 1px solid transparent; background: #ebedf0; color: #16171a;
+      font: inherit; font-size: 14px; outline: none;
+      transition: background .12s ease, border-color .12s ease, box-shadow .12s ease;
+    }
+    .gvsearch input::placeholder { color: #8a9098; }
+    .gvsearch input:hover { background: #e6e8ec; }
+    .gvsearch input:focus { background: #fff; border-color: rgba(94,106,210,0.55); box-shadow: 0 0 0 3px rgba(94,106,210,0.13); }
+    .gvsearch__clear {
+      position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+      width: 22px; height: 22px; padding: 0; display: grid; place-items: center;
+      border: 0; border-radius: 6px; background: transparent; color: #6b7280;
+      font-size: 17px; line-height: 1; cursor: pointer;
+    }
+    .gvsearch__clear:hover { background: rgba(16,17,26,0.08); color: #16171a; }
+    .gvsearch kbd {
+      position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
+      min-width: 17px; height: 18px; padding: 0 5px; display: grid; place-items: center;
+      border: 1px solid rgba(16,17,26,0.14); border-radius: 5px; background: #fff;
+      color: #8a9098; font: 600 11px/1 "Inter", "Inter Variable", sans-serif;
+    }
+
+    /* Section divider in the rail. */
+    .gvside__rule { height: 1px; background: rgba(16,17,26,0.08); margin: 9px 7px; }
+
+    /* Nav groups + items — higher-contrast, roomier rows to match the Figma reference. */
     .gvside__group { display: flex; flex-direction: column; gap: 1px; }
-    .gvside__label { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6b7280; margin: 13px 9px 5px; }
+    .gvside__label { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6b7280; margin: 12px 9px 5px; }
     .gvside a {
-      display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 8px;
-      text-decoration: none; color: #43474f; font-weight: 500; font-size: 14px;
+      display: flex; align-items: center; gap: 11px; padding: 8px 9px; border-radius: 8px;
+      text-decoration: none; color: #2c2f36; font-weight: 500; font-size: 14.5px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       transition: background .12s ease, color .12s ease;
     }
-    .gvside a:hover { background: rgba(16,17,26,0.05); color: #16171a; }
-    .gvside a[aria-current="page"] { background: rgba(16,17,26,0.08); color: #16171a; font-weight: 600; }
+    .gvside a:hover { background: rgba(16,17,26,0.05); color: #0e0f12; }
+    .gvside a[aria-current="page"] { background: rgba(16,17,26,0.07); color: #0e0f12; font-weight: 600; }
     .gvside a:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
     .gvside a > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-    .gvic { width: 17px; height: 17px; flex: none; color: #8b909b; }
+    .gvic { width: 18px; height: 18px; flex: none; color: #565a63; }
     .gvside a[aria-current="page"] .gvic { color: #16171a; }
+
+    /* Collapsible section (Library) — a clickable summary row + indented children. */
+    .gvside__sect { display: block; }
+    .gvside__sum {
+      display: flex; align-items: center; gap: 11px; padding: 8px 9px; border-radius: 8px;
+      list-style: none; cursor: pointer; user-select: none;
+      color: #2c2f36; font-weight: 500; font-size: 14.5px;
+      transition: background .12s ease, color .12s ease;
+    }
+    .gvside__sum::-webkit-details-marker { display: none; }
+    .gvside__sum::marker { content: ""; }
+    .gvside__sum:hover { background: rgba(16,17,26,0.05); color: #0e0f12; }
+    .gvside__sum:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvside__sum .gvic { transition: transform .15s ease; }
+    .gvside__sect[open] > .gvside__sum .gvic { transform: rotate(90deg); }
+    .gvside__sub { margin: 2px 0 4px 13px; padding-left: 8px; border-left: 1px solid rgba(16,17,26,0.08); }
 
     /* Mobile drawer scrim. */
     .gvscrim { display: none; position: fixed; inset: 0; z-index: 2147483099; background: rgba(16,17,26,0.34); opacity: 0; transition: opacity .2s ease; }
@@ -1056,48 +1061,51 @@ const NAV_CSS = `
       .gvscrim.is-open { display: block; opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .gvside, .gvscrim, .gvburger__bars span { transition: none; }
+      .gvside, .gvscrim, .gvburger__bars span, .gvside__sum .gvic { transition: none; }
     }`;
 
-// Magnifier glyph reused by the trigger + the overlay input row.
+// Magnifier glyph — used by the rail's omni-search field (railSearch).
 const SEARCH_ICON = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
-
-// In-page real-time filter field. Each listing page renders one near the top; the
-// shared chrome script (filterScript) wires it to that page's [data-fitem] cards.
-function filterField(placeholder) {
-  return `<div class="pfilter">${SEARCH_ICON}` +
-    `<input type="text" data-filter placeholder="${placeholder}" aria-label="${placeholder}" autocomplete="off" autocapitalize="off" spellcheck="false" />` +
-    `<button type="button" class="pfilter__clear" data-filter-clear aria-label="Clear search" hidden>&times;</button>` +
-    `<kbd data-filter-kbd>/</kbd>` +
-  `</div>`;
-}
 
 // "No matches" line shown under the cards when a query filters everything out.
 function filterEmpty() {
   return `<p class="filter-empty" data-filter-empty hidden>No matches.</p>`;
 }
 
-// GoVocal circular brand mark — pale-mint disc + coral "V"/check. Recreated as a
-// tiny inline SVG (the repo only ships the wordmark); colours sampled from the brand
-// app icon. Sized per context via the .orgsw__mark class.
-const GV_MARK = `<svg class="orgsw__mark" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="18" fill="#D2E8E1"/><path d="M10.5 14.2 16.8 24.4 25.7 9.6" fill="none" stroke="#EE5C66" stroke-width="4.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+// GoVocal circular brand mark — the real favicon (mint disc + coral "V"), pulled from
+// govocal.com's apple-touch-icon and shipped at /gv-mark.png (copied in main()). Sized
+// per context via the .gvmark class; root-relative src resolves from any page depth.
+const GV_MARK = `<img class="gvmark" src="/gv-mark.png" alt="" aria-hidden="true" width="36" height="36" />`;
 
-// Rail item glyphs — 17px line icons (stroke = currentColor, tinted via .gvic).
-const IC_HOME = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.6"/><rect x="13" y="3" width="8" height="8" rx="1.6"/><rect x="3" y="13" width="8" height="8" rx="1.6"/><rect x="13" y="13" width="8" height="8" rx="1.6"/></svg>`;
-const IC_PLAY = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6.4l-4.6 7.6a2 2 0 0 0 1.7 3h9.8a2 2 0 0 0 1.7-3L14 9.4V3"/><path d="M7 14.5h10"/></svg>`;
-const IC_FOLDER = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h3.6l2 2.4H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>`;
-const IC_PRIM = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 21.5 12 12 21.5 2.5 12 12 2.5Z"/></svg>`;
-const IC_COMP = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><circle cx="17.25" cy="17.25" r="3.85"/></svg>`;
-const IC_PAGE = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h6l4 4v14H7V3Z"/><path d="M13 3v4h4"/><path d="M9.5 12.5h5M9.5 16h5"/></svg>`;
-const IC_PLUS = `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
+// Rail item glyphs — real Lucide icons (ISC license), the clean line set Linear-class
+// apps use. Verbatim official paths, rendered at a refined 1.75 stroke for that crisp
+// Linear weight; 24px viewBox, currentColor, tinted/sized via .gvic.
+const ic = (inner) => `<svg class="gvic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+const IC_HOME = ic(`<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>`); // layout-grid
+const IC_PLAY = ic(`<path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/>`); // flask-conical
+const IC_FOLDER = ic(`<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>`); // folder
+const IC_PRIM = ic(`<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>`); // shapes
+const IC_COMP = ic(`<path d="M15.536 11.293a1 1 0 0 0 0 1.414l2.376 2.377a1 1 0 0 0 1.414 0l2.377-2.377a1 1 0 0 0 0-1.414l-2.377-2.377a1 1 0 0 0-1.414 0z"/><path d="M2.297 11.293a1 1 0 0 0 0 1.414l2.377 2.377a1 1 0 0 0 1.414 0l2.377-2.377a1 1 0 0 0 0-1.414L6.088 8.916a1 1 0 0 0-1.414 0z"/><path d="M8.916 17.912a1 1 0 0 0 0 1.415l2.377 2.376a1 1 0 0 0 1.414 0l2.377-2.376a1 1 0 0 0 0-1.415l-2.377-2.376a1 1 0 0 0-1.414 0z"/><path d="M8.916 4.674a1 1 0 0 0 0 1.414l2.377 2.376a1 1 0 0 0 1.414 0l2.377-2.376a1 1 0 0 0 0-1.414l-2.377-2.377a1 1 0 0 0-1.414 0z"/>`); // component
+const IC_PAGE = ic(`<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>`); // file-text
+const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
 
 // Nav context (opportunities + whether Playground shipped), set once in main() so the
 // same rail renders identically on every page without threading it through each call.
 const NAV_STATE = { opportunities: [], hasPlayground: false };
 
-// The persistent left rail: org switcher → Prototypes/Playground → Opportunities →
-// Library (Primitives/Components/Pages). `active` is a single key:
-// 'prototypes' | 'playground' | <opportunity name> | 'primitives' | 'components' | 'pages'.
+// The omni search field — lives in the rail, filters whatever cards are on the right
+// (the shared chrome script wires [data-filter] to the current page's [data-fitem]).
+function railSearch() {
+  return `<div class="gvsearch">${SEARCH_ICON}` +
+    `<input type="text" data-filter placeholder="Search…" aria-label="Search content" autocomplete="off" autocapitalize="off" spellcheck="false" />` +
+    `<button type="button" class="gvsearch__clear" data-filter-clear aria-label="Clear search" hidden>&times;</button>` +
+    `<kbd data-filter-kbd>/</kbd></div>`;
+}
+
+// The persistent left rail: brand → omni search → Library (collapsible, on top) →
+// Playground → Prototypes → Pinned (opportunities, until real pinning exists). `active`
+// is a single key: 'prototypes' | 'playground' | <opportunity name> | 'primitives' |
+// 'components' | 'pages'.
 function sideRail(active) {
   const item = (href, label, key, icon) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
@@ -1105,32 +1113,33 @@ function sideRail(active) {
   const opps = (NAV_STATE.opportunities || [])
     .map((o) => item(`/${encodeURIComponent(o.name)}/`, titleCase(o.name), o.name, IC_FOLDER))
     .join("");
-  const oppSection = opps
-    ? `<p class="gvside__label">Opportunities</p><div class="gvside__group">${opps}</div>`
+  // "Pinned" = every opportunity for now; real per-item pinning is a future step.
+  const pinned = opps
+    ? `<p class="gvside__label">Pinned</p><div class="gvside__group">${opps}</div>`
     : "";
-  return `<aside class="gvside" id="gvside" aria-label="Go Vocal Prototypes">
-    <div class="gvside__org">
-      <button type="button" class="orgsw" data-orgsw aria-haspopup="true" aria-expanded="false" aria-controls="orgsw-menu">
-        ${GV_MARK}<span class="orgsw__name">Go Vocal</span><span class="orgsw__caret" aria-hidden="true">▾</span>
-      </button>
-      <div class="orgsw__menu" id="orgsw-menu" data-orgsw-menu hidden>
-        <p class="orgsw__mlabel">Organizations</p>
-        <button type="button" class="orgsw__item" aria-current="true">${GV_MARK}<span>Go Vocal</span><span class="orgsw__check" aria-hidden="true">✓</span></button>
-        <div class="orgsw__div"></div>
-        <button type="button" class="orgsw__add" disabled>${IC_PLUS}<span>Add organization</span></button>
+  // Library is a collapsible section, collapsed by default — auto-open when you're on
+  // one of its pages so the active item is visible.
+  const libOpen = active === "primitives" || active === "components" || active === "pages";
+  const library = `<details class="gvside__sect"${libOpen ? " open" : ""}>
+      <summary class="gvside__sum">${IC_CHEV}<span>Library</span></summary>
+      <div class="gvside__group gvside__sub">
+        ${item("/primitives/", "Primitives", "primitives", IC_PRIM)}
+        ${item("/components/", "Components", "components", IC_COMP)}
+        ${item("/pages/", "Pages", "pages", IC_PAGE)}
       </div>
-    </div>
+    </details>`;
+  return `<aside class="gvside" id="gvside" aria-label="Go Vocal Prototypes">
+    <a class="gvside__brand" href="/" aria-label="Go Vocal — home">
+      ${GV_MARK}<span class="gvside__brandname">Go Vocal</span>
+    </a>
+    ${railSearch()}
+    <div class="gvside__rule"></div>
+    ${library}
     <div class="gvside__group">
-      ${item("/", "Prototypes", "prototypes", IC_HOME)}
       ${playground}
+      ${item("/", "Prototypes", "prototypes", IC_HOME)}
     </div>
-    ${oppSection}
-    <p class="gvside__label">Library</p>
-    <div class="gvside__group">
-      ${item("/primitives/", "Primitives", "primitives", IC_PRIM)}
-      ${item("/components/", "Components", "components", IC_COMP)}
-      ${item("/pages/", "Pages", "pages", IC_PAGE)}
-    </div>
+    ${pinned}
   </aside>`;
 }
 
@@ -1144,7 +1153,7 @@ function appChrome(active) {
   return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>`;
 }
 
-/** Shared chrome script: real-time in-page filter + the mobile rail drawer + org switcher. */
+/** Shared chrome script: real-time in-page filter + the mobile rail drawer. */
 function chromeScript() {
   return `(function(){
   // ── In-page real-time filter ─────────────────────────────────────────────
@@ -1216,17 +1225,6 @@ function chromeScript() {
     side.addEventListener('click', function(e){ if(e.target.closest('a')) closeSide(); });
     document.addEventListener('keydown', function(e){ if((e.key||'').toLowerCase() === 'escape') closeSide(); });
     window.addEventListener('resize', function(){ if(window.innerWidth > 860) closeSide(); });
-  }
-
-  // ── Org switcher dropdown (structure only — one org for now) ──────────────
-  var orgBtn = document.querySelector('[data-orgsw]');
-  var orgMenu = document.querySelector('[data-orgsw-menu]');
-  if(orgBtn && orgMenu){
-    function closeOrg(){ orgBtn.setAttribute('aria-expanded','false'); orgMenu.hidden = true; }
-    function openOrg(){ orgBtn.setAttribute('aria-expanded','true'); orgMenu.hidden = false; }
-    orgBtn.addEventListener('click', function(e){ e.stopPropagation(); orgMenu.hidden ? openOrg() : closeOrg(); });
-    document.addEventListener('click', function(e){ if(!orgMenu.hidden && !orgMenu.contains(e.target) && !orgBtn.contains(e.target)) closeOrg(); });
-    document.addEventListener('keydown', function(e){ if((e.key||'').toLowerCase() === 'escape') closeOrg(); });
   }
 })();`;
 }
@@ -1346,6 +1344,7 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <title>${title}</title>
+  <link rel="icon" type="image/png" href="/gv-mark.png" />
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>${FONT_CSS}${PAGE_CSS}${NAV_CSS}${addon ? addon.css() : ""}
   </style>
@@ -1417,7 +1416,6 @@ function renderRootIndex(opportunities) {
   // Nav (Playground + opportunities) now lives in the global left rail — the landing
   // page is just a single wide column of opportunity cards.
   const body = `
-    ${filterField("Search opportunities…")}
     <div data-fgroup>
       <p class="section-eyebrow">${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}</p>
       <div class="opp-grid">${cards}</div>
@@ -1471,8 +1469,7 @@ function renderOpportunityIndex(opp) {
   return shell({
     title: titleCase(opp.name),
     activeTab: opp.name,
-    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p>${filterField("Search prototypes…")}<div data-fgroup><div class="page-grid">${cards}</div></div>${filterEmpty()}`,
-    back: { href: "../", label: "&larr; All opportunities" },
+    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p><div data-fgroup><div class="page-grid">${cards}</div></div>${filterEmpty()}`,
   });
 }
 
@@ -1484,7 +1481,6 @@ function renderPlaygroundIndex(projects) {
       body: `<p class="section-eyebrow">Playground 🛝</p>
         <p class="empty">No projects yet. Add one under
         <code>playground/&lt;project&gt;/</code> and rebuild.</p>`,
-      back: { href: "/", label: "&larr; All prototypes" },
     });
   }
 
@@ -1508,8 +1504,7 @@ function renderPlaygroundIndex(projects) {
   return shell({
     title: "Playground",
     activeTab: "playground",
-    body: `<p class="section-eyebrow">Playground 🛝 &middot; ${plural(projects.length, "project")}</p>${filterField("Search projects…")}<div data-fgroup><div class="opp-grid">${cards}</div></div>${filterEmpty()}`,
-    back: { href: "/", label: "&larr; All prototypes" },
+    body: `<p class="section-eyebrow">Playground 🛝 &middot; ${plural(projects.length, "project")}</p><div data-fgroup><div class="opp-grid">${cards}</div></div>${filterEmpty()}`,
   });
 }
 
@@ -1583,7 +1578,7 @@ function renderPagesIndex(pages) {
   return shell({
     title: "Pages",
     activeTab: "pages",
-    body: `${filterField("Search pages…")}${cards}${pendingSection}${filterEmpty()}`,
+    body: `${cards}${pendingSection}${filterEmpty()}`,
   });
 }
 
@@ -1625,7 +1620,7 @@ function renderComponentsIndex(components) {
   return shell({
     title: "Components",
     activeTab: "components",
-    body: `<p class="section-eyebrow" style="margin-bottom:26px">Reusable building blocks</p>${filterField("Search components…")}<table class="comp-table">
+    body: `<p class="section-eyebrow" style="margin-bottom:26px">Reusable building blocks</p><table class="comp-table">
       <thead><tr><th>Preview</th><th>Component</th><th>What it is</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>${filterEmpty()}`,
@@ -1798,6 +1793,12 @@ async function main() {
   // the render-blocking Google Fonts link; one variable woff2 covers every weight.
   if (await isDir(path.join(ROOT, "fonts"))) {
     await copyDir(path.join(ROOT, "fonts"), path.join(DIST, "fonts"));
+  }
+
+  // GoVocal brand mark (real favicon) → /gv-mark.png. The rail brand + every page's
+  // <link rel="icon"> reference it root-relative, so it resolves from any depth.
+  if (await exists(path.join(ROOT, "gv-mark.png"))) {
+    await fs.copyFile(path.join(ROOT, "gv-mark.png"), path.join(DIST, "gv-mark.png"));
   }
 
   const protoCount = opportunities.reduce((n, o) => n + o.prototypes.length, 0);
