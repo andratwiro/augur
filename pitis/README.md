@@ -29,11 +29,13 @@ general repo files (CLAUDE.md, build.js logic, shared CSS, agent memory, etc.).
   FigPals resting pose. The piti only exists in the resting/lying pose; `awake` just
   opens the eyes (awake while travelling, sleepy when settled).
 - **Recolour + hats** — 9 shared colours + a cat-only **"Ginger & white"** bicolor
-  pattern (modelled on Rob's cat, **Aslam**). 4 hats: top hat, wizard, beanie, party.
+  pattern (modelled on Rob's cat, **Aslam**). 5 hats: sprout, top hat, wizard, beanie,
+  party.
 - **Behaviours / emotions** — idle → sit → (after ~11s) sleep with a "z"; a **pop-in**
   when summoned; a **startled hop + "!"** when you click a link/card (a port of the
-  FigPals detach-component surprise); a **sweat-drop "running"** state when it lags a
-  fast cursor; the occasional heart.
+  FigPals detach-component surprise); a **sweat-drop "running"** state + a faint
+  **after-image trail** (fading ghost copies) when it lags a fast cursor; the
+  occasional heart.
 - **Follows INTO prototypes**, not just the nav. Never blocks the UI
   (`pointer-events:none`), respects `prefers-reduced-motion`.
 

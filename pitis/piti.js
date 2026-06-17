@@ -75,6 +75,7 @@
      doodles matching the real Piti hat set; outline = OUT, stroke chunky. */
   const HATS = [
     { id: "none",   label: "None" },
+    { id: "sprout", label: "Sprout" },
     { id: "tophat", label: "Top hat" },
     { id: "wizard", label: "Wizard" },
     { id: "beanie", label: "Beanie" },
@@ -86,14 +87,25 @@
   //  • DOG (1256x984 frame): ear-tips ~x440 & ~x560, crown-top ~y365, dip ~y430
   //    (measured off a coordinate-grid render) — brim authored y250 lands at the
   //    crown when shifted +70x / +150y, sized to the dog's narrower head.
-  const HAT_T_CAT = 'transform="translate(140,-82)"';
-  const HAT_T_DOG = 'transform="translate(147,182) scale(0.82)"';
+  // Hats sit bigger now (~1.3×), scaled about the brim-centre (430,250) so they grow
+  // up/out while staying seated on the crown. translate = crownPoint − 430*s , −··· − 250*s.
+  const HAT_T_CAT = 'transform="translate(11,-157) scale(1.3)"';   // cat crown (570,168)
+  const HAT_T_DOG = 'transform="translate(41,121) scale(1.066)"';  // dog crown (499.6,387)
   function hatSVG(id, species) {
     if (!id || id === "none") return "";
     const S = 'stroke="' + OUT + '" stroke-width="28" stroke-linejoin="round" stroke-linecap="round"';
     const HAT_T = species === "dog" ? HAT_T_DOG : HAT_T_CAT;
     let inner = "";
-    if (id === "tophat") {
+    if (id === "sprout") {
+      // a hand-drawn seedling — two leaves + stem on the crown (traced from the snail pal)
+      inner = '<g ' + S + '>' +
+        '<path d="M430 262 C 424 224 426 196 432 176" fill="none" stroke="#3C7E34" stroke-width="22"/>' +
+        '<path d="M432 198 C 470 184 500 150 502 108 C 462 124 436 158 430 196 Z" fill="#62B852"/>' +
+        '<path d="M430 214 C 396 198 364 170 360 132 C 398 150 424 182 432 214 Z" fill="#62B852"/>' +
+        '</g>' +
+        '<path d="M444 176 C 470 158 488 132 494 116" fill="none" stroke="#3C7E34" stroke-width="9"/>' +
+        '<path d="M420 196 C 396 178 378 156 368 140" fill="none" stroke="#3C7E34" stroke-width="9"/>';
+    } else if (id === "tophat") {
       inner = '<g ' + S + '>' +
         '<path d="M236 250 Q236 232 430 228 Q624 232 624 250 Q624 270 430 274 Q236 270 236 250 Z" fill="#2A2730"/>' +
         '<path d="M300 250 Q296 120 312 48 Q430 22 548 50 Q564 122 560 250 Q430 266 300 250 Z" fill="#2A2730"/>' +
@@ -265,7 +277,7 @@
      opts.size (px), opts.start {x,y}. Returns a control handle.
      pointer-events are OFF so it never blocks the UI.
   ---------------------------------------------------------- */
-  const LIVE_SIZE = 48;   // cursor-sized companion (the live pal). Portrait passes its own.
+  const LIVE_SIZE = 55;   // cursor-sized companion (the live pal). Portrait passes its own.
 
   // little blue sweat-drop shown near the head when the pal is hustling to keep up
   const SWEAT_SVG =
@@ -329,6 +341,11 @@
         ".piti-bubble.pop.go{animation:pt-bpop .8s cubic-bezier(.2,.9,.3,1.4) forwards}" +
         "@keyframes pt-float{0%{opacity:0;transform:translateY(0) scale(.4)}25%{opacity:1;transform:translateY(-10px) scale(1)}100%{opacity:0;transform:translateY(-44px) scale(.9)}}" +
         "@keyframes pt-bpop{0%{opacity:0;transform:translateY(0) scale(.2)}30%{opacity:1;transform:translateY(-12px) scale(1.15)}70%{opacity:1;transform:translateY(-16px) scale(1)}100%{opacity:0;transform:translateY(-22px) scale(.95)}}" +
+        // motion after-image: faint ghost copies dropped behind while moving fast
+        ".piti-echo{position:fixed;left:0;top:0;pointer-events:none;z-index:2147483598;opacity:.4}" +
+        ".piti-echo svg{width:100%;height:100%;display:block;overflow:visible}" +
+        ".piti-echo.go{animation:pt-echo .34s ease-out forwards}" +
+        "@keyframes pt-echo{0%{opacity:.4}100%{opacity:0}}" +
         "@media (prefers-reduced-motion: reduce){" +
         ".piti-companion.walk .pt-rest svg,.piti-companion.walk .pt-awake svg{animation:none}" +
         ".piti-companion .pt-inner.pin,.piti-companion .pt-inner.hop{animation:none}" +
@@ -347,12 +364,26 @@
     // facing: target ±1 (deadzoned); facingNow eases toward it for a smooth flip.
     let facing = 1, facingNow = 1, walking = false, lastFlip = 0, runningHard = false;
     let lastMove = now(), lastT = now(), raf = 0, running = true;
-    let emoteUntil = 0, lastSurprise = 0;
+    let emoteUntil = 0, lastSurprise = 0, lastEcho = 0;
+    const reduceMotion = (() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } })();
 
     function now() { return performance.now(); }
 
     function onMove(e) { mouse.x = e.clientX; mouse.y = e.clientY; lastMove = now(); }
     addEventListener("pointermove", onMove, { passive: true });
+
+    // motion after-image: drop a faint, fading ghost of the current sprite at the
+    // current spot; as the pal speeds on, the ghosts trail behind it.
+    function dropEcho() {
+      const e = document.createElement("div");
+      e.className = "piti-echo";
+      e.style.width = e.style.height = size + "px";
+      e.style.transform = "translate(" + (pos.x - size / 2) + "px," + (pos.y - size / 2) + "px) scaleX(" + facingNow + ")";
+      e.innerHTML = awake.innerHTML;   // current art (running → awake pose)
+      document.body.appendChild(e);
+      requestAnimationFrame(() => e.classList.add("go"));
+      setTimeout(() => e.remove(), 360);
+    }
 
     function bubble(glyph, cls) {
       const b = document.createElement("div");
@@ -438,6 +469,9 @@
       if (!runningHard && dist > 64) runningHard = true;
       else if (runningHard && dist < 26) runningHard = false;
       el.classList.toggle("run", runningHard && walking);
+
+      // After-image trail while running fast (skipped under reduced-motion).
+      if (runningHard && walking && !reduceMotion && t - lastEcho > 42) { dropEcho(); lastEcho = t; }
 
       // Facing follows horizontal motion with a deadzone + a short commit window (≥320ms
       // between flips) so it can't dither. facingNow eases toward the target for a smooth flip.
