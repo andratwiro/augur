@@ -35,14 +35,24 @@
        viewport on mobile (the banner was computing ~767px from a 200px min-height). */
     .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
     .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .pp-title { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 10px 40px; align-items: start; padding: 36px 0 44px; }
-    .pp-title h1 { grid-column: 1; }
-    .pp-cta { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 10px; }
+    /* Project header = TWO stacked wide/narrow rows (the Content-Builder default
+       layout). Row 1: intro paragraph (wide) · CTA/participation box (narrow).
+       Row 2: the rest of the description (wide) · nothing (narrow). A single
+       wide/narrow row would, on mobile, stack the ENTIRE left column above the CTA
+       box — pushing all body text above the buttons. Splitting it puts only the
+       intro paragraph above the box, so the mobile read is:
+         hero · title · intro · CTAs · rest of the text.  */
+    .pp-head { padding: 36px 0 44px; }
+    .pp-head h1 { margin: 20px 0 16px; }
+    .pp-row { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 10px 40px; align-items: start; }
+    .pp-cta { display: flex; flex-direction: column; gap: 10px; }
     .pp-cta .gv-btn { justify-content: center; }
     /* participant row centered under the CTA stack (Wien project-header pattern) */
     .pp-cta .gv-participants { display: flex; justify-content: center; }
-    .pp-desc { grid-column: 1; }
-    @media (max-width: 760px) { .pp-title { grid-template-columns: 1fr; } .pp-title h1, .pp-cta, .pp-desc { grid-column: 1; } .pp-cta { grid-row: auto; } }
+    .pp-intro { margin: 0; }
+    /* Row 2 keeps the same wide/narrow tracks so the lower body text holds the SAME
+       measure as the intro (nothing sits in the narrow column on desktop). */
+    @media (max-width: 760px) { .pp-row { grid-template-columns: 1fr; } }
 
     /* ── Ideation MAP view (page-local; faithful to map-real-mapview capture) ──
        Desktop: a FULL-WIDTH Leaflet + OpenStreetMap map with a LEFT white overlay panel
@@ -180,24 +190,37 @@
       <img src="../../skills/govocal-ui/img/westmere/square.webp" alt="Market Square in the Old Town, with cyclists crossing the open paving" loading="lazy" />
     </section>
 
-    <!-- ════════ Title block — h1 + description (left) · CTA stack + participants (right) ════════ -->
-    <div class="pp-title">
-      <h1 class="gv-title h1" style="margin:20px 0 16px;">A square for everyone</h1>
-      <div class="pp-cta">
-        <a class="gv-btn primary" href="#ideas">Submit your idea</a>
-        <a class="gv-btn primary-outlined" href="#ideas">See the ideas</a>
-        <div class="gv-participants" style="margin-top:4px;">
-          <span class="gv-avatars on-light" aria-hidden="true">
-            <span class="av"></span>
-            <span class="av"></span>
-            <span class="av"></span>
-          </span>
-          <span class="gv-pcount">122 contributions</span>
-          <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
+    <!-- ════════ Project header — TWO stacked wide/narrow rows (Content-Builder default)
+         Row 1: title + intro paragraph (wide) · CTA stack + participants (narrow).
+         Row 2: the rest of the description (wide) · empty (narrow).
+         On mobile each row collapses left→right, so the read is:
+           title · intro · CTAs · rest — only the intro sits above the buttons. ════════ -->
+    <div class="pp-head">
+      <h1 class="gv-title h1">A square for everyone</h1>
+
+      <!-- Row 1 — intro paragraph · CTA / participation box -->
+      <div class="pp-row">
+        <div class="gv-projdesc pp-intro">
+          <p>Market Square is the heart of the Old Town, and it's time we rethought it together. We're <strong>redesigning the square so it works for everyone</strong> — for the weekly market, for people stopping for a coffee, for children and for residents getting around on foot and by bike.</p>
+        </div>
+        <div class="pp-cta">
+          <a class="gv-btn primary" href="#ideas">Submit your idea</a>
+          <a class="gv-btn primary-outlined" href="#ideas">See the ideas</a>
+          <div class="gv-participants" style="margin-top:4px;">
+            <span class="gv-avatars on-light" aria-hidden="true">
+              <span class="av"></span>
+              <span class="av"></span>
+              <span class="av"></span>
+            </span>
+            <span class="gv-pcount">122 contributions</span>
+            <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
+          </div>
         </div>
       </div>
-      <div class="gv-projdesc pp-desc">
-        <p>Market Square is the heart of the Old Town, and it's time we rethought it together. We're <strong>redesigning the square so it works for everyone</strong> — for the weekly market, for people stopping for a coffee, for children and for residents getting around on foot and by bike.</p>
+
+      <!-- Row 2 — rest of the description · (narrow column intentionally empty) -->
+      <div class="pp-row">
+        <div class="gv-projdesc pp-desc">
         <p>Right now the square is given over mostly to parking and through-traffic. Over the coming months we'll gather your ideas, test a few of them on site, and bring the community's priorities into a final design that goes to the council next year.</p>
         <p>Everything you share here is public and helps shape the shortlist that goes to the next phase. Have a read of the questions below before you post, then add your idea or react to others.</p>
         <div class="gv-accordion" style="margin-top:20px">
@@ -229,8 +252,9 @@
             <span class="gv-attachment__size">(742.6 KB)</span>
           </div>
         </div>
-      </div>
-    </div>
+      </div><!-- /.gv-projdesc pp-desc -->
+      </div><!-- /.pp-row (row 2) -->
+    </div><!-- /.pp-head -->
    </div><!-- /.gv-wrap -->
 
     <!-- ════════ Participation bar — sits between the white project context and the

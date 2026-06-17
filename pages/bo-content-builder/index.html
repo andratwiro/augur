@@ -1110,28 +1110,46 @@
       return b;
     }
     function seedDefault() {
-      // Mirror of the resident-facing PROJECT PAGE (the content this builder edits):
-      //   locked hero + title · wide/narrow 2-column (description text + accordions
-      //   on the left, participation box on the right) · then timeline · then events.
+      // Mirror of the resident-facing PROJECT PAGE (the content this builder edits).
+      // The description flows as TWO stacked wide/narrow 2-columns rather than one:
+      //   Row 1 — intro paragraph (wide) · participation box (narrow)
+      //   Row 2 — the rest of the description + accordions (wide) · empty (narrow)
+      // then timeline · then events.
+      // WHY two rows: a single wide/narrow row stacks the ENTIRE left column above
+      // the participation box on mobile, pushing all body text above the CTAs.
+      // Splitting it keeps only the intro above the box, so the resident reads:
+      //   hero · title · intro · CTAs · rest of the text.
       frame.insertBefore(makeLockedBlock('hero'), first);
       frame.insertBefore(makeLockedBlock('title'), first);
-      // Wide/narrow 2-column.
-      var two = makeBlock('two-column');
-      frame.appendChild(two);
-      var grid = two.querySelector('.cb-cols');
-      grid.setAttribute('data-collayout', 'wide-narrow');
-      grid.style.gridTemplateColumns = '2fr 1fr';
-      var cols = two.querySelectorAll('.cb-col');
-      if (cols[0]) {
-        // Left (wide): the project description text (= 'first', carries the frame
-        // checkpoint id) followed by info accordions.
-        cols[0].appendChild(first);
-        cols[0].appendChild(makeBlock('info-accordions'));
-        cols[0].appendChild(makeBlock('accordion'));
+
+      // Row 1 — wide/narrow: intro description (left) · participation box (right).
+      var row1 = makeBlock('two-column');
+      frame.appendChild(row1);
+      var grid1 = row1.querySelector('.cb-cols');
+      grid1.setAttribute('data-collayout', 'wide-narrow');
+      grid1.style.gridTemplateColumns = '2fr 1fr';
+      var c1 = row1.querySelectorAll('.cb-col');
+      // Left (wide): the intro text (= 'first', carries the frame checkpoint id).
+      if (c1[0]) c1[0].appendChild(first);
+      // Right (narrow): the participation box (CTAs + participant count).
+      if (c1[1]) c1[1].appendChild(makeBlock('about-box'));
+
+      // Row 2 — wide/narrow: rest of the description + accordions (left) · empty (right).
+      var row2 = makeBlock('two-column');
+      frame.appendChild(row2);
+      var grid2 = row2.querySelector('.cb-cols');
+      grid2.setAttribute('data-collayout', 'wide-narrow');
+      grid2.style.gridTemplateColumns = '2fr 1fr';
+      var c2 = row2.querySelectorAll('.cb-col');
+      if (c2[0]) {
+        c2[0].appendChild(seedBlock('text', 'Over the coming months we’ll gather your ideas, test a few of them on site, and bring the community’s priorities into a final design that goes to the council next year. Everything you share here is public and helps shape the shortlist that moves to the next phase.'));
+        c2[0].appendChild(makeBlock('info-accordions'));
+        c2[0].appendChild(makeBlock('accordion'));
       }
-      // Right (narrow): the participation box.
-      if (cols[1]) cols[1].appendChild(makeBlock('about-box'));
-      // Out of the column, below: timeline, then events.
+      // Right (narrow) of row 2 stays empty — an open drop zone, nothing beside the
+      // lower body copy.
+
+      // Out of the columns, below: timeline, then events.
       frame.appendChild(makeBlock('timeline'));
       frame.appendChild(makeBlock('events'));
       reflectEmptyAll();
