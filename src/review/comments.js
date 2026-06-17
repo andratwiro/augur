@@ -225,7 +225,7 @@
     '.pin.anno:hover{transform:translate(-50%,-50%) rotate(0deg) scale(1.16);box-shadow:0 7px 20px rgba(0,0,0,0.42);z-index:2;}' +
     '.pin.anno.active{outline:3px solid rgba(61,116,244,0.45);}' +
     /* note bubble (delivery mode), styled like Figma cursor-chat: blue pill + tail */
-    '.atip{position:fixed;pointer-events:none;max-width:260px;background:#5672da;color:#fff;padding:9px 14px;border-radius:18px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.12);transform:translate(-50%,var(--ty,-100%)) scale(.9);transform-origin:50% 110%;opacity:0;transition:opacity .14s ease,transform .2s cubic-bezier(.34,1.56,.64,1);white-space:pre-wrap;word-wrap:break-word;}' +
+    '.atip{position:fixed;pointer-events:none;max-width:260px;background:#5672da;color:#fff;padding:9px 14px;border-radius:18px;font:500 14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.12);transform:translate(-50%,var(--ty,-100%)) scale(.9);transform-origin:50% 110%;opacity:0;transition:opacity .14s ease,transform .2s cubic-bezier(.34,1.56,.64,1);white-space:pre-wrap;word-wrap:break-word;}' +
     '.atip::after{content:"";position:absolute;left:var(--tail-x,50%);bottom:-4px;width:9px;height:9px;background:#5672da;transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;}' +
     '.atip.below{--ty:0;transform-origin:50% -10%;}' +
     '.atip.below::after{bottom:auto;top:-4px;border-radius:3px 0 0 0;}' +
