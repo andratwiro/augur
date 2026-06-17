@@ -366,25 +366,29 @@ async function pinsApi(request, url, env) {
   if (request.method === "POST") {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
-    const raw = await kv.get(PINS_KEY);
-    const map = raw ? JSON.parse(raw) : {};
-    // Reorder: rebuild the map in the given key order (object key order = render order).
-    if (op && Array.isArray(op.order)) {
-      const next = {};
-      for (const k of op.order) { const ck = clamp(k, 300); if (ck && map[ck]) next[ck] = map[ck]; }
-      for (const k in map) if (!next[k]) next[k] = map[k]; // keep any not listed
-      await kv.put(PINS_KEY, JSON.stringify(next));
-      return jsonResponse({ map: next });
+    // Authoritative full-state write. The client owns the complete pins map (add,
+    // remove and reorder all just produce a new full map), so we store exactly what it
+    // sends — NO server-side read-modify-write, which races under KV eventual
+    // consistency: a stale/empty read could be written back and clobber everything
+    // (that wiped a user's pins during rapid reorder). `set` is the {key:{label,href}} map.
+    if (!op || typeof op.set !== "object" || op.set === null) {
+      return jsonResponse({ error: "bad-input" }, 400);
     }
-    const key = clamp(op && op.key, 300);
-    if (!key) return jsonResponse({ error: "bad-input" }, 400);
-    if (op && op.pinned === false) {
-      delete map[key];
-    } else {
-      map[key] = { label: clamp(op && op.label, 120) || key, href: clamp(op && op.href, 300) || key };
+    const next = {};
+    for (const k of Object.keys(op.set).slice(0, 200)) {
+      const ck = clamp(k, 300);
+      const v = op.set[k] || {};
+      if (ck) next[ck] = { label: clamp(v.label, 120) || ck, href: clamp(v.href, 300) || ck };
     }
-    await kv.put(PINS_KEY, JSON.stringify(map));
-    return jsonResponse({ map });
+    // Safety net: never silently wipe to empty. An empty result is almost always a bug
+    // (stale/poisoned client); only honour it when the client explicitly clears the
+    // last pin (allowEmpty). Otherwise leave KV untouched and echo the stored map back.
+    if (Object.keys(next).length === 0 && !(op && op.allowEmpty)) {
+      const raw = await kv.get(PINS_KEY);
+      return jsonResponse({ map: raw ? JSON.parse(raw) : {}, skipped: "empty-guard" });
+    }
+    await kv.put(PINS_KEY, JSON.stringify(next));
+    return jsonResponse({ map: next });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }

@@ -1660,7 +1660,7 @@ const PINS_JS = `
   var btns = Array.prototype.slice.call(document.querySelectorAll('[data-pin-key]'));
   if(!listEl && !btns.length) return;
   var PCACHE = 'gv_pins_map';
-  var EMO = /^(\p{Extended_Pictographic}(️)?(‍\p{Extended_Pictographic}(️)?)*)\s*/u;
+  var EMO = /^(\\p{Extended_Pictographic}(\\uFE0F)?(\\u200D\\p{Extended_Pictographic}(\\uFE0F)?)*)\\s*/u;
   var map = {};
   var loaded = false; // have we synced an authoritative map from the server this session?
   function splitEmoji(s){ s = s || ''; var m; try { m = s.match(EMO); } catch(e){ m = null; } return m ? [m[1], s.slice(m[0].length)] : ['', s]; }
