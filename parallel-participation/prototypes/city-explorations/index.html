@@ -57,7 +57,10 @@
     .pv .cb-pbtn--outline:hover { border-color: var(--pp-tenant); color: var(--pp-tenant); }
     .pv .pv-pbox__people { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
     .pv .pv-pbox__people .gv-avatars { margin: 0; }
-    .pv .pv-pbox__info { width: 14px; height: 14px; color: var(--gv-cool-grey-500); vertical-align: -2px; }
+    /* Participant avatars match the real product's compact cluster — measured 36px
+       total (border included) on partizipation.linz.at, vs the larger hero/spotlight
+       avatars. border-box so the 2px ring counts inside the 36px footprint. */
+    .pv .pv-pbox__people .gv-avatars .av { box-sizing: border-box; width: 36px; height: 36px; }
     .pv .pv-pbox__empty { border: 1px dashed var(--gv-grey-400); border-radius: 3px; text-align: center; padding: 14px; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
     /* When the about box stands in the wide left column (gallery), keep it readable */
     .pv .pv-pbox--inset { border: 1px solid var(--gv-grey-200); border-radius: var(--gv-radius); padding: 18px; background: #fff; }
@@ -429,7 +432,7 @@
       if (a.secondary) actions += `<a class="gv-btn full primary-outlined" href="#"><span class="gv-btn__label">${a.secondary}</span></a>`;
     }
     const people = a.participants
-      ? `<div class="gv-participants pv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">${a.count} ${a.label} <span class="pv-pbox__info" data-gv-icon="info-solid" title="Real-time count."></span></span></div>`
+      ? `<div class="gv-participants pv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">${a.count} participants</span></div>`
       : '';
     let inner = (actions ? `<div class="pv-pbox__actions">${actions}</div>` : '') + people;
     if (!inner) inner = '<div class="pv-pbox__empty">No active methods</div>';

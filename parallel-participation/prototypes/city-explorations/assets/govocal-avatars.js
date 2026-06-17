@@ -21,7 +21,20 @@
                'face-06.jpg', 'face-07.jpg', 'face-08.jpg', 'face-09.jpg', 'face-10.jpg',
                'face-11.jpg', 'face-12.jpg', 'face-13.jpg', 'face-14.jpg', 'face-15.jpg',
                'face-16.jpg', 'face-17.jpg', 'face-18.jpg', 'face-19.jpg', 'face-20.jpg'];
-  function faceURL() { return BASE + FACES[Math.floor(Math.random() * FACES.length)]; }
+  // Draw faces from a shuffled bag rather than picking independently at random, so a
+  // cluster of avatars never shows the same face twice until all 20 are used up (no
+  // more obvious repeats in a 3-up participant row). Bag refills + reshuffles when empty.
+  var bag = [];
+  function faceURL() {
+    if (!bag.length) {
+      bag = FACES.slice();
+      for (var i = bag.length - 1; i > 0; i--) {            // Fisher–Yates shuffle
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = bag[i]; bag[i] = bag[j]; bag[j] = t;
+      }
+    }
+    return BASE + bag.pop();
+  }
   function fill(root) {
     var scope = root || document;
     scope.querySelectorAll('.av, .gv-bo-table__avatar').forEach(function (el) {
