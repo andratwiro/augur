@@ -87,12 +87,36 @@ function injectReview(html) {
   return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
 }
 
+// Live-reload tag injected into EVERY built HTML page (prototypes + shell). It
+// bakes THIS build's id inline; a tiny poller compares it against /__version
+// (served by the worker, regenerated each deploy) and reloads the tab when they
+// differ — so an open tab auto-refreshes itself within ~10s of a deploy, no
+// manual reload. Skips polling inside preview iframes (the parent page reloads
+// them). Marker-wrapped so the Download HTML button can strip it for a clean file.
+// Lazy (function) so it reads BUILD_ID, declared just below.
+function reloadTag() {
+  return '<!--gv-reload-start--><script>(function(){if(window.top!==window.self)return;' +
+    'var B=' + JSON.stringify(BUILD_ID) + ';' +
+    'function c(){fetch("/__version",{cache:"no-store"}).then(function(r){return r.ok?r.text():null})' +
+    '.then(function(t){if(t&&t.trim()&&t.trim()!==B)location.reload()}).catch(function(){})}' +
+    'setInterval(function(){if(!document.hidden)c()},10000);' +
+    'document.addEventListener("visibilitychange",function(){if(!document.hidden)c()});})();</script><!--gv-reload-end-->';
+}
+
+/** Inject the live-reload tag before </body> (or append if none). */
+function injectReload(html) {
+  if (html.includes("gv-reload-start")) return html; // already injected
+  const tag = reloadTag();
+  const i = html.toLowerCase().lastIndexOf("</body>");
+  return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
+}
+
 // Version of the PROTOTYPES SITE UI (the landing/shell pages this file generates),
 // shown in the footer. Bump this ONLY when the site UI changes — i.e. edits to
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.30";
+const UI_VERSION = "0.31";
 
 // Top-level folders that are never treated as opportunity folders.
 const IGNORED_TOPLEVEL = new Set([

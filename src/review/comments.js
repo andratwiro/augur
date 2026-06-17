@@ -713,8 +713,11 @@
   window.addEventListener("hashchange", function () { if (state.active) { render(); } tryOpenPending(); setTimeout(orphanSweep, 1200); });
   window.addEventListener("popstate", function () { if (state.active) { render(); } tryOpenPending(); setTimeout(orphanSweep, 1200); });
 
-  // Boot.
-  try { state.active = sessionStorage.getItem(LS_ACTIVE) === "1"; } catch (e) {}
+  // Boot. Review mode always starts OFF — press Shift+C to turn it on. We do
+  // NOT restore the last active state: sessionStorage survives reloads and
+  // same-tab navigation, so restoring meant every prototype you opened in a tab
+  // booted into comment mode once you'd toggled it on anywhere. (Deep-linking to
+  // a specific comment still re-activates via tryOpenPending/SS_PENDING.)
   refresh().then(function () {
     var grace = function () { settled = true; orphanSweep(); };
     if (document.readyState === "complete") setTimeout(grace, 1500);
