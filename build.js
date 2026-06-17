@@ -164,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.46";
+const UI_VERSION = "0.47";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -190,10 +190,11 @@ const IGNORED_TOPLEVEL = new Set([
 // "Pending" roadmap so the team sees what's coming. Remove a slug here once its
 // real page lands under pages/<slug>/. Slugs are kebab-case; titleCase() labels them.
 const PENDING_PAGES = [
-  "survey-builder",
   "voting",
   "common-ground",
-  "ideation",
+  "sensemaking",
+  "autoinsights",
+  "official-updates",
 ];
 
 // Pages index has three top-level groups: Front office, Methods, Back office.
@@ -1659,8 +1660,9 @@ const PINS_JS = `
   var btns = Array.prototype.slice.call(document.querySelectorAll('[data-pin-key]'));
   if(!listEl && !btns.length) return;
   var PCACHE = 'gv_pins_map';
-  var EMO = /^(\\p{Extended_Pictographic}(\\uFE0F)?(\\u200D\\p{Extended_Pictographic}(\\uFE0F)?)*)\\s*/u;
+  var EMO = /^(\p{Extended_Pictographic}(️)?(‍\p{Extended_Pictographic}(️)?)*)\s*/u;
   var map = {};
+  var loaded = false; // have we synced an authoritative map from the server this session?
   function splitEmoji(s){ s = s || ''; var m; try { m = s.match(EMO); } catch(e){ m = null; } return m ? [m[1], s.slice(m[0].length)] : ['', s]; }
   function esc(s){ return (s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
   function renderList(){
@@ -1684,12 +1686,33 @@ const PINS_JS = `
       b.setAttribute('title', on ? 'Pinned — click to remove' : 'Pin to sidebar');
     });
   }
-  function apply(m){ map = m || {}; renderList(); paintBtns(); }
+  function cacheSave(){ try { sessionStorage.setItem(PCACHE, JSON.stringify(map)); } catch(e){} }
+  // Adopt a server/peer map — but refuse a suspicious wipe (empty map while we already
+  // show pins), which would otherwise let a stale KV read poison the cache.
+  function adopt(m){
+    if(!m || typeof m !== 'object') return false;
+    if(Object.keys(m).length === 0 && Object.keys(map).length > 0) return false;
+    map = m; cacheSave(); renderList(); paintBtns(); return true;
+  }
+  // Instant paint from the per-tab cache; then refresh from the server (authoritative).
   var cached = null; try { cached = JSON.parse(sessionStorage.getItem(PCACHE) || 'null'); } catch(e){}
-  if(cached){ apply(cached); }
-  else fetch('/__pins', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
-    .then(function(d){ var m = (d && d.map) || {}; try { sessionStorage.setItem(PCACHE, JSON.stringify(m)); } catch(e){} apply(m); })
-    .catch(function(){ apply({}); });
+  if(cached){ map = cached; renderList(); paintBtns(); loaded = true; }
+  fetch('/__pins', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
+    .then(function(d){ if(d && !d.warning) adopt(d.map); loaded = true; }).catch(function(){});
+  // Run cb once we hold a usable map — never persist before we've synced once, so a
+  // fresh tab can't overwrite the server with a guessed-empty/partial map.
+  function ready(cb){
+    if(loaded){ cb(); return; }
+    fetch('/__pins', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
+      .then(function(d){ if(d && !d.warning) adopt(d.map); loaded = true; cb(); }).catch(function(){ loaded = true; cb(); });
+  }
+  // Authoritative full-state write — send the COMPLETE map (no server read-modify-write).
+  function save(allowEmpty){
+    cacheSave();
+    fetch('/__pins', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ set: map, allowEmpty: !!allowEmpty }) })
+      .then(function(r){ return r.json(); }).then(function(d){ if(d && !d.skipped) adopt(d.map); }).catch(function(){});
+  }
   function labelFor(b){
     var card = b.closest('[data-rename-key]') || b.closest('.card-proto, .card-opp');
     var nm = card && card.querySelector('.proto-name');
@@ -1698,15 +1721,12 @@ const PINS_JS = `
   btns.forEach(function(b){
     b.addEventListener('click', function(e){
       e.preventDefault(); e.stopPropagation();
-      var key = b.getAttribute('data-pin-key'), href = b.getAttribute('data-pin-href') || key;
-      var on = Object.prototype.hasOwnProperty.call(map, key);
-      if(on){ delete map[key]; } else { map[key] = { label: labelFor(b), href: href }; }
-      try { sessionStorage.setItem(PCACHE, JSON.stringify(map)); } catch(e){}
-      renderList(); paintBtns();
-      fetch('/__pins', { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ key: key, href: href, label: (map[key] && map[key].label) || '', pinned: !on }) })
-        .then(function(r){ return r.json(); }).then(function(d){ if(d && d.map){ try { sessionStorage.setItem(PCACHE, JSON.stringify(d.map)); } catch(e){} apply(d.map); } })
-        .catch(function(){});
+      var key = b.getAttribute('data-pin-key'), href = b.getAttribute('data-pin-href') || key, lbl = labelFor(b);
+      ready(function(){
+        if(Object.prototype.hasOwnProperty.call(map, key)){ delete map[key]; } else { map[key] = { label: lbl, href: href }; }
+        renderList(); paintBtns();
+        save(Object.keys(map).length === 0);
+      });
     });
   });
   // ---- drag-and-drop reorder of the pinned list ----
@@ -1720,10 +1740,13 @@ const PINS_JS = `
     }
     function persistOrder(){
       var order = Array.prototype.slice.call(listEl.querySelectorAll('a')).map(function(a){ return a.getAttribute('data-k'); });
-      var nm = {}; order.forEach(function(k){ if(map[k]) nm[k] = map[k]; }); map = nm;
-      try { sessionStorage.setItem(PCACHE, JSON.stringify(map)); } catch(e){}
-      fetch('/__pins', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ order: order }) })
-        .then(function(r){ return r.json(); }).then(function(d){ if(d && d.map){ try { sessionStorage.setItem(PCACHE, JSON.stringify(d.map)); } catch(e){} map = d.map; } }).catch(function(){});
+      ready(function(){
+        var nm = {};
+        order.forEach(function(k){ if(map[k]) nm[k] = map[k]; });
+        Object.keys(map).forEach(function(k){ if(!nm[k]) nm[k] = map[k]; }); // keep keys not in the DOM
+        map = nm;
+        save(false); // a reorder must never empty the set
+      });
     }
     listEl.addEventListener('dragstart', function(e){
       var a = e.target.closest('a'); if(!a){ return; } dragEl = a;
@@ -1745,7 +1768,7 @@ const PINS_JS = `
       else if(e.key === 'ArrowDown'){ e.preventDefault(); var n = a.nextElementSibling; if(n){ listEl.insertBefore(n, a); a.focus(); persistOrder(); } }
     });
   }
-  window.addEventListener('storage', function(e){ if(e.key === PCACHE){ try { apply(JSON.parse(e.newValue || '{}')); } catch(_){} } });
+  window.addEventListener('storage', function(e){ if(e.key === PCACHE){ try { var nv = JSON.parse(e.newValue || '{}'); map = nv; renderList(); paintBtns(); } catch(_){} } });
 })();
 `;
 
