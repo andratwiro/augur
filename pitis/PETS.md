@@ -77,8 +77,7 @@ Internal — never ships. Companion engine lives entirely in `pitis/` (see READM
 - Always render-compare against the reference in a loop until it reads as the animal.
 
 ## Pending / TODO
-- **Cursor 30% smaller:** `CURSOR_SVG` `width/height 30 → 21`, hotspot `7 4 → 5 3`
-  (apply if not already done).
+- ~~Cursor 30% smaller~~ — done (`CURSOR_SVG` 21×21, hotspot `5 3`).
 - More pets welcome (more cats, etc.) — follow the recipe.
 
 ## References & docs
