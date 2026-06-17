@@ -107,10 +107,14 @@ function injectHead(html, pageUrl, hasOg) {
   const headClose = html.toLowerCase().indexOf("</head>");
   if (headClose === -1) return html;
   const tm = html.match(/<title>([^<]*)<\/title>/i);
-  const title = (tm ? tm[1] : "Product Prototype").trim();
+  const raw = (tm ? tm[1] : "Product Prototype").trim();
+  // og:title = just the prototype name (the part before the title's em-dash); the
+  // rest becomes the description. Keeps the unfurl headline short, not the full
+  // "Name — context (note)" page title.
+  const parts = raw.split(/\s+[—–-]\s+/);
+  const title = parts[0].trim();
+  const subtitle = parts.slice(1).join(" — ").trim();
   const dm = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']*)["']/i);
-  // Description: explicit meta → the subtitle after the title's em-dash → tagline.
-  const subtitle = title.split(/\s+[—–-]\s+/).slice(1).join(" — ").trim();
   const desc = (dm ? dm[1] : subtitle) || "Clickable design prototype · GoVocal";
   const img = hasOg
     ? `\n  <meta property="og:image" content="${escAttr(pageUrl + "og.jpg")}" />` +
