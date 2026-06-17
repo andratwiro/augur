@@ -346,6 +346,10 @@
         ".piti-echo svg{width:100%;height:100%;display:block;overflow:visible}" +
         ".piti-echo.go{animation:pt-echo .34s ease-out forwards}" +
         "@keyframes pt-echo{0%{opacity:.4}100%{opacity:0}}" +
+        // the customizer opens as a real overlay modal — the site stays visible, dimmed
+        ".piti-modal-backdrop{position:fixed;inset:0;z-index:2147483640;background:rgba(34,27,38,.55);display:grid;place-items:center;padding:20px;animation:pt-fade .2s ease both}" +
+        "@keyframes pt-fade{from{opacity:0}to{opacity:1}}" +
+        ".piti-modal-frame{width:480px;max-width:100%;height:680px;max-height:92vh;border:none;background:transparent;border-radius:20px}" +
         "@media (prefers-reduced-motion: reduce){" +
         ".piti-companion.walk .pt-rest svg,.piti-companion.walk .pt-awake svg{animation:none}" +
         ".piti-companion .pt-inner.pin,.piti-companion .pt-inner.hop{animation:none}" +
@@ -470,8 +474,9 @@
       else if (runningHard && dist < 26) runningHard = false;
       el.classList.toggle("run", runningHard && walking);
 
-      // After-image trail while running fast (skipped under reduced-motion).
-      if (runningHard && walking && !reduceMotion && t - lastEcho > 42) { dropEcho(); lastEcho = t; }
+      // After-image trail — only on BIG fast moves (cursor yanked far away), so it
+      // rarely triggers in normal use. Skipped under reduced-motion.
+      if (walking && !reduceMotion && dist > 165 && t - lastEcho > 40) { dropEcho(); lastEcho = t; }
 
       // Facing follows horizontal motion with a deadzone + a short commit window (≥320ms
       // between flips) so it can't dither. facingNow eases toward the target for a smooth flip.
@@ -534,6 +539,18 @@
   // re-skin the live companion (if any) — pass a config for instant preview, else re-read saved
   function refreshLive(override) { if (live) live.refresh(override); }
 
+  // ---- the customizer as a real overlay modal (the site stays visible, dimmed) ----
+  let modalEl = null;
+  function openModal() {
+    if (modalEl) return;
+    modalEl = document.createElement("div");
+    modalEl.className = "piti-modal-backdrop";
+    modalEl.innerHTML = '<iframe class="piti-modal-frame" src="/pitis/" title="Customize your Piti"></iframe>';
+    modalEl.addEventListener("click", function (e) { if (e.target === modalEl) closeModal(); });
+    document.body.appendChild(modalEl);
+  }
+  function closeModal() { if (modalEl) { modalEl.remove(); modalEl = null; } if (isRevealed()) ensureMounted(); refreshLive(); }
+
   function auto(opts) {
     autoOpts = opts || {};
     if (inIframe()) return;               // never run inside preview iframes
@@ -542,9 +559,22 @@
     // Shift + Ñ toggles the pal. Don't hijack it while typing in a field.
     addEventListener("keydown", function (e) {
       const t = e.target;
+      if (e.key === "Escape" && modalEl) { closeModal(); return; }
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
       const isEnye = e.key === "Ñ" || e.key === "ñ" || e.code === "Semicolon"; // ñ key (Spanish layout)
       if (e.shiftKey && isEnye) { e.preventDefault(); toggle(); }
+    });
+    // The footer paw opens the customizer as an overlay instead of navigating away.
+    addEventListener("click", function (e) {
+      const paw = e.target && e.target.closest && e.target.closest(".piti-paw");
+      if (paw) { e.preventDefault(); openModal(); }
+    });
+    // Messages from the customizer iframe (close / saved → refresh the live companion).
+    addEventListener("message", function (e) {
+      const d = e.data;
+      if (!d || typeof d.piti === "undefined") return;
+      if (d.piti === "close") closeModal();
+      else if (d.piti === "saved") { if (isRevealed()) ensureMounted(); refreshLive(); }
     });
   }
 
