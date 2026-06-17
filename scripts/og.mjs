@@ -82,20 +82,34 @@ async function makeCard(browser, dir) {
 
   const posterB64 = (await fs.readFile(posterPath)).toString("base64");
   const posterDataUri = `data:image/webp;base64,${posterB64}`;
-
-  // 1× = the OG spec size (1200×630). Unfurl thumbnails render ~500px wide, so a
-  // higher DPR only bloats the file (some bots time out on multi-MB images).
-  const page = await browser.newPage({ viewport: OG, deviceScaleFactor: 1 });
-  await page.setContent(cardHTML({ posterDataUri }), { waitUntil: "load" });
-  await page.waitForTimeout(200); // let the poster decode
-  // JPEG q85 keeps each committed card ~80–120KB (vs ~300KB PNG) — invisible on an
-  // unfurl thumbnail, ~3× lighter in the repo as the prototype count grows.
   const out = path.join(dir, "og.jpg");
-  await page.screenshot({ path: out, type: "jpeg", quality: 85, clip: { x: 0, y: 0, ...OG } });
-  await page.close();
-  const kb = Math.round((await fs.stat(out)).size / 1024);
-  console.log("✓", rel + "/og.jpg", kb + "KB");
-  return true;
+
+  // Up to 2 attempts, with per-card failures caught so a single transient screenshot
+  // hiccup can't crash the run and abort `npm run deploy` — the existing committed
+  // card is left in place and the run continues. Mirrors shoot.mjs.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    // 1× = the OG spec size (1200×630). Unfurl thumbnails render ~500px wide, so a
+    // higher DPR only bloats the file (some bots time out on multi-MB images).
+    const page = await browser.newPage({ viewport: OG, deviceScaleFactor: 1 });
+    try {
+      await page.setContent(cardHTML({ posterDataUri }), { waitUntil: "load" });
+      await page.waitForTimeout(200); // let the poster decode
+      // JPEG q85 keeps each committed card ~80–120KB (vs ~300KB PNG) — invisible on an
+      // unfurl thumbnail, ~3× lighter in the repo as the prototype count grows.
+      await page.screenshot({ path: out, type: "jpeg", quality: 85, clip: { x: 0, y: 0, ...OG } });
+      const kb = Math.round((await fs.stat(out)).size / 1024);
+      console.log("✓", rel + "/og.jpg", kb + "KB");
+      return true;
+    } catch (e) {
+      const msg = e.message.split("\n")[0];
+      if (attempt < 2) { console.log("· retry", rel, "—", msg); continue; }
+      console.log("✗ FAIL", rel, "—", msg);
+      return false;
+    } finally {
+      await page.close().catch(() => {});
+    }
+  }
+  return false;
 }
 
 // A folder needs a fresh card when it has no og.jpg, or its poster/entry html is

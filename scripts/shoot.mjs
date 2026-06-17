@@ -95,24 +95,36 @@ async function shoot(browser, dir) {
   const file = await entry(dir);
   const rel = path.relative(ROOT, dir);
   if (!file) { console.log("· skip (no html):", rel); return false; }
-  const page = await browser.newPage({ viewport: VIEWPORT });
   const tmp = path.join(os.tmpdir(), "shoot-" + rel.replace(/[^a-z0-9]+/gi, "-") + ".png");
-  try {
-    await page.goto("file://" + file, { waitUntil: "load", timeout: 20000 });
-    await page.waitForTimeout(900); // let fonts/layout settle
-    await page.screenshot({ path: tmp, clip: { x: 0, y: 0, ...VIEWPORT } });
-  } catch (e) {
-    console.log("✗ FAIL", rel, "—", e.message.split("\n")[0]);
-    await page.close();
-    return false;
-  }
-  await page.close();
   const outWebp = path.join(dir, "preview.webp");
-  await execFileP("cwebp", ["-quiet", "-q", String(WEBP_Q), "-resize", String(WEBP_W), "0", tmp, "-o", outWebp]);
-  await fs.unlink(tmp).catch(() => {});
-  const kb = Math.round((await fs.stat(outWebp)).size / 1024);
-  console.log("✓", rel + "/preview.webp", kb + "KB");
-  return true;
+  // Up to 2 attempts. Headless captures occasionally produce an empty/corrupt PNG
+  // that cwebp then can't read; previously the unguarded cwebp rejection crashed the
+  // whole run (aborting `npm run deploy`). Now any single-poster failure is caught and
+  // logged — the run keeps going and the existing committed poster is left in place —
+  // and a retry clears the common transient case.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const page = await browser.newPage({ viewport: VIEWPORT });
+    try {
+      await page.goto("file://" + file, { waitUntil: "load", timeout: 20000 });
+      await page.waitForTimeout(900); // let fonts/layout settle
+      await page.screenshot({ path: tmp, clip: { x: 0, y: 0, ...VIEWPORT } });
+      const png = await fs.stat(tmp).catch(() => null);
+      if (!png || png.size === 0) throw new Error("empty screenshot");
+      await execFileP("cwebp", ["-quiet", "-q", String(WEBP_Q), "-resize", String(WEBP_W), "0", tmp, "-o", outWebp]);
+      const kb = Math.round((await fs.stat(outWebp)).size / 1024);
+      console.log("✓", rel + "/preview.webp", kb + "KB");
+      return true;
+    } catch (e) {
+      const msg = e.message.split("\n")[0];
+      if (attempt < 2) { console.log("· retry", rel, "—", msg); continue; }
+      console.log("✗ FAIL", rel, "—", msg);
+      return false;
+    } finally {
+      await page.close().catch(() => {});
+      await fs.unlink(tmp).catch(() => {});
+    }
+  }
+  return false;
 }
 
 const argv = process.argv.slice(2);
