@@ -366,10 +366,18 @@ async function pinsApi(request, url, env) {
   if (request.method === "POST") {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
-    const key = clamp(op && op.key, 300);
-    if (!key) return jsonResponse({ error: "bad-input" }, 400);
     const raw = await kv.get(PINS_KEY);
     const map = raw ? JSON.parse(raw) : {};
+    // Reorder: rebuild the map in the given key order (object key order = render order).
+    if (op && Array.isArray(op.order)) {
+      const next = {};
+      for (const k of op.order) { const ck = clamp(k, 300); if (ck && map[ck]) next[ck] = map[ck]; }
+      for (const k in map) if (!next[k]) next[k] = map[k]; // keep any not listed
+      await kv.put(PINS_KEY, JSON.stringify(next));
+      return jsonResponse({ map: next });
+    }
+    const key = clamp(op && op.key, 300);
+    if (!key) return jsonResponse({ error: "bad-input" }, 400);
     if (op && op.pinned === false) {
       delete map[key];
     } else {

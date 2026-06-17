@@ -1166,6 +1166,8 @@ const NAV_CSS = `
     /* Pinned rows: the leading emoji sits in the same slot a nav icon would. */
     .gvpin-ic { width: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
     .gvside__pinhint { color: #6b7280; font-size: 12px; line-height: 1.45; margin: 2px 8px 2px; }
+    .gvside [data-pinned-list] a { cursor: grab; }
+    .gvside [data-pinned-list] a.gv-dragging { opacity: .45; cursor: grabbing; }
 
     /* Collapsible section (Library) — a clickable summary row + indented children. */
     .gvside__sect { display: block; }
@@ -1293,13 +1295,13 @@ function sideRail(active) {
     <div class="gvside__rule"></div>
     <div class="gvside__scroll">
       <div class="gvside__group">
-        ${playground}
         ${item("/", "Opportunities", "prototypes", IC_HOME)}
       </div>
       ${pinned}
     </div>
     <div class="gvside__foot">
       <div class="gvside__rule"></div>
+      ${playground}
       ${library}
     </div>
   </aside>`;
@@ -1667,7 +1669,7 @@ const PINS_JS = `
       var glyph = parts[0] || '📌';
       var txt = esc(parts[1] || it.label || k);
       var cur = (it.href === location.pathname) ? ' aria-current="page"' : '';
-      return '<a href="'+esc(it.href||k)+'"'+cur+'><span class="gvpin-ic" aria-hidden="true">'+esc(glyph)+'</span><span>'+txt+'</span></a>';
+      return '<a href="'+esc(it.href||k)+'" draggable="true" data-k="'+esc(k)+'"'+cur+'><span class="gvpin-ic" aria-hidden="true">'+esc(glyph)+'</span><span>'+txt+'</span></a>';
     }).join('');
     if(emptyEl) emptyEl.hidden = keys.length > 0;
   }
@@ -1705,6 +1707,42 @@ const PINS_JS = `
         .catch(function(){});
     });
   });
+  // ---- drag-and-drop reorder of the pinned list ----
+  if(listEl){
+    var dragEl = null, lastDrag = 0;
+    function afterEl(y){
+      var els = Array.prototype.slice.call(listEl.querySelectorAll('a:not(.gv-dragging)'));
+      var best = { off: -Infinity, el: null };
+      els.forEach(function(c){ var b = c.getBoundingClientRect(); var off = y - b.top - b.height/2; if(off < 0 && off > best.off){ best = { off: off, el: c }; } });
+      return best.el;
+    }
+    function persistOrder(){
+      var order = Array.prototype.slice.call(listEl.querySelectorAll('a')).map(function(a){ return a.getAttribute('data-k'); });
+      var nm = {}; order.forEach(function(k){ if(map[k]) nm[k] = map[k]; }); map = nm;
+      try { sessionStorage.setItem(PCACHE, JSON.stringify(map)); } catch(e){}
+      fetch('/__pins', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ order: order }) })
+        .then(function(r){ return r.json(); }).then(function(d){ if(d && d.map){ try { sessionStorage.setItem(PCACHE, JSON.stringify(d.map)); } catch(e){} map = d.map; } }).catch(function(){});
+    }
+    listEl.addEventListener('dragstart', function(e){
+      var a = e.target.closest('a'); if(!a){ return; } dragEl = a;
+      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', a.getAttribute('data-k') || ''); } catch(_){}
+      setTimeout(function(){ if(dragEl) dragEl.classList.add('gv-dragging'); }, 0);
+    });
+    listEl.addEventListener('dragover', function(e){
+      if(!dragEl) return; e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch(_){}
+      var after = afterEl(e.clientY);
+      if(after == null){ if(listEl.lastElementChild !== dragEl) listEl.appendChild(dragEl); }
+      else if(after !== dragEl){ listEl.insertBefore(dragEl, after); }
+    });
+    listEl.addEventListener('drop', function(e){ if(dragEl) e.preventDefault(); });
+    listEl.addEventListener('dragend', function(){ if(!dragEl) return; dragEl.classList.remove('gv-dragging'); dragEl = null; lastDrag = Date.now(); persistOrder(); });
+    listEl.addEventListener('click', function(e){ if(Date.now() - lastDrag < 150){ e.preventDefault(); } });
+    listEl.addEventListener('keydown', function(e){
+      var a = e.target.closest('a'); if(!a || !e.altKey) return;
+      if(e.key === 'ArrowUp'){ e.preventDefault(); var p = a.previousElementSibling; if(p){ listEl.insertBefore(a, p); a.focus(); persistOrder(); } }
+      else if(e.key === 'ArrowDown'){ e.preventDefault(); var n = a.nextElementSibling; if(n){ listEl.insertBefore(n, a); a.focus(); persistOrder(); } }
+    });
+  }
   window.addEventListener('storage', function(e){ if(e.key === PCACHE){ try { apply(JSON.parse(e.newValue || '{}')); } catch(_){} } });
 })();
 `;
