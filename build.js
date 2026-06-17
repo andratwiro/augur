@@ -164,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.43";
+const UI_VERSION = "0.44";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -606,7 +606,7 @@ const PAGE_CSS = `
         radial-gradient(940px 440px at 14% -12%, rgba(94,106,210,0.10), transparent 60%),
         radial-gradient(700px 420px at 98% -6%, rgba(140,99,210,0.07), transparent 55%);
     }
-    .wrap { position: relative; z-index: 1; max-width: var(--maxw); margin: 0 auto; padding: 60px 24px 120px; }
+    .wrap { position: relative; z-index: 1; max-width: var(--maxw); margin: 0 auto; padding: 40px 24px 110px; }
     .back {
       display: inline-flex; align-items: center; gap: 6px; margin-bottom: 30px; color: var(--muted);
       text-decoration: none; font-size: 13.5px; font-weight: 500;
@@ -626,11 +626,23 @@ const PAGE_CSS = `
       font-size: 12px; font-weight: 560; letter-spacing: .05em; text-transform: uppercase;
       color: var(--faint); margin: 0 0 14px;
     }
-    /* Folder heading — confident, not shouting. Title in full ink, count muted
-       beside it on the baseline (Figma-style). */
-    .page-head { display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; margin: 0 0 24px; }
-    .page-title { font-size: 23px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0; color: var(--fg); }
-    .page-count { font-size: 13px; color: var(--faint); }
+    /* Folder bar — compact one-line header (Linear list-view idiom): up-link,
+       title, count, then a dashed rule running to the edge. Tight + app-like. */
+    .folderbar { display: flex; align-items: center; gap: 10px; margin: 0 0 20px; }
+    .folderbar__up {
+      display: inline-grid; place-items: center; width: 24px; height: 24px;
+      margin-left: -3px; border-radius: 7px; color: var(--faint); flex: none;
+      transition: background .12s ease, color .12s ease;
+    }
+    .folderbar__up:hover { background: var(--bg-2); color: var(--fg); }
+    .folderbar__up:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .folderbar__up svg { width: 16px; height: 16px; }
+    .folderbar__title { font-size: 15px; font-weight: 600; letter-spacing: -0.014em; margin: 0; color: var(--fg); white-space: nowrap; }
+    .folderbar__count {
+      flex: none; font-size: 12px; font-weight: 560; color: var(--faint);
+      background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px;
+    }
+    .folderbar__rule { flex: 1; height: 0; border-top: 1px dashed var(--line-2); margin-left: 2px; }
     .empty { color: var(--muted); }
 
     /* ---- Collapsible Pages sections (native <details>) ---- */
@@ -753,8 +765,10 @@ const PAGE_CSS = `
       gap: 12px; flex-wrap: wrap;
     }
     .proto-text { min-width: 0; flex: 1 1 auto; }
-    .proto-name { font-weight: 600; font-size: 16px; letter-spacing: -0.015em; }
-    .proto-date { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+    /* Title + date share a size (Figma file-row pattern); weight + colour carry the
+       hierarchy, not scale. Kept small for app-like density. */
+    .proto-name { font-weight: 600; font-size: 13px; letter-spacing: -0.01em; }
+    .proto-date { color: var(--faint); font-weight: 450; font-size: 13px; margin-top: 1px; }
     /* Icon-only control (download) — square. */
     .btn-icon {
       font: inherit; line-height: 1; cursor: pointer; font-size: 18px;
@@ -786,8 +800,7 @@ const PAGE_CSS = `
     @media (max-width: 480px) { .page-grid.is-3up { grid-template-columns: 1fr; } }
     .page-grid .card-proto { transition: box-shadow .18s ease, transform .18s ease; }
     .page-grid .card-proto:hover { box-shadow: 0 12px 28px -14px rgba(16,24,40,0.28); border-color: var(--line-2); transform: translateY(-3px); }
-    .page-grid .proto-meta { padding: 12px 14px; }
-    .page-grid .proto-name { font-size: 15px; }
+    .page-grid .proto-meta { padding: 11px 13px; }
 
     /* ---- Pending page cards (planned, not built) ---- */
     .card-proto.is-pending { border-style: dashed; border-color: var(--line-2); background: transparent; }
@@ -1050,7 +1063,7 @@ const CAROUSEL_JS = `
 // padding-left (desktop); below 860px it collapses to a slide-in drawer behind a
 // slim top bar (body padding-top instead). z-index sits below modals, above content.
 const NAV_CSS = `
-    :root { --rail: 248px; }
+    :root { --rail: 230px; }
     body { padding-left: var(--rail); }
 
     /* ── Slim top bar — only when the rail collapses (mobile) ─────────────────── */
@@ -1083,9 +1096,9 @@ const NAV_CSS = `
     .gvside {
       position: fixed; top: 0; left: 0; bottom: 0; z-index: 2147483100; width: var(--rail);
       display: flex; flex-direction: column; gap: 1px;
-      padding: 13px 12px 14px; overflow: hidden;
+      padding: 11px 10px 12px; overflow: hidden;
       background: #fbfbfd; border-right: 1px solid rgba(16,17,26,0.09);
-      font: 500 14px/1.35 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font: 500 13px/1.35 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     /* Brand + search stay put; the nav list scrolls; the Library footer is pinned. */
     .gvside__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 1px; }
@@ -1094,15 +1107,15 @@ const NAV_CSS = `
     /* Workspace brand — Go Vocal + circular mark, sitting in the SAME icon column as
        every nav row below it. No dropdown; the name just links home. */
     .gvside__brand {
-      display: flex; align-items: center; gap: 11px; padding: 8px 9px; margin-bottom: 4px;
-      border-radius: 9px; text-decoration: none; color: #16171a;
+      display: flex; align-items: center; gap: 10px; padding: 6px 8px; margin-bottom: 3px;
+      border-radius: 8px; text-decoration: none; color: #16171a;
       transition: background .12s ease;
     }
     .gvside__brand:hover { background: rgba(16,17,26,0.05); }
     .gvside__brand:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvside__brandname { font-weight: 650; font-size: 15px; letter-spacing: -0.012em; }
+    .gvside__brandname { font-weight: 650; font-size: 13.5px; letter-spacing: -0.012em; }
     .gvmark { display: block; flex: none; object-fit: contain; border-radius: 50%; }
-    .gvside__brand .gvmark { width: 18px; height: 18px; }
+    .gvside__brand .gvmark { width: 17px; height: 17px; }
     .gvtop__brand .gvmark { width: 24px; height: 24px; }
 
     /* Omni search — one field, filters whatever cards are on the right. Figma-style
@@ -1110,9 +1123,9 @@ const NAV_CSS = `
     .gvsearch { position: relative; margin: 2px 1px 8px; }
     .gvsearch > svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #8a9098; pointer-events: none; }
     .gvsearch input {
-      width: 100%; height: 36px; padding: 0 32px 0 35px; border-radius: 9px;
+      width: 100%; height: 32px; padding: 0 32px 0 34px; border-radius: 8px;
       border: 1px solid transparent; background: #ebedf0; color: #16171a;
-      font: inherit; font-size: 14px; outline: none;
+      font: inherit; font-size: 13px; outline: none;
       transition: background .12s ease, border-color .12s ease, box-shadow .12s ease;
     }
     .gvsearch input::placeholder { color: #8a9098; }
@@ -1137,10 +1150,10 @@ const NAV_CSS = `
 
     /* Nav groups + items — higher-contrast, roomier rows to match the Figma reference. */
     .gvside__group { display: flex; flex-direction: column; gap: 1px; }
-    .gvside__label { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6b7280; margin: 12px 9px 5px; }
+    .gvside__label { font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #6b7280; margin: 11px 8px 4px; }
     .gvside a {
-      display: flex; align-items: center; gap: 11px; padding: 8px 9px; border-radius: 8px;
-      text-decoration: none; color: #2c2f36; font-weight: 500; font-size: 14.5px;
+      display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 7px;
+      text-decoration: none; color: #2c2f36; font-weight: 500; font-size: 13px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       transition: background .12s ease, color .12s ease;
     }
@@ -1148,18 +1161,18 @@ const NAV_CSS = `
     .gvside a[aria-current="page"] { background: rgba(16,17,26,0.07); color: #0e0f12; font-weight: 600; }
     .gvside a:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
     .gvside a > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-    .gvic { width: 18px; height: 18px; flex: none; color: #565a63; }
+    .gvic { width: 16px; height: 16px; flex: none; color: #565a63; }
     .gvside a[aria-current="page"] .gvic { color: #16171a; }
     /* Pinned rows: the leading emoji sits in the same slot a nav icon would. */
-    .gvpin-ic { width: 18px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }
-    .gvside__pinhint { color: #6b7280; font-size: 12.5px; line-height: 1.45; margin: 2px 9px 2px; }
+    .gvpin-ic { width: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
+    .gvside__pinhint { color: #6b7280; font-size: 12px; line-height: 1.45; margin: 2px 8px 2px; }
 
     /* Collapsible section (Library) — a clickable summary row + indented children. */
     .gvside__sect { display: block; }
     .gvside__sum {
-      display: flex; align-items: center; gap: 11px; padding: 8px 9px; border-radius: 8px;
+      display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 7px;
       list-style: none; cursor: pointer; user-select: none;
-      color: #2c2f36; font-weight: 500; font-size: 14.5px;
+      color: #2c2f36; font-weight: 500; font-size: 13px;
       transition: background .12s ease, color .12s ease;
     }
     .gvside__sum::-webkit-details-marker { display: none; }
@@ -1842,7 +1855,7 @@ function renderOpportunityIndex(opp) {
   return shell({
     title: titleCase(opp.name),
     activeTab: opp.name,
-    body: `<header class="page-head"><h1 class="page-title">${titleCase(opp.name)}</h1><span class="page-count">${plural(opp.prototypes.length, "prototype")}</span></header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
+    body: `<header class="folderbar"><a class="folderbar__up" href="/" aria-label="All opportunities" title="All opportunities"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span></header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
   });
 }
 
