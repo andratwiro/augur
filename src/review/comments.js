@@ -108,6 +108,12 @@
   }
   function find(id) { return state.threads.filter(function (t) { return t.id === id; })[0]; }
   function isAnno(t) { return !!t.annotation; }
+  // Deterministic per-pin tilt (-7°..+7°) hashed from the id, so a stamp keeps
+  // the same angle across re-renders instead of jittering.
+  function annoRot(id) {
+    var h = 0; for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+    return (Math.abs(h) % 15) - 7;
+  }
 
   /* ---------- views & anchoring ---------- */
 
@@ -193,13 +199,16 @@
     '.pin.resolved{background:#16a34a;}' +
     '.pin.active{outline:3px solid rgba(37,99,235,0.4);}' +
     '.pin.dragging{cursor:grabbing;opacity:0.85;}' +
-    /* annotation pin: cat avatar, centred on its anchor, always-on */
-    '.pin.anno{width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid #fff;padding:0;overflow:hidden;transform:translate(-50%,-50%);box-shadow:0 2px 8px rgba(0,0,0,0.32);cursor:pointer;}' +
+    /* annotation pin: cat avatar, centred on its anchor, always-on. --rot is a
+       per-pin random tilt (set in JS) so they read like hand-pressed stamps. */
+    '.pin.anno{width:38px;height:38px;border-radius:50%;background:#fff;border:2px solid #fff;padding:0;overflow:hidden;transform:translate(-50%,-50%) rotate(var(--rot,0deg));box-shadow:0 2px 9px rgba(0,0,0,0.34);cursor:pointer;transition:transform .18s cubic-bezier(.34,1.56,.64,1),box-shadow .18s ease;}' +
     '.pin.anno img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;pointer-events:none;}' +
-    '.pin.anno.active{outline:3px solid rgba(37,99,235,0.4);}' +
-    /* hover/sticky note bubble for annotation pins (delivery mode) */
-    '.atip{position:fixed;pointer-events:none;max-width:260px;background:#1a1a1a;color:#fff;padding:8px 11px;border-radius:10px;font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,0.28);transform:translate(-50%,-100%);opacity:0;transition:opacity .12s;white-space:pre-wrap;word-wrap:break-word;}' +
-    '.atip.show{opacity:0.97;}' +
+    '.pin.anno:hover{transform:translate(-50%,-50%) rotate(0deg) scale(1.16);box-shadow:0 7px 20px rgba(0,0,0,0.42);z-index:2;}' +
+    '.pin.anno.active{outline:3px solid rgba(61,116,244,0.45);}' +
+    /* note bubble (delivery mode), styled like Figma cursor-chat: blue pill + tail */
+    '.atip{position:fixed;pointer-events:none;max-width:260px;background:#3d74f4;color:#fff;padding:9px 13px;border-radius:16px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 8px 22px rgba(61,116,244,0.42);transform:translate(-50%,-100%) scale(.9);transform-origin:50% 110%;opacity:0;transition:opacity .14s ease,transform .2s cubic-bezier(.34,1.56,.64,1);white-space:pre-wrap;word-wrap:break-word;}' +
+    '.atip::after{content:"";position:absolute;left:50%;bottom:-4px;width:9px;height:9px;background:#3d74f4;transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;}' +
+    '.atip.show{opacity:1;transform:translate(-50%,-100%) scale(1);}' +
     /* sidebar */
     '.sb{position:fixed;top:0;right:0;height:100vh;width:300px;max-width:85vw;pointer-events:auto;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-6px 0 24px rgba(0,0,0,0.10);display:flex;flex-direction:column;transition:transform .18s ease;}' +
     '.sb.collapsed{transform:translateX(100%);}' +
@@ -358,6 +367,7 @@
       if (anno) {
         var av = document.createElement("img"); av.src = CAT; av.alt = "";
         b.appendChild(av);
+        b.style.setProperty("--rot", annoRot(t.id) + "deg");
         b.addEventListener("mouseenter", function () { showTip(b, t.id); });
         b.addEventListener("mouseleave", hideTip);
       } else {
@@ -422,7 +432,7 @@
     tipEl.textContent = (t.messages[0] && t.messages[0].body) || "";
     var r = btn.getBoundingClientRect();
     tipEl.style.left = (r.left + r.width / 2) + "px";
-    tipEl.style.top = (r.top - 8) + "px";
+    tipEl.style.top = (r.top - 10) + "px";
     tipEl.classList.add("show");
   }
   function hideTip(force) { if (tipSticky && force !== true) return; tipSticky = null; tipEl.classList.remove("show"); }
