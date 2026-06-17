@@ -729,19 +729,23 @@ const PAGE_CSS = `
       box-shadow: 0 2px 8px -2px rgba(16,24,40,0.30); backdrop-filter: blur(4px);
     }
     .preview-actions .btn-icon:hover { background: #fff; border-color: var(--accent); }
-    /* Star toggle — white rounded square; outline-grey unpinned, gold-filled pinned. */
+    /* Star toggle — small white rounded square. Hidden until the card is hovered
+       (or focused) when UNpinned; once pinned, it stays visible with a gold star and
+       a plain neutral border (no yellow ring). */
     .pin-btn {
-      width: 34px; height: 34px; min-width: 34px; padding: 0; cursor: pointer;
-      display: inline-grid; place-items: center; border-radius: 9px;
+      width: 30px; height: 30px; min-width: 30px; padding: 0; cursor: pointer;
+      display: inline-grid; place-items: center; border-radius: 8px;
       background: rgba(255,255,255,0.94); border: 1px solid rgba(16,24,40,0.14); color: #9aa0aa;
-      box-shadow: 0 2px 8px -2px rgba(16,24,40,0.30); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-      transition: background .12s ease, border-color .12s ease, color .12s ease, transform .12s ease;
+      box-shadow: 0 2px 7px -2px rgba(16,24,40,0.28); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+      opacity: 0; transition: opacity .12s ease, background .12s ease, color .12s ease;
     }
-    .pin-btn:hover { background: #fff; color: #6b7280; transform: translateY(-1px); }
+    .card-proto:hover .pin-btn, .card-opp:hover .pin-btn,
+    .pin-btn:focus-visible, .pin-btn.is-pinned { opacity: 1; }
+    @media (hover: none) { .pin-btn { opacity: 1; } }
+    .pin-btn:hover { background: #fff; color: #6b7280; }
     .pin-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .pin-btn .pin-star { width: 18px; height: 18px; display: block; }
-    .pin-btn.is-pinned { color: #f4b740; border-color: rgba(244,183,64,0.55); background: #fff; }
-    .pin-btn.is-pinned .pin-star { fill: #f4b740; }
+    .pin-btn .pin-star { width: 16px; height: 16px; display: block; }
+    .pin-btn.is-pinned .pin-star { fill: #f4b740; color: #f4b740; }
     @media (prefers-reduced-motion: reduce) { .pin-btn { transition: none; } }
     .opp-meta, .proto-meta { padding: 16px 18px; }
     .proto-meta {
