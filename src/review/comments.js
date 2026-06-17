@@ -24,6 +24,7 @@
  * note); (2) are exempt from the orphan auto-delete; (3) are skipped by the
  * resolve-comments tooling (scripts/review.mjs). It's the inverse of a comment:
  * comments are transient feedback, annotations are persistent always-on spec.
+ * The avatar ships as a sibling file (aslam.png), copied to /__review/ by build.js.
  *
  * Shared via the worker's KV API (/__review/api); falls back to localStorage if
  * the API is unreachable. Completely inert inside the index-page preview iframes.
@@ -45,9 +46,10 @@
 
   // Annotations = comments promoted to always-on dev-delivery notes. They render
   // even when review mode is off, are skipped by the resolve-comments tooling, and
-  // show as this avatar instead of a numbered pin. Data URI so the script stays
-  // self-contained (no asset to copy into each prototype).
-  var CAT = "data:image/webp;base64,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";
+  // show as this avatar instead of a numbered pin. Served as a real same-origin
+  // file (next to this script) rather than a data: URI — some privacy blockers
+  // refuse to paint inline images, and a plain <img src> is bulletproof.
+  var CAT = "/__review/aslam.png";
 
   var state = { threads: [], active: false, mode: "add", openId: null };
   var deleted = {};       // ids we've already issued a delete for

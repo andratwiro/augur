@@ -28,7 +28,9 @@ const PUBLIC_PREFIXES = [];
 // page or any asset it loads), or is the dormant review-overlay script that every
 // prototype embeds. Everything else falls through to the password gate.
 function isPublicPath(pathname) {
-  if (pathname === "/__review/comments.js") return true;
+  // The dormant review overlay + its avatar asset — both embedded into public
+  // prototypes, so both must bypass the gate (else the <img> gets the login page).
+  if (pathname === "/__review/comments.js" || pathname === "/__review/aslam.png") return true;
   return PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname === p.slice(0, -1) || pathname.startsWith(p)
   );

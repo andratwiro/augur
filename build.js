@@ -31,6 +31,7 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
 const SRC_REVIEW = path.join(ROOT, "src", "review", "comments.js");
+const SRC_REVIEW_CAT = path.join(ROOT, "src", "review", "aslam.png");
 
 // Dev-facing prototype status. Source of truth is the committed prototype-status.json
 // (keyed "<opportunity>/<prototype>"), rendered as a static chip at build time — no
@@ -1562,6 +1563,7 @@ async function main() {
   // Review overlay asset (shared by every injected prototype).
   await fs.mkdir(path.join(DIST, "__review"), { recursive: true });
   await fs.copyFile(SRC_REVIEW, path.join(DIST, "__review", "comments.js"));
+  await fs.copyFile(SRC_REVIEW_CAT, path.join(DIST, "__review", "aslam.png"));
 
   const protoCount = opportunities.reduce((n, o) => n + o.prototypes.length, 0);
   console.log(
