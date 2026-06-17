@@ -305,12 +305,16 @@
         <button class="gv-bo-cb-settings__close" type="button" id="cb-settings-close" aria-label="Close settings panel">
           <span class="gv-icon" data-gv-icon="close"></span>
         </button>
-        <h2 class="gv-bo-cb-settings__title" id="cb-settings-title">Text</h2>
-
-        <!-- multiloc language switcher (reuses the canonical .gv-bo-multiloc primitive) -->
-        <div class="gv-bo-multiloc" id="cb-settings-locales">
-          <button type="button" class="is-active" data-loc="en"><span class="done"></span>EN</button>
-          <button type="button" data-loc="es-ES"><span class="miss"></span>ES-ES</button>
+        <!-- Panel header = field-header row: the selected block's type (label, left)
+             and its per-field language switcher (right). The switcher is shown ONLY
+             when the selected block has translatable text (text, button, accordion,
+             cards, project title…) — hidden for image/whitespace/columns/embeds. -->
+        <div class="gv-bo-field__head">
+          <h2 class="gv-bo-cb-settings__title" id="cb-settings-title">Text</h2>
+          <div class="gv-bo-multiloc" id="cb-settings-locales">
+            <button type="button" class="is-active" data-loc="en"><span class="done"></span>EN</button>
+            <button type="button" data-loc="es-ES"><span class="miss"></span>ES-ES</button>
+          </div>
         </div>
 
         <!-- Per-block settings body, swapped by JS -->
@@ -401,7 +405,7 @@
         '<div class="gv-phasepanel cb-timeline__panel">' + cbPhasePanel(CB_CURRENT) + '</div></section>';
     }
     function cbEventCard(ev) {
-      return '<article class="gv-event-card">' +
+      return '<article class="gv-event-card bordered">' +
         '<div class="gv-event-card__media" aria-hidden="true">' +
           '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
           '<span class="gv-event-card__date"><span class="m">' + ev.m + '</span><span class="d">' + ev.d + '</span><span class="y">' + ev.y + '</span></span></div>' +
@@ -546,6 +550,12 @@
       var widget = block.getAttribute('data-widget');
       var label  = block.getAttribute('data-label') || (WIDGETS[widget] && WIDGETS[widget].label) || 'Block';
       sTitle.textContent = label;
+      // Per-field switcher: only blocks that carry translatable resident-facing text
+      // get a language switcher. Structural/media blocks (image, white-space, columns,
+      // iframe, file, timeline, events) have nothing to translate, so it's hidden.
+      var TX_WIDGETS = { text:1, button:1, accordion:1, 'info-accordions':1, 'about-box':1, 'image-text-cards':1, title:1 };
+      var sLoc = document.getElementById('cb-settings-locales');
+      if (sLoc) sLoc.style.display = TX_WIDGETS[widget] ? '' : 'none';
       sBody.innerHTML = bodyFor(widget, block);
       if (window.GVIcons) window.GVIcons.render(panel);
       bindTextBinding(block, widget);
