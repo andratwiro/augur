@@ -4,32 +4,552 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Survey Responses Export — a Go Vocal concept</title>
+  <title>Survey Responses → PDF export — GoVocal back office (concept)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="./govocal-tokens.css" />
+  <link rel="stylesheet" href="./govocal-ui.css" />
+  <link rel="stylesheet" href="./govocal-bo.css" />
+  <script src="./govocal-icons.js" defer></script>
+  <script src="./govocal-avatars.js" defer></script>
   <style>
-    :root{
-      --bg:#fbfbfd;
-      --card:#ffffff;
-      --ink:#17171a;
-      --muted:#6c6a65;
-      --faint:#9a978f;
-      --line:#e6e4df;
-      --gv:#0E7C86;
-      --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-      --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-    }
-    *{box-sizing:border-box;}
-    body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;display:grid;place-items:center;padding:40px;}
-    .stub{max-width:560px;text-align:center;}
-    .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gv);margin:0 0 18px;}
-    h1{font-size:clamp(30px,5vw,46px);line-height:1.05;letter-spacing:-.02em;margin:0 0 16px;font-weight:680;}
-    p{font-size:17px;line-height:1.5;color:var(--muted);margin:0;}
+    html, body { margin: 0; height: 100%; }
+    body { background: #fff; font-family: var(--gv-font-family); }
+    .pp-sub { display: none; }
+    .pp-sub.is-active { display: block; }
+    [hidden] { display: none !important; }
+    .pp-lede { margin: 0 0 12px; font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); }
+    .pp-lede a { color: var(--gv-blue-500); }
+
+    /* ── Single-phase timeline ribbon (matches nsv captures: a full green bar with
+       a centred dot + label, and a "+ New phase" affordance) ─────────────────── */
+    .sx-ribbon { display: flex; align-items: center; gap: 12px; margin: 4px 0 16px; }
+    .sx-ribbon__bar { position: relative; flex: 1; height: 22px; border-radius: 4px;
+      background: var(--gv-green-500); display: grid; place-items: center; }
+    .sx-ribbon__dot { width: 9px; height: 9px; border-radius: 50%; background: #fff; }
+    .sx-ribbon__label { position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
+      font-size: var(--gv-fs-s); color: var(--gv-green-600); white-space: nowrap; }
+    .sx-ribbon__new { flex: none; }
+
+    /* ── Insights header action cluster ─────────────────────────────────────── */
+    .sx-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .sx-openpill { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
+    .sx-linkbtn { background: none; border: 0; padding: 6px 4px; font: inherit; font-size: var(--gv-fs-s);
+      color: var(--gv-blue-500); cursor: pointer; }
+    .sx-menuwrap { position: relative; }
+    .sx-menuwrap .gv-bo-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; min-width: 268px; }
+    .gv-bo-menu__item .sx-newtag { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      color: var(--gv-teal-500); border: 1px solid var(--gv-teal-300, #9ad9de); border-radius: 3px; padding: 1px 5px; }
+    .gv-bo-menu__item .sx-betatag { margin-left: 6px; font-size: 10px; font-weight: 700; color: var(--gv-cool-grey-600);
+      border: 1px solid var(--gv-divider); border-radius: 3px; padding: 1px 5px; }
+    .gv-bo-menu__item.is-danger { color: var(--gv-red-500); }
+    .gv-bo-menu__sep { height: 1px; background: var(--gv-divider); margin: 5px 0; }
+    .gv-bo-menu__item.is-new { background: var(--gv-teal-50); }
+
+    /* ── Centered modal ─────────────────────────────────────────────────────── */
+    .sx-backdrop { position: fixed; inset: 0; background: rgba(7,26,43,.45); z-index: 200;
+      display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow: auto; }
+    .sx-modal { background: #fff; border-radius: 6px; width: 100%; max-width: 620px; margin: auto;
+      box-shadow: 0 18px 60px rgba(0,0,0,.30); display: flex; flex-direction: column; max-height: calc(100vh - 80px); }
+    .sx-modal__head { padding: 22px 26px 14px; border-bottom: 1px solid var(--gv-divider); position: relative; }
+    .sx-modal__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
+    .sx-modal__sub { margin: 6px 0 0; font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); line-height: 1.45; }
+    .sx-modal__x { position: absolute; top: 16px; right: 16px; width: 30px; height: 30px; border: 0; background: none;
+      border-radius: 4px; cursor: pointer; color: var(--gv-cool-grey-600); display: grid; place-items: center; }
+    .sx-modal__x:hover { background: var(--gv-grey-50); }
+    .sx-modal__body { padding: 18px 26px; overflow-y: auto; }
+    .sx-modal__foot { padding: 14px 26px; border-top: 1px solid var(--gv-divider);
+      display: flex; align-items: center; gap: 12px; }
+    .sx-modal__foot .sx-count { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
+    .sx-modal__foot .sx-spacer { margin-left: auto; }
+
+    .sx-sec { margin: 4px 0 20px; }
+    .sx-sec__head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
+    .sx-sec__title { font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-bo-primary); }
+    .sx-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .sx-fieldlabel { display: block; font-size: var(--gv-fs-s); font-weight: 500; color: var(--gv-bo-primary); margin: 0 0 4px; }
+    .sx-cover { margin-top: 12px; }
+    .sx-cover.is-off { opacity: .45; pointer-events: none; }
+
+    /* field include/exclude rows */
+    .sx-frow { display: flex; align-items: center; gap: 12px; padding: 9px 2px; border-bottom: 1px solid var(--gv-grey-100, #eef0f2); }
+    .sx-frow:last-child { border-bottom: 0; }
+    .sx-frow__main { min-width: 0; }
+    .sx-frow__title { font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
+    .sx-frow__type { font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+    .sx-frow__right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .sx-pii { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
+      color: var(--gv-red-500); background: var(--gv-red-50, #fdecec); border: 1px solid var(--gv-red-200, #f6c9c9);
+      border-radius: 11px; padding: 2px 8px; }
+    .sx-pii .gv-icon { width: 13px; height: 13px; }
+    .sx-grouphead { display: flex; align-items: center; gap: 8px; margin: 16px 0 2px; font-size: var(--gv-fs-s);
+      font-weight: 700; color: var(--gv-bo-primary); }
+    .sx-grouphead small { font-weight: 400; color: var(--gv-cool-grey-600); }
+    .sx-consent { display: flex; gap: 10px; align-items: flex-start; margin-top: 6px; padding: 12px 14px;
+      background: var(--gv-teal-50); border: 1px solid var(--gv-teal-100); border-radius: 4px; }
+    .sx-consent label { font-size: var(--gv-fs-s); color: var(--gv-bo-primary); line-height: 1.45; }
+
+    /* ── PDF preview overlay (a faux document viewer) ───────────────────────── */
+    .sx-pdf { position: fixed; inset: 0; z-index: 300; background: #525659; display: flex; flex-direction: column; }
+    .sx-pdf__bar { flex: none; height: 48px; background: #323639; color: #fff; display: flex; align-items: center;
+      gap: 14px; padding: 0 16px; font-size: var(--gv-fs-s); }
+    .sx-pdf__name { font-weight: 600; }
+    .sx-pdf__bar .sx-spacer { margin-left: auto; }
+    .sx-pdf__btn { background: rgba(255,255,255,.12); color: #fff; border: 0; border-radius: 4px; cursor: pointer;
+      padding: 7px 12px; font: inherit; font-size: var(--gv-fs-s); display: inline-flex; align-items: center; gap: 6px; }
+    .sx-pdf__btn:hover { background: rgba(255,255,255,.22); }
+    .sx-pdf__scroll { flex: 1; overflow: auto; padding: 26px 16px 60px; }
+    .sx-page { width: 620px; max-width: 92%; margin: 0 auto 22px; background: #fff; border-radius: 2px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.4); padding: 52px 54px; box-sizing: border-box; font-size: 13px; color: #1f2733; }
+    /* cover */
+    .sx-cover-eyebrow { font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--gv-teal-500); font-weight: 700; }
+    .sx-cover-title { font-size: 30px; line-height: 1.1; font-weight: 800; color: var(--gv-bo-primary); margin: 16px 0 8px; letter-spacing: -.01em; }
+    .sx-cover-sub { font-size: 15px; color: #56616a; margin: 0 0 40px; }
+    .sx-cover-meta { border-top: 1px solid #e6e9ec; padding-top: 16px; font-size: 12px; color: #56616a; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
+    .sx-cover-meta b { display: block; color: #1f2733; font-weight: 700; margin-bottom: 2px; }
+    .sx-cover-notes { margin-top: 18px; font-size: 12px; color: #56616a; }
+    /* respondent record */
+    .sx-rec { margin-bottom: 30px; }
+    .sx-rec__head { display: flex; align-items: baseline; justify-content: space-between;
+      background: var(--gv-bo-primary); color: #fff; padding: 7px 12px; border-radius: 3px; }
+    .sx-rec__id { font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+    .sx-rec__when { font-size: 10px; opacity: .8; }
+    .sx-qa { padding: 11px 2px 9px; border-bottom: 1px solid #eef0f2; }
+    .sx-qa__q { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: #7a858f; font-weight: 700; margin-bottom: 3px; }
+    .sx-qa__a { font-size: 13px; color: #1f2733; }
+    .sx-qa__a.is-empty { color: #aab2ba; font-style: italic; }
+    .sx-pageno { text-align: center; font-size: 11px; color: #c7ccd1; margin-top: -10px; }
+
+    .sx-note { display: flex; gap: 8px; align-items: flex-start; font-size: var(--gv-fs-s);
+      color: var(--gv-cool-grey-600); background: var(--gv-grey-50); border-radius: 4px; padding: 12px 14px; margin: 14px 0; }
+
+    /* toast */
+    .sx-toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--gv-bo-primary); color: #fff; padding: 11px 18px; border-radius: 5px; font-size: var(--gv-fs-s);
+      box-shadow: 0 8px 26px rgba(0,0,0,.3); opacity: 0; transition: all .2s; z-index: 400; pointer-events: none; }
+    .sx-toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
-<body>
-  <div class="stub">
-    <p class="eyebrow">Go Vocal · Playground</p>
-    <h1>Survey Responses Export</h1>
-    <p>Scaffold ready — awaiting context.</p>
+<body class="gv-bo" data-gv-screen="survey-phase/insights">
+  <div class="gv-bo-shell">
+
+    <!-- ── Sidebar ──────────────────────────────────────────────── -->
+    <nav class="gv-bo-side" aria-label="Admin">
+      <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo"><span data-gv-icon="admin-back" style="color:var(--gv-white)"></span></span> To platform</a>
+      <div class="gv-bo-nav">
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-dashboard"></span><span class="gv-bo-nav__label">Dashboard</span></a>
+        <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-projects"></span><span class="gv-bo-nav__label">Projects</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-input"></span><span class="gv-bo-nav__label">Input manager</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-users"></span><span class="gv-bo-nav__label">Users</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-messaging"></span><span class="gv-bo-nav__label">Messaging</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-reporting"></span><span class="gv-bo-nav__label">Reporting</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-community"></span><span class="gv-bo-nav__label">Community monitor</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-inspiration"></span><span class="gv-bo-nav__label">Inspiration hub</span></a>
+      </div>
+      <div class="gv-bo-nav gv-bo-nav--bottom">
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-tools"></span><span class="gv-bo-nav__label">Tools</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-pages"></span><span class="gv-bo-nav__label">Pages &amp; menu</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-settings"></span><span class="gv-bo-nav__label">Settings</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-notifications"></span><span class="gv-bo-nav__label">Notifications</span><span class="gv-bo-count">29</span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-avatar" data-gv-icon="user"></span><span class="gv-bo-nav__label">Go Vocal Admin<span class="gv-bo-nav__sub">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" style="color:var(--gv-green-400)" data-gv-icon="admin-support"></span><span class="gv-bo-nav__label">Support</span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+      </div>
+    </nav>
+
+    <!-- ── Main ─────────────────────────────────────────────────── -->
+    <div class="gv-bo-main">
+
+      <header class="gv-bo-topbar">
+        <div class="gv-bo-topbar__row">
+          <div>
+            <h1 class="gv-bo-topbar__title">Let's Reimagine Dorothea Dix Park</h1>
+            <div class="gv-bo-meta">
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="lock"></span>Everyone</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="eye"></span>Public</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="group"></span>312 project participants</span>
+              <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Published · Active</span>
+            </div>
+          </div>
+          <div class="gv-bo-topbar__actions">
+            <button class="gv-iconbtn" aria-label="Preview project"><span data-gv-icon="eye"></span></button>
+            <button class="gv-btn secondary-outlined"><span data-gv-icon="share"></span><span class="gv-btn__label">Share</span></button>
+            <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
+          </div>
+        </div>
+        <nav class="gv-bo-tabs" aria-label="Project">
+          <a class="gv-bo-tab" href="#" data-tab="general">General</a>
+          <a class="gv-bo-tab is-active" href="#" data-tab="timeline">Timeline</a>
+          <a class="gv-bo-tab" href="#" data-tab="audience">Audience</a>
+          <a class="gv-bo-tab" href="#" data-tab="messaging">Messaging</a>
+          <a class="gv-bo-tab" href="#" data-tab="events">Events</a>
+          <a class="gv-bo-tab" href="#" data-tab="input360">360 Input<span class="gv-bo-tab__new">NEW</span></a>
+        </nav>
+      </header>
+
+      <section class="gv-panel is-active" id="panel-timeline">
+        <div class="gv-bo-section">
+
+          <!-- single-phase ribbon -->
+          <div class="sx-ribbon">
+            <div class="sx-ribbon__bar"><span class="sx-ribbon__dot"></span>
+              <span class="sx-ribbon__label">Community Survey</span>
+            </div>
+            <button class="gv-btn secondary-outlined size-s sx-ribbon__new"><span data-gv-icon="plus"></span><span class="gv-btn__label">New phase</span></button>
+          </div>
+
+          <!-- Phase header -->
+          <div class="gv-bo-phasehead" style="margin-top:12px">
+            <div>
+              <h2 class="gv-bo-phasehead__title">Community Survey</h2>
+              <div class="gv-bo-phasehead__meta">
+                <span>In-platform survey phase</span>
+                <span><span class="gv-icon" data-gv-icon="calendar-range"></span>June 9, 2026 12:00 AM → No end date</span>
+                <span><span class="gv-icon" data-gv-icon="eye"></span>Mixed rights</span>
+              </div>
+            </div>
+            <div class="gv-bo-phasehead__actions">
+              <button class="gv-iconbtn" aria-label="Phase options"><span data-gv-icon="dots-horizontal"></span></button>
+            </div>
+          </div>
+
+          <!-- Native-survey sub-tabs (NO "Survey Results" — that's the external-survey tab) -->
+          <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Phase" id="subtabs">
+            <a class="gv-bo-tab" href="#" data-sub="setup">Setup</a>
+            <a class="gv-bo-tab" href="#" data-sub="description">Description</a>
+            <a class="gv-bo-tab" href="#" data-sub="surveyform">Survey form</a>
+            <a class="gv-bo-tab is-active" href="#" data-sub="insights">Insights</a>
+            <a class="gv-bo-tab" href="#" data-sub="access">Phase access and user data</a>
+            <a class="gv-bo-tab" href="#" data-sub="notifications">Notifications</a>
+          </nav>
+
+          <div class="gv-bo-card">
+
+            <!-- ═══════════ INSIGHTS (the star) ═══════════ -->
+            <div class="pp-sub is-active" data-sub="insights">
+              <div class="gv-bo-headrow">
+                <div>
+                  <h3 class="gv-bo-headrow__title">Insights</h3>
+                  <p class="gv-bo-help" style="margin:2px 0 0">Track engagement in real-time</p>
+                </div>
+                <div class="sx-actions">
+                  <!-- the ⋯ survey-actions menu — Amanda's export joins the existing exports here -->
+                  <div class="sx-menuwrap">
+                    <button class="gv-iconbtn" id="surveyMenuBtn" aria-label="Survey actions" aria-haspopup="true" aria-expanded="false"><span data-gv-icon="dots-horizontal"></span></button>
+                    <div class="gv-bo-menu" id="surveyMenu" role="menu" hidden>
+                      <button class="gv-bo-menu__item" role="menuitem" data-act="toast" data-msg="Preparing insights PDF…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Download insights as PDF</button>
+                      <button class="gv-bo-menu__item" role="menuitem" data-act="toast" data-msg="Preparing Word document…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Download as Word<span class="sx-betatag">BETA</span></button>
+                      <button class="gv-bo-menu__item" role="menuitem" data-act="toast" data-msg="Preparing .xlsx export…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Download survey results (.xlsx)</button>
+                      <button class="gv-bo-menu__item is-new" role="menuitem" id="openExport"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Export individual responses (PDF)…<span class="sx-newtag">NEW</span></button>
+                      <div class="gv-bo-menu__sep"></div>
+                      <button class="gv-bo-menu__item is-danger" role="menuitem" data-act="toast" data-msg="Delete survey results?"><span class="gv-bo-menu__icon" data-gv-icon="delete"></span>Delete survey results</button>
+                    </div>
+                  </div>
+                  <label class="sx-openpill"><span class="gv-toggle"><input type="checkbox" checked><span class="track"></span></span>Open for responses</label>
+                  <button class="sx-linkbtn" data-act="toast" data-msg="Add a submission on behalf of a participant.">New submission</button>
+                  <button class="gv-btn secondary-outlined size-s" data-act="toast" data-msg="Import responses from a file."><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></svg><span class="gv-btn__label">Import</span></button>
+                  <button class="gv-btn success size-s" data-act="toast" data-msg="Run AI analysis over the responses."><span data-gv-icon="stars"></span><span class="gv-btn__label">AI analysis</span></button>
+                </div>
+              </div>
+
+              <div class="gv-bo-statgrid" style="margin-top:14px">
+                <div class="gv-bo-stat"><div class="gv-bo-stat__top"><span class="gv-bo-stat__label">Visitors</span><span class="gv-bo-stat__icon" data-gv-icon="eye"></span></div><div class="gv-bo-stat__num">486</div><div class="gv-bo-stat__delta"><b>+12%</b> vs. previous 30d</div></div>
+                <div class="gv-bo-stat"><div class="gv-bo-stat__top"><span class="gv-bo-stat__label">Phase participants</span><span class="gv-bo-stat__icon" data-gv-icon="group"></span></div><div class="gv-bo-stat__num">204</div><div class="gv-bo-stat__delta"><b>+8%</b> vs. previous 30d</div></div>
+                <div class="gv-bo-stat"><div class="gv-bo-stat__top"><span class="gv-bo-stat__label">Submissions</span><span class="gv-bo-stat__icon" data-gv-icon="check-circle"></span></div><div class="gv-bo-stat__num">204</div><div class="gv-bo-stat__delta"><b>+8%</b> vs. previous 30d</div></div>
+                <div class="gv-bo-stat"><div class="gv-bo-stat__top"><span class="gv-bo-stat__label">Completion rate</span><span class="gv-bo-stat__icon" data-gv-icon="trend-up"></span></div><div class="gv-bo-stat__num">82%</div><div class="gv-bo-stat__delta"><b>+3%</b> vs. previous 30d</div></div>
+                <div class="gv-bo-stat"><div class="gv-bo-stat__top"><span class="gv-bo-stat__label">Participation rate</span><span class="gv-bo-stat__icon" data-gv-icon="trend-up"></span></div><div class="gv-bo-stat__num">42%</div><div class="gv-bo-stat__delta"><b>+5%</b> vs. previous 30d</div></div>
+              </div>
+
+              <div class="gv-bo-chartcard">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                  <div><h4 class="gv-bo-chartcard__title">Participation over time</h4>
+                  <p class="gv-bo-chartcard__sub">Cumulative submissions since the phase opened</p></div>
+                  <button class="gv-iconbtn" aria-label="Download chart data" data-act="toast" data-msg="Download chart data."><span data-gv-icon="download"></span></button>
+                </div>
+                <svg viewBox="0 0 600 160" preserveAspectRatio="none" role="img" aria-label="Participation over time area chart">
+                  <defs><linearGradient id="pp-area" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0" stop-color="var(--gv-bo-primary)" stop-opacity="0.18"/>
+                    <stop offset="1" stop-color="var(--gv-bo-primary)" stop-opacity="0"/>
+                  </linearGradient></defs>
+                  <line x1="0" y1="130" x2="600" y2="130" stroke="var(--gv-grey-300)"/>
+                  <path d="M0,128 L80,120 L160,118 L240,96 L320,86 L400,58 L480,48 L560,30 L600,24 L600,130 L0,130 Z" fill="url(#pp-area)"/>
+                  <path d="M0,128 L80,120 L160,118 L240,96 L320,86 L400,58 L480,48 L560,30 L600,24" fill="none" stroke="var(--gv-bo-primary)" stroke-width="2"/>
+                </svg>
+              </div>
+
+              <h4 class="gv-bo-subhead" style="margin-top:22px">Questions</h4>
+              <p class="pp-lede">Total 204 responses · 7 questions across 1 page</p>
+              <div class="sx-note"><span class="gv-icon" data-gv-icon="info-solid" style="color:var(--gv-blue-500)"></span><div>Per-question result charts render here. Use the <b>⋯ menu</b> above to export — including the new <b>“Export individual responses (PDF)”</b>, which lays out every response respondent-by-respondent with field-level control over what's included.</div></div>
+            </div>
+
+            <!-- ═══════════ SETUP (stub) ═══════════ -->
+            <div class="pp-sub" data-sub="setup">
+              <h3 class="gv-bo-formhead">Edit Phase</h3>
+              <div class="gv-bo-field"><span class="gv-label">Phase name</span><input class="gv-input" type="text" value="Community Survey" /></div>
+              <div class="gv-bo-field"><span class="gv-label">Dates</span><div class="gv-bo-dateface"><span>06/09/2026 12:00 AM</span><span class="sep">›</span><span>Open ended</span><span class="gv-icon" data-gv-icon="calendar"></span></div></div>
+              <h4 class="gv-bo-subhead">What do you want to do?</h4>
+              <p class="pp-lede">This phase runs the <b>in-platform Survey</b> method — native question types, logic, AI insights and the in-platform report builder.</p>
+              <div class="sx-note"><span class="gv-icon" data-gv-icon="survey" style="color:var(--gv-teal-500)"></span><div>Survey · in-platform. Build the questionnaire in the <a href="#" data-goto="surveyform">Survey form</a> tab and read results in <a href="#" data-goto="insights">Insights</a>.</div></div>
+            </div>
+
+            <!-- ═══════════ DESCRIPTION (stub) ═══════════ -->
+            <div class="pp-sub" data-sub="description">
+              <h4 class="gv-bo-subhead">Phase description</h4>
+              <p class="pp-lede">The blurb shown for this phase on the project page.</p>
+              <textarea class="gv-input" rows="6" style="resize:vertical">Help shape the future of Dorothea Dix Park. This short survey asks how you use the park today and which improvements matter most to you. Your answers feed directly into the master plan.</textarea>
+              <div style="margin-top:12px"><button class="gv-btn admin-dark"><span class="gv-btn__label">Save</span></button></div>
+            </div>
+
+            <!-- ═══════════ SURVEY FORM (stub) ═══════════ -->
+            <div class="pp-sub" data-sub="surveyform">
+              <h4 class="gv-bo-subhead">Survey form</h4>
+              <p class="pp-lede">Build the questions and pages of your survey in the full-screen builder.</p>
+              <div class="sx-note"><span class="gv-icon" data-gv-icon="edit" style="color:var(--gv-teal-500)"></span><div>7 questions across 1 page. The builder also offers <b>Download PDF</b> — note that exports the <i>blank questionnaire</i>, not the responses.</div></div>
+              <button class="gv-btn admin-dark"><span data-gv-icon="edit"></span><span class="gv-btn__label">Open the survey builder</span></button>
+            </div>
+
+            <!-- ═══════════ PHASE ACCESS (stub — where PII/demographic fields come from) ═══════════ -->
+            <div class="pp-sub" data-sub="access">
+              <h3 class="gv-bo-headrow__title" style="margin:6px 0 4px">Phase access and user data</h3>
+              <p class="pp-lede">Specify who can take each action, and ask additional questions to collect more information.</p>
+              <div class="gv-bo-accordion"><div class="gv-bo-accordion__head"><span class="gv-icon" data-gv-icon="chevron-right"></span><b>Who can take the survey?</b><span style="margin-left:auto;font-size:var(--gv-fs-s);color:var(--gv-cool-grey-600)">Confirmed email · Name · Password</span></div></div>
+              <div class="sx-note" style="margin-top:12px"><span class="gv-icon" data-gv-icon="info-solid" style="color:var(--gv-blue-500)"></span><div>The demographic / registration questions defined here (gender, year of birth, postcode, elected-official…) are exactly the <b>personal-data fields</b> the PDF export flags red and excludes by default.</div></div>
+            </div>
+
+            <!-- ═══════════ NOTIFICATIONS (stub) ═══════════ -->
+            <div class="pp-sub" data-sub="notifications">
+              <h4 class="gv-bo-subhead" style="margin-top:6px">Notifications</h4>
+              <p class="pp-lede">Emails triggered on a phase level.</p>
+              <div class="gv-bo-listrow"><label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label><div class="gv-bo-listrow__main"><div class="gv-bo-listrow__title">Survey not submitted</div></div></div>
+              <div class="gv-bo-listrow"><label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label><div class="gv-bo-listrow__main"><div class="gv-bo-listrow__title">New project phase</div></div></div>
+              <div class="gv-bo-listrow"><label class="gv-toggle"><input type="checkbox" checked><span class="track"></span></label><div class="gv-bo-listrow__main"><div class="gv-bo-listrow__title">Survey submitted</div></div></div>
+            </div>
+
+          </div><!-- /gv-bo-card -->
+        </div>
+      </section>
+
+    </div>
   </div>
+
+  <!-- ═══════════════ EXPORT MODAL ═══════════════ -->
+  <div class="sx-backdrop" id="exportBackdrop" hidden>
+    <div class="sx-modal" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+      <div class="sx-modal__head">
+        <h2 class="sx-modal__title" id="exportTitle">Export individual responses (PDF)</h2>
+        <p class="sx-modal__sub">Generates a PDF document with every survey response laid out as an individual record. Choose what to include below — fields flagged as personal data are excluded by default.</p>
+        <button class="sx-modal__x" id="exportX" aria-label="Close"><span data-gv-icon="close"></span></button>
+      </div>
+
+      <div class="sx-modal__body">
+
+        <!-- Cover page -->
+        <div class="sx-sec">
+          <div class="sx-sec__head">
+            <label class="gv-toggle"><input type="checkbox" id="coverToggle" checked><span class="track"></span></label>
+            <span class="sx-sec__title">Include a cover page</span>
+          </div>
+          <div class="sx-cover" id="coverFields">
+            <div class="gv-bo-field"><span class="sx-fieldlabel">Report title</span><input class="gv-input" type="text" id="covTitle" value="Community Survey — response record" /></div>
+            <div class="sx-grid2" style="margin-top:10px">
+              <div><span class="sx-fieldlabel">Date</span><input class="gv-input" type="text" id="covDate" value="17 June 2026" /></div>
+              <div><span class="sx-fieldlabel">Prepared by</span><input class="gv-input" type="text" id="covBy" value="Amanda Harrison" /></div>
+            </div>
+            <div class="gv-bo-field" style="margin-top:10px"><span class="sx-fieldlabel">Additional notes (optional)</span><input class="gv-input" type="text" id="covNotes" placeholder="e.g. Planning ref. 24/0581/FUL — public consultation responses" /></div>
+          </div>
+        </div>
+
+        <!-- Fields -->
+        <div class="sx-sec">
+          <div class="sx-sec__head"><span class="sx-sec__title">Fields to include</span></div>
+          <div class="sx-frow">
+            <div class="sx-frow__main"><div class="sx-frow__title">Include questions with no answer</div><div class="sx-frow__type">Off keeps records compact — blank questions are skipped</div></div>
+            <div class="sx-frow__right"><label class="gv-toggle"><input type="checkbox" id="inclEmpty"><span class="track"></span></label></div>
+          </div>
+
+          <div class="sx-grouphead">Survey questions <small>· included by default</small></div>
+          <div id="qFields"></div>
+
+          <div class="sx-grouphead"><span class="gv-icon" data-gv-icon="lock" style="width:14px;height:14px;color:var(--gv-red-500)"></span> Personal data <small>· excluded by default</small></div>
+          <div id="piiFields"></div>
+        </div>
+
+        <!-- Consent -->
+        <div class="sx-consent">
+          <label class="gv-checkbox"><input type="checkbox" id="consent"><span class="box"><span class="check" data-gv-icon="check"></span></span></label>
+          <label for="consent">I confirm I have the authority to process and export this data, including any personal data I have chosen to include above.</label>
+        </div>
+      </div>
+
+      <div class="sx-modal__foot">
+        <span class="sx-count" id="exportCount">204 responses will be exported</span>
+        <span class="sx-spacer"></span>
+        <button class="gv-btn secondary-outlined" id="exportCancel"><span class="gv-btn__label">Cancel</span></button>
+        <button class="gv-btn admin-dark" id="exportGo" disabled><span data-gv-icon="download"></span><span class="gv-btn__label">Generate PDF</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PDF PREVIEW ═══════════════ -->
+  <div class="sx-pdf" id="pdfView" hidden>
+    <div class="sx-pdf__bar">
+      <span class="sx-pdf__name" id="pdfName">community-survey_responses.pdf</span>
+      <span style="opacity:.7" id="pdfMeta"></span>
+      <span class="sx-spacer"></span>
+      <button class="sx-pdf__btn" data-act="toast" data-msg="Downloading PDF…"><span data-gv-icon="download"></span>Download</button>
+      <button class="sx-pdf__btn" id="pdfClose"><span data-gv-icon="close"></span>Close</button>
+    </div>
+    <div class="sx-pdf__scroll" id="pdfScroll"></div>
+  </div>
+
+  <div class="sx-toast" id="toast"></div>
+
+  <script>
+  (function () {
+    // ── survey model ──────────────────────────────────────────────────────────
+    const QUESTIONS = [
+      { id: 'improve', label: 'Which improvements matter most to you?', type: 'Multiple choice' },
+      { id: 'freq',    label: 'How often do you visit the park?',        type: 'Single choice' },
+      { id: 'access',  label: 'Rate the current accessibility',          type: 'Linear scale' },
+      { id: 'rank',    label: 'Rank these proposed features',            type: 'Ranking' },
+      { id: 'photos',  label: 'Photos of areas needing attention',       type: 'File upload' },
+      { id: 'pin',     label: 'Mark a location on the map',              type: 'Map' },
+      { id: 'more',    label: 'What would make you visit more often?',   type: 'Long answer' },
+    ];
+    const PII = [
+      { id: 'name',     label: 'Full name',            type: 'Registration field' },
+      { id: 'email',    label: 'Email address',        type: 'Registration field' },
+      { id: 'gender',   label: 'Gender',               type: 'Demographic' },
+      { id: 'yob',      label: 'Year of birth',        type: 'Demographic' },
+      { id: 'postcode', label: 'Place of residence (postcode)', type: 'Demographic' },
+      { id: 'official', label: 'Are you an elected official?',  type: 'Demographic' },
+    ];
+    const RESPONDENTS = [
+      { when: '2026-06-12 09:14', a: { improve:'More seating · Better lighting · Accessible paths', freq:'Weekly', access:'4 / 5', rank:'1. Accessible paths  2. Playground  3. Café', photos:null, pin:'Pinned — south entrance', more:'Safer lighting along the main path in the evenings.', name:'Jane Cooper', email:'jane.c@example.com', gender:'Female', yob:'1985', postcode:'NC 27601', official:'No' } },
+      { when: '2026-06-12 18:42', a: { improve:'Playground upgrade', freq:'Monthly', access:'2 / 5', rank:'1. Playground  2. Café  3. Accessible paths', photos:'2 files attached', pin:null, more:'A playground area for younger children.', name:'Marc Ellis', email:'marc.e@example.com', gender:'Male', yob:'1990', postcode:'NC 27604', official:'No' } },
+      { when: '2026-06-13 11:05', a: { improve:'Better lighting', freq:'Daily', access:'5 / 5', rank:null, photos:null, pin:'Pinned — north meadow', more:null, name:'Priya Nair', email:'priya.n@example.com', gender:'Prefer not to say', yob:'1978', postcode:'NC 27610', official:'Yes — city council' } },
+    ];
+    const TOTAL = 204;
+
+    const $ = (s, r) => (r||document).querySelector(s);
+    const $$ = (s, r) => Array.from((r||document).querySelectorAll(s));
+
+    // ── sub-tab switching ─────────────────────────────────────────────────────
+    function showSub(key) {
+      $$('#subtabs .gv-bo-tab').forEach(t => t.classList.toggle('is-active', t.dataset.sub === key));
+      $$('.pp-sub').forEach(p => p.classList.toggle('is-active', p.dataset.sub === key));
+      document.body.setAttribute('data-gv-screen', 'survey-phase/' + key);
+    }
+    $$('#subtabs .gv-bo-tab').forEach(t => t.addEventListener('click', e => { e.preventDefault(); showSub(t.dataset.sub); }));
+    $$('[data-goto]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); showSub(a.dataset.goto); }));
+
+    // ── toast ─────────────────────────────────────────────────────────────────
+    let toastT;
+    function toast(msg) {
+      const el = $('#toast'); el.textContent = msg; el.classList.add('is-on');
+      clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('is-on'), 1900);
+    }
+    $$('[data-act="toast"]').forEach(b => b.addEventListener('click', () => { closeMenu(); toast(b.dataset.msg); }));
+
+    // ── survey-actions ⋯ menu ─────────────────────────────────────────────────
+    const menu = $('#surveyMenu'), menuBtn = $('#surveyMenuBtn');
+    function openMenu() { menu.hidden = false; menuBtn.setAttribute('aria-expanded', 'true'); }
+    function closeMenu() { menu.hidden = true; menuBtn.setAttribute('aria-expanded', 'false'); }
+    menuBtn.addEventListener('click', e => { e.stopPropagation(); menu.hidden ? openMenu() : closeMenu(); });
+    document.addEventListener('click', e => { if (!menu.contains(e.target) && e.target !== menuBtn) closeMenu(); });
+
+    // ── build field rows ──────────────────────────────────────────────────────
+    function row(f, isPII) {
+      const el = document.createElement('label');
+      el.className = 'sx-frow';
+      el.innerHTML =
+        '<div class="sx-frow__main"><div class="sx-frow__title">' + f.label + '</div><div class="sx-frow__type">' + f.type + '</div></div>' +
+        '<div class="sx-frow__right">' +
+          (isPII ? '<span class="sx-pii"><span class="gv-icon" data-gv-icon="alert-circle"></span>Personal data</span>' : '') +
+          '<span class="gv-toggle"><input type="checkbox" data-field="' + f.id + '"' + (isPII ? '' : ' checked') + '><span class="track"></span></span>' +
+        '</div>';
+      return el;
+    }
+    QUESTIONS.forEach(f => $('#qFields').appendChild(row(f, false)));
+    PII.forEach(f => $('#piiFields').appendChild(row(f, true)));
+
+    // ── modal open/close + gating ─────────────────────────────────────────────
+    const backdrop = $('#exportBackdrop');
+    function openExport() { closeMenu(); backdrop.hidden = false; document.body.setAttribute('data-gv-screen', 'survey-phase/insights/export-modal'); }
+    function closeExport() { backdrop.hidden = true; document.body.setAttribute('data-gv-screen', 'survey-phase/insights'); }
+    $('#openExport').addEventListener('click', openExport);
+    $('#exportX').addEventListener('click', closeExport);
+    $('#exportCancel').addEventListener('click', closeExport);
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) closeExport(); });
+
+    $('#coverToggle').addEventListener('change', e => $('#coverFields').classList.toggle('is-off', !e.target.checked));
+    $('#consent').addEventListener('change', e => $('#exportGo').disabled = !e.target.checked);
+
+    // ── generate PDF preview from current choices ─────────────────────────────
+    function selectedFields() {
+      const all = QUESTIONS.concat(PII);
+      const on = new Set($$('[data-field]').filter(c => c.checked).map(c => c.dataset.field));
+      return all.filter(f => on.has(f.id));
+    }
+    function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function generate() {
+      const fields = selectedFields();
+      const inclEmpty = $('#inclEmpty').checked;
+      const scroll = $('#pdfScroll'); scroll.innerHTML = '';
+      let pageNo = 0;
+      const pageEl = () => { pageNo++; const p = document.createElement('div'); p.className = 'sx-page'; return p; };
+
+      // cover
+      if ($('#coverToggle').checked) {
+        const c = pageEl();
+        c.innerHTML =
+          '<div class="sx-cover-eyebrow">Survey response record</div>' +
+          '<div class="sx-cover-title">' + esc($('#covTitle').value || 'Survey responses') + '</div>' +
+          '<div class="sx-cover-sub">Let’s Reimagine Dorothea Dix Park</div>' +
+          '<div class="sx-cover-meta">' +
+            '<div><b>Date</b>' + esc($('#covDate').value) + '</div>' +
+            '<div><b>Prepared by</b>' + esc($('#covBy').value) + '</div>' +
+            '<div><b>Responses</b>' + TOTAL + ' individual records</div>' +
+            '<div><b>Fields included</b>' + fields.length + ' of ' + (QUESTIONS.length + PII.length) + '</div>' +
+          '</div>' +
+          ($('#covNotes').value ? '<div class="sx-cover-notes">' + esc($('#covNotes').value) + '</div>' : '');
+        scroll.appendChild(c);
+      }
+
+      // a page holding the first few respondent records (a real export paginates;
+      // the preview shows a representative sample of the 204)
+      const body = pageEl();
+      let html = '';
+      RESPONDENTS.forEach((r, i) => {
+        const num = String(i + 1).padStart(3, '0');
+        let rows = '';
+        fields.forEach(f => {
+          const val = r.a[f.id];
+          if (val == null && !inclEmpty) return;
+          const empty = val == null;
+          rows += '<div class="sx-qa"><div class="sx-qa__q">' + esc(f.label) + '</div>' +
+                  '<div class="sx-qa__a' + (empty ? ' is-empty' : '') + '">' + (empty ? 'No answer' : esc(val)) + '</div></div>';
+        });
+        html += '<div class="sx-rec"><div class="sx-rec__head"><span class="sx-rec__id">RESPONDENT ' + num + '</span><span class="sx-rec__when">' + r.when + '</span></div>' + rows + '</div>';
+      });
+      body.innerHTML = html;
+      scroll.appendChild(body);
+
+      const sample = document.createElement('div');
+      sample.className = 'sx-pageno';
+      sample.textContent = 'Showing 3 of ' + TOTAL + ' records · ' + pageNo + ' page' + (pageNo === 1 ? '' : 's') + ' shown';
+      scroll.appendChild(sample);
+
+      $('#pdfMeta').textContent = TOTAL + ' records · ' + fields.length + ' fields' + (inclEmpty ? '' : ' · blanks hidden');
+      closeExport();
+      $('#pdfView').hidden = false;
+      document.body.setAttribute('data-gv-screen', 'survey-phase/insights/pdf-preview');
+    }
+    $('#exportGo').addEventListener('click', generate);
+    $('#pdfClose').addEventListener('click', () => { $('#pdfView').hidden = true; document.body.setAttribute('data-gv-screen', 'survey-phase/insights'); });
+
+    // re-render icons injected after load
+    document.addEventListener('DOMContentLoaded', () => { if (window.gvIcons && window.gvIcons.render) window.gvIcons.render(); });
+  })();
+  </script>
 </body>
 </html>
