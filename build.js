@@ -147,7 +147,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.40";
+const UI_VERSION = "0.41";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -516,6 +516,28 @@ function fmtDate(ms) {
   });
 }
 
+// Relative "Edited N <unit> ago" label, computed at build time against now.
+// Weeks are intentionally skipped so the day bucket runs all the way to a month
+// ("Edited 20 days ago", not "2 weeks ago"). Months/years are calendar-approx
+// (30/365 days) — fine for a listing label. Pair with fmtDate() in a title=…
+// for the exact date on hover.
+function relTime(ms) {
+  if (!ms) return "";
+  const sec = Math.round(Math.max(0, Date.now() - ms) / 1000);
+  const units = [
+    ["year", 31536000],
+    ["month", 2592000],
+    ["day", 86400],
+    ["hour", 3600],
+    ["minute", 60],
+  ];
+  for (const [name, s] of units) {
+    const v = Math.floor(sec / s);
+    if (v >= 1) return `Edited ${v} ${name}${v > 1 ? "s" : ""} ago`;
+  }
+  return "Edited just now";
+}
+
 function plural(n, word) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
@@ -717,6 +739,11 @@ const PAGE_CSS = `
 
     /* ---- Pages grid (fast vertical scan, ~4 columns) ---- */
     .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 22px 20px; }
+    /* Opportunity prototype grid: capped at 3 roomier cards per row on desktop,
+       stepping down to 2 then 1 as width drops. */
+    .page-grid.is-3up { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 760px) { .page-grid.is-3up { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .page-grid.is-3up { grid-template-columns: 1fr; } }
     .page-grid .card-proto { transition: box-shadow .18s ease, transform .18s ease; }
     .page-grid .card-proto:hover { box-shadow: 0 12px 28px -14px rgba(16,24,40,0.28); border-color: var(--line-2); transform: translateY(-3px); }
     .page-grid .proto-meta { padding: 12px 14px; }
@@ -1590,7 +1617,7 @@ function renderRootIndex(opportunities) {
           ${preview(coverSrc, cover && cover.poster)}
           <div class="opp-meta">
             <div class="proto-name">${titleCase(opp.name)}</div>
-            <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; ${fmtDate(opp.mtimeMs)}</div>
+            <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; <span title="${fmtDate(opp.mtimeMs)}">${relTime(opp.mtimeMs)}</span></div>
           </div>
         </div>`;
     })
@@ -1642,7 +1669,7 @@ function renderOpportunityIndex(opp) {
           <div class="proto-meta">
             <div class="proto-text">
               <div class="proto-name">${titleCase(p.name)}</div>
-              <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
+              <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
             </div>
           </div>
         </div>`;
@@ -1652,7 +1679,7 @@ function renderOpportunityIndex(opp) {
   return shell({
     title: titleCase(opp.name),
     activeTab: opp.name,
-    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p><div data-fgroup><div class="page-grid">${cards}</div></div>${filterEmpty()}`,
+    body: `<p class="section-eyebrow">${titleCase(opp.name)} &middot; ${plural(opp.prototypes.length, "prototype")}</p><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
   });
 }
 
@@ -1678,7 +1705,7 @@ function renderPlaygroundIndex(projects) {
           ${preview(p.href, p.poster)}
           <div class="opp-meta">
             <div class="proto-name">${titleCase(p.name)}</div>
-            <div class="proto-date">${fmtDate(p.mtimeMs)}</div>
+            <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
           </div>
         </div>`;
     })
