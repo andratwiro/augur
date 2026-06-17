@@ -1550,6 +1550,14 @@
     #cb-settings-body .cb-varcard.is-selected .cb-varcard__radio { border-color:var(--gv-teal-500); background:var(--gv-teal-500); }
     #cb-settings-body .cb-varcard__t { display:block; font-size:13px; font-weight:600; color:var(--gv-text-primary); }
     #cb-settings-body .cb-varcard__d { display:block; font-size:11px; color:var(--gv-cool-grey-600); margin-top:3px; }
+    /* Easy read is the principal layout; the other 10 fold away (kept so they can be shown to devs) */
+    #cb-settings-body .cb-varmore { margin-top:10px; }
+    #cb-settings-body .cb-varmore > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--gv-cool-grey-600); padding:4px 2px; user-select:none; }
+    #cb-settings-body .cb-varmore > summary::-webkit-details-marker { display:none; }
+    #cb-settings-body .cb-varmore > summary::before { content:'▸'; font-size:10px; transition:transform .15s ease; }
+    #cb-settings-body .cb-varmore[open] > summary::before { transform:rotate(90deg); }
+    #cb-settings-body .cb-varmore__hint { font-weight:400; color:var(--gv-grey-500,#9aa3ad); }
+    #cb-settings-body .cb-varmore .cb-varlist { margin-top:8px; }
 
     /* ── Participation Box (spec: current-phase filled tenant-red, others outlined) ── */
     #cb-root { --pp-tenant: #E8505B; }
@@ -3325,7 +3333,7 @@
       // ── project-page components (this is the project's content builder) ──────
       'timeline':        { label: 'Timeline',           make: function () { return cbTimelineHTML(); } },
       'events':          { label: 'Events',             make: function () { return cbEventsHTML(2); } },
-      'extra-surveys':   { label: 'Extra surveys',      make: function () { return cbSurveyHTML('mobility','card','primary','','standard'); } },
+      'extra-surveys':   { label: 'Extra surveys',      make: function () { return cbSurveyHTML('mobility','card','primary','','easy'); } },
       // locked top blocks (never in the palette; created via makeLockedBlock)
       'hero':            { label: 'Project image' },
       'title':           { label: 'Project title' }
@@ -3477,7 +3485,14 @@
       { id:'minimal',    name:'Minimal',          d:'Borderless and quiet — title, time, CTA only.' },
       { id:'easy',       name:'Easy read · accessible', d:'Plain words, big text, one large high-contrast button. For vulnerable audiences.' }
     ];
-    function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'mobility', format:'card', style:'primary', label:'', cardVariant:'standard' }; return SURVEY_STATE[block.id]; }
+    // One picker card. Easy read is rendered as the principal option; the rest fold away.
+    function cbVarcardHTML(v) {
+      return '<button type="button" class="cb-varcard" data-variant="' + v.id + '">' +
+        '<span class="cb-varcard__radio"></span>' +
+        '<span><span class="cb-varcard__t">' + v.name + '</span>' +
+        '<span class="cb-varcard__d">' + v.d + '</span></span></button>';
+    }
+    function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'mobility', format:'card', style:'primary', label:'', cardVariant:'easy' }; return SURVEY_STATE[block.id]; }
     function cbSurveyHTML(survey, format, style, label, variant) {
       if (!survey) return '<div class="cb-survey-empty"><div class="cb-survey-empty__t">📣 Survey</div><div class="cb-survey-empty__s">Select a survey to link in the panel on the right.</div></div>';
       var s = SURVEY_DATA[survey] || SURVEY_DATA.mobility;
@@ -3660,14 +3675,15 @@
             '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="secondary"><span class="circle"></span>Secondary</label>' +
           '</div>' +
           // Card layout picker \u2014 only relevant (and shown) when the format is Card view.
+          // Easy read is the principal layout; the other 10 fold away (kept for dev review).
           '<div id="cb-card-variants"><div class="cb-setseg">Card layout</div><div class="cb-varlist">' +
-            CARD_VARIANTS.map(function (v) {
-              return '<button type="button" class="cb-varcard" data-variant="' + v.id + '">' +
-                '<span class="cb-varcard__radio"></span>' +
-                '<span><span class="cb-varcard__t">' + v.name + '</span>' +
-                '<span class="cb-varcard__d">' + v.d + '</span></span></button>';
-            }).join('') +
-          '</div></div>' +
+            CARD_VARIANTS.filter(function (v) { return v.id === 'easy'; }).map(cbVarcardHTML).join('') +
+          '</div>' +
+          '<details class="cb-varmore"><summary>Other layouts <span class="cb-varmore__hint">\u2014 for dev review</span></summary>' +
+            '<div class="cb-varlist">' +
+              CARD_VARIANTS.filter(function (v) { return v.id !== 'easy'; }).map(cbVarcardHTML).join('') +
+            '</div></details>' +
+          '</div>' +
           // Button label is translatable \u2014 the language switcher rides on this field (per-field, BO-only).
           '<div class="cb-fieldhead">' +
             '<span class="gv-bo-cb-settings__rowlabel">Button text</span>' +
@@ -4015,9 +4031,12 @@
         r.checked = (r.dataset.fmt === st.format);
         r.addEventListener('change', function () { if (this.checked) { st.format = this.dataset.fmt; syncVariantVisibility(); render(); } });
       });
-      // Card layout picker (10 designs) — switching here also flips format to Card view.
+      // Card layout picker — Easy read is principal; the rest live in a fold.
+      // If a folded (non-easy) variant is the current one, open the fold so it's visible.
+      var varmore = panel.querySelector('.cb-varmore');
+      if (varmore && st.cardVariant && st.cardVariant !== 'easy') varmore.open = true;
       panel.querySelectorAll('.cb-varcard').forEach(function (c) {
-        if (c.dataset.variant === (st.cardVariant || 'standard')) c.classList.add('is-selected');
+        if (c.dataset.variant === (st.cardVariant || 'easy')) c.classList.add('is-selected');
         c.addEventListener('click', function () {
           panel.querySelectorAll('.cb-varcard').forEach(function (x) { x.classList.remove('is-selected'); });
           c.classList.add('is-selected');
