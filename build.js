@@ -164,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.45";
+const UI_VERSION = "0.46";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1895,6 +1895,7 @@ function renderOpportunityIndex(opp) {
   return shell({
     title: titleCase(opp.name),
     activeTab: opp.name,
+    wrapClass: "wrap--wide",
     body: `<header class="folderbar"><a class="folderbar__up" href="/" aria-label="All opportunities" title="All opportunities"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span></header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
   });
 }
@@ -1933,6 +1934,7 @@ function renderPlaygroundIndex(projects) {
   return shell({
     title: "Playground",
     activeTab: "playground",
+    wrapClass: "wrap--wide",
     body: `<header class="folderbar"><h1 class="folderbar__title">Playground</h1><span class="folderbar__count">${projects.length}</span><span class="folderbar__rule"></span></header><div data-fgroup><div class="opp-grid">${cards}</div></div>${filterEmpty()}`,
   });
 }
