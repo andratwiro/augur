@@ -108,11 +108,11 @@
   }
   function find(id) { return state.threads.filter(function (t) { return t.id === id; })[0]; }
   function isAnno(t) { return !!t.annotation; }
-  // Deterministic per-pin tilt (-7°..+7°) hashed from the id, so a stamp keeps
+  // Deterministic per-pin tilt (-12°..+12°) hashed from the id, so a stamp keeps
   // the same angle across re-renders instead of jittering.
   function annoRot(id) {
     var h = 0; for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-    return (Math.abs(h) % 15) - 7;
+    return (Math.abs(h) % 25) - 12;
   }
 
   /* ---------- views & anchoring ---------- */
@@ -225,8 +225,8 @@
     '.pin.anno:hover{transform:translate(-50%,-50%) rotate(0deg) scale(1.16);box-shadow:0 7px 20px rgba(0,0,0,0.42);z-index:2;}' +
     '.pin.anno.active{outline:3px solid rgba(61,116,244,0.45);}' +
     /* note bubble (delivery mode), styled like Figma cursor-chat: blue pill + tail */
-    '.atip{position:fixed;pointer-events:none;max-width:260px;background:#3d74f4;color:#fff;padding:9px 13px;border-radius:16px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 8px 22px rgba(61,116,244,0.42);transform:translate(-50%,var(--ty,-100%)) scale(.9);transform-origin:50% 110%;opacity:0;transition:opacity .14s ease,transform .2s cubic-bezier(.34,1.56,.64,1);white-space:pre-wrap;word-wrap:break-word;}' +
-    '.atip::after{content:"";position:absolute;left:var(--tail-x,50%);bottom:-4px;width:9px;height:9px;background:#3d74f4;transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;}' +
+    '.atip{position:fixed;pointer-events:none;max-width:260px;background:#5672da;color:#fff;padding:9px 14px;border-radius:18px;font:600 13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,0.22),0 1px 3px rgba(0,0,0,0.12);transform:translate(-50%,var(--ty,-100%)) scale(.9);transform-origin:50% 110%;opacity:0;transition:opacity .14s ease,transform .2s cubic-bezier(.34,1.56,.64,1);white-space:pre-wrap;word-wrap:break-word;}' +
+    '.atip::after{content:"";position:absolute;left:var(--tail-x,50%);bottom:-4px;width:9px;height:9px;background:#5672da;transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0;}' +
     '.atip.below{--ty:0;transform-origin:50% -10%;}' +
     '.atip.below::after{bottom:auto;top:-4px;border-radius:3px 0 0 0;}' +
     '.atip.show{opacity:1;transform:translate(-50%,var(--ty,-100%)) scale(1);}' +
