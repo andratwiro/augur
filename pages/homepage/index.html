@@ -432,6 +432,10 @@
          Source-grounded on the live homepage events widget (community.govocal.com):
          a grid of event cards — header image (placeholder) with a two-tone date chip
          pinned top-right, then clock / link or location / registrants rows + Register.
+         Cards use the .bordered frame: community's EventsWidget <li> (digest
+         li.sc-jIXSKn) is white with a 1px #CCC border + 6px radius and NO shadow — the
+         contrast is the thin border, not a grey background or a drop shadow. (The
+         borderless base .gv-event-card is the wietsedemo events-page look.)
          Swap .gv-events__grid for .gv-events__empty (kept in the library) when none. -->
     <section class="gv-section" aria-labelledby="events-title">
       <div class="gv-section__body">
@@ -441,7 +445,7 @@
         </div>
         <div class="gv-events__grid">
 
-          <article class="gv-event-card">
+          <article class="gv-event-card bordered">
             <div class="gv-event-card__media">
               <img src="img/event-online.webp" alt="Residents and staff at an online-and-in-person community session" loading="lazy" />
               <span class="gv-event-card__date"><span class="m">Jun</span><span class="d">18</span><span class="y">2026</span></span>
@@ -458,7 +462,7 @@
             </div>
           </article>
 
-          <article class="gv-event-card">
+          <article class="gv-event-card bordered">
             <div class="gv-event-card__media">
               <img src="img/event-walk.webp" alt="Residents gathered on Station Road to view the plans on site" loading="lazy" />
               <span class="gv-event-card__date"><span class="m">Jun</span><span class="d">25</span><span class="y">2026</span></span>
@@ -474,7 +478,7 @@
             </div>
           </article>
 
-          <article class="gv-event-card">
+          <article class="gv-event-card bordered">
             <div class="gv-event-card__media">
               <img src="img/event-budget.webp" alt="Residents asking questions at a participatory budget session" loading="lazy" />
               <span class="gv-event-card__date"><span class="m">Jul</span><span class="d">02</span><span class="y">2026</span></span>
