@@ -220,6 +220,16 @@ None of these load by default. Reach for them when the task or the user calls fo
     (an `<img>` then silently fails). Same for any new asset embedded into public
     prototypes. Also avoid inline `data:` images for overlay UI — some browsers/blockers
     refuse to paint them; serve a real same-origin file instead.
+  - **Screen contract (SPA prototypes):** the overlay scopes a comment to the screen
+    it was made on. It keys off `<body data-gv-screen="…">`. Normal **multi-page**
+    prototypes need nothing — scoping falls back to the URL. But a prototype that swaps
+    "screens" **without changing the URL** (JS `display`/class toggles — e.g. the
+    editor-builder's `setView`/`setFrame`/`setProjectState`/modals) **must publish its
+    current screen** on `<body data-gv-screen>`, or comments bleed across every screen.
+    Pattern (see `parallel-editor-builder-v*`): a small IIFE that composes a key from
+    every visible-state axis (view + frame + state + phase + open modal), re-syncs after
+    any click (deferred) and on load, and writes only when the key changes. Each distinct
+    visible state = a distinct screen; off-screen comments are hidden entirely.
 - **Dev-status pipeline** — each prototype card on its opportunity index carries a
   dev-facing status badge (Playground / In progress / Dev ready / Shipped / Parked),
   cycled by clicking on the live site, persisted to KV via `src/_worker.js`. When the

@@ -127,8 +127,26 @@
   function safeQuery(sel) { try { return sel ? document.querySelector(sel) : null; } catch (e) { return null; } }
   function anchorOf(t) { return safeQuery(t.sel); }
   function resolvesHere(t) { return !!anchorOf(t); }
-  // Listed in sidebar unless it's a confirmed orphan (own view, anchor gone).
-  function isListed(t) { return resolvesHere(t) || !onThisView(t); }
+
+  // Screen contract: SPA prototypes change "screens" without changing the URL, so
+  // the prototype publishes its current screen on <body data-gv-screen="…"> (see
+  // CLAUDE.md). A comment captures that string at creation; it then only belongs
+  // on the matching screen. Empty string => prototype isn't screen-aware (normal
+  // multi-page), so scoping falls back to the URL exactly as before.
+  function curScreen() {
+    try { return (document.body && document.body.getAttribute("data-gv-screen")) || ""; }
+    catch (e) { return ""; }
+  }
+  function onThisScreen(t) {
+    if (!t.screen) return true;        // comment isn't screen-scoped → URL rules apply
+    if (!onThisView(t)) return true;   // on another URL → defer the check until we arrive
+    return t.screen === curScreen();
+  }
+
+  // Belongs on the current canvas/sidebar: its anchor is here, or it lives on
+  // another URL (kept for navigation). A screen-scoped comment on the wrong screen
+  // is fully hidden — not a pin, not in the list.
+  function isListed(t) { return onThisScreen(t) && (resolvesHere(t) || !onThisView(t)); }
 
   function cssPath(el) {
     if (!el || el.nodeType !== 1) return "body";
@@ -173,6 +191,7 @@
       fy: r.height ? (y - r.top) / r.height : 0.5,
       px: x + window.scrollX, py: y + window.scrollY,
       view: curView(),
+      screen: curScreen(),
     };
   }
 
@@ -498,7 +517,7 @@
       var text = tx.value.trim(); if (!text) { tx.focus(); return; }
       if (nm) setName(name);
       var thread = { id: uid(), sel: loc.sel, fx: loc.fx, fy: loc.fy, px: loc.px, py: loc.py,
-        view: loc.view, resolved: false, annotation: anno, messages: [{ author: name, body: text, at: nowIso() }] };
+        view: loc.view, screen: loc.screen, resolved: false, annotation: anno, messages: [{ author: name, body: text, at: nowIso() }] };
       closeCard();
       mutate({ op: "add", thread: thread });
       toast(anno ? "Annotation added" : "Comment added");
@@ -685,6 +704,9 @@
   }
   if (window.MutationObserver) {
     new MutationObserver(scheduleRerender).observe(document.documentElement, { childList: true, subtree: true });
+    // Re-scope pins the instant the prototype switches screens (data-gv-screen).
+    if (document.body) new MutationObserver(scheduleRerender)
+      .observe(document.body, { attributes: true, attributeFilter: ["data-gv-screen"] });
   }
   window.addEventListener("scroll", reposition, { passive: true });
   window.addEventListener("resize", reposition, { passive: true });

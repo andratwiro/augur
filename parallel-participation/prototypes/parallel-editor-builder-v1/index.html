@@ -4210,5 +4210,40 @@
   if(save) save.addEventListener("click", function(){ setTimeout(function(){ window.closeBuilder && window.closeBuilder(); }, 380); });
 })();
 </script>
+<script>
+  /* GoVocal review-overlay screen contract — publish the current visible screen
+     on <body data-gv-screen> so comments/annotations scope to the screen they were
+     made on (the overlay reads this; URL never changes in this SPA). Every visible-
+     state change = a distinct screen, composed from view + frame + state + phase +
+     any open modal. Re-synced after any click (deferred past the page's handlers)
+     and on load; only writes when the key actually changes. */
+  (function () {
+    function vis(el) { return el && getComputedStyle(el).display !== "none"; }
+    function gvScreen() {
+      var view = ["project", "phase", "add-phase", "add-survey"]
+        .filter(function (v) { return vis(document.getElementById("view-" + v)); })[0] || "project";
+      var fr = document.querySelector(".frame-chip button.on");
+      var st = document.querySelector(".state-chip button.on");
+      var phase = "";
+      if (view === "phase") {
+        var a = document.querySelector("[data-view=phase].active");
+        phase = a ? (a.getAttribute("data-phase") || "") : "";
+      }
+      var modal = [].slice.call(document.querySelectorAll(".modal,[id$=Modal],.modal-overlay"))
+        .some(vis) ? "modal" : "";
+      return [view, fr && fr.getAttribute("data-frame"), st && st.getAttribute("data-state"), phase, modal]
+        .filter(Boolean).join("|");
+    }
+    function sync() {
+      var s = gvScreen();
+      if (document.body.getAttribute("data-gv-screen") !== s) document.body.setAttribute("data-gv-screen", s);
+    }
+    document.addEventListener("click", function () { setTimeout(sync, 0); }, true);
+    if (document.readyState !== "loading") sync();
+    else document.addEventListener("DOMContentLoaded", sync);
+    setTimeout(sync, 400);
+  })();
+</script>
+
 </body>
 </html>

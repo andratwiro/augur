@@ -184,6 +184,7 @@ function applyOp(threads, op) {
       sel: clamp(t.sel, 600),
       fx: +t.fx || 0, fy: +t.fy || 0, px: +t.px || 0, py: +t.py || 0,
       view: clamp(t.view, 600) || null,
+      screen: clamp(t.screen, 200) || null,
       resolved: false,
       annotation: !!t.annotation,
       messages: (Array.isArray(t.messages) ? t.messages : []).slice(0, 1).map(sanitizeMsg),
