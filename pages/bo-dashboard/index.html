@@ -83,46 +83,10 @@
     .db-split__chart { min-width: 0; }
     @media (max-width: 1100px) { .db-split { grid-template-columns: 1fr; } }
 
-    /* CSS horizontal bar chart — navy bars, right-aligned wrapping labels, x-axis scale. */
-    .ch-h { display: grid; grid-template-columns: 150px 1fr; gap: 4px 12px; margin-top: 8px; align-items: center; }
-    .ch-hrow { display: contents; }
-    .ch-hlabel { color: var(--gv-chart-axis); text-align: right; line-height: 1.25; font-size: var(--gv-fs-xs); }
-    .ch-hbarcell { display: flex; align-items: center; gap: 8px; }
-    .ch-htrack { flex: 1; height: 15px; min-width: 0; }
-    .ch-hbar { display: block; height: 100%; background: var(--ch-bar); min-width: 1px; }
-    .ch-hval { color: var(--gv-chart-axis); font-weight: 400; font-size: var(--gv-fs-xs); flex: none; }
-    /* X-axis scale under horizontal bars. */
-    .ch-haxis { display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-top: 6px; }
-    .ch-haxis__scale { grid-column: 2; display: flex; justify-content: space-between; border-top: 1px solid var(--gv-grey-300); padding-top: 4px; font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); }
-    /* CSS vertical bar chart with y-axis scale. */
-    .ch-vframe { display: grid; grid-template-columns: 22px 1fr; gap: 6px; margin-top: 8px; }
-    .ch-vyaxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; height: 170px; font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); padding-bottom: 16px; }
-    .ch-v { display: flex; align-items: flex-end; gap: 10px; height: 170px; padding-top: 10px; border-bottom: 1px solid var(--gv-grey-300); }
-    .ch-vcol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
-    .ch-vbar { width: 60%; max-width: 46px; background: var(--ch-bar); min-height: 2px; }
-    .ch-vnum { font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); }
-    .ch-vlabels { display: flex; gap: 10px; margin-top: 6px; grid-column: 2; }
-    .ch-vlabels span { flex: 1; text-align: center; font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); }
-    /* Legend. */
+    /* Legend (still used by the Input-status status legend). */
     .ch-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: var(--gv-fs-13); color: var(--gv-text-primary); justify-content: center; }
     .ch-legend span { display: inline-flex; align-items: center; gap: 6px; }
     .ch-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-    /* Force the real plot height — must out-specify the canonical
-       `.gv-bo-chartcard svg { height:auto }` (0,1,1), else the 600x120 viewBox
-       squishes to width/5 (~42px) and the line + its .ch-dots overlay (130px) desync. */
-    .gv-bo-chartcard svg.db-line { width: 100%; height: 130px; display: block; }
-    /* Line-chart frame: y-axis scale + chart area + month axis along the bottom. */
-    .ch-line { display: grid; grid-template-columns: 22px 1fr; gap: 6px; margin-top: 6px; }
-    .ch-yaxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); height: 130px; }
-    .ch-plot { min-width: 0; position: relative; }
-    /* Line dot markers — recharts draws a filled r=3 dot (line colour) at each point.
-       Rendered as CSS-positioned circles overlaid on the 130px svg area so they stay
-       perfectly round (the svg itself uses preserveAspectRatio=none, which would
-       squash inline <circle>s into ellipses). %-coords map to the 600x120 viewBox. */
-    .ch-dots { position: absolute; top: 0; left: 0; width: 100%; height: 130px; pointer-events: none; }
-    .ch-dots i { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--ch-line); }
-    .ch-axis { display: flex; justify-content: space-between; margin-top: 4px; padding: 0 2px; }
-    .ch-axis span { font-size: var(--gv-fs-13); color: var(--gv-chart-axis); }
     .db-apex { min-width: 0; }            /* ApexCharts host — let it shrink inside split/grid cells */
     /* Representativeness card: score chip + chart/table toggle + footer. */
     .db-repr .db-cardhead { align-items: center; }
@@ -140,13 +104,8 @@
     .db-repr__foot svg { width: 14px; height: 14px; fill: var(--gv-cool-grey-500); flex: none; }
     .db-repr__list table { width: 100%; }
     .db-donutwrap { display: flex; align-items: center; gap: 22px; flex-wrap: nowrap; }
-    /* Donut host fixed size (canonical forces chartcard svg to 100% width — override). */
-    .db-donutwrap .db-donut__svg { width: 150px !important; height: 150px; flex: none; }
     .db-donut__host { width: 158px; flex: none; }
     .db-donut__host svg { width: 158px; height: 158px; }   /* pin the ApexCharts svg vs canonical width:100% */
-    .db-pie { display: flex; align-items: center; gap: 24px; padding: 8px 0; }
-    /* Pie SVG fixed size (canonical forces chartcard svg to 100% width — override). */
-    .db-pie .db-pie__svg { width: 150px !important; height: 150px; flex: none; }
     /* Input-status: progress-bar rows + stacked-status bar + 2-row legend. */
     .db-prog { flex: 1; min-width: 0; }
     .db-progrow { display: grid; grid-template-columns: 1fr 90px; gap: 12px; align-items: center; margin-bottom: 14px; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
@@ -265,15 +224,7 @@
                   <div class="db-bignum"><span class="db-bignum__lbl">Automated emails</span><span class="db-bignum__big">5</span><span class="db-bignum__sub">From 2 campaigns</span></div>
                   <div class="db-bignum"><span class="db-bignum__lbl">Custom emails</span><span class="db-bignum__big">0</span><span class="db-bignum__sub">From 0 campaigns</span></div>
                 </div>
-                <div class="db-split__chart">
-                  <div class="ch-line"><div class="ch-yaxis"><span>2</span><span>1.5</span><span>1</span><span>0.5</span><span>0</span></div>
-                  <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-                    <line x1="0" y1="12" x2="600" y2="12" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><line x1="0" y1="112" x2="600" y2="112" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>
-                    <polyline points="0,112 90,12 180,112 280,12 380,112 480,12 600,112" fill="none" stroke="var(--ch-blue)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
-                    <div class="ch-axis"><span>Dec</span><span>Apr</span><span>Aug</span><span>Dec</span><span>Apr</span><span>Aug</span><span>Jun</span></div>
-                    <div class="ch-legend"><span><i style="background:var(--ch-red)"></i>Custom emails</span><span><i style="background:var(--ch-blue)"></i>Automated emails</span></div>
-                  </div></div>
-                </div>
+                <div class="db-split__chart"><div class="db-apex" id="emails-chart"></div></div>
               </div>
             </div>
             <div class="gv-bo-chartcard">
@@ -337,17 +288,7 @@
                 <div><div class="db-stat__lbl db-stat__top">Visit duration</div><div class="db-stat__num">00:01:05</div><div class="db-stat__lbl">Last 30 days: <b>00:01:09</b></div></div>
                 <div><div class="db-stat__lbl db-stat__top">Pageviews per visit</div><div class="db-stat__num">4.52</div><div class="db-stat__lbl">Last 30 days: <b>4.33</b></div></div>
               </div>
-              <div class="db-split__chart">
-                <div class="ch-line"><div class="ch-yaxis"><span>60</span><span>45</span><span>30</span><span>15</span><span>0</span></div>
-                <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-                  <line x1="0" y1="12" x2="600" y2="12" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><line x1="0" y1="37" x2="600" y2="37" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><line x1="0" y1="62" x2="600" y2="62" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><line x1="0" y1="87" x2="600" y2="87" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><line x1="0" y1="112" x2="600" y2="112" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>
-                  <polyline points="0,110 50,109 100,107 150,100 200,80 250,40 280,18 320,40 370,80 430,105 490,109 540,110 600,111" fill="none" stroke="var(--ch-blue)" stroke-width="1" vector-effect="non-scaling-stroke"/>
-                  <polyline points="0,113 50,112 100,111 150,107 200,95 250,70 280,55 320,72 370,98 430,110 490,113 540,114 600,114" fill="none" stroke="var(--ch-red)" stroke-width="1" vector-effect="non-scaling-stroke"/>
-                </svg>
-                <div class="ch-axis"><span>Nov</span><span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span><span>Jan</span><span>Mar</span><span>May</span></div>
-                <div class="ch-legend" style="margin-top:8px"><span><i style="background:var(--ch-blue)"></i>Visitors</span><span><i style="background:var(--ch-red)"></i>Visits</span></div>
-                </div></div>
-              </div>
+              <div class="db-split__chart"><div class="db-apex" id="visitors-line"></div></div>
             </div>
           </div>
           <div class="gv-bo-chartcard db-span-12" data-chart="pie" data-title="Traffic sources"
@@ -507,6 +448,26 @@
         }
       } catch (err) { console.error("chart render failed", card.dataset.title, err); }
     });
+    // Two non-card line charts (hand-built inline markup, not data-chart cards): the Emails
+    // 2-series chart (Overview) and the Visitors/Visits 2-series chart (Visitors tab).
+    // Editable sample data; routed through the same lazy flush as the dispatch charts.
+    [
+      { host: "emails-chart", panel: "overview", colors: ["neg", "blue"], tickAmount: 6,
+        categories: ["Dec", "Apr", "Aug", "Dec", "Apr", "Aug", "Jun"],
+        series: [{ name: "Custom emails", data: [0, 0, 0, 0, 0, 0, 0] },
+                 { name: "Automated emails", data: [0, 2, 0, 2, 0, 2, 0] }] },
+      { host: "visitors-line", panel: "visitors", colors: ["blue", "neg"], tickAmount: 6,
+        categories: ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov"],
+        series: [{ name: "Visitors", data: [1, 2, 3, 7, 19, 43, 56, 43, 19, 4, 2, 1, 1] },
+                 { name: "Visits",   data: [0, 0, 1, 3, 10, 25, 34, 24, 8, 1, 0, 0, 0] }] }
+    ].forEach(cfg => __pending.push({ key: cfg.panel, render: () => {
+      const el = document.getElementById(cfg.host);
+      if (!window.GVChart || !el || el.__gv) return;
+      const p = GVChart.palette();
+      GVChart.line(el, { height: 150, legend: true, tickAmount: cfg.tickAmount,
+        categories: cfg.categories, series: cfg.series, colors: cfg.colors.map(c => p[c]) });
+    } }));
+
     // GVChart loads deferred (after this inline script parses) — flush the active
     // panel's charts once it's ready; other panels flush when their tab is shown.
     window.__flushCharts = (key) => __pending.forEach(p => { if (p.key === key) p.render(); });

@@ -41,6 +41,43 @@ static SVG — and to do it for **ALL charts** (a long, multi-loop effort). Libr
 
 ## Iterations
 
+### Loop 13 — 2026-06-18 — Convert last 2 inline line SVGs + CLEANUP + WRAP-UP ✅ MISSION COMPLETE
+- Converted the 2 remaining hand-built inline line SVGs to GVChart.line (2-series each, routed
+  through the lazy flush via __pending): EMAILS (Overview Mgmt — Custom #E52516 / Automated
+  #2F478A) and VISITORS "Visitors/Visits" (Visitors tab — Visitors #2F478A / Visits #E52516).
+  Data lives in an editable array.
+- **Removed ALL dead chart CSS** (.ch-h/.ch-v/.ch-line/.ch-yaxis/.ch-plot/.ch-dots/.ch-axis/
+  svg.db-line/.db-pie/.db-donut__svg) — kept .ch-legend (Input-status status legend still uses
+  it), .db-apex, .db-donutwrap. The page now has ZERO hand-rolled chart code: only `cardHead`
+  chrome + GVChart calls.
+- **Fixed a div-balance bug** the Visitors edit introduced (an extra `</div>` from the old
+  split__chart close prematurely closed the grid → pies fell outside it). Removed it; pies +
+  line charts back in the grid (verified by screenshot).
+- **FINAL SWEEP (HTTP-dist, every tab):** apex charts per tab — Overview 9, Users 3, Visitors 6,
+  Representativeness 1, Participation 0, Management 0 (=19 interactive charts). 0 chart-asset
+  4xx; the only console error is the unrelated /__review/api (review worker route, absent in
+  serve dist). lint ✓.
+- **Deploy:** yes. Overview poster reshot.
+
+## ✅ CONVERSION COMPLETE — full chart inventory (all interactive GVChart/ApexCharts)
+| Chart | Tab | GVChart type |
+|---|---|---|
+| Registrations, Participants | Overview & Visitors | line (split) |
+| Inputs | Overview | combo (bar+line) |
+| Comments, Reactions | Overview | line |
+| Participation per project / per tag | Overview | bar horizontal |
+| Input status | Overview | donut |
+| Emails | Overview | line (2-series) |
+| Users by geographic area | Users | bar horizontal |
+| Users by age, Commuting Method | Users | bar vertical |
+| Visitors / Visits | Visitors | line (2-series) |
+| Traffic sources, Language, Device Types | Visitors | pie |
+| Which market are you from? (+ chart/table toggle) | Representativeness | bar grouped |
+
+All themed from --gv-chart-* tokens, hover tooltips + legend-toggle, re-feedable from editable
+data objects. To customise: edit the data-* attrs (dispatch charts), the REPR object, the donut
+series, or the emails/visitors arrays. To re-theme: change --gv-chart-* in govocal-tokens.css.
+
 ### Loop 12 — 2026-06-18 — Convert Users-tab vertical bars → GVChart.bar (vertical)
 - Converted the 2 `data-chart="barsV"` cards (Users by age, Commuting Method) to GVChart.bar
   vertical (navy #073F80, value labels on top, category labels on x-axis) via the lazy dispatch
