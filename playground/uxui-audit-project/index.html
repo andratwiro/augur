@@ -191,12 +191,12 @@
 <body data-mode="index">
 
   <nav class="switch" id="switch">
-    <button data-m="lean"><span class="t">Lean</span><span class="s">2 weeks · what matters</span></button>
-    <button data-m="full"><span class="t">Full</span><span class="s">6-week studio audit</span></button>
-    <button data-m="evidence"><span class="t">Evidence</span><span class="s">let the data argue</span></button>
-    <button data-m="brief"><span class="t">Brief</span><span class="s">the research plan</span></button>
-    <button data-m="bets"><span class="t">Bets</span><span class="s">priors, tested fast</span></button>
-    <button data-m="index" class="on"><span class="t">Index</span><span class="s">the big topics</span></button>
+    <button data-m="lean"><span class="t">Lean</span></button>
+    <button data-m="full"><span class="t">Full</span></button>
+    <button data-m="evidence"><span class="t">Evidence</span></button>
+    <button data-m="brief"><span class="t">Brief</span></button>
+    <button data-m="bets"><span class="t">Bets</span></button>
+    <button data-m="index" class="on"><span class="t">Index</span></button>
   </nav>
   <div class="progress" id="progress"></div>
 
@@ -965,92 +965,84 @@
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">01 · the case</p>
-        <h2>Why now — or are we manufacturing the urgency?</h2>
-        <p class="lead">Three forces converge: <b>cost</b> (393 dispatch tickets, 68 still open), <b>competition</b> (Polis on deliberation, EngagementHQ on back-office maturity), and <b>compliance</b> (the European Accessibility Act in force since June 2025).</p>
-        <div class="grid g2">
-          <div class="card"><span class="lab">The honest case</span><p>The backlog is real and dated; the law has a deadline that already passed. This isn't a hunch — it's evidence with timestamps.</p></div>
-          <div class="card kill"><span class="lab">The challenge to it</span><p>A live sweep showed the product already fixed several old findings. Are we riding genuine urgency — or dressing a standing wish as a crisis?</p></div>
-        </div>
-        <div class="seam"><b>Decide Friday:</b> which single force leads the story? Compliance makes it a gate, not a vision. Adoption makes the tickets a sideshow. We can't headline all three.</div>
+        <h2>1 · The case — why now</h2>
+        <ul class="clean">
+          <li><b>Cost</b> — the 2026 support backlog (393 tickets, 68 open)</li>
+          <li><b>Competition</b> — Polis, EngagementHQ, Decidim</li>
+          <li><b>Compliance</b> — European Accessibility Act in force</li>
+        </ul>
       </div>
     </section>
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">02 · adoption, not polish</p>
-        <h2>The real problem is adoption. Can a UX/UI audit even fix that?</h2>
-        <p class="lead">Your brief leads here: project managers aren't adopting, infrequent users can't find their way back in, the tool feels too complex. "How might we get more people using it, sooner."</p>
-        <div class="grid g2">
-          <div class="card"><span class="lab">If it's a UX problem</span><p>Then findability, nesting and onboarding are the levers — an audit's home turf, and we can move them in weeks.</p></div>
-          <div class="card kill"><span class="lab">If it's a product problem</span><p>Then the fix is sunsetting features, changing workflows, integrating with Microsoft / SharePoint — beyond what a screen audit can touch.</p></div>
-        </div>
-        <div class="seam"><b>Decide Friday:</b> how far past "UI" is this audit allowed to range? If adoption is the goal, we may recommend killing features and rewiring workflows. Is that the mandate — or are we scoped to polish?</div>
+        <h2>2 · Adoption, not polish</h2>
+        <ul class="clean">
+          <li>PMs not adopting; infrequent users can't find their way back in</li>
+          <li>The tool feels too complex</li>
+          <li>Goal — more people using it, sooner</li>
+          <li>A UX problem, or a product / operating-model one?</li>
+        </ul>
       </div>
     </section>
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">03 · structural complexity</p>
-        <h2>The complexity <span class="accent">is the model.</span> You can't restyle it away.</h2>
-        <p class="lead">Eleven back-office destinations, a survey edit six URL levels below <code>/admin</code>, the same setting (tags, access-rights, emails) configured in two homes — all projections of one spine: Project → Phase → Method.</p>
-        <div class="grid g2">
-          <div class="card"><span class="lab">Preserve, re-surface</span><p>Keep the expressive model; hide it behind progressive disclosure + templates so the simple town gets a short path. Choice A in your architecture map.</p></div>
-          <div class="card kill"><span class="lab">Challenge the model</span><p>Or go deeper — sunset folders / spaces, flatten the spine. But that's product and data-model work, not a redesign, and it needs engineering to cost.</p></div>
-        </div>
-        <div class="seam"><b>Decide Friday:</b> where's the line between <b>design</b> (changeable now) and <b>product / technical</b> (expensive, needs Koen &amp; James)? We need that line drawn before we promise an outcome.</div>
+        <h2>3 · Structural complexity</h2>
+        <ul class="clean">
+          <li>The Project → Phase → Method spine</li>
+          <li>Eleven back-office destinations</li>
+          <li>Same setting in two homes — tags, access-rights, emails</li>
+          <li>Sunsetting — folders / spaces</li>
+          <li>The design vs product / technical line</li>
+        </ul>
       </div>
     </section>
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">04 · scope</p>
-        <h2>The whole loop — but who do we actually optimise for?</h2>
-        <p class="lead">One service, two surfaces: the resident front office (mobile) and the staff back office. Personas widen past power admins to <b>project managers and cross-department</b> users — plus residents (rare, engaged, skeptic).</p>
-        <div class="grid g2">
-          <div class="card"><span class="lab">Follow the evidence</span><p>The tickets are loudest on back-office <em>output trust</em> — reporting, AI-ignores-filter, emails. That's where the pain is countable.</p></div>
-          <div class="card kill"><span class="lab">Follow the brief</span><p>Adoption says lead with the infrequent PM getting in and finding their way — which the backlog barely registers. The two don't point the same way.</p></div>
-        </div>
-        <div class="seam"><b>Decide Friday:</b> wide (both surfaces, thin) or deep (one surface, one segment)? Six weeks won't do both surfaces justice — we pick depth, or we pick coverage.</div>
+        <h2>4 · Scope</h2>
+        <ul class="clean">
+          <li>Two surfaces — front office (mobile) + back office</li>
+          <li>The whole loop, as one service</li>
+          <li>Personas — project managers, cross-department, residents</li>
+          <li>Dimensions — usability / IA, AI-trust, accessibility</li>
+        </ul>
       </div>
     </section>
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">05 · method</p>
-        <h2>Workflows &amp; IA first — even though auditing screens is faster.</h2>
-        <p class="lead">Your steer: map core workflows and information architecture <em>before</em> any design. The studio spine underneath — Double Diamond, service blueprint, method-for-the-question, triangulate qual + quant.</p>
-        <div class="grid g2">
-          <div class="card"><span class="lab">Audit the screens</span><p>Fast, evidence-rich, already underway — but risks fixing symptoms on top of a structure we never questioned.</p></div>
-          <div class="card kill"><span class="lab">Map IA blank-slate</span><p>Slower, more strategic — the brief's ask. Holds us to "problems are clear, solutions aren't": validate direction before committing six months.</p></div>
-        </div>
-        <div class="seam"><b>Decide Friday:</b> how much do we validate before we build? A two-week probe sprint, or a six-week IA-first study? Same evidence, very different cadence.</div>
+        <h2>5 · Method</h2>
+        <ul class="clean">
+          <li>Workflows &amp; IA first, then design</li>
+          <li>Double Diamond + service blueprint</li>
+          <li>Method → question; triangulate qual + quant</li>
+          <li>Problem confidence vs solution confidence</li>
+        </ul>
       </div>
     </section>
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">06 · measurement</p>
-        <h2>If we can't baseline it <span class="accent">now,</span> we can't prove we fixed it.</h2>
-        <p class="lead">Capture a baseline before any change — NPS plus task-success on the core jobs — and re-measure the same tasks after. It's the only defensible ROI claim.</p>
-        <div class="grid g2">
-          <div class="card"><span class="lab">The candidates</span><p>Satisfaction (NPS) · adoption (active PMs, return rate) · cost (ticket volume) · civic (participation, representativeness — who showed up vs the city).</p></div>
-          <div class="card kill"><span class="lab">The honesty flag</span><p>SUS ≈68, SEQ ≈5.5, ~78% success are <em>industry</em> averages — useful to start, but we must re-base on our own data or the comparison lies.</p></div>
-        </div>
-        <div class="seam"><b>Decide Friday:</b> the <b>one number</b> we'll be judged on in six months — and capture its baseline this week, before anything changes.</div>
+        <h2>6 · Measurement</h2>
+        <ul class="clean">
+          <li>Baseline now, re-measure the same tasks</li>
+          <li>Candidates — NPS, adoption, ticket volume, representativeness</li>
+          <li>Pick one north-star number</li>
+        </ul>
       </div>
     </section>
 
     <section class="slide">
       <div class="slide-inner">
-        <p class="eyebrow">07 · plan &amp; the ask</p>
-        <h2>How much do we commit <span class="accent">before</span> we've validated?</h2>
-        <p class="lead">Three shapes are on the table — the same evidence, different bets on certainty. Each is its own deck up top: Lean, Full / Brief, Bets.</p>
-        <div class="grid g2">
-          <div class="card"><span class="lab">Probe sprint · 2 weeks</span><p>Build rough prototypes as instruments, test the named bets with 5 residents + admins, return confirmed / killed / reshaped. Wrong-fast and cheap.</p></div>
-          <div class="card"><span class="lab">Studio audit · 6 weeks</span><p>Discover → Define → Develop → Deliver with stakeholder gates. Slower, more rigorous, more defensible to Wietse and the Circle.</p></div>
-        </div>
-        <div class="seam"><b>The ask:</b> what do we want green-lit on Friday, and from whom? A little access (Intercom, analytics, demo accounts), a Maze seat, and a recurring slot — then we start Monday.</div>
+        <h2>7 · Plan &amp; the ask</h2>
+        <ul class="clean">
+          <li>Three shapes — lean / studio audit / probe sprint</li>
+          <li>Timeline — phases + stakeholder gates</li>
+          <li>Deliverables — friction inventory, blueprint, design principles, roadmap, quick wins</li>
+          <li>The ask</li>
+        </ul>
       </div>
     </section>
   </div>
