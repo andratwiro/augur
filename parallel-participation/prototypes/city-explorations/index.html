@@ -115,11 +115,10 @@
     .pv-sheet__grip { display: none; }
     .pv-sheet__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .pv-sheet__title { margin: 0; font-size: 19px; font-weight: 700; color: var(--gv-text-primary); }
-    .pv-sheet__sub { margin: 6px 0 18px; font-size: 13.5px; line-height: 1.45; color: var(--gv-text-secondary); }
     .pv-sheet__close { flex: none; width: 32px; height: 32px; margin: -4px -4px 0 0; border: 0; border-radius: 50%;
       background: var(--gv-grey-100); color: var(--gv-text-secondary); font-size: 20px; line-height: 1; cursor: pointer; }
     .pv-sheet__close:hover { background: var(--gv-grey-200); color: var(--gv-text-primary); }
-    .pv-sheet__actions { display: flex; flex-direction: column; gap: 10px; }
+    .pv-sheet__actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
     @media (max-width: 560px) {
       .pv-sheet__panel { left: 0; right: 0; bottom: 0; top: auto; width: 100%; transform: translateY(100%); opacity: 1;
         border-radius: 18px 18px 0 0; padding: 12px 18px calc(22px + env(safe-area-inset-bottom));
@@ -760,7 +759,6 @@
         '<div class="pv-sheet__grip"></div>' +
         '<div class="pv-sheet__head"><h2 class="pv-sheet__title" id="pv-sheet-title"></h2>' +
           '<button type="button" class="pv-sheet__close" data-close aria-label="Close">&times;</button></div>' +
-        '<p class="pv-sheet__sub">Choose how you’d like to take part — each method opens on the next screen.</p>' +
         '<div class="pv-sheet__actions"></div>' +
       '</div>';
     document.body.appendChild(sheetEl);
