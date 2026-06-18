@@ -1000,7 +1000,8 @@
 .gv-bo-aibar {
   display: flex; align-items: center; gap: 8px;
   background: var(--gv-teal-500); color: #fff;
-  padding: 10px 8px 10px 16px; font-size: var(--gv-fs-s); font-weight: 700;
+  /* Measured (r8-analysis-clean div.bQEqKY / p.bBeZjH): label weight is 400, not 700. */
+  padding: 10px 8px 10px 16px; font-size: var(--gv-fs-s); font-weight: 400;
 }
 .gv-bo-aibar .gv-icon { width: 18px; height: 18px; color: #fff; }
 .gv-bo-aibar--split { gap: 0; padding: 0; }
@@ -1052,8 +1053,11 @@
 /* AI insight card (a generated Summary or a Question answer). Source structure:
    header (stars/question icon + label) · body · footer (covered count + timeAgo)
    · action row (restore-filters/copy/flag/delete). */
-.gv-bo-aicard { background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); padding: 12px; margin-bottom: 12px; }
-.gv-bo-aicard__head { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--gv-bo-primary); }
+/* Measured (r8-analysis-clean div.fzykeO): insight/summary cards are borderless
+   white panels (border:none, pad 12px) — separated by the rail divider, not a 1px box.
+   Head = the AI-panel h4 idiom: 18px / 700 / bo-primary (h4.imgGNR). */
+.gv-bo-aicard { background: #fff; border-radius: var(--gv-radius); padding: 12px; margin-bottom: 12px; }
+.gv-bo-aicard__head { display: flex; align-items: center; gap: 6px; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.3; color: var(--gv-bo-primary); }
 .gv-bo-aicard__head .gv-icon { width: 18px; height: 18px; color: var(--gv-teal-500); }
 .gv-bo-aicard__body { margin: 8px 0; font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-grey-800); }
 .gv-bo-aicard__foot { display: flex; align-items: center; gap: 10px; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
@@ -1079,9 +1083,11 @@
 .gv-bo-inputview__meta { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); margin: 12px 0 4px; }
 
 /* Input-list row (the middle list of inputs/responses). Card-ish, white. */
+/* Measured (r8-analysis-clean): hover div.zeuYe = rgb(237,239,240) = canvas grey;
+   selected card div.fzykeO is plain #fff (no teal inset bar). */
 .gv-bo-inputrow { padding: 12px; border-bottom: 1px solid var(--gv-divider); cursor: pointer; }
-.gv-bo-inputrow:hover { background: var(--gv-grey-100); }
-.gv-bo-inputrow.is-active { background: var(--gv-teal-50); box-shadow: inset 3px 0 0 var(--gv-teal-500); }
+.gv-bo-inputrow:hover { background: var(--gv-bo-canvas); }
+.gv-bo-inputrow.is-active { background: #fff; }
 .gv-bo-inputrow__title { font-size: var(--gv-fs-s); color: var(--gv-grey-800); line-height: 1.4; }
 .gv-bo-inputrow__date { font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); margin-top: 4px; }
 .gv-bo-inputrow__stats { display: flex; gap: 14px; margin-top: 6px; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
@@ -1089,8 +1095,12 @@
 .gv-bo-inputrow__stats .gv-icon { width: 14px; height: 14px; }
 
 /* Demographic insight card (Authors by age/domicile carousel header).
-   The chart body is page-local SVG/bars — only the header chrome is canonical. */
-.gv-bo-democard { border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); padding: 12px; margin: 12px; background: #fff; }
+   The chart body is page-local SVG/bars — only the header chrome is canonical.
+   Measured (r8-analysis-clean): outer card div.jVblTB is BORDERLESS white (pad 12px);
+   the 1px rgb(203,203,203)/grey-400 border belongs to the inner plot box (div.bAxtpM),
+   exposed as .gv-bo-democard__plot. */
+.gv-bo-democard { border-radius: var(--gv-radius); padding: 12px; margin: 12px; background: #fff; }
+.gv-bo-democard__plot { border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius); }
 .gv-bo-democard__head { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--gv-grey-800); font-size: var(--gv-fs-s); }
 .gv-bo-democard__nav { margin-left: auto; display: flex; align-items: center; gap: 6px; color: var(--gv-cool-grey-600); }
 .gv-bo-democard__nav .gv-icon { width: 16px; height: 16px; cursor: pointer; }
