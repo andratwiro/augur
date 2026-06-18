@@ -1861,13 +1861,16 @@
        scoped under #cb-root so it never redefines a library .gv-* class.) */
     #cb-root .gv-bo-cb-canvas { transition: padding-right .12s ease; }
     #cb-root.cb-has-panel .gv-bo-cb-canvas { padding-right: 400px; }
-    /* When the 400px settings panel is open the canvas loses width; the frame is a
-       fixed 1000px so it used to overflow UNDER the panel, hiding the right half of
-       wide modules (the phases timeline, the 2-col events). Let the frame shrink to
-       the now-narrower canvas (still capped at 1000px on wide screens) so the whole
-       project page stays visible to the LEFT of the panel. Blocks already carry
-       max-width:100%, so they reflow with it. */
-    #cb-root.cb-has-panel .gv-bo-cb-frame { width: 100%; }
+    /* When the 400px settings panel is open the canvas loses width. We USED to
+       reflow the frame to width:100%, but that re-laid-out the project page into a
+       cramped narrow column — the desktop 2-col participation layout collapsed and
+       the middle canvas became unreadable. Instead keep the frame at its TRUE
+       desktop width (1000px) and ZOOM it down to fit whatever width the canvas has
+       left, so the whole page stays legible — just drawn smaller, like a fit-to-page
+       view. --cb-zoom is computed in JS (fitCanvas) from the live canvas width;
+       `zoom` (not transform) so the layout box shrinks with it: natural centering,
+       no horizontal overflow, no leftover scroll. Capped at 1 — never upscale. */
+    #cb-root .gv-bo-cb-frame { zoom: var(--cb-zoom, 1); }
 
     /* Preview mode hides editor chrome (palette + settings), removes block outlines. */
     #cb-root.cb-preview .gv-bo-cb-palette,
@@ -2798,6 +2801,7 @@
 
           <!-- ───────── PARTICIPANTS ───────── -->
           <div class="aud-sub is-active" data-aud="participants">
+            <div class="gv-bo-card">
             <div class="aud-head">
               <div class="aud-head__main">
                 <h1 class="gv-bo-pagehead">Participants</h1>
@@ -2897,6 +2901,7 @@
             </table>
 
             <nav class="gv-bo-pager" aria-label="Pagination"><button disabled><span data-gv-icon="chevron-left"></span></button><button class="is-active">1</button><button>2</button><button>3</button><span>…</span><button>8</button><button><span data-gv-icon="chevron-right"></span></button></nav>
+            </div><!-- /gv-bo-card -->
           </div>
 
           <!-- ───────── DEMOGRAPHICS (real GVChart) ───────── -->
@@ -2947,6 +2952,7 @@
 
           <!-- ───────── CUSTOM EMAILS ───────── -->
           <div class="msg-sub is-active" data-msg="custom">
+            <div class="gv-bo-card">
             <div class="aud-head">
               <div class="aud-head__main">
                 <h1 class="gv-bo-pagehead">Custom emails</h1>
@@ -2957,7 +2963,6 @@
               </div>
             </div>
 
-            <div class="gv-bo-card">
               <div class="gv-bo-listrow">
                 <div class="gv-bo-listrow__main">
                   <h3 class="gv-bo-listrow__title">📣 <a href="#">Reimagine Meridian 2030 is live — share your ideas</a></h3>
@@ -2984,9 +2989,9 @@
 
           <!-- ───────── AUTOMATED EMAILS ───────── -->
           <div class="msg-sub" data-msg="automated">
+            <div class="gv-bo-card">
             <h1 class="gv-bo-pagehead">Automated emails</h1>
             <p class="gv-bo-pagelede" style="margin:6px 0 18px">Automated emails are sent out automatically, triggered by a participant's actions. Some can be turned off; required ones cannot.</p>
-            <div class="gv-bo-card">
               <div class="gv-bo-listrow">
                 <div class="gv-bo-listrow__main">
                   <h3 class="gv-bo-listrow__title">Status change of your input</h3>
@@ -3070,6 +3075,7 @@
       <!-- ====== VIEW: 360 Input (real GoVocal NEW project tab — input overview) ====== -->
       <div id="view-input360" class="pp-phaseview" style="display:none;">
         <div class="gv-bo-section">
+          <div class="gv-bo-card">
           <div class="aud-head">
             <div class="aud-head__main">
               <h1 class="gv-bo-pagehead">360 Input <span class="gv-status-label outlined" style="vertical-align:middle">NEW</span></h1>
@@ -3087,10 +3093,10 @@
           </div>
 
           <div class="aud-stats" style="margin-top:18px">
-            <div class="gv-bo-card aud-stat"><span class="aud-stat__num">355</span><span class="aud-stat__lbl">Total inputs</span></div>
-            <div class="gv-bo-card aud-stat"><span class="aud-stat__num">214</span><span class="aud-stat__lbl">Ideas</span></div>
-            <div class="gv-bo-card aud-stat"><span class="aud-stat__num">98</span><span class="aud-stat__lbl">Comments</span></div>
-            <div class="gv-bo-card aud-stat"><span class="aud-stat__num">43</span><span class="aud-stat__lbl">Survey responses</span></div>
+            <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__num">355</span><span class="aud-stat__lbl">Total inputs</span></div>
+            <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__num">214</span><span class="aud-stat__lbl">Ideas</span></div>
+            <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__num">98</span><span class="aud-stat__lbl">Comments</span></div>
+            <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__num">43</span><span class="aud-stat__lbl">Survey responses</span></div>
           </div>
 
           <div class="aud-toolbar" style="margin-top:18px">
@@ -3148,6 +3154,7 @@
           </table>
 
           <nav class="gv-bo-pager" aria-label="Pagination"><button disabled><span data-gv-icon="chevron-left"></span></button><button class="is-active">1</button><button>2</button><button>3</button><span>…</span><button>36</button><button><span data-gv-icon="chevron-right"></span></button></nav>
+          </div><!-- /gv-bo-card -->
         </div>
       </div>
     </main>
@@ -4218,6 +4225,8 @@
     const builder = document.getElementById('view-builder');
     if (!builder || builder.classList.contains('open')) return;
     builder.classList.add('open');
+    // Frame is hidden until now → fit it once the canvas has real width.
+    if (window.fitCanvas) requestAnimationFrame(window.fitCanvas);
   }
   function closeBuilder() {
     const builder = document.getElementById('view-builder');
@@ -4565,10 +4574,34 @@
     phone.style.height = (L.h * scale + L.border * 2) + 'px';
     requestAnimationFrame(updateStickyBar);
   }
+  // ── Fit-to-canvas sizing — content builder ────────────────────────────────
+  // The builder frame is a true desktop page (1000px). When the settings panel
+  // is open it only has the canvas-minus-400px to live in, so we zoom it down to
+  // fit rather than reflow it into a cramped column. Same idea as the phone's
+  // --pz, but on the editor frame via --cb-zoom (capped at 1, never upscaled).
+  const CB_FRAME_W = 1000;    // .gv-bo-cb-frame natural width (= --gv-bo-cb-frame-w)
+  const CB_PANEL_W = 400;     // .gv-bo-cb-settings reserved width when open
+  function fitCanvas() {
+    const root   = document.getElementById('cb-root');
+    const canvas = root && root.querySelector('.gv-bo-cb-canvas');
+    if (!root || !canvas || !canvas.clientWidth) return;   // hidden → skip
+    // The panel is position:fixed (out of flow) but reserves space via the canvas's
+    // padding-right when .cb-has-panel is set — and is hidden in preview mode.
+    const hasPanel = root.classList.contains('cb-has-panel') && !root.classList.contains('cb-preview');
+    const MARGIN = 24;        // breathing room each side of the frame
+    // clientWidth is the canvas's flex width (stable — padding doesn't change it),
+    // so this is transition-proof: we derive the reserve from the class, not the
+    // mid-animation computed padding.
+    const avail = canvas.clientWidth - (hasPanel ? CB_PANEL_W : 0) - MARGIN * 2;
+    const scale = Math.min(1, Math.max(0.2, avail / CB_FRAME_W));
+    root.style.setProperty('--cb-zoom', scale.toFixed(4));
+  }
+  window.fitCanvas = fitCanvas;
+
   let _fitRaf;
   window.addEventListener('resize', () => {
     cancelAnimationFrame(_fitRaf);
-    _fitRaf = requestAnimationFrame(fitPreview);
+    _fitRaf = requestAnimationFrame(() => { fitPreview(); fitCanvas(); });
   });
 
   // Frame switcher: swaps the artboard (Phone ↔ Window) then re-fits it to the
@@ -5715,12 +5748,14 @@
       if (selected) selected.classList.remove('is-selected');
       selected = null;
       root.classList.remove('cb-has-panel');
+      if (window.fitCanvas) window.fitCanvas();   // panel closed → canvas regains width
     }
     function select(block) {
       if (selected) selected.classList.remove('is-selected');
       selected = block;
       block.classList.add('is-selected');
       root.classList.add('cb-has-panel');
+      if (window.fitCanvas) window.fitCanvas();    // panel opened → zoom frame to fit
       var widget = block.getAttribute('data-widget');
       var label  = block.getAttribute('data-label') || (WIDGETS[widget] && WIDGETS[widget].label) || 'Block';
       sTitle.textContent = label;
@@ -6319,6 +6354,7 @@
     document.getElementById('e2e-preview-toggle').addEventListener('change', function () {
       root.classList.toggle('cb-preview', this.checked);
       if (this.checked) deselect();
+      if (window.fitCanvas) window.fitCanvas();   // preview drops the panel → re-fit
       toast(this.checked ? 'Preview mode' : 'Editing mode');
     });
 
