@@ -718,10 +718,13 @@
 
 /* ── Left palette rail ───────────────────────────────────────────────────────
    Vertical white rail of draggable widgets, grouped into sections divided by a
-   1px #E0E0E0 top border (measured .fuAcZc). Item = 235×48, navy #044D6C icon,
-   #333 label. Rail width inferred from the 235px item + side gutter (not probed). */
+   1px #E0E0E0 top border (measured .fuAcZc). Navy #044D6C icon, #333 label.
+   Rail ≈232px (matched against the live description-builder — the real rail is
+   tighter than the 268px we'd first inferred; the narrower rail hands those
+   pixels back to the centre canvas). Item width tracks the rail minus the 16px
+   side gutters. */
 .gv-bo-cb-palette {
-  flex: none; width: 268px; box-sizing: border-box;
+  flex: none; width: 232px; box-sizing: border-box;
   background: var(--gv-white); border-right: 1px solid var(--gv-grey-300);
   padding: 0 16px; overflow-y: auto;
 }
@@ -729,7 +732,7 @@
 .gv-bo-cb-palette__group:first-child { border-top: 0; padding-top: 16px; }
 .gv-bo-cb-item {
   display: flex; align-items: center; gap: 12px;
-  width: 235px; height: 48px;
+  width: 200px; height: 48px;
   color: var(--gv-blue-500); font-family: var(--gv-font-family);
   font-size: var(--gv-fs-s); font-weight: 400; line-height: 19.999px;
   cursor: grab; user-select: none;
