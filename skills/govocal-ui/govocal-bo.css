@@ -576,9 +576,14 @@
 .gv-bo-filterrail__item.is-active { background: var(--gv-teal-75); font-weight: 600; }
 .gv-bo-filterrail__count { flex: none; color: var(--gv-text-secondary); font-size: 13px; }
 
-/* AI callout banner — same teal callout as .gv-bo-banner but with a trailing CTA
-   pushed to the right (Open AI analysis →). */
-.gv-bo-banner--ai { align-items: center; }
+/* AI / sensemaking callout banner — same teal-100 callout as .gv-bo-banner but
+   sized to the real product (measured bo-sensemaking-inputmgr): a 30px teal-500
+   sparkle, 16px body text, pad 8px 16px, with a trailing "Open AI analysis →" CTA
+   pushed to the right. The base .gv-bo-banner keeps its 14px/18px-icon sizing for
+   the generic-notice consumers; this variant overrides only what the AI banner needs. */
+.gv-bo-banner--ai { align-items: center; padding: 8px 16px; }
+.gv-bo-banner--ai .gv-icon { width: 30px; height: 30px; margin-top: 0; color: var(--gv-teal-500); }
+.gv-bo-banner--ai > div { font-size: var(--gv-fs-base); color: var(--gv-grey-800); }
 .gv-bo-banner--ai .gv-bo-banner__cta { margin-left: auto; flex: none; font-weight: 700; white-space: nowrap; }
 
 /* Section header row: title on the left, primary actions on the right. */
@@ -965,3 +970,124 @@
 .gv-bo-facetgroup__chev { flex: none; width: 16px; height: 16px; transition: transform .15s ease; }
 .gv-bo-facetgroup__head[aria-expanded="true"] .gv-bo-facetgroup__chev { transform: rotate(180deg); }
 .gv-bo-facetgroup__body { padding: 0 0 14px; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   AI ANALYSIS / SENSEMAKING workspace  (Input manager → "Open AI analysis")
+   The full-screen four-column sensemaking surface. Measured live:
+   bo-auto-insights-clean / bo-sensemaking-banner (Wonderville, epic tenant).
+   Source: citizenlab front/app/.../analysis/. Columns:
+     Tags rail (≈300px) · InputsList · InputPreview · Insights (right rail).
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Shell: the top bar + the 4-column row, on the BO canvas. */
+.gv-bo-analysis { display: flex; flex-direction: column; height: 100%; background: var(--gv-bo-canvas); }
+.gv-bo-analysis__top {
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 16px; background: #fff; border-bottom: 1px solid var(--gv-divider);
+}
+.gv-bo-analysis__back { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-bo-link); font-size: var(--gv-fs-s); }
+.gv-bo-analysis__title { font-size: var(--gv-fs-s); color: var(--gv-grey-800); line-height: 1.2; }
+.gv-bo-analysis__title b { display: block; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-bo-primary); }
+.gv-bo-analysis__topactions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.gv-bo-analysis__cols { display: grid; grid-template-columns: 300px 1.1fr 1.3fr 1.1fr; flex: 1; min-height: 0; }
+.gv-bo-analysis__col { min-width: 0; overflow: auto; border-right: 1px solid var(--gv-divider); }
+.gv-bo-analysis__col:last-child { border-right: 0; }
+.gv-bo-analysis__col--white { background: #fff; }
+
+/* AI action header bar — the teal-500 band that caps a column (Auto-tag rail
+   header; Summarize / Ask-a-question header). Measured div.bQEqKY:
+   bg teal-500, white text, pad 10px 8px 10px 16px. */
+.gv-bo-aibar {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--gv-teal-500); color: #fff;
+  padding: 10px 8px 10px 16px; font-size: var(--gv-fs-s); font-weight: 700;
+}
+.gv-bo-aibar .gv-icon { width: 18px; height: 18px; color: #fff; }
+.gv-bo-aibar--split { gap: 0; padding: 0; }
+.gv-bo-aibar--split > .gv-bo-aibar__cell {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 8px; color: #fff;
+}
+.gv-bo-aibar--split > .gv-bo-aibar__cell + .gv-bo-aibar__cell { border-left: 1px solid rgba(255,255,255,.25); }
+
+/* Tag rail — list of tags + counts; link-blue rows, active = rgba(0,0,0,.7)
+   (the sidebar-active idiom). Measured a.dnzbNv. */
+.gv-bo-tagrail { padding: 8px 0; }
+.gv-bo-tagrail__item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 8px 10px 16px; color: var(--gv-bo-link);
+  font-size: var(--gv-fs-s); border-radius: var(--gv-radius); cursor: pointer;
+}
+.gv-bo-tagrail__item:hover { background: var(--gv-grey-100); }
+.gv-bo-tagrail__item.is-active { background: rgba(0,0,0,.7); color: #fff; }
+.gv-bo-tagrail__count { margin-left: auto; font-variant-numeric: tabular-nums; }
+.gv-bo-tagrail__add { display: flex; gap: 8px; padding: 8px 12px; }
+.gv-bo-tagrail__add .gv-input { flex: 1; }
+.gv-bo-tagrail__help { padding: 12px 16px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); line-height: 1.45; }
+
+/* Auto-tag chip — computer-derived tag. Warm amber. Measured div.eMnFXQ:
+   bg amber-100, 1px amber-500, 3px, pad 4px 12px. */
+.gv-bo-autotag {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--gv-amber-100); border: 1px solid var(--gv-amber-500);
+  border-radius: var(--gv-radius); padding: 4px 12px;
+  font-size: var(--gv-fs-s); color: var(--gv-grey-800);
+}
+
+/* Notices in the AI panels (measured):
+   .is-locked  = auto-insights gate, teal-100  (gZsBWS, pad 14px)
+   .is-warn    = AI disclaimer,     orange-100 (ksJZlI, pad 8px) */
+.gv-bo-ainotice {
+  display: flex; align-items: flex-start; gap: 8px;
+  border-radius: var(--gv-radius); font-size: var(--gv-fs-s); line-height: 1.45; color: var(--gv-grey-800);
+}
+.gv-bo-ainotice .gv-icon { flex: none; width: 18px; height: 18px; margin-top: 1px; }
+.gv-bo-ainotice.is-locked { background: var(--gv-teal-100); padding: 14px; }
+.gv-bo-ainotice.is-warn { background: var(--gv-orange-100); padding: 8px; }
+.gv-bo-ainotice.is-warn .gv-icon { color: var(--gv-orange-500); }
+
+/* AI insight card (a generated Summary or a Question answer). Source structure:
+   header (stars/question icon + label) · body · footer (covered count + timeAgo)
+   · action row (restore-filters/copy/flag/delete). */
+.gv-bo-aicard { background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); padding: 12px; margin-bottom: 12px; }
+.gv-bo-aicard__head { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--gv-bo-primary); }
+.gv-bo-aicard__head .gv-icon { width: 18px; height: 18px; color: var(--gv-teal-500); }
+.gv-bo-aicard__body { margin: 8px 0; font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-grey-800); }
+.gv-bo-aicard__foot { display: flex; align-items: center; gap: 10px; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+.gv-bo-aicard__actions { display: flex; gap: 4px; margin-top: 8px; }
+
+/* Empty summary panel — dashed-feel grey-400 box. Measured div.bAxtpM:
+   1px solid #CBCBCB (grey-400), 3px, pad 16px 8px. */
+.gv-bo-aiempty {
+  border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius);
+  padding: 16px 8px; text-align: center;
+  font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-cool-grey-600);
+}
+
+/* Insights right-rail wrapper (white col body, with internal padding). */
+.gv-bo-airail { padding: 12px; }
+.gv-bo-airail__count { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: var(--gv-fs-s); color: var(--gv-grey-800); }
+
+/* Input-preview detail column. */
+.gv-bo-inputview { padding: 16px 20px; }
+.gv-bo-inputview__author { display: flex; align-items: center; gap: 8px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); }
+.gv-bo-inputview__avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.gv-bo-inputview__title { margin: 12px 0 8px; font-size: var(--gv-fs-l); font-weight: 700; color: var(--gv-grey-800); }
+.gv-bo-inputview__meta { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); margin: 12px 0 4px; }
+
+/* Input-list row (the middle list of inputs/responses). Card-ish, white. */
+.gv-bo-inputrow { padding: 12px; border-bottom: 1px solid var(--gv-divider); cursor: pointer; }
+.gv-bo-inputrow:hover { background: var(--gv-grey-100); }
+.gv-bo-inputrow.is-active { background: var(--gv-teal-50); box-shadow: inset 3px 0 0 var(--gv-teal-500); }
+.gv-bo-inputrow__title { font-size: var(--gv-fs-s); color: var(--gv-grey-800); line-height: 1.4; }
+.gv-bo-inputrow__date { font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); margin-top: 4px; }
+.gv-bo-inputrow__stats { display: flex; gap: 14px; margin-top: 6px; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+.gv-bo-inputrow__stats span { display: inline-flex; align-items: center; gap: 4px; }
+.gv-bo-inputrow__stats .gv-icon { width: 14px; height: 14px; }
+
+/* Demographic insight card (Authors by age/domicile carousel header).
+   The chart body is page-local SVG/bars — only the header chrome is canonical. */
+.gv-bo-democard { border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); padding: 12px; margin: 12px; background: #fff; }
+.gv-bo-democard__head { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--gv-grey-800); font-size: var(--gv-fs-s); }
+.gv-bo-democard__nav { margin-left: auto; display: flex; align-items: center; gap: 6px; color: var(--gv-cool-grey-600); }
+.gv-bo-democard__nav .gv-icon { width: 16px; height: 16px; cursor: pointer; }

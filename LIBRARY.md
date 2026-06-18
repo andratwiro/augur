@@ -69,6 +69,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Attachment** | `/components/attachment/` | `components/attachment/` | The Content-Builder "file attachment" widget — a downloadable-file row on a custom / info page (terms / about / archive). Source-grounded on St Louis ( stlouis… |
 | **Avatar Overflow Bubble** | `/components/avatar-overflow-bubble/` | `components/avatar-overflow-bubble/` | The participant-overflow count rendered AS a solid cool-grey circle capping the avatar overlap stack — grounded on Falkirk, the same treatment seen on Linz / S… |
 | **Banner** | `/components/banner/` | `components/banner/` | Image-only project hero: a full-width teal gradient art panel (1150×300) with an optional rotated campaign sticker. Drop an illustration <svg> inside __art . |
+| **Bo Analysis** | `/components/bo-analysis/` | `components/bo-analysis/` | BO AI Analysis (sensemaking) — component demo |
 | **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
 | **Bo Menu** | `/components/bo-menu/` | `components/bo-menu/` | One canonical dropdown surface — .gv-bo-menu — shared by the Input-manager Exports menu and the bell Notification flyout (the product uses the same <Dropdown>… |
 | **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
@@ -114,6 +115,7 @@ as a starting point for a prototype.
 
 | Page | Open | Source | What it is |
 |---|---|---|---|
+| **Bo Analysis** | `/pages/bo-analysis/` | `pages/bo-analysis/` | AI Analysis (sensemaking) — GoVocal back office (reference) |
 | **Bo Community Monitor** | `/pages/bo-community-monitor/` | `pages/bo-community-monitor/` | Community monitor — GoVocal back office (reference) |
 | **Bo Content Builder** | `/pages/bo-content-builder/` | `pages/bo-content-builder/` | Content builder — GoVocal back office (reference) |
 | **Bo Dashboard** | `/pages/bo-dashboard/` | `pages/bo-dashboard/` | Dashboard — GoVocal back office (reference) |
@@ -152,11 +154,13 @@ and reuse patterns. Prototypes are free to diverge from the library.
 
 | Prototype | Opportunity | Source | What it is |
 |---|---|---|---|
-| **Department Spaces** | Departments | `departments/prototypes/department-spaces/` | Hello-world placeholder for the Department Spaces prototype. |
-| **Sms Verification** | Departments | `departments/prototypes/sms-verification/` | Hello-world placeholder for the SMS Verification prototype. |
-| **Parallel Editor Builder** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder/` | Parallel Participation — Project editor + content builder |
+| **Department Spaces** | Departments | `departments/prototypes/department-spaces/` | Department spaces — GoVocal back office (prototype) |
+| **City Explorations** | Parallel Participation | `parallel-participation/prototypes/city-explorations/` | City explorations — Project front-office views |
+| **Parallel Editor Builder V1** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder-v1/` | Parallel Participation — Project editor + content builder (v1) |
+| **Parallel Editor Builder V2** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder-v2/` | Parallel Participation — Project editor + content builder (v2) |
 | **Access Rights Explorations** | Sms Verification | `sms-verification/prototypes/access-rights-explorations/` | Tap any underlined word. These rules cover everything — then add exceptions below if you need them. |
 | **Access Rights Explorations V2** | Sms Verification | `sms-verification/prototypes/access-rights-explorations-v2/` | Access Rights Explorations v2 — five product-grounded takes |
+| **Access Rights Simple** | Sms Verification | `sms-verification/prototypes/access-rights-simple/` | Phase access, made simple — GoVocal (prototype) |
 | **Hello World** | Sms Verification | `sms-verification/prototypes/hello-world/` | Scaffold placeholder for the SMS Verification opportunity. |
 | **Phase Access Inspector** | Sms Verification | `sms-verification/prototypes/phase-access-inspector/` | Phase access & user data — Properties inspector (GoVocal back office) |
 | **Phase Access Permissions** | Sms Verification | `sms-verification/prototypes/phase-access-permissions/` | Project configuration — GoVocal back office (reference) |

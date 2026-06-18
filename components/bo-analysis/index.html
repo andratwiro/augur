@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>BO AI Analysis (sensemaking) — component demo</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    body { margin: 0; padding: 32px; background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
+    .demo { max-width: 360px; display: grid; gap: 24px; }
+    h3 { font: 700 13px/1 var(--gv-font-family); color: var(--gv-cool-grey-600); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+    .panel { background: #fff; border: 1px solid var(--gv-divider); border-radius: 3px; overflow: hidden; }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="demo">
+
+    <section>
+      <h3>Sensemaking banner (Input manager)</h3>
+      <div class="gv-bo-banner gv-bo-banner--ai">
+        <span class="gv-icon" data-gv-icon="stars"></span>
+        <div>Explore AI-powered summaries and view individual submissions.</div>
+        <a class="gv-bo-banner__cta" href="#">Open AI analysis &rarr;</a>
+      </div>
+    </section>
+
+    <section>
+      <h3>AI action bar + split header</h3>
+      <div class="panel" style="margin-bottom:12px"><div class="gv-bo-aibar"><span class="gv-icon" data-gv-icon="stars"></span> Auto-tag</div></div>
+      <div class="panel">
+        <div class="gv-bo-aibar gv-bo-aibar--split">
+          <button class="gv-bo-aibar__cell"><span class="gv-icon" data-gv-icon="stars"></span> Summarize</button>
+          <button class="gv-bo-aibar__cell"><span class="gv-icon" data-gv-icon="question-bubble"></span> Ask a question</button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h3>Tag rail + auto-tag chips</h3>
+      <div class="panel">
+        <nav class="gv-bo-tagrail">
+          <a class="gv-bo-tagrail__item is-active">All inputs <span class="gv-bo-tagrail__count">6</span></a>
+          <a class="gv-bo-tagrail__item">Inputs without tags <span class="gv-bo-tagrail__count">6</span></a>
+          <a class="gv-bo-tagrail__item"><span class="gv-bo-autotag">Example tag 1</span> <span class="gv-bo-tagrail__count">0</span></a>
+        </nav>
+      </div>
+    </section>
+
+    <section>
+      <h3>AI notices</h3>
+      <div class="gv-bo-ainotice is-locked" style="margin-bottom:12px"><span class="gv-icon" data-gv-icon="info-outline"></span> Auto insights are not available for projects with less than 30 participants.</div>
+      <div class="gv-bo-ainotice is-warn"><span class="gv-icon" data-gv-icon="alert-circle"></span> AI can make mistakes. Please verify important information.</div>
+    </section>
+
+    <section>
+      <h3>AI insight card (generated summary)</h3>
+      <div class="gv-bo-aicard">
+        <div class="gv-bo-aicard__head"><span class="gv-icon" data-gv-icon="stars"></span> AI summary</div>
+        <div class="gv-bo-aicard__body">Residents broadly support more bike lanes near the park, with recurring concern about evening lighting and pedestrian crossings on the east entrance.</div>
+        <div class="gv-bo-aicard__foot"><span>18 / 24 inputs</span><span>generated 2 hours ago</span></div>
+        <div class="gv-bo-aicard__actions">
+          <button class="gv-iconbtn" aria-label="Restore filters"><span class="gv-icon" data-gv-icon="filter-2"></span></button>
+          <button class="gv-iconbtn" aria-label="Copy"><span class="gv-icon" data-gv-icon="copy"></span></button>
+          <button class="gv-iconbtn" aria-label="Rate"><span class="gv-icon" data-gv-icon="flag"></span></button>
+          <button class="gv-iconbtn" aria-label="Delete"><span class="gv-icon" data-gv-icon="delete"></span></button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h3>Empty summary panel</h3>
+      <div class="gv-bo-aiempty">Your text summaries will be displayed here, but you currently do not have any yet.<br><br>Click the Auto-summarize button above to get started.</div>
+    </section>
+
+  </div>
+  <script>document.addEventListener('DOMContentLoaded', () => window.GVIcons && GVIcons.render(document));</script>
+</body>
+</html>

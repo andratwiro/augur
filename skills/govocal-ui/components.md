@@ -1954,6 +1954,55 @@ accordion-head,intro-p}` (the structural type-scale; St Louis additionally confi
 
 ---
 
+## Back-office AI Analysis / sensemaking — `.gv-bo-aibar` / `.gv-bo-tagrail` / `.gv-bo-autotag` / `.gv-bo-aicard` / `.gv-bo-ainotice` (`components/bo-analysis/`, page `pages/bo-analysis/`)
+
+The staff **sensemaking** surface. Two parts: (1) the **Sensemaking banner** on the
+Input manager (`.gv-bo-banner--ai`, teal-100 callout: 30px sparkle + text + "Open AI
+analysis →"), and (2) the full-screen **AI Analysis** workspace it opens — a four-column
+layout (Tags rail ≈300px · Inputs list · Input preview · Insights). Source-grounded on
+`citizenlab front/app/.../analysis/`; values measured live (`bo-analysis-probed`,
+`bo-sensemaking-banner`, epic/Wonderville tenant). All under `.gv-bo`.
+
+Key atoms (canonical `.gv-bo-*` in `govocal-bo.css`, verified green):
+- **`.gv-bo-aibar`** — teal-500 (#147985) column header, white 14/700; **`--split`** = two
+  centred cells with a faint divider (Summarize / Ask a question).
+- **`.gv-bo-tagrail`** + `__item`(`.is-active` = `rgba(0,0,0,.7)` fill, the sidebar idiom)
+  `__count` `__add` `__help` — the link-blue (#4183C4) tag list.
+- **`.gv-bo-autotag`** — computer-derived tag chip: amber-100 fill / amber-500 border
+  (new tokens `--gv-amber-100 #F2E6D0` / `--gv-amber-500 #D49210`).
+- **`.gv-bo-ainotice`** — `.is-locked` (teal-100, auto-insights <30-participant gate) /
+  `.is-warn` (orange-100 AI disclaimer).
+- **`.gv-bo-aicard`** (`__head`/`__body`/`__foot`/`__actions`) — a generated Summary or
+  Question answer: `stars`/`question-bubble` icon + label, body, `{covered}/{total}` +
+  timeAgo footer, restore-filters/copy/flag/delete action row.
+- **`.gv-bo-aiempty`** — dashed-feel grey-400 empty-summary panel.
+- Plus `.gv-bo-inputrow` (analysis input-list row), `.gv-bo-inputview` (detail column),
+  `.gv-bo-democard` (Authors-by-age/domicile carousel header). New icons: `question-bubble`,
+  `copy`, `filter-2` (the sparkle = existing `stars`).
+
+```html
+<!-- Sensemaking banner (Input manager) -->
+<div class="gv-bo-banner gv-bo-banner--ai">
+  <span class="gv-icon" data-gv-icon="stars"></span>
+  <div>Explore AI-powered summaries and view individual submissions.</div>
+  <a class="gv-bo-banner__cta" href="#">Open AI analysis &rarr;</a>
+</div>
+
+<!-- Insights panel header + disclaimer + generated summary card -->
+<div class="gv-bo-aibar gv-bo-aibar--split">
+  <button class="gv-bo-aibar__cell"><span class="gv-icon" data-gv-icon="stars"></span> Summarize</button>
+  <button class="gv-bo-aibar__cell"><span class="gv-icon" data-gv-icon="question-bubble"></span> Ask a question</button>
+</div>
+<div class="gv-bo-ainotice is-warn"><span class="gv-icon" data-gv-icon="alert-circle"></span> AI can make mistakes. Please verify important information.</div>
+<div class="gv-bo-aicard">
+  <div class="gv-bo-aicard__head"><span class="gv-icon" data-gv-icon="stars"></span> AI summary</div>
+  <div class="gv-bo-aicard__body">…the generated summary text…</div>
+  <div class="gv-bo-aicard__foot"><span>18 / 24 inputs</span><span>generated 2 hours ago</span></div>
+</div>
+```
+
+---
+
 ## City theming (`govocal-themes.js`)
 
 The product themes **primary, secondary, text colours + a custom font** per tenant

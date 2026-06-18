@@ -12,6 +12,47 @@
   },
   "checkpoints": [
     {
+      "id": "bo-sensemaking/banner",
+      "built": "govocal-exports/_verify/sensemaking-banner.html",
+      "against": "bo-sensemaking-banner",
+      "map": {
+        ".QufzX, .dohWhi p, #e2e-analysis-banner-button button": ".gv-bo-banner--ai"
+      },
+      "props": [
+        "background-color",
+        "padding",
+        "border-radius"
+      ]
+    },
+    {
+      "id": "bo-analysis/aibar",
+      "built": "govocal-exports/_verify/analysis-bits.html",
+      "against": "bo-an-aibar",
+      "map": { ".bQEqKY": ".gv-bo-aibar" },
+      "props": ["background-color", "padding"]
+    },
+    {
+      "id": "bo-analysis/autotag",
+      "built": "govocal-exports/_verify/analysis-bits.html",
+      "against": "bo-an-autotag",
+      "map": { ".eMnFXQ": ".gv-bo-autotag" },
+      "props": ["background-color", "border", "border-radius", "padding"]
+    },
+    {
+      "id": "bo-analysis/notice-warn",
+      "built": "govocal-exports/_verify/analysis-bits.html",
+      "against": "bo-an-warn",
+      "map": { ".ksJZlI": ".gv-bo-ainotice.is-warn" },
+      "props": ["background-color", "border-radius", "padding"]
+    },
+    {
+      "id": "bo-analysis/empty",
+      "built": "govocal-exports/_verify/analysis-bits.html",
+      "against": "bo-an-empty",
+      "map": { ".bAxtpM": ".gv-bo-aiempty" },
+      "props": ["border", "border-radius", "padding"]
+    },
+    {
       "id": "homepage-spotlight-padding",
       "built": "pages/homepage/index.html",
       "against": "fo-homepage",

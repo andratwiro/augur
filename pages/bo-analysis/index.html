@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>AI Analysis (sensemaking) — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    /* Page-local: layout glue + the demographic bar-chart SVG (no real-DOM
+       equivalent to tokenize — a one-off Recharts reconstruction). */
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); color: var(--gv-grey-800); }
+    .an-search { position: relative; }
+    .an-search .gv-input { padding-right: 36px; }
+    .an-search [data-gv-icon] { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--gv-cool-grey-600); width: 18px; height: 18px; }
+    /* demographic chart bars */
+    .an-chart { display: flex; align-items: flex-end; gap: 6px; height: 90px; padding: 8px 0 0; }
+    .an-chart__col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 2px; }
+    .an-chart__bar { width: 100%; border-radius: 2px 2px 0 0; }
+    .an-chart__bar.f { background: var(--gv-teal-200); }
+    .an-chart__bar.n { background: var(--gv-grey-300); }
+    .an-chart__x { font-size: 10px; color: var(--gv-cool-grey-600); margin-top: 4px; white-space: nowrap; }
+    .an-chart__tot { font-size: 10px; color: var(--gv-grey-800); }
+    .an-pageframe { padding: 0; }
+  </style>
+</head>
+<body class="gv-bo">
+
+  <div class="gv-bo-analysis">
+
+    <!-- ── Top bar ─────────────────────────────────────────────────────── -->
+    <div class="gv-bo-analysis__top">
+      <a class="gv-bo-analysis__back" href="../bo-input-manager/index.html">
+        <span class="gv-icon" data-gv-icon="arrow-left"></span> Go back
+      </a>
+      <div class="gv-bo-analysis__title">AI Analysis <b>Test project 1 timeline with file</b></div>
+      <div class="gv-bo-analysis__topactions">
+        <button class="gv-btn outlined size-s"><span class="gv-icon" data-gv-icon="filter"></span> Filters</button>
+        <div class="an-search" style="width:200px">
+          <input class="gv-input" placeholder="Search" aria-label="Search inputs" />
+          <span data-gv-icon="search" aria-hidden="true"></span>
+        </div>
+        <button class="gv-iconbtn" aria-label="View options"><span class="gv-icon" data-gv-icon="settings"></span></button>
+        <button class="gv-iconbtn" aria-label="About AI analysis"><span class="gv-icon" data-gv-icon="info-outline"></span></button>
+      </div>
+    </div>
+
+    <!-- ── Four columns ────────────────────────────────────────────────── -->
+    <div class="gv-bo-analysis__cols">
+
+      <!-- Column 1 · Tags rail -->
+      <div class="gv-bo-analysis__col gv-bo-analysis__col--white">
+        <div class="gv-bo-aibar"><span class="gv-icon" data-gv-icon="stars"></span> Auto-tag</div>
+        <div class="gv-bo-tagrail__add">
+          <input class="gv-input" placeholder="Add tag" aria-label="Add a tag" />
+          <button class="gv-btn admin-dark size-s" aria-label="Add tag"><span class="gv-icon" data-gv-icon="plus-circle"></span></button>
+        </div>
+        <nav class="gv-bo-tagrail" aria-label="Tags">
+          <a class="gv-bo-tagrail__item is-active">All inputs <span class="gv-bo-tagrail__count">6</span></a>
+          <a class="gv-bo-tagrail__item">Inputs without tags <span class="gv-bo-tagrail__count">6</span></a>
+          <a class="gv-bo-tagrail__item"><span class="gv-bo-autotag">Example tag 1</span> <span class="gv-bo-tagrail__count">0</span></a>
+          <a class="gv-bo-tagrail__item"><span class="gv-bo-autotag">Example tag 2</span> <span class="gv-bo-tagrail__count">0</span></a>
+        </nav>
+        <p class="gv-bo-tagrail__help">Use tags to subdivide and filter the inputs, in order to make more accurate or targeted summaries.</p>
+      </div>
+
+      <!-- Column 2 · Demographic insights + inputs list -->
+      <div class="gv-bo-analysis__col">
+        <div class="gv-bo-democard">
+          <div class="gv-bo-democard__head">
+            Authors by age
+            <div class="gv-bo-democard__nav">
+              <span class="gv-icon" data-gv-icon="chevron-left" role="button" aria-label="Previous graph"></span>
+              1/2
+              <span class="gv-icon" data-gv-icon="chevron-right" role="button" aria-label="Next graph"></span>
+            </div>
+          </div>
+          <div class="an-chart" role="img" aria-label="Bar chart of authors by age">
+            <div class="an-chart__col"><span class="an-chart__tot">2</span><div class="an-chart__bar f" style="height:22px"></div><div class="an-chart__bar n" style="height:6px"></div><span class="an-chart__x">20-29</span></div>
+            <div class="an-chart__col"><span class="an-chart__tot">3</span><div class="an-chart__bar f" style="height:30px"></div><div class="an-chart__bar n" style="height:10px"></div><span class="an-chart__x">30-39</span></div>
+            <div class="an-chart__col"><span class="an-chart__tot">1</span><div class="an-chart__bar f" style="height:12px"></div><span class="an-chart__x">40-49</span></div>
+            <div class="an-chart__col"><span class="an-chart__tot">0</span><div class="an-chart__bar n" style="height:4px"></div><span class="an-chart__x">50-59</span></div>
+            <div class="an-chart__col"><span class="an-chart__tot">0</span><div class="an-chart__bar n" style="height:4px"></div><span class="an-chart__x">?</span></div>
+          </div>
+        </div>
+
+        <div class="gv-bo-ainotice is-locked" style="margin:0 12px 12px">
+          <span class="gv-icon" data-gv-icon="info-outline"></span>
+          Auto insights are not available for projects with less than 30 participants.
+        </div>
+
+        <div>
+          <div class="gv-bo-inputrow is-active">
+            <div class="gv-bo-inputrow__title">Facere autem molestias consequuntur inventore.</div>
+            <div class="gv-bo-inputrow__date">9/12/2017</div>
+            <div class="gv-bo-inputrow__stats">
+              <span><span class="gv-icon" data-gv-icon="comments"></span> 6</span>
+              <span><span class="gv-icon" data-gv-icon="vote-up"></span> 1</span>
+              <span><span class="gv-icon" data-gv-icon="vote-down"></span> 0</span>
+            </div>
+          </div>
+          <div class="gv-bo-inputrow">
+            <div class="gv-bo-inputrow__title">Velit in quas nihil et sapiente omnis.</div>
+            <div class="gv-bo-inputrow__date">11/10/2017</div>
+            <div class="gv-bo-inputrow__stats">
+              <span><span class="gv-icon" data-gv-icon="comments"></span> 10</span>
+              <span><span class="gv-icon" data-gv-icon="vote-up"></span> 3</span>
+              <span><span class="gv-icon" data-gv-icon="vote-down"></span> 0</span>
+            </div>
+          </div>
+          <div class="gv-bo-inputrow">
+            <div class="gv-bo-inputrow__title">Accusantium blanditiis dolor voluptas ratione odit iusto.</div>
+            <div class="gv-bo-inputrow__date">12/30/2017</div>
+            <div class="gv-bo-inputrow__stats">
+              <span><span class="gv-icon" data-gv-icon="comments"></span> 11</span>
+              <span><span class="gv-icon" data-gv-icon="vote-up"></span> 4</span>
+              <span><span class="gv-icon" data-gv-icon="vote-down"></span> 0</span>
+            </div>
+          </div>
+          <div class="gv-bo-inputrow">
+            <div class="gv-bo-inputrow__title">Illum qui eum sunt perferendis qui optio.</div>
+            <div class="gv-bo-inputrow__date">2/18/2018</div>
+            <div class="gv-bo-inputrow__stats">
+              <span><span class="gv-icon" data-gv-icon="comments"></span> 10</span>
+              <span><span class="gv-icon" data-gv-icon="vote-up"></span> 3</span>
+              <span><span class="gv-icon" data-gv-icon="vote-down"></span> 0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 3 · Input preview / detail -->
+      <div class="gv-bo-analysis__col gv-bo-analysis__col--white">
+        <div class="gv-bo-inputview">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="gv-bo-inputview__author">
+              <span class="gv-icon" data-gv-icon="user" style="width:32px;height:32px"></span>
+              Sylvester Kalinoski
+            </div>
+            <button class="gv-btn outlined size-s" style="margin-left:auto"><span class="gv-icon" data-gv-icon="settings"></span> Manage input</button>
+          </div>
+          <h2 class="gv-bo-inputview__title">Facere autem molestias consequuntur inventore.</h2>
+          <p style="font-size:var(--gv-fs-s);line-height:1.6;color:var(--gv-grey-800)">Laudantium optio dolorem expedita libero illum ut nobis. Amet quidem omnis sunt totam autem eius. Odio repellat dignissimos velit illo consequatur. Minus fugiat rem velit eligendi eius culpa excepturi. Similique facere quod.</p>
+          <p style="font-size:var(--gv-fs-s);line-height:1.6;color:var(--gv-grey-800)">Omnis necessitatibus et. Quis ipsam incidunt ducimus magnam voluptatem. Eos aut saepe perferendis minus sequi. Hic qui asperiores laborum.</p>
+          <div class="gv-bo-inputview__meta">Location</div>
+          <div style="font-size:var(--gv-fs-s)">224 Raynor Coves</div>
+          <div class="gv-bo-tags" style="margin-top:14px">
+            <span class="gv-bo-autotag">Example tag 1 <span class="gv-icon" data-gv-icon="close" style="width:12px;height:12px"></span></span>
+            <span class="gv-bo-autotag">Example tag 2 <span class="gv-icon" data-gv-icon="close" style="width:12px;height:12px"></span></span>
+          </div>
+          <div class="gv-bo-inputview__meta" style="display:flex;align-items:center;gap:10px">
+            Comments (5)
+            <button class="gv-btn text size-s" style="margin-left:auto"><span class="gv-icon" data-gv-icon="stars"></span> Summarize comments</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 4 · Insights / AI summary panel -->
+      <div class="gv-bo-analysis__col gv-bo-analysis__col--white">
+        <div class="gv-bo-aibar gv-bo-aibar--split">
+          <button class="gv-bo-aibar__cell" type="button"><span class="gv-icon" data-gv-icon="stars"></span> Summarize</button>
+          <button class="gv-bo-aibar__cell" type="button"><span class="gv-icon" data-gv-icon="question-bubble"></span> Ask a question</button>
+        </div>
+        <div class="gv-bo-airail">
+          <div class="gv-bo-ainotice is-warn">
+            <span class="gv-icon" data-gv-icon="alert-circle"></span>
+            AI can make mistakes. Please verify important information.
+          </div>
+          <div class="gv-bo-airail__count">
+            6 / 6 inputs selected
+            <button class="gv-btn text size-s" style="margin-left:auto"><span class="gv-icon" data-gv-icon="paperclip"></span> Attach files (0)</button>
+          </div>
+          <div class="gv-bo-aiempty">
+            Your text summaries will be displayed here, but you currently do not have any yet.<br><br>
+            Click the Auto-summarize button above to get started.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>document.addEventListener('DOMContentLoaded', () => window.GVIcons && GVIcons.render(document));</script>
+</body>
+</html>

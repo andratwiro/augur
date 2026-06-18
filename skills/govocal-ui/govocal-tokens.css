@@ -66,6 +66,12 @@
   --gv-orange-100: #FFECE6;
   --gv-orange-500: #FF672F;
 
+  /* ── Amber ────────────────────────────────────────────────────────────── */
+  /* AI auto-tag chips in the Analysis view (computer-derived tags): warm tan
+     fill + amber border. Measured bo-auto-insights-clean (div.eMnFXQ). */
+  --gv-amber-100: #F2E6D0; /* auto-tag chip fill */
+  --gv-amber-500: #D49210; /* auto-tag chip border */
+
   /* ── Other ────────────────────────────────────────────────────────────── */
   --gv-brown: #8C680D;
 
