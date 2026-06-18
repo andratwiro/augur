@@ -1006,8 +1006,11 @@
 .gv-bo-aibar--split { gap: 0; padding: 0; }
 .gv-bo-aibar--split > .gv-bo-aibar__cell {
   flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 12px 8px; color: #fff;
+  padding: 12px 8px; color: #fff; font-weight: 700; font-size: var(--gv-fs-s);
+  background: transparent; border: 0; cursor: pointer; font-family: inherit;
 }
+.gv-bo-aibar--split > .gv-bo-aibar__cell .gv-icon { color: #fff; width: 18px; height: 18px; }
+.gv-bo-aibar--split > .gv-bo-aibar__cell:hover { background: rgba(0,0,0,.12); }
 .gv-bo-aibar--split > .gv-bo-aibar__cell + .gv-bo-aibar__cell { border-left: 1px solid rgba(255,255,255,.25); }
 
 /* Tag rail — list of tags + counts; link-blue rows, active = rgba(0,0,0,.7)
