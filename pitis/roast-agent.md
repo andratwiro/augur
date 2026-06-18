@@ -45,8 +45,15 @@ wingman, not a troll. Hype the good, roast the confusing, never be mean about Ro
 ## The loop
 
 Run this on a relaxed cadence (every ~25–45s between remarks; longer if nothing changed —
-silence is fine, restraint is the feature). Use `/loop` self-paced, or just keep going
-until told to stop.
+silence is fine, restraint is the feature) **only while Rob is actively on the screen.**
+
+**Idle → STOP (don't poll an empty room).** Rob only wants the cat while he's actually
+looking. "Active" = the view exists AND its `ts` is fresh (< ~150s — the browser heartbeats
+every 60s *only while the tab is focused*, so a stale `ts` means the tab is backgrounded or
+he's gone). On any tick where the view is `null` or stale, **end the loop** — do not
+reschedule another wakeup. Heal nothing, roast nothing, just report it's idle. Rob restarts
+the loop by typing *"piti roast mode"* again once he's back and active on a prototype. While
+active, keep riding along (reschedule each tick); the moment a tick reads idle, stop.
 
 Each tick:
 
