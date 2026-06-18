@@ -92,11 +92,35 @@ Each tick:
      "sel":".cta a"                            // preferred; OR x/y/w/h as fallback
    }
    ```
-7. **Remember what you said** (per path+screen) so you never repeat a point. Wait out the
+7. **Leave the Aslamnotation (the permanent record).** Right after the roast bubble, the
+   cat drops a lasting note at the same spot — an **always-on annotation** that survives
+   after the bubble fades and renders with the cat's avatar (it's the existing review
+   "annotation" pin; authoring as **Aslam** is what makes it an *Aslamnotation*). It reuses
+   the review API's `add` op via the secret-guarded export endpoint — **no site password,
+   no new plumbing.** Anchor it to the same `sel` so it sits on the thing you roasted:
+   ```
+   POST {REVIEW_SITE_URL}/__review/api/export?key={REVIEW_EXPORT_KEY}   (Content-Type: application/json)
+   { "path":"{the exact view.path}",
+     "op":"add",
+     "thread":{
+       "id":"piti-{a unique id}",
+       "sel":"{same selector as the roast}",
+       "fx":0.5, "fy":0.5,          // centre the pin on the element (fractions of its box)
+       "px":0, "py":0,              // page-coord fallback, only used if sel can't resolve
+       "view":"{view.path}", "screen":"{view.screen}",
+       "annotation":true,           // ← always-on; shows with review mode OFF, skipped on "resolve comments"
+       "messages":[{"author":"Aslam","body":"{the roast text}","at":"{ISO timestamp}"}]
+     } }
+   ```
+   The annotation appears on the next page load (the overlay loads threads once); the live
+   roast is the bubble, the Aslamnotation is what you find waiting there later. Keep the
+   body = the roast (or a touch fuller if a sentence of "why" helps a permanent note).
+8. **Remember what you said** (per path+screen) so you never repeat a point. Wait out the
    dwell + a gap before the next. When the screen changes, you may comment sooner.
 
 At the **start of a session**, optionally clear stale quips:
-`POST /__piti {type:"clear", key:…}`.
+`POST /__piti {type:"clear", key:…}`. (Aslamnotations persist on purpose — never bulk-clear
+them; they're the durable trail. Delete one by hand in the overlay if it's wrong.)
 
 ## The low-comprehension checklist (your lens)
 

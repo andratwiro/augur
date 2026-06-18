@@ -569,9 +569,15 @@
     requestAnimationFrame(function () { inner.classList.add("pin"); setTimeout(function () { inner.classList.remove("pin"); }, 540); });
 
     /* ---- wingman channel: publish what we're viewing, poll for remarks ---- */
+    // A "talkable" page = a prototype or a playground project. The build flattens
+    // <opportunity>/prototypes/<name>/ to /<opportunity>/<name>/ (no "/prototypes/" in
+    // the live URL), so match by SHAPE: ≥2 path segments whose first segment isn't the
+    // library / system chrome. New opportunities work automatically; the index pages
+    // (single segment) and the /pages//components/ library demos stay quiet.
+    const PITI_SKIP_ROOTS = { pages: 1, components: 1, primitives: 1, pitis: 1, skills: 1, fonts: 1, "__review": 1 };
     function isCommentable() {
-      const p = location.pathname;
-      return /\/prototypes\//.test(p) || p === "/playground" || p.indexOf("/playground/") === 0;
+      const segs = location.pathname.split("/").filter(Boolean);
+      return segs.length >= 2 && !PITI_SKIP_ROOTS[segs[0]];
     }
     let lastViewKey = "";
     function publishView(force) {
