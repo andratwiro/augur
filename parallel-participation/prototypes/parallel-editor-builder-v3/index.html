@@ -5713,9 +5713,12 @@
       var label  = block.getAttribute('data-label') || (WIDGETS[widget] && WIDGETS[widget].label) || 'Block';
       sTitle.textContent = label;
       // Extra surveys carries its own per-field language switcher (on the Button text
-      // field), so hide the panel-level one for this widget.
+      // field), so hide the panel-level one for it. The Participation Box has no
+      // translatable free-text field at all (just toggles + method checkboxes whose
+      // labels come from the methods themselves), so a locale switcher is nonsensical
+      // there too — hide it.
       var topLoc = document.getElementById('cb-settings-locales');
-      if (topLoc) topLoc.style.display = (widget === 'extra-surveys') ? 'none' : '';
+      if (topLoc) topLoc.style.display = (widget === 'extra-surveys' || widget === 'participation-box') ? 'none' : '';
       sBody.innerHTML = bodyFor(widget, block);
       if (window.GVIcons) window.GVIcons.render(panel);
       bindTextBinding(block, widget);

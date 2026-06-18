@@ -208,7 +208,7 @@ body.gv-root {
 .gv-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
 .gv-toggle .track {
   box-sizing: border-box;
-  display: inline-block; width: 48px; height: 27px;
+  display: inline-flex; align-items: center; width: 48px; height: 27px;
   padding: 3px; border-radius: 24px; background: #ccc; border: 1px solid transparent;
   transition: background-color 80ms ease-out;
 }
