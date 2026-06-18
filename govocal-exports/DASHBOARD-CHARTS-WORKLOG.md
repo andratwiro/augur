@@ -41,6 +41,19 @@ static SVG — and to do it for **ALL charts** (a long, multi-loop effort). Libr
 
 ## Iterations
 
+### Loop 9.5 — 2026-06-18 — HOTFIX: charts blank on live site (govocal-charts.js 404)
+- **User-reported:** Overview charts blank on the deployed site (titles render, no charts).
+- **Root cause:** `govocal-charts.js` was NOT in build.js `SHARED_ASSETS` (the FILE whitelist) —
+  I'd only added `vendor/` to `SHARED_ASSET_DIRS` for ApexCharts. So on the live/dist site
+  govocal-charts.js 404'd → window.GVChart undefined → every chart hit its `if(!GVChart)return`
+  guard and silently skipped. Worked locally because file:// loads it straight from skills/.
+- **Fix:** add `"govocal-charts.js"` to SHARED_ASSETS. Verified by serving `dist` over HTTP
+  (the faithful live repro, NOT file://): both scripts 200, GVChart defined, 7 Overview apex
+  svgs render. (The remaining `/__review/api` 404 is the review-overlay worker route, absent in
+  plain `serve dist` — unrelated.)
+- **LESSON for future loops:** new shared assets need a whitelist entry AND must be verified by
+  serving `dist` over HTTP, not just file://. file:// masks missing-from-dist assets.
+
 ### Loop 9 — 2026-06-18 — Convert horizontal bars → GVChart.bar (horizontal)
 - Converted all `data-chart="barsH"` cards to GVChart.bar horizontal: Participation per project
   (5), per tag (9), Users-by-geographic-area (7). Navy (#073F80) bars, value labels at bar end,

@@ -2463,6 +2463,7 @@ async function main() {
     "govocal-themes.js", "govocal-cookies.js", "govocal-icons.js",
     "govocal-avatars.js", "govocal-rail.js", "govocal-partbar.js",
     "govocal-survey.css", "govocal-survey.js", "govocal-logo.svg",
+    "govocal-charts.js",
   ];
   const sharedDir = path.join(DIST, "skills", "govocal-ui");
   await fs.mkdir(sharedDir, { recursive: true });
