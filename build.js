@@ -164,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.51";
+const UI_VERSION = "0.52";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1439,6 +1439,12 @@ const PRIMITIVES_SKIN = `${FONT_CSS}
     }
     body.gv-root > .gv-gallery { position: relative; z-index: 1; }
     body.gv-root .gv-sidenav { top: 26px; }
+    /* The inner section-nav is chrome, not a themed primitive — keep its active/hover
+       state the rail's neutral grey, never the city's tenant colour. */
+    body.gv-root .gv-sidenav a:hover { background: rgba(16,17,26,0.05); color: #0e0f12; }
+    body.gv-root .gv-sidenav a.is-active {
+      background: rgba(16,17,26,0.07); color: #0e0f12; font-weight: 600;
+    }
     body.gv-root .gv-card {
       border: 1px solid rgba(16,17,26,0.07);
       box-shadow: 0 12px 30px -18px rgba(16,24,40,0.22);
@@ -1986,6 +1992,7 @@ function renderPagesIndex(pages) {
       title: "Pages",
       subtitle: "Composed GoVocal reference pages &mdash; copy one as a starting point.",
       activeTab: "pages",
+      wrapClass: "wrap--wide",
       body: `<p class="empty">No reference pages yet. Add one under
         <code>pages/&lt;name&gt;/</code> and rebuild.</p>`,
     });
@@ -2050,6 +2057,7 @@ function renderPagesIndex(pages) {
   return shell({
     title: "Pages",
     activeTab: "pages",
+    wrapClass: "wrap--wide",
     body: `${cards}${pendingSection}${filterEmpty()}`,
   });
 }
@@ -2062,6 +2070,7 @@ function renderComponentsIndex(components) {
       title: "Components",
       subtitle,
       activeTab: "components",
+      wrapClass: "wrap--wide",
       body: `<p class="empty">No components yet. Add one under
         <code>components/&lt;name&gt;/</code> and rebuild.</p>`,
     });
@@ -2092,6 +2101,7 @@ function renderComponentsIndex(components) {
   return shell({
     title: "Components",
     activeTab: "components",
+    wrapClass: "wrap--wide",
     body: `<p class="section-eyebrow" style="margin-bottom:26px">Reusable building blocks</p><table class="comp-table">
       <thead><tr><th>Preview</th><th>Component</th><th>What it is</th></tr></thead>
       <tbody>${rows}</tbody>
