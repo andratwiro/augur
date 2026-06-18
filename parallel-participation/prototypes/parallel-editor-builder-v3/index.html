@@ -3209,8 +3209,10 @@
   #view-fo .fo-states .gv-extra-survey__desc { flex: 1 1 auto; }
   /* tag + status pill share the top row of the card */
   #view-fo .es-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  /* upcoming = neutral grey pill (canonical .gv-statuspill ships only open / expired) */
-  .gv-statuspill.upcoming { color: var(--gv-text-secondary); border: 1px solid var(--gv-grey-300); }
+  /* upcoming + closed = neutral grey pills here (canonical .gv-statuspill ships only
+     open / expired; the proposals EXPIRED red is wrong for a scheduled survey that
+     simply finished, so this demo reads "Closed" in the same calm grey as "Upcoming"). */
+  .gv-statuspill.upcoming, .gv-statuspill.closed { color: var(--gv-text-secondary); border: 1px solid var(--gv-grey-300); }
   /* meta row surfaces the survey data already in the model (responses · timing) */
   .gv-extra-survey__meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 2px 0 16px; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
   .gv-extra-survey__meta span { display: inline-flex; align-items: center; gap: 6px; }
@@ -3327,7 +3329,6 @@
           <section class="fo-states" aria-labelledby="fo-states-title">
             <div class="gv-events__head" style="display:block">
               <h2 class="gv-title h2" id="fo-states-title" style="margin:0">Extra survey — three states</h2>
-              <p class="fo-states__sub">A linked survey can be scheduled, so the card has to read before it opens, while it’s live, and after it closes.</p>
             </div>
             <div class="fo-states__grid">
 
@@ -3365,7 +3366,7 @@
               <div class="gv-extra-survey gv-extra-survey--card">
                 <div class="es-head">
                   <span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> Survey</span>
-                  <span class="gv-statuspill expired">Closed</span>
+                  <span class="gv-statuspill closed">Closed</span>
                 </div>
                 <h3 class="gv-extra-survey__title">Spring budget priorities</h3>
                 <div class="gv-extra-survey__meta">
