@@ -2017,23 +2017,6 @@
     #cb-root .cb-survey-empty { border:2px dashed var(--gv-grey-400); border-radius:8px; padding:22px; text-align:center; background:var(--gv-grey-50); }
     #cb-root .cb-survey-empty__t { font-size:13px; font-weight:600; color:var(--gv-text-secondary); }
     #cb-root .cb-survey-empty__s { font-size:12px; color:var(--gv-cool-grey-600); margin-top:6px; }
-    /* layout variant picker cards (settings panel) */
-    #cb-settings-body .cb-varlist { display:flex; flex-direction:column; gap:8px; }
-    #cb-settings-body .cb-varcard { display:flex; align-items:flex-start; gap:8px; text-align:left; border:1px solid var(--gv-grey-300); border-radius:8px; padding:10px 12px; background:#fff; cursor:pointer; width:100%; }
-    #cb-settings-body .cb-varcard.is-selected { border-color:var(--gv-teal-500); background:var(--gv-teal-50,#e8f3f4); }
-    #cb-settings-body .cb-varcard__radio { width:14px; height:14px; border-radius:50%; border:2px solid var(--gv-grey-400); flex:none; margin-top:2px; }
-    #cb-settings-body .cb-varcard.is-selected .cb-varcard__radio { border-color:var(--gv-teal-500); background:var(--gv-teal-500); }
-    #cb-settings-body .cb-varcard__t { display:block; font-size:13px; font-weight:600; color:var(--gv-text-primary); }
-    #cb-settings-body .cb-varcard__d { display:block; font-size:11px; color:var(--gv-cool-grey-600); margin-top:3px; }
-    /* Easy read is the principal layout; the other 10 fold away (kept so they can be shown to devs) */
-    #cb-settings-body .cb-varmore { margin-top:10px; }
-    #cb-settings-body .cb-varmore > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--gv-cool-grey-600); padding:4px 2px; user-select:none; }
-    #cb-settings-body .cb-varmore > summary::-webkit-details-marker { display:none; }
-    #cb-settings-body .cb-varmore > summary::before { content:'▸'; font-size:10px; transition:transform .15s ease; }
-    #cb-settings-body .cb-varmore[open] > summary::before { transform:rotate(90deg); }
-    #cb-settings-body .cb-varmore__hint { font-weight:400; color:var(--gv-grey-500,#9aa3ad); }
-    #cb-settings-body .cb-varmore .cb-varlist { margin-top:8px; }
-
     /* ── Participation Box (spec: current-phase filled tenant-red, others outlined) ── */
     #cb-root { --pp-tenant: #E8505B; }
     #cb-root .cb-pbox__actions { display:flex; flex-direction:column; gap:8px; }
