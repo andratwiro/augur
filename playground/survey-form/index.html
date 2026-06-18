@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Survey footer — placement experiment</title>
+  <style>
+    /* ── Control shell ──────────────────────────────────────────────────────
+       This is a dev harness, not the product: a neutral slate chrome wrapping a
+       live iframe of the real (detached) survey runner. Deliberately NOT themed
+       like GoVocal so the product inside reads clearly as the thing under test. */
+    :root {
+      --bg: #0f1419; --panel: #1a2129; --panel-2: #232c36;
+      --line: #313c48; --fg: #eaf0f4; --muted: #93a1ad; --faint: #5d6b78;
+      --accent: #604596; --accent-fg: #b9a6e0;
+      --ok: #2ec4a0; --warn: #e0a23a;
+      --stage: #c9d2da;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--fg);
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* Top bar ---------------------------------------------------------------- */
+    .bar {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 22px;
+      padding: 14px 22px; background: var(--panel);
+      border-bottom: 1px solid var(--line); flex-wrap: wrap;
+    }
+    .brand { display: flex; flex-direction: column; gap: 1px; margin-right: 6px; }
+    .brand b { font-size: 14px; font-weight: 650; letter-spacing: -0.01em; }
+    .brand span { font-size: 11.5px; color: var(--muted); }
+
+    .grp { display: flex; align-items: center; gap: 10px; }
+    .grp > label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); font-weight: 600; }
+
+    .seg { display: inline-flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 3px; gap: 2px; }
+    .seg button {
+      appearance: none; border: 0; background: transparent; color: var(--muted);
+      font: inherit; font-size: 13px; font-weight: 550; padding: 6px 12px;
+      border-radius: 6px; cursor: pointer; line-height: 1.1; white-space: nowrap;
+      transition: background .12s, color .12s;
+    }
+    .seg button:hover { color: var(--fg); }
+    .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+    .seg button:focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
+
+    .spacer { flex: 1 1 auto; }
+    .note {
+      font-size: 12px; color: var(--muted); max-width: 360px; line-height: 1.45;
+    }
+    .note b { color: var(--fg); font-weight: 600; }
+
+    /* Stage ------------------------------------------------------------------ */
+    .stage {
+      flex: 1 1 auto; min-height: 0; background:
+        radial-gradient(120% 120% at 50% 0%, #18202a 0%, var(--bg) 70%);
+      display: flex; align-items: center; justify-content: center;
+      padding: 26px; overflow: auto;
+    }
+    .device {
+      position: relative; background: #0a0d11; border-radius: 26px;
+      padding: 12px; box-shadow: 0 24px 60px -18px rgba(0,0,0,.7), 0 0 0 1px var(--line);
+      transition: width .28s cubic-bezier(.2,.7,.2,1);
+      display: flex; flex-direction: column; height: 100%;
+    }
+    /* Device-agnostic frame — no notch / cutout. */
+    .device::before {
+      content: ""; position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+      width: 34px; height: 4px; border-radius: 3px; background: #222a33;
+    }
+    .screen {
+      flex: 1 1 auto; min-height: 0; border-radius: 16px; overflow: hidden; background: #fff;
+    }
+    iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+
+    .dims {
+      position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+      font-size: 11px; color: var(--faint); white-space: nowrap; letter-spacing: .04em;
+    }
+
+    @media (max-width: 760px) {
+      .note { display: none; }
+      .bar { gap: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <div class="brand">
+      <b>Survey footer · placement</b>
+      <span>detached copy of our survey runner</span>
+    </div>
+
+    <div class="grp">
+      <label>Layout</label>
+      <div class="seg" id="seg-layout" role="group" aria-label="Footer layout">
+        <button data-v="stacked" aria-pressed="true">New · % on own line</button>
+        <button data-v="inline" aria-pressed="false">Current · inline</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <label>Width</label>
+      <div class="seg" id="seg-width" role="group" aria-label="Viewport width">
+        <button data-v="320" aria-pressed="false">320</button>
+        <button data-v="375" aria-pressed="true">375</button>
+        <button data-v="full" aria-pressed="false">Full</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <label>Button labels</label>
+      <div class="seg" id="seg-labels" role="group" aria-label="Button label length">
+        <button data-v="short" aria-pressed="true">Short</button>
+        <button data-v="long" aria-pressed="false">Long</button>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <p class="note">
+      The <b>%-complete</b> status is required for a11y (WCAG 2.2). Inline, it fights the
+      nav buttons on a narrow phone with long labels — try <b>Current · inline</b> at
+      <b>320</b> + <b>Long</b>. <b>New</b> puts it on its own centred line.
+    </p>
+  </div>
+
+  <div class="stage">
+    <div class="device" id="device">
+      <span class="dims" id="dims"></span>
+      <div class="screen"><iframe id="frame" title="Survey runner preview"></iframe></div>
+    </div>
+  </div>
+
+  <script>
+    var state = { layout: 'stacked', width: '375', labels: 'short' };
+    var frame  = document.getElementById('frame');
+    var device = document.getElementById('device');
+    var dims   = document.getElementById('dims');
+
+    // Width drives the iframe's own viewport, so the runner's mobile media queries
+    // (≤600 / ≤480) fire exactly as they would on a real device of that width.
+    var WIDTHS = { '320': 320, '375': 375, 'full': 820 };
+
+    function applyWidth() {
+      var w = WIDTHS[state.width];
+      // 'full' fills the stage up to a desktop column; fixed widths stay pinned.
+      device.style.width = state.width === 'full' ? 'min(820px, 100%)' : (w + 12 * 2) + 'px';
+      dims.textContent = state.width === 'full' ? 'full width · desktop' : w + ' px wide';
+    }
+
+    function applySrc() {
+      var next = 'runner.html?layout=' + state.layout + '&labels=' + state.labels;
+      // Only reload the runner when layout/labels change (width is a pure CSS resize),
+      // so resizing doesn't reset the respondent's place in the survey.
+      var cur = frame.getAttribute('src') || '';
+      if (cur.split('runner.html')[1] !== next.split('runner.html')[1]) frame.src = next;
+    }
+
+    function wire(id, key, after) {
+      var seg = document.getElementById(id);
+      seg.addEventListener('click', function (e) {
+        var btn = e.target.closest('button'); if (!btn) return;
+        state[key] = btn.dataset.v;
+        [].forEach.call(seg.querySelectorAll('button'), function (b) {
+          b.setAttribute('aria-pressed', String(b === btn));
+        });
+        after();
+      });
+    }
+
+    wire('seg-layout', 'layout', applySrc);
+    wire('seg-width',  'width',  applyWidth);
+    wire('seg-labels', 'labels', applySrc);
+
+    applyWidth();
+    applySrc();
+  </script>
+</body>
+</html>

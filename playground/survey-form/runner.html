@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Survey — runner</title>
+  <!-- DETACHED COPY of the GoVocal survey kit (forked into this playground prototype
+       so footer experiments never touch the canonical skills/govocal-ui source). -->
+  <link rel="stylesheet" href="govocal-tokens.css" />
+  <link rel="stylesheet" href="govocal-ui.css" />
+  <link rel="stylesheet" href="govocal-survey.css" />
+  <script src="govocal-themes.js" defer></script>
+  <script src="govocal-icons.js" defer></script>
+  <script src="govocal-survey.js" defer></script>
+  <style>
+    body { margin: 0; background: var(--gv-survey-canvas); font-family: var(--gv-font-family); }
+    .sv-intro__media {
+      background:
+        linear-gradient(180deg, rgba(26,43,43,0) 40%, rgba(26,43,43,0.45) 100%),
+        url('img/westmere/square.webp') center/cover no-repeat;
+      height: 240px;
+    }
+  </style>
+</head>
+<body class="gv-root" data-gv-theme-picker="off">
+  <main class="sv-wrap"><div id="survey"></div></main>
+
+  <script>
+  /* ════════════════════════════════════════════════════════════════════════
+     FORM — pulled verbatim from our own pages/input-form (the "A square for
+     everyone" Westmere survey). Detached here for the footer experiment.
+     ════════════════════════════════════════════════════════════════════════ */
+  const FORM = {
+    pages: [
+      { kind:'intro', title:"A square for everyone", media:" ",
+        desc:"Help shape the redesign of Market Square in the Old Town. We're gathering residents' ideas for a square that works for everyone — for the weekly market, for sitting in the sun, for getting through on foot or by bike. Share your idea below; it joins the 122 contributions already on the project. Thank you for taking part." },
+
+      { emoji:'👋', title:'About you', desc:'A few details about you so we can understand who the square should work for. Nothing here is published with your idea.',
+        fields:[
+          { type:'select', label:'Which age group do you belong to?', desc:'Choose one',
+            options:['Under 18','18–24','25–34','35–44','45–54','55–64','65+'] },
+          { type:'select', label:'Which Westmere district do you live in?', desc:'Choose one',
+            options:['Old Town','Harbour','Northgate','Riverside','Westside','Lakeshore','I live outside Westmere'] },
+        ] },
+
+      { emoji:'🧭', title:'How you use Market Square today', desc:'Tell us how the square fits into your week, so we can build on what already works.',
+        fields:[
+          { type:'select', label:'How often do you spend time on Market Square?', options:['Daily','A few times a week','Weekly','A few times a month','Rarely','Never'] },
+          { type:'multiselect', label:'What do you mainly come to the square for?', desc:'Select all that apply',
+            options:['The weekly market','Meeting friends','Sitting and relaxing','Passing through on foot','Cycling through','Cafés and terraces','Events and festivals','Shopping nearby','Other'] },
+          { type:'text', label:'What’s the first word that comes to mind when you picture Market Square today?' },
+          { type:'rating', label:'How would you rate the square as a place to spend time right now?', desc:'(1 = very poor, 5 = excellent)', max:5, gate:true },
+        ] },
+
+      { emoji:'💡', title:'Your idea for the square', desc:'This is the heart of it. Give your idea a clear title and tell us what you’d change — it’s published to the project for others to read and support.',
+        fields:[
+          { type:'text', label:'Give your idea a title', desc:'A short, clear headline — e.g. “More shade and seating along the south side”' },
+          { type:'multiline_text', label:'Describe your idea', desc:'What would you change, and why does it matter? The more concrete, the better.' },
+          { type:'multiselect', label:'Which themes does your idea touch on?', desc:'Select all that apply — these become the tags on your contribution',
+            options:['Greenery & planting','Seating & shade','Walking & access','Cycling','The weekly market','Play for children','Events & culture','Lighting & safety','Heritage & character'] },
+          { type:'ranking', label:'For you, what should the redesign prioritise? Rank these from most to least important.', desc:'(1 = most important)',
+            options:['Greenery and shade','Room for the weekly market','Comfortable seating','Space for events','Easy walking and accessibility','Calmer traffic and cycling','Keeping the square’s historic character'] },
+          { type:'linear_scale', label:'How important is keeping the Old Town’s historic character in the redesign?', desc:'(1 = not important, 7 = essential)', max:7, minLabel:'not important', maxLabel:'essential', gate:true },
+          { type:'sentiment', label:'How do you feel about how safe and welcoming the square feels in the evening?', desc:'(from very poor to very good)',
+            faces:['😣','🙁','😐','🙂','😄'], labels:['Very bad','Bad','Ok','Good','Very good'], gate:true },
+        ] },
+
+      { emoji:'🎨', title:'Look & feel', desc:'We’re exploring different characters for the square. Which direction speaks to you most?',
+        fields:[
+          { type:'multiselect_image', label:'Which look would you most like for the redesigned Market Square?', desc:'(Select one image)',
+            images:[
+              { src:'img/westmere/square.webp',            label:'An open civic square — room to gather and move' },
+              { src:'img/westmere/oldtown.webp',           label:'Heritage cobbles — leaning into the Old Town character' },
+              { src:'img/westmere/park.webp',              label:'A greener square — trees, planting and shade' },
+              { src:'img/westmere/street-townhouses.webp', label:'Café terraces — life spilling onto the square' },
+            ] },
+          { type:'file_upload', label:'Have a sketch, photo or reference for your idea? Add it here.', desc:'Upload files here (optional)' },
+        ] },
+
+      { emoji:'✅', title:'Anything else?', desc:'Thank you — your idea is shaping the future of Market Square in the Old Town.',
+        fields:[
+          { type:'multiline_text', label:'Anything else you’d like the engagement team to know about the redesign?' },
+        ] },
+
+      { kind:'thankyou', title:'Thanks — your idea is in!', desc:'Your contribution has been added to “A square for everyone”. The Westmere engagement team reads every idea; you’ll be able to follow how the redesign takes shape on the project page.' },
+    ]
+  };
+
+  // Read experiment params from the URL (driven by the control shell index.html).
+  var params = new URLSearchParams(location.search);
+  var layout = params.get('layout') === 'stacked' ? 'stacked' : 'inline';
+  var longLabels = params.get('labels') === 'long';
+  // Realistic "long" labels — the kind a city writes once the default verbs feel
+  // terse — to stress the narrow-phone fit the inline placement struggles with.
+  var LABELS = longLabels
+    ? { prev: 'Previous step', next: 'Save & continue', submit: 'Submit your response' }
+    : { prev: 'Previous',      next: 'Next',            submit: 'Submit' };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var mountEl = document.getElementById('survey');
+    GVSurvey.mount(mountEl, FORM, {
+      title: 'Survey',
+      labels: LABELS,
+      onClose: function () { /* no-op in the experiment */ }
+    });
+    // Apply the footer layout under test.
+    var foot = mountEl.querySelector('.sv-foot');
+    if (foot) foot.setAttribute('data-layout', layout);
+  });
+  </script>
+</body>
+</html>
