@@ -369,7 +369,7 @@
         { label: 'Go deeper — 10 minutes', style: 'secondary' },
         { label: 'Easy Read version', style: 'secondary' }
       ] },
-      layout: ['banner', 'title', { row: [['intro'], ['about']], tpl: 'main-aside' }, { row: [['surveys', 'desc'], []], tpl: 'main-aside' }, 'partbar', 'timeline', 'events'],
+      layout: ['banner', { row: [['title', 'intro'], ['about']], tpl: 'main-aside' }, { row: [['surveys', 'desc'], []], tpl: 'main-aside' }, 'partbar', 'timeline', 'events'],
       events: [['Jun', '18', 'Drop-in: help with the survey', '18 Jun · 17:30 – 19:00', 'Central Library', '26', 'oldtown']]
     },
     {
@@ -392,7 +392,7 @@
       // then the rest of the text · empty. On mobile this reads intro → CTA → rest,
       // so the primary action ("Add your idea") sits right under the short intro
       // instead of below the whole description. (Matches bo-content-builder seedDefault.)
-      layout: ['banner', 'title', { row: [['intro'], ['about']], tpl: 'main-aside' }, { row: [['desc', 'surveys'], []], tpl: 'main-aside' }, 'events', 'partbar', 'timeline'],
+      layout: ['banner', { row: [['title', 'intro'], ['about']], tpl: 'main-aside' }, { row: [['desc', 'surveys'], []], tpl: 'main-aside' }, 'events', 'partbar', 'timeline'],
       events: [['Jun', '14', 'Riverside ideas walk', '14 Jun · 10:00 – 11:30', 'Donaupark', '41', 'workshop'], ['Jul', '02', 'Design workshop', '2 Jul · 18:00 – 20:00', 'Civic Hall', '57', 'community']]
     },
     {
@@ -417,7 +417,7 @@
       surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'primary', survey: 'market', heading: 'Have your say while voting is open' },
       // Two stacked wide/narrow rows so the participation hub ("Participate · 3 ways")
       // sits right under the intro on mobile, ahead of the description + survey card.
-      layout: ['banner', 'title', { row: [['intro'], ['about']], tpl: 'main-aside' }, { row: [['desc', 'surveys'], []], tpl: 'main-aside' }, 'partbar', 'timeline', 'events'],
+      layout: ['banner', { row: [['title', 'intro'], ['about']], tpl: 'main-aside' }, { row: [['desc', 'surveys'], []], tpl: 'main-aside' }, 'partbar', 'timeline', 'events'],
       events: [['Jun', '20', 'Budget Q&A evening', '20 Jun · 18:30 – 20:00', 'Rathaus', '88', 'community']]
     },
     {
@@ -439,7 +439,7 @@
       surveyGrid: ['mobility', 'market', 'school'], surveyGridStyle: 'primary', surveyGridHeading: 'More surveys you can still take',
       // Two stacked wide/narrow rows: intro · about box, then the rest of the text ·
       // empty — so "Read the full summary" sits under the short intro on mobile.
-      layout: ['banner', 'title', { row: [['intro'], ['about']], tpl: 'main-aside' }, { row: [['desc'], []], tpl: 'main-aside' }, 'partbar', 'timeline', 'events', 'surveyGrid'],
+      layout: ['banner', { row: [['title', 'intro'], ['about']], tpl: 'main-aside' }, { row: [['desc'], []], tpl: 'main-aside' }, 'partbar', 'timeline', 'events', 'surveyGrid'],
       events: [['Jun', '12', 'What-we-heard briefing', '12 Jun · 17:00 – 18:00', 'Online meeting', '64', 'workshop'], ['Jun', '19', 'Walk the centre with us', '19 Jun · 16:00 – 17:30', 'Rådhuspladsen', '52', 'oldtown'], ['Jun', '26', 'Theme drop-in session', '26 Jun · 17:00 – 19:00', 'Hovedbiblioteket', '38', 'community']]
     },
     {

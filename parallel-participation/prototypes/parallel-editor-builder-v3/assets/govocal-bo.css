@@ -155,12 +155,26 @@
 /* Topbar action buttons are compact — measured live: 4px 8px padding, ~35px tall,
    14px text (the full-size .gv-btn is for forms, not this chrome). */
 .gv-bo-topbar__actions .gv-btn { padding: 4px 8px; font-size: var(--gv-fs-s); line-height: 26px; }
-.gv-bo-topbar__actions .gv-iconbtn { width: 35px; height: 35px; }
+/* Icon-only action button (the preview eye). Grounded in the real project-editor
+   topbar (epic tenant, r1-bo-project-tabs digest): the "View project" control is a
+   *secondary-outlined Button with only an icon* — 42×34, padding 4px 8px, 1px border,
+   3px radius — NOT a bare/ghost glyph. Its icon is the same buttonIcon size as the
+   glyphs inside the text buttons, so the eye just drops the label and keeps the box.
+   Square it up a touch (no label to pad out the width). The glyph box takes the
+   button's line-height so an icon-only button stands the same height as its
+   text siblings (Share/Published) instead of collapsing to the glyph height. */
+.gv-bo-topbar__actions .gv-btn--icon { padding: 4px 7px; }
+.gv-bo-topbar__actions .gv-btn--icon > [data-gv-icon] { height: 26px; }
 
 /* status/meta pills under the title */
 .gv-bo-meta { display: flex; flex-wrap: wrap; gap: 16px; margin: 6px 0 0; }
 .gv-bo-meta__item {
   display: inline-flex; align-items: center; gap: 5px;
+  /* line-height:1 so the text flex-item box hugs the glyphs — with the default
+     ~1.5 line-height the box carries descender slack below the baseline, pushing
+     the line-box centre below the optical text centre, so a centre-aligned 14px
+     icon reads as sitting low. Tight line-height lines icon and label up. */
+  line-height: 1;
   font-size: var(--gv-fs-s); color: var(--gv-text-secondary);
 }
 .gv-bo-meta__item .gv-icon { width: 14px; height: 14px; }
