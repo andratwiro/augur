@@ -157,7 +157,8 @@
      (#EBEDEF) already aliases --gv-grey-200; axis tick text (#596B7A) aliases
      --gv-cool-grey-600 below. */
   --gv-chart-navy:  #073F80;                    /* bar fill (recharts-bar-rectangle, n=27) */
-  --gv-chart-blue:  #2F478A;                    /* primary line / combo line stroke (n=33) */
+  --gv-chart-blue:  #2F478A;                    /* primary line / combo line stroke (n=33); pie segment 1 */
+  --gv-chart-blue-light: #4D85C6;               /* pie segment 2 — monochrome blue ramp (recharts-pie-sector, bo-dash-visitors) */
   --gv-chart-line:  #7FBBCA;                    /* cumulative "Total" line stroke — dominant (n=144) */
   --gv-chart-teal:  var(--gv-teal-400);         /* #01A1B1 accent series */
   --gv-chart-pos:   var(--gv-green-500);        /* #04884C likes / positive series */

@@ -83,9 +83,24 @@ Read this at the start of each loop; append after each iteration.
   project" values now grey; combo bars blue.
 - **Deploy:** yes.
 
+### Loop 5 — 2026-06-18 — Pie segment colour ramp (Visitors tab)
+- Real Visitor pies (recharts-pie-sector, bo-dash-visitors) are a **monochrome blue ramp**:
+  segment 1 `#2F478A`, segment 2 `#4D85C6` (white sector separators) — NOT blue+teal as the
+  page rendered (`--ch-blue` + `--ch-teal`).
+- **Added** `--gv-chart-blue-light: #4D85C6` token (systemic — recurs across the pies).
+- **Changed** Language + Device pies' 2nd segment from `var(--ch-teal)` → `var(--gv-chart-blue-light)`
+  (legend swatch picks it up automatically). Traffic sources is 100% single-segment, untouched.
+- **Verify:** lint ✓. Rendered the Visitors tab via playwright (/tmp/visitors-tab.png) since
+  pies are off the default Overview poster — pies + legends now light-blue, eyeball ✓.
+  verify:all 152 green (dashboard all green; the 1 red is the pre-existing bo-users one).
+- **Deploy:** yes.
+- Reusable: to eyeball off-Overview tabs, render with playwright clicking `.gv-bo-tab[data-db=…]`.
+
 ## Next gaps (priority)
-1. Donut + pie + stacked-bar (Input status, Events, Visitors traffic/Language/Device): segment
-   colours (#057ABE/#5FC4E8/#0080A5/#00577C/#40B8C5/#32B67A family), sizes, legend swatch.
+1. Input status DONUT (Overview) + Events: real recharts-sector showed #40B8C5 segment on
+   #E0E0E0 (grey-300) track; page uses --ch-teal (#01A1B1) on --gv-grey-200. CONFIRM the
+   #40B8C5 belongs to the donut (probe bo-dash-overview donut selector) then ground it.
+   Also: pies have a white sector separator stroke the page lacks — add thin #fff stroke.
 2. Reactions chart is a single line in the page but real = Total line + Likes(#073F80) +
    Dislikes(#073f80b3 @70%) bars — consider a proper multi-series combo. Bigger change.
 3. Combo bar THICKNESS — re-measure a single chart's slot step cleanly, then ground width.
