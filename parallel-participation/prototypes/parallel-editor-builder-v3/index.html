@@ -372,33 +372,139 @@
     z-index: 5;
   }
 
-  /* ── Preview "click to edit" zones ──────────────────────────────────────────
-     Hover affordance over the 4 logical sections of the FO preview (hero, main
-     content, timeline, events) so the page reads as editable. Purely additive and
-     scoped to .phone: it lives on the prototype's own .pp-fo__* wrappers, NEVER on
-     the .gv-* components. Uses an INSET outline (outline-offset:-2) so nothing
-     grows the box (no reflow) and nothing gets clipped by the phone's rounded
-     overflow — the editor teal reads as chrome, not tenant content. */
-  .phone .pp-edit {
-    position: relative; cursor: pointer; border-radius: 8px;
-    outline: 2px solid transparent; outline-offset: -2px;
-    transition: outline-color .12s ease, background-color .12s ease;
+  /* ── Per-section edit zones RETIRED in v3 ───────────────────────────────────
+     The dev can't wire a hover/click target per logical section, so v3 drops the
+     section-level affordance entirely: the WHOLE phone is one click target that
+     opens the content builder (see the edit-cue explorer below). .pp-edit stays
+     only as an inert layout hook (the frame-window grid still selects on it). */
+  .phone .pp-edit { position: relative; }
+
+  /* ============ Edit-cue explorer (whole-phone → content builder) ════════════
+     One interaction, three ways to SIGNAL it. The phone is a real button: clicking
+     anywhere (or Enter/Space when focused) opens the builder; the interior controls
+     are inert so clicks bubble, but the page still SCROLLS. The bottom-centre chip
+     swaps three treatments (setEditCue):
+       1 · Button — a persistent "Edit page content" CTA pinned on the preview
+       2 · Reveal — clean preview + tiny corner cue; hover/focus fades in a full scrim CTA
+       3 · Frame  — the preview wears editor chrome (toolbar + dashed outline) at rest
+     Accent = the editor teal (#2c6e7d), so the cue reads as chrome, not tenant content. */
+  .phone-wrap { position: relative; display: inline-flex; }
+
+  /* Phone-as-button: no text caret, pointer cursor, a real focus target. */
+  #phone { cursor: pointer; transition: box-shadow .15s ease, transform .15s ease; }
+  #phone:focus { outline: none; }
+
+  /* Interior is inert — clicks fall through to the phone (→ builder) — but the
+     scroller still scrolls (it is NOT disabled, only its interactive children are). */
+  #phone .pp-screen a,
+  #phone .pp-screen button,
+  #phone .pp-screen summary,
+  #phone .pp-screen input,
+  #phone .pp-screen .gv-iconbtn,
+  #phone .pp-screen [role="button"] { pointer-events: none; }
+
+  /* Shared hover / keyboard-focus "lift" for all three treatments. */
+  .phone-wrap:hover #phone,
+  .phone-wrap:focus-within #phone {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 42px rgba(20,25,40,.16);
   }
-  .phone .pp-edit:hover { outline-color: #2c6e7d; background: rgba(44,110,125,.06); }
-  .phone .pp-edit::after {
-    content: ""; position: absolute; top: 8px; right: 8px;
-    width: 24px; height: 24px; border-radius: 999px; background: #2c6e7d;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 20h9'/><path d='M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z'/></svg>");
-    background-repeat: no-repeat; background-position: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,.2); z-index: 6; pointer-events: none;
-    opacity: 0; transform: scale(.8); transform-origin: center;
-    transition: opacity .12s ease, transform .12s ease;
+  /* Approaches 1 & 2 add a teal ring on engage; #3 uses its own outline instead. */
+  .phone-wrap.cue-1:hover #phone, .phone-wrap.cue-1:focus-within #phone,
+  .phone-wrap.cue-2:hover #phone, .phone-wrap.cue-2:focus-within #phone {
+    box-shadow: 0 0 0 3px rgba(44,110,125,.42), 0 18px 42px rgba(20,25,40,.16);
   }
-  .phone .pp-edit:hover::after { opacity: 1; transform: scale(1); }
+
+  /* All cue overlays are click-through; the phone underneath owns the click. */
+  .cue-btn, .cue-corner, .cue-scrim, .cue-bar, .cue-outline { pointer-events: none; }
+  .cue-btn svg, .cue-corner svg, .cue-scrim__cta svg, .cue-bar__label svg, .cue-bar__btn svg { display: inline-block; }
+
+  /* 1 · BUTTON — persistent CTA pinned to the preview, visible at rest. */
+  .cue-btn {
+    position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+    display: none; align-items: center; gap: 7px;
+    padding: 9px 16px; border-radius: 999px;
+    background: #2c6e7d; color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap;
+    box-shadow: 0 8px 20px rgba(20,25,40,.24), 0 0 0 3px rgba(255,255,255,.92);
+    z-index: 8; transition: transform .15s ease, background .15s ease;
+  }
+  .cue-btn svg { width: 15px; height: 15px; }
+  .phone-wrap.cue-1 .cue-btn { display: inline-flex; }
+  .phone-wrap.cue-1:hover .cue-btn,
+  .phone-wrap.cue-1:focus-within .cue-btn { background: #21525d; transform: translateX(-50%) translateY(-1px); }
+
+  /* 2 · REVEAL — clean preview + tiny corner cue; engage fades in a full-surface scrim. */
+  .cue-corner {
+    position: absolute; top: 12px; right: 12px;
+    display: none; align-items: center; gap: 5px;
+    padding: 5px 10px 5px 8px; border-radius: 999px;
+    background: rgba(26,31,44,.82); color: #fff; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+    z-index: 9; transition: opacity .14s ease;
+  }
+  .cue-corner svg { width: 13px; height: 13px; }
+  .phone-wrap.cue-2 .cue-corner { display: inline-flex; }
+  .cue-scrim {
+    position: absolute; inset: 0; border-radius: 22px;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(18,38,44,.44);
+    opacity: 0; transition: opacity .16s ease; z-index: 8;
+  }
+  .cue-scrim__cta {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 18px; border-radius: 999px;
+    background: #fff; color: #19282d; font-size: 13.5px; font-weight: 700;
+    box-shadow: 0 10px 26px rgba(0,0,0,.3); transform: translateY(7px); transition: transform .16s ease;
+  }
+  .cue-scrim__cta svg { width: 16px; height: 16px; }
+  .phone-wrap.cue-2 .cue-scrim { display: flex; }
+  .phone-wrap.cue-2:hover .cue-scrim,
+  .phone-wrap.cue-2:focus-within .cue-scrim { opacity: 1; }
+  .phone-wrap.cue-2:hover .cue-scrim__cta,
+  .phone-wrap.cue-2:focus-within .cue-scrim__cta { transform: translateY(0); }
+  .phone-wrap.cue-2:hover .cue-corner,
+  .phone-wrap.cue-2:focus-within .cue-corner { opacity: 0; }
+
+  /* 3 · FRAME — editor chrome: a toolbar above + a dashed outline, both at rest. */
+  .cue-bar {
+    position: absolute; left: 2px; right: 2px; top: -44px; height: 34px;
+    display: none; align-items: center; justify-content: space-between;
+    z-index: 8;
+  }
+  .cue-bar__label { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; letter-spacing: .03em; color: #5b6573; }
+  .cue-bar__label svg { width: 14px; height: 14px; color: #2c6e7d; }
+  .cue-bar__btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 13px; border-radius: 8px; background: #2c6e7d; color: #fff;
+    font-size: 12.5px; font-weight: 600; box-shadow: 0 2px 6px rgba(44,110,125,.32);
+  }
+  .cue-bar__btn svg { width: 14px; height: 14px; }
+  .phone-wrap.cue-3 .cue-bar { display: flex; }
+  .cue-outline {
+    position: absolute; inset: -5px; border-radius: 27px;
+    display: none; border: 2px dashed rgba(44,110,125,.5);
+    z-index: 7; transition: border-color .15s ease, border-style .15s ease;
+  }
+  .phone-wrap.cue-3 .cue-outline { display: block; }
+  .phone-wrap.cue-3:hover .cue-outline,
+  .phone-wrap.cue-3:focus-within .cue-outline { border-color: #2c6e7d; border-style: solid; }
+
   @media (prefers-reduced-motion: reduce) {
-    .phone .pp-edit::after { transition: opacity .12s ease; transform: none; }
-    .phone .pp-edit:hover::after { transform: none; }
+    #phone, .cue-btn, .cue-scrim, .cue-scrim__cta { transition: none; }
+    .phone-wrap:hover #phone, .phone-wrap:focus-within #phone { transform: none; }
   }
+
+  /* Bottom-centre chip — same family as the state chip, teal-on accent. */
+  .cue-chip {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 31;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 5px 3px 4px; background: #fff;
+    border: 1px solid var(--border); border-radius: 999px; font-size: 10.5px;
+    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04);
+  }
+  .cue-chip .label { padding: 0 6px 0 7px; color: #5b6573; letter-spacing: .06em; font-size: 10.5px; font-weight: 700; }
+  .cue-chip button { padding: 4px 11px; border-radius: 999px; color: #4b5563; font-weight: 600; transition: background .12s ease, color .12s ease; }
+  .cue-chip button:hover { background: #f4f6fa; }
+  .cue-chip button.on { background: #2c6e7d; color: #fff; }
 
   .compose-card { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid var(--border); border-radius:10px; background:#fff; }
   .compose-card .plus { width: 28px; height: 28px; border:1px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#5b6573; }
@@ -1104,9 +1210,9 @@
   .state-chip { padding: 3px 4px; gap: 4px; font-size: 10.5px; }
 
   /* v3 commits to one treatment for a survey that's created but not added to the project
-     (reachable only by direct URL): the dashed ring on the lifecycle dot + a "Not on the
-     project page" tag with a hover explaining the fix (was explorer #4 in v2). No switcher
-     here — see v2 for the full approach explorer. */
+     (reachable only by direct URL): a text-only "Not on the project page" tag on the meta
+     line (lifecycle dot untouched) with a hover explaining the fix (was explorer #4 in v2,
+     minus the dashed ring). No switcher here — see v2 for the full approach explorer. */
 
   /* ============ Empty-state approach explorer ============ */
   /* A bottom-left selector — shown ONLY in the 'empty' project state — that swaps how a
@@ -2135,7 +2241,10 @@
       <!-- ====== VIEW: Project page preview ====== -->
       <div id="view-project" class="preview-stage flex-1 flex items-center justify-center pt-8 pb-6 relative overflow-y-auto">
 
-        <div id="phone" class="phone frame-phone" style="cursor: pointer;" onclick="maybeOpenBuilder(event)">
+        <div id="phone-wrap" class="phone-wrap cue-1">
+        <div id="phone" class="phone frame-phone" role="button" tabindex="0"
+             aria-label="Edit the project page in the content builder"
+             onclick="openBuilder()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBuilder();}">
           <div class="notch"></div>
 
           <!-- .pp-screen = the whole phone interior, built from REAL full-size GoVocal
@@ -2148,7 +2257,7 @@
                query; the phone is a fixed box on a wide viewport, so the .phone scoped
                overrides force the mobile layout and contain the full-screen menu overlay
                to the phone. stopPropagation keeps nav clicks from triggering the builder. -->
-          <header class="gv-header pp-phone-header" onclick="event.stopPropagation()">
+          <header class="gv-header pp-phone-header">
             <div class="gv-header__inner">
               <a class="gv-brand" href="#" data-gv-logo aria-label="City home"></a>
               <!-- Desktop nav — shown only in the WINDOW (desktop) frame; hidden in phone. -->
@@ -2192,7 +2301,39 @@
           </div>
 
           </div><!-- /.pp-screen -->
-        </div>
+        </div><!-- /#phone -->
+
+          <!-- ── Edit-cue overlays (one shown at a time via .cue-N on #phone-wrap) ── -->
+          <!-- 1 · Button -->
+          <span class="cue-btn" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            Edit page content
+          </span>
+          <!-- 2 · Reveal -->
+          <span class="cue-corner" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+            Edit
+          </span>
+          <span class="cue-scrim" aria-hidden="true">
+            <span class="cue-scrim__cta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+              Edit page content
+            </span>
+          </span>
+          <!-- 3 · Frame -->
+          <span class="cue-bar" aria-hidden="true">
+            <span class="cue-bar__label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+              Project page · preview
+            </span>
+            <span class="cue-bar__btn">
+              Open editor
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+            </span>
+          </span>
+          <span class="cue-outline" aria-hidden="true"></span>
+
+        </div><!-- /#phone-wrap -->
       </div>
 
       <!-- demo state toggle -->
@@ -3690,15 +3831,13 @@
     const builder = document.getElementById('view-builder');
     if (builder) builder.classList.remove('open');
   }
-  function maybeOpenBuilder(e) {
-    const handler = e.target.closest('[onclick]');
-    if (handler && handler !== e.currentTarget) return;
-    openBuilder();
-    // Deep-link: if the click landed in a preview edit-zone, open the builder with
-    // that block selected (hero/title/timeline/events). Bridge lives in the builder.
-    const zone = e.target.closest('.pp-edit');
-    const widget = zone && zone.getAttribute('data-edit');
-    if (widget && window.cbFocusWidget) requestAnimationFrame(() => window.cbFocusWidget(widget));
+  // Edit-cue explorer: swap which affordance treatment the phone wears. The
+  // interaction is identical across all three — only the signalling differs.
+  function setEditCue(n, btn) {
+    const wrap = document.getElementById('phone-wrap');
+    if (wrap) wrap.className = 'phone-wrap cue-' + n;
+    document.querySelectorAll('.cue-chip button').forEach(b => b.classList.remove('on'));
+    if (btn) btn.classList.add('on');
   }
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -3726,6 +3865,10 @@
     const phaseTitle = document.getElementById('phase-title');
     const phaseKind = document.getElementById('phase-kind');
     const phaseDates = document.getElementById('phase-dates');
+
+    // The edit-cue chip only governs the phone preview → show it on the project view only.
+    const cueChip = document.getElementById('cue-chip');
+    if (cueChip) cueChip.style.display = (view === 'project') ? 'inline-flex' : 'none';
 
     // Hide all views by default
     projectView.style.display = 'none';
@@ -3783,6 +3926,17 @@
      they CAN'T otherwise see — the phone, which is how most participants actually open a
      project. One frame = a standing mobile-first nudge, and nothing to maintain. The
      desktop/Window frame + toggle are kept in parallel-editor-builder-v2 for reference. -->
+
+<!-- ============ Edit-cue explorer — compact, bottom-centre ============ -->
+<!-- Three ways to signal "the whole phone is clickable → content builder". The
+     interaction never changes; only the affordance does. See setEditCue + the
+     edit-cue CSS block. Hidden on non-project views (toggled in setView). -->
+<div class="cue-chip" id="cue-chip" role="group" aria-label="Edit-cue treatment">
+  <span class="label">EDIT CUE</span>
+  <button data-cue="1" class="on" onclick="setEditCue(1, this)" title="Persistent CTA button on the preview">Button</button>
+  <button data-cue="2" onclick="setEditCue(2, this)" title="Clean preview; hover/focus reveals a full-surface CTA">Reveal</button>
+  <button data-cue="3" onclick="setEditCue(3, this)" title="Editor chrome: toolbar + dashed outline at rest">Frame</button>
+</div>
 
 <!-- ============ State switcher — compact, bottom-right ============ -->
 <div class="state-chip" role="group" aria-label="Project content state">
@@ -4067,10 +4221,10 @@
 
   // ── Survey not added to the project ("Not on the project page" — v2 explorer option 4) ──
   // "School survey" is created but not added to the project — reachable only by its direct
-  // URL. v3 is locked to one treatment (the dashed ring on the real lifecycle dot + a "Not
-  // on the project page" tag): the dot keeps its colour (placement is orthogonal to
-  // active/future/past) and the tag spells the placement out. The tag carries a hover
-  // explaining the fix — add it from the project's Content Builder. No switcher here — see
+  // URL. v3 is locked to one treatment (a text-only "Not on the project page" tag on the
+  // meta line): the lifecycle dot is untouched (placement is orthogonal to active/future/
+  // past) and the tag spells the placement out. The tag carries a hover explaining the fix
+  // — add it from the project's Content Builder. No switcher here — see
   // v2 for the full approach explorer; renderComplexExtras/phoneExtras carry v2's other
   // cases but only ever see 4.
   window.ppHidden = 4;
@@ -4126,13 +4280,13 @@
               dates:`<span class="hs-linkmeta"><span class="hs-linkmeta__ic">${HS_SVG.link}</span><b>Link only</b> · 20 May–5 Jun</span>` })
           + market + kiosk;
         break;
-      case 4: { // Dashed ring on the REAL dot — placement ⟂ lifecycle. The ring is drawn
-        // outside the dot's 10px layout box (::after) so these rows stay aligned with plain
-        // rows. Shown on an active (green) AND a future (white) survey for contrast.
+      case 4: { // Text-only placement tag — the lifecycle dot is untouched (placement ⟂
+        // active/future/past); the "Not on the project page" meta line carries it on its own,
+        // with a hover explaining the fix. Shown on an active AND a future survey for contrast.
         const place = '<span class="hs-place hs-tip" data-tip="Created but not shown on the project page. Add it from the project’s Content Builder to make it visible to residents.">Not on the project page</span>';
         body = askus
-          + hsRow({ phase:'schools', dot:'live hs-ring', name:'School survey', dates:`20 May–5 Jun · ${place}` })
-          + hsRow({ dot:'upcoming hs-ring', name:'Market-day poll', dates:`15–17 Aug · ${place}` })
+          + hsRow({ phase:'schools', dot:'live', name:'School survey', dates:`20 May–5 Jun · ${place}` })
+          + hsRow({ dot:'upcoming', name:'Market-day poll', dates:`15–17 Aug · ${place}` })
           + kiosk;
         break;
       }
