@@ -109,7 +109,12 @@
      the desktop row layout. */
   .phone.frame-phone .gv-ideacard { flex-direction: column; align-items: stretch; gap: 14px; }
   .phone.frame-phone .gv-ideacard__thumb { flex: none; width: 100%; height: auto; aspect-ratio: 16 / 9; }
-  .phone .pp-fo__banner { height: 180px; overflow: hidden; }
+  /* Banner sits WITHIN the content frame (same 22px inset as .pp-fo__pad), not
+     edge-to-edge — and carries the low canonical --gv-radius, matching the real
+     mobile project page (pages/project-page .pp-banner). The radius override beats
+     the generic .pp-edit 8px corner via the combined-class selector. */
+  .phone .pp-fo__banner { height: 180px; overflow: hidden; margin: 12px 22px 0; }
+  .phone .pp-fo__banner.pp-edit { border-radius: var(--gv-radius); }
   .phone .pp-fo__banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .phone .pp-fo__pad { padding: 20px 22px 0; }
   .phone .pp-fo__cat { display: block; font-size: var(--gv-fs-s); letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--gv-text-secondary, #596B7A); margin-bottom: 8px; }
@@ -194,7 +199,9 @@
      context block becomes the real two-column project layout — main content on the
      left, the participation box pinned as a right-hand rail (the signature desktop
      GoVocal project page). The grey method band below stays one centred column. */
-  .frame-window .pp-fo__banner { height: 300px; }
+  /* Desktop banner also contained — aligned to the centred content measure
+     (pad is max-width 1120 / 40px padding → 1040 content), matching canonical. */
+  .frame-window .pp-fo__banner { height: 300px; max-width: 1040px; margin: 12px auto 0; }
   .frame-window .pp-fo__pad { max-width: 1120px; margin: 0 auto; padding: 36px 40px 0; }
   .frame-window .gv-partbar__inner { max-width: 1120px; margin: 0 auto; }
 
