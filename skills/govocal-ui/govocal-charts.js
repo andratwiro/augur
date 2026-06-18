@@ -194,7 +194,13 @@
         },
         yaxis: {
           max: !o.horizontal ? o.max : undefined,
-          labels: o.percent && !o.horizontal ? { formatter: pctFmt } : { style: { colors: p.axis } }
+          labels: {
+            // Horizontal: ApexCharts renders the category labels itself from xaxis.categories —
+            // do NOT add a yaxis formatter here (it draws a second overlapping set). Pre-truncate
+            // long category strings at the call site instead.
+            formatter: (o.percent && !o.horizontal) ? pctFmt : undefined,
+            style: { colors: p.axis, fontFamily: p.font, fontSize: "12px" }
+          }
         },
         legend: { show: o.legend != null ? o.legend : series.length > 1 }
       });

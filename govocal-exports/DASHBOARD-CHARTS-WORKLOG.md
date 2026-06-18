@@ -41,6 +41,21 @@ static SVG — and to do it for **ALL charts** (a long, multi-loop effort). Libr
 
 ## Iterations
 
+### Loop 9 — 2026-06-18 — Convert horizontal bars → GVChart.bar (horizontal)
+- Converted all `data-chart="barsH"` cards to GVChart.bar horizontal: Participation per project
+  (5), per tag (9), Users-by-geographic-area (7). Navy (#073F80) bars, value labels at bar end,
+  category labels on the left. Retired the old `barsH()` renderer (niceTicks still used by barsV).
+- **Two ApexCharts gotchas fixed (measured, not guessed):** (1) y-axis category labels OVERLAPPED
+  the bars — caused by adding a `yaxis.labels.formatter` for horizontal, which draws a SECOND
+  label set and breaks auto-layout. Fix: no yaxis formatter for horizontal; pre-truncate the
+  category strings (>22 chars → ellipsis) at the call site so ApexCharts reserves the left gutter.
+  Verified: first label right-edge 917px < first bar 932px (no overlap). (2) label textContent
+  reads doubled ("X…X…") — ApexCharts internal double-tspan; renders as ONE clean label
+  (width = single instance), cosmetic-only.
+- **Verify (strict):** playwright — Overview barsH [5,9], Users barsH [7], 0 errors; overlap=false;
+  eyeball ✓. lint ✓.
+- **Deploy:** yes. Poster reshot.
+
 ### Loop 8 — 2026-06-18 — Convert Overview line/combo charts → GVChart
 - Converted ALL `data-chart="line"` and `data-chart="combo"` cards to GVChart/ApexCharts
   (Overview: Registrations, Participants, Inputs combo, Comments, Reactions; Visitors: the 2

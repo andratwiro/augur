@@ -449,14 +449,6 @@
     }
     // Trailing-12-month axis (illustrative; the real charts show a sparse month axis).
     const MONTHS12 = ["Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun"];
-    function barsH(json) {
-      const items = JSON.parse(json);
-      const { top, ticks } = niceTicks(Math.max(...items.map(i => i[1]), 1));
-      const rows = items.map(([l, v]) =>
-        `<div class="ch-hrow"><span class="ch-hlabel" title="${l}">${l}</span><span class="ch-hbarcell"><span class="ch-htrack"><span class="ch-hbar" style="width:${(v / top * 100).toFixed(1)}%"></span></span><span class="ch-hval">${v}</span></span></div>`).join("");
-      const scale = ticks.map(v => `<span>${v}</span>`).join("");
-      return `<div class="ch-h">${rows}</div><div class="ch-haxis"><span class="ch-haxis__scale">${scale}</span></div>`;
-    }
     function barsV(json) {
       const items = JSON.parse(json);
       const { top, ticks } = niceTicks(Math.max(...items.map(i => i[1]), 1));
@@ -487,7 +479,7 @@
     document.querySelectorAll(".gv-bo-chartcard[data-chart]").forEach(card => {
       try {
         const t = card.dataset.chart, title = card.dataset.title;
-        if (t === "line" || t === "combo") {
+        if (t === "line" || t === "combo" || t === "barsH") {
           const statBlock = (lbl, num, sub, mt) =>
             `<div class="db-bignum"${mt ? ' style="margin-top:16px"' : ""}><span class="db-bignum__lbl">${lbl || ""}</span><span class="db-bignum__big">${num}</span><span class="db-bignum__sub">${sub || ""}</span></div>`;
           const big = card.dataset.big
@@ -502,25 +494,35 @@
           card.innerHTML = cardHead(title, card.dataset.dropdown) + body;
           const el = card.querySelector("#" + id);
           const panel = card.closest(".db-panel");
-          const pts = (card.dataset.points || "").split(",").map(Number);
           const series = (card.dataset.series || "Total").split(" · ");
           const render = () => {
             if (!window.GVChart || !el || el.__gv) return;
             if (t === "line") {
+              const pts = (card.dataset.points || "").split(",").map(Number);
               GVChart.line(el, { height: 156, categories: MONTHS12, tickAmount: 5, legend: true,
                 series: [{ name: series[0], data: pts }] });
-            } else {
+            } else if (t === "combo") {
+              const pts = (card.dataset.points || "").split(",").map(Number);
               const bv = (card.dataset.bars || "").split(",").map(Number);
               GVChart.combo(el, { height: 156, categories: MONTHS12,
                 bars: { name: series[1] || "This month", data: bv },
                 line: { name: series[0] || "Total", data: pts } });
+            } else { // barsH — horizontal bar (Participation per project/tag, Users by area)
+              const items = JSON.parse(card.dataset.bars);
+              const trunc = s => (typeof s === "string" && s.length > 22) ? s.slice(0, 21) + "…" : s;
+              GVChart.bar(el, {
+                horizontal: true, legend: false, dataLabels: true, barHeight: "62%",
+                height: Math.max(190, items.length * 34 + 54),
+                categories: items.map(i => trunc(i[0])),
+                series: [{ name: card.dataset.dropdown || "Inputs", data: items.map(i => i[1]) }],
+                colors: [GVChart.palette().navy]
+              });
             }
           };
           __pending.push({ key: panel ? panel.dataset.panel : null, render });
         } else {
           let body = "";
-          if (t === "barsH") body = barsH(card.dataset.bars);
-          else if (t === "barsV") body = barsV(card.dataset.bars);
+          if (t === "barsV") body = barsV(card.dataset.bars);
           else if (t === "pie") body = pieSVG(card.dataset.pie);
           card.innerHTML = cardHead(title, card.dataset.dropdown) + body;
         }
