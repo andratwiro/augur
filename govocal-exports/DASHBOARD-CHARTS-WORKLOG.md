@@ -41,6 +41,17 @@ static SVG — and to do it for **ALL charts** (a long, multi-loop effort). Libr
 
 ## Iterations
 
+### Loop 10 — 2026-06-18 — Convert Input-status donut → GVChart.donut
+- Replaced the hand-built concentric-circle donut svg with a GVChart.donut: series [4,96]
+  (Feedback given / No feedback), colours [#40B8C5 teal-light, #E0E0E0 grey-300], 76% donut
+  size, center label "Feedback given / 4%". Beside-it progress block + stackbar + status legend
+  left untouched (not yet converted).
+- Pinned `.db-donut__host svg { width:158px; height:158px }` so the canonical
+  `.gv-bo-chartcard svg { width:100% }` doesn't blow the donut up (gotcha a).
+- **Verify:** file:// — 2 segments, center text ["Feedback given","4%"], svg 158px, 0 errors.
+  HTTP-dist (loop 9.5 discipline) — donut renders 2 segments in built site, no asset 4xx. lint ✓.
+- **Deploy:** yes. Poster reshot.
+
 ### Loop 9.5 — 2026-06-18 — HOTFIX: charts blank on live site (govocal-charts.js 404)
 - **User-reported:** Overview charts blank on the deployed site (titles render, no charts).
 - **Root cause:** `govocal-charts.js` was NOT in build.js `SHARED_ASSETS` (the FILE whitelist) —

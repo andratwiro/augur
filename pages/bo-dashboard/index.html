@@ -140,8 +140,10 @@
     .db-repr__foot svg { width: 14px; height: 14px; fill: var(--gv-cool-grey-500); flex: none; }
     .db-repr__list table { width: 100%; }
     .db-donutwrap { display: flex; align-items: center; gap: 22px; flex-wrap: nowrap; }
-    /* Donut SVG fixed size (canonical forces chartcard svg to 100% width — override). */
+    /* Donut host fixed size (canonical forces chartcard svg to 100% width — override). */
     .db-donutwrap .db-donut__svg { width: 150px !important; height: 150px; flex: none; }
+    .db-donut__host { width: 158px; flex: none; }
+    .db-donut__host svg { width: 158px; height: 158px; }   /* pin the ApexCharts svg vs canonical width:100% */
     .db-pie { display: flex; align-items: center; gap: 24px; padding: 8px 0; }
     /* Pie SVG fixed size (canonical forces chartcard svg to 100% width — override). */
     .db-pie .db-pie__svg { width: 150px !important; height: 150px; flex: none; }
@@ -228,12 +230,7 @@
             <div class="gv-bo-chartcard">
               <div class="db-cardhead"><h3>Input status</h3><span class="db-cardhead__tools"><span class="gv-icon" data-gv-icon="download"></span></span></div>
               <div class="db-donutwrap">
-                <svg class="db-donut__svg" width="150" height="150" viewBox="0 0 42 42" aria-hidden="true">
-                  <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--gv-grey-300)" stroke-width="5"></circle>
-                  <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--gv-chart-teal-light)" stroke-width="5" stroke-dasharray="4 96" stroke-dashoffset="25"></circle>
-                  <text x="21" y="20.5" text-anchor="middle" font-size="7" font-weight="700" fill="var(--gv-bo-primary)" font-family="var(--gv-font-family)">4%</text>
-                  <text x="21" y="26.5" text-anchor="middle" font-size="2.8" fill="var(--gv-bo-primary)" font-family="var(--gv-font-family)">Feedback given</text>
-                </svg>
+                <div class="db-donut__host" id="db-donut"></div>
                 <div class="db-prog">
                   <div class="db-progrow"><span class="db-prog__lbl">Status changed</span><span class="db-prog__val">2 (1%)</span><span class="db-progtrack"><i style="width:6%"></i></span></div>
                   <div class="db-progrow"><span class="db-prog__lbl">Official update</span><span class="db-prog__val">11 (3%)</span><span class="db-progtrack"><i style="width:14%"></i></span></div>
@@ -534,6 +531,15 @@
     window.addEventListener("DOMContentLoaded", () => {
       const active = document.querySelector(".db-panel.is-active");
       if (active) window.__flushCharts(active.dataset.panel);
+      // Input-status donut (Overview, always active on load): single-value ring.
+      const donut = document.getElementById("db-donut");
+      if (donut && window.GVChart && !donut.__gv) {
+        const p = GVChart.palette();
+        GVChart.donut(donut, {
+          height: 158, legend: false, series: [4, 96], labels: ["Feedback given", "No feedback"],
+          colors: [p.tealLight, "#E0E0E0"], size: "76%", total: "4%", totalLabel: "Feedback given"
+        });
+      }
     });
 
     // ── Participation feed rows ─────────────────────────────────────────────
