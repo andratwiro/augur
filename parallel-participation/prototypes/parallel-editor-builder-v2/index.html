@@ -1071,12 +1071,22 @@
 
   /* Treatments applied to the hidden survey row(s) in the Extras list */
   .hs-pill { display:inline-flex; align-items:center; gap:4px; margin-left:6px; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700; background:#fff7ed; color:#b45309; border:1px solid #fed7aa; vertical-align:middle; }
-  .phase-row-rich.hs-dim { opacity:.62; }
   .hs-chain { color:#656e7d; flex-shrink:0; display:inline-flex; align-self:center; }
   .hs-chain svg { width:14px; height:14px; }
   .hs-eye { width:14px; height:14px; color:#656e7d; flex-shrink:0; align-self:center; }
-  .phase-status-dot.hs-dot { background:#fff; border:1.5px dashed #f59e0b; }
   .hs-muted { color:#b45309 !important; }
+  /* #3 — link-only shown as a NEUTRAL meta line. The lifecycle dot is untouched (placement
+     is orthogonal to active/future/past) and the row is NOT dimmed — link-only ≠ inactive. */
+  .hs-linkmeta { display:inline-flex; align-items:center; gap:5px; color:#5b6573; }
+  .hs-linkmeta__ic { display:inline-flex; color:#64748b; }
+  .hs-linkmeta__ic svg { width:13px; height:13px; }
+  .hs-linkmeta b { color:#475569; font-weight:600; }
+  /* #4 — a neutral dashed ring AROUND the real status dot: the inner fill still encodes
+     active/future/past; the ring adds the orthogonal "not on the project page" channel. */
+  .hs-dotwrap { position:relative; flex-shrink:0; align-self:flex-start; margin-top:1px; width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center; }
+  .hs-dotwrap::before { content:""; position:absolute; inset:0; border-radius:999px; border:1.5px dashed #94a3b8; }
+  .hs-dotwrap .phase-status-dot { margin:0; align-self:auto; }
+  .hs-place { color:#5b6573; }
   .hs-grouphead { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#5b6573; margin:8px 0 2px; padding:0 12px; display:flex; align-items:center; gap:6px; }
   .hs-grouphead--hidden { color:#b45309; }
   .hs-count { background:#eef0f4; color:#5b6573; border-radius:999px; padding:0 6px; font-size:10px; font-weight:700; }
@@ -3562,8 +3572,8 @@
   <span class="label">Hidden survey&nbsp;·&nbsp;<b id="hs-name">Eye-off icon</b></span>
   <button data-hs="1" class="on" title="Eye-off icon (baseline)" onclick="setHiddenApproach(1, this)">1</button>
   <button data-hs="2" title="&quot;Link-only&quot; pill" onclick="setHiddenApproach(2, this)">2</button>
-  <button data-hs="3" title="Dimmed row + chain icon" onclick="setHiddenApproach(3, this)">3</button>
-  <button data-hs="4" title="Hidden status dot" onclick="setHiddenApproach(4, this)">4</button>
+  <button data-hs="3" title="Link-only meta line" onclick="setHiddenApproach(3, this)">3</button>
+  <button data-hs="4" title="Dashed ring on dot (placement ⟂ lifecycle)" onclick="setHiddenApproach(4, this)">4</button>
   <button data-hs="5" title="Grouped: On project / Hidden" onclick="setHiddenApproach(5, this)">5</button>
   <button data-hs="6" title="Status column" onclick="setHiddenApproach(6, this)">6</button>
   <button data-hs="7" title="Section callout" onclick="setHiddenApproach(7, this)">7</button>
@@ -3868,8 +3878,8 @@
   const HS_META = {
     1:  { name: 'Eye-off icon',        term: 'hidden from participants' },
     2:  { name: '"Link-only" pill',    term: 'link-only' },
-    3:  { name: 'Dimmed + chain icon', term: 'unlisted' },
-    4:  { name: 'Hidden status dot',   term: 'off the project' },
+    3:  { name: 'Link-only meta line', term: 'link only' },
+    4:  { name: 'Dashed ring on dot',  term: 'not on the project page' },
     5:  { name: 'Grouped subsections', term: 'hidden' },
     6:  { name: 'Status column',       term: 'link-only' },
     7:  { name: 'Section callout',     term: 'off the project' },
@@ -3903,19 +3913,26 @@
           + hsRow({ phase:'schools', dot:'live', name:`School survey <span class="hs-pill"><span class="hs-eye-mini" style="width:12px;height:12px">${HS_SVG.link}</span>Link-only</span>`, dates:'20 May–5 Jun' })
           + market + kiosk;
         break;
-      case 3: // Dimmed row + chain icon — "Unlisted"
+      case 3: // Link-only meta line — neutral, lifecycle dot preserved, NOT dimmed.
+        // School survey is active (green dot stays green); "Link only" is a separate, calm
+        // placement signal on the meta line — it says how people reach it, not that it's off.
         body = askus
-          + `<div class="phase-row-rich hs-dim" data-view="phase" data-phase="schools" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>`
-            + `<div class="flex-1 min-w-0"><div class="phase-name">School survey</div><div class="phase-dates">Unlisted · link only</div></div>`
-            + `<span class="hs-chain">${HS_SVG.link}</span></div>`
+          + hsRow({ phase:'schools', dot:'live', name:'School survey',
+              dates:`<span class="hs-linkmeta"><span class="hs-linkmeta__ic">${HS_SVG.link}</span><b>Link only</b> · 20 May–5 Jun</span>` })
           + market + kiosk;
         break;
-      case 4: // Hidden status dot + caption — "Off the project"
+      case 4: { // Dashed ring around the REAL dot — placement is orthogonal to lifecycle.
+        // The inner fill keeps its green/white/grey meaning (active/future/past); the neutral
+        // dashed ring is the "not on the project page" channel. Shown here on an active (green)
+        // AND a future (white) survey, with on-project green + grey rows for contrast.
+        const ring = (dot) => `<span class="hs-dotwrap" title="Not on the project page — reachable by link"><span class="phase-status-dot ${dot}"></span></span>`;
+        const place = '<span class="hs-place">Not on the project page</span>';
         body = askus
-          + hsRow({ phase:'schools', dot:'hs-dot', name:'School survey',
-              dates:'<span class="hs-muted">Not on the project · link only</span>' })
-          + market + kiosk;
+          + `<div class="phase-row-rich" data-view="phase" data-phase="schools" onclick="setView('phase', this)">${ring('live')}<div class="flex-1 min-w-0"><div class="phase-name">School survey</div><div class="phase-dates">20 May–5 Jun · ${place}</div></div></div>`
+          + `<div class="phase-row-rich">${ring('upcoming')}<div class="flex-1 min-w-0"><div class="phase-name">Market-day poll</div><div class="phase-dates">15–17 Aug · ${place}</div></div></div>`
+          + kiosk;
         break;
+      }
       case 5: // Grouped subsections
         body = `<div class="hs-grouphead">On the project <span class="hs-count">3</span></div>`
           + askus + market + kiosk
@@ -3971,11 +3988,23 @@
   // the consequence of each treatment is visible on the FO side too.
   function phoneExtras(n) {
     const term = (HS_META[n] || HS_META[1]).term;
+    // Approach 4 marks two surveys as off-page (to show placement is independent of
+    // lifecycle); every other approach has only the School survey off-page.
+    const offPage = n === 4 ? ['School survey', 'Market-day poll'] : ['School survey'];
+    const all = [
+      { name: 'Ask us anything', meta: 'Ongoing' },
+      { name: 'School survey',   meta: '20 May–5 Jun' },
+      { name: 'Market-day poll', meta: '15–17 Aug' },
+    ];
+    const rows = all.filter(s => offPage.indexOf(s.name) === -1)
+      .map(s => `<a class="pp-fo__exrow" href="#"><span class="pp-fo__exname">${s.name}</span><span class="pp-fo__exmeta">${s.meta}</span></a>`).join('');
+    const many = offPage.length > 1;
+    const names = offPage.map(s => '“' + s + '”').join(' and ');
+    const note = `${names} ${many ? 'are' : 'is'} ${term} — ${many ? 'they' : 'it'} never appear${many ? '' : 's'} here; residents reach ${many ? 'them' : 'it'} only via ${many ? 'their' : 'its'} direct link.`;
     return `<div class="pp-fo__extra">
       <h2 class="gv-title h3 pp-fo__h2">Other ways to take part</h2>
-      <a class="pp-fo__exrow" href="#"><span class="pp-fo__exname">Ask us anything</span><span class="pp-fo__exmeta">Ongoing</span></a>
-      <a class="pp-fo__exrow" href="#"><span class="pp-fo__exname">Market-day poll</span><span class="pp-fo__exmeta">15–17 Aug</span></a>
-      <div class="pp-fo__hsnote"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span><span><b>Editor only.</b> “School survey” is ${term} — it never appears here; residents reach it only via its direct link.</span></div>
+      ${rows}
+      <div class="pp-fo__hsnote"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span><span><b>Editor only.</b> ${note}</span></div>
     </div>`;
   }
   // Toggle the explorer chip + (re)render Extras/phone for the chosen approach.
