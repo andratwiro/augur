@@ -3030,9 +3030,9 @@
 
 <!-- ============ State switcher — compact, bottom-right ============ -->
 <div class="state-chip" role="group" aria-label="Project content state">
-  <button data-state="empty" class="on" onclick="setProjectState('empty', this)">Empty</button>
+  <button data-state="empty" onclick="setProjectState('empty', this)">Empty</button>
   <button data-state="few" onclick="setProjectState('few', this)">Few</button>
-  <button data-state="complex" onclick="setProjectState('complex', this)">Complex</button>
+  <button data-state="complex" class="on" onclick="setProjectState('complex', this)">Complex</button>
 </div>
 
 <script>
@@ -3474,8 +3474,8 @@
     setView('project', document.querySelector('[data-view="project"]'));
   }
 
-  // Open in the empty state by default (panel + phone preview).
-  setProjectState('empty', document.querySelector('.state-chip button[data-state="empty"]'));
+  // Open in the complex state by default (panel + phone preview).
+  setProjectState('complex', document.querySelector('.state-chip button[data-state="complex"]'));
 
   // ── Full front-office project page ────────────────────────────────────────
   // The Eye icon (top bar + content builder) opens the live FO project page. It
