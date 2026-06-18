@@ -155,16 +155,21 @@
 /* Topbar action buttons are compact — measured live: 4px 8px padding, ~35px tall,
    14px text (the full-size .gv-btn is for forms, not this chrome). */
 .gv-bo-topbar__actions .gv-btn { padding: 4px 8px; font-size: var(--gv-fs-s); line-height: 26px; }
-/* Icon-only action button (the preview eye). Grounded in the real project-editor
-   topbar (epic tenant, r1-bo-project-tabs digest): the "View project" control is a
-   *secondary-outlined Button with only an icon* — 42×34, padding 4px 8px, 1px border,
-   3px radius — NOT a bare/ghost glyph. Its icon is the same buttonIcon size as the
-   glyphs inside the text buttons, so the eye just drops the label and keeps the box.
-   Square it up a touch (no label to pad out the width). The glyph box takes the
-   button's line-height so an icon-only button stands the same height as its
-   text siblings (Share/Published) instead of collapsing to the glyph height. */
-.gv-bo-topbar__actions .gv-btn--icon { padding: 4px 7px; }
-.gv-bo-topbar__actions .gv-btn--icon > [data-gv-icon] { height: 26px; }
+/* Borderless icon-only action button (the preview eye): a *button that carries
+   just an icon* — no border, transparent until a soft grey hover (per review). A
+   quiet grey glyph (matches the admin chrome, not link-blue), sized ~20px so it's
+   clearly an icon but lighter than the text-button labels. It stands the same
+   height as the Share/Published siblings — the glyph box takes the button
+   line-height so it doesn't collapse to the glyph height.
+   Three-class selector so it deterministically supersedes the inline
+   .pp-topbar-view rules in index.html regardless of stylesheet order. */
+.gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon {
+  border: 0; background: transparent; color: var(--gv-text-secondary);
+  padding: 4px 8px; border-radius: var(--gv-radius);
+}
+.gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon:hover { background: var(--gv-grey-100); filter: none; }
+.gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon > [data-gv-icon] { height: 26px; }
+.gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon [data-gv-icon] > svg { width: 20px; height: 20px; }
 
 /* status/meta pills under the title */
 .gv-bo-meta { display: flex; flex-wrap: wrap; gap: 16px; margin: 6px 0 0; }
@@ -178,6 +183,14 @@
   font-size: var(--gv-fs-s); color: var(--gv-text-secondary);
 }
 .gv-bo-meta__item .gv-icon { width: 14px; height: 14px; }
+/* Vertically centre the meta glyphs on their labels. The .gv-icon baseline shift
+   (vertical-align:-0.125em) leaves the inline svg sitting low even inside the
+   centred flex item; block display drops the shift so glyph and label share a
+   centre. Three-class selector supersedes the inline `top:1px` nudge in index.html
+   (which pushed the already-low glyph ~2px below the text). */
+.gv-bo-topbar .gv-bo-meta__item .gv-icon {
+  position: static; top: auto; display: block; vertical-align: 0;
+}
 
 /* ── Tab bar (project tabs AND phase sub-tabs share this) ─────────────────────
    Measured live (bo-phase-setup, nav.sc-gEXpur): the tab row is an *elevated
