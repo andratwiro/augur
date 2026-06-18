@@ -16,7 +16,45 @@ Read this at the start of each loop; append after each iteration.
 - Other observed fills: `#596B7A` bars/text, `#43515D`, `#057ABE`, `#5FC4E8`, `#0080A5`,
   `#00577C`, `#40B8C5`, `#32B67A` (donut/pie segments — to ground in a later loop)
 
+## ⚑ DIRECTION CHANGE (loop 7, user-requested) — charts become real interactive components
+The user wants the charts to be **interactive, data-driven, re-feedable components**, not
+static SVG — and to do it for **ALL charts** (a long, multi-loop effort). Library approved.
+- **Engine:** ApexCharts 5 (SVG, matches recharts look, tooltips/hover/legend-toggle, clean
+  series API). Vendored locally at `skills/govocal-ui/vendor/apexcharts.min.js` (600KB);
+  added `vendor` to build.js SHARED_ASSET_DIRS so it ships.
+- **Wrapper:** `skills/govocal-ui/govocal-charts.js` exposes `GVChart.{line,combo,bar,donut,
+  pie,create}` — themed from the `--gv-chart-*` tokens at render time (resolves CSS vars to
+  hex for Apex), sensible interactive defaults. Returns the live chart (el.__gv) for
+  updateSeries/updateOptions later. Pages load it via ../../skills/govocal-ui/ (canonical).
+- The earlier loops 1–6 (token palette, axis colours) STILL pay off: GVChart themes Apex from
+  those same tokens, so the colour grounding carries over to the new engine.
+- **Conversion backlog (one coherent group per loop):** [done] Representativeness grouped bar.
+  [todo] Overview line/combo (Registrations/Participants/Inputs/Comments/Reactions) → GVChart;
+  horizontal bars (Participation per project/tag) → GVChart.bar horizontal; Input-status donut;
+  Visitors line + 3 pies; Users-tab bars; vertical bars (age/commute). Retire the hand-rolled
+  lineSVG/comboSVG/barsH/pieSVG/donut SVG code as each is replaced.
+- **Gotcha logged:** the canonical `.gv-bo-chartcard svg { width:100%; height:auto }` blows up
+  ANY inline svg inside a chartcard (it caused both the loop-6 line squish AND a 363px footer
+  icon here). Pin decorative svg width/height (equal specificity + later source order wins).
+- **Gotcha:** ApexCharts mis-sizes in a `display:none` panel — render lazily when the tab is
+  first shown (see __renderRepr hooked into tab switching).
+
 ## Iterations
+
+### Loop 7 — 2026-06-18 — Interactive charts foundation + Representativeness (PoC)
+- Vendored ApexCharts; built `govocal-charts.js` GVChart wrapper (token-themed, data-driven).
+- Built the **Representativeness** tab (was empty-state): grouped Users vs Total-population bar,
+  % data labels, 0–60% axis, legend, "Representativeness score 48/100" header, footer
+  "61 of 72 (85%)…", and a working **chart/table toggle** (same REPR data → both views).
+  Interactive: Apex tooltips on hover + legend click-to-toggle. Data lives in an editable REPR
+  object (re-feedable). Colours from tokens (navy + teal-light) — re-themeable.
+- **Bug fixed mid-build:** GVChart.merge clobbered themed defaults with `undefined`
+  (xaxis.labels) → Apex crash. merge now skips undefined.
+- **Verify:** lint ✓. Playwright render of the Representativeness tab: 16 bars, 16 data labels,
+  2 legend items, 0 page errors; footer icon back to 14px; table toggle works. Eyeball ✓ vs the
+  user's screenshot.
+- **Deploy:** yes.
+
 
 ### Loop 1 — 2026-06-18 — Ground the chart palette + axis-tick colour system
 - **Added** `--gv-chart-*` token block to `govocal-tokens.css` (navy/blue/line/teal/pos/neg/

@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/vendor/apexcharts.min.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-charts.js" defer></script>
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
@@ -121,6 +123,21 @@
     .ch-dots i { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--ch-line); }
     .ch-axis { display: flex; justify-content: space-between; margin-top: 4px; padding: 0 2px; }
     .ch-axis span { font-size: var(--gv-fs-13); color: var(--gv-chart-axis); }
+    /* Representativeness card: score chip + chart/table toggle + footer. */
+    .db-repr .db-cardhead { align-items: center; }
+    .db-repr__score { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); font-weight: 400; }
+    .db-repr__score b { font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
+    .db-repr__max { color: var(--gv-cool-grey-500); }
+    .db-viewtoggle { display: inline-flex; border: 1px solid var(--gv-border-dark); border-radius: var(--gv-radius); overflow: hidden; }
+    .db-viewtoggle__btn { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 30px; border: 0; background: var(--gv-white); color: var(--gv-cool-grey-500); cursor: pointer; padding: 0; }
+    .db-viewtoggle__btn + .db-viewtoggle__btn { border-left: 1px solid var(--gv-border-dark); }
+    .db-viewtoggle__btn.is-active { background: var(--gv-bo-primary); color: var(--gv-white); }
+    /* Fix size: the canonical `.gv-bo-chartcard svg { width:100% }` would blow these
+       decorative icons up to full card width — pin them (equal specificity, later source). */
+    .db-viewtoggle__btn svg { width: 15px; height: 15px; fill: currentColor; }
+    .db-repr__foot { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
+    .db-repr__foot svg { width: 14px; height: 14px; fill: var(--gv-cool-grey-500); flex: none; }
+    .db-repr__list table { width: 100%; }
     .db-donutwrap { display: flex; align-items: center; gap: 22px; flex-wrap: nowrap; }
     /* Donut SVG fixed size (canonical forces chartcard svg to 100% width — override). */
     .db-donutwrap .db-donut__svg { width: 150px !important; height: 150px; flex: none; }
@@ -351,24 +368,27 @@
         <h1 class="gv-bo-pagehead">Community representativeness</h1>
         <p class="gv-bo-pagelede" style="margin:6px 0 16px">See how representative your platform users are compared to the total population - based on data collected during user registration.</p>
         <div style="margin-bottom:16px"><select class="gv-bo-select" aria-label="Project"><option>Type to search projects</option></select></div>
-        <div class="gv-bo-card">
-          <div class="gv-bo-empty">
-            <h3 class="gv-bo-empty__title">Please provide a base dataset.</h3>
-            <p class="gv-bo-empty__text">This base dataset is required to calculate the representativeness of platform users compared to the total population.</p>
-            <button class="gv-btn admin-dark">Submit base data</button>
-            <svg class="db-empty-illus" viewBox="0 0 280 160" aria-hidden="true">
-              <rect x="2" y="2" width="276" height="156" rx="6" fill="#fff" stroke="var(--gv-grey-200)"/>
-              <rect x="16" y="14" width="70" height="6" rx="3" fill="var(--gv-grey-300)"/>
-              <g fill="var(--gv-grey-300)">
-                <rect x="30" y="86" width="10" height="44"/><rect x="70" y="70" width="10" height="60"/><rect x="110" y="44" width="10" height="86"/>
-                <rect x="150" y="78" width="10" height="52"/><rect x="190" y="60" width="10" height="70"/><rect x="230" y="96" width="10" height="34"/>
-              </g>
-              <g fill="var(--gv-cool-grey-400)">
-                <rect x="42" y="74" width="10" height="56"/><rect x="82" y="58" width="10" height="72"/><rect x="122" y="36" width="10" height="94"/>
-                <rect x="162" y="66" width="10" height="64"/><rect x="202" y="50" width="10" height="80"/><rect x="242" y="84" width="10" height="46"/>
-              </g>
-              <line x1="16" y1="130" x2="264" y2="130" stroke="var(--gv-grey-300)"/>
-            </svg>
+        <div class="gv-bo-chartcard db-repr">
+          <div class="db-cardhead">
+            <h3>Which market are you from?</h3>
+            <span class="db-cardhead__tools">
+              <span class="db-repr__score">Representativeness score: <b id="repr-score">48</b><span class="db-repr__max">/100</span></span>
+              <span class="gv-icon" data-gv-icon="download"></span>
+              <span class="db-viewtoggle" role="group" aria-label="View">
+                <button class="db-viewtoggle__btn is-active" data-view="chart" aria-label="Chart view" aria-pressed="true">
+                  <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="1" y="8" width="3.2" height="7" rx="0.5"/><rect x="6.4" y="3" width="3.2" height="12" rx="0.5"/><rect x="11.8" y="6" width="3.2" height="9" rx="0.5"/></svg>
+                </button>
+                <button class="db-viewtoggle__btn" data-view="list" aria-label="Table view" aria-pressed="false">
+                  <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><g><rect x="1" y="2.5" width="14" height="1.8" rx="0.9"/><rect x="1" y="7.1" width="14" height="1.8" rx="0.9"/><rect x="1" y="11.7" width="14" height="1.8" rx="0.9"/></g></svg>
+                </button>
+              </span>
+            </span>
+          </div>
+          <div class="db-repr__chart" id="repr-chart" aria-label="Users vs total population by market"></div>
+          <div class="db-repr__list" hidden></div>
+          <div class="db-repr__foot">
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="5" r="3"/><path d="M2.5 14a5.5 5.5 0 0 1 11 0z"/></svg>
+            <span><b>61</b> out of <b>72</b> users included (<b>85%</b>) · <b>Required</b> for user registration</span>
           </div>
         </div>
       </section>
@@ -568,9 +588,56 @@
         tab.classList.add("is-active");
         const key = tab.dataset.db;
         document.querySelectorAll(".db-panel").forEach(p => p.classList.toggle("is-active", p.dataset.panel === key));
+        if (key === "representativeness" && window.__renderRepr) window.__renderRepr();
       });
     });
     if (window.GVIcons) window.GVIcons.render(document.body);
+
+    // ── Representativeness chart — interactive + data-driven via GVChart/ApexCharts.
+    // Edit REPR to re-feed; the chart and the table view both read from it.
+    (function () {
+      const REPR = {
+        categories: ["Belgium", "Netherlands", "US", "UK", "Chile", "DACH", "France", "Scandinavia"],
+        users:      [41, 6.6, 11.5, 14.7, 3.3, 6.6, 9.8, 6.5],
+        population: [34.3, 8.6, 14.3, 14.3, 5.7, 5.7, 8.5, 8.6],
+        score: 48
+      };
+      let chart = null;
+      window.__renderRepr = function () {
+        if (chart || !window.GVChart) return;            // render once, only when visible (ApexCharts needs a sized box)
+        const el = document.getElementById("repr-chart");
+        if (!el) return;
+        const p = GVChart.palette();
+        chart = GVChart.bar(el, {
+          height: 360,
+          categories: REPR.categories,
+          series: [{ name: "Users", data: REPR.users }, { name: "Total population", data: REPR.population }],
+          colors: [p.navy, p.tealLight],
+          grouped: true, dataLabels: true, percent: true, max: 60, columnWidth: "72%", legend: true
+        });
+      };
+      const scoreEl = document.getElementById("repr-score");
+      if (scoreEl) scoreEl.textContent = REPR.score;
+      const list = document.querySelector(".db-repr__list");
+      if (list) {
+        const rows = REPR.categories.map((c, i) =>
+          `<tr><td>${c}</td><td>${REPR.users[i]}%</td><td>${REPR.population[i]}%</td></tr>`).join("");
+        list.innerHTML = `<table class="gv-bo-table is-bordered"><thead><tr><th>Market</th><th>Users</th><th>Total population</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+      document.querySelectorAll(".db-repr .db-viewtoggle__btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const view = btn.dataset.view;
+          document.querySelectorAll(".db-repr .db-viewtoggle__btn").forEach(b => {
+            const on = b === btn; b.classList.toggle("is-active", on); b.setAttribute("aria-pressed", on);
+          });
+          document.querySelector(".db-repr__chart").hidden = view !== "chart";
+          document.querySelector(".db-repr__list").hidden = view !== "list";
+        });
+      });
+      // If the Representativeness tab is the active one on load, render immediately.
+      const panel = document.querySelector('.db-panel[data-panel="representativeness"]');
+      if (panel && panel.classList.contains("is-active")) window.__renderRepr();
+    })();
   </script>
 </body>
 </html>
