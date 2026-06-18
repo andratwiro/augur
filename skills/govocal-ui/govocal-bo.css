@@ -936,6 +936,12 @@
 .gv-bo-menu__item:hover { background: var(--gv-grey-50); }
 .gv-bo-menu__icon { width: 24px; height: 24px; display: inline-flex; flex: none; }
 .gv-bo-menu.is-flyout { width: 260px; min-width: 260px; padding: 0; }
+/* Grouped-menu furniture — section label, separator, and item state modifiers.
+   Used by the survey-actions Export menu + phase-options menu (bo-project-phase). */
+.gv-bo-menu__lbl { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--gv-cool-grey-600); font-weight: 700; padding: 8px 15px 2px; }
+.gv-bo-menu__sep { height: 1px; background: var(--gv-divider); margin: 5px 0; }
+.gv-bo-menu__item.is-danger { color: var(--gv-red-500); }
+.gv-bo-menu__item.is-new { background: var(--gv-teal-50); }
 
 /* Notification-flyout rows (content inside .gv-bo-menu.is-flyout) — measured
    r1-px-notif-flyout: <a> rows pad 10px 10px 10px 15px, body 14/400 #333,

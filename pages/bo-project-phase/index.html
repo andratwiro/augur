@@ -104,6 +104,94 @@
     /* Round 5 — validation / dirty states (page-local; token-grounded) */
     .pp-invalid { border-color: var(--gv-red-500) !important; box-shadow: 0 0 0 1px var(--gv-red-500); }
     .pp-fielderror { color: var(--gv-red-500); font-size: var(--gv-fs-s); margin: 6px 0 0; }
+
+    /* ════ Survey-phase Insights: export action cluster + flow (page-local sx-*) ════
+       Ported from the survey-responses-export concept. Survey-only — toggled on by
+       applyInsightsMode(). PDF-document literals (--pdf-*/--badge-*) are genuine
+       one-offs simulating a printed record, not product chrome. */
+    .sx-doc, .sx-frow__right { --pdf-ink:#1f2733; --pdf-muted:#6b7782; --pdf-blue:#2f6fec; --pdf-blue-deep:#2a5db0; --pdf-line:#dfe4ea; --pdf-coverbg:#eef2f7; }
+    .sx-badge { --badge-green:#2f9e57; --badge-red:#d83a2a; }
+
+    .sx-actions { display: flex; align-items: center; gap: 10px; }
+    .sx-linkbtn { background: none; border: 0; padding: 6px 4px; font: inherit; font-size: var(--gv-fs-base); color: var(--gv-blue-500); cursor: pointer; }
+    .sx-menuwrap { position: relative; }
+    .sx-menuwrap .gv-bo-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; min-width: 322px; white-space: nowrap; }
+    .gv-bo-menu__item .sx-newtag { margin-left: 12px; font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--gv-teal-500); border: 1px solid #9ad9de; border-radius: 3px; padding: 1px 5px; }
+    .gv-bo-menu__item .sx-betatag { margin-left: 8px; font-size: 10px; font-weight: 700; color: var(--gv-cool-grey-600); border: 1px solid var(--gv-divider); border-radius: 3px; padding: 1px 5px; }
+    /* (.gv-bo-menu__lbl / __sep / item.is-danger / item.is-new now live in canonical govocal-bo.css) */
+
+    .sx-note { display: flex; gap: 8px; align-items: flex-start; font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); background: var(--gv-grey-50); border-radius: 4px; padding: 12px 14px; margin: 14px 0; }
+
+    /* wide export modal */
+    .sx-backdrop { position: fixed; inset: 0; background: rgba(7,26,43,.45); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 28px 16px; }
+    .sx-modal { background: #fff; border-radius: 6px; width: 100%; max-width: 1020px; box-shadow: 0 18px 60px rgba(0,0,0,.30); display: flex; flex-direction: column; max-height: calc(100vh - 56px); overflow: hidden; }
+    .sx-modal__head { padding: 20px 26px 14px; border-bottom: 1px solid var(--gv-divider); position: relative; flex: none; }
+    .sx-modal__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-bo-primary); }
+    .sx-modal__sub { margin: 6px 0 0; font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); line-height: 1.45; max-width: 70ch; }
+    .sx-modal__x { position: absolute; top: 16px; right: 16px; width: 30px; height: 30px; border: 0; background: none; border-radius: 4px; cursor: pointer; color: var(--gv-cool-grey-600); display: grid; place-items: center; }
+    .sx-modal__x:hover { background: var(--gv-grey-50); }
+    .sx-modal__cols { display: grid; grid-template-columns: 1fr 1fr; min-height: 0; flex: 1; }
+    .sx-config { overflow-y: auto; padding: 18px 24px; border-right: 1px solid var(--gv-divider); display: flex; flex-direction: column; }
+    .sx-config__body { flex: 1; }
+    .sx-preview { background: #525659; overflow-y: auto; padding: 18px; }
+    .sx-preview__cap { color: #c7ccd1; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; margin: 0 0 12px; }
+    .sx-sec { margin: 2px 0 18px; }
+    .sx-sec__head { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+    .sx-sec__title { font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-bo-primary); }
+    .sx-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .sx-fieldlabel { display: block; font-size: var(--gv-fs-s); font-weight: 500; color: var(--gv-bo-primary); margin: 0 0 4px; }
+    .sx-cover.is-off { opacity: .45; pointer-events: none; }
+    .sx-count2 { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); margin: 0 0 12px; }
+    .sx-flag { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); margin: 0 0 6px; line-height: 1.45; }
+    .sx-frow { display: flex; align-items: center; gap: 12px; padding: 9px 2px; border-bottom: 1px solid #eef0f2; }
+    .sx-frow:last-child { border-bottom: 0; }
+    .sx-frow__main { min-width: 0; }
+    .sx-frow__title { font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
+    .sx-frow__type { font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+    .sx-frow__type .pii { color: var(--gv-red-500); font-weight: 600; }
+    .sx-frow__right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .sx-badge { font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--gv-white); border-radius: 4px; padding: 3px 9px; min-width: 74px; text-align: center; }
+    .sx-badge.in { background: var(--badge-green); }
+    .sx-badge.ex { background: var(--badge-red); }
+    .sx-consent { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0 0; padding: 12px 14px; background: var(--gv-teal-50); border: 1px solid var(--gv-teal-100); border-radius: 4px; }
+    .sx-consent label { font-size: var(--gv-fs-s); color: var(--gv-bo-primary); line-height: 1.45; }
+    .sx-config__foot { flex: none; display: flex; align-items: center; gap: 12px; padding-top: 14px; margin-top: 8px; border-top: 1px solid var(--gv-divider); }
+    .sx-config__foot .sx-spacer { margin-left: auto; }
+
+    /* simulated PDF document (preview + full viewer) */
+    .sx-doc { display: flex; flex-direction: column; gap: 16px; }
+    .sx-page { background: #fff; border-radius: 2px; box-shadow: 0 6px 22px rgba(0,0,0,.35); padding: 40px 42px; box-sizing: border-box; font-size: var(--gv-fs-xs); color: var(--pdf-ink); width: 100%; }
+    .sx-page--cover { background: var(--pdf-coverbg); min-height: 360px; display: flex; flex-direction: column; }
+    .sx-cv-eyebrow { font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--pdf-blue-deep); font-weight: 800; }
+    .sx-cv-title { font-size: var(--gv-fs-xxl); line-height: 1.12; font-weight: 800; color: var(--pdf-blue); margin: 14px 0 6px; letter-spacing: -.01em; }
+    .sx-cv-sub { font-size: var(--gv-fs-13); color: var(--pdf-muted); margin: 0; }
+    .sx-cv-foot { margin-top: auto; border-top: 1px solid #d6dee8; padding-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
+    .sx-cv-foot .lab { font-size: 8px; letter-spacing: .12em; text-transform: uppercase; color: var(--pdf-muted); font-weight: 700; }
+    .sx-cv-foot .val { font-size: 11px; color: var(--pdf-ink); }
+    .sx-cv-notes { grid-column: 1 / -1; }
+    .sx-rec { margin-bottom: 18px; }
+    .sx-rec:last-child { margin-bottom: 0; }
+    .sx-rec__head { display: flex; align-items: center; justify-content: space-between; background: var(--pdf-blue-deep); color: var(--gv-white); padding: 6px 11px; border-radius: 3px; }
+    .sx-rec__id { font-size: 11px; font-weight: 800; letter-spacing: .05em; }
+    .sx-rec__when { font-size: 9px; opacity: .85; }
+    .sx-qa { padding: 9px 0 2px; }
+    .sx-qa__q { font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--pdf-blue-deep); font-weight: 800; margin-bottom: 4px; }
+    .sx-qa__a { font-size: var(--gv-fs-xs); color: var(--pdf-ink); border: 1px solid var(--pdf-line); border-radius: 4px; padding: 7px 10px; background: #fff; }
+    .sx-qa__a.is-empty { color: #aab2ba; }
+    .sx-pageno { text-align: center; font-size: 10px; color: #c7ccd1; }
+
+    /* full-screen PDF viewer */
+    .sx-pdf { position: fixed; inset: 0; z-index: 300; background: #525659; display: flex; flex-direction: column; }
+    .sx-pdf__bar { flex: none; height: 48px; background: #323639; color: var(--gv-white); display: flex; align-items: center; gap: 14px; padding: 0 16px; font-size: var(--gv-fs-s); }
+    .sx-pdf__name { font-weight: 600; }
+    .sx-pdf__bar .sx-spacer { margin-left: auto; }
+    .sx-pdf__btn { background: rgba(255,255,255,.12); color: var(--gv-white); border: 0; border-radius: 4px; cursor: pointer; padding: 7px 12px; font: inherit; font-size: var(--gv-fs-s); display: inline-flex; align-items: center; gap: 6px; }
+    .sx-pdf__btn:hover { background: rgba(255,255,255,.22); }
+    .sx-pdf__scroll { flex: 1; overflow: auto; padding: 26px 16px 60px; }
+    .sx-pdf__scroll .sx-doc { max-width: 640px; margin: 0 auto; }
+
+    .sx-toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--gv-bo-primary); color: var(--gv-white); padding: 11px 18px; border-radius: 5px; font-size: var(--gv-fs-s); box-shadow: 0 8px 26px rgba(0,0,0,.3); opacity: 0; transition: all .2s; z-index: 400; pointer-events: none; }
+    .sx-toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body class="gv-bo">
@@ -293,8 +381,19 @@
                 <span><span class="gv-icon" data-gv-icon="eye"></span>Mixed rights</span>
               </div>
             </div>
+            <!-- phase-level options ⋯ — home for the irreversible "Delete survey results" (survey only),
+                 kept away from the Insights download menu -->
             <div class="gv-bo-phasehead__actions">
-              <button class="gv-iconbtn" aria-label="Phase options"><span data-gv-icon="dots-horizontal"></span></button>
+              <div class="sx-menuwrap">
+                <button class="gv-iconbtn" data-menu-trigger aria-label="Phase options" aria-haspopup="true"><span data-gv-icon="dots-horizontal"></span></button>
+                <div class="gv-bo-menu" hidden>
+                  <button class="gv-bo-menu__item" data-act="toast" data-msg="Edit phase."><span class="gv-bo-menu__icon" data-gv-icon="edit"></span>Edit phase</button>
+                  <button class="gv-bo-menu__item" data-act="toast" data-msg="Copy phase."><span class="gv-bo-menu__icon" data-gv-icon="paperclip"></span>Copy phase</button>
+                  <div class="gv-bo-menu__sep"></div>
+                  <button class="gv-bo-menu__item is-danger" id="delSurveyResults" data-act="toast" data-msg="Delete survey results? (would confirm)" hidden><span class="gv-bo-menu__icon" data-gv-icon="delete"></span>Delete survey results</button>
+                  <button class="gv-bo-menu__item is-danger" data-act="toast" data-msg="Delete phase?"><span class="gv-bo-menu__icon" data-gv-icon="delete"></span>Delete phase</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1223,15 +1322,37 @@
           </div>
 
           <!-- ════ Insights sub-panel ════ -->
-          <div class="pp-sub" data-sub="insights">
+          <div class="pp-sub" data-sub="insights" id="insightsPanel">
             <div class="gv-bo-headrow">
               <div>
                 <h3 class="gv-bo-headrow__title">Insights</h3>
                 <p class="gv-bo-help" style="margin:2px 0 0">Track engagement in real-time</p>
               </div>
-              <div class="gv-bo-headrow__actions">
+              <!-- Default action cluster (non-survey methods) -->
+              <div class="gv-bo-headrow__actions" data-actions="default">
                 <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Download</span></button>
                 <button class="gv-btn success"><span data-gv-icon="stars"></span><span class="gv-btn__label">AI analysis</span></button>
+              </div>
+              <!-- Survey-phase action cluster: New submission · Import · Export ▾ · AI analysis.
+                   Export ▾ is the established home for every download (one labelled menu,
+                   grouped by what you'd DO with the file). The new "Individual responses
+                   (PDF)…" item opens the field-review export flow. -->
+              <div class="gv-bo-headrow__actions sx-actions" data-actions="survey" hidden>
+                <button class="sx-linkbtn" data-act="toast" data-msg="Add a submission on behalf of a participant.">New submission</button>
+                <button class="gv-btn secondary-outlined" data-act="toast" data-msg="Import responses from a file."><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></svg><span class="gv-btn__label">Import</span></button>
+                <div class="sx-menuwrap">
+                  <button class="gv-btn secondary-outlined" data-menu-trigger><span data-gv-icon="download"></span><span class="gv-btn__label">Export</span><span data-gv-icon="chevron-down"></span></button>
+                  <div class="gv-bo-menu" hidden>
+                    <div class="gv-bo-menu__lbl">Per-respondent records</div>
+                    <button class="gv-bo-menu__item is-new" data-open-export><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Individual responses (PDF)…<span class="sx-newtag">NEW</span></button>
+                    <div class="gv-bo-menu__lbl">Raw data</div>
+                    <button class="gv-bo-menu__item" data-act="toast" data-msg="Preparing .xlsx export…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Survey results (.xlsx)</button>
+                    <div class="gv-bo-menu__lbl">Summary report</div>
+                    <button class="gv-bo-menu__item" data-act="toast" data-msg="Preparing insights PDF…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Insights summary (PDF)</button>
+                    <button class="gv-bo-menu__item" data-act="toast" data-msg="Preparing Word document…"><span class="gv-bo-menu__icon" data-gv-icon="download"></span>Insights summary (Word)<span class="sx-betatag">BETA</span></button>
+                  </div>
+                </div>
+                <button class="gv-btn admin-dark" data-act="toast" data-msg="Run AI analysis over the responses."><span data-gv-icon="stars"></span><span class="gv-btn__label">AI analysis</span></button>
               </div>
             </div>
 
@@ -1249,6 +1370,13 @@
                 <path d="M0,128 L80,120 L160,118 L240,96 L320,86 L400,58 L480,48 L560,30 L600,24 L600,130 L0,130 Z" fill="url(#pp-area)"/>
                 <path d="M0,128 L80,120 L160,118 L240,96 L320,86 L400,58 L480,48 L560,30 L600,24" fill="none" stroke="var(--gv-bo-primary)" stroke-width="2"/>
               </svg>
+            </div>
+
+            <!-- Survey-only: per-question results + a pointer to where exports/destructive actions live -->
+            <div id="insightsSurveyNote" hidden>
+              <h4 class="gv-bo-subhead" style="margin-top:22px">Questions</h4>
+              <p class="pp-lede">Total 204 responses · 7 questions across 1 page</p>
+              <div class="sx-note"><span class="gv-icon" data-gv-icon="info-solid" style="color:var(--gv-blue-500)"></span><div>Per-question result charts render here. Exports live in the labelled <b>Export ▾</b> menu (paired with Import); the irreversible <b>Delete survey results</b> sits in the phase <b>⋯ options</b> (top-right), away from the downloads.</div></div>
             </div>
           </div>
           </div><!-- /gv-bo-card -->
@@ -1375,6 +1503,78 @@
     </div>
   </div>
 
+  <!-- ═══════════ Survey-export flow (field-review modal → simulated PDF viewer) ═══════════
+       Opened from Insights → Export ▾ → "Individual responses (PDF)…". Survey-only. -->
+  <div class="sx-backdrop" id="exportBackdrop" hidden>
+    <div class="sx-modal" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+      <div class="sx-modal__head">
+        <h2 class="sx-modal__title" id="exportTitle">Export individual responses (PDF)</h2>
+        <p class="sx-modal__sub">Generates a PDF document with every survey response laid out as an individual record. Choose what to include — fields flagged as personal data are excluded by default.</p>
+        <button class="sx-modal__x" id="exportX" aria-label="Close"><span data-gv-icon="close"></span></button>
+      </div>
+
+      <div class="sx-modal__cols">
+        <div class="sx-config">
+          <div class="sx-config__body">
+            <p class="sx-count2">204 responses will be exported</p>
+
+            <div class="sx-sec">
+              <div class="sx-sec__head"><label class="gv-toggle"><input type="checkbox" id="coverToggle" checked><span class="track"></span></label><span class="sx-sec__title">Include a cover page</span></div>
+              <div class="sx-cover" id="coverFields">
+                <div class="gv-bo-field"><span class="sx-fieldlabel">Report title</span><input class="gv-input" type="text" id="covTitle" value="Community Survey — response record" /></div>
+                <div class="gv-bo-field" style="margin-top:10px"><span class="sx-fieldlabel">Subtitle</span><input class="gv-input" type="text" id="covSub" value="Let's Reimagine Dorothea Dix Park" /></div>
+                <div class="sx-grid2" style="margin-top:10px">
+                  <div><span class="sx-fieldlabel">Date</span><input class="gv-input" type="text" id="covDate" value="17 June 2026" /></div>
+                  <div><span class="sx-fieldlabel">Prepared by</span><input class="gv-input" type="text" id="covBy" value="Amanda Harrison" /></div>
+                </div>
+                <div class="gv-bo-field" style="margin-top:10px"><span class="sx-fieldlabel">Additional notes (optional)</span><input class="gv-input" type="text" id="covNotes" placeholder="e.g. Planning ref. 24/0581/FUL" /></div>
+              </div>
+            </div>
+
+            <div class="sx-sec">
+              <div class="sx-sec__head"><span class="sx-sec__title">Review fields before export</span></div>
+              <p class="sx-flag">6 fields are flagged as potential personal data and excluded by default. Toggle any field to include or exclude it.</p>
+              <div class="sx-frow">
+                <div class="sx-frow__main"><div class="sx-frow__title">Include questions with no answer</div><div class="sx-frow__type">Off keeps records compact — blank questions are skipped</div></div>
+                <div class="sx-frow__right"><label class="gv-toggle"><input type="checkbox" id="inclEmpty"><span class="track"></span></label></div>
+              </div>
+              <div id="fieldRows"></div>
+            </div>
+
+            <div class="sx-consent">
+              <label class="gv-checkbox"><input type="checkbox" id="consent"><span class="box"><span class="check" data-gv-icon="check"></span></span></label>
+              <label for="consent">I confirm I have the authority to process and export this data, including any personal data included above.</label>
+            </div>
+          </div>
+
+          <div class="sx-config__foot">
+            <span class="sx-spacer"></span>
+            <button class="gv-btn secondary-outlined" id="exportCancel"><span class="gv-btn__label">Cancel</span></button>
+            <button class="gv-btn admin-dark" id="exportGo" disabled><span data-gv-icon="download"></span><span class="gv-btn__label">Generate PDF</span></button>
+          </div>
+        </div>
+
+        <div class="sx-preview">
+          <p class="sx-preview__cap">PDF preview</p>
+          <div class="sx-doc" id="previewDoc"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sx-pdf" id="pdfView" hidden>
+    <div class="sx-pdf__bar">
+      <span class="sx-pdf__name">community-survey_responses.pdf</span>
+      <span style="opacity:.7" id="pdfMeta"></span>
+      <span class="sx-spacer"></span>
+      <button class="sx-pdf__btn" data-act="toast" data-msg="Downloading PDF…"><span data-gv-icon="download"></span>Download</button>
+      <button class="sx-pdf__btn" id="pdfClose"><span data-gv-icon="close"></span>Close</button>
+    </div>
+    <div class="sx-pdf__scroll"><div class="sx-doc" id="viewerDoc"></div></div>
+  </div>
+
+  <div class="sx-toast" id="toast"></div>
+
   <script>
     // ── Project top-tab switching ──────────────────────────────────────────
     const tabs = document.querySelectorAll('.gv-bo-tabs[aria-label="Project"] .gv-bo-tab');
@@ -1475,6 +1675,7 @@
       subtabs.querySelectorAll(".gv-bo-tab").forEach(x => x.classList.remove("is-active"));
       setupTab.classList.add("is-active");
       subPanels.forEach(p => p.classList.toggle("is-active", p.dataset.sub === ph.setup));
+      applyInsightsMode(ph.setup === "surveysetup");
       if (window.GVIcons) window.GVIcons.render(headMeta);
     }
 
@@ -1632,6 +1833,7 @@
       subtabs.querySelectorAll(".gv-bo-tab").forEach(x => x.classList.remove("is-active"));
       setupTab.classList.add("is-active");
       subPanels.forEach(p => p.classList.toggle("is-active", p.dataset.sub === b.setup));
+      applyInsightsMode(key === "survey");
       markDirty();
     }
     document.querySelectorAll(".pp-picker").forEach(grid => {
@@ -1898,8 +2100,135 @@
 
     if (window.GVIcons) window.GVIcons.render(document.body);
 
+    // ── Survey-phase Insights: swap the action cluster + survey-only affordances ──
+    // Called by selectPhase()/branchToMethod(): survey → export cluster, Questions
+    // note, and the "Delete survey results" item in the phase ⋯ menu; else default.
+    function applyInsightsMode(isSurvey) {
+      const panel = document.getElementById("insightsPanel");
+      if (panel) {
+        const def = panel.querySelector('[data-actions="default"]');
+        const sur = panel.querySelector('[data-actions="survey"]');
+        if (def) def.hidden = isSurvey;
+        if (sur) sur.hidden = !isSurvey;
+        const note = document.getElementById("insightsSurveyNote");
+        if (note) note.hidden = !isSurvey;
+      }
+      const del = document.getElementById("delSurveyResults");
+      if (del) del.hidden = !isSurvey;
+    }
+
     // Initialise to the current phase (Budget allocation) so the voting Setup shows.
     selectPhase(CURRENT);
+
+    // ── Survey export flow: dropdown menus, toast, field-review modal, PDF viewer ──
+    (function () {
+      const $ = (s, r) => (r || document).querySelector(s);
+      const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+      const esc = s => { const d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; };
+
+      let tT; function toast(m) { const e = $("#toast"); if (!e) return; e.textContent = m; e.classList.add("is-on"); clearTimeout(tT); tT = setTimeout(() => e.classList.remove("is-on"), 1900); }
+
+      // generic dropdown menus (Export ▾ + phase ⋯)
+      function closeMenus() { $$(".gv-bo-menu").forEach(m => { m.hidden = true; }); }
+      document.addEventListener("click", e => {
+        const trig = e.target.closest("[data-menu-trigger]");
+        if (trig) { e.stopPropagation(); const m = trig.parentElement.querySelector(".gv-bo-menu"); const open = m.hidden; closeMenus(); m.hidden = !open; return; }
+        if (!e.target.closest(".gv-bo-menu")) closeMenus();
+      });
+      $$('[data-act="toast"]').forEach(b => b.addEventListener("click", () => { closeMenus(); toast(b.dataset.msg); }));
+      $$("[data-open-export]").forEach(b => b.addEventListener("click", () => { closeMenus(); openExport(); }));
+
+      // sample data
+      const QUESTIONS = [
+        { id: "improve", label: "Which improvements matter most to you?", type: "Multiple choice" },
+        { id: "freq",    label: "How often do you visit the park?",        type: "Single choice" },
+        { id: "access",  label: "Rate the current accessibility",          type: "Linear scale" },
+        { id: "rank",    label: "Rank these proposed features",            type: "Ranking" },
+        { id: "photos",  label: "Photos of areas needing attention",       type: "File upload" },
+        { id: "pin",     label: "Mark a location on the map",              type: "Map" },
+        { id: "more",    label: "What would make you visit more often?",   type: "Long answer" },
+      ];
+      const PII = [
+        { id: "name",     label: "Full name",            type: "Registration field" },
+        { id: "email",    label: "Email address",        type: "Registration field" },
+        { id: "gender",   label: "Gender",               type: "Demographic" },
+        { id: "yob",      label: "Year of birth",        type: "Demographic" },
+        { id: "postcode", label: "Place of residence (postcode)", type: "Demographic" },
+        { id: "official", label: "Are you an elected official?",  type: "Demographic" },
+      ];
+      const FIELDS = QUESTIONS.map(f => ({ ...f, pii: false })).concat(PII.map(f => ({ ...f, pii: true })));
+      const RESPONDENTS = [
+        { when: "2026-06-12", a: { improve: "More seating · Better lighting · Accessible paths", freq: "Weekly", access: "4 / 5", rank: "1. Accessible paths  2. Playground  3. Café", photos: null, pin: "Pinned — south entrance", more: "Safer lighting along the main path in the evenings.", name: "Jane Cooper", email: "jane.c@example.com", gender: "Female", yob: "1985", postcode: "NC 27601", official: "No" } },
+        { when: "2026-06-12", a: { improve: "Playground upgrade", freq: "Monthly", access: "2 / 5", rank: "1. Playground  2. Café  3. Accessible paths", photos: "2 files attached", pin: null, more: "A playground area for younger children.", name: "Marc Ellis", email: "marc.e@example.com", gender: "Male", yob: "1990", postcode: "NC 27604", official: "No" } },
+        { when: "2026-06-13", a: { improve: "Better lighting", freq: "Daily", access: "5 / 5", rank: null, photos: null, pin: "Pinned — north meadow", more: null, name: "Priya Nair", email: "priya.n@example.com", gender: "Prefer not to say", yob: "1978", postcode: "NC 27610", official: "Yes — city council" } },
+      ];
+      const TOTAL = 204;
+
+      function badge(on) { return '<span class="sx-badge ' + (on ? "in" : "ex") + '">' + (on ? "INCLUDED" : "EXCLUDED") + "</span>"; }
+      (function buildRows() {
+        const wrap = $("#fieldRows"); if (!wrap) return;
+        FIELDS.forEach(f => {
+          const el = document.createElement("div"); el.className = "sx-frow";
+          el.innerHTML = '<div class="sx-frow__main"><div class="sx-frow__title">' + esc(f.label) + '</div><div class="sx-frow__type">' + esc(f.type) + (f.pii ? ' · <span class="pii">personal data</span>' : "") + "</div></div>" +
+            '<div class="sx-frow__right">' + badge(!f.pii) + '<label class="gv-toggle"><input type="checkbox" data-field="' + f.id + '"' + (f.pii ? "" : " checked") + '><span class="track"></span></label></div>';
+          const cb = el.querySelector("input");
+          cb.addEventListener("change", () => { el.querySelector(".sx-badge").outerHTML = badge(cb.checked); renderPreview(); });
+          wrap.appendChild(el);
+        });
+      })();
+
+      function selectedFields() { const on = new Set($$("[data-field]").filter(c => c.checked).map(c => c.dataset.field)); return FIELDS.filter(f => on.has(f.id)); }
+
+      function buildDoc() {
+        const fields = selectedFields(), inclEmpty = $("#inclEmpty").checked;
+        const frag = document.createDocumentFragment();
+        if ($("#coverToggle").checked) {
+          const c = document.createElement("div"); c.className = "sx-page sx-page--cover";
+          c.innerHTML = '<div class="sx-cv-eyebrow">Survey response record</div>' +
+            '<div class="sx-cv-title">' + esc($("#covTitle").value || "Survey responses") + "</div>" +
+            '<div class="sx-cv-sub">' + esc($("#covSub").value) + "</div>" +
+            '<div class="sx-cv-foot">' +
+              '<div><div class="lab">Date</div><div class="val">' + esc($("#covDate").value) + "</div></div>" +
+              '<div><div class="lab">Prepared by</div><div class="val">' + esc($("#covBy").value) + "</div></div>" +
+              '<div><div class="lab">Responses</div><div class="val">' + TOTAL + " individual records</div></div>" +
+              '<div><div class="lab">Fields included</div><div class="val">' + fields.length + " of " + FIELDS.length + "</div></div>" +
+              ($("#covNotes").value ? '<div class="sx-cv-notes"><div class="lab">Notes</div><div class="val">' + esc($("#covNotes").value) + "</div></div>" : "") +
+            "</div>";
+          frag.appendChild(c);
+        }
+        const page = document.createElement("div"); page.className = "sx-page"; let html = "";
+        RESPONDENTS.forEach((r, i) => {
+          const num = String(i + 1).padStart(3, "0"); let rows = "";
+          fields.forEach(f => { const v = r.a[f.id]; if (v == null && !inclEmpty) return; const empty = v == null;
+            rows += '<div class="sx-qa"><div class="sx-qa__q">' + esc(f.label) + '</div><div class="sx-qa__a' + (empty ? " is-empty" : "") + '">' + (empty ? "(No answer)" : esc(v)) + "</div></div>"; });
+          html += '<div class="sx-rec"><div class="sx-rec__head"><span class="sx-rec__id">RESPONDENT ' + num + '</span><span class="sx-rec__when">' + r.when + "</span></div>" + rows + "</div>";
+        });
+        page.innerHTML = html; frag.appendChild(page);
+        const no = document.createElement("div"); no.className = "sx-pageno"; no.textContent = "Showing 3 of " + TOTAL + " records"; frag.appendChild(no);
+        return { frag, fields, inclEmpty };
+      }
+      function renderPreview() { const { frag } = buildDoc(); const t = $("#previewDoc"); t.innerHTML = ""; t.appendChild(frag); }
+
+      const backdrop = $("#exportBackdrop");
+      function openExport() { backdrop.hidden = false; renderPreview(); document.body.setAttribute("data-gv-screen", "survey-phase/insights/export-modal"); }
+      function closeExport() { backdrop.hidden = true; document.body.removeAttribute("data-gv-screen"); }
+      $("#exportX").addEventListener("click", closeExport);
+      $("#exportCancel").addEventListener("click", closeExport);
+      backdrop.addEventListener("click", e => { if (e.target === backdrop) closeExport(); });
+      $("#coverToggle").addEventListener("change", e => { $("#coverFields").classList.toggle("is-off", !e.target.checked); renderPreview(); });
+      $("#inclEmpty").addEventListener("change", renderPreview);
+      $("#consent").addEventListener("change", e => $("#exportGo").disabled = !e.target.checked);
+      ["covTitle", "covSub", "covDate", "covBy", "covNotes"].forEach(id => $("#" + id).addEventListener("input", renderPreview));
+
+      $("#exportGo").addEventListener("click", () => {
+        const { frag, fields, inclEmpty } = buildDoc(); const t = $("#viewerDoc"); t.innerHTML = ""; t.appendChild(frag);
+        $("#pdfMeta").textContent = TOTAL + " records · " + fields.length + " fields" + (inclEmpty ? "" : " · blanks hidden");
+        closeExport(); $("#pdfView").hidden = false; document.body.setAttribute("data-gv-screen", "survey-phase/insights/pdf-preview");
+      });
+      $("#pdfClose").addEventListener("click", () => { $("#pdfView").hidden = true; document.body.removeAttribute("data-gv-screen"); });
+
+      if (window.GVIcons) window.GVIcons.render(document.body);
+    })();
 </script>
 </body>
 </html>
