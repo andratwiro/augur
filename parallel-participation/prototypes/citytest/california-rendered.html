@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>The Community Resilience Fund — Engaged California</title>
+  <link rel="stylesheet" href="assets/govocal-tokens.css" />
+  <link rel="stylesheet" href="assets/govocal-ui.css" />
+  <!-- Pin to a real tenant theme (Engaged California = 8): real logo, colours, font. -->
+  <script>(function(){try{var u=new URL(location.href);if(!u.searchParams.has('theme')){u.searchParams.set('theme','8');history.replaceState({},'',u);}}catch(e){}})();</script>
+  <script src="assets/govocal-themes.js" defer></script>
+  <script src="assets/govocal-icons.js" defer></script>
+  <script src="assets/govocal-avatars.js" defer></script>
+  <script src="assets/govocal-partbar.js" defer></script>
+  <!--
+    PARITY TEST — CANDIDATE (rendered complexity). Same project, brand, content and the
+    SAME four methods + off-timeline survey as the flat floor (california.html). The only
+    thing that changes is the rendering: the product does the legibility work instead of
+    the resident. One dominant primary (the current phase: vote), the other in-project
+    methods moved into a calm "More ways to take part" progressive disclosure, and the
+    off-timeline survey set apart with a dashed "separate" treatment that states its
+    relationship to the timeline. The pinned bar reinforces the SAME primary. The bet:
+    this reaches the comprehension of the simple baseline (california-simple.html) while
+    keeping every door the admin configured. Page-local (.pp-*) is layout only.
+  -->
+  <style>
+    body { margin: 0; background: #fff; }
+    main { padding-bottom: 8px; }
+    .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 20px; }
+    .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pp-head { padding: 30px 0 40px; }
+    .pp-head h1 { margin: 14px 0 16px; }
+    .pp-row { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 10px 40px; align-items: start; }
+    .pp-cta { display: flex; flex-direction: column; gap: 16px; }
+    .pp-cta .gv-participants { display: flex; justify-content: center; }
+    .pp-intro { margin: 0; }
+
+    /* Primary — the one thing to do right now */
+    .pp-lead { margin: 0 0 10px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gv-text-secondary); }
+    .pp-sub { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: var(--gv-text-secondary); }
+
+    /* Secondary — progressive disclosure, discoverable on demand, not competing */
+    .pp-more { border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); background: #fff; box-shadow: var(--gv-shadow); overflow: hidden; }
+    .pp-more__sum { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 14px 16px; font-size: 14px; font-weight: 600; color: var(--gv-text-primary); }
+    .pp-more__sum::-webkit-details-marker { display: none; }
+    .pp-more__lbl { flex: 1; }
+    .pp-more__n { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--gv-grey-200); color: var(--gv-text-secondary); font-size: 12px; font-weight: 700; }
+    .pp-more__chev { color: var(--gv-text-secondary); transition: transform .18s ease; flex: none; }
+    .pp-more[open] .pp-more__chev { transform: rotate(180deg); }
+    .pp-more__list { list-style: none; margin: 0; padding: 0 16px 6px; border-top: 1px solid var(--gv-grey-200); }
+    .pp-method { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--gv-grey-200); }
+    .pp-method:last-child { border-bottom: 0; }
+    .pp-method__txt { flex: 1; min-width: 0; }
+    .pp-method__txt h4 { margin: 0 0 3px; font-size: 15px; color: var(--gv-text-primary); }
+    .pp-method__txt p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--gv-text-secondary); }
+    .pp-method .gv-btn { flex: none; }
+
+    /* Separate — off-timeline survey, dashed treatment = "not part of this project's phases" */
+    .pp-aside { border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius); background: var(--gv-grey-100); padding: 14px 16px; }
+    .pp-aside__tag { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gv-text-secondary); margin-bottom: 8px; }
+    .pp-aside__tag .gv-icon { width: 14px; height: 14px; }
+    .pp-aside__txt { margin: 0 0 12px; font-size: 13px; line-height: 1.5; color: var(--gv-text-secondary); }
+    .pp-aside__txt strong { color: var(--gv-text-primary); }
+
+    .pp-budget { max-width: 720px; }
+    .pp-budget__bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 14px 18px; margin-bottom: 16px; }
+    .pp-budget__bar strong { color: var(--gv-tenant-primary); }
+    .pp-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px; }
+    .pp-opt { background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); overflow: hidden; display: flex; flex-direction: column; }
+    .pp-opt img { width: 100%; height: 120px; object-fit: cover; display: block; }
+    .pp-opt__b { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .pp-opt__b h3 { margin: 0; font-size: 16px; color: var(--gv-text-primary); }
+    .pp-opt__cost { color: var(--gv-text-secondary); font-size: 14px; }
+    .pp-opt .gv-btn { margin-top: auto; }
+    @media (max-width: 760px) {
+      .pp-row { grid-template-columns: 1fr; }
+      .pp-cta { margin-bottom: 22px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pp-more__chev { transition: none; }
+    }
+  </style>
+</head>
+<body class="gv-root gv-shell" data-gv-theme-picker="off" data-gv-cookies="off">
+
+  <header class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="Engaged California — Home"></a>
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#">Home</a></li>
+          <li><a class="gv-nav__link" href="#">All projects</a></li>
+          <li><a class="gv-nav__link" href="#">Proposals</a></li>
+          <li><a class="gv-nav__link" href="#">Events</a></li>
+        </ul>
+      </nav>
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
+        <a class="gv-btn secondary-outlined size-s gv-desktop-only" href="#">Log in</a>
+        <details class="gv-nav-m">
+          <summary aria-label="Show navigation menu">
+            <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+            <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
+            <a href="#" aria-current="page">Home</a><a href="#">All projects</a><a href="#">Proposals</a><a href="#">Events</a>
+            <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Log in</a>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <main>
+   <div class="gv-wrap">
+    <section class="pp-banner" aria-label="Project banner">
+      <img src="assets/img/community.webp" alt="Californians at a community event" loading="lazy" />
+    </section>
+
+    <div class="pp-head">
+      <h1 class="gv-title h1">The Community Resilience Fund</h1>
+
+      <div class="pp-row">
+        <div class="gv-projdesc pp-intro">
+          <p>California is putting <strong>$25 million</strong> into community resilience — extreme-heat relief, emergency readiness and local green space — and how it's spent is up to residents. There are several ways to take part this season; the main one right now is voting on the budget.</p>
+          <p>Everything you share feeds the final plan that goes to the Legislature this winter.</p>
+        </div>
+        <div class="pp-cta">
+          <!-- PRIMARY — one dominant action (the current phase) -->
+          <div class="gv-pbox">
+            <p class="pp-lead">The main way to take part right now</p>
+            <div class="gv-pbox__actions">
+              <a class="gv-btn primary full" href="#budget">Vote on the budget</a>
+            </div>
+            <p class="pp-sub">Spend your share of the $25M across the shortlisted proposals — about 2 minutes.</p>
+            <div class="gv-participants gv-pbox__people" style="margin-top:4px;">
+              <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
+              <span class="gv-pcount">3,860 contributions</span>
+              <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
+            </div>
+          </div>
+
+          <!-- SECONDARY — discoverable on demand, not competing for the thumb -->
+          <details class="pp-more">
+            <summary class="pp-more__sum">
+              <span class="pp-more__lbl">More ways to take part in this project</span>
+              <span class="pp-more__n">3</span>
+              <svg class="pp-more__chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </summary>
+            <ul class="pp-more__list">
+              <li class="pp-method">
+                <div class="pp-method__txt">
+                  <h4>Add a proposal</h4>
+                  <p>Suggest something the fund should pay for.</p>
+                </div>
+                <a class="gv-btn secondary-outlined size-s" href="#">Open</a>
+              </li>
+              <li class="pp-method">
+                <div class="pp-method__txt">
+                  <h4>Take the statewide survey</h4>
+                  <p>Share your priorities for the $25M.</p>
+                </div>
+                <a class="gv-btn secondary-outlined size-s" href="#">Open</a>
+              </li>
+              <li class="pp-method">
+                <div class="pp-method__txt">
+                  <h4>Join the residents' panel</h4>
+                  <p>Help shape the final plan over a few sessions.</p>
+                </div>
+                <a class="gv-btn secondary-outlined size-s" href="#">Open</a>
+              </li>
+            </ul>
+          </details>
+
+          <!-- SEPARATE — off-timeline survey, set apart so it reads as not part of the phases -->
+          <div class="pp-aside">
+            <span class="pp-aside__tag"><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> Separate survey · closes in 5 days</span>
+            <p class="pp-aside__txt"><strong>Extreme-heat experiences</strong> — a statewide survey running alongside this project, not part of the budget vote. 1,240 responses so far.</p>
+            <a class="gv-btn secondary-outlined size-s" href="#">Open survey</a>
+          </div>
+        </div>
+      </div>
+    </div>
+   </div>
+
+   <!-- Participation bar — reinforces the SAME primary, doesn't add a competing action -->
+   <div class="gv-partbar">
+     <div class="gv-partbar__inner">
+       <span class="gv-partbar__status">Open for participation</span>
+       <a class="gv-btn on-color" href="#budget">Vote on the budget <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+     </div>
+   </div>
+
+   <div class="gv-methodband">
+    <div class="gv-wrap">
+     <section class="gv-phases" aria-labelledby="phasesTitle">
+       <div class="gv-phases__bar"><h2 id="phasesTitle">Phases</h2></div>
+       <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"></div>
+       <div class="gv-phasepanel" id="phasepanel"></div>
+       <div class="gv-phasebody gv-phasebody--full" id="phasebody">
+         <div class="pp-budget" id="budget">
+           <div class="pp-budget__bar"><span>Your budget</span><strong>$25M to allocate · 0 of 4 chosen</strong></div>
+           <div class="pp-opts" id="opts"></div>
+         </div>
+       </div>
+     </section>
+    </div>
+   </div>
+
+   <div class="gv-wrap">
+     <section class="gv-section" aria-labelledby="ev-title" style="padding-top:40px;">
+       <div class="gv-events__head"><h2 class="gv-title h2" id="ev-title" style="margin:0">Events</h2></div>
+       <div class="gv-events__grid">
+         <article class="gv-event-card bordered">
+           <div class="gv-event-card__media"><img src="assets/img/meeting.webp" alt="Public town hall" loading="lazy" /></div>
+           <div class="gv-event-card__body">
+             <div class="gv-event-card__titlerow">
+               <span class="gv-event-card__date is-beside"><span class="m">Jul</span><span class="d">10</span><span class="y">2026</span></span>
+               <h3 class="gv-event-card__title"><a href="#">Virtual town hall: how the $25M could be spent</a></h3>
+             </div>
+             <div class="gv-event-card__meta">
+               <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 10 Jul 2026 · 6:00 – 7:30 PM PT</p>
+               <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online event</a></p>
+             </div>
+             <a class="gv-btn primary full" href="#">Register</a>
+           </div>
+         </article>
+       </div>
+     </section>
+   </div>
+  </main>
+
+  <footer class="gv-footer">
+    <div class="gv-footer__inner">
+      <nav class="gv-footer__links" aria-label="Legal"><ul>
+        <li><a href="#">Terms and conditions</a></li>
+        <li><a href="#">Privacy policy</a></li>
+        <li><a href="#">Accessibility statement</a></li>
+      </ul></nav>
+      <div class="gv-footer__powered"><span>Powered by</span>
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal"><img class="gv-powered-logo" src="assets/govocal-logo.svg" alt="Go Vocal" /></a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const PHASES = [
+      { name: 'Ideas & proposals', dates: 'Apr 1 – May 31, 2026', status: 'past', method: 'ideation',
+        description: 'Residents put forward proposals for the $25M Community Resilience Fund.' },
+      { name: 'Vote on the budget', dates: 'Jun 1 – Jul 31, 2026', status: 'current', method: 'voting',
+        description: 'Spend your share of the fund across the shortlisted proposals. You can also still add a proposal, take the statewide survey, or join the panel.' },
+      { name: 'Results & plan', dates: 'Aug 2026', status: 'upcoming', method: 'results',
+        description: 'The winning proposals and the final resilience plan that goes to the Legislature.' },
+    ];
+    const CURRENT = PHASES.findIndex(p => p.status === 'current');
+    const OPTS = [
+      { title: 'Neighborhood cooling centers & shade', cost: '$8.4M', img: 'assets/img/community.webp' },
+      { title: 'Emergency readiness & alerts', cost: '$6.1M', img: 'assets/img/meeting.webp' },
+      { title: 'Street trees & green corridors', cost: '$5.8M', img: 'assets/img/street-trees.webp' },
+      { title: 'Backup power for community hubs', cost: '$4.7M', img: 'assets/img/workshop.webp' },
+    ];
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    function optHTML(d) {
+      return `<div class="pp-opt"><img src="${d.img}" alt="" loading="lazy" />
+        <div class="pp-opt__b"><h3>${esc(d.title)}</h3><span class="pp-opt__cost">${esc(d.cost)}</span>
+        <button class="gv-btn secondary-outlined full" type="button"><span data-gv-icon="vote-up" aria-hidden="true"></span> Add to my budget</button></div></div>`;
+    }
+    const stepperEl = document.getElementById('stepper');
+    const panelEl = document.getElementById('phasepanel');
+    const budget = document.getElementById('budget');
+    document.getElementById('opts').innerHTML = OPTS.map(optHTML).join('');
+    let active = CURRENT;
+    function renderStepper() {
+      stepperEl.innerHTML = PHASES.map((p, i) => {
+        const isCurrent = i === CURRENT, dot = isCurrent ? '<span class="gv-pstep__dot"></span>' : '';
+        return `<button class="gv-phase${isCurrent ? ' current' : ''}" role="tab" data-i="${i}" aria-selected="${i === active}"><span class="gv-pstep">${dot}${i + 1}</span><span class="gv-phase__label">${p.name}</span></button>`;
+      }).join('');
+      stepperEl.querySelectorAll('.gv-phase').forEach(b => b.addEventListener('click', () => setPhase(+b.dataset.i)));
+    }
+    function setPhase(i) {
+      active = i; const p = PHASES[i], isCurrent = i === CURRENT;
+      stepperEl.querySelectorAll('.gv-phase').forEach(b => b.setAttribute('aria-selected', String(+b.dataset.i === i)));
+      panelEl.innerHTML = `<div class="gv-phasepanel__head${isCurrent ? '' : ' muted'}"><span class="gv-phasepanel__num" aria-hidden="true">${i + 1}</span><div><h3 class="gv-phasepanel__name">${p.name}</h3><p class="gv-phasepanel__date">${p.dates}</p></div></div><div class="gv-phasepanel__desc"><p>${p.description}</p></div>`;
+      budget.style.display = isCurrent ? '' : 'none';
+      if (window.GVIcons) window.GVIcons.render();
+    }
+    renderStepper(); setPhase(CURRENT);
+    if (window.GVIcons) window.GVIcons.render();
+  </script>
+</body>
+</html>
