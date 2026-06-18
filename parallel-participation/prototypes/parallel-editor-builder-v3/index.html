@@ -419,19 +419,19 @@
   .cue-btn, .cue-corner, .cue-scrim, .cue-bar, .cue-outline { pointer-events: none; }
   .cue-btn svg, .cue-corner svg, .cue-scrim__cta svg, .cue-bar__label svg, .cue-bar__btn svg { display: inline-block; }
 
-  /* 1 · BUTTON — persistent CTA pinned to the preview, visible at rest. */
+  /* 1 · BUTTON — persistent CTA pinned to the preview, visible at rest.
+     The CTA is a real BO button (.gv-btn admin-dark, navy) so it matches the screen
+     we're on; .cue-btn only POSITIONS it + adds a white halo to lift it off content. */
   .cue-btn {
-    position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
-    display: none; align-items: center; gap: 7px;
-    padding: 9px 16px; border-radius: 999px;
-    background: #2c6e7d; color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap;
+    position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+    display: none; white-space: nowrap; z-index: 8;
     box-shadow: 0 8px 20px rgba(20,25,40,.24), 0 0 0 3px rgba(255,255,255,.92);
-    z-index: 8; transition: transform .15s ease, background .15s ease;
+    transition: transform .15s ease, filter .15s ease;
   }
-  .cue-btn svg { width: 15px; height: 15px; }
+  .cue-btn svg { width: 16px; height: 16px; }
   .phone-wrap.cue-1 .cue-btn { display: inline-flex; }
   .phone-wrap.cue-1:hover .cue-btn,
-  .phone-wrap.cue-1:focus-within .cue-btn { background: #21525d; transform: translateX(-50%) translateY(-1px); }
+  .phone-wrap.cue-1:focus-within .cue-btn { filter: brightness(.9); transform: translateX(-50%) translateY(-1px); }
 
   /* 2 · REVEAL — clean preview + tiny corner cue; engage fades in a full-surface scrim. */
   .cue-corner {
@@ -449,11 +449,10 @@
     background: rgba(18,38,44,.44);
     opacity: 0; transition: opacity .16s ease; z-index: 8;
   }
+  /* Scrim CTA is the same BO button (.gv-btn admin-dark); only the entrance differs. */
   .cue-scrim__cta {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 11px 18px; border-radius: 999px;
-    background: #fff; color: #19282d; font-size: 13.5px; font-weight: 700;
-    box-shadow: 0 10px 26px rgba(0,0,0,.3); transform: translateY(7px); transition: transform .16s ease;
+    box-shadow: 0 10px 26px rgba(0,0,0,.34);
+    transform: translateY(7px); transition: transform .16s ease;
   }
   .cue-scrim__cta svg { width: 16px; height: 16px; }
   .phone-wrap.cue-2 .cue-scrim { display: flex; }
@@ -464,20 +463,20 @@
   .phone-wrap.cue-2:hover .cue-corner,
   .phone-wrap.cue-2:focus-within .cue-corner { opacity: 0; }
 
-  /* 3 · FRAME — editor chrome: a toolbar above + a dashed outline, both at rest. */
+  /* 3 · FRAME — editor chrome: a toolbar above + a dashed outline, both at rest.
+     fitPreview reserves headroom in this mode so the toolbar never clips (see
+     FRAME_CHROME). The "Open editor" pill is the same BO button as the other cues. */
   .cue-bar {
-    position: absolute; left: 2px; right: 2px; top: -44px; height: 34px;
+    position: absolute; left: 2px; right: 2px; top: -48px;
     display: none; align-items: center; justify-content: space-between;
     z-index: 8;
   }
   .cue-bar__label { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; letter-spacing: .03em; color: #5b6573; }
-  .cue-bar__label svg { width: 14px; height: 14px; color: #2c6e7d; }
-  .cue-bar__btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 7px 13px; border-radius: 8px; background: #2c6e7d; color: #fff;
-    font-size: 12.5px; font-weight: 600; box-shadow: 0 2px 6px rgba(44,110,125,.32);
-  }
-  .cue-bar__btn svg { width: 14px; height: 14px; }
+  .cue-bar__label svg { width: 14px; height: 14px; color: var(--gv-primary, #044d6c); }
+  .cue-bar__btn { box-shadow: 0 2px 6px rgba(4,77,108,.28); }
+  /* Toolbar-sized: BO-styled, just a touch tighter than a form button. */
+  .cue-bar__btn.gv-btn { padding: 7px 13px; font-size: 13px; }
+  .cue-bar__btn svg { width: 15px; height: 15px; }
   .phone-wrap.cue-3 .cue-bar { display: flex; }
   .cue-outline {
     position: absolute; inset: -5px; border-radius: 27px;
@@ -2304,10 +2303,10 @@
         </div><!-- /#phone -->
 
           <!-- ── Edit-cue overlays (one shown at a time via .cue-N on #phone-wrap) ── -->
-          <!-- 1 · Button -->
-          <span class="cue-btn" aria-hidden="true">
+          <!-- 1 · Button — real BO action button (.gv-btn admin-dark), positioned by .cue-btn -->
+          <span class="cue-btn gv-btn admin-dark" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-            Edit page content
+            <span class="gv-btn__label">Edit page content</span>
           </span>
           <!-- 2 · Reveal -->
           <span class="cue-corner" aria-hidden="true">
@@ -2315,9 +2314,9 @@
             Edit
           </span>
           <span class="cue-scrim" aria-hidden="true">
-            <span class="cue-scrim__cta">
+            <span class="cue-scrim__cta gv-btn admin-dark">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-              Edit page content
+              <span class="gv-btn__label">Edit page content</span>
             </span>
           </span>
           <!-- 3 · Frame -->
@@ -2326,8 +2325,8 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
               Project page · preview
             </span>
-            <span class="cue-bar__btn">
-              Open editor
+            <span class="cue-bar__btn gv-btn admin-dark">
+              <span class="gv-btn__label">Open editor</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
             </span>
           </span>
@@ -3838,6 +3837,8 @@
     if (wrap) wrap.className = 'phone-wrap cue-' + n;
     document.querySelectorAll('.cue-chip button').forEach(b => b.classList.remove('on'));
     if (btn) btn.classList.add('on');
+    // Frame mode reserves toolbar headroom → re-fit the phone to the new available height.
+    if (window.fitPreview) requestAnimationFrame(window.fitPreview);
   }
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -4150,8 +4151,12 @@
     const key = phone.classList.contains('frame-window') ? 'window' : 'phone';
     const L = FRAME_LOGICAL[key];
     const MARGIN_X = 28, MARGIN_Y = 24;                      // breathing room (tight — frame as large as the canvas allows)
+    // Frame cue floats an editor toolbar ABOVE the phone — reserve headroom so it
+    // never clips under the back-office top bar. Other cues live inside the phone.
+    const wrap = document.getElementById('phone-wrap');
+    const FRAME_CHROME = (wrap && wrap.classList.contains('cue-3')) ? 120 : 0;
     const availW = Math.max(160, stage.clientWidth  - MARGIN_X * 2);
-    const availH = Math.max(160, stage.clientHeight - MARGIN_Y * 2);
+    const availH = Math.max(160, stage.clientHeight - MARGIN_Y * 2 - FRAME_CHROME);
     const scale = Math.min(availW / L.w, availH / L.h, 1);   // fit, never upscale
     phone.style.setProperty('--pz', scale.toFixed(4));
     phone.style.width  = (L.w * scale + L.border * 2) + 'px';
