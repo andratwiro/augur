@@ -38,11 +38,29 @@ Read this at the start of each loop; append after each iteration.
 - **Deploy:** yes (user-visible chart change). NOTE: `npm run deploy` first hit a flaky
   `ENOTEMPTY` rmdir on stale `dist/` — cleared with `rm -rf dist` then re-deployed.
 
+### Loop 2 — 2026-06-18 — Line/combo stroke fidelity + gridline semantics
+- **Grounded line geometry** from bo-dash-overview/dom.html: data lines are `stroke-width="1"`
+  (n=144); dots are filled circles `r=3` same colour as line; NO area fill (no recharts-area);
+  5 y-ticks; gridlines `stroke-width="0.5"`.
+- **Set all data-line polylines** (JS `lineSVG`+`comboSVG` renderers AND the static Emails/
+  Visitors SVGs) to `stroke-width="1"` + `vector-effect="non-scaling-stroke"` — was 1.5–2 in a
+  `preserveAspectRatio="none"` stretched viewBox (which distorted the stroke). Now renders a
+  true crisp 1px line like recharts.
+- **Gridlines**: switched inline `<line>` stroke from `var(--gv-grey-200)` to the semantic
+  `var(--gv-chart-grid)` (same value) + `non-scaling-stroke` for a predictable 0.5px hairline.
+- **Verify:** page-only change (no shared CSS) → verify:all not required this loop. lint ✓.
+  Eyeball ✓ — lines render thin/crisp.
+- **Deploy:** yes.
+- **Deferred:** dot markers (r=3) — adding `<circle>` into the `preserveAspectRatio="none"`
+  stretched viewBox yields ellipses (x-scale≈0.64, y-scale≈0.93); needs a non-distorting
+  approach (overlay SVG with normal aspect, or compute dot px positions). Next loop.
+
 ## Next gaps (priority)
-1. Line/combo charts: stroke-WIDTH, dot markers (recharts-line-dot n=135), area fills, exact
-   y-axis tick count/values, month-axis tick typography (13px Public Sans #596B7A confirmed).
-2. Gridline semantics: switch inline SVG `<line stroke="var(--gv-grey-200)">` to
-   `--gv-chart-grid` for intent (same value); add the minor `#f5f5f5` grid if real charts show it.
+1. Line dot markers (r=3 filled, line colour) at each data point — do WITHOUT distortion
+   (the stretched viewBox turns circles into ellipses; render dots in a normal-aspect overlay
+   or as px-positioned nodes). Then exact y-axis tick count/values per chart.
+2. Gridline COLOUR grounding: real DOM has horizontal grid `#f5f5f5` (n=53) vs axis/vert
+   `#EBEDEF` (n=43) — currently all use `--gv-chart-grid` (#EBEDEF). Split if real charts do.
 3. Horizontal-bar charts: bar height (real recharts-bar-rectangle dims), value-label colour
    (is `.ch-hval` navy or grey in real product? — re-probe), x-axis scale ticks.
 4. Donut + pie + stacked-bar: segment colours (the #057ABE/#5FC4E8/#0080A5… family above),

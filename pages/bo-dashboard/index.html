@@ -244,8 +244,8 @@
                 <div class="db-split__chart">
                   <div class="ch-line"><div class="ch-yaxis"><span>2</span><span>1.5</span><span>1</span><span>0.5</span><span>0</span></div>
                   <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-                    <line x1="0" y1="12" x2="600" y2="12" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="112" x2="600" y2="112" stroke="var(--gv-grey-200)" stroke-width="0.5"/>
-                    <polyline points="0,112 90,12 180,112 280,12 380,112 480,12 600,112" fill="none" stroke="var(--ch-blue)" stroke-width="1.5"/></svg>
+                    <line x1="0" y1="12" x2="600" y2="12" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><line x1="0" y1="112" x2="600" y2="112" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>
+                    <polyline points="0,112 90,12 180,112 280,12 380,112 480,12 600,112" fill="none" stroke="var(--ch-blue)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
                     <div class="ch-axis"><span>Dec</span><span>Apr</span><span>Aug</span><span>Dec</span><span>Apr</span><span>Aug</span><span>Jun</span></div>
                     <div class="ch-legend"><span><i style="background:var(--ch-red)"></i>Custom emails</span><span><i style="background:var(--ch-blue)"></i>Automated emails</span></div>
                   </div></div>
@@ -316,9 +316,9 @@
               <div class="db-split__chart">
                 <div class="ch-line"><div class="ch-yaxis"><span>60</span><span>45</span><span>30</span><span>15</span><span>0</span></div>
                 <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-                  <line x1="0" y1="12" x2="600" y2="12" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="37" x2="600" y2="37" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="62" x2="600" y2="62" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="87" x2="600" y2="87" stroke="var(--gv-grey-200)" stroke-width="0.5"/><line x1="0" y1="112" x2="600" y2="112" stroke="var(--gv-grey-200)" stroke-width="0.5"/>
-                  <polyline points="0,110 50,109 100,107 150,100 200,80 250,40 280,18 320,40 370,80 430,105 490,109 540,110 600,111" fill="none" stroke="var(--ch-blue)" stroke-width="2"/>
-                  <polyline points="0,113 50,112 100,111 150,107 200,95 250,70 280,55 320,72 370,98 430,110 490,113 540,114 600,114" fill="none" stroke="var(--ch-red)" stroke-width="1.5"/>
+                  <line x1="0" y1="12" x2="600" y2="12" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><line x1="0" y1="37" x2="600" y2="37" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><line x1="0" y1="62" x2="600" y2="62" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><line x1="0" y1="87" x2="600" y2="87" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><line x1="0" y1="112" x2="600" y2="112" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>
+                  <polyline points="0,110 50,109 100,107 150,100 200,80 250,40 280,18 320,40 370,80 430,105 490,109 540,110 600,111" fill="none" stroke="var(--ch-blue)" stroke-width="1" vector-effect="non-scaling-stroke"/>
+                  <polyline points="0,113 50,112 100,111 150,107 200,95 250,70 280,55 320,72 370,98 430,110 490,113 540,114 600,114" fill="none" stroke="var(--ch-red)" stroke-width="1" vector-effect="non-scaling-stroke"/>
                 </svg>
                 <div class="ch-axis"><span>Nov</span><span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Nov</span><span>Jan</span><span>Mar</span><span>May</span></div>
                 <div class="ch-legend" style="margin-top:8px"><span><i style="background:var(--ch-blue)"></i>Visitors</span><span><i style="background:var(--ch-red)"></i>Visits</span></div>
@@ -426,12 +426,12 @@
       const pts = vals.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / top * 100).toFixed(1)}`).join(" ");
       // Vertical month gridlines.
       const grid = vals.map((_, i) =>
-        `<line x1="${(i / (n - 1) * 600).toFixed(1)}" y1="12" x2="${(i / (n - 1) * 600).toFixed(1)}" y2="112" stroke="var(--gv-grey-200)" stroke-width="0.5"/>`).join("");
+        `<line x1="${(i / (n - 1) * 600).toFixed(1)}" y1="12" x2="${(i / (n - 1) * 600).toFixed(1)}" y2="112" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`).join("");
       const yaxis = ticks.slice().reverse().map(v => `<span>${v}</span>`).join("");
       const axis = XMONTHS.map(m => `<span>${m}</span>`).join("");
       return `<div class="ch-line"><div class="ch-yaxis">${yaxis}</div>
         <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-        ${grid}<polyline points="${pts}" fill="none" stroke="var(--ch-line)" stroke-width="2"/></svg>
+        ${grid}<polyline points="${pts}" fill="none" stroke="var(--ch-line)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
         <div class="ch-axis">${axis}</div></div></div>`;
     }
     // Combo line+bar (Inputs/Comments/Reactions): navy bars (per-month, right axis)
@@ -440,12 +440,12 @@
       const lv = points.split(",").map(Number), bv = (bars || "").split(",").map(Number);
       const { top } = niceTicks(Math.max(...lv, 1)), btop = Math.max(...bv, 1);
       const n = lv.length, bw = 600 / n * 0.5;
-      const grid = lv.map((_, i) => `<line x1="${(i / (n - 1) * 600).toFixed(1)}" y1="12" x2="${(i / (n - 1) * 600).toFixed(1)}" y2="112" stroke="var(--gv-grey-200)" stroke-width="0.5"/>`).join("");
+      const grid = lv.map((_, i) => `<line x1="${(i / (n - 1) * 600).toFixed(1)}" y1="12" x2="${(i / (n - 1) * 600).toFixed(1)}" y2="112" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`).join("");
       const rects = bv.map((v, i) => { const h = v / btop * 96, x = i / (n - 1) * 600 - bw / 2; return `<rect x="${Math.max(0, x).toFixed(1)}" y="${(112 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="var(--ch-bar)"/>`; }).join("");
       const pts = lv.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / top * 100).toFixed(1)}`).join(" ");
       const axis = XMONTHS.map(m => `<span>${m}</span>`).join("");
       return `<div class="ch-line"><div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-        ${grid}${rects}<polyline points="${pts}" fill="none" stroke="var(--ch-line)" stroke-width="2"/></svg>
+        ${grid}${rects}<polyline points="${pts}" fill="none" stroke="var(--ch-line)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
         <div class="ch-axis">${axis}</div></div></div>`;
     }
     function barsH(json) {
