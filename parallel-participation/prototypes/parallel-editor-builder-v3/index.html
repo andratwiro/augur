@@ -389,7 +389,7 @@
      at rest; hover/focus fades in a full-surface scrim CTA. Accent = the editor
      teal (#2c6e7d), so the cue reads as chrome, not tenant content. (The two other
      treatments we explored — persistent Button + editor Frame — live in v2.) */
-  .phone-wrap { position: relative; display: inline-flex; }
+  .phone-wrap { position: relative; display: inline-flex; transition: transform .15s ease; }
 
   /* Phone-as-button: no text caret, pointer cursor, a real focus target. */
   #phone { cursor: pointer; transition: box-shadow .15s ease, transform .15s ease; }
@@ -404,10 +404,16 @@
   #phone .pp-screen .gv-iconbtn,
   #phone .pp-screen [role="button"] { pointer-events: none; }
 
-  /* Shared hover / keyboard-focus "lift" for all three treatments. */
+  /* Shared hover / keyboard-focus "lift". The transform is on the WRAPPER so the
+     phone AND its overlays (scrim, corner cue) rise together — lifting only #phone
+     left the scrim behind and exposed a ~2px light gap along the top edge/corners.
+     The box-shadow stays on #phone (it's the phone's own elevation shadow). */
+  .phone-wrap:hover,
+  .phone-wrap:focus-within {
+    transform: translateY(-2px);
+  }
   .phone-wrap:hover #phone,
   .phone-wrap:focus-within #phone {
-    transform: translateY(-2px);
     box-shadow: 0 18px 42px rgba(20,25,40,.16);
   }
   /* Engage adds a teal ring on the phone. */
@@ -451,8 +457,8 @@
   .phone-wrap.cue-2:focus-within .cue-corner { opacity: 0; }
 
   @media (prefers-reduced-motion: reduce) {
-    #phone, .cue-scrim, .cue-scrim__cta { transition: none; }
-    .phone-wrap:hover #phone, .phone-wrap:focus-within #phone { transform: none; }
+    #phone, .phone-wrap, .cue-scrim, .cue-scrim__cta { transition: none; }
+    .phone-wrap:hover, .phone-wrap:focus-within { transform: none; }
   }
 
   .compose-card { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid var(--border); border-radius:10px; background:#fff; }
@@ -1886,10 +1892,10 @@
     #cb-root .cb-zone--empty > .cb-zone__ph { display: flex; }
     .cb-dropline--x { width: 2px; height: auto; min-height: 24px; margin: 0 2px; align-self: stretch; }
 
-    /* ── Participation Box (about-box) — faithful resident-facing card ──────── */
-    /* Participation Box (about-box) — a MIRROR of the front-office project
+    /* ── Participation Box — faithful resident-facing card ──────── */
+    /* Participation Box — a MIRROR of the front-office project
        participation widget the resident sees: a primary CTA, a secondary
-       "Upcoming events" button, and an avatar row + participant count. Config is
+       "Upcoming events" button, and an avatar row + contribution count. Config is
        just whether to show the buttons and the avatars (toggles, scoped per card). */
     /* Participation box uses the SAME front-office components as the project page:
        .gv-btn (primary + primary-outlined), .gv-avatars/.av, .gv-pcount. Page-local
@@ -4175,7 +4181,7 @@
             </span>
             <span class="gv-bo-cb-item__label">Embed</span>
           </div>
-          <div class="gv-bo-cb-item" id="e2e-draggable-about-box" draggable="true" data-widget="about-box">
+          <div class="gv-bo-cb-item" id="e2e-draggable-participation-box" draggable="true" data-widget="participation-box">
             <span class="gv-bo-cb-item__icon">
               <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 9v5M10 6.3v.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
             </span>
@@ -4447,7 +4453,7 @@
         <div class="pp-fo__banner pp-edit" data-edit="hero"><img src="assets/img/${complex ? 'square' : 'street-trees'}.webp" alt="" loading="lazy" /><button class="gv-btn primary size-s pp-fo__follow" type="button" aria-pressed="true" onclick="event.stopPropagation();var on=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',String(on));this.querySelector('.pp-fo__follow-lbl').textContent=on?'Following (9)':'Follow (8)';"><span data-gv-icon="notification" aria-hidden="true"></span> <span class="pp-fo__follow-lbl">Following (9)</span></button></div>
         <div class="pp-fo__pad">
           <!-- Edit zones mirror the content-builder WIDGETS one-to-one (data-edit =
-               the builder's data-widget): Title · Text · Participation/About box ·
+               the builder's data-widget): Title · Text · Participation Box ·
                Info & accordions. No invented "category" eyebrow — the real title has
                no subtitle and there's no such widget. -->
           <div class="pp-edit" data-edit="title">
@@ -4460,14 +4466,14 @@
           </div>
           <!-- Participation box: CTA(s) first, participant avatars ALWAYS at the bottom
                (same contract as the content-builder .cb-pbox = actions then people). -->
-          <div class="pp-fo__pbox pp-edit" data-edit="about-box">
+          <div class="pp-fo__pbox pp-edit" data-edit="participation-box">
             <div class="pp-fo__cta">
               <a class="gv-btn primary full" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'}</a>
               <a class="gv-btn secondary-outlined full" href="#">See the ideas</a>
             </div>
             <div class="gv-participants pp-fo__parts">
               <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
-              <span class="gv-pcount">${complex ? '342' : '38'} participants</span>
+              <span class="gv-pcount">${complex ? '342' : '38'} contributions</span>
             </div>
           </div>
           <div class="pp-edit" data-edit="info-accordions"><div class="gv-accordion pp-fo__acc">
@@ -5398,7 +5404,7 @@
       'white-space':     { label: 'White space',       make: function () { return '<div class="cb-ws"></div>'; } },
       'accordion':       { label: 'Accordion',         make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">Accordion title</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">Hidden panel content the resident can expand.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
       'iframe':          { label: 'Embed',             make: function () { return '<div class="cb-iframe">&lt;/&gt; Embedded content<span class="cb-iframe__cap">Paste a URL to embed</span></div>'; } },
-      'about-box':       { label: 'Participation Box',  make: function () { return cbPboxBodyHTML(cbPboxDefault()); } },
+      'participation-box':       { label: 'Participation Box',  make: function () { return cbPboxBodyHTML(cbPboxDefault()); } },
       'file-attachment': { label: 'File Attachment',    make: function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__info"><span class="cb-file__name">project-brief.pdf</span><span class="cb-file__meta">PDF · 1.2 MB</span></span></div>'; } },
       'image-text-cards':{ label: 'Image & text cards', make: function () { return '<div class="cb-cards" data-n="3"><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card one</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card two</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card three</div></div></div>'; } },
       'info-accordions': { label: 'Info & accordions',  make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">How will my idea be used?</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
@@ -5528,7 +5534,7 @@
         cta = '<a class="gv-btn full primary" href="#">' + (st.aggTitle || 'Participate') + '</a>';
       }
       var people = st.showParticipants
-        ? '<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+19 participants <span class="cb-pbox__info" data-gv-icon="info-solid"></span></span></div>'
+        ? '<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+19 contributions <span class="cb-pbox__info" data-gv-icon="info-solid"></span></span></div>'
         : '';
       var inner = (cta ? '<div class="gv-pbox__actions">' + cta + '</div>' : '') + people;
       if (!inner) inner = '<div class="gv-pbox__empty">No active methods</div>';
@@ -5626,9 +5632,9 @@
       if (widget === 'iframe') {
         return settingsRow('Embed URL', '<input class="gv-input" id="cb-f-embedurl" placeholder="https://…">');
       }
-      if (widget === 'about-box') {
+      if (widget === 'participation-box') {
         return '<p class="cb-pbox-help">You can select below only methods that are active at the moment. They will disappear once they finish.</p>' +
-          '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="showppl"><span class="track"></span></label><span>Show all project participants</span></div>' +
+          '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="showppl"><span class="track"></span></label><span>Show all project contributions</span></div>' +
           '<div class="cb-setseg">Select visible methods</div>' +
           '<div id="cb-pbox-methods"></div>' +
           '<div id="cb-pbox-title"></div>';
@@ -5967,10 +5973,10 @@
       }
 
       if (widget === 'extra-surveys') { bindExtraSurveys(block); return; }
-      if (widget === 'about-box') { bindAboutBox(block); return; }
+      if (widget === 'participation-box') { bindParticipationBox(block); return; }
     }
 
-    function bindAboutBox(block) {
+    function bindParticipationBox(block) {
       var st = cbPboxState(block);
       function render() { cbSetBody(block, cbPboxBodyHTML(st)); }
       function titleField() {
@@ -6354,7 +6360,7 @@
         cols[0].appendChild(makeBlock('extra-surveys'));
       }
       // Right (narrow): the participation box.
-      if (cols[1]) cols[1].appendChild(makeBlock('about-box'));
+      if (cols[1]) cols[1].appendChild(makeBlock('participation-box'));
       // Out of the column, below: timeline, then events.
       frame.appendChild(makeBlock('timeline'));
       frame.appendChild(makeBlock('events'));
