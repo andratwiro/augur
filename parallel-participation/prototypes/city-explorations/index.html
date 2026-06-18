@@ -46,15 +46,18 @@
     /* ── LAYOUT ENGINE — each city composes the same modules in a different order to
        showcase the Content Builder's freedom to move blocks around. A layout is an
        array of rows; a row is one full-width module or a multi-column grid. ── */
-    /* Each top-level module is its own row in the page stack; bleed bands sit flush. */
+    /* Each top-level module is its own row in the page stack. The partbar and the
+       phases band are visually one unit, so flush that seam only — every other
+       adjacency keeps the 32px rhythm (incl. a survey card sitting above the partbar). */
     .pv-page > * + * { margin-top: 32px; }
-    .pv-page > .gv-partbar, .pv-page > .gv-methodband { margin-top: 0; }
+    .pv-page > .gv-partbar + .gv-methodband { margin-top: 0; }
     .pv-block { padding: 0; }
     .pv-row2 { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 24px 44px; align-items: start; }
     .pv-row-eq { display: grid; grid-template-columns: repeat(var(--n,2), minmax(0,1fr)); gap: 24px 44px; align-items: start; }
     .pv-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
     .pv-aside { display: flex; flex-direction: column; gap: 18px; }
-    .pv-h1 { margin: 0 0 4px; }
+    .pv-h1 { margin: 0; }
+    .pv-sub { margin: 10px 0 0; font-size: 18px; line-height: 1.45; color: var(--gv-text-secondary); max-width: 60ch; }
     .pv-intro { margin: 0; }
     .pv-about-wide { max-width: 560px; }
     /* 3-column survey-card grid below the events calendar */
@@ -344,16 +347,16 @@
   // Reusable survey records (the Extra-surveys widget links to these).
   const SURVEYS = {
     mobility: { name: 'Mobility check-in', range: '1 – 15 Jun 2026 · Ongoing', status: 'Ongoing',
-      desc: 'A 2-minute survey on how you move around the city this month — your answers feed the mobility plan.',
+      desc: 'How do you move around the city this month? Your answers feed straight into the mobility plan.',
       cta: 'Take the survey', minutes: '2 min', questions: 8, responses: 248, closesIn: 'Closes in 5 days', progress: 64 },
     market: { name: 'Market-day satisfaction', range: '10 – 24 Jun 2026', status: 'Open',
-      desc: 'Tell us how the Saturday market works for you — stalls, space and getting there.',
+      desc: 'Tell us how the Saturday market works for you — the stalls, the space, and getting there.',
       cta: 'Share your view', minutes: '3 min', questions: 6, responses: 91, closesIn: 'Closes in 9 days', progress: 38 },
     access: { name: 'Getting around survey', range: 'Open now · No end date', status: 'Open',
-      desc: 'A few easy questions about how you travel. Your answers help us make the area work for everyone.',
+      desc: 'A few plain questions about how you travel, so the streets work better for everyone.',
       cta: 'Start the survey', minutes: '4 min', questions: 7, responses: 162, closesIn: 'Closes in 12 days', progress: 22 },
     school: { name: 'School-run safety check', range: '5 – 19 Jun 2026', status: 'Open',
-      desc: 'Help us understand the morning school journey so we can make crossings and streets safer.',
+      desc: 'Tell us about the morning journey to school, so we can make crossings and streets safer.',
       cta: 'Take the survey', minutes: '3 min', questions: 9, responses: 134, closesIn: 'Closes in 4 days', progress: 71 }
   };
 
@@ -361,21 +364,22 @@
     {
       key: 'dublin', theme: 1, city: 'Dublin City',
       title: 'The big downtown survey',
+      subtitle: 'Tell us how the city centre works for you today. Choose the survey that fits the time you have.',
       banner: 'avenue',
-      config: 'Time-tier picker · three surveys as inline single buttons',
-      intro: 'We are reshaping the heart of the city centre and we want to start with you. Tell us how you use the centre today — pick whichever survey fits the time you have.',
-      desc: '<p>Short on time? The survey comes in a few depths, plus an Easy Read version with short sentences and pictures so everyone can take part. Whichever you pick, your answers go straight to the project team and shape the proposals we bring back later in the year.</p>',
-      accordion: [['How long does it take?', 'Anything from a minute to ten — pick the depth that suits you. You can skip any question and come back later; your answers save as you go.'], ['What happens to my answers?', 'They are anonymised and grouped into themes. We publish the headline findings before the next phase opens.']],
+      config: 'Time-tier picker · one survey offered at three depths as inline buttons',
+      intro: 'We are reshaping the heart of the city centre, and we want to start with you — not a finished plan. There is no wrong answer here: a one-line gripe is as useful as a considered paragraph.',
+      desc: '<p>Whichever depth you pick, every answer is read and grouped into themes by the project team. We publish the headline findings here before the next phase opens, so you can see how what you said shaped the proposals.</p>',
+      accordion: [['Can I change my answers?', 'Yes. Your answers save as you go and you can come back to finish or edit until the survey closes on 30 June.'], ['What happens to my answers?', 'They are anonymised and grouped into themes. We publish the headline findings here before the proposals phase opens.']],
       phases: [
         { name: 'City-centre survey', method: 'survey', dates: 'Jun 1 – Jun 30, 2026', status: 'current', description: 'The opening phase: a short survey on how the centre works for you today.' },
         { name: 'What we heard', method: 'information', dates: 'Jul 1 – Jul 14, 2026', status: 'upcoming', description: 'We share back the themes from your answers and what they mean for the plan.' },
         { name: 'Shape the proposals', method: 'ideation', dates: 'Jul 15 – Aug 15, 2026', status: 'upcoming', description: 'Add and react to ideas for the changes you want to see in the centre.' }
       ],
-      about: { mode: 'single', primary: 'Take the survey', secondary: 'See the results so far', participants: true, count: '1,204', label: 'responses' },
+      about: { mode: 'single', primary: 'See the results so far', secondary: null, participants: true, count: '1,204', label: 'responses' },
       surveys: { layout: 'buttons', heading: 'How much time do you have?', buttons: [
-        { label: 'Easy Read survey', style: 'primary', note: 'Plain language and pictures' },
-        { label: '5-minute survey', style: 'secondary', note: 'The standard check-in' },
-        { label: '10-minute deep dive', style: 'secondary', note: 'For the full picture' }
+        { label: 'Take the 5-minute survey', style: 'primary' },
+        { label: 'Go deeper — 10 minutes', style: 'secondary' },
+        { label: 'Easy Read version', style: 'secondary' }
       ] },
       layout: ['banner', 'title', { row: [['intro', 'surveys', 'desc'], ['about']], tpl: 'main-aside' }, 'partbar', 'timeline', 'events'],
       events: [['Jun', '18', 'Drop-in: help with the survey', '18 Jun · 17:30 – 19:00', 'Central Library', '26', 'oldtown']]
@@ -383,29 +387,31 @@
     {
       key: 'linz', theme: 0, city: 'Linz',
       title: 'Reimagine the riverside',
+      subtitle: 'The old industrial riverfront is coming back to the city. Help decide what goes there.',
       banner: 'park-people',
-      config: 'Events module placed above the timeline · easy-read survey card',
-      intro: 'Help shape how we use the riverside over the next few years. We are collecting ideas right now — add yours below, then back the ones you like best.',
-      desc: '<p>The team reads every suggestion, groups similar ones, and the most-supported move to a community vote and into the final plan. Come and talk it through in person too — the meet-ups below run while the ideas phase is open.</p>',
-      accordion: [['How will my idea be used?', 'Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.'], ['Who is running this project?', 'The City of Linz engagement team, together with the parks and mobility departments.']],
+      config: 'Events module lifted above the timeline · ideation feed + parallel survey',
+      intro: 'Nothing is drawn up yet — this is the ideas phase, and the widest range of voices now makes for a stronger shortlist later. Add your own idea, or back the ones your neighbours have already posted.',
+      desc: '<p>Every suggestion is read and grouped by theme; the most-supported move to a community vote and into the final plan. Prefer to talk it through in person? Come to one of the riverside meet-ups below — they run while the ideas phase is open.</p>',
+      accordion: [['How will my idea be used?', 'Every idea is read by the project team and grouped with similar ones. The most-supported move to the community vote in July.'], ['Who is running this project?', 'The City of Linz engagement team, with the parks and mobility departments.']],
       phases: [
         { name: 'Share your ideas', method: 'ideation', dates: 'May 20 – Jun 30, 2026', status: 'current', description: 'Residents share ideas for the riverside and react to each other’s suggestions.' },
         { name: 'Consolidation', method: 'information', dates: 'Jul 1 – Jul 14, 2026', status: 'upcoming', description: 'We group similar ideas and share how the shortlist was put together.' },
         { name: 'Community vote', method: 'voting', dates: 'Jul 15 – Aug 5, 2026', status: 'upcoming', description: 'Residents prioritise the shortlisted ideas with a budget of points.' }
       ],
-      about: { mode: 'dual', primary: 'Submit your idea', secondary: 'See the ideas', participants: true, count: '342', label: 'contributions' },
-      surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'secondary', survey: 'mobility', heading: 'One more way to take part' },
+      about: { mode: 'dual', primary: 'Add your idea', secondary: 'See the 342 ideas', participants: true, count: '342', label: 'contributions' },
+      surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'secondary', survey: 'mobility', heading: 'Rather answer a few questions?' },
       layout: ['banner', 'title', { row: [['intro', 'desc', 'surveys'], ['about']], tpl: 'main-aside' }, 'events', 'partbar', 'timeline'],
       events: [['Jun', '14', 'Riverside ideas walk', '14 Jun · 10:00 – 11:30', 'Donaupark', '41', 'workshop'], ['Jul', '02', 'Design workshop', '2 Jul · 18:00 – 20:00', 'Civic Hall', '57', 'community']]
     },
     {
       key: 'wien', theme: 2, city: 'Stadt Wien',
       title: 'Participatory budget 2026',
+      subtitle: '€500,000 for the district — and you decide where it goes. Three ways to take part are open at once.',
       banner: 'square',
-      config: 'Omnibox · 3 methods collapse to one button → opens a modal / bottom sheet',
-      intro: 'You decide where part of the district budget goes this year. Three ways to take part are open at once — vote on the shortlist, add a late idea, or have your say in the budget survey.',
-      desc: '<p>When more than two ways to participate are open together, the About box collapses them into a single clear call to action. Tapping it opens a modal — a bottom sheet on mobile — with each method as its own button.</p>',
-      accordion: [['How does the vote work?', 'You get a set of points to spread across the projects you most want funded. You can change your vote until the phase closes.'], ['How much is the budget?', '€500,000 for the district this year, split across the projects that get the most support.']],
+      config: 'Omnibox · three open methods collapse to one button → modal / bottom sheet',
+      intro: 'The shortlist was built from the proposals residents submitted this spring. Voting is the main event now, but ideas and the budget survey stay open alongside it — take part however suits you.',
+      desc: '<p>With three methods running together, listing every button would crowd the page, so the participation box collapses them behind one clear action. Tapping it opens a modal — a bottom sheet on mobile — with each way to take part as its own button.</p>',
+      accordion: [['How does the vote work?', 'You get points to spread across the projects you most want funded. You can change your vote until voting closes on 30 June.'], ['What if my idea did not make the shortlist?', 'You can still add a late idea — the team reviews them for the next budget round and replies in the project updates.']],
       phases: [
         { name: 'Collect proposals', method: 'ideation', dates: 'Mar 1 – May 1, 2026', status: 'past', description: 'Residents submitted projects for the district budget.' },
         { name: 'Vote on the shortlist', method: 'voting', dates: 'Jun 1 – Jun 30, 2026', status: 'current', description: 'Spend your points across the shortlisted projects for the district.' },
@@ -423,11 +429,12 @@
     {
       key: 'copenhagen', theme: 3, city: 'Københavns Kommune',
       title: 'What we heard: the city centre',
+      subtitle: '517 ideas, grouped into eight themes. Here is what you told us — and what happens next.',
       banner: 'oldtown',
-      config: 'Three-column survey-card row below the events calendar',
-      intro: 'Thank you to everyone who shared an idea. This phase shares back what we heard and how the ideas were grouped — and opens a few short follow-up surveys.',
-      desc: '<p>During consolidation we read every contribution, removed duplicates, and grouped the remaining ideas into themes. Below is how the process worked, when we are meeting in person, and the short surveys that are still open.</p>',
-      accordion: [['How were ideas grouped?', 'Ideas were clustered by theme and by where in the centre they sit. Near-identical ideas were merged, keeping the original authors credited.'], ['When can I vote?', 'Prioritisation opens next month. Followers of this project get a notification when voting starts.']],
+      config: 'Closing-the-loop page · three follow-up surveys below the events calendar',
+      intro: 'Thank you to everyone who took part. This is the part too many consultations skip: showing you what we did with what you said, before anyone decides anything.',
+      desc: '<p>We read every contribution, merged the near-identical ones — authors still credited — and clustered the rest into themes. Below is how that worked, where to meet the team in person, and the short follow-up surveys that are still open.</p>',
+      accordion: [['How were ideas grouped?', 'By theme, and by where in the centre they sit. Near-identical ideas were merged, keeping the original authors credited.'], ['When can I vote?', 'Prioritisation opens in July. Follow the project and you will get a notification the day voting starts.']],
       phases: [
         { name: 'Share your ideas', method: 'ideation', dates: 'Apr 1 – May 20, 2026', status: 'past', description: 'Residents shared ideas for the city centre.' },
         { name: 'What we heard', method: 'information', dates: 'Jun 1 – Jun 21, 2026', status: 'current', description: 'We share back the themes from your ideas and how the shortlist was built.' },
@@ -442,34 +449,36 @@
     {
       key: 'oslo', theme: 5, city: 'Oslo kommune',
       title: 'A safer school run',
+      subtitle: 'Written in plain words, with big text and one clear button — so every family can take part.',
       banner: 'street-trees',
-      config: 'Reordered page · timeline under the title, About box above the description',
-      intro: 'We want every child to get to school safely. This survey is written in plain words, with big text and one clear button — so everyone can take part.',
-      desc: '<p>Tell us about the morning journey to school: where it feels safe, where it does not, and what would help. Your answers shape crossings, speeds and the streets around our schools.</p>',
-      accordion: [['Who can answer?', 'Anyone who walks, cycles or drives the school run — parents, carers, children and neighbours.'], ['Do I need an account?', 'No. You can answer the survey without signing in. Signing in lets you follow the project for updates.']],
+      config: 'Reordered, accessible page · timeline under the title, single clear action',
+      intro: 'Tell us about the morning journey to school: where it feels safe, where it does not, and the one change that would help most. It takes a few minutes and you do not need an account.',
+      desc: '<p>Your answers go straight to the traffic and schools team and shape real decisions — where crossings go, how fast traffic moves, and which streets get calmed first. We share back what we heard in July, before anything is decided.</p>',
+      accordion: [['Who can answer?', 'Anyone who knows the school run — parents, carers, children, teachers and neighbours. Walk it, cycle it or drive it: we want to hear from you.'], ['Do I need an account?', 'No. You can answer without signing in. Signing in just lets you follow the project for updates.']],
       phases: [
         { name: 'School-run survey', method: 'survey', dates: 'Jun 5 – Jun 26, 2026', status: 'current', description: 'A short, plain-language survey about the morning journey to school.' },
         { name: 'What we heard', method: 'information', dates: 'Jul 1 – Jul 14, 2026', status: 'upcoming', description: 'We share back what we learned and the changes we are considering.' }
       ],
       about: { mode: 'single', primary: 'Take the survey', secondary: null, participants: true, count: '286', label: 'responses' },
-      surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'primary', survey: 'school', heading: 'The survey, in plain words' },
-      layout: ['banner', 'title', 'timeline', 'about', 'intro', 'desc', 'surveys', 'events'],
+      surveys: { layout: 'none' },
+      layout: ['banner', 'title', 'timeline', 'about', 'intro', 'desc', 'events'],
       events: [['Jun', '11', 'School-gate listening session', '11 Jun · 08:15 – 09:15', 'Skole gate', '19', 'community']]
     },
     {
       key: 'lambeth', theme: 6, city: 'Lambeth',
       title: 'Quiet streets pilot',
+      subtitle: 'One question, one action: where would calmer streets make the biggest difference?',
       banner: 'harbour',
-      config: 'Action-first minimal page · About box on top, then text and one survey',
-      intro: 'We are trialling quieter, calmer streets in the neighbourhood. Add your idea for where it would make the biggest difference.',
-      desc: '<p>This is a light-touch project page: the action sits right at the top, with a short explanation and a single easy-read survey below — for when the page should stay quiet and the next step is obvious.</p>',
-      accordion: [['What is a quiet street?', 'A street where through-traffic is reduced so it is calmer and safer for people walking, cycling and playing.']],
+      config: 'Action-first minimal page · the action leads, everything else stays quiet',
+      intro: 'We are trialling quieter, calmer streets — less through-traffic, more room to walk, cycle and play. Tell us the street you would start with.',
+      desc: '<p>This is a deliberately light page: the action comes first, with a short explanation underneath. The most-supported streets go into the trial this summer, and we report back on what actually changed.</p>',
+      accordion: [['What is a quiet street?', 'A street where through-traffic is reduced, so it is calmer and safer for people walking, cycling and playing — local access stays.']],
       phases: [
         { name: 'Suggest a street', method: 'ideation', dates: 'Jun 1 – Jul 1, 2026', status: 'current', description: 'Add the street where a quiet-streets trial would make the biggest difference.' },
         { name: 'Trial', method: 'information', dates: 'Aug 2026', status: 'upcoming', description: 'We trial the most-supported streets and report back on what changed.' }
       ],
-      about: { mode: 'single', primary: 'Suggest a street', secondary: null, participants: false },
-      surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'secondary', survey: 'access', heading: 'Or take the quick survey' },
+      about: { mode: 'single', primary: 'Suggest a street', secondary: null, participants: true, count: '128', label: 'streets suggested' },
+      surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'secondary', survey: 'access', heading: 'Prefer a few questions instead?' },
       layout: ['banner', 'title', 'about', 'intro', 'desc', 'surveys', 'partbar', 'timeline'],
       events: []
     },
@@ -503,7 +512,7 @@
       if (a.secondary) actions += `<a class="gv-btn full primary-outlined" href="#"><span class="gv-btn__label">${a.secondary}</span></a>`;
     }
     const people = a.participants
-      ? `<div class="gv-participants pv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">${a.count} participants</span></div>`
+      ? `<div class="gv-participants pv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">${a.count} ${a.label || 'participants'}</span></div>`
       : '';
     let inner = (actions ? `<div class="pv-pbox__actions">${actions}</div>` : '') + people;
     if (!inner) inner = '<div class="pv-pbox__empty">No active methods</div>';
@@ -596,8 +605,8 @@
             <button class="gv-feedfilter__btn" type="button">Accepted <span class="gv-feedfilter__count">18</span></button></div></div>
         </aside></div>`;
     },
-    survey() {
-      return `<div class="pv-survintro"><h3 class="gv-title h3">${SURVEYS.mobility.name}</h3><p>${SURVEYS.mobility.questions} questions · about ${SURVEYS.mobility.minutes} to complete. Your answers are saved as you go and you can finish later.</p><a class="gv-btn primary" href="#"><span class="gv-btn__label">Start the survey</span></a></div>`;
+    survey(p) {
+      return `<div class="pv-survintro"><h3 class="gv-title h3">${p.name}</h3><p>${p.description} Your answers are saved as you go, so you can stop and finish later.</p><a class="gv-btn primary" href="#"><span class="gv-btn__label">Start the survey</span></a></div>`;
     },
     information() {
       const acc = (q, p) => `<details class="gv-acc__item"><summary class="gv-acc__head"><span class="gv-acc__q">${q}</span><span class="gv-acc__chev" data-gv-icon="chevron-right"></span></summary><div class="gv-acc__body"><p>${p}</p></div></details>`;
@@ -641,7 +650,7 @@
     // Module content renderers (return inner HTML; no full-width wrapper).
     const M = {
       banner: () => `<section class="pp-banner" aria-label="Project banner"><img src="assets/img/westmere/${v.banner}.webp" alt="" loading="lazy" /></section>`,
-      title: () => `<h1 class="gv-title h1 pv-h1">${v.title}</h1>`,
+      title: () => `<h1 class="gv-title h1 pv-h1">${v.title}</h1>${v.subtitle ? `<p class="pv-sub">${v.subtitle}</p>` : ''}`,
       intro: () => `<div class="gv-projdesc pv-intro"><p>${v.intro}</p></div>`,
       desc: () => `<div class="gv-projdesc">${v.desc || ''}${acc ? `<div class="gv-accordion" style="margin-top:20px">${acc}</div>` : ''}</div>`,
       about: () => `<div class="pv-aside pv-about-wide">${aboutBoxHTML(v.about)}</div>`,
