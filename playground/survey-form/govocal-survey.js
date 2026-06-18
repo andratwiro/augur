@@ -166,7 +166,7 @@
   function rDrop(f, shapefile) {
     var cloud = '<svg viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14a6 6 0 0 0 6 6h13a5 5 0 0 0 .35-9.96M14 13v4h-4v-4H7l5-5 5 5z"/></svg>';
     var sub = shapefile ? 'Esri shapefile (.zip containing .shp, .shx, .dbf)' : 'PDF, PNG, JPG, DOCX — up to 50MB';
-    return qShell(f, '<div class="sv-drop" role="button" tabindex="0">' + cloud + '<span class="sv-drop__main"><b>Click to upload</b> or drag and drop</span><span class="sv-drop__sub">' + sub + '</span></div>');
+    return qShell(f, '<div class="sv-drop" role="button" tabindex="0">' + cloud + '<span class="sv-drop__main"><b>Zum Hochladen klicken</b> oder hierher ziehen</span><span class="sv-drop__sub">' + sub + '</span></div>');
   }
 
   var RENDER = {
@@ -198,13 +198,12 @@
 
   function shellHTML(title) {
     // Progressbar attrs reused by the header bar, footer bar and ring variants.
-    var pbar = ' role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% complete"';
+    var pbar = ' role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% abgeschlossen"';
     return '<section class="sv-card" aria-label="' + esc(title || 'Survey') + '">' +
       '<div class="sv-titlebar"><h1>' + esc(title || 'Survey') + '</h1>' +
       // Header numeral (headernum variant) — the % rides in the titlebar, no bar at all.
       '<span class="sv-titlebar__pct" role="status" aria-live="polite" aria-atomic="true">0%</span>' +
-      '<button class="sv-titlebar__edit" type="button">Edit survey</button>' +
-      '<button class="sv-close" type="button" aria-label="Close survey">' +
+      '<button class="sv-close" type="button" aria-label="Umfrage schließen">' +
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>' +
       // Header progress bar (topbar / tally variants) — pinned under the titlebar, stays visible while scrolling.
       '<div class="sv-hbar"' + pbar + '><span class="sv-hbar__track"><span class="sv-hbar__fill"></span></span><span class="sv-hbar__num">0%</span></div>' +
@@ -221,8 +220,8 @@
       // Three interchangeable progress indicators; CSS shows exactly one per layout (the
       // rest are display:none, so screen readers never get a duplicate announcement).
       '<span class="sv-foot__ring"' + pbar + '><b class="sv-foot__ring-num">0%</b></span>' +
-      '<span class="sv-foot__step" role="status" aria-live="polite" aria-atomic="true">Step 1 of 1</span>' +
-      '<span class="sv-foot__pct" role="status" aria-live="polite" aria-atomic="true">0% complete</span>' +
+      '<span class="sv-foot__step" role="status" aria-live="polite" aria-atomic="true">Schritt 1 von 1</span>' +
+      '<span class="sv-foot__pct" role="status" aria-live="polite" aria-atomic="true">0% abgeschlossen</span>' +
       '<div class="sv-foot__nav">' +
       '<button type="button" class="gv-btn primary-outlined sv-prev"><svg class="gv-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg><span class="sv-prev-label">Previous</span></button>' +
       '<button type="button" class="gv-btn primary sv-next"><span class="sv-next-label">Next</span><svg class="gv-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg></button>' +
@@ -278,7 +277,7 @@
       bodyEl.scrollTop = 0;
       var pct = (p.kind === 'thankyou') ? 100 : Math.round((Math.min(step, lastContent) / lastContent) * 100);
       if (seedPct != null) { pct = seedPct; seedPct = null; }   // posed-default seed (first paint only)
-      var pctTxt = pct + '% complete';
+      var pctTxt = pct + '% abgeschlossen';
       // Keep every progress representation in sync; only the one CSS shows is visible.
       barEl.style.width = pct + '%';
       pctEl.textContent = pctTxt;
@@ -289,7 +288,7 @@
       if (ringEl) { ringEl.style.setProperty('--p', pct); if (ringNum) ringNum.textContent = pct + '%'; }
       var sNum = Math.min(step, lastContent) + 1, sTot = lastContent + 1;
       if (stepEl) {
-        stepEl.textContent = (p.kind === 'thankyou') ? 'Complete' : ('Step ' + sNum + ' of ' + sTot);
+        stepEl.textContent = (p.kind === 'thankyou') ? 'Abgeschlossen' : ('Schritt ' + sNum + ' von ' + sTot);
       }
       if (dotSpans.length) {
         var done = (p.kind === 'thankyou') ? dotSpans.length : sNum;

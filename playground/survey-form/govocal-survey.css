@@ -268,7 +268,10 @@
        rgb(30,30,30)). The base rule above set it to 18px / 600 / secondary grey; we
        override to the measured values. Append-only so every consumer updates.
        The near-black is a measured one-off (not --gv-text-primary #333), kept literal. */
-    .sv-titlebar h1 { font-size: var(--gv-fs-base); font-weight: 400; line-height: 24px; color: rgb(30, 30, 30); }
+    .sv-titlebar h1 { font-size: var(--gv-fs-base); font-weight: 400; line-height: 24px; color: rgb(30, 30, 30);
+      /* A long survey title truncates with an ellipsis rather than wrapping/pushing the
+         close button — min-width:0 lets the flex item shrink below its content width. */
+      flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     /* Real header also carries an 'Edit survey' OUTLINE button (admin-preview affordance)
        to the left of the close ✕: white bg, 1px solid border, 3px radius, 9px 18px pad,
        16px text. Structural fidelity only — the renderer can opt to emit it. */
@@ -377,7 +380,8 @@
     .sv-foot__step { display: none; }
 
     /* Header progress bar (topbar) -------------------------------------------- */
-    .sv-hbar { flex: 0 0 auto; align-items: center; gap: 12px; padding: 10px 22px; }
+    /* Tight top padding pulls the bar + number up close to the title (compact header). */
+    .sv-hbar { flex: 0 0 auto; align-items: center; gap: 12px; padding: 2px 22px 10px; }
     .sv-hbar__track { position: relative; flex: 1 1 auto; height: 6px; border-radius: 3px;
       background: var(--gv-grey-200); overflow: hidden; }
     .sv-hbar__fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--gv-tenant-primary);
@@ -439,7 +443,7 @@
     /* 2 · topbar — slim determinate bar + % under the header; footer holds only lang+nav.
           The hairline reads BELOW the progress (the bar sits flush under the title), so
           the title and its progress feel like one unit. Header stays pinned while scrolling. */
-    .sv-card[data-layout="topbar"] .sv-titlebar { border-bottom: 0; }
+    .sv-card[data-layout="topbar"] .sv-titlebar { border-bottom: 0; padding-bottom: 6px; }
     .sv-card[data-layout="topbar"] .sv-hbar { display: flex; border-bottom: 1px solid var(--gv-grey-200); }
     .sv-card[data-layout="topbar"] .sv-foot__pct { display: none; }
 
@@ -451,7 +455,7 @@
     /* 4 · tally — Tally's pattern: a full-bleed bar flush under the title, NO numeral,
           hairline below. The bar alone signals progress (we keep the SR % via the
           footer's role=progressbar siblings, so it's never colour-only for AT). */
-    .sv-card[data-layout="tally"] .sv-titlebar { border-bottom: 0; }
+    .sv-card[data-layout="tally"] .sv-titlebar { border-bottom: 0; padding-bottom: 6px; }
     .sv-card[data-layout="tally"] .sv-hbar { display: flex; padding: 0; border-bottom: 1px solid var(--gv-grey-200); }
     .sv-card[data-layout="tally"] .sv-hbar__track { height: 6px; border-radius: 0; }
     .sv-card[data-layout="tally"] .sv-hbar__num { display: none; }
