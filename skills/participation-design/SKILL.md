@@ -1,6 +1,6 @@
 ---
 name: participation-design
-description: Critique and shape resident-facing participation pages (project pages, About/Participation box, surveys, phases, events) the way a senior digital-democracy practitioner would — for conversion, trust, and inclusion. Grounded in the public participation canon (IAP2, Arnstein, OECD, Ostrom, Plurality). Pull when designing or hard-critiquing a front-office participation flow, choosing CTAs/copy, or deciding what goes where on a project page.
+description: Critique and shape resident-facing participation pages (project pages, About/Participation box, surveys, phases, events) the way a senior digital-democracy practitioner would — for conversion, trust, and inclusion. Grounded in the public participation canon (IAP2, Arnstein, OECD, Ostrom) and read directly from the source books via the BookPower MCP (Plurality; Schneider's Governable Spaces; Bollier's Think Like a Commoner). Pull when designing or hard-critiquing a front-office participation flow, choosing CTAs/copy, or deciding what goes where on a project page.
 ---
 
 # Participation design
@@ -149,6 +149,50 @@ meaning), *deliberation disconnected from decision-making power* (Arnstein's tok
 methods (quadratic/points voting) express intensity and protect minorities better than
 first-past-the-post.
 
+### Governable Spaces (Nathan Schneider, 2024)
+
+- **Implicit feudalism** — "online communities … governed by relations of lord-and-vassal
+  power disguised as neutral platform administration. Platform owners hold unilateral, largely
+  unaccountable authority … in a structural pattern that mirrors pre-modern feudal hierarchy
+  even as it presents itself as merely technical or managerial" (Schneider, Intro). A city
+  platform where admins configure, moderate and decide *everything* while residents only fill
+  forms is implicit feudalism with a civic skin. The antidote is giving residents legible,
+  accountable governance levers — not just inputs.
+- **From users to citizens.** "Before a community can begin to self-govern, it needs to see
+  itself as a community — through participants telling stories about themselves and having
+  shared experiences" (Schneider). Design for *belonging* before extraction: credited
+  contributors, visible history, "what we heard," repeat participation — not one-shot
+  survey-fillers.
+
+### Think Like a Commoner (David Bollier, 2024)
+
+- **Commoning** is "the active, ongoing social practice of creating and sustaining a commons …
+  through shared governance, mutual obligation, and care" — and "MUST NOT be reduced to an
+  economic transaction" (Bollier). Treat participation as something residents *co-steward*,
+  not a service delivered to passive consumers.
+- **Enclosure / commons-washing** — the failure mode is an authority or vendor *claiming*
+  participation while capturing the public square and giving nothing back ("commons-washing").
+  On a page that is consultation theatre: a polished CTA over a process with no real return of
+  power. It is Arnstein's tokenism and Plurality's deliberation-without-action in commons language.
+
+### Aggregated through-line (across all sources)
+
+The frameworks converge on **one dominant failure and its inverse.** The failure — *control
+dressed as participation* — is named six ways: Arnstein's **tokenism**, IAP2's
+**over-promised level**, the OECD's missing **accountability**, Plurality's
+**deliberation-disconnected-from-decision**, Schneider's **implicit feudalism**, Bollier's
+**commons-washing**. Same defect each time: a page that *collects* without *ceding* or
+*returning*. The inverse — what good participation design does — also recurs, and every
+concrete heuristic in Part 1 is a page-level expression of one of these four:
+1. **Make real influence legible** — who decides, what your input changes; match the CTA to it
+   and prove it by closing the loop.
+2. **Build belonging, not just throughput** — users → citizens/commoners; credit people, show
+   history, design for the next visit, not just this submission.
+3. **Listen broadly, not loudly** — surface the full range and protect minorities (broad
+   listening, intensity-aware voting); don't reward whoever shouts most.
+4. **Lower the barrier and bridge difference** — inclusion (Easy Read, no-account, offline) and
+   cross-group coalition over winner-take-all; diversity is where value is created.
+
 ---
 
 ## Sources & going deeper
@@ -165,17 +209,20 @@ Ostrom, *Governing the Commons* (1990) · Weyl, Tang & ⿻ Community, *Plurality
 plurality.net).
 
 **BookPower MCP servers** (books-as-tools for agents, bookpower.org — built by Citizen
-Infrastructure, MIT-licensed server code). The Plurality server is a live remote HTTP MCP
-exposing ~13 tools (`find_failure_mode`, `suggest_governance_forms`, `find_precedent_case`,
-`assess_plural_design`, `get_glossary_term`, `find_quote`, `search_book`, …). To wire it into
-Claude Code so future sessions can query the book directly:
+Infrastructure, MIT-licensed server code). The Part 2 book material above was read **directly
+from these live remote HTTP MCPs** (each ~12–13 tools: `find_failure_mode` /
+`find_enclosure_pattern`, `suggest_governance_forms` / `suggest_commoning_protocols`,
+`get_glossary_term`, `find_quote`, `search_book`, `assess_*`, …). To wire them into Claude
+Code so future sessions can query the books directly:
 
 ```
-claude mcp add --transport http -s user plurality https://plurality-mcp-production.up.railway.app/mcp
+claude mcp add --transport http -s user plurality           https://plurality-mcp-production.up.railway.app/mcp
+claude mcp add --transport http -s user governable-spaces   https://governable-spaces-mcp-production.up.railway.app/mcp
+claude mcp add --transport http -s user think-like-a-commoner https://tlac-book-mcp-production.up.railway.app/mcp
 ```
 
-Also on BookPower: **Governable Spaces** (Schneider — "implicit feudalism," sortition,
-federated subsidiarity, plural voting), **Think Like a Commoner** (Bollier — Ostrom's
-principles as tools), and **Facilitating Deliberation** (MosaicLab — facilitator tools,
-private/by-request). When a participation-design question turns on democratic theory rather
-than page craft, query these rather than guessing.
+They are also reachable ad hoc over plain HTTP without installing: POST JSON-RPC `initialize`
+→ keep the `mcp-session-id` header → `notifications/initialized` → `tools/call` (responses
+are SSE `data:` lines). **Facilitating Deliberation** (MosaicLab) is also on BookPower but is
+private/by-request (copyrighted; email hello@zhgnv.com). When a participation-design question
+turns on democratic theory rather than page craft, query these rather than guessing.
