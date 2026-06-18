@@ -3113,8 +3113,9 @@
      Lives OUTSIDE the .gv-bo teal remap so it themes to the real city tenant
      (syncFOTheme re-points --gv-tenant-*). The manager-bar "Edit project" returns.
      Page-local CSS below is layout-only, copied from the canonical page; every
-     visual class is canonical .gv-*. The "extra surveys" block (.fo-extra) is the
-     content-builder's Extras promoted into the page, prototype-local.
+     visual class is canonical .gv-*. The participation box (.gv-pbox) and the extra
+     survey (.gv-extra-survey card, in the main column) are the same canonical
+     components the content-builder produces — no bespoke survey-list component.
      ════════════════════════════════════════════════════════════════════════ -->
 <style>
   #view-fo { position: fixed; inset: 0; z-index: 60; background: #fff; display: none; flex-direction: column; overflow: hidden; }
@@ -3176,18 +3177,10 @@
     #view-fo .pp-mapcard__list { order: 3; overflow: visible; padding: 0; gap: 14px; }
   }
 
-  /* ── Extra surveys — the content-builder's "Extras" promoted onto the page,
-       in the narrow participation column. Prototype-local (.fo-*). ─────────── */
-  #view-fo .fo-extra { margin-top: 18px; border: 1px solid var(--gv-grey-200); border-radius: var(--gv-radius); background: #fff; padding: 16px; }
-  #view-fo .fo-extra__title { margin: 0 0 2px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-text-primary); }
-  #view-fo .fo-extra__sub { margin: 0 0 12px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
-  #view-fo .fo-extra__list { display: flex; flex-direction: column; gap: 8px; }
-  #view-fo .fo-survey-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--gv-grey-200); border-radius: var(--gv-radius); background: #fff; text-decoration: none; }
-  #view-fo .fo-survey-row:hover { border-color: var(--gv-tenant-primary); }
-  #view-fo .fo-survey-row__info { display: flex; flex-direction: column; min-width: 0; }
-  #view-fo .fo-survey-row__name { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary); }
-  #view-fo .fo-survey-row__meta { font-size: 12px; color: var(--gv-text-secondary); }
-  #view-fo .fo-survey-row__go { flex: none; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-tenant-primary); white-space: nowrap; }
+  /* ── Extra survey — the content-builder's canonical .gv-extra-survey card,
+       promoted onto the project page in the MAIN column (under the description),
+       constrained so it doesn't span the full wide measure. ─────────────────── */
+  #view-fo #fo-extra { margin-top: 24px; max-width: 560px; }
 
   /* Empty project → nothing to preview yet. */
   #view-fo .foview-empty { max-width: 560px; margin: 96px auto; text-align: center; padding: 0 24px; color: var(--gv-text-secondary, #596B7A); }
@@ -3242,11 +3235,15 @@
               <div class="gv-projdesc pp-intro" id="fo-intro"></div>
               <div class="pp-ctacell">
                 <div class="pp-cta" id="fo-cta"></div>
-                <div class="fo-extra" id="fo-extra" hidden></div>
               </div>
             </div>
             <div class="pp-row" style="margin-top:18px;">
-              <div class="gv-projdesc pp-desc" id="fo-desc"></div>
+              <div class="pp-desccol">
+                <div class="gv-projdesc pp-desc" id="fo-desc"></div>
+                <!-- Extra survey — canonical .gv-extra-survey card, in the MAIN column
+                     (not the narrow CTA rail) so it doesn't crush the page layout. -->
+                <div id="fo-extra" hidden></div>
+              </div>
               <div aria-hidden="true"></div>
             </div>
           </div>
@@ -3741,15 +3738,20 @@
       <details class="gv-acc__item"><summary class="gv-acc__head"><span class="gv-acc__q">Who is running this project?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary><div class="gv-acc__body"><p>The City of Meridian engagement team, together with the mobility department.</p></div></details>` : ''}
     </div>`;
   const CTA = (primary, count) => `
-    <a class="gv-btn primary" href="#">${primary}</a>
-    <a class="gv-btn primary-outlined" href="#">See the ideas</a>
-    <div class="gv-participants" style="margin-top:4px;">
-      <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
-      <span class="gv-pcount">${count} contributions</span>
-      <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
+    <div class="gv-pbox">
+      <div class="gv-pbox__actions">
+        <a class="gv-btn primary full" href="#">${primary}</a>
+        <a class="gv-btn secondary-outlined full" href="#">See the ideas</a>
+      </div>
+      <div class="gv-participants gv-pbox__people" style="margin-top:4px;">
+        <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
+        <span class="gv-pcount">${count} contributions</span>
+        <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
+      </div>
     </div>`;
   const PARTBAR = (cta) => `<span class="gv-partbar__status">Open for participation</span><a class="gv-btn on-color" href="#">${cta} <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>`;
-  const EXTRA = (title, sub, rows) => ({ title, sub, rows });
+  // One linked survey, rendered as the canonical .gv-extra-survey card (no bespoke list).
+  const EXTRA = (name, desc, cta) => ({ name, desc, cta });
 
   const MERIDIAN_IDEAS = [
     { title: 'Protected cycle lane the length of Meridian Avenue', author: 'Daan Verhoeven', time: '2 days ago', excerpt: 'The painted lane just stops at the junction and it feels unsafe. A kerb-separated lane would let kids ride to school.', likes: 312, dislikes: 18, comments: 24, status: 'under consideration', img: 'assets/img/street-trees.webp', lat: 52.0915, lng: 5.1180 },
@@ -3782,12 +3784,7 @@
       desc: '<p>The team reads every suggestion, groups similar ones, and the most-supported move to a community vote and into the final plan. Everything you share here is public and helps shape the shortlist that goes to the next phase.</p>' + ACC(true),
       cta: CTA('Submit your idea', '342'),
       partbar: PARTBAR('Submit your idea'),
-      extra: EXTRA('Other ways to take part', 'Surveys running outside the timeline', [
-        { name: 'Ask us anything', meta: 'Ongoing', go: 'Open' },
-        { name: 'School survey', meta: '20 May – 5 Jun · ~3 min', go: 'Take the survey' },
-        { name: 'Market-day poll', meta: '15 – 17 Aug', go: 'Notify me' },
-        { name: 'Pop-up kiosk survey', meta: 'Closed · 2 – 4 May', go: 'View results' }
-      ]),
+      extra: EXTRA('School-run survey', 'A few quick questions about getting to school — open to everyone, running alongside the project.', 'Take the survey'),
       ideas: MERIDIAN_IDEAS,
       events: EVENT('Jun', '14', 'Mobility town hall', '14 Jun 2026 · 19:00', 'Central Library, Meridian', 'location-simple', '41', 'meeting.webp')
             + EVENT('Jul', '02', 'Neighbourhood design workshop', '2 Jul 2026 · 18:00', 'Meridian Civic Hall', 'location-simple', '57', 'workshop.webp'),
@@ -3806,9 +3803,7 @@
       desc: '<p>Your ideas go straight to the project team and shape the proposals we bring back to the neighbourhood.</p>' + ACC(false),
       cta: CTA('Submit your idea', '38'),
       partbar: PARTBAR('Submit your idea'),
-      extra: EXTRA('Other ways to take part', 'Surveys running outside the timeline', [
-        { name: 'Ask us anything', meta: 'Ongoing', go: 'Open' }
-      ]),
+      extra: EXTRA('Travel-habits survey', 'Tell us how you get around Station Road today — five short questions that feed the proposals.', 'Take the survey'),
       ideas: MERIDIAN_IDEAS.slice(0, 3),
       events: EVENT('Jun', '14', 'Mobility town hall', '14 Jun 2026 · 19:00', 'Central Library, Meridian', 'location-simple', '41', 'meeting.webp'),
       phases: [
@@ -3963,9 +3958,9 @@
       $('#fo-partbar').innerHTML = d.partbar;
       $('#fo-events').innerHTML = d.events;
       const ex = $('#fo-extra');
-      if (d.extra && d.extra.rows.length) {
+      if (d.extra) {
         ex.hidden = false;
-        ex.innerHTML = `<p class="fo-extra__title">${esc(d.extra.title)}</p><p class="fo-extra__sub">${esc(d.extra.sub)}</p><div class="fo-extra__list">${d.extra.rows.map((r) => `<a class="fo-survey-row" href="#"><span class="fo-survey-row__info"><span class="fo-survey-row__name">${esc(r.name)}</span><span class="fo-survey-row__meta">${esc(r.meta)}</span></span><span class="fo-survey-row__go">${esc(r.go)}</span></a>`).join('')}</div>`;
+        ex.innerHTML = `<div class="gv-extra-survey gv-extra-survey--card"><span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span><h3 class="gv-extra-survey__title">${esc(d.extra.name)}</h3><p class="gv-extra-survey__desc">${esc(d.extra.desc)}</p><a class="gv-btn secondary-outlined full" href="#">${esc(d.extra.cta)}</a></div>`;
       } else { ex.hidden = true; ex.innerHTML = ''; }
       wireOnce();
       renderStepper();
