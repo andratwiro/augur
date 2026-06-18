@@ -422,7 +422,8 @@ async function nameApi(request, url, env) {
     let op;
     try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
     const key = clamp(op && op.key, 300);
-    const name = clamp(op && op.name, 80);
+    // Component descriptions (keys ending "#desc") are full sentences; names stay short.
+    const name = clamp(op && op.name, key && key.endsWith("#desc") ? 280 : 80);
     if (!key) return jsonResponse({ error: "bad-input" }, 400);
     const raw = await kv.get(NAMES_KEY);
     const map = raw ? JSON.parse(raw) : {};

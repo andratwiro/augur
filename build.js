@@ -167,7 +167,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.55";
+const UI_VERSION = "0.56";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -219,25 +219,55 @@ const UI_SKILL = path.join(ROOT, "skills", "govocal-ui"); // Primitives gallery 
 const PAGES_SRC = path.join(ROOT, "pages"); // composed reference pages
 const COMPONENTS_SRC = path.join(ROOT, "components"); // composed component library
 
-// Short blurb + key classes per component, shown in the Components table.
-// Keyed by folder name; falls back to a generic line for anything unlisted.
+// Display name + key classes + one-line "what is it" per component, shown on the
+// Components page. Keyed by folder name; `name` is the SHARED, functional display name
+// (never a city — folders may be city-grounded, the name describes what it IS). This is
+// the CANONICAL source of truth: the live right-click Rename / Edit-description writes a
+// KV override (/__name), which is folded back here so code and live stay in one language.
 const COMPONENT_BLURBS = {
-  "header-nav": {
-    classes: ".gv-header / .gv-nav / .gv-nav-m",
-    desc: "Responsive 78px site chrome: logo slot, dropdown + “Mehr ···” overflow, search, CTA; CSS-only hamburger drawer on mobile.",
-  },
-  footer: {
-    classes: ".gv-footer / .gv-powered-logo",
-    desc: "Centered tenant logo, middot-separated legal links, and the “Ermöglicht durch go·vocal” powered-by attribution.",
-  },
-  "project-card": {
-    classes: ".gv-rail / .gv-pcard",
-    desc: "Participation-project card (thumb, title, status meta, CTA) + horizontal rail. Stretched-link card — no nested anchors.",
-  },
-  hero: {
-    classes: ".gv-hero / .gv-avatars",
-    desc: "Full-bleed page banner: tenant-tinted overlay, title/lead, avatar + count stack, primary CTA. Image-agnostic.",
-  },
+  accordion: { name: "FAQ accordion", classes: ".gv-accordion / .gv-acc__item / __head / __chev", desc: "CSS-only &lt;details&gt; FAQ accordion, collapsed by default, chevron rotates on open; steps up to 18px inside project description copy." },
+  "approval-voting": { name: "Voting method body", classes: ".gv-voteoptions / .gv-voteoption / .gv-tally / .gv-voteresults", desc: "The per-method panel for a voting phase: a collapsible options accordion plus a final-tally card over a grid of ranked result bars." },
+  attachment: { name: "File attachment row", classes: ".gv-attachment / __icon / __name / __size", desc: "The Content-Builder file-download row on a custom/info page: outlined row with paperclip glyph, file-name link and size span." },
+  "avatar-overflow-bubble": { name: "Avatar overflow-count bubble", classes: ".gv-bubbles .count.bubble (.sm / .xs)", desc: "The participant-overflow count rendered as a solid cool-grey circle capping the avatar overlap stack; holds abbreviated or full counts." },
+  banner: { name: "Image-only project banner", classes: ".gv-banner / __art / __sticker", desc: "Image-only project hero (no title/CTA): a full-width teal-gradient art panel holding an illustration SVG plus an optional rotated campaign sticker." },
+  "bo-analysis": { name: "Back-office AI analysis (sensemaking)", classes: ".gv-bo-aicard / .gv-bo-aibar / .gv-bo-autotag / .gv-bo-tagrail", desc: "The back-office AI sensemaking view: auto-tagged input cards with an AI insights bar and tag rail that cluster and theme resident submissions." },
+  "bo-app-shell": { name: "Back-office app shell", classes: ".gv-bo / .gv-bo-shell / .gv-bo-side / .gv-bo-topbar / .gv-bo-tabs", desc: "The staff-facing chrome shared by every back-office screen: dark teal/navy sidebar, project top-bar with status pills and actions, and the tab row." },
+  "bo-menu": { name: "Back-office menu + notification flyout", classes: ".gv-bo-menu (.is-flyout) / .gv-bo-notifflyout__item / .gv-badge.is-count", desc: "The one canonical back-office dropdown panel powering both the exports menu and the bell notification flyout, plus the red unread count badge." },
+  "bo-sidebar": { name: "Back-office sidebar", classes: ".gv-bo-side (.is-rail) / .gv-bo-nav / __item / __icon", desc: "The back-office sidebar as a standalone responsive component: 224px extended teal/navy nav that collapses to an 80px icon rail under 1200px." },
+  "bo-templatecard": { name: "Back-office template card + facet rail", classes: ".gv-bo-templatecard / __img / .gv-bo-facetgroup / __head", desc: "The new-project \"from a template\" gallery pieces: a grey-blue template tile and the collapsible left-rail filter disclosure group." },
+  "community-monitor": { name: "Community Monitor sentiment modal", classes: ".gv-modal.size-monitor / .gv-monitor__question / .gv-sentiment-scale / __opt", desc: "The \"City at a glance\" satisfaction module: an ongoing-survey modal asking how residents feel via a 5-point emoji sentiment scale." },
+  "content-builder-render": { name: "Content-Builder render layer", classes: ".gv-cb-frame / .gv-cb-row (.cols-1/2/3) / .gv-cb-col / .gv-cb-textbox", desc: "What the back-office Content Builder outputs onto a live page: a full-width frame of 1/2/3-column rows of text-box, image and white-space cells." },
+  "cookie-modal": { name: "Cookie-consent modal", classes: ".gv-cookie__content / __icon / .gv-modal__footer", desc: "The global cookie blocker as a content variant on the modal shell: tinted cookie icon, title, body and a Manage/Reject/Accept 3-action footer." },
+  "cta-banner": { name: "CTA banner — full-width strip", classes: ".gv-cta-banner / __inner / __cta", desc: "The Content-Builder \"CTA banner\" block: a thin full-bleed coloured strip carrying one centered call-to-action button on the tenant-primary fill." },
+  "event-card-bordered": { name: "Event card — bordered", classes: ".gv-event-card.bordered (.is-imageless) / .gv-event-datechip--stacked / .gv-event-info-panel", desc: "The bordered EventsWidget card: a white framed event with a 3-tier stacked date chip and a \"Date &amp; time\" info panel, plus an imageless degrade." },
+  "event-card": { name: "Event card", classes: ".gv-event-card / __media / __date / __rsvp / .gv-events__grid", desc: "The two-tone-date-chip event card: date chip over the media, clock/location/registrant rows and a Register CTA, with grid and empty state." },
+  "fo-linz-monitorband": { name: "Monitor band — duration variant", classes: ".gv-monitorband__ctameta--duration / .gv-monitorband / .gv-event-datechip--stacked", desc: "A small additive monitor-band modifier adding a \"Takes N minutes\" duration line, confirming the cross-tenant community-monitor band formula." },
+  "folder-card": { name: "Folder card", classes: ".gv-pcard.boxed.folder / __fmedia / __fbody / __fpile / .gv-pcard__count", desc: "The projects-list folder card: borderless card with a hero image, top-right project-count badge, title, description preview and child-project avatars." },
+  "footer-logos": { name: "Footer logo band + dual-auth header", classes: ".gv-footer__logos (.row) / .gv-nav.tinted / .gv-auth-dual", desc: "Three optional header/footer config variants: a white centered logo band above the footer, brand-tinted nav labels, and the dual log-in/register CTA." },
+  footer: { name: "Footer", classes: ".gv-footer / .gv-footer__links / .gv-powered-logo", desc: "The site footer: a secondary-nav list of legal links plus a \"powered by go·vocal\" attribution; links left, attribution right, stacking under 720px." },
+  "header-nav": { name: "Header + nav", classes: ".gv-header / .gv-nav / .gv-nav-m / .gv-account-dd", desc: "Responsive full-width 78px site chrome: logo, primary nav with dropdown and overflow, search, CTA; flips signed-out/signed-in via data-auth, hamburger drawer on mobile." },
+  hero: { name: "Hero / banner", classes: ".gv-hero (.signed-out/.centered/.layout-tworow/.layout-fixed) / .gv-hero__media / .gv-avatars", desc: "Full-bleed page banner with tenant-tinted overlay, title/lead, avatar-count stack and CTA; image-agnostic, with the three homepage-banner layouts." },
+  "homepage-featured-row": { name: "Featured 3-up spotlight row", classes: ".gv-featured-row / .gv-pcard.featured / .gv-bubbles.xs", desc: "The homepage \"we want to hear from you\" row: three large image-led featured project cards with title and avatar row, sitting above the project grid." },
+  "homepage-survey-band": { name: "Embedded-survey band", classes: ".gv-monitorband / __inner / __text / __media / __cta", desc: "The homepage \"help us serve you better\" banner promoting the community-monitor survey: a 3-zone tinted card with text, preview image and CTA." },
+  "idea-card": { name: "Idea card", classes: ".gv-ideacard / __thumb / __body / __title / .gv-react", desc: "The shared idea/proposal card: square thumb, author meta and excerpt with a footer of circular like/dislike react controls and a comment count." },
+  "idea-feed": { name: "Idea feed", classes: ".gv-feed / .gv-feedfilter / .gv-viewseg / .gv-idealist", desc: "The ideation feed layout: an idea count and List/Map toggle over a two-column grid pairing the idea list with a sort/status/topic sidebar." },
+  "issue-canvas": { name: "Issue canvas", classes: ".gv-issuecanvas (.is-detail) / __pile / __add / .gv-issuefeed", desc: "The dotted-grid Perspectives canvas that floats sticky-note ideas in a masonry pile, with a floating \"Add an idea\" button and a raised detail state." },
+  "login-modal": { name: "Modal + login", classes: ".gv-modal-overlay / .gv-modal / __header / __body / .gv-or", desc: "Reusable dialog abstraction (overlay → card → titled header, close, scrollable body), shown via the real \"before you participate\" auth flow." },
+  "participation-bar": { name: "Participation bar", classes: ".gv-partbar / __inner / __status / .gv-btn.on-color", desc: "The sticky project-page action footer: participation status on the left and a primary on-color CTA on the right that pins as residents scroll." },
+  "phase-timeline": { name: "Phase timeline", classes: ".gv-phases__bar / .gv-stepper / .gv-pstep / .gv-phasepanel", desc: "The project phase nav: a connected row of interlocking chevron ribbon segments with current (mint+dot) and viewing (slate) states, plus a content panel." },
+  poll: { name: "Poll method body", classes: ".gv-poll / __question / __qhead / __options / __send", desc: "The per-method panel for a poll phase: a stack of question cards holding single/multi-choice options, a full-width Send, and the sticky participation band." },
+  "project-card": { name: "Project card + rail", classes: ".gv-rail / .gv-pcard (.boxed/.horizontal) / .gv-pgrid", desc: "The participation-project card (thumb, title, status meta, CTA) in two layouts: the horizontal scroll rail and the bordered boxed grid card." },
+  "proposal-threshold": { name: "Proposal threshold", classes: ".gv-threshold / __icon / __count / __fill / .gv-statuspill", desc: "The proposals signature votes-needed bar: vote icon, count-over-target and tenant-tinted fill paired with an open/expired status pill." },
+  "signed-out-hero": { name: "Signed-out hero banner", classes: ".gv-hero.signed-out (.centered) / __title / __lead / .gv-btn.primary-inverse", desc: "The home-page banner a visitor sees before signing in: a full-bleed photo with tenant overlay, white headline, avatar overflow cluster and an inverse CTA." },
+  "spotlight-carousel": { name: "Project carousel", classes: ".gv-carousel / __head / __controls / __scroll / .gv-rail", desc: "The homepage project row: a section title with prev/next scroll controls wrapping the canonical scroll/snap rail of project cards, with a11y skip scaffolding." },
+  spotlight: { name: "Spotlight", classes: ".gv-spotlight / __eyebrow / __title / __media / .gv-progress", desc: "The homepage \"currently working on\" spotlight: a copy column (eyebrow/title/lead/actions plus avatar count) beside a media tile with a no-image placeholder." },
+  "sticky-note": { name: "Sticky note", classes: ".gv-sticky (.is-raised / pastel variants) / __author / __title / __react", desc: "The pastel Perspectives idea note: a 320px card with author chip, emoji, title, excerpt and react counts, in resting/raised states and four pastel colours." },
+  "survey-band": { name: "Survey band", classes: ".gv-surveyband / __inner / __status / __dot / __cta", desc: "The \"Take the survey\" CTA strip on a project-page survey phase: a live-dot status on the left and an on-color CTA on the right." },
+  "survey-fields": { name: "Survey fields", classes: ".sv-optcard / .sv-rating / .sv-matrix / .sv-map · GVSurvey.mount()", desc: "Every GoVocal survey question type (text, select, rating, ranking, scale, sentiment, image-select, matrix, map, upload) plus the page-by-page runner." },
+  "theme-card": { name: "Theme card", classes: ".gv-themecard (.is-active) / __emoji / __name / __count / __bar", desc: "The ranked Perspectives category card: an emoji swatch, name, response count and a mini share bar, with an active-selection state." },
+  "twocol-accordion": { name: "Two-column image + text + accordion", classes: ".gv-cb-row.cols-2 / .gv-cb-image / .gv-prose / .gv-accordion", desc: "The Content-Builder homepage \"about + FAQ\" section: a two-column row pairing an image cell with a rich-text column carrying a heading, intro and FAQ accordion." },
+  "volunteer-cause": { name: "Volunteer cause", classes: ".gv-cause / __media / __badge / __body / .gv-btn.volunteer", desc: "The volunteering opportunity card: photo with participant badge, title, count and description plus a green volunteer button that toggles a withdrawn state." },
+  voting: { name: "Project-page events section", classes: ".gv-project-events / __sec / __rule / __empty / .gv-event-card", desc: "The \"upcoming\" and \"past events\" sections a project page renders below the phase body, reusing the events grid, card and date-filter pill." },
 };
 
 // Structured metadata per component, surfaced as badges on the Components page so the
@@ -255,6 +285,7 @@ const COMPONENT_META = {
   attachment: { surface: "fo", category: "content", status: "canonical", tags: ["stlouis", "download"] },
   "avatar-overflow-bubble": { surface: "cross", category: "misc", status: "variant", tags: ["falkirk", "avatars"] },
   banner: { surface: "fo", category: "banners", status: "canonical", tags: ["hero", "illustration"] },
+  "bo-analysis": { surface: "bo", category: "content", status: "canonical", tags: ["ai", "sensemaking"] },
   "bo-app-shell": { surface: "bo", category: "shell", status: "canonical", tags: ["chrome", "topbar"] },
   "bo-menu": { surface: "bo", category: "navigation", status: "canonical", tags: ["dropdown", "flyout"] },
   "bo-sidebar": { surface: "bo", category: "shell", status: "canonical", tags: ["nav", "rail"] },
@@ -992,6 +1023,10 @@ const PAGE_CSS = `
     .comp-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 7px; }
     .comp-tags span { font-size: 11px; color: var(--faint); }
     .comp-desc { color: var(--muted); font-size: 14px; max-width: 42ch; }
+    .comp-desc[contenteditable] {
+      outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px;
+      background: var(--card); color: var(--fg); cursor: text;
+    }
     /* Validation chip column — pinned to the far right, narrow, centered. */
     .comp-table th.comp-status, .comp-table td.comp-status { width: 56px; text-align: center; padding-right: 8px; }
     td.comp-status .status-chip { margin: 0 auto; }
@@ -1559,15 +1594,25 @@ const CARD_MENU_JS = `
   var NCACHE='gv_names_map';
   function linkOf(c){ return c.querySelector('a.preview-link, a.card-cover-link, a[href]'); }
   function nameEl(c){ return c.querySelector('.proto-name'); }
+  function descEl(c){ return c.querySelector('[data-desc-key]'); }
   function dlBtn(c){ return c.querySelector('[data-dl]'); }
 
-  // ---- persisted display-name overrides ----
+  // ---- persisted display-name + description overrides ----
+  // Both share the /__name KV map; description keys end "#desc". Components are
+  // CODE-canonical — these overrides are folded back into build.js so the live label
+  // and the source name stay one language.
   function applyNames(map){
+    if(!map) return;
     cards.forEach(function(c){
-      var k=c.getAttribute('data-rename-key'), el=nameEl(c); if(!el) return;
-      if(map && Object.prototype.hasOwnProperty.call(map,k) && map[k]){ el.textContent=map[k]; c.setAttribute('data-fkey',map[k]); }
+      var k=c.getAttribute('data-rename-key'), el=nameEl(c);
+      if(el && k && Object.prototype.hasOwnProperty.call(map,k) && map[k]){ el.textContent=map[k]; c.setAttribute('data-fkey',map[k]); }
+      var de=descEl(c); if(de){ var dk=de.getAttribute('data-desc-key');
+        if(dk && Object.prototype.hasOwnProperty.call(map,dk) && map[dk]) de.textContent=map[dk]; }
     });
   }
+  // Snapshot the build-time default description (already entity-decoded as textContent)
+  // BEFORE any KV override overwrites it, so "revert to default" restores clean text.
+  cards.forEach(function(c){ var de=descEl(c); if(de && de._defDesc==null) de._defDesc=de.textContent; });
   var cached=null; try{ cached=JSON.parse(sessionStorage.getItem(NCACHE)||'null'); }catch(e){}
   if(cached) applyNames(cached);
   else fetch('/__name',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();})
@@ -1616,12 +1661,33 @@ const CARD_MENU_JS = `
     el.addEventListener('keydown',onKey); el.addEventListener('blur',onBlur);
   }
 
+  // ---- inline description edit (the "what is it" cell) ----
+  function startEditDesc(c){
+    var el=descEl(c); if(!el||el.isContentEditable) return;
+    var key=el.getAttribute('data-desc-key'), def=(el._defDesc!=null?el._defDesc:el.textContent), prev=el.textContent, done=false;
+    el.setAttribute('contenteditable','true'); el.spellcheck=false; el.focus();
+    var rg=document.createRange(); rg.selectNodeContents(el); var sl=getSelection(); sl.removeAllRanges(); sl.addRange(rg);
+    function onKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finish(true);} else if(e.key==='Escape'){e.preventDefault();finish(false);} }
+    function onBlur(){ finish(true); }
+    function finish(commit){
+      if(done) return; done=true;
+      el.removeEventListener('keydown',onKey); el.removeEventListener('blur',onBlur); el.removeAttribute('contenteditable');
+      var val=(el.textContent||'').replace(/\\s+/g,' ').trim().slice(0,280);
+      if(!commit){ el.textContent=prev; }
+      else if(!val||val===def){ el.textContent=def; if(prev!==def) persistName(key,''); }
+      else { el.textContent=val; persistName(key,val); }
+      var s=getSelection(); if(s) s.removeAllRanges();
+    }
+    el.addEventListener('keydown',onKey); el.addEventListener('blur',onBlur);
+  }
+
   // ---- menu ----
   var ICON={
     open:'<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
     copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
     dl:'<path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M5 21h14"/>',
     rename:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    desc:'<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/>',
     del:'<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
   };
   function item(act,label,icon,danger){ return '<button type="button" role="menuitem" data-act="'+act+'"'+(danger?' class="gv-ctx-danger"':'')+'><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+icon+'</svg>'+label+'</button>'; }
@@ -1641,6 +1707,7 @@ const CARD_MENU_JS = `
     html+='<hr>'+item('copy','Copy link',ICON.copy);
     if(dlBtn(c)) html+=item('download','Download HTML',ICON.dl);
     html+='<hr>'+item('rename','Rename',ICON.rename);
+    if(descEl(c)) html+=item('editdesc','Edit description',ICON.desc);
     html+='<hr>'+item('delete','Delete',ICON.del,true);
     menu.innerHTML=html; document.body.appendChild(menu);
     var r=menu.getBoundingClientRect();
@@ -1649,7 +1716,7 @@ const CARD_MENU_JS = `
     menu.addEventListener('click',function(e){
       var b=e.target.closest('button'); if(!b) return; var act=b.getAttribute('data-act'); closeMenu();
       if(act==='open') openCard(c); else if(act==='copy') copyLink(c); else if(act==='download') downloadCard(c);
-      else if(act==='rename') startRename(c); else if(act==='delete') deleteCard(c);
+      else if(act==='rename') startRename(c); else if(act==='editdesc') startEditDesc(c); else if(act==='delete') deleteCard(c);
     });
     var f=menu.querySelector('button'); if(f) f.focus();
     document.addEventListener('keydown',onMenuKey,true);
@@ -2279,8 +2346,11 @@ function renderComponentsIndex(components) {
 
   const rows = components
     .map((c) => {
-      const blurb = COMPONENT_BLURBS[c.name] || { classes: "", desc: "" };
+      const blurb = COMPONENT_BLURBS[c.name] || { name: "", classes: "", desc: "" };
       const meta = COMPONENT_META[c.name] || null;
+      // Display name = the canonical functional name from COMPONENT_BLURBS (falls back
+      // to the title-cased folder). The live Rename overlays a KV value over this.
+      const dname = blurb.name || titleCase(c.name);
       const classes = blurb.classes
         ? `<code>${blurb.classes}</code>`
         : "";
@@ -2292,16 +2362,19 @@ function renderComponentsIndex(components) {
       // Filter key spans name + classes + description + every metadata axis, so a
       // search like "bo", "review", or "wien" narrows the table.
       const metaKey = meta ? `${meta.surface} ${meta.category} ${meta.status} ${(meta.tags || []).join(" ")}` : "";
-      const fkey = `${titleCase(c.name)} ${blurb.classes} ${blurb.desc} ${metaKey}`.replace(/<[^>]+>/g, " ").replace(/"/g, "");
+      const fkey = `${dname} ${blurb.classes} ${blurb.desc} ${metaKey}`.replace(/<[^>]+>/g, " ").replace(/"/g, "");
+      // data-rename-key / data-desc-key feed CARD_MENU_JS (right-click → Rename / Edit
+      // description), persisting a KV override under those keys. Both default back to
+      // the canonical code values, which I fold the overrides into so we share one name.
       return `
-        <tr data-fitem data-fkey="${fkey}">
+        <tr data-fitem data-fkey="${fkey}" data-rename-key="components/${c.name}" data-default-name="${escAttr(dname)}">
           <td>
-            <a class="comp-thumb" href="${c.href}" aria-label="Open ${titleCase(c.name)}">
+            <a class="comp-thumb" href="${c.href}" aria-label="Open ${escAttr(dname)}">
               ${media(c.href, c.poster)}
             </a>
           </td>
-          <td><div class="comp-name">${titleCase(c.name)}${classes}</div>${badges}${tags}</td>
-          <td><div class="comp-desc">${blurb.desc}</div></td>
+          <td><div class="comp-name"><span class="proto-name">${dname}</span>${classes}</div>${badges}${tags}</td>
+          <td><div class="comp-desc" data-desc-key="components/${c.name}#desc">${blurb.desc}</div></td>
           <td class="comp-status">${compStatusChip(c.name)}</td>
         </tr>`;
     })
