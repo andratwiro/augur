@@ -162,12 +162,22 @@ function injectHead(html, pageUrl, hasOg) {
   return html.slice(0, headClose) + tags + html.slice(headClose);
 }
 
+// Prepend `emoji ` to a page's <title> (idempotent). Used to stamp a prototype's
+// scannable card emoji onto its browser tab so it's easy to pick out among tabs.
+function prependTitleEmoji(html, emoji) {
+  return html.replace(/<title>([\s\S]*?)<\/title>/i, (m, inner) => {
+    const t = inner.trim();
+    if (t.startsWith(emoji)) return m; // already stamped
+    return `<title>${emoji} ${t}</title>`;
+  });
+}
+
 // Version of the PROTOTYPES SITE UI (the landing/shell pages this file generates),
 // shown in the footer. Bump this ONLY when the site UI changes — i.e. edits to
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.56";
+const UI_VERSION = "0.57";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -422,7 +432,7 @@ function isInternalOnly(name) {
  * `exclude(name)` → true skips an entry (used to keep internal material out of
  * dist when copying a ship-verbatim folder like playground/).
  */
-async function copyDir(src, dest, exclude) {
+async function copyDir(src, dest, exclude, titleEmoji) {
   await fs.mkdir(dest, { recursive: true });
   let latest = 0;
   const entries = await fs.readdir(src, { withFileTypes: true });
@@ -431,7 +441,7 @@ async function copyDir(src, dest, exclude) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
     if (entry.isDirectory()) {
-      latest = Math.max(latest, await copyDir(srcPath, destPath, exclude));
+      latest = Math.max(latest, await copyDir(srcPath, destPath, exclude, titleEmoji));
     } else if (entry.isFile()) {
       if (entry.name.endsWith(".html")) {
         let html = await fs.readFile(srcPath, "utf8");
@@ -443,6 +453,9 @@ async function copyDir(src, dest, exclude) {
           const hasOg = await exists(path.join(src, "og.jpg"));
           html = injectHead(html, pageUrl, hasOg);
         }
+        // Prefix the prototype's scannable card emoji to the browser-tab <title>,
+        // so an open tab is easy to spot among many. Only set for prototypes.
+        if (titleEmoji) html = prependTitleEmoji(html, titleEmoji);
         await fs.writeFile(destPath, addonHtml(injectReview(html)), "utf8");
       } else {
         await fs.copyFile(srcPath, destPath);
@@ -497,7 +510,7 @@ async function scan() {
       const destDir = path.join(DIST, top.name, proto.name);
       // Exclude internal material (research/ + context/ folders, *.zip, .DS_Store)
       // that sometimes sits inside a prototype folder — it must never reach dist.
-      const latest = await copyDir(protoDir, destDir, isInternalOnly);
+      const latest = await copyDir(protoDir, destDir, isInternalOnly, protoEmoji(proto.name));
 
       const { href, file } = await entryPoint(proto.name, protoDir);
       prototypes.push({
