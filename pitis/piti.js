@@ -459,6 +459,21 @@
         ".piti-bubble.pop.go{animation:pt-bpop .8s cubic-bezier(.2,.9,.3,1.4) forwards}" +
         "@keyframes pt-float{0%{opacity:0;transform:translateY(0) scale(.4)}25%{opacity:1;transform:translateY(-10px) scale(1)}100%{opacity:0;transform:translateY(-44px) scale(.9)}}" +
         "@keyframes pt-bpop{0%{opacity:0;transform:translateY(0) scale(.2)}30%{opacity:1;transform:translateY(-12px) scale(1.15)}70%{opacity:1;transform:translateY(-16px) scale(1)}100%{opacity:0;transform:translateY(-22px) scale(.95)}}" +
+        // wingman speech bubble — a real worded remark the cat delivers when it travels
+        // to an issue and dwells there. Anchored above the cat (flips below near the top),
+        // with a little tail pointing down at it. JS controls its lifetime (the dwell).
+        ".piti-says{position:fixed;z-index:2147483602;pointer-events:none;max-width:248px;" +
+        "background:#fff;color:#241d29;font:500 13px/1.42 ui-rounded,system-ui,-apple-system,'Inter',sans-serif;" +
+        "padding:9px 12px;border-radius:14px;border:1px solid rgba(36,29,41,.10);letter-spacing:-.01em;" +
+        "box-shadow:0 12px 30px -12px rgba(16,24,40,.38),0 2px 6px rgba(16,24,40,.07);" +
+        "opacity:0;transform:translateY(4px) scale(.96);transform-origin:var(--tail,50%) 100%;" +
+        "transition:opacity .22s ease,transform .24s cubic-bezier(.2,.9,.3,1.35)}" +
+        ".piti-says.in{opacity:1;transform:translateY(0) scale(1)}" +
+        ".piti-says::after{content:'';position:absolute;left:var(--tail,50%);bottom:-6px;width:11px;height:11px;" +
+        "margin-left:-6px;background:#fff;border-right:1px solid rgba(36,29,41,.10);border-bottom:1px solid rgba(36,29,41,.10);transform:rotate(45deg)}" +
+        ".piti-says.below{transform-origin:var(--tail,50%) 0}" +
+        ".piti-says.below::after{bottom:auto;top:-6px;border:0;border-left:1px solid rgba(36,29,41,.10);border-top:1px solid rgba(36,29,41,.10)}" +
+        ".piti-says.k-a11y{box-shadow:0 12px 30px -12px rgba(180,35,24,.30),0 2px 6px rgba(16,24,40,.07)}" +
         // motion after-image: faint ghost copies dropped behind while moving fast
         ".piti-echo{position:fixed;left:0;top:0;pointer-events:none;z-index:2147483598;opacity:.4}" +
         ".piti-echo svg{width:100%;height:100%;display:block;overflow:visible}" +
@@ -473,6 +488,7 @@
         ".piti-companion.walk .pt-rest svg,.piti-companion.walk .pt-awake svg{animation:none}" +
         ".piti-companion .pt-inner.pin,.piti-companion .pt-inner.hop{animation:none}" +
         ".piti-companion.run .pt-sweat{animation:none;opacity:.9}" +
+        ".piti-says{transition:opacity .15s ease;transform:none}.piti-says.in{transform:none}" +
         ".piti-companion.sleep .pt-zzz{animation:none;opacity:.8}}";
       document.head.appendChild(st);
     }
@@ -489,6 +505,16 @@
     let lastMove = now(), lastT = now(), raf = 0, running = true, parked = false;
     let emoteUntil = 0, lastSurprise = 0, lastEcho = 0;
     const reduceMotion = (() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } })();
+
+    // --- live "wingman" comments (agent → cat). Only on prototype/playground pages. ---
+    // The agent posts short UX/a11y remarks to /__piti; the cat travels to the named
+    // element, speaks once it arrives, hovers ~3-5s as if waiting for you to read+act,
+    // then returns to following the cursor. See pitis/wingman-agent.md.
+    const sayQueue = [];                  // pending remarks waiting their turn
+    let commentMode = null;               // {phase:'travel'|'speak', target:{x,y}, node, text, kind, dwellMs, dwellUntil}
+    let saysEl = null;                    // the live speech-bubble element
+    let lastRemarkId = -1;                // -1 = not yet synced; then highest id consumed (id = server Date.now())
+    let pollTimer = 0, viewTimer = 0, viewObs = null;
 
     function now() { return performance.now(); }
 
@@ -542,6 +568,98 @@
     // pop-in when it first appears
     requestAnimationFrame(function () { inner.classList.add("pin"); setTimeout(function () { inner.classList.remove("pin"); }, 540); });
 
+    /* ---- wingman channel: publish what we're viewing, poll for remarks ---- */
+    function isCommentable() {
+      const p = location.pathname;
+      return /\/prototypes\//.test(p) || p === "/playground" || p.indexOf("/playground/") === 0;
+    }
+    let lastViewKey = "";
+    function publishView(force) {
+      const screen = (document.body && document.body.dataset && document.body.dataset.gvScreen) || "";
+      const key = location.pathname + "|" + screen;
+      if (!force && key === lastViewKey) return;
+      lastViewKey = key;
+      try {
+        fetch("/__piti", {
+          method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
+          body: JSON.stringify({ type: "view", path: location.pathname, screen: screen, w: innerWidth, h: innerHeight }),
+        }).catch(function () {});
+      } catch (e) {}
+    }
+    function pollRemarks() {
+      fetch("/__piti?type=remarks&path=" + encodeURIComponent(location.pathname) + "&since=" + Math.max(0, lastRemarkId),
+        { cache: "no-store" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          const list = (d && d.remarks) || [];
+          const firstSync = lastRemarkId < 0;     // first response: skip any backlog, don't replay old quips
+          let maxId = firstSync ? 0 : lastRemarkId;
+          const fresh = Date.now() - 90000;
+          for (let i = 0; i < list.length; i++) {
+            const r = list[i];
+            if (r.id > maxId) maxId = r.id;
+            if (!firstSync && r.id > lastRemarkId && (!r.ts || r.ts >= fresh)) sayQueue.push(r);
+          }
+          lastRemarkId = maxId;                    // after the first poll this is >= 0
+          maybePump();
+        })
+        .catch(function () {});
+    }
+
+    /* ---- the speech bubble (worded, dwell-controlled) ---- */
+    function showSays(text, kind) {
+      hideSays();
+      saysEl = document.createElement("div");
+      saysEl.className = "piti-says" + (kind ? " k-" + kind : "");
+      saysEl.setAttribute("aria-hidden", "true");
+      saysEl.textContent = text;
+      document.body.appendChild(saysEl);
+      positionSays();
+      requestAnimationFrame(function () { if (saysEl) saysEl.classList.add("in"); });
+    }
+    function positionSays() {
+      if (!saysEl) return;
+      const bw = saysEl.offsetWidth || 200, bh = saysEl.offsetHeight || 40;
+      let bx = pos.x - bw * 0.5;
+      let by = pos.y - size * 0.45 - bh;          // above the cat's head
+      let below = false;
+      if (by < 8) { by = pos.y + size * 0.45; below = true; }
+      bx = Math.max(8, Math.min(innerWidth - bw - 8, bx));
+      saysEl.style.left = bx + "px";
+      saysEl.style.top = by + "px";
+      saysEl.classList.toggle("below", below);
+      saysEl.style.setProperty("--tail", Math.max(12, Math.min(bw - 12, pos.x - bx)) + "px");
+    }
+    function hideSays() { if (saysEl) { saysEl.remove(); saysEl = null; } }
+
+    /* ---- start delivering one remark: resolve its target, switch to travel ---- */
+    function startComment(r) {
+      let target = null, node = null;
+      if (r.sel) {
+        try { node = document.querySelector(r.sel); } catch (e) { node = null; }
+        if (node) {
+          try { node.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" }); }
+          catch (e) { try { node.scrollIntoView(); } catch (_) {} }
+          const rc = node.getBoundingClientRect();
+          target = { x: rc.left + rc.width / 2, y: rc.top + rc.height / 2 };
+        }
+      }
+      if (!target && r.x != null && r.y != null) {   // fallback: viewport coords from the agent's screenshot, rescaled
+        const sx = r.w > 0 ? innerWidth / r.w : 1, sy = r.h > 0 ? innerHeight / r.h : 1;
+        target = { x: r.x * sx, y: r.y * sy };
+      }
+      if (!target) target = { x: innerWidth * 0.5, y: innerHeight * 0.42 };
+      commentMode = {
+        phase: "travel", target: target, node: node, text: r.text, kind: r.kind || "ux",
+        dwellMs: 3000 + Math.random() * 2000, dwellUntil: 0,
+      };
+    }
+    // Pull the next queued remark when the cat is free, and make sure the loop is awake.
+    function maybePump() {
+      if (!commentMode && sayQueue.length) startComment(sayQueue.shift());
+      wake();
+    }
+
     // Crossfade between the two stacked sprites (resting eyes vs open eyes).
     let curPose = "rest";
     function setPose(p) {
@@ -562,8 +680,17 @@
 
       // Target: trail behind & a little below the cursor so it reads as "coming over".
       // After a short pause, lock the target so it settles cleanly (no rubber-band wobble).
+      // While delivering a remark, the cursor is ignored — the cat heads to the issue.
       let tx, ty;
-      if (idle > 650) {
+      if (commentMode) {
+        if (commentMode.node) {                 // re-measure so it tracks the element as the page scrolls into place
+          const rc = commentMode.node.getBoundingClientRect();
+          commentMode.target.x = rc.left + rc.width / 2;
+          commentMode.target.y = rc.top + rc.height / 2;
+        }
+        tx = commentMode.target.x;              // sit just below the spot so the bubble (above) frames it, not covers it
+        ty = commentMode.target.y + size * 0.5;
+      } else if (idle > 650) {
         tx = pos.x; ty = pos.y;
       } else {
         tx = mouse.x - facing * size * 0.62;
@@ -593,6 +720,19 @@
       else if (runningHard && dist < 26) runningHard = false;
       el.classList.toggle("run", runningHard && walking);
 
+      // Wingman delivery state machine: travel to the issue → arrive → speak + dwell → return.
+      if (commentMode) {
+        if (commentMode.phase === "travel" && dist < 12) {
+          commentMode.phase = "speak";
+          commentMode.dwellUntil = t + commentMode.dwellMs;
+          showSays(commentMode.text, commentMode.kind);
+        }
+        if (commentMode.phase === "speak") {
+          positionSays();                         // keep the bubble pinned to the cat while it hovers
+          if (t > commentMode.dwellUntil) { hideSays(); commentMode = null; maybePump(); }
+        }
+      }
+
       // After-image trail — only on BIG fast moves (cursor yanked far away), so it
       // rarely triggers in normal use. Skipped under reduced-motion.
       if (walking && !reduceMotion && dist > 165 && t - lastEcho > 40) { dropEcho(); lastEcho = t; }
@@ -608,7 +748,9 @@
 
       // state machine: surprised → eyes open (held); travelling → eyes open;
       // settled → resting; long idle → sleep w/ zzz
-      if (t < emoteUntil) {
+      if (commentMode) {
+        setPose("awake");                         // alert while travelling to / waiting at the issue
+      } else if (t < emoteUntil) {
         setPose("awake");
       } else if (walking) {
         setPose("awake");
@@ -630,9 +772,38 @@
     function wake() { if (running && parked) { parked = false; lastT = now(); raf = requestAnimationFrame(frame); } }
     raf = requestAnimationFrame(frame);
 
+    // Wingman channel — only on prototype / playground pages, and never in a preview
+    // iframe (auto() already skips those). Publishes the current screen and polls for
+    // remarks every 4s; an observer catches SPA screen swaps that don't change the URL.
+    function onVis() { if (document.visibilityState === "visible") { publishView(true); pollRemarks(); } }
+    if (isCommentable()) {
+      publishView(true);
+      pollRemarks();
+      pollTimer = setInterval(pollRemarks, 4000);                           // polling is a cheap GET
+      // Heartbeat refreshes view.ts so the agent knows you're still here — but it's a KV
+      // WRITE, so keep it slow and only while the tab is visible (mind the write quota).
+      // Screen changes still publish instantly via the observer below.
+      viewTimer = setInterval(function () {
+        if (document.visibilityState === "visible") publishView(true);
+      }, 60000);
+      try {
+        viewObs = new MutationObserver(function () { publishView(false); });
+        viewObs.observe(document.body, { attributes: true, attributeFilter: ["data-gv-screen"] });
+      } catch (e) {}
+      addEventListener("visibilitychange", onVis);
+    }
+
     return {
       el,
-      destroy() { running = false; cancelAnimationFrame(raf); removeEventListener("pointermove", onMove); removeEventListener("pointerdown", onDown, true); el.remove(); document.documentElement.classList.remove("piti-cursor"); },
+      destroy() {
+        running = false; cancelAnimationFrame(raf);
+        removeEventListener("pointermove", onMove); removeEventListener("pointerdown", onDown, true);
+        clearInterval(pollTimer); clearInterval(viewTimer);
+        if (viewObs) { try { viewObs.disconnect(); } catch (e) {} viewObs = null; }
+        removeEventListener("visibilitychange", onVis);
+        hideSays(); commentMode = null;
+        el.remove(); document.documentElement.classList.remove("piti-cursor");
+      },
       // refresh(override) re-skins the live pal; pass a config for instant preview,
       // or omit to re-read whatever was last saved.
       refresh(override) { const ncfg = override || loadConfig();

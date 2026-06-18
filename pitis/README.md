@@ -45,6 +45,24 @@ general repo files (CLAUDE.md, build.js logic, shared CSS, agent memory, etc.).
 
 No feeding and no photobooth — both were prototyped early and removed.
 
+## Wingman channel (the talking piti)
+The piti can be driven by a **terminal agent** that watches what you're looking at and,
+now and then, has the cat **walk to a spot on the screen, drop one short UX/a11y remark,
+hover ~3–5s, then return to the cursor** — a design wingman speaking for users with low
+comprehension for screens. Self-contained: two KV keys on the live site + the agent brief.
+- **Live only, prototypes + playground only, and only while active (Shift+Ñ).** The cat
+  polls `/__piti` for remarks just on `/…/prototypes/…` and `/playground/…` pages.
+- **Bridge:** `src/_worker.js` `pitiApi()` exposes `/__piti` over KV keys `pt:view`
+  (browser publishes the page it's on) and `pt:remarks` (agent posts quips). Browser ops are
+  open; agent read-view / write-remark reuse the existing `REVIEW_EXPORT_KEY` secret — **no
+  new secret to provision**. The worker is the one sanctioned edge touch (same as it already
+  whitelists `/piti.js`); everything else lives in `pitis/`.
+- **Client:** the wingman channel in `piti.js` `mount()` — `publishView()`, `pollRemarks()`,
+  and a travel→speak→dwell→return state machine; the worded bubble is `.piti-says`.
+- **The agent:** see **`wingman-agent.md`** — persona, the low-comprehension lens, the loop
+  (read view → read local source + screenshot live URL → compose ONE quip → POST), cadence
+  and restraint rules. Run it from an agent terminal (`/loop` self-paced) while you build.
+
 ## Files (everything lives in `pitis/`)
 - **`piti.js`** — the whole engine (one source of truth). Exposes
   `window.Piti = { PALETTE, HATS, svg, loadConfig, saveConfig, mount, auto, reveal,
@@ -78,6 +96,8 @@ No feeding and no photobooth — both were prototyped early and removed.
   render harnesses (`_*.html` / `_*.png`).
 - **Agent briefs** (`trace-agent.md`, `redesign-agent.md`, `dog-agent.md`) — the
   prompts used to build/iterate the art; history.
+- **`wingman-agent.md`** — the brief that turns a terminal agent into the *talking* piti
+  (the wingman channel above). Persona + loop + the `/__piti` contract.
 
 ## Working discipline (important)
 - **Verify visuals by rendering with headless Chrome and Read-ing the PNG against
