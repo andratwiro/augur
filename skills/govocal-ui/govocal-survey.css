@@ -22,6 +22,10 @@
     .sv-card {
       background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow-hover-lg);
       display: flex; flex-direction: column; min-height: 78vh; overflow: hidden;
+      /* Cap the framed card to the viewport (minus .sv-wrap's 28+60 padding) so the
+         card never makes the PAGE scroll — instead .sv-body scrolls internally and the
+         titlebar + footer stay pinned. (Mobile overrides this with height:100dvh below.) */
+      max-height: calc(100dvh - 88px);
     }
     .sv-titlebar {
       flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
