@@ -154,8 +154,9 @@
   .phone .es-sk--btn  { height: 44px; border-radius: var(--gv-radius, 8px); }
   .phone .es-sk--av   { width: 28px; height: 28px; border-radius: 999px; }
   .phone .es-sk--pill { height: 30px; border-radius: 999px; }
-  /* Generic shipped placeholder copy — readable but clearly provisional. */
-  .phone .es-default-lead { margin: 0 0 12px; font-size: var(--gv-fs-base); line-height: 1.55; color: #8a94a1; }
+  /* Generic shipped placeholder copy — same metrics as .pp-fo__lead, just muted to read
+     as provisional. (Paired with .pp-fo__lead so width/margins match the real page.) */
+  .phone .es-default-lead { color: #8a94a1; }
 
   /* ── Preview FRAME variants ─────────────────────────────────────────────────
      Two minimal artboards (Phone / Window), same quiet 1px-outline treatment. The
@@ -966,12 +967,12 @@
   .sec-head {
     font-size: 14px; font-weight: 600;
     color: #374151;
-    padding: 0 4px;
+    padding: 0 12px;   /* align the section heading's left edge with the menu labels (Project page) */
     margin-bottom: 6px;
   }
   .sec-sub {
     font-size: 12.5px; color: #656e7d;
-    padding: 0 4px;
+    padding: 0 12px;   /* match .sec-head / menu-label left edge */
     margin: -2px 0 10px;
     line-height: 1.35;
   }
@@ -1020,7 +1021,7 @@
   /* ============ Empty-state worked example ============ */
   .tl-example-intro {
     font-size: 12.5px; color: #656e7d;
-    padding: 0 4px; margin: 4px 0 8px;
+    padding: 0 12px; margin: 4px 0 8px;   /* match .sec-head / menu-label left edge */
     line-height: 1.45;
   }
   /* Ghosted, non-interactive example phases */
@@ -4375,16 +4376,19 @@
   const ES_REAL_TITLE = 'Reimagine Meridian 2030';
 
   function emptyPhone() {
-    return '<div class="pp-fo"><div class="px-4 pt-3 pb-5">'
+    // Mirror the real project page's wrapper (.pp-fo__pad — 22px sides) so the title,
+    // description and box have the SAME width and line-breaks as the populated states.
+    return '<div class="pp-fo"><div class="pp-fo__pad" style="padding-bottom:24px;">'
       // Header image — still a ghost (not configured yet).
-      + '<div class="mt-2 ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
-      // Real project title (the project is created with one).
-      + '<div class="pp-edit" data-edit="title"><h1 class="gv-title h1 pp-fo__title" style="margin-top:14px;">' + ES_REAL_TITLE + '</h1></div>'
+      + '<div class="ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
+      // Real project title (the project is created with one). Same markup as phoneFO.
+      + '<div class="pp-edit" data-edit="title" style="margin-top:18px;"><h1 class="gv-title h1 pp-fo__title">' + ES_REAL_TITLE + '</h1></div>'
       // Generic placeholder description that ships with every project — "participants",
-      // not "residents", so it fits cities, organisations, or anyone running this.
-      + '<p class="es-default-lead">Tell participants what this project is about and how they can take part. This placeholder text ships with every project — edit it to describe yours.</p>'
+      // not "residents", so it fits cities, organisations, or anyone running this. Uses the
+      // real .pp-fo__lead metrics, just a muted colour.
+      + '<p class="pp-fo__lead es-default-lead">Tell participants what this project is about and how they can take part. This placeholder text ships with every project — edit it to describe yours.</p>'
       // Participation-box skeleton (greyed CTA bars + participant row) — not configured yet.
-      + '<div class="pp-fo__pbox" style="margin-top:14px;">'
+      + '<div class="pp-fo__pbox">'
       + '<div class="pp-fo__cta"><span class="es-sk es-sk--btn" style="width:100%;"></span><span class="es-sk es-sk--btn" style="width:100%;"></span></div>'
       + '<div class="gv-participants pp-fo__parts" style="margin-top:12px;"><span class="es-sk es-sk--av"></span><span class="es-sk es-sk--av" style="margin-left:-8px;"></span><span class="es-sk es-sk--av" style="margin-left:-8px;"></span><span class="es-sk es-sk--line" style="width:96px;margin:0 0 0 8px;"></span></div></div>'
       + '</div></div>';
