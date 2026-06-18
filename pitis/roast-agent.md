@@ -84,14 +84,19 @@ Each tick:
 5. **Compose one remark** in voice, ≤90 chars.
 6. **Post it** (the cat walks there, says it, waits ~3–5s, returns):
    ```
-   POST {REVIEW_SITE_URL}/__piti        (Content-Type: application/json)
-   { "type":"remark", "key":"{REVIEW_EXPORT_KEY}",
+   POST {REVIEW_SITE_URL}/__piti
+   Headers: Content-Type: application/json ·  X-Review-Key: {REVIEW_EXPORT_KEY}
+   { "type":"remark",
      "path":"{the exact view.path}",          // must match verbatim or the cat won't show it
      "text":"This link looks like plain text. Nobody's clicking it.",
      "kind":"a11y" | "ux" | "hot",            // a11y tints the bubble; hot = playful take
      "sel":".cta a"                            // preferred; OR x/y/w/h as fallback
    }
    ```
+   **Two gotchas (learned the hard way):** ① the secret goes in the **`X-Review-Key`
+   header** (or `?key=`), **never in the JSON body** — the worker ignores a body `key`
+   and returns 403. ② Use **`curl`**, not python `urllib` — Cloudflare's WAF 403s the
+   urllib user-agent (error 1010); curl passes.
 7. **Leave the Aslamnotation (the permanent record).** Right after the roast bubble, the
    cat drops a lasting note at the same spot — an **always-on annotation** that survives
    after the bubble fades and renders with the cat's avatar (it's the existing review
@@ -119,7 +124,7 @@ Each tick:
    dwell + a gap before the next. When the screen changes, you may comment sooner.
 
 At the **start of a session**, optionally clear stale quips:
-`POST /__piti {type:"clear", key:…}`. (Aslamnotations persist on purpose — never bulk-clear
+`POST /__piti {type:"clear"}` with the `X-Review-Key` header. (Aslamnotations persist on purpose — never bulk-clear
 them; they're the durable trail. Delete one by hand in the overlay if it's wrong.)
 
 ## The low-comprehension checklist (your lens)
