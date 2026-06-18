@@ -57,7 +57,6 @@
     .pv-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
     .pv-aside { display: flex; flex-direction: column; gap: 18px; }
     .pv-h1 { margin: 0; }
-    .pv-sub { margin: 10px 0 0; font-size: 18px; line-height: 1.45; color: var(--gv-text-secondary); max-width: 60ch; }
     .pv-intro { margin: 0; }
     .pv-about-wide { max-width: 560px; }
     /* 3-column survey-card grid below the events calendar */
@@ -641,7 +640,7 @@
     // Module content renderers (return inner HTML; no full-width wrapper).
     const M = {
       banner: () => `<section class="pp-banner" aria-label="Project banner"><img src="assets/img/westmere/${v.banner}.webp" alt="" loading="lazy" /></section>`,
-      title: () => `<h1 class="gv-title h1 pv-h1">${v.title}</h1>${v.subtitle ? `<p class="pv-sub">${v.subtitle}</p>` : ''}`,
+      title: () => `<h1 class="gv-title h1 pv-h1">${v.title}</h1>`,
       intro: () => `<div class="gv-projdesc pv-intro"><p>${v.intro}</p></div>`,
       desc: () => `<div class="gv-projdesc">${v.desc || ''}${acc ? `<div class="gv-accordion" style="margin-top:20px">${acc}</div>` : ''}</div>`,
       about: () => `<div class="pv-aside pv-about-wide">${aboutBoxHTML(v.about)}</div>`,
