@@ -523,6 +523,15 @@
     border:1px solid var(--border); color: var(--ink); background:#fff;
   }
   .icon-btn:hover { background: #f7f8fa; }
+  /* Project topbar "preview" = a borderless icon button (real GoVocal has no box
+     border here), link-blue eye glyph, with a hover background. */
+  .gv-bo-topbar__actions .pp-topbar-view { border: 0; background: transparent; color: var(--gv-bo-link, #4183c4); padding: 6px; border-radius: 6px; }
+  .gv-bo-topbar__actions .pp-topbar-view:hover { background: #eef1f4; }
+  .gv-bo-topbar__actions .pp-topbar-view > [data-gv-icon] { height: 22px; }
+  /* Optically centre the meta-row glyphs with their label: a 14px icon on the
+     13px text box extends ~0.5px past cap-height, so it reads as sitting high.
+     A 1px downward nudge lines the icon up with the text's optical centre. */
+  .gv-bo-meta__item .gv-icon { position: relative; top: 1px; }
 
   /* ============ Floating Settings button ============ */
   .floating-settings-btn {
@@ -2059,7 +2068,7 @@
         </div>
       </div>
       <div class="gv-bo-topbar__actions">
-        <button class="gv-btn secondary-outlined gv-btn--icon" aria-label="Preview project" onclick="openFO()"><span data-gv-icon="eye"></span></button>
+        <button class="gv-btn gv-btn--icon pp-topbar-view" aria-label="Preview project" onclick="openFO()"><span data-gv-icon="eye"></span></button>
         <button class="gv-btn secondary-outlined"><span data-gv-icon="share"></span><span class="gv-btn__label">Share</span></button>
         <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
       </div>
