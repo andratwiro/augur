@@ -11,6 +11,9 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+  <!-- Audience charts (Demographics + Traffic) use the canonical GVChart wrapper -->
+  <script src="../../skills/govocal-ui/vendor/apexcharts.min.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-charts.js" defer></script>
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: #fff; font-family: var(--gv-font-family); }
@@ -192,6 +195,27 @@
 
     .sx-toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--gv-bo-primary); color: var(--gv-white); padding: 11px 18px; border-radius: 5px; font-size: var(--gv-fs-s); box-shadow: 0 8px 26px rgba(0,0,0,.3); opacity: 0; transition: all .2s; z-index: 400; pointer-events: none; }
     .sx-toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Audience › Demographics + Traffic (assembled from GVChart + gv-bo-*) ── */
+    #panel-audience .aud-sub { display: none; }
+    #panel-audience .aud-sub.is-active { display: block; }
+    .aud-period { display: flex; align-items: center; gap: 14px; margin: 4px 0 18px; flex-wrap: wrap; }
+    .aud-period__field { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); padding: 7px 12px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); background: var(--gv-white); }
+    .aud-seg { margin-left: auto; display: inline-flex; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); overflow: hidden; }
+    .aud-seg button { border: 0; background: var(--gv-white); color: var(--gv-text-secondary); font: inherit; font-size: var(--gv-fs-s); padding: 7px 14px; cursor: pointer; }
+    .aud-seg button + button { border-left: 1px solid var(--gv-grey-300); }
+    .aud-seg button.is-active { background: var(--gv-bo-primary); color: var(--gv-white); }
+    .aud-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .aud-grid--full { grid-template-columns: 1fr; }
+    /* Visitor stat cards (Traffic) */
+    .aud-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .aud-stat { padding: 16px 18px; }
+    .aud-stat__lbl { display: flex; align-items: center; gap: 5px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+    .aud-stat__num { display: block; font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-bo-primary); line-height: 1.15; margin-top: 4px; }
+    .aud-stat__sub { display: block; font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); margin-top: 2px; }
+    /* Chart hosts: keep ApexCharts from being stretched by the canonical
+       `.gv-bo-chartcard svg { width:100% }` rule beyond its measured height. */
+    .aud-charthost { width: 100%; }
 </style>
 </head>
 <body class="gv-bo">
@@ -1387,11 +1411,13 @@
       <section class="gv-panel" id="panel-audience">
         <div class="gv-bo-section">
           <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Audience">
-            <a class="gv-bo-tab is-active" href="#">Participants</a>
-            <a class="gv-bo-tab" href="#">Demographics</a>
-            <a class="gv-bo-tab" href="#">Traffic</a>
+            <a class="gv-bo-tab is-active" href="#" data-aud="participants">Participants</a>
+            <a class="gv-bo-tab" href="#" data-aud="demographics">Demographics</a>
+            <a class="gv-bo-tab" href="#" data-aud="traffic">Traffic</a>
           </nav>
 
+          <!-- ───── Participants ───── -->
+          <div class="aud-sub is-active" data-aud="participants">
           <div class="gv-bo-card">
           <div style="display:flex;align-items:flex-end;gap:16px;margin-top:0">
             <div>
@@ -1423,6 +1449,77 @@
             <button><span data-gv-icon="chevron-right"></span></button>
           </div>
           </div><!-- /gv-bo-card -->
+          </div><!-- /aud-sub participants -->
+
+          <!-- ───── Demographics ───── -->
+          <div class="aud-sub" data-aud="demographics">
+            <div class="aud-period">
+              <span class="aud-period__field"><span class="gv-icon" data-gv-icon="calendar"></span>Jan 1, 2024 → Jun 30, 2024</span>
+            </div>
+
+            <div class="gv-bo-card" style="margin-bottom:16px">
+              <h3 class="gv-bo-pagehead" style="margin:0 0 4px">Participants timeline</h3>
+              <div class="gv-bo-banner" style="margin:10px 0 6px"><span class="gv-icon" data-gv-icon="info-outline"></span><div>Participation numbers may not be fully accurate, as some data is captured in an external survey that we do not track.</div></div>
+              <div id="aud-dem-timeline" class="aud-charthost"></div>
+            </div>
+
+            <div class="aud-grid">
+              <div class="gv-bo-chartcard">
+                <h3 class="gv-bo-chartcard__title">Gender</h3>
+                <div id="aud-dem-gender" class="aud-charthost"></div>
+              </div>
+              <div class="gv-bo-chartcard">
+                <h3 class="gv-bo-chartcard__title">Age</h3>
+                <div id="aud-dem-age" class="aud-charthost"></div>
+              </div>
+              <div class="gv-bo-chartcard">
+                <h3 class="gv-bo-chartcard__title">Domicile</h3>
+                <div id="aud-dem-domicile" class="aud-charthost"></div>
+              </div>
+              <div class="gv-bo-chartcard">
+                <h3 class="gv-bo-chartcard__title">Education</h3>
+                <div id="aud-dem-education" class="aud-charthost"></div>
+              </div>
+            </div>
+          </div><!-- /aud-sub demographics -->
+
+          <!-- ───── Traffic ───── -->
+          <div class="aud-sub" data-aud="traffic">
+            <div class="aud-period">
+              <span class="aud-period__field"><span class="gv-icon" data-gv-icon="calendar"></span>Jan 1, 2024 → Jun 30, 2024</span>
+              <span class="aud-seg" role="tablist" aria-label="Period granularity">
+                <button type="button">Days</button>
+                <button type="button">Weeks</button>
+                <button type="button" class="is-active">Months</button>
+              </span>
+            </div>
+
+            <div class="gv-bo-card" style="margin-bottom:16px">
+              <h3 class="gv-bo-pagehead" style="margin:0 0 14px">Visitors</h3>
+              <div class="aud-stats">
+                <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__lbl">Visitors <span class="gv-icon" data-gv-icon="info-outline"></span></span><span class="aud-stat__num">3,184</span><span class="aud-stat__sub">Last 30 days: 412</span></div>
+                <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__lbl">Visits <span class="gv-icon" data-gv-icon="info-outline"></span></span><span class="aud-stat__num">5,902</span><span class="aud-stat__sub">Last 30 days: 763</span></div>
+                <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__lbl">Visit duration</span><span class="aud-stat__num">2:14</span><span class="aud-stat__sub">Last 30 days: 1:58</span></div>
+                <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__lbl">Pageviews per visit</span><span class="aud-stat__num">1.9</span><span class="aud-stat__sub">Last 30 days: 2.1</span></div>
+              </div>
+              <div id="aud-tr-visitors" class="aud-charthost"></div>
+            </div>
+
+            <div class="aud-grid">
+              <div class="gv-bo-chartcard">
+                <h3 class="gv-bo-chartcard__title">Traffic sources</h3>
+                <div id="aud-tr-sources" class="aud-charthost"></div>
+              </div>
+              <div class="gv-bo-chartcard">
+                <h3 class="gv-bo-chartcard__title">Language</h3>
+                <div id="aud-tr-language" class="aud-charthost"></div>
+              </div>
+              <div class="gv-bo-chartcard">
+                <h3 class="gv-bo-chartcard__title">Device types</h3>
+                <div id="aud-tr-devices" class="aud-charthost"></div>
+              </div>
+            </div>
+          </div><!-- /aud-sub traffic -->
         </div>
       </section>
 
@@ -1738,6 +1835,82 @@
         <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>`;
       tbody.appendChild(tr);
     });
+
+    // ── Audience › Demographics + Traffic charts (lazy: ApexCharts mis-sizes
+    //    in a display:none panel, so render each sub-tab's charts on first show) ──
+    (function () {
+      const panel = document.getElementById("panel-audience");
+      if (!panel) return;
+      const nav = panel.querySelector('.gv-bo-tabs--sub');
+      const subs = panel.querySelectorAll('.aud-sub');
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+      const done = {};
+
+      function hbar(id, categories, data) {
+        const el = document.getElementById(id);
+        if (!el || el.__gv) return;
+        GVChart.bar(el, {
+          horizontal: true, legend: false, dataLabels: true, barHeight: "58%",
+          height: Math.max(150, categories.length * 38 + 30),
+          categories: categories,
+          series: [{ name: "Participants", data: data }],
+          colors: [GVChart.palette().navy]
+        });
+      }
+      function pie(id, labels, series) {
+        const el = document.getElementById(id);
+        if (!el || el.__gv) return;
+        const p = GVChart.palette();
+        GVChart.pie(el, {
+          height: 230, labels: labels, series: series,
+          colors: [p.navy, p.teal, p.blueLight, p.line, p.tealLight]
+        });
+      }
+
+      const RENDER = {
+        demographics() {
+          const t = document.getElementById("aud-dem-timeline");
+          if (t && !t.__gv) GVChart.line(t, {
+            height: 220, categories: MONTHS, area: true,
+            series: [{ name: "Cumulative participants", data: [22, 54, 91, 128, 154, 170] }]
+          });
+          hbar("aud-dem-gender", ["Female", "Male", "Other", "Unspecified"], [88, 74, 3, 5]);
+          hbar("aud-dem-age", ["18–24", "25–34", "35–44", "45–54", "55–64", "65+"], [14, 41, 38, 32, 24, 21]);
+          hbar("aud-dem-domicile", ["Downtown", "North Raleigh", "Southeast", "Outside Raleigh", "Unspecified"], [46, 38, 31, 27, 28]);
+          hbar("aud-dem-education", ["High school", "Some college", "Bachelor's", "Master's", "Doctoral", "Other"], [22, 34, 61, 39, 9, 5]);
+        },
+        traffic() {
+          const v = document.getElementById("aud-tr-visitors");
+          if (v && !v.__gv) GVChart.line(v, {
+            height: 240, categories: MONTHS, area: true,
+            series: [{ name: "Visitors", data: [380, 612, 905, 1124, 842, 521] }]
+          });
+          pie("aud-tr-sources", ["Direct entry", "Social networks", "Search engines", "Campaign emails"], [41, 28, 19, 12]);
+          pie("aud-tr-language", ["English", "Spanish", "Other"], [86, 11, 3]);
+          pie("aud-tr-devices", ["Mobile", "Desktop", "Tablet"], [58, 36, 6]);
+        }
+      };
+      function render(key) {
+        if (done[key] || !window.GVChart || !RENDER[key]) return;
+        done[key] = true;
+        try { RENDER[key](); } catch (e) { console.error("audience chart render failed", key, e); }
+      }
+
+      nav.querySelectorAll('.gv-bo-tab').forEach(t => t.addEventListener('click', e => {
+        e.preventDefault();
+        nav.querySelectorAll('.gv-bo-tab').forEach(x => x.classList.remove('is-active'));
+        t.classList.add('is-active');
+        const k = t.dataset.aud;
+        subs.forEach(s => s.classList.toggle('is-active', s.dataset.aud === k));
+        render(k);
+      }));
+      // Days/Weeks/Months granularity toggle (cosmetic — single data set here).
+      panel.querySelectorAll('.aud-seg').forEach(seg => seg.querySelectorAll('button').forEach(b =>
+        b.addEventListener('click', () => {
+          seg.querySelectorAll('button').forEach(x => x.classList.remove('is-active'));
+          b.classList.add('is-active');
+        })));
+    })();
 
     // ── Input-manager posts table ─────────────────────────────────────────
     const IDEAS = [

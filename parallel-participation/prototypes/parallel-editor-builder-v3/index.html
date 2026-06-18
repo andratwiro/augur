@@ -22,6 +22,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script src="assets/govocal-icons.js" defer></script>
 <script src="assets/govocal-avatars.js" defer></script>
+<!-- Audience charts (Demographics + Traffic) use the canonical GVChart wrapper -->
+<script src="assets/vendor/apexcharts.min.js" defer></script>
+<script src="assets/govocal-charts.js" defer></script>
 <!-- City theme switcher: drives --gv-tenant-* + renders [data-gv-logo]. On-screen picker
      disabled (body data-gv-theme-picker="off"); switch cities via the ?theme= URL param. -->
 <script src="assets/govocal-themes.js" defer></script>
@@ -1817,9 +1820,13 @@
   .aud-bar__val { flex:0 0 40px; text-align:right; color:var(--gv-text-secondary); font-variant-numeric:tabular-nums; }
   /* stat cards */
   .aud-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:16px; }
-  .aud-stat { display:flex; flex-direction:column; gap:4px; padding:18px 20px; }
-  .aud-stat__num { font-size:var(--gv-fs-xxl); font-weight:700; color:var(--gv-bo-primary); line-height:1.1; }
+  .aud-stat { display:flex; flex-direction:column; gap:2px; padding:16px 18px; }
+  .aud-stat__num { font-size:var(--gv-fs-xxl); font-weight:700; color:var(--gv-bo-primary); line-height:1.15; margin-top:4px; }
   .aud-stat__lbl { font-size:var(--gv-fs-13); color:var(--gv-text-secondary); }
+  .aud-stat__sub { font-size:var(--gv-fs-xs); color:var(--gv-text-secondary); }
+  /* GVChart card grid for Demographics/Traffic (same layout as canonical bo-project-phase) */
+  .aud-charts { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
+  #view-audience .gv-bo-chartcard { max-width:none; width:100%; box-sizing:border-box; }
   /* events list rows */
   .ev-list { margin-top:6px; }
   .ev-row { display:flex; align-items:center; gap:16px; padding:18px 0; border-top:1px solid var(--gv-grey-200); }
@@ -2892,53 +2899,37 @@
             <nav class="gv-bo-pager" aria-label="Pagination"><button disabled><span data-gv-icon="chevron-left"></span></button><button class="is-active">1</button><button>2</button><button>3</button><span>…</span><button>8</button><button><span data-gv-icon="chevron-right"></span></button></nav>
           </div>
 
-          <!-- ───────── DEMOGRAPHICS ───────── -->
+          <!-- ───────── DEMOGRAPHICS (real GVChart) ───────── -->
           <div class="aud-sub" data-aud="demographics">
-            <h1 class="gv-bo-pagehead">Demographics</h1>
-            <p class="gv-bo-pagelede" style="margin:6px 0 18px">A breakdown of the registered participants in this project, based on the fields they filled in at registration.</p>
-            <div class="aud-demo">
-              <div class="gv-bo-card aud-demo__card">
-                <h3 class="gv-bo-formhead" style="margin-bottom:14px">Age</h3>
-                <div class="aud-bar"><span class="aud-bar__label">18–24</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:14%"></span></span><span class="aud-bar__val">14%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">25–34</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:31%"></span></span><span class="aud-bar__val">31%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">35–44</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:24%"></span></span><span class="aud-bar__val">24%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">45–54</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:16%"></span></span><span class="aud-bar__val">16%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">55–64</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:9%"></span></span><span class="aud-bar__val">9%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">65+</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:6%"></span></span><span class="aud-bar__val">6%</span></div>
-              </div>
-              <div class="gv-bo-card aud-demo__card">
-                <h3 class="gv-bo-formhead" style="margin-bottom:14px">Gender</h3>
-                <div class="aud-bar"><span class="aud-bar__label">Female</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:51%"></span></span><span class="aud-bar__val">51%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">Male</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:43%"></span></span><span class="aud-bar__val">43%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">Other</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:3%"></span></span><span class="aud-bar__val">3%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">Unspecified</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:3%"></span></span><span class="aud-bar__val">3%</span></div>
-              </div>
-              <div class="gv-bo-card aud-demo__card">
-                <h3 class="gv-bo-formhead" style="margin-bottom:14px">Domicile</h3>
-                <div class="aud-bar"><span class="aud-bar__label">Meridian Central</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:38%"></span></span><span class="aud-bar__val">38%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">North Quarter</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:27%"></span></span><span class="aud-bar__val">27%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">Riverside</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:21%"></span></span><span class="aud-bar__val">21%</span></div>
-                <div class="aud-bar"><span class="aud-bar__label">Outside Meridian</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:14%"></span></span><span class="aud-bar__val">14%</span></div>
-              </div>
+            <div class="gv-bo-card" style="margin-bottom:16px">
+              <h3 class="gv-bo-pagehead" style="margin:0 0 4px">Participants timeline</h3>
+              <div class="gv-bo-banner" style="margin:10px 0 6px"><span class="gv-icon" data-gv-icon="info-outline"></span><div>Participation numbers may not be fully accurate, as some data is captured in an external survey that we do not track.</div></div>
+              <div id="audc-dem-timeline"></div>
+            </div>
+            <div class="aud-charts">
+              <div class="gv-bo-chartcard"><h3 class="gv-bo-chartcard__title">Gender</h3><div id="audc-dem-gender"></div></div>
+              <div class="gv-bo-chartcard"><h3 class="gv-bo-chartcard__title">Age</h3><div id="audc-dem-age"></div></div>
+              <div class="gv-bo-chartcard"><h3 class="gv-bo-chartcard__title">Domicile</h3><div id="audc-dem-domicile"></div></div>
+              <div class="gv-bo-chartcard"><h3 class="gv-bo-chartcard__title">Education</h3><div id="audc-dem-education"></div></div>
             </div>
           </div>
 
-          <!-- ───────── TRAFFIC ───────── -->
+          <!-- ───────── TRAFFIC (real GVChart) ───────── -->
           <div class="aud-sub" data-aud="traffic">
-            <h1 class="gv-bo-pagehead">Traffic</h1>
-            <p class="gv-bo-pagelede" style="margin:6px 0 18px">See how people reach this project and how engaged they are.</p>
-            <div class="aud-stats">
-              <div class="gv-bo-card aud-stat"><span class="aud-stat__num">3,184</span><span class="aud-stat__lbl">Visitors</span></div>
-              <div class="gv-bo-card aud-stat"><span class="aud-stat__num">5,902</span><span class="aud-stat__lbl">Visits</span></div>
-              <div class="gv-bo-card aud-stat"><span class="aud-stat__num">2:14</span><span class="aud-stat__lbl">Avg. time on project</span></div>
-              <div class="gv-bo-card aud-stat"><span class="aud-stat__num">1.9</span><span class="aud-stat__lbl">Pages per visit</span></div>
+            <div class="gv-bo-card" style="margin-bottom:16px">
+              <h3 class="gv-bo-pagehead" style="margin:0 0 14px">Visitors</h3>
+              <div class="aud-stats">
+                <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__lbl">Visitors</span><span class="aud-stat__num">3,184</span><span class="aud-stat__sub">Last 30 days: 412</span></div>
+                <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__lbl">Visits</span><span class="aud-stat__num">5,902</span><span class="aud-stat__sub">Last 30 days: 763</span></div>
+                <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__lbl">Visit duration</span><span class="aud-stat__num">2:14</span><span class="aud-stat__sub">Last 30 days: 1:58</span></div>
+                <div class="gv-bo-chartcard aud-stat"><span class="aud-stat__lbl">Pageviews per visit</span><span class="aud-stat__num">1.9</span><span class="aud-stat__sub">Last 30 days: 2.1</span></div>
+              </div>
+              <div id="audc-tr-visitors"></div>
             </div>
-            <div class="gv-bo-card" style="margin-top:18px">
-              <h3 class="gv-bo-formhead" style="margin-bottom:14px">Where visitors come from</h3>
-              <div class="aud-bar"><span class="aud-bar__label">Direct entry</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:41%"></span></span><span class="aud-bar__val">41%</span></div>
-              <div class="aud-bar"><span class="aud-bar__label">Social networks</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:28%"></span></span><span class="aud-bar__val">28%</span></div>
-              <div class="aud-bar"><span class="aud-bar__label">Search engines</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:19%"></span></span><span class="aud-bar__val">19%</span></div>
-              <div class="aud-bar"><span class="aud-bar__label">Campaign emails</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:12%"></span></span><span class="aud-bar__val">12%</span></div>
+            <div class="aud-charts">
+              <div class="gv-bo-chartcard"><h3 class="gv-bo-chartcard__title">Traffic sources</h3><div id="audc-tr-sources"></div></div>
+              <div class="gv-bo-chartcard"><h3 class="gv-bo-chartcard__title">Language</h3><div id="audc-tr-language"></div></div>
+              <div class="gv-bo-chartcard"><h3 class="gv-bo-chartcard__title">Device types</h3><div id="audc-tr-devices"></div></div>
             </div>
           </div>
 
@@ -5178,8 +5169,58 @@
       t.classList.add('is-active');
       const k = t.dataset[key];
       panels.forEach(p => p.classList.toggle('is-active', p.dataset[key] === k));
+      if (id === 'view-audience' && window.renderAudienceCharts) window.renderAudienceCharts(k);
     }));
   });
+
+  // ===== Audience Demographics + Traffic charts (real GVChart, lazy: ApexCharts
+  //       mis-sizes in a display:none panel, so render each sub-tab on first show) =====
+  (function () {
+    const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+    const done = {};
+    function P() { return GVChart.palette(); }
+    function hbar(id, categories, data) {
+      const el = document.getElementById(id);
+      if (!el || el.__gv) return;
+      GVChart.bar(el, {
+        horizontal: true, legend: false, dataLabels: true, barHeight: "58%",
+        height: Math.max(150, categories.length * 38 + 30),
+        categories: categories, series: [{ name: "Participants", data: data }],
+        colors: [P().navy]
+      });
+    }
+    function pie(id, labels, series) {
+      const el = document.getElementById(id);
+      if (!el || el.__gv) return;
+      const p = P();
+      GVChart.pie(el, { height: 230, labels: labels, series: series,
+        colors: [p.navy, p.teal, p.blueLight, p.line, p.tealLight] });
+    }
+    const RENDER = {
+      demographics() {
+        const t = document.getElementById("audc-dem-timeline");
+        if (t && !t.__gv) GVChart.line(t, { height: 220, categories: MONTHS, area: true,
+          series: [{ name: "Cumulative participants", data: [40, 96, 168, 234, 298, 342] }] });
+        hbar("audc-dem-gender", ["Female", "Male", "Other", "Unspecified"], [178, 149, 6, 9]);
+        hbar("audc-dem-age", ["18–24", "25–34", "35–44", "45–54", "55–64", "65+"], [29, 84, 78, 64, 49, 38]);
+        hbar("audc-dem-domicile", ["Meridian Central", "North Quarter", "Riverside", "Outside Meridian", "Unspecified"], [92, 76, 61, 48, 65]);
+        hbar("audc-dem-education", ["High school", "Some college", "Bachelor's", "Master's", "Doctoral", "Other"], [44, 68, 122, 78, 18, 12]);
+      },
+      traffic() {
+        const v = document.getElementById("audc-tr-visitors");
+        if (v && !v.__gv) GVChart.line(v, { height: 240, categories: MONTHS, area: true,
+          series: [{ name: "Visitors", data: [380, 612, 905, 1124, 842, 521] }] });
+        pie("audc-tr-sources", ["Direct entry", "Social networks", "Search engines", "Campaign emails"], [41, 28, 19, 12]);
+        pie("audc-tr-language", ["English", "Spanish", "Other"], [86, 11, 3]);
+        pie("audc-tr-devices", ["Mobile", "Desktop", "Tablet"], [58, 36, 6]);
+      }
+    };
+    window.renderAudienceCharts = function (key) {
+      if (done[key] || !window.GVChart || !RENDER[key]) return;
+      done[key] = true;
+      try { RENDER[key](); } catch (e) { console.error("audience chart render failed", key, e); }
+    };
+  })();
 
   // ===== Project Settings view: sub-tabs + lightweight interactions =====
   (function(){
