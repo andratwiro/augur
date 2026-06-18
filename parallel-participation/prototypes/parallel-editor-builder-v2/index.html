@@ -1044,6 +1044,81 @@
   /* Compact STATE chip (label removed): smaller pill + tighter buttons. */
   .state-chip { padding: 3px 4px; gap: 4px; font-size: 10.5px; }
 
+  /* ============ Hidden-survey approach explorer ============ */
+  /* A second selector (bottom-left) that swaps how a "created but not added to the
+     project" survey — reachable only by direct URL — is represented. Only shown in the
+     complex state (the one with a hidden Extra). 10 live approaches; see setHiddenApproach. */
+  .hidden-chip {
+    position: fixed; bottom: 20px; left: 24px; z-index: 30;
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px 5px; background: #fff;
+    border: 1px solid var(--border); border-radius: 999px;
+    font-size: 10.5px; max-width: calc(100vw - 48px);
+    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04);
+  }
+  .hidden-chip .label {
+    padding: 0 8px 0 4px; color: #5b6573; font-size: 10.5px;
+    font-weight: 700; white-space: nowrap;
+  }
+  .hidden-chip .label b { color: #1a1f2c; }
+  .hidden-chip button {
+    min-width: 22px; padding: 4px 7px; border-radius: 999px;
+    color: #4b5563; font-weight: 600;
+    transition: background .12s ease, color .12s ease;
+  }
+  .hidden-chip button:hover { background: #f4f6fa; }
+  .hidden-chip button.on { background: #1a1f2c; color: #fff; }
+
+  /* Treatments applied to the hidden survey row(s) in the Extras list */
+  .hs-pill { display:inline-flex; align-items:center; gap:4px; margin-left:6px; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700; background:#fff7ed; color:#b45309; border:1px solid #fed7aa; vertical-align:middle; }
+  .phase-row-rich.hs-dim { opacity:.62; }
+  .hs-chain { color:#656e7d; flex-shrink:0; display:inline-flex; align-self:center; }
+  .hs-chain svg { width:14px; height:14px; }
+  .hs-eye { width:14px; height:14px; color:#656e7d; flex-shrink:0; align-self:center; }
+  .phase-status-dot.hs-dot { background:#fff; border:1.5px dashed #f59e0b; }
+  .hs-muted { color:#b45309 !important; }
+  .hs-grouphead { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#5b6573; margin:8px 0 2px; padding:0 12px; display:flex; align-items:center; gap:6px; }
+  .hs-grouphead--hidden { color:#b45309; }
+  .hs-count { background:#eef0f4; color:#5b6573; border-radius:999px; padding:0 6px; font-size:10px; font-weight:700; }
+  .hs-grouphead--hidden .hs-count { background:#fff7ed; color:#b45309; }
+  .hs-eye-mini { display:inline-flex; }
+  .hs-eye-mini svg { width:13px; height:13px; }
+  .hs-status { margin-left:auto; flex-shrink:0; font-size:10.5px; font-weight:700; color:#5b6573; padding:2px 8px; border-radius:999px; background:#eef0f4; align-self:center; }
+  .hs-status--live { color:#1e7c3a; background:#e7f6ec; }
+  .hs-status--hidden { color:#b45309; background:#fff7ed; }
+  .hs-status--ended { color:#5b6573; background:#eef0f4; }
+  .hs-callout { display:flex; align-items:flex-start; gap:9px; margin:4px 0 10px; padding:10px 12px; border:1px solid #fed7aa; background:#fff7ed; border-radius:8px; }
+  .hs-callout__ic { color:#b45309; flex-shrink:0; margin-top:1px; display:inline-flex; }
+  .hs-callout__ic svg { width:16px; height:16px; }
+  .hs-callout__tx { flex:1; font-size:11.5px; line-height:1.45; color:#7c4a16; }
+  .hs-callout__tx strong { color:#92400e; }
+  .hs-callout__act { flex-shrink:0; align-self:center; font-size:11px; font-weight:700; color:#b45309; padding:4px 10px; border:1px solid #fed7aa; border-radius:999px; background:#fff; cursor:pointer; }
+  .hs-callout__act:hover { background:#fff1e0; }
+  .hs-actions { display:flex; gap:6px; margin-top:7px; }
+  .hs-act { font-size:11px; font-weight:700; color:#fff; background:#1a1f2c; padding:4px 10px; border-radius:999px; cursor:pointer; }
+  .hs-act--ghost { color:#4b5563; background:#eef0f4; }
+  .hs-act:hover { filter:brightness(1.08); }
+  .hs-tog { width:30px; height:18px; border-radius:999px; background:#22a455; position:relative; flex-shrink:0; margin-left:auto; align-self:center; cursor:pointer; transition:background .15s ease; }
+  .hs-tog.off { background:#cbd5e1; }
+  .hs-tog__k { position:absolute; top:2px; left:14px; width:14px; height:14px; border-radius:999px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); transition:left .15s ease; }
+  .hs-tog.off .hs-tog__k { left:2px; }
+  .hs-tray { margin:2px 0; }
+  .hs-tray__head { display:flex; align-items:center; gap:6px; padding:8px 12px; border-radius:8px; cursor:pointer; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#b45309; list-style:none; }
+  .hs-tray__head::-webkit-details-marker { display:none; }
+  .hs-tray__head:hover { background:#fff7ed; }
+  .hs-tray__chev { margin-left:auto; display:inline-flex; color:#b45309; transition:transform .15s ease; }
+  .hs-tray__chev svg { width:14px; height:14px; }
+  .hs-tray[open] .hs-tray__chev { transform:rotate(90deg); }
+
+  /* Phone reflection — resident "Other ways to take part" + editor-only hidden note */
+  .phone .pp-fo__extra { margin:0 0 26px; }
+  .phone .pp-fo__exrow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 15px; background:#fff; border:1px solid var(--gv-grey-200,#e3e7ea); border-radius:var(--gv-radius,8px); margin-bottom:8px; text-decoration:none; }
+  .phone .pp-fo__exname { font-size:14px; font-weight:600; color:var(--gv-text-primary,#1a1f2c); }
+  .phone .pp-fo__exmeta { font-size:12px; color:var(--gv-text-secondary,#596b7a); flex-shrink:0; }
+  .phone .pp-fo__hsnote { display:flex; align-items:flex-start; gap:7px; margin-top:6px; padding:9px 11px; font-size:11.5px; line-height:1.45; color:#7c4a16; background:#fff7ed; border:1px dashed #fbbf24; border-radius:8px; }
+  .phone .pp-fo__hsnote b { color:#92400e; }
+  .phone .pp-fo__hsnote .hs-eye-mini svg { width:13px; height:13px; color:#b45309; flex-shrink:0; }
+
   /* FRAME switcher — icon-only toggle pinned to the top-right of the preview, just
      below the back-office topbar. Same quiet pill treatment as the STATE chip. */
   .frame-chip {
@@ -1680,7 +1755,7 @@
 
   <!-- ── Real GoVocal back-office sidebar (collapsed icon rail) ──── -->
   <nav class="gv-bo-side is-rail" aria-label="Admin">
-    <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo"><span data-gv-icon="admin-back" style="color:var(--gv-white)"></span></span><span class="gv-bo-side__brandtext">To platform</span></a>
+    <a class="gv-bo-side__brand" href="#" onclick="openHome();return false;" title="Back to the platform homepage"><span class="gv-bo-side__logo"><span data-gv-icon="admin-back" style="color:var(--gv-white)"></span></span><span class="gv-bo-side__brandtext">To platform</span></a>
     <div class="gv-bo-nav">
       <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-dashboard"></span><span class="gv-bo-nav__label">Dashboard</span></a>
       <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-projects"></span><span class="gv-bo-nav__label">Projects</span></a>
@@ -3035,6 +3110,23 @@
   <button data-state="complex" class="on" onclick="setProjectState('complex', this)">Complex</button>
 </div>
 
+<!-- ============ Hidden-survey approach explorer — bottom-left (complex only) ============ -->
+<!-- Swaps how a survey that's created but NOT added to the project (URL-only access) is
+     surfaced in the Extras list + reflected on the resident phone preview. -->
+<div class="hidden-chip" role="group" aria-label="Hidden survey treatment" hidden>
+  <span class="label">Hidden survey&nbsp;·&nbsp;<b id="hs-name">Eye-off icon</b></span>
+  <button data-hs="1" class="on" title="Eye-off icon (baseline)" onclick="setHiddenApproach(1, this)">1</button>
+  <button data-hs="2" title="&quot;Link-only&quot; pill" onclick="setHiddenApproach(2, this)">2</button>
+  <button data-hs="3" title="Dimmed row + chain icon" onclick="setHiddenApproach(3, this)">3</button>
+  <button data-hs="4" title="Hidden status dot" onclick="setHiddenApproach(4, this)">4</button>
+  <button data-hs="5" title="Grouped: On project / Hidden" onclick="setHiddenApproach(5, this)">5</button>
+  <button data-hs="6" title="Status column" onclick="setHiddenApproach(6, this)">6</button>
+  <button data-hs="7" title="Section callout" onclick="setHiddenApproach(7, this)">7</button>
+  <button data-hs="8" title="Inline actions" onclick="setHiddenApproach(8, this)">8</button>
+  <button data-hs="9" title="Visibility toggle" onclick="setHiddenApproach(9, this)">9</button>
+  <button data-hs="10" title="Collapsible hidden tray" onclick="setHiddenApproach(10, this)">10</button>
+</div>
+
 <script>
   const _timelineCardOriginal = null;
   const _activitiesCardOriginal = null;
@@ -3173,6 +3265,7 @@
             <h2 class="gv-title h3 pp-fo__h2">Ideas <span class="gv-pcount">6</span></h2>
             <div class="gv-idealist">${ideas}</div>
           </div>` : ''}
+          ${complex ? phoneExtras(window.ppHidden) : ''}
           <div class="pp-edit" data-edit="events">
             <h2 class="gv-title h3 pp-fo__h2">Upcoming events</h2>
             ${ev('Jun', '14', 'Mobility town hall', '14 Jun · 19:00', 'Central Library', 'location-simple', '41', 'meeting.webp')}
@@ -3315,6 +3408,146 @@
     sc.classList.toggle('has-stuck-bar', stick);
   }
 
+  // ── Hidden-survey approach explorer ────────────────────────────────────────
+  // "School survey" is created but not added to the project — reachable only by its
+  // direct URL. window.ppHidden (1–10) selects how that state is represented in the
+  // Extras list and echoed on the resident phone preview. Each carries its own framing
+  // term so we can compare wording as well as visual/structural/actionable treatment.
+  window.ppHidden = window.ppHidden || 1;
+  const HS_SVG = {
+    eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
+    link:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+    info:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+    chev:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
+  };
+  const HS_META = {
+    1:  { name: 'Eye-off icon',        term: 'hidden from participants' },
+    2:  { name: '"Link-only" pill',    term: 'link-only' },
+    3:  { name: 'Dimmed + chain icon', term: 'unlisted' },
+    4:  { name: 'Hidden status dot',   term: 'off the project' },
+    5:  { name: 'Grouped subsections', term: 'hidden' },
+    6:  { name: 'Status column',       term: 'link-only' },
+    7:  { name: 'Section callout',     term: 'off the project' },
+    8:  { name: 'Inline actions',      term: 'link-only' },
+    9:  { name: 'Visibility toggle',   term: 'shared by link only' },
+    10: { name: 'Collapsible tray',    term: 'hidden' },
+  };
+  // Visible (on-project) Extras render the same; only the hidden one varies per approach.
+  function hsRow(opts) {
+    return `<div class="phase-row-rich"${opts.phase ? ` data-view="phase" data-phase="${opts.phase}" onclick="setView('phase', this)"` : ''}>`
+      + `<div class="phase-status-dot ${opts.dot || ''}"></div>`
+      + `<div class="flex-1 min-w-0"><div class="phase-name${opts.past ? ' phase-name-past' : ''}">${opts.name}</div>`
+      + `<div class="phase-dates">${opts.dates}</div></div>${opts.trail || ''}</div>`;
+  }
+  function renderComplexExtras(n) {
+    const head = `<hr class="panel-divider" /><div class="sec-head">Extras</div><div class="sec-sub">Surveys that run outside your timeline</div>`;
+    const add = `<button class="sec-add" onclick="setView('add-survey')"><svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New survey</button>`;
+    const askus  = hsRow({ phase:'askus',  dot:'live',     name:'Ask us anything',     dates:'Ongoing' });
+    const market = hsRow({ phase:'',        dot:'upcoming', name:'Market-day poll',      dates:'15–17 Aug' });
+    const kiosk  = hsRow({ phase:'',        dot:'completed',name:'Pop-up kiosk survey',  dates:'2–4 May', past:true });
+    let body;
+    switch (n) {
+      case 1: // Eye-off icon (baseline)
+        body = askus
+          + hsRow({ phase:'schools', dot:'live', name:'School survey', dates:'20 May–5 Jun',
+              trail:`<span class="hs-eye" title="Hidden from participants">${HS_SVG.eyeOff}</span>` })
+          + market + kiosk;
+        break;
+      case 2: // "Link-only" pill
+        body = askus
+          + hsRow({ phase:'schools', dot:'live', name:`School survey <span class="hs-pill"><span class="hs-eye-mini" style="width:12px;height:12px">${HS_SVG.link}</span>Link-only</span>`, dates:'20 May–5 Jun' })
+          + market + kiosk;
+        break;
+      case 3: // Dimmed row + chain icon — "Unlisted"
+        body = askus
+          + `<div class="phase-row-rich hs-dim" data-view="phase" data-phase="schools" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>`
+            + `<div class="flex-1 min-w-0"><div class="phase-name">School survey</div><div class="phase-dates">Unlisted · link only</div></div>`
+            + `<span class="hs-chain">${HS_SVG.link}</span></div>`
+          + market + kiosk;
+        break;
+      case 4: // Hidden status dot + caption — "Off the project"
+        body = askus
+          + hsRow({ phase:'schools', dot:'hs-dot', name:'School survey',
+              dates:'<span class="hs-muted">Not on the project · link only</span>' })
+          + market + kiosk;
+        break;
+      case 5: // Grouped subsections
+        body = `<div class="hs-grouphead">On the project <span class="hs-count">3</span></div>`
+          + askus + market + kiosk
+          + `<div class="hs-grouphead hs-grouphead--hidden"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span> Hidden — link only <span class="hs-count">1</span></div>`
+          + hsRow({ phase:'schools', dot:'live', name:'School survey', dates:'20 May–5 Jun' });
+        break;
+      case 6: // Status column
+        body = hsRow({ phase:'askus', dot:'live', name:'Ask us anything', dates:'Ongoing',
+              trail:'<span class="hs-status hs-status--live">Live</span>' })
+          + hsRow({ phase:'schools', dot:'live', name:'School survey', dates:'20 May–5 Jun',
+              trail:'<span class="hs-status hs-status--hidden">Link-only</span>' })
+          + hsRow({ phase:'', dot:'upcoming', name:'Market-day poll', dates:'15–17 Aug',
+              trail:'<span class="hs-status">Scheduled</span>' })
+          + hsRow({ phase:'', dot:'completed', name:'Pop-up kiosk survey', dates:'2–4 May', past:true,
+              trail:'<span class="hs-status hs-status--ended">Ended</span>' });
+        break;
+      case 7: // Section callout
+        body = `<div class="hs-callout"><span class="hs-callout__ic">${HS_SVG.info}</span>`
+          + `<div class="hs-callout__tx"><strong>1 survey isn't on your project.</strong> Only people with the link can find it.</div>`
+          + `<button class="hs-callout__act" onclick="event.stopPropagation()">Add it</button></div>`
+          + askus
+          + hsRow({ phase:'schools', dot:'live', name:'School survey', dates:'20 May–5 Jun' })
+          + market + kiosk;
+        break;
+      case 8: // Inline actions
+        body = askus
+          + `<div class="phase-row-rich" data-view="phase" data-phase="schools" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>`
+            + `<div class="flex-1 min-w-0"><div class="phase-name">School survey</div><div class="phase-dates">20 May–5 Jun · link only</div>`
+            + `<div class="hs-actions"><button class="hs-act" onclick="event.stopPropagation()">Add to project</button><button class="hs-act hs-act--ghost" onclick="event.stopPropagation()">Copy link</button></div></div></div>`
+          + market + kiosk;
+        break;
+      case 9: { // Visibility toggle per row
+        const tog = (on) => `<button class="hs-tog${on ? '' : ' off'}" role="switch" aria-checked="${on}" title="Visible on the project" onclick="event.stopPropagation(); this.classList.toggle('off'); this.setAttribute('aria-checked', this.classList.contains('off') ? 'false' : 'true')"><span class="hs-tog__k"></span></button>`;
+        body = hsRow({ phase:'askus', dot:'live', name:'Ask us anything', dates:'Ongoing', trail:tog(true) })
+          + `<div class="phase-row-rich" data-view="phase" data-phase="schools" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>`
+            + `<div class="flex-1 min-w-0"><div class="phase-name">School survey</div><div class="phase-dates"><span class="hs-muted">Shared by link only</span></div></div>${tog(false)}</div>`
+          + hsRow({ phase:'', dot:'upcoming', name:'Market-day poll', dates:'15–17 Aug', trail:tog(true) })
+          + hsRow({ phase:'', dot:'completed', name:'Pop-up kiosk survey', dates:'2–4 May', past:true, trail:tog(true) });
+        break;
+      }
+      case 10: // Collapsible hidden tray
+        body = askus + market + kiosk
+          + `<details class="hs-tray"><summary class="hs-tray__head"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span> Hidden surveys <span class="hs-count">1</span><span class="hs-tray__chev">${HS_SVG.chev}</span></summary>`
+            + `<div class="hs-tray__body">${hsRow({ phase:'schools', dot:'live', name:'School survey', dates:'20 May–5 Jun' })}</div></details>`;
+        break;
+      default:
+        return renderComplexExtras(1);
+    }
+    return head + body + add;
+  }
+  // Resident phone reflection: the hidden survey is simply absent from "Other ways to take
+  // part" (residents can't reach it) — plus a dashed EDITOR-ONLY note echoing the term, so
+  // the consequence of each treatment is visible on the FO side too.
+  function phoneExtras(n) {
+    const term = (HS_META[n] || HS_META[1]).term;
+    return `<div class="pp-fo__extra">
+      <h2 class="gv-title h3 pp-fo__h2">Other ways to take part</h2>
+      <a class="pp-fo__exrow" href="#"><span class="pp-fo__exname">Ask us anything</span><span class="pp-fo__exmeta">Ongoing</span></a>
+      <a class="pp-fo__exrow" href="#"><span class="pp-fo__exname">Market-day poll</span><span class="pp-fo__exmeta">15–17 Aug</span></a>
+      <div class="pp-fo__hsnote"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span><span><b>Editor only.</b> “School survey” is ${term} — it never appears here; residents reach it only via its direct link.</span></div>
+    </div>`;
+  }
+  // Toggle the explorer chip + (re)render Extras/phone for the chosen approach.
+  function setHiddenApproach(n, btn) {
+    window.ppHidden = n;
+    document.querySelectorAll('.hidden-chip button').forEach(b => b.classList.remove('on'));
+    const b = btn || document.querySelector('.hidden-chip button[data-hs="' + n + '"]');
+    if (b) b.classList.add('on');
+    const nameEl = document.getElementById('hs-name');
+    if (nameEl) nameEl.textContent = (HS_META[n] || HS_META[1]).name;
+    if (window.ppState === 'complex') {
+      const card = document.getElementById('activities-card');
+      if (card) card.innerHTML = renderComplexExtras(n);
+      renderPhone('complex');
+    }
+  }
+
   function setProjectState(state, btn) {
     window.ppState = state;   // current content state — the FO preview reads this
     document.querySelectorAll('.state-chip button').forEach(b => b.classList.remove('on'));
@@ -3326,6 +3559,11 @@
 
     // Reset audience visibility
     if (audienceNav) audienceNav.style.display = '';
+
+    // The hidden-survey explorer only applies to the complex state (the one with a
+    // survey that's off the project). Hide it elsewhere.
+    const hiddenChip = document.querySelector('.hidden-chip');
+    if (hiddenChip) hiddenChip.hidden = (state !== 'complex');
 
     // Phone preview content is rebuilt per state: ghost placeholders for 'empty',
     // a real GoVocal mobile FO project page (gv-* components) for 'few' / 'complex'.
@@ -3443,28 +3681,9 @@
         </button>
       `;
 
-      activitiesCard.innerHTML = `
-        <hr class="panel-divider" />
-        <div class="sec-head">Extras</div>
-        <div class="sec-sub">Surveys that run outside your timeline</div>
-        <div class="phase-row-rich" data-view="phase" data-phase="askus" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>
-          <div class="flex-1 min-w-0"><div class="phase-name">Ask us anything</div>
-            <div class="phase-dates">Ongoing</div></div></div>
-        <div class="phase-row-rich" data-view="phase" data-phase="schools" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>
-          <div class="flex-1 min-w-0"><div class="phase-name">School survey</div>
-            <div class="phase-dates">20 May–5 Jun</div></div>
-          <svg class="nav-icon" style="width:14px;height:14px;color:#656e7d;flex-shrink:0;" viewBox="0 0 24 24"><title>Hidden from participants</title><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
-        <div class="phase-row-rich"><div class="phase-status-dot upcoming"></div>
-          <div class="flex-1 min-w-0"><div class="phase-name">Market-day poll</div>
-            <div class="phase-dates">15–17 Aug</div></div></div>
-        <div class="phase-row-rich"><div class="phase-status-dot completed"></div>
-          <div class="flex-1 min-w-0"><div class="phase-name phase-name-past">Pop-up kiosk survey</div>
-            <div class="phase-dates">2–4 May</div></div></div>
-        <button class="sec-add" onclick="setView('add-survey')">
-          <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          New survey
-        </button>
-      `;
+      // Extras (incl. the hidden "School survey") are rendered by the explorer so the
+      // bottom-left chip can swap between the 10 hidden-survey treatments live.
+      activitiesCard.innerHTML = renderComplexExtras(window.ppHidden);
     }
   }
 
@@ -4942,7 +5161,11 @@
       }
       var modal = [].slice.call(document.querySelectorAll(".modal,[id$=Modal],.modal-overlay"))
         .some(vis) ? "modal" : "";
-      return [view, fr && fr.getAttribute("data-frame"), st && st.getAttribute("data-state"), phase, modal]
+      var state = st && st.getAttribute("data-state");
+      // The hidden-survey explorer only changes the complex state — fold its approach into
+      // the screen key there so comments scope per treatment (and don't bleed elsewhere).
+      var hs = state === "complex" ? ("hs" + (window.ppHidden || 1)) : "";
+      return [view, fr && fr.getAttribute("data-frame"), state, phase, hs, modal]
         .filter(Boolean).join("|");
     }
     function sync() {
