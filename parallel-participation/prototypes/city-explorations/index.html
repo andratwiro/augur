@@ -649,7 +649,7 @@
         ? `<section class="pv-surveys"><div class="pv-surveys__head"><h2 class="gv-title h3">${v.surveyGridHeading || 'More surveys you can take'}</h2></div><div class="pv-survey-grid">${v.surveyGrid.map((key) => surveyCard(SURVEYS[key], 'easy', v.surveyGridStyle || 'primary')).join('')}</div></section>`
         : '',
       events: () => (v.events && v.events.length)
-        ? `<section class="gv-section"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Events</h2><a class="gv-btn text" href="#">View all events</a></div><div class="gv-events__grid">${v.events.map(eventCard).join('')}</div></section>`
+        ? `<section class="gv-section"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">What's on</h2><a class="gv-btn text" href="#">View all events</a></div><div class="gv-events__grid">${v.events.map(eventCard).join('')}</div></section>`
         : ''
     };
 
