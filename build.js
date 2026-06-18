@@ -164,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.50";
+const UI_VERSION = "0.51";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1192,7 +1192,7 @@ const NAV_CSS = `
     .gvside__sum {
       display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 7px;
       list-style: none; cursor: pointer; user-select: none;
-      color: #2c2f36; font-weight: 500; font-size: 13px;
+      color: #6b7280; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
       transition: background .12s ease, color .12s ease;
     }
     .gvside__sum::-webkit-details-marker { display: none; }
@@ -1298,8 +1298,8 @@ function sideRail(active) {
   // disclosure chevron sits on the right.
   const libOpen = active === "primitives" || active === "components" || active === "pages";
   const library = `<details class="gvside__sect"${libOpen ? " open" : ""}>
-      <summary class="gvside__sum">${IC_LIBRARY}<span>Library</span><span class="gvside__caret" aria-hidden="true">${IC_CHEV}</span></summary>
-      <div class="gvside__group gvside__sub">
+      <summary class="gvside__sum"><span>Library</span><span class="gvside__caret" aria-hidden="true">${IC_CHEV}</span></summary>
+      <div class="gvside__group">
         ${item("/primitives/", "Primitives", "primitives", IC_PRIM)}
         ${item("/components/", "Components", "components", IC_COMP)}
         ${item("/pages/", "Pages", "pages", IC_PAGE)}
@@ -1314,12 +1314,12 @@ function sideRail(active) {
     <div class="gvside__scroll">
       <div class="gvside__group">
         ${item("/", "Opportunities", "prototypes", IC_HOME)}
+        ${playground}
       </div>
       ${pinned}
     </div>
     <div class="gvside__foot">
       <div class="gvside__rule"></div>
-      ${playground}
       ${library}
     </div>
   </aside>`;
