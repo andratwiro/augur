@@ -243,7 +243,6 @@
       font-family: var(--gv-font-family, 'Public Sans', system-ui, sans-serif); overflow-x: auto; -webkit-overflow-scrolling: touch; }
     @media (max-width: 760px) { #pv-switch { top: 64px; } }
     #pv-switch::-webkit-scrollbar { display: none; }
-    #pv-switch__label { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gv-cool-grey-600,#67768a); padding: 0 8px 0 10px; white-space: nowrap; }
     .pv-chip { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; cursor: pointer; padding: 7px 13px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--gv-text-primary,#1c2024); white-space: nowrap; }
     .pv-chip:hover { background: var(--gv-grey-100,#f1f3f5); }
     .pv-chip__sw { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 0 1px rgba(0,0,0,.08) inset; }
@@ -353,7 +352,7 @@
 
   const VARIANTS = [
     {
-      key: 'dublin', theme: 1, city: 'Dublin City',
+      key: 'dublin', theme: 1, city: 'Dublin',
       title: 'The big downtown survey',
       subtitle: 'Tell us how the city centre works for you today. Choose the survey that fits the time you have.',
       banner: 'avenue',
@@ -399,7 +398,7 @@
       events: [['Jun', '14', 'Riverside ideas walk', '14 Jun · 10:00 – 11:30', 'Donaupark', '41', 'workshop'], ['Jul', '02', 'Design workshop', '2 Jul · 18:00 – 20:00', 'Civic Hall', '57', 'community']]
     },
     {
-      key: 'wien', theme: 2, city: 'Stadt Wien',
+      key: 'wien', theme: 2, city: 'Wien',
       title: 'Participatory budget 2026',
       subtitle: '€500,000 for the district — and you decide where it goes. Three ways to take part are open at once.',
       banner: 'square',
@@ -424,7 +423,7 @@
       events: [['Jun', '20', 'Budget Q&A evening', '20 Jun · 18:30 – 20:00', 'Rathaus', '88', 'community']]
     },
     {
-      key: 'copenhagen', theme: 3, city: 'Københavns Kommune',
+      key: 'copenhagen', theme: 3, city: 'København',
       title: 'What we heard: the city centre',
       subtitle: '517 ideas, grouped into eight themes. Here is what you told us — and what happens next.',
       banner: 'oldtown',
@@ -446,7 +445,7 @@
       events: [['Jun', '12', 'What-we-heard briefing', '12 Jun · 17:00 – 18:00', 'Online meeting', '64', 'workshop'], ['Jun', '19', 'Walk the centre with us', '19 Jun · 16:00 – 17:30', 'Rådhuspladsen', '52', 'oldtown'], ['Jun', '26', 'Theme drop-in session', '26 Jun · 17:00 – 19:00', 'Hovedbiblioteket', '38', 'community']]
     },
     {
-      key: 'oslo', theme: 5, city: 'Oslo kommune',
+      key: 'oslo', theme: 5, city: 'Oslo',
       title: 'A safer school run',
       subtitle: 'Written in plain words, with big text and one clear button — so every family can take part.',
       banner: 'street-trees',
@@ -740,7 +739,7 @@
     wrap.id = 'pv-switch';
     wrap.setAttribute('role', 'tablist');
     wrap.setAttribute('aria-label', 'City exploration');
-    let html = '<span id="pv-switch__label">City</span>';
+    let html = '';
     VARIANTS.forEach((v, i) => {
       const t = themes.find((x) => x.id === v.theme) || {};
       v._primary = t.primary || '#444';
