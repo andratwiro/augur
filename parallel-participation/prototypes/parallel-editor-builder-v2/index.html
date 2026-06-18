@@ -17,6 +17,11 @@
 <link rel="stylesheet" href="assets/govocal-tokens.css" />
 <link rel="stylesheet" href="assets/govocal-ui.css" />
 <link rel="stylesheet" href="assets/govocal-bo.css" />
+<!-- Material Symbols (variable: FILL / weight / Rounded / Sharp) — substrate for the in-canvas
+     ICON explorer (bottom-centre). Stand-in glyphs to judge the icon *system*; the "Current"
+     direction keeps the real GoVocal set (govocal-icons.js). v2 is the icon-exploration sandbox;
+     v3 committed to the text-led direction. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,100..700,0..1,0&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,100..700,0..1,0&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@24,100..700,0..1,0&display=block" />
 <!-- Leaflet (open-source maps) — only used by the hooked FO project page's ideation MAP view -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
@@ -1685,6 +1690,83 @@
   .pp-lede a { color:var(--gv-blue-500); }
   .pp-infodot { width:16px; height:16px; vertical-align:-3px; color:var(--gv-cool-grey-600); }
   .pp-creation-foot { display:flex; justify-content:flex-end; gap:10px; margin-top:24px; padding-top:18px; border-top:1px solid var(--gv-divider); }
+
+  /* ============ ICON SYSTEM — five principled directions (icon-exploration sandbox) ============ */
+  /* Back-office chrome only (rail + project menu). NO tenant brand here — colours are BO
+     palette or neutral. "current" keeps the real GoVocal set; the five directions each take a
+     complete stance: one icon family at role-appropriate emphasis, ONE active idiom per
+     surface, and a shared keyline so the menu icons sit on the same vertical axis as the
+     timeline dots below. A Material glyph is injected as the last child of each [data-gv-icon]
+     host (inheriting its colour + active state); CSS shows one layer per direction. v3 committed
+     to the text-led direction; this sandbox keeps the full explorer. */
+  .msym {
+    font-family: 'Material Symbols Outlined'; font-weight: 400; font-style: normal; line-height: 1;
+    letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; direction: ltr;
+    -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .icx-host > .msym { display: none; }                 /* hidden until a non-current direction */
+  .icx-host.is-side > .msym { font-size: 20px; }
+  .icx-host.is-rail > .msym { font-size: 23px; }
+  .icx-host.is-mini > .msym { font-size: 18px; }
+  body:not([data-icx="current"]) .icx-host > .gv-icon { display: none; }
+  body:not([data-icx="current"]) .icx-host > .msym { display: inline-block; }
+
+  /* SHARED KEYLINE — pull the menu rows in so each icon's CENTRE lands on x≈17px, the timeline
+     dot centre below (both lists share the same px-3 origin). The menu icons and the phase dots
+     then sit on one vertical axis and labels line up with the phase titles. text-led has no
+     menu icons, so it is excluded; active-tile sizes its own cell (below). */
+  body[data-icx]:not([data-icx="current"]):not([data-icx="textled"]) .side-item { padding-left: 7px; }
+  body[data-icx]:not([data-icx="current"]):not([data-icx="textled"]):not([data-icx="activetile"]) .icx-host.is-side { width: 20px; justify-content: center; }
+
+  /* A · QUIET — outline neutral menu, filled icon-only rail; active = the row-bar only (no box) */
+  body[data-icx="quiet"] .icx-host.is-rail > .msym { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+  /* B · TEXT-LED — drop the labelled menu icons entirely; the icon-only rail keeps its OWN real
+     GoVocal glyphs (an icon-only rail must have icons, and the committed look should use the
+     authentic set, not the Material stand-ins the other directions explore with). */
+  body[data-icx="textled"] .icx-host.is-side { display: none; }
+  body[data-icx="textled"] .icx-host.is-rail > .gv-icon,
+  body[data-icx="textled"] .icx-host.is-mini > .gv-icon { display: inline-block; }
+  body[data-icx="textled"] .icx-host.is-rail > .msym,
+  body[data-icx="textled"] .icx-host.is-mini > .msym { display: none; }
+
+  /* C · STATEFUL — outline + neutral everywhere at rest (rail too); the active destination /
+     section is the ONLY thing that fills + takes BO teal. One law: fill = selected. */
+  body[data-icx="stateful"] .side-item.active .icx-host.is-side > .msym,
+  body[data-icx="stateful"] .gv-bo-nav__item.is-active .icx-host.is-rail > .msym { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  body[data-icx="stateful"] .side-item.active .icx-host.is-side > .msym { color: #147985; }
+
+  /* D · MONOCHROME — one neutral ink, zero brand colour; surface-aware (dark-on-light menu,
+     light-on-dark rail). Active is shown by STRUCTURE only — the row-bar / the rail tile. */
+  body[data-icx="mono"] .icx-host.is-side > .msym,
+  body[data-icx="mono"] .side-item.active .icx-host.is-side > .msym { color: #2a2e44; }
+  body[data-icx="mono"] .icx-host.is-rail > .msym { color: #aab6c8; }
+  body[data-icx="mono"] .gv-bo-nav__item.is-active .icx-host.is-rail > .msym { color: #ffffff; }
+
+  /* E · ACTIVE-TILE — bare neutral icons; the active menu item sits in a small BO-navy tile and
+     the row-bar is dropped, so the white menu and the navy rail share ONE active idiom. */
+  body[data-icx="activetile"] .icx-host.is-side { width: 24px; justify-content: center; }
+  body[data-icx="activetile"] .side-item.active { background: transparent; }
+  body[data-icx="activetile"] .side-item.active .icx-host.is-side { height: 24px; border-radius: 7px; background: #044D6C; }
+  body[data-icx="activetile"] .side-item.active .icx-host.is-side > .msym { color: #fff; font-size: 17px; font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+  /* ICON explorer chip — bottom-centre; the option name sits on its own line above the
+     numbers so the buttons never shift as you step through (per the switcher-chip rule). */
+  .icon-chip { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 31;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+  .icon-chip__name { pointer-events: auto; font-size: 10.5px; font-weight: 700; color: #1a1f2c; background: #fff;
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; white-space: nowrap;
+    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04); }
+  .icon-chip__name .k { color: #5b6573; letter-spacing: .06em; text-transform: uppercase; margin-right: 7px; }
+  .icon-chip__name .w { color: #5b6573; font-weight: 500; }
+  .icon-chip__row { pointer-events: auto; display: inline-flex; gap: 3px; padding: 3px 5px; background: #fff;
+    border: 1px solid var(--border); border-radius: 999px;
+    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04); }
+  .icon-chip__row button { min-width: 22px; padding: 4px 8px; border-radius: 999px; color: #4b5563; font-weight: 600;
+    font-size: 10.5px; transition: background .12s ease, color .12s ease; }
+  .icon-chip__row button:hover { background: #f4f6fa; }
+  .icon-chip__row button.on { background: #1a1f2c; color: #fff; }
 </style>
 <style id="cb-style">
 
@@ -5513,6 +5595,81 @@
 <!-- Blue-rail readability/hover explorer (5 options) — backup/lab; v3 ships Option 1.
      Prototype-local, detached from canon; self-contained in assets/rail-explorer.js. -->
 <script src="assets/rail-explorer.js" defer></script>
+
+<!-- ============ ICON explorer — bottom-centre (moved here from v3; v3 committed to text-led) ============ -->
+<div class="icon-chip" role="group" aria-label="Icon treatment">
+  <div class="icon-chip__name"><span class="k">Icons</span><b id="icon-chip-name">Current set</b><span class="w" id="icon-chip-why"> — mixed fill &amp; stroke</span></div>
+  <div class="icon-chip__row" id="icon-chip-row"></div>
+</div>
+<script>
+(function () {
+  // Five principled directions for the back-office nav (rail + project menu) + a baseline.
+  // #1 keeps the real GoVocal set; A–E each take one complete stance (see CSS). BO palette
+  // only — no tenant brand here.
+  const TREATS = [
+    { k: 'current',    name: 'Current set',    why: ' — real GoVocal icons, today (baseline)' },
+    { k: 'quiet',      name: 'A · Quiet keyline', why: ' — outline menu, filled rail, neutral; bar = active' },
+    { k: 'textled',    name: 'B · Text-led',   why: ' — no menu icons; the rail keeps them' },
+    { k: 'stateful',   name: 'C · Stateful',   why: ' — outline; fill = the selected item (BO teal)' },
+    { k: 'mono',       name: 'D · Monochrome', why: ' — one neutral ink, no colour; structure = active' },
+    { k: 'activetile', name: 'E · Active tile', why: ' — bare icons; active sits in a BO-navy tile' },
+  ];
+  // GoVocal icon name -> Material Symbols ligature. (Input 360 was a vague speech-bubble; "hub"
+  // reads as the 360° aggregation of input across phases.)
+  const MAP = {
+    home: 'home', group: 'group', email: 'mail', calendar: 'calendar_month', comments: 'hub', settings: 'settings',
+    'admin-dashboard': 'monitoring', 'admin-projects': 'apartment', 'admin-input': 'forum', 'admin-users': 'group',
+    'admin-messaging': 'mail', 'admin-reporting': 'bar_chart', 'admin-community': 'diversity_3', 'admin-inspiration': 'lightbulb',
+    'admin-tools': 'build', 'admin-pages': 'description', 'admin-settings': 'settings', 'admin-notifications': 'notifications',
+    'admin-support': 'help', 'admin-back': 'arrow_back', user: 'account_circle', 'chevron-right': 'chevron_right',
+  };
+  function ctx(el) {
+    if (el.classList.contains('side-ic')) return 'is-side';
+    if (el.classList.contains('gv-bo-nav__icon')) return 'is-rail';
+    return 'is-mini';
+  }
+  function inject() {
+    document.querySelectorAll('.gv-bo-side [data-gv-icon], .side-ic[data-gv-icon]').forEach(function (el) {
+      if (el.dataset.icxDone) return;
+      const m = MAP[el.getAttribute('data-gv-icon')];
+      if (!m) return;
+      el.classList.add('icx-host', ctx(el));
+      const s = document.createElement('span');
+      s.className = 'msym'; s.textContent = m; s.setAttribute('aria-hidden', 'true');
+      el.appendChild(s);              // runs after govocal-icons render (window load) so it survives
+      el.dataset.icxDone = '1';
+    });
+  }
+  const row = document.getElementById('icon-chip-row');
+  const nameEl = document.getElementById('icon-chip-name');
+  const whyEl = document.getElementById('icon-chip-why');
+  let cur = 0;
+  function set(i) {
+    cur = (i + TREATS.length) % TREATS.length;
+    const t = TREATS[cur];
+    document.body.setAttribute('data-icx', t.k);
+    nameEl.textContent = t.name;
+    whyEl.textContent = t.why;
+    [].forEach.call(row.children, function (b, j) { b.classList.toggle('on', j === cur); });
+  }
+  TREATS.forEach(function (t, i) {
+    const b = document.createElement('button');
+    b.textContent = (i + 1) % 10;     // 1..9, 0 — fixed glyphs, no shifting label
+    b.title = t.name; b.setAttribute('aria-label', t.name);
+    b.onclick = function () { set(i); };
+    row.appendChild(b);
+  });
+  document.body.setAttribute('data-icx', 'current');   // set immediately → no first-paint flash
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'ArrowRight') set(cur + 1);
+    else if (e.key === 'ArrowLeft') set(cur - 1);
+  });
+  function start() { inject(); set(1); }   // sandbox lands on A · Quiet; #1 is the baseline, flip freely
+  if (document.readyState === 'complete') start();
+  else window.addEventListener('load', start);
+})();
+</script>
 
 </body>
 </html>

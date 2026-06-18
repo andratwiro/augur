@@ -17,10 +17,6 @@
 <link rel="stylesheet" href="assets/govocal-tokens.css" />
 <link rel="stylesheet" href="assets/govocal-ui.css" />
 <link rel="stylesheet" href="assets/govocal-bo.css" />
-<!-- Material Symbols (variable: FILL / weight / Rounded / Sharp) — substrate for the in-canvas
-     ICON treatment switcher (bottom-centre). Stand-in glyphs to judge the icon *system*; the
-     "Current" treatment keeps the real GoVocal set (govocal-icons.js). -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,100..700,0..1,0&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,100..700,0..1,0&family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@24,100..700,0..1,0&display=block" />
 <!-- Leaflet (open-source maps) — only used by the hooked FO project page's ideation MAP view -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
@@ -113,8 +109,13 @@
      edge-to-edge — and carries the low canonical --gv-radius, matching the real
      mobile project page (pages/project-page .pp-banner). The radius override beats
      the generic .pp-edit 8px corner via the combined-class selector. */
-  .phone .pp-fo__banner { height: 180px; overflow: hidden; margin: 12px 22px 0; }
+  .phone .pp-fo__banner { position: relative; height: 180px; overflow: hidden; margin: 12px 22px 0; }
   .phone .pp-fo__banner.pp-edit { border-radius: var(--gv-radius); }
+  /* Follow button overlaid on the banner top-right — the Project FO page affordance
+     (gv-btn primary size-s + notification icon, Following ⇄ Follow). The hero
+     edit-pencil moves to the top-LEFT so the two never collide. */
+  .phone .pp-fo__follow { position: absolute; top: 12px; right: 12px; z-index: 4; box-shadow: 0 1px 4px rgba(20,25,40,.28); }
+  .phone .pp-fo__banner.pp-edit::after { right: auto; left: 8px; }
   .phone .pp-fo__banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .phone .pp-fo__pad { padding: 20px 22px 0; }
   .phone .pp-fo__cat { display: block; font-size: var(--gv-fs-s); letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--gv-text-secondary, #596B7A); margin-bottom: 8px; }
@@ -1103,8 +1104,9 @@
   .state-chip { padding: 3px 4px; gap: 4px; font-size: 10.5px; }
 
   /* v3 commits to one treatment for a survey that's created but not added to the project
-     (reachable only by direct URL): the neutral "Link only" meta line (was explorer #3 in
-     v2). No switcher here — see v2 for the full approach explorer. */
+     (reachable only by direct URL): the dashed ring on the lifecycle dot + a "Not on the
+     project page" tag with a hover explaining the fix (was explorer #4 in v2). No switcher
+     here — see v2 for the full approach explorer. */
 
   /* ============ Empty-state approach explorer ============ */
   /* A bottom-left selector — shown ONLY in the 'empty' project state — that swaps how a
@@ -1152,6 +1154,25 @@
   .phase-status-dot.hs-ring { position:relative; }
   .phase-status-dot.hs-ring::after { content:""; position:absolute; inset:-4px; border-radius:999px; border:1.5px dashed #94a3b8; }
   .hs-place { color:#5b6573; }
+  /* Hover on the "Not on the project page" tag — explains the fix: add it via the Content Builder.
+     The tag is a single non-wrapping box so it drops to its own line (predictable left edge),
+     keeping the left-anchored tooltip inside the narrow editor panel rather than clipping. */
+  .hs-place.hs-tip { position:relative; display:inline-block; white-space:nowrap; cursor:help; border-bottom:1px dotted #9aa3b1; }
+  .hs-place.hs-tip::after {
+    content: attr(data-tip);
+    position:absolute; left:-30px; bottom:calc(100% + 9px); width:196px;
+    padding:9px 11px; border-radius:8px; background:#1a1f2c; color:#fff;
+    font-size:11px; font-weight:500; line-height:1.5; text-transform:none; letter-spacing:0;
+    white-space:normal; box-shadow:0 8px 24px rgba(15,23,42,.22);
+    opacity:0; visibility:hidden; transform:translateY(4px);
+    transition:opacity .13s ease, transform .13s ease; z-index:60; pointer-events:none;
+  }
+  .hs-place.hs-tip::before {
+    content:""; position:absolute; left:34px; bottom:calc(100% + 3px);
+    border:6px solid transparent; border-top-color:#1a1f2c;
+    opacity:0; visibility:hidden; transition:opacity .13s ease; z-index:60; pointer-events:none;
+  }
+  .hs-place.hs-tip:hover::after, .hs-place.hs-tip:hover::before { opacity:1; visibility:visible; transform:translateY(0); }
   .hs-grouphead { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#5b6573; margin:8px 0 2px; padding:0 12px; display:flex; align-items:center; gap:6px; }
   .hs-grouphead--hidden { color:#475569; }
   .hs-count { background:#eef0f4; color:#5b6573; border-radius:999px; padding:0 6px; font-size:10px; font-weight:700; }
@@ -1219,82 +1240,6 @@
   }
   .frame-chip button:hover { background: #f4f6fa; color: #1a1f2c; }
   .frame-chip button.on { background: #1a1f2c; color: #fff; }
-
-  /* ============ ICON SYSTEM — five principled directions ============ */
-  /* Back-office chrome only (rail + project menu). NO tenant brand here — colours are BO
-     palette or neutral. "current" keeps the real GoVocal set; the five directions each take a
-     complete stance: one icon family at role-appropriate emphasis, ONE active idiom per
-     surface, and a shared keyline so the menu icons sit on the same vertical axis as the
-     timeline dots below. A Material glyph is injected as the last child of each [data-gv-icon]
-     host (inheriting its colour + active state); CSS shows one layer per direction. */
-  .msym {
-    font-family: 'Material Symbols Outlined'; font-weight: 400; font-style: normal; line-height: 1;
-    letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; direction: ltr;
-    -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  }
-  .icx-host > .msym { display: none; }                 /* hidden until a non-current direction */
-  .icx-host.is-side > .msym { font-size: 20px; }
-  .icx-host.is-rail > .msym { font-size: 23px; }
-  .icx-host.is-mini > .msym { font-size: 18px; }
-  body:not([data-icx="current"]) .icx-host > .gv-icon { display: none; }
-  body:not([data-icx="current"]) .icx-host > .msym { display: inline-block; }
-
-  /* SHARED KEYLINE — pull the menu rows in so each icon's CENTRE lands on x≈17px, the timeline
-     dot centre below (both lists share the same px-3 origin). The menu icons and the phase dots
-     then sit on one vertical axis and labels line up with the phase titles. text-led has no
-     menu icons, so it is excluded; active-tile sizes its own cell (below). */
-  body[data-icx]:not([data-icx="current"]):not([data-icx="textled"]) .side-item { padding-left: 7px; }
-  body[data-icx]:not([data-icx="current"]):not([data-icx="textled"]):not([data-icx="activetile"]) .icx-host.is-side { width: 20px; justify-content: center; }
-
-  /* A · QUIET — outline neutral menu, filled icon-only rail; active = the row-bar only (no box) */
-  body[data-icx="quiet"] .icx-host.is-rail > .msym { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-
-  /* B · TEXT-LED — drop the labelled menu icons entirely; the icon-only rail keeps its OWN real
-     GoVocal glyphs (an icon-only rail must have icons, and the committed look should use the
-     authentic set, not the Material stand-ins the other directions explore with). */
-  body[data-icx="textled"] .icx-host.is-side { display: none; }
-  body[data-icx="textled"] .icx-host.is-rail > .gv-icon,
-  body[data-icx="textled"] .icx-host.is-mini > .gv-icon { display: inline-block; }
-  body[data-icx="textled"] .icx-host.is-rail > .msym,
-  body[data-icx="textled"] .icx-host.is-mini > .msym { display: none; }
-
-  /* C · STATEFUL — outline + neutral everywhere at rest (rail too); the active destination /
-     section is the ONLY thing that fills + takes BO teal. One law: fill = selected. */
-  body[data-icx="stateful"] .side-item.active .icx-host.is-side > .msym,
-  body[data-icx="stateful"] .gv-bo-nav__item.is-active .icx-host.is-rail > .msym { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
-  body[data-icx="stateful"] .side-item.active .icx-host.is-side > .msym { color: #147985; }
-
-  /* D · MONOCHROME — one neutral ink, zero brand colour; surface-aware (dark-on-light menu,
-     light-on-dark rail). Active is shown by STRUCTURE only — the row-bar / the rail tile. */
-  body[data-icx="mono"] .icx-host.is-side > .msym,
-  body[data-icx="mono"] .side-item.active .icx-host.is-side > .msym { color: #2a2e44; }
-  body[data-icx="mono"] .icx-host.is-rail > .msym { color: #aab6c8; }
-  body[data-icx="mono"] .gv-bo-nav__item.is-active .icx-host.is-rail > .msym { color: #ffffff; }
-
-  /* E · ACTIVE-TILE — bare neutral icons; the active menu item sits in a small BO-navy tile and
-     the row-bar is dropped, so the white menu and the navy rail share ONE active idiom. */
-  body[data-icx="activetile"] .icx-host.is-side { width: 24px; justify-content: center; }
-  body[data-icx="activetile"] .side-item.active { background: transparent; }
-  body[data-icx="activetile"] .side-item.active .icx-host.is-side { height: 24px; border-radius: 7px; background: #044D6C; }
-  body[data-icx="activetile"] .side-item.active .icx-host.is-side > .msym { color: #fff; font-size: 17px; font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-
-  /* ICON explorer chip — bottom-centre; the option name sits on its own line above the
-     numbers so the buttons never shift as you step through (per the switcher-chip rule). */
-  .icon-chip { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 31;
-    display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
-  .icon-chip__name { pointer-events: auto; font-size: 10.5px; font-weight: 700; color: #1a1f2c; background: #fff;
-    border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; white-space: nowrap;
-    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04); }
-  .icon-chip__name .k { color: #5b6573; letter-spacing: .06em; text-transform: uppercase; margin-right: 7px; }
-  .icon-chip__name .w { color: #5b6573; font-weight: 500; }
-  .icon-chip__row { pointer-events: auto; display: inline-flex; gap: 3px; padding: 3px 5px; background: #fff;
-    border: 1px solid var(--border); border-radius: 999px;
-    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04); }
-  .icon-chip__row button { min-width: 22px; padding: 4px 8px; border-radius: 999px; color: #4b5563; font-weight: 600;
-    font-size: 10.5px; transition: background .12s ease, color .12s ease; }
-  .icon-chip__row button:hover { background: #f4f6fa; }
-  .icon-chip__row button.on { background: #1a1f2c; color: #fff; }
 
   /* ============ Empty state ghost placeholders ============ */
   .ghost-slot {
@@ -2119,8 +2064,10 @@
       <div class="flex-1 overflow-y-auto px-3 py-4">
 
         <!-- Project page — always shown (acts as "back to project" when on a phase) -->
+        <!-- Text-led project menu (committed direction): no icons — labels carry the meaning.
+             The icon-only blue rail keeps its icons (it has no labels). Explorer with all the
+             icon directions lives on parallel-editor-builder-v2. -->
         <div class="side-item active" data-view="project" onclick="setView('project', this)">
-          <span class="side-ic" data-gv-icon="home" aria-hidden="true"></span>
           <span class="flex-1">Project page</span>
           <svg id="project-chevron" class="nav-icon" style="width:14px;height:14px;color:#5b6573;transition:transform .15s ease;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
@@ -2128,24 +2075,19 @@
         <!-- Project utilities — hidden on phase view (original side nav) -->
         <div id="project-utilities">
           <div id="audience-nav" class="side-item">
-            <span class="side-ic" data-gv-icon="group" aria-hidden="true"></span>
             Audience
           </div>
           <div class="side-item">
-            <span class="side-ic" data-gv-icon="email" aria-hidden="true"></span>
             Messaging
           </div>
           <div class="side-item">
-            <span class="side-ic" data-gv-icon="calendar" aria-hidden="true"></span>
-            Events
+            <span class="flex-1">Events</span>
             <span class="badge-2 ml-auto">2</span>
           </div>
           <div class="side-item">
-            <span class="side-ic" data-gv-icon="comments" aria-hidden="true"></span>
             Input 360
           </div>
           <div class="side-item" data-view="settings" onclick="setView('settings', this)">
-            <span class="side-ic" data-gv-icon="settings" aria-hidden="true"></span>
             Settings
           </div>
         </div>
@@ -3849,85 +3791,11 @@
   <button data-state="complex" class="on" onclick="setProjectState('complex', this)">Complex</button>
 </div>
 
-<!-- v3 has no hidden-survey switcher — it commits to the "Link only" meta line (v2 #3). -->
+<!-- v3 has no hidden-survey switcher — it commits to the "Not on the project page" treatment (v2 #4). -->
 
 <!-- Empty state is locked in (timeline panel + phone scaffold); the explorer pickers
      live on the v2 prototype only. -->
 
-<!-- ============ ICON treatment explorer — bottom-centre ============ -->
-<div class="icon-chip" role="group" aria-label="Icon treatment">
-  <div class="icon-chip__name"><span class="k">Icons</span><b id="icon-chip-name">Current set</b><span class="w" id="icon-chip-why"> — mixed fill &amp; stroke</span></div>
-  <div class="icon-chip__row" id="icon-chip-row"></div>
-</div>
-<script>
-(function () {
-  // Five principled directions for the back-office nav (rail + project menu) + a baseline.
-  // #1 keeps the real GoVocal set; A–E each take one complete stance (see CSS). BO palette
-  // only — no tenant brand here.
-  const TREATS = [
-    { k: 'current',    name: 'Current set',    why: ' — real GoVocal icons, today (baseline)' },
-    { k: 'quiet',      name: 'A · Quiet keyline', why: ' — outline menu, filled rail, neutral; bar = active' },
-    { k: 'textled',    name: 'B · Text-led',   why: ' — no menu icons; the rail keeps them' },
-    { k: 'stateful',   name: 'C · Stateful',   why: ' — outline; fill = the selected item (BO teal)' },
-    { k: 'mono',       name: 'D · Monochrome', why: ' — one neutral ink, no colour; structure = active' },
-    { k: 'activetile', name: 'E · Active tile', why: ' — bare icons; active sits in a BO-navy tile' },
-  ];
-  // GoVocal icon name -> Material Symbols ligature. (Input 360 was a vague speech-bubble; "hub"
-  // reads as the 360° aggregation of input across phases.)
-  const MAP = {
-    home: 'home', group: 'group', email: 'mail', calendar: 'calendar_month', comments: 'hub', settings: 'settings',
-    'admin-dashboard': 'monitoring', 'admin-projects': 'apartment', 'admin-input': 'forum', 'admin-users': 'group',
-    'admin-messaging': 'mail', 'admin-reporting': 'bar_chart', 'admin-community': 'diversity_3', 'admin-inspiration': 'lightbulb',
-    'admin-tools': 'build', 'admin-pages': 'description', 'admin-settings': 'settings', 'admin-notifications': 'notifications',
-    'admin-support': 'help', 'admin-back': 'arrow_back', user: 'account_circle', 'chevron-right': 'chevron_right',
-  };
-  function ctx(el) {
-    if (el.classList.contains('side-ic')) return 'is-side';
-    if (el.classList.contains('gv-bo-nav__icon')) return 'is-rail';
-    return 'is-mini';
-  }
-  function inject() {
-    document.querySelectorAll('.gv-bo-side [data-gv-icon], .side-ic[data-gv-icon]').forEach(function (el) {
-      if (el.dataset.icxDone) return;
-      const m = MAP[el.getAttribute('data-gv-icon')];
-      if (!m) return;
-      el.classList.add('icx-host', ctx(el));
-      const s = document.createElement('span');
-      s.className = 'msym'; s.textContent = m; s.setAttribute('aria-hidden', 'true');
-      el.appendChild(s);              // runs after govocal-icons render (window load) so it survives
-      el.dataset.icxDone = '1';
-    });
-  }
-  const row = document.getElementById('icon-chip-row');
-  const nameEl = document.getElementById('icon-chip-name');
-  const whyEl = document.getElementById('icon-chip-why');
-  let cur = 0;
-  function set(i) {
-    cur = (i + TREATS.length) % TREATS.length;
-    const t = TREATS[cur];
-    document.body.setAttribute('data-icx', t.k);
-    nameEl.textContent = t.name;
-    whyEl.textContent = t.why;
-    [].forEach.call(row.children, function (b, j) { b.classList.toggle('on', j === cur); });
-  }
-  TREATS.forEach(function (t, i) {
-    const b = document.createElement('button');
-    b.textContent = (i + 1) % 10;     // 1..9, 0 — fixed glyphs, no shifting label
-    b.title = t.name; b.setAttribute('aria-label', t.name);
-    b.onclick = function () { set(i); };
-    row.appendChild(b);
-  });
-  document.body.setAttribute('data-icx', 'current');   // set immediately → no first-paint flash
-  document.addEventListener('keydown', function (e) {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key === 'ArrowRight') set(cur + 1);
-    else if (e.key === 'ArrowLeft') set(cur - 1);
-  });
-  function start() { inject(); set(2); }   // land on B · Text-led (the chosen direction); chip still flips for comparison
-  if (document.readyState === 'complete') start();
-  else window.addEventListener('load', start);
-})();
-</script>
 
 <script>
   const _timelineCardOriginal = null;
@@ -4006,7 +3874,7 @@
 
     return `
       <div class="pp-fo">
-        <div class="pp-fo__banner pp-edit" data-edit="hero"><img src="assets/img/${complex ? 'square' : 'street-trees'}.webp" alt="" loading="lazy" /></div>
+        <div class="pp-fo__banner pp-edit" data-edit="hero"><img src="assets/img/${complex ? 'square' : 'street-trees'}.webp" alt="" loading="lazy" /><button class="gv-btn primary size-s pp-fo__follow" type="button" aria-pressed="true" onclick="event.stopPropagation();var on=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',String(on));this.querySelector('.pp-fo__follow-lbl').textContent=on?'Following (9)':'Follow (8)';"><span data-gv-icon="notification" aria-hidden="true"></span> <span class="pp-fo__follow-lbl">Following (9)</span></button></div>
         <div class="pp-fo__pad">
           <!-- Edit zones mirror the content-builder WIDGETS one-to-one (data-edit =
                the builder's data-widget): Title · Text · Participation/About box ·
@@ -4197,13 +4065,15 @@
     sc.classList.toggle('has-stuck-bar', stick);
   }
 
-  // ── Survey not added to the project ("Link only" — v2 explorer option 3) ────
+  // ── Survey not added to the project ("Not on the project page" — v2 explorer option 4) ──
   // "School survey" is created but not added to the project — reachable only by its direct
-  // URL. v3 is locked to one neutral treatment (the "Link only" meta line): the lifecycle
-  // dot is untouched (placement is orthogonal to active/future/past) and a calm meta line
-  // says how people reach it. No switcher here — see v2 for the full approach explorer.
-  // renderComplexExtras/phoneExtras still carry v2's other cases but only ever see 3.
-  window.ppHidden = 3;
+  // URL. v3 is locked to one treatment (the dashed ring on the real lifecycle dot + a "Not
+  // on the project page" tag): the dot keeps its colour (placement is orthogonal to
+  // active/future/past) and the tag spells the placement out. The tag carries a hover
+  // explaining the fix — add it from the project's Content Builder. No switcher here — see
+  // v2 for the full approach explorer; renderComplexExtras/phoneExtras carry v2's other
+  // cases but only ever see 4.
+  window.ppHidden = 4;
   const HS_SVG = {
     eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
     link:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
@@ -4259,7 +4129,7 @@
       case 4: { // Dashed ring on the REAL dot — placement ⟂ lifecycle. The ring is drawn
         // outside the dot's 10px layout box (::after) so these rows stay aligned with plain
         // rows. Shown on an active (green) AND a future (white) survey for contrast.
-        const place = '<span class="hs-place">Not on the project page</span>';
+        const place = '<span class="hs-place hs-tip" data-tip="Created but not shown on the project page. Add it from the project’s Content Builder to make it visible to residents.">Not on the project page</span>';
         body = askus
           + hsRow({ phase:'schools', dot:'live hs-ring', name:'School survey', dates:`20 May–5 Jun · ${place}` })
           + hsRow({ dot:'upcoming hs-ring', name:'Market-day poll', dates:`15–17 Aug · ${place}` })
