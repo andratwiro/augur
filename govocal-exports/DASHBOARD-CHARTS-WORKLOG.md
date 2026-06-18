@@ -55,12 +55,31 @@ Read this at the start of each loop; append after each iteration.
   stretched viewBox yields ellipses (x-scale≈0.64, y-scale≈0.93); needs a non-distorting
   approach (overlay SVG with normal aspect, or compute dot px positions). Next loop.
 
+### Loop 3 — 2026-06-18 — Faithful line dot markers (r=3, line colour)
+- Real recharts draws a filled `r=3` dot in the line colour at every data point
+  (recharts-line-dot, n=135). The page's line SVG uses `preserveAspectRatio="none"`, which
+  squashes inline `<circle>`s into ellipses.
+- **Solution:** render dots as CSS-positioned round elements (`.ch-dots i`, 6px, border-radius
+  50%, `background: var(--ch-line)`) overlaid on the 130px svg area. `%` left/top map to the
+  same 600×120 viewBox coords as the polyline (`left = i/(n-1)*100%`,
+  `top = (112 - v/top*100)/1.2 %`), so dots stay perfectly round at any width and align
+  exactly with the line. Added to both JS renderers (`lineSVG` + `comboSVG`).
+- **Verify:** page-only change → no verify:all. lint ✓. Eyeball ✓ — round teal dots trace
+  each point on Registrations/Participants/Inputs/Comments/Reactions lines.
+- **Deploy:** yes.
+
 ## Next gaps (priority)
-1. Line dot markers (r=3 filled, line colour) at each data point — do WITHOUT distortion
-   (the stretched viewBox turns circles into ellipses; render dots in a normal-aspect overlay
-   or as px-positioned nodes). Then exact y-axis tick count/values per chart.
-2. Gridline COLOUR grounding: real DOM has horizontal grid `#f5f5f5` (n=53) vs axis/vert
+1. Static line SVGs (Emails 2-colour line ~L256, Visitors traffic line ~L325): add matching
+   dots + confirm they want them (Emails is a sparse 2-series; recheck real). Lower priority.
+2. Exact y-axis tick COUNT/values per chart vs real (real left axis = 5 ticks; confirm the
+   numbers, and whether combo charts show a right axis for the bars).
+3. Gridline COLOUR grounding: real DOM has horizontal grid `#f5f5f5` (n=53) vs axis/vert
    `#EBEDEF` (n=43) — currently all use `--gv-chart-grid` (#EBEDEF). Split if real charts do.
+4. Horizontal-bar charts: bar height, value-label colour (`.ch-hval` navy vs grey? re-probe),
+   x-axis scale ticks.
+5. Donut + pie + stacked-bar: segment colours (#057ABE/#5FC4E8/#0080A5… family), sizes, legend.
+6. Per-tab parity (Users, Visitors, Representativeness empty-state, feed tables).
+7. SPA `<body data-gv-screen>` IIFE for tab switching (review overlay) — side-task.
 3. Horizontal-bar charts: bar height (real recharts-bar-rectangle dims), value-label colour
    (is `.ch-hval` navy or grey in real product? — re-probe), x-axis scale ticks.
 4. Donut + pie + stacked-bar: segment colours (the #057ABE/#5FC4E8/#0080A5… family above),

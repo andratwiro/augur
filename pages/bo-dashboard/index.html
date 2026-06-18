@@ -109,7 +109,13 @@
     /* Line-chart frame: y-axis scale + chart area + month axis along the bottom. */
     .ch-line { display: grid; grid-template-columns: 22px 1fr; gap: 6px; margin-top: 6px; }
     .ch-yaxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); height: 130px; }
-    .ch-plot { min-width: 0; }
+    .ch-plot { min-width: 0; position: relative; }
+    /* Line dot markers — recharts draws a filled r=3 dot (line colour) at each point.
+       Rendered as CSS-positioned circles overlaid on the 130px svg area so they stay
+       perfectly round (the svg itself uses preserveAspectRatio=none, which would
+       squash inline <circle>s into ellipses). %-coords map to the 600x120 viewBox. */
+    .ch-dots { position: absolute; top: 0; left: 0; width: 100%; height: 130px; pointer-events: none; }
+    .ch-dots i { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--ch-line); }
     .ch-axis { display: flex; justify-content: space-between; margin-top: 4px; padding: 0 2px; }
     .ch-axis span { font-size: var(--gv-fs-13); color: var(--gv-chart-axis); }
     .db-donutwrap { display: flex; align-items: center; gap: 22px; flex-wrap: nowrap; }
@@ -429,9 +435,11 @@
         `<line x1="${(i / (n - 1) * 600).toFixed(1)}" y1="12" x2="${(i / (n - 1) * 600).toFixed(1)}" y2="112" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`).join("");
       const yaxis = ticks.slice().reverse().map(v => `<span>${v}</span>`).join("");
       const axis = XMONTHS.map(m => `<span>${m}</span>`).join("");
+      const dots = vals.map((v, i) => `<i style="left:${(i / (n - 1) * 100).toFixed(2)}%;top:${((112 - v / top * 100) / 1.2).toFixed(2)}%"></i>`).join("");
       return `<div class="ch-line"><div class="ch-yaxis">${yaxis}</div>
         <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
         ${grid}<polyline points="${pts}" fill="none" stroke="var(--ch-line)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
+        <div class="ch-dots">${dots}</div>
         <div class="ch-axis">${axis}</div></div></div>`;
     }
     // Combo line+bar (Inputs/Comments/Reactions): navy bars (per-month, right axis)
@@ -444,8 +452,10 @@
       const rects = bv.map((v, i) => { const h = v / btop * 96, x = i / (n - 1) * 600 - bw / 2; return `<rect x="${Math.max(0, x).toFixed(1)}" y="${(112 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="var(--ch-bar)"/>`; }).join("");
       const pts = lv.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / top * 100).toFixed(1)}`).join(" ");
       const axis = XMONTHS.map(m => `<span>${m}</span>`).join("");
+      const dots = lv.map((v, i) => `<i style="left:${(i / (n - 1) * 100).toFixed(2)}%;top:${((112 - v / top * 100) / 1.2).toFixed(2)}%"></i>`).join("");
       return `<div class="ch-line"><div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
         ${grid}${rects}<polyline points="${pts}" fill="none" stroke="var(--ch-line)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
+        <div class="ch-dots">${dots}</div>
         <div class="ch-axis">${axis}</div></div></div>`;
     }
     function barsH(json) {
