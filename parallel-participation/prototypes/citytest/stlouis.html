@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Reimagining Fairground Park — City of St. Louis</title>
+  <link rel="stylesheet" href="assets/govocal-tokens.css" />
+  <link rel="stylesheet" href="assets/govocal-ui.css" />
+  <!-- Pin to a real tenant theme (City of St. Louis = 4): real logo, colours, font. -->
+  <script>(function(){try{var u=new URL(location.href);if(!u.searchParams.has('theme')){u.searchParams.set('theme','4');history.replaceState({},'',u);}}catch(e){}})();</script>
+  <script src="assets/govocal-themes.js" defer></script>
+  <script src="assets/govocal-icons.js" defer></script>
+  <script src="assets/govocal-avatars.js" defer></script>
+  <script src="assets/govocal-partbar.js" defer></script>
+  <!--
+    CITY TEST B — City of St. Louis · PRIMARY + SECONDARY (clear hierarchy).
+    One loud primary method (Share your idea) + quieter parallel methods (outlined) +
+    one off-timeline extra-survey card (secondary button, so it doesn't fight the primary).
+    The participation bar reinforces the primary. Tests whether the filled/outlined
+    hierarchy reads as "this is the main thing; the rest are optional."
+    Real tenant branding via govocal-themes.js; page-local (.pp-*) is layout only.
+  -->
+  <style>
+    body { margin: 0; background: #fff; }
+    main { padding-bottom: 8px; }
+    .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 20px; }
+    .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pp-head { padding: 30px 0 40px; }
+    .pp-head h1 { margin: 14px 0 16px; }
+    .pp-row { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 10px 40px; align-items: start; }
+    .pp-cta { display: flex; flex-direction: column; gap: 20px; }
+    .pp-cta .gv-participants { display: flex; justify-content: center; }
+    .pp-intro { margin: 0; }
+    .pp-ideas { max-width: 720px; display: flex; flex-direction: column; gap: 14px; }
+    @media (max-width: 760px) {
+      .pp-row { grid-template-columns: 1fr; }
+      .pp-cta { margin-bottom: 22px; }
+    }
+  </style>
+</head>
+<body class="gv-root gv-shell" data-gv-theme-picker="off" data-gv-cookies="off">
+
+  <header class="gv-header sticky">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" data-gv-logo aria-label="City of St. Louis — Home"></a>
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#">Home</a></li>
+          <li><a class="gv-nav__link" href="#">All projects</a></li>
+          <li><a class="gv-nav__link" href="#">Proposals</a></li>
+          <li><a class="gv-nav__link" href="#">Events</a></li>
+        </ul>
+      </nav>
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
+        <a class="gv-btn secondary-outlined size-s gv-desktop-only" href="#">Log in</a>
+        <details class="gv-nav-m">
+          <summary aria-label="Show navigation menu">
+            <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
+            <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
+          </summary>
+          <nav class="gv-nav-m__panel" aria-label="Main navigation (mobile)">
+            <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
+            <a href="#" aria-current="page">Home</a><a href="#">All projects</a><a href="#">Proposals</a><a href="#">Events</a>
+            <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Log in</a>
+          </nav>
+        </details>
+      </div>
+    </div>
+  </header>
+
+  <main>
+   <div class="gv-wrap">
+    <section class="pp-banner" aria-label="Project banner">
+      <img src="assets/img/park-people.webp" alt="Residents enjoying Fairground Park" loading="lazy" />
+    </section>
+
+    <div class="pp-head">
+      <h1 class="gv-title h1">Reimagining Fairground Park</h1>
+
+      <div class="pp-row">
+        <div class="gv-projdesc pp-intro">
+          <p>Fairground Park is getting a refresh, and the first step is your ideas. <strong>Tell us what you'd love to see</strong> — for play, the lake, sports, shade or events — and react to what your neighbors suggest.</p>
+          <p>The most-supported ideas move on to the design phase. There are a couple of other ways to get involved too, but adding an idea is the main thing right now.</p>
+        </div>
+        <div class="pp-cta">
+          <!-- Participation box — ONE loud primary, parallel methods are quiet outlines -->
+          <div class="gv-pbox">
+            <div class="gv-pbox__actions">
+              <a class="gv-btn primary full" href="#ideas">Share your idea</a>
+              <a class="gv-btn secondary-outlined full" href="#ideas">See the 71 ideas</a>
+              <a class="gv-btn secondary-outlined full" href="#">Volunteer for a clean-up day</a>
+            </div>
+            <div class="gv-participants gv-pbox__people" style="margin-top:4px;">
+              <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
+              <span class="gv-pcount">71 contributions</span>
+              <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
+            </div>
+          </div>
+          <!-- Off-timeline extra survey — secondary button so it stays under the primary -->
+          <div class="gv-extra-survey gv-extra-survey--card">
+            <span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> Survey</span>
+            <h3 class="gv-extra-survey__title">Accessibility check-in</h3>
+            <p class="gv-extra-survey__desc">A short survey on how easy the park is to get around. Open all summer · 5 minutes.</p>
+            <a class="gv-btn secondary-outlined full" href="#">Take the survey</a>
+          </div>
+        </div>
+      </div>
+    </div>
+   </div>
+
+   <!-- Participation bar — reinforces the PRIMARY action -->
+   <div class="gv-partbar">
+     <div class="gv-partbar__inner">
+       <span class="gv-partbar__status">Open for participation</span>
+       <a class="gv-btn on-color" href="#ideas">Share your idea <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+     </div>
+   </div>
+
+   <div class="gv-methodband">
+    <div class="gv-wrap">
+     <section class="gv-phases" aria-labelledby="phasesTitle">
+       <div class="gv-phases__bar"><h2 id="phasesTitle">Phases</h2></div>
+       <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"></div>
+       <div class="gv-phasepanel" id="phasepanel"></div>
+       <div class="gv-phasebody gv-phasebody--full" id="phasebody">
+         <div id="ideas">
+           <h2 class="gv-feed__count" style="margin:0 0 14px;">71 ideas</h2>
+           <div class="pp-ideas" id="idealist"></div>
+         </div>
+       </div>
+     </section>
+    </div>
+   </div>
+
+   <div class="gv-wrap">
+     <section class="gv-section" aria-labelledby="ev-title" style="padding-top:40px;">
+       <div class="gv-events__head"><h2 class="gv-title h2" id="ev-title" style="margin:0">Events</h2></div>
+       <div class="gv-events__grid">
+         <article class="gv-event-card bordered">
+           <div class="gv-event-card__media"><img src="assets/img/workshop.webp" alt="Community design workshop" loading="lazy" /></div>
+           <div class="gv-event-card__body">
+             <div class="gv-event-card__titlerow">
+               <span class="gv-event-card__date is-beside"><span class="m">Jun</span><span class="d">25</span><span class="y">2026</span></span>
+               <h3 class="gv-event-card__title"><a href="#">Fairground Park design workshop</a></h3>
+             </div>
+             <div class="gv-event-card__meta">
+               <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 25 Jun 2026 · 6:30 – 8:00 PM</p>
+               <p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> Fairground Park Rec Center</p>
+             </div>
+             <a class="gv-btn primary full" href="#">Register</a>
+           </div>
+         </article>
+       </div>
+     </section>
+   </div>
+  </main>
+
+  <footer class="gv-footer">
+    <div class="gv-footer__inner">
+      <nav class="gv-footer__links" aria-label="Legal"><ul>
+        <li><a href="#">Terms and conditions</a></li>
+        <li><a href="#">Privacy policy</a></li>
+        <li><a href="#">Accessibility statement</a></li>
+      </ul></nav>
+      <div class="gv-footer__powered"><span>Powered by</span>
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal"><img class="gv-powered-logo" src="assets/govocal-logo.svg" alt="Go Vocal" /></a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    const PHASES = [
+      { name: 'Share your ideas', dates: 'Jun 1 – Jul 20, 2026', status: 'current', method: 'ideation',
+        description: 'Add your ideas for the park and react to others. The most-supported ideas move on to the design phase.' },
+      { name: 'Shortlist & design', dates: 'Aug – Sep 2026', status: 'upcoming', method: 'information',
+        description: 'We group the ideas, share a shortlist, and turn the favorites into a draft design.' },
+      { name: 'Final vote', dates: 'Oct 2026', status: 'upcoming', method: 'voting',
+        description: 'Residents vote on the shortlisted design options for the park.' },
+    ];
+    const CURRENT = PHASES.findIndex(p => p.status === 'current');
+    const IDEAS = [
+      { title: 'Restore the lake and add a boardwalk', author: 'Andre Williams', time: '3 weeks ago', likes: 63, comments: 12, img: 'assets/img/park.webp' },
+      { title: 'Keep the big open lawn for cookouts and games', author: 'Tanya Brooks', time: '2 weeks ago', likes: 47, comments: 7, img: 'assets/img/group.webp' },
+      { title: 'More shade trees and seating along the paths', author: 'Miguel Santos', time: '11 days ago', likes: 35, comments: 5, img: 'assets/img/avenue.webp' },
+    ];
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    function ideaHTML(d) {
+      const initials = d.author.split(' ').map(w => w[0]).slice(0,2).join('');
+      return `<article class="gv-ideacard">
+        <div class="gv-ideacard__thumb"><img src="${d.img}" alt="" loading="lazy" /></div>
+        <div class="gv-ideacard__body">
+          <h3 class="gv-ideacard__title"><a href="#">${esc(d.title)}</a></h3>
+          <div class="gv-ideacard__head"><span class="gv-ideacard__avatar" aria-hidden="true">${esc(initials)}</span>
+            <div><div class="gv-ideacard__meta"><span class="gv-ideacard__author">${esc(d.author)}</span><span class="gv-ideacard__sep" aria-hidden="true">&bull;</span><span class="gv-ideacard__time">${esc(d.time)}</span></div></div></div>
+          <footer class="gv-ideacard__foot">
+            <div class="gv-react"><button class="gv-react__btn" aria-label="Like"><span data-gv-icon="vote-up"></span></button><span class="gv-react__count">${d.likes}</span><button class="gv-react__btn" aria-label="Dislike"><span data-gv-icon="vote-down"></span></button></div>
+            <span class="gv-react__comment"><span data-gv-icon="comments"></span>${d.comments}</span>
+          </footer>
+        </div></article>`;
+    }
+    const stepperEl = document.getElementById('stepper');
+    const panelEl = document.getElementById('phasepanel');
+    const ideasWrap = document.getElementById('ideas');
+    document.getElementById('idealist').innerHTML = IDEAS.map(ideaHTML).join('');
+    let active = CURRENT;
+    function renderStepper() {
+      stepperEl.innerHTML = PHASES.map((p, i) => {
+        const isCurrent = i === CURRENT, dot = isCurrent ? '<span class="gv-pstep__dot"></span>' : '';
+        return `<button class="gv-phase${isCurrent ? ' current' : ''}" role="tab" data-i="${i}" aria-selected="${i === active}"><span class="gv-pstep">${dot}${i + 1}</span><span class="gv-phase__label">${p.name}</span></button>`;
+      }).join('');
+      stepperEl.querySelectorAll('.gv-phase').forEach(b => b.addEventListener('click', () => setPhase(+b.dataset.i)));
+    }
+    function setPhase(i) {
+      active = i; const p = PHASES[i], isCurrent = i === CURRENT;
+      stepperEl.querySelectorAll('.gv-phase').forEach(b => b.setAttribute('aria-selected', String(+b.dataset.i === i)));
+      panelEl.innerHTML = `<div class="gv-phasepanel__head${isCurrent ? '' : ' muted'}"><span class="gv-phasepanel__num" aria-hidden="true">${i + 1}</span><div><h3 class="gv-phasepanel__name">${p.name}</h3><p class="gv-phasepanel__date">${p.dates}</p></div></div><div class="gv-phasepanel__desc"><p>${p.description}</p></div>`;
+      ideasWrap.style.display = isCurrent ? '' : 'none';
+      if (window.GVIcons) window.GVIcons.render();
+    }
+    renderStepper(); setPhase(CURRENT);
+    if (window.GVIcons) window.GVIcons.render();
+  </script>
+</body>
+</html>
