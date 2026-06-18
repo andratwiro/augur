@@ -16,14 +16,16 @@
     /* Users splits the content column: a canvas-grey rail flush against the white content
        (measured: .e2e-left-panel bg #EDEFF0 / padding 55px 20px 10px; content on white). */
     .us-split { display: flex; align-items: stretch; min-height: calc(100vh - 0px); }
-    .us-rail { width: 300px; flex: none; box-sizing: border-box; background: var(--gv-bo-canvas); padding: 55px 20px 16px; display: flex; flex-direction: column; }
-    .us-railitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 44px; padding: 12px 0 12px 12px; border-radius: 3px; color: var(--gv-bo-primary); font-size: var(--gv-fs-base); text-decoration: none; cursor: pointer; }
+    .us-rail { width: 290px; flex: none; box-sizing: border-box; background: var(--gv-bo-canvas); padding: 28px 20px 16px; display: flex; flex-direction: column; }
+    /* Tighter, even rhythm — the real rail rows sit ~38px with a small gap, not the
+       airy 44px we had (measured r8-users). */
+    .us-railitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 38px; padding: 8px 10px 8px 12px; border-radius: 3px; color: var(--gv-bo-primary); font-size: var(--gv-fs-base); text-decoration: none; cursor: pointer; }
     .us-railitem:hover { background: rgba(4, 77, 108, 0.05); }
     .us-railitem.is-active { background: rgba(4, 77, 108, 0.08); }
     .us-railitem__count { margin-left: auto; color: var(--gv-bo-primary); font-size: var(--gv-fs-base); }
     .us-smarticon { width: 14px; height: 14px; margin-right: 6px; color: var(--gv-bo-primary); flex: none; }
-    .us-raildiv { border: 0; border-top: 1px solid var(--gv-divider); margin: 12px 0; width: 100%; }
-    .us-groupshead { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 8px; padding: 0 12px; }
+    .us-raildiv { border: 0; border-top: 1px solid var(--gv-divider); margin: 14px 0; width: 100%; }
+    .us-groupshead { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 6px; padding: 0 12px; }
     .us-groupshead h2 { margin: 0; font-size: var(--gv-fs-xl); font-weight: 600; color: var(--gv-bo-primary); }
     /* Add-group = secondary-outlined button forced to a 42px circle (real: 1px cool-grey-600). */
     .us-addgroup.gv-btn { width: 42px; height: 42px; min-width: 0; padding: 8px; border-radius: 50%; }
@@ -49,6 +51,23 @@
     .us-person span span { line-height: 1.35; }
     .us-assigned .gv-icon { width: 13px; height: 13px; }
 
+
+    /* ── The registered-users table is the SHARED .gv-bo-table.is-list (same
+       component as the Projects list). The Users page only sizes its person rows,
+       enlarges the avatar and uppercases the headers (measured r8-users), and pins
+       column widths so cells spread instead of bunching to the right. ──────────── */
+    .us-table { table-layout: fixed; }
+    .us-table thead th { text-transform: uppercase; letter-spacing: 0.01em; }
+    .us-table .us-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .us-table tbody td { height: 71px; }
+    .us-table .gv-bo-table__avatar { width: 38px; height: 38px; }
+    .us-table col.us-col-check  { width: 44px; }
+    .us-table col.us-col-name   { width: 32%; }
+    .us-table col.us-col-role   { width: 21%; }
+    .us-table col.us-col-active { width: 14%; }
+    .us-table col.us-col-joined { width: 15%; }
+    .us-table col.us-col-opts   { width: 56px; }
+    .us-table .us-rolecell > span:first-child { white-space: nowrap; }
 
     /* ── Sub-view view-swapping: only the active state shows ──────────── */
     .us-view { display: none; }
@@ -169,14 +188,18 @@
               <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search users"><span class="gv-icon" data-gv-icon="search"></span></span>
             </div>
 
-            <table class="gv-bo-table is-people">
+            <table class="gv-bo-table is-list us-table">
+              <colgroup>
+                <col class="us-col-check"><col class="us-col-name"><col class="us-col-role">
+                <col class="us-col-active"><col class="us-col-joined"><col class="us-col-opts">
+              </colgroup>
               <thead>
                 <tr>
                   <th class="gv-bo-table__check"></th>
-                  <th class="gv-bo-th--sort is-sorted">Name</th>
+                  <th class="gv-bo-th--sort">Name</th>
                   <th>Role</th>
                   <th>Last active</th>
-                  <th class="gv-bo-th--sort">Joined <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th class="gv-bo-th--sort is-sorted">Joined <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
                   <th>Options</th>
                 </tr>
               </thead>
@@ -308,14 +331,18 @@
               <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search members"><span class="gv-icon" data-gv-icon="search"></span></span>
             </div>
 
-            <table class="gv-bo-table is-people">
+            <table class="gv-bo-table is-list us-table">
+              <colgroup>
+                <col class="us-col-check"><col class="us-col-name"><col class="us-col-role">
+                <col class="us-col-active"><col class="us-col-joined"><col class="us-col-opts">
+              </colgroup>
               <thead>
                 <tr>
                   <th class="gv-bo-table__check"></th>
-                  <th class="gv-bo-th--sort is-sorted">Name</th>
+                  <th class="gv-bo-th--sort">Name</th>
                   <th>Role</th>
                   <th>Last active</th>
-                  <th class="gv-bo-th--sort">Joined <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th class="gv-bo-th--sort is-sorted">Joined <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
                   <th>Options</th>
                 </tr>
               </thead>
