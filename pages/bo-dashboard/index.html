@@ -72,7 +72,9 @@
     .db-stat__lbl.db-stat__top { color: var(--gv-bo-primary); }
     .db-stat__lbl b { color: var(--gv-text-secondary); font-weight: 700; }
     /* Card split: stat/number block on the left, chart on the right. */
-    .db-split { display: grid; grid-template-columns: minmax(150px, 320px) 1fr; gap: 24px; align-items: start; }
+    /* Stat block (left, narrow) + chart (right, fills). minmax(0,1fr) lets the chart
+       shrink with its container so the month axis never crams (Visitors bug fix). */
+    .db-split { display: grid; grid-template-columns: minmax(130px, 190px) minmax(0, 1fr); gap: 24px; align-items: start; }
     .db-statgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; }
     .db-bigblock { padding-top: 4px; }
     .db-split__chart { min-width: 0; }
@@ -325,8 +327,8 @@
           </div>
           <div class="gv-bo-chartcard db-span-12" data-chart="pie" data-title="Traffic sources"
                data-pie='[["Direct entry (100%)",100,"var(--ch-blue)"]]'></div>
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="0,0,0,0,0,0,0,0,0,0,0,0" data-title="Registrations" data-lbl="Total registrations" data-big="0" data-sub="Last 30 days <b>0</b><br>Registration rate <b>0%</b>" data-series="New registrations"></div>
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="0,1,1,2,3,4,5,6,7,9,10,11" data-title="Participants" data-lbl="Total participants" data-big="11" data-sub="Last 30 days <b>0</b><br>Participation rate <b>37%</b>" data-series="Participants"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="0,0,0,0,0,0,0,0,0,0,0,0" data-title="Registrations" data-lbl="Total registrations" data-big="0" data-sub="Last 30 days: <b>0</b>" data-lbl2="Registration rate" data-big2="0%" data-sub2="Last 30 days: <b>0%</b>" data-series="New registrations"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="0,1,1,2,3,4,5,6,7,9,10,11" data-title="Participants" data-lbl="Total participants" data-big="11" data-sub="Last 30 days: <b>0</b>" data-lbl2="Participation rate" data-big2="37%" data-sub2="Last 30 days: <b>0%</b>" data-series="Participants"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="pie" data-title="Language"
                data-pie='[["EN (98%)",98,"var(--ch-blue)"],["ES-ES (2%)",2,"var(--ch-teal)"]]'></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="pie" data-title="Device Types"
@@ -480,8 +482,12 @@
         const t = card.dataset.chart, title = card.dataset.title;
         let body = "";
         if (t === "line") {
+          const statBlock = (lbl, num, sub, mt) =>
+            `<div class="db-bignum"${mt ? ' style="margin-top:16px"' : ""}><span class="db-bignum__lbl">${lbl || ""}</span><span class="db-bignum__big">${num}</span><span class="db-bignum__sub">${sub || ""}</span></div>`;
+          // Optional second stacked stat group (e.g. Visitors → Registration/Participation rate).
           const big = card.dataset.big
-            ? `<div class="db-bignum"><span class="db-bignum__lbl">${card.dataset.lbl || ""}</span><span class="db-bignum__big">${card.dataset.big}</span><span class="db-bignum__sub">${card.dataset.sub || ""}</span></div>`
+            ? statBlock(card.dataset.lbl, card.dataset.big, card.dataset.sub) +
+              (card.dataset.big2 ? statBlock(card.dataset.lbl2, card.dataset.big2, card.dataset.sub2, true) : "")
             : (card.dataset.num ? `<div class="db-bignum">${card.dataset.num}</div>` : "");
           const lineColors = ["var(--ch-line)", "var(--ch-teal)", "var(--ch-red)"];
           const chart = `${lineSVG(card.dataset.points)}<div class="ch-legend">${(card.dataset.series || "").split(" · ").map((s, i) => `<span><i style="background:${lineColors[i] || "var(--ch-blue)"}"></i>${s}</span>`).join("")}</div>`;
