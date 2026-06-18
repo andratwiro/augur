@@ -164,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.52";
+const UI_VERSION = "0.53";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1440,7 +1440,9 @@ const PRIMITIVES_SKIN = `${FONT_CSS}
     body.gv-root > .gv-gallery { position: relative; z-index: 1; }
     body.gv-root .gv-sidenav { top: 26px; }
     /* The inner section-nav is chrome, not a themed primitive — keep its active/hover
-       state the rail's neutral grey, never the city's tenant colour. */
+       state the rail's neutral grey and its type the rail's Inter, never the city's
+       tenant colour or font. */
+    body.gv-root .gv-sidenav { font-family: "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
     body.gv-root .gv-sidenav a:hover { background: rgba(16,17,26,0.05); color: #0e0f12; }
     body.gv-root .gv-sidenav a.is-active {
       background: rgba(16,17,26,0.07); color: #0e0f12; font-weight: 600;
@@ -1448,12 +1450,25 @@ const PRIMITIVES_SKIN = `${FONT_CSS}
     body.gv-root .gv-card {
       border: 1px solid rgba(16,17,26,0.07);
       box-shadow: 0 12px 30px -18px rgba(16,24,40,0.22);
-    }`;
+    }
+    /* Folderbar title, matching Opportunities/Components/Pages (PAGE_CSS isn't loaded
+       in the gallery, so the shell's --vars are inlined as literals here). */
+    body.gv-root .folderbar { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font-family: "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body.gv-root .folderbar__title { font-size: 15px; font-weight: 600; letter-spacing: -0.014em; margin: 0; color: #16171a; white-space: nowrap; }
+    body.gv-root .folderbar__count { flex: none; font-size: 12px; font-weight: 560; color: #6b7280; background: #f3f4f7; border: 1px solid rgba(16,17,26,0.09); border-radius: 999px; padding: 1px 8px; }
+    body.gv-root .folderbar__rule { flex: 1; height: 0; border-top: 1px dashed rgba(16,17,26,0.15); margin-left: 2px; }`;
 
 /** Inject the nav + the Primitives skin (light, matches the shell) into the gallery. */
 function injectPrimitives(html) {
   const withNav = injectNav(html, "primitives");
-  return withNav.replace(/<\/head>/i, `  <style>${PRIMITIVES_SKIN}</style>\n</head>`);
+  const skinned = withNav.replace(/<\/head>/i, `  <style>${PRIMITIVES_SKIN}</style>\n</head>`);
+  // Swap the gallery's hero <h1> for the shell's folderbar title so Primitives reads
+  // consistently with Opportunities / Components / Pages. Count = section-nav links.
+  const sectionCount = (html.match(/<a href="#[^"]+"/g) || []).length;
+  return skinned.replace(
+    /<h1 class="gv-title h2">[^<]*<\/h1>/i,
+    `<header class="folderbar"><h1 class="folderbar__title">Primitives</h1><span class="folderbar__count">${sectionCount}</span><span class="folderbar__rule"></span></header>`
+  );
 }
 
 // Right-click menu for prototype cards (Figma-style). Acts on any card carrying
@@ -2058,7 +2073,7 @@ function renderPagesIndex(pages) {
     title: "Pages",
     activeTab: "pages",
     wrapClass: "wrap--wide",
-    body: `${cards}${pendingSection}${filterEmpty()}`,
+    body: `<header class="folderbar"><h1 class="folderbar__title">Pages</h1><span class="folderbar__count">${pages.length}</span><span class="folderbar__rule"></span></header>${cards}${pendingSection}${filterEmpty()}`,
   });
 }
 
@@ -2102,7 +2117,7 @@ function renderComponentsIndex(components) {
     title: "Components",
     activeTab: "components",
     wrapClass: "wrap--wide",
-    body: `<p class="section-eyebrow" style="margin-bottom:26px">Reusable building blocks</p><table class="comp-table">
+    body: `<header class="folderbar"><h1 class="folderbar__title">Components</h1><span class="folderbar__count">${components.length}</span><span class="folderbar__rule"></span></header><table class="comp-table">
       <thead><tr><th>Preview</th><th>Component</th><th>What it is</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>${filterEmpty()}`,
