@@ -100,15 +100,13 @@
     .us-tab.first { border-radius: 3px 0 0 3px; }
     .us-tab.last { border-radius: 0 3px 3px 0; border-left: 0; }
     .us-tab.is-selected { background: var(--gv-bo-primary); color: var(--gv-white); border-color: var(--gv-bo-primary); }
-    /* The seat-count row inside seats overview sits in a 1px #CBCBCB outlined band. */
-    .us-seatband { display: flex; flex-wrap: wrap; gap: 28px; align-items: center; margin: 18px 0; padding: 16px 20px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); }
-    /* Seats table: header bg #FCFCFC = var(--gv-grey-50), 1px #E0E0E0 borders, navy text. */
-    .us-seatstable { width: 100%; border-collapse: collapse; font-size: var(--gv-fs-s); color: var(--gv-bo-primary); border: 1px solid var(--gv-divider); }
-    .us-seatstable thead th { text-align: left; font-weight: 700; padding: 14px 16px; background: var(--gv-grey-50); border-bottom: 1px solid var(--gv-divider); }
-    .us-seatstable tbody td { padding: 14px 16px; border-bottom: 1px solid var(--gv-divider); vertical-align: middle; }
-    .us-seatstable tbody tr:last-child td { border-bottom: 0; }
+    /* Seats overview table = the SHARED .gv-bo-table.is-bordered (white rounded card),
+       the same component family as the registered-users / Projects tables — measured
+       r8-users-seats (no seat-count band, just the bordered table card under the tabs). */
+    .us-seatcard { margin-top: 18px; background: var(--gv-white); border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); overflow: hidden; }
+    .us-seatcard .gv-bo-table tbody tr:last-child td { border-bottom: 0; }
+    .us-seatcard .gv-bo-table tbody tr:hover { background: transparent; }
     .us-pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: var(--gv-fs-13); }
-    .us-pill.is-accepted { background: var(--gv-teal-100); color: var(--gv-teal-700); }
     .us-pill.is-pending { background: var(--gv-grey-200); color: var(--gv-cool-grey-600); }
 
     /* Group sub-view header actions. */
@@ -292,23 +290,19 @@
               <button class="us-tab last" role="tab" aria-selected="false" data-seattab="moderator">Managers</button>
             </div>
 
-            <div class="us-seatband">
-              <span class="us-seatsummary__item"><span class="gv-icon" data-gv-icon="shield"></span>Total admin seats (1)</span>
-              <span class="us-seatsummary__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Assigned seats: 0</span>
-              <span class="us-seatsummary__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Available seats: 1</span>
+            <div class="us-seatcard">
+              <table class="gv-bo-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Invite status</th>
+                    <th>Options</th>
+                  </tr>
+                </thead>
+                <tbody id="seatrows"></tbody>
+              </table>
             </div>
-
-            <table class="us-seatstable">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Role</th>
-                  <th>Invite status</th>
-                  <th>Options</th>
-                </tr>
-              </thead>
-              <tbody id="seatrows"></tbody>
-            </table>
           </div>
 
           <!-- ═══ VIEW: Single group (members table) ═══ -->
@@ -427,20 +421,21 @@
     ];
     document.getElementById("grouprows").innerHTML = GROUP_MEMBERS.map(personRow).join("");
 
-    // Seats overview table — Admins tab (one admin seat assigned to the account owner).
+    // Seats overview table — Admins tab (one admin seat, the account owner). Measured
+    // r8-users-seats: role is "Platform admin" + an "Assigned items" disclosure; the
+    // accepted owner shows NO invite-status pill (a pending invitee would).
+    // [name, email, role, status(accepted|pending), face]
     const SEATS = [
-      ["Go Vocal Admin", "admin@govocal.com", "Administrator", "accepted", 8],
+      ["Go Vocal Admin", "admin@govocal.com", "Platform admin", "accepted", 8],
     ];
     document.getElementById("seatrows").innerHTML = SEATS.map(s => {
       const [name, email, role, status, face] = s;
       const f = String(face).padStart(2, "0");
-      const pill = status === "accepted"
-        ? `<span class="us-pill is-accepted">Accepted</span>`
-        : `<span class="us-pill is-pending">Pending</span>`;
+      const invite = status === "pending" ? `<span class="us-pill is-pending">Pending</span>` : "";
       return `<tr>
-        <td><span class="us-person"><img class="gv-bo-table__avatar" src="../../skills/govocal-ui/avatars/face-${f}.jpg" alt=""><span><span class="us-name">${name}</span><span class="us-email">${email}</span></span></span></td>
-        <td>${role}</td>
-        <td>${pill}</td>
+        <td><span class="us-person"><img class="gv-bo-table__avatar" src="../../skills/govocal-ui/avatars/face-${f}.jpg" alt=""><span><a class="us-name" href="#">${name}</a><span class="us-email">${email}</span></span></span></td>
+        <td><span class="us-rolecell"><span style="color:var(--gv-bo-primary);line-height:1.3">${role}</span><span class="us-assigned">Assigned items <span class="gv-icon" data-gv-icon="chevron-down"></span></span></span></td>
+        <td>${invite}</td>
         <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td></tr>`;
     }).join("");
 
