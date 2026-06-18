@@ -255,10 +255,26 @@
         wrap.querySelectorAll('label').forEach(function (l) { l.classList.toggle('on', +l.dataset.val <= v); });
       }
       if (e.target.classList.contains('sv-rank__select')) {
-        var sel = e.target, val = sel.value, list = sel.closest('.sv-rank');
-        if (val) { list.querySelectorAll('.sv-rank__select').forEach(function (o) { if (o !== sel && o.value === val) o.value = ''; }); }
+        var sel = e.target, val = +sel.value, list = sel.closest('.sv-rank'), li = sel.closest('li');
+        if (val) {
+          // Picking a rank moves that option to the chosen slot, then renumbers the
+          // whole list — ranking one item auto-orders the rest (1..N by position).
+          var others = [].slice.call(list.children).filter(function (n) { return n !== li; });
+          var ref = others[val - 1];
+          if (ref) list.insertBefore(li, ref); else list.appendChild(li);
+          rankRenumber(list);
+        }
       }
     });
+
+    // Set every rank <select> to its 1-based position in the list. Called after a drag
+    // reorder or an explicit rank pick so position == rank, with no gaps or duplicates.
+    function rankRenumber(list) {
+      [].slice.call(list.children).forEach(function (row, i) {
+        var s = row.querySelector('.sv-rank__select');
+        if (s) s.value = String(i + 1);
+      });
+    }
 
     var dragEl = null;
     bodyEl.addEventListener('dragstart', function (e) { var li = e.target.closest('.sv-rank li'); if (li) { dragEl = li; e.dataTransfer.effectAllowed = 'move'; } });
@@ -270,6 +286,7 @@
         e.preventDefault(); li.classList.remove('drag-over');
         var list = li.parentNode, items = [].slice.call(list.children);
         if (items.indexOf(dragEl) < items.indexOf(li)) li.after(dragEl); else li.before(dragEl);
+        rankRenumber(list);
       }
     });
     bodyEl.addEventListener('dragend', function () { dragEl = null; bodyEl.querySelectorAll('.drag-over').forEach(function (n) { n.classList.remove('drag-over'); }); });
