@@ -2457,7 +2457,7 @@
       <a class="gv-brand" href="#" data-gv-logo aria-label="City home"></a>
       <nav class="gv-nav" aria-label="Primary">
         <ul class="gv-nav__list">
-          <li><a class="gv-nav__link" href="#">Home</a></li>
+          <li><a class="gv-nav__link" href="#" onclick="closeFO();openHome();return false;">Home</a></li>
           <li><a class="gv-nav__link" href="#" aria-current="page">All projects</a></li>
           <li><a class="gv-nav__link" href="#">Events</a></li>
         </ul>
@@ -2561,6 +2561,451 @@
     </div>
   </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     VIEW: Front-office PLATFORM HOMEPAGE (Meridian). Opened by the admin rail's
+     "To platform" arrow. This is the resident-facing home of the loop:
+        editor  →  ⟵ To platform  →  HOMEPAGE
+        homepage  →  click the project card  →  PROJECT PAGE (#view-fo, complex)
+        project page  →  Edit project  →  back to the editor.
+     The "Open to participation" row is the design study: ten cards, ALL the same
+     project (Reimagine Meridian 2030), each a different way to show that several
+     participation methods are open AT ONCE — the problem the single-method
+     countdown card can't express. Half keep a countdown, half drop it. Every
+     card drives the loop into the project page. Built from canonical .gv-*
+     primitives; the .ppv-* classes are the per-variant card treatments only.
+     Themes to the real city tenant (not the BO teal) like #view-fo. ════════════ -->
+<style>
+  #view-home { position: fixed; inset: 0; z-index: 60; background: #fff; display: none; flex-direction: column; overflow: hidden; }
+  #view-home .homeview-header { flex: 0 0 auto; }
+  #view-home .homeview-header .gv-nav-m { display: none !important; }
+  #view-home .homeview-scroller { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; }
+
+  /* ── Hero — a tenant-coloured gradient panel (self-contained, no image asset),
+       so the homepage re-skins per ?theme= along with the rest of the loop. ──── */
+  #view-home .hh-hero { position: relative; color: var(--gv-white); overflow: hidden;
+    background:
+      radial-gradient(120% 140% at 88% -10%, color-mix(in srgb, var(--gv-tenant-secondary, var(--gv-tenant-primary)) 90%, #000) 0%, transparent 55%),
+      linear-gradient(150deg, var(--gv-tenant-primary) 0%, color-mix(in srgb, var(--gv-tenant-primary) 62%, #11151f) 100%); }
+  #view-home .hh-hero__inner { max-width: 760px; margin: 0 auto; padding: 76px 24px 84px; text-align: center; }
+  #view-home .hh-eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 18px; padding: 6px 14px;
+    border: 1px solid rgba(255,255,255,.32); border-radius: 999px; font-size: var(--gv-fs-s); font-weight: 600; letter-spacing: .01em; }
+  #view-home .hh-eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: var(--gv-green-400, #5fd08a); box-shadow: 0 0 0 4px color-mix(in srgb, var(--gv-green-400, #5fd08a) 35%, transparent); }
+  #view-home .hh-hero__title { margin: 0 0 16px; font-size: clamp(30px, 4.4vw, 46px); line-height: 1.08; font-weight: 800; letter-spacing: -.02em; color: var(--gv-white); }
+  #view-home .hh-hero__lead { margin: 0 auto 26px; max-width: 560px; font-size: var(--gv-fs-l); line-height: 1.55; color: rgba(255,255,255,.92); }
+  #view-home .hh-hero__cta { display: inline-flex; align-items: center; gap: 9px; padding: 13px 22px; border-radius: 999px;
+    background: var(--gv-white); color: var(--gv-tenant-primary); font-weight: 700; font-size: var(--gv-fs-base); text-decoration: none;
+    box-shadow: 0 10px 26px rgba(10,14,22,.22); transition: transform .14s ease, box-shadow .14s ease; }
+  #view-home .hh-hero__cta:hover { transform: translateY(-1px); box-shadow: 0 14px 32px rgba(10,14,22,.28); }
+  #view-home .hh-hero__cta [data-gv-icon] { width: 16px; height: 16px; }
+  #view-home .hh-hero__stat { margin-top: 24px; font-size: var(--gv-fs-s); color: rgba(255,255,255,.85); }
+  #view-home .hh-hero__stat b { color: var(--gv-white); }
+
+  /* ── Section scaffold (layout-only — canonical type/colour) ──────────────── */
+  #view-home .hh-section { max-width: 1180px; margin: 0 auto; padding: 44px 24px 8px; }
+  #view-home .hh-section__head { margin: 0 0 4px; }
+  #view-home .hh-section__head h2 { margin: 0; }
+  #view-home .hh-section__sub { margin: 6px 0 22px; color: var(--gv-text-secondary); font-size: var(--gv-fs-base); max-width: 660px; line-height: 1.5; }
+  #view-home .hh-rail { display: flex; gap: 18px; overflow-x: auto; padding: 6px 4px 22px; scroll-snap-type: x proximity; }
+  #view-home .hh-rail > * { scroll-snap-align: start; }
+
+  /* ── Variant card shell — the comparison cards. All share this frame; only the
+       .ppv__meta region differs per treatment. ─────────────────────────────── */
+  #view-home .ppv { position: relative; flex: 0 0 296px; width: 296px; display: flex; flex-direction: column;
+    background: var(--gv-white); border: 1px solid var(--gv-grey-200); border-radius: 14px; overflow: hidden;
+    cursor: pointer; text-align: left; transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease; }
+  #view-home .ppv:hover { border-color: color-mix(in srgb, var(--gv-tenant-primary) 55%, var(--gv-grey-200)); box-shadow: 0 12px 30px rgba(16,22,34,.10); transform: translateY(-2px); }
+  #view-home .ppv:focus-visible { outline: 3px solid color-mix(in srgb, var(--gv-tenant-primary) 60%, transparent); outline-offset: 2px; }
+  #view-home .ppv__thumb { position: relative; aspect-ratio: 16/9; background: var(--gv-grey-100); overflow: hidden; }
+  #view-home .ppv__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #view-home .ppv__tag { position: absolute; top: 10px; left: 10px; z-index: 2; display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 9px; border-radius: 7px; background: rgba(13,18,28,.82); color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+  #view-home .ppv__tag b { font-weight: 800; }
+  #view-home .ppv__tag span { font-weight: 500; opacity: .85; }
+  #view-home .ppv__body { display: flex; flex-direction: column; gap: 12px; padding: 15px 16px 17px; flex: 1 1 auto; }
+  #view-home .ppv__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.28; color: var(--gv-text-heading-strong, var(--gv-text-primary)); }
+  #view-home .ppv__title a { color: inherit; text-decoration: none; }
+  #view-home .ppv:hover .ppv__title a { color: var(--gv-tenant-primary); }
+  #view-home .ppv__meta { margin-top: auto; display: flex; flex-direction: column; gap: 9px; }
+  #view-home .ppv__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 4px; }
+  #view-home .ppv__parts { display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+  #view-home .ppv__parts b { color: var(--gv-text-primary); font-weight: 700; }
+  #view-home .ppv__go { font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-tenant-primary); white-space: nowrap; }
+  #view-home .ppv .gv-icon, #view-home .ppv [data-gv-icon] { flex: none; }
+
+  /* tiny shared atoms used across several treatments */
+  #view-home .ppv .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--gv-grey-400); }
+  #view-home .ppv .dot.live { background: var(--gv-green-500, #2f9e57); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gv-green-500, #2f9e57) 22%, transparent); }
+  #view-home .ppv .mi { width: 16px; height: 16px; color: var(--gv-tenant-primary); }
+
+  /* V1 — soonest deadline + overflow count */
+  #view-home .ppv__status { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary); }
+  #view-home .ppv__status [data-gv-icon] { width: 15px; height: 15px; color: var(--gv-tenant-primary); }
+  #view-home .ppv__overflow { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+
+  /* V2 / V9 — per-method rows */
+  #view-home .ppv__rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+  #view-home .ppv__rows li { display: flex; align-items: center; gap: 9px; font-size: var(--gv-fs-s); color: var(--gv-text-primary); }
+  #view-home .ppv__rows .name { font-weight: 600; }
+  #view-home .ppv__rows .t { margin-left: auto; font-size: 12px; color: var(--gv-text-secondary); }
+  #view-home .ppv__rows .t.urgent { color: var(--gv-red-600, #c8442e); font-weight: 700; }
+  #view-home .ppv__rows .livetag { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--gv-green-700, #1e7c3a); }
+
+  /* V3 — segmented method bar (colour paired with a labelled legend → not colour-only) */
+  #view-home .ppv__segbar { display: flex; gap: 3px; height: 9px; border-radius: 6px; overflow: hidden; }
+  #view-home .ppv__segbar i { display: block; }
+  #view-home .ppv__seglegend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--gv-text-secondary); }
+  #view-home .ppv__seglegend span { display: inline-flex; align-items: center; gap: 6px; }
+  #view-home .ppv__seglegend .k { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  #view-home .ppv .s1 { background: var(--gv-tenant-primary); }
+  #view-home .ppv .s2 { background: color-mix(in srgb, var(--gv-tenant-primary) 56%, #fff); }
+  #view-home .ppv .s3 { background: color-mix(in srgb, var(--gv-tenant-primary) 28%, #fff); }
+  #view-home .ppv__cap { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--gv-text-secondary); }
+  #view-home .ppv__cap [data-gv-icon] { width: 14px; height: 14px; color: var(--gv-tenant-primary); }
+
+  /* V4 — method chips with one urgency badge */
+  #view-home .ppv__chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  #view-home .ppv__chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
+    background: var(--gv-grey-100); color: var(--gv-text-primary); font-size: 12.5px; font-weight: 600; }
+  #view-home .ppv__chip [data-gv-icon] { width: 14px; height: 14px; color: var(--gv-tenant-primary); }
+  #view-home .ppv__chip i { font-style: normal; margin-left: 2px; padding: 1px 6px; border-radius: 999px; font-size: 11px; font-weight: 800;
+    background: var(--gv-red-600, #c8442e); color: #fff; }
+
+  /* V5 — schedule / agenda (dates, no relative countdown) */
+  #view-home .ppv__agenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  #view-home .ppv__agenda li { display: flex; align-items: center; gap: 9px; font-size: var(--gv-fs-s); color: var(--gv-text-primary); }
+  #view-home .ppv__agenda .name { font-weight: 600; }
+  #view-home .ppv__agenda .when { margin-left: auto; font-size: 12px; color: var(--gv-text-secondary); }
+
+  /* V6 — count badge */
+  #view-home .ppv__count { font-size: 15px; color: var(--gv-text-primary); }
+  #view-home .ppv__count b { font-size: 30px; font-weight: 800; line-height: 1; margin-right: 8px; color: var(--gv-tenant-primary); vertical-align: -2px; }
+  #view-home .ppv__methodicons { display: flex; gap: 8px; }
+  #view-home .ppv__methodicons span { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px;
+    background: color-mix(in srgb, var(--gv-tenant-primary) 11%, #fff); color: var(--gv-tenant-primary); }
+  #view-home .ppv__methodicons [data-gv-icon] { width: 17px; height: 17px; }
+  #view-home .ppv__nowtag { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-green-700, #1e7c3a); }
+
+  /* V7 — overlapping method-icon cluster */
+  #view-home .ppv__cluster { display: flex; align-items: center; }
+  #view-home .ppv__cluster span { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%;
+    border: 2px solid var(--gv-white); box-shadow: 0 2px 6px rgba(16,22,34,.16); color: var(--gv-white);
+    margin-left: -8px; background-clip: padding-box; }
+  #view-home .ppv__cluster span:first-child { margin-left: 0; background: var(--gv-tenant-primary); }
+  #view-home .ppv__cluster span:nth-child(2) { background: color-mix(in srgb, var(--gv-tenant-primary) 78%, #fff); }
+  #view-home .ppv__cluster span:nth-child(3) { background: color-mix(in srgb, var(--gv-tenant-primary) 58%, #fff); }
+  #view-home .ppv__cluster [data-gv-icon] { width: 18px; height: 18px; }
+  #view-home .ppv__clusterlabel { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+  #view-home .ppv__clusterlabel b { color: var(--gv-text-primary); font-weight: 600; }
+
+  /* V8 — one dominant method, the rest folded under */
+  #view-home .ppv__dom-cta { display: inline-flex; align-items: center; gap: 9px; width: 100%; box-sizing: border-box; justify-content: center;
+    padding: 11px 14px; border-radius: 10px; background: var(--gv-tenant-primary); color: var(--gv-white); font-weight: 700; font-size: var(--gv-fs-base); }
+  #view-home .ppv__dom-cta [data-gv-icon] { width: 16px; height: 16px; }
+  #view-home .ppv__dom-more { display: block; margin-top: 9px; text-align: center; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+
+  /* V10 — in-card segmented control (interactive; CTA follows the chosen method) */
+  #view-home .ppv__tabs { display: flex; padding: 3px; gap: 3px; border-radius: 10px; background: var(--gv-grey-100); }
+  #view-home .ppv__tab { flex: 1; padding: 7px 4px; border: 0; border-radius: 7px; background: transparent; cursor: pointer;
+    font: 600 12.5px/1 var(--gv-font-family); color: var(--gv-text-secondary); }
+  #view-home .ppv__tab.is-on { background: var(--gv-white); color: var(--gv-tenant-primary); box-shadow: 0 1px 3px rgba(16,22,34,.16); }
+  #view-home .ppv__tabcta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; box-sizing: border-box;
+    padding: 10px 14px; border-radius: 10px; border: 1px solid var(--gv-tenant-primary); color: var(--gv-tenant-primary); font-weight: 700; font-size: var(--gv-fs-s); }
+
+  /* Completed row — quiet single-status cards (the old model still fits finished work) */
+  #view-home .hh-done { display: flex; gap: 18px; overflow-x: auto; padding: 6px 4px 22px; }
+  #view-home .hh-donecard { flex: 0 0 264px; width: 264px; background: var(--gv-white); border: 1px solid var(--gv-grey-200); border-radius: 14px; overflow: hidden; }
+  #view-home .hh-donecard__thumb { aspect-ratio: 16/9; background: var(--gv-grey-100); }
+  #view-home .hh-donecard__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #view-home .hh-donecard__body { padding: 14px 16px 16px; }
+  #view-home .hh-donecard__body h3 { margin: 0 0 8px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-text-primary); }
+  #view-home .hh-donecard__status { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-s); color: var(--gv-green-700, #1e7c3a); }
+  #view-home .hh-donecard__status [data-gv-icon] { width: 15px; height: 15px; }
+
+  /* Footer note */
+  #view-home .hh-foot { max-width: 1180px; margin: 18px auto 0; padding: 26px 24px 40px; border-top: 1px solid var(--gv-grey-200);
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); flex-wrap: wrap; }
+  #view-home .hh-foot__powered { display: inline-flex; align-items: center; gap: 8px; }
+  #view-home .hh-foot__powered img { height: 18px; }
+
+  @media (max-width: 620px) {
+    #view-home .ppv { flex-basis: 84vw; width: 84vw; }
+    #view-home .hh-donecard { flex-basis: 78vw; width: 78vw; }
+  }
+</style>
+
+<div id="view-home" aria-label="Meridian — platform homepage">
+  <!-- Resident-facing platform header (signed in) -->
+  <header class="gv-header homeview-header">
+    <div class="gv-header__inner">
+      <a class="gv-brand" href="#" onclick="return false;" data-gv-logo aria-label="Meridian — home"></a>
+      <nav class="gv-nav" aria-label="Primary">
+        <ul class="gv-nav__list">
+          <li><a class="gv-nav__link" href="#" aria-current="page" onclick="return false;">Home</a></li>
+          <li><a class="gv-nav__link" href="#" onclick="return false;">All projects</a></li>
+          <li><a class="gv-nav__link" href="#" onclick="return false;">Events</a></li>
+        </ul>
+      </nav>
+      <span style="flex:1 1 auto"></span>
+      <div class="gv-header__actions">
+        <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
+        <button class="gv-iconbtn" aria-label="Notifications, 3 unread"><span data-gv-icon="notification"></span><span class="gv-iconbtn__badge" aria-hidden="true">3</span></button>
+        <button class="gv-account gv-desktop-only" aria-label="Account menu" aria-haspopup="menu"><span>Rob</span><span class="gv-avatar">R</span></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="homeview-scroller">
+
+    <!-- ── Hero ── -->
+    <section class="hh-hero">
+      <div class="hh-hero__inner">
+        <span class="hh-eyebrow"><i></i> City of Meridian · engagement platform</span>
+        <h1 class="hh-hero__title">Help shape the future of Meridian</h1>
+        <p class="hh-hero__lead">From how we move to where we meet — your city is being reimagined, and several ways to take part are open right now.</p>
+        <a class="hh-hero__cta" href="#hh-open" onclick="document.getElementById('hh-open').scrollIntoView({behavior:'smooth'});return false;">See what's open <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
+        <p class="hh-hero__stat"><b>3,140</b> residents have taken part this year</p>
+      </div>
+    </section>
+
+    <!-- ── Open to participation — the ten parallel-method treatments ── -->
+    <section class="hh-section" id="hh-open" aria-labelledby="hh-open-title">
+      <div class="hh-section__head"><h2 class="gv-title h2" id="hh-open-title">Open to participation</h2></div>
+      <p class="hh-section__sub">Every card below is the <b>same</b> project — <b>Reimagine Meridian 2030</b> — running a survey, an idea collection and a vote all at the same time. Ten ways to say “several things are open at once.” Click any card to open the project.</p>
+      <div class="hh-rail" role="list" aria-label="Open projects — ten card treatments">
+
+        <!-- V1 · WITH time — soonest deadline, rest as an overflow count -->
+        <article class="ppv" role="listitem" tabindex="0" onclick="openProjectFromHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProjectFromHome();}">
+          <div class="ppv__thumb"><span class="ppv__tag"><b>V1</b><span>Soonest + more</span></span><img src="assets/img/street-trees.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+          <div class="ppv__body">
+            <h3 class="ppv__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+            <div class="ppv__meta">
+              <span class="ppv__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> Survey closes in 2 days</span>
+              <span class="ppv__overflow">+2 more ways to take part</span>
+            </div>
+            <div class="ppv__foot"><span class="ppv__parts"><span data-gv-icon="group" aria-hidden="true" style="width:15px;height:15px"></span><b>312</b>&nbsp;taking part</span><span class="ppv__go">Open project →</span></div>
+          </div>
+        </article>
+
+        <!-- V2 · WITH time — per-method rows, each with its own deadline -->
+        <article class="ppv" role="listitem" tabindex="0" onclick="openProjectFromHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProjectFromHome();}">
+          <div class="ppv__thumb"><span class="ppv__tag"><b>V2</b><span>Method rows + time</span></span><img src="assets/img/street-trees.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+          <div class="ppv__body">
+            <h3 class="ppv__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+            <div class="ppv__meta">
+              <ul class="ppv__rows">
+                <li><span class="mi" data-gv-icon="survey" aria-hidden="true"></span><span class="name">Survey</span><span class="t urgent">2 days left</span></li>
+                <li><span class="mi" data-gv-icon="idea" aria-hidden="true"></span><span class="name">Share ideas</span><span class="t">3 weeks left</span></li>
+                <li><span class="mi" data-gv-icon="vote-up" aria-hidden="true"></span><span class="name">Vote</span><span class="t">5 weeks left</span></li>
+              </ul>
+            </div>
+            <div class="ppv__foot"><span class="ppv__parts"><span data-gv-icon="group" aria-hidden="true" style="width:15px;height:15px"></span><b>312</b>&nbsp;taking part</span><span class="ppv__go">Open project →</span></div>
+          </div>
+        </article>
+
+        <!-- V3 · WITH time — segmented method bar + soonest caption -->
+        <article class="ppv" role="listitem" tabindex="0" onclick="openProjectFromHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProjectFromHome();}">
+          <div class="ppv__thumb"><span class="ppv__tag"><b>V3</b><span>Method bar</span></span><img src="assets/img/street-trees.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+          <div class="ppv__body">
+            <h3 class="ppv__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+            <div class="ppv__meta">
+              <div class="ppv__segbar" aria-hidden="true"><i class="s1" style="flex:2"></i><i class="s2" style="flex:3"></i><i class="s3" style="flex:3"></i></div>
+              <div class="ppv__seglegend"><span><i class="k s1"></i>Survey</span><span><i class="k s2"></i>Ideas</span><span><i class="k s3"></i>Vote</span></div>
+              <span class="ppv__cap"><span data-gv-icon="clock-solid" aria-hidden="true"></span> Soonest closes in 2 days</span>
+            </div>
+            <div class="ppv__foot"><span class="ppv__parts"><span data-gv-icon="group" aria-hidden="true" style="width:15px;height:15px"></span><b>312</b>&nbsp;taking part</span><span class="ppv__go">Open project →</span></div>
+          </div>
+        </article>
+
+        <!-- V4 · WITH time — method chips, one carries an urgency badge -->
+        <article class="ppv" role="listitem" tabindex="0" onclick="openProjectFromHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProjectFromHome();}">
+          <div class="ppv__thumb"><span class="ppv__tag"><b>V4</b><span>Chips + urgency</span></span><img src="assets/img/street-trees.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+          <div class="ppv__body">
+            <h3 class="ppv__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+            <div class="ppv__meta">
+              <div class="ppv__chips">
+                <span class="ppv__chip"><span data-gv-icon="survey" aria-hidden="true"></span> Survey <i>2d left</i></span>
+                <span class="ppv__chip"><span data-gv-icon="idea" aria-hidden="true"></span> Ideas</span>
+                <span class="ppv__chip"><span data-gv-icon="vote-up" aria-hidden="true"></span> Vote</span>
+              </div>
+            </div>
+            <div class="ppv__foot"><span class="ppv__parts"><span data-gv-icon="group" aria-hidden="true" style="width:15px;height:15px"></span><b>312</b>&nbsp;taking part</span><span class="ppv__go">Open project →</span></div>
+          </div>
+        </article>
+
+        <!-- V5 · WITH time — schedule/agenda with concrete end dates -->
+        <article class="ppv" role="listitem" tabindex="0" onclick="openProjectFromHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProjectFromHome();}">
+          <div class="ppv__thumb"><span class="ppv__tag"><b>V5</b><span>Schedule</span></span><img src="assets/img/street-trees.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+          <div class="ppv__body">
+            <h3 class="ppv__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+            <div class="ppv__meta">
+              <ul class="ppv__agenda">
+                <li><span class="dot live"></span><span class="name">Survey</span><span class="when">ends Thu 20 Jun</span></li>
+                <li><span class="dot live"></span><span class="name">Ideas</span><span class="when">ends 9 Jul</span></li>
+                <li><span class="dot live"></span><span class="name">Vote</span><span class="when">ends 23 Jul</span></li>
+              </ul>
+            </div>
+            <div class="ppv__foot"><span class="ppv__parts"><span data-gv-icon="group" aria-hidden="true" style="width:15px;height:15px"></span><b>312</b>&nbsp;taking part</span><span class="ppv__go">Open project →</span></div>
+          </div>
+        </article>
+
+        <!-- V6 · NO time — count badge -->
+        <article class="ppv" role="listitem" tabindex="0" onclick="openProjectFromHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProjectFromHome();}">
+          <div class="ppv__thumb"><span class="ppv__tag"><b>V6</b><span>Count badge</span></span><img src="assets/img/street-trees.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+          <div class="ppv__body">
+            <h3 class="ppv__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+            <div class="ppv__meta">
+              <div class="ppv__count"><b>3</b> ways to take part</div>
+              <div class="ppv__methodicons"><span data-gv-icon="survey" aria-label="Survey"></span><span data-gv-icon="idea" aria-label="Ideas"></span><span data-gv-icon="vote-up" aria-label="Vote"></span></div>
+              <span class="ppv__nowtag"><span class="dot live"></span> Open now</span>
+            </div>
+            <div class="ppv__foot"><span class="ppv__parts"><span data-gv-icon="group" aria-hidden="true" style="width:15px;height:15px"></span><b>312</b>&nbsp;taking part</span><span class="ppv__go">Open project →</span></div>
+          </div>
+        </article>
+
+        <!-- V7 · NO time — overlapping method-icon cluster -->
+        <article class="ppv" role="listitem" tabindex="0" onclick="openProjectFromHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProjectFromHome();}">
+          <div class="ppv__thumb"><span class="ppv__tag"><b>V7</b><span>Icon cluster</span></span><img src="assets/img/street-trees.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+          <div class="ppv__body">
+            <h3 class="ppv__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+            <div class="ppv__meta">
+              <div class="ppv__cluster" aria-hidden="true"><span data-gv-icon="survey"></span><span data-gv-icon="idea"></span><span data-gv-icon="vote-up"></span></div>
+              <span class="ppv__clusterlabel"><b>Survey, ideas &amp; voting</b> — all open</span>
+            </div>
+            <div class="ppv__foot"><span class="ppv__parts"><span data-gv-icon="group" aria-hidden="true" style="width:15px;height:15px"></span><b>312</b>&nbsp;taking part</span><span class="ppv__go">Open project →</span></div>
+          </div>
+        </article>
+
+        <!-- V8 · NO time — one dominant method, the rest folded under -->
+        <article class="ppv" role="listitem" tabindex="0" onclick="openProjectFromHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProjectFromHome();}">
+          <div class="ppv__thumb"><span class="ppv__tag"><b>V8</b><span>Dominant + more</span></span><img src="assets/img/street-trees.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+          <div class="ppv__body">
+            <h3 class="ppv__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+            <div class="ppv__meta">
+              <span class="ppv__dom-cta"><span data-gv-icon="survey" aria-hidden="true"></span> Take the mobility survey</span>
+              <span class="ppv__dom-more">+ 2 more ways to take part</span>
+            </div>
+            <div class="ppv__foot"><span class="ppv__parts"><span data-gv-icon="group" aria-hidden="true" style="width:15px;height:15px"></span><b>312</b>&nbsp;taking part</span><span class="ppv__go">Open project →</span></div>
+          </div>
+        </article>
+
+        <!-- V9 · NO time — all-live status dots -->
+        <article class="ppv" role="listitem" tabindex="0" onclick="openProjectFromHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProjectFromHome();}">
+          <div class="ppv__thumb"><span class="ppv__tag"><b>V9</b><span>All live</span></span><img src="assets/img/street-trees.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+          <div class="ppv__body">
+            <h3 class="ppv__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+            <div class="ppv__meta">
+              <ul class="ppv__rows">
+                <li><span class="dot live"></span><span class="name">Survey</span><span class="livetag">Live</span></li>
+                <li><span class="dot live"></span><span class="name">Share ideas</span><span class="livetag">Live</span></li>
+                <li><span class="dot live"></span><span class="name">Vote</span><span class="livetag">Live</span></li>
+              </ul>
+            </div>
+            <div class="ppv__foot"><span class="ppv__parts"><span data-gv-icon="group" aria-hidden="true" style="width:15px;height:15px"></span><b>312</b>&nbsp;taking part</span><span class="ppv__go">Open project →</span></div>
+          </div>
+        </article>
+
+        <!-- V10 · NO time — interactive segmented control, CTA follows the method -->
+        <article class="ppv" role="listitem" tabindex="0" onclick="openProjectFromHome()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProjectFromHome();}">
+          <div class="ppv__thumb"><span class="ppv__tag"><b>V10</b><span>In-card tabs</span></span><img src="assets/img/street-trees.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+          <div class="ppv__body">
+            <h3 class="ppv__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+            <div class="ppv__meta">
+              <div class="ppv__tabs" role="tablist" aria-label="Pick a way to take part" onclick="event.stopPropagation()">
+                <button class="ppv__tab is-on" type="button" role="tab" aria-selected="true" data-cta="Take the survey →">Survey</button>
+                <button class="ppv__tab" type="button" role="tab" aria-selected="false" data-cta="Share an idea →">Ideas</button>
+                <button class="ppv__tab" type="button" role="tab" aria-selected="false" data-cta="Cast your vote →">Vote</button>
+              </div>
+              <span class="ppv__tabcta">Take the survey →</span>
+            </div>
+            <div class="ppv__foot"><span class="ppv__parts"><span data-gv-icon="group" aria-hidden="true" style="width:15px;height:15px"></span><b>312</b>&nbsp;taking part</span><span class="ppv__go">Open project →</span></div>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ── Completed projects — the single-status card still fits finished work ── -->
+    <section class="hh-section" aria-labelledby="hh-done-title">
+      <div class="hh-section__head"><h2 class="gv-title h2" id="hh-done-title">Completed projects</h2></div>
+      <p class="hh-section__sub">When a project is finished there's only one thing to say, so the classic single-status card still works.</p>
+      <div class="hh-done">
+        <article class="hh-donecard"><div class="hh-donecard__thumb"><img src="assets/img/square.webp" alt="Meridian's Market Square" loading="lazy" /></div><div class="hh-donecard__body"><h3>A square for everyone</h3><span class="hh-donecard__status"><span data-gv-icon="check-circle" aria-hidden="true"></span> Closed · 3 weeks ago</span></div></article>
+        <article class="hh-donecard"><div class="hh-donecard__thumb"><img src="assets/img/meeting.webp" alt="Residents at a community meeting" loading="lazy" /></div><div class="hh-donecard__body"><h3>Children &amp; youth strategy</h3><span class="hh-donecard__status"><span data-gv-icon="check-circle" aria-hidden="true"></span> Closed · 7 weeks ago</span></div></article>
+        <article class="hh-donecard"><div class="hh-donecard__thumb"><img src="assets/img/workshop.webp" alt="A neighbourhood design workshop" loading="lazy" /></div><div class="hh-donecard__body"><h3>Greening the schoolyards</h3><span class="hh-donecard__status"><span data-gv-icon="check-circle" aria-hidden="true"></span> Closed · 5 months ago</span></div></article>
+      </div>
+    </section>
+
+    <div class="hh-foot">
+      <span>© City of Meridian — engagement platform</span>
+      <span class="hh-foot__powered">Powered by <img src="assets/govocal-logo.svg" alt="Go Vocal" /></span>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  /* ── Homepage ⇄ project ⇄ editor loop ─────────────────────────────────────
+     openHome() shows the platform homepage (admin rail "To platform" arrow).
+     A homepage card → openProjectFromHome() pins the complex project (Reimagine
+     Meridian 2030) and opens the real FO project page (#view-fo); its "Edit
+     project" closeFO() reveals the editor underneath — the loop closes. These
+     reach the global setProjectState()/openFO() defined in the main editor
+     script loaded above. */
+  function openHome() {
+    var v = document.getElementById('view-home');
+    if (!v) return;
+    if (window.closeFO) window.closeFO();
+    // theme the public platform to the real city tenant (like #view-fo)
+    var root = getComputedStyle(document.documentElement);
+    ['primary', 'secondary', 'text'].forEach(function (k) {
+      var val = root.getPropertyValue('--gv-tenant-' + k).trim();
+      if (val) v.style.setProperty('--gv-tenant-' + k, val);
+    });
+    v.style.display = 'flex';
+    var sc = v.querySelector('.homeview-scroller');
+    if (sc) sc.scrollTop = 0;
+    document.body.setAttribute('data-gv-screen', 'home');
+  }
+  function closeHome() {
+    var v = document.getElementById('view-home');
+    if (v) v.style.display = 'none';
+  }
+  function openProjectFromHome() {
+    closeHome();
+    // every homepage card is the same complex project — pin that state, then open FO
+    try {
+      var btn = document.querySelector('.state-chip button[data-state="complex"]');
+      if (window.setProjectState && btn) window.setProjectState('complex', btn);
+    } catch (e) {}
+    if (window.openFO) window.openFO();
+  }
+  window.openHome = openHome;
+  window.closeHome = closeHome;
+  window.openProjectFromHome = openProjectFromHome;
+
+  // V10 — segmented control: switch the card's CTA without triggering the card link.
+  (function () {
+    document.querySelectorAll('#view-home .ppv__tabs').forEach(function (tabs) {
+      var cta = tabs.parentNode.querySelector('.ppv__tabcta');
+      tabs.querySelectorAll('.ppv__tab').forEach(function (tab) {
+        tab.addEventListener('click', function (e) {
+          e.stopPropagation();
+          tabs.querySelectorAll('.ppv__tab').forEach(function (t) { t.classList.remove('is-on'); t.setAttribute('aria-selected', 'false'); });
+          tab.classList.add('is-on'); tab.setAttribute('aria-selected', 'true');
+          if (cta) cta.textContent = tab.getAttribute('data-cta');
+        });
+      });
+    });
+  })();
+
+  // Esc on the homepage returns to the editor (reveals the back office underneath).
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var v = document.getElementById('view-home');
+    if (v && v.style.display !== 'none') closeHome();
+  });
+</script>
 
 <!-- ════════ FO project-page engine — ports the canonical pages/project-page JS
      (PHASES → ribbon/stepper/panel → METHODS body, ideation feed + Leaflet map),
@@ -5143,6 +5588,8 @@
   (function () {
     function vis(el) { return el && getComputedStyle(el).display !== "none"; }
     function gvScreen() {
+      var home = document.getElementById("view-home");
+      if (vis(home)) return "home";
       var fo = document.getElementById("view-fo");
       if (vis(fo)) return "fo|" + (window.ppState || "");
       var builder = document.getElementById("view-builder");
