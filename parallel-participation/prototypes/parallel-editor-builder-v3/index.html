@@ -2277,7 +2277,7 @@
       <!-- ====== VIEW: Project page preview ====== -->
       <div id="view-project" class="preview-stage flex-1 flex items-center justify-center pt-8 pb-6 relative overflow-y-auto">
 
-        <div id="phone-wrap" class="phone-wrap cue-1">
+        <div id="phone-wrap" class="phone-wrap cue-2">
         <div id="phone" class="phone frame-phone" role="button" tabindex="0"
              aria-label="Edit the project page in the content builder"
              onclick="openBuilder()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBuilder();}">
@@ -4362,8 +4362,8 @@
      edit-cue CSS block. Hidden on non-project views (toggled in setView). -->
 <div class="cue-chip" id="cue-chip" role="group" aria-label="Edit-cue treatment">
   <span class="label">EDIT CUE</span>
-  <button data-cue="1" class="on" onclick="setEditCue(1, this)" title="Persistent CTA button on the preview">Button</button>
-  <button data-cue="2" onclick="setEditCue(2, this)" title="Clean preview; hover/focus reveals a full-surface CTA">Reveal</button>
+  <button data-cue="1" onclick="setEditCue(1, this)" title="Persistent CTA button on the preview">Button</button>
+  <button data-cue="2" class="on" onclick="setEditCue(2, this)" title="Clean preview; hover/focus reveals a full-surface CTA">Reveal</button>
   <button data-cue="3" onclick="setEditCue(3, this)" title="Editor chrome: toolbar + dashed outline at rest">Frame</button>
 </div>
 
@@ -5475,27 +5475,6 @@
       cta:'Take the survey',
       minutes:'2 min', questions:8, responses:248, closesIn:'Closes in 5 days', progress:64
     } };
-    // The 10 card-view designs, shown as a picker in the panel when format = card.
-    var CARD_VARIANTS = [
-      { id:'standard',   name:'Standard',         d:'Eyebrow, title, dates, description, full CTA.' },
-      { id:'compact',    name:'Compact',          d:'Icon + title + one-line meta. No description.' },
-      { id:'quick',      name:'Quick poll',       d:'Time + status chips up top; speed-forward.' },
-      { id:'social',     name:'Social proof',     d:'Responder avatars and a live response count.' },
-      { id:'accent',     name:'Accent stripe',    d:'Tenant side-stripe with a tinted survey icon.' },
-      { id:'banner',     name:'Banner header',    d:'Tinted SURVEY header band over the body.' },
-      { id:'deadline',   name:'Deadline',         d:'Closing pill + time-elapsed progress bar.' },
-      { id:'horizontal', name:'Icon beside text', d:'Large icon left, content right, CTA below.' },
-      { id:'detailed',   name:'Detailed stats',   d:'Time / questions / responses stat tiles.' },
-      { id:'minimal',    name:'Minimal',          d:'Borderless and quiet — title, time, CTA only.' },
-      { id:'easy',       name:'Easy read · accessible', d:'Plain words, big text, one large high-contrast button. For vulnerable audiences.' }
-    ];
-    // One picker card. Easy read is rendered as the principal option; the rest fold away.
-    function cbVarcardHTML(v) {
-      return '<button type="button" class="cb-varcard" data-variant="' + v.id + '">' +
-        '<span class="cb-varcard__radio"></span>' +
-        '<span><span class="cb-varcard__t">' + v.name + '</span>' +
-        '<span class="cb-varcard__d">' + v.d + '</span></span></button>';
-    }
     function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'mobility', format:'card', style:'primary', label:'', cardVariant:'easy' }; return SURVEY_STATE[block.id]; }
     function cbSurveyHTML(survey, format, style, label, variant) {
       if (!survey) return '<div class="cb-survey-empty"><div class="cb-survey-empty__t">📣 Survey</div><div class="cb-survey-empty__s">Select a survey to link in the panel on the right.</div></div>';
