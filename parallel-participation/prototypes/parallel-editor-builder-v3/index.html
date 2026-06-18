@@ -1223,51 +1223,59 @@
   .frame-chip button:hover { background: #f4f6fa; color: #1a1f2c; }
   .frame-chip button.on { background: #1a1f2c; color: #fff; }
 
-  /* ============ ICON treatment explorer ============ */
-  /* Re-skins every back-office nav glyph — the platform rail AND the project menu — so the
-     icon system can be compared live. "current" keeps the real GoVocal set; treatments 2–10
-     swap in Material Symbols at different fill / weight / shape axes. A Material glyph is
-     injected as the last child of each [data-gv-icon] host (so it inherits the host's colour
-     and active state); CSS shows exactly one layer per treatment. */
+  /* ============ ICON SYSTEM — five principled directions ============ */
+  /* Back-office chrome only (rail + project menu). NO tenant brand here — colours are BO
+     palette or neutral. "current" keeps the real GoVocal set; the five directions each take a
+     complete stance: one icon family at role-appropriate emphasis, ONE active idiom per
+     surface, and a shared keyline so the menu icons sit on the same vertical axis as the
+     timeline dots below. A Material glyph is injected as the last child of each [data-gv-icon]
+     host (inheriting its colour + active state); CSS shows one layer per direction. */
   .msym {
     font-family: 'Material Symbols Outlined'; font-weight: 400; font-style: normal; line-height: 1;
     letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; direction: ltr;
     -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased;
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   }
-  .icx-host > .msym { display: none; }                 /* hidden until a non-current treatment */
+  .icx-host > .msym { display: none; }                 /* hidden until a non-current direction */
   .icx-host.is-side > .msym { font-size: 20px; }
   .icx-host.is-rail > .msym { font-size: 23px; }
   .icx-host.is-mini > .msym { font-size: 18px; }
   body:not([data-icx="current"]) .icx-host > .gv-icon { display: none; }
   body:not([data-icx="current"]) .icx-host > .msym { display: inline-block; }
 
-  /* weight / family / fill axes */
-  body[data-icx="light"]  .icx-host > .msym { font-variation-settings: 'FILL' 0, 'wght' 250, 'GRAD' 0, 'opsz' 24; }
-  body[data-icx="bold"]   .icx-host > .msym { font-variation-settings: 'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24; }
-  body[data-icx="round"]  .icx-host > .msym { font-family: 'Material Symbols Rounded'; }
-  body[data-icx="sharp"]  .icx-host > .msym { font-family: 'Material Symbols Sharp'; }
-  body[data-icx="fill"]   .icx-host > .msym { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  /* SHARED KEYLINE — pull the menu rows in so each icon's CENTRE lands on x≈17px, the timeline
+     dot centre below (both lists share the same px-3 origin). The menu icons and the phase dots
+     then sit on one vertical axis and labels line up with the phase titles. text-led has no
+     menu icons, so it is excluded; active-tile sizes its own cell (below). */
+  body[data-icx]:not([data-icx="current"]):not([data-icx="textled"]) .side-item { padding-left: 7px; }
+  body[data-icx]:not([data-icx="current"]):not([data-icx="textled"]):not([data-icx="activetile"]) .icx-host.is-side { width: 20px; justify-content: center; }
 
-  /* stateful — outline at rest, fills + tenant colour on the active row/cell */
-  body[data-icx="state"] .side-item.active .icx-host > .msym,
-  body[data-icx="state"] .gv-bo-nav__item.is-active .icx-host > .msym { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
-  body[data-icx="state"] .side-item.active .icx-host.is-side > .msym { color: var(--gv-tenant-primary, #0E7C86); }
+  /* A · QUIET — outline neutral menu, filled icon-only rail; active = the row-bar only (no box) */
+  body[data-icx="quiet"] .icx-host.is-rail > .msym { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 
-  /* tinted tiles — glyph in a soft brand square (project menu) */
-  body[data-icx="tile"] .icx-host.is-side { width: 30px; height: 30px; border-radius: 8px; justify-content: center;
-    background: color-mix(in srgb, var(--gv-tenant-primary, #0E7C86) 12%, #fff);
-    border: 1px solid color-mix(in srgb, var(--gv-tenant-primary, #0E7C86) 22%, #fff); }
-  body[data-icx="tile"] .icx-host.is-side > .msym { font-size: 18px; color: var(--gv-tenant-primary, #0E7C86); }
-  body[data-icx="tile"] .side-item.active .icx-host.is-side { background: var(--gv-tenant-primary, #0E7C86); border-color: var(--gv-tenant-primary, #0E7C86); }
-  body[data-icx="tile"] .side-item.active .icx-host.is-side > .msym { color: #fff; }
+  /* B · TEXT-LED — drop the labelled menu icons; the icon-only rail keeps (and fills) its icons */
+  body[data-icx="textled"] .icx-host.is-side { display: none; }
+  body[data-icx="textled"] .icx-host.is-rail > .msym { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 
-  /* accent tiles — bold filled glyph in a square, active = full tenant fill */
-  body[data-icx="accent"] .icx-host.is-side { width: 30px; height: 30px; border-radius: 8px; justify-content: center; background: #eef1f6; }
-  body[data-icx="accent"] .icx-host.is-side > .msym { font-family: 'Material Symbols Rounded'; font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; font-size: 18px; color: #3b4255; }
-  body[data-icx="accent"] .side-item.active .icx-host.is-side { background: var(--gv-tenant-primary, #0E7C86); }
-  body[data-icx="accent"] .side-item.active .icx-host.is-side > .msym { color: #fff; }
-  body[data-icx="accent"] .gv-bo-nav__item .icx-host > .msym { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  /* C · STATEFUL — outline + neutral everywhere at rest (rail too); the active destination /
+     section is the ONLY thing that fills + takes BO teal. One law: fill = selected. */
+  body[data-icx="stateful"] .side-item.active .icx-host.is-side > .msym,
+  body[data-icx="stateful"] .gv-bo-nav__item.is-active .icx-host.is-rail > .msym { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  body[data-icx="stateful"] .side-item.active .icx-host.is-side > .msym { color: #147985; }
+
+  /* D · MONOCHROME — one neutral ink, zero brand colour; surface-aware (dark-on-light menu,
+     light-on-dark rail). Active is shown by STRUCTURE only — the row-bar / the rail tile. */
+  body[data-icx="mono"] .icx-host.is-side > .msym,
+  body[data-icx="mono"] .side-item.active .icx-host.is-side > .msym { color: #2a2e44; }
+  body[data-icx="mono"] .icx-host.is-rail > .msym { color: #aab6c8; }
+  body[data-icx="mono"] .gv-bo-nav__item.is-active .icx-host.is-rail > .msym { color: #ffffff; }
+
+  /* E · ACTIVE-TILE — bare neutral icons; the active menu item sits in a small BO-navy tile and
+     the row-bar is dropped, so the white menu and the navy rail share ONE active idiom. */
+  body[data-icx="activetile"] .icx-host.is-side { width: 24px; justify-content: center; }
+  body[data-icx="activetile"] .side-item.active { background: transparent; }
+  body[data-icx="activetile"] .side-item.active .icx-host.is-side { height: 24px; border-radius: 7px; background: #044D6C; }
+  body[data-icx="activetile"] .side-item.active .icx-host.is-side > .msym { color: #fff; font-size: 17px; font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 
   /* ICON explorer chip — bottom-centre; the option name sits on its own line above the
      numbers so the buttons never shift as you step through (per the switcher-chip rule). */
@@ -3857,23 +3865,21 @@
 </div>
 <script>
 (function () {
-  // Step through icon systems for the back-office nav (rail + project menu). #1 keeps the
-  // real GoVocal set; #2–#10 swap in Material Symbols at one coherent treatment each.
+  // Five principled directions for the back-office nav (rail + project menu) + a baseline.
+  // #1 keeps the real GoVocal set; A–E each take one complete stance (see CSS). BO palette
+  // only — no tenant brand here.
   const TREATS = [
-    { k: 'current', name: 'Current set',      why: ' — mixed fill & stroke (today)' },
-    { k: 'out',     name: 'Outline · regular', why: ' — one stroke weight, modern default' },
-    { k: 'light',   name: 'Outline · light',   why: ' — airy, lighter weight' },
-    { k: 'bold',    name: 'Outline · bold',    why: ' — sturdier, more legible' },
-    { k: 'round',   name: 'Rounded',           why: ' — soft, warmer, more civic' },
-    { k: 'sharp',   name: 'Sharp',             why: ' — geometric, precise' },
-    { k: 'fill',    name: 'Solid',             why: ' — unified filled glyphs' },
-    { k: 'state',   name: 'Stateful',          why: ' — fills + colours when active' },
-    { k: 'tile',    name: 'Tinted tiles',      why: ' — glyph in a soft brand square' },
-    { k: 'accent',  name: 'Accent tiles',      why: ' — bold filled tiles, active fills' },
+    { k: 'current',    name: 'Current set',    why: ' — real GoVocal icons, today (baseline)' },
+    { k: 'quiet',      name: 'A · Quiet keyline', why: ' — outline menu, filled rail, neutral; bar = active' },
+    { k: 'textled',    name: 'B · Text-led',   why: ' — no menu icons; the rail keeps them' },
+    { k: 'stateful',   name: 'C · Stateful',   why: ' — outline; fill = the selected item (BO teal)' },
+    { k: 'mono',       name: 'D · Monochrome', why: ' — one neutral ink, no colour; structure = active' },
+    { k: 'activetile', name: 'E · Active tile', why: ' — bare icons; active sits in a BO-navy tile' },
   ];
-  // GoVocal icon name -> Material Symbols ligature
+  // GoVocal icon name -> Material Symbols ligature. (Input 360 was a vague speech-bubble; "hub"
+  // reads as the 360° aggregation of input across phases.)
   const MAP = {
-    home: 'home', group: 'group', email: 'mail', calendar: 'calendar_month', comments: 'forum', settings: 'settings',
+    home: 'home', group: 'group', email: 'mail', calendar: 'calendar_month', comments: 'hub', settings: 'settings',
     'admin-dashboard': 'monitoring', 'admin-projects': 'apartment', 'admin-input': 'forum', 'admin-users': 'group',
     'admin-messaging': 'mail', 'admin-reporting': 'bar_chart', 'admin-community': 'diversity_3', 'admin-inspiration': 'lightbulb',
     'admin-tools': 'build', 'admin-pages': 'description', 'admin-settings': 'settings', 'admin-notifications': 'notifications',
@@ -3921,7 +3927,7 @@
     if (e.key === 'ArrowRight') set(cur + 1);
     else if (e.key === 'ArrowLeft') set(cur - 1);
   });
-  function start() { inject(); set(0); }
+  function start() { inject(); set(1); }   // land on A · Quiet (the recommended fix); #1 is the baseline
   if (document.readyState === 'complete') start();
   else window.addEventListener('load', start);
 })();
