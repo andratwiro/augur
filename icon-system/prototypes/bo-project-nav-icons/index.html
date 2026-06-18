@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Back-office nav · icon study</title>
+
+<!-- Material Symbols variable font: gives us FILL / weight / Rounded / Sharp axes —
+     the cleanest substrate for evaluating icon *treatment* (filled vs outline vs
+     rounded vs weight) as a decision. These are stand-in glyphs to judge the system,
+     not the final GoVocal artwork. Option 1 ("Current") uses the real GoVocal set. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,100..700,0..1,0&display=block');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,100..700,0..1,0&display=block');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@24,100..700,0..1,0&display=block');
+
+:root{
+  --teal:#0E7C86;            /* tenant primary / project title */
+  --teal-deep:#0A5159;
+  --navy:#15233b;            /* platform rail */
+  --navy-tile:#0b1727;       /* active rail cell */
+  --ink:#2a2e44;             /* menu labels */
+  --slate:#454c5e;           /* resting menu icon */
+  --active-bg:#e7eaf5;       /* selected menu row */
+  --badge:#15233b;
+  --line:#e7e9ee;
+  --canvas:#eef0f3;
+  --tint:color-mix(in srgb, var(--teal) 12%, #fff);
+  --tint-line:color-mix(in srgb, var(--teal) 22%, #fff);
+  font-family:'Public Sans',system-ui,sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{
+  background:#dfe2e7;
+  background-image:radial-gradient(circle at 1px 1px, #cfd3da 1px, transparent 0);
+  background-size:22px 22px;
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;min-height:100%;
+}
+
+/* study header */
+.study{padding:26px 30px 6px;}
+.study h1{font-size:15px;font-weight:700;letter-spacing:-.01em;margin:0;color:#1d2536;}
+.study p{margin:4px 0 0;font-size:13px;color:#5b6373;max-width:62ch;line-height:1.5;}
+
+/* the device: rail + project panel, cropped like the real BO */
+.stage{flex:1;display:flex;align-items:center;justify-content:center;padding:18px 30px 150px;}
+.window{
+  width:760px;height:520px;border-radius:14px;overflow:hidden;display:flex;
+  box-shadow:0 24px 60px -28px rgba(20,30,55,.45),0 2px 0 rgba(255,255,255,.6) inset;
+  background:#fff;border:1px solid #d7dbe2;
+}
+
+/* ── platform rail ───────────────────────────────────────────── */
+.rail{width:64px;background:var(--navy);display:flex;flex-direction:column;align-items:center;padding:0 0 12px;flex:none;}
+.rail__top{height:62px;width:100%;background:var(--teal-deep);display:flex;align-items:center;justify-content:center;}
+.rail__back{width:34px;height:34px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;color:#fff;border:none;cursor:pointer;}
+.rail__nav{display:flex;flex-direction:column;align-items:center;gap:5px;padding-top:12px;width:100%;}
+.rail__i{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#8fa6c4;cursor:pointer;}
+.rail__i:hover{background:rgba(255,255,255,.06);}
+.rail__i.is-active{background:var(--navy-tile);color:#48c7d6;}
+
+/* ── project panel ───────────────────────────────────────────── */
+.panel{flex:1;background:#fff;display:flex;flex-direction:column;min-width:0;}
+.phead{padding:20px 24px 14px;border-bottom:1px solid var(--line);}
+.phead__title{font-size:25px;font-weight:700;color:var(--teal);letter-spacing:-.02em;margin:0 0 10px;}
+.phead__meta{display:flex;flex-wrap:wrap;gap:18px;color:#5b6373;font-size:14px;font-weight:600;}
+.phead__meta span{display:inline-flex;align-items:center;gap:7px;}
+.phead__meta .mi{font-size:19px;color:#5b6373;}
+
+.menu{padding:14px 14px 0;overflow:auto;}
+.row{
+  display:flex;align-items:center;gap:14px;padding:11px 12px;border-radius:9px;
+  text-decoration:none;color:var(--ink);font-size:17px;font-weight:600;cursor:pointer;position:relative;
+}
+.row:hover{background:#f3f4f7;}
+.row.is-active{background:var(--active-bg);}
+.row__lb{flex:1;min-width:0;}
+.row__chev{font-size:22px;color:#7b8290;}
+.row__badge{background:var(--badge);color:#fff;font-size:13px;font-weight:700;min-width:26px;height:26px;border-radius:13px;display:flex;align-items:center;justify-content:center;padding:0 8px;}
+.divider{height:1px;background:var(--line);margin:14px 4px;}
+.sect{padding:6px 12px 4px;font-size:18px;font-weight:700;color:var(--ink);}
+
+/* icon cell holds both icon systems; CSS shows the active one */
+.ic{width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--slate);font-size:24px;}
+.row.is-active .ic{color:var(--ink);}
+.gvic{display:none;font-size:23px;}
+.gvic .gv-icon{width:1em;height:1em;}
+.msym{
+  font-family:'Material Symbols Outlined';font-weight:400;font-style:normal;line-height:1;
+  letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;
+  direction:ltr;-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased;
+  font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;
+}
+.rail .msym{font-size:24px;}
+
+/* ════════ TREATMENTS (set on .window[data-treat]) ════════ */
+/* 1 · current GoVocal set (mixed fill/stroke) */
+[data-treat="ref"] .ic .msym,[data-treat="ref"] .rail .msym{display:none;}
+[data-treat="ref"] .gvic{display:inline-flex;}
+
+/* shared: weight / family axes */
+[data-treat="light"] .ic .msym{font-variation-settings:'FILL' 0,'wght' 250,'GRAD' 0,'opsz' 24;}
+[data-treat="bold"]  .ic .msym{font-variation-settings:'FILL' 0,'wght' 600,'GRAD' 0,'opsz' 24;}
+[data-treat="round"] .ic .msym{font-family:'Material Symbols Rounded';}
+[data-treat="sharp"] .ic .msym{font-family:'Material Symbols Sharp';}
+[data-treat="fill"]  .ic .msym{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;}
+
+/* 8 · stateful — outline at rest, fills + tenant colour when active */
+[data-treat="state"] .row.is-active .ic{color:var(--teal);}
+[data-treat="state"] .row.is-active .ic .msym,
+[data-treat="state"] .rail__i.is-active .msym{font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;}
+
+/* 9 · tinted tiles — each glyph in a soft tenant-tint square */
+[data-treat="tile"] .ic{width:34px;height:34px;border-radius:9px;background:var(--tint);color:var(--teal);font-size:21px;border:1px solid var(--tint-line);}
+[data-treat="tile"] .row.is-active .ic{background:var(--teal);color:#fff;border-color:var(--teal);}
+[data-treat="tile"] .menu .row{gap:13px;}
+
+/* 10 · accent tiles — solid filled glyph in a bold square, active = full teal */
+[data-treat="accent"] .ic{width:34px;height:34px;border-radius:9px;background:#eef1f6;color:#3b4255;font-size:21px;}
+[data-treat="accent"] .ic .msym{font-family:'Material Symbols Rounded';font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;}
+[data-treat="accent"] .row.is-active .ic{background:var(--teal);color:#fff;}
+[data-treat="accent"] .rail__i.is-active .msym{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24;}
+
+/* ════════ switcher chip ════════ */
+.chip{
+  position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:50;
+  display:flex;flex-direction:column;align-items:center;gap:9px;
+}
+.chip__readout{
+  height:34px;display:flex;align-items:center;gap:9px;font-size:13px;color:#475;
+  color:#46506a;font-weight:600;background:#fff;border:1px solid #d9dde4;border-radius:8px;
+  padding:0 14px;box-shadow:0 8px 24px -14px rgba(20,30,55,.4);white-space:nowrap;
+}
+.chip__readout b{color:#15233b;font-weight:700;}
+.chip__readout .why{color:#7b8290;font-weight:500;}
+.chip__nums{display:flex;gap:4px;background:#15233b;padding:5px;border-radius:11px;box-shadow:0 12px 30px -12px rgba(20,30,55,.55);}
+.chip__nums button{
+  width:30px;height:30px;border:none;border-radius:7px;background:transparent;color:#9fb0c8;
+  font:600 13px/1 'Public Sans',sans-serif;cursor:pointer;transition:background .12s,color .12s;
+}
+.chip__nums button:hover{background:rgba(255,255,255,.08);color:#fff;}
+.chip__nums button.is-active{background:var(--teal);color:#fff;}
+.chip__hint{font-size:11px;color:#6b7383;}
+
+@media (max-width:820px){
+  .window{width:94vw;height:auto;flex-direction:column;}
+  .rail{width:100%;flex-direction:row;height:56px;padding:0 8px;}
+  .rail__top{display:none;}
+  .rail__nav{flex-direction:row;padding:0;gap:4px;overflow:auto;}
+}
+</style>
+</head>
+<body>
+
+<header class="study">
+  <h1>Back-office · project navigation — icon study</h1>
+  <p>The current set mixes filled and outlined glyphs at different weights. Step through ten coherent treatments to decide on one system. The chip drives the whole panel — menu and platform rail together.</p>
+</header>
+
+<div class="stage">
+  <div class="window" data-treat="ref">
+    <!-- platform rail -->
+    <nav class="rail" aria-label="Platform">
+      <div class="rail__top"><button class="rail__back" aria-label="Back to platform"><span class="gvic" data-gv-icon="admin-back"></span><span class="msym">arrow_back</span></button></div>
+      <div class="rail__nav">
+        <span class="rail__i" title="Dashboard"><span class="gvic" data-gv-icon="admin-dashboard"></span><span class="msym">monitoring</span></span>
+        <span class="rail__i is-active" title="Projects"><span class="gvic" data-gv-icon="admin-projects"></span><span class="msym">apartment</span></span>
+        <span class="rail__i" title="Messaging"><span class="gvic" data-gv-icon="admin-messaging"></span><span class="msym">mail</span></span>
+        <span class="rail__i" title="Users"><span class="gvic" data-gv-icon="admin-users"></span><span class="msym">group</span></span>
+        <span class="rail__i" title="Input manager"><span class="gvic" data-gv-icon="admin-input"></span><span class="msym">forum</span></span>
+        <span class="rail__i" title="Reporting"><span class="gvic" data-gv-icon="admin-reporting"></span><span class="msym">bar_chart</span></span>
+        <span class="rail__i" title="Inspiration hub"><span class="gvic" data-gv-icon="admin-inspiration"></span><span class="msym">lightbulb</span></span>
+        <span class="rail__i" title="Support"><span class="gvic" data-gv-icon="admin-support" style="color:#62c98f"></span><span class="msym" style="color:#62c98f">help</span></span>
+      </div>
+    </nav>
+
+    <!-- project panel -->
+    <section class="panel">
+      <div class="phead">
+        <h2 class="phead__title">Reimagine Meridian 2030</h2>
+        <div class="phead__meta">
+          <span><span class="ic" style="width:auto;height:auto"><span class="gvic" data-gv-icon="lock"></span><span class="msym mi">lock</span></span>Groups</span>
+          <span><span class="ic" style="width:auto;height:auto"><span class="gvic" data-gv-icon="eye"></span><span class="msym mi">visibility</span></span>Public</span>
+          <span><span class="ic" style="width:auto;height:auto"><span class="gvic" data-gv-icon="group"></span><span class="msym mi">group</span></span>38 project participants</span>
+        </div>
+      </div>
+
+      <nav class="menu" aria-label="Project">
+        <a class="row is-active">
+          <span class="ic"><span class="gvic" data-gv-icon="home"></span><span class="msym">home</span></span>
+          <span class="row__lb">Project page</span>
+          <span class="msym row__chev">expand_more</span>
+        </a>
+        <a class="row">
+          <span class="ic"><span class="gvic" data-gv-icon="group"></span><span class="msym">group</span></span>
+          <span class="row__lb">Audience</span>
+        </a>
+        <a class="row">
+          <span class="ic"><span class="gvic" data-gv-icon="email"></span><span class="msym">mail</span></span>
+          <span class="row__lb">Messaging</span>
+        </a>
+        <a class="row">
+          <span class="ic"><span class="gvic" data-gv-icon="calendar"></span><span class="msym">calendar_month</span></span>
+          <span class="row__lb">Events</span>
+          <span class="row__badge">2</span>
+        </a>
+        <a class="row">
+          <span class="ic"><span class="gvic" data-gv-icon="comments"></span><span class="msym">forum</span></span>
+          <span class="row__lb">Input 360</span>
+        </a>
+        <a class="row">
+          <span class="ic"><span class="gvic" data-gv-icon="settings"></span><span class="msym">settings</span></span>
+          <span class="row__lb">Settings</span>
+        </a>
+        <div class="divider"></div>
+        <div class="sect">Timeline</div>
+      </nav>
+    </section>
+  </div>
+</div>
+
+<div class="chip" role="group" aria-label="Icon treatment">
+  <div class="chip__readout"><b id="ro-name">Current set</b><span class="why" id="ro-why">— mixed fill &amp; stroke, the inconsistency we're fixing</span></div>
+  <div class="chip__nums" id="nums"></div>
+  <div class="chip__hint">Click a number, or use ← → / 1–9, 0</div>
+</div>
+
+<script src="govocal-icons.js" defer></script>
+<script>
+const TREATS=[
+  {k:'ref',    name:'Current set',     why:'— mixed fill & stroke, the inconsistency we’re fixing'},
+  {k:'out',    name:'Outline · regular',why:'— one stroke weight, the safe modern default'},
+  {k:'light',  name:'Outline · light', why:'— airy, elegant; risks feeling faint at 24px'},
+  {k:'bold',   name:'Outline · bold',  why:'— sturdier, more legible, more assertive'},
+  {k:'round',  name:'Rounded',         why:'— soft corners, warmer & more civic-friendly'},
+  {k:'sharp',  name:'Sharp',           why:'— geometric, precise, more “tool” than “community”'},
+  {k:'fill',   name:'Solid',           why:'— unified filled glyphs, denser and heavier'},
+  {k:'state',  name:'Stateful',        why:'— outline at rest, fills + colours when active'},
+  {k:'tile',   name:'Tinted tiles',    why:'— each glyph in a soft brand square, active goes solid'},
+  {k:'accent', name:'Accent tiles',    why:'— bold filled tiles, the most colourful, app-launcher feel'},
+];
+const win=document.querySelector('.window');
+const nums=document.getElementById('nums');
+const roName=document.getElementById('ro-name');
+const roWhy=document.getElementById('ro-why');
+let cur=0;
+
+TREATS.forEach((t,i)=>{
+  const b=document.createElement('button');
+  b.textContent=(i+1)%10;            // 1..9 then 0 — fixed glyphs, no shifting label
+  b.title=t.name;
+  b.setAttribute('aria-label',t.name);
+  b.addEventListener('click',()=>set(i));
+  nums.appendChild(b);
+});
+function set(i){
+  cur=(i+TREATS.length)%TREATS.length;
+  const t=TREATS[cur];
+  win.dataset.treat=t.k;
+  roName.textContent=t.name;
+  roWhy.textContent=t.why;
+  [...nums.children].forEach((b,j)=>b.classList.toggle('is-active',j===cur));
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight') set(cur+1);
+  else if(e.key==='ArrowLeft') set(cur-1);
+  else if(/^[0-9]$/.test(e.key)) set(e.key==='0'?9:(+e.key-1));
+});
+set(0);
+</script>
+</body>
+</html>
