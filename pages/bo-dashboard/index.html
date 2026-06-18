@@ -88,7 +88,7 @@
     .ch-hbarcell { display: flex; align-items: center; gap: 8px; }
     .ch-htrack { flex: 1; height: 15px; min-width: 0; }
     .ch-hbar { display: block; height: 100%; background: var(--ch-bar); min-width: 1px; }
-    .ch-hval { color: var(--gv-bo-primary); font-weight: 400; font-size: var(--gv-fs-xs); flex: none; }
+    .ch-hval { color: var(--gv-chart-axis); font-weight: 400; font-size: var(--gv-fs-xs); flex: none; }
     /* X-axis scale under horizontal bars. */
     .ch-haxis { display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-top: 6px; }
     .ch-haxis__scale { grid-column: 2; display: flex; justify-content: space-between; border-top: 1px solid var(--gv-grey-300); padding-top: 4px; font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); }
@@ -449,7 +449,7 @@
       const { top } = niceTicks(Math.max(...lv, 1)), btop = Math.max(...bv, 1);
       const n = lv.length, bw = 600 / n * 0.5;
       const grid = lv.map((_, i) => `<line x1="${(i / (n - 1) * 600).toFixed(1)}" y1="12" x2="${(i / (n - 1) * 600).toFixed(1)}" y2="112" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`).join("");
-      const rects = bv.map((v, i) => { const h = v / btop * 96, x = i / (n - 1) * 600 - bw / 2; return `<rect x="${Math.max(0, x).toFixed(1)}" y="${(112 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="var(--ch-bar)"/>`; }).join("");
+      const rects = bv.map((v, i) => { const h = v / btop * 96, x = i / (n - 1) * 600 - bw / 2; return `<rect x="${Math.max(0, x).toFixed(1)}" y="${(112 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="var(--ch-blue)"/>`; }).join("");
       const pts = lv.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / top * 100).toFixed(1)}`).join(" ");
       const axis = XMONTHS.map(m => `<span>${m}</span>`).join("");
       const dots = lv.map((v, i) => `<i style="left:${(i / (n - 1) * 100).toFixed(2)}%;top:${((112 - v / top * 100) / 1.2).toFixed(2)}%"></i>`).join("");

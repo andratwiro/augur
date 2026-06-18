@@ -68,18 +68,32 @@ Read this at the start of each loop; append after each iteration.
   each point on Registrations/Participants/Inputs/Comments/Reactions lines.
 - **Deploy:** yes.
 
+### Loop 4 — 2026-06-18 — Bar-chart colour grounding (combo bar fill + value labels)
+- Read real bar fills from bo-dash-overview/dom.html (recharts-rectangle paths, by `name`):
+  - Combo "Inputs" monthly bars (`name="This month"`) = **#2F478A** (blue), NOT navy. Page
+    drew combo bars in `--ch-bar` (#073F80). **Fixed** comboSVG rects → `var(--ch-blue)`.
+  - Reactions "Likes" bars = #073F80, "Dislikes" = #073f80b3 (navy @ 70%). Horizontal
+    "Participation" bars = #073F80 — page already navy (correct), left as-is.
+  - Bar value labels (recharts-label) = **#596B7A** grey (n=17, covers the ~14 bar labels;
+    #808080 n=6 is elsewhere). **Fixed** `.ch-hval` from navy `--gv-bo-primary` →
+    `var(--gv-chart-axis)`. (Reverses the loop-1 "leave hval navy" guess — DOM says grey.)
+- **NOT changed:** combo bar THICKNESS — real bar width ≈6.2px but the slot measurement mixes
+  multiple charts (ambiguous slot step), so not grounded enough to touch. Deferred.
+- **Verify:** page-only change → no verify:all. lint ✓. Eyeball ✓ — "Participation per
+  project" values now grey; combo bars blue.
+- **Deploy:** yes.
+
 ## Next gaps (priority)
-1. Static line SVGs (Emails 2-colour line ~L256, Visitors traffic line ~L325): add matching
-   dots + confirm they want them (Emails is a sparse 2-series; recheck real). Lower priority.
-2. Exact y-axis tick COUNT/values per chart vs real (real left axis = 5 ticks; confirm the
-   numbers, and whether combo charts show a right axis for the bars).
-3. Gridline COLOUR grounding: real DOM has horizontal grid `#f5f5f5` (n=53) vs axis/vert
-   `#EBEDEF` (n=43) — currently all use `--gv-chart-grid` (#EBEDEF). Split if real charts do.
-4. Horizontal-bar charts: bar height, value-label colour (`.ch-hval` navy vs grey? re-probe),
-   x-axis scale ticks.
-5. Donut + pie + stacked-bar: segment colours (#057ABE/#5FC4E8/#0080A5… family), sizes, legend.
-6. Per-tab parity (Users, Visitors, Representativeness empty-state, feed tables).
-7. SPA `<body data-gv-screen>` IIFE for tab switching (review overlay) — side-task.
+1. Donut + pie + stacked-bar (Input status, Events, Visitors traffic/Language/Device): segment
+   colours (#057ABE/#5FC4E8/#0080A5/#00577C/#40B8C5/#32B67A family), sizes, legend swatch.
+2. Reactions chart is a single line in the page but real = Total line + Likes(#073F80) +
+   Dislikes(#073f80b3 @70%) bars — consider a proper multi-series combo. Bigger change.
+3. Combo bar THICKNESS — re-measure a single chart's slot step cleanly, then ground width.
+4. Static line SVGs (Emails ~L256, Visitors traffic ~L325): add matching dots if real shows them.
+5. Exact y-axis tick COUNT/values per chart; whether combo shows a right axis for bars.
+6. Gridline COLOUR: real has horizontal grid #f5f5f5 vs axis/vert #EBEDEF — split if real does.
+7. Per-tab parity (Users, Visitors, Representativeness empty-state, feed tables).
+8. SPA `<body data-gv-screen>` IIFE for tab switching (review overlay) — side-task.
 3. Horizontal-bar charts: bar height (real recharts-bar-rectangle dims), value-label colour
    (is `.ch-hval` navy or grey in real product? — re-probe), x-axis scale ticks.
 4. Donut + pie + stacked-bar: segment colours (the #057ABE/#5FC4E8/#0080A5… family above),
