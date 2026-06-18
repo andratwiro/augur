@@ -1190,6 +1190,69 @@
   .frame-chip button:hover { background: #f4f6fa; color: #1a1f2c; }
   .frame-chip button.on { background: #1a1f2c; color: #fff; }
 
+  /* ============ ICON treatment explorer ============ */
+  /* Re-skins every back-office nav glyph — the platform rail AND the project menu — so the
+     icon system can be compared live. "current" keeps the real GoVocal set; treatments 2–10
+     swap in Material Symbols at different fill / weight / shape axes. A Material glyph is
+     injected as the last child of each [data-gv-icon] host (so it inherits the host's colour
+     and active state); CSS shows exactly one layer per treatment. */
+  .msym {
+    font-family: 'Material Symbols Outlined'; font-weight: 400; font-style: normal; line-height: 1;
+    letter-spacing: normal; text-transform: none; display: inline-block; white-space: nowrap; direction: ltr;
+    -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .icx-host > .msym { display: none; }                 /* hidden until a non-current treatment */
+  .icx-host.is-side > .msym { font-size: 20px; }
+  .icx-host.is-rail > .msym { font-size: 23px; }
+  .icx-host.is-mini > .msym { font-size: 18px; }
+  body:not([data-icx="current"]) .icx-host > .gv-icon { display: none; }
+  body:not([data-icx="current"]) .icx-host > .msym { display: inline-block; }
+
+  /* weight / family / fill axes */
+  body[data-icx="light"]  .icx-host > .msym { font-variation-settings: 'FILL' 0, 'wght' 250, 'GRAD' 0, 'opsz' 24; }
+  body[data-icx="bold"]   .icx-host > .msym { font-variation-settings: 'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24; }
+  body[data-icx="round"]  .icx-host > .msym { font-family: 'Material Symbols Rounded'; }
+  body[data-icx="sharp"]  .icx-host > .msym { font-family: 'Material Symbols Sharp'; }
+  body[data-icx="fill"]   .icx-host > .msym { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+  /* stateful — outline at rest, fills + tenant colour on the active row/cell */
+  body[data-icx="state"] .side-item.active .icx-host > .msym,
+  body[data-icx="state"] .gv-bo-nav__item.is-active .icx-host > .msym { font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  body[data-icx="state"] .side-item.active .icx-host.is-side > .msym { color: var(--gv-tenant-primary, #0E7C86); }
+
+  /* tinted tiles — glyph in a soft brand square (project menu) */
+  body[data-icx="tile"] .icx-host.is-side { width: 30px; height: 30px; border-radius: 8px; justify-content: center;
+    background: color-mix(in srgb, var(--gv-tenant-primary, #0E7C86) 12%, #fff);
+    border: 1px solid color-mix(in srgb, var(--gv-tenant-primary, #0E7C86) 22%, #fff); }
+  body[data-icx="tile"] .icx-host.is-side > .msym { font-size: 18px; color: var(--gv-tenant-primary, #0E7C86); }
+  body[data-icx="tile"] .side-item.active .icx-host.is-side { background: var(--gv-tenant-primary, #0E7C86); border-color: var(--gv-tenant-primary, #0E7C86); }
+  body[data-icx="tile"] .side-item.active .icx-host.is-side > .msym { color: #fff; }
+
+  /* accent tiles — bold filled glyph in a square, active = full tenant fill */
+  body[data-icx="accent"] .icx-host.is-side { width: 30px; height: 30px; border-radius: 8px; justify-content: center; background: #eef1f6; }
+  body[data-icx="accent"] .icx-host.is-side > .msym { font-family: 'Material Symbols Rounded'; font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; font-size: 18px; color: #3b4255; }
+  body[data-icx="accent"] .side-item.active .icx-host.is-side { background: var(--gv-tenant-primary, #0E7C86); }
+  body[data-icx="accent"] .side-item.active .icx-host.is-side > .msym { color: #fff; }
+  body[data-icx="accent"] .gv-bo-nav__item .icx-host > .msym { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+  /* ICON explorer chip — bottom-centre; the option name sits on its own line above the
+     numbers so the buttons never shift as you step through (per the switcher-chip rule). */
+  .icon-chip { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 31;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+  .icon-chip__name { pointer-events: auto; font-size: 10.5px; font-weight: 700; color: #1a1f2c; background: #fff;
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; white-space: nowrap;
+    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04); }
+  .icon-chip__name .k { color: #5b6573; letter-spacing: .06em; text-transform: uppercase; margin-right: 7px; }
+  .icon-chip__name .w { color: #5b6573; font-weight: 500; }
+  .icon-chip__row { pointer-events: auto; display: inline-flex; gap: 3px; padding: 3px 5px; background: #fff;
+    border: 1px solid var(--border); border-radius: 999px;
+    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04); }
+  .icon-chip__row button { min-width: 22px; padding: 4px 8px; border-radius: 999px; color: #4b5563; font-weight: 600;
+    font-size: 10.5px; transition: background .12s ease, color .12s ease; }
+  .icon-chip__row button:hover { background: #f4f6fa; }
+  .icon-chip__row button.on { background: #1a1f2c; color: #fff; }
+
   /* ============ Empty state ghost placeholders ============ */
   .ghost-slot {
     border: 1.5px dashed #cbd5e1;
@@ -3748,6 +3811,82 @@
 <!-- Empty-state design is locked in (v2 #4 — upright worked example + ghost slots);
      the explorer picker lives on v2 only. -->
 
+<!-- ============ ICON treatment explorer — bottom-centre ============ -->
+<div class="icon-chip" role="group" aria-label="Icon treatment">
+  <div class="icon-chip__name"><span class="k">Icons</span><b id="icon-chip-name">Current set</b><span class="w" id="icon-chip-why"> — mixed fill &amp; stroke</span></div>
+  <div class="icon-chip__row" id="icon-chip-row"></div>
+</div>
+<script>
+(function () {
+  // Step through icon systems for the back-office nav (rail + project menu). #1 keeps the
+  // real GoVocal set; #2–#10 swap in Material Symbols at one coherent treatment each.
+  const TREATS = [
+    { k: 'current', name: 'Current set',      why: ' — mixed fill & stroke (today)' },
+    { k: 'out',     name: 'Outline · regular', why: ' — one stroke weight, modern default' },
+    { k: 'light',   name: 'Outline · light',   why: ' — airy, lighter weight' },
+    { k: 'bold',    name: 'Outline · bold',    why: ' — sturdier, more legible' },
+    { k: 'round',   name: 'Rounded',           why: ' — soft, warmer, more civic' },
+    { k: 'sharp',   name: 'Sharp',             why: ' — geometric, precise' },
+    { k: 'fill',    name: 'Solid',             why: ' — unified filled glyphs' },
+    { k: 'state',   name: 'Stateful',          why: ' — fills + colours when active' },
+    { k: 'tile',    name: 'Tinted tiles',      why: ' — glyph in a soft brand square' },
+    { k: 'accent',  name: 'Accent tiles',      why: ' — bold filled tiles, active fills' },
+  ];
+  // GoVocal icon name -> Material Symbols ligature
+  const MAP = {
+    home: 'home', group: 'group', email: 'mail', calendar: 'calendar_month', comments: 'forum', settings: 'settings',
+    'admin-dashboard': 'monitoring', 'admin-projects': 'apartment', 'admin-input': 'forum', 'admin-users': 'group',
+    'admin-messaging': 'mail', 'admin-reporting': 'bar_chart', 'admin-community': 'diversity_3', 'admin-inspiration': 'lightbulb',
+    'admin-tools': 'build', 'admin-pages': 'description', 'admin-settings': 'settings', 'admin-notifications': 'notifications',
+    'admin-support': 'help', 'admin-back': 'arrow_back', user: 'account_circle', 'chevron-right': 'chevron_right',
+  };
+  function ctx(el) {
+    if (el.classList.contains('side-ic')) return 'is-side';
+    if (el.classList.contains('gv-bo-nav__icon')) return 'is-rail';
+    return 'is-mini';
+  }
+  function inject() {
+    document.querySelectorAll('.gv-bo-side [data-gv-icon], .side-ic[data-gv-icon]').forEach(function (el) {
+      if (el.dataset.icxDone) return;
+      const m = MAP[el.getAttribute('data-gv-icon')];
+      if (!m) return;
+      el.classList.add('icx-host', ctx(el));
+      const s = document.createElement('span');
+      s.className = 'msym'; s.textContent = m; s.setAttribute('aria-hidden', 'true');
+      el.appendChild(s);              // runs after govocal-icons render (window load) so it survives
+      el.dataset.icxDone = '1';
+    });
+  }
+  const row = document.getElementById('icon-chip-row');
+  const nameEl = document.getElementById('icon-chip-name');
+  const whyEl = document.getElementById('icon-chip-why');
+  let cur = 0;
+  function set(i) {
+    cur = (i + TREATS.length) % TREATS.length;
+    const t = TREATS[cur];
+    document.body.setAttribute('data-icx', t.k);
+    nameEl.textContent = t.name;
+    whyEl.textContent = t.why;
+    [].forEach.call(row.children, function (b, j) { b.classList.toggle('on', j === cur); });
+  }
+  TREATS.forEach(function (t, i) {
+    const b = document.createElement('button');
+    b.textContent = (i + 1) % 10;     // 1..9, 0 — fixed glyphs, no shifting label
+    b.title = t.name; b.setAttribute('aria-label', t.name);
+    b.onclick = function () { set(i); };
+    row.appendChild(b);
+  });
+  document.body.setAttribute('data-icx', 'current');   // set immediately → no first-paint flash
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'ArrowRight') set(cur + 1);
+    else if (e.key === 'ArrowLeft') set(cur - 1);
+  });
+  function start() { inject(); set(0); }
+  if (document.readyState === 'complete') start();
+  else window.addEventListener('load', start);
+})();
+</script>
 
 <script>
   const _timelineCardOriginal = null;
