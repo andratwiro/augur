@@ -2392,8 +2392,10 @@ function renderComponentsIndex(components) {
 }
 
 async function main() {
-  // Clean dist for a deterministic build.
-  await fs.rm(DIST, { recursive: true, force: true });
+  // Clean dist for a deterministic build. Retry the removal: on macOS a
+  // concurrent .DS_Store / Spotlight write can re-create a dir entry between
+  // node's readdir and rmdir, throwing ENOTEMPTY on an otherwise-empty tree.
+  await fs.rm(DIST, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   await fs.mkdir(DIST, { recursive: true });
 
   // Scan all three sources (each also copies its folders into dist).
