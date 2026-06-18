@@ -158,9 +158,15 @@
 .gv-bo-meta { display: flex; flex-wrap: wrap; gap: 16px; margin: 6px 0 0; }
 .gv-bo-meta__item {
   display: inline-flex; align-items: center; gap: 5px;
+  line-height: 1;        /* hug the glyphs: default ~1.5 line-height adds descender
+                            slack that drops the line-box centre below the optical
+                            text centre, so a centred icon reads low. */
   font-size: var(--gv-fs-s); color: var(--gv-text-secondary);
 }
-.gv-bo-meta__item .gv-icon { width: 14px; height: 14px; }
+/* display:block drops the .gv-icon baseline shift (vertical-align:-0.125em) so the
+   glyph centre lines up with the label centre inside the centred flex row. Without
+   it the icon sits ~1–2px low against the text. */
+.gv-bo-meta__item .gv-icon { width: 14px; height: 14px; display: block; }
 
 /* ── Tab bar (project tabs AND phase sub-tabs share this) ─────────────────────
    Measured live (bo-phase-setup, nav.sc-gEXpur): the tab row is an *elevated
