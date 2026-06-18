@@ -67,13 +67,25 @@ function opt(name, def = null) {
   const v = argv[i + 1];
   return v && !v.startsWith('--') ? v : true;
 }
+// Collect EVERY occurrence of a repeatable flag (e.g. multiple --click to walk
+// a multi-step reveal: open banner → dismiss onboarding modal → land on view).
+function optAll(name) {
+  const out = [];
+  argv.forEach((a, i) => {
+    if (a === `--${name}`) {
+      const v = argv[i + 1];
+      if (v && !v.startsWith('--')) out.push(v);
+    }
+  });
+  return out;
+}
 const flag = (name) => argv.includes(`--${name}`);
 
 const name = opt('name');
 const [vw, vh] = (opt('viewport', '1440x900') + '').split('x').map(Number);
 const probe = opt('probe');
 const waitSel = opt('wait');
-const clickSel = opt('click');
+const clickSels = optAll('click');
 const settle = Number(opt('settle', 800));
 const headed = flag('headed');
 const forceLogin = flag('login');
@@ -186,7 +198,10 @@ async function finish(page) {
   // --click reveals a menu/flyout/modal. Wait for it to be visible (SPA menus render
   // late), scroll it into view, then click. Supports Playwright engines: a CSS selector,
   // or `text=Exports` / `role=button[name="Exports"]` for text/role-based triggers.
-  if (clickSel) {
+  // Multiple --click flags fire IN ORDER (each waits for visible) so a multi-step
+  // reveal — open a banner, then dismiss the onboarding modal it triggers — lands
+  // on the final clean state in one capture.
+  for (const clickSel of clickSels) {
     try {
       const loc = page.locator(clickSel).first();
       await loc.waitFor({ state: 'visible', timeout: 8000 });

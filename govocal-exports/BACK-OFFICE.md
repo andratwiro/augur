@@ -560,3 +560,59 @@ Live-capture reality with the current `.env.capture` account:
   same basis that produced every Run-6 BO build. (To unblock live BO: the user must put an
   **admin** account in `.env.capture` or do a headed admin login.)
 - Session-check each wake stays valid: if `/admin` renders admin chrome, live BO is back on.
+
+---
+
+# RUN 7 — SENSEMAKING + AUTO-INSIGHTS (started 2026-06-18)
+
+**Live BO is BACK ON.** Session-check (`r7-session-check`, `/admin/projects`) rendered full
+admin chrome (sidebar `intercom-admin-general-navigation-side-bar`, real project UUIDs,
+tenant **Wonderville** on `7868.epic.govocal.com`, admin **Sylvester Kalinoski**). The
+`.env.capture` account NOW has admin rights — opposite of the Run-6 operating note. Live BO
+captures succeed.
+
+## Captures (this run, `bo-sensemaking-*` / `bo-auto-insights-*`)
+
+Reference project: **"Test project 1 timeline with file"** `0d3fcba2-a63e-4208-956d-8101e7f362d5`,
+active ideation phase `410f7be9-0fb3-4314-98fb-9ad87badeec0` (Input manager = `/phases/<id>/ideas`).
+Second project "An idea? Bring it to your council!" `e20f4428…` phase `ff41794e…`.
+
+| Capture | State | Key findings |
+|---|---|---|
+| `bo-sensemaking-inputmgr` | Input manager w/ **Sensemaking banner** | banner `div.QufzX`: bg `rgb(190,231,235)`=**`--gv-teal-100`**, radius 3px, pad `8px 16px`, navy text `--gv-blue-500`. Sparkle icon (material `auto_awesome`) 30px `#147985`. Text "Explore AI-powered summaries and view individual submissions." 16px/400 `#333`. Button `#e2e-analysis-banner-button` "Open AI analysis" + right-arrow. |
+| `bo-auto-insights-view` / `-big` | AI Analysis (modal over) | onboarding **"How to work with AI"** launch modal auto-opens (`#e2e-analysis-launch-modal`, agree btn). Big project adds **"Authors by age 1/2"** demographic carousel. |
+| `bo-sensemaking-launchmodal` | Launch modal probed | modal body `kUqTQZ` flex, gap 16px, pad `0 20px`. |
+| `bo-auto-insights-clean` | **clean 4-column AI Analysis** (banner→modal-dismiss, 2× `--click`) | full workspace digest below. |
+
+## Measured AI-Analysis values (from `bo-auto-insights-clean` digest — exact)
+
+- **Layout = 4 columns** (source-confirmed `analysis/index.tsx`): Tags rail (300px) · InputsList · InputPreview · Insights (right rail). Full-screen portal over `#modal-portal`; topbar = "← Go back" + "AI Analysis / <project>" + Filters + Search + view-toggle + info.
+- **AI-action header bar** (`bQEqKY` — the "Auto-tag" + "Summarize/Ask" column headers): bg `rgb(20,121,133)`=**`--gv-teal-500`**, white text, pad `10px 8px 10px 16px`.
+- **Tag rail item** (`a.dnzbNv`): link-blue `rgb(65,131,196)`=**`--gv-bo-link` #4183C4**, radius 3px, pad `10px 8px 10px 16px`; **active** = bg `rgba(0,0,0,.7)` (same idiom as sidebar active).
+- **Auto-tag chip** (`eMnFXQ`/`jwDXWe`): bg `rgb(242,230,208)` **#F2E6D0**, border `1px solid rgb(212,146,16)` **#D49210**, radius 3px, pad `4px 12px`. → NEW tokens `--gv-amber-100`/`--gv-amber-500` (only genuinely new colours this run).
+- **Locked auto-insights notice** (`gZsBWS`): teal `rgb(190,231,235)`=**`--gv-teal-100`**, 3px, pad 14px. Copy (source `Heatmap/messages.ts`): "Auto insights are not available for projects with less than 30 participants." (gate = `participants_count < 30`; cannot be unlocked on demo — no project ≥30 → generated-summary state grounded on SOURCE).
+- **AI disclaimer banner** (`ksJZlI`): light-red `rgb(255,236,230)`=**`--gv-orange-100`**, 3px, pad 8px. Copy: "AI can make mistakes. Please verify important information."
+- **Input list card** (`fzykeO`): white, pad 12px; engagement icons w/ counts (comments/likes/dislikes/votes).
+- **Summary CTA buttons**: teal `rgb(4,77,108)`/`rgb(10,81,89)`=`--gv-blue-500`/`--gv-teal-700`.
+- **Empty summary panel** (`bAxtpM`): `1px solid rgb(203,203,203)` (#CBCBCB), 3px, pad `16px 8px`. Copy: "Your text summaries will be displayed here, but you currently do not have any yet." + "Click the Auto-summarize button above to get started."
+- **Avatar** (`huqXLY`): 50%, 3px ring. Dark navy band `cqtQSr` `rgb(2,35,49)`=`--gv-blue-700`.
+
+## Source ground-truth (citizenlab @master, `front/app/.../analysis/`)
+Generated **Summary card**: `stars` icon + bold "AI summary" header · body · footer `{filtered}/{total}` inputs-covered + `timeAgo` · action row (restore-filters/copy/flag→Rate thumbs/delete). **Question** card = same shell, `question-bubble` icon + "Accuracy: {n}%". **Auto-tag** = 3-step modal wizard (Step1 radio cards "All inputs"/"Use current filters" + method grid: Fully automated/By label/By example/Platform tags/Sentiment/Controversial/Language). **Demographics** carousel = age + domicile stacked bar charts only. All copy strings captured in the run notes.
+
+## BUILD QUEUE (ordered; primitives → components → page)
+1. [ ] **tokens** `--gv-amber-100` #F2E6D0 / `--gv-amber-500` #D49210 (auto-tag chips).
+2. [ ] **icon** `auto-awesome` (sparkle, material `auto_awesome` path) in `govocal-icons.js` if absent; confirm `stars`, `question-bubble`, `arrow-right`.
+3. [ ] **`.gv-bo-aibanner`** (sensemaking banner) — teal-100 callout: sparkle + text + "Open AI analysis" link-button. Checkpoint vs `bo-sensemaking-inputmgr`.
+4. [ ] **`.gv-bo-aibar`** (AI action header bar, teal-500 column header) + **`.gv-bo-aibtn`** variants.
+5. [ ] **`.gv-bo-tagrail`** + `__item` (link-blue rows, active rgba(0,0,0,.7), counts) + Auto-tag header.
+6. [ ] **`.gv-bo-autotag`** chip (amber) — reuse `.gv-badge`? new `.is-amber` variant.
+7. [ ] **`.gv-bo-aicard`** (Summary/Question insight card: header icon+label, body, footer count+timeAgo, action row).
+8. [ ] **`.gv-bo-ainotice`** variants: `.is-locked` (teal-100) / `.is-warn` (orange-100 disclaimer).
+9. [ ] **`.gv-bo-aiempty`** (dashed-border empty summary panel).
+10. [ ] **`.gv-bo-democard`** (demographic chart carousel header + bar chart) — or page-local (one-off).
+11. [ ] **`.gv-bo-inputrow`** (analysis input-list row) — reuse existing table idiom where possible.
+12. [ ] **page** `pages/bo-analysis/` — 4-column AI Analysis workspace, assembled; wire Input manager banner → Analysis. Launch modal reuses canonical `.gv-modal`.
+
+Tooling: added **multi-`--click`** support to `grab.mjs` (sequential clicks → walk a multi-step
+reveal in one capture; used for banner→dismiss-modal). Backward-compatible (single `--click` unchanged).
