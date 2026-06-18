@@ -123,13 +123,15 @@
     <div class="grp">
       <label>Progress placement</label>
       <div class="seg seg--col" id="seg-layout" role="group" aria-label="Progress placement">
-        <button data-v="inline"    aria-pressed="false">Inline · current (the problem)</button>
-        <button data-v="stacked"   aria-pressed="false">% on its own line</button>
-        <button data-v="topbar"    aria-pressed="true">Bar under the header</button>
-        <button data-v="footbar"   aria-pressed="false">Bar + % in the footer</button>
-        <button data-v="step"      aria-pressed="false">Step counter (Step n of N)</button>
-        <button data-v="langgroup" aria-pressed="false">Grouped with the language switcher</button>
-        <button data-v="ring"      aria-pressed="false">Compact progress ring</button>
+        <button data-v="inline"     aria-pressed="false">Inline · current (the problem)</button>
+        <button data-v="topbar"     aria-pressed="true">Bar under header + %</button>
+        <button data-v="tally"      aria-pressed="false">Bar under header, no % (Tally)</button>
+        <button data-v="typeform"   aria-pressed="false">Hairline at top edge (Typeform)</button>
+        <button data-v="bottomedge" aria-pressed="false">Bar at the bottom edge</button>
+        <button data-v="headernum"  aria-pressed="false">% in the header, no bar</button>
+        <button data-v="stepdots"   aria-pressed="false">Step dots</button>
+        <button data-v="stacked"    aria-pressed="false">% on its own line (a11y baseline)</button>
+        <button data-v="footbar"    aria-pressed="false">Bar + % in the footer</button>
       </div>
     </div>
 
@@ -152,11 +154,13 @@
 
     <div class="spacer"></div>
     <p class="note">
-      The progress status is required for a11y (WCAG 2.2). <b>Inline</b> fights the nav
-      buttons on a narrow phone with long labels — try <b>Inline · current</b> at
-      <b>320</b> + <b>Long</b> to see it break. The other six placements all keep it
-      accessible (visible + programmatic, never colour-only) and clear of the buttons.
-      Scroll the survey to check the header/footer stay pinned.
+      A progress indicator <b>isn't required by WCAG 2.2</b> — there's no success criterion
+      for it; it's a usability / cognitive-accessibility aid. What a11y <i>does</i> need: if
+      shown, don't rely on colour alone, and expose it programmatically. So a plain
+      <b>number</b> ("40%" / "Step 2 of 5") is the most robust option; a bar alone is the
+      weakest. <b>Inline</b> (today's runner) fights the nav buttons on a narrow phone — try
+      <b>Inline · current</b> at <b>320</b> + <b>Long</b> to see it break. Every other
+      placement keeps progress clear of the buttons.
     </p>
   </div>
 

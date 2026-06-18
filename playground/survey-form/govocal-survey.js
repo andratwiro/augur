@@ -201,11 +201,17 @@
     var pbar = ' role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% complete"';
     return '<section class="sv-card" aria-label="' + esc(title || 'Survey') + '">' +
       '<div class="sv-titlebar"><h1>' + esc(title || 'Survey') + '</h1>' +
+      // Header numeral (headernum variant) — the % rides in the titlebar, no bar at all.
+      '<span class="sv-titlebar__pct" role="status" aria-live="polite" aria-atomic="true">0%</span>' +
       '<button class="sv-titlebar__edit" type="button">Edit survey</button>' +
       '<button class="sv-close" type="button" aria-label="Close survey">' +
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>' +
-      // Header progress bar (topbar variant) — pinned under the titlebar, stays visible while scrolling.
+      // Header progress bar (topbar / tally variants) — pinned under the titlebar, stays visible while scrolling.
       '<div class="sv-hbar"' + pbar + '><span class="sv-hbar__track"><span class="sv-hbar__fill"></span></span><span class="sv-hbar__num">0%</span></div>' +
+      // Card-edge hairline bar (typeform = top edge / bottomedge = bottom edge), absolutely positioned.
+      '<div class="sv-edge"' + pbar + '><span class="sv-edge__fill"></span></div>' +
+      // Discrete step dots (stepdots variant) — built in mount(); aria-hidden, SR uses .sv-foot__step.
+      '<div class="sv-dots" aria-hidden="true"></div>' +
       '<form class="sv-body" novalidate></form>' +
       '<div class="sv-foot">' +
       '<div class="sv-progress"' + pbar + '><div class="sv-progress__bar"></div></div>' +
@@ -239,6 +245,9 @@
         ringEl = root.querySelector('.sv-foot__ring'),
         ringNum = root.querySelector('.sv-foot__ring-num'),
         stepEl = root.querySelector('.sv-foot__step'),
+        edgeFill = root.querySelector('.sv-edge__fill'),
+        titlePct = root.querySelector('.sv-titlebar__pct'),
+        dotsEl = root.querySelector('.sv-dots'),
         progressbars = [].slice.call(root.querySelectorAll('[role="progressbar"]'));
     // Button labels are configurable (opts.labels) so a harness can stress-test how
     // long labels fit the footer at narrow widths. Defaults match the real runner.
@@ -248,6 +257,15 @@
     var step = 0, total = form.pages.length;
     var lastContent = total - 1;
     while (lastContent > 0 && form.pages[lastContent].kind === 'thankyou') lastContent--;
+
+    // Build the step dots once (one per content page) for the stepdots variant.
+    var dotSpans = [];
+    if (dotsEl) {
+      var dN = lastContent + 1, dh = '';
+      for (var di = 0; di < dN; di++) dh += '<span class="sv-dots__dot"></span>';
+      dotsEl.innerHTML = dh;
+      dotSpans = [].slice.call(dotsEl.children);
+    }
 
     function show() {
       var p = form.pages[step];
@@ -260,10 +278,16 @@
       pctEl.textContent = pctTxt;
       if (hbarFill) hbarFill.style.width = pct + '%';
       if (hbarNum) hbarNum.textContent = pct + '%';
+      if (edgeFill) edgeFill.style.width = pct + '%';
+      if (titlePct) titlePct.textContent = pct + '%';
       if (ringEl) { ringEl.style.setProperty('--p', pct); if (ringNum) ringNum.textContent = pct + '%'; }
+      var sNum = Math.min(step, lastContent) + 1, sTot = lastContent + 1;
       if (stepEl) {
-        var sNum = Math.min(step, lastContent) + 1, sTot = lastContent + 1;
         stepEl.textContent = (p.kind === 'thankyou') ? 'Complete' : ('Step ' + sNum + ' of ' + sTot);
+      }
+      if (dotSpans.length) {
+        var done = (p.kind === 'thankyou') ? dotSpans.length : sNum;
+        dotSpans.forEach(function (d, i) { d.classList.toggle('is-done', i < done); });
       }
       progressbars.forEach(function (el) { el.setAttribute('aria-valuenow', pct); el.setAttribute('aria-valuetext', pctTxt); });
       prevBtn.style.visibility = (step === 0 || p.kind === 'thankyou') ? 'hidden' : 'visible';

@@ -390,63 +390,94 @@
     .sv-foot__ring::before { content: ""; grid-area: 1 / 1; width: 30px; height: 30px; border-radius: 50%; background: #fff; }
     .sv-foot__ring-num { grid-area: 1 / 1; z-index: 1; font-size: 10px; font-weight: 700; color: var(--gv-text-secondary); }
 
-    /* Step counter (step) ----------------------------------------------------- */
+    /* Step counter (reused as SR-only "Step n of N" text for the stepdots variant) -- */
     .sv-foot__step { font-size: var(--gv-fs-s); font-weight: 500; color: var(--gv-text-secondary); white-space: nowrap; }
 
+    /* Card-edge bar (typeform = top edge / bottomedge = bottom edge). Absolutely
+       positioned; the card's overflow:hidden clips it to the rounded corners. */
+    .sv-card { position: relative; }
+    .sv-edge { display: none; position: absolute; left: 0; right: 0; z-index: 5;
+      height: 3px; background: var(--gv-grey-200); }
+    .sv-edge__fill { display: block; height: 100%; width: 0; background: var(--gv-tenant-primary);
+      transition: width 220ms ease-out; }
+
+    /* Header numeral (headernum) — the % rides in the titlebar, no bar at all. */
+    .sv-titlebar__pct { display: none; flex: 0 0 auto; margin-left: 10px;
+      font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-secondary); white-space: nowrap; }
+
+    /* Step dots (stepdots) — discrete, fill-not-colour (done = filled, to-do = hollow)
+       so the state never rests on hue alone (1.4.1). SR users get the .sv-foot__step text. */
+    .sv-dots { display: none; flex: 0 0 auto; align-items: center; gap: 7px; padding: 12px 22px; }
+    .sv-dots__dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; box-sizing: border-box;
+      background: transparent; border: 1.5px solid var(--gv-grey-400); }
+    .sv-dots__dot.is-done { background: var(--gv-tenant-primary); border-color: var(--gv-tenant-primary); }
+
+    /* Visually-hidden helper — keeps a status readable to AT while a visual stands in. */
+    .sv-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0;
+      margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
     /* The base kit collapses the footer row into a full-width COLUMN at ≤480 (line ~249)
-       and reorders lang/pct. For the redesigned variants we want a real horizontal
+       and reorders lang/pct. For every redesigned variant we want a real horizontal
        action row that wraps only when it must, so re-assert row direction + explicit
-       child order. Specificity (0,2,0) beats the kit's media rule (0,1,0), no !important.
-       ('inline' is intentionally NOT listed — it keeps the kit's current mobile
-       behaviour so it still demonstrates the problem.) */
-    .sv-card[data-layout="stacked"]   .sv-foot__row,
-    .sv-card[data-layout="topbar"]    .sv-foot__row,
-    .sv-card[data-layout="footbar"]   .sv-foot__row,
-    .sv-card[data-layout="step"]      .sv-foot__row,
-    .sv-card[data-layout="langgroup"] .sv-foot__row,
-    .sv-card[data-layout="ring"]      .sv-foot__row {
+       child order. `[data-layout]:not([data-layout="inline"])` covers all variants (and
+       any future one) in one rule; specificity (0,4,0) beats the kit's media rule (0,1,0),
+       no !important. 'inline' is intentionally excluded — it keeps the kit's current
+       mobile behaviour so it still demonstrates the problem. */
+    .sv-card[data-layout]:not([data-layout="inline"]) .sv-foot__row {
       flex-direction: row; flex-wrap: wrap; align-items: center; row-gap: 12px;
     }
-    /* The language switcher is fixed-size in every variant; the nav group grows to the
-       right and wraps as a unit only when the row can't hold it. */
-    .sv-card[data-layout="stacked"]   .sv-foot__lang,
-    .sv-card[data-layout="topbar"]    .sv-foot__lang,
-    .sv-card[data-layout="footbar"]   .sv-foot__lang,
-    .sv-card[data-layout="step"]      .sv-foot__lang,
-    .sv-card[data-layout="langgroup"] .sv-foot__lang,
-    .sv-card[data-layout="ring"]      .sv-foot__lang { flex: 0 0 auto; order: 1; }
-    .sv-card[data-layout="stacked"]   .sv-foot__nav,
-    .sv-card[data-layout="topbar"]    .sv-foot__nav,
-    .sv-card[data-layout="footbar"]   .sv-foot__nav,
-    .sv-card[data-layout="step"]      .sv-foot__nav,
-    .sv-card[data-layout="langgroup"] .sv-foot__nav,
-    .sv-card[data-layout="ring"]      .sv-foot__nav {
+    .sv-card[data-layout]:not([data-layout="inline"]) .sv-foot__lang { flex: 0 0 auto; order: 1; }
+    .sv-card[data-layout]:not([data-layout="inline"]) .sv-foot__nav {
       flex: 1 1 auto; order: 9; justify-content: flex-end; flex-wrap: wrap; row-gap: 8px;
     }
 
-    /* 1 · stacked — % on its own centred line above the action row (real GoVocal). */
+    /* 1 · stacked — % on its own centred line above the action row (real GoVocal). This
+          plain-numeral placement is also the most accessible: a text % conveys progress
+          without any colour-only bar, which is all WCAG actually needs. */
     .sv-card[data-layout="stacked"] .sv-foot__pct { order: 0; flex: 0 0 100%; text-align: center; }
 
-    /* 2 · topbar — slim determinate bar under the header; footer holds only lang+nav.
-          Progress stays visible while the body scrolls (the header is pinned). */
-    .sv-card[data-layout="topbar"] .sv-hbar { display: flex; }
+    /* 2 · topbar — slim determinate bar + % under the header; footer holds only lang+nav.
+          The hairline reads BELOW the progress (the bar sits flush under the title), so
+          the title and its progress feel like one unit. Header stays pinned while scrolling. */
+    .sv-card[data-layout="topbar"] .sv-titlebar { border-bottom: 0; }
+    .sv-card[data-layout="topbar"] .sv-hbar { display: flex; border-bottom: 1px solid var(--gv-grey-200); }
     .sv-card[data-layout="topbar"] .sv-foot__pct { display: none; }
 
-    /* 3 · footbar — thin bar across the footer top + centred % caption, then actions.
-          Recolour the kit's gold accent to the tenant primary so it matches the
-          header-bar/ring variants and clears 1.4.11 non-text contrast on the grey track. */
+    /* 3 · footbar — thin bar across the footer top + centred % caption, then actions. */
     .sv-card[data-layout="footbar"] .sv-progress { display: block; }
     .sv-card[data-layout="footbar"] .sv-progress__bar { background: var(--gv-tenant-primary); }
     .sv-card[data-layout="footbar"] .sv-foot__pct { order: 0; flex: 0 0 100%; text-align: center; }
 
-    /* 4 · step — a "Step n of N" counter leads the row (shorter than %, always fits). */
-    .sv-card[data-layout="step"] .sv-foot__step { display: inline; order: 0; flex: 0 0 auto; }
-    .sv-card[data-layout="step"] .sv-foot__pct { display: none; }
+    /* 4 · tally — Tally's pattern: a full-bleed bar flush under the title, NO numeral,
+          hairline below. The bar alone signals progress (we keep the SR % via the
+          footer's role=progressbar siblings, so it's never colour-only for AT). */
+    .sv-card[data-layout="tally"] .sv-titlebar { border-bottom: 0; }
+    .sv-card[data-layout="tally"] .sv-hbar { display: flex; padding: 0; border-bottom: 1px solid var(--gv-grey-200); }
+    .sv-card[data-layout="tally"] .sv-hbar__track { height: 6px; border-radius: 0; }
+    .sv-card[data-layout="tally"] .sv-hbar__num { display: none; }
+    .sv-card[data-layout="tally"] .sv-foot__pct { display: none; }
 
-    /* 5 · langgroup — % rides next to the language switcher (left cluster), nav right.
-          Tying it to lang's width means it never competes with the buttons. */
-    .sv-card[data-layout="langgroup"] .sv-foot__pct { order: 2; flex: 0 0 auto; text-align: left; }
+    /* 5 · typeform — Typeform's pattern: a 3px hairline pinned to the very top edge of
+          the card, no numeral (Typeform dropped the % — it confused respondents). */
+    .sv-card[data-layout="typeform"] .sv-edge { display: block; top: 0; }
+    .sv-card[data-layout="typeform"] .sv-foot__pct { display: none; }
 
-    /* 6 · ring — a compact circular dial (numeral inside) leads the row; very small footprint. */
-    .sv-card[data-layout="ring"] .sv-foot__ring { display: grid; order: 0; }
-    .sv-card[data-layout="ring"] .sv-foot__pct { display: none; }
+    /* 6 · bottomedge — a thin bar pinned to the bottom edge of the card (mobile-native,
+          out of the way of both header and action row). */
+    .sv-card[data-layout="bottomedge"] .sv-edge { display: block; bottom: 0; height: 4px; }
+    .sv-card[data-layout="bottomedge"] .sv-foot__pct { display: none; }
+
+    /* 7 · headernum — just the numeral, in the titlebar next to the title. Answers
+          "would the number suffice?": yes — top-anchored, glanceable, zero footer cost. */
+    .sv-card[data-layout="headernum"] .sv-titlebar__pct { display: inline; }
+    .sv-card[data-layout="headernum"] .sv-foot__pct { display: none; }
+
+    /* 8 · stepdots — discrete dots under the header for short, known-length flows; the
+          "Step n of N" text is kept SR-only so assistive tech still hears the count. */
+    .sv-card[data-layout="stepdots"] .sv-dots { display: flex; }
+    .sv-card[data-layout="stepdots"] .sv-foot__step { display: inline; }
+    .sv-card[data-layout="stepdots"] .sv-foot__step,
+    .sv-card[data-layout="stepdots"] .sv-titlebar { border-bottom: 0; }
+    .sv-card[data-layout="stepdots"] .sv-foot__step { position: absolute !important; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    .sv-card[data-layout="stepdots"] .sv-foot__pct { display: none; }

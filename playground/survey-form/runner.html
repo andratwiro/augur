@@ -114,7 +114,7 @@
 
   // Read experiment params from the URL (driven by the control shell index.html).
   var params = new URLSearchParams(location.search);
-  var LAYOUTS = ['inline','stacked','topbar','footbar','step','langgroup','ring'];
+  var LAYOUTS = ['inline','stacked','topbar','footbar','tally','typeform','bottomedge','headernum','stepdots'];
   var layout = LAYOUTS.indexOf(params.get('layout')) >= 0 ? params.get('layout') : 'inline';
   var longLabels = params.get('labels') === 'long';
   // Realistic "long" labels — the kind a city writes once the default verbs feel
