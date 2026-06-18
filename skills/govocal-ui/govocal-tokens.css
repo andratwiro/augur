@@ -161,6 +161,7 @@
   --gv-chart-blue-light: #4D85C6;               /* pie segment 2 — monochrome blue ramp (recharts-pie-sector, bo-dash-visitors) */
   --gv-chart-line:  #7FBBCA;                    /* cumulative "Total" line stroke — dominant (n=144) */
   --gv-chart-teal:  var(--gv-teal-400);         /* #01A1B1 accent series */
+  --gv-chart-teal-light: #40B8C5;               /* donut "feedback" segment (recharts-sector sum_feedback, bo-dash-overview) */
   --gv-chart-pos:   var(--gv-green-500);        /* #04884C likes / positive series */
   --gv-chart-neg:   var(--gv-red-500);          /* #E52516 dislikes / negative series */
   --gv-chart-axis:  var(--gv-cool-grey-600);    /* #596B7A axis tick text (recharts-cartesian-axis-tick-value, n=159) */

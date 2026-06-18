@@ -96,11 +96,29 @@ Read this at the start of each loop; append after each iteration.
 - **Deploy:** yes.
 - Reusable: to eyeball off-Overview tabs, render with playwright clicking `.gv-bo-tab[data-db=…]`.
 
+### Loop 6 — 2026-06-18 — CRITICAL fix: line/dot desync + Input-status donut colours
+- **BUG (user-reported, screenshot):** line-chart dots sat far BELOW the lines. Root cause:
+  the line `svg.db-line` was rendering at ~42px, not 130px — the canonical
+  `.gv-bo-chartcard svg { height:auto }` (specificity 0,1,1) was overriding the page's
+  `.db-line { height:130px }` (0,1,0), so the 600x120 viewBox squished to width/5 while the
+  `.ch-dots` overlay stayed 130px → desync. (Also why lines looked flat/short since loop 2.)
+  **FIX:** `.gv-bo-chartcard svg.db-line { height:130px }` (0,2,1) out-specifies canonical.
+  Measured with playwright: svgHeight now 130, max dot↔line delta **0.05px** (was ~67px).
+- **Donut (Input status):** confirmed real recharts-sector = #40B8C5 (sum_feedback) on #E0E0E0
+  (sum_no_feedback). Added `--gv-chart-teal-light: #40B8C5`; donut segment --ch-teal→that,
+  track --gv-grey-200→--gv-grey-300. (Stackbar/status-legend colours NOT yet grounded — left.)
+- **Verify:** lint ✓. Eyeball ✓ (dots on the line, lines fill height). verify:all pending bg.
+- **Deploy:** yes.
+
 ## Next gaps (priority)
-1. Input status DONUT (Overview) + Events: real recharts-sector showed #40B8C5 segment on
-   #E0E0E0 (grey-300) track; page uses --ch-teal (#01A1B1) on --gv-grey-200. CONFIRM the
-   #40B8C5 belongs to the donut (probe bo-dash-overview donut selector) then ground it.
-   Also: pies have a white sector separator stroke the page lacks — add thin #fff stroke.
+1. Pies: real recharts has white (#fff) sector separators the page's concentric-arc pieSVG
+   lacks — add thin #fff strokes between segments.
+2. Input-status STACKBAR + status legend colours (Under consideration/Implemented/Accepted/
+   Rejected) — not yet grounded; probe real status palette before touching.
+3. Static line SVGs (Emails ~L258, Visitors traffic ~L327): now 130px too — add dots if real shows them.
+4. y-axis tick count/values per chart; combo right-axis for bars.
+5. Per-tab parity (Users, Visitors, Representativeness empty-state, feed tables).
+6. NOTE coupling: `.ch-dots` height (130px) must match `svg.db-line` height (130px) — keep in sync.
 2. Reactions chart is a single line in the page but real = Total line + Likes(#073F80) +
    Dislikes(#073f80b3 @70%) bars — consider a proper multi-series combo. Bigger change.
 3. Combo bar THICKNESS — re-measure a single chart's slot step cleanly, then ground width.
