@@ -636,7 +636,8 @@
 .gv-bo-stat__delta b { font-weight: 700; color: var(--gv-bo-primary); }
 
 /* Chart card (Participation over time) — same white/shadow card, holds a title + plot. */
-.gv-bo-chartcard { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 20px; max-width: 1000px; margin-top: 18px; }
+/* Measured (r8-dash-overview2 div.iFyarX): padding 20px 20px 35px (extra bottom gutter for the x-axis legend). */
+.gv-bo-chartcard { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 20px 20px 35px; max-width: 1000px; margin-top: 18px; }
 .gv-bo-chartcard__title { margin: 0 0 4px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-chartcard__sub { margin: 0 0 16px; font-size: 13px; color: var(--gv-text-secondary); }
 .gv-bo-chartcard svg { display: block; width: 100%; height: auto; }

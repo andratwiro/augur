@@ -2476,6 +2476,49 @@
       "uses": [
         ".gv-ideacard"
       ]
+    },
+    {
+      "id": "bo-dashboard/chartcard",
+      "built": "pages/bo-dashboard/index.html",
+      "against": "r8-dash-overview2",
+      "map": {
+        "div.iFyarX": ".gv-bo-chartcard"
+      },
+      "props": [
+        "border-radius",
+        "box-shadow",
+        "padding",
+        "background-color"
+      ],
+      "uses": [
+        ".gv-bo-chartcard"
+      ]
+    },
+    {
+      "id": "bo-dashboard/card-title",
+      "built": "pages/bo-dashboard/index.html",
+      "against": "r8-dash-overview2",
+      "map": {
+        "h3.JYGBI.iMLaHR": ".db-cardhead h3"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "color"
+      ]
+    },
+    {
+      "id": "bo-dashboard/stat-number",
+      "built": "pages/bo-dashboard/index.html",
+      "against": "r8-dash-overview2",
+      "map": {
+        "p.dVXeQz.gGlSRN": ".db-bignum__big"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "color"
+      ]
     }
   ]
 }

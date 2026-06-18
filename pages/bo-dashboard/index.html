@@ -14,7 +14,7 @@
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
     /* Chart palette sampled from the real dashboard (page-local, illustrative). */
-    .db-panel { --ch-blue: #2F478A; --ch-bar: #073F80; --ch-teal: #01A1B1; --ch-red: #E5484D; }
+    .db-panel { --ch-blue: #2F478A; --ch-bar: #073F80; --ch-teal: #01A1B1; --ch-red: #E5484D; --ch-line: #7FBBCA; }
     .db-panel { display: none; }
     .db-panel.is-active { display: block; }
 
@@ -25,14 +25,14 @@
     .db-controls .db-spacer { margin-left: auto; }
 
     /* Date-range control: borderless "All Time ▾" select joined to a bordered
-       date-range picker face (Select date ▸ 6/15/2026 📅). Measured: select text
+       date-range picker face (Select date ▸ 6/18/2026 📅). Measured: select text
        cool-grey-600/16px; picker face 48px, 1px #767676 (var --gv-border-dark),
        radius 3px, white. */
     .db-daterange { display: inline-flex; align-items: center; gap: 12px; }
     .db-rangeselect { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; cursor: pointer; font-family: var(--gv-font-family); font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); padding: 0; }
     .db-rangeselect .gv-icon { width: 18px; height: 18px; color: var(--gv-cool-grey-600); }
-    .db-rangeface { display: inline-flex; align-items: center; gap: 8px; height: var(--gv-input-height); padding: 0 10px 0 8px; border: 1px solid var(--gv-border-dark); border-radius: var(--gv-radius); background: var(--gv-white); font-size: var(--gv-fs-base); color: var(--gv-text); }
-    .db-rangeface .db-rangebtn { border: 0; background: transparent; cursor: pointer; font-family: var(--gv-font-family); font-size: var(--gv-fs-base); color: var(--gv-text); padding: 4px 8px; white-space: nowrap; }
+    .db-rangeface { display: inline-flex; align-items: center; gap: 8px; height: var(--gv-input-height); padding: 0 10px 0 8px; border: 1px solid var(--gv-border-dark); border-radius: var(--gv-radius); background: var(--gv-white); font-size: var(--gv-fs-base); color: var(--gv-text-primary); }
+    .db-rangeface .db-rangebtn { border: 0; background: transparent; cursor: pointer; font-family: var(--gv-font-family); font-size: var(--gv-fs-base); color: var(--gv-text-primary); padding: 4px 8px; white-space: nowrap; }
     .db-rangeface .db-rangesep { color: var(--gv-cool-grey-500); display: inline-flex; }
     .db-rangeface .db-rangesep .gv-icon { width: 18px; height: 18px; }
     .db-rangeface .db-rangecal { margin-left: 2px; color: var(--gv-bo-primary); display: inline-flex; }
@@ -62,11 +62,12 @@
     /* Big-number block above a line chart: label / number / sublabel stacked. */
     .db-bignum { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); margin: 0 0 8px; }
     .db-bignum .db-bignum__lbl { font-size: var(--gv-fs-s); color: var(--gv-bo-primary); }
-    .db-bignum .db-bignum__big { font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-text); display: block; line-height: 1.1; margin: 2px 0; }
+    /* Measured (r8-dash-overview2 p.dVXeQz): big stat is 21px / weight 400 / #333, not 25/700. */
+    .db-bignum__big { font-size: var(--gv-fs-xl); font-weight: 400; color: var(--gv-text-primary); display: block; line-height: 1.5; margin: 2px 0; }
     .db-bignum .db-bignum__sub { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
     .db-bignum .db-bignum__sub b { color: var(--gv-text-secondary); font-weight: 700; }
     .db-statline { display: flex; gap: 36px; flex-wrap: wrap; margin: 6px 0 10px; }
-    .db-stat__num { font-size: var(--gv-fs-xl); font-weight: 400; color: var(--gv-text); line-height: 1.2; }
+    .db-stat__num { font-size: var(--gv-fs-xl); font-weight: 400; color: var(--gv-text-primary); line-height: 1.2; }
     .db-stat__lbl { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
     .db-stat__lbl.db-stat__top { color: var(--gv-bo-primary); }
     .db-stat__lbl b { color: var(--gv-text-secondary); font-weight: 700; }
@@ -98,7 +99,7 @@
     .ch-vlabels { display: flex; gap: 10px; margin-top: 6px; grid-column: 2; }
     .ch-vlabels span { flex: 1; text-align: center; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); }
     /* Legend. */
-    .ch-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: var(--gv-fs-13); color: var(--gv-text); justify-content: center; }
+    .ch-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: var(--gv-fs-13); color: var(--gv-text-primary); justify-content: center; }
     .ch-legend span { display: inline-flex; align-items: center; gap: 6px; }
     .ch-legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
     .db-line { width: 100%; height: 130px; display: block; }
@@ -165,7 +166,7 @@
             <div class="db-rangeface">
               <button class="db-rangebtn" type="button">Select date</button>
               <span class="db-rangesep"><span class="gv-icon" data-gv-icon="chevron-right"></span></span>
-              <button class="db-rangebtn" type="button">6/15/2026</button>
+              <button class="db-rangebtn" type="button">6/18/2026</button>
               <span class="db-rangecal"><span class="gv-icon" data-gv-icon="calendar"></span></span>
             </div>
           </div>
@@ -175,13 +176,13 @@
         </div>
 
         <div class="db-grid">
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="5,0,0,0,1,0,0,0,0,0,0,9" data-title="Registrations" data-lbl="Total registrations" data-big="9" data-sub="Last 30 days: <b>0</b>" data-series="New registrations"></div>
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="0,0,1,0,2,1,3,2,5,8,14,20" data-title="Participants" data-lbl="Total participants" data-big="20" data-sub="Last 30 days: <b>0</b>" data-series="Participants"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="3,2,4,3,14,5,6,4,3,2,3,2" data-title="Registrations" data-lbl="Total registrations" data-big="72" data-sub="Last 30 days: <b>1</b>" data-series="New registrations"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-split data-points="20,40,25,30,220,60,55,40,35,30,25,20" data-title="Participants" data-lbl="Total participants" data-big="683" data-sub="Last 30 days: <b>0</b>" data-series="Participants"></div>
         </div>
 
         <h2 class="db-sectionhead">Projects &amp; Participation</h2>
         <div class="db-grid">
-          <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,1,2,4,8,40,180,300,340,347" data-title='Inputs 347 <span class="db-delta">(+347)</span>' data-series="Total · This month"></div>
+          <div class="gv-bo-chartcard db-span-6" data-chart="combo" data-points="0,0,0,1,2,4,8,40,180,300,460,519" data-bars="2,5,8,12,30,45,60,80,55,40,35,40" data-title='Inputs 519 <span class="db-delta">(+519)</span>' data-series="Total · This month"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="barsH" data-title="Participation per project"
                data-bars='[["Post your proposal here and place it on…",8],["Mapping: Building Protected Bike Lanes",3],["Participatory Budget - District 3",3],["Sample survey",1],["Let&#39;s Reimagine Dorothea Dix Park",1]]' data-dropdown="Inputs"></div>
           <div class="gv-bo-chartcard db-span-6" data-chart="line" data-points="0,0,0,0,741,0,0,0,0,0,0,0" data-title='Comments 741 <span class="db-delta">(+741)</span>' data-series="Total · This month"></div>
@@ -268,7 +269,7 @@
             <div class="db-rangeface">
               <button class="db-rangebtn" type="button">Select date</button>
               <span class="db-rangesep"><span class="gv-icon" data-gv-icon="chevron-right"></span></span>
-              <button class="db-rangebtn" type="button">6/15/2026</button>
+              <button class="db-rangebtn" type="button">6/18/2026</button>
               <span class="db-rangecal"><span class="gv-icon" data-gv-icon="calendar"></span></span>
             </div>
           </div>
@@ -292,7 +293,7 @@
             <div class="db-rangeface">
               <button class="db-rangebtn" type="button">11/24/2024</button>
               <span class="db-rangesep"><span class="gv-icon" data-gv-icon="chevron-right"></span></span>
-              <button class="db-rangebtn" type="button">6/15/2026</button>
+              <button class="db-rangebtn" type="button">6/18/2026</button>
               <span class="db-rangecal"><span class="gv-icon" data-gv-icon="calendar"></span></span>
             </div>
           </div>
@@ -427,7 +428,21 @@
       const axis = XMONTHS.map(m => `<span>${m}</span>`).join("");
       return `<div class="ch-line"><div class="ch-yaxis">${yaxis}</div>
         <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-        ${grid}<polyline points="${pts}" fill="none" stroke="var(--ch-blue)" stroke-width="2"/></svg>
+        ${grid}<polyline points="${pts}" fill="none" stroke="var(--ch-line)" stroke-width="2"/></svg>
+        <div class="ch-axis">${axis}</div></div></div>`;
+    }
+    // Combo line+bar (Inputs/Comments/Reactions): navy bars (per-month, right axis)
+    // under a cumulative #7FBBCA line (left axis) — matches the real recharts ComposedChart.
+    function comboSVG(points, bars) {
+      const lv = points.split(",").map(Number), bv = (bars || "").split(",").map(Number);
+      const { top } = niceTicks(Math.max(...lv, 1)), btop = Math.max(...bv, 1);
+      const n = lv.length, bw = 600 / n * 0.5;
+      const grid = lv.map((_, i) => `<line x1="${(i / (n - 1) * 600).toFixed(1)}" y1="12" x2="${(i / (n - 1) * 600).toFixed(1)}" y2="112" stroke="var(--gv-grey-200)" stroke-width="0.5"/>`).join("");
+      const rects = bv.map((v, i) => { const h = v / btop * 96, x = i / (n - 1) * 600 - bw / 2; return `<rect x="${Math.max(0, x).toFixed(1)}" y="${(112 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="var(--ch-bar)"/>`; }).join("");
+      const pts = lv.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / top * 100).toFixed(1)}`).join(" ");
+      const axis = XMONTHS.map(m => `<span>${m}</span>`).join("");
+      return `<div class="ch-line"><div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
+        ${grid}${rects}<polyline points="${pts}" fill="none" stroke="var(--ch-line)" stroke-width="2"/></svg>
         <div class="ch-axis">${axis}</div></div></div>`;
     }
     function barsH(json) {
@@ -468,11 +483,15 @@
           const big = card.dataset.big
             ? `<div class="db-bignum"><span class="db-bignum__lbl">${card.dataset.lbl || ""}</span><span class="db-bignum__big">${card.dataset.big}</span><span class="db-bignum__sub">${card.dataset.sub || ""}</span></div>`
             : (card.dataset.num ? `<div class="db-bignum">${card.dataset.num}</div>` : "");
-          const lineColors = ["var(--ch-blue)", "var(--ch-teal)", "var(--ch-red)"];
+          const lineColors = ["var(--ch-line)", "var(--ch-teal)", "var(--ch-red)"];
           const chart = `${lineSVG(card.dataset.points)}<div class="ch-legend">${(card.dataset.series || "").split(" · ").map((s, i) => `<span><i style="background:${lineColors[i] || "var(--ch-blue)"}"></i>${s}</span>`).join("")}</div>`;
           body = card.dataset.split !== undefined
             ? `<div class="db-split"><div class="db-bigblock">${big}</div><div class="db-split__chart">${chart}</div></div>`
             : `${big}${chart}`;
+        }
+        else if (t === "combo") {
+          const chart = `${comboSVG(card.dataset.points, card.dataset.bars)}<div class="ch-legend">${(card.dataset.series || "").split(" · ").map((s, i) => `<span><i style="background:${i === 0 ? "var(--ch-line)" : "var(--ch-bar)"}"></i>${s}</span>`).join("")}</div>`;
+          body = card.dataset.num ? `<div class="db-bignum">${card.dataset.num}</div>${chart}` : chart;
         }
         else if (t === "barsH") body = barsH(card.dataset.bars);
         else if (t === "barsV") body = barsV(card.dataset.bars);
