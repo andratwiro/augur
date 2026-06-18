@@ -1003,6 +1003,8 @@
   .tl-example .phase-name {
     font-style: italic; font-size: 13px; color: #656e7d;
   }
+  /* Empty-state option #4 — same example, but upright (no italics) to see it "normally" */
+  .tl-example.tl-example--plain .phase-name { font-style: normal; }
   .tl-example .phase-status-dot { background: #d1d5db; box-shadow: 0 0 0 3px #fff; }
   /* Lighter, shorter connector tuned for single-line example rows */
   .tl-example .timeline-group::before {
@@ -3725,6 +3727,7 @@
   <button data-es="1" class="on" title="Current (baseline)" onclick="setEmptyApproach(1, this)">1</button>
   <button data-es="2" title="Illustrated empty state" onclick="setEmptyApproach(2, this)">2</button>
   <button data-es="3" title="Preview the destination (Example page)" onclick="setEmptyApproach(3, this)">3</button>
+  <button data-es="4" title="No italics — upright example phases" onclick="setEmptyApproach(4, this)">4</button>
 </div>
 
 <script>
@@ -4158,6 +4161,8 @@
     + '<div class="phase-row-rich timeline-item"><div class="phase-status-dot"></div><div class="flex-1 min-w-0"><div class="phase-name">Vote on the shortlist · Voting</div></div></div>'
     + '<div class="phase-row-rich timeline-item"><div class="phase-status-dot"></div><div class="flex-1 min-w-0"><div class="phase-name">Share what we heard · Information</div></div></div>'
     + '</div></div>';
+  // Same worked example, but with the upright (non-italic) modifier — option #4.
+  const ES_EXAMPLE_PLAIN = ES_EXAMPLE.replace('class="tl-example"', 'class="tl-example tl-example--plain"');
   const ES_NEWPHASE  = '<button class="sec-add" onclick="setView(&#39;add-phase&#39;)">' + ES_PLUS + 'New phase</button>';
   const ES_NEWSURVEY = '<hr class="panel-divider" /><button class="sec-add muted" onclick="setView(&#39;add-survey&#39;)">' + ES_PLUS + 'New survey outside the timeline</button>';
 
@@ -4171,6 +4176,11 @@
         + '<div class="es-illus__h">Let’s build your project</div>'
         + '<div class="es-illus__s">Add phases to map out how people take part — step by step.</div></div>'
         + ES_NEWPHASE;
+    }
+    if (n === 4) { // No italics — same as #1, but the example phases render upright
+      return ES_TL_HEAD
+        + '<div class="tl-example-intro">Phases are the steps people move through — for example:</div>'
+        + ES_EXAMPLE_PLAIN + ES_NEWPHASE;
     }
     // #1 Current (baseline) and #3 Example destination — the worked-example panel
     return ES_TL_HEAD
