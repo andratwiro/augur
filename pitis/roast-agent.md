@@ -104,11 +104,11 @@ Each tick:
    the review API's `add` op via the secret-guarded export endpoint — **no site password,
    no new plumbing.** Anchor it to the same `sel` so it sits on the thing you roasted:
    ```
-   POST {REVIEW_SITE_URL}/__review/api/export?key={REVIEW_EXPORT_KEY}   (Content-Type: application/json)
+   POST {REVIEW_SITE_URL}/__review/api/export   (header X-Review-Key: {REVIEW_EXPORT_KEY})
    { "path":"{the exact view.path}",
      "op":"add",
      "thread":{
-       "id":"piti-{a unique id}",
+       "id":"piti-{a STABLE id}",   // ← deterministic per roast (e.g. piti- + a hash of path|sel|text)
        "sel":"{same selector as the roast}",
        "fx":0.5, "fy":0.5,          // centre the pin on the element (fractions of its box)
        "px":0, "py":0,              // page-coord fallback, only used if sel can't resolve
@@ -117,9 +117,19 @@ Each tick:
        "messages":[{"author":"Aslam","body":"{the roast text}","at":"{ISO timestamp}"}]
      } }
    ```
-   The annotation appears on the next page load (the overlay loads threads once); the live
-   roast is the bubble, the Aslamnotation is what you find waiting there later. Keep the
-   body = the roast (or a touch fuller if a sentence of "why" helps a permanent note).
+   It's a real review annotation (cat avatar, shows in the review sidebar + `npm run review`
+   export). Keep the body = the roast (a touch fuller is fine for a permanent note).
+
+   **Survive the race — STABLE id + self-heal.** The page's annotations live under one
+   shared KV key that the user's live overlay *also* writes (its orphan-sweep fires `delete`
+   writes as an SPA re-renders); under KV's eventual consistency a stale-read write there can
+   clobber a freshly-added note. So: (a) give each Aslamnotation a **deterministic id** from
+   `path|sel|text` — `add` is now idempotent server-side, so re-posting the same id never
+   duplicates; (b) **re-assert every loop tick** — GET `{SITE}/__review/api?path=<path>`,
+   and for each roast you've made on the current page whose id is missing, re-POST its `add`.
+   They converge and stick once the user stops toggling, and once the overlay reloads with
+   the note present it keeps it (annotations are never orphan-swept). Track your roasts
+   (id + path + sel + text) for the session so you can heal them.
 8. **Remember what you said** (per path+screen) so you never repeat a point. Wait out the
    dwell + a gap before the next. When the screen changes, you may comment sooner.
 

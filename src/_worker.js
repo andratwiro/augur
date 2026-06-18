@@ -259,17 +259,23 @@ function applyOp(threads, op) {
   if (!op || typeof op !== "object") return threads;
   if (op.op === "add" && op.thread) {
     const t = op.thread;
-    threads.push({
-      id: clamp(t.id, 64) || String(Date.now()),
-      sel: clamp(t.sel, 600),
-      fx: +t.fx || 0, fy: +t.fy || 0, px: +t.px || 0, py: +t.py || 0,
-      view: clamp(t.view, 600) || null,
-      screen: clamp(t.screen, 200) || null,
-      resolved: false,
-      annotation: !!t.annotation,
-      messages: (Array.isArray(t.messages) ? t.messages : []).slice(0, 1).map(sanitizeMsg),
-    });
-    if (threads.length > 500) threads = threads.slice(-500);
+    const id = clamp(t.id, 64) || String(Date.now());
+    // Idempotent by id: re-adding the same thread is a no-op, never a duplicate. This
+    // lets a second writer (e.g. the piti roast agent) safely re-assert its annotation
+    // to heal it after a racing read-modify-write delete clobbered the shared key.
+    if (!threads.some((x) => x.id === id)) {
+      threads.push({
+        id,
+        sel: clamp(t.sel, 600),
+        fx: +t.fx || 0, fy: +t.fy || 0, px: +t.px || 0, py: +t.py || 0,
+        view: clamp(t.view, 600) || null,
+        screen: clamp(t.screen, 200) || null,
+        resolved: false,
+        annotation: !!t.annotation,
+        messages: (Array.isArray(t.messages) ? t.messages : []).slice(0, 1).map(sanitizeMsg),
+      });
+      if (threads.length > 500) threads = threads.slice(-500);
+    }
   } else if (op.op === "move") {
     const t = threads.find((x) => x.id === op.id);
     if (t) {
