@@ -2060,7 +2060,7 @@
               </div>
             </div>
           </div>
-          <button class="sec-add" onclick="setView('add-phase')">
+          <button class="sec-add muted" onclick="setView('add-phase')">
             <span class="sec-add-ic" data-gv-icon="plus" aria-hidden="true"></span>
             New phase
           </button>
@@ -4050,7 +4050,7 @@
   }
   function renderComplexExtras(n) {
     const head = `<hr class="panel-divider" /><div class="sec-head">Extras</div><div class="sec-sub">Surveys that run outside your timeline</div>`;
-    const add = `<button class="sec-add" onclick="setView('add-survey')"><svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New survey</button>`;
+    const add = `<button class="sec-add muted" onclick="setView('add-survey')"><svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New survey</button>`;
     const askus  = hsRow({ phase:'askus',  dot:'live',     name:'Ask us anything',     dates:'Ongoing' });
     const market = hsRow({ phase:'',        dot:'upcoming', name:'Market-day poll',      dates:'15–17 Aug' });
     const kiosk  = hsRow({ phase:'',        dot:'completed',name:'Pop-up kiosk survey',  dates:'2–4 May', past:true });
@@ -4247,7 +4247,7 @@
             </div>
           </div>
         </div>
-        <button class="sec-add" onclick="setView('add-phase')">
+        <button class="sec-add muted" onclick="setView('add-phase')">
           <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           New phase
         </button>
@@ -4264,7 +4264,7 @@
             <div class="phase-dates">Ongoing</div>
           </div>
         </div>
-        <button class="sec-add" onclick="setView('add-survey')">
+        <button class="sec-add muted" onclick="setView('add-survey')">
           <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           New survey
         </button>
@@ -4292,7 +4292,7 @@
             <div class="flex-1 min-w-0"><div class="phase-name">Find common ground</div>
               <div class="phase-dates">13–27 Jul · Common ground</div></div></div>
         </div>
-        <button class="sec-add" onclick="setView('add-phase')">
+        <button class="sec-add muted" onclick="setView('add-phase')">
           <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           New phase
         </button>
