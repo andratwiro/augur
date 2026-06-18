@@ -2796,60 +2796,6 @@
   #view-home .homeview-scroller { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; }
   #view-home .gv-spotlight__media { aspect-ratio: 4 / 3; }
 
-  /* ════ NEW WIDGET — "Take part now": one project, several methods open at once.
-     Prototype-local (.ppw-*), but harmonised to read as a homepage widget:
-     it sits inside a real .gv-section and is built on gv tokens so it themes
-     per ?theme= with everything else. The lanes are EQUAL + simultaneous (no
-     lightness ramp — that would imply a sequence). ════════════════════════════ */
-  #view-home .ppw { border: 1px solid var(--gv-grey-200); border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 18px 48px rgba(16,22,34,.10); }
-  #view-home .ppw__top { position: relative; isolation: isolate; padding: 28px 30px 26px; color: #fff; }
-  #view-home .ppw__top::before { content: ""; position: absolute; inset: 0; z-index: -2; background: url('assets/img/feat-downtown.webp') center 40% / cover; transform: scale(1.04); }
-  #view-home .ppw__top::after { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .94;
-    background: linear-gradient(118deg, color-mix(in srgb, var(--gv-tenant-primary) 94%, #000) 0%,
-      color-mix(in srgb, var(--gv-tenant-primary) 72%, #11151f) 54%,
-      color-mix(in srgb, var(--gv-tenant-secondary, var(--gv-tenant-primary)) 80%, #000) 100%); }
-  #view-home .ppw__grid { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
-  #view-home .ppw__eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 11px; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.82); }
-  #view-home .ppw__eyebrow::before { content: ""; width: 18px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.6); }
-  #view-home .ppw__title { margin: 0 0 13px; font-size: clamp(24px, 3vw, 33px); line-height: 1.07; font-weight: 800; letter-spacing: -.02em; color: #fff; }
-  #view-home .ppw__metarow { display: flex; align-items: center; gap: 9px 18px; flex-wrap: wrap; font-size: var(--gv-fs-s); color: rgba(255,255,255,.9); }
-  #view-home .ppw__metarow .it { display: inline-flex; align-items: center; gap: 7px; }
-  #view-home .ppw__metarow .it [data-gv-icon] { width: 15px; height: 15px; }
-  #view-home .ppw__metarow b { color: #fff; font-weight: 700; }
-  #view-home .ppw__live { display: inline-flex; align-items: center; gap: 9px; padding: 9px 15px; border-radius: 999px;
-    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.26); backdrop-filter: blur(6px); font-size: var(--gv-fs-s); font-weight: 700; white-space: nowrap; }
-  #view-home .ppw__live .pulse { position: relative; width: 9px; height: 9px; border-radius: 50%; background: var(--gv-green-400, #5fd08a); flex: none; }
-  #view-home .ppw__live .pulse::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--gv-green-400, #5fd08a); opacity: .8; animation: ppw-ping 1.9s ease-out infinite; }
-  #view-home .ppw__lanes { position: relative; }
-  #view-home .ppw__lanes::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 4px;
-    background: linear-gradient(var(--gv-tenant-primary), color-mix(in srgb, var(--gv-tenant-primary) 35%, #fff)); }
-  #view-home .ppw__lane { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 18px;
-    padding: 17px 30px 17px 32px; text-decoration: none; color: var(--gv-text-primary); border-top: 1px solid var(--gv-grey-200); transition: background .15s ease; cursor: pointer; }
-  #view-home .ppw__lane:first-child { border-top: 0; }
-  #view-home .ppw__lane:hover { background: color-mix(in srgb, var(--gv-tenant-primary) 6%, #fff); }
-  #view-home .ppw__lane:focus-visible { outline: 3px solid color-mix(in srgb, var(--gv-tenant-primary) 55%, transparent); outline-offset: -3px; }
-  #view-home .ppw__chip { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; flex: none; color: #fff; background: var(--gv-tenant-primary); }
-  #view-home .ppw__chip [data-gv-icon] { width: 21px; height: 21px; }
-  #view-home .ppw__lanetext { min-width: 0; }
-  #view-home .ppw__lanename { display: flex; align-items: center; gap: 9px; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.2; }
-  #view-home .ppw__kind { font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--gv-tenant-primary);
-    background: color-mix(in srgb, var(--gv-tenant-primary) 11%, #fff); padding: 2px 7px; border-radius: 5px; }
-  #view-home .ppw__lanesub { margin: 3px 0 0; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #view-home .ppw__lanestatus { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); white-space: nowrap; }
-  #view-home .ppw__lanestatus .live { width: 8px; height: 8px; border-radius: 50%; background: var(--gv-green-500, #2f9e57); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gv-green-500, #2f9e57) 22%, transparent); flex: none; }
-  #view-home .ppw__lanego { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; flex: none;
-    background: color-mix(in srgb, var(--gv-tenant-primary) 10%, #fff); color: var(--gv-tenant-primary); transition: transform .15s ease, background .15s ease; }
-  #view-home .ppw__lanego [data-gv-icon] { width: 17px; height: 17px; }
-  #view-home .ppw__lane:hover .ppw__lanego { background: var(--gv-tenant-primary); color: #fff; transform: translateX(3px); }
-  #view-home .ppw__foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 15px 30px; border-top: 1px solid var(--gv-grey-200); background: var(--gv-grey-50, #fafbfc); }
-  #view-home .ppw__foothint { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
-  #view-home .ppw__foothint b { color: var(--gv-text-primary); font-weight: 600; }
-  @media (max-width: 720px) {
-    #view-home .ppw__lane { grid-template-columns: auto minmax(0,1fr) auto; gap: 14px; padding: 15px 18px 15px 20px; }
-    #view-home .ppw__lanestatus { display: none; }
-    #view-home .ppw__top { padding: 24px 20px; }
-  }
-
   /* ════ NEW CARD VARIANT (.ppm) — drops into the real Open-to-participation rail
      at the SAME compact footprint; the lone clock becomes a method-icon trio +
      "N ways open" + a quiet soonest hint. Single-method cards keep .gv-pcard__status. ════ */
@@ -2862,8 +2808,26 @@
   #view-home .ppm__sub { margin: 5px 0 0; font-size: 13px; color: var(--gv-text-secondary); display: inline-flex; align-items: center; gap: 7px; }
   #view-home .ppm__sub [data-gv-icon] { width: 13px; height: 13px; color: var(--gv-tenant-primary); }
 
-  @keyframes ppw-ping { 0% { transform: scale(.6); opacity: .9 } 80%, 100% { transform: scale(1.7); opacity: 0 } }
-  @media (prefers-reduced-motion: reduce) { #view-home .ppw__live .pulse::after { animation: none; } }
+  /* Five elegant ways to show "several methods open" in the same compact card.
+     Each is a duplicate of the real Open-to-participation rail; only the Meridian
+     card's status region changes. Quiet variant label sits beside the heading. */
+  #view-home .ppm-tag { display: inline-flex; align-items: center; margin-left: 12px; padding: 3px 11px; border-radius: 999px;
+    background: var(--gv-grey-100); color: var(--gv-text-secondary); font-size: 12px; font-weight: 700; letter-spacing: .02em; vertical-align: middle; }
+  /* B · method names */
+  #view-home .ppm__names { margin: 6px 0 0; font-size: 13.5px; color: var(--gv-text-secondary); }
+  /* C · soonest clock (like its neighbours) + a quiet overflow line */
+  #view-home .ppm__more2 { display: block; margin: 8px 0 0; font-size: 13.5px; font-weight: 600; color: var(--gv-tenant-primary); }
+  /* D · method chips */
+  #view-home .ppm__chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 0; }
+  #view-home .ppm__chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px;
+    background: color-mix(in srgb, var(--gv-tenant-primary) 9%, #fff); color: var(--gv-tenant-primary); font-size: 12px; font-weight: 600; }
+  #view-home .ppm__chip [data-gv-icon] { width: 13px; height: 13px; }
+  /* E · all-live rows */
+  #view-home .ppm__rows { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  #view-home .ppm__rows li { display: flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 600; color: var(--gv-text-primary); }
+  #view-home .ppm__rows .live { width: 7px; height: 7px; border-radius: 50%; background: var(--gv-green-500, #2f9e57);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--gv-green-500, #2f9e57) 20%, transparent); flex: none; }
+
 </style>
 
 <div id="view-home" aria-label="Meridian — platform homepage">
@@ -2896,7 +2860,7 @@
         <h1 class="gv-hero__title">Help shape the future of Meridian</h1>
         <p class="gv-hero__lead">Have your say on the projects shaping our city — from how we move to where we meet.</p>
         <div class="gv-hero__actions">
-          <a class="gv-btn primary-inverse" href="#home-featured" onclick="document.getElementById('home-featured').scrollIntoView({behavior:'smooth'});return false;">Reimagine Meridian 2030 — take part</a>
+          <a class="gv-btn primary-inverse" href="#" onclick="openProjectFromHome();return false;">Reimagine Meridian 2030 — take part</a>
         </div>
       </div>
     </section>
@@ -2913,72 +2877,11 @@
       </div>
     </section>
 
-    <!-- ════ NEW WIDGET — "Take part now" (parallel participation) ════
-         A homepage widget for a project running several methods at once. Sits in a
-         real .gv-section between Spotlight and Open to participation. -->
-    <section class="gv-section" id="home-featured" aria-labelledby="home-feat-title">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="home-feat-title">Take part now</h2></div>
+    <!-- ════ Open to participation — variant A · Method icons ════ -->
+    <section class="gv-section" aria-labelledby="open-v1">
+      <div class="gv-section__head"><h2 class="gv-title h2" id="open-v1">Open to participation <span class="ppm-tag">A · Method icons</span></h2></div>
       <div class="gv-section__body">
-        <div class="ppw">
-          <div class="ppw__top">
-            <div class="ppw__grid">
-              <div>
-                <p class="ppw__eyebrow">Flagship project · City of Meridian</p>
-                <h3 class="ppw__title">Reimagine Meridian 2030</h3>
-                <div class="ppw__metarow">
-                  <span class="it"><span data-gv-icon="group" aria-hidden="true"></span> <b>312</b>&nbsp;taking part</span>
-                  <span class="it"><span data-gv-icon="calendar" aria-hidden="true"></span> Running through 2030</span>
-                </div>
-              </div>
-              <span class="ppw__live"><span class="pulse"></span> 3 ways open now</span>
-            </div>
-          </div>
-          <div class="ppw__lanes">
-            <a class="ppw__lane" href="#" onclick="openProjectFromHome();return false;">
-              <span class="ppw__chip"><span data-gv-icon="survey" aria-hidden="true"></span></span>
-              <span class="ppw__lanetext">
-                <span class="ppw__lanename">Mobility survey <span class="ppw__kind">Survey</span></span>
-                <span class="ppw__lanesub">Ten minutes on how you move around the city today.</span>
-              </span>
-              <span class="ppw__lanestatus"><span class="live"></span> closes in 2 days</span>
-              <span class="ppw__lanego"><span data-gv-icon="arrow-right" aria-hidden="true"></span></span>
-            </a>
-            <a class="ppw__lane" href="#" onclick="openProjectFromHome();return false;">
-              <span class="ppw__chip"><span data-gv-icon="idea" aria-hidden="true"></span></span>
-              <span class="ppw__lanetext">
-                <span class="ppw__lanename">Share your ideas <span class="ppw__kind">Ideation</span></span>
-                <span class="ppw__lanesub">Add a proposal for a street, square or route — and back others.</span>
-              </span>
-              <span class="ppw__lanestatus"><span class="live"></span> ends 9 Jul</span>
-              <span class="ppw__lanego"><span data-gv-icon="arrow-right" aria-hidden="true"></span></span>
-            </a>
-            <a class="ppw__lane" href="#" onclick="openProjectFromHome();return false;">
-              <span class="ppw__chip"><span data-gv-icon="vote-up" aria-hidden="true"></span></span>
-              <span class="ppw__lanetext">
-                <span class="ppw__lanename">Back the best ideas <span class="ppw__kind">Vote</span></span>
-                <span class="ppw__lanesub">Spend your points on the proposals you most want to see.</span>
-              </span>
-              <span class="ppw__lanestatus"><span class="live"></span> ends 23 Jul</span>
-              <span class="ppw__lanego"><span data-gv-icon="arrow-right" aria-hidden="true"></span></span>
-            </a>
-          </div>
-          <div class="ppw__foot">
-            <span class="ppw__foothint"><b>New here?</b> Start with the survey — the other ways stay open while you do.</span>
-            <a class="gv-btn primary size-s" href="#" onclick="openProjectFromHome();return false;">Open the project page</a>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ════ Open to participation (real .gv-rail of project-cards) ════
-         The new parallel-method card (.ppm, Reimagine Meridian 2030) sits FIRST,
-         next to the unchanged single-method cards — proving they share one rail. -->
-    <section class="gv-section" aria-labelledby="home-open-title">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="home-open-title">Open to participation</h2></div>
-      <div class="gv-section__body">
-        <div class="gv-rail" tabindex="0" role="group" aria-label="Projects open to participation, scroll for more">
-
-          <!-- NEW: parallel-method card → loop entry -->
+        <div class="gv-rail" tabindex="0" role="group" aria-label="Open to participation — variant A · Method icons">
           <article class="gv-pcard light compact ppm" onclick="openProjectFromHome()">
             <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
             <div class="gv-pcard__body">
@@ -2988,8 +2891,6 @@
               <span class="ppm__sub"><span data-gv-icon="clock-solid"></span> Survey closes first, in 2 days</span>
             </div>
           </article>
-
-          <!-- Real single-method cards (unchanged) -->
           <article class="gv-pcard light compact">
             <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="The harbour waterfront" loading="lazy" /></div>
             <div class="gv-pcard__body">
@@ -2998,7 +2899,6 @@
               <span class="gv-pcard__more">Learn more</span>
             </div>
           </article>
-
           <article class="gv-pcard light compact">
             <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="Market Square" loading="lazy" /></div>
             <div class="gv-pcard__body">
@@ -3007,16 +2907,141 @@
               <span class="gv-pcard__more">Learn more</span>
             </div>
           </article>
+        </div>
+      </div>
+    </section>
 
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/climate-northgate.webp" alt="A leafy street in Northgate" loading="lazy" /></div>
+    <!-- ════ Open to participation — variant B · Method names ════ -->
+    <section class="gv-section" aria-labelledby="open-v2">
+      <div class="gv-section__head"><h2 class="gv-title h2" id="open-v2">Open to participation <span class="ppm-tag">B · Method names</span></h2></div>
+      <div class="gv-section__body">
+        <div class="gv-rail" tabindex="0" role="group" aria-label="Open to participation — variant B · Method names">
+          <article class="gv-pcard light compact ppm" onclick="openProjectFromHome()">
+            <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
             <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Northgate green corridor</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 2 months left</span>
+              <h3 class="gv-pcard__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+              <span class="ppm__status"><span class="live"></span> Open now</span>
+              <span class="ppm__names">Survey, ideas &amp; vote</span>
+            </div>
+          </article>
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="The harbour waterfront" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3>
+              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span>
               <span class="gv-pcard__more">Learn more</span>
             </div>
           </article>
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="Market Square" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3>
+              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
 
+    <!-- ════ Open to participation — variant C · Soonest + more ════ -->
+    <section class="gv-section" aria-labelledby="open-v3">
+      <div class="gv-section__head"><h2 class="gv-title h2" id="open-v3">Open to participation <span class="ppm-tag">C · Soonest + more</span></h2></div>
+      <div class="gv-section__body">
+        <div class="gv-rail" tabindex="0" role="group" aria-label="Open to participation — variant C · Soonest + more">
+          <article class="gv-pcard light compact ppm" onclick="openProjectFromHome()">
+            <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 2 days left</span>
+              <span class="ppm__more2">+ 2 more ways to take part</span>
+            </div>
+          </article>
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="The harbour waterfront" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3>
+              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="Market Square" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3>
+              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ Open to participation — variant D · Method chips ════ -->
+    <section class="gv-section" aria-labelledby="open-v4">
+      <div class="gv-section__head"><h2 class="gv-title h2" id="open-v4">Open to participation <span class="ppm-tag">D · Method chips</span></h2></div>
+      <div class="gv-section__body">
+        <div class="gv-rail" tabindex="0" role="group" aria-label="Open to participation — variant D · Method chips">
+          <article class="gv-pcard light compact ppm" onclick="openProjectFromHome()">
+            <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+              <div class="ppm__chips"><span class="ppm__chip"><span data-gv-icon="survey"></span> Survey</span><span class="ppm__chip"><span data-gv-icon="idea"></span> Ideas</span><span class="ppm__chip"><span data-gv-icon="vote-up"></span> Vote</span></div>
+              <span class="ppm__sub"><span data-gv-icon="clock-solid"></span> Survey closes first, in 2 days</span>
+            </div>
+          </article>
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="The harbour waterfront" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3>
+              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="Market Square" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3>
+              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ Open to participation — variant E · All live ════ -->
+    <section class="gv-section" aria-labelledby="open-v5">
+      <div class="gv-section__head"><h2 class="gv-title h2" id="open-v5">Open to participation <span class="ppm-tag">E · All live</span></h2></div>
+      <div class="gv-section__body">
+        <div class="gv-rail" tabindex="0" role="group" aria-label="Open to participation — variant E · All live">
+          <article class="gv-pcard light compact ppm" onclick="openProjectFromHome()">
+            <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
+              <ul class="ppm__rows">
+                <li><span class="live"></span> Survey</li>
+                <li><span class="live"></span> Share ideas</li>
+                <li><span class="live"></span> Vote</li>
+              </ul>
+            </div>
+          </article>
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="The harbour waterfront" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3>
+              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
+          <article class="gv-pcard light compact">
+            <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="Market Square" loading="lazy" /></div>
+            <div class="gv-pcard__body">
+              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3>
+              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span>
+              <span class="gv-pcard__more">Learn more</span>
+            </div>
+          </article>
         </div>
       </div>
     </section>
@@ -3127,7 +3152,7 @@
 <script>
   /* ── Homepage ⇄ project ⇄ editor loop ─────────────────────────────────────
      openHome() shows the platform homepage (admin rail "To platform" arrow).
-     The Meridian project (the .ppw widget CTAs or the .ppm card) →
+     The Meridian project (the .ppm card or the hero CTA) →
      openProjectFromHome() pins the complex project and opens the FO project page
      (#view-fo); its "Edit project" closeFO() reveals the editor — loop closed.
      Reaches the global setProjectState()/openFO() from the main editor script. */
@@ -3719,16 +3744,9 @@
 
 <!-- v3 has no hidden-survey switcher — it commits to the "Link only" meta line (v2 #3). -->
 
-<!-- ============ Empty-state approach explorer — bottom-left (empty state only) ============ -->
-<!-- Swaps how a brand-new blank project is presented — across BOTH the timeline panel and
-     the resident phone preview — through 10 polished treatments for a non-technical staffer. -->
-<div class="empty-chip" role="group" aria-label="Empty-state treatment" hidden>
-  <span class="label">Empty state</span>
-  <button data-es="1" class="on" title="Current (baseline)" onclick="setEmptyApproach(1, this)">1</button>
-  <button data-es="2" title="Illustrated empty state" onclick="setEmptyApproach(2, this)">2</button>
-  <button data-es="3" title="Preview the destination (Example page)" onclick="setEmptyApproach(3, this)">3</button>
-  <button data-es="4" title="No italics — upright example phases" onclick="setEmptyApproach(4, this)">4</button>
-</div>
+<!-- Empty-state design is locked in (v2 #4 — upright worked example + ghost slots);
+     the explorer picker lives on v2 only. -->
+
 
 <script>
   const _timelineCardOriginal = null;
@@ -3959,7 +3977,7 @@
     const sc = document.getElementById('phone-scroller');
     if (!sc) return;
     if (state === 'empty') {
-      sc.innerHTML = emptyPhone(window.ppEmpty || 1);
+      sc.innerHTML = emptyPhone();
     } else {
       sc.innerHTML = phoneFO(state);
     }
@@ -4141,102 +4159,48 @@
       <div class="pp-fo__hsnote"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span><span><b>Editor only.</b> ${note}</span></div>
     </div>`;
   }
-  // ── Empty-state approach explorer ──────────────────────────────────────────
-  // A brand-new, blank project. window.ppEmpty (1–3) selects how it's presented to a
-  // (typically non-technical) city staffer across BOTH the timeline panel and the resident
-  // phone preview. Three live directions: #1 Current (baseline), #2 Illustrated empty state,
-  // #3 Example destination (a faded "this is what it'll look like" preview).
-  window.ppEmpty = window.ppEmpty || 1;
+  // ── Empty state (locked in) ────────────────────────────────────────────────
+  // A brand-new, blank project, presented to a (typically non-technical) city staffer:
+  // an upright worked-example timeline + ghost slots on the phone. (The exploration of
+  // alternatives lives on the v2 prototype; v3 commits to this one.)
 
   // Inline SVGs (panel uses literal <svg>, not data-gv-icon, to match the few/complex branches)
   const ES_PLUS  = '<svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
-  const ES_INFO  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
   const ES_IMG   = '<svg class="nav-icon" style="width:18px;height:18px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
-  const ES_ILLUS = '<svg viewBox="0 0 120 90" fill="none" aria-hidden="true"><line x1="20" y1="22" x2="20" y2="68" stroke="#cbd5e1" stroke-width="2"/><circle cx="20" cy="22" r="5" fill="#2c6e7d"/><rect x="34" y="15" width="64" height="14" rx="4" fill="#dbe7e9"/><circle cx="20" cy="45" r="5" fill="#9db8bf"/><rect x="34" y="38" width="50" height="14" rx="4" fill="#e8eef0"/><circle cx="20" cy="68" r="5" fill="#cbd5e1"/><rect x="34" y="61" width="58" height="14" rx="4" fill="#eef2f4"/></svg>';
 
   // Shared timeline fragments
   const ES_TL_HEAD   = '<hr class="panel-divider" /><div class="sec-head">Timeline</div>';
-  const ES_EXAMPLE   = '<div class="tl-example"><div class="timeline-group">'
+  const ES_EXAMPLE   = '<div class="tl-example tl-example--plain"><div class="timeline-group">'
     + '<div class="phase-row-rich timeline-item"><div class="phase-status-dot"></div><div class="flex-1 min-w-0"><div class="phase-name">Collect ideas · Ideation</div></div></div>'
     + '<div class="phase-row-rich timeline-item"><div class="phase-status-dot"></div><div class="flex-1 min-w-0"><div class="phase-name">Vote on the shortlist · Voting</div></div></div>'
     + '<div class="phase-row-rich timeline-item"><div class="phase-status-dot"></div><div class="flex-1 min-w-0"><div class="phase-name">Share what we heard · Information</div></div></div>'
     + '</div></div>';
-  // Same worked example, but with the upright (non-italic) modifier — option #4.
-  const ES_EXAMPLE_PLAIN = ES_EXAMPLE.replace('class="tl-example"', 'class="tl-example tl-example--plain"');
-  const ES_NEWPHASE  = '<button class="sec-add" onclick="setView(&#39;add-phase&#39;)">' + ES_PLUS + 'New phase</button>';
-  const ES_NEWSURVEY = '<hr class="panel-divider" /><button class="sec-add muted" onclick="setView(&#39;add-survey&#39;)">' + ES_PLUS + 'New survey outside the timeline</button>';
+  // Both empty-state actions are quiet/transparent text buttons (the muted variant).
+  const ES_NEWPHASE  = '<button class="sec-add muted" onclick="setView(&#39;add-phase&#39;)">' + ES_PLUS + 'New phase</button>';
 
-  // Timeline panel for each approach. The panel is identical for #1/#2/#3 — the worked
-  // example — except #2 (Illustrated) leads with a friendly illustration instead of the
-  // intro line. #3 (Example) keeps the baseline panel; its difference lives on the phone.
-  function emptyTimeline(n) {
-    if (n === 2) { // Illustrated empty state
-      return ES_TL_HEAD
-        + '<div class="es-illus">' + ES_ILLUS
-        + '<div class="es-illus__h">Let’s build your project</div>'
-        + '<div class="es-illus__s">Add phases to map out how people take part — step by step.</div></div>'
-        + ES_NEWPHASE;
-    }
-    if (n === 4) { // No italics — same as #1, but the example phases render upright
-      return ES_TL_HEAD
-        + '<div class="tl-example-intro">Phases are the steps people move through — for example:</div>'
-        + ES_EXAMPLE_PLAIN + ES_NEWPHASE;
-    }
-    // #1 Current (baseline) and #3 Example destination — the worked-example panel
+  // Timeline panel — the upright worked example + a quiet "New phase".
+  function emptyTimeline() {
     return ES_TL_HEAD
       + '<div class="tl-example-intro">Phases are the steps people move through — for example:</div>'
       + ES_EXAMPLE + ES_NEWPHASE;
   }
 
-  // Extras section — the quiet "survey outside the timeline" link, for every approach.
-  function emptyExtras(n) {
-    return ES_NEWSURVEY;
+  // Extras section — keep the "Extras" header + subtitle even with no surveys yet, with a
+  // quiet/transparent "New survey" button (matching the empty timeline's "New phase").
+  function emptyExtras() {
+    return '<hr class="panel-divider" />'
+      + '<div class="sec-head">Extras</div>'
+      + '<div class="sec-sub">Surveys that run outside your timeline</div>'
+      + '<button class="sec-add muted" onclick="setView(&#39;add-survey&#39;)">' + ES_PLUS + 'New survey</button>';
   }
 
-  // The original ghost slots (header image / title / description) — treatment #1.
-  function esPhoneGhosts() {
-    return '<div class="mt-2 ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
+  // Phone preview — ghost slots (header image / title / description).
+  function emptyPhone() {
+    return '<div class="px-4 pt-3 pb-5">'
+      + '<div class="mt-2 ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
       + '<div class="mt-4 pt-1"><div class="ghost-slot" style="justify-content:flex-start;padding:14px;font-size:15px;font-weight:600;">' + ES_PLUS + 'Add project title</div></div>'
-      + '<div class="ghost-slot mt-3" style="justify-content:flex-start;padding:14px;text-align:left;min-height:60px;"><span style="flex-shrink:0;align-self:flex-start;margin-top:1px;display:inline-flex;">' + ES_PLUS + '</span><span style="flex:1;">Add a short description explaining what this project is about</span></div>';
-  }
-
-  // Phone preview for each approach
-  function emptyPhone(n) {
-    if (n === 2) { // Friendly illustrated empty state
-      return '<div class="es-pillus">' + ES_ILLUS
-        + '<div class="es-pillus__h">Your project page starts here</div>'
-        + '<div class="es-pillus__s">Give it a name and a short description, then add the ways people can take part.</div>'
-        + '<span class="es-pillus__cta">' + ES_PLUS + 'Add a title</span></div>';
-    }
-    if (n === 3) { // Preview the destination — a faded, watermarked "Example" page
-      return '<div class="es-example"><div class="es-example__ribbon">' + ES_INFO + 'Example — yours will look like this</div>'
-        + '<div class="es-example__body">'
-        + '<div class="es-ex-hero"></div>'
-        + '<div class="es-ex-pad"><div class="es-ex-title">Reimagine Meridian 2030</div>'
-        + '<div class="es-ex-desc">Help shape how our high street looks and feels for the next decade. Share ideas, vote on a shortlist, and see what your neighbours suggested.</div></div>'
-        + '<div class="es-ex-bar"><div class="es-ex-bar__t">Collect ideas · open now</div><div class="es-ex-bar__s">Phase 1 of 3 · ends 10 Jun</div><div class="es-ex-line" style="width:90%"></div></div>'
-        + '<div class="es-ex-pad"><div class="es-ex-line" style="width:70%"></div><div class="es-ex-line" style="width:85%"></div><div class="es-ex-line" style="width:55%"></div></div>'
-        + '</div></div>';
-    }
-    // #1 Current (baseline) — ghost slots
-    return '<div class="px-4 pt-3 pb-5">' + esPhoneGhosts() + '</div>';
-  }
-
-  // Toggle the explorer chip + (re)render the panel + phone for the chosen approach.
-  function setEmptyApproach(n, btn) {
-    window.ppEmpty = n;
-    document.querySelectorAll('.empty-chip button').forEach(b => b.classList.remove('on'));
-    const b = btn || document.querySelector('.empty-chip button[data-es="' + n + '"]');
-    if (b) b.classList.add('on');
-    // No changing label in the chip — it would resize and shift the numbered buttons,
-    // making them impossible to click in sequence. Each button's title carries the name.
-    if (window.ppState === 'empty') {
-      const tl = document.getElementById('timeline-card');
-      const ac = document.getElementById('activities-card');
-      if (tl) tl.innerHTML = emptyTimeline(n);
-      if (ac) ac.innerHTML = emptyExtras(n);
-      renderPhone('empty');
-    }
+      + '<div class="ghost-slot mt-3" style="justify-content:flex-start;padding:14px;text-align:left;min-height:60px;"><span style="flex-shrink:0;align-self:flex-start;margin-top:1px;display:inline-flex;">' + ES_PLUS + '</span><span style="flex:1;">Add a short description explaining what this project is about</span></div>'
+      + '</div>';
   }
 
   function setProjectState(state, btn) {
@@ -4251,10 +4215,6 @@
     // Reset audience visibility
     if (audienceNav) audienceNav.style.display = '';
 
-    // The empty-state explorer only applies to the empty state.
-    const emptyChip = document.querySelector('.empty-chip');
-    if (emptyChip) emptyChip.hidden = (state !== 'empty');
-
     // Phone preview content is rebuilt per state: ghost placeholders for 'empty',
     // a real GoVocal mobile FO project page (gv-* components) for 'few' / 'complex'.
     renderPhone(state);
@@ -4262,10 +4222,9 @@
     if (state === 'empty') {
       // Hide audience until participants exist
       if (audienceNav) audienceNav.style.display = 'none';
-      // The empty-state explorer (#1 = current baseline) drives BOTH the timeline panel
-      // and the phone preview, so a non-technical staffer can compare treatments live.
-      timelineCard.innerHTML  = emptyTimeline(window.ppEmpty || 1);
-      activitiesCard.innerHTML = emptyExtras(window.ppEmpty || 1);
+      // The locked-in empty state drives BOTH the timeline panel and the phone preview.
+      timelineCard.innerHTML  = emptyTimeline();
+      activitiesCard.innerHTML = emptyExtras();
 
     } else if (state === 'few') {
       // A simple project: 2 timeline phases + 1 survey in Extras
