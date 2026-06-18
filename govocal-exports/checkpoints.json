@@ -3,8 +3,8 @@
   "$fields": {
     "id": "short unique name shown in the report",
     "built": "path to YOUR rendered file (component demo or page index.html), repo-relative",
-    "against": "capture folder under govocal-exports/ \u2014 must have a `probed` block (captured with --probe)",
-    "map": "object of { realSelector: yourSelector } pinning what to diff (or a 'real=mine|\u2026' string). Omit to pair identical selector strings.",
+    "against": "capture folder under govocal-exports/ — must have a `probed` block (captured with --probe)",
+    "map": "object of { realSelector: yourSelector } pinning what to diff (or a 'real=mine|…' string). Omit to pair identical selector strings.",
     "viewport": "optional WxH; defaults to the capture's own viewport",
     "tol": "optional px tolerance (default 1)",
     "props": "optional list of CSS props to diff (default: the visually-salient set). Narrow it when only specific values are grounded for a selector.",
@@ -28,29 +28,53 @@
       "id": "bo-analysis/aibar",
       "built": "govocal-exports/_verify/analysis-bits.html",
       "against": "bo-an-aibar",
-      "map": { ".bQEqKY": ".gv-bo-aibar" },
-      "props": ["background-color", "padding"]
+      "map": {
+        ".bQEqKY": ".gv-bo-aibar"
+      },
+      "props": [
+        "background-color",
+        "padding"
+      ]
     },
     {
       "id": "bo-analysis/autotag",
       "built": "govocal-exports/_verify/analysis-bits.html",
       "against": "bo-an-autotag",
-      "map": { ".eMnFXQ": ".gv-bo-autotag" },
-      "props": ["background-color", "border", "border-radius", "padding"]
+      "map": {
+        ".eMnFXQ": ".gv-bo-autotag"
+      },
+      "props": [
+        "background-color",
+        "border",
+        "border-radius",
+        "padding"
+      ]
     },
     {
       "id": "bo-analysis/notice-warn",
       "built": "govocal-exports/_verify/analysis-bits.html",
       "against": "bo-an-warn",
-      "map": { ".ksJZlI": ".gv-bo-ainotice.is-warn" },
-      "props": ["background-color", "border-radius", "padding"]
+      "map": {
+        ".ksJZlI": ".gv-bo-ainotice.is-warn"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "padding"
+      ]
     },
     {
       "id": "bo-analysis/empty",
       "built": "govocal-exports/_verify/analysis-bits.html",
       "against": "bo-an-empty",
-      "map": { ".bAxtpM": ".gv-bo-aiempty" },
-      "props": ["border", "border-radius", "padding"]
+      "map": {
+        ".bAxtpM": ".gv-bo-aiempty"
+      },
+      "props": [
+        "border",
+        "border-radius",
+        "padding"
+      ]
     },
     {
       "id": "homepage-spotlight-padding",
@@ -1770,9 +1794,9 @@
     {
       "id": "bo-users/people-header",
       "built": "pages/bo-users/index.html",
-      "against": "bo-users",
+      "against": "r8-users",
       "map": {
-        "th.dmRxby": ".gv-bo-table.is-people thead th.is-sorted"
+        "th.dAvdXZ": ".gv-bo-table.is-people thead th"
       },
       "props": [
         "background-color",

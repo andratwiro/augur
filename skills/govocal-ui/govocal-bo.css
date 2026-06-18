@@ -462,10 +462,11 @@
    /admin/users). A grey header BAND (#EBEDEF / grey-200, 65px, rounded ends, 14px/700
    admin-blue) over tall 84px rows with no striping — a person cell (38px round avatar +
    name link + email) on the left. Distinct from .is-list (striped, white header). */
-.gv-bo-table.is-people thead th { background: var(--gv-grey-200); height: 65px; border-bottom: 0; }
-.gv-bo-table.is-people thead th:first-child { border-top-left-radius: var(--gv-radius); border-bottom-left-radius: var(--gv-radius); }
-.gv-bo-table.is-people thead th:last-child { border-top-right-radius: var(--gv-radius); border-bottom-right-radius: var(--gv-radius); }
-.gv-bo-table.is-people tbody td { height: 84px; border-bottom: 1px solid var(--gv-divider); }
+/* Measured (r8-users): the registered-users table header is NOT a filled grey pill —
+   it's a transparent strip, 45px, with a single 1px #EBEDEF (grey-200) bottom rule;
+   rows are 71px. (Labels are sentence-case in markup, not uppercased.) */
+.gv-bo-table.is-people thead th { background: transparent; height: 45px; border-bottom: 1px solid var(--gv-grey-200); }
+.gv-bo-table.is-people tbody td { height: 65px; padding: 12px; border-bottom: 1px solid var(--gv-divider); }
 .gv-bo-table.is-people tbody tr:last-child td { border-bottom: 0; }
 .gv-bo-table.is-people .gv-bo-table__avatar { width: 38px; height: 38px; }
 
@@ -716,6 +717,14 @@
   font-size: var(--gv-fs-s); box-shadow: none;
 }
 .gv-btn.primary.gv-bo-cb-save:hover { background: var(--gv-green-700); border-color: var(--gv-green-700); }
+
+/* BO filled CTA — the real product's `Button primary` is indigo #162466 (measured
+   r8-users "Invite users"/"Seats overview", r8-analysis "Reject"), NOT the #044D6C
+   teal-navy chrome that `--gv-tenant-primary` resolves to in the .gv-bo scope. Scope
+   the fill to indigo for plain primary buttons; the green content-builder Save
+   (.gv-bo-cb-save) keeps its own later override, so exclude it here. */
+.gv-bo .gv-btn.primary:not(.gv-bo-cb-save) { background: var(--gv-bo-cta); border-color: var(--gv-bo-cta); }
+.gv-bo .gv-btn.primary:not(.gv-bo-cb-save):hover { filter: brightness(1.15); }
 
 /* ── Left palette rail ───────────────────────────────────────────────────────
    Vertical white rail of draggable widgets, grouped into sections divided by a

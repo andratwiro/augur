@@ -16,14 +16,17 @@
     /* Users splits the content column: a canvas-grey rail flush against the white content
        (measured: .e2e-left-panel bg #EDEFF0 / padding 55px 20px 10px; content on white). */
     .us-split { display: flex; align-items: stretch; min-height: calc(100vh - 0px); }
-    .us-rail { width: 264px; flex: none; box-sizing: border-box; background: var(--gv-bo-canvas); padding: 24px 20px 16px; display: flex; flex-direction: column; }
-    .us-railitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 44px; padding: 12px 12px 12px 12px; border-radius: 3px; color: var(--gv-bo-primary); font-size: var(--gv-fs-base); text-decoration: none; cursor: pointer; }
+    .us-rail { width: 300px; flex: none; box-sizing: border-box; background: var(--gv-bo-canvas); padding: 55px 20px 16px; display: flex; flex-direction: column; }
+    .us-railitem { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 44px; padding: 12px 0 12px 12px; border-radius: 3px; color: var(--gv-bo-primary); font-size: var(--gv-fs-base); text-decoration: none; cursor: pointer; }
     .us-railitem:hover { background: rgba(4, 77, 108, 0.05); }
     .us-railitem.is-active { background: rgba(4, 77, 108, 0.08); }
-    .us-railitem__count { color: var(--gv-bo-primary); font-size: var(--gv-fs-base); }
+    .us-railitem__count { margin-left: auto; color: var(--gv-bo-primary); font-size: var(--gv-fs-base); }
+    .us-smarticon { width: 14px; height: 14px; margin-right: 6px; color: var(--gv-bo-primary); flex: none; }
+    .us-raildiv { border: 0; border-top: 1px solid var(--gv-divider); margin: 12px 0; width: 100%; }
     .us-groupshead { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 8px; padding: 0 12px; }
     .us-groupshead h2 { margin: 0; font-size: var(--gv-fs-xl); font-weight: 600; color: var(--gv-bo-primary); }
-    .us-addgroup { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--gv-bo-primary); background: transparent; color: var(--gv-bo-primary); display: grid; place-items: center; cursor: pointer; }
+    /* Add-group = secondary-outlined button forced to a 42px circle (real: 1px cool-grey-600). */
+    .us-addgroup.gv-btn { width: 42px; height: 42px; min-width: 0; padding: 8px; border-radius: 50%; }
     .us-railsearch { margin: 6px 8px 10px; }
     .us-railsearch input { height: 40px; }
     .us-projfilter { margin: 0 8px 8px; }
@@ -40,8 +43,10 @@
     .us-person { display: flex; align-items: center; gap: 12px; }
     .us-name { color: var(--gv-bo-primary); text-decoration: none; }
     .us-name:hover { text-decoration: underline; }
-    .us-email { display: block; color: var(--gv-text-secondary); font-size: var(--gv-fs-13); margin-top: 2px; }
-    .us-assigned { display: inline-flex; align-items: center; gap: 4px; color: var(--gv-text-secondary); font-size: var(--gv-fs-13); cursor: pointer; margin-top: 2px; }
+    .us-email { display: block; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); line-height: 1.4; margin-top: 1px; }
+    .us-rolecell { display: inline-flex; flex-direction: column; gap: 0; }
+    .us-assigned { display: inline-flex; align-items: center; gap: 4px; color: var(--gv-bo-primary); font-size: var(--gv-fs-s); line-height: 1.3; cursor: pointer; }
+    .us-person span span { line-height: 1.35; }
     .us-assigned .gv-icon { width: 13px; height: 13px; }
 
 
@@ -117,24 +122,27 @@
 
         <!-- ── Left rail (canvas grey) ─────────────────────────────── -->
         <aside class="us-rail">
-          <a class="us-railitem is-active" href="#" data-view="people">Registered users <span class="us-railitem__count">1214</span></a>
-          <a class="us-railitem" href="#" data-view="admins" data-label="Admins" data-count="0">Admins <span class="us-railitem__count">0</span></a>
+          <a class="us-railitem is-active" href="#" data-view="people">Registered users <span class="us-railitem__count">72</span></a>
+          <a class="us-railitem" href="#" data-view="admins" data-label="Admins" data-count="1">Admins <span class="us-railitem__count">1</span></a>
           <a class="us-railitem" href="#" data-view="admins" data-label="Folder managers" data-count="0">Folder managers <span class="us-railitem__count">0</span></a>
-          <a class="us-railitem" href="#" data-view="people" data-label="Project managers">Project managers <span class="us-railitem__count">1</span></a>
+          <a class="us-railitem" href="#" data-view="people" data-label="Project managers">Project managers <span class="us-railitem__count">3</span></a>
           <a class="us-railitem" href="#" data-view="blocked">Blocked users <span class="us-railitem__count">0</span></a>
           <a class="us-railitem" href="#" data-view="banned">Banned emails <span class="us-railitem__count">0</span></a>
 
+          <hr class="us-raildiv">
+
           <div class="us-groupshead">
             <h2>Groups</h2>
-            <button class="us-addgroup" aria-label="Add a new group" data-open-modal><span data-gv-icon="plus"></span></button>
+            <button class="gv-btn secondary-outlined us-addgroup" aria-label="Add a new group" data-open-modal><span data-gv-icon="plus"></span></button>
           </div>
           <span class="gv-bo-search us-railsearch"><input class="gv-input" type="search" aria-label="Search groups"><span class="gv-icon" data-gv-icon="search"></span></span>
           <div class="us-projfilter"><select class="gv-bo-select" aria-label="Filter by project"><option>Filter by project</option><option>Dorothea Dix Park</option></select></div>
+          <a class="us-railitem" href="#" data-view="group" data-label="All users" data-count="72"><span class="us-smarticon" data-gv-icon="smart-group" aria-hidden="true"></span>All users <span class="us-railitem__count">72</span></a>
           <a class="us-railitem" href="#" data-view="group" data-label="Department Directors" data-count="17">Department Directors <span class="us-railitem__count">17</span></a>
           <a class="us-railitem" href="#" data-view="group" data-label="James  Test #1" data-count="2">James Test #1 <span class="us-railitem__count">2</span></a>
           <a class="us-railitem" href="#" data-view="group" data-label="Council Members" data-count="7">Council Members <span class="us-railitem__count">7</span></a>
 
-          <div class="us-invite"><button class="gv-btn success"><span data-gv-icon="email"></span><span class="gv-btn__label">Invite users</span></button></div>
+          <div class="us-invite"><button class="gv-btn primary"><span data-gv-icon="email"></span><span class="gv-btn__label">Invite users</span></button></div>
         </aside>
 
         <!-- ── Right content (white) ───────────────────────────────── -->
@@ -148,7 +156,7 @@
                 <p class="gv-bo-pagelede" style="margin:6px 0 0">Get an overview of all the people and organisations that registered on the platform. Add a selection of users to Manual groups or Smart groups.</p>
               </div>
               <div class="us-head__actions">
-                <button class="gv-btn success" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
+                <button class="gv-btn primary" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
                 <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
               </div>
             </div>
@@ -165,11 +173,11 @@
               <thead>
                 <tr>
                   <th class="gv-bo-table__check"></th>
-                  <th class="gv-bo-th--sort is-sorted">NAME</th>
-                  <th>ROLE</th>
-                  <th>LAST ACTIVE</th>
-                  <th class="gv-bo-th--sort">JOINED <span class="gv-icon" data-gv-icon="chevron-up"></span></th>
-                  <th>OPTIONS</th>
+                  <th class="gv-bo-th--sort is-sorted">Name</th>
+                  <th>Role</th>
+                  <th>Last active</th>
+                  <th class="gv-bo-th--sort">Joined <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th>Options</th>
                 </tr>
               </thead>
               <tbody id="rows"></tbody>
@@ -184,7 +192,7 @@
                 <p class="gv-bo-pagelede" style="margin:6px 0 0" id="admins-lede">Manage the people who can administer the platform.</p>
               </div>
               <div class="us-head__actions">
-                <button class="gv-btn success" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
+                <button class="gv-btn primary" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
                 <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
               </div>
             </div>
@@ -210,7 +218,7 @@
                 <p class="gv-bo-pagelede" style="margin:6px 0 0">Manage blocked users.</p>
               </div>
               <div class="us-head__actions">
-                <button class="gv-btn success" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
+                <button class="gv-btn primary" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
                 <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
               </div>
             </div>
@@ -229,7 +237,7 @@
                 <p class="gv-bo-pagelede" style="margin:6px 0 0">Manage email addresses blocked from registration</p>
               </div>
               <div class="us-head__actions">
-                <button class="gv-btn success" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
+                <button class="gv-btn primary" data-view="seats"><span data-gv-icon="gps"></span><span class="gv-btn__label">Seats overview</span></button>
                 <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
               </div>
             </div>
@@ -304,11 +312,11 @@
               <thead>
                 <tr>
                   <th class="gv-bo-table__check"></th>
-                  <th class="gv-bo-th--sort is-sorted">NAME</th>
-                  <th>ROLE</th>
-                  <th>LAST ACTIVE</th>
-                  <th class="gv-bo-th--sort">JOINED <span class="gv-icon" data-gv-icon="chevron-up"></span></th>
-                  <th>OPTIONS</th>
+                  <th class="gv-bo-th--sort is-sorted">Name</th>
+                  <th>Role</th>
+                  <th>Last active</th>
+                  <th class="gv-bo-th--sort">Joined <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th>Options</th>
                 </tr>
               </thead>
               <tbody id="grouprows"></tbody>
@@ -373,7 +381,7 @@
       const [name, email, role, pm, last, joined, face] = u;
       const f = String(face).padStart(2, "0");
       const roleCell = pm
-        ? `<span style="color:var(--gv-bo-primary)">${role}</span><span class="us-assigned">Assigned items <span class="gv-icon" data-gv-icon="chevron-down"></span></span>`
+        ? `<span class="us-rolecell"><span style="color:var(--gv-bo-primary);line-height:1.3">${role}</span><span class="us-assigned">Assigned items <span class="gv-icon" data-gv-icon="chevron-down"></span></span></span>`
         : `<span style="color:var(--gv-bo-primary)">${role}</span>`;
       return `<tr>
         <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
