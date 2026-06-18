@@ -45,9 +45,11 @@
     .pp-head { padding: 36px 0 44px; }
     .pp-head h1 { margin: 20px 0 16px; }
     .pp-row { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 10px 40px; align-items: start; }
-    .pp-cta { display: flex; flex-direction: column; gap: 10px; }
-    .pp-cta .gv-btn { justify-content: center; }
-    /* participant row centered under the CTA stack (Wien project-header pattern) */
+    /* The narrow CTA column stacks the canonical participation box (.gv-pbox) and,
+       below it, an extra-survey card (.gv-extra-survey). .pp-cta carries only the
+       page-local layout: the column gap, grid placement, and the participant row
+       centered under the button stack (Wien project-header pattern). */
+    .pp-cta { display: flex; flex-direction: column; gap: 20px; }
     .pp-cta .gv-participants { display: flex; justify-content: center; }
     .pp-intro { margin: 0; }
     /* Row 2 keeps the same wide/narrow tracks so the lower body text holds the SAME
@@ -212,16 +214,30 @@
           <p>Market Square is the heart of the Old Town, and it's time we rethought it together. We're <strong>redesigning the square so it works for everyone</strong> — for the weekly market, for people stopping for a coffee, for children and for residents getting around on foot and by bike.</p>
         </div>
         <div class="pp-cta">
-          <a class="gv-btn primary" href="#ideas">Submit your idea</a>
-          <a class="gv-btn primary-outlined" href="#ideas">See the ideas</a>
-          <div class="gv-participants" style="margin-top:4px;">
-            <span class="gv-avatars on-light" aria-hidden="true">
-              <span class="av"></span>
-              <span class="av"></span>
-              <span class="av"></span>
-            </span>
-            <span class="gv-pcount">122 contributions</span>
-            <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
+          <!-- Participation box — canonical .gv-pbox (mirrors the Content Builder widget) -->
+          <div class="gv-pbox">
+            <div class="gv-pbox__actions">
+              <a class="gv-btn primary full" href="#ideas">Submit your idea</a>
+              <a class="gv-btn secondary-outlined full" href="#ideas">See the ideas</a>
+            </div>
+            <div class="gv-participants gv-pbox__people" style="margin-top:4px;">
+              <span class="gv-avatars on-light" aria-hidden="true">
+                <span class="av"></span>
+                <span class="av"></span>
+                <span class="av"></span>
+              </span>
+              <span class="gv-pcount">122 contributions</span>
+              <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
+            </div>
+          </div>
+          <!-- Extra survey — canonical .gv-extra-survey card (same component as the
+               Content Builder "Extra surveys" widget). Secondary CTA so it doesn't
+               compete with the primary "Submit your idea" above. -->
+          <div class="gv-extra-survey gv-extra-survey--card">
+            <span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> Survey</span>
+            <h3 class="gv-extra-survey__title">Mobility check-in</h3>
+            <p class="gv-extra-survey__desc">Tell us how you move around the square today — a few quick questions that feed the redesign.</p>
+            <a class="gv-btn secondary-outlined full" href="#">Take the survey</a>
           </div>
         </div>
       </div>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Extra survey CTA — GoVocal component</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-primitives.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <style>
+    /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .demo { max-width: 760px; margin: 0 auto; padding: 28px 20px 80px; }
+    .demo h1 { font-size: 22px; margin: 0 0 4px; color: var(--gv-text-primary); }
+    .demo p.sub { margin: 0 0 22px; color: var(--gv-text-secondary); font-size: 14px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 700; margin: 26px 0 10px; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 22px; align-items: start; }
+    .label { font-size: 13px; margin: 0 0 10px; color: var(--gv-text-secondary); font-weight: 600; }
+    .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
+    .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <div class="demo">
+    <h1>Extra survey CTA</h1>
+    <p class="sub">A survey linked into a project page or the Content Builder, separate from the phase's own method. It renders either as a button or as a card. The button uses the same primary / secondary-outlined pair as the <a href="../participation-box/">participation box</a>.</p>
+
+    <p class="eyebrow">Card</p>
+    <div style="max-width: 420px;">
+      <!-- ===== COMPONENT — card (copy from here) ===== -->
+      <div class="gv-extra-survey gv-extra-survey--card">
+        <span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> Survey</span>
+        <h3 class="gv-extra-survey__title">Mobility check-in</h3>
+        <p class="gv-extra-survey__desc">Tell us how you move around the city this month — your answers feed the mobility plan.</p>
+        <a class="gv-btn primary full" href="#">Take the survey</a>
+      </div>
+      <!-- ===== /COMPONENT ===== -->
+    </div>
+
+    <p class="eyebrow">Button</p>
+    <div class="row">
+      <div>
+        <p class="label">Primary</p>
+        <div class="gv-extra-survey"><a class="gv-btn primary full" href="#">Take the survey</a></div>
+      </div>
+      <div>
+        <p class="label">Secondary</p>
+        <div class="gv-extra-survey"><a class="gv-btn secondary-outlined full" href="#">Take the survey</a></div>
+      </div>
+    </div>
+
+    <p class="eyebrow">Empty (back-office)</p>
+    <div style="max-width: 420px;">
+      <div class="gv-extra-survey__empty">
+        <div class="gv-extra-survey__empty-t">📣 Survey</div>
+        <div class="gv-extra-survey__empty-s">Select a survey to link in the panel on the right.</div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <p><strong>Buttons:</strong> <code>.gv-btn.primary</code> (filled tenant) or <code>.gv-btn.secondary-outlined</code> (neutral outline) — the same pair as the participation box, so the two CTAs sit together on a page without clashing.</p>
+      <p><strong>Card:</strong> sized for legibility by default — big type, one clear action, the icon always paired with a word. The SURVEY tag is tenant-tinted with an AA-safe darkened ink.</p>
+    </div>
+  </div>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+</body>
+</html>

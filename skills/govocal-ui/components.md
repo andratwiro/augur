@@ -1530,6 +1530,54 @@ The `.gv-btn.volunteer` green is the **tenant primary** (re-themes), and the dar
 </div></div>
 ```
 - **Common Ground (Polis)** renders an external `pol.is` iframe inside a white method
+
+## Participation box — `.gv-pbox` (`components/participation-box/`)
+
+The resident-facing project CTA block (a **parallel-participation** invention, mirrored
+1:1 by the Content Builder "Participation Box" widget). It stacks the project's active
+participation methods as full-width buttons, then an always-bottom participant row. The
+current-phase method is the filled `.gv-btn.primary`; parallel / extra methods are the
+neutral `.gv-btn.secondary-outlined` (3+ collapse into one "Participate" primary). The
+**extra-survey CTA below uses the SAME button pair** so the two read together on a page.
+Pure assembly — only stacks the canonical `.gv-btn` + `.gv-participants` atoms.
+```html
+<div class="gv-pbox">
+  <div class="gv-pbox__actions">
+    <a class="gv-btn primary full" href="#">View 82 proposals</a>
+    <a class="gv-btn secondary-outlined full" href="#">Ask the budget team anything</a>
+  </div>
+  <div class="gv-participants gv-pbox__people">
+    <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
+    <span class="gv-pcount">+19 participants</span>
+    <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true"></span>
+  </div>
+</div>
+```
+- `.gv-pbox--nobtns` hides the action stack; `.gv-pbox--nopeople` hides the participant row;
+  `.gv-pbox__empty` ("No active methods") replaces both when nothing is live.
+
+## Extra survey CTA — `.gv-extra-survey` (`components/extra-survey/`)
+
+A survey linked into a project page / Content Builder, separate from the phase method.
+Renders as a **button** (`.gv-btn.primary` or `.gv-btn.secondary-outlined` — the same pair
+the participation box uses) or as a **card** (`--card`): a tenant-tinted SURVEY tag, the
+name, a plain-language description and the CTA. The card is sized for legibility by default
+(big type, one clear action, icon always paired with a word).
+```html
+<!-- card -->
+<div class="gv-extra-survey gv-extra-survey--card">
+  <span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span>
+  <h3 class="gv-extra-survey__title">Mobility check-in</h3>
+  <p class="gv-extra-survey__desc">Tell us how you move around the city this month.</p>
+  <a class="gv-btn primary full" href="#">Take the survey</a>
+</div>
+
+<!-- button -->
+<div class="gv-extra-survey"><a class="gv-btn secondary-outlined full" href="#">Take the survey</a></div>
+```
+- The SURVEY tag tint + ink are derived from `--gv-tenant-primary` (`--gv-es-tint` /
+  `--gv-es-ink`, AA-safe), so it re-themes per city without a fixed brand colour.
+
   panel — GoVocal renders none of the voting UI, so the demo reconstructs it as
   page-local non-`gv-` markup (not grounded).
 

@@ -80,6 +80,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Cta Banner** | `/components/cta-banner/` | `components/cta-banner/` | A thin, full-bleed coloured strip carrying one centered call-to-action button, mounted as a Content-Builder block. Source-grounded on St Louis ( stlouis.govoca… |
 | **Event Card** | `/components/event-card/` | `components/event-card/` | Event card with a two-tone date chip pinned over the media, clock / location / link / registrant rows and a Register CTA, laid out in the events grid with its… |
 | **Event Card Bordered** | `/components/event-card-bordered/` | `components/event-card-bordered/` | The shared EventsWidget treatment (Copenhagen / Linz / Falkirk): each event in a bordered white card (1px #CCC, 6px radius) with a 3-tier stacked date chip (gr… |
+| **Extra Survey** | `/components/extra-survey/` | `components/extra-survey/` | A survey linked into a project page or the Content Builder, separate from the phase's own method. It renders either as a button or as a card. The button uses t… |
 | **Fo Linz Monitorband** | `/components/fo-linz-monitorband/` | `components/fo-linz-monitorband/` | Source-grounded on Linz partizipation.linz.at (capture fo-linz-monitorband , tenant-primary #604596 ). The community-monitor band uses the SAME formula as wiet… |
 | **Folder Card** | `/components/folder-card/` | `components/folder-card/` | The projects-list folder card — a white card carrying a green project-count line, the folder title, a description preview, and a stack of child-project preview… |
 | **Footer** | `/components/footer/` | `components/footer/` | Source-grounded on GoVocal’s real <footer id="hook-footer"> : a secondary-nav row of legal links — one is the Cookie-Einstellungen button — plus the “Ermöglich… |
@@ -93,6 +94,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Issue Canvas** | `/components/issue-canvas/` | `components/issue-canvas/` | Dotted-grid Perspectives canvas that floats pastel sticky-note ideas in a masonry pile, with a floating "Add an idea" button. |
 | **Login Modal** | `/components/login-modal/` | `components/login-modal/` | The reusable modal abstraction (overlay → dialog card → title header + top-right close + scrollable body), shown via GoVocal’s real “Before you participate” au… |
 | **Participation Bar** | `/components/participation-bar/` | `components/participation-bar/` | The sticky project-page action bar — a participation status on the left and a primary on-color CTA on the right that pins as residents scroll the phase. |
+| **Participation Box** | `/components/participation-box/` | `components/participation-box/` | The resident-facing project CTA block. It aggregates the project's active participation methods into a stack of full-width buttons, then an always-bottom parti… |
 | **Phase Timeline** | `/components/phase-timeline/` | `components/phase-timeline/` | Phase timeline — GoVocal component |
 | **Poll** | `/components/poll/` | `components/poll/` | Poll method body — GoVocal component |
 | **Project Card** | `/components/project-card/` | `components/project-card/` | The participation-project card (thumb, title, meta with status icon, CTA) and the horizontal scroll rail. The whole card is clickable via a stretched title lin… |
@@ -158,6 +160,7 @@ and reuse patterns. Prototypes are free to diverge from the library.
 | **City Explorations** | Parallel Participation | `parallel-participation/prototypes/city-explorations/` | City explorations — Project front-office views |
 | **Parallel Editor Builder V1** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder-v1/` | Parallel Participation — Project editor + content builder (v1) |
 | **Parallel Editor Builder V2** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder-v2/` | Parallel Participation — Project editor + content builder (v2) |
+| **Parallel Editor Builder V3** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder-v3/` | Parallel Participation — Project editor + content builder (v3) |
 | **Access Rights Explorations** | Sms Verification | `sms-verification/prototypes/access-rights-explorations/` | Tap any underlined word. These rules cover everything — then add exceptions below if you need them. |
 | **Access Rights Explorations V2** | Sms Verification | `sms-verification/prototypes/access-rights-explorations-v2/` | Access Rights Explorations v2 — five product-grounded takes |
 | **Access Rights Simple** | Sms Verification | `sms-verification/prototypes/access-rights-simple/` | Phase access, made simple — GoVocal (prototype) |
