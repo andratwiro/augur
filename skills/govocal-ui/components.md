@@ -1548,7 +1548,7 @@ Pure assembly — only stacks the canonical `.gv-btn` + `.gv-participants` atoms
   </div>
   <div class="gv-participants gv-pbox__people">
     <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
-    <span class="gv-pcount">+19 participants</span>
+    <span class="gv-pcount">+19 contributions</span>
     <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true"></span>
   </div>
 </div>

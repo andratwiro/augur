@@ -24,7 +24,7 @@ canon when you need to justify a call or go deeper.
    competing *primary* CTAs. Pick the single critical method for this phase; make it the one
    filled button. Everything else is secondary (outlined) or quieter. Two participation
    widgets both shouting "Take the survey" is a bug, not redundancy you can ignore.
-2. **The Participation/About box is the conversion point.** It answers: what's open, how
+2. **The Participation Box is the conversion point.** It answers: what's open, how
    many people already took part (social proof), and the one thing to do now. If the page's
    action lives elsewhere (an inline picker, a vote in the timeline), the box should carry
    *social proof + a glance at results/transparency*, not a duplicate of that action.

@@ -16,7 +16,7 @@
     A single, responsive front-office PROJECT PAGE, rendered across several real
     cities + configurations to explore the two new parallel-participation
     Content-Builder widgets in context:
-      • ABOUT BOX (participation box) — current-phase CTA filled (tenant), parallel
+      • PARTICIPATION BOX — current-phase CTA filled (tenant), parallel
         methods outlined, >2 collapse to one "Participate · N ways", participants row.
       • EXTRA SURVEYS — a linked survey as a button or one of 11 card layouts
         (incl. the accessible "Easy read"), primary/secondary, or a multi-survey list.
@@ -79,7 +79,7 @@
       .pv-page > * + * { margin-top: 24px; }
     }
 
-    /* ── ABOUT BOX (participation box) — ported from parallel-editor-builder-v2 ──
+    /* ── PARTICIPATION BOX — ported from parallel-editor-builder-v2 ──
        The resident-facing participation widget: CTA(s) then a participants row.
        Current-phase method = filled tenant button; parallel methods = outlined;
        >2 visible collapse into one "Participate · N ways". --pp-tenant follows the
@@ -98,7 +98,7 @@
        avatars. border-box so the 2px ring counts inside the 36px footprint. */
     .pv .gv-pbox__people .gv-avatars .av { box-sizing: border-box; width: 36px; height: 36px; }
     .pv .gv-pbox__empty { border: 1px dashed var(--gv-grey-400); border-radius: 3px; text-align: center; padding: 14px; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
-    /* When the about box stands in the wide left column (gallery), keep it readable */
+    /* When the participation box stands in the wide left column (gallery), keep it readable */
     .pv .gv-pbox--inset { border: 1px solid var(--gv-grey-200); border-radius: var(--gv-radius); padding: 18px; background: #fff; }
 
     /* ── PARTICIPATE SHEET — the collapsed "Participate · N ways" button opens this,
@@ -327,7 +327,7 @@
   <script>
   /* ════════════════════════════════════════════════════════════════════════
      DATA — each variant is a real city + a different project configuration,
-     focused on the ABOUT BOX and EXTRA SURVEYS widgets. `theme` is the
+     focused on the PARTICIPATION BOX and EXTRA SURVEYS widgets. `theme` is the
      govocal-themes.js id (drives ?theme= + the tenant palette).
      ════════════════════════════════════════════════════════════════════════ */
 
@@ -387,7 +387,7 @@
       ],
       about: { mode: 'dual', primary: 'Add your idea', secondary: 'See the 342 ideas', participants: true, count: '342', label: 'contributions' },
       surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'secondary', survey: 'mobility', heading: 'Rather answer a few questions?' },
-      // Two stacked wide/narrow rows (the Content-Builder pattern): intro · about box,
+      // Two stacked wide/narrow rows (the Content-Builder pattern): intro · participation box,
       // then the rest of the text · empty. On mobile this reads intro → CTA → rest,
       // so the primary action ("Add your idea") sits right under the short intro
       // instead of below the whole description. (Matches bo-content-builder seedDefault.)
@@ -408,7 +408,7 @@
         { name: 'Vote on the shortlist', method: 'voting', dates: 'Jun 1 – Jun 30, 2026', status: 'current', description: 'Spend your points across the shortlisted projects for the district.' },
         { name: 'Results', method: 'results', dates: 'Jul 1 – Jul 14, 2026', status: 'upcoming', description: 'The funded projects, and what happens next.' }
       ],
-      about: { mode: 'multi', participants: true, count: '2,910', label: 'participants', aggTitle: 'Participate · 3 ways', methods: [
+      about: { mode: 'multi', participants: true, count: '2,910', label: 'contributions', aggTitle: 'Participate · 3 ways', methods: [
         { cta: 'Vote on the shortlist', current: true },
         { cta: 'Add a late idea', current: false },
         { cta: 'Budget survey', current: false }
@@ -436,7 +436,7 @@
       about: { mode: 'single', primary: 'Read the full summary', secondary: null, participants: true, count: '517', label: 'contributions' },
       surveys: { layout: 'none' },
       surveyGrid: ['mobility', 'market', 'school'], surveyGridStyle: 'primary', surveyGridHeading: 'More surveys you can still take',
-      // Two stacked wide/narrow rows: intro · about box, then the rest of the text ·
+      // Two stacked wide/narrow rows: intro · participation box, then the rest of the text ·
       // empty — so "Read the full summary" sits under the short intro on mobile.
       layout: ['banner', { row: [['title', 'intro'], ['about']], tpl: 'main-aside' }, { row: [['desc'], []], tpl: 'main-aside' }, 'partbar', 'timeline', 'events', 'surveyGrid'],
       events: [['Jun', '12', 'What-we-heard briefing', '12 Jun · 17:00 – 18:00', 'Online meeting', '64', 'workshop'], ['Jun', '19', 'Walk the centre with us', '19 Jun · 16:00 – 17:30', 'Rådhuspladsen', '52', 'oldtown'], ['Jun', '26', 'Theme drop-in session', '26 Jun · 17:00 – 19:00', 'Hovedbiblioteket', '38', 'community']]
@@ -482,8 +482,8 @@
   /* ════════════════════════ Widget renderers ════════════════════════ */
   const ic = (n) => `<span class="gv-icon" data-gv-icon="${n}"></span>`;
 
-  // ── ABOUT BOX (participation box) ──
-  function aboutBoxHTML(a, opts) {
+  // ── PARTICIPATION BOX ──
+  function participationBoxHTML(a, opts) {
     opts = opts || {};
     let actions = '';
     if (a.mode === 'multi') {
@@ -500,7 +500,7 @@
       if (a.secondary) actions += `<a class="gv-btn full secondary-outlined" href="#"><span class="gv-btn__label">${a.secondary}</span></a>`;
     }
     const people = a.participants
-      ? `<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">${a.count} ${a.label || 'participants'}</span></div>`
+      ? `<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">${a.count} ${a.label || 'contributions'}</span></div>`
       : '';
     let inner = (actions ? `<div class="gv-pbox__actions">${actions}</div>` : '') + people;
     if (!inner) inner = '<div class="gv-pbox__empty">No active methods</div>';
@@ -641,7 +641,7 @@
       title: () => `<h1 class="gv-title h1 pv-h1">${v.title}</h1>`,
       intro: () => `<div class="gv-projdesc pv-intro"><p>${v.intro}</p></div>`,
       desc: () => `<div class="gv-projdesc">${v.desc || ''}${acc ? `<div class="gv-accordion" style="margin-top:20px">${acc}</div>` : ''}</div>`,
-      about: () => `<div class="pv-aside pv-about-wide">${aboutBoxHTML(v.about)}</div>`,
+      about: () => `<div class="pv-aside pv-about-wide">${participationBoxHTML(v.about)}</div>`,
       surveys: () => surveysHTML(v.surveys),
       surveyGrid: () => (v.surveyGrid && v.surveyGrid.length)
         ? `<section class="pv-surveys"><div class="pv-surveys__head"><h2 class="gv-title h3">${v.surveyGridHeading || 'More surveys you can take'}</h2></div><div class="pv-survey-grid">${v.surveyGrid.map((key) => surveyCard(SURVEYS[key], 'easy', v.surveyGridStyle || 'primary')).join('')}</div></section>`

@@ -92,10 +92,10 @@
     #cb-root .cb-zone--empty > .cb-zone__ph { display: flex; }
     .cb-dropline--x { width: 2px; height: auto; min-height: 24px; margin: 0 2px; align-self: stretch; }
 
-    /* ── Participation Box (about-box) — faithful resident-facing card ──────── */
-    /* Participation Box (about-box) — a MIRROR of the front-office project
+    /* ── Participation Box — faithful resident-facing card ──────── */
+    /* Participation Box — a MIRROR of the front-office project
        participation widget the resident sees: a primary CTA, a secondary
-       "Upcoming events" button, and an avatar row + participant count. Config is
+       "Upcoming events" button, and an avatar row + contribution count. Config is
        just whether to show the buttons and the avatars (toggles, scoped per card). */
     /* Participation box uses the SAME front-office components as the project page:
        .gv-btn (primary + primary-outlined), .gv-avatars/.av, .gv-pcount. Page-local
@@ -258,7 +258,7 @@
             </span>
             <span class="gv-bo-cb-item__label">Embed</span>
           </div>
-          <div class="gv-bo-cb-item" id="e2e-draggable-about-box" draggable="true" data-widget="about-box">
+          <div class="gv-bo-cb-item" id="e2e-draggable-participation-box" draggable="true" data-widget="participation-box">
             <span class="gv-bo-cb-item__icon">
               <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M10 9v5M10 6.3v.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
             </span>
@@ -345,7 +345,7 @@
       'white-space':     { label: 'White space',       make: function () { return '<div class="cb-ws"></div>'; } },
       'accordion':       { label: 'Accordion',         make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">Accordion title</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">Hidden panel content the resident can expand.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
       'iframe':          { label: 'Embed',             make: function () { return '<div class="cb-iframe">&lt;/&gt; Embedded content<span class="cb-iframe__cap">Paste a URL to embed</span></div>'; } },
-      'about-box':       { label: 'Participation Box',  make: function () { return '' +
+      'participation-box':       { label: 'Participation Box',  make: function () { return '' +
         '<div class="cb-pbox">' +
           '<div class="cb-pbox__actions">' +
             '<a class="gv-btn primary" data-pbox="cta" href="#">' + cbCurrentCTA() + '</a>' +
@@ -353,7 +353,7 @@
           '</div>' +
           '<div class="gv-participants cb-pbox__people">' +
             '<span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>' +
-            '<span class="gv-pcount"><span data-pbox="count">2,435</span> participants</span>' +
+            '<span class="gv-pcount"><span data-pbox="count">2,435</span> contributions</span>' +
           '</div>' +
         '</div>'; } },
       'file-attachment': { label: 'File Attachment',    make: function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__info"><span class="cb-file__name">project-brief.pdf</span><span class="cb-file__meta">PDF · 1.2 MB</span></span></div>'; } },
@@ -493,12 +493,12 @@
       if (widget === 'iframe') {
         return settingsRow('Embed URL', '<input class="gv-input" id="cb-f-embedurl" placeholder="https://…">');
       }
-      if (widget === 'about-box') {
+      if (widget === 'participation-box') {
         return settingsRow('Action label', '<input class="gv-input" data-set="cta" id="cb-f-cta" value="Take the survey">') +
           settingsRow('Events label', '<input class="gv-input" data-set="events" id="cb-f-events" value="Upcoming events">') +
-          settingsRow('Participants', '<input class="gv-input" data-set="count" id="cb-f-count" value="2,435">') +
+          settingsRow('Contributions', '<input class="gv-input" data-set="count" id="cb-f-count" value="2,435">') +
           settingsRow('Show buttons', '<label class="gv-toggle"><input type="checkbox" data-set="btns" id="cb-f-btns" checked><span class="track"></span></label>') +
-          settingsRow('Show participants', '<label class="gv-toggle"><input type="checkbox" data-set="people" id="cb-f-people" checked><span class="track"></span></label>');
+          settingsRow('Show contributions', '<label class="gv-toggle"><input type="checkbox" data-set="people" id="cb-f-people" checked><span class="track"></span></label>');
       }
       if (widget === 'file-attachment') {
         return settingsRow('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') +
@@ -553,7 +553,7 @@
       // Per-field switcher: only blocks that carry translatable resident-facing text
       // get a language switcher. Structural/media blocks (image, white-space, columns,
       // iframe, file, timeline, events) have nothing to translate, so it's hidden.
-      var TX_WIDGETS = { text:1, button:1, accordion:1, 'info-accordions':1, 'about-box':1, 'image-text-cards':1, title:1 };
+      var TX_WIDGETS = { text:1, button:1, accordion:1, 'info-accordions':1, 'participation-box':1, 'image-text-cards':1, title:1 };
       var sLoc = document.getElementById('cb-settings-locales');
       if (sLoc) sLoc.style.display = TX_WIDGETS[widget] ? '' : 'none';
       sBody.innerHTML = bodyFor(widget, block);
@@ -812,10 +812,10 @@
         return;
       }
 
-      if (widget === 'about-box') { bindAboutBox(block); return; }
+      if (widget === 'participation-box') { bindParticipationBox(block); return; }
     }
 
-    function bindAboutBox(block) {
+    function bindParticipationBox(block) {
       var card = block.querySelector('.cb-pbox');
       function q(sel) { return panel.querySelector('[data-set="' + sel + '"]'); }
       function r(sel) { return card ? card.querySelector('[data-pbox="' + sel + '"]') : null; }
@@ -1142,7 +1142,7 @@
       // Left (wide): the intro text (= 'first', carries the frame checkpoint id).
       if (c1[0]) c1[0].appendChild(first);
       // Right (narrow): the participation box (CTAs + participant count).
-      if (c1[1]) c1[1].appendChild(makeBlock('about-box'));
+      if (c1[1]) c1[1].appendChild(makeBlock('participation-box'));
 
       // Row 2 — wide/narrow: rest of the description + accordions (left) · empty (right).
       var row2 = makeBlock('two-column');
