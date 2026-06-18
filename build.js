@@ -164,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.49";
+const UI_VERSION = "0.50";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -618,7 +618,9 @@ const PAGE_CSS = `
         radial-gradient(940px 440px at 14% -12%, rgba(94,106,210,0.10), transparent 60%),
         radial-gradient(700px 420px at 98% -6%, rgba(140,99,210,0.07), transparent 55%);
     }
-    .wrap { position: relative; z-index: 1; max-width: var(--maxw); margin: 0 auto; padding: 40px 24px 110px; }
+    /* Top padding aligns the folderbar title's optical centre with the sidebar
+       "Go Vocal" brand row (~26px) so the two share one clean top band. */
+    .wrap { position: relative; z-index: 1; max-width: var(--maxw); margin: 0 auto; padding: 15px 24px 110px; }
     .back {
       display: inline-flex; align-items: center; gap: 6px; margin-bottom: 30px; color: var(--muted);
       text-decoration: none; font-size: 13.5px; font-weight: 500;
