@@ -141,6 +141,7 @@
   --gv-bo-step:           #D4D9DD;                     /* phase-ribbon chevron / +New phase track (measured live) */
   --gv-bo-row-alt:        var(--gv-grey-50);           /* #FCFCFC — alt table row / hover */
   --gv-bo-border:         var(--gv-cool-grey-600);     /* #596B7A — outline-button border */
+  --gv-bo-font:           'Public Sans', 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; /* GoVocal's OWN product font — BO is never city-themed (mirrors the --gv-font-family default) */
 
   /* ── Typography ───────────────────────────────────────────────────────── */
   /* The product's computed font stack repeats the theme family name before the

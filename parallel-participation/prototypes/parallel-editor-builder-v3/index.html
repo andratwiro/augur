@@ -4440,6 +4440,10 @@
       const v = root.getPropertyValue('--gv-tenant-' + k).trim();
       if (v) phone.style.setProperty('--gv-tenant-' + k, v);
     });
+    // ...and the CITY font: the .gv-bo shell remaps --gv-font-family to the fixed BO
+    // font, so re-assert the tenant font here or the FO preview reads in BO type.
+    const f = root.getPropertyValue('--gv-font-family').trim();
+    if (f) phone.style.setProperty('--gv-font-family', f);
   }
   // The builder CANVAS also renders FO content (the participation box + the survey
   // card) inside the .gv-bo teal shell. Its resident-facing CTAs must follow the real
@@ -4449,8 +4453,15 @@
   function syncCanvasTheme() {
     const cb = document.getElementById('cb-root');
     if (!cb) return;
-    const v = getComputedStyle(document.documentElement).getPropertyValue('--gv-tenant-primary').trim();
+    const root = getComputedStyle(document.documentElement);
+    const v = root.getPropertyValue('--gv-tenant-primary').trim();
     if (v) cb.style.setProperty('--pp-tenant', v);
+    // The FO artboard (the project page being edited) keeps the CITY font; the builder
+    // chrome around it (palette, settings, topbar) stays in the BO font. So re-assert
+    // the tenant font on the FRAME only, not the whole #cb-root.
+    const frame = document.getElementById('cb-frame');
+    const f = root.getPropertyValue('--gv-font-family').trim();
+    if (frame && f) frame.style.setProperty('--gv-font-family', f);
   }
   window.addEventListener('load', () => { syncPhoneTheme(); syncCanvasTheme(); if (window.syncFOTheme) syncFOTheme(); fitPreview(); });
   // Live re-theme: the on-screen city picker rewrites data-gv-theme on <html> on each
@@ -4905,6 +4916,8 @@
       const val = root.getPropertyValue('--gv-tenant-' + k).trim();
       if (val) v.style.setProperty('--gv-tenant-' + k, val);
     });
+    const f = root.getPropertyValue('--gv-font-family').trim();
+    if (f) v.style.setProperty('--gv-font-family', f);
   }
   function openFO() {
     const v = document.getElementById('view-fo');

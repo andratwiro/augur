@@ -2433,6 +2433,10 @@
       const v = root.getPropertyValue('--gv-tenant-' + k).trim();
       if (v) phone.style.setProperty('--gv-tenant-' + k, v);
     });
+    // ...and the CITY font: the .gv-bo shell remaps --gv-font-family to the fixed BO
+    // font, so re-assert the tenant font here or the FO preview reads in BO type.
+    const f = root.getPropertyValue('--gv-font-family').trim();
+    if (f) phone.style.setProperty('--gv-font-family', f);
   }
   window.addEventListener('load', () => { syncPhoneTheme(); fitPreview(); });
 

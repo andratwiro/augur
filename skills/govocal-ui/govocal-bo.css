@@ -15,6 +15,11 @@
   --gv-tenant-primary: var(--gv-bo-primary);
   --gv-tenant-secondary: var(--gv-bo-primary);
   --gv-tenant-text: var(--gv-text-primary);
+  /* Back office is GoVocal's OWN surface — never city-themed. Remap the themed font
+     var to the fixed product font so every primitive that references var(--gv-font-
+     family) renders in the BO font, exactly as the tenant COLOUR remap above does.
+     FO previews embedded in the BO re-assert the tenant font on their own wrapper. */
+  --gv-font-family: var(--gv-bo-font);
   color: var(--gv-text-primary);
   font-family: var(--gv-font-family);
   font-size: var(--gv-fs-s); /* back office base = 14px */
