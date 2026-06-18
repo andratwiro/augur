@@ -149,6 +149,22 @@
   --gv-bo-row-alt:        var(--gv-grey-50);           /* #FCFCFC — alt table row / hover */
   --gv-bo-border:         var(--gv-cool-grey-600);     /* #596B7A — outline-button border */
 
+  /* ── Dashboard chart palette ──────────────────────────────────────────────
+     Sampled from the real BO dashboard recharts SVG
+     (govocal-exports/bo-dash-overview/dom.html — fill/stroke attribute counts).
+     These series colours recur across every dashboard chart (line, combo, bar,
+     donut), so they are systemic tokens, not page one-offs. The recharts grid
+     (#EBEDEF) already aliases --gv-grey-200; axis tick text (#596B7A) aliases
+     --gv-cool-grey-600 below. */
+  --gv-chart-navy:  #073F80;                    /* bar fill (recharts-bar-rectangle, n=27) */
+  --gv-chart-blue:  #2F478A;                    /* primary line / combo line stroke (n=33) */
+  --gv-chart-line:  #7FBBCA;                    /* cumulative "Total" line stroke — dominant (n=144) */
+  --gv-chart-teal:  var(--gv-teal-400);         /* #01A1B1 accent series */
+  --gv-chart-pos:   var(--gv-green-500);        /* #04884C likes / positive series */
+  --gv-chart-neg:   var(--gv-red-500);          /* #E52516 dislikes / negative series */
+  --gv-chart-axis:  var(--gv-cool-grey-600);    /* #596B7A axis tick text (recharts-cartesian-axis-tick-value, n=159) */
+  --gv-chart-grid:  var(--gv-grey-200);         /* #EBEDEF cartesian gridlines */
+
   /* ── Typography ───────────────────────────────────────────────────────── */
   /* The product's computed font stack repeats the theme family name before the
      base fallbacks ("Public Sans","Public Sans",…) — every live capture shows it

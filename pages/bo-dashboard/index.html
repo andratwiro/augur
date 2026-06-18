@@ -13,8 +13,9 @@
   <style>
     html, body { margin: 0; height: 100%; }
     body { background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
-    /* Chart palette sampled from the real dashboard (page-local, illustrative). */
-    .db-panel { --ch-blue: #2F478A; --ch-bar: #073F80; --ch-teal: #01A1B1; --ch-red: #E5484D; --ch-line: #7FBBCA; }
+    /* Chart palette — aliases the canonical --gv-chart-* tokens (grounded in the
+       real dashboard recharts SVG). Page maps them to its short local names. */
+    .db-panel { --ch-blue: var(--gv-chart-blue); --ch-bar: var(--gv-chart-navy); --ch-teal: var(--gv-chart-teal); --ch-red: var(--gv-chart-neg); --ch-line: var(--gv-chart-line); }
     .db-panel { display: none; }
     .db-panel.is-active { display: block; }
 
@@ -83,23 +84,23 @@
     /* CSS horizontal bar chart — navy bars, right-aligned wrapping labels, x-axis scale. */
     .ch-h { display: grid; grid-template-columns: 150px 1fr; gap: 4px 12px; margin-top: 8px; align-items: center; }
     .ch-hrow { display: contents; }
-    .ch-hlabel { color: var(--gv-bo-primary); text-align: right; line-height: 1.25; font-size: var(--gv-fs-xs); }
+    .ch-hlabel { color: var(--gv-chart-axis); text-align: right; line-height: 1.25; font-size: var(--gv-fs-xs); }
     .ch-hbarcell { display: flex; align-items: center; gap: 8px; }
     .ch-htrack { flex: 1; height: 15px; min-width: 0; }
     .ch-hbar { display: block; height: 100%; background: var(--ch-bar); min-width: 1px; }
     .ch-hval { color: var(--gv-bo-primary); font-weight: 400; font-size: var(--gv-fs-xs); flex: none; }
     /* X-axis scale under horizontal bars. */
     .ch-haxis { display: grid; grid-template-columns: 150px 1fr; gap: 12px; margin-top: 6px; }
-    .ch-haxis__scale { grid-column: 2; display: flex; justify-content: space-between; border-top: 1px solid var(--gv-grey-300); padding-top: 4px; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); }
+    .ch-haxis__scale { grid-column: 2; display: flex; justify-content: space-between; border-top: 1px solid var(--gv-grey-300); padding-top: 4px; font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); }
     /* CSS vertical bar chart with y-axis scale. */
     .ch-vframe { display: grid; grid-template-columns: 22px 1fr; gap: 6px; margin-top: 8px; }
-    .ch-vyaxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; height: 170px; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); padding-bottom: 16px; }
+    .ch-vyaxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; height: 170px; font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); padding-bottom: 16px; }
     .ch-v { display: flex; align-items: flex-end; gap: 10px; height: 170px; padding-top: 10px; border-bottom: 1px solid var(--gv-grey-300); }
     .ch-vcol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
     .ch-vbar { width: 60%; max-width: 46px; background: var(--ch-bar); min-height: 2px; }
-    .ch-vnum { font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); }
+    .ch-vnum { font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); }
     .ch-vlabels { display: flex; gap: 10px; margin-top: 6px; grid-column: 2; }
-    .ch-vlabels span { flex: 1; text-align: center; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); }
+    .ch-vlabels span { flex: 1; text-align: center; font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); }
     /* Legend. */
     .ch-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: var(--gv-fs-13); color: var(--gv-text-primary); justify-content: center; }
     .ch-legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -107,10 +108,10 @@
     .db-line { width: 100%; height: 130px; display: block; }
     /* Line-chart frame: y-axis scale + chart area + month axis along the bottom. */
     .ch-line { display: grid; grid-template-columns: 22px 1fr; gap: 6px; margin-top: 6px; }
-    .ch-yaxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font-size: var(--gv-fs-xs); color: var(--gv-bo-primary); height: 130px; }
+    .ch-yaxis { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font-size: var(--gv-fs-xs); color: var(--gv-chart-axis); height: 130px; }
     .ch-plot { min-width: 0; }
     .ch-axis { display: flex; justify-content: space-between; margin-top: 4px; padding: 0 2px; }
-    .ch-axis span { font-size: var(--gv-fs-13); color: var(--gv-bo-primary); }
+    .ch-axis span { font-size: var(--gv-fs-13); color: var(--gv-chart-axis); }
     .db-donutwrap { display: flex; align-items: center; gap: 22px; flex-wrap: nowrap; }
     /* Donut SVG fixed size (canonical forces chartcard svg to 100% width — override). */
     .db-donutwrap .db-donut__svg { width: 150px !important; height: 150px; flex: none; }
