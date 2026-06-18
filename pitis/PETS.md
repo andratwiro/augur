@@ -85,8 +85,8 @@ Internal — never ships. Companion engine lives entirely in `pitis/` (see READM
 - **Self-contained:** nothing outside `pitis/` references it except one optional
   `import` in `build.js`. Keep it that way.
 
-## Wingman channel (the talking piti)
-A **terminal agent** can drive the cat as a live design wingman: it reads which prototype
+## Roast mode (the talking piti)
+A **terminal agent** can drive the cat as a live design wingman ("roast mode"): it reads which prototype
 you're on and, now and then, the cat **walks to an element, says one short UX/a11y remark,
 waits ~3–5s, then returns to the cursor**. Voice = an advocate for people with **low
 comprehension for screens** (the nervous first-timer, not the power user); bold but always
@@ -100,7 +100,7 @@ true. **Live only · prototypes + `/playground/` only · only while active (Shif
   `pollRemarks()`, `startComment()` and a travel→speak→dwell→return state machine in `frame()`;
   worded bubble `.piti-says` (resolves the target by CSS selector, falls back to rescaled
   viewport coords). Cleaned up in `destroy()`.
-- **Agent brief:** `pitis/wingman-agent.md` (persona, low-comprehension checklist, the loop,
+- **Agent brief:** `pitis/roast-agent.md` (persona, low-comprehension checklist, the loop,
   cadence/restraint, the full `/__piti` payload). Run from an agent terminal while building.
 
 ## Working discipline (do not skip)
