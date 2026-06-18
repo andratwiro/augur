@@ -84,8 +84,13 @@
      full-screen menu overlay to the phone. Real sizes (scaled by .pp-screen). Header
      static so the absolute menu panel resolves against the phone. */
   .phone .pp-phone-header { position: static; box-shadow: none; border-bottom: 1px solid var(--gv-grey-200); }
-  .phone .gv-nav { display: none !important; }            /* desktop nav off inside the phone */
-  .phone .gv-nav-m { display: block !important; }          /* hamburger on */
+  /* Chrome follows the frame: PHONE = mobile (hamburger), WINDOW = desktop (full nav +
+     header actions). Scoped to the frame class so swapping frames swaps the navbar. */
+  .phone.frame-phone .gv-nav, .phone.frame-phone .pp-fo__deskactions { display: none !important; }
+  .phone.frame-phone .gv-nav-m { display: block !important; }   /* hamburger on */
+  .phone.frame-window .gv-nav-m { display: none !important; }    /* hamburger off */
+  .phone.frame-window .gv-nav { display: flex !important; }      /* desktop nav on */
+  .phone.frame-window .pp-fo__deskactions { display: flex !important; align-items: center; gap: 10px; }
   .phone .gv-nav-m__panel { position: absolute; }          /* inset:0 → fills the phone, not the viewport */
 
   /* ── Phone FO project page — REAL components; only LAYOUT here, no type-size hacks ── */
@@ -162,17 +167,34 @@
      prototype only carries the mobile FO markup; a true two-column desktop page with
      a participate rail would be a separate build. */
   .phone.frame-window {
-    width: 820px; height: 560px; border-radius: 16px;
-    --pz: 0.62;
+    width: 1180px; height: 720px; border-radius: 16px;
+    --pz: 0.82;
   }
   .frame-window .pp-screen { background: #fff; }
-  /* hero spans the full window; everything else sits in a centred desktop column */
+
+  /* DESKTOP project page: full-bleed hero, then a centred desktop measure. The top
+     context block becomes the real two-column project layout — main content on the
+     left, the participation box pinned as a right-hand rail (the signature desktop
+     GoVocal project page). The grey method band below stays one centred column. */
   .frame-window .pp-fo__banner { height: 300px; }
-  .frame-window .pp-fo__pad { max-width: 860px; margin: 0 auto; padding: 34px 40px 0; }
-  .frame-window .gv-partbar__inner { max-width: 860px; }
-  /* desktop participation box: CTAs go side-by-side and size to content, not full-bleed */
-  .frame-window .pp-fo__cta { flex-direction: row; flex-wrap: wrap; gap: 12px; }
-  .frame-window .pp-fo__cta .gv-btn { width: auto; }
+  .frame-window .pp-fo__pad { max-width: 1120px; margin: 0 auto; padding: 36px 40px 0; }
+  .frame-window .gv-partbar__inner { max-width: 1120px; margin: 0 auto; }
+
+  /* Top block → two columns: content (1fr) · participation rail (340px). */
+  .frame-window .pp-fo__pad:not(.pp-fo__pad--grey) {
+    display: grid; grid-template-columns: minmax(0,1fr) 340px; column-gap: 48px; align-items: start;
+  }
+  .frame-window .pp-fo__pad:not(.pp-fo__pad--grey) > [data-edit="title"],
+  .frame-window .pp-fo__pad:not(.pp-fo__pad--grey) > [data-edit="text"],
+  .frame-window .pp-fo__pad:not(.pp-fo__pad--grey) > [data-edit="info-accordions"] { grid-column: 1; }
+  /* Participation box = sticky white rail card; CTAs stacked full-width as on the real page. */
+  .frame-window .pp-fo__pbox {
+    grid-column: 2; grid-row: 1 / span 50; align-self: start; position: sticky; top: 16px;
+    margin: 0; padding: 20px; background: #fff; border: 1px solid var(--gv-grey-200);
+    border-radius: var(--gv-radius); box-shadow: 0 2px 4px -1px rgba(0,0,0,.06);
+  }
+  .frame-window .pp-fo__cta { flex-direction: column; gap: 10px; margin: 0 0 14px; }
+  .frame-window .pp-fo__cta .gv-btn { width: 100%; justify-content: center; }
   .frame-window .pp-phone-header { border-bottom: 1px solid var(--gv-grey-200); }
 
   .rail-btn { display:flex; align-items:center; justify-content:center; width:40px; height:40px; border-radius:10px; color: rgba(255,255,255,.55); }
@@ -2096,7 +2118,21 @@
           <header class="gv-header pp-phone-header" onclick="event.stopPropagation()">
             <div class="gv-header__inner">
               <a class="gv-brand" href="#" data-gv-logo aria-label="City home"></a>
+              <!-- Desktop nav — shown only in the WINDOW (desktop) frame; hidden in phone. -->
+              <nav class="gv-nav" aria-label="Primary">
+                <ul class="gv-nav__list">
+                  <li><a class="gv-nav__link" href="#">Home</a></li>
+                  <li><a class="gv-nav__link" href="#">Projects</a></li>
+                  <li><a class="gv-nav__link" aria-current="page" href="#">This project</a></li>
+                  <li><a class="gv-nav__link" href="#">Events</a></li>
+                  <li><a class="gv-nav__link" href="#">About</a></li>
+                </ul>
+              </nav>
               <span style="flex:1 1 auto"></span>
+              <div class="gv-header__actions pp-fo__deskactions">
+                <button class="gv-iconbtn" aria-label="Search"><span data-gv-icon="search"></span></button>
+                <a class="gv-btn primary" href="#"><span class="gv-btn__label">Log in</span></a>
+              </div>
               <details class="gv-nav-m">
                 <summary aria-label="Show navigation menu">
                   <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
@@ -3907,7 +3943,10 @@
   // allows while keeping its true layout and aspect — and it re-fits on resize.
   const FRAME_LOGICAL = {
     phone:  { w: 400,  h: 800, border: 1.5 },
-    window: { w: 1280, h: 760, border: 1.5 },
+    // Window = a real desktop viewport (1440×900). fitPreview scales it down to the
+    // canvas, so the preview reads at full desktop width — crossing the desktop
+    // layout, not the in-between tablet measure — just drawn smaller.
+    window: { w: 1440, h: 900, border: 1.5 },
   };
   function fitPreview() {
     const phone = document.getElementById('phone');
@@ -3916,7 +3955,7 @@
     if (!stage.clientWidth || !stage.clientHeight) return;   // hidden → skip
     const key = phone.classList.contains('frame-window') ? 'window' : 'phone';
     const L = FRAME_LOGICAL[key];
-    const MARGIN_X = 48, MARGIN_Y = 32;                      // breathing room
+    const MARGIN_X = 28, MARGIN_Y = 24;                      // breathing room (tight — frame as large as the canvas allows)
     const availW = Math.max(160, stage.clientWidth  - MARGIN_X * 2);
     const availH = Math.max(160, stage.clientHeight - MARGIN_Y * 2);
     const scale = Math.min(availW / L.w, availH / L.h, 1);   // fit, never upscale
