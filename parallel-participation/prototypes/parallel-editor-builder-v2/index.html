@@ -1069,12 +1069,39 @@
   .hidden-chip button:hover { background: #f4f6fa; }
   .hidden-chip button.on { background: #1a1f2c; color: #fff; }
 
+  /* ============ Empty-state approach explorer ============ */
+  /* A bottom-left selector — shown ONLY in the 'empty' project state — that swaps how a
+     brand-new, blank project is presented to a (often non-technical) city staffer, across
+     BOTH the timeline panel and the resident phone preview at once. 10 polished treatments;
+     see setEmptyApproach. Mutually exclusive with the hidden-chip (which is complex-only),
+     so they can share the bottom-left corner. */
+  .empty-chip {
+    position: fixed; bottom: 20px; left: 24px; z-index: 30;
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 3px 5px; background: #fff;
+    border: 1px solid var(--border); border-radius: 999px;
+    font-size: 10.5px; max-width: calc(100vw - 48px);
+    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04);
+  }
+  .empty-chip .label {
+    padding: 0 8px 0 4px; color: #5b6573; font-size: 10.5px;
+    font-weight: 700; white-space: nowrap;
+  }
+  .empty-chip .label b { color: #1a1f2c; }
+  .empty-chip button {
+    min-width: 22px; padding: 4px 7px; border-radius: 999px;
+    color: #4b5563; font-weight: 600;
+    transition: background .12s ease, color .12s ease;
+  }
+  .empty-chip button:hover { background: #f4f6fa; }
+  .empty-chip button.on { background: #1a1f2c; color: #fff; }
+
   /* Treatments applied to the hidden survey row(s) in the Extras list */
-  .hs-pill { display:inline-flex; align-items:center; gap:4px; margin-left:6px; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700; background:#fff7ed; color:#b45309; border:1px solid #fed7aa; vertical-align:middle; }
+  .hs-pill { display:inline-flex; align-items:center; gap:4px; margin-left:6px; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; vertical-align:middle; }
   .hs-chain { color:#656e7d; flex-shrink:0; display:inline-flex; align-self:center; }
   .hs-chain svg { width:14px; height:14px; }
   .hs-eye { width:14px; height:14px; color:#656e7d; flex-shrink:0; align-self:center; }
-  .hs-muted { color:#b45309 !important; }
+  .hs-muted { color:#5b6573 !important; }
   /* #3 — link-only shown as a NEUTRAL meta line. The lifecycle dot is untouched (placement
      is orthogonal to active/future/past) and the row is NOT dimmed — link-only ≠ inactive. */
   .hs-linkmeta { display:inline-flex; align-items:center; gap:5px; color:#5b6573; }
@@ -1088,22 +1115,22 @@
   .hs-dotwrap .phase-status-dot { margin:0; align-self:auto; }
   .hs-place { color:#5b6573; }
   .hs-grouphead { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#5b6573; margin:8px 0 2px; padding:0 12px; display:flex; align-items:center; gap:6px; }
-  .hs-grouphead--hidden { color:#b45309; }
+  .hs-grouphead--hidden { color:#475569; }
   .hs-count { background:#eef0f4; color:#5b6573; border-radius:999px; padding:0 6px; font-size:10px; font-weight:700; }
-  .hs-grouphead--hidden .hs-count { background:#fff7ed; color:#b45309; }
+  .hs-grouphead--hidden .hs-count { background:#eef0f4; color:#5b6573; }
   .hs-eye-mini { display:inline-flex; }
   .hs-eye-mini svg { width:13px; height:13px; }
   .hs-status { margin-left:auto; flex-shrink:0; font-size:10.5px; font-weight:700; color:#5b6573; padding:2px 8px; border-radius:999px; background:#eef0f4; align-self:center; }
   .hs-status--live { color:#1e7c3a; background:#e7f6ec; }
-  .hs-status--hidden { color:#b45309; background:#fff7ed; }
+  .hs-status--hidden { color:#475569; background:#f1f5f9; }
   .hs-status--ended { color:#5b6573; background:#eef0f4; }
-  .hs-callout { display:flex; align-items:flex-start; gap:9px; margin:4px 0 10px; padding:10px 12px; border:1px solid #fed7aa; background:#fff7ed; border-radius:8px; }
-  .hs-callout__ic { color:#b45309; flex-shrink:0; margin-top:1px; display:inline-flex; }
+  .hs-callout { display:flex; align-items:flex-start; gap:9px; margin:4px 0 10px; padding:10px 12px; border:1px solid #d7dde5; background:#f4f7fb; border-radius:8px; }
+  .hs-callout__ic { color:#475569; flex-shrink:0; margin-top:1px; display:inline-flex; }
   .hs-callout__ic svg { width:16px; height:16px; }
-  .hs-callout__tx { flex:1; font-size:11.5px; line-height:1.45; color:#7c4a16; }
-  .hs-callout__tx strong { color:#92400e; }
-  .hs-callout__act { flex-shrink:0; align-self:center; font-size:11px; font-weight:700; color:#b45309; padding:4px 10px; border:1px solid #fed7aa; border-radius:999px; background:#fff; cursor:pointer; }
-  .hs-callout__act:hover { background:#fff1e0; }
+  .hs-callout__tx { flex:1; font-size:11.5px; line-height:1.45; color:#475569; }
+  .hs-callout__tx strong { color:#1a1f2c; }
+  .hs-callout__act { flex-shrink:0; align-self:center; font-size:11px; font-weight:700; color:#1a1f2c; padding:4px 10px; border:1px solid #cbd5e1; border-radius:999px; background:#fff; cursor:pointer; }
+  .hs-callout__act:hover { background:#eef2f7; }
   .hs-actions { display:flex; gap:6px; margin-top:7px; }
   .hs-act { font-size:11px; font-weight:700; color:#fff; background:#1a1f2c; padding:4px 10px; border-radius:999px; cursor:pointer; }
   .hs-act--ghost { color:#4b5563; background:#eef0f4; }
@@ -1113,10 +1140,10 @@
   .hs-tog__k { position:absolute; top:2px; left:14px; width:14px; height:14px; border-radius:999px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); transition:left .15s ease; }
   .hs-tog.off .hs-tog__k { left:2px; }
   .hs-tray { margin:2px 0; }
-  .hs-tray__head { display:flex; align-items:center; gap:6px; padding:8px 12px; border-radius:8px; cursor:pointer; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#b45309; list-style:none; }
+  .hs-tray__head { display:flex; align-items:center; gap:6px; padding:8px 12px; border-radius:8px; cursor:pointer; font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:#475569; list-style:none; }
   .hs-tray__head::-webkit-details-marker { display:none; }
-  .hs-tray__head:hover { background:#fff7ed; }
-  .hs-tray__chev { margin-left:auto; display:inline-flex; color:#b45309; transition:transform .15s ease; }
+  .hs-tray__head:hover { background:#f1f5f9; }
+  .hs-tray__chev { margin-left:auto; display:inline-flex; color:#475569; transition:transform .15s ease; }
   .hs-tray__chev svg { width:14px; height:14px; }
   .hs-tray[open] .hs-tray__chev { transform:rotate(90deg); }
 
@@ -1125,9 +1152,9 @@
   .phone .pp-fo__exrow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 15px; background:#fff; border:1px solid var(--gv-grey-200,#e3e7ea); border-radius:var(--gv-radius,8px); margin-bottom:8px; text-decoration:none; }
   .phone .pp-fo__exname { font-size:14px; font-weight:600; color:var(--gv-text-primary,#1a1f2c); }
   .phone .pp-fo__exmeta { font-size:12px; color:var(--gv-text-secondary,#596b7a); flex-shrink:0; }
-  .phone .pp-fo__hsnote { display:flex; align-items:flex-start; gap:7px; margin-top:6px; padding:9px 11px; font-size:11.5px; line-height:1.45; color:#7c4a16; background:#fff7ed; border:1px dashed #fbbf24; border-radius:8px; }
-  .phone .pp-fo__hsnote b { color:#92400e; }
-  .phone .pp-fo__hsnote .hs-eye-mini svg { width:13px; height:13px; color:#b45309; flex-shrink:0; }
+  .phone .pp-fo__hsnote { display:flex; align-items:flex-start; gap:7px; margin-top:6px; padding:9px 11px; font-size:11.5px; line-height:1.45; color:#475569; background:#f4f7fb; border:1px dashed #cbd5e1; border-radius:8px; }
+  .phone .pp-fo__hsnote b { color:#1a1f2c; }
+  .phone .pp-fo__hsnote .hs-eye-mini svg { width:13px; height:13px; color:#64748b; flex-shrink:0; }
 
   /* FRAME switcher — icon-only toggle pinned to the top-right of the preview, just
      below the back-office topbar. Same quiet pill treatment as the STATE chip. */
@@ -1191,6 +1218,165 @@
     font-size: 13px;
   }
   .empty-add-prompt strong { color: #1a1f2c; font-weight: 600; }
+
+  /* ============ Empty-state treatments (explorer #2–#10) ============ */
+  /* All written in plain, reassuring language for a non-technical city staffer.
+     Treatment #1 reuses the existing markup above; these style #2–#10. */
+
+  /* #2 + shared — a calm one-line orienter at the top of the panel */
+  .es-orient {
+    display: flex; gap: 8px; align-items: flex-start;
+    margin: 2px 4px 12px; padding: 10px 12px;
+    background: #f1f6f7; border: 1px solid #d4e3e6; border-radius: 10px;
+    font-size: 12px; line-height: 1.45; color: #38515a;
+  }
+  .es-orient svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; color: #2c6e7d; }
+  .es-orient b { color: #1f4651; font-weight: 600; }
+  /* Phone banner echoing the orienter */
+  .phone .es-pbanner {
+    margin: 0 0 4px; padding: 10px 12px; border-radius: 8px;
+    background: #f1f6f7; border: 1px solid #d4e3e6;
+    font-size: 12.5px; line-height: 1.45; color: #38515a; text-align: center;
+  }
+  .phone .es-pbanner b { color: #1f4651; }
+
+  /* #3 — get-started checklist */
+  .es-checklist { margin: 4px 4px 2px; }
+  .es-checklist__head { font-size: 12.5px; font-weight: 700; color: #1a1f2c; margin: 2px 0 9px; padding: 0 4px; }
+  .es-step {
+    display: flex; align-items: flex-start; gap: 10px;
+    width: 100%; text-align: left; background: transparent;
+    border: none; padding: 8px 8px; border-radius: 9px; cursor: pointer;
+    transition: background .12s ease;
+  }
+  .es-step:hover { background: #f4f6fa; }
+  .es-step__n {
+    flex-shrink: 0; width: 22px; height: 22px; border-radius: 999px;
+    background: #e7eef0; color: #2c6e7d; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .es-step__t { font-size: 13px; font-weight: 600; color: #1a1f2c; line-height: 1.35; }
+  .es-step__s { font-size: 11.5px; color: #656e7d; line-height: 1.4; margin-top: 2px; }
+  .es-step__chev { margin-left: auto; flex-shrink: 0; color: #b0b8c4; align-self: center; }
+  .es-step__chev svg { width: 16px; height: 16px; }
+
+  /* #4 — template / quick-start cards */
+  .es-tmpl-intro { font-size: 12.5px; color: #656e7d; padding: 0 4px; margin: 4px 0 9px; line-height: 1.45; }
+  .es-tmpl {
+    display: flex; align-items: flex-start; gap: 11px;
+    width: 100%; text-align: left; background: #fff;
+    border: 1px solid #d8dce3; border-radius: 11px; padding: 11px 12px;
+    margin: 0 4px 8px; cursor: pointer;
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  .es-tmpl:hover { border-color: #2c6e7d; box-shadow: 0 2px 8px rgba(44,110,125,.12); }
+  .es-tmpl__ic {
+    flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px;
+    background: #eef4f5; color: #2c6e7d;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .es-tmpl__ic svg { width: 16px; height: 16px; }
+  .es-tmpl__t { font-size: 13px; font-weight: 600; color: #1a1f2c; }
+  .es-tmpl__s { font-size: 11.5px; color: #656e7d; line-height: 1.4; margin-top: 2px; }
+
+  /* #5 — single focused CTA card */
+  .es-focus {
+    margin: 6px 4px 0; padding: 18px 16px;
+    border: 1.5px dashed #cbd5e1; border-radius: 14px; text-align: center;
+    background: #fafbfc;
+  }
+  .es-focus__ic {
+    width: 38px; height: 38px; margin: 0 auto 10px; border-radius: 999px;
+    background: #e7f6ec; color: #1e7c3a;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .es-focus__ic svg { width: 19px; height: 19px; }
+  .es-focus__cta {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--gv-tenant-primary, #1e7c3a); color: #fff;
+    border: none; border-radius: 999px; padding: 9px 16px;
+    font-size: 13.5px; font-weight: 600; cursor: pointer;
+  }
+  .es-focus__cta svg { width: 16px; height: 16px; }
+  .es-focus__help { font-size: 12px; color: #656e7d; line-height: 1.45; margin-top: 10px; }
+
+  /* #6 — numbered coachmark badges tying panel ↔ phone */
+  .es-coach {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 19px; height: 19px; border-radius: 999px; flex-shrink: 0;
+    background: #2c6e7d; color: #fff;       /* fixed so ① (phone) and ② (panel) read as one sequence */
+    font-size: 11px; font-weight: 700;
+  }
+  .es-coach-row { display: flex; align-items: center; gap: 8px; margin: 2px 4px 8px; }
+  .es-coach-row .es-coach { width: 22px; height: 22px; }
+  .es-coach-row span { font-size: 12.5px; color: #38515a; line-height: 1.4; }
+  .phone .es-coach-tag {
+    position: absolute; top: -9px; left: -9px; z-index: 2;
+    box-shadow: 0 2px 5px rgba(20,25,40,.2);
+  }
+
+  /* #7 — illustrated empty state */
+  .es-illus { text-align: center; padding: 16px 12px 6px; }
+  .es-illus svg { width: 96px; height: 72px; margin: 0 auto 6px; display: block; }
+  .es-illus__h { font-size: 14.5px; font-weight: 700; color: #1a1f2c; margin: 2px 0 4px; }
+  .es-illus__s { font-size: 12.5px; color: #656e7d; line-height: 1.5; margin: 0 auto 12px; max-width: 230px; }
+  .phone .es-pillus { text-align: center; padding: 40px 22px; }
+  .phone .es-pillus svg { width: 112px; height: 84px; margin: 0 auto 14px; display: block; }
+  .phone .es-pillus__h { font-size: 17px; font-weight: 700; color: #1a1f2c; margin: 0 0 6px; }
+  .phone .es-pillus__s { font-size: 13.5px; color: #596b7a; line-height: 1.55; margin: 0 auto 18px; max-width: 260px; }
+  .phone .es-pillus__cta {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--gv-tenant-primary, #1e7c3a); color: #fff;
+    border-radius: 999px; padding: 11px 20px; font-size: 15px; font-weight: 600;
+  }
+  .phone .es-pillus__cta svg { width: 17px; height: 17px; margin: 0; }
+
+  /* #8 — "Example" destination preview on the phone (faded + watermarked) */
+  .phone .es-example { position: relative; }
+  .phone .es-example__ribbon {
+    position: sticky; top: 0; z-index: 3;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 12px; font-size: 12px; font-weight: 600;
+    color: #7c4a16; background: #fff7ed; border-bottom: 1px solid #fed7aa;
+  }
+  .phone .es-example__ribbon svg { width: 14px; height: 14px; }
+  .phone .es-example__body { opacity: .62; filter: saturate(.9); pointer-events: none; padding: 0 0 24px; }
+  .phone .es-ex-hero { height: 120px; background: linear-gradient(135deg,#c3d4d8,#dde6e3); display:flex; align-items:flex-end; }
+  .phone .es-ex-pad { padding: 16px; }
+  .phone .es-ex-title { font-size: 20px; font-weight: 700; color: #1a1f2c; line-height: 1.25; margin: 14px 0 8px; }
+  .phone .es-ex-desc { font-size: 13.5px; color: #596b7a; line-height: 1.55; }
+  .phone .es-ex-bar { margin: 16px; padding: 13px 15px; border: 1px solid #e3e7ea; border-radius: 8px; background: #fff; }
+  .phone .es-ex-bar__t { font-size: 13px; font-weight: 600; color: #1a1f2c; }
+  .phone .es-ex-bar__s { font-size: 12px; color: #596b7a; margin-top: 3px; }
+  .phone .es-ex-line { height: 11px; border-radius: 4px; background: #e7ecef; margin-top: 9px; }
+
+  /* #9 — inline why-tips under each ghost / example */
+  .es-tip { display: block; font-size: 11px; color: #7d8696; line-height: 1.4; margin-top: 5px; font-weight: 400; }
+  .ghost-slot .es-tip { font-weight: 400; }
+  .es-panel-tip {
+    display: flex; gap: 7px; align-items: flex-start;
+    margin: 2px 4px 10px; padding: 9px 11px;
+    background: #fafbfc; border: 1px solid #e7ebf0; border-radius: 9px;
+    font-size: 11.5px; line-height: 1.45; color: #5b6573;
+  }
+  .es-panel-tip svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; color: #94a3b8; }
+
+  /* #10 — phone-led: a prominent inviting "name your project" affordance */
+  .phone .es-lead-title {
+    border: 2px dashed var(--gv-tenant-primary, #2c6e7d);
+    background: #fff; border-radius: 12px; padding: 18px 16px;
+    text-align: center; cursor: pointer;
+    box-shadow: 0 0 0 0 rgba(44,110,125,.0);
+    animation: es-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes es-pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(44,110,125,.18); }
+    50%     { box-shadow: 0 0 0 7px rgba(44,110,125,0); }
+  }
+  @media (prefers-reduced-motion: reduce) { .phone .es-lead-title { animation: none; } }
+  .phone .es-lead-title__k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #2c6e7d; }
+  .phone .es-lead-title__t { font-size: 16px; font-weight: 600; color: #1a1f2c; margin-top: 6px; }
+  .es-quiet-note { font-size: 12px; color: #818b99; line-height: 1.45; padding: 0 4px; margin: 4px 0 9px; }
 
   /* Bullet list */
   .bullet-list { list-style: disc; padding-left: 22px; margin-top: 6px; }
@@ -3569,17 +3755,34 @@
 <!-- Swaps how a survey that's created but NOT added to the project (URL-only access) is
      surfaced in the Extras list + reflected on the resident phone preview. -->
 <div class="hidden-chip" role="group" aria-label="Hidden survey treatment" hidden>
-  <span class="label">Hidden survey&nbsp;·&nbsp;<b id="hs-name">Eye-off icon</b></span>
-  <button data-hs="1" class="on" title="Eye-off icon (baseline)" onclick="setHiddenApproach(1, this)">1</button>
-  <button data-hs="2" title="&quot;Link-only&quot; pill" onclick="setHiddenApproach(2, this)">2</button>
+  <span class="label">Not on page</span>
+  <button data-hs="1" class="on" title="Eye-off icon" onclick="setHiddenApproach(1, this)">1</button>
+  <button data-hs="2" title="&quot;Link only&quot; pill" onclick="setHiddenApproach(2, this)">2</button>
   <button data-hs="3" title="Link-only meta line" onclick="setHiddenApproach(3, this)">3</button>
   <button data-hs="4" title="Dashed ring on dot (placement ⟂ lifecycle)" onclick="setHiddenApproach(4, this)">4</button>
-  <button data-hs="5" title="Grouped: On project / Hidden" onclick="setHiddenApproach(5, this)">5</button>
+  <button data-hs="5" title="Grouped subsections" onclick="setHiddenApproach(5, this)">5</button>
   <button data-hs="6" title="Status column" onclick="setHiddenApproach(6, this)">6</button>
   <button data-hs="7" title="Section callout" onclick="setHiddenApproach(7, this)">7</button>
   <button data-hs="8" title="Inline actions" onclick="setHiddenApproach(8, this)">8</button>
   <button data-hs="9" title="Visibility toggle" onclick="setHiddenApproach(9, this)">9</button>
-  <button data-hs="10" title="Collapsible hidden tray" onclick="setHiddenApproach(10, this)">10</button>
+  <button data-hs="10" title="Collapsible tray" onclick="setHiddenApproach(10, this)">10</button>
+</div>
+
+<!-- ============ Empty-state approach explorer — bottom-left (empty state only) ============ -->
+<!-- Swaps how a brand-new blank project is presented — across BOTH the timeline panel and
+     the resident phone preview — through 10 polished treatments for a non-technical staffer. -->
+<div class="empty-chip" role="group" aria-label="Empty-state treatment" hidden>
+  <span class="label">Empty state&nbsp;·&nbsp;<b id="es-name">Current</b></span>
+  <button data-es="1" class="on" title="Current (baseline)" onclick="setEmptyApproach(1, this)">1</button>
+  <button data-es="2" title="Plain-language intro" onclick="setEmptyApproach(2, this)">2</button>
+  <button data-es="3" title="Get-started checklist" onclick="setEmptyApproach(3, this)">3</button>
+  <button data-es="4" title="Templates / quick starts" onclick="setEmptyApproach(4, this)">4</button>
+  <button data-es="5" title="Single focused CTA" onclick="setEmptyApproach(5, this)">5</button>
+  <button data-es="6" title="Numbered coachmarks (panel ↔ phone)" onclick="setEmptyApproach(6, this)">6</button>
+  <button data-es="7" title="Illustrated empty state" onclick="setEmptyApproach(7, this)">7</button>
+  <button data-es="8" title="Preview the destination (Example page)" onclick="setEmptyApproach(8, this)">8</button>
+  <button data-es="9" title="Inline why-tips" onclick="setEmptyApproach(9, this)">9</button>
+  <button data-es="10" title="Phone-led first run" onclick="setEmptyApproach(10, this)">10</button>
 </div>
 
 <script>
@@ -3808,23 +4011,7 @@
     const sc = document.getElementById('phone-scroller');
     if (!sc) return;
     if (state === 'empty') {
-      sc.innerHTML = `
-        <div class="px-4 pt-3 pb-5">
-          <div class="mt-2 ghost-slot tall">
-            <svg class="nav-icon" style="width:18px;height:18px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            Add a header image
-          </div>
-          <div class="mt-4 pt-1">
-            <div class="ghost-slot" style="justify-content:flex-start;padding:14px;font-size:15px;font-weight:600;">
-              <svg class="nav-icon" style="width:14px;height:14px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Add project title
-            </div>
-          </div>
-          <div class="ghost-slot mt-3" style="justify-content:flex-start;padding:14px;text-align:left;min-height:60px;">
-            <svg class="nav-icon" style="width:14px;height:14px;flex-shrink:0;align-self:flex-start;margin-top:1px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span style="flex:1;">Add a short description explaining what this project is about</span>
-          </div>
-        </div>`;
+      sc.innerHTML = emptyPhone(window.ppEmpty || 1);
     } else {
       sc.innerHTML = phoneFO(state);
     }
@@ -3876,16 +4063,16 @@
     chev:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>',
   };
   const HS_META = {
-    1:  { name: 'Eye-off icon',        term: 'hidden from participants' },
-    2:  { name: '"Link-only" pill',    term: 'link-only' },
+    1:  { name: 'Eye-off icon',        term: 'not on the project page' },
+    2:  { name: '"Link only" pill',    term: 'link only' },
     3:  { name: 'Link-only meta line', term: 'link only' },
     4:  { name: 'Dashed ring on dot',  term: 'not on the project page' },
-    5:  { name: 'Grouped subsections', term: 'hidden' },
-    6:  { name: 'Status column',       term: 'link-only' },
-    7:  { name: 'Section callout',     term: 'off the project' },
-    8:  { name: 'Inline actions',      term: 'link-only' },
-    9:  { name: 'Visibility toggle',   term: 'shared by link only' },
-    10: { name: 'Collapsible tray',    term: 'hidden' },
+    5:  { name: 'Grouped subsections', term: 'not on the project page' },
+    6:  { name: 'Status column',       term: 'link only' },
+    7:  { name: 'Section callout',     term: 'not on the project page' },
+    8:  { name: 'Inline actions',      term: 'link only' },
+    9:  { name: 'Visibility toggle',   term: 'link only' },
+    10: { name: 'Collapsible tray',    term: 'not on the project page' },
   };
   // Visible (on-project) Extras render the same; only the hidden one varies per approach.
   function hsRow(opts) {
@@ -3902,15 +4089,15 @@
     const kiosk  = hsRow({ phase:'',        dot:'completed',name:'Pop-up kiosk survey',  dates:'2–4 May', past:true });
     let body;
     switch (n) {
-      case 1: // Eye-off icon (baseline)
+      case 1: // Eye-off icon (lifecycle dot kept; placement = neutral trailing glyph)
         body = askus
           + hsRow({ phase:'schools', dot:'live', name:'School survey', dates:'20 May–5 Jun',
-              trail:`<span class="hs-eye" title="Hidden from participants">${HS_SVG.eyeOff}</span>` })
+              trail:`<span class="hs-eye" title="Not on the project page — reachable by link">${HS_SVG.eyeOff}</span>` })
           + market + kiosk;
         break;
-      case 2: // "Link-only" pill
+      case 2: // "Link only" pill (neutral)
         body = askus
-          + hsRow({ phase:'schools', dot:'live', name:`School survey <span class="hs-pill"><span class="hs-eye-mini" style="width:12px;height:12px">${HS_SVG.link}</span>Link-only</span>`, dates:'20 May–5 Jun' })
+          + hsRow({ phase:'schools', dot:'live', name:`School survey <span class="hs-pill"><span class="hs-eye-mini" style="width:12px;height:12px">${HS_SVG.link}</span>Link only</span>`, dates:'20 May–5 Jun' })
           + market + kiosk;
         break;
       case 3: // Link-only meta line — neutral, lifecycle dot preserved, NOT dimmed.
@@ -3936,14 +4123,14 @@
       case 5: // Grouped subsections
         body = `<div class="hs-grouphead">On the project <span class="hs-count">3</span></div>`
           + askus + market + kiosk
-          + `<div class="hs-grouphead hs-grouphead--hidden"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span> Hidden — link only <span class="hs-count">1</span></div>`
+          + `<div class="hs-grouphead hs-grouphead--hidden"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span> Not on the project page <span class="hs-count">1</span></div>`
           + hsRow({ phase:'schools', dot:'live', name:'School survey', dates:'20 May–5 Jun' });
         break;
       case 6: // Status column
         body = hsRow({ phase:'askus', dot:'live', name:'Ask us anything', dates:'Ongoing',
               trail:'<span class="hs-status hs-status--live">Live</span>' })
           + hsRow({ phase:'schools', dot:'live', name:'School survey', dates:'20 May–5 Jun',
-              trail:'<span class="hs-status hs-status--hidden">Link-only</span>' })
+              trail:'<span class="hs-status hs-status--hidden">Link only</span>' })
           + hsRow({ phase:'', dot:'upcoming', name:'Market-day poll', dates:'15–17 Aug',
               trail:'<span class="hs-status">Scheduled</span>' })
           + hsRow({ phase:'', dot:'completed', name:'Pop-up kiosk survey', dates:'2–4 May', past:true,
@@ -3951,8 +4138,8 @@
         break;
       case 7: // Section callout
         body = `<div class="hs-callout"><span class="hs-callout__ic">${HS_SVG.info}</span>`
-          + `<div class="hs-callout__tx"><strong>1 survey isn't on your project.</strong> Only people with the link can find it.</div>`
-          + `<button class="hs-callout__act" onclick="event.stopPropagation()">Add it</button></div>`
+          + `<div class="hs-callout__tx"><strong>1 survey isn't on the project page.</strong> People can only reach it with its link.</div>`
+          + `<button class="hs-callout__act" onclick="event.stopPropagation()">Add to page</button></div>`
           + askus
           + hsRow({ phase:'schools', dot:'live', name:'School survey', dates:'20 May–5 Jun' })
           + market + kiosk;
@@ -3960,22 +4147,22 @@
       case 8: // Inline actions
         body = askus
           + `<div class="phase-row-rich" data-view="phase" data-phase="schools" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>`
-            + `<div class="flex-1 min-w-0"><div class="phase-name">School survey</div><div class="phase-dates">20 May–5 Jun · link only</div>`
-            + `<div class="hs-actions"><button class="hs-act" onclick="event.stopPropagation()">Add to project</button><button class="hs-act hs-act--ghost" onclick="event.stopPropagation()">Copy link</button></div></div></div>`
+            + `<div class="flex-1 min-w-0"><div class="phase-name">School survey</div><div class="phase-dates">20 May–5 Jun · <span class="hs-place">Not on the project page</span></div>`
+            + `<div class="hs-actions"><button class="hs-act" onclick="event.stopPropagation()">Add to page</button><button class="hs-act hs-act--ghost" onclick="event.stopPropagation()">Copy link</button></div></div></div>`
           + market + kiosk;
         break;
       case 9: { // Visibility toggle per row
         const tog = (on) => `<button class="hs-tog${on ? '' : ' off'}" role="switch" aria-checked="${on}" title="Visible on the project" onclick="event.stopPropagation(); this.classList.toggle('off'); this.setAttribute('aria-checked', this.classList.contains('off') ? 'false' : 'true')"><span class="hs-tog__k"></span></button>`;
         body = hsRow({ phase:'askus', dot:'live', name:'Ask us anything', dates:'Ongoing', trail:tog(true) })
           + `<div class="phase-row-rich" data-view="phase" data-phase="schools" onclick="setView('phase', this)"><div class="phase-status-dot live"></div>`
-            + `<div class="flex-1 min-w-0"><div class="phase-name">School survey</div><div class="phase-dates"><span class="hs-muted">Shared by link only</span></div></div>${tog(false)}</div>`
+            + `<div class="flex-1 min-w-0"><div class="phase-name">School survey</div><div class="phase-dates">20 May–5 Jun · <span class="hs-place">Link only</span></div></div>${tog(false)}</div>`
           + hsRow({ phase:'', dot:'upcoming', name:'Market-day poll', dates:'15–17 Aug', trail:tog(true) })
           + hsRow({ phase:'', dot:'completed', name:'Pop-up kiosk survey', dates:'2–4 May', past:true, trail:tog(true) });
         break;
       }
-      case 10: // Collapsible hidden tray
+      case 10: // Collapsible tray (neutral)
         body = askus + market + kiosk
-          + `<details class="hs-tray"><summary class="hs-tray__head"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span> Hidden surveys <span class="hs-count">1</span><span class="hs-tray__chev">${HS_SVG.chev}</span></summary>`
+          + `<details class="hs-tray"><summary class="hs-tray__head"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span> Not on the project page <span class="hs-count">1</span><span class="hs-tray__chev">${HS_SVG.chev}</span></summary>`
             + `<div class="hs-tray__body">${hsRow({ phase:'schools', dot:'live', name:'School survey', dates:'20 May–5 Jun' })}</div></details>`;
         break;
       default:
@@ -4007,14 +4194,192 @@
       <div class="pp-fo__hsnote"><span class="hs-eye-mini">${HS_SVG.eyeOff}</span><span><b>Editor only.</b> ${note}</span></div>
     </div>`;
   }
+  // ── Empty-state approach explorer ──────────────────────────────────────────
+  // A brand-new, blank project. window.ppEmpty (1–10) selects how it's presented to a
+  // (typically non-technical) city staffer across BOTH the timeline panel and the resident
+  // phone preview. #1 is the current baseline; #2–#10 are polished refinements. Each is
+  // written in plain, reassuring language — orientation, a clear first move, "change it later".
+  window.ppEmpty = window.ppEmpty || 1;
+  const ES_META = {
+    1:  { name: 'Current' },
+    2:  { name: 'Plain-language intro' },
+    3:  { name: 'Get-started checklist' },
+    4:  { name: 'Templates' },
+    5:  { name: 'Single focused CTA' },
+    6:  { name: 'Numbered coachmarks' },
+    7:  { name: 'Illustrated' },
+    8:  { name: 'Example destination' },
+    9:  { name: 'Inline why-tips' },
+    10: { name: 'Phone-led first run' },
+  };
+
+  // Inline SVGs (panel uses literal <svg>, not data-gv-icon, to match the few/complex branches)
+  const ES_PLUS  = '<svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+  const ES_INFO  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+  const ES_CHEV  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+  const ES_FLAG  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V4s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
+  const ES_BULB  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12c.5.5 1 1.2 1 2h6c0-.8.5-1.5 1-2a7 7 0 0 0-4-12z"/></svg>';
+  const ES_CLIP  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>';
+  const ES_MEGA  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l14-6v14L3 13z"/><path d="M7 13v4a2 2 0 0 0 4 0v-1"/></svg>';
+  const ES_IMG   = '<svg class="nav-icon" style="width:18px;height:18px;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+  const ES_ILLUS = '<svg viewBox="0 0 120 90" fill="none" aria-hidden="true"><line x1="20" y1="22" x2="20" y2="68" stroke="#cbd5e1" stroke-width="2"/><circle cx="20" cy="22" r="5" fill="#2c6e7d"/><rect x="34" y="15" width="64" height="14" rx="4" fill="#dbe7e9"/><circle cx="20" cy="45" r="5" fill="#9db8bf"/><rect x="34" y="38" width="50" height="14" rx="4" fill="#e8eef0"/><circle cx="20" cy="68" r="5" fill="#cbd5e1"/><rect x="34" y="61" width="58" height="14" rx="4" fill="#eef2f4"/></svg>';
+
+  // Shared timeline fragments
+  const ES_TL_HEAD   = '<hr class="panel-divider" /><div class="sec-head">Timeline</div>';
+  const ES_EXAMPLE   = '<div class="tl-example"><div class="timeline-group">'
+    + '<div class="phase-row-rich timeline-item"><div class="phase-status-dot"></div><div class="flex-1 min-w-0"><div class="phase-name">Collect ideas · Ideation</div></div></div>'
+    + '<div class="phase-row-rich timeline-item"><div class="phase-status-dot"></div><div class="flex-1 min-w-0"><div class="phase-name">Vote on the shortlist · Voting</div></div></div>'
+    + '<div class="phase-row-rich timeline-item"><div class="phase-status-dot"></div><div class="flex-1 min-w-0"><div class="phase-name">Share what we heard · Information</div></div></div>'
+    + '</div></div>';
+  const ES_NEWPHASE  = '<button class="sec-add" onclick="setView(&#39;add-phase&#39;)">' + ES_PLUS + 'New phase</button>';
+  const ES_NEWSURVEY = '<hr class="panel-divider" /><button class="sec-add muted" onclick="setView(&#39;add-survey&#39;)">' + ES_PLUS + 'New survey outside the timeline</button>';
+
+  // Timeline panel for each approach
+  function emptyTimeline(n) {
+    switch (n) {
+      case 2: // Plain-language intro — orient the staffer, then the worked example
+        return ES_TL_HEAD
+          + '<div class="es-orient">' + ES_INFO + '<div>This panel is where you <b>build your project</b>. The phone on the right shows exactly what residents will see.</div></div>'
+          + '<div class="tl-example-intro">A project runs in phases — the steps people move through. For example:</div>'
+          + ES_EXAMPLE + ES_NEWPHASE;
+      case 3: // Get-started checklist
+        return ES_TL_HEAD
+          + '<div class="es-checklist"><div class="es-checklist__head">Set up your project in 3 steps</div>'
+          + '<div class="es-step"><span class="es-step__n">1</span><div><div class="es-step__t">Add a title and description</div><div class="es-step__s">Tap the fields on the preview →</div></div></div>'
+          + '<button class="es-step" onclick="setView(&#39;add-phase&#39;)"><span class="es-step__n">2</span><div><div class="es-step__t">Add your first phase</div><div class="es-step__s">Choose how people take part.</div></div><span class="es-step__chev">' + ES_CHEV + '</span></button>'
+          + '<div class="es-step"><span class="es-step__n">3</span><div><div class="es-step__t">Publish when you’re ready</div><div class="es-step__s">Residents only see it once you publish.</div></div></div>'
+          + '</div>';
+      case 4: // Templates / quick starts
+        return ES_TL_HEAD
+          + '<div class="es-tmpl-intro">Start from a ready-made setup, or build your own:</div>'
+          + '<button class="es-tmpl" onclick="setView(&#39;add-phase&#39;)"><span class="es-tmpl__ic">' + ES_BULB + '</span><div><div class="es-tmpl__t">Collect &amp; prioritise ideas</div><div class="es-tmpl__s">Ideation → Voting → Information</div></div></button>'
+          + '<button class="es-tmpl" onclick="setView(&#39;add-phase&#39;)"><span class="es-tmpl__ic">' + ES_CLIP + '</span><div><div class="es-tmpl__t">Run a survey</div><div class="es-tmpl__s">One survey phase — quick to set up.</div></div></button>'
+          + '<button class="es-tmpl" onclick="setView(&#39;add-phase&#39;)"><span class="es-tmpl__ic">' + ES_MEGA + '</span><div><div class="es-tmpl__t">Share information</div><div class="es-tmpl__s">A single page to keep people informed.</div></div></button>'
+          + '<button class="sec-add muted" onclick="setView(&#39;add-phase&#39;)">' + ES_PLUS + 'Build from scratch</button>';
+      case 5: // Single focused CTA — strip everything but the one first move
+        return ES_TL_HEAD
+          + '<div class="es-focus"><div class="es-focus__ic">' + ES_FLAG + '</div>'
+          + '<button class="es-focus__cta" onclick="setView(&#39;add-phase&#39;)">' + ES_PLUS + 'Add your first phase</button>'
+          + '<div class="es-focus__help">A phase is one step people take part in — like collecting ideas or running a vote. You can add more later.</div></div>';
+      case 6: // Numbered coachmarks — ② lives here, ① on the phone title
+        return ES_TL_HEAD
+          + '<div class="es-coach-row"><span class="es-coach">2</span><span>Add the <b>phases</b> people move through — the steps of your project.</span></div>'
+          + ES_EXAMPLE + ES_NEWPHASE;
+      case 7: // Illustrated empty state
+        return ES_TL_HEAD
+          + '<div class="es-illus">' + ES_ILLUS
+          + '<div class="es-illus__h">Let’s build your project</div>'
+          + '<div class="es-illus__s">Add phases to map out how people take part — step by step.</div></div>'
+          + ES_NEWPHASE;
+      case 9: // Inline why-tips — a calm panel tip + the worked example
+        return ES_TL_HEAD
+          + '<div class="es-panel-tip">' + ES_INFO + '<div>Most projects start with just one or two phases. You can add, reorder or remove them anytime.</div></div>'
+          + '<div class="tl-example-intro">Phases are the steps people move through — for example:</div>'
+          + ES_EXAMPLE + ES_NEWPHASE;
+      case 10: // Phone-led — the panel steps back, the phone leads
+        return ES_TL_HEAD
+          + '<div class="es-quiet-note">Start by naming your project on the preview. Add the phases people move through here, whenever you’re ready.</div>'
+          + ES_NEWPHASE;
+      case 1: // Current (baseline) + #8 (panel unchanged; the Example lives on the phone)
+      case 8:
+      default:
+        return ES_TL_HEAD
+          + '<div class="tl-example-intro">Phases are the steps people move through — for example:</div>'
+          + ES_EXAMPLE + ES_NEWPHASE;
+    }
+  }
+
+  // Extras section for each approach — quiet survey link by default; hidden where it would
+  // add noise to a deliberately minimal treatment (#5 focus, #10 phone-led).
+  function emptyExtras(n) {
+    if (n === 5 || n === 10) return '';
+    return ES_NEWSURVEY;
+  }
+
+  // The original ghost slots (header image / title / description) — treatment #1.
+  function esPhoneGhosts() {
+    return '<div class="mt-2 ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
+      + '<div class="mt-4 pt-1"><div class="ghost-slot" style="justify-content:flex-start;padding:14px;font-size:15px;font-weight:600;">' + ES_PLUS + 'Add project title</div></div>'
+      + '<div class="ghost-slot mt-3" style="justify-content:flex-start;padding:14px;text-align:left;min-height:60px;"><span style="flex-shrink:0;align-self:flex-start;margin-top:1px;display:inline-flex;">' + ES_PLUS + '</span><span style="flex:1;">Add a short description explaining what this project is about</span></div>';
+  }
+
+  // Phone preview for each approach
+  function emptyPhone(n) {
+    let inner;
+    switch (n) {
+      case 2: // Plain-language banner above the ghosts
+        inner = '<div class="es-pbanner">This is <b>your project page</b> — empty for now. Fill it in here and publish when you’re ready.</div>' + esPhoneGhosts();
+        break;
+      case 3: // Step echo from the checklist
+        inner = '<div class="es-pbanner"><b>Step 1 of 3</b> — add a title and description</div>' + esPhoneGhosts();
+        break;
+      case 4: // Templates hint
+        inner = '<div class="es-pbanner">Pick a starting point on the left to preview it here.</div>' + esPhoneGhosts();
+        break;
+      case 5: // Single focus — minimal phone too (title + description only)
+        inner = '<div class="mt-4 pt-1"><div class="ghost-slot" style="justify-content:flex-start;padding:14px;font-size:15px;font-weight:600;">' + ES_PLUS + 'Add project title</div></div>'
+          + '<div class="ghost-slot mt-3" style="justify-content:flex-start;padding:14px;text-align:left;min-height:60px;"><span style="flex-shrink:0;align-self:flex-start;margin-top:1px;display:inline-flex;">' + ES_PLUS + '</span><span style="flex:1;">Add a short description explaining what this project is about</span></div>';
+        break;
+      case 6: // ① coachmark on the title, tying back to the panel's ②
+        inner = '<div class="mt-2 ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
+          + '<div class="mt-4 pt-1" style="position:relative;"><span class="es-coach es-coach-tag">1</span><div class="ghost-slot" style="justify-content:flex-start;padding:14px;font-size:15px;font-weight:600;">' + ES_PLUS + 'Add project title</div></div>'
+          + '<div class="ghost-slot mt-3" style="justify-content:flex-start;padding:14px;text-align:left;min-height:60px;"><span style="flex-shrink:0;align-self:flex-start;margin-top:1px;display:inline-flex;">' + ES_PLUS + '</span><span style="flex:1;">Add a short description explaining what this project is about</span></div>';
+        break;
+      case 7: // Friendly illustrated empty state
+        return '<div class="es-pillus">' + ES_ILLUS
+          + '<div class="es-pillus__h">Your project page starts here</div>'
+          + '<div class="es-pillus__s">Give it a name and a short description, then add the ways people can take part.</div>'
+          + '<span class="es-pillus__cta">' + ES_PLUS + 'Add a title</span></div>';
+      case 8: // Preview the destination — a faded, watermarked "Example" page
+        return '<div class="es-example"><div class="es-example__ribbon">' + ES_INFO + 'Example — yours will look like this</div>'
+          + '<div class="es-example__body">'
+          + '<div class="es-ex-hero"></div>'
+          + '<div class="es-ex-pad"><div class="es-ex-title">Reimagine Meridian 2030</div>'
+          + '<div class="es-ex-desc">Help shape how our high street looks and feels for the next decade. Share ideas, vote on a shortlist, and see what your neighbours suggested.</div></div>'
+          + '<div class="es-ex-bar"><div class="es-ex-bar__t">Collect ideas · open now</div><div class="es-ex-bar__s">Phase 1 of 3 · ends 10 Jun</div><div class="es-ex-line" style="width:90%"></div></div>'
+          + '<div class="es-ex-pad"><div class="es-ex-line" style="width:70%"></div><div class="es-ex-line" style="width:85%"></div><div class="es-ex-line" style="width:55%"></div></div>'
+          + '</div></div>';
+      case 9: // Inline why-tips on each ghost
+        inner = '<div class="mt-2 ghost-slot tall" style="flex-direction:column;gap:4px;">' + ES_IMG + '<span>Add a header image</span><span class="es-tip">The first thing residents see.</span></div>'
+          + '<div class="mt-4 pt-1"><div class="ghost-slot" style="flex-direction:column;align-items:flex-start;padding:14px;"><span style="display:flex;gap:8px;align-items:center;font-size:15px;font-weight:600;">' + ES_PLUS + 'Add project title</span><span class="es-tip">Keep it short and recognisable.</span></div></div>'
+          + '<div class="ghost-slot mt-3" style="flex-direction:column;align-items:flex-start;padding:14px;text-align:left;"><span style="display:flex;gap:8px;align-items:flex-start;"><span style="flex-shrink:0;margin-top:1px;display:inline-flex;">' + ES_PLUS + '</span><span>Add a short description</span></span><span class="es-tip">One or two sentences on what you’re asking people to do.</span></div>';
+        break;
+      case 10: // Phone-led — a prominent, inviting "name your project" affordance
+        return '<div class="px-4 pt-3 pb-5">'
+          + '<div class="es-lead-title"><div class="es-lead-title__k">Start here</div><div class="es-lead-title__t">Tap to name your project</div></div>'
+          + '<div class="ghost-slot mt-3" style="justify-content:flex-start;padding:14px;text-align:left;min-height:60px;"><span style="flex-shrink:0;align-self:flex-start;margin-top:1px;display:inline-flex;">' + ES_PLUS + '</span><span style="flex:1;">Add a short description</span></div>'
+          + '<div class="mt-3 ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
+          + '</div>';
+      case 1:
+      default:
+        inner = esPhoneGhosts();
+    }
+    return '<div class="px-4 pt-3 pb-5">' + inner + '</div>';
+  }
+
+  // Toggle the explorer chip + (re)render the panel + phone for the chosen approach.
+  function setEmptyApproach(n, btn) {
+    window.ppEmpty = n;
+    document.querySelectorAll('.empty-chip button').forEach(b => b.classList.remove('on'));
+    const b = btn || document.querySelector('.empty-chip button[data-es="' + n + '"]');
+    if (b) b.classList.add('on');
+    const nameEl = document.getElementById('es-name');
+    if (nameEl) nameEl.textContent = (ES_META[n] || ES_META[1]).name;
+    if (window.ppState === 'empty') {
+      const tl = document.getElementById('timeline-card');
+      const ac = document.getElementById('activities-card');
+      if (tl) tl.innerHTML = emptyTimeline(n);
+      if (ac) ac.innerHTML = emptyExtras(n);
+      renderPhone('empty');
+    }
+  }
+
   // Toggle the explorer chip + (re)render Extras/phone for the chosen approach.
   function setHiddenApproach(n, btn) {
     window.ppHidden = n;
     document.querySelectorAll('.hidden-chip button').forEach(b => b.classList.remove('on'));
     const b = btn || document.querySelector('.hidden-chip button[data-hs="' + n + '"]');
     if (b) b.classList.add('on');
-    const nameEl = document.getElementById('hs-name');
-    if (nameEl) nameEl.textContent = (HS_META[n] || HS_META[1]).name;
     if (window.ppState === 'complex') {
       const card = document.getElementById('activities-card');
       if (card) card.innerHTML = renderComplexExtras(n);
@@ -4038,6 +4403,9 @@
     // survey that's off the project). Hide it elsewhere.
     const hiddenChip = document.querySelector('.hidden-chip');
     if (hiddenChip) hiddenChip.hidden = (state !== 'complex');
+    // The empty-state explorer only applies to the empty state.
+    const emptyChip = document.querySelector('.empty-chip');
+    if (emptyChip) emptyChip.hidden = (state !== 'empty');
 
     // Phone preview content is rebuilt per state: ghost placeholders for 'empty',
     // a real GoVocal mobile FO project page (gv-* components) for 'few' / 'complex'.
@@ -4046,42 +4414,10 @@
     if (state === 'empty') {
       // Hide audience until participants exist
       if (audienceNav) audienceNav.style.display = 'none';
-
-      // Empty Timeline section — worked example previewing 3 phases
-      timelineCard.innerHTML = `
-        <hr class="panel-divider" />
-        <div class="sec-head">Timeline</div>
-        <div class="tl-example-intro">Phases are the steps people move through — for example:</div>
-        <div class="tl-example">
-          <div class="timeline-group">
-            <div class="phase-row-rich timeline-item">
-              <div class="phase-status-dot"></div>
-              <div class="flex-1 min-w-0"><div class="phase-name">Collect ideas · Ideation</div></div>
-            </div>
-            <div class="phase-row-rich timeline-item">
-              <div class="phase-status-dot"></div>
-              <div class="flex-1 min-w-0"><div class="phase-name">Vote on the shortlist · Voting</div></div>
-            </div>
-            <div class="phase-row-rich timeline-item">
-              <div class="phase-status-dot"></div>
-              <div class="flex-1 min-w-0"><div class="phase-name">Share what we heard · Information</div></div>
-            </div>
-          </div>
-        </div>
-        <button class="sec-add" onclick="setView(&#39;add-phase&#39;)">
-          <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          New phase
-        </button>
-      `;
-
-      // Empty Extras — just the quiet add link (no header until a survey exists)
-      activitiesCard.innerHTML = `
-        <hr class="panel-divider" />
-        <button class="sec-add muted" onclick="setView(&#39;add-survey&#39;)">
-          <svg class="nav-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          New survey outside the timeline
-        </button>
-      `;
+      // The empty-state explorer (#1 = current baseline) drives BOTH the timeline panel
+      // and the phone preview, so a non-technical staffer can compare treatments live.
+      timelineCard.innerHTML  = emptyTimeline(window.ppEmpty || 1);
+      activitiesCard.innerHTML = emptyExtras(window.ppEmpty || 1);
 
     } else if (state === 'few') {
       // A simple project: 2 timeline phases + 1 survey in Extras
