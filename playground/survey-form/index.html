@@ -52,6 +52,10 @@
     .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
     .seg button:focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
 
+    /* Vertical option list (the progress-placement group has 7 options). */
+    .seg--col { flex-direction: column; gap: 3px; }
+    .seg--col button { flex: 0 0 auto; text-align: left; padding: 8px 11px; }
+
     .spacer { flex: 1 1 auto; }
     .note {
       font-size: 12px; color: var(--muted); max-width: none; line-height: 1.45;
@@ -111,10 +115,15 @@
     </div>
 
     <div class="grp">
-      <label>Layout</label>
-      <div class="seg" id="seg-layout" role="group" aria-label="Footer layout">
-        <button data-v="stacked" aria-pressed="true">New · % on own line</button>
-        <button data-v="inline" aria-pressed="false">Current · inline</button>
+      <label>Progress placement</label>
+      <div class="seg seg--col" id="seg-layout" role="group" aria-label="Progress placement">
+        <button data-v="inline"    aria-pressed="false">Inline · current (the problem)</button>
+        <button data-v="stacked"   aria-pressed="false">% on its own line</button>
+        <button data-v="topbar"    aria-pressed="true">Bar under the header</button>
+        <button data-v="footbar"   aria-pressed="false">Bar + % in the footer</button>
+        <button data-v="step"      aria-pressed="false">Step counter (Step n of N)</button>
+        <button data-v="langgroup" aria-pressed="false">Grouped with the language switcher</button>
+        <button data-v="ring"      aria-pressed="false">Compact progress ring</button>
       </div>
     </div>
 
@@ -137,9 +146,11 @@
 
     <div class="spacer"></div>
     <p class="note">
-      The <b>%-complete</b> status is required for a11y (WCAG 2.2). Inline, it fights the
-      nav buttons on a narrow phone with long labels — try <b>Current · inline</b> at
-      <b>320</b> + <b>Long</b>. <b>New</b> puts it on its own centred line.
+      The progress status is required for a11y (WCAG 2.2). <b>Inline</b> fights the nav
+      buttons on a narrow phone with long labels — try <b>Inline · current</b> at
+      <b>320</b> + <b>Long</b> to see it break. The other six placements all keep it
+      accessible (visible + programmatic, never colour-only) and clear of the buttons.
+      Scroll the survey to check the header/footer stay pinned.
     </p>
   </div>
 
@@ -151,7 +162,7 @@
   </div>
 
   <script>
-    var state = { layout: 'stacked', width: '375', labels: 'short' };
+    var state = { layout: 'topbar', width: '375', labels: 'short' };
     var frame  = document.getElementById('frame');
     var device = document.getElementById('device');
     var dims   = document.getElementById('dims');

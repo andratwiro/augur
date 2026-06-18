@@ -197,17 +197,27 @@
   }
 
   function shellHTML(title) {
+    // Progressbar attrs reused by the header bar, footer bar and ring variants.
+    var pbar = ' role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% complete"';
     return '<section class="sv-card" aria-label="' + esc(title || 'Survey') + '">' +
       '<div class="sv-titlebar"><h1>' + esc(title || 'Survey') + '</h1>' +
       '<button class="sv-titlebar__edit" type="button">Edit survey</button>' +
       '<button class="sv-close" type="button" aria-label="Close survey">' +
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>' +
+      // Header progress bar (topbar variant) — pinned under the titlebar, stays visible while scrolling.
+      '<div class="sv-hbar"' + pbar + '><span class="sv-hbar__track"><span class="sv-hbar__fill"></span></span><span class="sv-hbar__num">0%</span></div>' +
       '<form class="sv-body" novalidate></form>' +
-      '<div class="sv-foot"><div class="sv-progress"><div class="sv-progress__bar"></div></div>' +
+      '<div class="sv-foot">' +
+      '<div class="sv-progress"' + pbar + '><div class="sv-progress__bar"></div></div>' +
       '<div class="sv-foot__row">' +
       '<details class="gv-nav__dd sv-foot__lang"><summary class="gv-lang">EN' +
       '<svg class="gv-nav__chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg></summary></details>' +
-      '<span class="sv-foot__pct" role="status" aria-live="polite" aria-atomic="true">0% complete</span><div class="sv-foot__nav">' +
+      // Three interchangeable progress indicators; CSS shows exactly one per layout (the
+      // rest are display:none, so screen readers never get a duplicate announcement).
+      '<span class="sv-foot__ring"' + pbar + '><b class="sv-foot__ring-num">0%</b></span>' +
+      '<span class="sv-foot__step" role="status" aria-live="polite" aria-atomic="true">Step 1 of 1</span>' +
+      '<span class="sv-foot__pct" role="status" aria-live="polite" aria-atomic="true">0% complete</span>' +
+      '<div class="sv-foot__nav">' +
       '<button type="button" class="gv-btn primary-outlined sv-prev"><svg class="gv-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg><span class="sv-prev-label">Previous</span></button>' +
       '<button type="button" class="gv-btn primary sv-next"><span class="sv-next-label">Next</span><svg class="gv-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg></button>' +
       '</div></div></div></section>';
@@ -222,7 +232,14 @@
         prevBtn = root.querySelector('.sv-prev'),
         nextBtn = root.querySelector('.sv-next'),
         nextLbl = root.querySelector('.sv-next-label'),
-        prevLbl = root.querySelector('.sv-prev-label');
+        prevLbl = root.querySelector('.sv-prev-label'),
+        // Extra progress indicators used by the playground footer-layout variants.
+        hbarFill = root.querySelector('.sv-hbar__fill'),
+        hbarNum = root.querySelector('.sv-hbar__num'),
+        ringEl = root.querySelector('.sv-foot__ring'),
+        ringNum = root.querySelector('.sv-foot__ring-num'),
+        stepEl = root.querySelector('.sv-foot__step'),
+        progressbars = [].slice.call(root.querySelectorAll('[role="progressbar"]'));
     // Button labels are configurable (opts.labels) so a harness can stress-test how
     // long labels fit the footer at narrow widths. Defaults match the real runner.
     var L = opts.labels || {};
@@ -236,9 +253,19 @@
       var p = form.pages[step];
       bodyEl.innerHTML = renderPage(p);
       bodyEl.scrollTop = 0;
-      var pct = Math.round((Math.min(step, lastContent) / lastContent) * 100);
+      var pct = (p.kind === 'thankyou') ? 100 : Math.round((Math.min(step, lastContent) / lastContent) * 100);
+      var pctTxt = pct + '% complete';
+      // Keep every progress representation in sync; only the one CSS shows is visible.
       barEl.style.width = pct + '%';
-      pctEl.textContent = (p.kind === 'thankyou' ? 100 : pct) + '% complete';
+      pctEl.textContent = pctTxt;
+      if (hbarFill) hbarFill.style.width = pct + '%';
+      if (hbarNum) hbarNum.textContent = pct + '%';
+      if (ringEl) { ringEl.style.setProperty('--p', pct); if (ringNum) ringNum.textContent = pct + '%'; }
+      if (stepEl) {
+        var sNum = Math.min(step, lastContent) + 1, sTot = lastContent + 1;
+        stepEl.textContent = (p.kind === 'thankyou') ? 'Complete' : ('Step ' + sNum + ' of ' + sTot);
+      }
+      progressbars.forEach(function (el) { el.setAttribute('aria-valuenow', pct); el.setAttribute('aria-valuetext', pctTxt); });
       prevBtn.style.visibility = (step === 0 || p.kind === 'thankyou') ? 'hidden' : 'visible';
       if (p.kind === 'thankyou') { nextBtn.style.display = 'none'; }
       else { nextBtn.style.display = ''; nextLbl.textContent = (step === lastContent ? LBL.submit : LBL.next); }

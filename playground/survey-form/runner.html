@@ -75,7 +75,32 @@
               { src:'img/westmere/park.webp',              label:'A greener square — trees, planting and shade' },
               { src:'img/westmere/street-townhouses.webp', label:'Café terraces — life spilling onto the square' },
             ] },
+          { type:'matrix', label:'How much do you agree with the following trade-offs?', gate:true,
+            scale:['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'],
+            statements:[
+              'I’d accept fewer parking spaces on the square in exchange for more greenery and seating.',
+              'The square should prioritise pedestrians, even if it means slowing down through-traffic.',
+              'Keeping room for the weekly market matters more to me than adding permanent features.',
+              'I’d welcome more evening lighting, even if it changes the square’s quiet character.',
+              'The square should host more events, even if that means occasional noise.',
+              'I’d rather have native trees and planting than large areas of paving.',
+              'I’d support café terraces spreading onto the square, even if it reduces open space.',
+            ] },
           { type:'file_upload', label:'Have a sketch, photo or reference for your idea? Add it here.', desc:'Upload files here (optional)' },
+        ] },
+
+      { emoji:'🚦', title:'Traffic on the square',
+        desc:"One of the bigger choices in this redesign is how much through-traffic the square should carry. We'd like to hear where you stand.",
+        fields:[
+          { type:'linear_scale', label:'Should we reduce car traffic crossing Market Square?', desc:'(1 = Strongly disagree, 5 = Strongly agree)', max:5, minLabel:'Strongly disagree', maxLabel:'Strongly agree', gate:true },
+          { type:'text', label:'Why?' },
+          { type:'select', label:'If through-traffic were reduced, what would you most like in the space it freed up?', options:['Seating and terraces','Trees and planting','A bigger market area','A play area for children','An open flexible space for events','Other'] },
+        ] },
+
+      { emoji:'🗺️', title:'Show us on the map', desc:'Use the map tools to point to the exact spots on and around Market Square your idea is about.',
+        fields:[
+          { type:'map', shape:'line', label:'Which route through the square matters most to you?', desc:'Draw the way you usually move through Market Square — on foot or by bike.' },
+          { type:'map', shape:'point', label:'Where on the square would you place new seating or greenery?', desc:'Drop a pin where you’d most like to see it.' },
         ] },
 
       { emoji:'✅', title:'Anything else?', desc:'Thank you — your idea is shaping the future of Market Square in the Old Town.',
@@ -89,7 +114,8 @@
 
   // Read experiment params from the URL (driven by the control shell index.html).
   var params = new URLSearchParams(location.search);
-  var layout = params.get('layout') === 'stacked' ? 'stacked' : 'inline';
+  var LAYOUTS = ['inline','stacked','topbar','footbar','step','langgroup','ring'];
+  var layout = LAYOUTS.indexOf(params.get('layout')) >= 0 ? params.get('layout') : 'inline';
   var longLabels = params.get('labels') === 'long';
   // Realistic "long" labels — the kind a city writes once the default verbs feel
   // terse — to stress the narrow-phone fit the inline placement struggles with.
@@ -104,9 +130,9 @@
       labels: LABELS,
       onClose: function () { /* no-op in the experiment */ }
     });
-    // Apply the footer layout under test.
-    var foot = mountEl.querySelector('.sv-foot');
-    if (foot) foot.setAttribute('data-layout', layout);
+    // Apply the layout under test (on the card, so it reaches the header bar too).
+    var card = mountEl.querySelector('.sv-card');
+    if (card) card.setAttribute('data-layout', layout);
   });
   </script>
 </body>

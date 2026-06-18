@@ -45,7 +45,7 @@
        chrome-adjusted area) instead of min-height. That makes .sv-body the internal
        scroller (flex:1 1 auto + overflow-y:auto) and pins the footer to the bottom
        of the screen — matching the real GoVocal runner. */
-    @media (max-width: 600px) { .sv-body { padding: 22px 18px 28px; } .sv-wrap { padding: 0; } .sv-card { height: 100vh; height: 100dvh; min-height: 0; border-radius: 0; } }
+    @media (max-width: 600px) { .sv-body { padding: 22px 18px 28px; } .sv-wrap { padding: 0; } .sv-card { height: 100vh; height: 100dvh; min-height: 0; max-height: none; border-radius: 0; } }
 
     /* Page heading + description */
     .sv-page__title { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.25; color: var(--gv-tenant-primary); margin: 0 0 14px; word-break: break-word; }
@@ -355,28 +355,98 @@
     .sv-q__label { font-weight: 600; color: var(--gv-text-heading-strong); }
 
     /* ════════════════════════════════════════════════════════════════════════
-       PLAYGROUND EXPERIMENT — footer-progress placement (detached fork)
+       PLAYGROUND EXPERIMENT — survey-progress placement (detached fork)
        ────────────────────────────────────────────────────────────────────────
        Problem in the canonical kit: the a11y-required "% complete" status sits
        INLINE between the language switcher and the nav buttons. On a narrow phone
        with longer button labels it collides / squishes the action row.
 
-       The footer carries data-layout to switch placement so the two can be
-       compared side by side:
-         • [data-layout="inline"]  — the current canonical behaviour (no overrides).
-         • [data-layout="stacked"] — the real GoVocal runner: the % status owns its
-           own CENTRED line above the action row, leaving the bottom row to just the
-           language switcher (left) + nav buttons (right). Frees the buttons to grow
-           and the row to wrap the nav group as a unit, never overlapping the %.
-       WCAG 2.2 kept intact: the % is a visible, programmatic status (role="status",
-       aria-live in the JS), the layout reflows to a single column with no horizontal
-       scroll at 320px (1.4.10), and target sizes are unchanged.
+       .sv-card carries data-layout (so a variant can reach BOTH the header bar and
+       the footer). Every variant keeps WCAG 2.2 intact: progress is a programmatic
+       status (role="status" / role="progressbar" with aria-valuetext, set in JS) AND
+       visible (text, step counter, or numeral) — never colour-only (1.4.1); bars/ring
+       use a ≥3:1 fill-vs-track contrast (1.4.11); layouts reflow with no horizontal
+       scroll at 320px (1.4.10); nothing here shrinks a target (2.5.8).
+
+       Exactly ONE indicator shows per layout; the others are display:none so screen
+       readers get a single announcement. Shared visual atoms first, then each layout.
        ════════════════════════════════════════════════════════════════════════ */
-    .sv-foot[data-layout="stacked"] .sv-foot__row { flex-wrap: wrap; row-gap: 12px; }
-    .sv-foot[data-layout="stacked"] .sv-foot__pct {
-      order: -1; flex: 0 0 100%; text-align: center;
+    /* Hidden by default — the base (inline) layout uses .sv-foot__pct only. */
+    .sv-hbar { display: none; }
+    .sv-foot__ring { display: none; }
+    .sv-foot__step { display: none; }
+
+    /* Header progress bar (topbar) -------------------------------------------- */
+    .sv-hbar { flex: 0 0 auto; align-items: center; gap: 12px; padding: 10px 22px; }
+    .sv-hbar__track { position: relative; flex: 1 1 auto; height: 6px; border-radius: 3px;
+      background: var(--gv-grey-200); overflow: hidden; }
+    .sv-hbar__fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--gv-tenant-primary);
+      transition: width 220ms ease-out; }
+    .sv-hbar__num { flex: 0 0 auto; font-size: var(--gv-fs-xs); font-weight: 600; color: var(--gv-text-secondary); }
+
+    /* Progress ring (ring) ---------------------------------------------------- */
+    .sv-foot__ring { width: 40px; height: 40px; border-radius: 50%; place-items: center; flex: 0 0 auto;
+      background: conic-gradient(var(--gv-tenant-primary) calc(var(--p, 0) * 1%), var(--gv-grey-200) 0); }
+    .sv-foot__ring::before { content: ""; grid-area: 1 / 1; width: 30px; height: 30px; border-radius: 50%; background: #fff; }
+    .sv-foot__ring-num { grid-area: 1 / 1; z-index: 1; font-size: 10px; font-weight: 700; color: var(--gv-text-secondary); }
+
+    /* Step counter (step) ----------------------------------------------------- */
+    .sv-foot__step { font-size: var(--gv-fs-s); font-weight: 500; color: var(--gv-text-secondary); white-space: nowrap; }
+
+    /* The base kit collapses the footer row into a full-width COLUMN at ≤480 (line ~249)
+       and reorders lang/pct. For the redesigned variants we want a real horizontal
+       action row that wraps only when it must, so re-assert row direction + explicit
+       child order. Specificity (0,2,0) beats the kit's media rule (0,1,0), no !important.
+       ('inline' is intentionally NOT listed — it keeps the kit's current mobile
+       behaviour so it still demonstrates the problem.) */
+    .sv-card[data-layout="stacked"]   .sv-foot__row,
+    .sv-card[data-layout="topbar"]    .sv-foot__row,
+    .sv-card[data-layout="footbar"]   .sv-foot__row,
+    .sv-card[data-layout="step"]      .sv-foot__row,
+    .sv-card[data-layout="langgroup"] .sv-foot__row,
+    .sv-card[data-layout="ring"]      .sv-foot__row {
+      flex-direction: row; flex-wrap: wrap; align-items: center; row-gap: 12px;
     }
-    .sv-foot[data-layout="stacked"] .sv-foot__lang { flex: 0 0 auto; }
-    .sv-foot[data-layout="stacked"] .sv-foot__nav  {
-      flex: 1 1 auto; justify-content: flex-end; flex-wrap: wrap; row-gap: 8px;
+    /* The language switcher is fixed-size in every variant; the nav group grows to the
+       right and wraps as a unit only when the row can't hold it. */
+    .sv-card[data-layout="stacked"]   .sv-foot__lang,
+    .sv-card[data-layout="topbar"]    .sv-foot__lang,
+    .sv-card[data-layout="footbar"]   .sv-foot__lang,
+    .sv-card[data-layout="step"]      .sv-foot__lang,
+    .sv-card[data-layout="langgroup"] .sv-foot__lang,
+    .sv-card[data-layout="ring"]      .sv-foot__lang { flex: 0 0 auto; order: 1; }
+    .sv-card[data-layout="stacked"]   .sv-foot__nav,
+    .sv-card[data-layout="topbar"]    .sv-foot__nav,
+    .sv-card[data-layout="footbar"]   .sv-foot__nav,
+    .sv-card[data-layout="step"]      .sv-foot__nav,
+    .sv-card[data-layout="langgroup"] .sv-foot__nav,
+    .sv-card[data-layout="ring"]      .sv-foot__nav {
+      flex: 1 1 auto; order: 9; justify-content: flex-end; flex-wrap: wrap; row-gap: 8px;
     }
+
+    /* 1 · stacked — % on its own centred line above the action row (real GoVocal). */
+    .sv-card[data-layout="stacked"] .sv-foot__pct { order: 0; flex: 0 0 100%; text-align: center; }
+
+    /* 2 · topbar — slim determinate bar under the header; footer holds only lang+nav.
+          Progress stays visible while the body scrolls (the header is pinned). */
+    .sv-card[data-layout="topbar"] .sv-hbar { display: flex; }
+    .sv-card[data-layout="topbar"] .sv-foot__pct { display: none; }
+
+    /* 3 · footbar — thin bar across the footer top + centred % caption, then actions.
+          Recolour the kit's gold accent to the tenant primary so it matches the
+          header-bar/ring variants and clears 1.4.11 non-text contrast on the grey track. */
+    .sv-card[data-layout="footbar"] .sv-progress { display: block; }
+    .sv-card[data-layout="footbar"] .sv-progress__bar { background: var(--gv-tenant-primary); }
+    .sv-card[data-layout="footbar"] .sv-foot__pct { order: 0; flex: 0 0 100%; text-align: center; }
+
+    /* 4 · step — a "Step n of N" counter leads the row (shorter than %, always fits). */
+    .sv-card[data-layout="step"] .sv-foot__step { display: inline; order: 0; flex: 0 0 auto; }
+    .sv-card[data-layout="step"] .sv-foot__pct { display: none; }
+
+    /* 5 · langgroup — % rides next to the language switcher (left cluster), nav right.
+          Tying it to lang's width means it never competes with the buttons. */
+    .sv-card[data-layout="langgroup"] .sv-foot__pct { order: 2; flex: 0 0 auto; text-align: left; }
+
+    /* 6 · ring — a compact circular dial (numeral inside) leads the row; very small footprint. */
+    .sv-card[data-layout="ring"] .sv-foot__ring { display: grid; order: 0; }
+    .sv-card[data-layout="ring"] .sv-foot__pct { display: none; }
