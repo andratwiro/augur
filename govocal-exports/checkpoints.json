@@ -2519,6 +2519,85 @@
         "font-weight",
         "color"
       ]
+    },
+    {
+      "id": "bo-new-project/segmented",
+      "built": "pages/bo-project-new/index.html",
+      "against": "r8-newproject",
+      "map": {
+        "button.hjEUXb": ".gv-bo-segmented__btn.is-active"
+      },
+      "props": [
+        "background-color",
+        "border-radius"
+      ],
+      "uses": [
+        ".gv-bo-segmented"
+      ]
+    },
+    {
+      "id": "bo-new-project/banner",
+      "built": "pages/bo-project-new/index.html",
+      "against": "r8-newproject",
+      "map": {
+        "div.iafFBN": ".np-form .gv-bo-banner"
+      },
+      "props": [
+        "background-color",
+        "border-radius",
+        "padding"
+      ],
+      "uses": [
+        ".gv-bo-banner"
+      ]
+    },
+    {
+      "id": "bo-new-project/tag",
+      "built": "pages/bo-project-new/index.html",
+      "against": "r8-newproject",
+      "map": {
+        "button.e2e-topics-picker-item": ".gv-bo-tag"
+      },
+      "props": [
+        "background-color",
+        "border",
+        "border-radius",
+        "padding"
+      ],
+      "uses": [
+        ".gv-bo-tag"
+      ]
+    },
+    {
+      "id": "bo-new-project/templatecard",
+      "built": "pages/bo-project-new/index.html",
+      "against": "r8-newproject-template",
+      "map": {
+        "div.hxEjaX": ".gv-bo-templatecard"
+      },
+      "props": [
+        "background-color",
+        "border",
+        "border-radius",
+        "padding",
+        "color"
+      ],
+      "uses": [
+        ".gv-bo-templatecard"
+      ]
+    },
+    {
+      "id": "bo-new-project/template-title",
+      "built": "pages/bo-project-new/index.html",
+      "against": "r8-newproject-template",
+      "map": {
+        "h3.e2e-card-title": ".gv-bo-templatecard__title"
+      },
+      "props": [
+        "font-size",
+        "font-weight",
+        "color"
+      ]
     }
   ]
 }

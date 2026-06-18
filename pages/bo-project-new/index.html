@@ -27,6 +27,12 @@
     .np-rail .gv-input { margin: 14px 0; }
     .np-facetline { font-size: var(--gv-fs-s); color: var(--gv-text-secondary); padding: 4px 0; line-height: 1.6; cursor: pointer; }
     .np-facetline input { margin-right: 8px; vertical-align: middle; }
+    /* Two-tier label: "Project name" header (18/500) + "Title" sub-label (16/400 cool-grey). */
+    .np-sublabel { display: block; margin: 2px 0 6px; font-size: var(--gv-fs-base); color: var(--gv-text-secondary); }
+    .np-infodot { width: 16px; height: 16px; color: var(--gv-cool-grey-600); vertical-align: -3px; }
+    /* This "Need inspiration" banner measures 14px uniform padding (vs the shared
+       base 12px 16px); scope the one-off here rather than move the shared atom. */
+    .np-form .gv-bo-banner { padding: 14px; }
     .np-results { flex: 1 1 auto; min-width: 0; }
     .np-search { margin: 0 0 18px; }
     .np-search .gv-input { max-width: 300px; }
@@ -55,12 +61,12 @@
 
         <!-- From scratch | From a template -->
         <div class="gv-bo-segmented" role="tablist" aria-label="Project creation mode">
-          <button type="button" class="gv-bo-segmented__btn" role="tab" aria-selected="false" data-mode="scratch">From scratch</button>
-          <button type="button" class="gv-bo-segmented__btn is-active" role="tab" aria-selected="true" data-mode="template">From a template</button>
+          <button type="button" class="gv-bo-segmented__btn is-active" role="tab" aria-selected="true" data-mode="scratch">From scratch</button>
+          <button type="button" class="gv-bo-segmented__btn" role="tab" aria-selected="false" data-mode="template">From a template</button>
         </div>
 
         <!-- ════════════ FROM A TEMPLATE ════════════ -->
-        <div class="np-panel is-active" data-panel="template">
+        <div class="np-panel" data-panel="template">
           <div class="np-gallery">
 
             <!-- filter rail -->
@@ -81,7 +87,7 @@
         </div>
 
         <!-- ════════════ FROM SCRATCH ════════════ -->
-        <div class="np-panel" data-panel="scratch">
+        <div class="np-panel is-active" data-panel="scratch">
           <div class="np-form">
             <div class="gv-bo-card">
               <h2 class="gv-bo-pagetitle">General settings for the project</h2>
@@ -89,9 +95,10 @@
 
               <div class="gv-bo-field">
                 <div class="gv-bo-field__head">
-                  <span class="gv-label">Project name</span>
+                  <span class="gv-label">Project name <span class="gv-icon np-infodot" data-gv-icon="info-outline" aria-hidden="true"></span></span>
                   <div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>
                 </div>
+                <span class="np-sublabel">Title</span>
                 <input class="gv-input" type="text" placeholder="Give your project a name" />
               </div>
 
@@ -114,20 +121,29 @@
                 <textarea class="gv-input" rows="3" style="resize:vertical" placeholder="A short summary shown on the homepage"></textarea>
               </div>
 
-              <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="stars"></span><div><b>Need inspiration?</b> Explore similar projects from other cities in the <a href="../bo-inspiration-hub/">Inspiration hub</a>.</div></div>
+              <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-outline"></span><div><b>Need inspiration?</b> Explore similar projects from other cities in the <a href="../bo-inspiration-hub/">Inspiration hub</a>.</div></div>
 
               <div class="gv-bo-field" style="max-width:640px">
-                <span class="gv-label">Tags</span>
+                <span class="gv-label">Tags <span class="gv-icon np-infodot" data-gv-icon="info-outline" aria-hidden="true"></span></span>
                 <div class="gv-bo-tags">
-                  <button class="gv-bo-tag">Mobility</button>
-                  <button class="gv-bo-tag">Public spaces</button>
-                  <button class="gv-bo-tag">Nature and biodiversity</button>
-                  <button class="gv-bo-tag">Sustainable development</button>
-                  <button class="gv-bo-tag">Energy and technology</button>
-                  <button class="gv-bo-tag">Health and welfare</button>
-                  <button class="gv-bo-tag">Culture, sports and events</button>
-                  <button class="gv-bo-tag">Education and youth</button>
-                  <button class="gv-bo-tag">Community development</button>
+                  <button class="gv-bo-tag">Wisdom &amp; Inspiration</button>
+                  <button class="gv-bo-tag">Growing Go Vocal</button>
+                  <button class="gv-bo-tag">United States</button>
+                  <button class="gv-bo-tag">Promise of Participation</button>
+                  <button class="gv-bo-tag">AI &amp; Innovation</button>
+                  <button class="gv-bo-tag">Elderly</button>
+                  <button class="gv-bo-tag">Youth</button>
+                  <button class="gv-bo-tag">Question</button>
+                  <button class="gv-bo-tag">Game</button>
+                  <button class="gv-bo-tag">Quiz</button>
+                  <button class="gv-bo-tag">Operations</button>
+                  <button class="gv-bo-tag">Development</button>
+                  <button class="gv-bo-tag">People</button>
+                  <button class="gv-bo-tag">Finance</button>
+                  <button class="gv-bo-tag">Sales</button>
+                  <button class="gv-bo-tag">Government Success</button>
+                  <button class="gv-bo-tag">Marketing</button>
+                  <button class="gv-bo-tag">Product</button>
                 </div>
               </div>
 
@@ -169,6 +185,12 @@
       ['photo-1449824913935-59a10b8d2000', 'Neighbourhood renewal', 'Co-create a renewal plan for a neighbourhood with the people who live there.'],
       ['photo-1473773508845-188df298d2d1', 'Climate action plan', 'Build a shared climate roadmap by collecting and prioritising resident proposals.'],
       ['photo-1502920917128-1aa500764cbd', 'Green spaces', 'Decide together how to improve parks, squares and other public green spaces.'],
+      ['photo-1517048676732-d65bc937f952', 'Community survey', 'Run a structured survey to understand resident priorities and satisfaction.'],
+      ['photo-1531206715517-5c0ba140b2b8', 'Youth engagement', 'Reach younger residents with a dedicated participation track and channels.'],
+      ['photo-1454165804606-c3d57bc86b40', 'Strategic vision', 'Co-write a long-term vision with residents through phased consultation.'],
+      ['photo-1460672985063-6764ac8b9c74', 'Safety &amp; prevention', 'Map local safety concerns and prioritise interventions together.'],
+      ['photo-1518770660439-4636190af475', 'Digital services', 'Test and improve digital public services with continuous resident feedback.'],
+      ['photo-1505842465776-3d90f616310d', 'Local economy', 'Support local business and economic development with a participatory plan.'],
     ];
     const img = (id) => `https://images.unsplash.com/${id}?w=560&q=70&auto=format&fit=crop`;
     document.getElementById('cards').innerHTML = POOL.map(([id, title, desc]) => `
@@ -177,8 +199,8 @@
         <h3 class="gv-bo-templatecard__title">${title}</h3>
         <p class="gv-bo-templatecard__desc">${desc}</p>
         <div class="gv-bo-templatecard__actions">
-          <button type="button" class="gv-btn secondary-outlined">Use template</button>
-          <button type="button" class="gv-btn admin-dark">More details</button>
+          <button type="button" class="gv-btn secondary-outlined full">Use template</button>
+          <button type="button" class="gv-btn admin-dark full">More details</button>
         </div>
       </div>`).join('');
 
@@ -186,7 +208,6 @@
     const FACETS = [
       ['Departments', true, ['Urban planning', 'Mobility', 'Environment', 'Culture']],
       ['Purposes', false, ['Collect input', 'Prioritise', 'Inform', 'Co-create']],
-      ['Participation levels', false, ['Consult', 'Involve', 'Collaborate']],
     ];
     document.getElementById('rail').innerHTML =
       FACETS.map(([label, open, opts], gi) => `

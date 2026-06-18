@@ -960,6 +960,7 @@
 .gv-bo-templatecard {
   background: #F2F4F5; border: 1px solid #EAEAEA; border-radius: var(--gv-radius);
   padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  color: var(--gv-bo-primary); /* measured (r8-newproject-template div.hxEjaX): card text is bo-primary navy */
 }
 .gv-bo-templatecard__img {
   width: 100%; height: 118px; border-radius: var(--gv-radius); flex: none;
