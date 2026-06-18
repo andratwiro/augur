@@ -3182,6 +3182,29 @@
        constrained so it doesn't span the full wide measure. ─────────────────── */
   #view-fo #fo-extra { margin-top: 24px; max-width: 560px; }
 
+  /* ── Extra survey — proposed temporal STATES (past · present · future). ──────
+       A linked survey can be scheduled, so the card has to read clearly before it
+       opens, while it's live, and after it closes. Shown here as a 3-up at the
+       bottom of the project preview so the states sit side by side. Built from the
+       canonical .gv-extra-survey--card; the status pill, the meta row and the
+       not-yet-open / closed CTA states are the bits that still need building into
+       the component itself. */
+  #view-fo .fo-states { padding: 52px 0 8px; }
+  #view-fo .fo-states .gv-events__head { margin-bottom: 18px; }
+  #view-fo .fo-states__sub { margin: 4px 0 0; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
+  #view-fo .fo-states__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; align-items: stretch; }
+  @media (max-width: 860px) { #view-fo .fo-states__grid { grid-template-columns: 1fr; } }
+  #view-fo .fo-states .gv-extra-survey--card { display: flex; flex-direction: column; height: 100%; }
+  #view-fo .fo-states .gv-extra-survey__desc { flex: 1 1 auto; }
+  /* tag + status pill share the top row of the card */
+  #view-fo .es-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  /* upcoming = neutral grey pill (canonical .gv-statuspill ships only open / expired) */
+  .gv-statuspill.upcoming { color: var(--gv-text-secondary); border: 1px solid var(--gv-grey-300); }
+  /* meta row surfaces the survey data already in the model (responses · timing) */
+  .gv-extra-survey__meta { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 2px 0 16px; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
+  .gv-extra-survey__meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .gv-extra-survey__meta .gv-icon { width: 14px; height: 14px; color: currentColor; }
+
   /* Empty project → nothing to preview yet. */
   #view-fo .foview-empty { max-width: 560px; margin: 96px auto; text-align: center; padding: 0 24px; color: var(--gv-text-secondary, #596B7A); }
   #view-fo .foview-empty h2 { font-size: 1.25rem; color: var(--gv-text-primary, #1a1f2c); margin: 0 0 10px; }
@@ -3279,6 +3302,70 @@
               <a class="gv-btn text" href="#">View all events</a>
             </div>
             <div class="gv-events__grid" id="fo-events"></div>
+          </section>
+        </div>
+
+        <!-- ════ Extra survey — proposed STATES (past · present · future) ════
+             A linked survey can be scheduled, so the same card needs to read
+             clearly before it opens, while it's live, and after it closes.
+             Three states shown side by side; all built from the canonical
+             .gv-extra-survey--card. The status pill, the meta row and the
+             not-yet-open / closed CTA treatments are what still need to be
+             built into the component. -->
+        <div class="gv-wrap">
+          <section class="fo-states" aria-labelledby="fo-states-title">
+            <div class="gv-events__head" style="display:block">
+              <h2 class="gv-title h2" id="fo-states-title" style="margin:0">Extra survey — three states</h2>
+              <p class="fo-states__sub">A linked survey can be scheduled, so the card has to read before it opens, while it’s live, and after it closes.</p>
+            </div>
+            <div class="fo-states__grid">
+
+              <!-- FUTURE — scheduled, not open yet -->
+              <div class="gv-extra-survey gv-extra-survey--card">
+                <div class="es-head">
+                  <span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> Survey</span>
+                  <span class="gv-statuspill upcoming">Upcoming</span>
+                </div>
+                <h3 class="gv-extra-survey__title">School-run travel survey</h3>
+                <div class="gv-extra-survey__meta">
+                  <span><span class="gv-icon" data-gv-icon="calendar" aria-hidden="true"></span> Opens 1 Jul 2026</span>
+                  <span><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> 8 questions</span>
+                </div>
+                <p class="gv-extra-survey__desc">Opening soon — tell us how children get to school so we can plan next year’s safe routes.</p>
+                <a class="gv-btn primary full" href="#" aria-disabled="true">Opens 1 Jul</a>
+              </div>
+
+              <!-- PRESENT — live now (the current example) -->
+              <div class="gv-extra-survey gv-extra-survey--card">
+                <div class="es-head">
+                  <span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> Survey</span>
+                  <span class="gv-statuspill open">Open</span>
+                </div>
+                <h3 class="gv-extra-survey__title">Mobility check-in</h3>
+                <div class="gv-extra-survey__meta">
+                  <span><span class="gv-icon" data-gv-icon="clock" aria-hidden="true"></span> Closes in 5 days</span>
+                  <span><span class="gv-icon" data-gv-icon="check" aria-hidden="true"></span> 248 responses</span>
+                </div>
+                <p class="gv-extra-survey__desc">A 2-minute survey on how you move around the city this month — your answers feed the mobility plan.</p>
+                <a class="gv-btn primary full" href="#">Take the survey</a>
+              </div>
+
+              <!-- PAST — closed, results available -->
+              <div class="gv-extra-survey gv-extra-survey--card">
+                <div class="es-head">
+                  <span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> Survey</span>
+                  <span class="gv-statuspill expired">Closed</span>
+                </div>
+                <h3 class="gv-extra-survey__title">Spring budget priorities</h3>
+                <div class="gv-extra-survey__meta">
+                  <span><span class="gv-icon" data-gv-icon="check" aria-hidden="true"></span> 412 responses</span>
+                  <span><span class="gv-icon" data-gv-icon="calendar" aria-hidden="true"></span> Closed 2 Jun 2026</span>
+                </div>
+                <p class="gv-extra-survey__desc">This survey has closed — thank you. Residents helped shape how the spring budget is spent.</p>
+                <a class="gv-btn secondary-outlined full" href="#">View results</a>
+              </div>
+
+            </div>
           </section>
         </div>
       </main>
