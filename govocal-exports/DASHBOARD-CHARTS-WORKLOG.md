@@ -31,7 +31,12 @@ Read this at the start of each loop; append after each iteration.
   warnings). Eyeball ✓ — axis labels + category labels now grey, bars navy, titles navy.
   `verify:all` advisory; change only ADDS tokens (no existing token value changed) so it
   cannot regress a registered checkpoint.
-- **Deploy:** yes (user-visible chart change).
+- **verify:all:** 152 green · 1 red. All three `bo-dashboard/*` checkpoints GREEN. The 1
+  red is **pre-existing and unrelated**: `bo-users/people-header` — selector
+  `.gv-bo-table.is-people thead th` not found in the bo-users render (stale selector on a
+  different page; not touched by this loop). Flagged for the bo-users owner / a later loop.
+- **Deploy:** yes (user-visible chart change). NOTE: `npm run deploy` first hit a flaky
+  `ENOTEMPTY` rmdir on stale `dist/` — cleared with `rm -rf dist` then re-deployed.
 
 ## Next gaps (priority)
 1. Line/combo charts: stroke-WIDTH, dot markers (recharts-line-dot n=135), area fills, exact
