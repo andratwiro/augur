@@ -41,6 +41,19 @@ static SVG — and to do it for **ALL charts** (a long, multi-loop effort). Libr
 
 ## Iterations
 
+### Loop 11 — 2026-06-18 — Convert Visitors pies → GVChart.pie
+- Converted the 3 Visitors `data-chart="pie"` cards (Traffic 100%, Language EN/ES, Device
+  Desktop/Mobile) to GVChart.pie via the lazy dispatch path (added a "pie" branch to the render
+  closure + `|| t === "pie"` to the condition; they're on the non-active Visitors tab so they
+  flush on tab show). Blue-ramp colours from GVChart.pie defaults (#2F478A → #4D85C6, matching
+  loop 5), right-side legend, white sector separators (this also closes the loop-5 "pies lack
+  #fff separators" gap). Retired `pieSVG()`.
+- ApexCharts svgs are immune to the canonical `.gv-bo-chartcard svg{width:100%}` (they carry
+  inline style) — measured svg widths match card widths (968 full / 454 half), no pin needed.
+- **Verify:** file:// — slices [1,2,2], svg sizes correct, 0 errors. HTTP-dist — 5 slices in
+  built site, no asset 4xx. lint ✓.
+- **Deploy:** yes.
+
 ### Loop 10 — 2026-06-18 — Convert Input-status donut → GVChart.donut
 - Replaced the hand-built concentric-circle donut svg with a GVChart.donut: series [4,96]
   (Feedback given / No feedback), colours [#40B8C5 teal-light, #E0E0E0 grey-300], 76% donut

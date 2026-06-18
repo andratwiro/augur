@@ -456,18 +456,6 @@
       return `<div class="ch-vframe"><div class="ch-vyaxis">${yaxis}</div><div class="ch-v">${cols}</div>
         <div class="ch-vlabels">${labels}</div></div>`;
     }
-    function pieSVG(json) {
-      const segs = JSON.parse(json);
-      // Solid pie: r=10.5 + stroke-width=21 fills from centre to edge (no donut hole).
-      let off = 25, circles = "";
-      segs.forEach(([, pct, color]) => {
-        circles += `<circle cx="21" cy="21" r="10.5" fill="none" stroke="${color}" stroke-width="21" stroke-dasharray="${(pct * 0.66).toFixed(2)} ${(66 - pct * 0.66).toFixed(2)}" stroke-dashoffset="${(off * 0.66).toFixed(2)}"></circle>`;
-        off = (off - pct + 100) % 100;
-      });
-      const legend = segs.map(([l, , c]) => `<span><i style="background:${c}"></i>${l}</span>`).join("");
-      return `<div class="db-pie"><svg class="db-pie__svg" width="150" height="150" viewBox="0 0 42 42" aria-hidden="true">${circles}</svg>
-        <div class="ch-legend" style="justify-content:flex-start;flex-direction:column;align-items:flex-start">${legend}</div></div>`;
-    }
     // Interactive charts (line/combo) render lazily via GVChart/ApexCharts — ApexCharts
     // mis-sizes in a display:none panel, so each non-active panel's charts render the
     // first time its tab is shown (flushed by __flushCharts, hooked into tab switching).
@@ -476,7 +464,7 @@
     document.querySelectorAll(".gv-bo-chartcard[data-chart]").forEach(card => {
       try {
         const t = card.dataset.chart, title = card.dataset.title;
-        if (t === "line" || t === "combo" || t === "barsH") {
+        if (t === "line" || t === "combo" || t === "barsH" || t === "pie") {
           const statBlock = (lbl, num, sub, mt) =>
             `<div class="db-bignum"${mt ? ' style="margin-top:16px"' : ""}><span class="db-bignum__lbl">${lbl || ""}</span><span class="db-bignum__big">${num}</span><span class="db-bignum__sub">${sub || ""}</span></div>`;
           const big = card.dataset.big
@@ -504,7 +492,7 @@
               GVChart.combo(el, { height: 156, categories: MONTHS12,
                 bars: { name: series[1] || "This month", data: bv },
                 line: { name: series[0] || "Total", data: pts } });
-            } else { // barsH — horizontal bar (Participation per project/tag, Users by area)
+            } else if (t === "barsH") { // horizontal bar (Participation per project/tag, Users by area)
               const items = JSON.parse(card.dataset.bars);
               const trunc = s => (typeof s === "string" && s.length > 22) ? s.slice(0, 21) + "…" : s;
               GVChart.bar(el, {
@@ -514,13 +502,19 @@
                 series: [{ name: card.dataset.dropdown || "Inputs", data: items.map(i => i[1]) }],
                 colors: [GVChart.palette().navy]
               });
+            } else { // pie (Traffic sources / Language / Device Types) — blue ramp
+              const segs = JSON.parse(card.dataset.pie);
+              GVChart.pie(el, {
+                height: 210, legendPos: "right",
+                labels: segs.map(s => s[0]),
+                series: segs.map(s => s[1])
+              });
             }
           };
           __pending.push({ key: panel ? panel.dataset.panel : null, render });
         } else {
           let body = "";
           if (t === "barsV") body = barsV(card.dataset.bars);
-          else if (t === "pie") body = pieSVG(card.dataset.pie);
           card.innerHTML = cardHead(title, card.dataset.dropdown) + body;
         }
       } catch (err) { console.error("chart render failed", card.dataset.title, err); }
