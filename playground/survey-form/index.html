@@ -74,8 +74,14 @@
       position: relative; background: #0a0d11; border-radius: 26px;
       padding: 12px; box-shadow: 0 24px 60px -18px rgba(0,0,0,.7), 0 0 0 1px var(--line);
       transition: width .28s cubic-bezier(.2,.7,.2,1);
-      display: flex; flex-direction: column; height: 100%;
+      display: flex; flex-direction: column;
+      /* Real phone proportion (≈9:19.5) so fixed widths read as a device and centre
+         in the stage, rather than stretching to the full viewport. Capped so it never
+         overflows; taller surveys scroll inside the screen. */
+      aspect-ratio: 9 / 19.5; max-height: 100%;
     }
+    /* 'Full' is a desktop column, not a phone — fill the stage height instead. */
+    .device.is-full { aspect-ratio: auto; height: 100%; }
     /* Device-agnostic frame — no notch / cutout. */
     .device::before {
       content: ""; position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
@@ -174,6 +180,7 @@
     function applyWidth() {
       var w = WIDTHS[state.width];
       // 'full' fills the stage up to a desktop column; fixed widths stay pinned.
+      device.classList.toggle('is-full', state.width === 'full');
       device.style.width = state.width === 'full' ? 'min(820px, 100%)' : (w + 12 * 2) + 'px';
       dims.textContent = state.width === 'full' ? 'full width · desktop' : w + ' px wide';
     }
