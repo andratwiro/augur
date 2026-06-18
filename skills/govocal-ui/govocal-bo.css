@@ -1115,3 +1115,95 @@
 .gv-bo-democard__head { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--gv-grey-800); font-size: var(--gv-fs-s); }
 .gv-bo-democard__nav { margin-left: auto; display: flex; align-items: center; gap: 6px; color: var(--gv-cool-grey-600); }
 .gv-bo-democard__nav .gv-icon { width: 16px; height: 16px; cursor: pointer; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   AI Analysis — auto-insights cross-tab + tag meters + insight cards
+   The "View all insights" screen (cross-tabulating analysis tags × a survey
+   field, coloured by % delta vs baseline) and the richer left-rail / insight
+   list it sits beside. Source: bo-auto-insights-big / bo-auto-insights-view
+   (internal.govocal.com, "2025 Betting Tables"). Cell palette aliases the
+   semantic green-100 / red-100 fills; nothing here hardcodes a raw hex.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Left rail — "All inputs" / "Inputs without tags" meter rows. */
+.gv-bo-tagmeter { padding: 10px 12px; }
+.gv-bo-tagmeter__label { font-size: var(--gv-fs-s); color: var(--gv-grey-800); margin-bottom: 5px; }
+.gv-bo-tagmeter__row { display: flex; align-items: center; gap: 10px; }
+.gv-bo-tagmeter__track { flex: 1; height: 6px; border-radius: 3px; background: var(--gv-grey-200); overflow: hidden; }
+.gv-bo-tagmeter__fill { height: 100%; border-radius: 3px; background: rgba(0,0,0,.78); }
+.gv-bo-tagmeter__num { font-size: var(--gv-fs-s); color: var(--gv-grey-800); font-variant-numeric: tabular-nums; }
+
+/* Left rail — a tagged-input row: checkbox · teal autotag chip · ⋯ menu, with a
+   small per-tag count meter beneath. */
+.gv-bo-tagitem { padding: 10px 12px; border-top: 1px solid var(--gv-divider); }
+.gv-bo-tagitem__row { display: flex; align-items: center; gap: 8px; }
+.gv-bo-tagitem__check { width: 16px; height: 16px; flex: none; border: 1px solid var(--gv-cool-grey-300); border-radius: 3px; }
+.gv-bo-tagitem__opts { margin-left: auto; color: var(--gv-cool-grey-600); display: inline-flex; cursor: pointer; }
+.gv-bo-tagitem__opts .gv-icon { width: 18px; height: 18px; }
+.gv-bo-tagitem__meter { display: flex; align-items: center; gap: 8px; margin-top: 7px; padding-left: 24px; }
+.gv-bo-tagitem__bar { height: 5px; border-radius: 3px; background: rgba(0,0,0,.78); min-width: 6px; }
+.gv-bo-tagitem__num { font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); font-variant-numeric: tabular-nums; }
+
+/* Centre column — "View all insights" entry + the insight cards it precedes. */
+.gv-bo-viewall {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  padding: 12px; border: 0; background: none; cursor: pointer;
+  font: 600 var(--gv-fs-s)/1 var(--gv-font-family); color: var(--gv-grey-800);
+}
+.gv-bo-viewall .gv-icon { width: 18px; height: 18px; }
+.gv-bo-viewall:hover { color: var(--gv-bo-link); }
+
+.gv-bo-insightcard { padding: 12px; border-bottom: 1px solid var(--gv-divider); cursor: pointer; }
+.gv-bo-insightcard:hover { background: var(--gv-bo-canvas); }
+.gv-bo-insightcard.is-active { background: var(--gv-grey-100); }
+.gv-bo-insightcard__head { display: flex; gap: 12px; align-items: flex-start; }
+.gv-bo-insightcard__title { flex: 1; font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-grey-800); line-height: 1.35; }
+.gv-bo-insightcard__date { flex: none; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+.gv-bo-insightcard__react { display: flex; gap: 14px; margin-top: 8px; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+.gv-bo-insightcard__react span { display: inline-flex; align-items: center; gap: 4px; }
+.gv-bo-insightcard__react .gv-icon { width: 14px; height: 14px; }
+.gv-bo-insightcard__tags { margin-top: 8px; }
+
+/* ── Cross-tab matrix ("auto insights") ─────────────────────────────────── */
+/* The matrix view swaps the 4 columns for a wide cross-tab + the AI panel. */
+.gv-bo-analysis__cols.is-matrix { grid-template-columns: 1fr 360px; }
+
+.gv-bo-xtab { position: relative; background: #fff; overflow: auto; }
+.gv-bo-xtab__close { position: absolute; top: 14px; right: 14px; z-index: 2; }
+.gv-bo-xtab__filters {
+  display: flex; gap: 16px; flex-wrap: wrap; padding: 18px 56px 18px 20px;
+  border-bottom: 1px solid var(--gv-divider);
+}
+.gv-bo-xtab__filter { flex: 1 1 200px; max-width: 320px; }
+.gv-bo-xtab__filter > label { display: block; font-size: var(--gv-fs-s); color: var(--gv-grey-800); margin-bottom: 6px; }
+
+.gv-bo-matrix { display: grid; gap: 8px; padding: 18px 20px; align-items: stretch; }
+.gv-bo-matrix__corner { }
+.gv-bo-matrix__colhead { align-self: end; padding-bottom: 4px; text-align: center; font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-bo-primary); }
+.gv-bo-matrix__rowhead { display: flex; align-items: center; }
+.gv-bo-matrix__cell {
+  display: flex; flex-direction: column; gap: 4px; justify-content: center; align-items: center;
+  border-radius: 4px; padding: 14px 8px; text-align: center; min-height: 64px;
+}
+.gv-bo-matrix__cell.is-pos { background: var(--gv-green-100); }
+.gv-bo-matrix__cell.is-neg { background: var(--gv-red-100); }
+.gv-bo-matrix__cell.is-zero { background: var(--gv-grey-100); }
+.gv-bo-matrix__num { font-size: 18px; font-weight: 700; color: var(--gv-grey-800); line-height: 1; }
+.gv-bo-matrix__delta { font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+
+/* ── AI panel (matrix side): filled Summarize / Ask + a generated Q&A ────── */
+.gv-bo-aiactions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+.gv-bo-aiactions__btn {
+  display: flex; align-items: center; gap: 8px; padding: 14px 16px; min-height: 56px;
+  border: 0; border-radius: 3px; cursor: pointer; text-align: left;
+  background: var(--gv-bo-primary); color: #fff;
+  font: 600 var(--gv-fs-base)/1.25 var(--gv-font-family);
+}
+.gv-bo-aiactions__btn .gv-icon { width: 18px; height: 18px; color: #fff; flex: none; }
+.gv-bo-aiactions__btn:hover { filter: brightness(1.12); }
+
+.gv-bo-aiqa { padding: 4px 12px 16px; }
+.gv-bo-aiqa__prompt { display: flex; gap: 8px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-grey-800); line-height: 1.4; }
+.gv-bo-aiqa__prompt .gv-icon { width: 18px; height: 18px; flex: none; margin-top: 2px; color: var(--gv-bo-primary); }
+.gv-bo-aiqa__body { margin-top: 12px; font-size: var(--gv-fs-s); line-height: 1.6; color: var(--gv-grey-800); }
+.gv-bo-aiqa__body hr { border: 0; border-top: 1px solid var(--gv-divider); margin: 14px 0; }

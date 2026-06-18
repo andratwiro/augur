@@ -77,6 +77,74 @@
       <div class="gv-bo-aiempty">Your text summaries will be displayed here, but you currently do not have any yet.<br><br>Click the Auto-summarize button above to get started.</div>
     </section>
 
+    <section>
+      <h3>Tag meters + tagged-input rows</h3>
+      <div class="panel">
+        <div class="gv-bo-tagmeter">
+          <div class="gv-bo-tagmeter__label">All inputs</div>
+          <div class="gv-bo-tagmeter__row"><div class="gv-bo-tagmeter__track"><div class="gv-bo-tagmeter__fill" style="width:100%"></div></div><span class="gv-bo-tagmeter__num">48</span></div>
+        </div>
+        <div class="gv-bo-tagmeter">
+          <div class="gv-bo-tagmeter__label">Inputs without tags</div>
+          <div class="gv-bo-tagmeter__row"><div class="gv-bo-tagmeter__track"><div class="gv-bo-tagmeter__fill" style="width:31%"></div></div><span class="gv-bo-tagmeter__num">15</span></div>
+        </div>
+        <div class="gv-bo-tagitem">
+          <div class="gv-bo-tagitem__row"><span class="gv-bo-tagitem__check"></span><span class="gv-bo-autotag">Input management</span><span class="gv-bo-tagitem__opts"><span class="gv-icon" data-gv-icon="dots-horizontal"></span></span></div>
+          <div class="gv-bo-tagitem__meter"><div class="gv-bo-tagitem__bar" style="width:28px"></div><span class="gv-bo-tagitem__num">3</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h3>View all insights + insight card</h3>
+      <div class="panel">
+        <button class="gv-bo-viewall" type="button"><span class="gv-icon" data-gv-icon="eye"></span> View all insights</button>
+        <div class="gv-bo-insightcard is-active">
+          <div class="gv-bo-insightcard__head">
+            <div class="gv-bo-insightcard__title">Interactive project list (with search and map)</div>
+            <div class="gv-bo-insightcard__date">8/20/2024</div>
+          </div>
+          <div class="gv-bo-insightcard__react">
+            <span><span class="gv-icon" data-gv-icon="vote-up"></span> 1</span>
+            <span><span class="gv-icon" data-gv-icon="vote-down"></span> 0</span>
+            <span><span class="gv-icon" data-gv-icon="email"></span> 0</span>
+            <span><span class="gv-icon" data-gv-icon="comments"></span> 1</span>
+          </div>
+          <div class="gv-bo-insightcard__tags"><span class="gv-bo-autotag">Project list/map <span class="gv-icon" data-gv-icon="close" style="width:12px;height:12px"></span></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h3>Auto-insights cross-tab (matrix)</h3>
+      <div class="panel" style="overflow:auto">
+        <div class="gv-bo-matrix" style="grid-template-columns:120px repeat(3,minmax(64px,1fr))">
+          <div class="gv-bo-matrix__corner"></div>
+          <div class="gv-bo-matrix__colhead">Marketing</div>
+          <div class="gv-bo-matrix__colhead">GS</div>
+          <div class="gv-bo-matrix__colhead">Dev</div>
+          <div class="gv-bo-matrix__rowhead"><span class="gv-bo-autotag">Input management</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">1</span><span class="gv-bo-matrix__delta">-43%</span></div>
+          <div class="gv-bo-matrix__cell is-pos"><span class="gv-bo-matrix__num">2</span><span class="gv-bo-matrix__delta">+353%</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h3>AI actions + generated answer</h3>
+      <div class="panel">
+        <div class="gv-bo-aiactions">
+          <button class="gv-bo-aiactions__btn" type="button"><span class="gv-icon" data-gv-icon="stars"></span> Summarize</button>
+          <button class="gv-bo-aiactions__btn" type="button"><span class="gv-icon" data-gv-icon="question-bubble"></span> Ask a question</button>
+        </div>
+        <div class="gv-bo-aiqa">
+          <div class="gv-bo-aiqa__prompt"><span class="gv-icon" data-gv-icon="question-bubble"></span> generate 25 trade-off questions for this ideation phase</div>
+          <div class="gv-bo-aiqa__body">Here are 25 trade-off questions, phrased for "agree/unsure/disagree" responses, based on the most recurring topics from the phase.</div>
+        </div>
+      </div>
+    </section>
+
   </div>
   <script>document.addEventListener('DOMContentLoaded', () => window.GVIcons && GVIcons.render(document));</script>
 </body>

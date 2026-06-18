@@ -26,50 +26,95 @@
     .an-chart__bar.n { background: var(--gv-grey-300); }
     .an-chart__x { font-size: 10px; color: var(--gv-cool-grey-600); margin-top: 4px; white-space: nowrap; }
     .an-chart__tot { font-size: 10px; color: var(--gv-grey-800); }
-    .an-pageframe { padding: 0; }
+    /* JS view toggle */
+    [data-an-cols] { display: none; }
+    [data-an-cols].is-on { display: grid; }
   </style>
 </head>
-<body class="gv-bo">
+<body class="gv-bo" data-gv-screen="ai-analysis-main">
 
   <div class="gv-bo-analysis">
 
-    <!-- ── Top bar ─────────────────────────────────────────────────────── -->
+    <!-- ── Top bar (persistent across both screens) ─────────────────────── -->
     <div class="gv-bo-analysis__top">
       <a class="gv-bo-analysis__back" href="../bo-input-manager/index.html">
         <span class="gv-icon" data-gv-icon="arrow-left"></span> Go back
       </a>
-      <div class="gv-bo-analysis__title">AI Analysis <b>Test project 1 timeline with file</b></div>
+      <div class="gv-bo-analysis__title">AI Analysis <b>🧠 2025 Betting Table(s) 🧠</b></div>
       <div class="gv-bo-analysis__topactions">
         <button class="gv-btn outlined size-s"><span class="gv-icon" data-gv-icon="filter"></span> Filters</button>
         <div class="an-search" style="width:200px">
           <input class="gv-input" placeholder="Search" aria-label="Search inputs" />
           <span data-gv-icon="search" aria-hidden="true"></span>
         </div>
-        <button class="gv-iconbtn" aria-label="View options"><span class="gv-icon" data-gv-icon="settings"></span></button>
+        <button class="gv-iconbtn" aria-label="List view"><span class="gv-icon" data-gv-icon="menu"></span></button>
         <button class="gv-iconbtn" aria-label="About AI analysis"><span class="gv-icon" data-gv-icon="info-outline"></span></button>
       </div>
     </div>
 
-    <!-- ── Four columns ────────────────────────────────────────────────── -->
-    <div class="gv-bo-analysis__cols">
+    <!-- ════ SCREEN 1 · the main four-column AI Analysis surface ═════════ -->
+    <div class="gv-bo-analysis__cols is-on" data-an-cols="main">
 
-      <!-- Column 1 · Tags rail -->
+      <!-- Column 1 · Tags rail (Auto-tag · meters · tagged-input rows) -->
       <div class="gv-bo-analysis__col gv-bo-analysis__col--white">
         <div class="gv-bo-aibar"><span class="gv-icon" data-gv-icon="stars"></span> Auto-tag</div>
         <div class="gv-bo-tagrail__add">
           <input class="gv-input" placeholder="Add tag" aria-label="Add a tag" />
           <button class="gv-btn admin-dark size-s" aria-label="Add tag"><span class="gv-icon" data-gv-icon="plus-circle"></span></button>
         </div>
-        <nav class="gv-bo-tagrail" aria-label="Tags">
-          <a class="gv-bo-tagrail__item is-active">All inputs <span class="gv-bo-tagrail__count">6</span></a>
-          <a class="gv-bo-tagrail__item">Inputs without tags <span class="gv-bo-tagrail__count">6</span></a>
-          <a class="gv-bo-tagrail__item"><span class="gv-bo-autotag">Example tag 1</span> <span class="gv-bo-tagrail__count">0</span></a>
-          <a class="gv-bo-tagrail__item"><span class="gv-bo-autotag">Example tag 2</span> <span class="gv-bo-tagrail__count">0</span></a>
-        </nav>
+
+        <div class="gv-bo-tagmeter">
+          <div class="gv-bo-tagmeter__label">All inputs</div>
+          <div class="gv-bo-tagmeter__row">
+            <div class="gv-bo-tagmeter__track"><div class="gv-bo-tagmeter__fill" style="width:100%"></div></div>
+            <span class="gv-bo-tagmeter__num">48</span>
+          </div>
+        </div>
+        <div class="gv-bo-tagmeter">
+          <div class="gv-bo-tagmeter__label">Inputs without tags</div>
+          <div class="gv-bo-tagmeter__row">
+            <div class="gv-bo-tagmeter__track"><div class="gv-bo-tagmeter__fill" style="width:31%"></div></div>
+            <span class="gv-bo-tagmeter__num">15</span>
+          </div>
+        </div>
+
+        <div class="gv-bo-tagitem">
+          <div class="gv-bo-tagitem__row">
+            <span class="gv-bo-tagitem__check"></span>
+            <span class="gv-bo-autotag">Input management</span>
+            <span class="gv-bo-tagitem__opts" aria-label="Tag options"><span class="gv-icon" data-gv-icon="dots-horizontal"></span></span>
+          </div>
+          <div class="gv-bo-tagitem__meter"><div class="gv-bo-tagitem__bar" style="width:28px"></div><span class="gv-bo-tagitem__num">3</span></div>
+        </div>
+        <div class="gv-bo-tagitem">
+          <div class="gv-bo-tagitem__row">
+            <span class="gv-bo-tagitem__check"></span>
+            <span class="gv-bo-autotag">Homepage customization</span>
+            <span class="gv-bo-tagitem__opts" aria-label="Tag options"><span class="gv-icon" data-gv-icon="dots-horizontal"></span></span>
+          </div>
+          <div class="gv-bo-tagitem__meter"><div class="gv-bo-tagitem__bar" style="width:28px"></div><span class="gv-bo-tagitem__num">3</span></div>
+        </div>
+        <div class="gv-bo-tagitem">
+          <div class="gv-bo-tagitem__row">
+            <span class="gv-bo-tagitem__check"></span>
+            <span class="gv-bo-autotag">Automated emails</span>
+            <span class="gv-bo-tagitem__opts" aria-label="Tag options"><span class="gv-icon" data-gv-icon="dots-horizontal"></span></span>
+          </div>
+          <div class="gv-bo-tagitem__meter"><div class="gv-bo-tagitem__bar" style="width:10px"></div><span class="gv-bo-tagitem__num">1</span></div>
+        </div>
+        <div class="gv-bo-tagitem">
+          <div class="gv-bo-tagitem__row">
+            <span class="gv-bo-tagitem__check"></span>
+            <span class="gv-bo-autotag">Volunteering/events</span>
+            <span class="gv-bo-tagitem__opts" aria-label="Tag options"><span class="gv-icon" data-gv-icon="dots-horizontal"></span></span>
+          </div>
+          <div class="gv-bo-tagitem__meter"><div class="gv-bo-tagitem__bar" style="width:10px"></div><span class="gv-bo-tagitem__num">1</span></div>
+        </div>
+
         <p class="gv-bo-tagrail__help">Use tags to subdivide and filter the inputs, in order to make more accurate or targeted summaries.</p>
       </div>
 
-      <!-- Column 2 · Demographic insights + inputs list -->
+      <!-- Column 2 · Demographic insights + View all insights + insight cards -->
       <div class="gv-bo-analysis__col">
         <div class="gv-bo-democard">
           <div class="gv-bo-democard__head">
@@ -82,87 +127,95 @@
           </div>
           <div class="gv-bo-democard__plot">
             <div class="an-chart" role="img" aria-label="Bar chart of authors by age">
-              <div class="an-chart__col"><span class="an-chart__tot">2</span><div class="an-chart__bar f" style="height:22px"></div><div class="an-chart__bar n" style="height:6px"></div><span class="an-chart__x">20-29</span></div>
-              <div class="an-chart__col"><span class="an-chart__tot">3</span><div class="an-chart__bar f" style="height:30px"></div><div class="an-chart__bar n" style="height:10px"></div><span class="an-chart__x">30-39</span></div>
-              <div class="an-chart__col"><span class="an-chart__tot">1</span><div class="an-chart__bar f" style="height:12px"></div><span class="an-chart__x">40-49</span></div>
-              <div class="an-chart__col"><span class="an-chart__tot">0</span><div class="an-chart__bar n" style="height:4px"></div><span class="an-chart__x">50-59</span></div>
-              <div class="an-chart__col"><span class="an-chart__tot">0</span><div class="an-chart__bar n" style="height:4px"></div><span class="an-chart__x">?</span></div>
+              <div class="an-chart__col"><span class="an-chart__tot">0</span><div class="an-chart__bar n" style="height:4px"></div><span class="an-chart__x">18</span></div>
+              <div class="an-chart__col"><span class="an-chart__tot">8</span><div class="an-chart__bar f" style="height:60px"></div><span class="an-chart__x">25</span></div>
+              <div class="an-chart__col"><span class="an-chart__tot">5</span><div class="an-chart__bar f" style="height:40px"></div><span class="an-chart__x">35</span></div>
+              <div class="an-chart__col"><span class="an-chart__tot">4</span><div class="an-chart__bar f" style="height:32px"></div><span class="an-chart__x">?</span></div>
             </div>
           </div>
         </div>
 
-        <div class="gv-bo-ainotice is-locked" style="margin:0 12px 12px">
-          <span class="gv-icon" data-gv-icon="info-outline"></span>
-          Auto insights are not available for projects with less than 30 participants.
-        </div>
+        <button class="gv-bo-viewall js-view-all" type="button">
+          <span class="gv-icon" data-gv-icon="eye"></span> View all insights
+        </button>
 
         <div>
-          <div class="gv-bo-inputrow is-active">
-            <div class="gv-bo-inputrow__title">Facere autem molestias consequuntur inventore.</div>
-            <div class="gv-bo-inputrow__date">9/12/2017</div>
-            <div class="gv-bo-inputrow__stats">
-              <span><span class="gv-icon" data-gv-icon="comments"></span> 6</span>
+          <div class="gv-bo-insightcard is-active">
+            <div class="gv-bo-insightcard__head">
+              <div class="gv-bo-insightcard__title">Interactive project list (with search and map)</div>
+              <div class="gv-bo-insightcard__date">8/20/2024</div>
+            </div>
+            <div class="gv-bo-insightcard__react">
               <span><span class="gv-icon" data-gv-icon="vote-up"></span> 1</span>
               <span><span class="gv-icon" data-gv-icon="vote-down"></span> 0</span>
+              <span><span class="gv-icon" data-gv-icon="email"></span> 0</span>
+              <span><span class="gv-icon" data-gv-icon="comments"></span> 1</span>
+            </div>
+            <div class="gv-bo-insightcard__tags">
+              <span class="gv-bo-autotag">Project list/map <span class="gv-icon" data-gv-icon="close" style="width:12px;height:12px"></span></span>
             </div>
           </div>
-          <div class="gv-bo-inputrow">
-            <div class="gv-bo-inputrow__title">Velit in quas nihil et sapiente omnis.</div>
-            <div class="gv-bo-inputrow__date">11/10/2017</div>
-            <div class="gv-bo-inputrow__stats">
-              <span><span class="gv-icon" data-gv-icon="comments"></span> 10</span>
-              <span><span class="gv-icon" data-gv-icon="vote-up"></span> 3</span>
-              <span><span class="gv-icon" data-gv-icon="vote-down"></span> 0</span>
+
+          <div class="gv-bo-insightcard">
+            <div class="gv-bo-insightcard__head">
+              <div class="gv-bo-insightcard__title">Customisable automated e-mails</div>
+              <div class="gv-bo-insightcard__date">4/30/2025</div>
             </div>
-          </div>
-          <div class="gv-bo-inputrow">
-            <div class="gv-bo-inputrow__title">Accusantium blanditiis dolor voluptas ratione odit iusto.</div>
-            <div class="gv-bo-inputrow__date">12/30/2017</div>
-            <div class="gv-bo-inputrow__stats">
-              <span><span class="gv-icon" data-gv-icon="comments"></span> 11</span>
+            <div class="gv-bo-insightcard__react">
               <span><span class="gv-icon" data-gv-icon="vote-up"></span> 4</span>
               <span><span class="gv-icon" data-gv-icon="vote-down"></span> 0</span>
+              <span><span class="gv-icon" data-gv-icon="email"></span> 0</span>
+              <span><span class="gv-icon" data-gv-icon="comments"></span> 2</span>
+            </div>
+            <div class="gv-bo-insightcard__tags">
+              <span class="gv-bo-autotag">Automated emails <span class="gv-icon" data-gv-icon="close" style="width:12px;height:12px"></span></span>
             </div>
           </div>
-          <div class="gv-bo-inputrow">
-            <div class="gv-bo-inputrow__title">Illum qui eum sunt perferendis qui optio.</div>
-            <div class="gv-bo-inputrow__date">2/18/2018</div>
-            <div class="gv-bo-inputrow__stats">
-              <span><span class="gv-icon" data-gv-icon="comments"></span> 10</span>
+
+          <div class="gv-bo-insightcard">
+            <div class="gv-bo-insightcard__head">
+              <div class="gv-bo-insightcard__title">Homepage you can rearrange and theme yourself</div>
+              <div class="gv-bo-insightcard__date">3/14/2025</div>
+            </div>
+            <div class="gv-bo-insightcard__react">
               <span><span class="gv-icon" data-gv-icon="vote-up"></span> 3</span>
-              <span><span class="gv-icon" data-gv-icon="vote-down"></span> 0</span>
+              <span><span class="gv-icon" data-gv-icon="vote-down"></span> 1</span>
+              <span><span class="gv-icon" data-gv-icon="email"></span> 0</span>
+              <span><span class="gv-icon" data-gv-icon="comments"></span> 5</span>
+            </div>
+            <div class="gv-bo-insightcard__tags">
+              <span class="gv-bo-autotag">Homepage customization <span class="gv-icon" data-gv-icon="close" style="width:12px;height:12px"></span></span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Column 3 · Input preview / detail -->
+      <!-- Column 3 · Insight / input detail -->
       <div class="gv-bo-analysis__col gv-bo-analysis__col--white">
         <div class="gv-bo-inputview">
           <div style="display:flex;align-items:center;gap:12px">
             <div class="gv-bo-inputview__author">
-              <span class="gv-icon" data-gv-icon="user" style="width:32px;height:32px"></span>
-              Sylvester Kalinoski
+              <span class="gv-icon" data-gv-icon="user-circle" style="width:32px;height:32px"></span>
+              Eva Mayer
             </div>
             <button class="gv-btn outlined size-s" style="margin-left:auto"><span class="gv-icon" data-gv-icon="settings"></span> Manage input</button>
           </div>
-          <h2 class="gv-bo-inputview__title">Facere autem molestias consequuntur inventore.</h2>
-          <p style="font-size:var(--gv-fs-s);line-height:1.6;color:var(--gv-grey-800)">Laudantium optio dolorem expedita libero illum ut nobis. Amet quidem omnis sunt totam autem eius. Odio repellat dignissimos velit illo consequatur. Minus fugiat rem velit eligendi eius culpa excepturi. Similique facere quod.</p>
-          <p style="font-size:var(--gv-fs-s);line-height:1.6;color:var(--gv-grey-800)">Omnis necessitatibus et. Quis ipsam incidunt ducimus magnam voluptatem. Eos aut saepe perferendis minus sequi. Hic qui asperiores laborum.</p>
+          <h2 class="gv-bo-inputview__title">Interactive project list (with search and map)</h2>
+          <p style="font-size:var(--gv-fs-s);line-height:1.6;color:var(--gv-grey-800)">In DACH knowledge sharing we would love a project-list module that lets residents both search and browse on a map, so participation feels transparent and discoverable across ongoing engagements.</p>
+          <p style="font-size:var(--gv-fs-s);line-height:1.6;color:var(--gv-grey-800)">Projects can be filtered on the map as well as through tags, making it easy to find what is relevant to you.</p>
           <div class="gv-bo-inputview__meta">Location</div>
-          <div style="font-size:var(--gv-fs-s)">224 Raynor Coves</div>
+          <div style="font-size:var(--gv-fs-s)">Vienna, AT</div>
           <div class="gv-bo-tags" style="margin-top:14px">
-            <span class="gv-bo-autotag">Example tag 1 <span class="gv-icon" data-gv-icon="close" style="width:12px;height:12px"></span></span>
-            <span class="gv-bo-autotag">Example tag 2 <span class="gv-icon" data-gv-icon="close" style="width:12px;height:12px"></span></span>
+            <span class="gv-bo-autotag">Project list/map <span class="gv-icon" data-gv-icon="close" style="width:12px;height:12px"></span></span>
           </div>
           <div class="gv-bo-inputview__meta" style="display:flex;align-items:center;gap:10px">
-            Comments (5)
+            Comments (1)
             <button class="gv-btn text size-s" style="margin-left:auto"><span class="gv-icon" data-gv-icon="stars"></span> Summarize comments</button>
           </div>
         </div>
       </div>
 
-      <!-- Column 4 · Insights / AI summary panel -->
+      <!-- Column 4 · AI summary panel (empty state) -->
       <div class="gv-bo-analysis__col gv-bo-analysis__col--white">
         <div class="gv-bo-aibar gv-bo-aibar--split">
           <button class="gv-bo-aibar__cell" type="button"><span class="gv-icon" data-gv-icon="stars"></span> Summarize</button>
@@ -174,7 +227,7 @@
             AI can make mistakes. Please verify important information.
           </div>
           <div class="gv-bo-airail__count">
-            6 / 6 inputs selected
+            48 / 48 inputs selected
             <button class="gv-btn text size-s" style="margin-left:auto"><span class="gv-icon" data-gv-icon="paperclip"></span> Attach files (0)</button>
           </div>
           <div class="gv-bo-aiempty">
@@ -185,8 +238,124 @@
       </div>
 
     </div>
+
+    <!-- ════ SCREEN 2 · auto-insights cross-tab matrix (View all insights) ═ -->
+    <div class="gv-bo-analysis__cols is-matrix" data-an-cols="matrix">
+
+      <!-- Cross-tab -->
+      <div class="gv-bo-xtab">
+        <button class="gv-iconbtn gv-bo-xtab__close js-close-matrix" type="button" aria-label="Close insights">
+          <span class="gv-icon" data-gv-icon="close"></span>
+        </button>
+
+        <div class="gv-bo-xtab__filters">
+          <div class="gv-bo-xtab__filter">
+            <label>Row values</label>
+            <select class="gv-bo-select"><option>Analysis tags</option></select>
+          </div>
+          <div class="gv-bo-xtab__filter">
+            <label>Column values</label>
+            <select class="gv-bo-select"><option>What team are you in?</option></select>
+          </div>
+          <div class="gv-bo-xtab__filter">
+            <label>Units</label>
+            <select class="gv-bo-select"><option>Inputs</option></select>
+          </div>
+        </div>
+
+        <div class="gv-bo-matrix" style="grid-template-columns:200px repeat(6,minmax(78px,1fr))">
+          <div class="gv-bo-matrix__corner"></div>
+          <div class="gv-bo-matrix__colhead">Marketing</div>
+          <div class="gv-bo-matrix__colhead">Product</div>
+          <div class="gv-bo-matrix__colhead">Sales</div>
+          <div class="gv-bo-matrix__colhead">GS</div>
+          <div class="gv-bo-matrix__colhead">Dev</div>
+          <div class="gv-bo-matrix__colhead">Design</div>
+
+          <div class="gv-bo-matrix__rowhead"><span class="gv-bo-autotag">Input management</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">1</span><span class="gv-bo-matrix__delta">-43%</span></div>
+          <div class="gv-bo-matrix__cell is-pos"><span class="gv-bo-matrix__num">2</span><span class="gv-bo-matrix__delta">+353%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+
+          <div class="gv-bo-matrix__rowhead"><span class="gv-bo-autotag">Homepage customization</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">1</span><span class="gv-bo-matrix__delta">-43%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+
+          <div class="gv-bo-matrix__rowhead"><span class="gv-bo-autotag">Automated emails</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-pos"><span class="gv-bo-matrix__num">1</span><span class="gv-bo-matrix__delta">+70%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+
+          <div class="gv-bo-matrix__rowhead"><span class="gv-bo-autotag">Volunteering/events</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-pos"><span class="gv-bo-matrix__num">1</span><span class="gv-bo-matrix__delta">+18%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
+        </div>
+      </div>
+
+      <!-- AI panel · filled Summarize / Ask + a generated answer -->
+      <div class="gv-bo-analysis__col gv-bo-analysis__col--white" style="border-right:0">
+        <div class="gv-bo-aiactions">
+          <button class="gv-bo-aiactions__btn" type="button"><span class="gv-icon" data-gv-icon="stars"></span> Summarize</button>
+          <button class="gv-bo-aiactions__btn" type="button"><span class="gv-icon" data-gv-icon="question-bubble"></span> Ask a question</button>
+        </div>
+        <div class="gv-bo-airail" style="padding-top:0">
+          <div class="gv-bo-ainotice is-warn">
+            <span class="gv-icon" data-gv-icon="alert-circle"></span>
+            AI can make mistakes. Please verify important information.
+            <span class="gv-icon" data-gv-icon="chevron-down" style="margin-left:auto;width:16px;height:16px"></span>
+          </div>
+          <div class="gv-bo-airail__count">
+            48 / 48 inputs selected
+            <button class="gv-btn text size-s" style="margin-left:auto"><span class="gv-icon" data-gv-icon="paperclip"></span> Attach files (0)</button>
+          </div>
+        </div>
+        <div class="gv-bo-aiqa">
+          <div class="gv-bo-aiqa__prompt">
+            <span class="gv-icon" data-gv-icon="question-bubble"></span>
+            generate 25 trade-off questions that participants can react to "agree/unsure/disagree" based on the most relevant topics out of this ideation phase
+          </div>
+          <div class="gv-bo-aiqa__body">
+            Here are 25 trade-off questions, phrased for "agree/unsure/disagree" responses, based on the most relevant and recurring topics from the ideation phase. Each question is designed to surface participant preferences between two competing priorities or approaches, as reflected in the responses.
+            <hr>
+            <strong>1.</strong> It is more important to allow clients to deeply customise their homepage than to keep the editing experience simple for first-time admins.
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
-  <script>document.addEventListener('DOMContentLoaded', () => window.GVIcons && GVIcons.render(document));</script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => window.GVIcons && GVIcons.render(document));
+    // Two screens, no URL change → publish the current one on <body data-gv-screen>
+    // so the review overlay scopes comments per screen (CLAUDE.md SPA contract).
+    (function(){
+      var cols = {
+        main:   document.querySelector('[data-an-cols="main"]'),
+        matrix: document.querySelector('[data-an-cols="matrix"]')
+      };
+      function show(which){
+        cols.main.classList.toggle('is-on', which === 'main');
+        cols.matrix.classList.toggle('is-on', which === 'matrix');
+        document.body.setAttribute('data-gv-screen', 'ai-analysis-' + which);
+      }
+      document.querySelectorAll('.js-view-all').forEach(function(b){ b.addEventListener('click', function(){ show('matrix'); }); });
+      document.querySelectorAll('.js-close-matrix').forEach(function(b){ b.addEventListener('click', function(){ show('main'); }); });
+    })();
+  </script>
 </body>
 </html>
