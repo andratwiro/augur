@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Parallel-participation user test — 3 cities</title>
+  <link rel="stylesheet" href="assets/govocal-tokens.css" />
+  <link rel="stylesheet" href="assets/govocal-ui.css" />
+  <style>
+    body { margin: 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 40px 22px 80px; }
+    h1 { font-size: 26px; margin: 0 0 6px; }
+    .lead { color: var(--gv-text-secondary); margin: 0 0 28px; line-height: 1.6; }
+    .note { background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); padding: 16px 18px; font-size: 14px; color: var(--gv-text-secondary); line-height: 1.6; margin-bottom: 28px; }
+    .card { background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 20px 22px; margin-bottom: 16px; }
+    .card .tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: var(--gv-tenant-primary); border-radius: 999px; padding: 3px 10px; margin-bottom: 10px; }
+    .card h2 { font-size: 19px; margin: 0 0 4px; }
+    .card .what { color: var(--gv-text-secondary); font-size: 14px; line-height: 1.6; margin: 0 0 14px; }
+    .card a.open { font-weight: 600; }
+    .card .url { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--gv-text-secondary); word-break: break-all; }
+    .a .tag { background: #16695E; } .b .tag { background: #9A4A1E; } .c .tag { background: #1F4E79; }
+  </style>
+</head>
+<body class="gv-root">
+  <div class="wrap">
+    <h1>Parallel participation — 3-city user test</h1>
+    <p class="lead">Three resident-facing project pages forming a <strong>complexity gradient</strong> for unmoderated mobile testing. Same task and post-task questions across all three; the variable is how many participation methods compete for attention.</p>
+    <div class="note"><strong>For testing:</strong> give each tester <em>one</em> city link only (don't link them together — this hub is internal). Best opened on a phone. The test reads what they can do and what they miss; see the research plan in <code>parallel-participation/research/</code>.</div>
+
+    <div class="card a">
+      <span class="tag">A · Single clear path</span>
+      <h2>Riverford — a new riverside path</h2>
+      <p class="what">Control. One method, one obvious next step; the participation bar reinforces the same action; no competing CTA. The baseline the others are read against.</p>
+      <p><a class="open gv-btn primary size-s" href="riverford.html">Open City A →</a></p>
+      <p class="url">…/citytest/riverford.html</p>
+    </div>
+
+    <div class="card b">
+      <span class="tag">B · Primary + secondary</span>
+      <h2>Hartwell — reimagining Hartwell Park</h2>
+      <p class="what">One loud primary method (share an idea) with quieter parallel methods and an off-timeline survey card. Tests whether the filled/outlined hierarchy reads as "main vs optional."</p>
+      <p><a class="open gv-btn primary size-s" href="hartwell.html">Open City B →</a></p>
+      <p class="url">…/citytest/hartwell.html</p>
+    </div>
+
+    <div class="card c">
+      <span class="tag">C · Many equal doors</span>
+      <h2>Easthaven — the future of the centre</h2>
+      <p class="what">Maximum competition: four methods in the box, a loud survey card, and the pinned bar — no dominant action. The configuration the canon predicts will overload; tests if residents can still triage.</p>
+      <p><a class="open gv-btn primary size-s" href="easthaven.html">Open City C →</a></p>
+      <p class="url">…/citytest/easthaven.html</p>
+    </div>
+  </div>
+</body>
+</html>

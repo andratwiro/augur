@@ -1,0 +1,262 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   GoVocal design tokens
+   Transcribed verbatim from the product source:
+     CitizenLabDotCo/citizenlab @ 5d67730
+     front/app/component-library/utils/styleUtils.ts
+   Refresh procedure + provenance: see skills/govocal-ui/SKILL.md.
+
+   Usage: include this file FIRST, then govocal-ui.css. Override
+   --gv-tenant-primary per city to re-theme (the product does this per tenant).
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Base ─────────────────────────────────────────────────────────────── */
+  --gv-black: #000000;
+  --gv-white: #ffffff;
+
+  /* ── Grey ─────────────────────────────────────────────────────────────── */
+  --gv-grey-800: #333333; /* text */
+  --gv-grey-700: #767676; /* border / grey */
+  --gv-grey-600: #999999; /* placeholder */
+  --gv-grey-500: #BDBDBD; /* disabled */
+  --gv-grey-400: #CBCBCB; /* light border */
+  --gv-grey-300: #E0E0E0; /* divider */
+  --gv-grey-200: #EBEDEF;
+  --gv-grey-100: #F4F6F8;
+  --gv-grey-50:  #FCFCFC;
+  --gv-cool-grey-700: #43515D;
+  --gv-cool-grey-600: #596B7A; /* secondary text / label */
+  --gv-cool-grey-500: #84939E;
+  --gv-cool-grey-400: #8D9EAC; /* reaction-button border (idea cards) — recurs across ideation captures */
+  --gv-cool-grey-300: #B8C5D0;
+
+  /* ── Blue ─────────────────────────────────────────────────────────────── */
+  --gv-blue-700: #022331;
+  --gv-blue-500: #044D6C; /* admin text / "primary" semantic */
+  --gv-blue-400: #00577C;
+  --gv-blue-10:  #E6EEF1;
+
+  /* ── Teal ─────────────────────────────────────────────────────────────── */
+  --gv-teal-700: #0A5159;
+  --gv-teal-500: #147985; /* "teal" semantic */
+  --gv-teal-400: #01A1B1;
+  --gv-teal-300: #40B8C5;
+  --gv-teal-200: #80CFD8;
+  --gv-teal-100: #BEE7EB; /* tealLight */
+  --gv-teal-75:  #E5F5F7; /* selected-card / inspiration tint (BO) */
+  --gv-teal-50:  #EDF8FA;
+
+  /* ── Red ──────────────────────────────────────────────────────────────── */
+  --gv-red-100: #fde9e8; /* errorLight */
+  --gv-red-400: #FC3C2D;
+  --gv-red-500: #E52516; /* error */
+  --gv-red-600: #D61607; /* error border (inputs) */
+  --gv-red-800: #9B1005;
+
+  /* ── Green ────────────────────────────────────────────────────────────── */
+  --gv-green-700: #024D2B;
+  --gv-green-600: #096F03; /* green CTA fill (e.g. "Stats overview") */
+  --gv-green-500: #04884C; /* success (also default checked checkbox/toggle) */
+  --gv-green-400: #32B67A;
+  --gv-green-300: #62C462;
+  --gv-green-100: #e4f7ef; /* successLight */
+  --gv-green-mint: #CAE0CD; /* phase-timeline CURRENT segment fill — sampled live fo-perspectives-entry current segment (srgb 202,224,205); distinct from successLight #e4f7ef so it can't drift it */
+
+  /* ── Orange ───────────────────────────────────────────────────────────── */
+  --gv-orange-100: #FFECE6;
+  --gv-orange-500: #FF672F;
+
+  /* ── Amber ────────────────────────────────────────────────────────────── */
+  /* AI auto-tag chips in the Analysis view (computer-derived tags): warm tan
+     fill + amber border. Measured bo-auto-insights-clean (div.eMnFXQ). */
+  --gv-amber-100: #F2E6D0; /* auto-tag chip fill */
+  --gv-amber-500: #D49210; /* auto-tag chip border */
+
+  /* ── Other ────────────────────────────────────────────────────────────── */
+  --gv-brown: #8C680D;
+
+  /* ── Semantic aliases (semanticColors) ────────────────────────────────── */
+  --gv-text-primary:   var(--gv-grey-800);
+  --gv-text-secondary: var(--gv-cool-grey-600);
+  --gv-text-heading:   #474747;   /* live heading colour (h1–h3 / card titles compute to rgb(71,71,71)) — wietsedemo FO */
+  --gv-text-heading-strong: #1E1E1E;  /* darker heading treatment grounded on FO project pages (ideation H1, idea-card author/title, feed count, cause desc compute to rgb(30,30,30)) */
+  --gv-text-pagetitle: #474747;   /* FO list/index page H1 ("Projects" 34px/500 → rgb(71,71,71)) */
+  --gv-text-body:      rgba(0,0,0,0.87);  /* FO body/meta text — the inherited root colour (e.g. project-card "2 weeks left" time-remaining probes to rgba(0,0,0,0.87)); visually near-identical to #333 but this is the grounded value */
+  --gv-header-text:    rgba(0,0,0,0.87);  /* FO site <header> root inherited text colour (wietsedemo #e2e-navbar computes to rgba(0,0,0,0.87)); nav links override to --gv-black */
+  --gv-border-dark:    var(--gv-grey-700);
+  --gv-border-light:   var(--gv-grey-400);
+  --gv-placeholder:    var(--gv-grey-600);
+  --gv-disabled:       var(--gv-grey-500);
+  --gv-divider:        var(--gv-grey-300);
+  --gv-primary:        var(--gv-blue-500);
+  --gv-error:          var(--gv-red-500);
+  --gv-error-light:    var(--gv-red-100);
+  --gv-success:        var(--gv-green-500);
+  --gv-success-light:  var(--gv-green-100);
+  --gv-background:     #EDEFF0;
+  --gv-survey-canvas:  #F4F6F8;  /* survey-runner route page bg (div.cwzUZm) — a lighter blue-grey than the generic app canvas; measured live */
+
+  /* ╔══════════════════════════════════════════════════════════════════════╗
+     ║ THEMING CONTRACT — READ THIS BEFORE ADDING ANY COLOUR/FONT TOKEN.      ║
+     ║ Per-city theming is EXACTLY four variables, common to EVERY component: ║
+     ║   --gv-tenant-primary · --gv-tenant-secondary · --gv-tenant-text       ║
+     ║   --gv-font-family                                                     ║
+     ║ Cities differ ONLY in these four values. The theme switcher            ║
+     ║ (govocal-themes.js / ?theme=) sets ONLY these per city; tints, focus   ║
+     ║ and component states DERIVE from them (color-mix). Therefore:          ║
+     ║  1. Components must reference var(--gv-tenant-*) / var(--gv-font-       ║
+     ║     family) — never a literal city hex as a property value.            ║
+     ║  2. NEVER invent a new per-city token (e.g. a city-specific green).     ║
+     ║     • If a value varies by city, it must BE one of the four above.     ║
+     ║     • If it's the same across cities, it is SYSTEM — use the shared     ║
+     ║       palette (--gv-green-*, --gv-success, greys, radii, type, etc.),   ║
+     ║       which is common to all tenants and is NOT touched by the switcher.║
+     ║  3. A city hex may appear ONLY as a source comment, or inside a         ║
+     ║     govocal-themes.js theme definition — nowhere else.                  ║
+     ╚══════════════════════════════════════════════════════════════════════╝ */
+  /* ── Tenant (per-city) colours ────────────────────────────────────────── */
+  /* The product themes these per tenant. Override --gv-tenant-primary on :root
+     (or a [data-city] scope) to re-skin.
+     DEFAULT GoVocal combination = deep teal + warm coral (replaces the old hot-pink
+     #E10069 / black, which read poorly and barely cleared AA). Teal #0E7C86 gives
+     4.95:1 for white button text (comfortable WCAG AA); coral is a warm brand accent
+     (use dark/large text if filled — ~3.5:1 white-on-coral). Real city tenants keep
+     their own brand colours via the ?theme= switcher (govocal-themes.js). */
+  --gv-tenant-primary:   #0E7C86; /* deep teal — AA-safe (4.95:1 white-on-primary) */
+  --gv-tenant-secondary: #E2603A; /* warm coral accent */
+  --gv-tenant-text:      #333333;
+  /* Lightened tenant-primary tints (product: tenantPrimaryLighten75/90/95).
+     Derived with color-mix so they re-theme automatically with the primary. */
+  --gv-tenant-primary-lighten75: color-mix(in srgb, var(--gv-tenant-primary) 25%, transparent);
+  --gv-tenant-primary-lighten90: color-mix(in srgb, var(--gv-tenant-primary) 10%, transparent);
+  --gv-tenant-primary-lighten95: color-mix(in srgb, var(--gv-tenant-primary) 5%,  transparent);
+
+  /* ── Back-office surface (GoVocal's OWN theme — NOT city-themed) ──────────
+     GoVocal has ~two UIs: the front office is themed per city (--gv-tenant-*);
+     the back office uses a fixed GoVocal teal/navy palette. Same type, radius,
+     spacing and primitives — only the colour layer differs. Measured live from
+     the demo platform (uxusertesting.govocal.com, City of Raleigh back office).
+     Apply by scoping markup under `.gv-bo`, which remaps the tenant vars below. */
+  --gv-bo-sidebar-bg:     #003349;                    /* dark teal/navy left nav */
+  --gv-bo-sidebar-text:   #fff;                       /* nav labels (digest: solid white) */
+  --gv-bo-sidebar-active: rgba(0,0,0,0.7);            /* active cell on the navy (digest n=22; hover is rgba(255,255,255,.07)) */
+  --gv-bo-primary:        var(--gv-blue-500);          /* #044D6C — fills, headings, table text */
+  --gv-bo-cta:            #162466;                     /* measured BO filled-CTA indigo (Button primary: Invite users, Seats overview, modal confirm) — distinct from the #044D6C teal-navy chrome */
+  --gv-bo-link:           #4183C4;                     /* link/anchor blue */
+  --gv-bo-canvas:         #EDEFF0;                     /* app canvas behind content (measured live, light blue-grey) */
+  --gv-bo-tabstrip:       #FBFBFB;                     /* elevated tab-strip / panel-header tint (measured live) */
+  --gv-bo-step:           #D4D9DD;                     /* phase-ribbon chevron / +New phase track (measured live) */
+  --gv-bo-row-alt:        var(--gv-grey-50);           /* #FCFCFC — alt table row / hover */
+  --gv-bo-border:         var(--gv-cool-grey-600);     /* #596B7A — outline-button border */
+  --gv-bo-font:           'Public Sans', 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; /* GoVocal's OWN product font — BO is never city-themed (mirrors the --gv-font-family default) */
+
+  /* ── Dashboard chart palette ──────────────────────────────────────────────
+     Sampled from the real BO dashboard recharts SVG
+     (govocal-exports/bo-dash-overview/dom.html — fill/stroke attribute counts).
+     These series colours recur across every dashboard chart (line, combo, bar,
+     donut), so they are systemic tokens, not page one-offs. The recharts grid
+     (#EBEDEF) already aliases --gv-grey-200; axis tick text (#596B7A) aliases
+     --gv-cool-grey-600 below. */
+  --gv-chart-navy:  #073F80;                    /* bar fill (recharts-bar-rectangle, n=27) */
+  --gv-chart-blue:  #2F478A;                    /* primary line / combo line stroke (n=33); pie segment 1 */
+  --gv-chart-blue-light: #4D85C6;               /* pie segment 2 — monochrome blue ramp (recharts-pie-sector, bo-dash-visitors) */
+  --gv-chart-line:  #7FBBCA;                    /* cumulative "Total" line stroke — dominant (n=144) */
+  --gv-chart-teal:  var(--gv-teal-400);         /* #01A1B1 accent series */
+  --gv-chart-teal-light: #40B8C5;               /* donut "feedback" segment (recharts-sector sum_feedback, bo-dash-overview) */
+  --gv-chart-pos:   var(--gv-green-500);        /* #04884C likes / positive series */
+  --gv-chart-neg:   var(--gv-red-500);          /* #E52516 dislikes / negative series */
+  --gv-chart-axis:  var(--gv-cool-grey-600);    /* #596B7A axis tick text (recharts-cartesian-axis-tick-value, n=159) */
+  --gv-chart-grid:  var(--gv-grey-200);         /* #EBEDEF cartesian gridlines */
+
+  /* ── Typography ───────────────────────────────────────────────────────── */
+  /* The product's computed font stack repeats the theme family name before the
+     base fallbacks ("Public Sans","Public Sans",…) — every live capture shows it
+     doubled. Mirror it verbatim so probed font-family checkpoints diff cleanly. */
+  --gv-font-family: 'Public Sans', 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Type scale is t-shirt-named (xs · s · base · l · xl …); --gv-fs-13 is the one
+     deliberate numeric step — a 13px micro-size that sits between xs(12) and s(14)
+     and recurs across BO chrome (captions, toasts, help text, drop placeholders). */
+  --gv-fs-xs:     12px;
+  --gv-fs-13:     13px;
+  --gv-fs-s:      14px;
+  --gv-fs-base:   16px;            /* body default — the single 16px source */
+  --gv-fs-m:      var(--gv-fs-base); /* alias of base; kept so existing .gv-* refs resolve */
+  --gv-fs-l:      18px;
+  --gv-fs-xl:     21px;
+  --gv-fs-xxl:    25px;
+  --gv-fs-xxxl:   30px;
+  --gv-fs-xxxxl:  34px;
+  --gv-fs-xxxxxl: 42px;
+  --gv-fs-display: 80px; /* huge per-tenant page title (FO /events H1: 80px/700/lh 104px) */
+
+  /* ── Radius, sizing, layout (stylingConsts) ───────────────────────────── */
+  --gv-radius: 3px;
+  --gv-input-height: 48px;
+  --gv-input-padding: 12px;
+  --gv-max-page-width: 952px;
+  --gv-page-width: 1150px;
+  --gv-text-width: 720px;
+  --gv-menu-height: 78px;
+
+  /* ── Elevation (defaultStyles) ────────────────────────────────────────── */
+  --gv-shadow:           0px 2px 4px -1px rgba(0,0,0,0.06);
+  --gv-shadow-menu:      0px 0px 12px 0px rgba(0,0,0,0.18); /* dropdown/menu/flyout elevation — component-library <Dropdown> */
+  --gv-shadow-header:    0px 2px 4px -1px rgba(0,0,0,0.10); /* live site <header> (mitgestalten.wien.gv.at) */
+  --gv-shadow-hover-sm:  0px 2px 4px -1px rgba(0,0,0,0.2);
+  --gv-shadow-hover-lg:  0px 4px 12px -1px rgba(0,0,0,0.12);
+  --gv-shadow-error:     0 0 0 3px rgba(214,22,7,0.35); /* transparentize(.65, red600) */
+  /* Left-edge inset shadow on the Content-Builder right settings panel (measured
+     live, bo-content-builder-settings, div#e2e-content-builder-settings). Distinct
+     from --gv-shadow/--gv-shadow-header — it casts to the left, panel flush right. */
+  --gv-shadow-panel-left: -2px 0px 1px 0px rgba(0,0,0,0.06);
+
+  /* ── Back-office Content/Description Builder (measured live) ─────────────
+     The craft.js content editor (top bar + widget palette + canvas + settings).
+     The Save CTA green (#08833a) sits between green-500/600 — its own systemic
+     token. The canvas-frame width (1000px) recurs as the editable-frame metric. */
+  --gv-green-save:        #08833a;  /* Content-Builder Save button fill (measured) */
+  --gv-bo-cb-frame-w:     1000px;   /* editable content frame width / max-width */
+
+  /* ── Focus ────────────────────────────────────────────────────────────── */
+  /* defaultOutline: 2px solid tenantPrimary */
+  --gv-focus-outline: 2px solid var(--gv-tenant-primary);
+
+  /* ── Event card (measured live: wietsedemo /events + project events) ──────
+     The event card meta rows sit on a tinted panel (div.kjzjNu) = #F4F6F8,
+     identical to --gv-grey-100; aliased semantically so the panel reads as
+     intent, not an incidental grey. The two-tone date chip's month/day cell
+     is a slightly cooler grey (#F5F6F7, div.sc-lilDSw) than grey-100 — its own
+     token; the year band reuses --gv-tenant-primary. */
+  --gv-event-meta-tint: var(--gv-grey-100);  /* #F4F6F8 meta panel */
+  --gv-event-chip-grey: #F5F6F7;             /* date chip month/day cell */
+  /* The shared EventsWidget (Copenhagen/Linz/Falkirk, capture fo-cph-events-card)
+     renders each event in a BORDERED <li> (li.sc-jIXSKn): 1px #CCC, 6px radius —
+     a cross-tenant structural frame distinct from the borderless wietsedemo card. */
+  --gv-event-card-border: #CCC;              /* bordered EventsWidget <li> frame */
+
+  /* ── Folder card project-count green (measured live: stlouis.govocal.com) ──
+     The "N projects" number renders in GoVocal's positive/count green — a SYSTEM
+     semantic, COMMON across tenants, NOT per-city skin. Probed #358545 = srgb
+     (53,133,69) on .e2e-folder-card-numberofprojects (14px/700); distinct from
+     --gv-success #04884C (used elsewhere, e.g. the nav projects dropdown). It is a
+     literal SYSTEM value like the rest of the --gv-green-* palette, so the theme
+     switcher correctly never touches it. NOT a per-tenant colour — per-city theming
+     is ONLY the four THEMING-CONTRACT vars above; don't reframe this as skin. */
+  --gv-folder-count: #358545;                /* system positive/count green (common across tenants) */
+
+  /* ── Attachment download-row border (measured live: stlouis.govocal.com /pages/memos) ──
+     The Content-Builder "file attachment" widget frames each downloadable file in a
+     1px cool-grey outlined row (div.keappF: 1px solid rgb(200,208,215) = #C8D0D7,
+     3px radius — digest #11). A cross-tenant STRUCTURAL frame (same widget on every
+     tenant's custom/info page); aliased so the neutral outline is one source of truth. */
+  --gv-attachment-border: #C8D0D7;           /* .gv-attachment download-row outline */
+
+  /* ── Phase timeline: SELECTED (viewed, non-current) segment fill ──────────
+     The live wietsedemo phase-ribbon selected segment was sampled srgb(89,107,122)
+     = #596B7A (matches the live .e2e-phase-title colour). Our earlier slate aliased
+     --gv-cool-grey-700 (#43515D) which reads noticeably darker/greyer than ground
+     truth. This is exactly --gv-cool-grey-600 (#596B7A); aliased semantically so the
+     selected-ribbon intent is explicit and can't drift the cool-grey-700 atom (still
+     used by event-card meta + nav hover). */
+  --gv-phase-selected-fill: var(--gv-cool-grey-600);  /* #596B7A blue-slate */
+}

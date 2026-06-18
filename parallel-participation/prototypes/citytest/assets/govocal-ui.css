@@ -1,0 +1,2782 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   GoVocal FRONT-OFFICE components — header/nav, footer, project card, hero,
+   phase timeline, homepage widgets, project-page blocks. Built on the primitives
+   (imported below) + tokens. Back-office chrome lives in govocal-bo.css.
+   ────────────────────────────────────────────────────────────────────────── */
+@import url('govocal-primitives.css');
+
+/* ── Site header + navigation (responsive) ──────────────────────────────────
+   Markup mirrors the live product: header#e2e-navbar.gv-header >
+   .gv-header__inner > [brand] [nav.gv-nav aria-label="Primäre"] [actions].
+   The primary nav is a <nav aria-label> landmark wrapping a <ul.gv-nav__list>.
+   Mobile menu is a CSS-only disclosure via <details class="gv-nav-m">, so the
+   component is drop-in with NO JavaScript. Menu height 78px (--gv-menu-height). */
+.gv-header {
+  background: #fff;
+  position: relative;
+  z-index: 50;
+  font-family: var(--gv-font-family);
+  box-shadow: var(--gv-shadow-header);   /* live product header carries a soft bottom shadow */
+  /* Root inherited text baseline — matches the live #e2e-navbar header element:
+     colour rgba(0,0,0,0.87), 14px, line-height 19.999px (≈1.43). The nav links
+     themselves override to 16px/500/--gv-black, so this only sets the chrome
+     baseline that verify probes on the header root. */
+  color: var(--gv-header-text);
+  font-size: var(--gv-fs-s);             /* 14px chrome baseline; .gv-nav__link overrides to --gv-fs-base */
+  line-height: 1.43;                     /* 14px × 1.43 ≈ 19.999px (matches real) */
+}
+/* z-index above the sticky participation bar (.gv-partbar = 30) and any in-page
+   overlay (e.g. a map's idea panel) so the header always stays on top when scrolling. */
+.gv-header.sticky { position: sticky; top: 0; z-index: 50; }
+/* Full-width bar: logo flush-left, actions flush-right (matches the live product —
+   the navbar spans the viewport even when the page CONTENT below is capped at
+   --gv-shell-w). Only the side gutter is fixed. */
+.gv-header__inner {
+  box-sizing: border-box;                 /* width:100% must INCLUDE the gutter, else the bar overflows the viewport */
+  width: 100%;
+  margin: 0;
+  padding: 0 24px;
+  height: var(--gv-menu-height);          /* 78px */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Brand / logo slot */
+.gv-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--gv-tenant-text); flex: 0 0 auto; }
+.gv-brand img, .gv-brand svg { display: block; }
+.gv-brand .gv-brand__word { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: -0.01em; }
+
+/* Desktop nav — <nav class="gv-nav" aria-label="Primäre"> wrapping <ul class="gv-nav__list"> */
+.gv-nav { display: flex; align-items: stretch; height: 100%; margin: 0 0 0 18px; }
+.gv-nav__list { display: flex; align-items: stretch; height: 100%; margin: 0; padding: 0; list-style: none; }
+.gv-nav__list > li { display: flex; }
+.gv-nav__link {
+  box-sizing: border-box;                        /* borders are part of the 100% height, else the cell overflows the bar */
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 100%; padding: 0 22px;
+  font-size: var(--gv-fs-base); font-weight: 500; line-height: 1;
+  color: var(--gv-black); text-decoration: none;
+  background: none; border: 0; cursor: pointer; font-family: inherit;
+  border-top: 4px solid transparent;            /* active indicator sits on top, like the live site (≈4px bar) */
+  border-bottom: 4px solid transparent;
+}
+.gv-nav__link:hover { color: var(--gv-tenant-primary); background: var(--gv-grey-100); }
+.gv-nav__dd[open] > summary.gv-nav__link { color: var(--gv-tenant-primary); background: var(--gv-grey-100); border-top-color: var(--gv-tenant-primary); }
+/* Active page — tenant-tinted cell + top accent bar, mirroring the live #e2e-navbar */
+/* Active = tenant top-bar + subtle tinted cell. NOT bold — the live product keeps
+   weight 500 for the current item (the bar + cell carry the state). */
+.gv-nav__link[aria-current="page"] {
+  border-top-color: var(--gv-tenant-primary); color: var(--gv-black);
+  background: color-mix(in srgb, var(--gv-tenant-primary) 9%, #fff);
+}
+.gv-nav__link[aria-current="page"]:hover { color: var(--gv-black); background: color-mix(in srgb, var(--gv-tenant-primary) 15%, #fff); }
+.gv-nav__link:focus-visible { outline: var(--gv-focus-outline); outline-offset: -3px; }
+.gv-nav__chev { width: 12px; height: 12px; transition: transform 120ms ease-out; }
+
+/* Dropdown / overflow ("Mehr ···") — CSS-only via <details> */
+.gv-nav__dd { position: relative; }
+.gv-nav__dd > summary { list-style: none; }
+.gv-nav__dd > summary::-webkit-details-marker { display: none; }
+.gv-nav__dd[open] > summary .gv-nav__chev { transform: rotate(180deg); }
+.gv-nav__menu {
+  position: absolute; top: calc(100% - 4px); left: 12px; z-index: 60;
+  min-width: 240px; padding: 8px;
+  background: #fff; border-radius: var(--gv-radius);
+  box-shadow: var(--gv-shadow-hover-lg); border: 1px solid var(--gv-grey-200);
+  border-bottom: 3px solid var(--gv-tenant-secondary);   /* live dropdown carries a coloured bottom accent */
+  display: grid; gap: 2px;
+}
+.gv-nav__dd.right .gv-nav__menu { left: auto; right: 12px; }
+.gv-nav__menu a, .gv-nav__menu button {
+  box-sizing: border-box; width: 100%;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 9px 12px; border-radius: var(--gv-radius);
+  font-family: inherit; font-size: var(--gv-fs-s); color: var(--gv-grey-800);
+  text-align: left; text-decoration: none; background: none; border: 0; cursor: pointer;
+}
+.gv-nav__menu a:hover, .gv-nav__menu button:hover { background: var(--gv-grey-100); color: var(--gv-tenant-primary); }
+.gv-nav__menu a svg, .gv-nav__menu a .gv-icon, .gv-nav__menu button svg, .gv-nav__menu button .gv-icon {
+  width: 16px; height: 16px; flex: none; color: var(--gv-grey-600);
+}
+.gv-nav__menu a:hover svg, .gv-nav__menu button:hover svg { color: var(--gv-tenant-primary); }
+/* in-menu divider (e.g. above "Sign out") */
+.gv-menu-sep { height: 1px; background: var(--gv-grey-200); margin: 6px 4px; }
+/* account/user menu — wider, cool-grey items in roomy rows, no divider, grey icons
+   on the right (live signed-in user menu measures ≈260px, items 14px #596B7A). */
+.gv-nav__menu--account { min-width: 260px; padding: 10px; }
+.gv-nav__menu--account a, .gv-nav__menu--account button { color: var(--gv-cool-grey-600); padding: 11px 14px; }
+.gv-nav__menu--account a svg, .gv-nav__menu--account a .gv-icon,
+.gv-nav__menu--account button svg, .gv-nav__menu--account button .gv-icon { color: var(--gv-cool-grey-500); }
+.gv-nav__menu--account a:hover, .gv-nav__menu--account button:hover { background: var(--gv-grey-100); color: var(--gv-cool-grey-700); }
+.gv-nav__menu--account a:hover svg, .gv-nav__menu--account button:hover svg,
+.gv-nav__menu--account a:hover .gv-icon, .gv-nav__menu--account button:hover .gv-icon { color: var(--gv-cool-grey-700); }
+
+/* Header right-side actions */
+.gv-header__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: 0 0 auto; }
+.gv-iconbtn {
+  position: relative;
+  display: grid; place-items: center; width: 40px; height: 40px; min-width: 40px;
+  border-radius: 50%; border: 0; background: transparent; color: var(--gv-grey-800); cursor: pointer;
+}
+.gv-iconbtn:hover { background: var(--gv-grey-100); color: var(--gv-tenant-primary); }
+.gv-iconbtn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-iconbtn .gv-icon { width: 28px; height: 28px; }    /* live header glyphs (search, bell) run ~30px — bigger than 22px */
+
+/* Logged-in actions — notification badge + account button (avatar + name + chevron).
+   Swap these into .gv-header__actions in place of the logged-out search + "Sign in"
+   CTA. Count badge on the bell uses the tenant colour; the avatar is an <img> or an
+   initials circle. The whole account control opens the user menu in the real product. */
+.gv-iconbtn__badge {
+  position: absolute; top: 2px; right: 2px; min-width: 17px; height: 16px; padding: 0 4px;
+  border-radius: 5px; background: var(--gv-red-500); color: #fff;       /* live badge is a red rounded SQUARE, not a pill */
+  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; border: 2px solid #fff;
+}
+/* Grounded fidelity (fo-account-dropdown digest, badge text "29"): the real notification
+   badge is a red rounded SQUARE with radius ~3px, regular weight 400, font-size 12px. The
+   background (red-500) and rounded-square shape were already right; only the numerics drift.
+   Append override so every consumer (header-nav + all FO pages) picks it up. */
+.gv-iconbtn__badge { border-radius: 3px; font-weight: 400; font-size: 12px; }
+.gv-account {
+  display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 4px 5px 4px 12px;
+  background: none; border: 0; border-radius: 999px; cursor: pointer; font-family: inherit;
+  font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary);
+}
+/* Grounded fidelity (fo-account-dropdown .e2e-username digest): the real signed-in
+   username is regular weight 400 at 16px, not bold. Override at the account control. */
+.gv-account { font-weight: 400; }
+.gv-account:hover { background: var(--gv-grey-100); }
+.gv-account:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-account .gv-nav__chev { width: 14px; height: 14px; color: var(--gv-grey-700); }
+/* .gv-avatar → moved to govocal-primitives.css (cross-surface atom). */
+/* Grounded (fo-account-dropdown digest, img.avatarImage = 38x38, border-radius 50%):
+   the header account avatar uses the .lg footprint. Reference it here so the account
+   control gets the 38px diameter without bumping the 32px base atom for everyone, and
+   without editing every page's markup. */
+.gv-account .gv-avatar { width: 38px; height: 38px; font-size: 15px; }
+
+/* Account control as a CSS-only dropdown: <details class="gv-nav__dd right
+   gv-account-dd"> with a <summary class="gv-account"> (avatar + name + chevron)
+   and a .gv-nav__menu (My activity / My settings / … / Sign out). */
+.gv-account__name { white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+/* Grounded: username renders at 16px / 400 (var(--gv-fs-base)), not the 14px nav scale. */
+.gv-account__name { font-size: var(--gv-fs-base); font-weight: 400; }
+.gv-account-dd > summary.gv-account { list-style: none; }
+.gv-account-dd > summary.gv-account::-webkit-details-marker { display: none; }
+.gv-account-dd[open] > summary.gv-account { background: var(--gv-grey-100); }
+.gv-account-dd[open] > summary .gv-nav__chev { transform: rotate(180deg); }
+/* Grounded fidelity (fo-account-dropdown dom: button.intercom-user-menu-button =
+   username SPAN + avatar IMG, no caret). The live user-menu toggle carries NO
+   visible chevron; the caret lives only on the separate language switcher (.gv-lang).
+   Hide it canonically so every FO consumer's account summary matches — markup may
+   still carry the .gv-nav__chev svg, this just removes it from the account control. */
+.gv-account .gv-nav__chev { display: none; }
+
+/* Language switcher — compact text button (EN ▾) opening a dropdown */
+.gv-lang {
+  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px;
+  background: none; border: 0; border-radius: var(--gv-radius); cursor: pointer; list-style: none;
+  font-family: inherit; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary);
+}
+/* Grounded fidelity: the real language toggle text renders at regular weight 400, not bold. */
+.gv-lang { font-weight: 400; }
+.gv-lang::-webkit-details-marker { display: none; }
+.gv-lang:hover { background: var(--gv-grey-100); }
+.gv-lang:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-lang .gv-nav__chev { width: 12px; height: 12px; color: var(--gv-grey-700); }
+.gv-nav__dd[open] > summary.gv-lang .gv-nav__chev { transform: rotate(180deg); }
+
+/* Signed-in / signed-out STATE SWITCH (one component, two states).
+   Set data-auth="out" | "in" on a root element (e.g. <body>); the matching
+   cluster shows, the other hides. Default (unset) shows the signed-out state. */
+.gv-header__actions .gv-auth-out, .gv-header__actions .gv-auth-in { display: inline-flex; align-items: center; gap: 6px; }
+.gv-nav-m__panel .gv-auth-out, .gv-nav-m__panel .gv-auth-in { display: contents; }   /* children flow in the drawer grid */
+[data-auth="in"]  .gv-auth-out { display: none !important; }
+[data-auth="out"] .gv-auth-in  { display: none !important; }
+
+/* Hamburger (shown on mobile) — a <details> disclosure that opens a FULL-SCREEN
+   overlay menu, matching live GoVocal mobile nav: brand logo centred at the top,
+   the toggle flips from bars to an X (top-right, in a soft circle), links centred
+   and generously spaced (no dividers), the current link in the tenant colour, and
+   a Search row at the bottom. */
+.gv-nav-m { display: none; }                    /* hidden on desktop */
+.gv-nav-m > summary {
+  list-style: none; display: grid; place-items: center;
+  width: 44px; height: 44px; border-radius: 50%; cursor: pointer; color: var(--gv-grey-800);
+  position: relative; z-index: 1001;            /* X stays above the overlay + clickable */
+}
+.gv-nav-m > summary::-webkit-details-marker { display: none; }
+.gv-nav-m > summary:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-nav-m__x { display: none; }
+.gv-nav-m[open] > summary { background: var(--gv-grey-100); }
+.gv-nav-m[open] > summary .gv-nav-m__bars { display: none; }
+.gv-nav-m[open] > summary .gv-nav-m__x { display: block; }
+.gv-nav-m__panel {
+  box-sizing: border-box;
+  position: fixed; inset: 0; z-index: 1000;
+  background: #fff; padding: 74px 24px 32px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; overflow-y: auto;
+}
+.gv-nav-m__logo { display: block; margin-bottom: 26px; }
+.gv-nav-m__logo img, .gv-nav-m__logo svg { height: 34px; width: auto; display: block; }
+.gv-nav-m__panel a, .gv-nav-m__panel summary {
+  display: block; width: 100%; max-width: 340px; text-align: center;
+  padding: 15px 8px; font-size: var(--gv-fs-l); font-weight: 500;
+  color: var(--gv-grey-800); text-decoration: none;
+}
+.gv-nav-m__panel a[aria-current="page"] { color: var(--gv-tenant-primary); font-weight: 600; }
+.gv-nav-m__panel .gv-btn { margin-top: 18px; width: 100%; max-width: 340px; }
+.gv-nav-m__search { display: inline-flex; align-items: center; justify-content: center; gap: 9px; }
+.gv-nav-m__search svg, .gv-nav-m__search .gv-icon { width: 18px; height: 18px; flex: none; }
+
+/* Header responsive switch */
+@media (max-width: 860px) {
+  .gv-nav, .gv-header__actions .gv-desktop-only { display: none; }
+  .gv-nav-m { display: block; }
+}
+
+/* Signed-in mobile header fidelity (fo-account-dropdown-m digest:
+   "EN29 unviewed notifications29 … Show mobile navigation" — the real signed-in
+   mobile header keeps language (EN), bell + badge and the avatar INLINE on the
+   right, and folds ONLY the primary nav links into the drawer; it does NOT hide
+   the account/bell/lang behind the hamburger). New opt-in variant — add
+   `.gv-mobile-inline` alongside `gv-desktop-only` on the bell / account / language
+   controls to keep them inline at mobile. Base behaviour is unchanged for anything
+   that doesn't opt in (e.g. the search button stays collapsed — no "Search" in the
+   real mobile digest). On the account control, collapse to the avatar only (the
+   38px avatar stands in for the full name+chevron control, matching the live
+   signed-in mobile header where the username label is dropped). */
+@media (max-width: 860px) {
+  .gv-header__actions .gv-desktop-only.gv-mobile-inline { display: inline-flex; }
+  /* account control collapses to the avatar puck on mobile */
+  .gv-account-dd.gv-mobile-inline > summary.gv-account { padding: 0; gap: 0; }
+  .gv-account-dd.gv-mobile-inline > summary.gv-account .gv-account__name { display: none; }
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────────
+   Source-grounded on GoVocal's real <footer id="hook-footer">: a secondary-nav row
+   of legal links (one is the Cookie-Einstellungen *button*) + the "Ermöglicht durch
+   go·vocal" powered-by attribution. No tenant logo (that lives in the header).
+   Desktop = links left / attribution right; mobile = stacked & centered. */
+/* Live footer is a thin WHITE bar (bg #fff, ~11px 28px), content spans wide. */
+.gv-footer { border-top: 1px solid var(--gv-grey-200); padding: 12px 28px; font-family: var(--gv-font-family); background: #fff; }
+.gv-footer__inner { max-width: var(--gv-page-width, 1280px); margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 28px; }
+.gv-footer__links ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; font-size: var(--gv-fs-s); }
+.gv-footer__links li { display: inline-flex; align-items: center; }
+.gv-footer__links a, .gv-footer__links button { color: var(--gv-cool-grey-600); text-decoration: none; padding: 2px 0; font: inherit; background: none; border: 0; cursor: pointer; }
+/* FO shared: real footer link line-height is 21px (1.5 × 14px) — looser vertical rhythm, matters most on the wrapping mobile link block. */
+.gv-footer__links a, .gv-footer__links button { line-height: 1.5; }
+.gv-footer__links a:hover, .gv-footer__links button:hover { color: var(--gv-tenant-primary); text-decoration: underline; }
+.gv-footer__links li:not(:first-child)::before { content: "·"; color: var(--gv-grey-500); margin: 0 14px; display: inline-block; }
+.gv-footer__powered { display: inline-flex; align-items: center; gap: 10px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); white-space: nowrap; }
+/* Optional tenant-logo slot (left of the legal links). Filled per-city by the theme
+   switcher via [data-gv-logo]; sizes whatever wordmark/svg/img it injects. */
+.gv-footer__logo { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.gv-footer__logo img, .gv-footer__logo svg { height: 28px; width: auto; display: block; }
+@media (max-width: 720px) {
+  .gv-footer__inner { flex-direction: column; justify-content: center; text-align: center; gap: 22px; }
+  .gv-footer__links ul { justify-content: center; }
+}
+/* FO shared (footer-background): the real Wien tenant footer is TRANSPARENT
+   (background-color rgba(0,0,0,0)) sitting on the page's grey #edeff0 backdrop, not a
+   painted white bar. On a white page this reads identically, but transparent is the
+   grounded treatment and lets a tinted page surface show through. The legal links keep
+   their own --gv-cool-grey-600 colour, so dropping the container fill is purely
+   treatment-level. Appended as an override so the base rule above stays intact. */
+.gv-footer { background: transparent; }
+
+/* The go·vocal "powered by" wordmark (govocal-logo.svg) — GoVocal's own brand mark,
+   shown in its muted footer grey; it does NOT re-theme per city. Rendered as a plain
+   <img> so it works when a prototype is opened directly via file:// (a CSS mask to an
+   external SVG is CORS-blocked on file://). Aspect ratio ~2.985:1. */
+.gv-powered-logo { display: inline-block; height: 26px; width: auto; flex: 0 0 auto; }
+
+/* ── Project card + rail ─────────────────────────────────────────────────────
+   IMPORTANT: the card is an <article>, NOT an <a>. The title link is stretched to
+   make the whole card clickable (::after overlay); any secondary CTA sits above it
+   with position:relative + z-index. This avoids invalid nested anchors. */
+.gv-rail {
+  display: flex; gap: 22px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  padding: 4px 24px 20px; margin: 0 -24px;
+  /* snap must respect the 24px bleed padding, else it auto-scrolls the gutter away
+     on load and the first card rests flush to the rail edge (left of the title). */
+  scroll-snap-type: x proximity; scroll-padding-inline: 24px; scrollbar-width: thin;
+}
+/* Soft white degradation so cards fade out instead of cutting cold (live Wien/
+   Raleigh carousels). The fade is SCROLL-AWARE (govocal-rail.js toggles the
+   classes): at rest only the right end fades, so the first card sits flush with
+   the section title; a left fade appears once you scroll, and the right fade
+   drops at the end. Page bg is white, so the mask reads as a fade. */
+.gv-rail.rail--fade-left.rail--fade-right {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+}
+.gv-rail.rail--fade-right:not(.rail--fade-left) {
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+}
+.gv-rail.rail--fade-left:not(.rail--fade-right) {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 100%);
+}
+.gv-rail::-webkit-scrollbar { height: 8px; }
+.gv-rail::-webkit-scrollbar-thumb { background: var(--gv-grey-300); border-radius: 999px; }
+.gv-rail > * { scroll-snap-align: start; }
+
+.gv-pcard { position: relative; flex: 0 0 250px; display: flex; flex-direction: column; min-width: 0; }
+.gv-pcard__thumb {
+  width: 100%; aspect-ratio: 16 / 10; border-radius: var(--gv-radius); overflow: hidden;
+  background: var(--gv-grey-200); display: grid; place-items: center; text-align: center;
+  color: #fff; font-weight: 800; line-height: 1.15;
+}
+.gv-pcard__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-pcard__title { font-size: var(--gv-fs-base); font-weight: 700; line-height: 1.3; color: var(--gv-text-heading); margin: 12px 0 8px; }
+.gv-pcard__title a { color: inherit; text-decoration: none; }
+.gv-pcard__title a:hover { color: var(--gv-tenant-primary); }
+.gv-pcard__title a::after { content: ""; position: absolute; inset: 0; }      /* stretched link → whole card clickable */
+.gv-pcard__title a:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-pcard__desc { font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-grey-800); margin: 0; }
+/* meta row: icon + label. Variant colours via modifier. */
+.gv-pcard__meta { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-s); color: var(--gv-text-body); }  /* live "2 weeks left" time-remaining probes to rgba(0,0,0,0.87) — the FO body-text colour (near-identical to #333) */
+.gv-pcard__meta svg { flex: 0 0 auto; }
+.gv-pcard__meta.time svg, .gv-pcard__meta.people svg { color: var(--gv-tenant-primary); }
+.gv-pcard__meta.done { color: var(--gv-success); }
+.gv-pcard__meta + .gv-pcard__desc, .gv-pcard__meta + .gv-pcard__cta { margin-top: 8px; }
+/* secondary CTA must sit ABOVE the stretched title link to stay clickable */
+/* Unboxed rail-card CTA — real (r7-wien-home p.sc-ktEKTO "Umfrage ausfüllen") is a
+   MUTED affordance: cool-grey-600, 16px/400, no underline (the whole card is the click
+   target) — NOT a brand-primary bold link. */
+.gv-pcard__cta { position: relative; z-index: 1; align-self: flex-start; margin-top: 8px;
+  font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); text-decoration: none; }
+.gv-pcard__cta:hover { text-decoration: underline; }
+/* card width variants */
+.gv-pcard.wide { flex-basis: 360px; }
+.gv-pcard.wide .gv-pcard__thumb { aspect-ratio: 16 / 9; }
+.gv-pcard.square { flex-basis: 210px; }
+.gv-pcard.square .gv-pcard__thumb { aspect-ratio: 1 / 1; }
+
+/* FO shared (type-scale): the live card 14px text (meta/time/people, CTA and the
+   small/medium/large body block) measures line-height 19.999px — leading ~1.43, not
+   the inherited `normal`. Pin the card's 14px secondary text to that measured 20px
+   so the vertical rhythm matches across every consumer. Appended as an override so
+   the base .gv-pcard__meta / .gv-pcard__cta rules above stay intact. (.gv-pcard__desc
+   keeps its own grounded 1.5 leading — see the live card-description measure above.) */
+.gv-pcard__meta, .gv-pcard__cta { line-height: 20px; }
+/* The boxed/standalone card title is a heading (live h3 18px/700, lh 23.4px = 1.3);
+   keep its measured 1.3 leading explicit so it reconciles with the 1.43 body text
+   rather than resolving to the browser default. */
+.gv-pcard__title { line-height: 1.3; }
+
+/* ── Hero / page banner ──────────────────────────────────────────────────────
+   Full-bleed banner. Set --gv-hero-image to a url() for a photo; a tenant-tinted
+   placeholder shows otherwise. Overlay uses tenant-primary so it re-themes. */
+.gv-hero {
+  /* Live anatomy (uxusertesting.govocal.com div.sc-MIkZJ.diuxHP, 1440×200 strip):
+     the white H1 sits LEFT-aligned in the upper-left of the band and the white CTA
+     is a separate bottom-right pill (.gv-hero__cta) — NOT a centered hero column.
+     Inner anchors top-left within the shell gutter; CTA is absolutely placed. */
+  position: relative; display: grid; align-content: start; justify-items: start; text-align: left;
+  min-height: 200px; color: #fff; overflow: hidden;
+  background-image: var(--gv-hero-image, linear-gradient(120deg, #6f4a34, #b07a4f 55%, #7a5238));
+  background-size: cover; background-position: center;
+}
+.gv-hero::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--gv-tenant-primary); opacity: 0.62; mix-blend-mode: multiply;
+}
+.gv-hero__inner { position: relative; z-index: 1; padding: 40px 24px; max-width: 720px;
+  width: 100%; box-sizing: border-box; margin: 0 auto;  /* center the content column on the shell gutter, but text within it stays left-aligned (see .gv-hero text-align:left) */ }
+/* Live homepage banner H1 (uxusertesting.govocal.com) computes to 25px/700/32.5px. */
+.gv-hero__title { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; margin: 0 0 10px; }
+/* Live banner subtitle (mitgestalten.wien.gv.at / community.govocal.com h2) = 18px/400/23.4px. */
+.gv-hero__lead { font-size: var(--gv-fs-l); font-weight: 400; line-height: 1.3; margin: 0 0 22px; opacity: 0.97; }
+.gv-hero__credit { position: absolute; left: 24px; bottom: 10px; z-index: 1; font-size: 11px; opacity: 0.85; }
+/* .gv-avatars (hero stack) → moved to govocal-primitives.css (cross-surface atom). */
+@media (max-width: 600px) { .gv-hero { min-height: 180px; } .gv-hero__inner { padding: 32px 20px; } }
+
+/* ── Signed-out full-width banner (.gv-hero.signed-out) ───────────────────────
+   The big home-page banner a VISITOR sees before signing in — a structural pattern
+   shared across tenants. Source-grounded on St Louis (stlouis.govocal.com →
+   .e2e-signed-out-header / #hook-header-content / .e2e-signed-out-header-subtitle /
+   .e2e-full-width-layout-header-image-overlay):
+   - banner is a fixed 450px-tall full-bleed strip; fallback canvas #EDEFF0 (--gv-bo-canvas)
+     shows when no --gv-hero-image is set (matches the live fallback bg).
+   - a full-bleed photo (--gv-hero-image) + an absolute tenant-primary overlay @ .6 opacity
+     (the live overlay is rgb(3,61,139)=St-Louis-blue @ .6 — i.e. tenant-primary, which the
+     base .gv-hero::before already paints, so it re-themes for free).
+   - content column #hook-header-content: max-width 1012, padding 50px 30px.
+   - H1 white 30px/700, subtitle (.gv-hero__lead) white 18px/400, an avatar cluster
+     (.gv-avatars + count) then a single .gv-btn.primary-inverse CTA.
+   .centered = the St-Louis/CPH/Lux centered layout (title·subtitle·avatars·CTA centered);
+   without it the band keeps the default upper-left .gv-hero alignment. */
+.gv-hero.signed-out { min-height: 450px; background-color: var(--gv-bo-canvas); align-content: center; }
+.gv-hero.signed-out .gv-hero__inner { max-width: 1012px; padding: 50px 30px; }
+.gv-hero.signed-out .gv-hero__title { font-size: var(--gv-fs-xxxl); margin: 0 0 8px; }
+.gv-hero.signed-out .gv-hero__lead  { margin: 0 0 18px; }
+.gv-hero.signed-out.centered { justify-items: center; text-align: center; }
+.gv-hero.signed-out.centered .gv-hero__inner { display: grid; justify-items: center; }
+.gv-hero.signed-out .gv-hero__actions { margin-top: 6px; }
+@media (max-width: 600px) {
+  .gv-hero.signed-out { min-height: 360px; }
+  .gv-hero.signed-out .gv-hero__inner { padding: 36px 22px; }
+  .gv-hero.signed-out .gv-hero__title { font-size: var(--gv-fs-xxl); }
+}
+
+/* ── Homepage-banner LAYOUT variants (.gv-hero.layout-*) ──────────────────────
+   The admin "Homepage banner" widget (Pages & menu → Homepage builder) offers three
+   layouts (live testids: full-width-banner-layout / two-row-layout / fixed-ratio-layout),
+   each rendered for a signed-out OR signed-in visitor. The base full-width layout is
+   .gv-hero.signed-out (image full-bleed @ 450px, tenant overlay, content overlaid).
+   These add the other two; all three share the same content column (title · subtitle ·
+   avatars · CTA), so the page just swaps the layout class + the signed-in/out content.
+   An optional .gv-hero__media child carries the <img> for the two-row layout (where the
+   image is its OWN row, not a backdrop). */
+.gv-hero__media { display: none; }
+
+/* two_row_layout — the banner image is a full-width row on TOP (no overlay), with
+   the content in a WHITE row beneath it: a tenant-primary title, a secondary-grey
+   subtitle, the avatar cluster, then a FILLED .gv-btn.primary CTA (the on-image
+   inverse CTA flips to a filled primary on the white band). Needs the .gv-hero__media
+   child. Source: live homepage builder "Two rows" layout. */
+.gv-hero.layout-tworow { display: block; min-height: 0; background-image: none; overflow: visible; color: var(--gv-text-primary); }
+.gv-hero.layout-tworow::before { display: none; }
+.gv-hero.layout-tworow .gv-hero__media { display: block; }
+.gv-hero.layout-tworow .gv-hero__media img { display: block; width: 100%; height: 300px; object-fit: cover; }
+.gv-hero.layout-tworow .gv-hero__inner { background: var(--gv-white); max-width: none; margin: 0; padding: 36px 30px; }
+.gv-hero.layout-tworow.centered .gv-hero__inner { display: grid; justify-items: center; text-align: center; }
+.gv-hero.layout-tworow .gv-hero__title { color: var(--gv-tenant-primary); }
+.gv-hero.layout-tworow .gv-hero__lead { color: var(--gv-text-secondary); opacity: 1; }
+.gv-hero.layout-tworow .gv-hero__actions .gv-btn { background: var(--gv-tenant-primary); color: #fff; }
+@media (max-width: 600px) { .gv-hero.layout-tworow .gv-hero__media img { height: 190px; } }
+
+/* fixed_ratio_layout — the image shown as a shorter fixed-ratio full-bleed strip
+   (a wide band rather than the tall 450px full-width crop), content + overlay
+   overlaid + centered like the full-width banner. */
+.gv-hero.layout-fixed { min-height: 0; aspect-ratio: 24 / 5; }
+@media (max-width: 600px) { .gv-hero.layout-fixed { aspect-ratio: 3 / 2; } }
+
+/* ── Section heading + content rhythm for composed pages ─────────────────────── */
+.gv-section { padding: 38px 0 4px; }
+.gv-section__head { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px; }
+.gv-section__body { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px; }
+
+/* ── Phase timeline (components/phase-timeline/) ──────────────────────────────
+   GoVocal's project phase navigation: a connected row of arrow/chevron "ribbon"
+   segments (interlocking, pointing right) with the phase number inside and the
+   label below. ONLY the current phase is filled green (with a • dot). A 3-button
+   nav (Previous · Current · Next) sits top-right. The content panel leads with a
+   big green numbered circle + green phase name + date. role=tablist on the stepper,
+   role=tab per phase, role=tabpanel on the content. */
+.gv-phases__bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.gv-phases__bar h2 { margin: 0; font-size: var(--gv-fs-xxl); font-weight: 700; }
+.gv-phases__nav { margin-left: auto; display: inline-flex; gap: 6px; }
+.gv-pnav { width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
+  background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); color: var(--gv-grey-700); }
+.gv-pnav svg, .gv-pnav .gv-icon { width: 16px; height: 16px; }
+.gv-pnav:hover { background: var(--gv-grey-100); }
+.gv-pnav:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-pnav[disabled] { color: var(--gv-grey-500); cursor: not-allowed; }
+.gv-pnav .gv-dotmark { width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
+/* The phase ribbon stays on ONE line and shrinks its wedges to fit the container —
+   it never wraps to multiple rows (flex-wrap:nowrap + min-width:0 so segments shrink
+   instead of overflowing/wrapping). Works in any width — desktop, BO canvas, or a
+   narrow mobile/phone preview. */
+.gv-stepper { display: flex; flex-wrap: nowrap; gap: 2px; padding-bottom: 4px; }
+.gv-phase { flex: 1 1 0; min-width: 0; background: none; border: 0; padding: 0; cursor: pointer;
+  font-family: inherit; display: flex; flex-direction: column; align-items: stretch; }
+/* Measured live (fo-project-ideation): segments are 23px tall, grey-track #D4D9DD,
+   current phase green-600 #096F03; the FINAL segment ends FLAT (rounded right), not
+   in a point. */
+.gv-pstep { position: relative; height: 23px; display: flex; align-items: center; justify-content: center;
+  background: var(--gv-bo-step); color: var(--gv-cool-grey-700); font-weight: 500; font-size: var(--gv-fs-s); line-height: 1;
+  /* shallower 11px chevron notch — the live Wien timeline point is gentler (less
+     steep) than a deep 15px arrow. */
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%, 11px 50%); }
+.gv-phase:first-child .gv-pstep { clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%); border-radius: 3px 0 0 3px; }
+/* last segment: notch on the left to interlock, but a FLAT (rounded) right end. */
+.gv-phase:last-child .gv-pstep { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 11px 50%); border-radius: 0 3px 3px 0; }
+.gv-phase.current .gv-pstep { background: var(--gv-green-600); color: #fff; }
+/* the FO project-page ribbon segments read a touch shorter than the standalone
+   component and carry a clear dark-grey top edge (clipped to the chevron shape) —
+   the "dark grey border on top" + "slightly smaller modules" seen on the real timeline */
+.gv-methodband .gv-pstep { box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.22); }  /* height stays the live 23px (.gv-pstep base) */
+.gv-pstep__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
+.gv-phase__label { padding: 9px 6px 0; text-align: center; font-size: var(--gv-fs-s); line-height: 1.3; color: var(--gv-text-primary); }
+.gv-phase.current .gv-phase__label { color: var(--gv-green-600); font-weight: 600; }
+.gv-phase:hover .gv-pstep { filter: brightness(0.97); }
+.gv-phase:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
+/* the phase you're VIEWING (if it isn't the current one) fills blue-slate.
+   FO shared (selected-slate-color fidelity): live selected segment sampled
+   srgb(89,107,122) #596B7A — aliased via --gv-phase-selected-fill; the old
+   --gv-cool-grey-700 #43515D read too dark/grey vs ground truth. */
+.gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-phase-selected-fill); color: #fff; }
+.gv-phase[aria-selected="true"]:not(.current) .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
+/* FO shared (current-phase-fill fidelity): the live wietsedemo/perspectives-entry
+   CURRENT segment is NOT a solid dark-green ribbon with white text. Sampled live
+   (fo-perspectives-entry, current phase 4 = /tmp/p4.png): light-mint fill
+   srgb(202,224,205) #CAE0CD with a DARK-GREEN number + DARK-GREEN dot (green-600,
+   not white), plus the same thin dark top edge the .gv-methodband segments carry.
+   Override the base solid-green rule (427) here so this is the FO default for every
+   consumer; the dot stays currentColor so it inherits the dark-green text. The
+   .gv-phase.current .gv-phase__label rule (434) already pins green-600 — matches. */
+.gv-phase.current .gv-pstep {
+  background: var(--gv-green-mint); color: var(--gv-green-600);
+  box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.22);
+}
+/* solid-green CURRENT as an opt-in variant (e.g. if a Wien-style tenant still wants
+   the old dark ribbon) — does NOT change the default above. */
+.gv-phase.current.solid .gv-pstep { background: var(--gv-green-600); color: #fff; box-shadow: none; }
+.gv-phase.current.solid .gv-phase__label { color: var(--gv-green-600); }
+/* FO shared (stepper-responsive): on the live wietsedemo mobile (390px) the whole
+   phase ribbon fits the viewport with NO horizontal scroll — segments collapse to
+   number-only chips and the per-segment text label is hidden (only the number
+   remains). Our default keeps .gv-phase min-width 92px + .gv-stepper overflow-x auto,
+   so on a phone only ~4 segments fit and the rest scroll off. Drop the min-width,
+   stop the horizontal scroll, and hide the label below the mobile breakpoint so all
+   phases sit inside the viewport as compact number chips (matches /tmp/m-timeline).
+   Appended as an override — the base .gv-stepper / .gv-phase / .gv-phase__label rules
+   above stay intact for desktop. */
+@media (max-width: 640px) {
+  .gv-stepper { overflow-x: visible; }
+  .gv-phase { min-width: 0; }
+  .gv-phase__label { display: none; }
+}
+/* FO shared (phase-state-model): decouple the CURRENT phase from the SELECTED/VIEWING
+   phase — on the live wietsedemo timeline these are two orthogonal states, NOT one
+   conflated green segment. Three-way treatment: other = grey track; current = mint
+   fill + dark-green number + dot (ALWAYS, even when not being viewed); viewing/selected
+   = dark-slate fill as an INDEPENDENT overlay that wins when its phase is being viewed.
+   The base rule at line 438 gated slate behind :not(.current), which made mint win over
+   a current+selected phase and tied "selected" to "current". Drop that coupling: let the
+   [aria-selected] slate overlay apply regardless of .current, so a current phase you are
+   ALSO viewing renders slate, while a current phase you are NOT viewing stays mint+dot.
+   Appended as an override — the base .gv-phase.current (448) and the :not(.current) slate
+   rule (438) stay intact; this is just the higher-specificity orthogonal overlay. */
+.gv-phase[aria-selected="true"].current .gv-pstep {
+  background: var(--gv-phase-selected-fill); color: #fff; box-shadow: none;
+}
+.gv-phase[aria-selected="true"].current .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
+/* content panel: big green numbered circle + green name + date */
+.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 30px 30px 35px; margin-top: 22px; }
+.gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
+/* Measured live (fo-project-ideation): the phase number sits in a 39px green-500
+   circle (16px/400 white), and the phase name is 21px/700 green-500 — not larger. */
+.gv-phasepanel__num { width: 39px; height: 39px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: var(--gv-green-500); color: #fff; font-size: var(--gv-fs-base); font-weight: 400; }
+.gv-phasepanel__name { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-green-500); line-height: 1.3; }
+.gv-phasepanel__date { margin: 4px 0 0; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
+/* the phase description sits inside the panel card, under the head — part of the
+   component (the real phase card always carries a few lines of phase description). */
+.gv-phasepanel__desc { margin: 14px 0 0; font-size: var(--gv-fs-base); line-height: 1.65;
+  color: var(--gv-text-primary); max-width: var(--gv-text-width); }
+.gv-phasepanel__desc p { margin: 0 0 12px; }
+.gv-phasepanel__desc p:last-child { margin-bottom: 0; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   HOMEPAGE WIDGETS — the modern GoVocal landing-page anatomy
+   Source-grounded on the live signed-in homepage (uxusertesting.govocal.com,
+   City of Raleigh): a full-width banner with an overlaid CTA, a "currently
+   working on" SPOTLIGHT, a tabbed + filterable project GRID of boxed cards
+   (project + folder), an events widget, a proposals CTA band, and a rich-text
+   block. Measured live: card = 1px var(--gv-grey-300) + var(--gv-radius) +
+   var(--gv-shadow) (probe matched the token exactly), 26px grid gap; card CTA =
+   .gv-btn.primary-outlined; tab/progress/filter all themeable via --gv-tenant-*.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Banner overlay CTA ────────────────────────────────────────────────────
+   A white pill the staff can pin onto the hero pointing at one project. Sits on
+   top of .gv-hero (which is position:relative); collapses inline on mobile. */
+.gv-hero__cta {
+  position: absolute; right: 24px; bottom: 24px; z-index: 2;
+  display: inline-flex; align-items: center; gap: 10px;
+  max-width: min(360px, 64%); padding: 13px 22px;       /* live content-builder banner button = 13px 22px */
+  background: #fff; color: var(--gv-tenant-text); border-radius: var(--gv-radius);
+  font-size: var(--gv-fs-base); font-weight: 500; line-height: 1.3; text-align: left; text-decoration: none;
+  box-shadow: var(--gv-shadow-hover-lg);
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out;
+}
+.gv-hero__cta:hover { transform: translateY(-2px); box-shadow: var(--gv-shadow-hover-sm); }
+.gv-hero__cta:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.gv-hero__cta .gv-icon, .gv-hero__cta svg { width: 18px; height: 18px; flex: none; color: var(--gv-tenant-primary); }
+@media (max-width: 640px) { .gv-hero__cta { position: static; max-width: none; margin: 16px auto 0; } }
+
+/* ── Spotlight: the "currently working on" featured project ─────────────────
+   Sits on the plain page background (live .e2e-spotlight-widget bg = transparent —
+   NOT a tinted band), two columns (copy + media). 56px 0 block padding, content
+   column 1200px. The 'Currently working on' line is the section <h2> (25px/700,
+   normal-case); the project name sits below it. Collapses to one column ≤820px. */
+.gv-spotlight { background: #fff; }
+.gv-spotlight__inner {
+  max-width: calc(var(--gv-shell-w, 1150px) - 48px); margin: 0 auto; padding: 56px 0;  /* keep the live 56px 0 padding (gutter on the shell); cap to the section CONTENT width (shell − 2×24px) so the flush content lines up with every other module */
+  display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
+}
+/* Spotlight anatomy: the single project TITLE (h2 — the one heading size) + a lead
+   description. No standalone "Currently working on" kicker — the real homepage frames
+   the row with a full heading "{City} is currently working on" instead, not a bare eyebrow. */
+.gv-spotlight__title { margin: 0 0 14px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }  /* the project name = the spotlight's single title */
+.gv-spotlight__lead { margin: 0 0 24px; font-size: var(--gv-fs-m); line-height: 1.55; color: var(--gv-grey-800); }
+.gv-spotlight__actions { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.gv-spotlight__media { aspect-ratio: 16 / 10; border-radius: var(--gv-radius); overflow: hidden;
+  background: var(--gv-grey-200); display: grid; place-items: center; color: #fff; font-weight: 800; text-align: center; }
+.gv-spotlight__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-spotlight__media--placeholder { background: var(--gv-grey-200); }
+/* Spotlight "campaign chip" — a themed chat-bubble title tile over the media
+   (theme-aware: re-skins per city via --gv-tenant-primary). */
+.gv-spotlight__chip { display: inline-block; padding: 18px 22px; border-radius: 16px 16px 16px 2px;
+  background: var(--gv-tenant-primary); color: #fff; font-size: 22px; font-weight: 800; line-height: 1.1; }
+@media (max-width: 820px) {
+  /* live mobile (390px) .e2e-spotlight-widget = padding 24px 20px 56px (asym: 24 top / 56 bottom / 20 sides) */
+  .gv-spotlight__inner { grid-template-columns: 1fr; gap: 26px; padding: 24px 20px 56px; }
+  .gv-spotlight__media { order: -1; aspect-ratio: 16 / 9; }
+}
+
+/* .gv-bubbles (avatar stack + count) → moved to govocal-primitives.css (cross-surface atom). */
+
+/* ── Post / contribution count ("142 Beiträge" · "1,204 votes") ───────────────
+   The count meta GoVocal shows on a live project card: just the bold number + a
+   label, in cool-grey secondary text — NO leading status dot (verified against the
+   Wien / Falkirk / default homepage cards, which render an avatar pile + plain
+   "N participants/contributions"). Use .closed for the muted finished state. */
+.gv-poststat { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-m);
+  line-height: 1.4; color: var(--gv-text-secondary); }
+.gv-poststat b { color: var(--gv-grey-800); font-weight: 700; }
+/* Finished-project counts: cool-grey-600 (#596B7A, 5.51:1 on white) — source-derived and
+   AA-compliant. (Was --gv-grey-500 #BDBDBD, the "disabled" token = 1.87:1, failed AA.) */
+.gv-poststat.closed, .gv-poststat.closed b { color: var(--gv-cool-grey-600); }
+
+/* .gv-progress (time-remaining bar) → moved to govocal-primitives.css (cross-surface atom). */
+
+/* ── Projects toolbar: status tabs + filter selectors ──────────────────────
+   Tabs left (Published/Archived/All) with a tenant-primary underline on the
+   selected one; filter selectors right ("Filter by" + Tag/Area pills). */
+.gv-ptoolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 24px;
+  flex-wrap: wrap; border-bottom: 1px solid var(--gv-grey-300); margin-bottom: 28px; }
+.gv-tabs { display: flex; gap: 2px; }
+/* Live status tabs = 18px/400; unselected cool-grey, selected coloured + underline. */
+.gv-tab { display: inline-flex; align-items: center; gap: 6px; padding: 12px 14px; margin-bottom: -1px;
+  background: none; border: 0; border-bottom: 3px solid transparent; cursor: pointer;
+  font-family: inherit; font-size: var(--gv-fs-l); font-weight: 400; color: var(--gv-text-secondary); }
+.gv-tab .ct { color: var(--gv-text-secondary); }
+.gv-tab:hover { color: var(--gv-tenant-primary); }
+.gv-tab[aria-selected="true"] { color: var(--gv-tenant-primary); font-weight: 600; border-bottom-color: var(--gv-tenant-primary); }
+.gv-tab[aria-selected="true"] .ct { color: var(--gv-tenant-primary); }
+.gv-tab:focus-visible { outline: var(--gv-focus-outline); outline-offset: -2px; border-radius: var(--gv-radius); }
+.gv-filterbar { display: flex; align-items: center; gap: 10px; padding-bottom: 9px; }
+.gv-filterbar__label { font-size: var(--gv-fs-base); color: var(--gv-text-secondary); }
+/* Live filter selectors are borderless grey text triggers ("Tag ▾"), not pills. */
+.gv-filter-btn { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px;
+  background: none; border: 0; border-radius: var(--gv-radius); cursor: pointer;
+  font-family: inherit; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); }
+.gv-filter-btn:hover { color: var(--gv-text-primary); }
+.gv-filter-btn.is-open { color: var(--gv-tenant-primary); }
+.gv-filter-btn svg, .gv-filter-btn .gv-icon { width: 14px; height: 14px; color: inherit; transition: transform 120ms ease-out; }
+.gv-filter-btn.is-open svg { transform: rotate(180deg); }
+.gv-filter-btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+@media (max-width: 620px) { .gv-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; } }
+
+/* ── Project / folder GRID of boxed cards ──────────────────────────────────
+   The homepage "All projects" widget: a 3-col grid of boxed cards. Span helpers
+   place the occasional wide/featured card. Cards stretch to equal row height. */
+.gv-pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: stretch; }
+.gv-pgrid > .span-2 { grid-column: span 2; }
+.gv-pgrid > .span-3 { grid-column: 1 / -1; }
+@media (max-width: 980px) { .gv-pgrid { grid-template-columns: repeat(2, 1fr); } .gv-pgrid > .span-3 { grid-column: 1 / -1; } .gv-pgrid > .span-2 { grid-column: 1 / -1; } }
+@media (max-width: 640px) { .gv-pgrid { grid-template-columns: 1fr; } .gv-pgrid > .span-2, .gv-pgrid > .span-3 { grid-column: 1 / -1; } }
+/* Featured project list — the live homepage rhythm: 1 big card, then a row of 2,
+   then rows of 3. A 6-track grid: big = full, .span-half = 1/2, default = 1/3. */
+.gv-pgrid.gv-pgrid--feat { grid-template-columns: repeat(6, 1fr); }
+.gv-pgrid--feat > .gv-pcard { grid-column: span 2; }
+.gv-pgrid--feat > .span-half { grid-column: span 3; }
+.gv-pgrid--feat > .span-3 { grid-column: 1 / -1; }
+@media (max-width: 980px) {
+  .gv-pgrid.gv-pgrid--feat { grid-template-columns: repeat(2, 1fr); }
+  .gv-pgrid--feat > .gv-pcard { grid-column: span 1; }
+  .gv-pgrid--feat > .span-half, .gv-pgrid--feat > .span-3 { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .gv-pgrid.gv-pgrid--feat { grid-template-columns: 1fr; }
+  .gv-pgrid--feat > .gv-pcard, .gv-pgrid--feat > .span-half, .gv-pgrid--feat > .span-3 { grid-column: 1 / -1; }
+}
+
+/* Boxed card = the rail .gv-pcard wrapped in a bordered, elevated box with a
+   padded body. Thumb runs flush to the card edges; content sits in __body. */
+.gv-pcard.boxed { flex: initial; background: #fff; border: 1px solid var(--gv-grey-300);
+  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); overflow: hidden;
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out; }
+.gv-pcard.boxed:hover { box-shadow: var(--gv-shadow-hover-lg); transform: translateY(-3px); }
+.gv-pcard.boxed .gv-pcard__thumb { border-radius: 0; aspect-ratio: 16 / 9; }
+/* Real image-less project placeholder: white institution glyph on light grey
+   (source-grounded on the live .e2e-project-card placeholder, uxusertesting). */
+.gv-pcard.boxed .gv-pcard__thumb.icon { background: var(--gv-grey-300); color: #fff; }
+.gv-pcard.boxed .gv-pcard__thumb.icon svg, .gv-pcard.boxed .gv-pcard__thumb.icon .gv-icon { width: 56px; height: 56px; }
+
+/* ── Thumbnail image placeholders ─────────────────────────────────────────────
+   Photo stand-ins so reference/demo pages stay PURE ASSEMBLY (no inline gradient
+   or hex). `--placeholder` mirrors the product's real image-less card (the live
+   skeleton fill #EDEFF0 = --gv-background); the tinted set reads like uploaded
+   project photography — content, not chrome, so deliberately fixed (not themed).
+   `gv-thumb-cap` sizes a campaign title set inside a tile (the thumb base already
+   centres + sets white/800-weight). */
+.gv-pcard__thumb--placeholder { background: var(--gv-background); }
+.gv-pcard__thumb--forest { background: linear-gradient(135deg, #2f6f4f, #7fb08a); }
+.gv-pcard__thumb--ocean  { background: linear-gradient(135deg, #33567e, #7c96b8); }
+.gv-pcard__thumb--clay   { background: linear-gradient(135deg, #b7423a, #d98a5a); }
+.gv-pcard__thumb--sage   { background: linear-gradient(135deg, #9fb0a3, #cdd6cd); }
+.gv-pcard__thumb--civic  { background: linear-gradient(135deg, #2b5cab, #f2c200); }
+.gv-pcard__thumb--coral  { background: #f4736f; }
+.gv-pcard__thumb--sand   { background: #f3e2a6; color: #7a5e12; }
+.gv-thumb-cap { font-size: 22px; line-height: 1.1; padding: 0 16px; }
+.gv-thumb-cap--lg { font-size: 26px; }
+.gv-thumb-cap--sm { font-size: 20px; }
+.gv-thumb-cap--xs { font-size: 18px; padding: 14px; }
+
+/* Circular campaign emblem dropped inside a folder/card thumb (decorative). */
+.gv-pcard__badge { width: 150px; height: 150px; border-radius: 50%;
+  border: 6px solid rgba(255,255,255,0.85); display: grid; place-items: center;
+  text-align: center; line-height: 1.12; color: #1a1a1a; }
+.gv-pcard__badge b { font-size: 19px; display: block; }
+.gv-pcard__badge .pre { font-style: italic; font-weight: 500; font-size: 12px; color: #2c2724; }
+.gv-pcard__badge .accent { color: #d83a36; }
+
+.gv-pcard__body { display: flex; flex-direction: column; flex: 1 1 auto; padding: 18px 22px 22px; }
+.gv-pcard.boxed .gv-pcard__title { margin: 0 0 8px; font-size: var(--gv-fs-xl); }  /* live card title = 21px/700 */
+.gv-pcard.boxed .gv-pcard__desc { color: var(--gv-text-secondary); }              /* live card desc = cool-grey #596B7A */
+/* SHARED FIX card-text-scale: the live .e2e-project-card sets its card text to
+   14px and lets meta/CTA/body inherit it — our boxed card otherwise inherits the
+   FO 16px base. Pin the boxed card's container scale to --gv-fs-s (14px) so the
+   card runs at the real product's denser scale. Title stays larger via the
+   explicit --gv-fs-xl override above; the rail (non-boxed) variant is untouched. */
+.gv-pcard.boxed { font-size: var(--gv-fs-s); }
+.gv-pcard__spacer { flex: 1 1 auto; min-height: 8px; }
+.gv-pcard__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+/* the boxed-card CTA is a real outline button; keep it above the stretched link.
+   Geometry source-grounded on the live .e2e-project-card-cta (14px / 8px 14px). */
+.gv-pcard.boxed .gv-btn { position: relative; z-index: 1; font-size: var(--gv-fs-s); padding: 8px 14px; line-height: 20px; }
+/* progress block inside a boxed card */
+.gv-pcard__progress { margin: 12px 0 0; }
+.gv-pcard__progress .gv-pcard__meta { margin-bottom: 8px; }
+
+/* ── Boxed-card top meta-row ──────────────────────────────────────────────────
+   Live Raleigh project cards lead with a white header strip: progress/time (or a
+   status/format icon) on the LEFT, the CTA button (or an icon) pinned top-RIGHT,
+   a hair divider beneath. Participant avatars then sit in the card foot at the
+   bottom. Vertical cards put __top above the thumb; the wide card nests it at the
+   top of the body and full-bleeds the divider to the content edges. */
+.gv-pcard.boxed .gv-pcard__top { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--gv-divider); min-height: 58px; background: #fff; }
+.gv-pcard__topprog { display: flex; flex-direction: column; gap: 7px; flex: 1 1 auto; min-width: 0; }
+.gv-pcard__topprog .gv-pcard__meta { margin: 0; }
+.gv-pcard__top .gv-btn { flex: 0 0 auto; margin-left: auto; }
+.gv-pcard__top .gv-status-label { margin: 0; }
+/* Folder glyph (top-right folder badge on a project-folder card) — the live folder
+   identity colour is the SYSTEM folder green (--gv-folder-count #358545, common across
+   tenants), NOT a per-tenant primary/secondary. Matches the canonical .gv-pcard__count. */
+.gv-pcard__topicon { margin-left: auto; color: var(--gv-folder-count); display: inline-flex; flex: 0 0 auto; }
+.gv-pcard__topicon svg, .gv-pcard__topicon .gv-icon { width: 22px; height: 22px; }
+.gv-pcard.boxed.horizontal .gv-pcard__top { margin: -32px -36px 22px; padding: 16px 36px; }
+.gv-pcard.boxed.horizontal .gv-pcard__body { justify-content: flex-start; }
+
+/* Full-width horizontal feature card (image left, copy right) */
+.gv-pcard.boxed.horizontal { flex-direction: row; }
+.gv-pcard.boxed.horizontal .gv-pcard__thumb { flex: 0 0 46%; aspect-ratio: auto; min-height: 300px; }
+.gv-pcard.boxed.horizontal .gv-pcard__body { justify-content: center; padding: 32px 36px; }
+.gv-pcard.boxed.horizontal .gv-pcard__title { font-size: var(--gv-fs-xl); }
+/* Featured "main" card — bigger and copy-led (live homepage featured card): a tall
+   image on the RIGHT (body comes first in source), a large title, a solid CTA and
+   the participant row on the LEFT. One-off literals: this card is intentionally
+   larger than the regular grid cards. */
+.gv-pcard.boxed.horizontal.feature { flex-direction: row-reverse; }   /* image LEFT, copy RIGHT */
+.gv-pcard.boxed.horizontal.feature .gv-pcard__thumb { flex: 0 0 50%; min-height: 430px; }
+.gv-pcard.boxed.horizontal.feature .gv-pcard__body { padding: 40px 46px; gap: 0; }
+.gv-pcard.boxed.horizontal.feature .gv-pcard__title { font-size: 28px; line-height: 1.18; margin: 0 0 14px; }
+.gv-pcard.boxed.horizontal.feature .gv-pcard__desc { font-size: var(--gv-fs-l); margin: 0 0 22px; }
+@media (max-width: 640px) {
+  .gv-pcard.boxed.horizontal { flex-direction: column; }
+  .gv-pcard.boxed.horizontal .gv-pcard__thumb { flex: none; min-height: 0; aspect-ratio: 16 / 9; }
+  .gv-pcard.boxed.horizontal .gv-pcard__body { padding: 18px 22px 22px; }
+  .gv-pcard.boxed.horizontal.feature { flex-direction: column-reverse; }   /* image on top */
+  .gv-pcard.boxed.horizontal.feature .gv-pcard__thumb { min-height: 0; }
+  .gv-pcard.boxed.horizontal.feature .gv-pcard__body { padding: 22px 22px 24px; }
+}
+
+/* ── Folder card ──────────────────────────────────────────────────────────────
+   Re-grounded on the live St Louis folder card (.e2e-folder-card,
+   stlouis.govocal.com/projects). STRUCTURE (cross-tenant, the "system"): a white
+   3px-radius card on the soft --gv-shadow, padding 18px 0 25px, margin-bottom 25px,
+   min-height 540px (it grows ~583px stacking child-project previews). Anatomy top
+   to bottom: a project HERO image with the project-COUNT badge (folder glyph + "N
+   projects") pinned TOP-RIGHT over a dark image overlay; then the folder title; then
+   a description preview; then small child-project avatar previews. The card has 0
+   horizontal padding, so the title/description carry their own ~30px inset via
+   .gv-pcard__fbody. SKIN (per-tenant): count colour (--gv-folder-count), font,
+   palette, imagery. */
+.gv-pcard.boxed.folder { position: relative; padding: 18px 0 25px; margin-bottom: 25px;
+  min-height: 540px; font-size: var(--gv-fs-s); line-height: 19.999px;
+  color: var(--gv-text-body); border: 0; }  /* borderless — soft --gv-shadow is the elevation */
+/* Hero image with a dark overlay so the count badge reads on any photo. */
+.gv-pcard.boxed.folder .gv-pcard__fmedia { position: relative; margin: -18px 0 0;
+  aspect-ratio: 16 / 9; overflow: hidden; background: var(--gv-grey-300); }
+.gv-pcard.boxed.folder .gv-pcard__fmedia img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-pcard.boxed.folder .gv-pcard__fmedia::after { content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,0) 45%); }
+/* Project-COUNT badge — folder glyph + the .e2e-folder-card-numberofprojects number
+   (tenant success-green --gv-folder-count, 14px/700) + " projects", pinned top-right
+   over the hero image overlay. */
+.gv-pcard__count { position: absolute; top: 12px; right: 12px; z-index: 1;
+  display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-s);
+  font-weight: 700; color: var(--gv-folder-count); }
+.gv-pcard__count svg, .gv-pcard__count .gv-icon { width: 16px; height: 16px; color: var(--gv-folder-count); }
+/* Title + description sit below the image with the card's own horizontal inset. */
+.gv-pcard.boxed.folder .gv-pcard__fbody { padding: 18px 30px 0; }
+.gv-pcard.boxed.folder .gv-pcard__title { margin: 0; font-size: var(--gv-fs-xl); }
+/* Folder description preview — live .e2e-folder-card-folder-description-preview:
+   16px/300 cool-grey (#596B7A), margin-top 15px, clamped to ~3 lines. */
+.gv-pcard__fdesc { margin: 15px 0 0; font-size: var(--gv-fs-base); font-weight: 300;
+  line-height: normal; color: var(--gv-text-secondary); display: -webkit-box;
+  -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* Child-project avatar previews stacked below (live renders 36px thumbs). */
+.gv-pcard__fpile { display: flex; gap: 8px; padding: 16px 30px 0; }
+/* Folder avatar pile — real avatars (r7-fo-home digest img.sc-idHGMI) are CIRCULAR
+   (50%) with a 2px white ring, not 3px squares. */
+.gv-pcard__fpile img, .gv-pcard__fpile .gv-pcard__fthumb { width: 36px; height: 36px;
+  border-radius: 50%; border: 2px solid var(--gv-white); background: var(--gv-grey-300); object-fit: cover; }
+/* "+N" overflow bubble (real: fo-home-raleigh div.sc-beqWaB.uItlk — cool-grey-600,
+   circular, 2px white ring, 14px dark text). Size kept at the pile's 36px for a uniform row. */
+.gv-pcard__fmore { display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex: none; border-radius: 50%; border: 2px solid var(--gv-white);
+  background: var(--gv-cool-grey-600); color: var(--gv-text-primary);
+  font-size: var(--gv-fs-s); font-weight: 400; }
+
+/* "Finished/archived" status label tone (StatusLabel primitive, neutral grey) */
+.gv-status-label.finished { background: var(--gv-grey-200); color: var(--gv-grey-800); }
+
+/* Show-more row */
+.gv-showmore { display: flex; justify-content: center; margin-top: 32px; }
+
+/* ── Light project card (borderless) — the Stadt Wien homepage pattern ────────
+   (mitgestalten.wien.gv.at): the WHOLE card is a link — a rounded thumb on top,
+   then an 18px/700 title, an optional status line (clock = tenant-primary + #333
+   text for ongoing / "Kein Enddatum"; green check + green for completed
+   "vor N Wochen"), participant count, and a quiet "Mehr erfahren" link. No box,
+   border or shadow — the artwork tile carries the card. Same .gv-pgrid as boxed. */
+.gv-pcard.light { background: none; border: 0; box-shadow: none; overflow: visible; }
+.gv-pcard.light:hover { transform: none; box-shadow: none; }
+.gv-pcard.light .gv-pcard__thumb { aspect-ratio: 16 / 10; border-radius: var(--gv-radius); }  /* live thumb = 3px */
+.gv-pcard.light .gv-pcard__body { padding: 14px 0 0; }                 /* text sits flush under the thumb */
+.gv-pcard.light .gv-pcard__title { margin: 0 0 10px; font-size: var(--gv-fs-l); }  /* live title = 18px/700 */
+.gv-pcard.light .gv-pcard__desc { color: var(--gv-text-primary); margin-top: 4px; }  /* live Wien card body = #333 (primary), not the lighter slate */
+/* status line: icon + "Kein Enddatum" / "noch N Wochen" (#333) or "vor N Wochen" (green) */
+.gv-pcard__status { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-base);
+  line-height: 1.5; color: var(--gv-grey-800); }
+.gv-pcard__status svg, .gv-pcard__status .gv-icon { flex: 0 0 auto; width: 16px; height: 16px; color: var(--gv-tenant-primary); }
+.gv-pcard__status.done { color: var(--gv-success); }
+.gv-pcard__status.done svg, .gv-pcard__status.done .gv-icon { color: var(--gv-success); }
+/* quiet "Mehr erfahren / Learn more" link beneath a light card */
+.gv-pcard__more { position: relative; z-index: 1; align-self: flex-start; margin-top: 10px;
+  font-size: var(--gv-fs-base); color: var(--gv-text-secondary); text-decoration: none; }
+.gv-pcard__more:hover { color: var(--gv-tenant-primary); }
+
+/* Compact light card — the Stadt Wien "Abgeschlossene Projekte" row renders the
+   completed-project cards visibly SMALLER than the ongoing ones (more cards per
+   row, tighter type). New variant on top of .light; doesn't change the base. */
+/* compact poster thumbs are squarer/taller than the ongoing-project 16:10 — the live
+   Wien "Abgeschlossene Projekte" image tiles measure 240×180 (4:3). */
+.gv-pcard.light.compact .gv-pcard__thumb { aspect-ratio: 4 / 3; }
+.gv-pcard.light.compact .gv-pcard__title { font-size: var(--gv-fs-base); margin: 0 0 6px; line-height: 1.3; }  /* ~14px vs 18px */
+.gv-pcard.light.compact .gv-pcard__body { padding-top: 12px; }
+/* status + "Learn more" stay 16px on compact cards too — the live Wien
+   "Abgeschlossene Projekte" status/link both measure 16px (#333 / #596B7A). */
+.gv-pcard.light.compact .gv-pcard__status { font-size: var(--gv-fs-base); }
+.gv-pcard.light.compact .gv-pcard__more { font-size: var(--gv-fs-base); margin-top: 8px; }
+.gv-pcard.light.compact .gv-thumb-cap { font-size: 15px; }
+.gv-pcard.light.compact .gv-thumb-cap--sm { font-size: 16px; }
+.gv-pcard.light.compact .gv-thumb-cap--xs { font-size: 13px; padding: 10px; }
+
+/* Grid density: a tighter column track for compact rows (completed-projects row
+   shows ~5 across at desktop instead of 3). Layout density, reusable. */
+.gv-pgrid.dense { grid-template-columns: repeat(5, 1fr); gap: 20px; }
+@media (max-width: 1100px) { .gv-pgrid.dense { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 860px)  { .gv-pgrid.dense { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px)  { .gv-pgrid.dense { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── Events widget (with empty state) ──────────────────────────────────────── */
+.gv-events__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+.gv-events__empty { display: grid; place-items: center; gap: 6px; text-align: center;
+  padding: 52px 24px; border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
+  background: var(--gv-grey-50); color: var(--gv-text-secondary); }
+.gv-events__empty svg, .gv-events__empty .gv-icon { width: 30px; height: 30px; color: var(--gv-grey-500); margin-bottom: 4px; }
+
+/* Events grid + event card — source-grounded on the live homepage events widget
+   (community.govocal.com): bordered white card, header image with a two-tone date
+   chip pinned top-right, then clock / link / registrants rows + a Register button.
+   Reuses the boxed-card border/shadow/radius tokens; date chip year band + Register
+   are tenant-themed (re-skin per ?theme=). */
+.gv-events__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+/* Event-card frame — RE-GROUNDED on the stated review target wietsedemo.govocal.com/en/events
+   (capture fo-event-card-frame, 2026-06). Probing the real card wrappers
+   (.e2e-event-card and its inner sc-beqWaB / sc-fRcFJl frames) returns
+   border:0px none, border-radius:0px, box-shadow:none on EVERY level — the live
+   wietsedemo card is a FLAT, borderless, square, shadowless white card. The visual
+   separation comes entirely from the media image + the grey-100 meta panel
+   (rgb(244,246,248) = --gv-event-meta-tint), not from a frame border/shadow.
+   This supersedes the earlier community.govocal.com spec (1px #CCC + 6px radius),
+   which was anchored to the wrong tenant. */
+.gv-event-card { display: flex; flex-direction: column; position: relative; background: #fff;
+  border: 0; border-radius: 0; box-shadow: none; overflow: hidden; }
+/* Media block ratio grounded on wietsedemo.govocal.com/en/events: the event-image
+   wrapper renders 369×123 (object-fit:cover, padding-top box) = exactly 3 / 1. */
+.gv-event-card__media { position: relative; aspect-ratio: 3 / 1; background: var(--gv-grey-300); color: #fff;
+  display: grid; place-items: center; }
+/* Absolute-fill so a portrait/odd source can't feed its intrinsic height into the
+   grid track and override aspect-ratio:3/1 — every card image crops to the same box. */
+.gv-event-card__media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-event-card__media svg, .gv-event-card__media .gv-icon { width: 40px; height: 40px; }
+/* two-tone date chip, pinned top-right over the media */
+/* Grounded on fo-events digest (div.sc-lilDSw grey month/day + div.sc-jtdBMk
+   tenant-primary year): the real badge is width:75px and FLAT (box-shadow:none);
+   the two-tone grey-top / tenant-primary-bottom split radii below are correct. */
+.gv-event-card__date { position: absolute; top: 14px; right: 14px; width: 75px; border-radius: var(--gv-radius);
+  overflow: hidden; text-align: center; box-shadow: none; line-height: 1.05; }
+.gv-event-card__date .m { display: block; padding-top: 6px; background: var(--gv-event-chip-grey); color: var(--gv-grey-800);
+  font-size: var(--gv-fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+/* Day glyph matches the uniform live chip (fo-events digest: month/day/year all
+   14px, day NOT enlarged/bolded) — month=500, day=400, year=500. */
+.gv-event-card__date .d { display: block; padding-bottom: 5px; background: var(--gv-event-chip-grey); color: var(--gv-grey-800);
+  font-size: var(--gv-fs-s); font-weight: 400; }
+.gv-event-card__date .y { display: block; padding: 3px 0; background: var(--gv-tenant-primary); color: #fff;
+  font-size: var(--gv-fs-xs); font-weight: 500; }
+/* attendance / RSVP pill, top-left */
+.gv-event-card__rsvp { position: absolute; top: 14px; left: 14px; padding: 4px 10px; border-radius: 999px;
+  background: var(--gv-success); color: #fff; font-size: var(--gv-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.gv-event-card__body { display: flex; flex-direction: column; flex: 1 1 auto; gap: 12px; padding: 16px 18px 18px; }
+.gv-event-card__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }
+/* the date/time · location · registrants rows are grouped on a grey-100 panel (live) */
+.gv-event-card__meta { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto;
+  background: var(--gv-event-meta-tint); border-radius: var(--gv-radius); padding: 12px 14px; }
+.gv-event-card__title a { color: inherit; text-decoration: none; }
+.gv-event-card__title a:hover { color: var(--gv-tenant-primary); }
+.gv-event-card__title a::after { content: ""; position: absolute; inset: 0; }
+.gv-event-card__title a:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-event-card__row { display: flex; align-items: center; gap: 9px; margin: 0; font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-cool-grey-700); }  /* live meta text = #43515D, lh 21px (1.5×14) */
+.gv-event-card__row svg, .gv-event-card__row .gv-icon { flex: 0 0 auto; width: 16px; height: 16px; color: var(--gv-cool-grey-700); }
+.gv-event-card__row a { position: relative; z-index: 1; color: var(--gv-tenant-primary); text-decoration: underline; }
+.gv-event-card__body .gv-btn { position: relative; z-index: 1; margin-top: auto; }
+
+/* Beside-title date badge — a NEW VARIANT (does NOT mutate the media-overlay
+   .gv-event-card__date used/verified on the homepage). The real project-page
+   events context renders the date as a small outlined box sitting BESIDE the
+   title: month + day stacked in a bordered cell, with a tenant (green) year band
+   beneath. To use, put .gv-event-card__date.is-beside inside a flex title row
+   (.gv-event-card__titlerow) in the card body, NOT over the media. Two-tone
+   values reuse the grounded overlay chip (grey-100 month/day cells, tenant-primary
+   year band); the box just gains a border + drops the absolute positioning. */
+.gv-event-card__titlerow { display: flex; align-items: flex-start; gap: 12px; }
+.gv-event-card__titlerow .gv-event-card__title { flex: 1 1 auto; }
+.gv-event-card__date.is-beside { position: static; top: auto; right: auto;
+  flex: 0 0 auto; width: 52px; border: 1px solid var(--gv-grey-400); box-shadow: none; }
+.gv-event-card__date.is-beside .m { padding-top: 5px; }
+.gv-event-card__date.is-beside .d { padding-bottom: 4px; font-size: 20px; }
+
+/* ── Events PAGE (/events) — title block, section headers, filter bar ───────── */
+/* Source-grounded on wietsedemo.govocal.com/en/events (Cultuurconnect tenant).
+   The standalone events page reuses the .gv-event-card / .gv-events__grid /
+   .gv-events__empty atoms above; what's net-new here is the page title scale,
+   the section h2s, and the FO filter-pill dropdowns under the upcoming section. */
+
+/* Huge per-tenant page title — live H1 "Events": 80px / 700 / tenant-primary,
+   line-height 104px, 53.6px top / 16px bottom margin (digest #19). */
+.gv-events-page__title { margin: 53.6px 0 16px; font-size: var(--gv-fs-display); font-weight: 700;
+  line-height: 104px; color: var(--gv-tenant-primary); }
+
+/* Section headers — live "Upcoming and ongoing events" / "Past events":
+   h2 25px / 700 / neutral dark #474747 (digest #17, count 2). Matches --gv-fs-xxl. */
+.gv-events-page__section { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px;
+  color: var(--gv-text-primary); margin: 5.75px 0; }
+
+/* The upcoming-section head holds the title left, the filter bar right. */
+.gv-events-page__sectionhead { display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+
+/* Filter bar — row of FO filter-pill dropdowns (Date, Projects). */
+.gv-eventfilters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Per-pill wrapper — establishes the positioning context the dropdown listbox anchors to. */
+.gv-filter { position: relative; }
+
+/* FO filter pill (a NEW variant — NOT .gv-btn, which is 3px radius). Live filter
+   button: tenant-primary fill, white text + down-chevron, 24px pill radius,
+   9px 18px padding, 14px text (digest #16). Used for the events Date/Projects
+   selectors and other resident-facing pill filters. */
+.gv-filter-pill { display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 9px 18px; border: 1px solid transparent; border-radius: 24px;
+  background: var(--gv-tenant-primary); color: #fff;
+  font-family: var(--gv-font-family); font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px;
+  text-align: left; white-space: nowrap; }
+.gv-filter-pill:hover { filter: brightness(0.88); }
+.gv-filter-pill:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-filter-pill svg, .gv-filter-pill .gv-icon { width: 18px; height: 18px; color: currentColor; flex: 0 0 auto; }
+.gv-filter-pill[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+/* ── Project-page embedded EVENTS section ───────────────────────────────────── */
+/* The "Upcoming and ongoing events" + "Past events" sections the project page
+   renders below the phase body, on the project's own content column.
+   Source-grounded on wietsedemo …/option-analysis-voting… (capture fo-voting):
+   the section container #e2e-events-section-project-page is a flex column with a
+   48px gap (digest/probed), max-width 1166px, transparent (sits on the page bg).
+   REUSES the events atoms wholesale — .gv-events-page__section h2 (25/700/32.5/#474747,
+   identical to the standalone /events page), .gv-events-page__sectionhead (title left,
+   Date filter right), .gv-filter-pill, .gv-events__grid + .gv-event-card. Net-new here
+   is ONLY the section scaffold/divider/plain empty-state that frame those in the
+   project context — distinct from the dashed-box .gv-events__empty. */
+.gv-project-events { display: flex; flex-direction: column; gap: 48px; max-width: 1166px; }
+/* a thin rule directly under each section head (live divider = grey-300) */
+.gv-project-events__sec { display: flex; flex-direction: column; }
+.gv-project-events__rule { border: none; border-top: 1px solid var(--gv-divider); margin: 6px 0 22px; }
+/* plain left-aligned empty line (NOT the .gv-events__empty dashed box): live text
+   #596B7A / 16px / line-height 26px (probed .sc-crPCXo), indented from the rule. */
+.gv-project-events__empty { margin: 0; padding: 14px 0 14px 48px; color: var(--gv-text-secondary);
+  font-size: var(--gv-fs-base); line-height: 26px; }
+
+/* ── Event card — GROUNDED layout (wietsedemo /events + project events) ───────
+   SHARED FIX: the live ground truth (fo-events AND fo-voting, desktop + mobile)
+   renders the card NOT with the date chip overlaid on the media, but as:
+     media banner (optional)
+       → upper BODY block: title (h3) left, two-tone date chip BESIDE it right
+       → tinted meta PANEL (div.kjzjNu, bg #F4F6F8 = --gv-event-meta-tint,
+         padding 12px 16px 4px, margin 16px 0, radius 0, no shadow)
+       → full-width navy "Read more".
+   This is the canonical structure for /events, project events and the homepage
+   row. Markup: wrap title + chip in .gv-event-card__titlerow inside __body, give
+   the chip .is-beside, and add .has-panel to the card so __meta picks up the
+   grounded panel metrics. Reuses the existing two-tone chip + __titlerow + is-beside
+   atoms above (no new visual atoms — just the grounded panel + assembly defaults). */
+.gv-event-card__body > .gv-event-card__titlerow { margin-bottom: 0; }
+.gv-event-card__titlerow .gv-event-card__title { font-size: var(--gv-fs-l); line-height: 1.3; }
+/* Grounded meta panel (div.kjzjNu): flush-square tinted band, generous top pad,
+   light bottom pad, 16px vertical margin separating it from title-row + CTA. */
+.gv-event-card.has-panel .gv-event-card__meta { background: var(--gv-event-meta-tint);
+  border-radius: 0; padding: 12px 16px 4px; margin: 16px 0; gap: 6px; }
+/* On the panel layout the card body gaps collapse to 0 (the panel owns its margin). */
+.gv-event-card.has-panel .gv-event-card__body { gap: 0; }
+
+/* ── Event card — BORDERED EventsWidget variant (Copenhagen / Linz / Falkirk) ──
+   Source-grounded on Copenhagen kobenhavntaler.kk.dk (capture fo-cph-events-card).
+   The shared EventsWidget code (used by CPH/Linz/Falkirk) wraps each event in a
+   BORDERED <li> (li.sc-jIXSKn digest #15): white, 1px #CCC, 6px radius — a
+   STRUCTURAL frame, distinct from the borderless wietsedemo .gv-event-card. The
+   skin re-themes per tenant (CPH primary #000C2E, Linz #604596, Falkirk #198754).
+   These are ADDITIVE variant classes — they do NOT mutate the base card or the
+   base two-tone .gv-event-card__date chip used+verified on the homepage. */
+.gv-event-card.bordered { background: #fff; border: 1px solid var(--gv-event-card-border);
+  border-radius: 6px; overflow: hidden; }
+
+/* 3-tier STACKED date chip (digest #17 grey top tier + #20 primary year band):
+   grey #F5F6F7 top cell holds DAY (14px/400) + MONTH (14px/500 uppercase), both in
+   tenant-primary text, radius 3px 3px 0 0; the tenant-primary YEAR band sits below,
+   white text, radius 0 0 3px 3px. Width 75px (spec). A NEW VARIANT of the chip —
+   the base .m/.d/.y two-tone overlay chip is untouched. */
+.gv-event-datechip--stacked { width: 75px; text-align: center; line-height: 1.05;
+  border-radius: var(--gv-radius); overflow: hidden; box-shadow: none; }
+.gv-event-datechip--stacked .gv-event-datechip__top { padding: 6px 0;
+  background: var(--gv-event-chip-grey); border-radius: 3px 3px 0 0; }
+.gv-event-datechip--stacked .gv-event-datechip__day { display: block;
+  color: var(--gv-tenant-primary); font-size: var(--gv-fs-s); font-weight: 400; }
+.gv-event-datechip--stacked .gv-event-datechip__month { display: block;
+  color: var(--gv-tenant-primary); font-size: var(--gv-fs-s); font-weight: 500; text-transform: uppercase; }
+.gv-event-datechip--stacked .gv-event-datechip__year { display: block; padding: 6px 0;
+  background: var(--gv-tenant-primary); color: #fff;
+  font-size: var(--gv-fs-s); font-weight: 400; border-radius: 0 0 3px 3px; }
+
+/* #F4F6F8 "Date & time" a11y INFO PANEL (digest #22 div.kjzjNu): the date/time ·
+   location · attendance rows grouped on a tinted #F4F6F8 band, pad 12px 16px 4px.
+   Mirrors the grounded .has-panel meta panel but exposed as its own named class so
+   the bordered EventsWidget can mount it standalone. */
+.gv-event-info-panel { background: var(--gv-event-meta-tint); border-radius: 0;
+  padding: 12px 16px 4px; display: flex; flex-direction: column; gap: 6px; }
+
+/* Imageless degrade (Falkirk fo-falkirk-events-widget) — when an event has no
+   media, the bordered card simply omits the __media block; the title row leads.
+   (Disabled/closed Register reuses the canonical .gv-btn[aria-disabled] state.) */
+.gv-event-card.bordered .gv-event-card__body { padding: 16px; }
+.gv-event-card.bordered.is-imageless .gv-event-card__body { padding-top: 16px; }
+
+/* CTA band (proposals / generic call to action) ────────────────────────────── */
+/* Live proposals CTA sits on the plain page background (no tinted band on the
+   captured tenant) — the primary button carries the colour. */
+.gv-ctaband { background: transparent; }
+.gv-ctaband__inner { max-width: var(--gv-text-width, 720px); margin: 0 auto; padding: 54px 24px; text-align: center; }
+.gv-ctaband__title { margin: 0 0 12px; font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-text-heading); }
+.gv-ctaband__lead { margin: 0 0 26px; font-size: var(--gv-fs-m); line-height: 1.6; color: var(--gv-grey-800); }
+
+/* Embedded-survey band ("Help us serve you better") ─────────────────────────
+   The homepage in-page banner that promotes the ongoing community-monitor
+   survey — the SISTER surface of the community-monitor modal (banner vs modal).
+   Source-grounded on wietsedemo `/en` (capture fo-homepage-survey-band):
+   outer wrapper `.drTRMc` = margin 0 120px, width 1200px; the tinted card
+   `.fGrxMq` = flex row, bg rgba(17,45,126,.1) (tenant-primary @ 10% =
+   --gv-tenant-primary-lighten90), padding 32px, gap 16px, radius 16px. Three
+   zones: text column (h2 25/700 #333 + lede 16/400 #333), a 240px preview
+   image, and a primary CTA. DISTINCT from .gv-ctaband (centered single-column,
+   transparent) — new variant, no base mutated. CTA = .gv-btn.primary.size-m. */
+.gv-monitorband { margin: 0 120px; }
+.gv-monitorband__inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 32px;
+  border-radius: 16px;
+  background: var(--gv-tenant-primary-lighten90);   /* live = rgba(primary, .1) */
+  font-size: var(--gv-fs-s); line-height: 1.43; color: var(--gv-text-body);   /* live .fGrxMq baseline = 14px/19.999px/rgba(0,0,0,.87); title/lead override their own type */
+}
+.gv-monitorband__text { flex: 1 1 auto; min-width: 0; }
+.gv-monitorband__title { margin: 0 0 16px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; color: var(--gv-grey-800); }  /* live 25px/700/32.5px/#333 */
+.gv-monitorband__lead { margin: 0; font-size: var(--gv-fs-m); font-weight: 400; line-height: 1.5; color: var(--gv-grey-800); }            /* live 16px/400/24px/#333 */
+.gv-monitorband__media { flex: 0 0 auto; }
+.gv-monitorband__media img { display: block; width: 240px; height: auto; }       /* live img width:240px */
+/* CTA zone is a 2-row column: primary button + a duration sub-label (clock +
+   "Takes N minutes") in tenant-primary — a recurring GoVocal survey-affordance.
+   Desktop: right-aligned under the button (live band). */
+.gv-monitorband__cta { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.gv-monitorband__ctameta { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-s); font-weight: 600; line-height: 1.43; color: var(--gv-tenant-primary); }  /* live "Takes 2 minutes" — 14px, tenant-primary #112D7E */
+.gv-monitorband__ctameta svg { flex: 0 0 auto; }
+/* Optional DURATION variant of the meta line — Linz "Dauer 2 Minuten"
+   (partizipation.linz.at, capture fo-linz-monitorband, tenant-primary #604596):
+   the same clock + duration affordance but measured weight 400 / tight 14px
+   line-height (p.sc-ktEKTO = 14px/400/14px/rgb(96,69,150)). Additive modifier,
+   the base .gv-monitorband__ctameta (weight 600 "Takes N minutes") is untouched. */
+.gv-monitorband__ctameta--duration { font-weight: 400; line-height: 1; }
+@media (max-width: 980px) {
+  .gv-monitorband { margin: 0 24px; }
+  .gv-monitorband__inner { flex-wrap: wrap; }
+  /* Stacked mobile band: button stretches edge-to-edge inside the card padding,
+     media + sub-label centre (live 390px band). */
+  .gv-monitorband__cta { width: 100%; align-items: stretch; }
+  .gv-monitorband__cta .gv-btn { width: 100%; }
+  .gv-monitorband__ctameta { justify-content: center; }
+  .gv-monitorband__media { margin-left: auto; margin-right: auto; align-self: center; }
+}
+
+/* ── Rich-text / prose block ───────────────────────────────────────────────── */
+.gv-prose { max-width: var(--gv-text-width, 720px); margin: 0 auto; padding: 8px 24px; }
+.gv-prose p { margin: 0 0 16px; font-size: var(--gv-fs-m); line-height: 1.5; color: var(--gv-grey-800); }  /* live rich-text = 16px/400/24px */
+.gv-prose em { color: var(--gv-text-primary); font-style: italic; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-spinner { animation-duration: 1600ms; }
+  .gv-toggle .track::before, .gv-btn, .gv-checkbox .box, .gv-radio .circle, .gv-radio .circle::after { transition: none; }
+  .gv-nav__chev, .gv-rail { transition: none; scroll-behavior: auto; }
+  .gv-pcard.boxed, .gv-hero__cta { transition: none; }
+}
+
+/* ── Project page components — promoted from pages/project-page so the page is
+   pure assembly. Reusable on any project surface. ──────────────────────────── */
+
+/* header action icons read larger on the real product */
+.gv-header__actions .gv-iconbtn { font-size: 24px; color: var(--gv-grey-800); }
+
+/* Project action bar (Back · Edit · Follow) */
+.gv-projbar__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gv-back { display: inline-flex; align-items: center; gap: 10px; background: none; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); padding: 4px; border-radius: var(--gv-radius); }
+.gv-back__ic { width: 28px; height: 28px; border-radius: 50%; background: var(--gv-cool-grey-600); color: #fff; display: grid; place-items: center; flex: none; }
+.gv-back__ic .gv-icon { width: 15px; height: 15px; }
+.gv-back:hover .gv-back__ic { filter: brightness(0.92); }
+.gv-back:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-projbar__spacer { flex: 1 1 auto; }
+.gv-projbar .gv-btn { gap: 8px; }
+.gv-edit { background: #fff; color: var(--gv-text-primary); border: 1px solid var(--gv-grey-300); box-shadow: none; }
+.gv-edit:hover { background: var(--gv-grey-100); }
+
+/* Banner (image-only project hero) */
+.gv-banner { background: var(--gv-grey-100); }
+.gv-banner__art { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; position: relative; aspect-ratio: 1150 / 300; min-height: 200px; overflow: hidden; background: radial-gradient(130% 150% at 75% 8%, #5fc6d1 0%, var(--gv-teal-300) 48%, var(--gv-teal-400) 100%); }
+.gv-banner__art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gv-banner__sticker { position: absolute; left: 7%; bottom: 16%; transform: rotate(-7deg); background: #ffe14d; color: #1a1a1a; font-weight: 800; letter-spacing: 0.04em; font-size: clamp(13px, 2vw, 20px); padding: 7px 13px; border-radius: 4px; box-shadow: 0 6px 14px rgba(0,0,0,0.18); }
+
+/* Project head (title + description + participants, no boxes) */
+.gv-projhead { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px 40px; padding: 30px 0 6px; align-items: start; }
+.gv-projhead__title { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 4px; }
+.gv-projhead__title h1 { margin: 0; font-size: clamp(26px, 3.4vw, 34px); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+.gv-chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--gv-grey-100); color: var(--gv-text-secondary); font-size: var(--gv-fs-xs); font-weight: 600; }
+.gv-projdesc { color: var(--gv-text-primary); max-width: 760px; }
+.gv-projdesc p { margin: 0 0 14px; font-size: var(--gv-fs-l); line-height: 1.6; }
+.gv-projdesc strong { font-weight: 700; }
+/* an accordion sitting inside a project description matches the 18px body copy
+   around it (question + answer), not the denser 16px in-phase accordion. */
+.gv-projdesc .gv-acc__head { font-size: var(--gv-fs-l); }
+.gv-projdesc .gv-acc__body p { font-size: var(--gv-fs-l); }
+.gv-participants { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; padding-top: 4px; }
+.gv-participants .gv-avatars { margin: 0; }   /* .gv-avatars.on-light variant → moved with the atom to govocal-primitives.css */
+.gv-pcount { font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-text-secondary); }
+.gv-pinfo { font-size: 16px; line-height: 1; color: var(--gv-cool-grey-500); cursor: help; display: inline-flex; align-items: center; }
+@media (max-width: 760px) { .gv-projhead { grid-template-columns: 1fr; } .gv-participants { padding-top: 0; } }
+
+/* Accordion (CSS-only <details>, collapsed by default, chevron rotates) */
+.gv-accordion { border-top: 1px solid var(--gv-divider); margin-top: 26px; }
+.gv-acc__item { border-bottom: 1px solid var(--gv-divider); }
+.gv-acc__head { display: flex; align-items: center; gap: 12px; cursor: pointer; list-style: none; padding: 18px 0; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); }
+.gv-acc__head::-webkit-details-marker { display: none; }
+.gv-acc__head:hover { color: var(--gv-tenant-primary); }
+.gv-acc__item > summary:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
+.gv-acc__head .gv-acc__q { flex: 1 1 auto; }
+.gv-acc__chev { flex: none; color: var(--gv-text-secondary); transition: transform 180ms ease; }
+.gv-acc__item[open] .gv-acc__chev { transform: rotate(90deg); }
+.gv-acc__body { padding: 0 0 20px; max-width: var(--gv-text-width); }
+.gv-acc__body p { margin: 0 0 10px; font-size: var(--gv-fs-base); line-height: 1.6; color: var(--gv-text-primary); }
+.gv-acc__body p:last-child { margin-bottom: 0; }
+/* An accordion mounted inside a Content-Builder rich-text column (.gv-prose, the
+   homepage "about + FAQ" two-column section) steps its question heads up to the
+   measured St Louis 21px/700/27.3 — a sibling of the .gv-projdesc 18px step-up
+   above, scoped to the prose context. Source: fo-stlouis-twocol-accordion h3 #10. */
+.gv-prose .gv-acc__head { font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; }
+.gv-prose .gv-acc__body p { font-size: var(--gv-fs-m); }
+
+/* Phase method band + phase body + read-more (rendered inside the phase panel) */
+.gv-methodband { background: var(--gv-background); margin-top: 0; padding: 60px 0 80px; }  /* live phase content sits on the page grey (#EDEFF0); measured 60/80 vertical rhythm */
+.gv-methodband .gv-phases { margin: 0; }
+.gv-phasepanel__head.muted .gv-phasepanel__num { background: var(--gv-cool-grey-500); }
+.gv-phasepanel__head.muted .gv-phasepanel__name { color: var(--gv-text-primary); }
+.gv-phasebody { margin-top: 16px; font-size: var(--gv-fs-base); line-height: 1.65; color: var(--gv-text-primary); max-width: var(--gv-text-width); }
+.gv-phasebody p { margin: 0 0 12px; }
+.gv-phasebody a { color: var(--gv-tenant-primary); text-decoration: underline; }
+.gv-phasebody ul { margin: 0 0 12px; padding-left: 22px; }
+.gv-phasebody li { margin: 0 0 6px; }
+.gv-phasebody.clamped { max-height: 150px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 58%, transparent); mask-image: linear-gradient(#000 58%, transparent); }
+/* The 720px text clamp is right for narrow method bodies (share-information),
+   but wide method bodies (ideation feed/list, proposals, volunteering) run the
+   full method-band width. Modifier opts out of the clamp without removing it. */
+.gv-phasebody--full { max-width: none; }
+.gv-readmore { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; background: none; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-tenant-primary); padding: 6px 0; }
+.gv-readmore:hover { text-decoration: underline; }
+.gv-readmore:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .gv-acc__chev { transition: none; } }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   METHOD PANEL BODIES — the per-method content that renders inside .gv-phasebody
+   (ideation/proposals lists & feeds, the List/Map toggle, volunteering causes,
+   the survey participation band, the sticky participation bar). Promoted from the
+   verified FO project-page variant drafts. Source-grounded on the City of Raleigh
+   ideation/proposals captures (uxusertesting.govocal.com) + Ostend volunteering.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Idea card — ONE horizontal media card shared by ideation list/feed AND
+   proposals (.e2e-idea-card). Source: fo-project-ideation-list — bg #fff,
+   3px radius, --gv-shadow, 17px padding, flex row, body 14px/lh19.999/rgba(0,0,0,.87).
+   Thumbnail 162×162 (.e2e-idea-card .sc-cYRYSS). The variants each defined it
+   slightly differently; this is the unified component. ───────────────────────── */
+.gv-idealist { display: flex; flex-direction: column; gap: 16px; }
+/* Feed column width — grounded fix for ideacard-thumb-scale. The real ideation/
+   proposal cards sit in a constrained list column, NOT the full content frame:
+   measured .e2e-idea-card width = 785px across fo-project-ideation-list / -feed /
+   -proposals (sidebar = 310px takes the rest of the row). The thumb is correctly
+   162px in both real and ours; the only proportion drift was that an uncapped feed
+   let the body sprawl (162px read as ~14% of an 1150px card instead of the real
+   ~20.6% of 785px). Capping the shared list at the source-true 785px restores the
+   real thumb-to-body proportion for every consumer, with the grounded 162px thumb
+   left untouched. Pages with their own column layout may still override. */
+.gv-idealist { max-width: 785px; }
+/* ideas-container-list-leak fix: .gv-idealist sets display:flex, which overrides the
+   native [hidden]{display:none}, so a toggled-off list view (#listView[hidden]) stayed
+   in flow stacked under the active perspective canvas. Restore the hidden contract so
+   only the active view renders (matches the .gv-issuecanvas__pile[hidden] guard).
+   Same class of bug to check on any flex/grid gv-* container toggled via [hidden]. */
+.gv-idealist[hidden] { display: none; }
+.gv-ideacard {
+  display: flex; align-items: stretch; gap: 18px;
+  background: #fff; border-radius: var(--gv-radius);
+  box-shadow: var(--gv-shadow); padding: 17px;
+  color: rgba(0, 0, 0, 0.87); font-size: var(--gv-fs-s); line-height: 1.4285;
+}
+.gv-ideacard__thumb {
+  flex: 0 0 162px; width: 162px; height: 162px; border-radius: var(--gv-radius);
+  overflow: hidden; background: var(--gv-grey-200);
+  display: grid; place-items: center; color: var(--gv-grey-500);
+}
+.gv-ideacard__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-ideacard__thumb svg, .gv-ideacard__thumb .gv-icon { width: 40px; height: 40px; }
+.gv-ideacard__body { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+/* title — .e2e-idea-card-title : 21px/700/27.3px/#333 */
+.gv-ideacard__title { margin: 4px 0 16px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-grey-800); }
+.gv-ideacard__title a { color: inherit; text-decoration: none; }
+.gv-ideacard__title a:hover { color: var(--gv-tenant-primary); }
+/* author/meta row */
+.gv-ideacard__head { display: flex; gap: 12px; align-items: flex-start; }
+.gv-ideacard__avatar { width: 44px; height: 44px; flex: none; border-radius: 50%; overflow: hidden;
+  background: var(--gv-grey-200); display: grid; place-items: center; }
+.gv-ideacard__avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* idea-card-avatar fidelity: real .e2e-idea-card .avatarImage probes 44px box with 3px
+   transparent padding (visible disc ~38px), not a flush-filled 44px disc. Adding the
+   measured padding shrinks the visible disc so the avatar no longer dominates the meta
+   row, while keeping the real 44px footprint. (grounded: fo-avatar-probe styles.json) */
+.gv-ideacard__avatar { box-sizing: border-box; padding: 3px; }
+.gv-ideacard__meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+/* username — .e2e-username : 14px/500/lh21/#596B7A (textSecondary; source StyledUserName) */
+.gv-ideacard__author { font-size: var(--gv-fs-s); font-weight: 500; line-height: 21px; color: var(--gv-cool-grey-600); }
+.gv-ideacard__sep { color: var(--gv-text-secondary); margin: 0 2px; }
+/* time — .e2e-idea-card .sc-OROEG : 14px/500/#596B7A */
+.gv-ideacard__time { font-size: var(--gv-fs-s); font-weight: 500; line-height: 21px; color: var(--gv-cool-grey-600); }
+/* body excerpt — .e2e-idea-card body: 14px/400/lh20/rgba(0,0,0,.87), 2-line clamp
+   (grounded across fo-project-ideation-list/-feed, fo-cph-ideas-overview, fo-lux-ideation;
+   the 300/#596B7A reading was unverified — no probe isolates a lighter BodyDiv). */
+.gv-ideacard__excerpt { font-size: var(--gv-fs-s); line-height: 20px; color: rgba(0, 0, 0, 0.87); margin: 0 0 12px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* footer — .e2e-idea-card footer : 35px tall */
+.gv-ideacard__foot { display: flex; align-items: center; gap: 18px; margin-top: auto; padding-top: 12px; }
+/* input-status pill — sits at footer RIGHT, opposite the reaction controls.
+   Real ideation/proposal cards (fo-project-ideation-list / -feed) carry a small
+   uppercase semantic-colour OUTLINED pill: 12px/600, br3, 5px 8px pad, 1px solid
+   at 30% of the status colour, text the full status colour. Source digest (both
+   captures): 'accepted' fs12 fw600 col rgb(4,136,76) bd 1px solid rgba(4,136,76,.3)
+   br3 pad 5px 8px tt uppercase. Default = success/accepted; variants recolour. */
+.gv-ideacard__status {
+  margin-left: auto; flex: none; align-self: center;
+  font-size: var(--gv-fs-xs); font-weight: 600; line-height: 1; text-transform: uppercase;
+  letter-spacing: .02em; padding: 5px 8px; border-radius: var(--gv-radius);
+  color: var(--gv-success); border: 1px solid color-mix(in srgb, var(--gv-success) 30%, transparent);
+  background: transparent; white-space: nowrap;
+}
+.gv-ideacard__status.is-implemented { color: var(--gv-green-700); border-color: color-mix(in srgb, var(--gv-green-700) 30%, transparent); }
+.gv-ideacard__status.is-considered  { color: var(--gv-tenant-primary); border-color: color-mix(in srgb, var(--gv-tenant-primary) 30%, transparent); }
+.gv-ideacard__status.is-rejected    { color: var(--gv-error); border-color: color-mix(in srgb, var(--gv-error) 30%, transparent); }
+.gv-ideacard__status.is-proposed    { color: var(--gv-text-secondary); border-color: var(--gv-border-light); }
+/* mobile (<=560px) — real product (fo-project-ideation-list-m / -feed-m) stacks the
+   card vertically: the thumb becomes a full-width banner across the top (no longer a
+   fixed 162px left square), with title → author → excerpt → reactions flowing below.
+   Append-only mobile breakpoint; the desktop horizontal rules above are untouched. */
+@media (max-width: 560px) {
+  .gv-ideacard { flex-direction: column; align-items: stretch; gap: 14px; }
+  .gv-ideacard__thumb { flex: none; width: 100%; height: auto; aspect-ratio: 16 / 9; }
+}
+
+/* ── Reaction controls — ONE component (.e2e-reaction-controls, h35). Circular
+   like/dislike buttons (35×35, 1px --gv-cool-grey-400) + count + comment count.
+   Source: fo-project-ideation-feed (controls h35) + ideation-list comment count. ─ */
+.gv-react { display: inline-flex; align-items: center; gap: 8px; height: 35px; }
+.gv-react__btn {
+  width: 35px; height: 35px; border-radius: 50%;
+  border: 1px solid var(--gv-cool-grey-400); background: #fff; color: var(--gv-text-primary);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+}
+.gv-react__btn:hover, .gv-react__btn.is-active { border-color: var(--gv-tenant-primary); color: var(--gv-tenant-primary); }
+.gv-react__btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-react__btn .gv-icon, .gv-react__btn svg { width: 18px; height: 18px; }
+.gv-react__count { font-size: var(--gv-fs-s); font-weight: 500; color: var(--gv-text-primary); }
+/* comment count — .e2e-ideacard-comment-count : 16px/400/#596B7A */
+.gv-react__comment { display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-m); line-height: 1.25; color: var(--gv-cool-grey-600); }
+.gv-react__comment .gv-icon, .gv-react__comment svg { width: 18px; height: 18px; color: var(--gv-cool-grey-600); }
+
+/* ── Labeled reaction variant — worded Like/Dislike buttons (icon + word + count
+   inside one pill). Source: fo-project-ideation-feed probed .e2e-reaction-controls
+   (text 'Like124Dislike4', w 144.17px, h35) + .e2e-ideacard-like-button (text
+   'Like124', w 64.11px, fs14). Opt-in via .gv-react--labeled so the base circular
+   icon-only buttons stay intact for existing consumers. ──────────────────────── */
+.gv-react--labeled { gap: 16px; }
+.gv-react--labeled .gv-react__btn {
+  width: auto; height: 35px; border-radius: 999px; padding: 0 14px;
+  gap: 6px; font-size: var(--gv-fs-m); font-weight: 500;
+}
+.gv-react--labeled .gv-react__btn .gv-react__label { display: inline; }
+.gv-react--labeled .gv-react__btn .gv-react__count { font-size: var(--gv-fs-m); font-weight: 500; color: inherit; }
+/* base buttons hide the word label (icon-only) */
+.gv-react__btn .gv-react__label { display: none; }
+
+/* ── Feed layout — feed column + 310px filter sidebar (#e2e-project-sidebar) ──── */
+.gv-feed { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 28px; align-items: start; }
+.gv-feed__count { font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-heading-strong); line-height: 20.8px; margin: 0 0 14px; }
+.gv-feed__col { display: flex; flex-direction: column; gap: 16px; }
+@media (max-width: 860px) { .gv-feed { grid-template-columns: minmax(0, 1fr); } }
+/* filter sidebar — live container computes 14px/lh19.999 (not the 16px FO base);
+   base inherited text colour matches the real product's rgba(0,0,0,.87) (not the
+   #333 grey token), per fo-project-ideation-feed #e2e-project-sidebar. */
+.gv-feedfilter { display: flex; flex-direction: column; gap: 14px; font-size: var(--gv-fs-s); line-height: 19.999px; color: rgba(0, 0, 0, 0.87); }
+/* On mobile the live ideation feed hides the filter panel behind a "Filters"
+   button (govocal-filters.js / page wiring toggles .is-open). Desktop: button
+   hidden, panel always shown in the sidebar column. */
+.gv-filters-btn { display: none; }
+@media (max-width: 860px) {
+  .gv-filters-btn { display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius);
+    padding: 9px 14px; font: 600 var(--gv-fs-s)/1 var(--gv-font-family); color: var(--gv-grey-800); }
+  .gv-filters-btn svg, .gv-filters-btn .gv-icon { width: 16px; height: 16px; }
+  .gv-filters-btn[aria-expanded="true"] { background: var(--gv-grey-100); }
+  .gv-feedfilter { display: none; order: -1; }   /* opened panel sits above the cards */
+  .gv-feedfilter.is-open { display: flex; }
+}
+/* Mobile: the live ideation feed shows the Filters trigger as a FULL-WIDTH button
+   on its own row above the idea list (sliders icon, centred), not an inline chip
+   beside the List/Map toggle. Grounded by fo-project-ideation-feed-m. Appended as a
+   refinement over the base inline rule above — do not reflow that block. */
+@media (max-width: 860px) {
+  .gv-filters-btn { flex: 1 0 100%; width: 100%; order: -1; justify-content: center; }
+}
+/* Each filter SECTION (label + its options) is grouped on its own white panel —
+   the background sits on the group, not the individual option buttons. */
+.gv-feedfilter > div { background: #fff; border-radius: var(--gv-radius); padding: 14px 16px; }
+.gv-feedfilter__group { display: flex; flex-direction: column; gap: 2px; }
+.gv-feedfilter__label { font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-grey-800); margin: 0 0 8px; }
+/* status/topic filter button — .e2e-topic : 16px/400, 1px transparent, radius 3px, 8px 14px */
+.gv-feedfilter__btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  text-align: left; cursor: pointer; border: 1px solid transparent; border-radius: var(--gv-radius);
+  background: transparent; color: var(--gv-grey-800); font-family: inherit; font-size: var(--gv-fs-base); font-weight: 400; padding: 8px 14px; }
+.gv-feedfilter__btn:hover { background: var(--gv-grey-100); }
+.gv-feedfilter__btn.is-active { background: var(--gv-tenant-primary); color: #fff; }
+.gv-feedfilter__btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-feedfilter__count { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
+.gv-feedfilter__btn.is-active .gv-feedfilter__count { color: rgba(255, 255, 255, 0.85); }
+
+/* ── SORT BY variant ─────────────────────────────────────────────────────────
+   The real ideation feed renders SORT BY as a vertical option LIST inside the
+   boxed filter card (same .gv-feedfilter > div panel as STATUS/TOPICS), NOT a
+   row of inline chips. Each row is a full-width .gv-feedfilter__btn carrying a
+   small leading icon (rocket=Most liked, chat=Most discussed, trend=Trending,
+   dice=Random, etc.); the active row is the full-width tenant-coloured filled
+   bar already produced by .gv-feedfilter__btn.is-active. Grounded by
+   fo-project-ideation-feed/page.png sidebar. New VARIANT — base btn untouched.
+   On a sort row the icon+label hug the left edge (no trailing count), so we
+   drop the justify-content:space-between to flex-start for this group only. */
+.gv-feedfilter__group--sort .gv-feedfilter__btn { justify-content: flex-start; }
+.gv-feedfilter__icon { flex: 0 0 auto; display: inline-flex; align-items: center;
+  width: 16px; height: 16px; }
+.gv-feedfilter__icon .gv-icon, .gv-feedfilter__icon svg { width: 16px; height: 16px; }
+/* active row: icon inherits the white-on-tenant treatment of the filled bar */
+.gv-feedfilter__btn.is-active .gv-feedfilter__icon { color: #fff; }
+
+/* ── List/Map segmented toggle — .e2e-list-map-viewbuttons : white, 4px pad,
+   3px radius, h40. Tabs (#view-tab-N) 4px 8px, 16px; active = tenant-primary + white. */
+.gv-viewseg { display: inline-flex; gap: 0; padding: 4px; height: 40px; box-sizing: border-box;
+  background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); }
+.gv-viewseg__tab { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 4px 8px;
+  border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-base); font-weight: 400;
+  background: transparent; color: var(--gv-text-heading); border-radius: var(--gv-radius); }
+.gv-viewseg__tab[aria-selected="true"], .gv-viewseg__tab.is-active { background: var(--gv-tenant-primary); color: #fff; }
+.gv-viewseg__tab:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-viewseg__tab .gv-icon, .gv-viewseg__tab svg { width: 20px; height: 20px; }
+
+/* ── Perspectives in-timeline List | Perspective toggle — the .e2e-list-map-viewbuttons
+   variant used inside a Perspective phase body (NOT List|Map). Measured live
+   (fo-perspectives-entry): a WHITE wrapper (.gv-pviewtoggle — padding 4px, 3px radius,
+   no shadow) holding pill tab buttons that each carry their own soft shadow
+   var(--gv-shadow) + 3px radius, 4px 8px padding, 16px/400 / lh 18.4px. Inactive tab =
+   transparent + heading text (live #474747 → var(--gv-text-heading)); active tab = the
+   Perspective method-accent fill (live #EFD015, a one-off literal, not a tenant hue) +
+   white text. */
+.gv-pviewtoggle { display: inline-flex; align-items: center; gap: 8px; padding: 4px;
+  background: #fff; border-radius: var(--gv-radius); box-sizing: border-box; }
+.gv-pviewtoggle__btn { display: inline-flex; align-items: center; gap: 6px; height: 32px;
+  padding: 4px 8px; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-base);
+  font-weight: 400; line-height: 18.4px; color: var(--gv-tenant-text); background: transparent;
+  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); }
+.gv-pviewtoggle__btn[aria-selected="true"], .gv-pviewtoggle__btn.is-active { background: #EFD015; color: #fff; }
+.gv-pviewtoggle__btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-pviewtoggle__btn .gv-icon, .gv-pviewtoggle__btn svg { width: 18px; height: 18px; }
+
+/* ── Signature / vote threshold — proposals. Count p.cyVyPb : #596B7A/14px;
+   bold count .fBuzIc : tenant-primary/16px/700. Track : 6px, --gv-grey-200, 3px;
+   fill : tenant-primary. Vote icon : cool-grey-600 (#596B7A), 20x20 — structural
+   grey, NOT tenant-tinted; tenant-primary stays on the bold count + bar fill only. */
+.gv-threshold { display: flex; align-items: center; gap: 10px; min-width: 280px; }
+.gv-threshold__icon { color: var(--gv-cool-grey-600); display: inline-flex; }
+.gv-threshold__icon .gv-icon, .gv-threshold__icon svg { width: 20px; height: 20px; }
+.gv-threshold__count { font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-cool-grey-600); white-space: nowrap; }
+.gv-threshold__count b { font-size: var(--gv-fs-m); line-height: 24px; font-weight: 700; color: var(--gv-tenant-primary); }
+/* division-bar: the ' / ' separator is a dedicated span (real DOM .division-bar) carrying
+   its own surrounding spaces; inherits the regular count type — NOT the bold tenant colour. */
+.gv-threshold__sep { font-weight: 400; color: inherit; }
+.gv-threshold__bar { flex: 1 1 auto; height: 6px; border-radius: var(--gv-radius); background: var(--gv-grey-200); overflow: hidden; min-width: 90px; }
+.gv-threshold__fill { height: 100%; background: var(--gv-tenant-primary); }
+
+/* ── threshold-bar-layout — grounded in the real proposals DOM (fo-project-proposals
+   dom.html, container .bOa-DQu): the icon+count row (.LryTj) and the progress-bar
+   block (.ckpJTL) are SIBLING BLOCKS — the bar is its own row UNDER the icon+count,
+   not an inline element stretched across the row to a trailing pill. So .gv-threshold
+   is a column: row 1 = .gv-threshold__head (icon + count, inline), row 2 = the bar at
+   full width. Overrides the base inline `display:flex;align-items:center` above (append,
+   no reflow). The real proposal card shows count/bar with NO adjacent open/expired pill
+   on this surface — the demo's trailing inline pill is a component-demo invention. This
+   also removes the source of the narrow-card clipping. */
+.gv-threshold { flex-direction: column; align-items: stretch; gap: 8px; }
+.gv-threshold__head { display: flex; align-items: center; gap: 10px; }
+.gv-threshold__bar { flex: 0 0 auto; width: 100%; min-width: 0; }
+
+/* ── threshold-foot-wrap (mobile) — at narrow proposal-card width the real product
+   stacks the threshold inside the card instead of overflowing: icon + count sit on
+   one row and the progress bar drops to its own full-width row below, and the status
+   pill wraps rather than getting clipped off the right edge (OPEN→'OPE' etc.). The
+   base .gv-threshold min-width:280px forces the overflow on a 390px card, so we drop
+   it here and let .gv-threshold become a 2-row flex (icon+count row, bar row). The
+   foot also wraps so the status pill can fall to a new line. Grounded in the real
+   mobile DOM (fo-project-proposals-m): the bar (.sc-jgWArk…ldyffd) is a sibling block
+   UNDER the icon+count row (.LryTj), both inside the threshold block. New responsive
+   override only — base desktop layout (single non-wrapping row) is untouched. */
+@media (max-width: 560px) {
+  .gv-ideacard__foot { flex-wrap: wrap; row-gap: 12px; }
+  .gv-threshold { flex-wrap: wrap; min-width: 0; flex: 1 1 100%; column-gap: 8px; }
+  .gv-threshold__bar { flex: 1 1 100%; min-width: 0; }
+  .gv-ideacard__foot .gv-statuspill[style*="margin-left"] { margin-left: 0; }
+}
+
+/* ── Status pill — proposals. EXPIRED : firebrick #b22222 (a literal one-off,
+   not a token); OPEN/threshold : tenant-primary. 12px/600, 5px 8px, uppercase. ── */
+.gv-statuspill { display: inline-flex; align-items: center; font-size: var(--gv-fs-xs); font-weight: 600; line-height: 1;
+  padding: 5px 8px; border-radius: var(--gv-radius); text-transform: uppercase; letter-spacing: 0.02em; }
+.gv-statuspill.expired { color: #b22222; border: 1px solid rgba(178, 34, 34, 0.3); }
+.gv-statuspill.open { color: var(--gv-tenant-primary); border: 1px solid color-mix(in srgb, var(--gv-tenant-primary) 30%, transparent); }
+
+/* ── Volunteering cause card — Ostend "Showroom". Card white/3px/--gv-shadow/20px,
+   image 300×136 (placeholder --gv-background), overlay badge rgba(0,0,0,.75),
+   title 21px/700/#1E1E1E/27.3px, body 16px/24px/#1E1E1E, CTA = .gv-btn.volunteer. */
+.gv-cause { display: flex; gap: 20px; align-items: flex-start; background: #fff;
+  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 20px; }
+.gv-cause__media { position: relative; flex: 0 0 300px; }
+.gv-cause__img { display: block; width: 300px; height: 136px; object-fit: cover; background: var(--gv-background); border-radius: 0; }
+.gv-cause__badge { position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(0, 0, 0, 0.75); color: #fff; border-radius: var(--gv-radius); padding: 6px 10px 6px 5px;
+  font-size: var(--gv-fs-s); font-weight: 400; line-height: 1.4; }
+.gv-cause__badge .gv-icon, .gv-cause__badge svg { width: 20px; height: 20px; }
+.gv-cause__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.gv-cause__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-text-heading-strong); }
+.gv-cause__count { font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: var(--gv-text-heading-strong); }
+.gv-cause__desc { font-size: var(--gv-fs-base); font-weight: 400; line-height: 24px; color: var(--gv-text-heading-strong); }
+.gv-cause__desc p { margin: 0 0 8px; }
+.gv-cause__desc p:last-child { margin-bottom: 0; }
+.gv-cause__cta { flex: 0 0 auto; align-self: flex-start; }
+@media (max-width: 720px) { .gv-cause { flex-direction: column; } .gv-cause__media, .gv-cause__img { flex-basis: auto; width: 100%; } }
+/* Cause-card vertical rhythm — grounded fix. The real cause cards
+   (.sc-iAUooG kuTmzy, fo-project-volunteering digest) carry margin: 0 0 20px →
+   20px between cards. Our cause lists reuse the shared .gv-idealist atom, whose
+   gap is 16px (correct for the ideation/proposals feeds, whose idea cards have
+   margin:0 and inherit the list's 16px rhythm). Rather than bump the shared atom
+   (and over-space every ideation feed), scope the +4px to lists that actually
+   hold cause cards, leaving ideation/proposals on the source-true 16px. */
+.gv-idealist:has(.gv-cause) { gap: 20px; }
+/* Cause-card CTA placement — grounded fix (fo-project-volunteering dom.html).
+   In the real Raleigh/wietsedemo capture the sign-up button is NOT a third
+   top-level flex sibling pinned to the card's top-right; it is the LAST element
+   inside the body column, after the full description block (title -> count ->
+   all desc paragraphs -> button), left-aligned. So .gv-cause is a 2-column flex
+   (media + body) and .gv-cause__cta is a body child. These overrides take the
+   cta out of any column treatment and keep it left-aligned; the body's 10px gap
+   supplies the space above it. (Append-only override of the base rule above.) */
+.gv-cause__body > .gv-cause__cta { flex: 0 0 auto; align-self: flex-start; margin-top: 2px; }
+
+/* ── Survey participation band — full-width tenant-primary strip framing a survey
+   CTA on the project page (div.sc-beqWaB.fAJdnP : bg tenant-primary, 20px pad,
+   white 14px text). The CTA is the white-on-colour button. ───────────────────── */
+.gv-surveyband { background: var(--gv-tenant-primary); }
+.gv-surveyband__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; background: var(--gv-tenant-primary);
+  padding: 20px; font-size: var(--gv-fs-s); line-height: 20px; display: flex; align-items: center; gap: 16px; }
+.gv-surveyband__status { display: inline-flex; align-items: center; gap: 10px; color: #fff;
+  font-size: var(--gv-fs-s); font-weight: 400; line-height: 21px; }
+.gv-surveyband__dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; flex: none; }
+.gv-surveyband__cta { margin-left: auto; }
+/* surveyband-inner-layout fidelity fix — the real band inner (div.sc-beqWaB.fAJdnP)
+   is full-bleed (width:1440px, max-width:none) and distributes status/CTA via
+   justify-content:space-around (gap:normal), NOT a 1150px shell cap with the CTA
+   pushed by margin-left:auto. Override here so status/CTA aren't hard-pinned to the
+   band edges; matches the probed digest. (Padding/type already verify green.) */
+.gv-surveyband__inner { max-width: none; justify-content: space-around; gap: normal; }
+.gv-surveyband__cta { margin-left: 0; }
+/* Mobile (≤768px): the band stacks into a pinned-action layout — status on its
+   own line, then a full-width on-colour CTA. Live wietsedemo project-survey-m. */
+@media (max-width: 768px) {
+  .gv-surveyband__inner { flex-direction: column; align-items: stretch; justify-content: flex-start; }
+  .gv-surveyband__cta { margin-left: 0; width: 100%; justify-content: center; }
+}
+
+/* ── Participation bar — tenant-primary band: white status left, white-on-colour
+   button right (the shell-authority "participate" footer). ─ */
+/* Lives INLINE in the page flow; govocal-partbar.js docks it to the footer the
+   moment the bottom of the viewport contacts the bottom of the bar, and releases it
+   when scrolled back above. .is-docked is the docked (fixed) state the script sets —
+   no space is reserved at its home, so detaching leaves no gap. (Pages must include
+   govocal-partbar.js; without it the bar simply stays inline.) */
+.gv-partbar { position: relative; z-index: 30; background: var(--gv-tenant-primary); color: #fff; }
+.gv-partbar.is-docked { position: fixed; left: 0; right: 0; bottom: 0; top: auto; box-shadow: 0 -2px 12px rgba(0,0,0,0.14); }
+/* Responsive dock direction (mirrors the live product — govocal-partbar.js drives it):
+   • MOBILE (≤760px): JS docks the bar to the BOTTOM on scroll (.is-docked above).
+   • DESKTOP (>760px): the bar sticks to the TOP, just under the sticky header, once it
+     reaches the upper edge of the viewport. position:sticky pins it natively and
+     reserves its own space (no JS/spacer needed); .is-stuck adds the drop shadow only
+     while pinned. Appended as a refinement over the base block — do not reflow it. */
+@media (min-width: 761px) {
+  .gv-partbar { position: sticky; top: var(--gv-menu-height); }
+  .gv-partbar.is-stuck { box-shadow: 0 2px 12px rgba(0,0,0,0.14); }
+}
+@media (max-width: 760px) {
+  /* status stacks above a full-width CTA (live ideation project behaviour) */
+  .gv-partbar__inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 20px; }
+  .gv-partbar .gv-btn { margin-left: 0; width: 100%; justify-content: center; }
+}
+.gv-partbar__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 14px 24px;
+  display: flex; align-items: center; gap: 16px; }
+.gv-partbar__status { display: inline-flex; align-items: center; gap: 9px; font-size: var(--gv-fs-base); color: #fff; }
+.gv-partbar__status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #fff; flex: none; }
+.gv-partbar .gv-btn { margin-left: auto; }
+
+/* participation-bar-status-type fidelity fix — the live CTA bar (fo-project-cta-probe:
+   div.sc-beqWaB.ffjLKu / fAJdnP) resolves to 14px text, lh 19.999px, height 64px, and
+   the status span (span.sc-crPCXo.cjdBYi "Open for participation") is 14px / lh 21px —
+   one step below the FO 16px base. The base rules above inherited --gv-fs-base (16px),
+   which inflated the bar to ~68px. Re-ground both to var(--gv-fs-s) (14px). Appended as
+   refinements over the base block — do not reflow it. */
+.gv-partbar, .gv-partbar__inner { font-size: var(--gv-fs-s); line-height: 19.999px; }
+.gv-partbar__status { font-size: var(--gv-fs-s); line-height: 20px; }
+
+/* participation-bar-mobile-status-align fidelity fix — on mobile the column inner is
+   align-items: stretch, but .gv-partbar__status is display:inline-flex so it shrinks to
+   content (~180px) and gets centered. The live mobile bottom bar (#project-cta-bar-bottom)
+   left-aligns 'Open for participation' flush with the bar's left padding, above the
+   full-width CTA. Pin the status to the start so it sits left, not centered. Appended as a
+   refinement over the @media block above — do not reflow it. */
+@media (max-width: 760px) {
+  .gv-partbar__status { align-self: flex-start; }
+}
+
+/* participation-bar-status-icon — the live "open" status reads as a small filled
+   white dot that BLINKS, signalling the project is actively open to participation
+   (intentional design choice — supersedes the earlier static info glyph). Round 10px
+   white dot + a soft pulse ring. Appended as a refinement over the base ::before above
+   — do not reflow it. Motion is disabled under prefers-reduced-motion. */
+.gv-partbar__status::before {
+  width: 10px; height: 10px; border-radius: 50%; background: #fff;
+  -webkit-mask: none; mask: none;
+  animation: gv-partbar-pulse 1.6s ease-in-out infinite;
+}
+@keyframes gv-partbar-pulse {
+  0%, 100% { opacity: 1;   box-shadow: 0 0 0 0   rgba(255,255,255,0.55); }
+  50%      { opacity: 0.5; box-shadow: 0 0 0 5px rgba(255,255,255,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gv-partbar__status::before { animation: none; }
+}
+
+/* Modal base text colour — the real dialog card (.modalcontent) renders its body
+   and the close X at rgba(0,0,0,0.87) (measured wietsedemo), the same near-black
+   the idea-card body uses, NOT the global #333 body text. Scope it to the FO modal
+   so .gv-modal inherits it and the close button (which sets its own colour in the
+   primitive) is re-aligned here too. Modal headings keep --gv-text-heading. */
+.gv-modal { color: rgba(0, 0, 0, 0.87); }
+.gv-modal__close { color: rgba(0, 0, 0, 0.87); }
+
+/* Round close-button variant — the Community Monitor modal frames its X in a
+   46px circle (measured .e2e-modal-close-button: border-radius 50%, padding 10px,
+   1px transparent border). A modifier on the base .gv-modal__close — it does NOT
+   change the default square 40px close other modals (e.g. login) rely on. */
+.gv-modal__close.round { width: 46px; height: 46px; padding: 10px; border: 1px solid transparent; border-radius: 50%; }
+
+/* ── Community Monitor — FO satisfaction module ("City at a glance") ──────────────
+   The ongoing-survey banner/modal that asks how residents feel about governance &
+   public services as a 5-point EMOJI SENTIMENT linear scale. Grounded on
+   wietsedemo (.modalcontent / #community-monitor-modal-title / *-linear-scale-option).
+   Shell = the .gv-modal abstraction; this adds the monitor body + a NEW horizontal
+   emoji sentiment-scale variant (distinct from the survey kit's vertical .sv-sentiment).
+   The modal card is a tight 460px (measured .modalcontent width). ──────────────── */
+.gv-modal.size-monitor { --gv-modal-w: 460px; }
+
+/* Monitor body — question title block. The intro copy is the muted cool-grey
+   (#596B7A, measured #community-monitor-modal-title), 14px / 21px. */
+.gv-monitor__intro { margin: 14px 0 16px; font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-cool-grey-600); }
+/* Question is the modal's primary heading (no "City at a glance" title in the real
+   modal). Measured: 16px / 600 / rgb(71,71,71) = --gv-text-heading. Sits first. */
+.gv-monitor__question { margin: 0 0 16px; font-size: var(--gv-fs-base); font-weight: 600; line-height: 1.3; color: var(--gv-text-heading); }
+.gv-monitor__footer { margin-top: 16px; display: flex; align-items: center; justify-content: center; }
+/* Real modal footer = a centred "Takes 2 minutes" duration indicator (clock icon +
+   label) in tenant link-blue (measured rgb(17,45,126) → tenant-primary, themeable).
+   No participant count here — that lives on the homepage band. */
+.gv-monitor__duration { display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-s); color: var(--gv-tenant-primary); }
+.gv-monitor__duration svg { width: 14px; height: 14px; display: block; flex: 0 0 auto; }
+
+/* Horizontal 5-emoji sentiment scale (linear-scale variant). Each option is a
+   ~56px column (measured #*-linear-scale-option-N = 56px wide), tinted in the
+   tenant primary (measured rgb(4,77,108) link-blue — themeable). Emoji on top,
+   caption under. Rendered as a row of radio-backed buttons (aria-pressed live). */
+.gv-sentiment-scale { display: flex; gap: 0; justify-content: space-between; flex-wrap: wrap; }
+/* The option itself is a bare 56px column (measured: 0 border / 0 radius / 0 pad,
+   tenant-primary text). Selection chrome lives on the inner __face, not here, so the
+   option's grounded geometry matches the live linear-scale option div exactly. */
+.gv-sentiment-scale__opt {
+  flex: 0 0 56px; width: 56px; min-width: 56px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  appearance: none; background: transparent; border: 0; border-radius: 0; padding: 0; cursor: pointer;
+  color: var(--gv-tenant-primary); font-family: inherit; font-size: var(--gv-fs-s); line-height: 1.4285;
+}
+.gv-sentiment-scale__opt:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-sentiment-scale__face {
+  width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+  color: inherit; border: 2px solid transparent; border-radius: 8px; padding: 4px;
+}
+.gv-sentiment-scale__face svg { width: 100%; height: 100%; display: block; }
+.gv-sentiment-scale__opt:hover .gv-sentiment-scale__face { background: var(--gv-tenant-primary-lighten95); }
+.gv-sentiment-scale__cap { font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); text-align: center; }
+.gv-sentiment-scale__opt[aria-pressed="true"] .gv-sentiment-scale__face { border-color: var(--gv-tenant-primary); background: var(--gv-tenant-primary-lighten90); }
+.gv-sentiment-scale__opt[aria-pressed="true"] .gv-sentiment-scale__cap { color: var(--gv-text-primary); font-weight: 600; }
+@media (max-width: 480px) { .gv-sentiment-scale { gap: 4px; justify-content: center; } }
+
+/* Emoji-glyph face variant (matches the real linear-scale, which renders native
+   full-colour platform emoji 😣 🙁 😐 🙂 😀 — filled yellow faces, not monochrome
+   outline icons). Render the emoji character at face size with the native colour
+   font so it reads as the real yellow-face scale rather than a thin tenant-tinted
+   outline. Selection chrome (border/tint) still lives on .gv-sentiment-scale__face. */
+.gv-sentiment-scale__face.is-emoji {
+  font-size: 32px; line-height: 1; padding: 4px;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  -webkit-font-smoothing: auto;
+}
+.gv-sentiment-scale__face.is-emoji .gv-sentiment-scale__glyph { display: block; }
+
+/* Mobile reflow (measured fo-community-monitor-m: 390px viewport → 360px .modalcontent
+   card). The 5-option row must stay on ONE line inside the narrow card by narrowing each
+   option from the 56px desktop column to ~40px (measured #place_to_live-linear-scale-option-1
+   = 40px wide, height unchanged at 49px), NOT wrap or overflow. The desktop base above is a
+   rigid flex:0 0 56px column (correct for the 460px card); inside the constrained card we let
+   each option flex/shrink to a ~40px floor and the 48px face shrink to fit. Appended override
+   — desktop checkpoint geometry above is untouched. */
+@media (max-width: 480px) {
+  .gv-sentiment-scale__opt {
+    flex: 0 0 40px; width: 40px; min-width: 40px; max-width: 40px;
+  }
+  .gv-sentiment-scale__face { box-sizing: border-box; width: 40px; height: 40px; max-width: 40px; }
+  .gv-sentiment-scale__face.is-emoji { font-size: 26px; }
+}
+
+/* ── Event DETAIL page (/events/:id) ────────────────────────────────────────── */
+/* Source-grounded on wietsedemo.govocal.com/en/events/<id> (capture: fo-event-detail,
+   Cultuurconnect tenant). NEW page reached from a Past-event card. Anatomy: a
+   "Go back" tenant-primary text link at top → a two-column body: left = event H1 +
+   "From <project>" eyebrow + "Go to the project" link + rich-text .gv-prose body;
+   right 350px sidebar = a stylized date block on the grey app-canvas panel
+   (#EDEFF0, 3px radius) showing the big day number / month / time, + an "Add to
+   calendar" text button + a "Share this event" block. Pure layout/content here —
+   colours/type live in tokens; net-new = the .gv-eventdetail-* layout atoms and the
+   stylized date block (distinct from the small .gv-event-card__date chip). */
+
+/* Two-column grid: main column + a fixed 350px sidebar (live `eFNXIK` = 350px). */
+.gv-eventdetail { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 40px;
+  max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px 64px; align-items: start; }
+.gv-eventdetail__main { min-width: 0; }
+.gv-eventdetail__side { min-width: 0; }
+
+/* "From <project>" eyebrow line — live p.jtLtWx: 16px / 400 / #333. */
+.gv-eventdetail__from { margin: 0 0 4px; font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-text-primary); }
+/* "Go to the project" link — live p.fOUwoV: 14px / 400 / cool-grey #596B7A. */
+.gv-eventdetail__projlink { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 20px;
+  font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-text-secondary); text-decoration: none; }
+.gv-eventdetail__projlink:hover { text-decoration: underline; }
+.gv-eventdetail__projlink svg, .gv-eventdetail__projlink .gv-icon { width: 16px; height: 16px; color: currentColor; }
+
+/* Event H1 — live #e2e-event-title: 30px / 700 / #333, line-height 39px. NOTE this
+   is the per-event heading, smaller than the /events page display title. */
+.gv-eventdetail__title { margin: 0 0 16px; font-size: 30px; font-weight: 700; line-height: 39px; color: var(--gv-text-primary); }
+
+/* Stylized date block — live `.jaafFe`: grey app-canvas panel #EDEFF0, 20px pad,
+   3px radius. TWO-LAYER: this outer grey panel WRAPS an elevated white inner card
+   (live `.ebYKxp`, bg #fff) that holds the centered date stack; below the inner card,
+   still on the grey, sit a hairline divider + a calendar meta row + "Add to calendar". */
+.gv-eventdetail__datecard { background: var(--gv-background); border-radius: var(--gv-radius); padding: 20px; }
+/* Elevated white inner card around the date stack (the second layer). */
+.gv-eventdetail__datecardinner { background: var(--gv-white); box-shadow: var(--gv-shadow);
+  border-radius: var(--gv-radius); padding: 24px; }
+/* Hairline divider + calendar meta row between the white inner card and Add-to-calendar. */
+.gv-eventdetail__datedivider { height: 1px; background: var(--gv-grey-300); margin: 18px 0 14px; border: 0; }
+.gv-eventdetail__datemeta { display: flex; align-items: flex-start; gap: 9px; margin: 0;
+  font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: var(--gv-grey-700); }
+.gv-eventdetail__datemeta svg, .gv-eventdetail__datemeta .gv-icon { flex: none; width: 16px; height: 16px; color: var(--gv-grey-700); }
+/* The probed container itself (live `.lgwDnG`) is plain body text — 14px / 400 /
+   rgba(0,0,0,.87) / lh 20px — wrapping the sr-only sentence + the visible stack. */
+.gv-eventdetail__datestylized { font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: rgba(0, 0, 0, 0.87); }
+/* The visible two-tone date stack (the sr-only sentence is read by AT, hidden here). */
+.gv-eventdetail__date { text-align: center; }
+.gv-eventdetail__date .d { display: block; font-size: 34px; font-weight: 700; line-height: 1; color: var(--gv-text-primary); }  /* live p.dMIryb */
+.gv-eventdetail__date .m { display: block; font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-grey-700); }  /* live p.kwLlLs — 16px #767676 */
+.gv-eventdetail__date .t { display: block; margin-top: 8px; font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary); }  /* live p.dwwqWS — 18px/600 */
+/* sidebar action group under the date block */
+.gv-eventdetail__actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; }
+
+/* "Share this event" block — live h2 span: 21px / 700 / #333. */
+.gv-eventdetail__share { margin-top: 28px; }
+.gv-eventdetail__share h2 { margin: 0 0 12px; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-text-primary); }
+.gv-eventdetail__sharebtns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Four square coloured social-share targets — live `.kZhvwV`: 40px squares, 3px radius
+   (Facebook #3b5998, WhatsApp #04884c, X #000, email #112d7e from the digest). */
+.gv-eventdetail__sharesq { display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--gv-radius); border: 0; cursor: pointer; color: #fff; }
+.gv-eventdetail__sharesq svg, .gv-eventdetail__sharesq .gv-icon { width: 20px; height: 20px; color: #fff; }
+.gv-eventdetail__sharesq.facebook { background: #3b5998; }
+.gv-eventdetail__sharesq.whatsapp { background: #04884c; }
+.gv-eventdetail__sharesq.x        { background: #000; }
+.gv-eventdetail__sharesq.email    { background: #112d7e; }
+.gv-eventdetail__shareor { font-size: var(--gv-fs-s); color: var(--gv-grey-700); }
+
+/* Neutral "Go back" text link — live `.bILJQM` span: 16px / 400 / cool-grey #596B7A,
+   with a filled grey circle holding a white left-arrow (NOT the tenant-primary brand link). */
+.gv-eventdetail__back { display: inline-flex; align-items: center; gap: 8px;
+  font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-text-secondary); text-decoration: none; }
+.gv-eventdetail__back:hover { text-decoration: underline; }
+.gv-eventdetail__back .gv-eventdetail__backcircle { display: inline-flex; align-items: center; justify-content: center;
+  flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--gv-grey-700); }
+.gv-eventdetail__back .gv-eventdetail__backcircle svg { width: 18px; height: 18px; color: #fff; }
+
+@media (max-width: 860px) {
+  .gv-eventdetail { grid-template-columns: 1fr; gap: 24px; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PERSPECTIVES — Issue-Mapping feed  (page: pages/perspectives-feed/)
+   Source-grounded on wietsedemo.govocal.com … /ideas-feed (capture fo-perspectives-feed).
+   The dedicated full-bleed Issue-Mapping screen: a 30% left RAIL (Back · title ·
+   participant bubbles · question + intro prose · ranked theme/category cards) beside
+   a 70% dotted-grid CANVAS that floats sticky-note idea cards. All values below come
+   from the styles.json DIGEST (exact computed colours/borders/shadows/fonts/padding).
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* The split shell. Fills the viewport below the header (full-bleed, no page gutter). */
+.gv-issuefeed { display: grid; grid-template-columns: minmax(320px, 30%) 1fr;
+  align-items: stretch; min-height: calc(100vh - 78px); background: #fff; }
+
+/* ── Left rail ── scrollable column of meta + ranked theme cards (.e2e-ideas-feed-sidebar) */
+.gv-issuefeed__rail { display: flex; flex-direction: column; padding: 24px 24px 32px;
+  overflow-y: auto; border-right: 1px solid var(--gv-grey-200); }
+/* "Back" link — live span = 16px/400/#333 next to a chevron, top-left of the rail. */
+.gv-issuefeed__back { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  margin-bottom: 14px; padding: 0; border: 0; background: none; cursor: pointer;
+  font-size: var(--gv-fs-m); line-height: 26px; color: var(--gv-text-primary); }
+.gv-issuefeed__back svg { width: 18px; height: 18px; }
+/* "Issue Mapping" — live span = 25px / 700 / #333. */
+.gv-issuefeed__title { margin: 0 0 12px; font-size: 25px; font-weight: 700; line-height: 32.5px;
+  color: var(--gv-text-primary); }
+/* participant bubbles row reuses .gv-bubbles (sm). */
+.gv-issuefeed__participants { margin-bottom: 8px; }
+/* question — live h3 = 18.72px / 600 / #333, line-height 28.08, margin 18.72 vertical. */
+.gv-issuefeed__question { margin: 18px 0; font-size: 18.72px; font-weight: 600; line-height: 28.08px;
+  color: var(--gv-text-primary); }
+/* intro prose uses the shared .gv-prose (16px/400/24px #333) but flush-left, no max-width. */
+.gv-issuefeed__rail .gv-prose { max-width: none; margin: 0; padding: 0; }
+.gv-issuefeed__themelist { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; }
+
+/* ── Theme / category card ── ranked clickable card in the rail.
+   Live button.bIgPWV = 1px solid #596B7A, radius 3px, padding 9px 18px, left-aligned. */
+/* Base structure (grounded to live wietsedemo rail, fix 68/93 — swatch/count inverted):
+   single-column body, NO 40px left swatch column. Emoji is a small inline glyph
+   immediately left of the title (real DOM div.htgTKl = span.krAyOU[emoji] + p[title]);
+   the pastel round 40×40 circle (real div.ifTotU = 40×40, radius 50%, bg pastel e.g.
+   rgb(255,212,216)) sits on the RIGHT of the head row and holds the COUNT. */
+.gv-themecard { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start;
+  width: 100%; text-align: left; padding: 14px 16px; background: #fff; cursor: pointer;
+  border: 1px solid var(--gv-cool-grey-600); border-radius: var(--gv-radius);
+  font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+.gv-themecard:hover { box-shadow: var(--gv-shadow-hover-sm); }
+.gv-themecard.is-active { border-color: var(--gv-tenant-primary); box-shadow: var(--gv-shadow); }
+.gv-themecard__main { min-width: 0; }
+/* head row: [emoji + title] on the left, pastel count circle on the right. */
+.gv-themecard__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+/* title (emoji rides inline at the start). Live p = 18px/700/27px #333. */
+.gv-themecard__name { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; line-height: 27px;
+  color: var(--gv-text-primary); }
+/* small inline emoji glyph, no background, sits immediately left of the title. */
+.gv-themecard__emoji { margin-right: 6px; }
+/* count → pastel round 40×40 circle on the RIGHT; pastel fill via --gv-themecard-swatch
+   (live div.ifTotU = 40×40, radius 50%, bg rgb(255,212,216)). Count = 14px/700 slate. */
+.gv-themecard__count { display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--gv-themecard-swatch, var(--gv-grey-100));
+  font-size: var(--gv-fs-s); font-weight: 700; line-height: 21px; color: var(--gv-text-primary); }
+/* excerpt — cool-grey body, clamped. */
+.gv-themecard__desc { margin: 6px 0 0; font-size: var(--gv-fs-s); line-height: 21px;
+  color: var(--gv-text-secondary); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; }
+/* mini share bar — live track div.gdJIUf = 1px solid #e0e0e0, radius 4px, height 6px;
+   fill is a coloured segment (set width + colour inline via --gv-themecard-bar). */
+.gv-themecard__bar { margin-top: 10px; height: 6px; border: 1px solid var(--gv-grey-200);
+  border-radius: 4px; overflow: hidden; }
+.gv-themecard__bar > i { display: block; height: 100%; background: var(--gv-themecard-bar, var(--gv-cool-grey-600)); }
+
+/* ── Theme card · --grounded (fix 24/93 → folded into the base in fix 68/93) ──
+   The grounded structure IS now the base above, so this modifier is a no-op
+   backward-compatible alias kept only so existing consumers that still carry
+   `gv-themecard--grounded` (e.g. pages/perspectives-feed) don't break. New
+   markup needs only `.gv-themecard`. */
+.gv-themecard--grounded { grid-template-columns: 1fr; }
+
+/* ── Theme card · desc/bar full-width (fix 69/93 → themecard-desc-full-width) ──
+   Follow-on to fix 68/93: with the 40px swatch column gone, __main is a single
+   full-width grid cell, so __desc/__bar must align to the card's left padding edge
+   (under the emoji, NOT indented under the title). __main is block-flow full width;
+   the share-bar track is authored as <span> and defaults to display:inline, which
+   collapses it to ~1px — force it to a full-width block so it fills the card width
+   like the real wietsedemo card (track div.gdJIUf spans the full card). */
+.gv-themecard__main { display: block; width: 100%; }
+.gv-themecard__bar { display: block; width: 100%; }
+
+/* ── Theme card · share-bar fill height (fix 70/93 → themecard-share-bar-fill-height) ──
+   Grounded against fo-perspectives-board digest: the track (div.gdJIUf) is 8px tall
+   (1px solid #e0e0e0, radius 4px) but the coloured fill (div.elgHSk) is only 6px tall
+   (bg rgb(229,147,156), no border, no radius). Earlier passes collapsed the track to 6px
+   and let the fill stretch to 100%, erasing the hairline gutter. Restore the 8px track and
+   sit a 6px fill inside it, vertically centred — leaving the ~1px gutter above/below. */
+.gv-themecard__bar { height: 8px; display: flex; align-items: center; }
+.gv-themecard__bar > i { height: 6px; }
+
+/* ── Dotted-grid canvas ── floats sticky-note idea cards.
+   Live bg = white + tiled inline-svg dot (circle r1.5 #e5e5e5) at 20×20. */
+.gv-issuecanvas { position: relative; overflow: auto; background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23e5e5e5'/%3E%3C/svg%3E");
+  background-size: 20px 20px; padding: 40px; display: flex; align-items: center; justify-content: center; }
+/* the masonry "pile" of sticky notes (no idea selected). */
+.gv-issuecanvas__pile { display: flex; flex-wrap: wrap; gap: 20px; align-content: flex-start;
+  justify-content: center; align-items: flex-start; max-width: 1000px; }
+.gv-issuecanvas__pile[hidden], .gv-issuecanvas__view[hidden] { display: none; }
+/* canvas-hidden guard: .gv-issuecanvas sets display:flex, which beats the UA
+   [hidden]{display:none}. So a consumer that toggles the WHOLE canvas via the
+   hidden attribute (e.g. the perspectives-entry List/Perspective view swap, where
+   the Perspective canvas is hidden when List is chosen) needs an explicit override
+   — same pattern as the .gv-idealist[hidden] guard below. */
+.gv-issuecanvas[hidden] { display: none; }
+.gv-issuecanvas.is-detail { align-items: flex-start; }
+
+/* ── Scatter pile (fix 27/93) ── the DEFINING Perspective layout: a fixed-height
+   RELATIVE canvas of absolutely-positioned, lightly-rotated, OVERLAPPING sticky
+   notes of varied sizes, with the bottom edge CLIPPED by the fixed height.
+   Grounded on the live [data-cy=e2e-sticky-notes-pile]: position:relative,
+   width 1166px, height/min-height 650px desktop (340×800 mobile). Opt-in variant —
+   the base masonry grid above is untouched for any other consumer. The page authors
+   per-note placement (left/top/width/rotate) as layout-only inline styles. */
+.gv-issuecanvas__pile.is-scatter { display: block; position: relative;
+  width: 100%; max-width: 1166px; height: 650px; min-height: 650px;
+  margin: 0 auto; overflow: hidden; }
+.gv-issuecanvas__pile.is-scatter > .gv-sticky { position: absolute; }
+/* the canvas wrapper shouldn't center a block-level scatter pile, and the bottom
+   fade hints at clipped content (decorative — the real height clip does the work). */
+.gv-issuecanvas.has-scatter { align-items: stretch; justify-content: stretch; }
+@media (max-width: 860px) {
+  .gv-issuecanvas__pile.is-scatter { max-width: 340px; height: 800px; min-height: 800px; }
+}
+
+/* ── Scatter pile · mobile overlap (fix 29/93 "mobile-pile-overlap") ──
+   Grounded on the live mobile [data-cy=e2e-sticky-notes-pile] (fo-perspectives-entry-m
+   digest): position:relative, 340×800, notes overlapping/bleeding in ONE packed column
+   with the bottom CLIPPED. The page authors per-note placement as layout-only inline
+   styles (left/top/width), but those are sized for the 1166px desktop canvas — on a
+   340px canvas they bleed off the RIGHT instead of overlapping in-column. So on mobile
+   we override the desktop horizontal placement only (left/width), keeping the authored
+   vertical offset (top) and rotation so the notes retain the scatter overlap character:
+   a single ~full-width column of lightly-staggered, overlapping notes, bottom clipped by
+   the 800px height. Layout-only override (no visual tokens), so we use !important purely
+   to win over the page's inline layout styles — same pattern other consumers inherit. */
+@media (max-width: 860px) {
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky {
+    width: 300px !important; max-width: calc(100% - 24px) !important;
+    height: auto !important; }
+  /* lightly stagger the left edge so notes overlap rather than stack flush — keeps the
+     scatter feel inside the narrow column. We also re-cascade `top` on mobile because the
+     authored desktop tops cluster the notes into two side-by-side rows; on the narrow
+     single column we want one continuous overlapping run that the 800px height clips. */
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(odd)  { left: 8px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(even) { left: 32px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(1) { top: 0px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(2) { top: 150px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(3) { top: 300px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(4) { top: 450px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(5) { top: 600px !important; }
+  .gv-issuecanvas__pile.is-scatter > .gv-sticky:nth-child(6) { top: 750px !important; }
+}
+
+/* ── Sticky-note idea card ── live button = 320px, padding 20px, radius 3px, pastel bg.
+   Resting shadow + (.is-raised) the selected/floating detail shadow. Variants set bg. */
+.gv-sticky { position: relative; box-sizing: border-box; width: 320px; padding: 20px;
+  border: 0; border-radius: var(--gv-radius); text-align: left; cursor: pointer;
+  font-family: var(--gv-font-family); color: var(--gv-text-primary);
+  background: var(--gv-sticky-bg, rgb(240, 240, 252)); display: flex; flex-direction: column;
+  box-shadow: rgba(0,0,0,0.1) 0px 4px 6px 0px, rgba(0,0,0,0.08) 0px 1px 3px 0px; }
+.gv-sticky:hover { box-shadow: rgba(0,0,0,0.15) 0px 8px 12px 0px, rgba(0,0,0,0.1) 0px 2px 4px 0px; }
+/* the selected / floating-detail card sits raised. */
+.gv-sticky.is-raised { box-shadow: rgba(0,0,0,0.15) 0px 8px 12px 0px, rgba(0,0,0,0.1) 0px 2px 4px 0px; }
+/* Grounded (wietsedemo perspectives RAISED detail, desktop page.png + mobile
+   fo-perspectives-feed-m): the raised/expanded note carries NO author row — it
+   leads straight with the title, then excerpt, then reactions. The author chip
+   (avatar + name + emoji) stays only on the resting pile notes. */
+.gv-sticky.is-raised .gv-sticky__author { display: none; }
+/* pastel variants — exact digest backgrounds. */
+.gv-sticky.lavender { --gv-sticky-bg: rgb(221, 226, 243); }
+.gv-sticky.mint     { --gv-sticky-bg: rgb(197, 232, 237); }
+.gv-sticky.pink     { --gv-sticky-bg: rgb(255, 214, 242); }
+.gv-sticky.grey     { --gv-sticky-bg: rgb(240, 240, 252); }
+/* author chip — 32px avatar + 14px/600 name + emoji. */
+.gv-sticky__author { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.gv-sticky__author .av { width: 32px; height: 32px; border-radius: 50%; flex: 0 0 auto;
+  border: 2px solid #fff; background: var(--gv-grey-200) center/cover; }
+.gv-sticky__authorname { font-size: var(--gv-fs-s); font-weight: 600; line-height: 21px;
+  color: var(--gv-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gv-sticky__emoji { margin-left: auto; font-size: var(--gv-fs-m); line-height: 1; }
+/* Top-right corner affordance (grounded: the source sticky note shows a small square
+   share/branch 'fork' action icon in the corner, not a category emoji). Sits pinned
+   to the card's top-right; the author row is just avatar + name. */
+.gv-sticky__share { margin-left: auto; flex: 0 0 auto; display: inline-flex;
+  align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0;
+  border: 0; border-radius: var(--gv-radius); background: none; cursor: pointer;
+  color: var(--gv-text-secondary, #5a5a5a); }
+.gv-sticky__share:hover { background: rgba(0,0,0,0.06); color: var(--gv-text-primary); }
+.gv-sticky__share svg { width: 18px; height: 18px; }
+/* card title — live p = 21px / 700 / 31.5px #333 (detail). */
+.gv-sticky__title { margin: 0 0 8px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 31.5px;
+  color: var(--gv-text-primary); }
+/* excerpt — live p = 14px / 400 / 21px #333, clamped within the fixed card height. */
+.gv-sticky__excerpt { margin: 0; font-size: var(--gv-fs-s); font-weight: 400; line-height: 21px;
+  color: var(--gv-text-primary); overflow: hidden; }
+/* reaction controls — live .e2e-reaction-controls = flex row-reverse, 14px, dislike then like. */
+.gv-sticky__react { display: flex; flex-direction: row-reverse; align-items: center;
+  justify-content: flex-end; gap: 14px; margin-top: auto; padding-top: 16px; }
+.gv-sticky__reactbtn { display: flex; align-items: center; gap: 5px; margin: 0 4px 0 0; padding: 0;
+  border: 0; background: none; cursor: pointer; font-size: var(--gv-fs-s); line-height: 16.1px;
+  color: var(--gv-text-primary); font-family: var(--gv-font-family); }
+.gv-sticky__reactbtn svg { width: 18px; height: 18px; }
+.gv-sticky__reactbtn .gv-sr-only + span,
+.gv-sticky__reactbtn b { font-weight: 400; }
+
+/* Grounded fixed card height — every probed live sticky note is 320×400, text-only
+   (author chip → title → excerpt → reactions). No image; excerpt clamps to fit. */
+.gv-sticky { height: 400px; }
+
+/* SHARED FIX 66/93 — sticky-note-height. Grounded: every probed [data-cy=e2e-sticky-note]
+   in the perspectives feed is a uniform 320×400 tile (the pile is a grid of equal-height
+   400px tiles, NOT variable-height notes). Make the canonical .gv-sticky the masonry
+   default: a fixed 400px tile that clips overflow, so consumers never need per-card inline
+   heights. The resting pile is uniform; .is-raised stays free to grow (min-height only). */
+.gv-sticky { overflow: hidden; }
+.gv-sticky.is-raised { height: auto; min-height: 400px; overflow: visible; }
+
+/* SHARED FIX 49/93 — sticky-note category emoji is a TOP-RIGHT CORNER CHIP, not an
+   inline glyph on the author line. In both real captures the emoji sits in its own
+   small ~32px grey rounded-square chip pinned to the card's top-right corner, visible
+   even on the raised/detail card where there is no author row. Promote the emoji to an
+   absolutely-positioned boxed chip (grounded: ~32px square, light grey #F2F2F2 fill,
+   small radius, centred glyph) and decouple it from the (display:none on raised)
+   author row. Appended override — the inline author rule above is left untouched. */
+.gv-sticky__emoji {
+  position: absolute; top: 20px; right: 20px; margin-left: 0; z-index: 2;
+  box-sizing: border-box; width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: #F2F2F2; border-radius: var(--gv-radius);
+  font-size: var(--gv-fs-m); line-height: 1;
+}
+/* Decouple from the hidden author row: on the raised card the avatar+name collapse
+   but the corner chip stays. Keep the author row laid out (so the absolutely-positioned
+   emoji child still renders) while visually hiding only its avatar + name children. */
+.gv-sticky.is-raised .gv-sticky__author { display: flex; min-height: 0; margin-bottom: 0; }
+.gv-sticky.is-raised .gv-sticky__author > .av,
+.gv-sticky.is-raised .gv-sticky__author > .gv-sticky__authorname { display: none; }
+
+/* Floating bottom-right "Add an idea" — live primary CTA pinned to the canvas corner. */
+.gv-issuecanvas__add { position: absolute; right: 24px; bottom: 24px; z-index: 5; }
+
+@media (max-width: 860px) {
+  .gv-issuefeed { grid-template-columns: 1fr; min-height: 0; }
+  .gv-issuefeed__rail { border-right: 0; border-bottom: 1px solid var(--gv-grey-200); }
+  .gv-issuecanvas { min-height: 420px; }
+}
+
+/* SHARED FIX 67/93 — sticky-note-width. The base .gv-sticky is hard-pinned to
+   width: 320px (the grounded desktop pile tile). In the real MOBILE perspectives
+   capture the RAISED detail card (.gv-sticky.is-raised, hosted directly in
+   .gv-issuecanvas__view, NOT in a width-constraining pile) stretches to nearly the
+   full viewport width (~340px+ on a 390px viewport) — its width is driven by the
+   hosting canvas column, but the primitive's unconditional 320px prevents it
+   widening. So on mobile let the raised detail card FILL its column: width 100% /
+   max-width none, with the canvas padding tightened so the card reaches ~340px+.
+   Layout-only, scoped to .is-raised on mobile — the resting pile (uniform 320×400
+   desktop tiles + the scatter pile's own 300px mobile override) is left untouched. */
+@media (max-width: 860px) {
+  .gv-issuecanvas.is-detail { padding: 20px; }
+  .gv-sticky.is-raised { width: 100%; max-width: 100%; }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   ── Issue-Mapping SNAP FEED variant (.is-feed) — the DEFINING Perspective UX ──
+   Source-grounded on a live multi-scroll Playwright probe of wietsedemo
+   /ideas-feed (2026-06): the real method is a TikTok-style vertical scroll-snap
+   feed, NOT a single static card or a masonry pile. Measured facts:
+   • The whole experience is a FULL-SCREEN FIXED takeover with NO global site
+     header — the outer wrapper is position:fixed, inset:0, full-viewport height,
+     overflow:hidden; the page body does not scroll.
+   • The LEFT RAIL stays fixed (Back · "Issue Mapping" · participants · question ·
+     intro · ranked theme cards do not scroll).
+   • The RIGHT CANVAS is the ONLY scroller: a single column with
+     overflow-y:auto + scroll-snap-type:y mandatory, height = viewport (≈900px),
+     scrollHeight ≈8500px (≈10 card-screens).
+   • Each card lives centred in a ~700px snap band (scroll-snap-align centre);
+     the 320×400 card is centred, and the NEXT card peeks at the bottom edge.
+   New variant on the existing components — the base .gv-issuefeed / .gv-issuecanvas
+   (header-below split + masonry/scatter pile) is untouched for other consumers. */
+
+/* Full-screen fixed takeover: pins the rail and lets only the canvas snap-scroll. */
+.gv-issuefeed.is-feed { position: fixed; inset: 0; height: 100vh; min-height: 0;
+  overflow: hidden; background: #fff; }
+/* the rail no longer scrolls the page — it's a fixed column inside the fixed shell.
+   Internal overflow guard only (rail content fits the viewport on desktop). */
+.gv-issuefeed.is-feed .gv-issuefeed__rail { height: 100vh; overflow-y: auto; }
+
+/* The canvas becomes the single snap container (replaces the centred flex box). */
+.gv-issuecanvas.is-feed { display: block; height: 100vh; overflow-y: auto; overflow-x: hidden;
+  padding: 0; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch;
+  align-items: stretch; justify-content: stretch; }
+
+/* Snap band — each card sits in a ~700px band that centres it; the next band's
+   card peeks below as you scroll. Grounded band height = 700px, snap-align centre. */
+.gv-sticky-band { box-sizing: border-box; display: flex; align-items: center;
+  justify-content: center; width: 100%; height: 700px; scroll-snap-align: center; }
+/* inside the snap feed every card is the uniform raised 320×400 tile, centred.
+   flex:0 0 auto so the band's flex centring can't shrink the card below 320px. */
+.gv-issuecanvas.is-feed .gv-sticky.is-raised { flex: 0 0 auto; width: 320px; max-width: 320px;
+  height: 400px; min-height: 400px; overflow: hidden; margin: 0; }
+
+/* ── Mobile composition (≤860px) — a DISTINCT layout, not stacked desktop ──
+   Grounded on fo-perspectives-feed-m: rail hidden; the card fills almost the whole
+   screen on the dotted background (full-bleed swipe feed); a top bar shows only a
+   Back arrow (left) + "Add an idea" CTA (right); the theme list collapses behind a
+   fixed bottom "Explore tags" bar. No global site header. */
+/* desktop: hide the mobile-only chrome. */
+.gv-issuefeed__mtop, .gv-issuefeed__tags { display: none; }
+/* mobile Back arrow button in the top bar. */
+.gv-issuefeed__mback { display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--gv-text-primary); }
+.gv-issuefeed__mback svg { width: 24px; height: 24px; }
+
+@media (max-width: 860px) {
+  /* the feed shell collapses to one column; the rail is removed from the flow. */
+  .gv-issuefeed.is-feed { display: block; }
+  .gv-issuefeed.is-feed .gv-issuefeed__rail { display: none; }
+
+  /* top bar: Back (left) + Add-idea CTA (right), floating over the dotted canvas. */
+  .gv-issuefeed.is-feed .gv-issuefeed__mtop { position: fixed; top: 0; left: 0; right: 0;
+    z-index: 20; display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; pointer-events: none; }
+  .gv-issuefeed.is-feed .gv-issuefeed__mtop > * { pointer-events: auto; }
+  .gv-issuefeed__madd { display: inline-flex; }
+
+  /* canvas fills the screen; bands shrink so the near-full-width card dominates. */
+  .gv-issuecanvas.is-feed { height: 100vh; padding: 0; }
+  .gv-issuecanvas.is-feed .gv-sticky-band { height: 100vh; padding: 0 16px; }
+  .gv-issuecanvas.is-feed .gv-sticky.is-raised { width: 100%; max-width: 100%;
+    height: auto; min-height: 360px; }
+  /* the desktop floating CTA is replaced by the top-bar Add-idea on mobile. */
+  .gv-issuefeed.is-feed .gv-issuecanvas__add { display: none; }
+
+  /* fixed bottom "Explore tags" trigger — opens the theme/category sheet. */
+  .gv-issuefeed.is-feed .gv-issuefeed__tags { position: fixed; left: 0; right: 0; bottom: 0;
+    z-index: 20; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 18px 16px; border: 0; border-top: 1px solid var(--gv-grey-200);
+    background: #fff; cursor: pointer; font-family: var(--gv-font-family);
+    font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary); }
+  .gv-issuefeed.is-feed .gv-issuefeed__tags svg { width: 20px; height: 20px; }
+}
+
+/* PAGE FIX 19/32 — standalone issue-canvas mobile CTA placement.
+   Grounded on fo-perspectives-feed-m (390×844): the real mobile Perspectives view
+   pins the dark "Add an idea" CTA to the TOP-RIGHT of the near-full-bleed canvas
+   (not bottom-right as on desktop). The full-page .is-feed variant already handles
+   this with its own fixed top bar (.gv-issuefeed__mtop) and HIDES .gv-issuecanvas__add
+   on mobile — so this rule is scoped to the BASE standalone canvas only
+   (:not(.is-feed)) so the page variant is untouched. Layout-only: re-pins the
+   floating CTA to top-right under the mobile breakpoint. */
+@media (max-width: 860px) {
+  .gv-issuecanvas:not(.is-feed) .gv-issuecanvas__add {
+    top: 16px; right: 16px; bottom: auto;
+  }
+}
+
+/* ── Homepage "We want to hear from you" featured 3-up spotlight row ──────────
+   Source-grounded on wietsedemo /en (capture fo-homepage-featured-row): a row of
+   large, image-led featured project cards that sit ABOVE the regular project grid,
+   under a shared .gv-title.h2 ("We want to hear from you" — 25px/700/#474747,
+   margin-bottom 16px). Each card is borderless and photo-dominant: a 4:3 image
+   (live 376×282, radius 3px, overflow hidden) + an 18px/700 title 8px below + the
+   avatar bubbles row — NO progress bar / timer / status (that's the boxed grid card).
+   Distinct from the wide single-block .gv-spotlight and from the bordered
+   .gv-pcard.boxed grid card. Built as a NEW layout (.gv-featured-row) of a NEW
+   .gv-pcard.featured variant — base .gv-pcard / .gv-pcard__thumb / __title unchanged.
+   Section h2 = the shared .gv-title.h2; bubbles = .gv-bubbles.xs (live 20px avatars). */
+.gv-featured-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+
+/* Featured card = borderless photo card. Thumb fills 3 of the 3-up columns;
+   live thumb is 376×282 (≈4:3) with the shared 3px radius + clipped corners. */
+.gv-pcard.featured { flex: initial; }
+.gv-pcard.featured .gv-pcard__thumb { aspect-ratio: 4 / 3; border-radius: var(--gv-radius); }
+.gv-pcard.featured .gv-pcard__title { font-size: var(--gv-fs-l); font-weight: 700;
+  line-height: 1.3; margin: 8px 0 0; }                 /* live h3 = 18px/700, margin-top 8px */
+.gv-pcard.featured .gv-bubbles { margin-top: 8px; }
+
+@media (max-width: 860px) {
+  /* Mobile = the live wietsedemo HORIZONTAL CAROUSEL feel: cards keep a fixed
+     card-width and the track scrolls horizontally with scroll-snap, so the next
+     card peeks on the right edge (live holds card 1 at ~290px with card 2
+     peeking). Replaces the old full-bleed vertical stack. The carousel's JS
+     swipe/skip affordance is intentionally out of scope for the static
+     component — this gives the same scroll-snap mechanic via native overflow. */
+  .gv-featured-row {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 86%;
+    gap: 16px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-left: 20px;
+    /* let the peeking card bleed to the viewport edge */
+    margin-inline: -20px;
+    padding-inline: 20px;
+    scrollbar-width: none;
+  }
+  .gv-featured-row::-webkit-scrollbar { display: none; }
+  .gv-featured-row > .gv-pcard.featured { scroll-snap-align: start; }
+}
+
+/* ── Projects & folders LIST page (FO /projects) ─────────────────────────────
+   Source-grounded on wietsedemo.govocal.com/en/projects (capture fo-projects-list).
+   The standalone "All projects" index: a centered page title, a full-width search
+   field, then the SAME .gv-ptoolbar (status tabs + Tag/District filter selectors)
+   and .gv-pgrid boxed-card grid already used on the homepage. Only net-new here are
+   the page-title atom and the magnifier search-field wrapper. */
+
+/* Centered page heading — live "Projects" span computes to 34px / 500 / rgb(71,71,71). */
+.gv-projlist__title { margin: 0 0 24px; text-align: center;
+  font-family: var(--gv-font-family); font-size: 34px; font-weight: 500;
+  line-height: 1.2; color: var(--gv-text-pagetitle); }
+/* Mobile: real /projects left-aligns the page title (flush with the search field),
+   keeping it centered at desktop. Append-only — mirrors real responsive behavior. */
+@media (max-width: 640px) {
+  .gv-projlist__title { text-align: left; }
+}
+
+/* .gv-searchfield → moved to govocal-primitives.css (cross-surface atom). */
+
+/* ════════════════════════════════════════════════════════════════════════════
+   VOTING METHOD BODY — the per-method panel that renders inside .gv-phasebody for
+   a voting phase (approval / single / budget voting). Two parts, source-grounded on
+   wietsedemo …/approval-voting-decide-on-the-future-of-the-greenwood-cemetery
+   (capture fo-approval-voting, Cultuurconnect tenant, primary #112D7E):
+     (1) .gv-voteoptions — a collapsible OPTIONS accordion at the top (one row per
+         vote option: 21px/700 title + right-chevron, expandable description region).
+     (2) the RESULTS state: a .gv-tally "Final tally" panel (a "Voting closed"
+         .gv-statuspill, big count number + caption) followed by a .gv-voteresults
+         grid of ranked .gv-voteresult cards (rank badge · thumb · title · percentage
+         bar · "Read more").
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Options accordion ──────────────────────────────────────────────────────
+   Each option is a white card (the live wrapper .cBWbiv) with a full-width header
+   button. The accordion title (.e2e-accordion h3) computes to 21px/700/#474747; the
+   chevron is a 24px right-arrow that rotates to point down when expanded. */
+.gv-voteoptions { display: flex; flex-direction: column; gap: 0; }
+/* Live wietsedemo renders options as a single FLAT divided list: each row is
+   transparent, no shadow/radius/padding, with a 1px top/bottom #E0E0E0 hairline
+   (.cBWbiv border-width 1px 0px) so consecutive rows share one rule. We put the
+   rule on border-top of every row and suppress the leading one on the first. */
+.gv-voteoption { background: transparent; border-radius: 0; box-shadow: none;
+  border-top: 1px solid var(--gv-grey-300); overflow: hidden; }
+.gv-voteoption:first-child { border-top: 0; }
+.gv-voteoption__head { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  width: 100%; padding: 20px; border: 0; background: transparent; cursor: pointer;
+  font-family: inherit; text-align: left; }
+.gv-voteoption__head:focus-visible { outline: var(--gv-focus-outline); outline-offset: -2px; }
+/* title — .e2e-accordion h3 : 21px / 700 / rgb(71,71,71) */
+.gv-voteoption__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.3; color: var(--gv-text-pagetitle); }
+.gv-voteoption__chevron { flex: 0 0 auto; display: inline-flex; color: var(--gv-grey-800);
+  transition: transform .15s ease; }
+.gv-voteoption__chevron svg, .gv-voteoption__chevron .gv-icon { width: 24px; height: 24px; }
+.gv-voteoption__head[aria-expanded="true"] .gv-voteoption__chevron { transform: rotate(90deg); }
+/* expandable region — collapsed by default; the page toggles .is-open */
+.gv-voteoption__panel { display: none; padding: 0 20px 20px; font-size: var(--gv-fs-base);
+  line-height: 1.65; color: var(--gv-text-primary); }
+.gv-voteoption__panel.is-open { display: block; }
+.gv-voteoption__panel p { margin: 0 0 12px; }
+.gv-voteoption__panel p:last-child { margin-bottom: 0; }
+
+/* ── Final tally panel — #voting-status-module's inner card (.hzyaEs). White, 20px
+   padding, soft --gv-shadow, 16px bottom margin. */
+/* Grounded re-base (fix 31/93 "tally-card"): the live Final-tally card (.hzyaEs) is
+   FLAT — box-shadow none, border-radius 0 — and carries a 4px solid LEFT accent bar in
+   tenant-primary (border-width '0px 0px 0px 4px', left border-color rgb(17,45,126) =
+   the captured --gv-tenant-primary). White bg / 20px padding / 16px bottom margin keep.
+   The old rounded+soft-shadow look is preserved as a .gv-tally--card variant for any
+   consumer that wants it back. */
+.gv-tally { background: #fff; border-radius: 0; box-shadow: none;
+  border-left: 4px solid var(--gv-tenant-primary);
+  padding: 20px; margin: 0 0 16px; }
+.gv-tally--card { border-left: 0; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); }
+/* "Final tally" heading — h3.igaFHq : 18px/700/tenant-primary, margin 4px 0 16px */
+.gv-tally__title { margin: 4px 0 16px; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.3; color: var(--gv-tenant-primary); }
+/* "Voting closed on … Participants could vote for N options." — span : 16px/.87 */
+.gv-tally__caption { font-size: var(--gv-fs-base); line-height: 1.5; color: rgba(0, 0, 0, 0.87); }
+.gv-tally__caption strong { font-weight: 700; }
+/* the headline count — p.ZrGRl : 34px/700/#333 */
+.gv-tally__count { margin: 12px 0 0; font-size: var(--gv-fs-xxxxl); font-weight: 700; line-height: 1.5; color: var(--gv-grey-800); }
+/* caption under it — p.jtLtWx : 16px/400/#333 */
+.gv-tally__sub { margin: 0; font-size: var(--gv-fs-base); font-weight: 400; line-height: 1.5; color: var(--gv-grey-800); }
+
+/* ── Ranked result cards — a 2-up grid (live each card is calc(50% - 16px)). ───
+   Each card (.e2e-card) is white, 3px radius, --gv-shadow, 17px padding, a flex row
+   with the rank-badged thumbnail (left) + the body (title · percentage bar · Read
+   more). Shares the soft-shadow media-card pattern with .gv-ideacard but carries a
+   ranked thumbnail and a percentage bar instead of author/reactions. */
+.gv-voteresults { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+@media (max-width: 720px) { .gv-voteresults { grid-template-columns: minmax(0, 1fr); } }
+.gv-voteresult { display: flex; align-items: center; gap: 17px; background: #fff;
+  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 17px;
+  color: var(--gv-text-primary); text-decoration: none; }
+.gv-voteresult:hover .gv-voteresult__title { color: var(--gv-tenant-primary); }
+.gv-voteresult:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+/* thumbnail + rank badge overlay */
+.gv-voteresult__thumb { position: relative; flex: 0 0 120px; width: 120px; height: 120px;
+  border-radius: var(--gv-radius); overflow: hidden; background: var(--gv-background);
+  display: grid; place-items: center; color: var(--gv-grey-500); }
+.gv-voteresult__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gv-voteresult__thumb svg, .gv-voteresult__thumb .gv-icon { width: 40px; height: 40px; }
+/* rank badge — .dcvdmw : bg --gv-blue-500 (#044D6C), 3px radius, 4px 12px pad, white #N 14px/400/19.999px */
+.gv-voteresult__rank { position: absolute; top: 0; left: 0; background: var(--gv-blue-500);
+  color: #fff; border-radius: var(--gv-radius); padding: 4px 12px;
+  font-size: var(--gv-fs-s); font-weight: 400; line-height: 1.4; }
+.gv-voteresult__body { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1 1 auto; }
+/* option title — h5.jlDUZH : 16px/700/#474747 */
+.gv-voteresult__title { margin: 0; font-size: var(--gv-fs-base); font-weight: 700; line-height: 1.3; color: var(--gv-text-pagetitle); }
+/* percentage line — p.hgLDJh : 14px/700/tenant-primary (e.g. "50% • 2 votes") */
+.gv-voteresult__pct { margin: 0; font-size: var(--gv-fs-s); font-weight: 700; line-height: 1.5; color: var(--gv-tenant-primary); }
+/* the fill bar — distinct from .gv-threshold__bar: the track (.bsnfRS) is the tenant
+   primary tinted to 25% with a 1px tenant-primary border + 4px radius, 8px tall; the
+   fill (.kpdUEH) is solid tenant primary, 6px tall. */
+.gv-voteresult__track { height: 8px; border-radius: 4px; box-sizing: border-box;
+  background: color-mix(in srgb, var(--gv-tenant-primary) 25%, transparent);
+  border: 1px solid var(--gv-tenant-primary); overflow: hidden; display: flex; align-items: center; }
+.gv-voteresult__fill { height: 6px; background: var(--gv-tenant-primary); }
+.gv-voteresult__foot { display: flex; align-items: center; gap: 18px; margin-top: 2px; }
+
+/* ── Poll method body — the poll participation form (FO) ──────────────────────────
+   Grounded on wietsedemo poll-mobility-plan-for-riverside-heights:
+   .e2e-poll-form (flex column, centred, 1166px), .e2e-poll-question (white card,
+   20px pad, 3px radius, --gv-shadow), the numbered badge (sc-jiwKzQ: 25px square,
+   #F2F2F2 bg, 16px/600, 3px radius), the question label (18px/600 #474747), and the
+   .e2e-poll-option choices (16px, indented 35px) which REUSE the .gv-radio / .gv-checkbox
+   primitives. The full-width 'Send' (.e2e-send-poll) is .gv-btn.primary.full. The sticky
+   'Open for participation · Take the poll' partbar and any participation CTA REUSE the
+   existing .gv-partbar / .gv-surveyband — this adds only the poll question/option body. */
+.gv-poll { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%;
+  color: var(--gv-text-pagetitle); font-size: var(--gv-fs-s); line-height: 19.999px; }
+.gv-poll__question { background: #fff; padding: 20px; margin: 0; border: 0; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow);
+  color: var(--gv-text-pagetitle); align-self: stretch; }
+.gv-poll__qhead { display: flex; align-items: center; gap: 13px; margin-bottom: 16px; }
+/* the order badge — neutral #F2F2F2 chip (one-off grey, not the grey-100 token #F4F6F8). */
+.gv-poll__num { width: 25px; height: 25px; flex: none; display: flex; align-items: center; justify-content: center;
+  background: #F2F2F2; color: var(--gv-text-pagetitle); font-size: var(--gv-fs-base); font-weight: 600;
+  border-radius: var(--gv-radius); }
+.gv-poll__label { font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-pagetitle); line-height: 1.3; }
+.gv-poll__options { display: flex; flex-direction: column; align-items: flex-start; }
+/* each option (the live .e2e-poll-option label) is 16px, indented 35px, stacked 12px.
+   It reuses the .gv-radio / .gv-checkbox primitive; align-items/line-height are reset
+   to the live label flow without mutating the base primitive elsewhere. */
+.gv-poll__options .gv-radio, .gv-poll__options .gv-checkbox {
+  font-size: var(--gv-fs-base); line-height: normal; align-items: normal; margin: 0 0 12px 35px; }
+/* the full-width Send row — a .gv-btn.primary.full; disabled until the poll is complete. */
+.gv-poll__send { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 12px; }
+
+/* ── FO project-page content H1 — grounded darker heading ───────────────────
+   The base .gv-title now carries the homepage card/section treatment (#474747,
+   wietsedemo fo-homepage-featured-row). FO project content pages use a darker H1:
+   real `main h1` on fo-project-ideation-list / proposals / survey / perspectives
+   computes to rgb(30,30,30). Route the project content title (h1.gv-title) to the
+   strong heading token without disturbing .gv-title.h2/.h3 (homepage sections). */
+h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
+
+/* ── FO idea-card reaction tally — grounded to match the comment tally ───────
+   Real product (digest .sc-dcEUjE 'comment'/'124', fo-project-ideation-list):
+   the like/dislike count renders at 16px / weight 400 / slate rgb(89,107,122),
+   identical to the comment-count tally — not the smaller, darker, semibold
+   treatment the base rule carried. Override so the reaction count matches the
+   comment count and the real product. */
+.gv-react__count { font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-cool-grey-600); }
+
+/* ── Survey-landing header band (open single-method survey project page) ────────
+   Live: div.sc-eIoBCF.jfrhiw — WHITE band, padding 30px 0 65px. Project H1 sits on
+   the LEFT; a right-aligned action column holds the Edit/Follow admin row, a large
+   primary "Take the survey" CTA, then a participant avatar+count line. No phase
+   stepper / Timeline heading for an open single phase. Layout-only variant on top of
+   the canonical .gv-title/.gv-btn/.gv-participants atoms — no colour/type re-authored.
+   Source: fo-project-survey. ───────────────────────────────────────────────────── */
+.gv-surveyhead { background: #fff; padding: 30px 0 65px; }
+.gv-surveyhead__grid { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px 56px; align-items: start; }
+.gv-surveyhead__main { padding-top: 40px; }   /* title baseline sits below the admin row, matching the live left/right offset */
+.gv-surveyhead__action { display: flex; flex-direction: column; align-items: flex-end; gap: 18px; min-width: 320px; }
+.gv-surveyhead__admin { display: inline-flex; align-items: center; gap: 12px; }
+.gv-surveyhead__cta { width: 100%; justify-content: center; padding: 13px 22px; font-size: var(--gv-fs-base); font-weight: 600; line-height: 22px; }
+.gv-surveyhead__action .gv-participants { padding-top: 0; }
+@media (max-width: 760px) {
+  .gv-surveyhead { padding: 24px 0 36px; }
+  .gv-surveyhead__grid { grid-template-columns: 1fr; }
+  .gv-surveyhead__main { padding-top: 0; }
+  .gv-surveyhead__action { align-items: stretch; min-width: 0; }
+  .gv-surveyhead__admin { justify-content: flex-start; }
+}
+
+/* Grey content section below the participation band (live: section, bg #EDEFF0,
+   padding 60px 0 80px). Reuses .gv-projdesc body copy; band-padding only here. */
+.gv-surveycontent { background: var(--gv-background); padding: 60px 0 80px; }
+
+/* "Back to folder" breadcrumb — text-button link with a leading arrow-left icon,
+   sitting above the project hero on single-project pages (live: project-volunteering
+   "Showroom" top of page). Secondary text colour, no chrome; aligns to the page wrap. */
+.gv-backlink { display: inline-flex; align-items: center; gap: 6px; padding: 18px 0 0;
+  background: none; border: 0; cursor: pointer; font: inherit;
+  font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+.gv-backlink:hover { color: var(--gv-text-primary); text-decoration: underline; }
+.gv-backlink [data-gv-icon] { width: 18px; height: 18px; display: inline-flex; }
+
+/* ── Content-Builder RENDER layer (FO) ──────────────────────────────────────
+   What the back-office Content Builder OUTPUTS onto a live front-office homepage
+   or custom page (NOT the editor chrome — that's .gv-bo-cb-* in govocal-bo.css).
+   Source-grounded on Copenhagen (kobenhavntaler.kk.dk, capture fo-cph-cb-home):
+   a full-width frame holds a vertical stack of rows; each row is 1/2/3 columns of
+   generic cells (text-box · image · white-space). Cross-tenant STRUCTURE — the skin
+   (font KBH-Regular→--gv-font-family, colours) re-themes per city. Measured:
+   frame width 1440 (page) · single-column 588 · text-box full-width 1200/max 1200,
+   margin 0 120 · in-column text-box width 588 margin 0 · white-space pad 12/24px 0.
+   1200 − (588×2) = 24px column gap → row gap:24px, max-width:1200. */
+
+.gv-cb-frame {                       /* render container — full page width, no chrome */
+  display: block; width: 100%; margin: 0; padding: 0;
+  font-family: var(--gv-font-family); color: var(--gv-text-primary);
+}
+
+/* A layout row = a full-width flow container; it spans the frame and lays its cells
+   out left→right with a 24px gap (588+24+588 = 1200). The 1200 content MEASURE +
+   centring live on the CELLS, not the row, exactly as the live render (a top-level
+   text-box self-centres with max-width:1200 + margin:0 120 on a 1440 page; a
+   white-space spacer spans the full 1440). cols-1 is plain block flow. */
+.gv-cb-row {
+  display: flex; flex-wrap: wrap; gap: 24px;
+  width: 100%; margin: 0; padding: 0;
+}
+.gv-cb-row.cols-1 { display: block; }                 /* single full cell, no gap */
+/* Multi-column rows are constrained + centred to the 1200 content measure, so two
+   columns + a 24px gap render 588 each (588+24+588 = 1200); three render ~384. */
+.gv-cb-row.cols-2,
+.gv-cb-row.cols-3 { max-width: var(--gv-cb-measure, 1200px); margin: 0 auto; }
+.gv-cb-col { flex: 1 1 0; min-width: 0; min-height: 40px; display: block; }
+
+/* Every cell carries the 1200 content measure. As a top-level (full-width) cell it
+   self-centres to 1200 on a wider page; inside a .gv-cb-col the column constrains
+   its rendered width (588 in a 2-col row) while the cap stays 1200 — matching live. */
+.gv-cb-textbox,
+.gv-cb-image { max-width: var(--gv-cb-measure, 1200px); margin-left: auto; margin-right: auto; }
+
+/* Text-box cell — a rich-text block. Padding 24px 0 (measured).
+   Quill alignment classes (ql-align-center/right/justify) come through from the editor. */
+.gv-cb-textbox { display: block; width: 100%; padding: 24px 0; min-height: 26px; }
+.gv-cb-textbox > * { font-family: var(--gv-font-family); }
+.gv-cb-textbox .ql-align-center  { text-align: center; }
+.gv-cb-textbox .ql-align-right   { text-align: right; }
+.gv-cb-textbox .ql-align-justify { text-align: justify; }
+/* Rich text inside a CB text-box uses the shared .gv-prose typography, but flush to the
+   cell — no 720px measure / auto-margins / side padding (the text-box already owns the
+   1200px measure + 24px 0 padding). Mirrors the .gv-issuefeed__rail .gv-prose reset. */
+.gv-cb-textbox .gv-prose { max-width: none; margin: 0; padding: 0; }
+
+/* Image cell — flex container so the <img> fills the cell width (live: display:flex). */
+.gv-cb-image { display: flex; width: 100%; min-height: 26px; }
+.gv-cb-image img { display: block; width: 100%; height: auto; }
+
+/* White-space spacer — vertical padding only, no content. Two measured steps. */
+.gv-cb-whitespace { display: block; width: 100%; padding: 24px 0; min-height: 0; }
+.gv-cb-whitespace.is-small  { padding: 12px 0; }
+.gv-cb-whitespace.is-medium { padding: 24px 0; }
+
+@media (max-width: 760px) {
+  .gv-cb-row { flex-direction: column; gap: 16px; padding: 0 16px; }
+}
+
+/* ── Project carousel ─────────────────────────────────────────────────────────
+   The product-default homepage "project row" presentation (Falkirk + St Louis):
+   a section title + prev/next scroll controls over a paged horizontal rail of
+   cards. STRUCTURALLY COMMON across tenants (one product, re-skinned), so this is
+   a thin COMPONENT wrapper around the existing .gv-rail atom — the rail keeps all
+   the scroll/snap/fade mechanics; the carousel only adds the header + controls +
+   the a11y scaffolding (role=region + aria-roledescription=carousel + the sr-only
+   "Press escape to skip carousel" button the live product renders).
+   The scroll buttons are transparent flex wrappers around a 24px chevron (live
+   class .e2e-event-previews-scroll-{left,right}; left .disabled at start). */
+.gv-carousel { display: block; }
+.gv-carousel__head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; margin-bottom: 14px; padding-right: 4px;
+}
+.gv-carousel__title { margin: 0; }  /* host a .gv-title.h2 (live = 25px/700/lh32.5) */
+.gv-carousel__controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+/* Scroll button — matches the live .e2e-event-previews-scroll-{left,right}: a bare
+   transparent control (no own bg/border/radius/shadow), centered flex, inheriting
+   the surrounding text (14px on the real homepage); only the 24px chevron shows.
+   The 36px box is a touch target via padding, not a visible circle. Disabled at a
+   rail end: aria-disabled dims + un-clicks it (left starts .disabled). */
+.gv-carousel__scroll {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 6px; border: 0; border-radius: 0;
+  background: transparent; color: var(--gv-text-primary); cursor: pointer;
+  font: inherit; line-height: inherit; -webkit-appearance: none; appearance: none;
+}
+.gv-carousel__scroll .gv-icon { width: 24px; height: 24px; }
+.gv-carousel__scroll:hover { filter: brightness(.8); }
+.gv-carousel__scroll:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+.gv-carousel__scroll[aria-disabled="true"],
+.gv-carousel__scroll.disabled { opacity: .35; pointer-events: none; cursor: default; }
+/* The sr-only skip button is keyboard-reachable but visually hidden until focused
+   (extends the .gv-sr-only atom — show it on focus so the focus ring is visible). */
+.gv-carousel__skip { display: block; }
+.gv-carousel__skip:focus { position: static; width: auto; height: auto; margin: 0 0 8px; clip: auto; white-space: normal;
+  background: var(--gv-grey-100); border-radius: var(--gv-radius); padding: 6px 10px; font: inherit; border: 0; cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-carousel__scroll { transition: none; }
+}
+
+/* ── CTA banner — full-width Content-Builder strip ──────────────────────────
+   A thin, full-bleed coloured strip carrying ONE centered call-to-action
+   button. Source-grounded on St Louis (stlouis.govocal.com, capture
+   fo-stlouis-cta-banner, tenant-primary #033D8B): the strip fill = the city's
+   --gv-tenant-primary; the CTA is GoVocal's real "Button" rendered as an <a>
+   (digest: bg #033D8B, padding 9px 18px, radius 3px, 14px/400, height 45px),
+   here a white .gv-btn.primary-inverse so it reads on the coloured fill.
+   Mounts as a CB block inside a .gv-cb-frame / .gv-cb-row.cols-1 cell.
+
+   DISTINCT from .gv-ctaband (transparent, centered title+lead+CTA, 720
+   measure) and .gv-monitorband (tinted 3-zone text/media/CTA flex card).
+   This is the bare coloured band whose only content is the button. Re-skins
+   per ?theme= via --gv-tenant-primary; override --gv-cta-banner-bg to pin a
+   one-off fill. */
+.gv-cta-banner {
+  width: 100%;
+  background: var(--gv-cta-banner-bg, var(--gv-tenant-primary));
+}
+.gv-cta-banner__inner {
+  max-width: var(--gv-cb-measure, 1200px);   /* same content measure as CB cells */
+  margin: 0 auto;
+  padding: 22px 24px;                          /* thin strip */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* baseline text treatment (measured: 14px / 19.999 / rgba(0,0,0,.87)) — the
+     button overrides its own, this just pins the strip's intrinsic baseline */
+  color: var(--gv-text-body);
+  font-family: var(--gv-font-family);
+  font-size: var(--gv-fs-s);
+  line-height: 19.999px;
+}
+/* The CTA wrapper mirrors the live e2e-cta-banner-button container — a
+   transparent centered flex box around the real <a> button. */
+.gv-cta-banner__cta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── File-attachment download row ────────────────────────────────────────────
+   The Content-Builder "file attachment" widget — a downloadable-file row on a
+   custom/info page (terms / about / archive pages). Source-grounded on St Louis
+   (stlouis.govocal.com/pages/memos, capture fo-stlouis-infopage): each file is an
+   outlined row (div.keappF, digest #11) — 1px solid #C8D0D7 (--gv-attachment-border),
+   3px radius, padding 10px 20px — holding a 24px paperclip glyph, the file-name <a>
+   link, and a "(NNN KB)" size span (a.esoZGW + span.isWOjc, digest #12/#13: both
+   16px/400/--gv-cool-grey-600, line-height 24px). A cross-tenant STRUCTURAL widget
+   (same on every tenant's custom pages); the SKIN (font/colours) re-themes per ?theme=.
+   Stack rows in a .gv-attachments list. Net-new block; reuses tokens only. */
+.gv-attachment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border: 1px solid var(--gv-attachment-border);
+  border-radius: var(--gv-radius);
+  color: var(--gv-cool-grey-600);
+  font-size: var(--gv-fs-base);
+  line-height: 24px;
+}
+.gv-attachment + .gv-attachment { margin-top: 8px; }
+.gv-attachment__icon { flex: 0 0 auto; width: 24px; height: 24px; color: var(--gv-cool-grey-600); }
+.gv-attachment__icon .gv-icon { width: 24px; height: 24px; }
+.gv-attachment__name {
+  color: var(--gv-cool-grey-600);
+  font-weight: 400;
+  text-decoration: underline;
+  word-break: break-word;
+}
+.gv-attachment__name:hover { text-decoration: none; }
+.gv-attachment__name:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+.gv-attachment__size { flex: 0 0 auto; color: var(--gv-cool-grey-600); }
+.gv-attachments { display: block; }
+
+/* ── Custom / info page rich-text headings & inline CTA ───────────────────────
+   On a custom/info page the Quill body is a .gv-prose block, but it also carries
+   sub-headings (the live page-title "Policy Memo Archive" renders as an embedded
+   <h2>, digest #4: 25px/700/32.5px/#333 = --gv-fs-xxl) and an inline "custom-button"
+   CTA (digest #10: a.custom-button — tenant-primary fill, white, 3px radius, pad
+   10px 18px). These extend the shared .gv-prose without forking it. */
+.gv-prose h2 { margin: 0 0 16px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px; color: var(--gv-text-primary); }
+.gv-prose h3 { margin: 24px 0 12px; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.4; color: var(--gv-text-primary); }
+.gv-prose strong { font-weight: 700; }
+/* Inline CTA button mounted inside Content-Builder rich text (a.custom-button). */
+.gv-prose .gv-cta-inline {
+  display: inline-block;
+  margin: 4px 0;
+  padding: 10px 18px;
+  border-radius: var(--gv-radius);
+  background: var(--gv-tenant-primary);
+  color: #fff;
+  font-size: var(--gv-fs-base);
+  font-weight: 400;
+  line-height: normal;
+  text-decoration: none;
+}
+.gv-prose .gv-cta-inline:hover { filter: brightness(0.92); }
+.gv-prose .gv-cta-inline:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+
+/* ── Cookie-consent modal — CONTENT variant on the .gv-modal shell ───────────
+   Source-grounded on Stadt Wien (mitgestalten.wien.gv.at, capture
+   fo-wien-cookie-modal): the global cookie blocker rendered as the standard
+   GoVocal dialog. NOT a new shell — it reuses .gv-modal-overlay + .gv-modal
+   (scrim rgba(0,0,0,.75), white 650px card, radius 3px, top-aligned). What's
+   new here is the CONTENT layout: a tenant-tinted product cookie icon leading
+   a title + body + policy link (padding 30px — capture div.ipfQaK), and a
+   3-action footer (pad 16px 28px — capture div.fHwGJs): Manage (ghost
+   .gv-btn.text) / Reject / Accept (tenant-filled .gv-btn.primary). Cross-tenant
+   SYSTEM — every tenant routes its consent prompt through this one dialog;
+   the SKIN (icon tint = --gv-tenant-primary, font, language) re-themes per
+   ?theme=. No base mutated; the footer row is reusable by any .gv-modal. */
+.gv-cookie__content { padding: 30px; }              /* div.sc-beqWaB.ipfQaK */
+.gv-cookie__icon {
+  width: 24px; height: 24px; display: block;
+  margin: 0 0 4px;
+  color: var(--gv-tenant-primary);                  /* real fill="#ff5a64" → tenant-tinted */
+}
+.gv-cookie__icon svg { display: block; width: 24px; height: 24px; fill: currentColor; }
+.gv-cookie__title {                                 /* h1#cookie-modal-title: 21/700/27.3/#333 */
+  margin: 14px 0 16px;
+  font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px;
+  color: var(--gv-text-primary);
+}
+.gv-cookie__body {                                  /* p.sc-ktEKTO: 16/400/24/#333 */
+  margin: 0;
+  font-size: var(--gv-fs-base); font-weight: 400; line-height: 24px;
+  color: var(--gv-text-primary);
+}
+.gv-cookie__link {                                  /* a.sc-hdDbdj: tenant-primary policy link */
+  color: var(--gv-tenant-primary); text-decoration: underline;
+}
+.gv-cookie__link:hover { filter: brightness(0.88); }
+.gv-cookie__link:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
+/* 3-action footer — reusable on any .gv-modal (div.sc-jFJHMl.fHwGJs) */
+.gv-modal__footer {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 8px;
+  padding: 16px 28px;
+}
+.gv-modal__footer .gv-btn { white-space: nowrap; }
+/* Manage sits left, Reject/Accept push to the right */
+.gv-modal__footer .gv-cookie__manage { margin-right: auto; }
+@media (max-width: 520px) {
+  .gv-cookie__content { padding: 20px; }
+  .gv-modal__footer { flex-wrap: wrap; padding: 12px 20px 16px; }
+  .gv-modal__footer .gv-cookie__manage { margin-right: 0; order: 3; flex: 1 1 100%; }
+}
+
+/* ── Footer logo band (optional, config variant) ─────────────────────────────
+   Some tenants enable an upper "logo band" ABOVE the legal-link row of the footer
+   — a white, centered strip that carries the tenant logo (and optionally one or
+   more partner / government logos). Source-grounded on Luxembourg
+   (zesumme-vereinfachen.lu, capture fo-lux-footer-logos): #hook-footer-logo =
+   white bg, padding 50px 20px 20px, flex column centered, ≈190px tall; the logo
+   <img> is height 100, margin-bottom 20. Cross-checked Linz (#hook-footer-logo =
+   single tenant logo). OPTIONAL: a tenant that doesn't configure it simply omits
+   the band. SYSTEM = the band geometry (all token-aliased); SKIN = which logos,
+   re-themed per ?theme=. Distinct from the header logo and from the small
+   .gv-footer__logo inline slot. Mount the band as a SIBLING above <footer>. */
+.gv-footer__logos {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 24px 40px;
+  background: #fff;
+  padding: 50px 20px 20px;            /* measured #hook-footer-logo */
+  font-family: var(--gv-font-family);
+}
+.gv-footer__logos.row { flex-direction: row; }   /* multiple logos side-by-side */
+/* Each logo is a link; the band's last/only logo carries the 20px bottom gutter
+   (measured margin 0 0 20px on the img). */
+.gv-footer__logos a { display: inline-flex; align-items: center; }
+.gv-footer__logos img, .gv-footer__logos svg { display: block; height: 100px; width: auto; max-width: 100%; }
+.gv-footer__logos .gv-footer__logos-cap { height: 64px; }   /* smaller partner/government marks */
+@media (max-width: 720px) {
+  .gv-footer__logos { padding: 36px 20px 16px; }
+  .gv-footer__logos.row { flex-direction: column; }
+  .gv-footer__logos img, .gv-footer__logos svg { height: 72px; }
+}
+
+/* ── Brand-tinted nav (config variant) ───────────────────────────────────────
+   A header configuration some tenants use: the primary-nav LABELS render in the
+   tenant brand colour rather than near-black. Source-grounded on Luxembourg
+   (nav.sc-PdSgz labels = rgb(27,94,125) = the Lux --gv-tenant-primary, 16px/500).
+   The base nav keeps weight 500 / --gv-fs-base; the only delta is the label
+   colour, so this is a thin .tinted modifier — base .gv-nav untouched. Active /
+   hover / dropdown-open states already use --gv-tenant-primary, so they remain
+   consistent. */
+.gv-nav.tinted .gv-nav__link { color: var(--gv-tenant-primary); }
+.gv-nav.tinted .gv-nav__link[aria-current="page"] { color: var(--gv-tenant-primary); }
+
+/* ── Dual signed-out auth CTAs (config variant) ──────────────────────────────
+   Some tenants expose BOTH a "Log in" and a "Register" call-to-action in the
+   signed-out header, instead of a single sign-in button. Source-grounded on
+   Luxembourg: a filled .gv-btn.primary "Se connecter" (tenant-primary fill, white
+   16px label, 9px 18px, radius 3, 45px tall) + an inverse .gv-btn.primary-inverse
+   "S'inscrire" (white fill, tenant-primary 16px/500 label, radius 3). Both button
+   variants ALREADY exist — this group only lays them out (gap) and re-tints the
+   inverse register button's label to the tenant brand (the live treatment) without
+   mutating the base .gv-btn.primary-inverse (which keeps its near-black label for
+   the on-hero use). */
+.gv-auth-dual { display: inline-flex; align-items: center; gap: 10px; }
+.gv-auth-dual .gv-btn.primary { font-size: var(--gv-fs-base); line-height: 16.1px; padding: 9px 18px; }
+.gv-auth-dual .gv-btn.primary-inverse {
+  color: var(--gv-tenant-primary); font-weight: 500;
+  font-size: var(--gv-fs-base); line-height: 16.1px; padding: 9px 18px;
+}
+
+/* ── Participation box (components/participation-box/) ────────────────────────
+   The resident-facing project-page CTA block, mirrored 1:1 by the back-office
+   Content Builder "Participation Box" widget. It aggregates the project's active
+   participation methods into a stack of full-width buttons, then an always-bottom
+   participant avatar row. The current-phase method is the filled .gv-btn.primary;
+   parallel / extra methods are the neutral .gv-btn.secondary-outlined. Three or
+   more visible methods collapse into one "Participate" primary button. Pure
+   assembly — composes the canonical .gv-btn + .gv-participants atoms; this block
+   only stacks them and carries the empty / hide states. */
+.gv-pbox { display: flex; flex-direction: column; gap: 16px; }
+.gv-pbox__actions { display: flex; flex-direction: column; gap: 12px; }
+.gv-pbox__actions .gv-btn { width: 100%; justify-content: center; }
+.gv-pbox__people { display: flex; align-items: center; gap: 8px; }
+.gv-pbox__empty { border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
+  text-align: center; padding: 14px; font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
+.gv-pbox--nobtns .gv-pbox__actions { display: none; }
+.gv-pbox--nopeople .gv-pbox__people { display: none; }
+
+/* ── Extra survey CTA (components/extra-survey/) ──────────────────────────────
+   A survey linked into a project page / Content Builder, separate from the phase
+   method. Renders either as a button (.gv-btn primary | secondary-outlined — the
+   SAME pair the participation box uses) or as a card (--card): a tenant-tinted
+   SURVEY tag, the survey name, a short plain-language description and the CTA. The
+   card is sized for legibility (accessible by default) — big type, one clear
+   action, icon always paired with a word. Tenant-themed via --gv-tenant-primary. */
+.gv-extra-survey { --gv-es-tint: color-mix(in srgb, var(--gv-tenant-primary) 9%, #fff);
+  /* AA-safe darkened tenant ink for text on the light tint (≥6:1 across city themes) */
+  --gv-es-ink: color-mix(in srgb, var(--gv-tenant-primary) 55%, #111); }
+.gv-extra-survey .gv-btn { width: 100%; }
+.gv-extra-survey--card { border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius);
+  padding: 22px; background: #fff; box-shadow: var(--gv-shadow); }
+.gv-extra-survey__tag { display: inline-flex; align-items: center; gap: 7px; font-size: 14px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gv-es-ink); }
+.gv-extra-survey__tag .gv-icon { width: 18px; height: 18px; color: var(--gv-tenant-primary); }
+.gv-extra-survey__title { font-size: 23px; font-weight: 700; color: var(--gv-text-primary);
+  line-height: 1.25; margin: 12px 0 8px; }
+.gv-extra-survey__desc { font-size: 16px; color: var(--gv-text-primary); line-height: 1.6; margin: 0 0 18px; }
+.gv-extra-survey__empty { border: 2px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
+  padding: 22px; text-align: center; background: var(--gv-grey-50); }
+.gv-extra-survey__empty-t { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-secondary); }
+.gv-extra-survey__empty-s { font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); margin-top: 6px; }
