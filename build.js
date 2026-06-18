@@ -164,7 +164,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.53";
+const UI_VERSION = "0.54";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -235,6 +235,60 @@ const COMPONENT_BLURBS = {
     classes: ".gv-hero / .gv-avatars",
     desc: "Full-bleed page banner: tenant-tinted overlay, title/lead, avatar + count stack, primary CTA. Image-agnostic.",
   },
+};
+
+// Structured metadata per component, surfaced as badges on the Components page so the
+// "mix" is eyeball-able and the library can be cleaned up. Derived from manifest.md.
+//   surface : "fo" | "bo" | "cross"   — which product surface it belongs to
+//   category: navigation|cards|banners|modals|survey|shell|voting|events|content|media|misc
+//   status  : "canonical" — real standalone source-grounded component
+//             "variant"   — additive variant/config on top of a base component
+//             "page-demo" — a page-level composition, not a standalone component
+//             "review"    — overlaps another entry / mislabeled → candidate for cleanup
+//   tags    : source tenant + a couple of descriptive keywords
+const COMPONENT_META = {
+  accordion: { surface: "fo", category: "content", status: "canonical", tags: ["faq", "details"] },
+  "approval-voting": { surface: "fo", category: "voting", status: "canonical", tags: ["cultuurconnect", "results"] },
+  attachment: { surface: "fo", category: "content", status: "canonical", tags: ["stlouis", "download"] },
+  "avatar-overflow-bubble": { surface: "cross", category: "misc", status: "variant", tags: ["falkirk", "avatars"] },
+  banner: { surface: "fo", category: "banners", status: "canonical", tags: ["hero", "illustration"] },
+  "bo-app-shell": { surface: "bo", category: "shell", status: "canonical", tags: ["chrome", "topbar"] },
+  "bo-menu": { surface: "bo", category: "navigation", status: "canonical", tags: ["dropdown", "flyout"] },
+  "bo-sidebar": { surface: "bo", category: "shell", status: "canonical", tags: ["nav", "rail"] },
+  "bo-templatecard": { surface: "bo", category: "cards", status: "canonical", tags: ["raleigh", "templates"] },
+  "community-monitor": { surface: "fo", category: "survey", status: "canonical", tags: ["wietsedemo", "sentiment"] },
+  "content-builder-render": { surface: "fo", category: "content", status: "canonical", tags: ["copenhagen", "layout"] },
+  "cookie-modal": { surface: "fo", category: "modals", status: "variant", tags: ["wien", "consent"] },
+  "cta-banner": { surface: "fo", category: "banners", status: "review", tags: ["stlouis", "strip"] },
+  "event-card-bordered": { surface: "fo", category: "events", status: "variant", tags: ["copenhagen", "linz", "eventswidget"] },
+  "event-card": { surface: "fo", category: "events", status: "canonical", tags: ["datechip", "rsvp"] },
+  "fo-linz-monitorband": { surface: "fo", category: "banners", status: "variant", tags: ["linz", "monitorband"] },
+  "folder-card": { surface: "fo", category: "cards", status: "variant", tags: ["stlouis", "projects-list"] },
+  "footer-logos": { surface: "fo", category: "navigation", status: "variant", tags: ["luxembourg", "linz", "config"] },
+  footer: { surface: "fo", category: "navigation", status: "canonical", tags: ["wien", "chrome"] },
+  "header-nav": { surface: "fo", category: "navigation", status: "canonical", tags: ["wien", "chrome"] },
+  hero: { surface: "fo", category: "banners", status: "canonical", tags: ["banner", "homepage"] },
+  "homepage-featured-row": { surface: "fo", category: "cards", status: "variant", tags: ["wietsedemo", "featured"] },
+  "homepage-survey-band": { surface: "fo", category: "banners", status: "variant", tags: ["wietsedemo", "monitorband"] },
+  "idea-card": { surface: "fo", category: "cards", status: "canonical", tags: ["ideation", "proposals"] },
+  "idea-feed": { surface: "fo", category: "content", status: "canonical", tags: ["ideation", "feed"] },
+  "issue-canvas": { surface: "fo", category: "content", status: "canonical", tags: ["perspectives", "canvas"] },
+  "login-modal": { surface: "fo", category: "modals", status: "canonical", tags: ["auth", "dialog"] },
+  "participation-bar": { surface: "fo", category: "misc", status: "canonical", tags: ["sticky", "cta"] },
+  "phase-timeline": { surface: "fo", category: "navigation", status: "canonical", tags: ["phases", "stepper"] },
+  poll: { surface: "fo", category: "survey", status: "canonical", tags: ["wietsedemo", "method"] },
+  "project-card": { surface: "fo", category: "cards", status: "canonical", tags: ["rail", "boxed"] },
+  "proposal-threshold": { surface: "fo", category: "voting", status: "canonical", tags: ["proposals", "votes"] },
+  "signed-out-hero": { surface: "fo", category: "banners", status: "variant", tags: ["stlouis", "banner"] },
+  "spotlight-carousel": { surface: "fo", category: "cards", status: "variant", tags: ["falkirk", "rail"] },
+  spotlight: { surface: "fo", category: "banners", status: "canonical", tags: ["homepage", "media"] },
+  "sticky-note": { surface: "fo", category: "cards", status: "canonical", tags: ["perspectives", "pastel"] },
+  "survey-band": { surface: "fo", category: "survey", status: "canonical", tags: ["cta", "strip"] },
+  "survey-fields": { surface: "fo", category: "survey", status: "canonical", tags: ["fieldkit", "runner"] },
+  "theme-card": { surface: "fo", category: "cards", status: "canonical", tags: ["perspectives", "category"] },
+  "twocol-accordion": { surface: "fo", category: "content", status: "canonical", tags: ["stlouis", "faq"] },
+  "volunteer-cause": { surface: "fo", category: "cards", status: "canonical", tags: ["volunteering", "cause"] },
+  voting: { surface: "fo", category: "events", status: "review", tags: ["wietsedemo", "events-section"] },
 };
 
 async function exists(p) {
@@ -919,6 +973,21 @@ const PAGE_CSS = `
     }
     .comp-name { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; }
     .comp-name code { display: block; font-size: 12px; color: var(--muted); font-weight: 400; margin-top: 4px; }
+    /* Metadata pills under the name — surface · category · status (status carries the
+       cleanup signal; "review" is styled loud amber). */
+    .comp-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .cbadge { font-size: 11px; font-weight: 600; line-height: 1; padding: 3px 7px; border-radius: 5px; letter-spacing: -0.004em; border: 1px solid transparent; }
+    .cbadge--cat, [class*="cbadge--st-"] { text-transform: capitalize; }
+    .cbadge--surf-fo { background: rgba(94,106,210,0.12); color: #4650b8; }
+    .cbadge--surf-bo { background: rgba(20,121,133,0.13); color: #0f6470; }
+    .cbadge--surf-cross { background: rgba(16,17,26,0.07); color: #5b626e; }
+    .cbadge--cat { background: rgba(16,17,26,0.05); color: #5b626e; }
+    .cbadge--st-canonical { background: rgba(34,139,84,0.12); color: #1f7a48; }
+    .cbadge--st-variant { background: rgba(16,17,26,0.06); color: #6b7280; }
+    .cbadge--st-page-demo { background: rgba(140,99,210,0.13); color: #6b46c1; }
+    .cbadge--st-review { background: rgba(214,120,12,0.15); color: #b45309; border-color: rgba(214,120,12,0.35); }
+    .comp-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 7px; }
+    .comp-tags span { font-size: 11px; color: var(--faint); }
     .comp-desc { color: var(--muted); font-size: 14px; max-width: 42ch; }
     .comp-actions { white-space: nowrap; }
     @media (max-width: 620px) {
@@ -2077,6 +2146,16 @@ function renderPagesIndex(pages) {
   });
 }
 
+const SURFACE_LABEL = { fo: "Front office", bo: "Back office", cross: "Cross-surface" };
+// Render the surface / category / status pills shown under a component's name on the
+// Components page. `status` carries the cleanup signal — "review" is styled loud.
+function metaBadges(meta) {
+  const surf = `<span class="cbadge cbadge--surf-${meta.surface}">${SURFACE_LABEL[meta.surface] || meta.surface}</span>`;
+  const cat = `<span class="cbadge cbadge--cat">${meta.category}</span>`;
+  const stat = `<span class="cbadge cbadge--st-${meta.status}">${meta.status}</span>`;
+  return `<div class="comp-badges">${surf}${cat}${stat}</div>`;
+}
+
 function renderComponentsIndex(components) {
   const subtitle =
     "Reusable building blocks &mdash; primitives composed into navbar, footer, cards, hero. They assemble into Pages.";
@@ -2094,12 +2173,19 @@ function renderComponentsIndex(components) {
   const rows = components
     .map((c) => {
       const blurb = COMPONENT_BLURBS[c.name] || { classes: "", desc: "" };
+      const meta = COMPONENT_META[c.name] || null;
       const classes = blurb.classes
         ? `<code>${blurb.classes}</code>`
         : "";
+      const badges = meta ? metaBadges(meta) : "";
+      const tags = meta && meta.tags && meta.tags.length
+        ? `<div class="comp-tags">${meta.tags.map((t) => `<span>#${t}</span>`).join("")}</div>`
+        : "";
       // Components are a designer reference — Open only, no HTML download.
-      // Filter key spans name + classes + description so a search matches any of them.
-      const fkey = `${titleCase(c.name)} ${blurb.classes} ${blurb.desc}`.replace(/<[^>]+>/g, " ").replace(/"/g, "");
+      // Filter key spans name + classes + description + every metadata axis, so a
+      // search like "bo", "review", or "wien" narrows the table.
+      const metaKey = meta ? `${meta.surface} ${meta.category} ${meta.status} ${(meta.tags || []).join(" ")}` : "";
+      const fkey = `${titleCase(c.name)} ${blurb.classes} ${blurb.desc} ${metaKey}`.replace(/<[^>]+>/g, " ").replace(/"/g, "");
       return `
         <tr data-fitem data-fkey="${fkey}">
           <td>
@@ -2107,7 +2193,7 @@ function renderComponentsIndex(components) {
               ${media(c.href, c.poster)}
             </a>
           </td>
-          <td><div class="comp-name">${titleCase(c.name)}${classes}</div></td>
+          <td><div class="comp-name">${titleCase(c.name)}${classes}</div>${badges}${tags}</td>
           <td><div class="comp-desc">${blurb.desc}</div></td>
         </tr>`;
     })

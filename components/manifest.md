@@ -14,6 +14,25 @@ forks them, so it always reflects the live source. Canonical CSS = `govocal-toke
 Edit those; `npm run lint` enforces that no demo copies or redefines them. (Only
 *prototypes* copy assets — they're the tier allowed to fork.)
 
+> **Metadata + cleanup backlog.** Each component now carries structured metadata
+> (`surface` / `category` / `status` / `tags`) in `build.js → COMPONENT_META`, shown
+> as badges on the Components page so the mix is eyeball-able. `status` flags the
+> cleanup signal. Current flags from the first pass:
+> - **`voting` — mislabeled (review).** The folder is NOT the voting method; it's the
+>   project-page **events sections** reusing `event-card`. The real voting body is
+>   `approval-voting`. Rename candidate (e.g. `project-events-section`).
+> - **`cta-banner` — overlaps two other CTA bands (review).** `.gv-cta-banner` (bare
+>   coloured strip), `.gv-ctaband` (centered title+lead+CTA) and `.gv-monitorband`
+>   (3-zone tinted card, used by `homepage-survey-band` + `fo-linz-monitorband`) are
+>   three near-identical promo-strip classes — consolidation candidates.
+> - **`fo-linz-monitorband` — confirmation capture, not new (variant).** Identical
+>   formula to `homepage-survey-band` + one `--duration` modifier; fold together.
+> - **`event-card` vs `event-card-bordered`** — true base+`.bordered` variant pair.
+> - **`avatar-overflow-bubble`** — a single `.count.bubble` modifier; borderline a
+>   note on the bubbles primitive rather than its own folder.
+> - **`survey-fields`** — canonical but architecturally distinct: its own opt-in
+>   `govocal-survey.css`/`.js` kit, outside the standard primitive cascade.
+
 | Component | Folder | Key classes | What it is |
 |---|---|---|---|
 | Header + nav | `components/header-nav/` | `.gv-header`(`__inner` full-width) `.gv-nav`/`.gv-nav__list` `.gv-nav__dd`/`.gv-nav__menu`(`.gv-menu-sep`) `.gv-nav-m` · signed-in: `.gv-account-dd`/`.gv-account`/`.gv-account__name` `.gv-avatar` `.gv-iconbtn__badge` `.gv-lang` · switch: `.gv-auth-out`/`.gv-auth-in` + `data-auth` | Responsive **full-width** 78px site chrome (mirrors live `#e2e-navbar`): logo flush-left, `<nav aria-label="Primäre">` primary nav, dropdown + “Mehr ···” overflow, actions flush-right; CSS-only hamburger drawer (real filled-bar icon) < 860px. **One component, two states** flipped by `data-auth` on a root: signed-out (search + Sign-in CTA) and signed-in (search · notification w/ count badge · **account dropdown** [avatar+name → Manage platform · My activity · My settings · Sign out] · **language switcher**). **Active item** = top accent bar + subtle tenant-tinted cell, **weight 500 (not bold)**, matching the live product; hover / open-dropdown get the grey cell highlight. |
