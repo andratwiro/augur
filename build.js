@@ -63,6 +63,9 @@ const STATUS_ICONS = {
     '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="#1c1c22" stroke-width="2.2"/><path d="M10 2.8a7.2 7.2 0 0 1 0 14.4z" fill="#1c1c22"/></svg>',
   ignore:
     '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="#aeb3bd" stroke-width="2.2"/><line x1="6.4" y1="10" x2="13.6" y2="10" stroke="#aeb3bd" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  // Component-only "validated" state — a filled green check (same idiom as dev-ready).
+  reviewed:
+    '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#17935a"/><path d="M5.8 10.4l2.7 2.7 5.7-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 
 // Sort priority for prototype cards within an opportunity: Dev ready → In progress
@@ -164,7 +167,7 @@ function injectHead(html, pageUrl, hasOg) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.54";
+const UI_VERSION = "0.55";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -989,6 +992,9 @@ const PAGE_CSS = `
     .comp-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 7px; }
     .comp-tags span { font-size: 11px; color: var(--faint); }
     .comp-desc { color: var(--muted); font-size: 14px; max-width: 42ch; }
+    /* Validation chip column — pinned to the far right, narrow, centered. */
+    .comp-table th.comp-status, .comp-table td.comp-status { width: 56px; text-align: center; padding-right: 8px; }
+    td.comp-status .status-chip { margin: 0 auto; }
     .comp-actions { white-space: nowrap; }
     @media (max-width: 620px) {
       .comp-table, .comp-table tbody, .comp-table tr, .comp-table td { display: block; }
@@ -1753,6 +1759,105 @@ const STATUS_JS = `
 })();
 `;
 
+// Clickable two-state validation chip for a component row (utmost-right cell). Unlike
+// prototypes there is NO "ignore" — a component is either "in-progress" (default) or
+// "reviewed" (validated). Keyed "components/<name>" so it shares the /__status KV map
+// but never collides with prototype keys. Uses its OWN attribute (data-comp-status-key)
+// so the 3-state prototype STATUS_JS skips these chips entirely.
+function compStatusChip(name) {
+  const key = `components/${name}`;
+  const aria = "Validation: In progress. Click to mark reviewed.";
+  return `<button type="button" class="status-chip is-wip" data-comp-status-key="${key}" data-status="in-progress" aria-label="${aria}" title="${aria}">${STATUS_ICONS["in-progress"]}</button>`;
+}
+
+// Component validation client. Two states only (in-progress ⇄ reviewed), reviewed
+// sorts first. Shares the /__status endpoint + the gv_status_map session cache with
+// STATUS_JS (component keys are namespaced, so no clash), and resorts <tr> rows inside
+// their <tbody> rather than cards in a grid.
+const COMP_STATUS_JS = `
+(function(){
+  var chips = Array.prototype.slice.call(document.querySelectorAll('[data-comp-status-key]'));
+  if(!chips.length) return;
+  var ORDER = ['in-progress','reviewed'];
+  var META = {
+    'in-progress': {label:'In progress', cls:'is-wip',  aria:'Validation: In progress. Click to mark reviewed.'},
+    'reviewed':    {label:'Reviewed',    cls:'is-ready', aria:'Validation: Reviewed. Click to reset to in progress.'}
+  };
+  var ICONS = ${JSON.stringify({ "in-progress": STATUS_ICONS["in-progress"], reviewed: STATUS_ICONS["reviewed"] })};
+  var RANK = { 'reviewed':0, 'in-progress':1 };
+  var CACHE = 'gv_status_map';
+  function paint(chip, status){
+    if(!META[status]) status = 'in-progress';
+    var m = META[status];
+    chip.className = 'status-chip ' + m.cls;
+    chip.innerHTML = ICONS[status] || ICONS['in-progress'];
+    chip.setAttribute('data-status', status);
+    chip.setAttribute('aria-label', m.aria);
+    chip.setAttribute('title', m.aria);
+  }
+  function applyMap(map){
+    chips.forEach(function(chip){
+      var k = chip.getAttribute('data-comp-status-key');
+      if(map && Object.prototype.hasOwnProperty.call(map, k)) paint(chip, map[k] || 'in-progress');
+    });
+  }
+  function resort(){
+    var bodies = [];
+    chips.forEach(function(chip){
+      var row = chip.closest('tr'); if(!row) return;
+      var body = row.parentElement; if(!body) return;
+      var b = null; for(var i=0;i<bodies.length;i++){ if(bodies[i].body===body){ b=bodies[i]; break; } }
+      if(!b){ b = {body:body, rows:[]}; bodies.push(b); }
+      b.rows.push(row);
+    });
+    bodies.forEach(function(b){
+      b.rows
+        .map(function(row, i){
+          var chip = row.querySelector('[data-comp-status-key]');
+          var s = chip && chip.getAttribute('data-status');
+          var r = Object.prototype.hasOwnProperty.call(RANK, s) ? RANK[s] : RANK['in-progress'];
+          return { row: row, r: r, i: i };
+        })
+        .sort(function(a, b){ return a.r - b.r || a.i - b.i; })
+        .forEach(function(o){ b.body.appendChild(o.row); });
+    });
+  }
+  var cached = null;
+  try { cached = JSON.parse(sessionStorage.getItem(CACHE) || 'null'); } catch(e){}
+  if(cached){ applyMap(cached); resort(); }
+  else {
+    fetch('/__status', {headers:{'Accept':'application/json'}})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var map = (d && d.map) || {};
+        try { sessionStorage.setItem(CACHE, JSON.stringify(map)); } catch(e){}
+        applyMap(map); resort();
+      }).catch(function(){});
+  }
+  chips.forEach(function(chip){
+    chip.addEventListener('click', function(){
+      var cur = chip.getAttribute('data-status') || 'in-progress';
+      var next = ORDER[(ORDER.indexOf(cur) + 1 + ORDER.length) % ORDER.length];
+      paint(chip, next);
+      resort();
+      chip.disabled = true;
+      fetch('/__status', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ key: chip.getAttribute('data-comp-status-key'), status: next })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if(d && d.map){
+          try { sessionStorage.setItem(CACHE, JSON.stringify(d.map)); } catch(e){}
+          var k = chip.getAttribute('data-comp-status-key');
+          paint(chip, d.map[k] || 'in-progress');
+          resort();
+        }
+      }).catch(function(){ paint(chip, cur); resort(); }).then(function(){ chip.disabled = false; });
+    });
+  });
+})();
+`;
+
 // Pins client. KV-frugal like STATUS_JS/CARD_MENU_JS: reads the whole pins map once
 // per session (sessionStorage), writes only on a star click. Runs on every shell page
 // to (a) render the rail's Pinned list from the map and (b) wire any star buttons on
@@ -1905,6 +2010,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <script>${chromeScript()}
   </script>
   <script>${STATUS_JS}
+  </script>
+  <script>${COMP_STATUS_JS}
   </script>
   <script>${CARD_MENU_JS}
   </script>
@@ -2195,6 +2302,7 @@ function renderComponentsIndex(components) {
           </td>
           <td><div class="comp-name">${titleCase(c.name)}${classes}</div>${badges}${tags}</td>
           <td><div class="comp-desc">${blurb.desc}</div></td>
+          <td class="comp-status">${compStatusChip(c.name)}</td>
         </tr>`;
     })
     .join("");
@@ -2204,7 +2312,7 @@ function renderComponentsIndex(components) {
     activeTab: "components",
     wrapClass: "wrap--wide",
     body: `<header class="folderbar"><h1 class="folderbar__title">Components</h1><span class="folderbar__count">${components.length}</span><span class="folderbar__rule"></span></header><table class="comp-table">
-      <thead><tr><th>Preview</th><th>Component</th><th>What it is</th></tr></thead>
+      <thead><tr><th>Preview</th><th>Component</th><th>What it is</th><th class="comp-status">Status</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>${filterEmpty()}`,
   });

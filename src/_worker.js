@@ -333,7 +333,7 @@ async function reviewApi(request, url, env) {
 // baseline comes from the committed prototype-status.json, and this overlays live
 // edits on top. Values: in-progress | dev-ready | ignore.
 const STATUS_KEY = "statuses";
-const VALID_STATUS = { "in-progress": 1, "dev-ready": 1, ignore: 1 };
+const VALID_STATUS = { "in-progress": 1, "dev-ready": 1, ignore: 1, reviewed: 1 };
 
 async function statusApi(request, url, env) {
   const kv = env.COMMENTS;
