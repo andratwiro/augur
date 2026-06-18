@@ -41,6 +41,17 @@ static SVG — and to do it for **ALL charts** (a long, multi-loop effort). Libr
 
 ## Iterations
 
+### Loop 12 — 2026-06-18 — Convert Users-tab vertical bars → GVChart.bar (vertical)
+- Converted the 2 `data-chart="barsV"` cards (Users by age, Commuting Method) to GVChart.bar
+  vertical (navy #073F80, value labels on top, category labels on x-axis) via the lazy dispatch
+  path. Retired `barsV()` AND `niceTicks()` (now unused). ALL hand-rolled SVG chart renderers are
+  now gone — only `cardHead` (header chrome) + GVChart remain.
+- **Verify:** file:// — bars [10,5], 0 errors. HTTP-dist — 15 bars, no asset 4xx. lint ✓.
+- **Deploy:** yes.
+- **REMAINING:** only the 2 static inline line SVGs (Emails 2-series in Overview Mgmt; Visitors
+  "Visitors/Visits" 2-line at top of Visitors tab) — these are inline markup, not data-chart
+  cards. Next loop converts them, then ALL charts are interactive → final full sweep + wrap-up.
+
 ### Loop 11 — 2026-06-18 — Convert Visitors pies → GVChart.pie
 - Converted the 3 Visitors `data-chart="pie"` cards (Traffic 100%, Language EN/ES, Device
   Desktop/Mobile) to GVChart.pie via the lazy dispatch path (added a "pie" branch to the render

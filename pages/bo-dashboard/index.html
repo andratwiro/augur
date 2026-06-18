@@ -436,26 +436,8 @@
       const dd = dropdown ? `<select class="gv-bo-select" style="max-width:110px;height:30px;padding:2px 8px;font-size:var(--gv-fs-13)"><option>${dropdown}</option></select>` : "";
       return `<div class="db-cardhead"><h3>${title}</h3><span class="db-cardhead__tools">${dd}<span class="gv-icon" data-gv-icon="download"></span></span></div>`;
     }
-    // Build a "nice" axis scale (0..max) into ~4 ticks.
-    function niceTicks(max) {
-      const m = Math.max(max, 1);
-      const step = m <= 4 ? 1 : m <= 8 ? 2 : m <= 20 ? 5 : Math.ceil(m / 4 / 10) * 10;
-      const top = Math.ceil(m / step) * step;
-      const ticks = []; for (let v = 0; v <= top; v += step) ticks.push(v);
-      return { top, ticks };
-    }
     // Trailing-12-month axis (illustrative; the real charts show a sparse month axis).
     const MONTHS12 = ["Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun"];
-    function barsV(json) {
-      const items = JSON.parse(json);
-      const { top, ticks } = niceTicks(Math.max(...items.map(i => i[1]), 1));
-      const yaxis = ticks.slice().reverse().map(v => `<span>${v}</span>`).join("");
-      const cols = items.map(([l, v]) =>
-        `<div class="ch-vcol"><span class="ch-vnum">${v}</span><span class="ch-vbar" style="height:${(v / top * 100).toFixed(1)}%"></span></div>`).join("");
-      const labels = items.map(([l]) => `<span>${l}</span>`).join("");
-      return `<div class="ch-vframe"><div class="ch-vyaxis">${yaxis}</div><div class="ch-v">${cols}</div>
-        <div class="ch-vlabels">${labels}</div></div>`;
-    }
     // Interactive charts (line/combo) render lazily via GVChart/ApexCharts — ApexCharts
     // mis-sizes in a display:none panel, so each non-active panel's charts render the
     // first time its tab is shown (flushed by __flushCharts, hooked into tab switching).
@@ -464,7 +446,7 @@
     document.querySelectorAll(".gv-bo-chartcard[data-chart]").forEach(card => {
       try {
         const t = card.dataset.chart, title = card.dataset.title;
-        if (t === "line" || t === "combo" || t === "barsH" || t === "pie") {
+        if (t === "line" || t === "combo" || t === "barsH" || t === "pie" || t === "barsV") {
           const statBlock = (lbl, num, sub, mt) =>
             `<div class="db-bignum"${mt ? ' style="margin-top:16px"' : ""}><span class="db-bignum__lbl">${lbl || ""}</span><span class="db-bignum__big">${num}</span><span class="db-bignum__sub">${sub || ""}</span></div>`;
           const big = card.dataset.big
@@ -502,20 +484,26 @@
                 series: [{ name: card.dataset.dropdown || "Inputs", data: items.map(i => i[1]) }],
                 colors: [GVChart.palette().navy]
               });
-            } else { // pie (Traffic sources / Language / Device Types) — blue ramp
+            } else if (t === "pie") { // Traffic sources / Language / Device Types — blue ramp
               const segs = JSON.parse(card.dataset.pie);
               GVChart.pie(el, {
                 height: 210, legendPos: "right",
                 labels: segs.map(s => s[0]),
                 series: segs.map(s => s[1])
               });
+            } else { // barsV — vertical bar (Users by age, Commuting Method)
+              const items = JSON.parse(card.dataset.bars);
+              GVChart.bar(el, {
+                height: 240, legend: false, dataLabels: true, columnWidth: "55%",
+                categories: items.map(i => i[0]),
+                series: [{ name: card.dataset.title || "Users", data: items.map(i => i[1]) }],
+                colors: [GVChart.palette().navy]
+              });
             }
           };
           __pending.push({ key: panel ? panel.dataset.panel : null, render });
         } else {
-          let body = "";
-          if (t === "barsV") body = barsV(card.dataset.bars);
-          card.innerHTML = cardHead(title, card.dataset.dropdown) + body;
+          card.innerHTML = cardHead(title, card.dataset.dropdown);   // defensive: unknown chart type
         }
       } catch (err) { console.error("chart render failed", card.dataset.title, err); }
     });
