@@ -48,7 +48,7 @@
           <span data-gv-icon="search" aria-hidden="true"></span>
         </div>
         <button class="gv-iconbtn" aria-label="List view"><span class="gv-icon" data-gv-icon="menu"></span></button>
-        <button class="gv-iconbtn" aria-label="About AI analysis"><span class="gv-icon" data-gv-icon="info-outline"></span></button>
+        <button class="gv-iconbtn" data-ai-info aria-label="About AI analysis"><span class="gv-icon" data-gv-icon="info-outline"></span></button>
       </div>
     </div>
 
@@ -339,6 +339,29 @@
     </div>
   </div>
 
+  <!-- ── "How to work with AI" intro dialog (opens from the ⓘ) ───────────── -->
+  <div class="gv-modal-overlay" data-ai-modal>
+    <div class="gv-modal" role="dialog" aria-modal="true" aria-labelledby="ai-howto-title">
+      <button class="gv-modal__close" type="button" data-ai-modal-close aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="gv-modal__header">
+        <span class="gv-icon gv-bo-aimodal__icon" data-gv-icon="stars"></span>
+        <h2 class="gv-modal__title" id="ai-howto-title">How to work with AI</h2>
+      </div>
+      <div class="gv-modal__body gv-bo-aimodal__body">
+        <p>We recommend using AI-generated summaries as a starting point for understanding large datasets, but not as the final word. Always check the results!</p>
+        <p><strong>Hallucinations:</strong> While rare, the AI might occasionally generate information that was not explicitly present in the original dataset.</p>
+        <p><strong>Exaggeration:</strong> The AI might emphasize certain themes or ideas more than others, potentially skewing the overall interpretation.</p>
+        <p><strong>Data Volume and Accuracy:</strong> Our system is optimized for handling 20-200 well-defined inputs for the most accurate results. As the volume of data increases beyond this range, the summary may become more high-level and generalized. This does not mean the AI becomes "less accurate", but rather that it will focus on broader trends and patterns. For more nuanced insights, we recommend using the (auto-)tagging feature to segment larger datasets into smaller, more manageable subsets.</p>
+        <p>Our platform enables you to explore the core themes, summarize the data, and examine various perspectives. If you are looking for specific answers or insights, consider using the "Ask a Question" feature to dive deeper beyond the summary.</p>
+      </div>
+      <div class="gv-modal__footer">
+        <button class="gv-bo-aimodal__cta" type="button" data-ai-modal-close>I understand</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     document.addEventListener('DOMContentLoaded', () => window.GVIcons && GVIcons.render(document));
     // Two screens, no URL change → publish the current one on <body data-gv-screen>
@@ -355,6 +378,18 @@
       }
       document.querySelectorAll('.js-view-all').forEach(function(b){ b.addEventListener('click', function(){ show('matrix'); }); });
       document.querySelectorAll('.js-close-matrix').forEach(function(b){ b.addEventListener('click', function(){ show('main'); }); });
+    })();
+    // "How to work with AI" dialog — opened from the ⓘ, dismissed by ×/I understand/scrim/Esc.
+    (function(){
+      var modal = document.querySelector('[data-ai-modal]');
+      if(!modal) return;
+      function open(){ modal.classList.add('is-open'); }
+      function close(){ modal.classList.remove('is-open'); }
+      var info = document.querySelector('[data-ai-info]');
+      if(info) info.addEventListener('click', open);
+      modal.querySelectorAll('[data-ai-modal-close]').forEach(function(b){ b.addEventListener('click', close); });
+      modal.addEventListener('click', function(e){ if(e.target === modal) close(); });
+      document.addEventListener('keydown', function(e){ if(e.key === 'Escape') close(); });
     })();
   </script>
 </body>

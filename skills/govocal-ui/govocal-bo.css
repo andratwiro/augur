@@ -1207,3 +1207,17 @@
 .gv-bo-aiqa__prompt .gv-icon { width: 18px; height: 18px; flex: none; margin-top: 2px; color: var(--gv-bo-primary); }
 .gv-bo-aiqa__body { margin-top: 12px; font-size: var(--gv-fs-s); line-height: 1.6; color: var(--gv-grey-800); }
 .gv-bo-aiqa__body hr { border: 0; border-top: 1px solid var(--gv-divider); margin: 14px 0; }
+
+/* "How to work with AI" intro dialog — opens from the AI Analysis ⓘ ("About AI
+   analysis"); in the real product it also greets you on first open. Reuses the
+   .gv-modal shell; the teal "I understand" CTA is the BO accent, measured on
+   bo-auto-insights-view (bg #0A5159 = teal-700 / radius 3px / pad 9px 18px / white). */
+.gv-bo-aimodal__icon { flex: none; width: 26px; height: 26px; margin-right: 10px; color: var(--gv-teal-500); }
+.gv-bo-aimodal__body p { margin: 0 0 14px; font-size: var(--gv-fs-s); line-height: 1.6; color: var(--gv-grey-800); }
+.gv-bo-aimodal__body p:last-child { margin-bottom: 0; }
+.gv-bo-aimodal__cta {
+  width: 100%; padding: 9px 18px; border: 0; border-radius: var(--gv-radius);
+  background: var(--gv-teal-700); color: #fff; cursor: pointer;
+  font: 600 var(--gv-fs-base)/1.4 var(--gv-font-family);
+}
+.gv-bo-aimodal__cta:hover { filter: brightness(1.12); }
