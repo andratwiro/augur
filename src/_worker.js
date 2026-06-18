@@ -477,6 +477,103 @@ async function reviewExport(request, url, env) {
   return jsonResponse({ pages, generatedAt: new Date().toISOString() });
 }
 
+// ---- Piti live channel (KV) — the cursor companion's agent bridge ----------
+// Self-contained easter egg (see pitis/). A terminal "piti" agent watches which
+// prototype you're on and posts short UX/a11y remarks the on-screen cat delivers.
+// Two single keys, same frugal one-get/one-put pattern as pins/status:
+//   pt:view    -> { path, screen, w, h, ts }        (browser publishes what it's on)
+//   pt:remarks -> [ { id, path, text, kind, sel, x, y, w, h, ts }, … ]  (agent → cat)
+// Browser-facing ops are OPEN (public prototypes carry no cookie); the two agent
+// ops — READ the view, WRITE a remark — reuse the REVIEW_EXPORT_KEY secret (so there
+// is no new secret to provision). id = Date.now() so ids never repeat across agent
+// sessions (a cleared queue can't collide with the client's last-seen id). Single
+// writer (one agent) => the read-modify-write on pt:remarks can't race in practice;
+// remarks older than 3 min are pruned on every write and the list is capped.
+const PITI_VIEW_KEY = "pt:view";
+const PITI_REMARKS_KEY = "pt:remarks";
+
+async function pitiApi(request, url, env) {
+  const kv = env.COMMENTS;
+  if (!kv) return jsonResponse({ warning: "no-kv-binding" });
+  const secret = env.REVIEW_EXPORT_KEY;
+  const given = url.searchParams.get("key") || request.headers.get("X-Review-Key") || "";
+  const authed = !!secret && given.length === secret.length && given === secret;
+
+  if (request.method === "GET") {
+    // Agent reads what the user is looking at (secret-guarded — it's a peek at activity).
+    if (url.searchParams.get("type") === "view") {
+      if (!authed) return jsonResponse({ error: "forbidden" }, 403);
+      const raw = await kv.get(PITI_VIEW_KEY);
+      return jsonResponse({ view: raw ? JSON.parse(raw) : null });
+    }
+    // Browser polls the quips queued for its page (open). since=<last id seen>.
+    const path = clamp(url.searchParams.get("path") || "/", 600);
+    const since = Number(url.searchParams.get("since")) || 0;
+    const raw = await kv.get(PITI_REMARKS_KEY);
+    const all = raw ? JSON.parse(raw) : [];
+    return jsonResponse({ remarks: all.filter((r) => r.path === path && r.id > since) });
+  }
+
+  if (request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+
+    // Browser publishes its current screen (open — a spoof just makes the cat comment
+    // on a different path, harmless on a private easter egg).
+    if (body && body.type === "view") {
+      const view = {
+        path: clamp(body.path, 600),
+        screen: clamp(body.screen, 200),
+        w: Math.max(0, Math.min(8000, Number(body.w) || 0)),
+        h: Math.max(0, Math.min(8000, Number(body.h) || 0)),
+        ts: Date.now(),
+      };
+      if (!view.path) return jsonResponse({ error: "bad-input" }, 400);
+      await kv.put(PITI_VIEW_KEY, JSON.stringify(view));
+      return jsonResponse({ ok: true });
+    }
+
+    // Agent posts a quip for the cat to deliver (secret-guarded so only the wingman,
+    // never a random visitor, can put words in the cat's mouth).
+    if (body && body.type === "remark") {
+      if (!authed) return jsonResponse({ error: "forbidden" }, 403);
+      const path = clamp(body.path, 600);
+      const text = clamp(body.text, 220);
+      if (!path || !text) return jsonResponse({ error: "bad-input" }, 400);
+      const raw = await kv.get(PITI_REMARKS_KEY);
+      let all = raw ? JSON.parse(raw) : [];
+      const cutoff = Date.now() - 3 * 60 * 1000;
+      all = all.filter((r) => r.ts > cutoff); // prune stale before appending
+      const num = (v, lo, hi) => (v == null || v === "" ? null : Math.max(lo, Math.min(hi, Number(v))));
+      all.push({
+        id: Date.now(),
+        path,
+        text,
+        kind: clamp(body.kind, 24) || "ux",
+        sel: clamp(body.sel, 400),
+        x: num(body.x, 0, 20000),
+        y: num(body.y, 0, 20000),
+        w: num(body.w, 0, 8000),
+        h: num(body.h, 0, 8000),
+        ts: Date.now(),
+      });
+      if (all.length > 24) all = all.slice(-24);
+      await kv.put(PITI_REMARKS_KEY, JSON.stringify(all));
+      return jsonResponse({ ok: true, id: all[all.length - 1].id });
+    }
+
+    // Agent wipes the queue at the start of a fresh wingman session (secret-guarded).
+    if (body && body.type === "clear") {
+      if (!authed) return jsonResponse({ error: "forbidden" }, 403);
+      await kv.put(PITI_REMARKS_KEY, JSON.stringify([]));
+      return jsonResponse({ ok: true });
+    }
+
+    return jsonResponse({ error: "bad-input" }, 400);
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -503,19 +600,19 @@ export default {
     // Review export bypasses the password gate (its own secret guards it).
     if (url.pathname === "/__review/api/export") return reviewExport(request, url, env);
 
+    // Piti live channel bypasses the gate too: the cat lives on PUBLIC prototypes
+    // (no cookie), so browser reads/view-writes are open; agent ops self-guard with
+    // the export secret. Same early-exit shape as /__version and the review export.
+    if (url.pathname === "/__piti") return pitiApi(request, url, env);
+
     const expected = env.SITE_PASSWORD;
 
-    // Comments: reads are open so devs see annotations (always-on) and comments
-    // (via Shift+C) on public prototypes; writes need the password cookie.
-    if (url.pathname === "/__review/api") {
-      if (expected && request.method !== "GET") {
-        const token = await tokenFor(expected);
-        const cookies = request.headers.get("Cookie") || "";
-        const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
-        if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
-      }
-      return reviewApi(request, url, env);
-    }
+    // Comments: fully OPEN (reads and writes) so devs who only have the public
+    // prototype link — no site password — can leave feedback that syncs to KV.
+    // Reads always were open (annotations always-on, comments via Shift+C); writes
+    // are now open too. These are obscure share links, not public discovery, so the
+    // spam surface is acceptable; applyOp already clamps/caps every field.
+    if (url.pathname === "/__review/api") return reviewApi(request, url, env);
 
     // Dev-status read/write: gated by the site password (cookie) when set.
     if (url.pathname === "/__status") {
