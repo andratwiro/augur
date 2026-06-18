@@ -43,6 +43,40 @@
       .pp-aside { margin-bottom: 26px; }
     }
 
+    /* ── LAYOUT ENGINE — each city composes the same modules in a different order to
+       showcase the Content Builder's freedom to move blocks around. A layout is an
+       array of rows; a row is one full-width module or a multi-column grid. ── */
+    /* Each top-level module is its own row in the page stack; bleed bands sit flush. */
+    .pv-page > * + * { margin-top: 32px; }
+    .pv-page > .gv-partbar, .pv-page > .gv-methodband { margin-top: 0; }
+    .pv-block { padding: 0; }
+    .pv-row2 { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 24px 44px; align-items: start; }
+    .pv-row-eq { display: grid; grid-template-columns: repeat(var(--n,2), minmax(0,1fr)); gap: 24px 44px; align-items: start; }
+    .pv-col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+    .pv-aside { display: flex; flex-direction: column; gap: 18px; }
+    .pv-h1 { margin: 0 0 4px; }
+    .pv-intro { margin: 0; }
+    .pv-about-wide { max-width: 560px; }
+    /* 3-column survey-card grid below the events calendar */
+    .pv-survey-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+    .pv-survey-grid > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+    /* 3 stacked single-button survey links inside the content section */
+    .pv-surveys__btns { display: flex; flex-direction: column; gap: 10px; max-width: 560px; }
+    .pv-surveys__btns .pv-survey-btnrow { display: flex; flex-direction: column; gap: 4px; }
+    .pv-surveys__btns .pv-survey-btnrow small { font-size: 12.5px; color: var(--gv-text-secondary); }
+
+    @media (max-width: 900px) {
+      .pv-survey-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 820px) {
+      .pv-row2 { grid-template-columns: 1fr; gap: 24px; }
+      .pv-row-eq { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .pv-survey-grid { grid-template-columns: 1fr; }
+      .pv-page > * + * { margin-top: 24px; }
+    }
+
     /* ── ABOUT BOX (participation box) — ported from parallel-editor-builder-v2 ──
        The resident-facing participation widget: CTA(s) then a participants row.
        Current-phase method = filled tenant button; parallel methods = outlined;
@@ -64,6 +98,33 @@
     .pv .pv-pbox__empty { border: 1px dashed var(--gv-grey-400); border-radius: 3px; text-align: center; padding: 14px; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
     /* When the about box stands in the wide left column (gallery), keep it readable */
     .pv .pv-pbox--inset { border: 1px solid var(--gv-grey-200); border-radius: var(--gv-radius); padding: 18px; background: #fff; }
+
+    /* ── PARTICIPATE SHEET — the collapsed "Participate · N ways" button opens this,
+       revealing each method as its own button. Centred modal on desktop, bottom
+       sheet on small screens. --pp-tenant on the panel so the method buttons theme. */
+    .pv-sheet { --pp-tenant: var(--gv-tenant-primary); position: fixed; inset: 0; z-index: 1000; display: none; }
+    .pv-sheet.open { display: block; }
+    .pv-sheet__scrim { position: absolute; inset: 0; background: rgba(15, 23, 35, .5); opacity: 0; transition: opacity .2s ease; }
+    .pv-sheet.open .pv-sheet__scrim { opacity: 1; }
+    .pv-sheet__panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -48%); opacity: 0;
+      width: min(440px, calc(100% - 32px)); box-sizing: border-box; background: #fff; border-radius: var(--gv-radius);
+      padding: 22px 22px 24px; box-shadow: 0 24px 56px -12px rgba(0, 0, 0, .4); transition: opacity .2s ease, transform .2s ease; }
+    .pv-sheet.open .pv-sheet__panel { transform: translate(-50%, -50%); opacity: 1; }
+    .pv-sheet__grip { display: none; }
+    .pv-sheet__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .pv-sheet__title { margin: 0; font-size: 19px; font-weight: 700; color: var(--gv-text-primary); }
+    .pv-sheet__sub { margin: 6px 0 18px; font-size: 13.5px; line-height: 1.45; color: var(--gv-text-secondary); }
+    .pv-sheet__close { flex: none; width: 32px; height: 32px; margin: -4px -4px 0 0; border: 0; border-radius: 50%;
+      background: var(--gv-grey-100); color: var(--gv-text-secondary); font-size: 20px; line-height: 1; cursor: pointer; }
+    .pv-sheet__close:hover { background: var(--gv-grey-200); color: var(--gv-text-primary); }
+    .pv-sheet__actions { display: flex; flex-direction: column; gap: 10px; }
+    @media (max-width: 560px) {
+      .pv-sheet__panel { left: 0; right: 0; bottom: 0; top: auto; width: 100%; transform: translateY(100%); opacity: 1;
+        border-radius: 18px 18px 0 0; padding: 12px 18px calc(22px + env(safe-area-inset-bottom));
+        transition: transform .28s cubic-bezier(.32, .72, 0, 1); }
+      .pv-sheet.open .pv-sheet__panel { transform: translateY(0); }
+      .pv-sheet__grip { display: block; width: 38px; height: 4px; border-radius: 100px; background: var(--gv-grey-300); margin: 0 auto 14px; }
+    }
 
     /* ── EXTRA SURVEYS widget — ported verbatim (re-scoped #cb-root → .pv) ── */
     .pv-surveys { margin-top: 8px; }
@@ -301,26 +362,31 @@
       key: 'dublin', theme: 1, city: 'Dublin City',
       title: 'The big downtown survey',
       banner: 'avenue',
-      config: 'Survey-led project · single CTA + linked follow-up',
-      intro: 'We are reshaping the heart of the city centre and we want to start with you. Take the short survey to tell us how you use the centre today, what works and what gets in the way.',
-      desc: '<p>Your answers go straight to the project team and shape the proposals we bring back later in the year. The survey is open to everyone who lives, works or studies in the city.</p>',
-      accordion: [['How long does it take?', 'About four minutes. You can skip any question and come back later — your answers save as you go.'], ['What happens to my answers?', 'They are anonymised and grouped into themes. We publish the headline findings before the next phase opens.']],
+      config: 'Time-tier picker · three surveys as inline single buttons',
+      intro: 'We are reshaping the heart of the city centre and we want to start with you. Tell us how you use the centre today — pick whichever survey fits the time you have.',
+      desc: '<p>Short on time? The survey comes in a few depths, plus an Easy Read version with short sentences and pictures so everyone can take part. Whichever you pick, your answers go straight to the project team and shape the proposals we bring back later in the year.</p>',
+      accordion: [['How long does it take?', 'Anything from a minute to ten — pick the depth that suits you. You can skip any question and come back later; your answers save as you go.'], ['What happens to my answers?', 'They are anonymised and grouped into themes. We publish the headline findings before the next phase opens.']],
       phases: [
         { name: 'City-centre survey', method: 'survey', dates: 'Jun 1 – Jun 30, 2026', status: 'current', description: 'The opening phase: a short survey on how the centre works for you today.' },
         { name: 'What we heard', method: 'information', dates: 'Jul 1 – Jul 14, 2026', status: 'upcoming', description: 'We share back the themes from your answers and what they mean for the plan.' },
         { name: 'Shape the proposals', method: 'ideation', dates: 'Jul 15 – Aug 15, 2026', status: 'upcoming', description: 'Add and react to ideas for the changes you want to see in the centre.' }
       ],
       about: { mode: 'single', primary: 'Take the survey', secondary: 'See the results so far', participants: true, count: '1,204', label: 'responses' },
-      surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'secondary', survey: 'mobility', heading: '' },
+      surveys: { layout: 'buttons', heading: 'How much time do you have?', buttons: [
+        { label: 'Easy Read survey', style: 'primary', note: 'Plain language and pictures' },
+        { label: '5-minute survey', style: 'secondary', note: 'The standard check-in' },
+        { label: '10-minute deep dive', style: 'secondary', note: 'For the full picture' }
+      ] },
+      layout: ['banner', 'title', { row: [['intro', 'surveys', 'desc'], ['about']], tpl: 'main-aside' }, 'partbar', 'timeline', 'events'],
       events: [['Jun', '18', 'Drop-in: help with the survey', '18 Jun · 17:30 – 19:00', 'Central Library', '26', 'oldtown']]
     },
     {
       key: 'linz', theme: 0, city: 'Linz',
       title: 'Reimagine the riverside',
       banner: 'park-people',
-      config: 'Ideation + two parallel surveys (multi-survey list)',
+      config: 'Events module placed above the timeline · easy-read survey card',
       intro: 'Help shape how we use the riverside over the next few years. We are collecting ideas right now — add yours below, then back the ones you like best.',
-      desc: '<p>The team reads every suggestion, groups similar ones, and the most-supported move to a community vote and into the final plan. Alongside the ideas, two short surveys run in parallel so you can weigh in even if you only have a minute.</p>',
+      desc: '<p>The team reads every suggestion, groups similar ones, and the most-supported move to a community vote and into the final plan. Come and talk it through in person too — the meet-ups below run while the ideas phase is open.</p>',
       accordion: [['How will my idea be used?', 'Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.'], ['Who is running this project?', 'The City of Linz engagement team, together with the parks and mobility departments.']],
       phases: [
         { name: 'Share your ideas', method: 'ideation', dates: 'May 20 – Jun 30, 2026', status: 'current', description: 'Residents share ideas for the riverside and react to each other’s suggestions.' },
@@ -328,19 +394,17 @@
         { name: 'Community vote', method: 'voting', dates: 'Jul 15 – Aug 5, 2026', status: 'upcoming', description: 'Residents prioritise the shortlisted ideas with a budget of points.' }
       ],
       about: { mode: 'dual', primary: 'Submit your idea', secondary: 'See the ideas', participants: true, count: '342', label: 'contributions' },
-      surveys: { layout: 'list', heading: 'Extra surveys', list: [
-        { name: 'Mobility check-in', meta: 'Open until 15 Jun · ~2 min', cta: 'Take the survey' },
-        { name: 'Market-day satisfaction', meta: '10 – 24 Jun · ~3 min', cta: 'Share your view' }
-      ] },
+      surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'secondary', survey: 'mobility', heading: 'One more way to take part' },
+      layout: ['banner', 'title', { row: [['intro', 'desc', 'surveys'], ['about']], tpl: 'main-aside' }, 'events', 'partbar', 'timeline'],
       events: [['Jun', '14', 'Riverside ideas walk', '14 Jun · 10:00 – 11:30', 'Donaupark', '41', 'workshop'], ['Jul', '02', 'Design workshop', '2 Jul · 18:00 – 20:00', 'Civic Hall', '57', 'community']]
     },
     {
       key: 'wien', theme: 2, city: 'Stadt Wien',
       title: 'Participatory budget 2026',
       banner: 'square',
-      config: 'Voting phase · multi-method About box (collapsed) + deadline survey',
+      config: 'Omnibox · 3 methods collapse to one button → opens a modal / bottom sheet',
       intro: 'You decide where part of the district budget goes this year. Three ways to take part are open at once — vote on the shortlist, add a late idea, or have your say in the budget survey.',
-      desc: '<p>When more than two ways to participate are open together, the About box collapses them into a single clear call to action, with each method available on the next screen.</p>',
+      desc: '<p>When more than two ways to participate are open together, the About box collapses them into a single clear call to action. Tapping it opens a modal — a bottom sheet on mobile — with each method as its own button.</p>',
       accordion: [['How does the vote work?', 'You get a set of points to spread across the projects you most want funded. You can change your vote until the phase closes.'], ['How much is the budget?', '€500,000 for the district this year, split across the projects that get the most support.']],
       phases: [
         { name: 'Collect proposals', method: 'ideation', dates: 'Mar 1 – May 1, 2026', status: 'past', description: 'Residents submitted projects for the district budget.' },
@@ -352,16 +416,17 @@
         { cta: 'Add a late idea', current: false },
         { cta: 'Budget survey', current: false }
       ] },
-      surveys: { layout: 'one', format: 'card', variant: 'deadline', style: 'primary', survey: 'market', heading: 'Have your say while voting is open' },
+      surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'primary', survey: 'market', heading: 'Have your say while voting is open' },
+      layout: ['banner', 'title', { row: [['intro', 'desc', 'surveys'], ['about']], tpl: 'main-aside' }, 'partbar', 'timeline', 'events'],
       events: [['Jun', '20', 'Budget Q&A evening', '20 Jun · 18:30 – 20:00', 'Rathaus', '88', 'community']]
     },
     {
       key: 'copenhagen', theme: 3, city: 'Københavns Kommune',
       title: 'What we heard: the city centre',
       banner: 'oldtown',
-      config: 'Information phase · participants-only box + banner survey',
-      intro: 'Thank you to everyone who shared an idea. This phase shares back what we heard and how the ideas were grouped — and opens one short follow-up survey.',
-      desc: '<p>During consolidation we read every contribution, removed duplicates, and grouped the remaining ideas into themes. Below is how the process worked and what comes next.</p>',
+      config: 'Three-column survey-card row below the events calendar',
+      intro: 'Thank you to everyone who shared an idea. This phase shares back what we heard and how the ideas were grouped — and opens a few short follow-up surveys.',
+      desc: '<p>During consolidation we read every contribution, removed duplicates, and grouped the remaining ideas into themes. Below is how the process worked, when we are meeting in person, and the short surveys that are still open.</p>',
       accordion: [['How were ideas grouped?', 'Ideas were clustered by theme and by where in the centre they sit. Near-identical ideas were merged, keeping the original authors credited.'], ['When can I vote?', 'Prioritisation opens next month. Followers of this project get a notification when voting starts.']],
       phases: [
         { name: 'Share your ideas', method: 'ideation', dates: 'Apr 1 – May 20, 2026', status: 'past', description: 'Residents shared ideas for the city centre.' },
@@ -369,14 +434,16 @@
         { name: 'Prioritisation', method: 'voting', dates: 'Jul 1 – Jul 21, 2026', status: 'upcoming', description: 'Residents will help decide which ideas to take into the final design.' }
       ],
       about: { mode: 'single', primary: 'Read the full summary', secondary: null, participants: true, count: '517', label: 'contributions' },
-      surveys: { layout: 'one', format: 'card', variant: 'banner', style: 'secondary', survey: 'market', heading: 'One more question for you' },
-      events: [['Jun', '12', 'What-we-heard briefing', '12 Jun · 17:00 – 18:00', 'Online meeting', '64', 'workshop']]
+      surveys: { layout: 'none' },
+      surveyGrid: ['mobility', 'market', 'school'], surveyGridStyle: 'primary', surveyGridHeading: 'More surveys you can still take',
+      layout: ['banner', 'title', { row: [['intro', 'desc'], ['about']], tpl: 'main-aside' }, 'partbar', 'timeline', 'events', 'surveyGrid'],
+      events: [['Jun', '12', 'What-we-heard briefing', '12 Jun · 17:00 – 18:00', 'Online meeting', '64', 'workshop'], ['Jun', '19', 'Walk the centre with us', '19 Jun · 16:00 – 17:30', 'Rådhuspladsen', '52', 'oldtown'], ['Jun', '26', 'Theme drop-in session', '26 Jun · 17:00 – 19:00', 'Hovedbiblioteket', '38', 'community']]
     },
     {
       key: 'oslo', theme: 5, city: 'Oslo kommune',
       title: 'A safer school run',
       banner: 'street-trees',
-      config: 'Accessible view · simple About box + Easy-read survey card',
+      config: 'Reordered page · timeline under the title, About box above the description',
       intro: 'We want every child to get to school safely. This survey is written in plain words, with big text and one clear button — so everyone can take part.',
       desc: '<p>Tell us about the morning journey to school: where it feels safe, where it does not, and what would help. Your answers shape crossings, speeds and the streets around our schools.</p>',
       accordion: [['Who can answer?', 'Anyone who walks, cycles or drives the school run — parents, carers, children and neighbours.'], ['Do I need an account?', 'No. You can answer the survey without signing in. Signing in lets you follow the project for updates.']],
@@ -386,22 +453,24 @@
       ],
       about: { mode: 'single', primary: 'Take the survey', secondary: null, participants: true, count: '286', label: 'responses' },
       surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'primary', survey: 'school', heading: 'The survey, in plain words' },
+      layout: ['banner', 'title', 'timeline', 'about', 'intro', 'desc', 'surveys', 'events'],
       events: [['Jun', '11', 'School-gate listening session', '11 Jun · 08:15 – 09:15', 'Skole gate', '19', 'community']]
     },
     {
       key: 'lambeth', theme: 6, city: 'Lambeth',
       title: 'Quiet streets pilot',
       banner: 'harbour',
-      config: 'Minimal view · button-only About box + button-format survey',
+      config: 'Action-first minimal page · About box on top, then text and one survey',
       intro: 'We are trialling quieter, calmer streets in the neighbourhood. Add your idea for where it would make the biggest difference.',
-      desc: '<p>This is a light-touch project page: a single action in the About box, and the linked survey shown as a plain button rather than a full card — for when the page should stay quiet and the action is obvious.</p>',
+      desc: '<p>This is a light-touch project page: the action sits right at the top, with a short explanation and a single easy-read survey below — for when the page should stay quiet and the next step is obvious.</p>',
       accordion: [['What is a quiet street?', 'A street where through-traffic is reduced so it is calmer and safer for people walking, cycling and playing.']],
       phases: [
         { name: 'Suggest a street', method: 'ideation', dates: 'Jun 1 – Jul 1, 2026', status: 'current', description: 'Add the street where a quiet-streets trial would make the biggest difference.' },
         { name: 'Trial', method: 'information', dates: 'Aug 2026', status: 'upcoming', description: 'We trial the most-supported streets and report back on what changed.' }
       ],
       about: { mode: 'single', primary: 'Suggest a street', secondary: null, participants: false },
-      surveys: { layout: 'one', format: 'button', style: 'secondary', survey: 'access', heading: 'Quick survey' },
+      surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'secondary', survey: 'access', heading: 'Or take the quick survey' },
+      layout: ['banner', 'title', 'about', 'intro', 'desc', 'surveys', 'partbar', 'timeline'],
       events: []
     },
     {
@@ -425,7 +494,9 @@
       if (vis.length <= 2) {
         actions = vis.map((m) => `<a class="gv-btn full ${m.current ? 'primary' : 'primary-outlined'}" href="#"><span class="gv-btn__label">${m.cta}</span></a>`).join('');
       } else {
-        actions = `<a class="gv-btn full primary" href="#"><span class="gv-btn__label">${a.aggTitle || 'Participate'}</span></a>`;
+        const payload = JSON.stringify(vis.map((m) => ({ cta: m.cta, current: !!m.current })));
+        const title = a.aggTitle || 'Participate';
+        actions = `<button type="button" class="gv-btn full primary pv-agg" aria-haspopup="dialog" data-title="${title}" data-methods='${payload}'><span class="gv-btn__label">${title}</span></button>`;
       }
     } else {
       if (a.primary) actions += `<a class="gv-btn full primary" href="#"><span class="gv-btn__label">${a.primary}</span></a>`;
@@ -472,7 +543,7 @@
       case 'minimal':
         return open('minimal') + `<span class="svc-eyebrow-min">${ic('survey')} Survey</span><h3 class="svc-title-min">${s.name}</h3><p class="svc-meta">≈ ${s.minutes} · ${s.status}</p>` + btn + close;
       case 'easy':
-        return open('easy') + `<span class="svc-easy__tag">${ic('survey')} Survey</span><h3 class="svc-easy__title">${s.name}</h3><p class="svc-easy__desc">${s.desc}</p><div class="svc-chips"><span class="svc-chip svc-chip--accent">${ic('clock')}${s.minutes}</span></div>` + btn + close;
+        return open('easy') + `<span class="svc-easy__tag">${ic('survey')} Survey</span><h3 class="svc-easy__title">${s.name}</h3><p class="svc-easy__desc">${s.desc}</p>` + btn + close;
       default:
         return open('standard') + eyebrow + title + range + desc + btn + close;
     }
@@ -480,13 +551,19 @@
   function surveysHTML(cfg) {
     if (!cfg || cfg.layout === 'none') return '';
     let body = '';
-    if (cfg.layout === 'list') {
+    if (cfg.layout === 'buttons') {
+      // The "single button" Extra-surveys variant, used several times to link out to
+      // a few different surveys from inside the text content (no card chrome).
+      body = `<div class="cb-survey pv-surveys__btns">${cfg.buttons.map((b) =>
+        `<div class="pv-survey-btnrow">${surveyBtn(b.style, b.label)}${b.note ? `<small>${b.note}</small>` : ''}</div>`
+      ).join('')}</div>`;
+    } else if (cfg.layout === 'list') {
       body = `<div class="cb-extra__list">${cfg.list.map((s) => `<div class="cb-survey-row"><div class="cb-survey-row__info"><span class="cb-survey-row__name">${s.name}</span><span class="cb-survey-row__meta">${s.meta}</span></div><a class="gv-btn primary-outlined size-s" href="#">${s.cta}</a></div>`).join('')}</div>`;
     } else {
       const s = SURVEYS[cfg.survey];
       const one = cfg.format === 'button'
         ? `<div class="cb-survey">${surveyBtn(cfg.style, s.cta)}</div>`
-        : surveyCard(s, cfg.variant, cfg.style);
+        : surveyCard(s, cfg.variant || 'easy', cfg.style);
       body = `<div class="pv-surveys__one">${one}</div>`;
     }
     const head = cfg.heading === '' ? '' : `<div class="pv-surveys__head"><h2 class="gv-title h3">${cfg.heading || 'Extra surveys'}</h2></div>`;
@@ -547,58 +624,56 @@
 
   let activePhase = 0;
 
+  // ── LAYOUT ENGINE ──
+  // Each city composes the same canonical modules in its own order, to showcase the
+  // Content Builder's freedom to move blocks around. `v.layout` is an array of entries:
+  //   • a string  → one full-width module
+  //   • {row:[[keys],[keys]], tpl} → a multi-column row (tpl 'main-aside' or 'eq')
+  // Two modules are full-bleed bands rendered specially: 'timeline' and 'partbar'.
+  const DEFAULT_LAYOUT = ['banner', 'title', { row: [['intro', 'desc', 'surveys'], ['about']], tpl: 'main-aside' }, 'partbar', 'timeline', 'events'];
+
   function renderProject(v) {
     const cur = v.phases.findIndex((p) => p.status === 'current');
-    const CURRENT = cur < 0 ? 0 : cur;
-    activePhase = CURRENT;
+    activePhase = cur < 0 ? 0 : cur;
     const acc = (v.accordion || []).map(([q, p]) => `<details class="gv-acc__item"><summary class="gv-acc__head"><span class="gv-acc__q">${q}</span><span class="gv-acc__chev" data-gv-icon="chevron-right"></span></summary><div class="gv-acc__body"><p>${p}</p></div></details>`).join('');
-    const eventsHTML = (v.events && v.events.length)
-      ? `<div class="gv-wrap"><section class="gv-section" style="padding-top:40px;"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Events</h2><a class="gv-btn text" href="#">View all events</a></div><div class="gv-events__grid">${v.events.map(eventCard).join('')}</div></section></div>`
-      : '';
     const partbarCTA = v.about && v.about.mode === 'multi' ? (v.about.methods.find((m) => m.current) || {}).cta : (v.about && v.about.primary);
 
-    return `
-     <div class="gv-wrap">
-      <section class="pp-banner" aria-label="Project banner">
-        <img src="assets/img/westmere/${v.banner}.webp" alt="" loading="lazy" />
-      </section>
+    // Module content renderers (return inner HTML; no full-width wrapper).
+    const M = {
+      banner: () => `<section class="pp-banner" aria-label="Project banner"><img src="assets/img/westmere/${v.banner}.webp" alt="" loading="lazy" /></section>`,
+      title: () => `<h1 class="gv-title h1 pv-h1">${v.title}</h1>`,
+      intro: () => `<div class="gv-projdesc pv-intro"><p>${v.intro}</p></div>`,
+      desc: () => `<div class="gv-projdesc">${v.desc || ''}${acc ? `<div class="gv-accordion" style="margin-top:20px">${acc}</div>` : ''}</div>`,
+      about: () => `<div class="pv-aside pv-about-wide">${aboutBoxHTML(v.about)}</div>`,
+      surveys: () => surveysHTML(v.surveys),
+      surveyGrid: () => (v.surveyGrid && v.surveyGrid.length)
+        ? `<section class="pv-surveys"><div class="pv-surveys__head"><h2 class="gv-title h3">${v.surveyGridHeading || 'More surveys you can take'}</h2></div><div class="pv-survey-grid">${v.surveyGrid.map((key) => surveyCard(SURVEYS[key], 'easy', v.surveyGridStyle || 'primary')).join('')}</div></section>`
+        : '',
+      events: () => (v.events && v.events.length)
+        ? `<section class="gv-section"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Events</h2><a class="gv-btn text" href="#">View all events</a></div><div class="gv-events__grid">${v.events.map(eventCard).join('')}</div></section>`
+        : ''
+    };
 
-      <div class="pp-head">
-        <h1 class="gv-title h1">${v.title}</h1>
+    const timelineBand = `<div class="gv-methodband"><div class="gv-wrap"><section class="gv-phases" aria-labelledby="phasesTitle"><div class="gv-phases__bar"><h2 id="phasesTitle">Phases</h2></div><div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"></div><div class="gv-phasepanel" id="phasepanel"></div><div class="gv-phasebody gv-phasebody--full" role="tabpanel" id="phasebody"></div></section></div></div>`;
+    const partbarBand = `<div class="gv-partbar"><div class="gv-partbar__inner"><span class="gv-partbar__status">Open for participation</span><a class="gv-btn on-color" href="#">${partbarCTA || 'Take part'} <span data-gv-icon="arrow-right" aria-hidden="true"></span></a></div></div>`;
 
-        <div class="pp-row">
-          <div class="gv-projdesc pp-intro">
-            <p>${v.intro}</p>
-            <div style="margin-top:18px">${v.desc || ''}</div>
-            ${acc ? `<div class="gv-accordion" style="margin-top:20px">${acc}</div>` : ''}
-            ${surveysHTML(v.surveys)}
-          </div>
-          <div class="pp-aside">
-            ${aboutBoxHTML(v.about)}
-          </div>
-        </div>
-      </div>
-     </div>
+    const chunks = (v.layout || DEFAULT_LAYOUT).map((entry) => {
+      if (entry === 'timeline') return timelineBand;
+      if (entry === 'partbar') return partbarBand;
+      if (typeof entry === 'string') {
+        const html = M[entry] ? M[entry]() : '';
+        return html ? `<div class="gv-wrap"><div class="pv-block">${html}</div></div>` : '';
+      }
+      if (entry && entry.row) {
+        const rowCls = entry.tpl === 'eq' ? 'pv-row-eq' : 'pv-row2';
+        const style = entry.tpl === 'eq' ? ` style="--n:${entry.row.length}"` : '';
+        const cols = entry.row.map((keys) => `<div class="pv-col">${keys.map((k) => (M[k] ? M[k]() : '')).join('')}</div>`).join('');
+        return `<div class="gv-wrap"><div class="pv-block ${rowCls}"${style}>${cols}</div></div>`;
+      }
+      return '';
+    }).join('');
 
-      <div class="gv-partbar">
-        <div class="gv-partbar__inner">
-          <span class="gv-partbar__status">Open for participation</span>
-          <a class="gv-btn on-color" href="#">${partbarCTA || 'Take part'} <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
-        </div>
-      </div>
-
-      <div class="gv-methodband">
-       <div class="gv-wrap">
-        <section class="gv-phases" aria-labelledby="phasesTitle">
-          <div class="gv-phases__bar"><h2 id="phasesTitle">Phases</h2></div>
-          <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"></div>
-          <div class="gv-phasepanel" id="phasepanel"></div>
-          <div class="gv-phasebody gv-phasebody--full" role="tabpanel" id="phasebody"></div>
-        </section>
-       </div>
-      </div>
-
-      ${eventsHTML}`;
+    return `<div class="pv-page">${chunks}</div>`;
   }
 
   function renderStepperAndPhase(v) {
@@ -717,6 +792,53 @@
     document.body.appendChild(wrap);
     wrap.querySelectorAll('.pv-chip').forEach((c) => c.addEventListener('click', () => render(+c.dataset.idx)));
   }
+
+  /* ════════════════════════ Participate sheet ════════════════════════ */
+  let sheetEl = null, lastTrigger = null;
+  function ensureSheet() {
+    if (sheetEl) return sheetEl;
+    sheetEl = document.createElement('div');
+    sheetEl.className = 'pv-sheet pv';
+    sheetEl.innerHTML =
+      '<div class="pv-sheet__scrim" data-close></div>' +
+      '<div class="pv-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="pv-sheet-title">' +
+        '<div class="pv-sheet__grip"></div>' +
+        '<div class="pv-sheet__head"><h2 class="pv-sheet__title" id="pv-sheet-title"></h2>' +
+          '<button type="button" class="pv-sheet__close" data-close aria-label="Close">&times;</button></div>' +
+        '<p class="pv-sheet__sub">Choose how you’d like to take part — each method opens on the next screen.</p>' +
+        '<div class="pv-sheet__actions"></div>' +
+      '</div>';
+    document.body.appendChild(sheetEl);
+    sheetEl.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeSheet));
+    return sheetEl;
+  }
+  function openSheet(title, methods) {
+    const s = ensureSheet();
+    s.querySelector('.pv-sheet__title').textContent = title;
+    s.querySelector('.pv-sheet__actions').innerHTML = methods.map((m) =>
+      `<a class="gv-btn full ${m.current ? 'primary' : 'primary-outlined'}" href="#"><span class="gv-btn__label">${m.cta}</span></a>`
+    ).join('');
+    requestAnimationFrame(() => s.classList.add('open'));
+    document.body.style.overflow = 'hidden';
+    const close = s.querySelector('.pv-sheet__close');
+    if (close) close.focus();
+  }
+  function closeSheet() {
+    if (!sheetEl) return;
+    sheetEl.classList.remove('open');
+    document.body.style.overflow = '';
+    if (lastTrigger) { lastTrigger.focus(); lastTrigger = null; }
+  }
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.pv-agg');
+    if (!btn) return;
+    e.preventDefault();
+    lastTrigger = btn;
+    let methods = [];
+    try { methods = JSON.parse(btn.dataset.methods || '[]'); } catch (err) {}
+    openSheet(btn.dataset.title || 'Participate', methods);
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
 
   function start() {
     buildSwitcher();

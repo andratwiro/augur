@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Parallel Participation Gallery — 5 cities (desktop)</title>
+<style>
+  :root{
+    /* palette vars are set per-city by JS */
+    --accent:#0f7d6b; --accent-dark:#0c6557; --accent2:#0f7d6b;
+    --ink:#16241f; --ink-2:#42514b; --ink-3:#76847e;
+    --line:#e3e8e6; --bg:#fff; --bg-soft:#f1f5f3;
+    --done:#2f8f4e; --closed:#9aa3b2;
+    --body-bg:#e7ebe9; --smod-line:#cfe3df;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--body-bg);color:var(--ink);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    transition:background .25s ease;}
+  .harness{max-width:1380px;margin:0 auto;padding:28px 24px 80px;}
+  .hh{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px;}
+  .hh h1{font-size:16px;margin:0;}
+  .hh p{margin:2px 0 0;font-size:13px;color:var(--ink-3);}
+  .toggle{display:flex;gap:6px;background:#fff;padding:4px;border-radius:10px;border:1px solid var(--line);flex-wrap:wrap;}
+  .toggle button{border:0;background:transparent;padding:7px 14px;border-radius:7px;font-size:13px;font-weight:600;color:var(--ink-2);cursor:pointer;}
+  .toggle button.active{background:var(--ink);color:#fff;}
+  .note{font-size:12.5px;color:var(--ink-3);background:#fff;border:1px dashed var(--line);border-radius:10px;padding:10px 14px;margin:14px 0 22px;line-height:1.5;}
+  .note b{color:var(--ink-2);}
+
+  button:focus-visible, .mrow:focus-visible{outline:3px solid var(--ink);outline-offset:2px;}
+  .statusbar button:focus-visible, .accent-surface button:focus-visible{outline-color:#fff;}
+
+  .block-label{position:absolute;top:-9px;left:14px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);background:var(--bg);padding:0 7px;display:none;z-index:5;}
+  .block{position:relative;}
+  .demo-outline .block{outline:1px dashed #c2cdc9;outline-offset:4px;border-radius:6px;}
+  .demo-outline .block-label{display:inline-block;}
+
+  /* overflow:clip (not hidden) so position:sticky inside still pins to the viewport */
+  .page{background:var(--bg);border:1px solid var(--line);border-radius:16px;overflow:clip;box-shadow:0 10px 40px rgba(20,40,33,.10);}
+  .chrome{display:flex;align-items:center;gap:28px;padding:14px 32px;border-bottom:1px solid var(--line);}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;line-height:1;}
+  .brand .crest{width:32px;height:32px;background:var(--accent);border-radius:50%;position:relative;}
+  .brand .crest:after{content:"~";position:absolute;color:#fff;font-size:22px;font-weight:800;left:9px;top:-2px;}
+  .chrome nav{display:flex;gap:24px;font-size:14px;color:var(--ink-2);}
+  .chrome .spacer{flex:1;}
+  .chrome .login{background:var(--accent);color:#fff;border:0;padding:9px 18px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:0 32px;}
+  .hero{margin:26px auto 0;max-width:1080px;padding:0 32px;}
+  .hero-img{height:280px;border-radius:14px;position:relative;overflow:hidden;}
+  .hero-img .hero-cap{position:absolute;left:18px;bottom:14px;color:#fff;font-size:12px;opacity:.85;}
+  .follow{position:absolute;top:14px;right:14px;background:var(--accent);color:#fff;border:0;padding:9px 16px;border-radius:8px;font-weight:700;font-size:13.5px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.18);}
+
+  .proj-head{margin-top:26px;max-width:780px;}
+  .head-grid{display:grid;grid-template-columns:1fr 320px;gap:40px;margin-top:6px;align-items:start;}
+  .head-grid.single{grid-template-columns:1fr;max-width:780px;}
+  h2.proj-ttl{font-size:30px;margin:0 0 10px;letter-spacing:-.02em;}
+  .proj-sub{font-size:19px;font-weight:600;color:var(--ink);margin:0 0 16px;}
+  .body-copy{font-size:15.5px;line-height:1.62;color:var(--ink-2);}
+  .body-copy p{margin:0 0 14px;}
+  .body-copy h3{font-size:18px;color:var(--ink);margin:22px 0 8px;}
+
+  .head-side{position:sticky;top:74px;}
+
+  /* ============ Participation Box (Pattern 1, count-driven) ============ */
+  .pbox{background:transparent;border:0;box-shadow:none;padding:0;}
+  .pbtn{border:0;border-radius:10px;padding:13px;font-weight:700;font-size:14.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;width:100%;}
+  .pbtn.primary{background:var(--accent);color:#fff;}
+  .pbtn.primary:hover{background:var(--accent-dark);}
+  .pbtn.secondary{background:#fff;color:var(--ink);border:1px solid var(--line);}
+  .pbtn.secondary:hover{background:var(--bg-soft);}
+  .pbtn.inverted{background:#fff;color:var(--accent);border:1px solid #fff;}
+  .pbtn.inverted:hover{background:rgba(255,255,255,.88);}
+  .pbtn+.pbtn{margin-top:9px;}
+  .avatars{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:13px;color:var(--ink-2);padding-top:14px;border-top:1px solid var(--line);}
+  .avatars .av{display:flex;}
+  .avatars .av span{width:26px;height:26px;border-radius:50%;background:var(--av,#bcd3cc);border:2px solid #fff;margin-left:-9px;}
+  .avatars .av span:first-child{margin-left:0;}
+  .avatars.plain{border-top:0;padding-top:0;margin:0 0 6px;}
+
+  .pbox-belowtitle{max-width:420px;margin:4px 0 26px;}
+  .pbox-anchorwrap{max-width:480px;margin:36px auto 0;}
+
+  /* time-tier picker (parallel surveys inline) */
+  .tiers{margin:24px 0 28px;max-width:420px;}
+  .tiers h4{font-size:17px;margin:0 0 12px;}
+  .tier-row{display:flex;flex-direction:column;gap:9px;}
+  .tier-btn{width:100%;padding:13px;font-size:14.5px;}
+
+  /* individual method cards (sidebar variant) */
+  .scard{border:1px solid var(--smod-line);border-radius:14px;background:#fff;padding:16px 18px;}
+  .scard+.scard{margin-top:12px;}
+  .scard .s-meta{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px;margin-bottom:7px;}
+  .scard .s-meta .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+  .scard h4{font-size:15.5px;margin:0 0 4px;}
+  .scard p{font-size:13px;color:var(--ink-2);line-height:1.5;margin:0 0 13px;}
+  .scard .pbtn{padding:11px;font-size:13.5px;}
+  .scard .btn-chip{font-size:11px;font-weight:700;background:var(--bg-soft);border:1px solid var(--line);border-radius:20px;padding:2px 8px;color:var(--ink-3);}
+  .scard.taken .s-meta{color:var(--done);}
+  .scard.taken .s-meta .dot{background:var(--done);}
+  .taken-line{display:flex;align-items:center;justify-content:center;gap:6px;background:#e9f4ed;border:1px solid #cde5d6;color:var(--done);border-radius:9px;padding:10px;font-weight:700;font-size:13px;}
+  .scard-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px;}
+  .scard-row .scard+.scard{margin-top:0;}
+
+  /* ============ events ============ */
+  .ev-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:18px;}
+  .ev{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .ev .ev-img{height:120px;position:relative;}
+  .ev .ev-date{position:absolute;top:10px;right:10px;background:#fff;border-radius:8px;padding:5px 8px;text-align:center;line-height:1.1;box-shadow:0 2px 6px rgba(0,0,0,.12);}
+  .ev .ev-date b{display:block;font-size:16px;}
+  .ev .ev-date span{font-size:10px;color:var(--ink-3);text-transform:uppercase;}
+  .ev .ev-body{padding:14px 16px;}
+  .ev .ev-body h5{margin:0 0 10px;font-size:14.5px;line-height:1.3;}
+  .ev .ev-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3);margin-bottom:5px;}
+  .ev .ev-btn{width:100%;margin-top:12px;background:#fff;color:var(--accent);border:1px solid var(--line);padding:9px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;}
+
+  /* ============ status strip — sticky, pins to viewport top ============ */
+  .statusbar{background:var(--accent);color:#fff;margin-top:30px;position:sticky;top:0;z-index:40;box-shadow:0 4px 14px rgba(15,64,58,.18);}
+  .statusbar .inner{max-width:1080px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;gap:14px;}
+  .statusbar .s-left{font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;display:flex;gap:8px;align-items:center;}
+  .statusbar .s-left .dot{width:8px;height:8px;border-radius:50%;background:#fff;}
+  .statusbar .pbtn.inverted{width:auto;padding:10px 20px;flex-shrink:0;}
+
+  /* ============ timeline (soft zone) ============ */
+  .soft-zone{background:var(--bg-soft);padding:30px 0 36px;}
+  .tl-head{display:flex;align-items:center;justify-content:space-between;}
+  .tl-head h3{font-size:22px;margin:0;}
+  .tl-nav{display:flex;gap:6px;}
+  .tl-nav button{width:34px;height:34px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--ink-2);}
+  .phases{display:flex;gap:6px;margin:18px 0 0;}
+  .phase{flex:1;text-align:center;}
+  .phase .bar{height:30px;border-radius:6px;background:#d4ddd9;color:var(--ink-3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;position:relative;}
+  .phase.done .bar{background:var(--done);color:#fff;}
+  .phase.done .bar:after{content:"";position:absolute;right:-6px;top:0;border-left:10px solid var(--done);border-top:15px solid transparent;border-bottom:15px solid transparent;z-index:2;}
+  .phase .lbl{font-size:12px;color:var(--ink-2);margin-top:8px;line-height:1.35;padding:0 4px;}
+  .phase.active .lbl{color:var(--done);font-weight:600;}
+  .phase-card{background:#fff;border-radius:12px;padding:24px 26px;margin-top:20px;border:1px solid var(--line);}
+  .phase-card .pc-head{display:flex;gap:12px;align-items:center;}
+  .phase-card .pc-num{width:30px;height:30px;border-radius:50%;background:var(--done);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+  .phase-card h4{margin:0;font-size:18px;color:var(--done);}
+  .phase-card .pc-date{font-size:13px;color:var(--ink-3);margin-top:2px;}
+  .phase-card .pc-body{font-size:14.5px;line-height:1.6;color:var(--ink-2);margin-top:14px;}
+  .phase-card .pc-body em{color:var(--ink);font-style:italic;}
+  .phase-method{margin-top:20px;border-top:1px solid var(--line);padding-top:20px;}
+  .pm-head{display:flex;align-items:center;justify-content:space-between;}
+  .pm-head h5{font-size:15px;margin:0;}
+  .pm-head .pm-meta{font-size:12px;color:var(--ink-3);}
+  .ideas-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px;}
+  .idea{background:var(--bg-soft);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+  .idea h6{margin:0 0 5px;font-size:14.5px;}
+  .idea p{margin:0;font-size:12.5px;color:var(--ink-2);line-height:1.45;}
+  .idea .i-meta{display:flex;align-items:center;gap:10px;margin-top:10px;font-size:11.5px;color:var(--ink-3);}
+  .idea .react{margin-left:auto;border:1px solid var(--line);background:#fff;border-radius:20px;padding:3px 9px;font-weight:600;color:var(--ink-2);}
+
+  /* survey preview (visual only — CTA lives in box & strip) */
+  .survey-prev{background:var(--bg-soft);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:14px;max-width:560px;}
+  .survey-prev .sp-meta{font-size:12px;color:var(--ink-3);margin-bottom:12px;font-weight:600;letter-spacing:.02em;}
+  .survey-prev .sp-q{font-weight:700;font-size:15px;margin-bottom:4px;color:var(--ink);}
+  .survey-prev .sp-hint{font-size:12px;color:var(--ink-3);margin-bottom:8px;}
+  .sp-opt{display:flex;gap:9px;align-items:center;padding:9px 12px;background:#fff;border:1px solid var(--line);border-radius:9px;margin-top:7px;font-size:13.5px;color:var(--ink-2);}
+  .sp-opt .radio{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink-3);flex-shrink:0;}
+
+  /* budget vote with tokens (visual only) */
+  .tok-summary{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--bg-soft);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-top:14px;}
+  .tok-summary b{font-size:14px;}
+  .tok-dots{display:flex;gap:6px;}
+  .tok-dots span{width:18px;height:18px;border-radius:50%;border:2px solid var(--accent);}
+  .tok-dots span.full{background:var(--accent);}
+  .tok-list{margin-top:12px;}
+  .tok-row{display:flex;align-items:center;justify-content:space-between;gap:18px;background:var(--bg-soft);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-top:10px;}
+  .tok-row h6{margin:0 0 4px;font-size:14.5px;}
+  .tok-row p{margin:0;font-size:12.5px;color:var(--ink-2);line-height:1.45;}
+  .tok-ctl{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+  .tok-ctl .cost{font-size:12px;font-weight:700;color:var(--ink-3);background:#fff;border:1px solid var(--line);border-radius:20px;padding:4px 10px;}
+  .stepper{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:9px;background:#fff;overflow:hidden;}
+  .stepper button{width:32px;height:32px;border:0;background:#fff;color:var(--ink-2);font-size:16px;font-weight:700;cursor:default;}
+  .stepper b{width:30px;text-align:center;font-size:14px;color:var(--accent);}
+
+  /* ============ Pattern 2 — standalone method module ============ */
+  .smod{border:1px solid var(--smod-line);border-radius:14px;background:#fff;padding:20px 22px;margin-top:42px;}
+  .smod.in-content{margin:26px 0;max-width:560px;padding:18px 20px;}
+  .smod .s-meta{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  .smod .s-meta .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);}
+  .smod h4{font-size:19px;margin:0 0 4px;}
+  .smod.in-content h4{font-size:16px;}
+  .smod p{font-size:14px;color:var(--ink-2);line-height:1.55;margin:0 0 16px;max-width:560px;}
+  .smod .pbtn{width:auto;padding:12px 24px;}
+
+  .foot{padding:30px 32px;text-align:center;font-size:12px;color:var(--ink-3);}
+
+  /* ============ omnibox modal (N ≥ 3) ============ */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(18,28,24,.46);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .modal-backdrop[hidden]{display:none;}
+  .modal{background:#fff;border-radius:16px;max-width:480px;width:100%;padding:24px 26px 26px;box-shadow:0 24px 60px rgba(10,20,16,.30);}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .modal-head h4{margin:0;font-size:19px;}
+  .modal-x{border:1px solid var(--line);background:#fff;width:34px;height:34px;border-radius:9px;font-size:15px;color:var(--ink-2);cursor:pointer;flex-shrink:0;}
+  .mrow{border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:12px;font-weight:700;font-size:14.5px;width:100%;border:0;text-align:left;font-family:inherit;}
+  .mrow+.mrow{margin-top:9px;}
+  .mrow .m-lbl{flex:1;line-height:1.3;}
+  .mrow .m-sub{display:block;font-size:12px;font-weight:500;margin-top:3px;opacity:.85;}
+  .mrow .chip{font-size:11.5px;font-weight:700;border-radius:20px;padding:4px 10px;flex-shrink:0;white-space:nowrap;}
+  .mrow.open{background:var(--accent);color:#fff;cursor:pointer;}
+  .mrow.open:hover{background:var(--accent-dark);}
+  .mrow.open .chip{background:rgba(255,255,255,.22);color:#fff;}
+  .mrow.done{background:#e9f4ed;color:var(--done);border:1px solid #cde5d6;}
+  .mrow.done .chip{background:#fff;color:var(--done);border:1px solid #cde5d6;}
+  .mrow.scheduled{background:color-mix(in srgb, var(--accent2) 10%, #fff);color:color-mix(in srgb, var(--accent2) 78%, #000);border:1px dashed color-mix(in srgb, var(--accent2) 45%, #fff);}
+  .mrow.scheduled .chip{background:#fff;color:color-mix(in srgb, var(--accent2) 78%, #000);border:1px solid color-mix(in srgb, var(--accent2) 45%, #fff);}
+  .mrow.closed{background:#f0f2f4;color:var(--closed);border:1px solid #e2e6ea;}
+  .mrow.closed .chip{background:#fff;color:var(--closed);border:1px solid #e2e6ea;}
+</style>
+</head>
+<body>
+<div class="harness">
+  <div class="hh">
+    <div>
+      <h1 id="hh-title"></h1>
+      <p id="hh-sub"></p>
+    </div>
+    <div class="toggle" id="switcher"></div>
+  </div>
+  <div class="note" id="hh-note"></div>
+  <div class="page" id="page"></div>
+</div>
+
+<div class="modal-backdrop" id="modal-bd" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-ttl">
+    <div class="modal-head">
+      <h4 id="modal-ttl">Participate</h4>
+      <button class="modal-x" id="modal-x" aria-label="Close dialog">✕</button>
+    </div>
+    <div id="modal-list" style="margin-top:16px;"></div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   DATA — one object per city. Shared render functions below.
+   ================================================================ */
+const CASES = [
+
+/* ---------- 1 · RIVERBEND — the calm baseline (source, as-is) ---------- */
+{
+  id:'riverbend', btn:'Riverbend',
+  hhTitle:'#1 · Riverbend — the calm baseline',
+  hhSub:'Ideation in the timeline + one always-on parallel micro-survey. Box at N=2 → primary + secondary.',
+  note:'<b>Structure on show:</b> intro content block + Participation Box (top-right, N=2 so it shows a primary “+ Add an idea” pointing at the timeline method, plus a secondary “Answer this week\u2019s question”). Status-only strip. Timeline with ideation folded into the active phase. The <b>Weekly question</b> rendered as a Pattern 2 standalone module inline. Project-wide participant count lives in the box.',
+  palette:{accent:'#0f7d6b',accentDark:'#0c6557',accent2:'#0f7d6b',bgSoft:'#f1f5f3',line:'#e3e8e6',bodyBg:'#e7ebe9',smodLine:'#cfe3df',av:'#bcd3cc',
+    heroGrad:'linear-gradient(135deg,#8fc9bd,#3e9c8a 60%,#27786a)',evGrad:'linear-gradient(135deg,#bfd8d1,#8bb8ad)'},
+  brand:'Riverbend', follow:'🔔 Follow (212)', heroCap:'Riverbend — riverfront renewal',
+  title:'Reimagining the Riverfront', sub:'Help shape the next chapter of our waterfront',
+  content:[
+    {p:'The old industrial riverfront is being returned to the community. Over the next year we\u2019re deciding together what goes there — green space, gathering spots, play areas, places to eat. This is your invitation to help shape it.'},
+    {h3:'Where we are now'},
+    {p:'We\u2019re in the ideas phase. Nothing is decided yet — we want the widest possible range of suggestions before anything is drawn up. Add your own idea, or react to what your neighbours have proposed. The more voices we hear now, the better the shortlist will be when we move into the next phase.'},
+    {p:'Every idea is read by the project team and grouped by theme. Popular and feasible suggestions are carried forward into Phase 2, where we\u2019ll refine a shortlist together with landscape architects. You don\u2019t need to have it all figured out — a one-line suggestion is just as welcome as a detailed proposal.'},
+    {p:'Alongside the big ideas process, we ask one short question every week to take the temperature on a specific topic. It takes under a minute and helps us steer between the larger phases.'}
+  ],
+  pbox:{placement:'sidebar', label:'Participation Box · N=2', participants:'+212 people taking part',
+    methods:[
+      {label:'See 148 ideas', kind:'timeline', status:'open'},
+      {label:'Answer this week\u2019s question', kind:'parallel', status:'open'}
+    ]},
+  events:{placement:'belowContent', heading:'Come meet us by the river', items:[
+    {d:'14',mo:'Jun',title:'Neighbours\u2019 meeting at the old quay',time:'18:00 – 19:30',place:'Quayside warehouse'},
+    {d:'21',mo:'Jun',title:'Family riverwalk & ideas picnic',time:'11:00 – 14:00',place:'North bank meadow'},
+    {d:'28',mo:'Jun',title:'Drop-in with the design team',time:'16:00 – 19:00',place:'Riverbend library'}
+  ]},
+  strip:{text:'Open for participation · ideas phase · 5 weeks left', verb:'+ Add an idea'},
+  timeline:{
+    phases:[
+      {n:1,label:'Gather ideas',cls:'done active'},
+      {n:2,label:'Shortlist & refine',cls:''},
+      {n:3,label:'Community vote',cls:''},
+      {n:4,label:'Final plan',cls:''}
+    ],
+    card:{num:1,title:'Gather ideas',dates:'1 June – 5 July 2026 · Ideation',
+      intro:'What should the new riverfront include? Share an idea, or react to others.',
+      method:{type:'ideas', head:'148 ideas so far', items:[
+        {t:'A floating swimming pool',p:'Like Copenhagen\u2019s harbour baths — clean river swimming in summer.',by:'Dana · 4 days ago',r:87},
+        {t:'Keep the old cranes',p:'Light them up at night as landmarks instead of demolishing them.',by:'Omar · 1 week ago',r:64},
+        {t:'A weekend food market',p:'Local stalls under the old warehouse roof, rain or shine.',by:'Priya · 2 weeks ago',r:53},
+        {t:'Quiet gardens, not just events',p:'Somewhere to sit and read by the water, away from noise.',by:'Lars · 2 weeks ago',r:41},
+        {t:'Step-free access to the water',p:'Ramps and gentle slopes so wheelchairs and prams can reach the edge.',by:'Nadia · 3 days ago',r:39},
+        {t:'A small jetty for kayaks',p:'Launch point for canoes and paddleboards on calm mornings.',by:'Tomás · 5 days ago',r:36},
+        {t:'Native planting, not lawns',p:'Wildflower meadows that need less water and feed pollinators.',by:'Greta · 1 week ago',r:34},
+        {t:'Evening lighting that\u2019s dark-sky friendly',p:'Warm, low lighting so we keep the stars and don\u2019t disturb wildlife.',by:'Sam · 1 week ago',r:31},
+        {t:'A community boathouse',p:'Shared store for clubs, schools and rowing groups.',by:'Mei · 1 week ago',r:29},
+        {t:'Keep one stretch wild',p:'Leave a section unlandscaped as a habitat corridor.',by:'Ravi · 2 weeks ago',r:27},
+        {t:'Outdoor cinema in summer',p:'Project films onto the old grain silo on warm nights.',by:'Hanna · 2 weeks ago',r:26},
+        {t:'A real public toilet',p:'Clean, accessible, open year-round — the basics matter.',by:'Joël · 2 weeks ago',r:25},
+        {t:'Bike repair station',p:'Free pump and tools where the river path meets the bridge.',by:'Aisha · 2 weeks ago',r:22},
+        {t:'Shade for hot days',p:'Pergolas and trees, not just open paving that bakes in July.',by:'Bruno · 3 weeks ago',r:21},
+        {t:'A history trail',p:'Plaques telling the story of the working docks that were here.',by:'Elin · 3 weeks ago',r:19},
+        {t:'Space for street food trucks',p:'Rotating vendors on weekends, with seating by the water.',by:'Karim · 3 weeks ago',r:18},
+        {t:'A tidal clock sculpture',p:'Public art that shows the river\u2019s rise and fall.',by:'Pia · 3 weeks ago',r:16},
+        {t:'Fishing platform',p:'A safe railed spot for kids and older anglers.',by:'Wim · 3 weeks ago',r:14},
+        {t:'Winter ice rink',p:'Flood and freeze a flat area when it\u2019s cold enough.',by:'Sofia · 4 weeks ago',r:12},
+        {t:'Drinking fountains',p:'Refill points along the whole length of the path.',by:'Diego · 4 weeks ago',r:11}
+      ]}}},
+  pattern2:[
+    {placement:'afterTimeline', meta:'This week\u2019s question · closes Sunday', title:'Should the riverfront be car-free?',
+     body:'One quick question to take the temperature this week. Under a minute, no sign-up needed — we ask a new one every Monday as the project moves along.',
+     btnLabel:'Answer in one tap', label:'Pattern 2 · standalone method'}
+  ]
+},
+
+/* ---------- 2 · WEXBRIDGE — the time-tier picker ---------- */
+{
+  id:'wexbridge', btn:'Wexbridge',
+  hhTitle:'#2 · Wexbridge — the time-tier picker',
+  hhSub:'Same three parallel surveys as Mont-Clair, but expanded inline as buttons — choose by how much time you have.',
+  note:'<b>Structure on show:</b> the opposite disclosure strategy to Mont-Clair. Instead of collapsing the three parallel surveys into an omnibox modal, they render <b>inline as a time-tier picker</b> — “How much time do you have?” with three buttons (1 / 5 / 10 min), placed after the first paragraph. Zero clicks to see all options; the trade-off is page weight. Flip between #2 and #3 to compare.',
+  palette:{accent:'#6b3aa5',accentDark:'#572f87',accent2:'#6b3aa5',bgSoft:'#f4f0f9',line:'#e6e0ef',bodyBg:'#eae5f1',smodLine:'#d9cdea',av:'#cbbade',
+    heroGrad:'linear-gradient(135deg,#c3aede,#8a63bd 55%,#572f87)',evGrad:'linear-gradient(135deg,#d8cbe9,#ab8ed0)'},
+  brand:'Wexbridge', follow:'🔔 Follow (264)', heroCap:'Wexbridge — town centre plan',
+  title:'Wexbridge Town Centre Plan', sub:'',
+  content:[
+    {p:'The High Street is changing — one in five units sits empty, the market is half the size it was, yet more people live in the centre than at any point since the seventies. Over the next year the council is writing a ten-year plan for the town centre, and we\u2019re writing it with you.'},
+    {pboxHere:true},
+    {h3:'Where we are now'},
+    {p:'We\u2019re gathering ideas. Tell us what would bring you into the centre more often — or what keeps you away. Every idea is read and themed by the planning team before the draft plan is written.'},
+    {p:'Short on time? The surveys above come in three depths — from one minute to ten. There\u2019s also an Easy Read version, with short sentences and pictures, so everyone can take part. Pick whichever fits; everything feeds the same plan.'}
+  ],
+  pbox:{placement:'inContent', variant:'tiers', participantsPlacement:'belowTitle', label:'Time-tier picker · 3 time tiers + Easy Read', participants:'+264 people taking part',
+    tiers:{heading:'How much time do you have?',
+      items:['1-min pulse check','5-min neighbourhood survey','10-min deep dive','Easy Read survey']}},
+  events:null,
+  strip:{text:'Open for participation · ideas phase · 4 weeks left', verb:'+ Add an idea'},
+  timeline:{
+    phases:[
+      {n:1,label:'Gather ideas',cls:'done active'},
+      {n:2,label:'Draft plan',cls:''},
+      {n:3,label:'Public consultation',cls:''},
+      {n:4,label:'Adoption',cls:''}
+    ],
+    card:{num:1,title:'Gather ideas',dates:'1 – 28 June 2026 · Ideation',
+      intro:'What would bring you into the town centre more often? Share an idea or react to others.',
+      method:{type:'ideas', head:'52 ideas so far', items:[
+        {t:'Pedestrianise the market square',p:'Cars out on weekends first, then see how it feels.',by:'Gemma · 3 days ago',r:47},
+        {t:'Free first hour in the multi-storey',p:'You can\u2019t pop in for a loaf if parking costs more than the bread.',by:'Dave · 5 days ago',r:42},
+        {t:'Bring back the evening market',p:'Food stalls and music on the first Friday of the month.',by:'Priya · 1 week ago',r:38},
+        {t:'Pop-up shops in the empty units',p:'Cheap short leases for local makers instead of boarded windows.',by:'Tom · 1 week ago',r:34},
+        {t:'A proper covered bus interchange',p:'Waiting in the rain on Crown Street isn\u2019t a transport strategy.',by:'Margaret · 2 weeks ago',r:29},
+        {t:'More benches, more shade',p:'Somewhere to sit that isn\u2019t a café you have to pay for.',by:'Ade · 2 weeks ago',r:25},
+        {t:'Keep the library open Sundays',p:'It\u2019s the only warm free space in the centre.',by:'Saoirse · 2 weeks ago',r:23},
+        {t:'A youth space that isn\u2019t a car park',p:'Somewhere for teenagers to actually be.',by:'Liam · 3 weeks ago',r:19}
+      ]}}},
+  pattern2:[]
+},
+
+/* ---------- 3 · MONT-CLAIR — the omnibox stress case ---------- */
+{
+  id:'montclair', btn:'Mont-Clair',
+  hhTitle:'#3 · Mont-Clair — the omnibox stress case',
+  hhSub:'Ideation in the timeline + 6 neighbourhood surveys. Box collapses to one “Participate · 6 ways” button → modal.',
+  note:'<b>Structure on show:</b> the omnibox scaling case — one survey <b>per neighbourhood</b>, six in total. Listing six buttons inline would swamp the page, so they collapse into a single “Participate · 6 ways” button mid-content; the modal lists them by area and you pick yours. The timeline ideation stays out of the box — its CTA lives in the status strip and the phase.',
+  palette:{accent:'#4149bf',accentDark:'#333aa0',accent2:'#4149bf',bgSoft:'#f1f2f8',line:'#e3e5ef',bodyBg:'#e8e9f1',smodLine:'#d3d6ec',av:'#c3c7e4',
+    heroGrad:'linear-gradient(135deg,#aeb4e0,#5d65cf 55%,#333aa0)',evGrad:'linear-gradient(135deg,#c9cdec,#9aa1dd)'},
+  brand:'Mont-Clair', follow:'🔔 Follow (481)', heroCap:'Mont-Clair — mobility plan 2030',
+  title:'Mont-Clair Mobility Plan 2030', sub:'How we get around the city — rethought with you',
+  content:[
+    {p:'Traffic in Mont-Clair has grown by a third in a decade, and the way we move is changing faster than our streets. Over the coming year the city is writing its next mobility plan — buses, bikes, parking, deliveries, school streets — and we\u2019re writing it together.'},
+    {pboxHere:true},
+    {h3:'Where we are now'},
+    {p:'We\u2019re gathering ideas. Tell us what would make your daily trips easier, safer or simply nicer — a missing bus connection, a dangerous crossing, a street that could breathe. Every idea is read, mapped and themed by the mobility team before the draft measures are written.'},
+    {p:'If you\u2019d rather answer questions than write, we run a short survey for each neighbourhood — Centre-Ville, Vieille Ville, Les Halles, Bellevue, Saint-Roch and Les Tilleuls. Answer for the area where you live, or several if your daily trips cross them. Everything feeds the same plan.'}
+  ],
+  pbox:{placement:'inContent', label:'Participation Box · N=6 neighbourhood surveys → collapsed', participants:'+481 people taking part',
+    methods:[
+      {label:'Centre-Ville survey', kind:'parallel', status:'open'},
+      {label:'Vieille Ville survey', kind:'parallel', status:'open'},
+      {label:'Quartier des Halles survey', kind:'parallel', status:'open'},
+      {label:'Bellevue survey', kind:'parallel', status:'open'},
+      {label:'Saint-Roch survey', kind:'parallel', status:'open'},
+      {label:'Les Tilleuls survey', kind:'parallel', status:'open'}
+    ]},
+  events:{placement:'afterTimeline', heading:'Meet the mobility team', items:[
+    {d:'10',mo:'Jun',title:'Open table at the central market',time:'10:00 – 13:00',place:'Market hall, stand 12'},
+    {d:'17',mo:'Jun',title:'Cycle tour of the proposed network',time:'18:00 – 19:30',place:'Departs Hôtel de Ville'},
+    {d:'24',mo:'Jun',title:'Evening Q&A with the planners',time:'19:00 – 20:30',place:'Mont-Clair community centre'}
+  ]},
+  strip:{text:'Open for participation · gathering ideas · 3 weeks left', verb:'+ Add an idea'},
+  timeline:{
+    phases:[
+      {n:1,label:'Gather ideas',cls:'done active'},
+      {n:2,label:'Draft measures',cls:''},
+      {n:3,label:'Public review',cls:''},
+      {n:4,label:'Council adoption',cls:''}
+    ],
+    card:{num:1,title:'Gather ideas',dates:'26 May – 28 June 2026 · Ideation',
+      intro:'What would make moving around Mont-Clair easier, safer, nicer? Share an idea or react to others.',
+      method:{type:'ideas', head:'64 ideas so far', items:[
+        {t:'Tram line to the north campus',p:'Thousands commute there daily; the bus is full by 8am.',by:'Camille · 2 days ago',r:58},
+        {t:'Protected bike lanes on Avenue Foch',p:'Paint isn\u2019t protection — kerbs or planters, please.',by:'Yanis · 5 days ago',r:51},
+        {t:'Car-free Saturdays in the old town',p:'Try it for a summer and measure what happens.',by:'Inès · 1 week ago',r:44},
+        {t:'More frequent night buses',p:'Hourly after midnight isn\u2019t a service, it\u2019s a rumour.',by:'Marco · 1 week ago',r:39},
+        {t:'Park & ride at the ring road',p:'Catch commuters before they enter, not after.',by:'Sofia · 2 weeks ago',r:33},
+        {t:'Wider pavements near schools',p:'Mornings are a crush of prams, kids and parked cars.',by:'Henri · 2 weeks ago',r:29},
+        {t:'Cargo-bike sharing scheme',p:'For the big shop, the flea-market find, the move.',by:'Lucie · 2 weeks ago',r:24},
+        {t:'Slow zones in residential streets',p:'20 km/h where people live; through-traffic on the avenues.',by:'Driss · 3 weeks ago',r:21}
+      ]}}},
+  pattern2:[]
+},
+
+/* ---------- 4 · ØSTHAVN — the mid-lifecycle story ---------- */
+{
+  id:'osthavn', btn:'Østhavn',
+  hhTitle:'#4 · Østhavn — the mid-lifecycle story',
+  hhSub:'Proposals open in the timeline; parallel surveys as individual cards in the right column — one open, one taken.',
+  note:'<b>Structure on show:</b> instead of a collapsed Participation Box, the parallel surveys render as <b>individual method cards in the right column</b> — one open (“Take the survey”, secondary so it never competes with the proposals CTA in the strip), one already taken (“✓ You took this”), telling the mid-lifecycle story card-by-card rather than through a modal. The timeline proposal CTA lives in the strip and the phase.',
+  palette:{accent:'#1d4866',accentDark:'#163a53',accent2:'#c2841f',bgSoft:'#eef2f5',line:'#dfe6ec',bodyBg:'#e4e9ee',smodLine:'#cfdde8',av:'#b9cad8',
+    heroGrad:'linear-gradient(135deg,#9db8cc,#3d6a8c 55%,#1d4866)',evGrad:'linear-gradient(135deg,#c2d3e0,#8aa9c0)'},
+  brand:'Østhavn', follow:'🔔 Follow (1.1k)', heroCap:'Østhavn — harbour district plan',
+  title:'Østhavn Harbour District', sub:'From working port to living neighbourhood',
+  content:[
+    {p:'When the container terminal relocates in 2027, fourteen hectares of harbour open up — the largest piece of land this city will redevelop in a generation. What it becomes is being decided in stages, with residents involved at every one.'},
+    {h3:'What we\u2019ve heard so far'},
+    {p:'1,037 residents answered the spring survey. Three priorities came through clearly: housing people can afford, a waterfront that stays public, and keeping space for maritime work and crafts. The full results are published and now frame this phase.'},
+    {p:'We\u2019re in the proposals phase: concrete suggestions for what the harbour should hold, written by residents, associations and local businesses. The strongest proposals go to a community vote — it opens in five days.'}
+  ],
+  pbox:{placement:'sidebarCards', participantsPlacement:'belowTitle', label:'Method cards · individual widgets (1 open · 1 taken)', participants:'+1,124 people taking part',
+    cards:[
+      {state:'open', meta:'Survey · open until 16 June', title:'Everyday harbour life',
+       body:'Five minutes on how you use the harbour today — routes, water access, noise, work.',
+       btn:'Take the survey', chip:'5 min'},
+      {state:'taken', meta:'Survey · ✓ taken', title:'Spring priorities survey',
+       body:'1,037 residents answered. The results frame this proposals phase.',
+       stateLine:'✓ You took this · 14 March'}
+    ]},
+  events:{placement:'belowContent', heading:'See the harbour with us', items:[
+    {d:'08',mo:'Jun',title:'Harbour walk with the planning team',time:'17:30 – 19:00',place:'Departs Pier 1 gatehouse'},
+    {d:'15',mo:'Jun',title:'Open evening at the port archive',time:'18:00 – 21:00',place:'Old customs house'},
+    {d:'19',mo:'Jun',title:'Proposal-writing workshop',time:'16:00 – 18:00',place:'Østhavn library, room 2'}
+  ]},
+  strip:{text:'Open for participation · proposals phase · 12 days left', verb:'Submit a proposal'},
+  timeline:{
+    phases:[
+      {n:1,label:'Spring survey',cls:'done'},
+      {n:2,label:'Proposals',cls:'done active'},
+      {n:3,label:'Community vote',cls:''},
+      {n:4,label:'Plan & decision',cls:''}
+    ],
+    card:{num:2,title:'Submit proposals',dates:'18 May – 16 June 2026 · Proposals',
+      intro:'What should the harbour become? Concrete proposals welcome — the strongest go to the community vote.',
+      method:{type:'proposals', head:'23 proposals so far', meta:'Supporting a proposal helps it reach the ballot', items:[
+        {t:'Harbour sauna & swimming pier',p:'A floating sauna with a railed swim zone, open year-round like the fjord towns.',by:'Maja · 3 days ago',r:84},
+        {t:'Affordable housing on Pier 3',p:'At least 40% of new homes capped at social rents, held by a city trust.',by:'Jonas · 5 days ago',r:77},
+        {t:'Maritime crafts hall',p:'Workshops for boatbuilders, sailmakers and repair trades in the old shed.',by:'Eva · 1 week ago',r:61},
+        {t:'A fully step-free promenade',p:'The whole waterfront reachable with wheels — prams, chairs, trolleys.',by:'Nils · 1 week ago',r:58},
+        {t:'Floating market on the ferry dock',p:'Weekend stalls on pontoons; fish in the morning, food trucks at night.',by:'Astrid · 2 weeks ago',r:46},
+        {t:'Cold-water swimming clubhouse',p:'Changing rooms and a wood stove for the year-round swimmers.',by:'Bo · 2 weeks ago',r:33}
+      ]}}},
+  pattern2:[]
+},
+
+/* ---------- 5 · SOLANO — the dead-simple counterpoint ---------- */
+{
+  id:'solano', btn:'Solano',
+  hhTitle:'#5 · Solano — the dead-simple counterpoint',
+  hhSub:'One survey in the timeline, single primary CTA. Below the timeline: closing text + a quiet “more ways to take part” card row.',
+  note:'<b>Structure on show:</b> still the dead-simple counterpoint above the fold — one survey, one CTA. But restructured: after the timeline comes a closing text block (“what happens with your answers”) and a <b>row of three participation cards</b> — paper survey, photo upload, workshop — the analog and low-effort extras that real consultations carry, kept quiet at the bottom so the primary survey stays unchallenged.',
+  palette:{accent:'#b3501f',accentDark:'#94411a',accent2:'#b3501f',bgSoft:'#f8f1ea',line:'#ecdfd4',bodyBg:'#efe7df',smodLine:'#e8d4c4',av:'#dcc1ab',
+    heroGrad:'linear-gradient(135deg,#e8c4a4,#cf8a55 55%,#b3501f)',evGrad:'linear-gradient(135deg,#ecd3bb,#d6a071)'},
+  brand:'Solano', follow:'🔔 Follow (96)', heroCap:'Solano — park renovation',
+  title:'Solano Park Renovation', sub:'Ten minutes of your time, for the next twenty years of the park',
+  content:[
+    {p:'The park\u2019s paths, lighting and playground are due for full renewal in 2027. Before we brief the landscape designers, we want to know how you actually use the park today — and what gets in the way.'},
+    {p:'It\u2019s one survey: nine questions, about five minutes, anonymous. Every response is read by the parks team, and the summary will be published here before the design brief is written.'}
+  ],
+  pbox:{placement:'sidebar', label:'Participation Box · N=1 (single CTA)', participants:'+96 people taking part',
+    methods:[
+      {label:'Take the survey', kind:'timeline', status:'open'}
+    ]},
+  events:null,
+  strip:{text:'Open for participation · survey closes 30 June', verb:'Take the survey'},
+  timeline:{
+    phases:[
+      {n:1,label:'Tell us what you think',cls:'done active'},
+      {n:2,label:'Results & design brief',cls:''}
+    ],
+    card:{num:1,title:'Tell us what you think',dates:'2 – 30 June 2026 · Survey',
+      intro:'How do you use Solano Park today, and what would make it better?',
+      method:{type:'survey',
+        meta:'9 questions · about 5 minutes · anonymous',
+        q:'How often do you visit Solano Park?', hint:'Question 1 of 9 — a preview of what we\u2019ll ask.',
+        opts:['Most days','A few times a week','A few times a month','Rarely or never']}}},
+  pattern2:[],
+  bottom:{label:'Bottom section · text + 3 participation cards',
+    content:[
+      {h3:'What happens with your answers'},
+      {p:'The results are published here in July and turned into the design brief for the landscape architects. Construction is planned for spring 2027 — and we\u2019ll come back to you with the draft design before anything is built.'}
+    ],
+    cardsHeading:'More ways to take part',
+    cards:[
+      {state:'open', meta:'Paper survey', title:'Prefer paper?',
+       body:'Pick up the same nine questions at the library or the pool reception — drop it back in the box by 30 June.',
+       btn:'Find a location'},
+      {state:'open', meta:'Photo upload', title:'Show us your park',
+       body:'Upload a photo of your favourite spot — or the one that needs the most work. They go straight to the designers.',
+       btn:'Add a photo'},
+      {state:'open', meta:'Workshop · 24 June', title:'Design afternoon in the park',
+       body:'Walk the park with the landscape team and mark up the plans together. Families welcome.',
+       btn:'Register'}
+    ]}
+},
+
+/* ---------- 6 · VALDORO — the critical vote ---------- */
+{
+  id:'valdoro', btn:'Valdoro',
+  hhTitle:'#6 · Valdoro — the critical vote',
+  hhSub:'A token budget vote in the timeline is the prioritized critical method. N=2; one quiet Pattern 2 sits mid-content.',
+  note:'<b>Structure on show:</b> when the timeline carries a high-stakes method, parallel CTAs must never compete. The strip verb is <b>“Vote now”</b> (inverted button); the box is N=2 with the vote as primary and the quiet “Ask the budget team” as secondary. The same Pattern 2 module also sits <b>between content paragraphs</b>, styled deliberately quieter than the vote. New: an <b>events block between the intro and the timeline</b> — neighbourhood budget nights, one per district, so the in-person discussion path is visible before the vote itself.',
+  palette:{accent:'#762038',accentDark:'#5d1a2c',accent2:'#762038',bgSoft:'#f6eef1',line:'#e9dade',bodyBg:'#ece2e5',smodLine:'#e0c8d0',av:'#d4b2bd',
+    heroGrad:'linear-gradient(135deg,#d4a2b0,#9c4660 55%,#762038)',evGrad:'linear-gradient(135deg,#e2c4cd,#bb8492)'},
+  brand:'Valdoro', follow:'🔔 Follow (358)', heroCap:'Valdoro — participatory budget 2026',
+  title:'Valdoro Participatory Budget 2026', sub:'€250,000 · five tokens · your call',
+  content:[
+    {p:'Each year Valdoro hands a slice of its budget directly to residents. This year it\u2019s €250,000, and five proposals — shortlisted from 112 submitted this winter — are on the ballot. The money follows the tokens: whatever you fund together gets built.'},
+    {pattern2Index:0},
+    {h3:'How the vote works'},
+    {p:'Every resident over 14 gets five tokens. Put them all on one proposal or spread them across several — there\u2019s no wrong way. Proposals are funded in order of tokens received until the €250,000 runs out.'},
+    {p:'Voting closes 21 June at midnight. Results are published the next morning, and works begin after the summer.'}
+  ],
+  pbox:{placement:'sidebar', label:'Participation Box · N=2 (vote prioritized)', participants:'+358 people taking part',
+    methods:[
+      {label:'Vote now', kind:'timeline', status:'open'},
+      {label:'Ask the budget team', kind:'parallel', status:'open'}
+    ]},
+  events:{placement:'belowContent', heading:'Discuss the proposals in your neighbourhood', items:[
+    {d:'09',mo:'Jun',title:'Budget night · Riba district',time:'19:00 – 20:30',place:'Riba civic centre'},
+    {d:'12',mo:'Jun',title:'Budget night · El Mirador',time:'19:00 – 20:30',place:'El Mirador school hall'},
+    {d:'16',mo:'Jun',title:'Budget night · Old Town',time:'18:30 – 20:00',place:'Casa del Poble'}
+  ]},
+  strip:{text:'Voting open · 5 tokens per resident · closes 21 June', verb:'Vote now'},
+  timeline:{
+    phases:[
+      {n:1,label:'Collect proposals',cls:'done'},
+      {n:2,label:'Vote on proposals',cls:'done active'},
+      {n:3,label:'Implementation',cls:''}
+    ],
+    card:{num:2,title:'Vote on proposals',dates:'5 – 21 June 2026 · Budget vote',
+      intro:'You have five tokens. Put them on the proposals you want funded — the budget follows the tokens.',
+      method:{type:'tokens', total:5, used:3, items:[
+        {t:'Shade trees & benches for Plaça Major',p:'Twenty mature trees and seating where the square bakes in summer.',cost:'€60,000',tok:2},
+        {t:'Step-free entrance for the civic library',p:'A proper ramp and powered doors at the main entrance, not the back.',cost:'€85,000',tok:1},
+        {t:'Night lighting on the river path',p:'Warm, dark-sky-friendly lights so the path works after sunset.',cost:'€45,000',tok:0},
+        {t:'Community fridge & pantry point',p:'A staffed sharing point against food waste, run with local groups.',cost:'€20,000',tok:0},
+        {t:'Repair café equipment fund',p:'Tools and spares for the volunteer-run monthly repair café.',cost:'€40,000',tok:0}
+      ]}}},
+  pattern2:[
+    {placement:'inContent', meta:'Questions? · open until the vote closes', title:'Ask the budget team',
+     body:'Not sure what a proposal involves, or how the tokens work? Drop a question — the team answers within two working days, publicly, so everyone votes informed.',
+     btnLabel:'Ask a question', label:'Pattern 2 · standalone method (mid-content)'}
+  ]
+}
+];
+
+/* ================================================================
+   RENDER — shared functions, driven by the data above.
+   ================================================================ */
+const pageEl = document.getElementById('page');
+let currentCase = CASES[0];
+let outlineOn = false;
+let lastOpener = null;
+
+function esc(s){return s;} // copy is authored, not user input
+
+/* ---- Participation Box (Pattern 1) — ONE function, driven by method count ---- */
+function renderPBox(c){
+  const m = c.pbox.methods;
+  const n = m.length;
+  let buttons = '';
+  if(n === 1){
+    buttons = `<button class="pbtn primary">${m[0].label}</button>`;
+  } else if(n === 2){
+    buttons = `<button class="pbtn primary">${m[0].label}</button>
+               <button class="pbtn secondary">${m[1].label}</button>`;
+  } else {
+    buttons = `<button class="pbtn primary" data-open-modal aria-haspopup="dialog">Participate · ${n} ways</button>`;
+  }
+  return `
+    <div class="pbox">
+      ${buttons}
+      <div class="avatars"><span class="av"><span></span><span></span><span></span></span> ${c.pbox.participants}</div>
+    </div>`;
+}
+
+function pboxBlock(c, extraClass){
+  return `
+    <div class="block ${extraClass||''}">
+      <span class="block-label">${c.pbox.label}</span>
+      ${renderPBox(c)}
+    </div>`;
+}
+
+/* ---- Pattern 2 module ---- */
+function renderSmod(mod, inContent){
+  return `
+    <div class="block smod ${inContent ? 'in-content' : ''}">
+      <span class="block-label">${mod.label}</span>
+      <div class="s-meta"><span class="dot"></span> ${mod.meta}</div>
+      <h4>${mod.title}</h4>
+      <p>${mod.body}</p>
+      <button class="pbtn secondary">${mod.btnLabel}</button>
+    </div>`;
+}
+
+/* ---- time-tier picker (parallel surveys inline as buttons) ---- */
+function renderTiers(c){
+  const t = c.pbox.tiers;
+  const items = t.items.map(i => `<button class="pbtn secondary tier-btn">${i}</button>`).join('');
+  return `
+    <div class="block tiers">
+      <span class="block-label">${c.pbox.label}</span>
+      <h4>${t.heading}</h4>
+      <div class="tier-row">${items}</div>
+    </div>`;
+}
+
+/* ---- content column ---- */
+function renderContent(c){
+  let html = '';
+  for(const seg of c.content){
+    if(seg.h3) html += `<h3>${seg.h3}</h3>`;
+    else if(seg.p) html += `<p>${seg.p}</p>`;
+    else if(seg.pboxHere){
+      html += c.pbox.variant === 'tiers' ? renderTiers(c) : `<div class="pbox-belowtitle">${pboxBlock(c)}</div>`;
+    }
+    else if(seg.pattern2Index !== undefined){
+      const mod = c.pattern2.filter(x=>x.placement==='inContent')[seg.pattern2Index];
+      if(mod) html += renderSmod(mod, true);
+    }
+  }
+  return html;
+}
+
+/* ---- individual method card (shared) ---- */
+function renderScard(card){
+  const taken = card.state === 'taken';
+  const action = taken
+    ? `<div class="taken-line">${card.stateLine}</div>`
+    : `<button class="pbtn secondary">${card.btn}${card.chip ? ` <span class="btn-chip">${card.chip}</span>` : ''}</button>`;
+  return `
+    <div class="scard ${taken ? 'taken' : ''}">
+      <div class="s-meta"><span class="dot"></span> ${card.meta}</div>
+      <h4>${card.title}</h4>
+      <p>${card.body}</p>
+      ${action}
+    </div>`;
+}
+
+/* ---- individual method cards (sidebar variant) ---- */
+function renderSideCards(c){
+  const cards = c.pbox.cards.map(renderScard).join('');
+  return `
+    <div class="block">
+      <span class="block-label">${c.pbox.label}</span>
+      ${cards}
+    </div>`;
+}
+
+function renderHeadGrid(c){
+  const sidebar = c.pbox.placement === 'sidebar' || c.pbox.placement === 'sidebarCards';
+  let sideHtml = '';
+  if(sidebar) sideHtml = c.pbox.placement === 'sidebarCards' ? renderSideCards(c) : pboxBlock(c);
+  return `
+    <div class="wrap">
+      <div class="proj-head">
+        <h2 class="proj-ttl">${c.title}</h2>
+        ${c.pbox.participantsPlacement === 'belowTitle' ? `<div class="avatars plain"><span class="av"><span></span><span></span><span></span></span> ${c.pbox.participants}</div>` : ''}
+        ${c.pbox.placement === 'belowTitle' ? `<div class="pbox-belowtitle">${pboxBlock(c)}</div>` : ''}
+      </div>
+      <div class="block head-grid ${sidebar ? '' : 'single'}">
+        <span class="block-label">Content block</span>
+        <div class="body-copy">${renderContent(c)}</div>
+        ${sidebar ? `<div class="head-side">${sideHtml}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+/* ---- events ---- */
+function renderEvents(c){
+  if(!c.events) return '';
+  const cards = c.events.items.map(e => `
+    <div class="ev">
+      <div class="ev-img" style="background:${c.palette.evGrad};"><div class="ev-date"><b>${e.d}</b><span>${e.mo}</span></div></div>
+      <div class="ev-body">
+        <h5>${e.title}</h5>
+        <div class="ev-row">🕐 ${e.time}</div>
+        <div class="ev-row">📍 ${e.place}</div>
+        <button class="ev-btn">+ Register</button>
+      </div>
+    </div>`).join('');
+  return `
+    <div class="wrap" style="margin-top:36px;">
+      <div class="block">
+        <span class="block-label">Events block (full width)</span>
+        <h3 style="font-size:22px;margin:0;">${c.events.heading}</h3>
+        <div class="ev-grid">${cards}</div>
+      </div>
+    </div>`;
+}
+
+/* ---- status strip ---- */
+function renderStrip(c){
+  return `
+    <div class="statusbar">
+      <div class="inner">
+        <div class="s-left"><span class="dot"></span> ${c.strip.text.toUpperCase()}</div>
+        <button class="pbtn inverted">${c.strip.verb}</button>
+      </div>
+    </div>`;
+}
+
+/* ---- timeline methods ---- */
+function renderIdeas(m){
+  const cards = m.items.map(i => `
+    <div class="idea"><h6>${i.t}</h6><p>${i.p}</p>
+      <div class="i-meta">${i.by} <span class="react">♥ ${i.r}</span></div></div>`).join('');
+  return `
+    <div class="phase-method">
+      <div class="pm-head"><h5>${m.head}</h5>${m.meta ? `<span class="pm-meta">${m.meta}</span>` : ''}</div>
+      <div class="ideas-grid">${cards}</div>
+    </div>`;
+}
+
+function renderProposals(m){
+  const cards = m.items.map(i => `
+    <div class="idea"><h6>${i.t}</h6><p>${i.p}</p>
+      <div class="i-meta">${i.by} <span class="react">▲ ${i.r} support</span></div></div>`).join('');
+  return `
+    <div class="phase-method">
+      <div class="pm-head"><h5>${m.head}</h5>${m.meta ? `<span class="pm-meta">${m.meta}</span>` : ''}</div>
+      <div class="ideas-grid">${cards}</div>
+    </div>`;
+}
+
+function renderSurvey(m){
+  const opts = m.opts.map(o => `<div class="sp-opt"><span class="radio" aria-hidden="true"></span>${o}</div>`).join('');
+  return `
+    <div class="phase-method">
+      <div class="survey-prev" aria-label="Survey preview">
+        <div class="sp-meta">${m.meta}</div>
+        <div class="sp-q">${m.q}</div>
+        <div class="sp-hint">${m.hint}</div>
+        ${opts}
+      </div>
+    </div>`;
+}
+
+function renderTokens(m){
+  const dots = Array.from({length:m.total}, (_,i) =>
+    `<span class="${i < m.used ? 'full' : ''}"></span>`).join('');
+  const rows = m.items.map(i => `
+    <div class="tok-row">
+      <div><h6>${i.t}</h6><p>${i.p}</p></div>
+      <div class="tok-ctl">
+        <span class="cost">${i.cost}</span>
+        <div class="stepper" aria-label="${i.tok} of your tokens on this proposal (preview)">
+          <button tabindex="-1" aria-hidden="true">−</button><b>${i.tok}</b><button tabindex="-1" aria-hidden="true">+</button>
+        </div>
+      </div>
+    </div>`).join('');
+  return `
+    <div class="phase-method">
+      <div class="tok-summary"><b>You have ${m.total} tokens · ${m.used} allocated</b><div class="tok-dots" aria-hidden="true">${dots}</div></div>
+      <div class="tok-list">${rows}</div>
+    </div>`;
+}
+
+const METHOD_RENDERERS = {ideas:renderIdeas, proposals:renderProposals, survey:renderSurvey, tokens:renderTokens};
+
+function renderTimeline(c){
+  const t = c.timeline;
+  const phases = t.phases.map(p => `
+    <div class="phase ${p.cls}"><div class="bar">${p.n}</div><div class="lbl">${p.label}</div></div>`).join('');
+  const method = METHOD_RENDERERS[t.card.method.type](t.card.method);
+  return `
+    <div class="soft-zone">
+      <div class="wrap block">
+        <span class="block-label">Timeline block (phases + active method)</span>
+        <div class="tl-head"><h3>Phases</h3><div class="tl-nav"><button aria-label="Previous phase">‹</button><button aria-label="Current phase">•</button><button aria-label="Next phase">›</button></div></div>
+        <div class="phases">${phases}</div>
+        <div class="phase-card">
+          <div class="pc-head">
+            <div class="pc-num">${t.card.num}</div>
+            <div><h4>${t.card.title}</h4><div class="pc-date">${t.card.dates}</div></div>
+          </div>
+          <div class="pc-body"><em>${t.card.intro}</em></div>
+          ${method}
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ---- bottom section: extra text + participation cards row ---- */
+function renderBottom(c){
+  if(!c.bottom) return '';
+  let copy = '';
+  for(const seg of c.bottom.content || []){
+    if(seg.h3) copy += `<h3>${seg.h3}</h3>`;
+    else if(seg.p) copy += `<p>${seg.p}</p>`;
+  }
+  const cards = (c.bottom.cards || []).map(renderScard).join('');
+  return `
+    <div class="wrap" style="margin-top:38px;">
+      <div class="block">
+        <span class="block-label">${c.bottom.label || 'Bottom section'}</span>
+        ${copy ? `<div class="body-copy" style="max-width:780px;">${copy}</div>` : ''}
+        ${cards ? `<h3 style="font-size:22px;margin:28px 0 0;">${c.bottom.cardsHeading || 'More ways to take part'}</h3><div class="scard-row">${cards}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+/* ---- full page assembly ---- */
+function renderPage(c){
+  let html = '';
+  html += `
+    <div class="chrome">
+      <div class="brand"><span class="crest"></span> ${c.brand}</div>
+      <nav><span>Home</span><span>Projects ⌄</span><span>Get involved</span><span>About</span></nav>
+      <div class="spacer"></div>
+      <button class="login">Log in</button>
+    </div>
+    <div class="hero"><div class="hero-img" style="background:${c.palette.heroGrad};"><span class="hero-cap">${c.heroCap}</span><button class="follow">${c.follow}</button></div></div>`;
+
+  html += renderHeadGrid(c);
+
+  if(c.events && c.events.placement === 'belowContent') html += renderEvents(c);
+
+  html += renderStrip(c);
+  html += renderTimeline(c);
+
+  if(c.pbox.placement === 'belowTimeline'){
+    html += `<div class="wrap"><div class="pbox-anchorwrap">${pboxBlock(c)}</div></div>`;
+  }
+
+  html += renderBottom(c);
+
+  if(c.events && c.events.placement === 'afterTimeline') html += renderEvents(c);
+
+  for(const mod of c.pattern2.filter(x => x.placement === 'afterTimeline')){
+    html += `<div class="wrap">${renderSmod(mod, false)}</div>`;
+  }
+
+  html += `<div class="foot">Terms · Privacy · Accessibility · Powered by Go Vocal</div>`;
+  return html;
+}
+
+/* ---- palette ---- */
+function applyPalette(p){
+  const r = document.documentElement.style;
+  r.setProperty('--accent', p.accent);
+  r.setProperty('--accent-dark', p.accentDark);
+  r.setProperty('--accent2', p.accent2);
+  r.setProperty('--bg-soft', p.bgSoft);
+  r.setProperty('--line', p.line);
+  r.setProperty('--body-bg', p.bodyBg);
+  r.setProperty('--smod-line', p.smodLine);
+  r.setProperty('--av', p.av);
+}
+
+/* ---- omnibox modal ---- */
+const modalBd = document.getElementById('modal-bd');
+const modalList = document.getElementById('modal-list');
+const modalX = document.getElementById('modal-x');
+
+function openModal(opener){
+  lastOpener = opener;
+  const c = currentCase;
+  modalList.innerHTML = c.pbox.methods.map(m => {
+    const chip = m.chip ? `<span class="chip">${m.chip}</span>` : '';
+    const sub = m.sub ? `<span class="m-sub">${m.sub}</span>` : '';
+    if(m.status === 'open'){
+      return `<button class="mrow open"><span class="m-lbl">${m.label}${sub}</span>${chip}</button>`;
+    }
+    // done / scheduled / closed → visibly non-interactive
+    return `<div class="mrow ${m.status}" aria-disabled="true"><span class="m-lbl">${m.label}${sub}</span>${chip}</div>`;
+  }).join('');
+  modalBd.hidden = false;
+  modalX.focus();
+}
+function closeModal(){
+  modalBd.hidden = true;
+  if(lastOpener && document.contains(lastOpener)) lastOpener.focus();
+  lastOpener = null;
+}
+modalX.addEventListener('click', closeModal);
+modalBd.addEventListener('click', e => { if(e.target === modalBd) closeModal(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && !modalBd.hidden) closeModal(); });
+
+/* ---- switcher ---- */
+const switcher = document.getElementById('switcher');
+function buildSwitcher(){
+  switcher.innerHTML = CASES.map(c =>
+    `<button data-city="${c.id}">${c.btn}</button>`).join('') +
+    `<button id="t-outline">Show block outlines</button>`;
+  switcher.querySelectorAll('[data-city]').forEach(b =>
+    b.addEventListener('click', () => selectCity(b.dataset.city)));
+  document.getElementById('t-outline').addEventListener('click', () => {
+    outlineOn = !outlineOn;
+    pageEl.classList.toggle('demo-outline', outlineOn);
+    document.getElementById('t-outline').classList.toggle('active', outlineOn);
+  });
+}
+
+function selectCity(id){
+  currentCase = CASES.find(c => c.id === id);
+  if(!modalBd.hidden) closeModal();
+  applyPalette(currentCase.palette);
+  document.getElementById('hh-title').textContent = currentCase.hhTitle;
+  document.getElementById('hh-sub').textContent = currentCase.hhSub;
+  document.getElementById('hh-note').innerHTML = currentCase.note;
+  pageEl.innerHTML = renderPage(currentCase);
+  pageEl.classList.toggle('demo-outline', outlineOn);
+  switcher.querySelectorAll('[data-city]').forEach(b =>
+    b.classList.toggle('active', b.dataset.city === id));
+  // bind omnibox openers (collapsed boxes only)
+  pageEl.querySelectorAll('[data-open-modal]').forEach(b =>
+    b.addEventListener('click', () => openModal(b)));
+  window.scrollTo({top:0});
+}
+
+buildSwitcher();
+selectCity('riverbend');
+</script>
+</body>
+</html>
