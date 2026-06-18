@@ -434,14 +434,15 @@
   .phone-wrap.cue-1:focus-within .cue-btn { filter: brightness(.9); transform: translateX(-50%) translateY(-1px); }
 
   /* 2 · REVEAL — clean preview + tiny corner cue; engage fades in a full-surface scrim. */
+  /* Persistent rest-state cue = a real BO button (.gv-btn admin-dark.size-s);
+     .cue-corner only POSITIONS it top-right + lifts it off the white header. */
   .cue-corner {
     position: absolute; top: 12px; right: 12px;
-    display: none; align-items: center; gap: 5px;
-    padding: 5px 10px 5px 8px; border-radius: 999px;
-    background: rgba(26,31,44,.82); color: #fff; font-size: 11.5px; font-weight: 600; white-space: nowrap;
-    z-index: 9; transition: opacity .14s ease;
+    display: none; white-space: nowrap; z-index: 9;
+    box-shadow: 0 2px 8px rgba(20,25,40,.22);
+    transition: opacity .14s ease;
   }
-  .cue-corner svg { width: 13px; height: 13px; }
+  .cue-corner svg { width: 14px; height: 14px; }
   .phone-wrap.cue-2 .cue-corner { display: inline-flex; }
   .cue-scrim {
     position: absolute; inset: 0; border-radius: 22px;
@@ -1796,6 +1797,42 @@
   #view-settings .set-divider { height:1px; background:var(--gv-grey-300); margin:22px 0; }
   #view-settings .opt-card + .opt-card { margin-top:10px; }
   #view-settings .gv-bo-tags { margin-top:8px; }
+
+  /* ── Audience / Messaging / Events / 360 Input project-tab views ───────── */
+  #view-audience .aud-sub, #view-messaging .msg-sub { display:none; }
+  #view-audience .aud-sub.is-active, #view-messaging .msg-sub.is-active { display:block; }
+  /* page head with right-aligned actions (Participants, Custom emails, 360 Input) */
+  .aud-head { display:flex; align-items:flex-start; gap:16px; margin-bottom:18px; }
+  .aud-head__main { flex:1; min-width:0; }
+  .aud-head__actions { display:flex; gap:8px; flex:none; }
+  /* select / export / search toolbar */
+  .aud-toolbar { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .aud-spacer { flex:1; }
+  /* demographics + traffic bars */
+  .aud-demo { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; }
+  .aud-bar { display:flex; align-items:center; gap:12px; margin:8px 0; font-size:var(--gv-fs-13); }
+  .aud-bar__label { flex:0 0 130px; color:var(--gv-text-primary); }
+  .aud-bar__track { flex:1; height:8px; border-radius:99px; background:var(--gv-grey-200); overflow:hidden; }
+  .aud-bar__fill { display:block; height:100%; border-radius:99px; background:var(--gv-bo-primary); }
+  .aud-bar__val { flex:0 0 40px; text-align:right; color:var(--gv-text-secondary); font-variant-numeric:tabular-nums; }
+  /* stat cards */
+  .aud-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:16px; }
+  .aud-stat { display:flex; flex-direction:column; gap:4px; padding:18px 20px; }
+  .aud-stat__num { font-size:var(--gv-fs-xxl); font-weight:700; color:var(--gv-bo-primary); line-height:1.1; }
+  .aud-stat__lbl { font-size:var(--gv-fs-13); color:var(--gv-text-secondary); }
+  /* events list rows */
+  .ev-list { margin-top:6px; }
+  .ev-row { display:flex; align-items:center; gap:16px; padding:18px 0; border-top:1px solid var(--gv-grey-200); }
+  .ev-row:first-child { border-top:0; }
+  .ev-row__main { flex:1; min-width:0; }
+  .ev-row__title { display:inline-block; font-size:var(--gv-fs-base); font-weight:600; color:var(--gv-bo-primary); text-decoration:none; }
+  .ev-row__title:hover { text-decoration:underline; }
+  .ev-row__meta { margin-top:4px; font-size:var(--gv-fs-13); color:var(--gv-text-secondary); line-height:1.5; }
+  .ev-row__count { flex:0 0 120px; font-size:var(--gv-fs-13); color:var(--gv-text-secondary); }
+  .ev-row__count strong { color:var(--gv-text-primary); }
+  .ev-row__actions { display:flex; gap:8px; flex:none; }
+  .in3-table .gv-bo-table__sub { display:block; }
+
   .gv-bo-section .gv-phases { margin:0 0 14px; }
   .pp-setup__thresholds { display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:520px; margin-top:12px; }
   .pp-setup__thresholds .gv-bo-caption { margin-bottom:4px; }
@@ -2179,17 +2216,17 @@
 
         <!-- Project utilities — hidden on phase view (original side nav) -->
         <div id="project-utilities">
-          <div id="audience-nav" class="side-item">
+          <div id="audience-nav" class="side-item" data-view="audience" onclick="setView('audience', this)">
             Audience
           </div>
-          <div class="side-item">
+          <div class="side-item" data-view="messaging" onclick="setView('messaging', this)">
             Messaging
           </div>
-          <div class="side-item">
+          <div class="side-item" data-view="events" onclick="setView('events', this)">
             <span class="flex-1">Events</span>
-            <span class="badge-2 ml-auto">2</span>
+            <span class="badge-2 ml-auto">3</span>
           </div>
-          <div class="side-item">
+          <div class="side-item" data-view="input360" onclick="setView('input360', this)">
             Input 360
           </div>
           <div class="side-item" data-view="settings" onclick="setView('settings', this)">
@@ -2309,9 +2346,9 @@
             <span class="gv-btn__label">Edit page content</span>
           </span>
           <!-- 2 · Reveal -->
-          <span class="cue-corner" aria-hidden="true">
+          <span class="cue-corner gv-btn admin-dark size-s" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-            Edit
+            <span class="gv-btn__label">Edit</span>
           </span>
           <span class="cue-scrim" aria-hidden="true">
             <span class="cue-scrim__cta gv-btn admin-dark">
@@ -2755,6 +2792,388 @@
             </div>
 
           </div>
+        </div>
+      </div>
+
+      <!-- ====== VIEW: Audience (real GoVocal project Audience tab) ====== -->
+      <div id="view-audience" class="pp-phaseview" style="display:none;">
+        <div class="gv-bo-section">
+
+          <!-- Sub-tabs (real product labels) -->
+          <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Audience">
+            <a class="gv-bo-tab is-active" href="#" data-aud="participants">Participants</a>
+            <a class="gv-bo-tab" href="#" data-aud="demographics">Demographics</a>
+            <a class="gv-bo-tab" href="#" data-aud="traffic">Traffic</a>
+          </nav>
+
+          <!-- ───────── PARTICIPANTS ───────── -->
+          <div class="aud-sub is-active" data-aud="participants">
+            <div class="aud-head">
+              <div class="aud-head__main">
+                <h1 class="gv-bo-pagehead">Participants</h1>
+                <p class="gv-bo-pagelede" style="margin:6px 0 0">Get an overview of the participants for this project that have an account. Anonymous participation is not accounted for.</p>
+              </div>
+              <div class="aud-head__actions">
+                <button class="gv-btn admin-dark"><span data-gv-icon="gps"></span><span class="gv-btn__label">Stats overview</span></button>
+                <button class="gv-btn secondary-outlined"><span data-gv-icon="trend-up"></span><span class="gv-btn__label">User insights</span></button>
+              </div>
+            </div>
+
+            <div class="aud-toolbar">
+              <label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label>
+              <span style="color:var(--gv-text-secondary)">Select</span>
+              <span class="aud-spacer"></span>
+              <button class="gv-bo-link"><span data-gv-icon="download"></span>Export all</button>
+              <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search participants"><span class="gv-icon" data-gv-icon="search"></span></span>
+            </div>
+
+            <table class="gv-bo-table is-list aud-table">
+              <thead>
+                <tr>
+                  <th class="gv-bo-table__check"></th>
+                  <th class="gv-bo-th--sort">Name</th>
+                  <th>Role</th>
+                  <th>Last active</th>
+                  <th class="gv-bo-th--sort is-sorted">Joined <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                  <th>Options</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                  <td><span class="gv-bo-table__person"><img class="gv-bo-table__avatar" src="assets/avatars/face-01.jpg" alt=""><span><a class="gv-bo-table__name" href="#">Noah Bergström</a><span class="gv-bo-table__sub">noah.bergstrom@meridian.co</span></span></span></td>
+                  <td>Project manager<span style="display:block;color:var(--gv-text-secondary);font-size:var(--gv-fs-12)">Assigned items</span></td>
+                  <td>4 months ago</td>
+                  <td>August 27, 2024</td>
+                  <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>
+                </tr>
+                <tr>
+                  <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                  <td><span class="gv-bo-table__person"><img class="gv-bo-table__avatar" src="assets/avatars/face-02.jpg" alt=""><span><a class="gv-bo-table__name" href="#">Hannah Adams</a><span class="gv-bo-table__sub">hannah.adams@gmail.com</span></span></span></td>
+                  <td>Registered user</td>
+                  <td>2 days ago</td>
+                  <td>December 4, 2023</td>
+                  <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>
+                </tr>
+                <tr>
+                  <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                  <td><span class="gv-bo-table__person"><img class="gv-bo-table__avatar" src="assets/avatars/face-03.jpg" alt=""><span><a class="gv-bo-table__name" href="#">Pamela Reyes</a><span class="gv-bo-table__sub">preyes@outlook.com</span></span></span></td>
+                  <td>Registered user</td>
+                  <td>1 week ago</td>
+                  <td>November 7, 2023</td>
+                  <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>
+                </tr>
+                <tr>
+                  <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                  <td><span class="gv-bo-table__person"><img class="gv-bo-table__avatar" src="assets/avatars/face-04.jpg" alt=""><span><a class="gv-bo-table__name" href="#">Marcus Lindqvist</a><span class="gv-bo-table__sub">m.lindqvist@meridian.co</span></span></span></td>
+                  <td>Platform admin<span style="display:block;color:var(--gv-text-secondary);font-size:var(--gv-fs-12)">Assigned items</span></td>
+                  <td>52 minutes ago</td>
+                  <td>September 24, 2023</td>
+                  <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>
+                </tr>
+                <tr>
+                  <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                  <td><span class="gv-bo-table__person"><img class="gv-bo-table__avatar" src="assets/avatars/face-05.jpg" alt=""><span><a class="gv-bo-table__name" href="#">Sarah Hamid</a><span class="gv-bo-table__sub">s.hamid@meridian.org</span></span></span></td>
+                  <td>Registered user</td>
+                  <td>3 weeks ago</td>
+                  <td>September 21, 2023</td>
+                  <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>
+                </tr>
+                <tr>
+                  <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                  <td><span class="gv-bo-table__person"><img class="gv-bo-table__avatar" src="assets/avatars/face-06.jpg" alt=""><span><a class="gv-bo-table__name" href="#">Caleb Mensah</a><span class="gv-bo-table__sub">caleb.mensah@gmail.com</span></span></span></td>
+                  <td>Registered user</td>
+                  <td>3 weeks ago</td>
+                  <td>September 21, 2023</td>
+                  <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>
+                </tr>
+                <tr>
+                  <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                  <td><span class="gv-bo-table__person"><img class="gv-bo-table__avatar" src="assets/avatars/face-07.jpg" alt=""><span><a class="gv-bo-table__name" href="#">Ingrid Halvorsen</a><span class="gv-bo-table__sub">ingrid.h@meridian.co</span></span></span></td>
+                  <td>Registered user</td>
+                  <td>1 month ago</td>
+                  <td>September 21, 2023</td>
+                  <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>
+                </tr>
+                <tr>
+                  <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                  <td><span class="gv-bo-table__person"><img class="gv-bo-table__avatar" src="assets/avatars/face-08.jpg" alt=""><span><a class="gv-bo-table__name" href="#">Ben Gordon</a><span class="gv-bo-table__sub">ben.gordon@outlook.com</span></span></span></td>
+                  <td>Registered user</td>
+                  <td>1 month ago</td>
+                  <td>September 21, 2023</td>
+                  <td class="gv-bo-table__opts"><span data-gv-icon="dots-horizontal"></span></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <nav class="gv-bo-pager" aria-label="Pagination"><button disabled><span data-gv-icon="chevron-left"></span></button><button class="is-active">1</button><button>2</button><button>3</button><span>…</span><button>8</button><button><span data-gv-icon="chevron-right"></span></button></nav>
+          </div>
+
+          <!-- ───────── DEMOGRAPHICS ───────── -->
+          <div class="aud-sub" data-aud="demographics">
+            <h1 class="gv-bo-pagehead">Demographics</h1>
+            <p class="gv-bo-pagelede" style="margin:6px 0 18px">A breakdown of the registered participants in this project, based on the fields they filled in at registration.</p>
+            <div class="aud-demo">
+              <div class="gv-bo-card aud-demo__card">
+                <h3 class="gv-bo-formhead" style="margin-bottom:14px">Age</h3>
+                <div class="aud-bar"><span class="aud-bar__label">18–24</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:14%"></span></span><span class="aud-bar__val">14%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">25–34</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:31%"></span></span><span class="aud-bar__val">31%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">35–44</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:24%"></span></span><span class="aud-bar__val">24%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">45–54</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:16%"></span></span><span class="aud-bar__val">16%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">55–64</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:9%"></span></span><span class="aud-bar__val">9%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">65+</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:6%"></span></span><span class="aud-bar__val">6%</span></div>
+              </div>
+              <div class="gv-bo-card aud-demo__card">
+                <h3 class="gv-bo-formhead" style="margin-bottom:14px">Gender</h3>
+                <div class="aud-bar"><span class="aud-bar__label">Female</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:51%"></span></span><span class="aud-bar__val">51%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">Male</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:43%"></span></span><span class="aud-bar__val">43%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">Other</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:3%"></span></span><span class="aud-bar__val">3%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">Unspecified</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:3%"></span></span><span class="aud-bar__val">3%</span></div>
+              </div>
+              <div class="gv-bo-card aud-demo__card">
+                <h3 class="gv-bo-formhead" style="margin-bottom:14px">Domicile</h3>
+                <div class="aud-bar"><span class="aud-bar__label">Meridian Central</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:38%"></span></span><span class="aud-bar__val">38%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">North Quarter</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:27%"></span></span><span class="aud-bar__val">27%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">Riverside</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:21%"></span></span><span class="aud-bar__val">21%</span></div>
+                <div class="aud-bar"><span class="aud-bar__label">Outside Meridian</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:14%"></span></span><span class="aud-bar__val">14%</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ───────── TRAFFIC ───────── -->
+          <div class="aud-sub" data-aud="traffic">
+            <h1 class="gv-bo-pagehead">Traffic</h1>
+            <p class="gv-bo-pagelede" style="margin:6px 0 18px">See how people reach this project and how engaged they are.</p>
+            <div class="aud-stats">
+              <div class="gv-bo-card aud-stat"><span class="aud-stat__num">3,184</span><span class="aud-stat__lbl">Visitors</span></div>
+              <div class="gv-bo-card aud-stat"><span class="aud-stat__num">5,902</span><span class="aud-stat__lbl">Visits</span></div>
+              <div class="gv-bo-card aud-stat"><span class="aud-stat__num">2:14</span><span class="aud-stat__lbl">Avg. time on project</span></div>
+              <div class="gv-bo-card aud-stat"><span class="aud-stat__num">1.9</span><span class="aud-stat__lbl">Pages per visit</span></div>
+            </div>
+            <div class="gv-bo-card" style="margin-top:18px">
+              <h3 class="gv-bo-formhead" style="margin-bottom:14px">Where visitors come from</h3>
+              <div class="aud-bar"><span class="aud-bar__label">Direct entry</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:41%"></span></span><span class="aud-bar__val">41%</span></div>
+              <div class="aud-bar"><span class="aud-bar__label">Social networks</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:28%"></span></span><span class="aud-bar__val">28%</span></div>
+              <div class="aud-bar"><span class="aud-bar__label">Search engines</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:19%"></span></span><span class="aud-bar__val">19%</span></div>
+              <div class="aud-bar"><span class="aud-bar__label">Campaign emails</span><span class="aud-bar__track"><span class="aud-bar__fill" style="width:12%"></span></span><span class="aud-bar__val">12%</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ====== VIEW: Messaging (real GoVocal project Messaging tab) ====== -->
+      <div id="view-messaging" class="pp-phaseview" style="display:none;">
+        <div class="gv-bo-section">
+
+          <nav class="gv-bo-tabs gv-bo-tabs--sub" aria-label="Messaging">
+            <a class="gv-bo-tab is-active" href="#" data-msg="custom">Custom emails</a>
+            <a class="gv-bo-tab" href="#" data-msg="automated">Automated emails</a>
+          </nav>
+
+          <!-- ───────── CUSTOM EMAILS ───────── -->
+          <div class="msg-sub is-active" data-msg="custom">
+            <div class="aud-head">
+              <div class="aud-head__main">
+                <h1 class="gv-bo-pagehead">Custom emails</h1>
+                <p class="gv-bo-pagelede" style="margin:6px 0 0">Send custom emails to the participants of this project and track their engagement.</p>
+              </div>
+              <div class="aud-head__actions">
+                <button class="gv-btn admin-dark"><span data-gv-icon="plus"></span><span class="gv-btn__label">Create email</span></button>
+              </div>
+            </div>
+
+            <div class="gv-bo-card">
+              <div class="gv-bo-listrow">
+                <div class="gv-bo-listrow__main">
+                  <h3 class="gv-bo-listrow__title">📣 <a href="#">Reimagine Meridian 2030 is live — share your ideas</a></h3>
+                  <div class="gv-bo-listrow__sub"><span class="gv-status-label published">Sent</span> · Sent to 170 recipients · 14 May 2026 · 62% opened</div>
+                </div>
+                <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button></div>
+              </div>
+              <div class="gv-bo-listrow">
+                <div class="gv-bo-listrow__main">
+                  <h3 class="gv-bo-listrow__title">🗳️ <a href="#">Voting is open: help pick the shortlist</a></h3>
+                  <div class="gv-bo-listrow__sub"><span class="gv-status-label published">Sent</span> · Sent to 148 recipients · 2 Jun 2026 · 58% opened</div>
+                </div>
+                <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="eye"></span><span class="gv-btn__label">View</span></button></div>
+              </div>
+              <div class="gv-bo-listrow">
+                <div class="gv-bo-listrow__main">
+                  <h3 class="gv-bo-listrow__title">📊 <a href="#">Thank you for participating — here's what we heard</a></h3>
+                  <div class="gv-bo-listrow__sub"><span class="gv-status-label draft">Draft</span></div>
+                </div>
+                <div class="gv-bo-listrow__actions"><button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Manage</span></button></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ───────── AUTOMATED EMAILS ───────── -->
+          <div class="msg-sub" data-msg="automated">
+            <h1 class="gv-bo-pagehead">Automated emails</h1>
+            <p class="gv-bo-pagelede" style="margin:6px 0 18px">Automated emails are sent out automatically, triggered by a participant's actions. Some can be turned off; required ones cannot.</p>
+            <div class="gv-bo-card">
+              <div class="gv-bo-listrow">
+                <div class="gv-bo-listrow__main">
+                  <h3 class="gv-bo-listrow__title">Status change of your input</h3>
+                  <div class="gv-bo-listrow__sub">A participant whose idea changes status · Immediately when an admin changes the status</div>
+                </div>
+                <div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" checked aria-label="Status change of your input"><span class="track"></span></span></div>
+              </div>
+              <div class="gv-bo-listrow">
+                <div class="gv-bo-listrow__main">
+                  <h3 class="gv-bo-listrow__title">Comment on your input</h3>
+                  <div class="gv-bo-listrow__sub">A participant whose idea receives a comment · Immediately when a comment is posted</div>
+                </div>
+                <div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" checked aria-label="Comment on your input"><span class="track"></span></span></div>
+              </div>
+              <div class="gv-bo-listrow">
+                <div class="gv-bo-listrow__main">
+                  <h3 class="gv-bo-listrow__title">Project phase started</h3>
+                  <div class="gv-bo-listrow__sub">All project participants · When a new phase begins</div>
+                </div>
+                <div class="gv-bo-listrow__actions"><span class="gv-toggle"><input type="checkbox" aria-label="Project phase started"><span class="track"></span></span></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ====== VIEW: Events (real GoVocal project Events tab) ====== -->
+      <div id="view-events" class="pp-phaseview" style="display:none;">
+        <div class="gv-bo-section">
+          <div class="gv-bo-card">
+            <h1 class="gv-bo-pagehead">Project events</h1>
+            <p class="gv-bo-pagelede" style="margin:6px 0 18px">Link upcoming events to this project and show them on the project's events page.</p>
+
+            <button class="gv-btn admin-dark" style="margin-bottom:18px"><span data-gv-icon="plus"></span><span class="gv-btn__label">Add an event</span></button>
+
+            <div class="gv-bo-banner"><span class="gv-icon" data-gv-icon="info-outline"></span><div>To email registrants directly from the platform, admins must create a user group in the <a href="#">Users</a> tab. <a href="#">See the support article.</a></div></div>
+
+            <div class="ev-list">
+              <div class="ev-row">
+                <div class="ev-row__main">
+                  <a class="ev-row__title" href="#">Mobility town hall</a>
+                  <div class="ev-row__meta">Central Library, Meridian<br>14 June 2026 7:00 PM → 14 June 2026 9:00 PM</div>
+                </div>
+                <div class="ev-row__count"><strong>41</strong> registrants</div>
+                <div class="ev-row__actions">
+                  <button class="gv-btn text"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                  <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Export registrants</span></button>
+                  <button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+                </div>
+              </div>
+              <div class="ev-row">
+                <div class="ev-row__main">
+                  <a class="ev-row__title" href="#">Neighbourhood design workshop</a>
+                  <div class="ev-row__meta">Meridian Civic Hall<br>2 July 2026 6:00 PM → 2 July 2026 8:00 PM</div>
+                </div>
+                <div class="ev-row__count"><strong>57</strong> registrants</div>
+                <div class="ev-row__actions">
+                  <button class="gv-btn text"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                  <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Export registrants</span></button>
+                  <button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+                </div>
+              </div>
+              <div class="ev-row">
+                <div class="ev-row__main">
+                  <a class="ev-row__title" href="#">Initial information session</a>
+                  <div class="ev-row__meta">Online · Streamed<br>10 March 2026 1:00 PM → 10 March 2026 2:00 PM</div>
+                </div>
+                <div class="ev-row__count"><strong>112</strong> registrants</div>
+                <div class="ev-row__actions">
+                  <button class="gv-btn text"><span data-gv-icon="delete"></span><span class="gv-btn__label">Delete</span></button>
+                  <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Export registrants</span></button>
+                  <button class="gv-btn secondary-outlined"><span data-gv-icon="edit"></span><span class="gv-btn__label">Edit</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== VIEW: 360 Input (real GoVocal NEW project tab — input overview) ====== -->
+      <div id="view-input360" class="pp-phaseview" style="display:none;">
+        <div class="gv-bo-section">
+          <div class="aud-head">
+            <div class="aud-head__main">
+              <h1 class="gv-bo-pagehead">360 Input <span class="gv-status-label outlined" style="vertical-align:middle">NEW</span></h1>
+              <p class="gv-bo-pagelede" style="margin:6px 0 0">A single view of every input across this project — ideas, comments, survey responses and votes — with AI sensemaking to surface what matters.</p>
+            </div>
+            <div class="aud-head__actions">
+              <button class="gv-btn secondary-outlined"><span data-gv-icon="download"></span><span class="gv-btn__label">Export</span></button>
+            </div>
+          </div>
+
+          <div class="gv-bo-banner gv-bo-banner--ai">
+            <span class="gv-icon" data-gv-icon="stars"></span>
+            <div><b>AI summary.</b> Across 355 inputs, the strongest theme is <b>safe cycling infrastructure</b> (28%), followed by <b>public transport frequency</b> (19%) and <b>green public space</b> (15%). Sentiment is broadly constructive; the most-debated input is covered bike parking at the station.</div>
+            <a class="gv-bo-banner__cta" href="#">Open AI analysis &rarr;</a>
+          </div>
+
+          <div class="aud-stats" style="margin-top:18px">
+            <div class="gv-bo-card aud-stat"><span class="aud-stat__num">355</span><span class="aud-stat__lbl">Total inputs</span></div>
+            <div class="gv-bo-card aud-stat"><span class="aud-stat__num">214</span><span class="aud-stat__lbl">Ideas</span></div>
+            <div class="gv-bo-card aud-stat"><span class="aud-stat__num">98</span><span class="aud-stat__lbl">Comments</span></div>
+            <div class="gv-bo-card aud-stat"><span class="aud-stat__num">43</span><span class="aud-stat__lbl">Survey responses</span></div>
+          </div>
+
+          <div class="aud-toolbar" style="margin-top:18px">
+            <p class="gv-bo-pagelede" style="margin:0">355 inputs</p>
+            <span class="aud-spacer"></span>
+            <button class="gv-bo-link"><span data-gv-icon="download"></span>Export all</button>
+            <span class="gv-bo-search"><input class="gv-input" type="search" placeholder="Search" aria-label="Search inputs"><span class="gv-icon" data-gv-icon="search"></span></span>
+          </div>
+
+          <table class="gv-bo-table is-bordered in3-table">
+            <thead>
+              <tr>
+                <th class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></th>
+                <th class="gv-bo-th--sort">Input</th>
+                <th>Theme</th>
+                <th class="gv-bo-table__num gv-bo-th--sort">Likes</th>
+                <th class="gv-bo-table__num gv-bo-th--sort is-sorted">Comments <span class="gv-icon" data-gv-icon="chevron-down"></span></th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                <td><a class="gv-bo-table__name" href="#">Secure covered bike parking at the station</a><span class="gv-bo-table__sub">Noah Bergström · 1 week ago</span></td>
+                <td><span class="gv-status-label outlined">Cycling</span></td>
+                <td class="gv-bo-table__num">176</td>
+                <td class="gv-bo-table__num">11</td>
+                <td><span class="gv-status-label outlined">Under consideration</span></td>
+              </tr>
+              <tr>
+                <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                <td><a class="gv-bo-table__name" href="#">More frequent buses on the north line</a><span class="gv-bo-table__sub">Hannah Adams · 2 weeks ago</span></td>
+                <td><span class="gv-status-label outlined">Transit</span></td>
+                <td class="gv-bo-table__num">142</td>
+                <td class="gv-bo-table__num">9</td>
+                <td><span class="gv-status-label outlined">Under consideration</span></td>
+              </tr>
+              <tr>
+                <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                <td><a class="gv-bo-table__name" href="#">Pocket park on the old depot site</a><span class="gv-bo-table__sub">Pamela Reyes · 3 weeks ago</span></td>
+                <td><span class="gv-status-label outlined">Green space</span></td>
+                <td class="gv-bo-table__num">118</td>
+                <td class="gv-bo-table__num">7</td>
+                <td><span class="gv-status-label published">Accepted</span></td>
+              </tr>
+              <tr>
+                <td class="gv-bo-table__check"><label class="gv-checkbox"><input type="checkbox"><span class="box"><span class="check" data-gv-icon="check"></span></span></label></td>
+                <td><a class="gv-bo-table__name" href="#">Lower speed limit around the schools</a><span class="gv-bo-table__sub">Sarah Hamid · 1 month ago</span></td>
+                <td><span class="gv-status-label outlined">Safety</span></td>
+                <td class="gv-bo-table__num">96</td>
+                <td class="gv-bo-table__num">5</td>
+                <td><span class="gv-status-label outlined">Under consideration</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <nav class="gv-bo-pager" aria-label="Pagination"><button disabled><span data-gv-icon="chevron-left"></span></button><button class="is-active">1</button><button>2</button><button>3</button><span>…</span><button>36</button><button><span data-gv-icon="chevron-right"></span></button></nav>
         </div>
       </div>
     </main>
@@ -3861,6 +4280,8 @@
     const addPhaseView = document.getElementById('view-add-phase');
     const addSurveyView = document.getElementById('view-add-survey');
     const settingsView = document.getElementById('view-settings');
+    const utilityViews = ['audience','messaging','events','input360']
+      .map(v => document.getElementById('view-' + v));
     const projectUtilities = document.getElementById('project-utilities');
     const projectChevron = document.getElementById('project-chevron');
     const phaseTitle = document.getElementById('phase-title');
@@ -3877,6 +4298,7 @@
     addPhaseView.style.display = 'none';
     addSurveyView.style.display = 'none';
     if (settingsView) settingsView.style.display = 'none';
+    utilityViews.forEach(v => { if (v) v.style.display = 'none'; });
 
     if (view === 'project') {
       projectView.style.display = 'flex';
@@ -3902,6 +4324,12 @@
     } else if (view === 'settings') {
       // Settings is a project-level utility: keep the left nav fully expanded.
       settingsView.style.display = 'block';
+      projectUtilities.classList.remove('collapsed');
+      projectChevron.style.transform = 'rotate(0deg)';
+    } else if (view === 'audience' || view === 'messaging' || view === 'events' || view === 'input360') {
+      // Project-level utility tabs — keep the left nav fully expanded like Settings.
+      const v = document.getElementById('view-' + view);
+      if (v) v.style.display = 'block';
       projectUtilities.classList.remove('collapsed');
       projectChevron.style.transform = 'rotate(0deg)';
     }
@@ -4449,6 +4877,11 @@
     if (state === 'empty') {
       // Hide audience until participants exist
       if (audienceNav) audienceNav.style.display = 'none';
+      // A utility tab (Audience/Messaging/Events/360 Input) makes no sense on a blank
+      // project — drop back to the project page if one is open.
+      const openUtil = ['audience','messaging','events','input360']
+        .some(v => { const el = document.getElementById('view-' + v); return el && el.style.display !== 'none'; });
+      if (openUtil) setView('project', document.querySelector('[data-view=project]'));
       // The locked-in empty state drives BOTH the timeline panel and the phone preview.
       timelineCard.innerHTML  = emptyTimeline();
       activitiesCard.innerHTML = emptyExtras();
@@ -4750,6 +5183,21 @@
 </div>
 
 <script>
+  // ===== Audience + Messaging utility views: sub-tab switching =====
+  [['view-audience','aud'], ['view-messaging','msg']].forEach(([id, key]) => {
+    const root = document.getElementById(id);
+    if (!root) return;
+    const tabs = root.querySelectorAll('.gv-bo-tabs--sub .gv-bo-tab');
+    const panels = root.querySelectorAll('[data-' + key + ']:not(.gv-bo-tab)');
+    tabs.forEach(t => t.addEventListener('click', e => {
+      e.preventDefault();
+      tabs.forEach(x => x.classList.remove('is-active'));
+      t.classList.add('is-active');
+      const k = t.dataset[key];
+      panels.forEach(p => p.classList.toggle('is-active', p.dataset[key] === k));
+    }));
+  });
+
   // ===== Project Settings view: sub-tabs + lightweight interactions =====
   (function(){
     const root = document.getElementById('view-settings');
@@ -5230,16 +5678,8 @@
             '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="primary"><span class="circle"></span>Primary</label>' +
             '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="secondary"><span class="circle"></span>Secondary</label>' +
           '</div>' +
-          // Card layout picker \u2014 only relevant (and shown) when the format is Card view.
-          // Easy read is the principal layout; the other 10 fold away (kept for dev review).
-          '<div id="cb-card-variants"><div class="cb-setseg">Card layout</div><div class="cb-varlist">' +
-            CARD_VARIANTS.filter(function (v) { return v.id === 'easy'; }).map(cbVarcardHTML).join('') +
-          '</div>' +
-          '<details class="cb-varmore"><summary>Other layouts <span class="cb-varmore__hint">\u2014 for dev review</span></summary>' +
-            '<div class="cb-varlist">' +
-              CARD_VARIANTS.filter(function (v) { return v.id !== 'easy'; }).map(cbVarcardHTML).join('') +
-            '</div></details>' +
-          '</div>' +
+          // Card view renders a single fixed layout (the Easy-read card) \u2014 no layout
+          // picker. The full set of card-layout explorations lives in v2.
           // Button label is translatable \u2014 the language switcher rides on this field (per-field, BO-only).
           '<div class="cb-fieldhead">' +
             '<span class="gv-bo-cb-settings__rowlabel">Button text</span>' +
@@ -5578,34 +6018,15 @@
 
     function bindExtraSurveys(block) {
       var st = cbSurveyState(block);
+      // Card view renders the single fixed Easy-read layout (no picker in v3).
+      st.cardVariant = 'easy';
       function render() { cbSetBody(block, cbSurveyHTML(st.survey, st.format, st.style, st.label, st.cardVariant)); }
-      var variants = panel.querySelector('#cb-card-variants');
-      function syncVariantVisibility() { if (variants) variants.style.display = (st.format === 'card') ? '' : 'none'; }
       var sel = panel.querySelector('[data-set="survey"]');
       if (sel) { sel.value = st.survey || ''; sel.addEventListener('change', function () { st.survey = this.value || null; render(); }); }
       panel.querySelectorAll('input[data-fmt]').forEach(function (r) {
         r.checked = (r.dataset.fmt === st.format);
-        r.addEventListener('change', function () { if (this.checked) { st.format = this.dataset.fmt; syncVariantVisibility(); render(); } });
+        r.addEventListener('change', function () { if (this.checked) { st.format = this.dataset.fmt; render(); } });
       });
-      // Card layout picker — Easy read is principal; the rest live in a fold.
-      // If a folded (non-easy) variant is the current one, open the fold so it's visible.
-      var varmore = panel.querySelector('.cb-varmore');
-      if (varmore && st.cardVariant && st.cardVariant !== 'easy') varmore.open = true;
-      panel.querySelectorAll('.cb-varcard').forEach(function (c) {
-        if (c.dataset.variant === (st.cardVariant || 'easy')) c.classList.add('is-selected');
-        c.addEventListener('click', function () {
-          panel.querySelectorAll('.cb-varcard').forEach(function (x) { x.classList.remove('is-selected'); });
-          c.classList.add('is-selected');
-          st.cardVariant = c.dataset.variant;
-          if (st.format !== 'card') {
-            st.format = 'card';
-            var rb = panel.querySelector('input[data-fmt="card"]'); if (rb) rb.checked = true;
-            syncVariantVisibility();
-          }
-          render();
-        });
-      });
-      syncVariantVisibility();
       panel.querySelectorAll('input[data-sty]').forEach(function (r) {
         r.checked = (r.dataset.sty === st.style);
         r.addEventListener('change', function () { if (this.checked) { st.style = this.dataset.sty; render(); } });
@@ -5996,7 +6417,7 @@
         var settings = document.getElementById("e2e-content-builder-settings");
         return ["builder", settings && vis(settings) ? "settings" : ""].filter(Boolean).join("|");
       }
-      var view = ["project", "phase", "add-phase", "add-survey"]
+      var view = ["project", "phase", "add-phase", "add-survey", "settings", "audience", "messaging", "events", "input360"]
         .filter(function (v) { return vis(document.getElementById("view-" + v)); })[0] || "project";
       var fr = document.querySelector(".frame-chip button.on");
       var st = document.querySelector(".state-chip button.on");
