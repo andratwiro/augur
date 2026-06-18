@@ -123,6 +123,7 @@
     .ch-dots i { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--ch-line); }
     .ch-axis { display: flex; justify-content: space-between; margin-top: 4px; padding: 0 2px; }
     .ch-axis span { font-size: var(--gv-fs-13); color: var(--gv-chart-axis); }
+    .db-apex { min-width: 0; }            /* ApexCharts host — let it shrink inside split/grid cells */
     /* Representativeness card: score chip + chart/table toggle + footer. */
     .db-repr .db-cardhead { align-items: center; }
     .db-repr__score { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); font-weight: 400; }
@@ -446,41 +447,8 @@
       const ticks = []; for (let v = 0; v <= top; v += step) ticks.push(v);
       return { top, ticks };
     }
-    // Sparse month labels along the x-axis (real shows ~every 3rd label, ending Jun).
-    const XMONTHS = ["Jan","Apr","Jul","Oct","Jan","Apr","Jul","Oct","Feb","Jun"];
-    function lineSVG(points) {
-      const vals = points.split(",").map(Number);
-      const { top, ticks } = niceTicks(Math.max(...vals, 1));
-      const n = vals.length;
-      const pts = vals.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / top * 100).toFixed(1)}`).join(" ");
-      // Vertical month gridlines.
-      const grid = vals.map((_, i) =>
-        `<line x1="${(i / (n - 1) * 600).toFixed(1)}" y1="12" x2="${(i / (n - 1) * 600).toFixed(1)}" y2="112" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`).join("");
-      const yaxis = ticks.slice().reverse().map(v => `<span>${v}</span>`).join("");
-      const axis = XMONTHS.map(m => `<span>${m}</span>`).join("");
-      const dots = vals.map((v, i) => `<i style="left:${(i / (n - 1) * 100).toFixed(2)}%;top:${((112 - v / top * 100) / 1.2).toFixed(2)}%"></i>`).join("");
-      return `<div class="ch-line"><div class="ch-yaxis">${yaxis}</div>
-        <div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-        ${grid}<polyline points="${pts}" fill="none" stroke="var(--ch-line)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
-        <div class="ch-dots">${dots}</div>
-        <div class="ch-axis">${axis}</div></div></div>`;
-    }
-    // Combo line+bar (Inputs/Comments/Reactions): navy bars (per-month, right axis)
-    // under a cumulative #7FBBCA line (left axis) — matches the real recharts ComposedChart.
-    function comboSVG(points, bars) {
-      const lv = points.split(",").map(Number), bv = (bars || "").split(",").map(Number);
-      const { top } = niceTicks(Math.max(...lv, 1)), btop = Math.max(...bv, 1);
-      const n = lv.length, bw = 600 / n * 0.5;
-      const grid = lv.map((_, i) => `<line x1="${(i / (n - 1) * 600).toFixed(1)}" y1="12" x2="${(i / (n - 1) * 600).toFixed(1)}" y2="112" stroke="var(--gv-chart-grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`).join("");
-      const rects = bv.map((v, i) => { const h = v / btop * 96, x = i / (n - 1) * 600 - bw / 2; return `<rect x="${Math.max(0, x).toFixed(1)}" y="${(112 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" fill="var(--ch-blue)"/>`; }).join("");
-      const pts = lv.map((v, i) => `${(i / (n - 1) * 600).toFixed(1)},${(112 - v / top * 100).toFixed(1)}`).join(" ");
-      const axis = XMONTHS.map(m => `<span>${m}</span>`).join("");
-      const dots = lv.map((v, i) => `<i style="left:${(i / (n - 1) * 100).toFixed(2)}%;top:${((112 - v / top * 100) / 1.2).toFixed(2)}%"></i>`).join("");
-      return `<div class="ch-line"><div class="ch-plot"><svg class="db-line" viewBox="0 0 600 120" preserveAspectRatio="none" aria-hidden="true">
-        ${grid}${rects}<polyline points="${pts}" fill="none" stroke="var(--ch-line)" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>
-        <div class="ch-dots">${dots}</div>
-        <div class="ch-axis">${axis}</div></div></div>`;
-    }
+    // Trailing-12-month axis (illustrative; the real charts show a sparse month axis).
+    const MONTHS12 = ["Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar","Apr","May","Jun"];
     function barsH(json) {
       const items = JSON.parse(json);
       const { top, ticks } = niceTicks(Math.max(...items.map(i => i[1]), 1));
@@ -511,33 +479,59 @@
       return `<div class="db-pie"><svg class="db-pie__svg" width="150" height="150" viewBox="0 0 42 42" aria-hidden="true">${circles}</svg>
         <div class="ch-legend" style="justify-content:flex-start;flex-direction:column;align-items:flex-start">${legend}</div></div>`;
     }
+    // Interactive charts (line/combo) render lazily via GVChart/ApexCharts — ApexCharts
+    // mis-sizes in a display:none panel, so each non-active panel's charts render the
+    // first time its tab is shown (flushed by __flushCharts, hooked into tab switching).
+    let __cid = 0;
+    const __pending = [];
     document.querySelectorAll(".gv-bo-chartcard[data-chart]").forEach(card => {
       try {
         const t = card.dataset.chart, title = card.dataset.title;
-        let body = "";
-        if (t === "line") {
+        if (t === "line" || t === "combo") {
           const statBlock = (lbl, num, sub, mt) =>
             `<div class="db-bignum"${mt ? ' style="margin-top:16px"' : ""}><span class="db-bignum__lbl">${lbl || ""}</span><span class="db-bignum__big">${num}</span><span class="db-bignum__sub">${sub || ""}</span></div>`;
-          // Optional second stacked stat group (e.g. Visitors → Registration/Participation rate).
           const big = card.dataset.big
             ? statBlock(card.dataset.lbl, card.dataset.big, card.dataset.sub) +
               (card.dataset.big2 ? statBlock(card.dataset.lbl2, card.dataset.big2, card.dataset.sub2, true) : "")
             : (card.dataset.num ? `<div class="db-bignum">${card.dataset.num}</div>` : "");
-          const lineColors = ["var(--ch-line)", "var(--ch-teal)", "var(--ch-red)"];
-          const chart = `${lineSVG(card.dataset.points)}<div class="ch-legend">${(card.dataset.series || "").split(" · ").map((s, i) => `<span><i style="background:${lineColors[i] || "var(--ch-blue)"}"></i>${s}</span>`).join("")}</div>`;
-          body = card.dataset.split !== undefined
-            ? `<div class="db-split"><div class="db-bigblock">${big}</div><div class="db-split__chart">${chart}</div></div>`
-            : `${big}${chart}`;
+          const id = "apx-" + (__cid++);
+          const chartEl = `<div class="db-apex" id="${id}"></div>`;
+          const body = (t === "line" && card.dataset.split !== undefined)
+            ? `<div class="db-split"><div class="db-bigblock">${big}</div><div class="db-split__chart">${chartEl}</div></div>`
+            : `${big}${chartEl}`;
+          card.innerHTML = cardHead(title, card.dataset.dropdown) + body;
+          const el = card.querySelector("#" + id);
+          const panel = card.closest(".db-panel");
+          const pts = (card.dataset.points || "").split(",").map(Number);
+          const series = (card.dataset.series || "Total").split(" · ");
+          const render = () => {
+            if (!window.GVChart || !el || el.__gv) return;
+            if (t === "line") {
+              GVChart.line(el, { height: 156, categories: MONTHS12, tickAmount: 5, legend: true,
+                series: [{ name: series[0], data: pts }] });
+            } else {
+              const bv = (card.dataset.bars || "").split(",").map(Number);
+              GVChart.combo(el, { height: 156, categories: MONTHS12,
+                bars: { name: series[1] || "This month", data: bv },
+                line: { name: series[0] || "Total", data: pts } });
+            }
+          };
+          __pending.push({ key: panel ? panel.dataset.panel : null, render });
+        } else {
+          let body = "";
+          if (t === "barsH") body = barsH(card.dataset.bars);
+          else if (t === "barsV") body = barsV(card.dataset.bars);
+          else if (t === "pie") body = pieSVG(card.dataset.pie);
+          card.innerHTML = cardHead(title, card.dataset.dropdown) + body;
         }
-        else if (t === "combo") {
-          const chart = `${comboSVG(card.dataset.points, card.dataset.bars)}<div class="ch-legend">${(card.dataset.series || "").split(" · ").map((s, i) => `<span><i style="background:${i === 0 ? "var(--ch-line)" : "var(--ch-bar)"}"></i>${s}</span>`).join("")}</div>`;
-          body = card.dataset.num ? `<div class="db-bignum">${card.dataset.num}</div>${chart}` : chart;
-        }
-        else if (t === "barsH") body = barsH(card.dataset.bars);
-        else if (t === "barsV") body = barsV(card.dataset.bars);
-        else if (t === "pie") body = pieSVG(card.dataset.pie);
-        card.innerHTML = cardHead(title, card.dataset.dropdown) + body;
       } catch (err) { console.error("chart render failed", card.dataset.title, err); }
+    });
+    // GVChart loads deferred (after this inline script parses) — flush the active
+    // panel's charts once it's ready; other panels flush when their tab is shown.
+    window.__flushCharts = (key) => __pending.forEach(p => { if (p.key === key) p.render(); });
+    window.addEventListener("DOMContentLoaded", () => {
+      const active = document.querySelector(".db-panel.is-active");
+      if (active) window.__flushCharts(active.dataset.panel);
     });
 
     // ── Participation feed rows ─────────────────────────────────────────────
@@ -588,6 +582,7 @@
         tab.classList.add("is-active");
         const key = tab.dataset.db;
         document.querySelectorAll(".db-panel").forEach(p => p.classList.toggle("is-active", p.dataset.panel === key));
+        if (window.__flushCharts) window.__flushCharts(key);
         if (key === "representativeness" && window.__renderRepr) window.__renderRepr();
       });
     });

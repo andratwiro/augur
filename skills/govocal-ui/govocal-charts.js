@@ -136,7 +136,7 @@
         markers: { size: o.markers != null ? o.markers : 3, strokeWidth: 0, hover: { size: (o.markers != null ? o.markers : 3) + 2 } },
         fill: o.area ? { type: "gradient", gradient: { opacityFrom: 0.25, opacityTo: 0.02 } } : { type: "solid" },
         xaxis: { categories: o.categories || [], tickAmount: o.tickAmount },
-        legend: { show: o.legend !== false && series.length > 1 }
+        legend: { show: o.legend != null ? !!o.legend : series.length > 1 }
       });
     },
 

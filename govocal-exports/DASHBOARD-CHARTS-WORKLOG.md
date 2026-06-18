@@ -41,6 +41,22 @@ static SVG — and to do it for **ALL charts** (a long, multi-loop effort). Libr
 
 ## Iterations
 
+### Loop 8 — 2026-06-18 — Convert Overview line/combo charts → GVChart
+- Converted ALL `data-chart="line"` and `data-chart="combo"` cards to GVChart/ApexCharts
+  (Overview: Registrations, Participants, Inputs combo, Comments, Reactions; Visitors: the 2
+  rate line charts). Retired `lineSVG()` + `comboSVG()` (and the XMONTHS const). barsH/barsV/pie
+  still on the old static renderers (next loops).
+- **Lazy render** pattern generalised: the dispatch builds scaffolds at parse, pushes a render
+  closure per chart keyed by its panel; `window.__flushCharts(key)` renders a panel's charts.
+  Active panel flushes on DOMContentLoaded (GVChart is deferred, so NOT available at parse —
+  this was a real bug: active-panel charts must wait for the deferred lib); other panels flush
+  when their tab is shown (hooked into the tab switcher). el.__gv guards against double-render.
+- Each line/combo reads from the existing data-* attrs (points/bars/series) → still editable/
+  re-feedable. Single-series lines keep a legend (fixed GVChart.line: honour o.legend when set).
+- **Verify (strict):** playwright — Overview 5 apex svgs, Visitors 2, Users 0 (bars-only, correct),
+  **0 page/console errors**. Eyeball ✓ (lines w/ dots, Inputs combo bars+cumulative line). lint ✓.
+- **Deploy:** yes. Poster reshot (Overview now shows live charts).
+
 ### Loop 7 — 2026-06-18 — Interactive charts foundation + Representativeness (PoC)
 - Vendored ApexCharts; built `govocal-charts.js` GVChart wrapper (token-themed, data-driven).
 - Built the **Representativeness** tab (was empty-state): grouped Users vs Total-population bar,
