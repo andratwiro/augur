@@ -3178,9 +3178,14 @@
   }
 
   /* ── Extra survey — the content-builder's canonical .gv-extra-survey card,
-       promoted onto the project page in the MAIN column (under the description),
-       constrained so it doesn't span the full wide measure. ─────────────────── */
-  #view-fo #fo-extra { margin-top: 24px; max-width: 560px; }
+       promoted onto the project page in the MAIN column (under the description).
+       Fills the content measure so its edges align with the body copy above (width
+       is a page concern — the canonical .gv-extra-survey is itself width-agnostic). */
+  #view-fo #fo-extra { margin-top: 24px; }
+  /* In a wide content card the CTA hugs its label rather than stretching the whole
+     measure (full-width buttons belong in the narrow participation rail, not here).
+     Overrides the .full button's display:flex/width:100% for this placement only. */
+  #view-fo #fo-extra .gv-btn { display: inline-flex; width: auto; }
 
   /* ── Extra survey — proposed temporal STATES (past · present · future). ──────
        A linked survey can be scheduled, so the card has to read clearly before it
