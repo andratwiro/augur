@@ -2049,6 +2049,10 @@
       /* AA-safe darkened tenant ink for text on the light tint (≥6:1 across all city themes) */
       --svc-ink: color-mix(in srgb, var(--pp-tenant) 55%, #111); }
     #cb-root .cb-survey .gv-btn.full { width:100%; }
+    /* Canonical participation box + extra-survey (the FO widgets) render inside the BO
+       canvas, where --gv-tenant-primary defaults to BO teal. Re-point it to the city
+       colour so the filled primary CTA + the SURVEY tag tint read like the real project. */
+    #cb-root .gv-pbox, #cb-root .gv-extra-survey { --gv-tenant-primary: var(--pp-tenant); }
     /* settings: stacked radio groups + per-field language switcher header */
     #cb-root .cb-radiocol { display:flex; flex-direction:column; gap:2px; }
     #cb-root .cb-radiocol .gv-radio { margin-bottom:0; }
@@ -5507,18 +5511,19 @@
       var cta = '';
       if (vis.length === 0) cta = '';
       else if (vis.length <= 2) {
+        // Canonical .gv-btn pair: current-phase method = filled primary, others = neutral outline.
         cta = vis.map(function (m) {
-          return '<a class="cb-pbtn ' + (m.current ? 'cb-pbtn--primary' : 'cb-pbtn--outline') + '" href="#">' + m.cta + '</a>';
+          return '<a class="gv-btn full ' + (m.current ? 'primary' : 'secondary-outlined') + '" href="#">' + m.cta + '</a>';
         }).join('');
       } else {
-        cta = '<a class="cb-pbtn cb-pbtn--primary" href="#">' + (st.aggTitle || 'Participate') + '</a>';
+        cta = '<a class="gv-btn full primary" href="#">' + (st.aggTitle || 'Participate') + '</a>';
       }
       var people = st.showParticipants
-        ? '<div class="gv-participants cb-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+19 participants <span class="cb-pbox__info" data-gv-icon="info-solid"></span></span></div>'
+        ? '<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+19 participants <span class="cb-pbox__info" data-gv-icon="info-solid"></span></span></div>'
         : '';
-      var inner = (cta ? '<div class="cb-pbox__actions">' + cta + '</div>' : '') + people;
-      if (!inner) inner = '<div class="cb-pbox__empty">No active methods</div>';
-      return '<div class="cb-pbox">' + inner + '</div>';
+      var inner = (cta ? '<div class="gv-pbox__actions">' + cta + '</div>' : '') + people;
+      if (!inner) inner = '<div class="gv-pbox__empty">No active methods</div>';
+      return '<div class="gv-pbox">' + inner + '</div>';
     }
 
     // ── Extra survey: a linked survey rendered as a button or a full card,
@@ -5534,89 +5539,22 @@
     } };
     function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'mobility', format:'card', style:'primary', label:'', cardVariant:'easy' }; return SURVEY_STATE[block.id]; }
     function cbSurveyHTML(survey, format, style, label, variant) {
-      if (!survey) return '<div class="cb-survey-empty"><div class="cb-survey-empty__t">📣 Survey</div><div class="cb-survey-empty__s">Select a survey to link in the panel on the right.</div></div>';
+      if (!survey) return '<div class="gv-extra-survey__empty"><div class="gv-extra-survey__empty-t">📣 Survey</div><div class="gv-extra-survey__empty-s">Select a survey to link in the panel on the right.</div></div>';
       var s = SURVEY_DATA[survey] || SURVEY_DATA.mobility;
       var cta = (label && label.trim()) || s.cta;
-      // Real GoVocal buttons, themed to the tenant: Primary = filled tenant colour,
-      // Secondary = the same tenant colour as an outline (.cb-survey remaps --gv-tenant-primary).
-      var bcls = 'gv-btn full ' + (style === 'secondary' ? 'primary-outlined' : 'primary');
-      var btn = '<a class="' + bcls + '" href="#"><span class="gv-btn__label">' + cta + '</span></a>';
-      if (format === 'button') return '<div class="cb-survey">' + btn + '</div>';
-      return cbSurveyCard(s, variant || 'standard', btn);
-    }
-    // 10 card-view layouts. All keep the .cb-survey scope (tenant-themed CTA) and
-    // assemble from GoVocal tokens/icons; the variant changes layout + which metadata shows.
-    function cbSurveyCard(s, variant, btn) {
-      function ic(n) { return '<span class="gv-icon" data-gv-icon="' + n + '"></span>'; }
-      var eyebrow = '<span class="cb-survey__eyebrow">SURVEY</span>';
-      var title   = '<h3 class="cb-survey__name">' + s.name + '</h3>';
-      var range   = '<p class="cb-survey__range">' + s.range + '</p>';
-      var desc    = '<p class="cb-survey__desc">' + s.desc + '</p>';
-      var open = function (mod) { return '<div class="cb-survey cb-survey--card svc svc--' + mod + '">'; };
-      var close = '</div>';
-      switch (variant) {
-        case 'compact':
-          return open('compact') +
-            '<div class="svc-row"><span class="svc-ic">' + ic('survey') + '</span>' +
-              '<div><h3 class="svc-title-sm">' + s.name + '</h3>' +
-              '<p class="svc-meta">≈ ' + s.minutes + ' · ' + s.questions + ' questions</p></div></div>' +
-            btn + close;
-        case 'quick':
-          return open('quick') +
-            '<div class="svc-chips"><span class="svc-chip svc-chip--accent">' + ic('clock') + s.minutes + '</span>' +
-              '<span class="svc-chip"><span class="svc-dot"></span>' + s.status + '</span></div>' +
-            title + desc + btn + close;
-        case 'social':
-          return open('social') + eyebrow + title + desc +
-            '<div class="svc-social"><span class="gv-avatars on-light"><span class="av"></span><span class="av"></span><span class="av"></span></span>' +
-              '<span class="svc-social__txt"><strong>' + s.responses + '</strong> residents have responded</span></div>' +
-            btn + close;
-        case 'accent':
-          return open('accent') +
-            '<div class="svc-accent__head"><span class="svc-ic svc-ic--tint">' + ic('survey') + '</span>' +
-              '<div>' + eyebrow + title + '</div></div>' +
-            desc + btn + close;
-        case 'banner':
-          return open('banner') +
-            '<div class="svc-banner">' + ic('survey') + '<span>Survey</span></div>' +
-            '<div class="svc-banner__body">' + title + range + desc + btn + '</div>' + close;
-        case 'deadline':
-          return open('deadline') +
-            '<div class="svc-toprow">' + eyebrow + '<span class="svc-pill">' + ic('clock') + s.closesIn + '</span></div>' +
-            title + desc +
-            '<div class="svc-progress"><span style="width:' + s.progress + '%"></span></div>' +
-            '<p class="svc-progress__lbl">' + s.progress + '% of the response window has passed</p>' +
-            btn + close;
-        case 'horizontal':
-          return open('horizontal') +
-            '<div class="svc-h"><span class="svc-ic svc-ic--lg svc-ic--tint">' + ic('survey') + '</span>' +
-              '<div class="svc-h__txt">' + title + '<p class="svc-meta">≈ ' + s.minutes + ' · ' + s.status + '</p>' + desc + '</div></div>' +
-            btn + close;
-        case 'detailed':
-          return open('detailed') + eyebrow + title + range + desc +
-            '<div class="svc-stats">' +
-              '<div class="svc-stat">' + ic('clock') + '<div><strong>' + s.minutes + '</strong><span>to complete</span></div></div>' +
-              '<div class="svc-stat">' + ic('survey') + '<div><strong>' + s.questions + '</strong><span>questions</span></div></div>' +
-              '<div class="svc-stat">' + ic('group') + '<div><strong>' + s.responses + '</strong><span>responses</span></div></div>' +
-            '</div>' + btn + close;
-        case 'minimal':
-          return open('minimal') +
-            '<span class="svc-eyebrow-min">' + ic('survey') + ' Survey</span>' +
-            '<h3 class="svc-title-min">' + s.name + '</h3>' +
-            '<p class="svc-meta">≈ ' + s.minutes + ' · ' + s.status + '</p>' + btn + close;
-        case 'easy':
-          // Built for vulnerable audiences (P1 Mara / P3 Doris): plain language, big legible
-          // type, one clear instruction, a large high-contrast button (large-text contrast),
-          // icon always paired with a word. GoVocal vocabulary throughout.
-          return open('easy') +
-            '<span class="svc-easy__tag">' + ic('survey') + ' Survey</span>' +
-            '<h3 class="svc-easy__title">' + s.name + '</h3>' +
-            '<p class="svc-easy__desc">' + s.desc + '</p>' +
-            '<div class="svc-chips"><span class="svc-chip svc-chip--accent">' + ic('clock') + s.minutes + '</span></div>' +
-            btn + close;
-        default: // standard
-          return open('standard') + eyebrow + title + range + desc + btn + close;
-      }
+      // Canonical .gv-btn pair — the SAME as the participation box: primary = filled
+      // tenant, secondary = neutral .gv-btn.secondary-outlined. (.gv-extra-survey
+      // remaps --gv-tenant-primary to the city colour for the FO preview.)
+      var bcls = 'gv-btn full ' + (style === 'secondary' ? 'secondary-outlined' : 'primary');
+      var btn = '<a class="' + bcls + '" href="#">' + cta + '</a>';
+      if (format === 'button') return '<div class="gv-extra-survey">' + btn + '</div>';
+      // Card view = the single canonical Easy-read layout (no duration chip — that
+      // metadata isn't in the product). Same component as components/extra-survey/.
+      return '<div class="gv-extra-survey gv-extra-survey--card">' +
+        '<span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span>' +
+        '<h3 class="gv-extra-survey__title">' + s.name + '</h3>' +
+        '<p class="gv-extra-survey__desc">' + s.desc + '</p>' +
+        btn + '</div>';
     }
 
     // ── settings panel bodies per widget type ─────────────────────────────────

@@ -2702,3 +2702,45 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
   color: var(--gv-tenant-primary); font-weight: 500;
   font-size: var(--gv-fs-base); line-height: 16.1px; padding: 9px 18px;
 }
+
+/* ── Participation box (components/participation-box/) ────────────────────────
+   The resident-facing project-page CTA block, mirrored 1:1 by the back-office
+   Content Builder "Participation Box" widget. It aggregates the project's active
+   participation methods into a stack of full-width buttons, then an always-bottom
+   participant avatar row. The current-phase method is the filled .gv-btn.primary;
+   parallel / extra methods are the neutral .gv-btn.secondary-outlined. Three or
+   more visible methods collapse into one "Participate" primary button. Pure
+   assembly — composes the canonical .gv-btn + .gv-participants atoms; this block
+   only stacks them and carries the empty / hide states. */
+.gv-pbox { display: flex; flex-direction: column; gap: 16px; }
+.gv-pbox__actions { display: flex; flex-direction: column; gap: 12px; }
+.gv-pbox__actions .gv-btn { width: 100%; justify-content: center; }
+.gv-pbox__people { display: flex; align-items: center; gap: 8px; }
+.gv-pbox__empty { border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
+  text-align: center; padding: 14px; font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
+.gv-pbox--nobtns .gv-pbox__actions { display: none; }
+.gv-pbox--nopeople .gv-pbox__people { display: none; }
+
+/* ── Extra survey CTA (components/extra-survey/) ──────────────────────────────
+   A survey linked into a project page / Content Builder, separate from the phase
+   method. Renders either as a button (.gv-btn primary | secondary-outlined — the
+   SAME pair the participation box uses) or as a card (--card): a tenant-tinted
+   SURVEY tag, the survey name, a short plain-language description and the CTA. The
+   card is sized for legibility (accessible by default) — big type, one clear
+   action, icon always paired with a word. Tenant-themed via --gv-tenant-primary. */
+.gv-extra-survey { --gv-es-tint: color-mix(in srgb, var(--gv-tenant-primary) 9%, #fff);
+  /* AA-safe darkened tenant ink for text on the light tint (≥6:1 across city themes) */
+  --gv-es-ink: color-mix(in srgb, var(--gv-tenant-primary) 55%, #111); }
+.gv-extra-survey .gv-btn { width: 100%; }
+.gv-extra-survey--card { border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius);
+  padding: 22px; background: #fff; box-shadow: var(--gv-shadow); }
+.gv-extra-survey__tag { display: inline-flex; align-items: center; gap: 7px; font-size: 14px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gv-es-ink); }
+.gv-extra-survey__tag .gv-icon { width: 18px; height: 18px; color: var(--gv-tenant-primary); }
+.gv-extra-survey__title { font-size: 23px; font-weight: 700; color: var(--gv-text-primary);
+  line-height: 1.25; margin: 12px 0 8px; }
+.gv-extra-survey__desc { font-size: 16px; color: var(--gv-text-primary); line-height: 1.6; margin: 0 0 18px; }
+.gv-extra-survey__empty { border: 2px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
+  padding: 22px; text-align: center; background: var(--gv-grey-50); }
+.gv-extra-survey__empty-t { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-secondary); }
+.gv-extra-survey__empty-s { font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); margin-top: 6px; }

@@ -85,21 +85,21 @@
        >2 visible collapse into one "Participate · N ways". --pp-tenant follows the
        city theme so the box re-colours per ?theme=. */
     .pv { --pp-tenant: var(--gv-tenant-primary); }
-    .pv .pv-pbox { display: flex; flex-direction: column; gap: 14px; }
-    .pv .pv-pbox__actions { display: flex; flex-direction: column; gap: 8px; }
+    .pv .gv-pbox { display: flex; flex-direction: column; gap: 14px; }
+    .pv .gv-pbox__actions { display: flex; flex-direction: column; gap: 8px; }
     .pv .cb-pbtn { display: block; width: 100%; box-sizing: border-box; text-align: center; padding: 12px 16px; border-radius: 3px; font-weight: 700; font-size: 15px; line-height: 1.2; text-decoration: none; cursor: pointer; }
     .pv .cb-pbtn--primary { background: var(--pp-tenant); color: #fff; border: 1px solid var(--pp-tenant); }
     .pv .cb-pbtn--outline { background: #fff; color: var(--gv-text-primary); border: 1px solid var(--gv-grey-400); }
     .pv .cb-pbtn--outline:hover { border-color: var(--pp-tenant); color: var(--pp-tenant); }
-    .pv .pv-pbox__people { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 2px; }
-    .pv .pv-pbox__people .gv-avatars { margin: 0; }
+    .pv .gv-pbox__people { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 2px; }
+    .pv .gv-pbox__people .gv-avatars { margin: 0; }
     /* Participant avatars match the real product's compact cluster — measured 36px
        total (border included) on partizipation.linz.at, vs the larger hero/spotlight
        avatars. border-box so the 2px ring counts inside the 36px footprint. */
-    .pv .pv-pbox__people .gv-avatars .av { box-sizing: border-box; width: 36px; height: 36px; }
-    .pv .pv-pbox__empty { border: 1px dashed var(--gv-grey-400); border-radius: 3px; text-align: center; padding: 14px; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
+    .pv .gv-pbox__people .gv-avatars .av { box-sizing: border-box; width: 36px; height: 36px; }
+    .pv .gv-pbox__empty { border: 1px dashed var(--gv-grey-400); border-radius: 3px; text-align: center; padding: 14px; font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); }
     /* When the about box stands in the wide left column (gallery), keep it readable */
-    .pv .pv-pbox--inset { border: 1px solid var(--gv-grey-200); border-radius: var(--gv-radius); padding: 18px; background: #fff; }
+    .pv .gv-pbox--inset { border: 1px solid var(--gv-grey-200); border-radius: var(--gv-radius); padding: 18px; background: #fff; }
 
     /* ── PARTICIPATE SHEET — the collapsed "Participate · N ways" button opens this,
        revealing each method as its own button. Centred modal on desktop, bottom
@@ -489,7 +489,7 @@
     if (a.mode === 'multi') {
       const vis = a.methods.slice().sort((x, y) => (y.current ? 1 : 0) - (x.current ? 1 : 0));
       if (vis.length <= 2) {
-        actions = vis.map((m) => `<a class="gv-btn full ${m.current ? 'primary' : 'primary-outlined'}" href="#"><span class="gv-btn__label">${m.cta}</span></a>`).join('');
+        actions = vis.map((m) => `<a class="gv-btn full ${m.current ? 'primary' : 'secondary-outlined'}" href="#"><span class="gv-btn__label">${m.cta}</span></a>`).join('');
       } else {
         const payload = JSON.stringify(vis.map((m) => ({ cta: m.cta, current: !!m.current })));
         const title = a.aggTitle || 'Participate';
@@ -497,19 +497,19 @@
       }
     } else {
       if (a.primary) actions += `<a class="gv-btn full primary" href="#"><span class="gv-btn__label">${a.primary}</span></a>`;
-      if (a.secondary) actions += `<a class="gv-btn full primary-outlined" href="#"><span class="gv-btn__label">${a.secondary}</span></a>`;
+      if (a.secondary) actions += `<a class="gv-btn full secondary-outlined" href="#"><span class="gv-btn__label">${a.secondary}</span></a>`;
     }
     const people = a.participants
-      ? `<div class="gv-participants pv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">${a.count} ${a.label || 'participants'}</span></div>`
+      ? `<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">${a.count} ${a.label || 'participants'}</span></div>`
       : '';
-    let inner = (actions ? `<div class="pv-pbox__actions">${actions}</div>` : '') + people;
-    if (!inner) inner = '<div class="pv-pbox__empty">No active methods</div>';
-    return `<div class="pv-pbox${opts.inset ? ' pv-pbox--inset' : ''}">${inner}</div>`;
+    let inner = (actions ? `<div class="gv-pbox__actions">${actions}</div>` : '') + people;
+    if (!inner) inner = '<div class="gv-pbox__empty">No active methods</div>';
+    return `<div class="gv-pbox${opts.inset ? ' gv-pbox--inset' : ''}">${inner}</div>`;
   }
 
   // ── EXTRA SURVEYS ──
   function surveyBtn(style, label) {
-    const cls = 'gv-btn full ' + (style === 'secondary' ? 'primary-outlined' : 'primary');
+    const cls = 'gv-btn full ' + (style === 'secondary' ? 'secondary-outlined' : 'primary');
     return `<a class="${cls}" href="#"><span class="gv-btn__label">${label}</span></a>`;
   }
   function surveyCard(s, variant, style) {
@@ -555,7 +555,7 @@
         `<div class="pv-survey-btnrow">${surveyBtn(b.style, b.label)}${b.note ? `<small>${b.note}</small>` : ''}</div>`
       ).join('')}</div>`;
     } else if (cfg.layout === 'list') {
-      body = `<div class="cb-extra__list">${cfg.list.map((s) => `<div class="cb-survey-row"><div class="cb-survey-row__info"><span class="cb-survey-row__name">${s.name}</span><span class="cb-survey-row__meta">${s.meta}</span></div><a class="gv-btn primary-outlined size-s" href="#">${s.cta}</a></div>`).join('')}</div>`;
+      body = `<div class="cb-extra__list">${cfg.list.map((s) => `<div class="cb-survey-row"><div class="cb-survey-row__info"><span class="cb-survey-row__name">${s.name}</span><span class="cb-survey-row__meta">${s.meta}</span></div><a class="gv-btn secondary-outlined size-s" href="#">${s.cta}</a></div>`).join('')}</div>`;
     } else {
       const s = SURVEYS[cfg.survey];
       const one = cfg.format === 'button'
@@ -769,7 +769,7 @@
     const s = ensureSheet();
     s.querySelector('.pv-sheet__title').textContent = title;
     s.querySelector('.pv-sheet__actions').innerHTML = methods.map((m) =>
-      `<a class="gv-btn full ${m.current ? 'primary' : 'primary-outlined'}" href="#"><span class="gv-btn__label">${m.cta}</span></a>`
+      `<a class="gv-btn full ${m.current ? 'primary' : 'secondary-outlined'}" href="#"><span class="gv-btn__label">${m.cta}</span></a>`
     ).join('');
     requestAnimationFrame(() => s.classList.add('open'));
     document.body.style.overflow = 'hidden';
