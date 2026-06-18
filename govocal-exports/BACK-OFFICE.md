@@ -616,3 +616,69 @@ Generated **Summary card**: `stars` icon + bold "AI summary" header · body · f
 
 Tooling: added **multi-`--click`** support to `grab.mjs` (sequential clicks → walk a multi-step
 reveal in one capture; used for banner→dismiss-modal). Backward-compatible (single `--click` unchanged).
+
+---
+
+# RUN 8 — Four-stream measured rebuild (internal.govocal.com, 2026-06-18)
+
+Live BO confirmed on **internal.govocal.com** ("Go Vocal Internal Platform", admin
+"Go Vocal Admin", session in `scripts/capture/.auth/state.json`). Captured + rebuilt
+four streams against measured `styles.json` digests (never eyeballed). All commits to
+`main`; final gate **lint 0 · verify:all 153 green / 0 red**.
+
+## Captures (this run, `r8-*`)
+| Capture | State | Probed checkpoints |
+|---|---|---|
+| `r8-analysis-clean` | 4-col AI Analysis (banner→"I understand" dismiss) | aibar/tagrail/autotag/aicard/inputrow/democard digests |
+| `r8-analysis-viewall` / `-autotag2` / `-summarize` / `-askq` | View-all-insights, auto-tag wizard, Summarize, Ask-a-question sub-states | (digest only; wizard not yet built) |
+| `r8-users` | /admin/users registered-users table | th.dAvdXZ (45px transparent), tr (65/71px) |
+| `r8-users-seats` | Seats overview | — |
+| `r8-dash-overview2` | /admin/dashboard/overview (real recharts + data) | div.iFyarX / h3.JYGBI / p.dVXeQz / segmented |
+| `r8-dash-users` | dashboard Users sub-tab (demographic bars) | — |
+| `r8-newproject` / `-template` | Create-a-project scratch + template gallery | segmented / banner / tag / templatecard / title |
+
+NOTE the cookie gotcha is real: "I understand" onboarding modal dismisses fine via
+`--click "text=I understand"`; the late cookie banner's "Accept" times out (>8s after
+the modal) but it only overlays the screenshot — the DOM + digest are complete, so build
+off the digest regardless.
+
+## Stream 1 — Sensemaking + Auto-insights (commit 0a7d2b6)
+The prior run's `.gv-bo-ai*` were mostly EXACT matches to the new measured digest
+(aibar/tagrail/autotag/ainotice/aiempty all matched). 5 corrections applied:
+- `.gv-bo-aibar` font-weight 700→400 · `.gv-bo-aicard` drop 1px frame (borderless) +
+  head 18px/700 · `.gv-bo-inputrow` hover→canvas grey, active→plain #fff (no teal inset)
+  · `.gv-bo-democard` outer borderless, 1px grey-400 moved to new `__plot` inner box.
+Existing analysis checkpoints stay green (props-filtered to bg/padding, which match).
+**Auto-tag wizard (r8-analysis-autotag2) NOT built** — needs 6 one-off method-icon swatch
+colours (amber #FFF3DB / indigo #E4E7EF / slate #43515D / teal #BEE7EB / red #FDE9E8 /
+green #E4F7EF) + a filled-#F4F6F8 tile structure distinct from `.gv-bo-methodcard`; measured
+values are in the digest, deferred as a secondary state.
+
+## Stream 2 — Users table (commit dc5c75b)
+- **NEW token `--gv-bo-cta` #162466** (measured `Button primary` indigo, confirmed across
+  r8-users "Invite users" + r8-analysis "Reject") + scoped `.gv-bo .gv-btn.primary` fill.
+  The real BO filled-CTA is indigo #162466, NOT the #044D6C teal-navy chrome; prior build
+  wrongly used green. (`.gv-bo-cb-save` green excluded.)
+- `.gv-bo-table.is-people` header: dropped grey-pill fill + corner radii (real = transparent
+  45px strip, 1px grey-200 bottom rule); rows 65px. Sentence-case labels.
+- rail: real counts 72/1/3, `<hr>`, "All users" smart group + **NEW `smart-group` bolt icon**,
+  42px secondary-outlined add-group. Re-pointed `bo-users/people-header` → r8-users.
+
+## Stream 3 — Dashboard charts (commit cda4eda)
+- big stat 25/700 → measured **21px/400/#333**. **Fixed latent bug:** `var(--gv-text)` is
+  UNDEFINED (silently inherited #596B7A) — 5 uses swapped to `var(--gv-text-primary)`.
+- real data: Registrations 72(+1/30d), Participants 683, Inputs **519** as a **combo line+bar**
+  (new `comboSVG` matching the real ComposedChart); line colour measured **#7FBBCA**; date 6/18.
+- canonical `.gv-bo-chartcard` padding 20px → **20px 20px 35px**. +3 checkpoints.
+
+## Stream 4 — Create-a-new-project (commit d7afe37)
+- default to **From scratch** active; banner **info** icon (was stars) + 14px padding (one-off);
+  two-tier "Project name"/"Title" label + info dots; **real internal-tenant tag set**;
+  template gallery → 12 cards, full-width buttons, facets trimmed to Departments + Purposes.
+- canonical `.gv-bo-templatecard` color → bo-primary navy (measured). +5 checkpoints.
+
+## Remaining (for a future wake)
+- Auto-tag **3-step wizard** modal (r8-analysis-autotag2 measured) — radio-cards + method grid
+  + 6 swatch colours + green "Recommended" badge; reuse canonical `.gv-modal` (650px).
+- Dashboard **Users/Visitors/Representativeness** sub-tabs deeper (r8-dash-users captured).
+- Users **Seats overview** sub-view table (r8-users-seats captured) faithful pass.
