@@ -128,6 +128,10 @@
     GVSurvey.mount(mountEl, FORM, {
       title: 'Survey',
       labels: LABELS,
+      // Open mid-survey (a content page with a few questions + both Prev/Next), % seeded
+      // to 65% on the first paint so the harness default reads like a real in-progress run.
+      start: 5,
+      demoPct: 65,
       onClose: function () { /* no-op in the experiment */ }
     });
     // Apply the layout under test (on the card, so it reaches the header bar too).

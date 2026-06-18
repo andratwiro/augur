@@ -254,9 +254,14 @@
     var L = opts.labels || {};
     var LBL = { prev: L.prev || 'Previous', next: L.next || 'Next', submit: L.submit || 'Submit' };
     prevLbl.textContent = LBL.prev;
-    var step = 0, total = form.pages.length;
+    var total = form.pages.length;
     var lastContent = total - 1;
     while (lastContent > 0 && form.pages[lastContent].kind === 'thankyou') lastContent--;
+    // The harness can open mid-survey for a posed default (opts.start = page index, so
+    // both Prev + Next show); opts.demoPct seeds the % on that first paint only —
+    // navigation recomputes the real value after, so the placement test stays honest.
+    var step = Math.max(0, Math.min(opts.start | 0, lastContent));
+    var seedPct = (opts.demoPct != null) ? opts.demoPct : null;
 
     // Build the step dots once (one per content page) for the stepdots variant.
     var dotSpans = [];
@@ -272,6 +277,7 @@
       bodyEl.innerHTML = renderPage(p);
       bodyEl.scrollTop = 0;
       var pct = (p.kind === 'thankyou') ? 100 : Math.round((Math.min(step, lastContent) / lastContent) * 100);
+      if (seedPct != null) { pct = seedPct; seedPct = null; }   // posed-default seed (first paint only)
       var pctTxt = pct + '% complete';
       // Keep every progress representation in sync; only the one CSS shows is visible.
       barEl.style.width = pct + '%';
