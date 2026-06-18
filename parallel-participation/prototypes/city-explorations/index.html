@@ -255,15 +255,6 @@
     /* "Configuration" caption under the title so each view explains itself */
     .pv-config { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gv-tenant-primary); margin: 0 0 4px; }
     .pv-config .gv-icon { width: 14px; height: 14px; }
-
-    /* Gallery (design-options catalog) */
-    .pv-gallery { padding: 8px 0 12px; }
-    .pv-gallery h2 { margin: 0 0 6px; }
-    .pv-gallery__lead { color: var(--gv-text-secondary); margin: 0 0 26px; max-width: 680px; }
-    .pv-gallery__seg { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gv-cool-grey-600); margin: 30px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--gv-grey-200); }
-    .pv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; align-items: start; }
-    .pv-gcell { display: flex; flex-direction: column; gap: 8px; }
-    .pv-gcell__cap { font-size: 12px; font-weight: 700; color: var(--gv-text-secondary); }
   </style>
 </head>
 <body class="gv-root gv-shell pv" data-gv-theme-picker="off">
@@ -489,13 +480,6 @@
       surveys: { layout: 'one', format: 'card', variant: 'easy', style: 'secondary', survey: 'access', heading: 'Prefer a few questions instead?' },
       layout: ['banner', 'title', 'about', 'intro', 'desc', 'surveys', 'partbar', 'timeline'],
       events: []
-    },
-    {
-      key: 'stlouis', theme: 4, city: 'City of St. Louis', gallery: true,
-      title: 'Widget gallery',
-      banner: 'community',
-      config: 'Design options · every About-box state + all 11 Extra-survey layouts',
-      intro: 'Not a single project — a catalogue of the two widgets across every configuration, themed to this city. Use it to pick the layout that fits a given project, then drop it into one of the views above.'
     }
   ];
 
@@ -714,48 +698,6 @@
     paint();
   }
 
-  /* ── Gallery variant (design-options catalogue) ── */
-  const GALLERY_VARIANTS = [
-    ['standard', 'Standard'], ['compact', 'Compact'], ['quick', 'Quick poll'], ['social', 'Social proof'],
-    ['accent', 'Accent stripe'], ['banner', 'Banner header'], ['deadline', 'Deadline'], ['horizontal', 'Icon beside text'],
-    ['detailed', 'Detailed stats'], ['minimal', 'Minimal'], ['easy', 'Easy read · accessible']
-  ];
-  function renderGallery(v) {
-    const s = SURVEYS.mobility;
-    const aboutStates = [
-      ['Single action', aboutBoxHTML({ mode: 'single', primary: 'Take the survey', secondary: null, participants: true, count: '1,204', label: 'responses' }, { inset: true })],
-      ['Two actions', aboutBoxHTML({ mode: 'dual', primary: 'Submit your idea', secondary: 'See the ideas', participants: true, count: '342', label: 'contributions' }, { inset: true })],
-      ['Multi-method (2 open)', aboutBoxHTML({ mode: 'multi', participants: true, count: '880', label: 'participants', methods: [{ cta: 'Cast your vote', current: true }, { cta: 'Add an idea', current: false }] }, { inset: true })],
-      ['Multi-method (3+, collapsed)', aboutBoxHTML({ mode: 'multi', participants: true, count: '2,910', label: 'participants', aggTitle: 'Participate · 3 ways', methods: [{ cta: 'Vote', current: true }, { cta: 'Idea', current: false }, { cta: 'Survey', current: false }] }, { inset: true })],
-      ['No participants', aboutBoxHTML({ mode: 'single', primary: 'Suggest a street', secondary: null, participants: false }, { inset: true })]
-    ];
-    const aboutCells = aboutStates.map(([cap, html]) => `<div class="pv-gcell"><span class="pv-gcell__cap">${cap}</span>${html}</div>`).join('');
-    const cardCells = GALLERY_VARIANTS.map(([id, cap]) => `<div class="pv-gcell"><span class="pv-gcell__cap">Card · ${cap}</span>${surveyCard(s, id, 'primary')}</div>`).join('');
-    const formatCells = [
-      ['Button · primary', `<div class="cb-survey">${surveyBtn('primary', s.cta)}</div>`],
-      ['Button · secondary', `<div class="cb-survey">${surveyBtn('secondary', s.cta)}</div>`],
-      ['Card · standard · secondary', surveyCard(s, 'standard', 'secondary')],
-      ['Multi-survey list', `<div class="cb-extra__list"><div class="cb-survey-row"><div class="cb-survey-row__info"><span class="cb-survey-row__name">Mobility check-in</span><span class="cb-survey-row__meta">Open until 15 Jun · ~2 min</span></div><a class="gv-btn primary-outlined size-s" href="#">Take the survey</a></div><div class="cb-survey-row"><div class="cb-survey-row__info"><span class="cb-survey-row__name">Market-day satisfaction</span><span class="cb-survey-row__meta">10 – 24 Jun · ~3 min</span></div><a class="gv-btn primary-outlined size-s" href="#">Share your view</a></div></div>`]
-    ].map(([cap, html]) => `<div class="pv-gcell"><span class="pv-gcell__cap">${cap}</span>${html}</div>`).join('');
-
-    return `
-     <div class="gv-wrap">
-      <section class="pp-banner" aria-label="Banner"><img src="assets/img/westmere/${v.banner}.webp" alt="" loading="lazy" /></section>
-      <div class="pp-head">
-        <h1 class="gv-title h1">${v.title}</h1>
-        <p class="pv-gallery__lead" style="max-width:680px;color:var(--gv-text-secondary);margin:10px 0 0;">${v.intro}</p>
-      </div>
-      <div class="pv-gallery">
-        <p class="pv-gallery__seg">About box — states</p>
-        <div class="pv-grid">${aboutCells}</div>
-        <p class="pv-gallery__seg">Extra surveys — card layouts (11)</p>
-        <div class="pv-grid">${cardCells}</div>
-        <p class="pv-gallery__seg">Extra surveys — formats &amp; styles</p>
-        <div class="pv-grid">${formatCells}</div>
-      </div>
-     </div>`;
-  }
-
   /* ════════════════════════ Boot + city switcher ════════════════════════ */
   const main = document.getElementById('pv-main');
 
@@ -775,8 +717,8 @@
   function render(idx) {
     const v = VARIANTS[idx];
     applyTheme(v.theme);
-    main.innerHTML = v.gallery ? renderGallery(v) : renderProject(v);
-    if (!v.gallery) renderStepperAndPhase(v);
+    main.innerHTML = renderProject(v);
+    renderStepperAndPhase(v);
     if (window.GVIcons) window.GVIcons.render();
     if (window.GVAvatars) window.GVAvatars.fill();
     if (window.GVPartbar && window.GVPartbar.init) window.GVPartbar.init();
@@ -802,8 +744,7 @@
     VARIANTS.forEach((v, i) => {
       const t = themes.find((x) => x.id === v.theme) || {};
       v._primary = t.primary || '#444';
-      const label = v.gallery ? 'Gallery' : v.city;
-      html += `<button class="pv-chip" role="tab" data-idx="${i}" aria-pressed="false" title="${v.city} — ${v.config}"><span class="pv-chip__sw" style="background:${v._primary}"></span>${label}</button>`;
+      html += `<button class="pv-chip" role="tab" data-idx="${i}" aria-pressed="false" title="${v.city} — ${v.config}"><span class="pv-chip__sw" style="background:${v._primary}"></span>${v.city}</button>`;
     });
     wrap.innerHTML = html;
     document.body.appendChild(wrap);
