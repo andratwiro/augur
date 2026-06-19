@@ -42,7 +42,7 @@
    responsively by toggling `.is-rail` at 1200px (see the demo's matchMedia
    snippet) — the real product is JS-driven, not CSS-only. */
 .gv-bo-side {
-  box-sizing: border-box; /* keep the 35px bottom padding INSIDE 100vh so the bottom-pinned
+  box-sizing: border-box; /* keep the bottom padding INSIDE 100vh so the bottom-pinned
                              items (account / Support) clear the viewport edge instead of
                              crashing into it — the content-box default pushed them off-screen */
   background: var(--gv-bo-sidebar-bg);
@@ -52,7 +52,7 @@
   width: 224px;
   font-size: 14px;
   line-height: 20px;
-  padding: 0 0 35px;
+  padding: 0 0 48px;
   /* Live: #sidebar is position:fixed, top:0, left:0, height:100vh — it stays put
      while the body scrolls, so the bottom-pinned items are always reachable. We
      use sticky within the grid (same result, no margin math; the 224px grid
