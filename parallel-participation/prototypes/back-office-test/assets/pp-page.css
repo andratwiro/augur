@@ -1,0 +1,69 @@
+/* pp-page.css — canonical project-page LAYOUT, lifted verbatim from pages/project-page.
+   Loaded inside the shared-renderer iframe (and available to the editor) so every surface
+   — phone preview, Eye/FO, builder canvas — draws the SAME page from one stylesheet.
+   Responsive breakpoints are viewport-based and fire correctly because each surface is a
+   real iframe viewport (390px phone, full-width desktop). Colour/elevation/type all come
+   from the canonical tokens + components (govocal-tokens.css / govocal-ui.css). */
+
+body.pp-doc { margin: 0; background: #fff; }
+.pp-doc main { padding-bottom: 8px; }
+
+/* layout-only (no colour/elevation/type authored here) */
+.pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
+.pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
+.pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Project header = TWO stacked wide/narrow rows (Content-Builder default layout).
+   Row 1: intro (wide) · CTA/participation box (narrow). Row 2: rest of the description. */
+.pp-head { padding: 36px 0 44px; }
+.pp-head h1 { margin: 20px 0 16px; }
+.pp-row { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 10px 40px; align-items: start; }
+.pp-cta { display: flex; flex-direction: column; gap: 20px; }
+.pp-cta .gv-participants { display: flex; justify-content: center; }
+.pp-intro { margin: 0; }
+@media (max-width: 760px) {
+  .pp-row { grid-template-columns: 1fr; }
+  .pp-cta { margin-bottom: 26px; }
+}
+
+/* ── Ideation MAP view (page-local; faithful to map-real-mapview capture) ── */
+.pp-map { position: relative; min-height: 560px; height: 560px; border-radius: var(--gv-radius); overflow: hidden;
+  border: 1px solid var(--gv-grey-200); background-color: #e8ede4; }
+.pp-map__canvas { position: absolute; inset: 0; border-radius: var(--gv-radius); z-index: 0; }
+.pp-map .leaflet-pane, .pp-map .leaflet-top, .pp-map .leaflet-bottom { z-index: 1; }
+.pp-poptitle { margin: 0 0 8px; font-size: var(--gv-fs-l); font-weight: 600; line-height: 1.25; color: var(--gv-text-heading-strong); }
+.pp-popstats { display: flex; align-items: center; gap: 16px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); }
+.pp-popstats span { display: inline-flex; align-items: center; gap: 6px; }
+.pp-popstats svg { width: 15px; height: 15px; }
+.pp-marker { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+  border-radius: 50%; background: var(--gv-tenant-primary); color: var(--gv-white); font-size: var(--gv-fs-s);
+  font-weight: 700; line-height: 1; border: 2px solid var(--gv-white); box-shadow: 0 1px 4px rgba(0,0,0,.4); cursor: pointer; }
+.pp-marker.is-active { background: var(--gv-tenant-secondary, var(--gv-tenant-primary)); transform: scale(1.12); }
+.pp-mapwrap { position: relative; isolation: isolate; }
+.pp-mappanel { position: absolute; top: 0; left: 0; bottom: 0; width: 360px; z-index: 1000;
+  display: flex; flex-direction: column; background: #fff; box-shadow: rgba(0,0,0,.12) 0 0 8px 0; }
+.pp-mappanel__top { padding: 16px; border-bottom: 1px solid var(--gv-grey-200); }
+.pp-mapcard__filters { width: 100%; justify-content: center; box-sizing: border-box; }
+.pp-mapcard__list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+.pp-mapidea { background: #fff; border: 1px solid #ccc; border-radius: var(--gv-radius); box-shadow: rgba(0,0,0,.06) 0 2px 4px -1px; padding: 16px 18px; cursor: pointer; }
+.pp-mapidea.is-active { border-color: var(--gv-tenant-primary); box-shadow: rgba(0,0,0,.12) 0 3px 8px -1px; }
+.pp-mapidea__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 600; line-height: 23px; color: var(--gv-text-heading-strong); }
+.pp-mapidea__stats { display: flex; align-items: center; gap: 16px; margin-top: 10px; color: var(--gv-cool-grey-600); font-size: 15px; }
+.pp-mapidea__stat { display: inline-flex; align-items: center; gap: 6px; }
+.pp-mapidea__stat .gv-icon, .pp-mapidea__stat svg { width: 16px; height: 16px; }
+.gv-feed.is-map { grid-template-columns: minmax(0, 1fr); }
+.gv-feed.is-map .gv-feed__col, .gv-feed.is-map .gv-feedfilter { display: none; }
+.gv-feed.is-map .pp-map { grid-column: 1; }
+.pp-toolbar.is-map .pp-toolbar__filters { display: none; }
+@media (max-width: 860px) {
+  .pp-mapwrap { display: flex; flex-direction: column; gap: 14px; }
+  .pp-map { min-height: 360px; height: 360px; order: 2; }
+  .pp-mappanel { display: contents; }
+  .pp-mappanel__top { order: 1; padding: 0; border: 0; }
+  .pp-mapcard__list { order: 3; overflow: visible; padding: 0; gap: 14px; }
+}
+
+/* Empty states for a freshly-built project (no submissions yet) — shown in method bodies. */
+.pp-empty { display: flex; gap: 14px; align-items: flex-start; max-width: 640px; color: var(--gv-text-secondary); }
+.pp-empty .gv-icon { color: var(--gv-tenant-primary); width: 26px; height: 26px; flex: none; }
+.pp-empty b { color: var(--gv-text-primary); display: block; margin-bottom: 4px; }
