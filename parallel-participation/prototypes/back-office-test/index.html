@@ -2783,7 +2783,7 @@
 
             <div class="pp-creation-foot">
               <button class="gv-btn secondary-outlined" onclick="setView('project', document.querySelector('[data-view=project]'))"><span class="gv-btn__label">Cancel</span></button>
-              <button class="gv-btn admin-dark" onclick="commitCreation()"><span class="gv-btn__label">Create phase</span></button>
+              <button class="gv-btn admin-dark" onclick="commitPhase()"><span class="gv-btn__label">Create phase</span></button>
             </div>
           </div>
         </div>
@@ -2816,7 +2816,7 @@
 
             <div class="pp-creation-foot">
               <button class="gv-btn secondary-outlined" onclick="setView('project', document.querySelector('[data-view=project]'))"><span class="gv-btn__label">Cancel</span></button>
-              <button class="gv-btn admin-dark" onclick="commitCreation()"><span class="gv-btn__label">Create survey</span></button>
+              <button class="gv-btn admin-dark" onclick="commitSurvey()"><span class="gv-btn__label">Create survey</span></button>
             </div>
           </div>
         </div>
@@ -4363,6 +4363,46 @@
       setPhase(CURRENT);
       if (window.GVIcons) window.GVIcons.render($('#view-fo'));
       if (window.GVAvatars) window.GVAvatars.fill($('#view-fo'));
+    },
+    // Render the live FO page from the tester-built model (window.ppBuilt). Same chrome
+    // as render(), but the DATA is assembled on the fly from what the tester configured.
+    renderModel(m) {
+      const page = $('#fo-page'), empty = $('#fo-empty');
+      if (!m || (!m.phases.length && !m.extras.length)) { page.hidden = true; empty.hidden = false; return; }
+      empty.hidden = true; page.hidden = false;
+      const phases = m.phases.map((p) => ({
+        name: p.name, method: p.method, dates: 'Open now', cta: p.cta,
+        status: p.status === 'live' ? 'current' : 'upcoming',
+        description: 'This phase invites people to take part.'
+      }));
+      if (phases.length && !phases.some((p) => p.status === 'current')) phases[0].status = 'current';
+      const cur = phases.find((p) => p.status === 'current');
+      IDEAS = MERIDIAN_IDEAS; PHASES = phases;
+      CURRENT = phases.findIndex((p) => p.status === 'current'); if (CURRENT < 0) CURRENT = 0;
+      ideaView = 'list';
+      if (ppMap) { ppMap.remove(); ppMap = null; ppMarkers = []; }
+      $('#fo-banner').src = 'assets/img/square.webp';
+      $('#fo-title').textContent = 'Reimagine Meridian 2030';
+      $('#fo-intro').innerHTML = '<p>Tell participants what this project is about and how they can take part.</p>';
+      $('#fo-desc').innerHTML = '<p>This placeholder description ships with every project — edit it to describe yours.</p>';
+      $('#fo-cta').innerHTML = cur ? CTA(cur.cta || 'Take part', '0') : '';
+      $('#fo-partbar').innerHTML = cur ? PARTBAR(cur.cta || 'Take part') : '';
+      // No events on a freshly-built project — hide the whole Events section.
+      const evGrid = $('#fo-events'); evGrid.innerHTML = '';
+      const evSection = evGrid.closest('.gv-section'); if (evSection) evSection.hidden = true;
+      // Phases section is only meaningful with phases.
+      const phasesSection = $('#fo-stepper') ? $('#fo-stepper').closest('.gv-methodband') : null;
+      if (phasesSection) phasesSection.hidden = !phases.length;
+      const ex = $('#fo-extra');
+      if (m.extras.length) {
+        ex.hidden = false;
+        ex.innerHTML = m.extras.map((e) =>
+          `<div class="gv-extra-survey gv-extra-survey--card"><span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span><h3 class="gv-extra-survey__title">${esc(e.title)}</h3><p class="gv-extra-survey__desc">Runs alongside the project — open to everyone.</p><a class="gv-btn secondary-outlined full" href="#">${esc(e.cta)}</a></div>`).join('');
+      } else { ex.hidden = true; ex.innerHTML = ''; }
+      wireOnce();
+      if (phases.length) { renderStepper(); setPhase(CURRENT); }
+      if (window.GVIcons) window.GVIcons.render($('#view-fo'));
+      if (window.GVAvatars) window.GVAvatars.fill($('#view-fo'));
     }
   };
 })();
@@ -5009,6 +5049,8 @@
     if (!sc) return;
     if (state === 'empty') {
       sc.innerHTML = emptyPhone();
+    } else if (state === 'built') {
+      sc.innerHTML = phoneBuilt();
     } else {
       sc.innerHTML = phoneFO(state);
     }
@@ -5281,6 +5323,17 @@
       timelineCard.innerHTML  = emptyTimeline();
       activitiesCard.innerHTML = emptyExtras();
 
+    } else if (state === 'built') {
+      // The tester-built project: editor panels + phone preview render from window.ppBuilt.
+      // No real participants yet, so audience stays hidden (like a fresh draft).
+      if (audienceNav) audienceNav.style.display = 'none';
+      const openUtil = ['audience','messaging','events','input360']
+        .some(v => { const el = document.getElementById('view-' + v); return el && el.style.display !== 'none'; });
+      if (openUtil) setView('project', document.querySelector('[data-view=project]'));
+      timelineCard.innerHTML  = builtTimeline();
+      activitiesCard.innerHTML = builtExtras();
+      if (window.GVIcons && GVIcons.render) { GVIcons.render(timelineCard); GVIcons.render(activitiesCard); }
+
     } else if (state === 'few') {
       // A simple project: 2 timeline phases + 1 survey in Extras
       timelineCard.innerHTML = `
@@ -5359,10 +5412,124 @@
     }
   }
 
-  // After "Create" in a demo, jump from empty to the populated "few" state.
-  function commitCreation() {
-    setProjectState('few', document.querySelector('.state-chip button[data-state="few"]'));
+  // ── Tester-built project model (LOCAL ONLY — lost on refresh) ────────────────
+  // As the tester adds phases/surveys in the empty editor, they accumulate here and
+  // flow into the editor panels AND the phone/FO preview. State becomes 'built' on the
+  // first creation. This is what lets us SEE what a fresh person actually configured.
+  window.ppBuilt = { phases: [], extras: [] };
+  let ppPhaseSeq = 0, ppExtraSeq = 0;
+  const ppEsc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // add-phase method-card title → { method (FO data key), label (timeline), cta (FO button) }
+  const PP_METHODS = {
+    'Collect input and feedback in public':         { method: 'ideation',      label: 'Ideation',      cta: 'Add your idea' },
+    'Proposals, petitions or initiatives':          { method: 'proposals',     label: 'Proposals',     cta: 'Submit a proposal' },
+    'Find common ground':                           { method: 'common-ground', label: 'Common ground', cta: 'Get started' },
+    'Create a survey':                              { method: 'survey',         label: 'Survey',        cta: 'Take the survey' },
+    'Conduct a voting or prioritization exercise':  { method: 'voting',         label: 'Voting',        cta: 'Cast your vote' },
+    'Share information':                            { method: 'information',    label: 'Information',   cta: 'Read more' },
+    'Recruit participants or volunteers':           { method: 'volunteering',   label: 'Volunteering',  cta: 'Volunteer' },
+  };
+  function ppMethodFromCard(scope) {
+    const sel = document.querySelector(scope + ' .gv-bo-methodcard.is-selected .gv-bo-methodcard__title');
+    const title = sel ? sel.textContent.trim() : '';
+    return PP_METHODS[title] || { method: 'ideation', label: 'Ideation', cta: 'Take part' };
+  }
+
+  // "Create phase" — capture the form, push to the model, reflect everywhere.
+  function commitPhase() {
+    const nameEl = document.querySelector('#view-add-phase input.gv-input');
+    const m = ppMethodFromCard('#view-add-phase');
+    const name = (nameEl && nameEl.value.trim()) || (m.label === 'Survey' ? 'Survey phase' : m.label);
+    // First phase is the live/current one; later phases queue as upcoming.
+    const status = window.ppBuilt.phases.length === 0 ? 'live' : 'upcoming';
+    window.ppBuilt.phases.push({ id: 'bp' + (++ppPhaseSeq), name, method: m.method, label: m.label, cta: m.cta, status });
+    ppResetPhaseForm();
+    setProjectState('built', null);
     setView('project', document.querySelector('[data-view="project"]'));
+  }
+  // "Create survey" — off-timeline extra survey.
+  function commitSurvey() {
+    const inps = document.querySelectorAll('#view-add-survey input.gv-input');
+    const title = (inps[0] && inps[0].value.trim()) || 'Survey';
+    const cta = (inps[1] && inps[1].value.trim()) || 'Take the survey';
+    window.ppBuilt.extras.push({ id: 'bx' + (++ppExtraSeq), title, cta });
+    ppResetSurveyForm();
+    setProjectState('built', null);
+    setView('project', document.querySelector('[data-view="project"]'));
+  }
+  function ppResetPhaseForm() {
+    const inp = document.querySelector('#view-add-phase input.gv-input'); if (inp) inp.value = '';
+    document.querySelectorAll('#view-add-phase .gv-bo-methodcard').forEach((c, i) => c.classList.toggle('is-selected', i === 0));
+  }
+  function ppResetSurveyForm() {
+    const inps = document.querySelectorAll('#view-add-survey input.gv-input');
+    if (inps[0]) inps[0].value = '';
+    if (inps[1]) inps[1].value = 'Take the survey';
+  }
+  window.commitPhase = commitPhase;
+  window.commitSurvey = commitSurvey;
+
+  // Editor TIMELINE panel built from the model (falls back to the empty example).
+  function builtTimeline() {
+    const phases = window.ppBuilt.phases;
+    if (!phases.length) return emptyTimeline();
+    const rows = phases.map((p) =>
+      '<div class="phase-row-rich timeline-item"><div class="phase-status-dot ' + (p.status === 'live' ? 'live' : 'upcoming') + '"></div>'
+      + '<div class="flex-1 min-w-0"><div class="phase-name">' + ppEsc(p.name) + '</div>'
+      + '<div class="phase-dates">' + ppEsc(p.label) + '</div></div></div>').join('');
+    return ES_TL_HEAD + '<div class="timeline-group">' + rows + '</div>' + ES_NEWPHASE;
+  }
+  // Editor EXTRAS panel built from the model (falls back to the empty header).
+  function builtExtras() {
+    const extras = window.ppBuilt.extras;
+    if (!extras.length) return emptyExtras();
+    const rows = extras.map((e) =>
+      '<div class="phase-row-rich"><div class="phase-status-dot live"></div>'
+      + '<div class="flex-1 min-w-0"><div class="phase-name">' + ppEsc(e.title) + '</div>'
+      + '<div class="phase-dates">Survey · Ongoing</div></div></div>').join('');
+    return '<hr class="panel-divider" /><div class="sec-head">Extras</div>'
+      + '<div class="sec-sub">Surveys that run outside your timeline</div>'
+      + rows
+      + '<button class="sec-add muted" onclick="setView(&#39;add-survey&#39;)">' + ES_PLUS + 'New survey</button>';
+  }
+
+  // Phone preview built from the model — a real (if young) project page.
+  function phoneBuilt() {
+    const phases = window.ppBuilt.phases, extras = window.ppBuilt.extras;
+    if (!phases.length && !extras.length) return emptyPhone();
+    let ci = phases.findIndex((p) => p.status === 'live'); if (ci < 0) ci = 0;
+    const cur = phases[ci];
+    const stepper = phases.map((p, i) =>
+      '<button class="gv-phase' + (i === ci ? ' current' : '') + '" type="button"><span class="gv-pstep">' + (i + 1) + '</span><span class="gv-phase__label">' + ppEsc(p.name) + '</span></button>').join('');
+    const pbox = cur
+      ? '<div class="pp-fo__pbox pp-edit" data-edit="participation-box"><div class="pp-fo__cta"><a class="gv-btn primary full" href="#">' + ppEsc(cur.cta) + '</a></div>'
+        + '<div class="gv-participants pp-fo__parts" style="margin-top:10px;"><span class="gv-pcount es-default-lead">Be the first to take part</span></div></div>'
+      : '<div class="pp-fo__pbox"><div class="pp-fo__cta"><span class="es-sk es-sk--btn" style="width:100%;"></span></div></div>';
+    const timeline = phases.length
+      ? '<div class="pp-fo__pad pp-fo__pad--grey"><div class="pp-edit" data-edit="timeline">'
+        + '<h2 class="gv-title h3 pp-fo__h2">Timeline</h2>'
+        + '<div class="gv-stepper pp-fo__stepper">' + stepper + '</div>'
+        + '<div class="pp-fo__phasecard"><div class="pp-fo__phasecard-eyebrow">Current phase · ' + (ci + 1) + ' of ' + phases.length + '</div>'
+        + '<h3 class="pp-fo__phasecard-title">' + ppEsc(cur.name) + '</h3>'
+        + '<div class="pp-fo__phasecard-dates"><span data-gv-icon="clock" aria-hidden="true"></span> Open now · ' + ppEsc(cur.label) + '</div></div>'
+        + '</div></div>'
+      : '';
+    const extrasHtml = extras.length
+      ? '<div class="pp-fo__pad"><h2 class="gv-title h3 pp-fo__h2">Other ways to take part</h2>'
+        + extras.map((e) =>
+          '<div class="gv-extra-survey gv-extra-survey--card" style="margin-top:12px;"><span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span>'
+          + '<h3 class="gv-extra-survey__title">' + ppEsc(e.title) + '</h3>'
+          + '<p class="gv-extra-survey__desc">Runs alongside the project — open to everyone.</p>'
+          + '<a class="gv-btn secondary-outlined full" href="#">' + ppEsc(e.cta) + '</a></div>').join('')
+        + '</div>'
+      : '';
+    return '<div class="pp-fo"><div class="pp-fo__pad" style="padding-bottom:20px;">'
+      + '<div class="ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
+      + '<div class="pp-edit" data-edit="title" style="margin-top:18px;"><h1 class="gv-title h1 pp-fo__title">' + ES_REAL_TITLE + '</h1></div>'
+      + '<p class="pp-fo__lead es-default-lead">Tell participants what this project is about and how they can take part. This placeholder text ships with every project — edit it to describe yours.</p>'
+      + pbox
+      + '</div>' + timeline + extrasHtml + '</div>';
   }
 
   // Open in the EMPTY state by default — a blank project the tester builds from scratch
@@ -5389,7 +5556,8 @@
     if (!v) return;
     const state = window.ppState || 'empty';
     // The real GoVocal project page (ported engine), driven by the editor's state.
-    if (window.FO && window.FO.render) window.FO.render(state);
+    if (state === 'built' && window.FO && window.FO.renderModel) window.FO.renderModel(window.ppBuilt);
+    else if (window.FO && window.FO.render) window.FO.render(state);
     syncFOTheme();
     v.style.display = 'flex';
     const sc = v.querySelector('.foview-scroller');
