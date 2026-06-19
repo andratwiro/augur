@@ -1,0 +1,6 @@
+<svg width="672" height="640" viewBox="176 150 672 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Augur">
+  <g fill="#2C2150">
+    <path d="M512 350 L556 400 L820 246 L726 516 L560 516 L546 572 L574 664 L512 620 Z"/>
+    <path transform="matrix(-1 0 0 1 1024 0)" d="M512 350 L556 400 L820 246 L726 516 L560 516 L546 572 L574 664 L512 620 Z"/>
+  </g>
+</svg>
