@@ -17,11 +17,15 @@
 <link rel="stylesheet" href="assets/govocal-tokens.css" />
 <link rel="stylesheet" href="assets/govocal-ui.css" />
 <link rel="stylesheet" href="assets/govocal-bo.css" />
+<link rel="stylesheet" href="assets/govocal-widgets.css" />
 <!-- Leaflet (open-source maps) — only used by the hooked FO project page's ideation MAP view -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script src="assets/govocal-icons.js" defer></script>
 <script src="assets/govocal-avatars.js" defer></script>
+<!-- Canonical Page Builder engine + project widget registry (shared source of truth) -->
+<script src="assets/govocal-widgets.js" defer></script>
+<script src="assets/govocal-pagebuilder.js" defer></script>
 <!-- Audience charts (Demographics + Traffic) use the canonical GVChart wrapper -->
 <script src="assets/vendor/apexcharts.min.js" defer></script>
 <script src="assets/govocal-charts.js" defer></script>
@@ -5220,7 +5224,7 @@
   function ppPost(frame) { try { frame.contentWindow.postMessage({ ppModel: buildModel(), ppTheme: ppTheme(), ppMode: frame.dataset.mode || 'fo' }, '*'); } catch (e) {} }
   function ppMountFrame(container, mode) {
     var f = document.createElement('iframe');
-    f.className = 'pp-frame'; f.src = 'pp-page.html'; f.dataset.mode = mode || 'fo';
+    f.className = 'pp-frame'; f.src = 'pp-page.html' + window.location.search; f.dataset.mode = mode || 'fo';
     f.style.cssText = 'border:0;display:block;width:100%;height:100%;background:#fff;';
     container.innerHTML = ''; container.appendChild(f);
     ppFrames.push(f);
@@ -5755,1209 +5759,179 @@
 
 
 <script id="cb-script">
-(function () {
-    var root    = document.getElementById('cb-root');
-    var frame   = document.getElementById('cb-frame');
-    var panel   = document.getElementById('e2e-content-builder-settings');
-    var sTitle  = document.getElementById('cb-settings-title');
-    var sBody   = document.getElementById('cb-settings-body');
+/* Canonical Page Builder mount — this prototype now RUNS the shared engine
+ * (assets/govocal-pagebuilder.js · GVPageBuilder.mount) with the canonical project
+ * widget registry (assets/govocal-widgets.js · GVWidgets.project), instead of the
+ * old forked copy. The registry already carries the 5-direction participation box +
+ * extra-surveys, so the widget DOM matches what the rest of this SPA expects.
+ *
+ * SYNC: the FO bridge (buildModel / ppRenderBlock / ppGetContent / iframe postMessage,
+ * all OUTSIDE this block) reads #cb-frame > .gv-bo-cb-block[data-widget] and the inner
+ * .cb-* classes the canonical widgets emit — so that bridge keeps working untouched.
+ *
+ * This block re-provides every window.* the rest of the SPA depends on that the old
+ * fork defined INSIDE cb-script: cbSyncFromModel (the model bridge), cbFocusWidget,
+ * ppSave, ppFlush — plus the localStorage persistence + auto-save that lived here. */
+// Run after the deferred engine + registry scripts have executed (they finish before
+// DOMContentLoaded fires). This inline block would otherwise parse-execute too early.
+function cbBoot() {
+    var root  = document.getElementById('cb-root');
+    var frame = document.getElementById('cb-frame');
     var toastEl = document.getElementById('cb-toast');
-    var uid = 1;
-
-    // ── widget catalogue: label + the default content markup it drops ──────────
-    // SYNC: project-page sync set = these WIDGETS (builder) ⇄ assets/pp-render.js +
-    // assets/pp-page.css (shared renderer) ⇄ pages/project-page/index.html (canonical).
-    // Change a widget/the project page → update all four. See memory page-builder-sync-contract.
-    var WIDGETS = {
-      'text':            { label: 'Text',              make: function () { return '<div class="gv-bo-cb-block__body"><div class="cb-richtext cb-p" contenteditable="true">This is some text. You can edit and format it by using the editor in the panel on the right.</div></div>'; } },
-      'button':          { label: 'Button',            make: function () { return '<div class="cb-btnblock"><span class="cb-fakebtn">Take the survey</span></div>'; } },
-      'image':           { label: 'Image',             make: function () { return '<div class="cb-imgph"><span class="gv-icon" data-gv-icon="eye"></span> Click to upload an image</div>'; } },
-      'two-column':      { label: '2 column',          make: function () { return '<div class="cb-cols cb-cols-2"><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
-      'three-column':    { label: '3 column',          make: function () { return '<div class="cb-cols cb-cols-3"><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div><div class="cb-col cb-zone--empty" data-cb-zone="col"><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
-      'white-space':     { label: 'White space',       make: function () { return '<div class="cb-ws"></div>'; } },
-      'accordion':       { label: 'Accordion',         make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">Accordion title</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">Hidden panel content the resident can expand.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
-      'iframe':          { label: 'Embed',             make: function () { return '<div class="cb-iframe">&lt;/&gt; Embedded content<span class="cb-iframe__cap">Paste a URL to embed</span></div>'; } },
-      'participation-box':       { label: 'Participation Box',  make: function () { return cbPboxBodyHTML(cbPboxDefault()); } },
-      'file-attachment': { label: 'File Attachment',    make: function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__info"><span class="cb-file__name">project-brief.pdf</span><span class="cb-file__meta">PDF · 1.2 MB</span></span></div>'; } },
-      'image-text-cards':{ label: 'Image & text cards', make: function () { return '<div class="cb-cards" data-n="3"><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card one</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card two</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card three</div></div></div>'; } },
-      'info-accordions': { label: 'Info & accordions',  make: function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">How will my idea be used?</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; } },
-      // ── project-page components (this is the project's content builder) ──────
-      'timeline':        { label: 'Timeline',           make: function () { return cbTimelineHTML(); } },
-      'events':          { label: 'Events',             make: function () { return cbEventsHTML(2); } },
-      'extra-surveys':   { label: 'Extra surveys',      make: function () { return cbSurveyHTML('mobility','card','primary','','easy','current'); } },
-      // locked top blocks (never in the palette; created via makeLockedBlock)
-      'hero':            { label: 'Project image' },
-      'title':           { label: 'Project title' }
-    };
-
-    // The project's phase timeline = the canonical .gv-phases / .gv-stepper ribbon
-    // (the same component the resident sees on the project page).
-    // Structural project data starts EMPTY and is fed from the tester's model
-    // (window.ppBuilt) via cbSyncFromModel() — so the builder shows exactly what the
-    // tester built, identical to the phone/FO preview. No Meridian sample data.
-    var CB_PHASES = [];
-    var CB_CURRENT = 0;
-    // The participation box CTA mirrors the action available in the CURRENT phase.
-    var CB_METHOD_CTA = { information: 'Learn more', survey: 'Take the survey', ideation: 'Submit your idea', voting: 'Cast your vote', proposals: 'Submit a proposal' };
-    function cbCurrentCTA() { var p = CB_PHASES[CB_CURRENT] || {}; return p.cta || CB_METHOD_CTA[p.method] || 'Take part'; }
-    // Keep every participation box's primary CTA in sync with the current phase,
-    // unless an editor has manually overridden it (data-cta-custom).
-    function syncParticipationCTAs() {
-      var ctas = document.querySelectorAll('#cb-frame .cb-pbox [data-pbox="cta"]');
-      for (var i = 0; i < ctas.length; i++) if (!ctas[i].hasAttribute('data-cta-custom')) ctas[i].textContent = cbCurrentCTA();
-    }
-    function cbPhasePanel(i) {
-      var p = CB_PHASES[i], muted = i === CB_CURRENT ? '' : ' muted';
-      return '<div class="gv-phasepanel__head' + muted + '">' +
-          '<span class="gv-phasepanel__num" aria-hidden="true">' + (i + 1) + '</span>' +
-          '<div><h3 class="gv-phasepanel__name">' + p.name + '</h3>' +
-          '<p class="gv-phasepanel__date">' + p.dates + '</p></div></div>' +
-        '<div class="gv-phasepanel__desc"><p>' + p.desc + '</p></div>';
-    }
-    function cbTimelineHTML() {
-      if (!CB_PHASES.length) return '<section class="gv-phases cb-timeline"><div class="gv-phases__bar"><h2>Phases</h2></div><div class="cb-empty-hint">No phases yet — add one from the project timeline on the left.</div></section>';
-      var steps = CB_PHASES.map(function (p, i) {
-        var cur = i === CB_CURRENT, dot = cur ? '<span class="gv-pstep__dot"></span>' : '';
-        return '<button class="gv-phase' + (cur ? ' current' : '') + '" type="button" role="tab" data-i="' + i + '" aria-selected="' + (i === CB_CURRENT) + '">' +
-          '<span class="gv-pstep">' + dot + (i + 1) + '</span><span class="gv-phase__label">' + p.name + '</span></button>';
-      }).join('');
-      return '<section class="gv-phases cb-timeline">' +
-        '<div class="gv-phases__bar"><h2>Phases</h2></div>' +
-        '<div class="gv-stepper" role="tablist" aria-label="Project phases">' + steps + '</div>' +
-        '<div class="gv-phasepanel cb-timeline__panel">' + cbPhasePanel(CB_CURRENT) + '</div></section>';
-    }
-    function cbEventCard(ev) {
-      return '<article class="gv-event-card">' +
-        '<div class="gv-event-card__media" aria-hidden="true">' +
-          '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
-          '<span class="gv-event-card__date"><span class="m">' + ev.m + '</span><span class="d">' + ev.d + '</span><span class="y">' + ev.y + '</span></span></div>' +
-        '<div class="gv-event-card__body"><h3 class="gv-event-card__title"><a href="#">' + ev.title + '</a></h3>' +
-          '<div class="gv-event-card__meta">' +
-            '<p class="gv-event-card__row"><span data-gv-icon="clock"></span> ' + ev.when + '</p>' +
-            '<p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> ' + ev.where + '</p>' +
-            '<p class="gv-event-card__row"><span data-gv-icon="user"></span> ' + ev.regs + ' registrants</p></div>' +
-          '<a class="gv-btn primary full" href="#">Register</a></div></article>';
-    }
-    // Order matters: the seeded Events block shows the first two — kept in step with the
-    // two events the resident sees on the FO page (phoneFO complex).
-    // Events have no tester-facing creation flow, so they stay empty (and the widget is
-    // omitted from the default page) — keeping the builder in step with the preview.
-    var CB_EVENTS = [];
-    function cbEventsHTML(n) {
-      var cards = CB_EVENTS.slice(0, n).map(cbEventCard).join('');
-      return '<section class="cb-events"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Events</h2>' +
-        '<a class="gv-btn text" href="#">View all events</a></div>' +
-        '<div class="gv-events__grid">' + cards + '</div></section>';
-    }
-    var CB_SURVEYS = [];
-    function cbExtraSurveysHTML() {
-      if (!CB_SURVEYS.length) return '<section class="cb-extra"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Extra surveys</h2></div><div class="cb-empty-hint">No extra surveys yet — add one from Extras on the left.</div></section>';
-      var rows = CB_SURVEYS.map(function (s) {
-        return '<div class="cb-survey-row"><div class="cb-survey-row__info"><span class="cb-survey-row__name">' + s.name + '</span><span class="cb-survey-row__meta">' + s.meta + '</span></div><a class="gv-btn primary-outlined size-s" href="#">' + s.cta + '</a></div>';
-      }).join('');
-      return '<section class="cb-extra"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Extra surveys</h2></div><div class="cb-extra__list">' + rows + '</div></section>';
-    }
-
-    // ── Single source of truth: pull the tester's model (window.ppBuilt) into the
-    //    builder's structural data + re-render the timeline / extra-surveys / participation
-    //    box blocks, so the builder canvas shows EXACTLY what the phone/FO preview shows. ──
-    function modelToMethods() {
-      var m = window.ppBuilt || { phases: [], extras: [] };
-      var out = [];
-      m.phases.forEach(function (p) {
-        out.push({ id: 'pm_' + p.id, type: p.method, label: p.name, cta: p.cta, dates: 'Open now',
-          status: p.status === 'live' ? 'active' : 'upcoming', timeline: true, current: p.status === 'live', visible: true });
-      });
-      m.extras.forEach(function (e) {
-        out.push({ id: 'sm_' + e.id, type: 'survey', label: e.title, cta: e.cta, dates: 'Ongoing',
-          status: 'active', timeline: false, current: false, visible: true });
-      });
-      return out;
-    }
-    window.cbSyncFromModel = function () {
-      var m = window.ppBuilt || { phases: [], extras: [] };
-      CB_PHASES = m.phases.map(function (p) {
-        return { name: p.name, method: p.method, cta: p.cta, dates: 'Open now', desc: 'This phase invites people to take part.' };
-      });
-      CB_CURRENT = m.phases.findIndex(function (p) { return p.status === 'live'; });
-      if (CB_CURRENT < 0) CB_CURRENT = 0;
-      CB_SURVEYS = m.extras.map(function (e) { return { name: e.title, meta: 'Ongoing', cta: e.cta }; });
-      var methods = modelToMethods();
-      var tl = frame.querySelector('[data-widget="timeline"]'); if (tl) cbSetBody(tl, cbTimelineHTML());
-      var es = frame.querySelector('[data-widget="extra-surveys"]'); if (es) cbSetBody(es, cbExtraSurveysHTML());
-      // Participation box(es): feed the model's methods + a fresh aggregate title, re-render.
-      var visCount = methods.filter(function (x) { return x.visible && x.status === 'active'; }).length;
-      Array.prototype.forEach.call(frame.querySelectorAll('[data-widget="participation-box"]'), function (block) {
-        var st = cbPboxState(block);
-        st.methods = methods;
-        st.showParticipants = false;   // fresh project — no real participants yet
-        st.aggTitle = 'Participate · ' + visCount + ' way' + (visCount === 1 ? '' : 's');
-        cbSetBody(block, cbPboxBodyHTML(st));
-      });
-      if (window.GVIcons) window.GVIcons.render(frame);
-    };
-
     function toast(msg) {
+      if (!toastEl) return;
       toastEl.textContent = msg; toastEl.classList.add('is-show');
       clearTimeout(toast._t); toast._t = setTimeout(function () { toastEl.classList.remove('is-show'); }, 1400);
     }
 
-    // ══════════ Participation Box + Extra surveys — original-prototype behaviour ══════════
-    // Replace a block's body (everything after its .gv-bo-cb-block__label) with new HTML.
-    function cbSetBody(block, html) {
-      var label = block.querySelector('.gv-bo-cb-block__label');
-      while (block.lastChild && block.lastChild !== label) block.removeChild(block.lastChild);
-      var tmp = document.createElement('div'); tmp.innerHTML = html;
-      while (tmp.firstChild) block.appendChild(tmp.firstChild);
-      if (window.GVIcons) window.GVIcons.render(block);
-      if (window.GVAvatars) window.GVAvatars.fill(block);
-    }
+    if (!window.GVPageBuilder || !window.GVWidgets) { console.error('[cb] GVPageBuilder/GVWidgets not loaded'); return; }
 
-    // ── Participation Box: aggregates the project's ACTIVE participation methods ──
-    // Filled (tenant-brand) button = the current-phase method; parallel/extra methods
-    // are outlined. >2 visible methods collapse into one editable "Participate" button.
-    var PBOX_STATE = {};
-    function cbPboxDefault() {
-      // Each method carries: type, run dates, temporal status (active/upcoming/past),
-      // timeline=true (a phase method, system-driven) and current=true (the live phase).
-      // `panel` = which CONFIGURATION-PANEL design (A–E) is shown — a prototype experiment
-      // on the right-side settings. The rendered module itself is fixed (direction A).
-      return { panel: 'A', showParticipants: true, aggTitle: 'Participate · 3 ways', methods: [
-        { id:'m_idea',    type:'ideation',     label:'Upload your idea for the neighbourhood park', cta:'Submit your idea',    dates:'20 May – 10 Jun', status:'active',   timeline:true,  current:true,  visible:true  },
-        { id:'m_qa',      type:'information',  label:'Ask the budget team anything',                cta:'Ask a question',      dates:'Ongoing',         status:'active',   timeline:false, current:false, visible:true  },
-        { id:'m_school',  type:'survey',       label:'School survey',                               cta:'Take the survey',     dates:'1 – 20 Jun',      status:'active',   timeline:false, current:false, visible:false },
-        { id:'m_travel',  type:'survey',       label:'School-run travel survey',                    cta:'Opens 1 Jul',         dates:'1 – 15 Jul',      status:'upcoming', timeline:false, current:false, visible:false },
-        { id:'m_vote',    type:'voting',       label:'Community vote',                              cta:'Opens 12 Jul',        dates:'12 – 26 Jul',     status:'upcoming', timeline:true,  current:false, visible:false },
-        { id:'m_budget',  type:'survey',       label:'Spring budget priorities',                    cta:'Closed 17 days ago',  dates:'Closed 2 Jun',    status:'past',     timeline:false, current:false, visible:false },
-        { id:'m_offline', type:'volunteering', label:'Offline test',                                cta:'Sign up',             dates:'Ongoing',         status:'active',   timeline:false, current:false, visible:false }
-      ] };
-    }
-    function cbPboxState(block) { if (!PBOX_STATE[block.id]) PBOX_STATE[block.id] = cbPboxDefault(); return PBOX_STATE[block.id]; }
-
-    // ── Method-presentation helpers ──
-    var PBOX_TYPES  = { ideation:'Ideation', survey:'Survey', voting:'Voting', information:'Q&A', volunteering:'Volunteering', mapping:'Mapping' };
-    var PBOX_STATUS = { active:['open','Open'], upcoming:['upcoming','Upcoming'], past:['closed','Closed'] };
-    function pbType(m)  { return '<span class="pbm-type">' + (PBOX_TYPES[m.type] || m.type) + '</span>'; }
-    function pbPill(m)  { var s = PBOX_STATUS[m.status] || PBOX_STATUS.active; return '<span class="gv-statuspill ' + s[0] + '">' + s[1] + '</span>'; }
-    function pbDates(m) { return '<span class="pbm-dates"><span class="gv-icon" data-gv-icon="calendar"></span>' + m.dates + '</span>'; }
-    function pbBtn(m, style, dis) { return '<a class="gv-btn full ' + style + '" href="#"' + (dis ? ' aria-disabled="true"' : '') + '>' + m.cta + '</a>'; }
-    function pbActive(m) { return m.status === 'active'; }
-    function pbOrder(a, b) {                              // current first, then active → upcoming → past
-      if (!!a.current !== !!b.current) return a.current ? -1 : 1;
-      var rank = { active:0, upcoming:1, past:2 };
-      return (rank[a.status] || 0) - (rank[b.status] || 0);
-    }
-    var PBOX_EMPTY = '<div class="gv-pbox__empty">No active methods</div>';
-
-    // ── 5 design directions. Each renders the project's visible methods differently;
-    //    the timeline (current-phase) method is highlighted. Add a key to add a chip. ──
-    var PBOX_DIRECTIONS = {
-      // A — Action stack (today): active methods only, as full-width buttons.
-      A: { name: 'A · Action stack — buttons only (today)', render: function (st, vis) {
-        var act = vis.filter(pbActive).sort(pbOrder);
-        if (!act.length) return PBOX_EMPTY;
-        var cta = act.length <= 2
-          ? act.map(function (m) { return pbBtn(m, m.current ? 'primary' : 'secondary-outlined'); }).join('')
-          : pbBtn({ cta: st.aggTitle || 'Participate' }, 'primary');
-        return '<div class="gv-pbox__actions">' + cta + '</div>';
-      } },
-      // B — Detailed rows: active methods with type + dates inline; current phase accented.
-      B: { name: 'B · Detailed rows — type + dates', render: function (st, vis) {
-        var act = vis.filter(pbActive).sort(pbOrder);
-        if (!act.length) return PBOX_EMPTY;
-        return '<div class="pbm-rows">' + act.map(function (m) {
-          return '<div class="pbm-row' + (m.current ? ' is-current' : '') + '">' +
-            '<div class="pbm-row__info">' +
-              '<div class="pbm-row__top">' + pbType(m) + (m.current ? '<span class="pbm-flag">This phase</span>' : '') + '</div>' +
-              '<div class="pbm-row__name">' + m.label + '</div>' + pbDates(m) +
-            '</div>' + pbBtn(m, m.current ? 'primary' : 'secondary-outlined') +
-          '</div>';
-        }).join('') + '</div>';
-      } },
-      // C — Full roster: every method (active + upcoming + past), status pill + dates.
-      //     Inactive ones are muted and non-interactive — the whole arc at a glance.
-      C: { name: 'C · Full roster — all states', render: function (st, vis) {
-        var all = vis.slice().sort(pbOrder);
-        if (!all.length) return PBOX_EMPTY;
-        return '<div class="pbm-roster">' + all.map(function (m) {
-          return '<div class="pbm-rosteritem' + (m.current ? ' is-current' : '') + (pbActive(m) ? '' : ' is-inactive') + '">' +
-            '<div class="pbm-rosteritem__head">' + pbType(m) + pbPill(m) + '</div>' +
-            '<div class="pbm-rosteritem__name">' + m.label + '</div>' + pbDates(m) +
-            (pbActive(m) ? pbBtn(m, m.current ? 'primary' : 'secondary-outlined') : '<span class="pbm-cta-muted">' + m.cta + '</span>') +
-          '</div>';
-        }).join('') + '</div>';
-      } },
-      // D — Featured + compact: current-phase method featured, other active ones compact.
-      D: { name: 'D · Featured current + compact rest', render: function (st, vis) {
-        var act = vis.filter(pbActive);
-        var cur = act.filter(function (m) { return m.current; })[0];
-        var rest = act.filter(function (m) { return !m.current; }).sort(pbOrder);
-        var out = '';
-        if (cur) {
-          out += '<div class="pbm-feature">' +
-            '<div class="pbm-feature__head">' + pbType(cur) + '<span class="pbm-flag">This phase</span></div>' +
-            '<div class="pbm-feature__name">' + cur.label + '</div>' + pbDates(cur) + pbBtn(cur, 'primary') + '</div>';
-        }
-        if (rest.length) {
-          out += '<div class="pbm-compact">' + rest.map(function (m) {
-            return '<a class="pbm-compactrow" href="#">' + pbType(m) + '<span class="pbm-compactrow__cta">' + m.cta + '</span><span class="gv-icon" data-gv-icon="chevron-right"></span></a>';
-          }).join('') + '</div>';
-        }
-        return out || PBOX_EMPTY;
-      } },
-      // E — Grouped by track: "Current phase" (timeline spine) vs "Other ways to take part"
-      //     (admin-curated extras). Active only; mirrors the timeline-vs-extra split.
-      E: { name: 'E · Grouped — phase vs extras', render: function (st, vis) {
-        var act = vis.filter(pbActive);
-        function grp(label, items) {
-          if (!items.length) return '';
-          return '<div class="pbm-group"><div class="pbm-group__label">' + label + '</div>' +
-            items.sort(pbOrder).map(function (m) {
-              return '<div class="pbm-grouprow' + (m.current ? ' is-current' : '') + '">' +
-                '<div class="pbm-grouprow__info">' + pbType(m) + '<span class="pbm-grouprow__name">' + m.label + '</span>' + pbDates(m) + '</div>' +
-                pbBtn(m, m.current ? 'primary' : 'secondary-outlined') + '</div>';
-            }).join('') + '</div>';
-        }
-        var out = grp('Current phase', act.filter(function (m) { return m.timeline; })) +
-                  grp('Other ways to take part', act.filter(function (m) { return !m.timeline; }));
-        return out || PBOX_EMPTY;
-      } }
-    };
-
-    function cbPboxBodyHTML(st) {
-      var dir = PBOX_DIRECTIONS[st.direction] ? st.direction : 'A';
-      var vis = st.methods.filter(function (m) { return m.visible; });
-      var inner = PBOX_DIRECTIONS[dir].render(st, vis);
-      var people = st.showParticipants
-        ? '<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+19 participants <span class="cb-pbox__info" data-gv-icon="info-solid"></span></span></div>'
-        : '';
-      return '<div class="gv-pbox gv-pbox--dir-' + dir.toLowerCase() + '">' + inner + people + '</div>';
-    }
-
-    // ── Extra survey: a linked survey rendered as a button or a full card,
-    //    in GoVocal primary (navy) or secondary (soft teal) style. ──
-    var SURVEY_STATE = {};
-    var SURVEY_DATA = { mobility: {
-      name:'Mobility check-in',
-      range:'1 – 15 Jun 2026 · Ongoing',
-      status:'Ongoing',
-      desc:'A 2-minute survey on how you move around the city this month — your answers feed the mobility plan.',
-      cta:'Take the survey',
-      minutes:'2 min', questions:8, responses:248, closesIn:'Closes in 5 days', progress:64
-    } };
-    function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'mobility', format:'card', style:'primary', label:'', cardVariant:'easy', state:'current' }; return SURVEY_STATE[block.id]; }
-    // Temporal states — the radios at the bottom of the config. Each mirrors one of the
-    // three FO "Extra survey — three states" cards (status pill + meta row + CTA treatment).
-    var SURVEY_STATES = {
-      current:    { pill:'open',     pillText:'Open',     m1:'<span class="gv-icon" data-gv-icon="clock"></span> Closes in 5 days',    m2:'<span class="gv-icon" data-gv-icon="check"></span> 248 responses',          cta:'Take the survey', btn:'primary',            dis:false, allowLabel:true  },
-      notstarted: { pill:'upcoming', pillText:'Upcoming', m1:'<span class="gv-icon" data-gv-icon="calendar"></span> Opens 1 Jul 2026', m2:'<span class="gv-icon" data-gv-icon="survey"></span> 8 questions',           cta:'Opens 1 Jul',     btn:'primary',            dis:true,  allowLabel:false },
-      past:       { pill:'closed',   pillText:'Closed',   m1:'<span class="gv-icon" data-gv-icon="check"></span> 412 responses',        m2:'<span class="gv-icon" data-gv-icon="calendar"></span> Closed 2 Jun 2026',   cta:'Closed 17 days ago', btn:'secondary-outlined', dis:true,  allowLabel:false },
-      // Survey still open, but THIS resident has already responded — a personal done-state.
-      taken:      { pill:'done',     pillText:'Completed',  m1:'<span class="gv-icon" data-gv-icon="check"></span> You responded 3 days ago', m2:'<span class="gv-icon" data-gv-icon="clock"></span> Closes in 5 days', cta:'<span class="gv-icon" data-gv-icon="check"></span> Thanks — response received', btn:'secondary-outlined', dis:true, allowLabel:false },
-      // Survey open, but this resident can't take it (group/verification/area permission). Rough — treatment TBD.
-      ineligible: { pill:'locked',   pillText:'Restricted', m1:'<span class="gv-icon" data-gv-icon="lock"></span> Verified residents only', m2:'<span class="gv-icon" data-gv-icon="clock"></span> Closes in 5 days', cta:'<span class="gv-icon" data-gv-icon="lock"></span> You’re not eligible to take this survey', btn:'secondary-outlined', dis:true, allowLabel:false }
-    };
-    function cbSurveyHTML(survey, format, style, label, variant, state) {
-      if (!survey) return '<div class="gv-extra-survey__empty"><div class="gv-extra-survey__empty-t">📣 Survey</div><div class="gv-extra-survey__empty-s">Select a survey to link in the panel on the right.</div></div>';
-      var s = SURVEY_DATA[survey] || SURVEY_DATA.mobility;
-      var stt = SURVEY_STATES[state] || SURVEY_STATES.current;
-      // CTA: the state drives the treatment. The custom Button-text only overrides the
-      // live "current" CTA; not-started/past carry their own fixed copy + style.
-      var ctaText = (stt.allowLabel && label && label.trim()) || stt.cta;
-      // Live state honours the Primary/Secondary picker; the other states are state-driven.
-      // Canonical .gv-btn pair — the SAME as the participation box (primary fill / outlined).
-      var btnStyle = (state && state !== 'current') ? stt.btn : (style === 'secondary' ? 'secondary-outlined' : 'primary');
-      var btn = '<a class="gv-btn full ' + btnStyle + '" href="#"' + (stt.dis ? ' aria-disabled="true"' : '') + '>' + ctaText + '</a>';
-      if (format === 'button') return '<div class="gv-extra-survey">' + btn + '</div>';
-      // Card view = canonical Easy-read layout (tag+pill, title, description, CTA).
-      // NOTE: no meta row between title and description — the state shows in the pill + CTA.
-      return '<div class="gv-extra-survey gv-extra-survey--card">' +
-        '<div class="es-head">' +
-          '<span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span>' +
-          '<span class="gv-statuspill ' + stt.pill + '">' + stt.pillText + '</span>' +
-        '</div>' +
-        '<h3 class="gv-extra-survey__title">' + s.name + '</h3>' +
-        '<p class="gv-extra-survey__desc">' + s.desc + '</p>' +
-        btn + '</div>';
-    }
-
-    // ── settings panel bodies per widget type ─────────────────────────────────
-    function rteToolbar() {
-      return '' +
-        '<div class="gv-bo-cb-rte__toolbar">' +
-          '<span class="gv-bo-cb-rte__group"><select class="gv-bo-cb-rte__select"><option>Normal</option><option>Title</option><option>Subtitle</option></select></span>' +
-          '<span class="gv-bo-cb-rte__group">' +
-            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Bold" data-fmt="bold"><b>B</b></button>' +
-            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Italic" data-fmt="italic"><i>i</i></button>' +
-            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Add link" data-fmt="link"><span class="gv-icon" data-gv-icon="link"></span></button>' +
-          '</span>' +
-          '<span class="gv-bo-cb-rte__group">' +
-            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Align left" data-fmt="left">▤</button>' +
-            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Center text" data-fmt="center">▥</button>' +
-            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Align right" data-fmt="right">▤</button>' +
-          '</span>' +
-          '<span class="gv-bo-cb-rte__group">' +
-            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Ordered list" data-fmt="ol">1.</button>' +
-            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Unordered list" data-fmt="ul">•</button>' +
-          '</span>' +
-          '<span class="gv-bo-cb-rte__group">' +
-            '<button class="gv-bo-cb-rte__btn" type="button" aria-label="Remove formatting" data-fmt="clean">T<sub>x</sub></button>' +
-          '</span>' +
-        '</div>';
-    }
-
-    function settingsRow(label, control) {
-      return '<div class="gv-bo-cb-settings__row"><span class="gv-bo-cb-settings__rowlabel">' + label + '</span>' + control + '</div>';
-    }
-
-    function bodyFor(widget, block) {
-      if (widget === 'text') {
-        return rteToolbar() +
-          '<div class="gv-bo-cb-rte__editor" id="cb-rte-editor" contenteditable="true"></div>';
-      }
-      if (widget === 'button') {
-        return settingsRow('Button text', '<input class="gv-input" id="cb-f-btnlabel" value="Take the survey">') +
-               settingsRow('Link URL', '<input class="gv-input" id="cb-f-btnurl" value="/projects/dix-park/survey">') +
-               settingsRow('Style', '<select class="gv-bo-select" id="cb-f-btnstyle"><option value="primary">Primary</option><option value="secondary">Secondary</option><option value="link">Text link</option></select>');
-      }
-      if (widget === 'image') {
-        return settingsRow('Image', '<input class="gv-input" type="file" id="cb-f-imgfile" accept="image/*">') +
-               settingsRow('Or paste URL', '<input class="gv-input" id="cb-f-imgurl" placeholder="https://…">') +
-               settingsRow('Alt text', '<input class="gv-input" id="cb-f-imgalt" placeholder="Describe the image">');
-      }
-      if (widget === 'two-column' || widget === 'three-column') {
-        var threeOpts = widget === 'three-column'
-          ? '<option value="equal">Equal</option><option value="wide-center">Wide centre</option>'
-          : '<option value="equal">Equal</option><option value="wide-narrow">Wide / narrow</option><option value="narrow-wide">Narrow / wide</option>';
-        return settingsRow('Column layout', '<select class="gv-bo-select" id="cb-f-collayout">' + threeOpts + '</select>');
-      }
-      if (widget === 'white-space') {
-        return settingsRow('Height', '<select class="gv-bo-select" id="cb-f-wsheight"><option value="24">Small</option><option value="40" selected>Medium</option><option value="80">Large</option></select>');
-      }
-      if (widget === 'accordion' || widget === 'info-accordions') {
-        return settingsRow('Title', '<input class="gv-input" id="cb-f-acctitle" value="Accordion title">') +
-               settingsRow('Content', '<textarea class="gv-input" id="cb-f-acccontent" rows="4">Hidden panel content the resident can expand.</textarea>');
-      }
-      if (widget === 'iframe') {
-        return settingsRow('Embed URL', '<input class="gv-input" id="cb-f-embedurl" placeholder="https://…">');
-      }
-      if (widget === 'participation-box') {
-        return '<p class="cb-pbox-help">Every participation method aggregates here — its type, run dates and status are shown. The current-phase method is highlighted and always included.</p>' +
-          '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="showppl"><span class="track"></span></label><span>Show all project contributions</span></div>' +
-          '<div class="cb-setseg">Methods</div>' +
-          '<div id="cb-pbox-methods"></div>' +
-          '<div id="cb-pbox-title"></div>' +
-          '<div class="cb-proto">' +
-            '<span class="cb-proto__tag"><span class="gv-icon" data-gv-icon="eye"></span> Prototype control — not a product setting</span>' +
-            '<p class="cb-proto__note">An exploration of how methods could be presented. Switches the preview only — devs, this is for comparing directions, not a feature to build as-is.</p>' +
-            '<div class="cb-setseg">Design direction</div>' +
-            '<div class="cb-vchip cb-vchip--wrap" role="group" aria-label="Participation box design direction">' +
-              '<button type="button" data-pv="A" title="Action stack — active methods as buttons (today’s behaviour)">A</button>' +
-              '<button type="button" data-pv="B" title="Detailed rows — each active method with its type and dates">B</button>' +
-              '<button type="button" data-pv="C" title="Full roster — every method incl. upcoming &amp; past, with status pills">C</button>' +
-              '<button type="button" data-pv="D" title="Featured current method + the rest as compact rows">D</button>' +
-              '<button type="button" data-pv="E" title="Grouped — current phase vs other ways to take part">E</button>' +
-            '</div>' +
-            '<div class="cb-vchip-name" id="cb-pv-name"></div>' +
-          '</div>';
-      }
-      if (widget === 'file-attachment') {
-        return settingsRow('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') +
-               settingsRow('File', '<input class="gv-input" type="file" id="cb-f-filefile">');
-      }
-      if (widget === 'image-text-cards') {
-        return settingsRow('Number of cards', '<select class="gv-bo-select" id="cb-f-cardcount"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>') +
-               '<div id="cb-f-cardcaps"></div>';
-      }
-      if (widget === 'timeline') {
-        var opts = CB_PHASES.map(function (p, i) { return '<option value="' + i + '"' + (i === CB_CURRENT ? ' selected' : '') + '>' + p.name + '</option>'; }).join('');
-        return settingsRow('Current phase', '<select class="gv-bo-select" id="cb-f-curphase">' + opts + '</select>') +
-               settingsRow('', '<p class="cb-p" style="color:var(--gv-cool-grey-600);font-size:var(--gv-fs-13)">The phase timeline mirrors the project’s phases. Residents see the same component.</p>');
-      }
-      if (widget === 'events') {
-        return settingsRow('Events shown', '<select class="gv-bo-select" id="cb-f-eventcount"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>');
-      }
-      if (widget === 'extra-surveys') {
-        return settingsRow('Survey', '<select class="gv-bo-select" data-set="survey"><option value="">Select a survey\u2026</option><option value="mobility">Mobility check-in</option></select>') +
-          '<div class="cb-setseg">Survey button format</div>' +
-          '<div class="cb-radiocol">' +
-            '<label class="gv-radio"><input type="radio" name="cb-svfmt" data-fmt="button"><span class="circle"></span>Button</label>' +
-            '<label class="gv-radio"><input type="radio" name="cb-svfmt" data-fmt="card"><span class="circle"></span>Card view</label>' +
-          '</div>' +
-          '<div class="cb-setseg">Button style</div>' +
-          '<div class="cb-radiocol">' +
-            '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="primary"><span class="circle"></span>Primary</label>' +
-            '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="secondary"><span class="circle"></span>Secondary</label>' +
-          '</div>' +
-          // Card view renders a single fixed layout (the Easy-read card) \u2014 no layout
-          // picker. The full set of card-layout explorations lives in v2.
-          // Button label is translatable \u2014 the language switcher rides on this field (per-field, BO-only).
-          '<div class="cb-fieldhead">' +
-            '<span class="gv-bo-cb-settings__rowlabel">Button text</span>' +
-            '<div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>' +
-          '</div>' +
-          '<input class="gv-input" id="cb-f-svlabel" placeholder="Take the survey">' +
-          '<div class="cb-proto">' +
-            '<span class="cb-proto__tag"><span class="gv-icon" data-gv-icon="eye"></span> Prototype control — not a product setting</span>' +
-            '<p class="cb-proto__note">In the real product this is decided by the survey’s dates and whether the resident has already responded. Use it here to preview each state.</p>' +
-            '<div class="cb-setseg">Preview state</div>' +
-            '<div class="cb-radiocol">' +
-              '<label class="gv-radio"><input type="radio" name="cb-svstate" data-state="current"><span class="circle"></span>Current</label>' +
-              '<label class="gv-radio"><input type="radio" name="cb-svstate" data-state="notstarted"><span class="circle"></span>Not started</label>' +
-              '<label class="gv-radio"><input type="radio" name="cb-svstate" data-state="past"><span class="circle"></span>Past</label>' +
-              '<label class="gv-radio"><input type="radio" name="cb-svstate" data-state="taken"><span class="circle"></span>Taken (resident responded)</label>' +
-              '<label class="gv-radio"><input type="radio" name="cb-svstate" data-state="ineligible"><span class="circle"></span>Not eligible / no permission</label>' +
-            '</div>' +
-          '</div>';
-      }
-      if (widget === 'hero') {
-        return settingsRow('Replace image', '<input class="gv-input" type="file" id="cb-f-herofile" accept="image/*">') +
-               settingsRow('Image URL', '<input class="gv-input" id="cb-f-herourl" placeholder="https://…">');
-      }
-      if (widget === 'title') {
-        return settingsRow('Project title', '<input class="gv-input" id="cb-f-ptitle" value="Reimagine Meridian 2030">');
-      }
-      return settingsRow('Settings', '<div class="cb-p">No additional settings for this element.</div>');
-    }
-
-    // ── selection ─────────────────────────────────────────────────────────────
-    var selected = null;
-    var syncing = false; // single loop-guard for two-way text binding
-
-    // Which DOM node inside a block the RTE mirrors (or null).
-    function textTargetOf(block) {
-      var w = block.getAttribute('data-widget');
-      if (w === 'text') return block.querySelector('.cb-richtext') || block.querySelector('.gv-bo-cb-block__body, .cb-p');
-      return null;
-    }
-
-    function deselect() {
-      if (selected) selected.classList.remove('is-selected');
-      selected = null;
-      root.classList.remove('cb-has-panel');
-      if (window.fitCanvas) window.fitCanvas();   // panel closed → canvas regains width
-    }
-    function select(block) {
-      if (selected) selected.classList.remove('is-selected');
-      selected = block;
-      block.classList.add('is-selected');
-      root.classList.add('cb-has-panel');
-      if (window.fitCanvas) window.fitCanvas();    // panel opened → zoom frame to fit
-      var widget = block.getAttribute('data-widget');
-      var label  = block.getAttribute('data-label') || (WIDGETS[widget] && WIDGETS[widget].label) || 'Block';
-      sTitle.textContent = label;
-      // Extra surveys carries its own per-field language switcher (on the Button text
-      // field), so hide the panel-level one for it. The Participation Box has no
-      // translatable free-text field at all (just toggles + method checkboxes whose
-      // labels come from the methods themselves), so a locale switcher is nonsensical
-      // there too — hide it.
-      var topLoc = document.getElementById('cb-settings-locales');
-      if (topLoc) topLoc.style.display = (widget === 'extra-surveys' || widget === 'participation-box') ? 'none' : '';
-      sBody.innerHTML = bodyFor(widget, block);
-      if (window.GVIcons) window.GVIcons.render(panel);
-      bindTextBinding(block, widget);
-      bindRteButtons();
-      wireBody(widget, block);
-      // Locked blocks (hero / title) can't be deleted — show a pinned note instead of Delete.
-      if (block.classList.contains('cb-locked')) {
-        var note = document.createElement('p');
-        note.className = 'cb-lockednote';
-        note.innerHTML = '<span class="gv-icon" data-gv-icon="lock"></span> Pinned to the top of the page — editable, but can’t be moved or removed.';
-        sBody.appendChild(note);
-        if (window.GVIcons) window.GVIcons.render(note);
-        return;
-      }
-      var delBtn = document.createElement('button');
-      delBtn.className = 'gv-bo-cb-delete';
-      delBtn.type = 'button';
-      delBtn.id = 'e2e-delete-button';
-      delBtn.innerHTML = '<span class="gv-icon" data-gv-icon="delete"></span>Delete';
-      sBody.appendChild(delBtn);
-      if (window.GVIcons) window.GVIcons.render(delBtn);
-      delBtn.addEventListener('click', function () {
-        if (!selected) return;
-        var b = selected; deselect(); b.parentNode.removeChild(b); reflectEmptyAll();
-        toast('Element deleted');
-      });
-    }
-
-    // ── live two-way text binding (RTE <-> block, simple fields) ──────────────
-    function bindTextBinding(block, widget) {
-      if (widget === 'text') {
-        var ed = document.getElementById('cb-rte-editor');
-        var tgt = textTargetOf(block);
-        if (ed && tgt) {
-          syncing = true; ed.innerHTML = tgt.innerHTML; syncing = false;
-          ed.addEventListener('input', function () {
-            if (syncing) return; syncing = true; tgt.innerHTML = ed.innerHTML; syncing = false;
-          });
-          if (tgt._cbSync) tgt.removeEventListener('input', tgt._cbSync);
-          tgt._cbSync = function () {
-            if (syncing) return; syncing = true; ed.innerHTML = tgt.innerHTML; syncing = false;
-          };
-          tgt.addEventListener('input', tgt._cbSync);
-          bindHeadingSelect(ed);
-        }
-      }
-    }
-
-    function bindHeadingSelect(ed) {
-      var sel = panel.querySelector('.gv-bo-cb-rte__select');
-      if (!sel || !ed) return;
-      sel.addEventListener('change', function () {
-        ed.focus();
-        var tag = sel.value === 'Title' ? 'H2' : sel.value === 'Subtitle' ? 'H3' : 'P';
-        document.execCommand('formatBlock', false, tag);
-        var tgt = selected && textTargetOf(selected);
-        if (tgt) { syncing = true; tgt.innerHTML = ed.innerHTML; syncing = false; }
-      });
-    }
-
-    function bindRteButtons() {
-      var ed = document.getElementById('cb-rte-editor');
-      var btns = panel.querySelectorAll('.gv-bo-cb-rte__btn');
-      var CMD = { bold: 'bold', italic: 'italic', left: 'justifyLeft', center: 'justifyCenter', right: 'justifyRight', ol: 'insertOrderedList', ul: 'insertUnorderedList', clean: 'removeFormat' };
-      for (var i = 0; i < btns.length; i++) {
-        (function (btn) {
-          btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
-          btn.addEventListener('click', function () {
-            if (!ed) { btn.classList.toggle('is-on'); return; }
-            var fmt = btn.getAttribute('data-fmt');
-            ed.focus();
-            if (fmt === 'link') { var url = prompt('Link URL', 'https://'); if (url) document.execCommand('createLink', false, url); }
-            else if (CMD[fmt]) document.execCommand(CMD[fmt], false, null);
-            if (fmt === 'bold' || fmt === 'italic') btn.classList.toggle('is-on');
-            var tgt = selected && textTargetOf(selected);
-            if (tgt) { syncing = true; tgt.innerHTML = ed.innerHTML; syncing = false; }
-          });
-        })(btns[i]);
-      }
-    }
-
-    // ── per-widget live binding: settings controls -> rendered block ──────────
-    function wireBody(widget, block) {
-      function pv(id) { return document.getElementById(id); }   // panel control
-      function bq(sel) { return block.querySelector(sel); }     // block content node
-
-      if (widget === 'button') {
-        var lbl = pv('cb-f-btnlabel'), sty = pv('cb-f-btnstyle'), url = pv('cb-f-btnurl');
-        var btn = bq('.cb-fakebtn');
-        if (lbl && btn) { lbl.value = (btn.textContent || '').trim(); lbl.addEventListener('input', function () { btn.textContent = lbl.value || 'Button'; }); }
-        if (sty && btn) sty.addEventListener('change', function () {
-          btn.classList.remove('cb-fakebtn--secondary', 'cb-fakebtn--link');
-          if (sty.value === 'secondary') btn.classList.add('cb-fakebtn--secondary');
-          else if (sty.value === 'link') btn.classList.add('cb-fakebtn--link');
-        });
-        if (url && btn) url.addEventListener('input', function () { btn.setAttribute('data-href', url.value); });
-        return;
-      }
-
-      if (widget === 'white-space') {
-        var ws = bq('.cb-ws'), hs = pv('cb-f-wsheight');
-        if (ws && hs) hs.addEventListener('change', function () { ws.style.height = hs.value + 'px'; });
-        return;
-      }
-
-      if (widget === 'image') {
-        var ph = bq('.cb-imgph'), img = bq('.cb-img'), fileIn = pv('cb-f-imgfile'), urlIn = pv('cb-f-imgurl'), altIn = pv('cb-f-imgalt');
-        function setSrc(src) {
-          var node = block.querySelector('.cb-img');
-          if (!node) {
-            node = document.createElement('img'); node.className = 'cb-img';
-            var slot = block.querySelector('.cb-imgph');
-            if (slot) slot.parentNode.replaceChild(node, slot);
-            else block.appendChild(node);
-          }
-          node.src = src;
-          if (altIn) node.alt = altIn.value || '';
-        }
-        if (fileIn) fileIn.addEventListener('change', function () {
-          if (fileIn.files && fileIn.files[0]) setSrc(URL.createObjectURL(fileIn.files[0]));
-        });
-        if (urlIn) urlIn.addEventListener('input', function () { if (urlIn.value) setSrc(urlIn.value); });
-        if (altIn) altIn.addEventListener('input', function () { var n = block.querySelector('.cb-img'); if (n) n.alt = altIn.value; });
-        return;
-      }
-
-      if (widget === 'iframe') {
-        var cap = bq('.cb-iframe__cap'), embed = pv('cb-f-embedurl');
-        if (cap && embed) embed.addEventListener('input', function () {
-          var v = embed.value.trim();
-          if (!v) { cap.textContent = 'Paste a URL to embed'; return; }
-          var host = v.replace(/^https?:\/\//, '').split('/')[0];
-          var type = /youtu/.test(v) ? 'embedded video' : /vimeo/.test(v) ? 'embedded video' : /maps|google\.[a-z]+\/maps/.test(v) ? 'embedded map' : 'embedded content';
-          cap.textContent = host + ' — ' + type;
-        });
-        return;
-      }
-
-      if (widget === 'two-column' || widget === 'three-column') {
-        var cols = bq('.cb-cols'), lay = pv('cb-f-collayout');
-        var map3 = { equal: '1fr 1fr 1fr', 'wide-center': '1fr 2fr 1fr' };
-        var map2 = { equal: '1fr 1fr', 'wide-narrow': '2fr 1fr', 'narrow-wide': '1fr 2fr' };
-        var m = widget === 'three-column' ? map3 : map2;
-        if (cols && lay) {
-          lay.value = cols.getAttribute('data-collayout') || 'equal';   // reflect the block's current layout on (re)select
-          lay.addEventListener('change', function () {
-            cols.setAttribute('data-collayout', lay.value);
-            cols.style.gridTemplateColumns = m[lay.value] || m.equal;
-          });
-        }
-        return;
-      }
-
-      if (widget === 'accordion' || widget === 'info-accordions') {
-        var head = bq('.cb-accordion__title'), textNode = bq('.cb-accordion__text');
-        var tIn = pv('cb-f-acctitle'), cIn = pv('cb-f-acccontent');
-        if (head && tIn) { tIn.value = (head.textContent || '').trim(); tIn.addEventListener('input', function () { head.textContent = tIn.value; }); }
-        if (textNode && cIn) { cIn.value = (textNode.textContent || '').trim(); cIn.addEventListener('input', function () { textNode.textContent = cIn.value; }); }
-        return;
-      }
-
-      if (widget === 'file-attachment') {
-        var nameNode = bq('.cb-file__name'), metaNode = bq('.cb-file__meta');
-        var nIn = pv('cb-f-filename'), fIn = pv('cb-f-filefile');
-        if (nameNode && nIn) { nIn.value = (nameNode.textContent || '').trim(); nIn.addEventListener('input', function () { nameNode.textContent = nIn.value; }); }
-        if (fIn) fIn.addEventListener('change', function () {
-          if (!fIn.files || !fIn.files[0]) return;
-          var f = fIn.files[0];
-          if (nameNode) nameNode.textContent = f.name;
-          if (nIn) nIn.value = f.name;
-          if (metaNode) {
-            var ext = (f.name.split('.').pop() || '').toUpperCase();
-            var size = f.size < 1024 * 1024 ? (Math.max(1, Math.round(f.size / 1024)) + ' KB') : ((f.size / 1024 / 1024).toFixed(1) + ' MB');
-            metaNode.textContent = ext + ' · ' + size;
-          }
-        });
-        return;
-      }
-
-      if (widget === 'image-text-cards') {
-        var grid = bq('.cb-cards'), countSel = pv('cb-f-cardcount'), capsHost = pv('cb-f-cardcaps');
-        function renderCaps() {
-          if (!capsHost || !grid) return;
-          var caps = grid.querySelectorAll('.cb-card__cap');
-          var html = '';
-          for (var c = 0; c < caps.length; c++) html += settingsRow('Card ' + (c + 1), '<input class="gv-input" data-cardcap="' + c + '" value="' + (caps[c].textContent || '').replace(/"/g, '&quot;') + '">');
-          capsHost.innerHTML = html;
-          var capIns = capsHost.querySelectorAll('[data-cardcap]');
-          for (var d = 0; d < capIns.length; d++) (function (inp) {
-            inp.addEventListener('input', function () {
-              var idx = +inp.getAttribute('data-cardcap');
-              var node = grid.querySelectorAll('.cb-card__cap')[idx];
-              if (node) node.textContent = inp.value;
-            });
-          })(capIns[d]);
-        }
-        if (countSel && grid) countSel.addEventListener('change', function () {
-          var n = +countSel.value;
-          var cur = grid.querySelectorAll('.cb-card').length;
-          while (grid.querySelectorAll('.cb-card').length > n) grid.removeChild(grid.lastElementChild);
-          var idx = cur;
-          while (grid.querySelectorAll('.cb-card').length < n) {
-            idx = grid.querySelectorAll('.cb-card').length;
-            var card = document.createElement('div'); card.className = 'cb-card';
-            card.innerHTML = '<div class="cb-card__img"></div><div class="cb-card__cap">Card ' + (idx + 1) + '</div>';
-            grid.appendChild(card);
-          }
-          grid.setAttribute('data-n', String(n));
-          renderCaps();
-        });
-        renderCaps();
-        return;
-      }
-
-      if (widget === 'timeline') {
-        var curSel = pv('cb-f-curphase');
-        if (curSel) curSel.addEventListener('change', function () {
-          CB_CURRENT = +curSel.value;
-          var sec = bq('.cb-timeline');
-          if (!sec) return;
-          // re-render this timeline's stepper + panel for the new current phase
-          var steps = CB_PHASES.map(function (p, i) {
-            var cur = i === CB_CURRENT, dot = cur ? '<span class="gv-pstep__dot"></span>' : '';
-            return '<button class="gv-phase' + (cur ? ' current' : '') + '" type="button" role="tab" data-i="' + i + '" aria-selected="' + (i === CB_CURRENT) + '"><span class="gv-pstep">' + dot + (i + 1) + '</span><span class="gv-phase__label">' + p.name + '</span></button>';
-          }).join('');
-          sec.querySelector('.gv-stepper').innerHTML = steps;
-          sec.querySelector('.cb-timeline__panel').innerHTML = cbPhasePanel(CB_CURRENT);
-          wireTimeline(block);
-          if (window.GVIcons) window.GVIcons.render(sec);
-          syncParticipationCTAs();   // participation box CTA mirrors the current phase
-        });
-        return;
-      }
-
-      if (widget === 'events') {
-        var evGrid = bq('.gv-events__grid'), evCount = pv('cb-f-eventcount');
-        if (evGrid && evCount) evCount.addEventListener('change', function () {
-          evGrid.innerHTML = CB_EVENTS.slice(0, +evCount.value).map(cbEventCard).join('');
-          if (window.GVIcons) window.GVIcons.render(evGrid);
-        });
-        return;
-      }
-
-      if (widget === 'hero') {
-        var hf = pv('cb-f-herofile'), hu = pv('cb-f-herourl');
-        // Set (or create) the hero <img>, replacing the ghost placeholder. Uses a data
-        // URL so the banner both renders in the preview AND survives serialization.
-        function setHero(src) {
-          var wrap = block.querySelector('.cb-hero');
-          var img = block.querySelector('.cb-hero__img');
-          if (!img) {
-            if (wrap) { wrap.classList.remove('cb-hero--empty'); wrap.innerHTML = ''; }
-            img = document.createElement('img'); img.className = 'cb-hero__img'; img.alt = 'Project banner';
-            (wrap || block).appendChild(img);
-          }
-          img.src = src;
-        }
-        if (hf) hf.addEventListener('change', function () {
-          if (hf.files && hf.files[0]) { var r = new FileReader(); r.onload = function (e) { setHero(e.target.result); }; r.readAsDataURL(hf.files[0]); }
-        });
-        if (hu) hu.addEventListener('input', function () { if (hu.value) setHero(hu.value); });
-        return;
-      }
-
-      if (widget === 'title') {
-        var h1 = bq('.cb-title'), tIn2 = pv('cb-f-ptitle');
-        if (h1 && tIn2) { tIn2.value = (h1.textContent || '').trim(); tIn2.addEventListener('input', function () { h1.textContent = tIn2.value; }); }
-        return;
-      }
-
-      if (widget === 'extra-surveys') { bindExtraSurveys(block); return; }
-      if (widget === 'participation-box') { bindParticipationBox(block); return; }
-    }
-
-    function bindParticipationBox(block) {
-      var st = cbPboxState(block);
-      function render() { cbSetBody(block, cbPboxBodyHTML(st)); }
-      // The aggregate "Participate · N ways" title only matters to direction A, when 3+
-      // active methods collapse into one button.
-      function titleField() {
-        var host = panel.querySelector('#cb-pbox-title'); if (!host) return;
-        var n = st.methods.filter(function (m) { return m.visible && pbActive(m); }).length;
-        if (st.direction === 'A' && n > 2) {
-          host.innerHTML = '<div class="cb-setseg">Button title (collapsed)</div>' +
-            '<div class="gv-bo-multiloc" style="margin-bottom:8px"><button type="button" class="is-active"><span class="miss"></span>EN</button><button type="button"><span class="miss"></span>NL-BE</button></div>' +
-            '<input class="gv-input" data-set="aggtitle">';
-          var inp = host.querySelector('[data-set="aggtitle"]'); inp.value = st.aggTitle || '';
-          inp.addEventListener('input', function () { st.aggTitle = this.value; render(); });
-          host.querySelectorAll('.gv-bo-multiloc button').forEach(function (b) {
-            b.addEventListener('click', function () { host.querySelectorAll('.gv-bo-multiloc button').forEach(function (x) { x.classList.remove('is-active'); }); b.classList.add('is-active'); });
-          });
-        } else { host.innerHTML = ''; }
-      }
-      var show = panel.querySelector('[data-set="showppl"]');
-      if (show) { show.checked = st.showParticipants; show.addEventListener('change', function () { st.showParticipants = this.checked; render(); }); }
-
-      // Method picker — each row shows type · dates · status; the current-phase method is
-      // flagged and always included (its checkbox is checked + disabled).
-      function methodsList() {
-        var list = panel.querySelector('#cb-pbox-methods'); if (!list) return;
-        list.innerHTML = st.methods.map(function (m, i) {
-          var s = PBOX_STATUS[m.status] || PBOX_STATUS.active;
-          var lock = m.current;
-          return '<label class="cb-mrow' + (m.current ? ' is-current' : '') + '">' +
-            '<input type="checkbox" data-mi="' + i + '"' + (m.visible || lock ? ' checked' : '') + (lock ? ' disabled' : '') + '>' +
-            '<span class="cb-mrow__body">' +
-              '<span class="cb-mrow__name">' + m.label + (m.current ? ' <span class="cb-mflag">This phase</span>' : '') + '</span>' +
-              '<span class="cb-mrow__meta">' + (PBOX_TYPES[m.type] || m.type) + ' · ' + m.dates +
-                ' <span class="gv-statuspill ' + s[0] + '">' + s[1] + '</span></span>' +
-            '</span></label>';
-        }).join('');
-        list.querySelectorAll('input[data-mi]:not([disabled])').forEach(function (inp) {
-          inp.addEventListener('change', function () { st.methods[+this.dataset.mi].visible = this.checked; render(); titleField(); });
-        });
-      }
-
-      // ── Design-direction chip (A–E) — switches how methods are presented ──
-      var nameEl = panel.querySelector('#cb-pv-name');
-      function syncDirUI() {
-        panel.querySelectorAll('.cb-vchip button[data-pv]').forEach(function (b) { b.classList.toggle('on', b.dataset.pv === st.direction); });
-        if (nameEl) nameEl.textContent = (PBOX_DIRECTIONS[st.direction] || {}).name || '';
-      }
-      panel.querySelectorAll('.cb-vchip button[data-pv]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          st.direction = b.dataset.pv;
-          syncDirUI(); titleField(); render();
-        });
-      });
-
-      // initial paint
-      syncDirUI(); methodsList(); titleField();
-    }
-
-    function bindExtraSurveys(block) {
-      var st = cbSurveyState(block);
-      // Card view renders the single fixed Easy-read layout (no picker in v3).
-      st.cardVariant = 'easy';
-      function render() { cbSetBody(block, cbSurveyHTML(st.survey, st.format, st.style, st.label, st.cardVariant, st.state)); }
-      var sel = panel.querySelector('[data-set="survey"]');
-      if (sel) { sel.value = st.survey || ''; sel.addEventListener('change', function () { st.survey = this.value || null; render(); }); }
-      panel.querySelectorAll('input[data-fmt]').forEach(function (r) {
-        r.checked = (r.dataset.fmt === st.format);
-        r.addEventListener('change', function () { if (this.checked) { st.format = this.dataset.fmt; render(); } });
-      });
-      panel.querySelectorAll('input[data-sty]').forEach(function (r) {
-        r.checked = (r.dataset.sty === st.style);
-        r.addEventListener('change', function () { if (this.checked) { st.style = this.dataset.sty; render(); } });
-      });
-      // Temporal state — Current / Not started / Past (mirrors the FO three-state cards).
-      panel.querySelectorAll('input[data-state]').forEach(function (r) {
-        r.checked = (r.dataset.state === (st.state || 'current'));
-        r.addEventListener('change', function () { if (this.checked) { st.state = this.dataset.state; render(); } });
-      });
-      // Button text — renames what the resident sees on the CTA (per locale).
-      var lbl = panel.querySelector('#cb-f-svlabel');
-      if (lbl) {
-        lbl.value = st.label || '';
-        lbl.addEventListener('input', function () { st.label = this.value; render(); });
-      }
-      // Per-field language switcher (visual toggle only in this prototype).
-      panel.querySelectorAll('.cb-fieldhead .gv-bo-multiloc button').forEach(function (b) {
-        b.addEventListener('click', function () {
-          var grp = b.parentNode;
-          grp.querySelectorAll('button').forEach(function (x) { x.classList.remove('is-active'); });
-          b.classList.add('is-active');
-        });
-      });
-    }
-
-    // ── block factory + wiring ────────────────────────────────────────────────
-    function makeBlock(widget) {
-      var def = WIDGETS[widget] || WIDGETS.text;
-      var block = document.createElement('div');
-      block.className = 'gv-bo-cb-block';
-      block.setAttribute('data-widget', widget);
-      block.setAttribute('data-label', def.label);
-      block.setAttribute('draggable', 'true');
-      block.id = 'cb-block-' + (uid++);
-      var tab = document.createElement('span');
-      tab.className = 'gv-bo-cb-block__label';
-      tab.textContent = def.label;
-      block.appendChild(tab);
-      var content = document.createElement('div');
-      content.innerHTML = def.make();
-      while (content.firstChild) block.appendChild(content.firstChild);
-      wireBlock(block);
-      // Activate any nested drop zones this block introduces (columns / accordion).
-      var zones = block.querySelectorAll('[data-cb-zone]');
-      for (var z = 0; z < zones.length; z++) makeDropZone(zones[z], 'y');
-      // Accordion head toggles expand/collapse on the canvas.
-      wireAccordion(block);
-      wireTimeline(block);
-      if (window.GVIcons) window.GVIcons.render(block);
-      if (window.GVAvatars) window.GVAvatars.fill(block);   // random faces in any avatar bubble (e.g. Participation Box)
-      return block;
-    }
-
-    // Locked top blocks: the project hero image + title. Editable, but pinned to
-    // the top — not draggable, not deletable, not reorderable.
-    function makeLockedBlock(kind) {
-      var def = WIDGETS[kind] || {};
-      var block = document.createElement('div');
-      block.className = 'gv-bo-cb-block cb-locked';
-      block.setAttribute('data-widget', kind);
-      block.setAttribute('data-label', def.label || kind);
-      block.setAttribute('draggable', 'false');
-      block.id = 'cb-block-' + (uid++);
-      var tab = document.createElement('span');
-      tab.className = 'gv-bo-cb-block__label';
-      tab.innerHTML = (def.label || kind) + ' <span class="cb-lockmark" aria-hidden="true"><span class="gv-icon" data-gv-icon="lock"></span></span>';
-      block.appendChild(tab);
-      var content = document.createElement('div');
-      if (kind === 'hero') {
-        // Fresh project: no header image yet — a ghost matching the phone preview's
-        // "Add a header image" placeholder (upload via the settings panel adds the img).
-        content.innerHTML = '<div class="cb-hero cb-hero--empty"><div class="cb-imgph" style="height:200px;"><span class="gv-icon" data-gv-icon="eye"></span> Add a header image</div></div>';
-      } else {
-        content.innerHTML = '<h1 class="gv-title h1 cb-title" contenteditable="true">Reimagine Meridian 2030</h1>';
-      }
-      while (content.firstChild) block.appendChild(content.firstChild);
-      wireBlock(block);
-      if (window.GVIcons) window.GVIcons.render(block);
-      return block;
-    }
-
-    // Timeline phase switching (the .gv-stepper ribbon) — works in edit + preview.
-    function wireTimeline(block) {
-      var steppers = block.querySelectorAll('.cb-timeline .gv-stepper');
-      for (var s = 0; s < steppers.length; s++) {
-        (function (stepper) {
-          var section = stepper.closest('.cb-timeline');
-          var panel = section ? section.querySelector('.cb-timeline__panel') : null;
-          stepper.querySelectorAll('.gv-phase').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-              var i = +btn.dataset.i;
-              stepper.querySelectorAll('.gv-phase').forEach(function (b) { b.setAttribute('aria-selected', String(+b.dataset.i === i)); });
-              if (panel) { panel.innerHTML = cbPhasePanel(i); if (window.GVIcons) window.GVIcons.render(panel); }
-            });
-          });
-        })(steppers[s]);
-      }
-    }
-
-    function wireAccordion(block) {
-      var heads = block.querySelectorAll('.cb-accordion__head');
-      for (var i = 0; i < heads.length; i++) {
-        (function (head) {
-          head.addEventListener('click', function (e) {
-            var acc = head.closest('.cb-accordion');
-            if (root.classList.contains('cb-preview')) {
-              // resident behaviour: expand/collapse, don't select
-              if (acc) acc.classList.toggle('cb-accordion--open');
-              return;
-            }
-            // edit mode: chevron toggles; elsewhere bubbles up to select the block
-            if (e.target.closest('.gv-icon')) {
-              e.stopPropagation();
-              if (acc) acc.classList.toggle('cb-accordion--open');
-            }
-          });
-        })(heads[i]);
-      }
-    }
-
-    function wireBlock(block) {
-      block.addEventListener('click', function (e) {
-        if (root.classList.contains('cb-preview')) return;
-        if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') { e.stopPropagation(); select(block); return; }
-        e.stopPropagation();
-        select(block);
-      });
-      // Locked blocks (hero image / title) are pinned to the top: editable but not draggable.
-      if (block.classList.contains('cb-locked')) { block.setAttribute('draggable', 'false'); return; }
-      // reorder within the canvas
-      block.addEventListener('dragstart', function (e) {
-        if (root.classList.contains('cb-preview')) { e.preventDefault(); return; }
-        e.stopPropagation();
-        clearLine();
-        dragData = { mode: 'move', el: block };
-        block.classList.add('is-dragging');
-        try { e.dataTransfer.setData('text/plain', 'move'); } catch (x) {}
-        e.dataTransfer.effectAllowed = 'move';
-      });
-      block.addEventListener('dragend', function () { block.classList.remove('is-dragging'); clearLine(); });
-    }
-
-    // ── drag state + a single GLOBAL clear that delegates to the active zone ───
-    var dragData = null;
-    var activeZone = null;
-    function clearLine() {
-      if (activeZone && activeZone._cbZone) activeZone._cbZone.clear();
-      activeZone = null;
-    }
-
-    // Direct-child .gv-bo-cb-block before which to insert (or null = append).
-    function zoneChildUnder(zoneEl, axis, x, y) {
-      var kids = zoneEl.children;
-      for (var i = 0; i < kids.length; i++) {
-        var child = kids[i];
-        if (!child.classList || !child.classList.contains('gv-bo-cb-block')) continue;
-        if (child.classList.contains('cb-locked')) continue;   // locked header pins the top; never insert above it
-        var r = child.getBoundingClientRect();
-        if (axis === 'x') { if (x < r.left + r.width / 2) return child; }
-        else { if (y < r.top + r.height / 2) return child; }
-      }
-      return null;
-    }
-
-    // Generic, reusable drop zone applied to the frame AND every nested zone.
-    function makeDropZone(zoneEl, axis) {
-      if (zoneEl._cbZone) return;            // already wired
-      var line = document.createElement('div');
-      line.className = 'gv-bo-cb-dropline cb-dropline--' + axis;
-      function clear() {
-        if (line.parentNode) line.parentNode.removeChild(line);
-        zoneEl.classList.remove('cb-zone--over', 'is-dragover');
-      }
-      zoneEl._cbZone = { line: line, clear: clear };
-
-      zoneEl.addEventListener('dragover', function (e) {
-        if (!dragData) return;
-        if (root.classList.contains('cb-preview')) return;
-        // Never drop a container into its own descendant.
-        if (dragData.mode === 'move' && (dragData.el === zoneEl || dragData.el.contains(zoneEl))) {
-          e.dataTransfer.dropEffect = 'none';
-          e.stopPropagation();               // swallow so the parent frame can't treat it as a valid drop
-          return;                            // no preventDefault -> no-drop cursor, drop won't fire here
-        }
-        e.preventDefault();
-        e.stopPropagation();                 // inner zone reacts; parent frame does not
-        e.dataTransfer.dropEffect = dragData.mode === 'move' ? 'move' : 'copy';
-        if (activeZone && activeZone !== zoneEl && activeZone._cbZone) activeZone._cbZone.clear();
-        activeZone = zoneEl;
-        zoneEl.classList.add('cb-zone--over', 'is-dragover');
-        var before = zoneChildUnder(zoneEl, axis, e.clientX, e.clientY);
-        if (before && before === dragData.el) { clear(); zoneEl.classList.add('cb-zone--over'); return; }
-        if (before) zoneEl.insertBefore(line, before);
-        else zoneEl.appendChild(line);
-      });
-
-      zoneEl.addEventListener('dragleave', function (e) {
-        if (e.target === zoneEl && !zoneEl.contains(e.relatedTarget)) clear();
-      });
-
-      zoneEl.addEventListener('drop', function (e) {
-        if (!dragData) return;
-        if (root.classList.contains('cb-preview')) return;
-        if (dragData.mode === 'move' && (dragData.el === zoneEl || dragData.el.contains(zoneEl))) {
-          e.preventDefault(); e.stopPropagation(); return;   // no-op drop; never bubble to frame (no self-nest reorder)
-        }
-        e.preventDefault();
-        e.stopPropagation();                 // stop the parent frame's drop from also firing
-        var ref = line.parentNode ? line : zoneChildUnder(zoneEl, axis, e.clientX, e.clientY);
-        if (dragData.mode === 'add') {
-          var block = makeBlock(dragData.widget);
-          if (line.parentNode) zoneEl.insertBefore(block, line);
-          else if (ref) zoneEl.insertBefore(block, ref);
-          else zoneEl.appendChild(block);
-          select(block);
-          toast('Added: ' + (WIDGETS[dragData.widget] ? WIDGETS[dragData.widget].label : dragData.widget));
-        } else if (dragData.mode === 'move' && dragData.el) {
-          if (line.parentNode) line.parentNode.insertBefore(dragData.el, line);
-          else if (ref) zoneEl.insertBefore(dragData.el, ref);
-          else zoneEl.appendChild(dragData.el);
-          toast('Element moved');
-        }
-        clear(); activeZone = null; dragData = null; reflectEmptyAll();
-      });
-    }
-
-    // Empty-state reflection across the frame AND every nested zone.
-    function reflectEmptyAll() {
-      var n = directBlockCount(frame);
-      frame.classList.toggle('is-empty', n === 0);
-      if (n === 0) deselect();
-      var zones = document.querySelectorAll('#cb-frame [data-cb-zone]');
-      for (var i = 0; i < zones.length; i++) {
-        zones[i].classList.toggle('cb-zone--empty', zoneIsEmpty(zones[i]));
-      }
-    }
-    // A zone is "empty" (shows the drop placeholder) only when it holds no nested
-    // blocks AND no meaningful default content — accordion bodies ship default text.
-    function zoneIsEmpty(zone) {
-      if (directBlockCount(zone) > 0) return false;
-      if (zone.querySelector('.cb-accordion__text')) return false;
-      return true;
-    }
-    function directBlockCount(el) {
-      var n = 0, kids = el.children;
-      for (var i = 0; i < kids.length; i++) if (kids[i].classList && kids[i].classList.contains('gv-bo-cb-block')) n++;
-      return n;
-    }
-    // Back-compat alias (now direct-child aware).
-    function reflectEmpty() { reflectEmptyAll(); }
-
-    // ── wire the frame as the primary drop zone (axis y), and the default block ─
-    makeDropZone(frame, 'y');
+    // The static frame ships ONE pre-existing text block (its body carries the
+    // #e2e-content-builder-frame checkpoint id, and ppRestore re-finds it). The seed
+    // tucks it into the wide column; `first` always points at the live node.
     var first = frame.querySelector('.gv-bo-cb-block');
-    if (first) wireBlock(first);
-    // Robustness: activate any nested zones already present in the static DOM.
-    var initialZones = document.querySelectorAll('#cb-frame [data-cb-zone]');
-    for (var iz = 0; iz < initialZones.length; iz++) makeDropZone(initialZones[iz], 'y');
 
-    // ── drag from palette ─────────────────────────────────────────────────────
-    var items = document.querySelectorAll('.gv-bo-cb-item');
-    for (var i = 0; i < items.length; i++) {
-      (function (item) {
-        item.addEventListener('dragstart', function (e) {
-          clearLine();
-          dragData = { mode: 'add', widget: item.getAttribute('data-widget') };
-          item.classList.add('is-dragging');
-          try { e.dataTransfer.setData('text/plain', item.getAttribute('data-widget')); } catch (x) {}
-          e.dataTransfer.effectAllowed = 'copy';
-        });
-        item.addEventListener('dragend', function () { item.classList.remove('is-dragging'); clearLine(); });
-      })(items[i]);
-    }
-
-    // click empty canvas area to deselect
-    document.querySelector('.gv-bo-cb-canvas').addEventListener('click', function (e) {
-      if (e.target === this || e.target === frame) deselect();
+    // ── mount the canonical engine ────────────────────────────────────────────
+    var api = GVPageBuilder.mount({
+      root: root,
+      frame: frame,
+      settingsBody: document.getElementById('cb-settings-body'),
+      settingsTitle: document.getElementById('cb-settings-title'),
+      settingsClose: document.getElementById('cb-settings-close'),
+      previewToggle: document.getElementById('e2e-preview-toggle'),
+      localeEl: document.getElementById('cb-settings-locales'),
+      // Show the panel-level locale switcher only for widgets with translatable free
+      // text (TX in the registry). The participation box + extra surveys carry their
+      // own per-field switcher / no free text, so the panel one stays hidden for them.
+      showLocale: function (w) { return !!(GVWidgets.project._meta && GVWidgets.project._meta.tx[w]); },
+      widgets: GVWidgets.project,
+      toast: toast,
+      onChange: function () { if (window.ppSave) window.ppSave(); },
+      seed: seedDefault
     });
 
-    // ── settings close, multiloc, preview toggle ──────────────────────────────
-    document.getElementById('cb-settings-close').addEventListener('click', deselect);
-
-    var locBtns = document.querySelectorAll('#cb-settings-locales button');
-    for (var k = 0; k < locBtns.length; k++) {
-      (function (b) {
-        b.addEventListener('click', function () {
-          for (var j = 0; j < locBtns.length; j++) locBtns[j].classList.remove('is-active');
-          b.classList.add('is-active');
-          toast('Editing ' + b.getAttribute('data-loc').toUpperCase());
-        });
-      })(locBtns[k]);
-    }
-
-    document.getElementById('e2e-preview-toggle').addEventListener('change', function () {
-      root.classList.toggle('cb-preview', this.checked);
-      if (this.checked) deselect();
-      if (window.fitCanvas) window.fitCanvas();   // preview drops the panel → re-fit
-      toast(this.checked ? 'Preview mode' : 'Editing mode');
-    });
-
-    document.getElementById('e2e-locale-select').addEventListener('change', function () {
-      toast('Language: ' + this.value.toUpperCase());
-    });
-
-    // Save / view buttons are inert in the reference page.
-    document.getElementById('e2e-content-builder-topbar-save').addEventListener('click', function () { toast('Saved'); });
-
-    // ── seed a fuller default layout (built via makeBlock so it's fully wired) ──
-    function seedBlock(widget, html) {
-      var b = makeBlock(widget);
-      if (html != null) {
-        var body = b.querySelector('.cb-richtext') || b.querySelector('.gv-bo-cb-block__body') || b.querySelector('.cb-p');
-        if (body) body.innerHTML = html;
-      }
-      return b;
-    }
-    // An accordion seeded with specific copy (title + body), matching an FO accordion.
-    function seedAccordion(title, body) {
-      var b = makeBlock('accordion');
+    // ── seed: replicate the old seedDefault() layout via the canonical api ──────
+    // locked hero + title (pinned top) · wide/narrow 2-column (description text +
+    // accordions + extra-surveys on the left, participation box on the right) ·
+    // then the timeline. (Events omitted — no tester creation flow.)
+    // NB: these helpers take `api` explicitly — during seed(api) the outer `api` var
+    // is not yet assigned (mount() hasn't returned), so the passed-in one must be used.
+    function seedAccordion(api, title, body) {
+      var b = api.makeBlock('accordion');
       var t = b.querySelector('.cb-accordion__title'); if (t) t.textContent = title;
       var p = b.querySelector('.cb-accordion__text'); if (p) p.textContent = body;
       return b;
     }
-    function seedDefault() {
-      // Mirror of the resident-facing PROJECT PAGE (the content this builder edits):
-      //   locked hero + title · wide/narrow 2-column (description text + accordions
-      //   on the left, participation box on the right) · then timeline · then events.
-      frame.insertBefore(makeLockedBlock('hero'), first);
-      frame.insertBefore(makeLockedBlock('title'), first);
+    // Hero + title come from GVWidgets.project (locked in the registry), but this
+    // prototype starts a FRESH project: an empty hero placeholder (so ppHeroSrc()
+    // returns '') and the prototype's own title. Re-skin the locked blocks' bodies.
+    function seedHero(api) {
+      var b = api.makeBlock('hero');
+      var label = b.querySelector('.gv-bo-cb-block__label');
+      while (b.lastChild && b.lastChild !== label) b.removeChild(b.lastChild);
+      var tmp = document.createElement('div');
+      tmp.innerHTML = '<div class="cb-hero cb-hero--empty"><div class="cb-imgph" style="height:200px;"><span class="gv-icon" data-gv-icon="eye"></span> Add a header image</div></div>';
+      while (tmp.firstChild) b.appendChild(tmp.firstChild);
+      if (window.GVIcons) window.GVIcons.render(b);
+      return b;
+    }
+    function seedTitle(api) {
+      var b = api.makeBlock('title');
+      var h1 = b.querySelector('.cb-title'); if (h1) h1.textContent = 'Reimagine Meridian 2030';
+      return b;
+    }
+    function seedDefault(api) {
+      frame.insertBefore(seedHero(api), first);
+      frame.insertBefore(seedTitle(api), first);
       // Wide/narrow 2-column.
-      var two = makeBlock('two-column');
+      var two = api.makeBlock('two-column');
       frame.appendChild(two);
       var grid = two.querySelector('.cb-cols');
       grid.setAttribute('data-collayout', 'wide-narrow');
       grid.style.gridTemplateColumns = '2fr 1fr';
       var cols = two.querySelectorAll('.cb-col');
       if (cols[0]) {
-        // Left (wide): the project description text (= 'first', carries the frame
-        // checkpoint id) followed by the SAME three accordions the resident sees on
-        // the FO page (kept in sync with phoneFO()'s info-accordions block).
+        // Left (wide): the project description text (= `first`, carries the checkpoint
+        // id) + the same accordions + extra-surveys the resident sees on the FO page.
         cols[0].appendChild(first);
-        cols[0].appendChild(makeBlock('info-accordions'));
-        cols[0].appendChild(seedAccordion('What can I suggest?', 'Anything within scope — seating, planting, traffic calming, lighting, cycle parking or how the space is used.'));
-        cols[0].appendChild(seedAccordion('Who is running this project?', 'The City of Meridian engagement team, together with the mobility department.'));
-        // …then the Extra-surveys widget (Accessibility / Easy-read variant), below all
-        // the text + accordions in the wide column — where extra content flows on the FO page.
-        cols[0].appendChild(makeBlock('extra-surveys'));
+        cols[0].appendChild(api.makeBlock('info-accordions'));
+        cols[0].appendChild(seedAccordion(api, 'What can I suggest?', 'Anything within scope — seating, planting, traffic calming, lighting, cycle parking or how the space is used.'));
+        cols[0].appendChild(seedAccordion(api, 'Who is running this project?', 'The City of Meridian engagement team, together with the mobility department.'));
+        cols[0].appendChild(api.makeBlock('extra-surveys'));
       }
       // Right (narrow): the participation box.
-      if (cols[1]) cols[1].appendChild(makeBlock('participation-box'));
-      // Out of the column, below: the timeline. (Events omitted — no creation flow, and
-      // it would otherwise show content the preview can't.)
-      frame.appendChild(makeBlock('timeline'));
-      reflectEmptyAll();
+      if (cols[1]) cols[1].appendChild(api.makeBlock('participation-box'));
+      // Out of the column, below: the timeline. (Events omitted — see above.)
+      frame.appendChild(api.makeBlock('timeline'));
+      api.reflectEmpty();
     }
-    // ── Persistence: full content-builder serialization to localStorage ──────────
+
+    // ── helpers reused by the model bridge ─────────────────────────────────────
+    // Map the tester's built project (window.ppBuilt) into the participation-box
+    // method list the canonical model API consumes. (Same mapping as the old fork's
+    // modelToMethods().)
+    function modelToMethods() {
+      var m = window.ppBuilt || { phases: [], extras: [] };
+      var out = [];
+      (m.phases || []).forEach(function (p) {
+        out.push({ id: 'pm_' + p.id, type: p.method, label: p.name, cta: p.cta, dates: 'Open now',
+          status: p.status === 'live' ? 'active' : 'upcoming', timeline: true, current: p.status === 'live', visible: true });
+      });
+      (m.extras || []).forEach(function (e) {
+        out.push({ id: 'sm_' + e.id, type: 'survey', label: e.title, cta: e.cta, dates: 'Ongoing',
+          status: 'active', timeline: false, current: false, visible: true });
+      });
+      return out;
+    }
+
+    // ── THE MODEL BRIDGE — window.cbSyncFromModel (called from ~8 places in the SPA) ──
+    // Pull the tester's model into the canonical project model + re-render the timeline
+    // and participation-box blocks in the frame, so the builder canvas shows EXACTLY
+    // what the phone/FO preview shows. Delegates to GVWidgets.project._applyModel.
+    window.cbSyncFromModel = function () {
+      var m = window.ppBuilt || { phases: [], extras: [] };
+      var methods = modelToMethods();
+      var visCount = methods.filter(function (x) { return x.visible && x.status === 'active'; }).length;
+      GVWidgets.project._applyModel({
+        phases: (m.phases || []).map(function (p) {
+          return { name: p.name, method: p.method, cta: p.cta, status: p.status === 'live' ? 'live' : 'upcoming' };
+        }),
+        methods: methods,
+        aggTitle: 'Participate · ' + visCount + ' way' + (visCount === 1 ? '' : 's')
+      }, frame);
+    };
+
+    // ── Bridge for the preview's "click to edit" zones (called from maybeOpenBuilder) ──
+    window.cbFocusWidget = function (widget) {
+      var block = frame.querySelector('[data-widget="' + widget + '"]');
+      if (!block) return;
+      api.select(block);
+      if (block.scrollIntoView) block.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    };
+
+    // ── Persistence: serialize the whole content-builder frame to localStorage ────
+    // (re-provided verbatim from the old fork — ppSave/ppFlush were defined INSIDE it.)
     var LS_KEY = 'gv-botest-state-v1';
     var DEFAULT_FRAME_HTML = '';
+    // Restored blocks (from innerHTML) have no engine click/drag handlers attached.
+    // A delegated listener on the frame selects the nearest block — fresh engine-made
+    // blocks call stopPropagation in their own handler, so this only fires for restored
+    // ones (no double-select). Drop zones + onMount (accordion/timeline) are re-run per
+    // restore. (Drag-reorder of restored blocks is the one fork behaviour not preserved.)
+    frame.addEventListener('click', function (e) {
+      if (root.classList.contains('cb-preview')) return;
+      var b = e.target.closest && e.target.closest('.gv-bo-cb-block');
+      if (b && frame.contains(b)) api.select(b);
+    });
     function reWireAll() {
-      Array.prototype.forEach.call(frame.querySelectorAll('.gv-bo-cb-block'), function (b) { wireBlock(b); });
+      Array.prototype.forEach.call(frame.querySelectorAll('.gv-bo-cb-block'), function (b) {
+        var w = b.getAttribute('data-widget'), def = api.def(w);
+        if (def && def.onMount) def.onMount(b, api);
+        var dz = b.querySelectorAll('[data-cb-zone]');
+        for (var k = 0; k < dz.length; k++) api.makeDropZone(dz[k], 'y');
+      });
       if (window.GVIcons) window.GVIcons.render(frame);
+      if (window.GVAvatars) window.GVAvatars.fill(frame);
     }
     window.ppSave = function () {
       try {
@@ -6987,10 +5961,10 @@
       return true;
     }
 
-    seedDefault();
+    // Seed already ran inside mount(); capture the pristine default, then restore.
+    DEFAULT_FRAME_HTML = frame.innerHTML;            // pristine default (empty model) for flush
     if (window.cbSyncFromModel) window.cbSyncFromModel();
-    DEFAULT_FRAME_HTML = frame.innerHTML;           // pristine default (empty model) for flush
-    var restored = ppRestore();                     // overlay any saved state
+    var restored = ppRestore();                      // overlay any saved state
     if (restored && window.cbSyncFromModel) window.cbSyncFromModel();   // re-render structural widgets from restored model
     if (window.ppCaptureContent) window.ppCaptureContent();             // reflect onto the preview
 
@@ -7004,29 +5978,28 @@
       reWireAll();
       if (window.cbSyncFromModel) window.cbSyncFromModel();
       if (window.ppCaptureContent) window.ppCaptureContent();
-      // Force the editor's Timeline/Extras panel to rebuild from the now-empty model
-      // (ppCaptureContent only repaints the phone when the state is already 'built').
+      // Force the editor's Timeline/Extras panel to rebuild from the now-empty model.
       if (window.setProjectState) window.setProjectState('built', null);
       if (window.ppToast) window.ppToast('Flushed');
     };
 
-    // Auto-save on any content-builder change (debounced) — covers typing, drag, delete.
+    // Auto-save on any content-builder change (debounced) — typing, drag, delete.
     var _saveT;
     new MutationObserver(function () { clearTimeout(_saveT); _saveT = setTimeout(window.ppSave, 500); })
       .observe(frame, { childList: true, subtree: true, characterData: true, attributes: true });
 
-    // open the panel for the default block to mirror the -settings capture
-    if (first) select(first);
+    // ── Zoom bridge: the canonical engine toggles `cb-has-panel` on #cb-root when a
+    //    block is (de)selected. This prototype zooms the frame (--cb-zoom, computed by
+    //    fitCanvas from .cb-has-panel). The fork called fitCanvas() on select/deselect;
+    //    mirror that by re-fitting whenever #cb-root's class attribute changes. ──
+    new MutationObserver(function () { if (window.fitCanvas) window.fitCanvas(); })
+      .observe(root, { attributes: true, attributeFilter: ['class'] });
 
-    // Bridge for the preview's "click to edit" zones: select the matching block
-    // (by data-widget) and bring it into view. Called from maybeOpenBuilder().
-    window.cbFocusWidget = function (widget) {
-      var block = frame.querySelector('[data-widget="' + widget + '"]');
-      if (!block) return;
-      select(block);
-      if (block.scrollIntoView) block.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    };
-  })();
+    // open the panel for the default block to mirror the -settings capture
+    if (first) api.select(first);
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', cbBoot);
+else cbBoot();
 </script>
 <script>
 (function(){

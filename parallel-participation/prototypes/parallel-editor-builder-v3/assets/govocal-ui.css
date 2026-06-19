@@ -342,8 +342,11 @@
 .gv-pcard__meta.done { color: var(--gv-success); }
 .gv-pcard__meta + .gv-pcard__desc, .gv-pcard__meta + .gv-pcard__cta { margin-top: 8px; }
 /* secondary CTA must sit ABOVE the stretched title link to stay clickable */
+/* Unboxed rail-card CTA — real (r7-wien-home p.sc-ktEKTO "Umfrage ausfüllen") is a
+   MUTED affordance: cool-grey-600, 16px/400, no underline (the whole card is the click
+   target) — NOT a brand-primary bold link. */
 .gv-pcard__cta { position: relative; z-index: 1; align-self: flex-start; margin-top: 8px;
-  font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-tenant-primary); text-decoration: none; }
+  font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); text-decoration: none; }
 .gv-pcard__cta:hover { text-decoration: underline; }
 /* card width variants */
 .gv-pcard.wide { flex-basis: 360px; }
@@ -464,7 +467,7 @@
    big green numbered circle + green phase name + date. role=tablist on the stepper,
    role=tab per phase, role=tabpanel on the content. */
 .gv-phases__bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.gv-phases__bar h2 { margin: 0; font-size: var(--gv-fs-xxl); font-weight: 700; letter-spacing: -0.01em; }
+.gv-phases__bar h2 { margin: 0; font-size: var(--gv-fs-xxl); font-weight: 700; }
 .gv-phases__nav { margin-left: auto; display: inline-flex; gap: 6px; }
 .gv-pnav { width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
   background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); color: var(--gv-grey-700); }
@@ -473,6 +476,10 @@
 .gv-pnav:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
 .gv-pnav[disabled] { color: var(--gv-grey-500); cursor: not-allowed; }
 .gv-pnav .gv-dotmark { width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
+/* The phase ribbon stays on ONE line and shrinks its wedges to fit the container —
+   it never wraps to multiple rows (flex-wrap:nowrap + min-width:0 so segments shrink
+   instead of overflowing/wrapping). Works in any width — desktop, BO canvas, or a
+   narrow mobile/phone preview. */
 .gv-stepper { display: flex; flex-wrap: nowrap; gap: 2px; padding-bottom: 4px; }
 .gv-phase { flex: 1 1 0; min-width: 0; background: none; border: 0; padding: 0; cursor: pointer;
   font-family: inherit; display: flex; flex-direction: column; align-items: stretch; }
@@ -481,6 +488,9 @@
    in a point. */
 .gv-pstep { position: relative; height: 23px; display: flex; align-items: center; justify-content: center;
   background: var(--gv-bo-step); color: var(--gv-cool-grey-700); font-weight: 500; font-size: var(--gv-fs-s); line-height: 1;
+  /* dark top edge on every segment — a11y: creates visible separation between
+     adjacent same-colour chevrons (real product has this on all phases). */
+  box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.22);
   /* shallower 11px chevron notch — the live Wien timeline point is gentler (less
      steep) than a deep 15px arrow. */
   clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%, 11px 50%); }
@@ -492,16 +502,16 @@
    component and carry a clear dark-grey top edge (clipped to the chevron shape) —
    the "dark grey border on top" + "slightly smaller modules" seen on the real timeline */
 .gv-methodband .gv-pstep { box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.22); }  /* height stays the live 23px (.gv-pstep base) */
-.gv-pstep__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
+.gv-pstep__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px;
+  animation: gv-dot-pulse 1.4s ease-in-out infinite; }
+@keyframes gv-dot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 .gv-phase__label { padding: 9px 6px 0; text-align: center; font-size: var(--gv-fs-s); line-height: 1.3; color: var(--gv-text-primary); }
 .gv-phase.current .gv-phase__label { color: var(--gv-green-600); font-weight: 600; }
 .gv-phase:hover .gv-pstep { filter: brightness(0.97); }
 .gv-phase:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
-/* the phase you're VIEWING (if it isn't the current one) fills blue-slate.
-   FO shared (selected-slate-color fidelity): live selected segment sampled
-   srgb(89,107,122) #596B7A — aliased via --gv-phase-selected-fill; the old
-   --gv-cool-grey-700 #43515D read too dark/grey vs ground truth. */
-.gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-phase-selected-fill); color: #fff; }
+/* the phase you're VIEWING fills solid green-600 — same hue as the current phase,
+   distinguished from the current phase only by the blinking dot. */
+.gv-phase[aria-selected="true"]:not(.current) .gv-pstep { background: var(--gv-green-600); color: #fff; }
 .gv-phase[aria-selected="true"]:not(.current) .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
 /* FO shared (current-phase-fill fidelity): the live wietsedemo/perspectives-entry
    CURRENT segment is NOT a solid dark-green ribbon with white text. Sampled live
@@ -533,29 +543,21 @@
   .gv-phase { min-width: 0; }
   .gv-phase__label { display: none; }
 }
-/* FO shared (phase-state-model): decouple the CURRENT phase from the SELECTED/VIEWING
-   phase — on the live wietsedemo timeline these are two orthogonal states, NOT one
-   conflated green segment. Three-way treatment: other = grey track; current = mint
-   fill + dark-green number + dot (ALWAYS, even when not being viewed); viewing/selected
-   = dark-slate fill as an INDEPENDENT overlay that wins when its phase is being viewed.
-   The base rule at line 438 gated slate behind :not(.current), which made mint win over
-   a current+selected phase and tied "selected" to "current". Drop that coupling: let the
-   [aria-selected] slate overlay apply regardless of .current, so a current phase you are
-   ALSO viewing renders slate, while a current phase you are NOT viewing stays mint+dot.
-   Appended as an override — the base .gv-phase.current (448) and the :not(.current) slate
-   rule (438) stay intact; this is just the higher-specificity orthogonal overlay. */
+/* FO shared (phase-state-model): current phase = mint+blinking dot ALWAYS; selected/viewing
+   phase = solid green-600. When a phase is both current AND selected, solid green wins and
+   the dot blinks on a white-on-green background. */
 .gv-phase[aria-selected="true"].current .gv-pstep {
-  background: var(--gv-phase-selected-fill); color: #fff; box-shadow: none;
+  background: var(--gv-green-600); color: #fff; box-shadow: none;
 }
 .gv-phase[aria-selected="true"].current .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
 /* content panel: big green numbered circle + green name + date */
-.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 30px 30px; margin-top: 22px; }
+.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 30px 30px 35px; margin-top: 22px; }
 .gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
 /* Measured live (fo-project-ideation): the phase number sits in a 39px green-500
    circle (16px/400 white), and the phase name is 21px/700 green-500 — not larger. */
 .gv-phasepanel__num { width: 39px; height: 39px; border-radius: 50%; flex: none; display: grid; place-items: center;
   background: var(--gv-green-500); color: #fff; font-size: var(--gv-fs-base); font-weight: 400; }
-.gv-phasepanel__name { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-green-500); line-height: 1.2; }
+.gv-phasepanel__name { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-green-500); line-height: 1.3; }
 .gv-phasepanel__date { margin: 4px 0 0; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
 /* the phase description sits inside the panel card, under the head — part of the
    component (the real phase card always carries a few lines of phase description). */
@@ -602,11 +604,9 @@
   max-width: calc(var(--gv-shell-w, 1150px) - 48px); margin: 0 auto; padding: 56px 0;  /* keep the live 56px 0 padding (gutter on the shell); cap to the section CONTENT width (shell − 2×24px) so the flush content lines up with every other module */
   display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
 }
-/* Spotlight anatomy: a small uppercase eyebrow kicker ('Currently working on'),
-   then the single project TITLE (h2 — the one heading size), then a lead description.
-   One title size only — the eyebrow is a label, not a competing heading. */
-.gv-spotlight__eyebrow { margin: 0 0 12px; font-size: var(--gv-fs-s); font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.04em; color: var(--gv-text-secondary); }
+/* Spotlight anatomy: the single project TITLE (h2 — the one heading size) + a lead
+   description. No standalone "Currently working on" kicker — the real homepage frames
+   the row with a full heading "{City} is currently working on" instead, not a bare eyebrow. */
 .gv-spotlight__title { margin: 0 0 14px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }  /* the project name = the spotlight's single title */
 .gv-spotlight__lead { margin: 0 0 24px; font-size: var(--gv-fs-m); line-height: 1.55; color: var(--gv-grey-800); }
 .gv-spotlight__actions { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
@@ -634,7 +634,9 @@
 .gv-poststat { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-m);
   line-height: 1.4; color: var(--gv-text-secondary); }
 .gv-poststat b { color: var(--gv-grey-800); font-weight: 700; }
-.gv-poststat.closed, .gv-poststat.closed b { color: var(--gv-grey-500); }
+/* Finished-project counts: cool-grey-600 (#596B7A, 5.51:1 on white) — source-derived and
+   AA-compliant. (Was --gv-grey-500 #BDBDBD, the "disabled" token = 1.87:1, failed AA.) */
+.gv-poststat.closed, .gv-poststat.closed b { color: var(--gv-cool-grey-600); }
 
 /* .gv-progress (time-remaining bar) → moved to govocal-primitives.css (cross-surface atom). */
 
@@ -828,8 +830,16 @@
   -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 /* Child-project avatar previews stacked below (live renders 36px thumbs). */
 .gv-pcard__fpile { display: flex; gap: 8px; padding: 16px 30px 0; }
+/* Folder avatar pile — real avatars (r7-fo-home digest img.sc-idHGMI) are CIRCULAR
+   (50%) with a 2px white ring, not 3px squares. */
 .gv-pcard__fpile img, .gv-pcard__fpile .gv-pcard__fthumb { width: 36px; height: 36px;
-  border-radius: var(--gv-radius); background: var(--gv-grey-300); object-fit: cover; }
+  border-radius: 50%; border: 2px solid var(--gv-white); background: var(--gv-grey-300); object-fit: cover; }
+/* "+N" overflow bubble (real: fo-home-raleigh div.sc-beqWaB.uItlk — cool-grey-600,
+   circular, 2px white ring, 14px dark text). Size kept at the pile's 36px for a uniform row. */
+.gv-pcard__fmore { display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex: none; border-radius: 50%; border: 2px solid var(--gv-white);
+  background: var(--gv-cool-grey-600); color: var(--gv-text-primary);
+  font-size: var(--gv-fs-s); font-weight: 400; }
 
 /* "Finished/archived" status label tone (StatusLabel primitive, neutral grey) */
 .gv-status-label.finished { background: var(--gv-grey-200); color: var(--gv-grey-800); }
@@ -983,6 +993,8 @@
 
 /* Filter bar — row of FO filter-pill dropdowns (Date, Projects). */
 .gv-eventfilters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Per-pill wrapper — establishes the positioning context the dropdown listbox anchors to. */
+.gv-filter { position: relative; }
 
 /* FO filter pill (a NEW variant — NOT .gv-btn, which is 3px radius). Live filter
    button: tenant-primary fill, white text + down-chevron, 24px pill radius,
@@ -1276,7 +1288,7 @@
 .gv-ideacard__thumb svg, .gv-ideacard__thumb .gv-icon { width: 40px; height: 40px; }
 .gv-ideacard__body { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 /* title — .e2e-idea-card-title : 21px/700/27.3px/#333 */
-.gv-ideacard__title { margin: 4px 0 12px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-grey-800); }
+.gv-ideacard__title { margin: 4px 0 16px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-grey-800); }
 .gv-ideacard__title a { color: inherit; text-decoration: none; }
 .gv-ideacard__title a:hover { color: var(--gv-tenant-primary); }
 /* author/meta row */
@@ -1290,11 +1302,14 @@
    row, while keeping the real 44px footprint. (grounded: fo-avatar-probe styles.json) */
 .gv-ideacard__avatar { box-sizing: border-box; padding: 3px; }
 .gv-ideacard__meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
-/* username — .e2e-username : 16px/400/18.4px/#1E1E1E */
-.gv-ideacard__author { font-size: var(--gv-fs-m); font-weight: 400; line-height: 1.15; color: var(--gv-text-heading-strong); }
+/* username — .e2e-username : 14px/500/lh21/#596B7A (textSecondary; source StyledUserName) */
+.gv-ideacard__author { font-size: var(--gv-fs-s); font-weight: 500; line-height: 21px; color: var(--gv-cool-grey-600); }
 .gv-ideacard__sep { color: var(--gv-text-secondary); margin: 0 2px; }
 /* time — .e2e-idea-card .sc-OROEG : 14px/500/#596B7A */
 .gv-ideacard__time { font-size: var(--gv-fs-s); font-weight: 500; line-height: 21px; color: var(--gv-cool-grey-600); }
+/* body excerpt — .e2e-idea-card body: 14px/400/lh20/rgba(0,0,0,.87), 2-line clamp
+   (grounded across fo-project-ideation-list/-feed, fo-cph-ideas-overview, fo-lux-ideation;
+   the 300/#596B7A reading was unverified — no probe isolates a lighter BodyDiv). */
 .gv-ideacard__excerpt { font-size: var(--gv-fs-s); line-height: 20px; color: rgba(0, 0, 0, 0.87); margin: 0 0 12px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 /* footer — .e2e-idea-card footer : 35px tall */
@@ -1560,15 +1575,27 @@
   .gv-surveyband__cta { margin-left: 0; width: 100%; justify-content: center; }
 }
 
-/* ── Sticky participation bar — pinned bottom band: tenant-primary, white status
-   left, white-on-colour button right (the shell-authority "participate" footer). ─ */
-/* Sits above the grey method band; sticks below the header on desktop, to the
-   bottom of the viewport on mobile (matches the live project page). */
-.gv-partbar { position: sticky; top: var(--gv-menu-height, 78px); z-index: 30; background: var(--gv-tenant-primary); color: #fff; }
+/* ── Participation bar — tenant-primary band: white status left, white-on-colour
+   button right (the shell-authority "participate" footer). ─ */
+/* Lives INLINE in the page flow; govocal-partbar.js docks it to the footer the
+   moment the bottom of the viewport contacts the bottom of the bar, and releases it
+   when scrolled back above. .is-docked is the docked (fixed) state the script sets —
+   no space is reserved at its home, so detaching leaves no gap. (Pages must include
+   govocal-partbar.js; without it the bar simply stays inline.) */
+.gv-partbar { position: relative; z-index: 30; background: var(--gv-tenant-primary); color: #fff; }
+.gv-partbar.is-docked { position: fixed; left: 0; right: 0; bottom: 0; top: auto; box-shadow: 0 -2px 12px rgba(0,0,0,0.14); }
+/* Responsive dock direction (mirrors the live product — govocal-partbar.js drives it):
+   • MOBILE (≤760px): JS docks the bar to the BOTTOM on scroll (.is-docked above).
+   • DESKTOP (>760px): the bar sticks to the TOP, just under the sticky header, once it
+     reaches the upper edge of the viewport. position:sticky pins it natively and
+     reserves its own space (no JS/spacer needed); .is-stuck adds the drop shadow only
+     while pinned. Appended as a refinement over the base block — do not reflow it. */
+@media (min-width: 761px) {
+  .gv-partbar { position: sticky; top: var(--gv-menu-height); }
+  .gv-partbar.is-stuck { box-shadow: 0 2px 12px rgba(0,0,0,0.14); }
+}
 @media (max-width: 760px) {
-  /* sticks to the BOTTOM of the viewport on mobile; status stacks above a
-     full-width CTA (live ideation project behaviour). */
-  .gv-partbar { top: auto; bottom: 0; box-shadow: 0 -2px 12px rgba(0,0,0,0.14); }
+  /* status stacks above a full-width CTA (live ideation project behaviour) */
   .gv-partbar__inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 20px; }
   .gv-partbar .gv-btn { margin-left: 0; width: 100%; justify-content: center; }
 }
@@ -2438,6 +2465,10 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 .gv-cb-textbox .ql-align-center  { text-align: center; }
 .gv-cb-textbox .ql-align-right   { text-align: right; }
 .gv-cb-textbox .ql-align-justify { text-align: justify; }
+/* Rich text inside a CB text-box uses the shared .gv-prose typography, but flush to the
+   cell — no 720px measure / auto-margins / side padding (the text-box already owns the
+   1200px measure + 24px 0 padding). Mirrors the .gv-issuefeed__rail .gv-prose reset. */
+.gv-cb-textbox .gv-prose { max-width: none; margin: 0; padding: 0; }
 
 /* Image cell — flex container so the <img> fills the cell width (live: display:flex). */
 .gv-cb-image { display: flex; width: 100%; min-height: 26px; }
@@ -2715,7 +2746,7 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 .gv-pbox { display: flex; flex-direction: column; gap: 16px; }
 .gv-pbox__actions { display: flex; flex-direction: column; gap: 12px; }
 .gv-pbox__actions .gv-btn { width: 100%; justify-content: center; }
-.gv-pbox__people { display: flex; align-items: center; gap: 8px; }
+.gv-pbox__people { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .gv-pbox__empty { border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
   text-align: center; padding: 14px; font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
 .gv-pbox--nobtns .gv-pbox__actions { display: none; }
