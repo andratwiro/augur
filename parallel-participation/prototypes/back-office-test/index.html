@@ -2000,6 +2000,11 @@
        so a selected block isn't hidden underneath. (All page-local layout state is
        scoped under #cb-root so it never redefines a library .gv-* class.) */
     #cb-root .gv-bo-cb-canvas { transition: padding-right .12s ease; }
+    /* The canvas centres the frame with display:flex; its default align-items:stretch
+       stretched the white sheet to the FULL canvas height, so the frame never sized to
+       its content (empty gap when short, content overflowing below the sheet when tall).
+       Pin to the top so the frame's height = its content and the canvas scrolls. */
+    #cb-root .gv-bo-cb-canvas { align-items: flex-start; }
     #cb-root.cb-has-panel .gv-bo-cb-canvas { padding-right: 400px; }
     /* When the 400px settings panel is open the canvas loses width. We USED to
        reflow the frame to width:100%, but that re-laid-out the project page into a
@@ -2063,14 +2068,23 @@
        frame. Direct block children stack vertically inside it. */
     .cb-col { min-width: 0; min-height: 64px; padding: 10px; background: #f8fafb; border: 1px dashed #d6dde3; border-radius: 3px; display: flex; flex-direction: column; gap: 8px; }
     .cb-ws { height: 40px; }
-    .cb-accordion { border: 1px solid var(--gv-grey-300); border-radius: 3px; }
-    .cb-accordion__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; font-weight: 600; color: var(--gv-grey-800); cursor: pointer; }
-    .cb-accordion__title { flex: 1; }
-    .cb-accordion__body { padding: 12px 16px 14px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); display: flex; flex-direction: column; gap: 8px; }
+    /* Info & accordions / Accordion render like the REAL GoVocal collapsible list:
+       NOT boxed cards, but items stacked FLUSH and separated by a single hairline
+       rule (border-bottom), no card border/radius, no gap between them. */
+    .cb-accordion { border: 0; border-bottom: 1px solid var(--gv-grey-300); border-radius: 0; background: transparent; }
+    .cb-accordion__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 2px; cursor: pointer; }
+    .cb-accordion__title { flex: 1; font-size: 18px; font-weight: 700; line-height: 1.3; color: var(--gv-text-heading); }
+    .cb-accordion__head .gv-icon { flex: none; color: var(--gv-cool-grey-600); transition: transform .15s ease; }
+    .cb-accordion__body { padding: 0 2px 16px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-base); line-height: 24px; display: flex; flex-direction: column; gap: 8px; }
     .cb-accordion__text { color: var(--gv-cool-grey-600); }
     .cb-accordion:not(.cb-accordion--open) .cb-accordion__body { display: none; }
-    .cb-accordion__head .gv-icon { transition: transform .15s ease; }
     .cb-accordion--open .cb-accordion__head .gv-icon { transform: rotate(180deg); }
+    /* Zero the per-block gap so consecutive collapsibles sit flush — one shared rule
+       between them (not two lines + a margin). Cancel the .cb-col flex gap between
+       accordion siblings, and give the first accordion after the description a top rule. */
+    #cb-root .gv-bo-cb-block:has(> .cb-accordion) { margin: 0; }
+    #cb-root .cb-col > .gv-bo-cb-block:has(> .cb-accordion) + .gv-bo-cb-block:has(> .cb-accordion) { margin-top: -8px; }
+    #cb-root .gv-bo-cb-block:not(:has(> .cb-accordion)) + .gv-bo-cb-block:has(> .cb-accordion) > .cb-accordion { border-top: 1px solid var(--gv-grey-300); }
     .cb-iframe { height: 200px; background: #1b1f23; color: #cfd6dc; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: monospace; border-radius: 3px; }
     .cb-iframe__cap { font-size: var(--gv-fs-xs); opacity: .85; }
 
