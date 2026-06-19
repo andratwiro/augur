@@ -230,8 +230,18 @@ window.GVPageBuilder = (function () {
       toast(this.checked ? 'Preview mode' : 'Editing mode');
     });
 
-    var api = { makeBlock: makeBlock, select: select, deselect: deselect, frame: frame,
+    var api = { makeBlock: makeBlock, select: select, deselect: deselect, frame: frame, root: root,
       panel: sBody, toast: toast, makeDropZone: makeDropZone, reflectEmpty: reflectEmptyAll, def: def };
+
+    // wire any pre-existing static blocks already in the frame (+ their nested zones)
+    var pre = frame.querySelectorAll(':scope > .gv-bo-cb-block');
+    for (var pj = 0; pj < pre.length; pj++) {
+      var pb = pre[pj];
+      if (def(pb.getAttribute('data-widget')).onMount) def(pb.getAttribute('data-widget')).onMount(pb, api);
+      wireBlock(pb);
+      var dz = pb.querySelectorAll('[data-cb-zone]');
+      for (var dk = 0; dk < dz.length; dk++) makeDropZone(dz[dk], 'y');
+    }
 
     if (cfg.seed) cfg.seed(api); else reflectEmptyAll();
     return api;
