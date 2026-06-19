@@ -5056,21 +5056,13 @@
     fitPreview();
   }
 
+  // The phone preview is now an iframe of the SHARED canonical renderer (pp-page.html),
+  // mounted once and re-fed the model on every change — same renderer as the Eye/FO.
   function renderPhone(state) {
     const sc = document.getElementById('phone-scroller');
     if (!sc) return;
-    if (state === 'empty') {
-      sc.innerHTML = emptyPhone();
-    } else if (state === 'built') {
-      sc.innerHTML = phoneBuilt();
-    } else {
-      sc.innerHTML = phoneFO(state);
-    }
-    if (window.GVIcons && GVIcons.render) GVIcons.render(sc);
-    if (window.GVAvatars && GVAvatars.fill) GVAvatars.fill(sc);
-    // Wire the sticky participation bar (idempotent listener) + set its initial state.
-    if (!sc._stickyWired) { sc.addEventListener('scroll', updateStickyBar, { passive: true }); sc._stickyWired = true; }
-    requestAnimationFrame(updateStickyBar);
+    if (!sc.querySelector('iframe.pp-frame')) ppMountFrame(sc, 'phone');   // mount once; first model via handshake
+    if (window.ppRefreshFrames) window.ppRefreshFrames();                  // keep every surface in sync
   }
 
   // Participation bar: lives inline above the timeline, and sticks to the phone footer
@@ -5584,6 +5576,59 @@
     return (img && img.getAttribute('src')) ? img.getAttribute('src') : '';
   };
 
+  // ── Shared-renderer model + iframe surfaces ─────────────────────────────────
+  // buildModel() derives the canonical project-page model consumed by pp-render.js
+  // (inside each iframe) from the tester's data — the content-builder content + the
+  // phase/survey model. Every surface (phone preview, Eye/FO, builder) renders this.
+  function ppTitle() {
+    var t = document.querySelector('#cb-frame .cb-title');
+    return (t && t.textContent.trim()) || ES_REAL_TITLE;
+  }
+  function buildModel() {
+    var m = window.ppBuilt || { phases: [], extras: [], content: '', contentTouched: false };
+    return {
+      hero: window.ppHeroSrc ? window.ppHeroSrc() : '',
+      title: ppTitle(),
+      intro: (m.contentTouched && m.content) ? m.content
+        : '<p style="color:var(--gv-text-secondary)">Tell participants what this project is about and how they can take part. This placeholder text ships with every project — edit it to describe yours.</p>',
+      desc: '',
+      participants: 0,
+      phases: (m.phases || []).map(function (p) {
+        return { name: p.name, method: p.method, dates: 'Open now', status: p.status === 'live' ? 'current' : 'upcoming', cta: p.cta, description: 'This phase invites people to take part.', ideas: [] };
+      }),
+      surveys: (m.extras || []).map(function (e) { return { title: e.title, cta: e.cta }; }),
+      events: []
+    };
+  }
+  window.ppBuildModel = buildModel;
+
+  var ppFrames = [];
+  function ppTheme() {
+    var r = getComputedStyle(document.documentElement);
+    return { primary: r.getPropertyValue('--gv-tenant-primary').trim(), secondary: r.getPropertyValue('--gv-tenant-secondary').trim(), text: r.getPropertyValue('--gv-tenant-text').trim(), font: r.getPropertyValue('--gv-font-family').trim() };
+  }
+  function ppPost(frame) { try { frame.contentWindow.postMessage({ ppModel: buildModel(), ppTheme: ppTheme(), ppMode: frame.dataset.mode || 'fo' }, '*'); } catch (e) {} }
+  function ppMountFrame(container, mode) {
+    var f = document.createElement('iframe');
+    f.className = 'pp-frame'; f.src = 'pp-page.html'; f.dataset.mode = mode || 'fo';
+    f.style.cssText = 'border:0;display:block;width:100%;height:100%;background:#fff;';
+    container.innerHTML = ''; container.appendChild(f);
+    ppFrames.push(f);
+    return f;
+  }
+  // Re-post the current model to every live surface (call after any model change).
+  window.ppRefreshFrames = function () {
+    ppFrames = ppFrames.filter(function (f) { return f.isConnected; });
+    ppFrames.forEach(ppPost);
+  };
+  // Handshake: each iframe posts {ppReady} when loaded; we answer with the model.
+  window.addEventListener('message', function (e) {
+    if (e.data && e.data.ppReady) {
+      var f = ppFrames.find(function (fr) { return fr.contentWindow === e.source; });
+      if (f) ppPost(f);
+    }
+  });
+
   // ── Content-builder → preview bridge ────────────────────────────────────────
   // Read the blocks the tester assembled in the content builder (#cb-frame) and turn
   // them into clean front-office HTML for the project-page description zone. Only the
@@ -5678,13 +5723,15 @@
     const builderOpen = (() => { const b = document.getElementById('view-builder'); return b && b.classList.contains('open'); })();
     if (builderOpen && window.ppCaptureContent) window.ppCaptureContent();
     const state = window.ppState || 'empty';
-    // The real GoVocal project page (ported engine), driven by the editor's state.
-    if (state === 'built' && window.FO && window.FO.renderModel) window.FO.renderModel(window.ppBuilt);
-    else if (window.FO && window.FO.render) window.FO.render(state);
-    syncFOTheme();
-    v.style.display = 'flex';
+    // The Eye now renders the SAME shared canonical page as the phone preview, in a
+    // full-width iframe (desktop viewport → desktop layout). One renderer, no drift.
     const sc = v.querySelector('.foview-scroller');
-    if (sc) sc.scrollTop = 0;
+    if (sc) {
+      let f = sc.querySelector('iframe.pp-frame');
+      if (!f) f = ppMountFrame(sc, 'fo');   // first model via the ready handshake
+      else ppPost(f);
+    }
+    v.style.display = 'flex';
     document.body.setAttribute('data-gv-screen', 'fo|' + state);
   }
   function closeFO() {

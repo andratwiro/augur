@@ -127,9 +127,10 @@
 
   /* ── pieces ─────────────────────────────────────────────────────────────── */
   function pboxHTML(m) {
-    var actives = []
-      .concat((m.phases || []).filter(function (p) { return p.status === 'current'; }).map(function (p) { return { cta: p.cta || CTA_LABELS[p.method] || 'Take part', primary: true }; }))
-      .concat((m.surveys || []).map(function (e) { return { cta: e.cta || 'Take the survey', primary: false }; }));
+    // Participation box = the live phase action(s). Extra surveys render as their own
+    // cards below (extraCardsHTML), matching the canonical project-page layout.
+    var actives = (m.phases || []).filter(function (p) { return p.status === 'current'; })
+      .map(function (p) { return { cta: p.cta || CTA_LABELS[p.method] || 'Take part', primary: true }; });
     if (!actives.length) return '';
     var people = (m.participants ? '<div class="gv-participants gv-pbox__people" style="margin-top:4px;"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">' + m.participants + ' participants</span></div>'
       : '<div class="gv-participants gv-pbox__people" style="margin-top:4px;"><span class="gv-pcount" style="color:var(--gv-text-secondary)">Be the first to take part</span></div>');
@@ -152,9 +153,13 @@
 
   /* ── public render ──────────────────────────────────────────────────────── */
   window.PP = {
-    render: function (model) {
+    render: function (model, mode) {
       MODEL = model = model || {};
       document.body.classList.add('pp-doc');
+      document.body.setAttribute('data-pp-mode', mode || 'fo');
+      // The admin "Edit project / Following" managers row belongs to the full FO page
+      // only; the phone preview + builder canvas have their own chrome, so hide it there.
+      var mgr = document.querySelector('.pp-managers'); if (mgr) mgr.style.display = (mode && mode !== 'fo') ? 'none' : '';
       // banner
       var banner = $('#banner'), bannerSec = banner && banner.closest('.pp-banner');
       if (model.hero) { if (banner) banner.src = model.hero; if (bannerSec) bannerSec.style.display = ''; }
@@ -162,7 +167,10 @@
       // header text
       if ($('#title')) $('#title').textContent = model.title || 'Untitled project';
       if ($('#intro')) $('#intro').innerHTML = model.intro || '';
-      if ($('#desc')) $('#desc').innerHTML = model.desc || '';
+      if ($('#desc')) {
+        $('#desc').innerHTML = model.desc || '';
+        var descRow = $('#desc').closest('.pp-row'); if (descRow) descRow.style.display = (model.desc ? '' : 'none');
+      }
       // CTA column = participation box + extra-survey cards
       if ($('#cta')) $('#cta').innerHTML = pboxHTML(model) + extraCardsHTML(model);
       // participation bar

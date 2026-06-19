@@ -81,7 +81,7 @@
     window.addEventListener('message', function (e) {
       var d = e.data || {};
       if (d.ppTheme) applyTheme(d.ppTheme);
-      if (d.ppModel && window.PP) window.PP.render(d.ppModel);
+      if (d.ppModel && window.PP) window.PP.render(d.ppModel, d.ppMode);
     });
     // Tell the parent we're ready so it can post the first model (handshake).
     if (window.parent && window.parent !== window) { try { window.parent.postMessage({ ppReady: true }, '*'); } catch (e) {} }
