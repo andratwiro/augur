@@ -2715,7 +2715,7 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 .gv-pbox { display: flex; flex-direction: column; gap: 16px; }
 .gv-pbox__actions { display: flex; flex-direction: column; gap: 12px; }
 .gv-pbox__actions .gv-btn { width: 100%; justify-content: center; }
-.gv-pbox__people { display: flex; align-items: center; gap: 8px; }
+.gv-pbox__people { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .gv-pbox__empty { border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
   text-align: center; padding: 14px; font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
 .gv-pbox--nobtns .gv-pbox__actions { display: none; }
