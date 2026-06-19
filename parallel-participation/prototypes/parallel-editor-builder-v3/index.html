@@ -1164,6 +1164,68 @@
   /* Compact STATE chip (label removed): smaller pill + tighter buttons. */
   .state-chip { padding: 3px 4px; gap: 4px; font-size: 10.5px; }
 
+  /* ============ NAV-architecture explorer (the project-nav block, 5 options) ============
+     The developer questioned the top-left project menu: "Project page" is overloaded — a
+     destination AND a disclosure header whose ▼ implies Audience/Messaging/Events/Input
+     360/Settings are its *children*. They're not: per the BO architecture they're peer
+     Layer-2 project tabs (General/Timeline/Audience/Messaging/Events/360 Input). These five
+     options test ways to fix the false hierarchy WITHOUT adding icons or new visuals — they
+     only re-group, re-label, or disclose. Driven by data-nav-mode on #proj-nav (see setNavMode).
+     1 Manage label · 2 Project header · 3 Manage (collapsible) · 4 Indented · 5 Current. */
+  .nav-head { display: none; }                          /* Manage/Project headings off by default */
+  .nav-head--manage { margin-top: 16px; }               /* breathing room above the tab group */
+  .manage-chevron { display: none; width: 13px; height: 13px; margin-left: auto;
+                    color: #5b6573; transition: transform .15s ease; transform: rotate(-90deg); }
+  /* default (modes 4 & 5): the Project-page chevron shows, no indent */
+  #proj-nav .nav-chevron { display: inline-block; }
+  #proj-nav #project-utilities .side-item { transition: padding .15s ease; }
+
+  /* 1 — "Manage" labels the five tabs as a peer section (like Timeline/Extras); Project page
+     is a standalone anchor. Honest peers, consistent grammar, no chevron. (Recommended.) */
+  #proj-nav[data-nav-mode="1"] .nav-head--manage { display: block; }
+  #proj-nav[data-nav-mode="1"] .nav-chevron { display: none; }
+
+  /* 2 — one "Project" header over all six destinations, flat. Minimal, single grammar. */
+  #proj-nav[data-nav-mode="2"] .nav-head--project { display: block; }
+  #proj-nav[data-nav-mode="2"] .nav-chevron { display: none; }
+
+  /* 3 — collapsible "Manage" group: progressive disclosure. Daily driver sees page + timeline;
+     the five admin tabs tuck away until needed. Chevron now belongs to a real parent. */
+  #proj-nav[data-nav-mode="3"] .nav-head--manage { display: flex; align-items: center; cursor: pointer; }
+  #proj-nav[data-nav-mode="3"] .nav-head--manage:hover { color: #1a1f2c; }
+  #proj-nav[data-nav-mode="3"] .manage-chevron { display: inline-block; }
+  #proj-nav[data-nav-mode="3"] .nav-chevron { display: none; }
+
+  /* 4 — indent the five under Project page: commit to the chevron's literal child reading. */
+  #proj-nav[data-nav-mode="4"] #project-utilities .side-item { padding-left: 26px; }
+
+  /* 5 — current: defaults above already reproduce today's chevron disclosure. */
+
+  /* On a phase, the peer headings (1 & 2) collapse with their group; mode 3 keeps its toggle. */
+  #proj-nav[data-context="phase"][data-nav-mode="1"] .nav-head--manage,
+  #proj-nav[data-context="phase"][data-nav-mode="2"] .nav-head--project { display: none; }
+
+  /* The NAV chip — same quiet pill as STATE, parked bottom-LEFT so it can't collide with the
+     bottom-right STATE chip. Numbered buttons (names in title=) per the switcher convention. */
+  .nav-chip {
+    position: fixed; bottom: 20px; left: 24px; z-index: 30;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 5px; background: #fff;
+    border: 1px solid var(--border); border-radius: 999px; font-size: 10.5px;
+    box-shadow: 0 6px 20px rgba(20,25,40,.10), 0 2px 4px rgba(20,25,40,.04);
+  }
+  .nav-chip .label {
+    padding: 0 6px 0 4px; color: #5b6573; letter-spacing: .06em;
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+  }
+  .nav-chip button {
+    min-width: 22px; padding: 4px 8px; border-radius: 999px;
+    color: #4b5563; font-weight: 600;
+    transition: background .12s ease, color .12s ease;
+  }
+  .nav-chip button:hover { background: #f4f6fa; }
+  .nav-chip button.on { background: #1a1f2c; color: #fff; }
+
   /* v3 commits to one treatment for a survey that's created but not added to the project
      (reachable only by direct URL): a text-only "Not on the project page" tag on the meta
      line (lifecycle dot untouched) with a hover explaining the fix (was explorer #4 in v2,
@@ -2173,18 +2235,29 @@
     <!-- Left side panel: project + phases -->
     <section class="flex flex-col bg-white border-r border-gray-200" style="width:280px;">
       <!-- nav -->
-      <div class="flex-1 overflow-y-auto px-3 py-4">
+      <div id="proj-nav" class="flex-1 overflow-y-auto px-3 py-4" data-nav-mode="1">
 
-        <!-- Project page — always shown (acts as "back to project" when on a phase) -->
         <!-- Text-led project menu (committed direction): no icons — labels carry the meaning.
              The icon-only blue rail keeps its icons (it has no labels). Explorer with all the
-             icon directions lives on parallel-editor-builder-v2. -->
+             icon directions lives on parallel-editor-builder-v2.
+             The NAV chip (bottom-left) swaps how this block is grouped — see setNavMode. -->
+
+        <!-- mode 2: one header over all six project destinations -->
+        <div class="sec-head nav-head nav-head--project">Project</div>
+
+        <!-- Project page — the public-facing destination (also "back to project" from a phase) -->
         <div class="side-item active" data-view="project" onclick="setView('project', this)">
           <span class="flex-1">Project page</span>
-          <svg id="project-chevron" class="nav-icon" style="width:14px;height:14px;color:#5b6573;transition:transform .15s ease;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg id="project-chevron" class="nav-icon nav-chevron" style="width:14px;height:14px;color:#5b6573;transition:transform .15s ease;" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
 
-        <!-- Project utilities — hidden on phase view (original side nav) -->
+        <!-- modes 1 & 3: "Manage" groups the back-office tabs below the page -->
+        <div class="sec-head nav-head nav-head--manage" id="manage-head" onclick="toggleManage()">
+          <span>Manage</span>
+          <svg class="nav-icon manage-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+
+        <!-- Project utilities — Layer-2 project tabs; hidden on phase view (original side nav) -->
         <div id="project-utilities">
           <div id="audience-nav" class="side-item" data-view="audience" onclick="setView('audience', this)">
             Audience
@@ -4297,6 +4370,12 @@
     document.querySelectorAll('[data-view]').forEach(n => n.classList.remove('active'));
     if (el) el.classList.add('active');
 
+    // Tell the nav-architecture CSS whether we're in a project-level or phase context, so the
+    // peer "Manage"/"Project" headings (modes 1–2) collapse with their group on a phase.
+    const navEl = document.getElementById('proj-nav');
+    if (navEl) navEl.setAttribute('data-context',
+      (view === 'phase' || view === 'add-phase' || view === 'add-survey') ? 'phase' : 'project');
+
     const projectView = document.getElementById('view-project');
     const phaseView = document.getElementById('view-phase');
     const addPhaseView = document.getElementById('view-add-phase');
@@ -4352,6 +4431,42 @@
       projectChevron.style.transform = 'rotate(0deg)';
     }
   }
+
+  // ===== NAV-architecture explorer (the bottom-left NAV chip) =====
+  // Swaps how the project-nav block is grouped. CSS does the re-grouping off data-nav-mode;
+  // this only flips the attribute, manages mode 3's collapse, and resets to the project view
+  // so every option is compared on the same screen.
+  function setNavMode(n, btn) {
+    document.querySelectorAll('.nav-chip button').forEach(b => b.classList.remove('on'));
+    if (btn) btn.classList.add('on');
+
+    const nav = document.getElementById('proj-nav');
+    nav.setAttribute('data-nav-mode', String(n));
+
+    // Compare apples to apples — return to the project view (also clears any phase-collapse).
+    const projItem = document.querySelector('.side-item[data-view="project"]');
+    setView('project', projItem);
+
+    // Mode 3 is the only one where the tabs start hidden behind the "Manage" toggle.
+    const utils = document.getElementById('project-utilities');
+    const mch = document.querySelector('.manage-chevron');
+    if (n === 3) {
+      utils.classList.add('collapsed');
+      if (mch) mch.style.transform = 'rotate(-90deg)';
+    } else {
+      utils.classList.remove('collapsed');
+    }
+  }
+
+  // Mode 3 only: the "Manage" heading is a real disclosure for the five admin tabs.
+  function toggleManage() {
+    const nav = document.getElementById('proj-nav');
+    if (nav.getAttribute('data-nav-mode') !== '3') return;   // inert label in other modes
+    const utils = document.getElementById('project-utilities');
+    const collapsed = utils.classList.toggle('collapsed');
+    const mch = document.querySelector('.manage-chevron');
+    if (mch) mch.style.transform = collapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+  }
 </script>
 
 
@@ -4382,6 +4497,18 @@
   <button data-state="empty" onclick="setProjectState('empty', this)">Empty</button>
   <button data-state="few" onclick="setProjectState('few', this)">Few</button>
   <button data-state="complex" class="on" onclick="setProjectState('complex', this)">Complex</button>
+</div>
+
+<!-- ============ NAV-architecture explorer — compact, bottom-LEFT ============
+     Tests 5 ways to resolve the overloaded "Project page" menu (see the CSS block / setNavMode).
+     Numbered to keep button widths stable; each option's name is in its title= tooltip. -->
+<div class="nav-chip" role="group" aria-label="Project-nav architecture">
+  <span class="label">Nav</span>
+  <button class="on" title="1 · Manage label — Project page stands alone; a quiet 'Manage' heading groups the five tabs as a peer section (like Timeline/Extras). No chevron. Recommended." onclick="setNavMode(1, this)">1</button>
+  <button title="2 · Project header — one 'Project' heading over all six destinations, flat. Minimal, single grammar." onclick="setNavMode(2, this)">2</button>
+  <button title="3 · Manage, collapsible — progressive disclosure: the five admin tabs tuck away under a 'Manage' toggle; daily driver sees page + timeline." onclick="setNavMode(3, this)">3</button>
+  <button title="4 · Indented — commit to the chevron's literal reading: indent the five as children of Project page." onclick="setNavMode(4, this)">4</button>
+  <button title="5 · Current — today's chevron disclosure on Project page, unchanged (baseline)." onclick="setNavMode(5, this)">5</button>
 </div>
 
 <!-- v3 has no hidden-survey switcher — it commits to the "Not on the project page" treatment (v2 #4). -->
