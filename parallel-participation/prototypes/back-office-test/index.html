@@ -4535,7 +4535,12 @@
    window.HBModel = ordered list of homepage widgets. The same model drives BOTH the
    Homepage Builder canvas (#hb-frame, as selectable blocks) AND the live homepage
    (#home-doc). Editing in the builder mutates the model and re-renders; on save/close
-   the real homepage reflects it. Faithful to the canonical pages/homepage. */
+   the real homepage reflects it. Faithful to the canonical pages/homepage.
+
+   SYNC: homepage sync set = THIS engine (HB_R renderers + M model + palette) ⇄
+   pages/homepage/index.html (canonical reference). Add/change a widget → update BOTH
+   (HB_R renderer + palette item + LABELS here, and the section in the canonical page).
+   See memory page-builder-sync-contract. */
 (function () {
   var IMG = 'assets/img/';
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]); }); };
@@ -6358,6 +6363,9 @@ window.closeHomeBuilder = function () {
     var uid = 1;
 
     // ── widget catalogue: label + the default content markup it drops ──────────
+    // SYNC: project-page sync set = these WIDGETS (builder) ⇄ assets/pp-render.js +
+    // assets/pp-page.css (shared renderer) ⇄ pages/project-page/index.html (canonical).
+    // Change a widget/the project page → update all four. See memory page-builder-sync-contract.
     var WIDGETS = {
       'text':            { label: 'Text',              make: function () { return '<div class="gv-bo-cb-block__body"><div class="cb-richtext cb-p" contenteditable="true">This is some text. You can edit and format it by using the editor in the panel on the right.</div></div>'; } },
       'button':          { label: 'Button',            make: function () { return '<div class="cb-btnblock"><span class="cb-fakebtn">Take the survey</span></div>'; } },
