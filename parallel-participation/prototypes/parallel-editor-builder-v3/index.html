@@ -3584,10 +3584,6 @@
                   <span class="gv-statuspill upcoming">Upcoming</span>
                 </div>
                 <h3 class="gv-extra-survey__title">School-run travel survey</h3>
-                <div class="gv-extra-survey__meta">
-                  <span><span class="gv-icon" data-gv-icon="calendar" aria-hidden="true"></span> Opens 1 Jul 2026</span>
-                  <span><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> 8 questions</span>
-                </div>
                 <p class="gv-extra-survey__desc">Opening soon — tell us how children get to school so we can plan next year’s safe routes.</p>
                 <a class="gv-btn primary full" href="#" aria-disabled="true">Opens 1 Jul</a>
               </div>
@@ -3599,10 +3595,6 @@
                   <span class="gv-statuspill open">Open</span>
                 </div>
                 <h3 class="gv-extra-survey__title">Mobility check-in</h3>
-                <div class="gv-extra-survey__meta">
-                  <span><span class="gv-icon" data-gv-icon="clock" aria-hidden="true"></span> Closes in 5 days</span>
-                  <span><span class="gv-icon" data-gv-icon="check" aria-hidden="true"></span> 248 responses</span>
-                </div>
                 <p class="gv-extra-survey__desc">A 2-minute survey on how you move around the city this month — your answers feed the mobility plan.</p>
                 <a class="gv-btn primary full" href="#">Take the survey</a>
               </div>
@@ -3614,10 +3606,6 @@
                   <span class="gv-statuspill closed">Closed</span>
                 </div>
                 <h3 class="gv-extra-survey__title">Spring budget priorities</h3>
-                <div class="gv-extra-survey__meta">
-                  <span><span class="gv-icon" data-gv-icon="check" aria-hidden="true"></span> 412 responses</span>
-                  <span><span class="gv-icon" data-gv-icon="calendar" aria-hidden="true"></span> Closed 2 Jun 2026</span>
-                </div>
                 <p class="gv-extra-survey__desc">This survey has closed — thank you. Residents helped shape how the spring budget is spent.</p>
                 <a class="gv-btn secondary-outlined full" href="#" aria-disabled="true">Closed 17 days ago</a>
               </div>
@@ -3629,10 +3617,6 @@
                   <span class="gv-statuspill done">Completed</span>
                 </div>
                 <h3 class="gv-extra-survey__title">Mobility check-in</h3>
-                <div class="gv-extra-survey__meta">
-                  <span><span class="gv-icon" data-gv-icon="check" aria-hidden="true"></span> You responded 3 days ago</span>
-                  <span><span class="gv-icon" data-gv-icon="clock" aria-hidden="true"></span> Closes in 5 days</span>
-                </div>
                 <p class="gv-extra-survey__desc">Thanks — your response is in. You can come back to the project page any time to see what happens next.</p>
                 <a class="gv-btn secondary-outlined full" href="#" aria-disabled="true"><span class="gv-icon" data-gv-icon="check" aria-hidden="true"></span> Thanks — response received</a>
               </div>
@@ -3644,10 +3628,6 @@
                   <span class="gv-statuspill locked">Restricted</span>
                 </div>
                 <h3 class="gv-extra-survey__title">Resident panel survey</h3>
-                <div class="gv-extra-survey__meta">
-                  <span><span class="gv-icon" data-gv-icon="lock" aria-hidden="true"></span> Verified residents only</span>
-                  <span><span class="gv-icon" data-gv-icon="clock" aria-hidden="true"></span> Closes in 5 days</span>
-                </div>
                 <p class="gv-extra-survey__desc">This survey is open to a specific group. Your account doesn’t currently meet the criteria to take part.</p>
                 <a class="gv-btn secondary-outlined full" href="#" aria-disabled="true"><span class="gv-icon" data-gv-icon="lock" aria-hidden="true"></span> You’re not eligible to take this survey</a>
               </div>
@@ -6031,14 +6011,14 @@
       var btnStyle = (state && state !== 'current') ? stt.btn : (style === 'secondary' ? 'secondary-outlined' : 'primary');
       var btn = '<a class="gv-btn full ' + btnStyle + '" href="#"' + (stt.dis ? ' aria-disabled="true"' : '') + '>' + ctaText + '</a>';
       if (format === 'button') return '<div class="gv-extra-survey">' + btn + '</div>';
-      // Card view = canonical Easy-read layout + the temporal-state chrome (pill + meta).
+      // Card view = canonical Easy-read layout (tag+pill, title, description, CTA).
+      // NOTE: no meta row between title and description — the state shows in the pill + CTA.
       return '<div class="gv-extra-survey gv-extra-survey--card">' +
         '<div class="es-head">' +
           '<span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span>' +
           '<span class="gv-statuspill ' + stt.pill + '">' + stt.pillText + '</span>' +
         '</div>' +
         '<h3 class="gv-extra-survey__title">' + s.name + '</h3>' +
-        '<div class="gv-extra-survey__meta"><span>' + stt.m1 + '</span><span>' + stt.m2 + '</span></div>' +
         '<p class="gv-extra-survey__desc">' + s.desc + '</p>' +
         btn + '</div>';
     }
