@@ -5525,6 +5525,11 @@
       return;
     }
     if (d.ppOpenBuilder) { if (window.openBuilder) window.openBuilder(); return; }
+    if (d.ppEditProject) {   // FO "Edit project" → back to the project editor (back office)
+      if (window.closeFO) window.closeFO();
+      if (window.setView) window.setView('project', document.querySelector('.side-item[data-view="project"]'));
+      return;
+    }
     if (d.ppEdit === 'hero') { ppPickHero(); return; }
     if (d.ppAdd === 'survey') {
       window.ppBuilt.extras.push({ id: 'bx' + (++ppExtraSeq), title: 'New survey', cta: 'Take the survey' });

@@ -197,6 +197,7 @@
       if (window.GVAvatars && window.GVAvatars.fill) window.GVAvatars.fill(document.body);
       if (mode === 'builder') enableBuilder(model);
       else if (mode === 'phone') enablePhone();
+      else { var eb = $('#editProject'); if (eb) eb.onclick = function (e) { e.preventDefault(); postOut({ ppEditProject: true }); }; }   // FO: Edit project → back office
     }
   };
 
@@ -212,12 +213,10 @@
   /* ── Builder mode: edit the canonical page in place, sync changes to the parent ── */
   function postOut(msg) { try { if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*'); } catch (e) {} }
   var _ceT;
-  function emitContent() {
+  function emitContent(flush) {
     clearTimeout(_ceT);
-    _ceT = setTimeout(function () {
-      var t = $('#title'), intro = $('#intro');
-      postOut({ ppContent: { title: t ? t.textContent.trim() : '', content: intro ? cleanContent(intro) : '' } });
-    }, 350);
+    var send = function () { var t = $('#title'), intro = $('#intro'); postOut({ ppContent: { title: t ? t.textContent.trim() : '', content: intro ? cleanContent(intro) : '' } }); };
+    if (flush) send(); else _ceT = setTimeout(send, 350);   // flush before a structural change so the re-render keeps content edits
   }
   function cleanContent(intro) {
     // Serialize the editable content minus all builder-only chrome.
@@ -262,31 +261,36 @@
       decorateBlock(el);
     });
   }
-  // ── Builder palette: a sticky widget tray at the top of the canvas ──
-  function makeChip(label, type, group) {
-    var chip = document.createElement('button');
-    chip.type = 'button'; chip.className = 'pp-chip'; chip.draggable = true; chip.textContent = label; chip.dataset.type = type;
-    chip.addEventListener('dragstart', function (e) { ppDrag = { kind: 'new', type: type, group: group }; try { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', type); } catch (x) {} });
-    chip.addEventListener('dragend', function () { clearIndicator(); ppDrag = null; });
-    chip.addEventListener('click', function () {
+  // ── Builder palette: the left widget rail (matches the real GoVocal content builder) ──
+  var PP_ICONS = {
+    text: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+    faq: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.4 2.4 0 1 1 3.3 2.2c-.7.4-1 .8-1 1.6"/><circle cx="12" cy="16.4" r=".7" fill="currentColor" stroke="none"/></svg>',
+    button: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="8" rx="4"/></svg>',
+    survey: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
+    phase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 12h8"/></svg>'
+  };
+  function makeCard(label, type, group) {
+    var card = document.createElement('button');
+    card.type = 'button'; card.className = 'pp-wcard'; card.draggable = true; card.dataset.type = type;
+    card.innerHTML = '<span class="pp-wcard__ic">' + (PP_ICONS[type] || '') + '</span><span class="pp-wcard__lb">' + label + '</span>';
+    card.addEventListener('dragstart', function (e) { ppDrag = { kind: 'new', type: type, group: group }; try { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', type); } catch (x) {} });
+    card.addEventListener('dragend', function () { clearIndicator(); ppDrag = null; });
+    card.addEventListener('click', function () {
       if (group === 'content') { var intro = $('#intro'); if (intro) { intro.appendChild(newBlockEl(type)); emitContent(); } }
-      else postOut({ ppAdd: type });   // project widgets are added to the model by the parent
+      else { emitContent(true); postOut({ ppAdd: type }); }   // flush content first
     });
-    return chip;
+    return card;
   }
   function buildPalette() {
-    var host = $('main') || document.body;
-    var old = host.querySelector('.pp-palette'); if (old) old.remove();   // idempotent across re-renders
-    var bar = document.createElement('div'); bar.className = 'pp-palette';
+    var old = document.querySelector('.pp-rail'); if (old) old.remove();   // idempotent across re-renders
+    var rail = document.createElement('aside'); rail.className = 'pp-rail';
     function group(title, items) {
-      var g = document.createElement('div'); g.className = 'pp-palette__group';
-      var h = document.createElement('span'); h.className = 'pp-palette__label'; h.textContent = title; g.appendChild(h);
-      items.forEach(function (it) { g.appendChild(makeChip(it[0], it[1], it[2])); });
-      bar.appendChild(g);
+      var h = document.createElement('div'); h.className = 'pp-rail__h'; h.textContent = title; rail.appendChild(h);
+      items.forEach(function (it) { rail.appendChild(makeCard(it[0], it[1], it[2])); });
     }
-    group('Content', [['＋ Text', 'text', 'content'], ['＋ FAQ', 'faq', 'content'], ['＋ Button', 'button', 'content']]);
-    group('Project', [['＋ Survey', 'survey', 'project'], ['＋ Phase', 'phase', 'project']]);
-    host.insertBefore(bar, host.firstChild);
+    group('Content', [['Text', 'text', 'content'], ['FAQ', 'faq', 'content'], ['Button', 'button', 'content']]);
+    group('Project', [['Survey', 'survey', 'project'], ['Phase', 'phase', 'project']]);
+    document.body.insertBefore(rail, document.body.firstChild);
   }
   // ── Drag-drop: insert content widgets at a position, reorder blocks, drop project widgets anywhere ──
   var ppDrag = null, _ind = null;
@@ -318,7 +322,7 @@
       _dndDocWired = true;
       // Project widgets (Survey / Phase) drop ANYWHERE on the page → parent adds to the model.
       document.addEventListener('dragover', function (e) { if (isProject()) e.preventDefault(); });
-      document.addEventListener('drop', function (e) { if (isProject()) { e.preventDefault(); postOut({ ppAdd: ppDrag.type }); ppDrag = null; } });
+      document.addEventListener('drop', function (e) { if (isProject()) { e.preventDefault(); emitContent(true); postOut({ ppAdd: ppDrag.type }); ppDrag = null; } });
     }
   }
   function enableBuilder(model) {
