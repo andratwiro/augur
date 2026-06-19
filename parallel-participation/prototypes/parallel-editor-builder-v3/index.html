@@ -2233,6 +2233,8 @@
     #cb-root .pbm-grouprow .gv-btn.full { width:auto; flex:none; }
     /* a detailed list above the participant row gets a divider */
     #cb-root .gv-pbox:not(.gv-pbox--dir-a) .gv-pbox__people { margin-top:14px; padding-top:14px; border-top:1px solid var(--gv-grey-300); }
+    /* Participant row centered horizontally below the buttons. */
+    #cb-root .gv-pbox--dir-a .gv-pbox__people { justify-content:center; }
     /* ── Extra survey (Button/Card view x Primary/Secondary) ──────────────────────
        Real GoVocal buttons (.gv-btn primary / primary-outlined). Both follow the
        tenant colour: this scope re-points --gv-tenant-primary (BO teal by default)
@@ -3417,7 +3419,7 @@
   #view-fo .pp-row { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 10px 40px; align-items: start; }
   #view-fo .pp-cta { display: flex; flex-direction: column; gap: 10px; }
   #view-fo .pp-cta .gv-btn { justify-content: center; }
-  #view-fo .pp-cta .gv-participants { display: flex; justify-content: flex-start; }
+  #view-fo .pp-cta .gv-participants { display: flex; justify-content: center; }
   #view-fo .pp-intro { margin: 0; }
   @media (max-width: 760px) {
     #view-fo .pp-row { grid-template-columns: 1fr; }
@@ -5903,9 +5905,9 @@
       return { panel: 'A', showParticipants: true, aggTitle: 'Participate · 3 ways', methods: [
         { id:'m_idea',    type:'ideation',     label:'Upload your idea for the neighbourhood park', cta:'Submit your idea',    dates:'20 May – 10 Jun', status:'active',   timeline:true,  current:true,  visible:true  },
         { id:'m_qa',      type:'information',  label:'Ask the budget team anything',                cta:'Ask a question',      dates:'Ongoing',         status:'active',   timeline:false, current:false, visible:true  },
-        { id:'m_school',  type:'survey',       label:'School survey',                               cta:'Take the survey',     dates:'1 – 20 Jun',      status:'active',   timeline:false, current:false, visible:false },
-        { id:'m_travel',  type:'survey',       label:'School-run travel survey',                    cta:'Opens 1 Jul',         dates:'1 – 15 Jul',      status:'upcoming', timeline:false, current:false, visible:false },
-        { id:'m_vote',    type:'voting',       label:'Community vote',                              cta:'Opens 12 Jul',        dates:'12 – 26 Jul',     status:'upcoming', timeline:true,  current:false, visible:false },
+        { id:'m_school',  type:'survey',       label:'School survey',                               cta:'Opens 1 Jul',         dates:'1 – 20 Jul',      status:'upcoming', timeline:false, current:false, visible:true  },
+        { id:'m_travel',  type:'survey',       label:'School-run travel survey',                    cta:'Opens 1 Jul',         dates:'1 – 15 Jul',      status:'upcoming', timeline:false, current:false, visible:true  },
+        { id:'m_vote',    type:'voting',       label:'Community vote',                              cta:'Opens 12 Jul',        dates:'12 – 26 Jul',     status:'upcoming', timeline:true,  current:false, visible:true  },
         { id:'m_budget',  type:'survey',       label:'Spring budget priorities',                    cta:'Closed 17 days ago',  dates:'Closed 2 Jun',    status:'past',     timeline:false, current:false, visible:false },
         { id:'m_offline', type:'volunteering', label:'Offline test',                                cta:'Sign up',             dates:'Ongoing',         status:'active',   timeline:false, current:false, visible:false }
       ] };
@@ -5946,7 +5948,7 @@
         return '<div class="pbm-rows">' + act.map(function (m) {
           return '<div class="pbm-row' + (m.current ? ' is-current' : '') + '">' +
             '<div class="pbm-row__info">' +
-              '<div class="pbm-row__top">' + pbType(m) + (m.current ? '<span class="pbm-flag">This phase</span>' : '') + '</div>' +
+              '<div class="pbm-row__top">' + pbType(m) + (m.current ? '<span class="pbm-flag">Timeline</span>' : '') + '</div>' +
               '<div class="pbm-row__name">' + m.label + '</div>' + pbDates(m) +
             '</div>' + pbBtn(m, m.current ? 'primary' : 'secondary-outlined') +
           '</div>';
@@ -5973,7 +5975,7 @@
         var out = '';
         if (cur) {
           out += '<div class="pbm-feature">' +
-            '<div class="pbm-feature__head">' + pbType(cur) + '<span class="pbm-flag">This phase</span></div>' +
+            '<div class="pbm-feature__head">' + pbType(cur) + '<span class="pbm-flag">Timeline</span></div>' +
             '<div class="pbm-feature__name">' + cur.label + '</div>' + pbDates(cur) + pbBtn(cur, 'primary') + '</div>';
         }
         if (rest.length) {
@@ -6024,7 +6026,7 @@
         return '<div class="cb-mlist">' + st.methods.map(function (m, i) {
           return '<label class="cb-mrow' + (m.current ? ' is-current' : '') + '">' +
             '<input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + (m.current ? ' disabled' : '') + '>' +
-            '<span class="cb-mrow__body"><span class="cb-mrow__name">' + m.label + (m.current ? ' <span class="cb-mflag">This phase</span>' : '') + '</span>' +
+            '<span class="cb-mrow__body"><span class="cb-mrow__name">' + m.label + (m.current ? ' <span class="cb-mflag">Timeline</span>' : '') + '</span>' +
             '<span class="cb-mrow__meta">' + pbTypeStr(m) + ' · ' + m.dates + ' ' + pbPanelPill(m) + '</span></span></label>';
         }).join('') + '</div>';
       } },
@@ -6036,26 +6038,34 @@
           return '<div class="cb-mgroup"><div class="cb-mgroup__h">' + label + '</div>' + items.map(function (m) {
             var i = st.methods.indexOf(m);
             return '<div class="cb-mtog' + (m.current ? ' is-current' : '') + '">' +
-              '<span class="cb-mtog__info"><span class="cb-mtog__name">' + m.label + (m.current ? ' <span class="cb-mflag">This phase</span>' : '') + '</span>' +
+              '<span class="cb-mtog__info"><span class="cb-mtog__name">' + m.label + (m.current ? ' <span class="cb-mflag">Timeline</span>' : '') + '</span>' +
               '<span class="cb-mtog__type">' + pbTypeStr(m) + ' · ' + m.dates + '</span></span>' +
               '<label class="gv-toggle"><input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + (m.current ? ' disabled' : '') + '><span class="track"></span></label></div>';
           }).join('') + '</div>';
         }
         return grp('Active', 'active') + grp('Upcoming', 'upcoming') + grp('Past', 'past');
       } },
-      // C — Grouped by track: timeline (phase) methods auto-included vs admin-curated extras.
+      // C — Grouped by track: the timeline (current-phase) method locked on top, then the
+      //     currently-open extras, then upcoming ones (on by default; toggle off to hide).
+      //     Past methods are intentionally hidden in this configuration.
       C: { name: 'By track', render: function (st) {
         function row(m) {
           var i = st.methods.indexOf(m), locked = m.current;
           return '<label class="cb-mrow' + (m.current ? ' is-current' : '') + '">' +
             '<input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + (locked ? ' disabled' : '') + '>' +
-            '<span class="cb-mrow__body"><span class="cb-mrow__name">' + m.label + (locked ? ' <span class="cb-mflag">Auto</span>' : '') + '</span>' +
+            '<span class="cb-mrow__body"><span class="cb-mrow__name">' + m.label + (locked ? ' <span class="cb-mflag">Timeline</span>' : '') + '</span>' +
             '<span class="cb-mrow__meta">' + pbTypeStr(m) + ' · ' + m.dates + ' ' + pbPanelPill(m) + '</span></span></label>';
         }
-        var phase = st.methods.filter(function (m) { return m.timeline; });
-        var extra = st.methods.filter(function (m) { return !m.timeline; });
-        return '<div class="cb-mgroup"><div class="cb-mgroup__h">Timeline · phase methods <span class="cb-mgroup__hint">follow the timeline</span></div>' + phase.map(row).join('') + '</div>' +
-               '<div class="cb-mgroup"><div class="cb-mgroup__h">Extra methods <span class="cb-mgroup__hint">you choose</span></div>' + extra.map(row).join('') + '</div>';
+        function grp(label, hint, items) {
+          if (!items.length) return '';
+          return '<div class="cb-mgroup"><div class="cb-mgroup__h">' + label + (hint ? ' <span class="cb-mgroup__hint">' + hint + '</span>' : '') + '</div>' + items.map(row).join('') + '</div>';
+        }
+        var timeline  = st.methods.filter(function (m) { return m.current; });                          // current phase, locked
+        var openExtra = st.methods.filter(function (m) { return m.status === 'active' && !m.current; }); // currently open
+        var upcoming  = st.methods.filter(function (m) { return m.status === 'upcoming'; });             // not yet open
+        return grp('Timeline', 'always shown', timeline) +
+               grp('Currently open', 'on by default · toggle off to hide', openExtra) +
+               grp('Upcoming', 'on by default · toggle off to hide', upcoming);
       } },
       // D — Compact table: Show · Method · Type · Runs · Status.
       D: { name: 'Compact table', render: function (st) {
@@ -6072,7 +6082,7 @@
           return '<label class="cb-mcard' + (m.visible ? ' is-on' : '') + (m.current ? ' is-current' : '') + '">' +
             '<input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + (m.current ? ' disabled' : '') + '>' +
             '<span class="cb-mcard__top"><span class="pbm-type">' + pbTypeStr(m) + '</span>' + pbPanelPill(m) + '</span>' +
-            '<span class="cb-mcard__name">' + m.label + (m.current ? ' <span class="cb-mflag">This phase</span>' : '') + '</span>' +
+            '<span class="cb-mcard__name">' + m.label + (m.current ? ' <span class="cb-mflag">Timeline</span>' : '') + '</span>' +
             '<span class="cb-mcard__dates">' + m.dates + '</span></label>';
         }).join('') + '</div>';
       } }
@@ -6191,7 +6201,7 @@
         return '<div class="cb-vchip cb-vchip--wrap cb-vchip--top" id="cb-pbox-switch" role="group" aria-label="Configuration panel design">' +
             '<button type="button" data-pv="A" title="Checklist">A</button>' +
             '<button type="button" data-pv="B" title="Toggles grouped by status">B</button>' +
-            '<button type="button" data-pv="C" title="Grouped by track (timeline vs extras)">C</button>' +
+            '<button type="button" data-pv="C" title="By track — timeline locked, then open extras, then upcoming (past hidden)">C</button>' +
             '<button type="button" data-pv="D" title="Compact table">D</button>' +
             '<button type="button" data-pv="E" title="Selectable cards">E</button>' +
           '</div>' +
@@ -6559,7 +6569,7 @@
       function footerHTML() {
         var nActive = st.methods.filter(function (m) { return m.visible && pbActive(m); }).length;
         return '<div class="cb-pfooter">' +
-          '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="showppl"' + (st.showParticipants ? ' checked' : '') + '><span class="track"></span></label><span>Show all project contributions</span></div>' +
+          '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="showppl"' + (st.showParticipants ? ' checked' : '') + '><span class="track"></span></label><span>Show all project participants</span></div>' +
           (nActive > 2 ? '<div class="cb-setseg">Collapsed button title</div><input class="gv-input" data-set="aggtitle" value="' + (st.aggTitle || '') + '">' : '') +
         '</div>';
       }
