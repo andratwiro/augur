@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.69";
+const UI_VERSION = "0.70";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1301,11 +1301,10 @@ const NAV_CSS = `
        with the Opportunities / Playground labels below it (same 8px pad + 10px gap). */
     .gvside__brand .gvmark { width: 16px; height: 16px; }
     .gvtop__brand .gvmark { width: 22px; height: 22px; }
-    /* Hovering the brand row spins the mark 45°. The disc is a perfect circle, so
-       rotating the whole mark looks like only the sparkle cut-out turns — and rotating
-       a whole element about its centre is bulletproof everywhere (no SVG fill-box). */
-    .gvside__brand .gvmark { transition: transform .45s cubic-bezier(.34,1.32,.5,1); }
-    .gvside__brand:hover .gvmark { transform: rotate(45deg); }
+    /* Each rail-brand hover spins the mark one full turn and rests there (the angle is
+       accumulated in JS — see chromeScript). The disc is a circle so only the sparkle
+       cut-out reads as turning; easeOutExpo gives a fast whip that settles home. */
+    .gvside__brand .gvmark { transition: transform .9s cubic-bezier(.16,1,.3,1); }
     @media (prefers-reduced-motion: reduce) { .gvside__brand .gvmark { transition: none; } }
 
     /* Omni search — one field, filters whatever cards are on the right. Figma-style
@@ -1513,6 +1512,18 @@ function appChrome(active) {
 /** Shared chrome script: real-time in-page filter + the mobile rail drawer. */
 function chromeScript() {
   return `(function(){
+  // ── Brand mark: each hover spins it a full turn forward, then rests there ──
+  var brand = document.querySelector('.gvside__brand');
+  if (brand && !brand.dataset.spin) {
+    brand.dataset.spin = '1';
+    var mark = brand.querySelector('.gvmark');
+    var turns = 0;
+    brand.addEventListener('mouseenter', function(){
+      if (!mark) return;
+      turns++;
+      mark.style.transform = 'rotate(' + (turns * 360) + 'deg)';
+    });
+  }
   // ── In-page real-time filter ─────────────────────────────────────────────
   var input = document.querySelector('[data-filter]');
   if (input && !input.dataset.wired) {
