@@ -987,6 +987,87 @@ window.GVWidgets = (function () {
       if (window.GVAvatars) window.GVAvatars.fill(frame);
     }
 
+    // ════════════ Canonical model-driven FRONT-OFFICE renderer ════════════
+    // Turns the builder's assembled blocks (or any project model) into the
+    // resident-facing project page — the single source of truth for FO output,
+    // consumed by the prototype phone preview and (later) pages/project-page.
+    // Content widgets (participation-box, extra-surveys, timeline, events) ARE
+    // already clean FO, so we reuse their make-internals; the builder-chrome
+    // widgets (title, hero, text, accordion, columns, …) get a clean FO emitter
+    // here (no contenteditable / cb-zone / drop affordances). Scaffold uses
+    // .gv-fo__* classes (styled per surface; page-composition layout, like the
+    // pp-* classes on pages/project-page).
+    function foEsc(s) { return esc(s == null ? '' : String(s)); }
+    function foDirectBlocks(el) {
+      // direct-child builder blocks (column children are read via their zone)
+      return Array.prototype.filter.call(el.children, function (c) {
+        return c.classList && c.classList.contains('gv-bo-cb-block');
+      });
+    }
+    // Read one builder block (.gv-bo-cb-block[data-widget]) back into {type,data}.
+    function readBlock(block) {
+      var type = block.getAttribute('data-widget');
+      function q(s) { return block.querySelector(s); }
+      function tx(s) { var n = q(s); return n ? (n.textContent || '').trim() : ''; }
+      var d = {};
+      switch (type) {
+        case 'title': d.text = tx('.cb-title'); break;
+        case 'hero': var hi = q('.cb-hero__img'); d.src = hi ? hi.getAttribute('src') : ''; break;
+        case 'text': var rt = q('.cb-richtext'); d.html = rt ? rt.innerHTML : ''; break;
+        case 'button': var b = q('.cb-fakebtn'); d.label = b ? (b.textContent || '').trim() : 'Button'; d.href = (b && b.getAttribute('data-href')) || '#'; d.style = b && b.classList.contains('cb-fakebtn--secondary') ? 'secondary' : (b && b.classList.contains('cb-fakebtn--link') ? 'link' : 'primary'); break;
+        case 'image': var im = q('.cb-img'); d.src = im ? im.getAttribute('src') : ''; d.alt = im ? (im.getAttribute('alt') || '') : ''; break;
+        case 'accordion': case 'info-accordions': d.title = tx('.cb-accordion__title'); var bt = q('.cb-accordion__text'); d.body = bt ? bt.innerHTML : ''; break;
+        case 'file-attachment': d.name = tx('.cb-file__name'); d.meta = tx('.cb-file__meta'); break;
+        case 'white-space': var ws = q('.cb-ws'); d.height = ws && ws.style.height ? parseInt(ws.style.height, 10) : 32; break;
+        case 'image-text-cards': d.caps = Array.prototype.map.call(block.querySelectorAll('.cb-card__cap'), function (c) { return (c.textContent || '').trim(); }); break;
+        case 'two-column': case 'three-column': d.cols = Array.prototype.map.call(block.querySelectorAll('.cb-col'), function (col) { return foDirectBlocks(col).map(readBlock); }); break;
+        case 'participation-box': d.pbox = cbPboxState(block); break;
+        case 'extra-surveys': d.survey = cbSurveyState(block); break;
+        case 'iframe': d.cap = tx('.cb-iframe__cap'); break;
+        // timeline / events render from the project model (CB_PHASES / CB_EVENTS)
+      }
+      return { type: type, data: d };
+    }
+    function buildModel(frame) {
+      if (!frame) return { blocks: [] };
+      return { blocks: foDirectBlocks(frame).map(readBlock) };
+    }
+    // Clean FO HTML for one block — no builder chrome.
+    function foBlock(type, data) {
+      data = data || {};
+      switch (type) {
+        case 'title': return data.text ? '<h1 class="gv-title h1 gv-fo__title">' + foEsc(data.text) + '</h1>' : '';
+        case 'text': return '<div class="gv-fo__rich gv-prose">' + (data.html || '') + '</div>';
+        case 'button': return '<div class="gv-fo__btnrow"><a class="gv-btn ' + (data.style === 'secondary' ? 'secondary-outlined' : data.style === 'link' ? 'text' : 'primary') + '" href="' + foEsc(data.href || '#') + '">' + foEsc(data.label || 'Button') + '</a></div>';
+        case 'image': return data.src ? '<figure class="gv-fo__img"><img src="' + foEsc(data.src) + '" alt="' + foEsc(data.alt) + '"></figure>' : '';
+        case 'accordion': case 'info-accordions': return '<div class="gv-accordion gv-fo__acc"><details class="gv-acc__item"><summary class="gv-acc__head"><span class="gv-acc__q">' + foEsc(data.title || 'More information') + '</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary><div class="gv-acc__body"><p>' + (data.body || '') + '</p></div></details></div>';
+        case 'file-attachment': return '<a class="gv-fileblock gv-fo__file" href="#"><span class="gv-icon" data-gv-icon="download"></span><span class="gv-fileblock__info"><span class="gv-fileblock__name">' + foEsc(data.name || 'Attachment') + '</span><span class="gv-fileblock__meta">' + foEsc(data.meta) + '</span></span></a>';
+        case 'white-space': return '<div class="gv-fo__ws" style="height:' + (data.height || 32) + 'px"></div>';
+        case 'image-text-cards': return '<div class="gv-fo__cards">' + (data.caps || []).map(function (c) { return '<div class="gv-fo__card"><div class="gv-fo__card-img"></div><div class="gv-fo__card-cap">' + foEsc(c) + '</div></div>'; }).join('') + '</div>';
+        case 'two-column': case 'three-column': return '<div class="gv-fo__cols gv-fo__cols--' + (type === 'three-column' ? 3 : 2) + '">' + (data.cols || []).map(function (col) { return '<div class="gv-fo__col">' + col.map(function (cb) { return foBlock(cb.type, cb.data); }).join('') + '</div>'; }).join('') + '</div>';
+        case 'iframe': return '<div class="gv-fo__embed">' + foEsc(data.cap || 'Embedded content') + '</div>';
+        case 'participation-box': return cbPboxBodyHTML(data.pbox || cbPboxDefault());
+        case 'extra-surveys': var sv = data.survey || { survey: 'mobility', format: 'card', style: 'primary', label: '', cardVariant: 'easy', state: 'current' }; return cbSurveyHTML(sv.survey, sv.format, sv.style, sv.label, sv.cardVariant, sv.state);
+        case 'timeline': return cbTimelineHTML();
+        case 'events': return cbEventsHTML(2);
+        default: return '';
+      }
+    }
+    // Assemble the full FO project body from a model {blocks:[{type,data}]}.
+    // Hero → full-bleed banner; title → page head; the rest flow in the content pad.
+    function renderFO(model) {
+      model = model || {};
+      var blocks = model.blocks || [];
+      var hero = '', head = '', body = '';
+      blocks.forEach(function (bl) {
+        if (bl.type === 'hero') { hero = (bl.data && bl.data.src) || hero; return; }
+        if (bl.type === 'title') { head += foBlock('title', bl.data); return; }
+        body += foBlock(bl.type, bl.data);
+      });
+      var banner = hero ? '<div class="gv-fo__banner"><img src="' + foEsc(hero) + '" alt=""></div>' : '';
+      return '<div class="gv-fo">' + banner + '<div class="gv-fo__pad">' + head + body + '</div></div>';
+    }
+
     // ── assemble the registry: every widget shares the dispatchers above ──
     var REG = {};
     Object.keys(MK).forEach(function (w) {
@@ -1001,6 +1082,10 @@ window.GVWidgets = (function () {
     });
     REG._meta = { tx: TX };   // which widgets show the panel-level locale switcher
     REG._applyModel = applyModel;   // prototypes call GVWidgets.project._applyModel(model, frame)
+    // Model-driven FO renderer: read the builder → render the resident page.
+    REG.buildModel = buildModel;    // GVWidgets.project.buildModel(frameEl) → {blocks}
+    REG.renderFO = renderFO;        // GVWidgets.project.renderFO(model) → FO HTML string
+    REG.foBlock = foBlock;          // per-widget clean FO emitter
     return REG;
   })();
 

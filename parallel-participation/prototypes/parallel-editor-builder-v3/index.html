@@ -157,6 +157,40 @@
   /* The blinking "open" status dot is now baked into the canonical .gv-partbar
      (gv-partbar-pulse in govocal-ui.css) — no prototype-local animation needed. */
 
+  /* ── Model-driven FO preview (canonical GVWidgets.project.renderFO output) ──────
+     The phone now renders the resident page LIVE from the builder's blocks. Widgets
+     are canonical .gv-* (themed, centered, etc.); these .gv-fo__* rules are only the
+     page frame (banner, content pad, spacing) — the same page-composition role the
+     pp-* classes play on pages/project-page. Prototype-local for now; promote to
+     canonical CSS when pages/project-page is converged onto renderFO (R1). */
+  .phone .gv-fo { font-family: var(--gv-font-family); color: var(--gv-text-primary, #1a1f2c); }
+  .phone .gv-fo__banner { position: relative; height: 180px; overflow: hidden; margin: 12px 22px 0; border-radius: var(--gv-radius); }
+  .phone .gv-fo__banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .phone .gv-fo__pad { padding: 20px 22px 28px; }
+  .phone .gv-fo__pad > * { margin: 0 0 22px; }
+  .phone .gv-fo__pad > *:last-child { margin-bottom: 0; }
+  .phone .gv-fo__title { margin: 0 0 14px; }
+  .phone .gv-fo__rich { font-size: var(--gv-fs-base); line-height: 1.55; color: var(--gv-grey-800, #43515D); }
+  .phone .gv-fo__rich p { margin: 0 0 10px; }
+  .phone .gv-fo__rich p:last-child { margin-bottom: 0; }
+  .phone .gv-fo__btnrow .gv-btn { width: 100%; justify-content: center; }
+  .phone .gv-fo__img img { width: 100%; border-radius: var(--gv-radius); display: block; }
+  .phone .gv-fo__cols { display: flex; flex-direction: column; gap: 22px; }
+  .phone .gv-fo__col > * { margin: 0 0 18px; }
+  .phone .gv-fo__col > *:last-child { margin-bottom: 0; }
+  .phone .gv-fo__cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .phone .gv-fo__card-img { aspect-ratio: 4 / 3; background: var(--gv-grey-200, #e3e7ea); border-radius: var(--gv-radius); margin-bottom: 6px; }
+  .phone .gv-fo__card-cap { font-size: var(--gv-fs-s); color: var(--gv-text-secondary, #596B7A); }
+  .phone .gv-fo__embed { padding: 28px; text-align: center; background: var(--gv-grey-100, #f4f6fa); border-radius: var(--gv-radius); color: var(--gv-text-secondary, #596B7A); font-size: var(--gv-fs-s); }
+  .phone .gv-fo__ws { width: 100%; }
+  .phone .gv-fo .gv-event-card { margin-bottom: 14px; }
+  .phone .gv-fo .cb-events, .phone .gv-fo .gv-phases { margin-top: 4px; }
+  /* Desktop frame: wider banner + a centred content column */
+  .frame-window .gv-fo__banner { height: 300px; max-width: 1040px; margin: 12px auto 0; }
+  .frame-window .gv-fo__pad { max-width: 1120px; margin: 0 auto; padding: 36px 40px; }
+  .frame-window .gv-fo__cols { flex-direction: row; align-items: flex-start; }
+  .frame-window .gv-fo__col { flex: 1; }
+
   /* ── Empty-phone default-scaffold exploration (3 options) ───────────────────
      A freshly-created project isn't truly blank: it has a real title, and (per option)
      ships with default scaffolding — generic body text, a participation box, and a
@@ -5025,8 +5059,17 @@
   function renderPhone(state) {
     const sc = document.getElementById('phone-scroller');
     if (!sc) return;
+    // LIVE preview: render the resident page from the builder's actual blocks via
+    // the canonical model-driven renderer (GVWidgets.project.renderFO ← buildModel).
+    // The builder mounts AFTER the initial render, so fall back to the static sample
+    // until it's seeded — then the post-mount observer re-renders live on every edit.
+    const frame = document.getElementById('cb-frame');
+    const live = state !== 'empty' && frame && window.GVWidgets && GVWidgets.project
+      && GVWidgets.project.renderFO && frame.querySelector('.gv-bo-cb-block');
     if (state === 'empty') {
       sc.innerHTML = emptyPhone();
+    } else if (live) {
+      sc.innerHTML = GVWidgets.project.renderFO(GVWidgets.project.buildModel(frame));
     } else {
       sc.innerHTML = phoneFO(state);
     }
@@ -5036,6 +5079,12 @@
     if (!sc._stickyWired) { sc.addEventListener('scroll', updateStickyBar, { passive: true }); sc._stickyWired = true; }
     requestAnimationFrame(updateStickyBar);
   }
+  // Re-render the phone from the current builder model (called by the post-mount
+  // edit observer in the content-builder script). Empty state keeps its ghost view.
+  window.cbSyncPhone = function () {
+    if (window.ppState === 'empty') return;
+    renderPhone(window.ppState || 'complex');
+  };
 
   // Participation bar: lives inline above the timeline, and sticks to the phone footer
   // ONLY once the user scrolls down far enough to reach it (then stays stuck through the
@@ -5892,6 +5941,24 @@
       var mo = new MutationObserver(function () { if (window.fitCanvas) window.fitCanvas(); });
       mo.observe(root, { attributes: true, attributeFilter: ['class'] });
     }
+
+    // ── Live FO preview: re-render the phone whenever the builder content changes ──
+    // The phone now mirrors the builder via GVWidgets.project.renderFO(buildModel) —
+    // typing a title, editing text, toggling a participation method, swapping a survey
+    // state all flow straight to the resident-page preview. Debounced so a burst of
+    // mutations (e.g. a widget re-render) collapses into one preview update. The
+    // observer watches #cb-frame only; the preview writes to #phone-scroller, so there
+    // is no feedback loop.
+    if (frame && window.MutationObserver) {
+      var _pvDeb;
+      var pvmo = new MutationObserver(function () {
+        clearTimeout(_pvDeb);
+        _pvDeb = setTimeout(function () { if (window.cbSyncPhone) window.cbSyncPhone(); }, 180);
+      });
+      pvmo.observe(frame, { subtree: true, childList: true, characterData: true, attributes: true });
+    }
+    // First live render now that the builder is seeded + the model is applied.
+    if (window.cbSyncPhone) window.cbSyncPhone();
 
     // ── Bridge for the preview's "click to edit" zones (called from maybeOpenBuilder) ──
     // Selects the block matching data-widget and brings it into view.
