@@ -2102,6 +2102,10 @@
     .cb-hero { border-radius: 4px; overflow: hidden; }
     .cb-hero__img { display: block; width: 100%; height: 240px; object-fit: cover; }
     .cb-empty-hint { padding: 18px 16px; color: var(--gv-cool-grey-600, #6b7280); font-size: 14px; font-style: italic; }
+  .pp-toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(8px); z-index: 80;
+    background: #1a1f2c; color: #fff; padding: 11px 20px; border-radius: 999px; font-size: 14px; font-weight: 600;
+    box-shadow: 0 10px 30px rgba(20,25,40,.3); opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease; }
+  .pp-toast.is-show { opacity: .96; transform: translateX(-50%) translateY(0); }
     .cb-title { margin: 4px 0 0; outline: none; }
 
     /* ── Timeline + Events blocks (canonical .gv-phases / .gv-event-card) ──────── */
@@ -2373,7 +2377,7 @@
       <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-pages"></span><span class="gv-bo-nav__label">Pages &amp; menu</span></a>
       <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-settings"></span><span class="gv-bo-nav__label">Settings</span></a>
       <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-notifications"></span><span class="gv-bo-nav__label">Notifications</span><span class="gv-bo-count">3</span></a>
-      <a class="gv-bo-nav__item" href="#"><span class="gv-bo-avatar" data-gv-icon="user"></span><span class="gv-bo-nav__label">Go Vocal Admin<span class="gv-bo-nav__sub">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
+      <a class="gv-bo-nav__item" href="#" title="Test only: clear saved project data" onclick="if(window.ppFlush)window.ppFlush();return false;"><span class="gv-bo-avatar" data-gv-icon="user"></span><span class="gv-bo-nav__label">Go Vocal Admin<span class="gv-bo-nav__sub">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
       <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" style="color:var(--gv-green-400)" data-gv-icon="admin-support"></span><span class="gv-bo-nav__label">Support</span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
     </div>
   </nav>
@@ -5426,6 +5430,14 @@
   // first creation. This is what lets us SEE what a fresh person actually configured.
   window.ppBuilt = { phases: [], extras: [], content: '', contentTouched: false };
   let ppPhaseSeq = 0, ppExtraSeq = 0;
+
+  // Lightweight toast for the main editor (the builder has its own cb-toast).
+  window.ppToast = function (msg) {
+    var el = document.getElementById('pp-toast');
+    if (!el) { el = document.createElement('div'); el.id = 'pp-toast'; el.className = 'pp-toast'; document.body.appendChild(el); }
+    el.textContent = msg; el.classList.add('is-show');
+    clearTimeout(window.ppToast._t); window.ppToast._t = setTimeout(function () { el.classList.remove('is-show'); }, 1600);
+  };
   const ppEsc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   // add-phase method-card title → { method (FO data key), label (timeline), cta (FO button) }
@@ -5456,6 +5468,7 @@
     ppResetPhaseForm();
     setProjectState('built', null);
     setView('project', document.querySelector('[data-view="project"]'));
+    if (window.ppSave) window.ppSave();
   }
   // "Create survey" — off-timeline extra survey.
   function commitSurvey() {
@@ -5467,6 +5480,7 @@
     ppResetSurveyForm();
     setProjectState('built', null);
     setView('project', document.querySelector('[data-view="project"]'));
+    if (window.ppSave) window.ppSave();
   }
   function ppResetPhaseForm() {
     const inp = document.querySelector('#view-add-phase input.gv-input'); if (inp) inp.value = '';
@@ -5479,6 +5493,12 @@
   }
   window.commitPhase = commitPhase;
   window.commitSurvey = commitSurvey;
+  // After restoring a saved model, advance the id counters past existing ids.
+  window.ppSyncSeq = function () {
+    const mx = (arr) => (arr || []).reduce((m, x) => Math.max(m, parseInt(String(x.id || '').replace(/\D/g, ''), 10) || 0), 0);
+    ppPhaseSeq = mx(window.ppBuilt.phases);
+    ppExtraSeq = mx(window.ppBuilt.extras);
+  };
 
   // Editor TIMELINE panel built from the model (falls back to the empty example).
   function builtTimeline() {
@@ -5628,6 +5648,7 @@
     window.ppBuilt.contentTouched = true;
     if (window.ppState !== 'built') setProjectState('built', null);
     else { renderPhone('built'); }
+    if (window.ppSave) window.ppSave();
   };
 
   // Open in the EMPTY state by default — a blank project the tester builds from scratch
@@ -7261,13 +7282,68 @@
       frame.appendChild(makeBlock('timeline'));
       reflectEmptyAll();
     }
+    // ── Persistence: full content-builder serialization to localStorage ──────────
+    var LS_KEY = 'gv-botest-state-v1';
+    var DEFAULT_FRAME_HTML = '';
+    function reWireAll() {
+      Array.prototype.forEach.call(frame.querySelectorAll('.gv-bo-cb-block'), function (b) { wireBlock(b); });
+      if (window.GVIcons) window.GVIcons.render(frame);
+    }
+    window.ppSave = function () {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify({
+          v: 1,
+          model: window.ppBuilt ? { phases: window.ppBuilt.phases, extras: window.ppBuilt.extras, content: window.ppBuilt.content, contentTouched: window.ppBuilt.contentTouched } : null,
+          frame: frame.innerHTML
+        }));
+      } catch (e) { /* quota / private mode — ignore */ }
+    };
+    function ppRestore() {
+      var raw; try { raw = localStorage.getItem(LS_KEY); } catch (e) { return false; }
+      if (!raw) return false;
+      var data; try { data = JSON.parse(raw); } catch (e) { return false; }
+      if (data.frame) {
+        frame.innerHTML = data.frame;
+        first = frame.querySelector('#e2e-content-builder-frame') || frame.querySelector('.gv-bo-cb-block');
+        reWireAll();
+      }
+      if (data.model && window.ppBuilt) {
+        window.ppBuilt.phases = data.model.phases || [];
+        window.ppBuilt.extras = data.model.extras || [];
+        window.ppBuilt.content = data.model.content || '';
+        window.ppBuilt.contentTouched = !!data.model.contentTouched;
+        if (window.ppSyncSeq) window.ppSyncSeq();
+      }
+      return true;
+    }
+
     seedDefault();
-    // Pull in whatever the tester has already built (empty on first load) so the builder
-    // canvas and the preview start identical and stay in step.
     if (window.cbSyncFromModel) window.cbSyncFromModel();
-    // Reflect the seeded page content (title text + accordions) onto the preview right
-    // away, so the preview matches the builder before it's ever opened.
-    if (window.ppCaptureContent) window.ppCaptureContent();
+    DEFAULT_FRAME_HTML = frame.innerHTML;           // pristine default (empty model) for flush
+    var restored = ppRestore();                     // overlay any saved state
+    if (restored && window.cbSyncFromModel) window.cbSyncFromModel();   // re-render structural widgets from restored model
+    if (window.ppCaptureContent) window.ppCaptureContent();             // reflect onto the preview
+
+    // Flush (test-only) — clear saved data, reset to the empty default in place, toast.
+    window.ppFlush = function () {
+      try { localStorage.removeItem(LS_KEY); } catch (e) {}
+      if (window.ppBuilt) { window.ppBuilt.phases = []; window.ppBuilt.extras = []; window.ppBuilt.content = ''; window.ppBuilt.contentTouched = false; }
+      if (window.ppSyncSeq) window.ppSyncSeq();
+      frame.innerHTML = DEFAULT_FRAME_HTML;
+      first = frame.querySelector('#e2e-content-builder-frame') || frame.querySelector('.gv-bo-cb-block');
+      reWireAll();
+      if (window.cbSyncFromModel) window.cbSyncFromModel();
+      if (window.ppCaptureContent) window.ppCaptureContent();
+      // Force the editor's Timeline/Extras panel to rebuild from the now-empty model
+      // (ppCaptureContent only repaints the phone when the state is already 'built').
+      if (window.setProjectState) window.setProjectState('built', null);
+      if (window.ppToast) window.ppToast('Flushed');
+    };
+
+    // Auto-save on any content-builder change (debounced) — covers typing, drag, delete.
+    var _saveT;
+    new MutationObserver(function () { clearTimeout(_saveT); _saveT = setTimeout(window.ppSave, 500); })
+      .observe(frame, { childList: true, subtree: true, characterData: true, attributes: true });
 
     // open the panel for the default block to mirror the -settings capture
     if (first) select(first);
