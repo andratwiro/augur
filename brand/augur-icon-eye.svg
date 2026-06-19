@@ -1,0 +1,30 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Augur (eye mark)">
+  <defs>
+    <linearGradient id="tile2" x1="160" y1="80" x2="880" y2="980" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#241A3D"/>
+      <stop offset="0.55" stop-color="#2C1F49"/>
+      <stop offset="1" stop-color="#382350"/>
+    </linearGradient>
+    <radialGradient id="dawn2" cx="512" cy="900" r="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7A4E86" stop-opacity="0.55"/>
+      <stop offset="0.45" stop-color="#4A2D5A" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#382350" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold2" x1="300" y1="360" x2="724" y2="680" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FAD79A"/>
+      <stop offset="0.55" stop-color="#F1C078"/>
+      <stop offset="1" stop-color="#E2A14E"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#tile2)"/>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#dawn2)"/>
+  <rect x="33.5" y="33.5" width="957" height="957" rx="222.5" stroke="#FFFFFF" stroke-opacity="0.07" stroke-width="3"/>
+
+  <!-- eye of augury: almond outline + bird as the pupil -->
+  <path d="M232 512 C360 372 664 372 792 512 C664 652 360 652 232 512 Z"
+        stroke="url(#gold2)" stroke-width="40" fill="none" stroke-linejoin="round"/>
+  <g stroke="url(#gold2)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M430 486 C462 482 496 522 512 568 C528 522 562 482 594 486"/>
+  </g>
+</svg>

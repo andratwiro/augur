@@ -1,0 +1,41 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Augur">
+  <defs>
+    <linearGradient id="tile" x1="160" y1="80" x2="880" y2="980" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#241A3D"/>
+      <stop offset="0.55" stop-color="#2C1F49"/>
+      <stop offset="1" stop-color="#382350"/>
+    </linearGradient>
+    <radialGradient id="dawn" cx="512" cy="900" r="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7A4E86" stop-opacity="0.55"/>
+      <stop offset="0.45" stop-color="#4A2D5A" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#382350" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="254" y1="296" x2="770" y2="686" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FAD79A"/>
+      <stop offset="0.55" stop-color="#F1C078"/>
+      <stop offset="1" stop-color="#E2A14E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- tile -->
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#tile)"/>
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#dawn)"/>
+  <rect x="33.5" y="33.5" width="957" height="957" rx="222.5" stroke="#FFFFFF" stroke-opacity="0.07" stroke-width="3"/>
+
+  <!-- soaring raptor, top-down -->
+  <path fill="url(#gold)" d="
+    M512 300
+    C 526 316 531 342 539 366
+    C 566 358 664 350 744 392
+    C 672 452 600 452 570 480
+    C 564 540 562 576 553 612
+    C 558 642 560 662 558 682
+    L 512 642
+    L 466 682
+    C 464 662 466 642 471 612
+    C 462 576 460 540 454 480
+    C 424 452 352 452 280 392
+    C 360 350 458 358 485 366
+    C 493 342 498 316 512 300
+    Z"/>
+</svg>

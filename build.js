@@ -150,7 +150,7 @@ function injectHead(html, pageUrl, hasOg) {
     : "";
   const tags =
     `\n  <meta property="og:type" content="website" />` +
-    `\n  <meta property="og:site_name" content="Product Prototypes" />` +
+    `\n  <meta property="og:site_name" content="Augur" />` +
     `\n  <meta property="og:title" content="${escAttr(title)}" />` +
     `\n  <meta property="og:description" content="${escAttr(desc)}" />` +
     `\n  <meta property="og:url" content="${escAttr(pageUrl)}" />` +
@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.60";
+const UI_VERSION = "0.61";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -735,7 +735,7 @@ const PAGE_CSS = `
         radial-gradient(700px 420px at 98% -6%, rgba(140,99,210,0.07), transparent 55%);
     }
     /* Top padding aligns the folderbar title's optical centre with the sidebar
-       "Go Vocal" brand row (~26px) so the two share one clean top band. */
+       "Augur" brand row (~26px) so the two share one clean top band. */
     .wrap { position: relative; z-index: 1; max-width: var(--maxw); margin: 0 auto; padding: 15px 24px 110px; }
     .back {
       display: inline-flex; align-items: center; gap: 6px; margin-bottom: 30px; color: var(--muted);
@@ -1260,7 +1260,7 @@ const NAV_CSS = `
     .gvside__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 1px; }
     .gvside__foot { flex: none; }
 
-    /* Workspace brand — Go Vocal + circular mark, sitting in the SAME icon column as
+    /* Workspace brand — Augur + falcon mark, sitting in the SAME icon column as
        every nav row below it. No dropdown; the name just links home. */
     .gvside__brand {
       display: flex; align-items: center; gap: 10px; padding: 6px 8px; margin-bottom: 3px;
@@ -1364,10 +1364,10 @@ function filterEmpty() {
   return `<p class="filter-empty" data-filter-empty hidden>No matches.</p>`;
 }
 
-// GoVocal circular brand mark — the real favicon (mint disc + coral "V"), pulled from
-// govocal.com's apple-touch-icon and shipped at /gv-mark.png (copied in main()). Sized
-// per context via the .gvmark class; root-relative src resolves from any page depth.
-const GV_MARK = `<img class="gvmark" src="/gv-mark.png" alt="" aria-hidden="true" width="36" height="36" />`;
+// Augur brand mark — the bone-tile falcon app icon, shipped at /augur-mark.png
+// (rendered from brand/augur-mark.svg, copied in main()). Sized per context via the
+// .gvmark class; root-relative src resolves from any page depth.
+const GV_MARK = `<img class="gvmark" src="/augur-mark.png" alt="" aria-hidden="true" width="36" height="36" />`;
 
 // Rail item glyphs — real Lucide icons (ISC license), the clean line set Linear-class
 // apps use. Verbatim official paths, rendered at a refined 1.75 stroke for that crisp
@@ -1443,9 +1443,9 @@ function sideRail(active) {
         ${item("/pages/", "Pages", "pages", IC_PAGE)}
       </div>
     </details>`;
-  return `<aside class="gvside" id="gvside" aria-label="Go Vocal Prototypes">
-    <a class="gvside__brand" href="/" aria-label="Go Vocal — home">
-      ${GV_MARK}<span class="gvside__brandname">Go Vocal</span>
+  return `<aside class="gvside" id="gvside" aria-label="Augur">
+    <a class="gvside__brand" href="/" aria-label="Augur — home">
+      ${GV_MARK}<span class="gvside__brandname">Augur</span>
     </a>
     ${railSearch()}
     <div class="gvside__rule"></div>
@@ -1468,7 +1468,7 @@ function sideRail(active) {
 function appChrome(active) {
   const top = `<header class="gvtop">
     <button type="button" class="gvburger" data-side-toggle aria-expanded="false" aria-controls="gvside" aria-label="Open navigation"><span class="gvburger__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
-    <a class="gvtop__brand" href="/">${GV_MARK}<span>Go Vocal</span></a>
+    <a class="gvtop__brand" href="/">${GV_MARK}<span>Augur</span></a>
   </header>`;
   return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>`;
 }
@@ -2088,9 +2088,10 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <title>${title}</title>
-  <link rel="icon" type="image/png" href="/gv-mark.png" />
+  <link rel="icon" type="image/png" href="/augur-mark.png" />
+  <link rel="apple-touch-icon" href="/augur-mark.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="theme-color" content="#5159c9" />
+  <meta name="theme-color" content="#2C2150" />
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>${FONT_CSS}${PAGE_CSS}${NAV_CSS}${addon ? addon.css() : ""}
   </style>
@@ -2140,7 +2141,7 @@ function preview(href, hasPoster) {
 function renderRootIndex(opportunities) {
   if (!opportunities.length) {
     return shell({
-      title: "Product Prototypes",
+      title: "Augur",
       subtitle: "Private &mdash; do not share outside the team.",
       body: `<p class="empty">No prototypes yet. Add one under
        <code>&lt;opportunity&gt;/prototypes/&lt;name&gt;/</code> and rebuild.</p>`,
@@ -2175,7 +2176,7 @@ function renderRootIndex(opportunities) {
     ${filterEmpty()}`;
 
   return shell({
-    title: "Product Prototypes",
+    title: "Augur",
     wrapClass: "wrap--wide",
     body,
   });
@@ -2592,38 +2593,39 @@ async function main() {
     await copyDir(path.join(ROOT, "fonts"), path.join(DIST, "fonts"));
   }
 
-  // GoVocal brand mark (real favicon) → /gv-mark.png. The rail brand + every page's
-  // <link rel="icon"> reference it root-relative, so it resolves from any depth.
-  if (await exists(path.join(ROOT, "gv-mark.png"))) {
-    await fs.copyFile(path.join(ROOT, "gv-mark.png"), path.join(DIST, "gv-mark.png"));
+  // Augur brand mark (the bone-tile falcon app icon) → /augur-mark.png. The rail brand
+  // + every page's <link rel="icon"> reference it root-relative, so it resolves from
+  // any depth. Rendered from brand/augur-mark.svg (internal source, never shipped).
+  if (await exists(path.join(ROOT, "augur-mark.png"))) {
+    await fs.copyFile(path.join(ROOT, "augur-mark.png"), path.join(DIST, "augur-mark.png"));
   }
-  // Full-bleed install icons (mint tile + coral V) for the PWA manifest — they fill
-  // the OS squircle edge-to-edge instead of floating the disc in a white tile.
-  for (const f of ["gv-icon-192.png", "gv-icon-512.png"]) {
+  // Full-bleed install icons (bone tile + indigo falcon) for the PWA manifest — they
+  // fill the OS squircle edge-to-edge instead of floating the mark in a white tile.
+  for (const f of ["augur-icon-192.png", "augur-icon-512.png"]) {
     if (await exists(path.join(ROOT, f))) {
       await fs.copyFile(path.join(ROOT, f), path.join(DIST, f));
     }
   }
 
   // Minimal web app manifest → /manifest.webmanifest. Makes the site installable as
-  // a desktop/dock app (Chrome/Edge/Safari) with the real GoVocal icon + name. No
-  // service worker on purpose: offline is useless behind the Access gate and a SW is
-  // the only high-maintenance part of a PWA. Reuses the existing gv-mark.png icon.
+  // a desktop/dock app (Chrome/Edge/Safari) with the Augur icon + name. No service
+  // worker on purpose: offline is useless behind the Access gate and a SW is the only
+  // high-maintenance part of a PWA. Uses the bone-tile augur-icon-* install icons.
   await fs.writeFile(
     path.join(DIST, "manifest.webmanifest"),
     JSON.stringify(
       {
-        name: "GoVocal Prototypes",
-        short_name: "Prototypes",
+        name: "Augur",
+        short_name: "Augur",
         start_url: "/",
         scope: "/",
         display: "standalone",
-        background_color: "#fbfbfd",
-        theme_color: "#5159c9",
+        background_color: "#F4EFE6",
+        theme_color: "#2C2150",
         icons: [
-          { src: "/gv-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-          { src: "/gv-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-          { src: "/gv-icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+          { src: "/augur-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/augur-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "/augur-icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       null,
