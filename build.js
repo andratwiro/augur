@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.68";
+const UI_VERSION = "0.69";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1301,11 +1301,12 @@ const NAV_CSS = `
        with the Opportunities / Playground labels below it (same 8px pad + 10px gap). */
     .gvside__brand .gvmark { width: 16px; height: 16px; }
     .gvtop__brand .gvmark { width: 22px; height: 22px; }
-    /* Hovering the brand row spins the sparkle cut-out 45° (✦ → ✕). The spark is a
-       mask child, so it rotates about its own centre via transform-box: fill-box. */
-    .gvmark .augur-spark { transform-box: fill-box; transform-origin: 50% 50%; transition: transform .45s cubic-bezier(.34,1.32,.5,1); }
-    .gvside__brand:hover .augur-spark { transform: rotate(45deg); }
-    @media (prefers-reduced-motion: reduce) { .gvmark .augur-spark { transition: none; } }
+    /* Hovering the brand row spins the mark 45°. The disc is a perfect circle, so
+       rotating the whole mark looks like only the sparkle cut-out turns — and rotating
+       a whole element about its centre is bulletproof everywhere (no SVG fill-box). */
+    .gvside__brand .gvmark { transition: transform .45s cubic-bezier(.34,1.32,.5,1); }
+    .gvside__brand:hover .gvmark { transform: rotate(45deg); }
+    @media (prefers-reduced-motion: reduce) { .gvside__brand .gvmark { transition: none; } }
 
     /* Omni search — one field, filters whatever cards are on the right. Figma-style
        filled input that brightens to white on focus. */
@@ -1401,19 +1402,9 @@ function filterEmpty() {
 // (the "seer's eye"). One mark everywhere: the transparent glyph here in the rail/top
 // bar, and the same shape on the bone tile for the favicon/PWA (augur-mark.png).
 // Shipped at /augur-eye.svg (copied in main() from brand/). Sized via the .gvmark class.
+// The brand mark rotates as a whole on rail-brand hover (see NAV_CSS) — the disc is a
+// circle so only the sparkle cut-out appears to spin.
 const GV_MARK = `<img class="gvmark" src="/augur-eye.svg" alt="" aria-hidden="true" width="24" height="24" />`;
-
-// Animated variant of the eye mark for the rail brand row: inline SVG so page CSS can
-// reach inside it. The sparkle is a mask cut-out (not a path hole), so it stays true
-// negative space yet can rotate independently — hovering the brand spins it 45°
-// (the sparkle becomes an X). Topbar keeps the static <img> (touch has no hover).
-const AUGUR_MARK_ANIM = `<svg class="gvmark" viewBox="0 0 643 643" width="24" height="24" aria-hidden="true" focusable="false">
-  <mask id="augurEye" maskUnits="userSpaceOnUse">
-    <path fill="#fff" d="M303.668 0.501C480.9 -9.319 632.543 126.378 642.396 303.609C652.249 480.839 516.579 632.508 339.35 642.392C162.076 652.279 10.36 516.567 0.505 339.291C-9.349 162.015 126.39 10.324 303.668 0.501Z"/>
-    <path class="augur-spark" fill="#000" d="M321.31 58.589C313.993 78.295 309.682 91 300.003 110.42C256.894 196.544 185.761 265.436 98.301 305.765C84.557 312.054 73.345 316.365 59.039 321.205C166.492 358.562 254.54 437.345 303.567 540.001C306.201 545.441 320.11 580.712 320.888 581.447C329.254 559.649 338.869 536.27 350.55 515.916C397.544 434.024 469.471 370.244 555.57 331.86C563.577 328.29 574.85 323.736 583.145 321.47C472.786 278.754 383.1 203.746 334.938 93.876C332.878 89.173 321.885 59.213 321.31 58.589Z"/>
-  </mask>
-  <rect width="643" height="643" fill="#2C2150" mask="url(#augurEye)"/>
-</svg>`;
 
 // Rail item glyphs — real Lucide icons (ISC license), the clean line set Linear-class
 // apps use. Verbatim official paths, rendered at a refined 1.75 stroke for that crisp
@@ -1491,7 +1482,7 @@ function sideRail(active) {
     </details>`;
   return `<aside class="gvside" id="gvside" aria-label="Augur">
     <a class="gvside__brand" href="/" aria-label="Augur — home">
-      ${AUGUR_MARK_ANIM}<span class="gvside__brandname">augur</span>
+      ${GV_MARK}<span class="gvside__brandname">augur</span>
     </a>
     ${railSearch()}
     <div class="gvside__rule"></div>
