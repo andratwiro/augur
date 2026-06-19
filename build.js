@@ -2088,8 +2088,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <title>${title}</title>
-  <link rel="icon" type="image/png" href="/augur-mark.png" />
-  <link rel="apple-touch-icon" href="/augur-mark.png" />
+  <link rel="icon" type="image/png" href="/augur-mark.png?v=${UI_VERSION}" />
+  <link rel="apple-touch-icon" href="/augur-mark.png?v=${UI_VERSION}" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="theme-color" content="#2C2150" />
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
