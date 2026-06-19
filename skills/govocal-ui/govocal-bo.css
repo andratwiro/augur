@@ -99,6 +99,8 @@
 .gv-bo-nav__item.is-active .gv-bo-nav__icon { color: var(--gv-teal-400); }
 .gv-bo-nav__label { white-space: nowrap; overflow: hidden; font-size: 15px; }
 .gv-bo-nav__sub { display: block; font-size: 11px; color: rgba(255, 255, 255, 0.55); }
+/* Items with a sub-label (user row) need room for two lines — real product avatar is 28px. */
+.gv-bo-nav__item:has(.gv-bo-nav__sub) { height: auto; min-height: 52px; padding-block: 8px; }
 .gv-bo-chev { margin-left: auto; color: rgba(255, 255, 255, 0.5); flex: none; }
 
 /* admin avatar (white circle, brand mark) */
