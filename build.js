@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.66";
+const UI_VERSION = "0.67";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1392,12 +1392,11 @@ function filterEmpty() {
   return `<p class="filter-empty" data-filter-empty hidden>No matches.</p>`;
 }
 
-// Augur in-app brand mark — the SIMPLIFIED falcon glyph (solid wings, no feather
-// detail), which stays crisp at the 16px rail size where the detailed eagle muddies.
-// Shipped at /augur-glyph-simple.svg (copied in main() from brand/). The detailed
-// eagle (augur-glyph.svg) + bone tile (augur-mark.png) remain the hero/favicon/PWA
-// marks. Sized per context via the .gvmark class.
-const GV_MARK = `<img class="gvmark" src="/augur-glyph-simple.svg" alt="" aria-hidden="true" width="24" height="24" />`;
+// Augur brand mark — an indigo disc with a 4-point sparkle cut out of the middle
+// (the "seer's eye"). One mark everywhere: the transparent glyph here in the rail/top
+// bar, and the same shape on the bone tile for the favicon/PWA (augur-mark.png).
+// Shipped at /augur-eye.svg (copied in main() from brand/). Sized via the .gvmark class.
+const GV_MARK = `<img class="gvmark" src="/augur-eye.svg" alt="" aria-hidden="true" width="24" height="24" />`;
 
 // Rail item glyphs — real Lucide icons (ISC license), the clean line set Linear-class
 // apps use. Verbatim official paths, rendered at a refined 1.75 stroke for that crisp
@@ -2646,12 +2645,12 @@ async function main() {
   if (await exists(path.join(ROOT, "augur-mark.png"))) {
     await fs.copyFile(path.join(ROOT, "augur-mark.png"), path.join(DIST, "augur-mark.png"));
   }
-  // Falcon glyphs (transparent, indigo) → /augur-glyph*.svg. The simplified cut is the
-  // in-app rail/top mark (crisp at 16px); the detailed one ships too for larger uses.
-  // (The bone tile augur-mark.png stays favicon/PWA.) Source in brand/ (internal).
-  for (const g of ["augur-glyph.svg", "augur-glyph-simple.svg"]) {
-    const src = path.join(ROOT, "brand", g);
-    if (await exists(src)) await fs.copyFile(src, path.join(DIST, g));
+  // Augur eye mark (transparent indigo disc + sparkle cutout) → /augur-eye.svg, the
+  // in-app rail/top brand mark. (Same shape on the bone tile = augur-mark.png favicon.)
+  // Source in brand/ (internal). The earlier falcon glyphs are retired.
+  {
+    const src = path.join(ROOT, "brand", "augur-eye.svg");
+    if (await exists(src)) await fs.copyFile(src, path.join(DIST, "augur-eye.svg"));
   }
   // Full-bleed install icons (bone tile + indigo falcon) for the PWA manifest — they
   // fill the OS squircle edge-to-edge instead of floating the mark in a white tile.
