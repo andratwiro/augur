@@ -11,6 +11,9 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-rail.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-widgets.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-pagebuilder.js" defer></script>
   <style>
     /* Page-local layout + the homepage-widget rendering ONLY. No gv-* class is
        DEFINED here — the builder chrome lives in canonical govocal-bo.css
@@ -227,6 +230,36 @@
   </div>
   <div class="cb-toast" id="hb-toast"></div>
 
-  <script src="hb-engine.js" defer></script>
+  <script>
+  /* Mount the canonical Page Builder engine with the HOMEPAGE widget registry.
+     SYNC: this page, pages/homepage, the prototype HB engine and each
+     components/<widget>/ demo all consume skills/govocal-ui/govocal-widgets.js —
+     one source of truth. See memory page-builder-sync-contract. */
+  window.addEventListener('DOMContentLoaded', function () {
+    if (!window.GVPageBuilder || !window.GVWidgets) return;
+    GVWidgets.config({ img: '../homepage/img/' });
+    var toastEl = document.getElementById('hb-toast');
+    function toast(m) { toastEl.textContent = m; toastEl.classList.add('is-show'); clearTimeout(toast._t); toast._t = setTimeout(function () { toastEl.classList.remove('is-show'); }, 1400); }
+    GVPageBuilder.mount({
+      root: document.getElementById('hb-root'),
+      frame: document.getElementById('hb-frame'),
+      settingsBody: document.getElementById('hb-settings-body'),
+      settingsTitle: document.getElementById('hb-settings-title'),
+      settingsClose: document.getElementById('hb-settings-close'),
+      previewToggle: document.getElementById('hb-preview-toggle'),
+      paletteAttr: 'data-hb-widget',
+      widgets: GVWidgets.homepage,
+      toast: toast,
+      seed: function (api) {
+        GVWidgets.homepageOrder.forEach(function (type) { api.frame.appendChild(api.makeBlock(type)); });
+        api.reflectEmpty();
+        if (window.GVIcons) window.GVIcons.render(api.frame);
+        if (window.GVAvatars) window.GVAvatars.fill(api.frame);
+        if (window.GVRail) window.GVRail.init(api.frame);
+      }
+    });
+    document.getElementById('hb-save').addEventListener('click', function () { toast('Homepage saved'); });
+  });
+  </script>
 </body>
 </html>
