@@ -22,9 +22,11 @@
     A project page = shell (header · manager controls · banner photo · title block
     with CTA stack + participants · phase ribbon) + a method PANEL BODY. Here the body
     is the ideation feed (idea cards + filter sidebar) with a List/Map view toggle.
-    SYNC: this canonical page ⇄ the project Content Builder (cb-script WIDGETS) +
-    assets/pp-render.js + assets/pp-page.css in parallel-participation/prototypes/
-    back-office-test. Change the project page/a widget → update all four. See memory
+    SYNC: this canonical page ⇄ the project widget registry
+    skills/govocal-ui/govocal-widgets.js (GVWidgets.project), consumed by the project
+    Content Builder pages/bo-content-builder and the prototype editors
+    (parallel-participation/prototypes/back-office-test, parallel-editor-builder-v3).
+    A widget change must be made in the registry and flows to all. See memory
     page-builder-sync-contract.
     Pure assembly: every component class is canonical .gv-* (govocal-ui.css). The only
     page-local classes carry layout (the two-col title block / feed sidebar wiring).
