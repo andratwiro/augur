@@ -210,11 +210,13 @@
     }, 350);
   }
   function cleanContent(intro) {
-    // Serialize the editable content minus builder-only chrome (delete buttons, toolbar).
+    // Serialize the editable content minus all builder-only chrome.
     var clone = intro.cloneNode(true);
-    clone.querySelectorAll('.pp-del, .pp-addbar, [contenteditable]').forEach(function (n) {
-      if (n.classList.contains('pp-del') || n.classList.contains('pp-addbar')) n.remove();
-      else n.removeAttribute('contenteditable');
+    clone.querySelectorAll('.pp-del, .pp-addbar, .pp-dropline').forEach(function (n) { n.remove(); });
+    clone.querySelectorAll('[contenteditable]').forEach(function (n) { n.removeAttribute('contenteditable'); });
+    clone.querySelectorAll('[data-pp-block]').forEach(function (n) {
+      n.removeAttribute('data-pp-block'); n.removeAttribute('draggable'); n.classList.remove('pp-dragging');
+      n.style.position = ''; if (!n.getAttribute('style')) n.removeAttribute('style');
     });
     return clone.innerHTML;
   }
@@ -224,47 +226,73 @@
     b.addEventListener('click', function (e) { e.stopPropagation(); var blk = b.closest('[data-pp-block]'); if (blk) { blk.remove(); emitContent(); } });
     return b;
   }
-  function wrapBlocks(intro) {
-    // Tag each top-level content element as a deletable block (skip the add bar).
-    Array.prototype.forEach.call(intro.children, function (el) {
-      if (el.classList.contains('pp-addbar') || el.hasAttribute('data-pp-block')) return;
-      el.setAttribute('data-pp-block', '1');
-      el.style.position = 'relative';
-      el.appendChild(delBtn());
-    });
+  // A content block is a DRAGGABLE wrapper; only its inner text is contenteditable
+  // (keeps drag-to-reorder from fighting text selection).
+  function decorateBlock(el) {
+    el.setAttribute('data-pp-block', '1');
+    el.style.position = 'relative';
+    el.setAttribute('draggable', 'true');
+    el.addEventListener('dragstart', function (e) { ppDrag = { kind: 'move', el: el }; el.classList.add('pp-dragging'); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'move'); } catch (x) {} e.stopPropagation(); });
+    el.addEventListener('dragend', function () { el.classList.remove('pp-dragging'); clearIndicator(); ppDrag = null; });
+    el.querySelectorAll('p, .gv-acc__q, .gv-btn').forEach(function (n) { n.setAttribute('contenteditable', 'true'); });
+    if (!el.querySelector('.pp-del')) el.appendChild(delBtn());
   }
-  function addBar(intro) {
-    var bar = document.createElement('div');
-    bar.className = 'pp-addbar'; bar.contentEditable = 'false';
-    [['Text', 'text'], ['FAQ', 'faq'], ['Button', 'button']].forEach(function (pair) {
-      var btn = document.createElement('button');
-      btn.type = 'button'; btn.textContent = '+ ' + pair[0];
-      btn.addEventListener('click', function () { addContentBlock(intro, pair[1]); });
-      bar.appendChild(btn);
-    });
-    intro.appendChild(bar);
-  }
-  function addContentBlock(intro, type) {
-    var bar = intro.querySelector('.pp-addbar');
+  function newBlockEl(type) {
     var node = document.createElement('div');
     if (type === 'text') node.innerHTML = '<div class="gv-projdesc"><p>New paragraph — click to edit.</p></div>';
     else if (type === 'faq') node.innerHTML = '<div class="gv-accordion"><details class="gv-acc__item" open><summary class="gv-acc__head"><span class="gv-acc__q">New question?</span><span class="gv-acc__chev" data-gv-icon="chevron-right"></span></summary><div class="gv-acc__body"><p>Answer — click to edit.</p></div></details></div>';
     else node.innerHTML = '<a class="gv-btn primary" href="#" onclick="return false">Button label</a>';
-    var el = node.firstChild;
-    intro.insertBefore(el, bar);
-    el.setAttribute('data-pp-block', '1'); el.style.position = 'relative'; el.appendChild(delBtn());
+    var el = node.firstChild; decorateBlock(el);
     if (window.GVIcons) window.GVIcons.render(el);
-    emitContent();
+    return el;
+  }
+  function wrapBlocks(intro) {
+    Array.prototype.forEach.call(intro.children, function (el) {
+      if (el.classList.contains('pp-addbar') || el.hasAttribute('data-pp-block')) return;
+      decorateBlock(el);
+    });
+  }
+  function addBar(intro) {
+    var bar = document.createElement('div');
+    bar.className = 'pp-addbar';
+    var label = document.createElement('span'); label.className = 'pp-addbar__label'; label.textContent = 'Drag in (or click):'; bar.appendChild(label);
+    [['Text', 'text'], ['FAQ', 'faq'], ['Button', 'button']].forEach(function (pair) {
+      var chip = document.createElement('button');
+      chip.type = 'button'; chip.className = 'pp-chip'; chip.draggable = true; chip.textContent = '+ ' + pair[0];
+      chip.addEventListener('dragstart', function (e) { ppDrag = { kind: 'new', type: pair[1] }; try { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', pair[1]); } catch (x) {} });
+      chip.addEventListener('dragend', function () { clearIndicator(); ppDrag = null; });
+      chip.addEventListener('click', function () { intro.insertBefore(newBlockEl(pair[1]), bar); emitContent(); });
+      bar.appendChild(chip);
+    });
+    intro.appendChild(bar);
+  }
+  // ── Drag-drop: insert new widgets at a position + reorder existing blocks ──
+  var ppDrag = null, _ind = null;
+  function blockAfter(intro, y) {
+    var blocks = Array.prototype.filter.call(intro.children, function (c) { return c.hasAttribute('data-pp-block') && !c.classList.contains('pp-dragging'); });
+    for (var i = 0; i < blocks.length; i++) { var r = blocks[i].getBoundingClientRect(); if (y < r.top + r.height / 2) return blocks[i]; }
+    return null;
+  }
+  function showIndicator(intro, ref) {
+    if (!_ind) { _ind = document.createElement('div'); _ind.className = 'pp-dropline'; }
+    intro.insertBefore(_ind, ref || intro.querySelector('.pp-addbar'));
+  }
+  function clearIndicator() { if (_ind && _ind.parentNode) _ind.parentNode.removeChild(_ind); }
+  function setupDnD(intro) {
+    intro.addEventListener('dragover', function (e) { if (!ppDrag) return; e.preventDefault(); try { e.dataTransfer.dropEffect = ppDrag.kind === 'new' ? 'copy' : 'move'; } catch (x) {} showIndicator(intro, blockAfter(intro, e.clientY)); });
+    intro.addEventListener('drop', function (e) {
+      if (!ppDrag) return; e.preventDefault();
+      var ref = blockAfter(intro, e.clientY); clearIndicator();
+      var el = ppDrag.kind === 'new' ? newBlockEl(ppDrag.type) : ppDrag.el;
+      if (el && el !== ref) intro.insertBefore(el, ref || intro.querySelector('.pp-addbar'));
+      ppDrag = null; emitContent();
+    });
   }
   function enableBuilder(model) {
     document.body.classList.add('pp-builder');
     var t = $('#title'); if (t) { t.setAttribute('contenteditable', 'true'); t.setAttribute('data-pp-edit', 'title'); }
     var intro = $('#intro');
-    if (intro) {
-      intro.setAttribute('contenteditable', 'true');
-      wrapBlocks(intro);
-      addBar(intro);
-    }
+    if (intro) { wrapBlocks(intro); addBar(intro); setupDnD(intro); }
     // Hero: always show a clickable banner in the builder (upload handled by the parent).
     var bannerSec = $('#banner') && $('#banner').closest('.pp-banner');
     if (bannerSec) {
@@ -274,7 +302,7 @@
       bannerSec.style.cursor = 'pointer';
       bannerSec.onclick = function () { postOut({ ppEdit: 'hero' }); };
     }
-    // Click the participation box / timeline → tell the parent to surface phase/survey mgmt.
+    // Click the participation box / timeline → ask the parent to surface phase/survey mgmt.
     ['#cta', '.gv-methodband'].forEach(function (sel) {
       var z = $(sel); if (z) { z.classList.add('pp-zone-edit'); z.addEventListener('click', function () { postOut({ ppEdit: sel === '#cta' ? 'participation' : 'phases' }); }); }
     });
