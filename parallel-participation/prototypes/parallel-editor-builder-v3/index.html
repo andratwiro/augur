@@ -3390,7 +3390,7 @@
                   <span><span class="gv-icon" data-gv-icon="calendar" aria-hidden="true"></span> Closed 2 Jun 2026</span>
                 </div>
                 <p class="gv-extra-survey__desc">This survey has closed — thank you. Residents helped shape how the spring budget is spent.</p>
-                <a class="gv-btn secondary-outlined full" href="#">View results</a>
+                <a class="gv-btn secondary-outlined full" href="#" aria-disabled="true">Closed 17 days ago</a>
               </div>
 
             </div>
@@ -5592,7 +5592,7 @@
     var SURVEY_STATES = {
       current:    { pill:'open',     pillText:'Open',     m1:'<span class="gv-icon" data-gv-icon="clock"></span> Closes in 5 days',    m2:'<span class="gv-icon" data-gv-icon="check"></span> 248 responses',          cta:'Take the survey', btn:'primary',            dis:false, allowLabel:true  },
       notstarted: { pill:'upcoming', pillText:'Upcoming', m1:'<span class="gv-icon" data-gv-icon="calendar"></span> Opens 1 Jul 2026', m2:'<span class="gv-icon" data-gv-icon="survey"></span> 8 questions',           cta:'Opens 1 Jul',     btn:'primary',            dis:true,  allowLabel:false },
-      past:       { pill:'closed',   pillText:'Closed',   m1:'<span class="gv-icon" data-gv-icon="check"></span> 412 responses',        m2:'<span class="gv-icon" data-gv-icon="calendar"></span> Closed 2 Jun 2026',   cta:'View results',    btn:'secondary-outlined', dis:false, allowLabel:false }
+      past:       { pill:'closed',   pillText:'Closed',   m1:'<span class="gv-icon" data-gv-icon="check"></span> 412 responses',        m2:'<span class="gv-icon" data-gv-icon="calendar"></span> Closed 2 Jun 2026',   cta:'Closed 17 days ago', btn:'secondary-outlined', dis:true,  allowLabel:false }
     };
     function cbSurveyHTML(survey, format, style, label, variant, state) {
       if (!survey) return '<div class="gv-extra-survey__empty"><div class="gv-extra-survey__empty-t">📣 Survey</div><div class="gv-extra-survey__empty-s">Select a survey to link in the panel on the right.</div></div>';
