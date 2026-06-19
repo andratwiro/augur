@@ -223,28 +223,8 @@
 <body class="gv-bo">
   <div class="gv-bo-shell">
 
-    <!-- ── Sidebar ──────────────────────────────────────────────── -->
-    <nav class="gv-bo-side" aria-label="Admin">
-      <a class="gv-bo-side__brand" href="#"><span class="gv-bo-side__logo"><span data-gv-icon="admin-back" style="color:var(--gv-white)"></span></span> To platform</a>
-      <div class="gv-bo-nav">
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-dashboard"></span><span class="gv-bo-nav__label">Dashboard</span></a>
-        <a class="gv-bo-nav__item is-active" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-projects"></span><span class="gv-bo-nav__label">Projects</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-input"></span><span class="gv-bo-nav__label">Input manager</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-users"></span><span class="gv-bo-nav__label">Users</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-messaging"></span><span class="gv-bo-nav__label">Messaging</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-reporting"></span><span class="gv-bo-nav__label">Reporting</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-community"></span><span class="gv-bo-nav__label">Community monitor</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-inspiration"></span><span class="gv-bo-nav__label">Inspiration hub</span></a>
-      </div>
-      <div class="gv-bo-nav gv-bo-nav--bottom">
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-tools"></span><span class="gv-bo-nav__label">Tools</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-pages"></span><span class="gv-bo-nav__label">Pages &amp; menu</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-settings"></span><span class="gv-bo-nav__label">Settings</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" data-gv-icon="admin-notifications"></span><span class="gv-bo-nav__label">Notifications</span><span class="gv-bo-count">29</span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-avatar" data-gv-icon="user"></span><span class="gv-bo-nav__label">Go Vocal Admin<span class="gv-bo-nav__sub">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
-        <a class="gv-bo-nav__item" href="#"><span class="gv-bo-nav__icon" style="color:var(--gv-green-400)" data-gv-icon="admin-support"></span><span class="gv-bo-nav__label">Support</span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
-      </div>
-    </nav>
+    <!-- ── Sidebar (10 rework options — rendered by sidebar-options.js) ── -->
+    <nav id="sbHost" class="sb" aria-label="Admin"></nav>
 
     <!-- ── Main ─────────────────────────────────────────────────── -->
     <div class="gv-bo-main">
@@ -1415,5 +1395,7 @@
       if (window.GVIcons) window.GVIcons.render(document.body);
     })();
 </script>
+<!-- Sidebar rework harness: 10 options + expanded/collapsed switcher -->
+<script src="assets/sidebar-options.js" defer></script>
 </body>
 </html>

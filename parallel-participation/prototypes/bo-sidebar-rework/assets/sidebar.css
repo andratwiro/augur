@@ -1,118 +1,298 @@
 /* ════════════════════════════════════════════════════════════════════════
-   BO SIDEBAR — detached for rework (bo-sidebar-rework prototype)
-   Lifted verbatim out of govocal-bo.css so the sidebar can be reworked in
-   isolation without touching the rest of the back-office chrome. Loaded
-   AFTER govocal-bo.css. Covers: .gv-bo-shell grid, .gv-bo-side*, .gv-bo-nav*,
-   .gv-bo-avatar, .gv-bo-count, and the .is-rail collapsed variant.
-   Edit THIS file to test sidebar changes.
+   BO SIDEBAR — rework bench (bo-sidebar-rework prototype)
+   10 switchable sidebar options, each previewable expanded OR collapsed.
+   Rendered by sidebar-options.js into <nav id="sbHost" class="sb">.
+
+   Shape of this file:
+     1. Shell grid (sidebar column + scrolling content)
+     2. .sb BASE — one token-driven sidebar; every knob is a --sb-* variable
+     3. [data-sb="N"] — the 10 options, mostly just remapping those tokens
+     4. Collapsed (.is-collapsed) behaviour + hover tooltips
+     5. .sbx — the floating test switcher (NOT part of the bar design)
+   Prototype is library-exempt: this forks freely, nothing flows back to canon.
    ════════════════════════════════════════════════════════════════════════ */
 
-/* ── App shell: fixed sidebar + scrolling content ─────────────────────────── */
+/* ── 1. App shell ─────────────────────────────────────────────────────────── */
 .gv-bo-shell {
   display: grid;
-  grid-template-columns: 224px 1fr;
+  grid-template-columns: max-content 1fr;   /* sidebar column follows each option's own width */
   min-height: 100vh;
   background: var(--gv-bo-canvas);
 }
-.gv-bo-shell.is-rail { grid-template-columns: 80px 1fr; }
+.gv-bo-main { min-width: 0; display: flex; flex-direction: column; }
 
-/* ── Sidebar ──────────────────────────────────────────────────────────────────
-   Measured live (uxusertesting.govocal.com): 224px extended, collapses to an
-   80px icon rail at <=1200px. Teal brand band (#147985) over a navy (#003349)
-   nav; 24px link-blue icons + white labels; active = dark inset cell (no bold).
-   States: default extended; add `.is-rail` for the collapsed rail. Drive it
-   responsively by toggling `.is-rail` at 1200px (see the demo's matchMedia
-   snippet) — the real product is JS-driven, not CSS-only. */
-.gv-bo-side {
-  box-sizing: border-box; /* keep the bottom padding INSIDE 100vh so the bottom-pinned
-                             items (account / Support) clear the viewport edge instead of
-                             crashing into it — the content-box default pushed them off-screen */
-  background: var(--gv-bo-sidebar-bg);
-  color: var(--gv-blue-500); /* cascade root (matches live); visible text is set white per-item */
-  display: flex;
-  flex-direction: column;
-  width: 224px;
-  font-size: 14px;
-  line-height: 20px;
-  padding: 0 0 48px;
-  /* Live: #sidebar is position:fixed, top:0, left:0, height:100vh — it stays put
-     while the body scrolls, so the bottom-pinned items are always reachable. We
-     use sticky within the grid (same result, no margin math; the 224px grid
-     column reserves the space). Internal scroll if the nav exceeds the viewport. */
-  position: sticky;
-  top: 0;
-  align-self: start;
-  height: 100vh;
-  overflow-y: auto;
+/* ── 2. Sidebar BASE — token-driven ───────────────────────────────────────── */
+.sb {
+  /* knobs every option remaps */
+  --sb-w: 244px;
+  --sb-rail: 76px;
+  --sb-bg: #003349;
+  --sb-fg: rgba(255,255,255,.75);          /* inactive icon + label (legible on navy — fixes the old #00577C) */
+  --sb-fg-strong: #ffffff;                  /* hover / active text */
+  --sb-icon: rgba(255,255,255,.75);
+  --sb-hover-bg: rgba(255,255,255,.09);
+  --sb-active-bg: rgba(0,0,0,.5);
+  --sb-active-fg: #ffffff;
+  --sb-active-icon: var(--gv-teal-300);
+  --sb-accent: var(--gv-teal-300);
+  --sb-badge-bg: var(--gv-red-500);
+  --sb-badge-fg: #ffffff;
+  --sb-divider: rgba(255,255,255,.12);
+  --sb-brand-fg: #ffffff;
+  --sb-support: var(--gv-green-400);
+  --sb-radius: 9px;
+  --sb-item-h: 40px;
+  --sb-gap: 12px;
+  --sb-pad-x: 14px;
+
+  box-sizing: border-box;
+  position: sticky; top: 0; align-self: start;
+  height: 100vh; overflow-y: auto; overflow-x: hidden;
+  width: var(--sb-w);
+  background: var(--sb-bg);
+  color: var(--sb-fg);
+  display: flex; flex-direction: column;
+  font-family: var(--gv-bo-font);
+  font-size: 14px; line-height: 20px;
+  padding-bottom: 12px;
+  transition: width .18s ease;
 }
+.sb::-webkit-scrollbar { width: 8px; }
+.sb::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 8px; }
 
-/* Brand band — measured live (div.bQEqKY / p.bBeZjH): teal #147985, 60px tall,
-   "To platform" is 14px / weight 400 (NOT bold), white; the back-arrow icon is
-   rendered 20×20. padding-left:16px matches nav item padding so icon aligns. */
-.gv-bo-side__brand {
-  flex: none;
-  height: 60px;
-  display: flex; align-items: center; gap: 12px;
-  padding: 0 8px 0 16px;
-  margin-bottom: 10px;
-  background: var(--gv-teal-500);
-  color: #fff; font-weight: 400; text-decoration: none;
-}
-.gv-bo-side__logo { width: 20px; height: 20px; flex: none; color: #fff; }
-.gv-bo-side__logo svg { width: 100%; height: 100%; fill: currentColor; }
+.sb__head { flex: none; }
+.sb__top { display: flex; flex-direction: column; gap: 1px; padding: 6px 0; }
+.sb__bottom { margin-top: auto; padding: 6px 0 0; display: flex; flex-direction: column; gap: 1px; }
 
-/* Nav groups — no horizontal padding; items span the full sidebar width (224px),
-   same as the real product. padding-left:16px on items aligns icons with the brand. */
-.gv-bo-nav { display: flex; flex-direction: column; gap: 1px; padding: 5px 0; }
-.gv-bo-nav--bottom { margin-top: auto; padding-top: 8px; padding-bottom: 0; }
-
-.gv-bo-nav__item {
+/* nav item */
+.sb__item {
   position: relative;
-  display: flex; align-items: center; gap: 12px;
-  height: 40px; padding: 0 8px 0 16px;
-  border-radius: 3px;
-  color: var(--gv-bo-sidebar-text); text-decoration: none; cursor: pointer;
+  display: flex; align-items: center; gap: var(--sb-gap);
+  height: var(--sb-item-h);
+  margin: 1px 10px; padding: 0 var(--sb-pad-x);
+  border-radius: var(--sb-radius);
+  color: var(--sb-fg); text-decoration: none; cursor: pointer;
+  transition: background .12s ease, color .12s ease;
 }
-.gv-bo-nav__item:hover { background: rgba(255, 255, 255, 0.07); }
-.gv-bo-nav__item.is-active { background: var(--gv-bo-sidebar-active); }
-/* Icons: subtle blue-400 inactive; active item goes teal-400 (Support is green). */
-.gv-bo-nav__icon { width: 24px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--gv-blue-400); }
-.gv-bo-nav__icon svg { width: 24px; height: 20px; fill: currentColor; }
-.gv-bo-nav__item.is-active .gv-bo-nav__icon { color: var(--gv-teal-400); }
-.gv-bo-nav__label { white-space: nowrap; overflow: hidden; font-size: 15px; }
-.gv-bo-nav__sub { display: block; font-size: 11px; color: rgba(255, 255, 255, 0.55); }
-/* Items with a sub-label (user row) need room for two lines — real product avatar is 28px. */
-.gv-bo-nav__item:has(.gv-bo-nav__sub) { height: auto; min-height: 52px; padding-block: 8px; }
-.gv-bo-chev { margin-left: auto; color: rgba(255, 255, 255, 0.5); flex: none; }
+.sb__item:hover { background: var(--sb-hover-bg); color: var(--sb-fg-strong); }
+.sb__item:hover .sb__icon { color: var(--sb-fg-strong); }
+.sb__item.is-active { background: var(--sb-active-bg); color: var(--sb-active-fg); font-weight: 600; }
+.sb__item.is-active .sb__icon { color: var(--sb-active-icon); }
+.sb__item:focus-visible { outline: 2px solid var(--sb-accent); outline-offset: -2px; }
 
-/* admin avatar (white circle, brand mark) */
-.gv-bo-avatar {
-  width: 28px; height: 28px; flex: none; border-radius: 50%;
-  background: var(--gv-cool-grey-500); display: grid; place-items: center;
+.sb__icon { width: 22px; height: 22px; flex: none; display: grid; place-items: center; color: var(--sb-icon); }
+.sb__icon svg { width: 22px; height: 22px; fill: currentColor; }
+.sb__label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb__badge {
+  margin-left: auto; min-width: 20px; height: 19px; padding: 0 6px;
+  border-radius: 10px; background: var(--sb-badge-bg); color: var(--sb-badge-fg);
+  font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+}
+.sb__chev { margin-left: auto; opacity: .5; flex: none; width: 18px; height: 18px; }
+.sb__chev svg { width: 18px; height: 18px; }
+
+/* optional left accent bar on the active item (data-accentbar) */
+.sb[data-accentbar] .sb__item.is-active::before {
+  content: ""; position: absolute; left: -10px; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 0 3px 3px 0; background: var(--sb-accent);
+}
+
+/* group header + divider */
+.sb__grouphdr {
+  padding: 14px 18px 5px; font-size: 11px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--sb-fg) 72%, transparent);
+}
+.sb__top .sb__grouphdr:first-child { padding-top: 6px; }
+.sb__div { height: 1px; margin: 8px 16px; background: var(--sb-divider); }
+
+/* account row (two-line) */
+.sb__account { height: auto; min-height: 50px; padding-block: 7px; }
+.sb__avatar {
+  width: 30px; height: 30px; border-radius: 50%; flex: none;
+  background: rgba(255,255,255,.18); display: grid; place-items: center;
   color: #fff; overflow: hidden;
 }
-.gv-bo-avatar svg { width: 20px; height: 20px; fill: currentColor; }
+.sb__avatar svg { width: 20px; height: 20px; fill: currentColor; }
+.sb__name { display: flex; flex-direction: column; line-height: 1.18; white-space: nowrap; overflow: hidden; }
+.sb__name small { font-size: 11px; font-weight: 400; color: color-mix(in srgb, var(--sb-fg) 85%, transparent); }
 
-/* red notification count */
-.gv-bo-count {
-  margin-left: auto;
-  min-width: 22px; height: 20px; padding: 0 6px;
-  border-radius: var(--gv-radius);
-  background: var(--gv-red-500); color: #fff;
-  font-size: 12px; font-weight: 700;
-  display: inline-flex; align-items: center; justify-content: center;
+/* search field */
+.sb__search {
+  margin: 8px 12px; display: flex; align-items: center; gap: 8px;
+  height: 36px; padding: 0 11px; border-radius: 9px;
+  background: color-mix(in srgb, var(--sb-fg) 12%, transparent); color: var(--sb-fg);
+}
+.sb__search [data-gv-icon] { width: 17px; height: 17px; flex: none; opacity: .85; }
+.sb__search svg { width: 17px; height: 17px; }
+.sb__search input { background: none; border: 0; outline: none; color: inherit; font: inherit; font-size: 13px; flex: 1; min-width: 0; }
+.sb__search input::placeholder { color: color-mix(in srgb, var(--sb-fg) 78%, transparent); }
+.sb__kbd { font-size: 11px; padding: 1px 6px; border-radius: 5px; background: color-mix(in srgb, var(--sb-fg) 16%, transparent); }
+
+/* platform / brand head treatments (free rein per option) */
+.sb__platform { display: flex; align-items: center; gap: 12px; padding: 0 16px; color: var(--sb-brand-fg); text-decoration: none; cursor: pointer; }
+.sb__platform-ico { width: 20px; height: 20px; flex: none; display: grid; place-items: center; }
+.sb__platform-ico svg { width: 20px; height: 20px; fill: currentColor; }
+.sb__platform-label { display: flex; flex-direction: column; line-height: 1.18; white-space: nowrap; overflow: hidden; }
+.sb__platform-label small { font-size: 11px; opacity: .62; font-weight: 400; }
+
+.sb__platform--band { background: var(--gv-teal-500); color: #fff; height: 60px; }
+.sb__platform--band:hover { background: var(--gv-teal-700); }
+.sb__platform--back { height: 54px; font-weight: 600; font-size: 13px; }
+.sb__platform--back .sb__platform-ico { opacity: .8; }
+.sb__platform--back:hover { background: var(--sb-hover-bg); }
+.sb__platform--switch { height: 64px; gap: 10px; }
+.sb__mark {
+  width: 32px; height: 32px; border-radius: 9px; flex: none;
+  display: grid; place-items: center; background: var(--sb-accent); color: #02202c;
+  font-weight: 800; font-size: 13px; letter-spacing: .02em;
+}
+.sb__mark svg { width: 19px; height: 19px; fill: currentColor; }
+.sb__mark--city { background: #E79450; color: #3a2410; }
+
+/* ── 3. The 10 options ────────────────────────────────────────────────────── */
+
+/* 01 · Refined Navy — better current A (familiar dark inset active, fixed) */
+.sb[data-sb="1"] { --sb-active-bg: rgba(0,0,0,.55); --sb-active-icon: var(--gv-teal-300); }
+
+/* 02 · Teal Pill — better current B (softer slate, solid teal active pill) */
+.sb[data-sb="2"] {
+  --sb-bg: #0c2a38; --sb-radius: 11px;
+  --sb-hover-bg: rgba(255,255,255,.07);
+  --sb-active-bg: var(--gv-teal-500); --sb-active-fg: #fff; --sb-active-icon: #fff;
 }
 
-/* ── Collapsed rail (.is-rail) ────────────────────────────────────────────── */
-.gv-bo-side.is-rail { width: 80px; }
-.gv-bo-side.is-rail .gv-bo-side__brand { padding: 0; justify-content: center; gap: 0; }
-.gv-bo-side.is-rail .gv-bo-side__brandtext { display: none; }
-.gv-bo-side.is-rail .gv-bo-nav__item { padding: 0; justify-content: center; margin: 0 8px; border-radius: 6px; }
-.gv-bo-side.is-rail .gv-bo-nav__label,
-.gv-bo-side.is-rail .gv-bo-nav__sub,
-.gv-bo-side.is-rail .gv-bo-chev { display: none; }
-.gv-bo-side.is-rail .gv-bo-nav__item.is-active { margin: 0 14px; border-radius: 8px; }
-.gv-bo-side.is-rail .gv-bo-count {
-  position: absolute; top: 1px; right: 9px; margin: 0;
-  min-width: 18px; height: 16px; padding: 0 4px; font-size: 10px;
+/* 03 · Sectioned — quiet group headers organise the long list */
+.sb[data-sb="3"] { --sb-active-bg: rgba(255,255,255,.13); --sb-active-icon: var(--gv-teal-300); }
+
+/* 04 · Command-first — search/⌘K + app-switcher exit */
+.sb[data-sb="4"] {
+  --sb-bg: #062430;
+  --sb-active-bg: rgba(1,161,177,.20); --sb-active-fg: #fff; --sb-active-icon: var(--gv-teal-300);
 }
+
+/* 05 · Comfortable — bigger targets, generous rail, collapse-friendly */
+.sb[data-sb="5"] {
+  --sb-w: 250px; --sb-rail: 86px; --sb-bg: #00293a;
+  --sb-item-h: 46px; --sb-radius: 12px;
+  --sb-active-bg: rgba(255,255,255,.14); --sb-active-icon: var(--gv-teal-300);
+}
+.sb[data-sb="5"] .sb__icon, .sb[data-sb="5"] .sb__icon svg { width: 23px; height: 23px; }
+.sb[data-sb="5"].is-collapsed .sb__item { width: 58px; height: 50px; }
+
+/* 06 · Light admin — white bar, dark text, teal accent (departure) */
+.sb[data-sb="6"] {
+  --sb-bg: #ffffff;
+  --sb-fg: #51606b; --sb-fg-strong: var(--gv-bo-primary); --sb-icon: #6b7884;
+  --sb-hover-bg: var(--gv-grey-100);
+  --sb-active-bg: var(--gv-teal-50); --sb-active-fg: var(--gv-bo-primary); --sb-active-icon: var(--gv-teal-500);
+  --sb-accent: var(--gv-teal-500); --sb-divider: var(--gv-grey-200);
+  --sb-brand-fg: var(--gv-bo-primary); --sb-support: var(--gv-green-600);
+  box-shadow: inset -1px 0 0 var(--gv-grey-200);
+}
+.sb[data-sb="6"] .sb__avatar { background: var(--gv-grey-200); color: var(--gv-cool-grey-600); }
+
+/* 07 · City-branded — tenant logo + city accent in the admin (departure) */
+.sb[data-sb="7"] {
+  --sb-bg: #0b1f3a;
+  --sb-active-bg: rgba(231,148,80,.16); --sb-active-fg: #fff; --sb-active-icon: #E79450;
+  --sb-accent: #E79450;
+}
+
+/* 08 · Floating card — rounded, shadowed, teal pills (departure) */
+.sb[data-sb="8"] {
+  --sb-bg: #0e2f3b; --sb-w: 252px; --sb-radius: 12px;
+  --sb-active-bg: var(--gv-teal-400); --sb-active-fg: #fff; --sb-active-icon: #fff;
+  margin: 14px; height: calc(100vh - 28px); border-radius: 18px;
+  box-shadow: 0 18px 44px rgba(2,35,49,.30); overflow: hidden;
+}
+.sb[data-sb="8"] .sb__platform--band { border-radius: 18px 18px 0 0; }
+.sb[data-sb="8"].is-collapsed { overflow: visible; }
+
+/* 09 · Dense — compact power-user density, grouped, thin */
+.sb[data-sb="9"] {
+  --sb-w: 230px; --sb-rail: 64px; --sb-bg: #01222f;
+  --sb-item-h: 33px; --sb-radius: 6px; --sb-gap: 10px; --sb-pad-x: 12px;
+  --sb-fg: rgba(255,255,255,.84); --sb-icon: rgba(255,255,255,.84);
+  --sb-active-bg: var(--gv-teal-500); --sb-active-fg: #fff; --sb-active-icon: #fff;
+  font-size: 13px;
+}
+.sb[data-sb="9"] .sb__icon, .sb[data-sb="9"] .sb__icon svg { width: 19px; height: 19px; }
+.sb[data-sb="9"] .sb__grouphdr { padding: 9px 16px 3px; }
+.sb[data-sb="9"] .sb__account { min-height: 44px; }
+
+/* 10 · Bold gradient — teal→navy gradient + mint active accent (the risk) */
+.sb[data-sb="10"] {
+  --sb-w: 258px; --sb-radius: 12px;
+  --sb-active-bg: rgba(255,255,255,.13); --sb-active-icon: #34e0d0; --sb-accent: #34e0d0;
+  background: linear-gradient(176deg, #0a4f59 0%, #052c3c 46%, #02202c 100%);
+}
+.sb[data-sb="10"] .sb__item.is-active { box-shadow: 0 0 0 1px rgba(52,224,208,.25) inset; }
+.sb[data-sb="10"] .sb__mark { color: #04222c; }
+
+/* ── 4. Collapsed (.is-collapsed) ─────────────────────────────────────────── */
+.sb.is-collapsed { overflow: visible; }      /* let hover tooltips escape the rail */
+.sb.is-collapsed .sb__label,
+.sb.is-collapsed .sb__name,
+.sb.is-collapsed .sb__chev,
+.sb.is-collapsed .sb__platform-label,
+.sb.is-collapsed .sb__grouphdr,
+.sb.is-collapsed .sb__search input,
+.sb.is-collapsed .sb__kbd { display: none; }
+.sb.is-collapsed .sb__item { justify-content: center; padding: 0; margin: 2px auto; width: 48px; }
+.sb.is-collapsed .sb__account { min-height: var(--sb-item-h); height: var(--sb-item-h); }
+.sb.is-collapsed .sb__platform { justify-content: center; padding: 0; gap: 0; }
+.sb.is-collapsed .sb__search { justify-content: center; padding: 0; width: 48px; margin: 8px auto; }
+.sb.is-collapsed .sb__div { margin: 8px 18px; }
+
+/* notification badge becomes a dot when collapsed (reuse the same element) */
+.sb.is-collapsed .sb__item[data-badge] .sb__badge {
+  position: absolute; top: 5px; right: 12px; margin: 0;
+  min-width: 0; width: 8px; height: 8px; padding: 0; font-size: 0;
+  border-radius: 50%; border: 1.5px solid var(--sb-bg);
+}
+
+/* collapsed hover tooltip — the explicit ask */
+.sb.is-collapsed .sb__item[data-label]:hover::after,
+.sb.is-collapsed .sb__platform[data-label]:hover::after {
+  content: attr(data-label);
+  position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%);
+  background: #0b1f29; color: #fff; padding: 6px 10px; border-radius: 7px;
+  font-size: 12px; font-weight: 500; white-space: nowrap; z-index: 60; pointer-events: none;
+  box-shadow: 0 8px 22px rgba(0,0,0,.34);
+}
+.sb[data-sb="6"].is-collapsed .sb__item[data-label]:hover::after { background: var(--gv-bo-primary); }
+
+/* ── 5. The floating test switcher (not part of any design) ───────────────── */
+.sbx {
+  position: fixed; right: 18px; bottom: 18px; z-index: 200;
+  width: 320px; max-width: calc(100vw - 36px);
+  background: rgba(11,28,38,.92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  color: #eaf1f4; border: 1px solid rgba(255,255,255,.12); border-radius: 14px;
+  box-shadow: 0 16px 44px rgba(0,0,0,.34); padding: 12px 13px 13px;
+  font-family: var(--gv-bo-font);
+}
+.sbx__title { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .6; margin: 0 2px 9px; display: flex; align-items: center; gap: 7px; }
+.sbx__title b { color: #fff; }
+.sbx__row { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; }
+.sbx__n {
+  height: 30px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04);
+  color: #cfe0e6; border-radius: 7px; font: 600 13px/1 var(--gv-bo-font); cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.sbx__n:hover { background: rgba(255,255,255,.12); color: #fff; }
+.sbx__n.is-on { background: var(--gv-teal-400); border-color: var(--gv-teal-400); color: #04222c; }
+.sbx__meta { margin: 11px 2px 0; }
+.sbx__meta b { font-size: 14px; color: #fff; }
+.sbx__tag {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  padding: 2px 7px; border-radius: 20px; margin-left: 7px;
+  background: rgba(1,161,177,.22); color: #6fe3ef; vertical-align: 2px;
+}
+.sbx__note { font-size: 12px; line-height: 1.45; color: #aebec5; margin: 6px 0 0; }
+.sbx__toggle { display: flex; gap: 4px; margin-top: 12px; background: rgba(255,255,255,.06); padding: 3px; border-radius: 9px; }
+.sbx__toggle button {
+  flex: 1; height: 30px; border: 0; background: none; color: #cfe0e6;
+  border-radius: 7px; font: 600 12px/1 var(--gv-bo-font); cursor: pointer;
+}
+.sbx__toggle button.is-on { background: #fff; color: #0b1c26; }
