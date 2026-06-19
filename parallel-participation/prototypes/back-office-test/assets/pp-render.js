@@ -196,8 +196,18 @@
       if (window.GVIcons) window.GVIcons.render(document.body);
       if (window.GVAvatars && window.GVAvatars.fill) window.GVAvatars.fill(document.body);
       if (mode === 'builder') enableBuilder(model);
+      else if (mode === 'phone') enablePhone();
     }
   };
+
+  // The phone preview is a non-interactive thumbnail: a click anywhere opens the content
+  // builder (in the parent); only scrolling works inside. (Wired once.)
+  var _phoneWired = false;
+  function enablePhone() {
+    if (_phoneWired) return; _phoneWired = true;
+    document.body.style.cursor = 'pointer';
+    document.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); postOut({ ppOpenBuilder: true }); }, true);
+  }
 
   /* ── Builder mode: edit the canonical page in place, sync changes to the parent ── */
   function postOut(msg) { try { if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*'); } catch (e) {} }
@@ -252,22 +262,35 @@
       decorateBlock(el);
     });
   }
-  function addBar(intro) {
-    var bar = document.createElement('div');
-    bar.className = 'pp-addbar';
-    var label = document.createElement('span'); label.className = 'pp-addbar__label'; label.textContent = 'Drag in (or click):'; bar.appendChild(label);
-    [['Text', 'text'], ['FAQ', 'faq'], ['Button', 'button']].forEach(function (pair) {
-      var chip = document.createElement('button');
-      chip.type = 'button'; chip.className = 'pp-chip'; chip.draggable = true; chip.textContent = '+ ' + pair[0];
-      chip.addEventListener('dragstart', function (e) { ppDrag = { kind: 'new', type: pair[1] }; try { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', pair[1]); } catch (x) {} });
-      chip.addEventListener('dragend', function () { clearIndicator(); ppDrag = null; });
-      chip.addEventListener('click', function () { intro.insertBefore(newBlockEl(pair[1]), bar); emitContent(); });
-      bar.appendChild(chip);
+  // ── Builder palette: a sticky widget tray at the top of the canvas ──
+  function makeChip(label, type, group) {
+    var chip = document.createElement('button');
+    chip.type = 'button'; chip.className = 'pp-chip'; chip.draggable = true; chip.textContent = label; chip.dataset.type = type;
+    chip.addEventListener('dragstart', function (e) { ppDrag = { kind: 'new', type: type, group: group }; try { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', type); } catch (x) {} });
+    chip.addEventListener('dragend', function () { clearIndicator(); ppDrag = null; });
+    chip.addEventListener('click', function () {
+      if (group === 'content') { var intro = $('#intro'); if (intro) { intro.appendChild(newBlockEl(type)); emitContent(); } }
+      else postOut({ ppAdd: type });   // project widgets are added to the model by the parent
     });
-    intro.appendChild(bar);
+    return chip;
   }
-  // ── Drag-drop: insert new widgets at a position + reorder existing blocks ──
+  function buildPalette() {
+    var host = $('main') || document.body;
+    var old = host.querySelector('.pp-palette'); if (old) old.remove();   // idempotent across re-renders
+    var bar = document.createElement('div'); bar.className = 'pp-palette';
+    function group(title, items) {
+      var g = document.createElement('div'); g.className = 'pp-palette__group';
+      var h = document.createElement('span'); h.className = 'pp-palette__label'; h.textContent = title; g.appendChild(h);
+      items.forEach(function (it) { g.appendChild(makeChip(it[0], it[1], it[2])); });
+      bar.appendChild(g);
+    }
+    group('Content', [['＋ Text', 'text', 'content'], ['＋ FAQ', 'faq', 'content'], ['＋ Button', 'button', 'content']]);
+    group('Project', [['＋ Survey', 'survey', 'project'], ['＋ Phase', 'phase', 'project']]);
+    host.insertBefore(bar, host.firstChild);
+  }
+  // ── Drag-drop: insert content widgets at a position, reorder blocks, drop project widgets anywhere ──
   var ppDrag = null, _ind = null;
+  function isProject() { return ppDrag && ppDrag.kind === 'new' && ppDrag.group === 'project'; }
   function blockAfter(intro, y) {
     var blocks = Array.prototype.filter.call(intro.children, function (c) { return c.hasAttribute('data-pp-block') && !c.classList.contains('pp-dragging'); });
     for (var i = 0; i < blocks.length; i++) { var r = blocks[i].getBoundingClientRect(); if (y < r.top + r.height / 2) return blocks[i]; }
@@ -275,24 +298,35 @@
   }
   function showIndicator(intro, ref) {
     if (!_ind) { _ind = document.createElement('div'); _ind.className = 'pp-dropline'; }
-    intro.insertBefore(_ind, ref || intro.querySelector('.pp-addbar'));
+    intro.insertBefore(_ind, ref);   // ref null → append
   }
   function clearIndicator() { if (_ind && _ind.parentNode) _ind.parentNode.removeChild(_ind); }
+  var _dndDocWired = false;
   function setupDnD(intro) {
-    intro.addEventListener('dragover', function (e) { if (!ppDrag) return; e.preventDefault(); try { e.dataTransfer.dropEffect = ppDrag.kind === 'new' ? 'copy' : 'move'; } catch (x) {} showIndicator(intro, blockAfter(intro, e.clientY)); });
-    intro.addEventListener('drop', function (e) {
-      if (!ppDrag) return; e.preventDefault();
-      var ref = blockAfter(intro, e.clientY); clearIndicator();
-      var el = ppDrag.kind === 'new' ? newBlockEl(ppDrag.type) : ppDrag.el;
-      if (el && el !== ref) intro.insertBefore(el, ref || intro.querySelector('.pp-addbar'));
-      ppDrag = null; emitContent();
-    });
+    if (!intro._dndWired) {
+      intro._dndWired = true;
+      intro.addEventListener('dragover', function (e) { if (!ppDrag || isProject()) return; e.preventDefault(); try { e.dataTransfer.dropEffect = ppDrag.kind === 'new' ? 'copy' : 'move'; } catch (x) {} showIndicator(intro, blockAfter(intro, e.clientY)); });
+      intro.addEventListener('drop', function (e) {
+        if (!ppDrag || isProject()) return; e.preventDefault();
+        var ref = blockAfter(intro, e.clientY); clearIndicator();
+        var el = ppDrag.kind === 'new' ? newBlockEl(ppDrag.type) : ppDrag.el;
+        if (el && el !== ref) intro.insertBefore(el, ref);
+        ppDrag = null; emitContent();
+      });
+    }
+    if (!_dndDocWired) {
+      _dndDocWired = true;
+      // Project widgets (Survey / Phase) drop ANYWHERE on the page → parent adds to the model.
+      document.addEventListener('dragover', function (e) { if (isProject()) e.preventDefault(); });
+      document.addEventListener('drop', function (e) { if (isProject()) { e.preventDefault(); postOut({ ppAdd: ppDrag.type }); ppDrag = null; } });
+    }
   }
   function enableBuilder(model) {
     document.body.classList.add('pp-builder');
     var t = $('#title'); if (t) { t.setAttribute('contenteditable', 'true'); t.setAttribute('data-pp-edit', 'title'); }
     var intro = $('#intro');
-    if (intro) { wrapBlocks(intro); addBar(intro); setupDnD(intro); }
+    if (intro) { wrapBlocks(intro); setupDnD(intro); }
+    buildPalette();
     // Hero: always show a clickable banner in the builder (upload handled by the parent).
     var bannerSec = $('#banner') && $('#banner').closest('.pp-banner');
     if (bannerSec) {
@@ -303,12 +337,14 @@
       bannerSec.onclick = function () { postOut({ ppEdit: 'hero' }); };
     }
     // Click the participation box / timeline → ask the parent to surface phase/survey mgmt.
+    // (onclick, not addEventListener, so re-renders don't stack handlers.)
     ['#cta', '.gv-methodband'].forEach(function (sel) {
-      var z = $(sel); if (z) { z.classList.add('pp-zone-edit'); z.addEventListener('click', function () { postOut({ ppEdit: sel === '#cta' ? 'participation' : 'phases' }); }); }
+      var z = $(sel); if (z) { z.classList.add('pp-zone-edit'); z.onclick = function () { postOut({ ppEdit: sel === '#cta' ? 'participation' : 'phases' }); }; }
     });
-    document.addEventListener('input', function () { emitContent(); });
+    if (!_builderInputWired) { _builderInputWired = true; document.addEventListener('input', function () { emitContent(); }); }
     if (window.GVIcons) window.GVIcons.render(document.body);
   }
+  var _builderInputWired = false;
   // expose for the iframe bootstrap (called after render when mode==='builder')
   window.PP.enableBuilder = enableBuilder;
 

@@ -71,8 +71,10 @@ body.pp-doc { margin: 0; background: #fff; }
 .pp-builder [data-pp-block]:hover { outline: 1px dashed var(--gv-grey-300); outline-offset: 4px; }
 .pp-del { position: absolute; top: -10px; right: -10px; width: 22px; height: 22px; border-radius: 50%; background: #e11d48; color: #fff; font: 700 15px/1 sans-serif; border: 0; cursor: pointer; opacity: 0; transition: opacity .12s; z-index: 5; display: flex; align-items: center; justify-content: center; }
 .pp-builder [data-pp-block]:hover .pp-del { opacity: 1; }
-.pp-addbar { display: flex; align-items: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
-.pp-addbar__label { font-size: 12px; color: var(--gv-cool-grey-600); font-weight: 600; }
+/* Builder palette — sticky widget tray at the top of the canvas (Content + Project). */
+.pp-palette { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 10px 16px; margin-bottom: 8px; background: #fff; border-bottom: 1px solid var(--gv-grey-200); box-shadow: 0 2px 10px rgba(20,25,40,.07); }
+.pp-palette__group { display: flex; align-items: center; gap: 8px; }
+.pp-palette__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--gv-cool-grey-600); }
 .pp-chip { font-size: 13px; padding: 6px 12px; border: 1px dashed var(--gv-grey-300); border-radius: 8px; background: #fff; color: var(--gv-text-secondary); cursor: grab; }
 .pp-chip:hover { border-color: var(--gv-tenant-primary); color: var(--gv-tenant-primary); }
 .pp-chip:active { cursor: grabbing; }

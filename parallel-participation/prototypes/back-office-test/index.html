@@ -5524,8 +5524,25 @@
       if (window.ppSave) window.ppSave();
       return;
     }
+    if (d.ppOpenBuilder) { if (window.openBuilder) window.openBuilder(); return; }
     if (d.ppEdit === 'hero') { ppPickHero(); return; }
+    if (d.ppAdd === 'survey') {
+      window.ppBuilt.extras.push({ id: 'bx' + (++ppExtraSeq), title: 'New survey', cta: 'Take the survey' });
+      ppAfterModelAdd(); return;
+    }
+    if (d.ppAdd === 'phase') {
+      var status = window.ppBuilt.phases.length === 0 ? 'live' : 'upcoming';
+      window.ppBuilt.phases.push({ id: 'bp' + (++ppPhaseSeq), name: 'New phase', method: 'ideation', label: 'Ideation', cta: 'Add your idea', status: status });
+      ppAfterModelAdd(); return;
+    }
   });
+  // After a project widget (survey/phase) drop: re-render the left panel + every surface
+  // (incl. the builder iframe, so the new widget appears there too) + persist.
+  function ppAfterModelAdd() {
+    setProjectState('built', null);
+    window.ppRefreshFrames();
+    if (window.ppSave) window.ppSave();
+  }
 
   // ── Persistence (localStorage) — model only; the content builder is just an editor. ──
   var PP_LS = 'gv-botest-model-v2';
