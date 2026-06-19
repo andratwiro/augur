@@ -4650,6 +4650,9 @@
 ═════════════════════════════════════════════════════════════════════════════ -->
 <style>
   /* Reuse the project builder's overlay + chrome; only the homepage specifics here. */
+  /* Opens FROM the homepage (#view-home, z-index 60), which stays open underneath —
+     so the builder must sit ABOVE it or it renders hidden behind the homepage. */
+  #view-home-builder { z-index: 70; }
   #hb-root { height: 100vh; overflow: hidden; }
   /* Frame must size to its content (not stretch to the canvas height), else overflow:hidden
      clips the lower sections — same fix as the project builder / canonical .gv-bo-cb-canvas. */
