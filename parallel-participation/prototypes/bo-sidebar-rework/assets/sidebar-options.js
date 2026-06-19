@@ -56,7 +56,17 @@
   ];
 
   /* ── Markup helpers ─────────────────────────────────────────────────────── */
-  const ico = (name, extra = "") => `<span class="sb__icon"${extra} data-gv-icon="${name}"></span>`;
+  // Line mode → real GVIcon admin glyph; Filled mode → embedded solid twin.
+  function glyph(name) {
+    const F = window.SB_FILLED;
+    const key = name === "arrow-left" ? "admin-back" : name;
+    if (filled && F && F[key]) {
+      const g = F[key];
+      return `<svg class="sb__fi" viewBox="${g.vb}" aria-hidden="true">${g.inner}</svg>`;
+    }
+    return `<span data-gv-icon="${name}"></span>`;
+  }
+  const ico = (name, extra = "") => `<span class="sb__icon"${extra}>${glyph(name)}</span>`;
 
   function item(it) {
     const cls = "sb__item" + (it.active ? " is-active" : "");
@@ -79,12 +89,12 @@
   function platformBlock(opt) {
     if (opt.platform === "band") {
       return `<a class="sb__platform sb__platform--band" href="javascript:void(0)" data-label="Back to platform">` +
-        `<span class="sb__platform-ico" data-gv-icon="admin-back"></span>` +
+        `<span class="sb__platform-ico">${glyph("admin-back")}</span>` +
         `<span class="sb__platform-label">Back to platform<small>Resident site</small></span></a>`;
     }
     if (opt.platform === "back") {
       return `<a class="sb__platform sb__platform--back" href="javascript:void(0)" data-label="Back to platform">` +
-        `<span class="sb__platform-ico" data-gv-icon="arrow-left"></span>` +
+        `<span class="sb__platform-ico">${glyph("arrow-left")}</span>` +
         `<span class="sb__platform-label">Back to platform</span></a>`;
     }
     // app-switcher
@@ -92,7 +102,7 @@
     const sub   = opt.city ? "City platform · admin" : "Switch to resident site";
     const mark  = opt.city
       ? `<span class="sb__mark sb__mark--city">EC</span>`
-      : `<span class="sb__mark" data-gv-icon="admin-projects"></span>`;
+      : `<span class="sb__mark">${glyph("admin-projects")}</span>`;
     return `<div class="sb__platform sb__platform--switch" data-label="${brand}">` +
       mark +
       `<span class="sb__platform-label">${brand}<small>${sub}</small></span>` +
@@ -108,7 +118,7 @@
 
   function accountBlock() {
     return `<a class="sb__item sb__account" href="javascript:void(0)" data-label="Go Vocal Admin">` +
-      `<span class="sb__avatar" data-gv-icon="user"></span>` +
+      `<span class="sb__avatar">${glyph("user")}</span>` +
       `<span class="sb__name">Go Vocal Admin<small>Administrator</small></span>` +
       `<span class="sb__chev" data-gv-icon="chevron-right"></span></a>`;
   }
