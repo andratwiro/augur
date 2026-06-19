@@ -4368,7 +4368,7 @@
     // as render(), but the DATA is assembled on the fly from what the tester configured.
     renderModel(m) {
       const page = $('#fo-page'), empty = $('#fo-empty');
-      if (!m || (!m.phases.length && !m.extras.length)) { page.hidden = true; empty.hidden = false; return; }
+      if (!m || (!m.phases.length && !m.extras.length && !m.contentTouched)) { page.hidden = true; empty.hidden = false; return; }
       empty.hidden = true; page.hidden = false;
       const phases = m.phases.map((p) => ({
         name: p.name, method: p.method, dates: 'Open now', cta: p.cta,
@@ -4384,7 +4384,9 @@
       $('#fo-banner').src = 'assets/img/square.webp';
       $('#fo-title').textContent = 'Reimagine Meridian 2030';
       $('#fo-intro').innerHTML = '<p>Tell participants what this project is about and how they can take part.</p>';
-      $('#fo-desc').innerHTML = '<p>This placeholder description ships with every project — edit it to describe yours.</p>';
+      $('#fo-desc').innerHTML = (m.contentTouched && m.content)
+        ? m.content
+        : '<p>This placeholder description ships with every project — edit it to describe yours.</p>';
       $('#fo-cta').innerHTML = cur ? CTA(cur.cta || 'Take part', '0') : '';
       $('#fo-partbar').innerHTML = cur ? PARTBAR(cur.cta || 'Take part') : '';
       // No events on a freshly-built project — hide the whole Events section.
@@ -4562,7 +4564,7 @@
           <!-- Default Text block (selected on load mirrors the -settings capture) -->
           <div class="gv-bo-cb-block" data-widget="text" data-label="Text" draggable="true">
             <span class="gv-bo-cb-block__label">Text</span>
-            <div class="gv-bo-cb-block__body" id="e2e-content-builder-frame"><div class="cb-richtext" contenteditable="true">Help shape how we move, cycle and gather across the city over the next four years. We're collecting ideas right now — add yours below, then back the ones you like best. The team reads every suggestion, groups similar ones, and the most-supported move to a community vote and into the final plan.</div></div>
+            <div class="gv-bo-cb-block__body" id="e2e-content-builder-frame"><div class="cb-richtext" contenteditable="true">Tell participants what this project is about and how they can take part. This placeholder text ships with every project — edit it to describe yours.</div></div>
           </div>
         </div>
       </main>
@@ -4600,6 +4602,8 @@
   }
   function closeBuilder() {
     const builder = document.getElementById('view-builder');
+    // Capture whatever the tester assembled, so it shows on the project preview.
+    if (window.ppCaptureContent) window.ppCaptureContent();
     if (builder) builder.classList.remove('open');
   }
   document.addEventListener('keydown', (e) => {
@@ -5416,7 +5420,7 @@
   // As the tester adds phases/surveys in the empty editor, they accumulate here and
   // flow into the editor panels AND the phone/FO preview. State becomes 'built' on the
   // first creation. This is what lets us SEE what a fresh person actually configured.
-  window.ppBuilt = { phases: [], extras: [] };
+  window.ppBuilt = { phases: [], extras: [], content: '', contentTouched: false };
   let ppPhaseSeq = 0, ppExtraSeq = 0;
   const ppEsc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -5497,15 +5501,21 @@
   // Phone preview built from the model — a real (if young) project page.
   function phoneBuilt() {
     const phases = window.ppBuilt.phases, extras = window.ppBuilt.extras;
-    if (!phases.length && !extras.length) return emptyPhone();
+    if (!phases.length && !extras.length && !window.ppBuilt.contentTouched) return emptyPhone();
+    // Description zone: the tester's content-builder output if they edited it, else the
+    // generic placeholder lead that ships with a fresh project.
+    const descZone = (window.ppBuilt.contentTouched && window.ppBuilt.content)
+      ? '<div class="pp-edit" data-edit="text">' + window.ppBuilt.content + '</div>'
+      : '<p class="pp-fo__lead es-default-lead">Tell participants what this project is about and how they can take part. This placeholder text ships with every project — edit it to describe yours.</p>';
     let ci = phases.findIndex((p) => p.status === 'live'); if (ci < 0) ci = 0;
     const cur = phases[ci];
     const stepper = phases.map((p, i) =>
       '<button class="gv-phase' + (i === ci ? ' current' : '') + '" type="button"><span class="gv-pstep">' + (i + 1) + '</span><span class="gv-phase__label">' + ppEsc(p.name) + '</span></button>').join('');
+    // Participation box only when there's a current phase to act on (no skeleton filler).
     const pbox = cur
       ? '<div class="pp-fo__pbox pp-edit" data-edit="participation-box"><div class="pp-fo__cta"><a class="gv-btn primary full" href="#">' + ppEsc(cur.cta) + '</a></div>'
         + '<div class="gv-participants pp-fo__parts" style="margin-top:10px;"><span class="gv-pcount es-default-lead">Be the first to take part</span></div></div>'
-      : '<div class="pp-fo__pbox"><div class="pp-fo__cta"><span class="es-sk es-sk--btn" style="width:100%;"></span></div></div>';
+      : '';
     const timeline = phases.length
       ? '<div class="pp-fo__pad pp-fo__pad--grey"><div class="pp-edit" data-edit="timeline">'
         + '<h2 class="gv-title h3 pp-fo__h2">Timeline</h2>'
@@ -5527,10 +5537,76 @@
     return '<div class="pp-fo"><div class="pp-fo__pad" style="padding-bottom:20px;">'
       + '<div class="ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
       + '<div class="pp-edit" data-edit="title" style="margin-top:18px;"><h1 class="gv-title h1 pp-fo__title">' + ES_REAL_TITLE + '</h1></div>'
-      + '<p class="pp-fo__lead es-default-lead">Tell participants what this project is about and how they can take part. This placeholder text ships with every project — edit it to describe yours.</p>'
+      + descZone
       + pbox
       + '</div>' + timeline + extrasHtml + '</div>';
   }
+
+  // ── Content-builder → preview bridge ────────────────────────────────────────
+  // Read the blocks the tester assembled in the content builder (#cb-frame) and turn
+  // them into clean front-office HTML for the project-page description zone. Only the
+  // page-content widgets render here; structural components (timeline/events/extra
+  // surveys) come from the phase model, so they're skipped to avoid duplicates.
+  function ppRenderBlock(block) {
+    const w = block.getAttribute('data-widget');
+    const cols = (sel) => Array.prototype.map.call(block.querySelectorAll(sel + ' > .gv-bo-cb-block'), ppRenderBlock).join('');
+    switch (w) {
+      case 'text': {
+        const rt = block.querySelector('.cb-richtext');
+        const html = rt ? rt.innerHTML.trim() : '';
+        return html ? '<div class="pp-fo__lead" style="color:var(--ink);margin:0 0 14px;">' + html + '</div>' : '';
+      }
+      case 'button': {
+        const t = block.querySelector('.cb-fakebtn');
+        return '<a class="gv-btn primary full" href="#" style="margin:6px 0 16px;">' + ppEsc(t ? t.textContent.trim() : 'Button') + '</a>';
+      }
+      case 'image': {
+        const img = block.querySelector('img');
+        if (img && img.getAttribute('src')) return '<img src="' + img.getAttribute('src') + '" alt="" style="width:100%;border-radius:10px;margin:6px 0 16px;display:block;" />';
+        return '<div class="ghost-slot tall" style="margin:6px 0 16px;">' + ES_IMG + 'Image</div>';
+      }
+      case 'white-space':
+        return '<div style="height:28px;"></div>';
+      case 'file-attachment': {
+        const name = block.querySelector('.cb-file__name'), meta = block.querySelector('.cb-file__meta');
+        return '<div class="gv-attachment" style="margin:6px 0 16px;"><span class="gv-attachment__icon" data-gv-icon="download"></span>'
+          + '<span class="gv-attachment__name">' + ppEsc(name ? name.textContent : 'Attachment') + '</span>'
+          + '<span class="gv-attachment__size">' + ppEsc(meta ? meta.textContent : '') + '</span></div>';
+      }
+      case 'accordion':
+      case 'info-accordions': {
+        const title = block.querySelector('.cb-accordion__title');
+        const txt = block.querySelector('.cb-accordion__text');
+        return '<div class="gv-accordion pp-fo__acc" style="margin:6px 0 16px;"><details class="gv-acc__item"><summary class="gv-acc__head">'
+          + '<span class="gv-acc__q">' + ppEsc(title ? title.textContent : 'More information') + '</span>'
+          + '<span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>'
+          + '<div class="gv-acc__body"><p>' + ppEsc(txt ? txt.textContent : '') + '</p></div></details></div>';
+      }
+      case 'two-column':
+      case 'three-column':
+        // On the narrow phone the columns stack — render each column's content in order.
+        return cols('.cb-col');
+      default:
+        return ''; // structural / unsupported widgets: handled by the phase model elsewhere
+    }
+  }
+  function ppGetContent() {
+    const frame = document.getElementById('cb-frame');
+    if (!frame) return '';
+    let out = '';
+    Array.prototype.forEach.call(frame.children, (block) => {
+      if (block.classList && block.classList.contains('gv-bo-cb-block')) out += ppRenderBlock(block);
+    });
+    return out.trim();
+  }
+  // Capture what's in the content builder into the model + reflect on the preview.
+  // Called whenever the tester leaves the builder (Save or back) or previews from it.
+  window.ppCaptureContent = function () {
+    window.ppBuilt.content = ppGetContent();
+    window.ppBuilt.contentTouched = true;
+    if (window.ppState !== 'built') setProjectState('built', null);
+    else { renderPhone('built'); }
+  };
 
   // Open in the EMPTY state by default — a blank project the tester builds from scratch
   // (panel ghost placeholders + phone scaffold). No state chip in this build.
@@ -5554,6 +5630,10 @@
   function openFO() {
     const v = document.getElementById('view-fo');
     if (!v) return;
+    // Previewing from inside the content builder: capture its content first so the
+    // live page reflects it (this also flips the state to 'built').
+    const builderOpen = (() => { const b = document.getElementById('view-builder'); return b && b.classList.contains('open'); })();
+    if (builderOpen && window.ppCaptureContent) window.ppCaptureContent();
     const state = window.ppState || 'empty';
     // The real GoVocal project page (ported engine), driven by the editor's state.
     if (state === 'built' && window.FO && window.FO.renderModel) window.FO.renderModel(window.ppBuilt);
