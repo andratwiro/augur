@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.62";
+const UI_VERSION = "0.63";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1281,9 +1281,9 @@ const NAV_CSS = `
     .gvside__brand:hover { background: rgba(16,17,26,0.05); }
     .gvside__brand:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
     .gvside__brandname { font-family: var(--font-display); font-weight: 400; font-size: 16px; letter-spacing: 0; }
-    .gvmark { display: block; flex: none; object-fit: contain; border-radius: 50%; }
-    .gvside__brand .gvmark { width: 17px; height: 17px; }
-    .gvtop__brand .gvmark { width: 24px; height: 24px; }
+    .gvmark { display: block; flex: none; object-fit: contain; }
+    .gvside__brand .gvmark { width: 22px; height: 22px; }
+    .gvtop__brand .gvmark { width: 22px; height: 22px; }
 
     /* Omni search — one field, filters whatever cards are on the right. Figma-style
        filled input that brightens to white on focus. */
@@ -1375,10 +1375,11 @@ function filterEmpty() {
   return `<p class="filter-empty" data-filter-empty hidden>No matches.</p>`;
 }
 
-// Augur brand mark — the bone-tile falcon app icon, shipped at /augur-mark.png
-// (rendered from brand/augur-mark.svg, copied in main()). Sized per context via the
-// .gvmark class; root-relative src resolves from any page depth.
-const GV_MARK = `<img class="gvmark" src="/augur-mark.png" alt="" aria-hidden="true" width="36" height="36" />`;
+// Augur in-app brand mark — the falcon GLYPH alone (transparent, indigo), sized to
+// mirror the rail nav icons. Shipped at /augur-glyph.svg (copied in main() from
+// brand/augur-glyph.svg). The bone-tile app icon (augur-mark.png) stays the favicon/
+// PWA icon only. Sized per context via the .gvmark class.
+const GV_MARK = `<img class="gvmark" src="/augur-glyph.svg" alt="" aria-hidden="true" width="24" height="24" />`;
 
 // Rail item glyphs — real Lucide icons (ISC license), the clean line set Linear-class
 // apps use. Verbatim official paths, rendered at a refined 1.75 stroke for that crisp
@@ -2493,6 +2494,7 @@ async function main() {
     "govocal-avatars.js", "govocal-rail.js", "govocal-partbar.js",
     "govocal-survey.css", "govocal-survey.js", "govocal-logo.svg",
     "govocal-charts.js",
+    "govocal-pagebuilder.js", "govocal-widgets.js", "govocal-widgets.css",
   ];
   const sharedDir = path.join(DIST, "skills", "govocal-ui");
   await fs.mkdir(sharedDir, { recursive: true });
@@ -2618,6 +2620,12 @@ async function main() {
   // any depth. Rendered from brand/augur-mark.svg (internal source, never shipped).
   if (await exists(path.join(ROOT, "augur-mark.png"))) {
     await fs.copyFile(path.join(ROOT, "augur-mark.png"), path.join(DIST, "augur-mark.png"));
+  }
+  // Falcon glyph alone (transparent, indigo) → /augur-glyph.svg — the in-app rail/top
+  // brand mark (the tile above is favicon/PWA only). Source in brand/ (internal).
+  {
+    const g = path.join(ROOT, "brand", "augur-glyph.svg");
+    if (await exists(g)) await fs.copyFile(g, path.join(DIST, "augur-glyph.svg"));
   }
   // Full-bleed install icons (bone tile + indigo falcon) for the PWA manifest — they
   // fill the OS squircle edge-to-edge instead of floating the mark in a white tile.
