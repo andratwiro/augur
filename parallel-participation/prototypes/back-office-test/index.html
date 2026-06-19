@@ -4382,7 +4382,10 @@
       CURRENT = phases.findIndex((p) => p.status === 'current'); if (CURRENT < 0) CURRENT = 0;
       ideaView = 'list';
       if (ppMap) { ppMap.remove(); ppMap = null; ppMarkers = []; }
-      $('#fo-banner').src = 'assets/img/square.webp';
+      var heroSrc = window.ppHeroSrc ? window.ppHeroSrc() : '';
+      var bannerSection = $('#fo-banner').closest('.pp-banner');
+      if (heroSrc) { $('#fo-banner').src = heroSrc; if (bannerSection) bannerSection.hidden = false; }
+      else if (bannerSection) { bannerSection.hidden = true; }
       $('#fo-title').textContent = 'Reimagine Meridian 2030';
       $('#fo-intro').innerHTML = '<p>Tell participants what this project is about and how they can take part.</p>';
       $('#fo-desc').innerHTML = (m.contentTouched && m.content)
@@ -5543,13 +5546,23 @@
           + '<a class="gv-btn secondary-outlined full" href="#">' + ppEsc(e.cta) + '</a></div>').join('')
         + '</div>'
       : '';
+    const heroSrc = window.ppHeroSrc ? window.ppHeroSrc() : '';
+    const heroHtml = heroSrc
+      ? '<div class="pp-fo__banner pp-edit" data-edit="hero" style="border-radius:10px;overflow:hidden;"><img src="' + heroSrc + '" alt="" style="width:100%;display:block;" /></div>'
+      : '<div class="ghost-slot tall">' + ES_IMG + 'Add a header image</div>';
     return '<div class="pp-fo"><div class="pp-fo__pad" style="padding-bottom:20px;">'
-      + '<div class="ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
+      + heroHtml
       + '<div class="pp-edit" data-edit="title" style="margin-top:18px;"><h1 class="gv-title h1 pp-fo__title">' + ES_REAL_TITLE + '</h1></div>'
       + descZone
       + pbox
       + '</div>' + timeline + extrasHtml + '</div>';
   }
+
+  // The project banner the tester set in the content builder (data URL or ghost).
+  window.ppHeroSrc = function () {
+    var img = document.querySelector('#cb-frame [data-widget="hero"] .cb-hero__img');
+    return (img && img.getAttribute('src')) ? img.getAttribute('src') : '';
+  };
 
   // ── Content-builder → preview bridge ────────────────────────────────────────
   // Read the blocks the tester assembled in the content builder (#cb-frame) and turn
@@ -6793,9 +6806,23 @@
       }
 
       if (widget === 'hero') {
-        var heroImg = bq('.cb-hero__img'), hf = pv('cb-f-herofile'), hu = pv('cb-f-herourl');
-        if (hf && heroImg) hf.addEventListener('change', function () { if (hf.files && hf.files[0]) heroImg.src = URL.createObjectURL(hf.files[0]); });
-        if (hu && heroImg) hu.addEventListener('input', function () { if (hu.value) heroImg.src = hu.value; });
+        var hf = pv('cb-f-herofile'), hu = pv('cb-f-herourl');
+        // Set (or create) the hero <img>, replacing the ghost placeholder. Uses a data
+        // URL so the banner both renders in the preview AND survives serialization.
+        function setHero(src) {
+          var wrap = block.querySelector('.cb-hero');
+          var img = block.querySelector('.cb-hero__img');
+          if (!img) {
+            if (wrap) { wrap.classList.remove('cb-hero--empty'); wrap.innerHTML = ''; }
+            img = document.createElement('img'); img.className = 'cb-hero__img'; img.alt = 'Project banner';
+            (wrap || block).appendChild(img);
+          }
+          img.src = src;
+        }
+        if (hf) hf.addEventListener('change', function () {
+          if (hf.files && hf.files[0]) { var r = new FileReader(); r.onload = function (e) { setHero(e.target.result); }; r.readAsDataURL(hf.files[0]); }
+        });
+        if (hu) hu.addEventListener('input', function () { if (hu.value) setHero(hu.value); });
         return;
       }
 
