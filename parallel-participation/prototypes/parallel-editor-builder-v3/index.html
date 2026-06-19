@@ -1988,6 +1988,11 @@
     #cb-root .cb-pbox__people { display:flex; align-items:center; gap:8px; margin-top:12px; }
     #cb-root .cb-pbox__info { width:14px; height:14px; color:var(--gv-cool-grey-500); vertical-align:-2px; }
     #cb-root .cb-pbox__empty { border:1px dashed var(--gv-grey-400); border-radius:3px; text-align:center; padding:14px; font-size:var(--gv-fs-13); color:var(--gv-cool-grey-600); }
+    /* "Next up" — a muted, NON-interactive forward line shown when nothing is active
+       (a between-phases lull). Not a button: there's no reminder action behind it. */
+    #cb-root .gv-pbox__next { display:flex; align-items:center; gap:8px; padding:12px 14px; border-radius:3px; background:var(--gv-grey-100); font-size:var(--gv-fs-13); color:var(--gv-cool-grey-600); }
+    #cb-root .gv-pbox__next strong { color:var(--gv-text-primary); font-weight:700; }
+    #cb-root .gv-pbox__next .cb-pbox__info { flex:none; }
     #cb-settings-body .cb-pbox-help { font-size:var(--gv-fs-13); color:var(--gv-cool-grey-600); line-height:1.5; margin:0 0 14px; }
     #cb-settings-body .cb-toggrow { display:flex; align-items:center; gap:10px; margin:8px 0; font-size:14px; color:var(--gv-text-primary); }
     #cb-settings-body .cb-setseg { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--gv-cool-grey-600); margin:18px 0 8px; }
@@ -5513,7 +5518,7 @@
     // are outlined. >2 visible methods collapse into one editable "Participate" button.
     var PBOX_STATE = {};
     function cbPboxDefault() {
-      return { showParticipants: true, aggTitle: 'Participate · 3 ways', methods: [
+      return { showParticipants: true, showNext: false, nextLabel: 'Voting opens 1 Jul', aggTitle: 'Participate · 3 ways', methods: [
         { id:'m_idea',    label:'Upload your idea for the neighbourhood park', cta:'View 82 proposals',            current:true,  visible:true  },
         { id:'m_school',  label:'School survey',                               cta:'School survey',                current:false, visible:false },
         { id:'m_budget',  label:'Ask the budget team anything',               cta:'Ask the budget team anything', current:false, visible:true  },
@@ -5538,7 +5543,13 @@
         ? '<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+19 contributions <span class="cb-pbox__info" data-gv-icon="info-solid"></span></span></div>'
         : '';
       var inner = (cta ? '<div class="gv-pbox__actions">' + cta + '</div>' : '') + people;
-      if (!inner) inner = '<div class="gv-pbox__empty">No active methods</div>';
+      if (!inner) {
+        // Lull: nothing active. With "next up" on, degrade to a muted forward line
+        // (informational, not a CTA) instead of the flat "No active methods".
+        inner = (st.showNext && st.nextLabel)
+          ? '<div class="gv-pbox__next"><span class="cb-pbox__info" data-gv-icon="clock"></span><span>Nothing open right now · <strong>' + st.nextLabel + '</strong></span></div>'
+          : '<div class="gv-pbox__empty">No active methods</div>';
+      }
       return '<div class="gv-pbox">' + inner + '</div>';
     }
 
@@ -5636,6 +5647,8 @@
       if (widget === 'participation-box') {
         return '<p class="cb-pbox-help">You can select below only methods that are active at the moment. They will disappear once they finish.</p>' +
           '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="showppl"><span class="track"></span></label><span>Show all project contributions</span></div>' +
+          '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="shownext"><span class="track"></span></label><span>Show what&rsquo;s coming next</span></div>' +
+          '<div id="cb-pbox-next"></div>' +
           '<div class="cb-setseg">Select visible methods</div>' +
           '<div id="cb-pbox-methods"></div>' +
           '<div id="cb-pbox-title"></div>';
@@ -5999,6 +6012,20 @@
       }
       var show = panel.querySelector('[data-set="showppl"]');
       if (show) { show.checked = st.showParticipants; show.addEventListener('change', function () { st.showParticipants = this.checked; render(); }); }
+      // "Show what's coming next" — reveals the muted forward line in the empty state,
+      // plus an editable label so the dev discussion can see real copy.
+      function nextField() {
+        var host = panel.querySelector('#cb-pbox-next'); if (!host) return;
+        if (st.showNext) {
+          host.innerHTML = '<input class="gv-input" data-set="nextlabel" placeholder="e.g. Voting opens 1 Jul" style="margin:4px 0 2px">' +
+            '<p class="cb-pbox-help" style="margin:6px 0 0">Shown only when no method is active — informational, not a button (no reminder action exists yet).</p>';
+          var inp = host.querySelector('[data-set="nextlabel"]'); inp.value = st.nextLabel || '';
+          inp.addEventListener('input', function () { st.nextLabel = this.value; render(); });
+        } else { host.innerHTML = ''; }
+      }
+      var nxt = panel.querySelector('[data-set="shownext"]');
+      if (nxt) { nxt.checked = st.showNext; nxt.addEventListener('change', function () { st.showNext = this.checked; render(); nextField(); }); }
+      nextField();
       var list = panel.querySelector('#cb-pbox-methods');
       if (list) {
         list.innerHTML = st.methods.map(function (m, i) {
