@@ -63,38 +63,6 @@ body.pp-doc { margin: 0; background: #fff; }
   .pp-mapcard__list { order: 3; overflow: visible; padding: 0; gap: 14px; }
 }
 
-/* ── Builder mode: in-place editing affordances on the canonical components ── */
-.pp-builder [contenteditable] { border-radius: 4px; transition: outline-color .12s; }
-.pp-builder #title[contenteditable]:hover, .pp-builder #intro[contenteditable]:hover { outline: 1px dashed var(--gv-grey-300); outline-offset: 6px; }
-.pp-builder #title[contenteditable]:focus, .pp-builder #intro[contenteditable]:focus { outline: 2px solid var(--gv-tenant-primary); outline-offset: 6px; }
-.pp-builder [data-pp-block] { position: relative; }
-.pp-builder [data-pp-block]:hover { outline: 1px dashed var(--gv-grey-300); outline-offset: 4px; }
-.pp-del { position: absolute; top: -10px; right: -10px; width: 22px; height: 22px; border-radius: 50%; background: #e11d48; color: #fff; font: 700 15px/1 sans-serif; border: 0; cursor: pointer; opacity: 0; transition: opacity .12s; z-index: 5; display: flex; align-items: center; justify-content: center; }
-.pp-builder [data-pp-block]:hover .pp-del { opacity: 1; }
-/* ── Builder chrome — left widget rail + framed page canvas (matches the real
-   GoVocal content builder: grey canvas, white centred "page", left palette rail). ── */
-body.pp-builder { display: flex; align-items: flex-start; background: var(--gv-grey-100, #eef0f3); min-height: 100vh; }
-.pp-rail { width: 236px; flex: none; align-self: stretch; box-sizing: border-box; background: #fff; border-right: 1px solid var(--gv-grey-200); padding: 14px 14px 24px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-.pp-rail__h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--gv-cool-grey-600); margin: 16px 4px 8px; }
-.pp-rail__h:first-child { margin-top: 2px; }
-.pp-wcard { display: flex; align-items: center; gap: 11px; width: 100%; box-sizing: border-box; text-align: left; padding: 9px 11px; border: 1px solid var(--gv-grey-200); border-radius: 8px; background: #fff; color: var(--gv-text-primary); font-size: 14px; font-weight: 500; cursor: grab; margin-bottom: 7px; transition: border-color .12s, background .12s; }
-.pp-wcard:hover { border-color: var(--gv-tenant-primary); background: #f8fafc; }
-.pp-wcard:active { cursor: grabbing; }
-.pp-wcard__ic { width: 20px; height: 20px; flex: none; color: var(--gv-cool-grey-600); display: inline-flex; }
-.pp-wcard__ic svg { width: 100%; height: 100%; }
-/* The page sits in a white framed "card" centred on the grey canvas. */
-body.pp-builder > main { flex: 1 1 auto; min-width: 0; align-self: flex-start; background: #fff; max-width: 1080px; margin: 28px auto; border-radius: 10px; box-shadow: 0 6px 28px rgba(20,25,40,.10); overflow: hidden; }
-body.pp-builder > main .gv-wrap { max-width: none; }
-.pp-builder [data-pp-block] { cursor: grab; }
-.pp-builder [data-pp-block]:active { cursor: grabbing; }
-.pp-builder [data-pp-block] [contenteditable] { cursor: text; }
-.pp-dragging { opacity: .4; }
-.pp-dropline { height: 0; border-top: 2px solid var(--gv-tenant-primary); margin: 8px 0; border-radius: 2px; pointer-events: none; }
-.pp-banner--edit { cursor: pointer; }
-.pp-banner--edit .pp-banner__ph { width: 100%; height: 100%; min-height: 200px; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--gv-grey-100); border: 1px dashed var(--gv-grey-300); border-radius: var(--gv-radius); color: var(--gv-text-secondary); }
-.pp-banner--edit:hover { outline: 1px dashed var(--gv-tenant-primary); outline-offset: 3px; }
-.pp-builder .pp-zone-edit:hover { outline: 1px dashed var(--gv-grey-300); outline-offset: 6px; cursor: pointer; }
-
 /* Empty states for a freshly-built project (no submissions yet) — shown in method bodies. */
 .pp-empty { display: flex; gap: 14px; align-items: flex-start; max-width: 640px; color: var(--gv-text-secondary); }
 .pp-empty .gv-icon { color: var(--gv-tenant-primary); width: 26px; height: 26px; flex: none; }

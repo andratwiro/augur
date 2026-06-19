@@ -195,162 +195,20 @@
       // glyphs + avatars across the whole doc
       if (window.GVIcons) window.GVIcons.render(document.body);
       if (window.GVAvatars && window.GVAvatars.fill) window.GVAvatars.fill(document.body);
-      if (mode === 'builder') enableBuilder(model);
-      else if (mode === 'phone') enablePhone();
-      else { var eb = $('#editProject'); if (eb) eb.onclick = function (e) { e.preventDefault(); postOut({ ppEditProject: true }); }; }   // FO: Edit project → back office
+      if (mode === 'phone') enablePhone();
+      else if (mode === 'fo') { var eb = $('#editProject'); if (eb) eb.onclick = function (e) { e.preventDefault(); postOut({ ppEditProject: true }); }; }
     }
   };
 
-  // The phone preview is a non-interactive thumbnail: a click anywhere opens the content
-  // builder (in the parent); only scrolling works inside. (Wired once.)
+  function postOut(msg) { try { if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*'); } catch (e) {} }
+  // Phone preview = a non-interactive thumbnail: a click anywhere opens the content builder
+  // (in the parent); only scrolling works inside. Wired once.
   var _phoneWired = false;
   function enablePhone() {
     if (_phoneWired) return; _phoneWired = true;
     document.body.style.cursor = 'pointer';
     document.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); postOut({ ppOpenBuilder: true }); }, true);
   }
-
-  /* ── Builder mode: edit the canonical page in place, sync changes to the parent ── */
-  function postOut(msg) { try { if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*'); } catch (e) {} }
-  var _ceT;
-  function emitContent(flush) {
-    clearTimeout(_ceT);
-    var send = function () { var t = $('#title'), intro = $('#intro'); postOut({ ppContent: { title: t ? t.textContent.trim() : '', content: intro ? cleanContent(intro) : '' } }); };
-    if (flush) send(); else _ceT = setTimeout(send, 350);   // flush before a structural change so the re-render keeps content edits
-  }
-  function cleanContent(intro) {
-    // Serialize the editable content minus all builder-only chrome.
-    var clone = intro.cloneNode(true);
-    clone.querySelectorAll('.pp-del, .pp-addbar, .pp-dropline').forEach(function (n) { n.remove(); });
-    clone.querySelectorAll('[contenteditable]').forEach(function (n) { n.removeAttribute('contenteditable'); });
-    clone.querySelectorAll('[data-pp-block]').forEach(function (n) {
-      n.removeAttribute('data-pp-block'); n.removeAttribute('draggable'); n.classList.remove('pp-dragging');
-      n.style.position = ''; if (!n.getAttribute('style')) n.removeAttribute('style');
-    });
-    return clone.innerHTML;
-  }
-  function delBtn() {
-    var b = document.createElement('button');
-    b.type = 'button'; b.className = 'pp-del'; b.setAttribute('aria-label', 'Delete'); b.textContent = '×';
-    b.addEventListener('click', function (e) { e.stopPropagation(); var blk = b.closest('[data-pp-block]'); if (blk) { blk.remove(); emitContent(); } });
-    return b;
-  }
-  // A content block is a DRAGGABLE wrapper; only its inner text is contenteditable
-  // (keeps drag-to-reorder from fighting text selection).
-  function decorateBlock(el) {
-    el.setAttribute('data-pp-block', '1');
-    el.style.position = 'relative';
-    el.setAttribute('draggable', 'true');
-    el.addEventListener('dragstart', function (e) { ppDrag = { kind: 'move', el: el }; el.classList.add('pp-dragging'); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'move'); } catch (x) {} e.stopPropagation(); });
-    el.addEventListener('dragend', function () { el.classList.remove('pp-dragging'); clearIndicator(); ppDrag = null; });
-    el.querySelectorAll('p, .gv-acc__q, .gv-btn').forEach(function (n) { n.setAttribute('contenteditable', 'true'); });
-    if (!el.querySelector('.pp-del')) el.appendChild(delBtn());
-  }
-  function newBlockEl(type) {
-    var node = document.createElement('div');
-    if (type === 'text') node.innerHTML = '<div class="gv-projdesc"><p>New paragraph — click to edit.</p></div>';
-    else if (type === 'faq') node.innerHTML = '<div class="gv-accordion"><details class="gv-acc__item" open><summary class="gv-acc__head"><span class="gv-acc__q">New question?</span><span class="gv-acc__chev" data-gv-icon="chevron-right"></span></summary><div class="gv-acc__body"><p>Answer — click to edit.</p></div></details></div>';
-    else node.innerHTML = '<a class="gv-btn primary" href="#" onclick="return false">Button label</a>';
-    var el = node.firstChild; decorateBlock(el);
-    if (window.GVIcons) window.GVIcons.render(el);
-    return el;
-  }
-  function wrapBlocks(intro) {
-    Array.prototype.forEach.call(intro.children, function (el) {
-      if (el.classList.contains('pp-addbar') || el.hasAttribute('data-pp-block')) return;
-      decorateBlock(el);
-    });
-  }
-  // ── Builder palette: the left widget rail (matches the real GoVocal content builder) ──
-  var PP_ICONS = {
-    text: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
-    faq: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.4 2.4 0 1 1 3.3 2.2c-.7.4-1 .8-1 1.6"/><circle cx="12" cy="16.4" r=".7" fill="currentColor" stroke="none"/></svg>',
-    button: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="8" rx="4"/></svg>',
-    survey: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>',
-    phase: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><path d="M8 12h8"/></svg>'
-  };
-  function makeCard(label, type, group) {
-    var card = document.createElement('button');
-    card.type = 'button'; card.className = 'pp-wcard'; card.draggable = true; card.dataset.type = type;
-    card.innerHTML = '<span class="pp-wcard__ic">' + (PP_ICONS[type] || '') + '</span><span class="pp-wcard__lb">' + label + '</span>';
-    card.addEventListener('dragstart', function (e) { ppDrag = { kind: 'new', type: type, group: group }; try { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('text/plain', type); } catch (x) {} });
-    card.addEventListener('dragend', function () { clearIndicator(); ppDrag = null; });
-    card.addEventListener('click', function () {
-      if (group === 'content') { var intro = $('#intro'); if (intro) { intro.appendChild(newBlockEl(type)); emitContent(); } }
-      else { emitContent(true); postOut({ ppAdd: type }); }   // flush content first
-    });
-    return card;
-  }
-  function buildPalette() {
-    var old = document.querySelector('.pp-rail'); if (old) old.remove();   // idempotent across re-renders
-    var rail = document.createElement('aside'); rail.className = 'pp-rail';
-    function group(title, items) {
-      var h = document.createElement('div'); h.className = 'pp-rail__h'; h.textContent = title; rail.appendChild(h);
-      items.forEach(function (it) { rail.appendChild(makeCard(it[0], it[1], it[2])); });
-    }
-    group('Content', [['Text', 'text', 'content'], ['FAQ', 'faq', 'content'], ['Button', 'button', 'content']]);
-    group('Project', [['Survey', 'survey', 'project'], ['Phase', 'phase', 'project']]);
-    document.body.insertBefore(rail, document.body.firstChild);
-  }
-  // ── Drag-drop: insert content widgets at a position, reorder blocks, drop project widgets anywhere ──
-  var ppDrag = null, _ind = null;
-  function isProject() { return ppDrag && ppDrag.kind === 'new' && ppDrag.group === 'project'; }
-  function blockAfter(intro, y) {
-    var blocks = Array.prototype.filter.call(intro.children, function (c) { return c.hasAttribute('data-pp-block') && !c.classList.contains('pp-dragging'); });
-    for (var i = 0; i < blocks.length; i++) { var r = blocks[i].getBoundingClientRect(); if (y < r.top + r.height / 2) return blocks[i]; }
-    return null;
-  }
-  function showIndicator(intro, ref) {
-    if (!_ind) { _ind = document.createElement('div'); _ind.className = 'pp-dropline'; }
-    intro.insertBefore(_ind, ref);   // ref null → append
-  }
-  function clearIndicator() { if (_ind && _ind.parentNode) _ind.parentNode.removeChild(_ind); }
-  var _dndDocWired = false;
-  function setupDnD(intro) {
-    if (!intro._dndWired) {
-      intro._dndWired = true;
-      intro.addEventListener('dragover', function (e) { if (!ppDrag || isProject()) return; e.preventDefault(); try { e.dataTransfer.dropEffect = ppDrag.kind === 'new' ? 'copy' : 'move'; } catch (x) {} showIndicator(intro, blockAfter(intro, e.clientY)); });
-      intro.addEventListener('drop', function (e) {
-        if (!ppDrag || isProject()) return; e.preventDefault();
-        var ref = blockAfter(intro, e.clientY); clearIndicator();
-        var el = ppDrag.kind === 'new' ? newBlockEl(ppDrag.type) : ppDrag.el;
-        if (el && el !== ref) intro.insertBefore(el, ref);
-        ppDrag = null; emitContent();
-      });
-    }
-    if (!_dndDocWired) {
-      _dndDocWired = true;
-      // Project widgets (Survey / Phase) drop ANYWHERE on the page → parent adds to the model.
-      document.addEventListener('dragover', function (e) { if (isProject()) e.preventDefault(); });
-      document.addEventListener('drop', function (e) { if (isProject()) { e.preventDefault(); emitContent(true); postOut({ ppAdd: ppDrag.type }); ppDrag = null; } });
-    }
-  }
-  function enableBuilder(model) {
-    document.body.classList.add('pp-builder');
-    var t = $('#title'); if (t) { t.setAttribute('contenteditable', 'true'); t.setAttribute('data-pp-edit', 'title'); }
-    var intro = $('#intro');
-    if (intro) { wrapBlocks(intro); setupDnD(intro); }
-    buildPalette();
-    // Hero: always show a clickable banner in the builder (upload handled by the parent).
-    var bannerSec = $('#banner') && $('#banner').closest('.pp-banner');
-    if (bannerSec) {
-      bannerSec.style.display = '';
-      bannerSec.classList.add('pp-banner--edit');
-      if (!model.hero) bannerSec.innerHTML = '<div class="pp-banner__ph"><span data-gv-icon="image"></span> Add a header image</div>';
-      bannerSec.style.cursor = 'pointer';
-      bannerSec.onclick = function () { postOut({ ppEdit: 'hero' }); };
-    }
-    // Click the participation box / timeline → ask the parent to surface phase/survey mgmt.
-    // (onclick, not addEventListener, so re-renders don't stack handlers.)
-    ['#cta', '.gv-methodband'].forEach(function (sel) {
-      var z = $(sel); if (z) { z.classList.add('pp-zone-edit'); z.onclick = function () { postOut({ ppEdit: sel === '#cta' ? 'participation' : 'phases' }); }; }
-    });
-    if (!_builderInputWired) { _builderInputWired = true; document.addEventListener('input', function () { emitContent(); }); }
-    if (window.GVIcons) window.GVIcons.render(document.body);
-  }
-  var _builderInputWired = false;
-  // expose for the iframe bootstrap (called after render when mode==='builder')
-  window.PP.enableBuilder = enableBuilder;
 
   // Auto-render if a model was injected before this script ran.
   if (window.__PP_MODEL__) window.PP.render(window.__PP_MODEL__);
