@@ -767,7 +767,7 @@
    The canvas is the #EDEFF0 shell showing through; the white frame is the craft
    root (#e2e-content-builder-frame), 1000px wide, 4px padding, 1px dashed
    transparent border (the drop hint, visible only while empty/drag-over). */
-.gv-bo-cb-canvas { flex: 1 1 auto; min-width: 0; overflow-y: auto; background: var(--gv-bo-canvas); display: flex; justify-content: center; padding: 24px 0 80px; }
+.gv-bo-cb-canvas { flex: 1 1 auto; min-width: 0; overflow-y: auto; background: var(--gv-bo-canvas); display: flex; justify-content: center; align-items: flex-start; padding: 24px 0 80px; }
 .gv-bo-cb-frame {
   position: relative;
   width: var(--gv-bo-cb-frame-w); max-width: var(--gv-bo-cb-frame-w);
