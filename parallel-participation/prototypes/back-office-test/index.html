@@ -608,9 +608,9 @@
   .icon-btn:hover { background: #f7f8fa; }
   /* Project topbar "preview" = a borderless icon button (real GoVocal has no box
      border here), link-blue eye glyph, with a hover background. */
-  .gv-bo-topbar__actions .pp-topbar-view { border: 0; background: transparent; color: var(--gv-bo-link, #4183c4); padding: 6px; border-radius: 6px; }
-  .gv-bo-topbar__actions .pp-topbar-view:hover { background: #eef1f4; }
-  .gv-bo-topbar__actions .pp-topbar-view > [data-gv-icon] { height: 22px; }
+  .gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon.pp-topbar-view { border: 1px solid #cbd2dc; background: #fff; color: var(--ink); padding: 9px 14px; border-radius: 8px; }
+  .gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon.pp-topbar-view:hover { background: #f4f6fa; }
+  .gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon.pp-topbar-view > [data-gv-icon] { height: 20px; }
   /* Optically centre the meta-row glyphs with their label: a 14px icon on the
      13px text box extends ~0.5px past cap-height, so it reads as sitting high.
      A 1px downward nudge lines the icon up with the text's optical centre. */
@@ -693,6 +693,50 @@
   .btn-primary:hover { background:#162d54; }
   .btn-secondary { background:#fff; color:var(--ink); padding: 9px 18px; border-radius:8px; font-weight:500; font-size:13.5px; border:1px solid var(--border); }
   .btn-secondary:hover { background:#f4f6fa; }
+
+  /* ============ Schedule-publication modal (Publish button) ============ */
+  .pub-card { width: 640px; max-width: 92vw; height: auto; max-height: 90vh; }
+  .pub-head { padding: 24px 28px 18px; border-bottom: 1px solid var(--border); }
+  .pub-head h2 { font-size: 22px; font-weight: 700; color: var(--ink); }
+  .pub-x { color: #6b7280; padding: 4px; border-radius: 6px; line-height: 0; }
+  .pub-x:hover { background: #f4f6fa; color: var(--ink); }
+  .pub-x [data-gv-icon] { width: 22px; height: 22px; }
+  .pub-body { padding: 22px 28px 26px; overflow-y: auto; }
+  .pub-label { font-size: 15px; font-weight: 700; color: var(--ink); margin: 0 0 12px; }
+  .pub-seg {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    background: #eef0f3; border-radius: 12px; padding: 5px; margin-bottom: 26px;
+  }
+  .pub-seg button {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 12px; border-radius: 9px; font-size: 15px; font-weight: 600; color: var(--ink-2);
+  }
+  .pub-seg button [data-gv-icon] { width: 18px; height: 18px; }
+  .pub-seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(20,25,40,.12); }
+  .pub-when { display: flex; gap: 12px; margin-bottom: 26px; }
+  .pub-field {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 15px; color: var(--ink); min-width: 150px;
+  }
+  .pub-field [data-gv-icon] { width: 18px; height: 18px; color: var(--ink-3); }
+  .pub-row-text { font-size: 15px; color: var(--ink-2); line-height: 1.5; margin-bottom: 26px; }
+  .pub-link { color: #1f5fbf; text-decoration: underline; cursor: pointer; }
+  .pub-emailrow { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .pub-recip { font-size: 14px; color: var(--ink-3); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+  .pub-recip [data-gv-icon] { width: 15px; height: 15px; color: #9aa3b0; }
+  .pub-toggle {
+    width: 52px; height: 30px; border-radius: 999px; background: #34a853; position: relative;
+    flex-shrink: 0; transition: background .15s;
+  }
+  .pub-toggle::after {
+    content: ""; position: absolute; top: 3px; left: 25px; width: 24px; height: 24px;
+    border-radius: 999px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: left .15s;
+  }
+  .pub-toggle.off { background: #c2c8d0; }
+  .pub-toggle.off::after { left: 3px; }
+  .pub-foot { padding: 16px 28px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; }
+  .pub-foot .gv-btn { padding: 11px 22px; font-size: 15px; }
 
   /* ============ Phase config view ============ */
   .phase-stage {
@@ -2341,11 +2385,10 @@
     <div class="gv-bo-topbar__row">
       <div>
         <h1 class="gv-bo-topbar__title" onclick="setView('project', document.querySelector('.side-item[data-view=&quot;project&quot;]'))">Reimagine Meridian 2030</h1>
+        <!-- Draft project (not yet published): no participant count, no "Published" status. -->
         <div class="gv-bo-meta">
           <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="lock"></span>Groups</span>
           <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="eye"></span>Public</span>
-          <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="group"></span>38 project participants</span>
-          <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Published · Active</span>
         </div>
       </div>
       <div class="gv-bo-topbar__actions">
@@ -2365,8 +2408,8 @@
           </div>
         </div>
         <button class="gv-btn gv-btn--icon pp-topbar-view" aria-label="Preview project" onclick="openFO()"><span data-gv-icon="eye"></span></button>
-        <button class="gv-btn secondary-outlined"><span data-gv-icon="share"></span><span class="gv-btn__label">Share</span></button>
-        <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
+        <button class="gv-btn admin-dark"><span class="gv-btn__label">Share</span></button>
+        <button class="gv-btn admin-dark" onclick="openPublishModal()"><span data-gv-icon="send"></span><span class="gv-btn__label">Publish</span></button>
       </div>
     </div>
   </header>
@@ -5370,6 +5413,46 @@
 </script>
 
 <!-- ============ Phase Settings Modal ============ -->
+<!-- ============ Schedule-publication modal — opened by the Publish button ============ -->
+<div id="publishModal" class="modal-backdrop" style="display:none;" onclick="if(event.target===this)closePublishModal()">
+  <div class="modal-card pub-card">
+    <div class="pub-head" style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <h2>Schedule publication</h2>
+      <button class="pub-x" aria-label="Close" onclick="closePublishModal()"><span data-gv-icon="close"></span></button>
+    </div>
+    <div class="pub-body">
+      <!-- Schedule / Now segmented toggle -->
+      <div class="pub-seg" role="group" aria-label="When to publish">
+        <button class="on" data-when="schedule" onclick="setPublishWhen('schedule', this)"><span data-gv-icon="calendar"></span>Schedule</button>
+        <button data-when="now" onclick="setPublishWhen('now', this)"><span data-gv-icon="send"></span>Now</button>
+      </div>
+
+      <!-- When (date + time) — shown for the Schedule option -->
+      <div id="pub-when-block">
+        <p class="pub-label">When</p>
+        <div class="pub-when">
+          <span class="pub-field">19/06/2026 <span data-gv-icon="calendar"></span></span>
+          <span class="pub-field">1:00 PM <span data-gv-icon="clock"></span></span>
+        </div>
+      </div>
+
+      <!-- Audience -->
+      <p class="pub-label">Who can see this project?</p>
+      <p class="pub-row-text">Anyone can see this project · <span class="pub-link">Edit</span></p>
+
+      <!-- Published email -->
+      <div class="pub-emailrow">
+        <p class="pub-label" style="margin:0;">Send "Project published" email</p>
+        <span class="pub-toggle" role="switch" aria-checked="true" tabindex="0" onclick="this.classList.toggle('off');this.setAttribute('aria-checked', this.classList.contains('off')?'false':'true')"></span>
+      </div>
+      <p class="pub-recip">&#8776; 46 recipients <span data-gv-icon="info-solid"></span> · <span class="pub-link">Edit settings</span></p>
+    </div>
+    <div class="pub-foot">
+      <button class="gv-btn admin-dark" id="pub-confirm" onclick="closePublishModal()"><span data-gv-icon="check"></span><span class="gv-btn__label">Schedule</span></button>
+    </div>
+  </div>
+</div>
+
 <div id="phaseSettingsModal" class="modal-backdrop" style="display:none;">
   <div class="modal-card">
     <div class="modal-head">
@@ -6930,6 +7013,33 @@
     else document.addEventListener("DOMContentLoaded", sync);
     setTimeout(sync, 400);
   })();
+</script>
+
+<!-- Schedule-publication modal behaviour (Publish button) -->
+<script>
+  function openPublishModal() {
+    var m = document.getElementById('publishModal');
+    if (m) m.style.display = 'flex';
+  }
+  function closePublishModal() {
+    var m = document.getElementById('publishModal');
+    if (m) m.style.display = 'none';
+  }
+  // Schedule ↔ Now: "Now" hides the date/time picker and relabels the confirm button.
+  function setPublishWhen(when, btn) {
+    document.querySelectorAll('.pub-seg button').forEach(function (b) { b.classList.remove('on'); });
+    if (btn) btn.classList.add('on');
+    var whenBlock = document.getElementById('pub-when-block');
+    var confirm = document.getElementById('pub-confirm');
+    var now = when === 'now';
+    if (whenBlock) whenBlock.style.display = now ? 'none' : '';
+    if (confirm) confirm.querySelector('.gv-btn__label').textContent = now ? 'Publish now' : 'Schedule';
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var m = document.getElementById('publishModal');
+    if (m && m.style.display !== 'none') closePublishModal();
+  });
 </script>
 
 <!-- Blue-rail readability/hover explorer (5 options) — prototype-local, detached from
