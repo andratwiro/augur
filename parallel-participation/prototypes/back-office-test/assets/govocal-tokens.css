@@ -66,6 +66,12 @@
   --gv-orange-100: #FFECE6;
   --gv-orange-500: #FF672F;
 
+  /* ── Amber ────────────────────────────────────────────────────────────── */
+  /* AI auto-tag chips in the Analysis view (computer-derived tags): warm tan
+     fill + amber border. Measured bo-auto-insights-clean (div.eMnFXQ). */
+  --gv-amber-100: #F2E6D0; /* auto-tag chip fill */
+  --gv-amber-500: #D49210; /* auto-tag chip border */
+
   /* ── Other ────────────────────────────────────────────────────────────── */
   --gv-brown: #8C680D;
 
@@ -132,9 +138,10 @@
      the demo platform (uxusertesting.govocal.com, City of Raleigh back office).
      Apply by scoping markup under `.gv-bo`, which remaps the tenant vars below. */
   --gv-bo-sidebar-bg:     #003349;                    /* dark teal/navy left nav */
-  --gv-bo-sidebar-text:   rgba(255,255,255,0.78);     /* nav labels */
-  --gv-bo-sidebar-active: rgba(0,0,0,0.30);           /* active/hover cell on the navy */
+  --gv-bo-sidebar-text:   #fff;                       /* nav labels (digest: solid white) */
+  --gv-bo-sidebar-active: rgba(0,0,0,0.7);            /* active cell on the navy (digest n=22; hover is rgba(255,255,255,.07)) */
   --gv-bo-primary:        var(--gv-blue-500);          /* #044D6C — fills, headings, table text */
+  --gv-bo-cta:            #162466;                     /* measured BO filled-CTA indigo (Button primary: Invite users, Seats overview, modal confirm) — distinct from the #044D6C teal-navy chrome */
   --gv-bo-link:           #4183C4;                     /* link/anchor blue */
   --gv-bo-canvas:         #EDEFF0;                     /* app canvas behind content (measured live, light blue-grey) */
   --gv-bo-tabstrip:       #FBFBFB;                     /* elevated tab-strip / panel-header tint (measured live) */
@@ -142,6 +149,24 @@
   --gv-bo-row-alt:        var(--gv-grey-50);           /* #FCFCFC — alt table row / hover */
   --gv-bo-border:         var(--gv-cool-grey-600);     /* #596B7A — outline-button border */
   --gv-bo-font:           'Public Sans', 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif; /* GoVocal's OWN product font — BO is never city-themed (mirrors the --gv-font-family default) */
+
+  /* ── Dashboard chart palette ──────────────────────────────────────────────
+     Sampled from the real BO dashboard recharts SVG
+     (govocal-exports/bo-dash-overview/dom.html — fill/stroke attribute counts).
+     These series colours recur across every dashboard chart (line, combo, bar,
+     donut), so they are systemic tokens, not page one-offs. The recharts grid
+     (#EBEDEF) already aliases --gv-grey-200; axis tick text (#596B7A) aliases
+     --gv-cool-grey-600 below. */
+  --gv-chart-navy:  #073F80;                    /* bar fill (recharts-bar-rectangle, n=27) */
+  --gv-chart-blue:  #2F478A;                    /* primary line / combo line stroke (n=33); pie segment 1 */
+  --gv-chart-blue-light: #4D85C6;               /* pie segment 2 — monochrome blue ramp (recharts-pie-sector, bo-dash-visitors) */
+  --gv-chart-line:  #7FBBCA;                    /* cumulative "Total" line stroke — dominant (n=144) */
+  --gv-chart-teal:  var(--gv-teal-400);         /* #01A1B1 accent series */
+  --gv-chart-teal-light: #40B8C5;               /* donut "feedback" segment (recharts-sector sum_feedback, bo-dash-overview) */
+  --gv-chart-pos:   var(--gv-green-500);        /* #04884C likes / positive series */
+  --gv-chart-neg:   var(--gv-red-500);          /* #E52516 dislikes / negative series */
+  --gv-chart-axis:  var(--gv-cool-grey-600);    /* #596B7A axis tick text (recharts-cartesian-axis-tick-value, n=159) */
+  --gv-chart-grid:  var(--gv-grey-200);         /* #EBEDEF cartesian gridlines */
 
   /* ── Typography ───────────────────────────────────────────────────────── */
   /* The product's computed font stack repeats the theme family name before the
@@ -175,6 +200,7 @@
 
   /* ── Elevation (defaultStyles) ────────────────────────────────────────── */
   --gv-shadow:           0px 2px 4px -1px rgba(0,0,0,0.06);
+  --gv-shadow-menu:      0px 0px 12px 0px rgba(0,0,0,0.18); /* dropdown/menu/flyout elevation — component-library <Dropdown> */
   --gv-shadow-header:    0px 2px 4px -1px rgba(0,0,0,0.10); /* live site <header> (mitgestalten.wien.gv.at) */
   --gv-shadow-hover-sm:  0px 2px 4px -1px rgba(0,0,0,0.2);
   --gv-shadow-hover-lg:  0px 4px 12px -1px rgba(0,0,0,0.12);

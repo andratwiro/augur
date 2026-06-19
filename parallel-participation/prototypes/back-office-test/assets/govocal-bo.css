@@ -42,7 +42,7 @@
    responsively by toggling `.is-rail` at 1200px (see the demo's matchMedia
    snippet) — the real product is JS-driven, not CSS-only. */
 .gv-bo-side {
-  box-sizing: border-box; /* keep the 35px bottom padding INSIDE 100vh so the bottom-pinned
+  box-sizing: border-box; /* keep the bottom padding INSIDE 100vh so the bottom-pinned
                              items (account / Support) clear the viewport edge instead of
                              crashing into it — the content-box default pushed them off-screen */
   background: var(--gv-bo-sidebar-bg);
@@ -52,7 +52,7 @@
   width: 224px;
   font-size: 14px;
   line-height: 20px;
-  padding: 0 0 35px;
+  padding: 0 0 48px;
   /* Live: #sidebar is position:fixed, top:0, left:0, height:100vh — it stays put
      while the body scrolls, so the bottom-pinned items are always reachable. We
      use sticky within the grid (same result, no margin math; the 224px grid
@@ -66,37 +66,41 @@
 
 /* Brand band — measured live (div.bQEqKY / p.bBeZjH): teal #147985, 60px tall,
    "To platform" is 14px / weight 400 (NOT bold), white; the back-arrow icon is
-   rendered 20×20. */
+   rendered 20×20. padding-left:16px matches nav item padding so icon aligns. */
 .gv-bo-side__brand {
   flex: none;
   height: 60px;
-  display: flex; align-items: center; gap: 10px;
-  padding: 0 16px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 8px 0 16px;
+  margin-bottom: 10px;
   background: var(--gv-teal-500);
   color: #fff; font-weight: 400; text-decoration: none;
 }
 .gv-bo-side__logo { width: 20px; height: 20px; flex: none; color: #fff; }
 .gv-bo-side__logo svg { width: 100%; height: 100%; fill: currentColor; }
 
-/* Nav groups */
-.gv-bo-nav { display: flex; flex-direction: column; gap: 1px; padding: 10px; }
+/* Nav groups — no horizontal padding; items span the full sidebar width (224px),
+   same as the real product. padding-left:16px on items aligns icons with the brand. */
+.gv-bo-nav { display: flex; flex-direction: column; gap: 1px; padding: 5px 0; }
 .gv-bo-nav--bottom { margin-top: auto; padding-top: 8px; padding-bottom: 0; }
 
 .gv-bo-nav__item {
   position: relative;
   display: flex; align-items: center; gap: 12px;
   height: 40px; padding: 0 8px 0 16px;
-  border-radius: var(--gv-radius);
-  color: #fff; text-decoration: none; cursor: pointer;
+  border-radius: 3px;
+  color: var(--gv-bo-sidebar-text); text-decoration: none; cursor: pointer;
 }
 .gv-bo-nav__item:hover { background: rgba(255, 255, 255, 0.07); }
-.gv-bo-nav__item.is-active { background: rgba(0, 0, 0, 0.7); }
+.gv-bo-nav__item.is-active { background: var(--gv-bo-sidebar-active); }
 /* Icons: subtle blue-400 inactive; active item goes teal-400 (Support is green). */
 .gv-bo-nav__icon { width: 24px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--gv-blue-400); }
 .gv-bo-nav__icon svg { width: 24px; height: 20px; fill: currentColor; }
 .gv-bo-nav__item.is-active .gv-bo-nav__icon { color: var(--gv-teal-400); }
 .gv-bo-nav__label { white-space: nowrap; overflow: hidden; font-size: 15px; }
 .gv-bo-nav__sub { display: block; font-size: 11px; color: rgba(255, 255, 255, 0.55); }
+/* Items with a sub-label (user row) need room for two lines — real product avatar is 28px. */
+.gv-bo-nav__item:has(.gv-bo-nav__sub) { height: auto; min-height: 52px; padding-block: 8px; }
 .gv-bo-chev { margin-left: auto; color: rgba(255, 255, 255, 0.5); flex: none; }
 
 /* admin avatar (white circle, brand mark) */
@@ -121,7 +125,7 @@
 .gv-bo-side.is-rail { width: 80px; }
 .gv-bo-side.is-rail .gv-bo-side__brand { padding: 0; justify-content: center; gap: 0; }
 .gv-bo-side.is-rail .gv-bo-side__brandtext { display: none; }
-.gv-bo-side.is-rail .gv-bo-nav__item { padding: 0; justify-content: center; }
+.gv-bo-side.is-rail .gv-bo-nav__item { padding: 0; justify-content: center; margin: 0 8px; border-radius: 6px; }
 .gv-bo-side.is-rail .gv-bo-nav__label,
 .gv-bo-side.is-rail .gv-bo-nav__sub,
 .gv-bo-side.is-rail .gv-bo-chev { display: none; }
@@ -145,10 +149,7 @@
   border-bottom: 0;
   border-radius: var(--gv-radius) var(--gv-radius) 0 0;
   box-shadow: var(--gv-shadow);
-  /* Bottom padding: the canonical topbar zeroes this because a tab strip sits flush
-     below it. This editor has no topbar tabs (nav lives in the side panel), so the
-     meta row needs breathing room above the header's bottom edge. */
-  padding: 16px 24px 16px;
+  padding: 16px 24px 0;
 }
 .gv-bo-topbar__row { display: flex; align-items: flex-start; gap: 16px; }
 .gv-bo-topbar__title {
@@ -160,42 +161,21 @@
 /* Topbar action buttons are compact — measured live: 4px 8px padding, ~35px tall,
    14px text (the full-size .gv-btn is for forms, not this chrome). */
 .gv-bo-topbar__actions .gv-btn { padding: 4px 8px; font-size: var(--gv-fs-s); line-height: 26px; }
-/* Borderless icon-only action button (the preview eye): a *button that carries
-   just an icon* — no border, transparent until a soft grey hover (per review). A
-   quiet grey glyph (matches the admin chrome, not link-blue), sized ~20px so it's
-   clearly an icon but lighter than the text-button labels. It stands the same
-   height as the Share/Published siblings — the glyph box takes the button
-   line-height so it doesn't collapse to the glyph height.
-   Three-class selector so it deterministically supersedes the inline
-   .pp-topbar-view rules in index.html regardless of stylesheet order. */
-.gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon {
-  border: 0; background: transparent; color: var(--gv-text-secondary);
-  padding: 4px 8px; border-radius: var(--gv-radius);
-}
-.gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon:hover { background: var(--gv-grey-100); filter: none; }
-.gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon > [data-gv-icon] { height: 26px; }
-.gv-bo-topbar .gv-bo-topbar__actions .gv-btn--icon [data-gv-icon] > svg { width: 20px; height: 20px; }
+.gv-bo-topbar__actions .gv-iconbtn { width: 35px; height: 35px; }
 
 /* status/meta pills under the title */
 .gv-bo-meta { display: flex; flex-wrap: wrap; gap: 16px; margin: 6px 0 0; }
 .gv-bo-meta__item {
   display: inline-flex; align-items: center; gap: 5px;
-  /* line-height:1 so the text flex-item box hugs the glyphs — with the default
-     ~1.5 line-height the box carries descender slack below the baseline, pushing
-     the line-box centre below the optical text centre, so a centre-aligned 14px
-     icon reads as sitting low. Tight line-height lines icon and label up. */
-  line-height: 1;
+  line-height: 1;        /* hug the glyphs: default ~1.5 line-height adds descender
+                            slack that drops the line-box centre below the optical
+                            text centre, so a centred icon reads low. */
   font-size: var(--gv-fs-s); color: var(--gv-text-secondary);
 }
-.gv-bo-meta__item .gv-icon { width: 14px; height: 14px; }
-/* Vertically centre the meta glyphs on their labels. The .gv-icon baseline shift
-   (vertical-align:-0.125em) leaves the inline svg sitting low even inside the
-   centred flex item; block display drops the shift so glyph and label share a
-   centre. Three-class selector supersedes the inline `top:1px` nudge in index.html
-   (which pushed the already-low glyph ~2px below the text). */
-.gv-bo-topbar .gv-bo-meta__item .gv-icon {
-  position: static; top: auto; display: block; vertical-align: 0;
-}
+/* display:block drops the .gv-icon baseline shift (vertical-align:-0.125em) so the
+   glyph centre lines up with the label centre inside the centred flex row. Without
+   it the icon sits ~1–2px low against the text. */
+.gv-bo-meta__item .gv-icon { width: 14px; height: 14px; display: block; }
 
 /* ── Tab bar (project tabs AND phase sub-tabs share this) ─────────────────────
    Measured live (bo-phase-setup, nav.sc-gEXpur): the tab row is an *elevated
@@ -299,27 +279,53 @@
 .gv-bo-phasehead__meta .gv-icon { width: 14px; height: 14px; }
 .gv-bo-phasehead__actions { margin-left: auto; }
 
-/* Multiloc language tabs (EN / ES-ES) above a translatable field. Measured live
-   (button.sc-hVkBjg): 14px/500, no border, 7px 8px padding; inactive = grey-200
-   fill + admin-blue text, active = admin-blue fill + white text. A 9px status
-   dot leads the label — green when translated, red when a translation is missing. */
-.gv-bo-multiloc { display: inline-flex; gap: 4px; margin-bottom: 8px; }
+/* ── Per-field language switcher (multiloc) ──────────────────────────────────
+   A BACK-OFFICE-ONLY control that rides on a single translatable TEXT field
+   (title, description, rich-text, content-builder text…). It is NOT a form-level
+   switcher and NEVER appears in the front office, nor on non-text controls
+   (selects, toggles, segmented groups, dates, numbers). Each switcher is
+   INDEPENDENT — flipping one field's locale doesn't move any other field.
+
+   It lives RIGHT-ALIGNED in the field's header row (see .gv-bo-field__head),
+   opposite the label. Measured live (button.sc-hVkBjg): 14px/500, no border,
+   7px 8px padding; inactive = grey-200 fill + admin-blue text, active =
+   admin-blue fill + white text. Locale codes render uppercase (EN / ES-ES). A
+   9px status dot leads the label — green when that locale has content (.done),
+   red when its translation is missing (.miss). */
+.gv-bo-multiloc { display: inline-flex; gap: 4px; flex: 0 0 auto; }
 .gv-bo-multiloc button {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 7px 8px; border-radius: var(--gv-radius);
   border: 0; background: var(--gv-grey-200);
   color: var(--gv-bo-primary); font-size: var(--gv-fs-s); font-weight: 500; cursor: pointer;
+  text-transform: uppercase;   /* normalize en / es-ES → EN / ES-ES centrally */
 }
 .gv-bo-multiloc button.is-active { background: var(--gv-bo-primary); color: #fff; }
 .gv-bo-multiloc .miss,
-.gv-bo-multiloc .done { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.gv-bo-multiloc .done { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
 .gv-bo-multiloc .miss { background: var(--gv-red-500); }
 .gv-bo-multiloc .done { background: var(--gv-green-500); }
 
 /* Field grouping inside config forms. Measured live: the field label ("Phase name")
    is 18px / weight 500 / admin-blue — larger and lighter than a generic label. */
 .gv-bo-field { margin-bottom: 22px; max-width: 540px; }
-.gv-bo-field > .gv-label { display: block; margin-bottom: 8px; font-size: var(--gv-fs-l); font-weight: 500; color: var(--gv-bo-primary); }
+.gv-bo-field > .gv-label,
+.gv-bo-field__head > .gv-label { display: block; font-size: var(--gv-fs-l); font-weight: 500; color: var(--gv-bo-primary); }
+.gv-bo-field > .gv-label { margin-bottom: 8px; }
+
+/* Field header row — label (left) ←→ per-field language switcher (right), on one
+   line, with the input below. The head owns the 8px gap down to the control, so
+   the label's own bottom margin collapses to 0 here. Wraps on narrow widths so a
+   long label + switcher never collide. When a field has NO label, the lone
+   switcher still sits flush-right (justify-content keeps it at the end). */
+.gv-bo-field__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px 16px; flex-wrap: wrap; margin-bottom: 8px;
+}
+/* The head owns the vertical rhythm, so any child's own margin (canonical .gv-label,
+   a page-local field label, or a panel title h2) collapses to 0 inside it. */
+.gv-bo-field__head > * { margin: 0; }
+.gv-bo-field__head.is-switcher-only { justify-content: flex-end; }
 
 /* Read-only/date input shell with a trailing icon (date-range picker face). */
 .gv-bo-dateface {
@@ -462,21 +468,13 @@
    measured live (table.kRaEJh) — #FCFCFC alternating rows, 700 admin-blue headers
    with 16px/12px padding, 54px rows; no outer card border (the table fills the
    content card edge-to-edge). A modifier, so the base table is untouched. */
-.gv-bo-table.is-list { border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); overflow: hidden; }
+/* Flush, not a rounded card — the real admin list tables (r8-users, bo-projects-list)
+   fill the content edge-to-edge: white header with a bottom rule (base), #FCFCFC
+   alternating rows, no outer border/radius. */
 .gv-bo-table.is-list thead th { padding: 16px 12px; height: 54px; background: #fff; }
 .gv-bo-table.is-list tbody td { padding: 10px 12px; }
 .gv-bo-table.is-list tbody tr { background: #fff; }
 .gv-bo-table.is-list tbody tr:nth-child(even) { background: var(--gv-bo-row-alt); }
-/* "People" table treatment (Users / Admins lists): measured live (table.dlEprZ on
-   /admin/users). A grey header BAND (#EBEDEF / grey-200, 65px, rounded ends, 14px/700
-   admin-blue) over tall 84px rows with no striping — a person cell (38px round avatar +
-   name link + email) on the left. Distinct from .is-list (striped, white header). */
-.gv-bo-table.is-people thead th { background: var(--gv-grey-200); height: 65px; border-bottom: 0; }
-.gv-bo-table.is-people thead th:first-child { border-top-left-radius: var(--gv-radius); border-bottom-left-radius: var(--gv-radius); }
-.gv-bo-table.is-people thead th:last-child { border-top-right-radius: var(--gv-radius); border-bottom-right-radius: var(--gv-radius); }
-.gv-bo-table.is-people tbody td { height: 84px; border-bottom: 1px solid var(--gv-divider); }
-.gv-bo-table.is-people tbody tr:last-child td { border-bottom: 0; }
-.gv-bo-table.is-people .gv-bo-table__avatar { width: 38px; height: 38px; }
 
 /* Small publication-status marker: a coloured dot + label, with an optional
    muted sub-line (visibility). Measured: Published = green, Draft = cool grey. */
@@ -585,9 +583,14 @@
 .gv-bo-filterrail__item.is-active { background: var(--gv-teal-75); font-weight: 600; }
 .gv-bo-filterrail__count { flex: none; color: var(--gv-text-secondary); font-size: 13px; }
 
-/* AI callout banner — same teal callout as .gv-bo-banner but with a trailing CTA
-   pushed to the right (Open AI analysis →). */
-.gv-bo-banner--ai { align-items: center; }
+/* AI / sensemaking callout banner — same teal-100 callout as .gv-bo-banner but
+   sized to the real product (measured bo-sensemaking-inputmgr): a 30px teal-500
+   sparkle, 16px body text, pad 8px 16px, with a trailing "Open AI analysis →" CTA
+   pushed to the right. The base .gv-bo-banner keeps its 14px/18px-icon sizing for
+   the generic-notice consumers; this variant overrides only what the AI banner needs. */
+.gv-bo-banner--ai { align-items: center; padding: 8px 16px; }
+.gv-bo-banner--ai .gv-icon { width: 30px; height: 30px; margin-top: 0; color: var(--gv-teal-500); }
+.gv-bo-banner--ai > div { font-size: var(--gv-fs-base); color: var(--gv-grey-800); }
 .gv-bo-banner--ai .gv-bo-banner__cta { margin-left: auto; flex: none; font-weight: 700; white-space: nowrap; }
 
 /* Section header row: title on the left, primary actions on the right. */
@@ -639,7 +642,8 @@
 .gv-bo-stat__delta b { font-weight: 700; color: var(--gv-bo-primary); }
 
 /* Chart card (Participation over time) — same white/shadow card, holds a title + plot. */
-.gv-bo-chartcard { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 20px; max-width: 1000px; margin-top: 18px; }
+/* Measured (r8-dash-overview2 div.iFyarX): padding 20px 20px 35px (extra bottom gutter for the x-axis legend). */
+.gv-bo-chartcard { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 20px 20px 35px; max-width: 1000px; margin-top: 18px; }
 .gv-bo-chartcard__title { margin: 0 0 4px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-bo-primary); }
 .gv-bo-chartcard__sub { margin: 0 0 16px; font-size: 13px; color: var(--gv-text-secondary); }
 .gv-bo-chartcard svg { display: block; width: 100%; height: auto; }
@@ -721,6 +725,14 @@
 }
 .gv-btn.primary.gv-bo-cb-save:hover { background: var(--gv-green-700); border-color: var(--gv-green-700); }
 
+/* BO filled CTA — the real product's `Button primary` is indigo #162466 (measured
+   r8-users "Invite users"/"Seats overview", r8-analysis "Reject"), NOT the #044D6C
+   teal-navy chrome that `--gv-tenant-primary` resolves to in the .gv-bo scope. Scope
+   the fill to indigo for plain primary buttons; the green content-builder Save
+   (.gv-bo-cb-save) keeps its own later override, so exclude it here. */
+.gv-bo .gv-btn.primary:not(.gv-bo-cb-save) { background: var(--gv-bo-cta); border-color: var(--gv-bo-cta); }
+.gv-bo .gv-btn.primary:not(.gv-bo-cb-save):hover { filter: brightness(1.15); }
+
 /* ── Left palette rail ───────────────────────────────────────────────────────
    Vertical white rail of draggable widgets, grouped into sections divided by a
    1px #E0E0E0 top border (measured .fuAcZc). Navy #044D6C icon, #333 label.
@@ -755,7 +767,7 @@
    The canvas is the #EDEFF0 shell showing through; the white frame is the craft
    root (#e2e-content-builder-frame), 1000px wide, 4px padding, 1px dashed
    transparent border (the drop hint, visible only while empty/drag-over). */
-.gv-bo-cb-canvas { flex: 1 1 auto; min-width: 0; overflow-y: auto; background: var(--gv-bo-canvas); display: flex; justify-content: center; padding: 24px 0 80px; }
+.gv-bo-cb-canvas { flex: 1 1 auto; min-width: 0; overflow-y: auto; background: var(--gv-bo-canvas); display: flex; justify-content: center; align-items: flex-start; padding: 24px 0 80px; }
 .gv-bo-cb-frame {
   position: relative;
   width: var(--gv-bo-cb-frame-w); max-width: var(--gv-bo-cb-frame-w);
@@ -916,3 +928,311 @@
   background: var(--gv-bo-primary); border-color: var(--gv-bo-primary); color: var(--gv-white);
   position: relative; z-index: 1;
 }
+
+/* ── Menu / dropdown surface — component-library <Dropdown> ─────────────────────
+   ONE canonical surface shared by the Input-manager Exports menu and the bell
+   notification flyout (source-confirmed same component). Measured r1-px-input-
+   manager-exports + r1-px-notif-flyout: #fff, radius 3px, shadow --gv-shadow-menu
+   (0 0 12px rgba(0,0,0,.18)), max-height 320px then scroll. The .is-flyout variant
+   fixes width to the Dropdown's 260px default. */
+.gv-bo-menu {
+  background: var(--gv-white); border-radius: var(--gv-radius); box-shadow: var(--gv-shadow-menu);
+  padding: 5px 0; min-width: 180px; max-height: 320px; overflow-y: auto;
+}
+.gv-bo-menu__item {
+  display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box;
+  padding: 9px 15px; background: transparent; border: 0; border-radius: var(--gv-radius);
+  font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-bo-primary); line-height: 1.3;
+  text-align: left; text-decoration: none; cursor: pointer;
+}
+.gv-bo-menu__item:hover { background: var(--gv-grey-50); }
+.gv-bo-menu__icon { width: 24px; height: 24px; display: inline-flex; flex: none; }
+.gv-bo-menu.is-flyout { width: 260px; min-width: 260px; padding: 0; }
+/* Grouped-menu furniture — section label, separator, and item state modifiers.
+   Used by the survey-actions Export menu + phase-options menu (bo-project-phase). */
+.gv-bo-menu__lbl { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--gv-cool-grey-600); font-weight: 700; padding: 8px 15px 2px; }
+.gv-bo-menu__sep { height: 1px; background: var(--gv-divider); margin: 5px 0; }
+.gv-bo-menu__item.is-danger { color: var(--gv-red-500); }
+.gv-bo-menu__item.is-new { background: var(--gv-teal-50); }
+
+/* Notification-flyout rows (content inside .gv-bo-menu.is-flyout) — measured
+   r1-px-notif-flyout: <a> rows pad 10px 10px 10px 15px, body 14/400 #333,
+   relative-time 12px cool-grey, 24px leading icon tile; unread = 700. */
+.gv-bo-notifflyout__item {
+  display: flex; align-items: flex-start; gap: 12px; padding: 10px 10px 10px 15px;
+  border-radius: var(--gv-radius); color: var(--gv-text-primary); text-decoration: none;
+  font-size: var(--gv-fs-s); font-weight: 400; line-height: 1.3;
+}
+.gv-bo-notifflyout__item:hover { background: var(--gv-grey-50); }
+.gv-bo-notifflyout__item.is-unread { font-weight: 700; }
+.gv-bo-notifflyout__icon { flex: none; width: 24px; height: 24px; color: var(--gv-text-primary); }
+.gv-bo-notifflyout__time { display: block; margin-top: 2px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-xs); }
+
+/* ── Template card — new-project "from a template" gallery (r1-px-projects-new-template)
+   A grey-blue bordered card, DISTINCT from the white floating .gv-bo-card: measured
+   bg #F2F4F5, 1px #EAEAEA, 3px radius, 16px pad (source admin_project_templates hardcodes
+   these literals too — kept literal, not systemic). Title 21px/500 navy; desc 14px/400 #808080. */
+.gv-bo-templatecard {
+  background: #F2F4F5; border: 1px solid #EAEAEA; border-radius: var(--gv-radius);
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  color: var(--gv-bo-primary); /* measured (r8-newproject-template div.hxEjaX): card text is bo-primary navy */
+}
+.gv-bo-templatecard__img {
+  width: 100%; height: 118px; border-radius: var(--gv-radius); flex: none;
+  background-size: cover; background-position: center;
+}
+.gv-bo-templatecard__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 500; color: var(--gv-bo-primary); line-height: 1.3; }
+.gv-bo-templatecard__desc { margin: 0; font-size: var(--gv-fs-s); font-weight: 400; line-height: 1.43; color: #808080; }
+.gv-bo-templatecard__actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+
+/* ── Facet group — collapsible filter disclosure in the template-gallery rail
+   (component-library FilterSelector). Head 16px/400 navy; chevron rotates on aria-expanded. */
+.gv-bo-facetgroup { border-bottom: 1px solid var(--gv-divider); }
+.gv-bo-facetgroup__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  padding: 14px 0; background: transparent; border: 0; cursor: pointer; text-align: left;
+  font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-bo-primary);
+}
+.gv-bo-facetgroup__chev { flex: none; width: 16px; height: 16px; transition: transform .15s ease; }
+.gv-bo-facetgroup__head[aria-expanded="true"] .gv-bo-facetgroup__chev { transform: rotate(180deg); }
+.gv-bo-facetgroup__body { padding: 0 0 14px; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   AI ANALYSIS / SENSEMAKING workspace  (Input manager → "Open AI analysis")
+   The full-screen four-column sensemaking surface. Measured live:
+   bo-auto-insights-clean / bo-sensemaking-banner (Wonderville, epic tenant).
+   Source: citizenlab front/app/.../analysis/. Columns:
+     Tags rail (≈300px) · InputsList · InputPreview · Insights (right rail).
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Shell: the top bar + the 4-column row, on the BO canvas. */
+.gv-bo-analysis { display: flex; flex-direction: column; height: 100%; background: var(--gv-bo-canvas); }
+.gv-bo-analysis__top {
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 16px; background: #fff; border-bottom: 1px solid var(--gv-divider);
+}
+.gv-bo-analysis__back { display: inline-flex; align-items: center; gap: 6px; color: var(--gv-bo-link); font-size: var(--gv-fs-s); }
+.gv-bo-analysis__title { font-size: var(--gv-fs-s); color: var(--gv-grey-800); line-height: 1.2; }
+.gv-bo-analysis__title b { display: block; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-bo-primary); }
+.gv-bo-analysis__topactions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.gv-bo-analysis__cols { display: grid; grid-template-columns: 300px 1.1fr 1.3fr 1.1fr; flex: 1; min-height: 0; }
+.gv-bo-analysis__col { min-width: 0; overflow: auto; border-right: 1px solid var(--gv-divider); }
+.gv-bo-analysis__col:last-child { border-right: 0; }
+.gv-bo-analysis__col--white { background: #fff; }
+
+/* AI action header bar — the teal-500 band that caps a column (Auto-tag rail
+   header; Summarize / Ask-a-question header). Measured div.bQEqKY:
+   bg teal-500, white text, pad 10px 8px 10px 16px. */
+.gv-bo-aibar {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--gv-teal-500); color: #fff;
+  /* Measured (r8-analysis-clean div.bQEqKY / p.bBeZjH): label weight is 400, not 700. */
+  padding: 10px 8px 10px 16px; font-size: var(--gv-fs-s); font-weight: 400;
+}
+.gv-bo-aibar .gv-icon { width: 18px; height: 18px; color: #fff; }
+.gv-bo-aibar--split { gap: 0; padding: 0; }
+.gv-bo-aibar--split > .gv-bo-aibar__cell {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 8px; color: #fff; font-weight: 700; font-size: var(--gv-fs-s);
+  background: transparent; border: 0; cursor: pointer; font-family: inherit;
+}
+.gv-bo-aibar--split > .gv-bo-aibar__cell .gv-icon { color: #fff; width: 18px; height: 18px; }
+.gv-bo-aibar--split > .gv-bo-aibar__cell:hover { background: rgba(0,0,0,.12); }
+.gv-bo-aibar--split > .gv-bo-aibar__cell + .gv-bo-aibar__cell { border-left: 1px solid rgba(255,255,255,.25); }
+
+/* Tag rail — list of tags + counts; link-blue rows, active = rgba(0,0,0,.7)
+   (the sidebar-active idiom). Measured a.dnzbNv. */
+.gv-bo-tagrail { padding: 8px 0; }
+.gv-bo-tagrail__item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 8px 10px 16px; color: var(--gv-bo-link);
+  font-size: var(--gv-fs-s); border-radius: var(--gv-radius); cursor: pointer;
+}
+.gv-bo-tagrail__item:hover { background: var(--gv-grey-100); }
+.gv-bo-tagrail__item.is-active { background: rgba(0,0,0,.7); color: #fff; }
+.gv-bo-tagrail__count { margin-left: auto; font-variant-numeric: tabular-nums; }
+.gv-bo-tagrail__add { display: flex; gap: 8px; padding: 8px 12px; }
+.gv-bo-tagrail__add .gv-input { flex: 1; }
+.gv-bo-tagrail__help { padding: 12px 16px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); line-height: 1.45; }
+
+/* Auto-tag chip — computer-derived tag. Warm amber. Measured div.eMnFXQ:
+   bg amber-100, 1px amber-500, 3px, pad 4px 12px. */
+.gv-bo-autotag {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--gv-amber-100); border: 1px solid var(--gv-amber-500);
+  border-radius: var(--gv-radius); padding: 4px 12px;
+  font-size: var(--gv-fs-s); color: var(--gv-grey-800);
+}
+
+/* Notices in the AI panels (measured):
+   .is-locked  = auto-insights gate, teal-100  (gZsBWS, pad 14px)
+   .is-warn    = AI disclaimer,     orange-100 (ksJZlI, pad 8px) */
+.gv-bo-ainotice {
+  display: flex; align-items: flex-start; gap: 8px;
+  border-radius: var(--gv-radius); font-size: var(--gv-fs-s); line-height: 1.45; color: var(--gv-grey-800);
+}
+.gv-bo-ainotice .gv-icon { flex: none; width: 18px; height: 18px; margin-top: 1px; }
+.gv-bo-ainotice.is-locked { background: var(--gv-teal-100); padding: 14px; }
+.gv-bo-ainotice.is-warn { background: var(--gv-orange-100); padding: 8px; }
+.gv-bo-ainotice.is-warn .gv-icon { color: var(--gv-orange-500); }
+
+/* AI insight card (a generated Summary or a Question answer). Source structure:
+   header (stars/question icon + label) · body · footer (covered count + timeAgo)
+   · action row (restore-filters/copy/flag/delete). */
+/* Measured (r8-analysis-clean div.fzykeO): insight/summary cards are borderless
+   white panels (border:none, pad 12px) — separated by the rail divider, not a 1px box.
+   Head = the AI-panel h4 idiom: 18px / 700 / bo-primary (h4.imgGNR). */
+.gv-bo-aicard { background: #fff; border-radius: var(--gv-radius); padding: 12px; margin-bottom: 12px; }
+.gv-bo-aicard__head { display: flex; align-items: center; gap: 6px; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.3; color: var(--gv-bo-primary); }
+.gv-bo-aicard__head .gv-icon { width: 18px; height: 18px; color: var(--gv-teal-500); }
+.gv-bo-aicard__body { margin: 8px 0; font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-grey-800); }
+.gv-bo-aicard__foot { display: flex; align-items: center; gap: 10px; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+.gv-bo-aicard__actions { display: flex; gap: 4px; margin-top: 8px; }
+
+/* Empty summary panel — dashed-feel grey-400 box. Measured div.bAxtpM:
+   1px solid #CBCBCB (grey-400), 3px, pad 16px 8px. */
+.gv-bo-aiempty {
+  border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius);
+  padding: 16px 8px; text-align: center;
+  font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-cool-grey-600);
+}
+
+/* Insights right-rail wrapper (white col body, with internal padding). */
+.gv-bo-airail { padding: 12px; }
+.gv-bo-airail__count { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: var(--gv-fs-s); color: var(--gv-grey-800); }
+
+/* Input-preview detail column. */
+.gv-bo-inputview { padding: 16px 20px; }
+.gv-bo-inputview__author { display: flex; align-items: center; gap: 8px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); }
+.gv-bo-inputview__avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.gv-bo-inputview__title { margin: 12px 0 8px; font-size: var(--gv-fs-l); font-weight: 700; color: var(--gv-grey-800); }
+.gv-bo-inputview__meta { font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); margin: 12px 0 4px; }
+
+/* Input-list row (the middle list of inputs/responses). Card-ish, white. */
+/* Measured (r8-analysis-clean): hover div.zeuYe = rgb(237,239,240) = canvas grey;
+   selected card div.fzykeO is plain #fff (no teal inset bar). */
+.gv-bo-inputrow { padding: 12px; border-bottom: 1px solid var(--gv-divider); cursor: pointer; }
+.gv-bo-inputrow:hover { background: var(--gv-bo-canvas); }
+.gv-bo-inputrow.is-active { background: #fff; }
+.gv-bo-inputrow__title { font-size: var(--gv-fs-s); color: var(--gv-grey-800); line-height: 1.4; }
+.gv-bo-inputrow__date { font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); margin-top: 4px; }
+.gv-bo-inputrow__stats { display: flex; gap: 14px; margin-top: 6px; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+.gv-bo-inputrow__stats span { display: inline-flex; align-items: center; gap: 4px; }
+.gv-bo-inputrow__stats .gv-icon { width: 14px; height: 14px; }
+
+/* Demographic insight card (Authors by age/domicile carousel header).
+   The chart body is page-local SVG/bars — only the header chrome is canonical.
+   Measured (r8-analysis-clean): outer card div.jVblTB is BORDERLESS white (pad 12px);
+   the 1px rgb(203,203,203)/grey-400 border belongs to the inner plot box (div.bAxtpM),
+   exposed as .gv-bo-democard__plot. */
+.gv-bo-democard { border-radius: var(--gv-radius); padding: 12px; margin: 12px; background: #fff; }
+.gv-bo-democard__plot { border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius); }
+.gv-bo-democard__head { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--gv-grey-800); font-size: var(--gv-fs-s); }
+.gv-bo-democard__nav { margin-left: auto; display: flex; align-items: center; gap: 6px; color: var(--gv-cool-grey-600); }
+.gv-bo-democard__nav .gv-icon { width: 16px; height: 16px; cursor: pointer; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   AI Analysis — auto-insights cross-tab + tag meters + insight cards
+   The "View all insights" screen (cross-tabulating analysis tags × a survey
+   field, coloured by % delta vs baseline) and the richer left-rail / insight
+   list it sits beside. Source: bo-auto-insights-big / bo-auto-insights-view
+   (internal.govocal.com, "2025 Betting Tables"). Cell palette aliases the
+   semantic green-100 / red-100 fills; nothing here hardcodes a raw hex.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Left rail — "All inputs" / "Inputs without tags" meter rows. */
+.gv-bo-tagmeter { padding: 10px 12px; }
+.gv-bo-tagmeter__label { font-size: var(--gv-fs-s); color: var(--gv-grey-800); margin-bottom: 5px; }
+.gv-bo-tagmeter__row { display: flex; align-items: center; gap: 10px; }
+.gv-bo-tagmeter__track { flex: 1; height: 6px; border-radius: 3px; background: var(--gv-grey-200); overflow: hidden; }
+.gv-bo-tagmeter__fill { height: 100%; border-radius: 3px; background: rgba(0,0,0,.78); }
+.gv-bo-tagmeter__num { font-size: var(--gv-fs-s); color: var(--gv-grey-800); font-variant-numeric: tabular-nums; }
+
+/* Left rail — a tagged-input row: checkbox · teal autotag chip · ⋯ menu, with a
+   small per-tag count meter beneath. */
+.gv-bo-tagitem { padding: 10px 12px; border-top: 1px solid var(--gv-divider); }
+.gv-bo-tagitem__row { display: flex; align-items: center; gap: 8px; }
+.gv-bo-tagitem__check { width: 16px; height: 16px; flex: none; border: 1px solid var(--gv-cool-grey-300); border-radius: 3px; }
+.gv-bo-tagitem__opts { margin-left: auto; color: var(--gv-cool-grey-600); display: inline-flex; cursor: pointer; }
+.gv-bo-tagitem__opts .gv-icon { width: 18px; height: 18px; }
+.gv-bo-tagitem__meter { display: flex; align-items: center; gap: 8px; margin-top: 7px; padding-left: 24px; }
+.gv-bo-tagitem__bar { height: 5px; border-radius: 3px; background: rgba(0,0,0,.78); min-width: 6px; }
+.gv-bo-tagitem__num { font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); font-variant-numeric: tabular-nums; }
+
+/* Centre column — "View all insights" entry + the insight cards it precedes. */
+.gv-bo-viewall {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  padding: 12px; border: 0; background: none; cursor: pointer;
+  font: 600 var(--gv-fs-s)/1 var(--gv-font-family); color: var(--gv-grey-800);
+}
+.gv-bo-viewall .gv-icon { width: 18px; height: 18px; }
+.gv-bo-viewall:hover { color: var(--gv-bo-link); }
+
+.gv-bo-insightcard { padding: 12px; border-bottom: 1px solid var(--gv-divider); cursor: pointer; }
+.gv-bo-insightcard:hover { background: var(--gv-bo-canvas); }
+.gv-bo-insightcard.is-active { background: var(--gv-grey-100); }
+.gv-bo-insightcard__head { display: flex; gap: 12px; align-items: flex-start; }
+.gv-bo-insightcard__title { flex: 1; font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-grey-800); line-height: 1.35; }
+.gv-bo-insightcard__date { flex: none; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+.gv-bo-insightcard__react { display: flex; gap: 14px; margin-top: 8px; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+.gv-bo-insightcard__react span { display: inline-flex; align-items: center; gap: 4px; }
+.gv-bo-insightcard__react .gv-icon { width: 14px; height: 14px; }
+.gv-bo-insightcard__tags { margin-top: 8px; }
+
+/* ── Cross-tab matrix ("auto insights") ─────────────────────────────────── */
+/* The matrix view swaps the 4 columns for a wide cross-tab + the AI panel. */
+.gv-bo-analysis__cols.is-matrix { grid-template-columns: 1fr 360px; }
+
+.gv-bo-xtab { position: relative; background: #fff; overflow: auto; }
+.gv-bo-xtab__close { position: absolute; top: 14px; right: 14px; z-index: 2; }
+.gv-bo-xtab__filters {
+  display: flex; gap: 16px; flex-wrap: wrap; padding: 18px 56px 18px 20px;
+  border-bottom: 1px solid var(--gv-divider);
+}
+.gv-bo-xtab__filter { flex: 1 1 200px; max-width: 320px; }
+.gv-bo-xtab__filter > label { display: block; font-size: var(--gv-fs-s); color: var(--gv-grey-800); margin-bottom: 6px; }
+
+.gv-bo-matrix { display: grid; gap: 8px; padding: 18px 20px; align-items: stretch; }
+.gv-bo-matrix__corner { }
+.gv-bo-matrix__colhead { align-self: end; padding-bottom: 4px; text-align: center; font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-bo-primary); }
+.gv-bo-matrix__rowhead { display: flex; align-items: center; }
+.gv-bo-matrix__cell {
+  display: flex; flex-direction: column; gap: 4px; justify-content: center; align-items: center;
+  border-radius: 4px; padding: 14px 8px; text-align: center; min-height: 64px;
+}
+.gv-bo-matrix__cell.is-pos { background: var(--gv-green-100); }
+.gv-bo-matrix__cell.is-neg { background: var(--gv-red-100); }
+.gv-bo-matrix__cell.is-zero { background: var(--gv-grey-100); }
+.gv-bo-matrix__num { font-size: 18px; font-weight: 700; color: var(--gv-grey-800); line-height: 1; }
+.gv-bo-matrix__delta { font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+
+/* ── AI panel (matrix side): filled Summarize / Ask + a generated Q&A ────── */
+.gv-bo-aiactions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+.gv-bo-aiactions__btn {
+  display: flex; align-items: center; gap: 8px; padding: 14px 16px; min-height: 56px;
+  border: 0; border-radius: 3px; cursor: pointer; text-align: left;
+  background: var(--gv-bo-primary); color: #fff;
+  font: 600 var(--gv-fs-base)/1.25 var(--gv-font-family);
+}
+.gv-bo-aiactions__btn .gv-icon { width: 18px; height: 18px; color: #fff; flex: none; }
+.gv-bo-aiactions__btn:hover { filter: brightness(1.12); }
+
+.gv-bo-aiqa { padding: 4px 12px 16px; }
+.gv-bo-aiqa__prompt { display: flex; gap: 8px; font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-grey-800); line-height: 1.4; }
+.gv-bo-aiqa__prompt .gv-icon { width: 18px; height: 18px; flex: none; margin-top: 2px; color: var(--gv-bo-primary); }
+.gv-bo-aiqa__body { margin-top: 12px; font-size: var(--gv-fs-s); line-height: 1.6; color: var(--gv-grey-800); }
+.gv-bo-aiqa__body hr { border: 0; border-top: 1px solid var(--gv-divider); margin: 14px 0; }
+
+/* "How to work with AI" intro dialog — opens from the AI Analysis ⓘ ("About AI
+   analysis"); in the real product it also greets you on first open. Reuses the
+   .gv-modal shell; the teal "I understand" CTA is the BO accent, measured on
+   bo-auto-insights-view (bg #0A5159 = teal-700 / radius 3px / pad 9px 18px / white). */
+.gv-bo-aimodal__icon { flex: none; width: 26px; height: 26px; margin-right: 10px; color: var(--gv-teal-500); }
+.gv-bo-aimodal__body p { margin: 0 0 14px; font-size: var(--gv-fs-s); line-height: 1.6; color: var(--gv-grey-800); }
+.gv-bo-aimodal__body p:last-child { margin-bottom: 0; }
+.gv-bo-aimodal__cta {
+  width: 100%; padding: 9px 18px; border: 0; border-radius: var(--gv-radius);
+  background: var(--gv-teal-700); color: #fff; cursor: pointer;
+  font: 600 var(--gv-fs-base)/1.4 var(--gv-font-family);
+}
+.gv-bo-aimodal__cta:hover { filter: brightness(1.12); }

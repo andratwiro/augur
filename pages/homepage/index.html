@@ -38,6 +38,13 @@
       font: 600 13px/1 var(--gv-font-family); }
     .auth-toggle::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
     [data-auth="in"] .auth-toggle::before { background: var(--gv-green-400); }
+    /* Staff affordance: hook to the Homepage Builder (the builder's eye button links
+       back here — closing the homepage ⇄ builder loop). Tokens + font shorthand. */
+    .edit-home { position: fixed; right: 16px; bottom: 16px; z-index: 1200;
+      display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px; text-decoration: none;
+      background: var(--gv-bo-primary); color: var(--gv-white); border-radius: 999px;
+      font: 600 13px/1 var(--gv-font-family); }
+    .edit-home .gv-icon, .edit-home svg { width: 15px; height: 15px; }
     /* The live Raleigh homepage banner H1 measures 25px (fo-homepage capture); the
        canonical .signed-out default is the St-Louis 30px. Match our tenant via token. */
     #homeBanner .gv-hero__title { font-size: var(--gv-fs-xxl); }
@@ -717,6 +724,7 @@
 
   <!-- Demo toggle: flip the header between signed-out and signed-in states -->
   <button class="auth-toggle" id="authToggle" aria-pressed="false">Signed out</button>
+  <a class="edit-home" href="../bo-homepage-builder/" title="Open this homepage in the Page Builder"><span data-gv-icon="edit" aria-hidden="true"></span> Edit homepage</a>
   <script>
     (function () {
       var body = document.body, t = document.getElementById('authToggle');
