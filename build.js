@@ -141,7 +141,7 @@ function injectHead(html, pageUrl, hasOg) {
   const title = parts[0].trim();
   const subtitle = parts.slice(1).join(" — ").trim();
   const dm = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']*)["']/i);
-  const desc = (dm ? dm[1] : subtitle) || "Clickable design prototype · GoVocal";
+  const desc = (dm ? dm[1] : subtitle) || "Clickable design prototype · Go Vocal";
   const img = hasOg
     ? `\n  <meta property="og:image" content="${escAttr(pageUrl + "og.jpg")}" />` +
       `\n  <meta property="og:image:width" content="1200" />` +
@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.61";
+const UI_VERSION = "0.62";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -193,8 +193,8 @@ const IGNORED_TOPLEVEL = new Set([
   "pages", // composed reference pages — shipped via their own builder, not as an opportunity
   "components", // composed component library — shipped via its own builder, not as an opportunity
   "playground", // standalone scratch prototype — shipped to /playground/, not as an opportunity
-  "references", // internal source exports (raw GoVocal HTML + screenshots) — NEVER ships
-  "govocal-exports", // internal raw GoVocal page exports (HTML + screenshots) — NEVER ships
+  "references", // internal source exports (raw Go Vocal HTML + screenshots) — NEVER ships
+  "govocal-exports", // internal raw Go Vocal page exports (HTML + screenshots) — NEVER ships
   ".git",
   ".github",
 ]);
@@ -286,7 +286,7 @@ const COMPONENT_BLURBS = {
   spotlight: { name: "Spotlight", classes: ".gv-spotlight / __eyebrow / __title / __media / .gv-progress", desc: "The homepage \"currently working on\" spotlight: a copy column (eyebrow/title/lead/actions plus avatar count) beside a media tile with a no-image placeholder." },
   "sticky-note": { name: "Sticky note", classes: ".gv-sticky (.is-raised / pastel variants) / __author / __title / __react", desc: "The pastel Perspectives idea note: a 320px card with author chip, emoji, title, excerpt and react counts, in resting/raised states and four pastel colours." },
   "survey-band": { name: "Survey band", classes: ".gv-surveyband / __inner / __status / __dot / __cta", desc: "The \"Take the survey\" CTA strip on a project-page survey phase: a live-dot status on the left and an on-color CTA on the right." },
-  "survey-fields": { name: "Survey fields", classes: ".sv-optcard / .sv-rating / .sv-matrix / .sv-map · GVSurvey.mount()", desc: "Every GoVocal survey question type (text, select, rating, ranking, scale, sentiment, image-select, matrix, map, upload) plus the page-by-page runner." },
+  "survey-fields": { name: "Survey fields", classes: ".sv-optcard / .sv-rating / .sv-matrix / .sv-map · GVSurvey.mount()", desc: "Every Go Vocal survey question type (text, select, rating, ranking, scale, sentiment, image-select, matrix, map, upload) plus the page-by-page runner." },
   "theme-card": { name: "Theme card", classes: ".gv-themecard (.is-active) / __emoji / __name / __count / __bar", desc: "The ranked Perspectives category card: an emoji swatch, name, response count and a mini share bar, with an active-selection state." },
   "twocol-accordion": { name: "Two-column image + text + accordion", classes: ".gv-cb-row.cols-2 / .gv-cb-image / .gv-prose / .gv-accordion", desc: "The Content-Builder homepage \"about + FAQ\" section: a two-column row pairing an image cell with a rich-text column carrying a heading, intro and FAQ accordion." },
   "volunteer-cause": { name: "Volunteer cause", classes: ".gv-cause / __media / __badge / __body / .gv-btn.volunteer", desc: "The volunteering opportunity card: photo with participant badge, title, count and description plus a green volunteer button that toggles a withdrawn state." },
@@ -566,7 +566,7 @@ async function scanPages() {
     const dir = path.join(PAGES_SRC, e.name);
     const latest = await copyDir(dir, path.join(DIST, "pages", e.name), isInternalOnly);
     const { href, file } = await entryPoint(e.name, dir);
-    // Surface = back-office (GoVocal's own theme), front-office (city-themed), or
+    // Surface = back-office (Go Vocal's own theme), front-office (city-themed), or
     // method (a front-office participation-method runner — its own Pages group).
     // fo-method-* and bo-method-* slugs are auto-classified as "method". Add
     // exceptions to METHOD_PAGES. Let <meta name="gv-surface"> override any of these.
@@ -697,11 +697,20 @@ const FONT_CSS = `
       font-weight: 100 900;
       font-display: swap;
       src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
+    }
+    /* LentiaNova (Neutral weight) — the Augur display/title face. Bundled from the
+       Linz tenant capture (govocal-exports/theme-linz), shipped to /fonts/ in main(). */
+    @font-face {
+      font-family: "LentiaNova";
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url("/fonts/lentianova.woff2") format("woff2");
     }`;
 
 const PAGE_CSS = `
     /* Linear-style shell — light edition: near-white canvas, indigo accent, Inter type.
-       This is the TOOLING UI; a light shell sits comfortably next to GoVocal's light brand. */
+       This is the TOOLING UI; a light shell sits comfortably next to Go Vocal's light brand. */
     :root {
       --bg: #fbfbfd;          /* page canvas */
       --bg-2: #f3f4f7;        /* subtle inset / preview backing */
@@ -716,6 +725,7 @@ const PAGE_CSS = `
       --accent-solid: #5e6ad2;/* Linear indigo (fills) */
       --radius: 12px;
       --maxw: 1080px;
+      --font-display: "LentiaNova", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
       color-scheme: light;
     }
     * { box-sizing: border-box; }
@@ -767,7 +777,7 @@ const PAGE_CSS = `
     .folderbar__up:hover { background: var(--bg-2); color: var(--fg); }
     .folderbar__up:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .folderbar__up svg { width: 16px; height: 16px; }
-    .folderbar__title { font-size: 15px; font-weight: 600; letter-spacing: -0.014em; margin: 0; color: var(--fg); white-space: nowrap; }
+    .folderbar__title { font-family: var(--font-display); font-size: 17px; font-weight: 400; letter-spacing: 0; margin: 0; color: var(--fg); white-space: nowrap; }
     .folderbar__count {
       flex: none; font-size: 12px; font-weight: 560; color: var(--faint);
       background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px;
@@ -1230,7 +1240,8 @@ const NAV_CSS = `
       border-bottom: 1px solid rgba(16,17,26,0.09);
       font: 600 14.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
-    .gvtop__brand { display: inline-flex; align-items: center; gap: 9px; color: #16171a; text-decoration: none; letter-spacing: -0.01em; }
+    .gvtop__brand { display: inline-flex; align-items: center; gap: 9px; color: #16171a; text-decoration: none; letter-spacing: 0; }
+    .gvtop__brand span { font-family: var(--font-display); font-size: 16px; }
     .gvburger {
       width: 36px; height: 34px; flex: none; padding: 0; cursor: pointer;
       display: inline-flex; align-items: center; justify-content: center;
@@ -1269,7 +1280,7 @@ const NAV_CSS = `
     }
     .gvside__brand:hover { background: rgba(16,17,26,0.05); }
     .gvside__brand:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvside__brandname { font-weight: 650; font-size: 13.5px; letter-spacing: -0.012em; }
+    .gvside__brandname { font-family: var(--font-display); font-weight: 400; font-size: 16px; letter-spacing: 0; }
     .gvmark { display: block; flex: none; object-fit: contain; border-radius: 50%; }
     .gvside__brand .gvmark { width: 17px; height: 17px; }
     .gvtop__brand .gvmark { width: 24px; height: 24px; }
@@ -1445,7 +1456,7 @@ function sideRail(active) {
     </details>`;
   return `<aside class="gvside" id="gvside" aria-label="Augur">
     <a class="gvside__brand" href="/" aria-label="Augur — home">
-      ${GV_MARK}<span class="gvside__brandname">Augur</span>
+      ${GV_MARK}<span class="gvside__brandname">augur</span>
     </a>
     ${railSearch()}
     <div class="gvside__rule"></div>
@@ -1468,7 +1479,7 @@ function sideRail(active) {
 function appChrome(active) {
   const top = `<header class="gvtop">
     <button type="button" class="gvburger" data-side-toggle aria-expanded="false" aria-controls="gvside" aria-label="Open navigation"><span class="gvburger__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
-    <a class="gvtop__brand" href="/">${GV_MARK}<span>Augur</span></a>
+    <a class="gvtop__brand" href="/">${GV_MARK}<span>augur</span></a>
   </header>`;
   return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>`;
 }
@@ -1592,7 +1603,7 @@ const PRIMITIVES_SKIN = `${FONT_CSS}
     /* Folderbar title, matching Opportunities/Components/Pages (PAGE_CSS isn't loaded
        in the gallery, so the shell's --vars are inlined as literals here). */
     body.gv-root .folderbar { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font-family: "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body.gv-root .folderbar__title { font-size: 15px; font-weight: 600; letter-spacing: -0.014em; margin: 0; color: #16171a; white-space: nowrap; }
+    body.gv-root .folderbar__title { font-family: var(--font-display); font-size: 17px; font-weight: 400; letter-spacing: 0; margin: 0; color: #16171a; white-space: nowrap; }
     body.gv-root .folderbar__count { flex: none; font-size: 12px; font-weight: 560; color: #6b7280; background: #f3f4f7; border: 1px solid rgba(16,17,26,0.09); border-radius: 999px; padding: 1px 8px; }
     body.gv-root .folderbar__rule { flex: 1; height: 0; border-top: 1px dashed rgba(16,17,26,0.15); margin-left: 2px; }`;
 
@@ -2279,7 +2290,7 @@ function renderPagesIndex(pages) {
   if (!pages.length) {
     return shell({
       title: "Pages",
-      subtitle: "Composed GoVocal reference pages &mdash; copy one as a starting point.",
+      subtitle: "Composed Go Vocal reference pages &mdash; copy one as a starting point.",
       activeTab: "pages",
       wrapClass: "wrap--wide",
       body: `<p class="empty">No reference pages yet. Add one under
@@ -2300,7 +2311,7 @@ function renderPagesIndex(pages) {
         </div>`;
 
   // Split by surface into three collapsible groups: Front office (city-themed
-  // shells), Methods (participation-method runners), Back office (GoVocal's theme).
+  // shells), Methods (participation-method runners), Back office (Go Vocal's theme).
   const front = pages.filter((p) => p.surface === "front-office");
   const methods = pages.filter((p) => p.surface === "method");
   const back = pages.filter((p) => p.surface === "back-office");
@@ -2591,6 +2602,15 @@ async function main() {
   // the render-blocking Google Fonts link; one variable woff2 covers every weight.
   if (await isDir(path.join(ROOT, "fonts"))) {
     await copyDir(path.join(ROOT, "fonts"), path.join(DIST, "fonts"));
+  }
+  // LentiaNova (Neutral) — the Augur display/title face → /fonts/lentianova.woff2.
+  // Sourced from the internal Linz tenant capture (govocal-exports never ships, but
+  // this one file does, matching the @font-face in FONT_CSS).
+  {
+    const src = path.join(ROOT, "govocal-exports", "theme-linz", "font-reg.woff2");
+    if (await exists(src)) {
+      await fs.copyFile(src, path.join(DIST, "fonts", "lentianova.woff2"));
+    }
   }
 
   // Augur brand mark (the bone-tile falcon app icon) → /augur-mark.png. The rail brand

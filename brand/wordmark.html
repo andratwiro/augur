@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Augur — wordmark (LentiaNova)</title>
+<style>
+  @font-face{
+    font-family:'LentiaNova';
+    src:url('../govocal-exports/theme-linz/font-reg.woff2') format('woff2');
+    font-weight:400; font-display:block;
+  }
+  :root{--indigo:#2C2150;--bone:#F4EFE6;}
+  *{box-sizing:border-box}
+  body{margin:0;background:#15171c;color:#d7dae0;font-family:-apple-system,system-ui,sans-serif;padding:44px 56px}
+  h1{font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#838997;font-weight:600;margin:0 0 30px}
+  .panel{background:var(--bone);border-radius:18px;padding:46px 52px;margin-bottom:22px;display:flex;align-items:center;gap:30px}
+  .panel.dark{background:var(--indigo)}
+  .word{font-family:'LentiaNova';color:var(--indigo);line-height:1;font-weight:400}
+  .dark .word{color:var(--bone)}
+  .lbl{font-size:11px;color:#838997;margin:0 0 8px;letter-spacing:.04em}
+  .row{margin-bottom:22px}
+  .big{font-size:96px}
+  .lockup{display:flex;align-items:center;gap:22px}
+  .lockup img{width:84px;height:84px;border-radius:22%}
+  .t-tight{letter-spacing:-.03em}
+  .t-loose{letter-spacing:.04em}
+  .stack{display:flex;flex-direction:column;gap:26px}
+</style>
+<body>
+  <h1>augur · wordmark in LentiaNova-Neutral</h1>
+
+  <div class="row"><p class="lbl">1 · wordmark, indigo on bone</p>
+    <div class="panel"><span class="word big">augur</span></div></div>
+
+  <div class="row"><p class="lbl">2 · lockup — falcon mark + wordmark</p>
+    <div class="panel"><div class="lockup"><img src="augur-mark.svg"><span class="word" style="font-size:74px">augur</span></div></div></div>
+
+  <div class="row"><p class="lbl">3 · tracking — tight / default / loose</p>
+    <div class="panel"><div class="stack">
+      <span class="word t-tight" style="font-size:60px">augur</span>
+      <span class="word" style="font-size:60px">augur</span>
+      <span class="word t-loose" style="font-size:60px">augur</span>
+    </div></div></div>
+
+  <div class="row"><p class="lbl">4 · inverse — bone on indigo</p>
+    <div class="panel dark"><span class="word big">augur</span></div></div>
+
+  <div class="row"><p class="lbl">5 · lockup inverse</p>
+    <div class="panel dark"><div class="lockup"><img src="augur-mark.svg"><span class="word" style="font-size:74px">augur</span></div></div></div>
+</body>
