@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.63";
+const UI_VERSION = "0.64";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -698,14 +698,29 @@ const FONT_CSS = `
       font-display: swap;
       src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
     }
-    /* LentiaNova (Neutral weight) — the Augur display/title face. Bundled from the
-       Linz tenant capture (govocal-exports/theme-linz), shipped to /fonts/ in main(). */
+    /* LentiaNova — the Augur display/title face (City of Linz tenant font). Bundled
+       from the Linz capture, shipped to /fonts/ in main(). Three cuts: Neutral 400,
+       Median 600 (section titles), Bulky 800 (the brand wordmark). */
     @font-face {
       font-family: "LentiaNova";
       font-style: normal;
       font-weight: 400;
       font-display: swap;
       src: url("/fonts/lentianova.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "LentiaNova";
+      font-style: normal;
+      font-weight: 600;
+      font-display: swap;
+      src: url("/fonts/lentianova-median.otf") format("opentype");
+    }
+    @font-face {
+      font-family: "LentiaNova";
+      font-style: normal;
+      font-weight: 800;
+      font-display: swap;
+      src: url("/fonts/lentianova-bulky.otf") format("opentype");
     }`;
 
 const PAGE_CSS = `
@@ -777,7 +792,7 @@ const PAGE_CSS = `
     .folderbar__up:hover { background: var(--bg-2); color: var(--fg); }
     .folderbar__up:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
     .folderbar__up svg { width: 16px; height: 16px; }
-    .folderbar__title { font-family: var(--font-display); font-size: 17px; font-weight: 400; letter-spacing: 0; margin: 0; color: var(--fg); white-space: nowrap; }
+    .folderbar__title { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: 0; margin: 0; color: var(--fg); white-space: nowrap; }
     .folderbar__count {
       flex: none; font-size: 12px; font-weight: 560; color: var(--faint);
       background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px;
@@ -1241,7 +1256,7 @@ const NAV_CSS = `
       font: 600 14.5px/1 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     .gvtop__brand { display: inline-flex; align-items: center; gap: 9px; color: #16171a; text-decoration: none; letter-spacing: 0; }
-    .gvtop__brand span { font-family: var(--font-display); font-size: 16px; }
+    .gvtop__brand span { font-family: var(--font-display); font-weight: 800; font-size: 16px; }
     .gvburger {
       width: 36px; height: 34px; flex: none; padding: 0; cursor: pointer;
       display: inline-flex; align-items: center; justify-content: center;
@@ -1280,7 +1295,7 @@ const NAV_CSS = `
     }
     .gvside__brand:hover { background: rgba(16,17,26,0.05); }
     .gvside__brand:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvside__brandname { font-family: var(--font-display); font-weight: 400; font-size: 16px; letter-spacing: 0; }
+    .gvside__brandname { font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: 0; }
     .gvmark { display: block; flex: none; object-fit: contain; }
     .gvside__brand .gvmark { width: 22px; height: 22px; }
     .gvtop__brand .gvmark { width: 22px; height: 22px; }
@@ -1604,7 +1619,7 @@ const PRIMITIVES_SKIN = `${FONT_CSS}
     /* Folderbar title, matching Opportunities/Components/Pages (PAGE_CSS isn't loaded
        in the gallery, so the shell's --vars are inlined as literals here). */
     body.gv-root .folderbar { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font-family: "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body.gv-root .folderbar__title { font-family: var(--font-display); font-size: 17px; font-weight: 400; letter-spacing: 0; margin: 0; color: #16171a; white-space: nowrap; }
+    body.gv-root .folderbar__title { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: 0; margin: 0; color: #16171a; white-space: nowrap; }
     body.gv-root .folderbar__count { flex: none; font-size: 12px; font-weight: 560; color: #6b7280; background: #f3f4f7; border: 1px solid rgba(16,17,26,0.09); border-radius: 999px; padding: 1px 8px; }
     body.gv-root .folderbar__rule { flex: 1; height: 0; border-top: 1px dashed rgba(16,17,26,0.15); margin-left: 2px; }`;
 
@@ -2605,13 +2620,20 @@ async function main() {
   if (await isDir(path.join(ROOT, "fonts"))) {
     await copyDir(path.join(ROOT, "fonts"), path.join(DIST, "fonts"));
   }
-  // LentiaNova (Neutral) — the Augur display/title face → /fonts/lentianova.woff2.
-  // Sourced from the internal Linz tenant capture (govocal-exports never ships, but
-  // this one file does, matching the @font-face in FONT_CSS).
+  // LentiaNova — the Augur display/title face → /fonts/. Neutral (400) from the Linz
+  // capture; Median (600) + Bulky (800) from brand/ (pulled from the same Linz font
+  // server). govocal-exports never ships, but these font files do, matching FONT_CSS.
   {
-    const src = path.join(ROOT, "govocal-exports", "theme-linz", "font-reg.woff2");
-    if (await exists(src)) {
-      await fs.copyFile(src, path.join(DIST, "fonts", "lentianova.woff2"));
+    const neutral = path.join(ROOT, "govocal-exports", "theme-linz", "font-reg.woff2");
+    if (await exists(neutral)) {
+      await fs.copyFile(neutral, path.join(DIST, "fonts", "lentianova.woff2"));
+    }
+    for (const [src, out] of [
+      ["lentianova-median.otf", "lentianova-median.otf"],
+      ["lentianova-bulky.otf", "lentianova-bulky.otf"],
+    ]) {
+      const p = path.join(ROOT, "brand", src);
+      if (await exists(p)) await fs.copyFile(p, path.join(DIST, "fonts", out));
     }
   }
 
