@@ -732,6 +732,12 @@
    (.gv-bo-cb-save) keeps its own later override, so exclude it here. */
 .gv-bo .gv-btn.primary:not(.gv-bo-cb-save) { background: var(--gv-bo-cta); border-color: var(--gv-bo-cta); }
 .gv-bo .gv-btn.primary:not(.gv-bo-cb-save):hover { filter: brightness(1.15); }
+/* FO widgets previewed inside the BO builder canvas are resident-facing, so their
+   primary CTA must follow the CITY theme, not the BO indigo chrome colour. Re-point
+   --gv-bo-cta to the tenant primary within FO widgets only (the rule above reads it),
+   so .gv-pbox / .gv-extra-survey / events CTAs render tenant-coloured. BO chrome
+   buttons outside these widgets keep --gv-bo-cta. */
+.gv-bo .gv-pbox, .gv-bo .gv-extra-survey, .gv-bo .cb-events, .gv-bo .gv-partbar { --gv-bo-cta: var(--gv-tenant-primary); }
 
 /* ── Left palette rail ───────────────────────────────────────────────────────
    Vertical white rail of draggable widgets, grouped into sections divided by a
