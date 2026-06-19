@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.70";
+const UI_VERSION = "0.71";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -2349,14 +2349,21 @@ function renderPagesIndex(pages) {
 
   // Split by surface into three collapsible groups: Front office (city-themed
   // shells), Methods (participation-method runners), Back office (Go Vocal's theme).
-  const front = pages.filter((p) => p.surface === "front-office");
-  const methods = pages.filter((p) => p.surface === "method");
-  const back = pages.filter((p) => p.surface === "back-office");
+  // Superseded reference pages — kept available but grouped under a collapsed
+  // "Legacy" section at the bottom. bo-project-phase is the old Project Editor,
+  // superseded by the new editor (parallel-editor-builder-v3, being progressed to
+  // canonical). Add a slug here to retire a page from the main groups.
+  const LEGACY_PAGES = new Set(["bo-project-phase"]);
+  const isLegacy = (p) => LEGACY_PAGES.has(p.name);
+  const front = pages.filter((p) => p.surface === "front-office" && !isLegacy(p));
+  const methods = pages.filter((p) => p.surface === "method" && !isLegacy(p));
+  const back = pages.filter((p) => p.surface === "back-office" && !isLegacy(p));
+  const legacy = pages.filter(isLegacy);
   // A collapsible section: <details> with the eyebrow as its <summary>. Filtering
   // (chromeScript) force-opens sections with matches, so search still reaches
-  // collapsed cards.
-  const group = (label, inner, count) => `
-        <details class="fsection" data-fgroup open>
+  // collapsed cards. Legacy starts collapsed.
+  const group = (label, inner, count, open = true) => `
+        <details class="fsection" data-fgroup${open ? " open" : ""}>
           <summary class="section-eyebrow"><span class="fsection__caret" aria-hidden="true"></span>${label}${count == null ? "" : ` &middot; ${count}`}</summary>
           <div class="page-grid">${inner}</div>
         </details>`;
@@ -2364,11 +2371,12 @@ function renderPagesIndex(pages) {
     ["Front office", front],
     ["Methods", methods],
     ["Back office", back],
+    ["Legacy", legacy],
   ].filter(([, list]) => list.length);
   // Two or more surfaces present → grouped; otherwise a single ungrouped list.
   const cards =
     built.length > 1
-      ? built.map(([label, list]) => group(label, list.map(pageCard).join(""), list.length)).join("")
+      ? built.map(([label, list]) => group(label, list.map(pageCard).join(""), list.length, label !== "Legacy")).join("")
       : `<section data-fgroup><p class="section-eyebrow">Composed reference screens</p><div class="page-grid">${pages.map(pageCard).join("")}</div></section>`;
 
   // Planned reference pages not built yet — shown as a roadmap of pending work.
