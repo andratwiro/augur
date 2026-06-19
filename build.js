@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.59";
+const UI_VERSION = "0.60";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -2597,6 +2597,13 @@ async function main() {
   if (await exists(path.join(ROOT, "gv-mark.png"))) {
     await fs.copyFile(path.join(ROOT, "gv-mark.png"), path.join(DIST, "gv-mark.png"));
   }
+  // Full-bleed install icons (mint tile + coral V) for the PWA manifest — they fill
+  // the OS squircle edge-to-edge instead of floating the disc in a white tile.
+  for (const f of ["gv-icon-192.png", "gv-icon-512.png"]) {
+    if (await exists(path.join(ROOT, f))) {
+      await fs.copyFile(path.join(ROOT, f), path.join(DIST, f));
+    }
+  }
 
   // Minimal web app manifest → /manifest.webmanifest. Makes the site installable as
   // a desktop/dock app (Chrome/Edge/Safari) with the real GoVocal icon + name. No
@@ -2614,7 +2621,9 @@ async function main() {
         background_color: "#fbfbfd",
         theme_color: "#5159c9",
         icons: [
-          { src: "/gv-mark.png", sizes: "256x256", type: "image/png", purpose: "any maskable" },
+          { src: "/gv-icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/gv-icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "/gv-icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       null,
