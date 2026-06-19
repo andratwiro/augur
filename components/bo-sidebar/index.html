@@ -48,8 +48,8 @@
 
     <div class="notes">
       <p><strong>Reuse:</strong> one <code>&lt;nav class="gv-bo-side"&gt;</code>. Default extended; add
-      <code>.is-rail</code> for the rail, or <code>data-gv-side-auto</code> + the matchMedia snippet to auto-collapse
-      at 1200px. Icons are GoVocal's real admin glyphs at 24×20: <code>--gv-blue-400</code> inactive,
+      <code>.is-rail</code> for the rail, or <code>data-gv-side-auto</code> + the ResizeObserver snippet to auto-collapse
+      when the container (not the viewport) drops below 1200px. Icons are GoVocal's real admin glyphs at 24×20: <code>--gv-blue-400</code> inactive,
       <code>--gv-teal-400</code> on the active item, <code>--gv-green-400</code> for Support. Labels are 15px white;
       the active cell is <code>rgba(0,0,0,.7)</code> (inset+rounded in the rail); the count badge overlaps the bell.</p>
     </div>
@@ -97,10 +97,18 @@
     if (window.GVIcons) GVIcons.render();
     else document.addEventListener('DOMContentLoaded', () => GVIcons.render());
 
-    // ── Responsive snippet (auto-collapse at 1200px) ──
-    const mq = matchMedia('(max-width: 1200px)');
-    const sync = () => document.querySelectorAll('[data-gv-side-auto], .gv-bo-shell').forEach((el) => el.classList.toggle('is-rail', mq.matches));
-    mq.addEventListener('change', sync); sync();
+    // ── Responsive snippet: container-aware collapse ──
+    // Observes each sidebar's direct parent — collapses when the container
+    // (not the viewport) drops below 1200px, so the sidebar reacts to the
+    // space it's actually placed in.
+    document.querySelectorAll('[data-gv-side-auto]').forEach(side => {
+      const container = side.closest('.gv-bo-shell, .gv-bo') || side.parentElement;
+      new ResizeObserver(([entry]) => {
+        const narrow = entry.contentRect.width < 1200;
+        side.classList.toggle('is-rail', narrow);
+        container.classList.toggle('is-rail', narrow);
+      }).observe(container);
+    });
   </script>
 </body>
 </html>
