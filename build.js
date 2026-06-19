@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.58";
+const UI_VERSION = "0.59";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -2089,6 +2089,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <meta name="robots" content="noindex, nofollow" />
   <title>${title}</title>
   <link rel="icon" type="image/png" href="/gv-mark.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#5159c9" />
   <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
   <style>${FONT_CSS}${PAGE_CSS}${NAV_CSS}${addon ? addon.css() : ""}
   </style>
@@ -2595,6 +2597,30 @@ async function main() {
   if (await exists(path.join(ROOT, "gv-mark.png"))) {
     await fs.copyFile(path.join(ROOT, "gv-mark.png"), path.join(DIST, "gv-mark.png"));
   }
+
+  // Minimal web app manifest → /manifest.webmanifest. Makes the site installable as
+  // a desktop/dock app (Chrome/Edge/Safari) with the real GoVocal icon + name. No
+  // service worker on purpose: offline is useless behind the Access gate and a SW is
+  // the only high-maintenance part of a PWA. Reuses the existing gv-mark.png icon.
+  await fs.writeFile(
+    path.join(DIST, "manifest.webmanifest"),
+    JSON.stringify(
+      {
+        name: "GoVocal Prototypes",
+        short_name: "Prototypes",
+        start_url: "/",
+        scope: "/",
+        display: "standalone",
+        background_color: "#fbfbfd",
+        theme_color: "#5159c9",
+        icons: [
+          { src: "/gv-mark.png", sizes: "256x256", type: "image/png", purpose: "any maskable" },
+        ],
+      },
+      null,
+      2
+    )
+  );
 
   const protoCount = opportunities.reduce((n, o) => n + o.prototypes.length, 0);
   console.log(
