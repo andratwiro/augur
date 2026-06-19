@@ -2101,6 +2101,7 @@
     .cb-lockednote .gv-icon { width: 14px; height: 14px; flex: none; }
     .cb-hero { border-radius: 4px; overflow: hidden; }
     .cb-hero__img { display: block; width: 100%; height: 240px; object-fit: cover; }
+    .cb-empty-hint { padding: 18px 16px; color: var(--gv-cool-grey-600, #6b7280); font-size: 14px; font-style: italic; }
     .cb-title { margin: 4px 0 0; outline: none; }
 
     /* ── Timeline + Events blocks (canonical .gv-phases / .gv-event-card) ──────── */
@@ -5448,6 +5449,7 @@
     // First phase is the live/current one; later phases queue as upcoming.
     const status = window.ppBuilt.phases.length === 0 ? 'live' : 'upcoming';
     window.ppBuilt.phases.push({ id: 'bp' + (++ppPhaseSeq), name, method: m.method, label: m.label, cta: m.cta, status });
+    if (window.cbSyncFromModel) window.cbSyncFromModel();   // keep the content builder in step
     ppResetPhaseForm();
     setProjectState('built', null);
     setView('project', document.querySelector('[data-view="project"]'));
@@ -5458,6 +5460,7 @@
     const title = (inps[0] && inps[0].value.trim()) || 'Survey';
     const cta = (inps[1] && inps[1].value.trim()) || 'Take the survey';
     window.ppBuilt.extras.push({ id: 'bx' + (++ppExtraSeq), title, cta });
+    if (window.cbSyncFromModel) window.cbSyncFromModel();   // keep the content builder in step
     ppResetSurveyForm();
     setProjectState('built', null);
     setView('project', document.querySelector('[data-view="project"]'));
@@ -5511,10 +5514,16 @@
     const cur = phases[ci];
     const stepper = phases.map((p, i) =>
       '<button class="gv-phase' + (i === ci ? ' current' : '') + '" type="button"><span class="gv-pstep">' + (i + 1) + '</span><span class="gv-phase__label">' + ppEsc(p.name) + '</span></button>').join('');
-    // Participation box only when there's a current phase to act on (no skeleton filler).
-    const pbox = cur
-      ? '<div class="pp-fo__pbox pp-edit" data-edit="participation-box"><div class="pp-fo__cta"><a class="gv-btn primary full" href="#">' + ppEsc(cur.cta) + '</a></div>'
-        + '<div class="gv-participants pp-fo__parts" style="margin-top:10px;"><span class="gv-pcount es-default-lead">Be the first to take part</span></div></div>'
+    // Participation box: the live phase (primary) plus any other active method — phases
+    // that are live, or surveys (always active) — as secondary CTAs, mirroring the
+    // content builder's participation-box (direction A: active methods as buttons).
+    const activeMethods = []
+      .concat(phases.filter((p) => p.status === 'live').map((p) => ({ cta: p.cta, primary: true })))
+      .concat(extras.map((e) => ({ cta: e.cta, primary: false })));
+    const pbox = activeMethods.length
+      ? '<div class="pp-fo__pbox pp-edit" data-edit="participation-box"><div class="pp-fo__cta">'
+        + activeMethods.map((a) => '<a class="gv-btn ' + (a.primary ? 'primary' : 'secondary-outlined') + ' full" href="#">' + ppEsc(a.cta) + '</a>').join('')
+        + '</div><div class="gv-participants pp-fo__parts" style="margin-top:10px;"><span class="gv-pcount es-default-lead">Be the first to take part</span></div></div>'
       : '';
     const timeline = phases.length
       ? '<div class="pp-fo__pad pp-fo__pad--grey"><div class="pp-edit" data-edit="timeline">'
@@ -6079,17 +6088,14 @@
 
     // The project's phase timeline = the canonical .gv-phases / .gv-stepper ribbon
     // (the same component the resident sees on the project page).
-    var CB_PHASES = [
-      { name: 'Pre-survey',         method: 'survey',      dates: '1 – 15 May 2026',   desc: 'A short survey to set the scene before ideation opens.' },
-      { name: 'Collect ideas',      method: 'ideation',    dates: '20 May – 10 Jun 2026', desc: 'Share your ideas for how we move, cycle and gather.' },
-      { name: 'What we heard',      method: 'information', dates: '11 – 25 Jun 2026',  desc: 'We share back the themes from your ideas.' },
-      { name: 'Community vote',     method: 'voting',      dates: '26 Jun – 12 Jul 2026', desc: 'Help prioritise the shortlisted ideas.' },
-      { name: 'Find common ground', method: 'information', dates: '13 – 27 Jul 2026',  desc: 'Surface where the community agrees and disagrees.' }
-    ];
-    var CB_CURRENT = 1;
+    // Structural project data starts EMPTY and is fed from the tester's model
+    // (window.ppBuilt) via cbSyncFromModel() — so the builder shows exactly what the
+    // tester built, identical to the phone/FO preview. No Meridian sample data.
+    var CB_PHASES = [];
+    var CB_CURRENT = 0;
     // The participation box CTA mirrors the action available in the CURRENT phase.
     var CB_METHOD_CTA = { information: 'Learn more', survey: 'Take the survey', ideation: 'Submit your idea', voting: 'Cast your vote', proposals: 'Submit a proposal' };
-    function cbCurrentCTA() { var p = CB_PHASES[CB_CURRENT] || {}; return CB_METHOD_CTA[p.method] || 'Take part'; }
+    function cbCurrentCTA() { var p = CB_PHASES[CB_CURRENT] || {}; return p.cta || CB_METHOD_CTA[p.method] || 'Take part'; }
     // Keep every participation box's primary CTA in sync with the current phase,
     // unless an editor has manually overridden it (data-cta-custom).
     function syncParticipationCTAs() {
@@ -6105,6 +6111,7 @@
         '<div class="gv-phasepanel__desc"><p>' + p.desc + '</p></div>';
     }
     function cbTimelineHTML() {
+      if (!CB_PHASES.length) return '<section class="gv-phases cb-timeline"><div class="gv-phases__bar"><h2>Phases</h2></div><div class="cb-empty-hint">No phases yet — add one from the project timeline on the left.</div></section>';
       var steps = CB_PHASES.map(function (p, i) {
         var cur = i === CB_CURRENT, dot = cur ? '<span class="gv-pstep__dot"></span>' : '';
         return '<button class="gv-phase' + (cur ? ' current' : '') + '" type="button" role="tab" data-i="' + i + '" aria-selected="' + (i === CB_CURRENT) + '">' +
@@ -6129,27 +6136,62 @@
     }
     // Order matters: the seeded Events block shows the first two — kept in step with the
     // two events the resident sees on the FO page (phoneFO complex).
-    var CB_EVENTS = [
-      { m: 'Jun', d: '14', y: '2026', title: 'Mobility town hall', when: '14 Jun 2026 · 19:00 – 20:30', where: 'Central Library, Meridian', regs: '41' },
-      { m: 'Jul', d: '02', y: '2026', title: 'Neighbourhood design workshop', when: '2 Jul 2026 · 18:00 – 20:00', where: 'Meridian Civic Hall', regs: '57' },
-      { m: 'Jun', d: '22', y: '2026', title: 'Cycling infrastructure walk', when: '22 Jun 2026 · 10:00 – 11:30', where: 'Riverside Park', regs: '23' }
-    ];
+    // Events have no tester-facing creation flow, so they stay empty (and the widget is
+    // omitted from the default page) — keeping the builder in step with the preview.
+    var CB_EVENTS = [];
     function cbEventsHTML(n) {
       var cards = CB_EVENTS.slice(0, n).map(cbEventCard).join('');
       return '<section class="cb-events"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Events</h2>' +
         '<a class="gv-btn text" href="#">View all events</a></div>' +
         '<div class="gv-events__grid">' + cards + '</div></section>';
     }
-    var CB_SURVEYS = [
-      { name: 'School survey',  meta: 'Open until 5 Jun · ~3 min', cta: 'Take the survey' },
-      { name: 'Market-day poll', meta: '15 – 17 Aug', cta: 'Notify me' }
-    ];
+    var CB_SURVEYS = [];
     function cbExtraSurveysHTML() {
+      if (!CB_SURVEYS.length) return '<section class="cb-extra"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Extra surveys</h2></div><div class="cb-empty-hint">No extra surveys yet — add one from Extras on the left.</div></section>';
       var rows = CB_SURVEYS.map(function (s) {
         return '<div class="cb-survey-row"><div class="cb-survey-row__info"><span class="cb-survey-row__name">' + s.name + '</span><span class="cb-survey-row__meta">' + s.meta + '</span></div><a class="gv-btn primary-outlined size-s" href="#">' + s.cta + '</a></div>';
       }).join('');
       return '<section class="cb-extra"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Extra surveys</h2></div><div class="cb-extra__list">' + rows + '</div></section>';
     }
+
+    // ── Single source of truth: pull the tester's model (window.ppBuilt) into the
+    //    builder's structural data + re-render the timeline / extra-surveys / participation
+    //    box blocks, so the builder canvas shows EXACTLY what the phone/FO preview shows. ──
+    function modelToMethods() {
+      var m = window.ppBuilt || { phases: [], extras: [] };
+      var out = [];
+      m.phases.forEach(function (p) {
+        out.push({ id: 'pm_' + p.id, type: p.method, label: p.name, cta: p.cta, dates: 'Open now',
+          status: p.status === 'live' ? 'active' : 'upcoming', timeline: true, current: p.status === 'live', visible: true });
+      });
+      m.extras.forEach(function (e) {
+        out.push({ id: 'sm_' + e.id, type: 'survey', label: e.title, cta: e.cta, dates: 'Ongoing',
+          status: 'active', timeline: false, current: false, visible: true });
+      });
+      return out;
+    }
+    window.cbSyncFromModel = function () {
+      var m = window.ppBuilt || { phases: [], extras: [] };
+      CB_PHASES = m.phases.map(function (p) {
+        return { name: p.name, method: p.method, cta: p.cta, dates: 'Open now', desc: 'This phase invites people to take part.' };
+      });
+      CB_CURRENT = m.phases.findIndex(function (p) { return p.status === 'live'; });
+      if (CB_CURRENT < 0) CB_CURRENT = 0;
+      CB_SURVEYS = m.extras.map(function (e) { return { name: e.title, meta: 'Ongoing', cta: e.cta }; });
+      var methods = modelToMethods();
+      var tl = frame.querySelector('[data-widget="timeline"]'); if (tl) cbSetBody(tl, cbTimelineHTML());
+      var es = frame.querySelector('[data-widget="extra-surveys"]'); if (es) cbSetBody(es, cbExtraSurveysHTML());
+      // Participation box(es): feed the model's methods + a fresh aggregate title, re-render.
+      var visCount = methods.filter(function (x) { return x.visible && x.status === 'active'; }).length;
+      Array.prototype.forEach.call(frame.querySelectorAll('[data-widget="participation-box"]'), function (block) {
+        var st = cbPboxState(block);
+        st.methods = methods;
+        st.showParticipants = false;   // fresh project — no real participants yet
+        st.aggTitle = 'Participate · ' + visCount + ' way' + (visCount === 1 ? '' : 's');
+        cbSetBody(block, cbPboxBodyHTML(st));
+      });
+      if (window.GVIcons) window.GVIcons.render(frame);
+    };
 
     function toast(msg) {
       toastEl.textContent = msg; toastEl.classList.add('is-show');
@@ -6906,7 +6948,9 @@
       block.appendChild(tab);
       var content = document.createElement('div');
       if (kind === 'hero') {
-        content.innerHTML = '<div class="cb-hero"><img class="cb-hero__img" src="assets/img/square.webp" alt="Project banner"></div>';
+        // Fresh project: no header image yet — a ghost matching the phone preview's
+        // "Add a header image" placeholder (upload via the settings panel adds the img).
+        content.innerHTML = '<div class="cb-hero cb-hero--empty"><div class="cb-imgph" style="height:200px;"><span class="gv-icon" data-gv-icon="eye"></span> Add a header image</div></div>';
       } else {
         content.innerHTML = '<h1 class="gv-title h1 cb-title" contenteditable="true">Reimagine Meridian 2030</h1>';
       }
@@ -7185,12 +7229,18 @@
       }
       // Right (narrow): the participation box.
       if (cols[1]) cols[1].appendChild(makeBlock('participation-box'));
-      // Out of the column, below: timeline, then events.
+      // Out of the column, below: the timeline. (Events omitted — no creation flow, and
+      // it would otherwise show content the preview can't.)
       frame.appendChild(makeBlock('timeline'));
-      frame.appendChild(makeBlock('events'));
       reflectEmptyAll();
     }
     seedDefault();
+    // Pull in whatever the tester has already built (empty on first load) so the builder
+    // canvas and the preview start identical and stay in step.
+    if (window.cbSyncFromModel) window.cbSyncFromModel();
+    // Reflect the seeded page content (title text + accordions) onto the preview right
+    // away, so the preview matches the builder before it's ever opened.
+    if (window.ppCaptureContent) window.ppCaptureContent();
 
     // open the panel for the default block to mirror the -settings capture
     if (first) select(first);
