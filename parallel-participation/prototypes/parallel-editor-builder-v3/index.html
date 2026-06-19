@@ -5679,19 +5679,19 @@
         return settingsRow('Embed URL', '<input class="gv-input" id="cb-f-embedurl" placeholder="https://…">');
       }
       if (widget === 'participation-box') {
-        return '<div class="cb-setseg">Design direction (experiment)</div>' +
-          '<div class="cb-vchip" role="group" aria-label="Participation box design direction">' +
-            '<button type="button" data-pv="A" title="Baseline — the participation box as it works today">A</button>' +
-            '<button type="button" data-pv="B" title="Now-only — proposed: current method locked, extras curated, &lsquo;next up&rsquo; when nothing is active">B</button>' +
-          '</div>' +
-          '<div class="cb-vchip-name" id="cb-pv-name"></div>' +
-          '<p class="cb-pbox-help">You can select below only methods that are active at the moment. They will disappear once they finish.</p>' +
+        return '<p class="cb-pbox-help">You can select below only methods that are active at the moment. They will disappear once they finish.</p>' +
           '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="showppl"><span class="track"></span></label><span>Show all project contributions</span></div>' +
           '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="shownext"><span class="track"></span></label><span>Show what&rsquo;s coming next</span></div>' +
           '<div id="cb-pbox-next"></div>' +
           '<div class="cb-setseg">Select visible methods</div>' +
           '<div id="cb-pbox-methods"></div>' +
-          '<div id="cb-pbox-title"></div>';
+          '<div id="cb-pbox-title"></div>' +
+          '<div class="cb-setseg" style="margin-top:22px">Design direction (experiment)</div>' +
+          '<div class="cb-vchip" role="group" aria-label="Participation box design direction">' +
+            '<button type="button" data-pv="A" title="Baseline — the participation box as it works today">A</button>' +
+            '<button type="button" data-pv="B" title="Now-only — proposed: current method locked, extras curated, &lsquo;next up&rsquo; when nothing is active">B</button>' +
+          '</div>' +
+          '<div class="cb-vchip-name" id="cb-pv-name"></div>';
       }
       if (widget === 'file-attachment') {
         return settingsRow('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') +
