@@ -70,7 +70,7 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Avatar Overflow Bubble** | `/components/avatar-overflow-bubble/` | `components/avatar-overflow-bubble/` | The participant-overflow count rendered AS a solid cool-grey circle capping the avatar overlap stack — grounded on Falkirk, the same treatment seen on Linz / S… |
 | **Banner** | `/components/banner/` | `components/banner/` | Image-only project hero: a full-width teal gradient art panel (1150×300) with an optional rotated campaign sticker. Drop an illustration <svg> inside __art . |
 | **Bo Analysis** | `/components/bo-analysis/` | `components/bo-analysis/` | BO AI Analysis (sensemaking) — component demo |
-| **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The persistent staff-facing chrome shared by every back-office screen: dark teal/navy sidebar (icon + label nav, active cell, notification count), a project to… |
+| **Bo App Shell** | `/components/bo-app-shell/` | `components/bo-app-shell/` | The project-specific header that sits inside .gv-bo-main — only present in the Project Editor, not on other back-office pages (Dashboard, Users, etc.). Combine… |
 | **Bo Menu** | `/components/bo-menu/` | `components/bo-menu/` | One canonical dropdown surface — .gv-bo-menu — shared by the Input-manager Exports menu and the bell Notification flyout (the product uses the same <Dropdown>… |
 | **Bo Sidebar** | `/components/bo-sidebar/` | `components/bo-sidebar/` | The persistent staff navigation, transcribed from the live admin (real glyphs + colours). Extended 224px (icon + label) collapses to an 80px icon rail at ≤1200… |
 | **Bo Templatecard** | `/components/bo-templatecard/` | `components/bo-templatecard/` | The two pieces of the back-office "From a template" gallery ( /admin/projects/new ). .gv-bo-templatecard is the grey-blue bordered template tile — measured bg… |
@@ -121,9 +121,19 @@ as a starting point for a prototype.
 | **Bo Community Monitor** | `/pages/bo-community-monitor/` | `pages/bo-community-monitor/` | Community monitor — GoVocal back office (reference) |
 | **Bo Content Builder** | `/pages/bo-content-builder/` | `pages/bo-content-builder/` | Content builder — GoVocal back office (reference) |
 | **Bo Dashboard** | `/pages/bo-dashboard/` | `pages/bo-dashboard/` | Dashboard — GoVocal back office (reference) |
+| **Bo Homepage Builder** | `/pages/bo-homepage-builder/` | `pages/bo-homepage-builder/` | Homepage builder — GoVocal back office (reference) |
 | **Bo Input Manager** | `/pages/bo-input-manager/` | `pages/bo-input-manager/` | Input manager — GoVocal back office (reference) |
 | **Bo Inspiration Hub** | `/pages/bo-inspiration-hub/` | `pages/bo-inspiration-hub/` | Inspiration hub — GoVocal back office (reference) |
 | **Bo Messaging** | `/pages/bo-messaging/` | `pages/bo-messaging/` | Messaging — GoVocal back office (reference) |
+| **Bo Method Budgeting** | `/pages/bo-method-budgeting/` | `pages/bo-method-budgeting/` | Budget allocation — Phase configuration — GoVocal back office |
+| **Bo Method Common Ground** | `/pages/bo-method-common-ground/` | `pages/bo-method-common-ground/` | Common ground — Phase configuration — GoVocal back office |
+| **Bo Method Ideation** | `/pages/bo-method-ideation/` | `pages/bo-method-ideation/` | Ideation — Phase configuration — GoVocal back office |
+| **Bo Method Information** | `/pages/bo-method-information/` | `pages/bo-method-information/` | Information — Phase configuration — GoVocal back office |
+| **Bo Method Mapping** | `/pages/bo-method-mapping/` | `pages/bo-method-mapping/` | Mapping — Phase configuration — GoVocal back office |
+| **Bo Method Perspectives** | `/pages/bo-method-perspectives/` | `pages/bo-method-perspectives/` | Perspectives — Phase configuration — GoVocal back office |
+| **Bo Method Survey** | `/pages/bo-method-survey/` | `pages/bo-method-survey/` | Survey — Phase configuration — GoVocal back office |
+| **Bo Method Volunteering** | `/pages/bo-method-volunteering/` | `pages/bo-method-volunteering/` | Volunteering — Phase configuration — GoVocal back office |
+| **Bo Method Voting** | `/pages/bo-method-voting/` | `pages/bo-method-voting/` | Voting — Phase configuration — GoVocal back office |
 | **Bo Notifications** | `/pages/bo-notifications/` | `pages/bo-notifications/` | Notifications — GoVocal back office (reference) |
 | **Bo Pages Menu** | `/pages/bo-pages-menu/` | `pages/bo-pages-menu/` | Pages & menu — GoVocal back office (reference) |
 | **Bo Project New** | `/pages/bo-project-new/` | `pages/bo-project-new/` | Create a project — GoVocal back office (reference) |
@@ -138,15 +148,14 @@ as a starting point for a prototype.
 | **Custom Page** | `/pages/custom-page/` | `pages/custom-page/` | Policy Memo Archive — GoVocal (reference) |
 | **Event Detail** | `/pages/event-detail/` | `pages/event-detail/` | Station Road walk & talk: see the plans on site — Westmere |
 | **Events Page** | `/pages/events-page/` | `pages/events-page/` | Events — Westmere |
+| **Fo Method Common Ground** | `/pages/fo-method-common-ground/` | `pages/fo-method-common-ground/` | Cleaner Harbour, healthier Mere — Common ground — Westmere |
+| **Fo Method Ideation** | `/pages/fo-method-ideation/` | `pages/fo-method-ideation/` | Proposals — Westmere |
+| **Fo Method Perspectives** | `/pages/fo-method-perspectives/` | `pages/fo-method-perspectives/` | The Big Westmere Conversation — Perspectives — Westmere |
+| **Fo Method Survey** | `/pages/fo-method-survey/` | `pages/fo-method-survey/` | The big downtown survey — Westmere |
+| **Fo Method Volunteering** | `/pages/fo-method-volunteering/` | `pages/fo-method-volunteering/` | Tree-planting volunteers — Westmere |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Westmere — Have your say |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | A square for everyone — share your idea — Westmere |
-| **FO Method Perspectives** | `/pages/fo-method-perspectives/` | `pages/fo-method-perspectives/` | The Big Westmere Conversation — Perspectives — Westmere |
-| **FO Method Perspectives Feed** | `/pages/fo-method-perspectives/feed/` | `pages/fo-method-perspectives/feed/` | Perspectives — Westmere (sub-artifact; opens from fo-method-perspectives) |
-| **FO Method Common Ground** | `/pages/fo-method-common-ground/` | `pages/fo-method-common-ground/` | Cleaner Harbour, healthier Mere — Common ground — Westmere |
 | **Project Page** | `/pages/project-page/` | `pages/project-page/` | A square for everyone — Westmere |
-| **FO Method Ideation** | `/pages/fo-method-ideation/` | `pages/fo-method-ideation/` | Proposals — Westmere |
-| **FO Method Survey** | `/pages/fo-method-survey/` | `pages/fo-method-survey/` | The big downtown survey — Westmere |
-| **FO Method Volunteering** | `/pages/fo-method-volunteering/` | `pages/fo-method-volunteering/` | Tree-planting volunteers — Westmere |
 | **Projects List** | `/pages/projects-list/` | `pages/projects-list/` | Projects & folders — Westmere |
 
 ## Prototypes (existing — for reference & patterns) — `<opportunity>/prototypes/<name>/`
@@ -157,6 +166,9 @@ and reuse patterns. Prototypes are free to diverge from the library.
 | Prototype | Opportunity | Source | What it is |
 |---|---|---|---|
 | **Department Spaces** | Departments | `departments/prototypes/department-spaces/` | Department spaces — GoVocal back office (prototype) |
+| **Back Office Test** | Parallel Participation | `parallel-participation/prototypes/back-office-test/` | Back Office Test — Project editor, empty-state usability test |
+| **Bo Editor Research Deck** | Parallel Participation | `parallel-participation/prototypes/bo-editor-research-deck/` | A usability test of the project editor — built on parallel-editor-builder v3 . |
+| **Bo Sidebar Rework** | Parallel Participation | `parallel-participation/prototypes/bo-sidebar-rework/` | BO sidebar rework — Project Phase Editor (in context) |
 | **City Explorations** | Parallel Participation | `parallel-participation/prototypes/city-explorations/` | City explorations — Project front-office views |
 | **Citytest** | Parallel Participation | `parallel-participation/prototypes/citytest/` | Parallel-participation user test — 3 cities |
 | **Parallel Editor Builder V1** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder-v1/` | Parallel Participation — Project editor + content builder (v1) |

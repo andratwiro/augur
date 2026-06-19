@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Homepage builder — GoVocal back office (reference)</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+  <style>
+    /* Page-local layout + the homepage-widget rendering ONLY. No gv-* class is
+       DEFINED here — the builder chrome lives in canonical govocal-bo.css
+       (.gv-bo-cb-*) and the FO content in govocal-ui.css (.gv-hero/.gv-spotlight/
+       .gv-pcard/…). These page-local hb-* classes carry literal layout values the
+       lint ignores. The PARALLEL of pages/bo-content-builder (project page builder):
+       same Page Builder engine + chrome, the real homepage widget palette + settings,
+       grounded on the live homepage builder (govocal-exports/r9-hpb-default,
+       r9-set-<widget> — each widget's real settings panel, captured 2026-06-19). */
+    html, body { margin: 0; height: 100%; }
+    body { font-family: var(--gv-font-family); }
+
+    #hb-root { height: 100vh; overflow: hidden; }
+    /* Frame sizes to its content (not the canvas height), else overflow:hidden clips
+       the lower sections — same fix as the project builder. */
+    #hb-root .gv-bo-cb-canvas { align-items: flex-start; transition: padding-right .12s ease; }
+    /* Homepage is full-bleed → wider frame, flush content, rounded contained page. */
+    #hb-root .gv-bo-cb-frame { width: min(1080px, 100%); max-width: min(1080px, 100%);
+      padding: 0; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+    #hb-root .gv-bo-cb-block { width: 100%; max-width: 100%; margin: 0; }
+    #hb-root .gv-bo-cb-block__label { top: 0; left: 0; z-index: 3; }
+
+    /* Settings panel: fixed right overlay; canvas reserves room so a selected block
+       isn't hidden underneath. Shown only when a block is selected. */
+    #hb-root .gv-bo-cb-settings { display: none; }
+    #hb-root.cb-has-panel .gv-bo-cb-settings { display: block; }
+    #hb-root.cb-has-panel .gv-bo-cb-canvas { padding-right: 400px; }
+    /* Preview mode hides editor chrome. */
+    #hb-root.cb-preview .gv-bo-cb-palette, #hb-root.cb-preview .gv-bo-cb-settings { display: none; }
+    #hb-root.cb-preview.cb-has-panel .gv-bo-cb-canvas { padding-right: 0; }
+    #hb-root.cb-preview .gv-bo-cb-block { cursor: default; }
+    #hb-root.cb-preview .gv-bo-cb-block:hover { border-color: transparent; }
+
+    /* ── homepage section blocks (faithful FO content; page-local layout only) ── */
+    .hb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .hb-cm { display: flex; align-items: center; gap: 20px; background: color-mix(in srgb, var(--gv-tenant-primary) 9%, #fff); border-radius: 10px; padding: 24px 28px; }
+    .hb-cm__icon { flex: none; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--gv-tenant-primary); color: var(--gv-white); }
+    .hb-cm__icon .gv-icon { width: 24px; height: 24px; }
+    .hb-cm__body { flex: 1 1 auto; }
+    .hb-cm__title { margin: 0 0 4px; font-size: 20px; font-weight: 700; color: var(--gv-text-heading); }
+    .hb-cm__lead { margin: 0; font-size: 15px; color: var(--gv-text-secondary); }
+    .hb-btnblock { display: flex; }
+    .hb-btnblock.is-center { justify-content: center; }
+    .hb-btnblock.is-right { justify-content: flex-end; }
+    .hb-btnblock.is-full .gv-btn { width: 100%; justify-content: center; }
+    .hb-img { width: 100%; display: block; border-radius: 8px; }
+    .hb-ws { width: 100%; }
+    .hb-ws.has-border { border-top: 1px solid var(--gv-grey-300); border-bottom: 1px solid var(--gv-grey-300); }
+    .hb-cols { display: grid; gap: 18px; }
+    .hb-cols-2 { grid-template-columns: 1fr 1fr; }
+    .hb-cols-2-1 { grid-template-columns: 2fr 1fr; }
+    .hb-cols-1-2 { grid-template-columns: 1fr 2fr; }
+    .hb-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .hb-colph { min-height: 90px; border: 1px dashed var(--gv-grey-400); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-s); background: var(--gv-grey-50); }
+    .hb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+    .hb-card__img { aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+    .hb-card__img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .hb-card__t { margin: 0 0 4px; font-size: 17px; font-weight: 700; color: var(--gv-text-heading); }
+    .hb-card__d { margin: 0; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
+    .hb-embed { height: 200px; background: #1b1f23; color: #cfd6dc; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: monospace; }
+    .hb-embed small { opacity: .8; }
+    .hb-video { aspect-ratio: 16/9; background: #1b1f23; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .hb-video__play { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.92); color: var(--gv-tenant-primary); display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .hb-events__head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 18px; }
+
+    /* ── settings-panel bodies (real homepage-builder fields; page-local controls) ── */
+    .hb-help { font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); line-height: 1.5; margin: 0 0 14px; }
+    .hb-desc { font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); line-height: 1.5; margin: 14px 0 4px; }
+    .hb-desc b { color: var(--gv-text-secondary); }
+    .hb-set-row { margin-bottom: 16px; }
+    .hb-set-row > label, .hb-set-label { display: block; margin-bottom: 6px; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-bo-primary); }
+    .hb-set-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    .hb-set-head .hb-set-label { margin: 0; }
+    .hb-field-help { margin: 5px 0 0; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); line-height: 1.45; }
+    /* tabbed sub-views (banner: non-registered / registered) */
+    .hb-subtabs { display: flex; gap: 4px; margin: 0 0 16px; background: var(--gv-grey-100); border-radius: 6px; padding: 3px; }
+    .hb-subtab { flex: 1; padding: 7px 4px; border: 0; border-radius: 4px; background: transparent; font: 600 var(--gv-fs-13)/1.2 var(--gv-font-family); color: var(--gv-cool-grey-600); cursor: pointer; }
+    .hb-subtab.is-active { background: var(--gv-white); color: var(--gv-bo-primary); box-shadow: var(--gv-shadow); }
+    /* radio-card row (banner layout) — reuses canonical .gv-bo-methodcard look via a thin wrapper */
+    .hb-radiocards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .hb-radiocard { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; padding: 10px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); cursor: pointer; font-size: var(--gv-fs-13); color: var(--gv-text-secondary); background: var(--gv-white); }
+    .hb-radiocard:hover { border-color: var(--gv-bo-primary); }
+    .hb-radiocard.is-active { border-color: var(--gv-bo-primary); background: var(--gv-teal-75); color: var(--gv-bo-primary); font-weight: 600; }
+    .hb-radiocard__art { width: 100%; height: 34px; border-radius: 3px; background: var(--gv-grey-100); display: grid; gap: 3px; padding: 5px; }
+    .hb-radiocard.is-active .hb-radiocard__art { background: var(--gv-white); }
+    .hb-ra-full { grid-template-rows: 1fr; }
+    .hb-ra-full::before { content: ""; background: var(--gv-cool-grey-400); border-radius: 2px; }
+    .hb-ra-cols { grid-template-columns: 1fr 1fr; }
+    .hb-ra-cols::before, .hb-ra-cols::after { content: ""; background: var(--gv-cool-grey-400); border-radius: 2px; }
+    .hb-ra-rows { grid-template-rows: 1fr 1fr; }
+    .hb-ra-rows::before, .hb-ra-rows::after { content: ""; background: var(--gv-cool-grey-400); border-radius: 2px; }
+    .hb-ra-ratio::before { content: ""; background: var(--gv-cool-grey-400); border-radius: 2px; margin: 0 14px; }
+    /* compact radio row (button type / alignment, filter-by, white-space, iframe mode) */
+    .hb-radiorow { display: flex; flex-wrap: wrap; gap: 6px; }
+    .hb-radiopill { padding: 7px 12px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); background: var(--gv-white); font-size: var(--gv-fs-13); color: var(--gv-text-secondary); cursor: pointer; }
+    .hb-radiopill:hover { border-color: var(--gv-bo-primary); }
+    .hb-radiopill.is-active { border-color: var(--gv-bo-primary); background: var(--gv-teal-75); color: var(--gv-bo-primary); font-weight: 600; }
+    /* toggle row with helper (display avatars, enable overlay, include border, open by default) */
+    .hb-togglerow { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+    .hb-togglerow .gv-toggle { flex: none; margin-top: 2px; }
+    .hb-togglerow__txt { flex: 1; }
+    .hb-togglerow__label { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-bo-primary); }
+    .hb-togglerow__help { margin: 3px 0 0; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); line-height: 1.45; }
+    /* colour field (overlay colour) */
+    .hb-colorfield { display: flex; align-items: center; gap: 8px; }
+    .hb-swatch { width: 34px; height: 34px; border-radius: var(--gv-radius); border: 1px solid var(--gv-grey-300); flex: none; }
+    /* selected-publication picker (spotlight / selection) */
+    .hb-pickbtn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 9px 12px; border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius); background: var(--gv-white); font-size: var(--gv-fs-s); color: var(--gv-text-secondary); cursor: pointer; }
+    .hb-pickbtn:hover { border-color: var(--gv-bo-primary); }
+    .hb-picklist { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+    .hb-pickitem { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); font-size: var(--gv-fs-13); color: var(--gv-text-heading); background: var(--gv-white); }
+    .hb-pickitem .hb-grip { color: var(--gv-cool-grey-500); cursor: grab; display: inline-flex; }
+    .hb-pickitem .hb-grip svg { width: 14px; height: 14px; }
+    .hb-pickitem__name { flex: 1; }
+    .hb-pickitem__del { border: 0; background: transparent; color: var(--gv-cool-grey-600); cursor: pointer; display: inline-flex; }
+    .hb-pickitem__del svg { width: 15px; height: 15px; }
+    /* warning banner (video embed) */
+    .hb-warn { display: flex; gap: 8px; padding: 10px 12px; border-radius: var(--gv-radius); background: var(--gv-orange-100); color: var(--gv-text-heading); font-size: var(--gv-fs-xs); line-height: 1.45; margin: 0 0 14px; }
+    /* move / delete bar */
+    .hb-blockbar { display: flex; gap: 8px; margin: 18px 0 10px; }
+    .hb-blockbar button { flex: 1; padding: 7px 0; border: 1px solid var(--gv-grey-300); border-radius: 4px; background: var(--gv-white); font-size: var(--gv-fs-13); font-weight: 600; color: var(--gv-bo-primary); cursor: pointer; }
+    .hb-blockbar button:hover { background: var(--gv-grey-100); }
+
+    /* toast */
+    .cb-toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+      background: var(--gv-grey-800); color: var(--gv-white); padding: 8px 14px; border-radius: 4px;
+      font-size: var(--gv-fs-13); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 100000; }
+    .cb-toast.is-show { opacity: .94; }
+
+    /* responsive: stack the settings panel + collapse the canvas reserve on narrow widths */
+    @media (max-width: 900px) {
+      #hb-root .gv-bo-cb-frame { width: 100%; max-width: 100%; }
+      .hb-grid, .hb-cards { grid-template-columns: 1fr; }
+      .hb-cols-2, .hb-cols-2-1, .hb-cols-1-2, .hb-cols-3 { grid-template-columns: 1fr; }
+      #hb-root.cb-has-panel .gv-bo-cb-canvas { padding-right: 0; }
+      #hb-root .gv-bo-cb-settings { position: fixed; inset: auto 0 0 0; top: var(--gv-bo-cb-topbar-h, 56px); width: 100%; z-index: 40; overflow-y: auto; }
+      /* tidy the cramped topbar: drop the subtitle, let the palette scroll */
+      #hb-root .gv-bo-cb-topbar__sub { display: none; }
+      #hb-root .gv-bo-cb-palette { overflow-y: auto; }
+    }
+  </style>
+</head>
+<body class="gv-bo">
+  <div class="gv-bo-cb" id="hb-root">
+
+    <!-- ══════════ TOP BAR ══════════ -->
+    <header class="gv-bo-cb-topbar">
+      <button class="gv-bo-cb-topbar__back" type="button" aria-label="Go back">
+        <span class="gv-icon" data-gv-icon="arrow-left"></span>
+      </button>
+      <div class="gv-bo-cb-topbar__titles">
+        <h1 class="gv-bo-cb-topbar__title">Homepage</h1>
+        <p class="gv-bo-cb-topbar__sub">Westmere participation platform</p>
+      </div>
+      <div class="gv-bo-cb-topbar__actions">
+        <div class="gv-bo-cb-locale">
+          <select aria-label="Content language"><option value="en">EN</option><option value="es-ES">ES-ES</option></select>
+        </div>
+        <label class="gv-bo-cb-preview" for="hb-preview-toggle">
+          <span class="gv-toggle"><input type="checkbox" id="hb-preview-toggle" /><span class="track"></span></span>
+          <span class="gv-bo-cb-preview__label">Preview</span>
+        </label>
+        <a class="gv-btn secondary-outlined gv-bo-cb-topbar__view" href="../homepage/" aria-label="View homepage">
+          <span class="gv-icon" data-gv-icon="eye"></span>
+        </a>
+        <div class="gv-bo-cb-save-wrap"><button class="gv-btn primary gv-bo-cb-save" type="button" id="hb-save">Save</button></div>
+      </div>
+    </header>
+
+    <div class="gv-bo-cb__body">
+
+      <!-- ══════════ LEFT PALETTE — the real homepage widget set ══════════ -->
+      <aside class="gv-bo-cb-palette" aria-label="Homepage widgets">
+        <div class="gv-bo-cb-palette__group">
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="homepage-banner"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 19 19" fill="currentColor" aria-hidden="true"><rect width="19" height="19" rx="3"></rect></svg></span><span class="gv-bo-cb-item__label">Homepage banner</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="open-to-participation"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z"></path></svg></span><span class="gv-bo-cb-item__label">Open to participation</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="followed-items"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29C10,4.19 10,4.1 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.1 14,4.19 14,4.29C16.97,5.17 19,7.9 19,11V17L21,19M14,21A2,2 0 0,1 12,23A2,2 0 0,1 10,21"></path></svg></span><span class="gv-bo-cb-item__label">Followed items</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="finished-or-archived"><span class="gv-bo-cb-item__icon"><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M360-720h80v-80h-80v80Zm160 0v-80h80v80h-80ZM360-400v-80h80v80h-80Zm320-160v-80h80v80h-80Zm0 160v-80h80v80h-80Zm-160 0v-80h80v80h-80Zm160-320v-80h80v80h-80Zm-240 80v-80h80v80h-80ZM200-160v-640h80v80h80v80h-80v80h80v80h-80v320h-80Zm400-320v-80h80v80h-80Zm-160 0v-80h80v80h-80Zm-80-80v-80h80v80h-80Zm160 0v-80h80v80h-80Zm80-80v-80h80v80h-80Z"></path></svg></span><span class="gv-bo-cb-item__label">Finished projects</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="areas"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"></path></svg></span><span class="gv-bo-cb-item__label">In your area</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="spotlight"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7,2V13H10V22L17,10H13L17,2H7Z"></path></svg></span><span class="gv-bo-cb-item__label">Spotlight</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="selection"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z"></path></svg></span><span class="gv-bo-cb-item__label">Selected projects and folders</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="published"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10,17L5,12L6.41,10.58L10,14.17L17.59,6.58L19,8M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"></path></svg></span><span class="gv-bo-cb-item__label">Published projects and folders</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="events"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"></path></svg></span><span class="gv-bo-cb-item__label">Events</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="call-to-action"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 20.5C20 21.3 19.3 22 18.5 22H13C12.6 22 12.3 21.9 12 21.6L8 17.4L8.7 16.6C8.9 16.4 9.2 16.3 9.5 16.3H9.7L12 18V9C12 8.4 12.4 8 13 8S14 8.4 14 9V13.5L15.2 13.6L19.1 15.8C19.6 16 20 16.6 20 17.1V20.5M20 2H4C2.9 2 2 2.9 2 4V12C2 13.1 2.9 14 4 14H8V12H4V4H20V12H18V14H20C21.1 14 22 13.1 22 12V4C22 2.9 21.1 2 20 2Z"></path></svg></span><span class="gv-bo-cb-item__label">Call to action</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="community-monitor-cta"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg></span><span class="gv-bo-cb-item__label">Community Monitor</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="projects"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"></path></svg></span><span class="gv-bo-cb-item__label">Projects and folders (legacy)</span></div>
+        </div>
+        <div class="gv-bo-cb-palette__group">
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="text"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 129 126" fill="currentColor" aria-hidden="true"><path d="M119.232 0L129 36.54L120.916 38.724C117.127 31.416 113.254 24.108 108.791 20.412C104.328 16.8 99.1077 16.8 93.9713 16.8H72.9204V105C72.9204 109.2 72.9204 113.4 75.6991 115.5C78.562 117.6 84.1194 117.6 89.7611 117.6V126H39.2389V117.6C44.8805 117.6 50.438 117.6 53.3009 115.5C56.0796 113.4 56.0796 109.2 56.0796 105V16.8H35.0287C29.8923 16.8 24.6717 16.8 20.2089 20.412C15.7461 24.108 11.8727 31.416 8.08355 38.724L0 36.54L9.76762 0H119.232Z"></path></svg></span><span class="gv-bo-cb-item__label">Text</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="white-space"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 20 14" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M0 6C1.10457 6 2 5.10457 2 4V2H5.5C6.60457 2 7.5 1.10457 7.5 0H1C0.95575 0 0.912171 0.00287412 0.86944 0.00844586C0.781234 0.0199471 0.696641 0.0429428 0.617212 0.0758806C0.372772 0.177246 0.177246 0.372772 0.0758805 0.617213C0.0429427 0.696641 0.0199471 0.781235 0.00844584 0.86944C0.00287411 0.912171 0 0.95575 0 1V6ZM12.5 0C12.5 1.10457 13.3954 2 14.5 2H18V4C18 5.10457 18.8954 6 20 6V1C20 0.955748 19.9971 0.912176 19.9916 0.869444C19.98 0.78124 19.9571 0.69664 19.9241 0.617212C19.8228 0.372772 19.6272 0.177246 19.3828 0.0758809C19.3034 0.0429431 19.2188 0.019947 19.1306 0.0084458C19.0878 0.0028741 19.0443 0 19 0H12.5ZM20 8C18.8954 8 18 8.89543 18 10V12H14.5C13.3954 12 12.5 12.8954 12.5 14H19C19.0443 14 19.0878 13.9971 19.1306 13.9915C19.2188 13.98 19.3034 13.9571 19.3828 13.9241C19.6272 13.8228 19.8228 13.6272 19.9241 13.3828C19.9571 13.3034 19.98 13.2188 19.9916 13.1306C19.9971 13.0878 20 13.0443 20 13V8ZM7.5 14C7.5 12.8954 6.60457 12 5.5 12H2V10C2 8.89543 1.10457 8 0 8V13C0 13.0443 0.00287411 13.0878 0.00844585 13.1306C0.0199471 13.2188 0.0429427 13.3034 0.0758806 13.3828C0.177246 13.6272 0.372772 13.8228 0.617212 13.9241C0.696641 13.9571 0.781235 13.9801 0.86944 13.9916C0.912171 13.9971 0.95575 14 1 14H7.5Z"></path></svg></span><span class="gv-bo-cb-item__label">White space</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="button"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 20.5C20 21.3 19.3 22 18.5 22H13C12.6 22 12.3 21.9 12 21.6L8 17.4L8.7 16.6C8.9 16.4 9.2 16.3 9.5 16.3H9.7L12 18V9C12 8.4 12.4 8 13 8S14 8.4 14 9V13.5L15.2 13.6L19.1 15.8C19.6 16 20 16.6 20 17.1V20.5M20 2H4C2.9 2 2 2.9 2 4V12C2 13.1 2.9 14 4 14H8V12H4V4H20V12H18V14H20C21.1 14 22 13.1 22 12V4C22 2.9 21.1 2 20 2Z"></path></svg></span><span class="gv-bo-cb-item__label">Button</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="image"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 127 103" fill="currentColor" aria-hidden="true"><path d="M127 91.5556V11.4444C127 5.15 120.65 0 112.889 0H14.1111C6.35 0 0 5.15 0 11.4444V91.5556C0 97.85 6.35 103 14.1111 103H112.889C120.65 103 127 97.85 127 91.5556ZM38.8056 60.0833L56.4444 77.3072L81.1389 51.5L112.889 85.8333H14.1111L38.8056 60.0833Z"></path></svg></span><span class="gv-bo-cb-item__label">Image</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="iframe"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.6,16.6L19.2,12L14.6,7.4L16,6L22,12L16,18L14.6,16.6M9.4,16.6L4.8,12L9.4,7.4L8,6L2,12L8,18L9.4,16.6Z"></path></svg></span><span class="gv-bo-cb-item__label">Embed</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="video-embed"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"></path></svg></span><span class="gv-bo-cb-item__label">Video</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="accordion"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M1 13.0015C0.447715 13.0015 -1.95703e-08 12.5537 -4.37114e-08 12.0015L-2.13006e-07 8.12845C-2.37147e-07 7.57617 0.447715 7.12845 1 7.12845L19 7.12845C19.5523 7.12845 20 7.57617 20 8.12845L20 12.0015C20 12.5537 19.5523 13.0015 19 13.0015L1 13.0015Z"></path><rect y="6.01709" width="5.87302" height="20" rx="1" transform="rotate(-90 0 6.01709)"></rect><rect y="19.9854" width="5.87302" height="20" rx="1" transform="rotate(-90 0 19.9854)"></rect></svg></span><span class="gv-bo-cb-item__label">Accordion</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="two-column"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 126 126" fill="currentColor" aria-hidden="true"><rect x="69" width="57" height="126" rx="2"></rect><rect width="57" height="126" rx="2"></rect></svg></span><span class="gv-bo-cb-item__label">2 column</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="three-column"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 126 126" fill="currentColor" aria-hidden="true"><path d="M44 2C44 0.89543 44.8954 0 46 0H79C80.1046 0 81 0.895431 81 2V124C81 125.105 80.1046 126 79 126H46C44.8954 126 44 125.105 44 124V2Z"></path><rect x="88" width="37" height="126" rx="2"></rect><rect width="37" height="126" rx="2"></rect></svg></span><span class="gv-bo-cb-item__label">3 column</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="image-text-cards"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M0.617212 19.9241L1 19.001V19H1.9V20H1C0.864409 20 0.73512 19.973 0.617212 19.9241ZM18.1 20V19H19L19.3828 19.9241C19.2649 19.973 19.1356 20 19 20H18.1ZM20 1.9H19V1L19.9241 0.617212C19.973 0.73512 20 0.864409 20 1V1.9ZM1.9 0H1C0.864408 0 0.73512 0.0269862 0.617212 0.0758805L1 0.998965V1H1.9V0ZM0 18.1V19C0 19.1356 0.0269862 19.2649 0.0758806 19.3828L0.998963 19H1L1 18.1H0ZM0 16.3H1V14.5H0V16.3ZM0 12.7H1V10.9H0V12.7ZM0 9.1H1V7.3H0V9.1ZM0 5.5H1V3.7H0V5.5ZM3.7 0V1H5.5V0H3.7ZM7.3 0V1H9.1V0H7.3ZM10.9 0V1H12.7V0H10.9ZM14.5 0V1H16.3V0H14.5Z"></path><path d="M8 18C7.44771 18 7 17.5523 7 17V15C7 14.4477 7.44772 14 8 14H17C17.5523 14 18 14.4477 18 15V17C18 17.5523 17.5523 18 17 18H8Z"></path><path d="M8 12C7.44771 12 7 11.5523 7 11V9C7 8.44772 7.44772 8 8 8H17C17.5523 8 18 8.44772 18 9V11C18 11.5523 17.5523 12 17 12L8 12Z"></path><path d="M3 6C2.44772 6 2 5.55228 2 5V3C2 2.44772 2.44772 2 3 2H5C5.55228 2 6 2.44772 6 3V5C6 5.55228 5.55228 6 5 6H3Z"></path></svg></span><span class="gv-bo-cb-item__label">Image &amp; text cards</span></div>
+        </div>
+      </aside>
+
+      <!-- ══════════ CENTRE CANVAS ══════════ -->
+      <main class="gv-bo-cb-canvas">
+        <div class="gv-bo-cb-frame" id="hb-frame"></div>
+      </main>
+
+      <!-- ══════════ RIGHT SETTINGS PANEL ══════════ -->
+      <aside class="gv-bo-cb-settings" id="hb-settings" aria-label="Widget settings">
+        <button class="gv-bo-cb-settings__close" type="button" id="hb-settings-close" aria-label="Close settings panel"><span class="gv-icon" data-gv-icon="close"></span></button>
+        <h2 class="gv-bo-cb-settings__title" id="hb-settings-title">Homepage banner</h2>
+        <div id="hb-settings-body"></div>
+      </aside>
+    </div>
+  </div>
+  <div class="cb-toast" id="hb-toast"></div>
+
+  <script src="hb-engine.js" defer></script>
+</body>
+</html>
