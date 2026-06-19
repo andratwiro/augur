@@ -140,13 +140,13 @@ as a starting point for a prototype.
 | **Events Page** | `/pages/events-page/` | `pages/events-page/` | Events — Westmere |
 | **Homepage** | `/pages/homepage/` | `pages/homepage/` | Westmere — Have your say |
 | **Input Form** | `/pages/input-form/` | `pages/input-form/` | A square for everyone — share your idea — Westmere |
-| **Perspectives Entry** | `/pages/perspectives-entry/` | `pages/perspectives-entry/` | The Big Westmere Conversation — Perspectives — Westmere |
-| **Perspectives Feed** | `/pages/perspectives-feed/` | `pages/perspectives-feed/` | Perspectives — Westmere |
-| **Project Common Ground** | `/pages/project-common-ground/` | `pages/project-common-ground/` | Cleaner Harbour, healthier Mere — Common ground — Westmere |
+| **FO Method Perspectives** | `/pages/fo-method-perspectives/` | `pages/fo-method-perspectives/` | The Big Westmere Conversation — Perspectives — Westmere |
+| **FO Method Perspectives Feed** | `/pages/fo-method-perspectives/feed/` | `pages/fo-method-perspectives/feed/` | Perspectives — Westmere (sub-artifact; opens from fo-method-perspectives) |
+| **FO Method Common Ground** | `/pages/fo-method-common-ground/` | `pages/fo-method-common-ground/` | Cleaner Harbour, healthier Mere — Common ground — Westmere |
 | **Project Page** | `/pages/project-page/` | `pages/project-page/` | A square for everyone — Westmere |
-| **Project Proposals** | `/pages/project-proposals/` | `pages/project-proposals/` | Proposals — Westmere |
-| **Project Survey** | `/pages/project-survey/` | `pages/project-survey/` | The big downtown survey — Westmere |
-| **Project Volunteering** | `/pages/project-volunteering/` | `pages/project-volunteering/` | Tree-planting volunteers — Westmere |
+| **FO Method Ideation** | `/pages/fo-method-ideation/` | `pages/fo-method-ideation/` | Proposals — Westmere |
+| **FO Method Survey** | `/pages/fo-method-survey/` | `pages/fo-method-survey/` | The big downtown survey — Westmere |
+| **FO Method Volunteering** | `/pages/fo-method-volunteering/` | `pages/fo-method-volunteering/` | Tree-planting volunteers — Westmere |
 | **Projects List** | `/pages/projects-list/` | `pages/projects-list/` | Projects & folders — Westmere |
 
 ## Prototypes (existing — for reference & patterns) — `<opportunity>/prototypes/<name>/`
@@ -158,6 +158,7 @@ and reuse patterns. Prototypes are free to diverge from the library.
 |---|---|---|---|
 | **Department Spaces** | Departments | `departments/prototypes/department-spaces/` | Department spaces — GoVocal back office (prototype) |
 | **City Explorations** | Parallel Participation | `parallel-participation/prototypes/city-explorations/` | City explorations — Project front-office views |
+| **Citytest** | Parallel Participation | `parallel-participation/prototypes/citytest/` | Parallel-participation user test — 3 cities |
 | **Parallel Editor Builder V1** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder-v1/` | Parallel Participation — Project editor + content builder (v1) |
 | **Parallel Editor Builder V2** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder-v2/` | Parallel Participation — Project editor + content builder (v2) |
 | **Parallel Editor Builder V3** | Parallel Participation | `parallel-participation/prototypes/parallel-editor-builder-v3/` | Parallel Participation — Project editor + content builder (v3) |

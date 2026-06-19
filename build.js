@@ -203,8 +203,22 @@ const IGNORED_TOPLEVEL = new Set([
 // "Pending" roadmap so the team sees what's coming. Remove a slug here once its
 // real page lands under pages/<slug>/. Slugs are kebab-case; titleCase() labels them.
 const PENDING_PAGES = [
-  "voting",
-  "common-ground",
+  // FO method pages not yet built
+  "fo-method-voting",
+  "fo-method-mapping",
+  "fo-method-budgeting",
+  "fo-method-information",
+  // BO method pages (all methods need a focused phase-config page)
+  "bo-method-survey",
+  "bo-method-ideation",
+  "bo-method-perspectives",
+  "bo-method-mapping",
+  "bo-method-common-ground",
+  "bo-method-voting",
+  "bo-method-budgeting",
+  "bo-method-information",
+  "bo-method-volunteering",
+  // Other pending pages
   "sensemaking",
   "autoinsights",
   "official-updates",
@@ -214,13 +228,10 @@ const PENDING_PAGES = [
 // "Methods" are the front-office screens where a resident actually runs a
 // participation method (survey, proposals, …). Classified by slug here; a page
 // can also opt in/out via <meta name="gv-surface" content="method">.
+// Any page whose slug starts with fo-method- or bo-method- is auto-classified as
+// "method" surface. Add explicit entries here only for exceptions (pages that
+// belong in Methods but don't follow the prefix convention).
 const METHOD_PAGES = new Set([
-  "project-survey", // Survey
-  "project-proposals", // Proposals / Petitions
-  "project-volunteering", // Recruit volunteers
-  "project-common-ground", // Common Ground
-  "perspectives-feed", // Ideation — Perspectives feed view
-  "perspectives-entry", // Ideation — Perspectives intro
   "input-form", // Ideation — input/submission form
 ]);
 
@@ -557,10 +568,10 @@ async function scanPages() {
     const { href, file } = await entryPoint(e.name, dir);
     // Surface = back-office (GoVocal's own theme), front-office (city-themed), or
     // method (a front-office participation-method runner — its own Pages group).
-    // Base it on the bo-/fo- name prefix + METHOD_PAGES, then let the
-    // <meta name="gv-surface"> tag override (back | front | method).
+    // fo-method-* and bo-method-* slugs are auto-classified as "method". Add
+    // exceptions to METHOD_PAGES. Let <meta name="gv-surface"> override any of these.
     let surface = /^bo-/.test(e.name) ? "back-office" : "front-office";
-    if (METHOD_PAGES.has(e.name)) surface = "method";
+    if (METHOD_PAGES.has(e.name) || /^(?:fo|bo)-method-/.test(e.name)) surface = "method";
     try {
       const html = await fs.readFile(file, "utf8");
       const m = html.match(/<meta\s+name=["']gv-surface["']\s+content=["']([^"']+)["']/i);
@@ -631,7 +642,7 @@ async function scanPlayground() {
 
 // Slug words that should render fully upper-cased (acronyms) rather than
 // Capitalized — so `sms-verification` reads "SMS Verification", not "Sms …".
-const ACRONYMS = new Set(["sms", "ui", "ux", "uxui", "api", "url", "faq", "sso", "cta", "pdf", "csv", "riot"]);
+const ACRONYMS = new Set(["sms", "ui", "ux", "uxui", "api", "url", "faq", "sso", "cta", "pdf", "csv", "riot", "fo", "bo"]);
 
 function titleCase(slug) {
   return slug
