@@ -3799,281 +3799,11 @@
 
   <div class="homeview-scroller">
 
-    <!-- ════ Homepage banner (real .gv-hero) ════ -->
-    <section class="gv-hero signed-out centered" id="homeHero" data-testid="full-width-banner-layout" style="background-image:url('assets/img/hero.webp')">
-      <div class="gv-hero__inner">
-        <h1 class="gv-hero__title">Help shape the future of Meridian</h1>
-        <p class="gv-hero__lead">Have your say on the projects shaping our city — from how we move to where we meet.</p>
-        <div class="gv-hero__actions">
-          <a class="gv-btn primary-inverse" href="#" onclick="openProjectFromHome();return false;">Reimagine Meridian 2030 — take part</a>
-        </div>
-      </div>
-    </section>
+    <!-- Homepage = model-driven: rendered from the SAME model the Homepage Builder
+         edits (window.HBModel) via the HB engine below. Edit in the builder → this
+         reflects it on save/close. -->
+    <div id="home-doc"></div>
 
-    <!-- ════ Spotlight (real .gv-spotlight) ════ -->
-    <section class="gv-spotlight" aria-labelledby="home-spot">
-      <div class="gv-spotlight__inner">
-        <div>
-          <h2 class="gv-spotlight__title" id="home-spot">A greener Station Road</h2>
-          <p class="gv-spotlight__lead">We’re redesigning Station Road for trees, wider pavements and safer cycling. Take the survey to tell us what matters most on your daily journey.</p>
-          <div class="gv-spotlight__actions"><a class="gv-btn primary size-m" href="#">Take the survey</a></div>
-        </div>
-        <div class="gv-spotlight__media"><img src="assets/img/spotlight.webp" alt="A leafy stretch of Station Road" loading="lazy" /></div>
-      </div>
-    </section>
-
-    <!-- ════ Open to participation — variant A · Method icons ════ -->
-    <section class="gv-section" aria-labelledby="open-v1">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="open-v1">Open to participation <span class="ppm-tag">A · Method icons</span></h2></div>
-      <div class="gv-section__body">
-        <div class="gv-rail" tabindex="0" role="group" aria-label="Open to participation — variant A · Method icons">
-          <article class="gv-pcard light compact ppm" onclick="openProjectFromHome()">
-            <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
-              <div class="ppm__methods" aria-hidden="true"><span data-gv-icon="survey"></span><span data-gv-icon="idea"></span><span data-gv-icon="vote-up"></span></div>
-              <span class="ppm__status"><span class="live"></span> 3 ways to take part open</span>
-              <span class="ppm__sub"><span data-gv-icon="clock-solid"></span> Survey closes first, in 2 days</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="The harbour waterfront" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="Market Square" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ════ Open to participation — variant B · Method names ════ -->
-    <section class="gv-section" aria-labelledby="open-v2">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="open-v2">Open to participation <span class="ppm-tag">B · Method names</span></h2></div>
-      <div class="gv-section__body">
-        <div class="gv-rail" tabindex="0" role="group" aria-label="Open to participation — variant B · Method names">
-          <article class="gv-pcard light compact ppm" onclick="openProjectFromHome()">
-            <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
-              <span class="ppm__status"><span class="live"></span> Open now</span>
-              <span class="ppm__names">Survey, ideas &amp; vote</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="The harbour waterfront" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="Market Square" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ════ Open to participation — variant C · Soonest + more ════ -->
-    <section class="gv-section" aria-labelledby="open-v3">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="open-v3">Open to participation <span class="ppm-tag">C · Soonest + more</span></h2></div>
-      <div class="gv-section__body">
-        <div class="gv-rail" tabindex="0" role="group" aria-label="Open to participation — variant C · Soonest + more">
-          <article class="gv-pcard light compact ppm" onclick="openProjectFromHome()">
-            <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 2 days left</span>
-              <span class="ppm__more2">+ 2 more ways to take part</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="The harbour waterfront" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="Market Square" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ════ Open to participation — variant D · Method chips ════ -->
-    <section class="gv-section" aria-labelledby="open-v4">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="open-v4">Open to participation <span class="ppm-tag">D · Method chips</span></h2></div>
-      <div class="gv-section__body">
-        <div class="gv-rail" tabindex="0" role="group" aria-label="Open to participation — variant D · Method chips">
-          <article class="gv-pcard light compact ppm" onclick="openProjectFromHome()">
-            <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
-              <div class="ppm__chips"><span class="ppm__chip"><span data-gv-icon="survey"></span> Survey</span><span class="ppm__chip"><span data-gv-icon="idea"></span> Ideas</span><span class="ppm__chip"><span data-gv-icon="vote-up"></span> Vote</span></div>
-              <span class="ppm__sub"><span data-gv-icon="clock-solid"></span> Survey closes first, in 2 days</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="The harbour waterfront" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="Market Square" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ════ Open to participation — variant E · All live ════ -->
-    <section class="gv-section" aria-labelledby="open-v5">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="open-v5">Open to participation <span class="ppm-tag">E · All live</span></h2></div>
-      <div class="gv-section__body">
-        <div class="gv-rail" tabindex="0" role="group" aria-label="Open to participation — variant E · All live">
-          <article class="gv-pcard light compact ppm" onclick="openProjectFromHome()">
-            <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="A tree-lined Meridian street" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="event.preventDefault();openProjectFromHome();">Reimagine Meridian 2030</a></h3>
-              <ul class="ppm__rows">
-                <li><span class="live"></span> Survey</li>
-                <li><span class="live"></span> Share ideas</li>
-                <li><span class="live"></span> Vote</li>
-              </ul>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="The harbour waterfront" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="Market Square" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3>
-              <span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ════ Completed projects (real .gv-rail) ════ -->
-    <section class="gv-section" aria-labelledby="home-done-title">
-      <div class="gv-section__head"><h2 class="gv-title h2" id="home-done-title">Completed projects</h2></div>
-      <div class="gv-section__body">
-        <div class="gv-rail" tabindex="0" role="group" aria-label="Completed projects, scroll for more">
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/done-youth.webp" alt="A community workshop" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Children &amp; youth strategy</a></h3>
-              <span class="gv-pcard__status done"><span data-gv-icon="check-circle" aria-hidden="true"></span> 7 weeks ago</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/done-schoolyards.webp" alt="A regreened schoolyard" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Greening the schoolyards</a></h3>
-              <span class="gv-pcard__status done"><span data-gv-icon="check-circle" aria-hidden="true"></span> 3 weeks ago</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-          <article class="gv-pcard light compact">
-            <div class="gv-pcard__thumb"><img src="assets/img/done-oldtown.webp" alt="A restored Old Town street" loading="lazy" /></div>
-            <div class="gv-pcard__body">
-              <h3 class="gv-pcard__title"><a href="#" onclick="return false;">Old Town as new</a></h3>
-              <span class="gv-pcard__status done"><span data-gv-icon="check-circle" aria-hidden="true"></span> 5 months ago</span>
-              <span class="gv-pcard__more">Learn more</span>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ════ Events (real .gv-events) ════ -->
-    <section class="gv-section" aria-labelledby="home-events-title">
-      <div class="gv-section__body">
-        <div class="gv-events__head">
-          <h2 class="gv-title h2" id="home-events-title" style="margin:0">Upcoming events</h2>
-          <a class="gv-btn text" href="#">View all events</a>
-        </div>
-        <div class="gv-events__grid">
-          <article class="gv-event-card bordered">
-            <div class="gv-event-card__media">
-              <img src="assets/img/event-walk.webp" alt="Residents viewing plans on site" loading="lazy" />
-              <span class="gv-event-card__date"><span class="m">Jun</span><span class="d">25</span><span class="y">2026</span></span>
-            </div>
-            <div class="gv-event-card__body">
-              <h3 class="gv-event-card__title"><a href="#">Station Road walk &amp; talk: see the plans on site</a></h3>
-              <div class="gv-event-card__meta">
-                <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 25 Jun 2026 · 17:30 – 19:00</p>
-                <p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> Northgate station</p>
-              </div>
-              <a class="gv-btn primary full" href="#">Register</a>
-            </div>
-          </article>
-          <article class="gv-event-card bordered">
-            <div class="gv-event-card__media">
-              <img src="assets/img/event-budget.webp" alt="A participatory budget session" loading="lazy" />
-              <span class="gv-event-card__date"><span class="m">Jul</span><span class="d">02</span><span class="y">2026</span></span>
-            </div>
-            <div class="gv-event-card__body">
-              <h3 class="gv-event-card__title"><a href="#">Reimagine Meridian: ideas workshop</a></h3>
-              <div class="gv-event-card__meta">
-                <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 2 Jul 2026 · 18:00 – 19:30</p>
-                <p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> Meridian Civic Hall</p>
-              </div>
-              <a class="gv-btn primary full" href="#">Register</a>
-            </div>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ════ Proposals CTA band (real .gv-ctaband) ════ -->
-    <section class="gv-ctaband" aria-labelledby="home-cta-title">
-      <div class="gv-ctaband__inner">
-        <h2 class="gv-ctaband__title" id="home-cta-title">What is your proposal?</h2>
-        <p class="gv-ctaband__lead">Post your proposal, gather support and place it on the city’s agenda.</p>
-        <a class="gv-btn primary size-m" href="#">Explore all proposals</a>
-      </div>
-    </section>
-
-    <!-- ════ Footer (real .gv-footer) ════ -->
     <footer class="gv-footer" style="margin-top:48px">
       <div class="gv-footer__inner">
         <div class="gv-footer__logo" data-gv-logo></div>
@@ -4695,6 +4425,33 @@
   .hb-set-row > label { display: block; margin-bottom: 6px; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-bo-primary); }
   #hb-root .gv-bo-cb-section-tag { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gv-cool-grey-600); background: var(--gv-grey-200); border-radius: 3px; padding: 1px 6px; vertical-align: middle; }
   .hb-edit-fab { position: fixed; top: 14px; right: 16px; z-index: 30; }
+  /* Homepage-engine widget content (page-local layout for blocks with no canonical section). */
+  .hb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+  .hb-cm { display: flex; align-items: center; gap: 20px; background: color-mix(in srgb, var(--gv-tenant-primary) 9%, #fff); border-radius: 10px; padding: 24px 28px; }
+  .hb-cm__icon { flex: none; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--gv-tenant-primary); color: #fff; }
+  .hb-cm__icon .gv-icon { width: 24px; height: 24px; }
+  .hb-cm__body { flex: 1 1 auto; }
+  .hb-cm__title { margin: 0 0 4px; font-size: 20px; font-weight: 700; color: var(--gv-text-heading); }
+  .hb-cm__lead { margin: 0; font-size: 15px; color: var(--gv-text-secondary); }
+  .hb-btnblock { display: flex; }
+  .hb-img { width: 100%; display: block; border-radius: 8px; }
+  .hb-ws { width: 100%; }
+  .hb-cols { display: grid; gap: 18px; }
+  .hb-cols-2 { grid-template-columns: 1fr 1fr; }
+  .hb-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .hb-colph { min-height: 90px; border: 1px dashed var(--gv-grey-400); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--gv-cool-grey-500); font-size: 14px; background: var(--gv-grey-50); }
+  .hb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+  .hb-card__img { aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+  .hb-card__img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .hb-card__t { margin: 0 0 4px; font-size: 17px; font-weight: 700; color: var(--gv-text-heading); }
+  .hb-card__d { margin: 0; font-size: 14px; color: var(--gv-text-secondary); }
+  .hb-embed { height: 200px; background: #1b1f23; color: #cfd6dc; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: monospace; }
+  .hb-embed small { opacity: .8; }
+  .hb-video { aspect-ratio: 16/9; background: #1b1f23; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .hb-video__play { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.92); color: var(--gv-tenant-primary); display: flex; align-items: center; justify-content: center; font-size: 24px; }
+  .hb-blockbar { display: flex; gap: 8px; margin: 16px 0 10px; }
+  .hb-blockbar button { flex: 1; padding: 7px 0; border: 1px solid var(--gv-grey-300); border-radius: 4px; background: #fff; font-size: 13px; font-weight: 600; color: var(--gv-bo-primary); cursor: pointer; }
+  .hb-blockbar button:hover { background: var(--gv-grey-100); }
 </style>
 
 <div id="view-home-builder" class="builder-overlay gv-bo">
@@ -4720,7 +4477,7 @@
         <a class="gv-btn secondary-outlined gv-bo-cb-topbar__view" href="#" aria-label="View current homepage" onclick="closeHomeBuilder();openHome();return false;">
           <span class="gv-icon" data-gv-icon="eye"></span>
         </a>
-        <div class="gv-bo-cb-save-wrap"><button class="gv-btn primary gv-bo-cb-save" type="button" onclick="hbToast('Homepage saved')">Save</button></div>
+        <div class="gv-bo-cb-save-wrap"><button class="gv-btn primary gv-bo-cb-save" type="button" onclick="hbSave()">Save</button></div>
       </div>
     </header>
 
@@ -4758,78 +4515,8 @@
 
       <!-- ── CENTRE CANVAS — faithful homepage assembled from canonical FO components ── -->
       <main class="gv-bo-cb-canvas">
-        <div class="gv-bo-cb-frame" id="hb-frame">
-
-          <div class="gv-bo-cb-block" data-hb-widget="homepage-banner" data-hb-label="Homepage banner">
-            <span class="gv-bo-cb-block__label">Homepage banner</span>
-            <section class="gv-hero signed-out centered" style="background-image:url('assets/img/hero.webp')">
-              <div class="gv-hero__inner">
-                <h1 class="gv-hero__title">Welcome to the Meridian participation platform</h1>
-                <p class="gv-hero__lead">Scroll below to see the projects we're shaping together.</p>
-                <div class="gv-hero__actions"><a class="gv-btn primary-inverse" href="#" onclick="return false;">Reimagine Meridian 2030 — take part</a></div>
-              </div>
-            </section>
-          </div>
-
-          <div class="gv-bo-cb-block" data-hb-widget="open-to-participation" data-hb-label="Open to participation">
-            <span class="gv-bo-cb-block__label">Open to participation</span>
-            <section class="gv-section">
-              <div class="gv-section__head"><h2 class="gv-title h2">Open to participation</h2></div>
-              <div class="gv-section__body">
-                <div class="gv-rail" role="group" aria-label="Open to participation">
-                  <article class="gv-pcard light compact">
-                    <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="" loading="lazy" /></div>
-                    <div class="gv-pcard__body"><h3 class="gv-pcard__title"><a href="#" onclick="return false;">Reimagine Meridian 2030</a></h3><span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 3 ways to take part open</span><span class="gv-pcard__more">Learn more</span></div>
-                  </article>
-                  <article class="gv-pcard light compact">
-                    <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="" loading="lazy" /></div>
-                    <div class="gv-pcard__body"><h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3><span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span><span class="gv-pcard__more">Learn more</span></div>
-                  </article>
-                  <article class="gv-pcard light compact">
-                    <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="" loading="lazy" /></div>
-                    <div class="gv-pcard__body"><h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3><span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span><span class="gv-pcard__more">Learn more</span></div>
-                  </article>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <div class="gv-bo-cb-block" data-hb-widget="spotlight" data-hb-label="Spotlight">
-            <span class="gv-bo-cb-block__label">Spotlight</span>
-            <section class="gv-spotlight">
-              <div class="gv-spotlight__inner">
-                <div>
-                  <h2 class="gv-spotlight__title">A greener Station Road</h2>
-                  <p class="gv-spotlight__lead">We're redesigning Station Road for trees, wider pavements and safer cycling. Take the survey to tell us what matters most on your daily journey.</p>
-                  <div class="gv-spotlight__actions"><a class="gv-btn primary size-m" href="#" onclick="return false;">Take the survey</a></div>
-                </div>
-                <div class="gv-spotlight__media"><img src="assets/img/spotlight.webp" alt="" loading="lazy" /></div>
-              </div>
-            </section>
-          </div>
-
-          <div class="gv-bo-cb-block" data-hb-widget="events" data-hb-label="Events">
-            <span class="gv-bo-cb-block__label">Events</span>
-            <section class="hb-events">
-              <div class="hb-events__head"><h2>Upcoming and ongoing events</h2><a class="gv-btn text" href="#" onclick="return false;">See all events</a></div>
-              <div class="hb-events__grid">
-                <div class="hb-evcard"><div class="hb-evcard__date"><span class="m">Jul</span><span class="d">03</span></div><div><p class="hb-evcard__t">Station Road walkshop</p><div class="hb-evcard__meta"><span>18:00 · Meridian Library</span><span>24 going</span></div></div></div>
-                <div class="hb-evcard"><div class="hb-evcard__date"><span class="m">Jul</span><span class="d">11</span></div><div><p class="hb-evcard__t">Budget priorities drop-in</p><div class="hb-evcard__meta"><span>12:30 · Market Square</span><span>9 going</span></div></div></div>
-              </div>
-            </section>
-          </div>
-
-          <div class="gv-bo-cb-block" data-hb-widget="call-to-action" data-hb-label="Call to action">
-            <span class="gv-bo-cb-block__label">Call to action</span>
-            <section class="hb-cta-band">
-              <h2>What is your proposal?</h2>
-              <p>Find your proposal on the platform, gather support and advance it on the agenda. It needs the support of others.</p>
-              <a class="gv-btn" href="#" onclick="return false;">Explore all proposals</a>
-            </section>
-          </div>
-
-        </div>
-      </main>
+        <div class="gv-bo-cb-frame" id="hb-frame"></div>
+            </main>
 
       <!-- ── RIGHT SETTINGS PANEL ── -->
       <aside class="gv-bo-cb-settings" id="hb-settings" aria-label="Widget settings">
@@ -4844,105 +4531,296 @@
 </div>
 
 <script>
+/* ════════ HOMEPAGE ENGINE — one model, two surfaces ════════
+   window.HBModel = ordered list of homepage widgets. The same model drives BOTH the
+   Homepage Builder canvas (#hb-frame, as selectable blocks) AND the live homepage
+   (#home-doc). Editing in the builder mutates the model and re-renders; on save/close
+   the real homepage reflects it. Faithful to the canonical pages/homepage. */
 (function () {
-  var root  = document.getElementById('hb-root');
-  var frame = document.getElementById('hb-frame');
-  var sTitle = document.getElementById('hb-settings-title');
-  var sBody  = document.getElementById('hb-settings-body');
-  var toastEl = document.getElementById('hb-toast');
+  var IMG = 'assets/img/';
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]); }); };
 
-  // Per-widget settings (faithful-shaped; the real homepage builder shows a short
-  // settings form per block). Keyed by data-hb-widget.
-  var HB_SET = {
-    'homepage-banner': '<p class="hb-help">The full-width hero residents see first. Configure the background image, headline, subtitle and the primary call-to-action.</p>'
-      + '<div class="hb-set-row"><label>Headline</label><input class="gv-input" value="Welcome to the Meridian participation platform" /></div>'
-      + '<div class="hb-set-row"><label>Subtitle</label><input class="gv-input" value="Scroll below to see the projects we\'re shaping together." /></div>'
-      + '<div class="hb-set-row"><label>Banner image</label><button class="gv-btn secondary-outlined size-s" type="button">Replace image…</button></div>'
-      + '<div class="hb-set-row"><label>Layout</label><select class="gv-input"><option>Full-width banner</option><option>Two-column</option><option>Fixed-ratio</option></select></div>',
-    'open-to-participation': '<p class="hb-help">Automatically lists every project currently open to participation, newest first. No manual selection — it updates as phases open and close.</p>'
-      + '<div class="hb-set-row"><label>Section title</label><input class="gv-input" value="Open to participation" /></div>'
-      + '<div class="hb-set-row"><label>Show as</label><select class="gv-input"><option>Horizontal rail</option><option>Grid</option></select></div>',
-    'spotlight': '<p class="hb-help">Highlight a single project, folder or page with a large image, title and call-to-action.</p>'
-      + '<div class="hb-set-row"><label>Highlighted item</label><select class="gv-input"><option>A greener Station Road</option><option>Reimagine Meridian 2030</option></select></div>'
-      + '<div class="hb-set-row"><label>Button label</label><input class="gv-input" value="Take the survey" /></div>',
-    'events': '<p class="hb-help">Shows upcoming and ongoing events across all projects. Residents can register directly.</p>'
-      + '<div class="hb-set-row"><label>Title</label><input class="gv-input" value="Upcoming and ongoing events" /></div>'
-      + '<div class="hb-set-row"><label>Events to show</label><select class="gv-input"><option>Next 4</option><option>Next 8</option><option>All upcoming</option></select></div>',
-    'call-to-action': '<p class="hb-help">A full-width coloured band with a headline and one button — used to drive residents toward a key action.</p>'
-      + '<div class="hb-set-row"><label>Headline</label><input class="gv-input" value="What is your proposal?" /></div>'
-      + '<div class="hb-set-row"><label>Button label</label><input class="gv-input" value="Explore all proposals" /></div>'
-      + '<div class="hb-set-row"><label>Button link</label><input class="gv-input" value="/proposals" /></div>'
+  var LABELS = {
+    'homepage-banner': 'Homepage banner', 'open-to-participation': 'Open to participation',
+    'followed-items': 'Followed items', 'finished-or-archived': 'Finished projects', 'areas': 'In your area',
+    'spotlight': 'Spotlight', 'selection': 'Selected projects and folders', 'published': 'Published projects and folders',
+    'events': 'Events', 'call-to-action': 'Call to action', 'community-monitor-cta': 'Community Monitor',
+    'projects': 'Projects and folders', 'text': 'Text', 'white-space': 'White space', 'button': 'Button',
+    'image': 'Image', 'iframe': 'Embed', 'video-embed': 'Video', 'accordion': 'Accordion',
+    'two-column': '2 column', 'three-column': '3 column', 'image-text-cards': 'Image & text cards'
   };
-  function settingsFor(w, label) {
-    return HB_SET[w] || '<p class="hb-help">Settings for the <strong>' + (label || w) + '</strong> widget. This block is part of the homepage layout — drag widgets from the left to add more.</p>';
+
+  // ── shared content pools (grounded in canonical pages/homepage) ──
+  var OPEN = [
+    { img: 'street.webp', t: 'Riverside path study', s: '2 days left' },
+    { img: 'climate-harbour.webp', t: 'Harbour cycle network', s: '5 days left' },
+    { img: 'done-square.webp', t: 'Redesigning Market Square', s: '1 week left' },
+    { img: 'climate-northgate.webp', t: 'Northgate green corridor', s: '2 months left' },
+    { img: 'feat-downtown.webp', t: 'Downtown mobility plan', s: 'No end date' }
+  ];
+  var DONE = [
+    { img: 'done-youth.webp', t: 'Children & youth strategy 2025–2030', s: '7 weeks ago' },
+    { img: 'done-schoolyards.webp', t: 'Greening the schoolyards', s: '3 weeks ago' },
+    { img: 'done-oldtown.webp', t: 'Old Town as new', s: '5 months ago' }
+  ];
+  var TEAMS = [
+    { img: 'climate-riverside.webp', t: 'Riverside climate team', n: '145' },
+    { img: 'climate-oldtown.webp', t: 'Old Town climate team', n: '69' },
+    { img: 'climate-harbour.webp', t: 'Harbour climate team', n: '132' },
+    { img: 'climate-northgate.webp', t: 'Northgate climate team', n: '98' },
+    { img: 'climate-westside.webp', t: 'Westside climate team', n: '211' }
+  ];
+  var EVENTS = [
+    { img: 'event-online.webp', m: 'Jun', d: '18', t: 'Community session: bringing online & offline participation together', when: '18 Jun 2026 · 11:00 – 12:00', li: 'Online meeting', link: 1, r: '2', rsvp: 1 },
+    { img: 'event-walk.webp', m: 'Jun', d: '25', t: 'Station Road walk & talk: see the plans on site', when: '25 Jun 2026 · 17:30 – 19:00', li: 'Northgate station, Station Road', r: '41' },
+    { img: 'event-budget.webp', m: 'Jul', d: '02', t: 'Participatory budget: info & Q&A session', when: '2 Jul 2026 · 18:00 – 19:30', li: 'Online meeting', link: 1, r: '7' }
+  ];
+  var GRID = [
+    { img: 'feat-downtown.webp', t: 'The big downtown survey', d: 'What does downtown need to become more liveable? Tell us which places matter.' },
+    { img: 'square.webp', t: 'A square for everyone', d: 'How can Market Square become a popular meeting point in the neighbourhood?' },
+    { img: 'street-trees.webp', t: 'The future of Station Road', d: 'Help redesign Station Road for trees, walking and safer cycling.' }
+  ];
+
+  function compactCard(c, done) {
+    return '<article class="gv-pcard light compact"><div class="gv-pcard__thumb"><img src="' + IMG + c.img + '" alt="" loading="lazy" /></div>'
+      + '<div class="gv-pcard__body"><h3 class="gv-pcard__title"><a href="#" onclick="return false;">' + esc(c.t) + '</a></h3>'
+      + '<span class="gv-pcard__status' + (done ? ' done' : '') + '"><span data-gv-icon="' + (done ? 'check-circle' : 'clock-solid') + '" aria-hidden="true"></span> ' + esc(c.s) + '</span>'
+      + '<span class="gv-pcard__more">Learn more</span></div></article>';
+  }
+  function teamCard(c) {
+    return '<article class="gv-pcard light climate-team"><div class="gv-pcard__thumb"><img src="' + IMG + c.img + '" alt="" loading="lazy" /></div>'
+      + '<div class="gv-pcard__body"><h3 class="gv-pcard__title"><a href="#" onclick="return false;">' + esc(c.t) + '</a></h3>'
+      + '<div class="gv-bubbles xs"><span class="av"></span><span class="av"></span><span class="av"></span><span class="gv-bubbles__label">' + c.n + ' participants</span></div>'
+      + '<p class="gv-pcard__desc">Wanted: your idea for a better climate in this district.</p></div></article>';
+  }
+  function gridCard(c) {
+    return '<article class="gv-pcard light"><div class="gv-pcard__thumb"><img src="' + IMG + c.img + '" alt="" loading="lazy" /></div>'
+      + '<div class="gv-pcard__body"><h3 class="gv-pcard__title"><a href="#" onclick="return false;">' + esc(c.t) + '</a></h3>'
+      + '<p class="gv-pcard__desc">' + esc(c.d) + '</p><span class="gv-pcard__more">Learn more</span></div></article>';
+  }
+  function eventCard(e) {
+    var rsvp = e.rsvp ? '<span class="gv-event-card__rsvp">Going</span>' : '';
+    var loc = e.link ? '<p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#" onclick="return false;">' + esc(e.li) + '</a></p>'
+      : '<p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> ' + esc(e.li) + '</p>';
+    return '<article class="gv-event-card bordered"><div class="gv-event-card__media"><img src="' + IMG + e.img + '" alt="" loading="lazy" />'
+      + '<span class="gv-event-card__date"><span class="m">' + e.m + '</span><span class="d">' + e.d + '</span><span class="y">2026</span></span>' + rsvp + '</div>'
+      + '<div class="gv-event-card__body"><h3 class="gv-event-card__title"><a href="#" onclick="return false;">' + esc(e.t) + '</a></h3>'
+      + '<div class="gv-event-card__meta"><p class="gv-event-card__row"><span data-gv-icon="clock"></span> ' + esc(e.when) + '</p>' + loc
+      + '<p class="gv-event-card__row"><span data-gv-icon="user"></span> ' + e.r + ' registrants</p></div>'
+      + '<a class="gv-btn primary full" href="#" onclick="return false;">Register</a></div></article>';
+  }
+  function railSec(title, cards) {
+    return '<section class="gv-section"><div class="gv-section__head"><h2 class="gv-title h2">' + esc(title) + '</h2></div>'
+      + '<div class="gv-section__body"><div class="gv-rail" tabindex="0" role="group" aria-label="' + esc(title) + '">' + cards + '</div></div></section>';
+  }
+  function gridSec(title, cards) {
+    return '<section class="gv-section"><div class="gv-section__head"><h2 class="gv-title h2">' + esc(title) + '</h2></div>'
+      + '<div class="gv-section__body"><div class="hb-grid">' + cards + '</div></div></section>';
   }
 
-  function deselect() { frame.querySelectorAll('.gv-bo-cb-block.is-selected').forEach(function (b) { b.classList.remove('is-selected'); }); }
-  function select(block) {
-    deselect(); block.classList.add('is-selected'); root.classList.add('cb-has-panel');
-    var w = block.getAttribute('data-hb-widget'), label = block.getAttribute('data-hb-label') || w;
-    sTitle.textContent = label;
-    sBody.innerHTML = settingsFor(w, label);
+  // ── one renderer per widget type (faithful to canonical pages/homepage) ──
+  var HB_R = {
+    'homepage-banner': function (w) {
+      return '<section class="gv-hero signed-out centered" style="background-image:url(\'' + IMG + 'hero.webp\')">'
+        + '<div class="gv-hero__inner"><h1 class="gv-hero__title">' + esc(w.title) + '</h1>'
+        + '<p class="gv-hero__lead">' + esc(w.lead) + '</p>'
+        + '<div class="gv-avatars" aria-label="15.4 thousand participants"><span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span><span class="count">15.4k</span></div>'
+        + '<div class="gv-hero__actions"><a class="gv-btn primary-inverse" href="#" onclick="return false;">' + esc(w.cta) + '</a></div></div></section>';
+    },
+    'spotlight': function (w) {
+      return '<section class="gv-spotlight"><div class="gv-spotlight__inner"><div>'
+        + '<h2 class="gv-spotlight__title">' + esc(w.title) + '</h2><p class="gv-spotlight__lead">' + esc(w.lead) + '</p>'
+        + '<div class="gv-spotlight__actions"><a class="gv-btn primary size-m" href="#" onclick="return false;">' + esc(w.cta) + '</a></div>'
+        + '<div class="gv-bubbles" style="margin-top:18px"><span class="av"></span><span class="av"></span><span class="av"></span><span class="gv-bubbles__label">145 participants</span></div></div>'
+        + '<div class="gv-spotlight__media"><img src="' + IMG + 'spotlight.webp" alt="" loading="lazy" /></div></div></section>';
+    },
+    'areas': function (w) { return railSec(w.title || 'In your area', TEAMS.map(teamCard).join('')); },
+    'open-to-participation': function (w) { return railSec(w.title || 'Open to participation', OPEN.map(function (c) { return compactCard(c, 0); }).join('')); },
+    'finished-or-archived': function (w) { return railSec(w.title || 'Completed projects', DONE.map(function (c) { return compactCard(c, 1); }).join('')); },
+    'followed-items': function (w) { return railSec(w.title || 'Projects you follow', OPEN.slice(0, 3).map(function (c) { return compactCard(c, 0); }).join('')); },
+    'selection': function (w) { return gridSec(w.title || 'Selected projects and folders', GRID.map(gridCard).join('')); },
+    'published': function (w) { return gridSec(w.title || 'Published projects and folders', GRID.concat(GRID.slice(0, 1)).map(gridCard).join('')); },
+    'projects': function (w) { return gridSec(w.title || 'Participation projects', GRID.map(gridCard).join('')); },
+    'events': function (w) {
+      return '<section class="gv-section"><div class="gv-section__body"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">' + esc(w.title || 'Upcoming and ongoing events') + '</h2><a class="gv-btn text" href="#" onclick="return false;">View all events</a></div><div class="gv-events__grid">' + EVENTS.map(eventCard).join('') + '</div></div></section>';
+    },
+    'call-to-action': function (w) {
+      return '<section class="gv-ctaband"><div class="gv-ctaband__inner"><h2 class="gv-ctaband__title">' + esc(w.title) + '</h2><p class="gv-ctaband__lead">' + esc(w.lead) + '</p><a class="gv-btn primary size-m" href="#" onclick="return false;">' + esc(w.cta) + '</a></div></section>';
+    },
+    'community-monitor-cta': function (w) {
+      return '<section class="gv-section"><div class="gv-section__body"><div class="hb-cm"><div class="hb-cm__icon"><span data-gv-icon="chart"></span></div>'
+        + '<div class="hb-cm__body"><h2 class="hb-cm__title">How is our community doing?</h2><p class="hb-cm__lead">Share how you feel about life in Meridian. It takes 2 minutes and helps the city track what matters over time.</p></div>'
+        + '<a class="gv-btn primary" href="#" onclick="return false;">Take the survey</a></div></div></section>';
+    },
+    'text': function (w) {
+      return '<section class="gv-section"><div class="gv-prose">' + (w.html || '<p>Welcome to the official engagement platform of the City of Meridian. Follow participation projects across our districts, share your thoughts on the questions that matter, and give feedback in dialogue with the city.</p><p><em>Sign up today and help us build a greener, more connected Meridian.</em></p>') + '</div></section>';
+    },
+    'button': function (w) { return '<section class="gv-section"><div class="hb-btnblock"><a class="gv-btn primary size-m" href="#" onclick="return false;">' + esc(w.label || 'Take the survey') + '</a></div></section>'; },
+    'image': function (w) { return '<section class="gv-section"><img class="hb-img" src="' + IMG + (w.img || 'meeting.webp') + '" alt="" loading="lazy" /></section>'; },
+    'white-space': function (w) { return '<div class="hb-ws" style="height:' + (w.h || 48) + 'px"></div>'; },
+    'accordion': function (w) {
+      return '<section class="gv-section"><div class="gv-accordion">'
+        + '<details class="gv-acc__item" open><summary class="gv-acc__head"><span class="gv-acc__q">How do I take part?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary><div class="gv-acc__body"><p>Pick any open project and follow the steps — most take just a few minutes.</p></div></details>'
+        + '<details class="gv-acc__item"><summary class="gv-acc__head"><span class="gv-acc__q">Who can participate?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary><div class="gv-acc__body"><p>Everyone who lives, works or studies in Meridian.</p></div></details>'
+        + '</div></section>';
+    },
+    'two-column': function (w) { return '<section class="gv-section"><div class="hb-cols hb-cols-2"><div class="hb-colph">Column 1</div><div class="hb-colph">Column 2</div></div></section>'; },
+    'three-column': function (w) { return '<section class="gv-section"><div class="hb-cols hb-cols-3"><div class="hb-colph">Column 1</div><div class="hb-colph">Column 2</div><div class="hb-colph">Column 3</div></div></section>'; },
+    'image-text-cards': function (w) {
+      return '<section class="gv-section"><div class="hb-cards">'
+        + GRID.map(function (c) { return '<div class="hb-card"><div class="hb-card__img"><img src="' + IMG + c.img + '" alt="" loading="lazy" /></div><h3 class="hb-card__t">' + esc(c.t) + '</h3><p class="hb-card__d">' + esc(c.d) + '</p></div>'; }).join('')
+        + '</div></section>';
+    },
+    'iframe': function (w) { return '<section class="gv-section"><div class="hb-embed"><span data-gv-icon="code"></span> Embedded content<small>Paste a URL to embed</small></div></section>'; },
+    'video-embed': function (w) { return '<section class="gv-section"><div class="hb-video"><span class="hb-video__play" aria-hidden="true">▶</span></div></section>'; }
+  };
+
+  function widgetHTML(w) { var fn = HB_R[w.type]; return fn ? fn(w) : '<section class="gv-section"><div class="hb-colph">' + esc(LABELS[w.type] || w.type) + '</div></section>'; }
+
+  // ── the model: ONE of every widget, in a faithful homepage order ──
+  var M = [
+    { type: 'homepage-banner', title: 'Help shape the future of Meridian', lead: 'Have your say on the projects shaping our city — from how we move to where we meet.', cta: 'A greener Station Road — share your ideas' },
+    { type: 'spotlight', title: 'A greener Station Road', lead: "We're redesigning Station Road to make space for trees, wider pavements and safer cycling. Take the survey to tell us what matters most on your daily journey.", cta: 'Take the survey' },
+    { type: 'areas', title: 'In your area' },
+    { type: 'open-to-participation', title: 'Open to participation' },
+    { type: 'finished-or-archived', title: 'Completed projects' },
+    { type: 'followed-items', title: 'Projects you follow' },
+    { type: 'events', title: 'Upcoming and ongoing events' },
+    { type: 'call-to-action', title: 'What is your proposal?', lead: "Post your proposal on this platform, gather support and place it on the city's agenda.", cta: 'Explore all proposals' },
+    { type: 'community-monitor-cta' },
+    { type: 'text' },
+    { type: 'selection', title: 'Selected projects and folders' },
+    { type: 'published', title: 'Published projects and folders' },
+    { type: 'projects', title: 'Participation projects' },
+    { type: 'image-text-cards' },
+    { type: 'two-column' }, { type: 'three-column' },
+    { type: 'image' }, { type: 'button', label: 'Take the survey' },
+    { type: 'accordion' }, { type: 'iframe' }, { type: 'video-embed' }, { type: 'white-space', h: 48 }
+  ];
+  var uid = 1;
+  M.forEach(function (w) { w.id = 'hw_' + (uid++); });
+  window.HBModel = M;
+  function find(id) { for (var i = 0; i < M.length; i++) if (M[i].id === id) return M[i]; return null; }
+  function indexOf(id) { for (var i = 0; i < M.length; i++) if (M[i].id === id) return i; return -1; }
+
+  var frame = document.getElementById('hb-frame');
+  var homeDoc = document.getElementById('home-doc');
+  var root = document.getElementById('hb-root');
+  var sTitle = document.getElementById('hb-settings-title');
+  var sBody = document.getElementById('hb-settings-body');
+  var toastEl = document.getElementById('hb-toast');
+  var selId = null;
+
+  function renderHome() {
+    if (!homeDoc) return;
+    homeDoc.innerHTML = M.map(widgetHTML).join('');
+    if (window.GVIcons) window.GVIcons.render(homeDoc);
+    if (window.GVAvatars) window.GVAvatars.fill(homeDoc);
   }
+  function renderCanvas() {
+    frame.innerHTML = M.map(function (w) {
+      return '<div class="gv-bo-cb-block' + (w.id === selId ? ' is-selected' : '') + '" data-hb-id="' + w.id + '" data-hb-widget="' + w.type + '">'
+        + '<span class="gv-bo-cb-block__label">' + esc(LABELS[w.type] || w.type) + '</span>' + widgetHTML(w) + '</div>';
+    }).join('');
+    if (window.GVIcons) window.GVIcons.render(frame);
+    if (window.GVAvatars) window.GVAvatars.fill(frame);
+  }
+  function renderBlock(id) {
+    var el = frame.querySelector('[data-hb-id="' + id + '"]'); if (!el) return;
+    var w = find(id);
+    el.innerHTML = '<span class="gv-bo-cb-block__label">' + esc(LABELS[w.type] || w.type) + '</span>' + widgetHTML(w);
+    if (window.GVIcons) window.GVIcons.render(el);
+    if (window.GVAvatars) window.GVAvatars.fill(el);
+  }
+
+  // ── settings: editable fields per widget + reorder/delete ──
+  function field(w, key, label) {
+    var val = w[key] == null ? '' : w[key];
+    var ctrl = (key === 'lead' || key === 'html')
+      ? '<textarea class="gv-input" rows="3" data-hb-field="' + key + '">' + esc(val) + '</textarea>'
+      : '<input class="gv-input" data-hb-field="' + key + '" value="' + esc(val) + '" />';
+    return '<div class="hb-set-row"><label>' + label + '</label>' + ctrl + '</div>';
+  }
+  var SETTINGS = {
+    'homepage-banner': function (w) { return '<p class="hb-help">The full-width hero residents see first.</p>' + field(w, 'title', 'Headline') + field(w, 'lead', 'Subtitle') + field(w, 'cta', 'Button label') + '<div class="hb-set-row"><label>Banner image</label><button class="gv-btn secondary-outlined size-s" type="button">Replace image…</button></div>'; },
+    'spotlight': function (w) { return '<p class="hb-help">Highlight a single project with image + CTA.</p>' + field(w, 'title', 'Title') + field(w, 'lead', 'Description') + field(w, 'cta', 'Button label'); },
+    'call-to-action': function (w) { return '<p class="hb-help">Full-width coloured band with one action.</p>' + field(w, 'title', 'Headline') + field(w, 'lead', 'Text') + field(w, 'cta', 'Button label'); },
+    'button': function (w) { return field(w, 'label', 'Button label'); },
+    'white-space': function (w) { return field(w, 'h', 'Height (px)'); }
+  };
+  function settingsHTML(w) {
+    var s = SETTINGS[w.type] ? SETTINGS[w.type](w)
+      : (['open-to-participation', 'finished-or-archived', 'followed-items', 'selection', 'published', 'projects', 'areas', 'events'].indexOf(w.type) >= 0
+        ? '<p class="hb-help">This widget auto-lists content from the platform. Edit its section title; the cards update from real data.</p>' + field(w, 'title', 'Section title')
+        : '<p class="hb-help">Settings for the <strong>' + esc(LABELS[w.type] || w.type) + '</strong> widget.</p>');
+    return s;
+  }
+  function deselect() { selId = null; root.classList.remove('cb-has-panel'); frame.querySelectorAll('.is-selected').forEach(function (b) { b.classList.remove('is-selected'); }); }
+  function select(id) {
+    selId = id; root.classList.add('cb-has-panel');
+    frame.querySelectorAll('.gv-bo-cb-block').forEach(function (b) { b.classList.toggle('is-selected', b.getAttribute('data-hb-id') === id); });
+    var w = find(id); sTitle.textContent = LABELS[w.type] || w.type;
+    sBody.innerHTML = settingsHTML(w)
+      + '<div class="hb-blockbar"><button type="button" data-hb-move="-1" title="Move up">▲ Up</button><button type="button" data-hb-move="1" title="Move down">▼ Down</button></div>'
+      + '<button class="gv-bo-cb-delete" type="button" data-hb-del="1"><span data-gv-icon="delete"></span> Delete</button>';
+    if (window.GVIcons) window.GVIcons.render(sBody);
+  }
+
   frame.addEventListener('click', function (e) {
     if (root.classList.contains('cb-preview')) return;
-    var b = e.target.closest('.gv-bo-cb-block'); if (b) select(b);
+    var b = e.target.closest('.gv-bo-cb-block'); if (b) select(b.getAttribute('data-hb-id'));
   });
-  document.getElementById('hb-settings-close').addEventListener('click', function () { root.classList.remove('cb-has-panel'); deselect(); });
+  document.getElementById('hb-settings-close').addEventListener('click', deselect);
+  sBody.addEventListener('input', function (e) {
+    var f = e.target.getAttribute('data-hb-field'); if (!f || !selId) return;
+    var w = find(selId); w[f] = e.target.value; renderBlock(selId);
+  });
+  sBody.addEventListener('click', function (e) {
+    var mv = e.target.closest('[data-hb-move]'), del = e.target.closest('[data-hb-del]');
+    if (mv && selId) { var i = indexOf(selId), j = i + parseInt(mv.getAttribute('data-hb-move'), 10); if (j < 0 || j >= M.length) return; var t = M[i]; M[i] = M[j]; M[j] = t; renderCanvas(); var el = frame.querySelector('[data-hb-id="' + selId + '"]'); if (el) el.scrollIntoView({ block: 'center' }); }
+    else if (del && selId) { var k = indexOf(selId); if (k >= 0) M.splice(k, 1); deselect(); renderCanvas(); }
+  });
 
-  // Preview toggle hides the editor chrome → clean homepage for comparing with #view-home.
+  // preview toggle
   document.getElementById('hb-preview-toggle').addEventListener('change', function () { root.classList.toggle('cb-preview', this.checked); });
 
-  // Palette: click (or drag-drop) a widget → append a new block of that type so the
-  // homepage can be composed. New homepage-data widgets render an editor placeholder.
-  function makeBlock(w, label) {
-    var block = document.createElement('div');
-    block.className = 'gv-bo-cb-block'; block.setAttribute('data-hb-widget', w); block.setAttribute('data-hb-label', label);
-    block.setAttribute('draggable', 'true');
-    block.innerHTML = '<span class="gv-bo-cb-block__label">' + label + '</span>'
-      + '<div style="padding:28px 40px;color:var(--gv-cool-grey-600);font-size:14px;border-top:1px dashed var(--gv-grey-300);">'
-      + '<strong style="color:var(--gv-bo-primary)">' + label + '</strong> widget — configure it in the panel on the right.</div>';
-    return block;
-  }
-  function addWidget(w, label) {
-    var block = makeBlock(w, label); frame.appendChild(block);
-    if (window.GVIcons) window.GVIcons.render(block);
-    select(block); block.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }
-  var dragW = null;
+  // palette → add a widget (click or drop)
+  function addWidget(type) { var w = { id: 'hw_' + (uid++), type: type }; M.push(w); renderCanvas(); select(w.id); var el = frame.querySelector('[data-hb-id="' + w.id + '"]'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  var dragType = null;
   root.querySelectorAll('.gv-bo-cb-palette .gv-bo-cb-item').forEach(function (it) {
-    var w = it.getAttribute('data-hb-widget'), label = it.querySelector('.gv-bo-cb-item__label').textContent;
-    it.addEventListener('click', function () { addWidget(w, label); });
-    it.addEventListener('dragstart', function () { dragW = { w: w, label: label }; it.classList.add('is-dragging'); });
-    it.addEventListener('dragend', function () { dragW = null; it.classList.remove('is-dragging'); });
+    var type = it.getAttribute('data-hb-widget');
+    it.addEventListener('click', function () { addWidget(type); });
+    it.addEventListener('dragstart', function () { dragType = type; it.classList.add('is-dragging'); });
+    it.addEventListener('dragend', function () { dragType = null; it.classList.remove('is-dragging'); });
   });
-  frame.addEventListener('dragover', function (e) { if (dragW) { e.preventDefault(); frame.classList.add('is-dragover'); } });
+  frame.addEventListener('dragover', function (e) { if (dragType) { e.preventDefault(); frame.classList.add('is-dragover'); } });
   frame.addEventListener('dragleave', function () { frame.classList.remove('is-dragover'); });
-  frame.addEventListener('drop', function (e) { if (dragW) { e.preventDefault(); frame.classList.remove('is-dragover'); addWidget(dragW.w, dragW.label); } });
+  frame.addEventListener('drop', function (e) { if (dragType) { e.preventDefault(); frame.classList.remove('is-dragover'); addWidget(dragType); } });
 
-  window.hbToast = function (msg) {
-    toastEl.textContent = msg; toastEl.classList.add('is-show');
-    clearTimeout(window.hbToast._t); window.hbToast._t = setTimeout(function () { toastEl.classList.remove('is-show'); }, 1400);
-  };
+  window.hbToast = function (msg) { toastEl.textContent = msg; toastEl.classList.add('is-show'); clearTimeout(window.hbToast._t); window.hbToast._t = setTimeout(function () { toastEl.classList.remove('is-show'); }, 1400); };
+  window.hbSave = function () { renderHome(); window.hbToast('Homepage saved'); };
+  window._hbRenderHome = renderHome;
+  window._hbRenderCanvas = renderCanvas;
+
+  // initial paint of the live homepage from the model
+  renderHome();
 })();
 
 window.openHomeBuilder = function () {
   var v = document.getElementById('view-home-builder'); if (!v) return;
-  // The canvas previews the homepage in the LIVE tenant theme. #view-home uses the root
-  // tenant tokens, but the builder overlay is .gv-bo (which remaps them to back-office
-  // colours), so copy the root tenant values straight onto the frame — keeps the preview
-  // matched to the current homepage whatever theme is active.
   var rs = getComputedStyle(document.documentElement);
   var frame = document.getElementById('hb-frame');
   ['--gv-tenant-primary', '--gv-tenant-secondary', '--gv-tenant-text', '--gv-font-family'].forEach(function (p) {
     var val = rs.getPropertyValue(p); if (val && val.trim()) frame.style.setProperty(p, val.trim());
   });
+  if (window._hbRenderCanvas) window._hbRenderCanvas();
   v.classList.add('open');
   document.body.setAttribute('data-gv-screen', 'home-builder');
   if (window.GVIcons) window.GVIcons.render(v);
 };
 window.closeHomeBuilder = function () {
   var v = document.getElementById('view-home-builder'); if (v) v.classList.remove('open');
+  if (window._hbRenderHome) window._hbRenderHome();   // the real homepage reflects the model
   document.body.setAttribute('data-gv-screen', 'home');
 };
 </script>
