@@ -41,7 +41,7 @@
   --sb-brand-fg: #ffffff;
   --sb-support: var(--gv-green-400);
   --sb-radius: 9px;
-  --sb-item-h: 40px;
+  --sb-item-h: 38px;
   --sb-gap: 12px;
   --sb-pad-x: 14px;
 
@@ -54,15 +54,15 @@
   display: flex; flex-direction: column;
   font-family: var(--gv-bo-font);
   font-size: 14px; line-height: 20px;
-  padding-bottom: 12px;
+  padding-bottom: 8px;
   transition: width .18s ease;
 }
 .sb::-webkit-scrollbar { width: 8px; }
 .sb::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 8px; }
 
 .sb__head { flex: none; }
-.sb__top { display: flex; flex-direction: column; gap: 1px; padding: 6px 0; }
-.sb__bottom { margin-top: auto; padding: 6px 0 0; display: flex; flex-direction: column; gap: 1px; }
+.sb__top { display: flex; flex-direction: column; gap: 1px; padding: 4px 0; }
+.sb__bottom { margin-top: auto; padding: 4px 0 0; display: flex; flex-direction: column; gap: 1px; }
 
 /* nav item */
 .sb__item {
@@ -99,15 +99,15 @@
 
 /* group header + divider */
 .sb__grouphdr {
-  padding: 14px 18px 5px; font-size: 11px; font-weight: 700;
+  padding: 7px 18px 3px; font-size: 11px; font-weight: 700;
   letter-spacing: .07em; text-transform: uppercase;
   color: color-mix(in srgb, var(--sb-fg) 72%, transparent);
 }
-.sb__top .sb__grouphdr:first-child { padding-top: 6px; }
-.sb__div { height: 1px; margin: 8px 16px; background: var(--sb-divider); }
+.sb__top .sb__grouphdr:first-child { padding-top: 4px; }
+.sb__div { height: 1px; margin: 6px 16px; background: var(--sb-divider); }
 
 /* account row (two-line) */
-.sb__account { height: auto; min-height: 50px; padding-block: 7px; }
+.sb__account { height: auto; min-height: 46px; padding-block: 6px; }
 .sb__avatar {
   width: 30px; height: 30px; border-radius: 50%; flex: none;
   background: rgba(255,255,255,.18); display: grid; place-items: center;
@@ -119,7 +119,7 @@
 
 /* search field */
 .sb__search {
-  margin: 8px 12px; display: flex; align-items: center; gap: 8px;
+  margin: 6px 12px; display: flex; align-items: center; gap: 8px;
   height: 36px; padding: 0 11px; border-radius: 9px;
   background: color-mix(in srgb, var(--sb-fg) 12%, transparent); color: var(--sb-fg);
 }
@@ -136,12 +136,12 @@
 .sb__platform-label { display: flex; flex-direction: column; line-height: 1.18; white-space: nowrap; overflow: hidden; }
 .sb__platform-label small { font-size: 11px; opacity: .62; font-weight: 400; }
 
-.sb__platform--band { background: var(--gv-teal-500); color: #fff; height: 60px; }
+.sb__platform--band { background: var(--gv-teal-500); color: #fff; height: 56px; }
 .sb__platform--band:hover { background: var(--gv-teal-700); }
-.sb__platform--back { height: 54px; font-weight: 600; font-size: 13px; }
+.sb__platform--back { height: 50px; font-weight: 600; font-size: 13px; }
 .sb__platform--back .sb__platform-ico { opacity: .8; }
 .sb__platform--back:hover { background: var(--sb-hover-bg); }
-.sb__platform--switch { height: 64px; gap: 10px; }
+.sb__platform--switch { height: 56px; gap: 10px; }
 .sb__mark {
   width: 32px; height: 32px; border-radius: 9px; flex: none;
   display: grid; place-items: center; background: var(--sb-accent); color: #02202c;
@@ -163,7 +163,8 @@
 }
 
 /* 03 · Sectioned — quiet group headers organise the long list */
-.sb[data-sb="3"] { --sb-active-bg: rgba(255,255,255,.13); --sb-active-icon: var(--gv-teal-300); }
+.sb[data-sb="3"] { --sb-active-bg: rgba(255,255,255,.13); --sb-active-icon: var(--gv-teal-300); --sb-item-h: 35px; }
+.sb[data-sb="3"] .sb__grouphdr { padding: 4px 18px 2px; }
 
 /* 04 · Command-first — search/⌘K + app-switcher exit */
 .sb[data-sb="4"] {
@@ -174,7 +175,7 @@
 /* 05 · Comfortable — bigger targets, generous rail, collapse-friendly */
 .sb[data-sb="5"] {
   --sb-w: 250px; --sb-rail: 86px; --sb-bg: #00293a;
-  --sb-item-h: 46px; --sb-radius: 12px;
+  --sb-item-h: 40px; --sb-radius: 12px;
   --sb-active-bg: rgba(255,255,255,.14); --sb-active-icon: var(--gv-teal-300);
 }
 .sb[data-sb="5"] .sb__icon, .sb[data-sb="5"] .sb__icon svg { width: 23px; height: 23px; }
@@ -218,8 +219,8 @@
   font-size: 13px;
 }
 .sb[data-sb="9"] .sb__icon, .sb[data-sb="9"] .sb__icon svg { width: 19px; height: 19px; }
-.sb[data-sb="9"] .sb__grouphdr { padding: 9px 16px 3px; }
-.sb[data-sb="9"] .sb__account { min-height: 44px; }
+.sb[data-sb="9"] .sb__grouphdr { padding: 6px 16px 2px; }
+.sb[data-sb="9"] .sb__account { min-height: 42px; }
 
 /* 10 · Bold gradient — teal→navy gradient + mint active accent (the risk) */
 .sb[data-sb="10"] {
