@@ -116,6 +116,7 @@
   function render(opt, collapsed) {
     host.dataset.sb = String(opt.n);
     host.classList.toggle("is-collapsed", collapsed);
+    host.classList.toggle("sb--filledicons", filled);
     host.toggleAttribute("data-accentbar", !!opt.accentbar);
 
     host.innerHTML =
@@ -139,6 +140,7 @@
   /* ── Floating switcher ──────────────────────────────────────────────────── */
   let cur = 0;            // index into OPTS
   let collapsed = false;
+  let filled = false;     // icon style: line (false) / filled tiles (true)
 
   const sbx = document.createElement("div");
   sbx.className = "sbx";
@@ -147,9 +149,13 @@
     `<div class="sbx__row">${OPTS.map((o, i) =>
       `<button class="sbx__n" data-i="${i}" title="${o.name}">${o.n}</button>`).join("")}</div>` +
     `<div class="sbx__meta"><b class="sbx__name"></b><span class="sbx__tag"></span><p class="sbx__note"></p></div>` +
-    `<div class="sbx__toggle">` +
+    `<div class="sbx__toggle" data-toggle="state">` +
       `<button data-state="expanded">Expanded</button>` +
       `<button data-state="collapsed">Collapsed</button>` +
+    `</div>` +
+    `<div class="sbx__toggle" data-toggle="icons">` +
+      `<button data-icons="line">Line icons</button>` +
+      `<button data-icons="filled">Filled icons</button>` +
     `</div>`;
   document.body.appendChild(sbx);
 
@@ -157,27 +163,31 @@
   const tagEl  = sbx.querySelector(".sbx__tag");
   const noteEl = sbx.querySelector(".sbx__note");
   const numBtns = [...sbx.querySelectorAll(".sbx__n")];
-  const toggleBtns = [...sbx.querySelectorAll(".sbx__toggle button")];
+  const stateBtns = [...sbx.querySelectorAll('[data-toggle="state"] button')];
+  const iconBtns = [...sbx.querySelectorAll('[data-toggle="icons"] button')];
 
   function paint() {
     const opt = OPTS[cur];
     render(opt, collapsed);
     numBtns.forEach((b, i) => b.classList.toggle("is-on", i === cur));
-    toggleBtns.forEach(b => b.classList.toggle("is-on", (b.dataset.state === "collapsed") === collapsed));
+    stateBtns.forEach(b => b.classList.toggle("is-on", (b.dataset.state === "collapsed") === collapsed));
+    iconBtns.forEach(b => b.classList.toggle("is-on", (b.dataset.icons === "filled") === filled));
     nameEl.textContent = String(opt.n).padStart(2, "0") + " · " + opt.name;
     tagEl.textContent = opt.tag;
     noteEl.textContent = opt.note;
   }
 
   numBtns.forEach(b => b.addEventListener("click", () => { cur = +b.dataset.i; paint(); }));
-  toggleBtns.forEach(b => b.addEventListener("click", () => { collapsed = b.dataset.state === "collapsed"; paint(); }));
+  stateBtns.forEach(b => b.addEventListener("click", () => { collapsed = b.dataset.state === "collapsed"; paint(); }));
+  iconBtns.forEach(b => b.addEventListener("click", () => { filled = b.dataset.icons === "filled"; paint(); }));
 
-  // Keyboard: 1–9/0 pick option, C toggles collapse
+  // Keyboard: 1–9/0 pick option, C toggles collapse, F toggles filled icons
   document.addEventListener("keydown", e => {
     if (e.target.matches("input, textarea")) return;
     if (e.key >= "1" && e.key <= "9") { cur = +e.key - 1; paint(); }
     else if (e.key === "0") { cur = 9; paint(); }
     else if (e.key.toLowerCase() === "c") { collapsed = !collapsed; paint(); }
+    else if (e.key.toLowerCase() === "f") { filled = !filled; paint(); }
   });
 
   function start() { paint(); }

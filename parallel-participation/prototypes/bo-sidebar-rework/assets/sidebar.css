@@ -35,6 +35,7 @@
   --sb-active-fg: #ffffff;
   --sb-active-icon: var(--gv-teal-300);
   --sb-accent: var(--gv-teal-300);
+  --sb-onaccent: #04222c;                   /* glyph colour on an accent-filled tile */
   --sb-badge-bg: var(--gv-red-500);
   --sb-badge-fg: #ffffff;
   --sb-divider: rgba(255,255,255,.12);
@@ -189,6 +190,7 @@
   --sb-active-bg: var(--gv-teal-50); --sb-active-fg: var(--gv-bo-primary); --sb-active-icon: var(--gv-teal-500);
   --sb-accent: var(--gv-teal-500); --sb-divider: var(--gv-grey-200);
   --sb-brand-fg: var(--gv-bo-primary); --sb-support: var(--gv-green-600);
+  --sb-onaccent: #ffffff;
   box-shadow: inset -1px 0 0 var(--gv-grey-200);
 }
 .sb[data-sb="6"] .sb__avatar { background: var(--gv-grey-200); color: var(--gv-cool-grey-600); }
@@ -263,6 +265,21 @@
   box-shadow: 0 8px 22px rgba(0,0,0,.34);
 }
 .sb[data-sb="6"].is-collapsed .sb__item[data-label]:hover::after { background: var(--gv-bo-primary); }
+
+/* ── 4b. Filled-icon mode (switcher toggle: Line / Filled) ────────────────────
+   The admin glyphs are outline-style, so "filled" = each glyph rides a filled
+   rounded tile (uniform across every icon); the active item's tile is the accent. */
+.sb--filledicons .sb__icon {
+  width: 30px; height: 30px; border-radius: 9px;
+  background: color-mix(in srgb, var(--sb-fg) 15%, transparent);
+  transition: background .12s ease;
+}
+.sb--filledicons .sb__icon svg { width: 18px; height: 18px; }
+.sb--filledicons .sb__item:hover .sb__icon { background: color-mix(in srgb, var(--sb-fg) 25%, transparent); }
+.sb--filledicons .sb__item.is-active .sb__icon { background: var(--sb-accent); }
+.sb--filledicons .sb__item.is-active .sb__icon svg { fill: var(--sb-onaccent); }
+/* dense rows are short — shrink the tile to fit */
+.sb[data-sb="9"].sb--filledicons .sb__icon { width: 27px; height: 27px; border-radius: 8px; }
 
 /* ── 5. The floating test switcher (not part of any design) ───────────────── */
 .sbx {
