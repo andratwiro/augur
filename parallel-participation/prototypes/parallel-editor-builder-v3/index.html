@@ -1201,9 +1201,89 @@
 
   /* 5 — current: defaults above already reproduce today's chevron disclosure. */
 
-  /* On a phase, the peer headings (1 & 2) collapse with their group; mode 3 keeps its toggle. */
-  #proj-nav[data-context="phase"][data-nav-mode="1"] .nav-head--manage,
-  #proj-nav[data-context="phase"][data-nav-mode="2"] .nav-head--project { display: none; }
+  /* On a phase, the peer headings collapse with their group (any mode that shows them); the
+     mode-3 toggle stays put. */
+  #proj-nav[data-context="phase"] .nav-head--manage,
+  #proj-nav[data-context="phase"] .nav-head--project { display: none; }
+  #proj-nav[data-context="phase"][data-nav-mode="3"] .nav-head--manage { display: flex; }
+
+  /* ============ NAV explorer, round 2 (options 6–10) — break the single-column premise ======
+     6–10 question the meta: the left column crams TWO axes (project facets vs the phase
+     timeline). These reach beyond the rail (top bar / canvas), so they key off the shell's
+     data-nav-mode, not #proj-nav's. Project page row + the five tabs = "the config cluster". */
+  .pp-projtabs { display: none; }           /* 6: horizontal project-tab strip under the title */
+  .pp-manage-wrap { display: none; }         /* 10: the top-bar "Manage project" menu */
+
+  /* Shared helper: hide the whole config cluster from the rail (used by 6 & 10) */
+  .gv-bo-shell[data-nav-mode="6"] #proj-nav .side-item[data-view="project"],
+  .gv-bo-shell[data-nav-mode="6"] #proj-nav .nav-head,
+  .gv-bo-shell[data-nav-mode="6"] #project-utilities,
+  .gv-bo-shell[data-nav-mode="10"] #proj-nav .side-item[data-view="project"],
+  .gv-bo-shell[data-nav-mode="10"] #proj-nav .nav-head,
+  .gv-bo-shell[data-nav-mode="10"] #project-utilities { display: none; }
+
+  /* 6 — Horizontal tab strip (matches the real product + the prototype's own sub-tabs). The
+     facets become tabs under the title; the rail is now purely the phase timeline (elevated as
+     the project's spine). */
+  .gv-bo-shell[data-nav-mode="6"] .pp-projtabs { display: flex; }
+  .pp-projtabs {
+    gap: 2px; padding: 0 28px; background: #fff;
+    border-bottom: 1px solid #e5e7eb; align-items: stretch;
+  }
+  .pp-projtabs button {
+    position: relative; padding: 13px 14px 12px; font-size: 13.5px; font-weight: 500;
+    color: #5b6573; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color .12s ease, border-color .12s ease;
+  }
+  .pp-projtabs button:hover { color: #1a1f2c; }
+  .pp-projtabs button.on { color: #147685; border-bottom-color: #147685; font-weight: 600; }
+
+  /* 7 — Timeline-first: reorder so the phase spine leads; the config cluster demotes below it. */
+  .gv-bo-shell[data-nav-mode="7"] #proj-nav { display: flex; flex-direction: column; }
+  .gv-bo-shell[data-nav-mode="7"] #timeline-card { order: 0; }
+  .gv-bo-shell[data-nav-mode="7"] #activities-card { order: 1; }
+  .gv-bo-shell[data-nav-mode="7"] .nav-head--manage { display: block; order: 2; }
+  .gv-bo-shell[data-nav-mode="7"] #proj-nav .side-item[data-view="project"] { order: 3; }
+  .gv-bo-shell[data-nav-mode="7"] #project-utilities { order: 4; }
+  .gv-bo-shell[data-nav-mode="7"] #timeline-card .panel-divider { display: none; } /* no leading rule */
+  .gv-bo-shell[data-nav-mode="7"] #project-chevron { display: none; }
+
+  /* 8 — Two-zone weight: same order, but the config reads as quiet "tools" (small, muted) and
+     the Timeline dominates as "the work". Differentiate the two axes by weight, not a label. */
+  .gv-bo-shell[data-nav-mode="8"] .nav-head--manage {
+    display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+    color: #8a93a2; font-weight: 700; margin-top: 2px;
+  }
+  .gv-bo-shell[data-nav-mode="8"] #proj-nav .side-item[data-view="project"],
+  .gv-bo-shell[data-nav-mode="8"] #project-utilities .side-item {
+    font-size: 12.5px; color: #5b6573; padding-top: 5px; padding-bottom: 5px;
+  }
+  .gv-bo-shell[data-nav-mode="8"] #timeline-card .sec-head { font-size: 15px; color: #1a1f2c; }
+  .gv-bo-shell[data-nav-mode="8"] #project-chevron { display: none; }
+
+  /* 9 — Drop the "Project page" row entirely: the page is what the canvas shows, not a nav item.
+     The five real config tabs sit under "Manage"; the title bar returns you to the page. */
+  .gv-bo-shell[data-nav-mode="9"] #proj-nav .side-item[data-view="project"] { display: none; }
+  .gv-bo-shell[data-nav-mode="9"] .nav-head--manage { display: block; }
+  .gv-bo-shell[data-nav-mode="9"] #project-chevron { display: none; }
+  .gv-bo-shell[data-nav-mode="9"] .gv-bo-topbar__title { cursor: pointer; }
+  .gv-bo-shell[data-nav-mode="9"] .gv-bo-topbar__title:hover { color: #147685; }
+
+  /* 10 — Config behind a top-bar "Manage project" menu; the rail is 100% timeline. The most
+     extreme reading of "the project IS its timeline; everything else is occasional setup." */
+  .gv-bo-shell[data-nav-mode="10"] .pp-manage-wrap { display: inline-block; position: relative; }
+  .pp-manage-btn .nav-icon { width: 13px; height: 13px; margin-left: 4px; }
+  .pp-manage-menu {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 40;
+    min-width: 200px; padding: 6px; background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 8px; box-shadow: 0 10px 30px rgba(20,25,40,.14), 0 2px 6px rgba(20,25,40,.06);
+  }
+  .pp-manage-menu.open { display: block; }
+  .pp-manage-menu button {
+    display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 6px;
+    font-size: 13.5px; color: #1a1f2c;
+  }
+  .pp-manage-menu button:hover { background: #eef0f4; }
 
   /* The NAV chip — same quiet pill as STATE, parked bottom-LEFT so it can't collide with the
      bottom-right STATE chip. Numbered buttons (names in title=) per the switcher convention. */
@@ -1225,6 +1305,8 @@
   }
   .nav-chip button:hover { background: #f4f6fa; }
   .nav-chip button.on { background: #1a1f2c; color: #fff; }
+  /* divider between round-1 (relabel) and round-2 (restructure) options */
+  .nav-chip__div { width: 1px; align-self: stretch; margin: 3px 3px; background: #e5e7eb; }
 
   /* v3 commits to one treatment for a survey that's created but not added to the project
      (reachable only by direct URL): a text-only "Not on the project page" tag on the meta
@@ -2220,7 +2302,7 @@
 </style>
 </head>
 <body class="gv-bo min-h-screen" data-gv-theme-picker="off">
-<div class="gv-bo-shell is-rail">
+<div class="gv-bo-shell is-rail" data-nav-mode="1">
 
   <!-- ── Real GoVocal back-office sidebar (collapsed icon rail) ──── -->
   <nav class="gv-bo-side is-rail" aria-label="Admin">
@@ -2252,7 +2334,7 @@
   <header class="gv-bo-topbar">
     <div class="gv-bo-topbar__row">
       <div>
-        <h1 class="gv-bo-topbar__title">Reimagine Meridian 2030</h1>
+        <h1 class="gv-bo-topbar__title" onclick="setView('project', document.querySelector('.side-item[data-view=&quot;project&quot;]'))">Reimagine Meridian 2030</h1>
         <div class="gv-bo-meta">
           <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="lock"></span>Groups</span>
           <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="eye"></span>Public</span>
@@ -2261,12 +2343,38 @@
         </div>
       </div>
       <div class="gv-bo-topbar__actions">
+        <!-- mode 10: project facets live behind this top-bar menu; rail = pure timeline -->
+        <div class="pp-manage-wrap">
+          <button class="gv-btn secondary-outlined pp-manage-btn" onclick="toggleManageMenu(event)">
+            <span class="gv-btn__label">Manage project</span>
+            <svg class="nav-icon" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="pp-manage-menu" id="manageMenu">
+            <button onclick="setViewFromMenu('project')">Project page</button>
+            <button onclick="setViewFromMenu('audience')">Audience</button>
+            <button onclick="setViewFromMenu('messaging')">Messaging</button>
+            <button onclick="setViewFromMenu('events')">Events</button>
+            <button onclick="setViewFromMenu('input360')">Input 360</button>
+            <button onclick="setViewFromMenu('settings')">Settings</button>
+          </div>
+        </div>
         <button class="gv-btn gv-btn--icon pp-topbar-view" aria-label="Preview project" onclick="openFO()"><span data-gv-icon="eye"></span></button>
         <button class="gv-btn secondary-outlined"><span data-gv-icon="share"></span><span class="gv-btn__label">Share</span></button>
         <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
       </div>
     </div>
   </header>
+
+  <!-- mode 6: horizontal project-tab strip — the facets as tabs under the title (matches the
+       real product + the prototype's own sub-tabs); the rail becomes the pure phase timeline. -->
+  <nav class="pp-projtabs" aria-label="Project sections">
+    <button class="on" data-ptab="project" onclick="setViewFromTab('project', this)">Project page</button>
+    <button data-ptab="audience" onclick="setViewFromTab('audience', this)">Audience</button>
+    <button data-ptab="messaging" onclick="setViewFromTab('messaging', this)">Messaging</button>
+    <button data-ptab="events" onclick="setViewFromTab('events', this)">Events</button>
+    <button data-ptab="input360" onclick="setViewFromTab('input360', this)">Input 360</button>
+    <button data-ptab="settings" onclick="setViewFromTab('settings', this)">Settings</button>
+  </nav>
 
   <!-- ============ Body: 3 columns ============ -->
   <div class="flex flex-1 overflow-hidden">
@@ -4480,12 +4588,16 @@
     document.querySelectorAll('.nav-chip button').forEach(b => b.classList.remove('on'));
     if (btn) btn.classList.add('on');
 
-    const nav = document.getElementById('proj-nav');
-    nav.setAttribute('data-nav-mode', String(n));
+    // Modes 1–5 reshape only the rail (#proj-nav); 6–10 also reach the top bar / canvas, so
+    // the shell carries the mode too.
+    document.getElementById('proj-nav').setAttribute('data-nav-mode', String(n));
+    document.querySelector('.gv-bo-shell').setAttribute('data-nav-mode', String(n));
+    closeManageMenu();
 
     // Compare apples to apples — return to the project view (also clears any phase-collapse).
     const projItem = document.querySelector('.side-item[data-view="project"]');
     setView('project', projItem);
+    syncProjTabs('project');
 
     // Mode 3 is the only one where the tabs start hidden behind the "Manage" toggle.
     const utils = document.getElementById('project-utilities');
@@ -4497,6 +4609,36 @@
       utils.classList.remove('collapsed');
     }
   }
+
+  // Mode 6 — horizontal tab strip: route a tab to the matching view + reflect the active tab.
+  function setViewFromTab(view, btn) {
+    const railItem = document.querySelector('.side-item[data-view="' + view + '"]');
+    setView(view, railItem);
+    syncProjTabs(view);
+  }
+  function syncProjTabs(view) {
+    document.querySelectorAll('.pp-projtabs button').forEach(b =>
+      b.classList.toggle('on', b.getAttribute('data-ptab') === view));
+  }
+
+  // Mode 10 — top-bar "Manage project" dropdown.
+  function toggleManageMenu(e) {
+    if (e) e.stopPropagation();
+    document.getElementById('manageMenu').classList.toggle('open');
+  }
+  function closeManageMenu() {
+    const m = document.getElementById('manageMenu');
+    if (m) m.classList.remove('open');
+  }
+  function setViewFromMenu(view) {
+    const railItem = document.querySelector('.side-item[data-view="' + view + '"]');
+    setView(view, railItem);
+    closeManageMenu();
+  }
+  // Click-away closes the menu.
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.pp-manage-wrap')) closeManageMenu();
+  });
 
   // Mode 3 only: the "Manage" heading is a real disclosure for the five admin tabs.
   function toggleManage() {
@@ -4549,6 +4691,12 @@
   <button title="3 · Manage, collapsible — progressive disclosure: the five admin tabs tuck away under a 'Manage' toggle; daily driver sees page + timeline." onclick="setNavMode(3, this)">3</button>
   <button title="4 · Indented — commit to the chevron's literal reading: indent the five as children of Project page." onclick="setNavMode(4, this)">4</button>
   <button title="5 · Current — today's chevron disclosure on Project page, unchanged (baseline)." onclick="setNavMode(5, this)">5</button>
+  <span class="nav-chip__div" aria-hidden="true"></span>
+  <button title="6 · Horizontal tabs — the facets become a tab strip under the title (like the real product); the rail is now the pure phase timeline. Strongest structural fix." onclick="setNavMode(6, this)">6</button>
+  <button title="7 · Timeline-first — reorder the rail so the phase spine leads; the config cluster demotes below it." onclick="setNavMode(7, this)">7</button>
+  <button title="8 · Two-zone weight — config reads as quiet 'tools' (small, muted), the timeline dominates as 'the work'. Differentiate by weight, not a label." onclick="setNavMode(8, this)">8</button>
+  <button title="9 · Drop the page row — 'Project page' isn't a nav item, it's what the canvas shows. Five real config tabs under 'Manage'; the title bar returns you to the page." onclick="setNavMode(9, this)">9</button>
+  <button title="10 · Top-bar menu — facets behind a 'Manage project' menu; the rail is 100% timeline. Most extreme: the project IS its timeline." onclick="setNavMode(10, this)">10</button>
 </div>
 
 <!-- v3 has no hidden-survey switcher — it commits to the "Not on the project page" treatment (v2 #4). -->
