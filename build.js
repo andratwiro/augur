@@ -177,7 +177,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.64";
+const UI_VERSION = "0.65";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1297,7 +1297,9 @@ const NAV_CSS = `
     .gvside__brand:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
     .gvside__brandname { font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: 0; }
     .gvmark { display: block; flex: none; object-fit: contain; }
-    .gvside__brand .gvmark { width: 22px; height: 22px; }
+    /* Match the 16px nav-icon column (.gvic) exactly so the "augur" wordmark left-aligns
+       with the Opportunities / Playground labels below it (same 8px pad + 10px gap). */
+    .gvside__brand .gvmark { width: 16px; height: 16px; }
     .gvtop__brand .gvmark { width: 22px; height: 22px; }
 
     /* Omni search — one field, filters whatever cards are on the right. Figma-style
