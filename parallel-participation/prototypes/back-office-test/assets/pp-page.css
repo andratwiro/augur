@@ -63,6 +63,22 @@ body.pp-doc { margin: 0; background: #fff; }
   .pp-mapcard__list { order: 3; overflow: visible; padding: 0; gap: 14px; }
 }
 
+/* ── Builder mode: in-place editing affordances on the canonical components ── */
+.pp-builder [contenteditable] { border-radius: 4px; transition: outline-color .12s; }
+.pp-builder #title[contenteditable]:hover, .pp-builder #intro[contenteditable]:hover { outline: 1px dashed var(--gv-grey-300); outline-offset: 6px; }
+.pp-builder #title[contenteditable]:focus, .pp-builder #intro[contenteditable]:focus { outline: 2px solid var(--gv-tenant-primary); outline-offset: 6px; }
+.pp-builder [data-pp-block] { position: relative; }
+.pp-builder [data-pp-block]:hover { outline: 1px dashed var(--gv-grey-300); outline-offset: 4px; }
+.pp-del { position: absolute; top: -10px; right: -10px; width: 22px; height: 22px; border-radius: 50%; background: #e11d48; color: #fff; font: 700 15px/1 sans-serif; border: 0; cursor: pointer; opacity: 0; transition: opacity .12s; z-index: 5; display: flex; align-items: center; justify-content: center; }
+.pp-builder [data-pp-block]:hover .pp-del { opacity: 1; }
+.pp-addbar { display: flex; gap: 8px; margin-top: 18px; }
+.pp-addbar button { font-size: 13px; padding: 6px 12px; border: 1px dashed var(--gv-grey-300); border-radius: 8px; background: #fff; color: var(--gv-text-secondary); cursor: pointer; }
+.pp-addbar button:hover { border-color: var(--gv-tenant-primary); color: var(--gv-tenant-primary); }
+.pp-banner--edit { cursor: pointer; }
+.pp-banner--edit .pp-banner__ph { width: 100%; height: 100%; min-height: 200px; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--gv-grey-100); border: 1px dashed var(--gv-grey-300); border-radius: var(--gv-radius); color: var(--gv-text-secondary); }
+.pp-banner--edit:hover { outline: 1px dashed var(--gv-tenant-primary); outline-offset: 3px; }
+.pp-builder .pp-zone-edit:hover { outline: 1px dashed var(--gv-grey-300); outline-offset: 6px; cursor: pointer; }
+
 /* Empty states for a freshly-built project (no submissions yet) — shown in method bodies. */
 .pp-empty { display: flex; gap: 14px; align-items: flex-start; max-width: 640px; color: var(--gv-text-secondary); }
 .pp-empty .gv-icon { color: var(--gv-tenant-primary); width: 26px; height: 26px; flex: none; }

@@ -195,8 +195,94 @@
       // glyphs + avatars across the whole doc
       if (window.GVIcons) window.GVIcons.render(document.body);
       if (window.GVAvatars && window.GVAvatars.fill) window.GVAvatars.fill(document.body);
+      if (mode === 'builder') enableBuilder(model);
     }
   };
+
+  /* ── Builder mode: edit the canonical page in place, sync changes to the parent ── */
+  function postOut(msg) { try { if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*'); } catch (e) {} }
+  var _ceT;
+  function emitContent() {
+    clearTimeout(_ceT);
+    _ceT = setTimeout(function () {
+      var t = $('#title'), intro = $('#intro');
+      postOut({ ppContent: { title: t ? t.textContent.trim() : '', content: intro ? cleanContent(intro) : '' } });
+    }, 350);
+  }
+  function cleanContent(intro) {
+    // Serialize the editable content minus builder-only chrome (delete buttons, toolbar).
+    var clone = intro.cloneNode(true);
+    clone.querySelectorAll('.pp-del, .pp-addbar, [contenteditable]').forEach(function (n) {
+      if (n.classList.contains('pp-del') || n.classList.contains('pp-addbar')) n.remove();
+      else n.removeAttribute('contenteditable');
+    });
+    return clone.innerHTML;
+  }
+  function delBtn() {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'pp-del'; b.setAttribute('aria-label', 'Delete'); b.textContent = '×';
+    b.addEventListener('click', function (e) { e.stopPropagation(); var blk = b.closest('[data-pp-block]'); if (blk) { blk.remove(); emitContent(); } });
+    return b;
+  }
+  function wrapBlocks(intro) {
+    // Tag each top-level content element as a deletable block (skip the add bar).
+    Array.prototype.forEach.call(intro.children, function (el) {
+      if (el.classList.contains('pp-addbar') || el.hasAttribute('data-pp-block')) return;
+      el.setAttribute('data-pp-block', '1');
+      el.style.position = 'relative';
+      el.appendChild(delBtn());
+    });
+  }
+  function addBar(intro) {
+    var bar = document.createElement('div');
+    bar.className = 'pp-addbar'; bar.contentEditable = 'false';
+    [['Text', 'text'], ['FAQ', 'faq'], ['Button', 'button']].forEach(function (pair) {
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.textContent = '+ ' + pair[0];
+      btn.addEventListener('click', function () { addContentBlock(intro, pair[1]); });
+      bar.appendChild(btn);
+    });
+    intro.appendChild(bar);
+  }
+  function addContentBlock(intro, type) {
+    var bar = intro.querySelector('.pp-addbar');
+    var node = document.createElement('div');
+    if (type === 'text') node.innerHTML = '<div class="gv-projdesc"><p>New paragraph — click to edit.</p></div>';
+    else if (type === 'faq') node.innerHTML = '<div class="gv-accordion"><details class="gv-acc__item" open><summary class="gv-acc__head"><span class="gv-acc__q">New question?</span><span class="gv-acc__chev" data-gv-icon="chevron-right"></span></summary><div class="gv-acc__body"><p>Answer — click to edit.</p></div></details></div>';
+    else node.innerHTML = '<a class="gv-btn primary" href="#" onclick="return false">Button label</a>';
+    var el = node.firstChild;
+    intro.insertBefore(el, bar);
+    el.setAttribute('data-pp-block', '1'); el.style.position = 'relative'; el.appendChild(delBtn());
+    if (window.GVIcons) window.GVIcons.render(el);
+    emitContent();
+  }
+  function enableBuilder(model) {
+    document.body.classList.add('pp-builder');
+    var t = $('#title'); if (t) { t.setAttribute('contenteditable', 'true'); t.setAttribute('data-pp-edit', 'title'); }
+    var intro = $('#intro');
+    if (intro) {
+      intro.setAttribute('contenteditable', 'true');
+      wrapBlocks(intro);
+      addBar(intro);
+    }
+    // Hero: always show a clickable banner in the builder (upload handled by the parent).
+    var bannerSec = $('#banner') && $('#banner').closest('.pp-banner');
+    if (bannerSec) {
+      bannerSec.style.display = '';
+      bannerSec.classList.add('pp-banner--edit');
+      if (!model.hero) bannerSec.innerHTML = '<div class="pp-banner__ph"><span data-gv-icon="image"></span> Add a header image</div>';
+      bannerSec.style.cursor = 'pointer';
+      bannerSec.onclick = function () { postOut({ ppEdit: 'hero' }); };
+    }
+    // Click the participation box / timeline → tell the parent to surface phase/survey mgmt.
+    ['#cta', '.gv-methodband'].forEach(function (sel) {
+      var z = $(sel); if (z) { z.classList.add('pp-zone-edit'); z.addEventListener('click', function () { postOut({ ppEdit: sel === '#cta' ? 'participation' : 'phases' }); }); }
+    });
+    document.addEventListener('input', function () { emitContent(); });
+    if (window.GVIcons) window.GVIcons.render(document.body);
+  }
+  // expose for the iframe bootstrap (called after render when mode==='builder')
+  window.PP.enableBuilder = enableBuilder;
 
   // Auto-render if a model was injected before this script ran.
   if (window.__PP_MODEL__) window.PP.render(window.__PP_MODEL__);
