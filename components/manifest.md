@@ -91,6 +91,46 @@ Edit those; `npm run lint` enforces that no demo copies or redefines them. (Only
 | **Two-column image + text + accordion (CB about + FAQ)** | `components/twocol-accordion/` | `.gv-cb-row.cols-2` + `.gv-cb-col`/`.gv-cb-image`/`.gv-cb-textbox` · `.gv-prose` (`h2`/intro `p`) · `.gv-accordion`/`.gv-acc__item`/`__head`/`__q`/`__chev`/`__body` · NEW step-up `.gv-prose .gv-acc__head` (21/700) | **The Content-Builder homepage "about + FAQ" section** — a two-column CB row pairing an image cell with a rich-text column that carries a section `h2` (25/700/32.5), an intro paragraph (16/400/24), and an FAQ accordion whose question heads step up to **21px/700/27.3** inside `.gv-prose`. Source-grounded on St Louis (`stlouis.govocal.com`, capture `fo-stlouis-twocol-accordion`, tenant-primary `#033D8B`), verified via `fo-stlouis-twocol-accordion/{section-h2,accordion-head,intro-p}` (the structural type-scale — St Louis also configures `--gv-tenant-text` to its brand navy + Public Sans, tenant skin re-themed per `?theme=`). **Pure assembly** — every piece pre-exists; **net-new = ONLY a `.gv-prose .gv-acc__head`/`.gv-acc__body p` step-up** (`govocal-ui.css`), a sibling of the existing `.gv-projdesc` 18px step-up scoped to the prose/CB context. Accordion chevron auto-rotates on `[open]` (canonical, no JS). Cross-tenant SYSTEM = the row/type geometry (token-aliased); SKIN = palette/font/imagery/language. |
 | **Banner** | `components/banner/` | `.gv-banner`/`__art`(`svg`)/`__sticker` | **Image-only project hero** (distinct from `.gv-hero` which carries title + CTA) — a full-width teal-gradient art panel (1150×300, `--gv-shell-w` capped) holding an illustration `<svg>` + an optional rotated campaign sticker. Pure assembly. |
 
+### Page Builder widgets (render + config screen)
+
+> One folder per builder widget, each showing the **rendered widget + its real
+> configuration screen** — both produced by the canonical registry
+> `skills/govocal-ui/govocal-widgets.js` (+ `govocal-widgets.css`), the SAME
+> `{make, settings, wire}` the homepage & project builders mount via
+> `govocal-pagebuilder.js`. Editing a widget here = editing it everywhere (one
+> source of truth). `homepage` / `project` = which surface's registry it belongs to.
+
+| Widget | Folder | Source | What it is |
+|---|---|---|---|
+| Homepage Banner | `components/widget-homepage-banner/` | `govocal-widgets.js` `homepage` registry | Homepage banner — full-width hero (signed-out/in tabs, 4 layouts, overlay, avatars, CTA) |
+| Spotlight | `components/widget-spotlight/` | `govocal-widgets.js` `homepage` registry | Spotlight — single project/folder highlight (title, RTE desc, CTA, avatars) |
+| Open To Participation | `components/widget-open-to-participation/` | `govocal-widgets.js` `homepage` registry | Open-to-participation rail (auto-listed; editable title + description) |
+| Followed Items | `components/widget-followed-items/` | `govocal-widgets.js` `homepage` registry | Followed-items rail (per-user follow preferences; title) |
+| Areas | `components/widget-areas/` | `govocal-widgets.js` `homepage` registry | In-your-area rail (projects for followed areas; title) |
+| Finished Projects | `components/widget-finished-projects/` | `govocal-widgets.js` `homepage` registry | Finished/archived rail (Filter-by radio: finished/archived/both) |
+| Selection | `components/widget-selection/` | `govocal-widgets.js` `homepage` registry | Selected projects & folders grid (pick + reorder list) |
+| Published | `components/widget-published/` | `govocal-widgets.js` `homepage` registry | Published projects & folders grid (title) |
+| Events | `components/widget-events/` | `govocal-widgets.js` `homepage` registry | Events widget (next 3 upcoming; no settings) |
+| Call To Action | `components/widget-call-to-action/` | `govocal-widgets.js` `homepage` registry | CTA band (title, description, primary + secondary button text/URL) |
+| Community Monitor | `components/widget-community-monitor/` | `govocal-widgets.js` `homepage` registry | Community-Monitor CTA (title, description, button) |
+| Projects Legacy | `components/widget-projects-legacy/` | `govocal-widgets.js` `homepage` registry | Projects & folders (legacy) grid (projects title) |
+| Text | `components/widget-text/` | `govocal-widgets.js` `homepage` registry | Text (rich-text Quill editor) |
+| White Space | `components/widget-white-space/` | `govocal-widgets.js` `homepage` registry | White space (height radio S/M/L + include-border toggle) |
+| Button | `components/widget-button/` | `govocal-widgets.js` `homepage` registry | Button (text, URL, type radio, alignment radio) |
+| Image | `components/widget-image/` | `govocal-widgets.js` `homepage` registry | Image (upload + multiloc alt text) |
+| Embed | `components/widget-embed/` | `govocal-widgets.js` `homepage` registry | Embed/iframe (URL, fixed/aspect mode, height, screen-reader desc) |
+| Video | `components/widget-video/` | `govocal-widgets.js` `homepage` registry | Video (warning + embed-code textarea) |
+| Accordion | `components/widget-accordion/` | `govocal-widgets.js` `homepage` registry | Accordion (title + open-by-default toggle) |
+| Two Column | `components/widget-two-column/` | `govocal-widgets.js` `homepage` registry | 2-column (layout radio: even / 60-30 / 30-60) |
+| Three Column | `components/widget-three-column/` | `govocal-widgets.js` `homepage` registry | 3-column (fixed layout) |
+| Image Text Cards | `components/widget-image-text-cards/` | `govocal-widgets.js` `homepage` registry | Image & text cards (3-row preset) |
+| Participation Box | `components/widget-participation-box/` | `govocal-widgets.js` `project` registry | Participation box (action + events labels, contributions, show toggles) |
+| Timeline | `components/widget-timeline/` | `govocal-widgets.js` `project` registry | Phase timeline (current-phase select; .gv-phases ribbon) |
+| File Attachment | `components/widget-file-attachment/` | `govocal-widgets.js` `project` registry | File attachment (display name + file) |
+| Info Accordions | `components/widget-info-accordions/` | `govocal-widgets.js` `project` registry | Info & accordions (title + content) |
+| Project Image | `components/widget-project-image/` | `govocal-widgets.js` `project` registry | Project image — locked hero (replace image / URL) |
+| Project Title | `components/widget-project-title/` | `govocal-widgets.js` `project` registry | Project title — locked H1 (editable text) |
+
 ## How to reuse in a prototype
 
 A **prototype** (unlike a library demo) IS self-contained — copy the assets in:

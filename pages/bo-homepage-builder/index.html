@@ -12,6 +12,7 @@
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-rail.js" defer></script>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-widgets.css" />
   <script src="../../skills/govocal-ui/govocal-widgets.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-pagebuilder.js" defer></script>
   <style>
@@ -47,101 +48,9 @@
     #hb-root.cb-preview .gv-bo-cb-block { cursor: default; }
     #hb-root.cb-preview .gv-bo-cb-block:hover { border-color: transparent; }
 
-    /* ── homepage section blocks (faithful FO content; page-local layout only) ── */
-    .hb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-    .hb-cm { display: flex; align-items: center; gap: 20px; background: color-mix(in srgb, var(--gv-tenant-primary) 9%, #fff); border-radius: 10px; padding: 24px 28px; }
-    .hb-cm__icon { flex: none; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--gv-tenant-primary); color: var(--gv-white); }
-    .hb-cm__icon .gv-icon { width: 24px; height: 24px; }
-    .hb-cm__body { flex: 1 1 auto; }
-    .hb-cm__title { margin: 0 0 4px; font-size: 20px; font-weight: 700; color: var(--gv-text-heading); }
-    .hb-cm__lead { margin: 0; font-size: 15px; color: var(--gv-text-secondary); }
-    .hb-btnblock { display: flex; }
-    .hb-btnblock.is-center { justify-content: center; }
-    .hb-btnblock.is-right { justify-content: flex-end; }
-    .hb-btnblock.is-full .gv-btn { width: 100%; justify-content: center; }
-    .hb-img { width: 100%; display: block; border-radius: 8px; }
-    .hb-ws { width: 100%; }
-    .hb-ws.has-border { border-top: 1px solid var(--gv-grey-300); border-bottom: 1px solid var(--gv-grey-300); }
-    .hb-cols { display: grid; gap: 18px; }
-    .hb-cols-2 { grid-template-columns: 1fr 1fr; }
-    .hb-cols-2-1 { grid-template-columns: 2fr 1fr; }
-    .hb-cols-1-2 { grid-template-columns: 1fr 2fr; }
-    .hb-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
-    .hb-colph { min-height: 90px; border: 1px dashed var(--gv-grey-400); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-s); background: var(--gv-grey-50); }
-    .hb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
-    .hb-card__img { aspect-ratio: 16/10; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
-    .hb-card__img img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .hb-card__t { margin: 0 0 4px; font-size: 17px; font-weight: 700; color: var(--gv-text-heading); }
-    .hb-card__d { margin: 0; font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
-    .hb-embed { height: 200px; background: #1b1f23; color: #cfd6dc; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: monospace; }
-    .hb-embed small { opacity: .8; }
-    .hb-video { aspect-ratio: 16/9; background: #1b1f23; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-    .hb-video__play { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,.92); color: var(--gv-tenant-primary); display: flex; align-items: center; justify-content: center; font-size: 24px; }
-    .hb-events__head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 18px; }
-
-    /* ── settings-panel bodies (real homepage-builder fields; page-local controls) ── */
-    .hb-help { font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); line-height: 1.5; margin: 0 0 14px; }
-    .hb-desc { font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); line-height: 1.5; margin: 14px 0 4px; }
-    .hb-desc b { color: var(--gv-text-secondary); }
-    .hb-set-row { margin-bottom: 16px; }
-    .hb-set-row > label, .hb-set-label { display: block; margin-bottom: 6px; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-bo-primary); }
-    .hb-set-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-    .hb-set-head .hb-set-label { margin: 0; }
-    .hb-field-help { margin: 5px 0 0; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); line-height: 1.45; }
-    /* tabbed sub-views (banner: non-registered / registered) */
-    .hb-subtabs { display: flex; gap: 4px; margin: 0 0 16px; background: var(--gv-grey-100); border-radius: 6px; padding: 3px; }
-    .hb-subtab { flex: 1; padding: 7px 4px; border: 0; border-radius: 4px; background: transparent; font: 600 var(--gv-fs-13)/1.2 var(--gv-font-family); color: var(--gv-cool-grey-600); cursor: pointer; }
-    .hb-subtab.is-active { background: var(--gv-white); color: var(--gv-bo-primary); box-shadow: var(--gv-shadow); }
-    /* radio-card row (banner layout) — reuses canonical .gv-bo-methodcard look via a thin wrapper */
-    .hb-radiocards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .hb-radiocard { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; padding: 10px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); cursor: pointer; font-size: var(--gv-fs-13); color: var(--gv-text-secondary); background: var(--gv-white); }
-    .hb-radiocard:hover { border-color: var(--gv-bo-primary); }
-    .hb-radiocard.is-active { border-color: var(--gv-bo-primary); background: var(--gv-teal-75); color: var(--gv-bo-primary); font-weight: 600; }
-    .hb-radiocard__art { width: 100%; height: 34px; border-radius: 3px; background: var(--gv-grey-100); display: grid; gap: 3px; padding: 5px; }
-    .hb-radiocard.is-active .hb-radiocard__art { background: var(--gv-white); }
-    .hb-ra-full { grid-template-rows: 1fr; }
-    .hb-ra-full::before { content: ""; background: var(--gv-cool-grey-400); border-radius: 2px; }
-    .hb-ra-cols { grid-template-columns: 1fr 1fr; }
-    .hb-ra-cols::before, .hb-ra-cols::after { content: ""; background: var(--gv-cool-grey-400); border-radius: 2px; }
-    .hb-ra-rows { grid-template-rows: 1fr 1fr; }
-    .hb-ra-rows::before, .hb-ra-rows::after { content: ""; background: var(--gv-cool-grey-400); border-radius: 2px; }
-    .hb-ra-ratio::before { content: ""; background: var(--gv-cool-grey-400); border-radius: 2px; margin: 0 14px; }
-    /* compact radio row (button type / alignment, filter-by, white-space, iframe mode) */
-    .hb-radiorow { display: flex; flex-wrap: wrap; gap: 6px; }
-    .hb-radiopill { padding: 7px 12px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); background: var(--gv-white); font-size: var(--gv-fs-13); color: var(--gv-text-secondary); cursor: pointer; }
-    .hb-radiopill:hover { border-color: var(--gv-bo-primary); }
-    .hb-radiopill.is-active { border-color: var(--gv-bo-primary); background: var(--gv-teal-75); color: var(--gv-bo-primary); font-weight: 600; }
-    /* toggle row with helper (display avatars, enable overlay, include border, open by default) */
-    .hb-togglerow { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
-    .hb-togglerow .gv-toggle { flex: none; margin-top: 2px; }
-    .hb-togglerow__txt { flex: 1; }
-    .hb-togglerow__label { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-bo-primary); }
-    .hb-togglerow__help { margin: 3px 0 0; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); line-height: 1.45; }
-    /* colour field (overlay colour) */
-    .hb-colorfield { display: flex; align-items: center; gap: 8px; }
-    .hb-swatch { width: 34px; height: 34px; border-radius: var(--gv-radius); border: 1px solid var(--gv-grey-300); flex: none; }
-    /* selected-publication picker (spotlight / selection) */
-    .hb-pickbtn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 9px 12px; border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius); background: var(--gv-white); font-size: var(--gv-fs-s); color: var(--gv-text-secondary); cursor: pointer; }
-    .hb-pickbtn:hover { border-color: var(--gv-bo-primary); }
-    .hb-picklist { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-    .hb-pickitem { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); font-size: var(--gv-fs-13); color: var(--gv-text-heading); background: var(--gv-white); }
-    .hb-pickitem .hb-grip { color: var(--gv-cool-grey-500); cursor: grab; display: inline-flex; }
-    .hb-pickitem .hb-grip svg { width: 14px; height: 14px; }
-    .hb-pickitem__name { flex: 1; }
-    .hb-pickitem__del { border: 0; background: transparent; color: var(--gv-cool-grey-600); cursor: pointer; display: inline-flex; }
-    .hb-pickitem__del svg { width: 15px; height: 15px; }
-    /* warning banner (video embed) */
-    .hb-warn { display: flex; gap: 8px; padding: 10px 12px; border-radius: var(--gv-radius); background: var(--gv-orange-100); color: var(--gv-text-heading); font-size: var(--gv-fs-xs); line-height: 1.45; margin: 0 0 14px; }
-    /* move / delete bar */
-    .hb-blockbar { display: flex; gap: 8px; margin: 18px 0 10px; }
-    .hb-blockbar button { flex: 1; padding: 7px 0; border: 1px solid var(--gv-grey-300); border-radius: 4px; background: var(--gv-white); font-size: var(--gv-fs-13); font-weight: 600; color: var(--gv-bo-primary); cursor: pointer; }
-    .hb-blockbar button:hover { background: var(--gv-grey-100); }
-
-    /* toast */
-    .cb-toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
-      background: var(--gv-grey-800); color: var(--gv-white); padding: 8px 14px; border-radius: 4px;
-      font-size: var(--gv-fs-13); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 100000; }
-    .cb-toast.is-show { opacity: .94; }
+    /* Widget content + config-control CSS is CANONICAL now — see
+       skills/govocal-ui/govocal-widgets.css (hb-* / cb-*), linked above and shared
+       with the project builder + every components/<widget>/ demo. */
 
     /* responsive: stack the settings panel + collapse the canvas reserve on narrow widths */
     @media (max-width: 900px) {

@@ -109,6 +109,34 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Twocol Accordion** | `/components/twocol-accordion/` | `components/twocol-accordion/` | Two-column image + text + accordion (CB about + FAQ) — GoVocal component |
 | **Volunteer Cause** | `/components/volunteer-cause/` | `components/volunteer-cause/` | A volunteering opportunity card — photo with a participant badge, title, count, description, and a green sign-up button that toggles to a withdraw state. |
 | **Voting** | `/components/voting/` | `components/voting/` | The Upcoming and ongoing events + Past events sections a project page renders below the phase body (on the project's own content column). Source-grounded on wi… |
+| **Widget Accordion** | `/components/widget-accordion/` | `components/widget-accordion/` | Accordion widget — GoVocal Page Builder |
+| **Widget Areas** | `/components/widget-areas/` | `components/widget-areas/` | In your area widget — GoVocal Page Builder |
+| **Widget Button** | `/components/widget-button/` | `components/widget-button/` | Button widget — GoVocal Page Builder |
+| **Widget Call To Action** | `/components/widget-call-to-action/` | `components/widget-call-to-action/` | Call to action widget — GoVocal Page Builder |
+| **Widget Community Monitor** | `/components/widget-community-monitor/` | `components/widget-community-monitor/` | Community Monitor widget — GoVocal Page Builder |
+| **Widget Embed** | `/components/widget-embed/` | `components/widget-embed/` | Embed widget — GoVocal Page Builder |
+| **Widget Events** | `/components/widget-events/` | `components/widget-events/` | Events widget — GoVocal Page Builder |
+| **Widget File Attachment** | `/components/widget-file-attachment/` | `components/widget-file-attachment/` | File Attachment widget — GoVocal Page Builder |
+| **Widget Finished Projects** | `/components/widget-finished-projects/` | `components/widget-finished-projects/` | Finished projects widget — GoVocal Page Builder |
+| **Widget Followed Items** | `/components/widget-followed-items/` | `components/widget-followed-items/` | Followed items widget — GoVocal Page Builder |
+| **Widget Homepage Banner** | `/components/widget-homepage-banner/` | `components/widget-homepage-banner/` | Homepage banner widget — GoVocal Page Builder |
+| **Widget Image** | `/components/widget-image/` | `components/widget-image/` | Image widget — GoVocal Page Builder |
+| **Widget Image Text Cards** | `/components/widget-image-text-cards/` | `components/widget-image-text-cards/` | Image & text cards widget — GoVocal Page Builder |
+| **Widget Info Accordions** | `/components/widget-info-accordions/` | `components/widget-info-accordions/` | Info & accordions widget — GoVocal Page Builder |
+| **Widget Open To Participation** | `/components/widget-open-to-participation/` | `components/widget-open-to-participation/` | Open to participation widget — GoVocal Page Builder |
+| **Widget Participation Box** | `/components/widget-participation-box/` | `components/widget-participation-box/` | Participation Box widget — GoVocal Page Builder |
+| **Widget Project Image** | `/components/widget-project-image/` | `components/widget-project-image/` | Project image widget — GoVocal Page Builder |
+| **Widget Project Title** | `/components/widget-project-title/` | `components/widget-project-title/` | Project title widget — GoVocal Page Builder |
+| **Widget Projects Legacy** | `/components/widget-projects-legacy/` | `components/widget-projects-legacy/` | Projects and folders (legacy) widget — GoVocal Page Builder |
+| **Widget Published** | `/components/widget-published/` | `components/widget-published/` | Published projects and folders widget — GoVocal Page Builder |
+| **Widget Selection** | `/components/widget-selection/` | `components/widget-selection/` | Selected projects and folders widget — GoVocal Page Builder |
+| **Widget Spotlight** | `/components/widget-spotlight/` | `components/widget-spotlight/` | Spotlight widget — GoVocal Page Builder |
+| **Widget Text** | `/components/widget-text/` | `components/widget-text/` | Text widget — GoVocal Page Builder |
+| **Widget Three Column** | `/components/widget-three-column/` | `components/widget-three-column/` | 3 column widget — GoVocal Page Builder |
+| **Widget Timeline** | `/components/widget-timeline/` | `components/widget-timeline/` | Timeline widget — GoVocal Page Builder |
+| **Widget Two Column** | `/components/widget-two-column/` | `components/widget-two-column/` | 2 column widget — GoVocal Page Builder |
+| **Widget Video** | `/components/widget-video/` | `components/widget-video/` | Video widget — GoVocal Page Builder |
+| **Widget White Space** | `/components/widget-white-space/` | `components/widget-white-space/` | White space widget — GoVocal Page Builder |
 
 ## Pages (screens) — `pages/<name>/`
 

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Selected projects and folders widget — GoVocal Page Builder</title>
+  <meta name="gv-surface" content="back-office" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-widgets.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-rail.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-widgets.js" defer></script>
+  <style>
+    /* Page-local layout only. The widget render + its config screen come from the
+       canonical registry (govocal-widgets.js/.css) — the SAME definitions the
+       homepage & project builders mount. This demo shows ONE widget + its config. */
+    html, body { margin: 0; }
+    body { font-family: var(--gv-font-family); background: var(--gv-bo-canvas); }
+    .wcx { display: grid; grid-template-columns: minmax(0,1fr) 380px; min-height: 100vh; align-items: start; }
+    .wcx-preview { padding: 28px; overflow: auto; }
+    .wcx-eyebrow { margin: 0 0 12px; font-size: var(--gv-fs-13); font-weight: 600; color: var(--gv-cool-grey-600); text-transform: uppercase; letter-spacing: .04em; }
+    .wcx-frame { background: var(--gv-white); border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); overflow: hidden; }
+    .wcx-config { background: var(--gv-white); border-left: 1px solid var(--gv-grey-300); padding: 22px 20px; min-height: 100vh; box-sizing: border-box; }
+    .wcx-config .gv-bo-cb-settings__title { margin: 0 0 6px; }
+    .wcx-confhint { margin: 0 0 18px; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); }
+    @media (max-width: 820px) { .wcx { grid-template-columns: 1fr; } .wcx-config { border-left: 0; border-top: 1px solid var(--gv-grey-300); min-height: 0; } }
+  </style>
+</head>
+<body class="gv-root">
+  <div class="wcx">
+    <section class="wcx-preview">
+      <p class="wcx-eyebrow">Page Builder widget · homepage</p>
+      <div class="wcx-frame" id="wcx-render"></div>
+    </section>
+    <aside class="wcx-config gv-bo" aria-label="Widget configuration">
+      <h2 class="gv-bo-cb-settings__title" id="wcx-title">Selected projects and folders</h2>
+      <p class="wcx-confhint">Configuration screen — the same panel the builder shows.</p>
+      <div id="wcx-body"></div>
+    </aside>
+  </div>
+  <script>
+  var WCX_SURFACE = "homepage", WCX_TYPE = "selection";
+  window.addEventListener('DOMContentLoaded', function () {
+    if (!window.GVWidgets) return;
+    GVWidgets.config({ img: '../../pages/homepage/img/' });
+    var reg = GVWidgets[WCX_SURFACE][WCX_TYPE]; if (!reg) return;
+    var render = document.getElementById('wcx-render');
+    var block = document.createElement('div'); block.setAttribute('data-widget', WCX_TYPE);
+    block.innerHTML = reg.make ? reg.make(block) : '';
+    render.appendChild(block);
+    if (window.GVIcons) GVIcons.render(render);
+    if (window.GVAvatars) GVAvatars.fill(render);
+    if (window.GVRail && GVRail.init) GVRail.init(render);
+    document.getElementById('wcx-title').textContent = reg.label || WCX_TYPE;
+    var body = document.getElementById('wcx-body');
+    var demoApi = { panel: body, frame: render, root: document.body, toast: function () {}, makeBlock: function () { return document.createElement('div'); }, select: function () { renderConfig(); } };
+    function renderConfig() {
+      body.innerHTML = reg.settings ? reg.settings(block) : '<p class="hb-help">This widget has no configuration options.</p>';
+      if (window.GVIcons) GVIcons.render(body);
+      try { if (reg.wire) reg.wire(block, demoApi); } catch (e) {}
+    }
+    if (reg.onMount) try { reg.onMount(block, demoApi); } catch (e) {}
+    renderConfig();
+  });
+  </script>
+</body>
+</html>
