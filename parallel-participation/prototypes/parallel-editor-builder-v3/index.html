@@ -2152,8 +2152,9 @@
     #cb-settings-body .cb-vchip button.on { background:#1a1f2c; color:#fff; }
     #cb-settings-body .cb-vchip-name { font-size:12px; color:var(--gv-cool-grey-600); margin:0; }
     /* A–E config-panel switcher pinned to the top of the panel. */
-    #cb-settings-body .cb-vchip--top { display:flex; margin:0 0 16px; }
+    #cb-settings-body .cb-vchip--top { display:flex; margin:0 0 14px; }
     #cb-settings-body .cb-vchip--top button { flex:1; text-align:center; }
+    #cb-settings-body .cb-toggrow--top { margin:0 0 4px; padding-bottom:14px; border-bottom:1px solid var(--gv-grey-200); }
     #cb-settings-body .cb-pfooter { margin-top:18px; padding-top:14px; border-top:1px solid var(--gv-grey-200); }
 
     /* ── Configuration-panel designs (method picker A–E) ── */
@@ -6205,6 +6206,7 @@
             '<button type="button" data-pv="D" title="Compact table">D</button>' +
             '<button type="button" data-pv="E" title="Selectable cards">E</button>' +
           '</div>' +
+          '<div class="cb-toggrow cb-toggrow--top"><label class="gv-toggle"><input type="checkbox" data-set="showppl"><span class="track"></span></label><span>Show all project participants</span></div>' +
           '<div id="cb-pbox-panel"></div>';
       }
       if (widget === 'file-attachment') {
@@ -6564,15 +6566,18 @@
       function renderModule() { cbSetBody(block, cbPboxBodyHTML(st)); }   // module is fixed (direction A)
       var cont = panel.querySelector('#cb-pbox-panel');
 
-      // Footer shared across every panel design: the participants toggle, and (only when 3+
-      // active methods are on, so the module collapses) the aggregate button title.
+      // Footer shared across every panel design: only the aggregate button title, and only
+      // when 3+ active methods are on (so the module collapses to one button).
       function footerHTML() {
         var nActive = st.methods.filter(function (m) { return m.visible && pbActive(m); }).length;
-        return '<div class="cb-pfooter">' +
-          '<div class="cb-toggrow"><label class="gv-toggle"><input type="checkbox" data-set="showppl"' + (st.showParticipants ? ' checked' : '') + '><span class="track"></span></label><span>Show all project participants</span></div>' +
-          (nActive > 2 ? '<div class="cb-setseg">Collapsed button title</div><input class="gv-input" data-set="aggtitle" value="' + (st.aggTitle || '') + '">' : '') +
-        '</div>';
+        return nActive > 2
+          ? '<div class="cb-pfooter"><div class="cb-setseg">Collapsed button title</div><input class="gv-input" data-set="aggtitle" value="' + (st.aggTitle || '') + '"></div>'
+          : '';
       }
+
+      // The participants toggle is static (top of panel, below the switcher) — wire it once.
+      var showTop = panel.querySelector('[data-set="showppl"]');
+      if (showTop) { showTop.checked = st.showParticipants; showTop.addEventListener('change', function () { st.showParticipants = this.checked; renderModule(); }); }
 
       // Render the selected panel design + footer, then (re-)wire the shared data hooks.
       function syncPanel() {
@@ -6586,8 +6591,6 @@
             renderModule(); syncPanel();   // footer (agg-title) + card highlight follow the change
           });
         });
-        var show = cont.querySelector('[data-set="showppl"]');
-        if (show) show.addEventListener('change', function () { st.showParticipants = this.checked; renderModule(); });
         var agg = cont.querySelector('[data-set="aggtitle"]');
         if (agg) agg.addEventListener('input', function () { st.aggTitle = this.value; renderModule(); });
       }
