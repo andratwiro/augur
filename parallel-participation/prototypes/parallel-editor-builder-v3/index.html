@@ -2345,7 +2345,7 @@
 </style>
 </head>
 <body class="gv-bo min-h-screen" data-gv-theme-picker="off">
-<div class="gv-bo-shell is-rail" data-nav-mode="1">
+<div class="gv-bo-shell is-rail" data-nav-mode="5">
 
   <!-- ── Real GoVocal back-office sidebar (collapsed icon rail) ──── -->
   <nav class="gv-bo-side is-rail" aria-label="Admin">
@@ -2426,7 +2426,7 @@
     <!-- Left side panel: project + phases -->
     <section class="flex flex-col bg-white border-r border-gray-200" style="width:280px;">
       <!-- nav -->
-      <div id="proj-nav" class="flex-1 overflow-y-auto px-3 py-4" data-nav-mode="1">
+      <div id="proj-nav" class="flex-1 overflow-y-auto px-3 py-4" data-nav-mode="5">
 
         <!-- Text-led project menu (committed direction): no icons — labels carry the meaning.
              The icon-only blue rail keeps its icons (it has no labels). Explorer with all the
@@ -4741,11 +4741,11 @@
      Numbered to keep button widths stable; each option's name is in its title= tooltip. -->
 <div class="nav-chip" role="group" aria-label="Project-nav architecture">
   <span class="label">Nav</span>
-  <button class="on" title="1 · Manage label — Project page stands alone; a quiet 'Manage' heading groups the five tabs as a peer section (like Timeline/Extras). No chevron. Recommended." onclick="setNavMode(1, this)">1</button>
+  <button class="on" title="5 · Current — today's chevron disclosure on Project page, unchanged (baseline)." onclick="setNavMode(5, this)">5</button>
+  <button title="1 · Manage label — Project page stands alone; a quiet 'Manage' heading groups the five tabs as a peer section (like Timeline/Extras). No chevron. Recommended." onclick="setNavMode(1, this)">1</button>
   <button title="2 · Project header — one 'Project' heading over all six destinations, flat. Minimal, single grammar." onclick="setNavMode(2, this)">2</button>
   <button title="3 · Manage, collapsible — progressive disclosure: the five admin tabs tuck away under a 'Manage' toggle; daily driver sees page + timeline." onclick="setNavMode(3, this)">3</button>
   <button title="4 · Indented — commit to the chevron's literal reading: indent the five as children of Project page." onclick="setNavMode(4, this)">4</button>
-  <button title="5 · Current — today's chevron disclosure on Project page, unchanged (baseline)." onclick="setNavMode(5, this)">5</button>
   <span class="nav-chip__div" aria-hidden="true"></span>
   <button title="6 · Horizontal tabs — the facets become a tab strip under the title (like the real product); the rail is now the pure phase timeline. Strongest structural fix." onclick="setNavMode(6, this)">6</button>
   <button title="7 · Timeline-first — reorder the rail so the phase spine leads; the config cluster demotes below it." onclick="setNavMode(7, this)">7</button>
