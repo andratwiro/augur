@@ -430,6 +430,7 @@ window.GVWidgets = (function () {
         '<div class="gv-phasepanel__desc"><p>' + p.desc + '</p></div>';
     }
     function cbTimelineHTML() {
+      if (!CB_PHASES.length) return '<section class="gv-phases cb-timeline"><div class="gv-phases__bar"><h2>Phases</h2></div><div class="cb-empty-hint">No phases yet — add one from the project timeline.</div></section>';
       var steps = CB_PHASES.map(function (p, i) {
         var cur = i === CB_CURRENT, dot = cur ? '<span class="gv-pstep__dot"></span>' : '';
         return '<button class="gv-phase' + (cur ? ' current' : '') + '" type="button" role="tab" data-i="' + i + '" aria-selected="' + (i === CB_CURRENT) + '"><span class="gv-pstep">' + dot + (i + 1) + '</span><span class="gv-phase__label">' + p.name + '</span></button>';
@@ -458,6 +459,263 @@ window.GVWidgets = (function () {
         '<a class="gv-btn text" href="#">View all events</a></div><div class="gv-events__grid">' + CB_EVENTS.slice(0, n).map(cbEventCard).join('') + '</div></section>';
     }
 
+    // ── Participation Box (5-direction) + Extra surveys — promoted from
+    //    parallel-editor-builder-v3 (latest). cbSetBody/PBOX_*/SURVEY_* + render. ──
+
+    // ══════════ Participation Box + Extra surveys — original-prototype behaviour ══════════
+    // Replace a block's body (everything after its .gv-bo-cb-block__label) with new HTML.
+    function cbSetBody(block, html) {
+      var label = block.querySelector('.gv-bo-cb-block__label');
+      while (block.lastChild && block.lastChild !== label) block.removeChild(block.lastChild);
+      var tmp = document.createElement('div'); tmp.innerHTML = html;
+      while (tmp.firstChild) block.appendChild(tmp.firstChild);
+      if (window.GVIcons) window.GVIcons.render(block);
+      if (window.GVAvatars) window.GVAvatars.fill(block);
+    }
+
+    // ── Participation Box: aggregates the project's ACTIVE participation methods ──
+    // Filled (tenant-brand) button = the current-phase method; parallel/extra methods
+    // are outlined. >2 visible methods collapse into one editable "Participate" button.
+    var PBOX_STATE = {};
+    function cbPboxDefault() {
+      // Each method carries: type, run dates, temporal status (active/upcoming/past),
+      // timeline=true (a phase method, system-driven) and current=true (the live phase).
+      // `panel` = which CONFIGURATION-PANEL design (A–E) is shown — a prototype experiment
+      // on the right-side settings. The rendered module itself is fixed (direction A).
+      if (PBOX_METHODS_OVERRIDE) return { panel: 'A', showParticipants: true, aggTitle: PBOX_AGG_OVERRIDE || 'Participate', methods: PBOX_METHODS_OVERRIDE.map(function (m) { return Object.assign({}, m); }) };
+      return { panel: 'A', showParticipants: true, aggTitle: 'Participate · 3 ways', methods: [
+        { id:'m_idea',    type:'ideation',     label:'Upload your idea for the neighbourhood park', cta:'Submit your idea',    dates:'20 May – 10 Jun', status:'active',   timeline:true,  current:true,  visible:true  },
+        { id:'m_qa',      type:'information',  label:'Ask the budget team anything',                cta:'Ask a question',      dates:'Ongoing',         status:'active',   timeline:false, current:false, visible:true  },
+        { id:'m_school',  type:'survey',       label:'School survey',                               cta:'Opens 1 Jul',         dates:'1 – 20 Jul',      status:'upcoming', timeline:false, current:false, visible:true  },
+        { id:'m_travel',  type:'survey',       label:'School-run travel survey',                    cta:'Opens 1 Jul',         dates:'1 – 15 Jul',      status:'upcoming', timeline:false, current:false, visible:true  },
+        { id:'m_vote',    type:'voting',       label:'Community vote',                              cta:'Opens 12 Jul',        dates:'12 – 26 Jul',     status:'upcoming', timeline:true,  current:false, visible:true  },
+        { id:'m_budget',  type:'survey',       label:'Spring budget priorities',                    cta:'Closed 17 days ago',  dates:'Closed 2 Jun',    status:'past',     timeline:false, current:false, visible:false },
+        { id:'m_offline', type:'volunteering', label:'Offline test',                                cta:'Sign up',             dates:'Ongoing',         status:'active',   timeline:false, current:false, visible:false }
+      ] };
+    }
+    function cbPboxState(block) { if (!PBOX_STATE[block.id]) PBOX_STATE[block.id] = cbPboxDefault(); return PBOX_STATE[block.id]; }
+
+    // ── Method-presentation helpers ──
+    var PBOX_TYPES  = { ideation:'Ideation', survey:'Survey', voting:'Voting', information:'Q&A', volunteering:'Volunteering', mapping:'Mapping' };
+    var PBOX_STATUS = { active:['open','Open'], upcoming:['upcoming','Upcoming'], past:['closed','Closed'] };
+    function pbType(m)  { return '<span class="pbm-type">' + (PBOX_TYPES[m.type] || m.type) + '</span>'; }
+    function pbPill(m)  { var s = PBOX_STATUS[m.status] || PBOX_STATUS.active; return '<span class="gv-statuspill ' + s[0] + '">' + s[1] + '</span>'; }
+    function pbDates(m) { return '<span class="pbm-dates"><span class="gv-icon" data-gv-icon="calendar"></span>' + m.dates + '</span>'; }
+    function pbBtn(m, style, dis) { return '<a class="gv-btn full ' + style + '" href="#"' + (dis ? ' aria-disabled="true"' : '') + '>' + m.cta + '</a>'; }
+    function pbActive(m) { return m.status === 'active'; }
+    function pbOrder(a, b) {                              // current first, then active → upcoming → past
+      if (!!a.current !== !!b.current) return a.current ? -1 : 1;
+      var rank = { active:0, upcoming:1, past:2 };
+      return (rank[a.status] || 0) - (rank[b.status] || 0);
+    }
+    var PBOX_EMPTY = '<div class="gv-pbox__empty">No active methods</div>';
+
+    // ── 5 design directions. Each renders the project's visible methods differently;
+    //    the timeline (current-phase) method is highlighted. Add a key to add a chip. ──
+    var PBOX_DIRECTIONS = {
+      // A — Action stack (today): active methods only, as full-width buttons.
+      A: { name: 'A · Action stack — buttons only (today)', render: function (st, vis) {
+        var act = vis.filter(pbActive).sort(pbOrder);
+        if (!act.length) return PBOX_EMPTY;
+        var cta = act.length <= 2
+          ? act.map(function (m) { return pbBtn(m, m.current ? 'primary' : 'secondary-outlined'); }).join('')
+          : pbBtn({ cta: st.aggTitle || 'Participate' }, 'primary');
+        return '<div class="gv-pbox__actions">' + cta + '</div>';
+      } },
+      // B — Detailed rows: active methods with type + dates inline; current phase accented.
+      B: { name: 'B · Detailed rows — type + dates', render: function (st, vis) {
+        var act = vis.filter(pbActive).sort(pbOrder);
+        if (!act.length) return PBOX_EMPTY;
+        return '<div class="pbm-rows">' + act.map(function (m) {
+          return '<div class="pbm-row' + (m.current ? ' is-current' : '') + '">' +
+            '<div class="pbm-row__info">' +
+              '<div class="pbm-row__top">' + pbType(m) + (m.current ? '<span class="pbm-flag">Timeline</span>' : '') + '</div>' +
+              '<div class="pbm-row__name">' + m.label + '</div>' + pbDates(m) +
+            '</div>' + pbBtn(m, m.current ? 'primary' : 'secondary-outlined') +
+          '</div>';
+        }).join('') + '</div>';
+      } },
+      // C — Full roster: every method (active + upcoming + past), status pill + dates.
+      //     Inactive ones are muted and non-interactive — the whole arc at a glance.
+      C: { name: 'C · Full roster — all states', render: function (st, vis) {
+        var all = vis.slice().sort(pbOrder);
+        if (!all.length) return PBOX_EMPTY;
+        return '<div class="pbm-roster">' + all.map(function (m) {
+          return '<div class="pbm-rosteritem' + (m.current ? ' is-current' : '') + (pbActive(m) ? '' : ' is-inactive') + '">' +
+            '<div class="pbm-rosteritem__head">' + pbType(m) + pbPill(m) + '</div>' +
+            '<div class="pbm-rosteritem__name">' + m.label + '</div>' + pbDates(m) +
+            (pbActive(m) ? pbBtn(m, m.current ? 'primary' : 'secondary-outlined') : '<span class="pbm-cta-muted">' + m.cta + '</span>') +
+          '</div>';
+        }).join('') + '</div>';
+      } },
+      // D — Featured + compact: current-phase method featured, other active ones compact.
+      D: { name: 'D · Featured current + compact rest', render: function (st, vis) {
+        var act = vis.filter(pbActive);
+        var cur = act.filter(function (m) { return m.current; })[0];
+        var rest = act.filter(function (m) { return !m.current; }).sort(pbOrder);
+        var out = '';
+        if (cur) {
+          out += '<div class="pbm-feature">' +
+            '<div class="pbm-feature__head">' + pbType(cur) + '<span class="pbm-flag">Timeline</span></div>' +
+            '<div class="pbm-feature__name">' + cur.label + '</div>' + pbDates(cur) + pbBtn(cur, 'primary') + '</div>';
+        }
+        if (rest.length) {
+          out += '<div class="pbm-compact">' + rest.map(function (m) {
+            return '<a class="pbm-compactrow" href="#">' + pbType(m) + '<span class="pbm-compactrow__cta">' + m.cta + '</span><span class="gv-icon" data-gv-icon="chevron-right"></span></a>';
+          }).join('') + '</div>';
+        }
+        return out || PBOX_EMPTY;
+      } },
+      // E — Grouped by track: "Current phase" (timeline spine) vs "Other ways to take part"
+      //     (admin-curated extras). Active only; mirrors the timeline-vs-extra split.
+      E: { name: 'E · Grouped — phase vs extras', render: function (st, vis) {
+        var act = vis.filter(pbActive);
+        function grp(label, items) {
+          if (!items.length) return '';
+          return '<div class="pbm-group"><div class="pbm-group__label">' + label + '</div>' +
+            items.sort(pbOrder).map(function (m) {
+              return '<div class="pbm-grouprow' + (m.current ? ' is-current' : '') + '">' +
+                '<div class="pbm-grouprow__info">' + pbType(m) + '<span class="pbm-grouprow__name">' + m.label + '</span>' + pbDates(m) + '</div>' +
+                pbBtn(m, m.current ? 'primary' : 'secondary-outlined') + '</div>';
+            }).join('') + '</div>';
+        }
+        var out = grp('Current phase', act.filter(function (m) { return m.timeline; })) +
+                  grp('Other ways to take part', act.filter(function (m) { return !m.timeline; }));
+        return out || PBOX_EMPTY;
+      } }
+    };
+
+    // The rendered module is FINAL (direction A — the action stack). The A–E experiment now
+    // lives entirely in the configuration panel, not here.
+    function cbPboxBodyHTML(st) {
+      var vis = st.methods.filter(function (m) { return m.visible; });
+      var inner = PBOX_DIRECTIONS.A.render(st, vis);
+      var people = st.showParticipants
+        ? '<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+19 participants <span class="cb-pbox__info" data-gv-icon="info-solid"></span></span></div>'
+        : '';
+      return '<div class="gv-pbox gv-pbox--dir-a">' + inner + people + '</div>';
+    }
+
+    // ── 5 CONFIGURATION-PANEL designs (the A–E chip switches these). Every design uses the
+    //    same data hooks — checkbox [data-mi] per method, [data-set=showppl], [data-set=aggtitle]
+    //    — so one wiring pass binds them all. They differ in layout only. ──
+    function pbTypeStr(m) { return PBOX_TYPES[m.type] || m.type; }
+    function pbPanelPill(m) { var s = PBOX_STATUS[m.status] || PBOX_STATUS.active; return '<span class="gv-statuspill ' + s[0] + '">' + s[1] + '</span>'; }
+    var PBOX_PANELS = {
+      // A — Checklist (today): checkbox + name + type · dates · status pill.
+      A: { name: 'Checklist', render: function (st) {
+        return '<div class="cb-mlist">' + st.methods.map(function (m, i) {
+          return '<label class="cb-mrow' + (m.current ? ' is-current' : '') + '">' +
+            '<input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + (m.current ? ' disabled' : '') + '>' +
+            '<span class="cb-mrow__body"><span class="cb-mrow__name">' + m.label + (m.current ? ' <span class="cb-mflag">Timeline</span>' : '') + '</span>' +
+            '<span class="cb-mrow__meta">' + pbTypeStr(m) + ' · ' + m.dates + ' ' + pbPanelPill(m) + '</span></span></label>';
+        }).join('') + '</div>';
+      } },
+      // B — Toggle switches, grouped by status (Active / Upcoming / Past).
+      B: { name: 'Toggles by status', render: function (st) {
+        function grp(label, st_) {
+          var items = st.methods.filter(function (m) { return m.status === st_; });
+          if (!items.length) return '';
+          return '<div class="cb-mgroup"><div class="cb-mgroup__h">' + label + '</div>' + items.map(function (m) {
+            var i = st.methods.indexOf(m);
+            return '<div class="cb-mtog' + (m.current ? ' is-current' : '') + '">' +
+              '<span class="cb-mtog__info"><span class="cb-mtog__name">' + m.label + (m.current ? ' <span class="cb-mflag">Timeline</span>' : '') + '</span>' +
+              '<span class="cb-mtog__type">' + pbTypeStr(m) + ' · ' + m.dates + '</span></span>' +
+              '<label class="gv-toggle"><input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + (m.current ? ' disabled' : '') + '><span class="track"></span></label></div>';
+          }).join('') + '</div>';
+        }
+        return grp('Active', 'active') + grp('Upcoming', 'upcoming') + grp('Past', 'past');
+      } },
+      // C — Grouped by track: the timeline (current-phase) method locked on top, then the
+      //     currently-open extras, then upcoming ones (on by default; toggle off to hide).
+      //     Past methods are intentionally hidden in this configuration.
+      C: { name: 'By track', render: function (st) {
+        function row(m) {
+          var i = st.methods.indexOf(m), locked = m.current;
+          return '<label class="cb-mrow' + (m.current ? ' is-current' : '') + '">' +
+            '<input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + (locked ? ' disabled' : '') + '>' +
+            '<span class="cb-mrow__body"><span class="cb-mrow__name">' + m.label + (locked ? ' <span class="cb-mflag">Timeline</span>' : '') + '</span>' +
+            '<span class="cb-mrow__meta">' + pbTypeStr(m) + ' · ' + m.dates + ' ' + pbPanelPill(m) + '</span></span></label>';
+        }
+        function grp(label, hint, items) {
+          if (!items.length) return '';
+          return '<div class="cb-mgroup"><div class="cb-mgroup__h">' + label + (hint ? ' <span class="cb-mgroup__hint">' + hint + '</span>' : '') + '</div>' + items.map(row).join('') + '</div>';
+        }
+        var timeline  = st.methods.filter(function (m) { return m.current; });                          // current phase, locked
+        var openExtra = st.methods.filter(function (m) { return m.status === 'active' && !m.current; }); // currently open
+        var upcoming  = st.methods.filter(function (m) { return m.status === 'upcoming'; });             // not yet open
+        return grp('Timeline', 'always shown', timeline) +
+               grp('Currently open', 'on by default · toggle off to hide', openExtra) +
+               grp('Upcoming', 'on by default · toggle off to hide', upcoming);
+      } },
+      // D — Compact table: Show · Method · Type · Runs · Status.
+      D: { name: 'Compact table', render: function (st) {
+        var rows = st.methods.map(function (m, i) {
+          return '<tr class="' + (m.current ? 'is-current' : '') + '">' +
+            '<td><input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + (m.current ? ' disabled' : '') + '></td>' +
+            '<td class="cb-mt__name">' + m.label + '</td><td>' + pbTypeStr(m) + '</td><td class="cb-mt__dates">' + m.dates + '</td><td>' + pbPanelPill(m) + '</td></tr>';
+        }).join('');
+        return '<table class="cb-mtable"><thead><tr><th>Show</th><th>Method</th><th>Type</th><th>Runs</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      } },
+      // E — Selectable cards: click a card to include it; selected cards highlighted.
+      E: { name: 'Selectable cards', render: function (st) {
+        return '<div class="cb-mcards">' + st.methods.map(function (m, i) {
+          return '<label class="cb-mcard' + (m.visible ? ' is-on' : '') + (m.current ? ' is-current' : '') + '">' +
+            '<input type="checkbox" data-mi="' + i + '"' + (m.visible ? ' checked' : '') + (m.current ? ' disabled' : '') + '>' +
+            '<span class="cb-mcard__top"><span class="pbm-type">' + pbTypeStr(m) + '</span>' + pbPanelPill(m) + '</span>' +
+            '<span class="cb-mcard__name">' + m.label + (m.current ? ' <span class="cb-mflag">Timeline</span>' : '') + '</span>' +
+            '<span class="cb-mcard__dates">' + m.dates + '</span></label>';
+        }).join('') + '</div>';
+      } }
+    };
+
+    // ── Extra survey: a linked survey rendered as a button or a full card,
+    //    in GoVocal primary (navy) or secondary (soft teal) style. ──
+    var SURVEY_STATE = {};
+    var SURVEY_DATA = { mobility: {
+      name:'Mobility check-in',
+      range:'1 – 15 Jun 2026 · Ongoing',
+      status:'Ongoing',
+      desc:'A 2-minute survey on how you move around the city this month — your answers feed the mobility plan.',
+      cta:'Take the survey',
+      minutes:'2 min', questions:8, responses:248, closesIn:'Closes in 5 days', progress:64
+    } };
+    function cbSurveyState(block) { if (!SURVEY_STATE[block.id]) SURVEY_STATE[block.id] = { survey:'mobility', format:'card', style:'primary', label:'', cardVariant:'easy', state:'current' }; return SURVEY_STATE[block.id]; }
+    // Temporal states — the radios at the bottom of the config. Each mirrors one of the
+    // three FO "Extra survey — three states" cards (status pill + meta row + CTA treatment).
+    var SURVEY_STATES = {
+      current:    { pill:'open',     pillText:'Open',     m1:'<span class="gv-icon" data-gv-icon="clock"></span> Closes in 5 days',    m2:'<span class="gv-icon" data-gv-icon="check"></span> 248 responses',          cta:'Take the survey', btn:'primary',            dis:false, allowLabel:true  },
+      notstarted: { pill:'upcoming', pillText:'Upcoming', m1:'<span class="gv-icon" data-gv-icon="calendar"></span> Opens 1 Jul 2026', m2:'<span class="gv-icon" data-gv-icon="survey"></span> 8 questions',           cta:'Opens 1 Jul',     btn:'primary',            dis:true,  allowLabel:false },
+      past:       { pill:'closed',   pillText:'Closed',   m1:'<span class="gv-icon" data-gv-icon="check"></span> 412 responses',        m2:'<span class="gv-icon" data-gv-icon="calendar"></span> Closed 2 Jun 2026',   cta:'Closed 17 days ago', btn:'secondary-outlined', dis:true,  allowLabel:false },
+      // Survey still open, but THIS resident has already responded — a personal done-state.
+      taken:      { pill:'done',     pillText:'Completed',  m1:'<span class="gv-icon" data-gv-icon="check"></span> You responded 3 days ago', m2:'<span class="gv-icon" data-gv-icon="clock"></span> Closes in 5 days', cta:'<span class="gv-icon" data-gv-icon="check"></span> Thanks — response received', btn:'secondary-outlined', dis:true, allowLabel:false },
+      // Survey open, but this resident can't take it (group/verification/area permission). Rough — treatment TBD.
+      ineligible: { pill:'locked',   pillText:'Restricted', m1:'<span class="gv-icon" data-gv-icon="lock"></span> Verified residents only', m2:'<span class="gv-icon" data-gv-icon="clock"></span> Closes in 5 days', cta:'<span class="gv-icon" data-gv-icon="lock"></span> You’re not eligible to take this survey', btn:'secondary-outlined', dis:true, allowLabel:false }
+    };
+    function cbSurveyHTML(survey, format, style, label, variant, state) {
+      if (!survey) return '<div class="gv-extra-survey__empty"><div class="gv-extra-survey__empty-t">📣 Survey</div><div class="gv-extra-survey__empty-s">Select a survey to link in the panel on the right.</div></div>';
+      var s = SURVEY_DATA[survey] || SURVEY_DATA.mobility;
+      var stt = SURVEY_STATES[state] || SURVEY_STATES.current;
+      // CTA: the state drives the treatment. The custom Button-text only overrides the
+      // live "current" CTA; not-started/past carry their own fixed copy + style.
+      var ctaText = (stt.allowLabel && label && label.trim()) || stt.cta;
+      // Live state honours the Primary/Secondary picker; the other states are state-driven.
+      // Canonical .gv-btn pair — the SAME as the participation box (primary fill / outlined).
+      var btnStyle = (state && state !== 'current') ? stt.btn : (style === 'secondary' ? 'secondary-outlined' : 'primary');
+      var btn = '<a class="gv-btn full ' + btnStyle + '" href="#"' + (stt.dis ? ' aria-disabled="true"' : '') + '>' + ctaText + '</a>';
+      if (format === 'button') return '<div class="gv-extra-survey">' + btn + '</div>';
+      // Card view = canonical Easy-read layout (tag+pill, title, description, CTA).
+      // NOTE: no meta row between title and description — the state shows in the pill + CTA.
+      return '<div class="gv-extra-survey gv-extra-survey--card">' +
+        '<div class="es-head">' +
+          '<span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span>' +
+          '<span class="gv-statuspill ' + stt.pill + '">' + stt.pillText + '</span>' +
+        '</div>' +
+        '<h3 class="gv-extra-survey__title">' + s.name + '</h3>' +
+        '<p class="gv-extra-survey__desc">' + s.desc + '</p>' +
+        btn + '</div>';
+    }
+
     // ── widget content (make) ──
     var MK = {
       'text': function () { return '<div class="gv-bo-cb-block__body"><div class="cb-richtext cb-p" contenteditable="true">This is some text. You can edit and format it by using the editor in the panel on the right.</div></div>'; },
@@ -468,7 +726,8 @@ window.GVWidgets = (function () {
       'white-space': function () { return '<div class="cb-ws"></div>'; },
       'accordion': function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">Accordion title</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">Hidden panel content the resident can expand.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; },
       'iframe': function () { return '<div class="cb-iframe">&lt;/&gt; Embedded content<span class="cb-iframe__cap">Paste a URL to embed</span></div>'; },
-      'participation-box': function () { return '<div class="cb-pbox"><div class="cb-pbox__actions"><a class="gv-btn primary" data-pbox="cta" href="#">' + cbCurrentCTA() + '</a><a class="gv-btn primary-outlined" data-pbox="events" href="#">Upcoming events</a></div><div class="gv-participants cb-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount"><span data-pbox="count">2,435</span> contributions</span></div></div>'; },
+      'participation-box': function () { return cbPboxBodyHTML(cbPboxDefault()); },
+      'extra-surveys': function () { return cbSurveyHTML('mobility', 'card', 'primary', '', 'easy', 'current'); },
       'file-attachment': function () { return '<div class="cb-file"><span class="gv-icon" data-gv-icon="download"></span><span class="cb-file__info"><span class="cb-file__name">project-brief.pdf</span><span class="cb-file__meta">PDF · 1.2 MB</span></span></div>'; },
       'image-text-cards': function () { return '<div class="cb-cards" data-n="3"><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card one</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card two</div></div><div class="cb-card"><div class="cb-card__img"></div><div class="cb-card__cap">Card three</div></div></div>'; },
       'info-accordions': function () { return '<div class="cb-accordion"><div class="cb-accordion__head"><span class="cb-accordion__title">How will my input be used?</span> <span class="gv-icon" data-gv-icon="chevron-down"></span></div><div class="cb-accordion__body cb-zone--empty" data-cb-zone="accordion"><div class="cb-accordion__text cb-p">An explanation of the process.</div><div class="cb-zone__ph">Drop content here</div></div></div>'; },
@@ -477,8 +736,8 @@ window.GVWidgets = (function () {
       'hero': function () { return '<div class="cb-hero"><img class="cb-hero__img" src="https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=1400&h=400&fit=crop" alt="Project banner"></div>'; },
       'title': function () { return '<h1 class="gv-title h1 cb-title" contenteditable="true">Let’s Reimagine Dorothea Dix Park</h1>'; }
     };
-    var LABEL = { 'text': 'Text', 'button': 'Button', 'image': 'Image', 'two-column': '2 column', 'three-column': '3 column', 'white-space': 'White space', 'accordion': 'Accordion', 'iframe': 'Embed', 'participation-box': 'Participation Box', 'file-attachment': 'File Attachment', 'image-text-cards': 'Image & text cards', 'info-accordions': 'Info & accordions', 'timeline': 'Timeline', 'events': 'Events', 'hero': 'Project image', 'title': 'Project title' };
-    var TX = { text: 1, button: 1, accordion: 1, 'info-accordions': 1, 'participation-box': 1, 'image-text-cards': 1, title: 1 };
+    var LABEL = { 'text': 'Text', 'button': 'Button', 'image': 'Image', 'two-column': '2 column', 'three-column': '3 column', 'white-space': 'White space', 'accordion': 'Accordion', 'iframe': 'Embed', 'participation-box': 'Participation Box', 'file-attachment': 'File Attachment', 'image-text-cards': 'Image & text cards', 'info-accordions': 'Info & accordions', 'timeline': 'Timeline', 'events': 'Events', 'extra-surveys': 'Extra surveys', 'hero': 'Project image', 'title': 'Project title' };
+    var TX = { text: 1, button: 1, accordion: 1, 'info-accordions': 1, 'image-text-cards': 1, title: 1 };
 
     // ── settings (bodyFor) ──
     function rteToolbar() {
@@ -500,11 +759,56 @@ window.GVWidgets = (function () {
       if (widget === 'white-space') return row('Height', '<select class="gv-bo-select" id="cb-f-wsheight"><option value="24">Small</option><option value="40" selected>Medium</option><option value="80">Large</option></select>');
       if (widget === 'accordion' || widget === 'info-accordions') return row('Title', '<input class="gv-input" id="cb-f-acctitle" value="Accordion title">') + row('Content', '<textarea class="gv-input" id="cb-f-acccontent" rows="4">Hidden panel content the resident can expand.</textarea>');
       if (widget === 'iframe') return row('Embed URL', '<input class="gv-input" id="cb-f-embedurl" placeholder="https://…">');
-      if (widget === 'participation-box') return row('Action label', '<input class="gv-input" data-set="cta" id="cb-f-cta" value="Take the survey">') + row('Events label', '<input class="gv-input" data-set="events" id="cb-f-events" value="Upcoming events">') + row('Contributions', '<input class="gv-input" data-set="count" id="cb-f-count" value="2,435">') + row('Show buttons', '<label class="gv-toggle"><input type="checkbox" data-set="btns" id="cb-f-btns" checked><span class="track"></span></label>') + row('Show contributions', '<label class="gv-toggle"><input type="checkbox" data-set="people" id="cb-f-people" checked><span class="track"></span></label>');
+      if (widget === 'participation-box') {
+        // Prototype: the A–E chips switch between configuration-panel DESIGNS (the module
+        // render itself is final). Bare chips pinned to the top; the binder fills #cb-pbox-panel.
+        return '<div class="cb-vchip cb-vchip--wrap cb-vchip--top" id="cb-pbox-switch" role="group" aria-label="Configuration panel design">' +
+            '<button type="button" data-pv="A" title="Checklist">A</button>' +
+            '<button type="button" data-pv="B" title="Toggles grouped by status">B</button>' +
+            '<button type="button" data-pv="C" title="By track — timeline locked, then open extras, then upcoming (past hidden)">C</button>' +
+            '<button type="button" data-pv="D" title="Compact table">D</button>' +
+            '<button type="button" data-pv="E" title="Selectable cards">E</button>' +
+          '</div>' +
+          '<div class="cb-toggrow cb-toggrow--top"><label class="gv-toggle"><input type="checkbox" data-set="showppl"><span class="track"></span></label><span>Show all project participants</span></div>' +
+          '<div id="cb-pbox-panel"></div>';
+      }
       if (widget === 'file-attachment') return row('Display name', '<input class="gv-input" id="cb-f-filename" value="project-brief.pdf">') + row('File', '<input class="gv-input" type="file" id="cb-f-filefile">');
       if (widget === 'image-text-cards') return row('Number of cards', '<select class="gv-bo-select" id="cb-f-cardcount"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>') + '<div id="cb-f-cardcaps"></div>';
       if (widget === 'timeline') { var op = CB_PHASES.map(function (p, i) { return '<option value="' + i + '"' + (i === CB_CURRENT ? ' selected' : '') + '>' + p.name + '</option>'; }).join(''); return row('Current phase', '<select class="gv-bo-select" id="cb-f-curphase">' + op + '</select>') + row('', '<p class="cb-p" style="color:var(--gv-cool-grey-600);font-size:var(--gv-fs-13)">The phase timeline mirrors the project’s phases. Residents see the same component.</p>'); }
       if (widget === 'events') return row('Events shown', '<select class="gv-bo-select" id="cb-f-eventcount"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select>');
+      if (widget === 'extra-surveys') {
+        return row('Survey', '<select class="gv-bo-select" data-set="survey"><option value="">Select a survey\u2026</option><option value="mobility">Mobility check-in</option></select>') +
+          '<div class="cb-setseg">Survey button format</div>' +
+          '<div class="cb-radiocol">' +
+            '<label class="gv-radio"><input type="radio" name="cb-svfmt" data-fmt="button"><span class="circle"></span>Button</label>' +
+            '<label class="gv-radio"><input type="radio" name="cb-svfmt" data-fmt="card"><span class="circle"></span>Card view</label>' +
+          '</div>' +
+          '<div class="cb-setseg">Button style</div>' +
+          '<div class="cb-radiocol">' +
+            '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="primary"><span class="circle"></span>Primary</label>' +
+            '<label class="gv-radio"><input type="radio" name="cb-svsty" data-sty="secondary"><span class="circle"></span>Secondary</label>' +
+          '</div>' +
+          // Card view renders a single fixed layout (the Easy-read card) \u2014 no layout
+          // picker. The full set of card-layout explorations lives in v2.
+          // Button label is translatable \u2014 the language switcher rides on this field (per-field, BO-only).
+          '<div class="cb-fieldhead">' +
+            '<span class="gv-bo-cb-settings__rowlabel">Button text</span>' +
+            '<div class="gv-bo-multiloc"><button type="button" class="is-active"><span class="done"></span>EN</button><button type="button"><span class="miss"></span>ES-ES</button></div>' +
+          '</div>' +
+          '<input class="gv-input" id="cb-f-svlabel" placeholder="Take the survey">' +
+          '<div class="cb-proto">' +
+            '<span class="cb-proto__tag"><span class="gv-icon" data-gv-icon="eye"></span> Prototype control — not a product setting</span>' +
+            '<p class="cb-proto__note">In the real product this is decided by the survey’s dates and whether the resident has already responded. Use it here to preview each state.</p>' +
+            '<div class="cb-setseg">Preview state</div>' +
+            '<div class="cb-radiocol">' +
+              '<label class="gv-radio"><input type="radio" name="cb-svstate" data-state="current"><span class="circle"></span>Current</label>' +
+              '<label class="gv-radio"><input type="radio" name="cb-svstate" data-state="notstarted"><span class="circle"></span>Not started</label>' +
+              '<label class="gv-radio"><input type="radio" name="cb-svstate" data-state="past"><span class="circle"></span>Past</label>' +
+              '<label class="gv-radio"><input type="radio" name="cb-svstate" data-state="taken"><span class="circle"></span>Taken (resident responded)</label>' +
+              '<label class="gv-radio"><input type="radio" name="cb-svstate" data-state="ineligible"><span class="circle"></span>Not eligible / no permission</label>' +
+            '</div>' +
+          '</div>';
+      }
       if (widget === 'hero') return row('Replace image', '<input class="gv-input" type="file" id="cb-f-herofile" accept="image/*">') + row('Image URL', '<input class="gv-input" id="cb-f-herourl" placeholder="https://…">');
       if (widget === 'title') return row('Project title', '<input class="gv-input" id="cb-f-ptitle" value="Let’s Reimagine Dorothea Dix Park">');
       return row('Settings', '<div class="cb-p">No additional settings for this element.</div>');
@@ -563,17 +867,84 @@ window.GVWidgets = (function () {
       })(heads[i]);
     }
     function bindParticipationBox(block, api) {
-      var card = block.querySelector('.cb-pbox'); var panel = api.panel;
-      function q(s) { return panel.querySelector('[data-set="' + s + '"]'); } function r(s) { return card ? card.querySelector('[data-pbox="' + s + '"]') : null; }
-      var ctaIn = q('cta'), eventsIn = q('events'), countIn = q('count'), btnsTgl = q('btns'), peopleTgl = q('people');
-      if (btnsTgl) btnsTgl.checked = !card.classList.contains('cb-pbox--nobtns');
-      if (peopleTgl) peopleTgl.checked = !card.classList.contains('cb-pbox--nopeople');
-      var ctaNode = r('cta'); if (ctaIn && ctaNode) ctaIn.value = (ctaNode.textContent || '').trim();
-      if (ctaIn) ctaIn.addEventListener('input', function () { var c = r('cta'); if (c) { c.textContent = this.value || 'Take part'; c.setAttribute('data-cta-custom', ''); } });
-      if (eventsIn) eventsIn.addEventListener('input', function () { var e = r('events'); if (e) e.textContent = this.value || 'Upcoming events'; });
-      if (countIn) countIn.addEventListener('input', function () { var c = r('count'); if (c) c.textContent = this.value || '0'; });
-      if (btnsTgl) btnsTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--nobtns', !this.checked); });
-      if (peopleTgl) peopleTgl.addEventListener('change', function () { card.classList.toggle('cb-pbox--nopeople', !this.checked); });
+      var st = cbPboxState(block);
+      function renderModule() { cbSetBody(block, cbPboxBodyHTML(st)); }   // module is fixed (direction A)
+      var cont = api.panel.querySelector('#cb-pbox-panel');
+
+      // Footer shared across every panel design: only the aggregate button title, and only
+      // when 3+ active methods are on (so the module collapses to one button).
+      function footerHTML() {
+        var nActive = st.methods.filter(function (m) { return m.visible && pbActive(m); }).length;
+        return nActive > 2
+          ? '<div class="cb-pfooter"><div class="cb-setseg">Collapsed button title</div><input class="gv-input" data-set="aggtitle" value="' + (st.aggTitle || '') + '"></div>'
+          : '';
+      }
+
+      // The participants toggle is static (top of panel, below the switcher) — wire it once.
+      var showTop = api.panel.querySelector('[data-set="showppl"]');
+      if (showTop) { showTop.checked = st.showParticipants; showTop.addEventListener('change', function () { st.showParticipants = this.checked; renderModule(); }); }
+
+      // Render the selected panel design + footer, then (re-)wire the shared data hooks.
+      function syncPanel() {
+        if (!cont) return;
+        cont.innerHTML = (PBOX_PANELS[st.panel] || PBOX_PANELS.A).render(st) + footerHTML();
+        if (window.GVIcons) window.GVIcons.render(cont);
+        cont.querySelectorAll('input[data-mi]:not([disabled])').forEach(function (inp) {
+          inp.addEventListener('change', function () {
+            st.methods[+this.dataset.mi].visible = this.checked;
+            var card = this.closest('.cb-mcard'); if (card) card.classList.toggle('is-on', this.checked);
+            renderModule(); syncPanel();   // footer (agg-title) + card highlight follow the change
+          });
+        });
+        var agg = cont.querySelector('[data-set="aggtitle"]');
+        if (agg) agg.addEventListener('input', function () { st.aggTitle = this.value; renderModule(); });
+      }
+
+      // ── Bare A–E chips (top of panel) — switch the CONFIGURATION-PANEL design ──
+      function syncChips() {
+        api.panel.querySelectorAll('#cb-pbox-switch button[data-pv]').forEach(function (b) { b.classList.toggle('on', b.dataset.pv === st.panel); });
+      }
+      api.panel.querySelectorAll('#cb-pbox-switch button[data-pv]').forEach(function (b) {
+        b.addEventListener('click', function () { st.panel = b.dataset.pv; syncChips(); syncPanel(); });
+      });
+
+      syncChips(); syncPanel();
+    }
+
+    function bindExtraSurveys(block, api) {
+      var st = cbSurveyState(block);
+      // Card view renders the single fixed Easy-read layout (no picker in v3).
+      st.cardVariant = 'easy';
+      function render() { cbSetBody(block, cbSurveyHTML(st.survey, st.format, st.style, st.label, st.cardVariant, st.state)); }
+      var sel = api.panel.querySelector('[data-set="survey"]');
+      if (sel) { sel.value = st.survey || ''; sel.addEventListener('change', function () { st.survey = this.value || null; render(); }); }
+      api.panel.querySelectorAll('input[data-fmt]').forEach(function (r) {
+        r.checked = (r.dataset.fmt === st.format);
+        r.addEventListener('change', function () { if (this.checked) { st.format = this.dataset.fmt; render(); } });
+      });
+      api.panel.querySelectorAll('input[data-sty]').forEach(function (r) {
+        r.checked = (r.dataset.sty === st.style);
+        r.addEventListener('change', function () { if (this.checked) { st.style = this.dataset.sty; render(); } });
+      });
+      // Temporal state — Current / Not started / Past (mirrors the FO three-state cards).
+      api.panel.querySelectorAll('input[data-state]').forEach(function (r) {
+        r.checked = (r.dataset.state === (st.state || 'current'));
+        r.addEventListener('change', function () { if (this.checked) { st.state = this.dataset.state; render(); } });
+      });
+      // Button text — renames what the resident sees on the CTA (per locale).
+      var lbl = api.panel.querySelector('#cb-f-svlabel');
+      if (lbl) {
+        lbl.value = st.label || '';
+        lbl.addEventListener('input', function () { st.label = this.value; render(); });
+      }
+      // Per-field language switcher (visual toggle only in this prototype).
+      api.panel.querySelectorAll('.cb-fieldhead .gv-bo-multiloc button').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var grp = b.parentNode;
+          grp.querySelectorAll('button').forEach(function (x) { x.classList.remove('is-active'); });
+          b.classList.add('is-active');
+        });
+      });
     }
     function wireBody(widget, block, api) {
       function pv(id) { return document.getElementById(id); } function bq(s) { return block.querySelector(s); }
@@ -589,7 +960,31 @@ window.GVWidgets = (function () {
       if (widget === 'events') { var evGrid = bq('.gv-events__grid'), evCount = pv('cb-f-eventcount'); if (evGrid && evCount) evCount.addEventListener('change', function () { evGrid.innerHTML = CB_EVENTS.slice(0, +evCount.value).map(cbEventCard).join(''); if (window.GVIcons) window.GVIcons.render(evGrid); }); return; }
       if (widget === 'hero') { var heroImg = bq('.cb-hero__img'), hf = pv('cb-f-herofile'), hu = pv('cb-f-herourl'); if (hf && heroImg) hf.addEventListener('change', function () { if (hf.files && hf.files[0]) heroImg.src = URL.createObjectURL(hf.files[0]); }); if (hu && heroImg) hu.addEventListener('input', function () { if (hu.value) heroImg.src = hu.value; }); return; }
       if (widget === 'title') { var h1 = bq('.cb-title'), tIn2 = pv('cb-f-ptitle'); if (h1 && tIn2) { tIn2.value = (h1.textContent || '').trim(); tIn2.addEventListener('input', function () { h1.textContent = tIn2.value; }); } return; }
+      if (widget === 'extra-surveys') { bindExtraSurveys(block, api); return; }
       if (widget === 'participation-box') { bindParticipationBox(block, api); return; }
+    }
+
+    // ── model injection (prototypes feed real phases/methods; default = sample) ──
+    var PBOX_METHODS_OVERRIDE = null, PBOX_AGG_OVERRIDE = null;
+    function applyModel(model, frame) {
+      model = model || {};
+      if (model.phases) {
+        CB_PHASES = model.phases.map(function (p) { return { name: p.name, method: p.method, cta: p.cta, dates: p.dates || 'Open now', desc: p.desc || 'This phase invites people to take part.' }; });
+        var li = -1; for (var i = 0; i < model.phases.length; i++) { if (model.phases[i].status === 'live' || model.phases[i].current) { li = i; break; } }
+        CB_CURRENT = li < 0 ? 0 : li;
+      }
+      if (model.events) CB_EVENTS = model.events;
+      if (model.methods) { PBOX_METHODS_OVERRIDE = model.methods; PBOX_AGG_OVERRIDE = model.aggTitle || null; }
+      if (!frame) return;
+      Array.prototype.forEach.call(frame.querySelectorAll('[data-widget="timeline"]'), function (b) { cbSetBody(b, cbTimelineHTML()); wireTimeline(b); });
+      Array.prototype.forEach.call(frame.querySelectorAll('[data-widget="participation-box"]'), function (b) {
+        var st = cbPboxState(b);
+        if (PBOX_METHODS_OVERRIDE) st.methods = PBOX_METHODS_OVERRIDE.map(function (m) { return Object.assign({}, m); });
+        if (PBOX_AGG_OVERRIDE) st.aggTitle = PBOX_AGG_OVERRIDE;
+        cbSetBody(b, cbPboxBodyHTML(st));
+      });
+      if (window.GVIcons) window.GVIcons.render(frame);
+      if (window.GVAvatars) window.GVAvatars.fill(frame);
     }
 
     // ── assemble the registry: every widget shares the dispatchers above ──
@@ -605,6 +1000,7 @@ window.GVWidgets = (function () {
       };
     });
     REG._meta = { tx: TX };   // which widgets show the panel-level locale switcher
+    REG._applyModel = applyModel;   // prototypes call GVWidgets.project._applyModel(model, frame)
     return REG;
   })();
 

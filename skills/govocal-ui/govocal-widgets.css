@@ -148,3 +148,118 @@
 /* toast (both builders) */
 .cb-toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--gv-grey-800); color: var(--gv-white); padding: 8px 14px; border-radius: 4px; font-size: var(--gv-fs-13); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 100000; }
 .cb-toast.is-show { opacity: .94; }
+
+/* ════════ Participation Box (5-direction) + Extra surveys ════════
+   Promoted from parallel-editor-builder-v3 (the latest versions). Canvas render
+   = direction A (action stack, .gv-pbox__actions in govocal-ui.css); the .pbm-*
+   rules below back the dormant B–E directions. The .cb-m*/.cb-vchip/.cb-proto
+   rules style the A–E configuration-panel designs in the settings panel. */
+.cb-toggrow { display:flex; align-items:center; gap:10px; margin:8px 0; font-size:14px; color:var(--gv-text-primary); }
+.cb-setseg { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--gv-cool-grey-600); margin:18px 0 8px; }
+    /* Method picker rows — checkbox + name/flag + type · dates · status pill. */
+.cb-mrow { display:flex; gap:10px; align-items:flex-start; padding:9px 0; cursor:pointer; border-top:1px solid var(--gv-grey-100); }
+.cb-mrow:first-child { border-top:0; }
+.cb-mrow input { accent-color:var(--gv-green-600); margin-top:2px; flex:none; width:16px; height:16px; }
+.cb-mrow__body { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.cb-mrow__name { font-size:13px; font-weight:600; color:var(--gv-text-primary); }
+.cb-mrow__meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:11px; color:var(--gv-cool-grey-600); }
+.cb-mrow.is-current { background:color-mix(in srgb, var(--gv-tenant-primary) 5%, #fff); margin:0 -10px; padding:9px 10px; border-radius:6px; border-top:0; }
+.cb-mflag { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--gv-tenant-primary); margin-left:6px; }
+    /* Design-direction chip — segmented A–E pill (same quiet treatment as the STATE chip). */
+.cb-vchip { display:inline-flex; gap:4px; padding:3px 4px; border:1px solid var(--gv-grey-300); border-radius:8px; background:#fff; margin-bottom:6px; }
+.cb-vchip--wrap { flex-wrap:wrap; }
+.cb-vchip button { border:0; background:transparent; border-radius:6px; padding:4px 12px; font-size:12px; font-weight:700; color:var(--gv-cool-grey-600); cursor:pointer; }
+.cb-vchip button:hover { background:#f4f6fa; }
+.cb-vchip button.on { background:#1a1f2c; color:#fff; }
+.cb-vchip-name { font-size:12px; color:var(--gv-cool-grey-600); margin:0; }
+    /* A–E config-panel switcher pinned to the top of the panel. */
+.cb-vchip--top { display:flex; margin:0 0 14px; }
+.cb-vchip--top button { flex:1; text-align:center; }
+.cb-toggrow--top { margin:0 0 4px; padding-bottom:14px; border-bottom:1px solid var(--gv-grey-200); }
+.cb-pfooter { margin-top:18px; padding-top:14px; border-top:1px solid var(--gv-grey-200); }
+
+    /* ── Configuration-panel designs (method picker A–E) ── */
+.cb-mgroup + .cb-mgroup { margin-top:16px; }
+.cb-mgroup__h { font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--gv-cool-grey-600); margin:0 0 6px; display:flex; align-items:baseline; gap:8px; }
+.cb-mgroup__hint { font-size:10px; font-weight:500; letter-spacing:0; text-transform:none; color:var(--gv-cool-grey-500); }
+    /* B — toggle rows */
+.cb-mtog { display:flex; align-items:center; gap:12px; padding:9px 0; border-top:1px solid var(--gv-grey-100); }
+.cb-mtog:first-child { border-top:0; }
+.cb-mtog__info { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.cb-mtog__name { font-size:13px; font-weight:600; color:var(--gv-text-primary); }
+.cb-mtog__type { font-size:11px; color:var(--gv-cool-grey-600); }
+.cb-mtog.is-current { background:color-mix(in srgb, var(--gv-tenant-primary) 5%, #fff); margin:0 -10px; padding:9px 10px; border-radius:6px; border-top:0; }
+    /* D — compact table */
+.cb-mtable { width:100%; border-collapse:collapse; font-size:12px; }
+.cb-mtable th { text-align:left; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--gv-cool-grey-500); padding:0 8px 6px 0; border-bottom:1px solid var(--gv-grey-300); }
+.cb-mtable td { padding:8px 8px 8px 0; border-bottom:1px solid var(--gv-grey-100); vertical-align:middle; }
+.cb-mtable .cb-mt__name { font-weight:600; color:var(--gv-text-primary); }
+.cb-mtable .cb-mt__dates { color:var(--gv-cool-grey-600); white-space:nowrap; }
+.cb-mtable tr.is-current td { background:color-mix(in srgb, var(--gv-tenant-primary) 5%, #fff); }
+.cb-mtable input { accent-color:var(--gv-green-600); width:16px; height:16px; }
+    /* E — selectable cards */
+.cb-mcards { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.cb-mcard { position:relative; display:flex; flex-direction:column; gap:6px; padding:12px; border:1px solid var(--gv-grey-300); border-radius:8px; cursor:pointer; }
+.cb-mcard input { position:absolute; opacity:0; pointer-events:none; }
+.cb-mcard.is-on { border-color:var(--gv-green-600); box-shadow:inset 0 0 0 1px var(--gv-green-600); background:color-mix(in srgb, var(--gv-green-600) 5%, #fff); }
+.cb-mcard.is-current { border-color:var(--gv-tenant-primary); box-shadow:inset 0 0 0 1px var(--gv-tenant-primary); }
+.cb-mcard__top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.cb-mcard__top .pbm-type { font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--gv-cool-grey-600); }
+.cb-mcard__name { font-size:13px; font-weight:600; color:var(--gv-text-primary); }
+.cb-mcard__dates { font-size:11px; color:var(--gv-cool-grey-600); }
+    /* Prototype-only control — visually fenced off so devs don't read it as a product setting. */
+.cb-proto { margin:22px 0 0; padding:12px 14px 14px; border:1px dashed #b79ce0; border-radius:8px; background:#faf7fe; }
+.cb-proto__tag { display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#6b3fa0; background:#efe7fb; border-radius:999px; padding:3px 9px; }
+.cb-proto__tag .gv-icon { width:12px; height:12px; }
+.cb-proto__note { font-size:11px; color:var(--gv-cool-grey-600); line-height:1.5; margin:8px 0 0; }
+.cb-proto .cb-setseg:first-of-type { margin-top:12px; }
+
+    /* ── Participation box — method-detail design directions (canvas render) ── */
+.pbm-type { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--gv-cool-grey-600); }
+.pbm-flag { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--gv-tenant-primary); margin-left:8px; }
+.pbm-dates { display:inline-flex; align-items:center; gap:6px; font-size:var(--gv-fs-13); color:var(--gv-cool-grey-600); }
+.pbm-dates .gv-icon { width:13px; height:13px; }
+    /* B — detailed rows */
+.pbm-rows { display:flex; flex-direction:column; gap:10px; }
+.pbm-row { display:flex; align-items:center; gap:14px; padding:12px 14px; border:1px solid var(--gv-grey-300); border-radius:var(--gv-radius); }
+.pbm-row.is-current { border-color:var(--gv-tenant-primary); box-shadow:inset 3px 0 0 var(--gv-tenant-primary); }
+.pbm-row__info { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.pbm-row__name { font-size:14px; font-weight:600; color:var(--gv-text-primary); }
+.pbm-row .gv-btn.full { width:auto; flex:none; }
+    /* C — full roster */
+.pbm-roster { display:flex; flex-direction:column; gap:10px; }
+.pbm-rosteritem { display:flex; flex-direction:column; gap:7px; padding:12px 14px; border:1px solid var(--gv-grey-300); border-radius:var(--gv-radius); }
+.pbm-rosteritem.is-current { border-color:var(--gv-tenant-primary); box-shadow:inset 3px 0 0 var(--gv-tenant-primary); }
+.pbm-rosteritem.is-inactive { background:var(--gv-grey-100); }
+.pbm-rosteritem.is-inactive .pbm-rosteritem__name { color:var(--gv-cool-grey-600); }
+.pbm-rosteritem__head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.pbm-rosteritem__name { font-size:14px; font-weight:600; color:var(--gv-text-primary); }
+.pbm-cta-muted { font-size:var(--gv-fs-13); color:var(--gv-cool-grey-500); font-weight:600; padding-top:2px; }
+    /* D — featured + compact */
+.pbm-feature { display:flex; flex-direction:column; gap:8px; padding:16px; border:1px solid var(--gv-tenant-primary); border-radius:var(--gv-radius); background:color-mix(in srgb, var(--gv-tenant-primary) 5%, #fff); }
+.pbm-feature__head { display:flex; align-items:center; }
+.pbm-feature__name { font-size:16px; font-weight:700; color:var(--gv-text-primary); }
+.pbm-feature .gv-btn.full { margin-top:4px; }
+.pbm-compact { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+.pbm-compactrow { display:flex; align-items:center; gap:10px; padding:11px 14px; border:1px solid var(--gv-grey-300); border-radius:var(--gv-radius); text-decoration:none; color:var(--gv-text-primary); }
+.pbm-compactrow__cta { flex:1; font-size:14px; font-weight:600; }
+.pbm-compactrow .gv-icon { width:16px; height:16px; color:var(--gv-cool-grey-500); }
+    /* E — grouped by track */
+.pbm-group + .pbm-group { margin-top:16px; }
+.pbm-group__label { font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--gv-cool-grey-600); margin:0 0 8px; }
+.pbm-grouprow { display:flex; align-items:center; gap:14px; padding:10px 0; }
+.pbm-grouprow + .pbm-grouprow { border-top:1px solid var(--gv-grey-300); }
+.pbm-grouprow__info { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.pbm-grouprow__name { font-size:14px; font-weight:600; color:var(--gv-text-primary); }
+.pbm-grouprow.is-current .pbm-grouprow__name { color:var(--gv-tenant-primary); }
+.pbm-grouprow .gv-btn.full { width:auto; flex:none; }
+    /* a detailed list above the participant row gets a divider */
+.gv-pbox:not(.gv-pbox--dir-a) .gv-pbox__people { margin-top:14px; padding-top:14px; border-top:1px solid var(--gv-grey-300); }
+    /* Participant row centered horizontally below the buttons. */
+.gv-pbox--dir-a .gv-pbox__people { justify-content:center; }
+.cb-radiocol { display:flex; flex-direction:column; gap:2px; }
+.cb-radiocol .gv-radio { margin-bottom:0; }
+.cb-fieldhead { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:18px 0 8px; }
+.cb-fieldhead .gv-bo-cb-settings__rowlabel { margin:0; }
+.cb-fieldhead .gv-bo-multiloc { margin-bottom:0; }
+    .es-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
