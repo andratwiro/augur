@@ -3789,6 +3789,7 @@
         </ul>
       </nav>
       <div class="gv-header__actions">
+        <a class="gv-btn secondary-outlined size-s gv-desktop-only" href="#" onclick="openHomeBuilder();return false;" title="Open the homepage in the Page Builder"><span data-gv-icon="edit" aria-hidden="true"></span> Edit homepage</a>
         <button class="gv-iconbtn gv-desktop-only" aria-label="Search"><span data-gv-icon="search"></span></button>
         <button class="gv-iconbtn" aria-label="Notifications, 3 unread"><span data-gv-icon="notification"></span><span class="gv-iconbtn__badge">3</span></button>
         <span class="gv-account gv-desktop-only"><span class="gv-account__name">Sofie Maes</span><span class="gv-avatar">SM</span></span>
@@ -4632,8 +4633,315 @@
     if (e.key === 'Escape') {
       const builder = document.getElementById('view-builder');
       if (builder && builder.classList.contains('open')) closeBuilder();
+      const hb = document.getElementById('view-home-builder');
+      if (hb && hb.classList.contains('open')) closeHomeBuilder();
     }
   });
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     HOMEPAGE BUILDER — a PARALLEL of the project Content Builder. Same GoVocal Page
+     Builder engine/chrome (.gv-bo-cb-*), different palette: the real homepage widget
+     set (banner, project lists, spotlight, events, CTA, community monitor + the shared
+     content widgets) transcribed from the live homepage-builder (govocal-exports/
+     bo-homepage-builder). The canvas renders a faithful homepage assembled from the
+     canonical FO components. The current homepage (#view-home) is kept untouched so the
+     two can be compared (the builder's eye button opens #view-home).
+═════════════════════════════════════════════════════════════════════════════ -->
+<style>
+  /* Reuse the project builder's overlay + chrome; only the homepage specifics here. */
+  #hb-root { height: 100vh; overflow: hidden; }
+  /* Frame must size to its content (not stretch to the canvas height), else overflow:hidden
+     clips the lower sections — same fix as the project builder / canonical .gv-bo-cb-canvas. */
+  #hb-root .gv-bo-cb-canvas { align-items: flex-start; }
+  /* Homepage is full-bleed → wider frame, flush content, rounded contained page. */
+  #hb-root .gv-bo-cb-frame { width: min(1120px, 100%); max-width: min(1120px, 100%);
+    padding: 0; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+  #hb-root .gv-bo-cb-block { width: 100%; max-width: 100%; margin: 0; }
+  /* The selected-block label tab sits inside the frame (frame clips overflow). */
+  #hb-root .gv-bo-cb-block__label { top: 0; left: 0; z-index: 3; }
+  /* Canvas content renders in the FO default tenant theme — escape the .gv-bo BO remap
+     so the homepage previews in the city's brand colours, not back-office teal/navy. */
+  #hb-frame { --gv-tenant-primary: #604596; --gv-tenant-secondary: #4F397B; --gv-tenant-text: #313131;
+    background: #fff; font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+  /* Settings panel shows only when a block is selected; preview hides editor chrome. */
+  #hb-root .gv-bo-cb-settings { display: none; }
+  #hb-root.cb-has-panel .gv-bo-cb-settings { display: block; }
+  #hb-root.cb-has-panel .gv-bo-cb-canvas { padding-right: 400px; transition: padding-right .12s ease; }
+  #hb-root.cb-preview .gv-bo-cb-palette, #hb-root.cb-preview .gv-bo-cb-settings { display: none; }
+  #hb-root.cb-preview.cb-has-panel .gv-bo-cb-canvas { padding-right: 0; }
+  #hb-root.cb-preview .gv-bo-cb-block { cursor: default; }
+  #hb-root.cb-preview .gv-bo-cb-block:hover { border-color: transparent; }
+  /* Homepage section blocks (faithful FO content) */
+  .hb-cta-band { background: var(--gv-tenant-primary); color: #fff; text-align: center; padding: 52px 24px; }
+  .hb-cta-band h2 { margin: 0 0 8px; font-size: 26px; font-weight: 700; }
+  .hb-cta-band p { margin: 0 0 20px; font-size: 16px; opacity: .92; }
+  .hb-cta-band .gv-btn { background: #fff; color: var(--gv-tenant-primary); border-color: #fff; }
+  .hb-events { padding: 40px 40px 8px; }
+  .hb-events__head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 18px; }
+  .hb-events__head h2 { margin: 0; font-size: 22px; font-weight: 700; color: var(--gv-text-heading); }
+  .hb-events__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .hb-evcard { display: flex; gap: 14px; border: 1px solid var(--gv-grey-200); border-radius: 8px; padding: 14px; background: #fff; }
+  .hb-evcard__date { flex: none; width: 54px; text-align: center; border-radius: 6px; background: var(--gv-grey-100); padding: 8px 0; }
+  .hb-evcard__date .m { display: block; font-size: 12px; font-weight: 700; color: var(--gv-tenant-primary); text-transform: uppercase; }
+  .hb-evcard__date .d { display: block; font-size: 22px; font-weight: 700; color: var(--gv-text-heading); line-height: 1; }
+  .hb-evcard__t { font-size: 16px; font-weight: 600; color: var(--gv-text-heading); margin: 0 0 6px; }
+  .hb-evcard__meta { font-size: 13px; color: var(--gv-cool-grey-600); display: flex; flex-direction: column; gap: 3px; }
+  .hb-help { font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); line-height: 1.5; margin: 0 0 14px; }
+  .hb-set-row { margin-bottom: 14px; }
+  .hb-set-row > label { display: block; margin-bottom: 6px; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-bo-primary); }
+  #hb-root .gv-bo-cb-section-tag { display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gv-cool-grey-600); background: var(--gv-grey-200); border-radius: 3px; padding: 1px 6px; vertical-align: middle; }
+  .hb-edit-fab { position: fixed; top: 14px; right: 16px; z-index: 30; }
+</style>
+
+<div id="view-home-builder" class="builder-overlay gv-bo">
+  <div class="gv-bo-cb" id="hb-root">
+
+    <!-- ── TOP BAR (same chrome as the project builder) ── -->
+    <header class="gv-bo-cb-topbar">
+      <button class="gv-bo-cb-topbar__back" type="button" onclick="closeHomeBuilder()" aria-label="Go back">
+        <span class="gv-icon" data-gv-icon="arrow-left"></span>
+      </button>
+      <div class="gv-bo-cb-topbar__titles">
+        <h1 class="gv-bo-cb-topbar__title">Homepage</h1>
+        <p class="gv-bo-cb-topbar__sub">Meridian participation platform</p>
+      </div>
+      <div class="gv-bo-cb-topbar__actions">
+        <div class="gv-bo-cb-locale">
+          <select aria-label="Content language"><option value="en">EN</option><option value="es-ES">ES-ES</option></select>
+        </div>
+        <label class="gv-bo-cb-preview" for="hb-preview-toggle">
+          <span class="gv-toggle"><input type="checkbox" id="hb-preview-toggle" /><span class="track"></span></span>
+          <span class="gv-bo-cb-preview__label">Preview</span>
+        </label>
+        <a class="gv-btn secondary-outlined gv-bo-cb-topbar__view" href="#" aria-label="View current homepage" onclick="closeHomeBuilder();openHome();return false;">
+          <span class="gv-icon" data-gv-icon="eye"></span>
+        </a>
+        <div class="gv-bo-cb-save-wrap"><button class="gv-btn primary gv-bo-cb-save" type="button" onclick="hbToast('Homepage saved')">Save</button></div>
+      </div>
+    </header>
+
+    <div class="gv-bo-cb__body">
+
+      <!-- ── LEFT PALETTE — the REAL homepage widget set (bo-homepage-builder) ── -->
+      <aside class="gv-bo-cb-palette" aria-label="Homepage widgets">
+        <div class="gv-bo-cb-palette__group">
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="homepage-banner"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 19 19" fill="currentColor" aria-hidden="true"><rect width="19" height="19" rx="3"></rect></svg></span><span class="gv-bo-cb-item__label">Homepage banner</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="open-to-participation"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z"></path></svg></span><span class="gv-bo-cb-item__label">Open to participation</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="followed-items"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21,19V20H3V19L5,17V11C5,7.9 7.03,5.17 10,4.29C10,4.19 10,4.1 10,4A2,2 0 0,1 12,2A2,2 0 0,1 14,4C14,4.1 14,4.19 14,4.29C16.97,5.17 19,7.9 19,11V17L21,19M14,21A2,2 0 0,1 12,23A2,2 0 0,1 10,21"></path></svg></span><span class="gv-bo-cb-item__label">Followed items</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="finished-or-archived"><span class="gv-bo-cb-item__icon"><svg viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M360-720h80v-80h-80v80Zm160 0v-80h80v80h-80ZM360-400v-80h80v80h-80Zm320-160v-80h80v80h-80Zm0 160v-80h80v80h-80Zm-160 0v-80h80v80h-80Zm160-320v-80h80v80h-80Zm-240 80v-80h80v80h-80ZM200-160v-640h80v80h80v80h-80v80h80v80h-80v320h-80Zm400-320v-80h80v80h-80Zm-160 0v-80h80v80h-80Zm-80-80v-80h80v80h-80Zm160 0v-80h80v80h-80Zm80-80v-80h80v80h-80Z"></path></svg></span><span class="gv-bo-cb-item__label">Finished projects</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="areas"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"></path></svg></span><span class="gv-bo-cb-item__label">In your area</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="spotlight"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7,2V13H10V22L17,10H13L17,2H7Z"></path></svg></span><span class="gv-bo-cb-item__label">Spotlight</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="selection"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20,18H4V8H20M20,6H12L10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6Z"></path></svg></span><span class="gv-bo-cb-item__label">Selected projects and folders</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="published"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10,17L5,12L6.41,10.58L10,14.17L17.59,6.58L19,8M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"></path></svg></span><span class="gv-bo-cb-item__label">Published projects and folders</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="events"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M17,12H12V17H17V12Z"></path></svg></span><span class="gv-bo-cb-item__label">Events</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="call-to-action"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 20.5C20 21.3 19.3 22 18.5 22H13C12.6 22 12.3 21.9 12 21.6L8 17.4L8.7 16.6C8.9 16.4 9.2 16.3 9.5 16.3H9.7L12 18V9C12 8.4 12.4 8 13 8S14 8.4 14 9V13.5L15.2 13.6L19.1 15.8C19.6 16 20 16.6 20 17.1V20.5M20 2H4C2.9 2 2 2.9 2 4V12C2 13.1 2.9 14 4 14H8V12H4V4H20V12H18V14H20C21.1 14 22 13.1 22 12V4C22 2.9 21.1 2 20 2Z"></path></svg></span><span class="gv-bo-cb-item__label">Call to action</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="community-monitor-cta"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg></span><span class="gv-bo-cb-item__label">Community Monitor</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="projects"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"></path></svg></span><span class="gv-bo-cb-item__label">Projects and folders (legacy)</span></div>
+        </div>
+        <div class="gv-bo-cb-palette__group">
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="text"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 129 126" fill="currentColor" aria-hidden="true"><path d="M119.232 0L129 36.54L120.916 38.724C117.127 31.416 113.254 24.108 108.791 20.412C104.328 16.8 99.1077 16.8 93.9713 16.8H72.9204V105C72.9204 109.2 72.9204 113.4 75.6991 115.5C78.562 117.6 84.1194 117.6 89.7611 117.6V126H39.2389V117.6C44.8805 117.6 50.438 117.6 53.3009 115.5C56.0796 113.4 56.0796 109.2 56.0796 105V16.8H35.0287C29.8923 16.8 24.6717 16.8 20.2089 20.412C15.7461 24.108 11.8727 31.416 8.08355 38.724L0 36.54L9.76762 0H119.232Z"></path></svg></span><span class="gv-bo-cb-item__label">Text</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="white-space"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 20 14" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M0 6C1.10457 6 2 5.10457 2 4V2H5.5C6.60457 2 7.5 1.10457 7.5 0H1C0.95575 0 0.912171 0.00287412 0.86944 0.00844586C0.781234 0.0199471 0.696641 0.0429428 0.617212 0.0758806C0.372772 0.177246 0.177246 0.372772 0.0758805 0.617213C0.0429427 0.696641 0.0199471 0.781235 0.00844584 0.86944C0.00287411 0.912171 0 0.95575 0 1V6ZM12.5 0C12.5 1.10457 13.3954 2 14.5 2H18V4C18 5.10457 18.8954 6 20 6V1C20 0.955748 19.9971 0.912176 19.9916 0.869444C19.98 0.78124 19.9571 0.69664 19.9241 0.617212C19.8228 0.372772 19.6272 0.177246 19.3828 0.0758809C19.3034 0.0429431 19.2188 0.019947 19.1306 0.0084458C19.0878 0.0028741 19.0443 0 19 0H12.5ZM20 8C18.8954 8 18 8.89543 18 10V12H14.5C13.3954 12 12.5 12.8954 12.5 14H19C19.0443 14 19.0878 13.9971 19.1306 13.9915C19.2188 13.98 19.3034 13.9571 19.3828 13.9241C19.6272 13.8228 19.8228 13.6272 19.9241 13.3828C19.9571 13.3034 19.98 13.2188 19.9916 13.1306C19.9971 13.0878 20 13.0443 20 13V8ZM7.5 14C7.5 12.8954 6.60457 12 5.5 12H2V10C2 8.89543 1.10457 8 0 8V13C0 13.0443 0.00287411 13.0878 0.00844585 13.1306C0.0199471 13.2188 0.0429427 13.3034 0.0758806 13.3828C0.177246 13.6272 0.372772 13.8228 0.617212 13.9241C0.696641 13.9571 0.781235 13.9801 0.86944 13.9916C0.912171 13.9971 0.95575 14 1 14H7.5Z"></path></svg></span><span class="gv-bo-cb-item__label">White space</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="button"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 20.5C20 21.3 19.3 22 18.5 22H13C12.6 22 12.3 21.9 12 21.6L8 17.4L8.7 16.6C8.9 16.4 9.2 16.3 9.5 16.3H9.7L12 18V9C12 8.4 12.4 8 13 8S14 8.4 14 9V13.5L15.2 13.6L19.1 15.8C19.6 16 20 16.6 20 17.1V20.5M20 2H4C2.9 2 2 2.9 2 4V12C2 13.1 2.9 14 4 14H8V12H4V4H20V12H18V14H20C21.1 14 22 13.1 22 12V4C22 2.9 21.1 2 20 2Z"></path></svg></span><span class="gv-bo-cb-item__label">Button</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="image"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 127 103" fill="currentColor" aria-hidden="true"><path d="M127 91.5556V11.4444C127 5.15 120.65 0 112.889 0H14.1111C6.35 0 0 5.15 0 11.4444V91.5556C0 97.85 6.35 103 14.1111 103H112.889C120.65 103 127 97.85 127 91.5556ZM38.8056 60.0833L56.4444 77.3072L81.1389 51.5L112.889 85.8333H14.1111L38.8056 60.0833Z"></path></svg></span><span class="gv-bo-cb-item__label">Image</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="iframe"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14.6,16.6L19.2,12L14.6,7.4L16,6L22,12L16,18L14.6,16.6M9.4,16.6L4.8,12L9.4,7.4L8,6L2,12L8,18L9.4,16.6Z"></path></svg></span><span class="gv-bo-cb-item__label">Embed</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="video-embed"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"></path></svg></span><span class="gv-bo-cb-item__label">Video</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="accordion"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M1 13.0015C0.447715 13.0015 -1.95703e-08 12.5537 -4.37114e-08 12.0015L-2.13006e-07 8.12845C-2.37147e-07 7.57617 0.447715 7.12845 1 7.12845L19 7.12845C19.5523 7.12845 20 7.57617 20 8.12845L20 12.0015C20 12.5537 19.5523 13.0015 19 13.0015L1 13.0015Z"></path><rect y="6.01709" width="5.87302" height="20" rx="1" transform="rotate(-90 0 6.01709)"></rect><rect y="19.9854" width="5.87302" height="20" rx="1" transform="rotate(-90 0 19.9854)"></rect></svg></span><span class="gv-bo-cb-item__label">Accordion</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="two-column"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 126 126" fill="currentColor" aria-hidden="true"><rect x="69" width="57" height="126" rx="2"></rect><rect width="57" height="126" rx="2"></rect></svg></span><span class="gv-bo-cb-item__label">2 column</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="three-column"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 126 126" fill="currentColor" aria-hidden="true"><path d="M44 2C44 0.89543 44.8954 0 46 0H79C80.1046 0 81 0.895431 81 2V124C81 125.105 80.1046 126 79 126H46C44.8954 126 44 125.105 44 124V2Z"></path><rect x="88" width="37" height="126" rx="2"></rect><rect width="37" height="126" rx="2"></rect></svg></span><span class="gv-bo-cb-item__label">3 column</span></div>
+          <div class="gv-bo-cb-item" draggable="true" data-hb-widget="image-text-cards"><span class="gv-bo-cb-item__icon"><svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M0.617212 19.9241L1 19.001V19H1.9V20H1C0.864409 20 0.73512 19.973 0.617212 19.9241ZM18.1 20V19H19L19.3828 19.9241C19.2649 19.973 19.1356 20 19 20H18.1ZM20 1.9H19V1L19.9241 0.617212C19.973 0.73512 20 0.864409 20 1V1.9ZM1.9 0H1C0.864408 0 0.73512 0.0269862 0.617212 0.0758805L1 0.998965V1H1.9V0ZM0 18.1V19C0 19.1356 0.0269862 19.2649 0.0758806 19.3828L0.998963 19H1L1 18.1H0ZM0 16.3H1V14.5H0V16.3ZM0 12.7H1V10.9H0V12.7ZM0 9.1H1V7.3H0V9.1ZM0 5.5H1V3.7H0V5.5ZM3.7 0V1H5.5V0H3.7ZM7.3 0V1H9.1V0H7.3ZM10.9 0V1H12.7V0H10.9ZM14.5 0V1H16.3V0H14.5Z"></path><path d="M8 18C7.44771 18 7 17.5523 7 17V15C7 14.4477 7.44772 14 8 14H17C17.5523 14 18 14.4477 18 15V17C18 17.5523 17.5523 18 17 18H8Z"></path><path d="M8 12C7.44771 12 7 11.5523 7 11V9C7 8.44772 7.44772 8 8 8H17C17.5523 8 18 8.44772 18 9V11C18 11.5523 17.5523 12 17 12L8 12Z"></path><path d="M3 6C2.44772 6 2 5.55228 2 5V3C2 2.44772 2.44772 2 3 2H5C5.55228 2 6 2.44772 6 3V5C6 5.55228 5.55228 6 5 6H3Z"></path></svg></span><span class="gv-bo-cb-item__label">Image &amp; text cards</span></div>
+        </div>
+      </aside>
+
+      <!-- ── CENTRE CANVAS — faithful homepage assembled from canonical FO components ── -->
+      <main class="gv-bo-cb-canvas">
+        <div class="gv-bo-cb-frame" id="hb-frame">
+
+          <div class="gv-bo-cb-block" data-hb-widget="homepage-banner" data-hb-label="Homepage banner">
+            <span class="gv-bo-cb-block__label">Homepage banner</span>
+            <section class="gv-hero signed-out centered" style="background-image:url('assets/img/hero.webp')">
+              <div class="gv-hero__inner">
+                <h1 class="gv-hero__title">Welcome to the Meridian participation platform</h1>
+                <p class="gv-hero__lead">Scroll below to see the projects we're shaping together.</p>
+                <div class="gv-hero__actions"><a class="gv-btn primary-inverse" href="#" onclick="return false;">Reimagine Meridian 2030 — take part</a></div>
+              </div>
+            </section>
+          </div>
+
+          <div class="gv-bo-cb-block" data-hb-widget="open-to-participation" data-hb-label="Open to participation">
+            <span class="gv-bo-cb-block__label">Open to participation</span>
+            <section class="gv-section">
+              <div class="gv-section__head"><h2 class="gv-title h2">Open to participation</h2></div>
+              <div class="gv-section__body">
+                <div class="gv-rail" role="group" aria-label="Open to participation">
+                  <article class="gv-pcard light compact">
+                    <div class="gv-pcard__thumb"><img src="assets/img/street.webp" alt="" loading="lazy" /></div>
+                    <div class="gv-pcard__body"><h3 class="gv-pcard__title"><a href="#" onclick="return false;">Reimagine Meridian 2030</a></h3><span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 3 ways to take part open</span><span class="gv-pcard__more">Learn more</span></div>
+                  </article>
+                  <article class="gv-pcard light compact">
+                    <div class="gv-pcard__thumb"><img src="assets/img/climate-harbour.webp" alt="" loading="lazy" /></div>
+                    <div class="gv-pcard__body"><h3 class="gv-pcard__title"><a href="#" onclick="return false;">Harbour cycle network</a></h3><span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 5 days left</span><span class="gv-pcard__more">Learn more</span></div>
+                  </article>
+                  <article class="gv-pcard light compact">
+                    <div class="gv-pcard__thumb"><img src="assets/img/done-square.webp" alt="" loading="lazy" /></div>
+                    <div class="gv-pcard__body"><h3 class="gv-pcard__title"><a href="#" onclick="return false;">Redesigning Market Square</a></h3><span class="gv-pcard__status"><span data-gv-icon="clock-solid" aria-hidden="true"></span> 1 week left</span><span class="gv-pcard__more">Learn more</span></div>
+                  </article>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="gv-bo-cb-block" data-hb-widget="spotlight" data-hb-label="Spotlight">
+            <span class="gv-bo-cb-block__label">Spotlight</span>
+            <section class="gv-spotlight">
+              <div class="gv-spotlight__inner">
+                <div>
+                  <h2 class="gv-spotlight__title">A greener Station Road</h2>
+                  <p class="gv-spotlight__lead">We're redesigning Station Road for trees, wider pavements and safer cycling. Take the survey to tell us what matters most on your daily journey.</p>
+                  <div class="gv-spotlight__actions"><a class="gv-btn primary size-m" href="#" onclick="return false;">Take the survey</a></div>
+                </div>
+                <div class="gv-spotlight__media"><img src="assets/img/spotlight.webp" alt="" loading="lazy" /></div>
+              </div>
+            </section>
+          </div>
+
+          <div class="gv-bo-cb-block" data-hb-widget="events" data-hb-label="Events">
+            <span class="gv-bo-cb-block__label">Events</span>
+            <section class="hb-events">
+              <div class="hb-events__head"><h2>Upcoming and ongoing events</h2><a class="gv-btn text" href="#" onclick="return false;">See all events</a></div>
+              <div class="hb-events__grid">
+                <div class="hb-evcard"><div class="hb-evcard__date"><span class="m">Jul</span><span class="d">03</span></div><div><p class="hb-evcard__t">Station Road walkshop</p><div class="hb-evcard__meta"><span>18:00 · Meridian Library</span><span>24 going</span></div></div></div>
+                <div class="hb-evcard"><div class="hb-evcard__date"><span class="m">Jul</span><span class="d">11</span></div><div><p class="hb-evcard__t">Budget priorities drop-in</p><div class="hb-evcard__meta"><span>12:30 · Market Square</span><span>9 going</span></div></div></div>
+              </div>
+            </section>
+          </div>
+
+          <div class="gv-bo-cb-block" data-hb-widget="call-to-action" data-hb-label="Call to action">
+            <span class="gv-bo-cb-block__label">Call to action</span>
+            <section class="hb-cta-band">
+              <h2>What is your proposal?</h2>
+              <p>Find your proposal on the platform, gather support and advance it on the agenda. It needs the support of others.</p>
+              <a class="gv-btn" href="#" onclick="return false;">Explore all proposals</a>
+            </section>
+          </div>
+
+        </div>
+      </main>
+
+      <!-- ── RIGHT SETTINGS PANEL ── -->
+      <aside class="gv-bo-cb-settings" id="hb-settings" aria-label="Widget settings">
+        <button class="gv-bo-cb-settings__close" type="button" id="hb-settings-close" aria-label="Close settings panel"><span class="gv-icon" data-gv-icon="close"></span></button>
+        <h2 class="gv-bo-cb-settings__title" id="hb-settings-title">Homepage banner</h2>
+        <div class="gv-bo-multiloc"><button type="button" class="is-active" data-loc="en"><span class="done"></span>EN</button><button type="button" data-loc="es-ES"><span class="miss"></span>ES-ES</button></div>
+        <div id="hb-settings-body"></div>
+      </aside>
+    </div>
+  </div>
+  <div class="cb-toast" id="hb-toast"></div>
+</div>
+
+<script>
+(function () {
+  var root  = document.getElementById('hb-root');
+  var frame = document.getElementById('hb-frame');
+  var sTitle = document.getElementById('hb-settings-title');
+  var sBody  = document.getElementById('hb-settings-body');
+  var toastEl = document.getElementById('hb-toast');
+
+  // Per-widget settings (faithful-shaped; the real homepage builder shows a short
+  // settings form per block). Keyed by data-hb-widget.
+  var HB_SET = {
+    'homepage-banner': '<p class="hb-help">The full-width hero residents see first. Configure the background image, headline, subtitle and the primary call-to-action.</p>'
+      + '<div class="hb-set-row"><label>Headline</label><input class="gv-input" value="Welcome to the Meridian participation platform" /></div>'
+      + '<div class="hb-set-row"><label>Subtitle</label><input class="gv-input" value="Scroll below to see the projects we\'re shaping together." /></div>'
+      + '<div class="hb-set-row"><label>Banner image</label><button class="gv-btn secondary-outlined size-s" type="button">Replace image…</button></div>'
+      + '<div class="hb-set-row"><label>Layout</label><select class="gv-input"><option>Full-width banner</option><option>Two-column</option><option>Fixed-ratio</option></select></div>',
+    'open-to-participation': '<p class="hb-help">Automatically lists every project currently open to participation, newest first. No manual selection — it updates as phases open and close.</p>'
+      + '<div class="hb-set-row"><label>Section title</label><input class="gv-input" value="Open to participation" /></div>'
+      + '<div class="hb-set-row"><label>Show as</label><select class="gv-input"><option>Horizontal rail</option><option>Grid</option></select></div>',
+    'spotlight': '<p class="hb-help">Highlight a single project, folder or page with a large image, title and call-to-action.</p>'
+      + '<div class="hb-set-row"><label>Highlighted item</label><select class="gv-input"><option>A greener Station Road</option><option>Reimagine Meridian 2030</option></select></div>'
+      + '<div class="hb-set-row"><label>Button label</label><input class="gv-input" value="Take the survey" /></div>',
+    'events': '<p class="hb-help">Shows upcoming and ongoing events across all projects. Residents can register directly.</p>'
+      + '<div class="hb-set-row"><label>Title</label><input class="gv-input" value="Upcoming and ongoing events" /></div>'
+      + '<div class="hb-set-row"><label>Events to show</label><select class="gv-input"><option>Next 4</option><option>Next 8</option><option>All upcoming</option></select></div>',
+    'call-to-action': '<p class="hb-help">A full-width coloured band with a headline and one button — used to drive residents toward a key action.</p>'
+      + '<div class="hb-set-row"><label>Headline</label><input class="gv-input" value="What is your proposal?" /></div>'
+      + '<div class="hb-set-row"><label>Button label</label><input class="gv-input" value="Explore all proposals" /></div>'
+      + '<div class="hb-set-row"><label>Button link</label><input class="gv-input" value="/proposals" /></div>'
+  };
+  function settingsFor(w, label) {
+    return HB_SET[w] || '<p class="hb-help">Settings for the <strong>' + (label || w) + '</strong> widget. This block is part of the homepage layout — drag widgets from the left to add more.</p>';
+  }
+
+  function deselect() { frame.querySelectorAll('.gv-bo-cb-block.is-selected').forEach(function (b) { b.classList.remove('is-selected'); }); }
+  function select(block) {
+    deselect(); block.classList.add('is-selected'); root.classList.add('cb-has-panel');
+    var w = block.getAttribute('data-hb-widget'), label = block.getAttribute('data-hb-label') || w;
+    sTitle.textContent = label;
+    sBody.innerHTML = settingsFor(w, label);
+  }
+  frame.addEventListener('click', function (e) {
+    if (root.classList.contains('cb-preview')) return;
+    var b = e.target.closest('.gv-bo-cb-block'); if (b) select(b);
+  });
+  document.getElementById('hb-settings-close').addEventListener('click', function () { root.classList.remove('cb-has-panel'); deselect(); });
+
+  // Preview toggle hides the editor chrome → clean homepage for comparing with #view-home.
+  document.getElementById('hb-preview-toggle').addEventListener('change', function () { root.classList.toggle('cb-preview', this.checked); });
+
+  // Palette: click (or drag-drop) a widget → append a new block of that type so the
+  // homepage can be composed. New homepage-data widgets render an editor placeholder.
+  function makeBlock(w, label) {
+    var block = document.createElement('div');
+    block.className = 'gv-bo-cb-block'; block.setAttribute('data-hb-widget', w); block.setAttribute('data-hb-label', label);
+    block.setAttribute('draggable', 'true');
+    block.innerHTML = '<span class="gv-bo-cb-block__label">' + label + '</span>'
+      + '<div style="padding:28px 40px;color:var(--gv-cool-grey-600);font-size:14px;border-top:1px dashed var(--gv-grey-300);">'
+      + '<strong style="color:var(--gv-bo-primary)">' + label + '</strong> widget — configure it in the panel on the right.</div>';
+    return block;
+  }
+  function addWidget(w, label) {
+    var block = makeBlock(w, label); frame.appendChild(block);
+    if (window.GVIcons) window.GVIcons.render(block);
+    select(block); block.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+  var dragW = null;
+  root.querySelectorAll('.gv-bo-cb-palette .gv-bo-cb-item').forEach(function (it) {
+    var w = it.getAttribute('data-hb-widget'), label = it.querySelector('.gv-bo-cb-item__label').textContent;
+    it.addEventListener('click', function () { addWidget(w, label); });
+    it.addEventListener('dragstart', function () { dragW = { w: w, label: label }; it.classList.add('is-dragging'); });
+    it.addEventListener('dragend', function () { dragW = null; it.classList.remove('is-dragging'); });
+  });
+  frame.addEventListener('dragover', function (e) { if (dragW) { e.preventDefault(); frame.classList.add('is-dragover'); } });
+  frame.addEventListener('dragleave', function () { frame.classList.remove('is-dragover'); });
+  frame.addEventListener('drop', function (e) { if (dragW) { e.preventDefault(); frame.classList.remove('is-dragover'); addWidget(dragW.w, dragW.label); } });
+
+  window.hbToast = function (msg) {
+    toastEl.textContent = msg; toastEl.classList.add('is-show');
+    clearTimeout(window.hbToast._t); window.hbToast._t = setTimeout(function () { toastEl.classList.remove('is-show'); }, 1400);
+  };
+})();
+
+window.openHomeBuilder = function () {
+  var v = document.getElementById('view-home-builder'); if (!v) return;
+  // The canvas previews the homepage in the LIVE tenant theme. #view-home uses the root
+  // tenant tokens, but the builder overlay is .gv-bo (which remaps them to back-office
+  // colours), so copy the root tenant values straight onto the frame — keeps the preview
+  // matched to the current homepage whatever theme is active.
+  var rs = getComputedStyle(document.documentElement);
+  var frame = document.getElementById('hb-frame');
+  ['--gv-tenant-primary', '--gv-tenant-secondary', '--gv-tenant-text', '--gv-font-family'].forEach(function (p) {
+    var val = rs.getPropertyValue(p); if (val && val.trim()) frame.style.setProperty(p, val.trim());
+  });
+  v.classList.add('open');
+  document.body.setAttribute('data-gv-screen', 'home-builder');
+  if (window.GVIcons) window.GVIcons.render(v);
+};
+window.closeHomeBuilder = function () {
+  var v = document.getElementById('view-home-builder'); if (v) v.classList.remove('open');
+  document.body.setAttribute('data-gv-screen', 'home');
+};
 </script>
 
 <!-- (bespoke rich builder JS removed — replaced by real GoVocal content builder below) -->
