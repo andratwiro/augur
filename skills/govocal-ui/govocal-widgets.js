@@ -523,7 +523,7 @@ window.GVWidgets = (function () {
     function pbType(m)  { return '<span class="pbm-type">' + (PBOX_TYPES[m.type] || m.type) + '</span>'; }
     function pbPill(m)  { var s = PBOX_STATUS[m.status] || PBOX_STATUS.active; return '<span class="gv-statuspill ' + s[0] + '">' + s[1] + '</span>'; }
     function pbDates(m) { return '<span class="pbm-dates"><span class="gv-icon" data-gv-icon="calendar"></span>' + m.dates + '</span>'; }
-    function pbBtn(m, style, dis) { return '<a class="gv-btn full ' + style + '" href="#"' + (dis ? ' aria-disabled="true"' : '') + '>' + m.cta + '</a>'; }
+    function pbBtn(m, style, dis) { return '<a class="gv-btn full ' + style + '" href="' + (m.href || '#') + '"' + (dis ? ' aria-disabled="true"' : '') + '>' + m.cta + '</a>'; }
     function pbActive(m) { return m.status === 'active'; }
     function pbOrder(a, b) {                              // current first, then active → upcoming → past
       if (!!a.current !== !!b.current) return a.current ? -1 : 1;

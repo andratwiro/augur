@@ -140,23 +140,40 @@ for (const tier of TIERS) {
       }
 
       // INV-7 (warn, PAGES): a page that hand-authors a registry widget's signature
-      // markup but never consumes GVWidgets is a SECOND source of truth — it drifts
-      // from the widget (the homepage / project-page divergence). Flag a page carrying
-      // ≥2 distinct widget signatures with 0 GVWidgets references; the fix is to render
-      // those sections via GVWidgets[surface][type].make()/renderFO, not duplicate the
-      // markup. ≥2 avoids flagging a page that incidentally uses one canonical component.
-      const WIDGET_SIGNATURES = {
-        'gv-spotlight': 'spotlight', 'gv-ctaband': 'CTA band', 'gv-pbox': 'participation-box',
-        'gv-extra-survey': 'extra-surveys', 'gv-stepper': 'timeline', 'gv-event-card': 'events',
+      // markup is a SECOND source of truth — it DRIFTS from the widget (the
+      // homepage / project-page divergence). The first version only fired when a page
+      // consumed ZERO GVWidgets, so a PARTIALLY-converged page (consumes the registry
+      // for some widgets, hand-authors others) slipped through — exactly how the
+      // project-page hero participation-box drifted to "contributions"/no --dir-a while
+      // the page already used the registry for events + survey. So check PER WIDGET:
+      // each content-widget signature must have its TYPE consumed via the registry
+      // (a foBlock('type') call or a 'type' string passed to make()). A signature
+      // present but whose type is never consumed = a hand-built fork → warn.
+      //   • gv-stepper/timeline is deliberately EXCLUDED — the project-page phase ribbon
+      //     reuses the .gv-stepper PRIMITIVE for bespoke interactive phase navigation
+      //     (the documented "timeline/phase-ribbon stays a page composition" exception),
+      //     so it is not a 1:1 content-widget fork.
+      const SIG_TO_KEY = {
+        'gv-spotlight': 'spotlight', 'gv-ctaband': 'call-to-action', 'gv-pbox': 'participation-box',
+        'gv-extra-survey': 'extra-surveys', 'gv-event-card': 'events',
       };
       // Ignore HTML comments — a SYNC note naming GVWidgets is documentation, not
       // consumption. Real use = a <script> loading the registry or a GVWidgets.* call.
       const code = html.replace(/<!--[\s\S]*?-->/g, '');
       const usesRegistry = /<script[^>]+govocal-widgets\.js|GVWidgets\.[a-z]/.test(code);
-      const sigHits = Object.entries(WIDGET_SIGNATURES)
-        .filter(([cls]) => new RegExp(`class=("|')[^"']*\\b${cls}\\b`).test(code)).map(([, n]) => n);
-      if (!usesRegistry && sigHits.length >= 2) {
-        warnings.push(`[registry]  ${rel}/index.html hand-authors ${sigHits.length} registry-widget sections [${sigHits.join(', ')}] but loads no GVWidgets — consume the registry (GVWidgets.<surface>.make()/renderFO) so they can't drift from the widget. (R1 / INV-7)`);
+      // A widget type is "consumed" when its registry key appears as a quoted literal
+      // (foBlock('events'…), the ['hp-x','spotlight'] make-map, etc.).
+      const consumes = (key) => new RegExp(`(["'])${key}\\1`).test(code);
+      const unconsumed = Object.entries(SIG_TO_KEY)
+        .filter(([cls]) => new RegExp(`class=("|')[^"']*\\b${cls}\\b`).test(code))
+        .filter(([, key]) => !consumes(key))
+        .map(([, key]) => key);
+      // Warn when the page hand-authors a widget it doesn't consume, AND either it
+      // already consumes the registry for something else (a PARTIAL-convergence drift
+      // gap) or it carries ≥2 such forks (a wholesale hand-authored page). One stray
+      // hand-built widget on a page that consumes nothing stays quiet (not yet converged).
+      if (unconsumed.length && (usesRegistry || unconsumed.length >= 2)) {
+        warnings.push(`[registry]  ${rel}/index.html hand-authors registry widget(s) [${unconsumed.join(', ')}] without consuming them — render via GVWidgets.<surface>.make()/foBlock so they can't drift from the canonical widget. (INV-7)`);
       }
     }
   }

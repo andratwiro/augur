@@ -4414,149 +4414,6 @@
   const _timelineCardOriginal = null;
   const _activitiesCardOriginal = null;
 
-  // ── Phone preview = a real GoVocal mobile FRONT-OFFICE project page, built from the
-  //    canonical gv-* components (hero, gv-title, gv-participants/gv-avatars, gv-btn CTA,
-  //    gv-projdesc, gv-accordion, gv-stepper phases, gv-event-card), themed via ?theme=.
-  //    'empty' = ghost build-it placeholders; 'few'/'complex' = light vs rich real project.
-  function phoneFO(state) {
-    const complex = state === 'complex';
-    const acc = (q, a, open) => `<details class="gv-acc__item"${open ? ' open' : ''} onclick="event.stopPropagation()">
-        <summary class="gv-acc__head"><span class="gv-acc__q">${q}</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
-        <div class="gv-acc__body"><p>${a}</p></div>
-      </details>`;
-    const ev = (m, d, title, time, place, icon, regs, img) => `<article class="gv-event-card pp-fo__event">
-        <div class="gv-event-card__media pp-fo__evmedia">
-          <img src="assets/img/${img}" alt="" loading="lazy" />
-          <span class="gv-event-card__date"><span class="m">${m}</span><span class="d">${d}</span><span class="y">2026</span></span>
-        </div>
-        <div class="gv-event-card__body">
-          <h3 class="gv-event-card__title"><a href="#">${title}</a></h3>
-          <div class="gv-event-card__meta">
-            <p class="gv-event-card__row"><span data-gv-icon="clock" aria-hidden="true"></span> ${time}</p>
-            <p class="gv-event-card__row"><span data-gv-icon="${icon}" aria-hidden="true"></span> ${place}</p>
-            <p class="gv-event-card__row"><span data-gv-icon="user" aria-hidden="true"></span> ${regs} registrants</p>
-          </div>
-          <a class="gv-btn primary full" href="#">Register</a>
-        </div>
-      </article>`;
-    // Idea card = canonical .gv-ideacard with the ideation reaction foot (vote up/down +
-    // comments), same markup as the real project-page ideation feed.
-    const idea = (title, author, time, excerpt, up, down, comments, img) => {
-      const initials = author.split(' ').map((w) => w[0]).slice(0, 2).join('');
-      const thumb = img
-        ? `<div class="gv-ideacard__thumb"><img src="assets/img/${img}" alt="" loading="lazy" /></div>`
-        : `<div class="gv-ideacard__thumb"><span data-gv-icon="vote-up" aria-hidden="true"></span></div>`;
-      return `<article class="gv-ideacard e2e-idea-card">
-        ${thumb}
-        <div class="gv-ideacard__body">
-          <h3 class="gv-ideacard__title"><a href="#" onclick="event.stopPropagation()">${title}</a></h3>
-          <div class="gv-ideacard__head">
-            <span class="gv-ideacard__avatar" aria-hidden="true">${initials}</span>
-            <div>
-              <div class="gv-ideacard__meta"><span class="gv-ideacard__author">${author}</span><span class="gv-ideacard__sep" aria-hidden="true">&bull;</span><span class="gv-ideacard__time">${time}</span></div>
-              <p class="gv-ideacard__excerpt">${excerpt}</p>
-            </div>
-          </div>
-          <footer class="gv-ideacard__foot">
-            <div class="gv-react">
-              <button class="gv-react__btn" type="button" aria-label="Like" onclick="event.stopPropagation()"><span data-gv-icon="vote-up" aria-hidden="true"></span></button>
-              <span class="gv-react__count">${up}</span>
-              <button class="gv-react__btn" type="button" aria-label="Dislike" onclick="event.stopPropagation()"><span data-gv-icon="vote-down" aria-hidden="true"></span></button>
-              <span class="gv-react__count">${down}</span>
-            </div>
-            <span class="gv-react__comment"><span data-gv-icon="comments" aria-hidden="true"></span> ${comments}</span>
-          </footer>
-        </div>
-      </article>`;
-    };
-    const ideas = [
-      idea('Protected cycle lane the length of Meridian Avenue', 'Daan Verhoeven', '2 days ago', 'The painted lane just stops at the junction and it feels unsafe. A kerb-separated lane would let kids ride to school.', 312, 18, 24, 'street-trees.webp'),
-      idea('Shade and benches in Market Square', 'Amara Okonkwo', '4 days ago', 'The square bakes in summer with nowhere to sit. A few trees and benches would make it usable again.', 287, 9, 16, 'square.webp'),
-      idea('Drop the limit to 30 around all schools', 'Liam Fitzgerald', '5 days ago', 'Cars still take the school streets too fast at pickup. A consistent 30 zone with clear signs would help.', 264, 31, 41, ''),
-      idea('Late-night buses on the western routes', 'Sofia Marchetti', '1 week ago', 'Shift workers and students have no way home after 23:00. Even an hourly night service would change that.', 198, 12, 19, ''),
-      idea('Secure covered bike parking at the station', 'Noah Bergström', '1 week ago', 'People won\'t cycle to the station if their bikes get stripped. Lockable, covered racks would fix it.', 176, 7, 11, 'meeting.webp'),
-      idea('Pedestrianise the old town on weekends', 'Priya Nair', '2 weeks ago', 'Saturday markets and café terraces would thrive without through-traffic. Trial it for a summer first.', 154, 28, 33, 'workshop.webp'),
-    ].join('');
-    const phaseData = complex
-      ? [['Pre-survey', '1–15 May', 'Survey'], ['Collect ideas', '20 May – 10 Jun', 'Ideation'], ['What we heard', '11–25 Jun', 'Information'], ['Community vote', '26 Jun – 12 Jul', 'Voting'], ['Common ground', '13–27 Jul', 'Common ground']]
-      : [['Collect ideas', '20 May – 10 Jun', 'Ideation'], ['What we heard', '11–25 Jun', 'Information']];
-    const current = complex ? 1 : 0;
-    const cur = phaseData[current];
-    const stepper = phaseData.map((p, i) =>
-      `<button class="gv-phase${i === current ? ' current' : ''}" type="button"><span class="gv-pstep">${i + 1}</span><span class="gv-phase__label">${p[0]}</span></button>`).join('');
-
-    return `
-      <div class="pp-fo">
-        <div class="pp-fo__banner pp-edit" data-edit="hero"><img src="assets/img/${complex ? 'square' : 'street-trees'}.webp" alt="" loading="lazy" /><button class="gv-btn primary size-s pp-fo__follow" type="button" aria-pressed="true" onclick="event.stopPropagation();var on=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',String(on));this.querySelector('.pp-fo__follow-lbl').textContent=on?'Following (9)':'Follow (8)';"><span data-gv-icon="notification" aria-hidden="true"></span> <span class="pp-fo__follow-lbl">Following (9)</span></button></div>
-        <div class="pp-fo__pad">
-          <!-- Edit zones mirror the content-builder WIDGETS one-to-one (data-edit =
-               the builder's data-widget): Title · Text · Participation Box ·
-               Info & accordions. No invented "category" eyebrow — the real title has
-               no subtitle and there's no such widget. -->
-          <div class="pp-edit" data-edit="title">
-            <h1 class="gv-title h1 pp-fo__title">${complex ? 'Reimagine Meridian 2030' : 'A greener Station Road'}</h1>
-          </div>
-          <div class="pp-edit" data-edit="text">
-            <p class="pp-fo__lead">${complex
-              ? 'Help shape how we move, cycle and gather across the city over the next four years. We\'re collecting ideas right now — add yours below, then back the ones you like best. The team reads every suggestion, groups similar ones, and the most-supported move to a community vote and into the final plan.'
-              : 'Help shape how we move, cycle and gather on Station Road. Take the short survey to tell us what works, what doesn\'t, and what you\'d change. Your answers go straight to the project team and shape the proposals we bring back to the neighbourhood.'}</p>
-          </div>
-          <!-- Participation box: CTA(s) first, participant avatars ALWAYS at the bottom
-               (same contract as the content-builder .cb-pbox = actions then people). -->
-          <div class="pp-fo__pbox pp-edit" data-edit="participation-box">
-            <div class="pp-fo__cta">
-              <a class="gv-btn primary full" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'}</a>
-              <a class="gv-btn secondary-outlined full" href="#">See the ideas</a>
-            </div>
-            <div class="gv-participants pp-fo__parts">
-              <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
-              <span class="gv-pcount">${complex ? '342' : '38'} participants</span>
-            </div>
-          </div>
-          <div class="pp-edit" data-edit="info-accordions"><div class="gv-accordion pp-fo__acc">
-            ${acc('How will my idea be used?', 'Every idea is read by the project team and grouped with similar suggestions. The most-supported ones move to the next phase.', true)}
-            ${complex ? acc('What can I suggest?', 'Anything within scope — seating, planting, traffic calming, lighting, cycle parking or how the space is used.', false) : ''}
-            ${complex ? acc('Who is running this project?', 'The City of Meridian engagement team, together with the mobility department.', false) : ''}
-          </div></div>
-        </div><!-- /.pp-fo__pad (top) -->
-
-        <!-- Participation bar HOME = above the timeline, in the content flow. The 0-height
-             anchor marks its inline position; updateStickyBar() pins the bar to the phone
-             footer once the user scrolls down to it, and releases it back inline at the top. -->
-        <div class="pp-fo__partbar-anchor" aria-hidden="true"></div>
-        <div class="gv-partbar pp-fo__partbar">
-          <div class="gv-partbar__inner">
-            <span class="gv-partbar__status">Open for participation</span>
-            <a class="gv-btn on-color" href="#">${complex ? 'Vote on the shortlist' : 'Take the survey'} <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
-          </div>
-        </div>
-
-        <div class="pp-fo__pad pp-fo__pad--grey">
-          <div class="pp-edit" data-edit="timeline">
-            <h2 class="gv-title h3 pp-fo__h2">Timeline</h2>
-            <div class="gv-stepper pp-fo__stepper">${stepper}</div>
-            <div class="pp-fo__phasecard">
-              <div class="pp-fo__phasecard-eyebrow">Current phase · ${current + 1} of ${phaseData.length}</div>
-              <h3 class="pp-fo__phasecard-title">${cur[0]}</h3>
-              <div class="pp-fo__phasecard-dates"><span data-gv-icon="clock" aria-hidden="true"></span> ${cur[1]} · ${cur[2]}</div>
-              <p class="pp-fo__phasecard-desc">Share your ideas for how we move, cycle and gather. Every suggestion is reviewed by the city team and shapes what comes next.</p>
-            </div>
-          </div>
-          <!-- Ideas collected this phase (Ideation method output). Canonical .gv-idealist
-               / .gv-ideacard — display content, not a builder widget, so no edit zone. -->
-          ${complex ? `<div class="pp-fo__ideas">
-            <h2 class="gv-title h3 pp-fo__h2">Ideas <span class="gv-pcount">6</span></h2>
-            <div class="gv-idealist">${ideas}</div>
-          </div>` : ''}
-          ${complex ? phoneExtras(window.ppHidden) : ''}
-          <div class="pp-edit" data-edit="events">
-            <h2 class="gv-title h3 pp-fo__h2">Upcoming events</h2>
-            ${ev('Jun', '14', 'Mobility town hall', '14 Jun · 19:00', 'Central Library', 'location-simple', '41', 'meeting.webp')}
-            ${complex ? ev('Jul', '02', 'Neighbourhood design workshop', '2 Jul · 18:00', 'Meridian Civic Hall', 'location-simple', '57', 'workshop.webp') : ''}
-          </div>
-        </div>
-      </div>`;
-  }
 
   // The FO phone preview lives inside the .gv-bo body, which remaps --gv-tenant-* to the
   // fixed back-office teal. Re-point the phone's tenant vars to the real CITY colours (set
@@ -4900,7 +4757,7 @@
     return '<div class="pp-fo"><div class="pp-fo__pad" style="padding-bottom:24px;">'
       // Header image — still a ghost (not configured yet).
       + '<div class="ghost-slot tall">' + ES_IMG + 'Add a header image</div>'
-      // Real project title (the project is created with one). Same markup as phoneFO.
+      // Real project title (the project is created with one) — the FO title block.
       + '<div class="pp-edit" data-edit="title" style="margin-top:18px;"><h1 class="gv-title h1 pp-fo__title">' + ES_REAL_TITLE + '</h1></div>'
       // Generic placeholder description that ships with every project — "participants",
       // not "residents", so it fits cities, organisations, or anyone running this. Uses the
@@ -5130,59 +4987,8 @@
       + '<button class="sec-add muted" onclick="setView(&#39;add-survey&#39;)">' + ES_PLUS + 'New survey</button>';
   }
 
-  // Phone preview built from the model — a real (if young) project page.
-  function phoneBuilt() {
-    const phases = window.ppBuilt.phases, extras = window.ppBuilt.extras;
-    if (!phases.length && !extras.length && !window.ppBuilt.contentTouched) return emptyPhone();
-    // Description zone: the tester's content-builder output if they edited it, else the
-    // generic placeholder lead that ships with a fresh project.
-    const descZone = (window.ppBuilt.contentTouched && window.ppBuilt.content)
-      ? '<div class="pp-edit" data-edit="text">' + window.ppBuilt.content + '</div>'
-      : '<p class="pp-fo__lead es-default-lead">Tell participants what this project is about and how they can take part. This placeholder text ships with every project — edit it to describe yours.</p>';
-    let ci = phases.findIndex((p) => p.status === 'live'); if (ci < 0) ci = 0;
-    const cur = phases[ci];
-    const stepper = phases.map((p, i) =>
-      '<button class="gv-phase' + (i === ci ? ' current' : '') + '" type="button"><span class="gv-pstep">' + (i + 1) + '</span><span class="gv-phase__label">' + ppEsc(p.name) + '</span></button>').join('');
-    // Participation box: the live phase (primary) plus any other active method — phases
-    // that are live, or surveys (always active) — as secondary CTAs, mirroring the
-    // content builder's participation-box (direction A: active methods as buttons).
-    const activeMethods = []
-      .concat(phases.filter((p) => p.status === 'live').map((p) => ({ cta: p.cta, primary: true })))
-      .concat(extras.map((e) => ({ cta: e.cta, primary: false })));
-    const pbox = activeMethods.length
-      ? '<div class="pp-fo__pbox pp-edit" data-edit="participation-box"><div class="pp-fo__cta">'
-        + activeMethods.map((a) => '<a class="gv-btn ' + (a.primary ? 'primary' : 'secondary-outlined') + ' full" href="#">' + ppEsc(a.cta) + '</a>').join('')
-        + '</div><div class="gv-participants pp-fo__parts" style="margin-top:10px;"><span class="gv-pcount es-default-lead">Be the first to take part</span></div></div>'
-      : '';
-    const timeline = phases.length
-      ? '<div class="pp-fo__pad pp-fo__pad--grey"><div class="pp-edit" data-edit="timeline">'
-        + '<h2 class="gv-title h3 pp-fo__h2">Timeline</h2>'
-        + '<div class="gv-stepper pp-fo__stepper">' + stepper + '</div>'
-        + '<div class="pp-fo__phasecard"><div class="pp-fo__phasecard-eyebrow">Current phase · ' + (ci + 1) + ' of ' + phases.length + '</div>'
-        + '<h3 class="pp-fo__phasecard-title">' + ppEsc(cur.name) + '</h3>'
-        + '<div class="pp-fo__phasecard-dates"><span data-gv-icon="clock" aria-hidden="true"></span> Open now · ' + ppEsc(cur.label) + '</div></div>'
-        + '</div></div>'
-      : '';
-    const extrasHtml = extras.length
-      ? '<div class="pp-fo__pad"><h2 class="gv-title h3 pp-fo__h2">Other ways to take part</h2>'
-        + extras.map((e) =>
-          '<div class="gv-extra-survey gv-extra-survey--card" style="margin-top:12px;"><span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span>'
-          + '<h3 class="gv-extra-survey__title">' + ppEsc(e.title) + '</h3>'
-          + '<p class="gv-extra-survey__desc">Runs alongside the project — open to everyone.</p>'
-          + '<a class="gv-btn secondary-outlined full" href="#">' + ppEsc(e.cta) + '</a></div>').join('')
-        + '</div>'
-      : '';
-    const heroSrc = window.ppHeroSrc ? window.ppHeroSrc() : '';
-    const heroHtml = heroSrc
-      ? '<div class="pp-fo__banner pp-edit" data-edit="hero" style="border-radius:10px;overflow:hidden;"><img src="' + heroSrc + '" alt="" style="width:100%;display:block;" /></div>'
-      : '<div class="ghost-slot tall">' + ES_IMG + 'Add a header image</div>';
-    return '<div class="pp-fo"><div class="pp-fo__pad" style="padding-bottom:20px;">'
-      + heroHtml
-      + '<div class="pp-edit" data-edit="title" style="margin-top:18px;"><h1 class="gv-title h1 pp-fo__title">' + ES_REAL_TITLE + '</h1></div>'
-      + descZone
-      + pbox
-      + '</div>' + timeline + extrasHtml + '</div>';
-  }
+  // (phoneFO/phoneBuilt — the old hand-built FO preview — removed: the phone is now
+  //  an iframe of the canonical shared renderer pp-page.html; see renderPhone.)
 
   // The project banner the tester set in the content builder (data URL or ghost).
   window.ppHeroSrc = function () {
@@ -5325,9 +5131,9 @@
   setProjectState('empty', null);
 
   // ── Full front-office project page ────────────────────────────────────────
-  // The Eye icon (top bar + content builder) opens the live FO project page. It
-  // renders the SAME phoneFO(state) body as the phone preview, so the resident-
-  // facing page and the editor preview never drift. "Edit project" returns here.
+  // The Eye icon (top bar + content builder) opens the live FO project page, driven by
+  // the same canonical shared renderer (pp-page.html / GVWidgets) as the phone preview,
+  // so the resident page and the editor preview never drift. "Edit project" returns here.
   function syncFOTheme() {
     const v = document.getElementById('view-fo');
     if (!v) return;

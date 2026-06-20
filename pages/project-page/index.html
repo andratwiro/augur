@@ -220,24 +220,11 @@
         <div class="gv-projdesc pp-intro">
           <p>Market Square is the heart of the Old Town, and it's time we rethought it together. We're <strong>redesigning the square so it works for everyone</strong> — for the weekly market, for people stopping for a coffee, for children and for residents getting around on foot and by bike.</p>
         </div>
-        <div class="pp-cta">
-          <!-- Participation box — canonical .gv-pbox (mirrors the Content Builder widget) -->
-          <div class="gv-pbox">
-            <div class="gv-pbox__actions">
-              <a class="gv-btn primary full" href="#ideas">Submit your idea</a>
-              <a class="gv-btn secondary-outlined full" href="#ideas">See the ideas</a>
-            </div>
-            <div class="gv-participants gv-pbox__people" style="margin-top:4px;">
-              <span class="gv-avatars on-light" aria-hidden="true">
-                <span class="av"></span>
-                <span class="av"></span>
-                <span class="av"></span>
-              </span>
-              <span class="gv-pcount">122 contributions</span>
-              <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
-            </div>
-          </div>
-        </div>
+        <!-- Participation box — rendered from the canonical registry
+             (GVWidgets.project 'participation-box') so it can NEVER drift from the
+             widget. The project's two actions + participant count are passed as the
+             model; method buttons carry the page's #ideas anchors (see script). -->
+        <div class="pp-cta" id="pp-pbox-mount"></div>
       </div>
 
       <!-- Row 2 — rest of the description · (narrow column intentionally empty) -->
@@ -663,6 +650,16 @@
     window.addEventListener('DOMContentLoaded', function () {
       if (!window.GVWidgets || !GVWidgets.project) return;
       var P = GVWidgets.project;
+      // Participation box — canonical widget; the project's two actions + participant
+      // count as the model. href on each method keeps the page's #ideas anchors.
+      var pm = document.getElementById('pp-pbox-mount');
+      if (pm) pm.innerHTML = P.foBlock('participation-box', { pbox: {
+        showParticipants: true, count: '122 participants',
+        methods: [
+          { type: 'ideation', cta: 'Submit your idea', href: '#ideas', status: 'active', current: true, visible: true, timeline: true },
+          { type: 'ideation', cta: 'See the ideas', href: '#ideas', status: 'active', visible: true }
+        ]
+      } });
       // Extra survey — canonical card with this project's name/desc (data override).
       var sm = document.getElementById('pp-survey-mount');
       if (sm) sm.innerHTML = P.foBlock('extra-surveys', { survey: {
@@ -684,6 +681,7 @@
             { icon: 'user', text: '21 registrants' } ] }
       ] });
       if (window.GVIcons) GVIcons.render(document.body);
+      if (window.GVAvatars) GVAvatars.fill(document.body);
     });
   </script>
 </body>
