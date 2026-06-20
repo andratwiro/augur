@@ -3455,18 +3455,31 @@
 
   /* ── layout-only, ported from canonical pages/project-page ───────────────── */
   #view-fo .pp-managers { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; padding: 24px 0 0; }
-  #view-fo .pp-banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
-  #view-fo .pp-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  #view-fo .pp-head { padding: 36px 0 44px; }
-  #view-fo .pp-head h1 { margin: 20px 0 16px; }
-  #view-fo .pp-row { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 10px 40px; align-items: start; }
-  #view-fo .pp-cta { display: flex; flex-direction: column; gap: 10px; }
-  #view-fo .pp-cta .gv-btn { justify-content: center; }
-  #view-fo .pp-cta .gv-participants { display: flex; justify-content: center; }
-  #view-fo .pp-intro { margin: 0; }
+  /* ── R1 convergence: the project header renders via GVWidgets.project.renderFO ←
+       buildModel(cb-frame) — the SAME canonical model + emitter the phone/window preview
+       uses — so it can no longer drift from the editor. These rules size the canonical
+       .gv-fo__* scaffold at full-page width: a wide banner over one flush-left reading
+       column (title · rich-text · accordions all share the measure + left edge, which
+       also kills the old intro/desc size + indent mismatch). */
+  #view-fo .gv-fo__banner { width: 100%; aspect-ratio: 1150 / 300; min-height: 200px; border-radius: var(--gv-radius); overflow: hidden; margin-top: 12px; }
+  #view-fo .gv-fo__banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #view-fo .gv-fo__pad { max-width: 760px; padding: 36px 0 44px; }
+  #view-fo .gv-fo__pad > * { margin: 0 0 22px; }
+  #view-fo .gv-fo__pad > *:last-child { margin-bottom: 0; }
+  #view-fo .gv-fo__title { margin: 8px 0 4px; }
+  /* Size the rich-text on the CONTAINER (not just `p`) — the editor stores bare text
+     with no <p>, so a `.gv-prose p` rule alone would miss it and fall to 14px (the old
+     "intro smaller than the rest" bug). Mirror the phone preview's metrics so the FO
+     reading column is identical across all three surfaces. */
+  #view-fo .gv-fo__rich { font-size: var(--gv-fs-base); line-height: 1.55; color: var(--gv-grey-800, #43515D); }
+  #view-fo .gv-fo .gv-prose { max-width: none; margin: 0; padding: 0; }   /* flush-left, fill the column */
+  #view-fo .gv-fo__cols { display: flex; gap: 40px; align-items: flex-start; }
+  #view-fo .gv-fo__col { flex: 1; }
+  #view-fo .gv-fo__col > * { margin: 0 0 18px; }
+  #view-fo .gv-fo__col > *:last-child { margin-bottom: 0; }
+  #view-fo .gv-fo__img img { width: 100%; border-radius: var(--gv-radius); display: block; }
   @media (max-width: 760px) {
-    #view-fo .pp-row { grid-template-columns: 1fr; }
-    #view-fo .pp-ctacell { margin-bottom: 26px; }
+    #view-fo .gv-fo__cols { flex-direction: column; }
   }
 
   /* Participation bar — header lives outside the scroller, so stick to top:0. */
@@ -3586,27 +3599,11 @@
             <button class="gv-btn primary size-s" id="fo-followBtn" type="button" aria-pressed="true">Following (9)</button>
           </div>
 
-          <section class="pp-banner" aria-label="Project banner"><img id="fo-banner" src="" alt="" /></section>
-
-          <!-- Project header — two stacked wide/narrow rows (Content-Builder default) -->
-          <div class="pp-head">
-            <h1 class="gv-title h1" id="fo-title"></h1>
-            <div class="pp-row">
-              <div class="gv-projdesc pp-intro" id="fo-intro"></div>
-              <div class="pp-ctacell">
-                <div class="pp-cta" id="fo-cta"></div>
-              </div>
-            </div>
-            <div class="pp-row" style="margin-top:18px;">
-              <div class="pp-desccol">
-                <div class="gv-projdesc pp-desc" id="fo-desc"></div>
-                <!-- Extra survey — canonical .gv-extra-survey card, in the MAIN column
-                     (not the narrow CTA rail) so it doesn't crush the page layout. -->
-                <div id="fo-extra" hidden></div>
-              </div>
-              <div aria-hidden="true"></div>
-            </div>
-          </div>
+          <!-- Project header — R1: rendered by GVWidgets.project.renderFO(buildModel(cb-frame)),
+               the canonical model-driven FO emitter shared with the phone/window preview, so
+               banner · title · description · accordions always mirror the editor (no hand-authored
+               copy that can drift). Participation entry lives in the sticky .gv-partbar below. -->
+          <div id="fo-canon"></div>
         </div>
 
         <!-- Participation bar -->
@@ -4383,30 +4380,28 @@
       CURRENT = d.phases.findIndex((p) => p.status === 'current'); if (CURRENT < 0) CURRENT = 0;
       ideaView = 'list';
       if (ppMap) { ppMap.remove(); ppMap = null; ppMarkers = []; }
-      $('#fo-banner').src = d.banner;
-      $('#fo-title').textContent = d.title;
-      $('#fo-intro').innerHTML = d.intro;
-      $('#fo-desc').innerHTML = d.desc;
-      $('#fo-cta').innerHTML = d.cta;
+      // R1 convergence: the resident-page HEADER (banner · title · description ·
+      // accordions · any content blocks) renders through the canonical model-driven
+      // emitter — GVWidgets.project.renderFO(buildModel(cb-frame)) — the SAME path the
+      // phone/window preview uses. One source of truth, so the full FO can no longer
+      // drift from the editor. Falls back to a model built from the static DATA when the
+      // builder canvas isn't mounted yet (deep-link before the editor seeds). The
+      // method band (phase feed + body) and the sticky participation bar stay below.
+      var _frame = document.getElementById('cb-frame');
+      var _GW = window.GVWidgets && GVWidgets.project;
+      if (_GW && _GW.renderFO) {
+        var _model = (_frame && _frame.querySelector('.gv-bo-cb-block'))
+          ? _GW.buildModel(_frame)
+          : { blocks: [
+              { type: 'hero',  data: { src: d.banner } },
+              { type: 'title', data: { text: d.title } },
+              { type: 'text',  data: { html: d.intro } },
+              { type: 'text',  data: { html: d.desc } }
+            ] };
+        $('#fo-canon').innerHTML = _GW.renderFO(_model);
+      }
       $('#fo-partbar').innerHTML = d.partbar;
       $('#fo-events').innerHTML = d.events;
-      const ex = $('#fo-extra');
-      if (d.extra) {
-        ex.hidden = false;
-        ex.innerHTML = `<div class="gv-extra-survey gv-extra-survey--card"><span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span><h3 class="gv-extra-survey__title">${esc(d.extra.name)}</h3><p class="gv-extra-survey__desc">${esc(d.extra.desc)}</p><a class="gv-btn secondary-outlined full" href="#">${esc(d.extra.cta)}</a></div>`;
-      } else { ex.hidden = true; ex.innerHTML = ''; }
-      // LIVE: the Eye-icon full page mirrors the builder's edited header (title ·
-      // banner · intro) from the SAME model the phone preview reads
-      // (GVWidgets.project.buildModel), so it can't drift from the editor. The phase
-      // feed + method body below stay sample content (not builder widgets); the
-      // pbox/survey slots follow when pages/project-page converges onto renderFO (R1).
-      var _bf = document.getElementById('cb-frame');
-      if (window.GVWidgets && GVWidgets.project.buildModel && _bf && _bf.querySelector('.gv-bo-cb-block')) {
-        var _flat = (function flat(bs) { var o = []; bs.forEach(function (b) { o.push(b); if (b.data && b.data.cols) b.data.cols.forEach(function (c) { o = o.concat(flat(c)); }); }); return o; })(GVWidgets.project.buildModel(_bf).blocks);
-        var _t = _flat.find(function (b) { return b.type === 'title'; }); if (_t && _t.data.text) $('#fo-title').textContent = _t.data.text;
-        var _h = _flat.find(function (b) { return b.type === 'hero'; }); if (_h && _h.data.src) $('#fo-banner').src = _h.data.src;
-        var _i = _flat.find(function (b) { return b.type === 'text'; }); if (_i && _i.data.html) $('#fo-intro').innerHTML = _i.data.html;
-      }
       wireOnce();
       renderStepper();
       setPhase(CURRENT);
