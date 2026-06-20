@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     body { margin: 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); color: var(--gv-text-primary); }
     .demo { padding: 24px 20px 70px; }
@@ -47,67 +48,28 @@
     </div>
 
     <div class="notes">
-      <p><strong>Reuse:</strong> one <code>&lt;nav class="gv-bo-side"&gt;</code>. Default extended; add
-      <code>.is-rail</code> for the rail, or <code>data-gv-side-auto</code> + the ResizeObserver snippet to auto-collapse
-      when the container (not the viewport) drops below 1200px. Icons are GoVocal's real admin glyphs at 24×20: <code>--gv-blue-400</code> inactive,
+      <p><strong>Reuse (as a linked instance):</strong> import the renderer and pass props —
+      <code>GV.mount('#el', 'sidebar', { active: 'projects' })</code>. The default nav (real admin
+      order + glyphs) lives in the renderer; props override <code>active</code>, <code>items</code>,
+      <code>brand</code>, <code>account</code> and the <code>rail</code> / <code>auto</code> variant — no markup is copied, so
+      editing <code>GV.sidebar</code> or the <code>.gv-bo</code> CSS upstream reflows every instance.
+      Icons are GoVocal's real admin glyphs at 24×20: <code>--gv-blue-400</code> inactive,
       <code>--gv-teal-400</code> on the active item, <code>--gv-green-400</code> for Support. Labels are 15px white;
       the active cell is <code>rgba(0,0,0,.7)</code> (inset+rounded in the rail); the count badge overlaps the bell.</p>
     </div>
   </div>
 
   <script>
-    // Real admin glyphs live in canonical govocal-icons.js (admin-* names) — referenced
-    // by data-gv-icon, never copied here. GVIcons.render() fills them after injection.
-    const ico = (name, extra = '') => `<span class="gv-bo-nav__icon"${extra} data-gv-icon="${name}"></span>`;
-    const TOP = [
-      ['admin-dashboard', 'Dashboard'], ['admin-projects', 'Projects', true], ['admin-input', 'Input manager'],
-      ['admin-users', 'Users'], ['admin-messaging', 'Messaging'], ['admin-reporting', 'Reporting'],
-      ['admin-community', 'Community monitor'], ['admin-inspiration', 'Inspiration hub'],
-    ];
-    const item = ([icon, label, active], extra = '') =>
-      `<a class="gv-bo-nav__item${active ? ' is-active' : ''}" href="#" title="${label}"${active ? ' aria-current="page"' : ''}>` +
-      `${ico(icon)}<span class="gv-bo-nav__label">${label}</span>${extra}</a>`;
-
-    function sidebar() {
-      return `
-      <nav class="gv-bo-side" aria-label="Admin">
-        <a class="gv-bo-side__brand" href="#">
-          <span class="gv-bo-side__logo"><span data-gv-icon="admin-back"></span></span>
-          <span class="gv-bo-side__brandtext">To platform</span>
-        </a>
-        <div class="gv-bo-nav">${TOP.map((i) => item(i)).join('')}</div>
-        <div class="gv-bo-nav gv-bo-nav--bottom">
-          ${item(['admin-tools', 'Tools'])}
-          ${item(['admin-pages', 'Pages & menu'])}
-          ${item(['admin-settings', 'Settings'])}
-          ${item(['admin-notifications', 'Notifications'], '<span class="gv-bo-count">29</span>')}
-          <a class="gv-bo-nav__item" href="#" title="Go Vocal Admin"><span class="gv-bo-avatar" data-gv-icon="user"></span><span class="gv-bo-nav__label">Go Vocal Admin<span class="gv-bo-nav__sub">Administrator</span></span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
-          <a class="gv-bo-nav__item" href="#" title="Support">${ico('admin-support', ' style="color:var(--gv-green-400)"')}<span class="gv-bo-nav__label">Support</span><span class="gv-bo-chev" data-gv-icon="chevron-right"></span></a>
-        </div>
-      </nav>`;
-    }
-
-    const auto = document.getElementById('side-auto');
-    auto.innerHTML = sidebar();
-    auto.firstElementChild.setAttribute('data-gv-side-auto', '');
-    const rail = document.getElementById('side-rail');
-    rail.innerHTML = sidebar();
-    rail.firstElementChild.classList.add('is-rail');
-    // fill the freshly-injected [data-gv-icon] nodes (script may have run before defer'd icons)
-    if (window.GVIcons) GVIcons.render();
-    else document.addEventListener('DOMContentLoaded', () => GVIcons.render());
-
-    // ── Responsive snippet: container-aware collapse ──
-    // Observes each sidebar's direct parent — collapses when the container
-    // (not the viewport) drops below 1200px, so the sidebar reacts to the
-    // space it's actually placed in.
-    document.querySelectorAll('[data-gv-side-auto]').forEach(side => {
-      const container = side.closest('.gv-bo-shell, .gv-bo') || side.parentElement;
-      new ResizeObserver(([entry]) => {
-        const narrow = entry.contentRect.width < 1200;
-        side.classList.toggle('is-rail', narrow);
-        container.classList.toggle('is-rail', narrow);
-      }).observe(container);
+    // LINKED INSTANCE — this demo owns NO sidebar markup. It imports the canonical
+    // renderer GV.sidebar(props) from govocal-instances.js and passes only PROPS:
+    // which item is `active`, and the `rail` / `auto` variant. Edit the renderer or
+    // its .gv-bo CSS upstream and every instance (here + in prototypes) reflows.
+    // GV.render(props) IS the detached form — `npm run detach` just freezes it.
+    document.addEventListener('DOMContentLoaded', function () {
+      // extended, auto-collapses when its container drops below 1200px
+      GV.mount('#side-auto', 'sidebar', { active: 'projects', auto: true });
+      // the same instance, forced to the collapsed icon rail via the `rail` prop
+      GV.mount('#side-rail', 'sidebar', { active: 'projects', rail: true });
     });
   </script>
 </body>
