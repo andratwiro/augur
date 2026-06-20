@@ -70,11 +70,6 @@
 .hb-radiopill { padding: 7px 12px; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); background: var(--gv-white); font-size: var(--gv-fs-13); color: var(--gv-text-secondary); cursor: pointer; }
 .hb-radiopill:hover { border-color: var(--gv-bo-primary); }
 .hb-radiopill.is-active { border-color: var(--gv-bo-primary); background: var(--gv-teal-75); color: var(--gv-bo-primary); font-weight: 600; }
-.hb-togglerow { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
-.hb-togglerow .gv-toggle { flex: none; margin-top: 2px; }
-.hb-togglerow__txt { flex: 1; }
-.hb-togglerow__label { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-bo-primary); }
-.hb-togglerow__help { margin: 3px 0 0; font-size: var(--gv-fs-xs); color: var(--gv-cool-grey-600); line-height: 1.45; }
 .hb-colorfield { display: flex; align-items: center; gap: 8px; }
 .hb-swatch { width: 34px; height: 34px; border-radius: var(--gv-radius); border: 1px solid var(--gv-grey-300); flex: none; }
 .hb-pickbtn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 9px 12px; border: 1px solid var(--gv-grey-400); border-radius: var(--gv-radius); background: var(--gv-white); font-size: var(--gv-fs-s); color: var(--gv-text-secondary); cursor: pointer; }

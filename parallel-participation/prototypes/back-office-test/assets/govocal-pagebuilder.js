@@ -231,7 +231,8 @@ window.GVPageBuilder = (function () {
     });
 
     var api = { makeBlock: makeBlock, select: select, deselect: deselect, frame: frame, root: root,
-      panel: sBody, toast: toast, makeDropZone: makeDropZone, reflectEmpty: reflectEmptyAll, def: def };
+      panel: sBody, toast: toast, makeDropZone: makeDropZone, reflectEmpty: reflectEmptyAll, def: def,
+      wireBlock: wireBlock };   // expose so consumers can re-arm dragstart on restored blocks (F-CV3)
 
     // wire any pre-existing static blocks already in the frame (+ their nested zones)
     var pre = frame.querySelectorAll(':scope > .gv-bo-cb-block');
