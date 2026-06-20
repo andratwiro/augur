@@ -613,7 +613,7 @@ window.GVWidgets = (function () {
       var vis = st.methods.filter(function (m) { return m.visible; });
       var inner = PBOX_DIRECTIONS.A.render(st, vis);
       var people = st.showParticipants
-        ? '<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">+19 participants <span class="cb-pbox__info" data-gv-icon="info-solid"></span></span></div>'
+        ? '<div class="gv-participants gv-pbox__people"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">' + (st.count || '+19 participants') + ' <span class="cb-pbox__info" data-gv-icon="info-solid"></span></span></div>'
         : '';
       return '<div class="gv-pbox gv-pbox--dir-a">' + inner + people + '</div>';
     }

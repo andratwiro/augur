@@ -126,29 +126,37 @@
   }
 
   /* ── pieces ─────────────────────────────────────────────────────────────── */
+  // The participation box, extra-survey cards and event cards are now rendered by the
+  // CANONICAL registry (GVWidgets.project.foBlock) instead of hand-built here, so this
+  // FO preview can't drift from the real widgets. We only map the preview's model fields
+  // onto each widget's data shape. (govocal-widgets.js is loaded in pp-page.html.)
   function pboxHTML(m) {
-    // Participation box = the live phase action(s). Extra surveys render as their own
-    // cards below (extraCardsHTML), matching the canonical project-page layout.
-    var actives = (m.phases || []).filter(function (p) { return p.status === 'current'; })
-      .map(function (p) { return { cta: p.cta || CTA_LABELS[p.method] || 'Take part', primary: true }; });
-    if (!actives.length) return '';
-    var people = (m.participants ? '<div class="gv-participants gv-pbox__people" style="margin-top:4px;"><span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span><span class="gv-pcount">' + m.participants + ' participants</span></div>'
-      : '<div class="gv-participants gv-pbox__people" style="margin-top:4px;"><span class="gv-pcount" style="color:var(--gv-text-secondary)">Be the first to take part</span></div>');
-    return '<div class="gv-pbox"><div class="gv-pbox__actions">' +
-      actives.map(function (a) { return '<a class="gv-btn ' + (a.primary ? 'primary' : 'secondary-outlined') + ' full" href="#">' + esc(a.cta) + '</a>'; }).join('') +
-      '</div>' + people + '</div>';
+    var methods = (m.phases || []).filter(function (p) { return p.status === 'current'; })
+      .map(function (p) { return { type: p.method, label: p.name, cta: p.cta || CTA_LABELS[p.method] || 'Take part', dates: p.dates || '', status: 'active', current: true, visible: true, timeline: true }; });
+    if (!methods.length || !window.GVWidgets) return '';
+    return GVWidgets.project.foBlock('participation-box', { pbox: {
+      showParticipants: !!m.participants,
+      count: m.participants ? (m.participants + ' participants') : null,
+      aggTitle: 'Participate', methods: methods
+    } });
   }
   function extraCardsHTML(m) {
+    if (!window.GVWidgets) return '';
     return (m.surveys || []).map(function (e) {
-      return '<div class="gv-extra-survey gv-extra-survey--card"><span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey"></span> Survey</span><h3 class="gv-extra-survey__title">' + esc(e.title) + '</h3><p class="gv-extra-survey__desc">' + esc(e.desc || 'Runs alongside the project — open to everyone.') + '</p><a class="gv-btn secondary-outlined full" href="#">' + esc(e.cta || 'Take the survey') + '</a></div>';
+      return GVWidgets.project.foBlock('extra-surveys', { survey: {
+        survey: 'mobility', format: 'card', style: 'secondary', state: 'current',
+        label: e.cta || 'Take the survey',
+        data: { name: e.title, desc: e.desc || 'Runs alongside the project — open to everyone.' }
+      } });
     }).join('');
   }
   function eventCardHTML(ev) {
-    return '<article class="gv-event-card bordered"><div class="gv-event-card__media">' + (ev.img ? '<img src="' + ev.img + '" alt="" loading="lazy" />' : '') +
-      '<span class="gv-event-card__date is-beside"><span class="m">' + esc(ev.m) + '</span><span class="d">' + esc(ev.d) + '</span><span class="y">' + esc(ev.y || '2026') + '</span></span></div>' +
-      '<div class="gv-event-card__body"><div class="gv-event-card__titlerow"><h3 class="gv-event-card__title"><a href="#">' + esc(ev.title) + '</a></h3></div>' +
-      '<div class="gv-event-card__meta"><p class="gv-event-card__row"><span data-gv-icon="clock"></span> ' + esc(ev.when) + '</p><p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> ' + esc(ev.where) + '</p></div>' +
-      '<a class="gv-btn primary full" href="#">Register</a></div></article>';
+    if (!window.GVWidgets) return '';
+    var meta = [{ icon: 'clock', text: esc(ev.when) }];
+    if (ev.where) meta.push({ icon: 'location-simple', text: esc(ev.where) });
+    return GVWidgets.project.foBlock('events', { cardsOnly: true, events: [
+      { m: ev.m, d: ev.d, y: ev.y || '2026', title: ev.title, img: ev.img || '', imgAlt: ev.imgAlt || '', meta: meta }
+    ] });
   }
 
   /* ── public render ──────────────────────────────────────────────────────── */
