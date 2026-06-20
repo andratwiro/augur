@@ -15,6 +15,7 @@
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-partbar.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-widgets.js" defer></script>
   <!--
     FLAGSHIP reference rebuild of a GoVocal IDEATION project page, composed from the
     govocal-ui system. Source: uxusertesting.govocal.com (City of Raleigh, "Let's
@@ -259,14 +260,10 @@
           </details>
         </div>
 
-        <!-- Extra survey — canonical .gv-extra-survey card (same component as the
-             Content Builder "Extra surveys" widget). Sits below the project FAQ. -->
-        <div class="gv-extra-survey gv-extra-survey--card" style="margin-top:20px">
-          <span class="gv-extra-survey__tag"><span class="gv-icon" data-gv-icon="survey" aria-hidden="true"></span> Survey</span>
-          <h3 class="gv-extra-survey__title">Mobility check-in</h3>
-          <p class="gv-extra-survey__desc">Tell us how you move around the square today — a few quick questions that feed the redesign.</p>
-          <a class="gv-btn secondary-outlined full" href="#">Take the survey</a>
-        </div>
+        <!-- Extra survey — rendered from the canonical registry (GVWidgets.project
+             'extra-surveys') so it always tracks the real widget incl. its tag+status
+             head; the project's own copy is passed as a data override (see script). -->
+        <div id="pp-survey-mount" style="margin-top:20px"></div>
 
         <!-- File-attachment download list (canonical .gv-attachment — same component as
              the Content-Builder info page, fo-stlouis-infopage). Project context files. -->
@@ -326,43 +323,9 @@
           <h2 class="gv-title h2" id="pp-events-title" style="margin:0">Events</h2>
           <a class="gv-btn text" href="#">View all events</a>
         </div>
-        <div class="gv-events__grid">
-          <article class="gv-event-card bordered">
-            <div class="gv-event-card__media">
-              <img src="../../skills/govocal-ui/img/westmere/oldtown.webp" alt="Cobbled Old Town street near Market Square" loading="lazy" />
-            </div>
-            <div class="gv-event-card__body">
-              <div class="gv-event-card__titlerow">
-                <span class="gv-event-card__date is-beside"><span class="m">Jul</span><span class="d">09</span><span class="y">2026</span></span>
-                <h3 class="gv-event-card__title"><a href="#">Market Square walk &amp; talk: see the ideas on site</a></h3>
-              </div>
-              <div class="gv-event-card__meta">
-                <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 9 Jul 2026 · 17:30 – 19:00</p>
-                <p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> Old Town Hall, Market Square</p>
-                <p class="gv-event-card__row"><span data-gv-icon="user"></span> 33 registrants</p>
-              </div>
-              <a class="gv-btn primary full" href="#">Register</a>
-            </div>
-          </article>
-          <article class="gv-event-card bordered">
-            <div class="gv-event-card__media">
-              <img src="../../skills/govocal-ui/img/westmere/workshop.webp" alt="Residents at a community workshop with screens and tables" loading="lazy" />
-              <span class="gv-event-card__rsvp">Going</span>
-            </div>
-            <div class="gv-event-card__body">
-              <div class="gv-event-card__titlerow">
-                <span class="gv-event-card__date is-beside"><span class="m">Jun</span><span class="d">18</span><span class="y">2026</span></span>
-                <h3 class="gv-event-card__title"><a href="#">Online session: bringing your ideas for the square together</a></h3>
-              </div>
-              <div class="gv-event-card__meta">
-                <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 18 Jun 2026 · 12:00 – 13:00</p>
-                <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online meeting</a></p>
-                <p class="gv-event-card__row"><span data-gv-icon="user"></span> 21 registrants</p>
-              </div>
-              <a class="gv-btn primary full" href="#">Register</a>
-            </div>
-          </article>
-        </div>
+        <!-- Grid filled from the canonical registry (GVWidgets.project 'events') with
+             this project's events (photos + online meta) passed in — see script. -->
+        <div class="gv-events__grid" id="pp-events-grid"></div>
       </section>
     </div>
   </main>
@@ -689,6 +652,39 @@
     renderStepper();
     setPhase(CURRENT);
     if (window.GVIcons) window.GVIcons.render();
+  </script>
+
+  <!-- Registry-driven widget sections: the Extra-survey card and the Events grid are
+       rendered from the canonical GVWidgets.project registry (not hand-authored), so
+       they track the real widgets. This project's own content is passed in as data —
+       the page owns layout + content; the widget owns markup. Runs on DOMContentLoaded
+       so the deferred govocal-widgets.js has loaded. -->
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      if (!window.GVWidgets || !GVWidgets.project) return;
+      var P = GVWidgets.project;
+      // Extra survey — canonical card with this project's name/desc (data override).
+      var sm = document.getElementById('pp-survey-mount');
+      if (sm) sm.innerHTML = P.foBlock('extra-surveys', { survey: {
+        survey: 'mobility', format: 'card', style: 'secondary', state: 'current',
+        data: { name: 'Mobility check-in', desc: 'Tell us how you move around the square today — a few quick questions that feed the redesign.' }
+      } });
+      // Events — this project's two events (photos + custom meta), via the registry.
+      var eg = document.getElementById('pp-events-grid');
+      if (eg) eg.innerHTML = P.foBlock('events', { cardsOnly: true, events: [
+        { m: 'Jul', d: '09', y: '2026', img: '../../skills/govocal-ui/img/westmere/oldtown.webp', imgAlt: 'Cobbled Old Town street near Market Square',
+          title: 'Market Square walk &amp; talk: see the ideas on site', meta: [
+            { icon: 'clock', text: '9 Jul 2026 · 17:30 – 19:00' },
+            { icon: 'location-simple', text: 'Old Town Hall, Market Square' },
+            { icon: 'user', text: '33 registrants' } ] },
+        { m: 'Jun', d: '18', y: '2026', img: '../../skills/govocal-ui/img/westmere/workshop.webp', imgAlt: 'Residents at a community workshop with screens and tables', rsvp: 'Going',
+          title: 'Online session: bringing your ideas for the square together', meta: [
+            { icon: 'clock', text: '18 Jun 2026 · 12:00 – 13:00' },
+            { icon: 'link', text: '<a href="#">Online meeting</a>' },
+            { icon: 'user', text: '21 registrants' } ] }
+      ] });
+      if (window.GVIcons) GVIcons.render(document.body);
+    });
   </script>
 </body>
 </html>

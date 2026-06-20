@@ -444,19 +444,39 @@ window.GVWidgets = (function () {
       { m: 'Sep', d: '10', y: '2026', title: 'Online townhall: review the shortlisted ideas', when: '10 Sep 2026 · 18:00 – 19:30', where: 'Online (Zoom)', regs: '88' },
       { m: 'Sep', d: '24', y: '2026', title: 'Pop-up booth at the State Fair', when: '24 Sep 2026 · 10:00 – 16:00', where: 'NC State Fairgrounds', regs: '12' }
     ];
+    var EV_DATE = function (ev) { return '<span class="m">' + ev.m + '</span><span class="d">' + ev.d + '</span><span class="y">' + ev.y + '</span>'; };
+    // Default card = SVG-placeholder media with the date inside it. OPTIONAL richer
+    // variant (additive — only when supplied): ev.img → photo media (+ ev.rsvp badge),
+    // date moves beside the title in a titlerow, ev.meta overrides the fixed rows.
     function cbEventCard(ev) {
+      if (ev.img) {
+        var meta = ev.meta
+          ? ev.meta.map(function (r) { return '<p class="gv-event-card__row"><span data-gv-icon="' + r.icon + '"></span> ' + r.text + '</p>'; }).join('')
+          : '<p class="gv-event-card__row"><span data-gv-icon="clock"></span> ' + ev.when + '</p>' +
+            '<p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> ' + ev.where + '</p>' +
+            '<p class="gv-event-card__row"><span data-gv-icon="user"></span> ' + ev.regs + ' registrants</p>';
+        return '<article class="gv-event-card bordered"><div class="gv-event-card__media">' +
+          '<img src="' + ev.img + '" alt="' + (ev.imgAlt || '') + '" loading="lazy">' +
+          (ev.rsvp ? '<span class="gv-event-card__rsvp">' + ev.rsvp + '</span>' : '') + '</div>' +
+          '<div class="gv-event-card__body"><div class="gv-event-card__titlerow">' +
+          '<span class="gv-event-card__date is-beside">' + EV_DATE(ev) + '</span>' +
+          '<h3 class="gv-event-card__title"><a href="#">' + ev.title + '</a></h3></div>' +
+          '<div class="gv-event-card__meta">' + meta + '</div>' +
+          '<a class="gv-btn primary full" href="#">Register</a></div></article>';
+      }
       return '<article class="gv-event-card bordered"><div class="gv-event-card__media" aria-hidden="true">' +
         '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
-        '<span class="gv-event-card__date"><span class="m">' + ev.m + '</span><span class="d">' + ev.d + '</span><span class="y">' + ev.y + '</span></span></div>' +
+        '<span class="gv-event-card__date">' + EV_DATE(ev) + '</span></div>' +
         '<div class="gv-event-card__body"><h3 class="gv-event-card__title"><a href="#">' + ev.title + '</a></h3>' +
         '<div class="gv-event-card__meta"><p class="gv-event-card__row"><span data-gv-icon="clock"></span> ' + ev.when + '</p>' +
         '<p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> ' + ev.where + '</p>' +
         '<p class="gv-event-card__row"><span data-gv-icon="user"></span> ' + ev.regs + ' registrants</p></div>' +
         '<a class="gv-btn primary full" href="#">Register</a></div></article>';
     }
-    function cbEventsHTML(n) {
+    function cbEventsHTML(n, events) {
+      var list = events || CB_EVENTS;
       return '<section class="cb-events"><div class="gv-events__head"><h2 class="gv-title h2" style="margin:0">Events</h2>' +
-        '<a class="gv-btn text" href="#">View all events</a></div><div class="gv-events__grid">' + CB_EVENTS.slice(0, n).map(cbEventCard).join('') + '</div></section>';
+        '<a class="gv-btn text" href="#">View all events</a></div><div class="gv-events__grid">' + list.slice(0, n).map(cbEventCard).join('') + '</div></section>';
     }
 
     // ── Participation Box (5-direction) + Extra surveys — promoted from
@@ -692,9 +712,11 @@ window.GVWidgets = (function () {
       // Survey open, but this resident can't take it (group/verification/area permission). Rough — treatment TBD.
       ineligible: { pill:'locked',   pillText:'Restricted', m1:'<span class="gv-icon" data-gv-icon="lock"></span> Verified residents only', m2:'<span class="gv-icon" data-gv-icon="clock"></span> Closes in 5 days', cta:'<span class="gv-icon" data-gv-icon="lock"></span> You’re not eligible to take this survey', btn:'secondary-outlined', dis:true, allowLabel:false }
     };
-    function cbSurveyHTML(survey, format, style, label, variant, state) {
+    function cbSurveyHTML(survey, format, style, label, variant, state, dataOverride) {
       if (!survey) return '<div class="gv-extra-survey__empty"><div class="gv-extra-survey__empty-t">📣 Survey</div><div class="gv-extra-survey__empty-s">Select a survey to link in the panel on the right.</div></div>';
-      var s = SURVEY_DATA[survey] || SURVEY_DATA.mobility;
+      // dataOverride (additive) lets a consumer page pass its own name/desc without a
+      // SURVEY_DATA entry; default = the sample survey, so existing callers are unchanged.
+      var s = dataOverride ? Object.assign({}, SURVEY_DATA[survey] || SURVEY_DATA.mobility, dataOverride) : (SURVEY_DATA[survey] || SURVEY_DATA.mobility);
       var stt = SURVEY_STATES[state] || SURVEY_STATES.current;
       // CTA: the state drives the treatment. The custom Button-text only overrides the
       // live "current" CTA; not-started/past carry their own fixed copy + style.
@@ -1047,9 +1069,13 @@ window.GVWidgets = (function () {
         case 'two-column': case 'three-column': return '<div class="gv-fo__cols gv-fo__cols--' + (type === 'three-column' ? 3 : 2) + '">' + (data.cols || []).map(function (col) { return '<div class="gv-fo__col">' + col.map(function (cb) { return foBlock(cb.type, cb.data); }).join('') + '</div>'; }).join('') + '</div>';
         case 'iframe': return '<div class="gv-fo__embed">' + foEsc(data.cap || 'Embedded content') + '</div>';
         case 'participation-box': return cbPboxBodyHTML(data.pbox || cbPboxDefault());
-        case 'extra-surveys': var sv = data.survey || { survey: 'mobility', format: 'card', style: 'primary', label: '', cardVariant: 'easy', state: 'current' }; return cbSurveyHTML(sv.survey, sv.format, sv.style, sv.label, sv.cardVariant, sv.state);
+        case 'extra-surveys': var sv = data.survey || { survey: 'mobility', format: 'card', style: 'primary', label: '', cardVariant: 'easy', state: 'current' }; return cbSurveyHTML(sv.survey, sv.format, sv.style, sv.label, sv.cardVariant, sv.state, sv.data);
         case 'timeline': return cbTimelineHTML();
-        case 'events': return cbEventsHTML(2);
+        case 'events':
+          // cardsOnly → just the grid cards (a page that owns its own <section>/head);
+          // else the full Events section. data.events overrides the sample CB_EVENTS.
+          if (data.cardsOnly) return (data.events || CB_EVENTS).slice(0, data.n || 99).map(cbEventCard).join('');
+          return cbEventsHTML(data.n || (data.events ? data.events.length : 2), data.events);
         default: return '';
       }
     }
