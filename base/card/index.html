@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Card — Go Vocal base</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    /* Page-local layout only — no .gv-* selectors. */
+    body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
+    .stage { max-width: 1166px; margin: 0 auto; padding: 40px 20px 80px; }
+    .heading { color: var(--gv-text-pagetitle); font-size: 25px; font-weight: 700; line-height: 32.5px; margin: 0 0 24px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  </style>
+</head>
+<body class="gv-root">
+  <div class="stage">
+    <h2 class="heading">Card</h2>
+    <div class="grid">
+      <div class="gv-card">
+        <h3 class="gv-title h3" style="margin:0 0 8px">Park redesign</h3>
+        <p class="gv-text bodyM gv-text--secondary" style="margin:0 0 14px">A plain surface card — a padded, rounded container with the standard border and shadow.</p>
+        <div class="row">
+          <span class="gv-status-label" style="--bg: var(--gv-success)">Published</span>
+          <button class="gv-btn primary size-m">Open</button>
+        </div>
+      </div>
+      <div class="gv-card">
+        <h3 class="gv-title h3" style="margin:0 0 8px">Budget 2026</h3>
+        <p class="gv-text bodyM gv-text--secondary" style="margin:0 0 14px">Cards hold any content — text, status, controls. They are the base surface for components.</p>
+        <hr class="gv-divider" style="margin:0 0 14px" />
+        <p class="gv-text bodyS gv-text--secondary" style="margin:0"><span data-gv-icon="calendar" aria-hidden="true"></span> Closes in 12 days</p>
+      </div>
+      <div class="gv-card">
+        <h3 class="gv-title h3" style="margin:0 0 8px">Bike lanes</h3>
+        <p class="gv-text bodyM gv-text--secondary" style="margin:0 0 14px">128 residents have shared input on this consultation so far.</p>
+        <div class="row">
+          <button class="gv-iconbtn" aria-label="Like"><span data-gv-icon="vote-up"></span></button>
+          <button class="gv-iconbtn" aria-label="Comment"><span data-gv-icon="comment"></span></button>
+          <button class="gv-iconbtn" aria-label="Share"><span data-gv-icon="share"></span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

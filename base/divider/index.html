@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Divider — Go Vocal base</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <style>
+    /* Page-local layout only — no .gv-* selectors. */
+    body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
+    .stage { max-width: 1166px; margin: 0 auto; padding: 40px 20px 80px; }
+    .heading { color: var(--gv-text-pagetitle); font-size: 25px; font-weight: 700; line-height: 32.5px; margin: 0 0 24px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--gv-text-secondary); font-weight: 600; margin: 0; }
+  </style>
+</head>
+<body class="gv-root">
+  <div class="stage">
+    <h2 class="heading">Divider</h2>
+    <div class="gv-card">
+      <p class="eyebrow">Hairline rule (<code>.gv-divider</code>)</p>
+      <p class="gv-text bodyM" style="margin:10px 0 0">Content above the rule.</p>
+      <hr class="gv-divider" style="margin:16px 0" />
+      <p class="gv-text bodyM" style="margin:0">Content below the rule.</p>
+
+      <p class="eyebrow" style="margin-top:28px">Labelled divider (<code>.gv-or</code>)</p>
+      <div class="gv-or" style="margin-top:14px"><span>Or</span></div>
+    </div>
+  </div>
+</body>
+</html>

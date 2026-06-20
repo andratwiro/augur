@@ -26,6 +26,7 @@ const OUT = path.join(ROOT, "LIBRARY.md");
 // Top-level folders that are not opportunity folders (mirrors build.js).
 const NON_OPP = new Set([
   "dist", "node_modules", "skills", "src", "pages", "components",
+  "base", "patterns",
   "playground", "scripts", ".git", ".github",
 ]);
 
@@ -131,12 +132,16 @@ function table(headers, rows) {
 
 function main() {
   return (async () => {
-    const [primitives, components, pages, prototypes] = await Promise.all([
-      scanPrimitives(), scanFolder("components"), scanFolder("pages"), scanPrototypes(),
+    const [primitives, base, components, patterns, pages, prototypes] = await Promise.all([
+      scanPrimitives(), scanFolder("base"), scanFolder("components"), scanFolder("patterns"), scanFolder("pages"), scanPrototypes(),
     ]);
 
+    const baseRows = base.map((c) =>
+      [`**${c.name}**`, `\`/base/${c.slug}/\``, `\`base/${c.slug}/\``, c.desc || "_(atom demo)_"]);
     const compRows = components.map((c) =>
       [`**${c.name}**`, `\`/components/${c.slug}/\``, `\`components/${c.slug}/\``, c.desc || "_(add a `.sub` line to its demo)_"]);
+    const patternRows = patterns.map((c) =>
+      [`**${c.name}**`, `\`/patterns/${c.slug}/\``, `\`patterns/${c.slug}/\``, c.desc || "_(composition demo)_"]);
     const pageRows = pages.map((p) =>
       [`**${p.name}**`, `\`/pages/${p.slug}/\``, `\`pages/${p.slug}/\``, p.desc || "_(no description)_"]);
     const protoRows = prototypes.map((p) =>
@@ -151,7 +156,7 @@ function main() {
 ## Reuse-first (read me before building a prototype)
 
 Before building **anything** in a prototype, scan this index and **reuse an existing
-layer** — Primitives → Components → Pages — instead of rebuilding it. Workflow:
+layer** — Tokens → Base → Components → Patterns → Pages — instead of rebuilding it. Workflow:
 
 1. **Find it here first.** Need a footer, a card, a nav, a login modal, a whole
    page? Check the tables below — if it exists, start from it.
@@ -174,19 +179,42 @@ Components · Pages); this file is the agent-readable twin.
 
 ---
 
-## Primitives (atoms) — \`skills/govocal-ui/\`
+> **Layered design system:** Tokens → Base → Components → Patterns → Pages. The
+> review site has a tab per layer (\`/tokens/\` · \`/base/\` · \`/components/\` ·
+> \`/patterns/\` · \`/pages/\`). Each layer imports live from the one below — proven by
+> the composition graph the review overlay recurses (\`dist/__review/graph.js\`,
+> derived from the canonical CSS).
 
-Design tokens (\`--gv-*\`) + base \`.gv-*\` classes. **Live demo:** \`skills/govocal-ui/gallery.html\`
-(the **Primitives** tab, \`/primitives/\`). **Snippets:** \`skills/govocal-ui/components.md\`.
+## Tokens — \`skills/govocal-ui/govocal-tokens.css\`
+
+The design-system variables (\`--gv-*\`): palette, type scale, radius, shadows, focus,
+tenant colours. Generated **Tokens** tab (\`/tokens/\`) shows each with its alias chain
+to a raw value + its consumers.
+
+## Base (atoms) — \`base/<name>/\`
+
+The source-grounded \`.gv-*\` atoms (button, input, card, badge, modal, icon, toggle,
+checkbox/radio, status-label, divider, avatar, typography). Shipped on the **Base**
+tab. Full live gallery: \`skills/govocal-ui/gallery.html\` (\`/primitives/\`, legacy).
+**Snippets:** \`skills/govocal-ui/components.md\`. Parsed primitive families:
 
 ${primitives.length ? primitives.map((p) => `- ${p}`).join("\n") : "_(none parsed)_"}
 
+${base.length ? table(["Atom", "Open", "Source", "What it is"], baseRows) : ""}
+
 ## Components (blocks) — \`components/<name>/\`
 
-Section-level blocks assembled from primitives. Shipped on the **Components** tab.
+Section-level blocks assembled from base atoms. Shipped on the **Components** tab.
 Class-level detail + “how to reuse”: \`components/manifest.md\`.
 
 ${components.length ? table(["Component", "Open", "Source", "What it is"], compRows) : "_(none yet)_"}
+
+## Patterns (compositions) — \`patterns/<name>/\`
+
+Curated recurring compositions — several components arranged the way real screens
+repeatedly arrange them. Shipped on the **Patterns** tab.
+
+${patterns.length ? table(["Pattern", "Open", "Source", "What it is"], patternRows) : "_(none yet)_"}
 
 ## Pages (screens) — \`pages/<name>/\`
 
@@ -205,8 +233,8 @@ ${prototypes.length ? table(["Prototype", "Opportunity", "Source", "What it is"]
 
     await fs.writeFile(OUT, md, "utf8");
     console.log(
-      `Wrote LIBRARY.md — ${primitives.length} primitives, ${components.length} components, ` +
-      `${pages.length} pages, ${prototypes.length} prototypes.`
+      `Wrote LIBRARY.md — ${primitives.length} primitives, ${base.length} base, ${components.length} components, ` +
+      `${patterns.length} patterns, ${pages.length} pages, ${prototypes.length} prototypes.`
     );
   })();
 }

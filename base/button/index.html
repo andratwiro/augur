@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Button — Go Vocal base</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    /* Page-local layout only — no .gv-* selectors. */
+    body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
+    .stage { max-width: 1166px; margin: 0 auto; padding: 40px 20px 80px; }
+    .heading { color: var(--gv-text-pagetitle); font-size: 25px; font-weight: 700; line-height: 32.5px; margin: 0 0 24px; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .row + .row { margin-top: 14px; }
+  </style>
+</head>
+<body class="gv-root">
+  <div class="stage">
+    <h2 class="heading">Button</h2>
+    <div class="gv-card">
+      <div class="row">
+        <button class="gv-btn primary"><span class="gv-btn__label">Primary</span></button>
+        <button class="gv-btn primary-outlined">Outlined</button>
+        <button class="gv-btn secondary">Secondary</button>
+        <button class="gv-btn white">White</button>
+        <button class="gv-btn text">Text</button>
+        <button class="gv-btn delete">Delete</button>
+        <button class="gv-btn admin-dark">Admin</button>
+      </div>
+      <div class="row">
+        <button class="gv-btn primary"><span data-gv-icon="plus" aria-hidden="true"></span><span class="gv-btn__label">With icon</span></button>
+        <button class="gv-btn primary" disabled>Disabled</button>
+        <button class="gv-btn primary processing"><span class="gv-btn__label">Saving</span><span class="gv-spinner sm"></span></button>
+        <button class="gv-btn primary size-m">Medium</button>
+        <button class="gv-btn primary size-l">Large</button>
+        <button class="gv-btn primary size-xl">XL</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

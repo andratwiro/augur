@@ -101,7 +101,10 @@ async function loadStatusMap() {
 // browser refetches comments.js instead of running a stale copy. Lazy (function,
 // not const) so it reads UI_VERSION, which is declared further down.
 function reviewTag() {
-  return '<!--gv-review-start--><script src="/__review/comments.js?v=' + UI_VERSION +
+  // graph.js (the CSS-derived composition graph) loads first so comments.js can read
+  // window.__GV_GRAPH for the recursive import-chain overlay. Both deferred → ordered.
+  return '<!--gv-review-start--><script src="/__review/graph.js?v=' + UI_VERSION +
+    '" defer></script><script src="/__review/comments.js?v=' + UI_VERSION +
     '" defer></script><!--gv-review-end-->';
 }
 
@@ -141,6 +144,22 @@ async function computeLinkedAssets(protoDir) {
       if (a.equals(b)) linked.add(base); // byte-identical local copy = in sync
     } catch { /* missing/unreadable local copy → not linked */ }
   }
+  // Follow canonical @import chains: a linked CSS that @imports another canonical
+  // CSS (e.g. govocal-ui.css @imports govocal-primitives.css) pulls it in transitively
+  // and in-sync — even though the page never <link>s it directly. Without this a
+  // component whose deps include primitives.css would never badge on an FO page.
+  const queue = [...linked];
+  while (queue.length) {
+    const base = queue.shift();
+    if (!base.endsWith(".css")) continue;
+    const canon = path.join(UI_SKILL, base);
+    let css;
+    try { css = await fs.readFile(canon, "utf8"); } catch { continue; }
+    for (const m of css.matchAll(/@import\s+(?:url\()?["']?(govocal-[\w.\-]+\.css)["']?/g)) {
+      const dep = m[1];
+      if (!linked.has(dep) && (await exists(path.join(UI_SKILL, dep)))) { linked.add(dep); queue.push(dep); }
+    }
+  }
   return [...linked];
 }
 
@@ -150,6 +169,22 @@ function injectLinked(html, assets) {
   const tag = "<script>window.__GV_LINKED=" + JSON.stringify(assets) + ";</script>";
   const i = html.toLowerCase().indexOf("</head>");
   return i === -1 ? tag + html : html.slice(0, i) + tag + html.slice(i);
+}
+
+/**
+ * Stamp __GV_LINKED into a copied demo's dist index.html, computed from the SOURCE
+ * folder's canonical refs. Used by every tier (prototypes AND the library tiers:
+ * pages/components/base/patterns) so the overlay marks linked components everywhere
+ * — not just prototypes. Library tiers live-reference ../../skills/govocal-ui/* so
+ * every canonical asset they touch is in sync, and they get the full linked set.
+ */
+async function stampLinkedInto(srcDir, destDir) {
+  const idxDest = path.join(destDir, "index.html");
+  if (!(await exists(idxDest))) return;
+  const linked = await computeLinkedAssets(srcDir);
+  if (!linked.length) return;
+  const h = await fs.readFile(idxDest, "utf8");
+  await fs.writeFile(idxDest, injectLinked(h, linked), "utf8");
 }
 
 // Absolute origin used to build absolute og:image / og:url (unfurl bots need
@@ -216,7 +251,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.73";
+const UI_VERSION = "0.74";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -231,6 +266,8 @@ const IGNORED_TOPLEVEL = new Set([
   "src",
   "pages", // composed reference pages — shipped via their own builder, not as an opportunity
   "components", // composed component library — shipped via its own builder, not as an opportunity
+  "base", // base-atom demos — shipped via their own builder (Base tab), not as an opportunity
+  "patterns", // curated composition demos — shipped via their own builder (Patterns tab)
   "playground", // standalone scratch prototype — shipped to /playground/, not as an opportunity
   "references", // internal source exports (raw Go Vocal HTML + screenshots) — NEVER ships
   "govocal-exports", // internal raw Go Vocal page exports (HTML + screenshots) — NEVER ships
@@ -278,6 +315,8 @@ const METHOD_PAGES = new Set([
 const UI_SKILL = path.join(ROOT, "skills", "govocal-ui"); // Primitives gallery + assets
 const PAGES_SRC = path.join(ROOT, "pages"); // composed reference pages
 const COMPONENTS_SRC = path.join(ROOT, "components"); // composed component library
+const BASE_SRC = path.join(ROOT, "base"); // base-atom demos (Base tab)
+const PATTERNS_SRC = path.join(ROOT, "patterns"); // curated composition demos (Patterns tab)
 const CHANGELOG_SRC = path.join(ROOT, "changelog.md"); // hand-edited changelog source (internal; rendered to /changelog/)
 
 // Display name + key classes + one-line "what is it" per component, shown on the
@@ -389,6 +428,186 @@ const COMPONENT_META = {
   "volunteer-cause": { surface: "fo", category: "cards", status: "canonical", tags: ["volunteering", "cause"] },
   voting: { surface: "fo", category: "events", status: "review", tags: ["wietsedemo", "events-section"] },
 };
+
+// ── Layer per component demo (Tokens → Base → Components → Patterns → Pages) ──
+// Most components/<name>/ demos are component-grade compositions of base atoms; a
+// curated few are PATTERNS (recurring multi-component compositions). Atoms now live
+// in base/, so no components/<name>/ is base-grade. Stamped onto COMPONENT_META so
+// every entry carries `layer` without 40 hand-edits; surfaced as a badge + used by
+// the lint/overlay alongside the CSS-derived graph.
+const PATTERN_COMPONENTS = new Set([
+  "idea-feed", "voting", "spotlight-carousel", "content-builder-render", "twocol-accordion",
+]);
+for (const [k, v] of Object.entries(COMPONENT_META)) {
+  v.layer = PATTERN_COMPONENTS.has(k) ? "pattern" : "component";
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Composition graph — the honesty backbone (Phase 0).
+// DERIVED from the live canonical CSS (it proves the import chain rather than
+// asserting it): every --gv-* token with its alias chain to a raw value + which
+// tokens/classes consume it, and every .gv-*/.sv-* family with the file/LAYER that
+// defines it plus the tokens its rule blocks drink. Emitted to dist/__review/graph.js
+// as window.__GV_GRAPH so the review overlay can recurse tokens → base → components
+// → patterns on any page. Single source of truth: edit the CSS, rebuild, graph moves.
+// ════════════════════════════════════════════════════════════════════════════
+
+// Family root of a .gv-x / .sv-x class (mirrors lint's familyRoot): strip the dot,
+// the BEM element (__x), the modifier (--x), and any chained class (.y).
+function familyRoot(cls) {
+  return cls.replace(/^\./, "").replace(/__.*/, "").replace(/--.*/, "").replace(/\..*/, "");
+}
+
+// Canonical stylesheets → their LAYER. Order matters: a family's layer is "base"
+// if primitives defines it (the atom is the source of truth), else "components".
+const CANON_CSS_LAYERS = [
+  ["govocal-primitives.css", "base"],
+  ["govocal-ui.css", "components"],
+  ["govocal-bo.css", "components"],
+  ["govocal-survey.css", "components"],
+  ["govocal-widgets.css", "components"],
+];
+
+// Family root → base/ demo {label, slug}. Atoms surfaced in base/<slug>/.
+const BASE_INDEX = {
+  "gv-btn": { label: "Button", slug: "button" },
+  "gv-iconbtn": { label: "Icon button", slug: "icon" },
+  "gv-icon": { label: "Icon", slug: "icon" },
+  "gv-input": { label: "Input", slug: "input" },
+  "gv-textarea": { label: "Textarea", slug: "input" },
+  "gv-select": { label: "Select", slug: "input" },
+  "gv-label": { label: "Field label", slug: "input" },
+  "gv-checkbox": { label: "Checkbox", slug: "checkbox-radio" },
+  "gv-radio": { label: "Radio", slug: "checkbox-radio" },
+  "gv-toggle": { label: "Toggle", slug: "checkbox-radio" },
+  "gv-card": { label: "Card", slug: "card" },
+  "gv-badge": { label: "Badge", slug: "badge" },
+  "gv-status-label": { label: "Status label", slug: "status-label" },
+  "gv-spinner": { label: "Spinner", slug: "badge" },
+  "gv-modal": { label: "Modal", slug: "modal" },
+  "gv-divider": { label: "Divider", slug: "divider" },
+  "gv-avatars": { label: "Avatar stack", slug: "avatar" },
+  "gv-title": { label: "Title", slug: "typography" },
+  "gv-text": { label: "Body text", slug: "typography" },
+};
+
+// Family root → components/ demo slug (label comes from COMPONENT_BLURBS). Ported
+// from the old hardcoded overlay list, MINUS the atoms (now base/) and MINUS deps
+// (now derived from the CSS file that defines the family).
+const COMPONENT_INDEX = {
+  "gv-bo-side": "bo-sidebar", "gv-bo-topbar": "bo-app-shell", "gv-bo-tabs": "bo-app-shell",
+  "gv-bo-menu": "bo-menu", "gv-bo-analysis": "bo-analysis", "gv-bo-templatecard": "bo-templatecard",
+  "gv-header": "header-nav", "gv-footer": "footer", "gv-hero": "hero", "gv-banner": "banner",
+  "gv-pbox": "participation-box", "gv-partbar": "participation-bar", "gv-pcard": "project-card",
+  "gv-featured-row": "homepage-featured-row", "gv-spotlight": "spotlight",
+  "gv-event-card": "event-card", "gv-ideacard": "idea-card", "gv-issuecanvas": "issue-canvas",
+  "gv-sticky": "sticky-note", "gv-themecard": "theme-card", "gv-accordion": "accordion",
+  "gv-cause": "volunteer-cause", "gv-poll": "poll", "gv-threshold": "proposal-threshold",
+  "gv-monitorband": "homepage-survey-band", "gv-surveyband": "survey-band",
+  "gv-extra-survey": "extra-survey", "gv-cta-banner": "cta-banner", "gv-voteoptions": "approval-voting",
+  "sv-optcard": "survey-fields",
+};
+
+// Curated PATTERN layer — recurring compositions promoted above components. Keyed by
+// the outermost family root; overrides the file-derived component layer. Slugs map
+// to patterns/<slug>/.
+const PATTERN_INDEX = {
+  "gv-feed": { label: "Idea feed", slug: "idea-feed" },
+  "gv-project-events": { label: "Events section", slug: "events-section" },
+  "gv-phases": { label: "Phase navigation", slug: "phase-nav" },
+  "gv-carousel": { label: "Spotlight row", slug: "homepage-spotlight-row" },
+  "gv-cb-frame": { label: "Content-builder grid", slug: "content-builder-grid" },
+  "gv-cb-row": { label: "Content-builder grid", slug: "content-builder-grid" },
+};
+
+const readCanon = (f) => fs.readFile(path.join(UI_SKILL, f), "utf8").catch(() => "");
+
+/**
+ * Parse the canonical CSS into the composition graph. Async (reads the files).
+ * Returns { tokens, classes, generatedFrom } — see the block comment above.
+ */
+async function buildGraph() {
+  // ── tokens: name → declared value (first definition wins) ──────────────────
+  const tokensCss = (await readCanon("govocal-tokens.css")).replace(/\/\*[\s\S]*?\*\//g, "");
+  const tokenVals = {};
+  for (const m of tokensCss.matchAll(/(--gv-[\w-]+)\s*:\s*([^;]+);/g)) {
+    if (!(m[1] in tokenVals)) tokenVals[m[1]] = m[2].trim();
+  }
+  const refsOf = (v) => [...new Set([...v.matchAll(/var\(\s*(--gv-[\w-]+)/g)].map((x) => x[1]))];
+  // Resolve a token's alias chain down to the first non-(solo-var) value = its raw.
+  function resolve(name, seen) {
+    seen = seen || new Set();
+    if (seen.has(name) || !(name in tokenVals)) return { chain: [name], raw: tokenVals[name] || null };
+    seen.add(name);
+    const v = tokenVals[name];
+    const solo = v.match(/^var\(\s*(--gv-[\w-]+)\s*\)$/);
+    if (solo && solo[1] in tokenVals) {
+      const nx = resolve(solo[1], seen);
+      return { chain: [name, ...nx.chain], raw: nx.raw };
+    }
+    return { chain: [name], raw: v };
+  }
+  const tokens = {};
+  for (const name of Object.keys(tokenVals)) {
+    const r = resolve(name);
+    tokens[name] = {
+      value: tokenVals[name], raw: r.raw, chain: r.chain,
+      refs: refsOf(tokenVals[name]), consumedBy: { tokens: [], classes: [] },
+    };
+  }
+  for (const name of Object.keys(tokens))
+    for (const ref of tokens[name].refs)
+      if (tokens[ref]) tokens[ref].consumedBy.tokens.push(name);
+
+  // ── classes: family → { layer, files, tokens } ─────────────────────────────
+  const raw = {};
+  for (const [file, layer] of CANON_CSS_LAYERS) {
+    const css = (await readCanon(file)).replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const sel = rule[1], body = rule[2];
+      const vars = [...new Set([...body.matchAll(/var\(\s*(--gv-[\w-]+)/g)].map((x) => x[1]))];
+      // Subject family = the first .gv-/.sv- class of each comma-separated part.
+      const fams = new Set();
+      for (const part of sel.split(",")) {
+        const m = part.trim().match(/\.((?:gv|sv)-[\w-]+)/);
+        if (m) fams.add(familyRoot("." + m[1]));
+      }
+      for (const fam of fams) {
+        if (!raw[fam]) raw[fam] = { layer, files: new Set(), tokens: new Set() };
+        raw[fam].files.add(file);
+        if (layer === "base") raw[fam].layer = "base"; // atom source wins
+        for (const v of vars) raw[fam].tokens.add(v);
+      }
+    }
+  }
+
+  const tierDir = (layer) => (layer === "base" ? "base" : layer === "pattern" ? "patterns" : "components");
+  const classes = {};
+  for (const fam of Object.keys(raw)) {
+    const c = raw[fam];
+    let layer = c.layer, label = null, slug = null;
+    if (PATTERN_INDEX[fam]) { layer = "pattern"; label = PATTERN_INDEX[fam].label; slug = PATTERN_INDEX[fam].slug; }
+    else if (BASE_INDEX[fam] && c.layer === "base") { label = BASE_INDEX[fam].label; slug = BASE_INDEX[fam].slug; }
+    else if (COMPONENT_INDEX[fam]) { slug = COMPONENT_INDEX[fam]; label = (COMPONENT_BLURBS[slug] || {}).name || titleCase(slug); }
+    const files = [...c.files];
+    // Honesty deps: a family is "linked" only when every canonical asset it's built
+    // from is in window.__GV_LINKED. Tokens are always in the chain; ui.css @imports
+    // primitives, so a component drinking from ui.css also needs primitives in sync.
+    const deps = new Set([...files, "govocal-tokens.css"]);
+    if (files.includes("govocal-ui.css")) deps.add("govocal-primitives.css");
+    const tk = [...c.tokens];
+    for (const v of tk) if (tokens[v]) tokens[v].consumedBy.classes.push(fam);
+    classes[fam] = {
+      layer, files, deps: [...deps], tokens: tk, label, slug,
+      url: slug ? `/${tierDir(layer)}/${slug}/` : null,
+    };
+  }
+  for (const name of Object.keys(tokens)) {
+    tokens[name].consumedBy.tokens = [...new Set(tokens[name].consumedBy.tokens)];
+    tokens[name].consumedBy.classes = [...new Set(tokens[name].consumedBy.classes)];
+  }
+  return { tokens, classes, generatedFrom: CANON_CSS_LAYERS.map((x) => x[0]) };
+}
 
 async function exists(p) {
   try {
@@ -578,14 +797,7 @@ async function scan() {
       // Stamp which canonical assets this prototype is in sync with, so the review
       // overlay can mark the components they power as "Linked" (computed fresh each
       // build, so a drifted copy honestly drops out). Entry-point HTML only.
-      const idxDest = path.join(destDir, "index.html");
-      if (await exists(idxDest)) {
-        const linked = await computeLinkedAssets(protoDir);
-        if (linked.length) {
-          const h = await fs.readFile(idxDest, "utf8");
-          await fs.writeFile(idxDest, injectLinked(h, linked), "utf8");
-        }
-      }
+      await stampLinkedInto(protoDir, destDir);
 
       const { href, file } = await entryPoint(proto.name, protoDir);
       prototypes.push({
@@ -624,7 +836,9 @@ async function scanPages() {
   for (const e of entries) {
     if (!e.isDirectory()) continue;
     const dir = path.join(PAGES_SRC, e.name);
-    const latest = await copyDir(dir, path.join(DIST, "pages", e.name), isInternalOnly);
+    const destDir = path.join(DIST, "pages", e.name);
+    const latest = await copyDir(dir, destDir, isInternalOnly);
+    await stampLinkedInto(dir, destDir); // overlay badges on Pages (live-linked → full set)
     const { href, file } = await entryPoint(e.name, dir);
     // Surface = back-office (Go Vocal's own theme), front-office (city-themed), or
     // method (a front-office participation-method runner — its own Pages group).
@@ -658,13 +872,39 @@ async function scanComponents() {
   for (const e of entries) {
     if (!e.isDirectory()) continue;
     const dir = path.join(COMPONENTS_SRC, e.name);
-    const latest = await copyDir(dir, path.join(DIST, "components", e.name), isInternalOnly);
+    const destDir = path.join(DIST, "components", e.name);
+    const latest = await copyDir(dir, destDir, isInternalOnly);
+    await stampLinkedInto(dir, destDir); // overlay badges on the component demo itself
     const { href, file } = await entryPoint(e.name, dir);
     components.push({ name: e.name, href, file, poster: await exists(path.join(dir, "preview.webp")), mtimeMs: modifiedTime(dir, latest) });
   }
   components.sort(byRecency);
   return components;
 }
+
+/**
+ * Scan a flat library tier (base/ or patterns/) — each subfolder is a self-contained
+ * demo like components/<name>/. Copies + stamps __GV_LINKED so the overlay recurses
+ * on these pages too. Returns the same {name, href, file, poster, mtimeMs} shape.
+ */
+async function scanTier(srcRoot, distSub) {
+  if (!(await isDir(srcRoot))) return [];
+  const entries = await fs.readdir(srcRoot, { withFileTypes: true });
+  const items = [];
+  for (const e of entries) {
+    if (!e.isDirectory()) continue;
+    const dir = path.join(srcRoot, e.name);
+    const destDir = path.join(DIST, distSub, e.name);
+    const latest = await copyDir(dir, destDir, isInternalOnly);
+    await stampLinkedInto(dir, destDir);
+    const { href, file } = await entryPoint(e.name, dir);
+    items.push({ name: e.name, href, file, poster: await exists(path.join(dir, "preview.webp")), mtimeMs: modifiedTime(dir, latest) });
+  }
+  items.sort(byRecency);
+  return items;
+}
+const scanBase = () => scanTier(BASE_SRC, "base");
+const scanPatterns = () => scanTier(PATTERNS_SRC, "patterns");
 
 /**
  * Scan playground/<project>/ subfolders. Playground is "a folder, just outside"
@@ -1010,6 +1250,24 @@ const PAGE_CSS = `
 
     /* ---- Pages grid (fast vertical scan, ~4 columns) ---- */
     .page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 22px 20px; }
+    /* Tier intro line (Base / Patterns / Tokens) */
+    .tier-hint { margin: -2px 0 18px; max-width: 70ch; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+    .tier-hint a { color: var(--accent); text-decoration: none; }
+    .tier-hint a:hover { text-decoration: underline; }
+    /* ── Tokens tab grid ── */
+    .tok-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; margin-top: 4px; }
+    .tok { display: flex; gap: 11px; align-items: flex-start; padding: 11px 12px; background: var(--card);
+           border: 1px solid var(--line); border-radius: 11px; }
+    .tok-sw { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(16,17,26,0.12);
+              display: grid; place-items: center; }
+    .tok-sw--mono { background: #f3f4f7; color: #6b7280; font-size: 13px; font-weight: 700; }
+    .tok-body { min-width: 0; flex: 1; }
+    .tok-name { display: block; font-size: 12.5px; font-weight: 600; color: var(--fg); word-break: break-all; }
+    .tok-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 4px; margin: 4px 0 3px; }
+    .tok-chain code { font-size: 11px; color: var(--muted); background: rgba(16,17,26,0.05); border-radius: 4px; padding: 1px 4px; }
+    .tok-chain code.tok-raw { color: var(--fg); background: rgba(94,106,210,0.10); }
+    .tok-arrow { color: #b6bac4; font-size: 11px; }
+    .tok-meta { font-size: 11px; color: var(--faint); }
     /* Opportunity prototype grid: capped at 3 roomier cards per row on desktop,
        stepping down to 2 then 1 as width drops. */
     .page-grid.is-3up { grid-template-columns: repeat(3, 1fr); }
@@ -1124,7 +1382,11 @@ const PAGE_CSS = `
        cleanup signal; "review" is styled loud amber). */
     .comp-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
     .cbadge { font-size: 11px; font-weight: 600; line-height: 1; padding: 3px 7px; border-radius: 5px; letter-spacing: -0.004em; border: 1px solid transparent; }
-    .cbadge--cat, [class*="cbadge--st-"] { text-transform: capitalize; }
+    .cbadge--cat, [class*="cbadge--st-"], [class*="cbadge--layer-"] { text-transform: capitalize; }
+    /* Layer cue: text label always present (WCAG 1.4.1 — colour is never the sole cue). */
+    .cbadge--layer-base { background: rgba(20,121,133,0.13); color: #0f6470; }
+    .cbadge--layer-component { background: rgba(94,106,210,0.13); color: #4650b8; }
+    .cbadge--layer-pattern { background: rgba(140,99,210,0.14); color: #6b46c1; }
     .cbadge--surf-fo { background: rgba(94,106,210,0.12); color: #4650b8; }
     .cbadge--surf-bo { background: rgba(20,121,133,0.13); color: #0f6470; }
     .cbadge--surf-cross { background: rgba(16,17,26,0.07); color: #5b626e; }
@@ -1478,6 +1740,8 @@ const IC_PAGE = ic(`<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M1
 const IC_LIBRARY = ic(`<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`); // library
 const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 21v-5h5"/>`); // history (clock + counter-rotate)
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
+const IC_TOKEN = ic(`<circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2a10 10 0 1 0 0 20 1.7 1.7 0 0 0 0-3.4h-.5a1.7 1.7 0 1 1 0-3.4H16a4 4 0 0 0 4-4 8 8 0 0 0-8-8Z"/>`); // palette (tokens)
+const IC_PATTERN = ic(`<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4M6.5 10v4M17.5 10v4M10 17.5h4"/>`); // grid + links (patterns)
 
 // Star toggle on cards — Lucide 'star'. Outline (grey) when unpinned, gold-filled
 // when pinned (PINS_JS toggles .is-pinned). Its own class so CSS can flip the fill.
@@ -1531,12 +1795,16 @@ function sideRail(active) {
   // Library is a collapsible section pinned to the BOTTOM of the rail; collapsed by
   // default, auto-opens when you're on one of its pages. Its own icon leads; the
   // disclosure chevron sits on the right.
-  const libOpen = active === "primitives" || active === "components" || active === "pages";
+  // Layered design system: Tokens → Base → Components → Patterns → Pages.
+  const LIB_KEYS = ["tokens", "base", "components", "patterns", "pages", "primitives"];
+  const libOpen = LIB_KEYS.includes(active);
   const library = `<details class="gvside__sect"${libOpen ? " open" : ""}>
       <summary class="gvside__sum"><span>Library</span><span class="gvside__caret" aria-hidden="true">${IC_CHEV}</span></summary>
       <div class="gvside__group">
-        ${item("/primitives/", "Primitives", "primitives", IC_PRIM)}
+        ${item("/tokens/", "Tokens", "tokens", IC_TOKEN)}
+        ${item("/base/", "Base", "base", IC_PRIM)}
         ${item("/components/", "Components", "components", IC_COMP)}
+        ${item("/patterns/", "Patterns", "patterns", IC_PATTERN)}
         ${item("/pages/", "Pages", "pages", IC_PAGE)}
       </div>
     </details>`;
@@ -2475,10 +2743,13 @@ const SURFACE_LABEL = { fo: "Front office", bo: "Back office", cross: "Cross-sur
 // Render the surface / category / status pills shown under a component's name on the
 // Components page. `status` carries the cleanup signal — "review" is styled loud.
 function metaBadges(meta) {
+  const layer = meta.layer
+    ? `<span class="cbadge cbadge--layer-${meta.layer}">${meta.layer}</span>`
+    : "";
   const surf = `<span class="cbadge cbadge--surf-${meta.surface}">${SURFACE_LABEL[meta.surface] || meta.surface}</span>`;
   const cat = `<span class="cbadge cbadge--cat">${meta.category}</span>`;
   const stat = `<span class="cbadge cbadge--st-${meta.status}">${meta.status}</span>`;
-  return `<div class="comp-badges">${surf}${cat}${stat}</div>`;
+  return `<div class="comp-badges">${layer}${surf}${cat}${stat}</div>`;
 }
 
 function renderComponentsIndex(components) {
@@ -2539,6 +2810,100 @@ function renderComponentsIndex(components) {
       <thead><tr><th>Preview</th><th>Component</th><th>What it is</th><th class="comp-status">Status</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>${filterEmpty()}`,
+  });
+}
+
+// ── Base / Patterns tabs (flat demo grids, like Pages) ───────────────────────
+// Generic card-grid renderer for a library tier whose demos are self-contained
+// folders (base/<name>/, patterns/<name>/). Same card contract as Pages.
+function renderTierGrid(items, { title, activeTab, subtitle, addHint }) {
+  if (!items.length) {
+    return shell({
+      title, activeTab, wrapClass: "wrap--wide",
+      body: `<p class="empty">${subtitle} None yet — add one under <code>${activeTab}/&lt;name&gt;/</code> and rebuild.</p>`,
+    });
+  }
+  const card = (p) => `
+        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${activeTab}/${p.name}" data-default-name="${titleCase(p.name)}">
+          <div class="preview">
+            ${media(p.href, p.poster)}
+            <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
+          </div>
+          <div class="proto-meta">
+            <div class="proto-name">${titleCase(p.name)}</div>
+          </div>
+        </div>`;
+  return shell({
+    title, activeTab, wrapClass: "wrap--wide",
+    body: `<header class="folderbar"><h1 class="folderbar__title">${title}</h1><span class="folderbar__count">${items.length}</span><span class="folderbar__rule"></span></header>` +
+      (addHint ? `<p class="tier-hint">${addHint}</p>` : "") +
+      `<div class="page-grid">${items.map(card).join("")}</div>${filterEmpty()}`,
+  });
+}
+const renderBaseIndex = (items) =>
+  renderTierGrid(items, {
+    title: "Base", activeTab: "base", subtitle: "Base atoms.",
+    addHint: "The source-grounded atoms — buttons, inputs, cards, badges, modal, icons. Components and Patterns are built from these; everything below drinks from <a href=\"/tokens/\">Tokens</a>.",
+  });
+const renderPatternsIndex = (items) =>
+  renderTierGrid(items, {
+    title: "Patterns", activeTab: "patterns", subtitle: "Composition patterns.",
+    addHint: "Curated recurring compositions — several Components arranged the way real screens repeatedly arrange them (participation flow, idea feed, events section, phase nav…).",
+  });
+
+// ── Tokens tab — GENERATED from the canonical govocal-tokens.css via the graph ─
+// Every --gv-* token: a swatch (when its resolved raw value is a colour), the
+// declared value, the alias chain down to the raw value, and how many tokens/
+// classes drink from it. Proves the bottom of the import chain is real, not asserted.
+function isColorVal(v) {
+  return !!v && /^(#|rgb|hsl|color-mix)/i.test(v.trim());
+}
+function tokenGroup(name) {
+  if (/^--gv-fs-|^--gv-font/.test(name)) return "Typography";
+  if (/^--gv-shadow/.test(name)) return "Elevation";
+  if (/^--gv-radius|width|height|padding|^--gv-menu-|frame-w/.test(name)) return "Sizing & layout";
+  if (/^--gv-focus/.test(name)) return "Focus";
+  return "Colour"; // default — the bulk of the palette
+}
+function renderTokensIndex(graph) {
+  const tokens = graph.tokens || {};
+  const names = Object.keys(tokens);
+  const groups = {};
+  for (const name of names) (groups[tokenGroup(name)] ||= []).push(name);
+  const ORDER = ["Colour", "Typography", "Sizing & layout", "Elevation", "Focus"];
+  const ordered = [...ORDER.filter((g) => groups[g]), ...Object.keys(groups).filter((g) => !ORDER.includes(g))];
+
+  const chip = (name) => {
+    const t = tokens[name];
+    const consumers = (t.consumedBy.tokens.length + t.consumedBy.classes.length);
+    const swatch = isColorVal(t.raw)
+      ? `<span class="tok-sw" style="background:${t.raw}"></span>`
+      : `<span class="tok-sw tok-sw--mono">Aa</span>`;
+    const chain = t.chain.length > 1
+      ? `<div class="tok-chain">${t.chain.map((c) => `<code>${c}</code>`).join('<span class="tok-arrow">→</span>')}<span class="tok-arrow">→</span><code class="tok-raw">${escAttr(t.raw || "")}</code></div>`
+      : `<div class="tok-chain"><code class="tok-raw">${escAttr(t.raw || t.value)}</code></div>`;
+    const fkey = `${name} ${t.raw || ""} ${t.value}`.replace(/"/g, "");
+    return `
+      <div class="tok" data-fitem data-fkey="${fkey}">
+        ${swatch}
+        <div class="tok-body">
+          <code class="tok-name">${name}</code>
+          ${chain}
+          <div class="tok-meta">${consumers ? `${consumers} consumer${consumers === 1 ? "" : "s"}` : "no direct consumers"}</div>
+        </div>
+      </div>`;
+  };
+  const sections = ordered.map((g) => `
+      <details class="fsection" data-fgroup open>
+        <summary class="section-eyebrow"><span class="fsection__caret" aria-hidden="true"></span>${g} &middot; ${groups[g].length}</summary>
+        <div class="tok-grid">${groups[g].map(chip).join("")}</div>
+      </details>`).join("");
+
+  return shell({
+    title: "Tokens", activeTab: "tokens", wrapClass: "wrap--wide",
+    body: `<header class="folderbar"><h1 class="folderbar__title">Tokens</h1><span class="folderbar__count">${names.length}</span><span class="folderbar__rule"></span></header>` +
+      `<p class="tier-hint">The design-system variables (<code>--gv-*</code>), parsed live from <code>govocal-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to.</p>` +
+      `${sections}${filterEmpty()}`,
   });
 }
 
@@ -2659,10 +3024,14 @@ async function main() {
   await fs.rm(DIST, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   await fs.mkdir(DIST, { recursive: true });
 
-  // Scan all three sources (each also copies its folders into dist).
+  // Scan every source (each also copies its folders into dist).
   const opportunities = await scan();
+  const base = await scanBase();
   const components = await scanComponents();
+  const patterns = await scanPatterns();
   const pages = await scanPages();
+  // Composition graph, derived from the canonical CSS (the honesty backbone).
+  const graph = await buildGraph();
 
   // Publish the nav context BEFORE any render so the global left rail (org switcher +
   // Prototypes/Playground + Opportunities + Library) is identical on every page.
@@ -2732,11 +3101,35 @@ async function main() {
     }
   }
 
+  // ── Tokens tab → GENERATED from govocal-tokens.css via the composition graph.
+  await fs.mkdir(path.join(DIST, "tokens"), { recursive: true });
+  await fs.writeFile(
+    path.join(DIST, "tokens", "index.html"),
+    renderTokensIndex(graph),
+    "utf8"
+  );
+
+  // ── Base tab → base-atom demos from base/<name>/.
+  await fs.mkdir(path.join(DIST, "base"), { recursive: true });
+  await fs.writeFile(
+    path.join(DIST, "base", "index.html"),
+    renderBaseIndex(base),
+    "utf8"
+  );
+
   // ── Components tab → composed component library from components/<name>/.
   await fs.mkdir(path.join(DIST, "components"), { recursive: true });
   await fs.writeFile(
     path.join(DIST, "components", "index.html"),
     renderComponentsIndex(components),
+    "utf8"
+  );
+
+  // ── Patterns tab → curated composition demos from patterns/<name>/.
+  await fs.mkdir(path.join(DIST, "patterns"), { recursive: true });
+  await fs.writeFile(
+    path.join(DIST, "patterns", "index.html"),
+    renderPatternsIndex(patterns),
     "utf8"
   );
 
@@ -2804,6 +3197,8 @@ async function main() {
     for (const p of opp.prototypes)
       versionMap[`/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`] = String(p.mtimeMs);
   for (const c of components) versionMap[`/components/${encodeURIComponent(c.name)}/`] = String(c.mtimeMs);
+  for (const b of base) versionMap[`/base/${encodeURIComponent(b.name)}/`] = String(b.mtimeMs);
+  for (const pt of patterns) versionMap[`/patterns/${encodeURIComponent(pt.name)}/`] = String(pt.mtimeMs);
   for (const pg of pages) versionMap[`/pages/${encodeURIComponent(pg.name)}/`] = String(pg.mtimeMs);
   for (const pj of playground) versionMap[`/playground/${encodeURIComponent(pj.name)}/`] = String(pj.mtimeMs);
 
@@ -2827,6 +3222,13 @@ async function main() {
   await fs.mkdir(path.join(DIST, "__review"), { recursive: true });
   await fs.copyFile(SRC_REVIEW, path.join(DIST, "__review", "comments.js"));
   await fs.copyFile(SRC_REVIEW_CAT, path.join(DIST, "__review", "aslam.png"));
+  // Composition graph (DERIVED from canonical CSS) → window.__GV_GRAPH, loaded before
+  // comments.js so the overlay can recurse tokens → base → components → patterns.
+  await fs.writeFile(
+    path.join(DIST, "__review", "graph.js"),
+    "window.__GV_GRAPH=" + JSON.stringify(graph) + ";",
+    "utf8"
+  );
 
   // Self-hosted fonts → /fonts/ (served immutable + public by the worker). Replaces
   // the render-blocking Google Fonts link; one variable woff2 covers every weight.
@@ -2909,7 +3311,11 @@ async function main() {
     console.log(`  playground/  — ${plural(playground.length, "project")}`);
     for (const p of playground) console.log(`    - ${p.name}`);
   }
-  console.log(`  primitives/  (Primitives gallery)`);
+  console.log(`  tokens/  — ${Object.keys(graph.tokens).length} tokens (generated from govocal-tokens.css)`);
+  console.log(`  base/  — ${plural(base.length, "atom demo")}`);
+  console.log(`  components/  — ${plural(components.length, "component")}`);
+  console.log(`  patterns/  — ${plural(patterns.length, "pattern")}`);
+  console.log(`  primitives/  (Primitives gallery — legacy, not in nav)`);
   console.log(`  pages/  — ${plural(pages.length, "reference page")}`);
   for (const p of pages) console.log(`    - ${p.name}`);
 }

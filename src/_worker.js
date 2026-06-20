@@ -53,6 +53,9 @@ function isPublicPath(pathname) {
   // The dormant review overlay + its avatar asset — both embedded into public
   // prototypes, so both must bypass the gate (else the <img> gets the login page).
   if (pathname === "/__review/comments.js" || pathname === "/__review/aslam.png") return true;
+  // The composition graph the overlay recurses (window.__GV_GRAPH) — embedded into
+  // every public prototype before comments.js, so it must bypass the gate too.
+  if (pathname === "/__review/graph.js") return true;
   // The cursor companion engine + self-hosted fonts are embedded into public
   // prototypes by absolute path, so they must bypass the gate too (else the
   // <script>/<link> fetches the login page instead of the asset).

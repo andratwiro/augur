@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Phase nav — Go Vocal pattern</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    /* Page-local layout only — no .gv-* redefinitions. */
+    body { margin: 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); color: var(--gv-text-primary); }
+    .stage { max-width: 1180px; margin: 0 auto; padding: 40px 20px 80px; }
+    .heading { color: var(--gv-text-pagetitle); font-size: 25px; font-weight: 700; line-height: 32.5px; margin: 0 0 24px; }
+  </style>
+</head>
+<body class="gv-root" data-gv-theme-picker="off">
+
+  <div class="stage">
+    <h2 class="heading">Phase nav</h2>
+
+    <!-- ════════ Phase navigation (.gv-phases__bar stepper + .gv-phasepanel content) ════════ -->
+    <section class="gv-phases" aria-labelledby="phT">
+      <div class="gv-phases__bar">
+        <h2 id="phT">Phases</h2>
+        <div class="gv-phases__nav">
+          <button class="gv-pnav" id="navPrev" aria-label="Previous phase"><span data-gv-icon="chevron-left"></span></button>
+          <button class="gv-pnav" id="navCurrent" aria-label="Go to current phase"><span class="gv-dotmark"></span></button>
+          <button class="gv-pnav" id="navNext" aria-label="Next phase"><span data-gv-icon="chevron-right"></span></button>
+        </div>
+      </div>
+
+      <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"></div>
+
+      <div class="gv-phasepanel" role="tabpanel" id="panel">
+        <div class="gv-phasepanel__head">
+          <span class="gv-phasepanel__num" id="panelNum" aria-hidden="true"></span>
+          <div>
+            <h3 class="gv-phasepanel__name" id="panelName"></h3>
+            <p class="gv-phasepanel__date" id="panelDate"></p>
+          </div>
+        </div>
+        <div class="gv-phasepanel__desc" id="panelDesc"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const PHASES = [
+      {
+        label: "Problem framing",
+        date: "Jan 15 – Feb 28, 2025",
+        desc: "The project team shares background research and the problem statement with the community. Residents can read the brief and sign up to be notified when participation opens.",
+      },
+      {
+        label: "Community ideation",
+        date: "Mar 1 – Apr 15, 2025",
+        desc: "Residents submit ideas on how to address the core challenge. Ideas can be commented on and liked by other participants. The team reviews submissions weekly.",
+      },
+      {
+        label: "Idea prioritization vote",
+        date: "Apr 16 – May 10, 2025",
+        desc: "The most-supported ideas from the ideation phase go to a community vote. Each participant gets 5 votes to allocate across the shortlisted proposals.",
+      },
+      {
+        label: "Needs assessment survey",
+        date: "May 15 – Jun 1, 2025",
+        desc: "A targeted survey collects demographic data and lived-experience insights to ensure the final plan reflects the full diversity of the community.",
+      },
+      {
+        label: "Co-design workshop",
+        date: "Jun 10 – Jun 30, 2025",
+        desc: "Small working groups of residents and staff collaborate on detailed design options. Outputs from each group feed directly into the draft development plan.",
+      },
+      {
+        label: "Draft plan review",
+        date: "Jul 1 – Jul 31, 2025",
+        desc: "The draft plan is published for community review. Residents can leave comments on specific sections. The team will publish a summary of all feedback received.",
+      },
+      {
+        label: "Public consultation",
+        date: "Aug 1 – Sep 15, 2025",
+        desc: "A formal public consultation survey collects structured feedback on the draft plan's key decisions before it is submitted for council approval.",
+      },
+      {
+        label: "Final vote",
+        date: "Sep 16 – Oct 5, 2025",
+        desc: "Residents cast a binding community vote on the final plan options. The winning option will be adopted and submitted to the planning authority.",
+      },
+      {
+        label: "Product Circle meets",
+        date: "Oct 6 – Oct 20, 2025",
+        desc: "The internal product circle reviews all community input and finalises the development brief. Meeting minutes will be published within 5 business days.",
+      },
+      {
+        label: "Development plan announced",
+        date: "Oct 21, 2025 – No end date",
+        desc: "With the consultation rounds complete, the project team shares the development plan that came out of the process — what was prioritised, why, and the timeline for delivery.",
+      },
+    ];
+
+    const CURRENT = 9;   // index of the live/current phase
+    let VIEWING = 9;     // index currently selected in the panel
+
+    const stepper = document.getElementById("stepper");
+    const panelNum  = document.getElementById("panelNum");
+    const panelName = document.getElementById("panelName");
+    const panelDate = document.getElementById("panelDate");
+    const panelDesc = document.getElementById("panelDesc");
+
+    function renderPanel(i) {
+      const ph = PHASES[i];
+      panelNum.textContent  = i + 1;
+      panelName.textContent = ph.label;
+      panelDate.textContent = ph.date;
+      panelDesc.innerHTML   = `<p>${ph.desc}</p>`;
+    }
+
+    function renderStepper() {
+      stepper.innerHTML = "";
+      PHASES.forEach((ph, i) => {
+        const b = document.createElement("button");
+        b.className = "gv-phase" + (i === CURRENT ? " current" : "");
+        b.setAttribute("role", "tab");
+        b.setAttribute("aria-selected", i === VIEWING ? "true" : "false");
+        b.setAttribute("title", ph.label);
+        const dot = i === CURRENT ? `<span class="gv-pstep__dot"></span>` : "";
+        b.innerHTML = `<span class="gv-pstep">${dot}${i + 1}</span><span class="gv-phase__label">${ph.label}</span>`;
+        b.addEventListener("click", () => selectPhase(i));
+        stepper.appendChild(b);
+      });
+      if (window.GVIcons) GVIcons.render();
+    }
+
+    function selectPhase(i) {
+      VIEWING = i;
+      renderPanel(i);
+      stepper.querySelectorAll(".gv-phase").forEach((b, j) => {
+        b.setAttribute("aria-selected", j === i ? "true" : "false");
+      });
+    }
+
+    document.getElementById("navPrev").addEventListener("click", () => {
+      if (VIEWING > 0) selectPhase(VIEWING - 1);
+    });
+    document.getElementById("navCurrent").addEventListener("click", () => {
+      selectPhase(CURRENT);
+    });
+    document.getElementById("navNext").addEventListener("click", () => {
+      if (VIEWING < PHASES.length - 1) selectPhase(VIEWING + 1);
+    });
+
+    renderStepper();
+    renderPanel(VIEWING);
+  </script>
+</body>
+</html>

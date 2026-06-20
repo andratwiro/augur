@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Input — Go Vocal base</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <style>
+    /* Page-local layout only — no .gv-* selectors. */
+    body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
+    .stage { max-width: 1166px; margin: 0 auto; padding: 40px 20px 80px; }
+    .heading { color: var(--gv-text-pagetitle); font-size: 25px; font-weight: 700; line-height: 32.5px; margin: 0 0 24px; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+    .row + .row { margin-top: 14px; }
+    .field { flex: 1; min-width: 220px; }
+  </style>
+</head>
+<body class="gv-root">
+  <div class="stage">
+    <h2 class="heading">Input</h2>
+    <div class="gv-card">
+      <div class="row">
+        <div class="field">
+          <label class="gv-label" for="g-email">Email</label>
+          <input class="gv-input" id="g-email" type="email" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label class="gv-label" for="g-err">Email (error)</label>
+          <input class="gv-input error" id="g-err" value="nope" aria-invalid="true" />
+          <p class="gv-error-text">⚠ Enter a valid email address.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label class="gv-label" for="g-dis">Disabled</label>
+          <input class="gv-input" id="g-dis" disabled value="Disabled field" />
+        </div>
+        <div class="field">
+          <label class="gv-label" for="g-ta">Idea</label>
+          <textarea class="gv-textarea" id="g-ta" placeholder="Share your idea…"></textarea>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label class="gv-label" for="g-sel">Sort by</label>
+          <div class="gv-select">
+            <select id="g-sel" aria-label="Sort by">
+              <option class="placeholder" value="" selected disabled hidden>Choose…</option>
+              <option>Most recent</option>
+              <option>Most discussed</option>
+              <option>Trending</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="gv-label" for="g-sel2">Disabled select</label>
+          <div class="gv-select">
+            <select id="g-sel2" disabled aria-label="Disabled"><option>Locked value</option></select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

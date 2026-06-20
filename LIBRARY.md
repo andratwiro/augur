@@ -7,7 +7,7 @@
 ## Reuse-first (read me before building a prototype)
 
 Before building **anything** in a prototype, scan this index and **reuse an existing
-layer** — Primitives → Components → Pages — instead of rebuilding it. Workflow:
+layer** — Tokens → Base → Components → Patterns → Pages — instead of rebuilding it. Workflow:
 
 1. **Find it here first.** Need a footer, a card, a nav, a login modal, a whole
    page? Check the tables below — if it exists, start from it.
@@ -30,10 +30,24 @@ Components · Pages); this file is the agent-readable twin.
 
 ---
 
-## Primitives (atoms) — `skills/govocal-ui/`
+> **Layered design system:** Tokens → Base → Components → Patterns → Pages. The
+> review site has a tab per layer (`/tokens/` · `/base/` · `/components/` ·
+> `/patterns/` · `/pages/`). Each layer imports live from the one below — proven by
+> the composition graph the review overlay recurses (`dist/__review/graph.js`,
+> derived from the canonical CSS).
 
-Design tokens (`--gv-*`) + base `.gv-*` classes. **Live demo:** `skills/govocal-ui/gallery.html`
-(the **Primitives** tab, `/primitives/`). **Snippets:** `skills/govocal-ui/components.md`.
+## Tokens — `skills/govocal-ui/govocal-tokens.css`
+
+The design-system variables (`--gv-*`): palette, type scale, radius, shadows, focus,
+tenant colours. Generated **Tokens** tab (`/tokens/`) shows each with its alias chain
+to a raw value + its consumers.
+
+## Base (atoms) — `base/<name>/`
+
+The source-grounded `.gv-*` atoms (button, input, card, badge, modal, icon, toggle,
+checkbox/radio, status-label, divider, avatar, typography). Shipped on the **Base**
+tab. Full live gallery: `skills/govocal-ui/gallery.html` (`/primitives/`, legacy).
+**Snippets:** `skills/govocal-ui/components.md`. Parsed primitive families:
 
 - Button
 - Text input / textarea
@@ -57,9 +71,23 @@ Design tokens (`--gv-*`) + base `.gv-*` classes. **Live demo:** `skills/govocal-
 - Table
 - Tooltip
 
+| Atom | Open | Source | What it is |
+|---|---|---|---|
+| **Avatar** | `/base/avatar/` | `base/avatar/` | Avatar — Go Vocal base |
+| **Badge** | `/base/badge/` | `base/badge/` | Badge — Go Vocal base |
+| **Button** | `/base/button/` | `base/button/` | Button — Go Vocal base |
+| **Card** | `/base/card/` | `base/card/` | Card — Go Vocal base |
+| **Checkbox Radio** | `/base/checkbox-radio/` | `base/checkbox-radio/` | Checkbox & radio — Go Vocal base |
+| **Divider** | `/base/divider/` | `base/divider/` | Divider — Go Vocal base |
+| **Icon** | `/base/icon/` | `base/icon/` | Icon — Go Vocal base |
+| **Input** | `/base/input/` | `base/input/` | Input — Go Vocal base |
+| **Modal** | `/base/modal/` | `base/modal/` | Modal — Go Vocal base |
+| **Status Label** | `/base/status-label/` | `base/status-label/` | Status label — Go Vocal base |
+| **Typography** | `/base/typography/` | `base/typography/` | Typography — Go Vocal base |
+
 ## Components (blocks) — `components/<name>/`
 
-Section-level blocks assembled from primitives. Shipped on the **Components** tab.
+Section-level blocks assembled from base atoms. Shipped on the **Components** tab.
 Class-level detail + “how to reuse”: `components/manifest.md`.
 
 | Component | Open | Source | What it is |
@@ -137,6 +165,20 @@ Class-level detail + “how to reuse”: `components/manifest.md`.
 | **Widget Two Column** | `/components/widget-two-column/` | `components/widget-two-column/` | 2 column widget — GoVocal Page Builder |
 | **Widget Video** | `/components/widget-video/` | `components/widget-video/` | Video widget — GoVocal Page Builder |
 | **Widget White Space** | `/components/widget-white-space/` | `components/widget-white-space/` | White space widget — GoVocal Page Builder |
+
+## Patterns (compositions) — `patterns/<name>/`
+
+Curated recurring compositions — several components arranged the way real screens
+repeatedly arrange them. Shipped on the **Patterns** tab.
+
+| Pattern | Open | Source | What it is |
+|---|---|---|---|
+| **Content Builder Grid** | `/patterns/content-builder-grid/` | `patterns/content-builder-grid/` | Content builder grid — Go Vocal pattern |
+| **Events Section** | `/patterns/events-section/` | `patterns/events-section/` | Events section — Go Vocal pattern |
+| **Homepage Spotlight Row** | `/patterns/homepage-spotlight-row/` | `patterns/homepage-spotlight-row/` | Homepage spotlight row — Go Vocal pattern |
+| **Idea Feed** | `/patterns/idea-feed/` | `patterns/idea-feed/` | Idea feed — Go Vocal pattern |
+| **Participation Flow** | `/patterns/participation-flow/` | `patterns/participation-flow/` | Participation flow — Go Vocal pattern |
+| **Phase Nav** | `/patterns/phase-nav/` | `patterns/phase-nav/` | Phase nav — Go Vocal pattern |
 
 ## Pages (screens) — `pages/<name>/`
 

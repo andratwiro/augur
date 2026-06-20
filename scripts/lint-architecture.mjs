@@ -31,7 +31,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TIERS = ['components', 'pages'];
+const TIERS = ['base', 'components', 'patterns', 'pages'];
 const ASSET_FILE = /^govocal-.*\.(css|js|svg)$/;
 const CANONICAL = '../../skills/govocal-ui/';
 
@@ -235,6 +235,46 @@ if (fs.existsSync(uiCssPath)) {
     .sort();
   for (const f of buried) {
     warnings.push(`[unsurfaced] .${f} is in govocal-ui.css but no components/<name>/ demo or primitive surfaces it — add a component folder (or promote to a primitive), else it stays invisible on the Components tab/LIBRARY.md. If it's page-local layout, add it to PAGE_LOCAL in lint-architecture.mjs.`);
+  }
+}
+
+// INV-8 (HARD): every composite COMPONENT must drink from ≥1 token. A component
+// family that declares LITERAL visual values (a hex/rgb colour, border, shadow or
+// outline) and references NO var(--gv-*) anywhere has hardcoded its look — it won't
+// re-theme and won't track a token change, breaking the "import live from tokens up
+// through the layers" promise. We only flag genuine hardcoders: families with a
+// literal visual AND zero tokens. Layout-only families (no literal visual) are fine,
+// and BASE atoms (defined in govocal-primitives.css) are the source of literal values
+// where unavoidable, so they're excluded. Parsed live from the canonical component CSS.
+{
+  const compFiles = ['govocal-ui.css', 'govocal-bo.css', 'govocal-survey.css', 'govocal-widgets.css'];
+  const primPath = path.join(ROOT, 'skills/govocal-ui/govocal-primitives.css');
+  const baseFamilies = new Set();
+  if (fs.existsSync(primPath)) {
+    const css = fs.readFileSync(primPath, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const m of css.matchAll(/([^{}]+)\{[^{}]*\}/g))
+      for (const part of m[1].split(','))
+        { const mm = part.trim().match(/\.((?:gv|sv)-[\w-]+)/); if (mm) baseFamilies.add(familyRoot('.' + mm[1])); }
+  }
+  const acc = {}; // family -> { hasVar, hasLiteral }
+  for (const f of compFiles) {
+    const p = path.join(ROOT, 'skills/govocal-ui', f);
+    if (!fs.existsSync(p)) continue;
+    const css = fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const sel = m[1], body = m[2];
+      const hasVar = /var\(\s*--gv-/.test(body);
+      const hasLiteral = /(?:color|background|border[\w-]*|box-shadow|outline|fill|stroke)\s*:\s*[^;]*(#[0-9a-fA-F]{3,8}|rgba?\()/.test(body);
+      const fams = new Set();
+      for (const part of sel.split(',')) { const mm = part.trim().match(/\.((?:gv|sv)-[\w-]+)/); if (mm) fams.add(familyRoot('.' + mm[1])); }
+      for (const fam of fams) { acc[fam] = acc[fam] || { hasVar: false, hasLiteral: false }; if (hasVar) acc[fam].hasVar = true; if (hasLiteral) acc[fam].hasLiteral = true; }
+    }
+  }
+  const hardcoders = Object.entries(acc)
+    .filter(([fam, o]) => !baseFamilies.has(fam) && o.hasLiteral && !o.hasVar)
+    .map(([fam]) => fam).sort();
+  for (const fam of hardcoders) {
+    violations.push(`[hardcoded] .${fam} declares literal visual value(s) but drinks from NO --gv-* token — alias the colour/border/shadow to a token so it re-themes and tracks the layer (INV-8). If the value is a genuine one-off with no token, add the nearest token or promote one.`);
   }
 }
 

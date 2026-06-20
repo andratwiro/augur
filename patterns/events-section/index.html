@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Events section — Go Vocal pattern</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    /* Page-local layout only — no .gv-* redefinitions. */
+    body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
+    .stage { max-width: 1240px; margin: 0 auto; padding: 40px 20px 80px; }
+    .heading { color: var(--gv-text-pagetitle); font-size: 25px; font-weight: 700; line-height: 32.5px; margin: 0 0 24px; }
+  </style>
+</head>
+<body class="gv-root" data-gv-theme-picker="off" data-gv-cookies="off">
+
+  <div class="stage">
+    <h2 class="heading">Events section</h2>
+
+    <!-- ════════ Project-page events section (.gv-project-events) — upcoming + past ════════ -->
+    <div id="e2e-events-section-project-page" class="gv-project-events">
+
+      <!-- ──── Upcoming and ongoing events — head + Date filter + empty state ──── -->
+      <section class="gv-project-events__sec">
+        <div class="gv-events-page__sectionhead">
+          <h2 class="gv-events-page__section">Upcoming and ongoing events</h2>
+
+          <!-- FO filter pill (Date). Click toggles aria-expanded (chevron flip). -->
+          <div class="gv-eventfilters" id="e2e-event-date-filter">
+            <div class="gv-filter">
+              <button type="button" class="gv-filter-pill" aria-haspopup="listbox" aria-expanded="false" aria-label="Date">
+                Date
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"></path></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <hr class="gv-project-events__rule" aria-hidden="true" />
+
+        <!-- Live state: no upcoming/ongoing events scheduled (plain line, not the dashed box) -->
+        <p class="gv-project-events__empty">No upcoming or ongoing events are currently scheduled.</p>
+      </section>
+
+      <!-- ──── Past events — head (no filter) + grid of event cards ──── -->
+      <section class="gv-project-events__sec">
+        <div class="gv-events-page__sectionhead">
+          <h2 class="gv-events-page__section">Past events</h2>
+        </div>
+        <hr class="gv-project-events__rule" aria-hidden="true" />
+
+        <div class="gv-events__grid">
+          <article class="e2e-event-card gv-event-card bordered has-panel">
+            <div class="gv-event-card__media">
+              <span data-gv-icon="calendar" aria-hidden="true"></span>
+            </div>
+            <div class="gv-event-card__body">
+              <div class="gv-event-card__titlerow">
+                <h3 class="gv-event-card__title"><a href="#">Presentation of final Main Square design</a></h3>
+                <span class="gv-event-card__date is-beside"><span class="m">Feb</span><span class="d">22</span><span class="y">2026</span></span>
+              </div>
+              <div class="gv-event-card__meta">
+                <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 22 Feb 2026 · 17:30 – 19:30 CET</p>
+                <p class="gv-event-card__row"><span data-gv-icon="user"></span> 3 registrants</p>
+              </div>
+              <a class="gv-btn primary" href="#">Read more</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    // page-local: toggle the Date filter pill's aria-expanded (chevron flips via CSS)
+    document.querySelectorAll('.gv-filter-pill').forEach(function (b) {
+      b.addEventListener('click', function () {
+        b.setAttribute('aria-expanded', b.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+      });
+    });
+  </script>
+</body>
+</html>

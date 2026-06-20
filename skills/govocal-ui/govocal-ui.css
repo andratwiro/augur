@@ -1910,7 +1910,7 @@
 
 /* ── Dotted-grid canvas ── floats sticky-note idea cards.
    Live bg = white + tiled inline-svg dot (circle r1.5 #e5e5e5) at 20×20. */
-.gv-issuecanvas { position: relative; overflow: auto; background-color: #fff;
+.gv-issuecanvas { position: relative; overflow: auto; background-color: var(--gv-white);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23e5e5e5'/%3E%3C/svg%3E");
   background-size: 20px 20px; padding: 40px; display: flex; align-items: center; justify-content: center; }
 /* the masonry "pile" of sticky notes (no idea selected). */

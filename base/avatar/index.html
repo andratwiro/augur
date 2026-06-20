@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Avatar — Go Vocal base</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <style>
+    /* Page-local layout only — no .gv-* selectors.
+       Avatar fill lives on a page-local .demo scope (not on a .gv-* selector). */
+    body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
+    .stage { max-width: 1166px; margin: 0 auto; padding: 40px 20px 80px; }
+    .heading { color: var(--gv-text-pagetitle); font-size: 25px; font-weight: 700; line-height: 32.5px; margin: 0 0 24px; }
+    .demo .av { background: var(--gv-tenant-primary); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 600; }
+  </style>
+</head>
+<body class="gv-root">
+  <div class="stage">
+    <h2 class="heading">Avatar stack</h2>
+    <div class="gv-card demo">
+      <div class="gv-avatars" style="margin:0">
+        <span class="av">AM</span><span class="av">KP</span><span class="av">JR</span><span class="av">+5</span>
+        <span class="count">128 participants</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

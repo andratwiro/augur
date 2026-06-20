@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Modal — Go Vocal base</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    /* Page-local layout only — no .gv-* selectors. */
+    body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
+    .stage { max-width: 1166px; margin: 0 auto; padding: 40px 20px 80px; }
+    .heading { color: var(--gv-text-pagetitle); font-size: 25px; font-weight: 700; line-height: 32.5px; margin: 0 0 24px; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  </style>
+</head>
+<body class="gv-root">
+  <div class="stage">
+    <h2 class="heading">Modal &amp; overlay</h2>
+    <div class="gv-card">
+      <p class="gv-text bodyS gv-text--secondary" style="margin:0 0 12px">
+        <code>.gv-modal-overlay</code> (scrim, toggle <code>.is-open</code>) centres a
+        <code>.gv-modal</code> card: <code>__header</code>/<code>__title</code>, top-right
+        <code>__close</code>, scrollable <code>__body</code>. The card is the dialog
+        (<code>role="dialog"</code> · <code>aria-modal</code> · <code>aria-labelledby</code>).
+      </p>
+      <div class="row">
+        <button class="gv-btn primary" type="button" data-open-modal>Open modal</button>
+      </div>
+      <!-- Static preview of the dialog card (no overlay, so it doesn't cover the page). -->
+      <div class="gv-modal" style="margin-top:16px; box-shadow: var(--gv-shadow);">
+        <div class="gv-modal__header"><h3 class="gv-modal__title" id="g-modal-title">Dialog title</h3></div>
+        <button class="gv-modal__close" type="button" aria-label="Close window"><span data-gv-icon="close"></span></button>
+        <div class="gv-modal__body">
+          <p class="gv-text bodyM" style="margin:0 0 14px">Body content goes here.</p>
+          <div class="gv-or"><span>Or</span></div>
+          <p class="gv-text bodyS gv-text--secondary" style="margin:14px 0 0">The <code>.gv-or</code> labelled divider splits choices.</p>
+        </div>
+      </div>
+      <!-- Live overlay instance, opened by the button above. -->
+      <div class="gv-modal-overlay" id="g-overlay">
+        <div class="gv-modal" role="dialog" aria-modal="true" aria-labelledby="g-ov-title">
+          <div class="gv-modal__header"><h2 class="gv-modal__title" id="g-ov-title">Dialog title</h2></div>
+          <button class="gv-modal__close" type="button" aria-label="Close window" data-close-modal><span data-gv-icon="close"></span></button>
+          <div class="gv-modal__body">
+            <p class="gv-text bodyM" style="margin:0 0 18px">Press Esc or click the scrim to close.</p>
+            <button class="gv-btn primary" type="button" data-close-modal>Got it</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var ov = document.getElementById('g-overlay');
+      if (ov) {
+        var open = function () { ov.classList.add('is-open'); };
+        var close = function () { ov.classList.remove('is-open'); };
+        document.querySelectorAll('[data-open-modal]').forEach(function (b) { b.addEventListener('click', open); });
+        ov.querySelectorAll('[data-close-modal]').forEach(function (b) { b.addEventListener('click', close); });
+        ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+      }
+    })();
+  </script>
+</body>
+</html>

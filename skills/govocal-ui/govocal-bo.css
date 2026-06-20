@@ -101,7 +101,7 @@
 .gv-bo-nav__sub { display: block; font-size: 11px; color: rgba(255, 255, 255, 0.55); }
 /* Items with a sub-label (user row) need room for two lines — real product avatar is 28px. */
 .gv-bo-nav__item:has(.gv-bo-nav__sub) { height: auto; min-height: 52px; padding-block: 8px; }
-.gv-bo-chev { margin-left: auto; color: rgba(255, 255, 255, 0.5); flex: none; }
+.gv-bo-chev { margin-left: auto; color: color-mix(in srgb, var(--gv-bo-sidebar-text) 50%, transparent); flex: none; } /* = rgba(255,255,255,.5) on the navy sidebar; drinks from the token (INV-8) */
 
 /* admin avatar (white circle, brand mark) */
 .gv-bo-avatar {

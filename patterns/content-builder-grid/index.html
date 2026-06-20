@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Content builder grid — Go Vocal pattern</title>
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <style>
+    /* Page-local layout only — no .gv-* redefinitions. */
+    body { margin: 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); }
+    .stage { max-width: 1240px; margin: 0 auto; padding: 40px 20px 80px; }
+    .heading { color: var(--gv-text-pagetitle); font-size: 25px; font-weight: 700; line-height: 32.5px; margin: 0 0 24px; }
+    .demo-frame { background: var(--gv-white); margin-bottom: 32px; }
+    .ph { background: var(--gv-grey-200); border-radius: var(--gv-radius); aspect-ratio: 16/9;
+      display: flex; align-items: center; justify-content: center; color: var(--gv-cool-grey-500); font-size: var(--gv-fs-s); }
+  </style>
+</head>
+<body class="gv-root" data-gv-theme-picker="off">
+
+  <div class="stage">
+    <h2 class="heading">Content builder grid</h2>
+
+    <!-- ════════ Content-Builder row grid (.gv-cb-frame holding .gv-cb-row cols-1/2/3) ════════ -->
+
+    <div class="demo-frame"><div class="gv-cb-frame">
+      <div class="gv-cb-row cols-1">
+        <div class="gv-cb-textbox">
+          <div class="gv-prose ql-align-center">
+            <h2>A centred full-width text block</h2>
+            <p>The text-box self-centres to the 1200px content measure (margin 0 auto), with 24px 0 padding.</p>
+          </div>
+        </div>
+      </div>
+      <div class="gv-cb-row cols-1"><div class="gv-cb-whitespace is-small"></div></div>
+    </div></div>
+
+    <div class="demo-frame"><div class="gv-cb-frame">
+      <div class="gv-cb-row cols-2">
+        <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph" style="aspect-ratio:1/1">Image</div></div></div>
+        <div class="gv-cb-col"><div class="gv-cb-textbox"><div class="gv-prose"><h2 style="font-size:var(--gv-fs-l)">A two-column row</h2><p>Two columns share the 1200 measure with a 24px gap, rendering 588px each.</p></div></div></div>
+      </div>
+    </div></div>
+
+    <div class="demo-frame"><div class="gv-cb-frame">
+      <div class="gv-cb-row cols-3">
+        <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><div class="gv-prose"><p>Column one.</p></div></div></div>
+        <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><div class="gv-prose"><p>Column two.</p></div></div></div>
+        <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><div class="gv-prose"><p>Column three.</p></div></div></div>
+      </div>
+    </div></div>
+
+  </div>
+
+</body>
+</html>
