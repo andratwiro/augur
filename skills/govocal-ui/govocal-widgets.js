@@ -172,12 +172,20 @@ window.GVWidgets = (function () {
   var HOMEPAGE = {
     'homepage-banner': {
       label: 'Homepage banner',
-      make: function () {
-        return '<section class="gv-hero signed-out centered" style="background-image:url(\'' + IMG + 'hero.webp\')">'
-          + '<div class="gv-hero__inner"><h1 class="gv-hero__title">Help shape the future of Westmere</h1>'
-          + '<p class="gv-hero__lead">Have your say on the projects and decisions shaping our city — from the harbour to your own street.</p>'
-          + '<div class="gv-avatars" aria-label="15.4 thousand participants"><span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span><span class="count">15.4k</span></div>'
-          + '<div class="gv-hero__actions"><a class="gv-btn primary-inverse" href="#" onclick="return false;">A greener Station Road — share your ideas</a></div></div></section>';
+      make: function (d) {
+        d = d || {};
+        var img = esc(d.img || (IMG + 'hero.webp'));
+        var title = esc(d.title != null ? d.title : 'Help shape the future of Westmere');
+        var lead = esc(d.lead != null ? d.lead : 'Have your say on the projects and decisions shaping our city — from the harbour to your own street.');
+        var aria = esc(d.participants != null ? d.participants : '15.4 thousand') + ' participants';
+        var count = esc(d.count != null ? d.count : '15.4k');
+        var ctaLabel = esc(d.ctaLabel != null ? d.ctaLabel : 'A greener Station Road — share your ideas');
+        var href = esc(d.ctaHref || '#');
+        return '<section class="gv-hero signed-out centered" style="background-image:url(\'' + img + '\')">'
+          + '<div class="gv-hero__inner"><h1 class="gv-hero__title">' + title + '</h1>'
+          + '<p class="gv-hero__lead">' + lead + '</p>'
+          + '<div class="gv-avatars" aria-label="' + aria + '"><span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span><span class="count">' + count + '</span></div>'
+          + '<div class="gv-hero__actions"><a class="gv-btn primary-inverse" href="' + href + '" onclick="return false;">' + ctaLabel + '</a></div></div></section>';
       },
       settings: function (block) {
         var view = block._bannerView || 'signedOut';
@@ -219,13 +227,21 @@ window.GVWidgets = (function () {
     },
     'spotlight': {
       label: 'Spotlight',
-      make: function () {
+      make: function (d) {
+        d = d || {};
         var id = uid('gv-spotlight-title');
+        var title = esc(d.title != null ? d.title : 'A greener Station Road');
+        var lead = esc(d.lead != null ? d.lead : 'We’re redesigning Station Road to make space for trees, wider pavements and safer cycling. Take the survey to tell us what matters most on your daily journey.');
+        var ctaLabel = esc(d.ctaLabel != null ? d.ctaLabel : 'Take the survey');
+        var href = esc(d.ctaHref || '#');
+        var count = esc(d.count != null ? d.count : '145');
+        var img = esc(d.img || (IMG + 'spotlight.webp'));
+        var alt = esc(d.alt != null ? d.alt : 'A leafy, tree-lined stretch of Station Road with people walking and cycling');
         return '<section class="gv-spotlight" aria-labelledby="' + id + '"><div class="gv-spotlight__inner"><div>'
-          + '<h2 class="gv-spotlight__title" id="' + id + '">A greener Station Road</h2><p class="gv-spotlight__lead">We’re redesigning Station Road to make space for trees, wider pavements and safer cycling. Take the survey to tell us what matters most on your daily journey.</p>'
-          + '<div class="gv-spotlight__actions"><a class="gv-btn primary size-m" href="#" onclick="return false;">Take the survey</a></div>'
-          + '<div class="gv-bubbles" style="margin-top:18px"><span class="av"></span><span class="av"></span><span class="av"></span><span class="gv-bubbles__label">145 participants</span></div></div>'
-          + '<div class="gv-spotlight__media"><img src="' + IMG + 'spotlight.webp" alt="A leafy, tree-lined stretch of Station Road with people walking and cycling" loading="lazy" /></div></div></section>';
+          + '<h2 class="gv-spotlight__title" id="' + id + '">' + title + '</h2><p class="gv-spotlight__lead">' + lead + '</p>'
+          + '<div class="gv-spotlight__actions"><a class="gv-btn primary size-m" href="' + href + '" onclick="return false;">' + ctaLabel + '</a></div>'
+          + '<div class="gv-bubbles" style="margin-top:18px"><span class="av"></span><span class="av"></span><span class="av"></span><span class="gv-bubbles__label">' + count + ' participants</span></div></div>'
+          + '<div class="gv-spotlight__media"><img src="' + img + '" alt="' + alt + '" loading="lazy" /></div></div></section>';
       },
       settings: function () {
         return '<div class="hb-set-row"><label class="hb-set-label">Select project or folder</label><button type="button" class="hb-pickbtn">A greener Station Road <span class="gv-icon" data-gv-icon="chevron-down"></span></button></div>'
@@ -268,12 +284,12 @@ window.GVWidgets = (function () {
     },
     'events': {
       label: 'Events',
-      make: function () { var id = uid('gv-events-title'); return '<section class="gv-section" aria-labelledby="' + id + '"><div class="gv-section__body"><div class="hb-events__head"><h2 class="gv-title h2" id="' + id + '" style="margin:0">Upcoming and ongoing events</h2><a class="gv-btn text" href="#" onclick="return false;">View all events</a></div><div class="gv-events__grid">' + EVENTS.map(eventCard).join('') + '</div></div></section>'; },
+      make: function (d) { d = d || {}; var id = uid('gv-events-title'); var title = esc(d.title != null ? d.title : 'Upcoming and ongoing events'); var list = (d.events && d.events.length) ? d.events : EVENTS; return '<section class="gv-section" aria-labelledby="' + id + '"><div class="gv-section__body"><div class="hb-events__head"><h2 class="gv-title h2" id="' + id + '" style="margin:0">' + title + '</h2><a class="gv-btn text" href="#" onclick="return false;">View all events</a></div><div class="gv-events__grid">' + list.map(eventCard).join('') + '</div></div></section>'; },
       settings: function () { return '<p class="hb-help">Displays the next 3 upcoming events on your platform.</p>'; }
     },
     'call-to-action': {
       label: 'Call to action',
-      make: function () { var id = uid('gv-ctaband-title'); return '<section class="gv-ctaband" aria-labelledby="' + id + '"><div class="gv-ctaband__inner"><h2 class="gv-ctaband__title" id="' + id + '">What is your proposal?</h2><p class="gv-ctaband__lead">Post your proposal on this platform, gather support and place it on the city’s agenda.</p><a class="gv-btn primary size-m" href="#" onclick="return false;">Explore all proposals</a></div></section>'; },
+      make: function (d) { d = d || {}; var id = uid('gv-ctaband-title'); var title = esc(d.title != null ? d.title : 'What is your proposal?'); var lead = esc(d.lead != null ? d.lead : 'Post your proposal on this platform, gather support and place it on the city’s agenda.'); var ctaLabel = esc(d.ctaLabel != null ? d.ctaLabel : 'Explore all proposals'); var href = esc(d.ctaHref || '#'); return '<section class="gv-ctaband" aria-labelledby="' + id + '"><div class="gv-ctaband__inner"><h2 class="gv-ctaband__title" id="' + id + '">' + title + '</h2><p class="gv-ctaband__lead">' + lead + '</p><a class="gv-btn primary size-m" href="' + href + '" onclick="return false;">' + ctaLabel + '</a></div></section>'; },
       settings: function () {
         return fText('Title', '', '.gv-ctaband__title', { multiloc: true })
           + fText('Description', '', '.gv-ctaband__lead', { multiloc: true })
@@ -314,7 +330,7 @@ window.GVWidgets = (function () {
     },
     'text': {
       label: 'Text',
-      make: function () { return '<section class="gv-section"><div class="gv-prose"><p>Welcome to the official engagement platform of the City of Westmere. Follow participation projects across our districts, share your thoughts on the questions that matter, and give feedback in dialogue with the city.</p></div></section>'; },
+      make: function (d) { d = d || {}; var html = (d.html != null) ? d.html : '<p>Welcome to the official engagement platform of the City of Westmere. Follow participation projects across our districts, share your thoughts on the questions that matter, and give feedback in dialogue with the city.</p>'; return '<section class="gv-section"><div class="gv-prose">' + html + '</div></section>'; },
       settings: function (block) { var p = block.querySelector('.gv-prose'); return fRte('Text', p ? p.innerHTML : '', '.gv-prose'); },
       wire: function (block, api) { bind(block, api.panel); }
     },
@@ -1116,6 +1132,44 @@ window.GVWidgets = (function () {
     REG.foBlock = foBlock;          // per-widget clean FO emitter
     return REG;
   })();
+
+  // ════════════ Shared model→HTML engine (one model, every surface) ════════════
+  // ONE model shape — { blocks: [ { type, data } ] } — is the single source of truth.
+  // The engine (renderStack) is identical across surfaces; only the per-widget EMITTER
+  // differs: PROJECT.foBlock for the resident project page, homeBlock for the homepage.
+  // Widgets shared by both surfaces resolve through the same code. mount(el, model)
+  // renders a model into ANY element with NO editor present — so a prototype can hold
+  // just a project page, just a homepage, or several of either, each fed its own object.
+  // When an editor IS used it edits a canvas that buildModel() snapshots back into this
+  // same shape, so editor and mount are interchangeable producers of the model.
+  function renderStack(blocks, emit) {
+    return (blocks || []).map(function (b) { return emit(b.type, (b && b.data) || {}); }).join('');
+  }
+  function mountInto(el, html) {
+    if (!el) return;
+    el.innerHTML = html;
+    if (window.GVIcons && GVIcons.render) GVIcons.render(el);
+    if (window.GVAvatars && GVAvatars.fill) GVAvatars.fill(el);
+  }
+  // Homepage emitter: each homepage widget renders from the block's data (widget makes
+  // read data with sample fallbacks). Widgets only defined on the project page fall
+  // through to PROJECT.foBlock, so shared content widgets run the exact same code.
+  function homeBlock(type, data) {
+    var w = HOMEPAGE[type];
+    if (w && w.make) return w.make(data);
+    if (PROJECT && PROJECT.foBlock) return PROJECT.foBlock(type, data);
+    return '';
+  }
+  // model.blocks omitted → render the default homepage section order (zero-config).
+  function renderHome(model) {
+    model = model || {};
+    var blocks = model.blocks || HOMEPAGE_ORDER.map(function (t) { return { type: t }; });
+    return '<div class="gv-home">' + renderStack(blocks, homeBlock) + '</div>';
+  }
+  HOMEPAGE.render = renderHome;                                            // GVWidgets.homepage.render(model) → homepage HTML string
+  HOMEPAGE.mount = function (el, model) { mountInto(el, renderHome(model)); };   // GVWidgets.homepage.mount(el, model) → editor-less render
+  PROJECT.render = PROJECT.renderFO;                                       // alias: GVWidgets.project.render === renderFO
+  PROJECT.mount = function (el, model) { mountInto(el, PROJECT.renderFO(model)); };  // GVWidgets.project.mount(el, model) → editor-less render
 
   return {
     config: function (o) { if (o && o.img != null) IMG = o.img; },

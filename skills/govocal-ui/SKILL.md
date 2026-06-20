@@ -82,6 +82,12 @@ mode loads it (System-building, or the future GoVocal UI mode) or the user asks 
 
 ## How to use it in a prototype
 
+> **Data-driven pages from one object — see [`MODEL.md`](MODEL.md).** A single model
+> object (`{ blocks: [{type, data}] }`) drives a whole surface: `GVWidgets.project.mount(el, model)`
+> renders a resident project page and `GVWidgets.homepage.mount(el, model)` a homepage, both
+> with **no editor required**. The content builder, when present, edits a canvas that snapshots
+> back into the same object — so editor and hand-authored model are interchangeable.
+
 Prototypes are self-contained, so **copy the asset files into the prototype
 folder** and reference them locally (`govocal-ui.css` `@import`s `govocal-primitives.css`,
 so copy both):
