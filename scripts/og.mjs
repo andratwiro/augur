@@ -39,7 +39,7 @@ async function targets() {
         if (p.isDirectory()) out.push(path.join(pp, p.name));
     }
   }
-  for (const group of ["pages", "components", "playground"]) {
+  for (const group of ["pages", "components", "base", "patterns", "playground"]) {
     const g = path.join(ROOT, group);
     if (await isDir(g)) {
       for (const e of await fs.readdir(g, { withFileTypes: true }))
