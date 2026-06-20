@@ -343,9 +343,20 @@
     '.preview .when{color:#9ca3af;font-size:13px;}' +
     '.preview .body{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}' +
     '.preview .body .mention{color:#2563eb;}' +
+    /* ===== "Linked" overlays — mark components in sync with the canonical library
+       (driven by window.__GV_LINKED, shown only in review mode). Light-purple wash +
+       a labelled badge: colour is NOT the only cue (the word "Linked" + chain glyph
+       carry it), so it stays WCAG 1.4.1-safe. pointer-events:none → clicks/commenting
+       pass straight through to the component underneath. ===== */
+    '.links{position:fixed;inset:0;pointer-events:none;}' +
+    '.linkbox{position:fixed;pointer-events:none;border:1.5px dashed rgba(124,58,237,0.55);background:rgba(139,92,246,0.10);border-radius:6px;}' +
+    '.linkbadge{position:absolute;top:0;left:8px;transform:translateY(-50%);pointer-events:auto;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;background:#7c3aed;color:#fff;font:600 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.02em;padding:3px 7px 3px 6px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,0.28);white-space:nowrap;transition:background .12s ease,transform .12s ease;}' +
+    '.linkbadge:hover{background:#6d28d9;transform:translateY(-50%) scale(1.05);}' +
+    '.linkbadge svg{width:10px;height:10px;display:block;flex:0 0 auto;}' +
     '</style>' +
     '<div class="layer hidden">' +
     '  <div class="catcher hidden"></div>' +
+    '  <div class="links"></div>' +
     '  <div class="pins"></div>' +
     '  <aside class="sb">' +
     '    <header><strong>Comments</strong><span class="cnt"></span>' +
@@ -362,7 +373,7 @@
     '</div>';
 
   var $ = function (s) { return root.querySelector(s); };
-  var layer = $(".layer"), catcher = $(".catcher"), pinsEl = $(".pins"),
+  var layer = $(".layer"), catcher = $(".catcher"), pinsEl = $(".pins"), linksEl = $(".links"),
       sb = $(".sb"), listEl = $(".list"), cntEl = $(".cnt"), cnt2El = $(".cnt2"),
       hintEl = $(".hint"), tabEl = $(".tab"), cardholder = $(".cardholder"),
       tipEl = $(".atip"), previewEl = $(".preview"), toastEl = $(".toast");
@@ -395,6 +406,7 @@
       : "Drag a pin to move it · + for a new comment";
     renderList();
     renderPins();
+    renderLinks();
   }
 
   function listed() { return state.threads.filter(isListed); }
@@ -470,6 +482,114 @@
     });
   }
 
+  /* ---------- "Linked" overlays (canonical components in sync with the library) ----------
+   * build.js stamps window.__GV_LINKED = [canonical asset filenames this prototype is
+   * still in sync with]. A component is "Linked" when EVERY canonical asset it's built
+   * from is in that set — so a forked/drifted dependency honestly drops the badge.
+   * Selectors are the outermost canonical roots (see components/manifest.md); nested
+   * matches are de-duped to the largest enclosing one so boxes don't stack. */
+  var DEP = {
+    BO: ["govocal-bo.css", "govocal-tokens.css"],
+    FO: ["govocal-ui.css", "govocal-primitives.css", "govocal-tokens.css"],
+    SV: ["govocal-survey.css", "govocal-tokens.css"],
+    WB: ["govocal-widgets.css", "govocal-widgets.js", "govocal-tokens.css"]
+  };
+  // [selector, label, deps, componentSlug] — slug = the folder under /components/<slug>/
+  // that the badge links to, so you can open the canonical component (and inspect its
+  // own sub-components) in the library.
+  var LINK_COMPONENTS = [
+    [".gv-bo-side", "Back-office sidebar", DEP.BO, "bo-sidebar"],
+    [".gv-bo-topbar", "Back-office top bar", DEP.BO, "bo-app-shell"],
+    [".gv-bo-tabs", "Back-office tab row", DEP.BO, "bo-app-shell"],
+    [".gv-bo-menu", "Back-office menu", DEP.BO, "bo-menu"],
+    [".gv-bo-analysis", "AI analysis (sensemaking)", DEP.BO, "bo-analysis"],
+    [".gv-bo-templatecard", "Template card", DEP.BO, "bo-templatecard"],
+    [".gv-header", "Header + nav", DEP.FO, "header-nav"],
+    [".gv-footer", "Footer", DEP.FO, "footer"],
+    [".gv-hero", "Hero / banner", DEP.FO, "hero"],
+    [".gv-banner", "Project banner", DEP.FO, "banner"],
+    [".gv-pbox", "Participation box", DEP.FO, "participation-box"],
+    [".gv-partbar", "Participation bar", DEP.FO, "participation-bar"],
+    [".gv-pcard", "Project card", DEP.FO, "project-card"],
+    [".gv-carousel", "Project carousel", DEP.FO, "spotlight-carousel"],
+    [".gv-featured-row", "Featured row", DEP.FO, "homepage-featured-row"],
+    [".gv-spotlight", "Spotlight", DEP.FO, "spotlight"],
+    [".gv-phases__bar", "Phase timeline", DEP.FO, "phase-timeline"],
+    [".gv-event-card", "Event card", DEP.FO, "event-card"],
+    [".gv-ideacard", "Idea card", DEP.FO, "idea-card"],
+    [".gv-feed", "Idea feed", DEP.FO, "idea-feed"],
+    [".gv-issuecanvas", "Issue canvas", DEP.FO, "issue-canvas"],
+    [".gv-sticky", "Sticky note", DEP.FO, "sticky-note"],
+    [".gv-themecard", "Theme card", DEP.FO, "theme-card"],
+    [".gv-modal", "Modal", DEP.FO, "login-modal"],
+    [".gv-accordion", "FAQ accordion", DEP.FO, "accordion"],
+    [".gv-cause", "Volunteer cause", DEP.FO, "volunteer-cause"],
+    [".gv-poll", "Poll", DEP.FO, "poll"],
+    [".gv-threshold", "Proposal threshold", DEP.FO, "proposal-threshold"],
+    [".gv-monitorband", "Survey band", DEP.FO, "homepage-survey-band"],
+    [".gv-surveyband", "Survey band", DEP.FO, "survey-band"],
+    [".gv-extra-survey", "Extra survey", DEP.FO, "extra-survey"],
+    [".gv-cta-banner", "CTA banner", DEP.FO, "cta-banner"],
+    [".gv-voteoptions", "Voting body", DEP.FO, "approval-voting"],
+    [".gv-project-events", "Events section", DEP.FO, "voting"],
+    [".sv-optcard", "Survey field", DEP.SV, "survey-fields"],
+    [".gv-cb-frame", "Content Builder render", DEP.WB, "content-builder-render"]
+  ];
+  var LINKICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 12h6M9.5 8H7a4 4 0 0 0 0 8h2.5M14.5 8H17a4 4 0 0 1 0 8h-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+  var linkBoxes = []; // {box, el}
+  function depsMet(deps) {
+    var L = window.__GV_LINKED;
+    if (!L || !L.length) return false;
+    for (var i = 0; i < deps.length; i++) if (L.indexOf(deps[i]) < 0) return false;
+    return true;
+  }
+  function collectLinkEls() {
+    var found = [];
+    LINK_COMPONENTS.forEach(function (c) {
+      if (!depsMet(c[2])) return;
+      var els; try { els = document.querySelectorAll(c[0]); } catch (e) { return; }
+      for (var i = 0; i < els.length; i++) {
+        if (!host.contains(els[i])) found.push({ el: els[i], label: c[1], slug: c[3] });
+      }
+    });
+    // Keep only the outermost match — drop any element nested inside another match.
+    return found.filter(function (a) {
+      return !found.some(function (b) { return b.el !== a.el && b.el.contains(a.el); });
+    });
+  }
+  function renderLinks() {
+    linksEl.textContent = ""; linkBoxes = [];
+    if (!state.active) return;            // overlays only while review mode is on
+    collectLinkEls().forEach(function (it) {
+      var r = it.el.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) return; // hidden / collapsed
+      var box = document.createElement("div");
+      box.className = "linkbox";
+      // Badge is a link to the canonical component page (open its sub-components there).
+      var badge = document.createElement("a");
+      badge.className = "linkbadge";
+      badge.href = "/components/" + it.slug + "/";
+      badge.target = "_blank";
+      badge.rel = "noopener";
+      badge.title = "Linked to canonical · " + it.label + " — open component page";
+      badge.innerHTML = LINKICON + "Linked";
+      box.appendChild(badge);
+      linksEl.appendChild(box);
+      linkBoxes.push({ box: box, el: it.el });
+    });
+    positionLinks();
+  }
+  function positionLinks() {
+    for (var i = 0; i < linkBoxes.length; i++) {
+      var lb = linkBoxes[i], r = lb.el.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) { lb.box.style.display = "none"; continue; }
+      lb.box.style.display = "";
+      lb.box.style.left = r.left + "px"; lb.box.style.top = r.top + "px";
+      lb.box.style.width = r.width + "px"; lb.box.style.height = r.height + "px";
+    }
+  }
+
   function reposition() {
     var pins = pinsEl.children, items = pinThreads().filter(function (t) { return pinXY(t); });
     for (var i = 0; i < pins.length && i < items.length; i++) {
@@ -479,6 +599,7 @@
     if (openCardAnchor) positionCard(openCardAnchor);
     if (tipEl.classList.contains("show")) hideTip(true); // anchor moved → drop bubble
     if (previewEl.classList.contains("show")) hidePreview();
+    positionLinks();
   }
 
   /* ---------- pin dragging ---------- */
@@ -855,6 +976,7 @@
     reRenderT = setTimeout(function () {
       if (state.active) renderList();
       renderPins(); // annotation pins repaint even with review off
+      if (state.active) renderLinks(); // re-detect linked components after DOM/screen change
       orphanSweep();
     }, 200);
   }
