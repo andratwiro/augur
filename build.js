@@ -113,6 +113,45 @@ function injectReview(html) {
   return i === -1 ? html + tag : html.slice(0, i) + tag + html.slice(i);
 }
 
+/**
+ * Which canonical assets a prototype is "linked" to — i.e. currently in sync with
+ * the library, so the review overlay can mark the components they power as Linked.
+ * An asset counts as linked when the prototype EITHER live-references it
+ * (../../../skills/govocal-ui/X — always canonical) OR carries a byte-identical
+ * local copy. A drifted (forked) copy is silently excluded, so this is honest per
+ * build: re-drift a copy and it drops out of the set on the next build.
+ * Reads the SOURCE index.html (refs are still original there, pre-rewrite).
+ */
+async function computeLinkedAssets(protoDir) {
+  const idx = path.join(protoDir, "index.html");
+  if (!(await exists(idx))) return [];
+  const html = await fs.readFile(idx, "utf8");
+  const re = /(?:href|src)\s*=\s*["']([^"']*\bgovocal-[^"'/]+\.(?:css|js))["']/gi;
+  const refs = [];
+  let m;
+  while ((m = re.exec(html))) refs.push(m[1]);
+  const linked = new Set();
+  for (const ref of refs) {
+    const base = ref.split("/").pop();
+    const canon = path.join(UI_SKILL, base);
+    if (!(await exists(canon))) continue; // not a canonical asset
+    if (/skills\/govocal-ui\//.test(ref)) { linked.add(base); continue; } // live-linked
+    try {
+      const [a, b] = await Promise.all([fs.readFile(path.resolve(protoDir, ref)), fs.readFile(canon)]);
+      if (a.equals(b)) linked.add(base); // byte-identical local copy = in sync
+    } catch { /* missing/unreadable local copy → not linked */ }
+  }
+  return [...linked];
+}
+
+/** Stamp window.__GV_LINKED (in-sync canonical assets) into <head> for the overlay. */
+function injectLinked(html, assets) {
+  if (!assets || !assets.length || html.includes("__GV_LINKED")) return html;
+  const tag = "<script>window.__GV_LINKED=" + JSON.stringify(assets) + ";</script>";
+  const i = html.toLowerCase().indexOf("</head>");
+  return i === -1 ? tag + html : html.slice(0, i) + tag + html.slice(i);
+}
+
 // Absolute origin used to build absolute og:image / og:url (unfurl bots need
 // absolute URLs). Update here if a custom domain replaces the pages.dev one.
 const SITE_ORIGIN = "https://govocal-prototypes.pages.dev";
@@ -177,7 +216,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.71";
+const UI_VERSION = "0.72";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -239,6 +278,7 @@ const METHOD_PAGES = new Set([
 const UI_SKILL = path.join(ROOT, "skills", "govocal-ui"); // Primitives gallery + assets
 const PAGES_SRC = path.join(ROOT, "pages"); // composed reference pages
 const COMPONENTS_SRC = path.join(ROOT, "components"); // composed component library
+const CHANGELOG_SRC = path.join(ROOT, "changelog.md"); // hand-edited changelog source (internal; rendered to /changelog/)
 
 // Display name + key classes + one-line "what is it" per component, shown on the
 // Components page. Keyed by folder name; `name` is the SHARED, functional display name
@@ -460,6 +500,14 @@ async function copyDir(src, dest, exclude, titleEmoji) {
     } else if (entry.isFile()) {
       if (entry.name.endsWith(".html")) {
         let html = await fs.readFile(srcPath, "utf8");
+        // Live-link rewrite: a prototype that IMPORTS canonical assets references
+        // them as ../../../skills/govocal-ui/X (resolves on disk when opened
+        // directly). In dist the shared export lives at dist/skills/govocal-ui/, one
+        // level shallower, so repoint any such ref to the correct dist-relative path.
+        // Depth-aware (computed from this file's dist dir) and idempotent for the
+        // library tiers (pages/, components/ already sit at ../../skills/govocal-ui/).
+        const relCanon = path.relative(dest, path.join(DIST, "skills", "govocal-ui")).split(path.sep).join("/");
+        html = html.replace(/(?:\.\.\/)+skills\/govocal-ui\//g, relCanon + "/");
         // OG/Twitter unfurl tags for the shareable entry page (index.html). The
         // composed card (og.png, see scripts/og.mjs) sits beside it when shot.
         if (entry.name === "index.html") {
@@ -526,6 +574,18 @@ async function scan() {
       // Exclude internal material (research/ + context/ folders, *.zip, .DS_Store)
       // that sometimes sits inside a prototype folder — it must never reach dist.
       const latest = await copyDir(protoDir, destDir, isInternalOnly, protoEmoji(proto.name));
+
+      // Stamp which canonical assets this prototype is in sync with, so the review
+      // overlay can mark the components they power as "Linked" (computed fresh each
+      // build, so a drifted copy honestly drops out). Entry-point HTML only.
+      const idxDest = path.join(destDir, "index.html");
+      if (await exists(idxDest)) {
+        const linked = await computeLinkedAssets(protoDir);
+        if (linked.length) {
+          const h = await fs.readFile(idxDest, "utf8");
+          await fs.writeFile(idxDest, injectLinked(h, linked), "utf8");
+        }
+      }
 
       const { href, file } = await entryPoint(proto.name, protoDir);
       prototypes.push({
@@ -1416,6 +1476,7 @@ const IC_PRIM = ic(`<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.1
 const IC_COMP = ic(`<path d="M15.536 11.293a1 1 0 0 0 0 1.414l2.376 2.377a1 1 0 0 0 1.414 0l2.377-2.377a1 1 0 0 0 0-1.414l-2.377-2.377a1 1 0 0 0-1.414 0z"/><path d="M2.297 11.293a1 1 0 0 0 0 1.414l2.377 2.377a1 1 0 0 0 1.414 0l2.377-2.377a1 1 0 0 0 0-1.414L6.088 8.916a1 1 0 0 0-1.414 0z"/><path d="M8.916 17.912a1 1 0 0 0 0 1.415l2.377 2.376a1 1 0 0 0 1.414 0l2.377-2.376a1 1 0 0 0 0-1.415l-2.377-2.376a1 1 0 0 0-1.414 0z"/><path d="M8.916 4.674a1 1 0 0 0 0 1.414l2.377 2.376a1 1 0 0 0 1.414 0l2.377-2.376a1 1 0 0 0 0-1.414l-2.377-2.377a1 1 0 0 0-1.414 0z"/>`); // component
 const IC_PAGE = ic(`<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/>`); // app-window (pages are websites, not paper)
 const IC_LIBRARY = ic(`<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`); // library
+const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 21v-5h5"/>`); // history (clock + counter-rotate)
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
 
 // Star toggle on cards — Lucide 'star'. Outline (grey) when unpinned, gold-filled
@@ -1494,6 +1555,9 @@ function sideRail(active) {
     </div>
     <div class="gvside__foot">
       <div class="gvside__rule"></div>
+      <div class="gvside__group">
+        ${item("/changelog/", "Changelog", "changelog", IC_CHANGELOG)}
+      </div>
       ${library}
     </div>
   </aside>`;
@@ -2478,6 +2542,116 @@ function renderComponentsIndex(components) {
   });
 }
 
+// ── Changelog ───────────────────────────────────────────────────────────────
+// Parse the hand-edited changelog.md (repo root, internal-only) into entries.
+// Each entry = a heading "## YYYY-MM-DD — Optional title" followed by body lines,
+// up to the next heading. Fenced ``` blocks (the format example in the intro) are
+// skipped so the sample heading inside them isn't mistaken for a real entry.
+async function loadChangelog() {
+  if (!(await exists(CHANGELOG_SRC))) return [];
+  const raw = await fs.readFile(CHANGELOG_SRC, "utf8");
+  const head = /^##\s+(\d{4}-\d{2}-\d{2})\s*(?:[—-]\s*(.+))?\s*$/;
+  const entries = [];
+  let cur = null;
+  let inFence = false;
+  for (const line of raw.split(/\r?\n/)) {
+    if (/^```/.test(line)) { inFence = !inFence; continue; }
+    if (inFence) continue;
+    const m = line.match(head);
+    if (m) {
+      cur = { date: m[1], title: (m[2] || "").trim(), body: [] };
+      entries.push(cur);
+    } else if (cur && line.trim() !== "---") {
+      cur.body.push(line);
+    }
+  }
+  // Newest first (ISO YYYY-MM-DD sorts lexically).
+  entries.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return entries.map((e) => ({ date: e.date, title: e.title, body: e.body.join("\n").trim() }));
+}
+
+// Minimal, safe inline markdown for changelog bodies: escape HTML, then re-enable
+// only `code` and **bold**. Blank lines split paragraphs; single newlines fold to
+// spaces (authored prose wraps for readability, renders as flowing text).
+function clInline(text) {
+  return text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+}
+function clBody(body) {
+  return body
+    .split(/\n{2,}/)
+    .map((p) => `<p>${clInline(p.replace(/\s*\n\s*/g, " ").trim())}</p>`)
+    .join("");
+}
+
+// Styles for the changelog list — a simple timeline of dated cards. Uses the
+// shared PAGE_CSS design tokens so it tracks the rest of the chrome.
+const CHANGELOG_CSS = `
+    .cl-list { display: flex; flex-direction: column; gap: 14px; max-width: 720px; }
+    .cl-entry { display: grid; grid-template-columns: 120px 1fr; gap: 18px; padding: 18px 20px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+    .cl-when { font-size: 12.5px; font-weight: 600; color: var(--muted); white-space: nowrap; padding-top: 1px; }
+    .cl-when time { cursor: default; }
+    .cl-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--fg); margin: 0 0 6px; line-height: 1.3; }
+    .cl-body p { font-size: 14px; line-height: 1.55; color: var(--fg); margin: 0 0 8px; }
+    .cl-body p:last-child { margin-bottom: 0; }
+    .cl-body code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em;
+      background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 5px; padding: 1px 5px; }
+    @media (max-width: 560px) {
+      .cl-entry { grid-template-columns: 1fr; gap: 6px; }
+      .cl-when { padding-top: 0; }
+    }`;
+
+// Client script: rewrite each absolute date into a relative phrase at view time,
+// so "Today" becomes "Yesterday" the next day with no rebuild. Absolute date stays
+// as a hover tooltip.
+const CHANGELOG_JS = `(function(){
+  var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function rel(iso){
+    var t = iso.split('-'); var then = new Date(+t[0], +t[1]-1, +t[2]);
+    var now = new Date(); var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var days = Math.round((today - then) / 86400000);
+    if (days <= 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return days + ' days ago';
+    if (days < 14) return '1 week ago';
+    if (days < 30) return Math.floor(days/7) + ' weeks ago';
+    if (days < 60) return '1 month ago';
+    if (days < 365) return Math.floor(days/30) + ' months ago';
+    if (days < 730) return '1 year ago';
+    return Math.floor(days/365) + ' years ago';
+  }
+  function abs(iso){ var t = iso.split('-'); return +t[2] + ' ' + MON[+t[1]-1] + ' ' + t[0]; }
+  var els = document.querySelectorAll('[data-reldate]');
+  for (var i=0;i<els.length;i++){
+    var iso = els[i].getAttribute('data-reldate');
+    els[i].textContent = rel(iso);
+    els[i].setAttribute('title', abs(iso));
+  }
+})();`;
+
+function renderChangelogPage(entries) {
+  const cards = entries
+    .map((e) => {
+      const fkey = `${e.title} ${e.body}`.replace(/[*`#]/g, "").replace(/"/g, "");
+      const title = e.title ? `<h2 class="cl-title">${clInline(e.title)}</h2>` : "";
+      return `<article class="cl-entry" data-fitem data-fkey="${escAttr(fkey)}">
+        <div class="cl-when"><time datetime="${e.date}" data-reldate="${e.date}">${e.date}</time></div>
+        <div class="cl-body">${title}${clBody(e.body)}</div>
+      </article>`;
+    })
+    .join("");
+  const body = entries.length
+    ? `<header class="folderbar"><h1 class="folderbar__title">Changelog</h1><span class="folderbar__count">${entries.length}</span><span class="folderbar__rule"></span></header>` +
+      `<div data-fgroup><div class="cl-list">${cards}</div></div>${filterEmpty()}` +
+      `<style>${CHANGELOG_CSS}</style><script>${CHANGELOG_JS}</script>`
+    : `<header class="folderbar"><h1 class="folderbar__title">Changelog</h1><span class="folderbar__rule"></span></header>` +
+      `<p class="empty">No updates yet. Add one to <code>changelog.md</code> and rebuild.</p>`;
+  return shell({ title: "Changelog", activeTab: "changelog", body });
+}
+
 async function main() {
   // Clean dist for a deterministic build. Retry the removal: on macOS a
   // concurrent .DS_Store / Spotlight write can re-create a dir entry between
@@ -2571,6 +2745,16 @@ async function main() {
   await fs.writeFile(
     path.join(DIST, "pages", "index.html"),
     renderPagesIndex(pages),
+    "utf8"
+  );
+
+  // ── Changelog → rendered from the hand-edited changelog.md (the .md itself is
+  // internal and never copied; only this generated page ships).
+  const changelog = await loadChangelog();
+  await fs.mkdir(path.join(DIST, "changelog"), { recursive: true });
+  await fs.writeFile(
+    path.join(DIST, "changelog", "index.html"),
+    renderChangelogPage(changelog),
     "utf8"
   );
 
