@@ -17,6 +17,7 @@
 window.GVWidgets = (function () {
   var IMG = '';
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]); }); };
+  var UID = 0; var uid = function (p) { return p + '-' + (++UID); };   // collision-safe ids for aria-labelledby
 
   /* ── settings-control builders (canonical .gv-bo-* chrome + page-local hb-* layout) ── */
   function mlHead(label) {
@@ -103,9 +104,9 @@ window.GVWidgets = (function () {
     { img: 'climate-westside.webp', t: 'Westside climate team', n: '211' }
   ];
   var EVENTS = [
-    { img: 'event-online.webp', m: 'Jun', d: '18', t: 'Community session: bringing online & offline participation together', when: '18 Jun 2026 · 11:00 – 12:00', li: 'Online meeting', link: 1, r: '2', rsvp: 1 },
-    { img: 'event-walk.webp', m: 'Jun', d: '25', t: 'Station Road walk & talk: see the plans on site', when: '25 Jun 2026 · 17:30 – 19:00', li: 'Northgate station, Station Road', r: '41' },
-    { img: 'event-budget.webp', m: 'Jul', d: '02', t: 'Participatory budget: info & Q&A session', when: '2 Jul 2026 · 18:00 – 19:30', li: 'Online meeting', link: 1, r: '7' }
+    { img: 'event-online.webp', alt: 'Residents and staff at an online-and-in-person community session', m: 'Jun', d: '18', t: 'Community session: bringing online & offline participation together', when: '18 Jun 2026 · 11:00 – 12:00', li: 'Online meeting', link: 1, r: '2', rsvp: 1 },
+    { img: 'event-walk.webp', alt: 'Residents gathered on Station Road to view the plans on site', m: 'Jun', d: '25', t: 'Station Road walk & talk: see the plans on site', when: '25 Jun 2026 · 17:30 – 19:00', li: 'Northgate station, Station Road', r: '41' },
+    { img: 'event-budget.webp', alt: 'Residents asking questions at a participatory budget session', m: 'Jul', d: '02', t: 'Participatory budget: info & Q&A session', when: '2 Jul 2026 · 18:00 – 19:30', li: 'Online meeting', link: 1, r: '7' }
   ];
   var GRID = [
     { img: 'feat-downtown.webp', t: 'The big downtown survey', d: 'What does downtown need to become more liveable? Tell us which places matter.' },
@@ -133,7 +134,7 @@ window.GVWidgets = (function () {
     var rsvp = e.rsvp ? '<span class="gv-event-card__rsvp">Going</span>' : '';
     var loc = e.link ? '<p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#" onclick="return false;">' + esc(e.li) + '</a></p>'
       : '<p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> ' + esc(e.li) + '</p>';
-    return '<article class="gv-event-card bordered"><div class="gv-event-card__media"><img src="' + IMG + e.img + '" alt="" loading="lazy" />'
+    return '<article class="gv-event-card bordered"><div class="gv-event-card__media"><img src="' + IMG + e.img + '" alt="' + esc(e.alt || '') + '" loading="lazy" />'
       + '<span class="gv-event-card__date"><span class="m">' + e.m + '</span><span class="d">' + e.d + '</span><span class="y">2026</span></span>' + rsvp + '</div>'
       + '<div class="gv-event-card__body"><h3 class="gv-event-card__title"><a href="#" onclick="return false;">' + esc(e.t) + '</a></h3>'
       + '<div class="gv-event-card__meta"><p class="gv-event-card__row"><span data-gv-icon="clock"></span> ' + esc(e.when) + '</p>' + loc
@@ -219,11 +220,12 @@ window.GVWidgets = (function () {
     'spotlight': {
       label: 'Spotlight',
       make: function () {
-        return '<section class="gv-spotlight"><div class="gv-spotlight__inner"><div>'
-          + '<h2 class="gv-spotlight__title">A greener Station Road</h2><p class="gv-spotlight__lead">We’re redesigning Station Road to make space for trees, wider pavements and safer cycling. Take the survey to tell us what matters most on your daily journey.</p>'
+        var id = uid('gv-spotlight-title');
+        return '<section class="gv-spotlight" aria-labelledby="' + id + '"><div class="gv-spotlight__inner"><div>'
+          + '<h2 class="gv-spotlight__title" id="' + id + '">A greener Station Road</h2><p class="gv-spotlight__lead">We’re redesigning Station Road to make space for trees, wider pavements and safer cycling. Take the survey to tell us what matters most on your daily journey.</p>'
           + '<div class="gv-spotlight__actions"><a class="gv-btn primary size-m" href="#" onclick="return false;">Take the survey</a></div>'
           + '<div class="gv-bubbles" style="margin-top:18px"><span class="av"></span><span class="av"></span><span class="av"></span><span class="gv-bubbles__label">145 participants</span></div></div>'
-          + '<div class="gv-spotlight__media"><img src="' + IMG + 'spotlight.webp" alt="" loading="lazy" /></div></div></section>';
+          + '<div class="gv-spotlight__media"><img src="' + IMG + 'spotlight.webp" alt="A leafy, tree-lined stretch of Station Road with people walking and cycling" loading="lazy" /></div></div></section>';
       },
       settings: function () {
         return '<div class="hb-set-row"><label class="hb-set-label">Select project or folder</label><button type="button" class="hb-pickbtn">A greener Station Road <span class="gv-icon" data-gv-icon="chevron-down"></span></button></div>'
@@ -266,12 +268,12 @@ window.GVWidgets = (function () {
     },
     'events': {
       label: 'Events',
-      make: function () { return '<section class="gv-section"><div class="gv-section__body"><div class="hb-events__head"><h2 class="gv-title h2" style="margin:0">Upcoming and ongoing events</h2><a class="gv-btn text" href="#" onclick="return false;">View all events</a></div><div class="gv-events__grid">' + EVENTS.map(eventCard).join('') + '</div></div></section>'; },
+      make: function () { var id = uid('gv-events-title'); return '<section class="gv-section" aria-labelledby="' + id + '"><div class="gv-section__body"><div class="hb-events__head"><h2 class="gv-title h2" id="' + id + '" style="margin:0">Upcoming and ongoing events</h2><a class="gv-btn text" href="#" onclick="return false;">View all events</a></div><div class="gv-events__grid">' + EVENTS.map(eventCard).join('') + '</div></div></section>'; },
       settings: function () { return '<p class="hb-help">Displays the next 3 upcoming events on your platform.</p>'; }
     },
     'call-to-action': {
       label: 'Call to action',
-      make: function () { return '<section class="gv-ctaband"><div class="gv-ctaband__inner"><h2 class="gv-ctaband__title">What is your proposal?</h2><p class="gv-ctaband__lead">Post your proposal on this platform, gather support and place it on the city’s agenda.</p><a class="gv-btn primary size-m" href="#" onclick="return false;">Explore all proposals</a></div></section>'; },
+      make: function () { var id = uid('gv-ctaband-title'); return '<section class="gv-ctaband" aria-labelledby="' + id + '"><div class="gv-ctaband__inner"><h2 class="gv-ctaband__title" id="' + id + '">What is your proposal?</h2><p class="gv-ctaband__lead">Post your proposal on this platform, gather support and place it on the city’s agenda.</p><a class="gv-btn primary size-m" href="#" onclick="return false;">Explore all proposals</a></div></section>'; },
       settings: function () {
         return fText('Title', '', '.gv-ctaband__title', { multiloc: true })
           + fText('Description', '', '.gv-ctaband__lead', { multiloc: true })

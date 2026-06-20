@@ -57,7 +57,8 @@
        redefinition). Desktop only — the canonical ≤820px rule keeps the wide stacked
        banner. */
     @media (min-width: 821px) {
-      .spotlight-media--balanced { aspect-ratio: 4 / 3; }
+      /* This page's layout choice: a 4/3 crop on the registry-rendered spotlight media. */
+      #hp-spotlight .gv-spotlight__media { aspect-ratio: 4 / 3; }
     }
 
     /* Layout-only: fix each climate-team card width inside the .gv-rail scroller so
@@ -201,22 +202,9 @@
     </section>
 
     <!-- ════════ Spotlight — currently working on ════════ -->
-    <section class="gv-spotlight" aria-labelledby="spot-heading">
-      <div class="gv-spotlight__inner">
-        <div>
-          <h2 class="gv-spotlight__title" id="spot-heading">A greener Station Road</h2>
-          <p class="gv-spotlight__lead">We're redesigning Station Road to make space for trees, wider pavements and safer cycling. Take the survey to tell us what matters most on your daily journey.</p>
-          <div class="gv-spotlight__actions">
-            <a class="gv-btn primary size-m" href="#">Take the survey</a>
-          </div>
-          <div class="gv-bubbles" aria-label="145 participants" style="margin-top:18px">
-            <span class="av"></span><span class="av"></span><span class="av"></span>
-            <span class="gv-bubbles__label">145 participants</span>
-          </div>
-        </div>
-        <div class="gv-spotlight__media spotlight-media--balanced"><img src="img/spotlight.webp" alt="A leafy, tree-lined stretch of Station Road with people walking and cycling" loading="lazy" /></div>
-      </div>
-    </section>
+    <!-- Spotlight rendered from the canonical registry (GVWidgets.homepage 'spotlight');
+         the 4/3 media crop is this page's layout choice (see #hp-spotlight in <style>). -->
+    <div id="hp-spotlight"></div>
 
 
 
@@ -449,76 +437,11 @@
          contrast is the thin border, not a grey background or a drop shadow. (The
          borderless base .gv-event-card is the wietsedemo events-page look.)
          Swap .gv-events__grid for .gv-events__empty (kept in the library) when none. -->
-    <section class="gv-section" aria-labelledby="events-title">
-      <div class="gv-section__body">
-        <div class="gv-events__head">
-          <h2 class="gv-title h2" id="events-title" style="margin:0">Upcoming and ongoing events</h2>
-          <a class="gv-btn text" href="#">View all events</a>
-        </div>
-        <div class="gv-events__grid">
+    <!-- Events rendered from the canonical registry (GVWidgets.homepage 'events'). -->
+    <div id="hp-events"></div>
 
-          <article class="gv-event-card bordered">
-            <div class="gv-event-card__media">
-              <img src="img/event-online.webp" alt="Residents and staff at an online-and-in-person community session" loading="lazy" />
-              <span class="gv-event-card__date"><span class="m">Jun</span><span class="d">18</span><span class="y">2026</span></span>
-              <span class="gv-event-card__rsvp">Going</span>
-            </div>
-            <div class="gv-event-card__body">
-              <h3 class="gv-event-card__title"><a href="#">Community session: bringing online &amp; offline participation together</a></h3>
-              <div class="gv-event-card__meta">
-                <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 18 Jun 2026 · 11:00 – 12:00</p>
-                <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online meeting</a></p>
-                <p class="gv-event-card__row"><span data-gv-icon="user"></span> 2 registrants</p>
-              </div>
-              <a class="gv-btn primary full" href="#">Register</a>
-            </div>
-          </article>
-
-          <article class="gv-event-card bordered">
-            <div class="gv-event-card__media">
-              <img src="img/event-walk.webp" alt="Residents gathered on Station Road to view the plans on site" loading="lazy" />
-              <span class="gv-event-card__date"><span class="m">Jun</span><span class="d">25</span><span class="y">2026</span></span>
-            </div>
-            <div class="gv-event-card__body">
-              <h3 class="gv-event-card__title"><a href="#">Station Road walk &amp; talk: see the plans on site</a></h3>
-              <div class="gv-event-card__meta">
-                <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 25 Jun 2026 · 17:30 – 19:00</p>
-                <p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> Northgate station, Station Road</p>
-                <p class="gv-event-card__row"><span data-gv-icon="user"></span> 41 registrants</p>
-              </div>
-              <a class="gv-btn primary full" href="#">Register</a>
-            </div>
-          </article>
-
-          <article class="gv-event-card bordered">
-            <div class="gv-event-card__media">
-              <img src="img/event-budget.webp" alt="Residents asking questions at a participatory budget session" loading="lazy" />
-              <span class="gv-event-card__date"><span class="m">Jul</span><span class="d">02</span><span class="y">2026</span></span>
-            </div>
-            <div class="gv-event-card__body">
-              <h3 class="gv-event-card__title"><a href="#">Participatory budget: info &amp; Q&amp;A session</a></h3>
-              <div class="gv-event-card__meta">
-                <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 2 Jul 2026 · 18:00 – 19:30</p>
-                <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online meeting</a></p>
-                <p class="gv-event-card__row"><span data-gv-icon="user"></span> 7 registrants</p>
-              </div>
-              <a class="gv-btn primary full" href="#">Register</a>
-            </div>
-          </article>
-
-        </div>
-      </div>
-    </section>
-
-    <!-- ════════ Proposals CTA band ════════ -->
-    <section class="gv-ctaband" aria-labelledby="cta-title">
-      <div class="gv-ctaband__inner">
-        <h2 class="gv-ctaband__title" id="cta-title">What is your proposal?</h2>
-        <p class="gv-ctaband__lead">Post your proposal on this platform, gather support and place it on the
-          city's agenda.</p>
-        <a class="gv-btn primary size-m" href="#">Explore all proposals</a>
-      </div>
-    </section>
+    <!-- ════════ Proposals CTA band — canonical registry (GVWidgets.homepage 'call-to-action') ════════ -->
+    <div id="hp-cta"></div>
 
     <!-- ════════ Rich-text welcome block ════════ -->
     <section class="gv-section">
@@ -785,5 +708,22 @@
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-rail.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-widgets.js" defer></script>
+  <!-- Registry-driven sections: spotlight, events and the call-to-action band render
+       from GVWidgets.homepage (not hand-authored), so they track the real widgets.
+       The page owns layout (the 4/3 spotlight crop in <style>); the widget owns markup. -->
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      if (!window.GVWidgets || !GVWidgets.homepage) return;
+      GVWidgets.config({ img: 'img/' });   // this page's image folder for widget media
+      var H = GVWidgets.homepage;
+      [['hp-spotlight', 'spotlight'], ['hp-events', 'events'], ['hp-cta', 'call-to-action']].forEach(function (m) {
+        var el = document.getElementById(m[0]);
+        if (el && H[m[1]] && H[m[1]].make) el.innerHTML = H[m[1]].make();
+      });
+      if (window.GVIcons) GVIcons.render(document.body);
+      if (window.GVAvatars) GVAvatars.fill(document.body);
+    });
+  </script>
 </body>
 </html>
