@@ -3440,7 +3440,13 @@
      components the content-builder produces — no bespoke survey-list component.
      ════════════════════════════════════════════════════════════════════════ -->
 <style>
-  #view-fo { position: fixed; inset: 0; z-index: 60; background: #fff; display: none; flex-direction: column; overflow: hidden; }
+  /* Re-declare font-family here so the TENANT font applies. #view-fo lives inside the
+     .gv-bo shell, which sets font-family:var(--gv-font-family) where the var is the BO
+     font — that COMPUTES to "Public Sans" and inherits down as a fixed value. syncFOTheme
+     re-points --gv-font-family on #view-fo to the city font, but without re-declaring
+     font-family the var is never re-evaluated, so the FO page rendered in the BO font.
+     This line re-evaluates it at #view-fo, so the resident page reads in the city font. */
+  #view-fo { position: fixed; inset: 0; z-index: 60; background: #fff; display: none; flex-direction: column; overflow: hidden; font-family: var(--gv-font-family); }
   #view-fo .foview-header { flex: 0 0 auto; }
   #view-fo .foview-header .gv-nav-m { display: none !important; }
   #view-fo .foview-scroller { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; }
@@ -5923,6 +5929,10 @@
         var cols = two.querySelectorAll('.cb-col');
         if (cols[0]) {
           cols[0].appendChild(first); // the static default text block (carries the frame checkpoint id)
+          // Seed real intro copy so the canvas, phone preview and FO page all read well
+          // (the preview now mirrors the builder, so the default placeholder would show).
+          var firstRt = first.querySelector('.cb-richtext');
+          if (firstRt) firstRt.innerHTML = 'Help shape how we move, cycle and gather across the city over the next four years. We’re collecting ideas right now — add yours below, then back the ones you like best. The team reads every suggestion, groups similar ones, and the most-supported move to a community vote and into the final plan.';
           cols[0].appendChild(api.makeBlock('info-accordions'));
           cols[0].appendChild(seedAccordion('What can I suggest?', 'Anything within scope — seating, planting, traffic calming, lighting, cycle parking or how the space is used.'));
           cols[0].appendChild(seedAccordion('Who is running this project?', 'The City of Meridian engagement team, together with the mobility department.'));
