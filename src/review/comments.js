@@ -51,7 +51,7 @@
   // refuse to paint inline images, and a plain <img src> is bulletproof.
   var CAT = "/__review/aslam.png?v=1";
 
-  var state = { threads: [], active: false, mode: "add", openId: null };
+  var state = { threads: [], active: false, mode: "add", openId: null, drill: 0 };
   var deleted = {};       // ids we've already issued a delete for
   var settled = false;    // becomes true after load grace period
 
@@ -343,20 +343,57 @@
     '.preview .when{color:#9ca3af;font-size:13px;}' +
     '.preview .body{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}' +
     '.preview .body .mention{color:#2563eb;}' +
-    /* ===== "Linked" overlays — mark components in sync with the canonical library
-       (driven by window.__GV_LINKED, shown only in review mode). Light-purple wash +
-       a labelled badge: colour is NOT the only cue (the word "Linked" + chain glyph
-       carry it), so it stays WCAG 1.4.1-safe. pointer-events:none → clicks/commenting
-       pass straight through to the component underneath. ===== */
+    /* ===== Layer overlays — the "honesty" view. Each on-page canonical element is
+       classified by the composition graph (window.__GV_GRAPH, derived from the real
+       CSS) and boxed + badged by its LAYER. The badge carries a TEXT label (the layer
+       word + component name), so colour is never the only cue (WCAG 1.4.1). The box is
+       pointer-events:none so commenting passes through; only the badge is clickable,
+       opening the recursive import-chain panel down to live token values. ===== */
     '.links{position:fixed;inset:0;pointer-events:none;}' +
-    '.linkbox{position:fixed;pointer-events:none;border:1.5px dashed rgba(124,58,237,0.55);background:rgba(139,92,246,0.10);border-radius:6px;}' +
-    '.linkbadge{position:absolute;top:0;left:8px;transform:translateY(-50%);pointer-events:auto;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;background:#7c3aed;color:#fff;font:600 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.02em;padding:3px 7px 3px 6px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,0.28);white-space:nowrap;transition:background .12s ease,transform .12s ease;}' +
-    '.linkbadge:hover{background:#6d28d9;transform:translateY(-50%) scale(1.05);}' +
+    '.linkbox{position:fixed;pointer-events:none;border:1.5px dashed rgba(94,106,210,0.5);background:rgba(94,106,210,0.07);border-radius:6px;}' +
+    '.linkbox.l-pattern{border-color:rgba(124,58,237,0.55);background:rgba(139,92,246,0.09);}' +
+    '.linkbox.l-component{border-color:rgba(86,114,218,0.6);background:rgba(86,114,218,0.07);}' +
+    '.linkbox.l-base{border-color:rgba(15,100,112,0.55);background:rgba(20,121,133,0.07);}' +
+    '.linkbadge{position:absolute;top:0;left:8px;transform:translateY(-50%);pointer-events:auto;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;background:#5672da;color:#fff;font:600 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.02em;padding:3px 7px 3px 7px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,0.28);white-space:nowrap;transition:background .12s ease,transform .12s ease;}' +
+    '.linkbadge .lyr{opacity:.72;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}' +
+    '.linkbadge.l-pattern{background:#7c3aed;}.linkbadge.l-component{background:#5672da;}.linkbadge.l-base{background:#147985;}' +
+    '.linkbadge:hover{transform:translateY(-50%) scale(1.06);filter:brightness(1.08);}' +
     '.linkbadge svg{width:10px;height:10px;display:block;flex:0 0 auto;}' +
+    /* drill control — bottom-left pill cycling Components → +Base → +Tokens */
+    '.drillctl{position:fixed;left:16px;bottom:16px;pointer-events:auto;display:inline-flex;align-items:center;gap:7px;background:#16171a;color:#fff;border:0;border-radius:999px;padding:8px 14px;font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.28);}' +
+    '.drillctl .dot{width:7px;height:7px;border-radius:50%;background:#7c3aed;box-shadow:0 0 0 2px rgba(255,255,255,.25);}' +
+    '.drillctl b{font-weight:700;}' +
+    /* import-chain panel — the recursive layer inspector */
+    '.chainp{position:fixed;left:16px;bottom:60px;width:330px;max-width:calc(100vw - 32px);max-height:72vh;overflow:auto;pointer-events:auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 16px 50px rgba(0,0,0,0.26);padding:0;font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1a1a1a;}' +
+    '.chainp__h{position:sticky;top:0;background:#fff;border-bottom:1px solid #f0f0f0;border-radius:14px 14px 0 0;padding:13px 14px 11px;display:flex;align-items:flex-start;gap:8px;}' +
+    '.chainp__h .ttl{flex:1;min-width:0;}' +
+    '.chainp__h .nm{font-weight:700;font-size:14px;display:block;}' +
+    '.chip{display:inline-flex;align-items:center;gap:4px;font:700 9.5px/1 -apple-system,BlinkMacSystemFont,sans-serif;text-transform:uppercase;letter-spacing:.04em;color:#fff;padding:3px 7px;border-radius:999px;margin-top:4px;}' +
+    '.chip.l-pattern{background:#7c3aed;}.chip.l-component{background:#5672da;}.chip.l-base{background:#147985;}.chip.l-token{background:#0e0f12;}' +
+    '.chainp__x{flex:0 0 auto;width:26px;height:26px;border:0;background:0;color:#9ca3af;cursor:pointer;border-radius:50%;font-size:17px;line-height:1;}' +
+    '.chainp__x:hover{background:#f0f1f3;color:#1a1a1a;}' +
+    '.chainp__jump{display:block;margin:0 14px 10px;text-align:center;text-decoration:none;background:#f3f4f7;color:#16171a;font-weight:600;font-size:12px;padding:8px;border-radius:9px;}' +
+    '.chainp__jump:hover{background:#e9ebf0;}' +
+    '.chainp__sec{padding:10px 14px;border-top:1px solid #f4f4f6;}' +
+    '.chainp__sec h5{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:700;}' +
+    '.chainrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:0;padding:6px 7px;border-radius:8px;cursor:pointer;font:inherit;color:#1a1a1a;}' +
+    '.chainrow:hover{background:#f5f6f8;}' +
+    '.chainrow .cn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+    '.chainrow .cn code{font-size:11.5px;color:#4650b8;}' +
+    '.chainrow .arr{color:#c2c6cf;flex:0 0 auto;}' +
+    '.tokrow{display:flex;align-items:center;gap:8px;padding:5px 7px;}' +
+    '.tokrow .sw{flex:0 0 auto;width:18px;height:18px;border-radius:5px;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.14);}' +
+    '.tokrow .tk{min-width:0;flex:1;}' +
+    '.tokrow .tk code{font-size:11px;color:#1a1a1a;word-break:break-all;}' +
+    '.tokrow .tk .res{display:block;color:#6b7280;font-size:10.5px;margin-top:1px;}' +
+    '.tokrow .tk .res b{color:#4650b8;font-weight:600;}' +
+    '.chainp__empty{padding:8px 14px 14px;color:#9ca3af;font-size:12px;}' +
     '</style>' +
     '<div class="layer hidden">' +
     '  <div class="catcher hidden"></div>' +
     '  <div class="links"></div>' +
+    '  <button class="drillctl hidden" type="button"><span class="dot"></span>Layers: <b></b></button>' +
+    '  <div class="chainp hidden"></div>' +
     '  <div class="pins"></div>' +
     '  <aside class="sb">' +
     '    <header><strong>Comments</strong><span class="cnt"></span>' +
@@ -376,7 +413,8 @@
   var layer = $(".layer"), catcher = $(".catcher"), pinsEl = $(".pins"), linksEl = $(".links"),
       sb = $(".sb"), listEl = $(".list"), cntEl = $(".cnt"), cnt2El = $(".cnt2"),
       hintEl = $(".hint"), tabEl = $(".tab"), cardholder = $(".cardholder"),
-      tipEl = $(".atip"), previewEl = $(".preview"), toastEl = $(".toast");
+      tipEl = $(".atip"), previewEl = $(".preview"), toastEl = $(".toast"),
+      drillEl = $(".drillctl"), chainEl = $(".chainp");
 
   // Shared SVG glyphs for the Figma-style chrome.
   var SVG = {
@@ -482,98 +520,89 @@
     });
   }
 
-  /* ---------- "Linked" overlays (canonical components in sync with the library) ----------
-   * build.js stamps window.__GV_LINKED = [canonical asset filenames this prototype is
-   * still in sync with]. A component is "Linked" when EVERY canonical asset it's built
-   * from is in that set — so a forked/drifted dependency honestly drops the badge.
-   * Selectors are the outermost canonical roots (see components/manifest.md); nested
-   * matches are de-duped to the largest enclosing one so boxes don't stack. */
-  var DEP = {
-    BO: ["govocal-bo.css", "govocal-tokens.css"],
-    FO: ["govocal-ui.css", "govocal-primitives.css", "govocal-tokens.css"],
-    SV: ["govocal-survey.css", "govocal-tokens.css"],
-    WB: ["govocal-widgets.css", "govocal-widgets.js", "govocal-tokens.css"]
-  };
-  // [selector, label, deps, componentSlug] — slug = the folder under /components/<slug>/
-  // that the badge links to, so you can open the canonical component (and inspect its
-  // own sub-components) in the library.
-  var LINK_COMPONENTS = [
-    [".gv-bo-side", "Back-office sidebar", DEP.BO, "bo-sidebar"],
-    [".gv-bo-topbar", "Back-office top bar", DEP.BO, "bo-app-shell"],
-    [".gv-bo-tabs", "Back-office tab row", DEP.BO, "bo-app-shell"],
-    [".gv-bo-menu", "Back-office menu", DEP.BO, "bo-menu"],
-    [".gv-bo-analysis", "AI analysis (sensemaking)", DEP.BO, "bo-analysis"],
-    [".gv-bo-templatecard", "Template card", DEP.BO, "bo-templatecard"],
-    [".gv-header", "Header + nav", DEP.FO, "header-nav"],
-    [".gv-footer", "Footer", DEP.FO, "footer"],
-    [".gv-hero", "Hero / banner", DEP.FO, "hero"],
-    [".gv-banner", "Project banner", DEP.FO, "banner"],
-    [".gv-pbox", "Participation box", DEP.FO, "participation-box"],
-    [".gv-partbar", "Participation bar", DEP.FO, "participation-bar"],
-    [".gv-pcard", "Project card", DEP.FO, "project-card"],
-    [".gv-carousel", "Project carousel", DEP.FO, "spotlight-carousel"],
-    [".gv-featured-row", "Featured row", DEP.FO, "homepage-featured-row"],
-    [".gv-spotlight", "Spotlight", DEP.FO, "spotlight"],
-    [".gv-phases__bar", "Phase timeline", DEP.FO, "phase-timeline"],
-    [".gv-event-card", "Event card", DEP.FO, "event-card"],
-    [".gv-ideacard", "Idea card", DEP.FO, "idea-card"],
-    [".gv-feed", "Idea feed", DEP.FO, "idea-feed"],
-    [".gv-issuecanvas", "Issue canvas", DEP.FO, "issue-canvas"],
-    [".gv-sticky", "Sticky note", DEP.FO, "sticky-note"],
-    [".gv-themecard", "Theme card", DEP.FO, "theme-card"],
-    [".gv-modal", "Modal", DEP.FO, "login-modal"],
-    [".gv-accordion", "FAQ accordion", DEP.FO, "accordion"],
-    [".gv-cause", "Volunteer cause", DEP.FO, "volunteer-cause"],
-    [".gv-poll", "Poll", DEP.FO, "poll"],
-    [".gv-threshold", "Proposal threshold", DEP.FO, "proposal-threshold"],
-    [".gv-monitorband", "Survey band", DEP.FO, "homepage-survey-band"],
-    [".gv-surveyband", "Survey band", DEP.FO, "survey-band"],
-    [".gv-extra-survey", "Extra survey", DEP.FO, "extra-survey"],
-    [".gv-cta-banner", "CTA banner", DEP.FO, "cta-banner"],
-    [".gv-voteoptions", "Voting body", DEP.FO, "approval-voting"],
-    [".gv-project-events", "Events section", DEP.FO, "voting"],
-    [".sv-optcard", "Survey field", DEP.SV, "survey-fields"],
-    [".gv-cb-frame", "Content Builder render", DEP.WB, "content-builder-render"]
-  ];
-  var LINKICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 12h6M9.5 8H7a4 4 0 0 0 0 8h2.5M14.5 8H17a4 4 0 0 1 0 8h-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-
-  var linkBoxes = []; // {box, el}
+  /* ---------- Recursive layer overlay (the honesty view) ----------
+   * Driven by window.__GV_GRAPH (graph.js, DERIVED from the canonical CSS at build) +
+   * window.__GV_LINKED (which canonical assets this page is in sync with). Every
+   * on-page canonical element is classified by the graph into a LAYER (base/component/
+   * pattern); the badge proves the import chain by recursing into the panel:
+   *   pattern → its components → their base atoms → the tokens each one drinks (with
+   *   LIVE resolved values from getComputedStyle, so tenant theming shows through).
+   * A drilldown control reveals deeper layers; a forked/drifted dependency drops out
+   * because its deps aren't in __GV_LINKED. This is the inverse of asserting links: it
+   * recomputes them from the real CSS graph every render. */
+  var GRAPH = window.__GV_GRAPH || { classes: {}, tokens: {} };
+  var LAYER_RANK = { base: 1, component: 2, components: 2, pattern: 3 };
+  var DRILL = ["Components", "+ Base", "+ Tokens"]; // 0,1,2
+  function normLayer(l) { return l === "components" ? "component" : l; }
+  function famRoot(cls) { return cls.replace(/__.*/, "").replace(/--.*/, ""); }
   function depsMet(deps) {
     var L = window.__GV_LINKED;
-    if (!L || !L.length) return false;
+    if (!L || !L.length || !deps) return false;
     for (var i = 0; i < deps.length; i++) if (L.indexOf(deps[i]) < 0) return false;
     return true;
   }
-  function collectLinkEls() {
-    var found = [];
-    LINK_COMPONENTS.forEach(function (c) {
-      if (!depsMet(c[2])) return;
-      var els; try { els = document.querySelectorAll(c[0]); } catch (e) { return; }
-      for (var i = 0; i < els.length; i++) {
-        if (!host.contains(els[i])) found.push({ el: els[i], label: c[1], slug: c[3] });
-      }
-    });
-    // Keep only the outermost match — drop any element nested inside another match.
-    return found.filter(function (a) {
-      return !found.some(function (b) { return b.el !== a.el && b.el.contains(a.el); });
-    });
+  // Best (highest-layer, deps-met) graph classification for one element, or null.
+  function classifyEl(el) {
+    if (!el.classList || !el.classList.length) return null;
+    var best = null;
+    for (var i = 0; i < el.classList.length; i++) {
+      var c = el.classList[i];
+      if (c.indexOf("gv-") !== 0 && c.indexOf("sv-") !== 0) continue;
+      // Only the family ROOT (or a --modifier of it) marks a component root; a BEM
+      // __part (e.g. .gv-feed__head) is internal scaffolding, not its own root, so it
+      // must not badge as the whole component or it spawns phantom duplicate roots.
+      if (c.indexOf("__") >= 0) continue;
+      var fam = famRoot(c), info = GRAPH.classes[fam];
+      if (!info || !info.layer || !info.label) continue; // only labelled families badge
+      if (!depsMet(info.deps)) continue;                 // honesty: drifted → no badge
+      var rank = LAYER_RANK[info.layer] || 0;
+      if (!best || rank > best.rank) best = { family: fam, info: info, layer: normLayer(info.layer), rank: rank };
+    }
+    return best;
   }
+  // The elements to box at the current drill level: outermost composites always,
+  // plus outermost base atoms once drilled in.
+  function collectLayered() {
+    var all = [], els = document.querySelectorAll("[class]");
+    for (var i = 0; i < els.length; i++) {
+      if (host.contains(els[i])) continue;
+      var c = classifyEl(els[i]); if (!c) continue;
+      c.el = els[i]; all.push(c);
+    }
+    var outermost = function (list) {
+      return list.filter(function (a) {
+        return !list.some(function (b) { return b.el !== a.el && b.el.contains(a.el); });
+      });
+    };
+    var composites = outermost(all.filter(function (a) { return a.rank >= 2; }));
+    var show = composites.slice();
+    if (state.drill >= 1) {
+      var bases = outermost(all.filter(function (a) { return a.rank === 1; }));
+      show = show.concat(bases);
+    }
+    return show;
+  }
+  var LINKICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 12h6M9.5 8H7a4 4 0 0 0 0 8h2.5M14.5 8H17a4 4 0 0 1 0 8h-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+  var linkBoxes = []; // {box, el}
   function renderLinks() {
     linksEl.textContent = ""; linkBoxes = [];
-    if (!state.active) return;            // overlays only while review mode is on
-    collectLinkEls().forEach(function (it) {
+    drillEl.classList.toggle("hidden", !state.active);
+    if (!state.active) { closeChain(); return; } // overlays only while review mode is on
+    drillEl.querySelector("b").textContent = DRILL[state.drill] || DRILL[0];
+    collectLayered().forEach(function (it) {
       var r = it.el.getBoundingClientRect();
       if (r.width < 8 || r.height < 8) return; // hidden / collapsed
       var box = document.createElement("div");
-      box.className = "linkbox";
-      // Badge is a link to the canonical component page (open its sub-components there).
-      var badge = document.createElement("a");
-      badge.className = "linkbadge";
-      badge.href = "/components/" + it.slug + "/";
-      badge.target = "_blank";
-      badge.rel = "noopener";
-      badge.title = "Linked to canonical · " + it.label + " — open component page";
-      badge.innerHTML = LINKICON + "Linked";
+      box.className = "linkbox l-" + it.layer;
+      var badge = document.createElement("button");
+      badge.type = "button";
+      badge.className = "linkbadge l-" + it.layer;
+      badge.title = it.layer + " · " + it.info.label + " — open the import chain";
+      badge.innerHTML = LINKICON + '<span class="lyr">' + it.layer + '</span> ' + escHtml(it.info.label);
+      (function (fam, el) {
+        badge.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); openChain(fam, el); });
+      })(it.family, it.el);
       box.appendChild(badge);
       linksEl.appendChild(box);
       linkBoxes.push({ box: box, el: it.el });
@@ -589,6 +618,121 @@
       lb.box.style.width = r.width + "px"; lb.box.style.height = r.height + "px";
     }
   }
+
+  function escHtml(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  // Library page URL for a family/layer (base/, components/, patterns/).
+  function libUrl(info) { return info.url || null; }
+
+  /* ---------- the recursive import-chain panel ---------- */
+  // Render one token row with its LIVE resolved value (getComputedStyle from the
+  // element, so tenant-themed vars show their real value here) + the static raw +
+  // the alias chain from the graph.
+  function tokenRow(name, scopeEl) {
+    var t = GRAPH.tokens[name] || {};
+    var live = "";
+    try { live = getComputedStyle(scopeEl).getPropertyValue(name).trim(); } catch (e) {}
+    var raw = t.raw || t.value || "";
+    var col = /^(#|rgb|hsl)/i.test(live) ? live : (/^(#|rgb|hsl|color-mix)/i.test(raw) ? raw : "");
+    var chain = (t.chain && t.chain.length > 1) ? t.chain.join(" → ") + " → " + raw : "";
+    var row = document.createElement("div");
+    row.className = "tokrow";
+    row.innerHTML =
+      (col ? '<span class="sw" style="background:' + escHtml(col) + '"></span>' : '<span class="sw" style="background:#f3f4f7"></span>') +
+      '<span class="tk"><code></code><span class="res"></span></span>';
+    row.querySelector("code").textContent = name;
+    var res = row.querySelector(".res");
+    res.innerHTML = (live ? 'live <b>' + escHtml(live) + '</b>' : (raw ? '<b>' + escHtml(raw) + '</b>' : "")) +
+      (chain ? '<br>' + escHtml(chain) : "");
+    return row;
+  }
+  function chainRow(label, sublabel, onClick) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "chainrow";
+    b.innerHTML = '<span class="cn"></span><span class="arr">›</span>';
+    b.querySelector(".cn").innerHTML = '<strong>' + escHtml(label) + '</strong>' + (sublabel ? ' <code>' + escHtml(sublabel) + '</code>' : "");
+    b.addEventListener("click", function (e) { e.stopPropagation(); onClick(); });
+    return b;
+  }
+  // Descendant elements of `el` classified at a given rank (deduped to outermost).
+  function descendantsOfRank(el, rank) {
+    var found = [], all = el.querySelectorAll("[class]");
+    for (var i = 0; i < all.length; i++) {
+      if (host.contains(all[i])) continue;
+      var c = classifyEl(all[i]);
+      if (c && c.rank === rank && all[i] !== el) { c.el = all[i]; found.push(c); }
+    }
+    return found.filter(function (a) {
+      return !found.some(function (b) { return b.el !== a.el && b.el.contains(a.el); });
+    });
+  }
+  function openChain(family, el) {
+    var info = GRAPH.classes[family]; if (!info) return;
+    var layer = normLayer(info.layer);
+    chainEl.classList.remove("hidden");
+    chainEl.textContent = "";
+    // header
+    var h = document.createElement("div"); h.className = "chainp__h";
+    h.innerHTML = '<span class="ttl"><span class="nm"></span><span class="chip l-' + layer + '">' + layer + '</span></span>' +
+      '<button class="chainp__x" title="Close">&times;</button>';
+    h.querySelector(".nm").textContent = info.label || family;
+    h.querySelector(".chainp__x").addEventListener("click", closeChain);
+    chainEl.appendChild(h);
+    // jump to library
+    var url = libUrl(info);
+    if (url) {
+      var jump = document.createElement("a");
+      jump.className = "chainp__jump"; jump.href = url; jump.target = "_blank"; jump.rel = "noopener";
+      jump.textContent = "Open " + layer + " in library ↗";
+      chainEl.appendChild(jump);
+    }
+    var addSec = function (title) {
+      var s = document.createElement("div"); s.className = "chainp__sec";
+      s.innerHTML = '<h5>' + escHtml(title) + '</h5>';
+      chainEl.appendChild(s); return s;
+    };
+    // pattern → the components inside it
+    if (layer === "pattern") {
+      var comps = descendantsOfRank(el, 2);
+      var cs = addSec("Composes " + comps.length + " component" + (comps.length === 1 ? "" : "s"));
+      if (!comps.length) cs.innerHTML += '<div class="chainp__empty">No nested canonical components detected here.</div>';
+      comps.forEach(function (c) {
+        cs.appendChild(chainRow(c.info.label, c.family, function () { openChain(c.family, c.el); }));
+      });
+    }
+    // component/pattern → base atoms inside it
+    if (layer !== "base") {
+      var bases = descendantsOfRank(el, 1);
+      var bs = addSec("Built from " + bases.length + " base atom" + (bases.length === 1 ? "" : "s"));
+      if (!bases.length) bs.innerHTML += '<div class="chainp__empty">No nested base atoms detected (it may draw straight from tokens).</div>';
+      bases.forEach(function (b) {
+        bs.appendChild(chainRow(b.info.label, b.family, function () { openChain(b.family, b.el); }));
+      });
+    }
+    // tokens this family drinks (always shown for base; for composites shown when
+    // drilled to "+ Tokens", else summarised with a reveal).
+    var toks = info.tokens || [];
+    var ts = addSec("Drinks from " + toks.length + " token" + (toks.length === 1 ? "" : "s"));
+    var showTokens = layer === "base" || state.drill >= 2;
+    if (!toks.length) {
+      ts.innerHTML += '<div class="chainp__empty">No direct tokens — it inherits from its base atoms.</div>';
+    } else if (showTokens) {
+      toks.forEach(function (name) { ts.appendChild(tokenRow(name, el)); });
+    } else {
+      var reveal = document.createElement("button");
+      reveal.type = "button"; reveal.className = "chainrow";
+      reveal.innerHTML = '<span class="cn">Show ' + toks.length + ' token value' + (toks.length === 1 ? "" : "s") + ' (live)</span><span class="arr">+</span>';
+      reveal.addEventListener("click", function (e) {
+        e.stopPropagation(); reveal.remove();
+        toks.forEach(function (name) { ts.appendChild(tokenRow(name, el)); });
+      });
+      ts.appendChild(reveal);
+    }
+    chainOpenFor = { family: family, el: el };
+  }
+  var chainOpenFor = null;
+  function closeChain() { chainEl.classList.add("hidden"); chainEl.textContent = ""; chainOpenFor = null; }
 
   function reposition() {
     var pins = pinsEl.children, items = pinThreads().filter(function (t) { return pinXY(t); });
@@ -899,10 +1043,17 @@
     state.active = on;
     try { sessionStorage.setItem(LS_ACTIVE, on ? "1" : "0"); } catch (e) {}
     hideTip(true);
-    if (on) { state.mode = "add"; } else { closeCard(); }
+    if (on) { state.mode = "add"; } else { closeCard(); closeChain(); }
     render();
-    if (on) toast("Review on · click to comment · Esc to browse");
+    if (on) toast("Review on · click to comment · Esc to browse · Layers shows the import chain");
   }
+  // Cycle the layer drilldown (Components → +Base → +Tokens) and re-detect.
+  drillEl.addEventListener("click", function () {
+    state.drill = (state.drill + 1) % DRILL.length;
+    if (chainOpenFor) openChain(chainOpenFor.family, chainOpenFor.el); // refresh open panel
+    renderLinks();
+    toast("Layers: " + DRILL[state.drill]);
+  });
   function setMode(m) { state.mode = m; if (m === "add") closeCard(); render(); }
 
   catcher.addEventListener("click", function (e) {

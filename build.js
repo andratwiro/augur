@@ -590,11 +590,15 @@ async function buildGraph() {
     else if (BASE_INDEX[fam] && c.layer === "base") { label = BASE_INDEX[fam].label; slug = BASE_INDEX[fam].slug; }
     else if (COMPONENT_INDEX[fam]) { slug = COMPONENT_INDEX[fam]; label = (COMPONENT_BLURBS[slug] || {}).name || titleCase(slug); }
     const files = [...c.files];
-    // Honesty deps: a family is "linked" only when every canonical asset it's built
-    // from is in window.__GV_LINKED. Tokens are always in the chain; ui.css @imports
-    // primitives, so a component drinking from ui.css also needs primitives in sync.
-    const deps = new Set([...files, "govocal-tokens.css"]);
-    if (files.includes("govocal-ui.css")) deps.add("govocal-primitives.css");
+    // Honesty deps: a family is "linked" only when its PRIMARY defining stylesheet +
+    // tokens are in window.__GV_LINKED. We use the primary file (the one matching the
+    // family's resolved layer), NOT the union of every file that touches it — a base
+    // atom like .gv-btn is *extended* in ui/bo/widgets, but its source of truth is
+    // primitives.css, so requiring bo+widgets would wrongly un-badge it on an FO page.
+    const primaryFile = layer === "base"
+      ? "govocal-primitives.css"
+      : (["govocal-ui.css", "govocal-bo.css", "govocal-survey.css", "govocal-widgets.css"].find((f) => files.includes(f)) || files[0]);
+    const deps = new Set([primaryFile, "govocal-tokens.css"]);
     const tk = [...c.tokens];
     for (const v of tk) if (tokens[v]) tokens[v].consumedBy.classes.push(fam);
     classes[fam] = {
