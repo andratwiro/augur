@@ -251,7 +251,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.74";
+const UI_VERSION = "0.75";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1744,7 +1744,7 @@ const IC_PAGE = ic(`<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M1
 const IC_LIBRARY = ic(`<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`); // library
 const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 21v-5h5"/>`); // history (clock + counter-rotate)
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
-const IC_TOKEN = ic(`<circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2a10 10 0 1 0 0 20 1.7 1.7 0 0 0 0-3.4h-.5a1.7 1.7 0 1 1 0-3.4H16a4 4 0 0 0 4-4 8 8 0 0 0-8-8Z"/>`); // palette (tokens)
+const IC_TOKEN = ic(`<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>`); // palette (tokens)
 const IC_PATTERN = ic(`<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4M6.5 10v4M17.5 10v4M10 17.5h4"/>`); // grid + links (patterns)
 
 // Star toggle on cards — Lucide 'star'. Outline (grey) when unpinned, gold-filled
@@ -1796,9 +1796,9 @@ function sideRail(active) {
   const pinned = `<p class="gvside__label">Pinned</p>
       <div class="gvside__group" data-pinned-list></div>
       <p class="gvside__pinhint" data-pinned-empty hidden>Star a prototype to pin it here.</p>`;
-  // Library is a collapsible section pinned to the BOTTOM of the rail; collapsed by
-  // default, auto-opens when you're on one of its pages. Its own icon leads; the
-  // disclosure chevron sits on the right.
+  // Library is a collapsible section in the pinned foot (Changelog sits below it);
+  // collapsed by default, auto-opens when you're on one of its pages. Its own icon
+  // leads; the disclosure chevron sits on the right.
   // Layered design system: Tokens → Base → Components → Patterns → Pages.
   const LIB_KEYS = ["tokens", "base", "components", "patterns", "pages", "primitives"];
   const libOpen = LIB_KEYS.includes(active);
@@ -1827,10 +1827,10 @@ function sideRail(active) {
     </div>
     <div class="gvside__foot">
       <div class="gvside__rule"></div>
+      ${library}
       <div class="gvside__group">
         ${item("/changelog/", "Changelog", "changelog", IC_CHANGELOG)}
       </div>
-      ${library}
     </div>
   </aside>`;
 }
