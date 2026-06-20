@@ -138,6 +138,26 @@ for (const tier of TIERS) {
       if (hex.length || shadows || looseFonts) {
         warnings.push(`[styling]   ${rel}/index.html page-authored visuals: ${hex.length} hex, ${shadows} box-shadow, ${looseFonts} non-token font-size — promote what's systemic to tokens/components; genuine one-offs are fine (layout css is fine).`);
       }
+
+      // INV-7 (warn, PAGES): a page that hand-authors a registry widget's signature
+      // markup but never consumes GVWidgets is a SECOND source of truth — it drifts
+      // from the widget (the homepage / project-page divergence). Flag a page carrying
+      // ≥2 distinct widget signatures with 0 GVWidgets references; the fix is to render
+      // those sections via GVWidgets[surface][type].make()/renderFO, not duplicate the
+      // markup. ≥2 avoids flagging a page that incidentally uses one canonical component.
+      const WIDGET_SIGNATURES = {
+        'gv-spotlight': 'spotlight', 'gv-ctaband': 'CTA band', 'gv-pbox': 'participation-box',
+        'gv-extra-survey': 'extra-surveys', 'gv-stepper': 'timeline', 'gv-event-card': 'events',
+      };
+      // Ignore HTML comments — a SYNC note naming GVWidgets is documentation, not
+      // consumption. Real use = a <script> loading the registry or a GVWidgets.* call.
+      const code = html.replace(/<!--[\s\S]*?-->/g, '');
+      const usesRegistry = /<script[^>]+govocal-widgets\.js|GVWidgets\.[a-z]/.test(code);
+      const sigHits = Object.entries(WIDGET_SIGNATURES)
+        .filter(([cls]) => new RegExp(`class=("|')[^"']*\\b${cls}\\b`).test(code)).map(([, n]) => n);
+      if (!usesRegistry && sigHits.length >= 2) {
+        warnings.push(`[registry]  ${rel}/index.html hand-authors ${sigHits.length} registry-widget sections [${sigHits.join(', ')}] but loads no GVWidgets — consume the registry (GVWidgets.<surface>.make()/renderFO) so they can't drift from the widget. (R1 / INV-7)`);
+      }
     }
   }
 }
