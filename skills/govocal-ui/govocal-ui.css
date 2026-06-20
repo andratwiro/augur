@@ -35,25 +35,25 @@
   box-sizing: border-box;                 /* width:100% must INCLUDE the gutter, else the bar overflows the viewport */
   width: 100%;
   margin: 0;
-  padding: 0 24px;
+  padding: 0 var(--gv-space-6);
   height: var(--gv-menu-height);          /* 78px */
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--gv-space-2);
 }
 /* Brand / logo slot */
-.gv-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--gv-tenant-text); flex: 0 0 auto; }
+.gv-brand { display: inline-flex; align-items: center; gap: var(--gv-space-3); text-decoration: none; color: var(--gv-tenant-text); flex: 0 0 auto; }
 .gv-brand img, .gv-brand svg { display: block; }
-.gv-brand .gv-brand__word { font-weight: 700; font-size: 18px; line-height: 1; letter-spacing: -0.01em; }
+.gv-brand .gv-brand__word { font-weight: 700; font-size: var(--gv-fs-l); line-height: 1; letter-spacing: -0.01em; }
 
 /* Desktop nav — <nav class="gv-nav" aria-label="Primäre"> wrapping <ul class="gv-nav__list"> */
-.gv-nav { display: flex; align-items: stretch; height: 100%; margin: 0 0 0 18px; }
+.gv-nav { display: flex; align-items: stretch; height: 100%; margin: 0 0 0 var(--gv-space-5); }
 .gv-nav__list { display: flex; align-items: stretch; height: 100%; margin: 0; padding: 0; list-style: none; }
 .gv-nav__list > li { display: flex; }
 .gv-nav__link {
   box-sizing: border-box;                        /* borders are part of the 100% height, else the cell overflows the bar */
-  display: inline-flex; align-items: center; gap: 6px;
-  height: 100%; padding: 0 22px;
+  display: inline-flex; align-items: center; gap: var(--gv-space-2);
+  height: 100%; padding: 0 var(--gv-space-6);
   font-size: var(--gv-fs-base); font-weight: 500; line-height: 1;
   color: var(--gv-black); text-decoration: none;
   background: none; border: 0; cursor: pointer; font-family: inherit;
@@ -80,17 +80,17 @@
 .gv-nav__dd[open] > summary .gv-nav__chev { transform: rotate(180deg); }
 .gv-nav__menu {
   position: absolute; top: calc(100% - 4px); left: 12px; z-index: 60;
-  min-width: 240px; padding: 8px;
+  min-width: 240px; padding: var(--gv-space-2);
   background: #fff; border-radius: var(--gv-radius);
   box-shadow: var(--gv-shadow-hover-lg); border: 1px solid var(--gv-grey-200);
   border-bottom: 3px solid var(--gv-tenant-secondary);   /* live dropdown carries a coloured bottom accent */
-  display: grid; gap: 2px;
+  display: grid; gap: var(--gv-space-1);
 }
 .gv-nav__dd.right .gv-nav__menu { left: auto; right: 12px; }
 .gv-nav__menu a, .gv-nav__menu button {
   box-sizing: border-box; width: 100%;
-  display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  padding: 9px 12px; border-radius: var(--gv-radius);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--gv-space-4);
+  padding: var(--gv-space-2) var(--gv-space-3); border-radius: var(--gv-radius);
   font-family: inherit; font-size: var(--gv-fs-s); color: var(--gv-grey-800);
   text-align: left; text-decoration: none; background: none; border: 0; cursor: pointer;
 }
@@ -100,11 +100,11 @@
 }
 .gv-nav__menu a:hover svg, .gv-nav__menu button:hover svg { color: var(--gv-tenant-primary); }
 /* in-menu divider (e.g. above "Sign out") */
-.gv-menu-sep { height: 1px; background: var(--gv-grey-200); margin: 6px 4px; }
+.gv-menu-sep { height: 1px; background: var(--gv-grey-200); margin: var(--gv-space-2) var(--gv-space-1); }
 /* account/user menu — wider, cool-grey items in roomy rows, no divider, grey icons
    on the right (live signed-in user menu measures ≈260px, items 14px #596B7A). */
-.gv-nav__menu--account { min-width: 260px; padding: 10px; }
-.gv-nav__menu--account a, .gv-nav__menu--account button { color: var(--gv-cool-grey-600); padding: 11px 14px; }
+.gv-nav__menu--account { min-width: 260px; padding: var(--gv-space-3); }
+.gv-nav__menu--account a, .gv-nav__menu--account button { color: var(--gv-cool-grey-600); padding: var(--gv-space-3) var(--gv-space-4); }
 .gv-nav__menu--account a svg, .gv-nav__menu--account a .gv-icon,
 .gv-nav__menu--account button svg, .gv-nav__menu--account button .gv-icon { color: var(--gv-cool-grey-500); }
 .gv-nav__menu--account a:hover, .gv-nav__menu--account button:hover { background: var(--gv-grey-100); color: var(--gv-cool-grey-700); }
@@ -112,11 +112,11 @@
 .gv-nav__menu--account a:hover .gv-icon, .gv-nav__menu--account button:hover .gv-icon { color: var(--gv-cool-grey-700); }
 
 /* Header right-side actions */
-.gv-header__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; flex: 0 0 auto; }
+.gv-header__actions { display: flex; align-items: center; gap: var(--gv-space-3); margin-left: auto; flex: 0 0 auto; }
 .gv-iconbtn {
   position: relative;
   display: grid; place-items: center; width: 40px; height: 40px; min-width: 40px;
-  border-radius: 50%; border: 0; background: transparent; color: var(--gv-grey-800); cursor: pointer;
+  border-radius: var(--gv-radius-full); border: 0; background: transparent; color: var(--gv-grey-800); cursor: pointer;
 }
 .gv-iconbtn:hover { background: var(--gv-grey-100); color: var(--gv-tenant-primary); }
 .gv-iconbtn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
@@ -127,18 +127,18 @@
    CTA. Count badge on the bell uses the tenant colour; the avatar is an <img> or an
    initials circle. The whole account control opens the user menu in the real product. */
 .gv-iconbtn__badge {
-  position: absolute; top: 2px; right: 2px; min-width: 17px; height: 16px; padding: 0 4px;
-  border-radius: 5px; background: var(--gv-red-500); color: #fff;       /* live badge is a red rounded SQUARE, not a pill */
-  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; border: 2px solid #fff;
+  position: absolute; top: 2px; right: 2px; min-width: 17px; height: 16px; padding: 0 var(--gv-space-1);
+  border-radius: var(--gv-radius-1); background: var(--gv-red-500); color: #fff;       /* live badge is a red rounded SQUARE, not a pill */
+  font-size: var(--gv-fs-xs); font-weight: 700; line-height: 16px; text-align: center; border: 2px solid #fff;
 }
 /* Grounded fidelity (fo-account-dropdown digest, badge text "29"): the real notification
    badge is a red rounded SQUARE with radius ~3px, regular weight 400, font-size 12px. The
    background (red-500) and rounded-square shape were already right; only the numerics drift.
    Append override so every consumer (header-nav + all FO pages) picks it up. */
-.gv-iconbtn__badge { border-radius: 3px; font-weight: 400; font-size: 12px; }
+.gv-iconbtn__badge { border-radius: var(--gv-radius-1); font-weight: 400; font-size: var(--gv-fs-xs); }
 .gv-account {
-  display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 4px 5px 4px 12px;
-  background: none; border: 0; border-radius: 999px; cursor: pointer; font-family: inherit;
+  display: inline-flex; align-items: center; gap: var(--gv-space-2); height: 40px; padding: var(--gv-space-1) var(--gv-space-1) var(--gv-space-1) var(--gv-space-3);
+  background: none; border: 0; border-radius: var(--gv-radius-full); cursor: pointer; font-family: inherit;
   font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary);
 }
 /* Grounded fidelity (fo-account-dropdown .e2e-username digest): the real signed-in
@@ -152,7 +152,7 @@
    the header account avatar uses the .lg footprint. Reference it here so the account
    control gets the 38px diameter without bumping the 32px base atom for everyone, and
    without editing every page's markup. */
-.gv-account .gv-avatar { width: 38px; height: 38px; font-size: 15px; }
+.gv-account .gv-avatar { width: 38px; height: 38px; font-size: var(--gv-fs-base); }
 
 /* Account control as a CSS-only dropdown: <details class="gv-nav__dd right
    gv-account-dd"> with a <summary class="gv-account"> (avatar + name + chevron)
@@ -173,7 +173,7 @@
 
 /* Language switcher — compact text button (EN ▾) opening a dropdown */
 .gv-lang {
-  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px;
+  display: inline-flex; align-items: center; gap: var(--gv-space-2); height: 40px; padding: 0 var(--gv-space-3);
   background: none; border: 0; border-radius: var(--gv-radius); cursor: pointer; list-style: none;
   font-family: inherit; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-primary);
 }
@@ -188,7 +188,7 @@
 /* Signed-in / signed-out STATE SWITCH (one component, two states).
    Set data-auth="out" | "in" on a root element (e.g. <body>); the matching
    cluster shows, the other hides. Default (unset) shows the signed-out state. */
-.gv-header__actions .gv-auth-out, .gv-header__actions .gv-auth-in { display: inline-flex; align-items: center; gap: 6px; }
+.gv-header__actions .gv-auth-out, .gv-header__actions .gv-auth-in { display: inline-flex; align-items: center; gap: var(--gv-space-2); }
 .gv-nav-m__panel .gv-auth-out, .gv-nav-m__panel .gv-auth-in { display: contents; }   /* children flow in the drawer grid */
 [data-auth="in"]  .gv-auth-out { display: none !important; }
 [data-auth="out"] .gv-auth-in  { display: none !important; }
@@ -201,7 +201,7 @@
 .gv-nav-m { display: none; }                    /* hidden on desktop */
 .gv-nav-m > summary {
   list-style: none; display: grid; place-items: center;
-  width: 44px; height: 44px; border-radius: 50%; cursor: pointer; color: var(--gv-grey-800);
+  width: 44px; height: 44px; border-radius: var(--gv-radius-full); cursor: pointer; color: var(--gv-grey-800);
   position: relative; z-index: 1001;            /* X stays above the overlay + clickable */
 }
 .gv-nav-m > summary::-webkit-details-marker { display: none; }
@@ -213,19 +213,19 @@
 .gv-nav-m__panel {
   box-sizing: border-box;
   position: fixed; inset: 0; z-index: 1000;
-  background: #fff; padding: 74px 24px 32px;
-  display: flex; flex-direction: column; align-items: center; gap: 2px; overflow-y: auto;
+  background: #fff; padding: 76px var(--gv-space-6) var(--gv-space-8);
+  display: flex; flex-direction: column; align-items: center; gap: var(--gv-space-1); overflow-y: auto;
 }
-.gv-nav-m__logo { display: block; margin-bottom: 26px; }
+.gv-nav-m__logo { display: block; margin-bottom: var(--gv-space-6); }
 .gv-nav-m__logo img, .gv-nav-m__logo svg { height: 34px; width: auto; display: block; }
 .gv-nav-m__panel a, .gv-nav-m__panel summary {
   display: block; width: 100%; max-width: 340px; text-align: center;
-  padding: 15px 8px; font-size: var(--gv-fs-l); font-weight: 500;
+  padding: var(--gv-space-4) var(--gv-space-2); font-size: var(--gv-fs-l); font-weight: 500;
   color: var(--gv-grey-800); text-decoration: none;
 }
 .gv-nav-m__panel a[aria-current="page"] { color: var(--gv-tenant-primary); font-weight: 600; }
-.gv-nav-m__panel .gv-btn { margin-top: 18px; width: 100%; max-width: 340px; }
-.gv-nav-m__search { display: inline-flex; align-items: center; justify-content: center; gap: 9px; }
+.gv-nav-m__panel .gv-btn { margin-top: var(--gv-space-5); width: 100%; max-width: 340px; }
+.gv-nav-m__search { display: inline-flex; align-items: center; justify-content: center; gap: var(--gv-space-2); }
 .gv-nav-m__search svg, .gv-nav-m__search .gv-icon { width: 18px; height: 18px; flex: none; }
 
 /* Header responsive switch */
@@ -258,22 +258,22 @@
    go·vocal" powered-by attribution. No tenant logo (that lives in the header).
    Desktop = links left / attribution right; mobile = stacked & centered. */
 /* Live footer is a thin WHITE bar (bg #fff, ~11px 28px), content spans wide. */
-.gv-footer { border-top: 1px solid var(--gv-grey-200); padding: 12px 28px; font-family: var(--gv-font-family); background: #fff; }
-.gv-footer__inner { max-width: var(--gv-page-width, 1280px); margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 28px; }
-.gv-footer__links ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; font-size: var(--gv-fs-s); }
+.gv-footer { border-top: 1px solid var(--gv-grey-200); padding: var(--gv-space-3) var(--gv-space-7); font-family: var(--gv-font-family); background: #fff; }
+.gv-footer__inner { max-width: var(--gv-page-width, 1280px); margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gv-space-3) var(--gv-space-7); }
+.gv-footer__links ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--gv-space-1) 0; font-size: var(--gv-fs-s); }
 .gv-footer__links li { display: inline-flex; align-items: center; }
-.gv-footer__links a, .gv-footer__links button { color: var(--gv-cool-grey-600); text-decoration: none; padding: 2px 0; font: inherit; background: none; border: 0; cursor: pointer; }
+.gv-footer__links a, .gv-footer__links button { color: var(--gv-cool-grey-600); text-decoration: none; padding: var(--gv-space-1) 0; font: inherit; background: none; border: 0; cursor: pointer; }
 /* FO shared: real footer link line-height is 21px (1.5 × 14px) — looser vertical rhythm, matters most on the wrapping mobile link block. */
 .gv-footer__links a, .gv-footer__links button { line-height: 1.5; }
 .gv-footer__links a:hover, .gv-footer__links button:hover { color: var(--gv-tenant-primary); text-decoration: underline; }
-.gv-footer__links li:not(:first-child)::before { content: "·"; color: var(--gv-grey-500); margin: 0 14px; display: inline-block; }
-.gv-footer__powered { display: inline-flex; align-items: center; gap: 10px; color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); white-space: nowrap; }
+.gv-footer__links li:not(:first-child)::before { content: "·"; color: var(--gv-grey-500); margin: 0 var(--gv-space-4); display: inline-block; }
+.gv-footer__powered { display: inline-flex; align-items: center; gap: var(--gv-space-3); color: var(--gv-cool-grey-600); font-size: var(--gv-fs-s); white-space: nowrap; }
 /* Optional tenant-logo slot (left of the legal links). Filled per-city by the theme
    switcher via [data-gv-logo]; sizes whatever wordmark/svg/img it injects. */
 .gv-footer__logo { display: inline-flex; align-items: center; flex: 0 0 auto; }
 .gv-footer__logo img, .gv-footer__logo svg { height: 28px; width: auto; display: block; }
 @media (max-width: 720px) {
-  .gv-footer__inner { flex-direction: column; justify-content: center; text-align: center; gap: 22px; }
+  .gv-footer__inner { flex-direction: column; justify-content: center; text-align: center; gap: var(--gv-space-6); }
   .gv-footer__links ul { justify-content: center; }
 }
 /* FO shared (footer-background): the real Wien tenant footer is TRANSPARENT
@@ -295,8 +295,8 @@
    make the whole card clickable (::after overlay); any secondary CTA sits above it
    with position:relative + z-index. This avoids invalid nested anchors. */
 .gv-rail {
-  display: flex; gap: 22px; overflow-x: auto; -webkit-overflow-scrolling: touch;
-  padding: 4px 24px 20px; margin: 0 -24px;
+  display: flex; gap: var(--gv-space-6); overflow-x: auto; -webkit-overflow-scrolling: touch;
+  padding: var(--gv-space-1) var(--gv-space-6) var(--gv-space-5); margin: 0 -24px;
   /* snap must respect the 24px bleed padding, else it auto-scrolls the gutter away
      on load and the first card rests flush to the rail edge (left of the title). */
   scroll-snap-type: x proximity; scroll-padding-inline: 24px; scrollbar-width: thin;
@@ -319,7 +319,7 @@
   mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 100%);
 }
 .gv-rail::-webkit-scrollbar { height: 8px; }
-.gv-rail::-webkit-scrollbar-thumb { background: var(--gv-grey-300); border-radius: 999px; }
+.gv-rail::-webkit-scrollbar-thumb { background: var(--gv-grey-300); border-radius: var(--gv-radius-full); }
 .gv-rail > * { scroll-snap-align: start; }
 
 .gv-pcard { position: relative; flex: 0 0 250px; display: flex; flex-direction: column; min-width: 0; }
@@ -329,23 +329,23 @@
   color: #fff; font-weight: 800; line-height: 1.15;
 }
 .gv-pcard__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.gv-pcard__title { font-size: var(--gv-fs-base); font-weight: 700; line-height: 1.3; color: var(--gv-text-heading); margin: 12px 0 8px; }
+.gv-pcard__title { font-size: var(--gv-fs-base); font-weight: 700; line-height: 1.3; color: var(--gv-text-heading); margin: var(--gv-space-3) 0 var(--gv-space-2); }
 .gv-pcard__title a { color: inherit; text-decoration: none; }
 .gv-pcard__title a:hover { color: var(--gv-tenant-primary); }
 .gv-pcard__title a::after { content: ""; position: absolute; inset: 0; }      /* stretched link → whole card clickable */
 .gv-pcard__title a:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
 .gv-pcard__desc { font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-grey-800); margin: 0; }
 /* meta row: icon + label. Variant colours via modifier. */
-.gv-pcard__meta { display: inline-flex; align-items: center; gap: 7px; font-size: var(--gv-fs-s); color: var(--gv-text-body); }  /* live "2 weeks left" time-remaining probes to rgba(0,0,0,0.87) — the FO body-text colour (near-identical to #333) */
+.gv-pcard__meta { display: inline-flex; align-items: center; gap: var(--gv-space-2); font-size: var(--gv-fs-s); color: var(--gv-text-body); }  /* live "2 weeks left" time-remaining probes to rgba(0,0,0,0.87) — the FO body-text colour (near-identical to #333) */
 .gv-pcard__meta svg { flex: 0 0 auto; }
 .gv-pcard__meta.time svg, .gv-pcard__meta.people svg { color: var(--gv-tenant-primary); }
 .gv-pcard__meta.done { color: var(--gv-success); }
-.gv-pcard__meta + .gv-pcard__desc, .gv-pcard__meta + .gv-pcard__cta { margin-top: 8px; }
+.gv-pcard__meta + .gv-pcard__desc, .gv-pcard__meta + .gv-pcard__cta { margin-top: var(--gv-space-2); }
 /* secondary CTA must sit ABOVE the stretched title link to stay clickable */
 /* Unboxed rail-card CTA — real (r7-wien-home p.sc-ktEKTO "Umfrage ausfüllen") is a
    MUTED affordance: cool-grey-600, 16px/400, no underline (the whole card is the click
    target) — NOT a brand-primary bold link. */
-.gv-pcard__cta { position: relative; z-index: 1; align-self: flex-start; margin-top: 8px;
+.gv-pcard__cta { position: relative; z-index: 1; align-self: flex-start; margin-top: var(--gv-space-2);
   font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-cool-grey-600); text-decoration: none; }
 .gv-pcard__cta:hover { text-decoration: underline; }
 /* card width variants */
@@ -383,15 +383,15 @@
   content: ""; position: absolute; inset: 0;
   background: var(--gv-tenant-primary); opacity: 0.62; mix-blend-mode: multiply;
 }
-.gv-hero__inner { position: relative; z-index: 1; padding: 40px 24px; max-width: 720px;
+.gv-hero__inner { position: relative; z-index: 1; padding: var(--gv-space-10) var(--gv-space-6); max-width: 720px;
   width: 100%; box-sizing: border-box; margin: 0 auto;  /* center the content column on the shell gutter, but text within it stays left-aligned (see .gv-hero text-align:left) */ }
 /* Live homepage banner H1 (uxusertesting.govocal.com) computes to 25px/700/32.5px. */
-.gv-hero__title { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; margin: 0 0 10px; }
+.gv-hero__title { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; margin: 0 0 var(--gv-space-3); }
 /* Live banner subtitle (mitgestalten.wien.gv.at / community.govocal.com h2) = 18px/400/23.4px. */
-.gv-hero__lead { font-size: var(--gv-fs-l); font-weight: 400; line-height: 1.3; margin: 0 0 22px; opacity: 0.97; }
-.gv-hero__credit { position: absolute; left: 24px; bottom: 10px; z-index: 1; font-size: 11px; opacity: 0.85; }
+.gv-hero__lead { font-size: var(--gv-fs-l); font-weight: 400; line-height: 1.3; margin: 0 0 var(--gv-space-6); opacity: 0.97; }
+.gv-hero__credit { position: absolute; left: 24px; bottom: 10px; z-index: 1; font-size: var(--gv-fs-xs); opacity: 0.85; }
 /* .gv-avatars (hero stack) → moved to govocal-primitives.css (cross-surface atom). */
-@media (max-width: 600px) { .gv-hero { min-height: 180px; } .gv-hero__inner { padding: 32px 20px; } }
+@media (max-width: 600px) { .gv-hero { min-height: 180px; } .gv-hero__inner { padding: var(--gv-space-8) var(--gv-space-5); } }
 
 /* ── Signed-out full-width banner (.gv-hero.signed-out) ───────────────────────
    The big home-page banner a VISITOR sees before signing in — a structural pattern
@@ -409,15 +409,15 @@
    .centered = the St-Louis/CPH/Lux centered layout (title·subtitle·avatars·CTA centered);
    without it the band keeps the default upper-left .gv-hero alignment. */
 .gv-hero.signed-out { min-height: 450px; background-color: var(--gv-bo-canvas); align-content: center; }
-.gv-hero.signed-out .gv-hero__inner { max-width: 1012px; padding: 50px 30px; }
-.gv-hero.signed-out .gv-hero__title { font-size: var(--gv-fs-xxxl); margin: 0 0 8px; }
-.gv-hero.signed-out .gv-hero__lead  { margin: 0 0 18px; }
+.gv-hero.signed-out .gv-hero__inner { max-width: 1012px; padding: 52px var(--gv-space-8); }
+.gv-hero.signed-out .gv-hero__title { font-size: var(--gv-fs-xxxl); margin: 0 0 var(--gv-space-2); }
+.gv-hero.signed-out .gv-hero__lead  { margin: 0 0 var(--gv-space-5); }
 .gv-hero.signed-out.centered { justify-items: center; text-align: center; }
 .gv-hero.signed-out.centered .gv-hero__inner { display: grid; justify-items: center; }
-.gv-hero.signed-out .gv-hero__actions { margin-top: 6px; }
+.gv-hero.signed-out .gv-hero__actions { margin-top: var(--gv-space-2); }
 @media (max-width: 600px) {
   .gv-hero.signed-out { min-height: 360px; }
-  .gv-hero.signed-out .gv-hero__inner { padding: 36px 22px; }
+  .gv-hero.signed-out .gv-hero__inner { padding: 36px var(--gv-space-6); }
   .gv-hero.signed-out .gv-hero__title { font-size: var(--gv-fs-xxl); }
 }
 
@@ -441,7 +441,7 @@
 .gv-hero.layout-tworow::before { display: none; }
 .gv-hero.layout-tworow .gv-hero__media { display: block; }
 .gv-hero.layout-tworow .gv-hero__media img { display: block; width: 100%; height: 300px; object-fit: cover; }
-.gv-hero.layout-tworow .gv-hero__inner { background: var(--gv-white); max-width: none; margin: 0; padding: 36px 30px; }
+.gv-hero.layout-tworow .gv-hero__inner { background: var(--gv-white); max-width: none; margin: 0; padding: 36px var(--gv-space-8); }
 .gv-hero.layout-tworow.centered .gv-hero__inner { display: grid; justify-items: center; text-align: center; }
 .gv-hero.layout-tworow .gv-hero__title { color: var(--gv-tenant-primary); }
 .gv-hero.layout-tworow .gv-hero__lead { color: var(--gv-text-secondary); opacity: 1; }
@@ -455,9 +455,9 @@
 @media (max-width: 600px) { .gv-hero.layout-fixed { aspect-ratio: 3 / 2; } }
 
 /* ── Section heading + content rhythm for composed pages ─────────────────────── */
-.gv-section { padding: 38px 0 4px; }
-.gv-section__head { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px; }
-.gv-section__body { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px; }
+.gv-section { padding: 36px 0 var(--gv-space-1); }
+.gv-section__head { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 var(--gv-space-6); }
+.gv-section__body { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 var(--gv-space-6); }
 
 /* ── Phase timeline (components/phase-timeline/) ──────────────────────────────
    GoVocal's project phase navigation: a connected row of arrow/chevron "ribbon"
@@ -466,21 +466,21 @@
    nav (Previous · Current · Next) sits top-right. The content panel leads with a
    big green numbered circle + green phase name + date. role=tablist on the stepper,
    role=tab per phase, role=tabpanel on the content. */
-.gv-phases__bar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.gv-phases__bar { display: flex; align-items: center; gap: var(--gv-space-3); margin-bottom: var(--gv-space-4); }
 .gv-phases__bar h2 { margin: 0; font-size: var(--gv-fs-xxl); font-weight: 700; }
-.gv-phases__nav { margin-left: auto; display: inline-flex; gap: 6px; }
+.gv-phases__nav { margin-left: auto; display: inline-flex; gap: var(--gv-space-2); }
 .gv-pnav { width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
   background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius); color: var(--gv-grey-700); }
 .gv-pnav svg, .gv-pnav .gv-icon { width: 16px; height: 16px; }
 .gv-pnav:hover { background: var(--gv-grey-100); }
 .gv-pnav:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
 .gv-pnav[disabled] { color: var(--gv-grey-500); cursor: not-allowed; }
-.gv-pnav .gv-dotmark { width: 8px; height: 8px; border-radius: 50%; background: var(--gv-grey-500); }
+.gv-pnav .gv-dotmark { width: 8px; height: 8px; border-radius: var(--gv-radius-full); background: var(--gv-grey-500); }
 /* The phase ribbon stays on ONE line and shrinks its wedges to fit the container —
    it never wraps to multiple rows (flex-wrap:nowrap + min-width:0 so segments shrink
    instead of overflowing/wrapping). Works in any width — desktop, BO canvas, or a
    narrow mobile/phone preview. */
-.gv-stepper { display: flex; flex-wrap: nowrap; gap: 2px; padding-bottom: 4px; }
+.gv-stepper { display: flex; flex-wrap: nowrap; gap: var(--gv-space-1); padding-bottom: var(--gv-space-1); }
 .gv-phase { flex: 1 1 0; min-width: 0; background: none; border: 0; padding: 0; cursor: pointer;
   font-family: inherit; display: flex; flex-direction: column; align-items: stretch; }
 /* Measured live (fo-project-ideation): segments are 23px tall, grey-track #D4D9DD,
@@ -494,18 +494,18 @@
   /* shallower 11px chevron notch — the live Wien timeline point is gentler (less
      steep) than a deep 15px arrow. */
   clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%, 11px 50%); }
-.gv-phase:first-child .gv-pstep { clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%); border-radius: 3px 0 0 3px; }
+.gv-phase:first-child .gv-pstep { clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%); border-radius: var(--gv-radius-1) 0 0 var(--gv-radius-1); }
 /* last segment: notch on the left to interlock, but a FLAT (rounded) right end. */
-.gv-phase:last-child .gv-pstep { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 11px 50%); border-radius: 0 3px 3px 0; }
+.gv-phase:last-child .gv-pstep { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 11px 50%); border-radius: 0 var(--gv-radius-1) var(--gv-radius-1) 0; }
 .gv-phase.current .gv-pstep { background: var(--gv-green-600); color: #fff; }
 /* the FO project-page ribbon segments read a touch shorter than the standalone
    component and carry a clear dark-grey top edge (clipped to the chevron shape) —
    the "dark grey border on top" + "slightly smaller modules" seen on the real timeline */
 .gv-methodband .gv-pstep { box-shadow: inset 0 2px 0 0 rgba(0, 0, 0, 0.22); }  /* height stays the live 23px (.gv-pstep base) */
-.gv-pstep__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px;
+.gv-pstep__dot { width: 6px; height: 6px; border-radius: var(--gv-radius-full); background: currentColor; margin-right: var(--gv-space-2);
   animation: gv-dot-pulse 1.4s ease-in-out infinite; }
 @keyframes gv-dot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-.gv-phase__label { padding: 9px 6px 0; text-align: center; font-size: var(--gv-fs-s); line-height: 1.3; color: var(--gv-text-primary); }
+.gv-phase__label { padding: var(--gv-space-2) var(--gv-space-2) 0; text-align: center; font-size: var(--gv-fs-s); line-height: 1.3; color: var(--gv-text-primary); }
 .gv-phase.current .gv-phase__label { color: var(--gv-green-600); font-weight: 600; }
 .gv-phase:hover .gv-pstep { filter: brightness(0.97); }
 .gv-phase:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
@@ -551,19 +551,19 @@
 }
 .gv-phase[aria-selected="true"].current .gv-phase__label { font-weight: 600; color: var(--gv-text-primary); }
 /* content panel: big green numbered circle + green name + date */
-.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 30px 30px 35px; margin-top: 22px; }
-.gv-phasepanel__head { display: flex; align-items: center; gap: 16px; }
+.gv-phasepanel { background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: var(--gv-space-8) var(--gv-space-8) 36px; margin-top: var(--gv-space-6); }
+.gv-phasepanel__head { display: flex; align-items: center; gap: var(--gv-space-4); }
 /* Measured live (fo-project-ideation): the phase number sits in a 39px green-500
    circle (16px/400 white), and the phase name is 21px/700 green-500 — not larger. */
-.gv-phasepanel__num { width: 39px; height: 39px; border-radius: 50%; flex: none; display: grid; place-items: center;
+.gv-phasepanel__num { width: 39px; height: 39px; border-radius: var(--gv-radius-full); flex: none; display: grid; place-items: center;
   background: var(--gv-green-500); color: #fff; font-size: var(--gv-fs-base); font-weight: 400; }
 .gv-phasepanel__name { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-green-500); line-height: 1.3; }
-.gv-phasepanel__date { margin: 4px 0 0; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
+.gv-phasepanel__date { margin: var(--gv-space-1) 0 0; color: var(--gv-text-secondary); font-size: var(--gv-fs-s); }
 /* the phase description sits inside the panel card, under the head — part of the
    component (the real phase card always carries a few lines of phase description). */
-.gv-phasepanel__desc { margin: 14px 0 0; font-size: var(--gv-fs-base); line-height: 1.65;
+.gv-phasepanel__desc { margin: var(--gv-space-4) 0 0; font-size: var(--gv-fs-base); line-height: 1.65;
   color: var(--gv-text-primary); max-width: var(--gv-text-width); }
-.gv-phasepanel__desc p { margin: 0 0 12px; }
+.gv-phasepanel__desc p { margin: 0 0 var(--gv-space-3); }
 .gv-phasepanel__desc p:last-child { margin-bottom: 0; }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -582,8 +582,8 @@
    top of .gv-hero (which is position:relative); collapses inline on mobile. */
 .gv-hero__cta {
   position: absolute; right: 24px; bottom: 24px; z-index: 2;
-  display: inline-flex; align-items: center; gap: 10px;
-  max-width: min(360px, 64%); padding: 13px 22px;       /* live content-builder banner button = 13px 22px */
+  display: inline-flex; align-items: center; gap: var(--gv-space-3);
+  max-width: min(360px, 64%); padding: var(--gv-space-3) var(--gv-space-6);       /* live content-builder banner button = 13px 22px */
   background: #fff; color: var(--gv-tenant-text); border-radius: var(--gv-radius);
   font-size: var(--gv-fs-base); font-weight: 500; line-height: 1.3; text-align: left; text-decoration: none;
   box-shadow: var(--gv-shadow-hover-lg);
@@ -592,7 +592,7 @@
 .gv-hero__cta:hover { transform: translateY(-2px); box-shadow: var(--gv-shadow-hover-sm); }
 .gv-hero__cta:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .gv-hero__cta .gv-icon, .gv-hero__cta svg { width: 18px; height: 18px; flex: none; color: var(--gv-tenant-primary); }
-@media (max-width: 640px) { .gv-hero__cta { position: static; max-width: none; margin: 16px auto 0; } }
+@media (max-width: 640px) { .gv-hero__cta { position: static; max-width: none; margin: var(--gv-space-4) auto 0; } }
 
 /* ── Spotlight: the "currently working on" featured project ─────────────────
    Sits on the plain page background (live .e2e-spotlight-widget bg = transparent —
@@ -607,20 +607,20 @@
 /* Spotlight anatomy: the single project TITLE (h2 — the one heading size) + a lead
    description. No standalone "Currently working on" kicker — the real homepage frames
    the row with a full heading "{City} is currently working on" instead, not a bare eyebrow. */
-.gv-spotlight__title { margin: 0 0 14px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }  /* the project name = the spotlight's single title */
-.gv-spotlight__lead { margin: 0 0 24px; font-size: var(--gv-fs-m); line-height: 1.55; color: var(--gv-grey-800); }
-.gv-spotlight__actions { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.gv-spotlight__title { margin: 0 0 var(--gv-space-4); font-size: var(--gv-fs-xl); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }  /* the project name = the spotlight's single title */
+.gv-spotlight__lead { margin: 0 0 var(--gv-space-6); font-size: var(--gv-fs-m); line-height: 1.55; color: var(--gv-grey-800); }
+.gv-spotlight__actions { display: flex; align-items: center; gap: var(--gv-space-6); flex-wrap: wrap; }
 .gv-spotlight__media { aspect-ratio: 16 / 10; border-radius: var(--gv-radius); overflow: hidden;
   background: var(--gv-grey-200); display: grid; place-items: center; color: #fff; font-weight: 800; text-align: center; }
 .gv-spotlight__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gv-spotlight__media--placeholder { background: var(--gv-grey-200); }
 /* Spotlight "campaign chip" — a themed chat-bubble title tile over the media
    (theme-aware: re-skins per city via --gv-tenant-primary). */
-.gv-spotlight__chip { display: inline-block; padding: 18px 22px; border-radius: 16px 16px 16px 2px;
-  background: var(--gv-tenant-primary); color: #fff; font-size: 22px; font-weight: 800; line-height: 1.1; }
+.gv-spotlight__chip { display: inline-block; padding: var(--gv-space-5) var(--gv-space-6); border-radius: var(--gv-radius-3) var(--gv-radius-3) var(--gv-radius-3) var(--gv-radius-1);
+  background: var(--gv-tenant-primary); color: #fff; font-size: var(--gv-fs-xxl); font-weight: 800; line-height: 1.1; }
 @media (max-width: 820px) {
   /* live mobile (390px) .e2e-spotlight-widget = padding 24px 20px 56px (asym: 24 top / 56 bottom / 20 sides) */
-  .gv-spotlight__inner { grid-template-columns: 1fr; gap: 26px; padding: 24px 20px 56px; }
+  .gv-spotlight__inner { grid-template-columns: 1fr; gap: var(--gv-space-6); padding: var(--gv-space-6) var(--gv-space-5) 56px; }
   .gv-spotlight__media { order: -1; aspect-ratio: 16 / 9; }
 }
 
@@ -631,7 +631,7 @@
    label, in cool-grey secondary text — NO leading status dot (verified against the
    Wien / Falkirk / default homepage cards, which render an avatar pile + plain
    "N participants/contributions"). Use .closed for the muted finished state. */
-.gv-poststat { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-m);
+.gv-poststat { display: inline-flex; align-items: center; gap: var(--gv-space-2); font-size: var(--gv-fs-m);
   line-height: 1.4; color: var(--gv-text-secondary); }
 .gv-poststat b { color: var(--gv-grey-800); font-weight: 700; }
 /* Finished-project counts: cool-grey-600 (#596B7A, 5.51:1 on white) — source-derived and
@@ -643,11 +643,11 @@
 /* ── Projects toolbar: status tabs + filter selectors ──────────────────────
    Tabs left (Published/Archived/All) with a tenant-primary underline on the
    selected one; filter selectors right ("Filter by" + Tag/Area pills). */
-.gv-ptoolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px 24px;
-  flex-wrap: wrap; border-bottom: 1px solid var(--gv-grey-300); margin-bottom: 28px; }
-.gv-tabs { display: flex; gap: 2px; }
+.gv-ptoolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--gv-space-4) var(--gv-space-6);
+  flex-wrap: wrap; border-bottom: 1px solid var(--gv-grey-300); margin-bottom: var(--gv-space-7); }
+.gv-tabs { display: flex; gap: var(--gv-space-1); }
 /* Live status tabs = 18px/400; unselected cool-grey, selected coloured + underline. */
-.gv-tab { display: inline-flex; align-items: center; gap: 6px; padding: 12px 14px; margin-bottom: -1px;
+.gv-tab { display: inline-flex; align-items: center; gap: var(--gv-space-2); padding: var(--gv-space-3) var(--gv-space-4); margin-bottom: -1px;
   background: none; border: 0; border-bottom: 3px solid transparent; cursor: pointer;
   font-family: inherit; font-size: var(--gv-fs-l); font-weight: 400; color: var(--gv-text-secondary); }
 .gv-tab .ct { color: var(--gv-text-secondary); }
@@ -655,10 +655,10 @@
 .gv-tab[aria-selected="true"] { color: var(--gv-tenant-primary); font-weight: 600; border-bottom-color: var(--gv-tenant-primary); }
 .gv-tab[aria-selected="true"] .ct { color: var(--gv-tenant-primary); }
 .gv-tab:focus-visible { outline: var(--gv-focus-outline); outline-offset: -2px; border-radius: var(--gv-radius); }
-.gv-filterbar { display: flex; align-items: center; gap: 10px; padding-bottom: 9px; }
+.gv-filterbar { display: flex; align-items: center; gap: var(--gv-space-3); padding-bottom: var(--gv-space-2); }
 .gv-filterbar__label { font-size: var(--gv-fs-base); color: var(--gv-text-secondary); }
 /* Live filter selectors are borderless grey text triggers ("Tag ▾"), not pills. */
-.gv-filter-btn { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px;
+.gv-filter-btn { display: inline-flex; align-items: center; gap: var(--gv-space-1); padding: var(--gv-space-1) var(--gv-space-2);
   background: none; border: 0; border-radius: var(--gv-radius); cursor: pointer;
   font-family: inherit; font-size: var(--gv-fs-base); color: var(--gv-cool-grey-600); }
 .gv-filter-btn:hover { color: var(--gv-text-primary); }
@@ -671,7 +671,7 @@
 /* ── Project / folder GRID of boxed cards ──────────────────────────────────
    The homepage "All projects" widget: a 3-col grid of boxed cards. Span helpers
    place the occasional wide/featured card. Cards stretch to equal row height. */
-.gv-pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: stretch; }
+.gv-pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gv-space-6); align-items: stretch; }
 .gv-pgrid > .span-2 { grid-column: span 2; }
 .gv-pgrid > .span-3 { grid-column: 1 / -1; }
 @media (max-width: 980px) { .gv-pgrid { grid-template-columns: repeat(2, 1fr); } .gv-pgrid > .span-3 { grid-column: 1 / -1; } .gv-pgrid > .span-2 { grid-column: 1 / -1; } }
@@ -719,21 +719,21 @@
 .gv-pcard__thumb--civic  { background: linear-gradient(135deg, #2b5cab, #f2c200); }
 .gv-pcard__thumb--coral  { background: #f4736f; }
 .gv-pcard__thumb--sand   { background: #f3e2a6; color: #7a5e12; }
-.gv-thumb-cap { font-size: 22px; line-height: 1.1; padding: 0 16px; }
-.gv-thumb-cap--lg { font-size: 26px; }
-.gv-thumb-cap--sm { font-size: 20px; }
-.gv-thumb-cap--xs { font-size: 18px; padding: 14px; }
+.gv-thumb-cap { font-size: var(--gv-fs-xxl); line-height: 1.1; padding: 0 var(--gv-space-4); }
+.gv-thumb-cap--lg { font-size: var(--gv-fs-xxl); }
+.gv-thumb-cap--sm { font-size: var(--gv-fs-xl); }
+.gv-thumb-cap--xs { font-size: var(--gv-fs-l); padding: var(--gv-space-4); }
 
 /* Circular campaign emblem dropped inside a folder/card thumb (decorative). */
-.gv-pcard__badge { width: 150px; height: 150px; border-radius: 50%;
+.gv-pcard__badge { width: 150px; height: 150px; border-radius: var(--gv-radius-full);
   border: 6px solid rgba(255,255,255,0.85); display: grid; place-items: center;
   text-align: center; line-height: 1.12; color: #1a1a1a; }
-.gv-pcard__badge b { font-size: 19px; display: block; }
-.gv-pcard__badge .pre { font-style: italic; font-weight: 500; font-size: 12px; color: #2c2724; }
+.gv-pcard__badge b { font-size: var(--gv-fs-xl); display: block; }
+.gv-pcard__badge .pre { font-style: italic; font-weight: 500; font-size: var(--gv-fs-xs); color: #2c2724; }
 .gv-pcard__badge .accent { color: #d83a36; }
 
-.gv-pcard__body { display: flex; flex-direction: column; flex: 1 1 auto; padding: 18px 22px 22px; }
-.gv-pcard.boxed .gv-pcard__title { margin: 0 0 8px; font-size: var(--gv-fs-xl); }  /* live card title = 21px/700 */
+.gv-pcard__body { display: flex; flex-direction: column; flex: 1 1 auto; padding: var(--gv-space-5) var(--gv-space-6) var(--gv-space-6); }
+.gv-pcard.boxed .gv-pcard__title { margin: 0 0 var(--gv-space-2); font-size: var(--gv-fs-xl); }  /* live card title = 21px/700 */
 .gv-pcard.boxed .gv-pcard__desc { color: var(--gv-text-secondary); }              /* live card desc = cool-grey #596B7A */
 /* SHARED FIX card-text-scale: the live .e2e-project-card sets its card text to
    14px and lets meta/CTA/body inherit it — our boxed card otherwise inherits the
@@ -742,13 +742,13 @@
    explicit --gv-fs-xl override above; the rail (non-boxed) variant is untouched. */
 .gv-pcard.boxed { font-size: var(--gv-fs-s); }
 .gv-pcard__spacer { flex: 1 1 auto; min-height: 8px; }
-.gv-pcard__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.gv-pcard__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--gv-space-3); margin-top: var(--gv-space-4); }
 /* the boxed-card CTA is a real outline button; keep it above the stretched link.
    Geometry source-grounded on the live .e2e-project-card-cta (14px / 8px 14px). */
-.gv-pcard.boxed .gv-btn { position: relative; z-index: 1; font-size: var(--gv-fs-s); padding: 8px 14px; line-height: 20px; }
+.gv-pcard.boxed .gv-btn { position: relative; z-index: 1; font-size: var(--gv-fs-s); padding: var(--gv-space-2) var(--gv-space-4); line-height: 20px; }
 /* progress block inside a boxed card */
-.gv-pcard__progress { margin: 12px 0 0; }
-.gv-pcard__progress .gv-pcard__meta { margin-bottom: 8px; }
+.gv-pcard__progress { margin: var(--gv-space-3) 0 0; }
+.gv-pcard__progress .gv-pcard__meta { margin-bottom: var(--gv-space-2); }
 
 /* ── Boxed-card top meta-row ──────────────────────────────────────────────────
    Live Raleigh project cards lead with a white header strip: progress/time (or a
@@ -757,8 +757,8 @@
    bottom. Vertical cards put __top above the thumb; the wide card nests it at the
    top of the body and full-bleeds the divider to the content edges. */
 .gv-pcard.boxed .gv-pcard__top { display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--gv-divider); min-height: 58px; background: #fff; }
-.gv-pcard__topprog { display: flex; flex-direction: column; gap: 7px; flex: 1 1 auto; min-width: 0; }
+  gap: var(--gv-space-3); padding: var(--gv-space-3) var(--gv-space-4); border-bottom: 1px solid var(--gv-divider); min-height: 58px; background: #fff; }
+.gv-pcard__topprog { display: flex; flex-direction: column; gap: var(--gv-space-2); flex: 1 1 auto; min-width: 0; }
 .gv-pcard__topprog .gv-pcard__meta { margin: 0; }
 .gv-pcard__top .gv-btn { flex: 0 0 auto; margin-left: auto; }
 .gv-pcard__top .gv-status-label { margin: 0; }
@@ -767,13 +767,13 @@
    tenants), NOT a per-tenant primary/secondary. Matches the canonical .gv-pcard__count. */
 .gv-pcard__topicon { margin-left: auto; color: var(--gv-folder-count); display: inline-flex; flex: 0 0 auto; }
 .gv-pcard__topicon svg, .gv-pcard__topicon .gv-icon { width: 22px; height: 22px; }
-.gv-pcard.boxed.horizontal .gv-pcard__top { margin: -32px -36px 22px; padding: 16px 36px; }
+.gv-pcard.boxed.horizontal .gv-pcard__top { margin: -32px -36px var(--gv-space-6); padding: var(--gv-space-4) 36px; }
 .gv-pcard.boxed.horizontal .gv-pcard__body { justify-content: flex-start; }
 
 /* Full-width horizontal feature card (image left, copy right) */
 .gv-pcard.boxed.horizontal { flex-direction: row; }
 .gv-pcard.boxed.horizontal .gv-pcard__thumb { flex: 0 0 46%; aspect-ratio: auto; min-height: 300px; }
-.gv-pcard.boxed.horizontal .gv-pcard__body { justify-content: center; padding: 32px 36px; }
+.gv-pcard.boxed.horizontal .gv-pcard__body { justify-content: center; padding: var(--gv-space-8) 36px; }
 .gv-pcard.boxed.horizontal .gv-pcard__title { font-size: var(--gv-fs-xl); }
 /* Featured "main" card — bigger and copy-led (live homepage featured card): a tall
    image on the RIGHT (body comes first in source), a large title, a solid CTA and
@@ -781,16 +781,16 @@
    larger than the regular grid cards. */
 .gv-pcard.boxed.horizontal.feature { flex-direction: row-reverse; }   /* image LEFT, copy RIGHT */
 .gv-pcard.boxed.horizontal.feature .gv-pcard__thumb { flex: 0 0 50%; min-height: 430px; }
-.gv-pcard.boxed.horizontal.feature .gv-pcard__body { padding: 40px 46px; gap: 0; }
-.gv-pcard.boxed.horizontal.feature .gv-pcard__title { font-size: 28px; line-height: 1.18; margin: 0 0 14px; }
-.gv-pcard.boxed.horizontal.feature .gv-pcard__desc { font-size: var(--gv-fs-l); margin: 0 0 22px; }
+.gv-pcard.boxed.horizontal.feature .gv-pcard__body { padding: var(--gv-space-10) 44px; gap: 0; }
+.gv-pcard.boxed.horizontal.feature .gv-pcard__title { font-size: var(--gv-fs-xxxl); line-height: 1.18; margin: 0 0 var(--gv-space-4); }
+.gv-pcard.boxed.horizontal.feature .gv-pcard__desc { font-size: var(--gv-fs-l); margin: 0 0 var(--gv-space-6); }
 @media (max-width: 640px) {
   .gv-pcard.boxed.horizontal { flex-direction: column; }
   .gv-pcard.boxed.horizontal .gv-pcard__thumb { flex: none; min-height: 0; aspect-ratio: 16 / 9; }
-  .gv-pcard.boxed.horizontal .gv-pcard__body { padding: 18px 22px 22px; }
+  .gv-pcard.boxed.horizontal .gv-pcard__body { padding: var(--gv-space-5) var(--gv-space-6) var(--gv-space-6); }
   .gv-pcard.boxed.horizontal.feature { flex-direction: column-reverse; }   /* image on top */
   .gv-pcard.boxed.horizontal.feature .gv-pcard__thumb { min-height: 0; }
-  .gv-pcard.boxed.horizontal.feature .gv-pcard__body { padding: 22px 22px 24px; }
+  .gv-pcard.boxed.horizontal.feature .gv-pcard__body { padding: var(--gv-space-6) var(--gv-space-6) var(--gv-space-6); }
 }
 
 /* ── Folder card ──────────────────────────────────────────────────────────────
@@ -804,7 +804,7 @@
    horizontal padding, so the title/description carry their own ~30px inset via
    .gv-pcard__fbody. SKIN (per-tenant): count colour (--gv-folder-count), font,
    palette, imagery. */
-.gv-pcard.boxed.folder { position: relative; padding: 18px 0 25px; margin-bottom: 25px;
+.gv-pcard.boxed.folder { position: relative; padding: var(--gv-space-5) 0 var(--gv-space-6); margin-bottom: var(--gv-space-6);
   min-height: 540px; font-size: var(--gv-fs-s); line-height: 19.999px;
   color: var(--gv-text-body); border: 0; }  /* borderless — soft --gv-shadow is the elevation */
 /* Hero image with a dark overlay so the count badge reads on any photo. */
@@ -817,27 +817,27 @@
    (tenant success-green --gv-folder-count, 14px/700) + " projects", pinned top-right
    over the hero image overlay. */
 .gv-pcard__count { position: absolute; top: 12px; right: 12px; z-index: 1;
-  display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-s);
+  display: inline-flex; align-items: center; gap: var(--gv-space-2); font-size: var(--gv-fs-s);
   font-weight: 700; color: var(--gv-folder-count); }
 .gv-pcard__count svg, .gv-pcard__count .gv-icon { width: 16px; height: 16px; color: var(--gv-folder-count); }
 /* Title + description sit below the image with the card's own horizontal inset. */
-.gv-pcard.boxed.folder .gv-pcard__fbody { padding: 18px 30px 0; }
+.gv-pcard.boxed.folder .gv-pcard__fbody { padding: var(--gv-space-5) var(--gv-space-8) 0; }
 .gv-pcard.boxed.folder .gv-pcard__title { margin: 0; font-size: var(--gv-fs-xl); }
 /* Folder description preview — live .e2e-folder-card-folder-description-preview:
    16px/300 cool-grey (#596B7A), margin-top 15px, clamped to ~3 lines. */
-.gv-pcard__fdesc { margin: 15px 0 0; font-size: var(--gv-fs-base); font-weight: 300;
+.gv-pcard__fdesc { margin: var(--gv-space-4) 0 0; font-size: var(--gv-fs-base); font-weight: 300;
   line-height: normal; color: var(--gv-text-secondary); display: -webkit-box;
   -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 /* Child-project avatar previews stacked below (live renders 36px thumbs). */
-.gv-pcard__fpile { display: flex; gap: 8px; padding: 16px 30px 0; }
+.gv-pcard__fpile { display: flex; gap: var(--gv-space-2); padding: var(--gv-space-4) var(--gv-space-8) 0; }
 /* Folder avatar pile — real avatars (r7-fo-home digest img.sc-idHGMI) are CIRCULAR
    (50%) with a 2px white ring, not 3px squares. */
 .gv-pcard__fpile img, .gv-pcard__fpile .gv-pcard__fthumb { width: 36px; height: 36px;
-  border-radius: 50%; border: 2px solid var(--gv-white); background: var(--gv-grey-300); object-fit: cover; }
+  border-radius: var(--gv-radius-full); border: 2px solid var(--gv-white); background: var(--gv-grey-300); object-fit: cover; }
 /* "+N" overflow bubble (real: fo-home-raleigh div.sc-beqWaB.uItlk — cool-grey-600,
    circular, 2px white ring, 14px dark text). Size kept at the pile's 36px for a uniform row. */
 .gv-pcard__fmore { display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; flex: none; border-radius: 50%; border: 2px solid var(--gv-white);
+  width: 36px; height: 36px; flex: none; border-radius: var(--gv-radius-full); border: 2px solid var(--gv-white);
   background: var(--gv-cool-grey-600); color: var(--gv-text-primary);
   font-size: var(--gv-fs-s); font-weight: 400; }
 
@@ -845,7 +845,7 @@
 .gv-status-label.finished { background: var(--gv-grey-200); color: var(--gv-grey-800); }
 
 /* Show-more row */
-.gv-showmore { display: flex; justify-content: center; margin-top: 32px; }
+.gv-showmore { display: flex; justify-content: center; margin-top: var(--gv-space-8); }
 
 /* ── Light project card (borderless) — the Stadt Wien homepage pattern ────────
    (mitgestalten.wien.gv.at): the WHOLE card is a link — a rounded thumb on top,
@@ -856,17 +856,17 @@
 .gv-pcard.light { background: none; border: 0; box-shadow: none; overflow: visible; }
 .gv-pcard.light:hover { transform: none; box-shadow: none; }
 .gv-pcard.light .gv-pcard__thumb { aspect-ratio: 16 / 10; border-radius: var(--gv-radius); }  /* live thumb = 3px */
-.gv-pcard.light .gv-pcard__body { padding: 14px 0 0; }                 /* text sits flush under the thumb */
-.gv-pcard.light .gv-pcard__title { margin: 0 0 10px; font-size: var(--gv-fs-l); }  /* live title = 18px/700 */
-.gv-pcard.light .gv-pcard__desc { color: var(--gv-text-primary); margin-top: 4px; }  /* live Wien card body = #333 (primary), not the lighter slate */
+.gv-pcard.light .gv-pcard__body { padding: var(--gv-space-4) 0 0; }                 /* text sits flush under the thumb */
+.gv-pcard.light .gv-pcard__title { margin: 0 0 var(--gv-space-3); font-size: var(--gv-fs-l); }  /* live title = 18px/700 */
+.gv-pcard.light .gv-pcard__desc { color: var(--gv-text-primary); margin-top: var(--gv-space-1); }  /* live Wien card body = #333 (primary), not the lighter slate */
 /* status line: icon + "Kein Enddatum" / "noch N Wochen" (#333) or "vor N Wochen" (green) */
-.gv-pcard__status { display: inline-flex; align-items: center; gap: 8px; font-size: var(--gv-fs-base);
+.gv-pcard__status { display: inline-flex; align-items: center; gap: var(--gv-space-2); font-size: var(--gv-fs-base);
   line-height: 1.5; color: var(--gv-grey-800); }
 .gv-pcard__status svg, .gv-pcard__status .gv-icon { flex: 0 0 auto; width: 16px; height: 16px; color: var(--gv-tenant-primary); }
 .gv-pcard__status.done { color: var(--gv-success); }
 .gv-pcard__status.done svg, .gv-pcard__status.done .gv-icon { color: var(--gv-success); }
 /* quiet "Mehr erfahren / Learn more" link beneath a light card */
-.gv-pcard__more { position: relative; z-index: 1; align-self: flex-start; margin-top: 10px;
+.gv-pcard__more { position: relative; z-index: 1; align-self: flex-start; margin-top: var(--gv-space-3);
   font-size: var(--gv-fs-base); color: var(--gv-text-secondary); text-decoration: none; }
 .gv-pcard__more:hover { color: var(--gv-tenant-primary); }
 
@@ -876,36 +876,36 @@
 /* compact poster thumbs are squarer/taller than the ongoing-project 16:10 — the live
    Wien "Abgeschlossene Projekte" image tiles measure 240×180 (4:3). */
 .gv-pcard.light.compact .gv-pcard__thumb { aspect-ratio: 4 / 3; }
-.gv-pcard.light.compact .gv-pcard__title { font-size: var(--gv-fs-base); margin: 0 0 6px; line-height: 1.3; }  /* ~14px vs 18px */
-.gv-pcard.light.compact .gv-pcard__body { padding-top: 12px; }
+.gv-pcard.light.compact .gv-pcard__title { font-size: var(--gv-fs-base); margin: 0 0 var(--gv-space-2); line-height: 1.3; }  /* ~14px vs 18px */
+.gv-pcard.light.compact .gv-pcard__body { padding-top: var(--gv-space-3); }
 /* status + "Learn more" stay 16px on compact cards too — the live Wien
    "Abgeschlossene Projekte" status/link both measure 16px (#333 / #596B7A). */
 .gv-pcard.light.compact .gv-pcard__status { font-size: var(--gv-fs-base); }
-.gv-pcard.light.compact .gv-pcard__more { font-size: var(--gv-fs-base); margin-top: 8px; }
-.gv-pcard.light.compact .gv-thumb-cap { font-size: 15px; }
-.gv-pcard.light.compact .gv-thumb-cap--sm { font-size: 16px; }
-.gv-pcard.light.compact .gv-thumb-cap--xs { font-size: 13px; padding: 10px; }
+.gv-pcard.light.compact .gv-pcard__more { font-size: var(--gv-fs-base); margin-top: var(--gv-space-2); }
+.gv-pcard.light.compact .gv-thumb-cap { font-size: var(--gv-fs-base); }
+.gv-pcard.light.compact .gv-thumb-cap--sm { font-size: var(--gv-fs-base); }
+.gv-pcard.light.compact .gv-thumb-cap--xs { font-size: var(--gv-fs-s); padding: var(--gv-space-3); }
 
 /* Grid density: a tighter column track for compact rows (completed-projects row
    shows ~5 across at desktop instead of 3). Layout density, reusable. */
-.gv-pgrid.dense { grid-template-columns: repeat(5, 1fr); gap: 20px; }
+.gv-pgrid.dense { grid-template-columns: repeat(5, 1fr); gap: var(--gv-space-5); }
 @media (max-width: 1100px) { .gv-pgrid.dense { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 860px)  { .gv-pgrid.dense { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 600px)  { .gv-pgrid.dense { grid-template-columns: repeat(2, 1fr); } }
 
 /* ── Events widget (with empty state) ──────────────────────────────────────── */
-.gv-events__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
-.gv-events__empty { display: grid; place-items: center; gap: 6px; text-align: center;
-  padding: 52px 24px; border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
+.gv-events__head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--gv-space-3); flex-wrap: wrap; margin-bottom: var(--gv-space-5); }
+.gv-events__empty { display: grid; place-items: center; gap: var(--gv-space-2); text-align: center;
+  padding: 52px var(--gv-space-6); border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
   background: var(--gv-grey-50); color: var(--gv-text-secondary); }
-.gv-events__empty svg, .gv-events__empty .gv-icon { width: 30px; height: 30px; color: var(--gv-grey-500); margin-bottom: 4px; }
+.gv-events__empty svg, .gv-events__empty .gv-icon { width: 30px; height: 30px; color: var(--gv-grey-500); margin-bottom: var(--gv-space-1); }
 
 /* Events grid + event card — source-grounded on the live homepage events widget
    (community.govocal.com): bordered white card, header image with a two-tone date
    chip pinned top-right, then clock / link / registrants rows + a Register button.
    Reuses the boxed-card border/shadow/radius tokens; date chip year band + Register
    are tenant-themed (re-skin per ?theme=). */
-.gv-events__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+.gv-events__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--gv-space-6); }
 /* Event-card frame — RE-GROUNDED on the stated review target wietsedemo.govocal.com/en/events
    (capture fo-event-card-frame, 2026-06). Probing the real card wrappers
    (.e2e-event-card and its inner sc-beqWaB / sc-fRcFJl frames) returns
@@ -931,27 +931,27 @@
    the two-tone grey-top / tenant-primary-bottom split radii below are correct. */
 .gv-event-card__date { position: absolute; top: 14px; right: 14px; width: 75px; border-radius: var(--gv-radius);
   overflow: hidden; text-align: center; box-shadow: none; line-height: 1.05; }
-.gv-event-card__date .m { display: block; padding-top: 6px; background: var(--gv-event-chip-grey); color: var(--gv-grey-800);
+.gv-event-card__date .m { display: block; padding-top: var(--gv-space-2); background: var(--gv-event-chip-grey); color: var(--gv-grey-800);
   font-size: var(--gv-fs-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
 /* Day glyph matches the uniform live chip (fo-events digest: month/day/year all
    14px, day NOT enlarged/bolded) — month=500, day=400, year=500. */
-.gv-event-card__date .d { display: block; padding-bottom: 5px; background: var(--gv-event-chip-grey); color: var(--gv-grey-800);
+.gv-event-card__date .d { display: block; padding-bottom: var(--gv-space-1); background: var(--gv-event-chip-grey); color: var(--gv-grey-800);
   font-size: var(--gv-fs-s); font-weight: 400; }
-.gv-event-card__date .y { display: block; padding: 3px 0; background: var(--gv-tenant-primary); color: #fff;
+.gv-event-card__date .y { display: block; padding: var(--gv-space-1) 0; background: var(--gv-tenant-primary); color: #fff;
   font-size: var(--gv-fs-xs); font-weight: 500; }
 /* attendance / RSVP pill, top-left */
-.gv-event-card__rsvp { position: absolute; top: 14px; left: 14px; padding: 4px 10px; border-radius: 999px;
+.gv-event-card__rsvp { position: absolute; top: 14px; left: 14px; padding: var(--gv-space-1) var(--gv-space-3); border-radius: var(--gv-radius-full);
   background: var(--gv-success); color: #fff; font-size: var(--gv-fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
-.gv-event-card__body { display: flex; flex-direction: column; flex: 1 1 auto; gap: 12px; padding: 16px 18px 18px; }
+.gv-event-card__body { display: flex; flex-direction: column; flex: 1 1 auto; gap: var(--gv-space-3); padding: var(--gv-space-4) var(--gv-space-5) var(--gv-space-5); }
 .gv-event-card__title { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.3; color: var(--gv-text-primary); }
 /* the date/time · location · registrants rows are grouped on a grey-100 panel (live) */
-.gv-event-card__meta { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto;
-  background: var(--gv-event-meta-tint); border-radius: var(--gv-radius); padding: 12px 14px; }
+.gv-event-card__meta { display: flex; flex-direction: column; gap: var(--gv-space-2); flex: 1 1 auto;
+  background: var(--gv-event-meta-tint); border-radius: var(--gv-radius); padding: var(--gv-space-3) var(--gv-space-4); }
 .gv-event-card__title a { color: inherit; text-decoration: none; }
 .gv-event-card__title a:hover { color: var(--gv-tenant-primary); }
 .gv-event-card__title a::after { content: ""; position: absolute; inset: 0; }
 .gv-event-card__title a:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
-.gv-event-card__row { display: flex; align-items: center; gap: 9px; margin: 0; font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-cool-grey-700); }  /* live meta text = #43515D, lh 21px (1.5×14) */
+.gv-event-card__row { display: flex; align-items: center; gap: var(--gv-space-2); margin: 0; font-size: var(--gv-fs-s); line-height: 1.5; color: var(--gv-cool-grey-700); }  /* live meta text = #43515D, lh 21px (1.5×14) */
 .gv-event-card__row svg, .gv-event-card__row .gv-icon { flex: 0 0 auto; width: 16px; height: 16px; color: var(--gv-cool-grey-700); }
 .gv-event-card__row a { position: relative; z-index: 1; color: var(--gv-tenant-primary); text-decoration: underline; }
 .gv-event-card__body .gv-btn { position: relative; z-index: 1; margin-top: auto; }
@@ -964,12 +964,12 @@
    (.gv-event-card__titlerow) in the card body, NOT over the media. Two-tone
    values reuse the grounded overlay chip (grey-100 month/day cells, tenant-primary
    year band); the box just gains a border + drops the absolute positioning. */
-.gv-event-card__titlerow { display: flex; align-items: flex-start; gap: 12px; }
+.gv-event-card__titlerow { display: flex; align-items: flex-start; gap: var(--gv-space-3); }
 .gv-event-card__titlerow .gv-event-card__title { flex: 1 1 auto; }
 .gv-event-card__date.is-beside { position: static; top: auto; right: auto;
   flex: 0 0 auto; width: 52px; border: 1px solid var(--gv-grey-400); box-shadow: none; }
-.gv-event-card__date.is-beside .m { padding-top: 5px; }
-.gv-event-card__date.is-beside .d { padding-bottom: 4px; font-size: 20px; }
+.gv-event-card__date.is-beside .m { padding-top: var(--gv-space-1); }
+.gv-event-card__date.is-beside .d { padding-bottom: var(--gv-space-1); font-size: var(--gv-fs-xl); }
 
 /* ── Events PAGE (/events) — title block, section headers, filter bar ───────── */
 /* Source-grounded on wietsedemo.govocal.com/en/events (Cultuurconnect tenant).
@@ -979,20 +979,20 @@
 
 /* Huge per-tenant page title — live H1 "Events": 80px / 700 / tenant-primary,
    line-height 104px, 53.6px top / 16px bottom margin (digest #19). */
-.gv-events-page__title { margin: 53.6px 0 16px; font-size: var(--gv-fs-display); font-weight: 700;
+.gv-events-page__title { margin: 52px 0 var(--gv-space-4); font-size: var(--gv-fs-display); font-weight: 700;
   line-height: 104px; color: var(--gv-tenant-primary); }
 
 /* Section headers — live "Upcoming and ongoing events" / "Past events":
    h2 25px / 700 / neutral dark #474747 (digest #17, count 2). Matches --gv-fs-xxl. */
 .gv-events-page__section { font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px;
-  color: var(--gv-text-primary); margin: 5.75px 0; }
+  color: var(--gv-text-primary); margin: var(--gv-space-1) 0; }
 
 /* The upcoming-section head holds the title left, the filter bar right. */
 .gv-events-page__sectionhead { display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  gap: var(--gv-space-4); flex-wrap: wrap; margin-bottom: var(--gv-space-4); }
 
 /* Filter bar — row of FO filter-pill dropdowns (Date, Projects). */
-.gv-eventfilters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.gv-eventfilters { display: flex; align-items: center; gap: var(--gv-space-3); flex-wrap: wrap; }
 /* Per-pill wrapper — establishes the positioning context the dropdown listbox anchors to. */
 .gv-filter { position: relative; }
 
@@ -1000,8 +1000,8 @@
    button: tenant-primary fill, white text + down-chevron, 24px pill radius,
    9px 18px padding, 14px text (digest #16). Used for the events Date/Projects
    selectors and other resident-facing pill filters. */
-.gv-filter-pill { display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
-  padding: 9px 18px; border: 1px solid transparent; border-radius: 24px;
+.gv-filter-pill { display: inline-flex; align-items: center; gap: var(--gv-space-2); cursor: pointer;
+  padding: var(--gv-space-2) var(--gv-space-5); border: 1px solid transparent; border-radius: var(--gv-radius-3);
   background: var(--gv-tenant-primary); color: #fff;
   font-family: var(--gv-font-family); font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px;
   text-align: left; white-space: nowrap; }
@@ -1021,13 +1021,13 @@
    Date filter right), .gv-filter-pill, .gv-events__grid + .gv-event-card. Net-new here
    is ONLY the section scaffold/divider/plain empty-state that frame those in the
    project context — distinct from the dashed-box .gv-events__empty. */
-.gv-project-events { display: flex; flex-direction: column; gap: 48px; max-width: 1166px; }
+.gv-project-events { display: flex; flex-direction: column; gap: var(--gv-space-12); max-width: 1166px; }
 /* a thin rule directly under each section head (live divider = grey-300) */
 .gv-project-events__sec { display: flex; flex-direction: column; }
-.gv-project-events__rule { border: none; border-top: 1px solid var(--gv-divider); margin: 6px 0 22px; }
+.gv-project-events__rule { border: none; border-top: 1px solid var(--gv-divider); margin: var(--gv-space-2) 0 var(--gv-space-6); }
 /* plain left-aligned empty line (NOT the .gv-events__empty dashed box): live text
    #596B7A / 16px / line-height 26px (probed .sc-crPCXo), indented from the rule. */
-.gv-project-events__empty { margin: 0; padding: 14px 0 14px 48px; color: var(--gv-text-secondary);
+.gv-project-events__empty { margin: 0; padding: var(--gv-space-4) 0 var(--gv-space-4) var(--gv-space-12); color: var(--gv-text-secondary);
   font-size: var(--gv-fs-base); line-height: 26px; }
 
 /* ── Event card — GROUNDED layout (wietsedemo /events + project events) ───────
@@ -1048,7 +1048,7 @@
 /* Grounded meta panel (div.kjzjNu): flush-square tinted band, generous top pad,
    light bottom pad, 16px vertical margin separating it from title-row + CTA. */
 .gv-event-card.has-panel .gv-event-card__meta { background: var(--gv-event-meta-tint);
-  border-radius: 0; padding: 12px 16px 4px; margin: 16px 0; gap: 6px; }
+  border-radius: 0; padding: var(--gv-space-3) var(--gv-space-4) var(--gv-space-1); margin: var(--gv-space-4) 0; gap: var(--gv-space-2); }
 /* On the panel layout the card body gaps collapse to 0 (the panel owns its margin). */
 .gv-event-card.has-panel .gv-event-card__body { gap: 0; }
 
@@ -1061,7 +1061,7 @@
    These are ADDITIVE variant classes — they do NOT mutate the base card or the
    base two-tone .gv-event-card__date chip used+verified on the homepage. */
 .gv-event-card.bordered { background: #fff; border: 1px solid var(--gv-event-card-border);
-  border-radius: 6px; overflow: hidden; }
+  border-radius: var(--gv-radius-2); overflow: hidden; }
 
 /* 3-tier STACKED date chip (digest #17 grey top tier + #20 primary year band):
    grey #F5F6F7 top cell holds DAY (14px/400) + MONTH (14px/500 uppercase), both in
@@ -1070,36 +1070,36 @@
    the base .m/.d/.y two-tone overlay chip is untouched. */
 .gv-event-datechip--stacked { width: 75px; text-align: center; line-height: 1.05;
   border-radius: var(--gv-radius); overflow: hidden; box-shadow: none; }
-.gv-event-datechip--stacked .gv-event-datechip__top { padding: 6px 0;
-  background: var(--gv-event-chip-grey); border-radius: 3px 3px 0 0; }
+.gv-event-datechip--stacked .gv-event-datechip__top { padding: var(--gv-space-2) 0;
+  background: var(--gv-event-chip-grey); border-radius: var(--gv-radius-1) var(--gv-radius-1) 0 0; }
 .gv-event-datechip--stacked .gv-event-datechip__day { display: block;
   color: var(--gv-tenant-primary); font-size: var(--gv-fs-s); font-weight: 400; }
 .gv-event-datechip--stacked .gv-event-datechip__month { display: block;
   color: var(--gv-tenant-primary); font-size: var(--gv-fs-s); font-weight: 500; text-transform: uppercase; }
-.gv-event-datechip--stacked .gv-event-datechip__year { display: block; padding: 6px 0;
+.gv-event-datechip--stacked .gv-event-datechip__year { display: block; padding: var(--gv-space-2) 0;
   background: var(--gv-tenant-primary); color: #fff;
-  font-size: var(--gv-fs-s); font-weight: 400; border-radius: 0 0 3px 3px; }
+  font-size: var(--gv-fs-s); font-weight: 400; border-radius: 0 0 var(--gv-radius-1) var(--gv-radius-1); }
 
 /* #F4F6F8 "Date & time" a11y INFO PANEL (digest #22 div.kjzjNu): the date/time ·
    location · attendance rows grouped on a tinted #F4F6F8 band, pad 12px 16px 4px.
    Mirrors the grounded .has-panel meta panel but exposed as its own named class so
    the bordered EventsWidget can mount it standalone. */
 .gv-event-info-panel { background: var(--gv-event-meta-tint); border-radius: 0;
-  padding: 12px 16px 4px; display: flex; flex-direction: column; gap: 6px; }
+  padding: var(--gv-space-3) var(--gv-space-4) var(--gv-space-1); display: flex; flex-direction: column; gap: var(--gv-space-2); }
 
 /* Imageless degrade (Falkirk fo-falkirk-events-widget) — when an event has no
    media, the bordered card simply omits the __media block; the title row leads.
    (Disabled/closed Register reuses the canonical .gv-btn[aria-disabled] state.) */
-.gv-event-card.bordered .gv-event-card__body { padding: 16px; }
-.gv-event-card.bordered.is-imageless .gv-event-card__body { padding-top: 16px; }
+.gv-event-card.bordered .gv-event-card__body { padding: var(--gv-space-4); }
+.gv-event-card.bordered.is-imageless .gv-event-card__body { padding-top: var(--gv-space-4); }
 
 /* CTA band (proposals / generic call to action) ────────────────────────────── */
 /* Live proposals CTA sits on the plain page background (no tinted band on the
    captured tenant) — the primary button carries the colour. */
 .gv-ctaband { background: transparent; }
-.gv-ctaband__inner { max-width: var(--gv-text-width, 720px); margin: 0 auto; padding: 54px 24px; text-align: center; }
-.gv-ctaband__title { margin: 0 0 12px; font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-text-heading); }
-.gv-ctaband__lead { margin: 0 0 26px; font-size: var(--gv-fs-m); line-height: 1.6; color: var(--gv-grey-800); }
+.gv-ctaband__inner { max-width: var(--gv-text-width, 720px); margin: 0 auto; padding: 56px var(--gv-space-6); text-align: center; }
+.gv-ctaband__title { margin: 0 0 var(--gv-space-3); font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-text-heading); }
+.gv-ctaband__lead { margin: 0 0 var(--gv-space-6); font-size: var(--gv-fs-m); line-height: 1.6; color: var(--gv-grey-800); }
 
 /* Embedded-survey band ("Help us serve you better") ─────────────────────────
    The homepage in-page banner that promotes the ongoing community-monitor
@@ -1115,22 +1115,22 @@
 .gv-monitorband__inner {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 32px;
-  border-radius: 16px;
+  gap: var(--gv-space-4);
+  padding: var(--gv-space-8);
+  border-radius: var(--gv-radius-3);
   background: var(--gv-tenant-primary-lighten90);   /* live = rgba(primary, .1) */
   font-size: var(--gv-fs-s); line-height: 1.43; color: var(--gv-text-body);   /* live .fGrxMq baseline = 14px/19.999px/rgba(0,0,0,.87); title/lead override their own type */
 }
 .gv-monitorband__text { flex: 1 1 auto; min-width: 0; }
-.gv-monitorband__title { margin: 0 0 16px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; color: var(--gv-grey-800); }  /* live 25px/700/32.5px/#333 */
+.gv-monitorband__title { margin: 0 0 var(--gv-space-4); font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 1.3; color: var(--gv-grey-800); }  /* live 25px/700/32.5px/#333 */
 .gv-monitorband__lead { margin: 0; font-size: var(--gv-fs-m); font-weight: 400; line-height: 1.5; color: var(--gv-grey-800); }            /* live 16px/400/24px/#333 */
 .gv-monitorband__media { flex: 0 0 auto; }
 .gv-monitorband__media img { display: block; width: 240px; height: auto; }       /* live img width:240px */
 /* CTA zone is a 2-row column: primary button + a duration sub-label (clock +
    "Takes N minutes") in tenant-primary — a recurring GoVocal survey-affordance.
    Desktop: right-aligned under the button (live band). */
-.gv-monitorband__cta { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-.gv-monitorband__ctameta { margin: 0; display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-s); font-weight: 600; line-height: 1.43; color: var(--gv-tenant-primary); }  /* live "Takes 2 minutes" — 14px, tenant-primary #112D7E */
+.gv-monitorband__cta { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: var(--gv-space-2); }
+.gv-monitorband__ctameta { margin: 0; display: inline-flex; align-items: center; gap: var(--gv-space-2); font-size: var(--gv-fs-s); font-weight: 600; line-height: 1.43; color: var(--gv-tenant-primary); }  /* live "Takes 2 minutes" — 14px, tenant-primary #112D7E */
 .gv-monitorband__ctameta svg { flex: 0 0 auto; }
 /* Optional DURATION variant of the meta line — Linz "Dauer 2 Minuten"
    (partizipation.linz.at, capture fo-linz-monitorband, tenant-primary #604596):
@@ -1139,7 +1139,7 @@
    the base .gv-monitorband__ctameta (weight 600 "Takes N minutes") is untouched. */
 .gv-monitorband__ctameta--duration { font-weight: 400; line-height: 1; }
 @media (max-width: 980px) {
-  .gv-monitorband { margin: 0 24px; }
+  .gv-monitorband { margin: 0 var(--gv-space-6); }
   .gv-monitorband__inner { flex-wrap: wrap; }
   /* Stacked mobile band: button stretches edge-to-edge inside the card padding,
      media + sub-label centre (live 390px band). */
@@ -1150,8 +1150,8 @@
 }
 
 /* ── Rich-text / prose block ───────────────────────────────────────────────── */
-.gv-prose { max-width: var(--gv-text-width, 720px); margin: 0 auto; padding: 8px 24px; }
-.gv-prose p { margin: 0 0 16px; font-size: var(--gv-fs-m); line-height: 1.5; color: var(--gv-grey-800); }  /* live rich-text = 16px/400/24px */
+.gv-prose { max-width: var(--gv-text-width, 720px); margin: 0 auto; padding: var(--gv-space-2) var(--gv-space-6); }
+.gv-prose p { margin: 0 0 var(--gv-space-4); font-size: var(--gv-fs-m); line-height: 1.5; color: var(--gv-grey-800); }  /* live rich-text = 16px/400/24px */
 .gv-prose em { color: var(--gv-text-primary); font-style: italic; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1165,17 +1165,17 @@
    pure assembly. Reusable on any project surface. ──────────────────────────── */
 
 /* header action icons read larger on the real product */
-.gv-header__actions .gv-iconbtn { font-size: 24px; color: var(--gv-grey-800); }
+.gv-header__actions .gv-iconbtn { font-size: var(--gv-fs-xxl); color: var(--gv-grey-800); }
 
 /* Project action bar (Back · Edit · Follow) */
-.gv-projbar__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.gv-back { display: inline-flex; align-items: center; gap: 10px; background: none; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); padding: 4px; border-radius: var(--gv-radius); }
-.gv-back__ic { width: 28px; height: 28px; border-radius: 50%; background: var(--gv-cool-grey-600); color: #fff; display: grid; place-items: center; flex: none; }
+.gv-projbar__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: var(--gv-space-4) var(--gv-space-6); display: flex; align-items: center; gap: var(--gv-space-3); flex-wrap: wrap; }
+.gv-back { display: inline-flex; align-items: center; gap: var(--gv-space-3); background: none; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); padding: var(--gv-space-1); border-radius: var(--gv-radius); }
+.gv-back__ic { width: 28px; height: 28px; border-radius: var(--gv-radius-full); background: var(--gv-cool-grey-600); color: #fff; display: grid; place-items: center; flex: none; }
 .gv-back__ic .gv-icon { width: 15px; height: 15px; }
 .gv-back:hover .gv-back__ic { filter: brightness(0.92); }
 .gv-back:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
 .gv-projbar__spacer { flex: 1 1 auto; }
-.gv-projbar .gv-btn { gap: 8px; }
+.gv-projbar .gv-btn { gap: var(--gv-space-2); }
 .gv-edit { background: #fff; color: var(--gv-text-primary); border: 1px solid var(--gv-grey-300); box-shadow: none; }
 .gv-edit:hover { background: var(--gv-grey-100); }
 
@@ -1183,38 +1183,38 @@
 .gv-banner { background: var(--gv-grey-100); }
 .gv-banner__art { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; position: relative; aspect-ratio: 1150 / 300; min-height: 200px; overflow: hidden; background: radial-gradient(130% 150% at 75% 8%, #5fc6d1 0%, var(--gv-teal-300) 48%, var(--gv-teal-400) 100%); }
 .gv-banner__art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.gv-banner__sticker { position: absolute; left: 7%; bottom: 16%; transform: rotate(-7deg); background: #ffe14d; color: #1a1a1a; font-weight: 800; letter-spacing: 0.04em; font-size: clamp(13px, 2vw, 20px); padding: 7px 13px; border-radius: 4px; box-shadow: 0 6px 14px rgba(0,0,0,0.18); }
+.gv-banner__sticker { position: absolute; left: 7%; bottom: 16%; transform: rotate(-7deg); background: #ffe14d; color: #1a1a1a; font-weight: 800; letter-spacing: 0.04em; font-size: clamp(14px, 2vw, 20px); padding: var(--gv-space-2) var(--gv-space-3); border-radius: var(--gv-radius-1); box-shadow: 0 6px 14px rgba(0,0,0,0.18); }
 
 /* Project head (title + description + participants, no boxes) */
-.gv-projhead { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px 40px; padding: 30px 0 6px; align-items: start; }
-.gv-projhead__title { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 4px; }
-.gv-projhead__title h1 { margin: 0; font-size: clamp(26px, 3.4vw, 34px); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
-.gv-chip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--gv-grey-100); color: var(--gv-text-secondary); font-size: var(--gv-fs-xs); font-weight: 600; }
+.gv-projhead { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: var(--gv-space-3) var(--gv-space-10); padding: var(--gv-space-8) 0 var(--gv-space-2); align-items: start; }
+.gv-projhead__title { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: var(--gv-space-3); margin: 0 0 var(--gv-space-1); }
+.gv-projhead__title h1 { margin: 0; font-size: clamp(24px, 3.4vw, 36px); font-weight: 700; line-height: 1.2; letter-spacing: -0.01em; }
+.gv-chip { display: inline-flex; align-items: center; gap: var(--gv-space-1); height: 26px; padding: 0 var(--gv-space-3); border-radius: var(--gv-radius-full); background: var(--gv-grey-100); color: var(--gv-text-secondary); font-size: var(--gv-fs-xs); font-weight: 600; }
 .gv-projdesc { color: var(--gv-text-primary); max-width: 760px; }
-.gv-projdesc p { margin: 0 0 14px; font-size: var(--gv-fs-l); line-height: 1.6; }
+.gv-projdesc p { margin: 0 0 var(--gv-space-4); font-size: var(--gv-fs-l); line-height: 1.6; }
 .gv-projdesc strong { font-weight: 700; }
 /* an accordion sitting inside a project description matches the 18px body copy
    around it (question + answer), not the denser 16px in-phase accordion. */
 .gv-projdesc .gv-acc__head { font-size: var(--gv-fs-l); }
 .gv-projdesc .gv-acc__body p { font-size: var(--gv-fs-l); }
-.gv-participants { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; padding-top: 4px; }
+.gv-participants { display: inline-flex; align-items: center; gap: var(--gv-space-3); white-space: nowrap; padding-top: var(--gv-space-1); }
 .gv-participants .gv-avatars { margin: 0; }   /* .gv-avatars.on-light variant → moved with the atom to govocal-primitives.css */
 .gv-pcount { font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-text-secondary); }
-.gv-pinfo { font-size: 16px; line-height: 1; color: var(--gv-cool-grey-500); cursor: help; display: inline-flex; align-items: center; }
+.gv-pinfo { font-size: var(--gv-fs-base); line-height: 1; color: var(--gv-cool-grey-500); cursor: help; display: inline-flex; align-items: center; }
 @media (max-width: 760px) { .gv-projhead { grid-template-columns: 1fr; } .gv-participants { padding-top: 0; } }
 
 /* Accordion (CSS-only <details>, collapsed by default, chevron rotates) */
-.gv-accordion { border-top: 1px solid var(--gv-divider); margin-top: 26px; }
+.gv-accordion { border-top: 1px solid var(--gv-divider); margin-top: var(--gv-space-6); }
 .gv-acc__item { border-bottom: 1px solid var(--gv-divider); }
-.gv-acc__head { display: flex; align-items: center; gap: 12px; cursor: pointer; list-style: none; padding: 18px 0; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); }
+.gv-acc__head { display: flex; align-items: center; gap: var(--gv-space-3); cursor: pointer; list-style: none; padding: var(--gv-space-5) 0; font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-primary); }
 .gv-acc__head::-webkit-details-marker { display: none; }
 .gv-acc__head:hover { color: var(--gv-tenant-primary); }
 .gv-acc__item > summary:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; border-radius: var(--gv-radius); }
 .gv-acc__head .gv-acc__q { flex: 1 1 auto; }
 .gv-acc__chev { flex: none; color: var(--gv-text-secondary); transition: transform 180ms ease; }
 .gv-acc__item[open] .gv-acc__chev { transform: rotate(90deg); }
-.gv-acc__body { padding: 0 0 20px; max-width: var(--gv-text-width); }
-.gv-acc__body p { margin: 0 0 10px; font-size: var(--gv-fs-base); line-height: 1.6; color: var(--gv-text-primary); }
+.gv-acc__body { padding: 0 0 var(--gv-space-5); max-width: var(--gv-text-width); }
+.gv-acc__body p { margin: 0 0 var(--gv-space-3); font-size: var(--gv-fs-base); line-height: 1.6; color: var(--gv-text-primary); }
 .gv-acc__body p:last-child { margin-bottom: 0; }
 /* An accordion mounted inside a Content-Builder rich-text column (.gv-prose, the
    homepage "about + FAQ" two-column section) steps its question heads up to the
@@ -1224,21 +1224,21 @@
 .gv-prose .gv-acc__body p { font-size: var(--gv-fs-m); }
 
 /* Phase method band + phase body + read-more (rendered inside the phase panel) */
-.gv-methodband { background: var(--gv-background); margin-top: 0; padding: 60px 0 80px; }  /* live phase content sits on the page grey (#EDEFF0); measured 60/80 vertical rhythm */
+.gv-methodband { background: var(--gv-background); margin-top: 0; padding: var(--gv-space-16) 0 80px; }  /* live phase content sits on the page grey (#EDEFF0); measured 60/80 vertical rhythm */
 .gv-methodband .gv-phases { margin: 0; }
 .gv-phasepanel__head.muted .gv-phasepanel__num { background: var(--gv-cool-grey-500); }
 .gv-phasepanel__head.muted .gv-phasepanel__name { color: var(--gv-text-primary); }
-.gv-phasebody { margin-top: 16px; font-size: var(--gv-fs-base); line-height: 1.65; color: var(--gv-text-primary); max-width: var(--gv-text-width); }
-.gv-phasebody p { margin: 0 0 12px; }
+.gv-phasebody { margin-top: var(--gv-space-4); font-size: var(--gv-fs-base); line-height: 1.65; color: var(--gv-text-primary); max-width: var(--gv-text-width); }
+.gv-phasebody p { margin: 0 0 var(--gv-space-3); }
 .gv-phasebody a { color: var(--gv-tenant-primary); text-decoration: underline; }
-.gv-phasebody ul { margin: 0 0 12px; padding-left: 22px; }
-.gv-phasebody li { margin: 0 0 6px; }
+.gv-phasebody ul { margin: 0 0 var(--gv-space-3); padding-left: var(--gv-space-6); }
+.gv-phasebody li { margin: 0 0 var(--gv-space-2); }
 .gv-phasebody.clamped { max-height: 150px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 58%, transparent); mask-image: linear-gradient(#000 58%, transparent); }
 /* The 720px text clamp is right for narrow method bodies (share-information),
    but wide method bodies (ideation feed/list, proposals, volunteering) run the
    full method-band width. Modifier opts out of the clamp without removing it. */
 .gv-phasebody--full { max-width: none; }
-.gv-readmore { display: inline-flex; align-items: center; gap: 5px; margin-top: 2px; background: none; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-tenant-primary); padding: 6px 0; }
+.gv-readmore { display: inline-flex; align-items: center; gap: var(--gv-space-1); margin-top: var(--gv-space-1); background: none; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-tenant-primary); padding: var(--gv-space-2) 0; }
 .gv-readmore:hover { text-decoration: underline; }
 .gv-readmore:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .gv-acc__chev { transition: none; } }
@@ -1256,7 +1256,7 @@
    3px radius, --gv-shadow, 17px padding, flex row, body 14px/lh19.999/rgba(0,0,0,.87).
    Thumbnail 162×162 (.e2e-idea-card .sc-cYRYSS). The variants each defined it
    slightly differently; this is the unified component. ───────────────────────── */
-.gv-idealist { display: flex; flex-direction: column; gap: 16px; }
+.gv-idealist { display: flex; flex-direction: column; gap: var(--gv-space-4); }
 /* Feed column width — grounded fix for ideacard-thumb-scale. The real ideation/
    proposal cards sit in a constrained list column, NOT the full content frame:
    measured .e2e-idea-card width = 785px across fo-project-ideation-list / -feed /
@@ -1274,9 +1274,9 @@
    Same class of bug to check on any flex/grid gv-* container toggled via [hidden]. */
 .gv-idealist[hidden] { display: none; }
 .gv-ideacard {
-  display: flex; align-items: stretch; gap: 18px;
+  display: flex; align-items: stretch; gap: var(--gv-space-5);
   background: #fff; border-radius: var(--gv-radius);
-  box-shadow: var(--gv-shadow); padding: 17px;
+  box-shadow: var(--gv-shadow); padding: var(--gv-space-4);
   color: rgba(0, 0, 0, 0.87); font-size: var(--gv-fs-s); line-height: 1.4285;
 }
 .gv-ideacard__thumb {
@@ -1288,32 +1288,32 @@
 .gv-ideacard__thumb svg, .gv-ideacard__thumb .gv-icon { width: 40px; height: 40px; }
 .gv-ideacard__body { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 /* title — .e2e-idea-card-title : 21px/700/27.3px/#333 */
-.gv-ideacard__title { margin: 4px 0 16px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-grey-800); }
+.gv-ideacard__title { margin: var(--gv-space-1) 0 var(--gv-space-4); font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-grey-800); }
 .gv-ideacard__title a { color: inherit; text-decoration: none; }
 .gv-ideacard__title a:hover { color: var(--gv-tenant-primary); }
 /* author/meta row */
-.gv-ideacard__head { display: flex; gap: 12px; align-items: flex-start; }
-.gv-ideacard__avatar { width: 44px; height: 44px; flex: none; border-radius: 50%; overflow: hidden;
+.gv-ideacard__head { display: flex; gap: var(--gv-space-3); align-items: flex-start; }
+.gv-ideacard__avatar { width: 44px; height: 44px; flex: none; border-radius: var(--gv-radius-full); overflow: hidden;
   background: var(--gv-grey-200); display: grid; place-items: center; }
 .gv-ideacard__avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 /* idea-card-avatar fidelity: real .e2e-idea-card .avatarImage probes 44px box with 3px
    transparent padding (visible disc ~38px), not a flush-filled 44px disc. Adding the
    measured padding shrinks the visible disc so the avatar no longer dominates the meta
    row, while keeping the real 44px footprint. (grounded: fo-avatar-probe styles.json) */
-.gv-ideacard__avatar { box-sizing: border-box; padding: 3px; }
-.gv-ideacard__meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.gv-ideacard__avatar { box-sizing: border-box; padding: var(--gv-space-1); }
+.gv-ideacard__meta { display: flex; align-items: center; gap: var(--gv-space-2); margin-bottom: var(--gv-space-2); flex-wrap: wrap; }
 /* username — .e2e-username : 14px/500/lh21/#596B7A (textSecondary; source StyledUserName) */
 .gv-ideacard__author { font-size: var(--gv-fs-s); font-weight: 500; line-height: 21px; color: var(--gv-cool-grey-600); }
-.gv-ideacard__sep { color: var(--gv-text-secondary); margin: 0 2px; }
+.gv-ideacard__sep { color: var(--gv-text-secondary); margin: 0 var(--gv-space-1); }
 /* time — .e2e-idea-card .sc-OROEG : 14px/500/#596B7A */
 .gv-ideacard__time { font-size: var(--gv-fs-s); font-weight: 500; line-height: 21px; color: var(--gv-cool-grey-600); }
 /* body excerpt — .e2e-idea-card body: 14px/400/lh20/rgba(0,0,0,.87), 2-line clamp
    (grounded across fo-project-ideation-list/-feed, fo-cph-ideas-overview, fo-lux-ideation;
    the 300/#596B7A reading was unverified — no probe isolates a lighter BodyDiv). */
-.gv-ideacard__excerpt { font-size: var(--gv-fs-s); line-height: 20px; color: rgba(0, 0, 0, 0.87); margin: 0 0 12px;
+.gv-ideacard__excerpt { font-size: var(--gv-fs-s); line-height: 20px; color: rgba(0, 0, 0, 0.87); margin: 0 0 var(--gv-space-3);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 /* footer — .e2e-idea-card footer : 35px tall */
-.gv-ideacard__foot { display: flex; align-items: center; gap: 18px; margin-top: auto; padding-top: 12px; }
+.gv-ideacard__foot { display: flex; align-items: center; gap: var(--gv-space-5); margin-top: auto; padding-top: var(--gv-space-3); }
 /* input-status pill — sits at footer RIGHT, opposite the reaction controls.
    Real ideation/proposal cards (fo-project-ideation-list / -feed) carry a small
    uppercase semantic-colour OUTLINED pill: 12px/600, br3, 5px 8px pad, 1px solid
@@ -1323,7 +1323,7 @@
 .gv-ideacard__status {
   margin-left: auto; flex: none; align-self: center;
   font-size: var(--gv-fs-xs); font-weight: 600; line-height: 1; text-transform: uppercase;
-  letter-spacing: .02em; padding: 5px 8px; border-radius: var(--gv-radius);
+  letter-spacing: .02em; padding: var(--gv-space-1) var(--gv-space-2); border-radius: var(--gv-radius);
   color: var(--gv-success); border: 1px solid color-mix(in srgb, var(--gv-success) 30%, transparent);
   background: transparent; white-space: nowrap;
 }
@@ -1336,16 +1336,16 @@
    fixed 162px left square), with title → author → excerpt → reactions flowing below.
    Append-only mobile breakpoint; the desktop horizontal rules above are untouched. */
 @media (max-width: 560px) {
-  .gv-ideacard { flex-direction: column; align-items: stretch; gap: 14px; }
+  .gv-ideacard { flex-direction: column; align-items: stretch; gap: var(--gv-space-4); }
   .gv-ideacard__thumb { flex: none; width: 100%; height: auto; aspect-ratio: 16 / 9; }
 }
 
 /* ── Reaction controls — ONE component (.e2e-reaction-controls, h35). Circular
    like/dislike buttons (35×35, 1px --gv-cool-grey-400) + count + comment count.
    Source: fo-project-ideation-feed (controls h35) + ideation-list comment count. ─ */
-.gv-react { display: inline-flex; align-items: center; gap: 8px; height: 35px; }
+.gv-react { display: inline-flex; align-items: center; gap: var(--gv-space-2); height: 35px; }
 .gv-react__btn {
-  width: 35px; height: 35px; border-radius: 50%;
+  width: 35px; height: 35px; border-radius: var(--gv-radius-full);
   border: 1px solid var(--gv-cool-grey-400); background: #fff; color: var(--gv-text-primary);
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
 }
@@ -1354,7 +1354,7 @@
 .gv-react__btn .gv-icon, .gv-react__btn svg { width: 18px; height: 18px; }
 .gv-react__count { font-size: var(--gv-fs-s); font-weight: 500; color: var(--gv-text-primary); }
 /* comment count — .e2e-ideacard-comment-count : 16px/400/#596B7A */
-.gv-react__comment { display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-m); line-height: 1.25; color: var(--gv-cool-grey-600); }
+.gv-react__comment { display: inline-flex; align-items: center; gap: var(--gv-space-2); font-size: var(--gv-fs-m); line-height: 1.25; color: var(--gv-cool-grey-600); }
 .gv-react__comment .gv-icon, .gv-react__comment svg { width: 18px; height: 18px; color: var(--gv-cool-grey-600); }
 
 /* ── Labeled reaction variant — worded Like/Dislike buttons (icon + word + count
@@ -1362,10 +1362,10 @@
    (text 'Like124Dislike4', w 144.17px, h35) + .e2e-ideacard-like-button (text
    'Like124', w 64.11px, fs14). Opt-in via .gv-react--labeled so the base circular
    icon-only buttons stay intact for existing consumers. ──────────────────────── */
-.gv-react--labeled { gap: 16px; }
+.gv-react--labeled { gap: var(--gv-space-4); }
 .gv-react--labeled .gv-react__btn {
-  width: auto; height: 35px; border-radius: 999px; padding: 0 14px;
-  gap: 6px; font-size: var(--gv-fs-m); font-weight: 500;
+  width: auto; height: 35px; border-radius: var(--gv-radius-full); padding: 0 var(--gv-space-4);
+  gap: var(--gv-space-2); font-size: var(--gv-fs-m); font-weight: 500;
 }
 .gv-react--labeled .gv-react__btn .gv-react__label { display: inline; }
 .gv-react--labeled .gv-react__btn .gv-react__count { font-size: var(--gv-fs-m); font-weight: 500; color: inherit; }
@@ -1373,22 +1373,22 @@
 .gv-react__btn .gv-react__label { display: none; }
 
 /* ── Feed layout — feed column + 310px filter sidebar (#e2e-project-sidebar) ──── */
-.gv-feed { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 28px; align-items: start; }
-.gv-feed__count { font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-heading-strong); line-height: 20.8px; margin: 0 0 14px; }
-.gv-feed__col { display: flex; flex-direction: column; gap: 16px; }
+.gv-feed { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: var(--gv-space-7); align-items: start; }
+.gv-feed__count { font-size: var(--gv-fs-base); font-weight: 600; color: var(--gv-text-heading-strong); line-height: 20.8px; margin: 0 0 var(--gv-space-4); }
+.gv-feed__col { display: flex; flex-direction: column; gap: var(--gv-space-4); }
 @media (max-width: 860px) { .gv-feed { grid-template-columns: minmax(0, 1fr); } }
 /* filter sidebar — live container computes 14px/lh19.999 (not the 16px FO base);
    base inherited text colour matches the real product's rgba(0,0,0,.87) (not the
    #333 grey token), per fo-project-ideation-feed #e2e-project-sidebar. */
-.gv-feedfilter { display: flex; flex-direction: column; gap: 14px; font-size: var(--gv-fs-s); line-height: 19.999px; color: rgba(0, 0, 0, 0.87); }
+.gv-feedfilter { display: flex; flex-direction: column; gap: var(--gv-space-4); font-size: var(--gv-fs-s); line-height: 19.999px; color: rgba(0, 0, 0, 0.87); }
 /* On mobile the live ideation feed hides the filter panel behind a "Filters"
    button (govocal-filters.js / page wiring toggles .is-open). Desktop: button
    hidden, panel always shown in the sidebar column. */
 .gv-filters-btn { display: none; }
 @media (max-width: 860px) {
-  .gv-filters-btn { display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  .gv-filters-btn { display: inline-flex; align-items: center; gap: var(--gv-space-2); cursor: pointer;
     background: #fff; border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius);
-    padding: 9px 14px; font: 600 var(--gv-fs-s)/1 var(--gv-font-family); color: var(--gv-grey-800); }
+    padding: var(--gv-space-2) var(--gv-space-4); font: 600 var(--gv-fs-s)/1 var(--gv-font-family); color: var(--gv-grey-800); }
   .gv-filters-btn svg, .gv-filters-btn .gv-icon { width: 16px; height: 16px; }
   .gv-filters-btn[aria-expanded="true"] { background: var(--gv-grey-100); }
   .gv-feedfilter { display: none; order: -1; }   /* opened panel sits above the cards */
@@ -1403,13 +1403,13 @@
 }
 /* Each filter SECTION (label + its options) is grouped on its own white panel —
    the background sits on the group, not the individual option buttons. */
-.gv-feedfilter > div { background: #fff; border-radius: var(--gv-radius); padding: 14px 16px; }
-.gv-feedfilter__group { display: flex; flex-direction: column; gap: 2px; }
-.gv-feedfilter__label { font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-grey-800); margin: 0 0 8px; }
+.gv-feedfilter > div { background: #fff; border-radius: var(--gv-radius); padding: var(--gv-space-4) var(--gv-space-4); }
+.gv-feedfilter__group { display: flex; flex-direction: column; gap: var(--gv-space-1); }
+.gv-feedfilter__label { font-size: var(--gv-fs-s); font-weight: 700; color: var(--gv-grey-800); margin: 0 0 var(--gv-space-2); }
 /* status/topic filter button — .e2e-topic : 16px/400, 1px transparent, radius 3px, 8px 14px */
-.gv-feedfilter__btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+.gv-feedfilter__btn { display: flex; align-items: center; justify-content: space-between; gap: var(--gv-space-2); width: 100%;
   text-align: left; cursor: pointer; border: 1px solid transparent; border-radius: var(--gv-radius);
-  background: transparent; color: var(--gv-grey-800); font-family: inherit; font-size: var(--gv-fs-base); font-weight: 400; padding: 8px 14px; }
+  background: transparent; color: var(--gv-grey-800); font-family: inherit; font-size: var(--gv-fs-base); font-weight: 400; padding: var(--gv-space-2) var(--gv-space-4); }
 .gv-feedfilter__btn:hover { background: var(--gv-grey-100); }
 .gv-feedfilter__btn.is-active { background: var(--gv-tenant-primary); color: #fff; }
 .gv-feedfilter__btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
@@ -1435,9 +1435,9 @@
 
 /* ── List/Map segmented toggle — .e2e-list-map-viewbuttons : white, 4px pad,
    3px radius, h40. Tabs (#view-tab-N) 4px 8px, 16px; active = tenant-primary + white. */
-.gv-viewseg { display: inline-flex; gap: 0; padding: 4px; height: 40px; box-sizing: border-box;
+.gv-viewseg { display: inline-flex; gap: 0; padding: var(--gv-space-1); height: 40px; box-sizing: border-box;
   background: #fff; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); }
-.gv-viewseg__tab { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 4px 8px;
+.gv-viewseg__tab { display: inline-flex; align-items: center; gap: var(--gv-space-2); height: 32px; padding: var(--gv-space-1) var(--gv-space-2);
   border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-base); font-weight: 400;
   background: transparent; color: var(--gv-text-heading); border-radius: var(--gv-radius); }
 .gv-viewseg__tab[aria-selected="true"], .gv-viewseg__tab.is-active { background: var(--gv-tenant-primary); color: #fff; }
@@ -1452,10 +1452,10 @@
    transparent + heading text (live #474747 → var(--gv-text-heading)); active tab = the
    Perspective method-accent fill (live #EFD015, a one-off literal, not a tenant hue) +
    white text. */
-.gv-pviewtoggle { display: inline-flex; align-items: center; gap: 8px; padding: 4px;
+.gv-pviewtoggle { display: inline-flex; align-items: center; gap: var(--gv-space-2); padding: var(--gv-space-1);
   background: #fff; border-radius: var(--gv-radius); box-sizing: border-box; }
-.gv-pviewtoggle__btn { display: inline-flex; align-items: center; gap: 6px; height: 32px;
-  padding: 4px 8px; border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-base);
+.gv-pviewtoggle__btn { display: inline-flex; align-items: center; gap: var(--gv-space-2); height: 32px;
+  padding: var(--gv-space-1) var(--gv-space-2); border: 0; cursor: pointer; font-family: inherit; font-size: var(--gv-fs-base);
   font-weight: 400; line-height: 18.4px; color: var(--gv-tenant-text); background: transparent;
   border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); }
 .gv-pviewtoggle__btn[aria-selected="true"], .gv-pviewtoggle__btn.is-active { background: #EFD015; color: #fff; }
@@ -1466,7 +1466,7 @@
    bold count .fBuzIc : tenant-primary/16px/700. Track : 6px, --gv-grey-200, 3px;
    fill : tenant-primary. Vote icon : cool-grey-600 (#596B7A), 20x20 — structural
    grey, NOT tenant-tinted; tenant-primary stays on the bold count + bar fill only. */
-.gv-threshold { display: flex; align-items: center; gap: 10px; min-width: 280px; }
+.gv-threshold { display: flex; align-items: center; gap: var(--gv-space-3); min-width: 280px; }
 .gv-threshold__icon { color: var(--gv-cool-grey-600); display: inline-flex; }
 .gv-threshold__icon .gv-icon, .gv-threshold__icon svg { width: 20px; height: 20px; }
 .gv-threshold__count { font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-cool-grey-600); white-space: nowrap; }
@@ -1486,8 +1486,8 @@
    no reflow). The real proposal card shows count/bar with NO adjacent open/expired pill
    on this surface — the demo's trailing inline pill is a component-demo invention. This
    also removes the source of the narrow-card clipping. */
-.gv-threshold { flex-direction: column; align-items: stretch; gap: 8px; }
-.gv-threshold__head { display: flex; align-items: center; gap: 10px; }
+.gv-threshold { flex-direction: column; align-items: stretch; gap: var(--gv-space-2); }
+.gv-threshold__head { display: flex; align-items: center; gap: var(--gv-space-3); }
 .gv-threshold__bar { flex: 0 0 auto; width: 100%; min-width: 0; }
 
 /* ── threshold-foot-wrap (mobile) — at narrow proposal-card width the real product
@@ -1501,8 +1501,8 @@
    UNDER the icon+count row (.LryTj), both inside the threshold block. New responsive
    override only — base desktop layout (single non-wrapping row) is untouched. */
 @media (max-width: 560px) {
-  .gv-ideacard__foot { flex-wrap: wrap; row-gap: 12px; }
-  .gv-threshold { flex-wrap: wrap; min-width: 0; flex: 1 1 100%; column-gap: 8px; }
+  .gv-ideacard__foot { flex-wrap: wrap; row-gap: var(--gv-space-3); }
+  .gv-threshold { flex-wrap: wrap; min-width: 0; flex: 1 1 100%; column-gap: var(--gv-space-2); }
   .gv-threshold__bar { flex: 1 1 100%; min-width: 0; }
   .gv-ideacard__foot .gv-statuspill[style*="margin-left"] { margin-left: 0; }
 }
@@ -1510,26 +1510,26 @@
 /* ── Status pill — proposals. EXPIRED : firebrick #b22222 (a literal one-off,
    not a token); OPEN/threshold : tenant-primary. 12px/600, 5px 8px, uppercase. ── */
 .gv-statuspill { display: inline-flex; align-items: center; font-size: var(--gv-fs-xs); font-weight: 600; line-height: 1;
-  padding: 5px 8px; border-radius: var(--gv-radius); text-transform: uppercase; letter-spacing: 0.02em; }
+  padding: var(--gv-space-1) var(--gv-space-2); border-radius: var(--gv-radius); text-transform: uppercase; letter-spacing: 0.02em; }
 .gv-statuspill.expired { color: #b22222; border: 1px solid rgba(178, 34, 34, 0.3); }
 .gv-statuspill.open { color: var(--gv-tenant-primary); border: 1px solid color-mix(in srgb, var(--gv-tenant-primary) 30%, transparent); }
 
 /* ── Volunteering cause card — Ostend "Showroom". Card white/3px/--gv-shadow/20px,
    image 300×136 (placeholder --gv-background), overlay badge rgba(0,0,0,.75),
    title 21px/700/#1E1E1E/27.3px, body 16px/24px/#1E1E1E, CTA = .gv-btn.volunteer. */
-.gv-cause { display: flex; gap: 20px; align-items: flex-start; background: #fff;
-  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 20px; }
+.gv-cause { display: flex; gap: var(--gv-space-5); align-items: flex-start; background: #fff;
+  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: var(--gv-space-5); }
 .gv-cause__media { position: relative; flex: 0 0 300px; }
 .gv-cause__img { display: block; width: 300px; height: 136px; object-fit: cover; background: var(--gv-background); border-radius: 0; }
-.gv-cause__badge { position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 5px;
-  background: rgba(0, 0, 0, 0.75); color: #fff; border-radius: var(--gv-radius); padding: 6px 10px 6px 5px;
+.gv-cause__badge { position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: var(--gv-space-1);
+  background: rgba(0, 0, 0, 0.75); color: #fff; border-radius: var(--gv-radius); padding: var(--gv-space-2) var(--gv-space-3) var(--gv-space-2) var(--gv-space-1);
   font-size: var(--gv-fs-s); font-weight: 400; line-height: 1.4; }
 .gv-cause__badge .gv-icon, .gv-cause__badge svg { width: 20px; height: 20px; }
-.gv-cause__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.gv-cause__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--gv-space-3); }
 .gv-cause__title { margin: 0; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px; color: var(--gv-text-heading-strong); }
 .gv-cause__count { font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: var(--gv-text-heading-strong); }
 .gv-cause__desc { font-size: var(--gv-fs-base); font-weight: 400; line-height: 24px; color: var(--gv-text-heading-strong); }
-.gv-cause__desc p { margin: 0 0 8px; }
+.gv-cause__desc p { margin: 0 0 var(--gv-space-2); }
 .gv-cause__desc p:last-child { margin-bottom: 0; }
 .gv-cause__cta { flex: 0 0 auto; align-self: flex-start; }
 @media (max-width: 720px) { .gv-cause { flex-direction: column; } .gv-cause__media, .gv-cause__img { flex-basis: auto; width: 100%; } }
@@ -1540,7 +1540,7 @@
    margin:0 and inherit the list's 16px rhythm). Rather than bump the shared atom
    (and over-space every ideation feed), scope the +4px to lists that actually
    hold cause cards, leaving ideation/proposals on the source-true 16px. */
-.gv-idealist:has(.gv-cause) { gap: 20px; }
+.gv-idealist:has(.gv-cause) { gap: var(--gv-space-5); }
 /* Cause-card CTA placement — grounded fix (fo-project-volunteering dom.html).
    In the real Raleigh/wietsedemo capture the sign-up button is NOT a third
    top-level flex sibling pinned to the card's top-right; it is the LAST element
@@ -1549,17 +1549,17 @@
    (media + body) and .gv-cause__cta is a body child. These overrides take the
    cta out of any column treatment and keep it left-aligned; the body's 10px gap
    supplies the space above it. (Append-only override of the base rule above.) */
-.gv-cause__body > .gv-cause__cta { flex: 0 0 auto; align-self: flex-start; margin-top: 2px; }
+.gv-cause__body > .gv-cause__cta { flex: 0 0 auto; align-self: flex-start; margin-top: var(--gv-space-1); }
 
 /* ── Survey participation band — full-width tenant-primary strip framing a survey
    CTA on the project page (div.sc-beqWaB.fAJdnP : bg tenant-primary, 20px pad,
    white 14px text). The CTA is the white-on-colour button. ───────────────────── */
 .gv-surveyband { background: var(--gv-tenant-primary); }
 .gv-surveyband__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; background: var(--gv-tenant-primary);
-  padding: 20px; font-size: var(--gv-fs-s); line-height: 20px; display: flex; align-items: center; gap: 16px; }
-.gv-surveyband__status { display: inline-flex; align-items: center; gap: 10px; color: #fff;
+  padding: var(--gv-space-5); font-size: var(--gv-fs-s); line-height: 20px; display: flex; align-items: center; gap: var(--gv-space-4); }
+.gv-surveyband__status { display: inline-flex; align-items: center; gap: var(--gv-space-3); color: #fff;
   font-size: var(--gv-fs-s); font-weight: 400; line-height: 21px; }
-.gv-surveyband__dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; flex: none; }
+.gv-surveyband__dot { width: 10px; height: 10px; border-radius: var(--gv-radius-full); background: #fff; flex: none; }
 .gv-surveyband__cta { margin-left: auto; }
 /* surveyband-inner-layout fidelity fix — the real band inner (div.sc-beqWaB.fAJdnP)
    is full-bleed (width:1440px, max-width:none) and distributes status/CTA via
@@ -1596,13 +1596,13 @@
 }
 @media (max-width: 760px) {
   /* status stacks above a full-width CTA (live ideation project behaviour) */
-  .gv-partbar__inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px 20px; }
+  .gv-partbar__inner { flex-direction: column; align-items: stretch; gap: var(--gv-space-3); padding: var(--gv-space-4) var(--gv-space-5); }
   .gv-partbar .gv-btn { margin-left: 0; width: 100%; justify-content: center; }
 }
-.gv-partbar__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 14px 24px;
-  display: flex; align-items: center; gap: 16px; }
-.gv-partbar__status { display: inline-flex; align-items: center; gap: 9px; font-size: var(--gv-fs-base); color: #fff; }
-.gv-partbar__status::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: #fff; flex: none; }
+.gv-partbar__inner { max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: var(--gv-space-4) var(--gv-space-6);
+  display: flex; align-items: center; gap: var(--gv-space-4); }
+.gv-partbar__status { display: inline-flex; align-items: center; gap: var(--gv-space-2); font-size: var(--gv-fs-base); color: #fff; }
+.gv-partbar__status::before { content: ""; width: 9px; height: 9px; border-radius: var(--gv-radius-full); background: #fff; flex: none; }
 .gv-partbar .gv-btn { margin-left: auto; }
 
 /* participation-bar-status-type fidelity fix — the live CTA bar (fo-project-cta-probe:
@@ -1630,7 +1630,7 @@
    white dot + a soft pulse ring. Appended as a refinement over the base ::before above
    — do not reflow it. Motion is disabled under prefers-reduced-motion. */
 .gv-partbar__status::before {
-  width: 10px; height: 10px; border-radius: 50%; background: #fff;
+  width: 10px; height: 10px; border-radius: var(--gv-radius-full); background: #fff;
   -webkit-mask: none; mask: none;
   animation: gv-partbar-pulse 1.6s ease-in-out infinite;
 }
@@ -1654,7 +1654,7 @@
    46px circle (measured .e2e-modal-close-button: border-radius 50%, padding 10px,
    1px transparent border). A modifier on the base .gv-modal__close — it does NOT
    change the default square 40px close other modals (e.g. login) rely on. */
-.gv-modal__close.round { width: 46px; height: 46px; padding: 10px; border: 1px solid transparent; border-radius: 50%; }
+.gv-modal__close.round { width: 46px; height: 46px; padding: var(--gv-space-3); border: 1px solid transparent; border-radius: var(--gv-radius-full); }
 
 /* ── Community Monitor — FO satisfaction module ("City at a glance") ──────────────
    The ongoing-survey banner/modal that asks how residents feel about governance &
@@ -1667,15 +1667,15 @@
 
 /* Monitor body — question title block. The intro copy is the muted cool-grey
    (#596B7A, measured #community-monitor-modal-title), 14px / 21px. */
-.gv-monitor__intro { margin: 14px 0 16px; font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-cool-grey-600); }
+.gv-monitor__intro { margin: var(--gv-space-4) 0 var(--gv-space-4); font-size: var(--gv-fs-s); line-height: 21px; color: var(--gv-cool-grey-600); }
 /* Question is the modal's primary heading (no "City at a glance" title in the real
    modal). Measured: 16px / 600 / rgb(71,71,71) = --gv-text-heading. Sits first. */
-.gv-monitor__question { margin: 0 0 16px; font-size: var(--gv-fs-base); font-weight: 600; line-height: 1.3; color: var(--gv-text-heading); }
-.gv-monitor__footer { margin-top: 16px; display: flex; align-items: center; justify-content: center; }
+.gv-monitor__question { margin: 0 0 var(--gv-space-4); font-size: var(--gv-fs-base); font-weight: 600; line-height: 1.3; color: var(--gv-text-heading); }
+.gv-monitor__footer { margin-top: var(--gv-space-4); display: flex; align-items: center; justify-content: center; }
 /* Real modal footer = a centred "Takes 2 minutes" duration indicator (clock icon +
    label) in tenant link-blue (measured rgb(17,45,126) → tenant-primary, themeable).
    No participant count here — that lives on the homepage band. */
-.gv-monitor__duration { display: inline-flex; align-items: center; gap: 6px; font-size: var(--gv-fs-s); color: var(--gv-tenant-primary); }
+.gv-monitor__duration { display: inline-flex; align-items: center; gap: var(--gv-space-2); font-size: var(--gv-fs-s); color: var(--gv-tenant-primary); }
 .gv-monitor__duration svg { width: 14px; height: 14px; display: block; flex: 0 0 auto; }
 
 /* Horizontal 5-emoji sentiment scale (linear-scale variant). Each option is a
@@ -1688,21 +1688,21 @@
    option's grounded geometry matches the live linear-scale option div exactly. */
 .gv-sentiment-scale__opt {
   flex: 0 0 56px; width: 56px; min-width: 56px;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  display: flex; flex-direction: column; align-items: center; gap: var(--gv-space-2);
   appearance: none; background: transparent; border: 0; border-radius: 0; padding: 0; cursor: pointer;
   color: var(--gv-tenant-primary); font-family: inherit; font-size: var(--gv-fs-s); line-height: 1.4285;
 }
 .gv-sentiment-scale__opt:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
 .gv-sentiment-scale__face {
   width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
-  color: inherit; border: 2px solid transparent; border-radius: 8px; padding: 4px;
+  color: inherit; border: 2px solid transparent; border-radius: var(--gv-radius-2); padding: var(--gv-space-1);
 }
 .gv-sentiment-scale__face svg { width: 100%; height: 100%; display: block; }
 .gv-sentiment-scale__opt:hover .gv-sentiment-scale__face { background: var(--gv-tenant-primary-lighten95); }
 .gv-sentiment-scale__cap { font-size: var(--gv-fs-xs); color: var(--gv-text-secondary); text-align: center; }
 .gv-sentiment-scale__opt[aria-pressed="true"] .gv-sentiment-scale__face { border-color: var(--gv-tenant-primary); background: var(--gv-tenant-primary-lighten90); }
 .gv-sentiment-scale__opt[aria-pressed="true"] .gv-sentiment-scale__cap { color: var(--gv-text-primary); font-weight: 600; }
-@media (max-width: 480px) { .gv-sentiment-scale { gap: 4px; justify-content: center; } }
+@media (max-width: 480px) { .gv-sentiment-scale { gap: var(--gv-space-1); justify-content: center; } }
 
 /* Emoji-glyph face variant (matches the real linear-scale, which renders native
    full-colour platform emoji 😣 🙁 😐 🙂 😀 — filled yellow faces, not monochrome
@@ -1710,7 +1710,7 @@
    font so it reads as the real yellow-face scale rather than a thin tenant-tinted
    outline. Selection chrome (border/tint) still lives on .gv-sentiment-scale__face. */
 .gv-sentiment-scale__face.is-emoji {
-  font-size: 32px; line-height: 1; padding: 4px;
+  font-size: var(--gv-fs-xxxl); line-height: 1; padding: var(--gv-space-1);
   font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   -webkit-font-smoothing: auto;
 }
@@ -1728,7 +1728,7 @@
     flex: 0 0 40px; width: 40px; min-width: 40px; max-width: 40px;
   }
   .gv-sentiment-scale__face { box-sizing: border-box; width: 40px; height: 40px; max-width: 40px; }
-  .gv-sentiment-scale__face.is-emoji { font-size: 26px; }
+  .gv-sentiment-scale__face.is-emoji { font-size: var(--gv-fs-xxl); }
 }
 
 /* ── Event DETAIL page (/events/:id) ────────────────────────────────────────── */
@@ -1743,34 +1743,34 @@
    stylized date block (distinct from the small .gv-event-card__date chip). */
 
 /* Two-column grid: main column + a fixed 350px sidebar (live `eFNXIK` = 350px). */
-.gv-eventdetail { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 40px;
-  max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 24px 64px; align-items: start; }
+.gv-eventdetail { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: var(--gv-space-10);
+  max-width: var(--gv-shell-w, 1150px); margin: 0 auto; padding: 0 var(--gv-space-6) var(--gv-space-16); align-items: start; }
 .gv-eventdetail__main { min-width: 0; }
 .gv-eventdetail__side { min-width: 0; }
 
 /* "From <project>" eyebrow line — live p.jtLtWx: 16px / 400 / #333. */
-.gv-eventdetail__from { margin: 0 0 4px; font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-text-primary); }
+.gv-eventdetail__from { margin: 0 0 var(--gv-space-1); font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-text-primary); }
 /* "Go to the project" link — live p.fOUwoV: 14px / 400 / cool-grey #596B7A. */
-.gv-eventdetail__projlink { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 20px;
+.gv-eventdetail__projlink { display: inline-flex; align-items: center; gap: var(--gv-space-2); margin: 0 0 var(--gv-space-5);
   font-size: var(--gv-fs-s); font-weight: 400; color: var(--gv-text-secondary); text-decoration: none; }
 .gv-eventdetail__projlink:hover { text-decoration: underline; }
 .gv-eventdetail__projlink svg, .gv-eventdetail__projlink .gv-icon { width: 16px; height: 16px; color: currentColor; }
 
 /* Event H1 — live #e2e-event-title: 30px / 700 / #333, line-height 39px. NOTE this
    is the per-event heading, smaller than the /events page display title. */
-.gv-eventdetail__title { margin: 0 0 16px; font-size: 30px; font-weight: 700; line-height: 39px; color: var(--gv-text-primary); }
+.gv-eventdetail__title { margin: 0 0 var(--gv-space-4); font-size: var(--gv-fs-xxxl); font-weight: 700; line-height: 39px; color: var(--gv-text-primary); }
 
 /* Stylized date block — live `.jaafFe`: grey app-canvas panel #EDEFF0, 20px pad,
    3px radius. TWO-LAYER: this outer grey panel WRAPS an elevated white inner card
    (live `.ebYKxp`, bg #fff) that holds the centered date stack; below the inner card,
    still on the grey, sit a hairline divider + a calendar meta row + "Add to calendar". */
-.gv-eventdetail__datecard { background: var(--gv-background); border-radius: var(--gv-radius); padding: 20px; }
+.gv-eventdetail__datecard { background: var(--gv-background); border-radius: var(--gv-radius); padding: var(--gv-space-5); }
 /* Elevated white inner card around the date stack (the second layer). */
 .gv-eventdetail__datecardinner { background: var(--gv-white); box-shadow: var(--gv-shadow);
-  border-radius: var(--gv-radius); padding: 24px; }
+  border-radius: var(--gv-radius); padding: var(--gv-space-6); }
 /* Hairline divider + calendar meta row between the white inner card and Add-to-calendar. */
-.gv-eventdetail__datedivider { height: 1px; background: var(--gv-grey-300); margin: 18px 0 14px; border: 0; }
-.gv-eventdetail__datemeta { display: flex; align-items: flex-start; gap: 9px; margin: 0;
+.gv-eventdetail__datedivider { height: 1px; background: var(--gv-grey-300); margin: var(--gv-space-5) 0 var(--gv-space-4); border: 0; }
+.gv-eventdetail__datemeta { display: flex; align-items: flex-start; gap: var(--gv-space-2); margin: 0;
   font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: var(--gv-grey-700); }
 .gv-eventdetail__datemeta svg, .gv-eventdetail__datemeta .gv-icon { flex: none; width: 16px; height: 16px; color: var(--gv-grey-700); }
 /* The probed container itself (live `.lgwDnG`) is plain body text — 14px / 400 /
@@ -1778,16 +1778,16 @@
 .gv-eventdetail__datestylized { font-size: var(--gv-fs-s); font-weight: 400; line-height: 20px; color: rgba(0, 0, 0, 0.87); }
 /* The visible two-tone date stack (the sr-only sentence is read by AT, hidden here). */
 .gv-eventdetail__date { text-align: center; }
-.gv-eventdetail__date .d { display: block; font-size: 34px; font-weight: 700; line-height: 1; color: var(--gv-text-primary); }  /* live p.dMIryb */
+.gv-eventdetail__date .d { display: block; font-size: var(--gv-fs-xxxxl); font-weight: 700; line-height: 1; color: var(--gv-text-primary); }  /* live p.dMIryb */
 .gv-eventdetail__date .m { display: block; font-size: var(--gv-fs-m); font-weight: 400; color: var(--gv-grey-700); }  /* live p.kwLlLs — 16px #767676 */
-.gv-eventdetail__date .t { display: block; margin-top: 8px; font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary); }  /* live p.dwwqWS — 18px/600 */
+.gv-eventdetail__date .t { display: block; margin-top: var(--gv-space-2); font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary); }  /* live p.dwwqWS — 18px/600 */
 /* sidebar action group under the date block */
-.gv-eventdetail__actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; }
+.gv-eventdetail__actions { display: flex; flex-direction: column; align-items: flex-start; gap: var(--gv-space-2); margin-top: var(--gv-space-3); }
 
 /* "Share this event" block — live h2 span: 21px / 700 / #333. */
-.gv-eventdetail__share { margin-top: 28px; }
-.gv-eventdetail__share h2 { margin: 0 0 12px; font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-text-primary); }
-.gv-eventdetail__sharebtns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gv-eventdetail__share { margin-top: var(--gv-space-7); }
+.gv-eventdetail__share h2 { margin: 0 0 var(--gv-space-3); font-size: var(--gv-fs-xl); font-weight: 700; color: var(--gv-text-primary); }
+.gv-eventdetail__sharebtns { display: flex; align-items: center; gap: var(--gv-space-2); flex-wrap: wrap; }
 /* Four square coloured social-share targets — live `.kZhvwV`: 40px squares, 3px radius
    (Facebook #3b5998, WhatsApp #04884c, X #000, email #112d7e from the digest). */
 .gv-eventdetail__sharesq { display: inline-flex; align-items: center; justify-content: center;
@@ -1801,15 +1801,15 @@
 
 /* Neutral "Go back" text link — live `.bILJQM` span: 16px / 400 / cool-grey #596B7A,
    with a filled grey circle holding a white left-arrow (NOT the tenant-primary brand link). */
-.gv-eventdetail__back { display: inline-flex; align-items: center; gap: 8px;
+.gv-eventdetail__back { display: inline-flex; align-items: center; gap: var(--gv-space-2);
   font-size: var(--gv-fs-base); font-weight: 400; color: var(--gv-text-secondary); text-decoration: none; }
 .gv-eventdetail__back:hover { text-decoration: underline; }
 .gv-eventdetail__back .gv-eventdetail__backcircle { display: inline-flex; align-items: center; justify-content: center;
-  flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--gv-grey-700); }
+  flex: none; width: 28px; height: 28px; border-radius: var(--gv-radius-full); background: var(--gv-grey-700); }
 .gv-eventdetail__back .gv-eventdetail__backcircle svg { width: 18px; height: 18px; color: #fff; }
 
 @media (max-width: 860px) {
-  .gv-eventdetail { grid-template-columns: 1fr; gap: 24px; }
+  .gv-eventdetail { grid-template-columns: 1fr; gap: var(--gv-space-6); }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -1826,24 +1826,24 @@
   align-items: stretch; min-height: calc(100vh - 78px); background: #fff; }
 
 /* ── Left rail ── scrollable column of meta + ranked theme cards (.e2e-ideas-feed-sidebar) */
-.gv-issuefeed__rail { display: flex; flex-direction: column; padding: 24px 24px 32px;
+.gv-issuefeed__rail { display: flex; flex-direction: column; padding: var(--gv-space-6) var(--gv-space-6) var(--gv-space-8);
   overflow-y: auto; border-right: 1px solid var(--gv-grey-200); }
 /* "Back" link — live span = 16px/400/#333 next to a chevron, top-left of the rail. */
-.gv-issuefeed__back { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
-  margin-bottom: 14px; padding: 0; border: 0; background: none; cursor: pointer;
+.gv-issuefeed__back { display: inline-flex; align-items: center; gap: var(--gv-space-2); align-self: flex-start;
+  margin-bottom: var(--gv-space-4); padding: 0; border: 0; background: none; cursor: pointer;
   font-size: var(--gv-fs-m); line-height: 26px; color: var(--gv-text-primary); }
 .gv-issuefeed__back svg { width: 18px; height: 18px; }
 /* "Issue Mapping" — live span = 25px / 700 / #333. */
-.gv-issuefeed__title { margin: 0 0 12px; font-size: 25px; font-weight: 700; line-height: 32.5px;
+.gv-issuefeed__title { margin: 0 0 var(--gv-space-3); font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px;
   color: var(--gv-text-primary); }
 /* participant bubbles row reuses .gv-bubbles (sm). */
-.gv-issuefeed__participants { margin-bottom: 8px; }
+.gv-issuefeed__participants { margin-bottom: var(--gv-space-2); }
 /* question — live h3 = 18.72px / 600 / #333, line-height 28.08, margin 18.72 vertical. */
-.gv-issuefeed__question { margin: 18px 0; font-size: 18.72px; font-weight: 600; line-height: 28.08px;
+.gv-issuefeed__question { margin: var(--gv-space-5) 0; font-size: var(--gv-fs-l); font-weight: 600; line-height: 28.08px;
   color: var(--gv-text-primary); }
 /* intro prose uses the shared .gv-prose (16px/400/24px #333) but flush-left, no max-width. */
 .gv-issuefeed__rail .gv-prose { max-width: none; margin: 0; padding: 0; }
-.gv-issuefeed__themelist { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; }
+.gv-issuefeed__themelist { display: flex; flex-direction: column; gap: var(--gv-space-4); margin-top: var(--gv-space-5); }
 
 /* ── Theme / category card ── ranked clickable card in the rail.
    Live button.bIgPWV = 1px solid #596B7A, radius 3px, padding 9px 18px, left-aligned. */
@@ -1852,34 +1852,34 @@
    immediately left of the title (real DOM div.htgTKl = span.krAyOU[emoji] + p[title]);
    the pastel round 40×40 circle (real div.ifTotU = 40×40, radius 50%, bg pastel e.g.
    rgb(255,212,216)) sits on the RIGHT of the head row and holds the COUNT. */
-.gv-themecard { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start;
-  width: 100%; text-align: left; padding: 14px 16px; background: #fff; cursor: pointer;
+.gv-themecard { display: grid; grid-template-columns: 1fr; gap: var(--gv-space-3); align-items: start;
+  width: 100%; text-align: left; padding: var(--gv-space-4) var(--gv-space-4); background: #fff; cursor: pointer;
   border: 1px solid var(--gv-cool-grey-600); border-radius: var(--gv-radius);
   font-family: var(--gv-font-family); color: var(--gv-text-primary); }
 .gv-themecard:hover { box-shadow: var(--gv-shadow-hover-sm); }
 .gv-themecard.is-active { border-color: var(--gv-tenant-primary); box-shadow: var(--gv-shadow); }
 .gv-themecard__main { min-width: 0; }
 /* head row: [emoji + title] on the left, pastel count circle on the right. */
-.gv-themecard__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gv-themecard__head { display: flex; align-items: center; justify-content: space-between; gap: var(--gv-space-3); }
 /* title (emoji rides inline at the start). Live p = 18px/700/27px #333. */
 .gv-themecard__name { margin: 0; font-size: var(--gv-fs-l); font-weight: 700; line-height: 27px;
   color: var(--gv-text-primary); }
 /* small inline emoji glyph, no background, sits immediately left of the title. */
-.gv-themecard__emoji { margin-right: 6px; }
+.gv-themecard__emoji { margin-right: var(--gv-space-2); }
 /* count → pastel round 40×40 circle on the RIGHT; pastel fill via --gv-themecard-swatch
    (live div.ifTotU = 40×40, radius 50%, bg rgb(255,212,216)). Count = 14px/700 slate. */
 .gv-themecard__count { display: inline-flex; align-items: center; justify-content: center;
-  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: var(--gv-radius-full);
   background: var(--gv-themecard-swatch, var(--gv-grey-100));
   font-size: var(--gv-fs-s); font-weight: 700; line-height: 21px; color: var(--gv-text-primary); }
 /* excerpt — cool-grey body, clamped. */
-.gv-themecard__desc { margin: 6px 0 0; font-size: var(--gv-fs-s); line-height: 21px;
+.gv-themecard__desc { margin: var(--gv-space-2) 0 0; font-size: var(--gv-fs-s); line-height: 21px;
   color: var(--gv-text-secondary); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
   overflow: hidden; }
 /* mini share bar — live track div.gdJIUf = 1px solid #e0e0e0, radius 4px, height 6px;
    fill is a coloured segment (set width + colour inline via --gv-themecard-bar). */
-.gv-themecard__bar { margin-top: 10px; height: 6px; border: 1px solid var(--gv-grey-200);
-  border-radius: 4px; overflow: hidden; }
+.gv-themecard__bar { margin-top: var(--gv-space-3); height: 6px; border: 1px solid var(--gv-grey-200);
+  border-radius: var(--gv-radius-1); overflow: hidden; }
 .gv-themecard__bar > i { display: block; height: 100%; background: var(--gv-themecard-bar, var(--gv-cool-grey-600)); }
 
 /* ── Theme card · --grounded (fix 24/93 → folded into the base in fix 68/93) ──
@@ -1912,9 +1912,9 @@
    Live bg = white + tiled inline-svg dot (circle r1.5 #e5e5e5) at 20×20. */
 .gv-issuecanvas { position: relative; overflow: auto; background-color: var(--gv-white);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23e5e5e5'/%3E%3C/svg%3E");
-  background-size: 20px 20px; padding: 40px; display: flex; align-items: center; justify-content: center; }
+  background-size: 20px 20px; padding: var(--gv-space-10); display: flex; align-items: center; justify-content: center; }
 /* the masonry "pile" of sticky notes (no idea selected). */
-.gv-issuecanvas__pile { display: flex; flex-wrap: wrap; gap: 20px; align-content: flex-start;
+.gv-issuecanvas__pile { display: flex; flex-wrap: wrap; gap: var(--gv-space-5); align-content: flex-start;
   justify-content: center; align-items: flex-start; max-width: 1000px; }
 .gv-issuecanvas__pile[hidden], .gv-issuecanvas__view[hidden] { display: none; }
 /* canvas-hidden guard: .gv-issuecanvas sets display:flex, which beats the UA
@@ -1974,7 +1974,7 @@
 
 /* ── Sticky-note idea card ── live button = 320px, padding 20px, radius 3px, pastel bg.
    Resting shadow + (.is-raised) the selected/floating detail shadow. Variants set bg. */
-.gv-sticky { position: relative; box-sizing: border-box; width: 320px; padding: 20px;
+.gv-sticky { position: relative; box-sizing: border-box; width: 320px; padding: var(--gv-space-5);
   border: 0; border-radius: var(--gv-radius); text-align: left; cursor: pointer;
   font-family: var(--gv-font-family); color: var(--gv-text-primary);
   background: var(--gv-sticky-bg, rgb(240, 240, 252)); display: flex; flex-direction: column;
@@ -1993,8 +1993,8 @@
 .gv-sticky.pink     { --gv-sticky-bg: rgb(255, 214, 242); }
 .gv-sticky.grey     { --gv-sticky-bg: rgb(240, 240, 252); }
 /* author chip — 32px avatar + 14px/600 name + emoji. */
-.gv-sticky__author { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.gv-sticky__author .av { width: 32px; height: 32px; border-radius: 50%; flex: 0 0 auto;
+.gv-sticky__author { display: flex; align-items: center; gap: var(--gv-space-3); margin-bottom: var(--gv-space-4); }
+.gv-sticky__author .av { width: 32px; height: 32px; border-radius: var(--gv-radius-full); flex: 0 0 auto;
   border: 2px solid #fff; background: var(--gv-grey-200) center/cover; }
 .gv-sticky__authorname { font-size: var(--gv-fs-s); font-weight: 600; line-height: 21px;
   color: var(--gv-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2009,15 +2009,15 @@
 .gv-sticky__share:hover { background: rgba(0,0,0,0.06); color: var(--gv-text-primary); }
 .gv-sticky__share svg { width: 18px; height: 18px; }
 /* card title — live p = 21px / 700 / 31.5px #333 (detail). */
-.gv-sticky__title { margin: 0 0 8px; font-size: var(--gv-fs-xl); font-weight: 700; line-height: 31.5px;
+.gv-sticky__title { margin: 0 0 var(--gv-space-2); font-size: var(--gv-fs-xl); font-weight: 700; line-height: 31.5px;
   color: var(--gv-text-primary); }
 /* excerpt — live p = 14px / 400 / 21px #333, clamped within the fixed card height. */
 .gv-sticky__excerpt { margin: 0; font-size: var(--gv-fs-s); font-weight: 400; line-height: 21px;
   color: var(--gv-text-primary); overflow: hidden; }
 /* reaction controls — live .e2e-reaction-controls = flex row-reverse, 14px, dislike then like. */
 .gv-sticky__react { display: flex; flex-direction: row-reverse; align-items: center;
-  justify-content: flex-end; gap: 14px; margin-top: auto; padding-top: 16px; }
-.gv-sticky__reactbtn { display: flex; align-items: center; gap: 5px; margin: 0 4px 0 0; padding: 0;
+  justify-content: flex-end; gap: var(--gv-space-4); margin-top: auto; padding-top: var(--gv-space-4); }
+.gv-sticky__reactbtn { display: flex; align-items: center; gap: var(--gv-space-1); margin: 0 var(--gv-space-1) 0 0; padding: 0;
   border: 0; background: none; cursor: pointer; font-size: var(--gv-fs-s); line-height: 16.1px;
   color: var(--gv-text-primary); font-family: var(--gv-font-family); }
 .gv-sticky__reactbtn svg { width: 18px; height: 18px; }
@@ -2077,7 +2077,7 @@
    Layout-only, scoped to .is-raised on mobile — the resting pile (uniform 320×400
    desktop tiles + the scatter pile's own 300px mobile override) is left untouched. */
 @media (max-width: 860px) {
-  .gv-issuecanvas.is-detail { padding: 20px; }
+  .gv-issuecanvas.is-detail { padding: var(--gv-space-5); }
   .gv-sticky.is-raised { width: 100%; max-width: 100%; }
 }
 
@@ -2141,13 +2141,13 @@
   /* top bar: Back (left) + Add-idea CTA (right), floating over the dotted canvas. */
   .gv-issuefeed.is-feed .gv-issuefeed__mtop { position: fixed; top: 0; left: 0; right: 0;
     z-index: 20; display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px; pointer-events: none; }
+    padding: var(--gv-space-3) var(--gv-space-4); pointer-events: none; }
   .gv-issuefeed.is-feed .gv-issuefeed__mtop > * { pointer-events: auto; }
   .gv-issuefeed__madd { display: inline-flex; }
 
   /* canvas fills the screen; bands shrink so the near-full-width card dominates. */
   .gv-issuecanvas.is-feed { height: 100vh; padding: 0; }
-  .gv-issuecanvas.is-feed .gv-sticky-band { height: 100vh; padding: 0 16px; }
+  .gv-issuecanvas.is-feed .gv-sticky-band { height: 100vh; padding: 0 var(--gv-space-4); }
   .gv-issuecanvas.is-feed .gv-sticky.is-raised { width: 100%; max-width: 100%;
     height: auto; min-height: 360px; }
   /* the desktop floating CTA is replaced by the top-bar Add-idea on mobile. */
@@ -2155,8 +2155,8 @@
 
   /* fixed bottom "Explore tags" trigger — opens the theme/category sheet. */
   .gv-issuefeed.is-feed .gv-issuefeed__tags { position: fixed; left: 0; right: 0; bottom: 0;
-    z-index: 20; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-    width: 100%; padding: 18px 16px; border: 0; border-top: 1px solid var(--gv-grey-200);
+    z-index: 20; display: inline-flex; align-items: center; justify-content: center; gap: var(--gv-space-3);
+    width: 100%; padding: var(--gv-space-5) var(--gv-space-4); border: 0; border-top: 1px solid var(--gv-grey-200);
     background: #fff; cursor: pointer; font-family: var(--gv-font-family);
     font-size: var(--gv-fs-l); font-weight: 600; color: var(--gv-text-primary); }
   .gv-issuefeed.is-feed .gv-issuefeed__tags svg { width: 20px; height: 20px; }
@@ -2187,15 +2187,15 @@
    .gv-pcard.boxed grid card. Built as a NEW layout (.gv-featured-row) of a NEW
    .gv-pcard.featured variant — base .gv-pcard / .gv-pcard__thumb / __title unchanged.
    Section h2 = the shared .gv-title.h2; bubbles = .gv-bubbles.xs (live 20px avatars). */
-.gv-featured-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.gv-featured-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gv-space-6); }
 
 /* Featured card = borderless photo card. Thumb fills 3 of the 3-up columns;
    live thumb is 376×282 (≈4:3) with the shared 3px radius + clipped corners. */
 .gv-pcard.featured { flex: initial; }
 .gv-pcard.featured .gv-pcard__thumb { aspect-ratio: 4 / 3; border-radius: var(--gv-radius); }
 .gv-pcard.featured .gv-pcard__title { font-size: var(--gv-fs-l); font-weight: 700;
-  line-height: 1.3; margin: 8px 0 0; }                 /* live h3 = 18px/700, margin-top 8px */
-.gv-pcard.featured .gv-bubbles { margin-top: 8px; }
+  line-height: 1.3; margin: var(--gv-space-2) 0 0; }                 /* live h3 = 18px/700, margin-top 8px */
+.gv-pcard.featured .gv-bubbles { margin-top: var(--gv-space-2); }
 
 @media (max-width: 860px) {
   /* Mobile = the live wietsedemo HORIZONTAL CAROUSEL feel: cards keep a fixed
@@ -2208,7 +2208,7 @@
     grid-template-columns: none;
     grid-auto-flow: column;
     grid-auto-columns: 86%;
-    gap: 16px;
+    gap: var(--gv-space-4);
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
@@ -2230,8 +2230,8 @@
    the page-title atom and the magnifier search-field wrapper. */
 
 /* Centered page heading — live "Projects" span computes to 34px / 500 / rgb(71,71,71). */
-.gv-projlist__title { margin: 0 0 24px; text-align: center;
-  font-family: var(--gv-font-family); font-size: 34px; font-weight: 500;
+.gv-projlist__title { margin: 0 0 var(--gv-space-6); text-align: center;
+  font-family: var(--gv-font-family); font-size: var(--gv-fs-xxxxl); font-weight: 500;
   line-height: 1.2; color: var(--gv-text-pagetitle); }
 /* Mobile: real /projects left-aligns the page title (flush with the search field),
    keeping it centered at desktop. Append-only — mirrors real responsive behavior. */
@@ -2266,8 +2266,8 @@
 .gv-voteoption { background: transparent; border-radius: 0; box-shadow: none;
   border-top: 1px solid var(--gv-grey-300); overflow: hidden; }
 .gv-voteoption:first-child { border-top: 0; }
-.gv-voteoption__head { display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  width: 100%; padding: 20px; border: 0; background: transparent; cursor: pointer;
+.gv-voteoption__head { display: flex; align-items: center; justify-content: space-between; gap: var(--gv-space-4);
+  width: 100%; padding: var(--gv-space-5); border: 0; background: transparent; cursor: pointer;
   font-family: inherit; text-align: left; }
 .gv-voteoption__head:focus-visible { outline: var(--gv-focus-outline); outline-offset: -2px; }
 /* title — .e2e-accordion h3 : 21px / 700 / rgb(71,71,71) */
@@ -2277,10 +2277,10 @@
 .gv-voteoption__chevron svg, .gv-voteoption__chevron .gv-icon { width: 24px; height: 24px; }
 .gv-voteoption__head[aria-expanded="true"] .gv-voteoption__chevron { transform: rotate(90deg); }
 /* expandable region — collapsed by default; the page toggles .is-open */
-.gv-voteoption__panel { display: none; padding: 0 20px 20px; font-size: var(--gv-fs-base);
+.gv-voteoption__panel { display: none; padding: 0 var(--gv-space-5) var(--gv-space-5); font-size: var(--gv-fs-base);
   line-height: 1.65; color: var(--gv-text-primary); }
 .gv-voteoption__panel.is-open { display: block; }
-.gv-voteoption__panel p { margin: 0 0 12px; }
+.gv-voteoption__panel p { margin: 0 0 var(--gv-space-3); }
 .gv-voteoption__panel p:last-child { margin-bottom: 0; }
 
 /* ── Final tally panel — #voting-status-module's inner card (.hzyaEs). White, 20px
@@ -2293,15 +2293,15 @@
    consumer that wants it back. */
 .gv-tally { background: #fff; border-radius: 0; box-shadow: none;
   border-left: 4px solid var(--gv-tenant-primary);
-  padding: 20px; margin: 0 0 16px; }
+  padding: var(--gv-space-5); margin: 0 0 var(--gv-space-4); }
 .gv-tally--card { border-left: 0; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); }
 /* "Final tally" heading — h3.igaFHq : 18px/700/tenant-primary, margin 4px 0 16px */
-.gv-tally__title { margin: 4px 0 16px; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.3; color: var(--gv-tenant-primary); }
+.gv-tally__title { margin: var(--gv-space-1) 0 var(--gv-space-4); font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.3; color: var(--gv-tenant-primary); }
 /* "Voting closed on … Participants could vote for N options." — span : 16px/.87 */
 .gv-tally__caption { font-size: var(--gv-fs-base); line-height: 1.5; color: rgba(0, 0, 0, 0.87); }
 .gv-tally__caption strong { font-weight: 700; }
 /* the headline count — p.ZrGRl : 34px/700/#333 */
-.gv-tally__count { margin: 12px 0 0; font-size: var(--gv-fs-xxxxl); font-weight: 700; line-height: 1.5; color: var(--gv-grey-800); }
+.gv-tally__count { margin: var(--gv-space-3) 0 0; font-size: var(--gv-fs-xxxxl); font-weight: 700; line-height: 1.5; color: var(--gv-grey-800); }
 /* caption under it — p.jtLtWx : 16px/400/#333 */
 .gv-tally__sub { margin: 0; font-size: var(--gv-fs-base); font-weight: 400; line-height: 1.5; color: var(--gv-grey-800); }
 
@@ -2310,10 +2310,10 @@
    with the rank-badged thumbnail (left) + the body (title · percentage bar · Read
    more). Shares the soft-shadow media-card pattern with .gv-ideacard but carries a
    ranked thumbnail and a percentage bar instead of author/reactions. */
-.gv-voteresults { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+.gv-voteresults { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gv-space-8); }
 @media (max-width: 720px) { .gv-voteresults { grid-template-columns: minmax(0, 1fr); } }
-.gv-voteresult { display: flex; align-items: center; gap: 17px; background: #fff;
-  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: 17px;
+.gv-voteresult { display: flex; align-items: center; gap: var(--gv-space-4); background: #fff;
+  border-radius: var(--gv-radius); box-shadow: var(--gv-shadow); padding: var(--gv-space-4);
   color: var(--gv-text-primary); text-decoration: none; }
 .gv-voteresult:hover .gv-voteresult__title { color: var(--gv-tenant-primary); }
 .gv-voteresult:focus-visible { outline: var(--gv-focus-outline); outline-offset: 2px; }
@@ -2325,9 +2325,9 @@
 .gv-voteresult__thumb svg, .gv-voteresult__thumb .gv-icon { width: 40px; height: 40px; }
 /* rank badge — .dcvdmw : bg --gv-blue-500 (#044D6C), 3px radius, 4px 12px pad, white #N 14px/400/19.999px */
 .gv-voteresult__rank { position: absolute; top: 0; left: 0; background: var(--gv-blue-500);
-  color: #fff; border-radius: var(--gv-radius); padding: 4px 12px;
+  color: #fff; border-radius: var(--gv-radius); padding: var(--gv-space-1) var(--gv-space-3);
   font-size: var(--gv-fs-s); font-weight: 400; line-height: 1.4; }
-.gv-voteresult__body { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1 1 auto; }
+.gv-voteresult__body { display: flex; flex-direction: column; gap: var(--gv-space-2); min-width: 0; flex: 1 1 auto; }
 /* option title — h5.jlDUZH : 16px/700/#474747 */
 .gv-voteresult__title { margin: 0; font-size: var(--gv-fs-base); font-weight: 700; line-height: 1.3; color: var(--gv-text-pagetitle); }
 /* percentage line — p.hgLDJh : 14px/700/tenant-primary (e.g. "50% • 2 votes") */
@@ -2335,11 +2335,11 @@
 /* the fill bar — distinct from .gv-threshold__bar: the track (.bsnfRS) is the tenant
    primary tinted to 25% with a 1px tenant-primary border + 4px radius, 8px tall; the
    fill (.kpdUEH) is solid tenant primary, 6px tall. */
-.gv-voteresult__track { height: 8px; border-radius: 4px; box-sizing: border-box;
+.gv-voteresult__track { height: 8px; border-radius: var(--gv-radius-1); box-sizing: border-box;
   background: color-mix(in srgb, var(--gv-tenant-primary) 25%, transparent);
   border: 1px solid var(--gv-tenant-primary); overflow: hidden; display: flex; align-items: center; }
 .gv-voteresult__fill { height: 6px; background: var(--gv-tenant-primary); }
-.gv-voteresult__foot { display: flex; align-items: center; gap: 18px; margin-top: 2px; }
+.gv-voteresult__foot { display: flex; align-items: center; gap: var(--gv-space-5); margin-top: var(--gv-space-1); }
 
 /* ── Poll method body — the poll participation form (FO) ──────────────────────────
    Grounded on wietsedemo poll-mobility-plan-for-riverside-heights:
@@ -2350,11 +2350,11 @@
    primitives. The full-width 'Send' (.e2e-send-poll) is .gv-btn.primary.full. The sticky
    'Open for participation · Take the poll' partbar and any participation CTA REUSE the
    existing .gv-partbar / .gv-surveyband — this adds only the poll question/option body. */
-.gv-poll { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%;
+.gv-poll { display: flex; flex-direction: column; align-items: center; gap: var(--gv-space-5); width: 100%;
   color: var(--gv-text-pagetitle); font-size: var(--gv-fs-s); line-height: 19.999px; }
-.gv-poll__question { background: #fff; padding: 20px; margin: 0; border: 0; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow);
+.gv-poll__question { background: #fff; padding: var(--gv-space-5); margin: 0; border: 0; border-radius: var(--gv-radius); box-shadow: var(--gv-shadow);
   color: var(--gv-text-pagetitle); align-self: stretch; }
-.gv-poll__qhead { display: flex; align-items: center; gap: 13px; margin-bottom: 16px; }
+.gv-poll__qhead { display: flex; align-items: center; gap: var(--gv-space-3); margin-bottom: var(--gv-space-4); }
 /* the order badge — neutral #F2F2F2 chip (one-off grey, not the grey-100 token #F4F6F8). */
 .gv-poll__num { width: 25px; height: 25px; flex: none; display: flex; align-items: center; justify-content: center;
   background: #F2F2F2; color: var(--gv-text-pagetitle); font-size: var(--gv-fs-base); font-weight: 600;
@@ -2365,9 +2365,9 @@
    It reuses the .gv-radio / .gv-checkbox primitive; align-items/line-height are reset
    to the live label flow without mutating the base primitive elsewhere. */
 .gv-poll__options .gv-radio, .gv-poll__options .gv-checkbox {
-  font-size: var(--gv-fs-base); line-height: normal; align-items: normal; margin: 0 0 12px 35px; }
+  font-size: var(--gv-fs-base); line-height: normal; align-items: normal; margin: 0 0 var(--gv-space-3) 36px; }
 /* the full-width Send row — a .gv-btn.primary.full; disabled until the poll is complete. */
-.gv-poll__send { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 12px; }
+.gv-poll__send { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: var(--gv-space-3); }
 
 /* ── FO project-page content H1 — grounded darker heading ───────────────────
    The base .gv-title now carries the homepage card/section treatment (#474747,
@@ -2392,15 +2392,15 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
    stepper / Timeline heading for an open single phase. Layout-only variant on top of
    the canonical .gv-title/.gv-btn/.gv-participants atoms — no colour/type re-authored.
    Source: fo-project-survey. ───────────────────────────────────────────────────── */
-.gv-surveyhead { background: #fff; padding: 30px 0 65px; }
-.gv-surveyhead__grid { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px 56px; align-items: start; }
-.gv-surveyhead__main { padding-top: 40px; }   /* title baseline sits below the admin row, matching the live left/right offset */
-.gv-surveyhead__action { display: flex; flex-direction: column; align-items: flex-end; gap: 18px; min-width: 320px; }
-.gv-surveyhead__admin { display: inline-flex; align-items: center; gap: 12px; }
-.gv-surveyhead__cta { width: 100%; justify-content: center; padding: 13px 22px; font-size: var(--gv-fs-base); font-weight: 600; line-height: 22px; }
+.gv-surveyhead { background: #fff; padding: var(--gv-space-8) 0 64px; }
+.gv-surveyhead__grid { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: var(--gv-space-6) 56px; align-items: start; }
+.gv-surveyhead__main { padding-top: var(--gv-space-10); }   /* title baseline sits below the admin row, matching the live left/right offset */
+.gv-surveyhead__action { display: flex; flex-direction: column; align-items: flex-end; gap: var(--gv-space-5); min-width: 320px; }
+.gv-surveyhead__admin { display: inline-flex; align-items: center; gap: var(--gv-space-3); }
+.gv-surveyhead__cta { width: 100%; justify-content: center; padding: var(--gv-space-3) var(--gv-space-6); font-size: var(--gv-fs-base); font-weight: 600; line-height: 22px; }
 .gv-surveyhead__action .gv-participants { padding-top: 0; }
 @media (max-width: 760px) {
-  .gv-surveyhead { padding: 24px 0 36px; }
+  .gv-surveyhead { padding: var(--gv-space-6) 0 36px; }
   .gv-surveyhead__grid { grid-template-columns: 1fr; }
   .gv-surveyhead__main { padding-top: 0; }
   .gv-surveyhead__action { align-items: stretch; min-width: 0; }
@@ -2409,12 +2409,12 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 
 /* Grey content section below the participation band (live: section, bg #EDEFF0,
    padding 60px 0 80px). Reuses .gv-projdesc body copy; band-padding only here. */
-.gv-surveycontent { background: var(--gv-background); padding: 60px 0 80px; }
+.gv-surveycontent { background: var(--gv-background); padding: var(--gv-space-16) 0 80px; }
 
 /* "Back to folder" breadcrumb — text-button link with a leading arrow-left icon,
    sitting above the project hero on single-project pages (live: project-volunteering
    "Showroom" top of page). Secondary text colour, no chrome; aligns to the page wrap. */
-.gv-backlink { display: inline-flex; align-items: center; gap: 6px; padding: 18px 0 0;
+.gv-backlink { display: inline-flex; align-items: center; gap: var(--gv-space-2); padding: var(--gv-space-5) 0 0;
   background: none; border: 0; cursor: pointer; font: inherit;
   font-size: var(--gv-fs-s); color: var(--gv-text-secondary); }
 .gv-backlink:hover { color: var(--gv-text-primary); text-decoration: underline; }
@@ -2442,7 +2442,7 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
    text-box self-centres with max-width:1200 + margin:0 120 on a 1440 page; a
    white-space spacer spans the full 1440). cols-1 is plain block flow. */
 .gv-cb-row {
-  display: flex; flex-wrap: wrap; gap: 24px;
+  display: flex; flex-wrap: wrap; gap: var(--gv-space-6);
   width: 100%; margin: 0; padding: 0;
 }
 .gv-cb-row.cols-1 { display: block; }                 /* single full cell, no gap */
@@ -2460,7 +2460,7 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 
 /* Text-box cell — a rich-text block. Padding 24px 0 (measured).
    Quill alignment classes (ql-align-center/right/justify) come through from the editor. */
-.gv-cb-textbox { display: block; width: 100%; padding: 24px 0; min-height: 26px; }
+.gv-cb-textbox { display: block; width: 100%; padding: var(--gv-space-6) 0; min-height: 26px; }
 .gv-cb-textbox > * { font-family: var(--gv-font-family); }
 .gv-cb-textbox .ql-align-center  { text-align: center; }
 .gv-cb-textbox .ql-align-right   { text-align: right; }
@@ -2475,12 +2475,12 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 .gv-cb-image img { display: block; width: 100%; height: auto; }
 
 /* White-space spacer — vertical padding only, no content. Two measured steps. */
-.gv-cb-whitespace { display: block; width: 100%; padding: 24px 0; min-height: 0; }
-.gv-cb-whitespace.is-small  { padding: 12px 0; }
-.gv-cb-whitespace.is-medium { padding: 24px 0; }
+.gv-cb-whitespace { display: block; width: 100%; padding: var(--gv-space-6) 0; min-height: 0; }
+.gv-cb-whitespace.is-small  { padding: var(--gv-space-3) 0; }
+.gv-cb-whitespace.is-medium { padding: var(--gv-space-6) 0; }
 
 @media (max-width: 760px) {
-  .gv-cb-row { flex-direction: column; gap: 16px; padding: 0 16px; }
+  .gv-cb-row { flex-direction: column; gap: var(--gv-space-4); padding: 0 var(--gv-space-4); }
 }
 
 /* ── Project carousel ─────────────────────────────────────────────────────────
@@ -2496,10 +2496,10 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 .gv-carousel { display: block; }
 .gv-carousel__head {
   display: flex; align-items: flex-end; justify-content: space-between;
-  gap: 16px; margin-bottom: 14px; padding-right: 4px;
+  gap: var(--gv-space-4); margin-bottom: var(--gv-space-4); padding-right: var(--gv-space-1);
 }
 .gv-carousel__title { margin: 0; }  /* host a .gv-title.h2 (live = 25px/700/lh32.5) */
-.gv-carousel__controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.gv-carousel__controls { display: flex; align-items: center; gap: var(--gv-space-2); flex: 0 0 auto; }
 /* Scroll button — matches the live .e2e-event-previews-scroll-{left,right}: a bare
    transparent control (no own bg/border/radius/shadow), centered flex, inheriting
    the surrounding text (14px on the real homepage); only the 24px chevron shows.
@@ -2507,7 +2507,7 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
    rail end: aria-disabled dims + un-clicks it (left starts .disabled). */
 .gv-carousel__scroll {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; padding: 6px; border: 0; border-radius: 0;
+  width: 36px; height: 36px; padding: var(--gv-space-2); border: 0; border-radius: 0;
   background: transparent; color: var(--gv-text-primary); cursor: pointer;
   font: inherit; line-height: inherit; -webkit-appearance: none; appearance: none;
 }
@@ -2519,8 +2519,8 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 /* The sr-only skip button is keyboard-reachable but visually hidden until focused
    (extends the .gv-sr-only atom — show it on focus so the focus ring is visible). */
 .gv-carousel__skip { display: block; }
-.gv-carousel__skip:focus { position: static; width: auto; height: auto; margin: 0 0 8px; clip: auto; white-space: normal;
-  background: var(--gv-grey-100); border-radius: var(--gv-radius); padding: 6px 10px; font: inherit; border: 0; cursor: pointer; }
+.gv-carousel__skip:focus { position: static; width: auto; height: auto; margin: 0 0 var(--gv-space-2); clip: auto; white-space: normal;
+  background: var(--gv-grey-100); border-radius: var(--gv-radius); padding: var(--gv-space-2) var(--gv-space-3); font: inherit; border: 0; cursor: pointer; }
 
 @media (prefers-reduced-motion: reduce) {
   .gv-carousel__scroll { transition: none; }
@@ -2547,7 +2547,7 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 .gv-cta-banner__inner {
   max-width: var(--gv-cb-measure, 1200px);   /* same content measure as CB cells */
   margin: 0 auto;
-  padding: 22px 24px;                          /* thin strip */
+  padding: var(--gv-space-6) var(--gv-space-6);                          /* thin strip */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2580,15 +2580,15 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 .gv-attachment {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 20px;
+  gap: var(--gv-space-3);
+  padding: var(--gv-space-3) var(--gv-space-5);
   border: 1px solid var(--gv-attachment-border);
   border-radius: var(--gv-radius);
   color: var(--gv-cool-grey-600);
   font-size: var(--gv-fs-base);
   line-height: 24px;
 }
-.gv-attachment + .gv-attachment { margin-top: 8px; }
+.gv-attachment + .gv-attachment { margin-top: var(--gv-space-2); }
 .gv-attachment__icon { flex: 0 0 auto; width: 24px; height: 24px; color: var(--gv-cool-grey-600); }
 .gv-attachment__icon .gv-icon { width: 24px; height: 24px; }
 .gv-attachment__name {
@@ -2608,14 +2608,14 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
    <h2>, digest #4: 25px/700/32.5px/#333 = --gv-fs-xxl) and an inline "custom-button"
    CTA (digest #10: a.custom-button — tenant-primary fill, white, 3px radius, pad
    10px 18px). These extend the shared .gv-prose without forking it. */
-.gv-prose h2 { margin: 0 0 16px; font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px; color: var(--gv-text-primary); }
-.gv-prose h3 { margin: 24px 0 12px; font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.4; color: var(--gv-text-primary); }
+.gv-prose h2 { margin: 0 0 var(--gv-space-4); font-size: var(--gv-fs-xxl); font-weight: 700; line-height: 32.5px; color: var(--gv-text-primary); }
+.gv-prose h3 { margin: var(--gv-space-6) 0 var(--gv-space-3); font-size: var(--gv-fs-l); font-weight: 700; line-height: 1.4; color: var(--gv-text-primary); }
 .gv-prose strong { font-weight: 700; }
 /* Inline CTA button mounted inside Content-Builder rich text (a.custom-button). */
 .gv-prose .gv-cta-inline {
   display: inline-block;
-  margin: 4px 0;
-  padding: 10px 18px;
+  margin: var(--gv-space-1) 0;
+  padding: var(--gv-space-3) var(--gv-space-5);
   border-radius: var(--gv-radius);
   background: var(--gv-tenant-primary);
   color: #fff;
@@ -2639,15 +2639,15 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
    SYSTEM — every tenant routes its consent prompt through this one dialog;
    the SKIN (icon tint = --gv-tenant-primary, font, language) re-themes per
    ?theme=. No base mutated; the footer row is reusable by any .gv-modal. */
-.gv-cookie__content { padding: 30px; }              /* div.sc-beqWaB.ipfQaK */
+.gv-cookie__content { padding: var(--gv-space-8); }              /* div.sc-beqWaB.ipfQaK */
 .gv-cookie__icon {
   width: 24px; height: 24px; display: block;
-  margin: 0 0 4px;
+  margin: 0 0 var(--gv-space-1);
   color: var(--gv-tenant-primary);                  /* real fill="#ff5a64" → tenant-tinted */
 }
 .gv-cookie__icon svg { display: block; width: 24px; height: 24px; fill: currentColor; }
 .gv-cookie__title {                                 /* h1#cookie-modal-title: 21/700/27.3/#333 */
-  margin: 14px 0 16px;
+  margin: var(--gv-space-4) 0 var(--gv-space-4);
   font-size: var(--gv-fs-xl); font-weight: 700; line-height: 27.3px;
   color: var(--gv-text-primary);
 }
@@ -2664,15 +2664,15 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 /* 3-action footer — reusable on any .gv-modal (div.sc-jFJHMl.fHwGJs) */
 .gv-modal__footer {
   flex: 0 0 auto;
-  display: flex; align-items: center; gap: 8px;
-  padding: 16px 28px;
+  display: flex; align-items: center; gap: var(--gv-space-2);
+  padding: var(--gv-space-4) var(--gv-space-7);
 }
 .gv-modal__footer .gv-btn { white-space: nowrap; }
 /* Manage sits left, Reject/Accept push to the right */
 .gv-modal__footer .gv-cookie__manage { margin-right: auto; }
 @media (max-width: 520px) {
-  .gv-cookie__content { padding: 20px; }
-  .gv-modal__footer { flex-wrap: wrap; padding: 12px 20px 16px; }
+  .gv-cookie__content { padding: var(--gv-space-5); }
+  .gv-modal__footer { flex-wrap: wrap; padding: var(--gv-space-3) var(--gv-space-5) var(--gv-space-4); }
   .gv-modal__footer .gv-cookie__manage { margin-right: 0; order: 3; flex: 1 1 100%; }
 }
 
@@ -2689,9 +2689,9 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
    .gv-footer__logo inline slot. Mount the band as a SIBLING above <footer>. */
 .gv-footer__logos {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  flex-wrap: wrap; gap: 24px 40px;
+  flex-wrap: wrap; gap: var(--gv-space-6) var(--gv-space-10);
   background: #fff;
-  padding: 50px 20px 20px;            /* measured #hook-footer-logo */
+  padding: 52px var(--gv-space-5) var(--gv-space-5);            /* measured #hook-footer-logo */
   font-family: var(--gv-font-family);
 }
 .gv-footer__logos.row { flex-direction: row; }   /* multiple logos side-by-side */
@@ -2701,7 +2701,7 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
 .gv-footer__logos img, .gv-footer__logos svg { display: block; height: 100px; width: auto; max-width: 100%; }
 .gv-footer__logos .gv-footer__logos-cap { height: 64px; }   /* smaller partner/government marks */
 @media (max-width: 720px) {
-  .gv-footer__logos { padding: 36px 20px 16px; }
+  .gv-footer__logos { padding: 36px var(--gv-space-5) var(--gv-space-4); }
   .gv-footer__logos.row { flex-direction: column; }
   .gv-footer__logos img, .gv-footer__logos svg { height: 72px; }
 }
@@ -2727,11 +2727,11 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
    inverse register button's label to the tenant brand (the live treatment) without
    mutating the base .gv-btn.primary-inverse (which keeps its near-black label for
    the on-hero use). */
-.gv-auth-dual { display: inline-flex; align-items: center; gap: 10px; }
-.gv-auth-dual .gv-btn.primary { font-size: var(--gv-fs-base); line-height: 16.1px; padding: 9px 18px; }
+.gv-auth-dual { display: inline-flex; align-items: center; gap: var(--gv-space-3); }
+.gv-auth-dual .gv-btn.primary { font-size: var(--gv-fs-base); line-height: 16.1px; padding: var(--gv-space-2) var(--gv-space-5); }
 .gv-auth-dual .gv-btn.primary-inverse {
   color: var(--gv-tenant-primary); font-weight: 500;
-  font-size: var(--gv-fs-base); line-height: 16.1px; padding: 9px 18px;
+  font-size: var(--gv-fs-base); line-height: 16.1px; padding: var(--gv-space-2) var(--gv-space-5);
 }
 
 /* ── Participation box (components/participation-box/) ────────────────────────
@@ -2743,12 +2743,12 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
    more visible methods collapse into one "Participate" primary button. Pure
    assembly — composes the canonical .gv-btn + .gv-participants atoms; this block
    only stacks them and carries the empty / hide states. */
-.gv-pbox { display: flex; flex-direction: column; gap: 16px; }
-.gv-pbox__actions { display: flex; flex-direction: column; gap: 12px; }
+.gv-pbox { display: flex; flex-direction: column; gap: var(--gv-space-4); }
+.gv-pbox__actions { display: flex; flex-direction: column; gap: var(--gv-space-3); }
 .gv-pbox__actions .gv-btn { width: 100%; justify-content: center; }
-.gv-pbox__people { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.gv-pbox__people { display: flex; align-items: center; justify-content: center; gap: var(--gv-space-2); }
 .gv-pbox__empty { border: 1px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
-  text-align: center; padding: 14px; font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
+  text-align: center; padding: var(--gv-space-4); font-size: var(--gv-fs-s); color: var(--gv-cool-grey-600); }
 .gv-pbox--nobtns .gv-pbox__actions { display: none; }
 .gv-pbox--nopeople .gv-pbox__people { display: none; }
 
@@ -2764,14 +2764,14 @@ h1.gv-title, .gv-title.h1 { color: var(--gv-text-heading-strong); }
   --gv-es-ink: color-mix(in srgb, var(--gv-tenant-primary) 55%, #111); }
 .gv-extra-survey .gv-btn { width: 100%; }
 .gv-extra-survey--card { border: 1px solid var(--gv-grey-300); border-radius: var(--gv-radius);
-  padding: 22px; background: #fff; box-shadow: var(--gv-shadow); }
-.gv-extra-survey__tag { display: inline-flex; align-items: center; gap: 7px; font-size: 14px;
+  padding: var(--gv-space-6); background: #fff; box-shadow: var(--gv-shadow); }
+.gv-extra-survey__tag { display: inline-flex; align-items: center; gap: var(--gv-space-2); font-size: var(--gv-fs-s);
   font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--gv-es-ink); }
 .gv-extra-survey__tag .gv-icon { width: 18px; height: 18px; color: var(--gv-tenant-primary); }
-.gv-extra-survey__title { font-size: 23px; font-weight: 700; color: var(--gv-text-primary);
-  line-height: 1.25; margin: 12px 0 8px; }
-.gv-extra-survey__desc { font-size: 16px; color: var(--gv-text-primary); line-height: 1.6; margin: 0 0 18px; }
+.gv-extra-survey__title { font-size: var(--gv-fs-xxl); font-weight: 700; color: var(--gv-text-primary);
+  line-height: 1.25; margin: var(--gv-space-3) 0 var(--gv-space-2); }
+.gv-extra-survey__desc { font-size: var(--gv-fs-base); color: var(--gv-text-primary); line-height: 1.6; margin: 0 0 var(--gv-space-5); }
 .gv-extra-survey__empty { border: 2px dashed var(--gv-grey-400); border-radius: var(--gv-radius);
-  padding: 22px; text-align: center; background: var(--gv-grey-50); }
+  padding: var(--gv-space-6); text-align: center; background: var(--gv-grey-50); }
 .gv-extra-survey__empty-t { font-size: var(--gv-fs-s); font-weight: 600; color: var(--gv-text-secondary); }
-.gv-extra-survey__empty-s { font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); margin-top: 6px; }
+.gv-extra-survey__empty-s { font-size: var(--gv-fs-13); color: var(--gv-cool-grey-600); margin-top: var(--gv-space-2); }

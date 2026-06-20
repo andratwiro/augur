@@ -173,30 +173,54 @@
      base fallbacks ("Public Sans","Public Sans",…) — every live capture shows it
      doubled. Mirror it verbatim so probed font-family checkpoints diff cleanly. */
   --gv-font-family: 'Public Sans', 'Public Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  /* Type scale is t-shirt-named (xs · s · base · l · xl …); --gv-fs-13 is the one
-     deliberate numeric step — a 13px micro-size that sits between xs(12) and s(14)
-     and recurs across BO chrome (captions, toasts, help text, drop placeholders). */
+  /* Type scale — CORRECTED to a clean ladder (Augur): 12·14·16·18·20·24·30·36·48.
+     The product source was off-grid (21/25/34/42); snapped to the scale so vertical
+     rhythm is consistent everywhere. t-shirt names kept so existing .gv-* refs resolve;
+     --gv-fs-13 folded into xs (12) — the 13px micro-size is gone (on-grid wins). */
   --gv-fs-xs:     12px;
-  --gv-fs-13:     13px;
+  --gv-fs-13:     var(--gv-fs-xs);   /* deprecated 13px micro-size → folded to 12 (on-grid) */
   --gv-fs-s:      14px;
   --gv-fs-base:   16px;            /* body default — the single 16px source */
   --gv-fs-m:      var(--gv-fs-base); /* alias of base; kept so existing .gv-* refs resolve */
   --gv-fs-l:      18px;
-  --gv-fs-xl:     21px;
-  --gv-fs-xxl:    25px;
+  --gv-fs-xl:     20px;            /* was 21 → 20 */
+  --gv-fs-xxl:    24px;            /* was 25 → 24 */
   --gv-fs-xxxl:   30px;
-  --gv-fs-xxxxl:  34px;
-  --gv-fs-xxxxxl: 42px;
-  --gv-fs-display: 80px; /* huge per-tenant page title (FO /events H1: 80px/700/lh 104px) */
+  --gv-fs-xxxxl:  36px;            /* was 34 → 36 */
+  --gv-fs-xxxxxl: 48px;            /* was 42 → 48 */
+  --gv-fs-display: 80px; /* hero page title (FO /events H1) — kept, on the 8-grid */
 
-  /* ── Radius, sizing, layout (stylingConsts) ───────────────────────────── */
-  --gv-radius: 3px;
+  /* ── Spacing scale — NEW (Augur): strict 4px grid ───────────────────────────
+     The product hardcodes spacing as literals — no scale ever existed. This is the
+     corrected vocabulary every component snaps to. Name = px ÷ 4 (--gv-space-3 = 12px). */
+  --gv-space-0:   0;
+  --gv-space-1:   4px;
+  --gv-space-2:   8px;
+  --gv-space-3:   12px;
+  --gv-space-4:   16px;
+  --gv-space-5:   20px;
+  --gv-space-6:   24px;
+  --gv-space-7:   28px;
+  --gv-space-8:   32px;
+  --gv-space-10:  40px;
+  --gv-space-12:  48px;
+  --gv-space-16:  64px;
+
+  /* ── Radius — CORRECTED ladder (Augur): 4·8·12·full. Was 3px (off-grid). ──── */
+  --gv-radius-1:    4px;
+  --gv-radius-2:    8px;
+  --gv-radius-3:    12px;
+  --gv-radius-full: 999px;          /* pill / circle */
+  --gv-radius: var(--gv-radius-1);  /* legacy alias — was 3px, snapped to 4 */
+
+  /* ── Sizing, layout (stylingConsts). Input height / content widths are layout
+     metrics, not spacing-scale steps, so they keep their measured values. ────── */
   --gv-input-height: 48px;
   --gv-input-padding: 12px;
   --gv-max-page-width: 952px;
   --gv-page-width: 1150px;
   --gv-text-width: 720px;
-  --gv-menu-height: 78px;
+  --gv-menu-height: 80px;           /* was 78 → 80 (8-grid) */
 
   /* ── Elevation (defaultStyles) ────────────────────────────────────────── */
   --gv-shadow:           0px 2px 4px -1px rgba(0,0,0,0.06);
