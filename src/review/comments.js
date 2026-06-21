@@ -357,6 +357,8 @@
     /* health overlay — overrides the layer tint when a box is off-grid or detached */
     '.linkbox.h-offgrid{border-style:solid;border-color:rgba(229,72,77,0.85);background:rgba(229,72,77,0.08);}' +
     '.linkbox.h-detached{border-style:dashed;border-color:rgba(240,180,41,0.9);background:rgba(240,180,41,0.10);}' +
+    '.linkbox.h-bespoke{border-style:solid;border-color:rgba(214,64,159,0.85);background:rgba(214,64,159,0.09);}' +
+    '.linkbox.h-modified{border-style:solid;border-color:rgba(232,89,12,0.85);background:rgba(232,89,12,0.09);}' +
     '.linkbadge{position:absolute;top:0;left:8px;transform:translateY(-50%);pointer-events:auto;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;background:#5672da;color:#fff;font:600 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.02em;padding:3px 7px 3px 7px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,0.28);white-space:nowrap;transition:background .12s ease,transform .12s ease;}' +
     '.linkbadge .lyr{opacity:.72;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}' +
     '.linkbadge.l-pattern{background:#7c3aed;}.linkbadge.l-component{background:#5672da;}.linkbadge.l-base{background:#147985;}' +
@@ -365,8 +367,12 @@
     '.linkbadge .hb.linked{background:rgba(255,255,255,0.22);color:#fff;}' +
     '.linkbadge .hb.detached{background:#f0b429;color:#3a2c00;}' +
     '.linkbadge .hb.offgrid{background:#e5484d;color:#fff;}' +
+    '.linkbadge .hb.bespoke{background:#d6409f;color:#fff;}' +
+    '.linkbadge .hb.modified{background:#e8590c;color:#fff;}' +
     '.linkbadge.h-offgrid{box-shadow:0 0 0 2px rgba(229,72,77,0.85),0 1px 3px rgba(0,0,0,0.28);}' +
     '.linkbadge.h-detached{box-shadow:0 0 0 2px rgba(240,180,41,0.9),0 1px 3px rgba(0,0,0,0.28);}' +
+    '.linkbadge.h-bespoke{box-shadow:0 0 0 2px rgba(214,64,159,0.85),0 1px 3px rgba(0,0,0,0.28);}' +
+    '.linkbadge.h-modified{box-shadow:0 0 0 2px rgba(232,89,12,0.85),0 1px 3px rgba(0,0,0,0.28);}' +
     '.linkbadge:hover{transform:translateY(-50%) scale(1.06);filter:brightness(1.08);}' +
     '.linkbadge svg{width:10px;height:10px;display:block;flex:0 0 auto;}' +
     /* spacing shading (devtools-style) — drawn inside each box at the "+ Tokens" drill
@@ -603,7 +609,7 @@
   }
   var LINKICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 12h6M9.5 8H7a4 4 0 0 0 0 8h2.5M14.5 8H17a4 4 0 0 1 0 8h-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
-  /* ---------- health: linked / detached / off-grid ----------
+  /* ---------- health: linked / detached / bespoke / modified / off-grid ----------
    * The badge already proves LINKAGE (it only renders for a deps-met canonical family).
    * Health adds the second axis (right vs off-grid), shown at the same time as the layer:
    *   • off-grid — the box's own computed SPACING sits off the space scale. The scale is
@@ -633,8 +639,24 @@
     var D = window.__GV_DETACHED;
     return !!(D && D.length && D.indexOf(fam) >= 0);
   }
-  function healthOf(el, fam) {
+  /* Provenance — the honesty signal class-lineage alone can't give. The runtime stamps
+   * data-gv-rendered (+ data-gv-hash) on a host it actually rendered (GV.mountAll/mount).
+   * A composite (component/pattern, rank≥2) NOT inside such a host wears the .gv-* class
+   * but was hand-authored → "bespoke". One that IS inside a rendered host but whose live
+   * markup no longer hashes to the stamp was edited after mount → "modified". Base atoms
+   * (rank 1) are meant to be hand-written, so they're exempt. */
+  function provenanceOf(el, rank) {
+    if (!(rank >= 2) || !el.closest) return null;
+    var host = el.closest("[data-gv-rendered]");
+    if (!host) return { state: "bespoke", detail: "bespoke — hand-authored markup wearing the class, not a canonical instance" };
+    var stored = host.getAttribute("data-gv-hash"), fn = (window.GV && GV.hash);
+    if (stored && fn && fn(host.innerHTML) !== stored) return { state: "modified", detail: "modified — a canonical instance edited after it was rendered" };
+    return null;
+  }
+  function healthOf(el, fam, rank) {
     if (isDetached(el, fam)) return { state: "detached", detail: "detached — forked from canonical" };
+    var prov = provenanceOf(el, rank);
+    if (prov) return prov;
     var off = spacingHealth(el);
     if (off) return { state: "offgrid", detail: "off-grid spacing: " + off.join(", ") };
     return { state: "linked", detail: "linked — tracks canonical, on-grid" };
@@ -649,7 +671,7 @@
     collectLayered().forEach(function (it) {
       var r = it.el.getBoundingClientRect();
       if (r.width < 8 || r.height < 8) return; // hidden / collapsed
-      var h = healthOf(it.el, it.family);
+      var h = healthOf(it.el, it.family, it.rank);
       var box = document.createElement("div");
       box.className = "linkbox l-" + it.layer + " h-" + h.state;
       if (state.drill >= 2) drawSpacing(box, it.el); // append shades first → badge stays on top
