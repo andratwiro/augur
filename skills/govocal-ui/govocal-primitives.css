@@ -34,6 +34,20 @@ body.gv-root {
 .gv-text.bodyXs { font-size: var(--gv-fs-xs); }
 .gv-text--secondary { color: var(--gv-text-secondary); }
 
+/* Type-role utilities — the canonical composite text styles (size + line-height +
+   weight from the --gv-type-* tokens). Use these for NEW text so "what is a heading"
+   has one answer; .gv-title/.gv-text above stay for existing consumers. Colour is
+   left to the caller (inherit / a text token) so a role can sit on any surface. */
+.gv-type-display { font-size: var(--gv-type-display-size); line-height: var(--gv-type-display-lh); font-weight: var(--gv-type-display-weight); }
+.gv-type-h1      { font-size: var(--gv-type-h1-size);      line-height: var(--gv-type-h1-lh);      font-weight: var(--gv-type-h1-weight); }
+.gv-type-h2      { font-size: var(--gv-type-h2-size);      line-height: var(--gv-type-h2-lh);      font-weight: var(--gv-type-h2-weight); }
+.gv-type-h3      { font-size: var(--gv-type-h3-size);      line-height: var(--gv-type-h3-lh);      font-weight: var(--gv-type-h3-weight); }
+.gv-type-title   { font-size: var(--gv-type-title-size);   line-height: var(--gv-type-title-lh);   font-weight: var(--gv-type-title-weight); }
+.gv-type-body    { font-size: var(--gv-type-body-size);    line-height: var(--gv-type-body-lh);    font-weight: var(--gv-type-body-weight); }
+.gv-type-bodys   { font-size: var(--gv-type-bodys-size);   line-height: var(--gv-type-bodys-lh);   font-weight: var(--gv-type-bodys-weight); }
+.gv-type-label   { font-size: var(--gv-type-label-size);   line-height: var(--gv-type-label-lh);   font-weight: var(--gv-type-label-weight); }
+.gv-type-caption { font-size: var(--gv-type-caption-size); line-height: var(--gv-type-caption-lh); font-weight: var(--gv-type-caption-weight); }
+
 /* ── Button ───────────────────────────────────────────────────────────────
    .gv-btn + a style modifier + an optional size modifier.
    Default size: padding 9px 18px, font-size base, line-height 26px.          */

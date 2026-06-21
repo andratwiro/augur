@@ -10,6 +10,24 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
+  /* ╔══════════════════════════════════════════════════════════════════════╗
+     ║ TOKEN TIERS — read this to tell the DESIGN LANGUAGE from INCIDENTALS.   ║
+     ║                                                                        ║
+     ║  TIER 1 · PRIMITIVES  raw values, no meaning — the palette ramps, the   ║
+     ║          type ladder, the spacing/radius/shadow scales. "What exists."  ║
+     ║  TIER 2 · SEMANTIC    role aliases that carry intent + enable theming   ║
+     ║          (text/border/primary/error/on-color/focus, the 4-var tenant    ║
+     ║          contract, the BO palette). Name is stable, value swaps. "Why." ║
+     ║  TIER 3 · CAPTURED    source-grounded one-offs measured from a single    ║
+     ║          live screen (tagged [T3]). Honest, but NOT the design language. ║
+     ║          PROMOTE to a Tier-2 semantic alias once 3+ places reuse it.    ║
+     ║                                                                        ║
+     ║ Adding a token? Decide its tier first. Most new scraped values are T3   ║
+     ║ until they recur. Per-city variation is ONLY the 4 tenant vars (see the ║
+     ║ THEMING CONTRACT below) — never invent a per-city token.                ║
+     ╚══════════════════════════════════════════════════════════════════════╝ */
+
+  /* ═══ TIER 1 · PRIMITIVES (raw values) ═══════════════════════════════════ */
   /* ── Base ─────────────────────────────────────────────────────────────── */
   --gv-black: #000000;
   --gv-white: #ffffff;
@@ -75,6 +93,7 @@
   /* ── Other ────────────────────────────────────────────────────────────── */
   --gv-brown: #8C680D;
 
+  /* ═══ TIER 2 · SEMANTIC (role aliases — intent + theming) ════════════════ */
   /* ── Semantic aliases (semanticColors) ────────────────────────────────── */
   --gv-text-primary:   var(--gv-grey-800);
   --gv-text-secondary: var(--gv-cool-grey-600);
@@ -126,10 +145,13 @@
   --gv-tenant-secondary: #E2603A; /* warm coral accent */
   --gv-tenant-text:      #333333;
   /* Lightened tenant-primary tints (product: tenantPrimaryLighten75/90/95).
-     Derived with color-mix so they re-theme automatically with the primary. */
-  --gv-tenant-primary-lighten75: color-mix(in srgb, var(--gv-tenant-primary) 25%, transparent);
-  --gv-tenant-primary-lighten90: color-mix(in srgb, var(--gv-tenant-primary) 10%, transparent);
-  --gv-tenant-primary-lighten95: color-mix(in srgb, var(--gv-tenant-primary) 5%,  transparent);
+     Derived with color-mix so they re-theme automatically with the primary, now
+     interpolated in OKLCH (perceptual) rather than sRGB — equal-looking steps and
+     no muddy mid-mix across hues, so the tint ladder is even for ANY city brand.
+     Still alpha-based (mixed with transparent) so they layer over any surface. */
+  --gv-tenant-primary-lighten75: color-mix(in oklch, var(--gv-tenant-primary) 25%, transparent);
+  --gv-tenant-primary-lighten90: color-mix(in oklch, var(--gv-tenant-primary) 10%, transparent);
+  --gv-tenant-primary-lighten95: color-mix(in oklch, var(--gv-tenant-primary) 5%,  transparent);
 
   /* ── On-color (foreground FOR a filled brand surface) — WCAG 1.4.3 ─────────
      Text on a FILLED --gv-tenant-* colour must stay legible for ANY city brand,
@@ -199,6 +221,24 @@
   --gv-fs-xxxxl:  36px;            /* was 34 → 36 */
   --gv-fs-xxxxxl: 48px;            /* was 42 → 48 */
   --gv-fs-display: 80px; /* hero page title (FO /events H1) — kept, on the 8-grid */
+
+  /* ── Type ROLES (composite — the canonical answer to "what is a heading?") ──
+     Each role bundles size + line-height + weight, the way M3 / the DTCG composite
+     `typography` type prescribes — so a new heading/body has ONE canonical spec
+     instead of re-guessing line-height per component. Sizes alias the --gv-fs-*
+     ladder (Tier 1); LINE-HEIGHTS are on the 4px baseline (÷4) so type rhythm and
+     the spacing grid share one unit. ADDITIVE: apply via the .gv-type-* utilities
+     (govocal-primitives.css); existing .gv-title/.gv-text are unchanged. Migrate a
+     component to a role when you touch it — don't sweep. */
+  --gv-type-display-size: var(--gv-fs-xxxxl); --gv-type-display-lh: 44px; --gv-type-display-weight: 700;
+  --gv-type-h1-size:      var(--gv-fs-xxxl);  --gv-type-h1-lh:      36px; --gv-type-h1-weight:      700;
+  --gv-type-h2-size:      var(--gv-fs-xxl);   --gv-type-h2-lh:      32px; --gv-type-h2-weight:      700;
+  --gv-type-h3-size:      var(--gv-fs-xl);    --gv-type-h3-lh:      28px; --gv-type-h3-weight:      700;
+  --gv-type-title-size:   var(--gv-fs-l);     --gv-type-title-lh:   24px; --gv-type-title-weight:   600;
+  --gv-type-body-size:    var(--gv-fs-base);  --gv-type-body-lh:    24px; --gv-type-body-weight:    400;
+  --gv-type-bodys-size:   var(--gv-fs-s);     --gv-type-bodys-lh:   20px; --gv-type-bodys-weight:   400;
+  --gv-type-label-size:   var(--gv-fs-s);     --gv-type-label-lh:   20px; --gv-type-label-weight:   600;
+  --gv-type-caption-size: var(--gv-fs-xs);    --gv-type-caption-lh: 16px; --gv-type-caption-weight: 400;
 
   /* ── Spacing scale (Augur): the 8-point grid with a 4-point half-step ────────
      On-grid = any multiple of 4 (the mainstream base-8 convention — Tailwind/Atlassian).
@@ -270,6 +310,13 @@
   --gv-focus-color:   #1a1a1a;                                    /* near-black neutral ring */
   --gv-focus-outline: var(--gv-focus-width) solid var(--gv-focus-color);
   --gv-focus-halo:    0 0 0 var(--gv-focus-offset) #fff;          /* light separator under an offset ring */
+
+  /* ═══ TIER 3 · CAPTURED ONE-OFFS (source-grounded; promote at 3× reuse) ══════
+     Values measured from a single live screen. Real and useful, but NOT the design
+     language — keep them fenced here so the palette above stays legible. When one
+     starts recurring across components, promote it to a Tier-2 semantic alias.
+     (A few captured one-offs predate this band and still sit inline next to their
+     hue — e.g. --gv-green-mint, --gv-amber-*, --gv-event-chip-grey — tagged in place.) */
 
   /* ── Event card (measured live: wietsedemo /events + project events) ──────
      The event card meta rows sit on a tinted panel (div.kjzjNu) = #F4F6F8,
