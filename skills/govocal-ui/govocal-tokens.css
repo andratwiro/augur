@@ -190,9 +190,12 @@
   --gv-fs-xxxxxl: 48px;            /* was 42 → 48 */
   --gv-fs-display: 80px; /* hero page title (FO /events H1) — kept, on the 8-grid */
 
-  /* ── Spacing scale — NEW (Augur): strict 4px grid ───────────────────────────
-     The product hardcodes spacing as literals — no scale ever existed. This is the
-     corrected vocabulary every component snaps to. Name = px ÷ 4 (--gv-space-3 = 12px). */
+  /* ── Spacing scale (Augur): the 8-point grid with a 4-point half-step ────────
+     On-grid = any multiple of 4 (the mainstream base-8 convention — Tailwind/Atlassian).
+     These named steps are the common vocabulary; name = px ÷ 4 (--gv-space-3 = 12px), a
+     stable self-documenting convention for a linear-4 scale. Lint INV-9 + the Shift+C
+     overlay enforce "multiple of 4" on canonical spacing. Larger layout steps (80/96)
+     close the top of the ramp. */
   --gv-space-0:   0;
   --gv-space-1:   4px;
   --gv-space-2:   8px;
@@ -205,6 +208,8 @@
   --gv-space-10:  40px;
   --gv-space-12:  48px;
   --gv-space-16:  64px;
+  --gv-space-20:  80px;
+  --gv-space-24:  96px;
 
   /* ── Radius — CORRECTED ladder (Augur): 4·8·12·full. Was 3px (off-grid). ──── */
   --gv-radius-1:    4px;

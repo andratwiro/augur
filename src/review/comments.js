@@ -597,20 +597,20 @@
   /* ---------- health: linked / detached / off-grid ----------
    * The badge already proves LINKAGE (it only renders for a deps-met canonical family).
    * Health adds the second axis AUGUR-SPEC asks for, shown at the same time as the layer:
-   *   • off-grid — the box's own computed SPACING sits off the corrected scale
-   *     (4/8/12/16/24/32/48/64). We read getComputedStyle and check padding (all sides),
-   *     row/column gap, and TOP/BOTTOM margin only — left/right margins are skipped
-   *     because `margin:auto` centering resolves to arbitrary px and would false-positive.
-   *     Scope matches lint INV-9: positive integer px in 4..64 not on the grid.
+   *   • off-grid — the box's own computed SPACING sits off the space scale. The scale is
+   *     the 8-point grid with a 4-point half-step, so on-grid = any MULTIPLE OF 4. We read
+   *     getComputedStyle and check padding (all sides), row/column gap, and TOP/BOTTOM
+   *     margin only — left/right margins are skipped because `margin:auto` centering
+   *     resolves to arbitrary px and would false-positive. Scope matches lint INV-9:
+   *     positive integer px ≥4 not divisible by 4.
    *   • detached — a deliberately forked instance, flagged by data-gv-detached on the
    *     element (or window.__GV_DETACHED listing the family). Detach lands in Phase 4;
    *     this lights up automatically once it does.
    *   • linked — neither of the above (the good default). */
-  var GRID_SET = { 4:1, 8:1, 12:1, 16:1, 24:1, 32:1, 48:1, 64:1 };
   function pxOffGrid(v) {
     var m = /^(-?\d*\.?\d+)px$/.exec(v); if (!m) return false;
     var n = parseFloat(m[1]);
-    return Number.isInteger(n) && n >= 4 && n <= 64 && !GRID_SET[n];
+    return Number.isInteger(n) && n >= 4 && n % 4 !== 0;
   }
   function spacingHealth(el) {
     var cs; try { cs = getComputedStyle(el); } catch (e) { return null; }
