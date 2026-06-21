@@ -6190,3 +6190,35 @@ GV.register("voting", function (props) {
     GV[n] = function (props) { return GV.render(n, props); };
   });
 })();
+
+/* ── declarative instances (Augur Phase 4) ───────────────────────────────────
+ * A prototype drops a LINKED component in declaratively, instead of writing its own
+ * mount script:
+ *   <div data-gv-instance="participation-box" data-gv-props='{"actions":[…]}'></div>
+ * GV.mountAll() renders every such node from the canonical registry on load, so the
+ * instance tracks the master (edit the renderer → every prototype reflows on reload).
+ * Props are JSON in data-gv-props (use a single-quoted attribute so the JSON keeps
+ * its double quotes). This is also what makes `npm run detach` deterministic: the
+ * detach CLI reads the same attributes, runs GV.render(name, props) in node, freezes
+ * the output inline, and stamps data-gv-detached — which makes mountAll SKIP the node
+ * (a detached instance is a local fork; it must not be re-rendered from canonical).
+ * Idempotent: a node is mounted at most once (__gvMounted). Library demos use the
+ * imperative GV.mount(...) and carry no data-gv-instance, so they're untouched. ── */
+GV.mountAll = function (root) {
+  root = (root && root.querySelectorAll) ? root : document;
+  var nodes = root.querySelectorAll("[data-gv-instance]:not([data-gv-detached])");
+  Array.prototype.forEach.call(nodes, function (el) {
+    if (el.__gvMounted) return;
+    var name = el.getAttribute("data-gv-instance");
+    var props = {};
+    var raw = el.getAttribute("data-gv-props");
+    if (raw) { try { props = JSON.parse(raw); } catch (e) { if (window.console) console.warn("GV.mountAll: bad data-gv-props on", el, e); return; } }
+    try { el.innerHTML = GV.render(name, props); el.__gvMounted = 1; GV.hydrate(el); }
+    catch (e) { if (window.console) console.warn("GV.mountAll: " + e.message, el); }
+  });
+  return root;
+};
+if (typeof document !== "undefined") {
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { GV.mountAll(); });
+  else GV.mountAll(); // defer script: DOM already parsed
+}
