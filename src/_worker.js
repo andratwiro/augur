@@ -91,15 +91,16 @@ function loginPage(redirect, error) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Product Prototypes</title>
+  <title>Augur</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
   <style>
-    /* Matches the Linear-style site shell: near-white canvas, indigo accent, Inter,
-       and the same faint indigo aurora behind the content. */
+    /* Same visual language as the site shell — near-white canvas, indigo accent,
+       Inter — but deliberately quiet: no aurora, no gradient mark, no big drop
+       shadow. A flat gate that reads as effortless rather than shiny. */
     :root {
-      --bg: #fbfbfd; --card: #ffffff; --fg: #16171a; --muted: #5b626e; --faint: #6b7280;
+      --bg: #fbfbfd; --card: #ffffff; --fg: #16171a; --muted: #5b626e; --faint: #9aa0ab;
       --line: rgba(16,17,26,0.09); --line-2: rgba(16,17,26,0.15);
       --accent: #5159c9; --accent-solid: #5e6ad2; --err: #b42318;
       color-scheme: light;
@@ -111,37 +112,30 @@ function loginPage(redirect, error) {
       letter-spacing: -0.011em; background: var(--bg); color: var(--fg);
       -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
     }
-    body::before {
-      content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background:
-        radial-gradient(940px 440px at 14% -12%, rgba(94,106,210,0.12), transparent 60%),
-        radial-gradient(700px 420px at 98% -6%, rgba(140,99,210,0.08), transparent 55%);
-    }
     .card {
-      position: relative; z-index: 1;
-      background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-      padding: 34px 32px; max-width: 380px; width: 100%;
-      box-shadow: 0 24px 60px -28px rgba(16,24,40,0.32), 0 1px 2px rgba(16,24,40,0.04);
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 30px 30px 28px; max-width: 360px; width: 100%;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -22px rgba(16,24,40,0.22);
     }
+    .brand { display: flex; align-items: center; gap: 9px; margin: 0 0 10px; }
     .mark {
-      width: 40px; height: 40px; border-radius: 11px; margin: 0 0 18px;
-      background: linear-gradient(150deg, #828bf5, #5e6ad2 70%);
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.25) inset, 0 4px 14px rgba(94,106,210,0.4);
-      display: grid; place-items: center; color: #fff; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;
+      width: 28px; height: 28px; border-radius: 8px; flex: none;
+      background: var(--accent-solid); color: #fff;
+      display: grid; place-items: center; font-size: 14px; font-weight: 700; letter-spacing: -0.02em;
     }
-    h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 5px; }
-    p.sub { color: var(--muted); margin: 0 0 24px; font-size: 14.5px; }
+    .brand .name { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+    p.sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
     label { display: block; font-size: 13px; font-weight: 500; margin: 0 0 7px; }
     input[type=password] {
-      width: 100%; font: inherit; font-size: 15px; padding: 11px 13px; border-radius: 10px;
+      width: 100%; font: inherit; font-size: 15px; padding: 11px 13px; border-radius: 9px;
       border: 1px solid var(--line-2); background: #fff; color: var(--fg);
-      transition: border-color .12s ease, box-shadow .12s ease;
+      transition: border-color .12s ease;
     }
     input[type=password]:hover { border-color: rgba(16,17,26,0.28); }
     input[type=password]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
     button {
-      width: 100%; margin-top: 18px; font: inherit; font-weight: 600; font-size: 15px; color: #fff;
-      background: var(--accent-solid); border: 1px solid transparent; border-radius: 10px; padding: 12px;
+      width: 100%; margin-top: 16px; font: inherit; font-weight: 600; font-size: 15px; color: #fff;
+      background: var(--accent-solid); border: 1px solid transparent; border-radius: 9px; padding: 11px;
       cursor: pointer; transition: background .12s ease;
     }
     button:hover { background: #525dc6; }
@@ -152,7 +146,6 @@ function loginPage(redirect, error) {
       color: var(--err); font-size: 13.5px; font-weight: 500; margin: 14px 0 0;
     }
     .error svg { width: 16px; height: 16px; flex: none; margin-top: 1px; }
-    .foot { position: relative; z-index: 1; margin-top: 20px; text-align: center; color: var(--faint); font-size: 12px; }
     /* Present in the DOM for password managers (Bitwarden pairs username+password),
        but visually hidden so the UI stays password-only. NOT display:none — managers
        skip removed/hidden fields. */
@@ -160,28 +153,30 @@ function loginPage(redirect, error) {
       position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
       overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
     }
-    @media (max-width: 420px) { .card { padding: 28px 22px; } }
+    @media (max-width: 420px) { .card { padding: 26px 22px; } }
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
 </head>
 <body>
-  <div>
-    <main class="card">
-      <div class="mark" aria-hidden="true">P</div>
-      <form method="POST" action="/__auth">
-        <input type="hidden" name="redirect" value="${safeRedirect}" />
-        <input class="visually-hidden" type="text" name="username" value="govocal"
-               autocomplete="username" tabindex="-1" aria-hidden="true" readonly />
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" autofocus required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
-        <button type="submit">Enter</button>
-        <p class="error" id="pw-err" role="alert">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-          <span>Incorrect password. Try again.</span>
-        </p>
-      </form>
-    </main>
-  </div>
+  <main class="card">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">A</div>
+      <span class="name">Augur</span>
+    </div>
+    <p class="sub">Private prototypes. Enter the password to continue.</p>
+    <form method="POST" action="/__auth">
+      <input type="hidden" name="redirect" value="${safeRedirect}" />
+      <input class="visually-hidden" type="text" name="username" value="govocal"
+             autocomplete="username" tabindex="-1" aria-hidden="true" readonly />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" autofocus required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
+      <button type="submit">Enter</button>
+      <p class="error" id="pw-err" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        <span>Incorrect password. Try again.</span>
+      </p>
+    </form>
+  </main>
 </body>
 </html>`;
 }
