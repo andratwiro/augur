@@ -1,7 +1,0 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Augur mark">
-  <!-- single-colour glyph; inherits currentColor. Use for favicon, terminal, stamps. -->
-  <g stroke="currentColor" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M120 196 C156 188 196 240 256 314 C316 240 356 188 392 196"/>
-    <path d="M256 314 L256 366"/>
-  </g>
-</svg>

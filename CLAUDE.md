@@ -272,9 +272,10 @@ None of these load by default. Reach for them when the task or the user calls fo
   failure (color-only state, low-contrast text, disabled zoom, tiny targets).
 - **Persona critique** — `gv-design-system/skills/govocal-persona-critique/` to critique a flow in
   character (participant/admin personas).
-- **Review comments & annotations** — `npm run comments` pulls reviewer threads into a gitignored
-  `review-comments.local.md`. Needs `REVIEW_SITE_URL` + `REVIEW_EXPORT_KEY` in `.env.deploy`; the
-  export key is a secret — never paste it in chat. The review overlay (`src/review/comments.js`,
+- **Review comments & annotations** — `npm run review` (`scripts/review.mjs`) reads reviewer
+  threads straight from production and can resolve/reply/reopen/delete them. Needs
+  `REVIEW_SITE_URL` + `REVIEW_EXPORT_KEY` in `.env.deploy`; the export key is a secret — never
+  paste it in chat. The review overlay (`src/review/comments.js`,
   `Shift+C`) has two pin types: transient **comments** and always-on **annotations** (a comment
   promoted via the Aslam toggle — dev-delivery notes that render with review mode off and are
   **skipped on "resolve comments"**, so use `node scripts/review.mjs --open` for the actionable
