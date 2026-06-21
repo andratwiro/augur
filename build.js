@@ -256,7 +256,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.82";
+const UI_VERSION = "0.83";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1339,6 +1339,21 @@ const PAGE_CSS = `
     .tok-chain code.tok-raw { color: var(--fg); background: rgba(94,106,210,0.10); }
     .tok-arrow { color: #b6bac4; font-size: 11px; }
     .tok-meta { font-size: 11px; color: var(--faint); }
+    /* Per-type token previews — type scale / font size / spacing render as rows so
+       the preview can BE the value (real glyph size, real bar width). Radius and
+       shadow stay in the chip grid but their swatch shows the rendered value. */
+    .tok-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+    .tok-row { display: flex; gap: 14px; align-items: center; padding: 10px 14px; background: var(--card);
+               border: 1px solid var(--line); border-radius: 11px; }
+    .tok-row .tok-body { flex: 1; }
+    .tok-meta--ann { color: var(--muted); font-weight: 600; margin: 3px 0; font-size: 11.5px; }
+    .ts-sample { flex: 0 0 132px; width: 132px; text-align: center; color: var(--fg); line-height: 1;
+                 font-family: 'Public Sans','Helvetica Neue',Helvetica,Arial,sans-serif;
+                 overflow: hidden; white-space: nowrap; }
+    .sp-track { flex: 0 0 248px; width: 248px; display: flex; align-items: center; }
+    .sp-bar { height: 14px; border-radius: 3px; background: rgba(94,106,210,0.85); box-shadow: inset 0 0 0 1px rgba(16,17,26,0.10); }
+    .tok-sw--radius { background: rgba(94,106,210,0.15); box-shadow: inset 0 0 0 1.5px rgba(94,106,210,0.55); }
+    .tok-sw--shadow { background: #fff; }
     /* Opportunity prototype grid: capped at 3 roomier cards per row on desktop,
        stepping down to 2 then 1 as width drops. */
     .page-grid.is-3up { grid-template-columns: repeat(3, 1fr); }
@@ -2987,44 +3002,99 @@ function isColorVal(v) {
   return !!v && /^(#|rgb|hsl|color-mix)/i.test(v.trim());
 }
 function tokenGroup(name) {
-  if (/^--gv-fs-|^--gv-font/.test(name)) return "Typography";
+  if (/^--gv-type-/.test(name)) return "Type scale";       // semantic size/lh/weight triplets
+  if (/^--gv-fs-/.test(name)) return "Font size";          // the raw size ramp
+  if (/^--gv-font|^--gv-bo-font/.test(name)) return "Font family";
+  if (/^--gv-space-/.test(name)) return "Spacing";
+  if (/^--gv-radius/.test(name)) return "Radius";
   if (/^--gv-shadow/.test(name)) return "Elevation";
-  if (/^--gv-radius|width|height|padding|^--gv-menu-|frame-w/.test(name)) return "Sizing & layout";
   if (/^--gv-focus/.test(name)) return "Focus";
+  if (/width|height|padding|^--gv-menu-|frame-w|target-min/.test(name)) return "Layout";
   return "Colour"; // default — the bulk of the palette
 }
+function tokPx(v) { const m = (v || "").match(/-?[\d.]+/); return m ? parseFloat(m[0]) : null; }
 function renderTokensIndex(graph) {
   const tokens = graph.tokens || {};
   const names = Object.keys(tokens);
   const groups = {};
   for (const name of names) (groups[tokenGroup(name)] ||= []).push(name);
-  const ORDER = ["Colour", "Typography", "Sizing & layout", "Elevation", "Focus"];
+  const ORDER = ["Colour", "Type scale", "Font size", "Font family", "Spacing", "Radius", "Elevation", "Layout", "Focus"];
   const ordered = [...ORDER.filter((g) => groups[g]), ...Object.keys(groups).filter((g) => !ORDER.includes(g))];
 
-  const chip = (name) => {
-    const t = tokens[name];
-    const consumers = (t.consumedBy.tokens.length + t.consumedBy.classes.length);
-    const swatch = isColorVal(t.raw)
-      ? `<span class="tok-sw" style="background:${t.raw}"></span>`
-      : `<span class="tok-sw tok-sw--mono">Aa</span>`;
-    const chain = t.chain.length > 1
-      ? `<div class="tok-chain">${t.chain.map((c) => `<code>${c}</code>`).join('<span class="tok-arrow">→</span>')}<span class="tok-arrow">→</span><code class="tok-raw">${escAttr(t.raw || "")}</code></div>`
-      : `<div class="tok-chain"><code class="tok-raw">${escAttr(t.raw || t.value)}</code></div>`;
-    const fkey = `${name} ${t.raw || ""} ${t.value}`.replace(/"/g, "");
-    return `
-      <div class="tok" data-fitem data-fkey="${fkey}">
-        ${swatch}
+  // ── shared row pieces ──
+  const fkey = (name, t) => `${name} ${t.raw || ""} ${t.value}`.replace(/"/g, "");
+  const chainOf = (t) => t.chain.length > 1
+    ? `<div class="tok-chain">${t.chain.map((c) => `<code>${c}</code>`).join('<span class="tok-arrow">→</span>')}<span class="tok-arrow">→</span><code class="tok-raw">${escAttr(t.raw || "")}</code></div>`
+    : `<div class="tok-chain"><code class="tok-raw">${escAttr(t.raw || t.value)}</code></div>`;
+  const consumersOf = (t) => t.consumedBy.tokens.length + t.consumedBy.classes.length;
+  const metaOf = (t) => { const c = consumersOf(t); return `<div class="tok-meta">${c ? `${c} consumer${c === 1 ? "" : "s"}` : "no direct consumers"}</div>`; };
+  const bodyOf = (name, t) => `<div class="tok-body"><code class="tok-name">${name}</code>${chainOf(t)}${metaOf(t)}</div>`;
+
+  // ── preview swatch for chip-grid groups (Colour / Radius / Elevation / Font family / Layout / Focus) ──
+  const swatchOf = (name, t, group) => {
+    const raw = t.raw || t.value || "";
+    if (isColorVal(raw)) return `<span class="tok-sw" style="background:${raw}"></span>`;
+    if (group === "Radius") return `<span class="tok-sw tok-sw--radius" style="border-radius:${raw}"></span>`;
+    if (group === "Elevation") return `<span class="tok-sw tok-sw--shadow" style="box-shadow:${raw}"></span>`;
+    if (group === "Font family") return `<span class="tok-sw tok-sw--mono" style="font-family:${raw};font-size:17px;font-weight:600">Ag</span>`;
+    const px = tokPx(raw); // Layout / Focus dims → show the number
+    return `<span class="tok-sw tok-sw--mono" style="font-size:11px">${px != null ? px : "·"}</span>`;
+  };
+  const chipItem = (name, group) => `<div class="tok" data-fitem data-fkey="${fkey(name, tokens[name])}">${swatchOf(name, tokens[name], group)}${bodyOf(name, tokens[name])}</div>`;
+  const gridSection = (g) => `<div class="tok-grid">${groups[g].map((n) => chipItem(n, g)).join("")}</div>`;
+
+  // ── Spacing → bars at the real width (clamped past 240px, true value labelled) ──
+  const spacingSection = (g) => {
+    const order = groups[g].slice().sort((a, b) => (tokPx(tokens[a].raw) || 0) - (tokPx(tokens[b].raw) || 0));
+    return `<div class="tok-list">${order.map((n) => {
+      const t = tokens[n]; const w = Math.max(2, Math.min(tokPx(t.raw) || 0, 240));
+      return `<div class="tok-row" data-fitem data-fkey="${fkey(n, t)}"><span class="sp-track"><span class="sp-bar" style="width:${w}px"></span></span>${bodyOf(n, t)}</div>`;
+    }).join("")}</div>`;
+  };
+
+  // ── Font size → glyph rendered at the real size (visual capped at 64px, true px labelled) ──
+  const fontSizeSection = (g) => {
+    const order = groups[g].slice().sort((a, b) => (tokPx(tokens[a].raw) || 0) - (tokPx(tokens[b].raw) || 0));
+    return `<div class="tok-list">${order.map((n) => {
+      const t = tokens[n]; const vis = Math.min(tokPx(t.raw) || 16, 64);
+      return `<div class="tok-row" data-fitem data-fkey="${fkey(n, t)}"><span class="ts-sample" style="font-size:${vis}px">Ag</span>${bodyOf(n, t)}</div>`;
+    }).join("")}</div>`;
+  };
+
+  // ── Type scale → pair the size/lh/weight triplet per role into one live sample ──
+  const ROLE_ORDER = ["display", "h1", "h2", "h3", "title", "body", "bodys", "label", "caption"];
+  const typeRoles = (g) => {
+    const roles = [...new Set(groups[g].map((n) => (n.match(/^--gv-type-(.+)-(size|lh|weight)$/) || [])[1]).filter(Boolean))];
+    return roles.sort((a, b) => { const i = ROLE_ORDER.indexOf(a), j = ROLE_ORDER.indexOf(b); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j); });
+  };
+  const typeScaleSection = (g) => `<div class="tok-list">${typeRoles(g).map((role) => {
+    const kSz = `--gv-type-${role}-size`, kLh = `--gv-type-${role}-lh`, kWt = `--gv-type-${role}-weight`;
+    const sz = tokens[kSz], lh = tokens[kLh], wt = tokens[kWt];
+    const szRaw = (sz && sz.raw) || "16px", lhRaw = (lh && lh.raw) || "", wtRaw = (wt && wt.raw) || "400";
+    const vis = Math.min(tokPx(szRaw) || 16, 52);
+    const present = [kSz, kLh, kWt].filter((k) => tokens[k]);
+    const consumers = present.reduce((s, k) => s + consumersOf(tokens[k]), 0);
+    const ann = `${szRaw}${wtRaw ? ` · ${wtRaw}` : ""}${lhRaw ? ` · ${lhRaw} line-height` : ""}`;
+    return `<div class="tok-row" data-fitem data-fkey="${`${role} ${present.join(" ")} ${szRaw} ${wtRaw}`.replace(/"/g, "")}">
+        <span class="ts-sample" style="font-size:${vis}px;font-weight:${wtRaw}">Ag</span>
         <div class="tok-body">
-          <code class="tok-name">${name}</code>
-          ${chain}
+          <code class="tok-name">${role}</code>
+          <div class="tok-meta--ann">${ann}</div>
+          <div class="tok-chain">${present.map((k) => `<code>${k}</code>`).join(" ")}</div>
           <div class="tok-meta">${consumers ? `${consumers} consumer${consumers === 1 ? "" : "s"}` : "no direct consumers"}</div>
         </div>
       </div>`;
-  };
+  }).join("")}</div>`;
+
+  const sectionBody = (g) => g === "Type scale" ? typeScaleSection(g)
+    : g === "Font size" ? fontSizeSection(g)
+    : g === "Spacing" ? spacingSection(g)
+    : gridSection(g);
+  const sectionCount = (g) => g === "Type scale" ? typeRoles(g).length : groups[g].length;
   const sections = ordered.map((g) => `
       <details class="fsection" data-fgroup open>
-        <summary class="section-eyebrow"><span class="fsection__caret" aria-hidden="true"></span>${g} &middot; ${groups[g].length}</summary>
-        <div class="tok-grid">${groups[g].map(chip).join("")}</div>
+        <summary class="section-eyebrow"><span class="fsection__caret" aria-hidden="true"></span>${g} &middot; ${sectionCount(g)}</summary>
+        ${sectionBody(g)}
       </details>`).join("");
 
   return shell({
