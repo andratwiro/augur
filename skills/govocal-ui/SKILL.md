@@ -157,19 +157,44 @@ a prototype across several city palettes:
   in-product `#FF1D2B` (near-pure Wien-Rot) is ~3.8:1 white-on-primary and the audit flags
   it (expected, accepted).
 
-## Accessibility notes (read with `skills/govocal-a11y/`)
+## Accessibility — WCAG 2.2 is a hardwired contract (read with `skills/govocal-a11y/`)
 
-- Focus is a visible 2px tenant-primary outline on every interactive component —
-  keep it.
-- Checked checkboxes/toggles are **success green**, not primary — that's the real
-  product, and it means state isn't signalled by the brand hue alone.
-- **Contrast:** the default GoVocal combination is a **deep teal `#0E7C86`
-  primary** (4.95:1 white-on-primary, comfortable AA) + a **warm coral `#E2603A`
-  secondary** (a brand accent — use dark/large text if filled, ~3.5:1 white-on-coral).
-  This replaced the old hot-pink/black default (`#E10069`, which barely cleared AA).
+Accessibility is enforced like the spacing grid, not left to review. `npm run lint`
+**INV-11** fails the build on the three regressions a system can prevent structurally
+(tenant-coloured focus ring · literal `#fff` on a tenant fill · focus rule that drops
+its indicator). The token + primitive rules below make the rest correct by construction.
+
+- **Focus is a NEUTRAL system concern, never a skin.** The ring is a two-tone token
+  set — a 2px near-black ring (`--gv-focus-outline`) offset out, plus a white halo
+  (`--gv-focus-halo`) in the gap — so it clears 3:1 (1.4.11 / 2.4.13) against *any*
+  background, brand or neutral. On dark surfaces (the BO navy sidebar) the scope flips
+  `--gv-focus-color` to white. **Never** point a focus ring at `var(--gv-tenant-*)`
+  (INV-11a) and **never** `outline:none` on `:focus` without a box-shadow replacement
+  (INV-11c). Was a brand-coloured ring — it failed 3:1 on brand fills.
+- **On-color, not `#fff`.** A control that fills with `var(--gv-tenant-primary|secondary)`
+  sets `color: var(--gv-on-primary|secondary)` — never a literal white (INV-11b). The
+  on-color token is white by default and flips to black/white by live contrast via
+  `contrast-color()` where supported (Baseline 2026), so an arbitrary *light* city brand
+  still yields a legible label (1.4.3). Under `.gv-bo` the on-color tokens are re-pinned
+  to the fixed BO palette, so they don't compute against the wrong (city) colour.
+- **Target size ≥ 24px (2.5.8 AA).** `--gv-target-min: 24px`; `.gv-btn` carries it as a
+  floor, the checkbox box is 24px, the modal close 40px. Any **new** icon-only / standalone
+  interactive control must reach a 24px hit area (pad it even if the glyph is smaller).
+  44px is AAA/touch, not the AA bar.
+- **Focus not obscured (2.4.11 AA).** Sticky chrome sets `--gv-scroll-offset` via `:has()`
+  (FO header, BO content-builder topbar), feeding `scroll-padding-top`, so a keyboard-focused
+  field is never hidden behind a sticky bar on scroll. New sticky chrome must do the same.
+- **Don't signal by colour alone (1.4.1 A).** Checked checkboxes/toggles are **success
+  green** + a check glyph (state isn't the brand hue alone); status pills carry text +
+  icon. Any new state must pair colour with text/icon/shape.
+- **Dragging alternative (2.5.7 AA).** Reorder / range / map-pin / voting controls must
+  ship a non-drag path (buttons, numeric input, "move to" menu) — bake it into the API.
+- **Don't block paste/autofill (3.3.8 AA)** on credential fields; set `autocomplete`.
+- **Contrast of the default theme:** deep teal `#0E7C86` primary (4.95:1 white-on-primary,
+  AA) + warm coral `#E2603A` secondary (brand accent — dark/large text if filled, ~3.5:1).
   Of the city templates, Copenhagen (1) and Engaged California (3) clear AA; Wien (2,
-  `#FF1D2B`) is the flagged ~3.8:1 exception. Always run `npm run audit` and report results;
-  if a city's primary is light, the real platform would need dark button text.
+  `#FF1D2B`) is the flagged ~3.8:1 exception. Run `npm run audit` and report results; with
+  the on-color token in place, a light city brand now self-corrects its button labels.
 
 ## Building & extending the library (System-building mode)
 

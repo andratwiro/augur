@@ -99,7 +99,7 @@
       transition: all 90ms ease-out;
     }
     .sv-scale label:hover { border-color: var(--gv-black); }
-    .sv-scale input:checked + label { background: var(--gv-tenant-primary); border-color: var(--gv-tenant-primary); color: #fff; font-weight: 600; }
+    .sv-scale input:checked + label { background: var(--gv-tenant-primary); border-color: var(--gv-tenant-primary); color: var(--gv-on-primary); font-weight: 600; }
     .sv-scale input:focus-visible + label { outline: var(--gv-focus-outline); outline-offset: 2px; }
     .sv-scale__ends { display: flex; justify-content: space-between; max-width: 420px; margin-top: var(--gv-space-2); font-size: var(--gv-fs-s); font-style: italic; color: var(--gv-text-secondary); }
     @media (max-width: 600px) { .sv-scale label { min-width: 44px; height: 48px; } }

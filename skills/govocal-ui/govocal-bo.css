@@ -15,6 +15,11 @@
   --gv-tenant-primary: var(--gv-bo-primary);
   --gv-tenant-secondary: var(--gv-bo-primary);
   --gv-tenant-text: var(--gv-text-primary);
+  /* On-color must track the BO remap, not the :root city brand — the BO fills are
+     the fixed dark navy/indigo, so their legible foreground is white (re-pin here
+     or contrast-color() at :root would compute against the wrong, city, colour). */
+  --gv-on-primary: #fff;
+  --gv-on-secondary: #fff;
   /* Back office is GoVocal's OWN surface — never city-themed. Remap the themed font
      var to the fixed product font so every primitive that references var(--gv-font-
      family) renders in the BO font, exactly as the tenant COLOUR remap above does.
@@ -123,6 +128,11 @@
 
 /* ── Collapsed rail (.is-rail) ────────────────────────────────────────────── */
 .gv-bo-side.is-rail { width: 80px; }
+/* The navy sidebar is a DARK surface — flip the focus ring to white + a dark halo
+   so it clears 3:1 here (WCAG 2.4.13 / 1.4.11). Same mechanism as FO, inverted. */
+.gv-bo-side { --gv-focus-color: #fff; --gv-focus-halo: 0 0 0 var(--gv-focus-offset) rgba(0,0,0,.55); }
+/* WCAG 2.4.11: the content-builder topbar is position:fixed — offset focused content. */
+html:has(.gv-bo-cb-topbar) { --gv-scroll-offset: calc(var(--gv-menu-height) + var(--gv-space-2)); }
 .gv-bo-side.is-rail .gv-bo-side__brand { padding: 0; justify-content: center; gap: 0; }
 .gv-bo-side.is-rail .gv-bo-side__brandtext { display: none; }
 .gv-bo-side.is-rail .gv-bo-nav__item { padding: 0; justify-content: center; margin: 0 var(--gv-space-2); border-radius: var(--gv-radius-2); }

@@ -55,9 +55,13 @@ body.gv-root {
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
+  min-height: var(--gv-target-min);   /* WCAG 2.5.8 floor (all variants already exceed it) */
   transition: background 80ms ease-out, border-color 80ms ease-out, box-shadow 125ms ease-in-out, filter 80ms ease-out;
 }
-.gv-btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: 1px; }
+/* Two-tone focus: dark ring (--gv-focus-outline) + white halo (--gv-focus-halo) in
+   the offset gap, so the indicator clears 3:1 against both a light page AND a brand/
+   dark fill — WCAG 2.4.13 / 1.4.11, brand-independent. */
+.gv-btn:focus-visible { outline: var(--gv-focus-outline); outline-offset: var(--gv-focus-offset); box-shadow: var(--gv-focus-halo); }
 
 /* sizes */
 .gv-btn.size-s  { padding: var(--gv-space-1) var(--gv-space-3); font-size: var(--gv-fs-s);  line-height: 20px; }
@@ -69,7 +73,7 @@ body.gv-root {
 .gv-btn.full { display: flex; width: 100%; }
 
 /* variants */
-.gv-btn.primary          { background: var(--gv-tenant-primary); color: #fff; }
+.gv-btn.primary          { background: var(--gv-tenant-primary); color: var(--gv-on-primary); }
 .gv-btn.primary:hover    { filter: brightness(0.88); }
 .gv-btn.primary-outlined          { background: transparent; color: var(--gv-tenant-primary); border-color: var(--gv-tenant-primary); }
 .gv-btn.primary-outlined:hover    { background: color-mix(in srgb, var(--gv-tenant-primary) 5%, transparent); }
@@ -157,7 +161,7 @@ body.gv-root {
 .gv-input:not(:disabled):hover, .gv-textarea:not(:disabled):hover { border-color: var(--gv-black); }
 .gv-input:not(:disabled):focus, .gv-textarea:not(:disabled):focus { outline: var(--gv-focus-outline); outline-offset: -1px; border-color: var(--gv-tenant-primary); }
 .gv-input.error, .gv-textarea.error { border-color: var(--gv-red-600); }
-.gv-input.error:focus, .gv-textarea.error:focus { box-shadow: var(--gv-shadow-error); outline: none; }
+.gv-input.error:focus, .gv-textarea.error:focus { outline: var(--gv-focus-outline); outline-offset: -1px; box-shadow: var(--gv-shadow-error); }
 .gv-input:disabled, .gv-textarea:disabled, .gv-input.disabled {
   color: #666; background-color: #f9f9f9; border-color: #ccc; cursor: not-allowed; opacity: 1;
 }
@@ -356,7 +360,7 @@ body.gv-root {
 .gv-select select:not(:disabled):focus { outline: var(--gv-focus-outline); outline-offset: -1px; border-color: var(--gv-tenant-primary); }
 .gv-select select:disabled { color: #666; background-color: #f9f9f9; border-color: #ccc; cursor: not-allowed; }
 .gv-select.error select { border-color: var(--gv-red-600); }
-.gv-select.error select:focus { box-shadow: var(--gv-shadow-error); outline: none; }
+.gv-select.error select:focus { outline: var(--gv-focus-outline); outline-offset: -1px; box-shadow: var(--gv-shadow-error); }
 .gv-select select.placeholder { color: var(--gv-placeholder); }  /* unselected placeholder option */
 .gv-select.size-small select { font-size: var(--gv-fs-s); padding: var(--gv-space-3); padding-right: var(--gv-space-7); }
 /* chevron-down standing in for the icon: fill #999 → black on hover/focus (source) */
@@ -431,6 +435,13 @@ body.gv-root {
 /* ── Visually-hidden utility (available to assistive tech) ─────────────────── */
 .gv-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
+/* ── Focus-not-obscured scroll offset (WCAG 2.4.11) ──────────────────────────
+   When a keyboard-focused element is scrolled into view it must not hide behind
+   sticky chrome. Default 0; the FO sticky header and the BO fixed content-builder
+   topbar set --gv-scroll-offset in their own files via :has() so it only applies
+   where the sticky chrome is actually present. */
+html { scroll-padding-top: var(--gv-scroll-offset, 0px); }
+
 /* ── Generic tab panel (show/hide by .is-active) ───────────────────────────── */
 .gv-panel { display: none; }
 .gv-panel.is-active { display: block; }
@@ -456,7 +467,7 @@ body.gv-root {
    a real face. .sm = the 26px header variant. */
 .gv-avatar {
   width: 32px; height: 32px; border-radius: var(--gv-radius-full); flex: none; display: grid; place-items: center;
-  overflow: hidden; background: var(--gv-tenant-primary); color: #fff; font-weight: 700; font-size: var(--gv-fs-s);
+  overflow: hidden; background: var(--gv-tenant-primary); color: var(--gv-on-primary); font-weight: 700; font-size: var(--gv-fs-s);
 }
 .gv-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gv-avatar.sm { width: 26px; height: 26px; font-size: var(--gv-fs-xs); }

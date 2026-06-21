@@ -368,6 +368,39 @@ if (fs.existsSync(uiCssPath)) {
   }
 }
 
+// INV-11 (HARD): ACCESSIBILITY baseline — the same "enforce it, don't trust review"
+// discipline INV-9 applies to the grid, applied to WCAG 2.2. Scans the canonical
+// component/primitive CSS for the three regressions a system can prevent structurally:
+//   a) a focus indicator built from a TENANT colour — a brand ring fails 1.4.11/2.4.13
+//      on a brand fill; focus is a NEUTRAL system concern (var(--gv-focus-*)), never a skin.
+//   b) a filled --gv-tenant-* control with a LITERAL white label — must drink from
+//      var(--gv-on-primary|secondary) so an arbitrary city brand stays legible (1.4.3).
+//   c) a :focus / :focus-visible rule that REMOVES the indicator (outline:none) with no
+//      box-shadow replacement — that strips focus visibility (2.4.7 / 2.4.13).
+// Custom-property declarations (--gv-*-color:) are protected by the lookbehind, so the
+// focus-token and on-color definitions themselves don't trip (b).
+{
+  const A11Y_FILES = ['govocal-primitives.css', 'govocal-ui.css', 'govocal-bo.css', 'govocal-survey.css', 'govocal-widgets.css'];
+  for (const f of A11Y_FILES) {
+    const p = path.join(ROOT, 'skills/govocal-ui', f);
+    if (!fs.existsSync(p)) continue;
+    const css = fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const sel = m[1].trim().replace(/\s+/g, ' '), body = m[2];
+      const isFocus = /:focus(-visible)?/.test(sel);
+      if (isFocus && /(?:outline|box-shadow)\s*:[^;]*var\(\s*--gv-tenant-/.test(body)) {
+        violations.push(`[a11y]      skills/govocal-ui/${f} — \`${sel.slice(0, 48)}\` builds its focus indicator from a tenant colour; use the neutral var(--gv-focus-*) tokens so it clears 3:1 on any brand (INV-11a).`);
+      }
+      if (/background[^;:]*:\s*[^;]*var\(\s*--gv-tenant-(?:primary|secondary)/.test(body) && /(?<![-\w])color:\s*#fff(?:fff)?\b/.test(body)) {
+        violations.push(`[a11y]      skills/govocal-ui/${f} — \`${sel.slice(0, 48)}\` fills with a tenant colour but hardcodes color:#fff; use var(--gv-on-primary|secondary) so a light city brand stays legible (INV-11b).`);
+      }
+      if (isFocus && /outline\s*:\s*none/.test(body) && !/box-shadow\s*:\s*(?!none)/.test(body)) {
+        violations.push(`[a11y]      skills/govocal-ui/${f} — \`${sel.slice(0, 48)}\` removes the focus outline with no box-shadow replacement; keep a visible focus indicator (INV-11c).`);
+      }
+    }
+  }
+}
+
 // ── report ──────────────────────────────────────────────────────────────────
 console.log(`\nArchitecture lint — library tiers + prototypes must be hardwired to canonical (detach to fork)\n`);
 if (violations.length) {

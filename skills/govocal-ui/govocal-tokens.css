@@ -131,6 +131,16 @@
   --gv-tenant-primary-lighten90: color-mix(in srgb, var(--gv-tenant-primary) 10%, transparent);
   --gv-tenant-primary-lighten95: color-mix(in srgb, var(--gv-tenant-primary) 5%,  transparent);
 
+  /* ── On-color (foreground FOR a filled brand surface) — WCAG 1.4.3 ─────────
+     Text on a FILLED --gv-tenant-* colour must stay legible for ANY city brand,
+     not just the default teal. A component that fills with --gv-tenant-primary
+     sets `color: var(--gv-on-primary)` — NEVER a literal #fff — so a light city
+     brand can't yield an unreadable label. Default is white (correct for the
+     default teal/coral, which clear AA); where contrast-color() is supported it
+     flips to black/white by live contrast (see the @supports block at EOF). */
+  --gv-on-primary:   #fff;
+  --gv-on-secondary: #fff;
+
   /* ── Back-office surface (GoVocal's OWN theme — NOT city-themed) ──────────
      GoVocal has ~two UIs: the front office is themed per city (--gv-tenant-*);
      the back office uses a fixed GoVocal teal/navy palette. Same type, radius,
@@ -222,6 +232,7 @@
      metrics, not spacing-scale steps, so they keep their measured values. ────── */
   --gv-input-height: 48px;
   --gv-input-padding: 12px;
+  --gv-target-min: 24px;            /* WCAG 2.5.8 (AA): minimum pointer-target size */
   --gv-max-page-width: 952px;
   --gv-page-width: 1150px;
   --gv-text-width: 720px;
@@ -246,9 +257,19 @@
   --gv-green-save:        #08833a;  /* Content-Builder Save button fill (measured) */
   --gv-bo-cb-frame-w:     1000px;   /* editable content frame width / max-width */
 
-  /* ── Focus ────────────────────────────────────────────────────────────── */
-  /* defaultOutline: 2px solid tenantPrimary */
-  --gv-focus-outline: 2px solid var(--gv-tenant-primary);
+  /* ── Focus (WCAG 2.4.13 Focus Appearance + 1.4.11 Non-text Contrast) ──────
+     A neutral, brand-INDEPENDENT indicator. A 2px near-black ring, offset OUT so
+     its adjacent colour is the (light) page rather than the control fill — it
+     therefore clears 3:1 regardless of the tenant brand. Interactive controls add
+     a white halo (--gv-focus-halo) in the offset gap so the ring also separates
+     from a brand/dark band. On dark surfaces (BO navy sidebar) the scope flips
+     --gv-focus-color to white. Was `2px solid var(--gv-tenant-primary)` — a brand
+     ring fails 3:1 on a brand fill, so focus is now a system concern, not a skin. */
+  --gv-focus-width:   2px;
+  --gv-focus-offset:  2px;
+  --gv-focus-color:   #1a1a1a;                                    /* near-black neutral ring */
+  --gv-focus-outline: var(--gv-focus-width) solid var(--gv-focus-color);
+  --gv-focus-halo:    0 0 0 var(--gv-focus-offset) #fff;          /* light separator under an offset ring */
 
   /* ── Event card (measured live: wietsedemo /events + project events) ──────
      The event card meta rows sit on a tinted panel (div.kjzjNu) = #F4F6F8,
@@ -288,4 +309,18 @@
      selected-ribbon intent is explicit and can't drift the cool-grey-700 atom (still
      used by event-card meta + nav hover). */
   --gv-phase-selected-fill: var(--gv-cool-grey-600);  /* #596B7A blue-slate */
+}
+
+/* ── On-color auto-contrast (progressive enhancement) ────────────────────────
+   Where contrast-color() is supported (Baseline 2026 — Chrome 147 / Firefox 146 /
+   Safari 26) pick black/white by live contrast against the tenant colour, so an
+   arbitrary city brand still yields a legible label on a filled surface. Older
+   engines keep the #fff defaults above (correct for the default teal/coral, which
+   clear AA). contrast-color() returns the HIGHER-contrast of black/white — verify
+   borderline mid-tone brands still meet 4.5:1 for normal text. */
+@supports (color: contrast-color(white)) {
+  :root {
+    --gv-on-primary:   contrast-color(var(--gv-tenant-primary));
+    --gv-on-secondary: contrast-color(var(--gv-tenant-secondary));
+  }
 }
