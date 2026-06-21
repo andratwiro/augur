@@ -256,7 +256,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.83";
+const UI_VERSION = "0.84";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1353,7 +1353,36 @@ const PAGE_CSS = `
     .sp-track { flex: 0 0 248px; width: 248px; display: flex; align-items: center; }
     .sp-bar { height: 14px; border-radius: 3px; background: rgba(94,106,210,0.85); box-shadow: inset 0 0 0 1px rgba(16,17,26,0.10); }
     .tok-sw--radius { background: rgba(94,106,210,0.15); box-shadow: inset 0 0 0 1.5px rgba(94,106,210,0.55); }
-    .tok-sw--shadow { background: #fff; }
+    /* Elevation: a white card floating on a neutral wash so the shadow actually reads */
+    .tok-sw--shadow { background: #eef0f4; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(16,17,26,0.05); }
+    .tok-sw__card { width: 24px; height: 24px; border-radius: 6px; background: #fff; }
+    /* Click-to-copy affordance */
+    .tok [data-copy], .tok-row [data-copy] { cursor: copy; }
+    .tok-name { transition: color .12s ease; }
+    .tok-name[data-copy]:hover { color: var(--accent); }
+    .tok-chain code[data-copy]:hover { background: rgba(94,106,210,0.18); color: var(--fg); }
+    .tok-sw[data-copy]:hover { outline: 2px solid var(--accent); outline-offset: 1px; }
+    /* Contrast badge (colour groups) — shows the best-legible text colour + WCAG grade */
+    .tok-contrast { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; color: var(--muted); margin: 4px 0 2px; }
+    .tok-contrast b { font-weight: 700; }
+    .tok-contrast--pass { color: #08833a; }
+    .tok-contrast--fail { color: #b42318; }
+    .tok-contrast__chip { display: inline-grid; place-items: center; width: 24px; height: 16px; border-radius: 4px;
+      font-size: 10px; font-weight: 700; box-shadow: inset 0 0 0 1px rgba(16,17,26,0.12); }
+    /* Where-used disclosure */
+    .tok-used { margin-top: 1px; }
+    .tok-used > summary { cursor: pointer; list-style: none; display: inline-block; }
+    .tok-used > summary::-webkit-details-marker { display: none; }
+    .tok-used > summary::before { content: "▸ "; color: var(--faint); }
+    .tok-used[open] > summary::before { content: "▾ "; }
+    .tok-used > summary:hover { color: var(--accent); }
+    .tok-uses { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 2px; }
+    .tok-use { font-size: 10.5px; color: var(--muted); background: rgba(16,17,26,0.05); border-radius: 4px; padding: 1px 5px; }
+    .tok-use--cls { color: var(--accent); background: rgba(94,106,210,0.10); }
+    /* Font-family sample row */
+    .ff-sample { flex: 1; min-width: 0; color: var(--fg); font-size: 15px; line-height: 1.45; }
+    .ff-sample b { display: block; font-size: 23px; font-weight: 700; margin-bottom: 2px; }
+    .tok-row--ff .tok-body { flex: 0 0 260px; }
     /* Opportunity prototype grid: capped at 3 roomier cards per row on desktop,
        stepping down to 2 then 1 as width drops. */
     .page-grid.is-3up { grid-template-columns: repeat(3, 1fr); }
@@ -3001,6 +3030,13 @@ const renderPatternsIndex = (items) =>
 function isColorVal(v) {
   return !!v && /^(#|rgb|hsl|color-mix)/i.test(v.trim());
 }
+// A palette primitive = a raw colour on a named scale step (grey-800, blue-500…),
+// plus the standalone base hues. Everything else colour-typed is a semantic role
+// (text-*, primary, error, tenant-*, bo-*, chart-*…) — usually an alias.
+function isPrimitiveColor(name) {
+  return /^--gv-(black|white|brown|green-mint)$/.test(name)
+    || /^--gv-(grey|cool-grey|blue|teal|red|green|orange|amber)-\d/.test(name);
+}
 function tokenGroup(name) {
   if (/^--gv-type-/.test(name)) return "Type scale";       // semantic size/lh/weight triplets
   if (/^--gv-fs-/.test(name)) return "Font size";          // the raw size ramp
@@ -3010,38 +3046,104 @@ function tokenGroup(name) {
   if (/^--gv-shadow/.test(name)) return "Elevation";
   if (/^--gv-focus/.test(name)) return "Focus";
   if (/width|height|padding|^--gv-menu-|frame-w|target-min/.test(name)) return "Layout";
-  return "Colour"; // default — the bulk of the palette
+  return isPrimitiveColor(name) ? "Palette" : "Semantic colour"; // the colour bulk, split
 }
 function tokPx(v) { const m = (v || "").match(/-?[\d.]+/); return m ? parseFloat(m[0]) : null; }
+// WCAG contrast: returns the most-legible text colour on a swatch + its ratio/grade.
+// Only for resolvable hex; aliased/rgba/color-mix values get no badge.
+function hexToRgb(h) {
+  h = (h || "").trim().replace(/^#/, "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  if (!/^[0-9a-f]{6}$/i.test(h)) return null;
+  const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function relLum(rgb) {
+  const f = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2]);
+}
+function contrastBadge(raw) {
+  const rgb = (raw || "").trim().startsWith("#") ? hexToRgb(raw) : null;
+  if (!rgb) return "";
+  const L = relLum(rgb);
+  const ratio = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  const onWhite = ratio(L, 1), onBlack = ratio(L, 0);
+  const whiteWins = onWhite >= onBlack;          // which TEXT colour reads best on the swatch
+  const r = Math.max(onWhite, onBlack);
+  const grade = r >= 7 ? "AAA" : r >= 4.5 ? "AA" : r >= 3 ? "AA Large" : "fail";
+  const cls = r >= 4.5 ? "tok-contrast--pass" : r >= 3 ? "" : "tok-contrast--fail";
+  return `<div class="tok-contrast ${cls}" title="Best text on this colour: ${r.toFixed(2)}:1 with ${whiteWins ? "white" : "black"} text (WCAG)">`
+    + `<span class="tok-contrast__chip" style="background:${escAttr(raw)};color:${whiteWins ? "#fff" : "#000"}">Aa</span>`
+    + `<b>${grade}</b> ${r.toFixed(1)}:1</div>`;
+}
+// Self-contained click-to-copy for the tokens page (chromeScript's showToast is
+// scoped to its own IIFE, so we ship a tiny local one reusing the .gv-toast style).
+const TOKENS_JS = `
+(function(){
+  if(!document.querySelector('[data-copy]')) return;
+  var toast;
+  function flash(m){ if(!toast){toast=document.createElement('div');toast.className='gv-toast';document.body.appendChild(toast);} toast.textContent=m; toast.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(function(){toast.classList.remove('show');},1500); }
+  function fb(v){ var t=document.createElement('textarea'); t.value=v; t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.focus(); t.select(); try{document.execCommand('copy'); flash('Copied  '+v);}catch(_){} t.remove(); }
+  document.addEventListener('click', function(e){
+    var el=e.target.closest('[data-copy]'); if(!el) return;
+    e.preventDefault();
+    var v=el.getAttribute('data-copy');
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(function(){flash('Copied  '+v);}, function(){fb(v);});
+    else fb(v);
+  });
+})();
+`;
 function renderTokensIndex(graph) {
   const tokens = graph.tokens || {};
   const names = Object.keys(tokens);
   const groups = {};
   for (const name of names) (groups[tokenGroup(name)] ||= []).push(name);
-  const ORDER = ["Colour", "Type scale", "Font size", "Font family", "Spacing", "Radius", "Elevation", "Layout", "Focus"];
+  const ORDER = ["Palette", "Semantic colour", "Type scale", "Font size", "Font family", "Spacing", "Radius", "Elevation", "Layout", "Focus"];
   const ordered = [...ORDER.filter((g) => groups[g]), ...Object.keys(groups).filter((g) => !ORDER.includes(g))];
 
   // ── shared row pieces ──
   const fkey = (name, t) => `${name} ${t.raw || ""} ${t.value}`.replace(/"/g, "");
+  const copyName = (n) => `data-copy="var(${n})" title="Copy var(${n})"`;
   const chainOf = (t) => t.chain.length > 1
-    ? `<div class="tok-chain">${t.chain.map((c) => `<code>${c}</code>`).join('<span class="tok-arrow">→</span>')}<span class="tok-arrow">→</span><code class="tok-raw">${escAttr(t.raw || "")}</code></div>`
-    : `<div class="tok-chain"><code class="tok-raw">${escAttr(t.raw || t.value)}</code></div>`;
-  const consumersOf = (t) => t.consumedBy.tokens.length + t.consumedBy.classes.length;
-  const metaOf = (t) => { const c = consumersOf(t); return `<div class="tok-meta">${c ? `${c} consumer${c === 1 ? "" : "s"}` : "no direct consumers"}</div>`; };
-  const bodyOf = (name, t) => `<div class="tok-body"><code class="tok-name">${name}</code>${chainOf(t)}${metaOf(t)}</div>`;
+    ? `<div class="tok-chain">${t.chain.map((c) => `<code ${copyName(c)}>${c}</code>`).join('<span class="tok-arrow">→</span>')}<span class="tok-arrow">→</span><code class="tok-raw" data-copy="${escAttr(t.raw || "")}" title="Copy value">${escAttr(t.raw || "")}</code></div>`
+    : `<div class="tok-chain"><code class="tok-raw" data-copy="${escAttr(t.raw || t.value)}" title="Copy value">${escAttr(t.raw || t.value)}</code></div>`;
+  // Where-used: the dead count becomes a disclosure listing the actual consuming
+  // tokens (copyable) and classes, straight from the composition graph.
+  const usedRender = (toks, cls) => {
+    const total = toks.length + cls.length;
+    if (!total) return `<div class="tok-meta">no direct consumers</div>`;
+    const chips = [
+      ...toks.map((x) => `<code class="tok-use" ${copyName(x)}>${x}</code>`),
+      ...cls.map((x) => `<code class="tok-use tok-use--cls">.${x}</code>`),
+    ].join("");
+    return `<details class="tok-used"><summary class="tok-meta">${total} consumer${total === 1 ? "" : "s"}</summary><div class="tok-uses">${chips}</div></details>`;
+  };
+  const usedOf = (t) => usedRender(t.consumedBy.tokens, t.consumedBy.classes);
+  const bodyOf = (name, t, extra = "") => `<div class="tok-body"><code class="tok-name" ${copyName(name)}>${name}</code>${chainOf(t)}${extra}${usedOf(t)}</div>`;
 
-  // ── preview swatch for chip-grid groups (Colour / Radius / Elevation / Font family / Layout / Focus) ──
+  // ── preview swatch for chip-grid groups (Palette / Semantic / Radius / Elevation / Layout / Focus) ──
   const swatchOf = (name, t, group) => {
     const raw = t.raw || t.value || "";
-    if (isColorVal(raw)) return `<span class="tok-sw" style="background:${raw}"></span>`;
+    if (isColorVal(raw)) return `<span class="tok-sw" style="background:${raw}" ${copyName(name)}></span>`;
     if (group === "Radius") return `<span class="tok-sw tok-sw--radius" style="border-radius:${raw}"></span>`;
-    if (group === "Elevation") return `<span class="tok-sw tok-sw--shadow" style="box-shadow:${raw}"></span>`;
-    if (group === "Font family") return `<span class="tok-sw tok-sw--mono" style="font-family:${raw};font-size:17px;font-weight:600">Ag</span>`;
+    if (group === "Elevation") return `<span class="tok-sw tok-sw--shadow"><span class="tok-sw__card" style="box-shadow:${raw}"></span></span>`;
     const px = tokPx(raw); // Layout / Focus dims → show the number
     return `<span class="tok-sw tok-sw--mono" style="font-size:11px">${px != null ? px : "·"}</span>`;
   };
-  const chipItem = (name, group) => `<div class="tok" data-fitem data-fkey="${fkey(name, tokens[name])}">${swatchOf(name, tokens[name], group)}${bodyOf(name, tokens[name])}</div>`;
+  const chipItem = (name, group) => {
+    const t = tokens[name];
+    const extra = (group === "Palette" || group === "Semantic colour") ? contrastBadge(t.raw) : "";
+    return `<div class="tok" data-fitem data-fkey="${fkey(name, t)}">${swatchOf(name, t, group)}${bodyOf(name, t, extra)}</div>`;
+  };
   const gridSection = (g) => `<div class="tok-grid">${groups[g].map((n) => chipItem(n, g)).join("")}</div>`;
+
+  // ── Font family → a real type sample (pangram + glyph set) in the actual face ──
+  const fontFamilySection = (g) => `<div class="tok-list">${groups[g].map((n) => {
+    const t = tokens[n]; const fam = t.raw || t.value;
+    return `<div class="tok-row tok-row--ff" data-fitem data-fkey="${fkey(n, t)}">
+        <div class="ff-sample" style="font-family:${fam}"><b>The quick brown fox jumps</b>ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789</div>
+        ${bodyOf(n, t)}
+      </div>`;
+  }).join("")}</div>`;
 
   // ── Spacing → bars at the real width (clamped past 240px, true value labelled) ──
   const spacingSection = (g) => {
@@ -3073,21 +3175,23 @@ function renderTokensIndex(graph) {
     const szRaw = (sz && sz.raw) || "16px", lhRaw = (lh && lh.raw) || "", wtRaw = (wt && wt.raw) || "400";
     const vis = Math.min(tokPx(szRaw) || 16, 52);
     const present = [kSz, kLh, kWt].filter((k) => tokens[k]);
-    const consumers = present.reduce((s, k) => s + consumersOf(tokens[k]), 0);
+    const usedToks = [...new Set(present.flatMap((k) => tokens[k].consumedBy.tokens))];
+    const usedCls = [...new Set(present.flatMap((k) => tokens[k].consumedBy.classes))];
     const ann = `${szRaw}${wtRaw ? ` · ${wtRaw}` : ""}${lhRaw ? ` · ${lhRaw} line-height` : ""}`;
     return `<div class="tok-row" data-fitem data-fkey="${`${role} ${present.join(" ")} ${szRaw} ${wtRaw}`.replace(/"/g, "")}">
         <span class="ts-sample" style="font-size:${vis}px;font-weight:${wtRaw}">Ag</span>
         <div class="tok-body">
           <code class="tok-name">${role}</code>
           <div class="tok-meta--ann">${ann}</div>
-          <div class="tok-chain">${present.map((k) => `<code>${k}</code>`).join(" ")}</div>
-          <div class="tok-meta">${consumers ? `${consumers} consumer${consumers === 1 ? "" : "s"}` : "no direct consumers"}</div>
+          <div class="tok-chain">${present.map((k) => `<code ${copyName(k)}>${k}</code>`).join(" ")}</div>
+          ${usedRender(usedToks, usedCls)}
         </div>
       </div>`;
   }).join("")}</div>`;
 
   const sectionBody = (g) => g === "Type scale" ? typeScaleSection(g)
     : g === "Font size" ? fontSizeSection(g)
+    : g === "Font family" ? fontFamilySection(g)
     : g === "Spacing" ? spacingSection(g)
     : gridSection(g);
   const sectionCount = (g) => g === "Type scale" ? typeRoles(g).length : groups[g].length;
@@ -3100,8 +3204,9 @@ function renderTokensIndex(graph) {
   return shell({
     title: "Tokens", activeTab: "tokens", wrapClass: "wrap--wide",
     body: `<header class="folderbar"><h1 class="folderbar__title">Tokens</h1><span class="folderbar__count">${names.length}</span><span class="folderbar__rule"></span></header>` +
-      `<p class="tier-hint">The design-system variables (<code>--gv-*</code>), parsed live from <code>govocal-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to.</p>` +
-      `${sections}${filterEmpty()}`,
+      `<p class="tier-hint">The design-system variables (<code>--gv-*</code>), parsed live from <code>govocal-tokens.css</code> — each with its alias chain down to a raw value and how much of the system drinks from it. This is the bottom of every import chain Base · Components · Patterns · Pages resolve to. <strong>Click any token name or value to copy it</strong>; expand a consumer count to see exactly what uses it.</p>` +
+      `${sections}${filterEmpty()}` +
+      `<script>${TOKENS_JS}</script>`,
   });
 }
 
