@@ -12,8 +12,9 @@
 // makes that structural: it FAILS the build if a library tier copies an asset,
 // links a local asset instead of canonical, or redefines a .gv-* class.
 //
-// Prototypes are intentionally EXEMPT — they're the one tier allowed to copy, fork
-// and break. This only governs the shared library (components/ and pages/).
+// Prototypes are LINKED by default too (Augur Phase 4): INV-10 fails a prototype that
+// holds/links a local canonical copy instead of referencing it — the deliberate fork
+// is `npm run detach`. (They remain free to author bespoke non-gv markup + local CSS.)
 //
 // Hard invariants (exit 1): INV-1 no asset copies · INV-2 canonical refs only ·
 //   INV-3 no .gv-* redefinition · INV-6 no redundant text literals — a page
@@ -324,8 +325,51 @@ if (fs.existsSync(uiCssPath)) {
   }
 }
 
+// INV-10 (HARD, PROTOTYPES): prototypes are LINKED by default. The library tiers are
+// governed above (INV-1/2); prototypes were the one exempt tier — Augur Phase 4 flips
+// their default from born-detached (copy assets/, fork) to born-linked (reference
+// canonical). So a prototype must NOT hold a local govocal-* asset copy, nor link one
+// by local filename — it references ../…/skills/govocal-ui/<asset> so it tracks
+// canonical. The deliberate escape hatch is `npm run detach` (a per-component fork:
+// frozen inline markup + assets/detached/<component>.css — which is NOT a govocal-*
+// file, so it never trips this). Net: a prototype is linked, or a component is
+// explicitly detached; a leftover govocal-* copy/ref is neither → fail.
+{
+  const skip = new Set(['node_modules', 'dist']);
+  for (const opp of fs.readdirSync(ROOT)) {
+    if (opp.startsWith('.') || skip.has(opp)) continue;
+    const pdir = path.join(ROOT, opp, 'prototypes');
+    if (!fs.existsSync(pdir) || !fs.statSync(pdir).isDirectory()) continue;
+    for (const name of fs.readdirSync(pdir)) {
+      const dir = path.join(pdir, name);
+      if (!fs.statSync(dir).isDirectory()) continue;
+      const rel = `${opp}/prototypes/${name}`;
+      // a) local govocal-* asset copies anywhere in the prototype (the drift source)
+      const copies = [];
+      (function findCopies(d) {
+        for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+          if (e.isDirectory()) { if (!['img', 'avatars', 'vendor', 'detached'].includes(e.name)) findCopies(path.join(d, e.name)); }
+          else if (ASSET_FILE.test(e.name)) copies.push(path.relative(dir, path.join(d, e.name)));
+        }
+      })(dir);
+      if (copies.length) {
+        violations.push(`[unlinked]  ${rel}/ holds ${copies.length} canonical asset copy(ies) [${copies.slice(0, 6).join(', ')}${copies.length > 6 ? ', …' : ''}] — delete them; reference ../../../skills/govocal-ui/<asset> so it tracks canonical (INV-10). To fork a component on purpose, \`npm run detach\`.`);
+      }
+      // b) pages that link a local govocal-* by filename instead of canonical
+      for (const page of fs.readdirSync(dir).filter((f) => f.endsWith('.html'))) {
+        const html = fs.readFileSync(path.join(dir, page), 'utf8');
+        for (const m of html.matchAll(/(?:href|src)\s*=\s*("|')([^"']*govocal-[\w.\-]+\.(?:css|js|svg))\1/gi)) {
+          if (!/skills\/govocal-ui\//.test(m[2])) {
+            violations.push(`[unlinked]  ${rel}/${page} links local "${m[2]}" — use ../../../skills/govocal-ui/${m[2].split('/').pop()} (INV-10).`);
+          }
+        }
+      }
+    }
+  }
+}
+
 // ── report ──────────────────────────────────────────────────────────────────
-console.log(`\nArchitecture lint — library tiers must be hardwired to canonical (prototypes exempt)\n`);
+console.log(`\nArchitecture lint — library tiers + prototypes must be hardwired to canonical (detach to fork)\n`);
 if (violations.length) {
   console.log(`✗ ${violations.length} violation(s) — these break primitives→components→pages sync:`);
   for (const v of violations) console.log('  ' + v);
