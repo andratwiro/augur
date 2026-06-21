@@ -369,6 +369,15 @@
     '.linkbadge.h-detached{box-shadow:0 0 0 2px rgba(240,180,41,0.9),0 1px 3px rgba(0,0,0,0.28);}' +
     '.linkbadge:hover{transform:translateY(-50%) scale(1.06);filter:brightness(1.08);}' +
     '.linkbadge svg{width:10px;height:10px;display:block;flex:0 0 auto;}' +
+    /* spacing shading (devtools-style) — drawn inside each box at the "+ Tokens" drill
+       level: padding ring (teal), gaps between flex/grid children (purple), top/bottom
+       margin (amber, outside the box). Each strip carries a px label so the actual
+       resolved spacing is readable without opening the chain panel. */
+    '.spc{position:absolute;pointer-events:none;display:flex;align-items:center;justify-content:center;overflow:visible;box-sizing:border-box;z-index:1;}' +
+    '.spcpad{background:rgba(20,121,133,0.24);}' +
+    '.spcgap{background:rgba(124,58,237,0.24);outline:1px dashed rgba(124,58,237,0.55);outline-offset:-1px;}' +
+    '.spcmar{background:rgba(240,150,40,0.22);}' +
+    '.spclbl{font:700 9px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#fff;background:rgba(0,0,0,0.62);padding:1px 3px;border-radius:3px;white-space:nowrap;letter-spacing:.02em;}' +
     /* drill control — bottom-left pill cycling Components → +Base → +Tokens */
     '.drillctl{position:fixed;left:16px;bottom:16px;pointer-events:auto;display:inline-flex;align-items:center;gap:7px;background:#16171a;color:#fff;border:0;border-radius:999px;padding:8px 14px;font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.28);}' +
     '.drillctl .dot{width:7px;height:7px;border-radius:50%;background:#7c3aed;box-shadow:0 0 0 2px rgba(255,255,255,.25);}' +
@@ -402,7 +411,7 @@
     '<div class="layer hidden">' +
     '  <div class="catcher hidden"></div>' +
     '  <div class="links"></div>' +
-    '  <button class="drillctl hidden" type="button"><span class="dot"></span>Layers: <b></b></button>' +
+    '  <button class="drillctl hidden" type="button" title="Layers — click or press ↑/↓ to change depth (Components → + Base → + Tokens shows spacing)"><span class="dot"></span>Layers: <b></b></button>' +
     '  <div class="chainp hidden"></div>' +
     '  <div class="pins"></div>' +
     '  <aside class="sb">' +
@@ -643,6 +652,7 @@
       var h = healthOf(it.el, it.family);
       var box = document.createElement("div");
       box.className = "linkbox l-" + it.layer + " h-" + h.state;
+      if (state.drill >= 2) drawSpacing(box, it.el); // append shades first → badge stays on top
       var badge = document.createElement("button");
       badge.type = "button";
       badge.className = "linkbadge l-" + it.layer + " h-" + h.state;
@@ -666,6 +676,63 @@
       lb.box.style.left = r.left + "px"; lb.box.style.top = r.top + "px";
       lb.box.style.width = r.width + "px"; lb.box.style.height = r.height + "px";
     }
+  }
+
+  /* ---------- spacing shading (the "+ Tokens" devtools view) ----------
+   * At drill ≥ 2 each rendered box gets its real resolved spacing painted ON the box:
+   * the padding ring, the gaps between flex/grid children, and top/bottom margin. All
+   * offsets are RELATIVE to the box's border-box origin (its left/top), so the shading
+   * tracks the box for free on scroll — no per-frame recompute. Resize rebuilds (layout
+   * may reflow). Reads getComputedStyle so tenant theming / responsive values show real. */
+  function spx(v) { var n = parseFloat(v); return isFinite(n) ? n : 0; }
+  function shade(box, cls, l, t, w, h, label) {
+    if (w <= 0 || h <= 0) return;
+    var d = document.createElement("div");
+    d.className = "spc " + cls;
+    d.style.left = l + "px"; d.style.top = t + "px"; d.style.width = w + "px"; d.style.height = h + "px";
+    if (label != null) { var s = document.createElement("span"); s.className = "spclbl"; s.textContent = label; d.appendChild(s); }
+    box.appendChild(d);
+  }
+  function drawGaps(box, el, cs, rect) {
+    var disp = cs.display || "";
+    if (disp.indexOf("flex") < 0 && disp.indexOf("grid") < 0) return;
+    var kids = [], ch = el.children;
+    for (var i = 0; i < ch.length; i++) {
+      if (host.contains(ch[i])) continue;
+      var cr = ch[i].getBoundingClientRect();
+      if (cr.width >= 1 && cr.height >= 1) kids.push(cr);
+    }
+    for (var j = 0; j < kids.length - 1; j++) {
+      var a = kids[j], b = kids[j + 1];
+      var hg = b.left - a.right, vg = b.top - a.bottom;
+      if (hg > 0 && hg < 200 && (vg <= 0 || hg >= vg)) {        // column gap (row layout)
+        var top = Math.max(a.top, b.top), bot = Math.min(a.bottom, b.bottom);
+        shade(box, "spcgap", a.right - rect.left, top - rect.top, hg, Math.max(bot - top, 1), Math.round(hg));
+      } else if (vg > 0 && vg < 200) {                           // row gap (column layout)
+        var lft = Math.max(a.left, b.left), rgt = Math.min(a.right, b.right);
+        shade(box, "spcgap", lft - rect.left, a.bottom - rect.top, Math.max(rgt - lft, 1), vg, Math.round(vg));
+      }
+    }
+  }
+  function drawSpacing(box, el) {
+    var cs; try { cs = getComputedStyle(el); } catch (e) { return; }
+    var rect = el.getBoundingClientRect();
+    var W = rect.width, H = rect.height;
+    var bt = spx(cs.borderTopWidth), br = spx(cs.borderRightWidth), bb = spx(cs.borderBottomWidth), bl = spx(cs.borderLeftWidth);
+    var pt = spx(cs.paddingTop), pr = spx(cs.paddingRight), pb = spx(cs.paddingBottom), pl = spx(cs.paddingLeft);
+    var iw = W - bl - br, ih = H - bt - bb; // padding-box (border-box minus borders)
+    // padding ring
+    if (pt > 0) shade(box, "spcpad", bl, bt, iw, pt, Math.round(pt));
+    if (pb > 0) shade(box, "spcpad", bl, bt + ih - pb, iw, pb, Math.round(pb));
+    if (pl > 0) shade(box, "spcpad", bl, bt + pt, pl, ih - pt - pb, Math.round(pl));
+    if (pr > 0) shade(box, "spcpad", bl + iw - pr, bt + pt, pr, ih - pt - pb, Math.round(pr));
+    // top/bottom margin (outside the box). Left/right skipped — margin:auto centering
+    // resolves to arbitrary px and would shade huge misleading bands (same as INV-9).
+    var mt = spx(cs.marginTop), mb = spx(cs.marginBottom);
+    if (mt > 0 && mt < 400) shade(box, "spcmar", 0, -mt, W, mt, "m " + Math.round(mt));
+    if (mb > 0 && mb < 400) shade(box, "spcmar", 0, H, W, mb, "m " + Math.round(mb));
+    // gaps between flex/grid children
+    drawGaps(box, el, cs, rect);
   }
 
   function escHtml(s) {
@@ -1094,15 +1161,18 @@
     hideTip(true);
     if (on) { state.mode = "add"; } else { closeCard(); closeChain(); }
     render();
-    if (on) toast("Review on · click to comment · Esc to browse · Layers shows the import chain");
+    if (on) toast("Review on · click to comment · Esc to browse · ↑/↓ for layers (+ Tokens shows spacing)");
   }
-  // Cycle the layer drilldown (Components → +Base → +Tokens) and re-detect.
-  drillEl.addEventListener("click", function () {
-    state.drill = (state.drill + 1) % DRILL.length;
+  // Set the layer drilldown (Components → +Base → +Tokens) and re-detect. Wraps, so it
+  // works the same from the click (cycle forward) and the ↑/↓ keys (step either way).
+  function setDrill(n) {
+    var len = DRILL.length;
+    state.drill = ((n % len) + len) % len;
     if (chainOpenFor) openChain(chainOpenFor.family, chainOpenFor.el); // refresh open panel
     renderLinks();
     toast("Layers: " + DRILL[state.drill]);
-  });
+  }
+  drillEl.addEventListener("click", function () { setDrill(state.drill + 1); });
   function setMode(m) { state.mode = m; if (m === "add") closeCard(); render(); }
 
   catcher.addEventListener("click", function (e) {
@@ -1140,6 +1210,9 @@
       if (state.openId) closeCard();
       else if (state.mode === "add") setMode("browse");
       else setActive(false);
+    } else if (state.active && !isTyping(src) && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      // ↑/↓ steps the bottom-left Layers depth (down = deeper toward + Tokens).
+      e.preventDefault(); setDrill(state.drill + (e.key === "ArrowDown" ? 1 : -1));
     }
   }, true);
 
@@ -1187,7 +1260,12 @@
       .observe(document.body, { attributes: true, attributeFilter: ["data-gv-screen"] });
   }
   window.addEventListener("scroll", reposition, { passive: true });
-  window.addEventListener("resize", reposition, { passive: true });
+  // Resize can reflow layout (padding/gap/margin change), so rebuild the spacing shades;
+  // scroll only translates the boxes, which the relative shading already tracks.
+  window.addEventListener("resize", function () {
+    reposition();
+    if (state.active && state.drill >= 2) renderLinks();
+  }, { passive: true });
   window.addEventListener("hashchange", function () { if (state.active) { render(); } tryOpenPending(); setTimeout(orphanSweep, 1200); });
   window.addEventListener("popstate", function () { if (state.active) { render(); } tryOpenPending(); setTimeout(orphanSweep, 1200); });
 
