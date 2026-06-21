@@ -251,7 +251,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.78";
+const UI_VERSION = "0.79";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1829,7 +1829,7 @@ function sideRail(active) {
     <div class="gvside__foot">
       <div class="gvside__rule"></div>
       ${library}
-      <div class="gvside__group">
+      <div class="gvside__group" style="margin-top:6px">
         <a href="/changelog/"${active === "changelog" ? ' aria-current="page"' : ""}>${IC_CHANGELOG}<span>Changelog</span><span class="gvside__ver">v${UI_VERSION}</span></a>
       </div>
     </div>
