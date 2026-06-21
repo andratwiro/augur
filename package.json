@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "index": "node scripts/build-index.mjs",
+    "index:instances": "node scripts/build-instances-index.mjs",
     "build": "node scripts/build-index.mjs && node build.js",
     "audit": "node skills/govocal-a11y/audit.mjs",
     "capture": "node scripts/capture/grab.mjs",

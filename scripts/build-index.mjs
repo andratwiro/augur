@@ -153,6 +153,12 @@ function main() {
 > your changes will be overwritten. Internal-only: lives at the repo root, never ships.
 > Regenerate after adding/removing a primitive, component, page, or prototype.
 
+> **Augur instances (lean lookup):** every base + component is a live \`window.GV\`
+> instance. For the slim name → props → renderer map, read
+> \`skills/govocal-ui/INSTANCES.md\` (≈7 KB, 58 components) and load only the one
+> renderer you need — don't ingest the 6k-line registry or the 100 KB \`components.md\`.
+> Call \`GV.render('<name>', props)\` / \`GV.mount(el, '<name>', props)\`.
+
 ## Reuse-first (read me before building a prototype)
 
 Before building **anything** in a prototype, scan this index and **reuse an existing
@@ -236,6 +242,9 @@ ${prototypes.length ? table(["Prototype", "Opportunity", "Source", "What it is"]
       `Wrote LIBRARY.md — ${primitives.length} primitives, ${base.length} base, ${components.length} components, ` +
       `${patterns.length} patterns, ${pages.length} pages, ${prototypes.length} prototypes.`
     );
+    // Also refresh the lean Augur instance index (skills/govocal-ui/INSTANCES.md) so it
+    // stays in lockstep with the registry everywhere build-index runs (index/build/CI).
+    await import("./build-instances-index.mjs");
   })();
 }
 
