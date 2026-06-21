@@ -16,6 +16,13 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-06-21 — Components are live copies now (like Figma)
+Every building block is now a real instance of one master, the way Figma works.
+Change the master and every copy updates itself. Each one also shows a little
+health badge — green if it still matches the master, a warning if someone pulled
+it out of line or off the spacing grid — so it's obvious at a glance what's tidy
+and what has drifted.
+
 ## 2026-06-20 — One settings sheet builds any page
 You now fill in a single list of settings and Augur builds the whole page from it
 — a project page or a homepage. Before, you had to edit two things and keep them
