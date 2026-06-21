@@ -52,7 +52,7 @@
     .sv-page__desc  { font-size: var(--gv-fs-l); font-style: italic; color: var(--gv-text-primary); line-height: 1.5; margin: 0 0 var(--gv-space-2); }
 
     /* Question block */
-    .sv-q { margin-top: 36px; }
+    .sv-q { margin-top: 32px; }
     .sv-q:first-of-type { margin-top: var(--gv-space-7); }
     .sv-q__label { font-size: var(--gv-fs-base); font-weight: 700; color: var(--gv-text-primary); line-height: 1.4; }
     .sv-q__optional { font-weight: 400; color: var(--gv-text-secondary); margin-left: var(--gv-space-2); }

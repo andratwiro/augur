@@ -227,7 +227,7 @@
    component, but it sits flush at the very top of the content column instead of
    inside a topbar/canvas gutter. Measured live (nav.sc-gEXpur on /admin/dashboard):
    #FBFBFB elevated strip, 60px tall, rounded top, soft shadow, 44px left inset. */
-.gv-bo-tabs--top { padding: 0 0 0 44px; min-height: 60px; box-sizing: border-box; align-items: stretch; }
+.gv-bo-tabs--top { padding: 0 0 0 48px; min-height: 60px; box-sizing: border-box; align-items: stretch; }
 
 /* Phase sub-tabs are the SAME tab component as the project tabs (measured: same
    sc-lilDSw wrapper, 16px text, 40px gap, teal active underline) — just a strip
@@ -557,7 +557,7 @@
 /* Title link + small inline like/dislike count cell. */
 .gv-bo-table__title { color: var(--gv-bo-primary); font-weight: 400; text-decoration: none; }
 .gv-bo-table__title:hover { text-decoration: underline; }
-.gv-bo-react { display: inline-flex; align-items: center; gap: 5px; color: var(--gv-text-secondary); }
+.gv-bo-react { display: inline-flex; align-items: center; gap: 4px; color: var(--gv-text-secondary); }
 .gv-bo-react .gv-icon { width: 15px; height: 15px; }
 
 /* Two-column layout: filter rail + table. */
@@ -1233,7 +1233,7 @@
    analysis"); in the real product it also greets you on first open. Reuses the
    .gv-modal shell; the teal "I understand" CTA is the BO accent, measured on
    bo-auto-insights-view (bg #0A5159 = teal-700 / radius 3px / pad 9px 18px / white). */
-.gv-bo-aimodal__icon { flex: none; width: 26px; height: 26px; margin-right: 10px; color: var(--gv-teal-500); }
+.gv-bo-aimodal__icon { flex: none; width: 26px; height: 26px; margin-right: 12px; color: var(--gv-teal-500); }
 .gv-bo-aimodal__body p { margin: 0 0 var(--gv-space-4); font-size: var(--gv-fs-s); line-height: 1.6; color: var(--gv-grey-800); }
 .gv-bo-aimodal__body p:last-child { margin-bottom: 0; }
 .gv-bo-aimodal__cta {

@@ -12,6 +12,7 @@
     "verify": "node scripts/capture/verify.mjs",
     "verify:all": "node scripts/capture/verify-all.mjs",
     "lint": "node scripts/lint-architecture.mjs",
+    "snap-spacing": "node scripts/snap-spacing.mjs",
     "shoot": "node scripts/shoot.mjs",
     "shoot:stale": "node scripts/shoot.mjs --stale",
     "og": "node scripts/og.mjs",

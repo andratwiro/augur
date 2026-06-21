@@ -196,7 +196,7 @@ const PAGE_LOCAL = new Set([
   // text / layout utilities — composition, not a standalone block
   'gv-prose', 'gv-section', 'gv-pgrid', 'gv-filterbar', 'gv-filters-btn',
   // single-page composition fragments (project-page header, event-detail layout, …)
-  'gv-eventdetail', 'gv-projbar', 'gv-projhead', 'gv-projdesc', 'gv-pinfo',
+  'gv-eventdetail', 'gv-projbar', 'gv-projhead', 'gv-projdesc', 'gv-pinfo', 'gv-projlist',
   'gv-participants', 'gv-pcount', 'gv-poststat', 'gv-thumb-cap',
   // survey-landing page composition (project-survey header band + grey content section)
   'gv-surveyhead', 'gv-surveycontent',
@@ -222,6 +222,16 @@ if (fs.existsSync(uiCssPath)) {
       const markup = fs.readFileSync(idx, 'utf8').replace(/<style[\s\S]*?<\/style>/gi, '');
       for (const m of markup.matchAll(/gv-[\w-]+/g)) surfaced.add(familyRoot(m[0]));
     }
+  }
+  // Augur instance model: a component's MARKUP now lives in its canonical renderer
+  // (govocal-instances.js → GV.register('<name>', …)) and, for widgets, in
+  // govocal-widgets.js. A demo that mounts via GV.render('<name>')/GVWidgets owns no
+  // literal .gv-* markup, so the renderer IS the surfacing source. Scan both so the
+  // Components-tab surfacing check tracks the instance, not just hand-authored markup.
+  for (const rf of ['govocal-instances.js', 'govocal-widgets.js']) {
+    const p = path.join(ROOT, 'skills/govocal-ui', rf);
+    if (!fs.existsSync(p)) continue;
+    for (const m of fs.readFileSync(p, 'utf8').matchAll(/gv-[\w-]+/g)) surfaced.add(familyRoot(m[0]));
   }
   // families documented as primitives in components.md (before the Composed divider).
   const mdPath = path.join(ROOT, 'skills/govocal-ui/components.md');
@@ -275,6 +285,43 @@ if (fs.existsSync(uiCssPath)) {
     .map(([fam]) => fam).sort();
   for (const fam of hardcoders) {
     violations.push(`[hardcoded] .${fam} declares literal visual value(s) but drinks from NO --gv-* token — alias the colour/border/shadow to a token so it re-themes and tracks the layer (INV-8). If the value is a genuine one-off with no token, add the nearest token or promote one.`);
+  }
+}
+
+// INV-9 (HARD): SPACING is on-grid. The corrected space scale is the law (AUGUR-SPEC):
+// 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64. A spacing literal off that grid in canonical CSS
+// is drift — it breaks the rhythm and won't track the scale. Scope is deliberately tight
+// so layout isn't caught in the net: only spacing props (margin/padding/gap + longhands),
+// only POSITIVE px in the rhythm range 4..64 (negatives are overlap nudges, 1-2px are
+// hairlines, >64px is layout dimension — all allowed). Values bearing var()/calc()/clamp()
+// are out of scope. `npm run snap-spacing --apply` snaps the whole canonical set; this
+// keeps it green. We enforce the GRID VALUE, not token-vs-literal (tokenize by judgment).
+{
+  const GRID = [4, 8, 12, 16, 24, 32, 48, 64];
+  const onGrid = (v) => GRID.includes(v);
+  const snap = (v) => { let best = GRID[0], bd = Infinity; for (const g of GRID) { const d = Math.abs(g - v); if (d < bd || (d === bd && g > best)) { bd = d; best = g; } } return best; };
+  const SPACING_PROP = /^(margin|padding|gap|row-gap|column-gap)(-(top|right|bottom|left|block|inline)(-(start|end))?)?$/;
+  for (const f of ['govocal-primitives.css', 'govocal-ui.css', 'govocal-bo.css', 'govocal-survey.css', 'govocal-widgets.css']) {
+    const p = path.join(ROOT, 'skills/govocal-ui', f);
+    if (!fs.existsSync(p)) continue;
+    const css = fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const offs = new Map();
+    for (const dm of css.matchAll(/([\w-]+)\s*:\s*([^;{}]+)[;}]/g)) {
+      if (!SPACING_PROP.test(dm[1].toLowerCase())) continue;
+      if (/var\(|calc\(|clamp\(/.test(dm[2])) continue;
+      for (const t of dm[2].matchAll(/(-?\d*\.?\d+)px/g)) {
+        const v = parseFloat(t[1]);
+        if (Number.isInteger(v) && v >= 4 && v <= 64 && !onGrid(v)) {
+          const k = `${dm[1].toLowerCase()}:${v}px → ${snap(v)}px`;
+          offs.set(k, (offs.get(k) || 0) + 1);
+        }
+      }
+    }
+    if (offs.size) {
+      const total = [...offs.values()].reduce((a, b) => a + b, 0);
+      const list = [...offs.entries()].map(([k, n]) => (n > 1 ? `${k} (×${n})` : k)).join('; ');
+      violations.push(`[off-grid]  skills/govocal-ui/${f} — ${total} spacing literal(s) off the 4/8/12/16/24/32/48/64 grid: ${list}. Run \`npm run snap-spacing -- --apply\` or hand-fix to the named step (INV-9).`);
+    }
   }
 }
 

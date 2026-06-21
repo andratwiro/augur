@@ -601,8 +601,8 @@
    normal-case); the project name sits below it. Collapses to one column ≤820px. */
 .gv-spotlight { background: #fff; }
 .gv-spotlight__inner {
-  max-width: calc(var(--gv-shell-w, 1150px) - 48px); margin: 0 auto; padding: 56px 0;  /* keep the live 56px 0 padding (gutter on the shell); cap to the section CONTENT width (shell − 2×24px) so the flush content lines up with every other module */
-  display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center;
+  max-width: calc(var(--gv-shell-w, 1150px) - 48px); margin: 0 auto; padding: 64px 0;  /* keep the live 56px 0 padding (gutter on the shell); cap to the section CONTENT width (shell − 2×24px) so the flush content lines up with every other module */
+  display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
 }
 /* Spotlight anatomy: the single project TITLE (h2 — the one heading size) + a lead
    description. No standalone "Currently working on" kicker — the real homepage frames
@@ -2215,7 +2215,7 @@
     scroll-padding-left: 20px;
     /* let the peeking card bleed to the viewport edge */
     margin-inline: -20px;
-    padding-inline: 20px;
+    padding-inline: 24px;
     scrollbar-width: none;
   }
   .gv-featured-row::-webkit-scrollbar { display: none; }
