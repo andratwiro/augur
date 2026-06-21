@@ -354,9 +354,19 @@
     '.linkbox.l-pattern{border-color:rgba(124,58,237,0.55);background:rgba(139,92,246,0.09);}' +
     '.linkbox.l-component{border-color:rgba(86,114,218,0.6);background:rgba(86,114,218,0.07);}' +
     '.linkbox.l-base{border-color:rgba(15,100,112,0.55);background:rgba(20,121,133,0.07);}' +
+    /* health overlay — overrides the layer tint when a box is off-grid or detached */
+    '.linkbox.h-offgrid{border-style:solid;border-color:rgba(229,72,77,0.85);background:rgba(229,72,77,0.08);}' +
+    '.linkbox.h-detached{border-style:dashed;border-color:rgba(240,180,41,0.9);background:rgba(240,180,41,0.10);}' +
     '.linkbadge{position:absolute;top:0;left:8px;transform:translateY(-50%);pointer-events:auto;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;background:#5672da;color:#fff;font:600 10px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:.02em;padding:3px 7px 3px 7px;border-radius:999px;box-shadow:0 1px 3px rgba(0,0,0,0.28);white-space:nowrap;transition:background .12s ease,transform .12s ease;}' +
     '.linkbadge .lyr{opacity:.72;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}' +
     '.linkbadge.l-pattern{background:#7c3aed;}.linkbadge.l-component{background:#5672da;}.linkbadge.l-base{background:#147985;}' +
+    /* health chip on the badge: linked (good) · detached (forked) · off-grid (violation) */
+    '.linkbadge .hb{margin-left:5px;padding:1px 5px 1px 5px;border-radius:999px;font:700 9px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;text-transform:uppercase;letter-spacing:.03em;}' +
+    '.linkbadge .hb.linked{background:rgba(255,255,255,0.22);color:#fff;}' +
+    '.linkbadge .hb.detached{background:#f0b429;color:#3a2c00;}' +
+    '.linkbadge .hb.offgrid{background:#e5484d;color:#fff;}' +
+    '.linkbadge.h-offgrid{box-shadow:0 0 0 2px rgba(229,72,77,0.85),0 1px 3px rgba(0,0,0,0.28);}' +
+    '.linkbadge.h-detached{box-shadow:0 0 0 2px rgba(240,180,41,0.9),0 1px 3px rgba(0,0,0,0.28);}' +
     '.linkbadge:hover{transform:translateY(-50%) scale(1.06);filter:brightness(1.08);}' +
     '.linkbadge svg{width:10px;height:10px;display:block;flex:0 0 auto;}' +
     /* drill control — bottom-left pill cycling Components → +Base → +Tokens */
@@ -584,6 +594,43 @@
   }
   var LINKICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 12h6M9.5 8H7a4 4 0 0 0 0 8h2.5M14.5 8H17a4 4 0 0 1 0 8h-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
+  /* ---------- health: linked / detached / off-grid ----------
+   * The badge already proves LINKAGE (it only renders for a deps-met canonical family).
+   * Health adds the second axis AUGUR-SPEC asks for, shown at the same time as the layer:
+   *   • off-grid — the box's own computed SPACING sits off the corrected scale
+   *     (4/8/12/16/24/32/48/64). We read getComputedStyle and check padding (all sides),
+   *     row/column gap, and TOP/BOTTOM margin only — left/right margins are skipped
+   *     because `margin:auto` centering resolves to arbitrary px and would false-positive.
+   *     Scope matches lint INV-9: positive integer px in 4..64 not on the grid.
+   *   • detached — a deliberately forked instance, flagged by data-gv-detached on the
+   *     element (or window.__GV_DETACHED listing the family). Detach lands in Phase 4;
+   *     this lights up automatically once it does.
+   *   • linked — neither of the above (the good default). */
+  var GRID_SET = { 4:1, 8:1, 12:1, 16:1, 24:1, 32:1, 48:1, 64:1 };
+  function pxOffGrid(v) {
+    var m = /^(-?\d*\.?\d+)px$/.exec(v); if (!m) return false;
+    var n = parseFloat(m[1]);
+    return Number.isInteger(n) && n >= 4 && n <= 64 && !GRID_SET[n];
+  }
+  function spacingHealth(el) {
+    var cs; try { cs = getComputedStyle(el); } catch (e) { return null; }
+    var props = ["paddingTop","paddingRight","paddingBottom","paddingLeft","rowGap","columnGap","marginTop","marginBottom"];
+    var hits = [];
+    for (var i = 0; i < props.length; i++) { if (pxOffGrid(cs[props[i]])) hits.push(props[i].replace(/([A-Z])/g, "-$1").toLowerCase() + ":" + cs[props[i]]); }
+    return hits.length ? hits : null;
+  }
+  function isDetached(el, fam) {
+    if (el.hasAttribute && el.hasAttribute("data-gv-detached")) return true;
+    var D = window.__GV_DETACHED;
+    return !!(D && D.length && D.indexOf(fam) >= 0);
+  }
+  function healthOf(el, fam) {
+    if (isDetached(el, fam)) return { state: "detached", detail: "detached — forked from canonical" };
+    var off = spacingHealth(el);
+    if (off) return { state: "offgrid", detail: "off-grid spacing: " + off.join(", ") };
+    return { state: "linked", detail: "linked — tracks canonical, on-grid" };
+  }
+
   var linkBoxes = []; // {box, el}
   function renderLinks() {
     linksEl.textContent = ""; linkBoxes = [];
@@ -593,13 +640,15 @@
     collectLayered().forEach(function (it) {
       var r = it.el.getBoundingClientRect();
       if (r.width < 8 || r.height < 8) return; // hidden / collapsed
+      var h = healthOf(it.el, it.family);
       var box = document.createElement("div");
-      box.className = "linkbox l-" + it.layer;
+      box.className = "linkbox l-" + it.layer + " h-" + h.state;
       var badge = document.createElement("button");
       badge.type = "button";
-      badge.className = "linkbadge l-" + it.layer;
-      badge.title = it.layer + " · " + it.info.label + " — open the import chain";
-      badge.innerHTML = LINKICON + '<span class="lyr">' + it.layer + '</span> ' + escHtml(it.info.label);
+      badge.className = "linkbadge l-" + it.layer + " h-" + h.state;
+      badge.title = it.layer + " · " + it.info.label + " · " + h.detail + " — open the import chain";
+      badge.innerHTML = LINKICON + '<span class="lyr">' + it.layer + '</span> ' + escHtml(it.info.label) +
+        '<span class="hb ' + h.state + '">' + h.state + '</span>';
       (function (fam, el) {
         badge.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); openChain(fam, el); });
       })(it.family, it.el);
