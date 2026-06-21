@@ -1161,7 +1161,7 @@
     hideTip(true);
     if (on) { state.mode = "add"; } else { closeCard(); closeChain(); }
     render();
-    if (on) toast("Review on · click to comment · Esc to browse · ↑/↓ for layers (+ Tokens shows spacing)");
+    if (on) toast("Review on · click to comment · Esc to exit · ↑/↓ for layers (+ Tokens shows spacing)");
   }
   // Set the layer drilldown (Components → +Base → +Tokens) and re-detect. Wraps, so it
   // works the same from the click (cycle forward) and the ↑/↓ keys (step either way).
@@ -1207,9 +1207,7 @@
     if (e.shiftKey && (e.code === "KeyC" || e.key === "C" || e.key === "c") && !isTyping(src)) {
       e.preventDefault(); setActive(!state.active);
     } else if (e.key === "Escape" && state.active) {
-      if (state.openId) closeCard();
-      else if (state.mode === "add") setMode("browse");
-      else setActive(false);
+      e.preventDefault(); setActive(false); // Esc exits comment mode outright
     } else if (state.active && !isTyping(src) && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
       // ↑/↓ steps the bottom-left Layers depth (down = deeper toward + Tokens).
       e.preventDefault(); setDrill(state.drill + (e.key === "ArrowDown" ? 1 : -1));
