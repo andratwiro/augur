@@ -1,8 +1,8 @@
 {
-  "name": "govocal-prototypes",
+  "name": "augur",
   "version": "1.0.0",
   "private": true,
-  "description": "Monorepo of design prototypes, built to a static site for private sharing.",
+  "description": "Augur — build/deploy platform composing the Go Vocal design system + workspace into a private static site.",
   "type": "module",
   "scripts": {
     "index": "node scripts/build-index.mjs",

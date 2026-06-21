@@ -1,6 +1,6 @@
 [submodule "gv-design-system"]
 	path = gv-design-system
-	url = git@github.com:andratwiro/gv-design-system.git
+	url = https://github.com/andratwiro/gv-design-system.git
 [submodule "gv-workspace"]
 	path = gv-workspace
-	url = git@github.com:andratwiro/gv-workspace.git
+	url = https://github.com/andratwiro/gv-workspace.git

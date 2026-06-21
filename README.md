@@ -1,48 +1,52 @@
-# GoVocal Prototypes
+# Augur
 
-A monorepo of clickable design prototypes, published to a private URL for the team.
+The build/deploy platform for the Go Vocal prototyping site. Augur **composes** two repos as
+git submodules and is the only thing that builds + ships the live site:
+
+- **`gv-design-system/`** (submodule, read-only) — canonical design system: `.gv-*` tokens,
+  primitives, CSS/JS, and the component/page galleries.
+- **`gv-workspace/`** (submodule) — opportunity folders (prototypes + research) + `GOVOCAL.md`.
+
+> The GitHub repo is `andratwiro/augur`; the Cloudflare Pages project is still named
+> `govocal-prototypes` (URL `https://govocal-prototypes.pages.dev`).
 
 ## Quick start
 
 ```bash
-node build.js        # generate /dist
+git clone --recurse-submodules git@github.com:andratwiro/augur.git
+cd augur
+node build.js        # generate /dist from both submodules
 npm run dev          # build + serve dist locally at http://localhost:3000
 ```
 
 ## Structure
 
 ```
-govocal-prototypes/
-├── build.js                 # scans folders → generates /dist + index.html
+augur/
+├── build.js                 # composes submodules → generates /dist + index.html
 ├── CLAUDE.md                # conventions (read this)
-├── skills/
-│   ├── frontend-design/     # generic design craft (Free mode default)
-│   └── govocal-ui/          # source-grounded GoVocal components & tokens
-├── parallel-participation/
-│   ├── research.md          # internal — never published
-│   ├── context.md           # internal — never published
-│   └── prototypes/          # publishable prototypes live here
-└── departments/
-    └── prototypes/
+├── src/_worker.js           # Cloudflare worker: auth gate, KV status/comments
+├── scripts/                 # build-index, capture, lint, og, detach, …
+├── skills/                  # platform-side skills (frontend-design, govocal-a11y, …)
+├── gv-design-system/        # submodule — canonical DS (edit in its own repo)
+└── gv-workspace/            # submodule — opportunities + research + GOVOCAL.md
 ```
 
 ## Adding a prototype
 
-1. Pick an opportunity folder (or create a new top-level one with a `prototypes/`
-   subfolder).
-2. Create `prototypes/<your-prototype>/index.html` (self-contained static HTML/JS).
-3. Run `node build.js` and open `dist/index.html`.
-4. Commit and push — Cloudflare Pages rebuilds and deploys automatically.
+Prototypes live in the **gv-workspace** repo, not here. Edit gv-workspace, push, then bump the
+submodule pin in Augur (`git submodule update --remote gv-workspace && git add gv-workspace &&
+git commit && git push`). See [CLAUDE.md](./CLAUDE.md).
 
 ## Important
 
-Only files inside `prototypes/` folders are published. `research.md`, `context.md`,
-and anything outside `prototypes/` are **never** copied to `/dist`. See
-[CLAUDE.md](./CLAUDE.md).
+Only files inside `prototypes/` folders (under `gv-workspace/`) are published. `research.md`,
+`context.md`, `GOVOCAL.md`, and anything outside `prototypes/` are **never** copied to `/dist`.
 
 ## Deployment
 
-- **Host:** Cloudflare Pages — build command `node build.js`, output dir `dist`.
-- **Access control:** Cloudflare Access (email allowlist) in front of the URL.
-
-See the setup steps shared during scaffolding (GitHub + Cloudflare Pages + Access).
+- **Host:** Cloudflare Pages (project `govocal-prototypes`) — build `node build.js`, output `dist`.
+- **CI:** push to `main` → `.github/workflows/deploy.yml` builds + deploys. Needs repo secrets
+  `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `SUBMODULE_PAT` (reads the private
+  submodules). `.gitmodules` URLs must stay **HTTPS** for the PAT to work.
+- **Access control:** auth gate in `src/_worker.js`.
