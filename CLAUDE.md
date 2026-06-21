@@ -1,4 +1,4 @@
-# Augur — the build/deploy platform (`govocal-prototypes` repo)
+# Augur — the build/deploy platform (`andratwiro/augur`)
 
 **Augur** is the platform that builds and ships the Go Vocal prototyping site. This repo
 (`andratwiro/augur` on GitHub; the Cloudflare Pages project is still named
@@ -12,7 +12,7 @@ git submodules mounted at its root:
 ```
 augur/                       # THIS repo — build + deploy platform ONLY
 ├── build.js, src/           # the build + the worker (comment/pin/status overlays)
-├── scripts/                 # platform scripts: shoot, og, review, detach (poster/OG/comments)
+├── scripts/                 # platform scripts: shoot (posters), og, review (comments)
 ├── pitis/                   # the Pitis layer + its pet-agents
 ├── gv-design-system/        # submodule (DS_ROOT) — canonical design system + capture/skills pipeline  [READ-ONLY here]
 └── gv-workspace/            # submodule (WS_ROOT) — opportunities + research + GOVOCAL.md
