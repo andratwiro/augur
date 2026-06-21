@@ -256,7 +256,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.79";
+const UI_VERSION = "0.80";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -780,6 +780,34 @@ async function entryPoint(prototype, protoDir) {
   return { href: base, file: null };
 }
 
+// Enumerate an opportunity's internal research/context docs — NAMES + mtime only,
+// never content. Walks the opportunity folder for .md files outside prototypes/ and
+// _archive/. Surfaced (gated, on the index pages) so you can see what context exists
+// per opportunity at a glance; the files themselves are never copied to dist.
+async function scanResearch(oppDir) {
+  const out = [];
+  async function walk(dir, rel) {
+    let entries;
+    try { entries = await fs.readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.name.startsWith(".")) continue;
+      if (e.isDirectory()) {
+        if (e.name === "prototypes" || e.name === "_archive") continue;
+        await walk(path.join(dir, e.name), rel ? `${rel}/${e.name}` : e.name);
+      } else if (e.name.endsWith(".md")) {
+        const full = path.join(dir, e.name);
+        const st = await fs.stat(full).catch(() => null);
+        if (st) out.push({ name: rel ? `${rel}/${e.name}` : e.name, mtimeMs: st.mtimeMs });
+      }
+    }
+  }
+  await walk(oppDir, "");
+  // research.md + context.md float to the top, then the rest A→Z.
+  const rank = (n) => (n === "research.md" ? 0 : n === "context.md" ? 1 : 2);
+  out.sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name));
+  return out;
+}
+
 async function scan() {
   const opportunities = [];
   const topEntries = await fs.readdir(WS_ROOT, { withFileTypes: true });
@@ -827,6 +855,7 @@ async function scan() {
     opportunities.push({
       name: top.name,
       prototypes,
+      research: await scanResearch(path.join(WS_ROOT, top.name)),
       mtimeMs: Math.max(...prototypes.map((p) => p.mtimeMs)),
     });
   }
@@ -1110,6 +1139,37 @@ const PAGE_CSS = `
     }
     .folderbar__rule { flex: 1; height: 0; border-top: 1px dashed var(--line-2); margin-left: 2px; }
     .empty { color: var(--muted); }
+
+    /* Research/context surface — quiet gated metadata (count + filenames). Colour stays
+       on the cover + status; this reads as metadata, not a CTA. */
+    .research-wrap { position: relative; flex: none; }
+    .research-chip, .research-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; font-weight: 560; color: var(--faint);
+      background: var(--bg-2); border: 1px solid var(--line);
+      border-radius: 999px; padding: 1px 8px 1px 6px; line-height: 1.55;
+    }
+    .research-chip { cursor: pointer; transition: color .12s ease, border-color .12s ease; }
+    .research-chip:hover { color: var(--fg); border-color: var(--line-2); }
+    .research-chip[aria-expanded="true"] { color: var(--fg); border-color: var(--accent); }
+    .research-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .research-chip .gvic, .research-tag .gvic { width: 13px; height: 13px; opacity: .85; }
+    .research-tag { pointer-events: none; }
+    .research-pop {
+      position: absolute; top: calc(100% + 6px); right: 0; z-index: 40;
+      min-width: 224px; max-width: 320px; padding: 7px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 11px;
+      box-shadow: 0 10px 30px rgba(16,17,26,0.16);
+    }
+    .research-pop__head { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 2px 6px 7px; }
+    .research-pop__list { list-style: none; margin: 0; padding: 0; }
+    .research-pop__list li { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 4px 6px; border-radius: 6px; }
+    .research-pop__list li + li { margin-top: 1px; }
+    .research-pop__name { color: var(--fg); font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    .research-pop__date { color: var(--faint); font-size: 11px; flex: none; white-space: nowrap; }
+    /* Landing card: title row so the static tag sits at the far right of the title. */
+    .opp-name-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .opp-name-row .proto-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* ---- Collapsible Pages sections (native <details>) ---- */
     details.fsection { margin: 0; }
@@ -1749,6 +1809,30 @@ const IC_FOLDER = ic(`<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0
 const IC_PRIM = ic(`<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>`); // shapes
 const IC_COMP = ic(`<path d="M15.536 11.293a1 1 0 0 0 0 1.414l2.376 2.377a1 1 0 0 0 1.414 0l2.377-2.377a1 1 0 0 0 0-1.414l-2.377-2.377a1 1 0 0 0-1.414 0z"/><path d="M2.297 11.293a1 1 0 0 0 0 1.414l2.377 2.377a1 1 0 0 0 1.414 0l2.377-2.377a1 1 0 0 0 0-1.414L6.088 8.916a1 1 0 0 0-1.414 0z"/><path d="M8.916 17.912a1 1 0 0 0 0 1.415l2.377 2.376a1 1 0 0 0 1.414 0l2.377-2.376a1 1 0 0 0 0-1.415l-2.377-2.376a1 1 0 0 0-1.414 0z"/><path d="M8.916 4.674a1 1 0 0 0 0 1.414l2.377 2.376a1 1 0 0 0 1.414 0l2.377-2.376a1 1 0 0 0 0-1.414l-2.377-2.377a1 1 0 0 0-1.414 0z"/>`); // component
 const IC_PAGE = ic(`<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/>`); // app-window (pages are websites, not paper)
+const IC_RESEARCH = ic(`<path d="M6 3h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v4h4"/><path d="M8.5 13h7M8.5 16.5h4.5"/>`); // document with text lines (internal research/context docs)
+
+// Research/context surface — gated metadata only. The count, and (interactive variant)
+// the filenames on click. Names live only on the already-gated index pages; file
+// CONTENT is never read or shipped. Empty research → renders nothing.
+function researchLabel(n) { return `${n} research ${n === 1 ? "file" : "files"}`; }
+function researchListItems(research) {
+  return research
+    .map((r) => `<li><span class="research-pop__name">${escAttr(r.name)}</span><span class="research-pop__date" title="${escAttr(fmtDate(r.mtimeMs))}">${relTime(r.mtimeMs)}</span></li>`)
+    .join("");
+}
+// Interactive (opportunity page header): click → disclosure of the filenames.
+function researchChip(research) {
+  if (!research || !research.length) return "";
+  const label = researchLabel(research.length);
+  return `<span class="research-wrap"><button type="button" class="research-chip" aria-expanded="false" aria-label="${label}" title="${label}">${IC_RESEARCH}<span class="research-chip__n">${research.length}</span></button><div class="research-pop" role="group" aria-label="Research &amp; context files" hidden><div class="research-pop__head">Research &amp; context</div><ul class="research-pop__list">${researchListItems(research)}</ul></div></span>`;
+}
+// Static (landing card): at-a-glance count only, no popover (clicks fall through to
+// the card's cover link, which opens the opportunity where the chip is interactive).
+function researchTag(research) {
+  if (!research || !research.length) return "";
+  const label = researchLabel(research.length);
+  return `<span class="research-tag" title="${label}" aria-label="${label}">${IC_RESEARCH}<span class="research-chip__n">${research.length}</span></span>`;
+}
 const IC_LIBRARY = ic(`<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`); // library
 const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 21v-5h5"/>`); // history (clock + counter-rotate)
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
@@ -2469,6 +2553,36 @@ const PINS_JS = `
 })();
 `;
 
+// Research chip disclosure — toggles the filename popover on the opportunity page.
+// Self-contained; no-ops on pages with no .research-chip. Names are already in the
+// (gated) HTML; this only shows/hides them.
+const RESEARCH_JS = `(function(){
+  function closeAll(except){
+    [].forEach.call(document.querySelectorAll('.research-chip[aria-expanded="true"]'), function(b){
+      if(b===except) return;
+      b.setAttribute('aria-expanded','false');
+      var p = b.parentNode.querySelector('.research-pop'); if(p) p.hidden = true;
+    });
+  }
+  [].forEach.call(document.querySelectorAll('.research-chip'), function(btn){
+    var pop = btn.parentNode.querySelector('.research-pop'); if(!pop) return;
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var open = btn.getAttribute('aria-expanded') === 'true';
+      closeAll(btn);
+      btn.setAttribute('aria-expanded', String(!open));
+      pop.hidden = open;
+    });
+  });
+  document.addEventListener('click', function(e){
+    if(e.target.closest && e.target.closest('.research-wrap')) return;
+    closeAll(null);
+  });
+  document.addEventListener('keydown', function(e){
+    if((e.key||'').toLowerCase()==='escape') closeAll(null);
+  });
+})();`;
+
 function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) {
   const backLink = back
     ? `<a class="back" href="${back.href}">${back.label}</a>`
@@ -2506,6 +2620,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <script>${CARD_MENU_JS}
   </script>
   <script>${PINS_JS}
+  </script>
+  <script>${RESEARCH_JS}
   </script>
   ${addon ? addon.bodyScripts(UI_VERSION) : ""}
   ${SPECULATION_RULES}
@@ -2551,7 +2667,7 @@ function renderRootIndex(opportunities) {
           <a class="card-cover-link" href="${oppPath}" aria-label="Open ${titleCase(opp.name)}"></a>
           ${preview(coverSrc, cover && cover.poster)}
           <div class="opp-meta">
-            <div class="proto-name">${titleCase(opp.name)}</div>
+            <div class="opp-name-row"><div class="proto-name">${titleCase(opp.name)}</div>${researchTag(opp.research)}</div>
             <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; <span title="${fmtDate(opp.mtimeMs)}">${relTime(opp.mtimeMs)}</span></div>
           </div>
         </div>`;
@@ -2621,7 +2737,7 @@ function renderOpportunityIndex(opp) {
     title: titleCase(opp.name),
     activeTab: opp.name,
     wrapClass: "wrap--wide",
-    body: `<header class="folderbar"><a class="folderbar__up" href="/" aria-label="All opportunities" title="All opportunities"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span></header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
+    body: `<header class="folderbar"><a class="folderbar__up" href="/" aria-label="All opportunities" title="All opportunities"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span>${researchChip(opp.research)}</header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
   });
 }
 

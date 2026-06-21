@@ -16,6 +16,12 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-06-21 — See what research backs each opportunity
+Every opportunity now shows a little chip with how many research notes it has
+(e.g. "4"). Click it on the opportunity's page to see the list of file names —
+handy for remembering what context exists before you dig in. It only shows the
+names, never the contents, and only to people who've passed the password.
+
 ## 2026-06-21 — Prototypes now borrow blocks instead of copying them
 Every prototype now points at the one master copy of each building block, instead
 of keeping its own. So when a block gets better, every prototype gets it for free —
