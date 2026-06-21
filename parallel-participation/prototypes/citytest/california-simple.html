@@ -5,14 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
   <title>The Community Resilience Fund — Engaged California</title>
-  <link rel="stylesheet" href="assets/govocal-tokens.css" />
-  <link rel="stylesheet" href="assets/govocal-ui.css" />
+  <!-- LINKED to canonical Augur assets (../../../skills/govocal-ui/ resolves on file://
+       at this depth, and build.js repoints it for /dist). Components are imported as
+       live GV instances (data-gv-instance) — no forked local copies. -->
+  <link rel="stylesheet" href="../../../skills/govocal-ui/govocal-tokens.css" />
+  <link rel="stylesheet" href="../../../skills/govocal-ui/govocal-ui.css" />
   <!-- Pin to a real tenant theme (Engaged California = 8): real logo, colours, font. -->
   <script>(function(){try{var u=new URL(location.href);if(!u.searchParams.has('theme')){u.searchParams.set('theme','8');history.replaceState({},'',u);}}catch(e){}})();</script>
-  <script src="assets/govocal-themes.js" defer></script>
-  <script src="assets/govocal-icons.js" defer></script>
-  <script src="assets/govocal-avatars.js" defer></script>
-  <script src="assets/govocal-partbar.js" defer></script>
+  <script src="../../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../../skills/govocal-ui/govocal-avatars.js" defer></script>
+  <script src="../../../skills/govocal-ui/govocal-instances.js" defer></script>
+  <script src="../../../skills/govocal-ui/govocal-partbar.js" defer></script>
   <!--
     PARITY TEST — CEILING (simple baseline). Same project, brand and content as
     california.html, but rendered the way GoVocal-today produces it: ONE method per
@@ -95,29 +99,16 @@
           <p>Everything you share feeds the final plan that goes to the Legislature this winter.</p>
         </div>
         <div class="pp-cta">
-          <!-- Participation box — ONE method (current phase), one CTA -->
-          <div class="gv-pbox">
-            <div class="gv-pbox__actions">
-              <a class="gv-btn primary full" href="#budget">Vote on the budget</a>
-            </div>
-            <div class="gv-participants gv-pbox__people" style="margin-top:4px;">
-              <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
-              <span class="gv-pcount">3,860 contributions</span>
-              <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time contribution count."></span>
-            </div>
-          </div>
+          <!-- Participation box — LINKED instance. ONE method (current phase), one CTA.
+               Props = this page's state/copy; shape + look track canonical. -->
+          <div data-gv-instance="participation-box" data-gv-props='{"actions":[{"label":"Vote on the budget","variant":"primary","href":"#budget"}],"people":{"avatars":3,"count":"3,860 contributions","infoTitle":"Real-time contribution count."}}'></div>
         </div>
       </div>
     </div>
    </div>
 
-   <!-- Participation bar — reinforces the SAME single action -->
-   <div class="gv-partbar">
-     <div class="gv-partbar__inner">
-       <span class="gv-partbar__status">Open for participation</span>
-       <a class="gv-btn on-color" href="#budget">Vote on the budget <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
-     </div>
-   </div>
+   <!-- Participation bar — LINKED instance. Reinforces the SAME single action. -->
+   <div data-gv-instance="participation-bar" data-gv-props='{"status":"Open for participation","ctaLabel":"Vote on the budget","ctaHref":"#budget"}'></div>
 
    <div class="gv-methodband">
     <div class="gv-wrap">
@@ -166,7 +157,7 @@
         <li><a href="#">Accessibility statement</a></li>
       </ul></nav>
       <div class="gv-footer__powered"><span>Powered by</span>
-        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal"><img class="gv-powered-logo" src="assets/govocal-logo.svg" alt="Go Vocal" /></a>
+        <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal"><img class="gv-powered-logo" src="../../../skills/govocal-ui/govocal-logo.svg" alt="Go Vocal" /></a>
       </div>
     </div>
   </footer>

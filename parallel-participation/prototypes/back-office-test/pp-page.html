@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Project page</title>
 <!-- Canonical tokens + components + the project-page layout (all "from Pages"). -->
-<link rel="stylesheet" href="assets/govocal-tokens.css" />
-<link rel="stylesheet" href="assets/govocal-ui.css" />
+<link rel="stylesheet" href="../../../skills/govocal-ui/govocal-tokens.css" />
+<link rel="stylesheet" href="../../../skills/govocal-ui/govocal-ui.css" />
 <link rel="stylesheet" href="assets/pp-page.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
@@ -65,14 +65,14 @@
   </main>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="assets/govocal-icons.js"></script>
-  <script src="assets/govocal-avatars.js"></script>
+  <script src="../../../skills/govocal-ui/govocal-icons.js"></script>
+  <script src="../../../skills/govocal-ui/govocal-avatars.js"></script>
   <!-- Load the canonical theme engine so the tenant @font-face set is DEFINED in this
        iframe (it bundles each city font as a data-URI). Without it the iframe could set
        --gv-font-family to a tenant font name that had no @font-face here, so it fell back
        to Public Sans — colours themed, fonts didn't. Picker off (this is a preview frame). -->
-  <script src="assets/govocal-themes.js"></script>
-  <script src="assets/govocal-widgets.js"></script>
+  <script src="../../../skills/govocal-ui/govocal-themes.js"></script>
+  <script src="../../../skills/govocal-ui/govocal-widgets.js"></script>
   <script src="assets/pp-render.js"></script>
   <script>
     // Model + theme arrive from the parent via postMessage (origin-safe on file:// AND https).
