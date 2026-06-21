@@ -596,7 +596,7 @@
 
   /* ---------- health: linked / detached / off-grid ----------
    * The badge already proves LINKAGE (it only renders for a deps-met canonical family).
-   * Health adds the second axis AUGUR-SPEC asks for, shown at the same time as the layer:
+   * Health adds the second axis (right vs off-grid), shown at the same time as the layer:
    *   • off-grid — the box's own computed SPACING sits off the space scale. The scale is
    *     the 8-point grid with a 4-point half-step, so on-grid = any MULTIPLE OF 4. We read
    *     getComputedStyle and check padding (all sides), row/column gap, and TOP/BOTTOM
