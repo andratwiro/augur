@@ -28,6 +28,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
+// Augur composes two read-only submodules mounted at the repo root: the design
+// system (canonical assets + galleries) and the workspace (opportunities +
+// research). The source paths below resolve into them.
+const DS_ROOT = path.join(ROOT, "gv-design-system"); // submodule: canonical DS
+const WS_ROOT = path.join(ROOT, "gv-workspace"); // submodule: opportunities + research
 const DIST = path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
 
@@ -271,6 +276,8 @@ const IGNORED_TOPLEVEL = new Set([
   "playground", // standalone scratch prototype — shipped to /playground/, not as an opportunity
   "references", // internal source exports (raw Go Vocal HTML + screenshots) — NEVER ships
   "govocal-exports", // internal raw Go Vocal page exports (HTML + screenshots) — NEVER ships
+  "gv-design-system", // the DS submodule nested inside the workspace — not an opportunity
+  "skills", // the workspace's skills→DS symlink (local-open convenience) — not an opportunity
   ".git",
   ".github",
 ]);
@@ -312,11 +319,11 @@ const METHOD_PAGES = new Set([
 ]);
 
 // Source for the reference tabs (Primitives · Components · Pages).
-const UI_SKILL = path.join(ROOT, "skills", "govocal-ui"); // Primitives gallery + assets
-const PAGES_SRC = path.join(ROOT, "pages"); // composed reference pages
-const COMPONENTS_SRC = path.join(ROOT, "components"); // composed component library
-const BASE_SRC = path.join(ROOT, "base"); // base-atom demos (Base tab)
-const PATTERNS_SRC = path.join(ROOT, "patterns"); // curated composition demos (Patterns tab)
+const UI_SKILL = path.join(DS_ROOT, "skills", "govocal-ui"); // Primitives gallery + assets
+const PAGES_SRC = path.join(DS_ROOT, "pages"); // composed reference pages
+const COMPONENTS_SRC = path.join(DS_ROOT, "components"); // composed component library
+const BASE_SRC = path.join(DS_ROOT, "base"); // base-atom demos (Base tab)
+const PATTERNS_SRC = path.join(DS_ROOT, "patterns"); // curated composition demos (Patterns tab)
 const CHANGELOG_SRC = path.join(ROOT, "changelog.md"); // hand-edited changelog source (internal; rendered to /changelog/)
 
 // Display name + key classes + one-line "what is it" per component, shown on the
@@ -775,14 +782,14 @@ async function entryPoint(prototype, protoDir) {
 
 async function scan() {
   const opportunities = [];
-  const topEntries = await fs.readdir(ROOT, { withFileTypes: true });
+  const topEntries = await fs.readdir(WS_ROOT, { withFileTypes: true });
   const statusMap = await loadStatusMap();
 
   for (const top of topEntries) {
     if (!top.isDirectory()) continue;
     if (IGNORED_TOPLEVEL.has(top.name) || top.name.startsWith(".")) continue;
 
-    const protoParent = path.join(ROOT, top.name, "prototypes");
+    const protoParent = path.join(WS_ROOT, top.name, "prototypes");
     if (!(await isDir(protoParent))) continue;
 
     const protoEntries = await fs.readdir(protoParent, { withFileTypes: true });
@@ -3245,7 +3252,7 @@ async function main() {
   // capture; Median (600) + Bulky (800) from brand/ (pulled from the same Linz font
   // server). govocal-exports never ships, but these font files do, matching FONT_CSS.
   {
-    const neutral = path.join(ROOT, "govocal-exports", "theme-linz", "font-reg.woff2");
+    const neutral = path.join(ROOT, "brand", "lentianova.woff2");
     if (await exists(neutral)) {
       await fs.copyFile(neutral, path.join(DIST, "fonts", "lentianova.woff2"));
     }

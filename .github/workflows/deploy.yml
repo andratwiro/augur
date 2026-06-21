@@ -16,11 +16,31 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # Augur composes three repos. We need the two private submodules
+      # (gv-workspace, gv-design-system) checked out. The default GITHUB_TOKEN
+      # cannot read OTHER private repos, so submodule fetch uses a PAT secret
+      # (SUBMODULE_PAT, Contents:read on both submodule repos). Non-recursive:
+      # Augur reads its own top-level gv-design-system, not the copy nested in
+      # gv-workspace.
       - uses: actions/checkout@v4
         with:
-          # Full history so build.js can read each prototype's git last-commit
-          # time for "most recently worked on" ordering (shallow checkouts lack it).
-          fetch-depth: 0
+          fetch-depth: 0          # full history for per-prototype "last worked on" ordering
+          submodules: true        # pull gv-workspace + gv-design-system (top-level)
+          token: ${{ secrets.SUBMODULE_PAT }}
+
+      # Read-only guard: the design system is consumed, never edited from Augur.
+      # A fresh CI checkout of a pinned submodule is always clean — this catches the
+      # one thing that CAN go wrong: an Augur commit that bundled a dirty DS worktree.
+      # (PRIMARY enforcement is git permissions: collaborators have no push to the DS repo.)
+      - name: Guard — gv-design-system is pristine (read-only)
+        run: |
+          if [ ! -e gv-design-system/skills/govocal-ui/govocal-ui.css ]; then
+            echo "::error::gv-design-system submodule did not check out (PAT/scope?)."; exit 1
+          fi
+          cd gv-design-system
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo "::error::gv-design-system has local edits — it is READ-ONLY to Augur. Edit it in its own repo and bump the pin."; exit 1
+          fi
 
       - uses: actions/setup-node@v4
         with:
