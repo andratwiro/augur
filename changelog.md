@@ -16,6 +16,13 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-06-21 — Prototypes now borrow blocks instead of copying them
+Every prototype now points at the one master copy of each building block, instead
+of keeping its own. So when a block gets better, every prototype gets it for free —
+no more stale duplicates quietly drifting apart. If you ever want to change a block
+for just one prototype, you can "detach" it: that makes a private copy you can edit
+freely, and Augur flags that it no longer follows the master.
+
 ## 2026-06-21 — Components are live copies now (like Figma)
 Every building block is now a real instance of one master, the way Figma works.
 Change the master and every copy updates itself. Each one also shows a little
