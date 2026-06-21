@@ -24,7 +24,8 @@ item / different label — exactly like a Figma variant. The two are not in tens
    (This is the `GVWidgets` pattern, generalised from widgets to *all* components.)
 
 2. **Linked by default, detach explicitly.** Prototypes reference canonical instances;
-   they do **not** copy markup or assets. `npm run detach <prototype> <component>`
+   they do **not** copy markup or assets. `npm run detach -- <prototype> <component>`
+   (run from the **gv-design-system** repo, where the instance system + its tooling live)
    flattens one instance to local markup + a local CSS copy and marks it forked.
    Default state of every component in every prototype is **linked**.
 

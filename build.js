@@ -918,15 +918,15 @@ const scanBase = () => scanTier(BASE_SRC, "base");
 const scanPatterns = () => scanTier(PATTERNS_SRC, "patterns");
 
 /**
- * Scan playground/<project>/ subfolders. Playground is "a folder, just outside"
- * the opportunities: a pinned scratch container the user drops project folders
- * into. Each subfolder is a self-contained prototype (its own index.html). The
- * whole playground/ tree is copied verbatim elsewhere (copyDir) — this only reads
- * the subfolders to render the Playground landing, so adding a folder = it appears.
+ * Scan playground/<project>/ subfolders. Playground is workspace material — a
+ * scratch opportunity living in gv-workspace/playground/ (WS_ROOT), not augur.
+ * Each subfolder is a self-contained prototype (its own index.html). The whole
+ * playground/ tree is copied verbatim elsewhere (copyDir) — this only reads the
+ * subfolders to render the Playground landing, so adding a folder = it appears.
  * hrefs are relative to dist/playground/index.html.
  */
 async function scanPlayground() {
-  const root = path.join(ROOT, "playground");
+  const root = path.join(WS_ROOT, "playground");
   if (!(await isDir(root))) return [];
   const entries = await fs.readdir(root, { withFileTypes: true });
   const statusMap = await loadStatusMap();
@@ -3048,7 +3048,7 @@ async function main() {
   // Publish the nav context BEFORE any render so the global left rail (org switcher +
   // Prototypes/Playground + Opportunities + Library) is identical on every page.
   NAV_STATE.opportunities = opportunities;
-  NAV_STATE.hasPlayground = await isDir(path.join(ROOT, "playground"));
+  NAV_STATE.hasPlayground = await isDir(path.join(WS_ROOT, "playground"));
 
   // Root index → opportunities.
   await fs.writeFile(path.join(DIST, "index.html"), renderRootIndex(opportunities), "utf8");
@@ -3168,8 +3168,8 @@ async function main() {
   // root sidebar. Copy the whole tree verbatim (shared assets + project subfolders),
   // then overwrite its index.html with a generated folder browser of the subfolders.
   let playground = [];
-  if (await isDir(path.join(ROOT, "playground"))) {
-    await copyDir(path.join(ROOT, "playground"), path.join(DIST, "playground"), isInternalOnly);
+  if (await isDir(path.join(WS_ROOT, "playground"))) {
+    await copyDir(path.join(WS_ROOT, "playground"), path.join(DIST, "playground"), isInternalOnly);
     playground = await scanPlayground();
     await fs.writeFile(
       path.join(DIST, "playground", "index.html"),
