@@ -26,8 +26,8 @@ augur/
 ├── build.js                 # composes submodules → generates /dist + index.html
 ├── CLAUDE.md                # conventions (read this)
 ├── src/_worker.js           # Cloudflare worker: auth gate, KV status/comments
-├── scripts/                 # build-index, capture, lint, og, detach, …
-├── skills/                  # platform-side skills (frontend-design, govocal-a11y, …)
+├── pitis/                   # the Pitis overlay layer + its build addon
+├── scripts/                 # platform scripts: shoot (posters), og, review (comments)
 ├── gv-design-system/        # submodule — canonical DS (edit in its own repo)
 └── gv-workspace/            # submodule — opportunities + research + GOVOCAL.md
 ```
