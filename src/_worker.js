@@ -102,7 +102,8 @@ function loginPage(redirect, error) {
     :root {
       --bg: #fbfbfd; --card: #ffffff; --fg: #16171a; --muted: #5b626e; --faint: #9aa0ab;
       --line: rgba(16,17,26,0.09); --line-2: rgba(16,17,26,0.15);
-      --accent: #5159c9; --accent-solid: #5e6ad2; --err: #b42318;
+      /* accent = the logo's almost-black (#2C2150), so button + focus match the mark */
+      --accent: #2c2150; --accent-solid: #2c2150; --err: #b42318;
       color-scheme: light;
     }
     * { box-sizing: border-box; }
@@ -117,14 +118,8 @@ function loginPage(redirect, error) {
       padding: 30px 30px 28px; max-width: 360px; width: 100%;
       box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -22px rgba(16,24,40,0.22);
     }
-    .brand { display: flex; align-items: center; gap: 9px; margin: 0 0 10px; }
-    .mark {
-      width: 28px; height: 28px; border-radius: 8px; flex: none;
-      background: var(--accent-solid); color: #fff;
-      display: grid; place-items: center; font-size: 14px; font-weight: 700; letter-spacing: -0.02em;
-    }
-    .brand .name { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
-    p.sub { color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+    .logo { display: flex; justify-content: center; margin: 4px 0 24px; }
+    .logo svg { width: 56px; height: 56px; display: block; }
     label { display: block; font-size: 13px; font-weight: 500; margin: 0 0 7px; }
     input[type=password] {
       width: 100%; font: inherit; font-size: 15px; padding: 11px 13px; border-radius: 9px;
@@ -138,7 +133,7 @@ function loginPage(redirect, error) {
       background: var(--accent-solid); border: 1px solid transparent; border-radius: 9px; padding: 11px;
       cursor: pointer; transition: background .12s ease;
     }
-    button:hover { background: #525dc6; }
+    button:hover { background: #38295e; }
     button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     /* Error carries an icon + text, never colour alone (WCAG 1.4.1). */
     .error {
@@ -159,11 +154,13 @@ function loginPage(redirect, error) {
 </head>
 <body>
   <main class="card">
-    <div class="brand">
-      <div class="mark" aria-hidden="true">A</div>
-      <span class="name">Augur</span>
+    <div class="logo">
+      <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Augur">
+        <rect width="1024" height="1024" rx="224" fill="#F4EFE6"/>
+        <g transform="translate(153.5 153.5) scale(1.115)" fill="#2C2150" fill-rule="evenodd"><path d="M303.668 0.501099C480.9 -9.31876 632.543 126.378 642.396 303.609C652.249 480.839 516.579 632.508 339.35 642.392C162.076 652.279 10.36 516.567 0.504883 339.291C-9.34912 162.015 126.39 10.3241 303.668 0.501099ZM321.31 58.589C313.993 78.2949 309.682 91.0001 300.003 110.42C256.894 196.544 185.761 265.436 98.3008 305.765C84.5568 312.054 73.3451 316.365 59.0391 321.205C166.492 358.562 254.54 437.345 303.567 540.001C306.201 545.441 320.11 580.712 320.888 581.447C329.254 559.649 338.869 536.27 350.55 515.916C397.544 434.024 469.471 370.244 555.57 331.86C563.577 328.29 574.85 323.736 583.145 321.47C472.786 278.754 383.1 203.746 334.938 93.8761C332.878 89.1732 321.885 59.2127 321.31 58.589Z"/></g>
+        <rect x="2" y="2" width="1020" height="1020" rx="222" fill="none" stroke="#2C2150" stroke-opacity="0.14" stroke-width="4"/>
+      </svg>
     </div>
-    <p class="sub">Private prototypes. Enter the password to continue.</p>
     <form method="POST" action="/__auth">
       <input type="hidden" name="redirect" value="${safeRedirect}" />
       <input class="visually-hidden" type="text" name="username" value="govocal"
