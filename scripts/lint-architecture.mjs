@@ -379,8 +379,15 @@ if (fs.existsSync(uiCssPath)) {
 //      box-shadow replacement — that strips focus visibility (2.4.7 / 2.4.13).
 // Custom-property declarations (--gv-*-color:) are protected by the lookbehind, so the
 // focus-token and on-color definitions themselves don't trip (b).
+//
+// SCOPE = FRONT OFFICE ONLY. The back office (govocal-bo.css) is deliberately EXEMPT:
+// it's GoVocal's own staff tooling on a FIXED neutral palette (never city-themed), so
+// white-on-navy is always safe and there's no arbitrary-brand contrast risk to guard.
+// WCAG 2.2 is a hard contract for the resident-facing FO; BO a11y stays best-effort, not
+// build-gated. (FO components previewed INSIDE the BO are still govocal-ui.css rules, so
+// they remain governed.) Shared primitives stay in scope — the FO leans on them.
 {
-  const A11Y_FILES = ['govocal-primitives.css', 'govocal-ui.css', 'govocal-bo.css', 'govocal-survey.css', 'govocal-widgets.css'];
+  const A11Y_FILES = ['govocal-primitives.css', 'govocal-ui.css', 'govocal-survey.css', 'govocal-widgets.css'];
   for (const f of A11Y_FILES) {
     const p = path.join(ROOT, 'skills/govocal-ui', f);
     if (!fs.existsSync(p)) continue;
