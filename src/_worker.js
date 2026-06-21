@@ -62,10 +62,11 @@ function isPublicPath(pathname) {
   if (pathname === "/piti.js" || pathname.startsWith("/fonts/")) return true;
   // Shared canonical design-system assets. Linked prototypes (the default — INV-10)
   // reference these via /skills/govocal-ui/<asset>, so they must bypass the gate or a
-  // public prototype renders unstyled for anyone without the password. Only the
-  // build-time whitelist (CSS/JS/fonts/img) lands in dist/skills/govocal-ui/ — the
-  // internal .md docs are never shipped, so opening this prefix exposes only rendered assets.
-  if (pathname.startsWith("/skills/govocal-ui/")) return true;
+  // public prototype renders unstyled for anyone without the password. Scope to RENDERED
+  // ASSET extensions only — never a blanket prefix — so any doc that ships into this dir
+  // (e.g. an img/.../MANIFEST.md, gallery.html) stays gated, not exposed.
+  if (pathname.startsWith("/skills/govocal-ui/") &&
+      /\.(css|js|mjs|woff2?|ttf|otf|svg|png|jpe?g|webp|gif|ico|json|map)$/i.test(pathname)) return true;
   // Composed OG/unfurl card for any page — always fetchable so link-preview bots
   // (Slack, iMessage, Twitter) can load the image even if its folder is gated.
   if (pathname.endsWith("/og.jpg")) return true;
