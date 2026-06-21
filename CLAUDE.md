@@ -10,12 +10,20 @@ Augur does **not** own the prototypes or the design system — it **composes** t
 git submodules mounted at its root:
 
 ```
-augur/                       # THIS repo — build + deploy platform
-├── build.js, src/, scripts/ # the platform
-├── skills/                  # platform-side skills (frontend-design, govocal-a11y, …)
-├── gv-design-system/        # submodule (DS_ROOT) — canonical design system  [READ-ONLY here]
+augur/                       # THIS repo — build + deploy platform ONLY
+├── build.js, src/           # the build + the worker (comment/pin/status overlays)
+├── scripts/                 # platform scripts: shoot, og, review, detach (poster/OG/comments)
+├── pitis/                   # the Pitis layer + its pet-agents
+├── gv-design-system/        # submodule (DS_ROOT) — canonical design system + capture/skills pipeline  [READ-ONLY here]
 └── gv-workspace/            # submodule (WS_ROOT) — opportunities + research + GOVOCAL.md
 ```
+
+> Augur owns **only** the platform — prototype navigation, the comment system, token
+> surfacing on the comment layer, Pitis (and later: users, workspace switching). The
+> **design system pipeline** (capture/scrape, lint, the `govocal-ui`/`frontend-design`/
+> `govocal-a11y`/`participation-design`/`govocal-persona-critique`/`webapp-testing` skills)
+> lives in the **gv-design-system** repo. When a mode below references a skill or
+> `npm run capture|verify|lint|audit`, that runs **from the DS repo**, not here.
 
 `build.js` reads DS assets from `gv-design-system/` (`DS_ROOT`) and opportunities from
 `gv-workspace/` (`WS_ROOT`), and emits `/dist`.
@@ -156,8 +164,8 @@ skills/context load — keep context minimal until the work actually needs more.
 
 ### Free mode (default)
 
-Just building a prototype, testing an idea. **Loads `skills/frontend-design/`** (in this repo)
-— generic design craft (typography, palette, layout, non-templated direction). That's the
+Just building a prototype, testing an idea. **Loads `gv-design-system/skills/frontend-design/`**
+(in the DS submodule) — generic design craft (typography, palette, layout, non-templated direction). That's the
 minimum, always, for prototype work. Nothing Go-Vocal-specific loads unless the user asks for it
 ad-hoc ("make it Go Vocal," "pull the survey kit," "read the research"). Build fast and light.
 
@@ -170,15 +178,16 @@ canonical assets live at `gv-design-system/skills/govocal-ui/` (real tokens, `.g
 `components.md`, `gallery.html`, themes, icons) + galleries (`components/ pages/ base/
 patterns/`) + `LIBRARY.md` / `components/manifest.md`.
 
-> ⚠️ **Tooling placement is still settling (god-mode backlog).** The capture/verify/lint npm
-> scripts currently live in **Augur's** `package.json` + `scripts/` and run over the DS
-> submodule; `govocal-exports/` (~1.5GB captures) is gitignored/local and lives under
-> `gv-design-system/`. Until the pipeline moves into the DS repo, run these from Augur but
-> commit the resulting DS edits in the **gv-design-system** repo.
+> **The pipeline lives in the DS repo.** The capture/verify/lint/index npm scripts, the
+> design skills, and `govocal-exports/` (~1.5GB captures, gitignored) all live under
+> `gv-design-system/`. Do this work in the **standalone DS clone**: run `npm install` once
+> (Playwright), set up `.env.capture` (copy `.env.capture.example`), then run the commands
+> below **from the DS repo**. Commit DS edits there, then bump Augur's pin. Don't run them
+> from Augur — the read-only submodule mirror here has no `scripts/`/`package.json`.
 
 **The workflow is the source-grounded pipeline — follow it, don't eyeball.** Full docs in
 `gv-design-system/skills/govocal-ui/SKILL.md` ("Building & extending") and
-`gv-design-system/govocal-exports/BACK-OFFICE.md`. Per piece:
+`gv-design-system/govocal-exports/BACK-OFFICE.md`. Per piece (run from the **DS repo**):
 
 1. **Capture** — `npm run capture -- <url> --name <slug> --probe "<real selectors>"`. Read exact
    values from `styles.json.digest`; **never approximate colours/borders/shadows/fonts off the
@@ -257,11 +266,11 @@ None of these load by default. Reach for them when the task or the user calls fo
   components. **Never hardcode brand colours** when you use it — use
   `var(--gv-tenant-primary|secondary|text)` so cities re-theme via `?theme=`. Copy asset files
   into the prototype folder (prototypes are self-contained).
-- **A11y audit** — `skills/govocal-a11y/` (this repo) + `npm run audit` (design-level: contrast,
-  use-of-color, zoom, target size). Run before a real handoff or when the user asks; report
-  results in chat. Flag immediately if a request would bake in a *visual* a11y failure
-  (color-only state, low-contrast text, disabled zoom, tiny targets).
-- **Persona critique** — `skills/govocal-persona-critique/` (this repo) to critique a flow in
+- **A11y audit** — `gv-design-system/skills/govocal-a11y/` + `npm run audit` (from the DS repo;
+  design-level: contrast, use-of-color, zoom, target size). Run before a real handoff or when the
+  user asks; report results in chat. Flag immediately if a request would bake in a *visual* a11y
+  failure (color-only state, low-contrast text, disabled zoom, tiny targets).
+- **Persona critique** — `gv-design-system/skills/govocal-persona-critique/` to critique a flow in
   character (participant/admin personas).
 - **Review comments & annotations** — `npm run comments` pulls reviewer threads into a gitignored
   `review-comments.local.md`. Needs `REVIEW_SITE_URL` + `REVIEW_EXPORT_KEY` in `.env.deploy`; the

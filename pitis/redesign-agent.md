@@ -12,7 +12,7 @@ You are improving **FigPal**, a cursor-following companion in this repo
 (`/Users/rob/Documents/go-vocal-prototypes`). It already works; your job is a
 **quality loop** — make it look and move ~99% like Figma's real FigPals. This is
 a Free-mode design-craft task (not GoVocal product UI): load
-`skills/frontend-design/SKILL.md` for craft, ignore the govocal-ui system.
+`gv-design-system/skills/frontend-design/SKILL.md` for craft, ignore the govocal-ui system.
 
 ### Ground truth — STUDY THESE FIRST (do not skip, do not work from memory)
 

@@ -109,7 +109,7 @@ true. **Live only · prototypes + `/playground/` only · only while active (Shif
   harnesses. Chrome: `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
   --headless --disable-gpu --hide-scrollbars --force-device-scale-factor=2
   --window-size=W,H --screenshot=OUT.png "file://ABS.html"`.
-- Free-mode design craft — load `skills/frontend-design/SKILL.md`; no `.gv-*`, no
+- Free-mode design craft — load `gv-design-system/skills/frontend-design/SKILL.md`; no `.gv-*`, no
   govocal-ui. `node build.js` must stay green. Commit only `pitis/` paths to `main`
   (never `git add -A`) with the `Co-Authored-By: Claude Opus 4.8 (1M context)` trailer;
   after live changes `npm run deploy` and report the URL.
