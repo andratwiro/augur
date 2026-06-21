@@ -251,7 +251,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.77";
+const UI_VERSION = "0.78";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1676,6 +1676,7 @@ const NAV_CSS = `
     .gvside a[aria-current="page"] { background: rgba(16,17,26,0.07); color: #0e0f12; font-weight: 600; }
     .gvside a:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
     .gvside a > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .gvside__ver { margin-left: auto; flex: none; font-size: 10px; font-weight: 600; letter-spacing: .02em; color: #9aa0ab; font-variant-numeric: tabular-nums; }
     .gvic { width: 16px; height: 16px; flex: none; color: #565a63; }
     .gvside a[aria-current="page"] .gvic { color: #16171a; }
     /* Pinned rows: the leading emoji sits in the same slot a nav icon would. */
@@ -1829,7 +1830,7 @@ function sideRail(active) {
       <div class="gvside__rule"></div>
       ${library}
       <div class="gvside__group">
-        ${item("/changelog/", "Changelog", "changelog", IC_CHANGELOG)}
+        <a href="/changelog/"${active === "changelog" ? ' aria-current="page"' : ""}>${IC_CHANGELOG}<span>Changelog</span><span class="gvside__ver">v${UI_VERSION}</span></a>
       </div>
     </div>
   </aside>`;
