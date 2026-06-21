@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no poll markup; it imports GV.render('poll', props). -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,6 +10,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Page-local layout only — no .gv-* redefinitions, no grounded visual values. */
     body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
@@ -31,52 +33,16 @@
     <h2 class="heading">Poll</h2>
 
     <!-- ════════ Poll body (.gv-poll) — questions + options + Send ════════ -->
-    <form class="gv-poll e2e-poll-form" id="poll" aria-label="Poll">
-
-      <fieldset class="gv-poll__question e2e-poll-question">
-        <div class="gv-poll__qhead">
-          <span class="gv-poll__num" aria-hidden="true">1</span>
-          <legend class="gv-poll__label">Select your age range</legend>
-        </div>
-        <div class="gv-poll__options" role="radiogroup">
-          <label class="gv-radio e2e-poll-option"><input type="radio" name="q1"><span class="circle" aria-hidden="true"></span> Under 25</label>
-          <label class="gv-radio e2e-poll-option"><input type="radio" name="q1"><span class="circle" aria-hidden="true"></span> 25-45</label>
-          <label class="gv-radio e2e-poll-option"><input type="radio" name="q1"><span class="circle" aria-hidden="true"></span> 45-65</label>
-          <label class="gv-radio e2e-poll-option"><input type="radio" name="q1"><span class="circle" aria-hidden="true"></span> 65 and Above</label>
-        </div>
-      </fieldset>
-
-      <fieldset class="gv-poll__question e2e-poll-question">
-        <div class="gv-poll__qhead">
-          <span class="gv-poll__num" aria-hidden="true">2</span>
-          <legend class="gv-poll__label">Do you support closing river-side streets to through traffic on weekends?</legend>
-        </div>
-        <div class="gv-poll__options" role="radiogroup">
-          <label class="gv-radio e2e-poll-option"><input type="radio" name="q2"><span class="circle" aria-hidden="true"></span> Strongly support</label>
-          <label class="gv-radio e2e-poll-option"><input type="radio" name="q2"><span class="circle" aria-hidden="true"></span> Somewhat support</label>
-          <label class="gv-radio e2e-poll-option"><input type="radio" name="q2"><span class="circle" aria-hidden="true"></span> Neutral</label>
-          <label class="gv-radio e2e-poll-option"><input type="radio" name="q2"><span class="circle" aria-hidden="true"></span> Oppose</label>
-        </div>
-      </fieldset>
-
-      <fieldset class="gv-poll__question e2e-poll-question">
-        <div class="gv-poll__qhead">
-          <span class="gv-poll__num" aria-hidden="true">3</span>
-          <legend class="gv-poll__label">Which improvements would you use? (Select all that apply)</legend>
-        </div>
-        <div class="gv-poll__options">
-          <label class="gv-checkbox e2e-poll-option"><input type="checkbox" name="q3"><span class="box" aria-hidden="true">✓</span> Protected bike lanes</label>
-          <label class="gv-checkbox e2e-poll-option"><input type="checkbox" name="q3"><span class="box" aria-hidden="true">✓</span> Wider pavements</label>
-          <label class="gv-checkbox e2e-poll-option"><input type="checkbox" name="q3"><span class="box" aria-hidden="true">✓</span> More benches & greenery</label>
-          <label class="gv-checkbox e2e-poll-option"><input type="checkbox" name="q3"><span class="box" aria-hidden="true">✓</span> Better lighting</label>
-        </div>
-      </fieldset>
-
-      <div class="gv-poll__send e2e-send-poll">
-        <button type="submit" class="gv-btn primary full" disabled>Send</button>
-      </div>
-    </form>
+    <div id="poll-mount"></div>
   </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      /* Render the primary instance (default props = HEAD's three questions) */
+      GV.mount(document.getElementById("poll-mount"), "poll", {});
+      GV.hydrate(document.getElementById("poll-mount"));
+    });
+  </script>
 
 </body>
 </html>

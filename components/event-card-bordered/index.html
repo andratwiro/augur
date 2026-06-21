@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no event-card-bordered markup; it imports GV.render('event-card-bordered', props). -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -8,6 +9,9 @@
   <title>Event card — bordered EventsWidget variant — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Default theme = Copenhagen (?theme=1, #000C2E) — the capture tenant. Pick Linz/Falkirk-like skins via the picker. */
     body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
@@ -23,103 +27,54 @@
 <body class="gv-root" data-gv-cookies="off" data-gv-theme="1">
   <div class="demo">
     <h1>Event card — bordered EventsWidget</h1>
-    <p class="sub">The shared EventsWidget treatment (Copenhagen / Linz / Falkirk): each event in a <strong>bordered</strong> white card (1px&nbsp;#CCC, 6px radius) with a <strong>3-tier stacked date chip</strong> (grey day+month over a tenant-primary year band) and an <strong>#F4F6F8 “Date &amp; time”</strong> info panel. Re-skins per <code>?theme=</code> (CPH #000C2E shown).</p>
+    <p class="sub">The shared EventsWidget treatment (Copenhagen / Linz / Falkirk): each event in a <strong>bordered</strong> white card (1px&nbsp;#CCC, 6px radius) with a <strong>3-tier stacked date chip</strong> (grey day+month over a tenant-primary year band) and an <strong>#F4F6F8 "Date &amp; time"</strong> info panel. Re-skins per <code>?theme=</code> (CPH #000C2E shown).</p>
 
     <p class="eyebrow">Upcoming event — image, stacked chip, info panel, Register</p>
     <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <div class="gv-events__grid">
-
-        <article class="gv-event-card bordered">
-          <div class="gv-event-card__media" aria-hidden="true">
-            <span data-gv-icon="calendar"></span>
-          </div>
-          <div class="gv-event-card__body">
-            <div class="gv-event-card__titlerow">
-              <h3 class="gv-event-card__title"><a href="#">Test din idé — kom til online møde om københavnerforslag</a></h3>
-              <span class="gv-event-datechip--stacked" aria-hidden="true">
-                <span class="gv-event-datechip__top">
-                  <span class="gv-event-datechip__day">18</span>
-                  <span class="gv-event-datechip__month">jun</span>
-                </span>
-                <span class="gv-event-datechip__year">2026</span>
-              </span>
-            </div>
-            <div class="gv-event-info-panel">
-              <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 18 Jun 2026 · 17:00 – 18:00</p>
-              <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online møde</a></p>
-              <p class="gv-event-card__row"><span data-gv-icon="user"></span> 24 tilmeldte</p>
-            </div>
-            <a class="gv-btn primary full" href="#">Registrer dig</a>
-          </div>
-        </article>
-
-        <article class="gv-event-card bordered">
-          <div class="gv-event-card__media" aria-hidden="true">
-            <span data-gv-icon="calendar"></span>
-          </div>
-          <div class="gv-event-card__body">
-            <div class="gv-event-card__titlerow">
-              <h3 class="gv-event-card__title"><a href="#">Højmosen: fredning, fugle og naturudvikling (Brønshøj-Husum)</a></h3>
-              <span class="gv-event-datechip--stacked" aria-hidden="true">
-                <span class="gv-event-datechip__top">
-                  <span class="gv-event-datechip__day">21</span>
-                  <span class="gv-event-datechip__month">jun</span>
-                </span>
-                <span class="gv-event-datechip__year">2026</span>
-              </span>
-            </div>
-            <div class="gv-event-info-panel">
-              <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 21 Jun 2026 · 10:00 – 12:30</p>
-              <p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> Højmosen, Husum</p>
-              <p class="gv-event-card__row"><span data-gv-icon="user"></span> 41 tilmeldte</p>
-            </div>
-            <a class="gv-btn primary full" href="#">Registrer dig</a>
-          </div>
-        </article>
-
-      </div>
-      <!-- ===== /COMPONENT ===== -->
+      <div id="mount-primary"></div>
     </div>
 
     <p class="eyebrow">Imageless degrade (Falkirk) + disabled Register (closed event)</p>
     <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <div class="gv-events__grid">
-
-        <article class="gv-event-card bordered is-imageless">
-          <div class="gv-event-card__body">
-            <div class="gv-event-card__titlerow">
-              <h3 class="gv-event-card__title"><a href="#">Falkirk Community Council — monthly meeting</a></h3>
-              <span class="gv-event-datechip--stacked" aria-hidden="true">
-                <span class="gv-event-datechip__top">
-                  <span class="gv-event-datechip__day">02</span>
-                  <span class="gv-event-datechip__month">jul</span>
-                </span>
-                <span class="gv-event-datechip__year">2026</span>
-              </span>
-            </div>
-            <div class="gv-event-info-panel">
-              <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 2 Jul 2026 · 19:00 – 20:30</p>
-              <p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> Falkirk Town Hall</p>
-              <p class="gv-event-card__row"><span data-gv-icon="user"></span> 12 attendees</p>
-            </div>
-            <a class="gv-btn primary full" aria-disabled="true" role="button" tabindex="-1">Registration closed</a>
-          </div>
-        </article>
-
-      </div>
-      <!-- ===== /COMPONENT ===== -->
+      <div id="mount-imageless"></div>
     </div>
 
     <div class="notes">
       <p><strong>Wrapper:</strong> add <code>.bordered</code> to <code>.gv-event-card</code> — white card, 1px&nbsp;#CCC, 6px radius (the shared EventsWidget <code>&lt;li&gt;</code> frame). Drop the <code>.gv-event-card__media</code> block and add <code>.is-imageless</code> when there's no photo.</p>
       <p><strong>Date chip:</strong> <code>.gv-event-datechip--stacked</code> — a grey <code>__top</code> tier holding <code>__day</code> + uppercase <code>__month</code> (both tenant-primary text) over a tenant-primary <code>__year</code> band. A NEW variant; the base two-tone <code>.gv-event-card__date</code> overlay chip is untouched.</p>
-      <p><strong>Info panel:</strong> <code>.gv-event-info-panel</code> — the #F4F6F8 “Date &amp; time” band grouping the clock / location / attendance <code>.gv-event-card__row</code>s.</p>
+      <p><strong>Info panel:</strong> <code>.gv-event-info-panel</code> — the #F4F6F8 "Date &amp; time" band grouping the clock / location / attendance <code>.gv-event-card__row</code>s.</p>
       <p><strong>Register:</strong> <code>.gv-btn.primary.full</code>; add <code>aria-disabled="true"</code> for a closed/past event (canonical disabled state).</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      /* Instance 1 — primary: 2 Copenhagen cards with media, stacked chip, info panel, Register */
+      GV.mount("#mount-primary", "event-card-bordered", {});
+      GV.hydrate(document.getElementById("mount-primary"));
+
+      /* Instance 2 — imageless/closed: Falkirk card, no media block, Registration closed */
+      GV.mount("#mount-imageless", "event-card-bordered", {
+        cards: [
+          {
+            title: "Falkirk Community Council — monthly meeting",
+            href: "#",
+            hasMedia: false,
+            day: "02",
+            month: "jul",
+            year: "2026",
+            rows: [
+              { icon: "clock",           html: "2 Jul 2026 · 19:00 – 20:30" },
+              { icon: "location-simple", html: "Falkirk Town Hall" },
+              { icon: "user",            html: "12 attendees" }
+            ],
+            ctaLabel: "Registration closed",
+            ctaDisabled: true
+          }
+        ]
+      });
+      GV.hydrate(document.getElementById("mount-imageless"));
+    });
+  </script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no phase-timeline markup; it imports GV.render('phase-timeline', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -8,6 +9,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Demo chrome only — the component styles (.gv-phases / .gv-stepper / .gv-pstep /
        .gv-phasepanel …) live in the shared govocal-ui.css, never forked here. */
@@ -21,31 +23,8 @@
   <div class="demo">
     <p class="eyebrow">Phase timeline</p>
 
-    <!-- ============ PHASE TIMELINE COMPONENT (copy from here) ============ -->
-    <section class="gv-phases" aria-labelledby="phT">
-      <div class="gv-phases__bar">
-        <h2 id="phT">Phases</h2>
-        <div class="gv-phases__nav">
-          <button class="gv-pnav" id="navPrev" aria-label="Previous phase"><span data-gv-icon="chevron-left"></span></button>
-          <button class="gv-pnav" id="navCurrent" aria-label="Go to current phase"><span class="gv-dotmark"></span></button>
-          <button class="gv-pnav" id="navNext" aria-label="Next phase"><span data-gv-icon="chevron-right"></span></button>
-        </div>
-      </div>
-
-      <div class="gv-stepper" role="tablist" aria-label="Project phases" id="stepper"></div>
-
-      <div class="gv-phasepanel" role="tabpanel" id="panel">
-        <div class="gv-phasepanel__head">
-          <span class="gv-phasepanel__num" id="panelNum" aria-hidden="true"></span>
-          <div>
-            <h3 class="gv-phasepanel__name" id="panelName"></h3>
-            <p class="gv-phasepanel__date" id="panelDate"></p>
-          </div>
-        </div>
-        <div class="gv-phasepanel__desc" id="panelDesc"></div>
-      </div>
-    </section>
-    <!-- ============ /PHASE TIMELINE COMPONENT ============ -->
+    <!-- Mount target — no .gv-* component markup lives here -->
+    <div id="mount-phase-timeline"></div>
   </div>
 
   <script>
@@ -105,59 +84,55 @@
     const CURRENT = 9;   // index of the live/current phase
     let VIEWING = 9;     // index currently selected in the panel
 
-
-    const stepper = document.getElementById("stepper");
-    const panelNum  = document.getElementById("panelNum");
-    const panelName = document.getElementById("panelName");
-    const panelDate = document.getElementById("panelDate");
-    const panelDesc = document.getElementById("panelDesc");
-
-    function renderPanel(i) {
-      const ph = PHASES[i];
-      panelNum.textContent  = i + 1;
-      panelName.textContent = ph.label;
-      panelDate.textContent = ph.date;
-      panelDesc.innerHTML   = `<p>${ph.desc}</p>`;
-    }
-
-    function renderStepper() {
-      stepper.innerHTML = "";
-      PHASES.forEach((ph, i) => {
-        const b = document.createElement("button");
-        b.className = "gv-phase" + (i === CURRENT ? " current" : "");
-        b.setAttribute("role", "tab");
-        b.setAttribute("aria-selected", i === VIEWING ? "true" : "false");
-        b.setAttribute("title", ph.label);
-        const dot = i === CURRENT ? `<span class="gv-pstep__dot"></span>` : "";
-        b.innerHTML = `<span class="gv-pstep">${dot}${i + 1}</span><span class="gv-phase__label">${ph.label}</span>`;
-        b.addEventListener("click", () => selectPhase(i));
-        stepper.appendChild(b);
+    document.addEventListener("DOMContentLoaded", function () {
+      // Render the canonical instance into the mount target
+      var container = document.getElementById("mount-phase-timeline");
+      GV.mount(container, "phase-timeline", {
+        phases: PHASES,
+        current: CURRENT,
+        viewing: VIEWING,
       });
-      if (window.GVIcons) GVIcons.render();
-    }
 
-    function selectPhase(i) {
-      VIEWING = i;
-      renderPanel(i);
-      // update aria-selected on all tabs
-      stepper.querySelectorAll(".gv-phase").forEach((b, j) => {
-        b.setAttribute("aria-selected", j === i ? "true" : "false");
+      // Grab DOM handles on the rendered component
+      var stepper  = document.getElementById("stepper");
+      var panelNum  = document.getElementById("panelNum");
+      var panelName = document.getElementById("panelName");
+      var panelDate = document.getElementById("panelDate");
+      var panelDesc = document.getElementById("panelDesc");
+
+      function renderPanel(i) {
+        var ph = PHASES[i];
+        panelNum.textContent  = i + 1;
+        panelName.textContent = ph.label;
+        panelDate.textContent = ph.date;
+        panelDesc.innerHTML   = "<p>" + ph.desc + "</p>";
+      }
+
+      function selectPhase(i) {
+        VIEWING = i;
+        renderPanel(i);
+        // update aria-selected on all tabs
+        stepper.querySelectorAll(".gv-phase").forEach(function (b, j) {
+          b.setAttribute("aria-selected", j === i ? "true" : "false");
+        });
+      }
+
+      // Wire click handlers on rendered stepper buttons
+      stepper.querySelectorAll(".gv-phase").forEach(function (b, i) {
+        b.addEventListener("click", function () { selectPhase(i); });
       });
-    }
 
-    // Nav buttons
-    document.getElementById("navPrev").addEventListener("click", () => {
-      if (VIEWING > 0) selectPhase(VIEWING - 1);
+      // Nav buttons
+      document.getElementById("navPrev").addEventListener("click", function () {
+        if (VIEWING > 0) selectPhase(VIEWING - 1);
+      });
+      document.getElementById("navCurrent").addEventListener("click", function () {
+        selectPhase(CURRENT);
+      });
+      document.getElementById("navNext").addEventListener("click", function () {
+        if (VIEWING < PHASES.length - 1) selectPhase(VIEWING + 1);
+      });
     });
-    document.getElementById("navCurrent").addEventListener("click", () => {
-      selectPhase(CURRENT);
-    });
-    document.getElementById("navNext").addEventListener("click", () => {
-      if (VIEWING < PHASES.length - 1) selectPhase(VIEWING + 1);
-    });
-
-    renderStepper();
-    renderPanel(VIEWING);
   </script>
 </body>
 </html>

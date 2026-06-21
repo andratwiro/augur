@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no modal markup; it imports GV.render('modal', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -9,6 +10,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Page-local layout only — no .gv-* selectors. */
     body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
@@ -31,41 +33,40 @@
         <button class="gv-btn primary" type="button" data-open-modal>Open modal</button>
       </div>
       <!-- Static preview of the dialog card (no overlay, so it doesn't cover the page). -->
-      <div class="gv-modal" style="margin-top:16px; box-shadow: var(--gv-shadow);">
-        <div class="gv-modal__header"><h3 class="gv-modal__title" id="g-modal-title">Dialog title</h3></div>
-        <button class="gv-modal__close" type="button" aria-label="Close window"><span data-gv-icon="close"></span></button>
-        <div class="gv-modal__body">
-          <p class="gv-text bodyM" style="margin:0 0 14px">Body content goes here.</p>
-          <div class="gv-or"><span>Or</span></div>
-          <p class="gv-text bodyS gv-text--secondary" style="margin:14px 0 0">The <code>.gv-or</code> labelled divider splits choices.</p>
-        </div>
-      </div>
+      <div id="modal-static"></div>
       <!-- Live overlay instance, opened by the button above. -->
-      <div class="gv-modal-overlay" id="g-overlay">
-        <div class="gv-modal" role="dialog" aria-modal="true" aria-labelledby="g-ov-title">
-          <div class="gv-modal__header"><h2 class="gv-modal__title" id="g-ov-title">Dialog title</h2></div>
-          <button class="gv-modal__close" type="button" aria-label="Close window" data-close-modal><span data-gv-icon="close"></span></button>
-          <div class="gv-modal__body">
-            <p class="gv-text bodyM" style="margin:0 0 18px">Press Esc or click the scrim to close.</p>
-            <button class="gv-btn primary" type="button" data-close-modal>Got it</button>
-          </div>
-        </div>
-      </div>
+      <div id="modal-overlay"></div>
     </div>
   </div>
 
   <script>
-    (function () {
-      var ov = document.getElementById('g-overlay');
-      if (ov) {
-        var open = function () { ov.classList.add('is-open'); };
-        var close = function () { ov.classList.remove('is-open'); };
-        document.querySelectorAll('[data-open-modal]').forEach(function (b) { b.addEventListener('click', open); });
-        ov.querySelectorAll('[data-close-modal]').forEach(function (b) { b.addEventListener('click', close); });
-        ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
-        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
-      }
-    })();
+    document.addEventListener('DOMContentLoaded', function () {
+      // Instance 1 — static preview (bare .gv-modal, no scrim). Demo chrome applies
+      // margin-top + box-shadow via the wrapper below so the card is visible in-page.
+      var staticWrap = document.getElementById('modal-static');
+      staticWrap.style.marginTop = '16px';
+      staticWrap.style.boxShadow = 'var(--gv-shadow)';
+      GV.mount(staticWrap, 'modal', {});
+
+      // Instance 2 — live overlay (scrim + .gv-modal-overlay wrapper). JS below
+      // wires open/close behaviour onto the rendered DOM.
+      GV.mount('#modal-overlay', 'modal', { variant: 'overlay' });
+
+      GV.hydrate(document.querySelector('.gv-card'));
+
+      // Open/close behaviour operates on the rendered overlay DOM.
+      (function () {
+        var ov = document.getElementById('g-overlay');
+        if (ov) {
+          var open  = function () { ov.classList.add('is-open'); };
+          var close = function () { ov.classList.remove('is-open'); };
+          document.querySelectorAll('[data-open-modal]').forEach(function (b) { b.addEventListener('click', open); });
+          ov.querySelectorAll('[data-close-modal]').forEach(function (b) { b.addEventListener('click', close); });
+          ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+          document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+        }
+      })();
+    });
   </script>
 </body>
 </html>

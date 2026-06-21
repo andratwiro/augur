@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no participation-box markup; it imports GV.render('participation-box', props). -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -31,39 +32,17 @@
     <div class="stage">
       <div class="card">
         <h3>One method + extra</h3>
-        <!-- ===== COMPONENT (copy from here) ===== -->
-        <div class="gv-pbox">
-          <div class="gv-pbox__actions">
-            <a class="gv-btn primary full" href="#">View 82 proposals</a>
-            <a class="gv-btn secondary-outlined full" href="#">Ask the budget team anything</a>
-          </div>
-          <div class="gv-participants gv-pbox__people">
-            <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
-            <span class="gv-pcount">+19 participants</span>
-            <span class="gv-icon gv-pinfo" data-gv-icon="info-solid" aria-hidden="true" title="Real-time participant count."></span>
-          </div>
-        </div>
-        <!-- ===== /COMPONENT ===== -->
+        <div data-gv-mount="participation-box" data-variant="primary"></div>
       </div>
 
       <div class="card">
         <h3>Three+ methods → collapsed</h3>
-        <div class="gv-pbox">
-          <div class="gv-pbox__actions">
-            <a class="gv-btn primary full" href="#">Participate · 3 ways</a>
-          </div>
-          <div class="gv-participants gv-pbox__people">
-            <span class="gv-avatars on-light" aria-hidden="true"><span class="av"></span><span class="av"></span><span class="av"></span></span>
-            <span class="gv-pcount">+19 participants</span>
-          </div>
-        </div>
+        <div data-gv-mount="participation-box" data-variant="collapsed"></div>
       </div>
 
       <div class="card">
         <h3>No active methods</h3>
-        <div class="gv-pbox">
-          <div class="gv-pbox__empty">No active methods</div>
-        </div>
+        <div data-gv-mount="participation-box" data-variant="empty"></div>
       </div>
     </div>
 
@@ -75,5 +54,24 @@
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
+  <script>
+    // LINKED INSTANCE demo: pass only PROPS; markup + .gv-* hooks come from GV.render('participation-box').
+    document.addEventListener("DOMContentLoaded", function () {
+      var PROPS = {
+        primary: {},
+        collapsed: {
+          actions: [{ label: "Participate · 3 ways", variant: "primary" }],
+          people: { info: false }
+        },
+        empty: { empty: "No active methods" }
+      };
+      document.querySelectorAll('[data-gv-mount="participation-box"]').forEach(function (el) {
+        el.innerHTML = GV.render("participation-box", PROPS[el.getAttribute("data-variant")] || {});
+      });
+      GV.hydrate(document);            // fills data-gv-icon glyphs (info-solid)
+      if (window.GVAvatars) GVAvatars.fill(document);  // paints the blank .av bubbles
+    });
+  </script>
 </body>
 </html>

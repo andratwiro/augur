@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no theme-card markup; it imports GV.render('theme-card', props). -->
 <!doctype html>
 <html lang="de">
 <head>
@@ -25,57 +26,7 @@
     <p class="sub">Ranked Perspectives category card with an emoji swatch, name, response count and a mini share bar; the first one shows the active selection.</p>
 
     <p class="eyebrow">Ranked category list (first card <code>.is-active</code>)</p>
-    <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <button type="button" class="gv-themecard is-active" data-cy="e2e-topic-item"
-        style="--gv-themecard-swatch: rgb(255, 212, 216)">
-        <span class="gv-themecard__main">
-          <span class="gv-themecard__head">
-            <span class="gv-themecard__name"><span class="gv-themecard__emoji" aria-hidden="true">🚧</span>Infrastructure &amp; Transportation</span>
-            <span class="gv-themecard__count">57</span>
-          </span>
-          <span class="gv-themecard__desc">Concerns about road conditions, traffic congestion, public transit, and the inability of existing infrastructure to keep pace with population growth and development.</span>
-          <span class="gv-themecard__bar"><i style="width: 85%; --gv-themecard-bar: rgb(229, 147, 156)"></i></span>
-        </span>
-      </button>
-      <!-- ===== /COMPONENT ===== -->
-
-      <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
-        style="--gv-themecard-swatch: rgb(255, 235, 214)">
-        <span class="gv-themecard__main">
-          <span class="gv-themecard__head">
-            <span class="gv-themecard__name"><span class="gv-themecard__emoji" aria-hidden="true">💼</span>Economic Opportunity &amp; Wages</span>
-            <span class="gv-themecard__count">32</span>
-          </span>
-          <span class="gv-themecard__desc">Issues around low wages, lack of well-paying jobs, economic inequality, workforce development, and the need for better economic investment in communities.</span>
-          <span class="gv-themecard__bar"><i style="width: 56%; --gv-themecard-bar: rgb(229, 184, 140)"></i></span>
-        </span>
-      </button>
-
-      <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
-        style="--gv-themecard-swatch: rgb(221, 226, 243)">
-        <span class="gv-themecard__main">
-          <span class="gv-themecard__head">
-            <span class="gv-themecard__name"><span class="gv-themecard__emoji" aria-hidden="true">🏠</span>Housing &amp; Cost of Living</span>
-            <span class="gv-themecard__count">27</span>
-          </span>
-          <span class="gv-themecard__desc">Challenges related to rising housing costs, affordability, availability of homes, and the broader cost-of-living pressures facing residents.</span>
-          <span class="gv-themecard__bar"><i style="width: 48%; --gv-themecard-bar: rgb(163, 172, 207)"></i></span>
-        </span>
-      </button>
-
-      <button type="button" class="gv-themecard" data-cy="e2e-topic-item"
-        style="--gv-themecard-swatch: rgb(208, 243, 231)">
-        <span class="gv-themecard__main">
-          <span class="gv-themecard__head">
-            <span class="gv-themecard__name"><span class="gv-themecard__emoji" aria-hidden="true">🩺</span>Healthcare &amp; Public Health</span>
-            <span class="gv-themecard__count">21</span>
-          </span>
-          <span class="gv-themecard__desc">Access to affordable healthcare, reproductive services, mental-health support, and stronger public-health provision across the region.</span>
-          <span class="gv-themecard__bar"><i style="width: 38%; --gv-themecard-bar: rgb(139, 207, 181)"></i></span>
-        </span>
-      </button>
-    </div>
+    <div class="stage" id="mount-theme-card-primary"></div>
 
     <div class="notes">
       <p><strong>Selection:</strong> add <code>.is-active</code> to mark the chosen category; only one card carries it at a time.</p>
@@ -85,5 +36,13 @@
     </div>
   </div>
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Primary instance — ranked category list, first card active (HEAD defaults)
+      GV.mount(document.getElementById("mount-theme-card-primary"), "theme-card", {});
+    });
+  </script>
 </body>
 </html>

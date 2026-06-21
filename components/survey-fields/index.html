@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no survey-fields markup; it imports GV.render('survey-fields', props). -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,6 +10,8 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-survey.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-survey.js" defer></script>
   <style>
     /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2). */
@@ -27,16 +30,17 @@
     <h1>Survey fields</h1>
     <p class="sub">The GoVocal input-form / survey field widgets — every question type, themeable via
       <code>--gv-*</code>. One shared source: <code>govocal-survey.css</code> + <code>govocal-survey.js</code>.
-      Rendered below from a field object via <code>GVSurvey.field({type, …})</code>. The full page-by-page
-      runner (wizard, progress, gating) is <code>GVSurvey.mount()</code> — see the <b>Input Form</b> page.</p>
+      Each field below is a LINKED INSTANCE rendered via <code>GV.render('survey-fields', {type, …})</code>
+      (the markup half of the engine's <code>GVSurvey.field()</code>). The full page-by-page runner
+      (wizard, progress, gating) is <code>GVSurvey.mount()</code> — see the <b>Input Form</b> page.</p>
 
     <div id="catalog"></div>
 
     <div class="notes">
       <p><b>Reuse one field type anywhere</b> (e.g. a matrix or ranking question):</p>
-      <p>1. Copy <code>govocal-tokens.css</code>, <code>govocal-ui.css</code>, <code>govocal-survey.css</code>
-        and <code>govocal-survey.js</code> into your prototype.<br>
-        2. <code>el.innerHTML = GVSurvey.field({ type:'matrix', label:'…', scale:[…], statements:[…] })</code>
+      <p>1. Load <code>govocal-instances.js</code> (plus
+        <code>govocal-survey.css</code>/<code>.js</code> for styling &amp; behaviour).<br>
+        2. <code>el.innerHTML = GV.render('survey-fields', { type:'matrix', label:'…', scale:[…], statements:[…] })</code>
         — or build a whole survey with <code>GVSurvey.mount(el, FORM)</code>.</p>
       <p>Field types: <code>text · multiline_text · number · select · multiselect · rating · ranking ·
         linear_scale · sentiment · multiselect_image · matrix · map · file_upload · shapefile_upload</code>.
@@ -45,30 +49,33 @@
   </div>
 
   <script>
-  // One example field per type — rendered with the shared GVSurvey.field() renderer.
+  // One example field per type — each a LINKED INSTANCE via GV.render('survey-fields', props).
+  // `uid` seeds the instance's internal id counter so the rendered ids (f1, f2, …) run in a
+  // single sequence across the catalog, exactly as the shared engine would emit them.
   var FIELDS = [
-    ['Single choice (select)',        { type:'select', label:'How often do you visit the park?', options:['Daily','A few times a week','Weekly','Rarely','Never'] }],
-    ['Multi choice (multiselect)',    { type:'multiselect', label:'What activities do you enjoy?', desc:'Select all that apply', options:['Walking','Picnicking','Playing sports','Dog walking'] }],
-    ['Short text',                    { type:'text', label:'What’s the first word that comes to mind?' }],
-    ['Long text (multiline)',         { type:'multiline_text', label:'What improvements would you like to see?' }],
-    ['Number',                        { type:'number', label:'How many in your household visit the park?' }],
-    ['Date',                          { type:'date', label:'When did you last visit the park?' }],
-    ['Rating (stars)',                { type:'rating', label:'Rate your overall experience', desc:'(1 = very poor, 5 = excellent)', max:5 }],
-    ['Linear scale',                  { type:'linear_scale', label:'How important is sustainability?', desc:'(1 = not important, 7 = extremely important)', max:7, minLabel:'not important', maxLabel:'extremely important' }],
-    ['Sentiment scale',               { type:'sentiment', label:'How do you feel about current safety?', faces:['😣','🙁','😐','🙂','😄'], labels:['Very bad','Bad','Ok','Good','Very good'] }],
-    ['Ranking',                       { type:'ranking', label:'Rank these features by importance', desc:'(1 = most important)', options:['Nature & biodiversity','Play & recreation','Safety & lighting','Public restrooms'] }],
-    ['Image select',                  { type:'multiselect_image', label:'Which playground style do you prefer?', desc:'(Select one image)', images:[{src:'img/playground-wooden.jpeg',label:'Natural wooden play structures'},{src:'img/playground-modern.jpeg',label:'Colorful rubberized modern sets'}] }],
-    ['Matrix (statements × scale)',   { type:'matrix', label:'Please rate the following aspects', scale:['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'], statements:['The park should prioritize quiet natural areas.','I’d prefer a fenced playground for safety.','The park should host community events.'] }],
-    ['Map (point / line / polygon)',  { type:'map', shape:'point', label:'Where would you like new bicycle storage?', desc:'Highlight a specific area on the map.' }],
-    ['File upload',                   { type:'file_upload', label:'Share any related documents or photos', desc:'Upload files here' }],
-    ['Shapefile upload',              { type:'shapefile_upload', label:'Upload your Esri shapefile', desc:'For planners / GIS professionals.' }],
+    ['Single choice (select)',        { type:'select', uid:0, label:'How often do you visit the park?', options:['Daily','A few times a week','Weekly','Rarely','Never'] }],
+    ['Multi choice (multiselect)',    { type:'multiselect', uid:1, label:'What activities do you enjoy?', desc:'Select all that apply', options:['Walking','Picnicking','Playing sports','Dog walking'] }],
+    ['Short text',                    { type:'text', uid:1, label:'What’s the first word that comes to mind?' }],
+    ['Long text (multiline)',         { type:'multiline_text', uid:1, label:'What improvements would you like to see?' }],
+    ['Number',                        { type:'number', uid:1, label:'How many in your household visit the park?' }],
+    ['Date',                          { type:'date', uid:1, label:'When did you last visit the park?' }],
+    ['Rating (stars)',                { type:'rating', uid:1, label:'Rate your overall experience', desc:'(1 = very poor, 5 = excellent)', max:5 }],
+    ['Linear scale',                  { type:'linear_scale', uid:2, label:'How important is sustainability?', desc:'(1 = not important, 7 = extremely important)', max:7, minLabel:'not important', maxLabel:'extremely important' }],
+    ['Sentiment scale',               { type:'sentiment', uid:3, label:'How do you feel about current safety?', faces:['😣','🙁','😐','🙂','😄'], labels:['Very bad','Bad','Ok','Good','Very good'] }],
+    ['Ranking',                       { type:'ranking', uid:4, label:'Rank these features by importance', desc:'(1 = most important)', options:['Nature & biodiversity','Play & recreation','Safety & lighting','Public restrooms'] }],
+    ['Image select',                  { type:'multiselect_image', uid:4, label:'Which playground style do you prefer?', desc:'(Select one image)', images:[{src:'img/playground-wooden.jpeg',label:'Natural wooden play structures'},{src:'img/playground-modern.jpeg',label:'Colorful rubberized modern sets'}] }],
+    ['Matrix (statements × scale)',   { type:'matrix', uid:5, label:'Please rate the following aspects', scale:['Strongly disagree','Disagree','Neutral','Agree','Strongly agree'], statements:['The park should prioritize quiet natural areas.','I’d prefer a fenced playground for safety.','The park should host community events.'] }],
+    ['Map (point / line / polygon)',  { type:'map', uid:11, shape:'point', label:'Where would you like new bicycle storage?', desc:'Highlight a specific area on the map.' }],
+    ['File upload',                   { type:'file_upload', uid:11, label:'Share any related documents or photos', desc:'Upload files here' }],
+    ['Shapefile upload',              { type:'shapefile_upload', uid:11, label:'Upload your Esri shapefile', desc:'For planners / GIS professionals.' }],
   ];
 
   document.addEventListener('DOMContentLoaded', function () {
     var root = document.getElementById('catalog');
     root.innerHTML = FIELDS.map(function (f) {
-      return '<p class="eyebrow">' + f[0] + '</p><div class="stage">' + GVSurvey.field(f[1]) + '</div>';
+      return '<p class="eyebrow">' + f[0] + '</p><div class="stage">' + GV.render('survey-fields', f[1]) + '</div>';
     }).join('');
+    GV.hydrate(root);
     // Minimal glue so the rating stars fill on click (the rest work via native :checked).
     root.addEventListener('change', function (e) {
       var wrap = e.target.closest('.sv-rating');

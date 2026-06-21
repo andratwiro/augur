@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Page-local layout only — no .gv-* selectors. */
     body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
@@ -18,25 +20,38 @@
   </style>
 </head>
 <body class="gv-root">
+  <!-- LINKED INSTANCE — this demo owns no checkbox-radio markup; it imports GV.render('checkbox-radio', props). -->
   <div class="stage">
     <h2 class="heading">Selection controls</h2>
     <div class="gv-card">
-      <div class="row">
-        <label class="gv-checkbox"><input type="checkbox" checked /><span class="box"><span class="check">✓</span></span> Checked</label>
-        <label class="gv-checkbox"><input type="checkbox" /><span class="box"><span class="check">✓</span></span> Unchecked</label>
-        <label class="gv-checkbox"><input type="checkbox" checked disabled /><span class="box"><span class="check">✓</span></span> Disabled</label>
-      </div>
-      <div class="row">
-        <label class="gv-radio"><input type="radio" name="g-r" checked /><span class="circle"></span> Option A</label>
-        <label class="gv-radio"><input type="radio" name="g-r" /><span class="circle"></span> Option B</label>
-        <label class="gv-radio"><input type="radio" name="g-r" disabled /><span class="circle"></span> Disabled</label>
-      </div>
-      <div class="row">
-        <label class="gv-toggle"><input type="checkbox" checked /><span class="track"></span><span class="label">On</span></label>
-        <label class="gv-toggle"><input type="checkbox" /><span class="track"></span><span class="label">Off</span></label>
-        <label class="gv-toggle"><input type="checkbox" disabled /><span class="track"></span><span class="label">Disabled</span></label>
-      </div>
+      <div class="row" id="row-checkbox"></div>
+      <div class="row" id="row-radio"></div>
+      <div class="row" id="row-toggle"></div>
     </div>
   </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Row 1: checkboxes — checked / unchecked / disabled
+      document.getElementById('row-checkbox').innerHTML =
+        GV.render('checkbox-radio', { variant: 'checkbox', label: 'Checked',   checked: true }) +
+        GV.render('checkbox-radio', { variant: 'checkbox', label: 'Unchecked', checked: false }) +
+        GV.render('checkbox-radio', { variant: 'checkbox', label: 'Disabled',  checked: true, disabled: true });
+
+      // Row 2: radios — Option A (checked) / Option B / disabled
+      document.getElementById('row-radio').innerHTML =
+        GV.render('checkbox-radio', { variant: 'radio', name: 'g-r', label: 'Option A', checked: true }) +
+        GV.render('checkbox-radio', { variant: 'radio', name: 'g-r', label: 'Option B', checked: false }) +
+        GV.render('checkbox-radio', { variant: 'radio', name: 'g-r', label: 'Disabled', checked: false, disabled: true });
+
+      // Row 3: toggles — On / Off / disabled
+      document.getElementById('row-toggle').innerHTML =
+        GV.render('checkbox-radio', { variant: 'toggle', label: 'On',       checked: true }) +
+        GV.render('checkbox-radio', { variant: 'toggle', label: 'Off',      checked: false }) +
+        GV.render('checkbox-radio', { variant: 'toggle', label: 'Disabled', checked: false, disabled: true });
+
+      GV.hydrate(document);
+    });
+  </script>
 </body>
 </html>

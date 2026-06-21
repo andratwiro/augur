@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Page-local layout only — no .gv-* selectors. */
     body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
@@ -30,31 +31,39 @@
     <h2 class="heading">Icon buttons &amp; glyphs</h2>
     <div class="gv-card">
       <p class="eyebrow">Icon buttons (<code>.gv-iconbtn</code> + <code>data-gv-icon</code>)</p>
-      <div class="row">
-        <button class="gv-iconbtn" aria-label="Search"><span data-gv-icon="search"></span></button>
-        <button class="gv-iconbtn" aria-label="Like"><span data-gv-icon="vote-up"></span></button>
-        <button class="gv-iconbtn" aria-label="Comment"><span data-gv-icon="comment"></span></button>
-        <button class="gv-iconbtn" aria-label="Share"><span data-gv-icon="share"></span></button>
-        <button class="gv-iconbtn" aria-label="More"><span data-gv-icon="dots-horizontal"></span></button>
-        <button class="gv-iconbtn" aria-label="Settings"><span data-gv-icon="settings"></span></button>
-      </div>
+      <div class="row" id="row-iconbtns"></div>
 
       <p class="eyebrow" style="margin-top:24px">Glyphs (<code>&lt;span data-gv-icon="…"&gt;</code> — inherits size &amp; colour)</p>
-      <div class="glyphs">
-        <div class="cell"><span class="g" data-gv-icon="search" aria-hidden="true"></span><span class="n">search</span></div>
-        <div class="cell"><span class="g" data-gv-icon="vote-up" aria-hidden="true"></span><span class="n">vote-up</span></div>
-        <div class="cell"><span class="g" data-gv-icon="comment" aria-hidden="true"></span><span class="n">comment</span></div>
-        <div class="cell"><span class="g" data-gv-icon="share" aria-hidden="true"></span><span class="n">share</span></div>
-        <div class="cell"><span class="g" data-gv-icon="settings" aria-hidden="true"></span><span class="n">settings</span></div>
-        <div class="cell"><span class="g" data-gv-icon="close" aria-hidden="true"></span><span class="n">close</span></div>
-        <div class="cell"><span class="g" data-gv-icon="plus" aria-hidden="true"></span><span class="n">plus</span></div>
-        <div class="cell"><span class="g" data-gv-icon="arrow-right" aria-hidden="true"></span><span class="n">arrow-right</span></div>
-        <div class="cell"><span class="g" data-gv-icon="info-outline" aria-hidden="true"></span><span class="n">info-outline</span></div>
-        <div class="cell"><span class="g" data-gv-icon="dots-horizontal" aria-hidden="true"></span><span class="n">dots-horizontal</span></div>
-        <div class="cell"><span class="g" data-gv-icon="calendar" aria-hidden="true"></span><span class="n">calendar</span></div>
-        <div class="cell"><span class="g" data-gv-icon="location" aria-hidden="true"></span><span class="n">location</span></div>
-      </div>
+      <div class="glyphs" id="grid-glyphs"></div>
     </div>
   </div>
+
+  <script>
+    // LINKED INSTANCE — this demo owns no icon markup; it imports GV.render('icon', props)
+    // and GV.render('iconbtn', props) from govocal-instances.js.
+    document.addEventListener('DOMContentLoaded', function () {
+      // Icon buttons — same six as HEAD, in order.
+      var iconbtns = [
+        { name: 'search',          ariaLabel: 'Search' },
+        { name: 'vote-up',         ariaLabel: 'Like' },
+        { name: 'comment',         ariaLabel: 'Comment' },
+        { name: 'share',           ariaLabel: 'Share' },
+        { name: 'dots-horizontal', ariaLabel: 'More' },
+        { name: 'settings',        ariaLabel: 'Settings' }
+      ];
+      var rowEl = document.getElementById('row-iconbtns');
+      rowEl.innerHTML = iconbtns.map(function (p) { return GV.render('iconbtn', p); }).join('');
+      GV.hydrate(rowEl);
+
+      // Glyph cells — same twelve as HEAD, in order.
+      var glyphs = [
+        'search', 'vote-up', 'comment', 'share', 'settings', 'close',
+        'plus', 'arrow-right', 'info-outline', 'dots-horizontal', 'calendar', 'location'
+      ];
+      var gridEl = document.getElementById('grid-glyphs');
+      gridEl.innerHTML = glyphs.map(function (name) { return GV.render('icon', { name: name }); }).join('');
+      GV.hydrate(gridEl);
+    });
+  </script>
 </body>
 </html>

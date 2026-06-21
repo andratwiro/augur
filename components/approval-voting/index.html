@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed to the captured wietsedemo tenant (primary #112D7E — the measured
        tenant-primary the percentage bars + "Final tally" heading take). Swap this
@@ -28,6 +29,7 @@
   </style>
 </head>
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <!-- LINKED INSTANCE — this demo owns no approval-voting markup; it imports GV.render('approval-voting', props). -->
   <div class="demo">
     <h1>Voting method body</h1>
     <p class="sub">The per-method panel that renders inside <code>.gv-phasebody</code>
@@ -43,113 +45,10 @@
       track (<code>.bsnfRS</code> tinted 25% + 1px border / <code>.kpdUEH</code> solid).</p>
 
     <div class="eyebrow">Part 1 — Options accordion</div>
-
-    <!-- ============ OPTIONS ACCORDION (copy from here) ============ -->
-    <div class="stage gv-phasebody gv-phasebody--full">
-      <div class="gv-voteoptions">
-        <div class="gv-voteoption">
-          <button class="gv-voteoption__head" aria-expanded="true" aria-controls="opt-1">
-            <h3 class="gv-voteoption__title">Option 1: Embrace the Past, Illuminate the Future</h3>
-            <span class="gv-voteoption__chevron"><span data-gv-icon="chevron-right"></span></span>
-          </button>
-          <div class="gv-voteoption__panel is-open" id="opt-1" role="region">
-            <p>Restore the historic monuments and headstones while adding subtle
-              low-impact lighting along the main paths, so the cemetery stays a place
-              of quiet reflection after dark without altering its character.</p>
-          </div>
-        </div>
-
-        <div class="gv-voteoption">
-          <button class="gv-voteoption__head" aria-expanded="false" aria-controls="opt-2">
-            <h3 class="gv-voteoption__title">Option 2: Bridging History and Innovation</h3>
-            <span class="gv-voteoption__chevron"><span data-gv-icon="chevron-right"></span></span>
-          </button>
-          <div class="gv-voteoption__panel" id="opt-2" role="region">
-            <p>Pair preservation with a small visitor centre and a digital
-              memorial archive, letting residents explore the cemetery's stories
-              online while protecting the grounds themselves.</p>
-          </div>
-        </div>
-
-        <div class="gv-voteoption">
-          <button class="gv-voteoption__head" aria-expanded="false" aria-controls="opt-3">
-            <h3 class="gv-voteoption__title">Option 3: A Living Legacy</h3>
-            <span class="gv-voteoption__chevron"><span data-gv-icon="chevron-right"></span></span>
-          </button>
-          <div class="gv-voteoption__panel" id="opt-3" role="region">
-            <p>Convert the surrounding grounds into a community memorial garden
-              with native planting and gathering spaces, keeping the cemetery active
-              and cared-for by the people who live around it.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- ============ /OPTIONS ACCORDION ============ -->
+    <div class="stage" id="mount-accordion"></div>
 
     <div class="eyebrow">Part 2 — Results (Final tally + ranked cards)</div>
-
-    <!-- ============ VOTING RESULTS (copy from here) ============ -->
-    <div class="stage gv-phasebody gv-phasebody--full">
-      <!-- "Voting closed" panel header + Final tally card -->
-      <h2 class="gv-title h2" style="margin: 0 0 16px;">Voting closed</h2>
-      <div class="gv-tally">
-        <h3 class="gv-tally__title">Final tally</h3>
-        <p class="gv-tally__caption">Voting closed on <strong>April 20, 2026.</strong>
-          Participants could <strong>vote for 2 options.</strong></p>
-        <p class="gv-tally__count">4</p>
-        <p class="gv-tally__sub">people submitted their votes online</p>
-      </div>
-
-      <!-- ranked result cards -->
-      <div class="gv-voteresults">
-        <a class="gv-voteresult" href="#">
-          <div class="gv-voteresult__thumb">
-            <span data-gv-icon="idea" aria-hidden="true"></span>
-            <span class="gv-voteresult__rank">#1</span>
-          </div>
-          <div class="gv-voteresult__body">
-            <h5 class="gv-voteresult__title">Bridging History and Innovation</h5>
-            <p class="gv-voteresult__pct">50% • 2 votes</p>
-            <div class="gv-voteresult__track"><div class="gv-voteresult__fill" style="width: 50%;"></div></div>
-            <div class="gv-voteresult__foot">
-              <button class="gv-btn text" type="button"><u>Read more</u></button>
-              <span class="gv-react__comment"><span data-gv-icon="comment" aria-hidden="true"></span><span>1</span></span>
-            </div>
-          </div>
-        </a>
-
-        <a class="gv-voteresult" href="#">
-          <div class="gv-voteresult__thumb">
-            <span data-gv-icon="idea" aria-hidden="true"></span>
-            <span class="gv-voteresult__rank">#2</span>
-          </div>
-          <div class="gv-voteresult__body">
-            <h5 class="gv-voteresult__title">Embrace the Past, Illuminate the Future</h5>
-            <p class="gv-voteresult__pct">25% • 1 vote</p>
-            <div class="gv-voteresult__track"><div class="gv-voteresult__fill" style="width: 25%;"></div></div>
-            <div class="gv-voteresult__foot">
-              <button class="gv-btn text" type="button"><u>Read more</u></button>
-            </div>
-          </div>
-        </a>
-
-        <a class="gv-voteresult" href="#">
-          <div class="gv-voteresult__thumb">
-            <span data-gv-icon="idea" aria-hidden="true"></span>
-            <span class="gv-voteresult__rank">#2</span>
-          </div>
-          <div class="gv-voteresult__body">
-            <h5 class="gv-voteresult__title">A Living Legacy</h5>
-            <p class="gv-voteresult__pct">25% • 1 vote</p>
-            <div class="gv-voteresult__track"><div class="gv-voteresult__fill" style="width: 25%;"></div></div>
-            <div class="gv-voteresult__foot">
-              <button class="gv-btn text" type="button"><u>Read more</u></button>
-            </div>
-          </div>
-        </a>
-      </div>
-    </div>
-    <!-- ============ /VOTING RESULTS ============ -->
+    <div class="stage" id="mount-results"></div>
 
     <div class="notes">
       <strong>Reuse:</strong> drop the markup into a project page's
@@ -164,14 +63,23 @@
     </div>
   </div>
 
-  <!-- page-local accordion toggle (demo behaviour only; not part of the library) -->
   <script>
-    document.querySelectorAll('.gv-voteoption__head').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var open = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!open));
-        var panel = document.getElementById(btn.getAttribute('aria-controls'));
-        if (panel) panel.classList.toggle('is-open', !open);
+    document.addEventListener('DOMContentLoaded', function () {
+      /* ── render instances ── */
+      var elAcc = document.getElementById('mount-accordion');
+      GV.mount(elAcc, 'approval-voting', { variant: 'accordion' });
+
+      var elRes = document.getElementById('mount-results');
+      GV.mount(elRes, 'approval-voting', { variant: 'results' });
+
+      /* ── accordion toggle (demo behaviour only; not part of the library) ── */
+      document.querySelectorAll('.gv-voteoption__head').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var open = btn.getAttribute('aria-expanded') === 'true';
+          btn.setAttribute('aria-expanded', String(!open));
+          var panel = document.getElementById(btn.getAttribute('aria-controls'));
+          if (panel) panel.classList.toggle('is-open', !open);
+        });
       });
     });
   </script>

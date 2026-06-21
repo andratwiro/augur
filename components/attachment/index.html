@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed by ?theme= / picker. The first stage pins St Louis #033D8B to match capture. */
     body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
@@ -22,6 +23,7 @@
   </style>
 </head>
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
+  <!-- LINKED INSTANCE — this demo owns no attachment markup; it imports GV.render('attachment', props). -->
   <div class="demo">
     <h2 class="demo-h">File attachment — download row</h2>
     <p class="sub">The Content-Builder "file attachment" widget — a downloadable-file row on a
@@ -32,38 +34,14 @@
       Cross-tenant structure; re-skins per <code>?theme=</code>. Stack rows in a
       <code>.gv-attachments</code> list. Reference page: <code>pages/custom-page/</code>.</p>
 
-    <p class="eyebrow">St Louis — single & stacked rows</p>
+    <p class="eyebrow">St Louis — single &amp; stacked rows</p>
     <div class="stage" style="--gv-tenant-primary:#033D8B;--gv-font-family:'Public Sans','Public Sans','Helvetica Neue',Helvetica,Arial,sans-serif">
-      <!-- ============ ATTACHMENT LIST (copy from here) ============ -->
-      <div class="gv-attachments">
-        <div class="gv-attachment">
-          <span class="gv-attachment__icon" data-gv-icon="paperclip" aria-hidden="true"></span>
-          <a class="gv-attachment__name" href="#" download>10_7_25 - Policy Memo - Opening Reflection or Prayer.pdf</a>
-          <span class="gv-attachment__size">(663.3 KB)</span>
-        </div>
-        <div class="gv-attachment">
-          <span class="gv-attachment__icon" data-gv-icon="paperclip" aria-hidden="true"></span>
-          <a class="gv-attachment__name" href="#" download>10_14_25 - Policy Memo - Sidewalk Repair Cost-Sharing.pdf</a>
-          <span class="gv-attachment__size">(412.8 KB)</span>
-        </div>
-        <div class="gv-attachment">
-          <span class="gv-attachment__icon" data-gv-icon="paperclip" aria-hidden="true"></span>
-          <a class="gv-attachment__name" href="#" download>10_21_25 - Policy Memo - Neighborhood Traffic Calming.pdf</a>
-          <span class="gv-attachment__size">(1.2 MB)</span>
-        </div>
-      </div>
-      <!-- ============ /ATTACHMENT LIST ============ -->
+      <div id="mount-stlouis"></div>
     </div>
 
     <p class="eyebrow">Default GoVocal theme</p>
     <div class="stage">
-      <div class="gv-attachments">
-        <div class="gv-attachment">
-          <span class="gv-attachment__icon" data-gv-icon="paperclip" aria-hidden="true"></span>
-          <a class="gv-attachment__name" href="#" download>2026 budget proposal.pdf</a>
-          <span class="gv-attachment__size">(2.4 MB)</span>
-        </div>
-      </div>
+      <div id="mount-default"></div>
     </div>
 
     <div class="notes">
@@ -75,5 +53,16 @@
         Text is 16px/400/24px <code>--gv-cool-grey-600</code> (digest #11/#12/#13).</p>
     </div>
   </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Primary instance: St Louis 3-row stacked list (default props)
+      GV.mount('#mount-stlouis', 'attachment', {});
+
+      // Second instance: single-row default GoVocal theme
+      GV.mount('#mount-default', 'attachment', {
+        items: [{ name: '2026 budget proposal.pdf', href: '#', size: '(2.4 MB)' }]
+      });
+    });
+  </script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no cta-banner markup; it imports GV.render('cta-banner', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -8,6 +9,9 @@
   <title>CTA banner (full-width strip) — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed by govocal-themes.js (pick a city bottom-right, or ?theme=). The first
        stage pins St Louis #033D8B locally to match the source capture. */
@@ -32,19 +36,11 @@
 
     <p class="eyebrow">St Louis — tenant-primary fill (#033D8B)</p>
     <div class="stage" style="--gv-tenant-primary:#033D8B;--gv-font-family:'Public Sans','Public Sans','Helvetica Neue',Helvetica,Arial,sans-serif">
-      <!-- ============ CTA BANNER as a CB block (copy from here) ============ -->
       <div class="gv-cb-frame">
         <div class="gv-cb-row cols-1">
-          <section class="gv-cta-banner" aria-label="Call to action">
-            <div class="gv-cta-banner__inner">
-              <div class="gv-cta-banner__cta" data-cy="e2e-cta-banner-button">
-                <a class="gv-btn primary-inverse e2e-cta-banner-button" href="#">Take the survey</a>
-              </div>
-            </div>
-          </section>
+          <div id="mount-primary"></div>
         </div>
       </div>
-      <!-- ============ /CTA BANNER ============ -->
     </div>
 
     <p class="eyebrow">Inside a page — strip between two content rows</p>
@@ -56,13 +52,7 @@
             Help shape how the city invests next year.</p></div>
         </div>
         <div class="gv-cb-row cols-1" style="margin-top:18px">
-          <section class="gv-cta-banner" aria-label="Call to action">
-            <div class="gv-cta-banner__inner">
-              <div class="gv-cta-banner__cta">
-                <a class="gv-btn primary-inverse" href="#">Share your input</a>
-              </div>
-            </div>
-          </section>
+          <div id="mount-inpage"></div>
         </div>
       </div>
     </div>
@@ -71,13 +61,7 @@
     <div class="stage">
       <div class="gv-cb-frame">
         <div class="gv-cb-row cols-1">
-          <section class="gv-cta-banner" aria-label="Call to action">
-            <div class="gv-cta-banner__inner">
-              <div class="gv-cta-banner__cta">
-                <a class="gv-btn primary-inverse" href="#">Get involved</a>
-              </div>
-            </div>
-          </section>
+          <div id="mount-rethemed"></div>
         </div>
       </div>
     </div>
@@ -98,6 +82,23 @@
         <code>--gv-cta-banner-bg</code> to pin a one-off colour.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Instance 1 — primary (St Louis, "Take the survey", with data-cy)
+      GV.mount(document.getElementById('mount-primary'), 'cta-banner', {});
+
+      // Instance 2 — inside a page, no data-cy e2e attribute
+      GV.mount(document.getElementById('mount-inpage'), 'cta-banner', {
+        label: 'Share your input',
+        dataCy: false
+      });
+
+      // Instance 3 — re-themed (GoVocal default teal), no data-cy
+      GV.mount(document.getElementById('mount-rethemed'), 'cta-banner', {
+        label: 'Get involved',
+        dataCy: false
+      });
+    });
+  </script>
 </body>
 </html>

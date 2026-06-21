@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no avatar-overflow-bubble markup; it imports GV.render('avatar-overflow-bubble', props). -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -7,6 +8,8 @@
   <title>Avatar overflow-count bubble — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
     .demo { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; }
@@ -27,48 +30,16 @@
       the bare <code>.count</code> stays adjacent text.</p>
 
     <p class="eyebrow">Overflow bubble — large (hero/banner, 38px)</p>
-    <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <div class="gv-bubbles">
-        <span class="av"></span>
-        <span class="av"></span>
-        <span class="av"></span>
-        <span class="av"></span>
-        <span class="count bubble" data-testid="userCountBubbleInner">19.8k</span>
-        <span class="gv-bubbles__label">19,813 users</span>
-      </div>
-      <!-- ===== /COMPONENT ===== -->
-    </div>
+    <div class="stage" id="inst-large"></div>
 
     <p class="eyebrow">Numeric overflow (no abbreviation)</p>
-    <div class="stage">
-      <div class="gv-bubbles">
-        <span class="av"></span>
-        <span class="av"></span>
-        <span class="av"></span>
-        <span class="count bubble">7443</span>
-      </div>
-    </div>
+    <div class="stage" id="inst-numeric"></div>
 
     <p class="eyebrow">Small (card stack, 28px)</p>
-    <div class="stage">
-      <div class="gv-bubbles sm">
-        <span class="av"></span>
-        <span class="av"></span>
-        <span class="av"></span>
-        <span class="count bubble">+24</span>
-      </div>
-    </div>
+    <div class="stage" id="inst-small"></div>
 
     <p class="eyebrow">Extra-small (Wien row, 20px)</p>
-    <div class="stage">
-      <div class="gv-bubbles xs">
-        <span class="av"></span>
-        <span class="av"></span>
-        <span class="count bubble">+9</span>
-        <span class="gv-bubbles__label">59 participants</span>
-      </div>
-    </div>
+    <div class="stage" id="inst-xs"></div>
 
     <div class="notes">
       <p><strong>Build:</strong> append <code>.count.bubble</code> after the avatars in a
@@ -79,5 +50,13 @@
         with the rest of the stack. Cross-tenant SYSTEM — re-skins per <code>?theme=</code>.</p>
     </div>
   </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      GV.mount('#inst-large',   'avatar-overflow-bubble', {});
+      GV.mount('#inst-numeric', 'avatar-overflow-bubble', { avatarCount: 3, count: '7443', label: '', testId: '' });
+      GV.mount('#inst-small',   'avatar-overflow-bubble', { size: 'sm', avatarCount: 3, count: '+24', label: '', testId: '' });
+      GV.mount('#inst-xs',      'avatar-overflow-bubble', { size: 'xs', avatarCount: 2, count: '+9', label: '59 participants', testId: '' });
+    });
+  </script>
 </body>
 </html>

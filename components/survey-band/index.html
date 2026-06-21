@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no survey-band markup; it imports GV.render('survey-band', props). -->
 <!doctype html>
 <html lang="de">
 <head>
@@ -18,6 +19,9 @@
     .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
     .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
   </style>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
 </head>
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
   <div class="demo">
@@ -25,16 +29,7 @@
     <p class="sub">The tenant-primary "Take the survey" strip on a project page survey phase — a status with a live dot on the left and an on-color CTA on the right.</p>
 
     <p class="eyebrow">Open for participation</p>
-    <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <div class="gv-surveyband" role="region" aria-label="Survey participation status">
-        <div class="gv-surveyband__inner">
-          <span class="gv-surveyband__status"><span class="gv-surveyband__dot" aria-hidden="true"></span> Open for participation</span>
-          <a class="gv-btn on-color gv-surveyband__cta" href="#survey">Take the survey <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
-        </div>
-      </div>
-      <!-- ===== /COMPONENT ===== -->
-    </div>
+    <div class="stage" id="mount-primary"></div>
 
     <div class="notes">
       <p><strong>Background:</strong> the band fills with <code>--gv-tenant-primary</code>; the CTA uses <code>.gv-btn.on-color</code> so it reads against the tinted strip in any city theme.</p>
@@ -42,7 +37,12 @@
       <p><strong>Not the field kit:</strong> this is the project-page CTA strip — survey form fields live in the separate <code>components/survey-fields/</code> demo.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Primary instance — defaults match HEAD: "Open for participation" / "Take the survey"
+      GV.mount(document.getElementById("mount-primary"), "survey-band", {});
+    });
+  </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no event-card markup; it imports GV.render('event-card', props). -->
 <html lang="de">
 <head>
   <meta charset="utf-8" />
@@ -7,6 +8,9 @@
   <title>Event card — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
     body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
@@ -26,105 +30,56 @@
 
     <p class="eyebrow">Events grid (homepage / project widget) — upcoming, with Register</p>
     <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <div class="gv-events__grid">
-
-        <article class="gv-event-card">
-          <div class="gv-event-card__media" aria-hidden="true">
-            <span data-gv-icon="calendar"></span>
-            <span class="gv-event-card__date"><span class="m">Jun</span><span class="d">18</span><span class="y">2026</span></span>
-            <span class="gv-event-card__rsvp">Going</span>
-          </div>
-          <div class="gv-event-card__body">
-            <h3 class="gv-event-card__title"><a href="#">Community session: bringing online &amp; offline participation together</a></h3>
-            <div class="gv-event-card__meta">
-              <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 18 Jun 2026 · 11:00 – 12:00</p>
-              <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online meeting</a></p>
-              <p class="gv-event-card__row"><span data-gv-icon="user"></span> 2 registrants</p>
-            </div>
-            <a class="gv-btn primary full" href="#">Register</a>
-          </div>
-        </article>
-
-        <article class="gv-event-card">
-          <div class="gv-event-card__media" aria-hidden="true">
-            <span data-gv-icon="calendar"></span>
-            <span class="gv-event-card__date"><span class="m">Jun</span><span class="d">25</span><span class="y">2026</span></span>
-          </div>
-          <div class="gv-event-card__body">
-            <h3 class="gv-event-card__title"><a href="#">Main Street walk &amp; talk: see the plans on site</a></h3>
-            <div class="gv-event-card__meta">
-              <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 25 Jun 2026 · 17:30 – 19:00</p>
-              <p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> Market Square, City Hall</p>
-              <p class="gv-event-card__row"><span data-gv-icon="user"></span> 41 registrants</p>
-            </div>
-            <a class="gv-btn primary full" href="#">Register</a>
-          </div>
-        </article>
-
-        <article class="gv-event-card">
-          <div class="gv-event-card__media" aria-hidden="true">
-            <span data-gv-icon="calendar"></span>
-            <span class="gv-event-card__date"><span class="m">Jul</span><span class="d">02</span><span class="y">2026</span></span>
-          </div>
-          <div class="gv-event-card__body">
-            <h3 class="gv-event-card__title"><a href="#">Participatory budget: info &amp; Q&amp;A session</a></h3>
-            <div class="gv-event-card__meta">
-              <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 2 Jul 2026 · 18:00 – 19:30</p>
-              <p class="gv-event-card__row"><span data-gv-icon="link"></span> <a href="#">Online meeting</a></p>
-              <p class="gv-event-card__row"><span data-gv-icon="user"></span> 7 registrants</p>
-            </div>
-            <a class="gv-btn primary full" href="#">Register</a>
-          </div>
-        </article>
-
-      </div>
-      <!-- ===== /COMPONENT ===== -->
+      <div id="mount-upcoming"></div>
     </div>
 
     <p class="eyebrow">Past event (no registrant row, filled "Read more" CTA — same primary as upcoming)</p>
     <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <div class="gv-events__grid">
-        <article class="gv-event-card">
-          <div class="gv-event-card__media" aria-hidden="true">
-            <span data-gv-icon="calendar"></span>
-            <span class="gv-event-card__date"><span class="m">Feb</span><span class="d">22</span><span class="y">2026</span></span>
-          </div>
-          <div class="gv-event-card__body">
-            <h3 class="gv-event-card__title"><a href="#">Presentation of final Main Square design</a></h3>
-            <div class="gv-event-card__meta">
-              <p class="gv-event-card__row"><span data-gv-icon="clock"></span> 22 Feb 2026 · 17:30 – 19:30 CET</p>
-              <p class="gv-event-card__row"><span data-gv-icon="location-simple"></span> Town Hall, Council Chamber</p>
-            </div>
-            <a class="gv-btn primary full" href="#">Read more</a>
-          </div>
-        </article>
-      </div>
-      <!-- ===== /COMPONENT ===== -->
+      <div id="mount-past"></div>
     </div>
 
     <p class="eyebrow">Empty state (no events scheduled)</p>
     <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <div class="gv-events__empty">
-        <span data-gv-icon="calendar" aria-hidden="true"></span>
-        <p class="gv-text bodyM">No upcoming or ongoing events are currently scheduled.</p>
-      </div>
-      <!-- ===== /COMPONENT ===== -->
+      <div id="mount-empty"></div>
     </div>
 
     <div class="notes">
       <p><strong>Date chip:</strong> <code>.gv-event-card__date</code> stacks <code>.m</code> /
       <code>.d</code> / <code>.y</code> as a two-tone tile pinned over the <code>__media</code> header.</p>
-      <p><strong>RSVP flag:</strong> add <code>.gv-event-card__rsvp</code> ("Going") when the resident
-      has registered. <strong>Rows:</strong> each <code>.gv-event-card__row</code> takes a leading
-      <code>data-gv-icon</code> (<code>clock</code>, <code>location-simple</code>, <code>link</code>, <code>user</code>).</p>
+      <p><strong>RSVP flag:</strong> add <code>rsvp: "Going"</code> when the resident
+      has registered — renders <code>.gv-event-card__rsvp</code>. <strong>Rows:</strong> each <code>rows[]</code> entry takes an
+      <code>icon</code> (<code>clock</code>, <code>location-simple</code>, <code>link</code>, <code>user</code>) and optional <code>href</code>.</p>
       <p><strong>Grid &amp; empty:</strong> wrap cards in <code>.gv-events__grid</code> (auto-fill);
-      swap for <code>.gv-events__empty</code> when there are none.</p>
+      swap for <code>variant: "empty"</code> when there are none.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      /* Primary instance: upcoming events grid (3 cards, first has RSVP badge) */
+      GV.mount("#mount-upcoming", "event-card", {});
+
+      /* Past event: single card, no registrant row, "Read more" CTA */
+      GV.mount("#mount-past", "event-card", {
+        cards: [
+          {
+            title:    "Presentation of final Main Square design",
+            dateM:    "Feb",
+            dateD:    "22",
+            dateY:    "2026",
+            rows: [
+              { icon: "clock",           text: "22 Feb 2026 · 17:30 – 19:30 CET" },
+              { icon: "location-simple", text: "Town Hall, Council Chamber" }
+            ],
+            ctaLabel: "Read more",
+            ctaHref:  "#"
+          }
+        ]
+      });
+
+      /* Empty state: no events scheduled */
+      GV.mount("#mount-empty", "event-card", { variant: "empty" });
+    });
+  </script>
 </body>
 </html>

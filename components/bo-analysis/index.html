@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no bo-analysis markup; it imports GV.render('bo-analysis', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -10,6 +11,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     body { margin: 0; padding: 32px; background: var(--gv-bo-canvas); font-family: var(--gv-font-family); }
     .demo { max-width: 360px; display: grid; gap: 24px; }
@@ -22,147 +24,82 @@
 
     <section>
       <h3>Sensemaking banner (Input manager)</h3>
-      <div class="gv-bo-banner gv-bo-banner--ai">
-        <span class="gv-icon" data-gv-icon="stars"></span>
-        <div>Explore AI-powered summaries and view individual submissions.</div>
-        <a class="gv-bo-banner__cta" href="#">Open AI analysis &rarr;</a>
-      </div>
+      <div id="i-banner"></div>
     </section>
 
     <section>
       <h3>AI action bar + split header</h3>
-      <div class="panel" style="margin-bottom:12px"><div class="gv-bo-aibar"><span class="gv-icon" data-gv-icon="stars"></span> Auto-tag</div></div>
-      <div class="panel">
-        <div class="gv-bo-aibar gv-bo-aibar--split">
-          <button class="gv-bo-aibar__cell"><span class="gv-icon" data-gv-icon="stars"></span> Summarize</button>
-          <button class="gv-bo-aibar__cell"><span class="gv-icon" data-gv-icon="question-bubble"></span> Ask a question</button>
-        </div>
-      </div>
+      <div class="panel" style="margin-bottom:12px" id="i-aibar"></div>
+      <div class="panel" id="i-aibar-split"></div>
     </section>
 
     <section>
       <h3>Tag rail + auto-tag chips</h3>
-      <div class="panel">
-        <nav class="gv-bo-tagrail">
-          <a class="gv-bo-tagrail__item is-active">All inputs <span class="gv-bo-tagrail__count">6</span></a>
-          <a class="gv-bo-tagrail__item">Inputs without tags <span class="gv-bo-tagrail__count">6</span></a>
-          <a class="gv-bo-tagrail__item"><span class="gv-bo-autotag">Example tag 1</span> <span class="gv-bo-tagrail__count">0</span></a>
-        </nav>
-      </div>
+      <div class="panel" id="i-tagrail"></div>
     </section>
 
     <section>
       <h3>AI notices</h3>
-      <div class="gv-bo-ainotice is-locked" style="margin-bottom:12px"><span class="gv-icon" data-gv-icon="info-outline"></span> Auto insights are not available for projects with less than 30 participants.</div>
-      <div class="gv-bo-ainotice is-warn"><span class="gv-icon" data-gv-icon="alert-circle"></span> AI can make mistakes. Please verify important information.</div>
+      <div id="i-notice-locked" style="margin-bottom:12px"></div>
+      <div id="i-notice-warn"></div>
     </section>
 
     <section>
       <h3>AI insight card (generated summary)</h3>
-      <div class="gv-bo-aicard">
-        <div class="gv-bo-aicard__head"><span class="gv-icon" data-gv-icon="stars"></span> AI summary</div>
-        <div class="gv-bo-aicard__body">Residents broadly support more bike lanes near the park, with recurring concern about evening lighting and pedestrian crossings on the east entrance.</div>
-        <div class="gv-bo-aicard__foot"><span>18 / 24 inputs</span><span>generated 2 hours ago</span></div>
-        <div class="gv-bo-aicard__actions">
-          <button class="gv-iconbtn" aria-label="Restore filters"><span class="gv-icon" data-gv-icon="filter-2"></span></button>
-          <button class="gv-iconbtn" aria-label="Copy"><span class="gv-icon" data-gv-icon="copy"></span></button>
-          <button class="gv-iconbtn" aria-label="Rate"><span class="gv-icon" data-gv-icon="flag"></span></button>
-          <button class="gv-iconbtn" aria-label="Delete"><span class="gv-icon" data-gv-icon="delete"></span></button>
-        </div>
-      </div>
+      <div id="i-aicard"></div>
     </section>
 
     <section>
       <h3>Empty summary panel</h3>
-      <div class="gv-bo-aiempty">Your text summaries will be displayed here, but you currently do not have any yet.<br><br>Click the Auto-summarize button above to get started.</div>
+      <div id="i-aiempty"></div>
     </section>
 
     <section>
       <h3>Tag meters + tagged-input rows</h3>
-      <div class="panel">
-        <div class="gv-bo-tagmeter">
-          <div class="gv-bo-tagmeter__label">All inputs</div>
-          <div class="gv-bo-tagmeter__row"><div class="gv-bo-tagmeter__track"><div class="gv-bo-tagmeter__fill" style="width:100%"></div></div><span class="gv-bo-tagmeter__num">48</span></div>
-        </div>
-        <div class="gv-bo-tagmeter">
-          <div class="gv-bo-tagmeter__label">Inputs without tags</div>
-          <div class="gv-bo-tagmeter__row"><div class="gv-bo-tagmeter__track"><div class="gv-bo-tagmeter__fill" style="width:31%"></div></div><span class="gv-bo-tagmeter__num">15</span></div>
-        </div>
-        <div class="gv-bo-tagitem">
-          <div class="gv-bo-tagitem__row"><span class="gv-bo-tagitem__check"></span><span class="gv-bo-autotag">Input management</span><span class="gv-bo-tagitem__opts"><span class="gv-icon" data-gv-icon="dots-horizontal"></span></span></div>
-          <div class="gv-bo-tagitem__meter"><div class="gv-bo-tagitem__bar" style="width:28px"></div><span class="gv-bo-tagitem__num">3</span></div>
-        </div>
-      </div>
+      <div class="panel" id="i-tagmeters"></div>
     </section>
 
     <section>
       <h3>View all insights + insight card</h3>
-      <div class="panel">
-        <button class="gv-bo-viewall" type="button"><span class="gv-icon" data-gv-icon="eye"></span> View all insights</button>
-        <div class="gv-bo-insightcard is-active">
-          <div class="gv-bo-insightcard__head">
-            <div class="gv-bo-insightcard__title">Interactive project list (with search and map)</div>
-            <div class="gv-bo-insightcard__date">8/20/2024</div>
-          </div>
-          <div class="gv-bo-insightcard__react">
-            <span><span class="gv-icon" data-gv-icon="vote-up"></span> 1</span>
-            <span><span class="gv-icon" data-gv-icon="vote-down"></span> 0</span>
-            <span><span class="gv-icon" data-gv-icon="email"></span> 0</span>
-            <span><span class="gv-icon" data-gv-icon="comments"></span> 1</span>
-          </div>
-          <div class="gv-bo-insightcard__tags"><span class="gv-bo-autotag">Project list/map <span class="gv-icon" data-gv-icon="close" style="width:12px;height:12px"></span></span></div>
-        </div>
-      </div>
+      <div class="panel" id="i-insightcard"></div>
     </section>
 
     <section>
       <h3>Auto-insights cross-tab (matrix)</h3>
-      <div class="panel" style="overflow:auto">
-        <div class="gv-bo-matrix" style="grid-template-columns:120px repeat(3,minmax(64px,1fr))">
-          <div class="gv-bo-matrix__corner"></div>
-          <div class="gv-bo-matrix__colhead">Marketing</div>
-          <div class="gv-bo-matrix__colhead">GS</div>
-          <div class="gv-bo-matrix__colhead">Dev</div>
-          <div class="gv-bo-matrix__rowhead"><span class="gv-bo-autotag">Input management</span></div>
-          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">0</span><span class="gv-bo-matrix__delta">-100%</span></div>
-          <div class="gv-bo-matrix__cell is-neg"><span class="gv-bo-matrix__num">1</span><span class="gv-bo-matrix__delta">-43%</span></div>
-          <div class="gv-bo-matrix__cell is-pos"><span class="gv-bo-matrix__num">2</span><span class="gv-bo-matrix__delta">+353%</span></div>
-        </div>
-      </div>
+      <div class="panel" style="overflow:auto" id="i-matrix"></div>
     </section>
 
     <section>
       <h3>“How to work with AI” intro dialog</h3>
-      <div class="gv-modal" style="max-width:none">
-        <div class="gv-modal__header">
-          <span class="gv-icon gv-bo-aimodal__icon" data-gv-icon="stars"></span>
-          <h2 class="gv-modal__title">How to work with AI</h2>
-        </div>
-        <div class="gv-modal__body gv-bo-aimodal__body" style="max-height:160px">
-          <p>We recommend using AI-generated summaries as a starting point for understanding large datasets, but not as the final word.</p>
-          <p><strong>Hallucinations:</strong> While rare, the AI might occasionally generate information not present in the original dataset.</p>
-        </div>
-        <div class="gv-modal__footer">
-          <button class="gv-bo-aimodal__cta" type="button">I understand</button>
-        </div>
-      </div>
+      <div id="i-aimodal"></div>
     </section>
 
     <section>
       <h3>AI actions + generated answer</h3>
-      <div class="panel">
-        <div class="gv-bo-aiactions">
-          <button class="gv-bo-aiactions__btn" type="button"><span class="gv-icon" data-gv-icon="stars"></span> Summarize</button>
-          <button class="gv-bo-aiactions__btn" type="button"><span class="gv-icon" data-gv-icon="question-bubble"></span> Ask a question</button>
-        </div>
-        <div class="gv-bo-aiqa">
-          <div class="gv-bo-aiqa__prompt"><span class="gv-icon" data-gv-icon="question-bubble"></span> generate 25 trade-off questions for this ideation phase</div>
-          <div class="gv-bo-aiqa__body">Here are 25 trade-off questions, phrased for "agree/unsure/disagree" responses, based on the most recurring topics from the phase.</div>
-        </div>
-      </div>
+      <div class="panel" id="i-aiactions"></div>
     </section>
 
   </div>
-  <script>document.addEventListener('DOMContentLoaded', () => window.GVIcons && GVIcons.render(document));</script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var R = function (id, props) { document.getElementById(id).innerHTML = GV.render('bo-analysis', props); };
+
+      R('i-banner',        { part: 'banner' });
+      R('i-aibar',         { part: 'aibar' });
+      R('i-aibar-split',   { part: 'aibar-split' });
+      R('i-tagrail',       { part: 'tagrail' });
+      R('i-notice-locked', { part: 'notice', state: 'locked' });
+      R('i-notice-warn',   { part: 'notice', state: 'warn' });
+      R('i-aicard',        { part: 'aicard' });
+      R('i-aiempty',       { part: 'aiempty' });
+      R('i-tagmeters',     { part: 'tagmeters' });
+      R('i-insightcard',   { part: 'insightcard' });
+      R('i-matrix',        { part: 'matrix' });
+      R('i-aimodal',       { part: 'aimodal' });
+      R('i-aiactions',     { part: 'aiactions' });
+
+      GV.hydrate(document);
+    });
+  </script>
 </body>
 </html>

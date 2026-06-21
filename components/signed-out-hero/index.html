@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no signed-out-hero markup; it imports GV.render('signed-out-hero', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -19,6 +20,9 @@
     .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
     .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
   </style>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
 </head>
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
   <div class="demo">
@@ -29,92 +33,19 @@
       St Louis (<code>stlouis.govocal.com</code>). Re-skins per <code>?theme=</code>.</p>
 
     <p class="eyebrow">St Louis — centered, with photo</p>
-    <div class="stage">
-      <!-- ============ SIGNED-OUT HERO (copy from here) ============ -->
-      <section class="gv-hero signed-out centered"
-               data-testid="full-width-banner-layout"
-               style="--gv-hero-image:url('https://images.unsplash.com/photo-1569959220744-ff553533f492?w=1600&q=60')">
-        <div class="gv-hero__inner">
-          <h1 class="gv-hero__title">Welcome to the St. Louis Board of Aldermen's public engagement page.</h1>
-          <p class="gv-hero__lead">Sign up and let your voice be heard!</p>
-          <div class="gv-avatars" aria-label="4,000+ participants">
-            <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
-            <span class="count">4k</span>
-          </div>
-          <div class="gv-hero__actions">
-            <button type="button" class="gv-btn primary-inverse">Sign up</button>
-          </div>
-        </div>
-      </section>
-      <!-- ============ /SIGNED-OUT HERO ============ -->
-    </div>
+    <div class="stage" id="mount-full"></div>
 
     <p class="eyebrow">Fallback canvas (no photo) — #EDEFF0</p>
-    <div class="stage">
-      <section class="gv-hero signed-out centered" id="cp-canvas">
-        <div class="gv-hero__inner" id="cp-inner">
-          <h1 class="gv-hero__title">Have your say on what happens in your city</h1>
-          <p class="gv-hero__lead">Join the conversation and shape local decisions.</p>
-          <div class="gv-avatars" aria-label="1,200+ participants">
-            <span class="av"></span><span class="av"></span><span class="av"></span>
-            <span class="count">1.2k</span>
-          </div>
-          <div class="gv-hero__actions">
-            <button type="button" class="gv-btn primary-inverse">Sign up</button>
-          </div>
-        </div>
-      </section>
-    </div>
+    <div class="stage" id="mount-canvas"></div>
 
     <p class="eyebrow">Left-aligned (drop <code>.centered</code>) — photo</p>
-    <div class="stage">
-      <section class="gv-hero signed-out"
-               style="--gv-hero-image:url('https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1600&q=60')">
-        <div class="gv-hero__inner">
-          <h1 class="gv-hero__title">A platform for everyone</h1>
-          <p class="gv-hero__lead">Discover projects, share ideas, and follow what's happening.</p>
-          <div class="gv-avatars" aria-label="850+ participants">
-            <span class="av"></span><span class="av"></span><span class="av"></span>
-            <span class="count">850</span>
-          </div>
-          <div class="gv-hero__actions">
-            <button type="button" class="gv-btn primary-inverse">Sign up</button>
-          </div>
-        </div>
-      </section>
-    </div>
+    <div class="stage" id="mount-left"></div>
 
     <p class="eyebrow">Two-row layout (<code>.layout-tworow</code>) — image row + white text row</p>
-    <div class="stage">
-      <section class="gv-hero signed-out centered layout-tworow" data-testid="two-row-layout">
-        <div class="gv-hero__media"><img src="https://images.unsplash.com/photo-1569959220744-ff553533f492?w=1600&q=60" alt="" /></div>
-        <div class="gv-hero__inner">
-          <h1 class="gv-hero__title">Welcome to our participation platform</h1>
-          <p class="gv-hero__lead">Scroll below to see the projects we're working on.</p>
-          <div class="gv-avatars" aria-label="1,200+ participants">
-            <span class="av"></span><span class="av"></span><span class="av"></span>
-            <span class="count">1.2k</span>
-          </div>
-          <div class="gv-hero__actions">
-            <button type="button" class="gv-btn primary-inverse">Sign up</button>
-          </div>
-        </div>
-      </section>
-    </div>
+    <div class="stage" id="mount-tworow"></div>
 
     <p class="eyebrow">Fixed-ratio layout (<code>.layout-fixed</code>) — a shorter fixed-ratio strip</p>
-    <div class="stage">
-      <section class="gv-hero signed-out centered layout-fixed" data-testid="fixed-ratio-layout"
-               style="--gv-hero-image:url('https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1600&q=60')">
-        <div class="gv-hero__inner">
-          <h1 class="gv-hero__title">Have your say on what happens in your city</h1>
-          <p class="gv-hero__lead">Join the conversation and shape local decisions.</p>
-          <div class="gv-hero__actions">
-            <button type="button" class="gv-btn primary-inverse">Sign up</button>
-          </div>
-        </div>
-      </section>
-    </div>
+    <div class="stage" id="mount-fixed"></div>
 
     <div class="notes">
       <p><strong>Layouts:</strong> the admin "Homepage banner" widget offers three —
@@ -136,6 +67,14 @@
       brand-neutral high-contrast button that reads on any tenant overlay.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      GV.mount("#mount-full",   "signed-out-hero", { layout: "full" });
+      GV.mount("#mount-canvas", "signed-out-hero", { layout: "canvas" });
+      GV.mount("#mount-left",   "signed-out-hero", { layout: "left" });
+      GV.mount("#mount-tworow", "signed-out-hero", { layout: "tworow" });
+      GV.mount("#mount-fixed",  "signed-out-hero", { layout: "fixed" });
+    });
+  </script>
 </body>
 </html>

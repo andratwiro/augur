@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no homepage-featured-row markup; it imports GV.render('homepage-featured-row', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -8,6 +9,8 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed to the captured wietsedemo tenant (primary #112D7E). Swap this one
        var, or use ?theme=, and the row re-themes — nothing brand-coloured is
@@ -41,48 +44,8 @@
       progress / timer / status (that's the boxed grid card). Distinct from the wide
       single-block <code>.gv-spotlight</code>.</p>
 
-    <section aria-labelledby="featured-h">
-      <h2 id="featured-h" class="gv-title h2" style="margin-bottom:16px;">We want to hear from you</h2>
-      <div class="gv-featured-row">
-
-        <article class="gv-pcard featured">
-          <div class="gv-pcard__thumb"><div class="ph ph-1"></div></div>
-          <h3 class="gv-pcard__title"><a href="#">Ideation: Let's Reimagine our Central Park</a></h3>
-          <div class="gv-bubbles xs" aria-hidden="true">
-            <span class="av" style="background:#7a8b99;"></span>
-            <span class="av" style="background:#9aa7b2;"></span>
-            <span class="av" style="background:#b6c0c8;"></span>
-            <span class="count">+42</span>
-            <span class="gv-bubbles__label">45 participants</span>
-          </div>
-        </article>
-
-        <article class="gv-pcard featured">
-          <div class="gv-pcard__thumb"><div class="ph ph-2"></div></div>
-          <h3 class="gv-pcard__title"><a href="#">Survey: Redesigning Coffman Park</a></h3>
-          <div class="gv-bubbles xs" aria-hidden="true">
-            <span class="av" style="background:#7a8b99;"></span>
-            <span class="av" style="background:#9aa7b2;"></span>
-            <span class="av" style="background:#b6c0c8;"></span>
-            <span class="count">+18</span>
-            <span class="gv-bubbles__label">21 participants</span>
-          </div>
-        </article>
-
-        <article class="gv-pcard featured">
-          <div class="gv-pcard__thumb"><div class="ph ph-3"></div></div>
-          <h3 class="gv-pcard__title"><a href="#">The Big Conversation</a></h3>
-          <div class="gv-bubbles xs" aria-hidden="true">
-            <span class="av" style="background:#7a8b99;"></span>
-            <span class="av" style="background:#9aa7b2;"></span>
-            <span class="av" style="background:#b6c0c8;"></span>
-            <span class="count">+9</span>
-            <span class="gv-bubbles__label">12 participants</span>
-          </div>
-        </article>
-
-      </div>
-    </section>
+    <!-- instance mount: primary (default props = HEAD) -->
+    <div id="inst-primary"></div>
 
     <p class="notes">
       <strong>Reuse:</strong> wrap three (or more) <code>.gv-pcard.featured</code> in a
@@ -94,5 +57,12 @@
       canonical <code>govocal-ui.css</code>; re-skins via <code>?theme=</code>.
     </p>
   </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Primary instance — no props; defaults reproduce the HEAD source exactly.
+      GV.mount(document.getElementById("inst-primary"), "homepage-featured-row", {});
+    });
+  </script>
 </body>
 </html>

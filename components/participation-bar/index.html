@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no participation-bar markup; it imports GV.render('participation-bar', props). -->
 <!doctype html>
 <html lang="de">
 <head>
@@ -18,6 +19,10 @@
     .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
     .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
   </style>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-partbar.js" defer></script>
 </head>
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
   <div class="demo">
@@ -25,24 +30,19 @@
     <p class="sub">The sticky project-page action bar — a participation status on the left and a primary on-color CTA on the right that pins as residents scroll the phase.</p>
 
     <p class="eyebrow">Open for participation</p>
-    <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <div class="gv-partbar">
-        <div class="gv-partbar__inner">
-          <span class="gv-partbar__status">Open for participation</span>
-          <a class="gv-btn on-color" href="#ideas">Submit your idea <span data-gv-icon="arrow-right" aria-hidden="true"></span></a>
-        </div>
-      </div>
-      <!-- ===== /COMPONENT ===== -->
-    </div>
+    <div class="stage" id="mount-primary"></div>
 
     <div class="notes">
       <p><strong>Placement:</strong> on a project page the bar sits between the white project context and the grey phase content, sticking to the top on desktop (bottom on mobile).</p>
       <p><strong>CTA:</strong> the action label adapts to the active method (Submit your idea, Take the survey, …); <code>.gv-btn.on-color</code> keeps it legible on the bar.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-partbar.js" defer></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Instance 1: primary (default — Open for participation / Submit your idea)
+      GV.mount(document.getElementById("mount-primary"), "participation-bar", {});
+    });
+  </script>
 </body>
 </html>

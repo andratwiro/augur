@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no banner markup; it imports GV.render('banner', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -7,6 +8,9 @@
   <title>Banner — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Demo chrome only — the component styles (.gv-banner / .gv-banner__art /
        .gv-banner__sticker) live in the shared govocal-ui.css, never forked here. */
@@ -21,25 +25,17 @@
     <p class="eyebrow">Banner</p>
     <p class="sub">Image-only project hero: a full-width teal gradient art panel (1150×300) with an optional rotated campaign sticker. Drop an illustration <code>&lt;svg&gt;</code> inside <code>__art</code>.</p>
 
-    <!-- ============ BANNER COMPONENT (copy from here) ============ -->
-    <section class="gv-banner" aria-label="Project banner">
-      <div class="gv-banner__art">
-        <svg viewBox="0 0 1150 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-          <g fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="2">
-            <circle cx="930" cy="80" r="120" />
-            <circle cx="930" cy="80" r="190" />
-            <circle cx="930" cy="80" r="260" />
-          </g>
-          <g fill="#ffffff" fill-opacity="0.16">
-            <rect x="80" y="210" width="120" height="60" rx="6" />
-            <rect x="220" y="180" width="120" height="90" rx="6" />
-            <rect x="360" y="150" width="120" height="120" rx="6" />
-          </g>
-        </svg>
-        <span class="gv-banner__sticker">HAVE YOUR SAY</span>
-      </div>
-    </section>
-    <!-- ============ /BANNER COMPONENT ============ -->
+    <!-- Mount target — no .gv-* markup lives here -->
+    <div id="banner-primary"></div>
   </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Primary instance — defaults: sticker "HAVE YOUR SAY", canonical SVG art
+      GV.mount('#banner-primary', 'banner', {});
+
+      GV.hydrate(document.getElementById('banner-primary'));
+    });
+  </script>
 </body>
 </html>

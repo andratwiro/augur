@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no homepage-survey-band markup; it imports GV.render('homepage-survey-band', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -7,6 +8,9 @@
   <title>Embedded-survey band — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed to the captured wietsedemo tenant (primary #112D7E — the measured
        tenant-primary the band tints to rgba(17,45,126,.1) and the CTA fills with).
@@ -60,49 +64,18 @@
 
     <div class="eyebrow">Demo</div>
 
-    <!-- ============ EMBEDDED-SURVEY BAND (copy from here) ============ -->
-    <!-- 3-zone tinted card: text column · 240px preview image · primary CTA.
-         New .gv-monitorband variant (NOT .gv-ctaband). CTA reuses .gv-btn. -->
-    <section class="gv-monitorband" aria-labelledby="survey-band-title">
-      <div class="gv-monitorband__inner">
-        <div class="gv-monitorband__text">
-          <h2 class="gv-monitorband__title" id="survey-band-title">Help us serve you better</h2>
-          <p class="gv-monitorband__lead">Ongoing survey about how feel about quality of
-            life, public services, and governance in our city.</p>
-        </div>
+    <!-- Mount target — no .gv-* markup lives here -->
+    <div id="mount-primary"></div>
 
-        <div class="gv-monitorband__media">
-          <!-- preview of a sentiment survey question (page-local reconstruction
-               of the live SentimentQuestionPreview.png illustration) -->
-          <div class="sqp" role="img" aria-label="Example of a sentiment survey question">
-            <div class="sqp__card">
-              <span class="sqp__line"></span>
-              <span class="sqp__line sqp__line--short"></span>
-              <div class="sqp__faces">
-                <span class="sqp__face">😣</span>
-                <span class="sqp__face">🙁</span>
-                <span class="sqp__face">😐</span>
-                <span class="sqp__face sqp__face--sel">🙂<span class="sqp__check" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="10" height="10" fill="#fff" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                </span></span>
-                <span class="sqp__face">😄</span>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div class="eyebrow">No media column</div>
 
-        <div class="gv-monitorband__cta">
-          <button class="gv-btn primary" type="button">Take the survey</button>
-          <p class="gv-monitorband__ctameta">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm.75 4.5v5.55l3.7 2.2-.76 1.28-4.44-2.64V6.5h1.5Z"/>
-            </svg>
-            <span>Takes 2 minutes</span>
-          </p>
-        </div>
-      </div>
-    </section>
-    <!-- ============ /EMBEDDED-SURVEY BAND ============ -->
+    <!-- Band without the sentiment-survey illustration (showMedia: false) -->
+    <div id="mount-nomedia"></div>
+
+    <div class="eyebrow">Custom copy</div>
+
+    <!-- Alternate copy, link-button CTA, no time meta -->
+    <div id="mount-custom"></div>
 
     <div class="notes">
       <p><strong>Reuse:</strong> <code>.gv-monitorband</code> (FO, in
@@ -123,7 +96,6 @@
     </div>
   </div>
 
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script>
     // Pin the captured wietsedemo tenant (primary #112D7E, Montserrat) so the
     // band renders in its real tenant skin. Any city re-themes the same way.
@@ -131,6 +103,29 @@
       var r = document.documentElement.style;
       r.setProperty('--gv-tenant-primary', '#112D7E');
       r.setProperty('--gv-font-family', 'Montserrat, "Public Sans", "Helvetica Neue", Helvetica, Arial, sans-serif');
+    });
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Instance 1 — primary (wietsedemo defaults, full three zones)
+      GV.mount(document.getElementById('mount-primary'), 'homepage-survey-band', {});
+
+      // Instance 2 — band without the __media illustration column
+      GV.mount(document.getElementById('mount-nomedia'), 'homepage-survey-band', {
+        showMedia: false
+      });
+
+      // Instance 3 — alternate copy, link-button CTA, no time meta
+      GV.mount(document.getElementById('mount-custom'), 'homepage-survey-band', {
+        title: 'Shape the future of your city',
+        lead: 'Share your experience with local services and help us improve together.',
+        ctaLabel: 'Start the survey',
+        ctaHref: '#survey',
+        ctaMeta: null
+      });
+
+      GV.hydrate(document.body);
     });
   </script>
 </body>

@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Page-local layout only — no .gv-* selectors. */
     body { margin: 0; background: var(--gv-grey-200); font-family: var(--gv-font-family); }
@@ -17,17 +19,28 @@
   </style>
 </head>
 <body class="gv-root">
+  <!-- LINKED INSTANCE — this demo owns no divider markup; it imports GV.render('divider', props). -->
   <div class="stage">
     <h2 class="heading">Divider</h2>
     <div class="gv-card">
       <p class="eyebrow">Hairline rule (<code>.gv-divider</code>)</p>
       <p class="gv-text bodyM" style="margin:10px 0 0">Content above the rule.</p>
-      <hr class="gv-divider" style="margin:16px 0" />
+      <div id="divider-rule"></div>
       <p class="gv-text bodyM" style="margin:0">Content below the rule.</p>
 
       <p class="eyebrow" style="margin-top:28px">Labelled divider (<code>.gv-or</code>)</p>
-      <div class="gv-or" style="margin-top:14px"><span>Or</span></div>
+      <div id="divider-or"></div>
     </div>
   </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // hairline rule — default props → <hr class="gv-divider" style="margin:16px 0" />
+      GV.mount('#divider-rule', 'divider');
+      // labelled "Or" divider — variant:"or" → <div class="gv-or" style="margin-top:14px"><span>Or</span></div>
+      GV.mount('#divider-or', 'divider', { variant: 'or' });
+      GV.hydrate(document.querySelector('.gv-card'));
+    });
+  </script>
 </body>
 </html>

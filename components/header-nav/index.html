@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no header-nav markup; it imports GV.render('header-nav', props). -->
 <!doctype html>
 <html lang="de">
 <head>
@@ -22,152 +23,27 @@
     .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
     .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
   </style>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
 </head>
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
   <div class="demo">
     <h1>Header + navigation</h1>
-    <p class="sub">Responsive site chrome — 78px bar, logo slot, dropdown + “Mehr ···” overflow,
+    <p class="sub">Responsive site chrome — 78px bar, logo slot, dropdown + "Mehr ···" overflow,
       search, primary CTA. Collapses to a hamburger drawer on narrow screens. CSS-only (no JS).</p>
 
     <p class="eyebrow">Desktop — signed out</p>
     <div class="stage scene">
-      <!-- ============ HEADER COMPONENT (copy from here) ============ -->
-      <header id="e2e-navbar" class="gv-header sticky">
-        <div class="gv-header__inner">
-          <!-- Logo slot: govocal-themes.js fills it with the active city's logo.
-               aria-current="page" = the homepage link is the active page (live product). -->
-          <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite" aria-current="page"></a>
-
-          <!-- Primary nav landmark (live product: <nav aria-label="Primäre">). -->
-          <nav class="gv-nav" aria-label="Primäre">
-            <ul class="gv-nav__list">
-              <li><a class="gv-nav__link" href="#" aria-current="page">Willkommen</a></li>
-              <li>
-                <details class="gv-nav__dd">
-                  <summary class="gv-nav__link">Beteiligungsprojekte
-                    <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  </summary>
-                  <!-- live "projects" dropdown lists actual projects, not status filters -->
-                  <div class="gv-nav__menu">
-                    <a href="#">Zukunft Taborstraße</a>
-                    <a href="#">Wiener Klimateam</a>
-                    <a href="#">Partizipatives Budget 2026</a>
-                    <a href="#">Neugestaltung Praterstraße</a>
-                  </div>
-                </details>
-              </li>
-              <li><a class="gv-nav__link" href="#">Mitmachen</a></li>
-              <li><a class="gv-nav__link" href="#">Netiquette</a></li>
-              <li>
-                <details class="gv-nav__dd right">
-                  <summary class="gv-nav__link">Mehr
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-                  </summary>
-                  <div class="gv-nav__menu">
-                    <a href="#">Über die Plattform</a>
-                    <a href="#">Häufige Fragen</a>
-                    <a href="#">Kontakt</a>
-                  </div>
-                </details>
-              </li>
-            </ul>
-          </nav>
-
-          <div class="gv-header__actions">
-            <button class="gv-iconbtn gv-desktop-only" aria-label="Suche">
-              <span data-gv-icon="search"></span>
-            </button>
-            <button class="gv-btn primary gv-desktop-only" style="padding:8px 18px;line-height:20px">Anmelden</button>
-
-            <!-- Mobile menu (shows < 860px). Real product icon = filled three-bar; label "Mobiles Navigationsmenü anzeigen". -->
-            <details class="gv-nav-m">
-              <summary aria-label="Mobiles Navigationsmenü anzeigen">
-                <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
-                <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
-              </summary>
-              <nav class="gv-nav-m__panel" aria-label="Hauptnavigation (mobil)">
-                <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
-                <a href="#" aria-current="page">Willkommen</a>
-                <a href="#">Beteiligungsprojekte</a>
-                <a href="#">Mitmachen</a>
-                <a href="#">Netiquette</a>
-                <a href="#">Mehr</a>
-                <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Suche</a>
-                <button class="gv-btn primary full">Anmelden</button>
-              </nav>
-            </details>
-          </div>
-        </div>
-      </header>
-      <!-- ============ /HEADER COMPONENT ============ -->
+      <!-- Mount: signed-out (primary) -->
+      <div id="mount-signed-out"></div>
       <div class="scene-body" aria-hidden="true"></div>
     </div>
 
     <p class="eyebrow">Desktop — signed in (account menu · notifications · language)</p>
     <div class="stage scene" style="overflow:visible">
-      <!-- Same chrome, logged-in actions: swap the search + "Anmelden" CTA for
-           search · notification (count badge) · account dropdown (avatar + name +
-           menu) · language switcher. Account menu shown OPEN here. -->
-      <header class="gv-header sticky">
-        <div class="gv-header__inner">
-          <a class="gv-brand" href="#" data-gv-logo aria-label="Startseite" aria-current="page"></a>
-          <nav class="gv-nav" aria-label="Primäre">
-            <ul class="gv-nav__list">
-              <li><a class="gv-nav__link" href="#" aria-current="page">Willkommen</a></li>
-              <li><a class="gv-nav__link" href="#">Beteiligungsprojekte</a></li>
-              <li><a class="gv-nav__link" href="#">Mitmachen</a></li>
-            </ul>
-          </nav>
-          <div class="gv-header__actions">
-            <button class="gv-iconbtn gv-desktop-only" aria-label="Suche">
-              <span data-gv-icon="search"></span>
-            </button>
-            <button class="gv-iconbtn" aria-label="Benachrichtigungen, 3 ungelesen">
-              <span data-gv-icon="notification"></span>
-              <span class="gv-iconbtn__badge" aria-hidden="true">3</span>
-            </button>
-            <details class="gv-nav__dd right gv-account-dd gv-desktop-only gv-mobile-inline" open>
-              <summary class="gv-account" aria-haspopup="menu">
-                <span class="gv-account__name">Rob</span>
-                <span class="gv-avatar">R</span>
-                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </summary>
-              <div class="gv-nav__menu gv-nav__menu--account">
-                <a href="#">Plattform verwalten <span data-gv-icon="shield"></span></a>
-                <a href="#">Meine Aktivität <span data-gv-icon="user-circle"></span></a>
-                <a href="#">Meine Einstellungen <span data-gv-icon="cogs"></span></a>
-                <button type="button">Abmelden <span data-gv-icon="power"></span></button>
-              </div>
-            </details>
-            <details class="gv-nav__dd right gv-desktop-only gv-mobile-inline">
-              <summary class="gv-lang">DE
-                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </summary>
-              <div class="gv-nav__menu">
-                <a href="#">Deutsch</a>
-                <a href="#">English</a>
-                <a href="#">Français</a>
-              </div>
-            </details>
-            <details class="gv-nav-m">
-              <summary aria-label="Mobiles Navigationsmenü anzeigen">
-                <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
-                <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
-              </summary>
-              <nav class="gv-nav-m__panel" aria-label="Hauptnavigation (mobil)">
-                <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
-                <a href="#" aria-current="page">Willkommen</a>
-                <a href="#">Beteiligungsprojekte</a>
-                <a href="#">Mitmachen</a>
-                <a href="#">Plattform verwalten</a>
-                <a href="#">Meine Aktivität</a>
-                <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Suche</a>
-                <button class="gv-btn primary-outlined full" style="margin-top:14px">Abmelden</button>
-              </nav>
-            </details>
-          </div>
-        </div>
-      </header>
+      <!-- Mount: signed-in (account menu shown open) -->
+      <div id="mount-signed-in"></div>
       <div class="scene-body" aria-hidden="true"></div>
     </div>
 
@@ -182,12 +58,28 @@
       or use <code>data-gv-logo</code> to let the theme switcher fill it per city.</p>
       <p><strong>Responsive:</strong> below 860px the desktop nav + actions hide and the
       <code>&lt;details class="gv-nav-m"&gt;</code> hamburger drawer takes over — no JavaScript.
-      Dropdowns and the “Mehr ···” overflow are <code>&lt;details&gt;</code> disclosures too.</p>
+      Dropdowns and the "Mehr ···" overflow are <code>&lt;details&gt;</code> disclosures too.</p>
       <p><strong>Theme:</strong> all colours come from <code>--gv-tenant-*</code>; the active link
       indicator and CTA re-skin per city. Try <code>?theme=1</code>.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      /* Render every instance in source order via GV.mount */
+      GV.mount(document.getElementById("mount-signed-out"), "header-nav", {});
+      GV.mount(document.getElementById("mount-signed-in"), "header-nav", { state: "signed-in" });
+
+      /* Wire <details>-based dropdowns: close others when one opens (desktop UX) */
+      document.querySelectorAll(".gv-nav__dd, .gv-nav-m").forEach(function (dd) {
+        dd.addEventListener("toggle", function () {
+          if (!dd.open) return;
+          document.querySelectorAll(".gv-nav__dd[open], .gv-nav-m[open]").forEach(function (other) {
+            if (other !== dd) other.removeAttribute("open");
+          });
+        });
+      });
+    });
+  </script>
 </body>
 </html>

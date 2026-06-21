@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no bo-templatecard markup; it imports GV.render('bo-templatecard', props) and GV.render('bo-facetgroup', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -10,6 +11,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* layout-only page CSS — no colours / shadows / radii / font-sizes of our own */
     body { margin: 0; background: var(--gv-bo-canvas); font-family: var(--gv-font-family); color: var(--gv-text-primary); }
@@ -67,56 +69,27 @@
   </div>
 
   <script>
-    const IMG = 'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=560&q=70&auto=format&fit=crop';
-    const IMG2 = 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=560&q=70&auto=format&fit=crop';
-    const IMG3 = 'https://images.unsplash.com/photo-1542621334-a254cf47733d?w=560&q=70&auto=format&fit=crop';
+    document.addEventListener('DOMContentLoaded', function () {
+      // ── Template cards gallery (3 cards, default data) ──────────────────
+      var cards = document.getElementById('cards');
+      cards.innerHTML = GV.render('bo-templatecard', { variant: 'gallery' });
+      GV.hydrate(cards);
 
-    const TEMPLATES = [
-      { img: IMG,  title: 'Spatial plan',        desc: 'Collect contributions regarding your new spacial plan and align residents around the vision.' },
-      { img: IMG2, title: 'Participatory budget', desc: 'Let residents allocate a portion of the municipal budget across competing proposals.' },
-      { img: IMG3, title: 'Mobility consultation', desc: 'Gather ideas and feedback on cycling, parking and public-transport priorities.' },
-    ];
+      // ── Facet filter rail (3 groups, default data) ───────────────────────
+      var rail = document.getElementById('rail');
+      rail.innerHTML = GV.render('bo-facetgroup', { variant: 'rail' });
+      GV.hydrate(rail);
 
-    document.getElementById('cards').innerHTML = TEMPLATES.map((t) => `
-      <div class="gv-bo-templatecard">
-        <div class="gv-bo-templatecard__img" style="background-image:url('${t.img}')"></div>
-        <h3 class="gv-bo-templatecard__title">${t.title}</h3>
-        <p class="gv-bo-templatecard__desc">${t.desc}</p>
-        <div class="gv-bo-templatecard__actions">
-          <button type="button" class="gv-btn secondary-outlined">Use template</button>
-          <button type="button" class="gv-btn admin-dark">More details</button>
-        </div>
-      </div>`).join('');
-
-    const FACETS = [
-      { label: 'Departments',          open: true,  opts: ['Urban planning', 'Mobility', 'Environment'] },
-      { label: 'Purposes',             open: false, opts: ['Collect input', 'Prioritise', 'Inform'] },
-      { label: 'Participation levels', open: false, opts: ['Consult', 'Involve', 'Collaborate'] },
-    ];
-
-    document.getElementById('rail').innerHTML = FACETS.map((f) => `
-      <div class="gv-bo-facetgroup">
-        <button type="button" class="gv-bo-facetgroup__head" aria-expanded="${f.open}">
-          <span>${f.label}</span>
-          <span class="gv-bo-facetgroup__chev" data-gv-icon="chevron-down"></span>
-        </button>
-        <div class="gv-bo-facetgroup__body" ${f.open ? '' : 'hidden'}>
-          ${f.opts.map((o) => `<div class="facetline">${o}</div>`).join('')}
-        </div>
-      </div>`).join('');
-
-    // toggle disclosure on head click
-    document.getElementById('rail').addEventListener('click', (e) => {
-      const head = e.target.closest('.gv-bo-facetgroup__head');
-      if (!head) return;
-      const open = head.getAttribute('aria-expanded') === 'true';
-      head.setAttribute('aria-expanded', String(!open));
-      const body = head.nextElementSibling;
-      if (body) body.hidden = open;
+      // toggle disclosure on head click
+      rail.addEventListener('click', function (e) {
+        var head = e.target.closest('.gv-bo-facetgroup__head');
+        if (!head) return;
+        var open = head.getAttribute('aria-expanded') === 'true';
+        head.setAttribute('aria-expanded', String(!open));
+        var body = head.nextElementSibling;
+        if (body) body.hidden = open;
+      });
     });
-
-    if (window.GVIcons) GVIcons.render();
-    else document.addEventListener('DOMContentLoaded', () => GVIcons.render());
   </script>
 </body>
 </html>

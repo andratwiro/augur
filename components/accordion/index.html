@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no accordion markup; it imports GV.render('accordion', props). -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -8,6 +9,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Demo chrome only — the component styles (.gv-accordion / .gv-acc__item /
        .gv-acc__head / .gv-acc__body / .gv-acc__chev) live in the shared
@@ -24,24 +26,17 @@
     <p class="eyebrow">Accordion</p>
     <p class="sub">CSS-only <code>&lt;details&gt;</code> accordion — collapsed by default, chevron rotates on open. Used for FAQs in a project description.</p>
 
-    <div class="card">
-      <!-- ============ ACCORDION COMPONENT (copy from here) ============ -->
-      <div class="gv-accordion">
-        <details class="gv-acc__item" open>
-          <summary class="gv-acc__head"><span class="gv-acc__q">How will my idea be used?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
-          <div class="gv-acc__body"><p>Every idea is read by the project team and grouped with similar suggestions. The most-supported, workable ideas move forward to the prioritisation phase, where residents help decide which ones to take into the final design.</p></div>
-        </details>
-        <details class="gv-acc__item">
-          <summary class="gv-acc__head"><span class="gv-acc__q">What can I suggest?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
-          <div class="gv-acc__body"><p>Anything that fits within Market Square and its surrounding streets — seating, planting and trees, the weekly market layout, play, lighting, paving, cycle parking or how traffic moves through. Out-of-scope ideas are tagged and passed to the right team.</p></div>
-        </details>
-        <details class="gv-acc__item">
-          <summary class="gv-acc__head"><span class="gv-acc__q">Who is running this project?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
-          <div class="gv-acc__body"><p>The City of Westmere — Engagement team, together with the Old Town public-space designers. Project updates are posted to followers as each phase opens.</p></div>
-        </details>
-      </div>
-      <!-- ============ /ACCORDION COMPONENT ============ -->
-    </div>
+    <div class="card" id="accordion-mount"></div>
   </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      /* Render the primary instance (default props = HEAD's three Westmere FAQ items) */
+      GV.mount("#accordion-mount", "accordion", {});
+
+      /* hydrate fills data-gv-icon glyphs on the rendered DOM */
+      GV.hydrate(document.getElementById("accordion-mount"));
+    });
+  </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no footer markup; it imports GV.render('footer', props). -->
 <html lang="de">
 <head>
   <meta charset="utf-8" />
@@ -17,38 +18,20 @@
     .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
     .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
   </style>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
 </head>
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
   <div class="demo">
     <h1>Footer</h1>
-    <p class="sub">Source-grounded on GoVocal’s real <code>&lt;footer id="hook-footer"&gt;</code>:
+    <p class="sub">Source-grounded on GoVocal's real <code>&lt;footer id="hook-footer"&gt;</code>:
       a secondary-nav row of legal links — one is the <strong>Cookie-Einstellungen</strong> button —
-      plus the “Ermöglicht durch go·vocal” powered-by attribution (real GoVocal wordmark).
+      plus the "Ermöglicht durch go·vocal" powered-by attribution (real GoVocal wordmark).
       No tenant logo (that lives in the header).</p>
 
     <div class="stage">
-      <!-- ============ FOOTER COMPONENT (copy from here) ============ -->
-      <footer class="gv-footer">
-        <div class="gv-footer__inner">
-          <nav class="gv-footer__links" aria-label="Secondary">
-            <ul>
-              <li><a href="#">Nutzungsbedingungen</a></li>
-              <li><a href="#">Impressum &amp; Datenschutz</a></li>
-              <li><a href="#">Cookierichtlinie</a></li>
-              <li><a href="#">Richtlinie zur Barrierefreiheit</a></li>
-              <li><button type="button">Cookie-Einstellungen</button></li>
-              <li><a href="#">Sitemap</a></li>
-            </ul>
-          </nav>
-          <div class="gv-footer__powered">
-            <span>Ermöglicht durch</span>
-            <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal (ehemals CitizenLab)">
-              <img class="gv-powered-logo" src="../../skills/govocal-ui/govocal-logo.svg" alt="Go Vocal" />
-            </a>
-          </div>
-        </div>
-      </footer>
-      <!-- ============ /FOOTER COMPONENT ============ -->
+      <div id="footer-primary"></div>
     </div>
 
     <div class="notes">
@@ -57,13 +40,23 @@
       <code>&lt;nav aria-label="Secondary"&gt;</code> landmark; <strong>Cookie-Einstellungen</strong>
       is a real <code>&lt;button&gt;</code> (it opens the cookie dialog), the rest are links.</p>
       <p><strong>go·vocal logo:</strong> <code>&lt;img class="gv-powered-logo" src="../../skills/govocal-ui/govocal-logo.svg"&gt;</code>
-      — GoVocal’s own brand mark in its muted footer grey (it doesn’t re-theme per city).
+      — GoVocal's own brand mark in its muted footer grey (it doesn't re-theme per city).
       Copy <code>govocal-logo.svg</code> into the prototype folder. Keep this attribution on resident-facing pages.</p>
       <p><strong>Links:</strong> middot separators are automatic
       (<code>.gv-footer__links li:not(:first-child)::before</code>). They wrap on small screens,
       and the whole row stacks below the attribution under 720px.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+
+  <script>
+    // LINKED INSTANCE — this demo owns NO footer markup. It imports the canonical
+    // renderer GV.render('footer', props) from govocal-instances.js
+    // and passes only PROPS. Edit the renderer or its CSS upstream and every instance
+    // (here + in prototypes) reflows. GV.render(props) IS the detached form.
+    document.addEventListener('DOMContentLoaded', function () {
+      // Primary instance — defaults reproduce the HEAD German-locale footer exactly.
+      GV.mount('#footer-primary', 'footer', {});
+    });
+  </script>
 </body>
 </html>

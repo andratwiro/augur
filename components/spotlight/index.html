@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no spotlight markup; it imports GV.render('spotlight', props). -->
 <!doctype html>
 <html lang="de">
 <head>
@@ -7,6 +8,9 @@
   <title>Spotlight — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
     body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
@@ -26,51 +30,14 @@
 
     <p class="eyebrow">Placeholder media + avatar bubbles</p>
     <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <section class="gv-spotlight" aria-labelledby="spot-heading">
-        <div class="gv-spotlight__inner">
-          <div>
-            <h2 class="gv-spotlight__title" id="spot-heading">A greener Main Street</h2>
-            <p class="gv-spotlight__lead">How do we make Main Street cooler, greener and healthier? Share your ideas
-              in our survey — participation closes in just a few days.</p>
-            <div class="gv-spotlight__actions">
-              <a class="gv-btn primary size-m" href="#">Take the survey</a>
-            </div>
-            <div class="gv-bubbles" aria-label="145 participants" style="margin-top:18px">
-              <span class="av"></span><span class="av"></span><span class="av"></span>
-              <span class="gv-bubbles__label">145 participants</span>
-            </div>
-          </div>
-          <div class="gv-spotlight__media gv-spotlight__media--placeholder" aria-hidden="true"></div>
-        </div>
-      </section>
-      <!-- ===== /COMPONENT ===== -->
+      <!-- Mount target — no .gv-* markup lives here -->
+      <div id="spotlight-primary"></div>
     </div>
 
     <p class="eyebrow">Campaign chip over the media (+ time-elapsed progress)</p>
     <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <section class="gv-spotlight" aria-labelledby="spot-heading-2">
-        <div class="gv-spotlight__inner">
-          <div>
-            <h2 class="gv-spotlight__title" id="spot-heading-2">Participatory budget 2026</h2>
-            <p class="gv-spotlight__lead">Decide how we spend €500,000 across the district. Submit a proposal and
-              vote for the ideas you want to see funded.</p>
-            <div class="gv-spotlight__actions">
-              <a class="gv-btn primary size-m" href="#">Submit a proposal</a>
-            </div>
-            <div class="gv-progress" role="progressbar" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed" style="margin-top:18px"><div class="gv-progress__fill" style="width:62%"></div></div>
-            <div class="gv-bubbles" aria-label="86 participants" style="margin-top:14px">
-              <span class="av"></span><span class="av"></span><span class="av"></span>
-              <span class="gv-bubbles__label">86 participants</span>
-            </div>
-          </div>
-          <div class="gv-spotlight__media gv-spotlight__media--placeholder" aria-hidden="true">
-            <span class="gv-spotlight__chip">€500,000<br>your call</span>
-          </div>
-        </div>
-      </section>
-      <!-- ===== /COMPONENT ===== -->
+      <!-- Mount target — no .gv-* markup lives here -->
+      <div id="spotlight-campaign"></div>
     </div>
 
     <div class="notes">
@@ -85,7 +52,26 @@
       <code>__fill</code> for time elapsed re-skin per city.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Instance 1 — primary: placeholder tile, avatar bubbles, no chip, no progress bar
+      GV.mount('#spotlight-primary', 'spotlight', {});
+      GV.hydrate(document.getElementById('spotlight-primary'));
+
+      // Instance 2 — campaign: placeholder tile + chip, progress bar, avatar bubbles
+      GV.mount('#spotlight-campaign', 'spotlight', {
+        headingId:   'spot-heading-2',
+        title:       'Participatory budget 2026',
+        lead:        'Decide how we spend €500,000 across the district. Submit a proposal and vote for the ideas you want to see funded.',
+        ctaLabel:    'Submit a proposal',
+        progress:    62,
+        avatarLabel: '86 participants',
+        bubbleLabel: '86 participants',
+        chip:        '€500,000\nyour call'
+      });
+      GV.hydrate(document.getElementById('spotlight-campaign'));
+    });
+  </script>
 </body>
 </html>

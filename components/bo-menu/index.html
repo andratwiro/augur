@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no bo-menu markup; it imports GV.render('bo-menu', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -10,6 +11,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* layout-only page CSS — no colours / shadows / radii / font-sizes of our own */
     body { margin: 0; background: var(--gv-bo-canvas); font-family: var(--gv-font-family); color: var(--gv-text-primary); }
@@ -70,33 +72,16 @@
   </div>
 
   <script>
-    const ico = (name) => `<span class="gv-bo-menu__icon" data-gv-icon="${name}"></span>`;
+    document.addEventListener('DOMContentLoaded', function () {
+      // Exports dropdown — primary variant (default props)
+      GV.mount(document.getElementById('exports'), 'bo-menu', {});
 
-    // ── Exports dropdown — keep the product's real ".xslx" spelling ──
-    document.getElementById('exports').innerHTML = `
-      <div class="gv-bo-menu" role="menu" aria-label="Export">
-        <a class="gv-bo-menu__item" role="menuitem" href="#" download>${ico('download')}Export all posts (.xslx)</a>
-        <a class="gv-bo-menu__item" role="menuitem" href="#" download>${ico('download')}Export all comments (.xslx)</a>
-      </div>`;
+      // Notification flyout variant
+      GV.mount(document.getElementById('flyout'), 'bo-menu', { variant: 'flyout' });
 
-    // ── Notification flyout — 4 rows, one unread ──
-    const NOTIFS = [
-      { icon: 'survey',        unread: true,  body: '<i>Resident satisfaction survey</i> will enter a new phase on 5/8/2025', time: '1 year ago' },
-      { icon: 'comment',       unread: false, body: '<i>Anna Becker</i> commented on your input <i>Bike lane on Oak St.</i>',  time: '1 year ago' },
-      { icon: 'vote-up',       unread: false, body: 'Your proposal <i>Riverside park clean-up</i> reached its threshold',       time: '1 year ago' },
-      { icon: 'admin-projects',unread: false, body: '<i>Downtown revitalisation</i> will enter a new phase on 3/2/2025',        time: '1 year ago' },
-    ];
-    document.getElementById('flyout').innerHTML = `
-      <div class="gv-bo-menu is-flyout" role="menu" aria-label="Notifications">
-        ${NOTIFS.map((n) => `
-          <a class="gv-bo-notifflyout__item${n.unread ? ' is-unread' : ''}" role="menuitem" href="#">
-            <span class="gv-bo-notifflyout__icon" data-gv-icon="${n.icon}"></span>
-            <span>${n.body}<span class="gv-bo-notifflyout__time">${n.time}</span></span>
-          </a>`).join('')}
-      </div>`;
-
-    if (window.GVIcons) GVIcons.render();
-    else document.addEventListener('DOMContentLoaded', () => GVIcons.render());
+      // Hydrate the standalone bell icon (not a GV instance — just needs icon fill)
+      GV.hydrate(document.body);
+    });
   </script>
 </body>
 </html>

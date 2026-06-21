@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no project-card markup; it imports GV.render('project-card', props). -->
 <!doctype html>
 <html lang="de">
 <head>
@@ -29,212 +30,22 @@
 
     <p class="eyebrow">Boxed grid — the homepage project card (dominant treatment)</p>
     <div class="stage" style="padding:24px">
-      <!-- ============ BOXED GRID + CARDS (the real-product homepage card) ============
-           White card, 1px border, soft elevation, 16:9 thumb, a __top meta row
-           (progress / status pill / contributions / folder count + outlined CTA),
-           title + desc, an avatar-stack + participant count footer. A .gv-pgrid lays
-           them 2-up, collapsing to 1-up <640px. Pure assembly of canonical .gv-pcard
-           .boxed in .gv-pgrid — no redefined classes. -->
-      <div class="gv-pgrid gv-pgrid--feat">
-
-        <!-- Featured horizontal card: image LEFT, copy RIGHT (full width) -->
-        <article class="gv-pcard boxed horizontal feature span-3">
-          <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a href="#">The big downtown survey</a></h3>
-            <p class="gv-pcard__desc">What does downtown need to become more liveable? Tell us which places,
-              routes and ideas matter most to you.</p>
-            <div><a class="gv-btn primary" href="#">Take the survey</a></div>
-            <div class="gv-bubbles" aria-label="248 participants" style="margin-top:18px">
-              <span class="av"></span><span class="av"></span><span class="av"></span>
-              <span class="gv-bubbles__label">248 participants</span>
-            </div>
-          </div>
-          <div class="gv-pcard__thumb"><img src="../../pages/homepage/img/feat-downtown.webp" alt="Harbour and downtown waterfront" loading="lazy" /></div>
-        </article>
-
-        <!-- Standard card: contributions (left) + outlined CTA top-right; avatars bottom -->
-        <article class="gv-pcard boxed span-half">
-          <div class="gv-pcard__top">
-            <span class="gv-poststat"><b>122</b>&nbsp;contributions</span>
-            <a class="gv-btn primary-outlined" href="#">Learn more</a>
-          </div>
-          <div class="gv-pcard__thumb"><img src="../../pages/homepage/img/done-square.webp" alt="People and cyclists crossing Market Square" loading="lazy" /></div>
-          <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a href="#">A square for everyone</a></h3>
-            <p class="gv-pcard__desc">How can Market Square become a popular meeting point in the neighbourhood?</p>
-            <div class="gv-pcard__spacer"></div>
-            <div class="gv-pcard__foot">
-              <div class="gv-bubbles" aria-label="122 participants">
-                <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="gv-bubbles__label">122 participants</span>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Survey card: time-left + progress bar (left) + outlined CTA top-right; avatars bottom -->
-        <article class="gv-pcard boxed span-half">
-          <div class="gv-pcard__top">
-            <div class="gv-pcard__topprog">
-              <span class="gv-pcard__meta time">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                6 weeks left
-              </span>
-              <div class="gv-progress" role="progressbar" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100" aria-label="Time elapsed"><div class="gv-progress__fill" style="width:18%"></div></div>
-            </div>
-            <a class="gv-btn primary-outlined" href="#">Take the survey</a>
-          </div>
-          <div class="gv-pcard__thumb"><img src="../../pages/homepage/img/street.webp" alt="A tree-lined stretch of Station Road" loading="lazy" /></div>
-          <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a href="#">The future of Station Road</a></h3>
-            <div class="gv-pcard__spacer"></div>
-            <div class="gv-pcard__foot">
-              <div class="gv-bubbles" aria-label="57 participants">
-                <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="gv-bubbles__label">57 participants</span>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Folder card: "N projects" (left) + folder icon top-right; avatars bottom -->
-        <article class="gv-pcard boxed">
-          <div class="gv-pcard__top">
-            <span class="gv-pcard__meta">3 projects</span>
-            <span class="gv-pcard__topicon" role="img" aria-label="Project folder">
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
-            </span>
-          </div>
-          <div class="gv-pcard__thumb"><img src="../../pages/homepage/img/folder-climate.webp" alt="A leafy city park — the climate teams' green spaces" loading="lazy" /></div>
-          <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a href="#">City climate teams</a></h3>
-            <p class="gv-pcard__desc">Wanted: your ideas for a better climate across the city's districts.</p>
-            <div class="gv-pcard__spacer"></div>
-            <div class="gv-pcard__foot">
-              <div class="gv-bubbles" aria-label="346 participants">
-                <span class="av"></span><span class="av"></span><span class="av"></span>
-                <span class="gv-bubbles__label">346 participants</span>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Finished card: status pill (left) + report CTA top-right; count bottom -->
-        <article class="gv-pcard boxed">
-          <div class="gv-pcard__top">
-            <span class="gv-status-label finished">Finished</span>
-            <a class="gv-btn primary-outlined" href="#">Read the report</a>
-          </div>
-          <div class="gv-pcard__thumb"><img src="../../pages/homepage/img/done-oldtown.webp" alt="A renewed Old Town street" loading="lazy" /></div>
-          <div class="gv-pcard__body">
-            <h3 class="gv-pcard__title"><a href="#">Old Town renewal</a></h3>
-            <p class="gv-pcard__desc">Participation has closed. Read which proposals are being put into action.</p>
-            <div class="gv-pcard__spacer"></div>
-            <div class="gv-pcard__foot">
-              <span class="gv-poststat closed"><b>503</b>&nbsp;contributions</span>
-            </div>
-          </div>
-        </article>
-
-      </div>
-      <!-- ============ /BOXED GRID + CARDS ============ -->
+      <div id="mount-boxed-grid"></div>
     </div>
 
     <p class="eyebrow">Rail — survey cards (time + CTA)</p>
     <div class="stage">
-      <!-- ============ RAIL + CARDS (copy from here) ============ -->
-      <div class="gv-rail">
-        <article class="gv-pcard">
-          <div class="gv-pcard__thumb" style="background:#eef0e8">
-            <span style="background:#0a7a4f;color:#fff;border-radius:14px 14px 14px 2px;padding:12px 14px;font-size:13px;max-width:80%">GESUNDE<br>BLINDENGASSE</span>
-          </div>
-          <h3 class="gv-pcard__title"><a href="#">Gesunde Blindengasse</a></h3>
-          <span class="gv-pcard__meta time">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Ein Tag verbleibend
-          </span>
-          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
-        </article>
-
-        <article class="gv-pcard">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9fb0a3,#cdd6cd)"></div>
-          <h3 class="gv-pcard__title"><a href="#">Gellertplatz für alle</a></h3>
-          <span class="gv-pcard__meta time">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            noch 3 Wochen
-          </span>
-          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
-        </article>
-
-        <article class="gv-pcard">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#b7423a,#d98a5a)">DIE GROSSE<br>MEIDLING-UMFRAGE</div>
-          <h3 class="gv-pcard__title"><a href="#">Die große Meidling-Umfrage</a></h3>
-          <span class="gv-pcard__meta time">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            noch 4 Wochen
-          </span>
-          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
-        </article>
-
-        <article class="gv-pcard">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9a9a9a,#c7c2bd)"></div>
-          <h3 class="gv-pcard__title"><a href="#">Supergrätzl Favoriten</a></h3>
-          <span class="gv-pcard__meta time">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            noch 5 Wochen
-          </span>
-          <a class="gv-pcard__cta" href="#">Umfrage ausfüllen</a>
-        </article>
-      </div>
-      <!-- ============ /RAIL + CARDS ============ -->
+      <div id="mount-rail"></div>
     </div>
 
     <p class="eyebrow">Wide cards — people count + description</p>
     <div class="stage">
-      <div class="gv-rail">
-        <article class="gv-pcard wide">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#9a9a9a,#c7c2bd)"></div>
-          <h3 class="gv-pcard__title"><a href="#">Supergrätzl Favoriten</a></h3>
-          <span class="gv-pcard__meta people">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg>
-            111 Teilnehmende
-          </span>
-          <p class="gv-pcard__desc">Das erste Wiener Supergrätzl ist fertig! Jetzt ist Ihre Meinung gefragt.</p>
-        </article>
-        <article class="gv-pcard wide">
-          <div class="gv-pcard__thumb" style="background:linear-gradient(135deg,#2b5cab,#f2c200)">MITMACH-BUDGET</div>
-          <h3 class="gv-pcard__title"><a href="#">Mitmach-Budget Brigittenau 2026</a></h3>
-          <span class="gv-pcard__meta people">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 11a3 3 0 100-6 3 3 0 000 6Zm6 0a3 3 0 100-6 3 3 0 000 6Zm-6 1.5c-2.7 0-6 1.35-6 4V18h8v-1.5c0-1 .35-1.9 1-2.6-.9-.25-1.95-.4-3-.4Zm6 0c-.35 0-.75 0-1.15.05C15.15 14.3 16 15.3 16 16.5V18h5v-1.5c0-2.65-3.3-4-6-4Z"/></svg>
-            16 Teilnehmende
-          </span>
-          <p class="gv-pcard__desc">Brigittenauer Mitmachbudget.</p>
-        </article>
-      </div>
+      <div id="mount-rail-wide"></div>
     </div>
 
     <p class="eyebrow">Square cards — completed (done status)</p>
     <div class="stage">
-      <div class="gv-rail">
-        <article class="gv-pcard square">
-          <div class="gv-pcard__thumb" style="background:#f3e2a6;color:#7a5e12;font-size:14px;padding:12px">Alt-Ottakring wie neu!</div>
-          <h3 class="gv-pcard__title"><a href="#">Alt-Ottakring wie neu!</a></h3>
-          <span class="gv-pcard__meta done">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 100 20 10 10 0 000-20Zm-1 14l-4-4 1.4-1.4L11 13.2l4.6-4.6L17 10l-6 6Z"/></svg>
-            vor 7 Wochen
-          </span>
-          <a class="gv-pcard__cta" href="#">Mehr erfahren</a>
-        </article>
-        <article class="gv-pcard square">
-          <div class="gv-pcard__thumb" style="background:#ece9e2;color:#a32a1c;font-size:15px;padding:12px">GRÄTZL<br>LABOR</div>
-          <h3 class="gv-pcard__title"><a href="#">Grätzllabor Innere Stadt</a></h3>
-          <span class="gv-pcard__meta time">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Kein Enddatum
-          </span>
-          <a class="gv-pcard__cta" href="#">Mehr erfahren</a>
-        </article>
-      </div>
+      <div id="mount-rail-square"></div>
     </div>
 
     <div class="notes">
@@ -258,5 +69,22 @@
     </div>
   </div>
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Boxed grid — primary (all defaults from HEAD)
+      GV.mount(document.getElementById("mount-boxed-grid"), "project-card", {});
+
+      // Rail — Wien survey cards
+      GV.mount(document.getElementById("mount-rail"), "project-card", { variant: "rail" });
+
+      // Wide cards — people count + description
+      GV.mount(document.getElementById("mount-rail-wide"), "project-card", { variant: "rail-wide" });
+
+      // Square cards — done + time
+      GV.mount(document.getElementById("mount-rail-square"), "project-card", { variant: "rail-square" });
+    });
+  </script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no sticky-note markup; it imports GV.render('sticky-note', props). -->
 <!doctype html>
 <html lang="de">
 <head>
@@ -18,6 +19,10 @@
     .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
     .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
   </style>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
 </head>
 <body data-gv-theme-picker="off" class="gv-root" data-gv-cookies="off">
   <div class="demo">
@@ -25,85 +30,21 @@
     <p class="sub">Pastel Perspectives idea card with author, emoji, title, excerpt and up/down react counts; comes in resting, raised, and four pastel variants.</p>
 
     <p class="eyebrow">Resting (pastel variants)</p>
-    <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <button type="button" class="gv-sticky lavender" data-cy="e2e-sticky-note">
-        <!-- Anonymous note: no avatar + no name — only the corner emoji chip. -->
-        <span class="gv-sticky__author">
-          <span class="gv-sticky__emoji" aria-hidden="true">🌱</span>
-        </span>
-        <span class="gv-sticky__title">Reproductive Healthcare Access</span>
-        <span class="gv-sticky__excerpt">We should solve women's reproductive rights. I work in women's health and have friends who've needed services and medical care that is banned.</span>
-        <span class="gv-sticky__react e2e-reaction-controls neutral">
-          <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
-          <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>13</b></button>
-        </span>
-      </button>
-      <!-- ===== /COMPONENT ===== -->
-
-      <button type="button" class="gv-sticky mint" data-cy="e2e-sticky-note">
-        <span class="gv-sticky__author">
-          <span class="av"></span>
-          <span class="gv-sticky__authorname">Jonathan Kongstad</span>
-          <span class="gv-sticky__emoji" aria-hidden="true">🚧</span>
-        </span>
-        <span class="gv-sticky__title">Roads &amp; transit can't keep up</span>
-        <span class="gv-sticky__excerpt">Infrastructure has not kept pace with overall population growth. Congestion is getting worse every year and public transit barely reaches the new neighbourhoods on the edge of town.</span>
-        <span class="gv-sticky__react e2e-reaction-controls neutral">
-          <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
-          <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>17</b></button>
-        </span>
-      </button>
-
-      <button type="button" class="gv-sticky pink" data-cy="e2e-sticky-note">
-        <span class="gv-sticky__author">
-          <span class="av"></span>
-          <span class="gv-sticky__authorname">Bill Berman</span>
-          <span class="gv-sticky__emoji" aria-hidden="true">📚</span>
-        </span>
-        <span class="gv-sticky__title">Black history and its erasure</span>
-        <span class="gv-sticky__excerpt">I take issue with how local history is taught — important parts of our community's story are being left out of the curriculum. We owe the next generation an honest, complete account.</span>
-        <span class="gv-sticky__react e2e-reaction-controls neutral">
-          <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
-          <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>18</b></button>
-        </span>
-      </button>
-
-      <button type="button" class="gv-sticky grey" data-cy="e2e-sticky-note">
-        <span class="gv-sticky__author">
-          <span class="av"></span>
-          <span class="gv-sticky__authorname">Lise Dawson</span>
-          <span class="gv-sticky__emoji" aria-hidden="true">🗳️</span>
-        </span>
-        <span class="gv-sticky__title">Getting voters to the polls</span>
-        <span class="gv-sticky__excerpt">Since people are able to vote by mail now, turnout should be higher than it is. We need to make registration easier and remind residents that local elections are the ones that affect them most.</span>
-        <span class="gv-sticky__react e2e-reaction-controls neutral">
-          <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button"><span data-gv-icon="vote-down" aria-hidden="true"></span><span class="gv-sr-only">Dislike</span><b>0</b></button>
-          <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button"><span data-gv-icon="vote-up" aria-hidden="true"></span><span class="gv-sr-only">Like</span><b>17</b></button>
-        </span>
-      </button>
+    <div class="stage" id="stage-resting">
+      <!-- mount: lavender (anonymous) -->
+      <span id="inst-lavender"></span>
+      <!-- mount: mint (Jonathan Kongstad) -->
+      <span id="inst-mint"></span>
+      <!-- mount: pink (Bill Berman) -->
+      <span id="inst-pink"></span>
+      <!-- mount: grey (Lise Dawson) -->
+      <span id="inst-grey"></span>
     </div>
 
     <p class="eyebrow">Raised (<code>.is-raised</code> — the floating detail card)</p>
-    <div class="stage">
-      <button type="button" class="gv-sticky is-raised lavender" data-cy="e2e-sticky-note" style="min-height: 400px">
-        <!-- Anonymous note: no avatar + no name — only the corner emoji chip (matches the real detail card). -->
-        <span class="gv-sticky__author">
-          <span class="gv-sticky__emoji" aria-hidden="true">🌱</span>
-        </span>
-        <span class="gv-sticky__title">Reproductive Healthcare Access</span>
-        <span class="gv-sticky__excerpt">We should solve women's reproductive rights. I work in women's health and have friends who've needed services &amp; medical care that is banned. People in our region deserve safe, legal access close to home — not a long, expensive trip to another state when they're already in a difficult situation.</span>
-        <span class="gv-sticky__react e2e-reaction-controls neutral">
-          <button type="button" class="gv-sticky__reactbtn e2e-ideacard-dislike-button">
-            <span data-gv-icon="vote-down" aria-hidden="true"></span>
-            <span class="gv-sr-only">Dislike</span><b>0</b>
-          </button>
-          <button type="button" class="gv-sticky__reactbtn e2e-ideacard-like-button">
-            <span data-gv-icon="vote-up" aria-hidden="true"></span>
-            <span class="gv-sr-only">Like</span><b>13</b>
-          </button>
-        </span>
-      </button>
+    <div class="stage" id="stage-raised">
+      <!-- mount: lavender, is-raised (anonymous) -->
+      <span id="inst-raised"></span>
     </div>
 
     <div class="notes">
@@ -114,8 +55,56 @@
       <code>__title</code> + <code>__excerpt</code>, then the <code>__react</code> row of <code>__reactbtn</code> up/down buttons.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-avatars.js" defer></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Resting — lavender (primary / anonymous)
+      GV.mount("#inst-lavender", "sticky-note", {});
+
+      // Resting — mint (named author)
+      GV.mount("#inst-mint", "sticky-note", {
+        colour: "mint",
+        anonymous: false,
+        authorName: "Jonathan Kongstad",
+        emoji: "🚧",
+        title: "Roads & transit can't keep up",
+        excerpt: "Infrastructure has not kept pace with overall population growth. Congestion is getting worse every year and public transit barely reaches the new neighbourhoods on the edge of town.",
+        likes: 17,
+        dislikes: 0
+      });
+
+      // Resting — pink (named author)
+      GV.mount("#inst-pink", "sticky-note", {
+        colour: "pink",
+        anonymous: false,
+        authorName: "Bill Berman",
+        emoji: "📚",
+        title: "Black history and its erasure",
+        excerpt: "I take issue with how local history is taught — important parts of our community's story are being left out of the curriculum. We owe the next generation an honest, complete account.",
+        likes: 18,
+        dislikes: 0
+      });
+
+      // Resting — grey (named author)
+      GV.mount("#inst-grey", "sticky-note", {
+        colour: "grey",
+        anonymous: false,
+        authorName: "Lise Dawson",
+        emoji: "🗳️",
+        title: "Getting voters to the polls",
+        excerpt: "Since people are able to vote by mail now, turnout should be higher than it is. We need to make registration easier and remind residents that local elections are the ones that affect them most.",
+        likes: 17,
+        dislikes: 0
+      });
+
+      // Raised — lavender (anonymous, is-raised)
+      GV.mount("#inst-raised", "sticky-note", {
+        raised: true,
+        excerpt: "We should solve women's reproductive rights. I work in women's health and have friends who've needed services & medical care that is banned. People in our region deserve safe, legal access close to home — not a long, expensive trip to another state when they're already in a difficult situation.",
+        likes: 13,
+        dislikes: 0
+      });
+    });
+  </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no idea-card markup; it imports GV.render('idea-card', props). -->
 <html lang="de">
 <head>
   <meta charset="utf-8" />
@@ -7,6 +8,9 @@
   <title>Idea card — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
     body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
@@ -27,64 +31,12 @@
 
     <p class="eyebrow">Ideation card (reaction controls)</p>
     <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <article class="gv-ideacard e2e-idea-card">
-        <div class="gv-ideacard__thumb"><img src="https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=320&h=320&fit=crop" alt="" loading="lazy" /></div>
-        <div class="gv-ideacard__body">
-          <h3 class="gv-ideacard__title e2e-idea-card-title"><a href="#">Cycle route network</a></h3>
-          <div class="gv-ideacard__head">
-            <span class="gv-ideacard__avatar" aria-hidden="true">EW</span>
-            <div>
-              <div class="gv-ideacard__meta">
-                <span class="gv-ideacard__author e2e-username">Eddy Walker</span>
-                <span class="gv-ideacard__sep" aria-hidden="true">&bull;</span>
-                <span class="gv-ideacard__time">2 years ago</span>
-              </div>
-              <p class="gv-ideacard__excerpt">Connect the park to the existing bike lanes with a safe, separated cycle route so families can ride here without using busy roads.</p>
-            </div>
-          </div>
-          <footer class="gv-ideacard__foot">
-            <div class="gv-react e2e-reaction-controls">
-              <button class="gv-react__btn" aria-label="Like"><span data-gv-icon="vote-up"></span></button>
-              <span class="gv-react__count">47</span>
-              <button class="gv-react__btn" aria-label="Dislike"><span data-gv-icon="vote-down"></span></button>
-              <span class="gv-react__count">3</span>
-            </div>
-            <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments"></span>3</span>
-          </footer>
-        </div>
-      </article>
-      <!-- ===== /COMPONENT ===== -->
+      <div id="mount-primary"></div>
     </div>
 
     <p class="eyebrow">No-photo variant (icon thumb)</p>
     <div class="stage">
-      <article class="gv-ideacard e2e-idea-card">
-        <div class="gv-ideacard__thumb"><span data-gv-icon="vote-up" aria-hidden="true"></span></div>
-        <div class="gv-ideacard__body">
-          <h3 class="gv-ideacard__title e2e-idea-card-title"><a href="#">More benches along the riverfront</a></h3>
-          <div class="gv-ideacard__head">
-            <span class="gv-ideacard__avatar" aria-hidden="true">MR</span>
-            <div>
-              <div class="gv-ideacard__meta">
-                <span class="gv-ideacard__author e2e-username">Maria Rossi</span>
-                <span class="gv-ideacard__sep" aria-hidden="true">&bull;</span>
-                <span class="gv-ideacard__time">5 months ago</span>
-              </div>
-              <p class="gv-ideacard__excerpt">Add a row of benches between the bridge and the boathouse so older residents can rest on their walk.</p>
-            </div>
-          </div>
-          <footer class="gv-ideacard__foot">
-            <div class="gv-react e2e-reaction-controls">
-              <button class="gv-react__btn" aria-label="Like"><span data-gv-icon="vote-up"></span></button>
-              <span class="gv-react__count">19</span>
-              <button class="gv-react__btn" aria-label="Dislike"><span data-gv-icon="vote-down"></span></button>
-              <span class="gv-react__count">0</span>
-            </div>
-            <span class="gv-react__comment e2e-ideacard-comment-count"><span data-gv-icon="comments"></span>1</span>
-          </footer>
-        </div>
-      </article>
+      <div id="mount-nophoto"></div>
     </div>
 
     <div class="notes">
@@ -98,7 +50,25 @@
       (<code>__author</code> &bull; <code>__time</code>) and the <code>.gv-ideacard__excerpt</code>.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      /* Primary instance: photo thumb, Eddy Walker card (all defaults) */
+      GV.mount("#mount-primary", "idea-card", {});
+
+      /* No-photo variant: icon thumb, Maria Rossi card */
+      GV.mount("#mount-nophoto", "idea-card", {
+        thumb:    null,
+        title:    "More benches along the riverfront",
+        avatar:   "MR",
+        author:   "Maria Rossi",
+        time:     "5 months ago",
+        excerpt:  "Add a row of benches between the bridge and the boathouse so older residents can rest on their walk.",
+        likes:    19,
+        dislikes: 0,
+        comments: 1
+      });
+    });
+  </script>
 </body>
 </html>

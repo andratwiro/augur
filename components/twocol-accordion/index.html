@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no twocol-accordion markup; it imports GV.render('twocol-accordion', props). -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -10,6 +11,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Demo chrome only. The component is pure assembly of canonical primitives:
        .gv-cb-frame / .gv-cb-row.cols-2 / .gv-cb-col / .gv-cb-image / .gv-cb-textbox
@@ -26,48 +28,19 @@
 
   <p class="demo-label">CB section · cols-2 · image left + (h2 + intro + FAQ accordion) right — St Louis homepage "about + FAQ"</p>
 
-  <!-- ============ TWO-COLUMN IMAGE + TEXT + ACCORDION (copy from here) ============
-       A Content-Builder two-column row: an image cell beside a rich-text column that
-       carries the section heading, an intro paragraph, and an FAQ accordion. The
-       accordion heads step up to 21px/700 inside .gv-prose (the measured St Louis
-       step-up, a sibling of the .gv-projdesc step-up). Pure assembly. -->
-  <div class="gv-cb-frame">
-    <div class="gv-cb-row cols-2">
+  <!-- mount target — component markup injected by GV.render("twocol-accordion") -->
+  <div id="twocol-accordion-mount"></div>
 
-      <!-- LEFT: image cell -->
-      <div class="gv-cb-col">
-        <div class="gv-cb-image"><div class="ph">Image</div></div>
-      </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      /* Primary instance — default props reproduce the HEAD St Louis "about + FAQ" section */
+      GV.mount("#twocol-accordion-mount", "twocol-accordion", {});
 
-      <!-- RIGHT: rich-text column (heading + intro + accordion) -->
-      <div class="gv-cb-col">
-        <div class="gv-cb-textbox">
-          <div class="gv-prose">
-            <h2>The Board of Aldermen is listening!</h2>
-            <p>The Board of Aldermen's public engagement platform makes it easier for residents to share ideas with elected officials, connect with other residents, and stay up-to-date on policies and projects taking shape in St.&nbsp;Louis.</p>
-
-            <div class="gv-accordion">
-              <details class="gv-acc__item" open>
-                <summary class="gv-acc__head"><span class="gv-acc__q">What is Speak Up, St.&nbsp;Louis?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
-                <div class="gv-acc__body"><p>Speak Up is where residents and the Board of Aldermen meet online. Browse active projects, react to and comment on ideas, take part in surveys, and follow the policies moving through City Hall — all in one place.</p></div>
-              </details>
-              <details class="gv-acc__item">
-                <summary class="gv-acc__head"><span class="gv-acc__q">Who can take part?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
-                <div class="gv-acc__body"><p>Anyone can read along. To post an idea, react, or answer a survey you'll be asked to create a free account so the team knows your contribution comes from a real resident.</p></div>
-              </details>
-              <details class="gv-acc__item">
-                <summary class="gv-acc__head"><span class="gv-acc__q">What happens to my contribution?</span><span class="gv-acc__chev" data-gv-icon="chevron-right" aria-hidden="true"></span></summary>
-                <div class="gv-acc__body"><p>Every contribution is read by the project team and grouped with similar input. Aldermen use what's shared here to shape the policies and projects they bring forward, and project updates are posted back to participants as each phase opens.</p></div>
-              </details>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-  <!-- ============ /TWO-COLUMN IMAGE + TEXT + ACCORDION ============ -->
+      /* hydrate fills data-gv-icon glyphs (chevron-right) on the rendered DOM.
+         The accordion expand/collapse is CSS-native <details> — no JS needed. */
+      GV.hydrate(document.getElementById("twocol-accordion-mount"));
+    });
+  </script>
 
 </body>
 </html>

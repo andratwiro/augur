@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no hero markup; it imports GV.render('hero', props). -->
 <!doctype html>
 <html lang="de">
 <head>
@@ -7,6 +8,9 @@
   <title>Hero / page banner — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
     body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
@@ -38,35 +42,14 @@
 
     <p class="eyebrow">Placeholder (no photo)</p>
     <div class="stage">
-      <!-- ============ HERO COMPONENT (copy from here) ============ -->
-      <section class="gv-hero">
-        <div class="gv-hero__inner">
-          <h1 class="gv-hero__title">Wien mitgestalten</h1>
-          <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
-          <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
-            <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
-            <span class="count">15.4k</span>
-          </div>
-        </div>
-        <a class="gv-hero__cta" href="#">Mehr zum aktuellen Projekt
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
-        <span class="gv-hero__credit">Banner: © Stadt Wien</span>
-      </section>
-      <!-- ============ /HERO COMPONENT ============ -->
+      <!-- Mount target — no .gv-* markup lives here -->
+      <div id="hero-placeholder"></div>
     </div>
 
     <p class="eyebrow">With a photo (<code>--gv-hero-image</code>)</p>
     <div class="stage">
-      <section class="gv-hero" style="--gv-hero-image:url('https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60')">
-        <div class="gv-hero__inner">
-          <h1 class="gv-hero__title">Wien mitgestalten</h1>
-          <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
-        </div>
-        <a class="gv-hero__cta" href="#">Mehr zum aktuellen Projekt
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </a>
-      </section>
+      <!-- Mount target — no .gv-* markup lives here -->
+      <div id="hero-photo"></div>
     </div>
 
     <p class="eyebrow">Homepage-banner switcher — 3 layouts × signed-out / signed-in</p>
@@ -94,28 +77,8 @@
     </div>
 
     <div class="stage" id="heroStage" data-auth="out">
-      <section class="gv-hero signed-out centered layout-full" id="switchHero" data-testid="full-width-banner-layout"
-               style="--gv-hero-image:url('https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60')">
-        <div class="gv-hero__media"><img src="https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=1400&q=60" alt="" /></div>
-        <div class="gv-hero__inner">
-          <!-- non-registered: avatars + sign-up -->
-          <div class="banner-content" data-when="out">
-            <h1 class="gv-hero__title">Wien mitgestalten</h1>
-            <p class="gv-hero__lead">Die Beteiligungsplattform der Stadt Wien</p>
-            <div class="gv-avatars" aria-label="15,4 Tausend Teilnehmende">
-              <span class="av"></span><span class="av"></span><span class="av"></span><span class="av"></span>
-              <span class="count">15.4k</span>
-            </div>
-            <div class="gv-hero__actions"><button type="button" class="gv-btn primary-inverse">Registrieren</button></div>
-          </div>
-          <!-- registered: no avatars, own CTA -->
-          <div class="banner-content" data-when="in">
-            <h1 class="gv-hero__title">Willkommen zurück, Robin</h1>
-            <p class="gv-hero__lead">Ihre gefolgten Projekte haben Neuigkeiten.</p>
-            <div class="gv-hero__actions"><button type="button" class="gv-btn primary-inverse">Zum Hafen-Masterplan</button></div>
-          </div>
-        </div>
-      </section>
+      <!-- Mount target — no .gv-* markup lives here -->
+      <div id="hero-switcher"></div>
     </div>
 
     <div class="notes">
@@ -136,31 +99,46 @@
       <code>.av</code> a <code>background-image</code> for real faces, and set the <code>.count</code> pill.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+
   <script>
-    // Live banner switcher — flip layout (.layout-*) + visitor (stage data-auth).
-    (function () {
-      var stage = document.getElementById('heroStage');
-      var hero = document.getElementById('switchHero');
-      var LAYOUTS = { full: 'full-width-banner-layout', tworow: 'two-row-layout', fixed: 'fixed-ratio-layout' };
-      function press(row, attr, val) {
-        row.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute(attr) === val)); });
-      }
-      document.getElementById('layoutSwitch').addEventListener('click', function (e) {
-        var el = e.target.closest('[data-layout]'); if (!el) return;
-        var k = el.getAttribute('data-layout');
-        hero.classList.remove('layout-full', 'layout-tworow', 'layout-fixed');
-        hero.classList.add('layout-' + k);
-        hero.setAttribute('data-testid', LAYOUTS[k]);
-        press(this, 'data-layout', k);
-      });
-      document.getElementById('authSwitch').addEventListener('click', function (e) {
-        var el = e.target.closest('[data-auth]'); if (!el) return;
-        var v = el.getAttribute('data-auth');
-        stage.setAttribute('data-auth', v);
-        press(this, 'data-auth', v);
-      });
-    })();
+    document.addEventListener('DOMContentLoaded', function () {
+      // Instance 1 — placeholder (primary, no photo)
+      GV.mount('#hero-placeholder', 'hero', {});
+      GV.hydrate(document.getElementById('hero-placeholder'));
+
+      // Instance 2 — with photo
+      GV.mount('#hero-photo', 'hero', { variant: 'photo' });
+      GV.hydrate(document.getElementById('hero-photo'));
+
+      // Instance 3 — homepage-banner switcher (full-width + signed-out default)
+      GV.mount('#hero-switcher', 'hero', { variant: 'switcher' });
+      GV.hydrate(document.getElementById('hero-switcher'));
+
+      // Live banner switcher — flip layout (.layout-*) + visitor (stage data-auth).
+      (function () {
+        var stage = document.getElementById('heroStage');
+        var LAYOUTS = { full: 'full-width-banner-layout', tworow: 'two-row-layout', fixed: 'fixed-ratio-layout' };
+        function hero() { return document.getElementById('switchHero'); }
+        function press(row, attr, val) {
+          row.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute(attr) === val)); });
+        }
+        document.getElementById('layoutSwitch').addEventListener('click', function (e) {
+          var el = e.target.closest('[data-layout]'); if (!el) return;
+          var k = el.getAttribute('data-layout');
+          var h = hero(); if (!h) return;
+          h.classList.remove('layout-full', 'layout-tworow', 'layout-fixed');
+          h.classList.add('layout-' + k);
+          h.setAttribute('data-testid', LAYOUTS[k]);
+          press(this, 'data-layout', k);
+        });
+        document.getElementById('authSwitch').addEventListener('click', function (e) {
+          var el = e.target.closest('[data-auth]'); if (!el) return;
+          var v = el.getAttribute('data-auth');
+          stage.setAttribute('data-auth', v);
+          press(this, 'data-auth', v);
+        });
+      })();
+    });
   </script>
 </body>
 </html>

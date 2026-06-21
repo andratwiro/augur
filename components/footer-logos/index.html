@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no footer-logos markup; it imports GV.render('footer-logos', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -8,6 +9,9 @@
   <title>Footer logo band + dual auth header — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right). */
     body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
@@ -36,119 +40,23 @@
     <!-- ============ 1. SIGNED-OUT HEADER: brand-tinted nav + dual auth CTAs ============ -->
     <p class="eyebrow">Header — brand-tinted nav + dual signed-out auth CTAs</p>
     <div class="stage scene" style="overflow:visible">
-      <header class="gv-header sticky">
-        <div class="gv-header__inner">
-          <a class="gv-brand" href="#" data-gv-logo aria-label="Home" aria-current="page"></a>
-
-          <!-- .tinted = the primary-nav labels render in --gv-tenant-primary (Lux config) -->
-          <nav class="gv-nav tinted" aria-label="Primary">
-            <ul class="gv-nav__list">
-              <li><a class="gv-nav__link" href="#" aria-current="page">Accueil</a></li>
-              <li><a class="gv-nav__link" href="#">Tous les projets</a></li>
-              <li><a class="gv-nav__link" href="#">FAQ</a></li>
-              <li><a class="gv-nav__link" href="#">À propos</a></li>
-            </ul>
-          </nav>
-
-          <div class="gv-header__actions">
-            <button class="gv-iconbtn gv-desktop-only" aria-label="Rechercher">
-              <span data-gv-icon="search"></span>
-            </button>
-
-            <!-- DUAL signed-out CTA: filled Log-in + inverse Register -->
-            <div class="gv-auth-dual gv-desktop-only">
-              <button class="gv-btn primary">Se connecter</button>
-              <button class="gv-btn primary-inverse">S'inscrire</button>
-            </div>
-
-            <!-- Signed-out language switcher (present in the signed-out header) -->
-            <details class="gv-nav__dd right gv-desktop-only gv-mobile-inline">
-              <summary class="gv-lang">FR
-                <svg class="gv-nav__chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </summary>
-              <div class="gv-nav__menu">
-                <a href="#">Français</a>
-                <a href="#">Deutsch</a>
-                <a href="#">English</a>
-              </div>
-            </details>
-
-            <details class="gv-nav-m">
-              <summary aria-label="Afficher le menu de navigation mobile">
-                <svg class="gv-nav-m__bars" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/></svg>
-                <svg class="gv-nav-m__x" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/></svg>
-              </summary>
-              <nav class="gv-nav-m__panel" aria-label="Navigation principale (mobile)">
-                <span class="gv-nav-m__logo" data-gv-logo aria-hidden="true"></span>
-                <a href="#" aria-current="page">Accueil</a>
-                <a href="#">Tous les projets</a>
-                <a href="#">FAQ</a>
-                <a href="#">À propos</a>
-                <a class="gv-nav-m__search" href="#"><span data-gv-icon="search" aria-hidden="true"></span> Rechercher</a>
-                <button class="gv-btn primary full" style="margin-top:14px">Se connecter</button>
-                <button class="gv-btn primary-outlined full" style="margin-top:10px">S'inscrire</button>
-              </nav>
-            </details>
-          </div>
-        </div>
-      </header>
+      <!-- Mount target — no .gv-* markup lives here -->
+      <div id="mount-header-tinted"></div>
       <div class="scene-body" aria-hidden="true"></div>
     </div>
 
     <!-- ============ 2. FOOTER WITH UPPER LOGO BAND ============ -->
     <p class="eyebrow">Footer — with the optional upper logo band</p>
     <div class="stage">
-      <!-- The logo band is a SIBLING above the footer (it sits between page content and
-           the legal-link row). Single tenant logo (Linz) OR tenant + partner/government
-           logos side-by-side (.row). -->
-      <div class="gv-footer__logos row">
-        <a href="#" aria-label="Home" data-gv-logo></a>
-        <span class="demo-gov gv-footer__logos-cap" aria-hidden="true">GOVERNMENT</span>
-      </div>
-
-      <footer class="gv-footer">
-        <div class="gv-footer__inner">
-          <nav class="gv-footer__links" aria-label="Secondary">
-            <ul>
-              <li><a href="#">Conditions générales</a></li>
-              <li><a href="#">Politique de confidentialité</a></li>
-              <li><a href="#">Politique de cookies</a></li>
-              <li><a href="#">Accessibilité : partiellement conforme</a></li>
-              <li><button type="button">Paramètres des cookies</button></li>
-              <li><a href="#">Plan du site</a></li>
-            </ul>
-          </nav>
-          <!-- Powered-by is OPTIONAL: keep it for tenants that show it (Lux does:
-               "Généré par Go Vocal"), drop the block for tenants that suppress it. -->
-          <div class="gv-footer__powered">
-            <span>Généré par</span>
-            <a href="https://govocal.com/" target="_blank" rel="noopener" aria-label="Go Vocal (anciennement CitizenLab)">
-              <img class="gv-powered-logo" src="../../skills/govocal-ui/govocal-logo.svg" alt="Go Vocal" />
-            </a>
-          </div>
-        </div>
-      </footer>
+      <!-- Mount target — no .gv-* markup lives here -->
+      <div id="mount-footer-row"></div>
     </div>
 
     <!-- ============ 3. FOOTER, LOGO BAND ONLY (single tenant logo, attribution suppressed) ============ -->
     <p class="eyebrow">Footer — single tenant logo, go·vocal attribution suppressed</p>
     <div class="stage">
-      <div class="gv-footer__logos" id="cp-logo-band">
-        <a href="#" aria-label="Home" data-gv-logo></a>
-      </div>
-      <footer class="gv-footer">
-        <div class="gv-footer__inner">
-          <nav class="gv-footer__links" aria-label="Secondary">
-            <ul>
-              <li><a href="#">Conditions générales</a></li>
-              <li><a href="#">Politique de confidentialité</a></li>
-              <li><button type="button">Paramètres des cookies</button></li>
-              <li><a href="#">Plan du site</a></li>
-            </ul>
-          </nav>
-          <!-- no .gv-footer__powered block -->
-        </div>
-      </footer>
+      <!-- Mount target — no .gv-* markup lives here -->
+      <div id="mount-footer-solo"></div>
     </div>
 
     <div class="notes">
@@ -170,7 +78,25 @@
         tenants that show "Généré par Go Vocal" (Lux does), omit it where suppressed.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Instance 1 — header: brand-tinted nav + dual signed-out auth CTAs (Luxembourg defaults)
+      GV.mount(document.getElementById('mount-header-tinted'), 'footer-logos', {
+        variant: 'header-tinted'
+      });
+      GV.hydrate(document.getElementById('mount-header-tinted'));
+
+      // Instance 2 — footer-row: tenant logo + partner/government cap mark + powered-by (PRIMARY)
+      GV.mount(document.getElementById('mount-footer-row'), 'footer-logos', {});
+      GV.hydrate(document.getElementById('mount-footer-row'));
+
+      // Instance 3 — footer-solo: single tenant logo, no partner mark, no powered-by
+      GV.mount(document.getElementById('mount-footer-solo'), 'footer-logos', {
+        variant: 'footer-solo'
+      });
+      GV.hydrate(document.getElementById('mount-footer-solo'));
+    });
+  </script>
 </body>
 </html>

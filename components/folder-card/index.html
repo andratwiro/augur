@@ -1,3 +1,4 @@
+<!-- LINKED INSTANCE — this demo owns no folder-card markup; it imports GV.render('folder-card', props). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -25,6 +26,9 @@
     .notes { margin-top: 26px; font-size: 14px; color: var(--gv-grey-800); line-height: 1.6; }
     .notes code { background: var(--gv-grey-100); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
   </style>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
 </head>
 <body data-gv-theme="4" class="gv-root" data-gv-cookies="off">
   <div class="demo">
@@ -37,74 +41,9 @@
     <p class="eyebrow">Folder cards — the live /projects grid</p>
     <div class="stage">
       <div class="fgrid">
-
-        <!-- ============ FOLDER CARD (re-grounded on .e2e-folder-card) ============
-             White boxed card, 3px radius, soft --gv-shadow, padding 18px 0 25px.
-             Top → bottom: a project HERO image with the COUNT badge (folder glyph +
-             "N projects") pinned top-right over a dark overlay; then the folder
-             title; then a description preview; then child-project avatar previews.
-             The count NUMBER is the system positive/count green (--gv-folder-count,
-             common across tenants — not per-city skin). Pure
-             assembly of canonical .gv-pcard.boxed.folder. -->
-        <article class="gv-pcard boxed folder">
-          <div class="gv-pcard__fmedia">
-            <div class="gv-pcard__thumb--ocean" style="width:100%;height:100%"></div>
-            <span class="gv-pcard__count" aria-label="2 projects in this folder">
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
-              <span class="e2e-folder-card-numberofprojects">2</span>&nbsp;projects
-            </span>
-          </div>
-          <div class="gv-pcard__fbody">
-            <h3 class="gv-pcard__title"><a href="#">BOA President's Office</a></h3>
-            <div class="gv-pcard__fdesc">The projects in this folder are city-wide or have been
-              proposed by the President of the Board of Aldermen—Megan E. Green.</div>
-          </div>
-          <div class="gv-pcard__fpile" aria-hidden="true">
-            <span class="gv-pcard__fthumb"></span>
-            <span class="gv-pcard__fthumb"></span>
-            <span class="gv-pcard__fmore">+5</span>
-          </div>
-        </article>
-
-        <article class="gv-pcard boxed folder">
-          <div class="gv-pcard__fmedia">
-            <div class="gv-pcard__thumb--clay" style="width:100%;height:100%"></div>
-            <span class="gv-pcard__count" aria-label="55 projects in this folder">
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
-              <span class="e2e-folder-card-numberofprojects">55</span>&nbsp;projects
-            </span>
-          </div>
-          <div class="gv-pcard__fbody">
-            <h3 class="gv-pcard__title"><a href="#">Rams Settlement Fund</a></h3>
-            <div class="gv-pcard__fdesc">The goal of this project is to invest the Rams Settlement Fund
-              in ways that benefit the residents of the City of St.&nbsp;Louis for generations to come.</div>
-          </div>
-          <div class="gv-pcard__fpile" aria-hidden="true">
-            <span class="gv-pcard__fthumb"></span>
-            <span class="gv-pcard__fthumb"></span>
-            <span class="gv-pcard__fthumb"></span>
-          </div>
-        </article>
-
-        <article class="gv-pcard boxed folder">
-          <div class="gv-pcard__fmedia">
-            <div class="gv-pcard__thumb--sage" style="width:100%;height:100%"></div>
-            <span class="gv-pcard__count" aria-label="8 projects in this folder">
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z"/></svg>
-              <span class="e2e-folder-card-numberofprojects">8</span>&nbsp;projects
-            </span>
-          </div>
-          <div class="gv-pcard__fbody">
-            <h3 class="gv-pcard__title"><a href="#">Tornado recovery</a></h3>
-            <div class="gv-pcard__fdesc">Recovery planning and resident input for the neighborhoods most
-              affected by the May tornado.</div>
-          </div>
-          <div class="gv-pcard__fpile" aria-hidden="true">
-            <span class="gv-pcard__fthumb"></span>
-            <span class="gv-pcard__fthumb"></span>
-          </div>
-        </article>
-
+        <div id="fc-1"></div>
+        <div id="fc-2"></div>
+        <div id="fc-3"></div>
       </div>
     </div>
 
@@ -119,6 +58,30 @@
       <code>.gv-pcard.boxed</code> wholesale.
     </p>
   </div>
-  <script src="../../skills/govocal-ui/govocal-themes.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Instance 1 — primary (ocean / 2 projects / BOA President's Office)
+      GV.mount(document.getElementById("fc-1"), "folder-card", {});
+
+      // Instance 2 — clay / 55 projects / Rams Settlement Fund
+      GV.mount(document.getElementById("fc-2"), "folder-card", {
+        thumb: "clay",
+        count: 55,
+        title: "Rams Settlement Fund",
+        desc: "The goal of this project is to invest the Rams Settlement Fund in ways that benefit the residents of the City of St. Louis for generations to come.",
+        pile: [{}, {}, {}]
+      });
+
+      // Instance 3 — sage / 8 projects / Tornado recovery
+      GV.mount(document.getElementById("fc-3"), "folder-card", {
+        thumb: "sage",
+        count: 8,
+        title: "Tornado recovery",
+        desc: "Recovery planning and resident input for the neighborhoods most affected by the May tornado.",
+        pile: [{}, {}]
+      });
+    });
+  </script>
 </body>
 </html>

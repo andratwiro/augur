@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Page-local layout only — no .gv-* selectors.
        Avatar fill lives on a page-local .demo scope (not on a .gv-* selector). */
@@ -21,11 +23,16 @@
   <div class="stage">
     <h2 class="heading">Avatar stack</h2>
     <div class="gv-card demo">
-      <div class="gv-avatars" style="margin:0">
-        <span class="av">AM</span><span class="av">KP</span><span class="av">JR</span><span class="av">+5</span>
-        <span class="count">128 participants</span>
-      </div>
+      <div id="av-stack"></div>
     </div>
   </div>
+
+  <script>
+    // LINKED INSTANCE — this demo owns no avatar markup; it imports GV.render('avatar', props).
+    document.addEventListener('DOMContentLoaded', function () {
+      // no props -> reproduces the primary instance (AM·KP·JR·+5, 128 participants)
+      GV.mount('#av-stack', 'avatar');
+    });
+  </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no content-builder-render markup; it imports GV.render('content-builder-render', props). -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -8,6 +9,8 @@
   <!-- References canonical assets directly — never copies or redefines them. -->
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script defer src="../../skills/govocal-ui/govocal-icons.js"></script>
+  <script defer src="../../skills/govocal-ui/govocal-instances.js"></script>
   <style>
     body { margin: 0; padding: 32px 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); }
     .demo-label { max-width: 1200px; margin: 0 auto 8px; padding: 0 24px;
@@ -22,37 +25,33 @@
   <!-- The FRONT-OFFICE Content-Builder render layer: a .gv-cb-frame holding a stack of
        .gv-cb-row (cols-1/2/3) of generic cells — .gv-cb-textbox / .gv-cb-image /
        .gv-cb-whitespace. This is what the back-office editor OUTPUTS onto a live page;
-       every other FO widget mounts INTO these cells. Source-grounded on Copenhagen. -->
+       every other FO widget mounts INTO these cells. Source-grounded on Copenhagen.
+       Each frame below is a LINKED INSTANCE of content-builder-render (props only). -->
 
   <p class="demo-label">cols-1 · full-width text-box (ql-align-center) + white-space</p>
-  <div class="demo-frame"><div class="gv-cb-frame">
-    <div class="gv-cb-row cols-1">
-      <div class="gv-cb-textbox">
-        <div class="gv-prose ql-align-center">
-          <h2>A centred full-width text block</h2>
-          <p>The text-box self-centres to the 1200px content measure (margin 0 auto), with 24px 0 padding.</p>
-        </div>
-      </div>
-    </div>
-    <div class="gv-cb-row cols-1"><div class="gv-cb-whitespace is-small"></div></div>
-  </div></div>
+  <div class="demo-frame" data-inst="cols1"></div>
 
   <p class="demo-label">cols-2 · image + text-box (588 + 24 gap + 588)</p>
-  <div class="demo-frame"><div class="gv-cb-frame">
-    <div class="gv-cb-row cols-2">
-      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph" style="aspect-ratio:1/1">Image</div></div></div>
-      <div class="gv-cb-col"><div class="gv-cb-textbox"><div class="gv-prose"><h2 style="font-size:var(--gv-fs-l)">A two-column row</h2><p>Two columns share the 1200 measure with a 24px gap, rendering 588px each.</p></div></div></div>
-    </div>
-  </div></div>
+  <div class="demo-frame" data-inst="cols2"></div>
 
   <p class="demo-label">cols-3 · three equal columns (flex gap 24, max 1200)</p>
-  <div class="demo-frame"><div class="gv-cb-frame">
-    <div class="gv-cb-row cols-3">
-      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><div class="gv-prose"><p>Column one.</p></div></div></div>
-      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><div class="gv-prose"><p>Column two.</p></div></div></div>
-      <div class="gv-cb-col"><div class="gv-cb-image"><div class="ph">Image</div></div><div class="gv-cb-textbox"><div class="gv-prose"><p>Column three.</p></div></div></div>
-    </div>
-  </div></div>
+  <div class="demo-frame" data-inst="cols3"></div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Each demo frame is a LINKED INSTANCE: pass only props, never markup.
+      // cols1 = the primary (no props); cols2/cols3 = the named frame presets.
+      var FRAMES = {
+        cols1: {},                            // primary — defaults reproduce HEAD frame 1
+        cols2: GV.contentBuilderFrames.cols2, // image + text-box
+        cols3: GV.contentBuilderFrames.cols3  // three equal columns
+      };
+      document.querySelectorAll("[data-inst]").forEach(function (el) {
+        el.innerHTML = GV.render("content-builder-render", FRAMES[el.getAttribute("data-inst")]);
+      });
+      GV.hydrate(document.body);
+    });
+  </script>
 
 </body>
 </html>

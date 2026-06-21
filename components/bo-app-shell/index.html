@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no bo-app-shell markup; it imports GV.render('bo-app-shell', props). -->
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -9,6 +10,7 @@
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-bo.css" />
   <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     body { margin: 0; background: var(--gv-grey-100); font-family: var(--gv-font-family); }
     .demo { padding: 24px 20px 60px; }
@@ -30,49 +32,8 @@
       (title · status · actions) with the project tab row. The sidebar navigation is a separate
       <code>bo-sidebar</code> component.</p>
 
-    <div class="stage">
-      <!-- ============ PROJECT EDITOR CHROME (copy from here) ============ -->
-      <div class="gv-bo">
-        <div class="gv-bo-main">
-
-          <!-- Project top bar -->
-          <header class="gv-bo-topbar">
-            <div class="gv-bo-topbar__row">
-              <div>
-                <h1 class="gv-bo-topbar__title">Let's Reimagine Dorothea Dix Park</h1>
-                <div class="gv-bo-meta">
-                  <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="lock"></span>Everyone</span>
-                  <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="eye"></span>Public</span>
-                  <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="group"></span>170 project participants</span>
-                  <span class="gv-bo-meta__item"><span class="gv-icon" data-gv-icon="check-circle"></span>Published · Active</span>
-                </div>
-              </div>
-              <div class="gv-bo-topbar__actions">
-                <button class="gv-iconbtn" aria-label="Preview project"><span data-gv-icon="eye"></span></button>
-                <button class="gv-btn secondary-outlined"><span data-gv-icon="share"></span><span class="gv-btn__label">Share</span></button>
-                <button class="gv-btn admin-dark"><span data-gv-icon="check"></span><span class="gv-btn__label">Published</span></button>
-              </div>
-            </div>
-
-            <!-- Project tabs -->
-            <nav class="gv-bo-tabs" aria-label="Project">
-              <a class="gv-bo-tab" href="#">General</a>
-              <a class="gv-bo-tab is-active" href="#">Timeline</a>
-              <a class="gv-bo-tab" href="#">Audience</a>
-              <a class="gv-bo-tab" href="#">Messaging</a>
-              <a class="gv-bo-tab" href="#">Events</a>
-              <a class="gv-bo-tab" href="#">360 Input<span class="gv-bo-tab__new">NEW</span></a>
-            </nav>
-          </header>
-
-          <!-- Page mounts here -->
-          <div class="bo-content-stub">
-            <div class="bo-stub-block">page content mounts in <code>.gv-bo-main</code></div>
-          </div>
-        </div>
-      </div>
-      <!-- ============ /PROJECT EDITOR CHROME ============ -->
-    </div>
+    <!-- LINKED INSTANCE mount — renderer injects the .gv-bo chrome here -->
+    <div class="stage" data-gv-instance="bo-app-shell"></div>
 
     <div class="notes">
       <p><strong>Reuse:</strong> mount inside <code>.gv-bo-main</code> alongside <code>bo-sidebar</code>
@@ -81,5 +42,14 @@
       (<code>.gv-btn.admin-dark</code>, <code>.gv-iconbtn</code>, etc.) render in BO colours automatically.</p>
     </div>
   </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll("[data-gv-instance]").forEach(function (el) {
+        el.innerHTML = GV.render(el.getAttribute("data-gv-instance"));
+      });
+      GV.hydrate(document.body);
+    });
+  </script>
 </body>
 </html>

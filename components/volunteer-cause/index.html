@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- LINKED INSTANCE — this demo owns no volunteer-cause markup; it imports GV.render('volunteer-cause', props). -->
 <html lang="de">
 <head>
   <meta charset="utf-8" />
@@ -7,6 +8,9 @@
   <title>Volunteer cause card — GoVocal component</title>
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-tokens.css" />
   <link rel="stylesheet" href="../../skills/govocal-ui/govocal-ui.css" />
+  <script src="../../skills/govocal-ui/govocal-icons.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+  <script src="../../skills/govocal-ui/govocal-instances.js" defer></script>
   <style>
     /* Themed by govocal-themes.js (default GoVocal; pick a city bottom-right, or ?theme=2 for Stadt Wien). */
     body { margin: 0; background: var(--gv-background); font-family: var(--gv-font-family); }
@@ -26,46 +30,12 @@
 
     <p class="eyebrow">Default (sign up)</p>
     <div class="stage">
-      <!-- ===== COMPONENT (copy from here) ===== -->
-      <article class="gv-cause">
-        <div class="gv-cause__media">
-          <img class="gv-cause__img" alt="" src="https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=600&h=300&fit=crop" />
-          <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>1 participant</span>
-        </div>
-        <div class="gv-cause__body">
-          <h3 class="gv-cause__title">Volunteer residential care centers 'Out and about with residents'</h3>
-          <span class="gv-cause__count">1 participant</span>
-          <div class="gv-cause__desc">
-            <p>You take the residents of the residential care center outside for a walk or do some shopping together.</p>
-            <p><strong>WHAT DO WE EXPECT?</strong></p>
-            <p>Do you like being outside and can you drive a wheelchair? And do you have a socially sensitive heart for older people?</p>
-          </div>
-          <div class="gv-cause__cta">
-            <button class="gv-btn volunteer" type="button"><span data-gv-icon="volunteer"></span>I want to participate</button>
-          </div>
-        </div>
-      </article>
-      <!-- ===== /COMPONENT ===== -->
+      <div id="mount-default"></div>
     </div>
 
     <p class="eyebrow">Signed up (<code>.is-in</code>)</p>
     <div class="stage">
-      <article class="gv-cause">
-        <div class="gv-cause__media">
-          <img class="gv-cause__img" alt="" src="https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=600&h=300&fit=crop" />
-          <span class="gv-cause__badge"><span data-gv-icon="volunteer"></span>4 participants</span>
-        </div>
-        <div class="gv-cause__body">
-          <h3 class="gv-cause__title">Volunteer for cycling lessons to adults</h3>
-          <span class="gv-cause__count">4 participants</span>
-          <div class="gv-cause__desc">
-            <p>Help adults gain confidence on a bike. You guide a small group through weekly lessons in a quiet, friendly setting.</p>
-          </div>
-          <div class="gv-cause__cta">
-            <button class="gv-btn volunteer is-in" type="button"><span data-gv-icon="volunteer"></span>I withdraw my offer to volunteer</button>
-          </div>
-        </div>
-      </article>
+      <div id="mount-signed-up"></div>
     </div>
 
     <div class="notes">
@@ -73,6 +43,23 @@
       <p><strong>Badge:</strong> <code>.gv-cause__badge</code> overlays the participant count on the media; mirror it as <code>.gv-cause__count</code> in the body.</p>
     </div>
   </div>
-  <script src="../../skills/govocal-ui/govocal-themes.js" defer></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      /* Primary instance: default sign-up state */
+      GV.mount("#mount-default", "volunteer-cause", {});
+
+      /* Signed-up / withdraw state */
+      GV.mount("#mount-signed-up", "volunteer-cause", {
+        signedUp: true,
+        title: "Volunteer for cycling lessons to adults",
+        img: "https://images.unsplash.com/photo-1571068316344-75bc76f77890?w=600&h=300&fit=crop",
+        participantLabel: "4 participants",
+        descParagraphs: [
+          "<p>Help adults gain confidence on a bike. You guide a small group through weekly lessons in a quiet, friendly setting.</p>"
+        ]
+      });
+    });
+  </script>
 </body>
 </html>
