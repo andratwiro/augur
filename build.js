@@ -359,7 +359,15 @@ const DS_CATALOG = (() => {
       }
     }
   } catch (e) {
-    console.warn("[catalog] could not read gv-design-system/registry.json —", e.message);
+    // Fail-fast, no silent fallback: the overlay catalog is REQUIRED to come from the
+    // DS contract. A missing/unreadable registry.json must break the build, not ship
+    // an unlabeled overlay (and never tempt anyone to re-hardcode a map here).
+    throw new Error("[catalog] could not read gv-design-system/registry.json — the overlay catalog is REQUIRED and has no fallback. " + e.message);
+  }
+  // Same guard for a present-but-empty contract (e.g. a DS that didn't publish the
+  // class/label fields): refuse to build an unlabeled overlay rather than degrade.
+  if (!Object.keys(COMPONENT_INDEX).length && !Object.keys(BASE_INDEX).length && !Object.keys(PATTERN_INDEX).length) {
+    throw new Error("[catalog] gv-design-system/registry.json yielded an EMPTY catalog — did the DS publish class/label fields? Run `npm run registry` in the DS. Refusing to build an unlabeled overlay.");
   }
   return { COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS };
 })();
