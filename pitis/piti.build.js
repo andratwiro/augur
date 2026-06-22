@@ -49,7 +49,11 @@ export function cornerHtml() {
 
 export function css() {
   return `
-    .piti-paw {
+    /* Pitis is an admin-only toy: hidden by default, revealed only when the profile
+       script marks the page as admin (html.gv-admin — set by PROFILE_JS from /__me).
+       Default-hidden (not JS-hidden) so Irene/Tali never see a flash of the paw. */
+    .piti-paw { display: none; }
+    html.gv-admin .piti-paw {
       position: fixed; right: 14px; bottom: 12px; z-index: 50;
       display: inline-flex; align-items: center; justify-content: center;
       width: 28px; height: 28px; border-radius: 8px;

@@ -1,0 +1,5 @@
+[
+  { "email": "rob@govocal.com",   "name": "Rob",            "initials": "R",  "color": "#4f46e5", "role": "admin", "pass": "augur-rob-2026" },
+  { "email": "irene@govocal.com", "name": "Irene Pedruelo", "initials": "IP", "color": "#db2777", "pass": "augur-irene-2026" },
+  { "email": "tali@govocal.com",  "name": "Tali Neiman",    "initials": "TN", "color": "#0d9488", "pass": "augur-tali-2026" }
+]

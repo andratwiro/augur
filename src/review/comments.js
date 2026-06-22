@@ -206,6 +206,15 @@
   function nowIso() { return new Date().toISOString(); }
   function getName() { try { return localStorage.getItem(LS_NAME) || ""; } catch (e) { return ""; } }
   function setName(n) { try { localStorage.setItem(LS_NAME, n); } catch (e) {} }
+  // If signed in to Augur, adopt the profile name as the comment author (so the name
+  // prompt is skipped and comments are attributed to the real person). On public
+  // prototypes there's no login → /__me returns { user: null } and this is a no-op.
+  try {
+    fetch("/__me", { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d && d.user && d.user.name) setName(d.user.name); })
+      .catch(function () {});
+  } catch (e) {}
 
   /* ---------- shadow UI ---------- */
 

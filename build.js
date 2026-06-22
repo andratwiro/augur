@@ -40,6 +40,14 @@ const WS_ROOT = process.env.GV_WS_ROOT ? path.resolve(ROOT, process.env.GV_WS_RO
 const DIST = path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
 
+// Internal users (identity + seed passwords). One committed source of truth, read
+// here and injected into the worker (the gate) and used for sidebar profiles + git
+// edit-attribution. Passwords never reach the client — IDENTITY_PUBLIC strips them.
+const IDENTITY = JSON.parse(readFileSync(path.join(ROOT, "src", "identity.json"), "utf8"));
+const IDENTITY_PUBLIC = IDENTITY.map(({ pass, ...u }) => u);
+// Lower-cased email → public profile, for mapping git commit authors to a face.
+const USER_BY_EMAIL = new Map(IDENTITY_PUBLIC.map((u) => [u.email.toLowerCase(), u]));
+
 // Optional, self-contained build addon. If present it can post-process copied HTML,
 // add footer/style/script snippets to shell pages, and emit its own dist files via
 // generic hooks (see its source). The site builds identically without it.
@@ -260,7 +268,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.84";
+const UI_VERSION = "0.86";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -627,6 +635,23 @@ function modifiedTime(srcDir, fsLatest) {
   return gitMtime(srcDir) || fsLatest;
 }
 
+/**
+ * Last commit author email for a folder, mapped to an internal user (a "face" on the
+ * card). Runs git INSIDE the folder's own repo (-C) so it works whether the workspace
+ * is a sibling clone (offline) or a nested submodule (deploy). Returns the public
+ * profile of a known user, or null (uncommitted folder, or an author we don't know).
+ */
+function lastEditor(absDir) {
+  let email = "";
+  try {
+    email = execFileSync("git", ["-C", absDir, "log", "-1", "--format=%ae", "--", "."], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim().toLowerCase();
+  } catch { return null; }
+  return email ? USER_BY_EMAIL.get(email) || null : null;
+}
+
 /** Latest filesystem mtime (ms) of any file within a directory tree. */
 async function latestMtime(dir) {
   let latest = 0;
@@ -804,6 +829,7 @@ async function scan() {
         poster: await exists(path.join(protoDir, "preview.webp")),
         mtimeMs: modifiedTime(protoDir, latest),
         status: statusMap[`${top.name}/${proto.name}`] || null,
+        editor: lastEditor(protoDir),
       });
     }
 
@@ -1255,6 +1281,12 @@ const PAGE_CSS = `
        hierarchy, not scale. Kept small for app-like density. */
     .proto-name { font-weight: 600; font-size: 13px; letter-spacing: -0.01em; }
     .proto-date { color: var(--faint); font-weight: 450; font-size: 13px; margin-top: 1px; }
+    /* Last-editor face — git's last-commit author for the prototype, mapped to a user. */
+    .proto-editor {
+      flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+      color: #fff; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em;
+      background-size: cover; background-position: center; box-shadow: 0 0 0 2px var(--card);
+    }
     /* Icon-only control (download) — square. */
     .btn-icon {
       font: inherit; line-height: 1; cursor: pointer; font-size: 18px;
@@ -1681,26 +1713,47 @@ const NAV_CSS = `
     .gvside__scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 1px; }
     .gvside__foot { flex: none; }
 
-    /* Workspace brand — Augur + falcon mark, sitting in the SAME icon column as
-       every nav row below it. No dropdown; the name just links home. */
-    .gvside__brand {
-      display: flex; align-items: center; gap: 10px; padding: 6px 8px; margin-bottom: 3px;
-      border-radius: 8px; text-decoration: none; color: #16171a;
-      transition: background .12s ease;
-    }
-    .gvside__brand:hover { background: rgba(16,17,26,0.05); }
-    .gvside__brand:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
-    .gvside__brandname { font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: 0; }
+    /* Brand mark (falcon) — still used by the mobile top bar. The signed-in profile
+       chip owns the desktop rail's top-left spot; there's no Augur wordmark there. */
     .gvmark { display: block; flex: none; object-fit: contain; }
-    /* Match the 16px nav-icon column (.gvic) exactly so the "augur" wordmark left-aligns
-       with the Opportunities / Playground labels below it (same 8px pad + 10px gap). */
-    .gvside__brand .gvmark { width: 16px; height: 16px; }
     .gvtop__brand .gvmark { width: 22px; height: 22px; }
-    /* Each rail-brand hover spins the mark one full turn and rests there (the angle is
-       accumulated in JS — see chromeScript). The disc is a circle so only the sparkle
-       cut-out reads as turning; easeOutExpo gives a fast whip that settles home. */
-    .gvside__brand .gvmark { transition: transform .9s cubic-bezier(.16,1,.3,1); }
-    @media (prefers-reduced-motion: reduce) { .gvside__brand .gvmark { transition: none; } }
+
+    /* Profile chip — the signed-in face + dropdown, in the brand spot. Hidden until
+       PROFILE_JS confirms a logged-in user (open/no-identity builds show nothing). */
+    .gvprof { position: relative; margin: 0 0 6px; }
+    .gvprof__btn {
+      display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px;
+      border: 1px solid transparent; border-radius: 8px; background: none; cursor: pointer;
+      font: inherit; color: #16171a; text-align: left; transition: background .12s ease;
+    }
+    .gvprof__btn:hover { background: rgba(16,17,26,0.05); }
+    .gvprof__btn:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvprof__btn[aria-expanded=true] { background: rgba(16,17,26,0.06); }
+    .gvprof__av {
+      flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+      background: var(--gvprof-color, #4f46e5); color: #fff; font-size: 10px; font-weight: 700;
+      letter-spacing: .02em; text-transform: uppercase; background-size: cover; background-position: center;
+    }
+    .gvprof__av.lg { width: 30px; height: 30px; font-size: 12px; }
+    .gvprof__name { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 13px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gvprof__cv { width: 15px; height: 15px; flex: none; color: #9aa0ab; }
+    .gvprof__menu {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 5;
+      background: #fff; border: 1px solid rgba(16,17,26,0.12); border-radius: 10px; padding: 5px;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 12px 30px -16px rgba(16,24,40,0.30);
+    }
+    .gvprof__id { display: flex; align-items: center; gap: 9px; padding: 7px 8px 9px;
+      border-bottom: 1px solid rgba(16,17,26,0.08); margin-bottom: 4px; }
+    .gvprof__idtext { display: flex; flex-direction: column; min-width: 0; }
+    .gvprof__idtext .gvprof__name { font-size: 13px; }
+    .gvprof__email { font-size: 11.5px; color: #5b626e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gvprof__item {
+      display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 7px;
+      text-decoration: none; color: #16171a; font-size: 13px; font-weight: 500;
+    }
+    .gvprof__item:hover { background: rgba(16,17,26,0.05); }
+    .gvprof__item .gvic { width: 15px; height: 15px; color: #5b626e; }
 
     /* Omni search — one field, filters whatever cards are on the right. Figma-style
        filled input that brightens to white on focus. */
@@ -1838,6 +1891,8 @@ function researchTag(research) {
 const IC_LIBRARY = ic(`<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`); // library
 const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 21v-5h5"/>`); // history (clock + counter-rotate)
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
+const IC_GEAR = ic(`<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>`); // settings
+const IC_SIGNOUT = ic(`<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>`); // log-out
 const IC_TOKEN = ic(`<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>`); // palette (tokens)
 const IC_PATTERN = ic(`<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4M6.5 10v4M17.5 10v4M10 17.5h4"/>`); // grid + links (patterns)
 
@@ -1848,6 +1903,17 @@ const IC_STAR = `<svg class="pin-star" viewBox="0 0 24 24" fill="none" stroke="c
 // A "pin to sidebar" star button for a pinnable card. PINS_JS reads/sets state.
 function pinStar(key, href) {
   return `<button type="button" class="pin-btn" data-pin-key="${key}" data-pin-href="${href}" aria-pressed="false" aria-label="Pin to sidebar" title="Pin to sidebar">${IC_STAR}</button>`;
+}
+
+// A small avatar for the prototype's last git-commit author (mapped to an internal
+// user by build's lastEditor). "" when the author is unknown / uncommitted.
+function editorChip(ed) {
+  if (!ed) return "";
+  const ini = (ed.initials || (ed.name || "?").slice(0, 2)).toUpperCase();
+  const style = ed.avatar
+    ? `background-image:url('${ed.avatar}')`
+    : `background:${ed.color || "#4f46e5"}`;
+  return `<span class="proto-editor" style="${style}" title="Last edited by ${escAttr(ed.name)}" aria-label="Last edited by ${escAttr(ed.name)}">${ed.avatar ? "" : escAttr(ini)}</span>`;
 }
 
 // Test emojis for prototypes/projects (the user will rename to real ones later). A
@@ -1875,6 +1941,28 @@ function railSearch() {
     `<input type="text" data-filter placeholder="Search…" aria-label="Search content" autocomplete="off" autocapitalize="off" spellcheck="false" />` +
     `<button type="button" class="gvsearch__clear" data-filter-clear aria-label="Clear search" hidden>&times;</button>` +
     `<kbd data-filter-kbd>/</kbd></div>`;
+}
+
+// Profile chip — sits in the brand spot under the wordmark. Static markup; PROFILE_JS
+// fills the avatar/name/email from /__me (per-request identity, so it can't be baked
+// at build time) and reveals the chip + the admin link only when relevant. Hidden by
+// default so signed-out / open (no-identity) builds show nothing.
+function profileChip() {
+  return `<div class="gvprof" data-prof hidden>
+      <button type="button" class="gvprof__btn" data-prof-toggle aria-haspopup="true" aria-expanded="false" aria-label="Account">
+        <span class="gvprof__av" data-prof-av aria-hidden="true"></span>
+        <span class="gvprof__name" data-prof-name>…</span>
+        <svg class="gvprof__cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="gvprof__menu" data-prof-menu role="menu" hidden>
+        <div class="gvprof__id">
+          <span class="gvprof__av lg" data-prof-av aria-hidden="true"></span>
+          <span class="gvprof__idtext"><span class="gvprof__name" data-prof-name></span><span class="gvprof__email" data-prof-email></span></span>
+        </div>
+        <a class="gvprof__item" href="/admin/" role="menuitem" data-prof-admin hidden>${IC_GEAR}<span>Admin settings</span></a>
+        <a class="gvprof__item" href="/__logout" role="menuitem" data-prof-signout>${IC_SIGNOUT}<span>Sign out</span></a>
+      </div>
+    </div>`;
 }
 
 // The persistent left rail: brand → omni search → Playground → Opportunities → Pinned
@@ -1907,9 +1995,7 @@ function sideRail(active) {
       </div>
     </details>`;
   return `<aside class="gvside" id="gvside" aria-label="Augur">
-    <a class="gvside__brand" href="/" aria-label="Augur — home">
-      ${GV_MARK}<span class="gvside__brandname">augur</span>
-    </a>
+    ${profileChip()}
     ${railSearch()}
     <div class="gvside__rule"></div>
     <div class="gvside__scroll">
@@ -1942,18 +2028,6 @@ function appChrome(active) {
 /** Shared chrome script: real-time in-page filter + the mobile rail drawer. */
 function chromeScript() {
   return `(function(){
-  // ── Brand mark: each hover spins it a full turn forward, then rests there ──
-  var brand = document.querySelector('.gvside__brand');
-  if (brand && !brand.dataset.spin) {
-    brand.dataset.spin = '1';
-    var mark = brand.querySelector('.gvmark');
-    var turns = 0;
-    brand.addEventListener('mouseenter', function(){
-      if (!mark) return;
-      turns++;
-      mark.style.transform = 'rotate(' + (turns * 360) + 'deg)';
-    });
-  }
   // ── In-page real-time filter ─────────────────────────────────────────────
   var input = document.querySelector('[data-filter]');
   if (input && !input.dataset.wired) {
@@ -2033,7 +2107,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${PINS_JS}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>`
   );
 }
 
@@ -2214,7 +2288,8 @@ const CARD_MENU_JS = `
     if(dlBtn(c)) html+=item('download','Download HTML',ICON.dl);
     html+='<hr>'+item('rename','Rename',ICON.rename);
     if(descEl(c)) html+=item('editdesc','Edit description',ICON.desc);
-    html+='<hr>'+item('delete','Delete',ICON.del,true);
+    // Delete intentionally removed from the UI — too risky (deleting prototypes is a
+    // repo edit; ask Claude to remove files instead).
     menu.innerHTML=html; document.body.appendChild(menu);
     var r=menu.getBoundingClientRect();
     menu.style.left=Math.max(8,Math.min(x, innerWidth-r.width-8))+'px';
@@ -2448,11 +2523,20 @@ const PINS_JS = `
   var loaded = false; // have we synced an authoritative map from the server this session?
   function splitEmoji(s){ s = s || ''; var m; try { m = s.match(EMO); } catch(e){ m = null; } return m ? [m[1], s.slice(m[0].length)] : ['', s]; }
   function esc(s){ return (s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  // The card-rename overrides (/__name, global across users) are authoritative for the
+  // displayed name. Pin keys are URL form ("/opp/proto/"); rename keys are bare
+  // ("opp/proto"), so normalise before lookup. This makes a rename flow into the pinned
+  // sidebar live — even for pins created BEFORE the rename (their stored label is just a
+  // fallback). Seeded from the shared cache, then refreshed from the server below.
+  var NAMES = {};
+  try { NAMES = JSON.parse(sessionStorage.getItem('gv_names_map') || '{}'); } catch(e) {}
+  function nameKeyOf(k){ try { return decodeURIComponent(k).replace(/^\\/+|\\/+$/g, ''); } catch(e){ return String(k).replace(/^\\/+|\\/+$/g, ''); } }
+  function labelOf(k, it){ return NAMES[nameKeyOf(k)] || (it && it.label) || k; }
   function renderList(){
     if(!listEl) return;
     var keys = Object.keys(map);
     listEl.innerHTML = keys.map(function(k){
-      var it = map[k] || {}; var parts = splitEmoji(it.label || k);
+      var it = map[k] || {}; var parts = splitEmoji(labelOf(k, it));
       var glyph = parts[0] || '📌';
       var txt = esc(parts[1] || it.label || k);
       var cur = (it.href === location.pathname) ? ' aria-current="page"' : '';
@@ -2482,6 +2566,9 @@ const PINS_JS = `
   if(cached){ map = cached; renderList(); paintBtns(); loaded = true; }
   fetch('/__pins', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
     .then(function(d){ if(d && !d.warning) adopt(d.map); loaded = true; }).catch(function(){});
+  // Refresh the rename overrides too, so the pinned sidebar reflects the latest names.
+  fetch('/__name', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
+    .then(function(d){ if(d && d.map){ NAMES = d.map; renderList(); } }).catch(function(){});
   // Run cb once we hold a usable map — never persist before we've synced once, so a
   // fresh tab can't overwrite the server with a guessed-empty/partial map.
   function ready(cb){
@@ -2555,6 +2642,117 @@ const PINS_JS = `
 })();
 `;
 
+// Profile chip behaviour: fetch the signed-in user from /__me, fill the avatar /
+// name / email, reveal the admin link for admins, and reveal the whole chip (it's
+// hidden until we confirm a user, so open/no-identity builds stay clean). Plus the
+// dropdown open/close (outside-click + Escape to dismiss).
+const PROFILE_JS = `(function(){
+  var box = document.querySelector('[data-prof]');
+  if(!box) return;
+  function initials(u){ return (u.initials || (u.name||'?').slice(0,2)).toUpperCase(); }
+  function paint(u){
+    var avs = box.querySelectorAll('[data-prof-av]');
+    for(var i=0;i<avs.length;i++){
+      var a = avs[i];
+      if(u.avatar){ a.style.backgroundImage = 'url("'+u.avatar+'")'; a.textContent=''; }
+      else { a.style.background = u.color || '#4f46e5'; a.textContent = initials(u); }
+    }
+    var names = box.querySelectorAll('[data-prof-name]');
+    for(var j=0;j<names.length;j++) names[j].textContent = u.name || u.email;
+    var em = box.querySelector('[data-prof-email]'); if(em) em.textContent = u.email || '';
+    // style.display, not [hidden]: .gvprof__item sets display:flex and out-specifies
+    // the [hidden] rule (same gotcha as the brand), so non-admins kept seeing this.
+    var adm = box.querySelector('[data-prof-admin]'); if(adm) adm.style.display = u.admin ? 'flex' : 'none';
+    // Admin-only surfaces (e.g. the Pitis paw) reveal via html.gv-admin.
+    document.documentElement.classList.toggle('gv-admin', !!u.admin);
+    box.hidden = false;
+  }
+  fetch('/__me', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
+    .then(function(d){ if(d && d.user) paint(d.user); }).catch(function(){});
+  var btn = box.querySelector('[data-prof-toggle]');
+  var menu = box.querySelector('[data-prof-menu]');
+  function open(o){ if(!menu) return; menu.hidden = !o; if(btn) btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
+  if(btn && menu){
+    btn.addEventListener('click', function(e){ e.stopPropagation(); open(menu.hidden); });
+    document.addEventListener('click', function(e){ if(!box.contains(e.target)) open(false); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') open(false); });
+  }
+})();
+`;
+
+// Admin page behaviour: load every user from /__admin/users (admin-only — 403s for
+// anyone else, though the worker also gates the /admin/ route) and render an editable
+// password row per user. Saving POSTs the new password; the worker stores it as a KV
+// override and that user's cookie stops matching, so they re-login with the new one.
+const ADMIN_JS = `(function(){
+  var host = document.querySelector('[data-admin-users]');
+  if(!host) return;
+  function esc(s){ return (s||'').replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function row(u){
+    var ini = (u.initials || (u.name||'?').slice(0,2)).toUpperCase();
+    var badge = u.role === 'admin' ? ' <span class="au__badge">admin</span>' : '';
+    return '<div class="au" data-email="'+esc(u.email)+'">'
+      + '<span class="au__av" style="background:'+esc(u.color||'#4f46e5')+'">'+esc(ini)+'</span>'
+      + '<span class="au__id"><span class="au__name">'+esc(u.name)+badge+'</span><span class="au__email">'+esc(u.email)+'</span></span>'
+      + '<span class="au__pw"><input type="text" class="au__input" value="'+esc(u.pass)+'" aria-label="Password for '+esc(u.email)+'" autocapitalize="off" autocorrect="off" spellcheck="false" />'
+      + '<button type="button" class="au__save">Save</button><span class="au__msg" aria-live="polite"></span></span>'
+      + '</div>';
+  }
+  function wire(){
+    var rows = host.querySelectorAll('.au');
+    for(var i=0;i<rows.length;i++){ (function(el){
+      var btn = el.querySelector('.au__save'), inp = el.querySelector('.au__input'), msg = el.querySelector('.au__msg');
+      btn.addEventListener('click', function(){
+        var pass = inp.value;
+        if(!pass){ msg.textContent = 'empty'; return; }
+        btn.disabled = true; msg.textContent = '…';
+        fetch('/__admin/users',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: el.getAttribute('data-email'), pass: pass }) })
+          .then(function(r){ return r.json(); })
+          .then(function(d){ btn.disabled = false; msg.textContent = d && d.ok ? 'saved ✓' : (d && d.error) || 'error'; setTimeout(function(){ msg.textContent = ''; }, 2500); })
+          .catch(function(){ btn.disabled = false; msg.textContent = 'error'; });
+      });
+    })(rows[i]); }
+  }
+  fetch('/__admin/users',{headers:{'Accept':'application/json'}}).then(function(r){
+    if(r.status === 403){ host.innerHTML = '<p class="empty">Admins only.</p>'; return null; }
+    return r.json();
+  }).then(function(d){
+    if(!d) return;
+    if(!d.users){ host.innerHTML = '<p class="empty">Could not load users.</p>'; return; }
+    host.innerHTML = d.users.map(row).join('');
+    wire();
+  }).catch(function(){ host.innerHTML = '<p class="empty">Could not load users.</p>'; });
+})();
+`;
+
+// The admin page: editable per-user passwords. Server-gated to admins (worker guards
+// the /admin/ route + the /__admin API); the page just renders what the API returns.
+function renderAdminPage() {
+  const body = `<style>
+    .admin-intro{ color:#5b626e; font-size:14px; margin:0 0 18px; max-width:62ch; line-height:1.6; }
+    .admin-users{ display:flex; flex-direction:column; gap:8px; max-width:700px; }
+    .au{ display:flex; align-items:center; gap:12px; padding:11px 14px; border:1px solid rgba(16,17,26,0.09); border-radius:12px; background:#fff; }
+    .au__av{ flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:700; font-size:12px; text-transform:uppercase; }
+    .au__id{ display:flex; flex-direction:column; min-width:0; flex:1 1 auto; }
+    .au__name{ font-weight:600; font-size:14px; display:flex; align-items:center; gap:7px; }
+    .au__badge{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#4f46e5; background:rgba(79,70,229,.1); padding:1px 6px; border-radius:5px; }
+    .au__email{ font-size:12.5px; color:#5b626e; }
+    .au__pw{ display:flex; align-items:center; gap:8px; flex:none; }
+    .au__input{ font:inherit; font-size:13px; padding:6px 10px; border:1px solid rgba(16,17,26,0.15); border-radius:8px; width:160px; background:#fff; }
+    .au__input:focus{ outline:2px solid #5e6ad2; outline-offset:1px; border-color:transparent; }
+    .au__save{ font:inherit; font-size:13px; font-weight:600; padding:6px 13px; border-radius:8px; border:1px solid transparent; background:#2c2150; color:#fff; cursor:pointer; }
+    .au__save:hover{ background:#38295e; }
+    .au__save:disabled{ opacity:.5; cursor:default; }
+    .au__msg{ font-size:12px; color:#5b626e; min-width:42px; }
+    @media (max-width:620px){ .au{ flex-wrap:wrap; } .au__pw{ width:100%; } .au__input{ flex:1 1 auto; width:auto; } }
+  </style>
+  <header class="folderbar"><h1 class="folderbar__title">Admin</h1><span class="folderbar__rule"></span></header>
+  <p class="admin-intro">Internal users and their passwords (admin-only). Editing a password saves immediately and signs that person out — they sign back in with the new one. Names, emails and roles live in <code>src/identity.json</code>.</p>
+  <div class="admin-users" data-admin-users><p class="empty">Loading…</p></div>
+  <script>${ADMIN_JS}</script>`;
+  return shell({ title: "Admin · Augur", activeTab: "admin", body });
+}
+
 // Research chip disclosure — toggles the filename popover on the opportunity page.
 // Self-contained; no-ops on pages with no .research-chip. Names are already in the
 // (gated) HTML; this only shows/hides them.
@@ -2622,6 +2820,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <script>${CARD_MENU_JS}
   </script>
   <script>${PINS_JS}
+  </script>
+  <script>${PROFILE_JS}
   </script>
   <script>${RESEARCH_JS}
   </script>
@@ -2730,6 +2930,7 @@ function renderOpportunityIndex(opp) {
               <div class="proto-name">${dname}</div>
               <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
             </div>
+            ${editorChip(p.editor)}
           </div>
         </div>`;
     })
@@ -3413,6 +3614,12 @@ async function main() {
     "utf8"
   );
 
+  // ── Admin → editable per-user passwords. The page ships to /admin/ but the worker
+  // gates the route to admins (and the /__admin API re-checks). Only meaningful when
+  // identity is configured (src/identity.json); harmless otherwise.
+  await fs.mkdir(path.join(DIST, "admin"), { recursive: true });
+  await fs.writeFile(path.join(DIST, "admin", "index.html"), renderAdminPage(), "utf8");
+
   // ── Playground → a folder that acts like an opportunity but stays pinned in the
   // root sidebar. Copy the whole tree verbatim (shared assets + project subfolders),
   // then overwrite its index.html with a generated folder browser of the subfolders.
@@ -3464,6 +3671,25 @@ async function main() {
   for (const pg of pages) versionMap[`/pages/${encodeURIComponent(pg.name)}/`] = String(pg.mtimeMs);
   for (const pj of playground) versionMap[`/playground/${encodeURIComponent(pj.name)}/`] = String(pj.mtimeMs);
 
+  // Live-reload id for the index/shell pages (everything not in VERSION_MAP). It used
+  // to be Date.now() — so EVERY rebuild reloaded the nav, and in offline mode (several
+  // agents saving constantly) that meant the nav blinked ~1×/s. Derive it instead from
+  // a STRUCTURAL signature: which items exist + their name/status/editor — but NOT their
+  // mtimes. So editing a prototype's contents reloads only that prototype's own page
+  // (its VERSION_MAP token), while the nav reloads only when the listing itself changes
+  // (an item added/removed/renamed/re-statused). Volatile "edited N ago" labels go a
+  // little stale between structural changes — fine for a local preview.
+  const sigParts = [`ui:${UI_VERSION}`, `pg:${playground.length > 0}`];
+  for (const opp of opportunities)
+    for (const p of opp.prototypes)
+      sigParts.push(`${opp.name}/${p.name}|${p.status || ""}|${p.editor ? p.editor.email : ""}`);
+  for (const [label, arr] of [["c", components], ["b", base], ["pt", patterns], ["pg", pages], ["pl", playground]])
+    for (const it of arr) sigParts.push(`${label}:${it.name}`);
+  let h = 5381;
+  const sig = sigParts.sort().join("\n");
+  for (let i = 0; i < sig.length; i++) h = ((h << 5) + h + sig.charCodeAt(i)) >>> 0; // djb2
+  const shellId = h.toString(36);
+
   const workerSrc = await fs.readFile(SRC_WORKER, "utf8");
   const gatedWorker = workerSrc.replace(
     "const PUBLIC_PREFIXES = [];",
@@ -3472,11 +3698,20 @@ async function main() {
   if (gatedWorker === workerSrc) {
     throw new Error("build: PUBLIC_PREFIXES placeholder not found in src/_worker.js");
   }
-  const stampedWorker = gatedWorker
-    .replace('const BUILD_ID = "dev";', `const BUILD_ID = ${JSON.stringify(BUILD_ID)};`)
+  const versionedWorker = gatedWorker
+    .replace('const BUILD_ID = "dev";', `const BUILD_ID = ${JSON.stringify(shellId)};`)
     .replace("const VERSION_MAP = {};", `const VERSION_MAP = ${JSON.stringify(versionMap)};`);
-  if (stampedWorker === gatedWorker) {
+  if (versionedWorker === gatedWorker) {
     throw new Error("build: BUILD_ID / VERSION_MAP placeholder not found in src/_worker.js");
+  }
+  // Inject the internal users (identity + seed passwords) from src/identity.json so
+  // the gate knows who exists (same injection model as BUILD_ID / VERSION_MAP above).
+  const stampedWorker = versionedWorker.replace(
+    "const USERS = [];",
+    `const USERS = ${JSON.stringify(IDENTITY)};`
+  );
+  if (stampedWorker === versionedWorker) {
+    throw new Error("build: USERS placeholder not found in src/_worker.js");
   }
   await fs.writeFile(path.join(DIST, "_worker.js"), stampedWorker, "utf8");
 

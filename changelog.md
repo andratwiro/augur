@@ -16,6 +16,15 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-06-22 — Your own account, with your own pins
+Augur now has real logins. Sign in with your email and password instead of one
+shared site password, and you get your own profile in the top-left corner — your
+name, your avatar, and your own set of pinned prototypes (they no longer get mixed
+up with everyone else's). Status chips, renames and comments stay shared, because
+those are team decisions, and renaming a prototype now also updates its name in the
+pinned list. The admin account gets an "Admin settings" page to manage everyone's
+passwords. The risky "Delete" option was removed from the card menu to be safe.
+
 ## 2026-06-21 — See what research backs each opportunity
 Every opportunity now shows a little chip with how many research notes it has
 (e.g. "4"). Click it on the opportunity's page to see the list of file names —

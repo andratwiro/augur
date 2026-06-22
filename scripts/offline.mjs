@@ -16,7 +16,7 @@
 // Zero new dependencies: Node's recursive fs.watch + npx wrangler (same as deploy).
 
 import { spawn } from "node:child_process";
-import { watch, existsSync } from "node:fs";
+import { watch, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,6 +24,29 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = process.env.OFFLINE_PORT || "8788";
 
 const log = (msg) => console.log(`\x1b[35m[offline]\x1b[0m ${msg}`);
+
+// Optional "offline-live" mode: if augur/.env.deploy holds Cloudflare creds, the local
+// worker talks to the REAL prod KV via the REST shim in _worker.js (kvFor) — so
+// comments/pins/status/renames are the shared live layer while prototypes stay local
+// ("offline Figma"). No creds → today's local KV, unchanged. Passed to the worker as
+// --binding GV_KV_* (read by kvFor). Prototypes/assets are always local regardless.
+function readEnvFile(p) {
+  const out = {};
+  try {
+    for (const line of readFileSync(p, "utf8").split("\n")) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (m) out[m[1]] = m[2].trim();
+    }
+  } catch (e) {}
+  return out;
+}
+const DEPLOY_ENV = readEnvFile(path.join(ROOT, ".env.deploy"));
+const LIVE_KV = !!(DEPLOY_ENV.CLOUDFLARE_API_TOKEN && DEPLOY_ENV.CLOUDFLARE_ACCOUNT_ID && DEPLOY_ENV.GV_KV_NS);
+const LIVE_KV_BINDINGS = LIVE_KV ? [
+  "--binding", `GV_KV_TOKEN=${DEPLOY_ENV.CLOUDFLARE_API_TOKEN}`,
+  "--binding", `GV_KV_ACCOUNT=${DEPLOY_ENV.CLOUDFLARE_ACCOUNT_ID}`,
+  "--binding", `GV_KV_NS=${DEPLOY_ENV.GV_KV_NS}`,
+] : [];
 
 // Build from the canonical EDIT-HERE clones, not the pinned nested submodules.
 // The god-mode checkout puts the canonical DS + workspace as siblings of augur/
@@ -44,6 +67,7 @@ const BUILD_ENV = { ...process.env, GV_DS_ROOT: DS_ROOT, GV_WS_ROOT: WS_ROOT };
 const WATCH = [
   path.join(ROOT, "build.js"),
   path.join(ROOT, "src", "_worker.js"),
+  path.join(ROOT, "src", "identity.json"),  // users + seed passwords → rebuild on change
   path.join(ROOT, "pitis"),          // augur-owned cursor-companion layer
   ...["skills", "components", "pages", "base", "patterns", "tokens.json", "registry"]
     .map((p) => path.join(DS_ROOT, p)),
@@ -88,10 +112,14 @@ await new Promise((resolve) => {
 });
 
 log(`serving on http://localhost:${PORT}  (Ctrl-C to stop)`);
+log(LIVE_KV
+  ? "KV: \x1b[1mLIVE\x1b[0m\x1b[35m — comments/pins/status/renames read & write PRODUCTION KV (prototypes stay local)"
+  : "KV: local (.env.deploy with Cloudflare creds absent → safe local sandbox)");
 const wrangler = spawn(
   "npx",
   ["--yes", "wrangler", "pages", "dev", "dist",
     "--kv", "COMMENTS",
+    ...LIVE_KV_BINDINGS,
     "--port", PORT,
     "--compatibility-date", "2024-09-01",
     "--persist-to", ".wrangler/state"],

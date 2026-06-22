@@ -17,6 +17,19 @@
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
+// ---- Users / identity -------------------------------------------------------
+// Augur is a private internal tool — the only real risk is impersonation, and the
+// real work happens through GitHub commits, so this is a casual identity layer, not
+// auth hardening. USERS is the seed identity + DEFAULT password, injected by build.js
+// from src/identity.json (committed). Empty in a raw copy → no users → the gate stays
+// open (offline/local builds with no identity injected). Effective password =
+// admin-set KV override (USER_SECRETS_KEY) ?? this default — so passwords are editable
+// at runtime from the admin panel without redeploying. Each entry:
+//   { email, name, pass, initials, color, role? }   role:"admin" → can edit passwords.
+const USERS = [];
+const USER_COOKIE = "gv_user";              // value: "<email>.<token>"
+const USER_SECRETS_KEY = "users:secrets";   // KV {email: password} — admin overrides
+
 // Build id for the live-reload poller. build.js replaces "dev" with this build's
 // id; it's the FALLBACK version for any path not in VERSION_MAP (index/shell pages,
 // assets). "dev" in a raw/local copy just means a stable id.
@@ -88,6 +101,97 @@ async function tokenFor(secret) {
     .join("");
 }
 
+// ---- Identity helpers -------------------------------------------------------
+function userByEmail(email) {
+  const e = String(email == null ? "" : email).trim().toLowerCase();
+  return USERS.find((u) => u.email.toLowerCase() === e) || null;
+}
+
+// Safe-to-expose view of a user — never includes the password.
+function publicUser(u) {
+  return u ? {
+    email: u.email, name: u.name,
+    initials: u.initials || "", color: u.color || "#4f46e5",
+    avatar: u.avatar || null, admin: u.role === "admin",
+  } : null;
+}
+
+// Effective password = admin-set KV override ?? the seeded default. One kv.get.
+async function effectivePass(env, u) {
+  if (!u) return "";
+  try {
+    const k = kvFor(env);
+    const raw = k ? await k.get(USER_SECRETS_KEY) : null;
+    const ov = raw ? JSON.parse(raw) : {};
+    if (ov && typeof ov[u.email] === "string" && ov[u.email]) return ov[u.email];
+  } catch (e) {}
+  return u.pass || "";
+}
+
+// Cookie token binds the email to the (effective) password: SHA-256("gv:email:pass").
+// Changing a password invalidates that user's existing cookies (token no longer
+// matches) — a free "log everyone out on password change", which is what we want.
+async function userToken(env, u) {
+  return tokenFor(u.email + ":" + (await effectivePass(env, u)));
+}
+
+// Resolve the signed-in user from the gv_user cookie ("<email>.<token>"), verifying
+// the token against that user's effective password. Stateless — no session store.
+async function identify(request, env) {
+  if (!USERS.length) return null;
+  const cookies = request.headers.get("Cookie") || "";
+  const c = cookies.split(/;\s*/).find((x) => x.startsWith(USER_COOKIE + "="));
+  if (!c) return null;
+  const val = c.slice(USER_COOKIE.length + 1);
+  const dot = val.lastIndexOf(".");
+  if (dot < 1) return null;
+  const u = userByEmail(val.slice(0, dot));
+  if (!u) return null;
+  const token = val.slice(dot + 1);
+  const expect = await userToken(env, u);
+  return token.length === expect.length && token === expect ? u : null;
+}
+
+// ---- KV access: the binding, or a REST shim to the REAL (prod) namespace --------
+// "Offline-live" mode: offline.mjs serves LOCAL assets (your working-tree prototypes)
+// but injects GV_KV_TOKEN/_ACCOUNT/_NS so the overlay data (comments/pins/status/
+// renames/etc.) reads & writes the PRODUCTION KV — the shared "offline Figma" layer.
+// (wrangler's remote KV bindings 500 on every op, so we go straight to the KV REST
+// API.) Active ONLY when GV_KV_TOKEN is present; in prod it's unset → the normal
+// env.COMMENTS binding is returned and nothing changes. The shim mirrors the subset of
+// the KV API the worker uses: get / put / list.
+function kvFor(env) {
+  if (!env || !env.GV_KV_TOKEN) return env && env.COMMENTS;
+  const base = `https://api.cloudflare.com/client/v4/accounts/${env.GV_KV_ACCOUNT}/storage/kv/namespaces/${env.GV_KV_NS}`;
+  const auth = { Authorization: `Bearer ${env.GV_KV_TOKEN}` };
+  return {
+    async get(key) {
+      const r = await fetch(`${base}/values/${encodeURIComponent(key)}`, { headers: auth });
+      if (r.status === 404) return null;
+      if (!r.ok) throw new Error(`REST KV get ${r.status}`);
+      return await r.text();
+    },
+    async put(key, value) {
+      const r = await fetch(`${base}/values/${encodeURIComponent(key)}`, { method: "PUT", headers: auth, body: value });
+      if (!r.ok) throw new Error(`REST KV put ${r.status}`);
+    },
+    async delete(key) {
+      const r = await fetch(`${base}/values/${encodeURIComponent(key)}`, { method: "DELETE", headers: auth });
+      if (!r.ok && r.status !== 404) throw new Error(`REST KV delete ${r.status}`);
+    },
+    async list(opts) {
+      const u = new URL(`${base}/keys`);
+      if (opts && opts.prefix) u.searchParams.set("prefix", opts.prefix);
+      if (opts && opts.cursor) u.searchParams.set("cursor", opts.cursor);
+      const r = await fetch(u.toString(), { headers: auth });
+      if (!r.ok) throw new Error(`REST KV list ${r.status}`);
+      const d = await r.json();
+      const ri = d.result_info || {};
+      return { keys: (d.result || []).map((k) => ({ name: k.name })), list_complete: !ri.cursor, cursor: ri.cursor || undefined };
+    },
+  };
+}
+
 function loginPage(redirect, error) {
   const safeRedirect = String(redirect).replace(/"/g, "&quot;");
   return `<!doctype html>
@@ -126,13 +230,14 @@ function loginPage(redirect, error) {
     .logo { display: flex; justify-content: center; margin: 4px 0 24px; }
     .logo svg { width: 40px; height: 40px; display: block; }
     label { display: block; font-size: 13px; font-weight: 500; margin: 0 0 7px; }
-    input[type=password] {
+    input[type=password], input[type=email] {
       width: 100%; font: inherit; font-size: 15px; padding: 8px 13px; border-radius: 9px;
       border: 1px solid var(--line-2); background: #fff; color: var(--fg);
       transition: border-color .12s ease;
     }
-    input[type=password]:hover { border-color: rgba(16,17,26,0.28); }
-    input[type=password]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+    input[type=password]:hover, input[type=email]:hover { border-color: rgba(16,17,26,0.28); }
+    input[type=password]:focus, input[type=email]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+    label + label, input + label { margin-top: 14px; }
     button {
       width: 100%; margin-top: 16px; font: inherit; font-weight: 600; font-size: 15px; color: #fff;
       background: var(--accent-solid); border: 1px solid transparent; border-radius: 9px; padding: 8px;
@@ -166,14 +271,14 @@ function loginPage(redirect, error) {
     </div>
     <form method="POST" action="/__auth">
       <input type="hidden" name="redirect" value="${safeRedirect}" />
-      <input class="visually-hidden" type="text" name="username" value="govocal"
-             autocomplete="username" tabindex="-1" aria-hidden="true" readonly />
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
       <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" autofocus required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
+      <input id="password" name="password" type="password" autocomplete="current-password" required ${error ? 'aria-invalid="true" aria-describedby="pw-err"' : ""} />
       <button type="submit">Enter</button>
       <p class="error" id="pw-err" role="alert">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 8v5M12 16.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.3 3.9 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-        <span>Incorrect password. Try again.</span>
+        <span>Incorrect email or password. Try again.</span>
       </p>
     </form>
   </main>
@@ -325,7 +430,7 @@ function applyOp(threads, op) {
 // Reads are open (public prototypes embed the overlay: annotations show always-on,
 // comments show once a viewer presses Shift+C). Writes stay gated — see router.
 async function reviewApi(request, url, env) {
-  const kv = env.COMMENTS;
+  const kv = kvFor(env);
   const path = clamp(url.searchParams.get("path") || "/", 600);
   if (!kv) return jsonResponse({ threads: [], warning: "no-kv-binding" });
   const key = "c:" + path;
@@ -356,7 +461,7 @@ const STATUS_KEY = "statuses";
 const VALID_STATUS = { "in-progress": 1, "dev-ready": 1, ignore: 1, reviewed: 1 };
 
 async function statusApi(request, url, env) {
-  const kv = env.COMMENTS;
+  const kv = kvFor(env);
   if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
 
   if (request.method === "GET") {
@@ -384,12 +489,21 @@ async function statusApi(request, url, env) {
 // Value: { "<path>": { label, href } }. POST { key, label, href, pinned } toggles.
 const PINS_KEY = "pins";
 
-async function pinsApi(request, url, env) {
-  const kv = env.COMMENTS;
+async function pinsApi(request, url, env, user) {
+  const kv = kvFor(env);
   if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
+  // Pins are per-user once identity is on (key "pins:<email>"); the pre-identity
+  // global "pins" key is the fallback when nobody is signed in.
+  const key = user ? `${PINS_KEY}:${user.email}` : PINS_KEY;
 
   if (request.method === "GET") {
-    const raw = await kv.get(PINS_KEY);
+    let raw = await kv.get(key);
+    // One-time migration: seed a user's pins from the pre-identity global map the
+    // first time they sign in, so existing pins carry over instead of vanishing.
+    if (raw == null && user) {
+      const legacy = await kv.get(PINS_KEY);
+      if (legacy != null) { await kv.put(key, legacy); raw = legacy; }
+    }
     return jsonResponse({ map: raw ? JSON.parse(raw) : {} });
   }
   if (request.method === "POST") {
@@ -413,10 +527,10 @@ async function pinsApi(request, url, env) {
     // (stale/poisoned client); only honour it when the client explicitly clears the
     // last pin (allowEmpty). Otherwise leave KV untouched and echo the stored map back.
     if (Object.keys(next).length === 0 && !(op && op.allowEmpty)) {
-      const raw = await kv.get(PINS_KEY);
+      const raw = await kv.get(key);
       return jsonResponse({ map: raw ? JSON.parse(raw) : {}, skipped: "empty-guard" });
     }
-    await kv.put(PINS_KEY, JSON.stringify(next));
+    await kv.put(key, JSON.stringify(next));
     return jsonResponse({ map: next });
   }
   return jsonResponse({ error: "method-not-allowed" }, 405);
@@ -431,7 +545,7 @@ async function pinsApi(request, url, env) {
 const NAMES_KEY = "names";
 
 async function nameApi(request, url, env) {
-  const kv = env.COMMENTS;
+  const kv = kvFor(env);
   if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
 
   if (request.method === "GET") {
@@ -455,6 +569,43 @@ async function nameApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Admin: users + passwords (KV-backed overrides) -------------------------
+// Admin-only. GET returns every user with their EFFECTIVE password (override ?? seed)
+// so the admin can read them; POST { email, pass } sets an override in KV. Identity
+// (name/email/role) stays in the committed identity.json — only passwords are mutable
+// here. me is the already-resolved caller; the router guards the route, we re-check.
+async function adminUsersApi(request, url, env, me) {
+  if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+  const kv = kvFor(env);
+
+  if (request.method === "GET") {
+    const users = [];
+    for (const u of USERS) {
+      users.push({
+        email: u.email, name: u.name, role: u.role || "user",
+        initials: u.initials || "", color: u.color || "#4f46e5",
+        pass: await effectivePass(env, u),
+      });
+    }
+    return jsonResponse({ users });
+  }
+  if (request.method === "POST") {
+    let op;
+    try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const u = userByEmail(op && op.email);
+    if (!u) return jsonResponse({ error: "unknown-user" }, 400);
+    const pass = clamp(op && op.pass, 200);
+    if (!pass) return jsonResponse({ error: "empty-pass" }, 400);
+    if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
+    const raw = await kv.get(USER_SECRETS_KEY);
+    const ov = raw ? JSON.parse(raw) : {};
+    ov[u.email] = pass;
+    await kv.put(USER_SECRETS_KEY, JSON.stringify(ov));
+    return jsonResponse({ ok: true, email: u.email });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
 // /__review/api/export?key=<REVIEW_EXPORT_KEY> — all comment threads.
 // Secret-guarded so tooling can read review data WITHOUT the site password.
 //   GET  → { pages, generatedAt }
@@ -468,7 +619,7 @@ async function reviewExport(request, url, env) {
   if (given.length !== secret.length || given !== secret) {
     return jsonResponse({ error: "forbidden" }, 403);
   }
-  const kv = env.COMMENTS;
+  const kv = kvFor(env);
   if (!kv) return jsonResponse({ pages: {}, warning: "no-kv-binding" });
 
   if (request.method === "POST") {
@@ -513,7 +664,7 @@ const PITI_VIEW_KEY = "pt:view";
 const PITI_REMARKS_KEY = "pt:remarks";
 
 async function pitiApi(request, url, env) {
-  const kv = env.COMMENTS;
+  const kv = kvFor(env);
   if (!kv) return jsonResponse({ warning: "no-kv-binding" });
   const secret = env.REVIEW_EXPORT_KEY;
   const given = url.searchParams.get("key") || request.headers.get("X-Review-Key") || "";
@@ -626,68 +777,94 @@ export default {
     if (url.pathname === "/__piti") return pitiApi(request, url, env);
 
     const expected = env.SITE_PASSWORD;
+    const usersActive = USERS.length > 0;
+    // Resolve identity once (identity mode); null in legacy/open mode.
+    const me = usersActive ? await identify(request, env) : null;
+    // Is this request past the gate? identity mode → a known user; legacy → the
+    // shared-password cookie; neither configured → open (raw/local build, no gate).
+    let authed;
+    if (usersActive) authed = !!me;
+    else if (expected) {
+      const token = await tokenFor(expected);
+      const cookies = request.headers.get("Cookie") || "";
+      authed = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
+    } else authed = true;
 
-    // Comments: fully OPEN (reads and writes) so devs who only have the public
-    // prototype link — no site password — can leave feedback that syncs to KV.
-    // Reads always were open (annotations always-on, comments via Shift+C); writes
-    // are now open too. These are obscure share links, not public discovery, so the
-    // spam surface is acceptable; applyOp already clamps/caps every field.
-    if (url.pathname === "/__review/api") return reviewApi(request, url, env);
+    // Who am I — the sidebar profile chip and the comment overlay read this. Open
+    // (returns {user:null} when signed out) so the chip can decide what to render.
+    if (url.pathname === "/__me") return jsonResponse({ user: publicUser(me) });
 
-    // Dev-status read/write: gated by the site password (cookie) when set.
-    if (url.pathname === "/__status") {
-      if (expected) {
-        const token = await tokenFor(expected);
-        const cookies = request.headers.get("Cookie") || "";
-        const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
-        if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
-      }
-      return statusApi(request, url, env);
+    // Sign out — clear the identity cookie and bounce home.
+    if (url.pathname === "/__logout") {
+      return new Response(null, {
+        status: 303,
+        headers: {
+          Location: "/",
+          "Set-Cookie": `${USER_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+          "Cache-Control": "no-store",
+        },
+      });
     }
 
-    // Sidebar pins read/write: gated by the site password (cookie) when set.
-    if (url.pathname === "/__pins") {
-      if (expected) {
-        const token = await tokenFor(expected);
-        const cookies = request.headers.get("Cookie") || "";
-        const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
-        if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
-      }
-      return pinsApi(request, url, env);
-    }
-
-    // Card display-name overrides: gated by the site password (cookie) when set.
-    if (url.pathname === "/__name") {
-      if (expected) {
-        const token = await tokenFor(expected);
-        const cookies = request.headers.get("Cookie") || "";
-        const ok = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
-        if (!ok) return jsonResponse({ error: "unauthorized" }, 401);
-      }
-      return nameApi(request, url, env);
-    }
-
-    if (!expected) return withAssetCache(withLiveReload(await env.ASSETS.fetch(request), url), url); // open when no password configured
-
-    const expectedToken = await tokenFor(expected);
+    // Admin users/passwords API — admin-only (adminUsersApi re-checks me.role).
+    if (url.pathname === "/__admin/users") return adminUsersApi(request, url, env, me);
 
     // Login form submission.
     if (request.method === "POST" && url.pathname === "/__auth") {
       const form = await request.formData();
-      const pass = (form.get("password") || "").toString();
       const requested = (form.get("redirect") || "/").toString();
       const redirect = requested.startsWith("/") ? requested : "/"; // avoid open redirect
-      if (pass.length === expected.length && pass === expected) {
+      if (usersActive) {
+        const u = userByEmail(form.get("email"));
+        const pass = (form.get("password") || "").toString();
+        const real = u ? await effectivePass(env, u) : "";
+        if (u && real && pass.length === real.length && pass === real) {
+          const token = await userToken(env, u);
+          return new Response(null, {
+            status: 303,
+            headers: {
+              Location: redirect,
+              "Set-Cookie": `${USER_COOKIE}=${u.email}.${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`,
+              "Cache-Control": "no-store",
+            },
+          });
+        }
+        return htmlResponse(loginPage(redirect, true), 401);
+      }
+      // Legacy shared-password mode (no identity injected).
+      const pass = (form.get("password") || "").toString();
+      if (expected && pass.length === expected.length && pass === expected) {
+        const token = await tokenFor(expected);
         return new Response(null, {
           status: 303,
           headers: {
             Location: redirect,
-            "Set-Cookie": `${COOKIE}=${expectedToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`,
+            "Set-Cookie": `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`,
             "Cache-Control": "no-store",
           },
         });
       }
       return htmlResponse(loginPage(redirect, true), 401);
+    }
+
+    // Comments: fully OPEN (reads and writes) so devs who only have the public
+    // prototype link — no login — can leave feedback that syncs to KV. Obscure
+    // share links, not public discovery; applyOp already clamps/caps every field.
+    if (url.pathname === "/__review/api") return reviewApi(request, url, env);
+
+    // Overlay APIs — gated by the same rule as the site (open in legacy no-gate mode
+    // so raw/local builds keep working). Pins are scoped to the signed-in user.
+    if (url.pathname === "/__status") {
+      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      return statusApi(request, url, env);
+    }
+    if (url.pathname === "/__pins") {
+      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      return pinsApi(request, url, env, me);
+    }
+    if (url.pathname === "/__name") {
+      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      return nameApi(request, url, env);
     }
 
     // Published prototypes are public — never gated, regardless of the cookie.
@@ -700,9 +877,15 @@ export default {
       return out;
     }
 
-    // Already authenticated?
-    const cookies = request.headers.get("Cookie") || "";
-    const authed = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${expectedToken}`);
+    // Admin pages (/admin/…): require an admin user. A signed-out visitor gets the
+    // login page; a signed-in non-admin is bounced home.
+    if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
+      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
+      if (usersActive && (!me || me.role !== "admin")) return Response.redirect(new URL("/", url).toString(), 303);
+      return withAssetCache(withLiveReload(await env.ASSETS.fetch(request), url), url);
+    }
+
+    // Past the gate (or nothing gates the site) → serve.
     if (authed) return withAssetCache(withLiveReload(await env.ASSETS.fetch(request), url), url);
 
     // Otherwise show the login page, remembering where they were headed.
