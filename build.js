@@ -22,7 +22,7 @@
  * Plain Node, no dependencies.
  */
 
-import { promises as fs } from "node:fs";
+import { promises as fs, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -330,58 +330,46 @@ const BASE_SRC = path.join(DS_ROOT, "base"); // base-atom demos (Base tab)
 const PATTERNS_SRC = path.join(DS_ROOT, "patterns"); // curated composition demos (Patterns tab)
 const CHANGELOG_SRC = path.join(ROOT, "changelog.md"); // hand-edited changelog source (internal; rendered to /changelog/)
 
+// ── Overlay + gallery catalog — DERIVED from the design system's published contract
+//    (gv-design-system/registry.json), NOT hand-kept here. The platform carries no
+//    GoVocal-specific names/families: swap the DS and the overlay relabels itself.
+//    The DS owns the curated family→component knowledge (its build-registry); we read
+//    it. Same four shapes the rest of build.js consumes:
+//      COMPONENT_INDEX  family → slug                   (components/blocks)
+//      BASE_INDEX       family → { label, slug }         (base atoms)
+//      PATTERN_INDEX    family → { label, slug }         (curated compositions)
+//      COMPONENT_BLURBS slug   → { name, classes, desc }  (gallery cards)
+const DS_CATALOG = (() => {
+  const COMPONENT_INDEX = {}, BASE_INDEX = {}, PATTERN_INDEX = {}, COMPONENT_BLURBS = {};
+  try {
+    const reg = JSON.parse(readFileSync(path.join(DS_ROOT, "registry.json"), "utf8"));
+    for (const it of reg.items || []) {
+      if (it.type === "page") continue;
+      const fams = it.classes || (it.class ? [it.class] : []);
+      const name = it.label || titleCase(it.name);
+      COMPONENT_BLURBS[it.name] = {
+        name,
+        classes: (it.cssClasses || fams).map((f) => "." + f).join(" / "),
+        desc: it.description || "",
+      };
+      for (const f of fams) {
+        if (it.type === "pattern") PATTERN_INDEX[f] = { label: name, slug: it.name };
+        else if (it.type === "primitive") BASE_INDEX[f] = { label: name, slug: it.name };
+        else COMPONENT_INDEX[f] = it.name;
+      }
+    }
+  } catch (e) {
+    console.warn("[catalog] could not read gv-design-system/registry.json —", e.message);
+  }
+  return { COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS };
+})();
+const { COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS } = DS_CATALOG;
+
 // Display name + key classes + one-line "what is it" per component, shown on the
 // Components page. Keyed by folder name; `name` is the SHARED, functional display name
 // (never a city — folders may be city-grounded, the name describes what it IS). This is
 // the CANONICAL source of truth: the live right-click Rename / Edit-description writes a
 // KV override (/__name), which is folded back here so code and live stay in one language.
-const COMPONENT_BLURBS = {
-  accordion: { name: "FAQ accordion", classes: ".gv-accordion / .gv-acc__item / __head / __chev", desc: "CSS-only &lt;details&gt; FAQ accordion, collapsed by default, chevron rotates on open; steps up to 18px inside project description copy." },
-  "approval-voting": { name: "Voting method body", classes: ".gv-voteoptions / .gv-voteoption / .gv-tally / .gv-voteresults", desc: "The per-method panel for a voting phase: a collapsible options accordion plus a final-tally card over a grid of ranked result bars." },
-  attachment: { name: "File attachment row", classes: ".gv-attachment / __icon / __name / __size", desc: "The Content-Builder file-download row on a custom/info page: outlined row with paperclip glyph, file-name link and size span." },
-  "avatar-overflow-bubble": { name: "Avatar overflow-count bubble", classes: ".gv-bubbles .count.bubble (.sm / .xs)", desc: "The participant-overflow count rendered as a solid cool-grey circle capping the avatar overlap stack; holds abbreviated or full counts." },
-  banner: { name: "Image-only project banner", classes: ".gv-banner / __art / __sticker", desc: "Image-only project hero (no title/CTA): a full-width teal-gradient art panel holding an illustration SVG plus an optional rotated campaign sticker." },
-  "bo-analysis": { name: "Back-office AI analysis (sensemaking)", classes: ".gv-bo-analysis / .gv-bo-tagitem / .gv-bo-matrix / .gv-bo-aiqa", desc: "The back-office AI sensemaking surface: tag rail, insight cards and AI summary panel, plus the auto-insights cross-tab matrix opened via 'View all insights'." },
-  "bo-app-shell": { name: "Back-office app shell", classes: ".gv-bo / .gv-bo-shell / .gv-bo-side / .gv-bo-topbar / .gv-bo-tabs", desc: "The staff-facing chrome shared by every back-office screen: dark teal/navy sidebar, project top-bar with status pills and actions, and the tab row." },
-  "bo-menu": { name: "Back-office menu + notification flyout", classes: ".gv-bo-menu (.is-flyout) / .gv-bo-notifflyout__item / .gv-badge.is-count", desc: "The one canonical back-office dropdown panel powering both the exports menu and the bell notification flyout, plus the red unread count badge." },
-  "bo-sidebar": { name: "Back-office sidebar", classes: ".gv-bo-side (.is-rail) / .gv-bo-nav / __item / __icon", desc: "The back-office sidebar as a standalone responsive component: 224px extended teal/navy nav that collapses to an 80px icon rail under 1200px." },
-  "bo-templatecard": { name: "Back-office template card + facet rail", classes: ".gv-bo-templatecard / __img / .gv-bo-facetgroup / __head", desc: "The new-project \"from a template\" gallery pieces: a grey-blue template tile and the collapsible left-rail filter disclosure group." },
-  "community-monitor": { name: "Community Monitor sentiment modal", classes: ".gv-modal.size-monitor / .gv-monitor__question / .gv-sentiment-scale / __opt", desc: "The \"City at a glance\" satisfaction module: an ongoing-survey modal asking how residents feel via a 5-point emoji sentiment scale." },
-  "content-builder-render": { name: "Content-Builder render layer", classes: ".gv-cb-frame / .gv-cb-row (.cols-1/2/3) / .gv-cb-col / .gv-cb-textbox", desc: "What the back-office Content Builder outputs onto a live page: a full-width frame of 1/2/3-column rows of text-box, image and white-space cells." },
-  "cookie-modal": { name: "Cookie-consent modal", classes: ".gv-cookie__content / __icon / .gv-modal__footer", desc: "The global cookie blocker as a content variant on the modal shell: tinted cookie icon, title, body and a Manage/Reject/Accept 3-action footer." },
-  "cta-banner": { name: "CTA banner — full-width strip", classes: ".gv-cta-banner / __inner / __cta", desc: "The Content-Builder \"CTA banner\" block: a thin full-bleed coloured strip carrying one centered call-to-action button on the tenant-primary fill." },
-  "event-card-bordered": { name: "Event card — bordered", classes: ".gv-event-card.bordered (.is-imageless) / .gv-event-datechip--stacked / .gv-event-info-panel", desc: "The bordered EventsWidget card: a white framed event with a 3-tier stacked date chip and a \"Date &amp; time\" info panel, plus an imageless degrade." },
-  "event-card": { name: "Event card", classes: ".gv-event-card / __media / __date / __rsvp / .gv-events__grid", desc: "The two-tone-date-chip event card: date chip over the media, clock/location/registrant rows and a Register CTA, with grid and empty state." },
-  "fo-linz-monitorband": { name: "Monitor band — duration variant", classes: ".gv-monitorband__ctameta--duration / .gv-monitorband / .gv-event-datechip--stacked", desc: "A small additive monitor-band modifier adding a \"Takes N minutes\" duration line, confirming the cross-tenant community-monitor band formula." },
-  "folder-card": { name: "Folder card", classes: ".gv-pcard.boxed.folder / __fmedia / __fbody / __fpile / .gv-pcard__count", desc: "The projects-list folder card: borderless card with a hero image, top-right project-count badge, title, description preview and child-project avatars." },
-  "footer-logos": { name: "Footer logo band + dual-auth header", classes: ".gv-footer__logos (.row) / .gv-nav.tinted / .gv-auth-dual", desc: "Three optional header/footer config variants: a white centered logo band above the footer, brand-tinted nav labels, and the dual log-in/register CTA." },
-  footer: { name: "Footer", classes: ".gv-footer / .gv-footer__links / .gv-powered-logo", desc: "The site footer: a secondary-nav list of legal links plus a \"powered by go·vocal\" attribution; links left, attribution right, stacking under 720px." },
-  "header-nav": { name: "Header + nav", classes: ".gv-header / .gv-nav / .gv-nav-m / .gv-account-dd", desc: "Responsive full-width 78px site chrome: logo, primary nav with dropdown and overflow, search, CTA; flips signed-out/signed-in via data-auth, hamburger drawer on mobile." },
-  hero: { name: "Hero / banner", classes: ".gv-hero (.signed-out/.centered/.layout-tworow/.layout-fixed) / .gv-hero__media / .gv-avatars", desc: "Full-bleed page banner with tenant-tinted overlay, title/lead, avatar-count stack and CTA; image-agnostic, with the three homepage-banner layouts." },
-  "homepage-featured-row": { name: "Featured 3-up spotlight row", classes: ".gv-featured-row / .gv-pcard.featured / .gv-bubbles.xs", desc: "The homepage \"we want to hear from you\" row: three large image-led featured project cards with title and avatar row, sitting above the project grid." },
-  "homepage-survey-band": { name: "Embedded-survey band", classes: ".gv-monitorband / __inner / __text / __media / __cta", desc: "The homepage \"help us serve you better\" banner promoting the community-monitor survey: a 3-zone tinted card with text, preview image and CTA." },
-  "idea-card": { name: "Idea card", classes: ".gv-ideacard / __thumb / __body / __title / .gv-react", desc: "The shared idea/proposal card: square thumb, author meta and excerpt with a footer of circular like/dislike react controls and a comment count." },
-  "idea-feed": { name: "Idea feed", classes: ".gv-feed / .gv-feedfilter / .gv-viewseg / .gv-idealist", desc: "The ideation feed layout: an idea count and List/Map toggle over a two-column grid pairing the idea list with a sort/status/topic sidebar." },
-  "issue-canvas": { name: "Issue canvas", classes: ".gv-issuecanvas (.is-detail) / __pile / __add / .gv-issuefeed", desc: "The dotted-grid Perspectives canvas that floats sticky-note ideas in a masonry pile, with a floating \"Add an idea\" button and a raised detail state." },
-  "login-modal": { name: "Modal + login", classes: ".gv-modal-overlay / .gv-modal / __header / __body / .gv-or", desc: "Reusable dialog abstraction (overlay → card → titled header, close, scrollable body), shown via the real \"before you participate\" auth flow." },
-  "extra-survey": { name: "Extra survey CTA", classes: ".gv-extra-survey (--card) / __tag / __title / __desc / .gv-btn", desc: "A survey linked into a project page or Content Builder, rendered as a button or a legible card; uses the same primary / secondary-outlined button pair as the participation box." },
-  "participation-bar": { name: "Participation bar", classes: ".gv-partbar / __inner / __status / .gv-btn.on-color", desc: "The sticky project-page action footer: participation status on the left and a primary on-color CTA on the right that pins as residents scroll." },
-  "participation-box": { name: "Participation box", classes: ".gv-pbox / __actions / __people / __empty / .gv-btn.primary + .secondary-outlined", desc: "The resident-facing project CTA block: the project's active participation methods stacked as full-width buttons (current = primary, others = secondary-outlined), then an always-bottom participant row. Mirrored in the Content Builder." },
-  "phase-timeline": { name: "Phase timeline", classes: ".gv-phases__bar / .gv-stepper / .gv-pstep / .gv-phasepanel", desc: "The project phase nav: a connected row of interlocking chevron ribbon segments with current (mint+dot) and viewing (slate) states, plus a content panel." },
-  poll: { name: "Poll method body", classes: ".gv-poll / __question / __qhead / __options / __send", desc: "The per-method panel for a poll phase: a stack of question cards holding single/multi-choice options, a full-width Send, and the sticky participation band." },
-  "project-card": { name: "Project card + rail", classes: ".gv-rail / .gv-pcard (.boxed/.horizontal) / .gv-pgrid", desc: "The participation-project card (thumb, title, status meta, CTA) in two layouts: the horizontal scroll rail and the bordered boxed grid card." },
-  "proposal-threshold": { name: "Proposal threshold", classes: ".gv-threshold / __icon / __count / __fill / .gv-statuspill", desc: "The proposals signature votes-needed bar: vote icon, count-over-target and tenant-tinted fill paired with an open/expired status pill." },
-  "signed-out-hero": { name: "Signed-out hero banner", classes: ".gv-hero.signed-out (.centered) / __title / __lead / .gv-btn.primary-inverse", desc: "The home-page banner a visitor sees before signing in: a full-bleed photo with tenant overlay, white headline, avatar overflow cluster and an inverse CTA." },
-  "spotlight-carousel": { name: "Project carousel", classes: ".gv-carousel / __head / __controls / __scroll / .gv-rail", desc: "The homepage project row: a section title with prev/next scroll controls wrapping the canonical scroll/snap rail of project cards, with a11y skip scaffolding." },
-  spotlight: { name: "Spotlight", classes: ".gv-spotlight / __eyebrow / __title / __media / .gv-progress", desc: "The homepage \"currently working on\" spotlight: a copy column (eyebrow/title/lead/actions plus avatar count) beside a media tile with a no-image placeholder." },
-  "sticky-note": { name: "Sticky note", classes: ".gv-sticky (.is-raised / pastel variants) / __author / __title / __react", desc: "The pastel Perspectives idea note: a 320px card with author chip, emoji, title, excerpt and react counts, in resting/raised states and four pastel colours." },
-  "survey-band": { name: "Survey band", classes: ".gv-surveyband / __inner / __status / __dot / __cta", desc: "The \"Take the survey\" CTA strip on a project-page survey phase: a live-dot status on the left and an on-color CTA on the right." },
-  "survey-fields": { name: "Survey fields", classes: ".sv-optcard / .sv-rating / .sv-matrix / .sv-map · GVSurvey.mount()", desc: "Every Go Vocal survey question type (text, select, rating, ranking, scale, sentiment, image-select, matrix, map, upload) plus the page-by-page runner." },
-  "theme-card": { name: "Theme card", classes: ".gv-themecard (.is-active) / __emoji / __name / __count / __bar", desc: "The ranked Perspectives category card: an emoji swatch, name, response count and a mini share bar, with an active-selection state." },
-  "twocol-accordion": { name: "Two-column image + text + accordion", classes: ".gv-cb-row.cols-2 / .gv-cb-image / .gv-prose / .gv-accordion", desc: "The Content-Builder homepage \"about + FAQ\" section: a two-column row pairing an image cell with a rich-text column carrying a heading, intro and FAQ accordion." },
-  "volunteer-cause": { name: "Volunteer cause", classes: ".gv-cause / __media / __badge / __body / .gv-btn.volunteer", desc: "The volunteering opportunity card: photo with participant badge, title, count and description plus a green volunteer button that toggles a withdrawn state." },
-  voting: { name: "Project-page events section", classes: ".gv-project-events / __sec / __rule / __empty / .gv-event-card", desc: "The \"upcoming\" and \"past events\" sections a project page renders below the phase body, reusing the events grid, card and date-filter pill." },
-};
 
 // Structured metadata per component, surfaced as badges on the Components page so the
 // "mix" is eyeball-able and the library can be cleaned up. Derived from manifest.md.
@@ -480,56 +468,14 @@ const CANON_CSS_LAYERS = [
 ];
 
 // Family root → base/ demo {label, slug}. Atoms surfaced in base/<slug>/.
-const BASE_INDEX = {
-  "gv-btn": { label: "Button", slug: "button" },
-  "gv-iconbtn": { label: "Icon button", slug: "icon" },
-  "gv-icon": { label: "Icon", slug: "icon" },
-  "gv-input": { label: "Input", slug: "input" },
-  "gv-textarea": { label: "Textarea", slug: "input" },
-  "gv-select": { label: "Select", slug: "input" },
-  "gv-label": { label: "Field label", slug: "input" },
-  "gv-checkbox": { label: "Checkbox", slug: "checkbox-radio" },
-  "gv-radio": { label: "Radio", slug: "checkbox-radio" },
-  "gv-toggle": { label: "Toggle", slug: "checkbox-radio" },
-  "gv-card": { label: "Card", slug: "card" },
-  "gv-badge": { label: "Badge", slug: "badge" },
-  "gv-status-label": { label: "Status label", slug: "status-label" },
-  "gv-spinner": { label: "Spinner", slug: "badge" },
-  "gv-modal": { label: "Modal", slug: "modal" },
-  "gv-divider": { label: "Divider", slug: "divider" },
-  "gv-avatars": { label: "Avatar stack", slug: "avatar" },
-  "gv-title": { label: "Title", slug: "typography" },
-  "gv-text": { label: "Body text", slug: "typography" },
-};
 
 // Family root → components/ demo slug (label comes from COMPONENT_BLURBS). Ported
 // from the old hardcoded overlay list, MINUS the atoms (now base/) and MINUS deps
 // (now derived from the CSS file that defines the family).
-const COMPONENT_INDEX = {
-  "gv-bo-side": "bo-sidebar", "gv-bo-topbar": "bo-app-shell", "gv-bo-tabs": "bo-app-shell",
-  "gv-bo-menu": "bo-menu", "gv-bo-analysis": "bo-analysis", "gv-bo-templatecard": "bo-templatecard",
-  "gv-header": "header-nav", "gv-footer": "footer", "gv-hero": "hero", "gv-banner": "banner",
-  "gv-pbox": "participation-box", "gv-partbar": "participation-bar", "gv-pcard": "project-card",
-  "gv-featured-row": "homepage-featured-row", "gv-spotlight": "spotlight",
-  "gv-event-card": "event-card", "gv-ideacard": "idea-card", "gv-issuecanvas": "issue-canvas",
-  "gv-sticky": "sticky-note", "gv-themecard": "theme-card", "gv-accordion": "accordion",
-  "gv-cause": "volunteer-cause", "gv-poll": "poll", "gv-threshold": "proposal-threshold",
-  "gv-monitorband": "homepage-survey-band", "gv-surveyband": "survey-band",
-  "gv-extra-survey": "extra-survey", "gv-cta-banner": "cta-banner", "gv-voteoptions": "approval-voting",
-  "sv-optcard": "survey-fields",
-};
 
 // Curated PATTERN layer — recurring compositions promoted above components. Keyed by
 // the outermost family root; overrides the file-derived component layer. Slugs map
 // to patterns/<slug>/.
-const PATTERN_INDEX = {
-  "gv-feed": { label: "Idea feed", slug: "idea-feed" },
-  "gv-project-events": { label: "Events section", slug: "events-section" },
-  "gv-phases": { label: "Phase navigation", slug: "phase-nav" },
-  "gv-carousel": { label: "Spotlight row", slug: "homepage-spotlight-row" },
-  "gv-cb-frame": { label: "Content-builder grid", slug: "content-builder-grid" },
-  "gv-cb-row": { label: "Content-builder grid", slug: "content-builder-grid" },
-};
 
 const readCanon = (f) => fs.readFile(path.join(UI_SKILL, f), "utf8").catch(() => "");
 
