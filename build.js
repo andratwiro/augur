@@ -31,8 +31,12 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 // Augur composes two read-only submodules mounted at the repo root: the design
 // system (canonical assets + galleries) and the workspace (opportunities +
 // research). The source paths below resolve into them.
-const DS_ROOT = path.join(ROOT, "gv-design-system"); // submodule: canonical DS
-const WS_ROOT = path.join(ROOT, "gv-workspace"); // submodule: opportunities + research
+// Default to the pinned submodules nested here — what deploy builds. Offline mode
+// (`npm run offline`) overrides these via GV_DS_ROOT / GV_WS_ROOT to point at the
+// canonical sibling clones in the god-mode checkout, so a local preview reflects live
+// edits with no pin bump. Relative overrides resolve against this file's dir.
+const DS_ROOT = process.env.GV_DS_ROOT ? path.resolve(ROOT, process.env.GV_DS_ROOT) : path.join(ROOT, "gv-design-system"); // canonical DS
+const WS_ROOT = process.env.GV_WS_ROOT ? path.resolve(ROOT, process.env.GV_WS_ROOT) : path.join(ROOT, "gv-workspace"); // opportunities + research
 const DIST = path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
 
