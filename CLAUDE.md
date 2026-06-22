@@ -128,6 +128,14 @@ If you add a new kind of internal file, keep it **outside** `prototypes/`.
 
 - `node build.js` → regenerates `/dist` (cleaned each run) + `dist/index.html` landing page,
   sorted most-recently-modified first. Composes both submodules; needs them checked out.
+- **Offline mode — `npm run offline`** (`scripts/offline.mjs`; Ctrl-C to stop). Local mirror of
+  the live site, no network/Cloudflare/deploy: builds `dist`, runs `wrangler pages dev` so the
+  **real `src/_worker.js`** executes against a **local KV** (overlays — comments/pins/status/
+  names/piti — all work; password gate is off → open), then watches the build inputs (DS skills/
+  components/pages/base/patterns/tokens/registry, the workspace, `build.js`, the worker) and
+  rebuilds on change. Each build stamps a fresh `BUILD_ID`; on localhost the injected live-reload
+  poller runs at ~1s (vs 10s live — see `withLiveReload`/`liveReloadSnippet`'s `fast` branch), so
+  a save reloads open tabs in ~1s. Serves `http://localhost:8788` (`OFFLINE_PORT` to override).
 - Deployed to Cloudflare Pages via **Direct Upload** (project name still **`govocal-prototypes`**,
   URL `https://govocal-prototypes.pages.dev`, isolated account). `/dist` and `node_modules` are
   gitignored.

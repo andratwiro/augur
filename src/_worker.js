@@ -201,16 +201,21 @@ function htmlResponse(body, status) {
 //   • non-HTML responses, • preview iframes (parent reloads them),
 //   • ?raw=1 fetches (the Download HTML button uses it to get a clean file).
 // Marker-wrapped so the Download button's strip also removes it as a fallback.
-function liveReloadSnippet(token) {
+// `fast` is set only for localhost requests (offline mode): poll every 1s and use a
+// short idle gate so a local rebuild reloads the tab near-instantly. Live (deployed)
+// requests keep the gentle 10s poll / 4s idle gate so they never hammer the worker.
+function liveReloadSnippet(token, fast) {
+  const interval = fast ? 1000 : 10000;
+  const idle = fast ? 300 : 4000;
   return '<!--gv-reload-start--><script>(function(){if(window.top!==window.self)return;' +
     'var B=' + JSON.stringify(token) + ',last=0;' +
     '["pointerdown","keydown","input","scroll","touchstart"].forEach(function(e){' +
     'document.addEventListener(e,function(){last=Date.now()},{passive:true,capture:true})});' +
     'function c(){fetch("/__version?path="+encodeURIComponent(location.pathname),{cache:"no-store"})' +
     '.then(function(r){return r.ok?r.text():null})' +
-    '.then(function(t){if(t&&t.trim()&&t.trim()!==B&&Date.now()-last>4000)location.reload()})' +
+    '.then(function(t){if(t&&t.trim()&&t.trim()!==B&&Date.now()-last>' + idle + ')location.reload()})' +
     '.catch(function(){})}' +
-    'setInterval(function(){if(!document.hidden)c()},10000);' +
+    'setInterval(function(){if(!document.hidden)c()},' + interval + ');' +
     'document.addEventListener("visibilitychange",function(){if(!document.hidden)c()});' +
     // bfcache restore (back/forward): re-check version immediately so a page restored
     // after a deploy refreshes, while normal restores stay instant.
@@ -234,8 +239,12 @@ function withAssetCache(res, url) {
 function withLiveReload(res, url) {
   const ct = res.headers.get("Content-Type") || "";
   if (!ct.includes("text/html") || url.searchParams.has("raw")) return res;
+  // Offline mode (`npm run offline` → wrangler pages dev) is served from localhost;
+  // there we poll fast so a rebuild reloads the tab in ~1s. Live stays on 10s.
+  const fast = url.hostname === "localhost" || url.hostname === "127.0.0.1" ||
+    url.hostname === "::1" || url.hostname.endsWith(".localhost");
   return new HTMLRewriter()
-    .on("body", { element(el) { el.append(liveReloadSnippet(versionFor(url.pathname)), { html: true }); } })
+    .on("body", { element(el) { el.append(liveReloadSnippet(versionFor(url.pathname), fast), { html: true }); } })
     .transform(res);
 }
 
