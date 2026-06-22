@@ -70,6 +70,11 @@ function isPublicPath(pathname) {
   // Composed OG/unfurl card for any page — always fetchable so link-preview bots
   // (Slack, iMessage, Twitter) can load the image even if its folder is gated.
   if (pathname.endsWith("/og.jpg")) return true;
+  // The composed reference Pages (DS gallery, shipped under /pages/<slug>/) are
+  // public so they can be shared without the password. They're self-contained and
+  // load their assets from already-public paths (/skills/govocal-ui/, /fonts/), so
+  // the whole subtree — index pages and any page-local assets — bypasses the gate.
+  if (pathname === "/pages" || pathname.startsWith("/pages/")) return true;
   return PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname === p.slice(0, -1) || pathname.startsWith(p)
   );
