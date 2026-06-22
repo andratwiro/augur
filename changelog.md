@@ -24,6 +24,8 @@ up with everyone else's). Status chips, renames and comments stay shared, becaus
 those are team decisions, and renaming a prototype now also updates its name in the
 pinned list. The admin account gets an "Admin settings" page to manage everyone's
 passwords. The risky "Delete" option was removed from the card menu to be safe.
+Pinned items that point to a prototype that's since been moved or deleted now
+quietly clean themselves out of your list, so you never click a dead link.
 
 ## 2026-06-21 — See what research backs each opportunity
 Every opportunity now shows a little chip with how many research notes it has

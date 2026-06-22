@@ -268,7 +268,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.86";
+const UI_VERSION = "0.87";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -2565,7 +2565,7 @@ const PINS_JS = `
   var cached = null; try { cached = JSON.parse(sessionStorage.getItem(PCACHE) || 'null'); } catch(e){}
   if(cached){ map = cached; renderList(); paintBtns(); loaded = true; }
   fetch('/__pins', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
-    .then(function(d){ if(d && !d.warning) adopt(d.map); loaded = true; }).catch(function(){});
+    .then(function(d){ if(d && !d.warning) adopt(d.map); loaded = true; pruneDead(); }).catch(function(){});
   // Refresh the rename overrides too, so the pinned sidebar reflects the latest names.
   fetch('/__name', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
     .then(function(d){ if(d && d.map){ NAMES = d.map; renderList(); } }).catch(function(){});
@@ -2582,6 +2582,26 @@ const PINS_JS = `
     fetch('/__pins', { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ set: map, allowEmpty: !!allowEmpty }) })
       .then(function(r){ return r.json(); }).then(function(d){ if(d && !d.skipped) adopt(d.map); }).catch(function(){});
+  }
+  // Auto-prune dead pins: a moved/deleted prototype 404s for a signed-in user (an
+  // unauthed request would get the 200 login page instead, but in-app you're always
+  // authed). HEAD each pin once after the authoritative load and drop only those that
+  // return a definitive 404 — never on a network error or 5xx, to avoid false prunes —
+  // then persist the cleaned map. Runs at most once per page load.
+  var pruned = false;
+  function pruneDead(){
+    if(pruned) return; pruned = true;
+    var keys = Object.keys(map); if(!keys.length) return;
+    Promise.all(keys.map(function(k){
+      var href = (map[k] && map[k].href) || k;
+      return fetch(href, { method:'HEAD' }).then(function(r){ return r.status === 404 ? k : null; }).catch(function(){ return null; });
+    })).then(function(res){
+      var dead = res.filter(Boolean);
+      if(!dead.length) return;
+      dead.forEach(function(k){ delete map[k]; });
+      renderList(); paintBtns();
+      save(Object.keys(map).length === 0);
+    });
   }
   function labelFor(b){
     var card = b.closest('[data-rename-key]') || b.closest('.card-proto, .card-opp');
