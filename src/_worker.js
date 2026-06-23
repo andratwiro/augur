@@ -492,18 +492,14 @@ const PINS_KEY = "pins";
 async function pinsApi(request, url, env, user) {
   const kv = kvFor(env);
   if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
-  // Pins are per-user once identity is on (key "pins:<email>"); the pre-identity
-  // global "pins" key is the fallback when nobody is signed in.
+  // Pins are per-user (key "pins:<email>"), independent across users; the global
+  // "pins" key is only the fallback when nobody is signed in. Note: NO migration
+  // from the global map — that seeded EVERY new user from one shared (effectively
+  // Rob's) map, leaking pins across accounts. A new user starts empty.
   const key = user ? `${PINS_KEY}:${user.email}` : PINS_KEY;
 
   if (request.method === "GET") {
-    let raw = await kv.get(key);
-    // One-time migration: seed a user's pins from the pre-identity global map the
-    // first time they sign in, so existing pins carry over instead of vanishing.
-    if (raw == null && user) {
-      const legacy = await kv.get(PINS_KEY);
-      if (legacy != null) { await kv.put(key, legacy); raw = legacy; }
-    }
+    const raw = await kv.get(key);
     return jsonResponse({ map: raw ? JSON.parse(raw) : {} });
   }
   if (request.method === "POST") {
