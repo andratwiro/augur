@@ -132,10 +132,14 @@ If you add a new kind of internal file, keep it **outside** `prototypes/`.
   sorted most-recently-modified first. Builds **every** space from the `gv-workspace` submodule
   (default space at root, others under `/<id>/`); needs the submodule checked out.
 - **Offline mode — `npm run offline`** (`scripts/offline.mjs`; Ctrl-C to stop). Local mirror of
-  the live site, no network/Cloudflare/deploy: builds `dist`, runs `wrangler pages dev` so the
-  **real `src/_worker.js`** executes against a **local KV** (overlays — comments/pins/status/
-  names/piti — all work; password gate is off → open), then watches the build inputs and rebuilds
-  on change. Each build stamps a fresh `BUILD_ID`; on localhost the injected live-reload poller
+  the live site, no deploy: builds `dist`, runs `wrangler pages dev` so the
+  **real `src/_worker.js`** executes (overlays — comments/pins/status/
+  names/piti — all work) with the **per-user login gate ON**, same as live (sign in as
+  `rob@govocal.com`; seed creds in `src/identity.json`), then watches the build inputs and rebuilds
+  on change. **⚠️ KV is LIVE/prod:** because `.env.deploy` holds Cloudflare creds, the offline
+  worker reads/writes the **real production KV** via a REST shim — overlay edits made offline are
+  live for everyone (intentional, an "offline Figma"); rename `.env.deploy` for a safe local-only
+  KV sandbox (it then logs `KV: local`). Each build stamps a fresh `BUILD_ID`; on localhost the injected live-reload poller
   runs at ~1s (vs 10s live — see `withLiveReload`/`liveReloadSnippet`'s `fast` branch), so a save
   reloads open tabs in ~1s. Serves `http://localhost:8788` (`OFFLINE_PORT` to override).
   - **Builds from the canonical EDIT-HERE sibling clone**, not the pinned nested submodule:

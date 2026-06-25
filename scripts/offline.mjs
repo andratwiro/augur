@@ -4,10 +4,14 @@
 //
 // What it does:
 //   1. Builds dist once (node build.js).
-//   2. Starts `wrangler pages dev dist` — the REAL src/_worker.js runs locally with a
-//      local KV store, so the password gate is off (open), and every overlay API
-//      (comments / pins / status / names / piti) works against on-disk KV. No network,
-//      no Cloudflare, no deploy — a faithful local mirror of the live site.
+//   2. Starts `wrangler pages dev dist` — the REAL src/_worker.js runs locally, so the
+//      per-user login gate is ON (same as live; sign in as rob@govocal.com — seed creds
+//      in src/identity.json), and every overlay API (comments / pins / status / names /
+//      piti) works. No deploy — a faithful local mirror of the live site.
+//      ⚠️ KV is LIVE/prod when .env.deploy holds Cloudflare creds: the worker reads/writes
+//      the REAL production KV via a REST shim (LIVE_KV below), so overlay edits made offline
+//      are live for everyone — intentional ("offline Figma"). Rename .env.deploy for a
+//      safe local-only KV sandbox (it then logs `KV: local`).
 //   3. Watches the build inputs (the design system, the workspace, build.js, the
 //      worker) and rebuilds on any change. Each build stamps a fresh BUILD_ID into
 //      dist/_worker.js; wrangler reloads the worker, and the page's live-reload poller
