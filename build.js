@@ -268,7 +268,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.88";
+const UI_VERSION = "0.89";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -2096,62 +2096,86 @@ function helpDrawer() {
       </div>
       <div class="gvhelp__body">
         <section class="gvhelp__track" data-help-track="review" role="tabpanel">
-          <p class="gvhelp__lead">How to give feedback on a prototype. No setup — just click around.</p>
-
-          <h4>Leave a comment</h4>
+          <h4>Comment</h4>
           <ul>
-            <li>Press <kbd>Shift</kbd>+<kbd>C</kbd> to turn review mode on.</li>
-            <li>Click any element to drop a pin, type your note, press Enter.</li>
-            <li>Pins stick to the exact screen you made them on — switch screens and off-screen pins hide.</li>
-            <li>Press <kbd>Shift</kbd>+<kbd>C</kbd> again to turn review off.</li>
+            <li><kbd>Shift</kbd>+<kbd>C</kbd>: toggle review mode.</li>
+            <li>Click any element to drop a pin, type, press <kbd>Enter</kbd>.</li>
+            <li>Pins scope to the screen they were made on. Off-screen pins hide.</li>
+            <li><kbd>Esc</kbd>: exit review mode.</li>
           </ul>
 
-          <h4>What the marks mean</h4>
+          <h4>Layers view</h4>
           <ul>
-            <li><b>Comments</b> — your pins &amp; threads (only while review mode is on).</li>
-            <li><b>Annotations</b> — dev notes pinned to stay visible with review off (cat avatar). Skipped by “resolve comments”.</li>
-            <li><b>Status</b> — the badge on each prototype card: Playground → In progress → Dev ready → Shipped → Parked. Click to advance it.</li>
-            <li><b>Piti</b> — a roaming design wingman that posts the occasional UX roast. Playful, optional.</li>
+            <li>In review mode, press <kbd>&uarr;</kbd>/<kbd>&darr;</kbd> (or click the Layers pill, bottom-left).</li>
+            <li>Boxes every element by layer: Components, +Base, +Tokens.</li>
+            <li>+Tokens paints live spacing on each box.</li>
           </ul>
 
-          <h4>Replies may appear</h4>
-          <p>Don’t be surprised if Claude answers or resolves your comment right in the thread — that’s the comment loop (see <b>Building</b>).</p>
+          <h4>Marks</h4>
+          <ul>
+            <li><b>Comments</b>: your pins and threads (review mode on).</li>
+            <li><b>Annotations</b>: notes pinned to stay visible with review off. Skipped by "resolve comments".</li>
+            <li><b>Status</b>: the badge on each card. Click to cycle Dev ready, In progress, Ignore.</li>
+          </ul>
+
+          <h4>Cards</h4>
+          <ul>
+            <li>Right-click a card: Open, Copy link, Download HTML, Rename, Edit description.</li>
+            <li>Star a card to pin it to the sidebar. Drag pinned items to reorder.</li>
+          </ul>
+
+          <h4>Search</h4>
+          <ul>
+            <li><kbd>/</kbd> focus. <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>K</kbd> focus and select. <kbd>Esc</kbd> clear.</li>
+          </ul>
+
+          <h4>Replies appear</h4>
+          <ul><li>Claude may answer or resolve your comment in-thread. That is the comment loop (see Building).</li></ul>
         </section>
 
         <section class="gvhelp__track" data-help-track="build" role="tabpanel" hidden>
-          <p class="gvhelp__lead">For building &amp; iterating prototypes with Claude. The canonical docs live in the repo — this is the map.</p>
-
           <h4>Skills</h4>
           <ul>
-            <li><code>frontend-design</code> — generic design craft. Loaded by default (Free mode).</li>
-            <li><code>govocal-ui</code> — real Go Vocal tokens + <code>.gv-*</code> components for product-faithful UI.</li>
-            <li><code>govocal-a11y</code> — accessibility audit (contrast, zoom, target size).</li>
-            <li><code>govocal-persona-critique</code>, <code>webapp-testing</code> — critique a flow in character; run personas + a11y.</li>
+            <li><code>frontend-design</code>: generic design craft. Default (Free mode).</li>
+            <li><code>govocal-ui</code>: real Go Vocal tokens + <code>.gv-*</code> components.</li>
+            <li><code>govocal-a11y</code>: accessibility audit (contrast, zoom, target size).</li>
+            <li><code>govocal-persona-critique</code>, <code>webapp-testing</code>: critique in character, run personas + a11y.</li>
           </ul>
 
-          <h4>Modes of work</h4>
+          <h4>Modes</h4>
           <ul>
-            <li><b>Free mode</b> (default) — fast, light, generic craft.</li>
-            <li><b>System-building</b> — faithful, reusable library work (targets the design-system repo).</li>
-            <li>Everything else is <b>opt-in</b> — name it and Claude loads it.</li>
+            <li><b>Free</b>: default, light, generic craft.</li>
+            <li><b>System-building</b>: faithful library work (design-system repo).</li>
+            <li>Everything else is opt-in. Name it to load it.</li>
           </ul>
 
-          <h4>What to avoid</h4>
+          <h4>Avoid</h4>
           <ul>
-            <li>Never hardcode brand colours — use <code>var(--gv-tenant-primary | secondary | text)</code> so cities re-theme via <code>?theme=</code>.</li>
-            <li>The design system is read-only from a prototype — edit the canonical source, don’t copy <code>.gv-*</code> out.</li>
-            <li>Keep prototypes self-contained static HTML (no build step).</li>
-            <li>A11y: no colour-only state, low-contrast text, disabled zoom, or tiny tap targets.</li>
+            <li>No hardcoded brand colours. Use <code>var(--gv-tenant-primary | secondary | text)</code>.</li>
+            <li>Design system is read-only from a prototype. Edit the source, don't copy <code>.gv-*</code> out.</li>
+            <li>Prototypes stay self-contained static HTML, no build step.</li>
+            <li>A11y: no colour-only state, low contrast, disabled zoom, tiny targets.</li>
           </ul>
 
-          <h4>Working with Claude</h4>
-          <p>Context loads on demand. Standing rules live in <code>CLAUDE.md</code>; deep Go Vocal product knowledge in <code>GOVOCAL.md</code> (re-read on a real product doubt — not auto-loaded). Name a mode to pull capability.</p>
+          <h4>Context</h4>
+          <ul>
+            <li>Standing rules: <code>CLAUDE.md</code>. Product depth: <code>GOVOCAL.md</code> (re-read on a real doubt, not auto-loaded).</li>
+            <li>Name a mode to pull capability.</li>
+          </ul>
 
-          <h4>The comment loop <span class="gvhelp__tag">aka “godmode”</span></h4>
-          <p>Point a Claude session at the live comments: <code>npm run review --open</code> lists open threads; Claude fixes them, then replies &amp; resolves in-thread. Put it on <code>/loop</code> to keep watching. It’s not automated — you steer it.</p>
+          <h4>Comment loop <span class="gvhelp__tag">godmode</span></h4>
+          <ul>
+            <li><code>npm run review --open</code> lists open threads.</li>
+            <li>Claude fixes, replies, resolves in-thread. Put it on <code>/loop</code> to keep watching.</li>
+            <li>Not automated. You steer it.</li>
+          </ul>
 
-          <h4>Theme preview</h4>
-          <p>Append <code>?theme=&lt;id&gt;</code> to any prototype URL to preview it in a city’s colours.</p>
+          <h4>Themes</h4>
+          <ul>
+            <li><code>?theme=&lt;id&gt;</code> on any prototype URL. Numeric id only (<code>?theme=2</code>, not a name).</li>
+            <li>Picker sits bottom-right. Hide with <code>&lt;body data-gv-theme-picker="off"&gt;</code>.</li>
+            <li><code>?cookies=reset</code> re-shows the cookie banner.</li>
+          </ul>
           <table class="gvhelp__themes"><tbody>${themeRows}</tbody></table>
         </section>
       </div>
