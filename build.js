@@ -368,9 +368,9 @@ const CHANGELOG_SRC = path.join(ROOT, "changelog.md"); // hand-edited changelog 
 //      COMPONENT_BLURBS slug   → { name, classes, desc }  (gallery cards)
 // (Re)loaded per space by setSpaceContext() — each space relabels the overlay from its
 // own registry.json. The four shapes are exposed as ambient `let` globals below.
-let COMPONENT_INDEX = {}, BASE_INDEX = {}, PATTERN_INDEX = {}, COMPONENT_BLURBS = {};
+let COMPONENT_INDEX = {}, BASE_INDEX = {}, PATTERN_INDEX = {}, COMPONENT_BLURBS = {}, COMPONENT_META = {};
 function loadCatalog(dsRoot) {
-  const COMPONENT_INDEX = {}, BASE_INDEX = {}, PATTERN_INDEX = {}, COMPONENT_BLURBS = {};
+  const COMPONENT_INDEX = {}, BASE_INDEX = {}, PATTERN_INDEX = {}, COMPONENT_BLURBS = {}, COMPONENT_META = {};
   const regPath = path.join(dsRoot, "registry.json");
   try {
     const reg = JSON.parse(readFileSync(regPath, "utf8"));
@@ -383,6 +383,9 @@ function loadCatalog(dsRoot) {
         classes: (it.cssClasses || fams).map((f) => "." + f).join(" / "),
         desc: it.description || "",
       };
+      // Curated badges/tags come straight from the DS contract (the generator emits
+      // component-meta.json onto each item's `meta`) — never hardcoded in the platform.
+      if (it.meta) COMPONENT_META[it.name] = it.meta;
       for (const f of fams) {
         if (it.type === "pattern") PATTERN_INDEX[f] = { label: name, slug: it.name };
         else if (it.type === "primitive") BASE_INDEX[f] = { label: name, slug: it.name };
@@ -400,7 +403,7 @@ function loadCatalog(dsRoot) {
   if (!Object.keys(COMPONENT_INDEX).length && !Object.keys(BASE_INDEX).length && !Object.keys(PATTERN_INDEX).length) {
     throw new Error("[catalog] " + regPath + " yielded an EMPTY catalog — did the DS publish class/label fields? Run `npm run registry` in the DS. Refusing to build an unlabeled overlay.");
   }
-  return { COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS };
+  return { COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS, COMPONENT_META };
 }
 
 // Display name + key classes + one-line "what is it" per component, shown on the
@@ -409,75 +412,13 @@ function loadCatalog(dsRoot) {
 // the CANONICAL source of truth: the live right-click Rename / Edit-description writes a
 // KV override (/__name), which is folded back here so code and live stay in one language.
 
-// Structured metadata per component, surfaced as badges on the Components page so the
-// "mix" is eyeball-able and the library can be cleaned up. Derived from manifest.md.
-//   surface : "fo" | "bo" | "cross"   — which product surface it belongs to
-//   category: navigation|cards|banners|modals|survey|shell|voting|events|content|media|misc
-//   status  : "canonical" — real standalone source-grounded component
-//             "variant"   — additive variant/config on top of a base component
-//             "page-demo" — a page-level composition, not a standalone component
-//             "review"    — overlaps another entry / mislabeled → candidate for cleanup
-//   tags    : source tenant + a couple of descriptive keywords
-const COMPONENT_META = {
-  accordion: { surface: "fo", category: "content", status: "canonical", tags: ["faq", "details"] },
-  "approval-voting": { surface: "fo", category: "voting", status: "canonical", tags: ["cultuurconnect", "results"] },
-  attachment: { surface: "fo", category: "content", status: "canonical", tags: ["stlouis", "download"] },
-  "avatar-overflow-bubble": { surface: "cross", category: "misc", status: "variant", tags: ["falkirk", "avatars"] },
-  banner: { surface: "fo", category: "banners", status: "canonical", tags: ["hero", "illustration"] },
-  "bo-analysis": { surface: "bo", category: "content", status: "canonical", tags: ["ai", "sensemaking"] },
-  "bo-app-shell": { surface: "bo", category: "shell", status: "canonical", tags: ["chrome", "topbar"] },
-  "bo-menu": { surface: "bo", category: "navigation", status: "canonical", tags: ["dropdown", "flyout"] },
-  "bo-sidebar": { surface: "bo", category: "shell", status: "canonical", tags: ["nav", "rail"] },
-  "bo-templatecard": { surface: "bo", category: "cards", status: "canonical", tags: ["raleigh", "templates"] },
-  "community-monitor": { surface: "fo", category: "survey", status: "canonical", tags: ["wietsedemo", "sentiment"] },
-  "content-builder-render": { surface: "fo", category: "content", status: "canonical", tags: ["copenhagen", "layout"] },
-  "cookie-modal": { surface: "fo", category: "modals", status: "variant", tags: ["wien", "consent"] },
-  "cta-banner": { surface: "fo", category: "banners", status: "review", tags: ["stlouis", "strip"] },
-  "event-card-bordered": { surface: "fo", category: "events", status: "variant", tags: ["copenhagen", "linz", "eventswidget"] },
-  "event-card": { surface: "fo", category: "events", status: "canonical", tags: ["datechip", "rsvp"] },
-  "fo-linz-monitorband": { surface: "fo", category: "banners", status: "variant", tags: ["linz", "monitorband"] },
-  "folder-card": { surface: "fo", category: "cards", status: "variant", tags: ["stlouis", "projects-list"] },
-  "footer-logos": { surface: "fo", category: "navigation", status: "variant", tags: ["luxembourg", "linz", "config"] },
-  footer: { surface: "fo", category: "navigation", status: "canonical", tags: ["wien", "chrome"] },
-  "header-nav": { surface: "fo", category: "navigation", status: "canonical", tags: ["wien", "chrome"] },
-  hero: { surface: "fo", category: "banners", status: "canonical", tags: ["banner", "homepage"] },
-  "homepage-featured-row": { surface: "fo", category: "cards", status: "variant", tags: ["wietsedemo", "featured"] },
-  "homepage-survey-band": { surface: "fo", category: "banners", status: "variant", tags: ["wietsedemo", "monitorband"] },
-  "idea-card": { surface: "fo", category: "cards", status: "canonical", tags: ["ideation", "proposals"] },
-  "idea-feed": { surface: "fo", category: "content", status: "canonical", tags: ["ideation", "feed"] },
-  "issue-canvas": { surface: "fo", category: "content", status: "canonical", tags: ["perspectives", "canvas"] },
-  "login-modal": { surface: "fo", category: "modals", status: "canonical", tags: ["auth", "dialog"] },
-  "extra-survey": { surface: "cross", category: "survey", status: "canonical", tags: ["parallel-participation", "cta"] },
-  "participation-bar": { surface: "fo", category: "misc", status: "canonical", tags: ["sticky", "cta"] },
-  "participation-box": { surface: "cross", category: "misc", status: "canonical", tags: ["parallel-participation", "cta"] },
-  "phase-timeline": { surface: "fo", category: "navigation", status: "canonical", tags: ["phases", "stepper"] },
-  poll: { surface: "fo", category: "survey", status: "canonical", tags: ["wietsedemo", "method"] },
-  "project-card": { surface: "fo", category: "cards", status: "canonical", tags: ["rail", "boxed"] },
-  "proposal-threshold": { surface: "fo", category: "voting", status: "canonical", tags: ["proposals", "votes"] },
-  "signed-out-hero": { surface: "fo", category: "banners", status: "variant", tags: ["stlouis", "banner"] },
-  "spotlight-carousel": { surface: "fo", category: "cards", status: "variant", tags: ["falkirk", "rail"] },
-  spotlight: { surface: "fo", category: "banners", status: "canonical", tags: ["homepage", "media"] },
-  "sticky-note": { surface: "fo", category: "cards", status: "canonical", tags: ["perspectives", "pastel"] },
-  "survey-band": { surface: "fo", category: "survey", status: "canonical", tags: ["cta", "strip"] },
-  "survey-fields": { surface: "fo", category: "survey", status: "canonical", tags: ["fieldkit", "runner"] },
-  "theme-card": { surface: "fo", category: "cards", status: "canonical", tags: ["perspectives", "category"] },
-  "twocol-accordion": { surface: "fo", category: "content", status: "canonical", tags: ["stlouis", "faq"] },
-  "volunteer-cause": { surface: "fo", category: "cards", status: "canonical", tags: ["volunteering", "cause"] },
-  voting: { surface: "fo", category: "events", status: "review", tags: ["wietsedemo", "events-section"] },
-};
-
-// ── Layer per component demo (Tokens → Base → Components → Patterns → Pages) ──
-// Most components/<name>/ demos are component-grade compositions of base atoms; a
-// curated few are PATTERNS (recurring multi-component compositions). Atoms now live
-// in base/, so no components/<name>/ is base-grade. Stamped onto COMPONENT_META so
-// every entry carries `layer` without 40 hand-edits; surfaced as a badge + used by
-// the lint/overlay alongside the CSS-derived graph.
-const PATTERN_COMPONENTS = new Set([
-  "idea-feed", "voting", "spotlight-carousel", "content-builder-render", "twocol-accordion",
-]);
-for (const [k, v] of Object.entries(COMPONENT_META)) {
-  v.layer = PATTERN_COMPONENTS.has(k) ? "pattern" : "component";
-}
+// Structured per-component metadata (surface / category / status / tags / layer), shown as
+// badges on the Components page. NO LONGER hardcoded here — it's authored per space in
+// gv-workspace at skills/govocal-ui/component-meta.json and emitted onto each registry item's
+// `meta`, so the platform carries no GoVocal-specific component knowledge. loadCatalog() reads
+// it.meta into COMPONENT_META (per space); see the ambient `let COMPONENT_META` above.
+//   surface : "fo" | "bo" | "cross"   · category: navigation|cards|banners|… · tags: source tenant + keywords
+//   status  : canonical | variant | page-demo | review   · layer: "pattern" | (absent → component)
 
 // ════════════════════════════════════════════════════════════════════════════
 // Composition graph — the honesty backbone (Phase 0).
@@ -3902,7 +3843,7 @@ function setSpaceContext(space) {
   COMPONENTS_SRC = path.join(space.root, "components");
   BASE_SRC = path.join(space.root, "base");
   PATTERNS_SRC = path.join(space.root, "patterns");
-  ({ COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS } = loadCatalog(space.root));
+  ({ COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS, COMPONENT_META } = loadCatalog(space.root));
   BASE = space.default ? "" : `/${space.id}`;
   SPACE_KEY = space.default ? "" : `${space.id}/`;
   DIST_SPACE = space.default ? DIST : path.join(DIST, space.id);
