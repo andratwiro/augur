@@ -268,7 +268,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.87";
+const UI_VERSION = "0.88";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1834,8 +1834,57 @@ const NAV_CSS = `
       .gvside.is-open { transform: translateX(0); }
       .gvscrim.is-open { display: block; opacity: 1; }
     }
+    /* Rail footer action button (Help) — styled to match the rail's <a> rows. */
+    .gvside__act {
+      display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 8px; border-radius: 7px;
+      border: 0; background: none; cursor: pointer; text-align: left; font: inherit;
+      color: #2c2f36; font-weight: 500; font-size: 13px; transition: background .12s ease, color .12s ease;
+    }
+    .gvside__act:hover { background: rgba(16,17,26,0.05); color: #0e0f12; }
+    .gvside__act:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+
+    /* ── Help drawer ───────────────────────────────────────────────────────────── */
+    .gvhelp { position: fixed; inset: 0; z-index: 2147483200; }
+    .gvhelp[hidden] { display: none; }
+    .gvhelp__scrim { position: absolute; inset: 0; background: rgba(16,17,26,0.34); opacity: 0; transition: opacity .2s ease; }
+    .gvhelp.is-open .gvhelp__scrim { opacity: 1; }
+    .gvhelp__panel {
+      position: absolute; top: 0; right: 0; bottom: 0; width: min(460px, 92vw);
+      display: flex; flex-direction: column; background: #fff;
+      border-left: 1px solid rgba(16,17,26,0.10); box-shadow: -24px 0 60px -28px rgba(16,24,40,0.45);
+      transform: translateX(100%); transition: transform .24s ease;
+      font: 500 13px/1.5 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #2c2f36;
+    }
+    .gvhelp.is-open .gvhelp__panel { transform: translateX(0); }
+    .gvhelp__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 12px; border-bottom: 1px solid rgba(16,17,26,0.08); }
+    .gvhelp__title { margin: 0; font: 600 16px/1.2 "Inter", "Inter Variable", sans-serif; color: #16171a; }
+    .gvhelp__x { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: #5b626e; cursor: pointer; }
+    .gvhelp__x:hover { background: rgba(16,17,26,0.06); color: #16171a; }
+    .gvhelp__x:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvhelp__x .gvic { width: 18px; height: 18px; }
+    .gvhelp__tabs { display: flex; gap: 4px; padding: 10px 14px; border-bottom: 1px solid rgba(16,17,26,0.08); }
+    .gvhelp__tab { flex: 1; padding: 7px 10px; border: 0; border-radius: 8px; background: none; cursor: pointer; font: 600 13px/1 "Inter", "Inter Variable", sans-serif; color: #5b626e; transition: background .12s ease, color .12s ease; }
+    .gvhelp__tab:hover { background: rgba(16,17,26,0.05); color: #16171a; }
+    .gvhelp__tab.is-active { background: rgba(94,106,210,0.10); color: #3d46b8; }
+    .gvhelp__tab:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvhelp__body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 4px 18px 26px; }
+    .gvhelp__lead { color: #5b626e; font-size: 12.5px; margin: 14px 0 4px; }
+    .gvhelp__track h4 { margin: 18px 0 6px; font: 700 11px/1.2 "Inter", "Inter Variable", sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; display: flex; align-items: center; gap: 8px; }
+    .gvhelp__track p { margin: 4px 0 8px; color: #2c2f36; font-size: 13px; }
+    .gvhelp__track ul { margin: 4px 0 8px; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+    .gvhelp__track li { color: #2c2f36; font-size: 13px; }
+    .gvhelp__track b { color: #16171a; font-weight: 600; }
+    .gvhelp kbd { display: inline-block; min-width: 16px; padding: 1px 5px; border: 1px solid rgba(16,17,26,0.16); border-bottom-width: 2px; border-radius: 5px; background: #fff; font: 600 11px/1.4 "Inter", "Inter Variable", sans-serif; color: #3a3f48; }
+    .gvhelp code { padding: 1px 5px; border-radius: 5px; background: #f1f2f5; font: 500 12px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: #39414e; }
+    .gvhelp__tag { font: 600 10px/1 "Inter", "Inter Variable", sans-serif; letter-spacing: 0; text-transform: none; color: #8a6d3b; background: #fbf1d9; border-radius: 999px; padding: 3px 7px; }
+    .gvhelp__themes { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    .gvhelp__themes td { padding: 5px 6px; border-bottom: 1px solid rgba(16,17,26,0.06); font-size: 12.5px; vertical-align: middle; }
+    .gvhelp__themes td:first-child { width: 104px; }
+    .gvhelp__sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 7px; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12); }
+
     @media (prefers-reduced-motion: reduce) {
-      .gvside, .gvscrim, .gvburger__bars span, .gvside__caret { transition: none; }
+      .gvside, .gvscrim, .gvburger__bars span, .gvside__caret, .gvhelp__scrim, .gvhelp__panel { transition: none; }
     }`;
 
 // Magnifier glyph — used by the rail's omni-search field (railSearch).
@@ -1893,6 +1942,8 @@ const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
 const IC_GEAR = ic(`<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>`); // settings
 const IC_SIGNOUT = ic(`<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>`); // log-out
+const IC_HELP = ic(`<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>`); // circle-help
+const IC_CLOSE = ic(`<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`); // x
 const IC_TOKEN = ic(`<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>`); // palette (tokens)
 const IC_PATTERN = ic(`<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4M6.5 10v4M17.5 10v4M10 17.5h4"/>`); // grid + links (patterns)
 
@@ -2009,10 +2060,103 @@ function sideRail(active) {
       <div class="gvside__rule"></div>
       ${library}
       <div class="gvside__group" style="margin-top:6px">
+        <button type="button" class="gvside__act" data-help-open>${IC_HELP}<span>Help</span></button>
         <a href="/changelog/"${active === "changelog" ? ' aria-current="page"' : ""}>${IC_CHANGELOG}<span>Changelog</span><span class="gvside__ver">v${UI_VERSION}</span></a>
       </div>
     </div>
   </aside>`;
+}
+
+// City themes for the Help drawer's ?theme= reference. Mirrors GV_THEMES in
+// gv-design-system/skills/govocal-ui/govocal-themes.js (id, name, primary) — that file
+// is the source of truth; this is a static copy for the shell (which doesn't load it).
+const HELP_THEMES = [
+  [0, "Linz", "#604596"], [1, "Dublin City", "#0077A3"], [2, "Stadt Wien", "#FF5A64"],
+  [3, "Københavns Kommune", "#000C2E"], [4, "City of St. Louis", "#033D8B"], [5, "Oslo kommune", "#034B45"],
+  [6, "Lambeth", "#246797"], [7, "Stad Lokeren", "#025157"], [8, "Engaged California", "#1C2745"],
+];
+
+// The Help drawer — a right-side slide-in panel opened from the rail footer (data-help-open).
+// Two tracks: Reviewing (stakeholders giving feedback) + Building (driving Claude). Present
+// on every page via appChrome(); chromeScript() wires open/close + track switching.
+function helpDrawer() {
+  const themeRows = HELP_THEMES.map(
+    ([id, name, c]) => `<tr><td><code>?theme=${id}</code></td><td><span class="gvhelp__sw" style="background:${c}"></span>${name}</td></tr>`
+  ).join("");
+  return `<div class="gvhelp" data-help hidden>
+    <div class="gvhelp__scrim" data-help-scrim></div>
+    <div class="gvhelp__panel" role="dialog" aria-modal="true" aria-label="Help">
+      <header class="gvhelp__head">
+        <h3 class="gvhelp__title">Help</h3>
+        <button type="button" class="gvhelp__x" data-help-close aria-label="Close help">${IC_CLOSE}</button>
+      </header>
+      <div class="gvhelp__tabs" role="tablist" aria-label="Help topics">
+        <button type="button" class="gvhelp__tab" data-help-tab="review" role="tab">Reviewing</button>
+        <button type="button" class="gvhelp__tab" data-help-tab="build" role="tab">Building</button>
+      </div>
+      <div class="gvhelp__body">
+        <section class="gvhelp__track" data-help-track="review" role="tabpanel">
+          <p class="gvhelp__lead">How to give feedback on a prototype. No setup — just click around.</p>
+
+          <h4>Leave a comment</h4>
+          <ul>
+            <li>Press <kbd>Shift</kbd>+<kbd>C</kbd> to turn review mode on.</li>
+            <li>Click any element to drop a pin, type your note, press Enter.</li>
+            <li>Pins stick to the exact screen you made them on — switch screens and off-screen pins hide.</li>
+            <li>Press <kbd>Shift</kbd>+<kbd>C</kbd> again to turn review off.</li>
+          </ul>
+
+          <h4>What the marks mean</h4>
+          <ul>
+            <li><b>Comments</b> — your pins &amp; threads (only while review mode is on).</li>
+            <li><b>Annotations</b> — dev notes pinned to stay visible with review off (cat avatar). Skipped by “resolve comments”.</li>
+            <li><b>Status</b> — the badge on each prototype card: Playground → In progress → Dev ready → Shipped → Parked. Click to advance it.</li>
+            <li><b>Piti</b> — a roaming design wingman that posts the occasional UX roast. Playful, optional.</li>
+          </ul>
+
+          <h4>Replies may appear</h4>
+          <p>Don’t be surprised if Claude answers or resolves your comment right in the thread — that’s the comment loop (see <b>Building</b>).</p>
+        </section>
+
+        <section class="gvhelp__track" data-help-track="build" role="tabpanel" hidden>
+          <p class="gvhelp__lead">For building &amp; iterating prototypes with Claude. The canonical docs live in the repo — this is the map.</p>
+
+          <h4>Skills</h4>
+          <ul>
+            <li><code>frontend-design</code> — generic design craft. Loaded by default (Free mode).</li>
+            <li><code>govocal-ui</code> — real Go Vocal tokens + <code>.gv-*</code> components for product-faithful UI.</li>
+            <li><code>govocal-a11y</code> — accessibility audit (contrast, zoom, target size).</li>
+            <li><code>govocal-persona-critique</code>, <code>webapp-testing</code> — critique a flow in character; run personas + a11y.</li>
+          </ul>
+
+          <h4>Modes of work</h4>
+          <ul>
+            <li><b>Free mode</b> (default) — fast, light, generic craft.</li>
+            <li><b>System-building</b> — faithful, reusable library work (targets the design-system repo).</li>
+            <li>Everything else is <b>opt-in</b> — name it and Claude loads it.</li>
+          </ul>
+
+          <h4>What to avoid</h4>
+          <ul>
+            <li>Never hardcode brand colours — use <code>var(--gv-tenant-primary | secondary | text)</code> so cities re-theme via <code>?theme=</code>.</li>
+            <li>The design system is read-only from a prototype — edit the canonical source, don’t copy <code>.gv-*</code> out.</li>
+            <li>Keep prototypes self-contained static HTML (no build step).</li>
+            <li>A11y: no colour-only state, low-contrast text, disabled zoom, or tiny tap targets.</li>
+          </ul>
+
+          <h4>Working with Claude</h4>
+          <p>Context loads on demand. Standing rules live in <code>CLAUDE.md</code>; deep Go Vocal product knowledge in <code>GOVOCAL.md</code> (re-read on a real product doubt — not auto-loaded). Name a mode to pull capability.</p>
+
+          <h4>The comment loop <span class="gvhelp__tag">aka “godmode”</span></h4>
+          <p>Point a Claude session at the live comments: <code>npm run review --open</code> lists open threads; Claude fixes them, then replies &amp; resolves in-thread. Put it on <code>/loop</code> to keep watching. It’s not automated — you steer it.</p>
+
+          <h4>Theme preview</h4>
+          <p>Append <code>?theme=&lt;id&gt;</code> to any prototype URL to preview it in a city’s colours.</p>
+          <table class="gvhelp__themes"><tbody>${themeRows}</tbody></table>
+        </section>
+      </div>
+    </div>
+  </div>`;
 }
 
 // Full chrome injected at the top of <body>: slim mobile top bar + the rail + the
@@ -2022,7 +2166,7 @@ function appChrome(active) {
     <button type="button" class="gvburger" data-side-toggle aria-expanded="false" aria-controls="gvside" aria-label="Open navigation"><span class="gvburger__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
     <a class="gvtop__brand" href="/">${GV_MARK}<span>augur</span></a>
   </header>`;
-  return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>`;
+  return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>${helpDrawer()}`;
 }
 
 /** Shared chrome script: real-time in-page filter + the mobile rail drawer. */
@@ -2097,6 +2241,53 @@ function chromeScript() {
     side.addEventListener('click', function(e){ if(e.target.closest('a')) closeSide(); });
     document.addEventListener('keydown', function(e){ if((e.key||'').toLowerCase() === 'escape') closeSide(); });
     window.addEventListener('resize', function(){ if(window.innerWidth > 860) closeSide(); });
+  }
+
+  // ── Help drawer (footer button → right-side panel, two tracks) ────────────
+  var helpEl = document.querySelector('[data-help]');
+  if(helpEl && !helpEl.dataset.wired){
+    helpEl.dataset.wired = '1';
+    var helpPanel = helpEl.querySelector('.gvhelp__panel');
+    var helpLast = null, helpHideT = null;
+    function helpTrack(t){
+      [].forEach.call(helpEl.querySelectorAll('[data-help-tab]'), function(b){
+        var on = b.getAttribute('data-help-tab') === t;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      [].forEach.call(helpEl.querySelectorAll('[data-help-track]'), function(s){
+        s.hidden = s.getAttribute('data-help-track') !== t;
+      });
+      try { sessionStorage.setItem('gvHelpTrack', t); } catch(e){}
+    }
+    function helpKey(e){ if((e.key||'').toLowerCase() === 'escape'){ e.preventDefault(); e.stopPropagation(); helpClose(); } }
+    function helpOpen(){
+      if(helpHideT){ clearTimeout(helpHideT); helpHideT = null; }
+      helpLast = document.activeElement;
+      helpEl.hidden = false;
+      requestAnimationFrame(function(){ helpEl.classList.add('is-open'); });
+      var x = helpEl.querySelector('[data-help-close]'); if(x) x.focus();
+      document.addEventListener('keydown', helpKey, true);
+    }
+    function helpClose(){
+      helpEl.classList.remove('is-open');
+      document.removeEventListener('keydown', helpKey, true);
+      // Hide after the slide-out finishes; a timeout backstops reduced-motion (no transitionend).
+      helpHideT = setTimeout(function(){ helpEl.hidden = true; helpHideT = null; }, 280);
+      if(helpLast && helpLast.focus) helpLast.focus();
+    }
+    [].forEach.call(document.querySelectorAll('[data-help-open]'), function(o){
+      o.addEventListener('click', function(e){ e.preventDefault(); helpOpen(); });
+    });
+    [].forEach.call(helpEl.querySelectorAll('[data-help-close], [data-help-scrim]'), function(c){
+      c.addEventListener('click', helpClose);
+    });
+    [].forEach.call(helpEl.querySelectorAll('[data-help-tab]'), function(b){
+      b.addEventListener('click', function(){ helpTrack(b.getAttribute('data-help-tab')); });
+    });
+    var savedTrack = 'review';
+    try { savedTrack = sessionStorage.getItem('gvHelpTrack') || 'review'; } catch(e){}
+    helpTrack(savedTrack);
   }
 })();`;
 }
