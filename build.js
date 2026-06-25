@@ -2416,7 +2416,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SPACE_JS}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${spaceContextScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SPACE_JS}</script>`
   );
 }
 
@@ -2820,6 +2820,15 @@ const COMP_STATUS_JS = `
 // to (a) render the rail's Pinned list from the map and (b) wire any star buttons on
 // the current page. A pinned row's icon is the leading emoji of its label (the test
 // emoji we prefix to prototype names), promoted into the icon slot.
+// Inline global consumed by PINS_JS to scope the pinned list to the active space:
+// { base: "<active space base>", others: [<every non-default space base>] }.
+function spaceContextScript() {
+  const spaces = NAV_STATE.spaces || [];
+  const active = spaces.find((s) => s.id === NAV_STATE.activeSpace) || spaces[0] || { base: "" };
+  const others = spaces.filter((s) => !s.default).map((s) => s.base);
+  return `window.__GV_SPACE=${JSON.stringify({ base: active.base || "", others })};`;
+}
+
 const PINS_JS = `
 (function(){
   var listEl = document.querySelector('[data-pinned-list]');
@@ -2832,6 +2841,17 @@ const PINS_JS = `
   var loaded = false; // have we synced an authoritative map from the server this session?
   function splitEmoji(s){ s = s || ''; var m; try { m = s.match(EMO); } catch(e){ m = null; } return m ? [m[1], s.slice(m[0].length)] : ['', s]; }
   function esc(s){ return (s||'').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  // Scope the rendered pin list to the CURRENT space. Pins live in one per-user bucket
+  // across spaces (keys are full URL paths, e.g. "/opp/proto/" or "/go-vocal-2/opp/proto/"),
+  // so the rail filters to this space: a non-default space keeps only keys under its base;
+  // the default space keeps everything NOT under another space's base. (Storage/prune stay
+  // on the full map — pinning is global per user; only the display is per-space.)
+  function inSpace(k){
+    var sp = window.__GV_SPACE || { base:'', others:[] };
+    if(sp.base) return k.indexOf(sp.base + '/') === 0;
+    for(var i=0;i<(sp.others||[]).length;i++){ if(sp.others[i] && k.indexOf(sp.others[i] + '/') === 0) return false; }
+    return true;
+  }
   // The card-rename overrides (/__name, global across users) are authoritative for the
   // displayed name. Pin keys are URL form ("/opp/proto/"); rename keys are bare
   // ("opp/proto"), so normalise before lookup. This makes a rename flow into the pinned
@@ -2843,7 +2863,7 @@ const PINS_JS = `
   function labelOf(k, it){ return NAMES[nameKeyOf(k)] || (it && it.label) || k; }
   function renderList(){
     if(!listEl) return;
-    var keys = Object.keys(map);
+    var keys = Object.keys(map).filter(inSpace);
     listEl.innerHTML = keys.map(function(k){
       var it = map[k] || {}; var parts = splitEmoji(labelOf(k, it));
       var glyph = parts[0] || '📌';
@@ -3170,6 +3190,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   <script>${COMP_STATUS_JS}
   </script>
   <script>${CARD_MENU_JS}
+  </script>
+  <script>${spaceContextScript()}
   </script>
   <script>${PINS_JS}
   </script>
