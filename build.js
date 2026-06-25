@@ -79,11 +79,12 @@ const addonHtml = (html) => (addon ? addon.transformHtml(html, UI_VERSION) : htm
 const SRC_REVIEW = path.join(ROOT, "src", "review", "comments.js");
 const SRC_REVIEW_CAT = path.join(ROOT, "src", "review", "aslam.png");
 
-// Dev-facing prototype status. Source of truth is the committed prototype-status.json
-// (keyed "<opportunity>/<prototype>"), rendered as a static chip at build time — no
-// KV, no runtime cost. Internal file: it lives outside any prototypes/ folder, so it
-// is never copied to dist. See STATUS_META for the allowed values.
-const STATUS_FILE = path.join(ROOT, "prototype-status.json");
+// Dev-facing prototype status baseline. Lives PER SPACE in gv-workspace at
+// spaces/<id>/prototype-status.json (keyed "<opportunity>/<prototype>"), rendered as a
+// static chip at build time — no KV, no runtime cost. Internal file: it lives outside any
+// prototypes/ folder, so it is never copied to dist. Set per space by setSpaceContext().
+// See STATUS_META for the allowed values.
+let STATUS_FILE = null;
 const STATUS_META = {
   "in-progress": { label: "In progress", cls: "is-wip" },
   "dev-ready": { label: "Dev ready", cls: "is-ready" },
@@ -316,41 +317,19 @@ const IGNORED_TOPLEVEL = new Set([
   ".github",
 ]);
 
-// Planned reference pages (Pages tab) that aren't built yet — rendered as a
-// "Pending" roadmap so the team sees what's coming. Remove a slug here once its
-// real page lands under pages/<slug>/. Slugs are kebab-case; titleCase() labels them.
-const PENDING_PAGES = [
-  // FO method pages not yet built
-  "fo-method-voting",
-  "fo-method-mapping",
-  "fo-method-budgeting",
-  "fo-method-information",
-  // BO method pages (all methods need a focused phase-config page)
-  "bo-method-survey",
-  "bo-method-ideation",
-  "bo-method-perspectives",
-  "bo-method-mapping",
-  "bo-method-common-ground",
-  "bo-method-voting",
-  "bo-method-budgeting",
-  "bo-method-information",
-  "bo-method-volunteering",
-  // Other pending pages
-  "sensemaking",
-  "autoinsights",
-  "official-updates",
-];
+// Planned reference pages (Pages tab) that aren't built yet — rendered as a "Pending"
+// roadmap so the team sees what's coming. NOT hardcoded here: authored PER SPACE in
+// gv-workspace as space.json `pendingPages` (the roadmap is GoVocal content, not platform
+// knowledge). Set per space by setSpaceContext(); a slug drops off once pages/<slug>/ lands.
+let PENDING_PAGES = [];
 
 // Pages index has three top-level groups: Front office, Methods, Back office.
 // "Methods" are the front-office screens where a resident actually runs a
-// participation method (survey, proposals, …). Classified by slug here; a page
-// can also opt in/out via <meta name="gv-surface" content="method">.
-// Any page whose slug starts with fo-method- or bo-method- is auto-classified as
-// "method" surface. Add explicit entries here only for exceptions (pages that
-// belong in Methods but don't follow the prefix convention).
-const METHOD_PAGES = new Set([
-  "input-form", // Ideation — input/submission form
-]);
+// participation method (survey, proposals, …). Any page whose slug starts with
+// fo-method- or bo-method- is auto-classified "method"; a page can also opt in/out via
+// <meta name="gv-surface" content="method">. Non-prefix exceptions are authored PER SPACE
+// in gv-workspace as space.json `methodPages` (GoVocal content). Set by setSpaceContext().
+let METHOD_PAGES = new Set();
 
 // Source for the reference tabs (Primitives · Components · Pages) — assigned per space
 // by setSpaceContext() from the active space root.
@@ -3818,6 +3797,9 @@ async function discoverSpaces() {
       name: meta.name || titleCase(e.name),
       default: !!meta.default,
       badge: meta.badge || "",
+      // GoVocal content, authored per space — the platform stays space-agnostic.
+      pendingPages: Array.isArray(meta.pendingPages) ? meta.pendingPages : [],
+      methodPages: Array.isArray(meta.methodPages) ? meta.methodPages : [],
       root,
     });
   }
@@ -3844,6 +3826,9 @@ function setSpaceContext(space) {
   BASE_SRC = path.join(space.root, "base");
   PATTERNS_SRC = path.join(space.root, "patterns");
   ({ COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS, COMPONENT_META } = loadCatalog(space.root));
+  STATUS_FILE = path.join(space.root, "prototype-status.json");
+  PENDING_PAGES = space.pendingPages || [];
+  METHOD_PAGES = new Set(space.methodPages || []);
   BASE = space.default ? "" : `/${space.id}`;
   SPACE_KEY = space.default ? "" : `${space.id}/`;
   DIST_SPACE = space.default ? DIST : path.join(DIST, space.id);
