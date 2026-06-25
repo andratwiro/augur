@@ -16,30 +16,24 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # Augur composes three repos. We need the two private submodules
-      # (gv-workspace, gv-design-system) checked out. The default GITHUB_TOKEN
-      # cannot read OTHER private repos, so submodule fetch uses a PAT secret
-      # (SUBMODULE_PAT, Contents:read on both submodule repos). Non-recursive:
-      # Augur reads its own top-level gv-design-system, not the copy nested in
-      # gv-workspace.
+      # Augur composes ONE private submodule: gv-workspace, which now holds BOTH the
+      # design system and the prototypes, organized into spaces/<id>/ (each a self-
+      # contained DS + opportunities bundle). The default GITHUB_TOKEN cannot read other
+      # private repos, so submodule fetch uses a PAT secret (SUBMODULE_PAT, Contents:read
+      # on gv-workspace).
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0          # full history for per-prototype "last worked on" ordering
-          submodules: true        # pull gv-workspace + gv-design-system (top-level)
+          submodules: true        # pull gv-workspace (carries the spaces, incl. the DS)
           token: ${{ secrets.SUBMODULE_PAT }}
 
-      # Read-only guard: the design system is consumed, never edited from Augur.
-      # A fresh CI checkout of a pinned submodule is always clean — this catches the
-      # one thing that CAN go wrong: an Augur commit that bundled a dirty DS worktree.
-      # (PRIMARY enforcement is git permissions: collaborators have no push to the DS repo.)
-      - name: Guard — gv-design-system is pristine (read-only)
+      # Sanity guard: the workspace submodule checked out with at least one space that
+      # carries the design-system assets build.js needs. (The old read-only DS guard is
+      # retired — the DS is now part of the editable gv-workspace by design.)
+      - name: Guard — gv-workspace spaces checked out
         run: |
-          if [ ! -e gv-design-system/skills/govocal-ui/govocal-ui.css ]; then
-            echo "::error::gv-design-system submodule did not check out (PAT/scope?)."; exit 1
-          fi
-          cd gv-design-system
-          if ! git diff --quiet || ! git diff --cached --quiet; then
-            echo "::error::gv-design-system has local edits — it is READ-ONLY to Augur. Edit it in its own repo and bump the pin."; exit 1
+          if ! ls gv-workspace/spaces/*/skills/govocal-ui/govocal-ui.css >/dev/null 2>&1; then
+            echo "::error::gv-workspace submodule has no space with DS assets at spaces/*/skills/govocal-ui/ (PAT/scope, or not yet restructured?)."; exit 1
           fi
 
       - uses: actions/setup-node@v4

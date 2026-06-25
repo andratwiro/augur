@@ -48,37 +48,34 @@ const LIVE_KV_BINDINGS = LIVE_KV ? [
   "--binding", `GV_KV_NS=${DEPLOY_ENV.GV_KV_NS}`,
 ] : [];
 
-// Build from the canonical EDIT-HERE clones, not the pinned nested submodules.
-// The god-mode checkout puts the canonical DS + workspace as siblings of augur/
-// (../gv-design-system, ../gv-workspace) — that's where every agent edits. Building
-// from them means a local preview reflects live edits with no pin bump, no matter
-// which agent made the change. Fall back to the nested submodules if the siblings
-// aren't present (e.g. augur cloned on its own, outside the god-mode container).
-const SIBLING_DS = path.join(ROOT, "..", "gv-design-system");
+// Build from the canonical EDIT-HERE clone, not the pinned nested submodule.
+// The god-mode checkout puts the canonical workspace — which now holds BOTH the design
+// system and the prototypes, organized into spaces/<id>/ — as a sibling of augur/
+// (../gv-workspace), and that's where every agent edits. Building from it means a local
+// preview reflects live edits with no pin bump, no matter which agent made the change.
+// Fall back to the nested submodule if the sibling isn't present (e.g. augur cloned on
+// its own, outside the god-mode container).
 const SIBLING_WS = path.join(ROOT, "..", "gv-workspace");
-const usingSiblings = existsSync(SIBLING_DS) && existsSync(SIBLING_WS);
-const DS_ROOT = usingSiblings ? SIBLING_DS : path.join(ROOT, "gv-design-system");
+const usingSiblings = existsSync(path.join(SIBLING_WS, "spaces"));
 const WS_ROOT = usingSiblings ? SIBLING_WS : path.join(ROOT, "gv-workspace");
-// Passed to build.js so it composes from these roots (see GV_DS_ROOT / GV_WS_ROOT there).
-const BUILD_ENV = { ...process.env, GV_DS_ROOT: DS_ROOT, GV_WS_ROOT: WS_ROOT };
+const SPACES_ROOT = path.join(WS_ROOT, "spaces");
+// Passed to build.js so it composes every space from here (see GV_SPACES_ROOT there).
+const BUILD_ENV = { ...process.env, GV_SPACES_ROOT: SPACES_ROOT };
 
-// Build inputs to watch. Specific subtrees only — never the 1.5GB gitignored
-// gv-design-system/govocal-exports, node_modules, .git, dist, or .wrangler.
+// Build inputs to watch — the whole spaces/ tree (each space's DS assets + prototypes)
+// plus the augur-owned build inputs. Specific subtrees only — never the 1.5GB gitignored
+// govocal-exports, node_modules, .git, dist, or .wrangler.
 const WATCH = [
   path.join(ROOT, "build.js"),
   path.join(ROOT, "src", "_worker.js"),
   path.join(ROOT, "src", "identity.json"),  // users + seed passwords → rebuild on change
   path.join(ROOT, "pitis"),          // augur-owned cursor-companion layer
-  ...["skills", "components", "pages", "base", "patterns", "tokens.json", "registry"]
-    .map((p) => path.join(DS_ROOT, p)),
-  WS_ROOT,
+  SPACES_ROOT,
 ];
 
-// Paths whose changes are noise — ignore even if they live under a watched root
-// (notably the workspace's own nested DS submodule, a read-only duplicate).
+// Paths whose changes are noise — ignore even if they live under a watched root.
 const IGNORE = [
-  "node_modules", "/.git/", "govocal-exports", "/dist/", "/.wrangler/",
-  `${path.basename(WS_ROOT)}/gv-design-system`, ".DS_Store",
+  "node_modules", "/.git/", "govocal-exports", "/dist/", "/.wrangler/", ".DS_Store",
 ];
 const ignored = (abs) => IGNORE.some((frag) => abs.includes(frag));
 
@@ -103,9 +100,8 @@ function build(reason) {
 }
 
 // ── initial build, then launch wrangler ──────────────────────────────────────
-log(`starting offline mode — building from ${usingSiblings ? "canonical sibling clones (edit-here)" : "nested submodules (pinned)"}`);
-log(`  DS: ${DS_ROOT}`);
-log(`  WS: ${WS_ROOT}`);
+log(`starting offline mode — building from ${usingSiblings ? "canonical sibling clone (edit-here)" : "nested submodule (pinned)"}`);
+log(`  spaces: ${SPACES_ROOT}`);
 await new Promise((resolve) => {
   const proc = spawn("node", ["build.js"], { cwd: ROOT, env: BUILD_ENV, stdio: "inherit" });
   proc.on("close", resolve);

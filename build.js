@@ -28,17 +28,39 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-// Augur composes two read-only submodules mounted at the repo root: the design
-// system (canonical assets + galleries) and the workspace (opportunities +
-// research). The source paths below resolve into them.
-// Default to the pinned submodules nested here — what deploy builds. Offline mode
-// (`npm run offline`) overrides these via GV_DS_ROOT / GV_WS_ROOT to point at the
-// canonical sibling clones in the god-mode checkout, so a local preview reflects live
-// edits with no pin bump. Relative overrides resolve against this file's dir.
-const DS_ROOT = process.env.GV_DS_ROOT ? path.resolve(ROOT, process.env.GV_DS_ROOT) : path.join(ROOT, "gv-design-system"); // canonical DS
-const WS_ROOT = process.env.GV_WS_ROOT ? path.resolve(ROOT, process.env.GV_WS_ROOT) : path.join(ROOT, "gv-workspace"); // opportunities + research
+// Augur composes ONE read-only submodule (gv-workspace) mounted at the repo root. It
+// holds the design system + the prototypes, organized into SPACES — each spaces/<id>/
+// is a self-contained bundle (its own skills/, galleries, registry.json, and
+// opportunities). build.js builds every space into /dist: the DEFAULT space at the root
+// URLs (so existing public links + overlay KV keys are untouched), and each additional
+// space under a /<id>/ path prefix.
+// Default to the pinned submodule nested here — what deploy builds. Offline mode
+// (`npm run offline`) overrides the location via GV_SPACES_ROOT to point at the canonical
+// sibling clone (../gv-workspace/spaces), so a local preview reflects live edits with no
+// pin bump. Relative overrides resolve against this file's dir.
+const SPACES_ROOT = process.env.GV_SPACES_ROOT
+  ? path.resolve(ROOT, process.env.GV_SPACES_ROOT)
+  : path.join(ROOT, "gv-workspace", "spaces");
 const DIST = path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
+
+// ── Per-space build context. (Re)assigned by setSpaceContext() at the top of each
+// space's build pass; every scan/render function reads these as ambient globals, so the
+// whole single-space pipeline runs unchanged once per space.
+//   DS_ROOT / WS_ROOT : the active space root (DS assets + opportunities now co-locate)
+//   BASE              : URL prefix for the active space ("" for the default, else "/<id>")
+//   DIST_SPACE        : where this space's content is written (DIST, or DIST/<id>)
+let DS_ROOT, WS_ROOT, BASE = "", DIST_SPACE = DIST;
+// SPACE_KEY: prefix for overlay KV keys that are keyed by "<opp>/<proto>" rather than by
+// URL path — i.e. dev-status chips and rename overrides. "" for the default space (so its
+// existing KV entries are untouched), "<id>/" otherwise, so a /<id>/ space's statuses /
+// names can't collide with another's. (Comments + pins are keyed by URL path, which
+// already carries the space prefix, so they isolate without this.)
+let SPACE_KEY = "";
+// S(p): prefix a SPACE-SCOPED root-relative URL with the active space's BASE. Shared
+// chrome (worker APIs /__*, /fonts, /augur-mark.png, /admin, /changelog) is NOT
+// space-scoped and stays root-absolute — don't wrap those.
+const S = (p) => BASE + p;
 
 // Internal users (identity + seed passwords). One committed source of truth, read
 // here and injected into the worker (the gate) and used for sidebar profiles + git
@@ -330,12 +352,9 @@ const METHOD_PAGES = new Set([
   "input-form", // Ideation — input/submission form
 ]);
 
-// Source for the reference tabs (Primitives · Components · Pages).
-const UI_SKILL = path.join(DS_ROOT, "skills", "govocal-ui"); // Primitives gallery + assets
-const PAGES_SRC = path.join(DS_ROOT, "pages"); // composed reference pages
-const COMPONENTS_SRC = path.join(DS_ROOT, "components"); // composed component library
-const BASE_SRC = path.join(DS_ROOT, "base"); // base-atom demos (Base tab)
-const PATTERNS_SRC = path.join(DS_ROOT, "patterns"); // curated composition demos (Patterns tab)
+// Source for the reference tabs (Primitives · Components · Pages) — assigned per space
+// by setSpaceContext() from the active space root.
+let UI_SKILL, PAGES_SRC, COMPONENTS_SRC, BASE_SRC, PATTERNS_SRC;
 const CHANGELOG_SRC = path.join(ROOT, "changelog.md"); // hand-edited changelog source (internal; rendered to /changelog/)
 
 // ── Overlay + gallery catalog — DERIVED from the design system's published contract
@@ -347,10 +366,14 @@ const CHANGELOG_SRC = path.join(ROOT, "changelog.md"); // hand-edited changelog 
 //      BASE_INDEX       family → { label, slug }         (base atoms)
 //      PATTERN_INDEX    family → { label, slug }         (curated compositions)
 //      COMPONENT_BLURBS slug   → { name, classes, desc }  (gallery cards)
-const DS_CATALOG = (() => {
+// (Re)loaded per space by setSpaceContext() — each space relabels the overlay from its
+// own registry.json. The four shapes are exposed as ambient `let` globals below.
+let COMPONENT_INDEX = {}, BASE_INDEX = {}, PATTERN_INDEX = {}, COMPONENT_BLURBS = {};
+function loadCatalog(dsRoot) {
   const COMPONENT_INDEX = {}, BASE_INDEX = {}, PATTERN_INDEX = {}, COMPONENT_BLURBS = {};
+  const regPath = path.join(dsRoot, "registry.json");
   try {
-    const reg = JSON.parse(readFileSync(path.join(DS_ROOT, "registry.json"), "utf8"));
+    const reg = JSON.parse(readFileSync(regPath, "utf8"));
     for (const it of reg.items || []) {
       if (it.type === "page") continue;
       const fams = it.classes || (it.class ? [it.class] : []);
@@ -370,16 +393,15 @@ const DS_CATALOG = (() => {
     // Fail-fast, no silent fallback: the overlay catalog is REQUIRED to come from the
     // DS contract. A missing/unreadable registry.json must break the build, not ship
     // an unlabeled overlay (and never tempt anyone to re-hardcode a map here).
-    throw new Error("[catalog] could not read gv-design-system/registry.json — the overlay catalog is REQUIRED and has no fallback. " + e.message);
+    throw new Error("[catalog] could not read " + regPath + " — the overlay catalog is REQUIRED and has no fallback. " + e.message);
   }
   // Same guard for a present-but-empty contract (e.g. a DS that didn't publish the
   // class/label fields): refuse to build an unlabeled overlay rather than degrade.
   if (!Object.keys(COMPONENT_INDEX).length && !Object.keys(BASE_INDEX).length && !Object.keys(PATTERN_INDEX).length) {
-    throw new Error("[catalog] gv-design-system/registry.json yielded an EMPTY catalog — did the DS publish class/label fields? Run `npm run registry` in the DS. Refusing to build an unlabeled overlay.");
+    throw new Error("[catalog] " + regPath + " yielded an EMPTY catalog — did the DS publish class/label fields? Run `npm run registry` in the DS. Refusing to build an unlabeled overlay.");
   }
   return { COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS };
-})();
-const { COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS } = DS_CATALOG;
+}
 
 // Display name + key classes + one-line "what is it" per component, shown on the
 // Components page. Keyed by folder name; `name` is the SHARED, functional display name
@@ -715,11 +737,12 @@ async function copyDir(src, dest, exclude, titleEmoji) {
         let html = await fs.readFile(srcPath, "utf8");
         // Live-link rewrite: a prototype that IMPORTS canonical assets references
         // them as ../../../skills/govocal-ui/X (resolves on disk when opened
-        // directly). In dist the shared export lives at dist/skills/govocal-ui/, one
-        // level shallower, so repoint any such ref to the correct dist-relative path.
-        // Depth-aware (computed from this file's dist dir) and idempotent for the
-        // library tiers (pages/, components/ already sit at ../../skills/govocal-ui/).
-        const relCanon = path.relative(dest, path.join(DIST, "skills", "govocal-ui")).split(path.sep).join("/");
+        // directly). In dist the shared export lives at <space>/skills/govocal-ui/, so
+        // repoint any such ref to the correct dist-relative path. Targets the ACTIVE
+        // space's skills (DIST_SPACE) — each space ships its own copy, so a /<id>/-
+        // prefixed space links its own DS, not the default's. Depth-aware (computed from
+        // this file's dist dir) and idempotent for the library tiers.
+        const relCanon = path.relative(dest, path.join(DIST_SPACE, "skills", "govocal-ui")).split(path.sep).join("/");
         html = html.replace(/(?:\.\.\/)+skills\/govocal-ui\//g, relCanon + "/");
         // OG/Twitter unfurl tags for the shareable entry page (index.html). The
         // composed card (og.png, see scripts/og.mjs) sits beside it when shot.
@@ -810,8 +833,8 @@ async function scan() {
       if (!proto.isDirectory()) continue;
       const protoDir = path.join(protoParent, proto.name);
 
-      // Copy ONLY the prototype folder into dist.
-      const destDir = path.join(DIST, top.name, proto.name);
+      // Copy ONLY the prototype folder into dist (under the active space).
+      const destDir = path.join(DIST_SPACE, top.name, proto.name);
       // Exclude internal material (research/ + context/ folders, *.zip, .DS_Store)
       // that sometimes sits inside a prototype folder — it must never reach dist.
       const latest = await copyDir(protoDir, destDir, isInternalOnly, protoEmoji(proto.name));
@@ -828,7 +851,7 @@ async function scan() {
         file,
         poster: await exists(path.join(protoDir, "preview.webp")),
         mtimeMs: modifiedTime(protoDir, latest),
-        status: statusMap[`${top.name}/${proto.name}`] || null,
+        status: statusMap[`${SPACE_KEY}${top.name}/${proto.name}`] || null,
         editor: lastEditor(protoDir),
       });
     }
@@ -860,7 +883,7 @@ async function scanPages() {
   for (const e of entries) {
     if (!e.isDirectory()) continue;
     const dir = path.join(PAGES_SRC, e.name);
-    const destDir = path.join(DIST, "pages", e.name);
+    const destDir = path.join(DIST_SPACE, "pages", e.name);
     const latest = await copyDir(dir, destDir, isInternalOnly);
     await stampLinkedInto(dir, destDir); // overlay badges on Pages (live-linked → full set)
     const { href, file } = await entryPoint(e.name, dir);
@@ -896,7 +919,7 @@ async function scanComponents() {
   for (const e of entries) {
     if (!e.isDirectory()) continue;
     const dir = path.join(COMPONENTS_SRC, e.name);
-    const destDir = path.join(DIST, "components", e.name);
+    const destDir = path.join(DIST_SPACE, "components", e.name);
     const latest = await copyDir(dir, destDir, isInternalOnly);
     await stampLinkedInto(dir, destDir); // overlay badges on the component demo itself
     const { href, file } = await entryPoint(e.name, dir);
@@ -918,7 +941,7 @@ async function scanTier(srcRoot, distSub) {
   for (const e of entries) {
     if (!e.isDirectory()) continue;
     const dir = path.join(srcRoot, e.name);
-    const destDir = path.join(DIST, distSub, e.name);
+    const destDir = path.join(DIST_SPACE, distSub, e.name);
     const latest = await copyDir(dir, destDir, isInternalOnly);
     await stampLinkedInto(dir, destDir);
     const { href, file } = await entryPoint(e.name, dir);
@@ -957,7 +980,7 @@ async function scanPlayground() {
       file,
       poster: await exists(path.join(dir, "preview.webp")),
       mtimeMs: modifiedTime(dir, await latestMtime(dir)),
-      status: statusMap[`playground/${e.name}`] || "in-progress",
+      status: statusMap[`${SPACE_KEY}playground/${e.name}`] || "in-progress",
     });
   }
   projects.sort(byStatusThenRecency);
@@ -1755,6 +1778,39 @@ const NAV_CSS = `
     .gvprof__item:hover { background: rgba(16,17,26,0.05); }
     .gvprof__item .gvic { width: 15px; height: 15px; color: #5b626e; }
 
+    /* Space switcher — active space icon+name+badge with a dropdown of all spaces.
+       Server-rendered from the build-time space list; SPACE_JS only toggles the menu. */
+    .gvspace { position: relative; margin: 2px 1px 8px; }
+    .gvspace__btn {
+      display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
+      border: 1px solid rgba(16,17,26,0.10); border-radius: 8px; background: #fff; cursor: pointer;
+      font: inherit; color: #16171a; text-align: left; transition: background .12s ease, border-color .12s ease;
+    }
+    .gvspace__btn:hover { background: rgba(16,17,26,0.03); border-color: rgba(16,17,26,0.16); }
+    .gvspace__btn:focus-visible { outline: 2px solid #5e6ad2; outline-offset: 1px; }
+    .gvspace__btn[aria-expanded=true] { background: rgba(16,17,26,0.04); }
+    .gvspace__icon { flex: none; width: 20px; height: 20px; border-radius: 5px; overflow: hidden; display: grid; place-items: center; background: #fff; }
+    .gvspace__icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .gvspace__name { flex: 1 1 auto; min-width: 0; font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gvspace__cv { width: 15px; height: 15px; flex: none; color: #9aa0ab; }
+    .gvspace__badge { flex: none; font-size: 10px; font-weight: 700; letter-spacing: .02em; text-transform: capitalize;
+      padding: 1px 6px; border-radius: 999px; background: rgba(16,17,26,0.07); color: #5b626e; }
+    .gvspace__badge.is-new { background: #2c2150; color: #fff; }
+    .gvspace__menu {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 6;
+      background: #fff; border: 1px solid rgba(16,17,26,0.12); border-radius: 10px; padding: 5px;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 12px 30px -16px rgba(16,24,40,0.30);
+    }
+    .gvspace__item { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 7px; text-decoration: none; color: #16171a; font-size: 13px; font-weight: 500; }
+    .gvspace__item:hover { background: rgba(16,17,26,0.05); }
+    .gvspace__iname { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gvspace__chk { width: 16px; height: 16px; flex: none; color: #5e6ad2; opacity: 0; }
+    .gvspace__item.is-active .gvspace__chk { opacity: 1; }
+    .gvspace__sep { height: 1px; background: rgba(16,17,26,0.08); margin: 4px 2px; }
+    .gvspace__create { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 8px; border: 0; border-radius: 7px; background: none; cursor: pointer; font: inherit; font-size: 13px; font-weight: 500; color: #5b626e; }
+    .gvspace__create:hover { background: rgba(16,17,26,0.05); color: #16171a; }
+    .gvspace__create svg { width: 15px; height: 15px; flex: none; }
+
     /* Omni search — one field, filters whatever cards are on the right. Figma-style
        filled input that brightens to white on focus. */
     .gvsearch { position: relative; margin: 2px 1px 8px; }
@@ -1983,7 +2039,7 @@ function protoName(slug) {
 
 // Nav context (opportunities + whether Playground shipped), set once in main() so the
 // same rail renders identically on every page without threading it through each call.
-const NAV_STATE = { opportunities: [], hasPlayground: false };
+const NAV_STATE = { opportunities: [], hasPlayground: false, spaces: [], activeSpace: "" };
 
 // The omni search field — lives in the rail, filters whatever cards are on the right
 // (the shared chrome script wires [data-filter] to the current page's [data-fitem]).
@@ -2016,13 +2072,50 @@ function profileChip() {
     </div>`;
 }
 
+// Space switcher — sits above the main nav (the team-switcher in the brief): the active
+// space's icon + name + badge, with a dropdown of every space (check on the active one)
+// and a Create-new stub. The space list is known at build time (NAV_STATE.spaces) and the
+// active space is stamped by setSpaceContext (NAV_STATE.activeSpace), so this is fully
+// server-rendered — SPACE_JS only toggles the menu open/closed. Each row links to the
+// space's base URL ("/" for the default, "/<id>/" otherwise). Hidden when only one space
+// exists (nothing to switch to) — the chip would be noise.
+function spaceSwitcher() {
+  const spaces = NAV_STATE.spaces || [];
+  if (spaces.length < 2) return "";
+  const active = spaces.find((s) => s.id === NAV_STATE.activeSpace) || spaces[0];
+  const icon = `<span class="gvspace__icon"><img src="/space-icon.png" alt="" width="20" height="20" /></span>`;
+  const badge = (b) => (b ? `<span class="gvspace__badge${b === "new" ? " is-new" : ""}">${escAttr(b)}</span>` : "");
+  const rows = spaces
+    .map(
+      (s) => `<a class="gvspace__item${s.id === active.id ? " is-active" : ""}" href="${s.base}/" role="menuitemradio" aria-checked="${s.id === active.id}">
+          ${icon}<span class="gvspace__iname">${escAttr(s.name)}</span>${badge(s.badge)}
+          <svg class="gvspace__chk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+        </a>`
+    )
+    .join("");
+  return `<div class="gvspace" data-space>
+      <button type="button" class="gvspace__btn" data-space-toggle aria-haspopup="true" aria-expanded="false" aria-label="Switch space">
+        ${icon}<span class="gvspace__name">${escAttr(active.name)}</span>${badge(active.badge)}
+        <svg class="gvspace__cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="gvspace__menu" data-space-menu role="menu" hidden>
+        ${rows}
+        <div class="gvspace__sep"></div>
+        <button type="button" class="gvspace__create" data-space-create>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Create new</span>
+        </button>
+      </div>
+    </div>`;
+}
+
 // The persistent left rail: brand → omni search → Playground → Opportunities → Pinned
 // (the user's starred prototypes/projects, rendered client-side by PINS_JS) → Library
 // (collapsible, pinned to the bottom). `active` is a single key: 'prototypes' |
 // 'playground' | <opportunity name> | 'primitives' | 'components' | 'pages'.
 function sideRail(active) {
   const item = (href, label, key, icon) =>
-    `<a href="${href}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
+    `<a href="${S(href)}"${active === key ? ' aria-current="page"' : ""}>${icon}<span>${label}</span></a>`;
   const playground = NAV_STATE.hasPlayground ? item("/playground/", "Playground", "playground", IC_PLAY) : "";
   // Pinned is rendered live from the KV pins map (PINS_JS fills [data-pinned-list] and
   // toggles the empty hint); nothing is server-rendered here.
@@ -2049,6 +2142,7 @@ function sideRail(active) {
     ${profileChip()}
     ${railSearch()}
     <div class="gvside__rule"></div>
+    ${spaceSwitcher()}
     <div class="gvside__scroll">
       <div class="gvside__group">
         ${item("/", "Opportunities", "prototypes", IC_HOME)}
@@ -2188,7 +2282,7 @@ function helpDrawer() {
 function appChrome(active) {
   const top = `<header class="gvtop">
     <button type="button" class="gvburger" data-side-toggle aria-expanded="false" aria-controls="gvside" aria-label="Open navigation"><span class="gvburger__bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
-    <a class="gvtop__brand" href="/">${GV_MARK}<span>augur</span></a>
+    <a class="gvtop__brand" href="${S("/")}">${GV_MARK}<span>augur</span></a>
   </header>`;
   return `${top}${sideRail(active)}<div class="gvscrim" data-side-scrim></div>${helpDrawer()}`;
 }
@@ -2322,7 +2416,7 @@ function injectNav(html, active) {
   if (!m) return html;
   return html.replace(
     m[0],
-    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>`
+    `${m[0]}\n  <style>${NAV_CSS}</style>\n  ${appChrome(active)}\n  <script>${chromeScript()}</script>\n  <script>${PINS_JS}</script>\n  <script>${PROFILE_JS}</script>\n  <script>${SPACE_JS}</script>`
   );
 }
 
@@ -2915,6 +3009,29 @@ const PROFILE_JS = `(function(){
 })();
 `;
 
+// Space switcher behaviour — open/close the dropdown (the chip + rows are server-rendered,
+// each row a plain <a> to the space's base URL, so switching is just navigation). The
+// Create-new entry is a stub for now: it explains how to add a space (drop a folder under
+// spaces/<id>/ with a space.json) since spaces are filesystem-defined, not created in-app.
+const SPACE_JS = `(function(){
+  var box = document.querySelector('[data-space]');
+  if(!box) return;
+  var btn = box.querySelector('[data-space-toggle]');
+  var menu = box.querySelector('[data-space-menu]');
+  function open(o){ if(!menu) return; menu.hidden = !o; if(btn) btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
+  if(btn && menu){
+    btn.addEventListener('click', function(e){ e.stopPropagation(); open(menu.hidden); });
+    document.addEventListener('click', function(e){ if(!box.contains(e.target)) open(false); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') open(false); });
+  }
+  var create = box.querySelector('[data-space-create]');
+  if(create) create.addEventListener('click', function(e){
+    e.stopPropagation();
+    alert('To add a space: create spaces/<id>/ in gv-workspace with a space.json ({"id","name"}) and copy the design-system assets into it. It appears here on the next build.');
+  });
+})();
+`;
+
 // Admin page behaviour: load every user from /__admin/users (admin-only — 403s for
 // anyone else, though the worker also gates the /admin/ route) and render an editable
 // password row per user. Saving POSTs the new password; the worker stores it as a KV
@@ -3058,6 +3175,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   </script>
   <script>${PROFILE_JS}
   </script>
+  <script>${SPACE_JS}
+  </script>
   <script>${RESEARCH_JS}
   </script>
   ${addon ? addon.bodyScripts(UI_VERSION) : ""}
@@ -3147,10 +3266,10 @@ function renderOpportunityIndex(opp) {
       const download = p.file
         ? `<button type="button" data-dl="${p.file}" data-dlname="${encodeURIComponent(p.name)}.html" aria-label="Download HTML" hidden></button>`
         : "";
-      const pinKey = `/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`;
+      const pinKey = S(`/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`);
       const dname = protoName(p.name);
       return `
-        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${opp.name}/${p.name}" data-default-name="${dname}">
+        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${SPACE_KEY}${opp.name}/${p.name}" data-default-name="${dname}">
           <div class="preview">
             ${media(p.href, p.poster)}
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
@@ -3158,7 +3277,7 @@ function renderOpportunityIndex(opp) {
               ${download}
               ${pinStar(pinKey, pinKey)}
             </div>
-            ${statusChip(p.status, opp.name + "/" + p.name)}
+            ${statusChip(p.status, SPACE_KEY + opp.name + "/" + p.name)}
           </div>
           <div class="proto-meta">
             <div class="proto-text">
@@ -3175,7 +3294,7 @@ function renderOpportunityIndex(opp) {
     title: titleCase(opp.name),
     activeTab: opp.name,
     wrapClass: "wrap--wide",
-    body: `<header class="folderbar"><a class="folderbar__up" href="/" aria-label="All opportunities" title="All opportunities"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span>${researchChip(opp.research)}</header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
+    body: `<header class="folderbar"><a class="folderbar__up" href="${S("/")}" aria-label="All opportunities" title="All opportunities"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span>${researchChip(opp.research)}</header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
   });
 }
 
@@ -3195,14 +3314,14 @@ function renderPlaygroundIndex(projects) {
   const cards = projects
     .map((p) => {
       const folder = `${encodeURIComponent(p.name)}/`;
-      const pinKey = `/playground/${encodeURIComponent(p.name)}/`;
+      const pinKey = S(`/playground/${encodeURIComponent(p.name)}/`);
       const dname = protoName(p.name);
       return `
-        <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="playground/${p.name}" data-default-name="${dname}">
+        <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${SPACE_KEY}playground/${p.name}" data-default-name="${dname}">
           <a class="card-cover-link" href="${folder}" aria-label="Open ${titleCase(p.name)}"></a>
           <div class="preview">
             ${media(p.href, p.poster)}
-            ${statusChip(p.status, "playground/" + p.name)}
+            ${statusChip(p.status, SPACE_KEY + "playground/" + p.name)}
           </div>
           <div class="preview-actions">${pinStar(pinKey, pinKey)}</div>
           <div class="opp-meta">
@@ -3235,7 +3354,7 @@ function renderPagesIndex(pages) {
 
   // Pages are a designer reference — Open only, no HTML download.
   const pageCard = (p) => `
-        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="pages/${p.name}" data-default-name="${titleCase(p.name)}">
+        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${SPACE_KEY}pages/${p.name}" data-default-name="${titleCase(p.name)}">
           <div class="preview">
             ${media(p.href, p.poster)}
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
@@ -3355,7 +3474,7 @@ function renderComponentsIndex(components) {
       // description), persisting a KV override under those keys. Both default back to
       // the canonical code values, which I fold the overrides into so we share one name.
       return `
-        <tr data-fitem data-fkey="${fkey}" data-rename-key="components/${c.name}" data-default-name="${escAttr(dname)}">
+        <tr data-fitem data-fkey="${fkey}" data-rename-key="${SPACE_KEY}components/${c.name}" data-default-name="${escAttr(dname)}">
           <td>
             <a class="comp-thumb" href="${c.href}" aria-label="Open ${escAttr(dname)}">
               ${media(c.href, c.poster)}
@@ -3390,7 +3509,7 @@ function renderTierGrid(items, { title, activeTab, subtitle, addHint }) {
     });
   }
   const card = (p) => `
-        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${activeTab}/${p.name}" data-default-name="${titleCase(p.name)}">
+        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${SPACE_KEY}${activeTab}/${p.name}" data-default-name="${titleCase(p.name)}">
           <div class="preview">
             ${media(p.href, p.poster)}
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
@@ -3714,12 +3833,68 @@ function renderChangelogPage(entries) {
   return shell({ title: "Changelog", activeTab: "changelog", body });
 }
 
-async function main() {
-  // Clean dist for a deterministic build. Retry the removal: on macOS a
-  // concurrent .DS_Store / Spotlight write can re-create a dir entry between
-  // node's readdir and rmdir, throwing ENOTEMPTY on an otherwise-empty tree.
-  await fs.rm(DIST, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
-  await fs.mkdir(DIST, { recursive: true });
+// Discover the spaces under SPACES_ROOT. Each spaces/<id>/ holds a space.json
+// ({id,name,default,badge}); non-dir / dotfile entries are skipped. The DEFAULT space
+// (space.json default:true, else the first) builds at the root URLs; the rest under
+// /<id>/. Returns default-first.
+async function discoverSpaces() {
+  let entries;
+  try {
+    entries = await fs.readdir(SPACES_ROOT, { withFileTypes: true });
+  } catch (e) {
+    throw new Error(`[spaces] could not read SPACES_ROOT (${SPACES_ROOT}): ${e.message}`);
+  }
+  const spaces = [];
+  for (const e of entries) {
+    if (!e.isDirectory() || e.name.startsWith(".")) continue;
+    const root = path.join(SPACES_ROOT, e.name);
+    let meta = {};
+    try { meta = JSON.parse(await fs.readFile(path.join(root, "space.json"), "utf8")); } catch {}
+    spaces.push({
+      id: meta.id || e.name,
+      name: meta.name || titleCase(e.name),
+      default: !!meta.default,
+      badge: meta.badge || "",
+      root,
+    });
+  }
+  if (!spaces.length) throw new Error(`[spaces] no spaces found under ${SPACES_ROOT}`);
+  if (!spaces.some((s) => s.default)) spaces[0].default = true;
+  // Exactly one default wins (first declared); others demoted. Default sorts first.
+  let seenDefault = false;
+  for (const s of spaces) {
+    if (s.default && !seenDefault) seenDefault = true;
+    else s.default = false;
+  }
+  spaces.sort((a, b) => (b.default - a.default) || a.id.localeCompare(b.id));
+  return spaces;
+}
+
+// Switch the ambient build context to a space: repoint the DS/WS roots + derived
+// sources, reload its catalog, and set the URL prefix (BASE) + dist target (DIST_SPACE).
+function setSpaceContext(space) {
+  DS_ROOT = space.root;
+  WS_ROOT = space.root;
+  UI_SKILL = path.join(space.root, "skills", "govocal-ui");
+  PAGES_SRC = path.join(space.root, "pages");
+  COMPONENTS_SRC = path.join(space.root, "components");
+  BASE_SRC = path.join(space.root, "base");
+  PATTERNS_SRC = path.join(space.root, "patterns");
+  ({ COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS } = loadCatalog(space.root));
+  BASE = space.default ? "" : `/${space.id}`;
+  SPACE_KEY = space.default ? "" : `${space.id}/`;
+  DIST_SPACE = space.default ? DIST : path.join(DIST, space.id);
+  NAV_STATE.activeSpace = space.id;
+}
+
+// Build ONE space into dist: the default space at the dist root, others under dist/<id>/.
+// Switches the ambient build context (DS_ROOT/WS_ROOT/sources/catalog/BASE/DIST_SPACE),
+// scans every source (each copies its folders into DIST_SPACE), then writes the index /
+// gallery pages. Returns the scan results so main() can fold this space's published paths
+// into the single shared worker (gate + version map).
+async function buildSpace(space) {
+  setSpaceContext(space);
+  await fs.mkdir(DIST_SPACE, { recursive: true });
 
   // Scan every source (each also copies its folders into dist).
   const opportunities = await scan();
@@ -3727,21 +3902,21 @@ async function main() {
   const components = await scanComponents();
   const patterns = await scanPatterns();
   const pages = await scanPages();
-  // Composition graph, derived from the canonical CSS (the honesty backbone).
+  // Composition graph, derived from this space's canonical CSS (the honesty backbone).
   const graph = await buildGraph();
 
-  // Publish the nav context BEFORE any render so the global left rail (org switcher +
-  // Prototypes/Playground + Opportunities + Library) is identical on every page.
+  // Publish the nav context BEFORE any render so the left rail (space switcher +
+  // Opportunities/Playground + Library) is identical on every page of this space.
   NAV_STATE.opportunities = opportunities;
   NAV_STATE.hasPlayground = await isDir(path.join(WS_ROOT, "playground"));
 
   // Root index → opportunities.
-  await fs.writeFile(path.join(DIST, "index.html"), renderRootIndex(opportunities), "utf8");
+  await fs.writeFile(path.join(DIST_SPACE, "index.html"), renderRootIndex(opportunities), "utf8");
 
   // Per-opportunity index → prototypes.
   for (const opp of opportunities) {
     await fs.writeFile(
-      path.join(DIST, opp.name, "index.html"),
+      path.join(DIST_SPACE, opp.name, "index.html"),
       renderOpportunityIndex(opp),
       "utf8"
     );
@@ -3750,7 +3925,7 @@ async function main() {
   // ── Primitives tab → ship the govocal-ui gallery (tokens: colour, type, shadow,
   // and the base primitives) + its assets out of the skill (skills/ doesn't ship
   // on its own). Inject the site nav into the gallery.
-  const patternsDir = path.join(DIST, "primitives");
+  const patternsDir = path.join(DIST_SPACE, "primitives");
   await fs.mkdir(patternsDir, { recursive: true });
   const galleryHtml = await fs.readFile(path.join(UI_SKILL, "gallery.html"), "utf8");
   await fs.writeFile(
@@ -3765,13 +3940,14 @@ async function main() {
     }
   }
 
-  // ── Canonical shared assets → dist/skills/govocal-ui/ (whitelist ONLY — never
-  // the internal .md files like SKILL.md / components.md). Library demos
-  // (components/<name>/, pages/<name>/) reference these via ../../skills/govocal-ui/
-  // so they're HARDWIRED to the live canonical source — no per-folder snapshot, so
-  // drift between primitives → components → pages is structurally impossible. The
-  // same relative path resolves locally (file://) and here on the shipped site.
-  // (Prototypes are the only tier that still copies assets — they're allowed to fork.)
+  // ── Canonical shared assets → <space>/skills/govocal-ui/ (whitelist ONLY — never
+  // the internal .md files like SKILL.md / components.md). Each space ships its OWN copy
+  // at its own root, so the ../../skills/govocal-ui/ relative refs in library demos
+  // (components/<name>/, pages/<name>/) and prototypes resolve WITHIN the space — local
+  // (file://), the default space at the dist root, and a /<id>/-prefixed space alike.
+  // That keeps primitives → components → pages hardwired to one source per space, so
+  // drift is structurally impossible and a space can diverge its DS without touching
+  // another. (Prototypes are the only tier that still copies assets — they may fork.)
   const SHARED_ASSETS = [
     "govocal-tokens.css", "govocal-primitives.css", "govocal-ui.css", "govocal-bo.css",
     "govocal-themes.js", "govocal-cookies.js", "govocal-icons.js",
@@ -3781,7 +3957,7 @@ async function main() {
     "govocal-pagebuilder.js", "govocal-widgets.js", "govocal-widgets.css",
     "govocal-instances.js",
   ];
-  const sharedDir = path.join(DIST, "skills", "govocal-ui");
+  const sharedDir = path.join(DIST_SPACE, "skills", "govocal-ui");
   await fs.mkdir(sharedDir, { recursive: true });
   for (const asset of SHARED_ASSETS) {
     if (await exists(path.join(UI_SKILL, asset))) {
@@ -3800,47 +3976,129 @@ async function main() {
   }
 
   // ── Tokens tab → GENERATED from govocal-tokens.css via the composition graph.
-  await fs.mkdir(path.join(DIST, "tokens"), { recursive: true });
+  await fs.mkdir(path.join(DIST_SPACE, "tokens"), { recursive: true });
   await fs.writeFile(
-    path.join(DIST, "tokens", "index.html"),
+    path.join(DIST_SPACE, "tokens", "index.html"),
     renderTokensIndex(graph),
     "utf8"
   );
 
   // ── Base tab → base-atom demos from base/<name>/.
-  await fs.mkdir(path.join(DIST, "base"), { recursive: true });
+  await fs.mkdir(path.join(DIST_SPACE, "base"), { recursive: true });
   await fs.writeFile(
-    path.join(DIST, "base", "index.html"),
+    path.join(DIST_SPACE, "base", "index.html"),
     renderBaseIndex(base),
     "utf8"
   );
 
   // ── Components tab → composed component library from components/<name>/.
-  await fs.mkdir(path.join(DIST, "components"), { recursive: true });
+  await fs.mkdir(path.join(DIST_SPACE, "components"), { recursive: true });
   await fs.writeFile(
-    path.join(DIST, "components", "index.html"),
+    path.join(DIST_SPACE, "components", "index.html"),
     renderComponentsIndex(components),
     "utf8"
   );
 
   // ── Patterns tab → curated composition demos from patterns/<name>/.
-  await fs.mkdir(path.join(DIST, "patterns"), { recursive: true });
+  await fs.mkdir(path.join(DIST_SPACE, "patterns"), { recursive: true });
   await fs.writeFile(
-    path.join(DIST, "patterns", "index.html"),
+    path.join(DIST_SPACE, "patterns", "index.html"),
     renderPatternsIndex(patterns),
     "utf8"
   );
 
   // ── Pages tab → composed reference pages from pages/<name>/.
-  await fs.mkdir(path.join(DIST, "pages"), { recursive: true });
+  await fs.mkdir(path.join(DIST_SPACE, "pages"), { recursive: true });
   await fs.writeFile(
-    path.join(DIST, "pages", "index.html"),
+    path.join(DIST_SPACE, "pages", "index.html"),
     renderPagesIndex(pages),
     "utf8"
   );
 
-  // ── Changelog → rendered from the hand-edited changelog.md (the .md itself is
-  // internal and never copied; only this generated page ships).
+  // ── Playground (per space) → a folder that acts like an opportunity but stays pinned
+  // in the rail. Copy the whole tree verbatim (shared assets + project subfolders), then
+  // overwrite its index.html with a generated folder browser of the subfolders.
+  let playground = [];
+  if (await isDir(path.join(WS_ROOT, "playground"))) {
+    await copyDir(path.join(WS_ROOT, "playground"), path.join(DIST_SPACE, "playground"), isInternalOnly);
+    playground = await scanPlayground();
+    await fs.writeFile(
+      path.join(DIST_SPACE, "playground", "index.html"),
+      renderPlaygroundIndex(playground),
+      "utf8"
+    );
+  }
+
+  // ── Per-space build log.
+  const protoCount = opportunities.reduce((n, o) => n + o.prototypes.length, 0);
+  console.log(
+    `[${space.id}]${space.default ? " (default → /)" : ` → /${space.id}/`} — ` +
+    `${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}, ` +
+    `${plural(protoCount, "prototype")}, ${components.length} components, ${pages.length} pages` +
+    `${playground.length ? `, ${plural(playground.length, "playground project")}` : ""}.`
+  );
+
+  return { opportunities, base, components, patterns, pages, playground, graph };
+}
+
+async function main() {
+  // Clean dist for a deterministic build. Retry the removal: on macOS a
+  // concurrent .DS_Store / Spotlight write can re-create a dir entry between
+  // node's readdir and rmdir, throwing ENOTEMPTY on an otherwise-empty tree.
+  await fs.rm(DIST, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  await fs.mkdir(DIST, { recursive: true });
+
+  const spaces = await discoverSpaces();
+  // Publish the space list (public meta) for the rail's space switcher — identical on
+  // every page; setSpaceContext() stamps which one is active per build pass.
+  NAV_STATE.spaces = spaces.map((s) => ({
+    id: s.id, name: s.name, default: s.default, badge: s.badge, base: s.default ? "" : `/${s.id}`,
+  }));
+
+  // Worker inputs accumulate ACROSS spaces — one gate, one version map for the whole site.
+  const publicPrefixes = [];
+  const versionMap = {};
+  const sigParts = [`ui:${UI_VERSION}`];
+  let defaultGraph = null;
+
+  for (const space of spaces) {
+    const r = await buildSpace(space); // sets BASE + DIST_SPACE for this space
+    if (space.default) defaultGraph = r.graph;
+
+    // Published, link-shareable paths (prototypes + playground), prefixed with this
+    // space's BASE so the gate opens them and they stay isolated per space. Galleries
+    // remain gated (not pushed here). S() reads the BASE just set by buildSpace().
+    for (const opp of r.opportunities)
+      for (const p of opp.prototypes) {
+        const u = S(`/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`);
+        publicPrefixes.push(u);
+        versionMap[u] = String(p.mtimeMs);
+      }
+    // Playground prototype folders are public (link-shareable); the /playground/ index
+    // listing itself stays gated (a shorter path matching no prefix).
+    for (const pj of r.playground) {
+      const u = S(`/playground/${encodeURIComponent(pj.name)}/`);
+      publicPrefixes.push(u);
+      versionMap[u] = String(pj.mtimeMs);
+    }
+    for (const c of r.components) versionMap[S(`/components/${encodeURIComponent(c.name)}/`)] = String(c.mtimeMs);
+    for (const b of r.base) versionMap[S(`/base/${encodeURIComponent(b.name)}/`)] = String(b.mtimeMs);
+    for (const pt of r.patterns) versionMap[S(`/patterns/${encodeURIComponent(pt.name)}/`)] = String(pt.mtimeMs);
+    for (const pg of r.pages) versionMap[S(`/pages/${encodeURIComponent(pg.name)}/`)] = String(pg.mtimeMs);
+
+    // Structural signature → shell live-reload id (NOT mtimes), namespaced per space.
+    sigParts.push(`space:${space.id}|pg:${r.playground.length > 0}`);
+    for (const opp of r.opportunities)
+      for (const p of opp.prototypes)
+        sigParts.push(`${space.id}:${opp.name}/${p.name}|${p.status || ""}|${p.editor ? p.editor.email : ""}`);
+    for (const [label, arr] of [["c", r.components], ["b", r.base], ["pt", r.patterns], ["pg", r.pages], ["pl", r.playground]])
+      for (const it of arr) sigParts.push(`${space.id}:${label}:${it.name}`);
+  }
+
+  // ── Shared chrome — emitted ONCE at the dist root (NOT space-scoped) ─────────────────
+
+  // Changelog (platform-level) → rendered from the hand-edited changelog.md (the .md
+  // itself is internal and never copied; only this generated page ships).
   const changelog = await loadChangelog();
   await fs.mkdir(path.join(DIST, "changelog"), { recursive: true });
   await fs.writeFile(
@@ -3849,82 +4107,27 @@ async function main() {
     "utf8"
   );
 
-  // ── Admin → editable per-user passwords. The page ships to /admin/ but the worker
-  // gates the route to admins (and the /__admin API re-checks). Only meaningful when
-  // identity is configured (src/identity.json); harmless otherwise.
+  // Admin → editable per-user passwords. The page ships to /admin/ but the worker gates
+  // the route to admins (and the /__admin API re-checks). Only meaningful when identity
+  // is configured (src/identity.json); harmless otherwise.
   await fs.mkdir(path.join(DIST, "admin"), { recursive: true });
   await fs.writeFile(path.join(DIST, "admin", "index.html"), renderAdminPage(), "utf8");
-
-  // ── Playground → a folder that acts like an opportunity but stays pinned in the
-  // root sidebar. Copy the whole tree verbatim (shared assets + project subfolders),
-  // then overwrite its index.html with a generated folder browser of the subfolders.
-  let playground = [];
-  if (await isDir(path.join(WS_ROOT, "playground"))) {
-    await copyDir(path.join(WS_ROOT, "playground"), path.join(DIST, "playground"), isInternalOnly);
-    playground = await scanPlayground();
-    await fs.writeFile(
-      path.join(DIST, "playground", "index.html"),
-      renderPlaygroundIndex(playground),
-      "utf8"
-    );
-  }
-  const hasPlayground = playground.length >= 0 && (await isDir(path.join(DIST, "playground")));
 
   // Optional self-contained build addon emits its own dist files (if present).
   if (addon) await addon.emit({ ROOT, DIST, fs, path, copyDir, isInternalOnly, exists });
 
-  // Edge auth gate. Inject the list of PUBLIC prototype path-prefixes so the
-  // password gate covers only the internal site — published prototypes stay open.
-  // (Derived from what actually shipped above, so the gate can never drift.)
-  const publicPrefixes = opportunities.flatMap((opp) =>
-    opp.prototypes.map(
-      (p) => `/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`
-    )
-  );
-  // Playground projects ship verbatim and are public too — individual scratch
-  // prototypes are link-shareable. Only the prototype folders are opened; the
-  // /playground/ index listing itself stays gated (a shorter path that matches no
-  // prefix), so the scratch catalogue isn't exposed.
-  for (const pj of playground) {
-    publicPrefixes.push(`/playground/${encodeURIComponent(pj.name)}/`);
-  }
-
-  // Per-page live-reload versions. Map each shipped folder's URL prefix → a token
-  // that changes ONLY when that folder's content changes (its git/fs last-change
-  // time). The worker injects the matching token into each page and serves it from
-  // /__version?path=…; a tab reloads only when ITS token changes — so a deploy that
-  // touched a different prototype never reloads an unrelated open tab. Anything not
-  // matched (index/shell pages, assets) falls back to BUILD_ID (reload every deploy,
-  // which is fine for the listings — they're meant to show the latest).
-  const versionMap = {};
-  for (const opp of opportunities)
-    for (const p of opp.prototypes)
-      versionMap[`/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`] = String(p.mtimeMs);
-  for (const c of components) versionMap[`/components/${encodeURIComponent(c.name)}/`] = String(c.mtimeMs);
-  for (const b of base) versionMap[`/base/${encodeURIComponent(b.name)}/`] = String(b.mtimeMs);
-  for (const pt of patterns) versionMap[`/patterns/${encodeURIComponent(pt.name)}/`] = String(pt.mtimeMs);
-  for (const pg of pages) versionMap[`/pages/${encodeURIComponent(pg.name)}/`] = String(pg.mtimeMs);
-  for (const pj of playground) versionMap[`/playground/${encodeURIComponent(pj.name)}/`] = String(pj.mtimeMs);
-
-  // Live-reload id for the index/shell pages (everything not in VERSION_MAP). It used
-  // to be Date.now() — so EVERY rebuild reloaded the nav, and in offline mode (several
-  // agents saving constantly) that meant the nav blinked ~1×/s. Derive it instead from
-  // a STRUCTURAL signature: which items exist + their name/status/editor — but NOT their
-  // mtimes. So editing a prototype's contents reloads only that prototype's own page
-  // (its VERSION_MAP token), while the nav reloads only when the listing itself changes
-  // (an item added/removed/renamed/re-statused). Volatile "edited N ago" labels go a
-  // little stale between structural changes — fine for a local preview.
-  const sigParts = [`ui:${UI_VERSION}`, `pg:${playground.length > 0}`];
-  for (const opp of opportunities)
-    for (const p of opp.prototypes)
-      sigParts.push(`${opp.name}/${p.name}|${p.status || ""}|${p.editor ? p.editor.email : ""}`);
-  for (const [label, arr] of [["c", components], ["b", base], ["pt", patterns], ["pg", pages], ["pl", playground]])
-    for (const it of arr) sigParts.push(`${label}:${it.name}`);
+  // Live-reload id for the index/shell pages (everything not in VERSION_MAP) — a djb2
+  // hash of the STRUCTURAL signature (which items exist + name/status/editor, NOT their
+  // mtimes). Editing a prototype reloads only its own page (its VERSION_MAP token); the
+  // nav reloads only when a listing changes (item added/removed/renamed/re-statused).
   let h = 5381;
   const sig = sigParts.sort().join("\n");
   for (let i = 0; i < sig.length; i++) h = ((h << 5) + h + sig.charCodeAt(i)) >>> 0; // djb2
   const shellId = h.toString(36);
 
+  // Edge auth gate. Inject the PUBLIC prototype path-prefixes (every space), the version
+  // map, the shell id, and the user identities. (Derived from what actually shipped, so
+  // the gate can never drift.)
   const workerSrc = await fs.readFile(SRC_WORKER, "utf8");
   const gatedWorker = workerSrc.replace(
     "const PUBLIC_PREFIXES = [];",
@@ -3950,7 +4153,8 @@ async function main() {
   }
   await fs.writeFile(path.join(DIST, "_worker.js"), stampedWorker, "utf8");
 
-  // Review overlay asset (shared by every injected prototype).
+  // Review overlay assets (shared; injected into prototypes via absolute /__review/
+  // paths). The composition graph is the DEFAULT space's — prototypes live there.
   await fs.mkdir(path.join(DIST, "__review"), { recursive: true });
   await fs.copyFile(SRC_REVIEW, path.join(DIST, "__review", "comments.js"));
   await fs.copyFile(SRC_REVIEW_CAT, path.join(DIST, "__review", "aslam.png"));
@@ -3958,7 +4162,7 @@ async function main() {
   // comments.js so the overlay can recurse tokens → base → components → patterns.
   await fs.writeFile(
     path.join(DIST, "__review", "graph.js"),
-    "window.__GV_GRAPH=" + JSON.stringify(graph) + ";",
+    "window.__GV_GRAPH=" + JSON.stringify(defaultGraph || { tokens: {} }) + ";",
     "utf8"
   );
 
@@ -3989,6 +4193,11 @@ async function main() {
   // any depth. Rendered from brand/augur-mark.svg (internal source, never shipped).
   if (await exists(path.join(ROOT, "augur-mark.png"))) {
     await fs.copyFile(path.join(ROOT, "augur-mark.png"), path.join(DIST, "augur-mark.png"));
+  }
+  // Space-switcher icon → /space-icon.png (the Go Vocal favicon; shared by every space's
+  // rail switcher). Referenced root-absolute, served on gated rail pages to authed users.
+  if (await exists(path.join(ROOT, "brand", "govocal-space-icon.png"))) {
+    await fs.copyFile(path.join(ROOT, "brand", "govocal-space-icon.png"), path.join(DIST, "space-icon.png"));
   }
   // Augur eye mark (transparent indigo disc + sparkle cutout) → /augur-eye.svg, the
   // in-app rail/top brand mark. (Same shape on the bone tile = augur-mark.png favicon.)
@@ -4031,25 +4240,7 @@ async function main() {
     )
   );
 
-  const protoCount = opportunities.reduce((n, o) => n + o.prototypes.length, 0);
-  console.log(
-    `Built dist/ — ${plural(opportunities.length, "opportunity").replace("opportunitys", "opportunities")}, ${plural(protoCount, "prototype")}.`
-  );
-  for (const opp of opportunities) {
-    console.log(`  ${opp.name}/`);
-    for (const p of opp.prototypes) console.log(`    - ${p.name}`);
-  }
-  if (hasPlayground) {
-    console.log(`  playground/  — ${plural(playground.length, "project")}`);
-    for (const p of playground) console.log(`    - ${p.name}`);
-  }
-  console.log(`  tokens/  — ${Object.keys(graph.tokens).length} tokens (generated from govocal-tokens.css)`);
-  console.log(`  base/  — ${plural(base.length, "atom demo")}`);
-  console.log(`  components/  — ${plural(components.length, "component")}`);
-  console.log(`  patterns/  — ${plural(patterns.length, "pattern")}`);
-  console.log(`  primitives/  (Primitives gallery — legacy, not in nav)`);
-  console.log(`  pages/  — ${plural(pages.length, "reference page")}`);
-  for (const p of pages) console.log(`    - ${p.name}`);
+  console.log(`Built dist/ — ${plural(spaces.length, "space")} (${spaces.map((s) => s.id).join(", ")}).`);
 }
 
 main().catch((err) => {
