@@ -302,10 +302,90 @@ function loginPage(redirect, error) {
 </html>`;
 }
 
+// Branded 404 — same shell language as loginPage (near-white canvas, indigo accent,
+// Inter, the Augur mark). Shown when env.ASSETS.fetch returns a 404 for a request
+// that is PAST the gate (authed user, admin page, or a public-prototype path). The
+// signed-out fallthrough keeps returning the login page instead, so an unknown URL
+// never reveals whether it exists to someone who hasn't logged in.
+function notFoundPage() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Not found · Augur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <style>
+    :root {
+      --bg: #fbfbfd; --card: #ffffff; --fg: #16171a; --muted: #5b626e; --faint: #9aa0ab;
+      --line: rgba(16,17,26,0.09); --line-2: rgba(16,17,26,0.15);
+      --accent: #2c2150; --accent-solid: #2c2150;
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+      font: 15px/1.55 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      letter-spacing: -0.011em; background: var(--bg); color: var(--fg);
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 34px 32px 30px; max-width: 380px; width: 100%; text-align: center;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -22px rgba(16,24,40,0.22);
+    }
+    .logo { display: flex; justify-content: center; margin: 2px 0 20px; }
+    .logo svg { width: 40px; height: 40px; display: block; }
+    .code { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); margin: 0 0 6px; }
+    h1 { font-size: 19px; font-weight: 600; margin: 0 0 8px; }
+    p { font-size: 14px; color: var(--muted); margin: 0 0 22px; }
+    a.home {
+      display: inline-block; font-weight: 600; font-size: 14px; color: #fff;
+      background: var(--accent-solid); border-radius: 9px; padding: 9px 18px;
+      text-decoration: none; transition: background .12s ease;
+    }
+    a.home:hover { background: #38295e; }
+    a.home:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (max-width: 420px) { .card { padding: 28px 22px; } }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="logo">
+      <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Augur">
+        <g transform="translate(153.5 153.5) scale(1.115)" fill="#2C2150" fill-rule="evenodd"><path d="M303.668 0.501099C480.9 -9.31876 632.543 126.378 642.396 303.609C652.249 480.839 516.579 632.508 339.35 642.392C162.076 652.279 10.36 516.567 0.504883 339.291C-9.34912 162.015 126.39 10.3241 303.668 0.501099ZM321.31 58.589C313.993 78.2949 309.682 91.0001 300.003 110.42C256.894 196.544 185.761 265.436 98.3008 305.765C84.5568 312.054 73.3451 316.365 59.0391 321.205C166.492 358.562 254.54 437.345 303.567 540.001C306.201 545.441 320.11 580.712 320.888 581.447C329.254 559.649 338.869 536.27 350.55 515.916C397.544 434.024 469.471 370.244 555.57 331.86C563.577 328.29 574.85 323.736 583.145 321.47C472.786 278.754 383.1 203.746 334.938 93.8761C332.878 89.1732 321.885 59.2127 321.31 58.589Z"/></g>
+      </svg>
+    </div>
+    <p class="code">404</p>
+    <h1>Page not found</h1>
+    <p>This URL doesn't match any page, prototype, or asset.</p>
+    <a class="home" href="/">Back to Augur</a>
+  </main>
+</body>
+</html>`;
+}
+
 function htmlResponse(body, status) {
   return new Response(body, {
     status,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+  });
+}
+
+// Branded 404 for requests that are past the gate. no-store + noindex so it's never
+// cached or crawled. Used wherever env.ASSETS.fetch returns a 404 for an authed/public path.
+function notFoundResponse() {
+  return new Response(notFoundPage(), {
+    status: 404,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+    },
   });
 }
 
@@ -893,7 +973,9 @@ export default {
     // The open door is for easy link-sharing, NOT public discovery, so tag every
     // public response as non-indexable (covers HTML and assets alike).
     if (isPublicPath(url.pathname)) {
-      const res = withAssetCache(withLiveReload(await env.ASSETS.fetch(request), url), url);
+      const asset = await env.ASSETS.fetch(request);
+      if (asset.status === 404) return notFoundResponse();
+      const res = withAssetCache(withLiveReload(asset, url), url);
       const out = new Response(res.body, res);
       out.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
       return out;
@@ -904,11 +986,17 @@ export default {
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
       if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
       if (usersActive && (!me || me.role !== "admin")) return Response.redirect(new URL("/", url).toString(), 303);
-      return withAssetCache(withLiveReload(await env.ASSETS.fetch(request), url), url);
+      const asset = await env.ASSETS.fetch(request);
+      if (asset.status === 404) return notFoundResponse();
+      return withAssetCache(withLiveReload(asset, url), url);
     }
 
     // Past the gate (or nothing gates the site) → serve.
-    if (authed) return withAssetCache(withLiveReload(await env.ASSETS.fetch(request), url), url);
+    if (authed) {
+      const asset = await env.ASSETS.fetch(request);
+      if (asset.status === 404) return notFoundResponse();
+      return withAssetCache(withLiveReload(asset, url), url);
+    }
 
     // Otherwise show the login page, remembering where they were headed.
     // 200 (not 401) so password managers treat it as a normal login page.
