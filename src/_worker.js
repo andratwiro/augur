@@ -93,6 +93,22 @@ function isPublicPath(pathname) {
   );
 }
 
+// ADMIN-ONLY space base paths (e.g. "/go-vocal-2" — the 2.0 workspace). build.js
+// replaces the array below with the base path of every space whose space.json sets
+// "adminOnly": true, so it can never drift from what shipped. Everything under one
+// of these prefixes requires an admin user — regular users (Irene, Tali) are bounced
+// home, signed-out visitors get the login page. Left empty in a raw copy → no space
+// is restricted (a local build with no identity gates nothing extra).
+const RESTRICTED_BASES = [];
+
+// Does this path live inside an admin-only space? Matches the base ("/go-vocal-2"),
+// its root ("/go-vocal-2/") and everything beneath it.
+function isRestrictedPath(pathname) {
+  return RESTRICTED_BASES.some(
+    (b) => pathname === b || pathname.startsWith(b + "/")
+  );
+}
+
 async function tokenFor(secret) {
   const data = new TextEncoder().encode("gv:" + secret);
   const digest = await crypto.subtle.digest("SHA-256", data);
@@ -861,6 +877,16 @@ export default {
     if (url.pathname === "/__name") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       return nameApi(request, url, env);
+    }
+
+    // Admin-only spaces (the 2.0 workspace): seal the whole base path BEFORE the
+    // public-prototype door, so nothing under it — not even an og.jpg — leaks. Only
+    // an admin (Rob) gets through; a signed-in non-admin (Irene, Tali) is bounced
+    // home; a signed-out visitor gets the login page. Skipped in legacy/open mode
+    // (no users injected), same as the /admin gate.
+    if (usersActive && isRestrictedPath(url.pathname)) {
+      if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
+      if (!me || me.role !== "admin") return Response.redirect(new URL("/", url).toString(), 303);
     }
 
     // Published prototypes are public — never gated, regardless of the cookie.

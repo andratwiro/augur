@@ -1699,8 +1699,12 @@ const NAV_CSS = `
     .gvprof__item .gvic { width: 15px; height: 15px; color: #5b626e; }
 
     /* Space switcher — active space icon+name+badge with a dropdown of all spaces.
-       Server-rendered from the build-time space list; SPACE_JS only toggles the menu. */
-    .gvspace { position: relative; margin: 2px 1px 8px; }
+       Server-rendered from the build-time space list; SPACE_JS only toggles the menu.
+       Admin-only: only Rob owns the 2.0 workspace, so the switcher is hidden by default
+       and revealed once /__me confirms an admin (html.gv-admin) — same reveal mechanism
+       as the other admin surfaces. Regular users (Irene, Tali) never see it. */
+    .gvspace { display: none; position: relative; margin: 2px 1px 8px; }
+    html.gv-admin .gvspace { display: block; }
     .gvspace__btn {
       display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
       border: 1px solid rgba(16,17,26,0.10); border-radius: 8px; background: #fff; cursor: pointer;
@@ -3797,6 +3801,9 @@ async function discoverSpaces() {
       name: meta.name || titleCase(e.name),
       default: !!meta.default,
       badge: meta.badge || "",
+      // Admin-only space: the switcher hides it for non-admins and the worker seals its
+      // base path (only Rob can reach the 2.0 workspace). Default space is never gated.
+      adminOnly: !!meta.adminOnly,
       // GoVocal content, authored per space — the platform stays space-agnostic.
       pendingPages: Array.isArray(meta.pendingPages) ? meta.pendingPages : [],
       methodPages: Array.isArray(meta.methodPages) ? meta.methodPages : [],
@@ -4001,6 +4008,7 @@ async function main() {
   // every page; setSpaceContext() stamps which one is active per build pass.
   NAV_STATE.spaces = spaces.map((s) => ({
     id: s.id, name: s.name, default: s.default, badge: s.badge, base: s.default ? "" : `/${s.id}`,
+    adminOnly: s.adminOnly,
   }));
 
   // Worker inputs accumulate ACROSS spaces — one gate, one version map for the whole site.
@@ -4099,7 +4107,20 @@ async function main() {
   if (stampedWorker === versionedWorker) {
     throw new Error("build: USERS placeholder not found in src/_worker.js");
   }
-  await fs.writeFile(path.join(DIST, "_worker.js"), stampedWorker, "utf8");
+  // Inject the admin-only space base paths (e.g. "/go-vocal-2") so the gate seals them
+  // to admins. Derived from each space's space.json `adminOnly` flag (default space is
+  // never restricted), so it can't drift from what shipped.
+  const restrictedBases = NAV_STATE.spaces
+    .filter((s) => s.adminOnly && !s.default)
+    .map((s) => s.base);
+  const sealedWorker = stampedWorker.replace(
+    "const RESTRICTED_BASES = [];",
+    `const RESTRICTED_BASES = ${JSON.stringify(restrictedBases)};`
+  );
+  if (sealedWorker === stampedWorker) {
+    throw new Error("build: RESTRICTED_BASES placeholder not found in src/_worker.js");
+  }
+  await fs.writeFile(path.join(DIST, "_worker.js"), sealedWorker, "utf8");
 
   // Review overlay assets (shared; injected into prototypes via absolute /__review/
   // paths). The composition graph is the DEFAULT space's — prototypes live there.
