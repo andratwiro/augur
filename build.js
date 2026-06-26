@@ -3023,6 +3023,71 @@ const ADMIN_JS = `(function(){
 
 // The admin page: editable per-user passwords. Server-gated to admins (worker guards
 // the /admin/ route + the /__admin API); the page just renders what the API returns.
+// Branded 404 written to dist/404.html. KEEP IN SYNC with notFoundPage() in
+// src/_worker.js — same shell language (near-white canvas, indigo accent, Inter, the
+// Augur mark) so a direct hit on 404.html and a worker-wrapped 404 look identical.
+function renderNotFoundPage() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Not found · Augur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <style>
+    :root {
+      --bg: #fbfbfd; --card: #ffffff; --fg: #16171a; --muted: #5b626e; --faint: #9aa0ab;
+      --line: rgba(16,17,26,0.09); --line-2: rgba(16,17,26,0.15);
+      --accent: #2c2150; --accent-solid: #2c2150;
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+      font: 15px/1.55 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      letter-spacing: -0.011em; background: var(--bg); color: var(--fg);
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+      padding: 34px 32px 30px; max-width: 380px; width: 100%; text-align: center;
+      box-shadow: 0 1px 2px rgba(16,24,40,0.05), 0 10px 28px -22px rgba(16,24,40,0.22);
+    }
+    .logo { display: flex; justify-content: center; margin: 2px 0 20px; }
+    .logo svg { width: 40px; height: 40px; display: block; }
+    .code { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--faint); margin: 0 0 6px; }
+    h1 { font-size: 19px; font-weight: 600; margin: 0 0 8px; }
+    p { font-size: 14px; color: var(--muted); margin: 0 0 22px; }
+    a.home {
+      display: inline-block; font-weight: 600; font-size: 14px; color: #fff;
+      background: var(--accent-solid); border-radius: 9px; padding: 9px 18px;
+      text-decoration: none; transition: background .12s ease;
+    }
+    a.home:hover { background: #38295e; }
+    a.home:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    @media (max-width: 420px) { .card { padding: 28px 22px; } }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="logo">
+      <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Augur">
+        <g transform="translate(153.5 153.5) scale(1.115)" fill="#2C2150" fill-rule="evenodd"><path d="M303.668 0.501099C480.9 -9.31876 632.543 126.378 642.396 303.609C652.249 480.839 516.579 632.508 339.35 642.392C162.076 652.279 10.36 516.567 0.504883 339.291C-9.34912 162.015 126.39 10.3241 303.668 0.501099ZM321.31 58.589C313.993 78.2949 309.682 91.0001 300.003 110.42C256.894 196.544 185.761 265.436 98.3008 305.765C84.5568 312.054 73.3451 316.365 59.0391 321.205C166.492 358.562 254.54 437.345 303.567 540.001C306.201 545.441 320.11 580.712 320.888 581.447C329.254 559.649 338.869 536.27 350.55 515.916C397.544 434.024 469.471 370.244 555.57 331.86C563.577 328.29 574.85 323.736 583.145 321.47C472.786 278.754 383.1 203.746 334.938 93.8761C332.878 89.1732 321.885 59.2127 321.31 58.589Z"/></g>
+      </svg>
+    </div>
+    <p class="code">404</p>
+    <h1>Page not found</h1>
+    <p>This URL doesn't match any page, prototype, or asset.</p>
+    <a class="home" href="/">Back to Augur</a>
+  </main>
+</body>
+</html>`;
+}
+
 function renderAdminPage() {
   const body = `<style>
     .admin-intro{ color:#5b626e; font-size:14px; margin:0 0 18px; max-width:62ch; line-height:1.6; }
@@ -4121,6 +4186,13 @@ async function main() {
     throw new Error("build: RESTRICTED_BASES placeholder not found in src/_worker.js");
   }
   await fs.writeFile(path.join(DIST, "_worker.js"), sealedWorker, "utf8");
+
+  // Top-level 404.html. Cloudflare Pages serves this (with a genuine 404 status) for
+  // any unmatched route — WITHOUT it, Pages falls back to serving the root index.html
+  // at status 200, so the worker's `asset.status === 404` branch never fires and bogus
+  // URLs render the internal landing page instead of a 404. Same shell/markup as the
+  // worker's notFoundPage() so direct hits and worker-wrapped hits look identical.
+  await fs.writeFile(path.join(DIST, "404.html"), renderNotFoundPage(), "utf8");
 
   // Review overlay assets (shared; injected into prototypes via absolute /__review/
   // paths). The composition graph is the DEFAULT space's — prototypes live there.
