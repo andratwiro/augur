@@ -20,7 +20,7 @@
 // Zero new dependencies: Node's recursive fs.watch + npx wrangler (same as deploy).
 
 import { spawn } from "node:child_process";
-import { watch, existsSync, readFileSync } from "node:fs";
+import { watch, existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,29 +52,38 @@ const LIVE_KV_BINDINGS = LIVE_KV ? [
   "--binding", `GV_KV_NS=${DEPLOY_ENV.GV_KV_NS}`,
 ] : [];
 
-// Build from the canonical EDIT-HERE clone, not the pinned nested submodule.
-// The god-mode checkout puts the canonical workspace — which now holds BOTH the design
-// system and the prototypes, organized into spaces/<id>/ — as a sibling of augur/
-// (../gv-workspace), and that's where every agent edits. Building from it means a local
-// preview reflects live edits with no pin bump, no matter which agent made the change.
-// Fall back to the nested submodule if the sibling isn't present (e.g. augur cloned on
-// its own, outside the god-mode container).
-const SIBLING_WS = path.join(ROOT, "..", "gv-workspace");
-const usingSiblings = existsSync(path.join(SIBLING_WS, "spaces"));
-const WS_ROOT = usingSiblings ? SIBLING_WS : path.join(ROOT, "gv-workspace");
-const SPACES_ROOT = path.join(WS_ROOT, "spaces");
+// Build from the canonical EDIT-HERE clones, not the pinned nested submodules.
+// One repo per space: the god-mode checkout puts each space repo — a self-contained
+// bundle with that space's design system AND prototypes at its root — as a sibling of
+// augur/ (../go-vocal, …), and that's where every agent edits. Building from them means
+// a local preview reflects live edits with no pin bump, no matter which agent made the
+// change. A sibling counts as a space iff it carries a space.json at its root — the same
+// filter build.js's discoverSpaces() applies — so augur itself and scratch dirs are
+// ignored. Fall back to the pinned submodules under augur/spaces/ if no sibling space
+// exists (e.g. augur cloned on its own, outside the god-mode container).
+const PARENT = path.join(ROOT, "..");
+let siblingSpaces = [];
+try {
+  siblingSpaces = readdirSync(PARENT, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith(".")
+      && existsSync(path.join(PARENT, e.name, "space.json")))
+    .map((e) => path.join(PARENT, e.name));
+} catch {}
+const usingSiblings = siblingSpaces.length > 0;
+const SPACES_ROOT = usingSiblings ? PARENT : path.join(ROOT, "spaces");
 // Passed to build.js so it composes every space from here (see GV_SPACES_ROOT there).
 const BUILD_ENV = { ...process.env, GV_SPACES_ROOT: SPACES_ROOT };
 
-// Build inputs to watch — the whole spaces/ tree (each space's DS assets + prototypes)
-// plus the augur-owned build inputs. Specific subtrees only — never the 1.5GB gitignored
-// govocal-exports, node_modules, .git, dist, or .wrangler.
+// Build inputs to watch — each space repo (its DS assets + prototypes) plus the
+// augur-owned build inputs. Specific subtrees only — never the 1.5GB gitignored
+// govocal-exports, node_modules, .git, dist, or .wrangler (IGNORE below filters their
+// events even inside a watched space root).
 const WATCH = [
   path.join(ROOT, "build.js"),
   path.join(ROOT, "src", "_worker.js"),
   path.join(ROOT, "src", "identity.json"),  // users + seed passwords → rebuild on change
   path.join(ROOT, "pitis"),          // augur-owned cursor-companion layer
-  SPACES_ROOT,
+  ...(usingSiblings ? siblingSpaces : [path.join(ROOT, "spaces")]),
 ];
 
 // Paths whose changes are noise — ignore even if they live under a watched root.
@@ -104,8 +113,8 @@ function build(reason) {
 }
 
 // ── initial build, then launch wrangler ──────────────────────────────────────
-log(`starting offline mode — building from ${usingSiblings ? "canonical sibling clone (edit-here)" : "nested submodule (pinned)"}`);
-log(`  spaces: ${SPACES_ROOT}`);
+log(`starting offline mode — building from ${usingSiblings ? "canonical sibling space clones (edit-here)" : "nested submodules (pinned)"}`);
+log(`  spaces: ${usingSiblings ? siblingSpaces.join(", ") : path.join(ROOT, "spaces")}`);
 await new Promise((resolve) => {
   const proc = spawn("node", ["build.js"], { cwd: ROOT, env: BUILD_ENV, stdio: "inherit" });
   proc.on("close", resolve);

@@ -1,3 +1,3 @@
-[submodule "gv-workspace"]
-	path = gv-workspace
-	url = https://github.com/andratwiro/gv-workspace.git
+[submodule "spaces/go-vocal"]
+	path = spaces/go-vocal
+	url = https://github.com/andratwiro/go-vocal.git

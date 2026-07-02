@@ -16,24 +16,22 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # Augur composes ONE private submodule: gv-workspace, which now holds BOTH the
-      # design system and the prototypes, organized into spaces/<id>/ (each a self-
-      # contained DS + opportunities bundle). The default GITHUB_TOKEN cannot read other
-      # private repos, so submodule fetch uses a PAT secret (SUBMODULE_PAT, Contents:read
-      # on gv-workspace).
+      # Augur composes ONE private submodule PER SPACE, mounted at spaces/<id> (each
+      # space repo is a self-contained DS + prototypes bundle at its root). The default
+      # GITHUB_TOKEN cannot read other private repos, so submodule fetch uses a PAT
+      # secret (SUBMODULE_PAT, Contents:read on every space repo).
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0          # full history for per-prototype "last worked on" ordering
-          submodules: true        # pull gv-workspace (carries the spaces, incl. the DS)
+          submodules: true        # pull every space repo (each carries its own DS)
           token: ${{ secrets.SUBMODULE_PAT }}
 
-      # Sanity guard: the workspace submodule checked out with at least one space that
-      # carries the design-system assets build.js needs. (The old read-only DS guard is
-      # retired — the DS is now part of the editable gv-workspace by design.)
-      - name: Guard — gv-workspace spaces checked out
+      # Sanity guard: at least one space submodule checked out with the design-system
+      # assets build.js needs.
+      - name: Guard — space submodules checked out
         run: |
-          if ! ls gv-workspace/spaces/*/skills/govocal-ui/govocal-ui.css >/dev/null 2>&1; then
-            echo "::error::gv-workspace submodule has no space with DS assets at spaces/*/skills/govocal-ui/ (PAT/scope, or not yet restructured?)."; exit 1
+          if ! ls spaces/*/skills/govocal-ui/govocal-ui.css >/dev/null 2>&1; then
+            echo "::error::no space submodule with DS assets at spaces/*/skills/govocal-ui/ checked out (PAT/scope, or missing submodule?)."; exit 1
           fi
 
       - uses: actions/setup-node@v4

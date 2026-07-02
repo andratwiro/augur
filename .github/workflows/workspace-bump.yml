@@ -1,14 +1,16 @@
-name: Bump gv-workspace pin (auto)
+name: Bump space pin (auto)
 
-# Receiver for the gv-workspace auto-deploy bridge. When gv-workspace pushes to main, its
-# deploy-trigger workflow fires a repository_dispatch here with the new commit SHA. We move
-# Augur's gv-workspace submodule pin to that SHA and push — which triggers deploy.yml and
-# ships the site. This lets a gv-workspace-only collaborator go live without Augur access.
+# Receiver for the space auto-deploy bridge. Augur mounts one repo per space as a
+# submodule at spaces/<id>. When a space repo pushes to main, its deploy-trigger workflow
+# fires a repository_dispatch here with the new commit SHA and the space name (= its repo
+# name). We move that space's submodule pin to the SHA and push — which triggers
+# deploy.yml and ships the site. This lets a space-repo-only collaborator go live without
+# Augur access.
 #
-# The pin is set straight from the payload SHA via update-index, so this job needs NO read
-# access to gv-workspace — deploy.yml resolves the SHA later using SUBMODULE_PAT. The push
-# uses AUGUR_PIN_TOKEN (a PAT, not GITHUB_TOKEN) precisely so it DOES re-trigger deploy.yml
-# (pushes made with the default GITHUB_TOKEN do not start new workflow runs).
+# The pin is set straight from the payload SHA via update-index, so this job needs NO
+# read access to the space repo — deploy.yml resolves the SHA later using SUBMODULE_PAT.
+# The push uses AUGUR_PIN_TOKEN (a PAT, not GITHUB_TOKEN) precisely so it DOES re-trigger
+# deploy.yml (pushes made with the default GITHUB_TOKEN do not start new workflow runs).
 
 on:
   repository_dispatch:
@@ -30,24 +32,35 @@ jobs:
           submodules: false
           token: ${{ secrets.AUGUR_PIN_TOKEN }} # Contents: write on andratwiro/augur
 
-      - name: Move gv-workspace pin to the pushed commit
+      - name: Move the space pin to the pushed commit
         env:
           NEW_SHA: ${{ github.event.client_payload.sha }}
+          SPACE: ${{ github.event.client_payload.space }}
           ACTOR: ${{ github.event.client_payload.actor }}
         run: |
           set -euo pipefail
-          # Validate the payload SHA (defence in depth — it becomes a gitlink).
+          # Validate the payload (defence in depth — SHA becomes a gitlink, SPACE a path).
           if ! printf '%s' "$NEW_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
             echo "::error::client_payload.sha is not a 40-char hex SHA: '$NEW_SHA'"; exit 1
           fi
-          CUR_SHA="$(git ls-tree HEAD gv-workspace | awk '{print $3}')"
+          if ! printf '%s' "$SPACE" | grep -Eq '^[a-z0-9][a-z0-9-]*$'; then
+            echo "::error::client_payload.space is not a valid space id: '$SPACE'"; exit 1
+          fi
+          SUB_PATH="spaces/$SPACE"
+          # The space must already be a mounted submodule — a dispatch can move a pin,
+          # never add one.
+          MODE="$(git ls-tree HEAD "$SUB_PATH" | awk '{print $1}')"
+          if [ "$MODE" != "160000" ]; then
+            echo "::error::'$SUB_PATH' is not a submodule of this repo — unknown space '$SPACE'."; exit 1
+          fi
+          CUR_SHA="$(git ls-tree HEAD "$SUB_PATH" | awk '{print $3}')"
           if [ "$NEW_SHA" = "$CUR_SHA" ]; then
             echo "Pin already at $NEW_SHA — nothing to do."; exit 0
           fi
           git config user.name "augur-bot"
           git config user.email "augur-bot@users.noreply.github.com"
-          # Set the submodule gitlink to NEW_SHA without fetching gv-workspace.
-          git update-index --cacheinfo "160000,$NEW_SHA,gv-workspace"
-          git commit -m "Auto-bump gv-workspace pin → ${NEW_SHA:0:12} (push by ${ACTOR:-unknown})"
+          # Set the submodule gitlink to NEW_SHA without fetching the space repo.
+          git update-index --cacheinfo "160000,$NEW_SHA,$SUB_PATH"
+          git commit -m "Auto-bump $SPACE pin → ${NEW_SHA:0:12} (push by ${ACTOR:-unknown})"
           git push origin HEAD:main
-          echo "Bumped gv-workspace pin: ${CUR_SHA:0:12} → ${NEW_SHA:0:12} (deploy.yml will now run)"
+          echo "Bumped $SPACE pin: ${CUR_SHA:0:12} → ${NEW_SHA:0:12} (deploy.yml will now run)"

@@ -28,19 +28,21 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-// Augur composes ONE read-only submodule (gv-workspace) mounted at the repo root. It
-// holds the design system + the prototypes, organized into SPACES — each spaces/<id>/
-// is a self-contained bundle (its own skills/, galleries, registry.json, and
-// opportunities). build.js builds every space into /dist: the DEFAULT space at the root
-// URLs (so existing public links + overlay KV keys are untouched), and each additional
-// space under a /<id>/ path prefix.
-// Default to the pinned submodule nested here — what deploy builds. Offline mode
-// (`npm run offline`) overrides the location via GV_SPACES_ROOT to point at the canonical
-// sibling clone (../gv-workspace/spaces), so a local preview reflects live edits with no
-// pin bump. Relative overrides resolve against this file's dir.
+// Augur composes ONE read-only submodule PER SPACE, mounted at spaces/<id>/. Each space
+// is its own repo — a self-contained bundle (its own skills/, galleries, registry.json,
+// space.json, and opportunities) with the design system + prototypes together at its
+// root. build.js builds every space into /dist: the DEFAULT space at the root URLs (so
+// existing public links + overlay KV keys are untouched), and each additional space
+// under a /<id>/ path prefix.
+// Default to the pinned submodules nested here — what deploy builds. Offline mode
+// (`npm run offline`) overrides the location via GV_SPACES_ROOT to point at the parent
+// of the canonical sibling clones (../), so a local preview reflects live edits with no
+// pin bump — discoverSpaces() only treats dirs carrying a space.json as spaces, so other
+// siblings (augur itself, scratch dirs) are ignored. Relative overrides resolve against
+// this file's dir.
 const SPACES_ROOT = process.env.GV_SPACES_ROOT
   ? path.resolve(ROOT, process.env.GV_SPACES_ROOT)
-  : path.join(ROOT, "gv-workspace", "spaces");
+  : path.join(ROOT, "spaces");
 const DIST = path.join(ROOT, "dist");
 const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
 
@@ -79,8 +81,8 @@ const addonHtml = (html) => (addon ? addon.transformHtml(html, UI_VERSION) : htm
 const SRC_REVIEW = path.join(ROOT, "src", "review", "comments.js");
 const SRC_REVIEW_CAT = path.join(ROOT, "src", "review", "aslam.png");
 
-// Dev-facing prototype status baseline. Lives PER SPACE in gv-workspace at
-// spaces/<id>/prototype-status.json (keyed "<opportunity>/<prototype>"), rendered as a
+// Dev-facing prototype status baseline. Lives PER SPACE in the space repo at
+// prototype-status.json (repo root) (keyed "<opportunity>/<prototype>"), rendered as a
 // static chip at build time — no KV, no runtime cost. Internal file: it lives outside any
 // prototypes/ folder, so it is never copied to dist. Set per space by setSpaceContext().
 // See STATUS_META for the allowed values.
@@ -319,7 +321,7 @@ const IGNORED_TOPLEVEL = new Set([
 
 // Planned reference pages (Pages tab) that aren't built yet — rendered as a "Pending"
 // roadmap so the team sees what's coming. NOT hardcoded here: authored PER SPACE in
-// gv-workspace as space.json `pendingPages` (the roadmap is GoVocal content, not platform
+// the space repo as space.json `pendingPages` (the roadmap is GoVocal content, not platform
 // knowledge). Set per space by setSpaceContext(); a slug drops off once pages/<slug>/ lands.
 let PENDING_PAGES = [];
 
@@ -328,7 +330,7 @@ let PENDING_PAGES = [];
 // participation method (survey, proposals, …). Any page whose slug starts with
 // fo-method- or bo-method- is auto-classified "method"; a page can also opt in/out via
 // <meta name="gv-surface" content="method">. Non-prefix exceptions are authored PER SPACE
-// in gv-workspace as space.json `methodPages` (GoVocal content). Set by setSpaceContext().
+// in the space repo as space.json `methodPages` (GoVocal content). Set by setSpaceContext().
 let METHOD_PAGES = new Set();
 
 // Source for the reference tabs (Primitives · Components · Pages) — assigned per space
@@ -393,7 +395,7 @@ function loadCatalog(dsRoot) {
 
 // Structured per-component metadata (surface / category / status / tags / layer), shown as
 // badges on the Components page. NO LONGER hardcoded here — it's authored per space in
-// gv-workspace at skills/govocal-ui/component-meta.json and emitted onto each registry item's
+// the space repo at skills/govocal-ui/component-meta.json and emitted onto each registry item's
 // `meta`, so the platform carries no GoVocal-specific component knowledge. loadCatalog() reads
 // it.meta into COMPONENT_META (per space); see the ambient `let COMPONENT_META` above.
 //   surface : "fo" | "bo" | "cross"   · category: navigation|cards|banners|… · tags: source tenant + keywords
@@ -875,7 +877,7 @@ const scanPatterns = () => scanTier(PATTERNS_SRC, "patterns");
 
 /**
  * Scan playground/<project>/ subfolders. Playground is workspace material — a
- * scratch opportunity living in gv-workspace/playground/ (WS_ROOT), not augur.
+ * scratch opportunity living in the space repo's playground/ (WS_ROOT), not augur.
  * Each subfolder is a self-contained prototype (its own index.html). The whole
  * playground/ tree is copied verbatim elsewhere (copyDir) — this only reads the
  * subfolders to render the Playground landing, so adding a folder = it appears.
@@ -2955,8 +2957,8 @@ const PROFILE_JS = `(function(){
 
 // Space switcher behaviour — open/close the dropdown (the chip + rows are server-rendered,
 // each row a plain <a> to the space's base URL, so switching is just navigation). The
-// Create-new entry is a stub for now: it explains how to add a space (drop a folder under
-// spaces/<id>/ with a space.json) since spaces are filesystem-defined, not created in-app.
+// Create-new entry is a stub: spaces are REPOS (one repo per space, mounted as Augur
+// submodules at spaces/<id>), so creating one is a maintainer act, not an in-app feature.
 const SPACE_JS = `(function(){
   var box = document.querySelector('[data-space]');
   if(!box) return;
@@ -2971,7 +2973,7 @@ const SPACE_JS = `(function(){
   var create = box.querySelector('[data-space-create]');
   if(create) create.addEventListener('click', function(e){
     e.stopPropagation();
-    alert('To add a space: create spaces/<id>/ in gv-workspace with a space.json ({"id","name"}) and copy the design-system assets into it. It appears here on the next build.');
+    alert('Spaces are repos: to add one, create a new GitHub repo templated from go-vocal (space.json + DS assets at its root), mount it in Augur as a submodule at spaces/<id>, and give it the deploy-trigger workflow. Ask Rob.');
   });
 })();
 `;
@@ -3844,10 +3846,12 @@ function renderChangelogPage(entries) {
   return shell({ title: "Changelog", activeTab: "changelog", body });
 }
 
-// Discover the spaces under SPACES_ROOT. Each spaces/<id>/ holds a space.json
-// ({id,name,default,badge}); non-dir / dotfile entries are skipped. The DEFAULT space
-// (space.json default:true, else the first) builds at the root URLs; the rest under
-// /<id>/. Returns default-first.
+// Discover the spaces under SPACES_ROOT. Each space dir (a per-space repo, mounted as a
+// submodule at spaces/<id> — or a sibling clone when offline points SPACES_ROOT at the
+// god-mode parent) holds a space.json ({id,name,default,badge}) at its root; dirs
+// WITHOUT a space.json are not spaces and are skipped, as are non-dir / dotfile entries.
+// The DEFAULT space (space.json default:true, else the first) builds at the root URLs;
+// the rest under /<id>/. Returns default-first.
 async function discoverSpaces() {
   let entries;
   try {
@@ -3859,8 +3863,8 @@ async function discoverSpaces() {
   for (const e of entries) {
     if (!e.isDirectory() || e.name.startsWith(".")) continue;
     const root = path.join(SPACES_ROOT, e.name);
-    let meta = {};
-    try { meta = JSON.parse(await fs.readFile(path.join(root, "space.json"), "utf8")); } catch {}
+    let meta;
+    try { meta = JSON.parse(await fs.readFile(path.join(root, "space.json"), "utf8")); } catch { continue; }
     spaces.push({
       id: meta.id || e.name,
       name: meta.name || titleCase(e.name),
@@ -4178,13 +4182,15 @@ async function main() {
   const restrictedBases = NAV_STATE.spaces
     .filter((s) => s.adminOnly && !s.default)
     .map((s) => s.base);
+  // Presence check, not before/after inequality — with zero restricted spaces the
+  // injected value IS the placeholder (`[]`), which a diff check misreads as "not found".
+  if (!stampedWorker.includes("const RESTRICTED_BASES = [];")) {
+    throw new Error("build: RESTRICTED_BASES placeholder not found in src/_worker.js");
+  }
   const sealedWorker = stampedWorker.replace(
     "const RESTRICTED_BASES = [];",
     `const RESTRICTED_BASES = ${JSON.stringify(restrictedBases)};`
   );
-  if (sealedWorker === stampedWorker) {
-    throw new Error("build: RESTRICTED_BASES placeholder not found in src/_worker.js");
-  }
   await fs.writeFile(path.join(DIST, "_worker.js"), sealedWorker, "utf8");
 
   // Top-level 404.html. Cloudflare Pages serves this (with a genuine 404 status) for
