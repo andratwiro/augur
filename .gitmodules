@@ -1,3 +1,6 @@
 [submodule "spaces/go-vocal"]
 	path = spaces/go-vocal
 	url = https://github.com/andratwiro/go-vocal.git
+[submodule "spaces/go-vocal-2"]
+	path = spaces/go-vocal-2
+	url = https://github.com/andratwiro/go-vocal-2.git
