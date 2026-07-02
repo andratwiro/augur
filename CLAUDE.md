@@ -72,7 +72,10 @@ those HTTPS URLs resolve to SSH transparently.
 `go-vocal` (its own `space.json`, DS assets, `deploy-trigger.yml`); grant `SUBMODULE_PAT`
 Contents:read on it and add `AUGUR_DISPATCH_TOKEN` to its Actions secrets; then here:
 `git submodule add https://github.com/andratwiro/<id>.git spaces/<id>` and push. It appears
-in the switcher on the next build.
+in the switcher on the next build. **Naming rule:** repo name = `space.json` `id` =
+`spaces/<id>` mount name, all lowercase `[a-z0-9-]` — the bridge keys the pin off the repo
+name and validates that charset, and build.js keys URLs off `space.json.id`; a mismatch
+means the bump errors or the space builds under the wrong prefix.
 
 ---
 

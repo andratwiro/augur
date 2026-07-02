@@ -19,9 +19,10 @@ on:
 permissions:
   contents: read # the actual push uses AUGUR_PIN_TOKEN below
 
-concurrency:
-  group: workspace-bump
-  cancel-in-progress: false
+# No concurrency group: a shared group would CANCEL a pending bump when a third dispatch
+# arrives (GitHub keeps one pending run per group), silently losing that space's deploy.
+# Concurrent runs are safe instead — each one re-syncs to origin/main and re-applies its
+# own gitlink on push rejection (see the retry loop below).
 
 jobs:
   bump:
@@ -53,14 +54,25 @@ jobs:
           if [ "$MODE" != "160000" ]; then
             echo "::error::'$SUB_PATH' is not a submodule of this repo — unknown space '$SPACE'."; exit 1
           fi
-          CUR_SHA="$(git ls-tree HEAD "$SUB_PATH" | awk '{print $3}')"
-          if [ "$NEW_SHA" = "$CUR_SHA" ]; then
-            echo "Pin already at $NEW_SHA — nothing to do."; exit 0
-          fi
           git config user.name "augur-bot"
           git config user.email "augur-bot@users.noreply.github.com"
-          # Set the submodule gitlink to NEW_SHA without fetching the space repo.
-          git update-index --cacheinfo "160000,$NEW_SHA,$SUB_PATH"
-          git commit -m "Auto-bump $SPACE pin → ${NEW_SHA:0:12} (push by ${ACTOR:-unknown})"
-          git push origin HEAD:main
-          echo "Bumped $SPACE pin: ${CUR_SHA:0:12} → ${NEW_SHA:0:12} (deploy.yml will now run)"
+          # Apply + push with retry: another space's bump can land on main between our
+          # checkout and our push. On rejection, re-sync to origin/main, re-apply OUR
+          # gitlink on top, and try again — both bumps survive.
+          for attempt in 1 2 3 4 5; do
+            CUR_SHA="$(git ls-tree HEAD "$SUB_PATH" | awk '{print $3}')"
+            if [ "$NEW_SHA" = "$CUR_SHA" ]; then
+              echo "Pin already at $NEW_SHA — nothing to do."; exit 0
+            fi
+            # Set the submodule gitlink to NEW_SHA without fetching the space repo.
+            git update-index --cacheinfo "160000,$NEW_SHA,$SUB_PATH"
+            git commit -m "Auto-bump $SPACE pin → ${NEW_SHA:0:12} (push by ${ACTOR:-unknown})"
+            if git push origin HEAD:main; then
+              echo "Bumped $SPACE pin: ${CUR_SHA:0:12} → ${NEW_SHA:0:12} (deploy.yml will now run)"; exit 0
+            fi
+            echo "Push rejected (concurrent bump landed) — re-syncing and retrying ($attempt/5)"
+            git fetch origin main
+            git reset --hard origin/main
+            sleep 2
+          done
+          echo "::error::could not push the $SPACE pin bump after 5 attempts"; exit 1

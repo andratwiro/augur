@@ -90,7 +90,9 @@ const WATCH = [
 const IGNORE = [
   "node_modules", "/.git/", "govocal-exports", "/dist/", "/.wrangler/", ".DS_Store",
 ];
-const ignored = (abs) => IGNORE.some((frag) => abs.includes(frag));
+// endsWith catches an event for the .git dir itself (no trailing slash) — the watch
+// roots are now whole sibling repos, which contain a real .git.
+const ignored = (abs) => IGNORE.some((frag) => abs.includes(frag)) || abs.endsWith("/.git");
 
 // ── build (run-to-completion, with a queued-rebuild guard) ───────────────────
 let building = false;
