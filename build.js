@@ -3030,6 +3030,11 @@ const ADMIN_JS = `(function(){
   }).then(function(d){
     if(!d) return;
     if(!d.users){ host.innerHTML = '<p class="empty">Could not load users.</p>'; return; }
+    // Most recent connection first; never-signed-in sink to the bottom (A–Z within ties).
+    d.users.sort(function(a,b){
+      var ta = a.lastSeen ? Date.parse(a.lastSeen) : 0, tb = b.lastSeen ? Date.parse(b.lastSeen) : 0;
+      return (tb - ta) || (a.name || '').localeCompare(b.name || '');
+    });
     host.innerHTML = d.users.map(row).join('');
     wire();
   }).catch(function(){ host.innerHTML = '<p class="empty">Could not load users.</p>'; });
