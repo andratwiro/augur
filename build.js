@@ -293,7 +293,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.89";
+const UI_VERSION = "0.90";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -2986,12 +2986,25 @@ const ADMIN_JS = `(function(){
   var host = document.querySelector('[data-admin-users]');
   if(!host) return;
   function esc(s){ return (s||'').replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function ago(iso){
+    if(!iso) return 'never';
+    var t = Date.parse(iso); if(isNaN(t)) return 'never';
+    var s = (Date.now() - t) / 1000;
+    if(s < 90) return 'just now';
+    if(s < 3600) return Math.floor(s/60) + ' min ago';
+    if(s < 86400) return Math.floor(s/3600) + ' h ago';
+    var d = Math.floor(s/86400);
+    if(d === 1) return 'yesterday';
+    if(d < 30) return d + ' days ago';
+    return new Date(t).toLocaleDateString();
+  }
   function row(u){
     var ini = (u.initials || (u.name||'?').slice(0,2)).toUpperCase();
     var badge = u.role === 'admin' ? ' <span class="au__badge">admin</span>' : '';
     return '<div class="au" data-email="'+esc(u.email)+'">'
       + '<span class="au__av" style="background:'+esc(u.color||'#4f46e5')+'">'+esc(ini)+'</span>'
       + '<span class="au__id"><span class="au__name">'+esc(u.name)+badge+'</span><span class="au__email">'+esc(u.email)+'</span></span>'
+      + '<span class="au__seen'+(u.lastSeen ? '' : ' au__seen--never')+'" title="'+(u.lastSeen ? 'Last connection: '+esc(u.lastSeen) : 'Never signed in')+'">'+esc(ago(u.lastSeen))+'</span>'
       + '<span class="au__pw"><input type="text" class="au__input" value="'+esc(u.pass)+'" aria-label="Password for '+esc(u.email)+'" autocapitalize="off" autocorrect="off" spellcheck="false" />'
       + '<button type="button" class="au__save">Save</button><span class="au__msg" aria-live="polite"></span></span>'
       + '</div>';
@@ -3100,6 +3113,8 @@ function renderAdminPage() {
     .au__name{ font-weight:600; font-size:14px; display:flex; align-items:center; gap:7px; }
     .au__badge{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#4f46e5; background:rgba(79,70,229,.1); padding:1px 6px; border-radius:5px; }
     .au__email{ font-size:12.5px; color:#5b626e; }
+    .au__seen{ flex:none; font-size:12.5px; color:#5b626e; white-space:nowrap; margin-right:14px; }
+    .au__seen--never{ color:#9aa0ab; font-style:italic; }
     .au__pw{ display:flex; align-items:center; gap:8px; flex:none; }
     .au__input{ font:inherit; font-size:13px; padding:6px 10px; border:1px solid rgba(16,17,26,0.15); border-radius:8px; width:160px; background:#fff; }
     .au__input:focus{ outline:2px solid #5e6ad2; outline-offset:1px; border-color:transparent; }

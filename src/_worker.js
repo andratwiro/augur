@@ -29,6 +29,7 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 const USERS = [];
 const USER_COOKIE = "gv_user";              // value: "<email>.<token>"
 const USER_SECRETS_KEY = "users:secrets";   // KV {email: password} — admin overrides
+const LASTSEEN_PREFIX = "users:lastseen:";  // KV per-user ISO stamp — admin list column
 
 // Build id for the live-reload poller. build.js replaces "dev" with this build's
 // id; it's the FALLBACK version for any path not in VERSION_MAP (index/shell pages,
@@ -166,6 +167,23 @@ async function identify(request, env) {
   const token = val.slice(dot + 1);
   const expect = await userToken(env, u);
   return token.length === expect.length && token === expect ? u : null;
+}
+
+// Record when a signed-in user was last seen ("last connection" in the admin list).
+// Fired only from /__me (one call per page view, the profile chip's fetch) and from a
+// successful login — never from asset requests. Throttled: while the stored stamp is
+// fresh (<15 min) a browsing burst costs one KV read and zero writes (KV allows ~1
+// write/sec/key). Fire-and-forget via ctx.waitUntil; telemetry must never break a
+// request, hence the blanket catch.
+async function touchLastSeen(env, u) {
+  try {
+    const kv = kvFor(env);
+    if (!kv || !u) return;
+    const key = LASTSEEN_PREFIX + u.email;
+    const prev = await kv.get(key);
+    if (prev && Date.now() - Date.parse(prev) < 15 * 60 * 1000) return;
+    await kv.put(key, new Date().toISOString());
+  } catch (e) {}
 }
 
 // ---- KV access: the binding, or a REST shim to the REAL (prod) namespace --------
@@ -673,10 +691,13 @@ async function adminUsersApi(request, url, env, me) {
   if (request.method === "GET") {
     const users = [];
     for (const u of USERS) {
+      let lastSeen = null;
+      try { lastSeen = kv ? await kv.get(LASTSEEN_PREFIX + u.email) : null; } catch (e) {}
       users.push({
         email: u.email, name: u.name, role: u.role || "user",
         initials: u.initials || "", color: u.color || "#4f46e5",
         pass: await effectivePass(env, u),
+        lastSeen,
       });
     }
     return jsonResponse({ users });
@@ -838,7 +859,7 @@ async function pitiApi(request, url, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     // Blanket "don't crawl anything" — the public prototypes are for link-sharing,
@@ -884,7 +905,11 @@ export default {
 
     // Who am I — the sidebar profile chip and the comment overlay read this. Open
     // (returns {user:null} when signed out) so the chip can decide what to render.
-    if (url.pathname === "/__me") return jsonResponse({ user: publicUser(me) });
+    // Doubles as the "last seen" heartbeat: it fires once per page view.
+    if (url.pathname === "/__me") {
+      if (me && ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, me));
+      return jsonResponse({ user: publicUser(me) });
+    }
 
     // Sign out — clear the identity cookie and bounce home.
     if (url.pathname === "/__logout") {
@@ -912,6 +937,7 @@ export default {
         const real = u ? await effectivePass(env, u) : "";
         if (u && real && pass.length === real.length && pass === real) {
           const token = await userToken(env, u);
+          if (ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, u));
           return new Response(null, {
             status: 303,
             headers: {
