@@ -548,52 +548,120 @@ async function isDir(p) {
 }
 
 /**
- * Last-commit time (ms) for a path, from git. Returns 0 when git is unavailable
- * or the path is untracked (e.g. a brand-new, uncommitted prototype).
+ * Rename-aware "last worked on" dates for a whole space repo, from ONE git pass.
  *
  * Why git instead of filesystem mtime: a checkout (the CI deploy) stamps EVERY
  * file with the same checkout time, collapsing any mtime-based "most recent first"
  * ordering. Git's last-commit time is stable across checkouts, so local
  * (`npm run deploy`) and CI builds produce the same, correct order. Needs full
  * history at build time — the deploy workflow sets `fetch-depth: 0` for this.
+ *
+ * Two subtleties this solves (both bit us on 2026-07-02):
+ * 1. WHERE git runs: space content lives in its own repo (a submodule at
+ *    spaces/<id>, or a sibling clone offline). Querying from Augur's repo sees
+ *    nothing inside a submodule and silently falls back to checkout mtimes —
+ *    every card reads "Edited just now" on CI deploys. So we run `git -C <space>`.
+ * 2. Pure renames are not edits: repo restructures (spaces/<id>/* → root) rename
+ *    every path, which would reset every date to the restructure day. Walking
+ *    `--name-status -M` newest→oldest, an R100 entry only records the path alias
+ *    (old name → current name); the date/author a path reports is its most recent
+ *    NON-rename change, attributed through however many renames followed it.
+ *
+ * Returns { file: Map<relPath, {t,email}>, dir: Map<relDirPath, {t,email}> } or
+ * null when git/history is unavailable (untracked content falls back to fs mtime).
  */
-function gitMtime(absPath) {
+const SPACE_DATES = new Map(); // space root → parsed maps (one git pass per space per build)
+function spaceDates(repoRoot) {
+  if (SPACE_DATES.has(repoRoot)) return SPACE_DATES.get(repoRoot);
+  let parsed = null;
   try {
-    const out = execFileSync("git", ["log", "-1", "--format=%ct", "--", absPath], {
-      cwd: ROOT,
+    // -z: NUL-delimited (paths with spaces/quotes stay intact). Each commit emits a
+    // header record "\x01<epoch> <email>" followed by status records; a rename is
+    // "R<score>" NUL <old> NUL <new>.
+    const raw = execFileSync("git", ["-C", repoRoot, "log", "-M", "--name-status", "-z", "--format=%x01%ct %ae"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    return out ? Number(out) * 1000 : 0;
-  } catch {
-    return 0;
-  }
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    const tokens = raw.split("\0");
+    const alias = new Map();   // historical path → today's path
+    const file = new Map();    // today's path → {t, email} of last real change
+    const cur = (p) => alias.get(p) || p;
+    let t = 0, email = "";
+    for (let i = 0; i < tokens.length; i++) {
+      let tok = tokens[i];
+      if (!tok) continue;
+      const at = tok.indexOf("\x01");
+      if (at !== -1) { // commit header (may be glued to the previous record's tail)
+        const head = tok.slice(at + 1).trim().split(" ");
+        t = Number(head[0]) * 1000;
+        email = (head[1] || "").toLowerCase();
+        tok = tok.slice(0, at);
+        if (!tok) continue;
+      }
+      const st = tok[0];
+      if (st === "R" || st === "C") {
+        const from = tokens[++i], to = tokens[++i];
+        if (to === undefined) break;
+        const today = cur(to);
+        if (st === "R") alias.set(from, today);
+        // A pure rename (R100) isn't an edit; a rename-with-change (R0xx) and any
+        // copy are. Stamp only the newest occurrence (we walk newest→oldest).
+        if (tok !== "R100" && !file.has(today)) file.set(today, { t, email });
+      } else { // A / M / T / D — single path
+        const p = tokens[++i];
+        if (p === undefined) break;
+        if (st === "D") continue; // deleted names don't exist today
+        const today = cur(p);
+        if (!file.has(today)) file.set(today, { t, email });
+      }
+    }
+    // Bubble file stamps up to every ancestor dir (max wins) so folder lookups are O(1).
+    const dir = new Map();
+    for (const [p, v] of file) {
+      let d = path.dirname(p);
+      while (d && d !== ".") {
+        const prev = dir.get(d);
+        if (!prev || v.t > prev.t) dir.set(d, v);
+        d = path.dirname(d);
+      }
+    }
+    parsed = { file, dir };
+  } catch { parsed = null; }
+  SPACE_DATES.set(repoRoot, parsed);
+  return parsed;
+}
+
+// Look up a path's last real change within the ACTIVE space (WS_ROOT is the space
+// repo root, ambient per build pass). Paths outside the space or untracked → null.
+function dateFor(absPath) {
+  const dates = WS_ROOT ? spaceDates(WS_ROOT) : null;
+  if (!dates) return null;
+  const rel = path.relative(WS_ROOT, absPath);
+  if (!rel || rel.startsWith("..")) return null;
+  return dates.file.get(rel) || dates.dir.get(rel) || null;
 }
 
 /**
- * The "last worked on" time (ms) for a copied folder: git last-commit time when
- * available, else the latest filesystem mtime within it (covers new/untracked
- * folders that have no commit yet). This is the sort key for every listing.
+ * The "last worked on" time (ms) for a copied folder: git last-real-change time
+ * when available (rename-transparent, see spaceDates), else the latest filesystem
+ * mtime within it (covers new/untracked folders that have no commit yet). This is
+ * the sort key for every listing.
  */
 function modifiedTime(srcDir, fsLatest) {
-  return gitMtime(srcDir) || fsLatest;
+  const d = dateFor(srcDir);
+  return (d && d.t) || fsLatest;
 }
 
 /**
- * Last commit author email for a folder, mapped to an internal user (a "face" on the
- * card). Runs git INSIDE the folder's own repo (-C) so it works whether the workspace
- * is a sibling clone (offline) or a nested submodule (deploy). Returns the public
- * profile of a known user, or null (uncommitted folder, or an author we don't know).
+ * Last real-change author email for a folder, mapped to an internal user (a "face"
+ * on the card). Same rename-transparent map as modifiedTime — a repo restructure
+ * doesn't claim authorship of every card. Returns the public profile of a known
+ * user, or null (uncommitted folder, or an author we don't know).
  */
 function lastEditor(absDir) {
-  let email = "";
-  try {
-    email = execFileSync("git", ["-C", absDir, "log", "-1", "--format=%ae", "--", "."], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim().toLowerCase();
-  } catch { return null; }
-  return email ? USER_BY_EMAIL.get(email) || null : null;
+  const d = dateFor(absDir);
+  return d && d.email ? USER_BY_EMAIL.get(d.email) || null : null;
 }
 
 /** Latest filesystem mtime (ms) of any file within a directory tree. */
