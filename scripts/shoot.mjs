@@ -14,9 +14,10 @@
 //   npm run shoot -- --stale            # only targets whose source changed (or no poster)
 //   npm run shoot -- <path/to/folder>   # just one folder (must hold an entry .html)
 //
-// `--stale` is what runs automatically on `npm run deploy`: it compares each folder's
-// newest source file against its preview.webp and reshoots only what actually changed,
-// so a normal deploy refreshes just-edited prototypes for free and skips the rest.
+// `--stale` is what `npm run posters` uses: it compares each folder's newest source
+// file against its preview.webp and reshoots only what actually changed. Posters are
+// COMMITTED IN THE SPACE REPOS — run this from the god-mode checkout (so targets
+// resolve to the editable sibling clones), then commit/push the space repo.
 //
 // Requires: playwright (devDep) + cwebp on PATH (`brew install webp`).
 
@@ -45,27 +46,47 @@ async function entry(dir) {
   return h ? path.join(dir, h.name) : null;
 }
 
-// Top-level folders that never hold card targets (mirrors build.js IGNORED_TOPLEVEL).
-const IGNORE = new Set(["dist", "node_modules", "skills", "src", "references", "govocal-exports", "pitis", ".git", ".github"]);
+// Folders inside a space root that never hold card targets.
+const IGNORE = new Set(["node_modules", "skills", "scripts", "registry", "govocal-exports", ".git", ".github", ".claude"]);
+
+// Space roots to scan. One repo per space: card targets live inside each space repo.
+// Prefer the EDITABLE sibling clones (../<x> with a space.json at its root — a shot
+// poster can be committed + pushed from there); fall back to the pinned spaces/<id>
+// mirrors (posters shot there can't be pushed — run from the god-mode checkout).
+async function spaceRoots() {
+  const roots = [];
+  for (const base of [path.join(ROOT, ".."), path.join(ROOT, "spaces")]) {
+    try {
+      for (const e of await fs.readdir(base, { withFileTypes: true })) {
+        if (!e.isDirectory() || e.name.startsWith(".")) continue;
+        if (await exists(path.join(base, e.name, "space.json"))) roots.push(path.join(base, e.name));
+      }
+    } catch {}
+    if (roots.length) break; // siblings found → don't also scan the pinned mirrors
+  }
+  return roots;
+}
 
 // Every folder that appears as a card on a shell page: each opportunity's prototypes,
-// plus the pages/, components/, playground/ groups.
+// plus the pages/, components/, base/, patterns/, playground/ groups — per space.
 async function targets() {
   const out = [];
-  for (const t of await fs.readdir(ROOT, { withFileTypes: true })) {
-    if (!t.isDirectory() || IGNORE.has(t.name) || t.name.startsWith(".")) continue;
-    const pp = path.join(ROOT, t.name, "prototypes");
-    if (await isDir(pp)) {
-      for (const p of await fs.readdir(pp, { withFileTypes: true })) {
-        if (p.isDirectory()) out.push(path.join(pp, p.name));
+  for (const root of await spaceRoots()) {
+    for (const t of await fs.readdir(root, { withFileTypes: true })) {
+      if (!t.isDirectory() || IGNORE.has(t.name) || t.name.startsWith(".")) continue;
+      const pp = path.join(root, t.name, "prototypes");
+      if (await isDir(pp)) {
+        for (const p of await fs.readdir(pp, { withFileTypes: true })) {
+          if (p.isDirectory()) out.push(path.join(pp, p.name));
+        }
       }
     }
-  }
-  for (const group of ["pages", "components", "base", "patterns", "playground"]) {
-    const g = path.join(ROOT, group);
-    if (await isDir(g)) {
-      for (const e of await fs.readdir(g, { withFileTypes: true })) {
-        if (e.isDirectory() && !e.name.startsWith(".")) out.push(path.join(g, e.name));
+    for (const group of ["pages", "components", "base", "patterns", "playground"]) {
+      const g = path.join(root, group);
+      if (await isDir(g)) {
+        for (const e of await fs.readdir(g, { withFileTypes: true })) {
+          if (e.isDirectory() && !e.name.startsWith(".")) out.push(path.join(g, e.name));
+        }
       }
     }
   }

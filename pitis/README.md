@@ -21,8 +21,9 @@ general repo files (CLAUDE.md, build.js logic, shared CSS, agent memory, etc.).
   `openModal()` loads `/pitis/` in an iframe). Direct `/pitis/` visits work standalone.
 - "Only-you" is lightweight: it only shows on browsers where you've toggled it.
   Prototypes are **public**, so a visitor who presses Shift+Ñ on a shared prototype
-  also gets one (harmless easter egg). A real per-user gate (Cloudflare Access / login
-  identity in `src/_worker.js`) is the someday option to make it invisible to others.
+  also gets one (harmless easter egg). Per-user login identity exists in
+  `src/_worker.js` and the paw already gates on `html.gv-admin`; wiring the toggle
+  itself to identity is the remaining nicety.
 
 ## What it does
 - **Follows the cursor** — eased trailing follow with a catch-up boost and a smooth

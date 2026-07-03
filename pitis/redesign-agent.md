@@ -9,10 +9,10 @@ smoothness**. Internal doc (gitignored from dist; `.md` never ships).
 ## PROMPT (paste this to the agent)
 
 You are improving **FigPal**, a cursor-following companion in this repo
-(`/Users/rob/Documents/go-vocal-prototypes`). It already works; your job is a
+(`/Users/rob/Documents/govocal-split/augur`). It already works; your job is a
 **quality loop** — make it look and move ~99% like Figma's real FigPals. This is
 a Free-mode design-craft task (not GoVocal product UI): load
-`gv-design-system/skills/frontend-design/SKILL.md` for craft, ignore the govocal-ui system.
+`spaces/go-vocal/skills/frontend-design/SKILL.md` for craft, ignore the govocal-ui system.
 
 ### Ground truth — STUDY THESE FIRST (do not skip, do not work from memory)
 
@@ -64,7 +64,7 @@ nose, small mouth), every pal reads as a friendly hand-drawn sticker.
    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless \
      --disable-gpu --hide-scrollbars --force-device-scale-factor=2 \
      --window-size=600,460 --screenshot=pitis/reference/_sprite-shot.png \
-     "file:///Users/rob/Documents/go-vocal-prototypes/pitis/reference/_sprite-test.html"
+     "file:///Users/rob/Documents/govocal-split/augur/pitis/reference/_sprite-test.html"
    ```
    Extend the harness to show every state (sit, blink, sleep) and a few palettes.
 3. **Check motion** — static shots won't reveal jitter/easing. Build a motion

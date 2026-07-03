@@ -9,16 +9,19 @@ Pages deploy. It is the **only** thing that builds and deploys the live site.
 Augur does **not** own the prototypes or the design system — it **composes** them from
 **one git submodule per space**, mounted at `spaces/<id>/`. Each space is its own repo — a
 self-contained bundle with its design system (skills, galleries, `registry.json`,
-`space.json`) *and* its prototypes together at the repo root. Currently one space is
-mounted: **`go-vocal`** (`andratwiro/go-vocal`, the default space):
+`space.json`) *and* its prototypes together at the repo root. Two spaces are mounted:
+**`go-vocal`** (the default — dist root URLs) and **`go-vocal-2`** (Go Vocal 2.0, served
+under `/go-vocal-2/`; its `space.json` sets `adminOnly: true`, which seals every URL under
+its base behind an **admin** login via the worker's `RESTRICTED_BASES`):
 
 ```
 augur/                       # THIS repo — build + deploy platform ONLY
 ├── build.js, src/           # the build + the worker (comment/pin/status overlays + space switcher)
-├── scripts/                 # platform scripts: shoot (posters), og, review (comments), offline
+├── scripts/                 # platform scripts: shoot/og (posters), review (comments), offline
 ├── pitis/                   # the Pitis layer + its pet-agents
 └── spaces/
-    └── go-vocal/            # submodule → andratwiro/go-vocal (DS + opportunities + GOVOCAL.md at its root)
+    ├── go-vocal/            # submodule → andratwiro/go-vocal (the default space)
+    └── go-vocal-2/          # submodule → andratwiro/go-vocal-2 (admin-only, /go-vocal-2/)
 ```
 
 > Augur owns **only** the platform — prototype navigation, the comment system, token
@@ -70,12 +73,19 @@ those HTTPS URLs resolve to SSH transparently.
 
 **Adding a space** (maintainer ritual, rare): create a GitHub repo templated from
 `go-vocal` (its own `space.json`, DS assets, `deploy-trigger.yml`); grant `SUBMODULE_PAT`
-Contents:read on it and add `AUGUR_DISPATCH_TOKEN` to its Actions secrets; then here:
+Contents:read on it and add `AUGUR_DISPATCH_TOKEN` to its Actions secrets; **run the
+preflight** (`gh workflow run space-preflight.yml -f repo=<id>` — green = the PAT grant
+works; mounting before that breaks every deploy at checkout); then here:
 `git submodule add https://github.com/andratwiro/<id>.git spaces/<id>` and push. It appears
 in the switcher on the next build. **Naming rule:** repo name = `space.json` `id` =
 `spaces/<id>` mount name, all lowercase `[a-z0-9-]` — the bridge keys the pin off the repo
 name and validates that charset, and build.js keys URLs off `space.json.id`; a mismatch
 means the bump errors or the space builds under the wrong prefix.
+
+**Deploy verification for space collaborators:** they can't see this repo's CI, so the
+build emits a public stamp — **`/_build.json`** (`{builtAt, spaces:{<id>:{sha}}}`,
+gate-exempt in `isPublicPath`). Comparing their space's `sha` to `git rev-parse HEAD` is
+their "my commit is live" check; keep it working.
 
 ---
 
@@ -168,19 +178,23 @@ If you add a new kind of internal file, keep it **outside** `prototypes/`.
 - Deployed to Cloudflare Pages via **Direct Upload** (project name still **`govocal-prototypes`**,
   URL `https://govocal-prototypes.pages.dev`, isolated account). `/dist` and `node_modules` are
   gitignored.
-- **Two ways to deploy:** Local `npm run deploy` (sources gitignored `.env.deploy`, builds,
-  uploads); or push to `main` → GitHub Actions (`.github/workflows/deploy.yml`) builds +
-  deploys, using repo secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` (+ `SUBMODULE_PAT`
-  for the private space submodules).
+- **The deploy path is push-to-main.** Pushing this repo (or any space repo, via the
+  bridge) runs `.github/workflows/deploy.yml`: checkout with submodules, build, ship —
+  using repo secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` (+ `SUBMODULE_PAT`
+  for the private space submodules). Local `npm run deploy` (sources gitignored
+  `.env.deploy`, builds from the pinned submodules, uploads) exists as a manual fallback
+  for when CI is down — not the normal path. `npm run posters` (shoot + og, `--stale`)
+  refreshes card posters; run it from the god-mode checkout (it targets the editable
+  sibling space clones, where a poster can be committed) and push the space repo after.
 - The Cloudflare API token must **never** be pasted into chat — it lives only in `.env.deploy`
   (local) and the GitHub secret (CI).
 
-**Deploy automatically (standing authorization).** After finishing a set of changes that affect
-the **live site** — a prototype's files, or the landing/shell UI — deploy without waiting to be
-asked: run `npm run deploy`, then report the URL. Don't deploy half-finished work. (No deploy
-for internal-only edits like `research.md`, `context.md`, `GOVOCAL.md`, or skills.) When the
-live-site change came from a space-repo edit (DS or prototype), the deploy path is automatic:
-push the space repo → the bridge bumps the pin here and ships.
+**Deploy automatically (standing authorization).** After finishing a set of changes that
+affect the **live site**, ship without waiting to be asked — which normally just means
+**commit + push** (this repo, or the space repo the change lives in; the bridge does the
+rest). Verify with `/_build.json` or the run list, then report the URL. Don't ship
+half-finished work. (No deploy for internal-only edits like `research.md`, `context.md`,
+`GOVOCAL.md`, or skills.)
 
 **Commit & push automatically (standing authorization).** The user does not want to manage git.
 After completing any change, commit and push without being asked — **per repo**, directly to
@@ -342,8 +356,10 @@ None of these load by default. Reach for them when the task or the user calls fo
     and writes only when the key changes. Each distinct visible state = a distinct screen;
     off-screen comments are hidden entirely.
 - **Dev-status pipeline** — each prototype card on its opportunity index carries a dev-facing
-  status badge (Playground / In progress / Dev ready / Shipped / Parked), cycled by clicking on
-  the live site, persisted to KV via `src/_worker.js`. The status and rename(name) KV keys carry
-  a **per-space prefix** for non-default spaces; the default space stays unprefixed (existing KV
-  preserved). When the user moves one to **Parked** or **Shipped**, that's the cue to consolidate
+  status badge (values: `in-progress` · `dev-ready` · `ignore`, plus `reviewed` for
+  components — see `STATUS_META` in build.js / `VALID_STATUS` in the worker), cycled by
+  clicking on the live site, persisted to KV via `src/_worker.js`. The status and rename
+  KV keys carry a **per-space prefix** for non-default spaces; the default space stays
+  unprefixed. When the user moves one to **dev-ready** (or retires one to **ignore**),
+  that's the cue to consolidate
   learnings into the space repo's `GOVOCAL.md` and commit.

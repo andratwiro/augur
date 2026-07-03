@@ -1,23 +1,27 @@
 #!/usr/bin/env node
 /**
- * build.js — scans opportunity folders and generates a static site in /dist.
+ * build.js — builds EVERY mounted space into a single static site in /dist.
  *
- * Convention (see CLAUDE.md):
- *   <opportunity>/
+ * Spaces (see CLAUDE.md): one repo per space, mounted as submodules at spaces/<id>.
+ * Each space root holds its own DS assets (skills/, galleries, registry.json,
+ * space.json) plus opportunity folders:
+ *   <space>/<opportunity>/
  *     research.md   <- context for agents, NEVER published
  *     context.md    <- context for agents, NEVER published
  *     prototypes/
  *       <prototype>/  <- self-contained static HTML/JS, THIS is what ships
  *
  * Rules:
- *   - ONLY files inside a prototypes/ folder are copied to /dist.
- *   - research.md, context.md, and anything outside prototypes/ are never copied.
+ *   - Publishing is whitelist-driven: prototypes/ contents, the gallery builders,
+ *     and the named DS asset list. research.md/context.md/anything else never ships.
  *
- * Output (two-level drill-down):
- *   /dist/index.html                     -> lists opportunities
- *   /dist/<opportunity>/index.html       -> lists that opportunity's prototypes
- *   /dist/<opportunity>/<prototype>/...  -> the prototype itself
- *   /dist/_worker.js                     -> edge auth gate (copied from src/)
+ * Output: the DEFAULT space (space.json default:true) at the dist root URLs, every
+ * other space under /<id>/:
+ *   /dist/index.html                     -> the default space's opportunity list
+ *   /dist/<opportunity>/<prototype>/...  -> a default-space prototype
+ *   /dist/<id>/...                       -> a non-default space, same shape
+ *   /dist/_worker.js                     -> edge auth gate (injected from src/)
+ *   /dist/_build.json                    -> public build stamp {builtAt, spaces:{id:{sha}}}
  *
  * Plain Node, no dependencies.
  */
@@ -300,23 +304,22 @@ const UI_VERSION = "0.90";
 // notice and reload. Same value across this whole build run.
 const BUILD_ID = String(Date.now());
 
-// Top-level folders that are never treated as opportunity folders.
+// Top-level folders of a SPACE ROOT that are never treated as opportunity folders.
+// (Belt and braces — the opportunity scan also requires a prototypes/ subdir.)
 const IGNORED_TOPLEVEL = new Set([
-  "dist",
   "node_modules",
-  "skills",
-  "src",
+  "skills", // the space's DS assets — shipped via the named-asset copier, not as an opportunity
+  "scripts", // the space's DS pipeline tooling — never ships
+  "registry", // generated per-component docs — never ships
   "pages", // composed reference pages — shipped via their own builder, not as an opportunity
   "components", // composed component library — shipped via its own builder, not as an opportunity
   "base", // base-atom demos — shipped via their own builder (Base tab), not as an opportunity
   "patterns", // curated composition demos — shipped via their own builder (Patterns tab)
   "playground", // standalone scratch prototype — shipped to /playground/, not as an opportunity
-  "references", // internal source exports (raw Go Vocal HTML + screenshots) — NEVER ships
   "govocal-exports", // internal raw Go Vocal page exports (HTML + screenshots) — NEVER ships
-  "gv-design-system", // the DS submodule nested inside the workspace — not an opportunity
-  "skills", // the workspace's skills→DS symlink (local-open convenience) — not an opportunity
   ".git",
   ".github",
+  ".claude",
 ]);
 
 // Planned reference pages (Pages tab) that aren't built yet — rendered as a "Pending"
@@ -339,7 +342,7 @@ let UI_SKILL, PAGES_SRC, COMPONENTS_SRC, BASE_SRC, PATTERNS_SRC;
 const CHANGELOG_SRC = path.join(ROOT, "changelog.md"); // hand-edited changelog source (internal; rendered to /changelog/)
 
 // ── Overlay + gallery catalog — DERIVED from the design system's published contract
-//    (gv-design-system/registry.json), NOT hand-kept here. The platform carries no
+//    (each space root's registry.json), NOT hand-kept here. The platform carries no
 //    GoVocal-specific names/families: swap the DS and the overlay relabels itself.
 //    The DS owns the curated family→component knowledge (its build-registry); we read
 //    it. Same four shapes the rest of build.js consumes:
@@ -2156,7 +2159,7 @@ function sideRail(active) {
 }
 
 // City themes for the Help drawer's ?theme= reference. Mirrors GV_THEMES in
-// gv-design-system/skills/govocal-ui/govocal-themes.js (id, name, primary) — that file
+// the space's skills/govocal-ui/govocal-themes.js (id, name, primary) — that file
 // is the source of truth; this is a static copy for the shell (which doesn't load it).
 const HELP_THEMES = [
   [0, "Linz", "#604596"], [1, "Dublin City", "#0077A3"], [2, "Stadt Wien", "#FF5A64"],

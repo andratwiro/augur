@@ -1,18 +1,18 @@
-// Source for dist/_worker.js — copied verbatim by build.js into the deploy dir.
+// Source for dist/_worker.js — injected (USERS, RESTRICTED_BASES, PUBLIC_PREFIXES,
+// VERSION_MAP, BUILD_ID) and copied by build.js into the deploy dir.
 // Cloudflare Pages Advanced Mode: this Worker runs in front of every request.
 //
-// When the SITE_PASSWORD env var/secret is set on the Pages project, the INTERNAL
-// site is gated behind a single custom password page (no username). A correct
-// password sets a cookie whose value is SHA-256("gv:" + password) — so the raw
-// password is never stored in the cookie — and the Worker checks that cookie on
-// every request. If SITE_PASSWORD is unset (e.g. local builds), the site is open.
+// Gate model: PER-USER accounts (email + password). build.js injects USERS from
+// src/identity.json; a login sets a cookie carrying "<email>.<token>" where token is
+// derived from the user's effective password (admin-set KV override ?? seed) — see
+// identify(). The internal surface (root index, per-opportunity indexes, galleries)
+// is gated; direct prototype URLs, their DS assets, /pages, and /_build.json are
+// public — see PUBLIC_PREFIXES / isPublicPath. Admin-only spaces' base paths
+// (RESTRICTED_BASES) are sealed to admins. Legacy fallback: with no USERS injected
+// but SITE_PASSWORD set, a single shared-password gate applies; with neither, the
+// site is open (raw/local builds).
 //
-// Published prototypes (`/<opportunity>/<prototype>/…`) are PUBLIC even when the
-// password is set — only the internal surface (root index, per-opportunity
-// indexes, /pages, /components, /primitives, /playground, /skills) is gated. See
-// PUBLIC_PREFIXES / isPublicPath below.
-//
-// Casual shared-password gate against link leakage — NOT Zero Trust.
+// Casual gate against link leakage — NOT Zero Trust.
 
 const COOKIE = "gv_auth";
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
@@ -94,6 +94,10 @@ function isPublicPath(pathname) {
   // load their assets from already-public paths (/skills/govocal-ui/, /fonts/), so
   // the whole subtree — index pages and any page-local assets — bypasses the gate.
   if (pathname === "/pages" || pathname.startsWith("/pages/")) return true;
+  // NOTE: the /skills and /pages doors above are DEFAULT-SPACE-ONLY (root paths). A
+  // future non-default, non-adminOnly space needs base-aware equivalents
+  // (/<id>/skills/…, /<id>/pages/…) or its public prototypes render unstyled to
+  // signed-out visitors. Revisit when the first public second space mounts.
   return PUBLIC_PREFIXES.some(
     (p) => pathname === p || pathname === p.slice(0, -1) || pathname.startsWith(p)
   );
@@ -575,7 +579,7 @@ async function reviewApi(request, url, env) {
 // kv.get and a click is one kv.put — NO kv.list (the small-bucket call that burned
 // quota in the old badge system). Default status is "ignore"; the build-time chip
 // baseline comes from the committed prototype-status.json, and this overlays live
-// edits on top. Values: in-progress | dev-ready | ignore.
+// edits on top. Values: in-progress | dev-ready | ignore | reviewed (components).
 const STATUS_KEY = "statuses";
 const VALID_STATUS = { "in-progress": 1, "dev-ready": 1, ignore: 1, reviewed: 1 };
 

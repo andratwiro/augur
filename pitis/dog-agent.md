@@ -5,7 +5,7 @@ the real FigPal-creator layout: **species (cat/dog) on top**, the **four chevron
 cycle hats (top pair) and colour (bottom pair)**. Internal doc; never ships.
 
 ## Repo + tooling
-Work in `/Users/rob/Documents/go-vocal-prototypes`. `potrace` + `magick` + headless
+Work in `/Users/rob/Documents/govocal-split/augur`. `potrace` + `magick` + headless
 Chrome are installed. Engine = `pitis/piti.js`; customizer = `pitis/index.html`.
 `node build.js` must stay green. Commit only your paths to `main` with the
 `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>` trailer; never

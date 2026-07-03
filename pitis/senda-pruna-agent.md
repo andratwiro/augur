@@ -3,11 +3,11 @@
 Two new real-pet additions, in the existing traced doodle style. Internal doc.
 
 ## Repo + how it works (read first)
-Work in `/Users/rob/Documents/go-vocal-prototypes`. Read **`pitis/README.md`** (current
+Work in `/Users/rob/Documents/govocal-split/augur`. Read **`pitis/README.md`** (current
 state + architecture) and **`pitis/dog-agent.md`** (the exact potrace/magick pipeline
 that built the dog species). Engine = `pitis/piti.js`; customizer = `pitis/index.html`.
 `potrace` + `magick` + headless Chrome are installed. This is Free-mode design craft
-(load `gv-design-system/skills/frontend-design/SKILL.md`; do NOT pull govocal-ui). `node build.js` must
+(load `spaces/go-vocal/skills/frontend-design/SKILL.md`; do NOT pull govocal-ui). `node build.js` must
 stay green. After finishing, `npm run deploy` and report the URL. Commit ONLY your
 paths (`pitis/piti.js`, `pitis/index.html`) to `main` with the trailer
 `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`; never `git add -A`.

@@ -16,6 +16,16 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-07-03 — Spaces are their own worlds now
+The workspace grew into **spaces**: Go Vocal (everything you know, same links) and a
+new **Go Vocal 2.0** sandbox, each living in its own repo and switchable from the
+menu next to your profile (2.0 is visible to admins only for now). Pushing a space's
+repo still puts it live in about a minute, and there's a new public
+`/_build.json` address that tells you exactly which version is live. The admin page
+now shows **when each person last connected**, sorted by most recent. And the cards'
+"edited X days ago" labels — which had quietly broken and showed "just now" for
+everything — tell the truth again.
+
 ## 2026-06-22 — Your own account, with your own pins
 Augur now has real logins. Sign in with your email and password instead of one
 shared site password, and you get your own profile in the top-left corner — your

@@ -6,8 +6,8 @@ submodule per space** and is the only thing that builds + ships the live site:
 - **`spaces/<id>/`** (one submodule per space) — each space is its own repo, a
   self-contained bundle at its root: `.gv-*` tokens, primitives, CSS/JS, galleries
   (`base/ components/ pages/ patterns/ registry.json`) **plus** its opportunity/prototype
-  folders, a `playground/`, and a `space.json`. Currently mounted: **`go-vocal`**
-  (`andratwiro/go-vocal`, the default space — previously named `gv-workspace`).
+  folders and a `space.json`. Mounted: **`go-vocal`** (the default space, dist root URLs)
+  and **`go-vocal-2`** (admin-only, served under `/go-vocal-2/`).
 
 > The GitHub repo is `andratwiro/augur`; the Cloudflare Pages project is still named
 > `govocal-prototypes` (URL `https://govocal-prototypes.pages.dev`).
@@ -34,7 +34,8 @@ augur/
 ├── pitis/                   # the Pitis overlay layer + its build addon
 ├── scripts/                 # platform scripts: offline, shoot (posters), og, review (comments)
 └── spaces/
-    └── go-vocal/            # submodule → andratwiro/go-vocal (the default space)
+    ├── go-vocal/            # submodule → andratwiro/go-vocal (the default space)
+    └── go-vocal-2/          # submodule → andratwiro/go-vocal-2 (admin-only, /go-vocal-2/)
 ```
 
 ## Adding a prototype
@@ -48,9 +49,11 @@ auto-bumps that space's submodule pin here and deploys (~1 min). See [CLAUDE.md]
 
 Spaces are repos. Create a GitHub repo templated from `go-vocal` (own `space.json`, DS
 assets, `deploy-trigger.yml`); grant `SUBMODULE_PAT` read on it and add
-`AUGUR_DISPATCH_TOKEN` to its Actions secrets; then here:
+`AUGUR_DISPATCH_TOKEN` to its Actions secrets; verify the grant with
+`gh workflow run space-preflight.yml -f repo=<id>` (green = safe to mount); then here:
 `git submodule add https://github.com/andratwiro/<id>.git spaces/<id>` and push. The
-default space builds at the root URLs; others under `/<id>/`.
+default space builds at the root URLs; others under `/<id>/` (`adminOnly: true` in
+`space.json` seals a space behind the admin login).
 
 ## Important
 
