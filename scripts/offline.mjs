@@ -22,6 +22,8 @@
 import { spawn } from "node:child_process";
 import { watch, existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import http from "node:http";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -51,6 +53,77 @@ const LIVE_KV_BINDINGS = LIVE_KV ? [
   "--binding", `GV_KV_ACCOUNT=${DEPLOY_ENV.CLOUDFLARE_ACCOUNT_ID}`,
   "--binding", `GV_KV_NS=${DEPLOY_ENV.GV_KV_NS}`,
 ] : [];
+// AI backend for the /__ai/summarize route (Project Builder doc summariser).
+// Preferred: a local `claude -p` bridge — uses the maintainer's Claude login,
+// NO API tokens (see startAiBridge below). If the CLI isn't on PATH, fall back
+// to an ANTHROPIC_API_KEY from .env.deploy (pay-as-you-go). Neither → the route
+// 503s and the prototype uses its local heuristic.
+function hasCli(bin) {
+  const exts = process.platform === "win32" ? [".cmd", ".exe", ""] : [""];
+  return (process.env.PATH || "").split(path.delimiter).some((dir) =>
+    dir && exts.some((ext) => { try { return existsSync(path.join(dir, bin + ext)); } catch { return false; } }));
+}
+const CLI_OK = hasCli("claude");
+const AI_PORT = process.env.OFFLINE_AI_PORT || "8790";
+const AI_CLI_MODEL = process.env.OFFLINE_AI_MODEL || "claude-haiku-4-5";
+const AI_BINDINGS = CLI_OK
+  ? ["--binding", `AI_CLI_URL=http://127.0.0.1:${AI_PORT}`]
+  : (DEPLOY_ENV.ANTHROPIC_API_KEY ? ["--binding", `ANTHROPIC_API_KEY=${DEPLOY_ENV.ANTHROPIC_API_KEY}`] : []);
+
+// ── AI bridge: POST /summarize {text} → `claude -p` → structured JSON ─────────
+// Runs headless Claude Code in a scratch cwd (so the repo's own MCP/skills don't
+// load), instructs it to emit only the drafting-signals JSON, and returns it.
+function aiPrompt(text) {
+  return [
+    "Read the document at the end and reply with ONLY a single minified JSON object — no prose, no markdown code fences.",
+    'Schema: {"title":"≤64 chars, in the document language","summary":"exactly two plain sentences in the document language: what the consultation is about and what decision it feeds; no \\"This document\\" preamble","archetype":"inform|agenda|cocreate|devolved|community","flags":{"budget":bool,"surveyLed":bool,"spatial":bool,"commonground":bool,"proposals":bool,"volunteering":bool},"tags":["1 to 4 of: Consultatie, Stedelijke ontwikkeling, Mobiliteit, Milieu, Jongeren, Ouderen, Burgerbegroting, Financiën, Veiligheid, Cultuur"]}',
+    "archetype: inform=communicate a decision; agenda=what should we prioritise; cocreate=shape a plan or site; devolved=residents vote or allocate a budget; community=identity/celebration.",
+    "Ground every field ONLY in the document; never invent a budget, audience, or scope it doesn't state. Use conservative defaults when unsure (budget=false unless residents clearly allocate money).",
+    "=== DOCUMENT ===",
+    text,
+  ].join("\n");
+}
+function extractJson(s) {
+  let t = String(s || "").replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  const i = t.indexOf("{"), j = t.lastIndexOf("}");
+  if (i < 0 || j < 0 || j < i) return null;
+  try { return JSON.parse(t.slice(i, j + 1)); } catch { return null; }
+}
+function runClaude(text) {
+  return new Promise((resolve) => {
+    const proc = spawn("claude", ["-p", "--output-format", "json", "--model", AI_CLI_MODEL, "--strict-mcp-config"], { cwd: os.tmpdir() });
+    let out = "", err = "";
+    const killer = setTimeout(() => { try { proc.kill("SIGKILL"); } catch {} }, 90000);
+    proc.stdout.on("data", (d) => (out += d));
+    proc.stderr.on("data", (d) => (err += d));
+    proc.on("error", (e) => { clearTimeout(killer); resolve({ error: "spawn: " + e.message }); });
+    proc.on("close", (code) => {
+      clearTimeout(killer);
+      let env; try { env = JSON.parse(out); } catch { resolve({ error: "envelope (" + code + "): " + err.slice(0, 160) }); return; }
+      const obj = extractJson(env && env.result);
+      resolve(obj ? { obj } : { error: "result not JSON" });
+    });
+    proc.stdin.write(aiPrompt(text)); proc.stdin.end();
+  });
+}
+function startAiBridge() {
+  const server = http.createServer((req, res) => {
+    if (req.method !== "POST" || !req.url.startsWith("/summarize")) { res.writeHead(404); res.end(); return; }
+    let buf = "";
+    req.on("data", (c) => { buf += c; if (buf.length > 200000) req.destroy(); });
+    req.on("end", async () => {
+      let text = ""; try { text = (JSON.parse(buf).text) || ""; } catch {}
+      text = text.slice(0, 24000); // ~4k words — docs front-load their purpose; keeps the call ~7s not ~34s
+      if (text.trim().length < 40) { res.writeHead(400, { "content-type": "application/json" }); res.end('{"error":"short"}'); return; }
+      const r = await runClaude(text);
+      res.writeHead(r.obj ? 200 : 502, { "content-type": "application/json" });
+      res.end(JSON.stringify(r.obj || { error: r.error || "cli" }));
+    });
+  });
+  server.on("error", (e) => log(`AI bridge failed: ${e.message}`));
+  server.listen(Number(AI_PORT), "127.0.0.1", () =>
+    log(`AI: \x1b[32mclaude -p\x1b[0m bridge on http://127.0.0.1:${AI_PORT} (model ${AI_CLI_MODEL}, no API tokens)`));
+}
 
 // Build from the canonical EDIT-HERE clones, not the pinned nested submodules.
 // One repo per space: the god-mode checkout puts each space repo — a self-contained
@@ -126,11 +199,15 @@ log(`serving on http://localhost:${PORT}  (Ctrl-C to stop)`);
 log(LIVE_KV
   ? "KV: \x1b[1mLIVE\x1b[0m\x1b[35m — comments/pins/status/renames read & write PRODUCTION KV (prototypes stay local)"
   : "KV: local (.env.deploy with Cloudflare creds absent → safe local sandbox)");
+if (CLI_OK) startAiBridge();
+else if (DEPLOY_ENV.ANTHROPIC_API_KEY) log("AI: Anthropic API key (pay-as-you-go) — `claude` CLI not found on PATH");
+else log("AI: off (no `claude` CLI, no ANTHROPIC_API_KEY) → Project Builder uses its local heuristic");
 const wrangler = spawn(
   "npx",
   ["--yes", "wrangler", "pages", "dev", "dist",
     "--kv", "COMMENTS",
     ...LIVE_KV_BINDINGS,
+    ...AI_BINDINGS,
     "--port", PORT,
     "--compatibility-date", "2024-09-01",
     "--persist-to", ".wrangler/state"],

@@ -516,6 +516,116 @@ async function mcpProxy(request, url) {
   });
 }
 
+// ---- AI document summarizer ------------------------------------------------
+// The Project Builder prototype drops a doc → this route reads its extracted
+// text and returns a plain-language summary + structured drafting signals
+// (archetype / method flags / tags), so the builder suggests a genuinely
+// better-shaped project instead of keyword-guessing. Gated behind the login.
+// Two backends, in order of preference (see aiSummarize):
+//   1. AI_CLI_URL  — a local `claude -p` bridge (offline mode; the maintainer's
+//      Claude login, NO API tokens). This is the normal path.
+//   2. ANTHROPIC_API_KEY — the Anthropic Messages API (pay-as-you-go); a
+//      dormant fallback for a deployed site that opts in by setting the key.
+// Neither configured → 503, and the prototype falls back to its heuristic.
+// The API-path model is a single constant. Haiku 4.5 for the live demo: fast
+// (~2–4s, good for a presentation) and ~a cent per doc. Bump to claude-sonnet-4-6
+// or claude-opus-4-8 for richer output if a call warrants it.
+
+const AI_MODEL = "claude-haiku-4-5";
+
+const AI_SUMMARY_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: { type: "string", description: "Short working title for the project (≤ 64 chars), in the document's language." },
+    summary: { type: "string", description: "2 plain sentences: what this consultation is about and what decision it feeds. Same language as the document. No preamble." },
+    archetype: { type: "string", enum: ["inform", "agenda", "cocreate", "devolved", "community"], description: "inform=communicate a decision; agenda=what should we prioritise; cocreate=shape a plan/site; devolved=citizens vote/allocate budget; community=identity/celebration." },
+    flags: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        budget: { type: "boolean", description: "A participatory budget / money to allocate is in scope." },
+        surveyLed: { type: "boolean", description: "Reach/breadth via a questionnaire fits better than open idea collection." },
+        spatial: { type: "boolean", description: "The ask is about places, routes, or sites (a map would help)." },
+        commonground: { type: "boolean", description: "The topic is divisive; finding agreement on statements is relevant." },
+        proposals: { type: "boolean", description: "Petition / threshold-based citizen proposals are the mechanism." },
+        volunteering: { type: "boolean", description: "Recruiting volunteers is part of the ask." },
+      },
+      required: ["budget", "surveyLed", "spatial", "commonground", "proposals", "volunteering"],
+    },
+    tags: { type: "array", items: { type: "string" }, description: "1–4 topic tags from: Consultatie, Stedelijke ontwikkeling, Mobiliteit, Milieu, Jongeren, Ouderen, Burgerbegroting, Financiën, Veiligheid, Cultuur." },
+  },
+  required: ["title", "summary", "archetype", "flags", "tags"],
+};
+
+const AI_SYSTEM = [
+  "You help a Go Vocal government-success manager turn an uploaded planning/policy document into a participation project.",
+  "Read the document and return the structured fields only. Ground every field in what the document actually says — never invent a driver, budget, audience, or scope it doesn't state.",
+  "The summary must read like a person wrote it: two short plain sentences, in the document's own language, no 'This document…' preamble.",
+  "Pick the SINGLE best-fitting archetype. Set every flag to false by default; set a flag true ONLY when the document explicitly calls for that exact mechanism — especially budget (residents allocating money), commonground (a divisive topic needing agreement on statements), and volunteering (recruiting volunteers). When in doubt, false.",
+].join(" ");
+
+async function aiSummarize(request, env) {
+  if (request.method !== "POST") return jsonResponse({ error: "method not allowed" }, 405);
+  let body;
+  try { body = await request.json(); } catch { return jsonResponse({ error: "bad json" }, 400); }
+  const text = String((body && body.text) || "").slice(0, 60000); // ~15k tokens cap
+  if (text.trim().length < 40) return jsonResponse({ error: "text too short" }, 400);
+
+  // Preferred path: a local CLI bridge (offline mode wires AI_CLI_URL to a
+  // 127.0.0.1 server that shells out to `claude -p` — the maintainer's Claude
+  // login, NO API tokens). The API-key path below is a dormant fallback for a
+  // deployed site that has ANTHROPIC_API_KEY set; absent both → 503 → heuristic.
+  if (env.AI_CLI_URL) {
+    try {
+      const r = await fetch(env.AI_CLI_URL.replace(/\/+$/, "") + "/summarize", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const j = await r.json().catch(() => null);
+      if (r.ok && j && j.summary) return jsonResponse(j);
+      return jsonResponse({ error: "cli", status: r.status }, 502);
+    } catch (e) {
+      return jsonResponse({ error: "cli_unreachable", detail: String((e && e.message) || e) }, 502);
+    }
+  }
+
+  const key = env.ANTHROPIC_API_KEY;
+  if (!key) return jsonResponse({ error: "ai_not_configured" }, 503);
+
+  let upstream;
+  try {
+    upstream = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        max_tokens: 1024,
+        system: AI_SYSTEM,
+        output_config: { format: { type: "json_schema", schema: AI_SUMMARY_SCHEMA } },
+        messages: [{ role: "user", content: "Document:\n\n" + text }],
+      }),
+    });
+  } catch (e) {
+    return jsonResponse({ error: "network", detail: String(e && e.message || e) }, 502);
+  }
+  if (!upstream.ok) {
+    const detail = await upstream.text().catch(() => "");
+    return jsonResponse({ error: "upstream", status: upstream.status, detail: detail.slice(0, 400) }, 502);
+  }
+  const data = await upstream.json().catch(() => null);
+  const block = data && Array.isArray(data.content) ? data.content.find((b) => b.type === "text") : null;
+  if (!block) return jsonResponse({ error: "empty" }, 502);
+  let out;
+  try { out = JSON.parse(block.text); } catch { return jsonResponse({ error: "parse" }, 502); }
+  return jsonResponse(out);
+}
+
 // ---- Review comments API (KV-backed) ----------------------------------------
 // Threads are stored one KV value per prototype page path, key "c:<path>".
 
@@ -911,6 +1021,14 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // Demo vanity domain: wizard.demogouda.govocal.com is CNAME'd to this Pages
+    // project + added as a custom domain, so the worker runs here. DNS can't
+    // target a path, so land its root on the Project Builder prototype. Scoped
+    // to that exact host — never affects pages.dev or any other domain.
+    if (url.hostname === "wizard.demogouda.govocal.com" && (url.pathname === "/" || url.pathname === "")) {
+      return Response.redirect("https://wizard.demogouda.govocal.com/playground/project-builder-v2/", 302);
+    }
+
     // Blanket "don't crawl anything" — the public prototypes are for link-sharing,
     // not search discovery, and the rest is password-gated. Served openly so robots
     // can actually read it (a gated robots.txt would just return the login page).
@@ -955,6 +1073,14 @@ export default {
       const cookies = request.headers.get("Cookie") || "";
       authed = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
     } else authed = true;
+
+    // AI document summarizer — gated (it spends Anthropic tokens), so it sits
+    // after the auth resolve. 503 when unconfigured → the prototype falls back
+    // to its local heuristic.
+    if (url.pathname === "/__ai/summarize") {
+      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      return aiSummarize(request, env);
+    }
 
     // Who am I — the sidebar profile chip and the comment overlay read this. Open
     // (returns {user:null} when signed out) so the chip can decide what to render.
