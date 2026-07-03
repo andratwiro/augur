@@ -1,5 +1,66 @@
 [
-  { "email": "rob@govocal.com",   "name": "Rob",            "initials": "R",  "color": "#4f46e5", "role": "admin", "pass": "augur-rob-2026" },
-  { "email": "irene@govocal.com", "name": "Irene Pedruelo", "initials": "IP", "color": "#db2777", "pass": "augur-irene-2026" },
-  { "email": "tali@govocal.com",  "name": "Tali Neiman",    "initials": "TN", "color": "#0d9488", "pass": "augur-tali-2026" }
+  {
+    "email": "rob@govocal.com",
+    "name": "Rob",
+    "initials": "R",
+    "color": "#4f46e5",
+    "role": "admin",
+    "pass": "augur-rob-2026"
+  },
+  {
+    "email": "irene@govocal.com",
+    "name": "Irene Pedruelo",
+    "initials": "IP",
+    "color": "#db2777",
+    "pass": "augur-irene-2026"
+  },
+  {
+    "email": "tali@govocal.com",
+    "name": "Tali Neiman",
+    "initials": "TN",
+    "color": "#0d9488",
+    "pass": "augur-tali-2026"
+  },
+  {
+    "email": "iva@govocal.com",
+    "name": "Iva Kopraleva",
+    "initials": "IK",
+    "color": "#ea580c",
+    "pass": "harbor-cedar-70"
+  },
+  {
+    "email": "simon@govocal.com",
+    "name": "Simon Tharby",
+    "initials": "ST",
+    "color": "#2563eb",
+    "pass": "vector-plume-91"
+  },
+  {
+    "email": "amanda@govocal.com",
+    "name": "Amanda Anderson",
+    "initials": "AA",
+    "color": "#7c3aed",
+    "pass": "aurora-lagoon-54"
+  },
+  {
+    "email": "edwin@govocal.com",
+    "name": "Edwin Kato",
+    "initials": "EK",
+    "color": "#ca8a04",
+    "pass": "zephyr-tulip-85"
+  },
+  {
+    "email": "amira@govocal.com",
+    "name": "Amira Bayoumi",
+    "initials": "AB",
+    "color": "#dc2626",
+    "pass": "comet-juniper-57"
+  },
+  {
+    "email": "wietse@govocal.com",
+    "name": "Wietse Van Ransbeeck",
+    "initials": "WV",
+    "color": "#059669",
+    "pass": "salvia-tidal-65"
+  }
 ]
