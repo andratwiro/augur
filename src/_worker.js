@@ -64,6 +64,11 @@ const PUBLIC_PREFIXES = [];
 // page or any asset it loads), or is the dormant review-overlay script that every
 // prototype embeds. Everything else falls through to the password gate.
 function isPublicPath(pathname) {
+  // The build stamp ({builtAt, spaces:{<id>:{sha}}}). Space-repo collaborators can't
+  // see this repo's CI, so this is their only way to verify "my commit is live" —
+  // curl it and compare sha to git rev-parse HEAD. Public by design; contains nothing
+  // but commit SHAs that those collaborators already have.
+  if (pathname === "/_build.json") return true;
   // The dormant review overlay + its avatar asset — both embedded into public
   // prototypes, so both must bypass the gate (else the <img> gets the login page).
   if (pathname === "/__review/comments.js" || pathname === "/__review/aslam.png") return true;

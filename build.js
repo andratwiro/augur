@@ -4281,6 +4281,28 @@ async function main() {
   );
   await fs.writeFile(path.join(DIST, "_worker.js"), sealedWorker, "utf8");
 
+  // Public build stamp: /_build.json — {builtAt, spaces:{<id>:{sha}}}. A space-repo
+  // collaborator cannot see this repo's CI, so this is their deploy verification:
+  // curl it and compare their space's sha to `git rev-parse HEAD`. Served ungated
+  // (see isPublicPath in src/_worker.js); it exposes only commit SHAs the space
+  // collaborators already have.
+  const stampSpaces = {};
+  for (const space of spaces) {
+    let sha = null;
+    try {
+      sha = execFileSync("git", ["-C", space.root, "rev-parse", "HEAD"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+    } catch {}
+    stampSpaces[space.id] = { sha };
+  }
+  await fs.writeFile(
+    path.join(DIST, "_build.json"),
+    JSON.stringify({ builtAt: new Date().toISOString(), spaces: stampSpaces }, null, 2),
+    "utf8"
+  );
+
   // Top-level 404.html. Cloudflare Pages serves this (with a genuine 404 status) for
   // any unmatched route — WITHOUT it, Pages falls back to serving the root index.html
   // at status 200, so the worker's `asset.status === 404` branch never fires and bogus
