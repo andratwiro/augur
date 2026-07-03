@@ -476,6 +476,46 @@ function withLiveReload(res, url) {
     .transform(res);
 }
 
+// ---- Go Vocal MCP proxy (same-origin bridge) ---------------------------------
+// GoVocal platforms send no CORS headers on /mcp or /oauth/token, so a browser
+// prototype on this origin cannot call them directly. This route lets a page
+// call /__mcp/<host>/<path> on ITS OWN origin and have the worker forward to
+// https://<host>/<path>. Public (before the gate) — the platform's own OAuth
+// Bearer token is the real auth; the proxy adds nothing, stores nothing, and
+// never logs a token. Allowlist is tight: *.govocal.com hosts, and exactly the
+// three paths the Project Builder flow needs.
+
+const MCP_PROXY_PATHS = new Set(["/mcp", "/oauth/token", "/web_api/v1/app_configuration"]);
+
+async function mcpProxy(request, url) {
+  const rest = url.pathname.slice("/__mcp/".length); // "<host>/<path…>"
+  const slash = rest.indexOf("/");
+  const host = slash === -1 ? rest : rest.slice(0, slash);
+  const path = slash === -1 ? "/" : rest.slice(slash);
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.govocal\.com$/.test(host))
+    return jsonResponse({ error: "host not allowed" }, 403);
+  if (!MCP_PROXY_PATHS.has(path)) return jsonResponse({ error: "path not allowed" }, 403);
+  if (request.method !== "POST" && request.method !== "GET")
+    return jsonResponse({ error: "method not allowed" }, 405);
+  const headers = new Headers();
+  for (const h of ["content-type", "accept", "authorization", "mcp-protocol-version"]) {
+    const v = request.headers.get(h);
+    if (v) headers.set(h, v);
+  }
+  const upstream = await fetch(`https://${host}${path}`, {
+    method: request.method,
+    headers,
+    body: request.method === "POST" ? await request.arrayBuffer() : undefined,
+  });
+  return new Response(upstream.body, {
+    status: upstream.status,
+    headers: {
+      "Content-Type": upstream.headers.get("Content-Type") || "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
 // ---- Review comments API (KV-backed) ----------------------------------------
 // Threads are stored one KV value per prototype page path, key "c:<path>".
 
@@ -897,6 +937,10 @@ export default {
     // (no cookie), so browser reads/view-writes are open; agent ops self-guard with
     // the export secret. Same early-exit shape as /__version and the review export.
     if (url.pathname === "/__piti") return pitiApi(request, url, env);
+
+    // Go Vocal MCP proxy — public prototypes call the platform through their own
+    // origin (the platform's Bearer token is the real auth; see mcpProxy).
+    if (url.pathname.startsWith("/__mcp/")) return mcpProxy(request, url);
 
     const expected = env.SITE_PASSWORD;
     const usersActive = USERS.length > 0;
