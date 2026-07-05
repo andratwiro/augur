@@ -3961,8 +3961,10 @@ async function discoverSpaces() {
       name: meta.name || titleCase(e.name),
       default: !!meta.default,
       badge: meta.badge || "",
-      // Admin-only space: the switcher hides it for non-admins and the worker seals its
-      // base path (only Rob can reach the 2.0 workspace). Default space is never gated.
+      // Admin-only space: the switcher still lists it for everyone (spaceSwitcher()
+      // renders every space unconditionally); the gate is the worker, which seals the
+      // space's base path (RESTRICTED_BASES) so a non-admin who clicks through is
+      // bounced to the admin login. Default space is never gated.
       adminOnly: !!meta.adminOnly,
       // GoVocal content, authored per space — the platform stays space-agnostic.
       pendingPages: Array.isArray(meta.pendingPages) ? meta.pendingPages : [],

@@ -1,0 +1,160 @@
+name: Bridge health canary
+
+# Deploy-bridge + deploy-path monitoring. The auto-bump bridge (space push →
+# repository_dispatch → workspace-bump.yml → deploy.yml → Cloudflare) fails SILENTLY at
+# several links: a dead AUGUR_DISPATCH_TOKEN on a space repo simply never fires the
+# dispatch, a dead AUGUR_PIN_TOKEN makes the bump push fail, and a broken deploy leaves
+# the live site stale while everyone assumes their push shipped. This canary runs every
+# 6 hours and checks each link from the outside:
+#
+#   a. every mounted space: is the pin (spaces/<id> gitlink) at the space repo's main
+#      HEAD? Drift older than a 30-min grace window = the bridge didn't fire/land.
+#      (go-vocal-2's bridge is deliberately unarmed — drift there still means someone
+#      pushed gv2 expecting a deploy, so flagging it is correct.)
+#   b. is AUGUR_PIN_TOKEN still alive? (PATs expire quietly.)
+#   c. does the live /_build.json sha match each pin? Mismatch with a pin older than
+#      30 min = the deploy didn't ship.
+#
+# On any failure the run exits non-zero (GitHub emails the owner) AND maintains a single
+# open issue labelled `bridge-health` (create-or-comment, never duplicates); a green run
+# closes it. Checks accumulate into one failure list so a single run reports everything.
+
+on:
+  schedule:
+    - cron: "23 */6 * * *" # every 6 hours (offset minute — GitHub drops top-of-hour crons)
+  workflow_dispatch: # allow manual runs from the Actions tab
+
+permissions:
+  contents: read
+  issues: write # create/comment/close the bridge-health issue with the default token
+
+concurrency:
+  group: bridge-health
+  cancel-in-progress: true
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    env:
+      FAILS: ${{ runner.temp }}/health-failures.txt
+      GRACE_SECONDS: "1800" # 30-min window for an in-flight bump/deploy
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false # we only read the gitlinks, never the space contents
+          fetch-depth: 0 # full history: pin AGE comes from `git log -- spaces/<id>`
+
+      # (a) Every mounted space: space repo main HEAD vs our spaces/<id> pin. A fresh
+      # push is allowed to drift for GRACE_SECONDS (the bump takes ~1 min); drift beyond
+      # that means the bridge is broken (dead dispatch token, bump failure, …).
+      - name: Check space pins vs space repo HEADs
+        env:
+          PAT: ${{ secrets.SUBMODULE_PAT }} # Contents:read on every space repo
+        run: |
+          set -euo pipefail
+          : > "$FAILS"
+          NOW=$(date -u +%s)
+          git config -f .gitmodules --get-regexp 'submodule\..*\.path' | awk '{print $2}' | while read -r SUB_PATH; do
+            ID="${SUB_PATH#spaces/}"
+            URL="$(git config -f .gitmodules --get "submodule.$SUB_PATH.url")"
+            REPO="${URL#https://github.com/}"; REPO="${REPO%.git}"
+            # Output/err discarded except the sha so the token-bearing URL never hits the log.
+            HEAD_SHA="$(git ls-remote "https://x-access-token:${PAT}@github.com/${REPO}.git" refs/heads/main 2>/dev/null | awk '{print $1}')" || true
+            if [ -z "$HEAD_SHA" ]; then
+              echo "cannot read ${REPO} main HEAD with SUBMODULE_PAT (token dead/expired, or repo access revoked?)" >> "$FAILS"
+              continue
+            fi
+            PIN_SHA="$(git ls-tree HEAD "$SUB_PATH" | awk '{print $3}')"
+            if [ "$HEAD_SHA" = "$PIN_SHA" ]; then
+              echo "OK: $ID pin matches main HEAD (${PIN_SHA:0:12})"
+              continue
+            fi
+            # Drift — only a failure if the space repo's last push is outside the grace
+            # window (a push seconds ago legitimately hasn't been bumped yet).
+            PUSHED_AT="$(GH_TOKEN="$PAT" gh api "repos/${REPO}" --jq .pushed_at 2>/dev/null || true)"
+            if [ -z "$PUSHED_AT" ]; then
+              echo "$ID pin (${PIN_SHA:0:12}) != main HEAD (${HEAD_SHA:0:12}) and could not read ${REPO} pushed_at" >> "$FAILS"
+              continue
+            fi
+            AGE=$(( NOW - $(date -u -d "$PUSHED_AT" +%s) ))
+            if [ "$AGE" -gt "$GRACE_SECONDS" ]; then
+              echo "broken bridge: $ID pushed ${AGE}s ago but the pin (${PIN_SHA:0:12}) still isn't at main HEAD (${HEAD_SHA:0:12}) — the auto-bump never landed" >> "$FAILS"
+            else
+              echo "OK: $ID drifting but pushed ${AGE}s ago (inside the ${GRACE_SECONDS}s grace window)"
+            fi
+          done
+
+      # (b) AUGUR_PIN_TOKEN — the PAT workspace-bump.yml pushes with. If it dies, every
+      # space push silently stops deploying. A cheap authenticated GET proves it works.
+      - name: Validate AUGUR_PIN_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.AUGUR_PIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! gh api "repos/${GITHUB_REPOSITORY}" --jq .full_name >/dev/null 2>&1; then
+            echo "AUGUR_PIN_TOKEN is dead/expired — workspace-bump.yml cannot push pin bumps (regenerate the PAT and update the secret)" >> "$FAILS"
+          else
+            echo "OK: AUGUR_PIN_TOKEN authenticates"
+          fi
+
+      # (c) Live site vs pins: /_build.json is the public build stamp
+      # ({builtAt, spaces:{<id>:{sha}}}). A pin older than the grace window whose sha
+      # isn't what's deployed means deploy.yml failed or never ran.
+      - name: Check deployed /_build.json vs pins
+        run: |
+          set -euo pipefail
+          NOW=$(date -u +%s)
+          if ! STAMP="$(curl -fsS --max-time 30 https://govocal-prototypes.pages.dev/_build.json)"; then
+            echo "could not fetch https://govocal-prototypes.pages.dev/_build.json — site down or stamp gone" >> "$FAILS"
+            exit 0
+          fi
+          git config -f .gitmodules --get-regexp 'submodule\..*\.path' | awk '{print $2}' | while read -r SUB_PATH; do
+            ID="${SUB_PATH#spaces/}"
+            PIN_SHA="$(git ls-tree HEAD "$SUB_PATH" | awk '{print $3}')"
+            LIVE_SHA="$(printf '%s' "$STAMP" | jq -r --arg id "$ID" '.spaces[$id].sha // empty')"
+            if [ "$LIVE_SHA" = "$PIN_SHA" ]; then
+              echo "OK: $ID deployed sha matches the pin (${PIN_SHA:0:12})"
+              continue
+            fi
+            # The pin may have JUST moved (deploy in flight) — age it by its last commit.
+            PIN_AT="$(git log -1 --format=%ct -- "$SUB_PATH")"
+            AGE=$(( NOW - PIN_AT ))
+            if [ "$AGE" -gt "$GRACE_SECONDS" ]; then
+              echo "deploy didn't ship: $ID pin is ${PIN_SHA:0:12} (set ${AGE}s ago) but the live site serves '${LIVE_SHA:-<absent>}'" >> "$FAILS"
+            else
+              echo "OK: $ID pin moved ${AGE}s ago, deploy presumably in flight"
+            fi
+          done
+
+      # (d) One issue, not a pile: create-or-comment on the single open `bridge-health`
+      # issue on failure (+ exit 1 so GitHub emails the owner); close it on recovery.
+      - name: Report — maintain the bridge-health issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh label create bridge-health --color D93F0B --description "Deploy-bridge canary failures (health.yml)" 2>/dev/null || true
+          EXISTING="$(gh issue list --label bridge-health --state open --json number --jq '.[0].number // empty')"
+          if [ -s "$FAILS" ]; then
+            N="$(wc -l < "$FAILS" | tr -d ' ')"
+            FIRST="$(head -n1 "$FAILS" | cut -c1-100)"
+            if [ "$N" -gt 1 ]; then TITLE="🚨 Bridge health: $N checks failing"; else TITLE="🚨 Bridge health: $FIRST"; fi
+            BODY="$(printf 'Canary run: %s\n\nFailing checks:\n%s\n\n(Auto-maintained by health.yml — this issue closes itself when a run goes green.)' "$RUN_URL" "$(sed 's/^/- /' "$FAILS")")"
+            if [ -n "$EXISTING" ]; then
+              gh issue edit "$EXISTING" --title "$TITLE" >/dev/null
+              gh issue comment "$EXISTING" --body "$BODY" >/dev/null
+              echo "Updated open issue #$EXISTING"
+            else
+              gh issue create --title "$TITLE" --body "$BODY" --label bridge-health >/dev/null
+              echo "Opened a new bridge-health issue"
+            fi
+            echo "::error::bridge health checks failing:"; sed 's/^/  - /' "$FAILS"
+            exit 1
+          fi
+          echo "All bridge health checks green."
+          if [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" --comment "All bridge health checks green again — closing. ($RUN_URL)" >/dev/null
+            echo "Closed recovered issue #$EXISTING"
+          fi
