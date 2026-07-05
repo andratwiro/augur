@@ -36,7 +36,8 @@ jobs:
   health:
     runs-on: ubuntu-latest
     env:
-      FAILS: ${{ runner.temp }}/health-failures.txt
+      # NB: the `runner` context is not available in job-level env, so a literal path.
+      FAILS: /tmp/health-failures.txt
       GRACE_SECONDS: "1800" # 30-min window for an in-flight bump/deploy
     steps:
       - uses: actions/checkout@v4
