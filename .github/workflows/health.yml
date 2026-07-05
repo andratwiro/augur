@@ -59,8 +59,11 @@ jobs:
             ID="${SUB_PATH#spaces/}"
             URL="$(git config -f .gitmodules --get "submodule.$SUB_PATH.url")"
             REPO="${URL#https://github.com/}"; REPO="${REPO%.git}"
-            # Output/err discarded except the sha so the token-bearing URL never hits the log.
-            HEAD_SHA="$(git ls-remote "https://x-access-token:${PAT}@github.com/${REPO}.git" refs/heads/main 2>/dev/null | awk '{print $1}')" || true
+            # Via the API, not `git ls-remote` — actions/checkout installs an
+            # http.<server>/.extraheader auth header (the default GITHUB_TOKEN) in this
+            # repo's local git config, which overrides a PAT embedded in the URL and
+            # can't read the private space repos.
+            HEAD_SHA="$(GH_TOKEN="$PAT" gh api "repos/${REPO}/branches/main" --jq .commit.sha 2>/dev/null || true)"
             if [ -z "$HEAD_SHA" ]; then
               echo "cannot read ${REPO} main HEAD with SUBMODULE_PAT (token dead/expired, or repo access revoked?)" >> "$FAILS"
               continue
