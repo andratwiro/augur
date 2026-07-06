@@ -557,15 +557,47 @@ const AI_SUMMARY_SCHEMA = {
       required: ["budget", "surveyLed", "spatial", "commonground", "proposals", "volunteering"],
     },
     tags: { type: "array", items: { type: "string" }, description: "1–4 topic tags from: Consultatie, Stedelijke ontwikkeling, Mobiliteit, Milieu, Jongeren, Ouderen, Burgerbegroting, Financiën, Veiligheid, Cultuur." },
+    plan: {
+      type: "object",
+      additionalProperties: false,
+      description: "The participation project you would design FROM THIS DOCUMENT — its phases in order, and why. Grounded in the document's own structure, not a generic template.",
+      properties: {
+        rationale: { type: "string", description: "1–2 plain Dutch sentences: why THIS phase sequence fits THIS document (the participation logic — what is gathered, decided, fed back). Reference the document's own milestones where it has them. No invented statistics or score claims." },
+        phases: {
+          type: "array",
+          minItems: 1,
+          maxItems: 6,
+          description: "The project's phases, in chronological order. Each phase runs exactly ONE method. Design them from the document's actual milestones/campaigns; do not pad with generic phases the document doesn't warrant.",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              title: { type: "string", description: "Short, specific Dutch phase title tied to this document (e.g. 'Visie en waarden ophalen'), not a generic label." },
+              method: { type: "string", enum: ["information", "collect", "proposals", "commonground", "survey", "voting", "volunteering"], description: "Go Vocal method. information=share info/results; collect=gather ideas & input (ideation); proposals=citizen proposals with a support threshold; commonground=find agreement on a divisive topic; survey=structured questionnaire for reach; voting=prioritise/choose between options (see votingType); volunteering=recruit volunteers." },
+              purpose: { type: "string", description: "One Dutch sentence: what happens in this phase and what it produces. Becomes the phase description." },
+              weeks: { type: "integer", minimum: 1, maximum: 16, description: "Phase length in weeks. Reflect the document's real horizon, not a fixed default." },
+              votingType: { type: "string", enum: ["approval", "budgeting"], description: "ONLY when method=voting. approval=vote to prioritise/choose; budgeting=participatory budget (residents allocate money)." },
+              budget: { type: "integer", description: "ONLY when method=voting AND votingType=budgeting: total euros residents allocate. Use the document's figure if it states one; otherwise a sensible round amount." },
+            },
+            required: ["title", "method", "purpose", "weeks"],
+          },
+        },
+      },
+      required: ["rationale", "phases"],
+    },
   },
-  required: ["title", "summary", "archetype", "flags", "tags"],
+  required: ["title", "summary", "archetype", "flags", "tags", "plan"],
 };
 
 const AI_SYSTEM = [
-  "You help a Go Vocal government-success manager turn an uploaded planning/policy document into a participation project.",
-  "Read the document and return the structured fields only. Ground every field in what the document actually says — never invent a driver, budget, audience, or scope it doesn't state.",
-  "The summary must read like a person wrote it: two short plain sentences, in the document's own language, no 'This document…' preamble.",
-  "Pick the SINGLE best-fitting archetype. Set every flag to false by default; set a flag true ONLY when the document explicitly calls for that exact mechanism — especially budget (residents allocating money), commonground (a divisive topic needing agreement on statements), and volunteering (recruiting volunteers). When in doubt, false.",
+  "You are a senior Go Vocal participation designer. You turn an uploaded planning/policy/engagement document into a concrete Go Vocal participation project for a Dutch municipality (Gemeente Gouda).",
+  "Ground everything in what the document actually says — never invent a driver, budget, audience, or scope it doesn't state.",
+  "Go Vocal model: a project is an ordered sequence of PHASES; each phase runs exactly ONE participation method. Design the phases FROM THE DOCUMENT'S OWN STRUCTURE — if it names milestones, stages, or campaigns (e.g. visioning → land-use/policy → draft review), mirror those as phases with specific titles. Do not force a generic template, and do not pad with phases the document doesn't warrant.",
+  "Method meanings — pick the one that fits each phase's real purpose: collect (ideation: gather ideas/input and discuss openly) · survey (a structured questionnaire, chosen for reach/breadth over open ideation) · proposals (residents submit proposals that gather support to a threshold) · commonground (surface agreement/disagreement on a divisive topic, statement by statement) · voting (prioritise or choose between options; set votingType=approval, OR votingType=budgeting with a budget amount when residents allocate money — participatory budgeting) · volunteering (recruit volunteers) · information (share context or feed back results).",
+  "Sound sequencing heuristics (guidance, adapt to the document): when there is at least one engagement phase, CLOSE with an information phase that feeds back results — the single biggest lever for people feeling heard. A lone engagement phase is weak. Co-creating a plan usually means two gathering rounds (broad input, then refine) before the closing information phase. Participatory budgeting is collect → voting(budgeting) → information. Only use voting/budget when the document really asks residents to choose between options or allocate money.",
+  "ALL user-facing text you generate — title, summary, every phase title, every purpose, and the rationale — must be in Dutch (nl-NL), even when the source document is in another language. The tenant is Dutch; this is deliberate.",
+  "The summary must read like a person wrote it: two short plain Dutch sentences, no 'Dit document…' preamble.",
+  "Also set the coarse signals: pick the single best-fitting archetype, and set every flag false unless the document explicitly calls for that mechanism (when in doubt, false). These are a fallback; your `plan` is the real output.",
 ].join(" ");
 
 async function aiSummarize(request, env) {
@@ -608,7 +640,7 @@ async function aiSummarize(request, env) {
       },
       body: JSON.stringify({
         model: AI_MODEL,
-        max_tokens: 1024,
+        max_tokens: 2048,
         system: AI_SYSTEM,
         output_config: { format: { type: "json_schema", schema: AI_SUMMARY_SCHEMA } },
         messages: [{ role: "user", content: "Document:\n\n" + text }],
