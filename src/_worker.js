@@ -601,6 +601,23 @@ const AI_SUMMARY_SCHEMA = {
       },
       required: ["rationale", "phases"],
     },
+    events: {
+      type: "array",
+      description: "Real-world moments this document describes or clearly implies — an info/consultation evening, a pop-up or market stand, a design workshop, a kick-off or closing meeting. Include 1–3 ONLY when the document genuinely implies people gathering in person or online. For a purely digital consultation with no gatherings, return an empty array — NEVER invent events.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          title: { type: "string", description: "Short, specific Dutch event title tied to the document (e.g. 'Inloopavond conceptplan')." },
+          purpose: { type: "string", description: "One Dutch sentence: what happens at this event and who it is for. Becomes the event description." },
+          format: { type: "string", enum: ["in_person", "online", "hybrid"], description: "in_person=a physical venue; online=a video call; hybrid=both." },
+          location: { type: "string", description: "For in_person/hybrid: a Dutch venue or area name grounded in the document (e.g. 'Stadhuis, raadzaal' or 'Marktplein'). Omit for online." },
+          phaseIndex: { type: "integer", description: "0-based index into plan.phases of the phase this event supports, so it can be scheduled inside that phase's window. Use the closest-fitting phase." },
+          durationHours: { type: "integer", description: "Typical length in hours (1–4 is usual, max 8)." },
+        },
+        required: ["title", "purpose", "format"],
+      },
+    },
   },
   required: ["title", "summary", "archetype", "flags", "tags", "plan"],
 };
@@ -613,6 +630,7 @@ const AI_SYSTEM = [
   "Consult vs inform — do NOT confuse them. The `information` method is ONE-WAY (share context, or feed back final results). If a document stage asks residents to REVIEW, react to, or give feedback on a draft/concept/proposal, that is a CONSULTATION — use survey (structured feedback) or collect (open comments/ideas on the draft), never `information`. Never collapse a 'review the draft plan' milestone into a one-way information phase. A closing `information` phase (‘what we did with your input’) is a good final touch, but it comes AFTER any real review — it does not replace it.",
   "Sequencing heuristics (guidance, adapt to the document): a lone engagement phase is weak — feed results back. Co-creating a plan usually means broad input, then refine, then review of the draft, then a short results/close. Participatory budgeting is collect → voting(budgeting) → information. Only use voting/budget when the document really asks residents to choose between options or allocate money.",
   "Phases are the document's SEQUENTIAL milestones only. Do NOT promote a cross-cutting audience, channel, or component into its own milestone phase — e.g. youth/student engagement, targeted outreach to hard-to-reach groups, or an always-open online portal run ACROSS the whole process, not as a separate step between milestones. Reflect a continuously-open channel, if the document describes one, as a single background collect phase spanning the process; reflect targeted audiences inside the relevant phase's purpose, not as their own phase.",
+  "Some documents describe or imply real-world moments — an info/consultation evening, a pop-up or market stand, a design workshop, a kick-off or closing meeting. When (and ONLY when) the document genuinely implies people gathering in person or online, propose 1–3 such events in `events`, each tied to the phase it supports (`phaseIndex`) and grounded in the document (a venue/area it actually names). For a purely digital consultation with no gatherings, return an empty `events` array — never invent them. All event text in Dutch.",
   "For EVERY phase whose method is `survey`, design its actual questionnaire in `questions`: 4–7 real questions that gather exactly what that phase's purpose says it needs from the document (satisfaction, priorities, constraints, willingness, context). Ground each question in the document — never generic filler. Open with a short context/demographic question (e.g. neighbourhood, or how often they use the thing) and mix field types deliberately: use select/multiselect (with concrete Dutch options) for categorical choices, linear_scale (with Dutch end labels) for satisfaction/agreement/importance, rating for a quality score, and a single multiline_text near the end for open remarks — do not make every question open text. Mark only the essentials required. Write every question and option in Dutch. Do NOT put a `questions` array on any non-survey phase.",
   "Set `weeks` to the document's REAL horizon, do not compress. A comprehensive/structural plan or a multi-campaign process typically runs many months (often 12–18); individual gathering or review phases are usually 4–8 weeks each. Off-platform tracks the document mentions (internal committees, stakeholder interviews, formal reporting) need not become phases — keep the resident-facing spine faithful, but you may note in the rationale what happens off-platform.",
   "ALL user-facing text you generate — title, summary, every phase title, every purpose, and the rationale — must be in Dutch (nl-NL), even when the source document is in another language. The tenant is Dutch; this is deliberate.",
