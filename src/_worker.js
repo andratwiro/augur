@@ -527,11 +527,14 @@ async function mcpProxy(request, url) {
 //   2. ANTHROPIC_API_KEY — the Anthropic Messages API (pay-as-you-go); a
 //      dormant fallback for a deployed site that opts in by setting the key.
 // Neither configured → 503, and the prototype falls back to its heuristic.
-// The API-path model is a single constant. Haiku 4.5 for the live demo: fast
-// (~2–4s, good for a presentation) and ~a cent per doc. Bump to claude-sonnet-4-6
-// or claude-opus-4-8 for richer output if a call warrants it.
+// The API-path model is a single constant. Opus 4.8 for the customer demo:
+// richest read of a complex doc (sharpest summary, most reliable archetype/flags,
+// least over-flagging) — its few extra seconds are covered by the client's narrated
+// "thinking" stepper, which makes the analysis read as considered. ~a few cents per
+// doc; trivial at demo volume. Drop to claude-sonnet-4-6 / claude-haiku-4-5 for
+// faster/cheaper output if a call warrants it.
 
-const AI_MODEL = "claude-haiku-4-5";
+const AI_MODEL = "claude-opus-4-8";
 
 const AI_SUMMARY_SCHEMA = {
   type: "object",
