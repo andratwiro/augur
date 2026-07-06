@@ -565,9 +565,7 @@ const AI_SUMMARY_SCHEMA = {
         rationale: { type: "string", description: "1–2 plain Dutch sentences: why THIS phase sequence fits THIS document (the participation logic — what is gathered, decided, fed back). Reference the document's own milestones where it has them. No invented statistics or score claims." },
         phases: {
           type: "array",
-          minItems: 1,
-          maxItems: 6,
-          description: "The project's phases, in chronological order. Each phase runs exactly ONE method. Design them from the document's actual milestones/campaigns; do not pad with generic phases the document doesn't warrant.",
+          description: "The project's phases (1–6), in chronological order. Each phase runs exactly ONE method. Design them from the document's actual milestones/campaigns; do not pad with generic phases the document doesn't warrant.",
           items: {
             type: "object",
             additionalProperties: false,
@@ -575,7 +573,7 @@ const AI_SUMMARY_SCHEMA = {
               title: { type: "string", description: "Short, specific Dutch phase title tied to this document (e.g. 'Visie en waarden ophalen'), not a generic label." },
               method: { type: "string", enum: ["information", "collect", "proposals", "commonground", "survey", "voting", "volunteering"], description: "Go Vocal method. information=share info/results; collect=gather ideas & input (ideation); proposals=citizen proposals with a support threshold; commonground=find agreement on a divisive topic; survey=structured questionnaire for reach; voting=prioritise/choose between options (see votingType); volunteering=recruit volunteers." },
               purpose: { type: "string", description: "One Dutch sentence: what happens in this phase and what it produces. Becomes the phase description." },
-              weeks: { type: "integer", minimum: 1, maximum: 16, description: "Phase length in weeks. Reflect the document's real horizon, not a fixed default." },
+              weeks: { type: "integer", description: "Phase length in weeks (1–16). Reflect the document's real horizon, not a fixed default." },
               votingType: { type: "string", enum: ["approval", "budgeting"], description: "ONLY when method=voting. approval=vote to prioritise/choose; budgeting=participatory budget (residents allocate money)." },
               budget: { type: "integer", description: "ONLY when method=voting AND votingType=budgeting: total euros residents allocate. Use the document's figure if it states one; otherwise a sensible round amount." },
             },
