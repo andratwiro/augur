@@ -677,8 +677,12 @@ async function aiSummarize(request, env) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
+        // Headroom for a rich plan: a comprehensive-plan doc yields multiple phases +
+        // per-survey questionnaires + events, which can run well past 2048 output
+        // tokens and truncate the JSON (→ parse error → 502). Only tokens actually
+        // generated are billed, so a high ceiling costs nothing on smaller docs.
         model: AI_MODEL,
-        max_tokens: 2048,
+        max_tokens: 8192,
         system: AI_SYSTEM,
         output_config: { format: { type: "json_schema", schema: AI_SUMMARY_SCHEMA } },
         messages: [{ role: "user", content: "Document:\n\n" + text }],
