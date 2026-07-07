@@ -1154,11 +1154,14 @@ export default {
       authed = cookies.split(/;\s*/).some((c) => c === `${COOKIE}=${token}`);
     } else authed = true;
 
-    // AI document summarizer — gated (it spends Anthropic tokens), so it sits
-    // after the auth resolve. 503 when unconfigured → the prototype falls back
-    // to its local heuristic.
+    // AI document summarizer — PUBLIC (not gated). The Project Builder prototype
+    // that calls this ships to /playground/ and is publicly reachable (customer
+    // demos, shared links — the viewer is never logged in), so gating this behind
+    // the login left the doc-upload flow 401ing for everyone but a signed-in admin.
+    // It spends Anthropic tokens, but the handler is self-limiting: POST-only, input
+    // capped at 60k chars, output bounded by the schema. 503 when unconfigured →
+    // the prototype falls back to its local heuristic.
     if (url.pathname === "/__ai/summarize") {
-      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       return aiSummarize(request, env);
     }
 
