@@ -880,18 +880,22 @@ async function scanPages() {
     const latest = await copyDir(dir, destDir, isInternalOnly);
     await stampLinkedInto(dir, destDir); // overlay badges on Pages (live-linked → full set)
     const { href, file } = await entryPoint(e.name, dir);
-    // Surface = back-office (Go Vocal's own theme), front-office (city-themed), or
-    // method (a front-office participation-method runner — its own Pages group).
+    // Surface = back-office (Go Vocal's own theme), front-office (city-themed),
+    // method (a front-office participation-method runner — its own Pages group), or
+    // upsell (a locked-feature promo screen — its own Pages group).
     // fo-method-* and bo-method-* slugs are auto-classified as "method". Add
     // exceptions to METHOD_PAGES. Let <meta name="gv-surface"> override any of these.
     let surface = /^bo-/.test(e.name) ? "back-office" : "front-office";
     if (METHOD_PAGES.has(e.name) || /^(?:fo|bo)-method-/.test(e.name)) surface = "method";
     try {
-      const html = await fs.readFile(file, "utf8");
+      // entryPoint's `file` is URL-relative ("<name>/<entry>") — resolve it against
+      // the pages source dir (reading it bare silently threw and disabled the
+      // gv-surface override for every page).
+      const html = await fs.readFile(path.join(PAGES_SRC, decodeURIComponent(file)), "utf8");
       const m = html.match(/<meta\s+name=["']gv-surface["']\s+content=["']([^"']+)["']/i);
       if (m) {
         const v = m[1].toLowerCase();
-        surface = /back/.test(v) ? "back-office" : /method/.test(v) ? "method" : "front-office";
+        surface = /upsell/.test(v) ? "upsell" : /back/.test(v) ? "back-office" : /method/.test(v) ? "method" : "front-office";
       }
     } catch {}
     pages.push({ name: e.name, href, file, surface, poster: await exists(path.join(dir, "preview.webp")), mtimeMs: modifiedTime(dir, latest) });
@@ -3468,8 +3472,10 @@ function renderPagesIndex(pages) {
           </div>
         </div>`;
 
-  // Split by surface into three collapsible groups: Front office (city-themed
-  // shells), Methods (participation-method runners), Back office (Go Vocal's theme).
+  // Split by surface into collapsible groups: Front office (city-themed
+  // shells), Methods (participation-method runners), Back office (Go Vocal's theme),
+  // Upsells (locked-feature promo screens, tagged gv-surface="upsell" — grouped
+  // separately to track how upsells are done across the product).
   // Superseded reference pages — kept available but grouped under a collapsed
   // "Legacy" section at the bottom. bo-project-phase is the old Project Editor,
   // superseded by the new editor (parallel-editor-builder-v3, being progressed to
@@ -3479,6 +3485,7 @@ function renderPagesIndex(pages) {
   const front = pages.filter((p) => p.surface === "front-office" && !isLegacy(p));
   const methods = pages.filter((p) => p.surface === "method" && !isLegacy(p));
   const back = pages.filter((p) => p.surface === "back-office" && !isLegacy(p));
+  const upsells = pages.filter((p) => p.surface === "upsell" && !isLegacy(p));
   const legacy = pages.filter(isLegacy);
   // A collapsible section: <details> with the eyebrow as its <summary>. Filtering
   // (chromeScript) force-opens sections with matches, so search still reaches
@@ -3492,6 +3499,7 @@ function renderPagesIndex(pages) {
     ["Front office", front],
     ["Methods", methods],
     ["Back office", back],
+    ["Upsells", upsells],
     ["Legacy", legacy],
   ].filter(([, list]) => list.length);
   // Two or more surfaces present → grouped; otherwise a single ungrouped list.
