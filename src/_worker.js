@@ -75,6 +75,12 @@ function isPublicPath(pathname) {
   // The composition graph the overlay recurses (window.__GV_GRAPH) — embedded into
   // every public prototype before comments.js, so it must bypass the gate too.
   if (pathname === "/__review/graph.js") return true;
+  // The shared infinite-canvas engine (canvas.js/.css) is embedded by absolute /__canvas/
+  // path into canvas prototypes, so its assets must bypass the gate too (else the
+  // <script>/<link> fetches the login page instead of the asset). RENDERED ASSET extensions
+  // only — never a blanket prefix; the board DATA API (/__board) has its own public route below.
+  if (pathname.startsWith("/__canvas/") &&
+      /\.(css|js|mjs|json|map|svg|png|webp)$/i.test(pathname)) return true;
   // The cursor companion engine + self-hosted fonts are embedded into public
   // prototypes by absolute path, so they must bypass the gate too (else the
   // <script>/<link> fetches the login page instead of the asset).
@@ -918,6 +924,39 @@ async function nameApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Canvas board documents (KV-backed, one key per canvas URL) -------------
+// Each canvas (a prototype that mounts the shared /__canvas/ engine) owns ONE board
+// document — nodes + view + name — keyed by its URL path, the same per-URL rail comments
+// use, so it isolates per-space for free. The client owns the whole document, so we store
+// exactly what it POSTs (authoritative full-state write, like pins) — no server-side merge
+// that could race under KV eventual consistency. GET returns { doc } (null if never saved).
+const BOARD_PREFIX = "board:";
+const BOARD_MAX_BYTES = 20 * 1024 * 1024; // under KV's 25MB per-value ceiling (inline images)
+
+async function boardApi(request, url, env) {
+  const kv = kvFor(env);
+  if (!kv) return jsonResponse({ doc: null, warning: "no-kv-binding" });
+  const path = clamp(url.searchParams.get("path"), 600);
+  if (!path) return jsonResponse({ error: "bad-input" }, 400);
+  const key = BOARD_PREFIX + path;
+
+  if (request.method === "GET") {
+    const raw = await kv.get(key);
+    return jsonResponse({ doc: raw ? JSON.parse(raw) : null });
+  }
+  if (request.method === "POST" || request.method === "PUT") {
+    const body = await request.text();
+    if (body.length > BOARD_MAX_BYTES) return jsonResponse({ error: "too-large" }, 413);
+    let op;
+    try { op = JSON.parse(body); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const doc = op && op.doc;
+    if (typeof doc !== "object" || doc === null || !Array.isArray(doc.nodes)) return jsonResponse({ error: "bad-input" }, 400);
+    await kv.put(key, JSON.stringify(doc));
+    return jsonResponse({ ok: true });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
 // ---- Admin: users + passwords (KV-backed overrides) -------------------------
 // Admin-only. GET returns every user with their EFFECTIVE password (override ?? seed)
 // so the admin can read them; POST { email, pass } sets an override in KV. Identity
@@ -1246,6 +1285,10 @@ export default {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       return nameApi(request, url, env);
     }
+    // Canvas board docs follow the COMMENTS model, not the status/pins model: a canvas is a
+    // PUBLISHED prototype (public, obscure share link), so its board must load & save without a
+    // login, exactly like /__review/api. Writes are full-state but size-capped in boardApi.
+    if (url.pathname === "/__board") return boardApi(request, url, env);
 
     // Admin-only spaces (the 2.0 workspace): seal the whole base path BEFORE the
     // public-prototype door, so nothing under it — not even an og.jpg — leaks. Only

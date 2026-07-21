@@ -173,6 +173,10 @@
     return parts.join(">");
   }
   function pinXY(t) {
+    // Canvas threads are anchored in world (board) coordinates: when this page mounts the
+    // infinite-canvas engine, map the stored world point through the live pan/zoom transform
+    // so the pin stays glued to the board as it moves. (Normal pages have no GVCanvas → skip.)
+    if (t.cwx != null && window.GVCanvas) return window.GVCanvas.worldToScreen(t.cwx, t.cwy);
     var el = anchorOf(t);
     if (!el) return null;
     // Body/page-level anchors use absolute page coords (the body box is the
@@ -192,7 +196,7 @@
     host.style.display = prev;
     if (!el || host.contains(el)) el = document.body;
     var r = el.getBoundingClientRect();
-    return {
+    var loc = {
       sel: cssPath(el),
       fx: r.width ? (x - r.left) / r.width : 0.5,
       fy: r.height ? (y - r.top) / r.height : 0.5,
@@ -200,6 +204,11 @@
       view: curView(),
       screen: curScreen(),
     };
+    // On an infinite canvas, also record the point in world (board) coordinates so the pin
+    // tracks pan/zoom instead of sticking to the screen. pinXY() prefers these when present;
+    // the engine dispatches a window "scroll" on every transform, which re-runs reposition().
+    if (window.GVCanvas) { var w = window.GVCanvas.screenToWorld(x, y); loc.cwx = w.x; loc.cwy = w.y; }
+    return loc;
   }
 
   function uid() { return Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e6).toString(36); }

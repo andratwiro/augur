@@ -84,6 +84,8 @@ try { addon = await import("./pitis/piti.build.js"); } catch (e) { addon = null;
 const addonHtml = (html) => (addon ? addon.transformHtml(html, UI_VERSION) : html);
 const SRC_REVIEW = path.join(ROOT, "src", "review", "comments.js");
 const SRC_REVIEW_CAT = path.join(ROOT, "src", "review", "aslam.png");
+const SRC_CANVAS_JS = path.join(ROOT, "src", "canvas", "canvas.js");
+const SRC_CANVAS_CSS = path.join(ROOT, "src", "canvas", "canvas.css");
 
 // Dev-facing prototype status baseline. Lives PER SPACE in the space repo at
 // prototype-status.json (repo root) (keyed "<opportunity>/<prototype>"), rendered as a
@@ -297,7 +299,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.90";
+const UI_VERSION = "0.91";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -4335,6 +4337,12 @@ async function main() {
     "window.__GV_GRAPH=" + JSON.stringify(defaultGraph || { tokens: {} }) + ";",
     "utf8"
   );
+
+  // Canvas engine (shared; canvas prototypes mount it by absolute /__canvas/ path, the same
+  // way every prototype embeds /__review/comments.js). Board DATA persists to KV via /__board.
+  await fs.mkdir(path.join(DIST, "__canvas"), { recursive: true });
+  await fs.copyFile(SRC_CANVAS_JS, path.join(DIST, "__canvas", "canvas.js"));
+  await fs.copyFile(SRC_CANVAS_CSS, path.join(DIST, "__canvas", "canvas.css"));
 
   // Self-hosted fonts → /fonts/ (served immutable + public by the worker). Replaces
   // the render-blocking Google Fonts link; one variable woff2 covers every weight.
