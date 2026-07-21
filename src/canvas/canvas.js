@@ -251,10 +251,19 @@
   function renderTile(node) {
     node.w = node.w || 420; node.h = node.h || 300;
     var body = el("div", { class: "gvc-tilebody" });
-    var nm = el("div", { class: "nm", text: node.name || node.url, contentEditable: "false", title: node.url });
-    nm.addEventListener("dblclick", function (e) { e.stopPropagation(); nm.contentEditable = "true"; nm.focus(); });
-    nm.addEventListener("blur", function () { nm.contentEditable = "false"; node.name = nm.textContent.trim() || node.name; scheduleSave(); });
-    nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } });
+    var nm = el("div", { class: "nm", text: node.name || node.url, contentEditable: "false", title: "Double-click to rename — " + node.url });
+    // Manual double-tap: root pointer-capture eats the native dblclick, and stopping propagation
+    // keeps a tap on the name from starting a tile drag. Double-tap → edit, single tap → select.
+    var nmTap = 0;
+    nm.addEventListener("pointerdown", function (e) {
+      if (nm.contentEditable === "true") return; // already editing → let the click place the caret
+      e.stopPropagation();
+      var now = Date.now();
+      if (now - nmTap < 350) { nmTap = 0; nm.contentEditable = "true"; nm.focus(); if (document.execCommand) document.execCommand("selectAll", false, null); }
+      else { nmTap = now; select(node.id); }
+    });
+    nm.addEventListener("blur", function () { nm.contentEditable = "false"; node.name = nm.textContent.trim() || node.name; nm.textContent = node.name; scheduleSave(); });
+    nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } else if (e.key === "Escape") { nm.textContent = node.name; nm.blur(); } });
     var liveBtn = el("button", { type: "button", class: "gvc-livebtn", text: "▶ Live" });
     var openBtn = el("button", { type: "button", text: "↗", title: "Open in new tab" });
     openBtn.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
