@@ -1,6 +1,6 @@
 /* Augur Canvas — hand-rolled infinite-canvas engine. Served from /__canvas/canvas.css.
-   A "canvas" is a prototype whose index.html mounts this engine; nodes live in a single
-   CSS-transformed "world" layer, the UI sits in a fixed layer above it. See CANVAS.md. */
+   A "canvas" is a prototype that mounts Augur's shared infinite-canvas engine; nodes live in a
+   single CSS-transformed "world" layer, the UI sits in a fixed layer above it. See CANVAS.md. */
 
 html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 
@@ -9,10 +9,11 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
   font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #1a1a1a; user-select: none; -webkit-user-select: none;
   background-color: #f4f5f7;
-  background-image: radial-gradient(circle, #d3d7de 1.2px, transparent 1.2px);
+  background-image: radial-gradient(circle, #d0d4db 1.1px, transparent 1.2px);
   background-size: 26px 26px; background-position: 0 0;
 }
 #gvc-root.panning { cursor: grabbing; }
+#gvc-root.hand { cursor: grab; }
 #gvc-root.dropping::after {
   content: "Drop image to place it"; position: fixed; inset: 0; display: flex;
   align-items: center; justify-content: center; font-size: 22px; color: #2563eb; font-weight: 600;
@@ -31,16 +32,19 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 .gvc-node > .gvc-name:empty { display: none; }
 
 .gvc-sticky {
-  min-width: 96px; min-height: 96px; padding: 12px 12px 14px; border-radius: 3px;
-  background: #fef3c7; box-shadow: 0 3px 8px rgba(0, 0, 0, .16); font-size: 15px; line-height: 1.35;
+  min-width: 96px; min-height: 96px; padding: 14px 14px 26px; border-radius: 3px;
+  background: #fce495; box-shadow: 0 4px 10px rgba(0, 0, 0, .14); font-size: 16px; line-height: 1.35;
   overflow: hidden; cursor: grab;
 }
 .gvc-sticky .gvc-txt { outline: none; white-space: pre-wrap; word-break: break-word; min-height: 1em; }
+.gvc-sticky .gvc-txt:empty::before { content: "Type anything"; color: rgba(0, 0, 0, .32); }
+.gvc-sticky .gvc-author { position: absolute; left: 14px; bottom: 8px; font-size: 12px; color: rgba(0, 0, 0, .5); pointer-events: none; max-width: calc(100% - 28px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gvc-sticky.editing, .gvc-text.editing { cursor: text; }
 .gvc-sticky.editing .gvc-txt, .gvc-text.editing .gvc-txt { cursor: text; }
 
 .gvc-text { padding: 4px 6px; font-size: 16px; color: #1a1a1a; cursor: grab; }
 .gvc-text .gvc-txt { outline: none; white-space: pre-wrap; word-break: break-word; min-width: 40px; min-height: 1em; }
+.gvc-text .gvc-txt:empty::before { content: "Text"; color: rgba(0, 0, 0, .3); }
 
 .gvc-image { cursor: grab; box-shadow: 0 3px 10px rgba(0, 0, 0, .18); border-radius: 4px; overflow: hidden; background: #fff; }
 .gvc-image img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
@@ -60,7 +64,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 .gvc-arrow svg { display: block; overflow: visible; }
 .gvc-arrow svg path { fill: none; stroke: #374151; stroke-width: 2.5; }
 
-/* handles (arrow endpoints + resize) */
 .gvc-handle { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: crosshair; z-index: 2; }
 .gvc-resize { position: absolute; right: -7px; bottom: -7px; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: nwse-resize; z-index: 2; }
 
@@ -69,23 +72,40 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 #gvc-ui.hidden { opacity: 0; pointer-events: none !important; }
 #gvc-ui > * { pointer-events: auto; }
 
-#gvc-topbar { position: fixed; top: 14px; left: 16px; display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 6px 8px; }
+#gvc-topbar { position: fixed; top: 14px; left: 16px; display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e9ebee; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 6px 8px; }
 #gvc-topbar .back { border: 0; background: 0; padding: 6px 9px; border-radius: 8px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 5px; }
 #gvc-topbar .back:hover { background: #f3f4f6; }
 #gvc-topbar .nm { font-weight: 600; padding: 6px 8px; border-radius: 8px; cursor: text; outline: none; min-width: 60px; max-width: 300px; white-space: nowrap; overflow: hidden; }
 #gvc-topbar .nm:hover { background: #f9fafb; }
 
-#gvc-zoom { position: fixed; bottom: 16px; left: 16px; display: flex; align-items: center; gap: 2px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 3px 12px rgba(0, 0, 0, .10); padding: 3px; }
-#gvc-zoom button { border: 0; background: 0; width: 28px; height: 28px; border-radius: 7px; cursor: pointer; font-size: 16px; color: #374151; }
+#gvc-zoom { position: fixed; bottom: 20px; left: 16px; display: flex; align-items: center; gap: 2px; background: #fff; border: 1px solid #e9ebee; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 3px; }
+#gvc-zoom button { border: 0; background: 0; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 16px; color: #374151; }
 #gvc-zoom button:hover { background: #f3f4f6; }
 #gvc-zoom .pct { font-size: 12px; color: #6b7280; min-width: 44px; text-align: center; cursor: pointer; }
 
-#gvc-toolbar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; box-shadow: 0 6px 24px rgba(0, 0, 0, .14); padding: 6px; }
-#gvc-toolbar .tool { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 62px; padding: 7px 4px; border-radius: 10px; cursor: grab; color: #374151; font-size: 10.5px; user-select: none; }
-#gvc-toolbar .tool:hover { background: #f3f4f6; }
-#gvc-toolbar .tool .ic { font-size: 19px; line-height: 1; }
-#gvc-toolbar .sep { width: 1px; align-self: stretch; background: #eceef1; margin: 4px 3px; }
+/* bottom toolbar — FigJam-style icon pill */
+#gvc-toolbar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; background: #fff; border: 1px solid #e9ebee; border-radius: 16px; box-shadow: 0 10px 34px rgba(0, 0, 0, .16), 0 1px 3px rgba(0, 0, 0, .08); padding: 6px; }
+#gvc-toolbar .tool { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 11px; cursor: pointer; color: #3b3f46; user-select: none; position: relative; transition: background .12s, color .12s; }
+#gvc-toolbar .tool:hover { background: #f2f3f5; }
+#gvc-toolbar .tool.on { background: #7b5bff; color: #fff; }
+#gvc-toolbar .tool[data-t="sticky"], #gvc-toolbar .tool[data-t="text"], #gvc-toolbar .tool[data-t="arrow"] { cursor: grab; }
+#gvc-toolbar .tool svg { width: 21px; height: 21px; }
+#gvc-toolbar .tool .tip { position: absolute; bottom: 49px; left: 50%; transform: translateX(-50%); background: #1f2430; color: #fff; font-size: 11px; white-space: nowrap; padding: 3px 8px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .12s; }
+#gvc-toolbar .tool:hover .tip { opacity: .96; }
+#gvc-toolbar .sep { width: 1px; align-self: stretch; background: #ebedf0; margin: 5px 4px; }
+
+/* sticky selection toolbar + color palette (dark, FigJam-style) */
+#gvc-selbar, #gvc-palette { position: fixed; z-index: 65; background: #1f2430; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); display: flex; align-items: center; padding: 5px; gap: 2px; }
+#gvc-selbar.hidden, #gvc-palette.hidden { display: none; }
+#gvc-selbar .sw { display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 8px; cursor: pointer; }
+#gvc-selbar .sw:hover, #gvc-selbar .btn:hover { background: rgba(255, 255, 255, .12); }
+#gvc-selbar .dot { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, .5); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06); }
+#gvc-selbar .chev { color: #aeb4c0; font-size: 10px; }
+#gvc-selbar .div { width: 1px; align-self: stretch; background: rgba(255, 255, 255, .14); margin: 4px 3px; }
+#gvc-selbar .btn { min-width: 32px; height: 30px; padding: 0 9px; border-radius: 8px; color: #e8eaee; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; border: 0; background: 0; }
+#gvc-selbar .btn.on { background: rgba(255, 255, 255, .18); }
+#gvc-palette .pc { width: 26px; height: 26px; border-radius: 50%; margin: 2px; cursor: pointer; border: 2px solid transparent; box-sizing: border-box; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
+#gvc-palette .pc.on { border-color: #7b5bff; }
 
 .gvc-ghost { position: fixed; pointer-events: none; z-index: 100; opacity: .9; transform: translate(-50%, -50%); }
-.gvc-hint { position: fixed; bottom: 74px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: #fff; font-size: 12px; padding: 6px 12px; border-radius: 99px; z-index: 70; opacity: 0; transition: opacity .2s; pointer-events: none; }
-.gvc-hint.show { opacity: .92; }
+.gvc-ghost .tip { display: none; }

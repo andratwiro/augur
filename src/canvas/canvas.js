@@ -1,8 +1,8 @@
 /* Augur Canvas — hand-rolled infinite-canvas engine. Served from /__canvas/canvas.js.
  *
- * A "canvas" is a prototype whose index.html mounts this engine. The board (nodes + view +
- * name) is one JSON document persisted to KV via /__board, keyed by the page URL — the same
- * per-URL rail comments use, so it isolates per-space for free.
+ * A "canvas" is a prototype that mounts this engine. The board (nodes + view + name) is one
+ * JSON document persisted to KV via /__board, keyed by the page URL — the same per-URL rail
+ * comments use, so it isolates per-space for free.
  *
  * Model: one #gvc-world layer with a single CSS transform (translate + scale); nodes are
  * absolutely positioned in WORLD coordinates inside it; the UI (#gvc-ui) is a fixed layer
@@ -23,19 +23,24 @@
 
   var MIN_SCALE = 0.1, MAX_SCALE = 4, GRID = 26, MAX_LIVE_TILES = 1;
   var IMG_MAX_DIM = 1400, IMG_QUALITY = 0.55; // aggressive: size over quality (Rob's call)
+  // FigJam pastel sticky palette (white, grey, red, orange, yellow, green, teal, blue, purple, pink)
+  var STICKY_COLORS = ["#ffffff", "#e9ecef", "#f4a9a8", "#f7c99a", "#fce495", "#bfe5a0", "#a9e5db", "#a9cbf5", "#cbb8f2", "#f5b3d7"];
+  var DEFAULT_STICKY = "#fce495";
+  var FONT_SIZES = { s: "13px", m: "16px", l: "21px" };
+  var ME = ""; // signed-in name, stamped as the sticky author (like FigJam)
 
   // ---- board state ---------------------------------------------------------
   var board = { v: 1, name: CFG.name || "Untitled canvas", view: { x: 0, y: 0, scale: 1 }, nodes: [] };
   var nodeEls = {};        // id -> DOM element
   var selected = null;     // single-selection id (v1)
   var liveTiles = [];      // ids of tiles currently showing a live iframe (LRU, capped)
-  var transformCbs = [];   // listeners notified on every pan/zoom (comments overlay, etc.)
+  var transformCbs = [];   // listeners notified on every pan/zoom (comments overlay, sel bar)
 
   function uid() { return "n" + Math.random().toString(36).slice(2, 9); }
   function clampScale(s) { return Math.max(MIN_SCALE, Math.min(MAX_SCALE, s)); }
-  // FigJam-style dot grid: dot SIZE is constant (the gradient stop below is absolute px), and
-  // spacing = GRID*scale is NORMALIZED into a comfortable band by doubling/halving — so it never
-  // becomes a dense moiré mush when zoomed out or huge gaps when zoomed in. Constant density.
+  // FigJam-style dot grid: dot SIZE is constant (the gradient stop is absolute px), and spacing
+  // = GRID*scale is NORMALIZED into a comfortable band by doubling/halving — so it never becomes
+  // a dense moire mush when zoomed out or huge gaps when zoomed in. Constant density.
   function gridStep(scale) { var s = GRID * scale; while (s < 22) s *= 2; while (s > 46) s /= 2; return s; }
 
   // ---- DOM scaffold --------------------------------------------------------
@@ -56,6 +61,9 @@
     if (kids) kids.forEach(function (c) { if (c) n.appendChild(c); });
     return n;
   }
+  function svgIcon(paths) {
+    return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + paths + "</svg>";
+  }
 
   // ---- coordinate transforms ----------------------------------------------
   function screenToWorld(sx, sy) { var v = board.view; return { x: (sx - v.x) / v.scale, y: (sy - v.y) / v.scale }; }
@@ -73,13 +81,11 @@
       root.style.backgroundPosition = v.x + "px " + v.y + "px";
       if (zoomPct) zoomPct.textContent = Math.round(v.scale * 100) + "%";
       // comments.js repositions pins on window scroll; a canvas pan/zoom IS a scroll of the
-      // world, so tell it. Board-anchored comment threads read GVCanvas.worldToScreen (see
-      // the canvas hook in comments.js), so this keeps their pins glued to the board.
+      // world, so tell it. Board-anchored threads read GVCanvas.worldToScreen (comments hook).
       try { window.dispatchEvent(new Event("scroll")); } catch (e) {}
       for (var i = 0; i < transformCbs.length; i++) { try { transformCbs[i](); } catch (e) {} }
     });
   }
-
   function zoomAt(sx, sy, factor) {
     var v = board.view, ns = clampScale(v.scale * factor), f = ns / v.scale;
     v.x = sx - (sx - v.x) * f; v.y = sy - (sy - v.y) * f; v.scale = ns;
@@ -107,7 +113,7 @@
     board.nodes.splice(i, 1);
     if (nodeEls[id]) { nodeEls[id].remove(); delete nodeEls[id]; }
     liveTiles = liveTiles.filter(function (t) { return t !== id; });
-    if (selected === id) selected = null;
+    if (selected === id) { selected = null; hideSelBar(); }
     scheduleSave();
   }
 
@@ -117,14 +123,15 @@
     selected = id;
     if (id && nodeEls[id]) { nodeEls[id].classList.add("sel"); decorate(id); }
     else clearDecor();
+    var n = id ? nodeById(id) : null;
+    if (n && n.type === "sticky") showSelBar(n); else hideSelBar();
   }
   var decorEls = [];
   function clearDecor() { decorEls.forEach(function (e) { e.remove(); }); decorEls = []; }
   function decorate(id) {
     clearDecor();
     var node = nodeById(id), host = nodeEls[id];
-    if (!node || !host) return;
-    if (node.type === "arrow") return; // arrows carry their own endpoint handles
+    if (!node || !host || node.type === "arrow") return;
     var rz = el("div", { class: "gvc-resize" });
     rz.addEventListener("pointerdown", function (e) { startResize(e, node); });
     host.appendChild(rz); decorEls.push(rz);
@@ -142,16 +149,6 @@
     if (node.w != null) host.style.width = node.w + "px";
     if (node.h != null) host.style.height = node.h + "px";
   }
-  function nameLabel(node) {
-    var lbl = el("div", { class: "gvc-name", text: node.name || "" });
-    lbl.addEventListener("dblclick", function (e) {
-      e.stopPropagation();
-      var v = prompt("Name this " + node.type, node.name || "");
-      if (v != null) { node.name = v.trim(); lbl.textContent = node.name; scheduleSave(); }
-    });
-    return lbl;
-  }
-
   function renderNode(node) {
     var old = nodeEls[node.id]; if (old) old.remove();
     var host;
@@ -179,7 +176,6 @@
       if (node.type !== "image" && node.type !== "tile") node.name = (node.text || "").split("\n")[0].slice(0, 60) || autoName(node.type);
       scheduleSave();
     });
-    // while editing, keep keystrokes/spaces local (don't pan / delete node)
     txt.addEventListener("pointerdown", function (e) { if (host.classList.contains("editing")) e.stopPropagation(); });
     txt.addEventListener("keydown", function (e) { e.stopPropagation(); });
     return txt;
@@ -195,10 +191,14 @@
   }
 
   function renderSticky(node) {
-    node.w = node.w || 150; node.h = node.h || 150;
+    node.w = node.w || 160; node.h = node.h || 160;
     var host = el("div", { class: "gvc-sticky" });
-    host.style.background = node.color || "#fef3c7";
-    host.appendChild(editableText(node, host, ""));
+    host.style.background = node.color || DEFAULT_STICKY;
+    var txt = editableText(node, host, "");
+    txt.style.fontSize = FONT_SIZES[node.fontScale || "m"];
+    if (node.bold) txt.style.fontWeight = "700";
+    host.appendChild(txt);
+    host.appendChild(el("div", { class: "gvc-author", text: node.author || "" }));
     place(host, node);
     return host;
   }
@@ -243,7 +243,6 @@
   }
   function toggleLive(node, body, btn) {
     if (body.querySelector("iframe")) { showThumb(node, body); btn.textContent = "▶ Live"; liveTiles = liveTiles.filter(function (t) { return t !== node.id; }); return; }
-    // enforce the live cap — swap the oldest live tile back to a thumbnail
     while (liveTiles.length >= MAX_LIVE_TILES) {
       var victim = liveTiles.shift(); var vn = nodeById(victim), ve = nodeEls[victim];
       if (vn && ve) { var vb = ve.querySelector(".gvc-tilebody"); showThumb(vn, vb); var vbtn = ve.querySelector(".gvc-tilebar button"); if (vbtn) vbtn.textContent = "▶ Live"; }
@@ -263,12 +262,11 @@
     var ang = Math.atan2(ly2 - ly1, lx2 - lx1), ah = 11;
     var a1x = lx2 - ah * Math.cos(ang - Math.PI / 7), a1y = ly2 - ah * Math.sin(ang - Math.PI / 7);
     var a2x = lx2 - ah * Math.cos(ang + Math.PI / 7), a2y = ly2 - ah * Math.sin(ang + Math.PI / 7);
-    // Build the SVG as an innerHTML string so the HTML parser creates real SVG-namespaced
-    // nodes — el()/createElement("svg") makes a non-namespaced element that never renders.
+    // Build the SVG as an innerHTML string so the HTML parser creates real SVG-namespaced nodes
+    // — createElement("svg") makes a non-namespaced element that never paints.
     host.innerHTML = '<svg width="' + (w + pad * 2) + '" height="' + (h + pad * 2) + '" style="overflow:visible">'
-      + '<path d="M' + lx1 + ' ' + ly1 + ' L' + lx2 + ' ' + ly2 + '"/>'
-      + '<path d="M' + a1x + ' ' + a1y + ' L' + lx2 + ' ' + ly2 + ' L' + a2x + ' ' + a2y + '"/></svg>';
-    // endpoint handles (shown when selected)
+      + '<path d="M' + lx1 + " " + ly1 + " L" + lx2 + " " + ly2 + '"/>'
+      + '<path d="M' + a1x + " " + a1y + " L" + lx2 + " " + ly2 + " L" + a2x + " " + a2y + '"/></svg>';
     if (node.id === selected) {
       [["1", lx1, ly1], ["2", lx2, ly2]].forEach(function (p) {
         var hd = el("div", { class: "gvc-handle" });
@@ -279,20 +277,17 @@
     }
     return host;
   }
-
   function escapeHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
   // ---- pointer interaction (pan / move / resize / arrow handles) -----------
-  var drag = null, lastTap = { id: null, t: 0 };
+  var drag = null, lastTap = { id: null, t: 0 }, panLock = false;
   root.addEventListener("pointerdown", function (e) {
     if (e.button !== 0) return;
-    var nodeHost = e.target.closest ? e.target.closest(".gvc-node") : null;
-    // ignore clicks that land on the fixed UI layer
     if (e.target.closest && e.target.closest("#gvc-ui")) return;
+    var nodeHost = (!panLock && e.target.closest) ? e.target.closest(".gvc-node") : null;
     if (nodeHost && nodeHost.classList.contains("editing")) return;
     if (nodeHost) {
-      var id = nodeHost.dataset.id, node = nodeById(id);
-      var now = Date.now();
+      var id = nodeHost.dataset.id, node = nodeById(id), now = Date.now();
       if (id === lastTap.id && now - lastTap.t < 350 && (node.type === "sticky" || node.type === "text")) {
         lastTap = { id: null, t: 0 }; enterEdit(id); return; // double-tap → edit text, no drag
       }
@@ -315,16 +310,16 @@
       var wdx = dx / board.view.scale, wdy = dy / board.view.scale;
       drag.moved = drag.moved || Math.abs(dx) + Math.abs(dy) > 2;
       if (node.type === "arrow") { node.x1 = drag.ox1 + wdx; node.y1 = drag.oy1 + wdy; node.x2 = drag.ox2 + wdx; node.y2 = drag.oy2 + wdy; renderNode(node); }
-      else { node.x = drag.ox + wdx; node.y = drag.oy + wdy; var h = nodeEls[drag.id]; h.style.left = node.x + "px"; h.style.top = node.y + "px"; }
+      else { node.x = drag.ox + wdx; node.y = drag.oy + wdy; var hh = nodeEls[drag.id]; hh.style.left = node.x + "px"; hh.style.top = node.y + "px"; }
+      positionSelBar();
     }
-    else if (drag.mode === "resize") { var n = drag.node; n.w = Math.max(40, drag.ow + dx / board.view.scale); n.h = Math.max(40, drag.oh + dy / board.view.scale); var hh = nodeEls[n.id]; hh.style.width = n.w + "px"; hh.style.height = n.h + "px"; }
+    else if (drag.mode === "resize") { var n = drag.node; n.w = Math.max(48, drag.ow + dx / board.view.scale); n.h = Math.max(48, drag.oh + dy / board.view.scale); var re = nodeEls[n.id]; re.style.width = n.w + "px"; re.style.height = n.h + "px"; positionSelBar(); }
     else if (drag.mode === "arrow") { var an = drag.node; if (drag.end === "1") { an.x1 = drag.px + dx / board.view.scale; an.y1 = drag.py + dy / board.view.scale; } else { an.x2 = drag.px + dx / board.view.scale; an.y2 = drag.py + dy / board.view.scale; } renderNode(an); }
   });
-  root.addEventListener("pointerup", function (e) {
+  root.addEventListener("pointerup", function () {
     if (!drag) return;
     root.classList.remove("panning");
-    if (drag.mode === "move" && !drag.moved) { /* a click, not a drag */ }
-    if (drag.mode === "arrow") renderNode(drag.node); // re-attach handles
+    if (drag.mode === "arrow") renderNode(drag.node);
     drag = null;
     scheduleSave();
   });
@@ -356,9 +351,7 @@
     var w = screenToWorld(e.clientX, e.clientY);
     Array.prototype.forEach.call(files, function (f, i) {
       if (!/^image\//.test(f.type)) return;
-      compressImage(f, function (dataUrl, dim) {
-        addNode({ type: "image", x: w.x + i * 24, y: w.y + i * 24, w: dim.w, h: dim.h, src: dataUrl });
-      });
+      compressImage(f, function (dataUrl, dim) { addNode({ type: "image", x: w.x + i * 24, y: w.y + i * 24, w: dim.w, h: dim.h, src: dataUrl }); });
     });
   });
   function compressImage(file, cb) {
@@ -368,20 +361,67 @@
       var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
       var c = document.createElement("canvas"); c.width = w; c.height = h;
       c.getContext("2d").drawImage(img, 0, 0, w, h);
-      var out;
-      try { out = c.toDataURL("image/jpeg", IMG_QUALITY); } catch (err) { out = c.toDataURL(); }
+      var out; try { out = c.toDataURL("image/jpeg", IMG_QUALITY); } catch (err) { out = c.toDataURL(); }
       URL.revokeObjectURL(img.src);
-      // display size capped so a huge photo doesn't dominate the board
       var dw = Math.min(w, 360), dh = Math.round(dw * h / w);
       cb(out, { w: dw, h: dh });
     };
     img.src = URL.createObjectURL(file);
   }
 
+  // ---- sticky selection toolbar + color palette ---------------------------
+  var selBar, palette;
+  function showSelBar(node) {
+    selBar.innerHTML = "";
+    var dot = el("div", { class: "dot" }); dot.style.background = node.color || DEFAULT_STICKY;
+    var sw = el("div", { class: "sw" }, [dot, el("div", { class: "chev", text: "▾" })]);
+    guard(sw); sw.addEventListener("click", function (e) { e.stopPropagation(); togglePalette(node, dot); });
+    var fb = el("div", { class: "btn", title: "Text size", html: '<span style="font-size:15px">A</span>' });
+    guard(fb); fb.addEventListener("click", function (e) { e.stopPropagation(); var o = ["s", "m", "l"], i = o.indexOf(node.fontScale || "m"); node.fontScale = o[(i + 1) % 3]; applyStickyStyle(node); scheduleSave(); });
+    var bb = el("button", { class: "btn" + (node.bold ? " on" : ""), type: "button", text: "B", title: "Bold" }); bb.style.fontWeight = "700";
+    guard(bb); bb.addEventListener("click", function (e) { e.stopPropagation(); node.bold = !node.bold; bb.classList.toggle("on", node.bold); applyStickyStyle(node); scheduleSave(); });
+    selBar.appendChild(sw); selBar.appendChild(el("div", { class: "div" })); selBar.appendChild(fb); selBar.appendChild(bb);
+    selBar.classList.remove("hidden");
+    positionSelBar();
+  }
+  function guard(elm) { elm.addEventListener("pointerdown", function (e) { e.stopPropagation(); }); }
+  function applyStickyStyle(node) {
+    var host = nodeEls[node.id]; if (!host) return;
+    host.style.background = node.color || DEFAULT_STICKY;
+    var txt = host.querySelector(".gvc-txt");
+    if (txt) { txt.style.fontWeight = node.bold ? "700" : ""; txt.style.fontSize = FONT_SIZES[node.fontScale || "m"]; }
+  }
+  function togglePalette(node, dot) {
+    if (!palette.classList.contains("hidden")) { palette.classList.add("hidden"); return; }
+    palette.innerHTML = "";
+    STICKY_COLORS.forEach(function (c) {
+      var pc = el("div", { class: "pc" + (c === node.color ? " on" : "") }); pc.style.background = c;
+      guard(pc); pc.addEventListener("click", function (e) { e.stopPropagation(); node.color = c; dot.style.background = c; applyStickyStyle(node); scheduleSave(); palette.classList.add("hidden"); });
+      palette.appendChild(pc);
+    });
+    palette.classList.remove("hidden");
+    positionSelBar();
+  }
+  function positionSelBar() {
+    if (!selBar || selBar.classList.contains("hidden")) return;
+    var node = nodeById(selected); if (!node) { hideSelBar(); return; }
+    var p = worldToScreen(node.x + (node.w || 150) / 2, node.y);
+    var bw = selBar.offsetWidth || 200;
+    var left = Math.max(8, Math.min(innerWidth - bw - 8, p.x - bw / 2));
+    var top = Math.max(8, p.y - 52);
+    selBar.style.left = left + "px"; selBar.style.top = top + "px";
+    if (!palette.classList.contains("hidden")) {
+      var pw = palette.offsetWidth || 300;
+      palette.style.left = Math.max(8, Math.min(innerWidth - pw - 8, p.x - pw / 2)) + "px";
+      palette.style.top = Math.max(8, top - 46) + "px";
+    }
+  }
+  function hideSelBar() { if (selBar) selBar.classList.add("hidden"); if (palette) palette.classList.add("hidden"); }
+
   // ---- UI: toolbar + top bar + zoom ---------------------------------------
-  var zoomPct;
+  var zoomPct, nameEl;
   function buildUI() {
-    // top-right: back + rename
+    // top-left: back + rename
     var back = el("button", { class: "back", type: "button", html: "&larr; Back" });
     back.addEventListener("click", function () { save(); if (history.length > 1) history.back(); else location.href = BOARD_PATH.replace(/[^/]+\/?$/, ""); });
     var nm = el("div", { class: "nm", contentEditable: "false", title: "Rename canvas", text: board.name });
@@ -399,27 +439,43 @@
     zout.addEventListener("click", function () { zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.2); });
     ui.appendChild(el("div", { id: "gvc-zoom" }, [zout, zoomPct, zin]));
 
-    // bottom-center: FigJam toolbar (drag out, or click to drop at center)
-    var tools = [
-      { t: "sticky", ic: "▧", lb: "Sticky" },
-      { t: "text", ic: "T", lb: "Text" },
-      { t: "arrow", ic: "↗", lb: "Arrow" },
-      { t: "image", ic: "▣", lb: "Image" },
-      { t: "tile", ic: "❐", lb: "Prototype" }
-    ];
+    // bottom-center: FigJam-style toolbar
     var bar = el("div", { id: "gvc-toolbar" });
-    tools.forEach(function (tool, i) {
+    var cursor = toolBtn("cursor", "Select", svgIcon('<path fill="currentColor" stroke="none" d="M5 3.1l10.4 6.2-4.5.9 2.5 4.6-1.9 1-2.5-4.6-3.5 3z"/>'));
+    var hand = toolBtn("hand", "Hand (pan)", svgIcon('<path d="M7 11V6.2a1.1 1.1 0 0 1 2.2 0V10m0-4.2a1.1 1.1 0 0 1 2.2 0V10m0-3.2a1.1 1.1 0 0 1 2.2 0V11c0 3-1.8 4.8-4.6 4.8-1.7 0-2.6-.6-3.6-1.9L6 12.1c-.5-.7.4-1.6 1.2-1.1z"/>'));
+    cursor.classList.add("on");
+    cursor.addEventListener("click", function () { panLock = false; cursor.classList.add("on"); hand.classList.remove("on"); root.classList.remove("hand"); });
+    hand.addEventListener("click", function () { panLock = true; hand.classList.add("on"); cursor.classList.remove("on"); root.classList.add("hand"); });
+    bar.appendChild(cursor); bar.appendChild(hand); bar.appendChild(el("div", { class: "sep" }));
+
+    var TOOLS = [
+      { t: "sticky", title: "Sticky note", svg: '<path d="M4 4h11v7l-4 4H4z"/><path d="M15 11h-4v4"/>' },
+      { t: "text", title: "Text", svg: '<path d="M4 5h12"/><path d="M10 5v11"/>' },
+      { t: "arrow", title: "Arrow", svg: '<path d="M4 16 15 5"/><path d="M9.5 5H15v5.5"/>' },
+      { t: "image", title: "Image", svg: '<rect x="3" y="4.5" width="14" height="11" rx="2"/><circle cx="7.4" cy="9" r="1.3"/><path d="M4 14l3.6-3.4 3 3 3-3L17 14"/>' },
+      { t: "tile", title: "Prototype", svg: '<rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 7.5h14"/>' }
+    ];
+    TOOLS.forEach(function (tool, i) {
       if (i === 3) bar.appendChild(el("div", { class: "sep" }));
-      var chip = el("div", { class: "tool" }, [el("div", { class: "ic", text: tool.ic }), el("div", { text: tool.lb })]);
-      chip.addEventListener("pointerdown", function (e) { e.preventDefault(); startToolDrag(e, tool.t, chip); });
-      bar.appendChild(chip);
+      var b = toolBtn(tool.t, tool.title, svgIcon(tool.svg));
+      b.addEventListener("pointerdown", function (e) { e.preventDefault(); startToolDrag(e, tool.t, b); });
+      bar.appendChild(b);
     });
     ui.appendChild(bar);
+
+    selBar = el("div", { id: "gvc-selbar", class: "hidden" });
+    palette = el("div", { id: "gvc-palette", class: "hidden" });
+    ui.appendChild(selBar); ui.appendChild(palette);
+    transformCbs.push(positionSelBar);
+    window.addEventListener("resize", positionSelBar);
   }
-  var nameEl;
+  function toolBtn(t, title, svgHtml) {
+    var b = el("div", { class: "tool" }); b.dataset.t = t;
+    b.innerHTML = svgHtml + '<span class="tip">' + title + "</span>";
+    return b;
+  }
 
   function startToolDrag(e, type, chip) {
-    // image/tile open a picker instead of dragging a body around
     if (type === "image") { pickImage(centerWorld()); return; }
     if (type === "tile") { addPrototypeTile(centerWorld()); return; }
     var ghost = el("div", { class: "gvc-ghost" });
@@ -428,22 +484,19 @@
     function move(ev) { ghost.style.left = ev.clientX + "px"; ghost.style.top = ev.clientY + "px"; }
     function up(ev) {
       document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); ghost.remove();
-      var overUI = ev.target.closest && ev.target.closest("#gvc-ui");
-      if (overUI) return;
-      var w = screenToWorld(ev.clientX, ev.clientY);
-      spawn(type, w);
+      if (ev.target.closest && ev.target.closest("#gvc-ui")) return;
+      spawn(type, screenToWorld(ev.clientX, ev.clientY));
     }
     document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
   }
   function spawn(type, w) {
-    if (type === "sticky") { var n = addNode({ type: "sticky", x: w.x - 75, y: w.y - 75, w: 150, h: 150, text: "", color: "#fef3c7" }); select(n.id); setTimeout(function () { enterEdit(n.id); }, 0); }
-    else if (type === "text") { var t = addNode({ type: "text", x: w.x, y: w.y, text: "Text" }); select(t.id); setTimeout(function () { enterEdit(t.id); }, 0); }
+    if (type === "sticky") { var n = addNode({ type: "sticky", x: w.x - 80, y: w.y - 80, w: 160, h: 160, text: "", color: DEFAULT_STICKY, author: ME }); select(n.id); setTimeout(function () { enterEdit(n.id); }, 0); }
+    else if (type === "text") { var t = addNode({ type: "text", x: w.x, y: w.y, text: "" }); select(t.id); setTimeout(function () { enterEdit(t.id); }, 0); }
     else if (type === "arrow") { var a = addNode({ type: "arrow", x1: w.x - 60, y1: w.y, x2: w.x + 60, y2: w.y }); select(a.id); }
   }
   function centerWorld() { return screenToWorld(innerWidth / 2, innerHeight / 2); }
   function pickImage(w) {
-    var inp = el("input", { type: "file", accept: "image/*", multiple: true });
-    inp.style.display = "none"; document.body.appendChild(inp);
+    var inp = el("input", { type: "file", accept: "image/*", multiple: true }); inp.style.display = "none"; document.body.appendChild(inp);
     inp.addEventListener("change", function () {
       Array.prototype.forEach.call(inp.files, function (f, i) { if (/^image\//.test(f.type)) compressImage(f, function (u, d) { addNode({ type: "image", x: w.x + i * 24, y: w.y + i * 24, w: d.w, h: d.h, src: u }); }); });
       inp.remove();
@@ -471,13 +524,8 @@
   });
   function load(done) {
     fetch(BOARD_API).then(function (r) { return r.json(); }).then(function (d) {
-      if (d && d.doc && d.doc.nodes) {
-        board = d.doc;
-        board.view = board.view || { x: 0, y: 0, scale: 1 };
-        board.name = board.name || CFG.name || "Untitled canvas";
-      } else {
-        board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; // new board: origin mid-screen
-      }
+      if (d && d.doc && d.doc.nodes) { board = d.doc; board.view = board.view || { x: 0, y: 0, scale: 1 }; board.name = board.name || CFG.name || "Untitled canvas"; }
+      else { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; }
       done();
     }).catch(function () { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; done(); });
   }
@@ -486,15 +534,13 @@
   window.GVCanvas = {
     get board() { return board; },
     get view() { return board.view; },
-    screenToWorld: screenToWorld,
-    worldToScreen: worldToScreen,
-    world: world,
+    screenToWorld: screenToWorld, worldToScreen: worldToScreen, world: world,
     onTransform: function (cb) { transformCbs.push(cb); },
-    nodes: function () { return board.nodes; },
-    addNode: addNode
+    nodes: function () { return board.nodes; }, addNode: addNode
   };
 
   // ---- boot ----------------------------------------------------------------
+  try { fetch("/__me", { headers: { Accept: "application/json" } }).then(function (r) { return r.json(); }).then(function (d) { if (d && d.user && d.user.name) ME = d.user.name; }).catch(function () {}); } catch (e) {}
   document.body.appendChild(root);
   buildUI();
   load(function () {
