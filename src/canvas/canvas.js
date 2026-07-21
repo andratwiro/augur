@@ -21,7 +21,7 @@
   var BOARD_PATH = CFG.boardPath || location.pathname;
   var BOARD_API = "/__board?path=" + encodeURIComponent(BOARD_PATH);
 
-  var MIN_SCALE = 0.1, MAX_SCALE = 4, GRID = 26, MAX_LIVE_TILES = 1;
+  var MIN_SCALE = 0.1, MAX_SCALE = 4, GRID = 26, MAX_LIVE_TILES = 6; // total loaded iframes (live or frozen); LRU-evict oldest to poster
   // A live tile renders its page at a chosen DEVICE viewport width, then scales to fit the tile —
   // so a device toggle (not tile-resize) drives the page's real responsive breakpoints. ASPECT
   // (w:h) shapes the tile to the device when you pick one; you can still resize freely after.
@@ -255,7 +255,7 @@
     nm.addEventListener("dblclick", function (e) { e.stopPropagation(); nm.contentEditable = "true"; nm.focus(); });
     nm.addEventListener("blur", function () { nm.contentEditable = "false"; node.name = nm.textContent.trim() || node.name; scheduleSave(); });
     nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } });
-    var liveBtn = el("button", { type: "button", text: "▶ Live" });
+    var liveBtn = el("button", { type: "button", class: "gvc-livebtn", text: "▶ Live" });
     var openBtn = el("button", { type: "button", text: "↗", title: "Open in new tab" });
     openBtn.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
     openBtn.addEventListener("click", function (e) { e.stopPropagation(); window.open(node.url, "_blank"); });
@@ -299,12 +299,24 @@
     img.src = node.thumb || (node.url.replace(/\/?$/, "/") + "preview.webp");
     body.appendChild(img);
   }
+  // Three tile states: poster (never loaded) → live (interactive iframe) ⇄ frozen (iframe kept but
+  // inert). "Stop" FREEZES rather than unloading, so the exact render — device layout, scroll
+  // position, in-page state — survives; the frozen iframe is pointer-events:none so the tile drags
+  // normally. Loaded iframes (live OR frozen) cost the same, so the cap is on TOTAL loaded, LRU-
+  // evicting the oldest back to its poster to keep pan/zoom smooth.
   function toggleLive(node, body, btn) {
-    if (body.querySelector("iframe")) { showThumb(node, body); btn.textContent = "▶ Live"; liveTiles = liveTiles.filter(function (t) { return t !== node.id; }); return; }
+    if (body.querySelector("iframe")) {
+      var nowFrozen = body.classList.toggle("gvc-frozen");
+      var badge = body.querySelector(".live-badge");
+      if (nowFrozen) { if (badge) badge.remove(); btn.textContent = "▶ Live"; }
+      else { if (!badge) body.appendChild(el("div", { class: "live-badge", text: "LIVE" })); fitFrame(body, node); btn.textContent = "■ Stop"; }
+      return;
+    }
     while (liveTiles.length >= MAX_LIVE_TILES) {
       var victim = liveTiles.shift(); var vn = nodeById(victim), ve = nodeEls[victim];
-      if (vn && ve) { var vb = ve.querySelector(".gvc-tilebody"); showThumb(vn, vb); var vbtn = ve.querySelector(".gvc-tilebar button"); if (vbtn) vbtn.textContent = "▶ Live"; }
+      if (vn && ve) { var vb = ve.querySelector(".gvc-tilebody"); vb.classList.remove("gvc-frozen"); showThumb(vn, vb); var vbtn = ve.querySelector(".gvc-livebtn"); if (vbtn) vbtn.textContent = "▶ Live"; }
     }
+    body.classList.remove("gvc-frozen");
     body.innerHTML = "";
     body.appendChild(el("iframe", { src: node.url, loading: "lazy" }));
     body.appendChild(el("div", { class: "live-badge", text: "LIVE" }));
