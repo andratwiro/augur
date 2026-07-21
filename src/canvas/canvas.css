@@ -70,32 +70,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 .gvc-tile .gvc-tilebody .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; text-align: center; color: #9ca3af; font-size: 12px; }
 .gvc-tile .gvc-tilebody .live-badge { position: absolute; top: 6px; right: 6px; background: #16a34a; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 99px; pointer-events: none; }
 
-/* build node — author a prototype on the canvas (ask AI → live HTML). Reuses .gvc-tile chrome. */
-.gvc-tile.gvc-build .gvc-tilebar { background: #4f46e5; }
-.gvc-tile .gvc-tilebar .gvc-refine { background: rgba(255, 255, 255, .18); font-weight: 600; }
-.gvc-buildbody { background: #fbfbfd; }
-.gvc-buildbody iframe { display: block; border: 0; background: #fff; transform-origin: top left; }
-.live-badge.build { background: #4f46e5; }
-.gvc-buildprompt { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 9px; padding: 22px; box-sizing: border-box; }
-.gvc-buildprompt.overlay { background: rgba(251, 251, 253, .97); z-index: 3; }
-.gvc-buildprompt .gvc-buildhead { font-weight: 700; font-size: 13px; color: #4f46e5; letter-spacing: .01em; }
-.gvc-buildprompt textarea { width: 100%; box-sizing: border-box; border: 1.5px solid #d9dce1; border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 13px; line-height: 1.4; resize: none; outline: none; background: #fff; }
-.gvc-buildprompt textarea:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, .12); }
-.gvc-buildprompt .row { display: flex; gap: 8px; }
-.gvc-buildprompt .go { background: #4f46e5; color: #fff; border: 0; border-radius: 9px; padding: 9px 16px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.gvc-buildprompt .go:hover { background: #4338ca; }
-.gvc-buildprompt .cancel { background: #eef0f3; color: #374151; border: 0; border-radius: 9px; padding: 9px 14px; font: inherit; font-size: 13px; cursor: pointer; }
-.gvc-buildprompt .cancel:hover { background: #e2e5ea; }
-.gvc-buildprompt .hint { font-size: 11px; color: #9ca3af; }
-.gvc-building { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 13px; color: #6b7280; font-size: 13px; }
-.gvc-building .spin { width: 26px; height: 26px; border: 3px solid #e5e7eb; border-top-color: #4f46e5; border-radius: 50%; animation: gvc-spin .8s linear infinite; }
-.gvc-building .lbl { font-weight: 600; color: #374151; }
-.gvc-building .sub { font-size: 11px; color: #9ca3af; }
-@keyframes gvc-spin { to { transform: rotate(360deg); } }
-.gvc-builderr { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 20px; text-align: center; }
-.gvc-builderr .m { color: #b91c1c; font-size: 13px; }
-.gvc-builderr .go { background: #4f46e5; color: #fff; border: 0; border-radius: 9px; padding: 8px 16px; font: inherit; font-size: 13px; cursor: pointer; }
-
 .gvc-arrow { cursor: grab; }
 .gvc-arrow svg { display: block; overflow: visible; }
 .gvc-arrow svg path { fill: none; stroke: #374151; stroke-width: 2.5; }

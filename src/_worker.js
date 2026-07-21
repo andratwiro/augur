@@ -722,89 +722,6 @@ async function aiSummarize(request, env) {
   return jsonResponse(out);
 }
 
-// ---- Build-on-canvas: prompt → self-contained HTML screen ------------------
-// Powers the canvas "build" node — you ask for a screen, this returns a complete
-// self-contained HTML document that renders in a sandboxed srcdoc iframe on the board.
-// Sonnet for a snappy iterate loop (fast + strong at self-contained UI); bump to Opus
-// for max fidelity. Same two-backend shape as aiSummarize (CLI bridge → API key).
-const AI_BUILD_MODEL = "claude-sonnet-4-6";
-
-const AI_BUILD_SYSTEM = [
-  "You generate ONE self-contained HTML document for a single UI screen or component that renders inside a sandboxed iframe on a design canvas. You are a senior product designer + front-end engineer; the result should look intentional and shippable, not like a wireframe.",
-  "Output ONLY the HTML — a complete document starting with <!DOCTYPE html>. No markdown, no code fences, no commentary before or after.",
-  "Self-contained and OFFLINE: all CSS in one <style>, any JS in one <script>. Never reference external stylesheets, scripts, fonts, or image URLs — the iframe has no network. Use system font stacks. For icons use inline SVG or emoji; for imagery use tasteful CSS (gradients, solid blocks, simple SVG), never an external <img> src.",
-  "Craft: a clear type scale, generous whitespace, a small cohesive color palette, real (plausible) placeholder copy and data — not lorem ipsum or 'Item 1'. Make it feel like a real product screen.",
-  "Responsive: it is given a fixed frame width (often a phone, tablet, or desktop). Use fluid layout (%/flex/grid, max-width) so it fills its width without horizontal overflow at any size.",
-  "Design language FOLLOWS THE REQUEST. If the user names a look (a brand, 'Go Vocal', dark mode, a specific product/screen), honor it precisely. Go Vocal is a civic-participation platform (clean, trustworthy, government-friendly; rounded cards, a calm primary color, clear CTAs) — evoke that when asked, don't copy a specific logo. With no style named, use a clean modern neutral default. Never impose a house style the user didn't ask for.",
-  "Interactivity: wire obvious in-screen behavior with vanilla JS (tabs switch, toggles flip, a submit shows a thank-you state, an accordion opens). Keep it ONE screen — no navigation/routing to other pages.",
-  "When given a PRIOR version, return a COMPLETE updated document that applies the requested change and preserves everything else.",
-  "Keep it reasonably COMPACT: clean minimal markup, no verbose code comments, no repeated boilerplate blocks — a focused single screen renders fast and reads clearly. Do not pad it out.",
-].join(" ");
-
-function stripFences(s) {
-  let t = String(s || "").trim();
-  t = t.replace(/^```(?:html)?\s*/i, "").replace(/\s*```$/, "");
-  // if the model still wrapped prose around it, keep from the first <!doctype/<html
-  const m = t.match(/<!doctype html[\s\S]*$/i) || t.match(/<html[\s\S]*$/i);
-  return (m ? m[0] : t).trim();
-}
-
-async function aiBuild(request, env) {
-  if (request.method !== "POST") return jsonResponse({ error: "method not allowed" }, 405);
-  let body;
-  try { body = await request.json(); } catch { return jsonResponse({ error: "bad json" }, 400); }
-  const prompt = String((body && body.prompt) || "").slice(0, 4000);
-  const prior = String((body && body.prior) || "").slice(0, 60000);
-  if (prompt.trim().length < 3) return jsonResponse({ error: "prompt too short" }, 400);
-  const userMsg = prior
-    ? "PRIOR version of the screen:\n\n" + prior + "\n\n---\nApply this change and return the full updated HTML document:\n" + prompt
-    : "Build this screen:\n" + prompt;
-
-  // Preferred: local CLI bridge (offline mode). Fallback: Anthropic API key. Neither → 503.
-  if (env.AI_CLI_URL) {
-    try {
-      const r = await fetch(env.AI_CLI_URL.replace(/\/+$/, "") + "/build", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ prompt, prior }),
-      });
-      const j = await r.json().catch(() => null);
-      if (r.ok && j && j.html) return jsonResponse({ html: j.html });
-      return jsonResponse({ error: "cli", status: r.status }, 502);
-    } catch (e) {
-      return jsonResponse({ error: "cli_unreachable", detail: String((e && e.message) || e) }, 502);
-    }
-  }
-
-  const key = env.ANTHROPIC_API_KEY;
-  if (!key) return jsonResponse({ error: "ai_not_configured" }, 503);
-  let upstream;
-  try {
-    upstream = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({
-        model: AI_BUILD_MODEL,
-        max_tokens: 32000, // a full screen with inline CSS/JS can be large; only generated tokens bill
-        system: AI_BUILD_SYSTEM,
-        messages: [{ role: "user", content: userMsg }],
-      }),
-    });
-  } catch (e) {
-    return jsonResponse({ error: "network", detail: String(e && e.message || e) }, 502);
-  }
-  if (!upstream.ok) {
-    const detail = await upstream.text().catch(() => "");
-    return jsonResponse({ error: "upstream", status: upstream.status, detail: detail.slice(0, 400) }, 502);
-  }
-  const data = await upstream.json().catch(() => null);
-  const block = data && Array.isArray(data.content) ? data.content.find((b) => b.type === "text") : null;
-  if (!block) return jsonResponse({ error: "empty" }, 502);
-  const html = stripFences(block.text);
-  if (!/<html|<!doctype/i.test(html)) return jsonResponse({ error: "not_html" }, 502);
-  return jsonResponse({ html });
-}
-
 // ---- Review comments API (KV-backed) ----------------------------------------
 // Threads are stored one KV value per prototype page path, key "c:<path>".
 
@@ -1295,13 +1212,6 @@ export default {
     // the prototype falls back to its local heuristic.
     if (url.pathname === "/__ai/summarize") {
       return aiSummarize(request, env);
-    }
-
-    // Build-on-canvas: generate a self-contained HTML screen from a prompt, for a canvas
-    // "build" node (an iframe you author by asking). PUBLIC + self-limiting like summarize
-    // (POST-only, prompt capped, output bounded by max_tokens); 503 when unconfigured.
-    if (url.pathname === "/__ai/build") {
-      return aiBuild(request, env);
     }
 
     // Who am I — the sidebar profile chip and the comment overlay read this. Open
