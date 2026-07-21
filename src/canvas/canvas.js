@@ -33,6 +33,10 @@
 
   function uid() { return "n" + Math.random().toString(36).slice(2, 9); }
   function clampScale(s) { return Math.max(MIN_SCALE, Math.min(MAX_SCALE, s)); }
+  // FigJam-style dot grid: dot SIZE is constant (the gradient stop below is absolute px), and
+  // spacing = GRID*scale is NORMALIZED into a comfortable band by doubling/halving — so it never
+  // becomes a dense moiré mush when zoomed out or huge gaps when zoomed in. Constant density.
+  function gridStep(scale) { var s = GRID * scale; while (s < 22) s *= 2; while (s > 46) s /= 2; return s; }
 
   // ---- DOM scaffold --------------------------------------------------------
   var root = el("div", { id: "gvc-root" });
@@ -64,7 +68,8 @@
       xfDirty = false;
       var v = board.view;
       world.style.transform = "translate(" + v.x + "px," + v.y + "px) scale(" + v.scale + ")";
-      root.style.backgroundSize = (GRID * v.scale) + "px " + (GRID * v.scale) + "px";
+      var gstep = gridStep(v.scale);
+      root.style.backgroundSize = gstep + "px " + gstep + "px";
       root.style.backgroundPosition = v.x + "px " + v.y + "px";
       if (zoomPct) zoomPct.textContent = Math.round(v.scale * 100) + "%";
       // comments.js repositions pins on window scroll; a canvas pan/zoom IS a scroll of the
@@ -166,11 +171,8 @@
 
   function editableText(node, host, cls) {
     var txt = el("div", { class: "gvc-txt " + cls, contentEditable: "false", html: escapeHtml(node.text || "") });
-    host.addEventListener("dblclick", function (e) {
-      e.stopPropagation();
-      host.classList.add("editing"); txt.contentEditable = "true"; txt.focus();
-      var r = document.createRange(); r.selectNodeContents(txt); var s = getSelection(); s.removeAllRanges(); s.addRange(r);
-    });
+    // Editing is entered via manual double-tap detection in the pointerdown handler (native
+    // dblclick is unreliable while the root holds pointer capture) → enterEdit(id).
     txt.addEventListener("blur", function () {
       host.classList.remove("editing"); txt.contentEditable = "false";
       node.text = txt.innerText;
@@ -181,6 +183,15 @@
     txt.addEventListener("pointerdown", function (e) { if (host.classList.contains("editing")) e.stopPropagation(); });
     txt.addEventListener("keydown", function (e) { e.stopPropagation(); });
     return txt;
+  }
+  function enterEdit(id) {
+    var node = nodeById(id), host = nodeEls[id];
+    if (!node || !host || node.type === "tile") return;
+    var txt = host.querySelector(".gvc-txt"); if (!txt) return;
+    select(id); host.classList.add("editing");
+    txt.contentEditable = "true"; txt.focus();
+    var r = document.createRange(); r.selectNodeContents(txt);
+    var s = getSelection(); s.removeAllRanges(); s.addRange(r);
   }
 
   function renderSticky(node) {
@@ -252,9 +263,11 @@
     var ang = Math.atan2(ly2 - ly1, lx2 - lx1), ah = 11;
     var a1x = lx2 - ah * Math.cos(ang - Math.PI / 7), a1y = ly2 - ah * Math.sin(ang - Math.PI / 7);
     var a2x = lx2 - ah * Math.cos(ang + Math.PI / 7), a2y = ly2 - ah * Math.sin(ang + Math.PI / 7);
-    var svg = el("svg", { width: w + pad * 2, height: h + pad * 2 });
-    svg.innerHTML = '<path d="M' + lx1 + ' ' + ly1 + ' L' + lx2 + ' ' + ly2 + '"/><path d="M' + a1x + ' ' + a1y + ' L' + lx2 + ' ' + ly2 + ' L' + a2x + ' ' + a2y + '"/>';
-    host.appendChild(svg);
+    // Build the SVG as an innerHTML string so the HTML parser creates real SVG-namespaced
+    // nodes — el()/createElement("svg") makes a non-namespaced element that never renders.
+    host.innerHTML = '<svg width="' + (w + pad * 2) + '" height="' + (h + pad * 2) + '" style="overflow:visible">'
+      + '<path d="M' + lx1 + ' ' + ly1 + ' L' + lx2 + ' ' + ly2 + '"/>'
+      + '<path d="M' + a1x + ' ' + a1y + ' L' + lx2 + ' ' + ly2 + ' L' + a2x + ' ' + a2y + '"/></svg>';
     // endpoint handles (shown when selected)
     if (node.id === selected) {
       [["1", lx1, ly1], ["2", lx2, ly2]].forEach(function (p) {
@@ -270,7 +283,7 @@
   function escapeHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
   // ---- pointer interaction (pan / move / resize / arrow handles) -----------
-  var drag = null;
+  var drag = null, lastTap = { id: null, t: 0 };
   root.addEventListener("pointerdown", function (e) {
     if (e.button !== 0) return;
     var nodeHost = e.target.closest ? e.target.closest(".gvc-node") : null;
@@ -279,6 +292,11 @@
     if (nodeHost && nodeHost.classList.contains("editing")) return;
     if (nodeHost) {
       var id = nodeHost.dataset.id, node = nodeById(id);
+      var now = Date.now();
+      if (id === lastTap.id && now - lastTap.t < 350 && (node.type === "sticky" || node.type === "text")) {
+        lastTap = { id: null, t: 0 }; enterEdit(id); return; // double-tap → edit text, no drag
+      }
+      lastTap = { id: id, t: now };
       select(id);
       drag = { mode: "move", id: id, sx: e.clientX, sy: e.clientY, ox: node.x, oy: node.y, ox1: node.x1, oy1: node.y1, ox2: node.x2, oy2: node.y2, moved: false };
     } else {
@@ -418,11 +436,10 @@
     document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
   }
   function spawn(type, w) {
-    if (type === "sticky") { var n = addNode({ type: "sticky", x: w.x - 75, y: w.y - 75, w: 150, h: 150, text: "", color: "#fef3c7" }); select(n.id); editNow(n.id); }
-    else if (type === "text") { var t = addNode({ type: "text", x: w.x, y: w.y, text: "Text" }); select(t.id); editNow(t.id); }
-    else if (type === "arrow") { addNode({ type: "arrow", x1: w.x - 60, y1: w.y, x2: w.x + 60, y2: w.y }); }
+    if (type === "sticky") { var n = addNode({ type: "sticky", x: w.x - 75, y: w.y - 75, w: 150, h: 150, text: "", color: "#fef3c7" }); select(n.id); setTimeout(function () { enterEdit(n.id); }, 0); }
+    else if (type === "text") { var t = addNode({ type: "text", x: w.x, y: w.y, text: "Text" }); select(t.id); setTimeout(function () { enterEdit(t.id); }, 0); }
+    else if (type === "arrow") { var a = addNode({ type: "arrow", x1: w.x - 60, y1: w.y, x2: w.x + 60, y2: w.y }); select(a.id); }
   }
-  function editNow(id) { var h = nodeEls[id]; if (h) { var d = new MouseEvent("dblclick", { bubbles: true }); h.dispatchEvent(d); } }
   function centerWorld() { return screenToWorld(innerWidth / 2, innerHeight / 2); }
   function pickImage(w) {
     var inp = el("input", { type: "file", accept: "image/*", multiple: true });

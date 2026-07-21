@@ -69,7 +69,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 #gvc-ui.hidden { opacity: 0; pointer-events: none !important; }
 #gvc-ui > * { pointer-events: auto; }
 
-#gvc-topbar { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 6px 8px; }
+#gvc-topbar { position: fixed; top: 14px; left: 16px; display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 6px 8px; }
 #gvc-topbar .back { border: 0; background: 0; padding: 6px 9px; border-radius: 8px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 5px; }
 #gvc-topbar .back:hover { background: #f3f4f6; }
 #gvc-topbar .nm { font-weight: 600; padding: 6px 8px; border-radius: 8px; cursor: text; outline: none; min-width: 60px; max-width: 300px; white-space: nowrap; overflow: hidden; }
