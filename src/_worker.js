@@ -738,6 +738,7 @@ const AI_BUILD_SYSTEM = [
   "Design language FOLLOWS THE REQUEST. If the user names a look (a brand, 'Go Vocal', dark mode, a specific product/screen), honor it precisely. Go Vocal is a civic-participation platform (clean, trustworthy, government-friendly; rounded cards, a calm primary color, clear CTAs) — evoke that when asked, don't copy a specific logo. With no style named, use a clean modern neutral default. Never impose a house style the user didn't ask for.",
   "Interactivity: wire obvious in-screen behavior with vanilla JS (tabs switch, toggles flip, a submit shows a thank-you state, an accordion opens). Keep it ONE screen — no navigation/routing to other pages.",
   "When given a PRIOR version, return a COMPLETE updated document that applies the requested change and preserves everything else.",
+  "Keep it reasonably COMPACT: clean minimal markup, no verbose code comments, no repeated boilerplate blocks — a focused single screen renders fast and reads clearly. Do not pad it out.",
 ].join(" ");
 
 function stripFences(s) {
