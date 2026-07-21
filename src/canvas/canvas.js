@@ -107,7 +107,7 @@
   // ---- node model helpers --------------------------------------------------
   function nodeById(id) { for (var i = 0; i < board.nodes.length; i++) if (board.nodes[i].id === id) return board.nodes[i]; return null; }
   function autoName(type) {
-    var base = { sticky: "Sticky", text: "Text", image: "Image", tile: "Prototype", arrow: "Arrow" }[type] || "Node";
+    var base = { sticky: "Sticky", text: "Text", image: "Image", tile: "Prototype", build: "Screen", arrow: "Arrow" }[type] || "Node";
     var n = 0; board.nodes.forEach(function (x) { if (x.type === type) n++; });
     return base + " " + (n + 1);
   }
@@ -190,6 +190,7 @@
     else if (node.type === "text") host = renderText(node);
     else if (node.type === "image") host = renderImage(node);
     else if (node.type === "tile") host = renderTile(node);
+    else if (node.type === "build") host = renderBuild(node);
     else if (node.type === "arrow") host = renderArrow(node);
     else return;
     host.className = "gvc-node " + host.className;
@@ -363,6 +364,102 @@
     frame.style.height = Math.ceil(vh / s) + "px";
     frame.style.transform = "scale(" + s + ")";
   }
+
+  // ---- build node: author a prototype ON the canvas (ask Claude → live HTML) ----
+  // A build node IS a prototype embedded in the canvas: {type:"build", prompt, html, device}
+  // stored in the board doc (KV), rendered as a sandboxed srcdoc iframe. No files, no git.
+  function renderBuild(node) {
+    node.w = node.w || 640; node.h = node.h || 420; node.device = node.device || "desktop";
+    var body = el("div", { class: "gvc-tilebody gvc-buildbody" });
+    var nm = el("div", { class: "nm", text: node.name || "Screen", contentEditable: "false", title: "Double-click to rename" });
+    var nmTap = 0;
+    nm.addEventListener("pointerdown", function (e) {
+      if (nm.contentEditable === "true") return; e.stopPropagation();
+      var now = Date.now();
+      if (now - nmTap < 350) { nmTap = 0; nm.contentEditable = "true"; nm.focus(); if (document.execCommand) document.execCommand("selectAll", false, null); }
+      else { nmTap = now; select(node.id); }
+    });
+    nm.addEventListener("blur", function () { nm.contentEditable = "false"; node.name = nm.textContent.trim() || node.name; nm.textContent = node.name; scheduleSave(); });
+    nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } else if (e.key === "Escape") { nm.textContent = node.name; nm.blur(); } });
+    var devSeg = el("div", { class: "gvc-dev" });
+    ["desktop", "tablet", "phone"].forEach(function (d) {
+      var b = el("button", { type: "button", class: node.device === d ? "on" : "", title: d });
+      b.dataset.dev = d; b.innerHTML = DEV_ICON[d];
+      b.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+      b.addEventListener("click", function (e) { e.stopPropagation(); setDevice(node, d); });
+      devSeg.appendChild(b);
+    });
+    var refineBtn = el("button", { type: "button", class: "gvc-refine", text: "✦ Ask" });
+    refineBtn.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+    refineBtn.addEventListener("click", function (e) { e.stopPropagation(); toggleBuildPrompt(node, body); });
+    var bar = el("div", { class: "gvc-tilebar" }, [nm, devSeg, refineBtn]);
+    var host = el("div", { class: "gvc-tile gvc-build" }, [bar, body]);
+    renderBuildBody(node, body);
+    place(host, node);
+    return host;
+  }
+  function renderBuildBody(node, body) {
+    body.innerHTML = "";
+    if (node.html) {
+      var frame = el("iframe", { sandbox: "allow-scripts allow-forms allow-popups allow-modals", loading: "lazy" });
+      frame.srcdoc = node.html;
+      body.appendChild(frame);
+      body.appendChild(el("div", { class: "live-badge build", text: "BUILT" }));
+      fitFrame(body, node);
+    } else {
+      body.appendChild(buildPromptPanel(node, body, false));
+    }
+  }
+  // The prompt/refine panel: textarea + go. Refine sends the current html as `prior`.
+  function buildPromptPanel(node, body, isRefine) {
+    var panel = el("div", { class: "gvc-buildprompt" + (isRefine ? " overlay" : "") });
+    var ta = el("textarea", { rows: "3", placeholder: isRefine ? "Ask for a change… e.g. make it dark, add a comment count" : "Describe a screen to build…\ne.g. a Go Vocal voting screen with three options and a submit button" });
+    if (!isRefine && node.prompt) ta.value = node.prompt;
+    var go = el("button", { type: "button", class: "go", text: isRefine ? "Update" : "✦ Build" });
+    var hint = el("div", { class: "hint", text: isRefine ? "Claude updates this screen." : "Claude builds it into this frame." });
+    var row = el("div", { class: "row" }, [go]);
+    if (isRefine) { var cancel = el("button", { type: "button", class: "cancel", text: "Cancel" }); cancel.addEventListener("click", function (e) { e.stopPropagation(); renderBuildBody(node, body); }); guard(cancel); row.appendChild(cancel); }
+    [panel, ta, go].forEach(guard);
+    function submit() { var p = ta.value.trim(); if (p.length < 3) { ta.focus(); return; } generateBuild(node, body, p, isRefine ? (node.html || "") : ""); }
+    ta.addEventListener("keydown", function (e) { e.stopPropagation(); if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); submit(); } });
+    go.addEventListener("click", function (e) { e.stopPropagation(); submit(); });
+    panel.appendChild(el("div", { class: "gvc-buildhead", text: isRefine ? "Refine" : "Build a screen" }));
+    panel.appendChild(ta); panel.appendChild(row); panel.appendChild(hint);
+    return panel;
+  }
+  function toggleBuildPrompt(node, body) {
+    var existing = body.querySelector(".gvc-buildprompt.overlay");
+    if (existing) { renderBuildBody(node, body); return; }
+    if (!node.html) { renderBuildBody(node, body); var ta0 = body.querySelector("textarea"); if (ta0) ta0.focus(); return; }
+    var panel = buildPromptPanel(node, body, true);
+    body.appendChild(panel);
+    var ta = panel.querySelector("textarea"); if (ta) ta.focus();
+  }
+  function generateBuild(node, body, prompt, prior) {
+    body.innerHTML = "";
+    body.appendChild(el("div", { class: "gvc-building" }, [el("div", { class: "spin" }), el("div", { class: "lbl", text: prior ? "Updating…" : "Building your screen…" })]));
+    fetch("/__ai/build", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: prompt, prior: prior || "" }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }).catch(function () { return { ok: false, j: null }; }); })
+      .then(function (res) {
+        if (res.ok && res.j && res.j.html) { node.html = res.j.html; node.prompt = prompt; renderBuildBody(node, body); scheduleSave(); }
+        else { showBuildError(node, body, prompt, prior, (res.j && res.j.error) || "failed"); }
+      })
+      .catch(function (e) { showBuildError(node, body, prompt, prior, String((e && e.message) || e)); });
+  }
+  function showBuildError(node, body, prompt, prior, err) {
+    body.innerHTML = "";
+    var msg = err === "ai_not_configured" ? "AI isn't configured on this server." : "Couldn't build that (" + err + ").";
+    var retry = el("button", { type: "button", class: "go", text: "Try again" });
+    retry.addEventListener("click", function (e) { e.stopPropagation(); generateBuild(node, body, prompt, prior); });
+    guard(retry);
+    body.appendChild(el("div", { class: "gvc-builderr" }, [el("div", { class: "m", text: msg }), retry]));
+  }
+  function spawnBuild() {
+    var w = centerWorld();
+    var n = addNode({ type: "build", x: w.x - 320, y: w.y - 210, w: 640, h: 420, device: "desktop" });
+    select(n.id); pop(n.id);
+    var host = nodeEls[n.id]; var ta = host && host.querySelector("textarea"); if (ta) ta.focus();
+  }
   function renderArrow(node) {
     var x1 = node.x1, y1 = node.y1, x2 = node.x2, y2 = node.y2;
     var minX = Math.min(x1, x2), minY = Math.min(y1, y2), w = Math.max(1, Math.abs(x2 - x1)), h = Math.max(1, Math.abs(y2 - y1));
@@ -445,7 +542,7 @@
       });
       setSelection(hits);
     }
-    else if (drag.mode === "resize") { var n2 = drag.node; n2.w = Math.max(48, drag.ow + dx / sc); n2.h = Math.max(48, drag.oh + dy / sc); var re = nodeEls[n2.id]; re.style.width = n2.w + "px"; re.style.height = n2.h + "px"; if (n2.type === "tile") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb, n2); } positionSelBar(); }
+    else if (drag.mode === "resize") { var n2 = drag.node; n2.w = Math.max(48, drag.ow + dx / sc); n2.h = Math.max(48, drag.oh + dy / sc); var re = nodeEls[n2.id]; re.style.width = n2.w + "px"; re.style.height = n2.h + "px"; if (n2.type === "tile" || n2.type === "build") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb, n2); } positionSelBar(); }
     else if (drag.mode === "arrow") { var an = drag.node; if (drag.end === "1") { an.x1 = drag.px + dx / sc; an.y1 = drag.py + dy / sc; } else { an.x2 = drag.px + dx / sc; an.y2 = drag.py + dy / sc; } renderNode(an); }
   });
   root.addEventListener("pointerup", function () {
@@ -597,10 +694,11 @@
       { t: "text", title: "Text", svg: '<path d="M4 5h12"/><path d="M10 5v11"/>' },
       { t: "arrow", title: "Arrow", svg: '<path d="M4 16 15 5"/><path d="M9.5 5H15v5.5"/>' },
       { t: "image", title: "Image", svg: '<rect x="3" y="4.5" width="14" height="11" rx="2"/><circle cx="7.4" cy="9" r="1.3"/><path d="M4 14l3.6-3.4 3 3 3-3L17 14"/>' },
-      { t: "tile", title: "Prototype", svg: '<rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 7.5h14"/>' }
+      { t: "tile", title: "Prototype", svg: '<rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 7.5h14"/>' },
+      { t: "build", title: "Build a screen with AI", svg: '<path fill="currentColor" stroke="none" d="M10 2.2l1.7 4.9 4.9 1.7-4.9 1.7L10 15.4l-1.7-4.9L3.4 8.8l4.9-1.7z"/><path fill="currentColor" stroke="none" d="M15.5 12.5l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/>' }
     ];
     TOOLS.forEach(function (tool, i) {
-      if (i === 3) bar.appendChild(el("div", { class: "sep" }));
+      if (i === 3 || i === 5) bar.appendChild(el("div", { class: "sep" }));
       var b = toolBtn(tool.t, tool.title, svgIcon(tool.svg));
       b.addEventListener("pointerdown", function (e) { e.preventDefault(); startToolDrag(e, tool.t, b); });
       bar.appendChild(b);
@@ -623,6 +721,7 @@
   function startToolDrag(e, type, chip) {
     if (type === "image") { pickImage(centerWorld()); return; }
     if (type === "tile") { openPicker(); return; }
+    if (type === "build") { spawnBuild(); return; }
     var ghost;
     if (type === "sticky") { ghost = el("div", { class: "gvc-ghost gvc-ghost-sticky" }); }
     else { ghost = el("div", { class: "gvc-ghost" }); ghost.appendChild(chip.cloneNode(true)); }
