@@ -1,10 +1,13 @@
 # Canvas — a capability template for infinite-canvas boards
 
-> **Status:** LIVE + iterating (2026-07-21). Core shipped, then several live-feedback rounds
-> (marquee/space model, styled toolbar + sticky options, search picker, polish). Spine: hand-
-> rolled · canvas = a template-born prototype file (not a platform overlay) · shared state in KV
-> · AI-legible via names. **New agents: read "Working on the canvas" at the bottom first** — file
-> map, dev loop, gotchas, backlog. The advanced author-prototypes-on-canvas pass is the next big one.
+> **Status:** LIVE + iterating (2026-07-21). Core shipped, then many live-feedback rounds:
+> marquee/space model, styled toolbar + sticky options, search picker, tile **device picker**
+> (desktop/tablet/phone → real responsive preview) + **freeze-on-Stop**, **Cmd+D duplicate**,
+> tile/image **rename**, and the **build-on-canvas** advanced pass (ask Claude → a prototype
+> generated into a live iframe node, embedded in the board). Spine: hand-rolled · canvas =
+> a template-born prototype file (not a platform overlay) · shared state in KV · AI-legible via
+> names. **New agents: read "Working on the canvas" at the bottom first** — file map, dev loop,
+> gotchas, backlog. Next big one: the **collaboration skill** (Claude reads the board to co-work).
 
 ## What it is
 
@@ -165,6 +168,14 @@ multiplayer cursors.
   every transform to re-run the overlay's `reposition()`. Normal pages: no `GVCanvas` → untouched.
 - **Insert-picker catalog**: `build.js` writes `dist/__canvas/catalog.json` (prototypes + pages +
   components across spaces, with poster thumbs). The Prototype tool searches it.
+- **Build-on-canvas** (✦ tool → `build` node): ask Claude for a screen, it generates a
+  self-contained HTML doc into a sandboxed `srcdoc` iframe node. The generated prototype lives as
+  node state `{type:"build", prompt, html, device}` in the **board doc (KV)** — embedded IN the
+  canvas, no files/git. Endpoint `aiBuild` in `src/_worker.js` (`POST /__ai/build {prompt,prior?}
+  → {html}`, **public + self-limiting** like `/__ai/summarize`, `ANTHROPIC_API_KEY` on live /
+  `AI_CLI_URL` offline via `scripts/offline.mjs` `/build`, model `claude-sonnet-4-6`). `renderBuild`
+  reuses the tile chrome (name, device toggle, scale-to-fit); "✦ Ask" = refine overlay (regenerates
+  with current html as `prior`). Latency ~30–60s (a full screen); loading state says so.
 - **A canvas instance IS a prototype**: `go-vocal/ux-ui-audit/prototypes/canvas/index.html` (a
   ~12-line loader) → lives at `/ux-ui-audit/canvas/`. Make more by copying that folder.
 
@@ -172,28 +183,47 @@ multiplayer cursors.
 - `npm --prefix augur run offline` (run in the background) → http://localhost:8788/ux-ui-audit/canvas/
   (sign in `rob@govocal.com` / `augur-rob-2026` if the site chrome asks). It watches sibling clones
   + Augur and hot-reloads (~1s). ⚠️ **Offline KV is LIVE prod** — board/overlay writes are real.
-- Edit `src/canvas/*`; **hard-refresh (⌘⇧R)** if a cached engine sticks.
+- Edit `src/canvas/*` — the offline watcher now watches `src/canvas` + `src/review`, so it
+  hot-reloads (~1s). `/__canvas/*` is served **`no-store`** (see `withAssetCache`), so a **reload**
+  gets the fresh engine — no hard-refresh dance, no stale-JS ghosts (that bit twice: new CSS + old
+  JS looked like "my fix didn't work").
 - **Ship**: commit + push per repo to `main`. **Augur first** (engine/worker/build/catalog), THEN
   go-vocal (the page, via the auto-bump bridge). Stage ONLY your paths (shared checkout, never
   `git add -A`); commit trailers per `augur/CLAUDE.md`. Bump `UI_VERSION` only when you touch
   `comments.js` / the build shell (busts the `?v=` on injected overlay scripts).
-- **No Playwright** in this checkout (a devDep, not installed) → headless browser tests need
-  `npm i` first; otherwise smoke-test with curl + Rob's eyes on the live URL.
+- **Playwright IS available** via the sibling `go-vocal/node_modules/playwright` (+ cached
+  chromium) — drive it against offline OR the live URL (the canvas page + `/__canvas/*` + `/__board`
+  + `/__ai/build` are all public). **Always block `POST **/__board`** in tests (`route(...).abort()`
+  on POST) so you never pollute the shared live board; the board loads read-only. This is how every
+  canvas fix this session was verified before reporting — do the same, don't reason blind.
 
 **Gotchas (each bought with a real bug)**
 - SVG nodes: build via an innerHTML string (or `createElementNS`), never `createElement("svg")`
   (no namespace → never paints).
-- Sticky text edit uses **manual double-tap detection** — pointer capture on the root eats the
-  native `dblclick`.
-- The board endpoint is **public by design** (a canvas is a published prototype; a gated board
-  401s for signed-out or cross-account viewers).
+- **Rename** (tile bar name, image `.gvc-name` label): **manual double-tap**, not native `dblclick`
+  — the root's pointer capture eats `dblclick`; also `stopPropagation` so a tap doesn't start a drag.
+- Insert-picker cards live in a **flex-column → grid**: without `flex:1; min-height:0` on the grid
+  (scroll region) + `grid-auto-rows:max-content`, flex shrinks the grid and collapses the auto rows
+  to ~8px, and `overflow:hidden` clips each poster to a sliver. `aspect-ratio` did NOT contribute
+  block height there — use a fixed thumb height.
+- **Wheel over the fixed UI** (`#gvc-ui`, e.g. the picker) must `return` early in the wheel handler
+  (no `preventDefault`, no pan) or it eats the picker's native scroll and pans the board instead.
+- Live **tile/build iframe**: render at a fixed DEVICE viewport width (`DEVICE_W`) and CSS-scale to
+  fit (`fitFrame`), `transform-origin: top left`; clientWidth/Height are layout px (immune to the
+  world transform). "Stop" **freezes** (keeps the iframe, `pointer-events:none`) so device/scroll
+  state survives; cap is total loaded iframes (`MAX_LIVE_TILES`), LRU-evict to poster.
+- The board + `/__ai/build` endpoints are **public by design** (a canvas is a published prototype).
 - **Interaction model**: empty drag = marquee multi-select; pan = scroll/trackpad or Space-drag /
   hand tool. Don't revert to drag-to-pan.
 
 **Backlog (pick with Rob — he reviews on the live URL and iterates fast)**
-- **Advanced pass**: author a prototype ON the canvas (Claude generates HTML into a movable
-  `srcdoc` iframe node; "you ask, I build it").
-- Proper cache-busting for `/__canvas/*.js|css` (today: `must-revalidate` + hard-refresh).
+- **DONE 2026-07-21** (this session): device picker + freeze-on-Stop, Cmd+D duplicate, tile/image
+  rename, picker-collapse + wheel-scroll fixes, no-store engine, and the **advanced pass**
+  (build-on-canvas — the ✦ Build node).
 - The **collaboration skill** — Claude reads board state + node names to co-work spatially
-  (resolve "that", cluster, summarise). Enabled by the AI-legible model; not built.
+  (resolve "that", cluster, summarise). NOW the next big one; the AI-legible model + names + the
+  new build nodes make it high-leverage.
+- Build-node polish: faster/streamed generation (Sonnet full-screen ~30–60s), a "duplicate as
+  starting point" flow, maybe seed a build node from a picked prototype's source.
+- Proper cache-busting for `/__canvas/*.js|css` if we move off `no-store` (today: no-store).
 - Connectors that snap to nodes; in-app "New canvas" button; multiplayer cursors (same live-KV rail).
