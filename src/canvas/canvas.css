@@ -54,6 +54,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 .gvc-tile .gvc-tilebar .nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; outline: none; }
 .gvc-tile .gvc-tilebar button { border: 0; background: rgba(255, 255, 255, .16); color: #fff; border-radius: 5px; font-size: 11px; padding: 2px 8px; cursor: pointer; }
 .gvc-tile .gvc-tilebar button:hover { background: rgba(255, 255, 255, .28); }
+.gvc-tile .gvc-tilebar .gvc-dev { display: flex; align-items: center; gap: 1px; background: rgba(255, 255, 255, .1); border-radius: 6px; padding: 1px; }
+.gvc-tile .gvc-tilebar .gvc-dev button { display: flex; align-items: center; justify-content: center; padding: 2px 5px; background: 0; border-radius: 5px; color: rgba(255, 255, 255, .6); }
+.gvc-tile .gvc-tilebar .gvc-dev button:hover { background: rgba(255, 255, 255, .16); color: #fff; }
+.gvc-tile .gvc-tilebar .gvc-dev button.on { background: rgba(255, 255, 255, .9); color: #111827; }
 .gvc-tile .gvc-tilebody { flex: 1; position: relative; background: #f4f5f7; min-height: 0; overflow: hidden; }
 .gvc-tile .gvc-tilebody img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; pointer-events: none; }
 /* width/height/transform are set inline by fitFrame() — a fixed desktop viewport scaled to the tile */

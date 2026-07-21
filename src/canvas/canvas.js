@@ -22,7 +22,18 @@
   var BOARD_API = "/__board?path=" + encodeURIComponent(BOARD_PATH);
 
   var MIN_SCALE = 0.1, MAX_SCALE = 4, GRID = 26, MAX_LIVE_TILES = 1;
-  var TILE_DESIGN_W = 1280; // live tiles render at a fixed desktop viewport, then scale-to-fit the tile
+  // A live tile renders its page at a chosen DEVICE viewport width, then scales to fit the tile —
+  // so a device toggle (not tile-resize) drives the page's real responsive breakpoints. ASPECT
+  // (w:h) shapes the tile to the device when you pick one; you can still resize freely after.
+  var DEVICE_W = { desktop: 1280, tablet: 820, phone: 390 };
+  // canvas-friendly default frame sizes per device (picking a device snaps the tile to one of
+  // these so it looks like that device; resize stays free afterwards)
+  var DEVICE_SIZE = { desktop: { w: 640, h: 400 }, tablet: { w: 480, h: 690 }, phone: { w: 300, h: 650 } };
+  var DEV_ICON = {
+    desktop: '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="1.5" y="2.5" width="13" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 14h4M8 11.5V14" stroke="currentColor" stroke-width="1.4"/></svg>',
+    tablet: '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="3.5" y="1.5" width="9" height="13" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 12.5h2" stroke="currentColor" stroke-width="1.4"/></svg>',
+    phone: '<svg viewBox="0 0 16 16" width="13" height="13"><rect x="5" y="1.5" width="6" height="13" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7.2 12.6h1.6" stroke="currentColor" stroke-width="1.4"/></svg>'
+  };
   var IMG_MAX_DIM = 1400, IMG_QUALITY = 0.55; // aggressive: size over quality (Rob's call)
   // FigJam pastel sticky palette (white, grey, red, orange, yellow, green, teal, blue, purple, pink)
   var STICKY_COLORS = ["#ffffff", "#e9ecef", "#f4a9a8", "#f7c99a", "#fce495", "#bfe5a0", "#a9e5db", "#a9cbf5", "#cbb8f2", "#f5b3d7"];
@@ -250,11 +261,35 @@
     openBtn.addEventListener("click", function (e) { e.stopPropagation(); window.open(node.url, "_blank"); });
     liveBtn.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
     liveBtn.addEventListener("click", function (e) { e.stopPropagation(); toggleLive(node, body, liveBtn); });
-    var bar = el("div", { class: "gvc-tilebar" }, [nm, liveBtn, openBtn]);
+    // device toggle — desktop / tablet / phone viewport for the live render
+    var dev = node.device || "desktop";
+    var devSeg = el("div", { class: "gvc-dev" });
+    ["desktop", "tablet", "phone"].forEach(function (d) {
+      var b = el("button", { type: "button", class: dev === d ? "on" : "", title: d.charAt(0).toUpperCase() + d.slice(1) });
+      b.dataset.dev = d; b.innerHTML = DEV_ICON[d];
+      b.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+      b.addEventListener("click", function (e) { e.stopPropagation(); setDevice(node, d); });
+      devSeg.appendChild(b);
+    });
+    var bar = el("div", { class: "gvc-tilebar" }, [nm, devSeg, liveBtn, openBtn]);
     var host = el("div", { class: "gvc-tile" }, [bar, body]);
     showThumb(node, body);
     place(host, node);
     return host;
+  }
+  // Pick a device viewport for a tile: shape it to that device's proportions (at its current
+  // width — resize stays free), mark the active segment, and reflow the live iframe if open.
+  function setDevice(node, d) {
+    node.device = d;
+    var sz = DEVICE_SIZE[d] || DEVICE_SIZE.desktop;
+    node.w = sz.w; node.h = sz.h;
+    var host = nodeEls[node.id]; if (!host) return;
+    host.style.width = node.w + "px"; host.style.height = node.h + "px";
+    host.querySelectorAll(".gvc-dev button").forEach(function (b) { b.classList.toggle("on", b.dataset.dev === d); });
+    var body = host.querySelector(".gvc-tilebody");
+    if (body && body.querySelector("iframe")) fitFrame(body, node);
+    positionSelBar();
+    scheduleSave();
   }
   function showThumb(node, body) {
     body.innerHTML = "";
@@ -273,18 +308,19 @@
     body.innerHTML = "";
     body.appendChild(el("iframe", { src: node.url, loading: "lazy" }));
     body.appendChild(el("div", { class: "live-badge", text: "LIVE" }));
-    fitFrame(body);
+    fitFrame(body, node);
     btn.textContent = "■ Stop"; liveTiles.push(node.id);
   }
   // A responsive page in a small frame either clips (fixed min-width) or reflows to a stray
   // mobile breakpoint. Instead we render the live iframe at a fixed DESKTOP viewport width and
   // CSS-scale it down to the tile — you always see the whole desktop page, top-aligned, matching
   // the poster thumbnail. clientWidth/Height are layout px (immune to the world's transform).
-  function fitFrame(body) {
+  function fitFrame(body, node) {
     var frame = body.querySelector("iframe"); if (!frame) return;
     var vw = body.clientWidth, vh = body.clientHeight; if (!vw) return;
-    var s = vw / TILE_DESIGN_W;
-    frame.style.width = TILE_DESIGN_W + "px";
+    var dw = DEVICE_W[(node && node.device) || "desktop"] || DEVICE_W.desktop;
+    var s = vw / dw;
+    frame.style.width = dw + "px";
     frame.style.height = Math.ceil(vh / s) + "px";
     frame.style.transform = "scale(" + s + ")";
   }
@@ -370,7 +406,7 @@
       });
       setSelection(hits);
     }
-    else if (drag.mode === "resize") { var n2 = drag.node; n2.w = Math.max(48, drag.ow + dx / sc); n2.h = Math.max(48, drag.oh + dy / sc); var re = nodeEls[n2.id]; re.style.width = n2.w + "px"; re.style.height = n2.h + "px"; if (n2.type === "tile") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb); } positionSelBar(); }
+    else if (drag.mode === "resize") { var n2 = drag.node; n2.w = Math.max(48, drag.ow + dx / sc); n2.h = Math.max(48, drag.oh + dy / sc); var re = nodeEls[n2.id]; re.style.width = n2.w + "px"; re.style.height = n2.h + "px"; if (n2.type === "tile") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb, n2); } positionSelBar(); }
     else if (drag.mode === "arrow") { var an = drag.node; if (drag.end === "1") { an.x1 = drag.px + dx / sc; an.y1 = drag.py + dy / sc; } else { an.x2 = drag.px + dx / sc; an.y2 = drag.py + dy / sc; } renderNode(an); }
   });
   root.addEventListener("pointerup", function () {
