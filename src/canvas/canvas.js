@@ -242,9 +242,27 @@
     host.style.left = node.x + "px"; host.style.top = node.y + "px";
     return host;
   }
+  // Editable floating name label above a node — the rename affordance for images (tiles carry
+  // their name in the bar; stickies/text are identified by their own content). Manual double-tap
+  // because the root's pointer capture eats native dblclick; single tap selects, Esc cancels.
+  function nameLabel(node) {
+    var lab = el("div", { class: "gvc-name", text: node.name || "", contentEditable: "false", title: "Double-click to rename" });
+    var tap = 0;
+    lab.addEventListener("pointerdown", function (e) {
+      if (lab.contentEditable === "true") return;
+      e.stopPropagation();
+      var now = Date.now();
+      if (now - tap < 350) { tap = 0; lab.contentEditable = "true"; lab.focus(); if (document.execCommand) document.execCommand("selectAll", false, null); }
+      else { tap = now; select(node.id); }
+    });
+    lab.addEventListener("blur", function () { lab.contentEditable = "false"; node.name = lab.textContent.trim() || node.name; lab.textContent = node.name; scheduleSave(); });
+    lab.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); lab.blur(); } else if (e.key === "Escape") { lab.textContent = node.name; lab.blur(); } });
+    return lab;
+  }
   function renderImage(node) {
     node.w = node.w || 240; node.h = node.h || 180;
     var host = el("div", { class: "gvc-image" }, [el("img", { src: node.src, alt: node.name || "" })]);
+    host.appendChild(nameLabel(node));
     place(host, node);
     return host;
   }
