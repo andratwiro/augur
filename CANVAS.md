@@ -1,9 +1,10 @@
 # Canvas — a capability template for infinite-canvas boards
 
-> **Status:** v1 CORE BUILT (2026-07-21) — running in offline mode, pending Rob's interactive
-> test before it ships to live. Spine: hand-rolled · canvas = a template-born prototype file
-> (not a platform overlay) · shared state in KV · AI-legible via names. See "v1 core — what
-> shipped" at the bottom for the file map; the advanced author-prototypes-on-canvas pass is next.
+> **Status:** LIVE + iterating (2026-07-21). Core shipped, then several live-feedback rounds
+> (marquee/space model, styled toolbar + sticky options, search picker, polish). Spine: hand-
+> rolled · canvas = a template-born prototype file (not a platform overlay) · shared state in KV
+> · AI-legible via names. **New agents: read "Working on the canvas" at the bottom first** — file
+> map, dev loop, gotchas, backlog. The advanced author-prototypes-on-canvas pass is the next big one.
 
 ## What it is
 
@@ -149,3 +150,50 @@ image/tile UX, comment pins tracking pan/zoom, ⌘. — the goal checklist.
 **Deferred to the advanced pass:** author-a-prototype-on-the-canvas (⌘-generate HTML into a
 movable `srcdoc` iframe node); connectors that snap to nodes; in-app "New canvas" button;
 multiplayer cursors.
+
+## Working on the canvas (start here if you're a fresh agent)
+
+**Where everything lives**
+- **Engine** (Augur-owned, shared): `augur/src/canvas/canvas.js` + `canvas.css`, served public at
+  `/__canvas/` (emitted by `build.js` mirroring `src/review/` → `dist/__review/`; gate-exempt in
+  `isPublicPath`). Vanilla JS, no deps, one IIFE. `window.GVCanvas` exposes the board +
+  `screenToWorld`/`worldToScreen`/`onTransform`.
+- **Persistence**: `boardApi` in `augur/src/_worker.js` — `GET/POST /__board?path=<url>`, KV key
+  `board:<path>` on `env.COMMENTS`, **PUBLIC** route (like `/__review/api`), full-state POST, 20MB cap.
+- **Comments (board-anchored)**: `augur/src/review/comments.js` — `pinXY()`/`anchorAt()` use
+  `window.GVCanvas` when present and store `cwx/cwy`; the engine dispatches a window `scroll` on
+  every transform to re-run the overlay's `reposition()`. Normal pages: no `GVCanvas` → untouched.
+- **Insert-picker catalog**: `build.js` writes `dist/__canvas/catalog.json` (prototypes + pages +
+  components across spaces, with poster thumbs). The Prototype tool searches it.
+- **A canvas instance IS a prototype**: `go-vocal/ux-ui-audit/prototypes/canvas/index.html` (a
+  ~12-line loader) → lives at `/ux-ui-audit/canvas/`. Make more by copying that folder.
+
+**Dev loop**
+- `npm --prefix augur run offline` (run in the background) → http://localhost:8788/ux-ui-audit/canvas/
+  (sign in `rob@govocal.com` / `augur-rob-2026` if the site chrome asks). It watches sibling clones
+  + Augur and hot-reloads (~1s). ⚠️ **Offline KV is LIVE prod** — board/overlay writes are real.
+- Edit `src/canvas/*`; **hard-refresh (⌘⇧R)** if a cached engine sticks.
+- **Ship**: commit + push per repo to `main`. **Augur first** (engine/worker/build/catalog), THEN
+  go-vocal (the page, via the auto-bump bridge). Stage ONLY your paths (shared checkout, never
+  `git add -A`); commit trailers per `augur/CLAUDE.md`. Bump `UI_VERSION` only when you touch
+  `comments.js` / the build shell (busts the `?v=` on injected overlay scripts).
+- **No Playwright** in this checkout (a devDep, not installed) → headless browser tests need
+  `npm i` first; otherwise smoke-test with curl + Rob's eyes on the live URL.
+
+**Gotchas (each bought with a real bug)**
+- SVG nodes: build via an innerHTML string (or `createElementNS`), never `createElement("svg")`
+  (no namespace → never paints).
+- Sticky text edit uses **manual double-tap detection** — pointer capture on the root eats the
+  native `dblclick`.
+- The board endpoint is **public by design** (a canvas is a published prototype; a gated board
+  401s for signed-out or cross-account viewers).
+- **Interaction model**: empty drag = marquee multi-select; pan = scroll/trackpad or Space-drag /
+  hand tool. Don't revert to drag-to-pan.
+
+**Backlog (pick with Rob — he reviews on the live URL and iterates fast)**
+- **Advanced pass**: author a prototype ON the canvas (Claude generates HTML into a movable
+  `srcdoc` iframe node; "you ask, I build it").
+- Proper cache-busting for `/__canvas/*.js|css` (today: `must-revalidate` + hard-refresh).
+- The **collaboration skill** — Claude reads board state + node names to co-work spatially
+  (resolve "that", cluster, summarise). Enabled by the AI-legible model; not built.
+- Connectors that snap to nodes; in-app "New canvas" button; multiplayer cursors (same live-KV rail).
