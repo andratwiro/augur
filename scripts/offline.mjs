@@ -106,23 +106,64 @@ function runClaude(text) {
     proc.stdin.write(aiPrompt(text)); proc.stdin.end();
   });
 }
+// ── build-on-canvas bridge: POST /build {prompt, prior} → `claude -p` → raw HTML ──
+const BUILD_MODEL = process.env.OFFLINE_BUILD_MODEL || "claude-sonnet-4-6"; // haiku is too weak for good UI
+function buildPrompt(prompt, prior) {
+  return [
+    "Generate ONE self-contained HTML document for a single UI screen. Output ONLY the HTML, starting with <!DOCTYPE html> — no markdown, no code fences, no commentary.",
+    "All CSS in one <style>, any JS in one <script>. No external stylesheets/scripts/fonts/image URLs (the iframe has no network). System fonts; inline SVG or emoji for icons; CSS for imagery.",
+    "Polished and responsive (fluid layout, no horizontal overflow), real placeholder copy. Design language follows the request; 'Go Vocal' = a clean civic-participation look when asked. Wire obvious in-screen interactions with vanilla JS. One screen only.",
+    prior ? "PRIOR version:\n" + prior + "\n---\nApply this change and return the full updated document:" : "Build this screen:",
+    prompt,
+  ].join("\n");
+}
+function extractHtml(s) {
+  let t = String(s || "").replace(/^```(?:html)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  const m = t.match(/<!doctype html[\s\S]*$/i) || t.match(/<html[\s\S]*$/i);
+  return (m ? m[0] : t).trim();
+}
+function runClaudeBuild(prompt, prior) {
+  return new Promise((resolve) => {
+    const proc = spawn("claude", ["-p", "--output-format", "json", "--model", BUILD_MODEL, "--strict-mcp-config"], { cwd: os.tmpdir() });
+    let out = "", err = "";
+    const killer = setTimeout(() => { try { proc.kill("SIGKILL"); } catch {} }, 180000);
+    proc.stdout.on("data", (d) => (out += d));
+    proc.stderr.on("data", (d) => (err += d));
+    proc.on("error", (e) => { clearTimeout(killer); resolve({ error: "spawn: " + e.message }); });
+    proc.on("close", (code) => {
+      clearTimeout(killer);
+      let env; try { env = JSON.parse(out); } catch { resolve({ error: "envelope (" + code + "): " + err.slice(0, 160) }); return; }
+      const html = extractHtml(env && env.result);
+      resolve(/<html|<!doctype/i.test(html) ? { html } : { error: "not html" });
+    });
+    proc.stdin.write(buildPrompt(prompt, prior)); proc.stdin.end();
+  });
+}
 function startAiBridge() {
   const server = http.createServer((req, res) => {
-    if (req.method !== "POST" || !req.url.startsWith("/summarize")) { res.writeHead(404); res.end(); return; }
+    if (req.method !== "POST") { res.writeHead(404); res.end(); return; }
     let buf = "";
-    req.on("data", (c) => { buf += c; if (buf.length > 200000) req.destroy(); });
+    req.on("data", (c) => { buf += c; if (buf.length > 300000) req.destroy(); });
     req.on("end", async () => {
-      let text = ""; try { text = (JSON.parse(buf).text) || ""; } catch {}
-      text = text.slice(0, 24000); // ~4k words — docs front-load their purpose; keeps the call ~7s not ~34s
-      if (text.trim().length < 40) { res.writeHead(400, { "content-type": "application/json" }); res.end('{"error":"short"}'); return; }
-      const r = await runClaude(text);
-      res.writeHead(r.obj ? 200 : 502, { "content-type": "application/json" });
-      res.end(JSON.stringify(r.obj || { error: r.error || "cli" }));
+      if (req.url.startsWith("/summarize")) {
+        let text = ""; try { text = (JSON.parse(buf).text) || ""; } catch {}
+        text = text.slice(0, 24000); // ~4k words — docs front-load their purpose; keeps the call ~7s not ~34s
+        if (text.trim().length < 40) { res.writeHead(400, { "content-type": "application/json" }); res.end('{"error":"short"}'); return; }
+        const r = await runClaude(text);
+        res.writeHead(r.obj ? 200 : 502, { "content-type": "application/json" });
+        res.end(JSON.stringify(r.obj || { error: r.error || "cli" }));
+      } else if (req.url.startsWith("/build")) {
+        let prompt = "", prior = ""; try { const b = JSON.parse(buf); prompt = String(b.prompt || ""); prior = String(b.prior || ""); } catch {}
+        if (prompt.trim().length < 3) { res.writeHead(400, { "content-type": "application/json" }); res.end('{"error":"short"}'); return; }
+        const r = await runClaudeBuild(prompt.slice(0, 4000), prior.slice(0, 60000));
+        res.writeHead(r.html ? 200 : 502, { "content-type": "application/json" });
+        res.end(JSON.stringify(r.html ? { html: r.html } : { error: r.error || "cli" }));
+      } else { res.writeHead(404); res.end(); }
     });
   });
   server.on("error", (e) => log(`AI bridge failed: ${e.message}`));
   server.listen(Number(AI_PORT), "127.0.0.1", () =>
-    log(`AI: \x1b[32mclaude -p\x1b[0m bridge on http://127.0.0.1:${AI_PORT} (model ${AI_CLI_MODEL}, no API tokens)`));
+    log(`AI: \x1b[32mclaude -p\x1b[0m bridge on http://127.0.0.1:${AI_PORT} (summarize ${AI_CLI_MODEL}, build ${BUILD_MODEL})`));
 }
 
 // Build from the canonical EDIT-HERE clones, not the pinned nested submodules.
