@@ -437,7 +437,7 @@
   }
   function generateBuild(node, body, prompt, prior) {
     body.innerHTML = "";
-    body.appendChild(el("div", { class: "gvc-building" }, [el("div", { class: "spin" }), el("div", { class: "lbl", text: prior ? "Updating your screen…" : "Building your screen…" }), el("div", { class: "sub", text: "Claude is designing it — about 30 seconds." })]));
+    body.appendChild(el("div", { class: "gvc-building" }, [el("div", { class: "spin" }), el("div", { class: "lbl", text: prior ? "Updating your screen…" : "Building your screen…" }), el("div", { class: "sub", text: "Claude is designing it — 30 to 60 seconds." })]));
     fetch("/__ai/build", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: prompt, prior: prior || "" }) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }).catch(function () { return { ok: false, j: null }; }); })
       .then(function (res) {
