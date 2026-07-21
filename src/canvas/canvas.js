@@ -434,6 +434,9 @@
 
   // ---- wheel zoom / trackpad pan ------------------------------------------
   root.addEventListener("wheel", function (e) {
+    // Over the fixed UI layer (picker, etc.) let the browser scroll it natively — don't
+    // preventDefault (which would eat the picker's scroll) and don't pan the canvas.
+    if (e.target.closest && e.target.closest("#gvc-ui")) return;
     e.preventDefault();
     if (e.ctrlKey || e.metaKey) { zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.01)); }
     else { board.view.x -= e.deltaX; board.view.y -= e.deltaY; applyTransform(); scheduleSave(); }
