@@ -463,6 +463,16 @@ function liveReloadSnippet(token, fast) {
 // (served from versioned /fonts/ paths). HTML and un-versioned assets (posters,
 // per-prototype CSS) are left on the default so they still revalidate via ETag/304.
 function withAssetCache(res, url) {
+  // The infinite-canvas engine (canvas.js/.css/catalog.json) is loaded by absolute path
+  // with no ?v= cache-buster and is actively iterated, so the default `max-age=0,
+  // must-revalidate` lets a soft/bfcache navigation keep running a stale engine (new CSS,
+  // old JS). no-store guarantees every canvas load fetches the current engine. Tiny files,
+  // low-traffic tool → cost is nil. (Switch to versioned-immutable once it stabilises.)
+  if (url.pathname.startsWith("/__canvas/") && /\.(js|css|json)$/i.test(url.pathname)) {
+    const out = new Response(res.body, res);
+    out.headers.set("Cache-Control", "no-store");
+    return out;
+  }
   const versioned = url.searchParams.has("v") || /\.(woff2?|ttf|otf)$/.test(url.pathname);
   if (!versioned) return res;
   const out = new Response(res.body, res);

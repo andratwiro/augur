@@ -118,7 +118,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 .gvc-node.gvc-pop { animation: gvc-pop .2s cubic-bezier(.34, 1.56, .64, 1); }
 
 /* insert picker — search prototypes / pages / components */
-#gvc-picker { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); width: 660px; max-width: calc(100vw - 32px); max-height: 78vh; background: #fff; border: 1px solid #e9ebee; border-radius: 16px; box-shadow: 0 20px 54px rgba(0, 0, 0, .24); z-index: 80; display: flex; flex-direction: column; overflow: hidden; }
+#gvc-picker { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); width: min(920px, calc(100vw - 32px)); max-height: 80vh; background: #fff; border: 1px solid #e9ebee; border-radius: 16px; box-shadow: 0 20px 54px rgba(0, 0, 0, .24); z-index: 80; display: flex; flex-direction: column; overflow: hidden; }
 #gvc-picker.hidden { display: none; }
 #gvc-picker .head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 10px; }
 #gvc-picker .head input { flex: 1; border: 1.5px solid #d9dce1; border-radius: 10px; padding: 10px 12px; font: inherit; outline: none; }
@@ -131,9 +131,11 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 #gvc-picker .grid { padding: 14px; overflow: auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; align-content: start; }
 #gvc-picker .card { border: 1px solid #eceef1; border-radius: 10px; overflow: hidden; cursor: pointer; background: #fff; transition: box-shadow .12s, transform .12s; }
 #gvc-picker .card:hover { box-shadow: 0 8px 20px rgba(0, 0, 0, .13); transform: translateY(-2px); }
-#gvc-picker .card .thumb { height: 210px; background-color: #f4f5f7; background-size: cover; background-position: top center; background-repeat: no-repeat; display: flex; align-items: center; justify-content: center; color: #b6bcc6; font-size: 11px; text-transform: capitalize; }
-/* components are small pieces — show the whole thing on a shorter tile rather than a cropped band */
-#gvc-picker .card.is-component .thumb { height: 130px; background-size: contain; background-position: center; background-color: #fafbfc; }
+/* posters are 768×480 (16:10) — match that aspect so the WHOLE page shows, as large as the
+   (now wide) column allows, instead of cropping to a thin band */
+#gvc-picker .card .thumb { aspect-ratio: 16 / 10; background-color: #f4f5f7; background-size: cover; background-position: top center; background-repeat: no-repeat; display: flex; align-items: center; justify-content: center; color: #b6bcc6; font-size: 11px; text-transform: capitalize; }
+/* components are small pieces (and many have no poster) — show the whole thing on a shorter tile */
+#gvc-picker .card.is-component .thumb { aspect-ratio: auto; height: 120px; background-size: contain; background-position: center; background-color: #fafbfc; }
 #gvc-picker .card .cap { padding: 8px 9px; }
 #gvc-picker .card .cap .t { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1f2430; }
 #gvc-picker .card .cap .ty { font-size: 10px; color: #9ca3af; text-transform: capitalize; margin-top: 1px; }

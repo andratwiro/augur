@@ -108,6 +108,23 @@
     scheduleSave();
     return node;
   }
+  // Duplicate the current selection, offset diagonally so the copies land NEXT TO the
+  // originals (grabbable), not stacked on top; the copies become the new selection so you
+  // can immediately drag them. (Cmd/Ctrl-D — the Figma convention.)
+  function duplicateSelection() {
+    if (!selected.length) return;
+    var dx = 32, dy = 32, newIds = [];
+    selected.forEach(function (id) {
+      var n = nodeById(id); if (!n) return;
+      var c = {}; for (var k in n) if (n.hasOwnProperty(k)) c[k] = n[k];
+      c.id = uid();
+      if (n.type === "arrow") { c.x1 = n.x1 + dx; c.y1 = n.y1 + dy; c.x2 = n.x2 + dx; c.y2 = n.y2 + dy; }
+      else { c.x = (n.x || 0) + dx; c.y = (n.y || 0) + dy; }
+      addNode(c); newIds.push(c.id); pop(c.id);
+    });
+    setSelection(newIds);
+    scheduleSave();
+  }
   function removeNode(id) {
     var i = board.nodes.findIndex(function (n) { return n.id === id; });
     if (i < 0) return;
@@ -382,6 +399,7 @@
     // Hold Space to pan (hand cursor), Figma/FigJam convention; dragging empty space marquee-selects.
     if (e.code === "Space" && !editing && tag !== "BUTTON") { if (!spaceDown) { spaceDown = true; root.classList.add("hand"); } e.preventDefault(); return; }
     if (editing) return;
+    if ((e.metaKey || e.ctrlKey) && (e.key === "d" || e.key === "D")) { e.preventDefault(); duplicateSelection(); return; }
     if ((e.key === "Backspace" || e.key === "Delete") && selected.length) { e.preventDefault(); selected.slice().forEach(removeNode); setSelection([]); }
     if (e.key === "Escape") { setSelection([]); if (picker) picker.classList.add("hidden"); }
   });
