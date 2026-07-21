@@ -128,14 +128,17 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 #gvc-picker .tabs { display: flex; gap: 4px; padding: 0 14px 8px; border-bottom: 1px solid #f0f1f3; }
 #gvc-picker .tab { font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer; color: #6b7280; }
 #gvc-picker .tab.on { background: #eef0f3; color: #111827; font-weight: 600; }
-#gvc-picker .grid { padding: 14px; overflow: auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; align-content: start; }
+/* flex:1 + min-height:0 make this a proper scroll region inside the flex-column picker;
+   grid-auto-rows:max-content stops the auto rows collapsing to ~8px when flex shrinks it. */
+#gvc-picker .grid { padding: 14px; flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(2, 1fr); grid-auto-rows: max-content; gap: 14px; align-content: start; }
 #gvc-picker .card { border: 1px solid #eceef1; border-radius: 10px; overflow: hidden; cursor: pointer; background: #fff; transition: box-shadow .12s, transform .12s; }
 #gvc-picker .card:hover { box-shadow: 0 8px 20px rgba(0, 0, 0, .13); transform: translateY(-2px); }
-/* posters are 768×480 (16:10) — match that aspect so the WHOLE page shows, as large as the
-   (now wide) column allows, instead of cropping to a thin band */
-#gvc-picker .card .thumb { aspect-ratio: 16 / 10; background-color: #f4f5f7; background-size: cover; background-position: top center; background-repeat: no-repeat; display: flex; align-items: center; justify-content: center; color: #b6bcc6; font-size: 11px; text-transform: capitalize; }
+/* A tall fixed height (NOT aspect-ratio — that collapsed the card to ~8px because its computed
+   height didn't contribute to the card's block layout, and overflow:hidden clipped the poster to
+   a sliver). cover + top center shows the page's identifying top half, big and legible. */
+#gvc-picker .card .thumb { height: 240px; background-color: #f4f5f7; background-size: cover; background-position: top center; background-repeat: no-repeat; display: flex; align-items: center; justify-content: center; color: #b6bcc6; font-size: 11px; text-transform: capitalize; }
 /* components are small pieces (and many have no poster) — show the whole thing on a shorter tile */
-#gvc-picker .card.is-component .thumb { aspect-ratio: auto; height: 120px; background-size: contain; background-position: center; background-color: #fafbfc; }
+#gvc-picker .card.is-component .thumb { height: 120px; background-size: contain; background-position: center; background-color: #fafbfc; }
 #gvc-picker .card .cap { padding: 8px 9px; }
 #gvc-picker .card .cap .t { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1f2430; }
 #gvc-picker .card .cap .ty { font-size: 10px; color: #9ca3af; text-transform: capitalize; margin-top: 1px; }
