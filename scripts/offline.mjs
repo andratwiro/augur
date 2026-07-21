@@ -155,6 +155,8 @@ const WATCH = [
   path.join(ROOT, "build.js"),
   path.join(ROOT, "src", "_worker.js"),
   path.join(ROOT, "src", "identity.json"),  // users + seed passwords → rebuild on change
+  path.join(ROOT, "src", "canvas"),  // the infinite-canvas engine (emitted to /__canvas)
+  path.join(ROOT, "src", "review"),  // comment/annotation overlay (emitted to /__review)
   path.join(ROOT, "pitis"),          // augur-owned cursor-companion layer
   ...(usingSiblings ? siblingSpaces : [path.join(ROOT, "spaces")]),
 ];

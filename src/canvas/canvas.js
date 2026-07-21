@@ -22,6 +22,7 @@
   var BOARD_API = "/__board?path=" + encodeURIComponent(BOARD_PATH);
 
   var MIN_SCALE = 0.1, MAX_SCALE = 4, GRID = 26, MAX_LIVE_TILES = 1;
+  var TILE_DESIGN_W = 1280; // live tiles render at a fixed desktop viewport, then scale-to-fit the tile
   var IMG_MAX_DIM = 1400, IMG_QUALITY = 0.55; // aggressive: size over quality (Rob's call)
   // FigJam pastel sticky palette (white, grey, red, orange, yellow, green, teal, blue, purple, pink)
   var STICKY_COLORS = ["#ffffff", "#e9ecef", "#f4a9a8", "#f7c99a", "#fce495", "#bfe5a0", "#a9e5db", "#a9cbf5", "#cbb8f2", "#f5b3d7"];
@@ -255,7 +256,20 @@
     body.innerHTML = "";
     body.appendChild(el("iframe", { src: node.url, loading: "lazy" }));
     body.appendChild(el("div", { class: "live-badge", text: "LIVE" }));
+    fitFrame(body);
     btn.textContent = "■ Stop"; liveTiles.push(node.id);
+  }
+  // A responsive page in a small frame either clips (fixed min-width) or reflows to a stray
+  // mobile breakpoint. Instead we render the live iframe at a fixed DESKTOP viewport width and
+  // CSS-scale it down to the tile — you always see the whole desktop page, top-aligned, matching
+  // the poster thumbnail. clientWidth/Height are layout px (immune to the world's transform).
+  function fitFrame(body) {
+    var frame = body.querySelector("iframe"); if (!frame) return;
+    var vw = body.clientWidth, vh = body.clientHeight; if (!vw) return;
+    var s = vw / TILE_DESIGN_W;
+    frame.style.width = TILE_DESIGN_W + "px";
+    frame.style.height = Math.ceil(vh / s) + "px";
+    frame.style.transform = "scale(" + s + ")";
   }
   function renderArrow(node) {
     var x1 = node.x1, y1 = node.y1, x2 = node.x2, y2 = node.y2;
@@ -339,7 +353,7 @@
       });
       setSelection(hits);
     }
-    else if (drag.mode === "resize") { var n2 = drag.node; n2.w = Math.max(48, drag.ow + dx / sc); n2.h = Math.max(48, drag.oh + dy / sc); var re = nodeEls[n2.id]; re.style.width = n2.w + "px"; re.style.height = n2.h + "px"; positionSelBar(); }
+    else if (drag.mode === "resize") { var n2 = drag.node; n2.w = Math.max(48, drag.ow + dx / sc); n2.h = Math.max(48, drag.oh + dy / sc); var re = nodeEls[n2.id]; re.style.width = n2.w + "px"; re.style.height = n2.h + "px"; if (n2.type === "tile") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb); } positionSelBar(); }
     else if (drag.mode === "arrow") { var an = drag.node; if (drag.end === "1") { an.x1 = drag.px + dx / sc; an.y1 = drag.py + dy / sc; } else { an.x2 = drag.px + dx / sc; an.y2 = drag.py + dy / sc; } renderNode(an); }
   });
   root.addEventListener("pointerup", function () {
@@ -579,7 +593,7 @@
     items.forEach(function (it) {
       var thumb = el("div", { class: "thumb" });
       if (it.thumb) thumb.style.backgroundImage = "url(" + it.thumb + ")"; else thumb.textContent = it.type;
-      var card = el("div", { class: "card" }, [thumb, el("div", { class: "cap" }, [el("div", { class: "t", text: it.title }), el("div", { class: "ty", text: it.type })])]);
+      var card = el("div", { class: "card is-" + it.type }, [thumb, el("div", { class: "cap" }, [el("div", { class: "t", text: it.title }), el("div", { class: "ty", text: it.type })])]);
       card.addEventListener("click", function () { insertTile(it); });
       grid.appendChild(card);
     });
