@@ -3,11 +3,16 @@
 > **Status:** LIVE + iterating (2026-07-21). Core shipped, then many live-feedback rounds:
 > marquee/space model, styled toolbar + sticky options, search picker, tile **device picker**
 > (desktop/tablet/phone → real responsive preview) + **freeze-on-Stop**, **Cmd+D duplicate**,
-> tile/image **rename**, and the **build-on-canvas** advanced pass (ask Claude → a prototype
-> generated into a live iframe node, embedded in the board). Spine: hand-rolled · canvas =
-> a template-born prototype file (not a platform overlay) · shared state in KV · AI-legible via
-> names. **New agents: read "Working on the canvas" at the bottom first** — file map, dev loop,
-> gotchas, backlog. Next big one: the **collaboration skill** (Claude reads the board to co-work).
+> tile/image **rename**, and **canvas-owned prototypes** — a canvas is a *container*; a prototype
+> "built on the canvas" is scaffolded (by an agent, in the terminal) into a **subfolder of the
+> canvas** and auto-placed as a tile, owned by it (remove it → delete it). Spine: hand-rolled ·
+> canvas = a template-born prototype file (not a platform overlay) · shared state in KV · AI-legible
+> via names. **New agents: read "Working on the canvas" + "Canvas-owned prototypes" below first.**
+> Next big one: the **collaboration skill** (Claude reads the board to co-work).
+>
+> _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
+> Rob authors prototypes via the terminal, not an in-canvas generator; the canvas is where they
+> live, not where they're typed into being. Don't rebuild that; build the scaffolding instead.)_
 
 ## What it is
 
@@ -154,6 +159,38 @@ image/tile UX, comment pins tracking pan/zoom, ⌘. — the goal checklist.
 movable `srcdoc` iframe node); connectors that snap to nodes; in-app "New canvas" button;
 multiplayer cursors.
 
+## Canvas-owned prototypes (what "build a prototype on the canvas" means)
+
+A canvas is a **container of prototypes**, not just a board of references. When Rob (in a terminal
+session like this) says *"build a prototype on/in this canvas"*, it means:
+
+1. **Author it the normal way — in the terminal.** Rob doesn't type prompts into an in-canvas
+   widget; he asks an agent, and the agent writes a real prototype (static HTML/JS). The canvas is
+   where prototypes **live and are arranged**, not where they're generated.
+2. **It's scaffolded into a SUBFOLDER of the canvas**, not a loose folder in the opportunity:
+   `<space>/<opp>/prototypes/<canvas>/<slug>/index.html` → ships at `/<opp>/<canvas>/<slug>/`.
+   `build.js` copies the canvas folder recursively, so nested screens ship automatically and do
+   **not** appear as separate opportunity cards — they belong to the canvas. (No build.js change.)
+3. **A tile for it is auto-placed on the canvas board** (KV) so it shows up where Rob's working.
+4. **It's OWNED by the canvas**: removing it from the canvas **deletes the folder** — gone in
+   general, not merely unlinked. (Contrast: a tile added via the in-app **picker** that points at a
+   pre-existing top-level prototype is a mere *reference* — removing that tile just unlinks it.)
+
+**The tool that encodes this:** `node scripts/canvas-screen.mjs`
+- `add <canvasUrl> <slug> [--title "T"]` — create the subfolder (+ a starter `index.html`) and
+  place the tile. Then **write the real prototype into that index.html** and commit + push the
+  space repo. Lives at `<site>/<opp>/<canvas>/<slug>/` once deployed.
+- `rm  <canvasUrl> <slug>` — remove the tile **and** delete the folder (the ownership coupling).
+  Commit + push so the deletion ships.
+- `ls  <canvasUrl>` — reconcile view: nested screen folders vs board tiles; flags an orphaned
+  folder (no tile) or a dangling tile (no folder).
+
+It talks to two stores: **files** (space repo — you commit + push) and the **board** (KV, via the
+public `/__board` API — immediate). Notes: the board mutation **retries** because Cloudflare KV is
+eventually consistent (a single read-modify-write can miss a just-written node); avoid running it
+while you're simultaneously dragging nodes on the live canvas (last full-state write wins). The
+coupling is enforced HERE (terminal), because a canvas can't write git from the browser.
+
 ## Working on the canvas (start here if you're a fresh agent)
 
 **Where everything lives**
@@ -168,14 +205,8 @@ multiplayer cursors.
   every transform to re-run the overlay's `reposition()`. Normal pages: no `GVCanvas` → untouched.
 - **Insert-picker catalog**: `build.js` writes `dist/__canvas/catalog.json` (prototypes + pages +
   components across spaces, with poster thumbs). The Prototype tool searches it.
-- **Build-on-canvas** (✦ tool → `build` node): ask Claude for a screen, it generates a
-  self-contained HTML doc into a sandboxed `srcdoc` iframe node. The generated prototype lives as
-  node state `{type:"build", prompt, html, device}` in the **board doc (KV)** — embedded IN the
-  canvas, no files/git. Endpoint `aiBuild` in `src/_worker.js` (`POST /__ai/build {prompt,prior?}
-  → {html}`, **public + self-limiting** like `/__ai/summarize`, `ANTHROPIC_API_KEY` on live /
-  `AI_CLI_URL` offline via `scripts/offline.mjs` `/build`, model `claude-sonnet-4-6`). `renderBuild`
-  reuses the tile chrome (name, device toggle, scale-to-fit); "✦ Ask" = refine overlay (regenerates
-  with current html as `prior`). Latency ~30–60s (a full screen); loading state says so.
+- **Canvas-owned prototypes**: `scripts/canvas-screen.mjs` (see the section below) — scaffolds a
+  prototype into a canvas subfolder + places its tile on the board.
 - **A canvas instance IS a prototype**: `go-vocal/ux-ui-audit/prototypes/canvas/index.html` (a
   ~12-line loader) → lives at `/ux-ui-audit/canvas/`. Make more by copying that folder.
 
@@ -218,12 +249,13 @@ multiplayer cursors.
 
 **Backlog (pick with Rob — he reviews on the live URL and iterates fast)**
 - **DONE 2026-07-21** (this session): device picker + freeze-on-Stop, Cmd+D duplicate, tile/image
-  rename, picker-collapse + wheel-scroll fixes, no-store engine, and the **advanced pass**
-  (build-on-canvas — the ✦ Build node).
+  rename, picker-collapse + wheel-scroll fixes, no-store engine, and **canvas-owned prototypes**
+  (the `canvas-screen.mjs` scaffolding — nested subfolder + auto-placed tile + ownership coupling).
 - The **collaboration skill** — Claude reads board state + node names to co-work spatially
-  (resolve "that", cluster, summarise). NOW the next big one; the AI-legible model + names + the
-  new build nodes make it high-leverage.
-- Build-node polish: faster/streamed generation (Sonnet full-screen ~30–60s), a "duplicate as
-  starting point" flow, maybe seed a build node from a picked prototype's source.
+  (resolve "that", cluster, summarise). NOW the next big one; the AI-legible model + names make it
+  high-leverage.
+- Canvas-owned-prototype polish: an in-app "remove screen" affordance on owned tiles that records
+  the deletion for the terminal to reconcile (today: `canvas-screen.mjs rm`); a poster shot for a
+  new screen so its tile isn't blank until you go Live.
 - Proper cache-busting for `/__canvas/*.js|css` if we move off `no-store` (today: no-store).
 - Connectors that snap to nodes; in-app "New canvas" button; multiplayer cursors (same live-KV rail).

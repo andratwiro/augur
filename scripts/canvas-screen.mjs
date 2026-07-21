@@ -1,0 +1,197 @@
+#!/usr/bin/env node
+// canvas-screen — scaffold a prototype that is OWNED BY a canvas.
+//
+// The model (see augur/CANVAS.md "Canvas-owned prototypes"): a canvas is a container.
+// "Build a prototype on the canvas" = create a real prototype in a SUBFOLDER of the canvas
+// (`<opp>/prototypes/<canvas>/<slug>/index.html`, ships at `/<opp>/<canvas>/<slug>/`) AND
+// place a tile for it on that canvas's board. The screen is OWNED by the canvas: removing it
+// from the canvas deletes the folder too — gone in general, not merely unlinked. (A tile that
+// points at some pre-existing top-level prototype, added via the in-app picker, is a mere
+// REFERENCE — this tool never touches those.)
+//
+// Because a canvas can't write git from the browser, that create/remove coupling is enforced
+// HERE, in the terminal, by whoever authors the prototype (you + an agent). Use:
+//   node scripts/canvas-screen.mjs add <canvasUrl> <slug> [--title "Nice Title"]
+//   node scripts/canvas-screen.mjs rm  <canvasUrl> <slug>
+//   node scripts/canvas-screen.mjs ls  <canvasUrl>
+// e.g. node scripts/canvas-screen.mjs add /ux-ui-audit/canvas/ voting-screen --title "Voting"
+//
+// `add`/`rm` touch two things: the FILES (in the space repo, which you then commit + push) and
+// the canvas BOARD (KV, via the public /__board API — takes effect immediately). After `add`,
+// write the real prototype into the created index.html, then commit + push the space repo.
+
+import { readdirSync, existsSync, readFileSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");   // augur/
+const PARENT = path.join(ROOT, "..");                                           // god-mode container
+const SITE = process.env.CANVAS_SITE_ORIGIN || "https://govocal-prototypes.pages.dev";
+
+// ---- space resolution: map a canvas URL to its space repo + on-disk prototype dir ----------
+function spaces() {
+  // sibling dirs carrying a space.json (same rule build.js/offline use)
+  return readdirSync(PARENT, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith(".") && existsSync(path.join(PARENT, e.name, "space.json")))
+    .map((e) => {
+      let meta = {};
+      try { meta = JSON.parse(readFileSync(path.join(PARENT, e.name, "space.json"), "utf8")); } catch {}
+      return { dir: path.join(PARENT, e.name), id: meta.id || e.name, isDefault: !!meta.default };
+    });
+}
+
+// canvasUrl: "/ux-ui-audit/canvas/" (default space) or "/<spaceid>/<opp>/<canvas>/" (non-default)
+function resolve(canvasUrl) {
+  const segs = String(canvasUrl).replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  if (segs.length < 2) throw new Error(`canvas URL needs at least <opp>/<canvas>: got "${canvasUrl}"`);
+  const sp = spaces();
+  const named = sp.find((s) => !s.isDefault && s.id === segs[0]);
+  const space = named || sp.find((s) => s.isDefault) || sp[0];
+  if (!space) throw new Error("no space repo found (need a sibling dir with space.json)");
+  const rest = named ? segs.slice(1) : segs;             // drop the space-id prefix if present
+  if (rest.length < 2) throw new Error(`expected <opp>/<canvas> after the space, got "${rest.join("/")}"`);
+  const [opp, canvas] = rest;
+  const canvasDir = path.join(space.dir, opp, "prototypes", canvas);
+  if (!existsSync(path.join(canvasDir, "index.html")))
+    throw new Error(`no canvas at ${path.relative(PARENT, canvasDir)} (its index.html must exist first)`);
+  const boardPath = "/" + rest.join("/") + "/";          // KV board key path is the CANVAS url (space-prefixed on live via the URL you pass)
+  return { space, opp, canvas, canvasDir, canvasUrl: (named ? "/" + segs.join("/") : "/" + rest.join("/")) + "/", boardPath: (named ? "/" + segs.join("/") : "/" + rest.join("/")) + "/" };
+}
+
+// ---- board (KV) via the public API ---------------------------------------------------------
+async function getBoard(canvasUrl) {
+  const r = await fetch(`${SITE}/__board?path=${encodeURIComponent(canvasUrl)}`);
+  const j = await r.json().catch(() => ({}));
+  return j.doc || { v: 1, name: "Untitled canvas", view: { x: 0, y: 0, scale: 1 }, nodes: [] };
+}
+async function putBoard(canvasUrl, doc) {
+  const r = await fetch(`${SITE}/__board?path=${encodeURIComponent(canvasUrl)}`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ doc }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!j.ok) throw new Error("board save failed: " + JSON.stringify(j));
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Cloudflare KV is eventually consistent, so a single read-modify-write is racy (a stale read
+// can miss the very node you're trying to touch). Re-read + re-apply (idempotently) until the
+// board CONFIRMS the desired end state; also converges past a concurrent live edit rather than
+// clobbering it (each retry re-reads the latest). Best-effort: warns instead of failing hard.
+async function mutateBoard(boardPath, apply, confirm, label) {
+  for (let i = 0; i < 7; i++) {
+    const doc = await getBoard(boardPath);
+    doc.nodes = doc.nodes || [];
+    apply(doc);                       // idempotent: add-if-absent / remove-if-present
+    await putBoard(boardPath, doc);
+    await sleep(i === 0 ? 700 : 3500);
+    if (confirm(await getBoard(boardPath))) return true;
+  }
+  console.warn(`⚠ board ${label} written but not yet reflected (KV still propagating — should settle within ~1 min).`);
+  return false;
+}
+const uid = () => "n" + Math.random().toString(36).slice(2, 9);
+
+// place a new tile clear of existing nodes: to the right of the rightmost, aligned to the top
+function placeRightOf(nodes, w, h) {
+  const boxes = nodes.filter((n) => n.type !== "arrow" && typeof n.x === "number");
+  if (!boxes.length) return { x: -w / 2, y: -h / 2 };
+  const right = Math.max(...boxes.map((n) => n.x + (n.w || 240)));
+  const top = Math.min(...boxes.map((n) => n.y));
+  return { x: right + 60, y: top };
+}
+
+const STARTER = (title) => `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${title}</title>
+<style>
+  body { margin: 0; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; }
+  .wrap { min-height: 100vh; display: grid; place-items: center; padding: 40px; box-sizing: border-box; text-align: center; background: #f4f5f7; }
+  h1 { margin: 0 0 8px; font-size: 22px; }
+  p { margin: 0; color: #6b7280; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div>
+      <h1>${title}</h1>
+      <p>Scaffolded canvas screen — replace this with the real prototype.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
+// ---- commands ------------------------------------------------------------------------------
+async function cmdAdd(canvasUrl, slug, title) {
+  const { space, canvasDir, boardPath } = resolve(canvasUrl);
+  if (!/^[a-z0-9-]+$/.test(slug)) throw new Error("slug must be lowercase [a-z0-9-]");
+  const screenDir = path.join(canvasDir, slug);
+  const url = boardPath + slug + "/";
+  const name = title || slug;
+  if (!existsSync(screenDir)) {
+    mkdirSync(screenDir, { recursive: true });
+    writeFileSync(path.join(screenDir, "index.html"), STARTER(name));
+    console.log(`✓ created ${path.relative(PARENT, path.join(screenDir, "index.html"))}`);
+  } else {
+    console.log(`• folder exists, keeping its index.html`);
+  }
+  const hasTile = (d) => (d.nodes || []).some((n) => n.type === "tile" && n.url === url);
+  await mutateBoard(boardPath, (d) => {
+    if (hasTile(d)) return;
+    const w = 560, h = 360, { x, y } = placeRightOf(d.nodes, w, h);
+    d.nodes.push({ id: uid(), type: "tile", x, y, w, h, url, name });
+  }, hasTile, "add-tile");
+  console.log(`✓ tile "${name}" → ${url} is on the canvas board`);
+  console.log(`\nNext: write the real prototype into that index.html, then commit + push the ${path.basename(space.dir)} repo.`);
+  console.log(`Lives at ${SITE}${url} once deployed.`);
+}
+
+async function cmdRm(canvasUrl, slug) {
+  const { canvasDir, boardPath } = resolve(canvasUrl);
+  const screenDir = path.join(canvasDir, slug);
+  const url = boardPath + slug + "/";
+  // 1) remove the tile from the board (retry through KV consistency until it's confirmed gone)
+  const gone = (d) => !(d.nodes || []).some((n) => n.type === "tile" && n.url === url);
+  await mutateBoard(boardPath, (d) => { d.nodes = (d.nodes || []).filter((n) => !(n.type === "tile" && n.url === url)); }, gone, "remove-tile");
+  console.log(`✓ tile ${url} removed from the board`);
+  // 2) delete the folder — owned-by-the-canvas means removing it deletes it in general
+  if (existsSync(screenDir)) { rmSync(screenDir, { recursive: true, force: true }); console.log(`✓ deleted ${path.relative(PARENT, screenDir)}`); }
+  else console.log(`• folder ${path.relative(PARENT, screenDir)} did not exist`);
+  console.log(`\nNext: commit + push the space repo so the deletion ships.`);
+}
+
+async function cmdLs(canvasUrl) {
+  const { canvasDir, boardPath } = resolve(canvasUrl);
+  const folders = readdirSync(canvasDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && existsSync(path.join(canvasDir, e.name, "index.html")))
+    .map((e) => e.name);
+  const doc = await getBoard(boardPath);
+  const tileUrls = new Set((doc.nodes || []).filter((n) => n.type === "tile").map((n) => n.url));
+  console.log(`Canvas ${boardPath} — owned screens (nested folders) vs board tiles:\n`);
+  for (const f of folders) {
+    const url = boardPath + f + "/";
+    console.log(`  ${tileUrls.has(url) ? "●" : "○ (folder, no tile — orphaned)"}  ${f}  → ${url}`);
+  }
+  // tiles pointing under this canvas but with no folder = a dangling tile
+  for (const n of (doc.nodes || []).filter((n) => n.type === "tile" && n.url && n.url.startsWith(boardPath) && n.url !== boardPath)) {
+    const slug = n.url.slice(boardPath.length).replace(/\/$/, "");
+    if (!folders.includes(slug)) console.log(`  ⚠ tile with no folder: ${n.url} (dangling)`);
+  }
+  if (!folders.length) console.log("  (no owned screens yet)");
+}
+
+// ---- cli -----------------------------------------------------------------------------------
+const [cmd, canvasUrl, slug] = process.argv.slice(2);
+const titleIdx = process.argv.indexOf("--title");
+const title = titleIdx > -1 ? process.argv[titleIdx + 1] : "";
+try {
+  if (cmd === "add" && canvasUrl && slug) await cmdAdd(canvasUrl, slug, title);
+  else if (cmd === "rm" && canvasUrl && slug) await cmdRm(canvasUrl, slug);
+  else if (cmd === "ls" && canvasUrl) await cmdLs(canvasUrl);
+  else {
+    console.log("usage:\n  canvas-screen add <canvasUrl> <slug> [--title \"T\"]\n  canvas-screen rm  <canvasUrl> <slug>\n  canvas-screen ls  <canvasUrl>");
+    process.exit(1);
+  }
+} catch (e) { console.error("✗ " + e.message); process.exit(1); }
