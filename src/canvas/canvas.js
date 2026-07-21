@@ -32,7 +32,7 @@
   // ---- board state ---------------------------------------------------------
   var board = { v: 1, name: CFG.name || "Untitled canvas", view: { x: 0, y: 0, scale: 1 }, nodes: [] };
   var nodeEls = {};        // id -> DOM element
-  var selected = null;     // single-selection id (v1)
+  var selected = [];       // ids of selected nodes (click, shift-add, or marquee = multi)
   var liveTiles = [];      // ids of tiles currently showing a live iframe (LRU, capped)
   var transformCbs = [];   // listeners notified on every pan/zoom (comments overlay, sel bar)
 
@@ -113,19 +113,24 @@
     board.nodes.splice(i, 1);
     if (nodeEls[id]) { nodeEls[id].remove(); delete nodeEls[id]; }
     liveTiles = liveTiles.filter(function (t) { return t !== id; });
-    if (selected === id) { selected = null; hideSelBar(); }
+    selected = selected.filter(function (s) { return s !== id; }); if (selected.length !== 1) hideSelBar();
     scheduleSave();
   }
 
-  // ---- selection -----------------------------------------------------------
-  function select(id) {
-    if (selected && nodeEls[selected]) nodeEls[selected].classList.remove("sel");
-    selected = id;
-    if (id && nodeEls[id]) { nodeEls[id].classList.add("sel"); decorate(id); }
-    else clearDecor();
-    var n = id ? nodeById(id) : null;
-    if (n && n.type === "sticky") showSelBar(n); else hideSelBar();
+  // ---- selection (click, shift-add, or marquee = multi-select) -------------
+  function isSelected(id) { return selected.indexOf(id) >= 0; }
+  function setSelection(ids) {
+    selected.forEach(function (id) { if (nodeEls[id]) nodeEls[id].classList.remove("sel"); });
+    clearDecor();
+    selected = ids.slice();
+    selected.forEach(function (id) { if (nodeEls[id]) nodeEls[id].classList.add("sel"); });
+    if (selected.length === 1) {
+      var n = nodeById(selected[0]);
+      decorate(selected[0]);
+      if (n && n.type === "sticky") showSelBar(n); else hideSelBar();
+    } else hideSelBar();
   }
+  function select(id) { setSelection(id ? [id] : []); }
   var decorEls = [];
   function clearDecor() { decorEls.forEach(function (e) { e.remove(); }); decorEls = []; }
   function decorate(id) {
@@ -142,7 +147,7 @@
     Object.keys(nodeEls).forEach(function (id) { nodeEls[id].remove(); });
     nodeEls = {};
     board.nodes.forEach(renderNode);
-    if (selected) select(selected);
+    if (selected.length) setSelection(selected.slice());
   }
   function place(host, node) {
     host.style.left = node.x + "px"; host.style.top = node.y + "px";
@@ -162,7 +167,7 @@
     host.dataset.id = node.id;
     nodeEls[node.id] = host;
     world.appendChild(host);
-    if (node.id === selected) { host.classList.add("sel"); decorate(node.id); }
+    if (isSelected(node.id)) { host.classList.add("sel"); if (selected.length === 1) decorate(node.id); }
     return host;
   }
 
@@ -267,7 +272,7 @@
     host.innerHTML = '<svg width="' + (w + pad * 2) + '" height="' + (h + pad * 2) + '" style="overflow:visible">'
       + '<path d="M' + lx1 + " " + ly1 + " L" + lx2 + " " + ly2 + '"/>'
       + '<path d="M' + a1x + " " + a1y + " L" + lx2 + " " + ly2 + " L" + a2x + " " + a2y + '"/></svg>';
-    if (node.id === selected) {
+    if (isSelected(node.id) && selected.length === 1) {
       [["1", lx1, ly1], ["2", lx2, ly2]].forEach(function (p) {
         var hd = el("div", { class: "gvc-handle" });
         hd.style.left = p[1] + "px"; hd.style.top = p[2] + "px";
@@ -280,45 +285,67 @@
   function escapeHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
   // ---- pointer interaction (pan / move / resize / arrow handles) -----------
-  var drag = null, lastTap = { id: null, t: 0 }, panLock = false;
+  var drag = null, lastTap = { id: null, t: 0 }, panLock = false, spaceDown = false, marquee = null;
   root.addEventListener("pointerdown", function (e) {
     if (e.button !== 0) return;
     if (e.target.closest && e.target.closest("#gvc-ui")) return;
-    var nodeHost = (!panLock && e.target.closest) ? e.target.closest(".gvc-node") : null;
+    var pan = spaceDown || panLock;
+    var nodeHost = (!pan && e.target.closest) ? e.target.closest(".gvc-node") : null;
     if (nodeHost && nodeHost.classList.contains("editing")) return;
-    if (nodeHost) {
+    if (pan) {
+      drag = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: board.view.x, oy: board.view.y };
+      root.classList.add("panning");
+    } else if (nodeHost) {
       var id = nodeHost.dataset.id, node = nodeById(id), now = Date.now();
       if (id === lastTap.id && now - lastTap.t < 350 && (node.type === "sticky" || node.type === "text")) {
         lastTap = { id: null, t: 0 }; enterEdit(id); return; // double-tap → edit text, no drag
       }
       lastTap = { id: id, t: now };
-      select(id);
-      drag = { mode: "move", id: id, sx: e.clientX, sy: e.clientY, ox: node.x, oy: node.y, ox1: node.x1, oy1: node.y1, ox2: node.x2, oy2: node.y2, moved: false };
+      if (e.shiftKey) setSelection(isSelected(id) ? selected.filter(function (s) { return s !== id; }) : selected.concat([id]));
+      else if (!isSelected(id)) setSelection([id]);
+      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, items: selected.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
     } else {
-      select(null);
-      drag = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: board.view.x, oy: board.view.y };
-      root.classList.add("panning");
+      // empty drag → marquee selection (Figma/FigJam); panning is Space-drag or scroll/trackpad
+      if (!e.shiftKey) setSelection([]);
+      drag = { mode: "marquee", sx: e.clientX, sy: e.clientY, base: selected.slice() };
+      marquee = el("div", { class: "gvc-marquee" });
+      marquee.style.left = e.clientX + "px"; marquee.style.top = e.clientY + "px";
+      root.appendChild(marquee);
     }
     root.setPointerCapture(e.pointerId);
   });
   root.addEventListener("pointermove", function (e) {
     if (!drag) return;
-    var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+    var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy, sc = board.view.scale;
     if (drag.mode === "pan") { board.view.x = drag.ox + dx; board.view.y = drag.oy + dy; applyTransform(); }
     else if (drag.mode === "move") {
-      var node = nodeById(drag.id); if (!node) return;
-      var wdx = dx / board.view.scale, wdy = dy / board.view.scale;
+      var wdx = dx / sc, wdy = dy / sc;
       drag.moved = drag.moved || Math.abs(dx) + Math.abs(dy) > 2;
-      if (node.type === "arrow") { node.x1 = drag.ox1 + wdx; node.y1 = drag.oy1 + wdy; node.x2 = drag.ox2 + wdx; node.y2 = drag.oy2 + wdy; renderNode(node); }
-      else { node.x = drag.ox + wdx; node.y = drag.oy + wdy; var hh = nodeEls[drag.id]; hh.style.left = node.x + "px"; hh.style.top = node.y + "px"; }
+      drag.items.forEach(function (it) {
+        var n = nodeById(it.id); if (!n) return;
+        if (it.arrow) { n.x1 = it.ox1 + wdx; n.y1 = it.oy1 + wdy; n.x2 = it.ox2 + wdx; n.y2 = it.oy2 + wdy; renderNode(n); }
+        else { n.x = it.ox + wdx; n.y = it.oy + wdy; var h = nodeEls[it.id]; if (h) { h.style.left = n.x + "px"; h.style.top = n.y + "px"; } }
+      });
       positionSelBar();
     }
-    else if (drag.mode === "resize") { var n = drag.node; n.w = Math.max(48, drag.ow + dx / board.view.scale); n.h = Math.max(48, drag.oh + dy / board.view.scale); var re = nodeEls[n.id]; re.style.width = n.w + "px"; re.style.height = n.h + "px"; positionSelBar(); }
-    else if (drag.mode === "arrow") { var an = drag.node; if (drag.end === "1") { an.x1 = drag.px + dx / board.view.scale; an.y1 = drag.py + dy / board.view.scale; } else { an.x2 = drag.px + dx / board.view.scale; an.y2 = drag.py + dy / board.view.scale; } renderNode(an); }
+    else if (drag.mode === "marquee") {
+      var l = Math.min(drag.sx, e.clientX), t = Math.min(drag.sy, e.clientY), w = Math.abs(dx), h = Math.abs(dy);
+      marquee.style.left = l + "px"; marquee.style.top = t + "px"; marquee.style.width = w + "px"; marquee.style.height = h + "px";
+      var hits = drag.base.slice();
+      board.nodes.forEach(function (n) {
+        var en = nodeEls[n.id]; if (!en) return;
+        var r = en.getBoundingClientRect();
+        if (r.right >= l && r.left <= l + w && r.bottom >= t && r.top <= t + h && hits.indexOf(n.id) < 0) hits.push(n.id);
+      });
+      setSelection(hits);
+    }
+    else if (drag.mode === "resize") { var n2 = drag.node; n2.w = Math.max(48, drag.ow + dx / sc); n2.h = Math.max(48, drag.oh + dy / sc); var re = nodeEls[n2.id]; re.style.width = n2.w + "px"; re.style.height = n2.h + "px"; positionSelBar(); }
+    else if (drag.mode === "arrow") { var an = drag.node; if (drag.end === "1") { an.x1 = drag.px + dx / sc; an.y1 = drag.py + dy / sc; } else { an.x2 = drag.px + dx / sc; an.y2 = drag.py + dy / sc; } renderNode(an); }
   });
   root.addEventListener("pointerup", function () {
     if (!drag) return;
     root.classList.remove("panning");
+    if (drag.mode === "marquee" && marquee) { marquee.remove(); marquee = null; }
     if (drag.mode === "arrow") renderNode(drag.node);
     drag = null;
     scheduleSave();
@@ -336,10 +363,16 @@
   // ---- keyboard ------------------------------------------------------------
   document.addEventListener("keydown", function (e) {
     if (e.metaKey && e.key === ".") { e.preventDefault(); ui.classList.toggle("hidden"); return; }
-    var editing = document.activeElement && (document.activeElement.isContentEditable || /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName));
+    var ae = document.activeElement, tag = ae ? ae.tagName : "";
+    var editing = ae && (ae.isContentEditable || tag === "INPUT" || tag === "TEXTAREA");
+    // Hold Space to pan (hand cursor), Figma/FigJam convention; dragging empty space marquee-selects.
+    if (e.code === "Space" && !editing && tag !== "BUTTON") { if (!spaceDown) { spaceDown = true; root.classList.add("hand"); } e.preventDefault(); return; }
     if (editing) return;
-    if ((e.key === "Backspace" || e.key === "Delete") && selected) { e.preventDefault(); removeNode(selected); select(null); }
-    if (e.key === "Escape") select(null);
+    if ((e.key === "Backspace" || e.key === "Delete") && selected.length) { e.preventDefault(); selected.slice().forEach(removeNode); setSelection([]); }
+    if (e.key === "Escape") { setSelection([]); if (picker) picker.classList.add("hidden"); }
+  });
+  document.addEventListener("keyup", function (e) {
+    if (e.code === "Space") { spaceDown = false; if (!panLock) root.classList.remove("hand"); }
   });
 
   // ---- image drop from desktop --------------------------------------------
@@ -370,7 +403,7 @@
   }
 
   // ---- sticky selection toolbar + color palette ---------------------------
-  var selBar, palette;
+  var selBar, palette, picker, catalog = null;
   function showSelBar(node) {
     selBar.innerHTML = "";
     var dot = el("div", { class: "dot" }); dot.style.background = node.color || DEFAULT_STICKY;
@@ -404,7 +437,8 @@
   }
   function positionSelBar() {
     if (!selBar || selBar.classList.contains("hidden")) return;
-    var node = nodeById(selected); if (!node) { hideSelBar(); return; }
+    if (selected.length !== 1) { hideSelBar(); return; }
+    var node = nodeById(selected[0]); if (!node) { hideSelBar(); return; }
     var p = worldToScreen(node.x + (node.w || 150) / 2, node.y);
     var bw = selBar.offsetWidth || 200;
     var left = Math.max(8, Math.min(innerWidth - bw - 8, p.x - bw / 2));
@@ -449,7 +483,7 @@
     bar.appendChild(cursor); bar.appendChild(hand); bar.appendChild(el("div", { class: "sep" }));
 
     var TOOLS = [
-      { t: "sticky", title: "Sticky note", svg: '<path d="M4 4h11v7l-4 4H4z"/><path d="M15 11h-4v4"/>' },
+      { t: "sticky", title: "Sticky note", svg: '<path d="M4 4h11v7l-4 4H4z" fill="#fce495" stroke="#dfbe57"/><path d="M15 11h-4v4" fill="none" stroke="#dfbe57"/>' },
       { t: "text", title: "Text", svg: '<path d="M4 5h12"/><path d="M10 5v11"/>' },
       { t: "arrow", title: "Arrow", svg: '<path d="M4 16 15 5"/><path d="M9.5 5H15v5.5"/>' },
       { t: "image", title: "Image", svg: '<rect x="3" y="4.5" width="14" height="11" rx="2"/><circle cx="7.4" cy="9" r="1.3"/><path d="M4 14l3.6-3.4 3 3 3-3L17 14"/>' },
@@ -466,6 +500,7 @@
     selBar = el("div", { id: "gvc-selbar", class: "hidden" });
     palette = el("div", { id: "gvc-palette", class: "hidden" });
     ui.appendChild(selBar); ui.appendChild(palette);
+    buildPicker();
     transformCbs.push(positionSelBar);
     window.addEventListener("resize", positionSelBar);
   }
@@ -477,10 +512,13 @@
 
   function startToolDrag(e, type, chip) {
     if (type === "image") { pickImage(centerWorld()); return; }
-    if (type === "tile") { addPrototypeTile(centerWorld()); return; }
-    var ghost = el("div", { class: "gvc-ghost" });
-    ghost.appendChild(chip.cloneNode(true)); ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px";
+    if (type === "tile") { openPicker(); return; }
+    var ghost;
+    if (type === "sticky") { ghost = el("div", { class: "gvc-ghost gvc-ghost-sticky" }); }
+    else { ghost = el("div", { class: "gvc-ghost" }); ghost.appendChild(chip.cloneNode(true)); }
+    ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px";
     document.body.appendChild(ghost);
+    if (type === "sticky") requestAnimationFrame(function () { ghost.classList.add("in"); });
     function move(ev) { ghost.style.left = ev.clientX + "px"; ghost.style.top = ev.clientY + "px"; }
     function up(ev) {
       document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); ghost.remove();
@@ -490,10 +528,11 @@
     document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
   }
   function spawn(type, w) {
-    if (type === "sticky") { var n = addNode({ type: "sticky", x: w.x - 80, y: w.y - 80, w: 160, h: 160, text: "", color: DEFAULT_STICKY, author: ME }); select(n.id); setTimeout(function () { enterEdit(n.id); }, 0); }
+    if (type === "sticky") { var n = addNode({ type: "sticky", x: w.x - 80, y: w.y - 80, w: 160, h: 160, text: "", color: DEFAULT_STICKY, author: ME }); select(n.id); pop(n.id); setTimeout(function () { enterEdit(n.id); }, 0); }
     else if (type === "text") { var t = addNode({ type: "text", x: w.x, y: w.y, text: "" }); select(t.id); setTimeout(function () { enterEdit(t.id); }, 0); }
     else if (type === "arrow") { var a = addNode({ type: "arrow", x1: w.x - 60, y1: w.y, x2: w.x + 60, y2: w.y }); select(a.id); }
   }
+  function pop(id) { var h = nodeEls[id]; if (!h) return; h.classList.add("gvc-pop"); setTimeout(function () { h.classList.remove("gvc-pop"); }, 240); }
   function centerWorld() { return screenToWorld(innerWidth / 2, innerHeight / 2); }
   function pickImage(w) {
     var inp = el("input", { type: "file", accept: "image/*", multiple: true }); inp.style.display = "none"; document.body.appendChild(inp);
@@ -503,11 +542,52 @@
     });
     inp.click();
   }
-  function addPrototypeTile(w) {
-    var url = prompt("Prototype URL or path to embed (e.g. /ux-ui-audit/status/ )", "");
-    if (!url) return; url = url.trim();
-    if (!/^https?:/.test(url) && url[0] !== "/") url = "/" + url;
-    addNode({ type: "tile", x: w.x - 210, y: w.y - 150, w: 420, h: 300, url: url });
+  // ---- insert picker: search prototypes / pages / components --------------
+  var pickTab = "all", pickQuery = "";
+  function buildPicker() {
+    picker = el("div", { id: "gvc-picker", class: "hidden" });
+    var inp = el("input", { type: "text", placeholder: "Search prototypes, pages, components…" });
+    inp.addEventListener("input", function () { pickQuery = inp.value.trim().toLowerCase(); renderPicker(); });
+    inp.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Escape") picker.classList.add("hidden"); });
+    var x = el("button", { class: "x", type: "button", html: "&times;" });
+    x.addEventListener("click", function () { picker.classList.add("hidden"); });
+    var tabs = el("div", { class: "tabs" });
+    [["all", "All"], ["prototype", "Prototypes"], ["page", "Pages"], ["component", "Components"]].forEach(function (t) {
+      var tb = el("div", { class: "tab" + (t[0] === "all" ? " on" : ""), text: t[1] });
+      tb.addEventListener("click", function () { pickTab = t[0]; tabs.querySelectorAll(".tab").forEach(function (o) { o.classList.remove("on"); }); tb.classList.add("on"); renderPicker(); });
+      tabs.appendChild(tb);
+    });
+    picker.appendChild(el("div", { class: "head" }, [inp, x]));
+    picker.appendChild(tabs);
+    picker.appendChild(el("div", { class: "grid" }));
+    ui.appendChild(picker);
+  }
+  function openPicker() {
+    picker.classList.remove("hidden");
+    var inp = picker.querySelector("input"); inp.value = ""; pickQuery = ""; inp.focus();
+    if (catalog) renderPicker();
+    else fetch("/__canvas/catalog.json").then(function (r) { return r.json(); }).then(function (d) { catalog = d || []; renderPicker(); }).catch(function () { catalog = []; renderPicker(); });
+  }
+  function renderPicker() {
+    var grid = picker.querySelector(".grid"); grid.innerHTML = "";
+    var items = (catalog || []).filter(function (it) {
+      if (pickTab !== "all" && it.type !== pickTab) return false;
+      if (pickQuery && (it.title + " " + (it.group || "") + " " + it.url).toLowerCase().indexOf(pickQuery) < 0) return false;
+      return true;
+    }).slice(0, 60);
+    if (!items.length) { grid.appendChild(el("div", { class: "empty", text: catalog ? "No matches" : "Loading…" })); return; }
+    items.forEach(function (it) {
+      var thumb = el("div", { class: "thumb" });
+      if (it.thumb) thumb.style.backgroundImage = "url(" + it.thumb + ")"; else thumb.textContent = it.type;
+      var card = el("div", { class: "card" }, [thumb, el("div", { class: "cap" }, [el("div", { class: "t", text: it.title }), el("div", { class: "ty", text: it.type })])]);
+      card.addEventListener("click", function () { insertTile(it); });
+      grid.appendChild(card);
+    });
+  }
+  function insertTile(it) {
+    var w = centerWorld();
+    var n = addNode({ type: "tile", x: w.x - 210, y: w.y - 150, w: 420, h: 300, url: it.url, name: it.title, thumb: it.thumb || undefined });
+    select(n.id); picker.classList.add("hidden");
   }
   function resetView() { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; applyTransform(); scheduleSave(); }
 

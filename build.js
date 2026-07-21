@@ -57,6 +57,9 @@ const SRC_WORKER = path.join(ROOT, "src", "_worker.js");
 //   BASE              : URL prefix for the active space ("" for the default, else "/<id>")
 //   DIST_SPACE        : where this space's content is written (DIST, or DIST/<id>)
 let DS_ROOT, WS_ROOT, BASE = "", DIST_SPACE = DIST;
+// Canvas insert-picker catalog — every embeddable thing across spaces (prototypes, pages,
+// components), accumulated per buildSpace and written to dist/__canvas/catalog.json.
+let CANVAS_CATALOG = [];
 // SPACE_KEY: prefix for overlay KV keys that are keyed by "<opp>/<proto>" rather than by
 // URL path — i.e. dev-status chips and rename overrides. "" for the default space (so its
 // existing KV entries are untouched), "<id>/" otherwise, so a /<id>/ space's statuses /
@@ -4032,6 +4035,15 @@ async function buildSpace(space) {
   // Composition graph, derived from this space's canonical CSS (the honesty backbone).
   const graph = await buildGraph();
 
+  // Canvas insert-picker catalog: every embeddable thing in this space, so the canvas
+  // "Prototype" tool can search + insert instead of pasting a URL. (BASE carries the space
+  // prefix; poster preview.webp becomes the thumbnail.)
+  for (const opp of opportunities) for (const p of opp.prototypes) {
+    CANVAS_CATALOG.push({ type: "prototype", title: p.name, group: opp.name, url: `${BASE}/${opp.name}/${p.href}`, thumb: p.poster ? `${BASE}/${opp.name}/${p.href}preview.webp` : null });
+  }
+  for (const p of pages) CANVAS_CATALOG.push({ type: "page", title: p.name, group: p.surface || "", url: `${BASE}/pages/${p.href}`, thumb: p.poster ? `${BASE}/pages/${p.href}preview.webp` : null });
+  for (const c of components) CANVAS_CATALOG.push({ type: "component", title: c.name, url: `${BASE}/components/${c.href}`, thumb: c.poster ? `${BASE}/components/${c.href}preview.webp` : null });
+
   // Publish the nav context BEFORE any render so the left rail (space switcher +
   // Opportunities/Playground + Library) is identical on every page of this space.
   NAV_STATE.opportunities = opportunities;
@@ -4343,6 +4355,7 @@ async function main() {
   await fs.mkdir(path.join(DIST, "__canvas"), { recursive: true });
   await fs.copyFile(SRC_CANVAS_JS, path.join(DIST, "__canvas", "canvas.js"));
   await fs.copyFile(SRC_CANVAS_CSS, path.join(DIST, "__canvas", "canvas.css"));
+  await fs.writeFile(path.join(DIST, "__canvas", "catalog.json"), JSON.stringify(CANVAS_CATALOG), "utf8");
 
   // Self-hosted fonts → /fonts/ (served immutable + public by the worker). Replaces
   // the render-blocking Google Fonts link; one variable woff2 covers every weight.
