@@ -1,6 +1,6 @@
 # Canvas — a capability template for infinite-canvas boards
 
-> **Status:** LIVE + iterating (2026-07-21). Core shipped, then many live-feedback rounds:
+> **Status:** LIVE + iterating (2026-07-22). Core shipped, then many live-feedback rounds:
 > marquee/space model, styled toolbar + sticky options, search picker, tile **device picker**
 > (desktop/tablet/phone → real responsive preview) + **freeze-on-Stop**, **Cmd+D duplicate**,
 > tile/image **rename**, and **canvas-owned prototypes** — a canvas is a *container*; a prototype
@@ -8,6 +8,11 @@
 > canvas** and auto-placed as a tile, owned by it (remove it → delete it). Spine: hand-rolled ·
 > canvas = a template-born prototype file (not a platform overlay) · shared state in KV · AI-legible
 > via names. **New agents: read "Working on the canvas" + "Canvas-owned prototypes" below first.**
+> **2026-07-22: full FigJam toolbar rebuild** — illustrated marker + sticky + shape-cluster tools,
+> draw sub-toolbar (marker/highlighter/washi/eraser · thin/thick · colors), shapes sub-toolbar
+> (connectors + shape grid + More shapes), stamps, sections, tables, speech bubbles, freehand
+> `draw` nodes, FigJam paper background, tool shortcuts, and **mobile/touch support** (one-finger
+> pan, two-finger pinch zoom, compact toolbar). Playwright-verified ≥95% visual match to FigJam.
 > Next big one: the **collaboration skill** (Claude reads the board to co-work).
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
@@ -91,8 +96,10 @@ genuinely harder.
    absolutely positioned in world coords; pointer pan/drag/select; rAF-batched transform
    writes. DOM is plenty at this scale (tens–low-hundreds of nodes); no WebGL. Virtualize only
    if boards get big (not v1).
-2. **Node registry** — pluggable node types, each `render + serialize`. v1: `sticky`, `text`,
-   `image`, `tile` (prototype embed).
+2. **Node registry** — pluggable node types, each `render + serialize`. Today: `sticky`, `text`,
+   `image`, `tile` (prototype embed), `arrow` (kinds: straight/elbow/curved/line), `draw`
+   (freehand marker/highlighter/washi strokes), `shape` (16 geometries + centered editable
+   text; `bubble` is a shape), `section` (background container), `table`, `stamp` (emoji).
 3. **Board document** — JSON `{id, name, nodes:[…], focus:{…}}` in KV, keyed by the canvas
    file's URL.
 
@@ -245,7 +252,17 @@ coupling is enforced HERE (terminal), because a canvas can't write git from the 
   state survives; cap is total loaded iframes (`MAX_LIVE_TILES`), LRU-evict to poster.
 - The board + `/__ai/build` endpoints are **public by design** (a canvas is a published prototype).
 - **Interaction model**: empty drag = marquee multi-select; pan = scroll/trackpad or Space-drag /
-  hand tool. Don't revert to drag-to-pan.
+  hand tool. Don't revert to drag-to-pan. **Exception — touch**: one finger on empty canvas pans,
+  two fingers pinch-zoom (phones have no trackpad/marquee need); armed tools still act on one
+  finger. A second finger landing mid-stroke cancels the stroke (it's the palm) and pinches.
+- **The FigJam toolbar** (rebuilt 2026-07-22, verified against real FigJam screenshots): tool
+  state is one `TOOL` object (`setTool()`), sub-toolbars sync from it (`syncBars()`). Shortcuts:
+  V select · H hand · M marker · S sticky · T text · E stamp · R square · O circle · L line ·
+  X elbow · ⇧S section · ⇧T table · Esc back to select. Drawing keeps the marker armed; shapes/
+  sticky/text/table place once then return to select; stamps stay armed (FigJam behaviour). The
+  eraser deletes whole `draw` strokes only. Sections render behind everything (`insertBefore`).
+  The illustrated pen/sticky/cluster arts are inline SVGs in canvas.js (`PEN_ART`/`STICKY_ART`/
+  `CLUSTER_ICON`) — keep gradients/ids unique, they're singletons in the bar.
 
 **Backlog (pick with Rob — he reviews on the live URL and iterates fast)**
 - **DONE 2026-07-21** (this session): device picker + freeze-on-Stop, Cmd+D duplicate, tile/image

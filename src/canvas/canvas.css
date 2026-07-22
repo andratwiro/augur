@@ -1,19 +1,24 @@
 /* Augur Canvas — hand-rolled infinite-canvas engine. Served from /__canvas/canvas.css.
    A "canvas" is a prototype that mounts Augur's shared infinite-canvas engine; nodes live in a
-   single CSS-transformed "world" layer, the UI sits in a fixed layer above it. See CANVAS.md. */
+   single CSS-transformed "world" layer, the UI sits in a fixed layer above it. See CANVAS.md.
+   The chrome is a faithful FigJam rebuild: warm paper background + dot grid, the bottom pill
+   toolbar with illustrated marker/sticky tools, and the draw/shapes/stamps sub-toolbars. */
 
-html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 
 #gvc-root {
   position: fixed; inset: 0; overflow: hidden; touch-action: none;
   font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #1a1a1a; user-select: none; -webkit-user-select: none;
-  background-color: #f4f5f7;
-  background-image: radial-gradient(circle, #d0d4db 1.1px, transparent 1.2px);
+  color: #1e1e1e; user-select: none; -webkit-user-select: none;
+  /* FigJam paper: warm light grey + a fine warm dot grid */
+  background-color: #f3f2f0;
+  background-image: radial-gradient(circle, #d3d1cd 1.1px, transparent 1.3px);
   background-size: 26px 26px; background-position: 0 0;
+  /* gridStep() keeps the spacing in a tighter 17-34px band (FigJam density) as you zoom */
 }
 #gvc-root.panning { cursor: grabbing; }
 #gvc-root.hand { cursor: grab; }
+#gvc-root.crosshair { cursor: crosshair; }
 #gvc-root.dropping::after {
   content: "Drop image to place it"; position: fixed; inset: 0; display: flex;
   align-items: center; justify-content: center; font-size: 22px; color: #2563eb; font-weight: 600;
@@ -39,10 +44,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 .gvc-sticky .gvc-txt { outline: none; white-space: pre-wrap; word-break: break-word; min-height: 1em; }
 .gvc-sticky .gvc-txt:empty::before { content: "Type anything"; color: rgba(0, 0, 0, .32); }
 .gvc-sticky .gvc-author { position: absolute; left: 14px; bottom: 8px; font-size: 12px; color: rgba(0, 0, 0, .5); pointer-events: none; max-width: calc(100% - 28px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.gvc-sticky.editing, .gvc-text.editing { cursor: text; }
-.gvc-sticky.editing .gvc-txt, .gvc-text.editing .gvc-txt { cursor: text; }
+.gvc-sticky.editing, .gvc-text.editing, .gvc-shape.editing { cursor: text; }
+.gvc-sticky.editing .gvc-txt, .gvc-text.editing .gvc-txt, .gvc-shape.editing .gvc-txt { cursor: text; }
 
-.gvc-text { padding: 4px 6px; font-size: 16px; color: #1a1a1a; cursor: grab; }
+.gvc-text { padding: 4px 6px; font-size: 16px; color: #1e1e1e; cursor: grab; }
 .gvc-text .gvc-txt { outline: none; white-space: pre-wrap; word-break: break-word; min-width: 40px; min-height: 1em; }
 .gvc-text .gvc-txt:empty::before { content: "Text"; color: rgba(0, 0, 0, .3); }
 
@@ -72,7 +77,32 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 
 .gvc-arrow { cursor: grab; }
 .gvc-arrow svg { display: block; overflow: visible; }
-.gvc-arrow svg path { fill: none; stroke: #374151; stroke-width: 2.5; }
+.gvc-arrow svg path { fill: none; stroke: #374151; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* freehand strokes: the host box is the stroke bbox; the svg hangs -pad outside it so round
+   caps never clip. Highlighter multiplies like a real marker over content. */
+.gvc-draw { cursor: grab; }
+.gvc-draw svg { position: absolute; overflow: visible; }
+.gvc-draw svg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.gvc-draw.hl svg { mix-blend-mode: multiply; }
+.gvc-drawing { position: absolute; left: 0; top: 0; pointer-events: none; }
+.gvc-drawing svg { position: absolute; overflow: visible; }
+
+/* shapes: geometry svg stretched to the node box, editable text centered on top */
+.gvc-shape { cursor: grab; }
+.gvc-shape svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gvc-shape .gvc-txt { position: absolute; inset: 12%; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; outline: none; overflow: hidden; white-space: pre-wrap; word-break: break-word; }
+
+/* sections: translucent background containers, label top-left (FigJam) */
+.gvc-section { background: rgba(255, 255, 255, .62); border: 1px solid rgba(0, 0, 0, .08); border-radius: 12px; cursor: grab; }
+.gvc-section > .gvc-name { top: 8px; left: 12px; font-size: 13px; font-weight: 600; color: #454545; }
+
+/* tables: CSS grid of editable cells, tinted header row */
+.gvc-table { display: grid; background: #fff; border: 1px solid #dcdbe0; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, .08); cursor: grab; }
+.gvc-cell { border-right: 1px solid #e6e5ea; border-bottom: 1px solid #e6e5ea; padding: 8px 10px; font-size: 13px; outline: none; overflow: hidden; min-width: 0; }
+.gvc-cell.hd { background: #f1edff; font-weight: 600; }
+
+.gvc-stamp { display: flex; align-items: center; justify-content: center; cursor: grab; line-height: 1; }
 
 .gvc-handle { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: crosshair; z-index: 2; }
 .gvc-resize { position: absolute; right: -7px; bottom: -7px; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: nwse-resize; z-index: 2; }
@@ -82,27 +112,129 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 #gvc-ui.hidden { opacity: 0; pointer-events: none !important; }
 #gvc-ui > * { pointer-events: auto; }
 
-#gvc-topbar { position: fixed; top: 14px; left: 16px; display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e9ebee; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 6px 8px; }
+#gvc-topbar { position: fixed; top: 14px; left: 16px; display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 6px 8px; }
 #gvc-topbar .back { border: 0; background: 0; padding: 6px 9px; border-radius: 8px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 5px; }
 #gvc-topbar .back:hover { background: #f3f4f6; }
 #gvc-topbar .nm { font-weight: 600; padding: 6px 8px; border-radius: 8px; cursor: text; outline: none; min-width: 60px; max-width: 300px; white-space: nowrap; overflow: hidden; }
 #gvc-topbar .nm:hover { background: #f9fafb; }
 
-#gvc-zoom { position: fixed; bottom: 20px; left: 16px; display: flex; align-items: center; gap: 2px; background: #fff; border: 1px solid #e9ebee; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 3px; }
-#gvc-zoom button { border: 0; background: 0; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 16px; color: #374151; }
-#gvc-zoom button:hover { background: #f3f4f6; }
-#gvc-zoom .pct { font-size: 12px; color: #6b7280; min-width: 44px; text-align: center; cursor: pointer; }
+#gvc-zoom { position: fixed; bottom: 24px; left: 16px; display: flex; align-items: center; gap: 2px; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 4px 16px rgba(0, 0, 0, .10); padding: 5px; }
+#gvc-zoom button { border: 0; background: 0; width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 16px; color: #1e1e1e; }
+#gvc-zoom button:hover { background: #f3f2f0; }
+#gvc-zoom .pct { font-size: 13px; color: #1e1e1e; min-width: 48px; text-align: center; cursor: pointer; }
 
-/* bottom toolbar — FigJam-style icon pill */
-#gvc-toolbar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; background: #fff; border: 1px solid #e9ebee; border-radius: 16px; box-shadow: 0 10px 34px rgba(0, 0, 0, .16), 0 1px 3px rgba(0, 0, 0, .08); padding: 6px; }
-#gvc-toolbar .tool { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 11px; cursor: pointer; color: #3b3f46; user-select: none; position: relative; transition: background .12s, color .12s; }
-#gvc-toolbar .tool:hover { background: #f2f3f5; }
-#gvc-toolbar .tool.on { background: #7b5bff; color: #fff; }
-#gvc-toolbar .tool[data-t="sticky"], #gvc-toolbar .tool[data-t="text"], #gvc-toolbar .tool[data-t="arrow"] { cursor: grab; }
-#gvc-toolbar .tool svg { width: 21px; height: 21px; }
-#gvc-toolbar .tool .tip { position: absolute; bottom: 49px; left: 50%; transform: translateX(-50%); background: #1f2430; color: #fff; font-size: 11px; white-space: nowrap; padding: 3px 8px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .12s; }
-#gvc-toolbar .tool:hover .tip { opacity: .96; }
-#gvc-toolbar .sep { width: 1px; align-self: stretch; background: #ebedf0; margin: 5px 4px; }
+/* ---- bottom toolbar — the FigJam pill ------------------------------------- */
+#gvc-toolbar {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 2px; height: 54px;
+  background: #fff; border-radius: 15px; padding: 0 7px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 12px 32px rgba(0, 0, 0, .14);
+}
+#gvc-toolbar .tool {
+  display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;
+  border-radius: 10px; cursor: pointer; color: #1e1e1e; user-select: none; position: relative;
+  transition: background .12s, color .12s;
+}
+#gvc-toolbar .tool:hover { background: #f2f1ef; }
+#gvc-toolbar .tool.on { background: #7b61ff; color: #fff; }
+#gvc-toolbar .tool svg { width: 25px; height: 25px; }
+#gvc-toolbar .sep { width: 1px; align-self: stretch; background: #e5e4e2; margin: 0 5px; }
+
+/* the illustrated marker + sticky: full-height slots whose art fills the pill and lifts on
+   hover; when armed the whole slot tints grey (FigJam) */
+#gvc-toolbar .tool.big { width: 54px; height: 54px; border-radius: 9px; }
+#gvc-toolbar .tool.big:hover { background: transparent; }
+#gvc-toolbar .tool.big.armed { background: #ececea; }
+#gvc-toolbar .tool.big .art { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); transition: transform .18s cubic-bezier(.3, 1.4, .6, 1); pointer-events: none; }
+#gvc-toolbar .tool.big:hover .art { transform: translateX(-50%) translateY(-5px); }
+#gvc-toolbar .art.pen { height: 54px; width: 35px; }
+#gvc-toolbar .art.sticky { height: 54px; width: 60px; }
+#gvc-toolbar .tool[data-t="sticky"] { width: 62px; }
+
+/* the shape cluster (big square + long curved arrow + circle, FigJam's illustrated cluster) */
+#gvc-toolbar .tool.cluster { width: 62px; height: 54px; border-radius: 9px; }
+#gvc-toolbar .tool.cluster svg { width: 46px; height: 39px; }
+#gvc-toolbar .tool.cluster.armed { background: #ececea; }
+
+/* the round grey insert button at the end */
+#gvc-toolbar .tool.plus { width: 37px; height: 37px; border-radius: 50%; background: #f0efed; margin-left: 3px; }
+#gvc-toolbar .tool.plus:hover { background: #e7e6e4; }
+#gvc-toolbar .tool.plus svg { width: 20px; height: 20px; }
+
+/* tooltips: dark with a caret notch, name + grey shortcut key, shown after a beat (FigJam) */
+#gvc-toolbar .tool .tip, .gvc-subbar .sbtn .tip, #gvc-moreshapes .sbtn .tip {
+  position: absolute; bottom: calc(100% + 11px); left: 50%; transform: translateX(-50%);
+  background: #1e1e1e; color: #fff; font-size: 13px; font-weight: 400; white-space: nowrap;
+  padding: 6px 10px; border-radius: 7px; opacity: 0; pointer-events: none; transition: opacity .1s;
+}
+#gvc-toolbar .tool .tip::after, .gvc-subbar .sbtn .tip::after, #gvc-moreshapes .sbtn .tip::after {
+  content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 5px solid transparent; border-top-color: #1e1e1e;
+}
+#gvc-toolbar .tool:hover .tip, .gvc-subbar .sbtn:hover .tip, #gvc-moreshapes .sbtn:hover .tip { opacity: 1; transition-delay: .35s; }
+#gvc-toolbar.plusopen .tool.plus .tip { opacity: 0 !important; }
+#gvc-toolbar .tool .tip .k, .gvc-subbar .sbtn .tip .k, #gvc-moreshapes .sbtn .tip .k { color: #999; margin-left: 8px; }
+
+/* ---- sub-toolbars (draw / shapes / stamps) -------------------------------- */
+.gvc-subbar {
+  position: fixed; bottom: 86px; left: 50%; transform: translateX(calc(-50% - 56px));
+  display: flex; align-items: center; gap: 2px;
+  background: #fff; border-radius: 14px; padding: 6px 7px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 10px 26px rgba(0, 0, 0, .14);
+  animation: gvc-rise .15s ease-out;
+}
+#gvc-stampbar { transform: translateX(calc(-50% + 60px)); }
+@keyframes gvc-rise { from { opacity: 0; margin-bottom: -6px; } }
+.gvc-subbar.hidden, #gvc-moreshapes.hidden, #gvc-plusmenu.hidden { display: none; }
+.gvc-subbar .sbtn {
+  display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border-radius: 9px; cursor: pointer; color: #1e1e1e; position: relative;
+  transition: background .12s;
+}
+.gvc-subbar .sbtn:hover { background: #f2f1ef; }
+.gvc-subbar .sbtn.on { background: #e9e1ff; }
+.gvc-subbar .sbtn.sel { box-shadow: inset 0 0 0 2px #7b61ff; }
+.gvc-subbar .sbtn svg { width: 25px; height: 25px; }
+.gvc-subbar .sbtn svg.shp { width: 20px; height: 20px; }
+.gvc-subbar .sbtn.stampb { font-size: 22px; }
+.gvc-subbar .dsep { width: 1px; align-self: stretch; background: #e5e4e2; margin: -6px 5px; }
+
+/* current-shape chip + chevron at the left of the shapes bar */
+.gvc-subbar .cur { display: flex; align-items: center; gap: 6px; padding: 0 11px; height: 40px; border-radius: 9px; cursor: pointer; }
+.gvc-subbar .cur:hover { background: #f2f1ef; }
+.gvc-subbar .cur svg.shp { width: 22px; height: 22px; }
+.gvc-subbar .cur svg.chev { width: 10px; height: 6px; flex: 0 0 auto; }
+
+/* marker color dots (+ the rainbow custom-color well) */
+.gvc-subbar .dot { width: 23px; height: 23px; border-radius: 50%; margin: 0 4px; cursor: pointer; flex: 0 0 auto; position: relative; }
+.gvc-subbar .dot.white { box-shadow: inset 0 0 0 1px #ddd; }
+.gvc-subbar .dot.selc { box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px #7b61ff; }
+.gvc-subbar .dot.white.selc { box-shadow: inset 0 0 0 1px #ddd, 0 0 0 2.5px #fff, 0 0 0 4.5px #7b61ff; }
+.gvc-subbar .dot.rainbow { background: conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d95, #ff3b30); }
+.gvc-subbar .dot.rainbow input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.gvc-subbar .more { border: 1px solid #e3e2e0; background: #fff; border-radius: 9px; padding: 9px 13px; font: inherit; font-size: 13px; font-weight: 500; color: #1e1e1e; cursor: pointer; margin-left: 4px; white-space: nowrap; }
+.gvc-subbar .more:hover { background: #f7f6f5; }
+
+/* the More-shapes tray floats above the shapes bar */
+#gvc-moreshapes {
+  position: fixed; bottom: 146px; left: 50%; transform: translateX(calc(-50% + 120px));
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
+  background: #fff; border-radius: 12px; padding: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 10px 26px rgba(0, 0, 0, .16);
+}
+#gvc-moreshapes .sbtn { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #1e1e1e; }
+#gvc-moreshapes .sbtn:hover { background: #f2f1ef; }
+#gvc-moreshapes .sbtn svg.shp { width: 19px; height: 19px; }
+
+/* + insert menu */
+#gvc-plusmenu {
+  position: fixed; bottom: 86px; left: 50%; transform: translateX(calc(-50% + 210px));
+  background: #fff; border-radius: 12px; padding: 5px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 10px 26px rgba(0, 0, 0, .16); min-width: 150px;
+}
+#gvc-plusmenu .row { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #1e1e1e; }
+#gvc-plusmenu .row:hover { background: #f2f1ef; }
+#gvc-plusmenu .row svg { width: 18px; height: 18px; }
 
 /* sticky selection toolbar + color palette (dark, FigJam-style) */
 #gvc-selbar, #gvc-palette { position: fixed; z-index: 65; background: #1f2430; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); display: flex; align-items: center; padding: 5px; gap: 2px; }
@@ -114,8 +246,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 #gvc-selbar .div { width: 1px; align-self: stretch; background: rgba(255, 255, 255, .14); margin: 4px 3px; }
 #gvc-selbar .btn { min-width: 32px; height: 30px; padding: 0 9px; border-radius: 8px; color: #e8eaee; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; border: 0; background: 0; }
 #gvc-selbar .btn.on { background: rgba(255, 255, 255, .18); }
+#gvc-selbar .btn.wide { font-size: 12px; white-space: nowrap; }
 #gvc-palette .pc { width: 26px; height: 26px; border-radius: 50%; margin: 2px; cursor: pointer; border: 2px solid transparent; box-sizing: border-box; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
-#gvc-palette .pc.on { border-color: #7b5bff; }
+#gvc-palette .pc.on { border-color: #7b61ff; }
 
 .gvc-marquee { position: fixed; z-index: 55; border: 1px solid #2563eb; background: rgba(37, 99, 235, .09); pointer-events: none; }
 .gvc-ghost { position: fixed; pointer-events: none; z-index: 100; opacity: .9; transform: translate(-50%, -50%); }
@@ -123,15 +256,16 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 /* smooth grab-and-drop: the sticky ghost springs up under the cursor, the dropped node pops in */
 .gvc-ghost-sticky { width: 66px; height: 66px; border-radius: 3px; background: #fce495; box-shadow: 0 12px 26px rgba(0, 0, 0, .24); opacity: 0; transform: translate(-50%, -50%) rotate(-5deg) scale(.5); transition: transform .17s cubic-bezier(.34, 1.56, .64, 1), opacity .12s; }
 .gvc-ghost-sticky.in { opacity: .96; transform: translate(-50%, -50%) rotate(-4deg) scale(1); }
+.gvc-ghost-stamp { font-size: 44px; line-height: 1; }
 @keyframes gvc-pop { from { transform: scale(.7); } to { transform: scale(1); } }
 .gvc-node.gvc-pop { animation: gvc-pop .2s cubic-bezier(.34, 1.56, .64, 1); }
 
 /* insert picker — search prototypes / pages / components */
-#gvc-picker { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); width: min(920px, calc(100vw - 32px)); max-height: 80vh; background: #fff; border: 1px solid #e9ebee; border-radius: 16px; box-shadow: 0 20px 54px rgba(0, 0, 0, .24); z-index: 80; display: flex; flex-direction: column; overflow: hidden; }
+#gvc-picker { position: fixed; top: 74px; left: 50%; transform: translateX(-50%); width: min(920px, calc(100vw - 32px)); max-height: 80vh; background: #fff; border: 1px solid #e9e8e6; border-radius: 16px; box-shadow: 0 20px 54px rgba(0, 0, 0, .24); z-index: 80; display: flex; flex-direction: column; overflow: hidden; }
 #gvc-picker.hidden { display: none; }
 #gvc-picker .head { display: flex; align-items: center; gap: 8px; padding: 12px 14px 10px; }
 #gvc-picker .head input { flex: 1; border: 1.5px solid #d9dce1; border-radius: 10px; padding: 10px 12px; font: inherit; outline: none; }
-#gvc-picker .head input:focus { border-color: #7b5bff; }
+#gvc-picker .head input:focus { border-color: #7b61ff; }
 #gvc-picker .head .x { border: 0; background: 0; font-size: 20px; line-height: 1; color: #6b7280; cursor: pointer; width: 32px; height: 32px; border-radius: 8px; }
 #gvc-picker .head .x:hover { background: #f3f4f6; }
 #gvc-picker .tabs { display: flex; gap: 4px; padding: 0 14px 8px; border-bottom: 1px solid #f0f1f3; }
@@ -152,3 +286,55 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f5f7; }
 #gvc-picker .card .cap .t { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1f2430; }
 #gvc-picker .card .cap .ty { font-size: 10px; color: #9ca3af; text-transform: capitalize; margin-top: 1px; }
 #gvc-picker .empty { grid-column: 1 / -1; padding: 34px; text-align: center; color: #9ca3af; font-size: 13px; }
+
+/* ---- mobile (phones / touch) ---------------------------------------------
+   One finger pans, two fingers pinch-zoom (handled in JS); here the chrome compacts:
+   the toolbar fits the screen and scrolls sideways if it must, sub-bars follow, the
+   zoom pill hides (pinch replaces it), and hover tooltips are dropped on touch. */
+@media (pointer: coarse) {
+  #gvc-toolbar .tool .tip, .gvc-subbar .sbtn .tip, #gvc-moreshapes .sbtn .tip { display: none; }
+}
+@media (max-width: 760px) {
+  #gvc-toolbar {
+    bottom: 12px; height: 50px; padding: 0 5px; gap: 0; border-radius: 13px;
+    max-width: calc(100vw - 12px); overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  #gvc-toolbar::-webkit-scrollbar { display: none; }
+  #gvc-toolbar > * { flex: 0 0 auto; }
+  #gvc-toolbar .tool { width: 38px; height: 38px; }
+  #gvc-toolbar .tool svg { width: 22px; height: 22px; }
+  #gvc-toolbar .tool.big { width: 46px; height: 50px; }
+  #gvc-toolbar .art.pen { height: 50px; width: 32px; }
+  #gvc-toolbar .art.sticky { height: 48px; width: 52px; }
+  #gvc-toolbar .tool[data-t="sticky"] { width: 52px; }
+  #gvc-toolbar .tool.cluster { width: 52px; height: 50px; }
+  #gvc-toolbar .tool.cluster svg { width: 40px; height: 34px; }
+  #gvc-toolbar .tool.plus { width: 34px; height: 34px; }
+  #gvc-toolbar .sep { margin: 0 3px; }
+  .gvc-subbar {
+    bottom: 68px; max-width: calc(100vw - 12px); overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; padding: 5px 6px;
+    left: 50%; transform: translateX(-50%);
+  }
+  .gvc-subbar::-webkit-scrollbar { display: none; }
+  .gvc-subbar > * { flex: 0 0 auto; }
+  #gvc-stampbar { transform: translateX(-50%); }
+  .gvc-subbar .sbtn { width: 36px; height: 36px; }
+  .gvc-subbar .sbtn svg { width: 22px; height: 22px; }
+  .gvc-subbar .dot { width: 21px; height: 21px; margin: 0 3px; }
+  #gvc-moreshapes { bottom: 122px; transform: translateX(-50%); }
+  #gvc-plusmenu { bottom: 68px; left: auto; right: 8px; transform: none; }
+  #gvc-zoom { display: none; }
+  #gvc-topbar { top: 8px; left: 8px; padding: 4px 6px; }
+  #gvc-topbar .nm { max-width: 40vw; }
+}
+/* on true phone widths the bar always overflows — a right-edge fade hints at the hidden tools
+   (position:sticky scroll-shadow trick; sits at content end, pinned to the visible edge) */
+@media (max-width: 600px) {
+  #gvc-toolbar::after {
+    content: ""; position: sticky; right: 0; flex: 0 0 26px; margin-left: -26px;
+    align-self: stretch; pointer-events: none; border-radius: 0 13px 13px 0;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0), #fff 82%);
+  }
+}

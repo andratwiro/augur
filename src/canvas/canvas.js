@@ -8,6 +8,12 @@
  * absolutely positioned in WORLD coordinates inside it; the UI (#gvc-ui) is a fixed layer
  * above, untransformed. Everything is DOM — no WebGL — which is plenty at this scale.
  *
+ * The toolbar is a faithful FigJam rebuild: select/hand · marker (draw sub-toolbar:
+ * marker/highlighter/washi/eraser + thin/thick + colors) · sticky · shape cluster (shapes
+ * sub-toolbar: connectors + shape grid + More shapes) · text/section/table/stamp/bubble ·
+ * prototypes · insert. Node types: sticky, text, image, tile, arrow (straight/elbow/curved/
+ * line), draw (freehand strokes), shape (geometry + centered text), section, table, stamp.
+ *
  * AI-legibility: nodes are plain data ({id,type,name,x,y,w,h,...}); every node carries a
  * human name so Claude and Rob share a vocabulary ("the onboarding tile"), not pixel pointing.
  * window.GVCanvas exposes the board + coordinate transforms for the comment overlay and tools.
@@ -21,7 +27,7 @@
   var BOARD_PATH = CFG.boardPath || location.pathname;
   var BOARD_API = "/__board?path=" + encodeURIComponent(BOARD_PATH);
 
-  var MIN_SCALE = 0.1, MAX_SCALE = 4, GRID = 26, MAX_LIVE_TILES = 6; // total loaded iframes (live or frozen); LRU-evict oldest to poster
+  var MIN_SCALE = 0.1, MAX_SCALE = 4, GRID = 16, MAX_LIVE_TILES = 6; // total loaded iframes (live or frozen); LRU-evict oldest to poster
   // A live tile renders its page at a chosen DEVICE viewport width, then scales to fit the tile —
   // so a device toggle (not tile-resize) drives the page's real responsive breakpoints. ASPECT
   // (w:h) shapes the tile to the device when you pick one; you can still resize freely after.
@@ -38,6 +44,9 @@
   // FigJam pastel sticky palette (white, grey, red, orange, yellow, green, teal, blue, purple, pink)
   var STICKY_COLORS = ["#ffffff", "#e9ecef", "#f4a9a8", "#f7c99a", "#fce495", "#bfe5a0", "#a9e5db", "#a9cbf5", "#cbb8f2", "#f5b3d7"];
   var DEFAULT_STICKY = "#fce495";
+  // FigJam marker palette (draw sub-toolbar dots, left to right)
+  var DRAW_COLORS = ["#1e1e1e", "#f24822", "#ff9f2e", "#ffd233", "#35c759", "#3aa2ff", "#8a5cff", "#ffffff"];
+  var STAMPS = ["👍", "👎", "❤️", "⭐", "✅", "❌", "❓", "🔥", "👀", "🎉"];
   var FONT_SIZES = { s: "13px", m: "16px", l: "21px" };
   var ME = ""; // signed-in name, stamped as the sticky author (like FigJam)
 
@@ -48,12 +57,19 @@
   var liveTiles = [];      // ids of tiles currently showing a live iframe (LRU, capped)
   var transformCbs = [];   // listeners notified on every pan/zoom (comments overlay, sel bar)
 
+  // ---- tool state ----------------------------------------------------------
+  // TOOL.kind: select | hand | draw | eraser | shape | connector | section | place
+  // draw substate lives in drawStyle; shape/connector carry what to draw; place carries type.
+  var TOOL = { kind: "select" };
+  var drawStyle = { mode: "marker", size: "thin", color: "#1e1e1e" };
+  var armedShape = "square", armedConnector = "arrow", armedStamp = STAMPS[0];
+
   function uid() { return "n" + Math.random().toString(36).slice(2, 9); }
   function clampScale(s) { return Math.max(MIN_SCALE, Math.min(MAX_SCALE, s)); }
   // FigJam-style dot grid: dot SIZE is constant (the gradient stop is absolute px), and spacing
   // = GRID*scale is NORMALIZED into a comfortable band by doubling/halving — so it never becomes
   // a dense moire mush when zoomed out or huge gaps when zoomed in. Constant density.
-  function gridStep(scale) { var s = GRID * scale; while (s < 22) s *= 2; while (s > 46) s /= 2; return s; }
+  function gridStep(scale) { var s = GRID * scale; while (s < 14) s *= 2; while (s > 28) s /= 2; return s; }
 
   // ---- DOM scaffold --------------------------------------------------------
   var root = el("div", { id: "gvc-root" });
@@ -107,7 +123,7 @@
   // ---- node model helpers --------------------------------------------------
   function nodeById(id) { for (var i = 0; i < board.nodes.length; i++) if (board.nodes[i].id === id) return board.nodes[i]; return null; }
   function autoName(type) {
-    var base = { sticky: "Sticky", text: "Text", image: "Image", tile: "Prototype", arrow: "Arrow" }[type] || "Node";
+    var base = { sticky: "Sticky", text: "Text", image: "Image", tile: "Prototype", arrow: "Connector", draw: "Drawing", shape: "Shape", section: "Section", table: "Table", stamp: "Stamp" }[type] || "Node";
     var n = 0; board.nodes.forEach(function (x) { if (x.type === type) n++; });
     return base + " " + (n + 1);
   }
@@ -128,6 +144,9 @@
     selected.forEach(function (id) {
       var n = nodeById(id); if (!n) return;
       var c = {}; for (var k in n) if (n.hasOwnProperty(k)) c[k] = n[k];
+      // deep-copy the mutable containers so the copy doesn't share them with the original
+      if (n.points) c.points = n.points.map(function (p) { return p.slice(); });
+      if (n.cells) { c.cells = {}; for (var ck in n.cells) c.cells[ck] = n.cells[ck]; }
       c.id = uid();
       if (n.type === "arrow") { c.x1 = n.x1 + dx; c.y1 = n.y1 + dy; c.x2 = n.x2 + dx; c.y2 = n.y2 + dy; }
       else { c.x = (n.x || 0) + dx; c.y = (n.y || 0) + dy; }
@@ -156,7 +175,7 @@
     if (selected.length === 1) {
       var n = nodeById(selected[0]);
       decorate(selected[0]);
-      if (n && n.type === "sticky") showSelBar(n); else hideSelBar();
+      if (n && (n.type === "sticky" || n.type === "shape" || n.type === "draw" || n.type === "table")) showSelBar(n); else hideSelBar();
     } else hideSelBar();
   }
   function select(id) { setSelection(id ? [id] : []); }
@@ -165,7 +184,7 @@
   function decorate(id) {
     clearDecor();
     var node = nodeById(id), host = nodeEls[id];
-    if (!node || !host || node.type === "arrow") return;
+    if (!node || !host || node.type === "arrow" || node.type === "draw") return;
     var rz = el("div", { class: "gvc-resize" });
     rz.addEventListener("pointerdown", function (e) { startResize(e, node); });
     host.appendChild(rz); decorEls.push(rz);
@@ -191,11 +210,18 @@
     else if (node.type === "image") host = renderImage(node);
     else if (node.type === "tile") host = renderTile(node);
     else if (node.type === "arrow") host = renderArrow(node);
+    else if (node.type === "draw") host = renderDraw(node);
+    else if (node.type === "shape") host = renderShape(node);
+    else if (node.type === "section") host = renderSection(node);
+    else if (node.type === "table") host = renderTable(node);
+    else if (node.type === "stamp") host = renderStamp(node);
     else return;
     host.className = "gvc-node " + host.className;
     host.dataset.id = node.id;
     nodeEls[node.id] = host;
-    world.appendChild(host);
+    // sections are background containers — keep them under every other node
+    if (node.type === "section") world.insertBefore(host, world.firstChild);
+    else world.appendChild(host);
     if (isSelected(node.id)) { host.classList.add("sel"); if (selected.length === 1) decorate(node.id); }
     return host;
   }
@@ -364,6 +390,7 @@
     frame.style.transform = "scale(" + s + ")";
   }
 
+  // ---- connectors (straight arrow / elbow / curved / plain line) -----------
   function renderArrow(node) {
     var x1 = node.x1, y1 = node.y1, x2 = node.x2, y2 = node.y2;
     var minX = Math.min(x1, x2), minY = Math.min(y1, y2), w = Math.max(1, Math.abs(x2 - x1)), h = Math.max(1, Math.abs(y2 - y1));
@@ -371,14 +398,29 @@
     var host = el("div", { class: "gvc-arrow" });
     host.style.left = (minX - pad) + "px"; host.style.top = (minY - pad) + "px"; host.style.width = (w + pad * 2) + "px"; host.style.height = (h + pad * 2) + "px";
     var lx1 = x1 - minX + pad, ly1 = y1 - minY + pad, lx2 = x2 - minX + pad, ly2 = y2 - minY + pad;
-    var ang = Math.atan2(ly2 - ly1, lx2 - lx1), ah = 11;
-    var a1x = lx2 - ah * Math.cos(ang - Math.PI / 7), a1y = ly2 - ah * Math.sin(ang - Math.PI / 7);
-    var a2x = lx2 - ah * Math.cos(ang + Math.PI / 7), a2y = ly2 - ah * Math.sin(ang + Math.PI / 7);
+    var kind = node.kind || "arrow", d, ang;
+    if (kind === "elbow") {
+      var mx = (lx1 + lx2) / 2;
+      d = "M" + lx1 + " " + ly1 + " L" + mx + " " + ly1 + " L" + mx + " " + ly2 + " L" + lx2 + " " + ly2;
+      ang = lx2 >= mx ? 0 : Math.PI;
+    } else if (kind === "curved") {
+      var cx = (lx1 + lx2) / 2 + (ly1 - ly2) * 0.3, cy = (ly1 + ly2) / 2 + (lx2 - lx1) * 0.3;
+      d = "M" + lx1 + " " + ly1 + " Q" + cx + " " + cy + " " + lx2 + " " + ly2;
+      ang = Math.atan2(ly2 - cy, lx2 - cx);
+    } else {
+      d = "M" + lx1 + " " + ly1 + " L" + lx2 + " " + ly2;
+      ang = Math.atan2(ly2 - ly1, lx2 - lx1);
+    }
     // Build the SVG as an innerHTML string so the HTML parser creates real SVG-namespaced nodes
     // — createElement("svg") makes a non-namespaced element that never paints.
-    host.innerHTML = '<svg width="' + (w + pad * 2) + '" height="' + (h + pad * 2) + '" style="overflow:visible">'
-      + '<path d="M' + lx1 + " " + ly1 + " L" + lx2 + " " + ly2 + '"/>'
-      + '<path d="M' + a1x + " " + a1y + " L" + lx2 + " " + ly2 + " L" + a2x + " " + a2y + '"/></svg>';
+    var svg = '<svg width="' + (w + pad * 2) + '" height="' + (h + pad * 2) + '" style="overflow:visible"><path d="' + d + '"/>';
+    if (kind !== "line") {
+      var ah = 11;
+      var a1x = lx2 - ah * Math.cos(ang - Math.PI / 7), a1y = ly2 - ah * Math.sin(ang - Math.PI / 7);
+      var a2x = lx2 - ah * Math.cos(ang + Math.PI / 7), a2y = ly2 - ah * Math.sin(ang + Math.PI / 7);
+      svg += '<path d="M' + a1x + " " + a1y + " L" + lx2 + " " + ly2 + " L" + a2x + " " + a2y + '"/>';
+    }
+    host.innerHTML = svg + "</svg>";
     if (isSelected(node.id) && selected.length === 1) {
       [["1", lx1, ly1], ["2", lx2, ly2]].forEach(function (p) {
         var hd = el("div", { class: "gvc-handle" });
@@ -389,14 +431,208 @@
     }
     return host;
   }
+
+  // ---- freehand drawing (marker / highlighter / washi tape) ----------------
+  // A draw node's points are relative to (x,y); the host box is the stroke bbox and the svg
+  // hangs -pad outside it so round caps never clip. Quadratic midpoint smoothing.
+  function pathD(pts) {
+    if (!pts.length) return "";
+    if (pts.length < 3) {
+      var d0 = "M" + pts[0][0] + " " + pts[0][1];
+      return pts.length > 1 ? d0 + " L" + pts[1][0] + " " + pts[1][1] : d0 + " l.01 0";
+    }
+    var d = "M" + pts[0][0] + " " + pts[0][1];
+    for (var i = 1; i < pts.length - 1; i++) {
+      var mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
+      d += " Q" + pts[i][0] + " " + pts[i][1] + " " + mx + " " + my;
+    }
+    return d + " L" + pts[pts.length - 1][0] + " " + pts[pts.length - 1][1];
+  }
+  function strokeSvg(d, mode, color, width, w, h, pad) {
+    var s = '<svg width="' + (w + pad * 2) + '" height="' + (h + pad * 2) + '" style="left:-' + pad + 'px;top:-' + pad + 'px">';
+    if (mode === "highlighter") s += '<path d="' + d + '" stroke="' + color + '" stroke-width="' + width + '" stroke-opacity=".42"/>';
+    else if (mode === "tape") s += '<path d="' + d + '" stroke="' + color + '" stroke-width="' + width + '" stroke-opacity=".9"/><path d="' + d + '" stroke="#fff" stroke-opacity=".5" stroke-width="' + (width * 0.45) + '" stroke-dasharray="0.5 ' + (width * 0.8) + '"/>';
+    else s += '<path d="' + d + '" stroke="' + color + '" stroke-width="' + width + '"/>';
+    return s + "</svg>";
+  }
+  function renderDraw(node) {
+    var pad = Math.ceil((node.size || 3) / 2) + 8;
+    var host = el("div", { class: "gvc-draw" + (node.mode === "highlighter" ? " hl" : "") });
+    place(host, node);
+    var pts = node.points.map(function (p) { return [p[0] + pad, p[1] + pad]; });
+    host.innerHTML = strokeSvg(pathD(pts), node.mode, node.color || "#1e1e1e", node.size || 3, node.w || 1, node.h || 1, pad);
+    return host;
+  }
+  function strokeWidth() {
+    var thin = { marker: 3, highlighter: 12, tape: 16 }, thick = { marker: 7, highlighter: 20, tape: 26 };
+    return (drawStyle.size === "thick" ? thick : thin)[drawStyle.mode] || 3;
+  }
+  // Eraser removes WHOLE strokes it touches (the FigJam model), draw nodes only.
+  function eraseAt(wx, wy) {
+    var r = 10 / board.view.scale + 4;
+    for (var i = board.nodes.length - 1; i >= 0; i--) {
+      var n = board.nodes[i];
+      if (n.type !== "draw") continue;
+      var hit = r + (n.size || 3) / 2;
+      if (wx < n.x - hit || wx > n.x + (n.w || 0) + hit || wy < n.y - hit || wy > n.y + (n.h || 0) + hit) continue;
+      var px = wx - n.x, py = wy - n.y, pts = n.points, found = false;
+      for (var j = 0; j < pts.length && !found; j++) {
+        var ax = pts[j][0], ay = pts[j][1];
+        if (j === pts.length - 1) { found = Math.hypot(px - ax, py - ay) < hit; break; }
+        var bx = pts[j + 1][0], by = pts[j + 1][1];
+        var dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+        var t = len2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
+        found = Math.hypot(px - (ax + t * dx), py - (ay + t * dy)) < hit;
+      }
+      if (found) removeNode(n.id);
+    }
+  }
+
+  // ---- shapes (geometry + centered editable text) --------------------------
+  // Geometry is authored in a 0..100 box and stretched (preserveAspectRatio=none);
+  // vector-effect keeps the stroke width constant while the geometry scales.
+  var VE = ' vector-effect="non-scaling-stroke"';
+  var SHAPE_GEO = {
+    square: '<rect x="1.5" y="1.5" width="97" height="97" rx="2"' + VE + "/>",
+    round: '<rect x="1.5" y="1.5" width="97" height="97" rx="14"' + VE + "/>",
+    circle: '<ellipse cx="50" cy="50" rx="48.5" ry="48.5"' + VE + "/>",
+    diamond: '<polygon points="50,1.5 98.5,50 50,98.5 1.5,50"' + VE + "/>",
+    triangle: '<polygon points="50,3 97,97 3,97"' + VE + "/>",
+    "triangle-down": '<polygon points="3,3 97,3 50,97"' + VE + "/>",
+    pill: '<rect x="1.5" y="1.5" width="97" height="97" rx="30"' + VE + "/>",
+    cylinder: '<path d="M2 16v68c0 8 21.5 14 48 14s48-6 48-14V16"' + VE + '/><ellipse cx="50" cy="15" rx="48" ry="12"' + VE + "/>",
+    bubble: '<path d="M11 2h78a9 9 0 0 1 9 9v54a9 9 0 0 1-9 9H40L14 97l8-23H11a9 9 0 0 1-9-9V11a9 9 0 0 1 9-9z"' + VE + "/>",
+    star: '<polygon points="50,2 61.8,35.5 97.6,35.5 68.9,57.5 79.4,91.5 50,71 20.6,91.5 31.1,57.5 2.4,35.5 38.2,35.5"' + VE + "/>",
+    hexagon: '<polygon points="25,3 75,3 97,50 75,97 25,97 3,50"' + VE + "/>",
+    pentagon: '<polygon points="50,2 97,38 79,97 21,97 3,38"' + VE + "/>",
+    parallelogram: '<polygon points="22,3 97,3 78,97 3,97"' + VE + "/>",
+    trapezoid: '<polygon points="25,3 75,3 97,97 3,97"' + VE + "/>",
+    plus: '<path d="M35 3h30v32h32v30H65v32H35V65H3V35h32z"' + VE + "/>",
+    "arrow-right": '<path d="M3 35h55V12l39 38-39 38V65H3z"' + VE + "/>"
+  };
+  var SHAPE_SIZE = { square: [140, 140], round: [140, 140], circle: [140, 140], diamond: [150, 150], triangle: [150, 130], "triangle-down": [150, 130], pill: [180, 80], cylinder: [140, 160], bubble: [180, 130], star: [150, 150], hexagon: [150, 140], pentagon: [150, 140], parallelogram: [170, 120], trapezoid: [160, 120], plus: [140, 140], "arrow-right": [170, 120] };
+  function shapeIcon(shape) {
+    return '<svg viewBox="0 0 100 100" class="shp" preserveAspectRatio="none"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">' + SHAPE_GEO[shape] + "</g></svg>";
+  }
+  function renderShape(node) {
+    var def = SHAPE_SIZE[node.shape] || [140, 140];
+    node.w = node.w || def[0]; node.h = node.h || def[1];
+    var host = el("div", { class: "gvc-shape" });
+    host.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><g fill="' + (node.color || "#ffffff") + '" stroke="#777a80" stroke-width="1.4" stroke-linejoin="round">' + (SHAPE_GEO[node.shape] || SHAPE_GEO.square) + "</g></svg>";
+    var txt = editableText(node, host, "");
+    if (node.bold) txt.style.fontWeight = "700";
+    host.appendChild(txt);
+    place(host, node);
+    return host;
+  }
+
+  // ---- sections (background containers with a name label) ------------------
+  function renderSection(node) {
+    node.w = node.w || 520; node.h = node.h || 360;
+    var host = el("div", { class: "gvc-section" });
+    host.appendChild(nameLabel(node));
+    place(host, node);
+    return host;
+  }
+
+  // ---- tables --------------------------------------------------------------
+  function renderTable(node) {
+    node.rows = node.rows || 3; node.cols = node.cols || 3;
+    node.w = node.w || node.cols * 120; node.h = node.h || node.rows * 44;
+    node.cells = node.cells || {};
+    var host = el("div", { class: "gvc-table" });
+    host.style.gridTemplateColumns = "repeat(" + node.cols + ",1fr)";
+    host.style.gridTemplateRows = "repeat(" + node.rows + ",1fr)";
+    for (var r = 0; r < node.rows; r++) for (var c = 0; c < node.cols; c++) {
+      var cell = el("div", { class: "gvc-cell" + (r === 0 ? " hd" : ""), text: node.cells[r + "-" + c] || "" });
+      cell.dataset.rc = r + "-" + c;
+      cell.contentEditable = "false";
+      cell.addEventListener("keydown", function (e) { e.stopPropagation(); });
+      cell.addEventListener("pointerdown", function (e) { if (e.currentTarget.contentEditable === "true") e.stopPropagation(); });
+      host.appendChild(cell);
+    }
+    place(host, node);
+    return host;
+  }
+  function editCell(node, cellEl) {
+    select(node.id);
+    cellEl.contentEditable = "true"; cellEl.focus();
+    if (document.execCommand) document.execCommand("selectAll", false, null);
+    cellEl.addEventListener("blur", function onb() {
+      cellEl.removeEventListener("blur", onb);
+      cellEl.contentEditable = "false";
+      node.cells[cellEl.dataset.rc] = cellEl.innerText.trim();
+      scheduleSave();
+    });
+  }
+
+  // ---- stamps --------------------------------------------------------------
+  function renderStamp(node) {
+    node.w = node.w || 64; node.h = node.h || 64;
+    var host = el("div", { class: "gvc-stamp", text: node.stamp || "👍" });
+    host.style.fontSize = Math.round(node.h * 0.78) + "px";
+    place(host, node);
+    return host;
+  }
+
   function escapeHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-  // ---- pointer interaction (pan / move / resize / arrow handles) -----------
-  var drag = null, lastTap = { id: null, t: 0 }, panLock = false, spaceDown = false, marquee = null;
+  // ---- pointer interaction (pan / move / resize / draw / place / pinch) ----
+  var drag = null, lastTap = { id: null, t: 0 }, spaceDown = false, marquee = null;
+  var pointers = {}; // live canvas pointers (touch) — two at once = pinch zoom/pan
+  function isPan() { return spaceDown || TOOL.kind === "hand"; }
+  function pinchBase() {
+    var ids = Object.keys(pointers), a = pointers[ids[0]], b = pointers[ids[1]];
+    return { dist: Math.max(12, Math.hypot(b.x - a.x, b.y - a.y)), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+  }
+  function startPinch() {
+    if (drag) {
+      if (drag.mode === "stroke") drag.host.remove(); // a second finger mid-stroke = the palm — drop the stroke, zoom instead
+      if (drag.mode === "marquee" && marquee) { marquee.remove(); marquee = null; }
+    }
+    root.classList.remove("panning");
+    var b = pinchBase();
+    drag = { mode: "pinch", dist0: b.dist, mid0: b.mid, v0: { x: board.view.x, y: board.view.y, scale: board.view.scale } };
+  }
   root.addEventListener("pointerdown", function (e) {
-    if (e.button !== 0) return;
+    if (e.pointerType !== "touch" && e.button !== 0) return;
     if (e.target.closest && e.target.closest("#gvc-ui")) return;
-    var pan = spaceDown || panLock;
+    if (e.pointerType === "touch") {
+      pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+      if (Object.keys(pointers).length === 2) { startPinch(); root.setPointerCapture(e.pointerId); return; }
+      if (Object.keys(pointers).length > 2) return;
+    }
+    closePops();
+    if (!isPan()) {
+      // an armed tool takes precedence over node interaction — FigJam draws on top of things
+      if (TOOL.kind === "draw") {
+        var sw = screenToWorld(e.clientX, e.clientY);
+        var tmp = el("div", { class: "gvc-drawing" });
+        world.appendChild(tmp);
+        drag = { mode: "stroke", pts: [[sw.x, sw.y]], host: tmp };
+        root.setPointerCapture(e.pointerId);
+        return;
+      }
+      if (TOOL.kind === "eraser") {
+        var ew = screenToWorld(e.clientX, e.clientY);
+        eraseAt(ew.x, ew.y);
+        drag = { mode: "erase" };
+        root.setPointerCapture(e.pointerId);
+        return;
+      }
+      if (TOOL.kind === "shape" || TOOL.kind === "section") {
+        drag = { mode: "newshape", start: screenToWorld(e.clientX, e.clientY), node: null };
+        root.setPointerCapture(e.pointerId);
+        return;
+      }
+      if (TOOL.kind === "connector") {
+        drag = { mode: "newconn", start: screenToWorld(e.clientX, e.clientY), node: null };
+        root.setPointerCapture(e.pointerId);
+        return;
+      }
+      if (TOOL.kind === "place") { placeAt(e); return; }
+    }
+    var pan = isPan();
     var nodeHost = (!pan && e.target.closest) ? e.target.closest(".gvc-node") : null;
     if (nodeHost && nodeHost.classList.contains("editing")) return;
     if (pan) {
@@ -404,13 +640,23 @@
       root.classList.add("panning");
     } else if (nodeHost) {
       var id = nodeHost.dataset.id, node = nodeById(id), now = Date.now();
-      if (id === lastTap.id && now - lastTap.t < 350 && (node.type === "sticky" || node.type === "text")) {
-        lastTap = { id: null, t: 0 }; enterEdit(id); return; // double-tap → edit text, no drag
+      if (id === lastTap.id && now - lastTap.t < 350) {
+        if (node.type === "sticky" || node.type === "text" || node.type === "shape") {
+          lastTap = { id: null, t: 0 }; enterEdit(id); return; // double-tap → edit text, no drag
+        }
+        if (node.type === "table") {
+          var cellEl = e.target.closest && e.target.closest(".gvc-cell");
+          if (cellEl) { lastTap = { id: null, t: 0 }; editCell(node, cellEl); return; }
+        }
       }
       lastTap = { id: id, t: now };
       if (e.shiftKey) setSelection(isSelected(id) ? selected.filter(function (s) { return s !== id; }) : selected.concat([id]));
       else if (!isSelected(id)) setSelection([id]);
       drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, items: selected.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
+    } else if (e.pointerType === "touch") {
+      // touch: one finger on empty canvas pans (no mouse to scroll with); two fingers pinch
+      setSelection([]);
+      drag = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: board.view.x, oy: board.view.y };
     } else {
       // empty drag → marquee selection (Figma/FigJam); panning is Space-drag or scroll/trackpad
       if (!e.shiftKey) setSelection([]);
@@ -422,9 +668,49 @@
     root.setPointerCapture(e.pointerId);
   });
   root.addEventListener("pointermove", function (e) {
+    if (pointers[e.pointerId]) pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     if (!drag) return;
+    if (drag.mode === "pinch") {
+      if (Object.keys(pointers).length < 2) return;
+      var pb = pinchBase(), v = board.view;
+      var ns = clampScale(drag.v0.scale * pb.dist / drag.dist0), f = ns / drag.v0.scale;
+      v.x = pb.mid.x - (drag.mid0.x - drag.v0.x) * f;
+      v.y = pb.mid.y - (drag.mid0.y - drag.v0.y) * f;
+      v.scale = ns;
+      applyTransform();
+      return;
+    }
     var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy, sc = board.view.scale;
     if (drag.mode === "pan") { board.view.x = drag.ox + dx; board.view.y = drag.oy + dy; applyTransform(); }
+    else if (drag.mode === "stroke") {
+      var w = screenToWorld(e.clientX, e.clientY);
+      var lp = drag.pts[drag.pts.length - 1];
+      if (Math.hypot(w.x - lp[0], w.y - lp[1]) > 1.2) {
+        drag.pts.push([w.x, w.y]);
+        drag.host.innerHTML = '<svg style="overflow:visible" width="2" height="2"><path d="' + pathD(drag.pts) + '" fill="none" stroke="' + drawStyle.color + '" stroke-width="' + strokeWidth() + '" stroke-opacity="' + (drawStyle.mode === "highlighter" ? ".42" : "1") + '" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      }
+    }
+    else if (drag.mode === "erase") { var ep = screenToWorld(e.clientX, e.clientY); eraseAt(ep.x, ep.y); }
+    else if (drag.mode === "newshape") {
+      var sp = screenToWorld(e.clientX, e.clientY), st = drag.start;
+      if (!drag.node && Math.hypot(sp.x - st.x, sp.y - st.y) * sc > 6) {
+        drag.node = addNode(TOOL.kind === "section"
+          ? { type: "section", x: st.x, y: st.y, w: 1, h: 1 }
+          : { type: "shape", shape: TOOL.shape, x: st.x, y: st.y, w: 1, h: 1, text: "", color: "#ffffff" });
+      }
+      if (drag.node) {
+        drag.node.x = Math.min(st.x, sp.x); drag.node.y = Math.min(st.y, sp.y);
+        drag.node.w = Math.max(1, Math.abs(sp.x - st.x)); drag.node.h = Math.max(1, Math.abs(sp.y - st.y));
+        place(nodeEls[drag.node.id], drag.node);
+      }
+    }
+    else if (drag.mode === "newconn") {
+      var cp = screenToWorld(e.clientX, e.clientY), cs = drag.start;
+      if (!drag.node && Math.hypot(cp.x - cs.x, cp.y - cs.y) * sc > 6) {
+        drag.node = addNode({ type: "arrow", kind: TOOL.conn, x1: cs.x, y1: cs.y, x2: cp.x, y2: cp.y });
+      }
+      if (drag.node) { drag.node.x2 = cp.x; drag.node.y2 = cp.y; renderNode(drag.node); }
+    }
     else if (drag.mode === "move") {
       var wdx = dx / sc, wdy = dy / sc;
       drag.moved = drag.moved || Math.abs(dx) + Math.abs(dy) > 2;
@@ -436,27 +722,77 @@
       positionSelBar();
     }
     else if (drag.mode === "marquee") {
-      var l = Math.min(drag.sx, e.clientX), t = Math.min(drag.sy, e.clientY), w = Math.abs(dx), h = Math.abs(dy);
-      marquee.style.left = l + "px"; marquee.style.top = t + "px"; marquee.style.width = w + "px"; marquee.style.height = h + "px";
+      var l = Math.min(drag.sx, e.clientX), t = Math.min(drag.sy, e.clientY), w2 = Math.abs(dx), h2 = Math.abs(dy);
+      marquee.style.left = l + "px"; marquee.style.top = t + "px"; marquee.style.width = w2 + "px"; marquee.style.height = h2 + "px";
       var hits = drag.base.slice();
       board.nodes.forEach(function (n) {
         var en = nodeEls[n.id]; if (!en) return;
         var r = en.getBoundingClientRect();
-        if (r.right >= l && r.left <= l + w && r.bottom >= t && r.top <= t + h && hits.indexOf(n.id) < 0) hits.push(n.id);
+        if (r.right >= l && r.left <= l + w2 && r.bottom >= t && r.top <= t + h2 && hits.indexOf(n.id) < 0) hits.push(n.id);
       });
       setSelection(hits);
     }
     else if (drag.mode === "resize") { var n2 = drag.node; n2.w = Math.max(48, drag.ow + dx / sc); n2.h = Math.max(48, drag.oh + dy / sc); var re = nodeEls[n2.id]; re.style.width = n2.w + "px"; re.style.height = n2.h + "px"; if (n2.type === "tile") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb, n2); } positionSelBar(); }
     else if (drag.mode === "arrow") { var an = drag.node; if (drag.end === "1") { an.x1 = drag.px + dx / sc; an.y1 = drag.py + dy / sc; } else { an.x2 = drag.px + dx / sc; an.y2 = drag.py + dy / sc; } renderNode(an); }
   });
-  root.addEventListener("pointerup", function () {
+  function onPointerEnd(e) {
+    delete pointers[e.pointerId];
     if (!drag) return;
+    if (drag.mode === "pinch") {
+      if (Object.keys(pointers).length < 2) { drag = null; scheduleSave(); }
+      return;
+    }
     root.classList.remove("panning");
     if (drag.mode === "marquee" && marquee) { marquee.remove(); marquee = null; }
     if (drag.mode === "arrow") renderNode(drag.node);
+    if (drag.mode === "resize" && drag.node.type === "stamp") renderNode(drag.node);
+    if (drag.mode === "stroke") {
+      drag.host.remove();
+      finishStroke(drag.pts);
+    }
+    if (drag.mode === "newshape") {
+      var w = screenToWorld(e.clientX, e.clientY);
+      var made = drag.node;
+      if (!made) {
+        made = TOOL.kind === "section"
+          ? addNode({ type: "section", x: w.x - 260, y: w.y - 180 })
+          : (function () { var d = SHAPE_SIZE[TOOL.shape] || [140, 140]; return addNode({ type: "shape", shape: TOOL.shape, x: w.x - d[0] / 2, y: w.y - d[1] / 2, text: "", color: "#ffffff" }); })();
+      }
+      select(made.id); pop(made.id);
+      if (made.type === "shape") setTimeout(function () { enterEdit(made.id); }, 0);
+      setTool("select");
+    }
+    if (drag.mode === "newconn") {
+      var cw = screenToWorld(e.clientX, e.clientY);
+      var conn = drag.node || addNode({ type: "arrow", kind: TOOL.conn, x1: cw.x - 70, y1: cw.y, x2: cw.x + 70, y2: cw.y });
+      select(conn.id);
+      setTool("select");
+    }
     drag = null;
     scheduleSave();
-  });
+  }
+  root.addEventListener("pointerup", onPointerEnd);
+  root.addEventListener("pointercancel", onPointerEnd);
+  function finishStroke(pts) {
+    if (!pts.length) return;
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    pts.forEach(function (p) { minX = Math.min(minX, p[0]); minY = Math.min(minY, p[1]); maxX = Math.max(maxX, p[0]); maxY = Math.max(maxY, p[1]); });
+    var rel = pts.map(function (p) { return [Math.round((p[0] - minX) * 10) / 10, Math.round((p[1] - minY) * 10) / 10]; });
+    var n = addNode({ type: "draw", mode: drawStyle.mode, color: drawStyle.color, size: strokeWidth(), x: minX, y: minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY), points: rel });
+    return n; // marker stays armed — keep sketching
+  }
+  function placeAt(e) {
+    var w = screenToWorld(e.clientX, e.clientY);
+    if (TOOL.type === "sticky") { spawnSticky(w); setTool("select"); }
+    else if (TOOL.type === "text") { var t = addNode({ type: "text", x: w.x, y: w.y, text: "" }); select(t.id); setTimeout(function () { enterEdit(t.id); }, 0); setTool("select"); }
+    else if (TOOL.type === "table") { var tb = addNode({ type: "table", x: w.x - 180, y: w.y - 66 }); select(tb.id); pop(tb.id); setTool("select"); }
+    else if (TOOL.type === "stamp") { var st = addNode({ type: "stamp", stamp: armedStamp, x: w.x - 32, y: w.y - 32, w: 64, h: 64 }); pop(st.id); /* stamps stay armed */ }
+  }
+  function spawnSticky(w) {
+    var n = addNode({ type: "sticky", x: w.x - 80, y: w.y - 80, w: 160, h: 160, text: "", color: DEFAULT_STICKY, author: ME });
+    select(n.id); pop(n.id); setTimeout(function () { enterEdit(n.id); }, 0);
+    return n;
+  }
   function startResize(e, node) { e.stopPropagation(); drag = { mode: "resize", node: node, sx: e.clientX, sy: e.clientY, ow: node.w, oh: node.h }; root.setPointerCapture(e.pointerId); }
   function startArrowHandle(e, node, end) { e.stopPropagation(); drag = { mode: "arrow", node: node, end: end, sx: e.clientX, sy: e.clientY, px: end === "1" ? node.x1 : node.x2, py: end === "1" ? node.y1 : node.y2 }; root.setPointerCapture(e.pointerId); }
 
@@ -480,10 +816,28 @@
     if (editing) return;
     if ((e.metaKey || e.ctrlKey) && (e.key === "d" || e.key === "D")) { e.preventDefault(); duplicateSelection(); return; }
     if ((e.key === "Backspace" || e.key === "Delete") && selected.length) { e.preventDefault(); selected.slice().forEach(removeNode); setSelection([]); }
-    if (e.key === "Escape") { setSelection([]); if (picker) picker.classList.add("hidden"); }
+    if (e.key === "Escape") { setSelection([]); if (picker) picker.classList.add("hidden"); setTool("select"); return; }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    // FigJam tool shortcuts
+    var k = e.key.toLowerCase();
+    if (e.shiftKey) {
+      if (k === "s") setTool("section");
+      else if (k === "t") setTool({ kind: "place", type: "table" });
+      return;
+    }
+    if (k === "v") setTool("select");
+    else if (k === "h") setTool("hand");
+    else if (k === "m") { drawStyle.mode = "marker"; setTool("draw"); }
+    else if (k === "s") setTool({ kind: "place", type: "sticky" });
+    else if (k === "t") setTool({ kind: "place", type: "text" });
+    else if (k === "e") setTool({ kind: "place", type: "stamp" });
+    else if (k === "r") { armedShape = "square"; setTool({ kind: "shape", shape: "square" }); }
+    else if (k === "o") { armedShape = "circle"; setTool({ kind: "shape", shape: "circle" }); }
+    else if (k === "l") { armedConnector = "line"; setTool({ kind: "connector", conn: "line" }); }
+    else if (k === "x") { armedConnector = "elbow"; setTool({ kind: "connector", conn: "elbow" }); }
   });
   document.addEventListener("keyup", function (e) {
-    if (e.code === "Space") { spaceDown = false; if (!panLock) root.classList.remove("hand"); }
+    if (e.code === "Space") { spaceDown = false; if (TOOL.kind !== "hand") root.classList.remove("hand"); }
   });
 
   // ---- image drop from desktop --------------------------------------------
@@ -513,34 +867,52 @@
     img.src = URL.createObjectURL(file);
   }
 
-  // ---- sticky selection toolbar + color palette ---------------------------
+  // ---- selection toolbar (sticky / shape / draw / table) -------------------
   var selBar, palette, picker, catalog = null;
   function showSelBar(node) {
     selBar.innerHTML = "";
-    var dot = el("div", { class: "dot" }); dot.style.background = node.color || DEFAULT_STICKY;
-    var sw = el("div", { class: "sw" }, [dot, el("div", { class: "chev", text: "▾" })]);
-    guard(sw); sw.addEventListener("click", function (e) { e.stopPropagation(); togglePalette(node, dot); });
-    var fb = el("div", { class: "btn", title: "Text size", html: '<span style="font-size:15px">A</span>' });
-    guard(fb); fb.addEventListener("click", function (e) { e.stopPropagation(); var o = ["s", "m", "l"], i = o.indexOf(node.fontScale || "m"); node.fontScale = o[(i + 1) % 3]; applyStickyStyle(node); scheduleSave(); });
-    var bb = el("button", { class: "btn" + (node.bold ? " on" : ""), type: "button", text: "B", title: "Bold" }); bb.style.fontWeight = "700";
-    guard(bb); bb.addEventListener("click", function (e) { e.stopPropagation(); node.bold = !node.bold; bb.classList.toggle("on", node.bold); applyStickyStyle(node); scheduleSave(); });
-    selBar.appendChild(sw); selBar.appendChild(el("div", { class: "div" })); selBar.appendChild(fb); selBar.appendChild(bb);
+    if (node.type === "table") {
+      var ar = el("button", { class: "btn wide", type: "button", text: "+ Row" });
+      guard(ar); ar.addEventListener("click", function (e) { e.stopPropagation(); node.h = node.h / node.rows * (node.rows + 1); node.rows++; renderNode(node); scheduleSave(); });
+      var ac = el("button", { class: "btn wide", type: "button", text: "+ Col" });
+      guard(ac); ac.addEventListener("click", function (e) { e.stopPropagation(); node.w = node.w / node.cols * (node.cols + 1); node.cols++; renderNode(node); scheduleSave(); });
+      selBar.appendChild(ar); selBar.appendChild(ac);
+    } else {
+      var dot = el("div", { class: "dot" }); dot.style.background = node.color || (node.type === "draw" ? "#1e1e1e" : node.type === "shape" ? "#ffffff" : DEFAULT_STICKY);
+      var sw = el("div", { class: "sw" }, [dot, el("div", { class: "chev", text: "▾" })]);
+      guard(sw); sw.addEventListener("click", function (e) { e.stopPropagation(); togglePalette(node, dot); });
+      selBar.appendChild(sw);
+      if (node.type === "sticky" || node.type === "shape") {
+        selBar.appendChild(el("div", { class: "div" }));
+        if (node.type === "sticky") {
+          var fb = el("div", { class: "btn", title: "Text size", html: '<span style="font-size:15px">A</span>' });
+          guard(fb); fb.addEventListener("click", function (e) { e.stopPropagation(); var o = ["s", "m", "l"], i = o.indexOf(node.fontScale || "m"); node.fontScale = o[(i + 1) % 3]; applyNodeStyle(node); scheduleSave(); });
+          selBar.appendChild(fb);
+        }
+        var bb = el("button", { class: "btn" + (node.bold ? " on" : ""), type: "button", text: "B", title: "Bold" }); bb.style.fontWeight = "700";
+        guard(bb); bb.addEventListener("click", function (e) { e.stopPropagation(); node.bold = !node.bold; bb.classList.toggle("on", node.bold); applyNodeStyle(node); scheduleSave(); });
+        selBar.appendChild(bb);
+      }
+    }
     selBar.classList.remove("hidden");
     positionSelBar();
   }
   function guard(elm) { elm.addEventListener("pointerdown", function (e) { e.stopPropagation(); }); }
-  function applyStickyStyle(node) {
+  function applyNodeStyle(node) {
     var host = nodeEls[node.id]; if (!host) return;
-    host.style.background = node.color || DEFAULT_STICKY;
-    var txt = host.querySelector(".gvc-txt");
-    if (txt) { txt.style.fontWeight = node.bold ? "700" : ""; txt.style.fontSize = FONT_SIZES[node.fontScale || "m"]; }
+    if (node.type === "sticky") {
+      host.style.background = node.color || DEFAULT_STICKY;
+      var txt = host.querySelector(".gvc-txt");
+      if (txt) { txt.style.fontWeight = node.bold ? "700" : ""; txt.style.fontSize = FONT_SIZES[node.fontScale || "m"]; }
+    } else renderNode(node); // shapes/draws re-render their svg
   }
   function togglePalette(node, dot) {
     if (!palette.classList.contains("hidden")) { palette.classList.add("hidden"); return; }
     palette.innerHTML = "";
-    STICKY_COLORS.forEach(function (c) {
+    var colors = node.type === "draw" ? DRAW_COLORS : STICKY_COLORS;
+    colors.forEach(function (c) {
       var pc = el("div", { class: "pc" + (c === node.color ? " on" : "") }); pc.style.background = c;
-      guard(pc); pc.addEventListener("click", function (e) { e.stopPropagation(); node.color = c; dot.style.background = c; applyStickyStyle(node); scheduleSave(); palette.classList.add("hidden"); });
+      guard(pc); pc.addEventListener("click", function (e) { e.stopPropagation(); node.color = c; dot.style.background = c; applyNodeStyle(node); scheduleSave(); palette.classList.add("hidden"); });
       palette.appendChild(pc);
     });
     palette.classList.remove("hidden");
@@ -563,8 +935,91 @@
   }
   function hideSelBar() { if (selBar) selBar.classList.add("hidden"); if (palette) palette.classList.add("hidden"); }
 
-  // ---- UI: toolbar + top bar + zoom ---------------------------------------
+  // ---- toolbar: icons ------------------------------------------------------
+  var I_SELECT = '<path d="M5 3.5l11 6.9-4.7.8 2.4 4.7-2.2 1.1-2.4-4.7-4.1 2.6z"/>';
+  var I_HAND = '<path d="M6.4 10.6V5.6a1.1 1.1 0 0 1 2.2 0v3.6m0-4.5a1.1 1.1 0 0 1 2.2 0v4.4m0-3.6a1.1 1.1 0 0 1 2.2 0v4.3m0-2.4a1.05 1.05 0 0 1 2.1 0v4.8c0 3.5-2.4 5.9-5.7 5.9-2.1 0-3.4-.8-4.5-2.3l-2.3-3.2c-.6-.9.2-2 1.3-1.7l1.5.5z"/>';
+  var I_TEXT = '<path d="M4.5 6V4.5h11V6M10 4.5v11M8 15.5h4"/>';
+  var I_SECTION = '<rect x="2.8" y="4.6" width="14.4" height="11" rx="2.2"/><path d="M2.8 8.2h4.6V4.6"/>';
+  var I_TABLE = '<rect x="2.8" y="3.6" width="14.4" height="12.8" rx="1.8"/><path d="M2.8 7.8h14.4M2.8 12.2h14.4M8.6 7.8v8.6M13.2 7.8v8.6"/>';
+  var I_STAMP = '<path d="M8.3 10.9 7.6 8c-.3-.5-.5-1-.5-1.6a2.9 2.9 0 0 1 5.8 0c0 .6-.2 1.1-.5 1.6l-.7 2.9"/><path d="M5 14.6c0-1.7 1.4-3.1 3.1-3.1h3.8c1.7 0 3.1 1.4 3.1 3.1v.6H5z"/><path d="M4.4 17h11.2"/>';
+  var I_BUBBLE = '<path d="M10 3.8c3.9 0 7 2.5 7 5.6s-3.1 5.6-7 5.6c-.6 0-1.2-.1-1.8-.2L4.2 16.4l.9-2.9C3.7 12.4 3 11 3 9.4c0-3.1 3.1-5.6 7-5.6z"/>';
+  var I_WIDGETS = '<path d="M6.1 3.2 8.9 6 6.1 8.8 3.3 6z"/><rect x="11.5" y="3.5" width="5.2" height="5.2" rx="1.1"/><circle cx="6.1" cy="14" r="2.7"/><path d="M14.1 11.5v5M11.6 14h5"/>';
+  var I_PLUS = '<path d="M10 4.6v10.8M4.6 10h10.8"/>';
+  var I_IMAGE = '<rect x="3" y="4.5" width="14" height="11" rx="2"/><circle cx="7.4" cy="9" r="1.3"/><path d="M4 14l3.6-3.4 3 3 3-3L17 14"/>';
+  var I_PROTO = '<rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 7.5h14"/>';
+  var IC_ELBOW = '<path d="M5.5 17.5v-3.2c0-1.1.9-2 2-2h5c1.1 0 2-.9 2-2V5.6"/><path d="M12.1 8 14.5 5.6 16.9 8"/>';
+  var IS_FLOW = '<rect x="7.1" y="2.6" width="5.8" height="4.6" rx="1"/><rect x="2.2" y="12.8" width="5.8" height="4.6" rx="1"/><rect x="12" y="12.8" width="5.8" height="4.6" rx="1"/><path d="M10 7.2v2.4M5.1 12.8v-1.4c0-.9.7-1.6 1.6-1.6h6.6c.9 0 1.6.7 1.6 1.6v1.4"/>';
+  var IC_CURVE = '<path d="M4 15.5C5.2 9.4 9.4 6.6 14.6 7.4"/><path d="M11.9 4.5l3.2 2.6-2.6 3.2"/>';
+  var IC_ARROW = '<path d="M4.5 15.5 15 5"/><path d="M9.5 4.6h5.9v5.9"/>';
+  var IC_LINE = '<path d="M4 16 16 4"/>';
+  // the big illustrated shape cluster: square high-left, curved arrow diving to a heavy circle low-right
+  var CLUSTER_ICON = '<svg viewBox="0 0 48 42" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="5" width="20" height="20" rx="1.6"/><path d="M25.5 8.2c3.4-4.4 9.3-5.2 13.9-2.4"/><path d="M38.2 2l1.2 3.8-3.9 1.1"/><circle cx="37" cy="30.5" r="9.6"/></svg>';
+  // illustrated tools (the FigJam "physical" pen + pink sticky stack, overflowing the bar)
+  var PEN_ART = '<svg viewBox="0 0 40 62" class="art pen"><defs><linearGradient id="gvpen-b" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset=".38" stop-color="#f2f3f6"/><stop offset=".72" stop-color="#d4d7dd"/><stop offset=".9" stop-color="#b0b4be"/><stop offset="1" stop-color="#9a9eaa"/></linearGradient><linearGradient id="gvpen-c" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f0f1f4"/><stop offset=".55" stop-color="#c0c3cc"/><stop offset="1" stop-color="#93979f"/></linearGradient></defs><path d="M20 3 30.2 19.6H9.8z" fill="#1e1f24"/><path d="M20 3 25.2 19.6H9.8z" fill="#383941"/><path d="M9.4 19.4h21.2l1.8 8.8H8.8z" fill="url(#gvpen-c)"/><path d="M7.6 28.2h24.8V62H7.6z" fill="url(#gvpen-b)"/><rect x="10" y="30.4" width="2.6" height="31.6" fill="#ffffff" opacity=".55"/><rect x="7.6" y="34.6" width="24.8" height="1.4" fill="#cfd2d9"/></svg>';
+  var STICKY_ART = '<svg viewBox="0 0 66 60" class="art sticky"><defs><linearGradient id="gvst-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb5e0"/><stop offset="1" stop-color="#f078c0"/></linearGradient><linearGradient id="gvst-fold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fda1d6"/><stop offset="1" stop-color="#d55da6"/></linearGradient><filter id="gvst-s" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="2.5" stdDeviation="2.8" flood-color="#000" flood-opacity="0.34"/></filter></defs><g transform="rotate(13 44 34)"><rect x="25" y="9" width="42" height="42" rx="1.5" fill="#d863ab"/></g><g transform="rotate(4 33 34)"><rect x="15" y="10" width="44" height="44" rx="1.5" fill="#f286c7"/></g><g transform="rotate(-9 28 32)" filter="url(#gvst-s)"><path d="M5 8h46v31L36 54H5z" fill="url(#gvst-f)"/><path d="M37.2 53.2 50.2 40.2 45 42.6 39.4 48z" fill="#a8437f" opacity=".28"/><path d="M51 39 36 54V42.4a3.4 3.4 0 0 1 3.4-3.4z" fill="url(#gvst-fold)"/><path d="M51 39 36 54" stroke="#a8437f" stroke-width="1" fill="none"/></g></svg>';
+  // draw sub-toolbar mini illustrations
+  var MINI_MARKER = '<svg viewBox="0 0 26 26"><g transform="rotate(42 13 13)"><path d="M13 0 17 7.2H9z" fill="#1e1f24"/><rect x="9" y="7" width="8" height="3" fill="#b9bcc4"/><rect x="8.2" y="10" width="9.6" height="16" rx="2" fill="#f4f5f7" stroke="#c2c5cd" stroke-width=".9"/></g></svg>';
+  var MINI_HL = '<svg viewBox="0 0 26 26"><g transform="rotate(42 13 13)"><path d="M9.6.6h6.8l1.7 5.8H7.9z" fill="#f4b62c"/><rect x="7.9" y="6.4" width="10.2" height="3" fill="#e5e6ea"/><rect x="7.2" y="9.4" width="11.6" height="16" rx="2" fill="#ffd75e" stroke="#e3b83e" stroke-width=".9"/></g></svg>';
+  var MINI_TAPE = '<svg viewBox="0 0 26 26"><rect x="3.5" y="3.5" width="19" height="19" rx="3.4" fill="#efeaff" stroke="#b6a3f5" stroke-width="1.2"/><path d="M8.7 3.5v19M13.6 3.5v19M18.4 3.5v19M3.5 8.7h19M3.5 13.6h19M3.5 18.4h19" stroke="#cabcf8" stroke-width="1"/></svg>';
+  var MINI_ERASER = '<svg viewBox="0 0 26 26"><g transform="rotate(-16 13 13)"><rect x="2.8" y="8.2" width="20.4" height="11.6" rx="2.6" fill="#f4aab6"/><path d="M2.8 10.8a2.6 2.6 0 0 1 2.6-2.6h7.4l-2.6 11.6H5.4a2.6 2.6 0 0 1-2.6-2.6z" fill="#e2798d"/><rect x="4" y="9.4" width="18" height="3" rx="1.5" fill="#ffffff" opacity=".4"/><path d="M2.8 17h20.4" stroke="#d16a7f" stroke-width=".8"/></g></svg>';
+  var SQUIG_THIN = '<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 13.5c2.4-6.5 5.3-6.5 7.7 0s5 6.5 8.3 0"/></svg>';
+  var SQUIG_THICK = '<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"><path d="M4 13.5c2.2-5.5 4.8-5.5 7 0s4.6 5.5 7 0"/></svg>';
+
+  // ---- UI: toolbar + sub-toolbars + top bar + zoom -------------------------
   var zoomPct, nameEl;
+  var barEls = {}, drawBar, shapeBar, stampBar, moreShapes, plusMenu, colorInput;
+  function setTool(t) {
+    TOOL = typeof t === "string" ? { kind: t } : t;
+    root.classList.toggle("hand", TOOL.kind === "hand");
+    root.classList.toggle("crosshair", ["draw", "eraser", "shape", "connector", "section", "place"].indexOf(TOOL.kind) >= 0);
+    clearGhost();
+    if (TOOL.kind === "place" && (TOOL.type === "sticky" || TOOL.type === "stamp")) makeGhost();
+    closePops();
+    syncBars();
+  }
+  var toolGhost = null;
+  function moveGhost(e) {
+    if (!toolGhost) return;
+    toolGhost.style.left = e.clientX + "px"; toolGhost.style.top = e.clientY + "px";
+    var over = document.elementFromPoint(e.clientX, e.clientY);
+    toolGhost.style.opacity = over && over.closest && over.closest("#gvc-ui") ? "0" : "";
+  }
+  function makeGhost() {
+    toolGhost = TOOL.type === "sticky"
+      ? el("div", { class: "gvc-ghost gvc-ghost-sticky in" })
+      : el("div", { class: "gvc-ghost gvc-ghost-stamp", text: armedStamp });
+    toolGhost.style.left = "-999px";
+    document.body.appendChild(toolGhost);
+    document.addEventListener("pointermove", moveGhost);
+  }
+  function clearGhost() {
+    if (!toolGhost) return;
+    document.removeEventListener("pointermove", moveGhost);
+    toolGhost.remove(); toolGhost = null;
+  }
+  function closePops() {
+    if (moreShapes) moreShapes.classList.add("hidden");
+    if (plusMenu) plusMenu.classList.add("hidden");
+    if (barEls.bar) barEls.bar.classList.remove("plusopen");
+  }
+  function syncBars() {
+    if (!barEls.select) return;
+    barEls.select.classList.toggle("on", TOOL.kind === "select");
+    barEls.hand.classList.toggle("on", TOOL.kind === "hand");
+    barEls.marker.classList.toggle("armed", TOOL.kind === "draw" || TOOL.kind === "eraser");
+    barEls.sticky.classList.toggle("armed", TOOL.kind === "place" && TOOL.type === "sticky");
+    barEls.cluster.classList.toggle("armed", (TOOL.kind === "shape" && TOOL.shape !== "bubble") || TOOL.kind === "connector");
+    barEls.text.classList.toggle("on", TOOL.kind === "place" && TOOL.type === "text");
+    barEls.section.classList.toggle("on", TOOL.kind === "section");
+    barEls.table.classList.toggle("on", TOOL.kind === "place" && TOOL.type === "table");
+    barEls.stamp.classList.toggle("on", TOOL.kind === "place" && TOOL.type === "stamp");
+    barEls.bubble.classList.toggle("on", TOOL.kind === "shape" && TOOL.shape === "bubble");
+    drawBar.classList.toggle("hidden", TOOL.kind !== "draw" && TOOL.kind !== "eraser");
+    shapeBar.classList.toggle("hidden", !((TOOL.kind === "shape" && TOOL.shape !== "bubble") || TOOL.kind === "connector"));
+    stampBar.classList.toggle("hidden", !(TOOL.kind === "place" && TOOL.type === "stamp"));
+    syncDrawBar(); syncShapeBar(); syncStampBar();
+  }
+
   function buildUI() {
     // top-left: back + rename
     var back = el("button", { class: "back", type: "button", html: "&larr; Back" });
@@ -584,29 +1039,11 @@
     zout.addEventListener("click", function () { zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.2); });
     ui.appendChild(el("div", { id: "gvc-zoom" }, [zout, zoomPct, zin]));
 
-    // bottom-center: FigJam-style toolbar
-    var bar = el("div", { id: "gvc-toolbar" });
-    var cursor = toolBtn("cursor", "Select", svgIcon('<path fill="currentColor" stroke="none" d="M5 3.1l10.4 6.2-4.5.9 2.5 4.6-1.9 1-2.5-4.6-3.5 3z"/>'));
-    var hand = toolBtn("hand", "Hand (pan)", svgIcon('<path d="M7 11V6.2a1.1 1.1 0 0 1 2.2 0V10m0-4.2a1.1 1.1 0 0 1 2.2 0V10m0-3.2a1.1 1.1 0 0 1 2.2 0V11c0 3-1.8 4.8-4.6 4.8-1.7 0-2.6-.6-3.6-1.9L6 12.1c-.5-.7.4-1.6 1.2-1.1z"/>'));
-    cursor.classList.add("on");
-    cursor.addEventListener("click", function () { panLock = false; cursor.classList.add("on"); hand.classList.remove("on"); root.classList.remove("hand"); });
-    hand.addEventListener("click", function () { panLock = true; hand.classList.add("on"); cursor.classList.remove("on"); root.classList.add("hand"); });
-    bar.appendChild(cursor); bar.appendChild(hand); bar.appendChild(el("div", { class: "sep" }));
-
-    var TOOLS = [
-      { t: "sticky", title: "Sticky note", svg: '<path d="M4 4h11v7l-4 4H4z" fill="#fce495" stroke="#dfbe57"/><path d="M15 11h-4v4" fill="none" stroke="#dfbe57"/>' },
-      { t: "text", title: "Text", svg: '<path d="M4 5h12"/><path d="M10 5v11"/>' },
-      { t: "arrow", title: "Arrow", svg: '<path d="M4 16 15 5"/><path d="M9.5 5H15v5.5"/>' },
-      { t: "image", title: "Image", svg: '<rect x="3" y="4.5" width="14" height="11" rx="2"/><circle cx="7.4" cy="9" r="1.3"/><path d="M4 14l3.6-3.4 3 3 3-3L17 14"/>' },
-      { t: "tile", title: "Prototype", svg: '<rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 7.5h14"/>' }
-    ];
-    TOOLS.forEach(function (tool, i) {
-      if (i === 3) bar.appendChild(el("div", { class: "sep" }));
-      var b = toolBtn(tool.t, tool.title, svgIcon(tool.svg));
-      b.addEventListener("pointerdown", function (e) { e.preventDefault(); startToolDrag(e, tool.t, b); });
-      bar.appendChild(b);
-    });
-    ui.appendChild(bar);
+    buildToolbar();
+    buildDrawBar();
+    buildShapeBar();
+    buildStampBar();
+    buildPlusMenu();
 
     selBar = el("div", { id: "gvc-selbar", class: "hidden" });
     palette = el("div", { id: "gvc-palette", class: "hidden" });
@@ -614,35 +1051,220 @@
     buildPicker();
     transformCbs.push(positionSelBar);
     window.addEventListener("resize", positionSelBar);
+    syncBars();
   }
-  function toolBtn(t, title, svgHtml) {
+
+  function toolBtn(t, title, svgHtml, key) {
     var b = el("div", { class: "tool" }); b.dataset.t = t;
-    b.innerHTML = svgHtml + '<span class="tip">' + title + "</span>";
+    b.innerHTML = svgHtml + '<span class="tip">' + title + (key ? '<span class="k">' + key + "</span>" : "") + "</span>";
     return b;
   }
 
-  function startToolDrag(e, type, chip) {
-    if (type === "image") { pickImage(centerWorld()); return; }
-    if (type === "tile") { openPicker(); return; }
-    var ghost;
-    if (type === "sticky") { ghost = el("div", { class: "gvc-ghost gvc-ghost-sticky" }); }
-    else { ghost = el("div", { class: "gvc-ghost" }); ghost.appendChild(chip.cloneNode(true)); }
-    ghost.style.left = e.clientX + "px"; ghost.style.top = e.clientY + "px";
-    document.body.appendChild(ghost);
-    if (type === "sticky") requestAnimationFrame(function () { ghost.classList.add("in"); });
-    function move(ev) { ghost.style.left = ev.clientX + "px"; ghost.style.top = ev.clientY + "px"; }
-    function up(ev) {
-      document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); ghost.remove();
-      if (ev.target.closest && ev.target.closest("#gvc-ui")) return;
-      spawn(type, screenToWorld(ev.clientX, ev.clientY));
+  // bottom-center: the FigJam toolbar. Groups: [select hand] | [marker sticky] | [shapes] | [inserts +]
+  function buildToolbar() {
+    var bar = el("div", { id: "gvc-toolbar" });
+    barEls.select = toolBtn("cursor", "Select", svgIcon(I_SELECT), "V");
+    barEls.select.addEventListener("click", function () { setTool("select"); });
+    barEls.hand = toolBtn("hand", "Hand tool", svgIcon(I_HAND), "H");
+    barEls.hand.addEventListener("click", function () { setTool("hand"); });
+    bar.appendChild(barEls.select); bar.appendChild(barEls.hand);
+    bar.appendChild(el("div", { class: "sep" }));
+
+    barEls.marker = toolBtn("marker", "Marker", PEN_ART, "M");
+    barEls.marker.classList.add("big");
+    barEls.marker.addEventListener("click", function () { if (TOOL.kind === "draw" || TOOL.kind === "eraser") setTool("select"); else setTool("draw"); });
+    bar.appendChild(barEls.marker);
+
+    barEls.sticky = toolBtn("sticky", "Sticky note", STICKY_ART, "S");
+    barEls.sticky.classList.add("big");
+    barEls.sticky.addEventListener("pointerdown", function (e) { e.preventDefault(); startStickyPress(e); });
+    bar.appendChild(barEls.sticky);
+
+    barEls.cluster = toolBtn("shapes", "Shapes and connectors", CLUSTER_ICON, "R");
+    barEls.cluster.classList.add("cluster");
+    barEls.cluster.addEventListener("click", function () {
+      if (TOOL.kind === "shape" || TOOL.kind === "connector") { setTool("select"); return; }
+      setTool({ kind: "shape", shape: armedShape });
+    });
+    bar.appendChild(barEls.cluster);
+    bar.appendChild(el("div", { class: "sep" }));
+
+    barEls.text = toolBtn("text", "Text", svgIcon(I_TEXT), "T");
+    barEls.text.addEventListener("click", function () { setTool({ kind: "place", type: "text" }); });
+    barEls.section = toolBtn("section", "Section", svgIcon(I_SECTION), "⇧S");
+    barEls.section.addEventListener("click", function () { setTool("section"); });
+    barEls.table = toolBtn("table", "Table", svgIcon(I_TABLE), "⇧T");
+    barEls.table.addEventListener("click", function () { setTool({ kind: "place", type: "table" }); });
+    barEls.stamp = toolBtn("stamp", "Stamp", svgIcon(I_STAMP), "E");
+    barEls.stamp.addEventListener("click", function () { setTool({ kind: "place", type: "stamp" }); });
+    barEls.bubble = toolBtn("bubble", "Speech bubble", svgIcon(I_BUBBLE));
+    barEls.bubble.addEventListener("click", function () { armedShape = "bubble"; setTool({ kind: "shape", shape: "bubble" }); });
+    barEls.widgets = toolBtn("widgets", "Prototypes and pages", svgIcon(I_WIDGETS));
+    barEls.widgets.addEventListener("click", function () { openPicker(); });
+    bar.appendChild(barEls.text); bar.appendChild(barEls.section); bar.appendChild(barEls.table);
+    bar.appendChild(barEls.stamp); bar.appendChild(barEls.bubble); bar.appendChild(barEls.widgets);
+
+    barEls.plus = toolBtn("plus", "Insert", svgIcon(I_PLUS));
+    barEls.plus.classList.add("plus");
+    barEls.plus.addEventListener("click", function (e) {
+      e.stopPropagation();
+      plusMenu.classList.toggle("hidden");
+      bar.classList.toggle("plusopen", !plusMenu.classList.contains("hidden"));
+    });
+    bar.appendChild(barEls.plus);
+    barEls.bar = bar;
+    ui.appendChild(bar);
+  }
+
+  // Big sticky press: a real drag rides the classic ghost-out-of-the-bar spawn; a plain
+  // click arms the sticky tool (FigJam: the note then follows the cursor until you click).
+  function startStickyPress(e) {
+    var sx = e.clientX, sy = e.clientY, moved = false, ghost = null;
+    function mv(ev) {
+      if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) > 6) {
+        moved = true;
+        ghost = el("div", { class: "gvc-ghost gvc-ghost-sticky" });
+        document.body.appendChild(ghost);
+        requestAnimationFrame(function () { ghost.classList.add("in"); });
+      }
+      if (ghost) { ghost.style.left = ev.clientX + "px"; ghost.style.top = ev.clientY + "px"; }
     }
-    document.addEventListener("pointermove", move); document.addEventListener("pointerup", up);
+    function up(ev) {
+      document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up);
+      if (ghost) ghost.remove();
+      if (!moved) {
+        if (TOOL.kind === "place" && TOOL.type === "sticky") setTool("select");
+        else setTool({ kind: "place", type: "sticky" });
+        return;
+      }
+      if (ev.target.closest && ev.target.closest("#gvc-ui")) return;
+      spawnSticky(screenToWorld(ev.clientX, ev.clientY));
+    }
+    document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
   }
-  function spawn(type, w) {
-    if (type === "sticky") { var n = addNode({ type: "sticky", x: w.x - 80, y: w.y - 80, w: 160, h: 160, text: "", color: DEFAULT_STICKY, author: ME }); select(n.id); pop(n.id); setTimeout(function () { enterEdit(n.id); }, 0); }
-    else if (type === "text") { var t = addNode({ type: "text", x: w.x, y: w.y, text: "" }); select(t.id); setTimeout(function () { enterEdit(t.id); }, 0); }
-    else if (type === "arrow") { var a = addNode({ type: "arrow", x1: w.x - 60, y1: w.y, x2: w.x + 60, y2: w.y }); select(a.id); }
+
+  // draw sub-toolbar: marker / highlighter / washi / eraser · thin / thick · colors
+  var drawEls = {};
+  function buildDrawBar() {
+    drawBar = el("div", { id: "gvc-drawbar", class: "gvc-subbar hidden" });
+    [["marker", MINI_MARKER, "Marker"], ["highlighter", MINI_HL, "Highlighter"], ["tape", MINI_TAPE, "Washi tape"], ["eraser", MINI_ERASER, "Eraser"]].forEach(function (m) {
+      var b = el("div", { class: "sbtn", html: m[1] + '<span class="tip">' + m[2] + "</span>" });
+      b.addEventListener("click", function () {
+        if (m[0] === "eraser") setTool("eraser");
+        else { drawStyle.mode = m[0]; setTool("draw"); }
+      });
+      drawEls[m[0]] = b; drawBar.appendChild(b);
+    });
+    drawBar.appendChild(el("div", { class: "dsep" }));
+    [["thin", SQUIG_THIN, "Thin"], ["thick", SQUIG_THICK, "Thick"]].forEach(function (s) {
+      var b = el("div", { class: "sbtn", html: s[1] + '<span class="tip">' + s[2] + "</span>" });
+      b.addEventListener("click", function () { drawStyle.size = s[0]; if (TOOL.kind === "eraser") setTool("draw"); else syncDrawBar(); });
+      drawEls[s[0]] = b; drawBar.appendChild(b);
+    });
+    drawBar.appendChild(el("div", { class: "dsep" }));
+    drawEls.dots = [];
+    DRAW_COLORS.forEach(function (c) {
+      var d = el("div", { class: "dot" + (c === "#ffffff" ? " white" : "") });
+      d.style.background = c; d.dataset.c = c;
+      d.addEventListener("click", function () { drawStyle.color = c; if (TOOL.kind === "eraser") setTool("draw"); else syncDrawBar(); });
+      drawEls.dots.push(d); drawBar.appendChild(d);
+    });
+    var rb = el("div", { class: "dot rainbow", title: "Custom color" });
+    colorInput = el("input", { type: "color", value: "#1e1e1e" });
+    colorInput.addEventListener("input", function () { drawStyle.color = colorInput.value; if (TOOL.kind === "eraser") setTool("draw"); else syncDrawBar(); });
+    rb.appendChild(colorInput);
+    drawEls.rainbow = rb; drawBar.appendChild(rb);
+    ui.appendChild(drawBar);
   }
+  function syncDrawBar() {
+    if (!drawEls.marker) return;
+    ["marker", "highlighter", "tape"].forEach(function (m) { drawEls[m].classList.toggle("on", TOOL.kind === "draw" && drawStyle.mode === m); });
+    drawEls.eraser.classList.toggle("on", TOOL.kind === "eraser");
+    drawEls.thin.classList.toggle("on", drawStyle.size === "thin");
+    drawEls.thick.classList.toggle("on", drawStyle.size === "thick");
+    var preset = false;
+    drawEls.dots.forEach(function (d) { var on = d.dataset.c === drawStyle.color; d.classList.toggle("selc", on); preset = preset || on; });
+    drawEls.rainbow.classList.toggle("selc", !preset);
+  }
+
+  // shapes sub-toolbar: current ▾ · connectors · shape grid · More shapes
+  var shapeEls = { conns: {}, shapes: {} };
+  var BAR_SHAPES = ["square", "circle", "diamond", "triangle", "triangle-down", "pill", "cylinder"];
+  var MORE_SHAPES = ["round", "star", "hexagon", "pentagon", "parallelogram", "trapezoid", "plus", "arrow-right"];
+  var SHAPE_NAME = { square: "Square", round: "Rounded rectangle", circle: "Circle", diamond: "Diamond", triangle: "Triangle", "triangle-down": "Inverted triangle", pill: "Oval", cylinder: "Cylinder", bubble: "Speech bubble", star: "Star", hexagon: "Hexagon", pentagon: "Pentagon", parallelogram: "Parallelogram", trapezoid: "Trapezoid", plus: "Plus", "arrow-right": "Arrow" };
+  var SHAPE_KEY = { square: "R", circle: "O" };
+  var CONNS = [["elbow", IC_ELBOW, "Elbow connector", "X"], ["curved", IC_CURVE, "Curved connector"], ["arrow", IC_ARROW, "Arrow", ""], ["line", IC_LINE, "Line", "L"]];
+  function tipHtml(name, key) { return '<span class="tip">' + name + (key ? '<span class="k">' + key + "</span>" : "") + "</span>"; }
+  var CHEV = '<svg class="chev" viewBox="0 0 10 6" width="10" height="6" fill="none" stroke="#444" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l4 4 4-4"/></svg>';
+  function buildShapeBar() {
+    shapeBar = el("div", { id: "gvc-shapebar", class: "gvc-subbar hidden" });
+    shapeEls.cur = el("div", { class: "cur", html: shapeIcon(armedShape) + CHEV });
+    shapeEls.cur.addEventListener("click", function (e) { e.stopPropagation(); moreShapes.classList.toggle("hidden"); });
+    shapeBar.appendChild(shapeEls.cur);
+    shapeBar.appendChild(el("div", { class: "dsep" }));
+    CONNS.forEach(function (c) {
+      var b = el("div", { class: "sbtn", html: svgIcon(c[1]) + tipHtml(c[2], c[3]) });
+      b.addEventListener("click", function () { armedConnector = c[0]; setTool({ kind: "connector", conn: c[0] }); });
+      shapeEls.conns[c[0]] = b; shapeBar.appendChild(b);
+    });
+    BAR_SHAPES.forEach(function (s) {
+      var b = el("div", { class: "sbtn", html: shapeIcon(s) + tipHtml(SHAPE_NAME[s], SHAPE_KEY[s]) });
+      b.addEventListener("click", function () { armedShape = s; setTool({ kind: "shape", shape: s }); });
+      shapeEls.shapes[s] = b; shapeBar.appendChild(b);
+    });
+    // FigJam's 12th slot: the flowchart glyph — opens the extended shape tray
+    var flow = el("div", { class: "sbtn", html: svgIcon(IS_FLOW) + tipHtml("More shapes") });
+    flow.addEventListener("click", function (e) { e.stopPropagation(); moreShapes.classList.toggle("hidden"); });
+    shapeBar.appendChild(flow);
+    shapeBar.appendChild(el("div", { class: "dsep" }));
+    var more = el("button", { class: "more", type: "button", text: "More shapes" });
+    more.addEventListener("click", function (e) { e.stopPropagation(); moreShapes.classList.toggle("hidden"); });
+    shapeBar.appendChild(more);
+    ui.appendChild(shapeBar);
+    moreShapes = el("div", { id: "gvc-moreshapes", class: "hidden" });
+    MORE_SHAPES.forEach(function (s) {
+      var b = el("div", { class: "sbtn", html: shapeIcon(s) + tipHtml(SHAPE_NAME[s]) });
+      b.addEventListener("click", function () { armedShape = s; setTool({ kind: "shape", shape: s }); });
+      shapeEls.shapes[s] = b; moreShapes.appendChild(b);
+    });
+    ui.appendChild(moreShapes);
+  }
+  function syncShapeBar() {
+    if (!shapeEls.cur) return;
+    shapeEls.cur.innerHTML = shapeIcon(TOOL.kind === "shape" ? TOOL.shape : armedShape) + CHEV;
+    CONNS.forEach(function (c) { shapeEls.conns[c[0]].classList.toggle("sel", TOOL.kind === "connector" && TOOL.conn === c[0]); });
+    Object.keys(shapeEls.shapes).forEach(function (s) { shapeEls.shapes[s].classList.toggle("sel", TOOL.kind === "shape" && TOOL.shape === s); });
+  }
+
+  // stamp sub-toolbar
+  var stampEls = [];
+  function buildStampBar() {
+    stampBar = el("div", { id: "gvc-stampbar", class: "gvc-subbar hidden" });
+    STAMPS.forEach(function (s) {
+      var b = el("div", { class: "sbtn stampb", text: s });
+      b.addEventListener("click", function () {
+        armedStamp = s; syncStampBar();
+        if (toolGhost && toolGhost.classList.contains("gvc-ghost-stamp")) toolGhost.textContent = s;
+      });
+      stampEls.push(b); stampBar.appendChild(b);
+    });
+    ui.appendChild(stampBar);
+  }
+  function syncStampBar() {
+    stampEls.forEach(function (b) { b.classList.toggle("sel", b.textContent === armedStamp); });
+  }
+
+  // + insert menu (image upload · prototype tile)
+  function buildPlusMenu() {
+    plusMenu = el("div", { id: "gvc-plusmenu", class: "hidden" });
+    [["Image", I_IMAGE, function () { pickImage(centerWorld()); }], ["Prototype", I_PROTO, function () { openPicker(); }]].forEach(function (it) {
+      var row = el("div", { class: "row", html: svgIcon(it[1]) + "<span>" + it[0] + "</span>" });
+      row.addEventListener("click", function () { plusMenu.classList.add("hidden"); it[2](); });
+      plusMenu.appendChild(row);
+    });
+    ui.appendChild(plusMenu);
+  }
+
   function pop(id) { var h = nodeEls[id]; if (!h) return; h.classList.add("gvc-pop"); setTimeout(function () { h.classList.remove("gvc-pop"); }, 240); }
   function centerWorld() { return screenToWorld(innerWidth / 2, innerHeight / 2); }
   function pickImage(w) {
@@ -727,7 +1349,8 @@
     get view() { return board.view; },
     screenToWorld: screenToWorld, worldToScreen: worldToScreen, world: world,
     onTransform: function (cb) { transformCbs.push(cb); },
-    nodes: function () { return board.nodes; }, addNode: addNode
+    nodes: function () { return board.nodes; }, addNode: addNode,
+    setTool: setTool
   };
 
   // ---- boot ----------------------------------------------------------------
