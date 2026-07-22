@@ -133,46 +133,48 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 #gvc-zoom .pct { font-size: 13px; color: #1e1e1e; min-width: 48px; text-align: center; cursor: pointer; }
 
 /* ---- bottom toolbar — the FigJam pill ------------------------------------- */
+/* FigJam-measured metrics (see figjam-refs/7): pill 47px, small icons ~1/3 of pill height —
+   the airiness comes from small icons in a generous pill, not from a short pill */
 #gvc-toolbar {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 2px; height: 54px;
-  background: #fff; border-radius: 15px; padding: 0 7px;
+  display: flex; align-items: center; gap: 2px; height: 47px;
+  background: #fff; border-radius: 13px; padding: 0 7px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 12px 32px rgba(0, 0, 0, .14);
 }
 #gvc-toolbar .tool {
-  display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;
-  border-radius: 10px; cursor: pointer; color: #1e1e1e; user-select: none; position: relative;
+  display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+  border-radius: 8px; cursor: pointer; color: #1e1e1e; user-select: none; position: relative;
   transition: background .12s, color .12s;
 }
 #gvc-toolbar .tool:hover { background: #f2f1ef; }
 #gvc-toolbar .tool.on { background: #7b61ff; color: #fff; }
-#gvc-toolbar .tool svg { width: 25px; height: 25px; }
-#gvc-toolbar .sep { width: 1px; align-self: stretch; background: #e5e4e2; margin: 0 5px; }
+#gvc-toolbar .tool svg { width: 16px; height: 16px; }
+#gvc-toolbar .sep { width: 1px; align-self: stretch; background: #e5e4e2; margin: 0 4px; }
 
 /* the illustrated marker + sticky: full-height slots whose art fills the pill and lifts on
    hover; when armed the whole slot tints grey (FigJam) */
-#gvc-toolbar .tool.big { width: 54px; height: 54px; border-radius: 9px; }
+#gvc-toolbar .tool.big { width: 40px; height: 47px; border-radius: 8px; }
 #gvc-toolbar .tool.big:hover { background: transparent; }
 #gvc-toolbar .tool.big.armed { background: #ececea; }
 /* the arts hang BELOW the pill's bottom edge and get cut by it (FigJam); hovering lifts them
-   back up, revealing the hidden part. The clip wrapper clips only the bottom — the pen tip
-   may still rise above the pill on hover. */
+   back up, revealing the hidden part. The pen apex sits ~10px below the pill top at rest and
+   never breaches it — the hover-lift is the only reveal. */
 #gvc-toolbar .tool.big .artclip { position: absolute; inset: 0; pointer-events: none; clip-path: inset(-70px -30px 0 -30px); }
-#gvc-toolbar .tool.big .art { position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); transition: transform .18s cubic-bezier(.3, 1.4, .6, 1); pointer-events: none; }
-#gvc-toolbar .tool.big:hover .art { transform: translateX(-50%) translateY(-11px); }
-#gvc-toolbar .art.pen { height: 68px; width: 44px; }
-#gvc-toolbar .art.sticky { height: 62px; width: 68px; bottom: -10px; }
-#gvc-toolbar .tool[data-t="sticky"] { width: 62px; }
+#gvc-toolbar .tool.big .art { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); transition: transform .18s cubic-bezier(.3, 1.4, .6, 1); pointer-events: none; }
+#gvc-toolbar .tool.big:hover .art { transform: translateX(-50%) translateY(-7px); }
+#gvc-toolbar .art.pen { height: 44px; width: 26px; }
+#gvc-toolbar .art.sticky { height: 42px; width: 50px; bottom: -5px; }
+#gvc-toolbar .tool[data-t="sticky"] { width: 54px; }
 
 /* the shape cluster (big square + long curved arrow + circle, FigJam's illustrated cluster) */
-#gvc-toolbar .tool.cluster { width: 62px; height: 54px; border-radius: 9px; }
-#gvc-toolbar .tool.cluster svg { width: 46px; height: 39px; }
+#gvc-toolbar .tool.cluster { width: 50px; height: 47px; border-radius: 8px; }
+#gvc-toolbar .tool.cluster svg { width: 40px; height: 33px; }
 #gvc-toolbar .tool.cluster.armed { background: #ececea; }
 
 /* the round grey insert button at the end */
-#gvc-toolbar .tool.plus { width: 37px; height: 37px; border-radius: 50%; background: #f0efed; margin-left: 3px; }
+#gvc-toolbar .tool.plus { width: 33px; height: 33px; border-radius: 50%; background: #f0efed; margin-left: 3px; }
 #gvc-toolbar .tool.plus:hover { background: #e7e6e4; }
-#gvc-toolbar .tool.plus svg { width: 20px; height: 20px; }
+#gvc-toolbar .tool.plus svg { width: 16px; height: 16px; }
 
 /* tooltips: dark with a caret notch, name + grey shortcut key, shown after a beat (FigJam) */
 #gvc-toolbar .tool .tip, .gvc-subbar .sbtn .tip, #gvc-moreshapes .sbtn .tip {
@@ -190,9 +192,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 
 /* ---- sub-toolbars (draw / shapes / stamps) -------------------------------- */
 .gvc-subbar {
-  position: fixed; bottom: 86px; left: 50%; transform: translateX(calc(-50% - 56px));
+  position: fixed; bottom: 77px; left: 50%; transform: translateX(calc(-50% - 56px));
   display: flex; align-items: center; gap: 2px;
-  background: #fff; border-radius: 14px; padding: 6px 7px;
+  background: #fff; border-radius: 12px; padding: 5px 6px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 10px 26px rgba(0, 0, 0, .14);
   animation: gvc-rise .15s ease-out;
 }
@@ -200,7 +202,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 
 /* the stamp wheel — FigJam's radial picker: grey segmented ring, white hub, stamps in the slices */
 #gvc-stampwheel {
-  position: fixed; bottom: 86px; left: 50%; transform: translateX(calc(-50% + 60px));
+  position: fixed; bottom: 77px; left: 50%; transform: translateX(calc(-50% + 60px));
   width: 216px; height: 216px; border-radius: 50%; background: #f1f0ee;
   box-shadow: 0 2px 6px rgba(0, 0, 0, .10), 0 16px 38px rgba(0, 0, 0, .18);
   animation: gvc-rise .15s ease-out;
@@ -228,47 +230,47 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 #gvc-stampwheel .stampb.plus1 { font-size: 23px; font-weight: 800; font-style: italic; color: #7b61ff; }
 .gvc-subbar.hidden, #gvc-moreshapes.hidden, #gvc-plusmenu.hidden { display: none; }
 .gvc-subbar .sbtn {
-  display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;
-  border-radius: 9px; cursor: pointer; color: #1e1e1e; position: relative;
+  display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+  border-radius: 8px; cursor: pointer; color: #1e1e1e; position: relative;
   transition: background .12s;
 }
 .gvc-subbar .sbtn:hover { background: #f2f1ef; }
 .gvc-subbar .sbtn.on { background: #e9e1ff; }
 .gvc-subbar .sbtn.sel { box-shadow: inset 0 0 0 2px #7b61ff; }
-.gvc-subbar .sbtn svg { width: 25px; height: 25px; }
-.gvc-subbar .sbtn svg.shp { width: 20px; height: 20px; }
-.gvc-subbar .dsep { width: 1px; align-self: stretch; background: #e5e4e2; margin: -6px 5px; }
+.gvc-subbar .sbtn svg { width: 21px; height: 21px; }
+.gvc-subbar .sbtn svg.shp { width: 17px; height: 17px; }
+.gvc-subbar .dsep { width: 1px; align-self: stretch; background: #e5e4e2; margin: -5px 4px; }
 
 /* current-shape chip + chevron at the left of the shapes bar */
-.gvc-subbar .cur { display: flex; align-items: center; gap: 6px; padding: 0 11px; height: 40px; border-radius: 9px; cursor: pointer; }
+.gvc-subbar .cur { display: flex; align-items: center; gap: 5px; padding: 0 9px; height: 34px; border-radius: 8px; cursor: pointer; }
 .gvc-subbar .cur:hover { background: #f2f1ef; }
-.gvc-subbar .cur svg.shp { width: 22px; height: 22px; }
+.gvc-subbar .cur svg.shp { width: 18px; height: 18px; }
 .gvc-subbar .cur svg.chev { width: 10px; height: 6px; flex: 0 0 auto; }
 
 /* marker color dots (+ the rainbow custom-color well) */
-.gvc-subbar .dot { width: 23px; height: 23px; border-radius: 50%; margin: 0 4px; cursor: pointer; flex: 0 0 auto; position: relative; }
+.gvc-subbar .dot { width: 20px; height: 20px; border-radius: 50%; margin: 0 3px; cursor: pointer; flex: 0 0 auto; position: relative; }
 .gvc-subbar .dot.white { box-shadow: inset 0 0 0 1px #ddd; }
 .gvc-subbar .dot.selc { box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px #7b61ff; }
 .gvc-subbar .dot.white.selc { box-shadow: inset 0 0 0 1px #ddd, 0 0 0 2.5px #fff, 0 0 0 4.5px #7b61ff; }
 .gvc-subbar .dot.rainbow { background: conic-gradient(#ff3b30, #ffcc00, #34c759, #32ade6, #5856d6, #ff2d95, #ff3b30); }
 .gvc-subbar .dot.rainbow input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-.gvc-subbar .more { border: 1px solid #e3e2e0; background: #fff; border-radius: 9px; padding: 9px 13px; font: inherit; font-size: 13px; font-weight: 500; color: #1e1e1e; cursor: pointer; margin-left: 4px; white-space: nowrap; }
+.gvc-subbar .more { border: 1px solid #e3e2e0; background: #fff; border-radius: 8px; padding: 7px 11px; font: inherit; font-size: 12.5px; font-weight: 500; color: #1e1e1e; cursor: pointer; margin-left: 4px; white-space: nowrap; }
 .gvc-subbar .more:hover { background: #f7f6f5; }
 
 /* the More-shapes tray floats above the shapes bar */
 #gvc-moreshapes {
-  position: fixed; bottom: 146px; left: 50%; transform: translateX(calc(-50% + 120px));
+  position: fixed; bottom: 130px; left: 50%; transform: translateX(calc(-50% + 120px));
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
   background: #fff; border-radius: 12px; padding: 6px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 10px 26px rgba(0, 0, 0, .16);
 }
-#gvc-moreshapes .sbtn { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #1e1e1e; }
+#gvc-moreshapes .sbtn { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #1e1e1e; }
 #gvc-moreshapes .sbtn:hover { background: #f2f1ef; }
-#gvc-moreshapes .sbtn svg.shp { width: 19px; height: 19px; }
+#gvc-moreshapes .sbtn svg.shp { width: 17px; height: 17px; }
 
 /* + insert menu */
 #gvc-plusmenu {
-  position: fixed; bottom: 86px; left: 50%; transform: translateX(calc(-50% + 210px));
+  position: fixed; bottom: 77px; left: 50%; transform: translateX(calc(-50% + 210px));
   background: #fff; border-radius: 12px; padding: 5px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 10px 26px rgba(0, 0, 0, .16); min-width: 150px;
 }
@@ -337,45 +339,32 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 }
 @media (max-width: 760px) {
   #gvc-toolbar {
-    bottom: 12px; height: 50px; padding: 0 5px; gap: 0; border-radius: 13px;
+    bottom: 12px;
     max-width: calc(100vw - 12px); overflow-x: auto; overflow-y: hidden;
     scrollbar-width: none; -webkit-overflow-scrolling: touch;
   }
   #gvc-toolbar::-webkit-scrollbar { display: none; }
   #gvc-toolbar > * { flex: 0 0 auto; }
-  #gvc-toolbar .tool { width: 38px; height: 38px; }
-  #gvc-toolbar .tool svg { width: 22px; height: 22px; }
-  #gvc-toolbar .tool.big { width: 46px; height: 50px; }
-  #gvc-toolbar .art.pen { height: 60px; width: 39px; bottom: -12px; }
-  #gvc-toolbar .art.sticky { height: 55px; width: 60px; bottom: -9px; }
-  #gvc-toolbar .tool[data-t="sticky"] { width: 52px; }
-  #gvc-toolbar .tool.cluster { width: 52px; height: 50px; }
-  #gvc-toolbar .tool.cluster svg { width: 40px; height: 34px; }
-  #gvc-toolbar .tool.plus { width: 34px; height: 34px; }
-  #gvc-toolbar .sep { margin: 0 3px; }
   .gvc-subbar {
-    bottom: 68px; max-width: calc(100vw - 12px); overflow-x: auto; overflow-y: hidden;
-    scrollbar-width: none; padding: 5px 6px;
+    bottom: 60px; max-width: calc(100vw - 12px); overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none;
     left: 50%; transform: translateX(-50%);
   }
   .gvc-subbar::-webkit-scrollbar { display: none; }
   .gvc-subbar > * { flex: 0 0 auto; }
-  #gvc-stampwheel { transform: translateX(-50%); bottom: 74px; }
-  .gvc-subbar .sbtn { width: 36px; height: 36px; }
-  .gvc-subbar .sbtn svg { width: 22px; height: 22px; }
-  .gvc-subbar .dot { width: 21px; height: 21px; margin: 0 3px; }
-  #gvc-moreshapes { bottom: 122px; transform: translateX(-50%); }
-  #gvc-plusmenu { bottom: 68px; left: auto; right: 8px; transform: none; }
+  #gvc-stampwheel { transform: translateX(-50%); bottom: 60px; }
+  #gvc-moreshapes { bottom: 112px; transform: translateX(-50%); }
+  #gvc-plusmenu { bottom: 60px; left: auto; right: 8px; transform: none; }
   #gvc-zoom { display: none; }
   #gvc-topbar { top: 8px; left: 8px; padding: 4px 6px; }
   #gvc-topbar .nm { max-width: 40vw; }
 }
-/* on true phone widths the bar always overflows — a right-edge fade hints at the hidden tools
+/* on narrow phones the bar can overflow — a right-edge fade hints at the hidden tools
    (position:sticky scroll-shadow trick; sits at content end, pinned to the visible edge) */
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   #gvc-toolbar::after {
-    content: ""; position: sticky; right: 0; flex: 0 0 26px; margin-left: -26px;
-    align-self: stretch; pointer-events: none; border-radius: 0 13px 13px 0;
+    content: ""; position: sticky; right: 0; flex: 0 0 24px; margin-left: -24px;
+    align-self: stretch; pointer-events: none; border-radius: 0 12px 12px 0;
     background: linear-gradient(to right, rgba(255, 255, 255, 0), #fff 82%);
   }
 }
