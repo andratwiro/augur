@@ -140,7 +140,7 @@ svg.stk { display: block; overflow: visible; }
    the airiness comes from small icons in a generous pill, not from a short pill */
 #gvc-toolbar {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 2px; height: 47px;
+  display: flex; align-items: center; gap: 6px; height: 47px;
   background: #fff; border-radius: 13px; padding: 0 7px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 12px 32px rgba(0, 0, 0, .14);
 }
@@ -151,7 +151,7 @@ svg.stk { display: block; overflow: visible; }
 }
 #gvc-toolbar .tool:hover { background: #f2f1ef; }
 #gvc-toolbar .tool.on { background: #7b61ff; color: #fff; }
-#gvc-toolbar .tool svg { width: 16px; height: 16px; }
+#gvc-toolbar .tool svg { width: 21px; height: 21px; }
 #gvc-toolbar .sep { width: 1px; align-self: stretch; background: #e5e4e2; margin: 0 4px; }
 
 /* the illustrated marker + sticky: full-height slots whose art fills the pill and lifts on
@@ -174,10 +174,11 @@ svg.stk { display: block; overflow: visible; }
 #gvc-toolbar .tool.cluster svg { width: 40px; height: 33px; }
 #gvc-toolbar .tool.cluster.armed { background: #ececea; }
 
-/* the round grey insert button at the end */
-#gvc-toolbar .tool.plus { width: 33px; height: 33px; border-radius: 50%; background: #f0efed; margin-left: 3px; }
+/* the round grey insert button at the end — its circle is exactly the size of the other
+   icons' tap targets (FigJam) */
+#gvc-toolbar .tool.plus { width: 32px; height: 32px; border-radius: 50%; background: #f0efed; margin-left: 3px; }
 #gvc-toolbar .tool.plus:hover { background: #e7e6e4; }
-#gvc-toolbar .tool.plus svg { width: 16px; height: 16px; }
+#gvc-toolbar .tool.plus svg { width: 17px; height: 17px; }
 
 /* tooltips: dark with a caret notch, name + grey shortcut key, shown after a beat (FigJam) */
 #gvc-toolbar .tool .tip, .gvc-subbar .sbtn .tip, #gvc-moreshapes .sbtn .tip {
