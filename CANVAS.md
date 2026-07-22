@@ -13,6 +13,11 @@
 > (connectors + shape grid + More shapes), stamps, sections, tables, speech bubbles, freehand
 > `draw` nodes, FigJam paper background, tool shortcuts, and **mobile/touch support** (one-finger
 > pan, two-finger pinch zoom, compact toolbar). Playwright-verified ≥95% visual match to FigJam.
+> Also 2026-07-22: **image crop** — double-tap an image enters Figma-style crop mode (full image
+> ghosted, blue window handles, drag to slide the image under the window; click-out/Enter commits,
+> Esc cancels). NON-destructive: `node.crop` = the window as fractions of the full `src`, rendered
+> via percent sizing inside a clipping `.gvc-imgwrap`, so re-entering crop restores the hidden
+> parts and free resize needs no JS. See the "image crop" section in canvas.js.
 > Next big one: the **collaboration skill** (Claude reads the board to co-work).
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —

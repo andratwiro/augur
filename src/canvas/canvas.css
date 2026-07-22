@@ -51,10 +51,13 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 .gvc-text .gvc-txt { outline: none; white-space: pre-wrap; word-break: break-word; min-width: 40px; min-height: 1em; }
 .gvc-text .gvc-txt:empty::before { content: "Text"; color: rgba(0, 0, 0, .3); }
 
-/* no overflow:hidden here — it would clip the .gvc-name label that floats above the node; the
-   img carries the rounding instead */
+/* no overflow:hidden on the host — it would clip the .gvc-name label that floats above the
+   node; the inner wrap clips instead (which is also what makes a crop possible) */
 .gvc-image { cursor: grab; box-shadow: 0 3px 10px rgba(0, 0, 0, .18); border-radius: 4px; background: #fff; }
-.gvc-image img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; border-radius: 4px; }
+.gvc-image .gvc-imgwrap { position: absolute; inset: 0; overflow: hidden; border-radius: 4px; }
+.gvc-image img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+/* cropped: percent size/offset set inline from node.crop show just the crop window */
+.gvc-image img.cropped { position: absolute; max-width: none; object-fit: fill; }
 
 .gvc-tile { background: #fff; border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .16); overflow: hidden; cursor: grab; display: flex; flex-direction: column; }
 .gvc-tile .gvc-tilebar { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #111827; color: #fff; font-size: 11px; }
@@ -118,6 +121,27 @@ svg.stk { display: block; overflow: visible; }
 
 .gvc-handle { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: crosshair; z-index: 2; }
 .gvc-resize { position: absolute; right: -7px; bottom: -7px; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: nwse-resize; z-index: 2; }
+
+/* ---- image crop mode (double-click an image; Figma-style) -----------------
+   .gvc-crop = the full image ghosted at its world rect; .gvc-cropwin = the visible window at
+   full opacity (inner .clip clips its copy of the image; the handles hang on the window edges
+   OUTSIDE the clip so they never get cut). Solid blue flush-inside handles, like the ref. */
+.gvc-crop { position: absolute; z-index: 5; cursor: grab; }
+.gvc-crop img { display: block; pointer-events: none; }
+.gvc-crop .ghost { width: 100%; height: 100%; opacity: .35; border-radius: 4px; }
+.gvc-cropwin { position: absolute; cursor: move; box-shadow: 0 0 0 1.5px #2563eb, 0 3px 10px rgba(0, 0, 0, .18); }
+.gvc-cropwin .clip { position: absolute; inset: 0; overflow: hidden; background: #fff; }
+.gvc-cropwin .clip img { position: absolute; max-width: none; }
+.gvc-croph { position: absolute; background: #2563eb; z-index: 2; }
+.gvc-croph.corner { width: 13px; height: 13px; }
+.gvc-croph.nw { left: 0; top: 0; cursor: nwse-resize; }
+.gvc-croph.ne { right: 0; top: 0; cursor: nesw-resize; }
+.gvc-croph.sw { left: 0; bottom: 0; cursor: nesw-resize; }
+.gvc-croph.se { right: 0; bottom: 0; cursor: nwse-resize; }
+.gvc-croph.n { top: 0; left: 50%; margin-left: -12px; width: 24px; height: 7px; cursor: ns-resize; }
+.gvc-croph.s { bottom: 0; left: 50%; margin-left: -12px; width: 24px; height: 7px; cursor: ns-resize; }
+.gvc-croph.w { left: 0; top: 50%; margin-top: -12px; width: 7px; height: 24px; cursor: ew-resize; }
+.gvc-croph.e { right: 0; top: 50%; margin-top: -12px; width: 7px; height: 24px; cursor: ew-resize; }
 
 /* ---- fixed UI layer ------------------------------------------------------- */
 #gvc-ui { position: fixed; inset: 0; pointer-events: none; z-index: 60; transition: opacity .16s ease; }

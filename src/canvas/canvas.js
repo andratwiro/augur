@@ -170,6 +170,7 @@
       // deep-copy the mutable containers so the copy doesn't share them with the original
       if (n.points) c.points = n.points.map(function (p) { return p.slice(); });
       if (n.cells) { c.cells = {}; for (var ck in n.cells) c.cells[ck] = n.cells[ck]; }
+      if (n.crop) c.crop = { x: n.crop.x, y: n.crop.y, w: n.crop.w, h: n.crop.h };
       c.id = uid();
       if (n.type === "arrow") { c.x1 = n.x1 + dx; c.y1 = n.y1 + dy; c.x2 = n.x2 + dx; c.y2 = n.y2 + dy; }
       else { c.x = (n.x || 0) + dx; c.y = (n.y || 0) + dy; }
@@ -318,10 +319,20 @@
   }
   function renderImage(node) {
     node.w = node.w || 240; node.h = node.h || 180;
-    var host = el("div", { class: "gvc-image" }, [el("img", { src: node.src, alt: node.name || "" })]);
+    var img = el("img", { src: node.src, alt: node.name || "" });
+    if (node.crop) applyCrop(img, node.crop);
+    var host = el("div", { class: "gvc-image" }, [el("div", { class: "gvc-imgwrap" }, [img])]);
     host.appendChild(nameLabel(node));
     place(host, node);
     return host;
+  }
+  // A crop is NON-destructive: src keeps the full image, node.crop = the visible window as
+  // fractions {x,y,w,h} of it. Percent sizing (relative to the clipping wrap) keeps the
+  // window correct under free node resize with no JS in the resize path.
+  function applyCrop(img, c) {
+    img.className = "cropped";
+    img.style.width = (100 / c.w) + "%"; img.style.height = (100 / c.h) + "%";
+    img.style.left = (-100 * c.x / c.w) + "%"; img.style.top = (-100 * c.y / c.h) + "%";
   }
   function renderTile(node) {
     node.w = node.w || 420; node.h = node.h || 300;
@@ -641,6 +652,7 @@
       if (Object.keys(pointers).length > 2) return;
     }
     closePops();
+    if (cropState) { commitCrop(); return; } // click outside crop mode = commit (Figma); crop UI handlers stop propagation
     if (!isPan()) {
       // an armed tool takes precedence over node interaction — FigJam draws on top of things
       if (TOOL.kind === "draw") {
@@ -685,6 +697,9 @@
         if (node.type === "table") {
           var cellEl = e.target.closest && e.target.closest(".gvc-cell");
           if (cellEl) { lastTap = { id: null, t: 0 }; editCell(node, cellEl); return; }
+        }
+        if (node.type === "image") {
+          lastTap = { id: null, t: 0 }; enterCrop(node); return; // double-tap → crop mode
         }
       }
       lastTap = { id: id, t: now };
@@ -834,6 +849,89 @@
   function startResize(e, node) { e.stopPropagation(); drag = { mode: "resize", node: node, sx: e.clientX, sy: e.clientY, ow: node.w, oh: node.h }; root.setPointerCapture(e.pointerId); }
   function startArrowHandle(e, node, end) { e.stopPropagation(); drag = { mode: "arrow", node: node, end: end, sx: e.clientX, sy: e.clientY, px: end === "1" ? node.x1 : node.x2, py: end === "1" ? node.y1 : node.y2 }; root.setPointerCapture(e.pointerId); }
 
+  // ---- image crop (double-tap an image; Figma-style, non-destructive) ------
+  // Crop mode shows the FULL image ghosted at G (its world rect) with the visible window W
+  // on top at full opacity: drag the corner/edge handles to move W's edges, drag anywhere
+  // else (window or ghost) to slide the image under the window. Click outside or Enter
+  // commits (node.x/y/w/h = W, crop = W as fractions of G); Esc cancels. src keeps the full
+  // image, so double-tapping a cropped image later restores the hidden parts to re-adjust.
+  var cropState = null;
+  function enterCrop(node) {
+    if (cropState) commitCrop();
+    var c = node.crop || { x: 0, y: 0, w: 1, h: 1 };
+    var G = { w: node.w / c.w, h: node.h / c.h };
+    G.x = node.x - c.x * G.w; G.y = node.y - c.y * G.h;
+    setSelection([]);
+    if (nodeEls[node.id]) nodeEls[node.id].style.visibility = "hidden";
+    var ghost = el("img", { class: "ghost", src: node.src });
+    var winImg = el("img", { src: node.src });
+    var win = el("div", { class: "gvc-cropwin" }, [el("div", { class: "clip" }, [winImg])]);
+    var box = el("div", { class: "gvc-crop" }, [ghost, win]);
+    ["nw", "n", "ne", "e", "se", "s", "sw", "w"].forEach(function (dir) {
+      var h = el("div", { class: "gvc-croph " + (dir.length === 2 ? "corner " : "edge ") + dir });
+      h.addEventListener("pointerdown", function (e) { startCropDrag(e, "win", dir); });
+      win.appendChild(h);
+    });
+    box.addEventListener("pointerdown", function (e) { startCropDrag(e, "img", null); });
+    box.addEventListener("pointermove", moveCropDrag);
+    box.addEventListener("pointerup", endCropDrag);
+    box.addEventListener("pointercancel", endCropDrag);
+    world.appendChild(box);
+    cropState = { node: node, G: G, W: { x: node.x, y: node.y, w: node.w, h: node.h }, box: box, win: win, winImg: winImg, drag: null };
+    layoutCrop();
+  }
+  function layoutCrop() {
+    var s = cropState, G = s.G, W = s.W;
+    s.box.style.left = G.x + "px"; s.box.style.top = G.y + "px"; s.box.style.width = G.w + "px"; s.box.style.height = G.h + "px";
+    s.win.style.left = (W.x - G.x) + "px"; s.win.style.top = (W.y - G.y) + "px"; s.win.style.width = W.w + "px"; s.win.style.height = W.h + "px";
+    s.winImg.style.width = G.w + "px"; s.winImg.style.height = G.h + "px";
+    s.winImg.style.left = (G.x - W.x) + "px"; s.winImg.style.top = (G.y - W.y) + "px";
+  }
+  function startCropDrag(e, kind, dir) {
+    if (e.pointerType !== "touch" && e.button !== 0) return;
+    e.stopPropagation();
+    var s = cropState; if (!s) return;
+    s.drag = { kind: kind, dir: dir || "", sx: e.clientX, sy: e.clientY, G0: { x: s.G.x, y: s.G.y }, W0: { x: s.W.x, y: s.W.y, w: s.W.w, h: s.W.h } };
+    s.box.setPointerCapture(e.pointerId);
+  }
+  function moveCropDrag(e) {
+    var s = cropState; if (!s || !s.drag) return;
+    var d = s.drag, sc = board.view.scale, dx = (e.clientX - d.sx) / sc, dy = (e.clientY - d.sy) / sc;
+    var G = s.G, W = s.W, MIN = 24;
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    if (d.kind === "img") {
+      // slide the image under the fixed window, clamped so the window stays covered
+      G.x = clamp(d.G0.x + dx, W.x + W.w - G.w, W.x);
+      G.y = clamp(d.G0.y + dy, W.y + W.h - G.h, W.y);
+    } else {
+      // move the window edges named by dir ("nw" moves both), clamped inside G
+      if (d.dir.indexOf("w") >= 0) { W.x = clamp(d.W0.x + dx, G.x, d.W0.x + d.W0.w - MIN); W.w = d.W0.x + d.W0.w - W.x; }
+      if (d.dir.indexOf("e") >= 0) W.w = clamp(d.W0.w + dx, MIN, G.x + G.w - d.W0.x);
+      if (d.dir.indexOf("n") >= 0) { W.y = clamp(d.W0.y + dy, G.y, d.W0.y + d.W0.h - MIN); W.h = d.W0.y + d.W0.h - W.y; }
+      if (d.dir.indexOf("s") >= 0) W.h = clamp(d.W0.h + dy, MIN, G.y + G.h - d.W0.y);
+    }
+    layoutCrop();
+  }
+  function endCropDrag() { if (cropState) cropState.drag = null; }
+  function commitCrop() {
+    var s = cropState; if (!s) return;
+    cropState = null;
+    var n = s.node, G = s.G, W = s.W, r = function (v) { return Math.round(v * 1e4) / 1e4; };
+    n.x = W.x; n.y = W.y; n.w = W.w; n.h = W.h;
+    var c = { x: r((W.x - G.x) / G.w), y: r((W.y - G.y) / G.h), w: r(W.w / G.w), h: r(W.h / G.h) };
+    if (c.w > 0.999 && c.h > 0.999) delete n.crop; else n.crop = c;
+    s.box.remove();
+    if (nodeEls[n.id]) nodeEls[n.id].style.visibility = "";
+    renderNode(n); select(n.id); scheduleSave();
+  }
+  function cancelCrop() {
+    var s = cropState; if (!s) return;
+    cropState = null;
+    s.box.remove();
+    if (nodeEls[s.node.id]) nodeEls[s.node.id].style.visibility = "";
+    select(s.node.id);
+  }
+
   // ---- wheel zoom / trackpad pan ------------------------------------------
   root.addEventListener("wheel", function (e) {
     // Over the fixed UI layer (picker, etc.) let the browser scroll it natively — don't
@@ -846,6 +944,11 @@
 
   // ---- keyboard ------------------------------------------------------------
   document.addEventListener("keydown", function (e) {
+    if (cropState) { // crop mode owns the keyboard: Enter commits, Esc cancels, everything else is inert
+      if (e.key === "Enter") { e.preventDefault(); commitCrop(); }
+      else if (e.key === "Escape") { e.preventDefault(); cancelCrop(); }
+      return;
+    }
     if (e.metaKey && e.key === ".") { e.preventDefault(); ui.classList.toggle("hidden"); return; }
     var ae = document.activeElement, tag = ae ? ae.tagName : "";
     var editing = ae && (ae.isContentEditable || tag === "INPUT" || tag === "TEXTAREA");
