@@ -99,7 +99,8 @@ genuinely harder.
 2. **Node registry** — pluggable node types, each `render + serialize`. Today: `sticky`, `text`,
    `image`, `tile` (prototype embed), `arrow` (kinds: straight/elbow/curved/line), `draw`
    (freehand marker/highlighter/washi strokes), `shape` (16 geometries + centered editable
-   text; `bubble` is a shape), `section` (background container), `table`, `stamp` (emoji).
+   text), `section` (background container), `table` (plain FigJam grid; blue + strips on
+   select add row/col), `stamp` (emoji, picked from a radial wheel; "+1" renders styled).
 3. **Board document** — JSON `{id, name, nodes:[…], focus:{…}}` in KV, keyed by the canvas
    file's URL.
 
@@ -257,12 +258,17 @@ coupling is enforced HERE (terminal), because a canvas can't write git from the 
   finger. A second finger landing mid-stroke cancels the stroke (it's the palm) and pinches.
 - **The FigJam toolbar** (rebuilt 2026-07-22, verified against real FigJam screenshots): tool
   state is one `TOOL` object (`setTool()`), sub-toolbars sync from it (`syncBars()`). Shortcuts:
-  V select · H hand · M marker · S sticky · T text · E stamp · R square · O circle · L line ·
-  X elbow · ⇧S section · ⇧T table · Esc back to select. Drawing keeps the marker armed; shapes/
-  sticky/text/table place once then return to select; stamps stay armed (FigJam behaviour). The
-  eraser deletes whole `draw` strokes only. Sections render behind everything (`insertBefore`).
-  The illustrated pen/sticky/cluster arts are inline SVGs in canvas.js (`PEN_ART`/`STICKY_ART`/
-  `CLUSTER_ICON`) — keep gradients/ids unique, they're singletons in the bar.
+  V select · H hand · M marker · S sticky · T text · E stamp (radial wheel picker) · R square ·
+  O circle · L line · X elbow · ⇧S section · ⇧T table · C comment · Esc back to select. Drawing
+  keeps the marker armed; shapes/sticky/text/table place once then return to select; stamps stay
+  armed (FigJam behaviour). The eraser deletes whole `draw` strokes only. Sections render behind
+  everything (`insertBefore`). The illustrated pen/sticky/cluster arts are inline SVGs in
+  canvas.js (`PEN_ART`/`STICKY_ART`/`CLUSTER_ICON`) — keep gradients/ids unique, they're
+  singletons in the bar; they hang below the pill and are clipped by `.artclip`, lifting on
+  hover (FigJam). Small line icons are **Lucide** (the shadcn set) via `lucideIcon()` — extend
+  with Lucide paths, don't hand-draw new glyphs. The **speech-bubble tool is the comment
+  layer**: it dispatches the overlay's own Shift+C keydown (`toggleComments()`), no new node
+  type. Default sticky color is FigJam blue (`#a9cbf5`).
 
 **Backlog (pick with Rob — he reviews on the live URL and iterates fast)**
 - **DONE 2026-07-21** (this session): device picker + freeze-on-Stop, Cmd+D duplicate, tile/image

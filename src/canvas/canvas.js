@@ -43,10 +43,11 @@
   var IMG_MAX_DIM = 1400, IMG_QUALITY = 0.55; // aggressive: size over quality (Rob's call)
   // FigJam pastel sticky palette (white, grey, red, orange, yellow, green, teal, blue, purple, pink)
   var STICKY_COLORS = ["#ffffff", "#e9ecef", "#f4a9a8", "#f7c99a", "#fce495", "#bfe5a0", "#a9e5db", "#a9cbf5", "#cbb8f2", "#f5b3d7"];
-  var DEFAULT_STICKY = "#fce495";
+  var DEFAULT_STICKY = "#a9cbf5"; // FigJam's default blue (Rob's pick)
   // FigJam marker palette (draw sub-toolbar dots, left to right)
   var DRAW_COLORS = ["#1e1e1e", "#f24822", "#ff9f2e", "#ffd233", "#35c759", "#3aa2ff", "#8a5cff", "#ffffff"];
-  var STAMPS = ["👍", "👎", "❤️", "⭐", "✅", "❌", "❓", "🔥", "👀", "🎉"];
+  // stamp wheel, clockwise from the top (FigJam's simple set; "+1" renders as styled text)
+  var STAMPS = ["👍", "+1", "⭐", "❓", "👎", "👀", "🔥", "❤️"];
   var FONT_SIZES = { s: "13px", m: "16px", l: "21px" };
   var ME = ""; // signed-in name, stamped as the sticky author (like FigJam)
 
@@ -91,6 +92,11 @@
   }
   function svgIcon(paths) {
     return '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + paths + "</svg>";
+  }
+  // Lucide icons (lucide.dev, ISC — the set shadcn/Augur already use) render in their native
+  // 24-viewBox; slightly thinner stroke than stock to sit with FigJam's line weight.
+  function lucideIcon(paths) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + paths + "</svg>";
   }
 
   // ---- coordinate transforms ----------------------------------------------
@@ -175,7 +181,7 @@
     if (selected.length === 1) {
       var n = nodeById(selected[0]);
       decorate(selected[0]);
-      if (n && (n.type === "sticky" || n.type === "shape" || n.type === "draw" || n.type === "table")) showSelBar(n); else hideSelBar();
+      if (n && (n.type === "sticky" || n.type === "shape" || n.type === "draw")) showSelBar(n); else hideSelBar();
     } else hideSelBar();
   }
   function select(id) { setSelection(id ? [id] : []); }
@@ -185,6 +191,14 @@
     clearDecor();
     var node = nodeById(id), host = nodeEls[id];
     if (!node || !host || node.type === "arrow" || node.type === "draw") return;
+    if (node.type === "table") {
+      // FigJam's add affordances: a blue + strip along the bottom (row) and right (column)
+      var ar = el("div", { class: "gvc-addrow", text: "+" });
+      guard(ar); ar.addEventListener("click", function (e) { e.stopPropagation(); node.h = node.h / node.rows * (node.rows + 1); node.rows++; renderNode(node); scheduleSave(); });
+      var ac = el("div", { class: "gvc-addcol", text: "+" });
+      guard(ac); ac.addEventListener("click", function (e) { e.stopPropagation(); node.w = node.w / node.cols * (node.cols + 1); node.cols++; renderNode(node); scheduleSave(); });
+      host.appendChild(ar); host.appendChild(ac); decorEls.push(ar, ac);
+    }
     var rz = el("div", { class: "gvc-resize" });
     rz.addEventListener("pointerdown", function (e) { startResize(e, node); });
     host.appendChild(rz); decorEls.push(rz);
@@ -535,16 +549,16 @@
     return host;
   }
 
-  // ---- tables --------------------------------------------------------------
+  // ---- tables (FigJam-style: plain white cells; + strips on select add row/col)
   function renderTable(node) {
-    node.rows = node.rows || 3; node.cols = node.cols || 3;
-    node.w = node.w || node.cols * 120; node.h = node.h || node.rows * 44;
+    node.rows = node.rows || 2; node.cols = node.cols || 2;
+    node.w = node.w || node.cols * 190; node.h = node.h || node.rows * 88;
     node.cells = node.cells || {};
     var host = el("div", { class: "gvc-table" });
     host.style.gridTemplateColumns = "repeat(" + node.cols + ",1fr)";
     host.style.gridTemplateRows = "repeat(" + node.rows + ",1fr)";
     for (var r = 0; r < node.rows; r++) for (var c = 0; c < node.cols; c++) {
-      var cell = el("div", { class: "gvc-cell" + (r === 0 ? " hd" : ""), text: node.cells[r + "-" + c] || "" });
+      var cell = el("div", { class: "gvc-cell", text: node.cells[r + "-" + c] || "" });
       cell.dataset.rc = r + "-" + c;
       cell.contentEditable = "false";
       cell.addEventListener("keydown", function (e) { e.stopPropagation(); });
@@ -569,8 +583,9 @@
   // ---- stamps --------------------------------------------------------------
   function renderStamp(node) {
     node.w = node.w || 64; node.h = node.h || 64;
-    var host = el("div", { class: "gvc-stamp", text: node.stamp || "👍" });
-    host.style.fontSize = Math.round(node.h * 0.78) + "px";
+    var plus1 = node.stamp === "+1";
+    var host = el("div", { class: "gvc-stamp" + (plus1 ? " plus1" : ""), text: node.stamp || "👍" });
+    host.style.fontSize = Math.round(node.h * (plus1 ? 0.5 : 0.78)) + "px";
     place(host, node);
     return host;
   }
@@ -785,7 +800,7 @@
     var w = screenToWorld(e.clientX, e.clientY);
     if (TOOL.type === "sticky") { spawnSticky(w); setTool("select"); }
     else if (TOOL.type === "text") { var t = addNode({ type: "text", x: w.x, y: w.y, text: "" }); select(t.id); setTimeout(function () { enterEdit(t.id); }, 0); setTool("select"); }
-    else if (TOOL.type === "table") { var tb = addNode({ type: "table", x: w.x - 180, y: w.y - 66 }); select(tb.id); pop(tb.id); setTool("select"); }
+    else if (TOOL.type === "table") { var tb = addNode({ type: "table", x: w.x - 190, y: w.y - 88 }); select(tb.id); pop(tb.id); setTool("select"); }
     else if (TOOL.type === "stamp") { var st = addNode({ type: "stamp", stamp: armedStamp, x: w.x - 32, y: w.y - 32, w: 64, h: 64 }); pop(st.id); /* stamps stay armed */ }
   }
   function spawnSticky(w) {
@@ -835,6 +850,7 @@
     else if (k === "o") { armedShape = "circle"; setTool({ kind: "shape", shape: "circle" }); }
     else if (k === "l") { armedConnector = "line"; setTool({ kind: "connector", conn: "line" }); }
     else if (k === "x") { armedConnector = "elbow"; setTool({ kind: "connector", conn: "elbow" }); }
+    else if (k === "c") { setTool("select"); toggleComments(); }
   });
   document.addEventListener("keyup", function (e) {
     if (e.code === "Space") { spaceDown = false; if (TOOL.kind !== "hand") root.classList.remove("hand"); }
@@ -871,28 +887,20 @@
   var selBar, palette, picker, catalog = null;
   function showSelBar(node) {
     selBar.innerHTML = "";
-    if (node.type === "table") {
-      var ar = el("button", { class: "btn wide", type: "button", text: "+ Row" });
-      guard(ar); ar.addEventListener("click", function (e) { e.stopPropagation(); node.h = node.h / node.rows * (node.rows + 1); node.rows++; renderNode(node); scheduleSave(); });
-      var ac = el("button", { class: "btn wide", type: "button", text: "+ Col" });
-      guard(ac); ac.addEventListener("click", function (e) { e.stopPropagation(); node.w = node.w / node.cols * (node.cols + 1); node.cols++; renderNode(node); scheduleSave(); });
-      selBar.appendChild(ar); selBar.appendChild(ac);
-    } else {
-      var dot = el("div", { class: "dot" }); dot.style.background = node.color || (node.type === "draw" ? "#1e1e1e" : node.type === "shape" ? "#ffffff" : DEFAULT_STICKY);
-      var sw = el("div", { class: "sw" }, [dot, el("div", { class: "chev", text: "▾" })]);
-      guard(sw); sw.addEventListener("click", function (e) { e.stopPropagation(); togglePalette(node, dot); });
-      selBar.appendChild(sw);
-      if (node.type === "sticky" || node.type === "shape") {
-        selBar.appendChild(el("div", { class: "div" }));
-        if (node.type === "sticky") {
-          var fb = el("div", { class: "btn", title: "Text size", html: '<span style="font-size:15px">A</span>' });
-          guard(fb); fb.addEventListener("click", function (e) { e.stopPropagation(); var o = ["s", "m", "l"], i = o.indexOf(node.fontScale || "m"); node.fontScale = o[(i + 1) % 3]; applyNodeStyle(node); scheduleSave(); });
-          selBar.appendChild(fb);
-        }
-        var bb = el("button", { class: "btn" + (node.bold ? " on" : ""), type: "button", text: "B", title: "Bold" }); bb.style.fontWeight = "700";
-        guard(bb); bb.addEventListener("click", function (e) { e.stopPropagation(); node.bold = !node.bold; bb.classList.toggle("on", node.bold); applyNodeStyle(node); scheduleSave(); });
-        selBar.appendChild(bb);
+    var dot = el("div", { class: "dot" }); dot.style.background = node.color || (node.type === "draw" ? "#1e1e1e" : node.type === "shape" ? "#ffffff" : DEFAULT_STICKY);
+    var sw = el("div", { class: "sw" }, [dot, el("div", { class: "chev", text: "▾" })]);
+    guard(sw); sw.addEventListener("click", function (e) { e.stopPropagation(); togglePalette(node, dot); });
+    selBar.appendChild(sw);
+    if (node.type === "sticky" || node.type === "shape") {
+      selBar.appendChild(el("div", { class: "div" }));
+      if (node.type === "sticky") {
+        var fb = el("div", { class: "btn", title: "Text size", html: '<span style="font-size:15px">A</span>' });
+        guard(fb); fb.addEventListener("click", function (e) { e.stopPropagation(); var o = ["s", "m", "l"], i = o.indexOf(node.fontScale || "m"); node.fontScale = o[(i + 1) % 3]; applyNodeStyle(node); scheduleSave(); });
+        selBar.appendChild(fb);
       }
+      var bb = el("button", { class: "btn" + (node.bold ? " on" : ""), type: "button", text: "B", title: "Bold" }); bb.style.fontWeight = "700";
+      guard(bb); bb.addEventListener("click", function (e) { e.stopPropagation(); node.bold = !node.bold; bb.classList.toggle("on", node.bold); applyNodeStyle(node); scheduleSave(); });
+      selBar.appendChild(bb);
     }
     selBar.classList.remove("hidden");
     positionSelBar();
@@ -935,23 +943,23 @@
   }
   function hideSelBar() { if (selBar) selBar.classList.add("hidden"); if (palette) palette.classList.add("hidden"); }
 
-  // ---- toolbar: icons ------------------------------------------------------
-  var I_SELECT = '<path d="M5 3.5l11 6.9-4.7.8 2.4 4.7-2.2 1.1-2.4-4.7-4.1 2.6z"/>';
-  var I_HAND = '<path d="M6.4 10.6V5.6a1.1 1.1 0 0 1 2.2 0v3.6m0-4.5a1.1 1.1 0 0 1 2.2 0v4.4m0-3.6a1.1 1.1 0 0 1 2.2 0v4.3m0-2.4a1.05 1.05 0 0 1 2.1 0v4.8c0 3.5-2.4 5.9-5.7 5.9-2.1 0-3.4-.8-4.5-2.3l-2.3-3.2c-.6-.9.2-2 1.3-1.7l1.5.5z"/>';
-  var I_TEXT = '<path d="M4.5 6V4.5h11V6M10 4.5v11M8 15.5h4"/>';
-  var I_SECTION = '<rect x="2.8" y="4.6" width="14.4" height="11" rx="2.2"/><path d="M2.8 8.2h4.6V4.6"/>';
-  var I_TABLE = '<rect x="2.8" y="3.6" width="14.4" height="12.8" rx="1.8"/><path d="M2.8 7.8h14.4M2.8 12.2h14.4M8.6 7.8v8.6M13.2 7.8v8.6"/>';
-  var I_STAMP = '<path d="M8.3 10.9 7.6 8c-.3-.5-.5-1-.5-1.6a2.9 2.9 0 0 1 5.8 0c0 .6-.2 1.1-.5 1.6l-.7 2.9"/><path d="M5 14.6c0-1.7 1.4-3.1 3.1-3.1h3.8c1.7 0 3.1 1.4 3.1 3.1v.6H5z"/><path d="M4.4 17h11.2"/>';
-  var I_BUBBLE = '<path d="M10 3.8c3.9 0 7 2.5 7 5.6s-3.1 5.6-7 5.6c-.6 0-1.2-.1-1.8-.2L4.2 16.4l.9-2.9C3.7 12.4 3 11 3 9.4c0-3.1 3.1-5.6 7-5.6z"/>';
-  var I_WIDGETS = '<path d="M6.1 3.2 8.9 6 6.1 8.8 3.3 6z"/><rect x="11.5" y="3.5" width="5.2" height="5.2" rx="1.1"/><circle cx="6.1" cy="14" r="2.7"/><path d="M14.1 11.5v5M11.6 14h5"/>';
-  var I_PLUS = '<path d="M10 4.6v10.8M4.6 10h10.8"/>';
-  var I_IMAGE = '<rect x="3" y="4.5" width="14" height="11" rx="2"/><circle cx="7.4" cy="9" r="1.3"/><path d="M4 14l3.6-3.4 3 3 3-3L17 14"/>';
-  var I_PROTO = '<rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 7.5h14"/>';
-  var IC_ELBOW = '<path d="M5.5 17.5v-3.2c0-1.1.9-2 2-2h5c1.1 0 2-.9 2-2V5.6"/><path d="M12.1 8 14.5 5.6 16.9 8"/>';
-  var IS_FLOW = '<rect x="7.1" y="2.6" width="5.8" height="4.6" rx="1"/><rect x="2.2" y="12.8" width="5.8" height="4.6" rx="1"/><rect x="12" y="12.8" width="5.8" height="4.6" rx="1"/><path d="M10 7.2v2.4M5.1 12.8v-1.4c0-.9.7-1.6 1.6-1.6h6.6c.9 0 1.6.7 1.6 1.6v1.4"/>';
-  var IC_CURVE = '<path d="M4 15.5C5.2 9.4 9.4 6.6 14.6 7.4"/><path d="M11.9 4.5l3.2 2.6-2.6 3.2"/>';
-  var IC_ARROW = '<path d="M4.5 15.5 15 5"/><path d="M9.5 4.6h5.9v5.9"/>';
-  var IC_LINE = '<path d="M4 16 16 4"/>';
+  // ---- toolbar: icons — Lucide (the shadcn set) wherever one exists --------
+  var I_SELECT = '<path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/>'; // mouse-pointer-2
+  var I_HAND = '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>'; // hand
+  var I_TEXT = '<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/>'; // type
+  var I_SECTION = '<rect x="2.8" y="4.6" width="14.4" height="11" rx="2.2"/><path d="M2.8 8.2h4.6V4.6"/>'; // custom (FigJam section glyph — no Lucide equivalent)
+  var I_TABLE = '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>'; // grid-3x3
+  var I_STAMP = '<path d="M5 22h14"/><path d="M19.27 13.73A2.5 2.5 0 0 0 17.5 13h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.66-.26-1.3-.73-1.77Z"/><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13"/>'; // stamp
+  var I_BUBBLE = '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>'; // message-circle
+  var I_WIDGETS = '<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>'; // shapes
+  var I_PLUS = '<path d="M5 12h14"/><path d="M12 5v14"/>'; // plus
+  var I_IMAGE = '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'; // image
+  var I_PROTO = '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/>'; // app-window
+  var IC_ELBOW = '<path d="m10 9 5-5 5 5"/><path d="M4 20h7a4 4 0 0 0 4-4V4"/>'; // corner-right-up
+  var IS_FLOW = '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>'; // network
+  var IC_CURVE = '<path d="M5 19C6.2 10.6 11.4 6.3 18.6 7.1"/><path d="m15.2 3.9 3.9 3.1-3.1 3.9"/>'; // custom spline + arrowhead
+  var IC_ARROW = '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>'; // arrow-up-right
+  var IC_LINE = '<path d="M19 5 5 19"/>'; // slash
   // the big illustrated shape cluster: square high-left, curved arrow diving to a heavy circle low-right
   var CLUSTER_ICON = '<svg viewBox="0 0 48 42" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="5" width="20" height="20" rx="1.6"/><path d="M25.5 8.2c3.4-4.4 9.3-5.2 13.9-2.4"/><path d="M38.2 2l1.2 3.8-3.9 1.1"/><circle cx="37" cy="30.5" r="9.6"/></svg>';
   // illustrated tools (the FigJam "physical" pen + pink sticky stack, overflowing the bar)
@@ -987,10 +995,14 @@
   function makeGhost() {
     toolGhost = TOOL.type === "sticky"
       ? el("div", { class: "gvc-ghost gvc-ghost-sticky in" })
-      : el("div", { class: "gvc-ghost gvc-ghost-stamp", text: armedStamp });
+      : el("div", { class: "gvc-ghost gvc-ghost-stamp" + (armedStamp === "+1" ? " plus1" : ""), text: armedStamp });
     toolGhost.style.left = "-999px";
     document.body.appendChild(toolGhost);
     document.addEventListener("pointermove", moveGhost);
+  }
+  // the speech-bubble tool IS the comment layer — fire the overlay's own Shift+C toggle
+  function toggleComments() {
+    try { window.dispatchEvent(new KeyboardEvent("keydown", { shiftKey: true, code: "KeyC", key: "C" })); } catch (e) {}
   }
   function clearGhost() {
     if (!toolGhost) return;
@@ -1008,14 +1020,13 @@
     barEls.hand.classList.toggle("on", TOOL.kind === "hand");
     barEls.marker.classList.toggle("armed", TOOL.kind === "draw" || TOOL.kind === "eraser");
     barEls.sticky.classList.toggle("armed", TOOL.kind === "place" && TOOL.type === "sticky");
-    barEls.cluster.classList.toggle("armed", (TOOL.kind === "shape" && TOOL.shape !== "bubble") || TOOL.kind === "connector");
+    barEls.cluster.classList.toggle("armed", TOOL.kind === "shape" || TOOL.kind === "connector");
     barEls.text.classList.toggle("on", TOOL.kind === "place" && TOOL.type === "text");
     barEls.section.classList.toggle("on", TOOL.kind === "section");
     barEls.table.classList.toggle("on", TOOL.kind === "place" && TOOL.type === "table");
     barEls.stamp.classList.toggle("on", TOOL.kind === "place" && TOOL.type === "stamp");
-    barEls.bubble.classList.toggle("on", TOOL.kind === "shape" && TOOL.shape === "bubble");
     drawBar.classList.toggle("hidden", TOOL.kind !== "draw" && TOOL.kind !== "eraser");
-    shapeBar.classList.toggle("hidden", !((TOOL.kind === "shape" && TOOL.shape !== "bubble") || TOOL.kind === "connector"));
+    shapeBar.classList.toggle("hidden", !(TOOL.kind === "shape" || TOOL.kind === "connector"));
     stampBar.classList.toggle("hidden", !(TOOL.kind === "place" && TOOL.type === "stamp"));
     syncDrawBar(); syncShapeBar(); syncStampBar();
   }
@@ -1063,19 +1074,19 @@
   // bottom-center: the FigJam toolbar. Groups: [select hand] | [marker sticky] | [shapes] | [inserts +]
   function buildToolbar() {
     var bar = el("div", { id: "gvc-toolbar" });
-    barEls.select = toolBtn("cursor", "Select", svgIcon(I_SELECT), "V");
+    barEls.select = toolBtn("cursor", "Select", lucideIcon(I_SELECT), "V");
     barEls.select.addEventListener("click", function () { setTool("select"); });
-    barEls.hand = toolBtn("hand", "Hand tool", svgIcon(I_HAND), "H");
+    barEls.hand = toolBtn("hand", "Hand tool", lucideIcon(I_HAND), "H");
     barEls.hand.addEventListener("click", function () { setTool("hand"); });
     bar.appendChild(barEls.select); bar.appendChild(barEls.hand);
     bar.appendChild(el("div", { class: "sep" }));
 
-    barEls.marker = toolBtn("marker", "Marker", PEN_ART, "M");
+    barEls.marker = toolBtn("marker", "Marker", '<span class="artclip">' + PEN_ART + "</span>", "M");
     barEls.marker.classList.add("big");
     barEls.marker.addEventListener("click", function () { if (TOOL.kind === "draw" || TOOL.kind === "eraser") setTool("select"); else setTool("draw"); });
     bar.appendChild(barEls.marker);
 
-    barEls.sticky = toolBtn("sticky", "Sticky note", STICKY_ART, "S");
+    barEls.sticky = toolBtn("sticky", "Sticky note", '<span class="artclip">' + STICKY_ART + "</span>", "S");
     barEls.sticky.classList.add("big");
     barEls.sticky.addEventListener("pointerdown", function (e) { e.preventDefault(); startStickyPress(e); });
     bar.appendChild(barEls.sticky);
@@ -1089,22 +1100,22 @@
     bar.appendChild(barEls.cluster);
     bar.appendChild(el("div", { class: "sep" }));
 
-    barEls.text = toolBtn("text", "Text", svgIcon(I_TEXT), "T");
+    barEls.text = toolBtn("text", "Text", lucideIcon(I_TEXT), "T");
     barEls.text.addEventListener("click", function () { setTool({ kind: "place", type: "text" }); });
     barEls.section = toolBtn("section", "Section", svgIcon(I_SECTION), "⇧S");
     barEls.section.addEventListener("click", function () { setTool("section"); });
-    barEls.table = toolBtn("table", "Table", svgIcon(I_TABLE), "⇧T");
+    barEls.table = toolBtn("table", "Table", lucideIcon(I_TABLE), "⇧T");
     barEls.table.addEventListener("click", function () { setTool({ kind: "place", type: "table" }); });
-    barEls.stamp = toolBtn("stamp", "Stamp", svgIcon(I_STAMP), "E");
+    barEls.stamp = toolBtn("stamp", "Stamp", lucideIcon(I_STAMP), "E");
     barEls.stamp.addEventListener("click", function () { setTool({ kind: "place", type: "stamp" }); });
-    barEls.bubble = toolBtn("bubble", "Speech bubble", svgIcon(I_BUBBLE));
-    barEls.bubble.addEventListener("click", function () { armedShape = "bubble"; setTool({ kind: "shape", shape: "bubble" }); });
-    barEls.widgets = toolBtn("widgets", "Prototypes and pages", svgIcon(I_WIDGETS));
+    barEls.bubble = toolBtn("bubble", "Comment", lucideIcon(I_BUBBLE), "C");
+    barEls.bubble.addEventListener("click", function () { setTool("select"); toggleComments(); });
+    barEls.widgets = toolBtn("widgets", "Prototypes and pages", lucideIcon(I_WIDGETS));
     barEls.widgets.addEventListener("click", function () { openPicker(); });
     bar.appendChild(barEls.text); bar.appendChild(barEls.section); bar.appendChild(barEls.table);
     bar.appendChild(barEls.stamp); bar.appendChild(barEls.bubble); bar.appendChild(barEls.widgets);
 
-    barEls.plus = toolBtn("plus", "Insert", svgIcon(I_PLUS));
+    barEls.plus = toolBtn("plus", "Insert", lucideIcon(I_PLUS));
     barEls.plus.classList.add("plus");
     barEls.plus.addEventListener("click", function (e) {
       e.stopPropagation();
@@ -1203,7 +1214,7 @@
     shapeBar.appendChild(shapeEls.cur);
     shapeBar.appendChild(el("div", { class: "dsep" }));
     CONNS.forEach(function (c) {
-      var b = el("div", { class: "sbtn", html: svgIcon(c[1]) + tipHtml(c[2], c[3]) });
+      var b = el("div", { class: "sbtn", html: lucideIcon(c[1]) + tipHtml(c[2], c[3]) });
       b.addEventListener("click", function () { armedConnector = c[0]; setTool({ kind: "connector", conn: c[0] }); });
       shapeEls.conns[c[0]] = b; shapeBar.appendChild(b);
     });
@@ -1213,7 +1224,7 @@
       shapeEls.shapes[s] = b; shapeBar.appendChild(b);
     });
     // FigJam's 12th slot: the flowchart glyph — opens the extended shape tray
-    var flow = el("div", { class: "sbtn", html: svgIcon(IS_FLOW) + tipHtml("More shapes") });
+    var flow = el("div", { class: "sbtn", html: lucideIcon(IS_FLOW) + tipHtml("More shapes") });
     flow.addEventListener("click", function (e) { e.stopPropagation(); moreShapes.classList.toggle("hidden"); });
     shapeBar.appendChild(flow);
     shapeBar.appendChild(el("div", { class: "dsep" }));
@@ -1236,15 +1247,23 @@
     Object.keys(shapeEls.shapes).forEach(function (s) { shapeEls.shapes[s].classList.toggle("sel", TOOL.kind === "shape" && TOOL.shape === s); });
   }
 
-  // stamp sub-toolbar
+  // stamp wheel — FigJam's radial picker: 8 stamps on a segmented ring around a hub
   var stampEls = [];
   function buildStampBar() {
-    stampBar = el("div", { id: "gvc-stampbar", class: "gvc-subbar hidden" });
-    STAMPS.forEach(function (s) {
-      var b = el("div", { class: "sbtn stampb", text: s });
+    stampBar = el("div", { id: "gvc-stampwheel", class: "hidden" });
+    stampBar.appendChild(el("div", { class: "hub", text: "😂🙏\n👌🔥" }));
+    var R = 78, C = 108;
+    STAMPS.forEach(function (s, i) {
+      var b = el("div", { class: "stampb" + (s === "+1" ? " plus1" : ""), text: s });
+      var a = (-90 + i * (360 / STAMPS.length)) * Math.PI / 180;
+      b.style.left = (C + Math.cos(a) * R) + "px";
+      b.style.top = (C + Math.sin(a) * R) + "px";
       b.addEventListener("click", function () {
         armedStamp = s; syncStampBar();
-        if (toolGhost && toolGhost.classList.contains("gvc-ghost-stamp")) toolGhost.textContent = s;
+        if (toolGhost && toolGhost.classList.contains("gvc-ghost-stamp")) {
+          toolGhost.textContent = s;
+          toolGhost.classList.toggle("plus1", s === "+1");
+        }
       });
       stampEls.push(b); stampBar.appendChild(b);
     });
@@ -1258,7 +1277,7 @@
   function buildPlusMenu() {
     plusMenu = el("div", { id: "gvc-plusmenu", class: "hidden" });
     [["Image", I_IMAGE, function () { pickImage(centerWorld()); }], ["Prototype", I_PROTO, function () { openPicker(); }]].forEach(function (it) {
-      var row = el("div", { class: "row", html: svgIcon(it[1]) + "<span>" + it[0] + "</span>" });
+      var row = el("div", { class: "row", html: lucideIcon(it[1]) + "<span>" + it[0] + "</span>" });
       row.addEventListener("click", function () { plusMenu.classList.add("hidden"); it[2](); });
       plusMenu.appendChild(row);
     });

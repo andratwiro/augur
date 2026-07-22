@@ -97,12 +97,21 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 .gvc-section { background: rgba(255, 255, 255, .62); border: 1px solid rgba(0, 0, 0, .08); border-radius: 12px; cursor: grab; }
 .gvc-section > .gvc-name { top: 8px; left: 12px; font-size: 13px; font-weight: 600; color: #454545; }
 
-/* tables: CSS grid of editable cells, tinted header row */
-.gvc-table { display: grid; background: #fff; border: 1px solid #dcdbe0; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, .08); cursor: grab; }
-.gvc-cell { border-right: 1px solid #e6e5ea; border-bottom: 1px solid #e6e5ea; padding: 8px 10px; font-size: 13px; outline: none; overflow: hidden; min-width: 0; }
-.gvc-cell.hd { background: #f1edff; font-weight: 600; }
+/* tables: FigJam-style — plain white cells, thin inner gridlines; when selected, blue +
+   strips (right = add column, bottom = add row) */
+.gvc-table { display: grid; background: #fff; border: 1px solid #cfd1d6; border-radius: 2px; box-shadow: 0 2px 8px rgba(0, 0, 0, .06); cursor: grab; }
+.gvc-cell { border-right: 1px solid #e3e3e6; border-bottom: 1px solid #e3e3e6; padding: 8px 10px; font-size: 13px; outline: none; overflow: hidden; min-width: 0; }
+.gvc-addrow, .gvc-addcol {
+  position: absolute; display: flex; align-items: center; justify-content: center;
+  background: #c9dff9; color: #2f80ed; font-size: 22px; font-weight: 500;
+  border-radius: 8px; cursor: pointer; z-index: 2; transition: background .12s;
+}
+.gvc-addrow:hover, .gvc-addcol:hover { background: #b4d3f7; }
+.gvc-addrow { left: 0; right: 0; bottom: -46px; height: 38px; }
+.gvc-addcol { top: 0; bottom: 0; right: -46px; width: 38px; }
 
-.gvc-stamp { display: flex; align-items: center; justify-content: center; cursor: grab; line-height: 1; }
+/* stacked white drop-shadows give emoji the die-cut sticker outline FigJam stamps have */
+.gvc-stamp { display: flex; align-items: center; justify-content: center; cursor: grab; line-height: 1; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 2px 3px rgba(0, 0, 0, .22)); }
 
 .gvc-handle { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: crosshair; z-index: 2; }
 .gvc-resize { position: absolute; right: -7px; bottom: -7px; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: nwse-resize; z-index: 2; }
@@ -145,10 +154,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 #gvc-toolbar .tool.big { width: 54px; height: 54px; border-radius: 9px; }
 #gvc-toolbar .tool.big:hover { background: transparent; }
 #gvc-toolbar .tool.big.armed { background: #ececea; }
-#gvc-toolbar .tool.big .art { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); transition: transform .18s cubic-bezier(.3, 1.4, .6, 1); pointer-events: none; }
-#gvc-toolbar .tool.big:hover .art { transform: translateX(-50%) translateY(-5px); }
-#gvc-toolbar .art.pen { height: 54px; width: 35px; }
-#gvc-toolbar .art.sticky { height: 54px; width: 60px; }
+/* the arts hang BELOW the pill's bottom edge and get cut by it (FigJam); hovering lifts them
+   back up, revealing the hidden part. The clip wrapper clips only the bottom — the pen tip
+   may still rise above the pill on hover. */
+#gvc-toolbar .tool.big .artclip { position: absolute; inset: 0; pointer-events: none; clip-path: inset(-70px -30px 0 -30px); }
+#gvc-toolbar .tool.big .art { position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%); transition: transform .18s cubic-bezier(.3, 1.4, .6, 1); pointer-events: none; }
+#gvc-toolbar .tool.big:hover .art { transform: translateX(-50%) translateY(-11px); }
+#gvc-toolbar .art.pen { height: 68px; width: 44px; }
+#gvc-toolbar .art.sticky { height: 62px; width: 68px; bottom: -10px; }
 #gvc-toolbar .tool[data-t="sticky"] { width: 62px; }
 
 /* the shape cluster (big square + long curved arrow + circle, FigJam's illustrated cluster) */
@@ -183,8 +196,36 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
   box-shadow: 0 1px 4px rgba(0, 0, 0, .10), 0 10px 26px rgba(0, 0, 0, .14);
   animation: gvc-rise .15s ease-out;
 }
-#gvc-stampbar { transform: translateX(calc(-50% + 60px)); }
 @keyframes gvc-rise { from { opacity: 0; margin-bottom: -6px; } }
+
+/* the stamp wheel — FigJam's radial picker: grey segmented ring, white hub, stamps in the slices */
+#gvc-stampwheel {
+  position: fixed; bottom: 86px; left: 50%; transform: translateX(calc(-50% + 60px));
+  width: 216px; height: 216px; border-radius: 50%; background: #f1f0ee;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .10), 0 16px 38px rgba(0, 0, 0, .18);
+  animation: gvc-rise .15s ease-out;
+}
+#gvc-stampwheel.hidden { display: none; }
+#gvc-stampwheel::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: repeating-conic-gradient(from 20.5deg, #fff 0 4deg, transparent 4deg 45deg);
+}
+#gvc-stampwheel .hub {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 92px; height: 92px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .10);
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  font-size: 17px; line-height: 1.25; white-space: pre-line; pointer-events: none;
+}
+#gvc-stampwheel .stampb {
+  position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px;
+  display: flex; align-items: center; justify-content: center; font-size: 29px; line-height: 1;
+  cursor: pointer; border-radius: 50%; transition: transform .12s;
+  filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 1px 2px rgba(0, 0, 0, .2));
+}
+#gvc-stampwheel .stampb:hover { transform: scale(1.18); }
+#gvc-stampwheel .stampb.sel { background: rgba(123, 97, 255, .16); }
+#gvc-stampwheel .stampb.plus1 { font-size: 23px; font-weight: 800; font-style: italic; color: #7b61ff; }
 .gvc-subbar.hidden, #gvc-moreshapes.hidden, #gvc-plusmenu.hidden { display: none; }
 .gvc-subbar .sbtn {
   display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;
@@ -196,7 +237,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 .gvc-subbar .sbtn.sel { box-shadow: inset 0 0 0 2px #7b61ff; }
 .gvc-subbar .sbtn svg { width: 25px; height: 25px; }
 .gvc-subbar .sbtn svg.shp { width: 20px; height: 20px; }
-.gvc-subbar .sbtn.stampb { font-size: 22px; }
 .gvc-subbar .dsep { width: 1px; align-self: stretch; background: #e5e4e2; margin: -6px 5px; }
 
 /* current-shape chip + chevron at the left of the shapes bar */
@@ -254,9 +294,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 .gvc-ghost { position: fixed; pointer-events: none; z-index: 100; opacity: .9; transform: translate(-50%, -50%); }
 .gvc-ghost .tip { display: none; }
 /* smooth grab-and-drop: the sticky ghost springs up under the cursor, the dropped node pops in */
-.gvc-ghost-sticky { width: 66px; height: 66px; border-radius: 3px; background: #fce495; box-shadow: 0 12px 26px rgba(0, 0, 0, .24); opacity: 0; transform: translate(-50%, -50%) rotate(-5deg) scale(.5); transition: transform .17s cubic-bezier(.34, 1.56, .64, 1), opacity .12s; }
+.gvc-ghost-sticky { width: 66px; height: 66px; border-radius: 3px; background: #a9cbf5; box-shadow: 0 12px 26px rgba(0, 0, 0, .24); opacity: 0; transform: translate(-50%, -50%) rotate(-5deg) scale(.5); transition: transform .17s cubic-bezier(.34, 1.56, .64, 1), opacity .12s; }
 .gvc-ghost-sticky.in { opacity: .96; transform: translate(-50%, -50%) rotate(-4deg) scale(1); }
-.gvc-ghost-stamp { font-size: 44px; line-height: 1; }
+.gvc-ghost-stamp { font-size: 44px; line-height: 1; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 3px 5px rgba(0, 0, 0, .25)); }
+.gvc-ghost-stamp.plus1, .gvc-stamp.plus1 { color: #7b61ff; font-weight: 800; font-style: italic; }
 @keyframes gvc-pop { from { transform: scale(.7); } to { transform: scale(1); } }
 .gvc-node.gvc-pop { animation: gvc-pop .2s cubic-bezier(.34, 1.56, .64, 1); }
 
@@ -305,8 +346,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
   #gvc-toolbar .tool { width: 38px; height: 38px; }
   #gvc-toolbar .tool svg { width: 22px; height: 22px; }
   #gvc-toolbar .tool.big { width: 46px; height: 50px; }
-  #gvc-toolbar .art.pen { height: 50px; width: 32px; }
-  #gvc-toolbar .art.sticky { height: 48px; width: 52px; }
+  #gvc-toolbar .art.pen { height: 60px; width: 39px; bottom: -12px; }
+  #gvc-toolbar .art.sticky { height: 55px; width: 60px; bottom: -9px; }
   #gvc-toolbar .tool[data-t="sticky"] { width: 52px; }
   #gvc-toolbar .tool.cluster { width: 52px; height: 50px; }
   #gvc-toolbar .tool.cluster svg { width: 40px; height: 34px; }
@@ -319,7 +360,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
   }
   .gvc-subbar::-webkit-scrollbar { display: none; }
   .gvc-subbar > * { flex: 0 0 auto; }
-  #gvc-stampbar { transform: translateX(-50%); }
+  #gvc-stampwheel { transform: translateX(-50%); bottom: 74px; }
   .gvc-subbar .sbtn { width: 36px; height: 36px; }
   .gvc-subbar .sbtn svg { width: 22px; height: 22px; }
   .gvc-subbar .dot { width: 21px; height: 21px; margin: 0 3px; }
