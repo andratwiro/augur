@@ -110,8 +110,11 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 .gvc-addrow { left: 0; right: 0; bottom: -46px; height: 38px; }
 .gvc-addcol { top: 0; bottom: 0; right: -46px; width: 38px; }
 
-/* stacked white drop-shadows give emoji the die-cut sticker outline FigJam stamps have */
+/* sticker stamps: SVG stickers carry their own white die-cut outline (paint-order:stroke);
+   the stacked white drop-shadows give legacy emoji stamps the same look */
 .gvc-stamp { display: flex; align-items: center; justify-content: center; cursor: grab; line-height: 1; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 2px 3px rgba(0, 0, 0, .22)); }
+svg.stk { display: block; overflow: visible; }
+.gvc-stamp svg.stk { width: 100%; height: 100%; }
 
 .gvc-handle { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: crosshair; z-index: 2; }
 .gvc-resize { position: absolute; right: -7px; bottom: -7px; width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; cursor: nwse-resize; z-index: 2; }
@@ -163,7 +166,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 #gvc-toolbar .tool.big .art { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); transition: transform .18s cubic-bezier(.3, 1.4, .6, 1); pointer-events: none; }
 #gvc-toolbar .tool.big:hover .art { transform: translateX(-50%) translateY(-7px); }
 #gvc-toolbar .art.pen { height: 44px; width: 26px; }
-#gvc-toolbar .art.sticky { height: 42px; width: 50px; bottom: -5px; }
+#gvc-toolbar .art.sticky { height: 42px; width: 53px; bottom: -5px; }
 #gvc-toolbar .tool[data-t="sticky"] { width: 54px; }
 
 /* the shape cluster (big square + long curved arrow + circle, FigJam's illustrated cluster) */
@@ -227,7 +230,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 }
 #gvc-stampwheel .stampb:hover { transform: scale(1.18); }
 #gvc-stampwheel .stampb.sel { background: rgba(123, 97, 255, .16); }
-#gvc-stampwheel .stampb.plus1 { font-size: 23px; font-weight: 800; font-style: italic; color: #7b61ff; }
+#gvc-stampwheel .stampb svg.stk { width: 33px; height: 33px; }
 .gvc-subbar.hidden, #gvc-moreshapes.hidden, #gvc-plusmenu.hidden { display: none; }
 .gvc-subbar .sbtn {
   display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;
@@ -299,7 +302,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 .gvc-ghost-sticky { width: 66px; height: 66px; border-radius: 3px; background: #a9cbf5; box-shadow: 0 12px 26px rgba(0, 0, 0, .24); opacity: 0; transform: translate(-50%, -50%) rotate(-5deg) scale(.5); transition: transform .17s cubic-bezier(.34, 1.56, .64, 1), opacity .12s; }
 .gvc-ghost-sticky.in { opacity: .96; transform: translate(-50%, -50%) rotate(-4deg) scale(1); }
 .gvc-ghost-stamp { font-size: 44px; line-height: 1; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 3px 5px rgba(0, 0, 0, .25)); }
-.gvc-ghost-stamp.plus1, .gvc-stamp.plus1 { color: #7b61ff; font-weight: 800; font-style: italic; }
+.gvc-ghost-stamp svg.stk { width: 48px; height: 48px; }
 @keyframes gvc-pop { from { transform: scale(.7); } to { transform: scale(1); } }
 .gvc-node.gvc-pop { animation: gvc-pop .2s cubic-bezier(.34, 1.56, .64, 1); }
 

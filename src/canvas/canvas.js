@@ -46,8 +46,25 @@
   var DEFAULT_STICKY = "#a9cbf5"; // FigJam's default blue (Rob's pick)
   // FigJam marker palette (draw sub-toolbar dots, left to right)
   var DRAW_COLORS = ["#1e1e1e", "#f24822", "#ff9f2e", "#ffd233", "#35c759", "#3aa2ff", "#8a5cff", "#ffffff"];
-  // stamp wheel, clockwise from the top (FigJam's simple set; "+1" renders as styled text)
-  var STAMPS = ["👍", "+1", "⭐", "❓", "👎", "👀", "🔥", "❤️"];
+  // stamp wheel, clockwise from the top — FigJam's die-cut sticker set, re-created as flat
+  // SVGs with a white outline (paint-order:stroke) so they read as stickers, not OS emoji.
+  // "laugh" fills FigJam's avatar slot with an emoji rendered through the same sticker filter.
+  var STAMPS = ["thumbs-up", "+1", "star", "question", "thumbs-down", "sticker", "laugh", "heart"];
+  var S_OUT = ' stroke="#ffffff" stroke-width="3" paint-order="stroke" stroke-linejoin="round"';
+  var THUMB = '<path d="M13.5 17.5 18 7.2c.5-1.2 1.7-2 3-2 1.9 0 3.4 1.5 3.4 3.4 0 .4-.1.8-.2 1.2l-1.3 4.4h7.6c1.9 0 3.3 1.8 2.9 3.6l-2.3 9.4a3 3 0 0 1-2.9 2.3H13.5z"/><rect x="6" y="17.2" width="7.5" height="12.4" rx="1.8"/>';
+  function stickerSvg(inner) { return '<svg viewBox="0 0 40 40" class="stk">' + inner + "</svg>"; }
+  var STAMP_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+  var STAMP_ART = {
+    "thumbs-up": stickerSvg('<g fill="#41a04c"' + S_OUT + ">" + THUMB + "</g>"),
+    "thumbs-down": stickerSvg('<g transform="rotate(180 20 19)" fill="#5677e8"' + S_OUT + ">" + THUMB + "</g>"),
+    "+1": stickerSvg('<text x="20" y="28" text-anchor="middle" font-family="' + STAMP_FONT + '" font-size="26" font-weight="900" font-style="italic" fill="#7b52e0" stroke="#ffffff" stroke-width="5.2" paint-order="stroke" stroke-linejoin="round">+1</text><text x="20" y="28" text-anchor="middle" font-family="' + STAMP_FONT + '" font-size="26" font-weight="900" font-style="italic" fill="#7b52e0" stroke="#7b52e0" stroke-width="1.3" paint-order="stroke" stroke-linejoin="round">+1</text>'),
+    star: stickerSvg('<polygon points="20,2.5 24.9,14.2 37.5,15.2 27.9,23.4 30.9,35.7 20,29 9.1,35.7 12.1,23.4 2.5,15.2 15.1,14.2" fill="none" stroke="#ffffff" stroke-width="6.5" stroke-linejoin="round"/><polygon points="20,2.5 24.9,14.2 37.5,15.2 27.9,23.4 30.9,35.7 20,29 9.1,35.7 12.1,23.4 2.5,15.2 15.1,14.2" fill="#f6c514" stroke="#f6c514" stroke-width="2.6" stroke-linejoin="round"/>'),
+    question: stickerSvg('<text x="20" y="30.5" text-anchor="middle" font-family="' + STAMP_FONT + '" font-size="31" font-weight="900" fill="#e2571d" stroke="#ffffff" stroke-width="5.2" paint-order="stroke" stroke-linejoin="round">?</text><text x="20" y="30.5" text-anchor="middle" font-family="' + STAMP_FONT + '" font-size="31" font-weight="900" fill="#e2571d" stroke="#e2571d" stroke-width="1.3" paint-order="stroke" stroke-linejoin="round">?</text>'),
+    heart: stickerSvg('<path d="M20 34.7C10.6 28.4 5.6 22.8 5.6 16.4c0-4.1 3.3-7.4 7.4-7.4 2.8 0 5.4 1.6 7 4a8.1 8.1 0 0 1 7-4c4.1 0 7.4 3.3 7.4 7.4 0 6.4-5 12-14.4 18.3z" fill="#ee7a6c"' + S_OUT + "/>"),
+    sticker: stickerSvg('<circle cx="20" cy="19.5" r="12.5" fill="#b6bfcc"' + S_OUT + '/><path d="M7.8 22.8a12.5 12.5 0 0 0 9.5 8.9c-.9-4.7-4.2-7.8-9.5-8.9z" fill="#e9edf3"/><path d="M7.8 22.8c5.3 1.1 8.6 4.2 9.5 8.9" stroke="#98a3b3" stroke-width=".8" fill="none"/>'),
+    laugh: '😂'
+  };
+  function stampHtml(key) { var a = STAMP_ART[key]; return a && a.indexOf("<svg") === 0 ? a : null; }
   var FONT_SIZES = { s: "13px", m: "16px", l: "21px" };
   var ME = ""; // signed-in name, stamped as the sticky author (like FigJam)
 
@@ -581,11 +598,17 @@
   }
 
   // ---- stamps --------------------------------------------------------------
+  // Sticker keys render their die-cut SVG; anything else (old boards stored emoji chars)
+  // falls back to text, so legacy stamps keep painting.
   function renderStamp(node) {
     node.w = node.w || 64; node.h = node.h || 64;
-    var plus1 = node.stamp === "+1";
-    var host = el("div", { class: "gvc-stamp" + (plus1 ? " plus1" : ""), text: node.stamp || "👍" });
-    host.style.fontSize = Math.round(node.h * (plus1 ? 0.5 : 0.78)) + "px";
+    var host = el("div", { class: "gvc-stamp" });
+    var art = stampHtml(node.stamp);
+    if (art) host.innerHTML = art;
+    else {
+      host.textContent = STAMP_ART[node.stamp] || node.stamp || "👍";
+      host.style.fontSize = Math.round(node.h * 0.78) + "px";
+    }
     place(host, node);
     return host;
   }
@@ -968,7 +991,12 @@
   // bottom-left, front sheet rotated ~-2.5° with a LARGE top-left corner curl (lighter
   // underside, concave silhouette, crease shadow). Both crop flush at the pill bottom.
   var PEN_ART = '<svg viewBox="0 0 26 44" class="art pen"><defs><linearGradient id="gvpen-b" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset=".42" stop-color="#f3f4f7"/><stop offset=".78" stop-color="#dcdfe4"/><stop offset="1" stop-color="#bfc3cc"/></linearGradient><linearGradient id="gvpen-c" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fafbfc"/><stop offset=".55" stop-color="#e4e6eb"/><stop offset="1" stop-color="#b9bdc7"/></linearGradient></defs><path d="M13 .6c1.8 0 3.1 1.1 3.5 2.7L18 10.5H8l1.5-7.2C9.9 1.7 11.2.6 13 .6z" fill="#1e1f24"/><path d="M13 .6c-1.8 0-3.1 1.1-3.5 2.7L8 10.5h6.4L13.2.7z" fill="#32333a"/><path d="M8 10.5h10c3 3.3 6.5 6 7.5 11.5H.5C1.5 16.5 5 13.8 8 10.5z" fill="url(#gvpen-c)"/><path d="M.5 22h25v22H.5z" fill="url(#gvpen-b)"/><rect x="2.2" y="23.4" width="2.2" height="20.6" fill="#ffffff" opacity=".65"/><rect x=".5" y="26.4" width="25" height=".8" fill="#c9cdd5"/></svg>';
-  var STICKY_ART = '<svg viewBox="0 0 52 44" class="art sticky"><defs><linearGradient id="gvst-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7b3de"/><stop offset="1" stop-color="#e78cc6"/></linearGradient><filter id="gvst-s" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.8" flood-color="#000" flood-opacity="0.28"/></filter></defs><g transform="rotate(-11 12 36)"><rect x="-3" y="24" width="27" height="20" fill="#cf72ae"/></g><g transform="rotate(-6.5 20 22)"><rect x="-2" y="3" width="43" height="41" fill="#e18cc4"/></g><g transform="rotate(-2.5 30 22)" filter="url(#gvst-s)"><path d="M24 0h26v44H8V13c6.2-1.8 11.6-6.6 16-13z" fill="url(#gvst-f)"/><path d="M24.6.8C19.4 7.6 14 11.6 8.6 13.4c5-.2 10.4-4 15.4-10z" fill="#c169a4" opacity=".3"/><path d="M24 0C18.6 6.8 13.2 11.4 8 13.2 6.3 8.8 8.2 4 12.4 2 16 .3 20.2 0 24 0z" fill="#f9cbe8"/><path d="M24 0C18.6 6.8 13.2 11.4 8 13.2" stroke="#cf7bb3" stroke-width=".8" fill="none"/></g></svg>';
+  // blue, not pink — the art matches the DEFAULT_STICKY blue family. Three sheets stacked
+  // FigJam's way (round-8 forensics): the FRONT sheet is upright with the top-left curl;
+  // the BACK sheets carry the rotation — a second sheet (-9°) wedges out of the lower half
+  // of the left edge, widening toward the bottom crop, and a third tongue (-17°) protrudes
+  // beyond it at the bottom-left. The fan opens to the lower-left; nothing peeks elsewhere.
+  var STICKY_ART = '<svg viewBox="-3 0 55 44" class="art sticky"><defs><linearGradient id="gvst-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c9defb"/><stop offset="1" stop-color="#9ec2f2"/></linearGradient><filter id="gvst-s" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.8" flood-color="#000" flood-opacity="0.28"/></filter></defs><g transform="translate(0 7) rotate(17 28 30)" filter="url(#gvst-s)"><rect x="2" y="30" width="26" height="16" fill="#7da9e2"/></g><g transform="translate(-1.5 4) rotate(9 30 17)" filter="url(#gvst-s)"><rect x="6.5" y="17" width="36" height="32" fill="#8fb7ec"/></g><g filter="url(#gvst-s)"><path d="M24 0h26v44H8V13c6.2-1.8 11.6-6.6 16-13z" fill="url(#gvst-f)"/><path d="M24.6.8C19.4 7.6 14 11.6 8.6 13.4c5-.2 10.4-4 15.4-10z" fill="#5f83c0" opacity=".28"/><path d="M24 0C18.6 6.8 13.2 11.4 8 13.2 6.3 8.8 8.2 4 12.4 2 16 .3 20.2 0 24 0z" fill="#e0edfd"/><path d="M24 0C18.6 6.8 13.2 11.4 8 13.2" stroke="#7d9fd6" stroke-width=".8" fill="none"/></g></svg>';
   // draw sub-toolbar mini illustrations
   var MINI_MARKER = '<svg viewBox="0 0 26 26"><g transform="rotate(42 13 13)"><path d="M13 0 17 7.2H9z" fill="#1e1f24"/><rect x="9" y="7" width="8" height="3" fill="#b9bcc4"/><rect x="8.2" y="10" width="9.6" height="16" rx="2" fill="#f4f5f7" stroke="#c2c5cd" stroke-width=".9"/></g></svg>';
   var MINI_HL = '<svg viewBox="0 0 26 26"><g transform="rotate(42 13 13)"><path d="M9.6.6h6.8l1.7 5.8H7.9z" fill="#f4b62c"/><rect x="7.9" y="6.4" width="10.2" height="3" fill="#e5e6ea"/><rect x="7.2" y="9.4" width="11.6" height="16" rx="2" fill="#ffd75e" stroke="#e3b83e" stroke-width=".9"/></g></svg>';
@@ -997,12 +1025,19 @@
     toolGhost.style.opacity = over && over.closest && over.closest("#gvc-ui") ? "0" : "";
   }
   function makeGhost() {
-    toolGhost = TOOL.type === "sticky"
-      ? el("div", { class: "gvc-ghost gvc-ghost-sticky in" })
-      : el("div", { class: "gvc-ghost gvc-ghost-stamp" + (armedStamp === "+1" ? " plus1" : ""), text: armedStamp });
+    if (TOOL.type === "sticky") toolGhost = el("div", { class: "gvc-ghost gvc-ghost-sticky in" });
+    else {
+      toolGhost = el("div", { class: "gvc-ghost gvc-ghost-stamp" });
+      setStampFace(toolGhost, armedStamp);
+    }
     toolGhost.style.left = "-999px";
     document.body.appendChild(toolGhost);
     document.addEventListener("pointermove", moveGhost);
+  }
+  function setStampFace(elm, key) {
+    var art = stampHtml(key);
+    if (art) elm.innerHTML = art;
+    else elm.textContent = STAMP_ART[key] || key;
   }
   // the speech-bubble tool IS the comment layer — fire the overlay's own Shift+C toggle
   function toggleComments() {
@@ -1255,26 +1290,25 @@
   var stampEls = [];
   function buildStampBar() {
     stampBar = el("div", { id: "gvc-stampwheel", class: "hidden" });
-    stampBar.appendChild(el("div", { class: "hub", text: "😂🙏\n👌🔥" }));
+    stampBar.appendChild(el("div", { class: "hub", text: "😂🙏\n👌🔥👀" }));
     var R = 78, C = 108;
     STAMPS.forEach(function (s, i) {
-      var b = el("div", { class: "stampb" + (s === "+1" ? " plus1" : ""), text: s });
+      var b = el("div", { class: "stampb" });
+      b.dataset.s = s;
+      setStampFace(b, s);
       var a = (-90 + i * (360 / STAMPS.length)) * Math.PI / 180;
       b.style.left = (C + Math.cos(a) * R) + "px";
       b.style.top = (C + Math.sin(a) * R) + "px";
       b.addEventListener("click", function () {
         armedStamp = s; syncStampBar();
-        if (toolGhost && toolGhost.classList.contains("gvc-ghost-stamp")) {
-          toolGhost.textContent = s;
-          toolGhost.classList.toggle("plus1", s === "+1");
-        }
+        if (toolGhost && toolGhost.classList.contains("gvc-ghost-stamp")) setStampFace(toolGhost, s);
       });
       stampEls.push(b); stampBar.appendChild(b);
     });
     ui.appendChild(stampBar);
   }
   function syncStampBar() {
-    stampEls.forEach(function (b) { b.classList.toggle("sel", b.textContent === armedStamp); });
+    stampEls.forEach(function (b) { b.classList.toggle("sel", b.dataset.s === armedStamp); });
   }
 
   // + insert menu (image upload · prototype tile)
