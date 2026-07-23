@@ -326,8 +326,9 @@ Do this **unless prompted otherwise**.
   1. **Thinking:** walk to the relevant section → `pose('thinking')` → `say('reading the
      Intercom numbers…')` — *then* go read/reason. Update the bubble as your focus shifts.
   2. **Building:** walk to where the artifact will land → `stub({...})` the placeholder →
-     `pose('sparkles')` + `say('building common ground…')` — *then* build. The finished
-     artifact replaces the stub in place (`del` the stub when the real nodes land).
+     `pose('sparkles')` + `say('building common ground…')` — *then* build. When the real
+     nodes land, **`del` the stub — never retitle it into a permanent frame.** Rob's rule:
+     a finished prototype tile stands ALONE on the board, no section wrapped around it.
   3. **Emotions as punctuation (full character):** `happy` when something lands, `sunglasses`
      when it ships live, `love` when the human likes it, `sleeping` when parked. Statuses are
      the grammar, emotions the punctuation.
