@@ -967,6 +967,17 @@ async function boardApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Canvas multiplayer proxy (/__rt → augur-realtime worker) ---------------
+// The BoardRoom Durable Objects live in a SEPARATE worker (Pages can't define DO
+// classes), deployed from realtime/ via `npm run deploy:realtime`. Proxying keeps the
+// client same-origin (no hardcoded workers.dev URL in canvas.js, works offline too);
+// fetch() with the Upgrade header intact returns the 101 + socket, passed through.
+const RT_ORIGIN = "https://augur-realtime.rob-3d3.workers.dev";
+function rtProxy(request, url) {
+  if (request.headers.get("Upgrade") !== "websocket") return jsonResponse({ error: "expected-websocket" }, 426);
+  return fetch(RT_ORIGIN + "/room" + url.search, request);
+}
+
 // ---- Admin: users + passwords (KV-backed overrides) -------------------------
 // Admin-only. GET returns every user with their EFFECTIVE password (override ?? seed)
 // so the admin can read them; POST { email, pass } sets an override in KV. Identity
@@ -1299,6 +1310,10 @@ export default {
     // PUBLISHED prototype (public, obscure share link), so its board must load & save without a
     // login, exactly like /__review/api. Writes are full-state but size-capped in boardApi.
     if (url.pathname === "/__board") return boardApi(request, url, env);
+    // Canvas multiplayer: same-origin WebSocket proxied to the augur-realtime worker (one
+    // BoardRoom Durable Object per board path — cursors/presence/live ops). Public like
+    // /__board: the board is the credential. The engine degrades to solo if this fails.
+    if (url.pathname === "/__rt") return rtProxy(request, url);
 
     // Admin-only spaces (the 2.0 workspace): seal the whole base path BEFORE the
     // public-prototype door, so nothing under it — not even an og.jpg — leaks. Only

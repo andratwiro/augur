@@ -1,0 +1,23 @@
+# augur-realtime — the multiplayer relay for canvas boards.
+#
+# One BoardRoom Durable Object per board path (same key as the KV doc): every visitor's
+# WebSocket meets there, and the room relays cursors, presence, node ops, and editing
+# focus between them. Persistence stays on KV via the existing /__board rail (clients
+# keep saving as before) — the room is live session state only, so losing it costs
+# nothing but a reconnect.
+#
+# Deployed standalone (not via Pages): `npm run deploy:realtime` from the augur root,
+# or  cd realtime && npx wrangler deploy  with .env.deploy sourced. The Pages worker
+# proxies /__rt → this worker, so clients stay same-origin.
+
+name = "augur-realtime"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "BoardRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BoardRoom"]

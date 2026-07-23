@@ -18,6 +18,11 @@
 > Esc cancels). NON-destructive: `node.crop` = the window as fractions of the full `src`, rendered
 > via percent sizing inside a clipping `.gvc-imgwrap`, so re-entering crop restores the hidden
 > parts and free resize needs no JS. See the "image crop" section in canvas.js.
+> **2026-07-23: MULTIPLAYER** — every canvas is a live multiplayer room (FigJam-style colored
+> cursors + name pills, presence chips, live drags/edits/deletes, streamed co-typing with
+> editing-focus rings). Template-level: it ships in the shared engine, so every canvas in every
+> space has it with zero instance changes. See "Multiplayer" below — including the TEST-ISOLATION
+> rule (blocking POST /__board is no longer enough).
 > Next big one: the **collaboration skill** (Claude reads the board to co-work).
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
@@ -172,6 +177,46 @@ image/tile UX, comment pins tracking pan/zoom, ⌘. — the goal checklist.
 movable `srcdoc` iframe node); connectors that snap to nodes; in-app "New canvas" button;
 multiplayer cursors.
 
+## Multiplayer (2026-07-23) — every canvas is a live room
+
+**The model.** A `BoardRoom` Durable Object per board path (the same key as the KV doc) relays
+cursors, presence, node ops, and editing focus between everyone on that board. Durable
+persistence STAYS on the `/__board` KV rail, written by clients exactly as before — the room is
+live session state only (it caches the latest doc so joiners start fresher than KV, and drops
+the cache when the last socket leaves). Strictly an **enhancement layer**: if the socket can't
+connect, the canvas behaves exactly as solo. Public like `/__board` (the board is the
+credential).
+
+**The pieces:**
+- `realtime/` — the `augur-realtime` worker (BoardRoom DO, WebSocket Hibernation API). Deployed
+  **standalone**, NOT via Pages: `npm run deploy:realtime` (Pages can't define DO classes).
+  Live at `augur-realtime.rob-3d3.workers.dev`; protocol documented at the top of its index.js.
+- `src/_worker.js` `rtProxy` — `/__rt` proxies the WebSocket same-origin to that worker (no
+  hardcoded URL in the engine; works offline too, where it reaches the REAL prod rooms — same
+  "offline Figma" posture as live KV).
+- `src/canvas/canvas.js` "multiplayer" section + `canvas.css` tail — the client layer. **No
+  hooks in the mutation paths**: a 120ms diff tick compares each node against a shadow
+  signature (long strings collapsed, so image boards stay cheap) and broadcasts
+  `upsert/del/name` ops; applying a remote op writes the shadow FIRST so the tick never echoes.
+  Conflicts are per-node last-writer-wins; a node you're dragging/editing ignores remote writes
+  (the tick then re-broadcasts your version). `board.view` is per-user and never synced.
+  Geometry-only remote changes patch styles on the live element (`.gvc-remote-move` tween)
+  instead of re-rendering — smooth drags, no iframe/image churn.
+- **Cursors** — ONE glyph for everybody: the Figma-style arrow from piti mode
+  (`pitis/piti.js` CURSOR_SVG), tinted per visitor from the room's palette. Your own OS
+  pointer wears it too (your color, via injected style; tool/text cursors still win), peers
+  render it with a name pill. Cursor layer lives OUTSIDE `#gvc-ui` so ⌘. keeps people visible.
+  Names come from `/__me` (login), else "Guest".
+
+**⚠️ Playwright/testing rule (bit on day one):** blocking `POST **/__board` is **no longer
+enough** — a test that opens a canvas page ALSO **joins its real room** and broadcasts ops to
+real visitors. Tests must isolate the room by overriding `GV_CANVAS.boardPath` to a throwaway
+path — and because instance HTML does `window.GV_CANVAS = {...}` (full overwrite), a plain
+`addInitScript` value gets clobbered: use `Object.defineProperty(window, "GV_CANVAS", ...)`
+with a setter that forces `boardPath` back in. (Rooms self-heal — the doc cache drops when
+empty — but don't rely on that.) Reference test: the mp-e2e script pattern (two contexts,
+isolated room, cursor/ops/focus assertions).
+
 ## Canvas-owned prototypes (what "build a prototype on the canvas" means)
 
 A canvas is a **container of prototypes**, not just a board of references. When Rob (in a terminal
@@ -286,4 +331,6 @@ coupling is enforced HERE (terminal), because a canvas can't write git from the 
   the deletion for the terminal to reconcile (today: `canvas-screen.mjs rm`); a poster shot for a
   new screen so its tile isn't blank until you go Live.
 - Proper cache-busting for `/__canvas/*.js|css` if we move off `no-store` (today: no-store).
-- Connectors that snap to nodes; in-app "New canvas" button; multiplayer cursors (same live-KV rail).
+- Connectors that snap to nodes; in-app "New canvas" button.
+- **DONE 2026-07-23:** multiplayer (cursors/presence/live ops/co-typing) — see the
+  "Multiplayer" section; NOT the old "live-KV rail" idea, a Durable Object room per board.

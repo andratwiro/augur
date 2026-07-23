@@ -1513,6 +1513,298 @@
     setTool: setTool
   };
 
+  // ---- multiplayer (cursors · presence · live ops · co-editing) ------------
+  // Every canvas is born multiplayer: the engine opens a WebSocket to /__rt (proxied to the
+  // augur-realtime worker — one BoardRoom Durable Object per board path, the same key as the
+  // KV doc). Live cursors, presence chips, node ops and editing focus flow through the room;
+  // durable persistence STAYS on the /__board KV rail exactly as before. Strictly an
+  // enhancement layer: if the socket can't connect the canvas behaves exactly as solo.
+  //
+  // Sync model: no hooks in the mutation paths. A 120ms diff tick compares every node
+  // against a shadow signature and broadcasts changes as {op:"upsert"|"del"|"name"} —
+  // catching drags mid-flight (which don't scheduleSave until pointer-up), text mid-edit,
+  // and even GVCanvas.addNode calls from the collaboration skill. Applying a remote op
+  // writes the shadow FIRST, so the tick never echoes it back. Conflicts are per-node
+  // last-writer-wins; a node you're actively dragging or editing ignores remote writes
+  // (the tick then re-broadcasts your version — deterministic convergence). The doc's
+  // `view` is per-user viewport and is never synced.
+  var mp = null, mpSid = null, mpName = "", mpColor = "#0d0d0d";
+  var mpPeers = {};        // sid -> {name,color,focus,cx,cy,el,idle}
+  var mpShadow = {};       // node id -> signature as last seen/sent
+  var mpShadowName = null; // board name as last seen/sent
+  var mpReady = false, mpRetry = 1000;
+  var mpCursorLayer = null, mpPresence = null, mpCurPend = null, mpCurTimer = null;
+  var GEO_KEYS = ["x", "y", "w", "h", "x1", "y1", "x2", "y2"];
+
+  // signature = JSON with long strings (inlined image src) collapsed to length + edges,
+  // so the 120ms tick stays cheap on image-heavy boards
+  function mpSig(node) {
+    return JSON.stringify(node, function (k, v) {
+      return typeof v === "string" && v.length > 2048 ? "#" + v.length + ":" + v.slice(0, 40) + v.slice(-40) : v;
+    });
+  }
+  function mpGeoLessSig(node) {
+    var c = {}; for (var k in node) if (node.hasOwnProperty(k) && GEO_KEYS.indexOf(k) < 0) c[k] = node[k];
+    return mpSig(c);
+  }
+  function mpSeedShadow() {
+    mpShadow = {};
+    board.nodes.forEach(function (n) { mpShadow[n.id] = mpSig(n); });
+    mpShadowName = board.name;
+  }
+  function mpSend(msg) { if (mp && mp.readyState === 1) { try { mp.send(JSON.stringify(msg)); } catch (e) {} } }
+
+  // the outbound diff tick
+  function mpTick() {
+    if (!mp || mp.readyState !== 1 || !mpReady) return;
+    var ops = [], seen = {};
+    board.nodes.forEach(function (n) {
+      var s = mpSig(n); seen[n.id] = true;
+      if (mpShadow[n.id] !== s) { mpShadow[n.id] = s; ops.push({ op: "upsert", node: n }); }
+    });
+    for (var id in mpShadow) if (!seen[id]) { delete mpShadow[id]; ops.push({ op: "del", id: id }); }
+    if (board.name !== mpShadowName) { mpShadowName = board.name; ops.push({ op: "name", name: board.name }); }
+    if (ops.length) mpSend({ t: "ops", ops: ops });
+  }
+
+  function mpDragInvolves(id) {
+    if (!drag) return false;
+    if (drag.items) return drag.items.some(function (it) { return it.id === id; });
+    return !!(drag.node && drag.node.id === id);
+  }
+  function mpLocallyEditing(id) {
+    var host = nodeEls[id];
+    return !!(host && host.querySelector('[contenteditable="true"]'));
+  }
+  // remove a node because a PEER deleted it — removeNode minus scheduleSave (their client saves)
+  function mpRemoveLocal(id) {
+    var i = board.nodes.findIndex(function (n) { return n.id === id; });
+    if (i >= 0) board.nodes.splice(i, 1);
+    if (nodeEls[id]) { nodeEls[id].remove(); delete nodeEls[id]; }
+    liveTiles = liveTiles.filter(function (t) { return t !== id; });
+    selected = selected.filter(function (s) { return s !== id; });
+    if (selected.length !== 1) hideSelBar();
+  }
+  function mpApplyOps(ops) {
+    var focusDirty = false;
+    ops.forEach(function (op) {
+      if (!op) return;
+      if (op.op === "upsert" && op.node && op.node.id) {
+        var r = op.node;
+        mpShadow[r.id] = mpSig(r); // anti-echo — set BEFORE deciding whether to apply
+        if (mpDragInvolves(r.id) || mpLocallyEditing(r.id)) return; // local interaction wins
+        var local = nodeById(r.id), host = nodeEls[r.id];
+        if (local && host && mpGeoLessSig(r) === mpGeoLessSig(local) && local.type !== "arrow") {
+          // geometry-only change (a peer dragging/resizing): patch styles on the live element
+          // instead of rebuilding it — smooth at tick rate, no iframe/image churn
+          GEO_KEYS.forEach(function (k) { if (r[k] != null) local[k] = r[k]; });
+          host.classList.add("gvc-remote-move");
+          clearTimeout(host.__mpMoveT);
+          host.__mpMoveT = setTimeout(function () { host.classList.remove("gvc-remote-move"); }, 300);
+          place(host, local);
+          if (local.type === "tile") { var b = host.querySelector(".gvc-tilebody"); if (b && b.querySelector("iframe")) fitFrame(b, local); }
+          if (isSelected(r.id)) positionSelBar();
+        } else {
+          var i = board.nodes.findIndex(function (n) { return n.id === r.id; });
+          if (i >= 0) board.nodes[i] = r; else board.nodes.push(r);
+          renderNode(r);
+          focusDirty = true;
+        }
+      } else if (op.op === "del" && op.id) {
+        delete mpShadow[op.id];
+        mpRemoveLocal(op.id);
+      } else if (op.op === "name" && typeof op.name === "string") {
+        board.name = op.name; mpShadowName = op.name;
+        document.title = op.name; if (nameEl) nameEl.textContent = op.name;
+      }
+    });
+    if (focusDirty) mpRenderFocus(); // renderNode replaced elements — re-hang focus rings
+  }
+  // adopt the room's live doc (fresher than our KV read) — keep OUR viewport
+  function mpAdoptDoc(doc) {
+    if (!doc || !Array.isArray(doc.nodes)) return;
+    var view = board.view;
+    board = doc;
+    board.view = view;
+    board.name = board.name || "Untitled canvas";
+    document.title = board.name; if (nameEl) nameEl.textContent = board.name;
+    render();
+    mpSeedShadow();
+    mpRenderFocus();
+  }
+
+  // ---- peer cursors --------------------------------------------------------
+  // The FigJam look: ONE arrow glyph for everybody, tinted per visitor. The glyph is the
+  // Figma-style pointer from piti mode (pitis/piti.js CURSOR_SVG — dark arrow, white
+  // outline, hotspot at the tip 5,3): peers render it in their room color, and your own
+  // OS pointer wears it too (in YOUR color) whenever a canvas file is open.
+  var MP_ARROW = '<svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 912 892"><g transform="translate(0.000000,892.000000) scale(0.100000,-0.100000)"><path d="M2604 7445 c-38 -17 -89 -66 -111 -109 -19 -36 -20 -144 -4 -351 6 -71 16 -186 21 -255 5 -69 14 -181 20 -250 5 -69 21 -267 35 -440 32 -400 72 -900 85 -1055 5 -66 14 -181 20 -255 6 -74 15 -193 20 -265 6 -71 15 -188 20 -260 6 -71 15 -184 20 -250 5 -66 14 -183 20 -260 6 -77 15 -187 20 -245 6 -58 14 -168 20 -245 6 -77 15 -194 21 -260 5 -66 16 -201 24 -300 8 -99 19 -236 25 -305 6 -69 15 -183 20 -255 5 -71 15 -191 21 -265 6 -74 14 -180 18 -235 9 -117 26 -161 84 -210 64 -55 159 -71 235 -40 63 27 67 31 227 280 18 28 99 156 180 285 204 324 374 593 465 735 42 66 128 201 190 300 180 287 200 315 290 405 166 168 374 283 595 329 59 12 295 27 670 41 149 6 376 15 505 20 129 5 366 15 525 20 490 19 576 25 621 48 105 54 152 186 105 294 -24 55 -47 75 -216 192 -77 52 -207 142 -290 199 -82 57 -332 229 -555 382 -223 153 -443 305 -490 337 -47 32 -152 105 -235 161 -149 103 -421 290 -1063 732 -183 127 -393 271 -465 320 -73 50 -206 142 -297 205 -91 62 -235 161 -320 220 -85 59 -229 158 -320 220 -91 63 -228 157 -305 210 -77 53 -160 110 -185 129 -25 18 -60 39 -79 47 -42 18 -146 17 -187 -1z" fill="{C}" stroke="#ffffff" stroke-width="620" stroke-linejoin="round" stroke-linecap="round" paint-order="stroke"/></g></svg>';
+  function mpArrowSvg(color) { return MP_ARROW.replace("{C}", color); }
+  // your own pointer: injected <style> so the tool cursors keep winning where they should —
+  // hand/pan/crosshair modes and text editing stay native, everything else wears the arrow
+  var mpCursorStyleEl = null;
+  function mpApplyLocalCursor() {
+    var uri = "data:image/svg+xml," + encodeURIComponent(mpArrowSvg(mpColor));
+    if (!mpCursorStyleEl) { mpCursorStyleEl = document.createElement("style"); document.head.appendChild(mpCursorStyleEl); }
+    mpCursorStyleEl.textContent =
+      "#gvc-root,#gvc-root .gvc-node{cursor:url('" + uri + "') 5 3,auto}" +
+      "#gvc-root.hand .gvc-node,#gvc-root.panning .gvc-node,#gvc-root.crosshair .gvc-node{cursor:inherit}" +
+      '#gvc-root .gvc-node.editing,#gvc-root .gvc-node [contenteditable="true"]{cursor:text}';
+  }
+  function mpEnsureCursor(p) {
+    if (p.el) return p.el;
+    p.el = el("div", { class: "gvc-cursor", html: mpArrowSvg(p.color) + '<span class="lbl"></span>' });
+    var lbl = p.el.querySelector(".lbl");
+    lbl.textContent = p.name; lbl.style.background = p.color;
+    mpCursorLayer.appendChild(p.el);
+    return p.el;
+  }
+  function mpPlaceCursor(p) {
+    if (!p.el || p.cx == null) return;
+    var s = worldToScreen(p.cx, p.cy);
+    p.el.style.transform = "translate(" + Math.round(s.x) + "px," + Math.round(s.y) + "px)";
+  }
+  function mpPositionCursors() { for (var sid in mpPeers) mpPlaceCursor(mpPeers[sid]); }
+  function mpCursorMsg(m) {
+    var p = mpPeers[m.sid] || (mpPeers[m.sid] = { name: m.name, color: m.color, focus: null });
+    p.name = m.name; p.color = m.color;
+    if (m.gone) { if (p.el) p.el.classList.add("idle"); return; }
+    mpEnsureCursor(p);
+    p.cx = m.x; p.cy = m.y;
+    p.el.classList.remove("idle");
+    clearTimeout(p.idle);
+    p.idle = setTimeout(function () { if (p.el) p.el.classList.add("idle"); }, 5000);
+    mpPlaceCursor(p);
+  }
+  // my cursor out — world coords, trailing-throttled to ~20/s
+  function mpTrackPointer(e) {
+    if (!mp || mp.readyState !== 1) return;
+    mpCurPend = screenToWorld(e.clientX, e.clientY);
+    if (mpCurTimer) return;
+    mpCurTimer = setTimeout(function () {
+      mpCurTimer = null;
+      if (mpCurPend) mpSend({ t: "cursor", x: Math.round(mpCurPend.x * 10) / 10, y: Math.round(mpCurPend.y * 10) / 10 });
+    }, 50);
+  }
+
+  // ---- presence chips (top-right) ------------------------------------------
+  function mpInitials(name) {
+    return String(name || "?").trim().split(/\s+/).map(function (w) { return w.charAt(0); }).slice(0, 2).join("").toUpperCase();
+  }
+  function mpRenderPresence() {
+    if (!mpPresence) return;
+    mpPresence.innerHTML = "";
+    if (!mp || mp.readyState !== 1) { mpPresence.classList.add("hidden"); return; }
+    var chips = [{ name: mpName, title: mpName + " (you)", color: mpColor, me: true }];
+    for (var sid in mpPeers) { var p = mpPeers[sid]; chips.push({ name: p.name, title: p.name, color: p.color }); }
+    if (chips.length < 2) { mpPresence.classList.add("hidden"); return; } // alone — no chrome
+    mpPresence.classList.remove("hidden");
+    chips.forEach(function (c) {
+      var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : ""), text: mpInitials(c.name), title: c.title });
+      chip.style.background = c.color;
+      mpPresence.appendChild(chip);
+    });
+  }
+
+  // ---- editing focus (who is typing where) ---------------------------------
+  function mpRenderFocus() {
+    document.querySelectorAll(".gvc-remote-focus").forEach(function (e) { e.remove(); });
+    for (var sid in mpPeers) {
+      var p = mpPeers[sid];
+      if (!p.focus || !nodeEls[p.focus]) continue;
+      var ring = el("div", { class: "gvc-remote-focus" }, [el("span", { class: "who", text: p.name })]);
+      ring.style.borderColor = p.color;
+      ring.querySelector(".who").style.background = p.color;
+      nodeEls[p.focus].appendChild(ring);
+    }
+  }
+  var mpMyFocus = null;
+  function mpSendFocus(id) { if (id !== mpMyFocus) { mpMyFocus = id; mpSend({ t: "focus", id: id }); } }
+
+  // ---- socket lifecycle ----------------------------------------------------
+  function mpOnMessage(ev) {
+    var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (!m || !m.t) return;
+    if (m.t === "welcome") {
+      mpSid = m.sid; mpRetry = 1000;
+      if (m.color && m.color !== mpColor) { mpColor = m.color; mpApplyLocalCursor(); } // your pointer takes your room color
+      mpPeers = {};
+      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null }; });
+      if (m.doc) mpAdoptDoc(m.doc);
+      else mpSend({ t: "doc", doc: board }); // seed the room (first in, or post-hibernation — KV is current when the room was idle)
+      mpReady = true;
+      mpRenderPresence(); mpRenderFocus();
+    } else if (m.t === "join") {
+      mpPeers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, focus: m.peer.focus || null };
+      mpRenderPresence();
+    } else if (m.t === "leave") {
+      var p = mpPeers[m.peer.sid];
+      if (p) { if (p.el) p.el.remove(); clearTimeout(p.idle); delete mpPeers[m.peer.sid]; }
+      mpRenderPresence(); mpRenderFocus();
+    } else if (m.t === "cursor") mpCursorMsg(m);
+    else if (m.t === "ops") mpApplyOps(m.ops || []);
+    else if (m.t === "focus") { var fp = mpPeers[m.sid]; if (fp) { fp.focus = m.id || null; mpRenderFocus(); } }
+    else if (m.t === "doc") mpAdoptDoc(m.doc);
+    else if (m.t === "docreq") mpSend({ t: "doc", doc: board });
+  }
+  function mpConnect() {
+    var ws;
+    try {
+      ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host +
+        "/__rt?path=" + encodeURIComponent(BOARD_PATH) + "&name=" + encodeURIComponent(mpName || "Guest"));
+    } catch (e) { mpRetryLater(); return; }
+    mp = ws;
+    ws.onmessage = mpOnMessage;
+    ws.onclose = ws.onerror = function () {
+      if (mp !== ws) return;
+      mp = null; mpReady = false;
+      for (var sid in mpPeers) { var p = mpPeers[sid]; if (p.el) p.el.remove(); clearTimeout(p.idle); }
+      mpPeers = {};
+      mpRenderPresence(); mpRenderFocus();
+      mpRetryLater();
+    };
+  }
+  function mpRetryLater() { setTimeout(mpConnect, mpRetry); mpRetry = Math.min(Math.round(mpRetry * 1.6), 15000); }
+
+  function mpBoot() {
+    mpSeedShadow();
+    mpApplyLocalCursor(); // the canvas cursor identity — dark until the room assigns your color
+    mpCursorLayer = el("div", { id: "gvc-cursors" });
+    document.body.appendChild(mpCursorLayer); // outside #gvc-ui so ⌘. keeps cursors visible
+    mpPresence = el("div", { id: "gvc-presence", class: "hidden" });
+    ui.appendChild(mpPresence);
+    transformCbs.push(mpPositionCursors);
+    root.addEventListener("pointermove", mpTrackPointer);
+    document.addEventListener("mouseleave", function () { mpSend({ t: "cursor", gone: true }); });
+    // co-editing: focus events bubble from every contentEditable (sticky/shape/text text,
+    // table cells, name labels) — no per-renderer hooks needed
+    document.addEventListener("focusin", function (e) {
+      var host = e.target && e.target.closest && e.target.closest(".gvc-node");
+      if (host && e.target.isContentEditable) mpSendFocus(host.dataset.id);
+    });
+    document.addEventListener("focusout", function (e) {
+      var host = e.target && e.target.closest && e.target.closest(".gvc-node");
+      if (host) mpSendFocus(null);
+    });
+    // live text: mirror keystrokes into the node so the diff tick streams them (the existing
+    // blur handlers still commit name derivation exactly as before)
+    document.addEventListener("input", function (e) {
+      var t = e.target;
+      if (!t || !t.closest || !t.classList) return;
+      var host = t.closest(".gvc-node"); if (!host) return;
+      var node = nodeById(host.dataset.id); if (!node) return;
+      if (t.classList.contains("gvc-txt")) node.text = t.innerText;
+      else if (t.classList.contains("gvc-cell") && node.cells) node.cells[t.dataset.rc] = t.innerText.trim();
+    });
+    setInterval(mpTick, 120);
+    // resolve my display name first so the cursor label is right from the first frame
+    fetch("/__me", { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { mpName = (d && d.user && d.user.name) || ME || "Guest"; })
+      .catch(function () { mpName = ME || "Guest"; })
+      .then(mpConnect);
+  }
+
   // ---- boot ----------------------------------------------------------------
   try { fetch("/__me", { headers: { Accept: "application/json" } }).then(function (r) { return r.json(); }).then(function (d) { if (d && d.user && d.user.name) ME = d.user.name; }).catch(function () {}); } catch (e) {}
   document.body.appendChild(root);
@@ -1522,5 +1814,6 @@
     if (nameEl) nameEl.textContent = board.name;
     render();
     applyTransform();
+    mpBoot();
   });
 })();

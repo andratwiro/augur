@@ -14,6 +14,7 @@
     "dev": "node build.js && npx --yes serve dist",
     "offline": "node scripts/offline.mjs",
     "deploy": "set -a && . ./.env.deploy && set +a && node build.js && npx wrangler pages deploy dist --project-name govocal-prototypes --branch main",
+    "deploy:realtime": "set -a && . ./.env.deploy && set +a && cd realtime && npx wrangler deploy",
     "posters": "node scripts/shoot.mjs --stale && node scripts/og.mjs --stale"
   },
   "engines": {
