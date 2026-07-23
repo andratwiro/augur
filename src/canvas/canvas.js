@@ -46,6 +46,9 @@
   var DEFAULT_STICKY = "#a9cbf5"; // FigJam's default blue (Rob's pick)
   // FigJam marker palette (draw sub-toolbar dots, left to right)
   var DRAW_COLORS = ["#1e1e1e", "#f24822", "#ff9f2e", "#ffd233", "#35c759", "#3aa2ff", "#8a5cff", "#ffffff"];
+  // Section colors (FigJam-style): each is the SOLID label-chip color; the section fill is a
+  // light tint of it (see renderSection). Medium-dark bases so the white chip text stays legible.
+  var SECTION_COLORS = ["#6b7280", "#e03131", "#e8590c", "#f0a000", "#2f9e44", "#0c8599", "#1971c2", "#7048e8", "#c2255c"];
   // stamp wheel, clockwise from the top — FigJam's die-cut sticker set, re-created as flat
   // SVGs with a white outline (paint-order:stroke) so they read as stickers, not OS emoji.
   // "laugh" fills FigJam's avatar slot with an emoji rendered through the same sticker filter.
@@ -200,7 +203,7 @@
     if (selected.length === 1) {
       var n = nodeById(selected[0]);
       decorate(selected[0]);
-      if (n && (n.type === "sticky" || n.type === "shape" || n.type === "draw" || n.type === "tile")) showSelBar(n); else hideSelBar();
+      if (n && (n.type === "sticky" || n.type === "shape" || n.type === "draw" || n.type === "tile" || n.type === "section")) showSelBar(n); else hideSelBar();
     } else hideSelBar();
   }
   function select(id) { setSelection(id ? [id] : []); }
@@ -218,9 +221,11 @@
       guard(ac); ac.addEventListener("click", function (e) { e.stopPropagation(); node.w = node.w / node.cols * (node.cols + 1); node.cols++; renderNode(node); scheduleSave(); });
       host.appendChild(ar); host.appendChild(ac); decorEls.push(ar, ac);
     }
-    var rz = el("div", { class: "gvc-resize" });
-    rz.addEventListener("pointerdown", function (e) { startResize(e, node); });
-    host.appendChild(rz); decorEls.push(rz);
+    if (!node.locked) {
+      var rz = el("div", { class: "gvc-resize" });
+      rz.addEventListener("pointerdown", function (e) { startResize(e, node); });
+      host.appendChild(rz); decorEls.push(rz);
+    }
   }
 
   // ---- render --------------------------------------------------------------
@@ -616,13 +621,51 @@
     return host;
   }
 
-  // ---- sections (background containers with a name label) ------------------
+  // ---- sections (background containers with a colored label chip) ----------
+  // node.color = the SOLID chip color; the fill is a light tint of it. node.locked =
+  // "all" (frame + contents inert) | "bg" (only the background inert; work on top freely).
   function renderSection(node) {
     node.w = node.w || 520; node.h = node.h || 360;
     var host = el("div", { class: "gvc-section" });
-    host.appendChild(nameLabel(node));
+    if (node.color) { host.style.background = node.color + "1f"; host.style.borderColor = node.color + "59"; }
+    if (node.locked) host.classList.add("locked");
+    host.appendChild(sectionLabel(node));
     place(host, node);
     return host;
+  }
+  // The label is a FigJam-style chip: section icon + editable name (+ a lock glyph when
+  // locked). Solid color bg when colored; stays clickable even when the section is locked,
+  // so the chip is how you re-select a locked section to unlock it.
+  function sectionLabel(node) {
+    var chip = el("div", { class: "gvc-seclabel" + (node.color ? " colored" : "") });
+    if (node.color) chip.style.background = node.color;
+    chip.innerHTML = '<svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7">' + I_SECTION + "</svg>";
+    var nm = el("div", { class: "gvc-name", text: node.name || autoName("section"), contentEditable: "false", title: "Double-click to rename" });
+    var tap = 0;
+    nm.addEventListener("pointerdown", function (e) {
+      if (nm.contentEditable === "true") return;
+      e.stopPropagation();
+      var now = Date.now();
+      if (now - tap < 350) { tap = 0; nm.contentEditable = "true"; nm.focus(); if (document.execCommand) document.execCommand("selectAll", false, null); }
+      else { tap = now; select(node.id); }
+    });
+    nm.addEventListener("blur", function () { nm.contentEditable = "false"; node.name = nm.textContent.trim() || node.name; nm.textContent = node.name; scheduleSave(); });
+    nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } });
+    chip.appendChild(nm);
+    if (node.locked) chip.insertAdjacentHTML("beforeend", '<svg class="lk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">' + I_LOCK + "</svg>");
+    return chip;
+  }
+  // The section (if any) that locks a given node with "lock all" — i.e. the node's center
+  // sits inside an all-locked section. Used to make locked contents inert (topmost wins).
+  function sectionLockingNode(id) {
+    var n = nodeById(id); if (!n || n.type === "section") return null;
+    var cx = n.type === "arrow" ? (n.x1 + n.x2) / 2 : n.x + (n.w || 0) / 2;
+    var cy = n.type === "arrow" ? (n.y1 + n.y2) / 2 : n.y + (n.h || 0) / 2;
+    for (var i = board.nodes.length - 1; i >= 0; i--) {
+      var s = board.nodes[i];
+      if (s.type === "section" && s.locked === "all" && cx >= s.x && cx <= s.x + s.w && cy >= s.y && cy <= s.y + s.h) return s;
+    }
+    return null;
   }
 
   // ---- tables (FigJam-style: plain white cells; + strips on select add row/col)
@@ -741,6 +784,10 @@
       root.classList.add("panning");
     } else if (nodeHost) {
       var id = nodeHost.dataset.id, node = nodeById(id), now = Date.now();
+      // "lock all" makes contents inert: a click on locked content selects the locking
+      // section instead (so you can unlock), never the content itself.
+      var lockSec = sectionLockingNode(id);
+      if (lockSec) { setSelection([lockSec.id]); lastTap = { id: null, t: 0 }; return; }
       if (id === lastTap.id && now - lastTap.t < 350) {
         if (node.type === "sticky" || node.type === "text" || node.type === "shape") {
           lastTap = { id: null, t: 0 }; enterEdit(id); return; // double-tap → edit text, no drag
@@ -1064,7 +1111,7 @@
   }
 
   // ---- selection toolbar (sticky / shape / draw / table) -------------------
-  var selBar, palette, picker, catalog = null;
+  var selBar, palette, lockMenu, picker, catalog = null;
   function showSelBar(node) {
     selBar.innerHTML = "";
     // tiles: device viewport segment + interact + open — the actions that used to crowd the
@@ -1087,10 +1134,17 @@
       positionSelBar();
       return;
     }
-    var dot = el("div", { class: "dot" }); dot.style.background = node.color || (node.type === "draw" ? "#1e1e1e" : node.type === "shape" ? "#ffffff" : DEFAULT_STICKY);
+    var dot = el("div", { class: "dot" }); dot.style.background = node.color || (node.type === "draw" ? "#1e1e1e" : node.type === "shape" ? "#ffffff" : node.type === "section" ? "#c4c9d4" : DEFAULT_STICKY);
     var sw = el("div", { class: "sw" }, [dot, el("div", { class: "chev", text: "▾" })]);
     guard(sw); sw.addEventListener("click", function (e) { e.stopPropagation(); togglePalette(node, dot); });
     selBar.appendChild(sw);
+    if (node.type === "section") {
+      selBar.appendChild(el("div", { class: "div" }));
+      var lb = el("button", { type: "button", class: "btn lock" + (node.locked ? " on" : ""), title: node.locked ? "Locked" : "Lock",
+        html: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">' + (node.locked ? I_LOCK : I_LOCK_OPEN) + '</svg><span class="chev">▾</span>' });
+      guard(lb); lb.addEventListener("click", function (e) { e.stopPropagation(); toggleLockMenu(node, lb); });
+      selBar.appendChild(lb);
+    }
     if (node.type === "sticky" || node.type === "shape") {
       selBar.appendChild(el("div", { class: "div" }));
       if (node.type === "sticky") {
@@ -1116,8 +1170,9 @@
   }
   function togglePalette(node, dot) {
     if (!palette.classList.contains("hidden")) { palette.classList.add("hidden"); return; }
+    if (lockMenu) lockMenu.classList.add("hidden");
     palette.innerHTML = "";
-    var colors = node.type === "draw" ? DRAW_COLORS : STICKY_COLORS;
+    var colors = node.type === "draw" ? DRAW_COLORS : node.type === "section" ? SECTION_COLORS : STICKY_COLORS;
     colors.forEach(function (c) {
       var pc = el("div", { class: "pc" + (c === node.color ? " on" : "") }); pc.style.background = c;
       guard(pc); pc.addEventListener("click", function (e) { e.stopPropagation(); node.color = c; dot.style.background = c; applyNodeStyle(node); scheduleSave(); palette.classList.add("hidden"); });
@@ -1125,6 +1180,30 @@
     });
     palette.classList.remove("hidden");
     positionSelBar();
+  }
+  // FigJam-style lock dropdown for sections: Lock all / Lock background only / Unlock.
+  function toggleLockMenu(node, btn) {
+    if (!lockMenu.classList.contains("hidden")) { lockMenu.classList.add("hidden"); return; }
+    if (palette) palette.classList.add("hidden");
+    lockMenu.innerHTML = "";
+    var items = node.locked === "all" ? [["bg", "Lock background only"], [null, "Unlock"]]
+      : node.locked === "bg" ? [["all", "Lock all"], [null, "Unlock"]]
+      : [["all", "Lock all"], ["bg", "Lock background only"]];
+    items.forEach(function (it) {
+      var row = el("div", { class: "item", text: it[1] });
+      guard(row); row.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (it[0]) node.locked = it[0]; else delete node.locked;
+        renderNode(node); setSelection([node.id]); scheduleSave();
+        lockMenu.classList.add("hidden");
+      });
+      lockMenu.appendChild(row);
+    });
+    var r = btn.getBoundingClientRect();
+    lockMenu.classList.remove("hidden");
+    var mw = lockMenu.offsetWidth || 190;
+    lockMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.left)) + "px";
+    lockMenu.style.top = (r.bottom + 6) + "px";
   }
   function positionSelBar() {
     if (!selBar || selBar.classList.contains("hidden")) return;
@@ -1141,13 +1220,15 @@
       palette.style.top = Math.max(8, top - 46) + "px";
     }
   }
-  function hideSelBar() { if (selBar) selBar.classList.add("hidden"); if (palette) palette.classList.add("hidden"); }
+  function hideSelBar() { if (selBar) selBar.classList.add("hidden"); if (palette) palette.classList.add("hidden"); if (lockMenu) lockMenu.classList.add("hidden"); }
 
   // ---- toolbar: icons — Lucide (the shadcn set) wherever one exists --------
   var I_SELECT = '<path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/>'; // mouse-pointer-2
   var I_HAND = '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>'; // hand
   var I_TEXT = '<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/>'; // type
   var I_SECTION = '<rect x="3.2" y="3.4" width="13.6" height="13.6" rx="2.2"/><path d="M3.2 7.6h4.2V3.4"/>'; // custom (FigJam section glyph, square — no Lucide equivalent)
+  var I_LOCK = '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'; // lock (Lucide)
+  var I_LOCK_OPEN = '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>'; // lock-open (Lucide)
   var I_TABLE = '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 9v12"/><path d="M15 9v12"/>'; // table with header row (FigJam-style)
   var I_STAMP = '<path d="M5 22h14"/><path d="M19.27 13.73A2.5 2.5 0 0 0 17.5 13h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.66-.26-1.3-.73-1.77Z"/><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13"/>'; // stamp
   var I_BUBBLE = '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>'; // message-circle
@@ -1226,6 +1307,7 @@
     toolGhost.remove(); toolGhost = null;
   }
   function closePops() {
+    if (lockMenu) lockMenu.classList.add("hidden");
     if (moreShapes) moreShapes.classList.add("hidden");
     if (plusMenu) plusMenu.classList.add("hidden");
     if (barEls.bar) barEls.bar.classList.remove("plusopen");
@@ -1274,7 +1356,8 @@
 
     selBar = el("div", { id: "gvc-selbar", class: "hidden" });
     palette = el("div", { id: "gvc-palette", class: "hidden" });
-    ui.appendChild(selBar); ui.appendChild(palette);
+    lockMenu = el("div", { id: "gvc-lockmenu", class: "hidden" });
+    ui.appendChild(selBar); ui.appendChild(palette); ui.appendChild(lockMenu);
     buildPicker();
     transformCbs.push(positionSelBar);
     window.addEventListener("resize", positionSelBar);
