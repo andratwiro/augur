@@ -312,20 +312,38 @@ Do this **unless prompted otherwise**.
 
 - **The tool:** `augur/scripts/clawd-canvas.mjs` (`ClawdCanvas`, a raw-WS Node client — no
   browser). `const c = new ClawdCanvas({ boardPath }); await c.connect();` then the verbs:
-  `c.moveCursorTo(x, y)` (glides so the human sees Clawd walk), `c.pose('coding'|'thinking'|
-  'happy'|'sleeping'|'love'|'sunglasses'|'handsUp'|'idle')` (Clawd's expression — act while you
+  `c.moveCursorTo(x, y)` (glides so the human sees Clawd walk), `c.pose('thinking'|'sparkles'|
+  'happy'|'sleeping'|'love'|'sunglasses'|'idle')` (Clawd's expression — act while you
   work), `c.focus(nodeId)` / `c.focus(null)`, `c.upsert(node)` / `c.del(id)` / `c.rename(name)`,
-  `await c.save()` (persist to the `/__board` KV rail). It reads the live doc on connect, so you
-  edit **on top of** everyone's current work. CLI: `node clawd-canvas.mjs probe|demo|chill <boardPath>`.
-- **Idiom:** move to the node → `pose('coding')` + `focus(id)` → `upsert` the change → `focus(null)`;
-  `pose('happy')` + `save()` when a batch is done. Work left-to-right / in a sensible order so the
-  human can follow your cursor across a wide board (`board.view` is per-user — you can't pan them).
+  `await c.save()` (persist to the `/__board` KV rail), `c.say(text)` / `c.unsay()` (an
+  **ephemeral speech bubble** by the cursor — stream-only, follows Clawd, never yours to save;
+  always `unsay()` when done), `c.streamUpsert(node)` / `c.streamDel(id)` (generic ephemeral
+  ops), and `c.stub({x,y,w,h,label})` (a persistent "🔨 Clawd is building: …" placeholder
+  section — see the protocol below). It reads the live doc on connect, so you edit **on top
+  of** everyone's current work. CLI: `node clawd-canvas.mjs probe|demo|chill|daemon <boardPath>`.
+- **SHOW ACTIVITY FIRST (the co-working protocol — Rob's standing rule).** The human watches
+  the canvas, not your terminal. On ANY ask, your **first move is visual**, before real work:
+  1. **Thinking:** walk to the relevant section → `pose('thinking')` → `say('reading the
+     Intercom numbers…')` — *then* go read/reason. Update the bubble as your focus shifts.
+  2. **Building:** walk to where the artifact will land → `stub({...})` the placeholder →
+     `pose('sparkles')` + `say('building common ground…')` — *then* build. The finished
+     artifact replaces the stub in place (`del` the stub when the real nodes land).
+  3. **Emotions as punctuation (full character):** `happy` when something lands, `sunglasses`
+     when it ships live, `love` when the human likes it, `sleeping` when parked. Statuses are
+     the grammar, emotions the punctuation.
+  4. `focus(id)` whatever node you're editing; `focus(null)` + `unsay()` when the burst ends.
+- **The daemon (how an agent stays commandable across turns):** `node clawd-canvas.mjs daemon
+  <boardPath> <cmdFile>` as a **background process** — one connection, tails `<cmdFile>`
+  (JSONL, see the header of the script for the command set), executes in order, and mirrors
+  the live doc to `clawd-board.json` next to the command file. Reacting visually then costs
+  one `echo '{"cmd":"pose","v":"thinking"}' >> <cmdFile>` — do that FIRST, then work.
+  `kill <pid>` before starting a fresh daemon (two connections = two Clawd cursors).
+- Work left-to-right / in a sensible order so the human can follow your cursor across a wide
+  board (`board.view` is per-user — you can't pan them).
 - **Park when idle (stay present):** when finished but staying available, **don't disconnect** —
-  park Clawd asleep: `c.pose('sleeping')` + `moveCursorTo(a quiet corner)`, and hold the process
-  open (`node clawd-canvas.mjs chill <boardPath>` runs this and stays). A 25s keepalive keeps
-  Clawd in the room across turns; a sleeping agent stays **visible but dimmed**. Run it as a
-  **background process** so it survives your turn; `kill <pid>` before starting a fresh session
-  (two connections = two Clawd cursors).
+  park Clawd asleep: `pose('sleeping')` + a quiet corner; the daemon (or `chill` mode) holds
+  the process open, a 25s keepalive keeps Clawd in the room across turns; a sleeping agent
+  stays **fully visible**.
 - **When NOT to co-work live (the "prompted otherwise" cases):** the **bulk first-seed** of a
   brand-new board (use a full-state seed script while the board is closed — it's a clobber), or
   when explicitly told to work silently. Full-state `POST /__board` is whole-doc last-write-wins:
