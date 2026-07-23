@@ -338,6 +338,11 @@ Do this **unless prompted otherwise**.
   the live doc to `clawd-board.json` next to the command file. Reacting visually then costs
   one `echo '{"cmd":"pose","v":"thinking"}' >> <cmdFile>` — do that FIRST, then work.
   `kill <pid>` before starting a fresh daemon (two connections = two Clawd cursors).
+- **Ambient chill (daemon default):** connected-but-idle ≠ frozen. With no commands for ~12s
+  and the pose plain `idle`, Clawd hangs out — fidgets in place, strolls near the human's
+  cursor or around the content, the odd happy blip — so the presence reads as alive. Any
+  command pauses it instantly; explicit poses (`thinking`/`sparkles`/`sleeping`) hold.
+  `{"cmd":"chill","v":false}` turns it off.
 - Work left-to-right / in a sensible order so the human can follow your cursor across a wide
   board (`board.view` is per-user — you can't pan them).
 - **Park when idle (stay present):** when finished but staying available, **don't disconnect** —

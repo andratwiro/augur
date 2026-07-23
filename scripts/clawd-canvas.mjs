@@ -38,8 +38,11 @@
 //       {"cmd":"upsert","node":{...}} / {"cmd":"del","id":".."}   real edits (KV-saved;
 //         add "ephemeral":true for stream-only)
 //       {"cmd":"rename","name":".."} {"cmd":"save"} {"cmd":"quit"}
+//       {"cmd":"chill","v":false}                        disable the ambient chill loop
 //     It also mirrors the live doc to <cmdFile dir>/clawd-board.json on every op, so the
-//     agent always reads the human's latest state without reconnecting.
+//     agent always reads the human's latest state without reconnecting. While connected and
+//     idle (no commands ~12s, pose plain idle) Clawd CHILLS instead of freezing: fidgets,
+//     strolls near the human's cursor or around the content, the odd happy blip.
 
 const RT_ORIGIN = 'wss://augur-realtime.rob-3d3.workers.dev';
 const SITE = 'https://govocal-prototypes.pages.dev';
@@ -277,9 +280,15 @@ if (isMain) {
     c._ws.addEventListener('message', dump); // human ops keep the mirror fresh
     let offset = readFileSync(cmdFile, 'utf8').length; // ignore stale commands from a past run
     let queue = Promise.resolve();
+    let pending = 0, lastCmdAt = Date.now(), explicitPose = 'idle', chillOn = true;
+    const enqueue = (fn, label) => {
+      pending++;
+      queue = queue.then(fn).catch((e) => console.log((label || 'step') + ' failed:', e.message)).finally(() => { pending--; });
+    };
     const run = async (m) => {
       if (m.cmd === 'goto') await c.moveCursorTo(m.x, m.y, { steps: m.steps || 18, stepMs: m.stepMs || 40 });
-      else if (m.cmd === 'pose') c.pose(m.v);
+      else if (m.cmd === 'pose') { explicitPose = m.v; c.pose(m.v); }
+      else if (m.cmd === 'chill') chillOn = m.v !== false;
       else if (m.cmd === 'say') c.say(m.text);
       else if (m.cmd === 'unsay') c.unsay();
       else if (m.cmd === 'focus') c.focus(m.id ?? null);
@@ -298,9 +307,42 @@ if (isMain) {
       for (const line of chunk.split('\n')) {
         const s = line.trim(); if (!s) continue;
         let m; try { m = JSON.parse(s); } catch { console.log('bad cmd line:', s); continue; }
-        queue = queue.then(() => run(m)).catch((e) => console.log('cmd failed:', m.cmd, e.message));
+        lastCmdAt = Date.now();
+        enqueue(() => run(m), m.cmd);
       }
     });
+
+    // ambient chill — connected-but-idle ≠ frozen (which the engine renders as sleeping).
+    // When no command has arrived for a while and the pose is plain idle, Clawd hangs out:
+    // mostly fidgets in place, sometimes strolls over to the human's cursor or a random
+    // piece of content, rarely flashes a happy blip. Any command pauses it instantly; an
+    // explicit pose (thinking/sparkles/sleeping/…) means intentional state — hold it.
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const chillStep = async () => {
+      if (Math.random() < 0.6) { // shuffle on the spot
+        await c.moveCursorTo(c._cur.x + rand(-45, 45), c._cur.y + rand(-35, 35), { steps: 8, stepMs: 60 });
+        return;
+      }
+      const human = Object.values(c.peers).find((p) => p.kind !== 'agent' && p.cx != null);
+      let tx, ty;
+      if (human) { // keep the human company, never sit on their cursor
+        do { tx = human.cx + rand(-520, 520); ty = human.cy + rand(-360, 360); }
+        while (Math.hypot(tx - human.cx, ty - human.cy) < 140);
+      } else { // or wander the content
+        const ns = c.doc.nodes.filter((n) => Number.isFinite(n.x) && Number.isFinite(n.w));
+        const n = ns.length ? ns[Math.floor(Math.random() * ns.length)] : null;
+        tx = n ? n.x + rand(-60, n.w + 60) : 300 + rand(-250, 250);
+        ty = n ? n.y + rand(-60, (n.h || 120) + 60) : 200 + rand(-180, 180);
+      }
+      await c.moveCursorTo(tx, ty, { steps: 30, stepMs: 70 });
+      if (Math.random() < 0.15) { c.pose('happy'); await sleep(1400); c.pose('idle'); }
+    };
+    setInterval(() => {
+      if (!chillOn || pending > 0 || Date.now() - lastCmdAt < 12000) return;
+      if (explicitPose !== 'idle') return;
+      enqueue(chillStep, 'chill');
+    }, 3400);
+
     console.log(`daemon: pid=${process.pid} · commands → ${cmdFile} · doc mirror → ${dumpFile}`);
     setInterval(() => {}, 1 << 30);
   } else {
