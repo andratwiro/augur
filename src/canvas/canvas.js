@@ -171,6 +171,9 @@
       if (n.cells) { c.cells = {}; for (var ck in n.cells) c.cells[ck] = n.cells[ck]; }
       if (n.crop) c.crop = { x: n.crop.x, y: n.crop.y, w: n.crop.w, h: n.crop.h };
       c.id = uid();
+      // duplicated tiles get a distinct name — names are the shared vocabulary ("change the
+      // copy"), and canvas-screen.mjs dup finds the "… copy" tile to repoint at a forked folder
+      if (c.type === "tile" && c.name) c.name = c.name + " copy";
       if (n.type === "arrow") { c.x1 = n.x1 + dx; c.y1 = n.y1 + dy; c.x2 = n.x2 + dx; c.y2 = n.y2 + dy; }
       else { c.x = (n.x || 0) + dx; c.y = (n.y || 0) + dy; }
       addNode(c); newIds.push(c.id); pop(c.id);
@@ -370,7 +373,11 @@
     });
     nm.addEventListener("blur", function () { nm.contentEditable = "false"; node.name = nm.textContent.trim() || node.name; nm.textContent = node.name; scheduleSave(); });
     nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } else if (e.key === "Escape") { nm.textContent = node.name; nm.blur(); } });
-    var host = el("div", { class: "gvc-tile" }, [nm, body]);
+    // drag handle, visible only while interacting (the iframe eats the pointer then, so the
+    // grip is how you still move the tile). No stopPropagation: its pointerdown bubbles to
+    // the root and rides the normal select+move drag path.
+    var grip = el("div", { class: "gvc-draghandle", title: "Drag to move", html: lucideIcon('<path d="M5 9 2 12l3 3"/><path d="M9 5l3-3 3 3"/><path d="m15 19-3 3-3-3"/><path d="M19 9l3 3-3 3"/><path d="M2 12h20"/><path d="M12 2v20"/>') });
+    var host = el("div", { class: "gvc-tile" }, [nm, body, grip]);
     showThumb(node, body);
     place(host, node);
     scaleTileChrome(node, host);
@@ -378,13 +385,18 @@
     else setTimeout(function () { if (nodeEls[node.id] === host) mountTile(node); }, 0);
     return host;
   }
-  // counter-scale the floating name chip so it reads at 12px on screen at ANY zoom (FigJam
-  // frame titles); width-capped to the tile's VISUAL width so long names truncate, not spill
+  // counter-scale the floating chrome (name chip, drag grip) so it reads at a constant
+  // screen size at ANY zoom (FigJam frame titles); the name is width-capped to the tile's
+  // VISUAL width so long names truncate, not spill
   function scaleTileChrome(node, host) {
-    var nm = host.querySelector(".gvc-tilename"); if (!nm) return;
     var s = board.view.scale;
-    nm.style.transform = "scale(" + 1 / s + ")";
-    nm.style.maxWidth = Math.max(80, node.w * s) + "px";
+    var nm = host.querySelector(".gvc-tilename");
+    if (nm) {
+      nm.style.transform = "scale(" + 1 / s + ")";
+      nm.style.maxWidth = Math.max(80, node.w * s) + "px";
+    }
+    var grip = host.querySelector(".gvc-draghandle");
+    if (grip) grip.style.transform = "scale(" + 1 / s + ")";
   }
   transformCbs.push(function () {
     board.nodes.forEach(function (n) { if (n.type === "tile" && nodeEls[n.id]) scaleTileChrome(n, nodeEls[n.id]); });
@@ -424,9 +436,12 @@
   }
   function exitInteract() {
     if (!interactId) return;
-    var host = nodeEls[interactId];
-    if (host) { host.classList.remove("interacting"); var hit = host.querySelector(".gvc-hit"); if (hit) hit.style.display = ""; }
+    var id = interactId;
     interactId = null;
+    var host = nodeEls[id];
+    if (host) { host.classList.remove("interacting"); var hit = host.querySelector(".gvc-hit"); if (hit) hit.style.display = ""; }
+    // keep the floating toolbar's Interact/Stop label honest (Esc, click-out, remote paths)
+    if (selected.length === 1 && selected[0] === id) { var n = nodeById(id); if (n) showSelBar(n); }
   }
   // Pick a device viewport for a tile: shape it to that device's proportions, reflow the
   // iframe, refresh the floating toolbar's segment state.
@@ -1061,8 +1076,9 @@
         selBar.appendChild(b);
       });
       selBar.appendChild(el("div", { class: "div" }));
-      var ib = el("button", { type: "button", class: "btn wide", title: "Interact with the prototype (or double-click it)", text: "▶ Interact" });
-      guard(ib); ib.addEventListener("click", function (e) { e.stopPropagation(); enterInteract(node); });
+      var driving = interactId === node.id;
+      var ib = el("button", { type: "button", class: "btn wide" + (driving ? " on" : ""), title: driving ? "Stop interacting (or Esc / click outside)" : "Interact with the prototype (or double-click it)", text: driving ? "■ Stop" : "▶ Interact" });
+      guard(ib); ib.addEventListener("click", function (e) { e.stopPropagation(); if (interactId === node.id) exitInteract(); else enterInteract(node); showSelBar(node); });
       selBar.appendChild(ib);
       var ob = el("button", { type: "button", class: "btn", title: "Open in new tab", text: "↗" });
       guard(ob); ob.addEventListener("click", function (e) { e.stopPropagation(); window.open(node.url, "_blank"); });

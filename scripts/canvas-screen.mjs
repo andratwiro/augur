@@ -20,7 +20,7 @@
 // the canvas BOARD (KV, via the public /__board API — takes effect immediately). After `add`,
 // write the real prototype into the created index.html, then commit + push the space repo.
 
-import { readdirSync, existsSync, readFileSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { readdirSync, existsSync, readFileSync, mkdirSync, writeFileSync, rmSync, cpSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -162,6 +162,39 @@ async function cmdRm(canvasUrl, slug) {
   console.log(`\nNext: commit + push the space repo so the deletion ships.`);
 }
 
+
+// Fork a canvas-owned screen: copy its folder to a new slug and point the DUPLICATE tile at
+// it. This is the terminal half of "duplicate the tile ⇒ duplicate the folder": Cmd+D on the
+// canvas clones only the tile (the browser can't write git), so both tiles briefly share one
+// folder; before editing "the copy", run dup — it repoints the duplicate (by --tile name, or
+// the one named "… copy", or the last sharer) at the fresh fork. If no duplicate tile exists
+// yet it places a new one beside the source.
+async function cmdDup(canvasUrl, srcSlug, newSlug, title, tileName) {
+  const { space, canvasDir, boardPath } = resolve(canvasUrl);
+  if (!/^[a-z0-9-]+$/.test(newSlug || "")) throw new Error("new slug must be lowercase [a-z0-9-]");
+  const srcDir = path.join(canvasDir, srcSlug), newDir = path.join(canvasDir, newSlug);
+  if (!existsSync(path.join(srcDir, "index.html"))) throw new Error(`no owned screen at ${srcSlug}`);
+  if (existsSync(newDir)) throw new Error(`${newSlug} already exists`);
+  cpSync(srcDir, newDir, { recursive: true });
+  console.log(`✓ forked ${path.relative(PARENT, srcDir)} → ${path.relative(PARENT, newDir)}`);
+  const srcUrl = boardPath + srcSlug + "/", newUrl = boardPath + newSlug + "/";
+  const name = title || newSlug;
+  const done = (d) => (d.nodes || []).some((n) => n.type === "tile" && n.url === newUrl);
+  await mutateBoard(boardPath, (d) => {
+    if (done(d)) return;
+    const sharers = d.nodes.filter((n) => n.type === "tile" && n.url === srcUrl);
+    let dupe = tileName ? sharers.find((n) => n.name === tileName) : null;
+    if (!dupe && sharers.length > 1) dupe = sharers.find((n) => / copy$/.test(n.name || "")) || sharers[sharers.length - 1];
+    if (dupe) { dupe.url = newUrl; dupe.name = name; delete dupe.liveUrl; delete dupe.thumb; }
+    else {
+      const src = sharers[0] || { x: 0, y: 0, w: 560, h: 360 };
+      d.nodes.push({ id: uid(), type: "tile", x: (src.x || 0) + 48, y: (src.y || 0) + 48, w: src.w || 560, h: src.h || 360, url: newUrl, name });
+    }
+  }, done, "fork-tile");
+  console.log(`✓ tile "${name}" → ${newUrl} on the board`);
+  console.log(`\nNext: edit the fork (${path.relative(PARENT, newDir)}), then commit + push the ${path.basename(space.dir)} repo.`);
+}
+
 async function cmdLs(canvasUrl) {
   const { canvasDir, boardPath } = resolve(canvasUrl);
   const folders = readdirSync(canvasDir, { withFileTypes: true })
@@ -187,11 +220,14 @@ const [cmd, canvasUrl, slug] = process.argv.slice(2);
 const titleIdx = process.argv.indexOf("--title");
 const title = titleIdx > -1 ? process.argv[titleIdx + 1] : "";
 try {
+  const tileIdx = process.argv.indexOf("--tile");
+  const tileName = tileIdx > -1 ? process.argv[tileIdx + 1] : "";
   if (cmd === "add" && canvasUrl && slug) await cmdAdd(canvasUrl, slug, title);
+  else if (cmd === "dup" && canvasUrl && slug && process.argv[5] && !process.argv[5].startsWith("--")) await cmdDup(canvasUrl, slug, process.argv[5], title, tileName);
   else if (cmd === "rm" && canvasUrl && slug) await cmdRm(canvasUrl, slug);
   else if (cmd === "ls" && canvasUrl) await cmdLs(canvasUrl);
   else {
-    console.log("usage:\n  canvas-screen add <canvasUrl> <slug> [--title \"T\"]\n  canvas-screen rm  <canvasUrl> <slug>\n  canvas-screen ls  <canvasUrl>");
+    console.log("usage:\n  canvas-screen add <canvasUrl> <slug> [--title \"T\"]\n  canvas-screen dup <canvasUrl> <srcSlug> <newSlug> [--title \"T\"] [--tile \"Dup tile name\"]\n  canvas-screen rm  <canvasUrl> <slug>\n  canvas-screen ls  <canvasUrl>");
     process.exit(1);
   }
 } catch (e) { console.error("✗ " + e.message); process.exit(1); }

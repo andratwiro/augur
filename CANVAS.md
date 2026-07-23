@@ -267,6 +267,13 @@ session like this) says *"build a prototype on/in this canvas"*, it means:
 - `add <canvasUrl> <slug> [--title "T"]` — create the subfolder (+ a starter `index.html`) and
   place the tile. Then **write the real prototype into that index.html** and commit + push the
   space repo. Lives at `<site>/<opp>/<canvas>/<slug>/` once deployed.
+- `dup <canvasUrl> <srcSlug> <newSlug> [--title "T"] [--tile "name"]` — **fork** an owned
+  screen: copy the folder and repoint the duplicate tile at it. This is the terminal half of
+  Rob's rule "duplicate the tile ⇒ duplicate the folder": Cmd+D in the canvas clones only the
+  TILE (named "… copy", pointing at the SAME folder — the browser can't write git), so **any
+  agent asked to change a duplicate must run `dup` FIRST** (it repoints the "… copy" tile, or
+  `--tile <name>`, at the fresh fork), then edit the fork and commit + push. Never edit a
+  folder two tiles share unless the change is meant for both.
 - `rm  <canvasUrl> <slug>` — remove the tile **and** delete the folder (the ownership coupling).
   Commit + push so the deletion ships.
 - `ls  <canvasUrl>` — reconcile view: nested screen folders vs board tiles; flags an orphaned
