@@ -98,7 +98,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
    stays clickable so it's how you re-select the section to unlock it */
 .gvc-section.locked { pointer-events: none; }
 .gvc-section.locked > .gvc-seclabel { pointer-events: auto; }
-.gvc-seclabel { position: absolute; top: 8px; left: 10px; display: flex; align-items: center; gap: 6px;
+.gvc-seclabel { position: absolute; bottom: calc(100% + 7px); left: 0; display: flex; align-items: center; gap: 6px;
   padding: 4px 9px 4px 8px; border-radius: 8px; background: #e9ecef; color: #4a4f57;
   font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   box-shadow: 0 1px 2px rgba(0, 0, 0, .12); max-width: calc(100% - 20px); cursor: grab; }

@@ -627,7 +627,7 @@
   function renderSection(node) {
     node.w = node.w || 520; node.h = node.h || 360;
     var host = el("div", { class: "gvc-section" });
-    if (node.color) { host.style.background = node.color + "1f"; host.style.borderColor = node.color + "59"; }
+    if (node.color) { host.style.background = node.color + "1f"; host.style.border = "2px solid " + node.color; }
     if (node.locked) host.classList.add("locked");
     host.appendChild(sectionLabel(node));
     place(host, node);
