@@ -38,9 +38,11 @@ export class ClawdCanvas {
     this.sid = null;
     this.ready = false;
     this._cur = { x: 0, y: 0 };
+    this._pose = 'idle';
     this._ws = null;
     this._onready = null;
     this._saveT = null;
+    this._pingT = null;
   }
 
   connect() {
@@ -49,7 +51,12 @@ export class ClawdCanvas {
     const ws = new WebSocket(url);
     this._ws = ws;
     ws.addEventListener('message', (ev) => this._onMessage(ev));
-    ws.addEventListener('close', () => { this.ready = false; });
+    // keepalive: the room reaps sockets that stop pinging (~75s) — ping every 25s so a
+    // parked/sleeping Clawd stays present in the room across turns
+    ws.addEventListener('open', () => {
+      this._pingT = setInterval(() => { if (this._ws && this._ws.readyState === 1) { try { this._ws.send('ping'); } catch {} } }, 25000);
+    });
+    ws.addEventListener('close', () => { this.ready = false; clearInterval(this._pingT); });
     return new Promise((resolve, reject) => {
       this._onready = resolve;
       ws.addEventListener('error', reject, { once: true });
@@ -64,7 +71,7 @@ export class ClawdCanvas {
       this.sid = m.sid;
       this.color = m.color || this.color;
       this.peers = {};
-      (m.peers || []).forEach((p) => (this.peers[p.sid] = { name: p.name, color: p.color, kind: p.kind, focus: p.focus }));
+      (m.peers || []).forEach((p) => (this.peers[p.sid] = { name: p.name, color: p.color, kind: p.kind, pose: p.pose, focus: p.focus }));
       if (m.doc) this.doc = m.doc;
       else { // no live doc — pull the durable copy from KV so we edit on top of the real board
         const kv = await this._getKv();
@@ -73,7 +80,7 @@ export class ClawdCanvas {
       this.ready = true;
       if (this._onready) { this._onready(this); this._onready = null; }
     } else if (m.t === 'join') {
-      this.peers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, kind: m.peer.kind, focus: m.peer.focus };
+      this.peers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, kind: m.peer.kind, pose: m.peer.pose, focus: m.peer.focus };
     } else if (m.t === 'leave') {
       delete this.peers[m.peer.sid];
     } else if (m.t === 'cursor') {
@@ -82,6 +89,8 @@ export class ClawdCanvas {
       this._applyOps(m.ops || []); // track the human's edits so our doc stays current
     } else if (m.t === 'focus') {
       const p = this.peers[m.sid]; if (p) p.focus = m.id || null;
+    } else if (m.t === 'pose') {
+      const p = this.peers[m.sid]; if (p) p.pose = m.pose || null;
     } else if (m.t === 'doc') {
       if (m.doc && Array.isArray(m.doc.nodes)) this.doc = m.doc;
     } else if (m.t === 'docreq') {
@@ -130,6 +139,9 @@ export class ClawdCanvas {
 
   focus(id) { this._send({ t: 'focus', id: id || null }); }
 
+  // set Clawd's expression: idle · coding · thinking · happy · sleeping · love · sunglasses · handsUp
+  pose(name) { this._pose = name; this._send({ t: 'pose', pose: name }); }
+
   upsert(node) {
     const i = this.doc.nodes.findIndex((n) => n.id === node.id);
     if (i >= 0) this.doc.nodes[i] = node; else this.doc.nodes.push(node);
@@ -157,7 +169,7 @@ export class ClawdCanvas {
     } catch { return false; }
   }
 
-  close() { try { this._send({ t: 'cursor', gone: true }); this._ws.close(); } catch {} }
+  close() { try { clearInterval(this._pingT); this._send({ t: 'cursor', gone: true }); this._ws.close(); } catch {} }
 }
 
 // ---- CLI --------------------------------------------------------------------
@@ -174,16 +186,24 @@ if (isMain) {
     // walk to a spot, drop a sticky, focus it, wave the cursor, then leave it
     const nid = 'clawd-demo-' + Math.random().toString(36).slice(2, 7);
     await c.moveCursorTo(2600, 1900);
+    c.pose('coding');
     c.upsert({ id: nid, type: 'sticky', x: 2500, y: 1820, w: 300, h: 150, text: 'Clawd was here 👋', color: '#ffe066', name: 'clawd hello', fontScale: 'm', bold: true, author: '' });
     c.focus(nid);
     await sleep(400);
     for (const [dx, dy] of [[60, -30], [-60, 30], [40, 20], [0, 0]]) { await c.moveCursorTo(2650 + dx, 1895 + dy, { steps: 10, stepMs: 45 }); }
-    c.focus(null);
+    c.focus(null); c.pose('happy');
     await c.save();
     console.log('demo: dropped sticky', nid, '— saved');
     await sleep(800);
+    c.close(); await sleep(200); process.exit(0);
+  } else if (mode === 'chill' || mode === 'sleep') {
+    // park Clawd in a corner, asleep, and STAY connected until this process is killed
+    const cx = Number(process.argv[4]) || 300, cy = Number(process.argv[5]) || 200;
+    await c.moveCursorTo(cx, cy, { steps: 22, stepMs: 45 });
+    c.pose('sleeping');
+    console.log(`chilling at (${cx},${cy}), pose=sleeping, pid=${process.pid} — staying on the board until killed`);
+    setInterval(() => {}, 1 << 30); // hold the event loop; ws + ping keep presence alive
+  } else {
+    c.close(); await sleep(200); process.exit(0); // probe: info already printed
   }
-  c.close();
-  await sleep(200);
-  process.exit(0);
 }

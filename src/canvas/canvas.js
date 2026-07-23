@@ -2033,19 +2033,57 @@
   // OS pointer wears it too (in YOUR color) whenever a canvas file is open.
   var MP_ARROW = '<svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 912 892"><g transform="translate(0.000000,892.000000) scale(0.100000,-0.100000)"><path d="M2604 7445 c-38 -17 -89 -66 -111 -109 -19 -36 -20 -144 -4 -351 6 -71 16 -186 21 -255 5 -69 14 -181 20 -250 5 -69 21 -267 35 -440 32 -400 72 -900 85 -1055 5 -66 14 -181 20 -255 6 -74 15 -193 20 -265 6 -71 15 -188 20 -260 6 -71 15 -184 20 -250 5 -66 14 -183 20 -260 6 -77 15 -187 20 -245 6 -58 14 -168 20 -245 6 -77 15 -194 21 -260 5 -66 16 -201 24 -300 8 -99 19 -236 25 -305 6 -69 15 -183 20 -255 5 -71 15 -191 21 -265 6 -74 14 -180 18 -235 9 -117 26 -161 84 -210 64 -55 159 -71 235 -40 63 27 67 31 227 280 18 28 99 156 180 285 204 324 374 593 465 735 42 66 128 201 190 300 180 287 200 315 290 405 166 168 374 283 595 329 59 12 295 27 670 41 149 6 376 15 505 20 129 5 366 15 525 20 490 19 576 25 621 48 105 54 152 186 105 294 -24 55 -47 75 -216 192 -77 52 -207 142 -290 199 -82 57 -332 229 -555 382 -223 153 -443 305 -490 337 -47 32 -152 105 -235 161 -149 103 -421 290 -1063 732 -183 127 -393 271 -465 320 -73 50 -206 142 -297 205 -91 62 -235 161 -320 220 -85 59 -229 158 -320 220 -91 63 -228 157 -305 210 -77 53 -160 110 -185 129 -25 18 -60 39 -79 47 -42 18 -146 17 -187 -1z" fill="{C}" stroke="#ffffff" stroke-width="620" stroke-linejoin="round" stroke-linecap="round" paint-order="stroke"/></g></svg>';
   function mpArrowSvg(color) { return MP_ARROW.replace("{C}", color); }
-  // Agent peers (Claude co-working via the collaboration harness) wear CLAWD — the Claude
-  // mascot — instead of the arrow: a blocky body tinted with the peer's room color (orange
-  // for the primary agent, other hues for additional agents), black eyes, white outline.
-  // A tinted body + name pill = you can tell WHICH agent, the same way colored arrows tell
-  // which human. Rendered bigger than the arrow (see .gvc-cursor.agent in canvas.css).
-  var MP_CLAWD = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="31" viewBox="0 0 40 36">' +
-    '<path d="M6 3 H34 V11 H38 V17 H34 V25 H32 V32 H28 V25 H25 V32 H21 V25 H19 V32 H15 V25 H12 V32 H8 V25 H6 V17 H2 V11 H6 Z" ' +
-    'fill="{C}" stroke="#ffffff" stroke-width="2.6" stroke-linejoin="round" paint-order="stroke"/>' +
-    '<rect x="12.5" y="9" width="3.8" height="6" fill="#1a1a1a"/>' +
-    '<rect x="23.7" y="9" width="3.8" height="6" fill="#1a1a1a"/></svg>';
-  function mpClawdSvg(color) { return MP_CLAWD.replace("{C}", color); }
-  // glyph for a peer: Clawd if it's an agent, the arrow otherwise
-  function mpGlyph(p) { return p && p.kind === "agent" ? mpClawdSvg(p.color) : mpArrowSvg(p.color); }
+  // ---- Clawd: the Claude mascot as tintable pixel-SVG, with expression STATES ----------
+  // Agent peers (Claude collaboration clients) render as CLAWD, not the arrow. The expression
+  // follows the agent's broadcast `pose` (idle/coding/thinking/happy/sleeping/…) so the cursor
+  // can "act". Body pixels ('B') take the peer's color (Clawd orange for the primary, other
+  // hues for more agents); features are fixed. A white outline (feMorphology) keeps it legible
+  // on any background. Shared 14x12 grid; each pose overrides eyes/cheeks/arms/accessories.
+  var CLAWD_U = 4, CLAWD_K = "#1a1a1a";
+  var CLAWD_BODY = [
+    "..BBBBBBBBBB..", ".BBBBBBBBBBBB.", ".BBBBBBBBBBBB.", ".BBBBBBBBBBBB.",
+    ".BBBBBBBBBBBB.", ".BBBBBBBBBBBB.", "BBBBBBBBBBBBBB", "BBBBBBBBBBBBBB",
+    ".BBBBBBBBBBBB.", ".BBBBBBBBBBBB.", ".BB.BB..BB.BB.", ".BB.BB..BB.BB."
+  ];
+  function clawdEyes(open, color) {
+    var c = [], rows = open ? [3, 4] : [4], cols = [4, 5, 8, 9], i, j;
+    for (i = 0; i < rows.length; i++) for (j = 0; j < 4; j++) c.push([rows[i], cols[j], color || CLAWD_K]);
+    return c;
+  }
+  var CLAWD_EXPR = {
+    idle: function () { return clawdEyes(true); },
+    coding: function () { return clawdEyes(false).concat([[3, 4, CLAWD_K], [3, 9, CLAWD_K]]); },
+    thinking: function () { return clawdEyes(true).concat([[1, 12, CLAWD_K], [0, 13, CLAWD_K], [2, 11, CLAWD_K]]); },
+    happy: function () { return [[3, 4, CLAWD_K], [3, 5, CLAWD_K], [3, 8, CLAWD_K], [3, 9, CLAWD_K], [5, 3, "#ff8787"], [5, 10, "#ff8787"]]; },
+    sleeping: function () { return clawdEyes(false).concat([[1, 12, "#adb5bd"], [0, 13, "#adb5bd"]]); },
+    love: function () { return [[3, 4, "#e03131"], [3, 5, "#e03131"], [4, 4, "#e03131"], [3, 8, "#e03131"], [3, 9, "#e03131"], [4, 8, "#e03131"], [0, 11, "#e03131"], [0, 12, "#e03131"]]; },
+    sunglasses: function () { var c = [], col; for (col = 3; col <= 10; col++) c.push([3, col, CLAWD_K]); [4, 5, 8, 9].forEach(function (k) { c.push([4, k, CLAWD_K]); }); return c; },
+    handsUp: function () { return clawdEyes(true).concat([[0, 0, "B"], [1, 0, "B"], [0, 1, "B"], [0, 13, "B"], [1, 13, "B"], [0, 12, "B"]]); }
+  };
+  var clawdSeq = 0;
+  function clawdSvg(pose, color) {
+    var cells = {}, r, c, feat, i, k, parts, col, rects = "", fid = "clawd-o-" + (++clawdSeq);
+    for (r = 0; r < CLAWD_BODY.length; r++) for (c = 0; c < CLAWD_BODY[r].length; c++) if (CLAWD_BODY[r].charAt(c) === "B") cells[r + "," + c] = "B";
+    feat = (CLAWD_EXPR[pose] || CLAWD_EXPR.idle)();
+    for (i = 0; i < feat.length; i++) cells[feat[i][0] + "," + feat[i][1]] = feat[i][2];
+    for (k in cells) { if (!cells.hasOwnProperty(k)) continue; parts = k.split(","); col = cells[k] === "B" ? color : cells[k]; rects += '<rect x="' + (parts[1] * CLAWD_U) + '" y="' + (parts[0] * CLAWD_U) + '" width="' + CLAWD_U + '" height="' + CLAWD_U + '" fill="' + col + '"/>'; }
+    var W = 14 * CLAWD_U, H = 12 * CLAWD_U;
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' +
+      '<defs><filter id="' + fid + '" x="-25%" y="-25%" width="150%" height="150%">' +
+      '<feMorphology in="SourceAlpha" operator="dilate" radius="1.3" result="d"/>' +
+      '<feFlood flood-color="#fff"/><feComposite in2="d" operator="in" result="o"/>' +
+      '<feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>' +
+      '<g filter="url(#' + fid + ')">' + rects + '</g></svg>';
+  }
+  // glyph for a peer: Clawd (in its current pose) if it's an agent, the arrow otherwise
+  function mpGlyph(p) { return p && p.kind === "agent" ? clawdSvg(p.pose || "idle", p.color) : mpArrowSvg(p.color); }
+  // swap just the glyph svg in place (pose change) — keep the name label
+  function mpUpdateGlyph(p) {
+    if (!p.el) return;
+    var svg = p.el.querySelector("svg"); if (!svg) return;
+    var tmp = document.createElement("div"); tmp.innerHTML = mpGlyph(p);
+    if (tmp.firstChild) p.el.replaceChild(tmp.firstChild, svg);
+  }
   // your own pointer: injected <style> so the tool cursors keep winning where they should —
   // hand/pan/crosshair modes and text editing stay native, everything else wears the arrow
   var mpCursorStyleEl = null;
@@ -2102,12 +2140,16 @@
     mpPresence.innerHTML = "";
     if (!mp || mp.readyState !== 1) { mpPresence.classList.add("hidden"); return; }
     var chips = [{ name: mpName, title: mpName + " (you)", color: mpColor, me: true }];
-    for (var sid in mpPeers) { var p = mpPeers[sid]; chips.push({ name: p.name, title: p.name, color: p.color, kind: p.kind }); }
+    for (var sid in mpPeers) { var p = mpPeers[sid]; chips.push({ name: p.name, title: p.name, color: p.color, kind: p.kind, pose: p.pose }); }
     if (chips.length < 2) { mpPresence.classList.add("hidden"); return; } // alone — no chrome
     mpPresence.classList.remove("hidden");
     chips.forEach(function (c) {
-      var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : "") + (c.kind === "agent" ? " agent" : ""), text: mpInitials(c.name), title: c.title });
+      var isAgent = c.kind === "agent";
+      var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : "") + (isAgent ? " agent" : ""), title: c.title });
       chip.style.background = c.color;
+      // agents show a mini Clawd (in its current pose) instead of a letter initial
+      if (isAgent) chip.innerHTML = clawdSvg(c.pose || "idle", "#fff").replace('width="56" height="48"', 'width="22" height="19"');
+      else chip.textContent = mpInitials(c.name);
       mpPresence.appendChild(chip);
     });
   }
@@ -2135,13 +2177,13 @@
       mpSid = m.sid; mpRetry = 1000;
       if (m.color && m.color !== mpColor) { mpColor = m.color; mpApplyLocalCursor(); } // your pointer takes your room color
       mpPeers = {};
-      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null, kind: p.kind || null }; });
+      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null }; });
       if (m.doc) mpAdoptDoc(m.doc);
       else mpSend({ t: "doc", doc: board }); // seed the room (first in, or post-hibernation — KV is current when the room was idle)
       mpReady = true;
       mpRenderPresence(); mpRenderFocus();
     } else if (m.t === "join") {
-      mpPeers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, focus: m.peer.focus || null, kind: m.peer.kind || null };
+      mpPeers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, focus: m.peer.focus || null, kind: m.peer.kind || null, pose: m.peer.pose || null };
       mpRenderPresence();
     } else if (m.t === "leave") {
       var p = mpPeers[m.peer.sid];
@@ -2151,6 +2193,7 @@
     else if (m.t === "proto") mpProtoApply(m);
     else if (m.t === "ops") mpApplyOps(m.ops || []);
     else if (m.t === "focus") { var fp = mpPeers[m.sid]; if (fp) { fp.focus = m.id || null; mpRenderFocus(); } }
+    else if (m.t === "pose") { var qp = mpPeers[m.sid]; if (qp) { qp.pose = m.pose || null; mpUpdateGlyph(qp); mpRenderPresence(); } }
     else if (m.t === "doc") mpAdoptDoc(m.doc);
     else if (m.t === "docreq") mpSend({ t: "doc", doc: board });
   }

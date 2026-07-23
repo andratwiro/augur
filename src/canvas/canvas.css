@@ -431,15 +431,19 @@ svg.stk { display: block; overflow: visible; }
 .gvc-cursor svg { display: block; width: 21px; height: 21px; margin: -3px 0 0 -5px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .3)); }
 .gvc-cursor .lbl { position: absolute; left: 13px; top: 17px; padding: 2px 8px 3px; border-radius: 10px 10px 10px 3px; color: #fff; font: 600 11px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); }
 .gvc-cursor.idle { opacity: 0; }
-/* agent peers wear Clawd: a bigger mascot glyph (hotspot near its head), label to the side */
-.gvc-cursor.agent svg { width: 34px; height: 31px; margin: -4px 0 0 -6px; }
-.gvc-cursor.agent .lbl { left: 30px; top: 22px; }
+/* agent peers wear Clawd: the mascot glyph, hotspot at its TOP-LEFT (points at the target
+   like a normal cursor tip); name pill trails to the bottom-right of the body */
+.gvc-cursor.agent svg { width: 40px; height: 34px; margin: -2px 0 0 -2px; }
+.gvc-cursor.agent .lbl { left: 34px; top: 28px; }
+/* a parked/sleeping agent stays VISIBLE (dimmed), not fully hidden like an idle human cursor */
+.gvc-cursor.agent.idle { opacity: .55; }
 #gvc-presence { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 5px 8px 5px 12px; }
 #gvc-presence.hidden { display: none; }
 .gvc-peerchip { width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); }
 .gvc-peerchip.me { order: 1; }
-/* agent (Clawd) chip: blocky, so it reads apart from the round human chips */
-.gvc-peerchip.agent { border-radius: 7px; }
+/* agent (Clawd) chip: blocky + shows a mini Clawd instead of a letter initial */
+.gvc-peerchip.agent { border-radius: 7px; overflow: visible; }
+.gvc-peerchip.agent svg { display: block; }
 /* a peer is typing in this node — colored ring + name tag (border-color/background set inline) */
 .gvc-remote-focus { position: absolute; inset: -4px; border: 2px solid; border-radius: 7px; pointer-events: none; z-index: 4; }
 .gvc-remote-focus .who { position: absolute; top: -20px; left: -2px; padding: 1px 7px 2px; border-radius: 8px 8px 8px 2px; color: #fff; font: 600 10.5px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; }

@@ -72,7 +72,7 @@ export class BoardRoom {
     for (const ws of this.ctx.getWebSockets()) {
       if (ws === excludeWs) continue;
       const a = ws.deserializeAttachment();
-      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, focus: a.focus || null });
+      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, pose: a.pose || null, focus: a.focus || null });
     }
     return out;
   }
@@ -105,13 +105,13 @@ export class BoardRoom {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ sid, name, color, kind, focus: null, joined: Date.now() });
+    server.serializeAttachment({ sid, name, color, kind, pose: null, focus: null, joined: Date.now() });
 
     const welcome = { t: "welcome", sid, color, peers: this.peers(server) };
     if (this.doc) welcome.doc = this.doc;
     else if (welcome.peers.length) welcome.needDoc = true; // room woke from hibernation mid-session
     server.send(JSON.stringify(welcome));
-    this.broadcast({ t: "join", peer: { sid, name, color, kind, focus: null } }, server);
+    this.broadcast({ t: "join", peer: { sid, name, color, kind, pose: null, focus: null } }, server);
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -148,6 +148,14 @@ export class BoardRoom {
       a.focus = msg.id || null;
       ws.serializeAttachment(a);
       this.broadcast({ t: "focus", sid: a.sid, name: a.name, color: a.color, id: a.focus }, ws);
+      return;
+    }
+    if (msg.t === "pose") {
+      // an agent's Clawd expression (idle/coding/sleeping/…) — stored per-session so late
+      // joiners see the right face, and relayed so everyone updates it live.
+      a.pose = (typeof msg.pose === "string" ? msg.pose : "").slice(0, 24) || null;
+      ws.serializeAttachment(a);
+      this.broadcast({ t: "pose", sid: a.sid, pose: a.pose }, ws);
       return;
     }
     if (msg.t === "doc" && msg.doc && Array.isArray(msg.doc.nodes)) {
