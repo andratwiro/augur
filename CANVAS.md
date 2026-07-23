@@ -25,6 +25,14 @@
 > navigation are shared tile state, and clicks/typing/scrolling INSIDE a live prototype iframe
 > mirror to the room (same-origin event replay). See "Multiplayer" below — including the
 > TEST-ISOLATION rule (blocking POST /__board is no longer enough).
+> **2026-07-23: text nodes grow up.** Text boxes are now **width-resizable** — drag the
+> bottom-right handle to set a fixed width and the text **wraps + grows downward** (FigJam
+> fixed-width text; a fresh text node still auto-widths until you resize it). Fixed the
+> handle no-op (text carried no `w`/`h`, so `ow + dx` was `NaN` → `startResize` now falls
+> back to the MEASURED element size). Text also gets the floating toolbar now: **text color ·
+> size (A) · Bold · Italic · Strikethrough · Align (L/C/R)** — all whole-box node styles
+> (`node.bold/italic/strike/align/fontScale/color`), no rich-text model (link/list skipped —
+> they'd need per-run HTML). Shared `applyTextStyle(txt, node)` styles both stickies + text.
 > Next big one: the **collaboration skill** (Claude reads the board to co-work).
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
@@ -108,7 +116,8 @@ genuinely harder.
    absolutely positioned in world coords; pointer pan/drag/select; rAF-batched transform
    writes. DOM is plenty at this scale (tens–low-hundreds of nodes); no WebGL. Virtualize only
    if boards get big (not v1).
-2. **Node registry** — pluggable node types, each `render + serialize`. Today: `sticky`, `text`,
+2. **Node registry** — pluggable node types, each `render + serialize`. Today: `sticky`, `text`
+   (auto-width until resized, then fixed-width wrapping + node-level color/size/bold/italic/strike/align),
    `image`, `tile` (prototype embed), `arrow` (kinds: straight/elbow/curved/line), `draw`
    (freehand marker/highlighter/washi strokes), `shape` (16 geometries + centered editable
    text), `section` (background container), `table` (plain FigJam grid; blue + strips on
@@ -325,6 +334,16 @@ coupling is enforced HERE (terminal), because a canvas can't write git from the 
 **Gotchas (each bought with a real bug)**
 - SVG nodes: build via an innerHTML string (or `createElementNS`), never `createElement("svg")`
   (no namespace → never paints).
+- **Resize handle needs a real starting size.** `startResize` reads `node.w/h` for `ow/oh`, but
+  some nodes (text) carry neither until first resized → `ow + dx = NaN` and the handle silently
+  did nothing. Fallback to the host's measured `offsetWidth/Height` when `node.w/h` are null. Text
+  is width-only on resize (clear `style.height` → auto) so it wraps + grows like FigJam; only
+  `renderText` applying `node.w` when present makes the width survive a re-render/reload.
+- **Text formatting is node-level, not rich-text.** `node.text` is plain `innerText`, so styles
+  (`bold/italic/strike/align/fontScale/color`) apply to the WHOLE box via `applyTextStyle` — no
+  per-run markup. That's why link + list aren't in the text toolbar (they'd need a real rich-text
+  model); don't bolt them on without that. `applyNodeStyle` patches the live `.gvc-txt` in place
+  (never a re-render) so an active edit isn't torn down.
 - **Rename** (tile bar name, image `.gvc-name` label): **manual double-tap**, not native `dblclick`
   — the root's pointer capture eats `dblclick`; also `stopPropagation` so a tap doesn't start a drag.
 - Insert-picker cards live in a **flex-column → grid**: without `flex:1; min-height:0` on the grid

@@ -46,6 +46,7 @@
   var DEFAULT_STICKY = "#a9cbf5"; // FigJam's default blue (Rob's pick)
   // FigJam marker palette (draw sub-toolbar dots, left to right)
   var DRAW_COLORS = ["#1e1e1e", "#f24822", "#ff9f2e", "#ffd233", "#35c759", "#3aa2ff", "#8a5cff", "#ffffff"];
+  var TEXT_COLORS = ["#1e1e1e", "#6b7280", "#e03131", "#e8590c", "#f0a000", "#2f9e44", "#0c8599", "#1971c2", "#7048e8", "#c2255c"];
   // Section colors (FigJam-style): each is the SOLID label-chip color; the section fill is a
   // light tint of it (see renderSection). Medium-dark bases so the white chip text stays legible.
   var SECTION_COLORS = ["#6b7280", "#e03131", "#e8590c", "#f0a000", "#2f9e44", "#0c8599", "#1971c2", "#7048e8", "#c2255c"];
@@ -213,7 +214,7 @@
     if (selected.length === 1) {
       var n = nodeById(selected[0]);
       decorate(selected[0]);
-      if (n && (n.type === "sticky" || n.type === "shape" || n.type === "draw" || n.type === "tile" || n.type === "section")) showSelBar(n); else hideSelBar();
+      if (n && (n.type === "sticky" || n.type === "text" || n.type === "shape" || n.type === "draw" || n.type === "tile" || n.type === "section")) showSelBar(n); else hideSelBar();
     } else hideSelBar();
   }
   function select(id) { setSelection(id ? [id] : []); }
@@ -298,13 +299,22 @@
     var s = getSelection(); s.removeAllRanges(); s.addRange(r);
   }
 
+  // Node-level text styling shared by stickies + text nodes (whole-box, so no rich-text model).
+  // Only text nodes take a text COLOR (a sticky's node.color is its background).
+  function applyTextStyle(txt, node) {
+    txt.style.fontSize = FONT_SIZES[node.fontScale || "m"];
+    txt.style.fontWeight = node.bold ? "700" : "";
+    txt.style.fontStyle = node.italic ? "italic" : "";
+    txt.style.textDecoration = node.strike ? "line-through" : "";
+    txt.style.textAlign = node.align || "";
+    if (node.type === "text") txt.style.color = node.color || "";
+  }
   function renderSticky(node) {
     node.w = node.w || 160; node.h = node.h || 160;
     var host = el("div", { class: "gvc-sticky" });
     host.style.background = node.color || DEFAULT_STICKY;
     var txt = editableText(node, host, "");
-    txt.style.fontSize = FONT_SIZES[node.fontScale || "m"];
-    if (node.bold) txt.style.fontWeight = "700";
+    applyTextStyle(txt, node);
     host.appendChild(txt);
     host.appendChild(el("div", { class: "gvc-author", text: node.author || "" }));
     place(host, node);
@@ -312,8 +322,13 @@
   }
   function renderText(node) {
     var host = el("div", { class: "gvc-text" });
-    host.appendChild(editableText(node, host, ""));
+    var txt = editableText(node, host, "");
+    applyTextStyle(txt, node);
+    host.appendChild(txt);
     host.style.left = node.x + "px"; host.style.top = node.y + "px";
+    // A fresh text node auto-widths (grows with content); once resized it carries an explicit
+    // width and becomes a fixed-width wrapping box (height stays auto).
+    if (node.w != null) host.style.width = node.w + "px";
     return host;
   }
   // Editable floating name label above a node — the rename affordance for images (tiles carry
@@ -911,7 +926,11 @@
       });
       setSelection(hits);
     }
-    else if (drag.mode === "resize") { var n2 = drag.node; n2.w = Math.max(48, drag.ow + dx / sc); n2.h = Math.max(48, drag.oh + dy / sc); var re = nodeEls[n2.id]; re.style.width = n2.w + "px"; re.style.height = n2.h + "px"; if (n2.type === "tile") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb, n2); } positionSelBar(); }
+    else if (drag.mode === "resize") { var n2 = drag.node, re = nodeEls[n2.id]; n2.w = Math.max(48, drag.ow + dx / sc); re.style.width = n2.w + "px";
+      // text: fixed WIDTH, auto height — the box wraps and grows downward as you type (FigJam text).
+      if (n2.type === "text") { re.style.height = ""; }
+      else { n2.h = Math.max(48, drag.oh + dy / sc); re.style.height = n2.h + "px"; if (n2.type === "tile") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb, n2); } }
+      positionSelBar(); }
     else if (drag.mode === "arrow") { var an = drag.node; if (drag.end === "1") { an.x1 = drag.px + dx / sc; an.y1 = drag.py + dy / sc; } else { an.x2 = drag.px + dx / sc; an.y2 = drag.py + dy / sc; } renderNode(an); }
   });
   function onPointerEnd(e) {
@@ -972,7 +991,9 @@
     select(n.id); pop(n.id); setTimeout(function () { enterEdit(n.id); }, 0);
     return n;
   }
-  function startResize(e, node) { e.stopPropagation(); drag = { mode: "resize", node: node, sx: e.clientX, sy: e.clientY, ow: node.w, oh: node.h }; root.setPointerCapture(e.pointerId); }
+  // ow/oh fall back to the MEASURED element size — text nodes carry no w/h until first resized,
+  // so reading node.w blind gave NaN and the handle silently did nothing (the "drag doesn't work" bug).
+  function startResize(e, node) { e.stopPropagation(); var h = nodeEls[node.id]; drag = { mode: "resize", node: node, sx: e.clientX, sy: e.clientY, ow: node.w != null ? node.w : (h ? h.offsetWidth : 150), oh: node.h != null ? node.h : (h ? h.offsetHeight : 100) }; root.setPointerCapture(e.pointerId); }
   function startArrowHandle(e, node, end) { e.stopPropagation(); drag = { mode: "arrow", node: node, end: end, sx: e.clientX, sy: e.clientY, px: end === "1" ? node.x1 : node.x2, py: end === "1" ? node.y1 : node.y2 }; root.setPointerCapture(e.pointerId); }
 
   // ---- image crop (double-tap an image; Figma-style, non-destructive) ------
@@ -1159,7 +1180,7 @@
       positionSelBar();
       return;
     }
-    var dot = el("div", { class: "dot" }); dot.style.background = node.color || (node.type === "draw" ? "#1e1e1e" : node.type === "shape" ? "#ffffff" : node.type === "section" ? "#c4c9d4" : DEFAULT_STICKY);
+    var dot = el("div", { class: "dot" }); dot.style.background = node.color || (node.type === "draw" || node.type === "text" ? "#1e1e1e" : node.type === "shape" ? "#ffffff" : node.type === "section" ? "#c4c9d4" : DEFAULT_STICKY);
     var sw = el("div", { class: "sw" }, [dot, el("div", { class: "chev", text: "▾" })]);
     guard(sw); sw.addEventListener("click", function (e) { e.stopPropagation(); togglePalette(node, dot); });
     selBar.appendChild(sw);
@@ -1170,9 +1191,9 @@
       guard(lb); lb.addEventListener("click", function (e) { e.stopPropagation(); toggleLockMenu(node, lb); });
       selBar.appendChild(lb);
     }
-    if (node.type === "sticky" || node.type === "shape") {
+    if (node.type === "sticky" || node.type === "shape" || node.type === "text") {
       selBar.appendChild(el("div", { class: "div" }));
-      if (node.type === "sticky") {
+      if (node.type === "sticky" || node.type === "text") {
         var fb = el("div", { class: "btn", title: "Text size", html: '<span style="font-size:15px">A</span>' });
         guard(fb); fb.addEventListener("click", function (e) { e.stopPropagation(); var o = ["s", "m", "l"], i = o.indexOf(node.fontScale || "m"); node.fontScale = o[(i + 1) % 3]; applyNodeStyle(node); scheduleSave(); });
         selBar.appendChild(fb);
@@ -1180,6 +1201,19 @@
       var bb = el("button", { class: "btn" + (node.bold ? " on" : ""), type: "button", text: "B", title: "Bold" }); bb.style.fontWeight = "700";
       guard(bb); bb.addEventListener("click", function (e) { e.stopPropagation(); node.bold = !node.bold; bb.classList.toggle("on", node.bold); applyNodeStyle(node); scheduleSave(); });
       selBar.appendChild(bb);
+      if (node.type === "text") {
+        var itb = el("button", { class: "btn" + (node.italic ? " on" : ""), type: "button", text: "I", title: "Italic" }); itb.style.fontStyle = "italic"; itb.style.fontFamily = "Georgia, 'Times New Roman', serif";
+        guard(itb); itb.addEventListener("click", function (e) { e.stopPropagation(); node.italic = !node.italic; itb.classList.toggle("on", node.italic); applyNodeStyle(node); scheduleSave(); });
+        selBar.appendChild(itb);
+        var stb = el("button", { class: "btn" + (node.strike ? " on" : ""), type: "button", text: "S", title: "Strikethrough" }); stb.style.textDecoration = "line-through";
+        guard(stb); stb.addEventListener("click", function (e) { e.stopPropagation(); node.strike = !node.strike; stb.classList.toggle("on", node.strike); applyNodeStyle(node); scheduleSave(); });
+        selBar.appendChild(stb);
+        var ALIGN = ["left", "center", "right"];
+        var AL_ICON = { left: '<line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="6" y2="6"/><line x1="21" x2="3" y1="18" y2="18"/>', center: '<line x1="17" x2="7" y1="12" y2="12"/><line x1="19" x2="5" y1="6" y2="6"/><line x1="21" x2="3" y1="18" y2="18"/>', right: '<line x1="21" x2="9" y1="12" y2="12"/><line x1="21" x2="7" y1="6" y2="6"/><line x1="21" x2="3" y1="18" y2="18"/>' };
+        var alb = el("button", { class: "btn", type: "button", title: "Align text", html: lucideIcon(AL_ICON[node.align || "left"]) });
+        guard(alb); alb.addEventListener("click", function (e) { e.stopPropagation(); var i = ALIGN.indexOf(node.align || "left"); node.align = ALIGN[(i + 1) % 3]; alb.innerHTML = lucideIcon(AL_ICON[node.align]); applyNodeStyle(node); scheduleSave(); });
+        selBar.appendChild(alb);
+      }
     }
     selBar.classList.remove("hidden");
     positionSelBar();
@@ -1187,17 +1221,17 @@
   function guard(elm) { elm.addEventListener("pointerdown", function (e) { e.stopPropagation(); }); }
   function applyNodeStyle(node) {
     var host = nodeEls[node.id]; if (!host) return;
-    if (node.type === "sticky") {
-      host.style.background = node.color || DEFAULT_STICKY;
+    if (node.type === "sticky" || node.type === "text") {
+      if (node.type === "sticky") host.style.background = node.color || DEFAULT_STICKY;
       var txt = host.querySelector(".gvc-txt");
-      if (txt) { txt.style.fontWeight = node.bold ? "700" : ""; txt.style.fontSize = FONT_SIZES[node.fontScale || "m"]; }
+      if (txt) applyTextStyle(txt, node); // patch in place so an active edit isn't torn down
     } else renderNode(node); // shapes/draws re-render their svg
   }
   function togglePalette(node, dot) {
     if (!palette.classList.contains("hidden")) { palette.classList.add("hidden"); return; }
     if (lockMenu) lockMenu.classList.add("hidden");
     palette.innerHTML = "";
-    var colors = node.type === "draw" ? DRAW_COLORS : node.type === "section" ? SECTION_COLORS : STICKY_COLORS;
+    var colors = node.type === "draw" ? DRAW_COLORS : node.type === "text" ? TEXT_COLORS : node.type === "section" ? SECTION_COLORS : STICKY_COLORS;
     colors.forEach(function (c) {
       var pc = el("div", { class: "pc" + (c === node.color ? " on" : "") }); pc.style.background = c;
       guard(pc); pc.addEventListener("click", function (e) { e.stopPropagation(); node.color = c; dot.style.background = c; applyNodeStyle(node); scheduleSave(); palette.classList.add("hidden"); });
