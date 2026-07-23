@@ -37,7 +37,10 @@
 > scale + a **custom px input**, storing `node.fontSize` (px number; legacy `fontScale` s/m/l still
 > resolved via `fontPx()`). All whole-box node styles (`bold/italic/strike/align/fontSize/color`),
 > no rich-text model (link/list skipped — they'd need per-run HTML). Shared `applyTextStyle(txt,
-> node)` styles both stickies + text. Next big one: the **collaboration skill**.
+> node)` styles both stickies + text. **2026-07-23: the collaboration skill (first cut) SHIPPED
+> and is now the DEFAULT working mode** — agents co-work LIVE as Clawd via `scripts/clawd-canvas.mjs`
+> (join the room, cursor + focus + per-node ops, expression poses, park-sleeping), instead of
+> full-state seeding. See "Working on the canvas" below.
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
 > Rob authors prototypes via the terminal, not an in-canvas generator; the canvas is where they
@@ -299,6 +302,38 @@ while you're simultaneously dragging nodes on the live canvas (last full-state w
 coupling is enforced HERE (terminal), because a canvas can't write git from the browser.
 
 ## Working on the canvas (start here if you're a fresh agent)
+
+**DEFAULT WORKING MODE: co-work LIVE as Clawd.** When you're asked to change a board (add /
+move / retitle / arrange / delete nodes), the default is to **join the board's multiplayer room
+as a real participant and stream per-node ops** — NOT a full-state `POST /__board`. The human
+then sees your **Clawd** cursor move, a focus ring on the node you're touching, and each edit
+land live; and because it's per-node last-writer-wins, you never clobber their concurrent work.
+Do this **unless prompted otherwise**.
+
+- **The tool:** `augur/scripts/clawd-canvas.mjs` (`ClawdCanvas`, a raw-WS Node client — no
+  browser). `const c = new ClawdCanvas({ boardPath }); await c.connect();` then the verbs:
+  `c.moveCursorTo(x, y)` (glides so the human sees Clawd walk), `c.pose('coding'|'thinking'|
+  'happy'|'sleeping'|'love'|'sunglasses'|'handsUp'|'idle')` (Clawd's expression — act while you
+  work), `c.focus(nodeId)` / `c.focus(null)`, `c.upsert(node)` / `c.del(id)` / `c.rename(name)`,
+  `await c.save()` (persist to the `/__board` KV rail). It reads the live doc on connect, so you
+  edit **on top of** everyone's current work. CLI: `node clawd-canvas.mjs probe|demo|chill <boardPath>`.
+- **Idiom:** move to the node → `pose('coding')` + `focus(id)` → `upsert` the change → `focus(null)`;
+  `pose('happy')` + `save()` when a batch is done. Work left-to-right / in a sensible order so the
+  human can follow your cursor across a wide board (`board.view` is per-user — you can't pan them).
+- **Park when idle (stay present):** when finished but staying available, **don't disconnect** —
+  park Clawd asleep: `c.pose('sleeping')` + `moveCursorTo(a quiet corner)`, and hold the process
+  open (`node clawd-canvas.mjs chill <boardPath>` runs this and stays). A 25s keepalive keeps
+  Clawd in the room across turns; a sleeping agent stays **visible but dimmed**. Run it as a
+  **background process** so it survives your turn; `kill <pid>` before starting a fresh session
+  (two connections = two Clawd cursors).
+- **When NOT to co-work live (the "prompted otherwise" cases):** the **bulk first-seed** of a
+  brand-new board (use a full-state seed script while the board is closed — it's a clobber), or
+  when explicitly told to work silently. Full-state `POST /__board` is whole-doc last-write-wins:
+  only when nobody has the board open.
+- **⚠️ Test on a throwaway `boardPath`** — opening a board page (or connecting a client) joins its
+  REAL room and broadcasts to real visitors. See the isolation rule in the Multiplayer section.
+- Multi-agent: each agent joins with its own pinned color (Clawd orange is the primary); different
+  parts of the board merge cleanly, same node = last-writer-wins.
 
 **Where everything lives**
 - **Engine** (Augur-owned, shared): `augur/src/canvas/canvas.js` + `canvas.css`, served public at
