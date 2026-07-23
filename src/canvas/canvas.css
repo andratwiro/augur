@@ -4,17 +4,18 @@
    The chrome is a faithful FigJam rebuild: warm paper background + dot grid, the bottom pill
    toolbar with illustrated marker/sticky tools, and the draw/shapes/stamps sub-toolbars. */
 
-html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f4f4; }
 
 #gvc-root {
   position: fixed; inset: 0; overflow: hidden; touch-action: none;
   font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #1e1e1e; user-select: none; -webkit-user-select: none;
-  /* FigJam paper: warm light grey + a fine warm dot grid */
-  background-color: #f3f2f0;
-  background-image: radial-gradient(circle, #d3d1cd 1.1px, transparent 1.3px);
-  background-size: 26px 26px; background-position: 0 0;
-  /* gridStep() keeps the spacing in a tighter 17-34px band (FigJam density) as you zoom */
+  /* FigJam paper: neutral light grey + a neutral dot grid. gridSpec() sets the live
+     background-image (dot radius) + background-size (spacing) per zoom; these are the
+     at-rest defaults for scale 1 until the first transform runs. */
+  background-color: #f4f4f4;
+  background-image: radial-gradient(circle, #c4c4c4 1.2px, transparent 1.8px);
+  background-size: 16px 16px; background-position: 0 0;
 }
 #gvc-root.panning { cursor: grabbing; }
 #gvc-root.hand { cursor: grab; }

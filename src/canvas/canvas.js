@@ -86,10 +86,19 @@
 
   function uid() { return "n" + Math.random().toString(36).slice(2, 9); }
   function clampScale(s) { return Math.max(MIN_SCALE, Math.min(MAX_SCALE, s)); }
-  // FigJam-style dot grid: dot SIZE is constant (the gradient stop is absolute px), and spacing
-  // = GRID*scale is NORMALIZED into a comfortable band by doubling/halving — so it never becomes
-  // a dense moire mush when zoomed out or huge gaps when zoomed in. Constant density.
-  function gridStep(scale) { var s = GRID * scale; while (s < 14) s *= 2; while (s > 28) s /= 2; return s; }
+  // FigJam-style dot grid: the grid scales WITH zoom (world-space feel) — spacing = GRID*scale,
+  // so zooming IN spreads the dots apart and grows them, zooming OUT packs them and shrinks
+  // them. It only octave-corrects at the extremes (≈9–96px) so it never mushes into moiré or
+  // gaps hugely. The dot RADIUS is proportional to the spacing (~FigJam's ratio, clamped), so
+  // wider gaps = bigger dots. Returns { step, r } in screen px.
+  var DOT_COLOR = "#c4c4c4";
+  function gridSpec(scale) {
+    var s = GRID * scale;
+    while (s < 9) s *= 2;
+    while (s > 96) s /= 2;
+    var r = s * 0.072; if (r < 0.85) r = 0.85; else if (r > 4) r = 4;
+    return { step: s, r: r };
+  }
 
   // ---- DOM scaffold --------------------------------------------------------
   var root = el("div", { id: "gvc-root" });
@@ -129,8 +138,9 @@
       xfDirty = false;
       var v = board.view;
       world.style.transform = "translate(" + v.x + "px," + v.y + "px) scale(" + v.scale + ")";
-      var gstep = gridStep(v.scale);
-      root.style.backgroundSize = gstep + "px " + gstep + "px";
+      var g = gridSpec(v.scale);
+      root.style.backgroundImage = "radial-gradient(circle, " + DOT_COLOR + " " + g.r + "px, transparent " + (g.r + 0.6) + "px)";
+      root.style.backgroundSize = g.step + "px " + g.step + "px";
       root.style.backgroundPosition = v.x + "px " + v.y + "px";
       if (zoomPct) zoomPct.textContent = Math.round(v.scale * 100) + "%";
       // comments.js repositions pins on window scroll; a canvas pan/zoom IS a scroll of the
