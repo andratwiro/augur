@@ -370,6 +370,12 @@
     var host = el("div", { class: "gvc-tile" }, [bar, body]);
     showThumb(node, body);
     place(host, node);
+    // a tile whose shared state says live mounts its iframe (remote ▶, or persisted reload);
+    // deferred so the host is in the DOM with real layout before fitFrame measures it
+    if (node.live) setTimeout(function () {
+      var h = nodeEls[node.id];
+      if (h && nodeById(node.id) === node) mountLive(node, h.querySelector(".gvc-tilebody"), h.querySelector(".gvc-livebtn"), node.live === "frozen");
+    }, 0);
     return host;
   }
   // Pick a device viewport for a tile: shape it to that device's proportions (at its current
@@ -405,18 +411,34 @@
       var badge = body.querySelector(".live-badge");
       if (nowFrozen) { if (badge) badge.remove(); btn.textContent = "▶ Live"; }
       else { if (!badge) body.appendChild(el("div", { class: "live-badge", text: "LIVE" })); fitFrame(body, node); btn.textContent = "■ Stop"; }
+      node.live = nowFrozen ? "frozen" : "on"; // shared state — the room follows (multiplayer)
+      scheduleSave();
       return;
     }
+    mountLive(node, body, btn, false);
+    node.live = "on";
+    scheduleSave();
+  }
+  // Build the live iframe — shared by the ▶ click, by multiplayer remote mounts, and by
+  // renderTile restoring a persisted live tile. node.live ∈ {"on","frozen",undefined=poster}
+  // lives IN the doc, so live state is shared with the room and survives reload;
+  // node.liveUrl tracks in-frame navigation (the demo-sync channel keeps it fresh).
+  function mountLive(node, body, btn, frozen) {
+    if (body.querySelector("iframe")) return;
     while (liveTiles.length >= MAX_LIVE_TILES) {
       var victim = liveTiles.shift(); var vn = nodeById(victim), ve = nodeEls[victim];
+      if (vn) vn.live = undefined; // synced — the iframe budget is a shared budget
       if (vn && ve) { var vb = ve.querySelector(".gvc-tilebody"); vb.classList.remove("gvc-frozen"); showThumb(vn, vb); var vbtn = ve.querySelector(".gvc-livebtn"); if (vbtn) vbtn.textContent = "▶ Live"; }
     }
-    body.classList.remove("gvc-frozen");
+    body.classList.toggle("gvc-frozen", !!frozen);
     body.innerHTML = "";
-    body.appendChild(el("iframe", { src: node.url, loading: "lazy" }));
-    body.appendChild(el("div", { class: "live-badge", text: "LIVE" }));
+    var frame = el("iframe", { src: node.liveUrl || node.url, loading: "lazy" });
+    frame.addEventListener("load", function () { mpFrameLoad(node, frame); });
+    body.appendChild(frame);
+    if (!frozen) body.appendChild(el("div", { class: "live-badge", text: "LIVE" }));
     fitFrame(body, node);
-    btn.textContent = "■ Stop"; liveTiles.push(node.id);
+    btn.textContent = frozen ? "▶ Live" : "■ Stop";
+    liveTiles.push(node.id);
   }
   // A responsive page in a small frame either clips (fixed min-width) or reflows to a stray
   // mobile breakpoint. Instead we render the live iframe at a fixed DESKTOP viewport width and
@@ -1547,6 +1569,12 @@
     var c = {}; for (var k in node) if (node.hasOwnProperty(k) && GEO_KEYS.indexOf(k) < 0) c[k] = node[k];
     return mpSig(c);
   }
+  // tile signature ALSO ignoring live/liveUrl — a change in only those is a live-state
+  // transition handled in place (keep the iframe's DOM state), never a rebuild
+  function mpTileSig(node) {
+    var c = {}; for (var k in node) if (node.hasOwnProperty(k) && GEO_KEYS.indexOf(k) < 0 && k !== "live" && k !== "liveUrl") c[k] = node[k];
+    return mpSig(c);
+  }
   function mpSeedShadow() {
     mpShadow = {};
     board.nodes.forEach(function (n) { mpShadow[n.id] = mpSig(n); });
@@ -1604,6 +1632,33 @@
           place(host, local);
           if (local.type === "tile") { var b = host.querySelector(".gvc-tilebody"); if (b && b.querySelector("iframe")) fitFrame(b, local); }
           if (isSelected(r.id)) positionSelBar();
+        } else if (local && host && local.type === "tile" && r.type === "tile" && mpTileSig(r) === mpTileSig(local)) {
+          // live/frozen/navigation transition on a tile — act on the existing element so the
+          // iframe's in-page state survives a remote Stop/resume; never a rebuild
+          GEO_KEYS.forEach(function (k) { if (r[k] != null) local[k] = r[k]; });
+          local.live = r.live; local.liveUrl = r.liveUrl;
+          place(host, local);
+          var tb = host.querySelector(".gvc-tilebody"), tbtn = host.querySelector(".gvc-livebtn");
+          var fr = tb.querySelector("iframe");
+          if (!r.live) { // remote stop-to-poster (cap eviction)
+            tb.classList.remove("gvc-frozen");
+            liveTiles = liveTiles.filter(function (t) { return t !== r.id; });
+            showThumb(local, tb); if (tbtn) tbtn.textContent = "▶ Live";
+          } else if (fr) {
+            var frz = r.live === "frozen";
+            tb.classList.toggle("gvc-frozen", frz);
+            var bd = tb.querySelector(".live-badge");
+            if (frz && bd) bd.remove();
+            if (!frz && !bd) tb.appendChild(el("div", { class: "live-badge", text: "LIVE" }));
+            if (tbtn) tbtn.textContent = frz ? "▶ Live" : "■ Stop";
+            fitFrame(tb, local);
+            if (r.liveUrl) { // stale frame? follow the shared navigation
+              try {
+                var cl = fr.contentWindow.location;
+                if (cl.pathname + cl.search + cl.hash !== r.liveUrl) fr.contentWindow.location.replace(r.liveUrl);
+              } catch (e) {}
+            }
+          } else mountLive(local, tb, tbtn, r.live === "frozen");
         } else {
           var i = board.nodes.findIndex(function (n) { return n.id === r.id; });
           if (i >= 0) board.nodes[i] = r; else board.nodes.push(r);
@@ -1631,6 +1686,106 @@
     render();
     mpSeedShadow();
     mpRenderFocus();
+  }
+
+  // ---- prototype demo sync (inside live tile iframes) ----------------------
+  // Prototypes are SAME-ORIGIN, so the engine can reach inside a live tile: clicks, typed
+  // input, scrolling and navigation are mirrored to everyone on the board — pressing ▶ Live
+  // demos to the room, not just yourself. Symmetric (anyone can drive, like node ops).
+  // Anti-echo: replayed events are synthetic (isTrusted=false) and every replay opens a
+  // short quiet window on that frame, so mirrored interaction never re-broadcasts.
+  // Navigation rides node.liveUrl through the normal op sync (late joiners mount there);
+  // in-frame events ride ephemeral {t:"proto"} relays. Cross-origin tiles safely no-op.
+  function mpFrameLoad(node, frame) {
+    var win, doc;
+    try { win = frame.contentWindow; doc = win.document; if (!doc || !doc.documentElement) return; } catch (e) { return; }
+    var href = win.location.pathname + win.location.search + win.location.hash;
+    var want = href === node.url ? undefined : href;
+    if (node.liveUrl !== want) node.liveUrl = want; // diff tick syncs; peers already there absorb it
+    if (frame.__mpHooked === doc) return;
+    frame.__mpHooked = doc;
+    function quiet() { return win.__mpQuiet && Date.now() < win.__mpQuiet; }
+    doc.addEventListener("click", function (e) {
+      if (!e.isTrusted || quiet()) return;
+      mpSend({ t: "proto", id: node.id, ev: { k: "click", sel: mpSelOf(e.target, doc), x: e.clientX, y: e.clientY } });
+    }, true);
+    var inpT = null, inpEl = null;
+    function inpFlush() {
+      if (inpT) { clearTimeout(inpT); inpT = null; }
+      if (!inpEl) return;
+      var ev = { k: "input", sel: mpSelOf(inpEl, doc) };
+      if (inpEl.type === "checkbox" || inpEl.type === "radio") ev.c = !!inpEl.checked;
+      else ev.v = inpEl.value;
+      inpEl = null;
+      mpSend({ t: "proto", id: node.id, ev: ev });
+    }
+    function onInput(e) {
+      if (!e.isTrusted || quiet()) return;
+      var t = e.target; if (!t || !t.tagName || t.value == null) return;
+      if (inpEl && inpEl !== t) inpFlush();
+      inpEl = t;
+      if (inpT) clearTimeout(inpT);
+      inpT = setTimeout(inpFlush, 150);
+    }
+    doc.addEventListener("input", onInput, true);
+    doc.addEventListener("change", onInput, true);
+    var scT = null, scEl = null;
+    win.addEventListener("scroll", function (e) {
+      if (quiet()) return; // scroll events are always trusted — the quiet window is the only guard
+      scEl = e.target;
+      if (scT) return;
+      scT = setTimeout(function () {
+        scT = null;
+        try {
+          if (!scEl || scEl === doc || scEl === win || scEl === doc.documentElement || scEl === doc.body)
+            mpSend({ t: "proto", id: node.id, ev: { k: "scroll", sel: "@win", top: win.scrollY, left: win.scrollX } });
+          else mpSend({ t: "proto", id: node.id, ev: { k: "scroll", sel: mpSelOf(scEl, doc), top: scEl.scrollTop, left: scEl.scrollLeft } });
+        } catch (err) {}
+      }, 120);
+    }, true);
+  }
+  // css path for an element inside a prototype frame — id if there is one, else an
+  // nth-child chain (clicks also carry x/y, elementFromPoint is the fallback)
+  function mpSelOf(t, doc) {
+    if (!t || !t.tagName) return null;
+    var esc = function (s) { return window.CSS && CSS.escape ? CSS.escape(s) : s; };
+    if (t.id) return "#" + esc(t.id);
+    var path = [], el2 = t;
+    while (el2 && el2.tagName && el2 !== doc.body && path.length < 14) {
+      var p = el2.parentElement, i = 1, s = el2.previousElementSibling;
+      while (s) { i++; s = s.previousElementSibling; }
+      path.unshift(el2.tagName.toLowerCase() + ":nth-child(" + i + ")");
+      if (p && p.id) { path.unshift("#" + esc(p.id)); return path.join(" > "); }
+      el2 = p;
+    }
+    return "body > " + path.join(" > ");
+  }
+  function mpProtoApply(m) {
+    var host = nodeEls[m.id]; if (!host) return;
+    var frame = host.querySelector("iframe"); if (!frame) return;
+    var win, doc;
+    try { win = frame.contentWindow; doc = win.document; if (!doc) return; } catch (e) { return; }
+    win.__mpQuiet = Date.now() + 400;
+    var ev = m.ev || {};
+    try {
+      if (ev.k === "click") {
+        var t = null;
+        if (ev.sel) { try { t = doc.querySelector(ev.sel); } catch (e) {} }
+        if (!t && ev.x != null) t = doc.elementFromPoint(ev.x, ev.y); // same DEVICE_W everywhere → same layout
+        if (t) t.click();
+      } else if (ev.k === "input") {
+        var ie = ev.sel && doc.querySelector(ev.sel);
+        if (ie) {
+          if (ev.c != null) ie.checked = ev.c;
+          if (ev.v != null) ie.value = ev.v;
+          ie.dispatchEvent(new win.Event("input", { bubbles: true }));
+          ie.dispatchEvent(new win.Event("change", { bubbles: true }));
+        }
+      } else if (ev.k === "scroll") {
+        if (ev.sel === "@win") win.scrollTo(ev.left || 0, ev.top || 0);
+        else { var se = ev.sel && doc.querySelector(ev.sel); if (se) { se.scrollTop = ev.top || 0; se.scrollLeft = ev.left || 0; } }
+      }
+    } catch (e) {}
   }
 
   // ---- peer cursors --------------------------------------------------------
@@ -1742,6 +1897,7 @@
       if (p) { if (p.el) p.el.remove(); clearTimeout(p.idle); delete mpPeers[m.peer.sid]; }
       mpRenderPresence(); mpRenderFocus();
     } else if (m.t === "cursor") mpCursorMsg(m);
+    else if (m.t === "proto") mpProtoApply(m);
     else if (m.t === "ops") mpApplyOps(m.ops || []);
     else if (m.t === "focus") { var fp = mpPeers[m.sid]; if (fp) { fp.focus = m.id || null; mpRenderFocus(); } }
     else if (m.t === "doc") mpAdoptDoc(m.doc);

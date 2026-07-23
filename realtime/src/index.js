@@ -14,9 +14,10 @@
  *
  * Protocol (JSON, one object per message):
  *   client→room: {t:"cursor",x,y}|{t:"cursor",gone:true} · {t:"ops",ops:[...]} ·
- *                {t:"focus",id|null} · {t:"doc",doc} (reply to needDoc/docreq)
+ *                {t:"focus",id|null} · {t:"proto",id,ev} (demo sync in a live tile iframe) ·
+ *                {t:"doc",doc} (reply to needDoc/docreq)
  *   room→client: {t:"welcome",sid,color,peers,doc?,needDoc?} · {t:"join"|"leave",peer} ·
- *                relayed cursor/ops/focus stamped with the sender's peer info ·
+ *                relayed cursor/ops/focus/proto stamped with the sender's peer info ·
  *                {t:"doc",doc} · {t:"docreq"}
  * Ops (applied to the room doc AND relayed): {op:"upsert",node} · {op:"del",id} ·
  * {op:"name",name}. The doc's `view` is per-user viewport — never synced.
@@ -96,6 +97,11 @@ export class BoardRoom {
 
     if (msg.t === "cursor") {
       this.broadcast({ t: "cursor", sid: a.sid, name: a.name, color: a.color, x: msg.x, y: msg.y, gone: !!msg.gone }, ws);
+      return;
+    }
+    if (msg.t === "proto") {
+      // demo sync inside live prototype tiles — pure ephemeral relay, nothing stored
+      this.broadcast({ t: "proto", sid: a.sid, id: msg.id, ev: msg.ev }, ws);
       return;
     }
     if (msg.t === "ops" && Array.isArray(msg.ops)) {

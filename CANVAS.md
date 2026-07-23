@@ -21,8 +21,10 @@
 > **2026-07-23: MULTIPLAYER** — every canvas is a live multiplayer room (FigJam-style colored
 > cursors + name pills, presence chips, live drags/edits/deletes, streamed co-typing with
 > editing-focus rings). Template-level: it ships in the shared engine, so every canvas in every
-> space has it with zero instance changes. See "Multiplayer" below — including the TEST-ISOLATION
-> rule (blocking POST /__board is no longer enough).
+> space has it with zero instance changes. Same day: **prototype demo sync** — ▶ Live/Stop/
+> navigation are shared tile state, and clicks/typing/scrolling INSIDE a live prototype iframe
+> mirror to the room (same-origin event replay). See "Multiplayer" below — including the
+> TEST-ISOLATION rule (blocking POST /__board is no longer enough).
 > Next big one: the **collaboration skill** (Claude reads the board to co-work).
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
@@ -207,6 +209,21 @@ credential).
   pointer wears it too (your color, via injected style; tool/text cursors still win), peers
   render it with a name pill. Cursor layer lives OUTSIDE `#gvc-ui` so ⌘. keeps people visible.
   Names come from `/__me` (login), else "Guest".
+
+**Prototype demo sync (same day).** Live tiles are shared, not per-viewer: `node.live`
+("on"/"frozen") and `node.liveUrl` (in-frame navigation) live IN the doc, so pressing
+▶ Live mounts the iframe for everyone, Stop freezes it for everyone (in place — remote DOM
+state survives, handled in `mpApplyOps`' tile branch via `mpTileSig`), late joiners mount at
+the URL you navigated to, and a reload restores live tiles (solo benefit too). And because
+prototypes are SAME-ORIGIN, the engine reaches inside the frame (`mpFrameLoad`): clicks,
+input values, scrolling and navigation mirror to the room as ephemeral `{t:"proto"}` relays —
+interacting with a prototype demos it to everyone. Symmetric (anyone can drive); anti-echo =
+`isTrusted` filter + a 400ms quiet window per frame after each replay (scroll events are
+always trusted, the window is their only guard). The iframe cap (`MAX_LIVE_TILES`) is a
+shared budget — an eviction syncs. Cross-origin tiles safely no-op. Limits: replay is
+event-level (click/input/scroll/nav), not DOM mirroring — a mid-flow SPA state does NOT
+transfer to late joiners (they get the right URL, fresh); simultaneous drivers can fight
+politely (LWW). True state snapshots = rrweb territory, deliberately out of scope.
 
 **⚠️ Playwright/testing rule (bit on day one):** blocking `POST **/__board` is **no longer
 enough** — a test that opens a canvas page ALSO **joins its real room** and broadcasts ops to
