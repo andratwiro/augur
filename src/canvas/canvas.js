@@ -403,8 +403,22 @@
     var grip = host.querySelector(".gvc-draghandle");
     if (grip) grip.style.transform = "scale(" + 1 / s + ")";
   }
+  // Section label chips are like tile/prototype names: counter-scale so they stay legible
+  // at any zoom (origin left-bottom, so the chip stays anchored above the section's top-left).
+  function scaleSectionLabel(node, host) {
+    var lab = host.querySelector(".gvc-seclabel");
+    if (lab) {
+      var s = board.view.scale;
+      lab.style.transform = "scale(" + 1 / s + ")";
+      lab.style.maxWidth = Math.max(80, node.w * s) + "px";
+    }
+  }
   transformCbs.push(function () {
-    board.nodes.forEach(function (n) { if (n.type === "tile" && nodeEls[n.id]) scaleTileChrome(n, nodeEls[n.id]); });
+    board.nodes.forEach(function (n) {
+      if (!nodeEls[n.id]) return;
+      if (n.type === "tile") scaleTileChrome(n, nodeEls[n.id]);
+      else if (n.type === "section") scaleSectionLabel(n, nodeEls[n.id]);
+    });
   });
   function mountTile(node) {
     var host = nodeEls[node.id]; if (!host) return;
@@ -631,6 +645,7 @@
     if (node.locked) host.classList.add("locked");
     host.appendChild(sectionLabel(node));
     place(host, node);
+    scaleSectionLabel(node, host);
     return host;
   }
   // The label is a FigJam-style chip: section icon + editable name (+ a lock glyph when
