@@ -72,7 +72,7 @@ export class BoardRoom {
     for (const ws of this.ctx.getWebSockets()) {
       if (ws === excludeWs) continue;
       const a = ws.deserializeAttachment();
-      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, focus: a.focus || null });
+      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, focus: a.focus || null });
     }
     return out;
   }
@@ -93,19 +93,25 @@ export class BoardRoom {
     const url = new URL(request.url);
     const name = (url.searchParams.get("name") || "Guest").slice(0, 60);
     const sid = "p" + Math.random().toString(36).slice(2, 10);
-    const color = COLORS[this.ctx.getWebSockets().length % COLORS.length];
+    // `kind=agent` marks a Claude collaboration client — clients render it as Clawd, not the
+    // arrow. Only an agent may PIN its color (so Clawd stays its brand hue instead of a
+    // palette slot); humans always take the next palette color (no color hijacking).
+    const kind = (url.searchParams.get("kind") || "").slice(0, 16) || null;
+    const reqColor = url.searchParams.get("color");
+    const pinned = kind === "agent" && reqColor && /^#[0-9a-fA-F]{6}$/.test(reqColor) ? reqColor : null;
+    const color = pinned || COLORS[this.ctx.getWebSockets().length % COLORS.length];
 
     this.sweep();
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ sid, name, color, focus: null, joined: Date.now() });
+    server.serializeAttachment({ sid, name, color, kind, focus: null, joined: Date.now() });
 
     const welcome = { t: "welcome", sid, color, peers: this.peers(server) };
     if (this.doc) welcome.doc = this.doc;
     else if (welcome.peers.length) welcome.needDoc = true; // room woke from hibernation mid-session
     server.send(JSON.stringify(welcome));
-    this.broadcast({ t: "join", peer: { sid, name, color, focus: null } }, server);
+    this.broadcast({ t: "join", peer: { sid, name, color, kind, focus: null } }, server);
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -119,7 +125,7 @@ export class BoardRoom {
     if (!a || !msg || !msg.t) return;
 
     if (msg.t === "cursor") {
-      this.broadcast({ t: "cursor", sid: a.sid, name: a.name, color: a.color, x: msg.x, y: msg.y, gone: !!msg.gone }, ws);
+      this.broadcast({ t: "cursor", sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, x: msg.x, y: msg.y, gone: !!msg.gone }, ws);
       return;
     }
     if (msg.t === "proto") {

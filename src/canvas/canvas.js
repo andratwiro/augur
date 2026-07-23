@@ -69,7 +69,18 @@
     laugh: '😂'
   };
   function stampHtml(key) { var a = STAMP_ART[key]; return a && a.indexOf("<svg") === 0 ? a : null; }
-  var FONT_SIZES = { s: "13px", m: "16px", l: "21px" };
+  // Named presets (FigJam-style) + a custom numeric fallback. Size is stored as node.fontSize
+  // (px number); node.fontScale is the legacy s/m/l — still resolved so old boards are unchanged.
+  var FONT_PRESETS = [
+    { label: "Small", px: 16, disp: 13 },
+    { label: "Medium", px: 24, disp: 16 },
+    { label: "Large", px: 32, disp: 19 },
+    { label: "Extra large", px: 48, disp: 23 },
+    { label: "Huge", px: 80, disp: 28 },
+  ];
+  var LEGACY_FONT = { s: 13, m: 16, l: 21 };
+  function fontPx(node) { return node.fontSize || LEGACY_FONT[node.fontScale] || 16; }
+  function fontLabel(node) { var px = fontPx(node); for (var i = 0; i < FONT_PRESETS.length; i++) if (FONT_PRESETS[i].px === px) return FONT_PRESETS[i].label; return px + ""; }
   var ME = ""; // signed-in name, stamped as the sticky author (like FigJam)
 
   // ---- board state ---------------------------------------------------------
@@ -302,7 +313,7 @@
   // Node-level text styling shared by stickies + text nodes (whole-box, so no rich-text model).
   // Only text nodes take a text COLOR (a sticky's node.color is its background).
   function applyTextStyle(txt, node) {
-    txt.style.fontSize = FONT_SIZES[node.fontScale || "m"];
+    txt.style.fontSize = fontPx(node) + "px";
     txt.style.fontWeight = node.bold ? "700" : "";
     txt.style.fontStyle = node.italic ? "italic" : "";
     txt.style.textDecoration = node.strike ? "line-through" : "";
@@ -326,9 +337,10 @@
     applyTextStyle(txt, node);
     host.appendChild(txt);
     host.style.left = node.x + "px"; host.style.top = node.y + "px";
-    // A fresh text node auto-widths (grows with content); once resized it carries an explicit
-    // width and becomes a fixed-width wrapping box (height stays auto).
-    if (node.w != null) host.style.width = node.w + "px";
+    // Default = auto-adapt: the box hugs its text. It must be max-content, NOT plain width:auto —
+    // the #gvc-world containing block is 0-wide, so auto collapses to one-word-per-line. Once the
+    // user drags the width handle the node carries an explicit w and becomes fixed-width + wrapping.
+    host.style.width = node.w != null ? node.w + "px" : "max-content";
     return host;
   }
   // Editable floating name label above a node — the rename affordance for images (tiles carry
@@ -1157,7 +1169,7 @@
   }
 
   // ---- selection toolbar (sticky / shape / draw / table) -------------------
-  var selBar, palette, lockMenu, picker, catalog = null;
+  var selBar, palette, lockMenu, fontMenu, picker, catalog = null;
   function showSelBar(node) {
     selBar.innerHTML = "";
     // tiles: device viewport segment + interact + open — the actions that used to crowd the
@@ -1194,8 +1206,9 @@
     if (node.type === "sticky" || node.type === "shape" || node.type === "text") {
       selBar.appendChild(el("div", { class: "div" }));
       if (node.type === "sticky" || node.type === "text") {
-        var fb = el("div", { class: "btn", title: "Text size", html: '<span style="font-size:15px">A</span>' });
-        guard(fb); fb.addEventListener("click", function (e) { e.stopPropagation(); var o = ["s", "m", "l"], i = o.indexOf(node.fontScale || "m"); node.fontScale = o[(i + 1) % 3]; applyNodeStyle(node); scheduleSave(); });
+        var fb = el("button", { class: "btn wide fontbtn", type: "button", title: "Font size", html: '<span class="fslabel"></span><span class="chev">▾</span>' });
+        fb.querySelector(".fslabel").textContent = fontLabel(node);
+        guard(fb); fb.addEventListener("click", function (e) { e.stopPropagation(); toggleFontMenu(node, fb); });
         selBar.appendChild(fb);
       }
       var bb = el("button", { class: "btn" + (node.bold ? " on" : ""), type: "button", text: "B", title: "Bold" }); bb.style.fontWeight = "700";
@@ -1230,6 +1243,7 @@
   function togglePalette(node, dot) {
     if (!palette.classList.contains("hidden")) { palette.classList.add("hidden"); return; }
     if (lockMenu) lockMenu.classList.add("hidden");
+    if (fontMenu) fontMenu.classList.add("hidden");
     palette.innerHTML = "";
     var colors = node.type === "draw" ? DRAW_COLORS : node.type === "text" ? TEXT_COLORS : node.type === "section" ? SECTION_COLORS : STICKY_COLORS;
     colors.forEach(function (c) {
@@ -1244,6 +1258,7 @@
   function toggleLockMenu(node, btn) {
     if (!lockMenu.classList.contains("hidden")) { lockMenu.classList.add("hidden"); return; }
     if (palette) palette.classList.add("hidden");
+    if (fontMenu) fontMenu.classList.add("hidden");
     lockMenu.innerHTML = "";
     var items = node.locked === "all" ? [["bg", "Lock background only"], [null, "Unlock"]]
       : node.locked === "bg" ? [["all", "Lock all"], [null, "Unlock"]]
@@ -1264,6 +1279,39 @@
     lockMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.left)) + "px";
     lockMenu.style.top = (r.bottom + 6) + "px";
   }
+  // FigJam-style font-size dropdown: named presets rendered at their own scale + a custom px input.
+  function setFontSize(node, px, btn) {
+    node.fontSize = Math.max(6, Math.min(400, px)); delete node.fontScale;
+    applyNodeStyle(node); scheduleSave();
+    if (btn) { var lbl = btn.querySelector(".fslabel"); if (lbl) lbl.textContent = fontLabel(node); }
+    positionSelBar();
+  }
+  function toggleFontMenu(node, btn) {
+    if (!fontMenu.classList.contains("hidden")) { fontMenu.classList.add("hidden"); return; }
+    if (palette) palette.classList.add("hidden");
+    if (lockMenu) lockMenu.classList.add("hidden");
+    fontMenu.innerHTML = "";
+    var cur = fontPx(node);
+    FONT_PRESETS.forEach(function (p) {
+      var row = el("div", { class: "item" + (p.px === cur ? " on" : "") });
+      row.appendChild(el("span", { class: "ck", text: p.px === cur ? "✓" : "" }));
+      var lb = el("span", { class: "lb", text: p.label }); lb.style.fontSize = p.disp + "px";
+      row.appendChild(lb);
+      guard(row); row.addEventListener("click", function (e) { e.stopPropagation(); setFontSize(node, p.px, btn); fontMenu.classList.add("hidden"); });
+      fontMenu.appendChild(row);
+    });
+    var inp = el("input", { class: "num", type: "number", min: "6", max: "400", value: String(cur) });
+    guard(inp);
+    function applyNum() { setFontSize(node, parseInt(inp.value, 10) || cur, btn); }
+    inp.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); applyNum(); fontMenu.classList.add("hidden"); } });
+    inp.addEventListener("change", applyNum);
+    fontMenu.appendChild(inp);
+    var r = btn.getBoundingClientRect();
+    fontMenu.classList.remove("hidden");
+    var mw = fontMenu.offsetWidth || 150;
+    fontMenu.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.left)) + "px";
+    fontMenu.style.top = (r.bottom + 6) + "px";
+  }
   function positionSelBar() {
     if (!selBar || selBar.classList.contains("hidden")) return;
     if (selected.length !== 1) { hideSelBar(); return; }
@@ -1279,7 +1327,7 @@
       palette.style.top = Math.max(8, top - 46) + "px";
     }
   }
-  function hideSelBar() { if (selBar) selBar.classList.add("hidden"); if (palette) palette.classList.add("hidden"); if (lockMenu) lockMenu.classList.add("hidden"); }
+  function hideSelBar() { if (selBar) selBar.classList.add("hidden"); if (palette) palette.classList.add("hidden"); if (lockMenu) lockMenu.classList.add("hidden"); if (fontMenu) fontMenu.classList.add("hidden"); }
 
   // ---- toolbar: icons — Lucide (the shadcn set) wherever one exists --------
   var I_SELECT = '<path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/>'; // mouse-pointer-2
@@ -1367,6 +1415,7 @@
   }
   function closePops() {
     if (lockMenu) lockMenu.classList.add("hidden");
+    if (fontMenu) fontMenu.classList.add("hidden");
     if (moreShapes) moreShapes.classList.add("hidden");
     if (plusMenu) plusMenu.classList.add("hidden");
     if (barEls.bar) barEls.bar.classList.remove("plusopen");
@@ -1416,7 +1465,8 @@
     selBar = el("div", { id: "gvc-selbar", class: "hidden" });
     palette = el("div", { id: "gvc-palette", class: "hidden" });
     lockMenu = el("div", { id: "gvc-lockmenu", class: "hidden" });
-    ui.appendChild(selBar); ui.appendChild(palette); ui.appendChild(lockMenu);
+    fontMenu = el("div", { id: "gvc-fontmenu", class: "hidden" });
+    ui.appendChild(selBar); ui.appendChild(palette); ui.appendChild(lockMenu); ui.appendChild(fontMenu);
     buildPicker();
     transformCbs.push(positionSelBar);
     window.addEventListener("resize", positionSelBar);
@@ -1983,6 +2033,19 @@
   // OS pointer wears it too (in YOUR color) whenever a canvas file is open.
   var MP_ARROW = '<svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 912 892"><g transform="translate(0.000000,892.000000) scale(0.100000,-0.100000)"><path d="M2604 7445 c-38 -17 -89 -66 -111 -109 -19 -36 -20 -144 -4 -351 6 -71 16 -186 21 -255 5 -69 14 -181 20 -250 5 -69 21 -267 35 -440 32 -400 72 -900 85 -1055 5 -66 14 -181 20 -255 6 -74 15 -193 20 -265 6 -71 15 -188 20 -260 6 -71 15 -184 20 -250 5 -66 14 -183 20 -260 6 -77 15 -187 20 -245 6 -58 14 -168 20 -245 6 -77 15 -194 21 -260 5 -66 16 -201 24 -300 8 -99 19 -236 25 -305 6 -69 15 -183 20 -255 5 -71 15 -191 21 -265 6 -74 14 -180 18 -235 9 -117 26 -161 84 -210 64 -55 159 -71 235 -40 63 27 67 31 227 280 18 28 99 156 180 285 204 324 374 593 465 735 42 66 128 201 190 300 180 287 200 315 290 405 166 168 374 283 595 329 59 12 295 27 670 41 149 6 376 15 505 20 129 5 366 15 525 20 490 19 576 25 621 48 105 54 152 186 105 294 -24 55 -47 75 -216 192 -77 52 -207 142 -290 199 -82 57 -332 229 -555 382 -223 153 -443 305 -490 337 -47 32 -152 105 -235 161 -149 103 -421 290 -1063 732 -183 127 -393 271 -465 320 -73 50 -206 142 -297 205 -91 62 -235 161 -320 220 -85 59 -229 158 -320 220 -91 63 -228 157 -305 210 -77 53 -160 110 -185 129 -25 18 -60 39 -79 47 -42 18 -146 17 -187 -1z" fill="{C}" stroke="#ffffff" stroke-width="620" stroke-linejoin="round" stroke-linecap="round" paint-order="stroke"/></g></svg>';
   function mpArrowSvg(color) { return MP_ARROW.replace("{C}", color); }
+  // Agent peers (Claude co-working via the collaboration harness) wear CLAWD — the Claude
+  // mascot — instead of the arrow: a blocky body tinted with the peer's room color (orange
+  // for the primary agent, other hues for additional agents), black eyes, white outline.
+  // A tinted body + name pill = you can tell WHICH agent, the same way colored arrows tell
+  // which human. Rendered bigger than the arrow (see .gvc-cursor.agent in canvas.css).
+  var MP_CLAWD = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="31" viewBox="0 0 40 36">' +
+    '<path d="M6 3 H34 V11 H38 V17 H34 V25 H32 V32 H28 V25 H25 V32 H21 V25 H19 V32 H15 V25 H12 V32 H8 V25 H6 V17 H2 V11 H6 Z" ' +
+    'fill="{C}" stroke="#ffffff" stroke-width="2.6" stroke-linejoin="round" paint-order="stroke"/>' +
+    '<rect x="12.5" y="9" width="3.8" height="6" fill="#1a1a1a"/>' +
+    '<rect x="23.7" y="9" width="3.8" height="6" fill="#1a1a1a"/></svg>';
+  function mpClawdSvg(color) { return MP_CLAWD.replace("{C}", color); }
+  // glyph for a peer: Clawd if it's an agent, the arrow otherwise
+  function mpGlyph(p) { return p && p.kind === "agent" ? mpClawdSvg(p.color) : mpArrowSvg(p.color); }
   // your own pointer: injected <style> so the tool cursors keep winning where they should —
   // hand/pan/crosshair modes and text editing stay native, everything else wears the arrow
   var mpCursorStyleEl = null;
@@ -1996,7 +2059,7 @@
   }
   function mpEnsureCursor(p) {
     if (p.el) return p.el;
-    p.el = el("div", { class: "gvc-cursor", html: mpArrowSvg(p.color) + '<span class="lbl"></span>' });
+    p.el = el("div", { class: "gvc-cursor" + (p.kind === "agent" ? " agent" : ""), html: mpGlyph(p) + '<span class="lbl"></span>' });
     var lbl = p.el.querySelector(".lbl");
     lbl.textContent = p.name; lbl.style.background = p.color;
     mpCursorLayer.appendChild(p.el);
@@ -2009,8 +2072,8 @@
   }
   function mpPositionCursors() { for (var sid in mpPeers) mpPlaceCursor(mpPeers[sid]); }
   function mpCursorMsg(m) {
-    var p = mpPeers[m.sid] || (mpPeers[m.sid] = { name: m.name, color: m.color, focus: null });
-    p.name = m.name; p.color = m.color;
+    var p = mpPeers[m.sid] || (mpPeers[m.sid] = { name: m.name, color: m.color, focus: null, kind: m.kind || null });
+    p.name = m.name; p.color = m.color; if (m.kind != null) p.kind = m.kind;
     if (m.gone) { if (p.el) p.el.classList.add("idle"); return; }
     mpEnsureCursor(p);
     p.cx = m.x; p.cy = m.y;
@@ -2039,11 +2102,11 @@
     mpPresence.innerHTML = "";
     if (!mp || mp.readyState !== 1) { mpPresence.classList.add("hidden"); return; }
     var chips = [{ name: mpName, title: mpName + " (you)", color: mpColor, me: true }];
-    for (var sid in mpPeers) { var p = mpPeers[sid]; chips.push({ name: p.name, title: p.name, color: p.color }); }
+    for (var sid in mpPeers) { var p = mpPeers[sid]; chips.push({ name: p.name, title: p.name, color: p.color, kind: p.kind }); }
     if (chips.length < 2) { mpPresence.classList.add("hidden"); return; } // alone — no chrome
     mpPresence.classList.remove("hidden");
     chips.forEach(function (c) {
-      var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : ""), text: mpInitials(c.name), title: c.title });
+      var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : "") + (c.kind === "agent" ? " agent" : ""), text: mpInitials(c.name), title: c.title });
       chip.style.background = c.color;
       mpPresence.appendChild(chip);
     });
@@ -2072,13 +2135,13 @@
       mpSid = m.sid; mpRetry = 1000;
       if (m.color && m.color !== mpColor) { mpColor = m.color; mpApplyLocalCursor(); } // your pointer takes your room color
       mpPeers = {};
-      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null }; });
+      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null, kind: p.kind || null }; });
       if (m.doc) mpAdoptDoc(m.doc);
       else mpSend({ t: "doc", doc: board }); // seed the room (first in, or post-hibernation — KV is current when the room was idle)
       mpReady = true;
       mpRenderPresence(); mpRenderFocus();
     } else if (m.t === "join") {
-      mpPeers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, focus: m.peer.focus || null };
+      mpPeers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, focus: m.peer.focus || null, kind: m.peer.kind || null };
       mpRenderPresence();
     } else if (m.t === "leave") {
       var p = mpPeers[m.peer.sid];

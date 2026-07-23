@@ -334,6 +334,16 @@ svg.stk { display: block; overflow: visible; }
 #gvc-lockmenu.hidden { display: none; }
 #gvc-lockmenu .item { padding: 8px 12px; border-radius: 7px; color: #e8eaee; font-size: 13px; cursor: pointer; white-space: nowrap; }
 #gvc-lockmenu .item:hover { background: rgba(255, 255, 255, .12); }
+#gvc-fontmenu { position: fixed; z-index: 66; background: #1f2430; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); padding: 6px; min-width: 168px; }
+#gvc-fontmenu.hidden { display: none; }
+#gvc-fontmenu .item { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 7px; color: #e8eaee; cursor: pointer; white-space: nowrap; line-height: 1.35; }
+#gvc-fontmenu .item:hover { background: rgba(255, 255, 255, .12); }
+#gvc-fontmenu .item .ck { flex: none; width: 12px; color: #cfd3da; font-size: 12px; }
+#gvc-fontmenu .item .lb { font-weight: 500; }
+#gvc-fontmenu .num { margin-top: 5px; width: 100%; box-sizing: border-box; background: #12151c; border: 1px solid #7b61ff; border-radius: 6px; color: #e8eaee; font: inherit; font-size: 13px; padding: 6px 9px; outline: none; }
+#gvc-fontmenu .num::-webkit-inner-spin-button { opacity: .5; }
+#gvc-selbar .btn.fontbtn { gap: 4px; }
+#gvc-selbar .btn.fontbtn .fslabel { font-size: 12px; }
 
 .gvc-marquee { position: fixed; z-index: 55; border: 1px solid #2563eb; background: rgba(37, 99, 235, .09); pointer-events: none; }
 .gvc-ghost { position: fixed; pointer-events: none; z-index: 100; opacity: .9; transform: translate(-50%, -50%); }
@@ -421,10 +431,15 @@ svg.stk { display: block; overflow: visible; }
 .gvc-cursor svg { display: block; width: 21px; height: 21px; margin: -3px 0 0 -5px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .3)); }
 .gvc-cursor .lbl { position: absolute; left: 13px; top: 17px; padding: 2px 8px 3px; border-radius: 10px 10px 10px 3px; color: #fff; font: 600 11px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); }
 .gvc-cursor.idle { opacity: 0; }
+/* agent peers wear Clawd: a bigger mascot glyph (hotspot near its head), label to the side */
+.gvc-cursor.agent svg { width: 34px; height: 31px; margin: -4px 0 0 -6px; }
+.gvc-cursor.agent .lbl { left: 30px; top: 22px; }
 #gvc-presence { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 5px 8px 5px 12px; }
 #gvc-presence.hidden { display: none; }
 .gvc-peerchip { width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); }
 .gvc-peerchip.me { order: 1; }
+/* agent (Clawd) chip: blocky, so it reads apart from the round human chips */
+.gvc-peerchip.agent { border-radius: 7px; }
 /* a peer is typing in this node — colored ring + name tag (border-color/background set inline) */
 .gvc-remote-focus { position: absolute; inset: -4px; border: 2px solid; border-radius: 7px; pointer-events: none; z-index: 4; }
 .gvc-remote-focus .who { position: absolute; top: -20px; left: -2px; padding: 1px 7px 2px; border-radius: 8px 8px 8px 2px; color: #fff; font: 600 10.5px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; }
