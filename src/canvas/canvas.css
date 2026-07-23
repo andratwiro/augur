@@ -431,12 +431,16 @@ svg.stk { display: block; overflow: visible; }
 .gvc-cursor svg { display: block; width: 21px; height: 21px; margin: -3px 0 0 -5px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .3)); }
 .gvc-cursor .lbl { position: absolute; left: 13px; top: 17px; padding: 2px 8px 3px; border-radius: 10px 10px 10px 3px; color: #fff; font: 600 11px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); }
 .gvc-cursor.idle { opacity: 0; }
-/* agent peers wear Clawd: the mascot glyph, hotspot at its TOP-LEFT (points at the target
-   like a normal cursor tip); name pill trails to the bottom-right of the body */
-.gvc-cursor.agent svg { width: 40px; height: 34px; margin: -2px 0 0 -2px; }
-.gvc-cursor.agent .lbl { left: 34px; top: 28px; }
-/* a parked/sleeping agent stays VISIBLE (dimmed), not fully hidden like an idle human cursor */
-.gvc-cursor.agent.idle { opacity: .55; }
+/* agent peers wear Clawd (icons8): hotspot at the mascot's TOP-LEFT (points at the target like a
+   normal cursor tip); the icon's body starts partway down its 48x48 box, so the margin lifts it
+   so the body's top-left sits on the point. Name pill trails to the bottom-right. */
+.gvc-cursor.agent svg { width: 40px; height: 40px; margin: -15px 0 0 -5px; }
+.gvc-cursor.agent .lbl { left: 30px; top: 24px; }
+/* a parked/sleeping agent stays FULLY visible (never fades like an idle human cursor) */
+.gvc-cursor.agent.idle { opacity: 1; }
+/* walking: a little vertical bob while the agent's cursor is moving */
+@keyframes gvc-clawd-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+.gvc-cursor.agent.walking svg { animation: gvc-clawd-bob .32s ease-in-out infinite; }
 #gvc-presence { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 5px 8px 5px 12px; }
 #gvc-presence.hidden { display: none; }
 .gvc-peerchip { width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); }
