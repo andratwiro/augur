@@ -388,8 +388,14 @@ coupling is enforced HERE (terminal), because a canvas can't write git from the 
   rename, picker-collapse + wheel-scroll fixes, no-store engine, and **canvas-owned prototypes**
   (the `canvas-screen.mjs` scaffolding — nested subfolder + auto-placed tile + ownership coupling).
 - The **collaboration skill** — Claude reads board state + node names to co-work spatially
-  (resolve "that", cluster, summarise). NOW the next big one; the AI-legible model + names make it
-  high-leverage.
+  (resolve "that", cluster, summarise). **First cut SHIPPED 2026-07-23:** `scripts/clawd-canvas.mjs`
+  (`ClawdCanvas`) — a raw-WS Node client that joins a board's room as a real participant
+  ("Clawd", `kind=agent`), glides its cursor, raises a focus ring on the node it's working, and
+  streams `upsert/del/name` ops (live, per-node LWW — no full-state clobber). The engine renders
+  agent peers as the Clawd mascot (`MP_CLAWD` / `.gvc-cursor.agent`) tinted by a pinned color
+  (Clawd orange for the primary; humans always take a palette slot). STILL AHEAD: the "read the
+  board + reason spatially" half (resolve "that", cluster, summarise on request) and a continuous
+  presence loop (today the agent works in bursts, turn-by-turn, not a sub-second cursor).
 - Canvas-owned-prototype polish: an in-app "remove screen" affordance on owned tiles that records
   the deletion for the terminal to reconcile (today: `canvas-screen.mjs rm`); a poster shot for a
   new screen so its tile isn't blank until you go Live.
