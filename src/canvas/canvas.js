@@ -2181,9 +2181,9 @@
     chips.forEach(function (c) {
       var isAgent = c.kind === "agent";
       var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : "") + (isAgent ? " agent" : ""), title: c.title });
-      chip.style.background = c.color;
-      // agents show a mini Clawd (in its current pose) instead of a letter initial
-      if (isAgent) chip.innerHTML = clawdChipSvg("#fff");
+      // agents: the Clawd in its color on a BLACK chip (orange-on-black pops); humans: initial on their color
+      chip.style.background = isAgent ? "#1a1a1a" : c.color;
+      if (isAgent) chip.innerHTML = clawdChipSvg(c.color);
       else chip.textContent = mpInitials(c.name);
       mpPresence.appendChild(chip);
     });
