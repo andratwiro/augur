@@ -118,9 +118,12 @@ genuinely harder.
 
 ## The one real performance rule
 
-The infinite canvas is cheap; **live prototypes = iframes are the only heavy thing.** So:
-**thumbnail (poster) at rest, live iframe only on focus/zoom-in, cap concurrent live iframes.**
-Posters reuse go-vocal's capture stack (`scripts/shoot.mjs` / `og.mjs`).
+The infinite canvas is cheap; **live prototypes = iframes are the only heavy thing.**
+Since 2026-07-23 tiles are **ALWAYS LIVE** (the poster-at-rest model looked broken and
+predates multiplayer): mounting is IntersectionObserver-gated (only tiles near the
+viewport mount; posters remain as the placeholder for unseen tiles) with a
+`MOUNT_BUDGET` LRU backstop that quietly unmounts offscreen tiles. Posters reuse
+go-vocal's capture stack (`scripts/shoot.mjs` / `og.mjs`).
 
 ## Scope
 
@@ -210,29 +213,38 @@ credential).
   render it with a name pill. Cursor layer lives OUTSIDE `#gvc-ui` so ⌘. keeps people visible.
   Names come from `/__me` (login), else "Guest".
 
-**Prototype demo sync (same day).** Live tiles are shared, not per-viewer: `node.live`
-("on"/"frozen") and `node.liveUrl` (in-frame navigation) live IN the doc, so pressing
-▶ Live mounts the iframe for everyone, Stop freezes it for everyone (in place — remote DOM
-state survives, handled in `mpApplyOps`' tile branch via `mpTileSig`), late joiners mount at
-the URL you navigated to, and a reload restores live tiles (solo benefit too). And because
-prototypes are SAME-ORIGIN, the engine reaches inside the frame (`mpFrameLoad`): clicks,
-input values, scrolling and navigation mirror to the room as ephemeral `{t:"proto"}` relays —
-interacting with a prototype demos it to everyone. Symmetric (anyone can drive); anti-echo =
-`isTrusted` filter + a 400ms quiet window per frame after each replay (scroll events are
-always trusted, the window is their only guard). The iframe cap (`MAX_LIVE_TILES`) is a
-shared budget — an eviction syncs. Cross-origin tiles safely no-op. Limits: replay is
-event-level (click/input/scroll/nav), not DOM mirroring — a mid-flow SPA state does NOT
-transfer to late joiners (they get the right URL, fresh); simultaneous drivers can fight
-politely (LWW). True state snapshots = rrweb territory, deliberately out of scope.
+**Prototype demo sync + the ALWAYS-LIVE tile model (2026-07-23, remodeled same day).**
+Tiles are always live — there is NO ▶ Live/■ Stop anymore. Every tile mounts its real
+iframe when it nears the viewport (IO-gated, `MOUNT_BUDGET` LRU backstop), under a
+transparent `.gvc-hit` overlay so it selects/drags like any node (grab cursor = the
+affordance). **Double-click a tile to interact** (overlay off, blue ring, you drive the
+prototype); click outside or Esc leaves (Esc is caught INSIDE the frame too — the iframe
+owns the keyboard once you click in). Interact mode is per-user; what you DO mirrors:
+prototypes are SAME-ORIGIN, so `mpFrameLoad` hooks each frame document and clicks, input
+values, scrolling and navigation broadcast as ephemeral `{t:"proto"}` relays. Navigation
+also persists as `node.liveUrl` (synced), so late joiners and reloads mount at the URL you
+navigated to. Anti-echo = `isTrusted` filter + a 400ms quiet window per frame after each
+replay (scroll events are always trusted; the window is their only guard). Tile chrome is
+FigJam-style: a name chip floats ABOVE the tile, counter-scaled (`scaleTileChrome`) so it
+reads at 12px at any zoom; device/interact/open actions live on the floating selection
+toolbar. A tile can embed ANOTHER canvas — it joins its own room from inside the tile
+(correct, delightful, slightly recursive). Cross-origin tiles safely no-op. `node.live`
+(the old Stop/Live shared state) is written nowhere and ignored everywhere. Limits: replay
+is event-level, not DOM mirroring — mid-flow SPA state does not transfer to late joiners;
+simultaneous drivers fight politely (LWW). rrweb-style snapshots deliberately out of scope.
 
-**⚠️ Playwright/testing rule (bit on day one):** blocking `POST **/__board` is **no longer
-enough** — a test that opens a canvas page ALSO **joins its real room** and broadcasts ops to
-real visitors. Tests must isolate the room by overriding `GV_CANVAS.boardPath` to a throwaway
-path — and because instance HTML does `window.GV_CANVAS = {...}` (full overwrite), a plain
-`addInitScript` value gets clobbered: use `Object.defineProperty(window, "GV_CANVAS", ...)`
-with a setter that forces `boardPath` back in. (Rooms self-heal — the doc cache drops when
-empty — but don't rely on that.) Reference test: the mp-e2e script pattern (two contexts,
-isolated room, cursor/ops/focus assertions).
+**⚠️ Playwright/testing rule (bit on day one, twice):** blocking `POST **/__board` is **no
+longer enough** — a test that opens a canvas page ALSO **joins its real room** and broadcasts
+ops to real visitors. Tests must isolate the room by overriding `GV_CANVAS.boardPath` to a
+throwaway path — and because instance HTML does `window.GV_CANVAS = {...}` (full overwrite),
+a plain `addInitScript` value gets clobbered: use `Object.defineProperty(window, "GV_CANVAS",
+...)` with a setter that forces `boardPath` back in, **guarded `if (window.top !== window)
+return;`** — `addInitScript` runs in every frame, and an unguarded override leaks into tile
+iframes, so a canvas-typed prototype embedded in a tile joins the TEST room and haunts
+presence as phantom "Guest" chips (bit #2 — cost an afternoon of zombie-hunting). Also don't
+navigate test tiles to canvas-typed prototypes (`customer-interviews` is one). (Rooms
+self-heal — the doc cache drops when empty — but don't rely on that.) Reference test: the
+mp-proto-e2e script pattern (two contexts, isolated room, mount/interact/mirror assertions).
 
 ## Canvas-owned prototypes (what "build a prototype on the canvas" means)
 

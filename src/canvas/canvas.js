@@ -27,7 +27,7 @@
   var BOARD_PATH = CFG.boardPath || location.pathname;
   var BOARD_API = "/__board?path=" + encodeURIComponent(BOARD_PATH);
 
-  var MIN_SCALE = 0.1, MAX_SCALE = 4, GRID = 16, MAX_LIVE_TILES = 6; // total loaded iframes (live or frozen); LRU-evict oldest to poster
+  var MIN_SCALE = 0.1, MAX_SCALE = 4, GRID = 16;
   // A live tile renders its page at a chosen DEVICE viewport width, then scales to fit the tile —
   // so a device toggle (not tile-resize) drives the page's real responsive breakpoints. ASPECT
   // (w:h) shapes the tile to the device when you pick one; you can still resize freely after.
@@ -72,7 +72,6 @@
   var board = { v: 1, name: CFG.name || "Untitled canvas", view: { x: 0, y: 0, scale: 1 }, nodes: [] };
   var nodeEls = {};        // id -> DOM element
   var selected = [];       // ids of selected nodes (click, shift-add, or marquee = multi)
-  var liveTiles = [];      // ids of tiles currently showing a live iframe (LRU, capped)
   var transformCbs = [];   // listeners notified on every pan/zoom (comments overlay, sel bar)
 
   // ---- tool state ----------------------------------------------------------
@@ -184,7 +183,6 @@
     if (i < 0) return;
     board.nodes.splice(i, 1);
     if (nodeEls[id]) { nodeEls[id].remove(); delete nodeEls[id]; }
-    liveTiles = liveTiles.filter(function (t) { return t !== id; });
     selected = selected.filter(function (s) { return s !== id; }); if (selected.length !== 1) hideSelBar();
     scheduleSave();
   }
@@ -199,7 +197,7 @@
     if (selected.length === 1) {
       var n = nodeById(selected[0]);
       decorate(selected[0]);
-      if (n && (n.type === "sticky" || n.type === "shape" || n.type === "draw")) showSelBar(n); else hideSelBar();
+      if (n && (n.type === "sticky" || n.type === "shape" || n.type === "draw" || n.type === "tile")) showSelBar(n); else hideSelBar();
     } else hideSelBar();
   }
   function select(id) { setSelection(id ? [id] : []); }
@@ -334,10 +332,32 @@
     img.style.width = (100 / c.w) + "%"; img.style.height = (100 / c.h) + "%";
     img.style.left = (-100 * c.x / c.w) + "%"; img.style.top = (-100 * c.y / c.h) + "%";
   }
+  // ALWAYS LIVE, inert until entered. Every tile mounts its real iframe as soon as it comes
+  // near the viewport (IntersectionObserver, generous margin) — no ▶ Live step, so boards
+  // never look broken. The iframe sits under a transparent hit overlay: the tile selects and
+  // drags like any node (grab cursor = the affordance); DOUBLE-CLICK enters the prototype
+  // (overlay off, ring on, you're interacting), click outside or Esc leaves. Tile chrome is
+  // FigJam-style: a name chip floating ABOVE the tile, counter-scaled so it stays readable
+  // at any zoom; device/open/interact actions live on the floating selection toolbar.
+  // Offscreen tiles beyond MOUNT_BUDGET quietly return to their poster (LRU by last sight)
+  // and remount on sight. node.live (the old shared Stop/Live) is ignored; node.liveUrl
+  // still tracks in-frame navigation for the room + late joiners.
+  var MOUNT_BUDGET = 16;
+  var tileVis = {}, tileSeen = {}, tileClock = 0, interactId = null;
+  var tileIO = typeof IntersectionObserver === "function" ? new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      var id = en.target.dataset.id;
+      if (en.target !== nodeEls[id]) { tileIO.unobserve(en.target); return; } // stale re-rendered host
+      var node = nodeById(id); if (!node || node.type !== "tile") return;
+      tileVis[id] = en.isIntersecting;
+      if (en.isIntersecting) { tileSeen[id] = ++tileClock; mountTile(node); trimTiles(); }
+    });
+  }, { rootMargin: "600px" }) : null;
+
   function renderTile(node) {
     node.w = node.w || 420; node.h = node.h || 300;
     var body = el("div", { class: "gvc-tilebody" });
-    var nm = el("div", { class: "nm", text: node.name || node.url, contentEditable: "false", title: "Double-click to rename — " + node.url });
+    var nm = el("div", { class: "gvc-tilename", text: node.name || node.url, contentEditable: "false", title: "Double-click to rename — " + node.url });
     // Manual double-tap: root pointer-capture eats the native dblclick, and stopping propagation
     // keeps a tap on the name from starting a tile drag. Double-tap → edit, single tap → select.
     var nmTap = 0;
@@ -350,95 +370,86 @@
     });
     nm.addEventListener("blur", function () { nm.contentEditable = "false"; node.name = nm.textContent.trim() || node.name; nm.textContent = node.name; scheduleSave(); });
     nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } else if (e.key === "Escape") { nm.textContent = node.name; nm.blur(); } });
-    var liveBtn = el("button", { type: "button", class: "gvc-livebtn", text: "▶ Live" });
-    var openBtn = el("button", { type: "button", text: "↗", title: "Open in new tab" });
-    openBtn.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
-    openBtn.addEventListener("click", function (e) { e.stopPropagation(); window.open(node.url, "_blank"); });
-    liveBtn.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
-    liveBtn.addEventListener("click", function (e) { e.stopPropagation(); toggleLive(node, body, liveBtn); });
-    // device toggle — desktop / tablet / phone viewport for the live render
-    var dev = node.device || "desktop";
-    var devSeg = el("div", { class: "gvc-dev" });
-    ["desktop", "tablet", "phone"].forEach(function (d) {
-      var b = el("button", { type: "button", class: dev === d ? "on" : "", title: d.charAt(0).toUpperCase() + d.slice(1) });
-      b.dataset.dev = d; b.innerHTML = DEV_ICON[d];
-      b.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
-      b.addEventListener("click", function (e) { e.stopPropagation(); setDevice(node, d); });
-      devSeg.appendChild(b);
-    });
-    var bar = el("div", { class: "gvc-tilebar" }, [nm, devSeg, liveBtn, openBtn]);
-    var host = el("div", { class: "gvc-tile" }, [bar, body]);
+    var host = el("div", { class: "gvc-tile" }, [nm, body]);
     showThumb(node, body);
     place(host, node);
-    // a tile whose shared state says live mounts its iframe (remote ▶, or persisted reload);
-    // deferred so the host is in the DOM with real layout before fitFrame measures it
-    if (node.live) setTimeout(function () {
-      var h = nodeEls[node.id];
-      if (h && nodeById(node.id) === node) mountLive(node, h.querySelector(".gvc-tilebody"), h.querySelector(".gvc-livebtn"), node.live === "frozen");
-    }, 0);
+    scaleTileChrome(node, host);
+    if (tileIO) tileIO.observe(host);
+    else setTimeout(function () { if (nodeEls[node.id] === host) mountTile(node); }, 0);
     return host;
   }
-  // Pick a device viewport for a tile: shape it to that device's proportions (at its current
-  // width — resize stays free), mark the active segment, and reflow the live iframe if open.
+  // counter-scale the floating name chip so it reads at 12px on screen at ANY zoom (FigJam
+  // frame titles); width-capped to the tile's VISUAL width so long names truncate, not spill
+  function scaleTileChrome(node, host) {
+    var nm = host.querySelector(".gvc-tilename"); if (!nm) return;
+    var s = board.view.scale;
+    nm.style.transform = "scale(" + 1 / s + ")";
+    nm.style.maxWidth = Math.max(80, node.w * s) + "px";
+  }
+  transformCbs.push(function () {
+    board.nodes.forEach(function (n) { if (n.type === "tile" && nodeEls[n.id]) scaleTileChrome(n, nodeEls[n.id]); });
+  });
+  function mountTile(node) {
+    var host = nodeEls[node.id]; if (!host) return;
+    var body = host.querySelector(".gvc-tilebody");
+    if (!body || body.querySelector("iframe")) return;
+    body.innerHTML = "";
+    var frame = el("iframe", { src: node.liveUrl || node.url });
+    frame.addEventListener("load", function () { mpFrameLoad(node, frame); });
+    body.appendChild(frame);
+    var hit = el("div", { class: "gvc-hit" });
+    if (interactId === node.id) { hit.style.display = "none"; host.classList.add("interacting"); }
+    body.appendChild(hit);
+    fitFrame(body, node);
+  }
+  function trimTiles() {
+    var mounted = board.nodes.filter(function (n) { return n.type === "tile" && nodeEls[n.id] && nodeEls[n.id].querySelector("iframe"); });
+    if (mounted.length <= MOUNT_BUDGET) return;
+    mounted
+      .filter(function (n) { return !tileVis[n.id] && n.id !== interactId; })
+      .sort(function (a, b) { return (tileSeen[a.id] || 0) - (tileSeen[b.id] || 0); })
+      .slice(0, mounted.length - MOUNT_BUDGET)
+      .forEach(function (n) { showThumb(n, nodeEls[n.id].querySelector(".gvc-tilebody")); });
+  }
+  // interact mode — per-user (who's driving is not shared state; what they DO mirrors
+  // through the demo-sync channel). One tile at a time, FigJam-embed style.
+  function enterInteract(node) {
+    exitInteract();
+    var host = nodeEls[node.id]; if (!host) return;
+    interactId = node.id;
+    mountTile(node);
+    var hit = host.querySelector(".gvc-hit"); if (hit) hit.style.display = "none";
+    host.classList.add("interacting");
+    select(node.id);
+  }
+  function exitInteract() {
+    if (!interactId) return;
+    var host = nodeEls[interactId];
+    if (host) { host.classList.remove("interacting"); var hit = host.querySelector(".gvc-hit"); if (hit) hit.style.display = ""; }
+    interactId = null;
+  }
+  // Pick a device viewport for a tile: shape it to that device's proportions, reflow the
+  // iframe, refresh the floating toolbar's segment state.
   function setDevice(node, d) {
     node.device = d;
     var sz = DEVICE_SIZE[d] || DEVICE_SIZE.desktop;
     node.w = sz.w; node.h = sz.h;
     var host = nodeEls[node.id]; if (!host) return;
     host.style.width = node.w + "px"; host.style.height = node.h + "px";
-    host.querySelectorAll(".gvc-dev button").forEach(function (b) { b.classList.toggle("on", b.dataset.dev === d); });
     var body = host.querySelector(".gvc-tilebody");
     if (body && body.querySelector("iframe")) fitFrame(body, node);
+    scaleTileChrome(node, host);
+    if (isSelected(node.id) && selected.length === 1) showSelBar(node);
     positionSelBar();
     scheduleSave();
   }
   function showThumb(node, body) {
     body.innerHTML = "";
     var img = el("img", { alt: node.name || "" });
-    var ph = el("div", { class: "ph", text: "No preview yet — click ▶ Live to load " + node.url });
+    var ph = el("div", { class: "ph", text: "Loading " + node.url + " …" });
     img.addEventListener("error", function () { img.remove(); if (!body.contains(ph)) body.appendChild(ph); });
     img.src = node.thumb || (node.url.replace(/\/?$/, "/") + "preview.webp");
     body.appendChild(img);
-  }
-  // Three tile states: poster (never loaded) → live (interactive iframe) ⇄ frozen (iframe kept but
-  // inert). "Stop" FREEZES rather than unloading, so the exact render — device layout, scroll
-  // position, in-page state — survives; the frozen iframe is pointer-events:none so the tile drags
-  // normally. Loaded iframes (live OR frozen) cost the same, so the cap is on TOTAL loaded, LRU-
-  // evicting the oldest back to its poster to keep pan/zoom smooth.
-  function toggleLive(node, body, btn) {
-    if (body.querySelector("iframe")) {
-      var nowFrozen = body.classList.toggle("gvc-frozen");
-      var badge = body.querySelector(".live-badge");
-      if (nowFrozen) { if (badge) badge.remove(); btn.textContent = "▶ Live"; }
-      else { if (!badge) body.appendChild(el("div", { class: "live-badge", text: "LIVE" })); fitFrame(body, node); btn.textContent = "■ Stop"; }
-      node.live = nowFrozen ? "frozen" : "on"; // shared state — the room follows (multiplayer)
-      scheduleSave();
-      return;
-    }
-    mountLive(node, body, btn, false);
-    node.live = "on";
-    scheduleSave();
-  }
-  // Build the live iframe — shared by the ▶ click, by multiplayer remote mounts, and by
-  // renderTile restoring a persisted live tile. node.live ∈ {"on","frozen",undefined=poster}
-  // lives IN the doc, so live state is shared with the room and survives reload;
-  // node.liveUrl tracks in-frame navigation (the demo-sync channel keeps it fresh).
-  function mountLive(node, body, btn, frozen) {
-    if (body.querySelector("iframe")) return;
-    while (liveTiles.length >= MAX_LIVE_TILES) {
-      var victim = liveTiles.shift(); var vn = nodeById(victim), ve = nodeEls[victim];
-      if (vn) vn.live = undefined; // synced — the iframe budget is a shared budget
-      if (vn && ve) { var vb = ve.querySelector(".gvc-tilebody"); vb.classList.remove("gvc-frozen"); showThumb(vn, vb); var vbtn = ve.querySelector(".gvc-livebtn"); if (vbtn) vbtn.textContent = "▶ Live"; }
-    }
-    body.classList.toggle("gvc-frozen", !!frozen);
-    body.innerHTML = "";
-    var frame = el("iframe", { src: node.liveUrl || node.url, loading: "lazy" });
-    frame.addEventListener("load", function () { mpFrameLoad(node, frame); });
-    body.appendChild(frame);
-    if (!frozen) body.appendChild(el("div", { class: "live-badge", text: "LIVE" }));
-    fitFrame(body, node);
-    btn.textContent = frozen ? "▶ Live" : "■ Stop";
-    liveTiles.push(node.id);
   }
   // A responsive page in a small frame either clips (fixed min-width) or reflows to a stray
   // mobile breakpoint. Instead we render the live iframe at a fixed DESKTOP viewport width and
@@ -674,6 +685,9 @@
       if (Object.keys(pointers).length > 2) return;
     }
     closePops();
+    // a pointerdown anywhere OUTSIDE the interacting tile leaves interact mode (clicks
+    // inside its iframe never reach the root, so interaction itself is unaffected)
+    if (interactId && !(e.target.closest && e.target.closest(".gvc-node") === nodeEls[interactId])) exitInteract();
     if (cropState) { commitCrop(); return; } // click outside crop mode = commit (Figma); crop UI handlers stop propagation
     if (!isPan()) {
       // an armed tool takes precedence over node interaction — FigJam draws on top of things
@@ -722,6 +736,9 @@
         }
         if (node.type === "image") {
           lastTap = { id: null, t: 0 }; enterCrop(node); return; // double-tap → crop mode
+        }
+        if (node.type === "tile") {
+          lastTap = { id: null, t: 0 }; enterInteract(node); return; // double-tap → drive the prototype
         }
       }
       lastTap = { id: id, t: now };
@@ -979,7 +996,7 @@
     if (editing) return;
     if ((e.metaKey || e.ctrlKey) && (e.key === "d" || e.key === "D")) { e.preventDefault(); duplicateSelection(); return; }
     if ((e.key === "Backspace" || e.key === "Delete") && selected.length) { e.preventDefault(); selected.slice().forEach(removeNode); setSelection([]); }
-    if (e.key === "Escape") { setSelection([]); if (picker) picker.classList.add("hidden"); setTool("select"); return; }
+    if (e.key === "Escape") { exitInteract(); setSelection([]); if (picker) picker.classList.add("hidden"); setTool("select"); return; }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     // FigJam tool shortcuts
     var k = e.key.toLowerCase();
@@ -1035,6 +1052,25 @@
   var selBar, palette, picker, catalog = null;
   function showSelBar(node) {
     selBar.innerHTML = "";
+    // tiles: device viewport segment + interact + open — the actions that used to crowd the
+    // tile bar, now at constant screen size on the floating toolbar (FigJam-style)
+    if (node.type === "tile") {
+      ["desktop", "tablet", "phone"].forEach(function (d) {
+        var b = el("button", { type: "button", class: "btn dev" + ((node.device || "desktop") === d ? " on" : ""), title: d.charAt(0).toUpperCase() + d.slice(1), html: DEV_ICON[d] });
+        guard(b); b.addEventListener("click", function (e) { e.stopPropagation(); setDevice(node, d); });
+        selBar.appendChild(b);
+      });
+      selBar.appendChild(el("div", { class: "div" }));
+      var ib = el("button", { type: "button", class: "btn wide", title: "Interact with the prototype (or double-click it)", text: "▶ Interact" });
+      guard(ib); ib.addEventListener("click", function (e) { e.stopPropagation(); enterInteract(node); });
+      selBar.appendChild(ib);
+      var ob = el("button", { type: "button", class: "btn", title: "Open in new tab", text: "↗" });
+      guard(ob); ob.addEventListener("click", function (e) { e.stopPropagation(); window.open(node.url, "_blank"); });
+      selBar.appendChild(ob);
+      selBar.classList.remove("hidden");
+      positionSelBar();
+      return;
+    }
     var dot = el("div", { class: "dot" }); dot.style.background = node.color || (node.type === "draw" ? "#1e1e1e" : node.type === "shape" ? "#ffffff" : DEFAULT_STICKY);
     var sw = el("div", { class: "sw" }, [dot, el("div", { class: "chev", text: "▾" })]);
     guard(sw); sw.addEventListener("click", function (e) { e.stopPropagation(); togglePalette(node, dot); });
@@ -1609,7 +1645,6 @@
     var i = board.nodes.findIndex(function (n) { return n.id === id; });
     if (i >= 0) board.nodes.splice(i, 1);
     if (nodeEls[id]) { nodeEls[id].remove(); delete nodeEls[id]; }
-    liveTiles = liveTiles.filter(function (t) { return t !== id; });
     selected = selected.filter(function (s) { return s !== id; });
     if (selected.length !== 1) hideSelBar();
   }
@@ -1633,24 +1668,15 @@
           if (local.type === "tile") { var b = host.querySelector(".gvc-tilebody"); if (b && b.querySelector("iframe")) fitFrame(b, local); }
           if (isSelected(r.id)) positionSelBar();
         } else if (local && host && local.type === "tile" && r.type === "tile" && mpTileSig(r) === mpTileSig(local)) {
-          // live/frozen/navigation transition on a tile — act on the existing element so the
-          // iframe's in-page state survives a remote Stop/resume; never a rebuild
+          // navigation/geometry-only change on a tile — act on the existing element so the
+          // iframe's in-page state survives; never a rebuild (tiles are always live now)
           GEO_KEYS.forEach(function (k) { if (r[k] != null) local[k] = r[k]; });
-          local.live = r.live; local.liveUrl = r.liveUrl;
+          local.liveUrl = r.liveUrl;
           place(host, local);
-          var tb = host.querySelector(".gvc-tilebody"), tbtn = host.querySelector(".gvc-livebtn");
-          var fr = tb.querySelector("iframe");
-          if (!r.live) { // remote stop-to-poster (cap eviction)
-            tb.classList.remove("gvc-frozen");
-            liveTiles = liveTiles.filter(function (t) { return t !== r.id; });
-            showThumb(local, tb); if (tbtn) tbtn.textContent = "▶ Live";
-          } else if (fr) {
-            var frz = r.live === "frozen";
-            tb.classList.toggle("gvc-frozen", frz);
-            var bd = tb.querySelector(".live-badge");
-            if (frz && bd) bd.remove();
-            if (!frz && !bd) tb.appendChild(el("div", { class: "live-badge", text: "LIVE" }));
-            if (tbtn) tbtn.textContent = frz ? "▶ Live" : "■ Stop";
+          scaleTileChrome(local, host);
+          var tb = host.querySelector(".gvc-tilebody");
+          var fr = tb && tb.querySelector("iframe");
+          if (fr) {
             fitFrame(tb, local);
             if (r.liveUrl) { // stale frame? follow the shared navigation
               try {
@@ -1658,7 +1684,8 @@
                 if (cl.pathname + cl.search + cl.hash !== r.liveUrl) fr.contentWindow.location.replace(r.liveUrl);
               } catch (e) {}
             }
-          } else mountLive(local, tb, tbtn, r.live === "frozen");
+          }
+          if (isSelected(r.id)) positionSelBar();
         } else {
           var i = board.nodes.findIndex(function (n) { return n.id === r.id; });
           if (i >= 0) board.nodes[i] = r; else board.nodes.push(r);
@@ -1704,6 +1731,9 @@
     if (node.liveUrl !== want) node.liveUrl = want; // diff tick syncs; peers already there absorb it
     if (frame.__mpHooked === doc) return;
     frame.__mpHooked = doc;
+    // once you click into a prototype the iframe owns the keyboard — catch Esc in there
+    // so leaving interact mode works no matter where focus sits
+    doc.addEventListener("keydown", function (e) { if (e.key === "Escape") { try { exitInteract(); } catch (err) {} } });
     function quiet() { return win.__mpQuiet && Date.now() < win.__mpQuiet; }
     doc.addEventListener("click", function (e) {
       if (!e.isTrusted || quiet()) return;
@@ -1953,6 +1983,9 @@
       else if (t.classList.contains("gvc-cell") && node.cells) node.cells[t.dataset.rc] = t.innerText.trim();
     });
     setInterval(mpTick, 120);
+    // keepalive: the room's auto-responder pongs and timestamps us; sockets that stop
+    // pinging (dropped transports) get swept server-side instead of haunting presence
+    setInterval(function () { if (mp && mp.readyState === 1) { try { mp.send("ping"); } catch (e) {} } }, 25000);
     // resolve my display name first so the cursor label is right from the first frame
     fetch("/__me", { headers: { Accept: "application/json" } })
       .then(function (r) { return r.json(); })

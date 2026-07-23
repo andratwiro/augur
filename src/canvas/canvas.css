@@ -59,24 +59,20 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f3f2f0; }
 /* cropped: percent size/offset set inline from node.crop show just the crop window */
 .gvc-image img.cropped { position: absolute; max-width: none; object-fit: fill; }
 
-.gvc-tile { background: #fff; border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .16); overflow: hidden; cursor: grab; display: flex; flex-direction: column; }
-.gvc-tile .gvc-tilebar { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #111827; color: #fff; font-size: 11px; }
-.gvc-tile .gvc-tilebar .nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; outline: none; }
-.gvc-tile .gvc-tilebar button { border: 0; background: rgba(255, 255, 255, .16); color: #fff; border-radius: 5px; font-size: 11px; padding: 2px 8px; cursor: pointer; }
-.gvc-tile .gvc-tilebar button:hover { background: rgba(255, 255, 255, .28); }
-.gvc-tile .gvc-tilebar .gvc-dev { display: flex; align-items: center; gap: 1px; background: rgba(255, 255, 255, .1); border-radius: 6px; padding: 1px; }
-.gvc-tile .gvc-tilebar .gvc-dev button { display: flex; align-items: center; justify-content: center; padding: 2px 5px; background: 0; border-radius: 5px; color: rgba(255, 255, 255, .6); }
-.gvc-tile .gvc-tilebar .gvc-dev button:hover { background: rgba(255, 255, 255, .16); color: #fff; }
-.gvc-tile .gvc-tilebar .gvc-dev button.on { background: rgba(255, 255, 255, .9); color: #111827; }
-.gvc-tile .gvc-tilebody { flex: 1; position: relative; background: #f4f5f7; min-height: 0; overflow: hidden; }
+.gvc-tile { border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, .16); }
+/* the FigJam-style frame title: floats ABOVE the tile, counter-scaled by JS (scaleTileChrome)
+   so it reads at a constant 12px at any zoom; max-width follows the tile's VISUAL width */
+.gvc-tilename { position: absolute; bottom: 100%; left: 0; margin-bottom: 6px; transform-origin: left bottom; font: 600 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; outline: none; padding: 1px 2px; }
+.gvc-tilename:hover { color: #111827; }
+.gvc-tile .gvc-tilebody { position: absolute; inset: 0; background: #f4f5f7; border-radius: 8px; overflow: hidden; }
 .gvc-tile .gvc-tilebody img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; pointer-events: none; }
 /* width/height/transform are set inline by fitFrame() — a fixed desktop viewport scaled to the tile */
 .gvc-tile .gvc-tilebody iframe { display: block; border: 0; background: #fff; transform-origin: top left; }
-/* frozen = "Stop" pressed: keep the exact render (device/scroll/state) but make it inert so the
-   tile drags normally instead of the iframe eating the pointer */
-.gvc-tile .gvc-tilebody.gvc-frozen iframe { pointer-events: none; }
+/* tiles are ALWAYS live but inert: the hit overlay makes the tile select/drag like any node
+   (grab = the drag affordance); enterInteract() hides it while you drive the prototype */
+.gvc-tile .gvc-hit { position: absolute; inset: 0; cursor: grab; }
+.gvc-tile.interacting { box-shadow: 0 0 0 2.5px #2563eb, 0 4px 14px rgba(0, 0, 0, .16); }
 .gvc-tile .gvc-tilebody .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 12px; text-align: center; color: #9ca3af; font-size: 12px; }
-.gvc-tile .gvc-tilebody .live-badge { position: absolute; top: 6px; right: 6px; background: #16a34a; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 99px; pointer-events: none; }
 
 .gvc-arrow { cursor: grab; }
 .gvc-arrow svg { display: block; overflow: visible; }

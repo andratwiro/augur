@@ -48,6 +48,23 @@ export class BoardRoom {
     this.ctx = ctx;
     this.doc = null;      // latest board doc (cache — null after hibernation wake)
     this.wantDoc = false; // a docreq is in flight, don't spam
+    this.sweptAt = 0;
+    // clients ping every 25s; the runtime pongs WITHOUT waking the DO and stamps the
+    // socket, so sweep() can spot zombies (dropped transports whose close never fired —
+    // sends to them "succeed" into the void, so send-failure reaping can't catch them)
+    this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
+  }
+
+  sweep() {
+    const now = Date.now();
+    if (now - this.sweptAt < 10000) return;
+    this.sweptAt = now;
+    for (const ws of this.ctx.getWebSockets()) {
+      const ts = this.ctx.getWebSocketAutoResponseTimestamp(ws);
+      const a = ws.deserializeAttachment();
+      const seen = ts ? ts.getTime() : (a && a.joined) || 0;
+      if (seen && now - seen > 75000) this.reap(ws); // no ping in ~3 intervals = dead
+    }
   }
 
   peers(excludeWs) {
@@ -62,10 +79,14 @@ export class BoardRoom {
 
   broadcast(msg, exceptWs) {
     const raw = typeof msg === "string" ? msg : JSON.stringify(msg);
+    const dead = [];
     for (const ws of this.ctx.getWebSockets()) {
       if (ws === exceptWs) continue;
-      try { ws.send(raw); } catch (e) { /* closing socket — the close handler reaps it */ }
+      try { ws.send(raw); } catch (e) { dead.push(ws); }
     }
+    // a failed send = a zombie (an aborted handshake or vanished client whose close event
+    // never fired) — reap NOW or it haunts the peers list as a phantom presence chip
+    for (const ws of dead) this.reap(ws);
   }
 
   async fetch(request) {
@@ -74,10 +95,11 @@ export class BoardRoom {
     const sid = "p" + Math.random().toString(36).slice(2, 10);
     const color = COLORS[this.ctx.getWebSockets().length % COLORS.length];
 
+    this.sweep();
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ sid, name, color, focus: null });
+    server.serializeAttachment({ sid, name, color, focus: null, joined: Date.now() });
 
     const welcome = { t: "welcome", sid, color, peers: this.peers(server) };
     if (this.doc) welcome.doc = this.doc;
@@ -90,6 +112,7 @@ export class BoardRoom {
 
   webSocketMessage(ws, raw) {
     if (typeof raw !== "string" || raw.length > MAX_MSG) return;
+    this.sweep();
     let msg;
     try { msg = JSON.parse(raw); } catch (e) { return; }
     const a = ws.deserializeAttachment();
