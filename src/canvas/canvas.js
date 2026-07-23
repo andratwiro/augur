@@ -91,12 +91,12 @@
   // them. It only octave-corrects at the extremes (≈9–96px) so it never mushes into moiré or
   // gaps hugely. The dot RADIUS is proportional to the spacing (~FigJam's ratio, clamped), so
   // wider gaps = bigger dots. Returns { step, r } in screen px.
-  var DOT_COLOR = "#c4c4c4";
+  var DOT_COLOR = "#c8c8c8";
   function gridSpec(scale) {
     var s = GRID * scale;
     while (s < 9) s *= 2;
     while (s > 96) s /= 2;
-    var r = s * 0.072; if (r < 0.85) r = 0.85; else if (r > 4) r = 4;
+    var r = s * 0.05; if (r < 0.7) r = 0.7; else if (r > 3) r = 3;
     return { step: s, r: r };
   }
 

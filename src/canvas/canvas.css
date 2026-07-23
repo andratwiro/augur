@@ -4,7 +4,7 @@
    The chrome is a faithful FigJam rebuild: warm paper background + dot grid, the bottom pill
    toolbar with illustrated marker/sticky tools, and the draw/shapes/stamps sub-toolbars. */
 
-html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f4f4; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
 
 #gvc-root {
   position: fixed; inset: 0; overflow: hidden; touch-action: none;
@@ -13,8 +13,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f4f4f4; }
   /* FigJam paper: neutral light grey + a neutral dot grid. gridSpec() sets the live
      background-image (dot radius) + background-size (spacing) per zoom; these are the
      at-rest defaults for scale 1 until the first transform runs. */
-  background-color: #f4f4f4;
-  background-image: radial-gradient(circle, #c4c4c4 1.2px, transparent 1.8px);
+  background-color: #f6f6f6;
+  background-image: radial-gradient(circle, #c8c8c8 0.9px, transparent 1.5px);
   background-size: 16px 16px; background-position: 0 0;
 }
 #gvc-root.panning { cursor: grabbing; }
