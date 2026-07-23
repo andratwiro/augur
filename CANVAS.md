@@ -25,15 +25,19 @@
 > navigation are shared tile state, and clicks/typing/scrolling INSIDE a live prototype iframe
 > mirror to the room (same-origin event replay). See "Multiplayer" below — including the
 > TEST-ISOLATION rule (blocking POST /__board is no longer enough).
-> **2026-07-23: text nodes grow up.** Text boxes are now **width-resizable** — drag the
-> bottom-right handle to set a fixed width and the text **wraps + grows downward** (FigJam
-> fixed-width text; a fresh text node still auto-widths until you resize it). Fixed the
-> handle no-op (text carried no `w`/`h`, so `ow + dx` was `NaN` → `startResize` now falls
-> back to the MEASURED element size). Text also gets the floating toolbar now: **text color ·
-> size (A) · Bold · Italic · Strikethrough · Align (L/C/R)** — all whole-box node styles
-> (`node.bold/italic/strike/align/fontScale/color`), no rich-text model (link/list skipped —
-> they'd need per-run HTML). Shared `applyTextStyle(txt, node)` styles both stickies + text.
-> Next big one: the **collaboration skill** (Claude reads the board to co-work).
+> **2026-07-23: text nodes grow up.** Text boxes **auto-adapt to their content by default**
+> (`width: max-content` — hug the text, grow as you type) and become **fixed-width + wrapping**
+> only once you drag the bottom-right handle (which sets `node.w`). Two bugs behind this: the
+> handle was a no-op (text carried no `w`/`h`, so `ow + dx` = `NaN` → `startResize` now falls
+> back to the MEASURED element size), and plain `width:auto` collapsed text to a one-word-per-line
+> column because `#gvc-world` is **0-wide** (its containing block) — `max-content` is the fix, not
+> `auto`. Text also gets the floating toolbar: **text color · font-size dropdown · Bold · Italic ·
+> Strikethrough · Align (L/C/R)**. The size control is a FigJam-style **dropdown** (`#gvc-fontmenu`,
+> modelled on the lock menu): presets Small/Medium/Large/Extra large/Huge rendered at their own
+> scale + a **custom px input**, storing `node.fontSize` (px number; legacy `fontScale` s/m/l still
+> resolved via `fontPx()`). All whole-box node styles (`bold/italic/strike/align/fontSize/color`),
+> no rich-text model (link/list skipped — they'd need per-run HTML). Shared `applyTextStyle(txt,
+> node)` styles both stickies + text. Next big one: the **collaboration skill**.
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
 > Rob authors prototypes via the terminal, not an in-canvas generator; the canvas is where they
@@ -117,7 +121,7 @@ genuinely harder.
    writes. DOM is plenty at this scale (tens–low-hundreds of nodes); no WebGL. Virtualize only
    if boards get big (not v1).
 2. **Node registry** — pluggable node types, each `render + serialize`. Today: `sticky`, `text`
-   (auto-width until resized, then fixed-width wrapping + node-level color/size/bold/italic/strike/align),
+   (auto-adapt `max-content` until resized, then fixed-width wrapping + node-level color/fontSize/bold/italic/strike/align),
    `image`, `tile` (prototype embed), `arrow` (kinds: straight/elbow/curved/line), `draw`
    (freehand marker/highlighter/washi strokes), `shape` (16 geometries + centered editable
    text), `section` (background container), `table` (plain FigJam grid; blue + strips on
@@ -339,6 +343,10 @@ coupling is enforced HERE (terminal), because a canvas can't write git from the 
   did nothing. Fallback to the host's measured `offsetWidth/Height` when `node.w/h` are null. Text
   is width-only on resize (clear `style.height` → auto) so it wraps + grows like FigJam; only
   `renderText` applying `node.w` when present makes the width survive a re-render/reload.
+- **Auto-adapt text = `max-content`, never `width:auto`.** `#gvc-world` (the node containing block)
+  is `width:0`, so an `auto`-width absolutely-positioned text node shrink-to-fits to its *minimum*
+  content width — a one-word-per-line column, not a hug. `renderText` sets `width: max-content` when
+  `node.w` is null (hug + grow), an explicit px only after a resize drag.
 - **Text formatting is node-level, not rich-text.** `node.text` is plain `innerText`, so styles
   (`bold/italic/strike/align/fontScale/color`) apply to the WHOLE box via `applyTextStyle` — no
   per-run markup. That's why link + list aren't in the text toolbar (they'd need a real rich-text
