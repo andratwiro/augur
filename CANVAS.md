@@ -363,7 +363,10 @@ Do this **unless prompted otherwise**.
   bubbles are per-name (the connect sweep only removes bubbles of agents NOT in the room);
   different parts of the board merge cleanly, same node = last-writer-wins. Clawd orange
   (`#d97757`) is the primary's — give siblings distinct names AND colors, and only ever
-  `kill` your own daemon.
+  `kill` your own daemon. **Naming convention:** if the terminal session has a name (the
+  harness says so in a system-reminder), the daemon's `--name` IS that session name — the
+  pill on the canvas then tells the human which terminal each Clawd is. Fall back to
+  `Clawd` only when the session is unnamed.
 
 **Where everything lives**
 - **Engine** (Augur-owned, shared): `augur/src/canvas/canvas.js` + `canvas.css`, served public at

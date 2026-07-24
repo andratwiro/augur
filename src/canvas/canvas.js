@@ -2134,7 +2134,14 @@
   function mpPlaceCursor(p) {
     if (!p.el || p.cx == null) return;
     var s = worldToScreen(p.cx, p.cy);
-    p.el.style.transform = "translate(" + Math.round(s.x) + "px," + Math.round(s.y) + "px)";
+    var t = "translate(" + Math.round(s.x) + "px," + Math.round(s.y) + "px)";
+    // agents half-live in canvas space: soft-scale the mascot with zoom (clamped) so
+    // zooming out shrinks Clawd a bit too instead of towering over the shrunken board
+    if (p.kind === "agent") {
+      var k = Math.max(0.45, Math.min(1.25, Math.pow(board.view.scale, 0.45)));
+      t += " scale(" + k.toFixed(3) + ")";
+    }
+    p.el.style.transform = t;
   }
   function mpPositionCursors() { for (var sid in mpPeers) mpPlaceCursor(mpPeers[sid]); }
   function mpCursorMsg(m) {
@@ -2181,8 +2188,8 @@
     chips.forEach(function (c) {
       var isAgent = c.kind === "agent";
       var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : "") + (isAgent ? " agent" : ""), title: c.title });
-      // agents: the Clawd in its color on a BLACK chip (orange-on-black pops); humans: initial on their color
-      chip.style.background = isAgent ? "#1a1a1a" : c.color;
+      // agents: the Clawd in its color on a CREAM circle (Rob's pick); humans: initial on their color
+      chip.style.background = isAgent ? "#f6f0e4" : c.color;
       if (isAgent) chip.innerHTML = clawdChipSvg(c.color);
       else chip.textContent = mpInitials(c.name);
       mpPresence.appendChild(chip);

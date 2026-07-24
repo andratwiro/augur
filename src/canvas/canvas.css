@@ -425,11 +425,12 @@ svg.stk { display: block; overflow: visible; }
 /* ---- multiplayer: peer cursors · presence · remote editing focus ---------- */
 /* cursors live OUTSIDE #gvc-ui so ⌘. (hide UI) keeps collaborators visible */
 #gvc-cursors { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 58; }
-.gvc-cursor { position: absolute; left: 0; top: 0; will-change: transform; transition: transform .06s linear, opacity .4s; }
+.gvc-cursor { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; transition: transform .06s linear, opacity .4s; }
 /* the piti/Figma arrow glyph (fill+outline live in the SVG); margin puts the TIP (hotspot
    5,3 of 21px) exactly on the peer's position, like the local cursor hotspot */
 .gvc-cursor svg { display: block; width: 21px; height: 21px; margin: -3px 0 0 -5px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .3)); }
-.gvc-cursor .lbl { position: absolute; left: 13px; top: 17px; padding: 2px 8px 3px; border-radius: 10px 10px 10px 3px; color: #fff; font: 600 11px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); }
+/* the pill's SHARP corner = top-left, pointing back at the cursor tip it hangs from */
+.gvc-cursor .lbl { position: absolute; left: 13px; top: 17px; padding: 2px 8px 3px; border-radius: 3px 10px 10px 10px; color: #fff; font: 600 11px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; box-shadow: 0 1px 4px rgba(0, 0, 0, .22); }
 .gvc-cursor.idle { opacity: 0; }
 /* agent peers wear Clawd (icons8): hotspot at the mascot's TOP-LEFT (points at the target like a
    normal cursor tip); the icon's body starts partway down its 48x48 box, so the margin lifts it
@@ -445,8 +446,8 @@ svg.stk { display: block; overflow: visible; }
 #gvc-presence.hidden { display: none; }
 .gvc-peerchip { width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); }
 .gvc-peerchip.me { order: 1; }
-/* agent (Clawd) chip: blocky + shows a mini Clawd instead of a letter initial */
-.gvc-peerchip.agent { border-radius: 7px; overflow: visible; }
+/* agent (Clawd) chip: a cream CIRCLE with a mini Clawd instead of a letter initial */
+.gvc-peerchip.agent { overflow: visible; }
 .gvc-peerchip.agent svg { display: block; }
 /* a peer is typing in this node — colored ring + name tag (border-color/background set inline) */
 .gvc-remote-focus { position: absolute; inset: -4px; border: 2px solid; border-radius: 7px; pointer-events: none; z-index: 4; }
