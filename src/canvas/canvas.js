@@ -2125,7 +2125,16 @@
   function mpEnsureCursor(p) {
     if (p.el) return p.el;
     p.el = el("div", { class: "gvc-cursor" + (p.kind === "agent" ? " agent" : ""), html: mpGlyph(p) + '<span class="lbl"></span>' });
-    if (p.kind === "agent") p.shownPose = agentPose(p);
+    if (p.kind === "agent") {
+      p.shownPose = agentPose(p);
+      // poke: clicking a Clawd makes it hop (listener on the container — the svg gets
+      // swapped on pose changes; class removal + reflow restarts the animation)
+      p.el.addEventListener("click", function () {
+        p.el.classList.remove("poked"); void p.el.offsetWidth;
+        p.el.classList.add("poked");
+        setTimeout(function () { p.el.classList.remove("poked"); }, 750);
+      });
+    }
     var lbl = p.el.querySelector(".lbl");
     lbl.textContent = p.name; lbl.style.background = p.color;
     mpCursorLayer.appendChild(p.el);

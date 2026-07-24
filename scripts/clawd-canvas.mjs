@@ -354,23 +354,28 @@ if (isMain) {
     // explicit pose (thinking/sparkles/sleeping/…) means intentional state — hold it.
     const rand = (a, b) => a + Math.random() * (b - a);
     const chillStep = async () => {
-      if (Math.random() < 0.6) { // shuffle on the spot
-        await c.moveCursorTo(c._cur.x + rand(-45, 45), c._cur.y + rand(-35, 35), { steps: 8, stepMs: 60 });
+      if (Math.random() < 0.65) { // mostly: an unhurried shuffle on the spot
+        await c.moveCursorTo(c._cur.x + rand(-30, 30), c._cur.y + rand(-24, 24), { steps: 10, stepMs: 90 });
         return;
       }
+      // amble: pick a point of interest (near the human, else near content), then take ONE
+      // SHORT slow hop toward it — Clawd drifts over several ticks, never marches across
+      // the board in a single stroll
       const human = Object.values(c.peers).find((p) => p.kind !== 'agent' && p.cx != null);
-      let tx, ty;
-      if (human) { // keep the human company, never sit on their cursor
-        do { tx = human.cx + rand(-520, 520); ty = human.cy + rand(-360, 360); }
-        while (Math.hypot(tx - human.cx, ty - human.cy) < 140);
-      } else { // or wander the content
+      let ax, ay;
+      if (human) { ax = human.cx + rand(-320, 320); ay = human.cy + rand(-240, 240); }
+      else {
         const ns = c.doc.nodes.filter((n) => Number.isFinite(n.x) && Number.isFinite(n.w));
         const n = ns.length ? ns[Math.floor(Math.random() * ns.length)] : null;
-        tx = n ? n.x + rand(-60, n.w + 60) : 300 + rand(-250, 250);
-        ty = n ? n.y + rand(-60, (n.h || 120) + 60) : 200 + rand(-180, 180);
+        ax = n ? n.x + rand(0, n.w) : c._cur.x + rand(-260, 260);
+        ay = n ? n.y + rand(0, n.h || 120) : c._cur.y + rand(-180, 180);
       }
-      await c.moveCursorTo(tx, ty, { steps: 30, stepMs: 70 });
-      if (Math.random() < 0.15) { c.pose('happy'); await sleep(1400); c.pose('idle'); }
+      const dx = ax - c._cur.x, dy = ay - c._cur.y, dist = Math.hypot(dx, dy) || 1;
+      const hop = Math.min(dist, rand(90, 220)); // short trips only
+      const tx = c._cur.x + (dx / dist) * hop, ty = c._cur.y + (dy / dist) * hop;
+      if (human && Math.hypot(tx - human.cx, ty - human.cy) < 140) return; // personal space
+      await c.moveCursorTo(tx, ty, { steps: Math.round(hop / 9) + 8, stepMs: 120 });
+      if (Math.random() < 0.12) { c.pose('happy'); await sleep(1400); c.pose('idle'); }
     };
     setInterval(() => {
       if (!chillOn || pending > 0 || Date.now() - lastCmdAt < 12000) return;
