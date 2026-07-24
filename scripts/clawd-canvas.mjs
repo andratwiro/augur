@@ -26,6 +26,10 @@
 //   node clawd-canvas.mjs probe  <boardPath>           # connect, print doc + peers, leave
 //   node clawd-canvas.mjs demo   <boardPath>           # walk in, drop a sticky, wave, leave
 //   node clawd-canvas.mjs chill  <boardPath> [x y]     # park sleeping, stay until killed
+//   All modes take [--name N --color '#hex'] — the agent's identity. Multiple agents can
+//   co-work the same board simultaneously: each runs its OWN daemon (own name, color, and
+//   command file); the engine renders each as its own tinted Clawd, per-node LWW merges.
+//
 //   node clawd-canvas.mjs daemon <boardPath> <cmdFile> # persistent puppet: tail a JSONL
 //     command file and execute in order — one connection an agent can command across turns.
 //     Commands (one JSON object per line, appended):
@@ -49,6 +53,7 @@ const SITE = 'https://govocal-prototypes.pages.dev';
 const CLAWD_ORANGE = '#d97757'; // Claude clay — the primary agent's Clawd hue
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
 export class ClawdCanvas {
   constructor({ boardPath, name = 'Clawd', color = CLAWD_ORANGE, site = SITE, rtOrigin = RT_ORIGIN } = {}) {
@@ -104,8 +109,10 @@ export class ClawdCanvas {
       }
       this.ready = true;
       // sweep bubbles orphaned by a crashed run — a human's full-state save can have
-      // persisted one to KV, so delete durably if any are found
-      const orphans = this.doc.nodes.filter((n) => String(n.id).startsWith('clawd-bubble'));
+      // persisted one to KV, so delete durably. Multi-agent aware: never pop a bubble
+      // whose owner is currently in the room (each agent's bubble id carries its name).
+      const present = new Set(Object.values(this.peers).filter((p) => p.kind === 'agent').map((p) => 'clawd-bubble-' + slug(p.name)));
+      const orphans = this.doc.nodes.filter((n) => String(n.id).startsWith('clawd-bubble') && !present.has(n.id));
       if (orphans.length) { for (const n of orphans) this.del(n.id); }
       if (this._onready) { this._onready(this); this._onready = null; }
     } else if (m.t === 'join') {
@@ -187,10 +194,10 @@ export class ClawdCanvas {
   // Stream-only — but a HUMAN's full-state save can persist it, so always unsay() when
   // done (the welcome sweep cleans up after crashes).
   say(text) { this._bubbleText = text; this._placeBubble(); }
-  unsay() { if (this._bubbleText) { this._bubbleText = null; this.streamDel('clawd-bubble-' + this.name.toLowerCase()); } }
+  unsay() { if (this._bubbleText) { this._bubbleText = null; this.streamDel('clawd-bubble-' + slug(this.name)); } }
   _placeBubble() {
     this.streamUpsert({
-      id: 'clawd-bubble-' + this.name.toLowerCase(), type: 'sticky',
+      id: 'clawd-bubble-' + slug(this.name), type: 'sticky',
       x: Math.round(this._cur.x + 30), y: Math.round(this._cur.y - 110),
       w: 280, h: 84, text: this._bubbleText, color: '#f4c7b3',
       name: this.name + ' says', fontScale: 's', author: '',
@@ -239,9 +246,12 @@ export class ClawdCanvas {
 // ---- CLI --------------------------------------------------------------------
 const isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
-  const [mode, boardPath] = process.argv.slice(2);
-  if (!mode || !boardPath) { console.error('usage: node clawd-canvas.mjs <probe|demo|chill|daemon> <boardPath> [args]'); process.exit(1); }
-  const c = new ClawdCanvas({ boardPath });
+  const argv = process.argv.slice(2);
+  const flag = (n) => { const i = argv.indexOf('--' + n); return i >= 0 ? argv.splice(i, 2)[1] : undefined; };
+  const name = flag('name'), color = flag('color'); // identity: one per agent, so several Clawds can co-work
+  const [mode, boardPath] = argv;
+  if (!mode || !boardPath) { console.error("usage: node clawd-canvas.mjs <probe|demo|chill|daemon> <boardPath> [args] [--name N --color '#hex']"); process.exit(1); }
+  const c = new ClawdCanvas({ boardPath, ...(name ? { name } : {}), ...(color ? { color } : {}) });
   await c.connect();
   console.log(`joined ${boardPath} as ${c.name} (${c.color}), sid=${c.sid}`);
   console.log(`doc: "${c.doc.name}" · ${c.doc.nodes.length} nodes · peers: ${Object.values(c.peers).map((p) => p.name + (p.kind === 'agent' ? '(agent)' : '')).join(', ') || 'none'}`);
@@ -262,7 +272,7 @@ if (isMain) {
     c.close(); await sleep(200); process.exit(0);
   } else if (mode === 'chill' || mode === 'sleep') {
     // park Clawd in a corner, asleep, and STAY connected until this process is killed
-    const cx = Number(process.argv[4]) || 300, cy = Number(process.argv[5]) || 200;
+    const cx = Number(argv[2]) || 300, cy = Number(argv[3]) || 200;
     await c.moveCursorTo(cx, cy, { steps: 22, stepMs: 45 });
     c.pose('sleeping');
     console.log(`chilling at (${cx},${cy}), pose=sleeping, pid=${process.pid} — staying on the board until killed`);
@@ -271,7 +281,7 @@ if (isMain) {
     // persistent puppet: tail a JSONL command file, execute in order, mirror the doc
     const { readFileSync, writeFileSync, existsSync, watchFile } = await import('node:fs');
     const { dirname, join } = await import('node:path');
-    const cmdFile = process.argv[4];
+    const cmdFile = argv[2];
     if (!cmdFile) { console.error('daemon needs a command file path'); process.exit(1); }
     const dumpFile = join(dirname(cmdFile), 'clawd-board.json');
     if (!existsSync(cmdFile)) writeFileSync(cmdFile, '');

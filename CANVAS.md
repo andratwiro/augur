@@ -356,8 +356,14 @@ Do this **unless prompted otherwise**.
   only when nobody has the board open.
 - **⚠️ Test on a throwaway `boardPath`** — opening a board page (or connecting a client) joins its
   REAL room and broadcasts to real visitors. See the isolation rule in the Multiplayer section.
-- Multi-agent: each agent joins with its own pinned color (Clawd orange is the primary); different
-  parts of the board merge cleanly, same node = last-writer-wins.
+- **Multi-agent (several Clawds at once):** each terminal session / subagent joins with its
+  OWN identity — `node clawd-canvas.mjs daemon <boardPath> <cmdFile> --name Scout --color
+  '#4e8fd9'` — its own daemon, name, color, and command file (use the session's scratchpad so
+  they never collide). The engine renders each as its own tinted Clawd with a name pill;
+  bubbles are per-name (the connect sweep only removes bubbles of agents NOT in the room);
+  different parts of the board merge cleanly, same node = last-writer-wins. Clawd orange
+  (`#d97757`) is the primary's — give siblings distinct names AND colors, and only ever
+  `kill` your own daemon.
 
 **Where everything lives**
 - **Engine** (Augur-owned, shared): `augur/src/canvas/canvas.js` + `canvas.css`, served public at
