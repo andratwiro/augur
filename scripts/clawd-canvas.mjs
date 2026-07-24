@@ -43,6 +43,9 @@
 //         add "ephemeral":true for stream-only)
 //       {"cmd":"rename","name":".."} {"cmd":"save"} {"cmd":"quit"}
 //       {"cmd":"chill","v":false}                        disable the ambient chill loop
+//       {"cmd":"identity","name":"F5 Clawd"}             rename the AGENT live (quick
+//         reconnect; color re-derives from the name unless "color" is given). Send this
+//         when the terminal session gets renamed — identity should track the session.
 //     It also mirrors the live doc to <cmdFile dir>/clawd-board.json on every op, so the
 //     agent always reads the human's latest state without reconnecting. While connected and
 //     idle (no commands ~12s, pose plain idle) Clawd CHILLS instead of freezing: fidgets,
@@ -55,12 +58,21 @@ const CLAWD_ORANGE = '#d97757'; // Claude clay — the primary agent's Clawd hue
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
+// identity color derives from the name (stable hash → curated palette), so a terminal's
+// Clawd keeps its color across restarts with no coordination. Plain "Clawd" = the orange.
+const PALETTE = ['#4e8fd9', '#8a63c9', '#2e9e6b', '#d9569b', '#c8912e', '#3aa6b9', '#6a7dd9', '#b5533c'];
+export const colorFor = (name) => {
+  if (!name || slug(name) === 'clawd') return CLAWD_ORANGE;
+  let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return PALETTE[h % PALETTE.length];
+};
+
 export class ClawdCanvas {
-  constructor({ boardPath, name = 'Clawd', color = CLAWD_ORANGE, site = SITE, rtOrigin = RT_ORIGIN } = {}) {
+  constructor({ boardPath, name = 'Clawd', color, site = SITE, rtOrigin = RT_ORIGIN } = {}) {
     if (!boardPath) throw new Error('boardPath required');
     this.boardPath = boardPath;
     this.name = name;
-    this.color = color;
+    this.color = color || colorFor(name);
     this.site = site;
     this.rtOrigin = rtOrigin;
     this.doc = { v: 1, name: 'Untitled canvas', nodes: [] };
@@ -305,7 +317,20 @@ if (isMain) {
       else if (m.cmd === 'stub') console.log('stub:', c.stub(m));
       else if (m.cmd === 'upsert') (m.ephemeral ? c.streamUpsert(m.node) : c.upsert(m.node));
       else if (m.cmd === 'del') (m.ephemeral ? c.streamDel(m.id) : c.del(m.id));
-      else if (m.cmd === 'rename') c.rename(m.name);
+      else if (m.cmd === 'rename') c.rename(m.name); // renames the BOARD, not the agent!
+      else if (m.cmd === 'identity') { // rename the AGENT (e.g. the session was renamed):
+        // the room stamps name/color at connect, so identity changes ride a quick reconnect
+        const bubble = c._bubbleText, pose = c._pose, cur = { ...c._cur };
+        c.unsay(); c.close();
+        c.name = m.name || c.name;
+        c.color = m.color || colorFor(c.name);
+        await sleep(400);
+        await c.connect();
+        c._ws.addEventListener('message', dump);
+        c.cursor(cur.x, cur.y); c.pose(pose);
+        if (bubble) c.say(bubble);
+        console.log(`identity → ${c.name} (${c.color})`);
+      }
       else if (m.cmd === 'save') await c.save();
       else if (m.cmd === 'quit') { c.unsay(); c.close(); setTimeout(() => process.exit(0), 300); }
       else console.log('unknown cmd:', JSON.stringify(m));

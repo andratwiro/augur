@@ -363,10 +363,16 @@ Do this **unless prompted otherwise**.
   bubbles are per-name (the connect sweep only removes bubbles of agents NOT in the room);
   different parts of the board merge cleanly, same node = last-writer-wins. Clawd orange
   (`#d97757`) is the primary's — give siblings distinct names AND colors, and only ever
-  `kill` your own daemon. **Naming convention:** if the terminal session has a name (the
-  harness says so in a system-reminder), the daemon's `--name` IS that session name — the
-  pill on the canvas then tells the human which terminal each Clawd is. Fall back to
-  `Clawd` only when the session is unnamed.
+  `kill` your own daemon — never a blanket `pkill` (that murders sibling sessions' Clawds).
+  **Naming convention:** if the terminal session has a name (the harness says so in a
+  system-reminder), the daemon's `--name` IS that session name — the pill on the canvas then
+  tells the human which terminal each Clawd is; fall back to `Clawd` only when unnamed.
+  **Color is automatic:** it derives from the name (stable hash → palette; plain "Clawd" =
+  the orange) and the presence chip wears the same color, so cursor and chip always match.
+  When the session gets renamed mid-flight, send `{"cmd":"identity","name":"<new name>"}` —
+  the daemon reconnects with the new name + derived color, keeping pose and bubble.
+  ⚠️ `rename` renames the **BOARD**, not the agent — a sibling once titled the whole board
+  after itself; identity changes go through `identity`.
 
 **Where everything lives**
 - **Engine** (Augur-owned, shared): `augur/src/canvas/canvas.js` + `canvas.css`, served public at

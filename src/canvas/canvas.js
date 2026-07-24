@@ -2134,14 +2134,13 @@
   function mpPlaceCursor(p) {
     if (!p.el || p.cx == null) return;
     var s = worldToScreen(p.cx, p.cy);
-    var t = "translate(" + Math.round(s.x) + "px," + Math.round(s.y) + "px)";
-    // agents half-live in canvas space: soft-scale the mascot with zoom (clamped) so
-    // zooming out shrinks Clawd a bit too instead of towering over the shrunken board
+    p.el.style.transform = "translate(" + Math.round(s.x) + "px," + Math.round(s.y) + "px)";
+    // the MASCOT soft-scales with zoom (clamped); the name pill stays constant-size like a
+    // human cursor's label — the CSS var drives only the svg (and the pill's anchor offset)
     if (p.kind === "agent") {
       var k = Math.max(0.45, Math.min(1.25, Math.pow(board.view.scale, 0.45)));
-      t += " scale(" + k.toFixed(3) + ")";
+      p.el.style.setProperty("--clawd-k", k.toFixed(3));
     }
-    p.el.style.transform = t;
   }
   function mpPositionCursors() { for (var sid in mpPeers) mpPlaceCursor(mpPeers[sid]); }
   function mpCursorMsg(m) {
@@ -2188,9 +2187,10 @@
     chips.forEach(function (c) {
       var isAgent = c.kind === "agent";
       var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : "") + (isAgent ? " agent" : ""), title: c.title });
-      // agents: the Clawd in its color on a CREAM circle (Rob's pick); humans: initial on their color
-      chip.style.background = isAgent ? "#f6f0e4" : c.color;
-      if (isAgent) chip.innerHTML = clawdChipSvg(c.color);
+      // every chip wears its owner's identity color; agents get a cream mini Clawd on it,
+      // humans their initial — so the chip color always matches the cursor on the board
+      chip.style.background = c.color;
+      if (isAgent) chip.innerHTML = clawdChipSvg("#f6f0e4");
       else chip.textContent = mpInitials(c.name);
       mpPresence.appendChild(chip);
     });

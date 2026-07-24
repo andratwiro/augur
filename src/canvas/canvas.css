@@ -425,7 +425,7 @@ svg.stk { display: block; overflow: visible; }
 /* ---- multiplayer: peer cursors · presence · remote editing focus ---------- */
 /* cursors live OUTSIDE #gvc-ui so ⌘. (hide UI) keeps collaborators visible */
 #gvc-cursors { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 58; }
-.gvc-cursor { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; transition: transform .06s linear, opacity .4s; }
+.gvc-cursor { position: absolute; left: 0; top: 0; will-change: transform; transition: transform .06s linear, opacity .4s; }
 /* the piti/Figma arrow glyph (fill+outline live in the SVG); margin puts the TIP (hotspot
    5,3 of 21px) exactly on the peer's position, like the local cursor hotspot */
 .gvc-cursor svg { display: block; width: 21px; height: 21px; margin: -3px 0 0 -5px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .3)); }
@@ -435,12 +435,15 @@ svg.stk { display: block; overflow: visible; }
 /* agent peers wear Clawd (icons8): hotspot at the mascot's TOP-LEFT (points at the target like a
    normal cursor tip); the icon's body starts partway down its 48x48 box, so the margin lifts it
    so the body's top-left sits on the point. Name pill trails to the bottom-right. */
-.gvc-cursor.agent svg { width: 40px; height: 40px; margin: -15px 0 0 -5px; }
-.gvc-cursor.agent .lbl { left: 30px; top: 24px; }
+/* --clawd-k (set per-frame from zoom) scales ONLY the mascot; origin = the hotspot point
+   (5,15 inside the svg box after margins) so the tip stays planted while Clawd shrinks */
+.gvc-cursor.agent svg { width: 40px; height: 40px; margin: -15px 0 0 -5px; transform: scale(var(--clawd-k, 1)); transform-origin: 5px 15px; }
+/* the pill keeps constant SIZE but its anchor tracks the scaled mascot's bottom-right */
+.gvc-cursor.agent .lbl { left: calc(30px * var(--clawd-k, 1)); top: calc(24px * var(--clawd-k, 1)); }
 /* a parked/sleeping agent stays FULLY visible (never fades like an idle human cursor) */
 .gvc-cursor.agent.idle { opacity: 1; }
 /* walking: a little vertical bob while the agent's cursor is moving */
-@keyframes gvc-clawd-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+@keyframes gvc-clawd-bob { 0%, 100% { transform: scale(var(--clawd-k, 1)) translateY(0); } 50% { transform: scale(var(--clawd-k, 1)) translateY(-2.5px); } }
 .gvc-cursor.agent.walking svg { animation: gvc-clawd-bob .32s ease-in-out infinite; }
 #gvc-presence { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 5px 8px 5px 12px; }
 #gvc-presence.hidden { display: none; }
