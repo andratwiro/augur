@@ -2049,12 +2049,21 @@
       '<rect width="7.5" height="6" x="40.5" y="33" fill="' + color + '"/>';
   }
   function clawdEye(x, fill) { return '<rect width="3" height="6" x="' + x + '" y="24" fill="' + fill + '"/>'; }
+  // pixel heart (5x4 cells, 1.5px cell) for the "Clawd In Love" eyes — icons8-style chunky
+  function clawdHeart(x, y) {
+    var c = 1.5, f = ' fill="#e03131"/>';
+    return '<rect width="3" height="1.5" x="' + x + '" y="' + y + '"' + f +
+      '<rect width="3" height="1.5" x="' + (x + 3 * c) + '" y="' + y + '"' + f +
+      '<rect width="7.5" height="1.5" x="' + x + '" y="' + (y + c) + '"' + f +
+      '<rect width="4.5" height="1.5" x="' + (x + c) + '" y="' + (y + 2 * c) + '"' + f +
+      '<rect width="1.5" height="1.5" x="' + (x + 2 * c) + '" y="' + (y + 3 * c) + '"' + f;
+  }
   function clawdEyesMarkup(pose) {
     if (pose === "sleeping") return '<rect width="4" height="2" x="11.5" y="28" fill="' + CLAWD_K + '"/><rect width="4" height="2" x="32.5" y="28" fill="' + CLAWD_K + '"/>';
     if (pose === "lookLeft") return clawdEye(10, CLAWD_K) + clawdEye(31, CLAWD_K);
     if (pose === "lookRight") return clawdEye(14, CLAWD_K) + clawdEye(35, CLAWD_K);
     if (pose === "happy") return '<rect width="4" height="2" x="11.5" y="25" fill="' + CLAWD_K + '"/><rect width="4" height="2" x="32.5" y="25" fill="' + CLAWD_K + '"/>';
-    if (pose === "love") return clawdEye(12, "#e03131") + clawdEye(33, "#e03131");
+    if (pose === "love") return clawdHeart(9.75, 24) + clawdHeart(30.75, 24); // heart eyes
     if (pose === "sunglasses") return '<rect width="27" height="4" x="9" y="24" fill="' + CLAWD_K + '"/>' + clawdEye(12, CLAWD_K) + clawdEye(33, CLAWD_K);
     return clawdEye(12, CLAWD_K) + clawdEye(33, CLAWD_K); // idle / sparkles / thinking
   }
@@ -2084,6 +2093,7 @@
   // an explicit emotion the agent broadcast > sleeping (quiet/parked) > idle.
   function agentPose(p) {
     var now = Date.now();
+    if (p.petLove) return "love"; // being petted (hovered) beats everything — heart eyes
     if (p.walkUntil && now < p.walkUntil) return p.dir === "L" ? "lookLeft" : "lookRight";
     if (p.focus) return "sparkles";
     if (p.pose && p.pose !== "idle" && p.pose !== "sleeping") return p.pose;
@@ -2127,6 +2137,11 @@
     p.el = el("div", { class: "gvc-cursor" + (p.kind === "agent" ? " agent" : ""), html: mpGlyph(p) + '<span class="lbl"></span>' });
     if (p.kind === "agent") {
       p.shownPose = agentPose(p);
+      // pet: hovering flips the mascot to the "In Love" state (heart eyes) — the pose
+      // tick picks petLove up and swaps the glyph; pointerover/out survive glyph swaps
+      // because they live on the container
+      p.el.addEventListener("pointerover", function () { p.petLove = true; });
+      p.el.addEventListener("pointerout", function () { p.petLove = false; });
       // poke: clicking a Clawd makes it hop (listener on the container — the svg gets
       // swapped on pose changes; class removal + reflow restarts the animation)
       p.el.addEventListener("click", function () {
