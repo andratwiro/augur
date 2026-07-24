@@ -2049,21 +2049,20 @@
       '<rect width="7.5" height="6" x="40.5" y="33" fill="' + color + '"/>';
   }
   function clawdEye(x, fill) { return '<rect width="3" height="6" x="' + x + '" y="24" fill="' + fill + '"/>'; }
-  // pixel heart (5x4 cells, 1.5px cell) for the "Clawd In Love" eyes — icons8-style chunky
-  function clawdHeart(x, y) {
-    var c = 1.5, f = ' fill="#e03131"/>';
-    return '<rect width="3" height="1.5" x="' + x + '" y="' + y + '"' + f +
-      '<rect width="3" height="1.5" x="' + (x + 3 * c) + '" y="' + y + '"' + f +
-      '<rect width="7.5" height="1.5" x="' + x + '" y="' + (y + c) + '"' + f +
-      '<rect width="4.5" height="1.5" x="' + (x + c) + '" y="' + (y + 2 * c) + '"' + f +
-      '<rect width="1.5" height="1.5" x="' + (x + 2 * c) + '" y="' + (y + 3 * c) + '"' + f;
+  // pixel heart (5x4 cells, cell size c) — the "Clawd In Love" accessory shape
+  function clawdHeart(x, y, c) {
+    var f = ' fill="#e03131"/>';
+    return '<rect width="' + 2 * c + '" height="' + c + '" x="' + x + '" y="' + y + '"' + f +
+      '<rect width="' + 2 * c + '" height="' + c + '" x="' + (x + 3 * c) + '" y="' + y + '"' + f +
+      '<rect width="' + 5 * c + '" height="' + c + '" x="' + x + '" y="' + (y + c) + '"' + f +
+      '<rect width="' + 3 * c + '" height="' + c + '" x="' + (x + c) + '" y="' + (y + 2 * c) + '"' + f +
+      '<rect width="' + c + '" height="' + c + '" x="' + (x + 2 * c) + '" y="' + (y + 3 * c) + '"' + f;
   }
   function clawdEyesMarkup(pose) {
     if (pose === "sleeping") return '<rect width="4" height="2" x="11.5" y="28" fill="' + CLAWD_K + '"/><rect width="4" height="2" x="32.5" y="28" fill="' + CLAWD_K + '"/>';
     if (pose === "lookLeft") return clawdEye(10, CLAWD_K) + clawdEye(31, CLAWD_K);
     if (pose === "lookRight") return clawdEye(14, CLAWD_K) + clawdEye(35, CLAWD_K);
     if (pose === "happy") return '<rect width="4" height="2" x="11.5" y="25" fill="' + CLAWD_K + '"/><rect width="4" height="2" x="32.5" y="25" fill="' + CLAWD_K + '"/>';
-    if (pose === "love") return clawdHeart(9.75, 24) + clawdHeart(30.75, 24); // heart eyes
     if (pose === "sunglasses") return '<rect width="27" height="4" x="9" y="24" fill="' + CLAWD_K + '"/>' + clawdEye(12, CLAWD_K) + clawdEye(33, CLAWD_K);
     return clawdEye(12, CLAWD_K) + clawdEye(33, CLAWD_K); // idle / sparkles / thinking
   }
@@ -2072,6 +2071,12 @@
   function clawdAcc(pose) {
     if (pose === "sparkles") return CLAWD_SPARKLES;
     if (pose === "thinking") return '<rect width="2.5" height="2.5" x="43" y="13" fill="' + CLAWD_K + '"/><rect width="2" height="2" x="45.5" y="8" fill="' + CLAWD_K + '"/>';
+    // "Clawd In Love" (icons8): eyes stay NORMAL — a big pixel heart floats above the head
+    // top-right, with a few stray heart-pixels drifting off it
+    if (pose === "love") return clawdHeart(31, 2, 3) +
+      '<rect width="3" height="3" x="25" y="4" fill="#e03131"/>' +
+      '<rect width="2" height="2" x="28" y="10" fill="#e03131"/>' +
+      '<rect width="2" height="2" x="21" y="1" fill="#e03131"/>';
     return "";
   }
   var clawdSeq = 0;
