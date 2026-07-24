@@ -32,6 +32,8 @@
 //
 //   node clawd-canvas.mjs daemon <boardPath> <cmdFile> # persistent puppet: tail a JSONL
 //     command file and execute in order — one connection an agent can command across turns.
+//     Launch DETACHED (nohup … & echo $! > clawd-daemon.pid; disown) so harness task
+//     cleanups can't reap it; dismiss explicitly with {"cmd":"quit"} or the pidfile.
 //     Commands (one JSON object per line, appended):
 //       {"cmd":"goto","x":2400,"y":300}                  glide there (walking pose derives)
 //       {"cmd":"pose","v":"thinking|sparkles|happy|love|sunglasses|sleeping|idle"}

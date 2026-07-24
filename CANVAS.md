@@ -334,11 +334,20 @@ Do this **unless prompted otherwise**.
      the grammar, emotions the punctuation.
   4. `focus(id)` whatever node you're editing; `focus(null)` + `unsay()` when the burst ends.
 - **The daemon (how an agent stays commandable across turns):** `node clawd-canvas.mjs daemon
-  <boardPath> <cmdFile>` as a **background process** — one connection, tails `<cmdFile>`
-  (JSONL, see the header of the script for the command set), executes in order, and mirrors
-  the live doc to `clawd-board.json` next to the command file. Reacting visually then costs
-  one `echo '{"cmd":"pose","v":"thinking"}' >> <cmdFile>` — do that FIRST, then work.
-  `kill <pid>` before starting a fresh daemon (two connections = two Clawd cursors).
+  <boardPath> <cmdFile>` — one connection, tails `<cmdFile>` (JSONL, see the header of the
+  script for the command set), executes in order, and mirrors the live doc to
+  `clawd-board.json` next to the command file. Reacting visually then costs one
+  `echo '{"cmd":"pose","v":"thinking"}' >> <cmdFile>` — do that FIRST, then work.
+  **Launch it DETACHED, not as a harness-tracked background task** (task-list cleanups kept
+  reaping tracked daemons mid-session and Clawd vanished from the board):
+  ```sh
+  nohup node scripts/clawd-canvas.mjs daemon <boardPath> <cmdFile> --name '<session name>' \
+    > <scratchpad>/clawd-daemon.log 2>&1 & echo $! > <scratchpad>/clawd-daemon.pid; disown
+  ```
+  A detached daemon does NOT die with the session — dismiss it explicitly when co-work ends
+  (`{"cmd":"quit"}` to the cmd file, or `kill $(cat clawd-daemon.pid)`). Check the pidfile
+  before launching (a live one means YOUR previous daemon is still up — reuse or quit it;
+  two connections = two Clawd cursors). Never touch other sessions' daemons.
 - **Ambient chill (daemon default):** connected-but-idle ≠ frozen. With no commands for ~12s
   and the pose plain `idle`, Clawd hangs out — fidgets in place, strolls near the human's
   cursor or around the content, the odd happy blip — so the presence reads as alive. Any
