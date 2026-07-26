@@ -168,6 +168,13 @@ svg.stk { display: block; overflow: visible; }
 .gvc-croph.w { left: 0; top: 50%; margin-top: -12px; width: 7px; height: 24px; cursor: ew-resize; }
 .gvc-croph.e { right: 0; top: 50%; margin-top: -12px; width: 7px; height: 24px; cursor: ew-resize; }
 
+/* alignment guides: screen-space 1px lines drawn while a drag/resize is snapped to a
+   neighbour's edge or centre (Figma's red) */
+#gvc-guides { position: fixed; inset: 0; pointer-events: none; z-index: 55; }
+.gvc-guide { position: absolute; background: #f24822; }
+.gvc-guide.x { width: 1px; }
+.gvc-guide.y { height: 1px; }
+
 /* ---- fixed UI layer ------------------------------------------------------- */
 #gvc-ui { position: fixed; inset: 0; pointer-events: none; z-index: 60; transition: opacity .16s ease; }
 #gvc-ui.hidden { opacity: 0; pointer-events: none !important; }

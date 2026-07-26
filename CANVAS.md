@@ -51,6 +51,14 @@
 > (3) **Boxes auto-grow to fit their text** — a sticky/shape never clips (`autoGrow`, grow-only).
 > (4) **Shift-drag locks the move to one axis** (Figma), and a shift-CLICK still toggles the
 > selection — resolved on pointer-UP by whether the pointer actually moved.
+> Same day, round 2: (5) **type the formatting** — `- ` / `* ` / `1. ` at the head of a line
+> becomes a list, `**bold**` / `_italic_` / `~~strike~~` convert as you close them, and
+> ⌘B/⌘I/⌘U/⌘⇧S/⌘⇧7/⌘⇧8 are handled by the engine (not left to the browser) so every browser
+> behaves the same. (6) **Auto height SHRINKS too** — a box hugs its text until you drag a
+> handle, which pins the height (`node.hFixed`); pinned boxes still grow rather than clip.
+> (7) **Smart snapping + alignment guides** — every node radiates six alignment lines
+> (left/centre/right, top/middle/bottom); a drag or resize latches onto the nearest within 6
+> SCREEN px and draws Figma's red guide across both boxes. Hold ⌘/Ctrl to drag past them.
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
 > Rob authors prototypes via the terminal, not an in-canvas generator; the canvas is where they
@@ -483,10 +491,25 @@ Do this **unless prompted otherwise**.
     blurs the editable and the selection is gone before the command runs.
   - `applyNodeStyle` patches the live `.gvc-txt` in place (never a re-render) so an active edit
     isn't torn down.
-- **Stickies/shapes grow, never clip** (`autoGrow`): height is bumped to the content on render,
-  on input and on blur. Grow-only, so it's idempotent and can't fight a manual resize. A shape's
-  text is inset 12% a side (hence `/0.76`) and its `.gvc-txt` needs `flex-direction: column` —
-  as a flex ROW, rich-text line blocks would lay out side by side.
+- **Stickies/shapes size themselves to their text** (`autoFit(node, allowShrink)`): grow so they
+  never clip, and SHRINK back on edit while the height is still automatic. `allowShrink` is false
+  on render, so opening an old board never reflows it; dragging a resize handle sets
+  `node.hFixed` and the box stops hugging. A shape's text is inset 12% a side (hence `/0.76`) and
+  its height is capped by those insets, so `scrollHeight` can't see that the content got shorter
+  — measure the line blocks (`contentH`). Its `.gvc-txt` also needs `flex-direction: column`; as
+  a flex ROW, rich-text line blocks lay out side by side.
+- **Input rules can't assume the line model exists yet.** A brand-new sticky's text is a bare
+  text node — no `<div>` line block until something re-renders it — so the "- " rule matched
+  nothing on the most common case of all. `autoFormat` falls back to the editable itself as the
+  line and anchors on the last `"\n"`, and eats exactly the marker it matched.
+- **After an inline conversion, toggle the style OFF again.** `execCommand("bold")` on a range
+  leaves the PENDING typing style on, so everything typed after `**bold**` stayed bold. Collapse
+  to the end and run the same command a second time (invisible — it only flips the pending state).
+- **Snapping is measured in SCREEN pixels** (`SNAP_PX / view.scale`), or it feels sticky zoomed
+  out and unreachable zoomed in. Candidate rects are collected ONCE per drag (`armSnap`), never
+  per pointermove, and a multi-selection snaps as one union box. Shift (axis lock) beats snapping
+  on the pinned axis; ⌘/Ctrl bypasses it entirely — which is also what a test must hold down when
+  it asserts exact pixel deltas.
 - **Rename** (tile bar name, image `.gvc-name` label): **manual double-tap**, not native `dblclick`
   — the root's pointer capture eats `dblclick`; also `stopPropagation` so a tap doesn't start a drag.
 - Insert-picker cards live in a **flex-column → grid**: without `flex:1; min-height:0` on the grid

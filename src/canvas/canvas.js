@@ -296,7 +296,7 @@
     if (node.type === "section") world.insertBefore(host, world.firstChild);
     else world.appendChild(host);
     if (isSelected(node.id)) { host.classList.add("sel"); if (selected.length === 1) decorate(node.id); }
-    autoGrow(node); // never render a box that clips its own text (no-op for other types)
+    autoFit(node, false); // never render a box that clips its own text (no-op for other types)
     return host;
   }
 
@@ -467,7 +467,7 @@
     var els = lineEls(txt), last = els[Math.min(b, els.length - 1)];
     if (last) { var r = document.createRange(); r.selectNodeContents(last); r.collapse(false); var s2 = getSelection(); s2.removeAllRanges(); s2.addRange(r); }
     txt.focus();
-    commitRich(node, txt); autoGrow(node); scheduleSave();
+    commitRich(node, txt); autoFit(node, true); scheduleSave();
   }
   // the live editable of a node, only while it's actually being typed in
   function editingTxt(node) {
@@ -475,14 +475,13 @@
     var t = host.querySelector(".gvc-txt");
     return t && t.contentEditable === "true" ? t : null;
   }
-  function hasTextSelection(t) {
-    var s = getSelection();
-    return !!(s && s.rangeCount && !s.isCollapsed && t.contains(s.anchorNode) && t.contains(s.focusNode));
-  }
-  // B / I / S: on the SELECTED TEXT while editing (FigJam — bold one word), else the whole node
+  // B / I / S mean two different things, exactly as in FigJam — and the button and the ⌘-key
+  // must agree: while you're EDITING they act on the text (the selection, or the style the
+  // next characters will take if the caret is collapsed); with the node merely selected they
+  // toggle the whole box.
   function toggleFormat(node, btn, cmd, prop) {
     var t = editingTxt(node);
-    if (t && hasTextSelection(t)) { execRich(cmd); commitRich(node, t); autoGrow(node); scheduleSave(); return; }
+    if (t) { execRich(cmd); commitRich(node, t); autoFit(node, true); scheduleSave(); return; }
     node[prop] = !node[prop];
     if (btn) btn.classList.toggle("on", !!node[prop]);
     applyNodeStyle(node); scheduleSave();
@@ -496,20 +495,31 @@
       host.classList.remove("editing"); txt.contentEditable = "false";
       commitRich(node, txt);
       if (node.type !== "image" && node.type !== "tile") node.name = (node.text || "").split("\n")[0].slice(0, 60) || autoName(node.type);
-      autoGrow(node);
+      autoFit(node, true);
       scheduleSave();
     });
-    txt.addEventListener("input", function () { commitRich(node, txt); autoGrow(node); });
+    txt.addEventListener("input", function (e) {
+      if (!autoFormat(node, txt, e)) commitRich(node, txt); // autoFormat commits its own rewrite
+      autoFit(node, true);
+    });
     txt.addEventListener("pointerdown", function (e) { if (host.classList.contains("editing")) e.stopPropagation(); });
-    // keydown is swallowed so canvas shortcuts don't fire mid-typing. The FigJam text
-    // shortcuts still work: ⌘B/⌘I/⌘U are the browser's own, ⌘⇧S (strike) we run ourselves;
-    // either way re-commit on the next tick so the markup lands on the node.
+    // keydown is swallowed so canvas shortcuts don't fire mid-typing. Text shortcuts are run
+    // HERE rather than left to the browser's native contenteditable handling, so the result is
+    // the same in every browser and the markup lands on the node immediately.
     txt.addEventListener("keydown", function (e) {
       e.stopPropagation();
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
-      var k = (e.key || "").toLowerCase();
-      if (k === "s" && e.shiftKey) { e.preventDefault(); execRich("strikeThrough"); commitRich(node, txt); autoGrow(node); scheduleSave(); }
-      else if (k === "b" || k === "i" || k === "u") setTimeout(function () { commitRich(node, txt); scheduleSave(); }, 0);
+      var k = (e.key || "").toLowerCase(), code = e.code || "", cmd = null;
+      if (k === "b") cmd = "bold";
+      else if (k === "i") cmd = "italic";
+      else if (k === "u") cmd = "underline";
+      else if (k === "s" && e.shiftKey) cmd = "strikeThrough";
+      else if (e.shiftKey && code === "Digit8") cmd = "ul"; // ⌘⇧8 / ⌘⇧7 — the Docs/Notion list keys
+      else if (e.shiftKey && code === "Digit7") cmd = "ol";
+      if (!cmd) return;
+      e.preventDefault();
+      if (cmd === "ul" || cmd === "ol") { toggleList(node, cmd); return; }
+      execRich(cmd); commitRich(node, txt); autoFit(node, true); scheduleSave();
     });
     // paste as PLAIN text — pasted web markup would otherwise land in the doc (fonts, colours,
     // whole layouts). Formatting is something you apply here, not something you import.
@@ -518,24 +528,96 @@
       var t = cd.getData("text/plain"); if (t == null) return;
       e.preventDefault();
       execRich("insertText", t);
-      commitRich(node, txt); autoGrow(node); scheduleSave();
+      commitRich(node, txt); autoFit(node, true); scheduleSave();
     });
     return txt;
   }
-  // FigJam: a sticky/shape never clips its text — the box GROWS DOWNWARD to fit it (width
-  // stays exactly where you put it). Grow-only, so it converges, is idempotent on load, and
-  // never fights a manual resize that's already big enough.
-  function autoGrow(node) {
+  // ---- markdown-ish input rules ---------------------------------------------
+  // Type the formatting instead of reaching for the toolbar (Notion/FigJam): "- " or "* " at
+  // the head of a line becomes a bullet, "1. " a numbered item, and **bold** / _italic_ /
+  // ~~strike~~ convert the moment you close the delimiter. The typed markers are eaten.
+  var MD_INLINE = [
+    { re: /(^|[\s(])\*\*([^*\n]+)\*\*$/, cmd: "bold", mark: 2 },
+    { re: /(^|[\s(])__([^_\n]+)__$/, cmd: "bold", mark: 2 },
+    { re: /(^|[\s(])~~([^~\n]+)~~$/, cmd: "strikeThrough", mark: 2 },
+    { re: /(^|[\s(])\*([^*\n]+)\*$/, cmd: "italic", mark: 1 },
+    { re: /(^|[\s(])_([^_\n]+)_$/, cmd: "italic", mark: 1 },
+  ];
+  // the block element a node sits in (one <div>/<li> per line — see the line model)
+  function lineElOf(root, n) {
+    while (n && n !== root) { if (n.nodeType === 1 && (BLOCK_TAGS[n.nodeName] || n.nodeName === "LI")) return n; n = n.parentNode; }
+    return null;
+  }
+  function autoFormat(node, txt, ev) {
+    var s = getSelection();
+    if (!s || !s.rangeCount || !s.isCollapsed) return false;
+    var at = s.anchorNode, off = s.anchorOffset;
+    if (!at || at.nodeType !== 3 || !txt.contains(at)) return false;
+    var typed = ev && ev.data;
+
+    // 1. list markers — at the head of a line (a real line block, or after the last "\n" in a
+    // box the browser hasn't blocked out yet, e.g. a brand-new sticky), on the closing space
+    if (typed === " ") {
+      var line = lineElOf(txt, at) || txt;
+      if (line.nodeName !== "LI") {
+        var head = document.createRange(); head.selectNodeContents(line); head.setEnd(at, off);
+        var mk = /(^|\n)([-*•]|\d+[.)])\s$/.exec(head.toString());
+        if (mk && off >= mk[2].length + 1) {
+          var eat = document.createRange(); eat.setStart(at, off - (mk[2].length + 1)); eat.setEnd(at, off);
+          eat.deleteContents(); // the marker is typed, never left in the text
+          eat.collapse(true);
+          s.removeAllRanges(); s.addRange(eat);
+          toggleList(node, /[-*•]/.test(mk[2]) ? "ul" : "ol"); // commits + saves
+          return true;
+        }
+      }
+    }
+
+    // 2. inline markers
+    var before = at.nodeValue.slice(0, off);
+    for (var i = 0; i < MD_INLINE.length; i++) {
+      var rule = MD_INLINE[i], m = rule.re.exec(before);
+      if (!m) continue;
+      var start = m.index + m[1].length, inner = m[2];
+      var close = document.createRange(); close.setStart(at, off - rule.mark); close.setEnd(at, off); close.deleteContents();
+      var open = document.createRange(); open.setStart(at, start); open.setEnd(at, start + rule.mark); open.deleteContents();
+      var body = document.createRange(); body.setStart(at, start); body.setEnd(at, start + inner.length);
+      s.removeAllRanges(); s.addRange(body);
+      execRich(rule.cmd);
+      s = getSelection(); s.collapseToEnd();
+      execRich(rule.cmd); // toggle the PENDING style back off so what you type next is plain
+      commitRich(node, txt); scheduleSave();
+      return true;
+    }
+    return false;
+  }
+
+  // A sticky/shape sizes itself to its text: it grows so it never clips, and in auto mode it
+  // SHRINKS back when you delete text. Dragging a resize handle sets an explicit height
+  // (node.hFixed) — from then on the box only ever grows, never shrinks under you.
+  // allowShrink is false on render, so opening an old board never reflows it.
+  function autoFit(node, allowShrink) {
     if (!node || (node.type !== "sticky" && node.type !== "shape")) return;
     var host = nodeEls[node.id]; if (!host) return;
     var txt = host.querySelector(".gvc-txt"); if (!txt) return;
-    // sticky: 14px top + 26px bottom padding around the text; shape: text is inset 12% a side
-    var need = node.type === "sticky" ? txt.scrollHeight + 40 : txt.scrollHeight / 0.76;
-    need = Math.max(MIN_NODE, Math.ceil(need));
-    if (need > (node.h || 0)) {
-      node.h = need; host.style.height = need + "px";
-      positionSelBar(); scheduleSave();
-    }
+    var need, min;
+    if (node.type === "sticky") { need = txt.scrollHeight + 40; min = 96; } // 14px top + 26px bottom padding; 96 = the CSS min-height
+    else { need = contentH(txt) / 0.76; min = MIN_NODE; }                   // shape text is inset 12% a side
+    need = Math.max(min, Math.ceil(need));
+    var h = node.h || 0, target = h;
+    if (need > h) target = need;                          // never clip
+    else if (allowShrink && !node.hFixed) target = need;  // auto mode: hug the text
+    if (Math.abs(target - h) < 1) return;
+    node.h = target; host.style.height = target + "px";
+    positionSelBar(); scheduleSave();
+  }
+  // A shape's text box is height-constrained by its insets, so scrollHeight can't see that the
+  // content got SHORTER — measure the line blocks themselves.
+  function contentH(txt) {
+    if (!txt.children.length) return txt.scrollHeight;
+    var sum = 0;
+    for (var i = 0; i < txt.children.length; i++) sum += txt.children[i].offsetHeight;
+    return Math.max(sum, 0);
   }
   function enterEdit(id) {
     var node = nodeById(id), host = nodeEls[id];
@@ -1101,7 +1183,8 @@
       var shiftToggle = null;
       if (e.shiftKey) { if (isSelected(id)) shiftToggle = id; else setSelection(selected.concat([id])); }
       else if (!isSelected(id)) setSelection([id]);
-      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, items: selected.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
+      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, bbox: selectionRect(selected), items: selected.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
+      armSnap(selected);
     } else if (e.pointerType === "touch") {
       // touch: one finger on empty canvas pans (no mouse to scroll with); two fingers pinch
       setSelection([]);
@@ -1116,6 +1199,80 @@
     }
     root.setPointerCapture(e.pointerId);
   });
+  // ---- smart snapping + alignment guides (Figma / FigJam) -------------------
+  // Every node radiates six invisible alignment lines — its left/centre/right and
+  // top/middle/bottom. While you drag or resize, the moving box latches onto the nearest one
+  // within a few SCREEN pixels (so the feel is the same at every zoom) and a red guide is
+  // drawn spanning both boxes, exactly like Figma's. Hold ⌘/Ctrl to drag past them.
+  var SNAP_PX = 6;
+  var snapCands = null, guideLayer = null;
+  function nodeRect(n) {
+    if (!n || n.type === "arrow" || n.x == null) return null;
+    var host = nodeEls[n.id];
+    var w = n.w != null ? n.w : (host ? host.offsetWidth : 0);
+    var h = n.h != null ? n.h : (host ? host.offsetHeight : 0);
+    return w && h ? { x: n.x, y: n.y, w: w, h: h } : null;
+  }
+  // computed once per drag: every OTHER node's rect (the ones you're moving can't snap to
+  // themselves, and re-walking the board on every pointermove would be wasteful)
+  function armSnap(excludeIds) {
+    snapCands = [];
+    board.nodes.forEach(function (n) {
+      if (excludeIds.indexOf(n.id) >= 0) return;
+      var r = nodeRect(n); if (r) snapCands.push(r);
+    });
+  }
+  function disarmSnap() { snapCands = null; clearGuides(); }
+  // xs/ys = the world coords of the moving box's own edges that are allowed to latch on.
+  // Returns the correction to apply plus the guides to draw.
+  function snapRect(rect, xs, ys) {
+    var out = { dx: 0, dy: 0, guides: [] };
+    if (!snapCands || !snapCands.length) return out;
+    var tol = SNAP_PX / board.view.scale, bx = null, by = null;
+    snapCands.forEach(function (t) {
+      [t.x, t.x + t.w / 2, t.x + t.w].forEach(function (tv) {
+        xs.forEach(function (mv) {
+          var d = tv - mv;
+          if (Math.abs(d) <= tol && (!bx || Math.abs(d) < Math.abs(bx.d))) bx = { d: d, v: tv, t: t };
+        });
+      });
+      [t.y, t.y + t.h / 2, t.y + t.h].forEach(function (tv) {
+        ys.forEach(function (mv) {
+          var d = tv - mv;
+          if (Math.abs(d) <= tol && (!by || Math.abs(d) < Math.abs(by.d))) by = { d: d, v: tv, t: t };
+        });
+      });
+    });
+    if (bx) { out.dx = bx.d; out.guides.push({ axis: "x", v: bx.v, a: rect, b: bx.t }); }
+    if (by) { out.dy = by.d; out.guides.push({ axis: "y", v: by.v, a: rect, b: by.t }); }
+    return out;
+  }
+  function showGuides(guides) {
+    if (!guideLayer) { guideLayer = el("div", { id: "gvc-guides" }); root.appendChild(guideLayer); }
+    guideLayer.innerHTML = "";
+    guides.forEach(function (g) {
+      var d = el("div", { class: "gvc-guide " + g.axis });
+      if (g.axis === "x") {
+        var a = worldToScreen(g.v, Math.min(g.a.y, g.b.y)), b = worldToScreen(g.v, Math.max(g.a.y + g.a.h, g.b.y + g.b.h));
+        d.style.left = a.x + "px"; d.style.top = a.y + "px"; d.style.height = Math.max(1, b.y - a.y) + "px";
+      } else {
+        var c = worldToScreen(Math.min(g.a.x, g.b.x), g.v), e2 = worldToScreen(Math.max(g.a.x + g.a.w, g.b.x + g.b.w), g.v);
+        d.style.left = c.x + "px"; d.style.top = c.y + "px"; d.style.width = Math.max(1, e2.x - c.x) + "px";
+      }
+      guideLayer.appendChild(d);
+    });
+  }
+  function clearGuides() { if (guideLayer) guideLayer.innerHTML = ""; }
+  // the union box of everything being dragged — a multi-selection snaps as ONE box, like Figma
+  function selectionRect(ids) {
+    var x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    ids.forEach(function (id) {
+      var r = nodeRect(nodeById(id)); if (!r) return;
+      x1 = Math.min(x1, r.x); y1 = Math.min(y1, r.y); x2 = Math.max(x2, r.x + r.w); y2 = Math.max(y2, r.y + r.h);
+    });
+    return x1 === Infinity ? null : { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+  }
+
   // Figma/FigJam: holding Shift while dragging kills the off-axis component, so a move runs
   // dead horizontal or dead vertical (never diagonal). The dominant axis wins, and it can
   // switch mid-drag — Shift is read live off the pointer event, not latched at pointerdown.
@@ -1170,6 +1327,14 @@
     else if (drag.mode === "move") {
       var mv = axisLock(dx, dy, e.shiftKey), wdx = mv[0] / sc, wdy = mv[1] / sc;
       drag.moved = drag.moved || Math.abs(dx) + Math.abs(dy) > 2;
+      if (drag.bbox && !(e.metaKey || e.ctrlKey)) {
+        var pr = { x: drag.bbox.x + wdx, y: drag.bbox.y + wdy, w: drag.bbox.w, h: drag.bbox.h };
+        var sn = snapRect(pr, [pr.x, pr.x + pr.w / 2, pr.x + pr.w], [pr.y, pr.y + pr.h / 2, pr.y + pr.h]);
+        var lockedAxis = e.shiftKey ? (Math.abs(dx) >= Math.abs(dy) ? "y" : "x") : null; // never snap the axis Shift pinned
+        if (lockedAxis !== "x") { wdx += sn.dx; pr.x += sn.dx; }
+        if (lockedAxis !== "y") { wdy += sn.dy; pr.y += sn.dy; }
+        showGuides(sn.guides.filter(function (g) { return g.axis !== lockedAxis; }));
+      } else clearGuides();
       drag.items.forEach(function (it) {
         var n = nodeById(it.id); if (!n) return;
         if (it.arrow) { n.x1 = it.ox1 + wdx; n.y1 = it.oy1 + wdy; n.x2 = it.ox2 + wdx; n.y2 = it.oy2 + wdy; renderNode(n); }
@@ -1199,7 +1364,14 @@
       if (e.shiftKey && n2.type !== "text" && drag.ow && drag.oh) {
         var ar = drag.ow / drag.oh;
         if (nw2 / ar >= nh2) nh2 = Math.max(MIN_NODE, nw2 / ar); else nw2 = Math.max(MIN_NODE, nh2 * ar);
-      }
+      } else if (!(e.metaKey || e.ctrlKey)) {
+        // snap the two edges you're actually dragging to the neighbours' alignment lines
+        var pr2 = { x: west ? drag.ox + (drag.ow - nw2) : drag.ox, y: north ? drag.oy + (drag.oh - nh2) : drag.oy, w: nw2, h: nh2 };
+        var sn2 = snapRect(pr2, [west ? pr2.x : pr2.x + pr2.w], [north ? pr2.y : pr2.y + pr2.h]);
+        if (sn2.dx) nw2 = Math.max(MIN_NODE, nw2 + (west ? -sn2.dx : sn2.dx));
+        if (sn2.dy) nh2 = Math.max(MIN_NODE, nh2 + (north ? -sn2.dy : sn2.dy));
+        showGuides(sn2.guides);
+      } else clearGuides();
       n2.w = nw2; re.style.width = n2.w + "px";
       if (west) { n2.x = drag.ox + (drag.ow - n2.w); re.style.left = n2.x + "px"; }
       // text: fixed WIDTH, auto height — the box wraps and grows downward as you type (FigJam text).
@@ -1215,6 +1387,7 @@
   });
   function onPointerEnd(e) {
     delete pointers[e.pointerId];
+    disarmSnap();
     if (!drag) return;
     if (drag.mode === "pinch") {
       if (Object.keys(pointers).length < 2) { drag = null; scheduleSave(); }
@@ -1226,7 +1399,12 @@
     if (drag.mode === "marquee" && marquee) { marquee.remove(); marquee = null; }
     if (drag.mode === "arrow") renderNode(drag.node);
     if (drag.mode === "resize" && drag.node.type === "stamp") renderNode(drag.node);
-    if (drag.mode === "resize") autoGrow(drag.node); // a box you dragged too small springs back to its text, now — not silently on the next reload
+    if (drag.mode === "resize") {
+      // you set a height by hand → the box stops hugging its text (it still grows rather than
+      // clip, it just never shrinks under you again)
+      if (drag.node.type !== "text" && Math.abs((drag.node.h || 0) - drag.oh) > 1) drag.node.hFixed = true;
+      autoFit(drag.node, false); // a box dragged smaller than its text springs back now, not silently on the next reload
+    }
     if (drag.mode === "stroke") {
       drag.host.remove();
       finishStroke(drag.pts);
@@ -1276,7 +1454,7 @@
   }
   // ow/oh fall back to the MEASURED element size — text nodes carry no w/h until first resized,
   // so reading node.w blind gave NaN and the handle silently did nothing (the "drag doesn't work" bug).
-  function startResize(e, node, dir) { e.stopPropagation(); var h = nodeEls[node.id]; drag = { mode: "resize", node: node, dir: dir || "se", sx: e.clientX, sy: e.clientY, ox: node.x, oy: node.y, ow: node.w != null ? node.w : (h ? h.offsetWidth : 150), oh: node.h != null ? node.h : (h ? h.offsetHeight : 100) }; root.setPointerCapture(e.pointerId); }
+  function startResize(e, node, dir) { e.stopPropagation(); var h = nodeEls[node.id]; drag = { mode: "resize", node: node, dir: dir || "se", sx: e.clientX, sy: e.clientY, ox: node.x, oy: node.y, ow: node.w != null ? node.w : (h ? h.offsetWidth : 150), oh: node.h != null ? node.h : (h ? h.offsetHeight : 100) }; armSnap([node.id]); root.setPointerCapture(e.pointerId); }
   function startArrowHandle(e, node, end) { e.stopPropagation(); drag = { mode: "arrow", node: node, end: end, sx: e.clientX, sy: e.clientY, px: end === "1" ? node.x1 : node.x2, py: end === "1" ? node.y1 : node.y2 }; root.setPointerCapture(e.pointerId); }
 
   // ---- image crop (double-tap an image; Figma-style, non-destructive) ------
