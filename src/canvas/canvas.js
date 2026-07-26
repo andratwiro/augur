@@ -110,7 +110,7 @@
       var k = Math.min(1, (Date.now() - t0) / 320), e = 1 - Math.pow(1 - k, 3);
       v.x = x0 + (x1 - x0) * e; v.y = y0 + (y1 - y0) * e; v.scale = s0 + (s1 - s0) * e;
       applyTransform();
-      if (k < 1) flyRaf = requestAnimationFrame(step); else { flyRaf = null; scheduleSave(); }
+      if (k < 1) flyRaf = requestAnimationFrame(step); else { flyRaf = null; saveView(); }
     })();
   }
   // FigJam-style dot grid: the grid scales WITH zoom (world-space feel) — spacing = GRID*scale,
@@ -179,7 +179,7 @@
   function zoomAt(sx, sy, factor) {
     var v = board.view, ns = clampScale(v.scale * factor), f = ns / v.scale;
     v.x = sx - (sx - v.x) * f; v.y = sy - (sy - v.y) * f; v.scale = ns;
-    applyTransform(); scheduleSave();
+    applyTransform(); saveView(); // camera only — never a KV write
   }
 
   // ---- node model helpers --------------------------------------------------
@@ -1482,7 +1482,7 @@
     disarmSnap();
     if (!drag) return;
     if (drag.mode === "pinch") {
-      if (Object.keys(pointers).length < 2) { drag = null; scheduleSave(); }
+      if (Object.keys(pointers).length < 2) { drag = null; saveView(); }
       return;
     }
     root.classList.remove("panning");
@@ -1519,8 +1519,9 @@
       select(conn.id);
       setTool("select");
     }
+    var wasPan = drag.mode === "pan";
     drag = null;
-    scheduleSave();
+    if (wasPan) saveView(); else scheduleSave();
   }
   root.addEventListener("pointerup", onPointerEnd);
   root.addEventListener("pointercancel", onPointerEnd);
@@ -1639,7 +1640,7 @@
     if (e.target.closest && e.target.closest("#gvc-ui")) return;
     e.preventDefault();
     if (e.ctrlKey || e.metaKey) { zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.01)); }
-    else { board.view.x -= e.deltaX; board.view.y -= e.deltaY; applyTransform(); scheduleSave(); }
+    else { board.view.x -= e.deltaX; board.view.y -= e.deltaY; applyTransform(); saveView(); }
   }, { passive: false });
 
   // ---- keyboard ------------------------------------------------------------
@@ -2306,7 +2307,7 @@
     var n = addNode({ type: "tile", x: w.x - 210, y: w.y - 150, w: 420, h: 300, url: it.url, name: it.title, thumb: it.thumb || undefined });
     select(n.id); picker.classList.add("hidden");
   }
-  function resetView() { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; applyTransform(); scheduleSave(); }
+  function resetView() { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; applyTransform(); saveView(); }
 
   // ---- persistence ---------------------------------------------------------
   var saveTimer = null;
@@ -2385,19 +2386,49 @@
     histUndo.push(entry);
     return true;
   }
+  // Writes are the scarce resource on Workers KV (the free tier is a THOUSAND a day) and this
+  // doc runs to hundreds of KB once images are inlined — so never spend a write we don't owe.
+  // If only the camera moved, the content signature is unchanged and the POST is skipped.
+  var lastSavedSig = null;
+  function docSig() { return JSON.stringify({ n: board.nodes, m: board.name }); }
   function save() {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    var sig = docSig();
+    if (sig === lastSavedSig) return;
+    lastSavedSig = sig;
     fetch(BOARD_API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ doc: board }) }).catch(function () {});
   }
+  // The viewport is PER-USER — the room never syncs it — so it has no business in the shared
+  // doc, where every pan and every zoom step used to trigger a full-document KV write AND
+  // overwrite everyone else's stored camera. It lives in localStorage now, keyed by board path;
+  // the doc's `view` is still read as a fallback so existing boards open where they always did.
+  var VIEW_KEY = "gvc:view:" + BOARD_PATH, viewTimer = null;
+  function saveView() {
+    if (viewTimer) return;
+    viewTimer = setTimeout(function () {
+      viewTimer = null;
+      try { localStorage.setItem(VIEW_KEY, JSON.stringify(board.view)); } catch (e) {}
+    }, 400);
+  }
+  function storedView() {
+    try {
+      var v = JSON.parse(localStorage.getItem(VIEW_KEY) || "null");
+      if (v && typeof v.x === "number" && typeof v.y === "number" && typeof v.scale === "number") return v;
+    } catch (e) {}
+    return null;
+  }
   window.addEventListener("beforeunload", function () {
-    if (!saveTimer) return;
+    if (!saveTimer || docSig() === lastSavedSig) return;
     try { navigator.sendBeacon(BOARD_API, new Blob([JSON.stringify({ doc: board })], { type: "application/json" })); } catch (e) {}
   });
   function load(done) {
     fetch(BOARD_API).then(function (r) { return r.json(); }).then(function (d) {
       if (d && d.doc && d.doc.nodes) { board = d.doc; board.view = board.view || { x: 0, y: 0, scale: 1 }; board.name = board.name || CFG.name || "Untitled canvas"; }
       else { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; }
+      var mine = storedView();
+      if (mine) board.view = mine;
       histSeed();
+      lastSavedSig = docSig(); // freshly loaded == already saved
       done();
     }).catch(function () { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; histSeed(); done(); });
   }
@@ -2555,6 +2586,7 @@
     document.title = board.name; if (nameEl) nameEl.textContent = board.name;
     render();
     mpSeedShadow();
+    lastSavedSig = docSig(); // the room's doc is the peer's to persist — don't duplicate their write
     histSeed(); histUndo.length = 0; histRedo.length = 0; // not your edit — no undoing "into" it
     mpRenderFocus();
   }

@@ -512,6 +512,17 @@ Do this **unless prompted otherwise**.
 - **After an inline conversion, toggle the style OFF again.** `execCommand("bold")` on a range
   leaves the PENDING typing style on, so everything typed after `**bold**` stayed bold. Collapse
   to the end and run the same command a second time (invisible — it only flips the pending state).
+- **KV WRITES ARE THE SCARCE RESOURCE — never spend one on the camera.** The free tier allows
+  ~1k writes/day and the board doc runs to hundreds of KB with images inlined, yet every pan,
+  every wheel-zoom step and every zoom-button click used to `scheduleSave()` the WHOLE document
+  (Rob hit 50% of the daily quota on 2026-07-26 just from working on a board). The viewport is
+  per-user — the room never syncs it — so it now lives in `localStorage` under `gvc:view:<path>`
+  (`saveView`/`storedView`, doc `view` still read as a fallback), which also stops one person's
+  camera from overwriting everyone else's. Belt and braces: `save()` compares a content
+  signature (`docSig` = nodes + name) and skips the POST when only the camera moved, the save
+  debounce is 1200ms so a burst is one write, and adopting a room doc reseeds the signature so
+  every client doesn't re-persist the same change. If you add a feature that touches
+  `board.view`, call `saveView()`, NOT `scheduleSave()`.
 - **Undo must be per-USER, not per-document, in a live room.** Restoring a whole-board snapshot
   would silently revert whatever a teammate did in the meantime. `histCommit` diffs the board
   against a shadow on the save debounce and records only the nodes that changed, as
