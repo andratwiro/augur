@@ -1,89 +1,31 @@
 # Canvas — a capability template for infinite-canvas boards
 
-> **Status:** LIVE + iterating (2026-07-22). Core shipped, then many live-feedback rounds:
-> marquee/space model, styled toolbar + sticky options, search picker, tile **device picker**
-> (desktop/tablet/phone → real responsive preview) + **freeze-on-Stop**, **Cmd+D duplicate**,
-> tile/image **rename**, and **canvas-owned prototypes** — a canvas is a *container*; a prototype
-> "built on the canvas" is scaffolded (by an agent, in the terminal) into a **subfolder of the
-> canvas** and auto-placed as a tile, owned by it (remove it → delete it). Spine: hand-rolled ·
-> canvas = a template-born prototype file (not a platform overlay) · shared state in KV · AI-legible
-> via names. **New agents: read "Working on the canvas" + "Canvas-owned prototypes" below first.**
-> **2026-07-22: full FigJam toolbar rebuild** — illustrated marker + sticky + shape-cluster tools,
-> draw sub-toolbar (marker/highlighter/washi/eraser · thin/thick · colors), shapes sub-toolbar
-> (connectors + shape grid + More shapes), stamps, sections, tables, speech bubbles, freehand
-> `draw` nodes, FigJam paper background, tool shortcuts, and **mobile/touch support** (one-finger
-> pan, two-finger pinch zoom, compact toolbar). Playwright-verified ≥95% visual match to FigJam.
-> Also 2026-07-22: **image crop** — double-tap an image enters Figma-style crop mode (full image
-> ghosted, blue window handles, drag to slide the image under the window; click-out/Enter commits,
-> Esc cancels). NON-destructive: `node.crop` = the window as fractions of the full `src`, rendered
-> via percent sizing inside a clipping `.gvc-imgwrap`, so re-entering crop restores the hidden
-> parts and free resize needs no JS. See the "image crop" section in canvas.js.
-> **2026-07-23: MULTIPLAYER** — every canvas is a live multiplayer room (FigJam-style colored
-> cursors + name pills, presence chips, live drags/edits/deletes, streamed co-typing with
-> editing-focus rings). Template-level: it ships in the shared engine, so every canvas in every
-> space has it with zero instance changes. Same day: **prototype demo sync** — ▶ Live/Stop/
-> navigation are shared tile state, and clicks/typing/scrolling INSIDE a live prototype iframe
-> mirror to the room (same-origin event replay). See "Multiplayer" below — including the
-> TEST-ISOLATION rule (blocking POST /__board is no longer enough).
-> **2026-07-23: text nodes grow up.** Text boxes **auto-adapt to their content by default**
-> (`width: max-content` — hug the text, grow as you type) and become **fixed-width + wrapping**
-> only once you drag the bottom-right handle (which sets `node.w`). Two bugs behind this: the
-> handle was a no-op (text carried no `w`/`h`, so `ow + dx` = `NaN` → `startResize` now falls
-> back to the MEASURED element size), and plain `width:auto` collapsed text to a one-word-per-line
-> column because `#gvc-world` is **0-wide** (its containing block) — `max-content` is the fix, not
-> `auto`. Text also gets the floating toolbar: **text color · font-size dropdown · Bold · Italic ·
-> Strikethrough · Align (L/C/R)**. The size control is a FigJam-style **dropdown** (`#gvc-fontmenu`,
-> modelled on the lock menu): presets Small/Medium/Large/Extra large/Huge rendered at their own
-> scale + a **custom px input**, storing `node.fontSize` (px number; legacy `fontScale` s/m/l still
-> resolved via `fontPx()`). All whole-box node styles (`bold/italic/strike/align/fontSize/color`),
-> no rich-text model (link/list skipped — they'd need per-run HTML). Shared `applyTextStyle(txt,
-> node)` styles both stickies + text. **2026-07-23: the collaboration skill (first cut) SHIPPED
-> and is now the DEFAULT working mode** — agents co-work LIVE as Clawd via `scripts/clawd-canvas.mjs`
-> (join the room, cursor + focus + per-node ops, expression poses, park-sleeping), instead of
-> full-state seeding. See "Working on the canvas" below.
-> **2026-07-26: FigJam parity pass — corners, rich text, auto-grow, axis lock.** (1) **All four
-> corners resize** (`nw/ne/sw/se`), not just the bottom-right: the grabbed corner follows the
-> pointer and the opposite one stays pinned (`drag.dir` + `ox/oy` in `startResize`), **Shift =
-> keep the aspect ratio**. Handles are counter-scaled (`scaleDecor` on `transformCbs`) so they
-> stay ~13px at any zoom. (2) **Real rich text** in stickies/shapes/text: **bold · italic ·
-> strike on a SELECTION** (not just whole-box) plus **bullet + numbered lists**, stored as
-> sanitized HTML in `node.rich` with `node.text` still kept in sync (old boards unchanged).
-> (3) **Boxes auto-grow to fit their text** — a sticky/shape never clips (`autoGrow`, grow-only).
-> (4) **Shift-drag locks the move to one axis** (Figma), and a shift-CLICK still toggles the
-> selection — resolved on pointer-UP by whether the pointer actually moved.
-> Same day, round 2: (5) **type the formatting** — `- ` / `* ` / `1. ` at the head of a line
-> becomes a list, `**bold**` / `_italic_` / `~~strike~~` convert as you close them, and
-> ⌘B/⌘I/⌘U/⌘⇧S/⌘⇧7/⌘⇧8 are handled by the engine (not left to the browser) so every browser
-> behaves the same. (6) **Auto height SHRINKS too** — a box hugs its text until you drag a
-> handle, which pins the height (`node.hFixed`); pinned boxes still grow rather than clip.
-> (7) **Smart snapping + alignment guides** — every node radiates six alignment lines
-> (left/centre/right, top/middle/bottom); a drag or resize latches onto the nearest within 6
-> SCREEN px and draws Figma's red guide across both boxes. Hold ⌘/Ctrl to drag past them.
-> **2026-07-27: the multiplayer feel + KV-economics batch** (all seven agreed with Rob):
-> (a) **drag fast-path** — mid-drag geometry rides the 50ms cursor message (`cursor.drag`),
-> so peers see 20Hz glide instead of 8Hz steps; durable upserts still ride the 120ms tick.
-> (b) **peer selection rings** — thin outline in each peer's color on whatever they have
-> selected (`{t:"sel"}`, kept on the socket attachment for late joiners). (c) **remote ops
-> have life** — a peer's insert pops, their delete fades. (d) **follow mode** — click a
-> presence chip to fly to that person and then CHASE their cursor; any manual pan/zoom
-> breaks it (your hand wins). (e) **hidden tabs pause the tick** (catch-up tick on
-> visibilitychange). (f) **THE ROOM IS THE PERSISTER** — while the socket is live the
-> BoardRoom DO writes KV itself (45s dirty-alarm + flush when the room empties); the client
-> /__board POST is now only the solo fallback. N clients × edit-bursts → ≤ ~80 writes/hour
-> per hot board. (g) double-tap actions (edit/crop/interact) now fire on pointer-UP and
-> only if the pointer didn't move — click-then-quick-drag used to throw you into text edit.
-> (h) **images live OUTSIDE the doc**: paste/drop compresses then uploads once to
-> `/__asset` (content-hashed KV `basset:<sha>`, immutable cache headers, dedup on re-paste)
-> and the node carries the tiny URL — the doc drops from hundreds of KB to a few KB, so
-> KV writes, room seeds and diff-tick stringifies stop carrying pixels. Data-URL srcs
-> still render (old boards untouched) and remain the upload-failure fallback.
-> Round 3: (8) **Tab / Shift-Tab nest and un-nest list items** (depth lives on the line;
-> `serializeLines` rebuilds real `<ul>/<ol>` nesting from it). (9) **Presence chips name their
-> owner on hover and fly you to them on click** (`mpJumpTo` → `flyTo`, easing rather than
-> teleporting, with a one-off pulse on the peer's cursor when you land). (10) **⌘Z / ⌘⇧Z undo
-> and redo** — snapshot-diff history (`histCommit`), per-node and per-user, so it never reverts
-> a teammate. (11) **A section carries its contents**: dragging one takes every node whose
-> centre sits inside it, resolved at grab time.
+> **Status: LIVE** — the shared engine every canvas board mounts (`/__canvas/canvas.js`).
+> Built 2026-07-21, then hardened through daily live use with Rob. History is in git;
+> what matters is what's true NOW:
+>
+> **Editing** — FigJam-grade: full illustrated toolbar (marker/highlighter/washi + eraser,
+> stickies, 16 shapes + connectors, text, sections, tables, stamps, speech bubbles, insert
+> picker), marquee/Space-pan/pinch, ⌘D duplicate, ⌘Z/⌘⇧Z **undo/redo** (per-user — never
+> reverts a teammate), 4-corner resize (Shift = aspect), **smart snapping with red alignment
+> guides** (⌘ bypasses), Shift-drag axis lock, non-destructive image crop, sections that
+> carry their contents, auto-grow/shrink boxes (`hFixed` after a manual resize).
+> **Text** — real rich text (`node.rich`, sanitized HTML; `node.text` stays in sync for old
+> boards): selection-level bold/italic/strike, bullet + numbered lists with **Tab/Shift-Tab
+> nesting**, markdown input rules (`- ` `1. ` `**b**` `_i_` `~~s~~`), ⌘B/I/U/⇧S/⇧7/⇧8,
+> font-size dropdown + custom px, text color, align.
+> **Multiplayer** — every canvas is a live room (BoardRoom DO): colored cursors + name
+> pills, presence chips (hover = name, click = **follow mode**), live drags at 20Hz (the
+> cursor fast-path), peer **selection rings** + editing-focus rings, streamed co-typing,
+> remote inserts pop / deletes fade, prototype demo sync inside live tiles, agents co-work
+> as the Clawd mascot (`scripts/clawd-canvas.mjs`).
+> **Persistence & KV economics** — the ROOM writes KV while live (45s dirty-alarm + flush
+> on empty; client POST is the solo fallback); the camera lives in localStorage, never the
+> doc; images live OUTSIDE the doc at `/__asset` (content-hashed, immutable, dedup);
+> `/__test/` rooms never persist. Net: a hot multi-person board costs ≤ ~80 KV writes/hour.
+>
+> **New agents: read "Working on the canvas" below first**, then the Gotchas — every entry
+> there was bought with a real bug. The `canvas.js` header has a section MAP.
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
 > Rob authors prototypes via the terminal, not an in-canvas generator; the canvas is where they
@@ -186,72 +128,45 @@ viewport mount; posters remain as the placeholder for unseen tiles) with a
 `MOUNT_BUDGET` LRU backstop that quietly unmounts offscreen tiles. Posters reuse
 go-vocal's capture stack (`scripts/shoot.mjs` / `og.mjs`).
 
-## Scope
+## Settled decisions (were open, now aren't)
 
-**v1:** engine (pan/zoom/drag/select) · sticky + text + image + tile nodes · scaffold-from-
-template creation · KV persistence via the generic per-URL endpoint · thumbnail↔live tile
-swap · AI-legible state (nodes + names + refs) · turn-based Claude co-work + the skill.
+- **Engine is a shared Augur asset**, never baked per-canvas — a canvas is a *capability*;
+  instances stay 12-line loaders and every board upgrades centrally.
+- **Creation is agent-scaffolds-the-file** (copy the loader folder); no in-app "New canvas"
+  button (spaces/files are repos — creation is a terminal act, like everything else here).
+- **Multiple canvases per opportunity** is normal. Tile-add is the insert **picker**.
+- Still genuinely open: connectors that snap to nodes · frames/groups · voting/timers.
 
-**Later:** connectors/arrows · frames/groups · in-app "New canvas" button (live git write) ·
-multiplayer cursors/presence (same live-KV rail) · live focus/selection streaming (location-
-deixis + pointing) · real-time Claude co-manipulation · voting/timers.
+## The plumbing (what's where)
 
-## Open sub-decisions
-
-- **Engine: shared Augur asset vs baked into each canvas file.** Shared = thin instances,
-  central updates, but not fully self-contained. Baked = self-contained/forkable but frozen at
-  copy time. Lean shared (a canvas is a *capability*, more like the system layer than a one-off
-  prototype).
-- **Creation:** agent-scaffolds-the-file (v1, matches how everything is made) vs in-app "New
-  canvas" button (needs a live git write; later).
-- **Multiple canvases per opportunity vs one.** Lean multiple.
-- **Tile-add UX:** pick from the opportunity's existing prototype cards / drag from a rail /
-  paste a URL. Lean picker for v1.
-- **Naming:** "Canvas" the feature, "a canvas" the file. OK, or another word?
-
-## v1 core — what shipped (2026-07-21)
-
-Hand-rolled, no dependencies, native to Augur's vanilla-JS stack.
-
-- **Engine (Augur-owned, shared):** `src/canvas/canvas.js` + `canvas.css`, emitted to
-  `dist/__canvas/` by `build.js` (mirroring how `src/review/` → `dist/__review/`) and served
-  public via `isPublicPath()`. Pan (drag empty), zoom-to-cursor (⌘/ctrl-wheel), trackpad pan,
-  node drag + resize, single-select + delete. Node types: `sticky`, `text`, `image`, `arrow`
-  (free-floating, endpoint handles), `tile` (referenced prototype: `preview.webp` thumbnail at
-  rest, live iframe on ▶, capped at 1 live). FigJam bottom toolbar (drag-out sticky/arrow;
-  image → file picker; prototype → URL prompt), top-right back + rename, bottom-left zoom, and
-  **⌘. toggles all UI**. Every node carries a `name` (AI-legibility). Image drop from desktop
-  downscales to ≤1400px / JPEG q0.55 and inlines.
-- **Persistence:** worker `boardApi` (`/__board?path=<url>`), KV key `board:<path>` on the
-  `env.COMMENTS` binding, full-state POST (client owns the doc, like pins), 20MB cap, input-
-  guarded. **PUBLIC route** (like `/__review/api`, NOT gated like `/__status`) — a canvas is a
-  published prototype, so its board must load/save without login. `window.GVCanvas` exposes the
-  board + `screenToWorld`/`worldToScreen`/`onTransform` for tools and the comment overlay.
-- **Comments (board-anchored):** two guarded edits in `src/review/comments.js` — `pinXY()`
-  prefers `GVCanvas.worldToScreen` for threads carrying world coords; `anchorAt()` records
-  `cwx/cwy` when `GVCanvas` is present. The engine dispatches a window `scroll` on every
-  transform, which re-runs the overlay's existing `reposition()`. Normal pages have no
-  `GVCanvas` → byte-identical behaviour.
-- **First instance:** `go-vocal/ux-ui-audit/prototypes/canvas/index.html` — a 12-line file that
-  loads the engine and names the board. Lives at `/ux-ui-audit/canvas/`.
-
-**Verified (platform):** build + emission, public asset serving, page loads engine + comments,
-board round-trip + guards. **Pending (Rob, interactive):** pan/zoom/drag feel, sticky/arrow/
-image/tile UX, comment pins tracking pan/zoom, ⌘. — the goal checklist.
-
-**Deferred to the advanced pass:** author-a-prototype-on-the-canvas (⌘-generate HTML into a
-movable `srcdoc` iframe node); connectors that snap to nodes; in-app "New canvas" button;
-multiplayer cursors.
+- **Engine:** `src/canvas/canvas.js` + `canvas.css` (this repo), emitted to `dist/__canvas/`
+  by `build.js`, served public via `isPublicPath()`. The js header carries a section MAP.
+- **Board doc:** worker `boardApi` (`/__board?path=<url>`), KV key `board:<path>`, 20MB cap.
+  **PUBLIC route** (a canvas is a published prototype — no login to load). While a room
+  socket is live the **BoardRoom DO persists instead of the client** (see Multiplayer).
+- **Images:** worker `assetApi` (`/__asset`), KV `basset:<sha256[0:40]>`, content type in
+  metadata, immutable cache headers, dedup on identical bytes. Nodes carry the URL; data-URL
+  srcs are the legacy/fallback form and still render.
+- **Room:** `realtime/` — a separate worker (`augur-realtime`, BoardRoom DO), deployed with
+  `npm run deploy:realtime` (NOT via Pages CI — redeploy it yourself when you touch it).
+  The Pages worker proxies `/__rt` → it, so clients stay same-origin.
+- **Comments overlay:** two guarded hooks in `src/review/comments.js` (`pinXY`/`anchorAt`
+  prefer `GVCanvas` world coords); the engine dispatches a window `scroll` on every transform
+  so the overlay repositions. Pages without `GVCanvas` are byte-identical.
+- **Instances:** e.g. `go-vocal/ux-ui-audit/prototypes/canvas/index.html` — a 12-line loader
+  (`window.GV_CANVAS = {name}` + the two engine tags). Copy that folder to make a new board.
+- **API:** `window.GVCanvas` = board + nodes()/addNode + screenToWorld/worldToScreen/
+  onTransform/setTool — what the collaboration skill and the comment overlay drive.
 
 ## Multiplayer (2026-07-23) — every canvas is a live room
 
 **The model.** A `BoardRoom` Durable Object per board path (the same key as the KV doc) relays
-cursors, presence, node ops, and editing focus between everyone on that board. Durable
-persistence STAYS on the `/__board` KV rail, written by clients exactly as before — the room is
-live session state only (it caches the latest doc so joiners start fresher than KV, and drops
-the cache when the last socket leaves). Strictly an **enhancement layer**: if the socket can't
-connect, the canvas behaves exactly as solo. Public like `/__board` (the board is the
-credential).
+cursors, presence, node ops, live selections, and editing focus between everyone on that board
+— and while it's live, **the room is also the persister** (2026-07-27): ops set a dirty flag,
+a 45s alarm writes the doc to KV, and the last socket leaving flushes immediately; `/__test/`
+rooms never persist. Clients POST `/__board` only as the **solo fallback** (socket down).
+Strictly an **enhancement layer**: if the socket can't connect, the canvas behaves exactly as
+solo. Public like `/__board` (the board is the credential).
 
 **The pieces:**
 - `realtime/` — the `augur-realtime` worker (BoardRoom DO, WebSocket Hibernation API). Deployed

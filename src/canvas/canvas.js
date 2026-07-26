@@ -17,6 +17,25 @@
  * AI-legibility: nodes are plain data ({id,type,name,x,y,w,h,...}); every node carries a
  * human name so Claude and Rob share a vocabulary ("the onboarding tile"), not pixel pointing.
  * window.GVCanvas exposes the board + coordinate transforms for the comment overlay and tools.
+ *
+ * MAP (grep "// ----" for the section headers, in file order):
+ *   state/scaffold   board state · tool state · DOM scaffold · coordinate transforms
+ *   model            node helpers (add/duplicate/remove) · selection + decor (resize handles)
+ *   text             render · rich text (sanitizer, node.rich) · LINE model (lists, Tab
+ *                    nesting, markers) · markdown input rules · autoFit (grow/shrink)
+ *   node renderers   sticky · text · image (+ nameLabel/wireRename) · tile (live iframe) ·
+ *                    connectors · freehand draw · shapes · sections · tables · stamps
+ *   interaction      pointer (pan/move/resize/marquee/pinch, deferred double-tap) ·
+ *                    snapping + guides · axis lock · image crop · wheel/keyboard · image drop
+ *   chrome           selection toolbar · Lucide icons · toolbar/sub-toolbars/topbar/zoom ·
+ *                    insert picker
+ *   data             persistence (save = SOLO fallback; camera → localStorage) ·
+ *                    undo/redo (per-user snapshot-diff history) · public API (GVCanvas)
+ *   multiplayer      socket + protocol · diff tick · remote ops (mpPatchGeo) · proto demo
+ *                    sync · peer cursors · Clawd mascot · presence chips · follow mode ·
+ *                    editing focus + selection rings · boot
+ *
+ * Deep docs + the gotchas that were each bought with a real bug: augur/CANVAS.md.
  */
 (function () {
   "use strict";
@@ -729,19 +748,26 @@
   // Editable floating name label above a node — the rename affordance for images (tiles carry
   // their name in the bar; stickies/text are identified by their own content). Manual double-tap
   // because the root's pointer capture eats native dblclick; single tap selects, Esc cancels.
-  function nameLabel(node) {
-    var lab = el("div", { class: "gvc-name", text: node.name || "", contentEditable: "false", title: "Double-click to rename" });
+  //
+  // ONE rename behavior for every name label (image label, tile bar name, section chip):
+  // double-tap → edit (manual detection — root pointer-capture eats native dblclick;
+  // stopPropagation so a tap on the name never starts a drag), single tap → select,
+  // Enter commits, Esc restores, blur trims + falls back to the old name.
+  function wireRename(nm, node) {
     var tap = 0;
-    lab.addEventListener("pointerdown", function (e) {
-      if (lab.contentEditable === "true") return;
+    nm.addEventListener("pointerdown", function (e) {
+      if (nm.contentEditable === "true") return; // already editing → let the click place the caret
       e.stopPropagation();
       var now = Date.now();
-      if (now - tap < 350) { tap = 0; lab.contentEditable = "true"; lab.focus(); if (document.execCommand) document.execCommand("selectAll", false, null); }
+      if (now - tap < 350) { tap = 0; nm.contentEditable = "true"; nm.focus(); if (document.execCommand) document.execCommand("selectAll", false, null); }
       else { tap = now; select(node.id); }
     });
-    lab.addEventListener("blur", function () { lab.contentEditable = "false"; node.name = lab.textContent.trim() || node.name; lab.textContent = node.name; scheduleSave(); });
-    lab.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); lab.blur(); } else if (e.key === "Escape") { lab.textContent = node.name; lab.blur(); } });
-    return lab;
+    nm.addEventListener("blur", function () { nm.contentEditable = "false"; node.name = nm.textContent.trim() || node.name; nm.textContent = node.name; scheduleSave(); });
+    nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } else if (e.key === "Escape") { nm.textContent = node.name; nm.blur(); } });
+    return nm;
+  }
+  function nameLabel(node) {
+    return wireRename(el("div", { class: "gvc-name", text: node.name || "", contentEditable: "false", title: "Double-click to rename" }), node);
   }
   function renderImage(node) {
     node.w = node.w || 240; node.h = node.h || 180;
@@ -785,19 +811,7 @@
   function renderTile(node) {
     node.w = node.w || 420; node.h = node.h || 300;
     var body = el("div", { class: "gvc-tilebody" });
-    var nm = el("div", { class: "gvc-tilename", text: node.name || node.url, contentEditable: "false", title: "Double-click to rename — " + node.url });
-    // Manual double-tap: root pointer-capture eats the native dblclick, and stopping propagation
-    // keeps a tap on the name from starting a tile drag. Double-tap → edit, single tap → select.
-    var nmTap = 0;
-    nm.addEventListener("pointerdown", function (e) {
-      if (nm.contentEditable === "true") return; // already editing → let the click place the caret
-      e.stopPropagation();
-      var now = Date.now();
-      if (now - nmTap < 350) { nmTap = 0; nm.contentEditable = "true"; nm.focus(); if (document.execCommand) document.execCommand("selectAll", false, null); }
-      else { nmTap = now; select(node.id); }
-    });
-    nm.addEventListener("blur", function () { nm.contentEditable = "false"; node.name = nm.textContent.trim() || node.name; nm.textContent = node.name; scheduleSave(); });
-    nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } else if (e.key === "Escape") { nm.textContent = node.name; nm.blur(); } });
+    var nm = wireRename(el("div", { class: "gvc-tilename", text: node.name || node.url, contentEditable: "false", title: "Double-click to rename — " + node.url }), node);
     // drag handle, visible only while interacting (the iframe eats the pointer then, so the
     // grip is how you still move the tile). No stopPropagation: its pointerdown bubbles to
     // the root and rides the normal select+move drag path.
@@ -1075,17 +1089,7 @@
     var chip = el("div", { class: "gvc-seclabel" + (node.color ? " colored" : "") });
     if (node.color) chip.style.background = node.color;
     chip.innerHTML = '<svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7">' + I_SECTION + "</svg>";
-    var nm = el("div", { class: "gvc-name", text: node.name || autoName("section"), contentEditable: "false", title: "Double-click to rename" });
-    var tap = 0;
-    nm.addEventListener("pointerdown", function (e) {
-      if (nm.contentEditable === "true") return;
-      e.stopPropagation();
-      var now = Date.now();
-      if (now - tap < 350) { tap = 0; nm.contentEditable = "true"; nm.focus(); if (document.execCommand) document.execCommand("selectAll", false, null); }
-      else { tap = now; select(node.id); }
-    });
-    nm.addEventListener("blur", function () { nm.contentEditable = "false"; node.name = nm.textContent.trim() || node.name; nm.textContent = node.name; scheduleSave(); });
-    nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } });
+    var nm = wireRename(el("div", { class: "gvc-name", text: node.name || autoName("section"), contentEditable: "false", title: "Double-click to rename" }), node);
     chip.appendChild(nm);
     if (node.locked) chip.insertAdjacentHTML("beforeend", '<svg class="lk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">' + I_LOCK + "</svg>");
     return chip;
@@ -1149,8 +1153,6 @@
     place(host, node);
     return host;
   }
-
-  function escapeHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
   // ---- pointer interaction (pan / move / resize / draw / place / pinch) ----
   var drag = null, lastTap = { id: null, t: 0 }, spaceDown = false, marquee = null;
@@ -2572,13 +2574,7 @@
         if (local && host && mpGeoLessSig(r) === mpGeoLessSig(local) && local.type !== "arrow") {
           // geometry-only change (a peer dragging/resizing): patch styles on the live element
           // instead of rebuilding it — smooth at tick rate, no iframe/image churn
-          GEO_KEYS.forEach(function (k) { if (r[k] != null) local[k] = r[k]; });
-          host.classList.add("gvc-remote-move");
-          clearTimeout(host.__mpMoveT);
-          host.__mpMoveT = setTimeout(function () { host.classList.remove("gvc-remote-move"); }, 300);
-          place(host, local);
-          if (local.type === "tile") { var b = host.querySelector(".gvc-tilebody"); if (b && b.querySelector("iframe")) fitFrame(b, local); }
-          if (isSelected(r.id)) positionSelBar();
+          mpPatchGeo(local, host, r);
         } else if (local && host && local.type === "tile" && r.type === "tile" && mpTileSig(r) === mpTileSig(local)) {
           // navigation/geometry-only change on a tile — act on the existing element so the
           // iframe's in-page state survives; never a rebuild (tiles are always live now)
@@ -2881,6 +2877,19 @@
     }
   }
   function mpPositionCursors() { for (var sid in mpPeers) mpPlaceCursor(mpPeers[sid]); }
+  // Patch a node's geometry from a remote source IN PLACE (no rebuild): tween class for the
+  // glide, place(), tile iframe refit, toolbar reposition. Shared by the cursor fast-path
+  // and the ops tick — one behavior, one place.
+  function mpPatchGeo(n, host, src) {
+    GEO_KEYS.forEach(function (k) { if (src[k] != null) n[k] = src[k]; });
+    if (n.type === "arrow") { renderNode(n); return; }
+    host.classList.add("gvc-remote-move");
+    clearTimeout(host.__mpMoveT);
+    host.__mpMoveT = setTimeout(function () { host.classList.remove("gvc-remote-move"); }, 300);
+    place(host, n);
+    if (n.type === "tile") { var b = host.querySelector(".gvc-tilebody"); if (b && b.querySelector("iframe")) fitFrame(b, n); }
+    if (isSelected(n.id)) positionSelBar();
+  }
   // apply a peer's mid-drag geometry (the cursor fast-path). Shadow + history are updated
   // FIRST so our own diff tick doesn't echo the patch back as an op, and undo never records
   // a teammate's drag as ours. Local interaction still wins.
@@ -2890,15 +2899,8 @@
       if (mpDragInvolves(g.id) || mpLocallyEditing(g.id)) continue;
       var n = nodeById(g.id), host = nodeEls[g.id];
       if (!n || !host) continue;
-      GEO_KEYS.forEach(function (k) { if (g[k] != null) n[k] = g[k]; });
-      mpShadow[g.id] = mpSig(n); histSeen(n);
-      if (n.type === "arrow") { renderNode(n); continue; }
-      host.classList.add("gvc-remote-move");
-      clearTimeout(host.__mpMoveT);
-      host.__mpMoveT = setTimeout(function () { host.classList.remove("gvc-remote-move"); }, 300);
-      place(host, n);
-      if (n.type === "tile") { var b = host.querySelector(".gvc-tilebody"); if (b && b.querySelector("iframe")) fitFrame(b, n); }
-      if (isSelected(g.id)) positionSelBar();
+      mpPatchGeo(n, host, g);
+      mpShadow[g.id] = mpSig(n); histSeen(n); // same synchronous turn — the tick can't interleave
     }
   }
   function mpCursorMsg(m) {
