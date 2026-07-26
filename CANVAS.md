@@ -41,6 +41,16 @@
 > and is now the DEFAULT working mode** — agents co-work LIVE as Clawd via `scripts/clawd-canvas.mjs`
 > (join the room, cursor + focus + per-node ops, expression poses, park-sleeping), instead of
 > full-state seeding. See "Working on the canvas" below.
+> **2026-07-26: FigJam parity pass — corners, rich text, auto-grow, axis lock.** (1) **All four
+> corners resize** (`nw/ne/sw/se`), not just the bottom-right: the grabbed corner follows the
+> pointer and the opposite one stays pinned (`drag.dir` + `ox/oy` in `startResize`), **Shift =
+> keep the aspect ratio**. Handles are counter-scaled (`scaleDecor` on `transformCbs`) so they
+> stay ~13px at any zoom. (2) **Real rich text** in stickies/shapes/text: **bold · italic ·
+> strike on a SELECTION** (not just whole-box) plus **bullet + numbered lists**, stored as
+> sanitized HTML in `node.rich` with `node.text` still kept in sync (old boards unchanged).
+> (3) **Boxes auto-grow to fit their text** — a sticky/shape never clips (`autoGrow`, grow-only).
+> (4) **Shift-drag locks the move to one axis** (Figma), and a shift-CLICK still toggles the
+> selection — resolved on pointer-UP by whether the pointer actually moved.
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
 > Rob authors prototypes via the terminal, not an in-canvas generator; the canvas is where they
@@ -123,7 +133,9 @@ genuinely harder.
    absolutely positioned in world coords; pointer pan/drag/select; rAF-batched transform
    writes. DOM is plenty at this scale (tens–low-hundreds of nodes); no WebGL. Virtualize only
    if boards get big (not v1).
-2. **Node registry** — pluggable node types, each `render + serialize`. Today: `sticky`, `text`
+2. **Node registry** — pluggable node types, each `render + serialize`. Every box resizes from
+   **all four corners** and every text-bearing node takes **rich text** (selection-level
+   bold/italic/strike + bullet/numbered lists, `node.rich`). Today: `sticky`, `text`
    (auto-adapt `max-content` until resized, then fixed-width wrapping + node-level color/fontSize/bold/italic/strike/align),
    `image`, `tile` (prototype embed), `arrow` (kinds: straight/elbow/curved/line), `draw`
    (freehand marker/highlighter/washi strokes), `shape` (16 geometries + centered editable
@@ -426,15 +438,46 @@ Do this **unless prompted otherwise**.
   did nothing. Fallback to the host's measured `offsetWidth/Height` when `node.w/h` are null. Text
   is width-only on resize (clear `style.height` → auto) so it wraps + grows like FigJam; only
   `renderText` applying `node.w` when present makes the width survive a re-render/reload.
+- **A clipping host eats its own resize handles.** Corner handles straddle the node's edge, so any
+  node whose host is `overflow:hidden` (stickies were) shows quarter-circles or nothing at all.
+  Clip in an INNER wrap (`.gvc-stickyin`) and leave the host visible. Same reason `.gvc-image`
+  never clips at host level.
+- **Decor doesn't inherit the zoom fix.** Handles are world-space children, so at 40% zoom a 13px
+  handle paints at 5px. `scaleDecor` counter-scales them (`transform: scale(1/zoom)`, origin
+  centre, position `left/top: 0|100%` + a half-size negative margin so the centre sits exactly on
+  the corner) and is registered on `transformCbs` — same trick as tile/section chrome.
+- **Shift is overloaded on a node drag** — shift-CLICK toggles the selection, shift-DRAG locks the
+  axis. Deciding at pointerDOWN broke one of them (the toggle removed the node, so the drag moved
+  an empty selection). Decide at pointer-UP: apply the toggle only if `drag.moved` is false.
+  Related: a finished DRAG must clear `lastTap`, or a second drag inside 350ms reads as a
+  double-tap and drops you into the text editor.
 - **Auto-adapt text = `max-content`, never `width:auto`.** `#gvc-world` (the node containing block)
   is `width:0`, so an `auto`-width absolutely-positioned text node shrink-to-fits to its *minimum*
   content width — a one-word-per-line column, not a hug. `renderText` sets `width: max-content` when
   `node.w` is null (hug + grow), an explicit px only after a resize drag.
-- **Text formatting is node-level, not rich-text.** `node.text` is plain `innerText`, so styles
-  (`bold/italic/strike/align/fontScale/color`) apply to the WHOLE box via `applyTextStyle` — no
-  per-run markup. That's why link + list aren't in the text toolbar (they'd need a real rich-text
-  model); don't bolt them on without that. `applyNodeStyle` patches the live `.gvc-txt` in place
-  (never a re-render) so an active edit isn't torn down.
+- **Text is rich now — but only through the LINE model** (2026-07-26). `node.rich` holds sanitized
+  HTML, `node.text` stays in sync as plain `innerText` and is the fallback when `rich` is absent
+  (old boards render unchanged). Node-level styles (`bold/italic/strike/align/fontSize/color`,
+  `applyTextStyle`) still exist and now mean "the whole box"; the toolbar applies to the SELECTION
+  instead whenever one exists inside an editable (`toggleFormat`). Rules bought with bugs:
+  - **Never `execCommand("insertUnorderedList")` on our boxes.** They're `white-space: pre-wrap`,
+    where Chrome keeps Enter as a literal `"\n"`, so the browser sees ONE block and makes ONE
+    bullet out of every line. Lists are ours: `flattenLines` → toggle `kind` → `serializeLines`
+    (one `<div>` per plain line, consecutive same-kind lines merged into a `<ul>/<ol>` run).
+  - **Map the selection to lines with MARKERS, not a second counter.** A hand-written
+    line-counter drifted off by one on empty `<div><br></div>` lines. `markSelection` plants
+    `<gv-mk1>/<gv-mk2>` and the SAME `flattenLines` reports which lines they landed on.
+  - **Sanitize on render AND on commit.** Board HTML round-trips through shared KV and the
+    multiplayer socket — a peer's `<img onerror>` would be stored XSS. `sanitizeRichEl`
+    whitelists tags and strips every attribute; paste is forced to plain text.
+  - **Format buttons need `keepFocus`** (mousedown `preventDefault`) or the native focus move
+    blurs the editable and the selection is gone before the command runs.
+  - `applyNodeStyle` patches the live `.gvc-txt` in place (never a re-render) so an active edit
+    isn't torn down.
+- **Stickies/shapes grow, never clip** (`autoGrow`): height is bumped to the content on render,
+  on input and on blur. Grow-only, so it's idempotent and can't fight a manual resize. A shape's
+  text is inset 12% a side (hence `/0.76`) and its `.gvc-txt` needs `flex-direction: column` —
+  as a flex ROW, rich-text line blocks would lay out side by side.
 - **Rename** (tile bar name, image `.gvc-name` label): **manual double-tap**, not native `dblclick`
   — the root's pointer capture eats `dblclick`; also `stopPropagation` so a tap doesn't start a drag.
 - Insert-picker cards live in a **flex-column → grid**: without `flex:1; min-height:0` on the grid

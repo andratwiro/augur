@@ -82,6 +82,7 @@
   function fontPx(node) { return node.fontSize || LEGACY_FONT[node.fontScale] || 16; }
   function fontLabel(node) { var px = fontPx(node); for (var i = 0; i < FONT_PRESETS.length; i++) if (FONT_PRESETS[i].px === px) return FONT_PRESETS[i].label; return px + ""; }
   var ME = ""; // signed-in name, stamped as the sticky author (like FigJam)
+  var MIN_NODE = 48; // smallest side a resize drag can reach (world px)
 
   // ---- board state ---------------------------------------------------------
   var board = { v: 1, name: CFG.name || "Untitled canvas", view: { x: 0, y: 0, scale: 1 }, nodes: [] };
@@ -244,11 +245,23 @@
       host.appendChild(ar); host.appendChild(ac); decorEls.push(ar, ac);
     }
     if (!node.locked) {
-      var rz = el("div", { class: "gvc-resize" });
-      rz.addEventListener("pointerdown", function (e) { startResize(e, node); });
-      host.appendChild(rz); decorEls.push(rz);
+      // FigJam: ALL FOUR corners resize (nw/ne/sw/se) — dragging a west/north corner moves the
+      // node's x/y as well as its size, so the opposite corner stays pinned.
+      ["nw", "ne", "sw", "se"].forEach(function (dir) {
+        var rz = el("div", { class: "gvc-resize " + dir });
+        rz.addEventListener("pointerdown", function (e) { startResize(e, node, dir); });
+        host.appendChild(rz); decorEls.push(rz);
+      });
+      scaleDecor();
     }
   }
+  // handles are world-space children, so counter-scale them (like tile/section chrome) to keep
+  // a constant ~13px screen size — otherwise they vanish when zoomed out and bloat zoomed in
+  function scaleDecor() {
+    var s = board.view.scale;
+    decorEls.forEach(function (e) { if (e.classList.contains("gvc-resize")) e.style.transform = "scale(" + 1 / s + ")"; });
+  }
+  transformCbs.push(scaleDecor);
 
   // ---- render --------------------------------------------------------------
   function render() {
@@ -283,22 +296,246 @@
     if (node.type === "section") world.insertBefore(host, world.firstChild);
     else world.appendChild(host);
     if (isSelected(node.id)) { host.classList.add("sel"); if (selected.length === 1) decorate(node.id); }
+    autoGrow(node); // never render a box that clips its own text (no-op for other types)
     return host;
   }
 
+  // ---- rich text (inline formatting + lists) --------------------------------
+  // Text is HTML now: `node.rich` holds sanitized markup — inline **bold / italic /
+  // underline / strike on a SELECTION** plus bullet + numbered lists, FigJam-style. The old
+  // `node.text` plain string is still written on every edit (it names the node, and it's what
+  // old boards carry), and it's the fallback whenever `node.rich` is absent — so every
+  // existing board renders byte-identically and a plain sticky stays a plain string on the wire.
+  // SANITIZE ON BOTH SIDES: board content round-trips through shared KV and the multiplayer
+  // socket, so unfiltered HTML from a peer (or a paste) would be stored XSS.
+  var RICH_TAGS = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, BR: 1, DIV: 1, P: 1, UL: 1, OL: 1, LI: 1, SPAN: 1 };
+  function sanitizeRichEl(html) {
+    var box = document.createElement("div");
+    box.innerHTML = String(html == null ? "" : html);
+    (function clean(parent) {
+      var c = parent.firstChild;
+      while (c) {
+        var next = c.nextSibling;
+        if (c.nodeType === 3) { /* text node — keep */ }
+        else if (c.nodeType !== 1 || c.nodeName === "SCRIPT" || c.nodeName === "STYLE") parent.removeChild(c);
+        else if (RICH_TAGS[c.nodeName]) { for (var i = c.attributes.length - 1; i >= 0; i--) c.removeAttribute(c.attributes[i].name); clean(c); }
+        else { clean(c); while (c.firstChild) parent.insertBefore(c.firstChild, c); parent.removeChild(c); } // unknown tag → unwrap, keep its text
+        c = next;
+      }
+    })(box);
+    return box;
+  }
+  function sanitizeRich(html) { return sanitizeRichEl(html).innerHTML; }
+  // Render = sanitize, then NORMALIZE to canonical lines (see the line model below), so the
+  // DOM the user edits always has one block per line — plain `node.text` boards included.
+  function richHtml(node) {
+    var box;
+    if (node.rich != null) box = sanitizeRichEl(node.rich);
+    else { box = document.createElement("div"); box.textContent = String(node.text || ""); }
+    return serializeLines(flattenLines(box));
+  }
+  function hasRichMarkup(h) { return /<(b|strong|i|em|u|s|strike|del|ul|ol|li)[\s>]/i.test(h); }
+  // commit the live DOM back onto the node (called on every keystroke so the multiplayer diff
+  // tick streams formatting too, not just characters)
+  function commitRich(node, txt) {
+    node.text = txt.innerText;
+    var h = sanitizeRich(txt.innerHTML);
+    if (hasRichMarkup(h)) node.rich = h; else delete node.rich;
+  }
+  // execCommand is deprecated-but-universal and the only way to get real selection-level
+  // formatting out of contenteditable. styleWithCSS=false keeps the output as <b>/<i>/<s>
+  // tags (which the sanitizer whitelists) instead of style attributes (which it strips).
+  function execRich(cmd, val) {
+    try { document.execCommand("styleWithCSS", false, false); } catch (e) {}
+    try { return document.execCommand(cmd, false, val == null ? null : val); } catch (e) { return false; }
+  }
+
+  // ---- the LINE model (what makes lists possible) ---------------------------
+  // Our text boxes are `white-space: pre-wrap`, so a line break can be a literal "\n", a <br>,
+  // or a block — and `execCommand("insertUnorderedList")` on a \n-separated box makes ONE
+  // bullet out of every line (verified in Chrome). So lists are ours, not the browser's: we
+  // flatten the box to a flat array of LINES (each carrying its inline markup + an optional
+  // list kind), toggle the lines the selection touches, and re-serialize. Canonical output is
+  // one <div> per plain line and consecutive same-kind lines merged into one <ul>/<ol> run.
+  var INLINE_TAGS = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, SPAN: 1 };
+  var BLOCK_TAGS = { DIV: 1, P: 1, LI: 1 };
+  function flattenLines(root) {
+    var lines = [], cur = document.createDocumentFragment(), kind = null;
+    function push(force) { if (force || cur.childNodes.length) { lines.push({ kind: kind, frag: cur }); cur = document.createDocumentFragment(); } }
+    function newline() { lines.push({ kind: kind, frag: cur }); cur = document.createDocumentFragment(); }
+    function walk(n) {
+      for (var c = n.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3) {
+          var parts = String(c.nodeValue).split("\n");
+          for (var i = 0; i < parts.length; i++) {
+            if (i) newline();
+            if (parts[i]) cur.appendChild(document.createTextNode(parts[i]));
+          }
+        } else if (c.nodeType !== 1) continue;
+        else if (c.nodeName === "BR") newline();
+        else if (c.nodeName === "UL" || c.nodeName === "OL") {
+          push(false); var prev = kind; kind = c.nodeName === "OL" ? "ol" : "ul"; walk(c); push(false); kind = prev;
+        } else if (BLOCK_TAGS[c.nodeName]) {
+          push(false); var before = lines.length; walk(c);
+          if (cur.childNodes.length) push(true); else if (lines.length === before) push(true); // an empty block is a blank line
+        } else if (c.nodeName === "GV-MK1" || c.nodeName === "GV-MK2") {
+          cur.appendChild(document.createElement(c.nodeName.toLowerCase())); // selection marker, see markSelection
+        } else if (INLINE_TAGS[c.nodeName]) {
+          // an inline run can straddle a line break (bold spanning two lines) — flatten it and
+          // re-wrap each piece in its own copy of the tag
+          var sub = flattenLines(c), tag = c.nodeName.toLowerCase();
+          sub.forEach(function (ln, i) {
+            if (i) newline();
+            if (ln.frag.childNodes.length) { var w = document.createElement(tag); w.appendChild(ln.frag); cur.appendChild(w); }
+          });
+        } else walk(c); // unknown wrapper → transparent
+      }
+    }
+    walk(root);
+    push(false);
+    return lines;
+  }
+  function serializeLines(lines) {
+    var box = document.createElement("div"), list = null, listKind = null;
+    lines.forEach(function (ln) {
+      if (ln.kind) {
+        if (!list || listKind !== ln.kind) { list = document.createElement(ln.kind); listKind = ln.kind; box.appendChild(list); }
+        var li = document.createElement("li");
+        if (ln.frag.childNodes.length) li.appendChild(ln.frag); else li.appendChild(document.createElement("br"));
+        list.appendChild(li);
+      } else {
+        list = null; listKind = null;
+        var d = document.createElement("div");
+        if (ln.frag.childNodes.length) d.appendChild(ln.frag); else d.appendChild(document.createElement("br"));
+        box.appendChild(d);
+      }
+    });
+    return box.innerHTML;
+  }
+  // Which lines does the selection touch? Rather than counting line breaks a SECOND way (that
+  // drifted: an empty `<div><br></div>` counted twice), plant two marker elements at the
+  // selection's edges and run the SAME flattenLines over the live DOM — then read back which
+  // lines they landed on. The markers are stripped before serializing, so nothing leaks.
+  function markSelection(txt) {
+    var s = getSelection();
+    if (!s || !s.rangeCount || !txt.contains(s.anchorNode) || !txt.contains(s.focusNode)) return false;
+    var r = s.getRangeAt(0);
+    var end = r.cloneRange(); end.collapse(false); end.insertNode(document.createElement("gv-mk2"));
+    var start = r.cloneRange(); start.collapse(true); start.insertNode(document.createElement("gv-mk1")); // end first: inserting shifts offsets
+    return true;
+  }
+  function markedLines(lines) {
+    var a = -1, b = -1;
+    lines.forEach(function (ln, i) {
+      if (!ln.frag.querySelector) return;
+      if (a < 0 && ln.frag.querySelector("gv-mk1")) a = i;
+      if (ln.frag.querySelector("gv-mk2")) b = i;
+      var junk = ln.frag.querySelectorAll("gv-mk1, gv-mk2");
+      for (var k = 0; k < junk.length; k++) junk[k].parentNode.removeChild(junk[k]);
+    });
+    if (a < 0 && b < 0) return null;
+    if (a < 0) a = b; if (b < 0) b = a;
+    return b < a ? { a: b, b: a } : { a: a, b: b };
+  }
+  // the DOM element that holds each line, in order — used to put the caret back after a rebuild
+  function lineEls(root) {
+    var out = [];
+    for (var c = root.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType !== 1) continue;
+      if (c.nodeName === "UL" || c.nodeName === "OL") { for (var li = c.firstChild; li; li = li.nextSibling) if (li.nodeName === "LI") out.push(li); }
+      else out.push(c);
+    }
+    return out;
+  }
+  // Bullet / numbered toggle. Applies to the lines the selection touches (whole box when the
+  // node is selected but not being edited — the FigJam "turn this sticky into a list" move).
+  function toggleList(node, wantKind) {
+    var txt = editingTxt(node);
+    if (!txt) { enterEdit(node.id); txt = editingTxt(node); }
+    if (!txt) return;
+    var marked = markSelection(txt);
+    var lines = flattenLines(txt);
+    if (!lines.length) lines = [{ kind: null, frag: document.createDocumentFragment() }];
+    var range = marked ? markedLines(lines) : null;
+    var a = range ? range.a : 0, b = range ? range.b : lines.length - 1; // no selection → whole box
+    b = Math.max(0, Math.min(b, lines.length - 1));
+    a = Math.max(0, Math.min(a, b));
+    var allOn = true;
+    for (var i = a; i <= b; i++) if (lines[i].kind !== wantKind) { allOn = false; break; }
+    for (var j = a; j <= b; j++) lines[j].kind = allOn ? null : wantKind; // second click un-lists
+    txt.innerHTML = serializeLines(lines);
+    var els = lineEls(txt), last = els[Math.min(b, els.length - 1)];
+    if (last) { var r = document.createRange(); r.selectNodeContents(last); r.collapse(false); var s2 = getSelection(); s2.removeAllRanges(); s2.addRange(r); }
+    txt.focus();
+    commitRich(node, txt); autoGrow(node); scheduleSave();
+  }
+  // the live editable of a node, only while it's actually being typed in
+  function editingTxt(node) {
+    var host = nodeEls[node.id]; if (!host) return null;
+    var t = host.querySelector(".gvc-txt");
+    return t && t.contentEditable === "true" ? t : null;
+  }
+  function hasTextSelection(t) {
+    var s = getSelection();
+    return !!(s && s.rangeCount && !s.isCollapsed && t.contains(s.anchorNode) && t.contains(s.focusNode));
+  }
+  // B / I / S: on the SELECTED TEXT while editing (FigJam — bold one word), else the whole node
+  function toggleFormat(node, btn, cmd, prop) {
+    var t = editingTxt(node);
+    if (t && hasTextSelection(t)) { execRich(cmd); commitRich(node, t); autoGrow(node); scheduleSave(); return; }
+    node[prop] = !node[prop];
+    if (btn) btn.classList.toggle("on", !!node[prop]);
+    applyNodeStyle(node); scheduleSave();
+  }
+
   function editableText(node, host, cls) {
-    var txt = el("div", { class: "gvc-txt " + cls, contentEditable: "false", html: escapeHtml(node.text || "") });
+    var txt = el("div", { class: "gvc-txt " + cls, contentEditable: "false", html: richHtml(node) });
     // Editing is entered via manual double-tap detection in the pointerdown handler (native
     // dblclick is unreliable while the root holds pointer capture) → enterEdit(id).
     txt.addEventListener("blur", function () {
       host.classList.remove("editing"); txt.contentEditable = "false";
-      node.text = txt.innerText;
+      commitRich(node, txt);
       if (node.type !== "image" && node.type !== "tile") node.name = (node.text || "").split("\n")[0].slice(0, 60) || autoName(node.type);
+      autoGrow(node);
       scheduleSave();
     });
+    txt.addEventListener("input", function () { commitRich(node, txt); autoGrow(node); });
     txt.addEventListener("pointerdown", function (e) { if (host.classList.contains("editing")) e.stopPropagation(); });
-    txt.addEventListener("keydown", function (e) { e.stopPropagation(); });
+    // keydown is swallowed so canvas shortcuts don't fire mid-typing. The FigJam text
+    // shortcuts still work: ⌘B/⌘I/⌘U are the browser's own, ⌘⇧S (strike) we run ourselves;
+    // either way re-commit on the next tick so the markup lands on the node.
+    txt.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      var k = (e.key || "").toLowerCase();
+      if (k === "s" && e.shiftKey) { e.preventDefault(); execRich("strikeThrough"); commitRich(node, txt); autoGrow(node); scheduleSave(); }
+      else if (k === "b" || k === "i" || k === "u") setTimeout(function () { commitRich(node, txt); scheduleSave(); }, 0);
+    });
+    // paste as PLAIN text — pasted web markup would otherwise land in the doc (fonts, colours,
+    // whole layouts). Formatting is something you apply here, not something you import.
+    txt.addEventListener("paste", function (e) {
+      var cd = e.clipboardData; if (!cd || (cd.files && cd.files.length)) return;
+      var t = cd.getData("text/plain"); if (t == null) return;
+      e.preventDefault();
+      execRich("insertText", t);
+      commitRich(node, txt); autoGrow(node); scheduleSave();
+    });
     return txt;
+  }
+  // FigJam: a sticky/shape never clips its text — the box GROWS DOWNWARD to fit it (width
+  // stays exactly where you put it). Grow-only, so it converges, is idempotent on load, and
+  // never fights a manual resize that's already big enough.
+  function autoGrow(node) {
+    if (!node || (node.type !== "sticky" && node.type !== "shape")) return;
+    var host = nodeEls[node.id]; if (!host) return;
+    var txt = host.querySelector(".gvc-txt"); if (!txt) return;
+    // sticky: 14px top + 26px bottom padding around the text; shape: text is inset 12% a side
+    var need = node.type === "sticky" ? txt.scrollHeight + 40 : txt.scrollHeight / 0.76;
+    need = Math.max(MIN_NODE, Math.ceil(need));
+    if (need > (node.h || 0)) {
+      node.h = need; host.style.height = need + "px";
+      positionSelBar(); scheduleSave();
+    }
   }
   function enterEdit(id) {
     var node = nodeById(id), host = nodeEls[id];
@@ -326,8 +563,9 @@
     host.style.background = node.color || DEFAULT_STICKY;
     var txt = editableText(node, host, "");
     applyTextStyle(txt, node);
-    host.appendChild(txt);
-    host.appendChild(el("div", { class: "gvc-author", text: node.author || "" }));
+    // inner wrap does the clipping so the corner resize handles (which straddle the host's
+    // edges) stay visible — see .gvc-stickyin
+    host.appendChild(el("div", { class: "gvc-stickyin" }, [txt, el("div", { class: "gvc-author", text: node.author || "" })]));
     place(host, node);
     return host;
   }
@@ -856,9 +1094,14 @@
         }
       }
       lastTap = { id: id, t: now };
-      if (e.shiftKey) setSelection(isSelected(id) ? selected.filter(function (s) { return s !== id; }) : selected.concat([id]));
+      // Shift means two things (as in Figma): shift-CLICK toggles the selection, shift-DRAG
+      // locks the move to one axis. Resolve the ambiguity on pointerUP — a shift-click on an
+      // already-selected node only drops it from the selection if the pointer never moved,
+      // otherwise the shift was meant as the axis lock and the selection must survive it.
+      var shiftToggle = null;
+      if (e.shiftKey) { if (isSelected(id)) shiftToggle = id; else setSelection(selected.concat([id])); }
       else if (!isSelected(id)) setSelection([id]);
-      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, items: selected.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
+      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, items: selected.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
     } else if (e.pointerType === "touch") {
       // touch: one finger on empty canvas pans (no mouse to scroll with); two fingers pinch
       setSelection([]);
@@ -873,6 +1116,13 @@
     }
     root.setPointerCapture(e.pointerId);
   });
+  // Figma/FigJam: holding Shift while dragging kills the off-axis component, so a move runs
+  // dead horizontal or dead vertical (never diagonal). The dominant axis wins, and it can
+  // switch mid-drag — Shift is read live off the pointer event, not latched at pointerdown.
+  function axisLock(dx, dy, shift) {
+    if (!shift) return [dx, dy];
+    return Math.abs(dx) >= Math.abs(dy) ? [dx, 0] : [0, dy];
+  }
   root.addEventListener("pointermove", function (e) {
     if (pointers[e.pointerId]) pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
     if (!drag) return;
@@ -918,7 +1168,7 @@
       if (drag.node) { drag.node.x2 = cp.x; drag.node.y2 = cp.y; renderNode(drag.node); }
     }
     else if (drag.mode === "move") {
-      var wdx = dx / sc, wdy = dy / sc;
+      var mv = axisLock(dx, dy, e.shiftKey), wdx = mv[0] / sc, wdy = mv[1] / sc;
       drag.moved = drag.moved || Math.abs(dx) + Math.abs(dy) > 2;
       drag.items.forEach(function (it) {
         var n = nodeById(it.id); if (!n) return;
@@ -938,12 +1188,30 @@
       });
       setSelection(hits);
     }
-    else if (drag.mode === "resize") { var n2 = drag.node, re = nodeEls[n2.id]; n2.w = Math.max(48, drag.ow + dx / sc); re.style.width = n2.w + "px";
+    else if (drag.mode === "resize") {
+      // Any of the four corners: the grabbed corner follows the pointer, the OPPOSITE corner
+      // stays pinned — so a west/north drag changes x/y as well as w/h. Shift = keep the
+      // original aspect ratio (FigJam).
+      var n2 = drag.node, re = nodeEls[n2.id], d = drag.dir || "se";
+      var west = d.charAt(1) === "w", north = d.charAt(0) === "n";
+      var nw2 = Math.max(MIN_NODE, drag.ow + (west ? -dx : dx) / sc);
+      var nh2 = Math.max(MIN_NODE, drag.oh + (north ? -dy : dy) / sc);
+      if (e.shiftKey && n2.type !== "text" && drag.ow && drag.oh) {
+        var ar = drag.ow / drag.oh;
+        if (nw2 / ar >= nh2) nh2 = Math.max(MIN_NODE, nw2 / ar); else nw2 = Math.max(MIN_NODE, nh2 * ar);
+      }
+      n2.w = nw2; re.style.width = n2.w + "px";
+      if (west) { n2.x = drag.ox + (drag.ow - n2.w); re.style.left = n2.x + "px"; }
       // text: fixed WIDTH, auto height — the box wraps and grows downward as you type (FigJam text).
       if (n2.type === "text") { re.style.height = ""; }
-      else { n2.h = Math.max(48, drag.oh + dy / sc); re.style.height = n2.h + "px"; if (n2.type === "tile") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb, n2); } }
+      else {
+        n2.h = nh2; re.style.height = n2.h + "px";
+        if (north) { n2.y = drag.oy + (drag.oh - n2.h); re.style.top = n2.y + "px"; }
+        if (n2.type === "tile") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb, n2); }
+      }
+      if (n2.type === "tile") scaleTileChrome(n2, re); else if (n2.type === "section") scaleSectionLabel(n2, re);
       positionSelBar(); }
-    else if (drag.mode === "arrow") { var an = drag.node; if (drag.end === "1") { an.x1 = drag.px + dx / sc; an.y1 = drag.py + dy / sc; } else { an.x2 = drag.px + dx / sc; an.y2 = drag.py + dy / sc; } renderNode(an); }
+    else if (drag.mode === "arrow") { var an = drag.node, av = axisLock(dx, dy, e.shiftKey); if (drag.end === "1") { an.x1 = drag.px + av[0] / sc; an.y1 = drag.py + av[1] / sc; } else { an.x2 = drag.px + av[0] / sc; an.y2 = drag.py + av[1] / sc; } renderNode(an); }
   });
   function onPointerEnd(e) {
     delete pointers[e.pointerId];
@@ -953,9 +1221,12 @@
       return;
     }
     root.classList.remove("panning");
+    if (drag.mode === "move" && drag.shiftToggle && !drag.moved) setSelection(selected.filter(function (s) { return s !== drag.shiftToggle; })); // shift-CLICK (no drag) = drop from selection
+    if (drag.mode === "move" && drag.moved) lastTap = { id: null, t: 0 }; // a DRAG is not half a double-tap: two quick drags in a row must not open the text editor
     if (drag.mode === "marquee" && marquee) { marquee.remove(); marquee = null; }
     if (drag.mode === "arrow") renderNode(drag.node);
     if (drag.mode === "resize" && drag.node.type === "stamp") renderNode(drag.node);
+    if (drag.mode === "resize") autoGrow(drag.node); // a box you dragged too small springs back to its text, now — not silently on the next reload
     if (drag.mode === "stroke") {
       drag.host.remove();
       finishStroke(drag.pts);
@@ -1005,7 +1276,7 @@
   }
   // ow/oh fall back to the MEASURED element size — text nodes carry no w/h until first resized,
   // so reading node.w blind gave NaN and the handle silently did nothing (the "drag doesn't work" bug).
-  function startResize(e, node) { e.stopPropagation(); var h = nodeEls[node.id]; drag = { mode: "resize", node: node, sx: e.clientX, sy: e.clientY, ow: node.w != null ? node.w : (h ? h.offsetWidth : 150), oh: node.h != null ? node.h : (h ? h.offsetHeight : 100) }; root.setPointerCapture(e.pointerId); }
+  function startResize(e, node, dir) { e.stopPropagation(); var h = nodeEls[node.id]; drag = { mode: "resize", node: node, dir: dir || "se", sx: e.clientX, sy: e.clientY, ox: node.x, oy: node.y, ow: node.w != null ? node.w : (h ? h.offsetWidth : 150), oh: node.h != null ? node.h : (h ? h.offsetHeight : 100) }; root.setPointerCapture(e.pointerId); }
   function startArrowHandle(e, node, end) { e.stopPropagation(); drag = { mode: "arrow", node: node, end: end, sx: e.clientX, sy: e.clientY, px: end === "1" ? node.x1 : node.x2, py: end === "1" ? node.y1 : node.y2 }; root.setPointerCapture(e.pointerId); }
 
   // ---- image crop (double-tap an image; Figma-style, non-destructive) ------
@@ -1211,16 +1482,26 @@
         guard(fb); fb.addEventListener("click", function (e) { e.stopPropagation(); toggleFontMenu(node, fb); });
         selBar.appendChild(fb);
       }
-      var bb = el("button", { class: "btn" + (node.bold ? " on" : ""), type: "button", text: "B", title: "Bold" }); bb.style.fontWeight = "700";
-      guard(bb); bb.addEventListener("click", function (e) { e.stopPropagation(); node.bold = !node.bold; bb.classList.toggle("on", node.bold); applyNodeStyle(node); scheduleSave(); });
+      // B / I / S apply to the SELECTED TEXT when you're editing (bold one word) and to the
+      // whole box otherwise — see toggleFormat. keepFocus stops the click from blurring the
+      // editable, which would drop the selection before the command could run.
+      var bb = el("button", { class: "btn" + (node.bold ? " on" : ""), type: "button", text: "B", title: "Bold (⌘B)" }); bb.style.fontWeight = "700";
+      guard(bb); keepFocus(bb); bb.addEventListener("click", function (e) { e.stopPropagation(); toggleFormat(node, bb, "bold", "bold"); });
       selBar.appendChild(bb);
+      var itb = el("button", { class: "btn" + (node.italic ? " on" : ""), type: "button", text: "I", title: "Italic (⌘I)" }); itb.style.fontStyle = "italic"; itb.style.fontFamily = "Georgia, 'Times New Roman', serif";
+      guard(itb); keepFocus(itb); itb.addEventListener("click", function (e) { e.stopPropagation(); toggleFormat(node, itb, "italic", "italic"); });
+      selBar.appendChild(itb);
+      var stb = el("button", { class: "btn" + (node.strike ? " on" : ""), type: "button", text: "S", title: "Strikethrough (⌘⇧S)" }); stb.style.textDecoration = "line-through";
+      guard(stb); keepFocus(stb); stb.addEventListener("click", function (e) { e.stopPropagation(); toggleFormat(node, stb, "strikeThrough", "strike"); });
+      selBar.appendChild(stb);
+      // lists: the selected lines (or the whole box when the node isn't being edited)
+      var ulb = el("button", { class: "btn", type: "button", title: "Bulleted list", html: lucideIcon(I_LIST) });
+      guard(ulb); keepFocus(ulb); ulb.addEventListener("click", function (e) { e.stopPropagation(); toggleList(node, "ul"); });
+      selBar.appendChild(ulb);
+      var olb = el("button", { class: "btn", type: "button", title: "Numbered list", html: lucideIcon(I_LIST_NUM) });
+      guard(olb); keepFocus(olb); olb.addEventListener("click", function (e) { e.stopPropagation(); toggleList(node, "ol"); });
+      selBar.appendChild(olb);
       if (node.type === "text") {
-        var itb = el("button", { class: "btn" + (node.italic ? " on" : ""), type: "button", text: "I", title: "Italic" }); itb.style.fontStyle = "italic"; itb.style.fontFamily = "Georgia, 'Times New Roman', serif";
-        guard(itb); itb.addEventListener("click", function (e) { e.stopPropagation(); node.italic = !node.italic; itb.classList.toggle("on", node.italic); applyNodeStyle(node); scheduleSave(); });
-        selBar.appendChild(itb);
-        var stb = el("button", { class: "btn" + (node.strike ? " on" : ""), type: "button", text: "S", title: "Strikethrough" }); stb.style.textDecoration = "line-through";
-        guard(stb); stb.addEventListener("click", function (e) { e.stopPropagation(); node.strike = !node.strike; stb.classList.toggle("on", node.strike); applyNodeStyle(node); scheduleSave(); });
-        selBar.appendChild(stb);
         var ALIGN = ["left", "center", "right"];
         var AL_ICON = { left: '<line x1="15" x2="3" y1="12" y2="12"/><line x1="17" x2="3" y1="6" y2="6"/><line x1="21" x2="3" y1="18" y2="18"/>', center: '<line x1="17" x2="7" y1="12" y2="12"/><line x1="19" x2="5" y1="6" y2="6"/><line x1="21" x2="3" y1="18" y2="18"/>', right: '<line x1="21" x2="9" y1="12" y2="12"/><line x1="21" x2="7" y1="6" y2="6"/><line x1="21" x2="3" y1="18" y2="18"/>' };
         var alb = el("button", { class: "btn", type: "button", title: "Align text", html: lucideIcon(AL_ICON[node.align || "left"]) });
@@ -1232,6 +1513,9 @@
     positionSelBar();
   }
   function guard(elm) { elm.addEventListener("pointerdown", function (e) { e.stopPropagation(); }); }
+  // a toolbar button that must not steal focus from the text being edited — without this the
+  // native mousedown focus move blurs the editable and the text selection is gone by click time
+  function keepFocus(elm) { elm.addEventListener("mousedown", function (e) { e.preventDefault(); }); }
   function applyNodeStyle(node) {
     var host = nodeEls[node.id]; if (!host) return;
     if (node.type === "sticky" || node.type === "text") {
@@ -1336,6 +1620,8 @@
   var I_SECTION = '<rect x="3.2" y="3.4" width="13.6" height="13.6" rx="2.2"/><path d="M3.2 7.6h4.2V3.4"/>'; // custom (FigJam section glyph, square — no Lucide equivalent)
   var I_LOCK = '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'; // lock (Lucide)
   var I_LOCK_OPEN = '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>'; // lock-open (Lucide)
+  var I_LIST = '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>'; // list (Lucide)
+  var I_LIST_NUM = '<line x1="10" x2="21" y1="6" y2="6"/><line x1="10" x2="21" y1="12" y2="12"/><line x1="10" x2="21" y1="18" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/>'; // list-ordered (Lucide)
   var I_TABLE = '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 9v12"/><path d="M15 9v12"/>'; // table with header row (FigJam-style)
   var I_STAMP = '<path d="M5 22h14"/><path d="M19.27 13.73A2.5 2.5 0 0 0 17.5 13h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.66-.26-1.3-.73-1.77Z"/><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13"/>'; // stamp
   var I_BUBBLE = '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>'; // message-circle
@@ -2314,7 +2600,7 @@
       if (!t || !t.closest || !t.classList) return;
       var host = t.closest(".gvc-node"); if (!host) return;
       var node = nodeById(host.dataset.id); if (!node) return;
-      if (t.classList.contains("gvc-txt")) node.text = t.innerText;
+      if (t.classList.contains("gvc-txt")) commitRich(node, t); // text AND inline markup/lists
       else if (t.classList.contains("gvc-cell") && node.cells) node.cells[t.dataset.rc] = t.innerText.trim();
     });
     setInterval(mpTick, 120);
