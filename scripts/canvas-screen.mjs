@@ -17,8 +17,9 @@
 // e.g. node scripts/canvas-screen.mjs add /ux-ui-audit/canvas/ voting-screen --title "Voting"
 //
 // `add`/`rm` touch two things: the FILES (in the space repo, which you then commit + push) and
-// the canvas BOARD (KV, via the public /__board API — takes effect immediately). After `add`,
-// write the real prototype into the created index.html, then commit + push the space repo.
+// the canvas BOARD — written THROUGH the multiplayer room as per-node ops (takes effect
+// live, and can't be clobbered by the room's own KV persistence). After `add`, write the
+// real prototype into the created index.html, then commit + push the space repo.
 
 import { readdirSync, existsSync, readFileSync, mkdirSync, writeFileSync, rmSync, cpSync } from "node:fs";
 import path from "node:path";
@@ -58,35 +59,43 @@ function resolve(canvasUrl) {
   return { space, opp, canvas, canvasDir, canvasUrl: (named ? "/" + segs.join("/") : "/" + rest.join("/")) + "/", boardPath: (named ? "/" + segs.join("/") : "/" + rest.join("/")) + "/" };
 }
 
-// ---- board (KV) via the public API ---------------------------------------------------------
+// ---- board mutations — THROUGH THE ROOM, never a raw KV overwrite --------------------------
+// Since 2026-07-27 the BoardRoom DO persists the doc itself while anyone is on the board, so
+// a direct POST /__board would be silently clobbered by the room's next write. The correct
+// write path for every out-of-band tool is the same one the engine uses: join the room, send
+// per-node ops, let the room fold them into the live doc and persist. When the room is empty
+// this still works — the one-shot client seeds it from KV, ops apply, and the room flushes to
+// KV when the client (last one out) disconnects.
+import { ClawdCanvas } from "./clawd-canvas.mjs";
 async function getBoard(canvasUrl) {
   const r = await fetch(`${SITE}/__board?path=${encodeURIComponent(canvasUrl)}`);
   const j = await r.json().catch(() => ({}));
   return j.doc || { v: 1, name: "Untitled canvas", view: { x: 0, y: 0, scale: 1 }, nodes: [] };
 }
-async function putBoard(canvasUrl, doc) {
-  const r = await fetch(`${SITE}/__board?path=${encodeURIComponent(canvasUrl)}`, {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ doc }),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!j.ok) throw new Error("board save failed: " + JSON.stringify(j));
-}
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// Cloudflare KV is eventually consistent, so a single read-modify-write is racy (a stale read
-// can miss the very node you're trying to touch). Re-read + re-apply (idempotently) until the
-// board CONFIRMS the desired end state; also converges past a concurrent live edit rather than
-// clobbering it (each retry re-reads the latest). Best-effort: warns instead of failing hard.
+// apply(doc) mutates a COPY of the live doc into the desired state; we then diff copy vs live
+// and send the difference as upsert/del ops. Returns the room's resulting doc.
 async function mutateBoard(boardPath, apply, confirm, label) {
-  for (let i = 0; i < 7; i++) {
-    const doc = await getBoard(boardPath);
-    doc.nodes = doc.nodes || [];
-    apply(doc);                       // idempotent: add-if-absent / remove-if-present
-    await putBoard(boardPath, doc);
-    await sleep(i === 0 ? 700 : 3500);
-    if (confirm(await getBoard(boardPath))) return true;
+  const c = new ClawdCanvas({ boardPath, name: "canvas-screen" });
+  try {
+    await c.connect();
+    const before = JSON.parse(JSON.stringify(c.doc));
+    const desired = JSON.parse(JSON.stringify(c.doc));
+    desired.nodes = desired.nodes || [];
+    apply(desired);
+    const beforeIds = new Set((before.nodes || []).map((n) => n.id));
+    const desiredIds = new Set(desired.nodes.map((n) => n.id));
+    for (const n of desired.nodes) {
+      const old = (before.nodes || []).find((o) => o.id === n.id);
+      if (!old || JSON.stringify(old) !== JSON.stringify(n)) c.upsert(n);
+    }
+    for (const id of beforeIds) if (!desiredIds.has(id)) c.del(id);
+    await new Promise((r) => setTimeout(r, 600)); // let the ops land in the room
+    const ok = confirm(c.doc);
+    if (!ok) console.warn(`⚠ board ${label}: ops sent but end state not confirmed in the room doc.`);
+    return ok;
+  } finally {
+    try { c.close(); } catch {}
   }
-  console.warn(`⚠ board ${label} written but not yet reflected (KV still propagating — should settle within ~1 min).`);
-  return false;
 }
 const uid = () => "n" + Math.random().toString(36).slice(2, 9);
 

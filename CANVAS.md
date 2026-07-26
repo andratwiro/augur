@@ -102,6 +102,33 @@ re-clusters on demand. The canvas becomes shared 2D working memory on top of the
 v1 and ~90% of the value. Real-time shoulder-to-shoulder (both dragging live) is later and
 genuinely harder.
 
+## Node schemas — the write-side reference (agents: this is your contract)
+
+Everything below is a plain object in `board.nodes`. Positions/sizes are WORLD px. Every
+node gets `id` (any unique string; the engine uses `n<rand>`) and should get a human `name`.
+Omitted optional fields just take defaults. Write nodes through the daemon's `upsert` (or
+`GVCanvas.addNode` in-page) — never a raw board POST while people are on the board.
+
+| type | required | optional (what it means) |
+|------|----------|--------------------------|
+| `sticky` | `x y` | `w h` (160×160) · `text` · `rich` (see below) · `color` (pastel bg) · `author` · `fontSize` px · `bold` · `align` · `hFixed` (true = height pinned by a manual resize; omit = hugs its text) |
+| `text` | `x y` | `text` · `rich` · `w` (none = hug/`max-content`; set = fixed width + wrap) · `fontSize` · `color` · `bold italic strike` · `align` |
+| `shape` | `shape x y` | `w h` (per-shape default) · `text`/`rich` (centered) · `color` (fill). Shapes: square round circle diamond triangle triangle-down pill cylinder bubble star hexagon pentagon parallelogram trapezoid plus arrow-right |
+| `image` | `x y src` | `w h` · `name` · `crop` `{x,y,w,h}` as FRACTIONS of the full src. `src` = an `/__asset/<hash>` URL (upload bytes with `POST /__asset`, image/* content-type) — data URLs are legacy-render-only, don't write new ones |
+| `tile` | `x y url` | `w h` (420×300) · `name` · `device` desktop\|tablet\|phone (viewport the iframe renders at) · `liveUrl` (in-frame navigation, room-managed) |
+| `arrow` | `x1 y1 x2 y2` | `kind` arrow\|elbow\|curved\|line (default arrow) |
+| `draw` | `x y points` | `mode` marker\|highlighter\|tape · `color` · `size` stroke px · `w h` bbox · `points` = [[dx,dy],…] RELATIVE to x,y |
+| `section` | `x y` | `w h` · `name` · `color` · `locked` "all" (contents inert) \| "bg" (bg only). Dragging a section carries every node whose CENTRE is inside |
+| `table` | `x y` | `rows cols` (2×2) · `w h` · `cells` = { "r-c": text } (zero-based, e.g. "0-1") |
+| `stamp` | `stamp x y` | `w h` (64×64). Stamps: thumbs-up +1 star question thumbs-down sticker laugh heart |
+
+**Rich text (`node.rich`)** — sanitized HTML, whitelist: `b strong i em u s strike del br
+div p ul ol li span`, ALL attributes stripped. One `<div>` per line; lists as `<ul>/<ol>`
+runs, nesting = lists inside `<li>`. When you write `rich`, ALSO write `text` as the plain
+`innerText` equivalent (it names the node and is the no-rich fallback). Anything outside
+the whitelist is stripped on render — don't fight the sanitizer, it's the XSS gate for a
+doc that round-trips through shared KV and the room socket.
+
 ## Architecture — hand-rolled, three layers, native to Augur's vanilla-JS stack
 
 1. **Canvas engine** — one "world" layer, one CSS transform (`translate(x,y) scale(z)`); nodes
@@ -275,7 +302,8 @@ Do this **unless prompted otherwise**.
   `c.moveCursorTo(x, y)` (glides so the human sees Clawd walk), `c.pose('thinking'|'sparkles'|
   'happy'|'sleeping'|'love'|'sunglasses'|'idle')` (Clawd's expression — act while you
   work), `c.focus(nodeId)` / `c.focus(null)`, `c.upsert(node)` / `c.del(id)` / `c.rename(name)`,
-  `await c.save()` (persist to the `/__board` KV rail), `c.say(text)` / `c.unsay()` (an
+  `await c.save()` (no-op while connected — the ROOM persists; it POSTs `/__board` only as
+  the disconnected fallback), `c.say(text)` / `c.unsay()` (an
   **ephemeral speech bubble** by the cursor — stream-only, follows Clawd, never yours to save;
   always `unsay()` when done), `c.streamUpsert(node)` / `c.streamDel(id)` (generic ephemeral
   ops), and `c.stub({x,y,w,h,label})` (a persistent "🔨 Clawd is building: …" placeholder

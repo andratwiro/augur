@@ -4,7 +4,8 @@
 // ("Clawd") and co-work in real time: move a cursor, raise a focus ring on the node it's
 // working, and stream node edits — everything a human client does, over the same /__rt
 // protocol (augur-realtime BoardRoom DO). No browser: a raw WebSocket speaks the protocol
-// directly (Node's global WebSocket). Durable saves ride the existing /__board KV rail.
+// directly (Node's global WebSocket). Durable persistence is the ROOM's job while the
+// socket is live (BoardRoom DO writes KV itself); /__board POST is only the offline fallback.
 //
 // The engine renders any peer with kind:"agent" as the Clawd mascot (tinted by color) with
 // a name pill + focus rings, so the human sees WHERE Clawd is and WHAT it's touching.
@@ -245,10 +246,13 @@ export class ClawdCanvas {
 
   _scheduleSave() { clearTimeout(this._saveT); this._saveT = setTimeout(() => this.save(), 1200); }
 
-  // durable save to KV (full-state, like every canvas client). Our doc includes the human's
-  // ops we've been tracking, so this preserves their work as of our latest received op.
+  // Durable persistence: while the socket is live, THE ROOM persists the doc to KV itself
+  // (2026-07-27 — BoardRoom DO dirty-alarm + flush-on-empty), and a full-state POST from
+  // here would race it and could resurrect stale state. So save() is a no-op when
+  // connected; the POST only exists as the disconnected fallback.
   async save() {
     clearTimeout(this._saveT);
+    if (this._ws && this._ws.readyState === 1) return true; // the room owns the write
     try {
       const r = await fetch(`${this.site}/__board?path=${encodeURIComponent(this.boardPath)}`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ doc: this.doc }),
