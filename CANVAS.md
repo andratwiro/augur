@@ -24,6 +24,18 @@
 > doc; images live OUTSIDE the doc at `/__asset` (content-hashed, immutable, dedup);
 > `/__test/` rooms never persist. Net: a hot multi-person board costs ≤ ~80 KV writes/hour.
 >
+> **Clawds feel human (2026-07-27, Rob's brief: "hide the terminal")** — agents on a board
+> now: **walk in** from beside the content; **drag nodes** with cursor + node travelling
+> together; **type** stickies word-by-word under their focus ring; **point by selecting**;
+> live in a bottom-right **agents strip** (face · name · status · working/idle/attention/
+> done states, click to follow) while the top-right chips stay humans-only; wear a
+> **name-hashed accessory** so multiple Clawds differ by silhouette; auto-idle and
+> eventually **walk out** when their session dies (transcript heartbeat); and everyone has
+> **cursor chat** ("/" — FigJam) which daemons log to `clawd-events.jsonl` so words typed
+> at a Clawd reach its agent next turn. Identity is DETERMINISTIC: name = session name,
+> color = name hash, default state = working; the daemon refuses `--name` without
+> `--sibling`.
+>
 > **New agents: read "Working on the canvas" below first**, then the Gotchas — every entry
 > there was bought with a real bug. The `canvas.js` header has a section MAP.
 >
@@ -309,6 +321,25 @@ Do this **unless prompted otherwise**.
   ops), and `c.stub({x,y,w,h,label})` (a persistent "🔨 Clawd is building: …" placeholder
   section — see the protocol below). It reads the live doc on connect, so you edit **on top
   of** everyone's current work. CLI: `node clawd-canvas.mjs probe|demo|chill|daemon <boardPath>`.
+- **The humanized verbs (2026-07-27) — PREFER THESE over raw upserts for visible work:**
+  `await c.dragNode(id, x, y)` — walk over, grab (focus ring), node + cursor travel together
+  (the cursor.drag fast-path), durable upsert on release. `await c.typeNode(node)` — create
+  and TYPE the text word-by-word under your focus ring (`node` carries final text + optional
+  rich; conversational scale only — bulk seeding stays instant). `c.sel(ids)` — point with
+  selection rings ("these three"). `c.status(text, 'working'|'idle'|'attention'|'done')` —
+  your line in the bottom-right **agents strip** (attention pulses amber = you need the
+  human; done flashes green; the strip is how Rob works with the terminal hidden — keep it
+  current). `c.chat(text)` — cursor-chat bubble (a moment; status is the state).
+  `c.follow(name)` / `c.unfollow()` — trail a human at a respectful offset (accompany mode).
+  Both `dragNode` and `typeNode` are POLITE: they `waitUnheld()` while a human has the node
+  focused/selected. Daemon commands mirror all of these 1:1 (`move`, `type`, `sel`,
+  `status`, `attention`, `done`, `chat`, `follow`/`unfollow`, `progress` for stub labels).
+- **Humans can talk back on the board:** "/" opens FigJam-style cursor chat; every line a
+  human types is appended to `<cmdfile dir>/clawd-events.jsonl` by the daemon (with command
+  errors) — **read that file at the start of a turn** to hear what was said to you.
+- **Lifecycle is automatic:** the daemon walks IN beside the content on launch, auto-idles
+  (sleep pose + idle status) when the session transcript goes quiet, wakes on activity, and
+  after `--linger` ms of a dead session says goodbye and walks out (default 3h; 0 = never).
 - **SHOW ACTIVITY FIRST (the co-working protocol — Rob's standing rule).** The human watches
   the canvas, not your terminal. On ANY ask, your **first move is visual**, before real work:
   1. **Thinking:** walk to the relevant section → `pose('thinking')` → `say('reading the

@@ -519,6 +519,63 @@ svg.stk { display: block; overflow: visible; }
 /* a peer is typing in this node — colored ring + name tag (border-color/background set inline) */
 .gvc-remote-focus { position: absolute; inset: -4px; border: 2px solid; border-radius: 7px; pointer-events: none; z-index: 4; }
 .gvc-remote-focus .who { position: absolute; top: -20px; left: -2px; padding: 1px 7px 2px; border-radius: 8px 8px 8px 2px; color: #fff; font: 600 10.5px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; }
+/* ---- cursor chat + the agents strip --------------------------------------- */
+/* chat bubble at a cursor: a MOMENT (6s, then gone) — states live in the agents strip */
+.gvc-cursor .chat {
+  position: absolute; left: 13px; top: 40px; max-width: 260px; padding: 5px 10px 6px;
+  border-radius: 3px 12px 12px 12px; color: #fff;
+  font: 500 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .25); white-space: pre-wrap; word-break: break-word;
+}
+.gvc-cursor .chat.hidden { display: none; }
+.gvc-cursor.self { pointer-events: none; z-index: 71; }
+#gvc-cursorchat { position: fixed; z-index: 72; }
+#gvc-cursorchat input {
+  width: 220px; padding: 7px 11px; border: 0; border-radius: 3px 12px 12px 12px;
+  background: #1e1e1e; color: #fff; font: 500 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  outline: none; box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+}
+#gvc-cursorchat input::placeholder { color: rgba(255, 255, 255, .45); }
+/* the Clawd that needs you pulses amber at the cursor (locality) — the strip is the home */
+.gvc-cursor.attention svg { animation: gvc-attn 1.1s ease-in-out infinite; }
+@keyframes gvc-attn {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(245, 158, 11, 0)); }
+  50% { filter: drop-shadow(0 0 7px rgba(245, 158, 11, .95)); }
+}
+
+/* agents strip: the Clawds' home, bottom-right — glance here instead of the terminal.
+   working = breathing face + live dot · idle = dimmed, still · attention = amber pulse ·
+   done = one green flash. Click a row to follow that Clawd. */
+#gvc-agents { position: fixed; bottom: 24px; right: 16px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; z-index: 61; }
+#gvc-agents.hidden { display: none; }
+#gvc-agents .row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 11px 6px 7px;
+  background: #fff; border: 1px solid #e9e8e6; border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 4px 16px rgba(0, 0, 0, .10);
+  cursor: pointer; transition: transform .12s;
+  font: 500 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1e1e1e;
+}
+#gvc-agents .row:hover { transform: translateY(-1px); }
+#gvc-agents .row.following { box-shadow: 0 0 0 2px #2563eb33, 0 4px 16px rgba(0, 0, 0, .10); }
+#gvc-agents .face { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+#gvc-agents .face svg { display: block; }
+#gvc-agents .who { font-weight: 700; }
+#gvc-agents .what { color: #6b7280; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#gvc-agents .dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+#gvc-agents .row.working .dot { background: #22c55e; animation: gvc-live 1.6s ease-in-out infinite; }
+#gvc-agents .row.working .face { animation: gvc-breathe 2.4s ease-in-out infinite; }
+#gvc-agents .row.idle { opacity: .62; }
+#gvc-agents .row.idle .dot { background: #c4c9d4; }
+#gvc-agents .row.attention { border-color: #f59e0b; box-shadow: 0 0 0 2px #f59e0b44, 0 4px 16px rgba(0, 0, 0, .12); animation: gvc-attnrow 1.1s ease-in-out infinite; }
+#gvc-agents .row.attention .dot { background: #f59e0b; }
+#gvc-agents .row.attention .what { color: #b45309; font-weight: 600; }
+#gvc-agents .row.done .dot { background: #22c55e; }
+#gvc-agents .row.done { animation: gvc-doneflash .9s ease-out; }
+@keyframes gvc-live { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes gvc-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.09); } }
+@keyframes gvc-attnrow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes gvc-doneflash { 0% { background: #dcfce7; } 100% { background: #fff; } }
+
 /* peers' drags arrive at tick rate (~8Hz) — a short linear tween makes them glide */
 /* 90ms: just over the 50ms drag fast-path cadence, so remote motion is always mid-tween
    (continuous glide) instead of hop-pause-hop at the old 120ms ops tick */

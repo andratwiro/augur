@@ -22,10 +22,13 @@
  * Protocol (JSON, one object per message):
  *   client→room: {t:"cursor",x,y,drag?}|{t:"cursor",gone:true} · {t:"ops",ops:[...]} ·
  *                {t:"focus",id|null} · {t:"sel",ids:[...]} (live selection) ·
+ *                {t:"status",text,state} (persistent work state under an agent cursor:
+ *                state working|idle|attention; kept on the attachment for late joiners) ·
+ *                {t:"chat",text} (FigJam-style cursor chat — pure ephemeral relay) ·
  *                {t:"proto",id,ev} (demo sync in a live tile iframe) ·
  *                {t:"doc",doc} (reply to needDoc/docreq)
  *   room→client: {t:"welcome",sid,color,peers,doc?,needDoc?} · {t:"join"|"leave",peer} ·
- *                relayed cursor/ops/focus/sel/proto stamped with the sender's peer info ·
+ *                relayed cursor/ops/focus/sel/status/chat stamped with the sender's info ·
  *                {t:"doc",doc} · {t:"docreq"}
  * cursor.drag is the drag fast-path: [{id,x,y,w,h},…] geometry for nodes mid-drag,
  * relayed verbatim on the cursor cadence (~20Hz) so remote drags glide instead of
@@ -91,7 +94,7 @@ export class BoardRoom {
     for (const ws of this.ctx.getWebSockets()) {
       if (ws === excludeWs) continue;
       const a = ws.deserializeAttachment();
-      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, pose: a.pose || null, focus: a.focus || null, sel: a.sel || null });
+      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, pose: a.pose || null, focus: a.focus || null, sel: a.sel || null, status: a.status || null });
     }
     return out;
   }
@@ -183,6 +186,22 @@ export class BoardRoom {
       a.focus = msg.id || null;
       ws.serializeAttachment(a);
       this.broadcast({ t: "focus", sid: a.sid, name: a.name, color: a.color, id: a.focus }, ws);
+      return;
+    }
+    if (msg.t === "status") {
+      // persistent "what am I working on" line under a cursor — survives on the attachment
+      // so late joiners see it (unlike chat, which is a moment, not a state)
+      const text = (typeof msg.text === "string" ? msg.text : "").slice(0, 120);
+      const state = ["working", "idle", "attention", "done"].indexOf(msg.state) >= 0 ? msg.state : "working";
+      a.status = text || state !== "working" ? { text, state } : null;
+      ws.serializeAttachment(a);
+      this.broadcast({ t: "status", sid: a.sid, status: a.status }, ws);
+      return;
+    }
+    if (msg.t === "chat") {
+      // FigJam cursor chat: ephemeral, relayed and forgotten (no storage, no replay)
+      const text = (typeof msg.text === "string" ? msg.text : "").slice(0, 200);
+      if (text) this.broadcast({ t: "chat", sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, text }, ws);
       return;
     }
     if (msg.t === "pose") {

@@ -1679,6 +1679,7 @@
       else if (k === "t") setTool({ kind: "place", type: "table" });
       return;
     }
+    if (e.key === "/") { e.preventDefault(); openCursorChat(); return; } // FigJam cursor chat
     if (k === "v") setTool("select");
     else if (k === "h") setTool("hand");
     else if (k === "m") { drawStyle.mode = "marker"; setTool("draw"); }
@@ -2785,9 +2786,23 @@
     return "";
   }
   var clawdSeq = 0;
-  function clawdSvg(pose, color) {
+  // Multiple Clawds on one board differ by silhouette, not just tint: a deterministic
+  // accessory from the NAME hash (same recipe as the identity color, so it's stable across
+  // sessions with zero coordination). The primary orange "Clawd" stays bare — it's the icon.
+  function clawdWearable(name) {
+    if (!name || String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-") === "clawd") return "";
+    var h = 0; for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    var kind = h % 4, c = "#f6f0e4"; // cream, matching the die-cut outline — reads on any tint
+    if (kind === 0) return ""; // some Clawds just don't do hats
+    if (kind === 1) // antenna with a bobble
+      return '<rect x="22.5" y="11" width="3" height="7" fill="' + c + '"/><rect x="21" y="7.5" width="6" height="4" fill="' + c + '"/>';
+    if (kind === 2) // beanie with a pompom
+      return '<rect x="13" y="13.5" width="22" height="4.5" fill="' + c + '"/><rect x="21" y="9.5" width="6" height="4" fill="' + c + '"/>';
+    return '<rect x="30" y="12.5" width="4" height="5" fill="' + c + '"/><rect x="35.5" y="11" width="5" height="8" fill="' + c + '"/>'; // jaunty side cap
+  }
+  function clawdSvg(pose, color, name) {
     var fid = "clawd-o-" + (++clawdSeq);
-    var inner = clawdBody(color) + clawdEyesMarkup(pose) + clawdAcc(pose);
+    var inner = clawdBody(color) + clawdEyesMarkup(pose) + clawdAcc(pose) + clawdWearable(name);
     return '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">' +
       '<defs><filter id="' + fid + '" x="-25%" y="-25%" width="150%" height="150%">' +
       '<feMorphology in="SourceAlpha" operator="dilate" radius="1.5" result="d"/>' +
@@ -2811,7 +2826,7 @@
     return "idle";
   }
   // glyph for a peer: Clawd (in its derived state) if it's an agent, the arrow otherwise
-  function mpGlyph(p) { return p && p.kind === "agent" ? clawdSvg(agentPose(p), p.color) : mpArrowSvg(p.color); }
+  function mpGlyph(p) { return p && p.kind === "agent" ? clawdSvg(agentPose(p), p.color, p.name) : mpArrowSvg(p.color); }
   // swap just the glyph svg in place (pose change) — keep the name label
   function mpUpdateGlyph(p) {
     if (!p.el) return;
@@ -2844,7 +2859,7 @@
   }
   function mpEnsureCursor(p) {
     if (p.el) return p.el;
-    p.el = el("div", { class: "gvc-cursor" + (p.kind === "agent" ? " agent" : ""), html: mpGlyph(p) + '<span class="lbl"></span>' });
+    p.el = el("div", { class: "gvc-cursor" + (p.kind === "agent" ? " agent" : ""), html: mpGlyph(p) + '<span class="lbl"></span><span class="chat hidden"></span>' });
     if (p.kind === "agent") {
       p.shownPose = agentPose(p);
       // pet: hovering flips the mascot to the "In Love" state (heart eyes) — the pose
@@ -2863,7 +2878,92 @@
     var lbl = p.el.querySelector(".lbl");
     lbl.textContent = p.name; lbl.style.background = p.color;
     mpCursorLayer.appendChild(p.el);
+    mpApplyStatus(p);
     return p.el;
+  }
+  // Status is a STATE, so it lives in one calm place — the agents strip by the bottom bar
+  // (Rob's call: the board itself stays uncrowded; "hide the terminal" means glancing at ONE
+  // spot). The cursor only carries the amber attention pulse, for locality when the Clawd
+  // that needs you happens to be on screen.
+  function mpApplyStatus(p) {
+    if (p.el) p.el.classList.toggle("attention", !!(p.status && p.status.state === "attention"));
+    mpRenderAgents();
+  }
+  // The agents strip: one row per agent peer — face (tinted mini Clawd), name, status text,
+  // state (working = live dot · idle = dimmed · attention = amber pulse). Click a row to
+  // fly-and-follow that Clawd. Hidden when no agents are in the room.
+  var mpAgentsBar = null;
+  function mpRenderAgents() {
+    if (!mpAgentsBar) return;
+    mpAgentsBar.innerHTML = "";
+    var rows = [];
+    for (var sid in mpPeers) { var p = mpPeers[sid]; if (p.kind === "agent") rows.push({ sid: sid, p: p }); }
+    if (!rows.length) { mpAgentsBar.classList.add("hidden"); return; }
+    mpAgentsBar.classList.remove("hidden");
+    rows.forEach(function (r) {
+      var p = r.p, s = p.status || {};
+      // default state is DETERMINISTIC: working. Idle is only ever set explicitly (the
+      // daemon's heartbeat owns it) — deriving it from the mascot's quiet-pose made the
+      // strip flap and fight the heartbeat's wake.
+      var state = s.state || "working";
+      var text = s.text || (state === "idle" ? "idle" : state === "attention" ? "needs you" : state === "done" ? "done ✓" : "working…");
+      var row = el("div", { class: "row " + state + (mpFollowSid === r.sid ? " following" : ""), title: state === "attention" ? p.name + " needs your input — click to go" : "Click to follow " + p.name });
+      var face = el("span", { class: "face", html: clawdChipSvg("#f6f0e4") }); face.style.background = p.color;
+      row.appendChild(face);
+      row.appendChild(el("span", { class: "who", text: p.name }));
+      row.appendChild(el("span", { class: "what", text: text }));
+      row.appendChild(el("span", { class: "dot" }));
+      row.addEventListener("click", function () { if (mpFollowSid === r.sid) mpUnfollow(); else mpFollow(r.sid); });
+      mpAgentsBar.appendChild(row);
+    });
+  }
+  // cursor chat (FigJam): a bubble at the cursor for ~6s, then gone. A moment, not a state.
+  function mpShowChat(p, text) {
+    mpEnsureCursor(p);
+    var c = p.el.querySelector(".chat"); if (!c) return;
+    c.textContent = text; c.style.background = p.color;
+    c.classList.remove("hidden");
+    p.el.classList.remove("idle");
+    clearTimeout(p.chatT);
+    p.chatT = setTimeout(function () { c.classList.add("hidden"); }, 6000);
+  }
+  // MY side of cursor chat: "/" opens a small input at the pointer (the FigJam key), Enter
+  // sends {t:"chat"} + echoes the bubble locally, Esc closes. Clawd daemons log incoming
+  // chat to their events file, so talking to an agent here reaches it on its next turn.
+  var chatInput = null, lastMouse = { x: innerWidth / 2, y: innerHeight / 2 };
+  function openCursorChat() {
+    if (chatInput) { chatInput.querySelector("input").focus(); return; }
+    chatInput = el("div", { id: "gvc-cursorchat" }, [el("input", { type: "text", placeholder: "Say something…", maxLength: "200" })]);
+    chatInput.style.left = Math.min(innerWidth - 240, lastMouse.x + 14) + "px";
+    chatInput.style.top = Math.min(innerHeight - 48, lastMouse.y + 16) + "px";
+    document.body.appendChild(chatInput);
+    var inp = chatInput.querySelector("input");
+    inp.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        var t = inp.value.trim();
+        if (t) {
+          mpSend({ t: "chat", text: t });
+          mpShowChat(mpSelfPeer(), t); // echo at my own cursor so I see what everyone sees
+        }
+        closeCursorChat();
+      } else if (e.key === "Escape") closeCursorChat();
+    });
+    inp.addEventListener("blur", function () { setTimeout(closeCursorChat, 120); });
+    inp.focus();
+  }
+  function closeCursorChat() { if (chatInput) { chatInput.remove(); chatInput = null; } }
+  // a pseudo-peer for my own cursor bubble (I have no .gvc-cursor element of my own — fake
+  // one anchored at the live pointer, cleaned up by the same 6s timer)
+  var selfBubble = null;
+  function mpSelfPeer() {
+    if (!selfBubble) {
+      selfBubble = { name: mpName, color: mpColor, el: el("div", { class: "gvc-cursor self", html: '<span class="chat hidden"></span>' }) };
+      mpCursorLayer.appendChild(selfBubble.el);
+    }
+    selfBubble.el.style.transform = "translate(" + Math.round(lastMouse.x) + "px," + Math.round(lastMouse.y) + "px)";
+    selfBubble.color = mpColor;
+    return selfBubble;
   }
   function mpPlaceCursor(p) {
     if (!p.el || p.cx == null) return;
@@ -2963,11 +3063,15 @@
     return String(name || "?").trim().split(/\s+/).map(function (w) { return w.charAt(0); }).slice(0, 2).join("").toUpperCase();
   }
   function mpRenderPresence() {
+    mpRenderAgents(); // the agents strip tracks the same lifecycle events as the chips
     if (!mpPresence) return;
     mpPresence.innerHTML = "";
     if (!mp || mp.readyState !== 1) { mpPresence.classList.add("hidden"); return; }
+    // top-right chips = HUMANS only. Agents live in the bottom agents strip (Rob's call:
+    // people and agents are different kinds of presence — you glance top-right for who's
+    // here, bottom for what the Clawds are doing).
     var chips = [{ name: mpName, title: mpName + " (you)", color: mpColor, me: true }];
-    for (var sid in mpPeers) { var p = mpPeers[sid]; chips.push({ sid: sid, name: p.name, title: p.name, color: p.color, kind: p.kind, pose: p.pose }); }
+    for (var sid in mpPeers) { var p = mpPeers[sid]; if (p.kind === "agent") continue; chips.push({ sid: sid, name: p.name, title: p.name, color: p.color, kind: p.kind, pose: p.pose }); }
     if (chips.length < 2) { mpPresence.classList.add("hidden"); return; } // alone — no chrome
     mpPresence.classList.remove("hidden");
     chips.forEach(function (c) {
@@ -3084,13 +3188,13 @@
       mpSid = m.sid; mpRetry = 1000;
       if (m.color && m.color !== mpColor) { mpColor = m.color; mpApplyLocalCursor(); } // your pointer takes your room color
       mpPeers = {};
-      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null, sel: p.sel || null }; });
+      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null, sel: p.sel || null, status: p.status || null }; });
       if (m.doc) mpAdoptDoc(m.doc);
       else mpSend({ t: "doc", doc: board }); // seed the room (first in, or post-hibernation — KV is current when the room was idle)
       mpReady = true;
       mpRenderPresence(); mpRenderFocus();
     } else if (m.t === "join") {
-      mpPeers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, focus: m.peer.focus || null, kind: m.peer.kind || null, pose: m.peer.pose || null };
+      mpPeers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, focus: m.peer.focus || null, kind: m.peer.kind || null, pose: m.peer.pose || null, status: m.peer.status || null };
       mpRenderPresence();
     } else if (m.t === "leave") {
       var p = mpPeers[m.peer.sid];
@@ -3102,6 +3206,8 @@
     else if (m.t === "ops") mpApplyOps(m.ops || []);
     else if (m.t === "focus") { var fp = mpPeers[m.sid]; if (fp) { fp.focus = m.id || null; mpRenderFocus(); } }
     else if (m.t === "sel") { var sp = mpPeers[m.sid]; if (sp) { sp.sel = m.ids || null; mpRenderFocus(); } }
+    else if (m.t === "status") { var stp = mpPeers[m.sid]; if (stp) { stp.status = m.status || null; mpApplyStatus(stp); mpRenderPresence(); } }
+    else if (m.t === "chat") { var cp = mpPeers[m.sid] || (mpPeers[m.sid] = { name: m.name, color: m.color, kind: m.kind || null, focus: null }); mpShowChat(cp, m.text); }
     else if (m.t === "pose") { var qp = mpPeers[m.sid]; if (qp) { qp.pose = m.pose || null; mpUpdateGlyph(qp); mpRenderPresence(); } }
     else if (m.t === "doc") mpAdoptDoc(m.doc);
     else if (m.t === "docreq") mpSend({ t: "doc", doc: board });
@@ -3132,8 +3238,11 @@
     document.body.appendChild(mpCursorLayer); // outside #gvc-ui so ⌘. keeps cursors visible
     mpPresence = el("div", { id: "gvc-presence", class: "hidden" });
     ui.appendChild(mpPresence);
+    mpAgentsBar = el("div", { id: "gvc-agents", class: "hidden" });
+    ui.appendChild(mpAgentsBar);
     transformCbs.push(mpPositionCursors);
     root.addEventListener("pointermove", mpTrackPointer);
+    root.addEventListener("pointermove", function (e) { lastMouse.x = e.clientX; lastMouse.y = e.clientY; });
     document.addEventListener("mouseleave", function () { mpSend({ t: "cursor", gone: true }); });
     // co-editing: focus events bubble from every contentEditable (sticky/shape/text text,
     // table cells, name labels) — no per-renderer hooks needed

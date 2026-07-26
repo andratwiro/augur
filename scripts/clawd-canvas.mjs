@@ -143,6 +143,10 @@ export class ClawdCanvas {
       this._applyOps(m.ops || []); // track the human's edits so our doc stays current
     } else if (m.t === 'focus') {
       const p = this.peers[m.sid]; if (p) p.focus = m.id || null;
+    } else if (m.t === 'sel') {
+      const p = this.peers[m.sid]; if (p) p.sel = m.ids || null; // what each human has selected — the politeness guard reads this
+    } else if (m.t === 'chat') {
+      if (this.onChat) { try { this.onChat({ sid: m.sid, name: m.name, kind: m.kind || null, text: m.text }); } catch {} }
     } else if (m.t === 'pose') {
       const p = this.peers[m.sid]; if (p) p.pose = m.pose || null;
     } else if (m.t === 'doc') {
@@ -181,9 +185,16 @@ export class ClawdCanvas {
   // ---- the co-working verbs ------------------------------------------------
   cursor(x, y) { this._cur = { x, y }; this._send({ t: 'cursor', x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }); }
 
-  // glide the cursor so the human sees Clawd walk over, not teleport
-  async moveCursorTo(x, y, { steps = 24, stepMs = 40 } = {}) {
+  // glide the cursor so the human sees Clawd walk over, not teleport. Duration is
+  // DISTANCE-PROPORTIONAL (humans cross a desk faster than they nudge a mouse): short hops
+  // are quick, treks are brisk, nothing is slow-motion or teleporty. Explicit steps/stepMs
+  // still win (the chill loop uses slow ambles on purpose).
+  async moveCursorTo(x, y, opts = {}) {
     const sx = this._cur.x, sy = this._cur.y;
+    const dist = Math.hypot(x - sx, y - sy);
+    const dur = Math.max(180, Math.min(1100, dist * 0.9));
+    const steps = opts.steps || Math.max(5, Math.round(dur / (opts.stepMs || 40)));
+    const stepMs = opts.stepMs || 40;
     for (let i = 1; i <= steps; i++) {
       const t = i / steps, e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // easeInOut
       this.cursor(sx + (x - sx) * e, sy + (y - sy) * e);
@@ -193,6 +204,98 @@ export class ClawdCanvas {
   }
 
   focus(id) { this._send({ t: 'focus', id: id || null }); }
+  sel(ids) { this._send({ t: 'sel', ids: Array.isArray(ids) ? ids : ids ? [ids] : [] }); } // point with selection rings ("these three")
+  // the persistent line in the board's agents strip: what am I doing, and do I need you.
+  // state: working | idle | attention | done — attention pulses amber, done flashes green.
+  status(text, state) { this._send({ t: 'status', text: text || '', state: state || 'working' }); }
+  chat(text) { this._send({ t: 'chat', text: String(text || '').slice(0, 200) }); } // cursor-chat bubble (a moment; status is the state)
+
+  // ---- politeness: never grab what a human's hands are on -------------------
+  _heldBy(id) {
+    return Object.values(this.peers).find((p) => p.kind !== 'agent' && (p.focus === id || (p.sel || []).indexOf(id) >= 0)) || null;
+  }
+  // wait (politely, visibly) for a human to let go of a node; give up after `timeout` and
+  // proceed — matching a human colleague's "sorry, I'll just grab it" after hovering.
+  async waitUnheld(id, timeout = 15000) {
+    const t0 = Date.now();
+    let announced = false;
+    while (Date.now() - t0 < timeout) {
+      const h = this._heldBy(id);
+      if (!h) { if (announced) this.status('', 'working'); return true; }
+      if (!announced) { announced = true; this.status(`waiting for ${h.name}…`, 'working'); }
+      await sleep(700);
+    }
+    if (announced) this.status('', 'working');
+    return false;
+  }
+
+  // ---- humanized edits: drags that travel, text that types ------------------
+  // Move a node the way a person does: walk to it, grab (focus ring), then node + cursor
+  // travel TOGETHER via the cursor.drag fast-path (20Hz on peers' screens), durable upsert
+  // on release. Never teleports someone's board around.
+  async dragNode(id, tx, ty, { ms } = {}) {
+    const n = this.doc.nodes.find((x) => x.id === id);
+    if (!n) throw new Error('dragNode: no node ' + id);
+    await this.waitUnheld(id);
+    const grabX = n.x + (n.w || 150) / 2, grabY = n.y + (n.h || 100) / 2;
+    await this.moveCursorTo(grabX, grabY);
+    this.focus(id);
+    await sleep(120); // a beat between grab and pull — instant yank reads as glitch
+    const sx = n.x, sy = n.y, dist = Math.hypot(tx - sx, ty - sy);
+    const dur = ms || Math.max(380, Math.min(1400, dist * 1.1));
+    const frames = Math.max(6, Math.round(dur / 50));
+    for (let i = 1; i <= frames; i++) {
+      const t = i / frames, e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      n.x = sx + (tx - sx) * e; n.y = sy + (ty - sy) * e;
+      const cx = n.x + (n.w || 150) / 2, cy = n.y + (n.h || 100) / 2;
+      this._cur = { x: cx, y: cy };
+      this._send({ t: 'cursor', x: Math.round(cx * 10) / 10, y: Math.round(cy * 10) / 10, drag: [{ id, x: Math.round(n.x * 10) / 10, y: Math.round(n.y * 10) / 10 }] });
+      await sleep(50);
+    }
+    n.x = tx; n.y = ty;
+    this.upsert({ ...n });
+    this.focus(null);
+    if (this._bubbleText) this._placeBubble();
+  }
+  // Create a text-bearing node and TYPE its content word by word (the engine's co-typing
+  // rail streams it; peers watch it grow under Clawd's focus ring). `node` carries the
+  // FINAL text (and optional rich, applied at the end). Conversational scale only — bulk
+  // seeding should stay instant, fake slowness on 40 nodes is torture.
+  async typeNode(node, { wordMs = 130 } = {}) {
+    if (!node || !node.id) throw new Error('typeNode: node with id required');
+    await this.waitUnheld(node.id);
+    await this.moveCursorTo(node.x + (node.w || 160) / 2, node.y + (node.h || 160) / 2);
+    const full = String(node.text || '');
+    const rich = node.rich;
+    this.upsert({ ...node, text: '', rich: undefined });
+    this.focus(node.id);
+    let acc = '';
+    for (const piece of full.split(/(\s+)/)) {
+      if (!piece) continue;
+      acc += piece;
+      if (!piece.trim()) continue; // whitespace rides with the next word
+      this.upsert({ ...node, text: acc, rich: undefined });
+      await sleep(wordMs);
+    }
+    this.upsert(rich ? { ...node } : { ...node, rich: undefined });
+    this.focus(null);
+  }
+
+  // ---- accompany: trail a human like a colleague looking over their shoulder ----
+  // Follows at an offset, catching up in relaxed bursts — never mirroring 1:1 (creepy).
+  follow(who) {
+    this.unfollow();
+    this._followT = setInterval(async () => {
+      if (this._followBusy) return;
+      const p = Object.values(this.peers).find((q) => (q.name === who || q.sid === who) && q.cx != null);
+      if (!p) return;
+      const tx = p.cx - 90, ty = p.cy + 55;
+      if (Math.hypot(tx - this._cur.x, ty - this._cur.y) < 150) return; // close enough — don't hover
+      this._followBusy = true;
+      try { await this.moveCursorTo(tx, ty); } finally { this._followBusy = false; }
+    }, 450);
+  }
+  unfollow() { if (this._followT) { clearInterval(this._followT); this._followT = null; } }
 
   // set Clawd's expression: idle · thinking · sparkles · happy · sleeping · love · sunglasses
   pose(name) { this._pose = name; this._send({ t: 'pose', pose: name }); }
@@ -319,10 +422,24 @@ if (isMain) {
   const flag = (n) => { const i = argv.indexOf('--' + n); return i >= 0 ? argv.splice(i, 2)[1] : undefined; };
   let name = flag('name');
   const nameWasExplicit = name != null; // an explicit --name pins the identity; no auto-tracking
+  const sibling = argv.indexOf('--sibling') >= 0; if (sibling) argv.splice(argv.indexOf('--sibling'), 1);
+  const lingerMs = Number(flag('linger') ?? process.env.CLAWD_LINGER_MS ?? 3 * 3600 * 1000);
+  const idleMs = Number(process.env.CLAWD_IDLE_MS || 180000);
   const color = flag('color'); // identity: one per agent, so several Clawds can co-work
   const sessionFileFlag = flag('session-file'); // escape hatch when the path isn't derivable
   const [mode, boardPath] = argv;
   if (!mode || !boardPath) { console.error("usage: node clawd-canvas.mjs <probe|demo|chill|daemon> <boardPath> [args] [--name N --color '#hex' --session-file P]"); process.exit(1); }
+  // IDENTITY IS DETERMINISTIC, not the agent's choice: the session's own Clawd takes its
+  // name from the terminal session (and follows /rename), its color from the name hash,
+  // and its strip state from behavior. --name exists ONLY for sibling agents that need a
+  // separate identity, and must say so explicitly — this guard is what makes the rule
+  // structural instead of a doc plea.
+  if (mode === 'daemon' && nameWasExplicit && !sibling) {
+    console.error('daemon: --name pins an identity, which is reserved for SIBLING agents. ' +
+      'For the session\'s own Clawd, omit --name (identity follows the session transcript). ' +
+      'If this really is a sibling, add --sibling.');
+    process.exit(1);
+  }
   // daemon with no explicit --name → take it from the session, before the first
   // connect, so the pill is right from the moment Clawd appears.
   let namer = null;
@@ -358,7 +475,7 @@ if (isMain) {
     setInterval(() => {}, 1 << 30); // hold the event loop; ws + ping keep presence alive
   } else if (mode === 'daemon') {
     // persistent puppet: tail a JSONL command file, execute in order, mirror the doc
-    const { readFileSync, writeFileSync, existsSync, watchFile } = await import('node:fs');
+    const { readFileSync, writeFileSync, existsSync, watchFile, appendFileSync } = await import('node:fs');
     const { dirname, join } = await import('node:path');
     const cmdFile = argv[2];
     if (!cmdFile) { console.error('daemon needs a command file path'); process.exit(1); }
@@ -367,13 +484,28 @@ if (isMain) {
     const dump = () => { try { writeFileSync(dumpFile, JSON.stringify(c.doc, null, 2)); } catch {} };
     dump();
     c._ws.addEventListener('message', dump); // human ops keep the mirror fresh
+    // events OUT to the agent: humans' cursor-chat lines (and command errors) land here —
+    // read it at the start of a turn to hear what was said to you on the canvas
+    const evFile = join(dirname(cmdFile), 'clawd-events.jsonl');
+    const logEvent = (o) => { try { appendFileSync(evFile, JSON.stringify({ ts: new Date().toISOString(), ...o }) + '\n'); } catch {} };
+    c.onChat = (m) => { if (m.kind !== 'agent') logEvent({ event: 'chat', from: m.name, text: m.text }); };
     let offset = readFileSync(cmdFile, 'utf8').length; // ignore stale commands from a past run
     let queue = Promise.resolve();
     let pending = 0, lastCmdAt = Date.now(), explicitPose = 'idle', chillOn = true;
     const enqueue = (fn, label) => {
       pending++;
-      queue = queue.then(fn).catch((e) => console.log((label || 'step') + ' failed:', e.message)).finally(() => { pending--; });
+      queue = queue.then(fn).catch((e) => { console.log((label || 'step') + ' failed:', e.message); try { logEvent({ event: 'error', cmd: label, error: e.message }); } catch {} }).finally(() => { pending--; });
     };
+    // ENTRANCE: walk in from beside the content instead of materializing mid-board
+    {
+      const boxes = c.doc.nodes.filter((nd) => Number.isFinite(nd.x) && Number.isFinite(nd.w));
+      if (boxes.length) {
+        const minX = Math.min(...boxes.map((nd) => nd.x));
+        const midY = boxes.reduce((a, nd) => a + nd.y + (nd.h || 100) / 2, 0) / boxes.length;
+        c.cursor(minX - 420, midY);
+        enqueue(() => c.moveCursorTo(minX - 120, midY), 'entrance');
+      } else c.cursor(300, 240);
+    }
     // rename the AGENT (not the board). The room stamps name/color at connect, so an
     // identity change rides a quick reconnect, carrying pose/bubble/cursor across.
     const setIdentity = async (newName, newColor) => {
@@ -398,6 +530,16 @@ if (isMain) {
       else if (m.cmd === 'say') c.say(m.text);
       else if (m.cmd === 'unsay') c.unsay();
       else if (m.cmd === 'focus') c.focus(m.id ?? null);
+      else if (m.cmd === 'sel') c.sel(m.ids || []);
+      else if (m.cmd === 'status') c.status(m.text, m.state);
+      else if (m.cmd === 'attention') { c.status(m.text || 'needs your input', 'attention'); c.pose('thinking'); }
+      else if (m.cmd === 'done') { c.status(m.text || 'done \u2713', 'done'); c.pose('happy'); }
+      else if (m.cmd === 'chat') c.chat(m.text);
+      else if (m.cmd === 'move') await c.dragNode(m.id, m.x, m.y, { ms: m.ms });
+      else if (m.cmd === 'type') await c.typeNode(m.node, { wordMs: m.wordMs });
+      else if (m.cmd === 'follow') c.follow(m.name || m.sid);
+      else if (m.cmd === 'unfollow') c.unfollow();
+      else if (m.cmd === 'progress') { const st = c.doc.nodes.find((x) => x.id === m.id); if (st) c.upsert({ ...st, text: '\ud83d\udd28 ' + c.name + ' is building: ' + (m.label || '\u2026') }); c.status(m.label || '', 'working'); }
       else if (m.cmd === 'stub') console.log('stub:', c.stub(m));
       else if (m.cmd === 'upsert') (m.ephemeral ? c.streamUpsert(m.node) : c.upsert(m.node));
       else if (m.cmd === 'del') (m.ephemeral ? c.streamDel(m.id) : c.del(m.id));
@@ -454,6 +596,38 @@ if (isMain) {
       if (explicitPose !== 'idle') return;
       enqueue(chillStep, 'chill');
     }, 3400);
+
+    // HEARTBEAT — presence you can trust. The transcript the identity-follow already tails
+    // is also a liveness signal: quiet for idleMs → auto-sleep (pose + idle status in the
+    // agents strip); dead/missing for lingerMs → say goodbye, walk off beside the content,
+    // quit. Parked-on-purpose stays possible: --linger 0 disables the walk-out.
+    let autoIdle = false;
+    const transcriptFresh = () => {
+      try { return namer && namer.file ? (Date.now() - statSyncHb(namer.file).mtimeMs) : Infinity; } catch { return Infinity; }
+    };
+    const { statSync: statSyncHb } = await import('node:fs');
+    setInterval(() => {
+      const quiet = Math.min(transcriptFresh(), Date.now() - lastCmdAt);
+      if (lingerMs > 0 && quiet > lingerMs) {
+        enqueue(async () => {
+          logEvent({ event: 'left', reason: 'session quiet ' + Math.round(quiet / 60000) + 'min' });
+          c.status('heading out', 'idle'); c.say('heading out \ud83d\udc4b'); c.pose('happy');
+          const boxes = c.doc.nodes.filter((nd) => Number.isFinite(nd.x) && Number.isFinite(nd.w));
+          const minX = boxes.length ? Math.min(...boxes.map((nd) => nd.x)) : c._cur.x - 400;
+          await c.moveCursorTo(minX - 420, c._cur.y);
+          c.unsay(); c.close();
+          setTimeout(() => process.exit(0), 400);
+        }, 'walk-out');
+        return;
+      }
+      if (!autoIdle && quiet > idleMs && pending === 0 && explicitPose === 'idle') {
+        autoIdle = true;
+        enqueue(async () => { c.pose('sleeping'); c.status('', 'idle'); }, 'auto-idle');
+      } else if (autoIdle && quiet < idleMs) {
+        autoIdle = false;
+        enqueue(async () => { c.pose('idle'); c.status('', 'working'); }, 'wake');
+      }
+    }, 15000);
 
     // follow the session name — /rename in the terminal renames Clawd on the board,
     // with nothing for the agent to notice or remember.
