@@ -29,6 +29,9 @@
 //   All modes take [--name N --color '#hex'] — the agent's identity. Multiple agents can
 //   co-work the same board simultaneously: each runs its OWN daemon (own name, color, and
 //   command file); the engine renders each as its own tinted Clawd, per-node LWW merges.
+//   ⚠️ In daemon mode DON'T pass --name for the session's own Clawd: with no --name it
+//   reads the name from the session transcript and FOLLOWS /rename automatically (see
+//   "session identity" below). Pass --name only to pin a sibling agent to its own identity.
 //
 //   node clawd-canvas.mjs daemon <boardPath> <cmdFile> # persistent puppet: tail a JSONL
 //     command file and execute in order — one connection an agent can command across turns.
@@ -46,8 +49,8 @@
 //       {"cmd":"rename","name":".."} {"cmd":"save"} {"cmd":"quit"}
 //       {"cmd":"chill","v":false}                        disable the ambient chill loop
 //       {"cmd":"identity","name":"F5 Clawd"}             rename the AGENT live (quick
-//         reconnect; color re-derives from the name unless "color" is given). Send this
-//         when the terminal session gets renamed — identity should track the session.
+//         reconnect; color re-derives from the name unless "color" is given). Rarely
+//         needed by hand — a nameless daemon already follows the session's own name.
 //     It also mirrors the live doc to <cmdFile dir>/clawd-board.json on every op, so the
 //     agent always reads the human's latest state without reconnecting. While connected and
 //     idle (no commands ~12s, pose plain idle) Clawd CHILLS instead of freezing: fidgets,
@@ -257,14 +260,72 @@ export class ClawdCanvas {
   close() { try { clearInterval(this._pingT); this._send({ t: 'cursor', gone: true }); this._ws.close(); } catch {} }
 }
 
+// ---- session identity (the agent names ITSELF) ------------------------------
+// A terminal session's name is the Clawd's name. Relying on the agent to pass
+// --name (and to re-send `identity` on every /rename) failed exactly the way you
+// would expect: it read a stale name and the pill was wrong. So the daemon reads
+// the name from the session transcript instead. Claude Code appends
+//   {"type":"custom-title","customTitle":"…","sessionId":"…"}
+// on every rename, so the LAST such line IS the current name.
+// The daemon's command file lives in the session scratchpad
+//   …/<project-slug>/<sessionId>/scratchpad/<cmdFile>
+// which is enough to locate ~/.claude/projects/<project-slug>/<sessionId>.jsonl.
+// Explicit --name still wins (siblings/subagents that want their own identity).
+const sessionTranscriptFor = async (cmdFile) => {
+  const { resolve, sep, join } = await import('node:path');
+  const { homedir } = await import('node:os');
+  const parts = resolve(cmdFile).split(sep);
+  const i = parts.lastIndexOf('scratchpad');
+  if (i < 2) return null;
+  const sessionId = parts[i - 1], projectSlug = parts[i - 2];
+  if (!/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(sessionId)) return null;
+  return join(homedir(), '.claude', 'projects', projectSlug, `${sessionId}.jsonl`);
+};
+
+// Tails the transcript for custom-title lines. Reads the whole file once, then
+// only the bytes appended since — a rename mid-session costs a few hundred bytes.
+const sessionNamer = async (file) => {
+  const { statSync, openSync, readSync, closeSync, existsSync } = await import('node:fs');
+  const TITLE = /"type":"custom-title","customTitle":"((?:[^"\\]|\\.)*)"/g;
+  let seen = 0, current = null;
+  const poll = () => {
+    if (!file || !existsSync(file)) return current;
+    try {
+      const size = statSync(file).size;
+      if (size < seen) seen = 0;                 // truncated/rotated → re-read
+      if (size === seen) return current;
+      const fd = openSync(file, 'r');
+      const buf = Buffer.allocUnsafe(size - seen);
+      readSync(fd, buf, 0, buf.length, seen);
+      closeSync(fd);
+      seen = size;
+      for (const m of buf.toString('utf8').matchAll(TITLE)) {
+        try { current = JSON.parse('"' + m[1] + '"'); } catch { current = m[1]; }
+      }
+    } catch {}
+    return current;
+  };
+  return { poll, file };
+};
+
 // ---- CLI --------------------------------------------------------------------
 const isMain = import.meta.url === `file://${process.argv[1]}`;
 if (isMain) {
   const argv = process.argv.slice(2);
   const flag = (n) => { const i = argv.indexOf('--' + n); return i >= 0 ? argv.splice(i, 2)[1] : undefined; };
-  const name = flag('name'), color = flag('color'); // identity: one per agent, so several Clawds can co-work
+  let name = flag('name');
+  const nameWasExplicit = name != null; // an explicit --name pins the identity; no auto-tracking
+  const color = flag('color'); // identity: one per agent, so several Clawds can co-work
+  const sessionFileFlag = flag('session-file'); // escape hatch when the path isn't derivable
   const [mode, boardPath] = argv;
-  if (!mode || !boardPath) { console.error("usage: node clawd-canvas.mjs <probe|demo|chill|daemon> <boardPath> [args] [--name N --color '#hex']"); process.exit(1); }
+  if (!mode || !boardPath) { console.error("usage: node clawd-canvas.mjs <probe|demo|chill|daemon> <boardPath> [args] [--name N --color '#hex' --session-file P]"); process.exit(1); }
+  // daemon with no explicit --name → take it from the session, before the first
+  // connect, so the pill is right from the moment Clawd appears.
+  let namer = null;
+  if (mode === 'daemon' && argv[2]) {
+    namer = await sessionNamer(sessionFileFlag || (await sessionTranscriptFor(argv[2])));
+    if (!name) name = namer.poll() || undefined;
+  }
   const c = new ClawdCanvas({ boardPath, ...(name ? { name } : {}), ...(color ? { color } : {}) });
   await c.connect();
   console.log(`joined ${boardPath} as ${c.name} (${c.color}), sid=${c.sid}`);
@@ -309,6 +370,23 @@ if (isMain) {
       pending++;
       queue = queue.then(fn).catch((e) => console.log((label || 'step') + ' failed:', e.message)).finally(() => { pending--; });
     };
+    // rename the AGENT (not the board). The room stamps name/color at connect, so an
+    // identity change rides a quick reconnect, carrying pose/bubble/cursor across.
+    const setIdentity = async (newName, newColor) => {
+      if (!newName && !newColor) return;
+      if ((newName || c.name) === c.name && !newColor) return;
+      const bubble = c._bubbleText, pose = c._pose, cur = { ...c._cur };
+      c.unsay(); c.close();
+      c.name = newName || c.name;
+      c.color = newColor || colorFor(c.name);
+      await sleep(400);
+      await c.connect();
+      c._ws.addEventListener('message', dump);
+      c.cursor(cur.x, cur.y); c.pose(pose);
+      if (bubble) c.say(bubble);
+      console.log(`identity → ${c.name} (${c.color})`);
+    };
+
     const run = async (m) => {
       if (m.cmd === 'goto') await c.moveCursorTo(m.x, m.y, { steps: m.steps || 18, stepMs: m.stepMs || 40 });
       else if (m.cmd === 'pose') { explicitPose = m.v; c.pose(m.v); }
@@ -320,19 +398,7 @@ if (isMain) {
       else if (m.cmd === 'upsert') (m.ephemeral ? c.streamUpsert(m.node) : c.upsert(m.node));
       else if (m.cmd === 'del') (m.ephemeral ? c.streamDel(m.id) : c.del(m.id));
       else if (m.cmd === 'rename') c.rename(m.name); // renames the BOARD, not the agent!
-      else if (m.cmd === 'identity') { // rename the AGENT (e.g. the session was renamed):
-        // the room stamps name/color at connect, so identity changes ride a quick reconnect
-        const bubble = c._bubbleText, pose = c._pose, cur = { ...c._cur };
-        c.unsay(); c.close();
-        c.name = m.name || c.name;
-        c.color = m.color || colorFor(c.name);
-        await sleep(400);
-        await c.connect();
-        c._ws.addEventListener('message', dump);
-        c.cursor(cur.x, cur.y); c.pose(pose);
-        if (bubble) c.say(bubble);
-        console.log(`identity → ${c.name} (${c.color})`);
-      }
+      else if (m.cmd === 'identity') await setIdentity(m.name, m.color);
       else if (m.cmd === 'save') await c.save();
       else if (m.cmd === 'quit') { c.unsay(); c.close(); setTimeout(() => process.exit(0), 300); }
       else console.log('unknown cmd:', JSON.stringify(m));
@@ -385,7 +451,17 @@ if (isMain) {
       enqueue(chillStep, 'chill');
     }, 3400);
 
+    // follow the session name — /rename in the terminal renames Clawd on the board,
+    // with nothing for the agent to notice or remember.
+    if (namer && !nameWasExplicit) {
+      setInterval(() => {
+        const t = namer.poll();
+        if (t && t !== c.name) enqueue(() => setIdentity(t), 'identity');
+      }, 5000);
+    }
+
     console.log(`daemon: pid=${process.pid} · commands → ${cmdFile} · doc mirror → ${dumpFile}`);
+    console.log(namer?.file ? `identity follows session: ${namer.file}${nameWasExplicit ? ' (pinned by --name, not following)' : ''}` : 'identity: static (no session transcript found)');
     setInterval(() => {}, 1 << 30);
   } else {
     c.close(); await sleep(200); process.exit(0); // probe: info already printed

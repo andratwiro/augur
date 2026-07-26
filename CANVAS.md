@@ -385,13 +385,22 @@ Do this **unless prompted otherwise**.
   different parts of the board merge cleanly, same node = last-writer-wins. Clawd orange
   (`#d97757`) is the primary's — give siblings distinct names AND colors, and only ever
   `kill` your own daemon — never a blanket `pkill` (that murders sibling sessions' Clawds).
-  **Naming convention:** if the terminal session has a name (the harness says so in a
-  system-reminder), the daemon's `--name` IS that session name — the pill on the canvas then
-  tells the human which terminal each Clawd is; fall back to `Clawd` only when unnamed.
+  **Naming is AUTOMATIC — don't pass `--name` for the session's own Clawd.** The pill on the
+  canvas should say which terminal each Clawd is, i.e. the session's name; a daemon launched
+  with **no** `--name` reads that name itself and keeps following it. Mechanism: Claude Code
+  appends `{"type":"custom-title","customTitle":"…","sessionId":"…"}` to the session
+  transcript on every `/rename`, so the last such line is the current name; the daemon
+  locates its own transcript from the command-file path (the scratchpad carries the session
+  id: `…/<project-slug>/<sessionId>/scratchpad/…` → `~/.claude/projects/<project-slug>/
+  <sessionId>.jsonl`) and re-reads the appended tail every 5s, swapping identity on change.
+  `--session-file <path>` overrides the derivation. **Passing `--name` PINS the identity and
+  turns following off** — right for a sibling agent, wrong for the session's own Clawd.
+  *(This replaced having the agent read the name out of a system-reminder and pass it by
+  hand: it went stale the moment Rob renamed the session mid-turn, and the board showed the
+  old name. Machinery beats attention.)*
   **Color is automatic:** it derives from the name (stable hash → palette; plain "Clawd" =
   the orange) and the presence chip wears the same color, so cursor and chip always match.
-  When the session gets renamed mid-flight, send `{"cmd":"identity","name":"<new name>"}` —
-  the daemon reconnects with the new name + derived color, keeping pose and bubble.
+  `{"cmd":"identity","name":"…"}` still forces a rename by hand if you ever need it.
   ⚠️ `rename` renames the **BOARD**, not the agent — a sibling once titled the whole board
   after itself; identity changes go through `identity`.
 
