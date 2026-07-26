@@ -236,6 +236,7 @@
     selected.forEach(function (id) { if (nodeEls[id]) nodeEls[id].classList.remove("sel"); });
     clearDecor();
     selected = ids.slice();
+    if (typeof mpSendSel === "function") mpSendSel(); // live selection → the room (throttled)
     selected.forEach(function (id) { if (nodeEls[id]) nodeEls[id].classList.add("sel"); });
     if (selected.length === 1) {
       var n = nodeById(selected[0]);
@@ -1214,6 +1215,7 @@
     var nodeHost = (!pan && e.target.closest) ? e.target.closest(".gvc-node") : null;
     if (nodeHost && nodeHost.classList.contains("editing")) return;
     if (pan) {
+      mpUnfollow();
       drag = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: board.view.x, oy: board.view.y };
       root.classList.add("panning");
     } else if (nodeHost) {
@@ -1222,22 +1224,25 @@
       // section instead (so you can unlock), never the content itself.
       var lockSec = sectionLockingNode(id);
       if (lockSec) { setSelection([lockSec.id]); lastTap = { id: null, t: 0 }; return; }
+      // Double-tap is detected on the second pointerDOWN but the ACTION is deferred to
+      // pointer-UP, and only fires if the pointer didn't move in between — native dblclick
+      // semantics. Acting at down bit hard: click-select then quickly drag (<350ms) threw
+      // fast users into text-edit instead of moving the node.
+      var dblAction = null;
       if (id === lastTap.id && now - lastTap.t < 350) {
         if (node.type === "sticky" || node.type === "text" || node.type === "shape") {
-          lastTap = { id: null, t: 0 }; enterEdit(id); return; // double-tap → edit text, no drag
-        }
-        if (node.type === "table") {
+          dblAction = function () { enterEdit(id); }; // double-tap → edit text
+        } else if (node.type === "table") {
           var cellEl = e.target.closest && e.target.closest(".gvc-cell");
-          if (cellEl) { lastTap = { id: null, t: 0 }; editCell(node, cellEl); return; }
+          if (cellEl) dblAction = function () { editCell(node, cellEl); };
+        } else if (node.type === "image") {
+          dblAction = function () { enterCrop(node); }; // double-tap → crop mode
+        } else if (node.type === "tile") {
+          dblAction = function () { enterInteract(node); }; // double-tap → drive the prototype
         }
-        if (node.type === "image") {
-          lastTap = { id: null, t: 0 }; enterCrop(node); return; // double-tap → crop mode
-        }
-        if (node.type === "tile") {
-          lastTap = { id: null, t: 0 }; enterInteract(node); return; // double-tap → drive the prototype
-        }
+        if (dblAction) lastTap = { id: null, t: 0 };
       }
-      lastTap = { id: id, t: now };
+      if (!dblAction) lastTap = { id: id, t: now };
       // Shift means two things (as in Figma): shift-CLICK toggles the selection, shift-DRAG
       // locks the move to one axis. Resolve the ambiguity on pointerUP — a shift-click on an
       // already-selected node only drops it from the selection if the pointer never moved,
@@ -1248,11 +1253,12 @@
       // a section drags its contents with it; snapping still uses the SELECTION's box (you're
       // aligning the section, not its stickies) and must not treat the passengers as targets
       var moving = withSectionChildren(selected);
-      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, bbox: selectionRect(selected), items: moving.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
+      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, dblAction: dblAction, bbox: selectionRect(selected), items: moving.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
       armSnap(moving);
     } else if (e.pointerType === "touch") {
       // touch: one finger on empty canvas pans (no mouse to scroll with); two fingers pinch
       setSelection([]);
+      mpUnfollow();
       drag = { mode: "pan", sx: e.clientX, sy: e.clientY, ox: board.view.x, oy: board.view.y };
     } else {
       // empty drag → marquee selection (Figma/FigJam); panning is Space-drag or scroll/trackpad
@@ -1488,6 +1494,7 @@
     root.classList.remove("panning");
     if (drag.mode === "move" && drag.shiftToggle && !drag.moved) setSelection(selected.filter(function (s) { return s !== drag.shiftToggle; })); // shift-CLICK (no drag) = drop from selection
     if (drag.mode === "move" && drag.moved) lastTap = { id: null, t: 0 }; // a DRAG is not half a double-tap: two quick drags in a row must not open the text editor
+    if (drag.mode === "move" && !drag.moved && drag.dblAction) { var act = drag.dblAction; drag = null; act(); scheduleSave(); return; } // the deferred double-tap: a real double-CLICK, not a click-then-drag
     if (drag.mode === "marquee" && marquee) { marquee.remove(); marquee = null; }
     if (drag.mode === "arrow") renderNode(drag.node);
     if (drag.mode === "resize" && drag.node.type === "stamp") renderNode(drag.node);
@@ -1639,6 +1646,7 @@
     // preventDefault (which would eat the picker's scroll) and don't pan the canvas.
     if (e.target.closest && e.target.closest("#gvc-ui")) return;
     e.preventDefault();
+    mpUnfollow(); // your hand on the camera always beats follow mode
     if (e.ctrlKey || e.metaKey) { zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.01)); }
     else { board.view.x -= e.deltaX; board.view.y -= e.deltaY; applyTransform(); saveView(); }
   }, { passive: false });
@@ -2307,7 +2315,7 @@
     var n = addNode({ type: "tile", x: w.x - 210, y: w.y - 150, w: 420, h: 300, url: it.url, name: it.title, thumb: it.thumb || undefined });
     select(n.id); picker.classList.add("hidden");
   }
-  function resetView() { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; applyTransform(); saveView(); }
+  function resetView() { mpUnfollow(); board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; applyTransform(); saveView(); }
 
   // ---- persistence ---------------------------------------------------------
   var saveTimer = null;
@@ -2393,6 +2401,10 @@
   function docSig() { return JSON.stringify({ n: board.nodes, m: board.name }); }
   function save() {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    // While the room socket is live, the ROOM persists (it sees every op and writes KV on
+    // its own alarm) — a client POST here would only duplicate the write and re-open the
+    // two-browsers-stomp problem. This rail is the SOLO fallback: socket down or never up.
+    if (mp && mp.readyState === 1 && mpReady) return;
     var sig = docSig();
     if (sig === lastSavedSig) return;
     lastSavedSig = sig;
@@ -2418,6 +2430,7 @@
     return null;
   }
   window.addEventListener("beforeunload", function () {
+    if (mp && mp.readyState === 1 && mpReady) return; // the room outlives this tab and flushes on empty
     if (!saveTimer || docSig() === lastSavedSig) return;
     try { navigator.sendBeacon(BOARD_API, new Blob([JSON.stringify({ doc: board })], { type: "application/json" })); } catch (e) {}
   });
@@ -2490,8 +2503,11 @@
   }
   function mpSend(msg) { if (mp && mp.readyState === 1) { try { mp.send(JSON.stringify(msg)); } catch (e) {} } }
 
-  // the outbound diff tick
+  // the outbound diff tick. Skipped while the tab is hidden — stringifying the whole board
+  // 8×/s in a background tab is pure waste; visibilitychange runs one catch-up tick so
+  // anything an agent mutated while hidden still syncs the moment you come back.
   function mpTick() {
+    if (document.hidden) return;
     if (!mp || mp.readyState !== 1 || !mpReady) return;
     var ops = [], seen = {};
     board.nodes.forEach(function (n) {
@@ -2516,7 +2532,14 @@
   function mpRemoveLocal(id) {
     var i = board.nodes.findIndex(function (n) { return n.id === id; });
     if (i >= 0) board.nodes.splice(i, 1);
-    if (nodeEls[id]) { nodeEls[id].remove(); delete nodeEls[id]; }
+    // a peer's delete FADES out (FigJam) instead of blinking away — the element is already
+    // out of the model and the els map, it just lingers 160ms on its way out
+    var host = nodeEls[id];
+    if (host) {
+      delete nodeEls[id];
+      host.style.transition = "opacity .16s ease-out"; host.style.opacity = "0";
+      setTimeout(function () { host.remove(); }, 170);
+    }
     selected = selected.filter(function (s) { return s !== id; });
     if (selected.length !== 1) hideSelBar();
   }
@@ -2561,8 +2584,10 @@
           if (isSelected(r.id)) positionSelBar();
         } else {
           var i = board.nodes.findIndex(function (n) { return n.id === r.id; });
+          var isNew = i < 0;
           if (i >= 0) board.nodes[i] = r; else board.nodes.push(r);
           renderNode(r);
+          if (isNew) pop(r.id); // a peer's new node lands with the same pop yours do
           focusDirty = true;
         }
       } else if (op.op === "del" && op.id) {
@@ -2840,9 +2865,30 @@
     }
   }
   function mpPositionCursors() { for (var sid in mpPeers) mpPlaceCursor(mpPeers[sid]); }
+  // apply a peer's mid-drag geometry (the cursor fast-path). Shadow + history are updated
+  // FIRST so our own diff tick doesn't echo the patch back as an op, and undo never records
+  // a teammate's drag as ours. Local interaction still wins.
+  function mpApplyDragGeo(list) {
+    for (var i = 0; i < list.length; i++) {
+      var g = list[i]; if (!g || !g.id) continue;
+      if (mpDragInvolves(g.id) || mpLocallyEditing(g.id)) continue;
+      var n = nodeById(g.id), host = nodeEls[g.id];
+      if (!n || !host) continue;
+      GEO_KEYS.forEach(function (k) { if (g[k] != null) n[k] = g[k]; });
+      mpShadow[g.id] = mpSig(n); histSeen(n);
+      if (n.type === "arrow") { renderNode(n); continue; }
+      host.classList.add("gvc-remote-move");
+      clearTimeout(host.__mpMoveT);
+      host.__mpMoveT = setTimeout(function () { host.classList.remove("gvc-remote-move"); }, 300);
+      place(host, n);
+      if (n.type === "tile") { var b = host.querySelector(".gvc-tilebody"); if (b && b.querySelector("iframe")) fitFrame(b, n); }
+      if (isSelected(g.id)) positionSelBar();
+    }
+  }
   function mpCursorMsg(m) {
     var p = mpPeers[m.sid] || (mpPeers[m.sid] = { name: m.name, color: m.color, focus: null, kind: m.kind || null });
     p.name = m.name; p.color = m.color; if (m.kind != null) p.kind = m.kind;
+    if (m.drag) mpApplyDragGeo(m.drag);
     if (m.gone) { if (p.el) p.el.classList.add("idle"); return; }
     mpEnsureCursor(p);
     // agent walking: direction from horizontal delta, and a short window that marks "moving"
@@ -2857,15 +2903,40 @@
     clearTimeout(p.idle);
     p.idle = setTimeout(function () { if (p.el) p.el.classList.add("idle"); }, 5000);
     mpPlaceCursor(p);
+    if (m.sid === mpFollowSid) mpFollowChase();
   }
-  // my cursor out — world coords, trailing-throttled to ~20/s
+  // my cursor out — world coords, trailing-throttled to ~20/s. Mid-drag, the SAME message
+  // carries the dragged nodes' geometry (the fast-path): peers get 20Hz motion instead of
+  // the 120ms ops tick, and it costs zero extra messages. The durable upserts still ride
+  // the tick — this is display-only traffic.
+  function mpDragGeo() {
+    if (!drag) return null;
+    var out = [];
+    if (drag.mode === "move" && drag.items) {
+      drag.items.forEach(function (it) {
+        var n = nodeById(it.id); if (!n) return;
+        if (it.arrow) out.push({ id: n.id, x1: n.x1, y1: n.y1, x2: n.x2, y2: n.y2 });
+        else out.push({ id: n.id, x: n.x, y: n.y });
+      });
+    } else if (drag.mode === "resize" && drag.node) {
+      var n2 = drag.node;
+      out.push({ id: n2.id, x: n2.x, y: n2.y, w: n2.w, h: n2.h });
+    } else if (drag.mode === "arrow" && drag.node) {
+      var a = drag.node;
+      out.push({ id: a.id, x1: a.x1, y1: a.y1, x2: a.x2, y2: a.y2 });
+    }
+    return out.length && out.length <= 64 ? out : null;
+  }
   function mpTrackPointer(e) {
     if (!mp || mp.readyState !== 1) return;
     mpCurPend = screenToWorld(e.clientX, e.clientY);
     if (mpCurTimer) return;
     mpCurTimer = setTimeout(function () {
       mpCurTimer = null;
-      if (mpCurPend) mpSend({ t: "cursor", x: Math.round(mpCurPend.x * 10) / 10, y: Math.round(mpCurPend.y * 10) / 10 });
+      if (!mpCurPend) return;
+      var msg = { t: "cursor", x: Math.round(mpCurPend.x * 10) / 10, y: Math.round(mpCurPend.y * 10) / 10 };
+      var g = mpDragGeo(); if (g) msg.drag = g;
+      mpSend(msg);
     }, 50);
   }
 
@@ -2891,12 +2962,48 @@
       else chip.textContent = mpInitials(c.name);
       // hover = who this is (a styled label, not the OS tooltip — that took a second to appear
       // and looked nothing like the board); click = fly the viewport to what they're looking at
-      chip.appendChild(el("span", { class: "lbl", text: c.me ? c.title : c.title + " — click to jump" }));
+      var following = !c.me && c.sid && mpFollowSid === c.sid;
+      chip.appendChild(el("span", { class: "lbl", text: c.me ? c.title : following ? c.title + " — following, click to stop" : c.title + " — click to follow" }));
       if (!c.me && c.sid) {
         chip.classList.add("jump");
-        chip.addEventListener("click", function (e) { e.stopPropagation(); mpJumpTo(c.sid); });
+        if (following) { chip.classList.add("following"); chip.style.setProperty("--halo", c.color); }
+        chip.addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (mpFollowSid === c.sid) mpUnfollow(); else mpFollow(c.sid);
+        });
       }
       mpPresence.appendChild(chip);
+    });
+  }
+  // ---- follow mode (FigJam/Mural): glue the camera to a peer -----------------
+  // Click a face → fly to them once, then CHASE: every cursor update lerps the viewport
+  // toward keeping them centred. Any manual pan/zoom/space-drag breaks the follow (your
+  // hand always wins) — as does clicking the chip again or the peer leaving.
+  var mpFollowSid = null, mpFollowRaf = null;
+  function mpFollow(sid) {
+    mpFollowSid = sid;
+    mpJumpTo(sid);
+    mpRenderPresence();
+  }
+  function mpUnfollow() {
+    if (!mpFollowSid) return;
+    mpFollowSid = null;
+    if (mpFollowRaf) { cancelAnimationFrame(mpFollowRaf); mpFollowRaf = null; }
+    mpRenderPresence();
+  }
+  function mpFollowChase() {
+    var p = mpFollowSid && mpPeers[mpFollowSid];
+    if (!p || p.cx == null) return;
+    if (flyRaf) return; // the initial flyTo is still travelling — don't fight it
+    if (mpFollowRaf) return;
+    mpFollowRaf = requestAnimationFrame(function () {
+      mpFollowRaf = null;
+      var q = mpFollowSid && mpPeers[mpFollowSid];
+      if (!q || q.cx == null) return;
+      var v = board.view;
+      var tx = innerWidth / 2 - q.cx * v.scale, ty = innerHeight / 2 - q.cy * v.scale;
+      v.x += (tx - v.x) * 0.18; v.y += (ty - v.y) * 0.18; // soft chase, not a hard lock
+      applyTransform(); saveView();
     });
   }
   // Fly to where a peer is: their live cursor, or the node they're typing in if they haven't
@@ -2916,17 +3023,40 @@
   // ---- editing focus (who is typing where) ---------------------------------
   function mpRenderFocus() {
     document.querySelectorAll(".gvc-remote-focus").forEach(function (e) { e.remove(); });
+    document.querySelectorAll(".gvc-peer-sel").forEach(function (e) { e.remove(); });
     for (var sid in mpPeers) {
       var p = mpPeers[sid];
+      // FigJam's togetherness cue: a thin outline in the peer's color on whatever they have
+      // SELECTED (the thicker named ring below stays reserved for active typing)
+      if (p.sel) p.sel.forEach(function (id) {
+        var host = nodeEls[id];
+        if (!host || id === p.focus) return;
+        var ring = el("div", { class: "gvc-peer-sel" });
+        ring.style.borderColor = p.color;
+        host.appendChild(ring);
+      });
       if (!p.focus || !nodeEls[p.focus]) continue;
-      var ring = el("div", { class: "gvc-remote-focus" }, [el("span", { class: "who", text: p.name })]);
-      ring.style.borderColor = p.color;
-      ring.querySelector(".who").style.background = p.color;
-      nodeEls[p.focus].appendChild(ring);
+      var ring2 = el("div", { class: "gvc-remote-focus" }, [el("span", { class: "who", text: p.name })]);
+      ring2.style.borderColor = p.color;
+      ring2.querySelector(".who").style.background = p.color;
+      nodeEls[p.focus].appendChild(ring2);
     }
   }
   var mpMyFocus = null;
   function mpSendFocus(id) { if (id !== mpMyFocus) { mpMyFocus = id; mpSend({ t: "focus", id: id }); } }
+  // my live selection → the room, trailing-throttled (marquee calls setSelection per
+  // pointermove) and change-gated so a quiet selection costs nothing
+  var mpSelSent = "", mpSelTimer = null;
+  function mpSendSel() {
+    if (mpSelTimer) return;
+    mpSelTimer = setTimeout(function () {
+      mpSelTimer = null;
+      var key = selected.join(",");
+      if (key === mpSelSent) return;
+      mpSelSent = key;
+      mpSend({ t: "sel", ids: selected.slice(0, 200) });
+    }, 150);
+  }
 
   // ---- socket lifecycle ----------------------------------------------------
   function mpOnMessage(ev) {
@@ -2936,7 +3066,7 @@
       mpSid = m.sid; mpRetry = 1000;
       if (m.color && m.color !== mpColor) { mpColor = m.color; mpApplyLocalCursor(); } // your pointer takes your room color
       mpPeers = {};
-      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null }; });
+      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null, sel: p.sel || null }; });
       if (m.doc) mpAdoptDoc(m.doc);
       else mpSend({ t: "doc", doc: board }); // seed the room (first in, or post-hibernation — KV is current when the room was idle)
       mpReady = true;
@@ -2947,11 +3077,13 @@
     } else if (m.t === "leave") {
       var p = mpPeers[m.peer.sid];
       if (p) { if (p.el) p.el.remove(); clearTimeout(p.idle); delete mpPeers[m.peer.sid]; }
+      if (m.peer.sid === mpFollowSid) mpUnfollow();
       mpRenderPresence(); mpRenderFocus();
     } else if (m.t === "cursor") mpCursorMsg(m);
     else if (m.t === "proto") mpProtoApply(m);
     else if (m.t === "ops") mpApplyOps(m.ops || []);
     else if (m.t === "focus") { var fp = mpPeers[m.sid]; if (fp) { fp.focus = m.id || null; mpRenderFocus(); } }
+    else if (m.t === "sel") { var sp = mpPeers[m.sid]; if (sp) { sp.sel = m.ids || null; mpRenderFocus(); } }
     else if (m.t === "pose") { var qp = mpPeers[m.sid]; if (qp) { qp.pose = m.pose || null; mpUpdateGlyph(qp); mpRenderPresence(); } }
     else if (m.t === "doc") mpAdoptDoc(m.doc);
     else if (m.t === "docreq") mpSend({ t: "doc", doc: board });
@@ -3006,6 +3138,7 @@
       else if (t.classList.contains("gvc-cell") && node.cells) node.cells[t.dataset.rc] = t.innerText.trim();
     });
     setInterval(mpTick, 120);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) { try { mpTick(); } catch (e) {} } });
     setInterval(mpPoseTick, 200); // animate agent Clawd state (walk/work/sleep) from behaviour
     // keepalive: the room's auto-responder pongs and timestamps us; sockets that stop
     // pinging (dropped transports) get swept server-side instead of haunting presence

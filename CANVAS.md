@@ -59,6 +59,19 @@
 > (7) **Smart snapping + alignment guides** — every node radiates six alignment lines
 > (left/centre/right, top/middle/bottom); a drag or resize latches onto the nearest within 6
 > SCREEN px and draws Figma's red guide across both boxes. Hold ⌘/Ctrl to drag past them.
+> **2026-07-27: the multiplayer feel + KV-economics batch** (all seven agreed with Rob):
+> (a) **drag fast-path** — mid-drag geometry rides the 50ms cursor message (`cursor.drag`),
+> so peers see 20Hz glide instead of 8Hz steps; durable upserts still ride the 120ms tick.
+> (b) **peer selection rings** — thin outline in each peer's color on whatever they have
+> selected (`{t:"sel"}`, kept on the socket attachment for late joiners). (c) **remote ops
+> have life** — a peer's insert pops, their delete fades. (d) **follow mode** — click a
+> presence chip to fly to that person and then CHASE their cursor; any manual pan/zoom
+> breaks it (your hand wins). (e) **hidden tabs pause the tick** (catch-up tick on
+> visibilitychange). (f) **THE ROOM IS THE PERSISTER** — while the socket is live the
+> BoardRoom DO writes KV itself (45s dirty-alarm + flush when the room empties); the client
+> /__board POST is now only the solo fallback. N clients × edit-bursts → ≤ ~80 writes/hour
+> per hot board. (g) double-tap actions (edit/crop/interact) now fire on pointer-UP and
+> only if the pointer didn't move — click-then-quick-drag used to throw you into text edit.
 > Round 3: (8) **Tab / Shift-Tab nest and un-nest list items** (depth lives on the line;
 > `serializeLines` rebuilds real `<ul>/<ol>` nesting from it). (9) **Presence chips name their
 > owner on hover and fly you to them on click** (`mpJumpTo` → `flyTo`, easing rather than
@@ -522,7 +535,13 @@ Do this **unless prompted otherwise**.
   signature (`docSig` = nodes + name) and skips the POST when only the camera moved, the save
   debounce is 1200ms so a burst is one write, and adopting a room doc reseeds the signature so
   every client doesn't re-persist the same change. If you add a feature that touches
-  `board.view`, call `saveView()`, NOT `scheduleSave()`.
+  `board.view`, call `saveView()`, NOT `scheduleSave()`. As of 2026-07-27 the client POST
+  only runs at all as the SOLO fallback — while the room socket is live, the BoardRoom DO
+  is the persister (see `realtime/src/index.js`: `markDirty`/`alarm`/`persist`, flush on
+  empty, `/__test/` rooms exempt). Playwright note: blocking `POST /__board` no longer
+  proves "no KV writes" — the room writes server-side; test rooms must stay under
+  `/__test/`, and blocking the socket needs a WebSocket-constructor stub (HTTP routes
+  don't intercept upgrades).
 - **Undo must be per-USER, not per-document, in a live room.** Restoring a whole-board snapshot
   would silently revert whatever a teammate did in the meantime. `histCommit` diffs the board
   against a shadow on the save debounce and records only the nodes that changed, as

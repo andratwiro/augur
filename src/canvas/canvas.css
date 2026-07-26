@@ -495,6 +495,8 @@ svg.stk { display: block; overflow: visible; }
    that took a second to appear and looked foreign on the board) */
 .gvc-peerchip.jump { cursor: pointer; }
 .gvc-peerchip.jump:hover { transform: translateY(-1px) scale(1.08); z-index: 2; }
+/* following this person: their chip stays lifted with a colored halo until you stop */
+.gvc-peerchip.following { transform: translateY(-1px) scale(1.1); z-index: 2; box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px var(--halo, #2563eb), 0 2px 6px rgba(0, 0, 0, .22); }
 .gvc-peerchip .lbl {
   position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
   padding: 3px 8px 4px; border-radius: 7px; background: #1e1e1e; color: #fff;
@@ -518,7 +520,11 @@ svg.stk { display: block; overflow: visible; }
 .gvc-remote-focus { position: absolute; inset: -4px; border: 2px solid; border-radius: 7px; pointer-events: none; z-index: 4; }
 .gvc-remote-focus .who { position: absolute; top: -20px; left: -2px; padding: 1px 7px 2px; border-radius: 8px 8px 8px 2px; color: #fff; font: 600 10.5px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; }
 /* peers' drags arrive at tick rate (~8Hz) — a short linear tween makes them glide */
-.gvc-node.gvc-remote-move { transition: left .13s linear, top .13s linear, width .13s linear, height .13s linear; }
+/* 90ms: just over the 50ms drag fast-path cadence, so remote motion is always mid-tween
+   (continuous glide) instead of hop-pause-hop at the old 120ms ops tick */
+.gvc-node.gvc-remote-move { transition: left .09s linear, top .09s linear, width .09s linear, height .09s linear; }
+/* what a peer has SELECTED — thin ring in their color (typing gets the thicker named ring) */
+.gvc-peer-sel { position: absolute; inset: -3px; border: 1.5px solid; border-radius: 6px; pointer-events: none; z-index: 4; opacity: .85; }
 /* interact-mode drag grip: pinned to the tile's top-right corner, counter-scaled like the
    name chip; its pointerdown bubbles to the root drag path — no special handling */
 .gvc-draghandle { position: absolute; top: -13px; right: -13px; width: 30px; height: 30px; display: none; align-items: center; justify-content: center; background: #2563eb; color: #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0, 0, 0, .28); cursor: grab; transform-origin: top right; z-index: 6; }

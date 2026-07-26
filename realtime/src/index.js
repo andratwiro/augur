@@ -4,23 +4,36 @@
  * the room named by the board path (the same key the KV doc uses). The room is a relay
  * plus soft state: it fans cursor moves / node ops / editing focus out to the other
  * sockets and keeps the latest doc in memory so a joiner starts from the live state
- * rather than a possibly-stale KV read. Durable persistence stays on the existing
- * /__board KV rail, written by clients exactly as before — a hibernated or evicted
- * room loses nothing that matters.
+ * rather than a possibly-stale KV read.
+ *
+ * THE ROOM IS ALSO THE PERSISTER (2026-07-27). While a room is live, the room — not the
+ * clients — writes the doc to KV: a dirty flag set by ops arms a single alarm (45s), and
+ * the last socket leaving flushes immediately. That collapses N clients × edit-bursts of
+ * whole-document client writes into ≤ ~80 writes/hour per hot board, and ends the
+ * last-writer-wins stomps between two saving browsers. Clients still write /__board
+ * themselves ONLY as the solo fallback (socket down). Rooms under /__test/ never persist
+ * — that's the Playwright isolation convention (see augur/CANVAS.md).
  *
  * Uses the WebSocket Hibernation API, so an idle board with open tabs costs ~nothing.
  * In-memory fields (doc, colors) are caches: after a hibernation wake they rebuild
- * from socket attachments and the docreq dance below.
+ * from socket attachments and the docreq dance below. The board path survives
+ * hibernation in ctx.storage ("path") because the alarm needs it to build the KV key.
  *
  * Protocol (JSON, one object per message):
- *   client→room: {t:"cursor",x,y}|{t:"cursor",gone:true} · {t:"ops",ops:[...]} ·
- *                {t:"focus",id|null} · {t:"proto",id,ev} (demo sync in a live tile iframe) ·
+ *   client→room: {t:"cursor",x,y,drag?}|{t:"cursor",gone:true} · {t:"ops",ops:[...]} ·
+ *                {t:"focus",id|null} · {t:"sel",ids:[...]} (live selection) ·
+ *                {t:"proto",id,ev} (demo sync in a live tile iframe) ·
  *                {t:"doc",doc} (reply to needDoc/docreq)
  *   room→client: {t:"welcome",sid,color,peers,doc?,needDoc?} · {t:"join"|"leave",peer} ·
- *                relayed cursor/ops/focus/proto stamped with the sender's peer info ·
+ *                relayed cursor/ops/focus/sel/proto stamped with the sender's peer info ·
  *                {t:"doc",doc} · {t:"docreq"}
+ * cursor.drag is the drag fast-path: [{id,x,y,w,h},…] geometry for nodes mid-drag,
+ * relayed verbatim on the cursor cadence (~20Hz) so remote drags glide instead of
+ * stepping at the 120ms ops tick. Ephemeral — the durable version rides the ops tick.
  * Ops (applied to the room doc AND relayed): {op:"upsert",node} · {op:"del",id} ·
- * {op:"name",name}. The doc's `view` is per-user viewport — never synced.
+ * {op:"name",name}. The doc's `view` is per-user viewport — never synced (the copy
+ * inside the persisted doc is a harmless fossil; clients read their camera from
+ * localStorage).
  */
 
 const MAX_MSG = 8 * 1024 * 1024; // a node op can carry an inlined image; KV caps the doc at 20MB
@@ -43,11 +56,17 @@ export default {
   },
 };
 
+const BOARD_PREFIX = "board:";   // same key scheme as the Pages worker's /__board rail
+const PERSIST_MS = 45000;        // dirty → alarm → KV write; ≤ ~80 writes/hour per hot board
+
 export class BoardRoom {
-  constructor(ctx) {
+  constructor(ctx, env) {
     this.ctx = ctx;
+    this.env = env;
     this.doc = null;      // latest board doc (cache — null after hibernation wake)
     this.wantDoc = false; // a docreq is in flight, don't spam
+    this.dirty = false;   // doc changed since the last KV write
+    this.alarmSet = false;
     this.sweptAt = 0;
     // clients ping every 25s; the runtime pongs WITHOUT waking the DO and stamps the
     // socket, so sweep() can spot zombies (dropped transports whose close never fired —
@@ -72,7 +91,7 @@ export class BoardRoom {
     for (const ws of this.ctx.getWebSockets()) {
       if (ws === excludeWs) continue;
       const a = ws.deserializeAttachment();
-      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, pose: a.pose || null, focus: a.focus || null });
+      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, pose: a.pose || null, focus: a.focus || null, sel: a.sel || null });
     }
     return out;
   }
@@ -91,6 +110,8 @@ export class BoardRoom {
 
   async fetch(request) {
     const url = new URL(request.url);
+    const path = (url.searchParams.get("path") || "").slice(0, 600);
+    if (path) this.ctx.storage.put("path", path); // the alarm needs it after a hibernation wake
     const name = (url.searchParams.get("name") || "Guest").slice(0, 60);
     const sid = "p" + Math.random().toString(36).slice(2, 10);
     // `kind=agent` marks a Claude collaboration client — clients render it as Clawd, not the
@@ -125,7 +146,20 @@ export class BoardRoom {
     if (!a || !msg || !msg.t) return;
 
     if (msg.t === "cursor") {
-      this.broadcast({ t: "cursor", sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, x: msg.x, y: msg.y, gone: !!msg.gone }, ws);
+      const out = { t: "cursor", sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, x: msg.x, y: msg.y, gone: !!msg.gone };
+      // drag fast-path: mid-drag geometry rides the cursor cadence (relay only — never
+      // applied to the room doc; the durable upserts follow on the sender's ops tick)
+      if (Array.isArray(msg.drag) && msg.drag.length && msg.drag.length <= 64) out.drag = msg.drag;
+      this.broadcast(out, ws);
+      return;
+    }
+    if (msg.t === "sel") {
+      // live selection (colored outlines on what each person has selected) — kept on the
+      // attachment so late joiners see it via peers()
+      a.sel = Array.isArray(msg.ids) ? msg.ids.slice(0, 200).filter((x) => typeof x === "string") : null;
+      if (a.sel && !a.sel.length) a.sel = null;
+      ws.serializeAttachment(a);
+      this.broadcast({ t: "sel", sid: a.sid, color: a.color, ids: a.sel }, ws);
       return;
     }
     if (msg.t === "proto") {
@@ -135,6 +169,7 @@ export class BoardRoom {
     }
     if (msg.t === "ops" && Array.isArray(msg.ops)) {
       this.applyOps(msg.ops);
+      if (this.doc) this.markDirty();
       this.broadcast({ t: "ops", sid: a.sid, ops: msg.ops }, ws);
       // room lost its doc (hibernation) and can't rebuild from deltas — ask the sender,
       // who by definition has the current state, for a full snapshot
@@ -162,10 +197,37 @@ export class BoardRoom {
       const had = !!this.doc;
       this.doc = msg.doc;
       this.wantDoc = false;
+      // A fresh seed marks dirty on purpose: the seeder might carry an edit made in the
+      // ~1s between its last KV load and the socket coming up — its own save() skips the
+      // POST once the room is live, so if the room didn't persist the seed, that edit
+      // would only ever exist in RAM. One extra write per room session buys the guarantee.
+      this.markDirty();
       // first seed of a live room: peers loaded from KV themselves, no need to rebroadcast;
       // only a post-hibernation reseed stays silent too — ops already kept everyone level.
       if (!had) return;
     }
+  }
+
+  // ---- persistence (the room owns the KV write while it's alive) ------------
+  markDirty() {
+    this.dirty = true;
+    if (this.alarmSet) return;
+    this.alarmSet = true;
+    this.ctx.storage.setAlarm(Date.now() + PERSIST_MS);
+  }
+  async alarm() {
+    this.alarmSet = false;
+    await this.persist();
+    // still dirty means ops landed while the write was in flight — re-arm
+    if (this.dirty) this.markDirty();
+  }
+  async persist() {
+    if (!this.dirty || !this.doc || !this.env.BOARD_KV) return;
+    const path = await this.ctx.storage.get("path");
+    if (!path || path.indexOf("/__test/") === 0) { this.dirty = false; return; } // test rooms never persist (Playwright isolation)
+    this.dirty = false; // before the await: ops during the write re-set it
+    try { await this.env.BOARD_KV.put(BOARD_PREFIX + path, JSON.stringify(this.doc)); }
+    catch (e) { this.dirty = true; } // failed write: keep the flag, the next alarm retries
   }
 
   applyOps(ops) {
@@ -190,6 +252,11 @@ export class BoardRoom {
     const a = ws.deserializeAttachment();
     try { ws.close(); } catch (e) {}
     if (a) this.broadcast({ t: "leave", peer: { sid: a.sid, name: a.name, color: a.color } }, ws);
-    if (!this.ctx.getWebSockets().some((s) => s !== ws)) this.doc = null; // empty room → drop the cache
+    if (!this.ctx.getWebSockets().some((s) => s !== ws)) {
+      // last one out: flush the doc to KV NOW (don't wait for the alarm), then drop the
+      // cache. No waitUntil — the runtime keeps a DO alive while async work is in flight.
+      if (this.dirty) { const d = this.doc; this.persist().then(() => { if (this.doc === d) this.doc = null; }); }
+      else this.doc = null;
+    }
   }
 }
