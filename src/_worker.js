@@ -214,14 +214,36 @@ function kvFor(env) {
   const base = `https://api.cloudflare.com/client/v4/accounts/${env.GV_KV_ACCOUNT}/storage/kv/namespaces/${env.GV_KV_NS}`;
   const auth = { Authorization: `Bearer ${env.GV_KV_TOKEN}` };
   return {
-    async get(key) {
+    async get(key, opts) {
       const r = await fetch(`${base}/values/${encodeURIComponent(key)}`, { headers: auth });
       if (r.status === 404) return null;
       if (!r.ok) throw new Error(`REST KV get ${r.status}`);
-      return await r.text();
+      return opts && opts.type === "arrayBuffer" ? await r.arrayBuffer() : await r.text();
     },
-    async put(key, value) {
-      const r = await fetch(`${base}/values/${encodeURIComponent(key)}`, { method: "PUT", headers: auth, body: value });
+    // binding-compatible getWithMetadata — the REST API keeps metadata on a separate
+    // endpoint, so this costs two calls (offline-only; the real binding does it in one)
+    async getWithMetadata(key, opts) {
+      const value = await this.get(key, opts);
+      if (value === null) return { value: null, metadata: null };
+      let metadata = null;
+      try {
+        const m = await fetch(`${base}/metadata/${encodeURIComponent(key)}`, { headers: auth });
+        if (m.ok) metadata = (await m.json()).result || null;
+      } catch (e) {}
+      return { value, metadata };
+    },
+    async put(key, value, opts) {
+      let init;
+      if (opts && opts.metadata) {
+        // metadata rides a multipart form on the REST rail (a plain body PUT drops it)
+        const fd = new FormData();
+        fd.append("value", value instanceof ArrayBuffer ? new Blob([value]) : value);
+        fd.append("metadata", JSON.stringify(opts.metadata));
+        init = { method: "PUT", headers: auth, body: fd };
+      } else {
+        init = { method: "PUT", headers: auth, body: value };
+      }
+      const r = await fetch(`${base}/values/${encodeURIComponent(key)}`, init);
       if (!r.ok) throw new Error(`REST KV put ${r.status}`);
     },
     async delete(key) {
@@ -967,6 +989,47 @@ async function boardApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Canvas board images (/__asset) -----------------------------------------
+// Pasted/dropped canvas images used to be inlined into the board doc as data URLs, which
+// made every doc write (and every room seed) carry every image ever pasted. Now the client
+// uploads the compressed JPEG once; we store it under its content hash (immutable, so the
+// browser caches it forever) and the doc carries only the tiny /__asset/<hash> URL.
+// Old boards with inline data URLs still render — <img src> takes either form.
+const ASSET_PREFIX = "basset:";
+const ASSET_MAX_BYTES = 4 * 1024 * 1024; // client compresses to ~<1MB; hard stop well below that x4
+async function assetApi(request, url, env) {
+  const kv = kvFor(env);
+  if (!kv) return jsonResponse({ error: "no-kv-binding" }, 503);
+  if (request.method === "POST" && url.pathname === "/__asset") {
+    const ct = (request.headers.get("content-type") || "").toLowerCase().split(";")[0].trim();
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(ct)) return jsonResponse({ error: "bad-type" }, 415);
+    const buf = await request.arrayBuffer();
+    if (!buf.byteLength || buf.byteLength > ASSET_MAX_BYTES) return jsonResponse({ error: "too-large" }, 413);
+    const digest = await crypto.subtle.digest("SHA-256", buf);
+    const hash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40);
+    const key = ASSET_PREFIX + hash;
+    // content-addressed → a re-paste of the same image is free (skip the duplicate write)
+    if ((await kv.get(key, { type: "arrayBuffer" })) === null) {
+      await kv.put(key, buf, { metadata: { ct } });
+    }
+    return jsonResponse({ url: "/__asset/" + hash });
+  }
+  if (request.method === "GET") {
+    const hash = url.pathname.slice("/__asset/".length);
+    if (!/^[0-9a-f]{40}$/.test(hash)) return jsonResponse({ error: "bad-input" }, 400);
+    const got = await kv.getWithMetadata(ASSET_PREFIX + hash, { type: "arrayBuffer" });
+    if (!got || !got.value) return jsonResponse({ error: "not-found" }, 404);
+    return new Response(got.value, {
+      headers: {
+        "content-type": (got.metadata && got.metadata.ct) || "image/jpeg",
+        // content-hashed = immutable: one KV read per browser, ever
+        "cache-control": "public, max-age=31536000, immutable",
+      },
+    });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
 // ---- Canvas multiplayer proxy (/__rt → augur-realtime worker) ---------------
 // The BoardRoom Durable Objects live in a SEPARATE worker (Pages can't define DO
 // classes), deployed from realtime/ via `npm run deploy:realtime`. Proxying keeps the
@@ -1310,6 +1373,9 @@ export default {
     // PUBLISHED prototype (public, obscure share link), so its board must load & save without a
     // login, exactly like /__review/api. Writes are full-state but size-capped in boardApi.
     if (url.pathname === "/__board") return boardApi(request, url, env);
+    // Board images live OUTSIDE the doc (content-hashed, immutable) — same public model as
+    // /__board: the hash is the credential. See assetApi.
+    if (url.pathname.startsWith("/__asset")) return assetApi(request, url, env);
     // Canvas multiplayer: same-origin WebSocket proxied to the augur-realtime worker (one
     // BoardRoom Durable Object per board path — cursors/presence/live ops). Public like
     // /__board: the board is the credential. The engine degrades to solo if this fails.

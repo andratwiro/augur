@@ -72,6 +72,11 @@
 > /__board POST is now only the solo fallback. N clients × edit-bursts → ≤ ~80 writes/hour
 > per hot board. (g) double-tap actions (edit/crop/interact) now fire on pointer-UP and
 > only if the pointer didn't move — click-then-quick-drag used to throw you into text edit.
+> (h) **images live OUTSIDE the doc**: paste/drop compresses then uploads once to
+> `/__asset` (content-hashed KV `basset:<sha>`, immutable cache headers, dedup on re-paste)
+> and the node carries the tiny URL — the doc drops from hundreds of KB to a few KB, so
+> KV writes, room seeds and diff-tick stringifies stop carrying pixels. Data-URL srcs
+> still render (old boards untouched) and remain the upload-failure fallback.
 > Round 3: (8) **Tab / Shift-Tab nest and un-nest list items** (depth lives on the line;
 > `serializeLines` rebuilds real `<ul>/<ol>` nesting from it). (9) **Presence chips name their
 > owner on hover and fly you to them on click** (`mpJumpTo` → `flyTo`, easing rather than

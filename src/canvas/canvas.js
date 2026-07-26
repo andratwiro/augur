@@ -1705,6 +1705,11 @@
       compressImage(f, function (dataUrl, dim) { addNode({ type: "image", x: w.x + i * 24, y: w.y + i * 24, w: dim.w, h: dim.h, src: dataUrl }); });
     });
   });
+  // Compress, then get the image OUT of the document: upload the JPEG once to /__asset
+  // (content-hashed, immutable) and hand back the tiny URL — so the board doc, every KV
+  // write, every room seed and every diff-tick stringify stops carrying the pixels. The
+  // data-URL path survives as the fallback (upload failed / offline sandbox); old boards
+  // with inlined data URLs render unchanged (<img src> takes either form).
   function compressImage(file, cb) {
     var img = new Image();
     img.onload = function () {
@@ -1712,10 +1717,21 @@
       var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
       var c = document.createElement("canvas"); c.width = w; c.height = h;
       c.getContext("2d").drawImage(img, 0, 0, w, h);
-      var out; try { out = c.toDataURL("image/jpeg", IMG_QUALITY); } catch (err) { out = c.toDataURL(); }
       URL.revokeObjectURL(img.src);
       var dw = Math.min(w, 360), dh = Math.round(dw * h / w);
-      cb(out, { w: dw, h: dh });
+      function dataUrlFallback() {
+        var out; try { out = c.toDataURL("image/jpeg", IMG_QUALITY); } catch (err) { out = c.toDataURL(); }
+        cb(out, { w: dw, h: dh });
+      }
+      try {
+        c.toBlob(function (blob) {
+          if (!blob) return dataUrlFallback();
+          fetch("/__asset", { method: "POST", headers: { "content-type": "image/jpeg" }, body: blob })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) { if (d && d.url) cb(d.url, { w: dw, h: dh }); else dataUrlFallback(); })
+            .catch(dataUrlFallback);
+        }, "image/jpeg", IMG_QUALITY);
+      } catch (err) { dataUrlFallback(); }
     };
     img.src = URL.createObjectURL(file);
   }
