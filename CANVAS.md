@@ -59,6 +59,13 @@
 > (7) **Smart snapping + alignment guides** — every node radiates six alignment lines
 > (left/centre/right, top/middle/bottom); a drag or resize latches onto the nearest within 6
 > SCREEN px and draws Figma's red guide across both boxes. Hold ⌘/Ctrl to drag past them.
+> Round 3: (8) **Tab / Shift-Tab nest and un-nest list items** (depth lives on the line;
+> `serializeLines` rebuilds real `<ul>/<ol>` nesting from it). (9) **Presence chips name their
+> owner on hover and fly you to them on click** (`mpJumpTo` → `flyTo`, easing rather than
+> teleporting, with a one-off pulse on the peer's cursor when you land). (10) **⌘Z / ⌘⇧Z undo
+> and redo** — snapshot-diff history (`histCommit`), per-node and per-user, so it never reverts
+> a teammate. (11) **A section carries its contents**: dragging one takes every node whose
+> centre sits inside it, resolved at grab time.
 >
 > _(An in-canvas "ask AI → generate HTML" build node was prototyped and **removed** 2026-07-21 —
 > Rob authors prototypes via the terminal, not an in-canvas generator; the canvas is where they
@@ -505,6 +512,21 @@ Do this **unless prompted otherwise**.
 - **After an inline conversion, toggle the style OFF again.** `execCommand("bold")` on a range
   leaves the PENDING typing style on, so everything typed after `**bold**` stayed bold. Collapse
   to the end and run the same command a second time (invisible — it only flips the pending state).
+- **Undo must be per-USER, not per-document, in a live room.** Restoring a whole-board snapshot
+  would silently revert whatever a teammate did in the meantime. `histCommit` diffs the board
+  against a shadow on the save debounce and records only the nodes that changed, as
+  `{before, after}` pairs; `mpApplyOps` folds every REMOTE change straight into that shadow
+  (`histSeen` / `histForget`), so a peer's work never enters your stack. Adopting a room doc
+  (`mpAdoptDoc`) reseeds the shadow and clears both stacks — you can't undo "into" someone
+  else's document. Inside a text box the browser's own undo wins (the global handler returns
+  early while `editing`).
+- **Snapshots share their strings.** `histClone` is a shallow copy with the mutable containers
+  (`points`/`cells`/`crop`) deep-copied — never `JSON.parse(JSON.stringify(node))`, which would
+  duplicate every inlined image data-URL on the board 60 times over.
+- **Sections carry their contents by CENTRE containment**, resolved once at pointerdown
+  (`withSectionChildren`) so what you pick up is what you saw. The passengers are excluded from
+  the snap candidates (`armSnap(moving)`) or the section would snap to its own stickies, while
+  the snap box stays the SELECTION's rect — you're aligning the section, not its contents.
 - **Snapping is measured in SCREEN pixels** (`SNAP_PX / view.scale`), or it feels sticky zoomed
   out and unreachable zoomed in. Candidate rects are collected ONCE per drag (`armSnap`), never
   per pointermove, and a multi-selection snaps as one union box. Shift (axis lock) beats snapping

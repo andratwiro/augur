@@ -99,6 +99,20 @@
 
   function uid() { return "n" + Math.random().toString(36).slice(2, 9); }
   function clampScale(s) { return Math.max(MIN_SCALE, Math.min(MAX_SCALE, s)); }
+  // ease the viewport onto a world point (jumping to a peer, and anything else that needs to
+  // move the camera for you) — a teleport loses you, 300ms of travel doesn't
+  var flyRaf = null;
+  function flyTo(wx, wy, scale) {
+    var v = board.view, s0 = v.scale, s1 = clampScale(scale || v.scale), x0 = v.x, y0 = v.y;
+    var x1 = innerWidth / 2 - wx * s1, y1 = innerHeight / 2 - wy * s1, t0 = Date.now();
+    if (flyRaf) cancelAnimationFrame(flyRaf);
+    (function step() {
+      var k = Math.min(1, (Date.now() - t0) / 320), e = 1 - Math.pow(1 - k, 3);
+      v.x = x0 + (x1 - x0) * e; v.y = y0 + (y1 - y0) * e; v.scale = s0 + (s1 - s0) * e;
+      applyTransform();
+      if (k < 1) flyRaf = requestAnimationFrame(step); else { flyRaf = null; scheduleSave(); }
+    })();
+  }
   // FigJam-style dot grid: the grid scales WITH zoom (world-space feel) — spacing = GRID*scale,
   // so zooming IN spreads the dots apart and grows them, zooming OUT packs them and shrinks
   // them. It only octave-corrects at the extremes (≈9–96px) so it never mushes into moiré or
@@ -360,9 +374,9 @@
   var INLINE_TAGS = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, SPAN: 1 };
   var BLOCK_TAGS = { DIV: 1, P: 1, LI: 1 };
   function flattenLines(root) {
-    var lines = [], cur = document.createDocumentFragment(), kind = null;
-    function push(force) { if (force || cur.childNodes.length) { lines.push({ kind: kind, frag: cur }); cur = document.createDocumentFragment(); } }
-    function newline() { lines.push({ kind: kind, frag: cur }); cur = document.createDocumentFragment(); }
+    var lines = [], cur = document.createDocumentFragment(), kind = null, depth = -1; // depth: nesting level of the enclosing list, -1 = not in one
+    function push(force) { if (force || cur.childNodes.length) { lines.push({ kind: kind, depth: Math.max(0, depth), frag: cur }); cur = document.createDocumentFragment(); } }
+    function newline() { lines.push({ kind: kind, depth: Math.max(0, depth), frag: cur }); cur = document.createDocumentFragment(); }
     function walk(n) {
       for (var c = n.firstChild; c; c = c.nextSibling) {
         if (c.nodeType === 3) {
@@ -374,7 +388,10 @@
         } else if (c.nodeType !== 1) continue;
         else if (c.nodeName === "BR") newline();
         else if (c.nodeName === "UL" || c.nodeName === "OL") {
-          push(false); var prev = kind; kind = c.nodeName === "OL" ? "ol" : "ul"; walk(c); push(false); kind = prev;
+          push(false);
+          var prev = kind; kind = c.nodeName === "OL" ? "ol" : "ul"; depth++;
+          walk(c); push(false);
+          depth--; kind = prev;
         } else if (BLOCK_TAGS[c.nodeName]) {
           push(false); var before = lines.length; walk(c);
           if (cur.childNodes.length) push(true); else if (lines.length === before) push(true); // an empty block is a blank line
@@ -396,19 +413,26 @@
     return lines;
   }
   function serializeLines(lines) {
-    var box = document.createElement("div"), list = null, listKind = null;
+    var box = document.createElement("div");
+    var stack = [], lastLi = []; // per depth: the open <ul>/<ol>, and the <li> a deeper list nests into
+    function block(tag, frag) {
+      var e2 = document.createElement(tag);
+      if (frag.childNodes.length) e2.appendChild(frag); else e2.appendChild(document.createElement("br"));
+      return e2;
+    }
     lines.forEach(function (ln) {
-      if (ln.kind) {
-        if (!list || listKind !== ln.kind) { list = document.createElement(ln.kind); listKind = ln.kind; box.appendChild(list); }
-        var li = document.createElement("li");
-        if (ln.frag.childNodes.length) li.appendChild(ln.frag); else li.appendChild(document.createElement("br"));
-        list.appendChild(li);
-      } else {
-        list = null; listKind = null;
-        var d = document.createElement("div");
-        if (ln.frag.childNodes.length) d.appendChild(ln.frag); else d.appendChild(document.createElement("br"));
-        box.appendChild(d);
+      if (!ln.kind) { stack.length = 0; lastLi.length = 0; box.appendChild(block("div", ln.frag)); return; }
+      var d = Math.min(Math.max(0, ln.depth || 0), stack.length); // a level can never be skipped
+      stack.length = Math.min(stack.length, d + 1);
+      var list = stack[d];
+      if (!list || list.nodeName.toLowerCase() !== ln.kind) {
+        list = document.createElement(ln.kind);
+        if (d === 0) box.appendChild(list); else lastLi[d - 1].appendChild(list); // nest INSIDE the line above
+        stack[d] = list;
       }
+      var li = block("li", ln.frag);
+      list.appendChild(li);
+      lastLi[d] = li; lastLi.length = d + 1;
     });
     return box.innerHTML;
   }
@@ -437,14 +461,18 @@
     if (a < 0) a = b; if (b < 0) b = a;
     return b < a ? { a: b, b: a } : { a: a, b: b };
   }
-  // the DOM element that holds each line, in order — used to put the caret back after a rebuild
+  // the DOM element that holds each line, in document order (nested lists included) — used to
+  // put the caret back after a rebuild
   function lineEls(root) {
     var out = [];
-    for (var c = root.firstChild; c; c = c.nextSibling) {
-      if (c.nodeType !== 1) continue;
-      if (c.nodeName === "UL" || c.nodeName === "OL") { for (var li = c.firstChild; li; li = li.nextSibling) if (li.nodeName === "LI") out.push(li); }
-      else out.push(c);
-    }
+    (function walk(n) {
+      for (var c = n.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType !== 1) continue;
+        if (c.nodeName === "UL" || c.nodeName === "OL") walk(c);
+        else if (c.nodeName === "LI") { out.push(c); walk(c); } // its own line first, then anything nested under it
+        else out.push(c);
+      }
+    })(root);
     return out;
   }
   // Bullet / numbered toggle. Applies to the lines the selection touches (whole box when the
@@ -462,10 +490,36 @@
     a = Math.max(0, Math.min(a, b));
     var allOn = true;
     for (var i = a; i <= b; i++) if (lines[i].kind !== wantKind) { allOn = false; break; }
-    for (var j = a; j <= b; j++) lines[j].kind = allOn ? null : wantKind; // second click un-lists
+    for (var j = a; j <= b; j++) { lines[j].kind = allOn ? null : wantKind; if (allOn) lines[j].depth = 0; } // second click un-lists
+    rebuildLines(node, txt, lines, b);
+  }
+  // Tab / Shift-Tab inside a list nests and un-nests it, like every editor. Depth lives on the
+  // LINE; serializeLines turns it back into real <ul>/<ol> nesting.
+  function indentLines(node, delta) {
+    var txt = editingTxt(node); if (!txt) return false;
+    var marked = markSelection(txt);
+    var lines = flattenLines(txt);
+    var range = marked ? markedLines(lines) : null;
+    if (!range || !lines.length) return false;
+    var touched = false;
+    for (var i = range.a; i <= Math.min(range.b, lines.length - 1); i++) {
+      var ln = lines[i]; if (!ln.kind) continue;
+      var above = i > 0 && lines[i - 1].kind ? lines[i - 1].depth : -1; // you can only nest UNDER a line, never leap a level
+      var d = (ln.depth || 0) + delta;
+      if (delta > 0 && d > above + 1) continue;
+      if (d < 0) { ln.kind = null; ln.depth = 0; } // Shift-Tab at the outer level leaves the list
+      else ln.depth = d;
+      touched = true;
+    }
+    if (!touched) return false;
+    rebuildLines(node, txt, lines, range.b);
+    return true;
+  }
+  // re-render the editable from the line array and put the caret back at the end of `caretLine`
+  function rebuildLines(node, txt, lines, caretLine) {
     txt.innerHTML = serializeLines(lines);
-    var els = lineEls(txt), last = els[Math.min(b, els.length - 1)];
-    if (last) { var r = document.createRange(); r.selectNodeContents(last); r.collapse(false); var s2 = getSelection(); s2.removeAllRanges(); s2.addRange(r); }
+    var els = lineEls(txt), last = els[Math.max(0, Math.min(caretLine, els.length - 1))];
+    if (last) { var r = document.createRange(); r.selectNodeContents(last); r.collapse(false); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
     txt.focus();
     commitRich(node, txt); autoFit(node, true); scheduleSave();
   }
@@ -508,6 +562,14 @@
     // the same in every browser and the markup lands on the node immediately.
     txt.addEventListener("keydown", function (e) {
       e.stopPropagation();
+      // Tab nests the current list item (Shift-Tab un-nests, and pops it out of the list at the
+      // outer level). Outside a list it inserts a tab instead of escaping the box like the
+      // browser's default would.
+      if (e.key === "Tab") {
+        e.preventDefault();
+        if (!indentLines(node, e.shiftKey ? -1 : 1)) execRich("insertText", "\t");
+        return;
+      }
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       var k = (e.key || "").toLowerCase(), code = e.code || "", cmd = null;
       if (k === "b") cmd = "bold";
@@ -1183,8 +1245,11 @@
       var shiftToggle = null;
       if (e.shiftKey) { if (isSelected(id)) shiftToggle = id; else setSelection(selected.concat([id])); }
       else if (!isSelected(id)) setSelection([id]);
-      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, bbox: selectionRect(selected), items: selected.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
-      armSnap(selected);
+      // a section drags its contents with it; snapping still uses the SELECTION's box (you're
+      // aligning the section, not its stickies) and must not treat the passengers as targets
+      var moving = withSectionChildren(selected);
+      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, bbox: selectionRect(selected), items: moving.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
+      armSnap(moving);
     } else if (e.pointerType === "touch") {
       // touch: one finger on empty canvas pans (no mouse to scroll with); two fingers pinch
       setSelection([]);
@@ -1263,6 +1328,33 @@
     });
   }
   function clearGuides() { if (guideLayer) guideLayer.innerHTML = ""; }
+  // A section is a CONTAINER: dragging it takes everything sitting inside it along (FigJam).
+  // Membership is by the node's CENTRE being inside — forgiving for things that stick out a
+  // little — and it's resolved at grab time, so what you pick up is exactly what you saw.
+  function inRect(r, x, y) { return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h; }
+  function sectionChildIds(secId) {
+    var sec = nodeById(secId); if (!sec || sec.type !== "section") return [];
+    var sr = nodeRect(sec); if (!sr) return [];
+    var out = [];
+    board.nodes.forEach(function (n) {
+      if (n.id === secId) return;
+      if (n.type === "arrow") { // no box — carry it only if BOTH ends are inside
+        if (inRect(sr, n.x1, n.y1) && inRect(sr, n.x2, n.y2)) out.push(n.id);
+        return;
+      }
+      var r = nodeRect(n); if (!r) return;
+      if (inRect(sr, r.x + r.w / 2, r.y + r.h / 2)) out.push(n.id);
+    });
+    return out;
+  }
+  function withSectionChildren(ids) {
+    var out = ids.slice();
+    ids.forEach(function (id) {
+      var n = nodeById(id);
+      if (n && n.type === "section") sectionChildIds(id).forEach(function (cid) { if (out.indexOf(cid) < 0) out.push(cid); });
+    });
+    return out;
+  }
   // the union box of everything being dragged — a multi-selection snaps as ONE box, like Figma
   function selectionRect(ids) {
     var x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
@@ -1562,7 +1654,9 @@
     var editing = ae && (ae.isContentEditable || tag === "INPUT" || tag === "TEXTAREA");
     // Hold Space to pan (hand cursor), Figma/FigJam convention; dragging empty space marquee-selects.
     if (e.code === "Space" && !editing && tag !== "BUTTON") { if (!spaceDown) { spaceDown = true; root.classList.add("hand"); } e.preventDefault(); return; }
-    if (editing) return;
+    if (editing) return; // inside a text box the browser's own undo stack is the right one
+    if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+    if ((e.metaKey || e.ctrlKey) && (e.key === "y" || e.key === "Y")) { e.preventDefault(); redo(); return; } // the Windows redo key
     if ((e.metaKey || e.ctrlKey) && (e.key === "d" || e.key === "D")) { e.preventDefault(); duplicateSelection(); return; }
     if ((e.key === "Backspace" || e.key === "Delete") && selected.length) { e.preventDefault(); selected.slice().forEach(removeNode); setSelection([]); }
     if (e.key === "Escape") { exitInteract(); setSelection([]); if (picker) picker.classList.add("hidden"); setTool("select"); return; }
@@ -2216,7 +2310,81 @@
 
   // ---- persistence ---------------------------------------------------------
   var saveTimer = null;
-  function scheduleSave() { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(save, 600); }
+  function scheduleSave() { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(save, 600); histSchedule(); }
+
+  // ---- undo / redo (⌘Z · ⌘⇧Z) ----------------------------------------------
+  // Snapshot-diff history, not a command log: nothing in the mutation paths has to know about
+  // it. A debounced tick compares the board against a shadow copy and records ONLY the nodes
+  // that changed, as {before, after} pairs — so undo puts those nodes back rather than
+  // restoring the whole doc. That's what keeps it safe in a live room: remote edits are folded
+  // into the shadow as they arrive (histSeen), so they never enter YOUR history and your ⌘Z
+  // can never revert a teammate's work. Same debounce as the save, so a burst of typing or one
+  // drag is one undo step.
+  var histUndo = [], histRedo = [], histShadow = {}, histTimer = null, histBusy = false;
+  var HIST_MAX = 60;
+  function histClone(n) {
+    var c = {}; for (var k in n) if (n.hasOwnProperty(k)) c[k] = n[k];
+    if (n.points) c.points = n.points.map(function (p) { return p.slice(); });
+    if (n.cells) { c.cells = {}; for (var ck in n.cells) c.cells[ck] = n.cells[ck]; }
+    if (n.crop) c.crop = { x: n.crop.x, y: n.crop.y, w: n.crop.w, h: n.crop.h };
+    return c;
+  }
+  function histSeed() { histShadow = {}; board.nodes.forEach(function (n) { histShadow[n.id] = histClone(n); }); }
+  function histSeen(node) { if (node) histShadow[node.id] = histClone(node); }   // remote change: mine to ignore
+  function histForget(id) { delete histShadow[id]; }
+  function histSchedule() { if (histBusy) return; if (histTimer) clearTimeout(histTimer); histTimer = setTimeout(histCommit, 500); }
+  function histCommit() {
+    histTimer = null;
+    var entry = [], seen = {};
+    board.nodes.forEach(function (n) {
+      seen[n.id] = true;
+      var was = histShadow[n.id];
+      if (!was) { entry.push({ id: n.id, before: null, after: histClone(n) }); histShadow[n.id] = histClone(n); return; }
+      if (mpSig(was) !== mpSig(n)) { entry.push({ id: n.id, before: was, after: histClone(n) }); histShadow[n.id] = histClone(n); }
+    });
+    for (var id in histShadow) if (!seen[id]) { entry.push({ id: id, before: histShadow[id], after: null }); delete histShadow[id]; }
+    if (!entry.length) return;
+    histUndo.push(entry);
+    if (histUndo.length > HIST_MAX) histUndo.shift();
+    histRedo.length = 0; // a fresh edit forks the timeline
+  }
+  // apply one side of an entry: `dir` picks which snapshot wins
+  function histApply(entry, dir) {
+    histBusy = true;
+    if (histTimer) { clearTimeout(histTimer); histTimer = null; }
+    var touched = [];
+    entry.forEach(function (it) {
+      var want = dir === "before" ? it.before : it.after;
+      var i = board.nodes.findIndex(function (n) { return n.id === it.id; });
+      if (!want) { // the node shouldn't exist on this side
+        if (i >= 0) { board.nodes.splice(i, 1); if (nodeEls[it.id]) { nodeEls[it.id].remove(); delete nodeEls[it.id]; } }
+        histForget(it.id);
+        return;
+      }
+      var copy = histClone(want);
+      if (i >= 0) board.nodes[i] = copy; else board.nodes.push(copy);
+      histShadow[it.id] = histClone(copy);
+      touched.push(copy);
+    });
+    selected = selected.filter(function (id) { return !!nodeById(id); });
+    touched.forEach(renderNode);
+    if (selected.length === 1) setSelection(selected.slice()); else hideSelBar();
+    save();
+    histBusy = false;
+    return touched;
+  }
+  function undo() {
+    var entry = histUndo.pop(); if (!entry) return false;
+    histApply(entry, "before");
+    histRedo.push(entry);
+    return true;
+  }
+  function redo() {
+    var entry = histRedo.pop(); if (!entry) return false;
+    histApply(entry, "after");
+    histUndo.push(entry);
+    return true;
+  }
   function save() {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
     fetch(BOARD_API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ doc: board }) }).catch(function () {});
@@ -2229,8 +2397,9 @@
     fetch(BOARD_API).then(function (r) { return r.json(); }).then(function (d) {
       if (d && d.doc && d.doc.nodes) { board = d.doc; board.view = board.view || { x: 0, y: 0, scale: 1 }; board.name = board.name || CFG.name || "Untitled canvas"; }
       else { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; }
+      histSeed();
       done();
-    }).catch(function () { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; done(); });
+    }).catch(function () { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; histSeed(); done(); });
   }
 
   // ---- public API for the comment overlay + tools --------------------------
@@ -2327,6 +2496,7 @@
       if (op.op === "upsert" && op.node && op.node.id) {
         var r = op.node;
         mpShadow[r.id] = mpSig(r); // anti-echo — set BEFORE deciding whether to apply
+        histSeen(r);               // a peer's edit is not mine to undo
         if (mpDragInvolves(r.id) || mpLocallyEditing(r.id)) return; // local interaction wins
         var local = nodeById(r.id), host = nodeEls[r.id];
         if (local && host && mpGeoLessSig(r) === mpGeoLessSig(local) && local.type !== "arrow") {
@@ -2366,6 +2536,7 @@
         }
       } else if (op.op === "del" && op.id) {
         delete mpShadow[op.id];
+        histForget(op.id);
         mpRemoveLocal(op.id);
       } else if (op.op === "name" && typeof op.name === "string") {
         board.name = op.name; mpShadowName = op.name;
@@ -2384,6 +2555,7 @@
     document.title = board.name; if (nameEl) nameEl.textContent = board.name;
     render();
     mpSeedShadow();
+    histSeed(); histUndo.length = 0; histRedo.length = 0; // not your edit — no undoing "into" it
     mpRenderFocus();
   }
 
@@ -2674,19 +2846,39 @@
     mpPresence.innerHTML = "";
     if (!mp || mp.readyState !== 1) { mpPresence.classList.add("hidden"); return; }
     var chips = [{ name: mpName, title: mpName + " (you)", color: mpColor, me: true }];
-    for (var sid in mpPeers) { var p = mpPeers[sid]; chips.push({ name: p.name, title: p.name, color: p.color, kind: p.kind, pose: p.pose }); }
+    for (var sid in mpPeers) { var p = mpPeers[sid]; chips.push({ sid: sid, name: p.name, title: p.name, color: p.color, kind: p.kind, pose: p.pose }); }
     if (chips.length < 2) { mpPresence.classList.add("hidden"); return; } // alone — no chrome
     mpPresence.classList.remove("hidden");
     chips.forEach(function (c) {
       var isAgent = c.kind === "agent";
-      var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : "") + (isAgent ? " agent" : ""), title: c.title });
+      var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : "") + (isAgent ? " agent" : "") });
       // every chip wears its owner's identity color; agents get a cream mini Clawd on it,
       // humans their initial — so the chip color always matches the cursor on the board
       chip.style.background = c.color;
       if (isAgent) chip.innerHTML = clawdChipSvg("#f6f0e4");
       else chip.textContent = mpInitials(c.name);
+      // hover = who this is (a styled label, not the OS tooltip — that took a second to appear
+      // and looked nothing like the board); click = fly the viewport to what they're looking at
+      chip.appendChild(el("span", { class: "lbl", text: c.me ? c.title : c.title + " — click to jump" }));
+      if (!c.me && c.sid) {
+        chip.classList.add("jump");
+        chip.addEventListener("click", function (e) { e.stopPropagation(); mpJumpTo(c.sid); });
+      }
       mpPresence.appendChild(chip);
     });
+  }
+  // Fly to where a peer is: their live cursor, or the node they're typing in if they haven't
+  // moved the mouse yet. Eases rather than teleports so you keep your bearings.
+  function mpJumpTo(sid) {
+    var p = mpPeers[sid]; if (!p) return;
+    var wx = p.cx, wy = p.cy;
+    if (wx == null && p.focus) {
+      var n = nodeById(p.focus), r = n && nodeRect(n);
+      if (r) { wx = r.x + r.w / 2; wy = r.y + r.h / 2; }
+    }
+    if (wx == null) return;
+    flyTo(wx, wy);
+    if (p.el) { p.el.classList.remove("idle"); p.el.classList.add("pinged"); setTimeout(function () { if (p.el) p.el.classList.remove("pinged"); }, 900); }
   }
 
   // ---- editing focus (who is typing where) ---------------------------------

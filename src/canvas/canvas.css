@@ -489,8 +489,28 @@ svg.stk { display: block; overflow: visible; }
 .gvc-cursor.agent.poked svg { animation: gvc-clawd-hop .7s cubic-bezier(.34, 1.56, .64, 1); }
 #gvc-presence { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 5px 8px 5px 12px; }
 #gvc-presence.hidden { display: none; }
-.gvc-peerchip { width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); }
+.gvc-peerchip { position: relative; width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); transition: transform .12s; }
 .gvc-peerchip.me { order: 1; }
+/* click a peer's face to fly to them; hover names them (our own label, not the OS tooltip —
+   that took a second to appear and looked foreign on the board) */
+.gvc-peerchip.jump { cursor: pointer; }
+.gvc-peerchip.jump:hover { transform: translateY(-1px) scale(1.08); z-index: 2; }
+.gvc-peerchip .lbl {
+  position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+  padding: 3px 8px 4px; border-radius: 7px; background: #1e1e1e; color: #fff;
+  font: 600 11px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity .12s; box-shadow: 0 2px 8px rgba(0, 0, 0, .22);
+}
+.gvc-peerchip:hover .lbl { opacity: 1; }
+/* the peer you just jumped to pulses once, so you spot them on arrival. Animate the SVG, never
+   the .gvc-cursor itself — its transform carries the cursor's position. */
+.gvc-cursor.pinged svg { animation: gvc-ping .9s ease-out; }
+@keyframes gvc-ping {
+  0% { transform: scale(var(--clawd-k, 1)); }
+  22% { transform: scale(calc(var(--clawd-k, 1) * 1.6)); }
+  55% { transform: scale(calc(var(--clawd-k, 1) * .92)); }
+  100% { transform: scale(var(--clawd-k, 1)); }
+}
 /* agent (Clawd) chip: a cream CIRCLE with a mini Clawd instead of a letter initial */
 .gvc-peerchip.agent { overflow: visible; }
 .gvc-peerchip.agent svg { display: block; }
