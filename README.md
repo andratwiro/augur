@@ -54,8 +54,10 @@ pushes to retrigger CI by themselves — the template workflows don't need it
 
 ## Adding a space
 
-Create a repo with a `space.json` and one or more `<opportunity>/prototypes/`
+Create a repo with a `space.json` and one or more `<project>/prototypes/`
 folders — a design system is optional; plain self-contained HTML builds fine.
+(The UI calls these top-level folders "Projects" by default; a space renames
+the section via `space.json` `projectsLabel`.)
 Add [templates/space-deploy-trigger.yml](./templates/space-deploy-trigger.yml)
 as `.github/workflows/deploy-trigger.yml` (point `SHELL_REPO` at your shell)
 and give it the `AUGUR_DISPATCH_TOKEN` secret. Grant `SUBMODULE_PAT` read

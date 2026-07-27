@@ -27,17 +27,21 @@ A **space** is a separate git repo: a self-contained design system + prototypes 
 `./spaces`). The default space builds at the site root; every other space under
 `/<id>/`.
 
-`space.json` contract: `{ id, name, default, badge, adminOnly, methodPages,
-pendingPages, designSystem, ignore }`.
+`space.json` contract: `{ id, name, default, badge, adminOnly, projectsLabel,
+methodPages, pendingPages, designSystem, ignore }`.
 - `id` = the `spaces/<id>` mount name + URL prefix (lowercase `[a-z0-9-]`). The repo
   NAME is a free label — the deploy bridge names spaces from `space.json`, not the repo.
 - `adminOnly: true` seals every URL under the space's base behind the admin login
   (injected into the worker as `RESTRICTED_BASES`).
+- `projectsLabel`: what the UI calls the space's top-level prototype folders (rail
+  section + landing title). Default "Projects"; a space whose team has its own
+  vocabulary for them (e.g. "Opportunities") overrides it here. Internal code keeps
+  the historical `opportunities` identifiers — only user-facing strings read the label.
 - **The UI skill is auto-detected**: the dir under `<space>/skills/` named
   `<prefix>-ui` containing `<dirname>.css`. Every canonical asset name derives from the
   prefix (`<prefix>-tokens.css`, `<prefix>-primitives.css`, …). Override with
   `designSystem: { "skill": "<dir>" }`.
-- `ignore`: extra top-level dirs the build must never treat as opportunities.
+- `ignore`: extra top-level dirs the build must never treat as project folders.
 
 **Publishing is whitelist-driven (critical guardrail).** Only the contents of
 `prototypes/` folders, the gallery tiers (`base/ components/ pages/ patterns/`,

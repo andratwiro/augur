@@ -70,6 +70,10 @@ let SPACE_KEY = "";
 // name, and extra ignored top-level dirs (space.json "ignore") — set by setSpaceContext.
 let DS = { dirName: null, prefix: null };
 let SPACE_NAME = "";
+// What this space calls its top-level prototype folders in the UI (rail section,
+// landing title). Generic default; a space overrides via space.json `projectsLabel`
+// (e.g. a team whose vocabulary for them is "Opportunities").
+let PROJECTS_LABEL = "Projects";
 let SPACE_IGNORE = new Set();
 // S(p): prefix a SPACE-SCOPED root-relative URL with the active space's BASE. Shared
 // chrome (worker APIs /__*, /fonts, /augur-mark.png, /admin, /changelog) is NOT
@@ -2197,7 +2201,7 @@ function sideRail(active) {
     ${spaceSwitcher()}
     <div class="gvside__scroll">
       <div class="gvside__group">
-        ${item("/", "Opportunities", "prototypes", IC_HOME)}
+        ${item("/", PROJECTS_LABEL, "prototypes", IC_HOME)}
         ${playground}
       </div>
       ${pinned}
@@ -3367,7 +3371,7 @@ function renderRootIndex(opportunities) {
       title: "Augur",
       subtitle: "Private &mdash; do not share outside the team.",
       body: `<p class="empty">No prototypes yet. Add one under
-       <code>&lt;opportunity&gt;/prototypes/&lt;name&gt;/</code> and rebuild.</p>`,
+       <code>&lt;folder&gt;/prototypes/&lt;name&gt;/</code> and rebuild.</p>`,
     });
   }
 
@@ -3392,7 +3396,7 @@ function renderRootIndex(opportunities) {
   // Nav (Playground + opportunities) now lives in the global left rail — the landing
   // page is just a single wide column of opportunity cards.
   const body = `
-    <header class="folderbar"><h1 class="folderbar__title">Opportunities</h1><span class="folderbar__count">${opportunities.length}</span><span class="folderbar__rule"></span></header>
+    <header class="folderbar"><h1 class="folderbar__title">${PROJECTS_LABEL}</h1><span class="folderbar__count">${opportunities.length}</span><span class="folderbar__rule"></span></header>
     <div data-fgroup>
       <div class="opp-grid">${cards}</div>
     </div>
@@ -3453,7 +3457,7 @@ function renderOpportunityIndex(opp) {
     title: titleCase(opp.name),
     activeTab: opp.name,
     wrapClass: "wrap--wide",
-    body: `<header class="folderbar"><a class="folderbar__up" href="${S("/")}" aria-label="All opportunities" title="All opportunities"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span>${researchChip(opp.research)}</header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
+    body: `<header class="folderbar"><a class="folderbar__up" href="${S("/")}" aria-label="All ${PROJECTS_LABEL.toLowerCase()}" title="All ${PROJECTS_LABEL.toLowerCase()}"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span>${researchChip(opp.research)}</header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
   });
 }
 
@@ -4029,6 +4033,7 @@ async function discoverSpaces() {
       pendingPages: Array.isArray(meta.pendingPages) ? meta.pendingPages : [],
       methodPages: Array.isArray(meta.methodPages) ? meta.methodPages : [],
       designSystem: meta.designSystem || null,
+      projectsLabel: typeof meta.projectsLabel === "string" ? meta.projectsLabel : "",
       ignore: Array.isArray(meta.ignore) ? meta.ignore : [],
       root,
     });
@@ -4069,6 +4074,7 @@ function setSpaceContext(space) {
   DS = detectUiSkill(space);
   CANON_CSS_LAYERS = DS.prefix ? canonCssLayers(DS.prefix) : [];
   SPACE_NAME = space.name || "";
+  PROJECTS_LABEL = space.projectsLabel || "Projects";
   SPACE_IGNORE = new Set(space.ignore || []);
   UI_SKILL = path.join(space.root, "skills", DS.dirName || "_ui");
   PAGES_SRC = path.join(space.root, "pages");

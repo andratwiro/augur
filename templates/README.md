@@ -17,7 +17,7 @@ templates/
 ## Minimal instance recipe
 
 1. **Space repo** (private, one per space): a `space.json` (`{ "id": "...",
-   "default": true }` for the space that owns the site root), opportunity
+   "default": true }` for the space that owns the site root), project
    folders with `prototypes/`, and `space-deploy-trigger.yml` (set `SHELL_REPO`).
    A design system is optional — a space of plain HTML prototypes builds fine.
 2. **Shell repo** (private): mount the engine at `engine/` and each space at
