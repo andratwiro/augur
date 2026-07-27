@@ -39,6 +39,10 @@ Push the shell → the site deploys. Push a space → its pin bumps → the site
 deploys (~1 min). Engine updates arrive on the shell's schedule via
 `engine-bump.yml` — the public engine carries no per-instance wiring.
 
+Engine missing something for your instance? Don't patch your copy — **open a PR
+upstream** (see the engine's CONTRIBUTING.md) and take it back via pin bump.
+That keeps your instance on the update train and ships your fix to everyone.
+
 ## Canvas multiplayer (optional)
 
 Live multiplayer boards need a second Cloudflare worker — `realtime/` in the

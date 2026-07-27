@@ -103,5 +103,7 @@ comments bleed across screens.
   shell, don't keep an instance on a private engine fork. Engine gaps get fixed HERE
   on `main` (generic, zero product words), then every instance takes them by pin bump
   — GoVocal automatically, others via their shell's `engine-bump.yml`. Instance values
-  live in the shell's `deploy.config.json`; space values in `space.json`.
+  live in the shell's `deploy.config.json`; space values in `space.json`. Outside
+  contributors go through PRs (CONTRIBUTING.md) — fork to PR, not to deploy — and
+  Rob's agents hold PRs to the same bar: generic, config-driven, minimal-instance-safe.
 - The canvas layer is documented in `CANVAS.md`; the pet layer in `pitis/README.md`.

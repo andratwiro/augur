@@ -68,10 +68,13 @@ is a free label.
 Instances **pin** this engine and take updates by moving the pin (the shell's
 `engine-bump.yml`). Don't fork-and-patch it inside an instance, and don't carry
 engine edits in a shell or space repo — a patched instance stops taking
-upstream fixes cleanly, and every instance loses the fix you kept local. If the
-engine is missing something, change it **here** (or open an issue) and bump
-your pin. Instance-specific behavior belongs in the shell's
-`deploy.config.json`; space-specific behavior in `space.json`.
+upstream fixes cleanly, and every instance loses the fix you kept local.
+
+If the engine is missing something, **send it here — PRs are welcome** (see
+[CONTRIBUTING.md](./CONTRIBUTING.md)): fork to PR, not to deploy. Your instance
+then takes the fix by pin bump, like every other. Instance-specific behavior
+belongs in the shell's `deploy.config.json`; space-specific behavior in
+`space.json`.
 
 ## License
 
