@@ -16,8 +16,10 @@
  *
  * Uses the WebSocket Hibernation API, so an idle board with open tabs costs ~nothing.
  * In-memory fields (doc, colors) are caches: after a hibernation wake they rebuild
- * from socket attachments and the docreq dance below. The board path survives
- * hibernation in ctx.storage ("path") because the alarm needs it to build the KV key.
+ * from socket attachments and the docreq dance below. Anything the ALARM depends on must
+ * therefore be durable, because the alarm outlives the instance that armed it and fires
+ * into a fresh one: ctx.storage holds "path" (the KV key), "dirty" (a write is pending)
+ * and "doc" (a stash, refreshed once per alarm window, for flushing an empty room).
  *
  * Protocol (JSON, one object per message):
  *   client→room: {t:"cursor",x,y,drag?}|{t:"cursor",gone:true} · {t:"ops",ops:[...]} ·
@@ -68,7 +70,8 @@ export class BoardRoom {
     this.env = env;
     this.doc = null;      // latest board doc (cache — null after hibernation wake)
     this.wantDoc = false; // a docreq is in flight, don't spam
-    this.dirty = false;   // doc changed since the last KV write
+    this.dirty = false;   // doc changed since the last KV write (mirrored durably — see markDirty)
+    this.coldWrite = false; // an alarm woke without a doc and asked a client for one
     this.alarmSet = false;
     this.sweptAt = 0;
     // clients ping every 25s; the runtime pongs WITHOUT waking the DO and stamps the
@@ -221,6 +224,9 @@ export class BoardRoom {
       // POST once the room is live, so if the room didn't persist the seed, that edit
       // would only ever exist in RAM. One extra write per room session buys the guarantee.
       this.markDirty();
+      // A cold alarm asked for this doc because it woke without one. Write NOW: arming
+      // another 45s alarm risks landing cold again, which is how a room stalls forever.
+      if (this.coldWrite) { this.coldWrite = false; this.persist(); }
       // first seed of a live room: peers loaded from KV themselves, no need to rebroadcast;
       // only a post-hibernation reseed stays silent too — ops already kept everyone level.
       if (!had) return;
@@ -228,25 +234,73 @@ export class BoardRoom {
   }
 
   // ---- persistence (the room owns the KV write while it's alive) ------------
+  // HIBERNATION-SAFE. The alarm is DURABLE, `dirty` and `doc` are in-memory caches, so an
+  // alarm armed before a hibernation wake fires into a FRESH instance where dirty=false and
+  // doc=null — the write was silently skipped and, because the re-arm is also guarded by
+  // dirty, never retried. `path` was already made durable for exactly this reason; the
+  // pending-write flag now lives beside it, and a cold alarm rebuilds the doc from a live
+  // client (docreq — they hold the truth) or, in an empty room, from the durable stash.
   markDirty() {
     this.dirty = true;
+    this.ctx.storage.put("dirty", 1);
     if (this.alarmSet) return;
     this.alarmSet = true;
+    // Stash the doc when ARMING (≤ once per window, not per ops tick) so a cold alarm with
+    // no one left to ask still has something to write. Best effort: a doc over the DO value
+    // limit just doesn't stash, and the docreq path covers it.
+    if (this.doc) { try { this.ctx.storage.put("doc", this.doc).catch(() => {}); } catch (e) {} }
     this.ctx.storage.setAlarm(Date.now() + PERSIST_MS);
+  }
+  // Write whatever is pending, from a cold instance if need be (no client left to ask).
+  async flush() {
+    if (!(await this.isDirty())) return;
+    if (!this.doc) {
+      const stashed = await this.ctx.storage.get("doc");
+      if (stashed) this.doc = stashed;
+    }
+    await this.persist();
+  }
+  async isDirty() {
+    if (this.dirty) return true;
+    this.dirty = !!(await this.ctx.storage.get("dirty"));
+    return this.dirty;
+  }
+  clearDirty() {
+    this.dirty = false;
+    return this.ctx.storage.delete("dirty");
   }
   async alarm() {
     this.alarmSet = false;
+    if (!(await this.isDirty())) return;
+    if (!this.doc) {
+      // Cold wake. A connected client has the current state — ask, and write when it answers
+      // (see the `doc` handler). Re-arm as the safety net in case nobody replies.
+      const ws = this.ctx.getWebSockets()[0];
+      if (ws) {
+        this.coldWrite = true;
+        if (!this.wantDoc) {
+          this.wantDoc = true;
+          try { ws.send(JSON.stringify({ t: "docreq" })); } catch (e) {}
+        }
+        this.alarmSet = true;
+        this.ctx.storage.setAlarm(Date.now() + PERSIST_MS);
+        return;
+      }
+      const stashed = await this.ctx.storage.get("doc"); // empty room: the stash is all we have
+      if (stashed) this.doc = stashed;
+    }
     await this.persist();
     // still dirty means ops landed while the write was in flight — re-arm
     if (this.dirty) this.markDirty();
   }
   async persist() {
-    if (!this.dirty || !this.doc || !this.env.BOARD_KV) return;
+    if (!this.doc || !this.env.BOARD_KV) return;
+    if (!(await this.isDirty())) return;
     const path = await this.ctx.storage.get("path");
-    if (!path || path.indexOf("/__test/") === 0) { this.dirty = false; return; } // test rooms never persist (Playwright isolation)
-    this.dirty = false; // before the await: ops during the write re-set it
+    if (!path || path.indexOf("/__test/") === 0) { await this.clearDirty(); return; } // test rooms never persist (Playwright isolation)
+    await this.clearDirty(); // before the await: ops during the write re-set it
     try { await this.env.BOARD_KV.put(BOARD_PREFIX + path, JSON.stringify(this.doc)); }
-    catch (e) { this.dirty = true; } // failed write: keep the flag, the next alarm retries
+    catch (e) { this.dirty = true; this.ctx.storage.put("dirty", 1); } // failed write: the next alarm retries
   }
 
   applyOps(ops) {
@@ -274,8 +328,9 @@ export class BoardRoom {
     if (!this.ctx.getWebSockets().some((s) => s !== ws)) {
       // last one out: flush the doc to KV NOW (don't wait for the alarm), then drop the
       // cache. No waitUntil — the runtime keeps a DO alive while async work is in flight.
-      if (this.dirty) { const d = this.doc; this.persist().then(() => { if (this.doc === d) this.doc = null; }); }
-      else this.doc = null;
+      // dirty/doc can both be cold here (hibernation wake), so flush() re-reads them.
+      const d = this.doc;
+      this.flush().then(() => { if (this.doc === d) this.doc = null; });
     }
   }
 }
