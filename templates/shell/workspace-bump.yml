@@ -1,0 +1,83 @@
+name: Bump space pin (auto)
+
+# Receiver for the space auto-deploy bridge. This shell mounts one repo per space as a
+# submodule at spaces/<id>. When a space repo pushes to main, its deploy-trigger workflow
+# fires a repository_dispatch here with the new commit SHA and the space id (from its
+# space.json). We move that space's submodule pin to the SHA, push, and start deploy.yml.
+# This lets a space-repo-only collaborator go live without access to this repo.
+#
+# This variant needs NO extra PAT on this side: the pin push uses the workflow's own
+# GITHUB_TOKEN — which deliberately does NOT retrigger workflows — and the deploy is then
+# started explicitly via workflow_dispatch, one of the two event types GITHUB_TOKEN IS
+# allowed to trigger.
+#
+# The pin is set straight from the payload SHA via update-index, so this job needs NO
+# read access to the space repo — deploy.yml resolves the SHA later using SUBMODULE_PAT.
+
+on:
+  repository_dispatch:
+    types: [workspace-updated]
+
+permissions:
+  contents: write # push the pin-bump commit
+  actions: write  # start deploy.yml via workflow_dispatch
+
+# No concurrency group: a shared group would CANCEL a pending bump when a third dispatch
+# arrives (GitHub keeps one pending run per group), silently losing that space's deploy.
+# Concurrent runs are safe instead — each one re-syncs to origin/main and re-applies its
+# own gitlink on push rejection (see the retry loop below).
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Move the space pin to the pushed commit
+        env:
+          NEW_SHA: ${{ github.event.client_payload.sha }}
+          SPACE: ${{ github.event.client_payload.space }}
+          ACTOR: ${{ github.event.client_payload.actor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Validate the payload (defence in depth — SHA becomes a gitlink, SPACE a path).
+          if ! printf '%s' "$NEW_SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::client_payload.sha is not a 40-char hex SHA: '$NEW_SHA'"; exit 1
+          fi
+          if ! printf '%s' "$SPACE" | grep -Eq '^[a-z0-9][a-z0-9-]*$'; then
+            echo "::error::client_payload.space is not a valid space id: '$SPACE'"; exit 1
+          fi
+          SUB_PATH="spaces/$SPACE"
+          # The space must already be a mounted submodule — a dispatch can move a pin,
+          # never add one.
+          MODE="$(git ls-tree HEAD "$SUB_PATH" | awk '{print $1}')"
+          if [ "$MODE" != "160000" ]; then
+            echo "::error::'$SUB_PATH' is not a submodule of this repo — unknown space '$SPACE'."; exit 1
+          fi
+          git config user.name "augur-bot"
+          git config user.email "augur-bot@users.noreply.github.com"
+          # Apply + push with retry: another bump can land on main between our checkout
+          # and our push. On rejection, re-sync to origin/main, re-apply OUR gitlink on
+          # top, and try again — both bumps survive.
+          for attempt in 1 2 3 4 5; do
+            CUR_SHA="$(git ls-tree HEAD "$SUB_PATH" | awk '{print $3}')"
+            if [ "$NEW_SHA" = "$CUR_SHA" ]; then
+              echo "Pin already at $NEW_SHA — nothing to do."; exit 0
+            fi
+            # Set the submodule gitlink to NEW_SHA without fetching the space repo.
+            git update-index --cacheinfo "160000,$NEW_SHA,$SUB_PATH"
+            git commit -m "Auto-bump $SPACE pin → ${NEW_SHA:0:12} (push by ${ACTOR:-unknown})"
+            if git push origin HEAD:main; then
+              echo "Bumped $SPACE pin: ${CUR_SHA:0:12} → ${NEW_SHA:0:12} — starting deploy.yml"
+              gh workflow run deploy.yml --ref main
+              exit 0
+            fi
+            echo "Push rejected (concurrent bump landed) — re-syncing and retrying ($attempt/5)"
+            git fetch origin main
+            git reset --hard origin/main
+            sleep 2
+          done
+          echo "::error::could not push the $SPACE pin bump after 5 attempts"; exit 1

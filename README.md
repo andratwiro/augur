@@ -41,19 +41,27 @@ GV_SPACES_ROOT=/path/to/spaces node build.js  # any dir holding space repos (eac
 npm run dev                                   # build + serve locally
 ```
 
-CI lives in the deploy shell repo, which needs a Cloudflare Pages project and
-four secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `SUBMODULE_PAT`
-(reads the engine + space submodules; `.gitmodules` URLs must stay HTTPS for it
-to work) and `AUGUR_PIN_TOKEN` (pushes the auto-bump commits). This repo needs
-only `AUGUR_DISPATCH_TOKEN` (write on the shell) to announce its pushes.
+CI lives in the deploy shell repo — copy-paste workflows and a full instance
+recipe live in [templates/](./templates/). The shell needs a Cloudflare Pages
+project (with a KV namespace bound as `COMMENTS` for the overlay state) and
+three secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and
+`SUBMODULE_PAT` (Contents:read on the shell itself + every private space repo;
+`.gitmodules` URLs must stay HTTPS for it to work). Each space repo needs
+`AUGUR_DISPATCH_TOKEN` (Contents:write on the shell) to announce its pushes.
+A shell may add `AUGUR_PIN_TOKEN` (Contents:write on itself) if it wants pin
+pushes to retrigger CI by themselves — the template workflows don't need it
+(they push with their own `GITHUB_TOKEN` and start the deploy explicitly).
 
 ## Adding a space
 
-Create a repo with a `space.json`, design system assets, and the
-`deploy-trigger.yml` workflow. Grant `SUBMODULE_PAT` read access on it and
-verify with the deploy shell's `space-preflight.yml`. Then, in the shell:
-`git submodule add <repo-url> spaces/<id>` and push. The space id comes from
-`space.json`, so the repo name is a free label.
+Create a repo with a `space.json` and one or more `<opportunity>/prototypes/`
+folders — a design system is optional; plain self-contained HTML builds fine.
+Add [templates/space-deploy-trigger.yml](./templates/space-deploy-trigger.yml)
+as `.github/workflows/deploy-trigger.yml` (point `SHELL_REPO` at your shell)
+and give it the `AUGUR_DISPATCH_TOKEN` secret. Grant `SUBMODULE_PAT` read
+access on the new repo. Then, in the shell: `git submodule add <https-url>
+spaces/<id>` and push. The space id comes from `space.json`, so the repo name
+is a free label.
 
 ## License
 

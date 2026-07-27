@@ -1,0 +1,57 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual runs from the Actions tab
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # This shell composes the public Augur ENGINE (submodule at engine/) plus one
+      # submodule per space, mounted at spaces/<id>. The engine is public, but the space
+      # repos are private — and actions/checkout uses ONE token for the host repo and
+      # every submodule, so SUBMODULE_PAT needs Contents:read on THIS repo and on every
+      # space repo. (.gitmodules URLs must stay HTTPS — checkout cannot authenticate SSH
+      # URLs.)
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # full history for per-prototype "last worked on" ordering
+          submodules: true        # pull the engine + every space repo
+          token: ${{ secrets.SUBMODULE_PAT }}
+
+      # Sanity guard: at least one space submodule actually checked out. A PAT/scope
+      # mistake surfaces as an empty spaces/ dir, and the build would ship an empty site.
+      - name: Guard — space submodules checked out
+        run: |
+          if ! ls spaces/*/space.json >/dev/null 2>&1; then
+            echo "::error::no space submodule with a space.json checked out (PAT scope, or missing submodule?)."; exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # The engine's build.js reads spaces + identity + deploy config from THIS repo via
+      # env overrides; it emits dist inside the engine checkout (engine/dist).
+      - name: Build site
+        run: node engine/build.js
+        env:
+          GV_SPACES_ROOT: ${{ github.workspace }}/spaces
+          GV_IDENTITY_PATH: ${{ github.workspace }}/identity.json
+          GV_DEPLOY_CONFIG_PATH: ${{ github.workspace }}/deploy.config.json
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy engine/dist --project-name=your-pages-project --branch=main

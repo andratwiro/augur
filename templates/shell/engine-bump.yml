@@ -1,0 +1,58 @@
+name: Bump engine pin (scheduled)
+
+# The public engine moves on its own cadence; this instance takes updates on ITS OWN
+# schedule. Weekly (or on demand from the Actions tab) this job reads the engine repo's
+# current main SHA — the engine is public, so no token is needed to read it — moves the
+# engine submodule pin, pushes, and starts deploy.yml.
+#
+# The pull lives ENTIRELY on this side: the engine repo knows nothing about this shell
+# (no dispatch wiring, no secrets upstream). That keeps the public engine free of
+# per-instance infrastructure, and the pin doubles as this instance's release valve —
+# upstream can move fast, updates land only when this job runs. Skip a broken upstream
+# by simply not running it; roll back by resetting the pin commit.
+#
+# Push + trigger use the workflow's own GITHUB_TOKEN: the push deliberately does NOT
+# retrigger workflows, and deploy.yml is then started explicitly via workflow_dispatch
+# (one of the two event types GITHUB_TOKEN IS allowed to trigger). No PAT needed.
+#
+# NB GitHub disables cron schedules after ~60 days without repo activity — the manual
+# workflow_dispatch always works.
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC — weekly engine refresh
+  workflow_dispatch:
+
+permissions:
+  contents: write # push the pin-bump commit
+  actions: write  # start deploy.yml via workflow_dispatch
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Move the engine pin to the engine's current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ENGINE_URL="$(git config -f .gitmodules submodule.engine.url)"
+          NEW_SHA="$(git ls-remote "$ENGINE_URL" refs/heads/main | cut -f1)"
+          if [ -z "$NEW_SHA" ]; then
+            echo "::error::could not resolve the engine's main from $ENGINE_URL"; exit 1
+          fi
+          CUR_SHA="$(git ls-tree HEAD engine | awk '{print $3}')"
+          if [ "$NEW_SHA" = "$CUR_SHA" ]; then
+            echo "Engine pin already at $NEW_SHA — nothing to do."; exit 0
+          fi
+          git config user.name "augur-bot"
+          git config user.email "augur-bot@users.noreply.github.com"
+          git update-index --cacheinfo "160000,$NEW_SHA,engine"
+          git commit -m "Bump engine pin → ${NEW_SHA:0:12}"
+          git push origin HEAD:main
+          echo "Bumped engine pin: ${CUR_SHA:0:12} → ${NEW_SHA:0:12} — starting deploy.yml"
+          gh workflow run deploy.yml --ref main

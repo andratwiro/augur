@@ -1,0 +1,50 @@
+name: Trigger live deploy
+
+# Auto-deploy bridge. A push to this space repo's main is necessary but not sufficient to
+# go live — the live site is built by the Augur deploy shell, which mounts each space repo
+# as a submodule at spaces/<space-id> and pins it at a fixed commit. This job tells the
+# shell to bump that pin to the just-pushed commit, which fires the shell's deploy. It
+# lets a collaborator with access to ONLY this repo ship live, with no access to the shell.
+#
+# The dispatch payload names the space by the `id` in space.json (the source of truth),
+# NOT by the repo name — so the repo can be renamed freely and this file stays copy-paste
+# identical across all space repos of one instance. The only per-instance value is the
+# shell repo in SHELL_REPO below.
+#
+# Auth: AUGUR_DISPATCH_TOKEN — a fine-grained PAT with Contents: read & write on the
+# shell repo (the repository_dispatch REST endpoint requires write). Add it under
+# Settings → Secrets and variables → Actions. Until it exists, this job fails harmlessly
+# (nothing in .github/ is published, so the site is unaffected).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual re-trigger from the Actions tab
+
+permissions:
+  contents: read
+
+env:
+  SHELL_REPO: your-user/your-augur-shell
+
+jobs:
+  notify-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4 # only to read space.json (this repo has no submodules)
+
+      - name: Ask the shell to bump this space's pin and deploy
+        env:
+          GH_TOKEN: ${{ secrets.AUGUR_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          SPACE="$(jq -r '.id // empty' space.json)"
+          if [ -z "$SPACE" ]; then
+            echo "::error::space.json has no id — cannot name the space in the dispatch"; exit 1
+          fi
+          gh api -X POST "/repos/${SHELL_REPO}/dispatches" \
+            -f event_type=workspace-updated \
+            -f "client_payload[sha]=${{ github.sha }}" \
+            -f "client_payload[space]=${SPACE}" \
+            -f "client_payload[actor]=${{ github.actor }}"
+          echo "Dispatched workspace-updated for ${SPACE}@${{ github.sha }} → ${SHELL_REPO}"
