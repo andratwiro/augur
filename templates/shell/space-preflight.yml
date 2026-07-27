@@ -1,0 +1,35 @@
+name: Preflight — can CI read a space repo?
+
+# Part of the add-a-space ritual: BEFORE mounting a new space repo as a submodule,
+# verify SUBMODULE_PAT can read it — mounting first would break every deploy at the
+# checkout step until the grant is fixed. Run from the Actions tab (or
+# `gh workflow run space-preflight.yml -f repo=<owner/name>`); green = safe to mount.
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "Space repo (owner/name)"
+        required: true
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe SUBMODULE_PAT read access
+        env:
+          PAT: ${{ secrets.SUBMODULE_PAT }}
+          REPO: ${{ inputs.repo }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$REPO" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9._-]+$'; then
+            echo "::error::bad repo '$REPO' (expected owner/name)"; exit 1
+          fi
+          # Output fully discarded so the token-bearing URL can never reach the log.
+          if git ls-remote "https://x-access-token:${PAT}@github.com/${REPO}.git" HEAD >/dev/null 2>&1; then
+            echo "OK — SUBMODULE_PAT can read ${REPO}; safe to mount at spaces/<id>."
+          else
+            echo "::error::SUBMODULE_PAT cannot read ${REPO} — add it to the token's repository access (Settings → Developer settings → Fine-grained tokens), then re-run."; exit 1
+          fi

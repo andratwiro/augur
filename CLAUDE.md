@@ -97,4 +97,11 @@ comments bleed across screens.
 - Prototypes are self-contained static HTML (no build step); they live in the space
   repos, not here. Edit spaces in their own clones — the `spaces/` mounts in a deploy
   shell are read-only build mirrors.
+- **The engine is a pinned dependency of every instance — never fork-and-patch it.**
+  Don't edit engine code from inside a shell checkout (the `engine/` mount there is a
+  read-only build mirror), don't vendor build.js or worker snippets into a space or
+  shell, don't keep an instance on a private engine fork. Engine gaps get fixed HERE
+  on `main` (generic, zero product words), then every instance takes them by pin bump
+  — GoVocal automatically, others via their shell's `engine-bump.yml`. Instance values
+  live in the shell's `deploy.config.json`; space values in `space.json`.
 - The canvas layer is documented in `CANVAS.md`; the pet layer in `pitis/README.md`.

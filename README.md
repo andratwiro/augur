@@ -63,6 +63,16 @@ access on the new repo. Then, in the shell: `git submodule add <https-url>
 spaces/<id>` and push. The space id comes from `space.json`, so the repo name
 is a free label.
 
+## Modifying the engine
+
+Instances **pin** this engine and take updates by moving the pin (the shell's
+`engine-bump.yml`). Don't fork-and-patch it inside an instance, and don't carry
+engine edits in a shell or space repo — a patched instance stops taking
+upstream fixes cleanly, and every instance loses the fix you kept local. If the
+engine is missing something, change it **here** (or open an issue) and bump
+your pin. Instance-specific behavior belongs in the shell's
+`deploy.config.json`; space-specific behavior in `space.json`.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).

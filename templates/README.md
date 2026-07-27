@@ -10,7 +10,8 @@ templates/
 └── shell/
     ├── deploy.yml             # → <shell-repo>/.github/workflows/deploy.yml
     ├── workspace-bump.yml     # → <shell-repo>/.github/workflows/workspace-bump.yml
-    └── engine-bump.yml        # → <shell-repo>/.github/workflows/engine-bump.yml
+    ├── engine-bump.yml        # → <shell-repo>/.github/workflows/engine-bump.yml
+    └── space-preflight.yml    # → <shell-repo>/.github/workflows/space-preflight.yml
 ```
 
 ## Minimal instance recipe
@@ -25,7 +26,9 @@ templates/
    `deploy.config.json` (`{ "siteOrigin": "https://..." }`), and the three
    `shell/` workflows (set the Pages project name in `deploy.yml`).
 3. **Cloudflare**: a Pages project with a KV namespace bound as `COMMENTS`
-   (production + preview), and an API token that can deploy Pages.
+   (production + preview), and an API token that can deploy Pages. Before
+   mounting any later space, run `space-preflight.yml` with the new repo —
+   mounting before the token grant breaks every deploy at checkout.
 4. **Secrets**: on the shell — `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
    `SUBMODULE_PAT` (Contents:read on the shell itself + every private space
    repo; the engine is public). On each space repo — `AUGUR_DISPATCH_TOKEN`
