@@ -21,7 +21,7 @@
  *   /dist/<opportunity>/<prototype>/...  -> a default-space prototype
  *   /dist/<id>/...                       -> a non-default space, same shape
  *   /dist/_worker.js                     -> edge auth gate (injected from src/)
- *   /dist/_build.json                    -> public build stamp {builtAt, spaces:{id:{sha}}}
+ *   /dist/_build.json                    -> public build stamp {builtAt, engine:{sha}, spaces:{id:{sha}}}
  *
  * Plain Node, no dependencies.
  */
@@ -377,6 +377,12 @@ let COMPONENT_INDEX = {}, BASE_INDEX = {}, PATTERN_INDEX = {}, COMPONENT_BLURBS 
 function loadCatalog(dsRoot) {
   const COMPONENT_INDEX = {}, BASE_INDEX = {}, PATTERN_INDEX = {}, COMPONENT_BLURBS = {}, COMPONENT_META = {};
   const regPath = path.join(dsRoot, "registry.json");
+  // A space with no UI skill has no DS contract to publish — an empty catalog is the
+  // truthful state there, not a degradation (the overlay simply has no labels to
+  // offer). The REQUIRED guards below bind DS-carrying spaces only.
+  if (!DS.prefix && !existsSync(regPath)) {
+    return { COMPONENT_INDEX, BASE_INDEX, PATTERN_INDEX, COMPONENT_BLURBS, COMPONENT_META };
+  }
   try {
     const reg = JSON.parse(readFileSync(regPath, "utf8"));
     for (const it of reg.items || []) {
@@ -4393,11 +4399,20 @@ async function main() {
   }
   await fs.writeFile(path.join(DIST, "_worker.js"), finalWorker, "utf8");
 
-  // Public build stamp: /_build.json — {builtAt, spaces:{<id>:{sha}}}. A space-repo
-  // collaborator cannot see this repo's CI, so this is their deploy verification:
-  // curl it and compare their space's sha to `git rev-parse HEAD`. Served ungated
-  // (see isPublicPath in src/_worker.js); it exposes only commit SHAs the space
-  // collaborators already have.
+  // Public build stamp: /_build.json — {builtAt, engine:{sha}, spaces:{<id>:{sha}}}.
+  // A space-repo collaborator cannot see this repo's CI, so this is their deploy
+  // verification: curl it and compare their space's sha to `git rev-parse HEAD`.
+  // engine.sha is the engine commit the site was built from — deploy shells pin the
+  // engine at different SHAs, so it's the cross-instance divergence check. Served
+  // ungated (see isPublicPath in src/_worker.js); it exposes only commit SHAs the
+  // collaborators already have (the engine is public).
+  let engineSha = null;
+  try {
+    engineSha = execFileSync("git", ["-C", ROOT, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {}
   const stampSpaces = {};
   for (const space of spaces) {
     let sha = null;
@@ -4411,7 +4426,7 @@ async function main() {
   }
   await fs.writeFile(
     path.join(DIST, "_build.json"),
-    JSON.stringify({ builtAt: new Date().toISOString(), spaces: stampSpaces }, null, 2),
+    JSON.stringify({ builtAt: new Date().toISOString(), engine: { sha: engineSha }, spaces: stampSpaces }, null, 2),
     "utf8"
   );
 
