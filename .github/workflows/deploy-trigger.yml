@@ -1,0 +1,32 @@
+name: Trigger live deploy
+
+# Engine-side auto-deploy bridge. This repo no longer deploys anything itself — the
+# live site ships from the deploy shell (andratwiro/augur-deploy), which pins this repo
+# as its `engine` submodule. A push here asks the shell to bump that pin to the pushed
+# commit (repository_dispatch `engine-updated` → the shell's engine-bump.yml), which
+# triggers the shell's deploy.
+#
+# Auth: AUGUR_DISPATCH_TOKEN — a fine-grained PAT with Contents read & write on the
+# shell repo. Until it exists, this job fails harmlessly and nothing ships.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow manual re-trigger from the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  notify-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask the deploy shell to bump the engine pin and deploy
+        env:
+          GH_TOKEN: ${{ secrets.AUGUR_DISPATCH_TOKEN }}
+        run: |
+          gh api -X POST /repos/andratwiro/augur-deploy/dispatches \
+            -f event_type=engine-updated \
+            -f "client_payload[sha]=${{ github.sha }}" \
+            -f "client_payload[actor]=${{ github.actor }}"
+          echo "Dispatched engine-updated for ${{ github.sha }} → andratwiro/augur-deploy"

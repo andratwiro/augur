@@ -1,0 +1,32 @@
+node_modules/
+.venv/
+/dist
+.DS_Store
+*.log
+
+# Local deploy secrets — NEVER commit. Copy .env.deploy.example → .env.deploy
+.env.deploy
+.env*.local
+.dev.vars*
+
+# Capture harness — creds + saved browser session. NEVER commit.
+.env.capture
+scripts/capture/.auth/
+
+# Pulled review comments — local working copy, never committed.
+review-comments.local.md
+
+# Wrangler local state
+.wrangler/
+
+# scratch: image curation workspace (internal)
+.imgwork/
+
+# Internal research notes — per opportunity OR per prototype, always named "research"
+# (research.md or a research/ folder), always ignored. build.js also excludes them from dist.
+research/
+research.md
+
+# Piti research imagery — downloaded third-party reference assets,
+# kept on-machine only. build.js also excludes pitis/reference/ from dist.
+pitis/reference/
