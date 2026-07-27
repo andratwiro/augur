@@ -944,13 +944,18 @@ async function assetApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
-// ---- Canvas multiplayer proxy (/__rt → augur-realtime worker) ---------------
+// ---- Canvas multiplayer proxy (/__rt → the instance's realtime worker) ------
 // The BoardRoom Durable Objects live in a SEPARATE worker (Pages can't define DO
-// classes), deployed from realtime/ via `npm run deploy:realtime`. Proxying keeps the
-// client same-origin (no hardcoded workers.dev URL in canvas.js, works offline too);
-// fetch() with the Upgrade header intact returns the 101 + socket, passed through.
-const RT_ORIGIN = "https://augur-realtime.rob-3d3.workers.dev";
+// classes), deployed from realtime/ — one PER INSTANCE, each with its own name and
+// its own board KV binding, or rooms (keyed by board path) and board docs would be
+// shared across instances. Proxying keeps the client same-origin (no hardcoded
+// workers.dev URL in canvas.js, works offline too); fetch() with the Upgrade header
+// intact returns the 101 + socket, passed through. Injected at build from the deploy
+// config's `realtimeOrigin`; without one, boards run solo (the client's socket-down
+// fallback: it persists via /__board to this instance's own KV).
+const RT_ORIGIN = "";
 function rtProxy(request, url) {
+  if (!RT_ORIGIN) return jsonResponse({ error: "realtime-not-configured" }, 501);
   if (request.headers.get("Upgrade") !== "websocket") return jsonResponse({ error: "expected-websocket" }, 426);
   return fetch(RT_ORIGIN + "/room" + url.search, request);
 }

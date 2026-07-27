@@ -4393,6 +4393,7 @@ async function main() {
     ["const MCP_HOST_SUFFIXES = [];", DEPLOY.mcpHostSuffixes || []],
     ["const VANITY_REDIRECTS = {};", DEPLOY.vanityRedirects || {}],
     ["const BUILDER_CONFIG = null;", DEPLOY.builder || null],
+    ['const RT_ORIGIN = "";', DEPLOY.realtimeOrigin || ""],
   ]) {
     if (!finalWorker.includes(ph)) throw new Error(`build: placeholder missing in src/_worker.js: ${ph}`);
     finalWorker = finalWorker.replace(ph, ph.replace(/= [^=]*;$/, `= ${JSON.stringify(value)};`));
