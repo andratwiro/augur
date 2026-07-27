@@ -146,13 +146,28 @@ const usingSiblings = siblingSpaces.length > 0;
 const SPACES_ROOT = usingSiblings ? PARENT : path.join(ROOT, "spaces");
 // Passed to build.js so it composes every space from here (see GV_SPACES_ROOT there).
 const BUILD_ENV = { ...process.env, GV_SPACES_ROOT: SPACES_ROOT };
-// Identity: explicit GV_IDENTITY_PATH wins; else the deploy shell's identity.json
-// (sibling augur-deploy clone — the live user list since the deploy moved there); else
-// the in-repo file (an empty [] placeholder in a raw engine clone → gate stays open).
+// Identity + deploy config: explicit env wins; else auto-detect a sibling DEPLOY SHELL
+// by shape — any sibling dir with an identity.json at its root that is not a space
+// (shell repo names vary per instance). The shell also contributes deploy.config.json
+// when it has one. A raw engine clone with no shell falls back to the in-repo
+// src/identity.json (an empty [] placeholder → gate stays open).
+let SHELL_DIR = null;
+try {
+  SHELL_DIR = readdirSync(PARENT, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && !e.name.startsWith(".")
+      && path.resolve(PARENT, e.name) !== path.resolve(ROOT)
+      && !existsSync(path.join(PARENT, e.name, "space.json"))
+      && existsSync(path.join(PARENT, e.name, "identity.json")))
+    .map((e) => path.join(PARENT, e.name)).sort()[0] || null;
+} catch {}
 const IDENTITY_PATH = process.env.GV_IDENTITY_PATH
-  || [path.join(PARENT, "augur-deploy", "identity.json"), path.join(ROOT, "src", "identity.json")]
-    .find((p) => existsSync(p));
+  || [SHELL_DIR && path.join(SHELL_DIR, "identity.json"), path.join(ROOT, "src", "identity.json")]
+    .filter(Boolean).find((p) => existsSync(p));
 if (IDENTITY_PATH) BUILD_ENV.GV_IDENTITY_PATH = IDENTITY_PATH;
+const DEPLOY_CONFIG_PATH = process.env.GV_DEPLOY_CONFIG_PATH
+  || (SHELL_DIR && existsSync(path.join(SHELL_DIR, "deploy.config.json"))
+      ? path.join(SHELL_DIR, "deploy.config.json") : null);
+if (DEPLOY_CONFIG_PATH) BUILD_ENV.GV_DEPLOY_CONFIG_PATH = DEPLOY_CONFIG_PATH;
 
 // Build inputs to watch — each space repo (its DS assets + prototypes) plus the
 // augur-owned build inputs. Specific subtrees only — never node_modules, .git, dist,
@@ -162,6 +177,7 @@ const WATCH = [
   path.join(ROOT, "build.js"),
   path.join(ROOT, "src", "_worker.js"),
   ...(IDENTITY_PATH ? [IDENTITY_PATH] : []),  // users + seed passwords → rebuild on change
+  ...(DEPLOY_CONFIG_PATH ? [DEPLOY_CONFIG_PATH] : []),  // instance config → rebuild on change
   path.join(ROOT, "src", "canvas"),  // the infinite-canvas engine (emitted to /__canvas)
   path.join(ROOT, "src", "review"),  // comment/annotation overlay (emitted to /__review)
   path.join(ROOT, "pitis"),          // augur-owned cursor-companion layer
