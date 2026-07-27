@@ -64,7 +64,9 @@ function hasCli(bin) {
     dir && exts.some((ext) => { try { return existsSync(path.join(dir, bin + ext)); } catch { return false; } }));
 }
 const CLI_OK = hasCli("claude");
-const AI_PORT = process.env.OFFLINE_AI_PORT || "8790";
+// Derived from the main port (same +2 as the old fixed default) so two offline
+// instances on different OFFLINE_PORTs never fight over one AI-bridge port.
+const AI_PORT = process.env.OFFLINE_AI_PORT || String(Number(PORT) + 2);
 const AI_CLI_MODEL = process.env.OFFLINE_AI_MODEL || "claude-haiku-4-5";
 const AI_BINDINGS = CLI_OK
   ? ["--binding", `AI_CLI_URL=http://127.0.0.1:${AI_PORT}`]
