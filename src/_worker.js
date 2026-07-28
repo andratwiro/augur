@@ -1211,9 +1211,12 @@ export default {
     // Who am I — the sidebar profile chip and the comment overlay read this. Open
     // (returns {user:null} when signed out) so the chip can decide what to render.
     // Doubles as the "last seen" heartbeat: it fires once per page view.
+    // `accounts` tells a client whether this deployment HAS user accounts at all, so
+    // {user:null} can be read correctly: signed out (accounts:true) vs an instance
+    // with no user list, where everyone is the operator (accounts:false).
     if (url.pathname === "/__me") {
       if (me && ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, me));
-      return jsonResponse({ user: publicUser(me) });
+      return jsonResponse({ user: publicUser(me), accounts: usersActive });
     }
 
     // Sign out — clear the identity cookie and bounce home.

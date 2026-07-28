@@ -866,19 +866,45 @@
   }
   function closeModal() { if (modalEl) { modalEl.remove(); modalEl = null; } if (isRevealed()) ensureMounted(); refreshLive(); }
 
+  // The pal is the OPERATOR's toy, not a site feature: only an admin may summon one.
+  // Asked once per page via /__me (same identity source as the profile chip and the
+  // admin-gated paw). Two ways in: a signed-in admin, or an instance with no user
+  // accounts at all (accounts:false — nobody to hide it from). Everyone else — signed-in
+  // teammates, signed-out visitors on public prototypes — gets nothing, hotkey included.
+  // Fail CLOSED: a failed /__me means no pal.
+  function allowed() {
+    return fetch("/__me", { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { return !!(d && ((d.user && d.user.admin) || d.accounts === false)); })
+      .catch(function () { return false; });
+  }
+
+  // Shift + Ñ toggles the pal. Don't hijack it while typing in a field. The key must
+  // really be ñ: matching e.code "Semicolon" as a fallback meant that on a US/AZERTY
+  // layout — where that physical key is ; — anyone typing a colon summoned a pal.
+  function wireHotkey() {
+    addEventListener("keydown", function (e) {
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (!(e.shiftKey && (e.key === "Ñ" || e.key === "ñ"))) return;
+      e.preventDefault();
+      if (isRevealed()) { hide(); return; }            // dismissing needs no permission
+      allowed().then(function (ok) { if (ok) reveal(); });
+    });
+  }
+
   function auto(opts) {
     autoOpts = opts || {};
     if (inIframe()) return;               // never run inside preview iframes
-    if (isRevealed()) ensureMounted();
     if (autoWired) return; autoWired = true;
-    // Shift + Ñ toggles the pal. Don't hijack it while typing in a field.
-    addEventListener("keydown", function (e) {
-      const t = e.target;
-      if (e.key === "Escape" && modalEl) { closeModal(); return; }
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
-      const isEnye = e.key === "Ñ" || e.key === "ñ" || e.code === "Semicolon"; // ñ key (Spanish layout)
-      if (e.shiftKey && isEnye) { e.preventDefault(); toggle(); }
-    });
+    addEventListener("keydown", function (e) { if (e.key === "Escape" && modalEl) closeModal(); });
+    // Identity is asked for only when it can change something — when a pal is already
+    // summoned here (below) or when someone presses the combo. A public prototype
+    // viewed by a customer costs no extra request.
+    // A non-admin who summoned one before this gate existed (or on a shared machine)
+    // loses the saved flag too, so it can't come back on the next page.
+    if (isRevealed()) allowed().then(function (ok) { ok ? ensureMounted() : hide(); });
+    wireHotkey();
     // The footer paw opens the customizer as an overlay instead of navigating away.
     addEventListener("click", function (e) {
       const paw = e.target && e.target.closest && e.target.closest(".piti-paw");

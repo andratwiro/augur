@@ -17,11 +17,17 @@ general repo files (CLAUDE.md, build.js logic, shared CSS, agent memory, etc.).
 - A quiet, Linear-styled **paw in the site footer** (the addon's `footerHtml()`) opens
   the **customizer** as an in-page **overlay modal** over the dimmed site (piti.js
   `openModal()` loads `/pitis/` in an iframe). Direct `/pitis/` visits work standalone.
-- "Only-you" is lightweight: it only shows on browsers where you've toggled it.
-  Prototypes are **public**, so a visitor who presses Shift+Ñ on a shared prototype
-  also gets one (harmless easter egg). Per-user login identity exists in
-  `src/_worker.js` and the paw already gates on `html.gv-admin`; wiring the toggle
-  itself to identity is the remaining nicety.
+- **Admin-only, identity-gated.** Summoning requires a signed-in **admin** — `auto()`
+  checks `/__me` (or an instance with no user accounts at all: `accounts:false`, nobody
+  to hide it from). A signed-in teammate or a signed-out visitor on a public prototype
+  can press the combo all day and gets nothing; a stale `piti-revealed` flag in their
+  browser is cleared on the next page. Fails closed if `/__me` fails. Identity is only
+  asked for when it can change something (a pal already revealed here, or the combo
+  pressed) — a customer opening a public prototype costs no extra request.
+  The paw is separately hidden behind `html.gv-admin`.
+  ⚠️ The hotkey matches the **ñ character only** — it used to also match `e.code ===
+  "Semicolon"`, which on a US/AZERTY keyboard is `;`, so a teammate typing a colon
+  summoned a permanent pink cat. (Which is how the gate came to exist.)
 
 ## What it does
 - **Follows the cursor** — eased trailing follow with a catch-up boost and a smooth
