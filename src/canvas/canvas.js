@@ -935,7 +935,15 @@
     body.innerHTML = "";
     var img = el("img", { alt: node.name || "" });
     var ph = el("div", { class: "ph", text: "Loading " + node.url + " …" });
-    img.addEventListener("error", function () { img.remove(); if (!body.contains(ph)) body.appendChild(ph); });
+    // A missing poster 404s asynchronously, and the tile may have been mounted (live
+    // iframe, body cleared) by the time it does. Only fall back to the placeholder while
+    // this poster is still what the tile is showing — otherwise the text ends up stranded
+    // on top of a working frame and never goes away.
+    img.addEventListener("error", function () {
+      if (img.parentNode !== body) return;
+      img.remove();
+      if (!body.contains(ph)) body.appendChild(ph);
+    });
     img.src = node.thumb || (node.url.replace(/\/?$/, "/") + "preview.webp");
     body.appendChild(img);
   }
