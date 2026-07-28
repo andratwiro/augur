@@ -874,14 +874,40 @@
       else if (n.type === "section") scaleSectionLabel(n, nodeEls[n.id]);
     });
   });
+  // The BOARD is a light surface (canvas.css has no dark mode at all), but a tile is its own
+  // document, so it answers the VIEWER's prefers-color-scheme — on an OS in dark mode every
+  // prototype went black against a white board. Prototypes are same-origin and the house viz
+  // style already guards its dark block with :root:where(:not([data-theme="light"])), so
+  // stamping data-theme="light" on the frame's root pins a tile to the board's own theme.
+  // Standalone (opened at its own URL) a prototype still follows the viewer. Cross-origin
+  // tiles safely no-op. Re-stamped on every load, since in-frame navigation fires load again.
+  function themeFrame(frame) {
+    try {
+      var doc = frame.contentDocument;
+      if (doc && doc.documentElement) doc.documentElement.setAttribute("data-theme", "light");
+    } catch (e) {}
+  }
+  // Stamp as early as the real document exists, not just on load, or the tile paints dark for
+  // a beat and then flips — a visible flash on every mount.
+  function themeFrameEarly(frame) {
+    var n = 0;
+    var t = setInterval(function () {
+      themeFrame(frame);
+      var done = false;
+      try { done = !frame.isConnected || (frame.contentDocument && frame.contentDocument.readyState === "complete"); }
+      catch (e) { done = true; } // cross-origin: nothing to do
+      if (done || ++n > 60) clearInterval(t);
+    }, 30);
+  }
   function mountTile(node) {
     var host = nodeEls[node.id]; if (!host) return;
     var body = host.querySelector(".gvc-tilebody");
     if (!body || body.querySelector("iframe")) return;
     body.innerHTML = "";
     var frame = el("iframe", { src: node.liveUrl || node.url });
-    frame.addEventListener("load", function () { mpFrameLoad(node, frame); });
+    frame.addEventListener("load", function () { themeFrame(frame); mpFrameLoad(node, frame); });
     body.appendChild(frame);
+    themeFrameEarly(frame);
     var hit = el("div", { class: "gvc-hit" });
     if (interactId === node.id) { hit.style.display = "none"; host.classList.add("interacting"); }
     body.appendChild(hit);
