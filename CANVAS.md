@@ -483,6 +483,14 @@ Do this **unless prompted otherwise**.
 **Gotchas (each bought with a real bug)**
 - SVG nodes: build via an innerHTML string (or `createElementNS`), never `createElement("svg")`
   (no namespace → never paints).
+- **A node must never be a native HTML5 drag source.** The browser starts its own drag from a
+  node's text run (and from `<img>`), which paints a ghost copy under the cursor AND fires
+  `dragover` — so dragging a **text** node lit up the full-screen "Drop image to place it"
+  overlay mid-drag. Two guards, keep both: `dragstart` on anything inside `.gvc-node` is
+  `preventDefault`ed (except while the node is `.editing`, where dragging a text selection
+  inside the box is a real affordance), and the drop overlay only answers to a drag actually
+  carrying files (`dataTransfer.types` contains `"Files"`). The canvas moves nodes with its own
+  pointer handlers; the native drag machinery has no job here.
 - **Resize handle needs a real starting size.** `startResize` reads `node.w/h` for `ow/oh`, but
   some nodes (text) carry neither until first resized → `ow + dx = NaN` and the handle silently
   did nothing. Fallback to the host's measured `offsetWidth/Height` when `node.w/h` are null. Text
@@ -605,6 +613,17 @@ Do this **unless prompted otherwise**.
   with Lucide paths, don't hand-draw new glyphs. The **speech-bubble tool is the comment
   layer**: it dispatches the overlay's own Shift+C keydown (`toggleComments()`), no new node
   type. Default sticky color is the soft blue (`#a9cbf5`).
+- **Deep links to one node** (2026-07-28): the last button on the selection bar — present for
+  **every** node type — copies `<board URL>#n=<node id>`. Opening that link flies the camera
+  to the node (`flyToRect`, fit with a margin, capped at 1:1 so a sticky doesn't slam you to
+  400%), selects it and pulses it. Node ids are stable in the saved doc, so a link survives
+  everything except deleting the node (which gets a toast, not a dead board).
+  **The hash is CONSUMED on arrival** — `history.replaceState`'d away immediately — because
+  comment threads scope themselves to `pathname + search + hash` (`src/review/comments.js`),
+  so a lingering `#n=` would quietly file every comment made afterwards under a view nobody
+  else is on. That's also why this isn't a `?query` param. Types with no styling controls
+  (image, table, stamp, arrow) now get a selection bar for the first time, carrying the link
+  button alone; `positionSelBar`/`anyRect` handle arrows, which have endpoints, not `x/y/w/h`.
 
 **Backlog (pick with Rob — he reviews on the live URL and iterates fast)**
 - **DONE 2026-07-21** (this session): device picker + freeze-on-Stop, Cmd+D duplicate, tile/image

@@ -132,6 +132,24 @@
       if (k < 1) flyRaf = requestAnimationFrame(step); else { flyRaf = null; saveView(); }
     })();
   }
+  // A world box for ANY node type. nodeRect() has no answer for arrows (they carry endpoints,
+  // not x/y/w/h) and deep links have to be able to frame one, so this fills that hole.
+  function anyRect(n) {
+    if (!n) return null;
+    if (n.type === "arrow") {
+      if (n.x1 == null) return null;
+      return { x: Math.min(n.x1, n.x2), y: Math.min(n.y1, n.y2), w: Math.max(1, Math.abs(n.x2 - n.x1)), h: Math.max(1, Math.abs(n.y2 - n.y1)) };
+    }
+    return nodeRect(n);
+  }
+  // Frame a world box: centre it, pick the scale that fits with a margin. Capped at 1:1 so
+  // arriving on one sticky doesn't slam the camera to 400% — "show me this", not "fill the screen".
+  function flyToRect(r) {
+    if (!r) return;
+    var pad = 140;
+    var fit = Math.min((innerWidth - pad) / r.w, (innerHeight - pad) / r.h);
+    flyTo(r.x + r.w / 2, r.y + r.h / 2, Math.min(1, fit));
+  }
   // dot grid: the grid scales WITH zoom (world-space feel) — spacing = GRID*scale,
   // so zooming IN spreads the dots apart and grows them, zooming OUT packs them and shrinks
   // them. It only octave-corrects at the extremes (≈9–96px) so it never mushes into moiré or
@@ -260,7 +278,9 @@
     if (selected.length === 1) {
       var n = nodeById(selected[0]);
       decorate(selected[0]);
-      if (n && (n.type === "sticky" || n.type === "text" || n.type === "shape" || n.type === "draw" || n.type === "tile" || n.type === "section")) showSelBar(n); else hideSelBar();
+      // EVERY node type gets the bar now — the ones with no styling controls (image, table,
+      // stamp, arrow) still need somewhere to hang "copy link to this node".
+      if (n) showSelBar(n); else hideSelBar();
     } else hideSelBar();
   }
   function select(id) { setSelection(id ? [id] : []); }
@@ -1697,7 +1717,23 @@
   });
 
   // ---- image drop from desktop --------------------------------------------
-  root.addEventListener("dragover", function (e) { e.preventDefault(); root.classList.add("dropping"); });
+  // Nodes are NEVER a native HTML5 drag source. The browser will happily start one of its own
+  // from a node's text run or an <img> — which paints a ghost copy under the cursor and fires
+  // dragover, lighting up the "drop image" overlay in the middle of an ordinary node drag (bit
+  // by exactly that on text nodes). The canvas moves nodes with its own pointer handlers, so
+  // kill it at the source. The one exception is a node being EDITED, where dragging a text
+  // selection around inside the box is a real affordance.
+  root.addEventListener("dragstart", function (e) {
+    var t = e.target && e.target.closest ? e.target.closest(".gvc-node") : null;
+    if (t && !t.classList.contains("editing")) e.preventDefault();
+  });
+  // ...and the overlay only ever answers to a drag carrying FILES, so no internal drag can
+  // summon it even if one slips through.
+  function dragHasFiles(e) {
+    var types = e.dataTransfer && e.dataTransfer.types;
+    return !!types && Array.prototype.indexOf.call(types, "Files") >= 0;
+  }
+  root.addEventListener("dragover", function (e) { if (!dragHasFiles(e)) return; e.preventDefault(); root.classList.add("dropping"); });
   root.addEventListener("dragleave", function (e) { if (e.target === root) root.classList.remove("dropping"); });
   root.addEventListener("drop", function (e) {
     e.preventDefault(); root.classList.remove("dropping");
@@ -1758,15 +1794,19 @@
       selBar.appendChild(ib);
       var ob = el("button", { type: "button", class: "btn", title: "Open in new tab", text: "↗" });
       guard(ob); ob.addEventListener("click", function (e) { e.stopPropagation(); window.open(node.url, "_blank"); });
-      selBar.appendChild(ob);
+      addLinkBtn(node);
       selBar.classList.remove("hidden");
       positionSelBar();
       return;
     }
-    var dot = el("div", { class: "dot" }); dot.style.background = node.color || (node.type === "draw" || node.type === "text" ? "#1e1e1e" : node.type === "shape" ? "#ffffff" : node.type === "section" ? "#c4c9d4" : DEFAULT_STICKY);
-    var sw = el("div", { class: "sw" }, [dot, el("div", { class: "chev", text: "▾" })]);
-    guard(sw); sw.addEventListener("click", function (e) { e.stopPropagation(); togglePalette(node, dot); });
-    selBar.appendChild(sw);
+    // The color swatch belongs only to the types togglePalette actually knows how to paint;
+    // image/table/stamp/arrow reach this bar for the link action alone.
+    if (PALETTED[node.type]) {
+      var dot = el("div", { class: "dot" }); dot.style.background = node.color || (node.type === "draw" || node.type === "text" ? "#1e1e1e" : node.type === "shape" ? "#ffffff" : node.type === "section" ? "#c4c9d4" : DEFAULT_STICKY);
+      var sw = el("div", { class: "sw" }, [dot, el("div", { class: "chev", text: "▾" })]);
+      guard(sw); sw.addEventListener("click", function (e) { e.stopPropagation(); togglePalette(node, dot); });
+      selBar.appendChild(sw);
+    }
     if (node.type === "section") {
       selBar.appendChild(el("div", { class: "div" }));
       var lb = el("button", { type: "button", class: "btn lock" + (node.locked ? " on" : ""), title: node.locked ? "Locked" : "Lock",
@@ -1809,8 +1849,67 @@
         selBar.appendChild(alb);
       }
     }
+    addLinkBtn(node);
     selBar.classList.remove("hidden");
     positionSelBar();
+  }
+  // ---- deep links: copy a link to one node ---------------------------------
+  // The last button on every selection bar. A link is the board's own URL + #n=<node id>;
+  // node ids are stable in the saved doc, so it survives everything but deleting the node.
+  var PALETTED = { sticky: 1, text: 1, shape: 1, draw: 1, section: 1 };
+  var KIND = { sticky: "sticky", text: "text", image: "image", tile: "prototype", arrow: "connector", draw: "drawing", shape: "shape", section: "section", table: "table", stamp: "stamp" };
+  function nodeKind(node) { return KIND[node.type] || "node"; }
+  function addLinkBtn(node) {
+    if (selBar.childNodes.length) selBar.appendChild(el("div", { class: "div" }));
+    var b = el("button", { type: "button", class: "btn", title: "Copy link to this " + nodeKind(node), html: lucideIcon(I_LINK) });
+    guard(b); b.addEventListener("click", function (e) { e.stopPropagation(); copyNodeLink(node); });
+    selBar.appendChild(b);
+  }
+  function copyNodeLink(node) {
+    var u; try { u = new URL(location.href); u.hash = "n=" + node.id; u = u.href; }
+    catch (e) { u = location.href.split("#")[0] + "#n=" + node.id; }
+    var done = function () { toast("Link copied — it opens on this " + nodeKind(node)); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(u).then(done, function () { if (legacyCopy(u)) done(); else toast("Couldn't copy the link"); });
+      return;
+    }
+    if (legacyCopy(u)) done(); else toast("Couldn't copy the link");
+  }
+  // clipboard API needs a secure context; this is the fallback for anything that isn't one
+  function legacyCopy(text) {
+    try {
+      var ta = el("textarea", { value: text });
+      ta.style.cssText = "position:fixed;top:-2000px;left:0;opacity:0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      var ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    } catch (e) { return false; }
+  }
+  // one-line confirmation, bottom centre — the canvas had no such rail until the link action
+  var toastEl = null, toastTimer = null;
+  function toast(msg) {
+    if (!toastEl) { toastEl = el("div", { id: "gvc-toast" }); ui.appendChild(toastEl); }
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { if (toastEl) toastEl.classList.remove("show"); }, 2400);
+  }
+  // Arriving on a deep link: fly to the node, select it, pulse it. The hash is CONSUMED —
+  // stripped from the address bar immediately — because comment threads scope themselves to
+  // pathname+search+hash (src/review/comments.js), so a lingering #n= would quietly file every
+  // comment made afterwards under a view nobody else is looking at.
+  function openDeepLink() {
+    var m = /^#n=([A-Za-z0-9_-]+)$/.exec(location.hash || "");
+    if (!m) return;
+    var id = m[1];
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+    var n = nodeById(id);
+    if (!n) { toast("That part of the board isn't here any more"); return; }
+    flyToRect(anyRect(n));
+    setSelection([id]);
+    var host = nodeEls[id];
+    if (host) { host.classList.add("gvc-linked"); setTimeout(function () { host.classList.remove("gvc-linked"); }, 1700); }
   }
   function guard(elm) { elm.addEventListener("pointerdown", function (e) { e.stopPropagation(); }); }
   // a toolbar button that must not steal focus from the text being edited — without this the
@@ -1900,7 +1999,9 @@
     if (!selBar || selBar.classList.contains("hidden")) return;
     if (selected.length !== 1) { hideSelBar(); return; }
     var node = nodeById(selected[0]); if (!node) { hideSelBar(); return; }
-    var p = worldToScreen(node.x + (node.w || 150) / 2, node.y);
+    // anyRect, not node.x/node.w — arrows carry endpoints instead, and they get a bar now too
+    var r = anyRect(node) || { x: node.x || 0, y: node.y || 0, w: node.w || 150 };
+    var p = worldToScreen(r.x + r.w / 2, r.y);
     var bw = selBar.offsetWidth || 200;
     var left = Math.max(8, Math.min(innerWidth - bw - 8, p.x - bw / 2));
     var top = Math.max(8, p.y - 52);
@@ -1928,6 +2029,7 @@
   var I_WIDGETS = '<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>'; // shapes
   var I_PLUS = '<path d="M5 12h14"/><path d="M12 5v14"/>'; // plus
   var I_IMAGE = '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'; // image
+  var I_LINK = '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'; // link (Lucide)
   var I_PROTO = '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/>'; // app-window
   var IC_ELBOW = '<path d="m10 9 5-5 5 5"/><path d="M4 20h7a4 4 0 0 0 4-4V4"/>'; // corner-right-up
   var IS_FLOW = '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>'; // network
@@ -3287,6 +3389,9 @@
     if (nameEl) nameEl.textContent = board.name;
     render();
     applyTransform();
+    openDeepLink();  // #n=<id> → fly there (after render, so nodeEls exist)
     mpBoot();
   });
+  // pasting a link into the bar of an already-open board never reloads — catch it here
+  window.addEventListener("hashchange", openDeepLink);
 })();

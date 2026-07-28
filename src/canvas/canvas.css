@@ -368,6 +368,14 @@ svg.stk { display: block; overflow: visible; }
 #gvc-fontmenu .num::-webkit-inner-spin-button { opacity: .5; }
 #gvc-selbar .btn.fontbtn { gap: 4px; }
 #gvc-selbar .btn.fontbtn .fslabel { font-size: 12px; }
+#gvc-selbar .btn svg { width: 16px; height: 16px; }
+
+/* deep links: the copy confirmation, and the pulse on the node you land on */
+/* sits ABOVE the bottom toolbar pill, not on it */
+#gvc-toast { position: fixed; z-index: 90; left: 50%; bottom: 104px; transform: translate(-50%, 8px); background: #1f2430; color: #e8eaee; font-size: 13px; padding: 9px 15px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, .34); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .16s, transform .16s; }
+#gvc-toast.show { opacity: 1; transform: translate(-50%, 0); }
+@keyframes gvc-linkpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(123, 97, 255, 0); } 22% { box-shadow: 0 0 0 7px rgba(123, 97, 255, .42); } 60% { box-shadow: 0 0 0 4px rgba(123, 97, 255, .22); } }
+.gvc-node.gvc-linked { animation: gvc-linkpulse 1.7s ease-out; }
 
 .gvc-marquee { position: fixed; z-index: 55; border: 1px solid #2563eb; background: rgba(37, 99, 235, .09); pointer-events: none; }
 .gvc-ghost { position: fixed; pointer-events: none; z-index: 100; opacity: .9; transform: translate(-50%, -50%); }
