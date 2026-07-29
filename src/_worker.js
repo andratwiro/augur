@@ -554,11 +554,23 @@ async function mcpProxy(request, url) {
     headers,
     body: request.method === "POST" ? await request.arrayBuffer() : undefined,
   });
+  // The response is rebuilt, and the upstream content type is NOT trusted. An
+  // allowed host is still a third party, and /__mcp/<host>/<path> is reachable by
+  // plain navigation — echoing its `text/html` would hand it script execution on
+  // the origin that serves every gated page and the admin API. These paths speak
+  // JSON, plus event-stream for a streaming MCP transport; anything else is
+  // relabelled and never rendered. Upstream response headers are dropped wholesale
+  // (no Set-Cookie on this origin, no CORS grant, and no `WWW-Authenticate: Basic`
+  // summoning a credential prompt here).
+  const upType = upstream.headers.get("Content-Type") || "";
   return new Response(upstream.body, {
     status: upstream.status,
     headers: {
-      "Content-Type": upstream.headers.get("Content-Type") || "application/json; charset=utf-8",
+      "Content-Type": /^\s*(application\/json|text\/event-stream)\s*(;|$)/i.test(upType)
+        ? upType : "application/json; charset=utf-8",
       "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "sandbox",
     },
   });
 }
