@@ -54,3 +54,22 @@ would share rooms and board storage). Keep a small wrangler config in the shell
 `"realtimeOrigin": "https://<that-worker>.workers.dev"` in `deploy.config.json`.
 Without it, boards still work single-user (they persist through the Pages
 worker to the instance's KV); `/__rt` answers 501.
+
+## Platform MCP proxy (optional)
+
+A prototype that talks to an upstream platform API usually cannot call it from
+the browser — those APIs send no CORS headers — so `/__mcp/<host>/<path>`
+forwards from the site's own origin. Which hosts it forwards is instance
+config, in two parts:
+
+- `"mcpHostSuffixes": ["example.com"]` — allows any subdomain of each entry.
+- `"mcpHostAllowlistUrl": "https://…/allowlist.json"` — a JSON document shaped
+  `{"hosts": ["a.example", "b.example"]}`, matched as **exact hosts**. This is
+  for platforms on their own vanity domain, where no suffix rule works: allowing
+  `city.be` by suffix would mean allowing every `.be` domain.
+
+The list is fetched once per isolate and cached for an hour. Unset or
+unreachable, only the suffix rule applies — so a broken list never revokes
+access that works today. Both are deliberately explicit: forwarding "anything
+that looks like the right kind of API" would make the route an open proxy for
+whatever is reachable from the deploy network.

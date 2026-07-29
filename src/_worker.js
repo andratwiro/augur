@@ -28,10 +28,12 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 //   { email, name, pass, initials, color, role? }   role:"admin" → can edit passwords.
 const USERS = [];
 // Deploy-specific knobs, injected by build.js from the deploy config (all empty in a
-// raw engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist,
-// vanity-host redirects, and the optional AI project-builder prompts + schema.
+// raw engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
+// (suffix rule + the URL of an exact-host list), vanity-host redirects, and the
+// optional AI project-builder prompts + schema.
 const PUBLIC_SKILL_PREFIXES = [];
 const MCP_HOST_SUFFIXES = [];
+const MCP_HOST_ALLOWLIST_URL = "";
 const VANITY_REDIRECTS = {};
 const BUILDER_CONFIG = null;
 const USER_COOKIE = "gv_user";              // value: "<email>.<token>"
@@ -528,18 +530,55 @@ function withLiveReload(res, url) {
 // page call /__mcp/<host>/<path> on ITS OWN origin and have the worker forward to
 // https://<host>/<path>. Public (before the gate) — the platform's own OAuth
 // Bearer token is the real auth; the proxy adds nothing, stores nothing, and
-// never logs a token. Allowlist is tight: only subdomains of the injected
-// MCP_HOST_SUFFIXES, and exactly the three paths the builder flow needs.
+// never logs a token. Allowlist is tight: subdomains of the injected
+// MCP_HOST_SUFFIXES, plus the exact hosts published at MCP_HOST_ALLOWLIST_URL,
+// and exactly the paths the builder + OAuth flows need.
 
-const MCP_PROXY_PATHS = new Set(["/mcp", "/oauth/token", "/web_api/v1/app_configuration"]);
+const MCP_PROXY_PATHS = new Set([
+  "/mcp",
+  "/oauth/registrations",
+  "/oauth/token",
+  "/web_api/v1/app_configuration",
+]);
+
+// Exact-host allowlist, fetched once per isolate from MCP_HOST_ALLOWLIST_URL — a
+// JSON document shaped {"hosts": ["…"]}. A suffix rule cannot express a platform
+// living on its own vanity domain without opening that domain's whole public
+// suffix, and an "answers like a platform?" probe would turn this route into an
+// open proxy for anything reachable from the deploy network — so the instance
+// publishes an explicit list instead. Unset, or unreachable, means no host beyond
+// MCP_HOST_SUFFIXES is allowed: the route behaves exactly as it does without the
+// knob rather than failing closed on traffic that works today.
+let mcpHostAllowlist = null;
+
+function mcpAllowlist() {
+  if (!MCP_HOST_ALLOWLIST_URL) return Promise.resolve(null);
+  if (!mcpHostAllowlist) {
+    mcpHostAllowlist = fetch(MCP_HOST_ALLOWLIST_URL, { cf: { cacheTtl: 3600, cacheEverything: true } })
+      .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then((doc) => new Set(Array.isArray(doc && doc.hosts) ? doc.hosts : []))
+      .catch(() => { mcpHostAllowlist = null; return null; }); // retry on the next request
+  }
+  return mcpHostAllowlist;
+}
+
+async function mcpHostAllowed(host) {
+  if (MCP_HOST_SUFFIXES.some((sfx) => host.endsWith("." + sfx))) return true;
+  const allow = await mcpAllowlist();
+  // Exact match only — endsWith on a bare host would let <allowed>.attacker.example
+  // through. The list is stored without a leading "www.".
+  return !!allow && (allow.has(host) || allow.has(host.replace(/^www\./, "")));
+}
 
 async function mcpProxy(request, url) {
   const rest = url.pathname.slice("/__mcp/".length); // "<host>/<path…>"
   const slash = rest.indexOf("/");
   const host = slash === -1 ? rest : rest.slice(0, slash);
   const path = slash === -1 ? "/" : rest.slice(slash);
+  // The pattern is lowercase-only, so it also rejects any case-variant spelling of
+  // an allowed host before the comparisons below.
   if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/.test(host)
-      || !MCP_HOST_SUFFIXES.some((sfx) => host.endsWith("." + sfx)))
+      || !(await mcpHostAllowed(host)))
     return jsonResponse({ error: "host not allowed" }, 403);
   if (!MCP_PROXY_PATHS.has(path)) return jsonResponse({ error: "path not allowed" }, 403);
   if (request.method !== "POST" && request.method !== "GET")

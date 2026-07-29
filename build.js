@@ -4389,14 +4389,16 @@ async function main() {
   );
   // Deploy knobs → worker (same injection model, presence-checked): the gate-exempt
   // skill-asset prefixes (from the DEFAULT space's detected UI skill — root paths
-  // only, mirroring the /skills and /pages doors), the MCP-proxy host allowlist,
-  // vanity redirects, and the optional AI-builder prompts from the deploy config.
+  // only, mirroring the /skills and /pages doors), the MCP-proxy host allowlist
+  // (suffix rule + exact-host list URL), vanity redirects, and the optional
+  // AI-builder prompts from the deploy config.
   const defaultDs = detectUiSkill(spaces.find((s) => s.default));
   const gateExempt = defaultDs.dirName ? [`/skills/${defaultDs.dirName}/`] : [];
   let finalWorker = sealedWorker;
   for (const [ph, value] of [
     ["const PUBLIC_SKILL_PREFIXES = [];", gateExempt],
     ["const MCP_HOST_SUFFIXES = [];", DEPLOY.mcpHostSuffixes || []],
+    ['const MCP_HOST_ALLOWLIST_URL = "";', DEPLOY.mcpHostAllowlistUrl || ""],
     ["const VANITY_REDIRECTS = {};", DEPLOY.vanityRedirects || {}],
     ["const BUILDER_CONFIG = null;", DEPLOY.builder || null],
     ['const RT_ORIGIN = "";', DEPLOY.realtimeOrigin || ""],
