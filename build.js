@@ -4035,6 +4035,9 @@ async function discoverSpaces() {
       designSystem: meta.designSystem || null,
       projectsLabel: typeof meta.projectsLabel === "string" ? meta.projectsLabel : "",
       ignore: Array.isArray(meta.ignore) ? meta.ignore : [],
+      // Paths (space-relative) of {"hosts":[…]} documents the space ships — exact
+      // hosts its prototypes need the /__mcp/ proxy to forward (see main()).
+      mcpAllowlists: Array.isArray(meta.mcpAllowlists) ? meta.mcpAllowlists : [],
       root,
     });
   }
@@ -4390,14 +4393,47 @@ async function main() {
   // Deploy knobs → worker (same injection model, presence-checked): the gate-exempt
   // skill-asset prefixes (from the DEFAULT space's detected UI skill — root paths
   // only, mirroring the /skills and /pages doors), the MCP-proxy host allowlist
-  // (suffix rule + exact-host list URL), vanity redirects, and the optional
-  // AI-builder prompts from the deploy config.
+  // (suffix rule + space-declared exact hosts + exact-host list URL), vanity
+  // redirects, and the optional AI-builder prompts from the deploy config.
+  //
+  // Space-declared MCP hosts: space.json "mcpAllowlists" names shipped JSON
+  // documents ({"hosts":[…]}, e.g. a generated client list) whose union is baked
+  // into the worker. Mounting a space is the trust act — its declared hosts ride
+  // in with it, no per-instance config and no runtime fetch to go stale. Failures
+  // are loud: a DECLARED list that is missing or malformed is a broken space, not
+  // a knob to degrade past (unlike the URL knob, whose runtime fetch fails soft
+  // by design). Hosts are validated against the worker's own host pattern and
+  // stored bare (lowercase, no leading "www.") to match its exact-match lookup.
+  const MCP_HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;
+  const mcpSpaceHosts = new Set();
+  for (const space of spaces) {
+    for (const rel of space.mcpAllowlists) {
+      const file = path.resolve(space.root, rel);
+      if (!file.startsWith(path.resolve(space.root) + path.sep))
+        throw new Error(`[mcp] space "${space.id}": allowlist path escapes the space: ${rel}`);
+      let doc;
+      try {
+        doc = JSON.parse(await fs.readFile(file, "utf8"));
+      } catch (e) {
+        throw new Error(`[mcp] space "${space.id}": cannot read allowlist ${rel}: ${e.message}`);
+      }
+      if (!doc || !Array.isArray(doc.hosts))
+        throw new Error(`[mcp] space "${space.id}": allowlist ${rel} must be shaped {"hosts": […]}`);
+      for (const h of doc.hosts) {
+        const bare = String(h).toLowerCase().replace(/^www\./, "");
+        if (!MCP_HOST_RE.test(bare))
+          throw new Error(`[mcp] space "${space.id}": allowlist ${rel} carries an invalid host: ${JSON.stringify(h)}`);
+        mcpSpaceHosts.add(bare);
+      }
+    }
+  }
   const defaultDs = detectUiSkill(spaces.find((s) => s.default));
   const gateExempt = defaultDs.dirName ? [`/skills/${defaultDs.dirName}/`] : [];
   let finalWorker = sealedWorker;
   for (const [ph, value] of [
     ["const PUBLIC_SKILL_PREFIXES = [];", gateExempt],
     ["const MCP_HOST_SUFFIXES = [];", DEPLOY.mcpHostSuffixes || []],
+    ["const MCP_HOST_ALLOWLIST = [];", [...mcpSpaceHosts].sort()],
     ['const MCP_HOST_ALLOWLIST_URL = "";', DEPLOY.mcpHostAllowlistUrl || ""],
     ["const VANITY_REDIRECTS = {};", DEPLOY.vanityRedirects || {}],
     ["const BUILDER_CONFIG = null;", DEPLOY.builder || null],

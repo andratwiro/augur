@@ -59,17 +59,26 @@ worker to the instance's KV); `/__rt` answers 501.
 
 A prototype that talks to an upstream platform API usually cannot call it from
 the browser — those APIs send no CORS headers — so `/__mcp/<host>/<path>`
-forwards from the site's own origin. Which hosts it forwards is instance
-config, in two parts:
+forwards from the site's own origin. Which hosts it forwards comes from three
+explicit sources:
 
-- `"mcpHostSuffixes": ["example.com"]` — allows any subdomain of each entry.
-- `"mcpHostAllowlistUrl": "https://…/allowlist.json"` — a JSON document shaped
+- `"mcpHostSuffixes": ["example.com"]` (deploy config) — allows any subdomain
+  of each entry.
+- `space.json` `"mcpAllowlists": ["path/in/space/allowlist.json"]` — each path
+  names a JSON document the space ships, shaped
   `{"hosts": ["a.example", "b.example"]}`, matched as **exact hosts**. This is
-  for platforms on their own vanity domain, where no suffix rule works: allowing
-  `city.be` by suffix would mean allowing every `.be` domain.
+  for platforms on their own vanity domain, where no suffix rule works:
+  allowing `city.be` by suffix would mean allowing every `.be` domain. The
+  union is baked into the worker at build — no runtime fetch — so a space push
+  updates the proxy with the same deploy that ships the prototype using it.
+  Mounting a space is the trust act: its declared hosts ride in with it. A
+  declared list that is missing or malformed **fails the build** loudly.
+- `"mcpHostAllowlistUrl": "https://…/allowlist.json"` (deploy config) — same
+  document shape, fetched once per isolate and cached for an hour, for
+  instances that want an exact-host list outside any space. Unset or
+  unreachable, the other two sources apply alone — so a broken URL never
+  revokes access that works today.
 
-The list is fetched once per isolate and cached for an hour. Unset or
-unreachable, only the suffix rule applies — so a broken list never revokes
-access that works today. Both are deliberately explicit: forwarding "anything
-that looks like the right kind of API" would make the route an open proxy for
-whatever is reachable from the deploy network.
+All three are deliberately explicit: forwarding "anything that looks like the
+right kind of API" would make the route an open proxy for whatever is reachable
+from the deploy network.
