@@ -26,7 +26,8 @@
  *   node renderers   sticky · text · image (+ nameLabel/wireRename) · tile (live iframe) ·
  *                    connectors · freehand draw · shapes · sections · tables · stamps
  *   interaction      pointer (pan/move/resize/marquee/pinch, deferred double-tap) ·
- *                    snapping + guides · axis lock · image crop · wheel/keyboard · image drop
+ *                    snapping + guides · axis lock · image crop · wheel/keyboard · image drop ·
+ *                    clipboard (⌘C/⌘X/⌘V — cross-tab, cross-board, via the system clipboard)
  *   chrome           selection toolbar · Lucide icons · toolbar/sub-toolbars/topbar/zoom ·
  *                    insert picker
  *   data             persistence (save = SOLO fallback; camera → localStorage) ·
@@ -363,9 +364,17 @@
   // SANITIZE ON BOTH SIDES: board content round-trips through shared KV and the multiplayer
   // socket, so unfiltered HTML from a peer (or a paste) would be stored XSS.
   var RICH_TAGS = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, BR: 1, DIV: 1, P: 1, UL: 1, OL: 1, LI: 1, SPAN: 1 };
+  // PARSE INERT, THEN CLEAN. Assigning untrusted markup to a live element's innerHTML — even a
+  // detached one — starts loading its resources immediately, so `<img src=x onerror=…>` fires
+  // BEFORE the walk below ever reaches it: the sanitizer strips the element from the doc but the
+  // script has already run. A DOMParser document is inert (nothing loads, nothing executes), so
+  // the walk happens somewhere harmless and only the cleaned markup — whitelisted tags, zero
+  // attributes, so nothing that can load anything — is handed to a live element.
   function sanitizeRichEl(html) {
     var box = document.createElement("div");
-    box.innerHTML = String(html == null ? "" : html);
+    var inert;
+    try { inert = new DOMParser().parseFromString("<!doctype html><body>" + String(html == null ? "" : html), "text/html").body; }
+    catch (e) { box.textContent = String(html == null ? "" : html); return box; } // no DOMParser: text only, never markup
     (function clean(parent) {
       var c = parent.firstChild;
       while (c) {
@@ -376,7 +385,8 @@
         else { clean(c); while (c.firstChild) parent.insertBefore(c.firstChild, c); parent.removeChild(c); } // unknown tag → unwrap, keep its text
         c = next;
       }
-    })(box);
+    })(inert);
+    box.innerHTML = inert.innerHTML; // safe now: whitelisted tags, no attributes, nothing loadable
     return box;
   }
   function sanitizeRich(html) { return sanitizeRichEl(html).innerHTML; }
@@ -1723,6 +1733,10 @@
     if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
     if ((e.metaKey || e.ctrlKey) && (e.key === "y" || e.key === "Y")) { e.preventDefault(); redo(); return; } // the Windows redo key
     if ((e.metaKey || e.ctrlKey) && (e.key === "d" || e.key === "D")) { e.preventDefault(); duplicateSelection(); return; }
+    // ⌘C/⌘X write the selection to the system clipboard; ⌘V is a `paste` listener (see the
+    // clipboard section) because only the event carries clipboardData without a permission prompt
+    if ((e.metaKey || e.ctrlKey) && (e.key === "c" || e.key === "C")) { if (selected.length) { e.preventDefault(); clipCopy(false); } return; }
+    if ((e.metaKey || e.ctrlKey) && (e.key === "x" || e.key === "X")) { if (selected.length) { e.preventDefault(); clipCopy(true); } return; }
     if ((e.key === "Backspace" || e.key === "Delete") && selected.length) { e.preventDefault(); selected.slice().forEach(removeNode); setSelection([]); }
     if (e.key === "Escape") { exitInteract(); setSelection([]); if (picker) picker.classList.add("hidden"); setTool("select"); return; }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1808,6 +1822,224 @@
     };
     img.src = URL.createObjectURL(file);
   }
+
+  // ---- clipboard: copy · cut · paste (⌘C / ⌘X / ⌘V) ------------------------
+  // Cross-tab and cross-BOARD, because the payload rides the SYSTEM clipboard and not a JS
+  // variable: ⌘C serialises the selection to JSON and writes it as text/plain, ⌘V parses it
+  // back. That IS the feature — an in-memory clipboard would only work inside one page, and
+  // the thing people actually want is "these three stickies, over there, in the other tab".
+  // Images ride along for free: an image node's `src` is an absolute, immutable
+  // /__asset/<hash> path, so what travels is a URL, not pixels. The one trip that does NOT
+  // work is pasting into a DIFFERENT ORIGIN — /__asset is per-site, so the node would land
+  // pointing at a 404 (deliberately not solved: re-uploading someone else's site's bytes on
+  // paste is a much bigger decision than it looks).
+  //
+  // ⌘V also takes things that never came from a canvas: an image on the clipboard (a
+  // screenshot, "copy image" from anywhere) becomes an image node through the same
+  // compress + upload path as a drop, and plain text becomes a text node. Paste doing
+  // NOTHING was the old behaviour and it read as broken.
+  var CLIP_TAG = "augur.canvas/1";
+  var CLIP_MAX = 400;               // one paste can't carpet-bomb a board
+  // renderNode's dispatch, mirrored — anything not in here is not a node we know how to draw
+  var CLIP_TYPES = { sticky: 1, text: 1, image: 1, tile: 1, arrow: 1, draw: 1, shape: 1, section: 1, table: 1, stamp: 1 };
+  var CLIP_MODES = { marker: 1, highlighter: 1, tape: 1 };
+  var CLIP_KINDS = { arrow: 1, elbow: 1, curved: 1, line: 1 };
+  var CLIP_ALIGN = { left: 1, center: 1, right: 1 };
+  var CLIP_DEVICE = { desktop: 1, tablet: 1, phone: 1 };
+
+  function clipCopy(cut) {
+    var nodes = [];
+    selected.forEach(function (id) { var n = nodeById(id); if (n) nodes.push(histClone(n)); });
+    if (!nodes.length) return;
+    var text = JSON.stringify({ tag: CLIP_TAG, origin: BOARD_PATH, nodes: nodes });
+    var label = nodes.length + (nodes.length === 1 ? " node" : " nodes");
+    // the delete half of a CUT only runs once the clipboard write actually landed — a failed
+    // write that had already deleted the nodes would be data loss with no undo affordance
+    var done = function () {
+      if (cut) { nodes.forEach(function (n) { removeNode(n.id); }); setSelection([]); }
+      toast((cut ? "Cut " : "Copied ") + label + " — ⌘V on any board");
+    };
+    var fail = function () { toast("Couldn't reach the clipboard"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { if (legacyCopy(text)) done(); else fail(); });
+      return;
+    }
+    if (legacyCopy(text)) done(); else fail();
+  }
+
+  // Paste lands at the POINTER, centred — "where I'm looking" beats "where it came from",
+  // and it's the only sane answer when the source board's coordinates mean nothing here.
+  // Pasting repeatedly without moving the mouse walks the copies diagonally instead of
+  // stacking them into one unclickable pile.
+  var pasteAnchor = null, pasteNudge = 0;
+  function clipTarget() {
+    var w = screenToWorld(lastMouse.x, lastMouse.y);
+    if (pasteAnchor && Math.abs(pasteAnchor.x - w.x) < 1 && Math.abs(pasteAnchor.y - w.y) < 1) pasteNudge += 28;
+    else { pasteAnchor = { x: w.x, y: w.y }; pasteNudge = 0; }
+    return { x: w.x + pasteNudge, y: w.y + pasteNudge };
+  }
+  // geometry without touching the DOM — these nodes aren't rendered yet, so nodeRect() (which
+  // measures hug-width text off its element) has nothing to read
+  function clipRect(n) {
+    if (n.type === "arrow") return { x: Math.min(n.x1, n.x2), y: Math.min(n.y1, n.y2), w: Math.abs(n.x2 - n.x1), h: Math.abs(n.y2 - n.y1) };
+    return { x: n.x || 0, y: n.y || 0, w: n.w || 160, h: n.h || 160 };
+  }
+  function clipMove(n, dx, dy) {
+    if (n.type === "arrow") { n.x1 += dx; n.y1 += dy; n.x2 += dx; n.y2 += dy; }
+    else { n.x = (n.x || 0) + dx; n.y = (n.y || 0) + dy; }
+  }
+
+  // ---- sanitizing an incoming node ----------------------------------------
+  // The clipboard is UNTRUSTED INPUT. Whatever we accept is pushed into board.nodes, written
+  // to shared KV, and broadcast over the room socket into everyone else's DOM — so a bad
+  // paste is stored XSS for the whole board, not just for you. A pasted node is therefore
+  // REBUILT field by field, never spread in: known type, fresh id, rich text through the same
+  // sanitizer the editors use, numbers coerced, enums whitelisted, and the fields that become
+  // a live URL held to same-origin paths.
+  function clipNum(v, d) { v = Number(v); return isFinite(v) ? v : d; }
+  function clipStr(v, max) { return v == null ? "" : String(v).slice(0, max || 4000); }
+  // Colour is the sharp edge: renderShape and renderDraw CONCATENATE node.color into an
+  // innerHTML string, so a colour of `"/><img src=x onerror=…>` executes. Hex literals only.
+  function clipColor(v) { v = String(v == null ? "" : v); return /^#[0-9a-fA-F]{3,8}$/.test(v) ? v : ""; }
+  function clipSrc(v) {
+    v = String(v == null ? "" : v);
+    if (/^\/__asset\/[A-Za-z0-9._-]+$/.test(v)) return v;                                  // the modern path
+    if (/^data:image\/(png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=]*$/.test(v)) return v;   // legacy inlined boards
+    return "";
+  }
+  // A tile is an IFRAME. "Paste this, it's cool" pointing at someone else's origin is a real
+  // attack, not a hypothetical — same-origin absolute paths only, never protocol-relative.
+  function clipPath(v) { v = String(v == null ? "" : v); return /^\/(?!\/)[^\s"'<>]*$/.test(v) ? v : ""; }
+
+  function clipSanitize(raw) {
+    if (!raw || typeof raw !== "object" || !CLIP_TYPES[raw.type]) return null;
+    var n = { id: uid(), type: raw.type };
+    if (raw.type !== "arrow") { n.x = clipNum(raw.x, 0); n.y = clipNum(raw.y, 0); }
+    if (raw.w != null) n.w = Math.max(1, clipNum(raw.w, 160));
+    if (raw.h != null) n.h = Math.max(1, clipNum(raw.h, 160));
+    if (raw.name != null) n.name = clipStr(raw.name, 200);
+    if (raw.desc != null) n.desc = clipStr(raw.desc, 600);
+    if (raw.author != null) n.author = clipStr(raw.author, 120);
+    if (raw.text != null) n.text = clipStr(raw.text, 20000);
+    if (raw.rich != null) { var h = sanitizeRich(raw.rich); if (hasRichMarkup(h)) n.rich = h; }
+    var col = clipColor(raw.color); if (col) n.color = col;
+    if (raw.fontSize != null) n.fontSize = Math.max(6, Math.min(400, clipNum(raw.fontSize, 16)));
+    if (raw.bold) n.bold = true;
+    if (raw.italic) n.italic = true;
+    if (raw.strike) n.strike = true;
+    if (raw.hFixed) n.hFixed = true;
+    if (CLIP_ALIGN[raw.align]) n.align = raw.align;
+    if (raw.locked === true) n.locked = true;
+    else if (raw.locked === "all" || raw.locked === "bg") n.locked = raw.locked;
+
+    if (n.type === "image") {
+      n.src = clipSrc(raw.src);
+      if (!n.src) return null; // an image we can't vouch for the src of isn't an image
+      if (raw.crop) n.crop = { x: clipNum(raw.crop.x, 0), y: clipNum(raw.crop.y, 0), w: clipNum(raw.crop.w, 1), h: clipNum(raw.crop.h, 1) };
+    } else if (n.type === "tile") {
+      n.url = clipPath(raw.url);
+      if (!n.url) return null;
+      var live = clipPath(raw.liveUrl); if (live) n.liveUrl = live;
+      if (CLIP_DEVICE[raw.device]) n.device = raw.device;
+    } else if (n.type === "arrow") {
+      n.x1 = clipNum(raw.x1, 0); n.y1 = clipNum(raw.y1, 0);
+      n.x2 = clipNum(raw.x2, 120); n.y2 = clipNum(raw.y2, 0);
+      if (CLIP_KINDS[raw.kind]) n.kind = raw.kind;
+    } else if (n.type === "draw") {
+      if (!Array.isArray(raw.points) || !raw.points.length) return null;
+      // points go straight into an SVG `d` attribute — coerce every one to a real number
+      n.points = raw.points.slice(0, 5000).map(function (p) { return [clipNum(p && p[0], 0), clipNum(p && p[1], 0)]; });
+      if (CLIP_MODES[raw.mode]) n.mode = raw.mode;
+      n.size = Math.max(1, Math.min(200, clipNum(raw.size, 3)));
+    } else if (n.type === "shape") {
+      n.shape = SHAPE_GEO[raw.shape] ? raw.shape : "square";
+    } else if (n.type === "stamp") {
+      n.stamp = STAMPS.indexOf(raw.stamp) >= 0 ? raw.stamp : STAMPS[0];
+    } else if (n.type === "table") {
+      n.rows = Math.max(1, Math.min(60, Math.round(clipNum(raw.rows, 2))));
+      n.cols = Math.max(1, Math.min(30, Math.round(clipNum(raw.cols, 2))));
+      n.cells = {};
+      if (raw.cells && typeof raw.cells === "object") {
+        for (var k in raw.cells) if (/^\d{1,3}-\d{1,3}$/.test(k)) n.cells[k] = clipStr(raw.cells[k], 4000);
+      }
+    }
+    return n;
+  }
+
+  function clipPasteNodes(payload, target) {
+    var clean = [];
+    for (var i = 0; i < payload.nodes.length && clean.length < CLIP_MAX; i++) {
+      var n = clipSanitize(payload.nodes[i]);
+      if (n) clean.push(n);
+    }
+    if (!clean.length) { toast("Nothing pasteable on the clipboard"); return; }
+    // centre the whole group on the pointer, preserving the layout the copy was made in
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    clean.forEach(function (n) {
+      var r = clipRect(n);
+      if (r.x < x0) x0 = r.x; if (r.y < y0) y0 = r.y;
+      if (r.x + r.w > x1) x1 = r.x + r.w; if (r.y + r.h > y1) y1 = r.y + r.h;
+    });
+    var dx = target.x - (x0 + x1) / 2, dy = target.y - (y0 + y1) / 2;
+    var sameBoard = payload.origin === BOARD_PATH, ids = [];
+    clean.forEach(function (n) {
+      clipMove(n, dx, dy);
+      // same-board tile copies get a distinct name for the same reason ⌘D's do — names are the
+      // shared vocabulary, and canvas-screen.mjs dup looks for the "… copy" tile
+      if (sameBoard && n.type === "tile" && n.name) n.name = n.name + " copy";
+      addNode(n); ids.push(n.id); pop(n.id);
+    });
+    setSelection(ids);
+    scheduleSave();
+    var dropped = payload.nodes.length - clean.length;
+    toast("Pasted " + clean.length + (clean.length === 1 ? " node" : " nodes") + (dropped > 0 ? " (" + dropped + " skipped)" : ""));
+  }
+
+  document.addEventListener("paste", function (e) {
+    // a text box owns its own paste (the sticky/text editors handle it, plain-text-only) and
+    // crop mode owns the whole keyboard
+    var ae = document.activeElement, tag = ae ? ae.tagName : "";
+    if (ae && (ae.isContentEditable || tag === "INPUT" || tag === "TEXTAREA")) return;
+    if (cropState) return;
+    var cd = e.clipboardData; if (!cd) return;
+
+    // 1) an image on the clipboard → the same compress + /__asset upload a drop gets
+    var imgs = [];
+    for (var i = 0; i < (cd.files ? cd.files.length : 0); i++) if (/^image\//.test(cd.files[i].type)) imgs.push(cd.files[i]);
+    if (imgs.length) {
+      e.preventDefault();
+      var at = clipTarget(), landed = [];
+      imgs.forEach(function (f, k) {
+        compressImage(f, function (src, dim) {
+          var n = addNode({ type: "image", x: at.x + k * 24, y: at.y + k * 24, w: dim.w, h: dim.h, src: src });
+          pop(n.id); landed.push(n.id); setSelection(landed.slice());
+          scheduleSave();
+        });
+      });
+      return;
+    }
+
+    var txt = cd.getData("text/plain") || "";
+    if (!txt) return;
+
+    // 2) nodes copied off a canvas — this tab's or any other
+    if (txt.charAt(0) === "{" && txt.indexOf(CLIP_TAG) > 0) {
+      var payload = null;
+      try { payload = JSON.parse(txt); } catch (err) { payload = null; }
+      if (payload && payload.tag === CLIP_TAG && Array.isArray(payload.nodes)) {
+        e.preventDefault();
+        clipPasteNodes(payload, clipTarget());
+        return;
+      }
+    }
+
+    // 3) anything else is text — a text node, so a paste is never a no-op
+    e.preventDefault();
+    var w = clipTarget();
+    var t = addNode({ type: "text", x: w.x, y: w.y, w: 360, text: txt.slice(0, 20000), name: txt.split("\n")[0].slice(0, 60) || "Text" });
+    pop(t.id); setSelection([t.id]);
+    scheduleSave();
+  });
 
   // ---- selection toolbar (sticky / shape / draw / table) -------------------
   var selBar, palette, lockMenu, fontMenu, picker, catalog = null;
@@ -3066,7 +3298,11 @@
   // MY side of cursor chat: "/" opens a small input at the pointer, Enter
   // sends {t:"chat"} + echoes the bubble locally, Esc closes. Clawd daemons log incoming
   // chat to their events file, so talking to an agent here reaches it on its next turn.
+  // Where the pointer last was over the canvas, in SCREEN px. Cursor chat opens here and
+  // ⌘V lands here, so it's tracked unconditionally — it used to be wired up inside mpBoot,
+  // which quietly made "paste at the cursor" depend on the multiplayer layer booting.
   var chatInput = null, lastMouse = { x: innerWidth / 2, y: innerHeight / 2 };
+  root.addEventListener("pointermove", function (e) { lastMouse.x = e.clientX; lastMouse.y = e.clientY; });
   function openCursorChat() {
     if (chatInput) { chatInput.querySelector("input").focus(); return; }
     chatInput = el("div", { id: "gvc-cursorchat" }, [el("input", { type: "text", placeholder: "Say something…", maxLength: "200" })]);
@@ -3378,7 +3614,6 @@
     ui.appendChild(mpAgentsBar);
     transformCbs.push(mpPositionCursors);
     root.addEventListener("pointermove", mpTrackPointer);
-    root.addEventListener("pointermove", function (e) { lastMouse.x = e.clientX; lastMouse.y = e.clientY; });
     document.addEventListener("mouseleave", function () { mpSend({ t: "cursor", gone: true }); });
     // co-editing: focus events bubble from every contentEditable (sticky/shape/text text,
     // table cells, name labels) — no per-renderer hooks needed

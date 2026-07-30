@@ -6,7 +6,9 @@
 >
 > **Editing** — full whiteboard-grade: full illustrated toolbar (marker/highlighter/washi + eraser,
 > stickies, 16 shapes + connectors, text, sections, tables, stamps, speech bubbles, insert
-> picker), marquee/Space-pan/pinch, ⌘D duplicate, ⌘Z/⌘⇧Z **undo/redo** (per-user — never
+> picker), marquee/Space-pan/pinch, ⌘D duplicate, **⌘C/⌘X/⌘V copy-cut-paste across tabs and
+> boards** (system clipboard, so a second board in a second tab pastes the same selection),
+> ⌘Z/⌘⇧Z **undo/redo** (per-user — never
 > reverts a teammate), 4-corner resize (Shift = aspect), **smart snapping with red alignment
 > guides** (⌘ bypasses), Shift-drag axis lock, non-destructive image crop, sections that
 > carry their contents, auto-grow/shrink boxes (`hFixed` after a manual resize).
@@ -191,6 +193,38 @@ predates multiplayer): mounting is IntersectionObserver-gated (only tiles near t
 viewport mount; posters remain as the placeholder for unseen tiles) with a
 `MOUNT_BUDGET` LRU backstop that quietly unmounts offscreen tiles. Posters reuse
 the poster stack (`scripts/shoot.mjs` / `og.mjs`).
+
+## Clipboard (⌘C · ⌘X · ⌘V — added 2026-07-30)
+
+The payload rides the **system clipboard**, not a JS variable — that's the whole feature. ⌘C
+serialises the selection to `{tag:"augur.canvas/1", origin:<board path>, nodes:[…]}` as
+`text/plain`; ⌘V is a `paste` **event listener** (the only way to read clipboardData without a
+permission prompt) that parses it back. So a second board in a second tab, another window, or
+tomorrow, all paste the same thing.
+
+- **Images cross for free** — an image node's `src` is an absolute `/__asset/<hash>` path, so
+  what travels is a URL, not pixels. The trip that does NOT work is a **different origin**
+  (`/__asset` is per-site; the node would land on a 404). Deliberately unsolved.
+- ⌘V also accepts non-canvas clipboards: an **image** (screenshot, "copy image") goes through
+  the same compress + `/__asset` upload a drop gets; **plain text** becomes a text node. Paste
+  doing nothing read as broken.
+- **Paste lands centred on the pointer**, not at the source coordinates — which mean nothing on
+  another board. Repeat-pasting without moving the mouse walks the copies diagonally.
+- ⌘X only deletes the originals **after** the clipboard write resolves — a failed write that had
+  already deleted would be data loss with no undo affordance.
+- **A pasted node is REBUILT field by field, never spread in** (`clipSanitize`). The clipboard is
+  untrusted input, and whatever we accept goes into shared KV and out over the room socket into
+  everyone else's DOM — a bad paste is stored XSS for the whole board. Known type, fresh id,
+  numbers coerced, enums whitelisted, `rich` through `sanitizeRich`, **`color` hex-only**
+  (renderShape/renderDraw concatenate it into innerHTML), and `image.src` / `tile.url` held to
+  `/__asset/…` and same-origin paths (a tile is an *iframe*).
+- Undo/redo and multiplayer need nothing: `addNode` + `scheduleSave` means the diff tick picks
+  the new nodes up as upserts and the history snapshot records them as one step.
+- ⚠️ **`sanitizeRichEl` parses in a DOMParser document, on purpose.** Assigning untrusted markup
+  to a live element's `innerHTML` — even a detached one — loads its resources *immediately*, so
+  `<img src=x onerror=…>` fires before the strip-walk ever reaches it. Parse inert, clean, then
+  hand the cleaned markup (whitelisted tags, zero attributes) to a live element. Don't "simplify"
+  this back to `box.innerHTML = html`.
 
 ## Settled decisions (were open, now aren't)
 
@@ -609,8 +643,9 @@ Do this **unless prompted otherwise**.
 - **The main toolbar** (rebuilt 2026-07-22, pixel-verified against the reference screenshots):
   tool state is one `TOOL` object (`setTool()`), sub-toolbars sync from it (`syncBars()`). Shortcuts:
   V select · H hand · M marker · S sticky · T text · E stamp (radial wheel picker) · R square ·
-  O circle · L line · X elbow · ⇧S section · ⇧T table · C comment · Esc back to select. Drawing
-  keeps the marker armed; shapes/sticky/text/table place once then return to select; stamps stay
+  O circle · L line · X elbow · ⇧S section · ⇧T table · C comment · Esc back to select.
+  (⌘C/⌘X/⌘V and ⌘D/⌘Z/⌘⇧Z are handled ahead of the tool letters, so ⌘C never toggles comments.)
+  Drawing keeps the marker armed; shapes/sticky/text/table place once then return to select; stamps stay
   armed. The eraser deletes whole `draw` strokes only. Sections render behind
   everything (`insertBefore`). The illustrated pen/sticky/cluster arts are inline SVGs in
   canvas.js (`PEN_ART`/`STICKY_ART`/`CLUSTER_ICON`) — keep gradients/ids unique, they're
