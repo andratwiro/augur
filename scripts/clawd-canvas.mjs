@@ -57,8 +57,15 @@
 //     idle (no commands ~12s, pose plain idle) Clawd CHILLS instead of freezing: fidgets,
 //     strolls near the human's cursor or around the content, the odd happy blip.
 
-const RT_ORIGIN = 'wss://augur-realtime.rob-3d3.workers.dev';
-const SITE = process.env.CANVAS_SITE_ORIGIN || process.env.REVIEW_SITE_URL || '';
+import { deployConfig } from './lib/instance.mjs';
+
+// This instance's room server and site — resolved from the shell's deploy.config.json
+// (the same source the built worker's /__rt proxy reads), never hardcoded: the engine is
+// shared, and a baked-in origin would drop an agent into ANOTHER instance's rooms.
+const DEPLOY = deployConfig();
+const RT_ORIGIN = String(process.env.CANVAS_RT_ORIGIN || DEPLOY.realtimeOrigin || '')
+  .replace(/^http/, 'ws').replace(/\/+$/, '');
+const SITE = process.env.CANVAS_SITE_ORIGIN || process.env.REVIEW_SITE_URL || DEPLOY.siteOrigin || '';
 const CLAWD_ORANGE = '#d97757'; // Claude clay — the primary agent's Clawd hue
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -77,6 +84,7 @@ export class ClawdCanvas {
   constructor({ boardPath, name = 'Clawd', color, site = SITE, rtOrigin = RT_ORIGIN } = {}) {
     if (!boardPath) throw new Error('boardPath required');
     if (!site) throw new Error('no site origin — pass {site} or set CANVAS_SITE_ORIGIN (the deployed site origin, e.g. https://<project>.pages.dev)');
+    if (!rtOrigin) throw new Error('no realtime origin — set "realtimeOrigin" in your deploy shell\'s deploy.config.json (see CANVAS.md), or pass {rtOrigin} / CANVAS_RT_ORIGIN');
     this.boardPath = boardPath;
     this.name = name;
     this.color = color || colorFor(name);

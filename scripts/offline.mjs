@@ -25,6 +25,7 @@ import path from "node:path";
 import http from "node:http";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+import { findShellDir } from "./lib/instance.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = process.env.OFFLINE_PORT || "8788";
@@ -153,15 +154,7 @@ const BUILD_ENV = { ...process.env, GV_SPACES_ROOT: SPACES_ROOT };
 // (shell repo names vary per instance). The shell also contributes deploy.config.json
 // when it has one. A raw engine clone with no shell falls back to the in-repo
 // src/identity.json (an empty [] placeholder → gate stays open).
-let SHELL_DIR = null;
-try {
-  SHELL_DIR = readdirSync(PARENT, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && !e.name.startsWith(".")
-      && path.resolve(PARENT, e.name) !== path.resolve(ROOT)
-      && !existsSync(path.join(PARENT, e.name, "space.json"))
-      && existsSync(path.join(PARENT, e.name, "identity.json")))
-    .map((e) => path.join(PARENT, e.name)).sort()[0] || null;
-} catch {}
+const SHELL_DIR = findShellDir(ROOT);
 const IDENTITY_PATH = process.env.GV_IDENTITY_PATH
   || [SHELL_DIR && path.join(SHELL_DIR, "identity.json"), path.join(ROOT, "src", "identity.json")]
     .filter(Boolean).find((p) => existsSync(p));

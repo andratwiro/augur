@@ -48,9 +48,9 @@ That keeps your instance on the update train and ships your fix to everyone.
 Live multiplayer boards need a second Cloudflare worker — `realtime/` in the
 engine, deployed **once per instance** with its own name and its own board KV
 binding (rooms are keyed by board path, so two instances sharing one worker
-would share rooms and board storage). Keep a small wrangler config in the shell
-(name, `BOARD_KV` → the instance's KV namespace, Durable Object migration as in
-`realtime/wrangler.toml`), deploy it with `wrangler deploy -c`, and set
+would share rooms and board storage). Copy `realtime/wrangler.example.toml` from the
+engine into the shell as `realtime.wrangler.toml` (fill in the worker name and
+`BOARD_KV` → the instance's KV namespace), deploy it with `wrangler deploy -c`, and set
 `"realtimeOrigin": "https://<that-worker>.workers.dev"` in `deploy.config.json`.
 Without it, boards still work single-user (they persist through the Pages
 worker to the instance's KV); `/__rt` answers 501.

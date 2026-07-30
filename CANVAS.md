@@ -211,9 +211,11 @@ the poster stack (`scripts/shoot.mjs` / `og.mjs`).
 - **Images:** worker `assetApi` (`/__asset`), KV `basset:<sha256[0:40]>`, content type in
   metadata, immutable cache headers, dedup on identical bytes. Nodes carry the URL; data-URL
   srcs are the legacy/fallback form and still render.
-- **Room:** `realtime/` — a separate worker (`augur-realtime`, BoardRoom DO), deployed with
+- **Room:** `realtime/` — a separate worker (BoardRoom DO), deployed with
   `npm run deploy:realtime` (NOT via Pages CI — redeploy it yourself when you touch it).
-  The Pages worker proxies `/__rt` → it, so clients stay same-origin.
+  Its name + board KV live in the SHELL's `realtime.wrangler.toml`, one per instance
+  (`realtime/wrangler.example.toml` is the template; `REALTIME_CONFIG` in `.env.deploy`
+  points at yours). The Pages worker proxies `/__rt` → it, so clients stay same-origin.
 - **Comments overlay:** two guarded hooks in `src/review/comments.js` (`pinXY`/`anchorAt`
   prefer `GVCanvas` world coords); the engine dispatches a window `scroll` on every transform
   so the overlay repositions. Pages without `GVCanvas` are byte-identical.
@@ -233,9 +235,13 @@ Strictly an **enhancement layer**: if the socket can't connect, the canvas behav
 solo. Public like `/__board` (the board is the credential).
 
 **The pieces:**
-- `realtime/` — the `augur-realtime` worker (BoardRoom DO, WebSocket Hibernation API). Deployed
+- `realtime/` — the room worker (BoardRoom DO, WebSocket Hibernation API). Deployed
   **standalone**, NOT via Pages: `npm run deploy:realtime` (Pages can't define DO classes).
-  Live at `augur-realtime.rob-3d3.workers.dev`; protocol documented at the top of its index.js.
+  **One worker per instance** — rooms are keyed by board path, so two instances sharing a
+  worker would share rooms *and* board storage. The engine carries only the code; the
+  worker's name and its `BOARD_KV` binding come from the shell's `realtime.wrangler.toml`
+  (template: `realtime/wrangler.example.toml`), and the site finds it through
+  `realtimeOrigin` in `deploy.config.json`. Protocol documented at the top of its index.js.
 - `src/_worker.js` `rtProxy` — `/__rt` proxies the WebSocket same-origin to that worker (no
   hardcoded URL in the engine; works offline too, where it reaches the REAL prod rooms — same
   live-KV-while-offline posture as the overlay data).

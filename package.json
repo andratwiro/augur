@@ -14,8 +14,8 @@
     "review": "node scripts/review.mjs",
     "dev": "node build.js && npx --yes serve dist",
     "offline": "node scripts/offline.mjs",
-    "deploy": "set -a && . ./.env.deploy && set +a && GV_IDENTITY_PATH=\"${GV_IDENTITY_PATH:-../augur-deploy/identity.json}\" GV_DEPLOY_CONFIG_PATH=\"${GV_DEPLOY_CONFIG_PATH:-../augur-deploy/deploy.config.json}\" node build.js && npx wrangler pages deploy dist --project-name \"$PAGES_PROJECT\" --branch main",
-    "deploy:realtime": "set -a && . ./.env.deploy && set +a && cd realtime && npx wrangler deploy",
+    "deploy": "set -a && . ./.env.deploy && set +a && GV_IDENTITY_PATH=\"${GV_IDENTITY_PATH:?set it in .env.deploy — path to your deploy shell's identity.json}\" GV_DEPLOY_CONFIG_PATH=\"${GV_DEPLOY_CONFIG_PATH:?set it in .env.deploy — path to your deploy shell's deploy.config.json}\" node build.js && npx wrangler pages deploy dist --project-name \"${PAGES_PROJECT:?set it in .env.deploy}\" --branch main",
+    "deploy:realtime": "set -a && . ./.env.deploy && set +a && npx wrangler deploy realtime/src/index.js -c \"${REALTIME_CONFIG:?set it in .env.deploy — path to your deploy shell's realtime.wrangler.toml (see realtime/wrangler.example.toml)}\"",
     "posters": "node scripts/shoot.mjs --stale && node scripts/og.mjs --stale"
   },
   "engines": {

@@ -71,7 +71,11 @@ declare via `space.json` `"mcpAllowlists": [<space-relative paths>]` — exact h
 baked at build, refreshed by every space push, no instance config needed.
 
 Env reference: `GV_SPACES_ROOT` (spaces location) · `GV_IDENTITY_PATH` (user list) ·
-`GV_DEPLOY_CONFIG_PATH` (deploy config) · `OFFLINE_PORT` (offline preview).
+`GV_DEPLOY_CONFIG_PATH` (deploy config) · `OFFLINE_PORT` (offline preview). The local
+deploy scripts read `.env.deploy` for the rest (`PAGES_PROJECT`, `REALTIME_CONFIG`, the
+Cloudflare creds) — see `.env.deploy.example`. **No account id, project, worker name or
+shell repo name is hardcoded anywhere in this repo; scripts resolve the instance through
+`scripts/lib/instance.mjs` or fail loudly.**
 
 ## Offline mode (local live preview)
 
