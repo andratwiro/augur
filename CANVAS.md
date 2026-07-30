@@ -6,7 +6,7 @@
 >
 > **Editing** — full whiteboard-grade: full illustrated toolbar (marker/highlighter/washi + eraser,
 > stickies, 16 shapes + connectors, text, sections, tables, stamps, speech bubbles, insert
-> picker), marquee/Space-pan/pinch, ⌘D duplicate, **⌘C/⌘X/⌘V copy-cut-paste across tabs and
+> picker), marquee/Space-pan/pinch, ⌘D duplicate, **Option-drag to duplicate**, **⌘C/⌘X/⌘V copy-cut-paste across tabs and
 > boards** (system clipboard, so a second board in a second tab pastes the same selection),
 > ⌘Z/⌘⇧Z **undo/redo** (per-user — never
 > reverts a teammate), 4-corner resize (Shift = aspect), **smart snapping with red alignment
@@ -193,6 +193,27 @@ predates multiplayer): mounting is IntersectionObserver-gated (only tiles near t
 viewport mount; posters remain as the placeholder for unseen tiles) with a
 `MOUNT_BUDGET` LRU backstop that quietly unmounts offscreen tiles. Posters reuse
 the poster stack (`scripts/shoot.mjs` / `og.mjs`).
+
+## Option-drag = duplicate (added 2026-07-30)
+
+Hold Option and drag a node (or a whole selection) to leave a copy behind — the Figma/Miro
+idiom. Every node shows the copy cursor while Option is held, so the gesture is discoverable
+rather than folklore.
+
+- **The copies are cloned on the FIRST MOVE, not at pointerdown.** An Option-*click* that never
+  moves must not leave an invisible duplicate stacked on the original.
+- **The originals keep their ids and stay put; the copies are what you drag.** Deep links
+  (`#n=<id>`), comment threads and a tile's prototype folder all stay attached to the node that
+  was already there — the thing you're placing is the new one.
+- Dragging a **section** carries its contents, so Option-dragging one duplicates the section
+  *and* its children (the drag was already armed with `withSectionChildren`).
+  ⚠️ **⌘D does not** — it duplicates only the selection, so ⌘D on a section still gives you an
+  empty section. Known asymmetry, left alone deliberately; fix it in `duplicateSelection` if it
+  starts biting.
+- After the split, snapping is re-armed on the copies — which makes the ORIGINALS valid snap
+  targets, so a duplicate aligns to the node it came from.
+- `cloneNode(n, dx, dy)` is shared with ⌘D. It leans on `histClone` for the deep-copy of
+  `points`/`cells`/`crop`, so a copy never shares a mutable container with its original.
 
 ## Clipboard (⌘C · ⌘X · ⌘V — added 2026-07-30)
 

@@ -20,6 +20,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
 #gvc-root.panning { cursor: grabbing; }
 #gvc-root.hand { cursor: grab; }
 #gvc-root.crosshair { cursor: crosshair; }
+/* Option held = dragging a node duplicates it. Nodes set their own `cursor: grab`, so this has
+   to reach them specifically; the hand tool still wins (it's a pan, not a drag). */
+#gvc-root.altcopy:not(.hand) .gvc-node, #gvc-root.altcopy:not(.hand) .gvc-node * { cursor: copy; }
 #gvc-root.dropping::after {
   content: "Drop image to place it"; position: fixed; inset: 0; display: flex;
   align-items: center; justify-content: center; font-size: 22px; color: #2563eb; font-weight: 600;

@@ -26,6 +26,7 @@
  *   node renderers   sticky · text · image (+ nameLabel/wireRename) · tile (live iframe) ·
  *                    connectors · freehand draw · shapes · sections · tables · stamps
  *   interaction      pointer (pan/move/resize/marquee/pinch, deferred double-tap) ·
+ *                    Option-drag duplicate ·
  *                    snapping + guides · axis lock · image crop · wheel/keyboard · image drop ·
  *                    clipboard (⌘C/⌘X/⌘V — cross-tab, cross-board, via the system clipboard)
  *   chrome           selection toolbar · Lucide icons · toolbar/sub-toolbars/topbar/zoom ·
@@ -238,22 +239,25 @@
   // Duplicate the current selection, offset diagonally so the copies land NEXT TO the
   // originals (grabbable), not stacked on top; the copies become the new selection so you
   // can immediately drag them. (Cmd/Ctrl-D — the standard duplicate shortcut.)
+  // One node → a fresh, independent copy of it, offset by (dx,dy). Shared by ⌘D and by
+  // Option-drag; histClone already deep-copies the mutable containers (points/cells/crop) so
+  // the copy never shares them with the original.
+  function cloneNode(n, dx, dy) {
+    var c = histClone(n);
+    c.id = uid();
+    // duplicated tiles get a distinct name — names are the shared vocabulary ("change the
+    // copy"), and canvas-screen.mjs dup finds the "… copy" tile to repoint at a forked folder
+    if (c.type === "tile" && c.name) c.name = c.name + " copy";
+    if (n.type === "arrow") { c.x1 = n.x1 + dx; c.y1 = n.y1 + dy; c.x2 = n.x2 + dx; c.y2 = n.y2 + dy; }
+    else { c.x = (n.x || 0) + dx; c.y = (n.y || 0) + dy; }
+    return c;
+  }
   function duplicateSelection() {
     if (!selected.length) return;
-    var dx = 32, dy = 32, newIds = [];
+    var newIds = [];
     selected.forEach(function (id) {
       var n = nodeById(id); if (!n) return;
-      var c = {}; for (var k in n) if (n.hasOwnProperty(k)) c[k] = n[k];
-      // deep-copy the mutable containers so the copy doesn't share them with the original
-      if (n.points) c.points = n.points.map(function (p) { return p.slice(); });
-      if (n.cells) { c.cells = {}; for (var ck in n.cells) c.cells[ck] = n.cells[ck]; }
-      if (n.crop) c.crop = { x: n.crop.x, y: n.crop.y, w: n.crop.w, h: n.crop.h };
-      c.id = uid();
-      // duplicated tiles get a distinct name — names are the shared vocabulary ("change the
-      // copy"), and canvas-screen.mjs dup finds the "… copy" tile to repoint at a forked folder
-      if (c.type === "tile" && c.name) c.name = c.name + " copy";
-      if (n.type === "arrow") { c.x1 = n.x1 + dx; c.y1 = n.y1 + dy; c.x2 = n.x2 + dx; c.y2 = n.y2 + dy; }
-      else { c.x = (n.x || 0) + dx; c.y = (n.y || 0) + dy; }
+      var c = cloneNode(n, 32, 32);
       addNode(c); newIds.push(c.id); pop(c.id);
     });
     setSelection(newIds);
@@ -1320,6 +1324,9 @@
       // aligning the section, not its stickies) and must not treat the passengers as targets
       var moving = withSectionChildren(selected);
       drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, dblAction: dblAction, bbox: selectionRect(selected), items: moving.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
+      // Option-drag duplicates (the Figma/Miro idiom). Armed here, but the copies aren't made
+      // until the pointer actually MOVES — see altCopySplit.
+      drag.altCopy = e.altKey && !dblAction;
       armSnap(moving);
     } else if (e.pointerType === "touch") {
       // touch: one finger on empty canvas pans (no mouse to scroll with); two fingers pinch
@@ -1419,6 +1426,34 @@
     });
     return out;
   }
+  // ---- Option-drag = duplicate ---------------------------------------------
+  // Fires on the FIRST MOVE of an Option-drag, never at pointerdown: an Option-CLICK that
+  // never moves must not leave an invisible duplicate stacked on the original.
+  //
+  // The copies are born exactly on top of the originals and become what the drag moves, so
+  // every item keeps the offsets it was armed with — only its id is repointed. The ORIGINALS
+  // stay put and keep their ids, which is what you want: deep links (#n=<id>), comment
+  // threads and a tile's prototype folder all stay attached to the node that was already
+  // there, and the thing you're placing is the new one.
+  function altCopySplit() {
+    drag.altCopy = false;
+    var map = {}, fresh = [];
+    drag.items.forEach(function (it) {
+      var n = nodeById(it.id); if (!n) return;
+      var c = cloneNode(n, 0, 0);
+      addNode(c);
+      map[it.id] = c.id; fresh.push(c.id);
+    });
+    if (!fresh.length) return;
+    drag.items.forEach(function (it) { if (map[it.id]) it.id = map[it.id]; });
+    // the selection follows the copies, so the selection bar acts on what you're dragging and
+    // releasing leaves the new nodes selected (drag them again, ⌘D them, style them)
+    setSelection(selected.map(function (id) { return map[id] || id; }));
+    drag.shiftToggle = null; // a shift-toggle armed against the original is moot now
+    // re-arm snapping on the copies — which also makes the originals valid snap targets, so a
+    // duplicate can align to the node it came from
+    armSnap(fresh);
+  }
   function withSectionChildren(ids) {
     var out = ids.slice();
     ids.forEach(function (id) {
@@ -1491,6 +1526,7 @@
     else if (drag.mode === "move") {
       var mv = axisLock(dx, dy, e.shiftKey), wdx = mv[0] / sc, wdy = mv[1] / sc;
       drag.moved = drag.moved || Math.abs(dx) + Math.abs(dy) > 2;
+      if (drag.altCopy && drag.moved) altCopySplit();
       if (drag.bbox && !(e.metaKey || e.ctrlKey)) {
         var pr = { x: drag.bbox.x + wdx, y: drag.bbox.y + wdy, w: drag.bbox.w, h: drag.bbox.h };
         var sn = snapRect(pr, [pr.x, pr.x + pr.w / 2, pr.x + pr.w], [pr.y, pr.y + pr.h / 2, pr.y + pr.h]);
@@ -1763,6 +1799,13 @@
   document.addEventListener("keyup", function (e) {
     if (e.code === "Space") { spaceDown = false; if (TOOL.kind !== "hand") root.classList.remove("hand"); }
   });
+  // Holding Option flips every node to the copy cursor, so the duplicate-drag is discoverable
+  // instead of folklore. Cleared on window blur too — Option is how you reach a lot of macOS
+  // shortcuts, and coming back to a canvas stuck on the copy cursor would just be a lie.
+  function altCue(on) { root.classList.toggle("altcopy", !!on); }
+  document.addEventListener("keydown", function (e) { if (e.key === "Alt") altCue(true); });
+  document.addEventListener("keyup", function (e) { if (e.key === "Alt") altCue(false); });
+  window.addEventListener("blur", function () { altCue(false); });
 
   // ---- image drop from desktop --------------------------------------------
   // Nodes are NEVER a native HTML5 drag source. The browser will happily start one of its own
