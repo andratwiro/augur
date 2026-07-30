@@ -200,11 +200,21 @@ Hold Option and drag a node (or a whole selection) to leave a copy behind — th
 idiom. Every node shows the copy cursor while Option is held, so the gesture is discoverable
 rather than folklore.
 
-- **The copies are cloned on the FIRST MOVE, not at pointerdown.** An Option-*click* that never
+- ⚠️ **Option is a LIVE modifier, checked continuously for as long as the drag lasts — NOT a
+  decision made once at pointerdown.** The first version read `e.altKey` at pointerdown only,
+  which looked right in a test that held Option first and did nothing at all for the way people
+  actually move: press-and-drag, then reach for Option a moment later. Press it, release it,
+  press it again, any number of times mid-drag; `altCopySync()` owns the flip and is called from
+  both `pointermove` and the Alt keydown/keyup (so it works with the mouse held still).
+- **Entering:** the copy is born exactly where the drag has GOT TO and the original snaps back to
+  where it started — the node under your cursor stays under your cursor. **Leaving:** the
+  original takes over from wherever the copy had got to and the copy is deleted, so the drag
+  carries on without a jump and releasing Option early is a clean plain move.
+- **The originals keep their ids throughout.** Deep links (`#n=<id>`), comment threads and a
+  tile's prototype folder all stay attached to the node that was already there — the thing
+  you're placing is the new one.
+- Copies are only ever made once the drag has actually **MOVED**. An Option-*click* that never
   moves must not leave an invisible duplicate stacked on the original.
-- **The originals keep their ids and stay put; the copies are what you drag.** Deep links
-  (`#n=<id>`), comment threads and a tile's prototype folder all stay attached to the node that
-  was already there — the thing you're placing is the new one.
 - Dragging a **section** carries its contents, so Option-dragging one duplicates the section
   *and* its children (the drag was already armed with `withSectionChildren`).
   ⚠️ **⌘D does not** — it duplicates only the selection, so ⌘D on a section still gives you an

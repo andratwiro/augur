@@ -1323,10 +1323,11 @@
       // a section drags its contents with it; snapping still uses the SELECTION's box (you're
       // aligning the section, not its stickies) and must not treat the passengers as targets
       var moving = withSectionChildren(selected);
-      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, dblAction: dblAction, bbox: selectionRect(selected), items: moving.map(function (sid) { var n = nodeById(sid); return { id: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
-      // Option-drag duplicates (the Figma/Miro idiom). Armed here, but the copies aren't made
-      // until the pointer actually MOVES — see altCopySplit.
-      drag.altCopy = e.altKey && !dblAction;
+      drag = { mode: "move", sx: e.clientX, sy: e.clientY, moved: false, shiftToggle: shiftToggle, dblAction: dblAction, bbox: selectionRect(selected), items: moving.map(function (sid) { var n = nodeById(sid); return { id: sid, origId: sid, arrow: n.type === "arrow", ox: n.x, oy: n.y, ox1: n.x1, oy1: n.y1, ox2: n.x2, oy2: n.y2 }; }) };
+      // Option-drag duplicates (the Figma idiom) — `origId` and `selBefore` are what let the
+      // drag swap between the originals and their copies as Option goes down and up.
+      drag.copying = false;
+      drag.selBefore = selected.slice();
       armSnap(moving);
     } else if (e.pointerType === "touch") {
       // touch: one finger on empty canvas pans (no mouse to scroll with); two fingers pinch
@@ -1427,32 +1428,60 @@
     return out;
   }
   // ---- Option-drag = duplicate ---------------------------------------------
-  // Fires on the FIRST MOVE of an Option-drag, never at pointerdown: an Option-CLICK that
-  // never moves must not leave an invisible duplicate stacked on the original.
+  // Option is a LIVE MODIFIER, checked continuously for as long as the drag lasts — not a
+  // decision made once at pointerdown. That's how Figma behaves and it's the only model that
+  // survives contact with real hands: people press-and-drag first and reach for Option a
+  // moment later, or let go of Option before the mouse. Both directions work, any number of
+  // times, mid-drag.
   //
-  // The copies are born exactly on top of the originals and become what the drag moves, so
-  // every item keeps the offsets it was armed with — only its id is repointed. The ORIGINALS
-  // stay put and keep their ids, which is what you want: deep links (#n=<id>), comment
-  // threads and a tile's prototype folder all stay attached to the node that was already
-  // there, and the thing you're placing is the new one.
-  function altCopySplit() {
-    drag.altCopy = false;
+  // Entering: the copy is born exactly where the drag has GOT TO and the original snaps back
+  // to where it started — so the node under your cursor stays under your cursor, and what you
+  // let go of is the new one. Leaving: the original takes over from wherever the copy had got
+  // to and the copy is deleted, so the drag carries on without a jump.
+  //
+  // The ORIGINALS keep their ids throughout. Deep links (#n=<id>), comment threads and a
+  // tile's prototype folder stay attached to the node that was already there.
+  function dragPos(n, arrow) { return arrow ? { x1: n.x1, y1: n.y1, x2: n.x2, y2: n.y2 } : { x: n.x, y: n.y }; }
+  function setDragPos(n, p, arrow) {
+    if (arrow) { n.x1 = p.x1; n.y1 = p.y1; n.x2 = p.x2; n.y2 = p.y2; renderNode(n); }
+    else { n.x = p.x; n.y = p.y; var h = nodeEls[n.id]; if (h) { h.style.left = n.x + "px"; h.style.top = n.y + "px"; } }
+  }
+  function altCopyEnter() {
     var map = {}, fresh = [];
     drag.items.forEach(function (it) {
       var n = nodeById(it.id); if (!n) return;
-      var c = cloneNode(n, 0, 0);
+      var c = cloneNode(n, 0, 0);           // born where the drag has got to
       addNode(c);
-      map[it.id] = c.id; fresh.push(c.id);
+      setDragPos(n, it.arrow ? { x1: it.ox1, y1: it.oy1, x2: it.ox2, y2: it.oy2 } : { x: it.ox, y: it.oy }, it.arrow);
+      it.id = c.id;
+      map[it.origId] = c.id; fresh.push(c.id);
     });
     if (!fresh.length) return;
-    drag.items.forEach(function (it) { if (map[it.id]) it.id = map[it.id]; });
+    drag.copying = true;
     // the selection follows the copies, so the selection bar acts on what you're dragging and
     // releasing leaves the new nodes selected (drag them again, ⌘D them, style them)
-    setSelection(selected.map(function (id) { return map[id] || id; }));
+    setSelection(drag.selBefore.map(function (id) { return map[id] || id; }));
     drag.shiftToggle = null; // a shift-toggle armed against the original is moot now
     // re-arm snapping on the copies — which also makes the originals valid snap targets, so a
     // duplicate can align to the node it came from
     armSnap(fresh);
+  }
+  function altCopyExit() {
+    drag.copying = false;
+    drag.items.forEach(function (it) {
+      var copy = nodeById(it.id), orig = nodeById(it.origId);
+      if (copy && orig && copy !== orig) { setDragPos(orig, dragPos(copy, it.arrow), it.arrow); removeNode(copy.id); }
+      it.id = it.origId;
+    });
+    setSelection(drag.selBefore.slice());
+    armSnap(drag.items.map(function (it) { return it.id; }));
+  }
+  // The gate: only ever flip during a move-drag that has actually MOVED — an Option-CLICK
+  // that never moves must not leave an invisible duplicate stacked on the original.
+  function altCopySync(wanted) {
+    if (!drag || drag.mode !== "move" || !drag.moved) return;
+    if (!!wanted === !!drag.copying) return;
+    if (wanted) altCopyEnter(); else altCopyExit();
   }
   function withSectionChildren(ids) {
     var out = ids.slice();
@@ -1526,7 +1555,7 @@
     else if (drag.mode === "move") {
       var mv = axisLock(dx, dy, e.shiftKey), wdx = mv[0] / sc, wdy = mv[1] / sc;
       drag.moved = drag.moved || Math.abs(dx) + Math.abs(dy) > 2;
-      if (drag.altCopy && drag.moved) altCopySplit();
+      altCopySync(e.altKey); // Option can go down or up at any point in the drag
       if (drag.bbox && !(e.metaKey || e.ctrlKey)) {
         var pr = { x: drag.bbox.x + wdx, y: drag.bbox.y + wdy, w: drag.bbox.w, h: drag.bbox.h };
         var sn = snapRect(pr, [pr.x, pr.x + pr.w / 2, pr.x + pr.w], [pr.y, pr.y + pr.h / 2, pr.y + pr.h]);
@@ -1802,7 +1831,10 @@
   // Holding Option flips every node to the copy cursor, so the duplicate-drag is discoverable
   // instead of folklore. Cleared on window blur too — Option is how you reach a lot of macOS
   // shortcuts, and coming back to a canvas stuck on the copy cursor would just be a lie.
-  function altCue(on) { root.classList.toggle("altcopy", !!on); }
+  // These also drive the duplicate itself, not just the cursor: pressing Option with the mouse
+  // already down and STILL should flip the drag to copying right then. Waiting for the next
+  // pointermove would mean holding Option changed nothing until you jiggled the mouse.
+  function altCue(on) { root.classList.toggle("altcopy", !!on); altCopySync(on); }
   document.addEventListener("keydown", function (e) { if (e.key === "Alt") altCue(true); });
   document.addEventListener("keyup", function (e) { if (e.key === "Alt") altCue(false); });
   window.addEventListener("blur", function () { altCue(false); });
