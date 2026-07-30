@@ -65,7 +65,10 @@ default space's skill dir, gate-exempt for asset extensions), and from
 also forward, for platforms on vanity domains no suffix rule can cover; unset or
 unreachable = suffixes only), `VANITY_REDIRECTS`, `BUILDER_CONFIG` (AI project-builder
 prompts + schema; without it `/__ai/summarize` answers 501), plus `SITE_ORIGIN` for
-absolute og/unfurl URLs.
+absolute og/unfurl URLs. One placeholder is space-injected instead:
+`MCP_HOST_ALLOWLIST`, the validated union of the `{"hosts":[…]}` documents spaces
+declare via `space.json` `"mcpAllowlists": [<space-relative paths>]` — exact hosts
+baked at build, refreshed by every space push, no instance config needed.
 
 Env reference: `GV_SPACES_ROOT` (spaces location) · `GV_IDENTITY_PATH` (user list) ·
 `GV_DEPLOY_CONFIG_PATH` (deploy config) · `OFFLINE_PORT` (offline preview).

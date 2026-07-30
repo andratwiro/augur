@@ -29,10 +29,13 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 const USERS = [];
 // Deploy-specific knobs, injected by build.js from the deploy config (all empty in a
 // raw engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
-// (suffix rule + the URL of an exact-host list), vanity-host redirects, and the
-// optional AI project-builder prompts + schema.
+// (suffix rule + space-declared exact hosts + the URL of an exact-host list),
+// vanity-host redirects, and the optional AI project-builder prompts + schema.
+// MCP_HOST_ALLOWLIST alone is space-injected: the union of the {"hosts":[…]} files
+// the spaces declare via space.json "mcpAllowlists" (see build.js).
 const PUBLIC_SKILL_PREFIXES = [];
 const MCP_HOST_SUFFIXES = [];
+const MCP_HOST_ALLOWLIST = [];
 const MCP_HOST_ALLOWLIST_URL = "";
 const VANITY_REDIRECTS = {};
 const BUILDER_CONFIG = null;
@@ -531,7 +534,8 @@ function withLiveReload(res, url) {
 // https://<host>/<path>. Public (before the gate) — the platform's own OAuth
 // Bearer token is the real auth; the proxy adds nothing, stores nothing, and
 // never logs a token. Allowlist is tight: subdomains of the injected
-// MCP_HOST_SUFFIXES, plus the exact hosts published at MCP_HOST_ALLOWLIST_URL,
+// MCP_HOST_SUFFIXES, the exact hosts the spaces declared at build time
+// (MCP_HOST_ALLOWLIST), plus the exact hosts published at MCP_HOST_ALLOWLIST_URL,
 // and exactly the paths the builder + OAuth flows need.
 
 const MCP_PROXY_PATHS = new Set([
@@ -562,12 +566,19 @@ function mcpAllowlist() {
   return mcpHostAllowlist;
 }
 
+// Space-declared exact hosts, baked in at build (see build.js): no fetch, no
+// failure mode, and a space push refreshes the list with the same deploy that
+// ships the prototype using it.
+const mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
+
 async function mcpHostAllowed(host) {
   if (MCP_HOST_SUFFIXES.some((sfx) => host.endsWith("." + sfx))) return true;
-  const allow = await mcpAllowlist();
   // Exact match only — endsWith on a bare host would let <allowed>.attacker.example
-  // through. The list is stored without a leading "www.".
-  return !!allow && (allow.has(host) || allow.has(host.replace(/^www\./, "")));
+  // through. Both lists are stored without a leading "www.".
+  const bare = host.replace(/^www\./, "");
+  if (mcpStaticHosts.has(host) || mcpStaticHosts.has(bare)) return true;
+  const allow = await mcpAllowlist();
+  return !!allow && (allow.has(host) || allow.has(bare));
 }
 
 async function mcpProxy(request, url) {
