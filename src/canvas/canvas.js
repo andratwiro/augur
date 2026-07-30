@@ -1901,15 +1901,19 @@
   // Colour is the sharp edge: renderShape and renderDraw CONCATENATE node.color into an
   // innerHTML string, so a colour of `"/><img src=x onerror=…>` executes. Hex literals only.
   function clipColor(v) { v = String(v == null ? "" : v); return /^#[0-9a-fA-F]{3,8}$/.test(v) ? v : ""; }
+  // Same-origin absolute path. Never protocol-relative (`//host` is another origin), never a
+  // scheme — which is what keeps `javascript:` and someone else's server out.
+  function clipPath(v) { v = String(v == null ? "" : v); return /^\/(?!\/)[^\s"'<>]*$/.test(v) ? v : ""; }
+  // An image src is ANY same-origin path, not just /__asset/<hash>. CANVAS.md's schema row
+  // describes uploads, but boards are also built by hand and by agents pointing straight at
+  // images committed in the space repo (`/ux-ui-audit/…/img/04-method.jpg`) — on the timings
+  // board that's most of them. Held to the same rule as a tile url: an <img> at a same-origin
+  // path can do nothing worse than 404.
   function clipSrc(v) {
     v = String(v == null ? "" : v);
-    if (/^\/__asset\/[A-Za-z0-9._-]+$/.test(v)) return v;                                  // the modern path
-    if (/^data:image\/(png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=]*$/.test(v)) return v;   // legacy inlined boards
-    return "";
+    if (/^data:image\/(png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=]*$/.test(v)) return v; // legacy inlined boards
+    return clipPath(v);
   }
-  // A tile is an IFRAME. "Paste this, it's cool" pointing at someone else's origin is a real
-  // attack, not a hypothetical — same-origin absolute paths only, never protocol-relative.
-  function clipPath(v) { v = String(v == null ? "" : v); return /^\/(?!\/)[^\s"'<>]*$/.test(v) ? v : ""; }
 
   function clipSanitize(raw) {
     if (!raw || typeof raw !== "object" || !CLIP_TYPES[raw.type]) return null;

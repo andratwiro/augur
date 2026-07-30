@@ -128,7 +128,7 @@ Omitted optional fields just take defaults. Write nodes through the daemon's `up
 | `sticky` | `x y` | `w h` (160×160) · `text` · `rich` (see below) · `color` (pastel bg) · `author` · `fontSize` px · `bold` · `align` · `hFixed` (true = height pinned by a manual resize; omit = hugs its text) |
 | `text` | `x y` | `text` · `rich` · `w` (none = hug/`max-content`; set = fixed width + wrap) · `fontSize` · `color` · `bold italic strike` · `align` |
 | `shape` | `shape x y` | `w h` (per-shape default) · `text`/`rich` (centered) · `color` (fill). Shapes: square round circle diamond triangle triangle-down pill cylinder bubble star hexagon pentagon parallelogram trapezoid plus arrow-right |
-| `image` | `x y src` | `w h` · `name` · `desc` (one line — the claim the image makes; see the description contract below) · `crop` `{x,y,w,h}` as FRACTIONS of the full src. `src` = an `/__asset/<hash>` URL (upload bytes with `POST /__asset`, image/* content-type) — data URLs are legacy-render-only, don't write new ones |
+| `image` | `x y src` | `w h` · `name` · `desc` (one line — the claim the image makes; see the description contract below) · `crop` `{x,y,w,h}` as FRACTIONS of the full src. `src` = any **same-origin path**: `/__asset/<hash>` for uploads (bytes via `POST /__asset`, image/* content-type) **or a path to an image committed in the space repo** (`/ux-ui-audit/…/img/04-method.jpg` — how hand-built and agent-built boards usually do it; most of the timings board is these). Data URLs are legacy-render-only, don't write new ones |
 | `tile` | `x y url` | `w h` (420×300) · `name` · `device` desktop\|tablet\|phone (viewport the iframe renders at) · `liveUrl` (in-frame navigation, room-managed) |
 | `arrow` | `x1 y1 x2 y2` | `kind` arrow\|elbow\|curved\|line (default arrow) |
 | `draw` | `x y points` | `mode` marker\|highlighter\|tape · `color` · `size` stroke px · `w h` bbox · `points` = [[dx,dy],…] RELATIVE to x,y |
@@ -217,7 +217,11 @@ tomorrow, all paste the same thing.
   everyone else's DOM — a bad paste is stored XSS for the whole board. Known type, fresh id,
   numbers coerced, enums whitelisted, `rich` through `sanitizeRich`, **`color` hex-only**
   (renderShape/renderDraw concatenate it into innerHTML), and `image.src` / `tile.url` held to
-  `/__asset/…` and same-origin paths (a tile is an *iframe*).
+  **same-origin paths** — no scheme, no protocol-relative `//host` (a tile is an *iframe*).
+  ⚠️ The first cut of this restricted `image.src` to `/__asset/<hash>` because that's what the
+  schema row above used to say. Most real images are repo paths, so copying them dropped every
+  node and ⌘V answered "nothing pasteable". **Validate against a live board, not the doc** —
+  `curl '<site>/__board?path=<board path>'` is public and takes two seconds.
 - Undo/redo and multiplayer need nothing: `addNode` + `scheduleSave` means the diff tick picks
   the new nodes up as upserts and the history snapshot records them as one step.
 - ⚠️ **`sanitizeRichEl` parses in a DOMParser document, on purpose.** Assigning untrusted markup
