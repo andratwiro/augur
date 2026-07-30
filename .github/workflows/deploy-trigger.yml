@@ -1,12 +1,15 @@
 name: Trigger live deploy
 
-# Engine-side auto-deploy bridge. This repo no longer deploys anything itself — the
-# live site ships from the deploy shell (andratwiro/augur-deploy), which pins this repo
-# as its `engine` submodule. A push here asks the shell to bump that pin to the pushed
-# commit (repository_dispatch `engine-updated` → the shell's engine-bump.yml), which
-# triggers the shell's deploy.
+# Engine-side auto-deploy bridge. This repo deploys nothing itself — a live site ships
+# from a deploy shell, which pins this repo as its `engine` submodule. A push here asks
+# ONE shell to bump that pin immediately (repository_dispatch `engine-updated` → that
+# shell's engine-bump.yml), which triggers its deploy. Every other instance pulls the
+# engine on its own schedule instead, so this is a convenience for the shell that lives
+# closest to the engine, never a requirement.
 #
-# Auth: AUGUR_DISPATCH_TOKEN — a fine-grained PAT with Contents read & write on the
+# Which shell: the `SHELL_REPO` repository VARIABLE (`owner/repo`) — no shell repo is
+# named in this file, so a fork with the variable unset simply skips the job.
+# Auth: AUGUR_DISPATCH_TOKEN — a fine-grained PAT with Contents read & write on that
 # shell repo. Until it exists, this job fails harmlessly and nothing ships.
 
 on:
@@ -20,13 +23,15 @@ permissions:
 jobs:
   notify-shell:
     runs-on: ubuntu-latest
+    if: vars.SHELL_REPO != '' # no shell configured (e.g. a fork) → nothing to notify
     steps:
       - name: Ask the deploy shell to bump the engine pin and deploy
         env:
           GH_TOKEN: ${{ secrets.AUGUR_DISPATCH_TOKEN }}
+          SHELL_REPO: ${{ vars.SHELL_REPO }}
         run: |
-          gh api -X POST /repos/andratwiro/augur-deploy/dispatches \
+          gh api -X POST "/repos/$SHELL_REPO/dispatches" \
             -f event_type=engine-updated \
             -f "client_payload[sha]=${{ github.sha }}" \
             -f "client_payload[actor]=${{ github.actor }}"
-          echo "Dispatched engine-updated for ${{ github.sha }} → andratwiro/augur-deploy"
+          echo "Dispatched engine-updated for ${{ github.sha }} → $SHELL_REPO"
