@@ -1244,7 +1244,12 @@
     // e.target is retargeted to the shadow host for events from inside our
     // shadow DOM, so check the real originating node via composedPath.
     var src = (e.composedPath && e.composedPath()[0]) || e.target;
-    if (e.shiftKey && (e.code === "KeyC" || e.key === "C" || e.key === "c") && !isTyping(src)) {
+    // The shortcut is plain Shift+C. Any OTHER modifier makes it a different chord that
+    // belongs to someone else — ⌘⇧C / Ctrl+⇧C is a copy-as-image chord in canvases and in
+    // most host apps — and this listener is on window in the CAPTURE phase with a
+    // preventDefault(), so without these guards it swallowed those chords everywhere the
+    // overlay is injected (every prototype page, including ones framed inside a canvas tile).
+    if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && (e.code === "KeyC" || e.key === "C" || e.key === "c") && !isTyping(src)) {
       e.preventDefault(); setActive(!state.active);
     } else if (e.key === "Escape" && state.active) {
       e.preventDefault(); setActive(false); // Esc exits comment mode outright
