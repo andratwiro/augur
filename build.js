@@ -101,6 +101,7 @@ const SRC_REVIEW = path.join(ROOT, "src", "review", "comments.js");
 const SRC_REVIEW_CAT = path.join(ROOT, "src", "review", "aslam.png");
 const SRC_CANVAS_JS = path.join(ROOT, "src", "canvas", "canvas.js");
 const SRC_CANVAS_CSS = path.join(ROOT, "src", "canvas", "canvas.css");
+const SRC_CANVAS_CAPTURE = path.join(ROOT, "src", "canvas", "capture.js");
 
 // Dev-facing prototype status baseline. Lives PER SPACE in the space repo at
 // prototype-status.json (repo root) (keyed "<opportunity>/<prototype>"), rendered as a
@@ -4500,6 +4501,8 @@ async function main() {
   await fs.mkdir(path.join(DIST, "__canvas"), { recursive: true });
   await fs.copyFile(SRC_CANVAS_JS, path.join(DIST, "__canvas", "canvas.js"));
   await fs.copyFile(SRC_CANVAS_CSS, path.join(DIST, "__canvas", "canvas.css"));
+  // capture.js is not on any page: canvas.js lazy-loads it by absolute path on the first ⌘⇧C
+  await fs.copyFile(SRC_CANVAS_CAPTURE, path.join(DIST, "__canvas", "capture.js"));
   await fs.writeFile(path.join(DIST, "__canvas", "catalog.json"), JSON.stringify(CANVAS_CATALOG), "utf8");
 
   // Self-hosted fonts → /fonts/ (served immutable + public by the worker). Replaces

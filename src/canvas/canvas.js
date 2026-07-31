@@ -28,7 +28,8 @@
  *   interaction      pointer (pan/move/resize/marquee/pinch, deferred double-tap) ·
  *                    Option-drag duplicate ·
  *                    snapping + guides · axis lock · image crop · wheel/keyboard · image drop ·
- *                    clipboard (⌘C/⌘X/⌘V — cross-tab, cross-board, via the system clipboard)
+ *                    clipboard (⌘C/⌘X/⌘V — cross-tab, cross-board, via the system clipboard) ·
+ *                    copy as PNG (⌘⇧C — rasterizer lazy-loaded from capture.js)
  *   chrome           selection toolbar · Lucide icons · toolbar/sub-toolbars/topbar/zoom ·
  *                    insert picker
  *   data             persistence (save = SOLO fallback; camera → localStorage) ·
@@ -1822,9 +1823,14 @@
     if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
     if ((e.metaKey || e.ctrlKey) && (e.key === "y" || e.key === "Y")) { e.preventDefault(); redo(); return; } // the Windows redo key
     if ((e.metaKey || e.ctrlKey) && (e.key === "d" || e.key === "D")) { e.preventDefault(); duplicateSelection(); return; }
+    // ⌘⇧C = a PICTURE of the selection, ⌘C = the nodes themselves. ⚠️ ORDER MATTERS: with Shift
+    // held e.key is "C", so the ⌘C branch below matches this chord too — hence the shiftKey test
+    // here, above it, and the !shiftKey test there. (Both must stay; either alone is a trap for
+    // whoever reorders these lines next.)
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === "c" || e.key === "C")) { e.preventDefault(); copyAsPng(); return; }
     // ⌘C/⌘X write the selection to the system clipboard; ⌘V is a `paste` listener (see the
     // clipboard section) because only the event carries clipboardData without a permission prompt
-    if ((e.metaKey || e.ctrlKey) && (e.key === "c" || e.key === "C")) { if (selected.length) { e.preventDefault(); clipCopy(false); } return; }
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === "c" || e.key === "C")) { if (selected.length) { e.preventDefault(); clipCopy(false); } return; }
     if ((e.metaKey || e.ctrlKey) && (e.key === "x" || e.key === "X")) { if (selected.length) { e.preventDefault(); clipCopy(true); } return; }
     if ((e.key === "Backspace" || e.key === "Delete") && selected.length) { e.preventDefault(); selected.slice().forEach(removeNode); setSelection([]); }
     if (e.key === "Escape") { exitInteract(); setSelection([]); if (picker) picker.classList.add("hidden"); setTool("select"); return; }
@@ -2167,6 +2173,131 @@
     scheduleSave();
   });
 
+  // ---- copy as PNG (⌘⇧C) ---------------------------------------------------
+  // The keystroke replaces the manual screenshot round-trip: a picture of the selection, on
+  // the system clipboard, ready to paste into a chat. Two things make it worth more than ⌘⇧4:
+  // it renders at 2x the node's NATURAL size whatever the board is zoomed to (a tile you're
+  // reading at 30% still comes out crisp), and it knows where the node ends, so no cropping.
+  //
+  // SCREENSHOT semantics, deliberately unlike Figma's cut-out-on-transparency: the shot is the
+  // selection's box plus a small bleed, holding EVERYTHING visible in that rectangle — the
+  // paper, the grid, and every node that overlaps it. A note sitting on a section brings the
+  // section's colour with it, which is what a screenshot would have given you. What does NOT
+  // come along is editor chrome (selection rings, handles, peer cursors, comment pins): those
+  // are how you WORK the board, not what's on it.
+  var PNG_SCALE = 2, PNG_BLEED = 12;
+  var captureLoad = null;
+  function loadCapture() {
+    if (window.GVCanvasCapture) return Promise.resolve(window.GVCanvasCapture);
+    if (captureLoad) return captureLoad;
+    // ~350 lines of rasterizer that most sessions never need — fetched on the first ⌘⇧C and
+    // then cached. /__canvas/* is served no-store, so this is never a stale-engine risk.
+    captureLoad = new Promise(function (resolve, reject) {
+      var s = el("script", { src: "/__canvas/capture.js" });
+      s.onload = function () { if (window.GVCanvasCapture) resolve(window.GVCanvasCapture); else reject(new Error("capture")); };
+      s.onerror = function () { captureLoad = null; reject(new Error("capture")); };
+      document.head.appendChild(s);
+    });
+    return captureLoad;
+  }
+  // A frame's name chip and a section's label float ABOVE their node's box, so a shot framed on
+  // the box alone slices the label off the top. They're content (they're the node's name), so
+  // the box grows to hold them — and only them; every other overhanging child is chrome.
+  var PNG_LABELS = ".gvc-tilename,.gvc-seclabel,.gvc-name";
+  function labelBox(host, r) {
+    if (!host) return r;
+    Array.prototype.forEach.call(host.children, function (ch) {
+      if (!ch.matches || !ch.matches(PNG_LABELS) || !ch.offsetHeight) return;
+      var lx = host.offsetLeft + ch.offsetLeft, ly = host.offsetTop + ch.offsetTop;
+      var lw = ch.offsetWidth, lh = ch.offsetHeight;
+      r = { x: Math.min(r.x, lx), y: Math.min(r.y, ly),
+            w: Math.max(r.x + r.w, lx + lw) - Math.min(r.x, lx),
+            h: Math.max(r.y + r.h, ly + lh) - Math.min(r.y, ly) };
+    });
+    return r;
+  }
+  function pngRect() {
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, any = false;
+    selected.forEach(function (id) {
+      var r = anyRect(nodeById(id)); if (!r) return;
+      r = labelBox(nodeEls[id], r);
+      any = true;
+      x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+      x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+    });
+    if (!any) return null;
+    // the bleed keeps a sticky's drop shadow (and a section's label chip) inside the frame
+    return { x: x0 - PNG_BLEED, y: y0 - PNG_BLEED, w: (x1 - x0) + PNG_BLEED * 2, h: (y1 - y0) + PNG_BLEED * 2 };
+  }
+  // every node whose box overlaps the shot, in DOM order = Z-ORDER. offsetLeft/Top/Width/Height
+  // are layout px, immune to the world transform — the same reason fitFrame reads them.
+  function pngEls(rect) {
+    var out = [];
+    Array.prototype.forEach.call(world.children, function (ch) {
+      var id = ch.dataset ? ch.dataset.id : null;
+      if (!id || nodeEls[id] !== ch) return;
+      var l = ch.offsetLeft, t = ch.offsetTop, w = ch.offsetWidth, h = ch.offsetHeight;
+      if (l + w < rect.x || t + h < rect.y || l > rect.x + rect.w || t > rect.y + rect.h) return;
+      out.push(ch);
+    });
+    return out;
+  }
+  function pngPoster(host) {
+    var n = nodeById(host.dataset.id);
+    if (!n || n.type !== "tile" || !n.url) return null;
+    return n.thumb || (n.url.replace(/\/?$/, "/") + "preview.webp"); // the tile's own fallback
+  }
+  function pngBackground() {
+    var g = gridSpec(1); // the capture is at natural scale, so the grid is its scale-1 spec
+    var fill = "#f6f6f6";
+    try { fill = getComputedStyle(root).backgroundColor || fill; } catch (e) {}
+    return { fill: fill, dot: DOT_COLOR, step: g.step, r: g.r };
+  }
+  function pngName() {
+    var n = selected.length === 1 ? nodeById(selected[0]) : null;
+    var base = (n && n.name) || board.name || "canvas";
+    base = base.replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-").slice(0, 60);
+    return (base || "canvas") + ".png";
+  }
+  function downloadPng(blob, name) {
+    var u = URL.createObjectURL(blob);
+    var a = el("a", { href: u, download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(u); }, 8000);
+  }
+  function copyAsPng() {
+    var rect = selected.length ? pngRect() : null;
+    if (!rect) { toast("Select something to copy as PNG"); return; }
+    var name = pngName(), info = null;
+    toast("Copying as PNG…");
+    var blobP = loadCapture().then(function (cap) {
+      return cap.nodesToPng({
+        els: pngEls(rect), rect: rect, scale: PNG_SCALE,
+        background: pngBackground(), poster: pngPoster,
+        onInfo: function (i) { info = i; }
+      });
+    });
+    // ⚠️ The PROMISE goes to the clipboard, not the blob — Safari only allows a clipboard write
+    // in the same task as the gesture that asked for it, and rasterizing takes far longer than
+    // that. ClipboardItem accepts a pending blob for exactly this reason.
+    var wrote = null;
+    try {
+      if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem === "function") {
+        wrote = navigator.clipboard.write([new ClipboardItem({ "image/png": blobP })]);
+      }
+    } catch (e) { wrote = null; }
+    var ok = function () {
+      var extra = info && info.downgraded ? " (scaled down to fit)" : (info && info.frames.failed ? " (a live frame fell back to its poster)" : "");
+      toast("Copied as PNG" + extra);
+    };
+    // any clipboard refusal downloads the file instead — never silently nothing
+    var fallback = function () {
+      blobP.then(function (b) { downloadPng(b, name); toast("Clipboard refused it — downloaded " + name); }, function () {});
+    };
+    blobP.catch(function () { toast("Couldn't render that as a PNG"); });
+    if (wrote) wrote.then(ok, fallback); else blobP.then(function (b) { downloadPng(b, name); toast("This browser can't put images on the clipboard — downloaded " + name); }, function () {});
+  }
+
   // ---- selection toolbar (sticky / shape / draw / table) -------------------
   var selBar, palette, lockMenu, fontMenu, picker, catalog = null;
   function showSelBar(node) {
@@ -2251,8 +2382,13 @@
   var PALETTED = { sticky: 1, text: 1, shape: 1, draw: 1, section: 1 };
   var KIND = { sticky: "sticky", text: "text", image: "image", tile: "prototype", arrow: "connector", draw: "drawing", shape: "shape", section: "section", table: "table", stamp: "stamp" };
   function nodeKind(node) { return KIND[node.type] || "node"; }
+  // The take-it-with-you group, closing every selection bar: a picture of it (⌘⇧C) and a link
+  // to it. The bar is single-selection only, so multi-select capture stays keyboard-only.
   function addLinkBtn(node) {
     if (selBar.childNodes.length) selBar.appendChild(el("div", { class: "div" }));
+    var c = el("button", { type: "button", class: "btn", title: "Copy as PNG (⌘⇧C)", html: lucideIcon(I_CAMERA) });
+    guard(c); c.addEventListener("click", function (e) { e.stopPropagation(); copyAsPng(); });
+    selBar.appendChild(c);
     var b = el("button", { type: "button", class: "btn", title: "Copy link to this " + nodeKind(node), html: lucideIcon(I_LINK) });
     guard(b); b.addEventListener("click", function (e) { e.stopPropagation(); copyNodeLink(node); });
     selBar.appendChild(b);
@@ -2422,6 +2558,7 @@
   var I_PLUS = '<path d="M5 12h14"/><path d="M12 5v14"/>'; // plus
   var I_IMAGE = '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'; // image
   var I_LINK = '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'; // link (Lucide)
+  var I_CAMERA = '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>'; // camera (Lucide)
   var I_PROTO = '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4"/><path d="M2 8h20"/><path d="M6 4v4"/>'; // app-window
   var IC_ELBOW = '<path d="m10 9 5-5 5 5"/><path d="M4 20h7a4 4 0 0 0 4-4V4"/>'; // corner-right-up
   var IS_FLOW = '<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>'; // network

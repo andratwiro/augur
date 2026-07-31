@@ -8,6 +8,7 @@
 > stickies, 16 shapes + connectors, text, sections, tables, stamps, speech bubbles, insert
 > picker), marquee/Space-pan/pinch, ⌘D duplicate, **Option-drag to duplicate**, **⌘C/⌘X/⌘V copy-cut-paste across tabs and
 > boards** (system clipboard, so a second board in a second tab pastes the same selection),
+> **⌘⇧C copy as PNG** (a picture of the selection on the clipboard at 2x, whatever the zoom),
 > ⌘Z/⌘⇧Z **undo/redo** (per-user — never
 > reverts a teammate), 4-corner resize (Shift = aspect), **smart snapping with red alignment
 > guides** (⌘ bypasses), Shift-drag axis lock, non-destructive image crop, sections that
@@ -261,6 +262,70 @@ tomorrow, all paste the same thing.
   hand the cleaned markup (whitelisted tags, zero attributes) to a live element. Don't "simplify"
   this back to `box.innerHTML = html`.
 
+## Copy as PNG (⌘⇧C — added 2026-07-31)
+
+A picture of the selection, straight onto the system clipboard, so a board can be pasted into
+a chat without a manual screenshot. Also the camera button on the selection toolbar (that bar
+is single-selection only, so multi-select capture stays keyboard-only). It **re-renders** the
+nodes rather than grabbing the screen: 2x the node's NATURAL size regardless of
+`board.view.scale` (a tile you're reading at 30% still comes out crisp), exact node bounds, no
+permission prompt. The rasterizer is ~350 lines in **`src/canvas/capture.js`**, exposing one
+board-agnostic `nodesToPng({els, rect, scale, background, poster, onInfo})`; `canvas.js` lazy-loads
+it from `/__canvas/capture.js` on the first ⌘⇧C, so no board's `index.html` gains a script tag
+and a session that never uses it pays nothing.
+
+- **SCREENSHOT semantics, deliberately unlike Figma's** cut-out-on-transparency: the frame is
+  the selection's box + a 12px bleed, holding *everything visible in that rectangle* — paper,
+  dot grid, and every node that overlaps it. A note on a section brings the section's colour
+  with it, which is what ⌘⇧4 would have given you. **Stripped as chrome:** selection rings,
+  resize handles, the tile hit overlay and drag grip, peer selection/focus rings. Peer cursors,
+  presence chips, the floating toolbar and comment pins need no stripping at all — they live
+  outside `#gvc-world` (on `body` or in the review overlay's shadow root) and are never cloned.
+- **Kept as content:** tile name chips, section labels and image name labels — rendered at
+  their 100%-zoom size (their live counter-scale is reset), and the capture box GROWS upward to
+  hold them, or the shot slices the name off the top.
+- **Three layers, composited, so one bad node degrades instead of killing the shot:** paper +
+  dot grid drawn natively into the 2D context; the nodes cloned into a mini-world at scale 1 and
+  rasterized through `<foreignObject>`; then each live tile rasterized in its OWN isolated pass.
+  Tiles are separate because a framed page carries its own stylesheet, which would leak over
+  every other node in a shared document. The node passes are **cut at each tile** so z-order
+  still holds (a note dropped on a prototype stays on top of it).
+- **Fallback chain for a tile:** live frame → the tile's poster (`node.thumb || url +
+  "preview.webp"`) → a neutral placeholder. The poster is what the node pass draws in the frame
+  box anyway; a successful live pass simply paints over it.
+- Clipboard failure **downloads the PNG** instead and says so. A ~40MP cap halves the scale
+  rather than emitting a broken blob.
+
+**Gotchas (each bought with a real bug):**
+- ⚠️ **The SVG must be a `data:` URL, never a `blob:` URL.** An `<img>` loads the same SVG from
+  either, but the blob one **taints the canvas** (opaque origin) — and the taint only surfaces
+  at the very end, as `toBlob` throwing `SecurityError`. Verified in Chromium: data = clean,
+  blob = tainted.
+- ⚠️ **A rasterizing SVG is frozen at time ZERO**, so `animation: rise .45s both` is caught at
+  its FIRST keyframe — usually `opacity: 0`. A slide deck came out as an empty panel with only
+  its `position:fixed` nav and footer drawn. The fix is `animation-duration:0s` +
+  `animation-delay:0s` (NOT `animation:none`), which lands every animation on its END state.
+- ⚠️ **Nothing is fetched during rasterization.** Stylesheets are read out of
+  `document.styleSheets`, every `url()` in them is absolutized and swallowed as a data URI, and
+  every `<img>` src is swapped for one. Anything that can't be inlined is dropped rather than
+  left as a broken reference. Cross-origin sheets (`cssRules` throws) are simply skipped.
+- ⚠️ **Chrome-class stripping runs on the ENGINE's nodes only.** A framed page is somebody
+  else's markup, where a class called `sel` or `active` is theirs and means something.
+- A clone is inert markup, so live DOM state has to be written down: `<canvas>` → `toDataURL`
+  as an `<img>`, input/textarea/select values → attributes. Source and clone are walked in
+  parallel (`querySelectorAll` is document order in both).
+- **⚠️ ORDER TRAP in the keydown handler:** with Shift held `e.key` is `"C"`, so the plain ⌘C
+  branch matches ⌘⇧C too. The PNG branch sits ABOVE it and tests `e.shiftKey`; the ⌘C branch
+  tests `!e.shiftKey`. Both guards must stay.
+- The comment overlay (`src/review/comments.js`) used to own ⌘⇧C: its Shift+C binding is on
+  `window` in the CAPTURE phase with `preventDefault()` and never excluded `metaKey`/`ctrlKey`,
+  so ⌘⇧C silently toggled the overlay on **every prototype in every instance**. Fixed 2026-07-31.
+
+**Known limits (accepted):** while *interacting* with a tile (double-clicked into a prototype)
+the iframe owns the keyboard, so ⌘⇧C does nothing — Esc out, then capture. A framed page's own
+scroll position isn't reproduced. On Windows Chrome `Ctrl+Shift+C` is DevTools and can't be
+intercepted by a page (macOS Chrome is free — inspect element is ⌘⌥C).
+
 ## Settled decisions (were open, now aren't)
 
 - **Engine is a shared Augur asset**, never baked per-canvas — a canvas is a *capability*;
@@ -274,6 +339,8 @@ tomorrow, all paste the same thing.
 
 - **Engine:** `src/canvas/canvas.js` + `canvas.css` (this repo), emitted to `dist/__canvas/`
   by `build.js`, served public via `isPublicPath()`. The js header carries a section MAP.
+  `capture.js` rides along in the same copy step — it is on NO page, `canvas.js` fetches it by
+  absolute path on the first ⌘⇧C.
 - **Board doc:** worker `boardApi` (`/__board?path=<url>`), KV key `board:<path>`, 20MB cap.
   **PUBLIC route** (a canvas is a published prototype — no login to load). While a room
   socket is live the **BoardRoom DO persists instead of the client** (see Multiplayer).
@@ -679,7 +746,7 @@ Do this **unless prompted otherwise**.
   tool state is one `TOOL` object (`setTool()`), sub-toolbars sync from it (`syncBars()`). Shortcuts:
   V select · H hand · M marker · S sticky · T text · E stamp (radial wheel picker) · R square ·
   O circle · L line · X elbow · ⇧S section · ⇧T table · C comment · Esc back to select.
-  (⌘C/⌘X/⌘V and ⌘D/⌘Z/⌘⇧Z are handled ahead of the tool letters, so ⌘C never toggles comments.)
+  (⌘⇧C, ⌘C/⌘X/⌘V and ⌘D/⌘Z/⌘⇧Z are handled ahead of the tool letters, so ⌘C never toggles comments.)
   Drawing keeps the marker armed; shapes/sticky/text/table place once then return to select; stamps stay
   armed. The eraser deletes whole `draw` strokes only. Sections render behind
   everything (`insertBefore`). The illustrated pen/sticky/cluster arts are inline SVGs in
@@ -689,8 +756,9 @@ Do this **unless prompted otherwise**.
   with Lucide paths, don't hand-draw new glyphs. The **speech-bubble tool is the comment
   layer**: it dispatches the overlay's own Shift+C keydown (`toggleComments()`), no new node
   type. Default sticky color is the soft blue (`#a9cbf5`).
-- **Deep links to one node** (2026-07-28): the last button on the selection bar — present for
-  **every** node type — copies `<board URL>#n=<node id>`. Opening that link flies the camera
+- **Deep links to one node** (2026-07-28): the last button on the selection bar (the camera —
+  copy as PNG — sits just before it) — present for **every** node type — copies
+  `<board URL>#n=<node id>`. Opening that link flies the camera
   to the node (`flyToRect`, fit with a margin, capped at 1:1 so a sticky doesn't slam you to
   400%), selects it and pulses it. Node ids are stable in the saved doc, so a link survives
   everything except deleting the node (which gets a toast, not a dead board).
