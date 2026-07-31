@@ -156,6 +156,9 @@ export class ClawdCanvas {
       const p = this.peers[m.sid]; if (p) p.sel = m.ids || null; // what each human has selected — the politeness guard reads this
     } else if (m.t === 'chat') {
       if (this.onChat) { try { this.onChat({ sid: m.sid, name: m.name, kind: m.kind || null, text: m.text }); } catch {} }
+    } else if (m.t === 'kick') {
+      // evicted from the board by a human — the room only sends this to the target
+      if (m.sid === this.sid && this.onKick) { try { this.onKick({ by: m.by || '' }); } catch {} }
     } else if (m.t === 'pose') {
       const p = this.peers[m.sid]; if (p) p.pose = m.pose || null;
     } else if (m.t === 'doc') {
@@ -498,6 +501,21 @@ if (isMain) {
     const evFile = join(dirname(cmdFile), 'clawd-events.jsonl');
     const logEvent = (o) => { try { appendFileSync(evFile, JSON.stringify({ ts: new Date().toISOString(), ...o }) + '\n'); } catch {} };
     c.onChat = (m) => { if (m.kind !== 'agent') logEvent({ event: 'chat', from: m.name, text: m.text }); };
+    // KICKED — a human removed this agent from the board (the × on its chip in the agents
+    // strip). A real eviction: drop the bubble, close the socket, END THE PROCESS. The event
+    // is logged because that is what makes the kick stick — the agent reads its event file at
+    // the start of a turn, so it learns it was removed instead of cheerfully relaunching its
+    // puppet and wandering back in. No walk-off animation: that is the polite exit of a
+    // session going quiet, and a kick should take effect now. Just a beat to clear the bubble
+    // durably, since a half-sent unsay leaves an orphan node on the board.
+    c.onKick = (m) => {
+      logEvent({ event: 'kicked', by: m.by || '' });
+      try { c.pose('happy'); c.say('kicked 👋'); } catch {}
+      setTimeout(() => {
+        try { c.unsay(); } catch {}
+        setTimeout(() => { try { c.close(); } catch {} setTimeout(() => process.exit(0), 200); }, 250);
+      }, 700);
+    };
     let offset = readFileSync(cmdFile, 'utf8').length; // ignore stale commands from a past run
     let queue = Promise.resolve();
     let pending = 0, lastCmdAt = Date.now(), explicitPose = 'idle', chillOn = true;

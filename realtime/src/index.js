@@ -204,6 +204,23 @@ export class BoardRoom {
       if (text) this.broadcast({ t: "chat", sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, text }, ws);
       return;
     }
+    if (msg.t === "kick") {
+      // Remove an AGENT from the board. Delivered only to the target, whose client ends its
+      // own process on receipt — a real eviction, not a UI one, which is the only kind worth
+      // having (hiding the avatar would leave the thing still editing the board).
+      // AGENTS ONLY: a human's tab belongs to that human, not to whoever else is in the room.
+      // Pure relay, nothing stored — a room that remembered its evictions would need an
+      // un-ban path and a policy about who may set one. The record that it happened belongs
+      // with the agent instead, in its own event log, where its next turn will read it.
+      const target = typeof msg.sid === "string" ? msg.sid : "";
+      if (!target) return;
+      for (const peer of this.ctx.getWebSockets()) {
+        const p = peer.deserializeAttachment();
+        if (!p || p.sid !== target || p.kind !== "agent") continue;
+        try { peer.send(JSON.stringify({ t: "kick", sid: target, by: a.name || "" })); } catch (e) {}
+      }
+      return;
+    }
     if (msg.t === "pose") {
       // an agent's Clawd expression (idle/coding/sleeping/…) — stored per-session so late
       // joiners see the right face, and relayed so everyone updates it live.
