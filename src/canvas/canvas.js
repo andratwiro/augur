@@ -1867,7 +1867,20 @@
       compressImage(f, function (dataUrl, dim) { addNode({ type: "image", x: w.x + i * 24, y: w.y + i * 24, w: dim.w, h: dim.h, src: dataUrl }); });
     });
   });
-  // Compress, then get the image OUT of the document: upload the JPEG once to /__asset
+  // Does the drawn bitmap actually USE its alpha channel? JPEG has none, so re-encoding a
+  // cut-out PNG as JPEG composites it onto the canvas's transparent black and lands a solid
+  // BLACK box on the board (bit by exactly that on a dropped lens-flare PNG). Photos are the
+  // common case and JPEG is much smaller than the alpha-capable formats, so don't switch
+  // format blind — look. A JPEG source can't carry alpha at all, so skip the scan there.
+  // getImageData can't taint here: the bitmap came from a local File, not a remote URL.
+  function usesAlpha(ctx, w, h, file) {
+    if (file && file.type === "image/jpeg") return false;
+    var d;
+    try { d = ctx.getImageData(0, 0, w, h).data; } catch (err) { return true; } // can't tell → keep alpha
+    for (var i = 3; i < d.length; i += 4) if (d[i] < 255) return true;
+    return false;
+  }
+  // Compress, then get the image OUT of the document: upload it once to /__asset
   // (content-hashed, immutable) and hand back the tiny URL — so the board doc, every KV
   // write, every room seed and every diff-tick stringify stops carrying the pixels. The
   // data-URL path survives as the fallback (upload failed / offline sandbox); old boards
@@ -1878,21 +1891,30 @@
       var scale = Math.min(1, IMG_MAX_DIM / Math.max(img.width, img.height));
       var w = Math.round(img.width * scale), h = Math.round(img.height * scale);
       var c = document.createElement("canvas"); c.width = w; c.height = h;
-      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      var ctx = c.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(img.src);
       var dw = Math.min(w, 360), dh = Math.round(dw * h / w);
+      // Transparent images go out as WebP: it keeps alpha and stays far smaller than PNG on
+      // the photo-ish artwork these tend to be. Quality is higher than IMG_QUALITY because
+      // that aggressive 0.55 visibly bands the smooth gradients cut-outs are usually made of.
+      // A browser that can't encode the type falls back to PNG on its own (the toBlob spec),
+      // which also keeps alpha — so label the upload from blob.type, not from what we asked
+      // for. /__asset already accepts and stores jpeg/png/webp/gif and serves the type back.
+      var alpha = usesAlpha(ctx, w, h, file);
+      var fmt = alpha ? "image/webp" : "image/jpeg", quality = alpha ? 0.8 : IMG_QUALITY;
       function dataUrlFallback() {
-        var out; try { out = c.toDataURL("image/jpeg", IMG_QUALITY); } catch (err) { out = c.toDataURL(); }
+        var out; try { out = c.toDataURL(fmt, quality); } catch (err) { out = c.toDataURL(); }
         cb(out, { w: dw, h: dh });
       }
       try {
         c.toBlob(function (blob) {
           if (!blob) return dataUrlFallback();
-          fetch("/__asset", { method: "POST", headers: { "content-type": "image/jpeg" }, body: blob })
+          fetch("/__asset", { method: "POST", headers: { "content-type": blob.type || fmt }, body: blob })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (d) { if (d && d.url) cb(d.url, { w: dw, h: dh }); else dataUrlFallback(); })
             .catch(dataUrlFallback);
-        }, "image/jpeg", IMG_QUALITY);
+        }, fmt, quality);
       } catch (err) { dataUrlFallback(); }
     };
     img.src = URL.createObjectURL(file);
