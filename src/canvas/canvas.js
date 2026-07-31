@@ -803,14 +803,38 @@
   function nameLabel(node) {
     return wireRename(el("div", { class: "gvc-name", text: node.name || "", contentEditable: "false", title: "Double-click to rename" }), node);
   }
+  // An image node is a white CARD (paper stock + a drop shadow) — right for a photo, wrong
+  // for a cut-out, which then reads as a flare floating on a white rectangle. node.alpha (set
+  // at drop/paste time) drops the stock and the shadow so a transparent image sits directly
+  // on the board. Images that predate the flag have it undefined, so probe them once on load.
   function renderImage(node) {
     node.w = node.w || 240; node.h = node.h || 180;
     var img = el("img", { src: node.src, alt: node.name || "" });
     if (node.crop) applyCrop(img, node.crop);
-    var host = el("div", { class: "gvc-image" }, [el("div", { class: "gvc-imgwrap" }, [img])]);
+    var host = el("div", { class: "gvc-image" + (node.alpha ? " alpha" : "") }, [el("div", { class: "gvc-imgwrap" }, [img])]);
+    if (node.alpha === undefined) img.addEventListener("load", function () { probeAlpha(node, img, host); });
     host.appendChild(nameLabel(node));
     place(host, node);
     return host;
+  }
+  // Legacy backfill. Cheap on purpose: alpha survives a downscale, so probe a thumbnail-sized
+  // copy rather than the full bitmap. The result is applied to the ELEMENT only and never
+  // written to node.alpha — persisting it would push a doc write (and a room op) for every
+  // image on every load, and the probe is cheap enough to just redo. Assets are same-origin,
+  // so the canvas doesn't taint; a cross-origin src throws and is simply left as a card.
+  function probeAlpha(node, img, host) {
+    if (!img.naturalWidth) return;
+    try {
+      var s = Math.min(1, 128 / Math.max(img.naturalWidth, img.naturalHeight));
+      var pw = Math.max(1, Math.round(img.naturalWidth * s)), ph = Math.max(1, Math.round(img.naturalHeight * s));
+      var c = document.createElement("canvas"); c.width = pw; c.height = ph;
+      var ctx = c.getContext("2d");
+      ctx.drawImage(img, 0, 0, pw, ph);
+      var d = ctx.getImageData(0, 0, pw, ph).data;
+      for (var i = 3; i < d.length; i += 4) {
+        if (d[i] < 255) { host.classList.add("alpha"); return; }
+      }
+    } catch (err) { /* tainted or oversized — leave it as a card */ }
   }
   // A crop is NON-destructive: src keeps the full image, node.crop = the visible window as
   // fractions {x,y,w,h} of it. Percent sizing (relative to the clipping wrap) keeps the
@@ -1864,7 +1888,7 @@
     var w = screenToWorld(e.clientX, e.clientY);
     Array.prototype.forEach.call(files, function (f, i) {
       if (!/^image\//.test(f.type)) return;
-      compressImage(f, function (dataUrl, dim) { addNode({ type: "image", x: w.x + i * 24, y: w.y + i * 24, w: dim.w, h: dim.h, src: dataUrl }); });
+      compressImage(f, function (dataUrl, dim) { addNode({ type: "image", x: w.x + i * 24, y: w.y + i * 24, w: dim.w, h: dim.h, src: dataUrl, alpha: dim.alpha || undefined }); });
     });
   });
   // Does the drawn bitmap actually USE its alpha channel? JPEG has none, so re-encoding a
@@ -1905,14 +1929,14 @@
       var fmt = alpha ? "image/webp" : "image/jpeg", quality = alpha ? 0.8 : IMG_QUALITY;
       function dataUrlFallback() {
         var out; try { out = c.toDataURL(fmt, quality); } catch (err) { out = c.toDataURL(); }
-        cb(out, { w: dw, h: dh });
+        cb(out, { w: dw, h: dh, alpha: alpha });
       }
       try {
         c.toBlob(function (blob) {
           if (!blob) return dataUrlFallback();
           fetch("/__asset", { method: "POST", headers: { "content-type": blob.type || fmt }, body: blob })
             .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (d) { if (d && d.url) cb(d.url, { w: dw, h: dh }); else dataUrlFallback(); })
+            .then(function (d) { if (d && d.url) cb(d.url, { w: dw, h: dh, alpha: alpha }); else dataUrlFallback(); })
             .catch(dataUrlFallback);
         }, fmt, quality);
       } catch (err) { dataUrlFallback(); }
@@ -2036,6 +2060,7 @@
     if (n.type === "image") {
       n.src = clipSrc(raw.src);
       if (!n.src) return null; // an image we can't vouch for the src of isn't an image
+      if (raw.alpha) n.alpha = true; // carry the cut-out flag, or the paste flashes a white card until the probe lands
       if (raw.crop) n.crop = { x: clipNum(raw.crop.x, 0), y: clipNum(raw.crop.y, 0), w: clipNum(raw.crop.w, 1), h: clipNum(raw.crop.h, 1) };
     } else if (n.type === "tile") {
       n.url = clipPath(raw.url);
@@ -2112,7 +2137,7 @@
       var at = clipTarget(), landed = [];
       imgs.forEach(function (f, k) {
         compressImage(f, function (src, dim) {
-          var n = addNode({ type: "image", x: at.x + k * 24, y: at.y + k * 24, w: dim.w, h: dim.h, src: src });
+          var n = addNode({ type: "image", x: at.x + k * 24, y: at.y + k * 24, w: dim.w, h: dim.h, src: src, alpha: dim.alpha || undefined });
           pop(n.id); landed.push(n.id); setSelection(landed.slice());
           scheduleSave();
         });
