@@ -152,6 +152,17 @@ svg.stk { display: block; overflow: visible; }
 .gvc-resize.ne { left: 100%; top: 0; cursor: nesw-resize; }
 .gvc-resize.sw { left: 0; top: 100%; cursor: nesw-resize; }
 .gvc-resize.se { left: 100%; top: 100%; cursor: nwse-resize; }
+/* edge handles: invisible strips straddling each border along its FULL length, so a side can
+   be grabbed anywhere — not only at a corner. 8px thick, centred on the border by the negative
+   margin; the JS counter-scales the thickness axis only (scaleY/scaleX), so they stay 8px on
+   screen at any zoom while still spanning the side. Below the corners, which keep z-index 3. */
+.gvc-resize.edge { border: 0; border-radius: 0; background: transparent; box-shadow: none; z-index: 2; }
+.gvc-resize.n, .gvc-resize.s { left: 0; width: 100%; height: 8px; margin: -4px 0 0 0; cursor: ns-resize; }
+.gvc-resize.e, .gvc-resize.w { top: 0; height: 100%; width: 8px; margin: 0 0 0 -4px; cursor: ew-resize; }
+.gvc-resize.n { top: 0; }
+.gvc-resize.s { top: 100%; }
+.gvc-resize.w { left: 0; }
+.gvc-resize.e { left: 100%; }
 
 /* ---- image crop mode (double-click an image; non-destructive) -------------
    .gvc-crop = the full image ghosted at its world rect; .gvc-cropwin = the visible window at

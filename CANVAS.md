@@ -10,7 +10,8 @@
 > boards** (system clipboard, so a second board in a second tab pastes the same selection),
 > **⌘⇧C copy as PNG** (a picture of the selection on the clipboard at 2x, whatever the zoom),
 > ⌘Z/⌘⇧Z **undo/redo** (per-user — never
-> reverts a teammate), 4-corner resize (Shift = aspect), **smart snapping with red alignment
+> reverts a teammate), 4-corner + 4-edge resize (corners: Shift = aspect; edges resize one
+> axis), **smart snapping with red alignment
 > guides** (⌘ bypasses), Shift-drag axis lock, non-destructive image crop, sections that
 > carry their contents, auto-grow/shrink boxes (`hFixed` after a manual resize).
 > **Text** — real rich text (`node.rich`, sanitized HTML; `node.text` stays in sync for old
@@ -176,7 +177,8 @@ rules that fix that:
    writes. DOM is plenty at this scale (tens–low-hundreds of nodes); no WebGL. Virtualize only
    if boards get big (not v1).
 2. **Node registry** — pluggable node types, each `render + serialize`. Every box resizes from
-   **all four corners** and every text-bearing node takes **rich text** (selection-level
+   **all four corners and all four edges** (a text box has no draggable height, so it takes the
+   e/w edges only) and every text-bearing node takes **rich text** (selection-level
    bold/italic/strike + bullet/numbered lists, `node.rich`). Today: `sticky`, `text`
    (auto-adapt `max-content` until resized, then fixed-width wrapping + node-level color/fontSize/bold/italic/strike/align),
    `image`, `tile` (prototype embed), `arrow` (kinds: straight/elbow/curved/line), `draw`
@@ -646,6 +648,16 @@ Do this **unless prompted otherwise**.
   handle paints at 5px. `scaleDecor` counter-scales them (`transform: scale(1/zoom)`, origin
   centre, position `left/top: 0|100%` + a half-size negative margin so the centre sits exactly on
   the corner) and is registered on `transformCbs` — same trick as tile/section chrome.
+- **An edge handle can only counter-scale ONE axis.** The n/s/e/w handles are invisible 8px strips
+  spanning a whole side, so `scale(1/zoom)` would shrink their LENGTH too and they'd stop covering
+  the side. They get `scaleY(1/zoom)` (horizontal strips) or `scaleX(1/zoom)` (vertical) instead:
+  constant 8px screen thickness, full-length always. They sit at `z-index:2` under the corners, so
+  the last ~13px of each side still gives you the two-axis corner grab.
+- **The resize math is direction-driven, and a one-letter direction is not a corner.** The drag
+  branch derives `west/north` (which side is pinned) plus `doW/doH` (which axis moves at all) by
+  explicit membership — inferring them from character positions (`dir.charAt(1) === "w"`) silently
+  mis-reads `"w"` as not-west. An edge freezes the other axis at its drag-start value, and Shift's
+  aspect lock is corner-only: applied to an edge it would move a side you never grabbed.
 - **Shift is overloaded on a node drag** — shift-CLICK toggles the selection, shift-DRAG locks the
   axis. Deciding at pointerDOWN broke one of them (the toggle removed the node, so the drag moved
   an empty selection). Decide at pointer-UP: apply the toggle only if `drag.moved` is false.

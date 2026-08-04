@@ -306,9 +306,15 @@
     }
     if (!node.locked) {
       // ALL FOUR corners resize (nw/ne/sw/se) — dragging a west/north corner moves the
-      // node's x/y as well as its size, so the opposite corner stays pinned.
-      ["nw", "ne", "sw", "se"].forEach(function (dir) {
-        var rz = el("div", { class: "gvc-resize " + dir });
+      // node's x/y as well as its size, so the opposite corner stays pinned. The four EDGES
+      // (n/s/e/w) resize one axis: invisible strips straddling the whole border, so you can
+      // grab a side anywhere along it, not just at a corner. Corners sit above them (z-index)
+      // so the last ~13px of each side still gives you the two-axis grab.
+      // A text box has no draggable height (it wraps and auto-grows), so it gets e/w only.
+      var dirs = ["nw", "ne", "sw", "se", "e", "w"];
+      if (node.type !== "text") dirs.push("n", "s");
+      dirs.forEach(function (dir) {
+        var rz = el("div", { class: "gvc-resize " + dir + (dir.length === 1 ? " edge" : "") });
         rz.addEventListener("pointerdown", function (e) { startResize(e, node, dir); });
         host.appendChild(rz); decorEls.push(rz);
       });
@@ -316,10 +322,16 @@
     }
   }
   // handles are world-space children, so counter-scale them (like tile/section chrome) to keep
-  // a constant ~13px screen size — otherwise they vanish when zoomed out and bloat zoomed in
+  // a constant ~13px screen size — otherwise they vanish when zoomed out and bloat zoomed in.
+  // An edge strip spans its whole side, so only its THICKNESS is counter-scaled (scaleY on a
+  // horizontal strip, scaleX on a vertical one) — centred, so it keeps straddling the border.
   function scaleDecor() {
-    var s = board.view.scale;
-    decorEls.forEach(function (e) { if (e.classList.contains("gvc-resize")) e.style.transform = "scale(" + 1 / s + ")"; });
+    var s = board.view.scale, inv = 1 / s;
+    decorEls.forEach(function (e) {
+      if (!e.classList.contains("gvc-resize")) return;
+      if (!e.classList.contains("edge")) e.style.transform = "scale(" + inv + ")";
+      else e.style.transform = (e.classList.contains("n") || e.classList.contains("s") ? "scaleY(" : "scaleX(") + inv + ")";
+    });
   }
   transformCbs.push(scaleDecor);
 
@@ -1608,20 +1620,23 @@
       setSelection(hits);
     }
     else if (drag.mode === "resize") {
-      // Any of the four corners: the grabbed corner follows the pointer, the OPPOSITE corner
-      // stays pinned — so a west/north drag changes x/y as well as w/h. Shift = keep the
-      // original aspect ratio.
+      // Any corner OR any edge: what you grabbed follows the pointer, the opposite side stays
+      // pinned — so a west/north drag changes x/y as well as w/h. An edge (n/s/e/w) drives ONE
+      // axis and freezes the other. Shift = keep the original aspect ratio (corners only:
+      // locking the ratio off an edge would move a side you never touched).
       var n2 = drag.node, re = nodeEls[n2.id], d = drag.dir || "se";
-      var west = d.charAt(1) === "w", north = d.charAt(0) === "n";
-      var nw2 = Math.max(MIN_NODE, drag.ow + (west ? -dx : dx) / sc);
-      var nh2 = Math.max(MIN_NODE, drag.oh + (north ? -dy : dy) / sc);
-      if (e.shiftKey && n2.type !== "text" && drag.ow && drag.oh) {
+      var west = d === "w" || d === "nw" || d === "sw", east = d === "e" || d === "ne" || d === "se";
+      var north = d === "n" || d === "nw" || d === "ne";
+      var doW = west || east, doH = north || d === "s" || d === "sw" || d === "se";
+      var nw2 = doW ? Math.max(MIN_NODE, drag.ow + (west ? -dx : dx) / sc) : drag.ow;
+      var nh2 = doH ? Math.max(MIN_NODE, drag.oh + (north ? -dy : dy) / sc) : drag.oh;
+      if (e.shiftKey && doW && doH && n2.type !== "text" && drag.ow && drag.oh) {
         var ar = drag.ow / drag.oh;
         if (nw2 / ar >= nh2) nh2 = Math.max(MIN_NODE, nw2 / ar); else nw2 = Math.max(MIN_NODE, nh2 * ar);
       } else if (!(e.metaKey || e.ctrlKey)) {
-        // snap the two edges you're actually dragging to the neighbours' alignment lines
+        // snap the edges you're actually dragging to the neighbours' alignment lines
         var pr2 = { x: west ? drag.ox + (drag.ow - nw2) : drag.ox, y: north ? drag.oy + (drag.oh - nh2) : drag.oy, w: nw2, h: nh2 };
-        var sn2 = snapRect(pr2, [west ? pr2.x : pr2.x + pr2.w], [north ? pr2.y : pr2.y + pr2.h]);
+        var sn2 = snapRect(pr2, doW ? [west ? pr2.x : pr2.x + pr2.w] : [], doH ? [north ? pr2.y : pr2.y + pr2.h] : []);
         if (sn2.dx) nw2 = Math.max(MIN_NODE, nw2 + (west ? -sn2.dx : sn2.dx));
         if (sn2.dy) nh2 = Math.max(MIN_NODE, nh2 + (north ? -sn2.dy : sn2.dy));
         showGuides(sn2.guides);
