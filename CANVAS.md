@@ -689,7 +689,12 @@ Do this **unless prompted otherwise**.
 - **Stickies/shapes size themselves to their text** (`autoFit(node, allowShrink)`): grow so they
   never clip, and SHRINK back on edit while the height is still automatic. `allowShrink` is false
   on render, so opening an old board never reflows it; dragging a resize handle sets
-  `node.hFixed` and the box stops hugging. A shape's text is inset 12% a side (hence `/0.76`) and
+  `node.hFixed` and the box stops hugging.
+  **A sticky's auto floor is the size it was dropped at** (`STICKY_H`), not the CSS `min-height`:
+  with the CSS floor, typing two words into a fresh 160px note collapsed it to 96 — the note you
+  dropped is the note you should still have. The floor is skipped when `hFixed` (a height you
+  dragged is yours) and on render (`allowShrink` false), so no existing board is regrown on open;
+  an old collapsed sticky pops back to the floor the next time you edit it. A shape's text is inset 12% a side (hence `/0.76`) and
   its height is capped by those insets, so `scrollHeight` can't see that the content got shorter
   — measure the line blocks (`contentH`). Its `.gvc-txt` also needs `flex-direction: column`; as
   a flex ROW, rich-text line blocks lay out side by side.

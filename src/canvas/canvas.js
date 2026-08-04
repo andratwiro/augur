@@ -66,6 +66,9 @@
   // pastel sticky palette (white, grey, red, orange, yellow, green, teal, blue, purple, pink)
   var STICKY_COLORS = ["#ffffff", "#e9ecef", "#f4a9a8", "#f7c99a", "#fce495", "#bfe5a0", "#a9e5db", "#a9cbf5", "#cbb8f2", "#f5b3d7"];
   var DEFAULT_STICKY = "#a9cbf5"; // soft default blue (Rob's pick)
+  // the size a sticky is dropped at — and, while its height is still automatic, the floor
+  // autoFit will not shrink it below (a note you typed two words into stays a note)
+  var STICKY_W = 160, STICKY_H = 160;
   // marker palette (draw sub-toolbar dots, left to right)
   var DRAW_COLORS = ["#1e1e1e", "#f24822", "#ff9f2e", "#ffd233", "#35c759", "#3aa2ff", "#8a5cff", "#ffffff"];
   var TEXT_COLORS = ["#1e1e1e", "#6b7280", "#e03131", "#e8590c", "#f0a000", "#2f9e44", "#0c8599", "#1971c2", "#7048e8", "#c2255c"];
@@ -725,12 +728,16 @@
   // SHRINKS back when you delete text. Dragging a resize handle sets an explicit height
   // (node.hFixed) — from then on the box only ever grows, never shrinks under you.
   // allowShrink is false on render, so opening an old board never reflows it.
+  // A sticky AUTO-SIZING has the size it was dropped at (STICKY_H) as its floor: a fresh note you
+  // type two words into must stay the note you dropped — only text that outgrows it makes it
+  // taller. A height you set by hand (hFixed) is yours, floor or no floor; and the floor is
+  // deliberately NOT applied on render, so opening an old board still never reflows it.
   function autoFit(node, allowShrink) {
     if (!node || (node.type !== "sticky" && node.type !== "shape")) return;
     var host = nodeEls[node.id]; if (!host) return;
     var txt = host.querySelector(".gvc-txt"); if (!txt) return;
     var need, min;
-    if (node.type === "sticky") { need = txt.scrollHeight + 40; min = 96; } // 14px top + 26px bottom padding; 96 = the CSS min-height
+    if (node.type === "sticky") { need = txt.scrollHeight + 40; min = allowShrink && !node.hFixed ? STICKY_H : 96; } // 14px top + 26px bottom padding; 96 = the CSS min-height
     else { need = contentH(txt) / 0.76; min = MIN_NODE; }                   // shape text is inset 12% a side
     need = Math.max(min, Math.ceil(need));
     var h = node.h || 0, target = h;
@@ -769,7 +776,7 @@
     if (node.type === "text") txt.style.color = node.color || "";
   }
   function renderSticky(node) {
-    node.w = node.w || 160; node.h = node.h || 160;
+    node.w = node.w || STICKY_W; node.h = node.h || STICKY_H;
     var host = el("div", { class: "gvc-sticky" });
     host.style.background = node.color || DEFAULT_STICKY;
     var txt = editableText(node, host, "");
@@ -1719,7 +1726,7 @@
     else if (TOOL.type === "stamp") { var st = addNode({ type: "stamp", stamp: armedStamp, x: w.x - 32, y: w.y - 32, w: 64, h: 64 }); pop(st.id); /* stamps stay armed */ }
   }
   function spawnSticky(w) {
-    var n = addNode({ type: "sticky", x: w.x - 80, y: w.y - 80, w: 160, h: 160, text: "", color: DEFAULT_STICKY, author: ME });
+    var n = addNode({ type: "sticky", x: w.x - STICKY_W / 2, y: w.y - STICKY_H / 2, w: STICKY_W, h: STICKY_H, text: "", color: DEFAULT_STICKY, author: ME });
     select(n.id); pop(n.id); setTimeout(function () { enterEdit(n.id); }, 0);
     return n;
   }
