@@ -3149,7 +3149,11 @@
     });
     sessDigits.addEventListener("blur", sessCommitDigits);
     sessDigits.addEventListener("focus", function () { if (!sessDigits.readOnly) sessDigits.select(); });
-    var clock = el("div", { class: "clock" }, [el("div", { class: "ghost", text: "88:88", "aria-hidden": "true" }), sessDigits]);
+    // the ghost is an INPUT too, not a div: a single-line input vertically centers its
+    // text where a div sits it on the line box, so only a twin input renders the unlit
+    // 88:88 through the exact same path as the digits — pixel-identical cells
+    var ghost = el("input", { class: "ghost", value: "88:88", readOnly: true, tabIndex: -1, "aria-hidden": "true" });
+    var clock = el("div", { class: "clock" }, [ghost, sessDigits]);
 
     // idle: "+1 min" nudges the pending duration locally (the room only hears "start");
     // typing into the digits is the other, unchanged way in. Both clamp at 99:59.

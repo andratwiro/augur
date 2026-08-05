@@ -519,11 +519,11 @@ svg.stk { display: block; overflow: visible; }
   100% { transform: scale(var(--clawd-k, 1)) rotate(0deg); }
 }
 .gvc-cursor.agent.poked svg { animation: gvc-clawd-hop .7s cubic-bezier(.34, 1.56, .64, 1); }
-/* the presence row lives INSIDE the top-right card — no chrome of its own */
-#gvc-presence { display: flex; align-items: center; padding-left: 5px; }
+/* the presence row lives INSIDE the top-right card — no chrome of its own. The left
+   padding absorbs the -7px chip-overlap margin of whichever chip renders first (flex
+   `order` reorders them, so :first-child can't know which one that is). */
+#gvc-presence { display: flex; align-items: center; padding-left: 14px; }
 #gvc-presence.hidden { display: none; }
-/* the overlap margin is for chip-on-chip — the FIRST chip must not eat the card's padding */
-#gvc-presence .gvc-peerchip:first-child { margin-left: 0; }
 .gvc-peerchip { position: relative; width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); transition: transform .12s; }
 .gvc-peerchip.me { order: 1; }
 /* click a peer's face to fly to them; hover names them (our own label, not the OS tooltip —
@@ -644,16 +644,16 @@ svg.stk { display: block; overflow: visible; }
 
 /* the session inset: [mini record] [time or track name] [speaker while music plays] —
    a light-bordered segment when idle, colored fill when the room is live */
-.gvc-sesspill { border: 1px solid #e5e7eb; background: #fff; padding: 6px 11px; border-radius: 10px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 8px; }
+.gvc-sesspill { border: 1px solid #e5e7eb; background: #fff; padding: 5px 10px; border-radius: 10px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 7px; }
 .gvc-sesspill:hover, .gvc-sesspill.on { background: #f9fafb; }
 .gvc-sesspill .rec { display: flex; }
-.gvc-sesspill .rec svg { width: 24px; height: 24px; display: block; overflow: visible; }
+.gvc-sesspill .rec svg { width: 22px; height: 22px; display: block; overflow: visible; }
 .gvc-sesspill .rec .disc { transform-box: fill-box; transform-origin: center; }
 .gvc-sesspill .rec.spin .disc { animation: gvc-spin 2s linear infinite; }
 /* time (or name). Ghost = the pending duration in unlit gray; digits modes render in the
    seven-segment face, the name mode in the UI face */
 .gvc-sesspill .t { font-family: DSEG7, ui-monospace, monospace; font-weight: 700; font-size: 15px; letter-spacing: .04em; color: #cbccd0; }
-.gvc-sesspill .t[data-mode="name"] { font-family: inherit; font-weight: 500; font-size: 12.5px; letter-spacing: 0; color: #4338ca; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gvc-sesspill .t[data-mode="name"] { font-family: inherit; font-weight: 500; font-size: 12px; letter-spacing: 0; color: #4338ca; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gvc-sesspill .spk { display: none; color: #6366f1; padding-left: 8px; margin-left: 0; border-left: 1px solid #e5e7eb; align-self: stretch; align-items: center; }
 .gvc-sesspill .spk.shown { display: flex; }
 .gvc-sesspill .spk:hover { color: #4338ca; }
@@ -687,7 +687,7 @@ svg.stk { display: block; overflow: visible; }
 /* the clock: unlit 88:88 ghost under the live digits; the ghost copies the input's exact
    box metrics (font, size, padding, centering) so segments overlay segment-for-segment */
 #gvc-sesspanel .clock { position: relative; background: #f5f5f7; border-radius: 12px; }
-#gvc-sesspanel .clock .ghost { position: absolute; inset: 0; border: 1px solid transparent; padding: 18px 0; text-align: center; font-family: DSEG7, ui-monospace, monospace; font-size: 42px; font-weight: 700; letter-spacing: .06em; color: #e4e4e7; pointer-events: none; user-select: none; }
+#gvc-sesspanel .clock .ghost { position: absolute; inset: 0; width: 100%; box-sizing: border-box; border: 1px solid transparent; background: transparent; border-radius: 12px; padding: 18px 0; text-align: center; font-family: DSEG7, ui-monospace, monospace; font-size: 42px; font-weight: 700; letter-spacing: .06em; color: #e4e4e7; pointer-events: none; user-select: none; outline: none; }
 /* mid-edit values ("5:0", "15") center-float and can't sit on the fixed 88:88 cells —
    hide the ghost while typing; blur normalizes to mm:ss, which aligns again */
 #gvc-sesspanel .clock:focus-within .ghost { visibility: hidden; }
