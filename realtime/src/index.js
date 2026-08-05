@@ -28,10 +28,12 @@
  *                state working|idle|attention; kept on the attachment for late joiners) ·
  *                {t:"chat",text} (cursor chat — pure ephemeral relay) ·
  *                {t:"proto",id,ev} (demo sync in a live tile iframe) ·
+ *                {t:"timer",do:"start"|"add"|"pause"|"resume"|"stop",ms?} ·
+ *                {t:"music",do:"play"|"stop",track?,at?} (shared session — see below) ·
  *                {t:"doc",doc} (reply to needDoc/docreq)
- *   room→client: {t:"welcome",sid,color,peers,doc?,needDoc?} · {t:"join"|"leave",peer} ·
+ *   room→client: {t:"welcome",sid,color,peers,doc?,needDoc?,session?} · {t:"join"|"leave",peer} ·
  *                relayed cursor/ops/focus/sel/status/chat stamped with the sender's info ·
- *                {t:"doc",doc} · {t:"docreq"}
+ *                {t:"session",timer,music} · {t:"doc",doc} · {t:"docreq"}
  * cursor.drag is the drag fast-path: [{id,x,y,w,h},…] geometry for nodes mid-drag,
  * relayed verbatim on the cursor cadence (~20Hz) so remote drags glide instead of
  * stepping at the 120ms ops tick. Ephemeral — the durable version rides the ops tick.
@@ -63,6 +65,8 @@ export default {
 
 const BOARD_PREFIX = "board:";   // same key scheme as the Pages worker's /__board rail
 const PERSIST_MS = 45000;        // dirty → alarm → KV write; ≤ ~80 writes/hour per hot board
+const MAX_TIMER_MS = 99 * 60000 + 59000; // 99:59 — a session timer, not a scheduler
+const STALE_TIMER_MS = 3600000;  // an expired timer older than this is forgotten, not shown at 00:00
 
 export class BoardRoom {
   constructor(ctx, env) {
@@ -74,6 +78,8 @@ export class BoardRoom {
     this.coldWrite = false; // an alarm woke without a doc and asked a client for one
     this.alarmSet = false;
     this.sweptAt = 0;
+    this.sess = null;     // shared timer/music state (cache — reloaded from storage on demand)
+    this.sessQ = null;    // serializes session mutations (read-modify-write over storage)
     // clients ping every 25s; the runtime pongs WITHOUT waking the DO and stamps the
     // socket, so sweep() can spot zombies (dropped transports whose close never fired —
     // sends to them "succeed" into the void, so send-failure reaping can't catch them)
@@ -134,6 +140,9 @@ export class BoardRoom {
     const welcome = { t: "welcome", sid, color, peers: this.peers(server) };
     if (this.doc) welcome.doc = this.doc;
     else if (welcome.peers.length) welcome.needDoc = true; // room woke from hibernation mid-session
+    // a joiner walks into a running timer mid-countdown — hand them the live values
+    const sess = await this.sessionState();
+    if (sess.timer || sess.music) welcome.session = this.sessionWire(sess);
     server.send(JSON.stringify(welcome));
     this.broadcast({ t: "join", peer: { sid, name, color, kind, pose: null, focus: null } }, server);
 
@@ -204,6 +213,13 @@ export class BoardRoom {
       if (text) this.broadcast({ t: "chat", sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, text }, ws);
       return;
     }
+    if (msg.t === "timer" || msg.t === "music") {
+      // Serialized, not fire-and-forget: two people hitting "+1 min" in the same tick would
+      // otherwise both read the pre-write state and the second would overwrite the first's
+      // minute instead of stacking on it.
+      this.sessQ = (this.sessQ || Promise.resolve()).then(() => this.applySession(msg)).catch(() => {});
+      return;
+    }
     if (msg.t === "kick") {
       // Remove an AGENT from the board. Delivered only to the target, whose client ends its
       // own process on receipt — a real eviction, not a UI one, which is the only kind worth
@@ -245,6 +261,103 @@ export class BoardRoom {
       // only a post-hibernation reseed stays silent too — ops already kept everyone level.
       if (!had) return;
     }
+  }
+
+  // ---- session: the shared timer + music ------------------------------------
+  // Room-level state, unlike status/pose which hang off one socket: a room has ONE timer and
+  // ONE track, the same for everyone. Held in ctx.storage (not the doc) because a countdown
+  // is a moment, not board content — it must not land in the KV document, ride the ops tick,
+  // or turn up in undo.
+  //
+  // NO ALARM, deliberately. Expiry is computed by each client from the remaining ms below.
+  // This DO has a single alarm slot and it belongs to the KV persist rail; a timer that
+  // borrowed it would silently cancel a pending document write — losing board edits to
+  // show a countdown would be a terrible trade.
+  //
+  // Time goes on the wire as REMAINING MILLISECONDS AT SEND, never as an absolute deadline.
+  // A client stamps arrival with its own monotonic clock and counts down from there, so a
+  // laptop whose wall clock is ten minutes off still shows the same 04:56 as everyone else.
+  // The stored `at` is only ever differenced against this DO's own clock, so it stays exact
+  // across hibernation.
+  async sessionState() {
+    if (!this.sess) {
+      const s = (await this.ctx.storage.get("sess")) || {};
+      this.sess = { timer: s.timer || null, music: s.music || null };
+      // don't greet a joiner with last month's meeting frozen at 00:00
+      const t = this.sess.timer;
+      if (t && !t.running && t.remain <= 0 && Date.now() - t.at > STALE_TIMER_MS) this.sess.timer = null;
+    }
+    return this.sess;
+  }
+  // stored values rolled forward to this instant
+  sessionWire(s) {
+    const now = Date.now();
+    const out = { timer: null, music: null };
+    if (s.timer) {
+      const remain = s.timer.running ? Math.max(0, s.timer.remain - (now - s.timer.at)) : s.timer.remain;
+      out.timer = { running: !!s.timer.running && remain > 0, remain, total: s.timer.total };
+    }
+    if (s.music) {
+      out.music = {
+        track: s.music.track,
+        playing: !!s.music.playing,
+        elapsed: s.music.playing ? s.music.elapsed + (now - s.music.at) : s.music.elapsed,
+      };
+    }
+    return out;
+  }
+  saveSession(s) {
+    this.sess = s;
+    this.ctx.storage.put("sess", s);
+    // to EVERYONE including the sender: the room's value is the authoritative one, so the
+    // person who clicked snaps to it too rather than trusting their own optimistic guess
+    this.broadcast({ t: "session", ...this.sessionWire(s) });
+  }
+  async applySession(msg) {
+    const s = await this.sessionState();
+    const now = Date.now();
+    if (msg.t === "timer") {
+      const cur = s.timer;
+      const remain = cur ? (cur.running ? Math.max(0, cur.remain - (now - cur.at)) : cur.remain) : 0;
+      const arg = Math.min(Math.max(Math.round(Number(msg.ms)) || 0, 0), MAX_TIMER_MS);
+      if (msg.do === "start") {
+        if (arg < 1000) return;
+        s.timer = { running: true, remain: arg, total: arg, at: now };
+      } else if (msg.do === "add") {
+        if (!cur || !arg) return;
+        const next = Math.min(remain + arg, MAX_TIMER_MS);
+        // adding time to a timer that already rang restarts it — that IS the point of
+        // "+1 min" at 00:00, and it's the only way back without re-entering the duration
+        s.timer = { running: cur.running || remain <= 0, remain: next, total: Math.max(cur.total, next), at: now };
+      } else if (msg.do === "pause") {
+        if (!cur || !cur.running || remain <= 0) return;
+        s.timer = { running: false, remain, total: cur.total, at: now };
+      } else if (msg.do === "resume") {
+        if (!cur || cur.running || remain <= 0) return;
+        s.timer = { running: true, remain, total: cur.total, at: now };
+      } else if (msg.do === "stop") {
+        if (!cur) return;
+        s.timer = null;
+      } else return;
+    } else {
+      const cur = s.music;
+      if (msg.do === "play") {
+        const track = (typeof msg.track === "string" ? msg.track : "").slice(0, 64);
+        if (!track) return;
+        // Resuming the same track picks up where it stopped; a NEW track takes the offset the
+        // caller chose. That offset is a random entry point, which is why it's the client's to
+        // pick and the room's to make authoritative — everyone must land on the same bar.
+        const same = cur && cur.track === track;
+        const elapsed = same
+          ? (cur.playing ? cur.elapsed + (now - cur.at) : cur.elapsed)
+          : Math.max(0, Math.round(Number(msg.at)) || 0);
+        s.music = { track, playing: true, elapsed, at: now };
+      } else if (msg.do === "stop") {
+        if (!cur || !cur.playing) return;
+        s.music = { track: cur.track, playing: false, elapsed: cur.elapsed + (now - cur.at), at: now };
+      } else return;
+    }
+    this.saveSession(s);
   }
 
   // ---- persistence (the room owns the KV write while it's alive) ------------

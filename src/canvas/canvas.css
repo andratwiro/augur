@@ -33,7 +33,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
 
 /* ---- nodes ---------------------------------------------------------------- */
 .gvc-node { position: absolute; box-sizing: border-box; }
-.gvc-node.sel { outline: 2px solid #2563eb; outline-offset: 2px; }
+/* FigJam's selection is a HAIRLINE flush to the node, not a ring standing off it — the node
+   stays the loudest thing on the board and the chrome gets out of its way. */
+.gvc-node.sel { outline: 1.5px solid #2563eb; outline-offset: 0; }
 .gvc-node > .gvc-name {
   position: absolute; left: 0; top: -19px; font-size: 11px; color: #6b7280;
   max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text;
@@ -41,13 +43,18 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
 .gvc-node > .gvc-name:empty { display: none; }
 
 /* the host must NOT clip (it would cut the corner resize handles, which straddle the edge) —
-   the inner wrap carries the padding + overflow clip instead */
+   the inner wrap carries the padding + overflow clip instead.
+   Proportions are FigJam's, measured off a reference screenshot and normalised to the note's
+   width (so zoom and DPR cancel): padding 8.7% a side, author label ~5% and sitting ~10% up
+   from the bottom edge, and a radius of exactly 0 — a FigJam sticky's corners are SHARP. */
 .gvc-sticky {
-  min-width: 96px; min-height: 96px; border-radius: 3px;
+  min-width: 96px; min-height: 96px; border-radius: 0;
   background: #fce495; box-shadow: 0 4px 10px rgba(0, 0, 0, .14); font-size: 16px; line-height: 1.35;
   cursor: grab;
 }
-.gvc-sticky .gvc-stickyin { position: absolute; inset: 0; padding: 14px 14px 26px; overflow: hidden; border-radius: 3px; }
+/* padding-bottom is the author's lane — it keeps the text off the name. Its vertical total
+   is STICKY_PAD_V in canvas.js; the two must move together or the fit measures the wrong box. */
+.gvc-sticky .gvc-stickyin { position: absolute; inset: 0; padding: 19px 19px 40px; overflow: hidden; border-radius: 0; }
 .gvc-sticky .gvc-txt { outline: none; white-space: pre-wrap; word-break: break-word; min-height: 1em; }
 /* rich text: one <div> per line (the line model in canvas.js), lists as real ul/ol runs.
    No margins anywhere — the line box IS the spacing, so a list sits flush with plain lines. */
@@ -55,7 +62,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
 .gvc-txt li { margin: 0; }
 .gvc-txt li::marker { font-size: .95em; }
 .gvc-sticky .gvc-txt:empty::before { content: "Type anything"; color: rgba(0, 0, 0, .32); }
-.gvc-sticky .gvc-author { position: absolute; left: 14px; bottom: 8px; font-size: 12px; color: rgba(0, 0, 0, .5); pointer-events: none; max-width: calc(100% - 28px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gvc-sticky .gvc-author { position: absolute; left: 19px; bottom: 18px; font-size: 11px; color: rgba(0, 0, 0, .5); pointer-events: none; max-width: calc(100% - 38px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gvc-sticky.editing, .gvc-text.editing, .gvc-shape.editing { cursor: text; }
 .gvc-sticky.editing .gvc-txt, .gvc-text.editing .gvc-txt, .gvc-shape.editing .gvc-txt { cursor: text; }
 
@@ -147,7 +154,7 @@ svg.stk { display: block; overflow: visible; }
 /* resize handles: all FOUR corners. Each is centred exactly on its corner
    (left/top % + a half-size negative margin) so the JS counter-scale — transform:
    scale(1/zoom), origin centre — keeps it pinned there at a constant screen size. */
-.gvc-resize { position: absolute; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; background: #fff; border: 2px solid #2563eb; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); z-index: 3; }
+.gvc-resize { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: #fff; border: 1.5px solid #2563eb; box-shadow: 0 1px 2px rgba(0, 0, 0, .18); z-index: 3; }
 .gvc-resize.nw { left: 0; top: 0; cursor: nwse-resize; }
 .gvc-resize.ne { left: 100%; top: 0; cursor: nesw-resize; }
 .gvc-resize.sw { left: 0; top: 100%; cursor: nesw-resize; }
@@ -398,7 +405,7 @@ svg.stk { display: block; overflow: visible; }
 .gvc-ghost { position: fixed; pointer-events: none; z-index: 100; opacity: .9; transform: translate(-50%, -50%); }
 .gvc-ghost .tip { display: none; }
 /* smooth grab-and-drop: the sticky ghost springs up under the cursor, the dropped node pops in */
-.gvc-ghost-sticky { width: 66px; height: 66px; border-radius: 3px; background: #a9cbf5; box-shadow: 0 12px 26px rgba(0, 0, 0, .24); opacity: 0; transform: translate(-50%, -50%) rotate(-5deg) scale(.5); transition: transform .17s cubic-bezier(.34, 1.56, .64, 1), opacity .12s; }
+.gvc-ghost-sticky { width: 66px; height: 66px; border-radius: 0; background: #a9cbf5; box-shadow: 0 12px 26px rgba(0, 0, 0, .24); opacity: 0; transform: translate(-50%, -50%) rotate(-5deg) scale(.5); transition: transform .17s cubic-bezier(.34, 1.56, .64, 1), opacity .12s; }
 .gvc-ghost-sticky.in { opacity: .96; transform: translate(-50%, -50%) rotate(-4deg) scale(1); }
 .gvc-ghost-stamp { font-size: 44px; line-height: 1; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 3px 5px rgba(0, 0, 0, .25)); }
 .gvc-ghost-stamp svg.stk { width: 48px; height: 48px; }
@@ -612,3 +619,75 @@ svg.stk { display: block; overflow: visible; }
 .gvc-draghandle { position: absolute; top: -13px; right: -13px; width: 30px; height: 30px; display: none; align-items: center; justify-content: center; background: #2563eb; color: #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0, 0, 0, .28); cursor: grab; transform-origin: top right; z-index: 6; }
 .gvc-draghandle svg { width: 15px; height: 15px; }
 .gvc-tile.interacting .gvc-draghandle { display: flex; }
+
+/* ---- session: the shared timer + music ------------------------------------
+   Lives in the top bar because it belongs to the MEETING, not to the selection: it stays
+   put and stays readable while you work, which is the whole point of a countdown. */
+.gvc-sesspill { border: 0; background: 0; padding: 6px 9px; border-radius: 8px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 6px; }
+.gvc-sesspill:hover, .gvc-sesspill.on { background: #f3f4f6; }
+.gvc-sesspill .i { display: flex; }
+.gvc-sesspill svg { width: 17px; height: 17px; display: block; }
+.gvc-sesspill .t { font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: .02em; }
+.gvc-sesspill .t:empty { display: none; }
+/* a running timer colors the pill so it reads from across the board, not just up close */
+.gvc-sesspill.live { background: #eef2ff; color: #4338ca; }
+.gvc-sesspill.live:hover { background: #e0e7ff; }
+.gvc-sesspill.over { background: #fee2e2; color: #b91c1c; }
+
+#gvc-sesspanel { position: fixed; top: 62px; left: 16px; width: 300px; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, .13); font-size: 13px; color: #111827; }
+#gvc-sesspanel.hidden { display: none; }
+#gvc-sesspanel .head { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 12px 14px; border-bottom: 1px solid #f1f0ee; }
+#gvc-sesspanel .ttl { font-weight: 650; font-size: 14px; }
+#gvc-sesspanel .x { border: 0; background: 0; padding: 4px; border-radius: 6px; cursor: pointer; color: #6b7280; display: flex; }
+#gvc-sesspanel .x:hover { background: #f3f4f6; color: #111827; }
+#gvc-sesspanel .x svg { width: 16px; height: 16px; }
+#gvc-sesspanel .row { padding: 12px 14px; border-bottom: 1px solid #f1f0ee; }
+#gvc-sesspanel .row:last-child { border-bottom: 0; }
+
+#gvc-sesspanel .row.vol { display: flex; align-items: center; gap: 10px; }
+#gvc-sesspanel .vol .vol { border: 0; background: 0; padding: 0; cursor: pointer; color: #4b5563; display: flex; flex: 0 0 auto; }
+#gvc-sesspanel .vol .vol:hover { color: #111827; }
+#gvc-sesspanel .vol svg { width: 18px; height: 18px; }
+#gvc-sesspanel input[type=range] { flex: 1; accent-color: #4f46e5; }
+
+#gvc-sesspanel .digits { width: 100%; box-sizing: border-box; border: 1px solid transparent; background: #f5f5f7; border-radius: 9px; padding: 14px 0; text-align: center; font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 40px; font-weight: 600; letter-spacing: .04em; color: #111827; outline: none; }
+#gvc-sesspanel .digits:not(.live):hover { border-color: #d9d8d6; }
+#gvc-sesspanel .digits:not(.live):focus { border-color: #4f46e5; background: #fff; }
+#gvc-sesspanel .digits.live { color: #4338ca; }
+#gvc-sesspanel .digits.over { color: #b91c1c; }
+
+#gvc-sesspanel .idle { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+#gvc-sesspanel .idle.hidden, #gvc-sesspanel .run.hidden { display: none; }
+#gvc-sesspanel .chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+#gvc-sesspanel .chip { border: 1px solid #e5e7eb; background: #fff; border-radius: 999px; padding: 5px 10px; font: inherit; font-size: 12px; color: #374151; cursor: pointer; }
+#gvc-sesspanel .chip:hover { background: #f9fafb; border-color: #d1d5db; }
+#gvc-sesspanel .go { border: 0; background: #4f46e5; color: #fff; border-radius: 8px; padding: 6px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+#gvc-sesspanel .go:hover { background: #4338ca; }
+
+#gvc-sesspanel .run { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+#gvc-sesspanel .run .sp { flex: 1; }
+#gvc-sesspanel .act { border: 1px solid #e5e7eb; background: #fff; border-radius: 9px; min-width: 38px; height: 34px; padding: 0 9px; display: flex; align-items: center; justify-content: center; gap: 6px; font: inherit; color: #374151; cursor: pointer; }
+#gvc-sesspanel .act:hover { background: #f9fafb; border-color: #d1d5db; }
+#gvc-sesspanel .act.hidden { display: none; }
+#gvc-sesspanel .act.wide { padding: 0 12px; }
+#gvc-sesspanel .act svg { width: 15px; height: 15px; }
+/* sound is waiting on this tab's first click (autoplay policy) — say so quietly */
+#gvc-sesspanel .act.blocked { border-color: #fcd34d; background: #fffbeb; color: #b45309; }
+
+#gvc-sesspanel .row.music { display: flex; align-items: center; gap: 8px; }
+#gvc-sesspanel .track { flex: 1; min-width: 0; border: 1px solid #e5e7eb; border-radius: 9px; height: 34px; padding: 0 8px; font: inherit; font-size: 13px; color: #374151; background: #fff; cursor: pointer; }
+#gvc-sesspanel .empty { color: #9ca3af; font-size: 12px; padding: 2px 0; }
+
+/* 00:00 — the reference shakes the timer and everyone sees it, panel open or not */
+.gvc-rang { animation: gvc-rang .5s cubic-bezier(.36, .07, .19, .97) 2; }
+@keyframes gvc-rang {
+  10%, 90% { transform: translateX(-1.5px); }
+  20%, 80% { transform: translateX(3px); }
+  30%, 50%, 70% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+}
+
+@media (max-width: 640px) {
+  #gvc-sesspanel { left: 8px; right: 8px; width: auto; top: 54px; }
+  .gvc-sesspill .t { font-size: 12px; }
+}

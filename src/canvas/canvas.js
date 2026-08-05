@@ -67,8 +67,17 @@
   var STICKY_COLORS = ["#ffffff", "#e9ecef", "#f4a9a8", "#f7c99a", "#fce495", "#bfe5a0", "#a9e5db", "#a9cbf5", "#cbb8f2", "#f5b3d7"];
   var DEFAULT_STICKY = "#a9cbf5"; // soft default blue (Rob's pick)
   // the size a sticky is dropped at — and, while its height is still automatic, the floor
-  // autoFit will not shrink it below (a note you typed two words into stays a note)
-  var STICKY_W = 160, STICKY_H = 160;
+  // autoFit will not shrink it below (a note you typed two words into stays a note).
+  // 220, not 160: measured against FigJam, a sticky's line box is ~10% of its width (its
+  // default note is 240 world px). At 160 our 16px default read 13.5% — a third too big —
+  // so the same sentence needed 6 lines where FigJam fit 4. Growing the NOTE keeps 16px
+  // readable and lands the ratio at 16 * 1.35 / 220 = 9.8%.
+  var STICKY_W = 220, STICKY_H = 220;
+  // .gvc-stickyin vertical padding (19 top + 40 bottom, the bottom leaving room for the author)
+  var STICKY_PAD_V = 59;
+  // The ladder a sticky's text steps DOWN as it outgrows the note (see fitStickyFont). The
+  // top of the ladder is whatever size the user picked; these are the stops below it.
+  var STICKY_FONT_RAMP = [80, 64, 48, 40, 32, 28, 24, 21, 18, 16, 14, 12, 11, 10, 9, 8];
   // marker palette (draw sub-toolbar dots, left to right)
   var DRAW_COLORS = ["#1e1e1e", "#f24822", "#ff9f2e", "#ffd233", "#35c759", "#3aa2ff", "#8a5cff", "#ffffff"];
   var TEXT_COLORS = ["#1e1e1e", "#6b7280", "#e03131", "#e8590c", "#f0a000", "#2f9e44", "#0c8599", "#1971c2", "#7048e8", "#c2255c"];
@@ -312,7 +321,7 @@
       // node's x/y as well as its size, so the opposite corner stays pinned. The four EDGES
       // (n/s/e/w) resize one axis: invisible strips straddling the whole border, so you can
       // grab a side anywhere along it, not just at a corner. Corners sit above them (z-index)
-      // so the last ~13px of each side still gives you the two-axis grab.
+      // so the last ~9px of each side still gives you the two-axis grab.
       // A text box has no draggable height (it wraps and auto-grows), so it gets e/w only.
       var dirs = ["nw", "ne", "sw", "se", "e", "w"];
       if (node.type !== "text") dirs.push("n", "s");
@@ -325,7 +334,7 @@
     }
   }
   // handles are world-space children, so counter-scale them (like tile/section chrome) to keep
-  // a constant ~13px screen size — otherwise they vanish when zoomed out and bloat zoomed in.
+  // a constant ~9px screen size — otherwise they vanish when zoomed out and bloat zoomed in.
   // An edge strip spans its whole side, so only its THICKNESS is counter-scaled (scaleY on a
   // horizontal strip, scaleX on a vertical one) — centred, so it keeps straddling the border.
   function scaleDecor() {
@@ -728,6 +737,35 @@
     return false;
   }
 
+  // The ladder for ONE sticky: the size the user picked, then every ramp stop below it.
+  // The picked size is the CEILING — text never renders bigger than what the dropdown says.
+  function stickyRamp(node) {
+    var ceil = fontPx(node), out = [ceil];
+    for (var i = 0; i < STICKY_FONT_RAMP.length; i++) if (STICKY_FONT_RAMP[i] < ceil) out.push(STICKY_FONT_RAMP[i]);
+    return out;
+  }
+  // FigJam's sticky model, and the reason a sticky reads as a sticky: the NOTE holds its shape
+  // and the TEXT shrinks to fit it. Step down the ladder until the words fit `h`; only when the
+  // bottom rung still overflows does autoFit let the note grow (so nothing is ever clipped).
+  //
+  // Walks from the size currently applied (cached on the node's own element) rather than from
+  // the top of the ladder, so a keystroke costs 1-2 forced reflows, not 16. Returns the px used.
+  function fitStickyFont(node, txt, h) {
+    var ramp = stickyRamp(node), avail = Math.max(1, h - STICKY_PAD_V);
+    var i = ramp.indexOf(+txt.dataset.fit); if (i < 0) i = 0;
+    txt.style.fontSize = ramp[i] + "px";
+    if (txt.scrollHeight > avail) {
+      while (i < ramp.length - 1 && txt.scrollHeight > avail) { i++; txt.style.fontSize = ramp[i] + "px"; }
+    } else {
+      while (i > 0) {                                     // deleted text — climb back toward the ceiling
+        txt.style.fontSize = ramp[i - 1] + "px";
+        if (txt.scrollHeight > avail) { txt.style.fontSize = ramp[i] + "px"; break; }
+        i--;
+      }
+    }
+    txt.dataset.fit = ramp[i];
+    return ramp[i];
+  }
   // A sticky/shape sizes itself to its text: it grows so it never clips, and in auto mode it
   // SHRINKS back when you delete text. Dragging a resize handle sets an explicit height
   // (node.hFixed) — from then on the box only ever grows, never shrinks under you.
@@ -736,12 +774,21 @@
   // type two words into must stay the note you dropped — only text that outgrows it makes it
   // taller. A height you set by hand (hFixed) is yours, floor or no floor; and the floor is
   // deliberately NOT applied on render, so opening an old board still never reflows it.
+  //
+  // A sticky shrinks its TEXT before it grows its BOX (fitStickyFont). The height it fits the
+  // text against is the height the note WANTS — the square floor in auto mode, its own height
+  // once you've sized it by hand. Never the current grown height: fitting against a height the
+  // fit itself just changed is a feedback loop (grow -> text fits bigger -> shrink -> repeat).
   function autoFit(node, allowShrink) {
     if (!node || (node.type !== "sticky" && node.type !== "shape")) return;
     var host = nodeEls[node.id]; if (!host) return;
     var txt = host.querySelector(".gvc-txt"); if (!txt) return;
     var need, min;
-    if (node.type === "sticky") { need = txt.scrollHeight + 40; min = allowShrink && !node.hFixed ? STICKY_H : 96; } // 14px top + 26px bottom padding; 96 = the CSS min-height
+    if (node.type === "sticky") {
+      fitStickyFont(node, txt, allowShrink && !node.hFixed ? STICKY_H : (node.h || STICKY_H));
+      need = txt.scrollHeight + STICKY_PAD_V;
+      min = allowShrink && !node.hFixed ? STICKY_H : 96;   // 96 = the CSS min-height
+    }
     else { need = contentH(txt) / 0.76; min = MIN_NODE; }                   // shape text is inset 12% a side
     need = Math.max(min, Math.ceil(need));
     var h = node.h || 0, target = h;
@@ -1859,7 +1906,7 @@
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === "c" || e.key === "C")) { if (selected.length) { e.preventDefault(); clipCopy(false); } return; }
     if ((e.metaKey || e.ctrlKey) && (e.key === "x" || e.key === "X")) { if (selected.length) { e.preventDefault(); clipCopy(true); } return; }
     if ((e.key === "Backspace" || e.key === "Delete") && selected.length) { e.preventDefault(); selected.slice().forEach(removeNode); setSelection([]); }
-    if (e.key === "Escape") { exitInteract(); setSelection([]); if (picker) picker.classList.add("hidden"); setTool("select"); return; }
+    if (e.key === "Escape") { exitInteract(); setSelection([]); if (picker) picker.classList.add("hidden"); if (sessPanel) sessToggle(false); setTool("select"); return; }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     // tool shortcuts
     var k = e.key.toLowerCase();
@@ -2475,6 +2522,9 @@
       if (node.type === "sticky") host.style.background = node.color || DEFAULT_STICKY;
       var txt = host.querySelector(".gvc-txt");
       if (txt) applyTextStyle(txt, node); // patch in place so an active edit isn't torn down
+      // picking a size from the dropdown moves the sticky's CEILING, so the fit has to be
+      // re-run — otherwise the note keeps whatever rung it had stepped down to.
+      if (node.type === "sticky") autoFit(node, true);
     } else renderNode(node); // shapes/draws re-render their svg
   }
   function togglePalette(node, dot) {
@@ -2582,6 +2632,14 @@
   var I_BUBBLE = '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>'; // message-circle
   var I_WIDGETS = '<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>'; // shapes
   var I_PLUS = '<path d="M5 12h14"/><path d="M12 5v14"/>'; // plus
+  var I_CLOCK = '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'; // clock
+  var I_X = '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'; // x
+  var I_SPEAKER = '<path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/>';
+  var I_VOL = I_SPEAKER + '<path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 5.6a9 9 0 0 1 0 12.7"/>'; // volume-2
+  var I_VOL_OFF = I_SPEAKER + '<line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/>'; // volume-x
+  var I_PLAY = '<polygon points="6 3 20 12 6 21 6 3"/>'; // play
+  var I_PAUSE = '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>'; // pause
+  var I_STOP = '<rect width="16" height="16" x="4" y="4" rx="2"/>'; // square
   var I_IMAGE = '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'; // image
   var I_LINK = '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'; // link (Lucide)
   var I_CAMERA = '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>'; // camera (Lucide)
@@ -2614,7 +2672,7 @@
   var SQUIG_THICK = '<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"><path d="M4 13.5c2.2-5.5 4.8-5.5 7 0s4.6 5.5 7 0"/></svg>';
 
   // ---- UI: toolbar + sub-toolbars + top bar + zoom -------------------------
-  var zoomPct, nameEl;
+  var zoomPct, nameEl, topbarEl;
   var barEls = {}, drawBar, shapeBar, stampBar, moreShapes, plusMenu, colorInput;
   function setTool(t) {
     TOOL = typeof t === "string" ? { kind: t } : t;
@@ -2689,7 +2747,8 @@
     nm.addEventListener("blur", function () { nm.contentEditable = "false"; board.name = nm.textContent.trim() || "Untitled canvas"; nm.textContent = board.name; document.title = board.name; save(); });
     nm.addEventListener("keydown", function (e) { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); nm.blur(); } });
     nameEl = nm;
-    ui.appendChild(el("div", { id: "gvc-topbar" }, [back, nm]));
+    topbarEl = el("div", { id: "gvc-topbar" }, [back, nm]);
+    ui.appendChild(topbarEl);
 
     // bottom-left: zoom
     zoomPct = el("div", { class: "pct", text: "100%" });
@@ -2704,6 +2763,7 @@
     buildShapeBar();
     buildStampBar();
     buildPlusMenu();
+    buildSession();
 
     selBar = el("div", { id: "gvc-selbar", class: "hidden" });
     palette = el("div", { id: "gvc-palette", class: "hidden" });
@@ -2992,6 +3052,344 @@
     select(n.id); picker.classList.add("hidden");
   }
   function resetView() { mpUnfollow(); board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; applyTransform(); saveView(); }
+
+  // ---- session: the shared timer + music -----------------------------------
+  // One timer and one track per board, the same for everyone — a facilitation surface, not
+  // board content. It never touches the document: no node, no ops tick, no undo, no KV. The
+  // room (BoardRoom) holds it and is the only authority; this client renders what it's told.
+  //
+  // WHY THE COUNTDOWN NEVER TICKS OVER THE WIRE: the room sends REMAINING MILLISECONDS as of
+  // the moment it sent them, and we stamp arrival with performance.now() — a monotonic clock
+  // that no NTP correction or wrong system time can shift. Everyone therefore counts down
+  // from the same authoritative number using a clock only ever compared against itself, and
+  // a board with ten people costs ten messages per timer CLICK rather than per second.
+  //
+  // Anyone can drive it, like every other shared surface here (node ops, live tile demos).
+  // Facilitator-only control would need a notion of who's running the session, which this
+  // engine deliberately doesn't have.
+  var TRACKS = null;         // null = manifest not loaded yet; [] = none installed
+  var sessPill, sessPillTime, sessPanel, sessDigits, sessIdle, sessRun, sessPauseBtn, sessMusicBody, sessTrackSel, sessPlayBtn, sessVolIn, sessVolIcon;
+  var sess = { timer: null, music: null }; // last snapshot from the room
+  var sessAt = 0;            // performance.now() when that snapshot landed
+  var sessRang = false;      // this countdown's 00:00 has already been announced
+  var sessAudio = null, sessBlocked = false, sessSeekTries = 0;
+  var sessVol = 0.6, sessMuted = false, sessPending = 300000; // 5:00 is the default round
+
+  try {
+    var sv = localStorage.getItem("gvc-vol");
+    if (sv != null) sessVol = Math.min(1, Math.max(0, parseFloat(sv) || 0));
+    sessMuted = localStorage.getItem("gvc-muted") === "1";
+  } catch (e) {}
+
+  function mmss(ms) {
+    var s = Math.max(0, Math.ceil(ms / 1000));
+    return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  }
+  // the live remaining time: the room's number, rolled forward on OUR monotonic clock
+  function sessRemain() {
+    if (!sess.timer) return null;
+    if (!sess.timer.running) return sess.timer.remain;
+    return Math.max(0, sess.timer.remain - (performance.now() - sessAt));
+  }
+  function sessRunning() { var r = sessRemain(); return r != null && sess.timer.running && r > 0; }
+
+  function buildSession() {
+    sessPillTime = el("span", { class: "t" });
+    sessPill = el("button", { class: "gvc-sesspill", type: "button", title: "Timer and music" },
+      [el("span", { class: "i", html: lucideIcon(I_CLOCK) }), sessPillTime]);
+    sessPill.addEventListener("click", function (e) { e.stopPropagation(); sessToggle(); });
+    topbarEl.appendChild(sessPill);
+
+    // ---- panel
+    var close = el("button", { class: "x", type: "button", html: lucideIcon(I_X), title: "Close" });
+    close.addEventListener("click", function () { sessToggle(false); });
+    var head = el("div", { class: "head" }, [el("div", { class: "ttl", text: "Timer and music" }), close]);
+
+    // volume (per-user, never synced — your ears, your setting)
+    sessVolIcon = el("button", { class: "vol", type: "button", title: "Mute" });
+    sessVolIcon.addEventListener("click", function () { sessSetMuted(!sessMuted); });
+    sessVolIn = el("input", { type: "range", min: "0", max: "100", value: String(Math.round(sessVol * 100)) });
+    sessVolIn.addEventListener("input", function () {
+      sessVol = (parseInt(sessVolIn.value, 10) || 0) / 100;
+      if (sessMuted && sessVol > 0) sessMuted = false;
+      sessSaveVol(); sessSyncVol(); sessApplyMusic();
+    });
+    var volRow = el("div", { class: "row vol" }, [sessVolIcon, sessVolIn]);
+
+    // timer
+    sessDigits = el("input", { class: "digits", value: "05:00", spellcheck: false, "aria-label": "Timer" });
+    sessDigits.addEventListener("keydown", function (e) {
+      e.stopPropagation(); // the canvas owns single-key shortcuts — don't place a sticky mid-edit
+      if (e.key === "Enter") { e.preventDefault(); sessDigits.blur(); sessStart(); }
+      if (e.key === "Escape") { e.preventDefault(); sessSyncTimer(true); sessDigits.blur(); }
+    });
+    sessDigits.addEventListener("blur", sessCommitDigits);
+    sessDigits.addEventListener("focus", function () { if (!sessDigits.readOnly) sessDigits.select(); });
+
+    var chips = el("div", { class: "chips" });
+    [1, 5, 10, 15, 20].forEach(function (m) {
+      var c = el("button", { class: "chip", type: "button", text: m + " min" });
+      c.addEventListener("click", function () { sessPending = m * 60000; sessSyncTimer(true); });
+      chips.appendChild(c);
+    });
+    var startBtn = el("button", { class: "go", type: "button", text: "Start" });
+    startBtn.addEventListener("click", sessStart);
+    sessIdle = el("div", { class: "idle" }, [chips, startBtn]);
+
+    var addBtn = el("button", { class: "act wide", type: "button", html: lucideIcon(I_PLUS) + "<span>1 min</span>" });
+    addBtn.addEventListener("click", function () { mpSend({ t: "timer", do: "add", ms: 60000 }); });
+    var stopBtn = el("button", { class: "act", type: "button", html: lucideIcon(I_STOP), title: "Stop" });
+    stopBtn.addEventListener("click", function () { mpSend({ t: "timer", do: "stop" }); });
+    sessPauseBtn = el("button", { class: "act", type: "button", title: "Pause" });
+    sessPauseBtn.addEventListener("click", function () {
+      mpSend({ t: "timer", do: sessRunning() ? "pause" : "resume" });
+    });
+    sessRun = el("div", { class: "run" }, [addBtn, el("div", { class: "sp" }), stopBtn, sessPauseBtn]);
+
+    var timerBlock = el("div", { class: "row timer" }, [sessDigits, sessIdle, sessRun]);
+
+    // music
+    sessMusicBody = el("div", { class: "row music" });
+    sessPanel = el("div", { id: "gvc-sesspanel", class: "hidden" }, [head, volRow, timerBlock, sessMusicBody]);
+    ui.appendChild(sessPanel);
+    sessPanel.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+
+    sessSyncVol();
+    sessSyncTimer(true);
+    sessRenderMusic();
+    setInterval(sessTick, 200);
+    // Autoplay policy blocks sound until this tab has been interacted with, so a joiner who
+    // walks into a playing room gets silence. Their first click anywhere is the permission —
+    // take it and start, rather than making them find a button to fix something they didn't break.
+    document.addEventListener("pointerdown", sessUnblock, true);
+    document.addEventListener("keydown", sessUnblock, true);
+    // The manifest is the whole music hook: drop tracks into a space's tracks/ folder and
+    // this list fills itself. Until then the section renders its empty state and the rest
+    // of the panel works exactly as it will with tracks installed.
+    fetch("/__canvas/tracks.json", { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (list) { TRACKS = Array.isArray(list) ? list : []; sessTracksReady(); })
+      .catch(function () { TRACKS = []; sessTracksReady(); });
+  }
+
+  // The manifest is a separate fetch, so it can lose the race against the room's welcome — and
+  // a welcome that names a track this client can't resolve yet is dropped on the floor. Re-run
+  // the music state once the names are known, or a joiner who arrives mid-track sits in silence
+  // until somebody happens to press something.
+  function sessTracksReady() {
+    sessRenderMusic();
+    sessApplyMusic();
+  }
+
+  function sessToggle(force) {
+    var open = force == null ? sessPanel.classList.contains("hidden") : force;
+    sessPanel.classList.toggle("hidden", !open);
+    sessPill.classList.toggle("on", open);
+    if (open) sessUnblock();
+  }
+  function sessSaveVol() {
+    try { localStorage.setItem("gvc-vol", String(sessVol)); localStorage.setItem("gvc-muted", sessMuted ? "1" : "0"); } catch (e) {}
+  }
+  function sessSetMuted(m) { sessMuted = m; sessSaveVol(); sessSyncVol(); sessApplyMusic(); }
+  function sessSyncVol() {
+    var off = sessMuted || sessVol <= 0;
+    sessVolIcon.innerHTML = lucideIcon(off ? I_VOL_OFF : I_VOL);
+    sessVolIcon.title = off ? "Unmute" : "Mute";
+    sessVolIn.value = String(Math.round((sessMuted ? 0 : sessVol) * 100));
+  }
+
+  function sessCommitDigits() {
+    if (sessDigits.readOnly) return;
+    // "7" → 7:00 · "7:30" → 7m30s · anything else snaps back to the last good value
+    var m = /^\s*(\d{1,2})(?::(\d{1,2}))?\s*$/.exec(sessDigits.value);
+    if (m) {
+      var ms = (parseInt(m[1], 10) * 60 + (m[2] ? parseInt(m[2], 10) : 0)) * 1000;
+      if (ms >= 1000) sessPending = Math.min(ms, 99 * 60000 + 59000);
+    }
+    sessSyncTimer(true);
+  }
+  function sessStart() {
+    sessCommitDigits();
+    mpSend({ t: "timer", do: "start", ms: sessPending });
+  }
+
+  // paint the timer chrome for the current mode (idle vs counting). `hard` also rewrites the
+  // digits — the 200ms tick calls it without that so it can't fight a field you're typing in.
+  function sessSyncTimer(hard) {
+    var r = sessRemain(), live = r != null;
+    sessRun.classList.toggle("hidden", !live);
+    sessIdle.classList.toggle("hidden", live);
+    sessDigits.readOnly = live;
+    sessDigits.classList.toggle("live", live);
+    sessDigits.classList.toggle("over", live && r <= 0);
+    if (sessPauseBtn) {
+      var running = sessRunning();
+      sessPauseBtn.innerHTML = lucideIcon(running ? I_PAUSE : I_PLAY);
+      sessPauseBtn.title = running ? "Pause" : "Resume";
+      sessPauseBtn.classList.toggle("hidden", live && r <= 0); // nothing left to pause
+    }
+    if (hard && document.activeElement !== sessDigits) sessDigits.value = mmss(live ? r : sessPending);
+    // derived, never latched: "+1 min" on a timer that already rang has to drop the expired
+    // styling, and a flag set in sessRing() would still be sitting there
+    sessPill.classList.toggle("live", live && r > 0);
+    sessPill.classList.toggle("over", live && r <= 0);
+    sessPillTime.textContent = live ? mmss(r) : "";
+  }
+
+  function sessTick() {
+    var r = sessRemain();
+    if (r == null) return;
+    var txt = mmss(r);
+    if (document.activeElement !== sessDigits && sessDigits.value !== txt) sessDigits.value = txt;
+    if (sessPillTime.textContent !== txt) sessPillTime.textContent = txt;
+    if (r <= 0 && !sessRang) { sessRang = true; sessRing(); }
+  }
+
+  // 00:00. Everyone announces it locally off the same authoritative countdown, so it lands
+  // together without the room having to broadcast anything at the moment it matters.
+  function sessRing() {
+    sessSyncTimer(true);
+    [sessPill, sessDigits].forEach(function (n) {
+      if (!n) return;
+      n.classList.remove("gvc-rang");
+      void n.offsetWidth; // restart the animation even if it just ran
+      n.classList.add("gvc-rang");
+    });
+  }
+
+  // ---- music: driven entirely by the room's shared offset -------------------
+  function sessTrack(id) {
+    if (!TRACKS) return null;
+    for (var i = 0; i < TRACKS.length; i++) if (TRACKS[i].id === id) return TRACKS[i];
+    return null;
+  }
+  // Built ONCE per manifest, not per session message: a peer starting a timer must not
+  // collapse a dropdown you have open.
+  function sessRenderMusic() {
+    if (!sessMusicBody) return;
+    sessMusicBody.innerHTML = "";
+    sessTrackSel = sessPlayBtn = null;
+    if (TRACKS === null) return; // manifest still in flight — render nothing rather than a guess
+    if (!TRACKS.length) {
+      sessMusicBody.appendChild(el("div", { class: "empty", text: "No tracks installed" }));
+      return;
+    }
+    var sel = el("select", { class: "track" });
+    TRACKS.forEach(function (t) { sel.appendChild(el("option", { value: t.id, text: t.name || t.id })); });
+    sel.addEventListener("change", function () { sessPlay(sel.value, true); });
+    sessTrackSel = sel;
+    sessPlayBtn = el("button", { class: "act", type: "button" });
+    sessPlayBtn.addEventListener("click", function () {
+      sessUnblock();
+      if (sess.music && sess.music.playing) mpSend({ t: "music", do: "stop" });
+      else sessPlay(sel.value, false);
+    });
+    sessMusicBody.appendChild(sel);
+    sessMusicBody.appendChild(sessPlayBtn);
+    sessSyncMusic();
+  }
+  // Starting a track it isn't already on enters at a RANDOM point in the mix, so a board you
+  // open every day doesn't always open on the same bar. The offset is picked here and made
+  // authoritative by the room, so everyone lands on the same one.
+  function sessPlay(id, force) {
+    var t = sessTrack(id), same = !force && sess.music && sess.music.track === id;
+    var at = !same && t && t.duration ? Math.floor(Math.random() * t.duration * 1000) : 0;
+    sessUnblock();
+    mpSend({ t: "music", do: "play", track: id, at: at });
+  }
+  function sessSyncMusic() {
+    if (sessTrackSel && sess.music && sess.music.track && sessTrackSel.value !== sess.music.track &&
+        sessTrack(sess.music.track)) sessTrackSel.value = sess.music.track;
+    if (!sessPlayBtn) return;
+    var on = !!(sess.music && sess.music.playing);
+    sessPlayBtn.innerHTML = lucideIcon(on ? I_STOP : I_PLAY);
+    sessPlayBtn.title = on ? "Stop music" : "Play music";
+    sessPlayBtn.classList.toggle("blocked", sessBlocked);
+  }
+  function sessApplyMusic() {
+    var m = sess.music, t = m && sessTrack(m.track);
+    if (!m || !m.playing || !t) { if (sessAudio) sessAudio.pause(); sessSyncMusic(); return; }
+    if (!sessAudio) {
+      // in the DOM, not a detached `new Audio()`: it renders nothing without `controls`, and
+      // being inspectable in devtools is worth more than the tidiness of hiding it
+      sessAudio = el("audio", { class: "gvc-audio", loop: true, preload: "none" });
+      document.body.appendChild(sessAudio);
+    }
+    var a = sessAudio;
+    if (a.dataset.track !== m.track) { a.dataset.track = m.track; a.src = t.url; }
+    a.volume = sessMuted ? 0 : sessVol;
+    // Seek to the room's position so everyone hears the same bar at the same moment — timed to
+    // the `playing` event, i.e. the instant sound actually comes out. Seeking any earlier is a
+    // trap: a paused element accepts the seek and then SITS there (still loading, or blocked by
+    // the autoplay policy waiting for a click), and every second it waits becomes a permanent
+    // offset the moment it finally starts. `playing` is the only point at which "the room's
+    // current position" and "this element's position" mean the same thing.
+    if (a.paused) {
+      a.addEventListener("playing", sessSeek, { once: true });
+      var p = a.play();
+      // autoplay policy: a joiner who hasn't clicked yet can't be given sound. Don't fight
+      // it — mark it and let their next click anywhere on the board start playback.
+      if (p && p.catch) p.catch(function () { sessBlocked = true; sessSyncMusic(); });
+    } else {
+      sessSeek(); // already playing: a re-sync, so correct it now
+    }
+    sessSyncMusic();
+  }
+  // Recomputed at the moment of the seek, never captured beforehand: when this is deferred to
+  // loadedmetadata, a second or more has passed since the decision to seek was made.
+  // A 1.5s dead zone, because re-seeking on every small drift is audible and this is ambient
+  // background music, not a click track.
+  function sessSeek() {
+    var m = sess.music, t = m && sessTrack(m.track), a = sessAudio;
+    if (!m || !t || !a) return;
+    var dur = t.duration || a.duration;
+    if (!dur || !isFinite(dur)) return;
+    var want = ((m.elapsed + (m.playing ? performance.now() - sessAt : 0)) / 1000) % dur;
+    // Tight, and deliberately so. This is not a continuous drift corrector that would chatter —
+    // it runs on state changes and on load — so the dead zone only needs to skip a seek that
+    // would move nothing. A loose one (1.5s was the first guess) doesn't smooth anything: it
+    // just bakes the joiner's connection delay in as a PERMANENT offset, which is audible as an
+    // echo the moment two people sit in the same room.
+    if (Math.abs(a.currentTime - want) <= 0.25) return;
+    // Only assign if the target is actually reachable. An origin that doesn't serve byte ranges
+    // makes the whole resource unseekable, and the browser then DROPS every assignment without
+    // raising — playback just carries on from wherever it was, which reads exactly like a
+    // working seek until you measure it.
+    if (sessSeekable(a, want)) { try { a.currentTime = want; } catch (e) {} }
+    // Bounded recheck, because the target may simply not have downloaded yet. Costs nothing once
+    // in sync: the recheck recomputes `want`, which has advanced by as much as currentTime has,
+    // so it returns at the dead zone above. And it gives up rather than spinning when the origin
+    // serves no ranges at all — everyone still hears the track, just not from the same point.
+    if (sessSeekTries < 4) { sessSeekTries++; setTimeout(sessSeek, 500); }
+  }
+  function sessSeekable(a, t) {
+    try {
+      for (var i = 0; i < a.seekable.length; i++) {
+        if (a.seekable.end(i) <= 0) continue; // a degenerate [0,0] range means "not seekable"
+        if (t >= a.seekable.start(i) && t <= a.seekable.end(i)) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+  function sessUnblock() {
+    if (!sessBlocked) return;
+    sessBlocked = false;
+    sessApplyMusic();
+  }
+
+  // the room's word is final — adopt it wholesale and re-render
+  function sessApply(msg) {
+    var wasRemain = sessRemain(), wasTrack = sess.music && sess.music.track;
+    sess = { timer: msg.timer || null, music: msg.music || null };
+    sessAt = performance.now();
+    // a new track (or a restart) is a fresh seek target — give it its own retry budget
+    if (!sess.music || sess.music.track !== wasTrack) sessSeekTries = 0;
+    // a fresh countdown re-arms the 00:00 announcement; one that's already at zero doesn't
+    var r = sessRemain();
+    if (!sess.timer || (r > 0 && (wasRemain == null || r > wasRemain))) sessRang = false;
+    sessSyncTimer(true);
+    sessApplyMusic(); // re-syncs the track picker and play button on its way through
+  }
 
   // ---- persistence ---------------------------------------------------------
   var saveTimer = null;
@@ -3852,6 +4250,8 @@
       (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null, sel: p.sel || null, status: p.status || null }; });
       if (m.doc) mpAdoptDoc(m.doc);
       else mpSend({ t: "doc", doc: board }); // seed the room (first in, or post-hibernation — KV is current when the room was idle)
+      // walked in on a running timer / playing track: adopt it mid-flight
+      sessApply(m.session || { timer: null, music: null });
       mpReady = true;
       mpRenderPresence(); mpRenderFocus();
     } else if (m.t === "join") {
@@ -3870,6 +4270,7 @@
     else if (m.t === "status") { var stp = mpPeers[m.sid]; if (stp) { stp.status = m.status || null; mpApplyStatus(stp); mpRenderPresence(); } }
     else if (m.t === "chat") { var cp = mpPeers[m.sid] || (mpPeers[m.sid] = { name: m.name, color: m.color, kind: m.kind || null, focus: null }); mpShowChat(cp, m.text); }
     else if (m.t === "pose") { var qp = mpPeers[m.sid]; if (qp) { qp.pose = m.pose || null; mpUpdateGlyph(qp); mpRenderPresence(); } }
+    else if (m.t === "session") sessApply(m);
     else if (m.t === "doc") mpAdoptDoc(m.doc);
     else if (m.t === "docreq") mpSend({ t: "doc", doc: board });
   }

@@ -93,6 +93,12 @@ function isPublicPath(pathname) {
   // only — never a blanket prefix; the board DATA API (/__board) has its own public route below.
   if (pathname.startsWith("/__canvas/") &&
       /\.(css|js|mjs|json|map|svg|png|webp)$/i.test(pathname)) return true;
+  // Canvas session music: a space's tracks/ folder, at the root for the default space and
+  // under /<space>/ for the rest. A public board plays the same track as a gated one, so the
+  // audio has to clear the gate too. AUDIO EXTENSIONS ONLY — a README or a stray export that
+  // lands in the same folder stays gated. Admin-only spaces are unaffected: isRestrictedPath
+  // is checked BEFORE this door, so their tracks stay sealed with everything else.
+  if (/^(\/[a-z0-9-]+)?\/tracks\/[^?]+\.(mp3|m4a|aac|ogg|opus|wav|flac|webm)$/i.test(pathname)) return true;
   // The cursor companion engine + self-hosted fonts are embedded into public
   // prototypes by absolute path, so they must bypass the gate too (else the
   // <script>/<link> fetches the login page instead of the asset).

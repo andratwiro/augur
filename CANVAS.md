@@ -13,7 +13,9 @@
 > reverts a teammate), 4-corner + 4-edge resize (corners: Shift = aspect; edges resize one
 > axis), **smart snapping with red alignment
 > guides** (⌘ bypasses), Shift-drag axis lock, non-destructive image crop, sections that
-> carry their contents, auto-grow/shrink boxes (`hFixed` after a manual resize).
+> carry their contents, auto-grow/shrink boxes (`hFixed` after a manual resize), **stickies that
+> hold their square and shrink their TEXT to fit it** (FigJam's model — the note only grows once
+> the text has floored).
 > **Text** — real rich text (`node.rich`, sanitized HTML; `node.text` stays in sync for old
 > boards): selection-level bold/italic/strike, bullet + numbered lists with **Tab/Shift-Tab
 > nesting**, markdown input rules (`- ` `1. ` `**b**` `_i_` `~~s~~`), ⌘B/I/U/⇧S/⇧7/⇧8,
@@ -127,7 +129,7 @@ Omitted optional fields just take defaults. Write nodes through the daemon's `up
 
 | type | required | optional (what it means) |
 |------|----------|--------------------------|
-| `sticky` | `x y` | `w h` (160×160) · `text` · `rich` (see below) · `color` (pastel bg) · `author` · `fontSize` px · `bold` · `align` · `hFixed` (true = height pinned by a manual resize; omit = hugs its text) |
+| `sticky` | `x y` | `w h` (220×220) · `text` · `rich` (see below) · `color` (pastel bg) · `author` · `fontSize` px (a CEILING — the text shrinks below it to fit) · `bold` · `align` · `hFixed` (true = height pinned by a manual resize; omit = hugs its text) |
 | `text` | `x y` | `text` · `rich` · `w` (none = hug/`max-content`; set = fixed width + wrap) · `fontSize` · `color` · `bold italic strike` · `align` |
 | `shape` | `shape x y` | `w h` (per-shape default) · `text`/`rich` (centered) · `color` (fill). Shapes: square round circle diamond triangle triangle-down pill cylinder bubble star hexagon pentagon parallelogram trapezoid plus arrow-right |
 | `image` | `x y src` | `w h` · `name` · `desc` (one line — the claim the image makes; see the description contract below) · `crop` `{x,y,w,h}` as FRACTIONS of the full src. `src` = any **same-origin path**: `/__asset/<hash>` for uploads (bytes via `POST /__asset`, image/* content-type) **or a path to an image committed in the space repo** (`/ux-ui-audit/…/img/04-method.jpg` — how hand-built and agent-built boards usually do it; most of the timings board is these). Data URLs are legacy-render-only, don't write new ones |
@@ -430,6 +432,58 @@ navigate test tiles to canvas-typed prototypes (`customer-interviews` is one). (
 self-heal — the doc cache drops when empty — but don't rely on that.) Reference test: the
 mp-proto-e2e script pattern (two contexts, isolated room, mount/interact/mirror assertions).
 
+## Session: the shared timer + music (2026-08-05)
+
+The top bar carries a **timer pill** that opens a *Timer and music* panel. One timer and one
+track per board, the same for everyone; anyone can drive it, like every other shared surface
+here. Start / pause / resume / stop / +1 min, up to 99:59; the digits are editable when idle
+(`7` → 7:00, `7:30` → 7m30s). At zero the pill and digits shake and read 00:00 for everyone,
+panel open or not. `+1 min` on a timer that already rang restarts it.
+
+**It is not board content.** Session state lives on the room (`ctx.storage` in the DO), never in
+the document — no node, no ops tick, no undo, no KV doc write. `{t:"timer",do:…}` /
+`{t:"music",do:…}` go up; the room broadcasts `{t:"session",timer,music}` to *everyone including
+the sender*, and hands it to late joiners on `welcome`.
+
+Three rules that were each bought with a bug:
+
+- **The wire carries REMAINING ms, never a deadline.** Clients stamp arrival with
+  `performance.now()` and count down locally. No clock agreement needed, and a board with ten
+  people costs ten messages per *click*, not per second.
+- **No alarm.** The DO has one alarm slot and it belongs to the KV persist rail. Expiry is
+  computed client-side. A timer that borrowed the alarm would silently cancel a pending
+  document write.
+- **Session mutations are serialized** (`sessQ`). Two people hitting `+1 min` in the same tick
+  must stack, not overwrite.
+
+### Music is a hook, not content — the engine ships no audio
+
+The picker is built from `/__canvas/tracks.json`, accumulated at build time from each space's
+`tracks/` folder (same pattern as the insert-picker catalog) with ids namespaced `<space>:<id>`.
+A space authors `tracks/tracks.json` as `[{id,name,file,duration}]`; `duration` (seconds) is what
+lets every client seek to the same point. No tracks installed → the section says so and the timer
+is unaffected. Volume and mute are **per-user, localStorage, never synced**.
+
+Position sync is the fiddly part, and every one of these was a silent failure:
+
+- **Seek on the `playing` event**, not when you decide to. A paused element accepts a seek and
+  then *sits* there (loading, or blocked by autoplay); every second it waits becomes a permanent
+  offset once it starts.
+- **Gate on `seekable`.** An origin that doesn't serve byte ranges makes the whole resource
+  unseekable and the browser *drops every assignment without raising* — playback carries on and
+  looks correct until you measure it. `wrangler pages dev` is such an origin, so **music position
+  does not sync in offline preview**; Cloudflare Pages serves ranges, so it does live.
+- **Dead zone 0.25s, not 1.5s.** This isn't a continuous drift corrector, so a loose dead zone
+  smooths nothing — it just bakes the joiner's connection delay in as a permanent, audible offset.
+- Re-run `sessApplyMusic()` when the manifest lands: the tracks fetch can lose the race against
+  the room's welcome, and a welcome naming a track you can't resolve yet is dropped.
+- Autoplay policy blocks a joiner who hasn't clicked. Don't fight it — mark it (the play button
+  shows a waiting state) and let their next click anywhere on the board start playback.
+
+**`tracks/` is gitignored in the space repos by design.** Audio you may listen to is not audio you
+may redistribute, and the space repos build a public site. Personal listening material lives there
+un-committed and plays in offline preview only.
+
 ## Canvas-owned prototypes (what "build a prototype on the canvas" means)
 
 A canvas is a **container of prototypes**, not just a board of references. When Rob (in a terminal
@@ -690,6 +744,14 @@ Do this **unless prompted otherwise**.
   never clip, and SHRINK back on edit while the height is still automatic. `allowShrink` is false
   on render, so opening an old board never reflows it; dragging a resize handle sets
   `node.hFixed` and the box stops hugging.
+  **A sticky shrinks its TEXT before it grows its BOX** (`fitStickyFont`, FigJam's model and the
+  reason a sticky reads as a sticky): the size on the dropdown is a CEILING, and the text steps
+  down `STICKY_FONT_RAMP` until it fits. Only when the bottom rung still overflows does the note
+  grow. Two traps: (1) fit against the height the note WANTS — `STICKY_H` in auto mode, its own
+  height once `hFixed` — never the current grown height, or the fit feeds back into itself
+  (grow → text fits bigger → shrink → repeat). (2) `STICKY_PAD_V` must track `.gvc-stickyin`'s
+  vertical padding in the CSS, or every fit measures the wrong box. The walk starts from the size
+  already applied (cached on `txt.dataset.fit`), so a keystroke costs 1-2 reflows, not 16.
   **A sticky's auto floor is the size it was dropped at** (`STICKY_H`), not the CSS `min-height`:
   with the CSS floor, typing two words into a fresh 160px note collapsed it to 96 — the note you
   dropped is the note you should still have. The floor is skipped when `hFixed` (a height you

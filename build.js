@@ -60,6 +60,12 @@ let DS_ROOT, WS_ROOT, BASE = "", DIST_SPACE = DIST;
 // Canvas insert-picker catalog — every embeddable thing across spaces (prototypes, pages,
 // components), accumulated per buildSpace and written to dist/__canvas/catalog.json.
 let CANVAS_CATALOG = [];
+// Canvas session music — every track any space installs, accumulated the same way the
+// insert-picker catalog is and written to dist/__canvas/tracks.json. The engine ships NO
+// audio: a space declares its own in tracks/tracks.json and the canvas fills its picker from
+// whatever is there. An instance with no tracks/ folder gets an empty manifest and a canvas
+// whose music section says so — the timer is unaffected.
+let CANVAS_TRACKS = [];
 // SPACE_KEY: prefix for overlay KV keys that are keyed by "<opp>/<proto>" rather than by
 // URL path — i.e. dev-status chips and rename overrides. "" for the default space (so its
 // existing KV entries are untouched), "<id>/" otherwise, so a /<id>/ space's statuses /
@@ -342,6 +348,7 @@ const IGNORED_TOPLEVEL = new Set([
   "patterns", // curated composition demos — shipped via their own builder (Patterns tab)
   "playground", // standalone scratch prototype — shipped to /playground/, not as an opportunity
   "references", // page-source intake (raw HTML exports + screenshots) — internal, NEVER ships
+  "tracks", // canvas session music — shipped verbatim + indexed into the canvas manifest
   // (a space can declare additional ignores in space.json "ignore" — see SPACE_IGNORE)
   ".git",
   ".github",
@@ -4251,6 +4258,31 @@ async function buildSpace(space) {
     );
   }
 
+  // ── Canvas session music (per space) → tracks/ shipped verbatim, indexed into the shared
+  // manifest. The space authors tracks/tracks.json as [{id,name,file,duration}]; `file` is
+  // relative to tracks/ and `duration` (seconds) is what lets every client seek to the same
+  // point in a loop, so a track without one plays but won't sync mid-stream.
+  if (await isDir(path.join(WS_ROOT, "tracks"))) {
+    await copyDir(path.join(WS_ROOT, "tracks"), path.join(DIST_SPACE, "tracks"), isInternalOnly);
+    try {
+      const raw = JSON.parse(await fs.readFile(path.join(WS_ROOT, "tracks", "tracks.json"), "utf8"));
+      for (const t of Array.isArray(raw) ? raw : []) {
+        if (!t || !t.id || !t.file) continue;
+        CANVAS_TRACKS.push({
+          // namespaced by space so two spaces can both ship a track called "ambient"
+          id: `${space.id}:${t.id}`,
+          name: t.name || t.id,
+          // per-segment encoding: track filenames are human-typed ("01 It's Friday.mp3"), and a
+          // raw space merely looks wrong while a raw # silently truncates the URL to nothing
+          url: `${BASE}/tracks/${t.file.split("/").map(encodeURIComponent).join("/")}`,
+          ...(Number(t.duration) > 0 ? { duration: Number(t.duration) } : {}),
+        });
+      }
+    } catch (e) {
+      console.warn(`build: ${space.id} has tracks/ but no readable tracks.json — no music installed`);
+    }
+  }
+
   // ── Per-space build log.
   const protoCount = opportunities.reduce((n, o) => n + o.prototypes.length, 0);
   console.log(
@@ -4504,6 +4536,9 @@ async function main() {
   // capture.js is not on any page: canvas.js lazy-loads it by absolute path on the first ⌘⇧C
   await fs.copyFile(SRC_CANVAS_CAPTURE, path.join(DIST, "__canvas", "capture.js"));
   await fs.writeFile(path.join(DIST, "__canvas", "catalog.json"), JSON.stringify(CANVAS_CATALOG), "utf8");
+  // Always written, even empty: the canvas fetches it unconditionally, and a 404 on every
+  // board load is a worse signal than an honest [].
+  await fs.writeFile(path.join(DIST, "__canvas", "tracks.json"), JSON.stringify(CANVAS_TRACKS), "utf8");
 
   // Self-hosted fonts → /fonts/ (served immutable + public by the worker). Replaces
   // the render-blocking Google Fonts link; one variable woff2 covers every weight.
