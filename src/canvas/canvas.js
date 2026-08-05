@@ -2672,7 +2672,7 @@
   var SQUIG_THICK = '<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"><path d="M4 13.5c2.2-5.5 4.8-5.5 7 0s4.6 5.5 7 0"/></svg>';
 
   // ---- UI: toolbar + sub-toolbars + top bar + zoom -------------------------
-  var zoomPct, nameEl, topbarEl, topRightEl;
+  var zoomPct, nameEl, topbarEl, topRightEl, topRightRowEl;
   var barEls = {}, drawBar, shapeBar, stampBar, moreShapes, plusMenu, colorInput;
   function setTool(t) {
     TOOL = typeof t === "string" ? { kind: t } : t;
@@ -3110,7 +3110,10 @@
     // Top RIGHT, beside the presence chips — a session control belongs with the people in the
     // room, not with the file name. Its own row rather than inside #gvc-presence, which hides
     // itself when you're alone; a timer you set on your own must not vanish with it.
-    topRightEl = el("div", { id: "gvc-topright" }, [sessPill]);
+    // The corner is a COLUMN: [pill + presence chips] on the first row, the agent pills
+    // stacked beneath — everyone in the room, human and Clawd, lives in this one corner.
+    topRightRowEl = el("div", { class: "gvc-toprow" }, [sessPill]);
+    topRightEl = el("div", { id: "gvc-topright" }, [topRightRowEl]);
     ui.appendChild(topRightEl);
 
     // ---- panel
@@ -4132,17 +4135,20 @@
     mpApplyStatus(p);
     return p.el;
   }
-  // Status is a STATE, so it lives in one calm place — the agents strip by the bottom bar
-  // (Rob's call: the board itself stays uncrowded; "hide the terminal" means glancing at ONE
-  // spot). The cursor only carries the amber attention pulse, for locality when the Clawd
+  // Status is a STATE, so it lives in one calm place — the agent pills under the top-right
+  // corner (Rob's call: everyone in the room, human and Clawd, is glanced at in ONE spot).
+  // The cursor only carries the amber attention pulse, for locality when the Clawd
   // that needs you happens to be on screen.
   function mpApplyStatus(p) {
     if (p.el) p.el.classList.toggle("attention", !!(p.status && p.status.state === "attention"));
     mpRenderAgents();
   }
-  // The agents strip: one row per agent peer — face (tinted mini Clawd), name, status text,
-  // state (working = live dot · idle = dimmed · attention = amber pulse). Click a row to
-  // fly-and-follow that Clawd. Hidden when no agents are in the room.
+  // The agent pills: one per agent peer — face (tinted mini Clawd), name, status text,
+  // state (working = live dot · idle = dimmed · attention = amber). The pills are COMPACT
+  // (face + name + dot): the status text stays folded until you hover, follow, or the
+  // agent needs you — attention unfolds the message and makes the pill jump. Click a row
+  // to fly-and-follow that Clawd (an attention click = "take me to what needs me").
+  // Hidden when no agents are in the room.
   var mpAgentsBar = null;
   function mpRenderAgents() {
     if (!mpAgentsBar) return;
@@ -4322,9 +4328,9 @@
     if (!mpPresence) return;
     mpPresence.innerHTML = "";
     if (!mp || mp.readyState !== 1) { mpPresence.classList.add("hidden"); return; }
-    // top-right chips = HUMANS only. Agents live in the bottom agents strip (Rob's call:
-    // people and agents are different kinds of presence — you glance top-right for who's
-    // here, bottom for what the Clawds are doing).
+    // top-right chips = HUMANS only. Agents get their own pills stacked under this row
+    // (Rob's call: people and agents are different kinds of presence, one corner for both —
+    // chips for who's here, pills beneath for what the Clawds are doing).
     var chips = [{ name: mpName, title: mpName + " (you)", color: mpColor, me: true }];
     for (var sid in mpPeers) { var p = mpPeers[sid]; if (p.kind === "agent") continue; chips.push({ sid: sid, name: p.name, title: p.name, color: p.color, kind: p.kind, pose: p.pose }); }
     if (chips.length < 2) { mpPresence.classList.add("hidden"); return; } // alone — no chrome
@@ -4496,9 +4502,11 @@
     document.body.appendChild(mpCursorLayer); // outside #gvc-ui so ⌘. keeps cursors visible
     mpPresence = el("div", { id: "gvc-presence", class: "hidden" });
     // into the top-right row (next to the timer pill), not straight onto the UI layer
-    (topRightEl || ui).appendChild(mpPresence);
+    (topRightRowEl || ui).appendChild(mpPresence);
+    // the agent pills stack under that row, same corner (Rob's call 2026-08-05: agents
+    // belong top-right with everything else; the strip left the bottom bar)
     mpAgentsBar = el("div", { id: "gvc-agents", class: "hidden" });
-    ui.appendChild(mpAgentsBar);
+    (topRightEl || ui).appendChild(mpAgentsBar);
     transformCbs.push(mpPositionCursors);
     root.addEventListener("pointermove", mpTrackPointer);
     document.addEventListener("mouseleave", function () { mpSend({ t: "cursor", gone: true }); });

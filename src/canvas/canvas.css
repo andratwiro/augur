@@ -578,7 +578,11 @@ svg.stk { display: block; overflow: visible; }
 /* agents strip: the Clawds' home, bottom-right — glance here instead of the terminal.
    working = breathing face + live dot · idle = dimmed, still · attention = amber pulse ·
    done = one green flash. Click a row to follow that Clawd. */
-#gvc-agents { position: fixed; bottom: 24px; right: 16px; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; z-index: 61; }
+/* The agent pills live in the top-right column, stacked under the session/presence row.
+   COMPACT by default (face + name + dot): the status text is folded away and unfolds on
+   hover, while following, or when the agent needs you — attention also makes the pill
+   jump so "needs you" is impossible to miss from across the board. */
+#gvc-agents { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 #gvc-agents.hidden { display: none; }
 #gvc-agents .row {
   display: flex; align-items: center; gap: 8px; padding: 6px 11px 6px 7px;
@@ -592,20 +596,27 @@ svg.stk { display: block; overflow: visible; }
 #gvc-agents .face { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
 #gvc-agents .face svg { display: block; }
 #gvc-agents .who { font-weight: 700; }
-#gvc-agents .what { color: #6b7280; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#gvc-agents .what { color: #6b7280; max-width: 0; opacity: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: max-width .3s ease, opacity .2s ease; }
+#gvc-agents .row:hover .what, #gvc-agents .row.following .what, #gvc-agents .row.attention .what, #gvc-agents .row.done .what { max-width: 240px; opacity: 1; }
 #gvc-agents .dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
 #gvc-agents .row.working .dot { background: #22c55e; animation: gvc-live 1.6s ease-in-out infinite; }
 #gvc-agents .row.working .face { animation: gvc-breathe 2.4s ease-in-out infinite; }
 #gvc-agents .row.idle { opacity: .62; }
 #gvc-agents .row.idle .dot { background: #c4c9d4; }
-#gvc-agents .row.attention { border-color: #f59e0b; box-shadow: 0 0 0 2px #f59e0b44, 0 4px 16px rgba(0, 0, 0, .12); animation: gvc-attnrow 1.1s ease-in-out infinite; }
+#gvc-agents .row.attention { border-color: #f59e0b; box-shadow: 0 0 0 2px #f59e0b44, 0 4px 16px rgba(0, 0, 0, .12); animation: gvc-jump 2.2s ease-in-out infinite; }
 #gvc-agents .row.attention .dot { background: #f59e0b; }
 #gvc-agents .row.attention .what { color: #b45309; font-weight: 600; }
 #gvc-agents .row.done .dot { background: #22c55e; }
 #gvc-agents .row.done { animation: gvc-doneflash .9s ease-out; }
 @keyframes gvc-live { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @keyframes gvc-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.09); } }
-@keyframes gvc-attnrow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+/* two quick hops, then rest — repeated, so it beckons without vibrating */
+@keyframes gvc-jump {
+  0%, 26%, 100% { transform: translateY(0); }
+  8% { transform: translateY(-7px); }
+  16% { transform: translateY(0); }
+  21% { transform: translateY(-3px); }
+}
 @keyframes gvc-doneflash { 0% { background: #dcfce7; } 100% { background: #fff; } }
 
 /* peers' drags arrive at tick rate (~8Hz) — a short linear tween makes them glide */
@@ -625,7 +636,9 @@ svg.stk { display: block; overflow: visible; }
    put and stays readable while you work, which is the whole point of a countdown. */
 /* the top-right row: [timer pill] [presence chips] — one flex line so the pill keeps its place
    as peers come and go, and so it survives presence hiding itself when you're on the board alone */
-#gvc-topright { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; gap: 8px; }
+/* the top-right corner is a COLUMN: [session pill + presence chips] then agent pills */
+#gvc-topright { position: fixed; top: 14px; right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+#gvc-topright .gvc-toprow { display: flex; align-items: center; gap: 8px; }
 /* the seven-segment display face (shipped under /__canvas/, license alongside) */
 @font-face { font-family: "DSEG7"; src: url("/__canvas/DSEG7Classic-Bold.woff2") format("woff2"); font-weight: 700; font-display: block; }
 
