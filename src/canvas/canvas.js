@@ -3760,7 +3760,7 @@
   // last-writer-wins; a node you're actively dragging or editing ignores remote writes
   // (the tick then re-broadcasts your version — deterministic convergence). The doc's
   // `view` is per-user viewport and is never synced.
-  var mp = null, mpSid = null, mpName = "", mpColor = "#0d0d0d";
+  var mp = null, mpSid = null, mpName = "", mpColor = "#0d0d0d", mpAvatar = null;
   var mpPeers = {};        // sid -> {name,color,focus,cx,cy,el,idle}
   var mpShadow = {};       // node id -> signature as last seen/sent
   var mpShadowName = null; // board name as last seen/sent
@@ -4381,8 +4381,8 @@
     // ONE row for the whole room (Rob's call 2026-08-05): humans as initial chips, Clawds
     // as face chips right beside them, wearing their status as the dot on the avatar —
     // agents present the way people do. Humans first, then agents.
-    var chips = [{ name: mpName, title: mpName + " (you)", color: mpColor, me: true }];
-    for (var sid in mpPeers) { var p = mpPeers[sid]; if (p.kind === "agent") continue; chips.push({ sid: sid, name: p.name, title: p.name, color: p.color, kind: p.kind, pose: p.pose }); }
+    var chips = [{ name: mpName, title: mpName + " (you)", color: mpColor, avatar: mpAvatar, me: true }];
+    for (var sid in mpPeers) { var p = mpPeers[sid]; if (p.kind === "agent") continue; chips.push({ sid: sid, name: p.name, title: p.name, color: p.color, avatar: p.avatar, kind: p.kind, pose: p.pose }); }
     for (var sid2 in mpPeers) { var p2 = mpPeers[sid2]; if (p2.kind !== "agent") continue; chips.push({ sid: sid2, name: p2.name, title: p2.name, color: p2.color, kind: "agent", peer: p2 }); }
     if (chips.length < 2) { mpPresence.classList.add("hidden"); mpAgentPopClose(); return; } // alone — no chrome
     mpPresence.classList.remove("hidden");
@@ -4390,9 +4390,11 @@
       var isAgent = c.kind === "agent";
       var chip = el("div", { class: "gvc-peerchip" + (c.me ? " me" : "") + (isAgent ? " agent" : "") });
       // every chip wears its owner's identity color; agents get a cream mini Clawd on it,
-      // humans their initial — so the chip color always matches the cursor on the board
+      // humans their photo when their account carries one, else their initial — so the
+      // chip always matches the cursor identity on the board
       chip.style.background = c.color;
       if (isAgent) chip.innerHTML = clawdChipSvg("#f6f0e4");
+      else if (c.avatar) chip.style.background = "url(\"" + c.avatar + "\") center/cover, " + c.color;
       else chip.textContent = mpInitials(c.name);
       var following = !c.me && c.sid && mpFollowSid === c.sid;
       if (isAgent) {
@@ -4513,7 +4515,7 @@
       mpSid = m.sid; mpRetry = 1000;
       if (m.color && m.color !== mpColor) { mpColor = m.color; mpApplyLocalCursor(); } // your pointer takes your room color
       mpPeers = {};
-      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null, sel: p.sel || null, status: p.status || null }; });
+      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, avatar: p.avatar || null, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null, sel: p.sel || null, status: p.status || null }; });
       if (m.doc) mpAdoptDoc(m.doc);
       else mpSend({ t: "doc", doc: board }); // seed the room (first in, or post-hibernation — KV is current when the room was idle)
       // walked in on a running timer / playing track: adopt it mid-flight
@@ -4521,7 +4523,7 @@
       mpReady = true;
       mpRenderPresence(); mpRenderFocus();
     } else if (m.t === "join") {
-      mpPeers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, focus: m.peer.focus || null, kind: m.peer.kind || null, pose: m.peer.pose || null, status: m.peer.status || null };
+      mpPeers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, avatar: m.peer.avatar || null, focus: m.peer.focus || null, kind: m.peer.kind || null, pose: m.peer.pose || null, status: m.peer.status || null };
       mpRenderPresence();
     } else if (m.t === "leave") {
       var p = mpPeers[m.peer.sid];
@@ -4544,7 +4546,8 @@
     var ws;
     try {
       ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host +
-        "/__rt?path=" + encodeURIComponent(BOARD_PATH) + "&name=" + encodeURIComponent(mpName || "Guest"));
+        "/__rt?path=" + encodeURIComponent(BOARD_PATH) + "&name=" + encodeURIComponent(mpName || "Guest") +
+        (mpAvatar ? "&avatar=" + encodeURIComponent(mpAvatar) : ""));
     } catch (e) { mpRetryLater(); return; }
     mp = ws;
     ws.onmessage = mpOnMessage;
@@ -4598,10 +4601,16 @@
     // keepalive: the room's auto-responder pongs and timestamps us; sockets that stop
     // pinging (dropped transports) get swept server-side instead of haunting presence
     setInterval(function () { if (mp && mp.readyState === 1) { try { mp.send("ping"); } catch (e) {} } }, 25000);
-    // resolve my display name first so the cursor label is right from the first frame
+    // resolve my display name (and avatar, if the account has one) first so the cursor
+    // label and presence chip are right from the first frame
     fetch("/__me", { headers: { Accept: "application/json" } })
       .then(function (r) { return r.json(); })
-      .then(function (d) { mpName = (d && d.user && d.user.name) || ME || "Guest"; })
+      .then(function (d) {
+        mpName = (d && d.user && d.user.name) || ME || "Guest";
+        var av = d && d.user && d.user.avatar;
+        // same-origin paths only — this string rides the join URL to every peer
+        if (typeof av === "string" && av.charAt(0) === "/" && av.length < 300) mpAvatar = av;
+      })
       .catch(function () { mpName = ME || "Guest"; })
       .then(mpConnect);
   }

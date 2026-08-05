@@ -163,8 +163,23 @@ function publicUser(u) {
   return u ? {
     email: u.email, name: u.name,
     initials: u.initials || "", color: u.color || "#4f46e5",
-    avatar: u.avatar || null, admin: u.role === "admin",
+    avatar: avatarUrl(u), admin: u.role === "admin",
   } : null;
+}
+
+// A data-URI avatar in the user list is SERVED at a stable /__avatar/ URL rather than
+// inlined everywhere: the canvas multiplayer join carries the URL to peers, and inline
+// data: images in overlay UI are a known trap. The key hashes email + content length, so
+// a changed photo changes the URL and immutable caching stays safe.
+function avatarKey(u) {
+  const s = u.email + ":" + u.avatar.length;
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+function avatarUrl(u) {
+  if (!u || !u.avatar) return null;
+  return u.avatar.startsWith("data:") ? "/__avatar/" + avatarKey(u) : u.avatar;
 }
 
 // Effective password = admin-set KV override ?? the seeded default. One kv.get.
@@ -1285,6 +1300,23 @@ export default {
     if (url.pathname === "/__me") {
       if (me && ctx && ctx.waitUntil) ctx.waitUntil(touchLastSeen(env, me));
       return jsonResponse({ user: publicUser(me), accounts: usersActive });
+    }
+
+    // A user's avatar image, decoded from the identity list's data URI. Deliberately
+    // ungated: presence chips on PUBLIC boards render it for everyone in the room.
+    if (url.pathname.startsWith("/__avatar/")) {
+      const key = url.pathname.slice("/__avatar/".length);
+      const u = USERS.find((x) => x.avatar && x.avatar.startsWith("data:") && avatarKey(x) === key);
+      const m = u && /^data:([^;,]+);base64,(.*)$/.exec(u.avatar);
+      if (!m) return new Response("Not found", { status: 404 });
+      const bin = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
+      return new Response(bin, {
+        headers: {
+          "Content-Type": m[1],
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
     }
 
     // Sign out — clear the identity cookie and bounce home.

@@ -100,7 +100,7 @@ export class BoardRoom {
     for (const ws of this.ctx.getWebSockets()) {
       if (ws === excludeWs) continue;
       const a = ws.deserializeAttachment();
-      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, kind: a.kind || null, pose: a.pose || null, focus: a.focus || null, sel: a.sel || null, status: a.status || null });
+      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, avatar: a.avatar || null, kind: a.kind || null, pose: a.pose || null, focus: a.focus || null, sel: a.sel || null, status: a.status || null });
     }
     return out;
   }
@@ -130,12 +130,16 @@ export class BoardRoom {
     const reqColor = url.searchParams.get("color");
     const pinned = kind === "agent" && reqColor && /^#[0-9a-fA-F]{6}$/.test(reqColor) ? reqColor : null;
     const color = pinned || COLORS[this.ctx.getWebSockets().length % COLORS.length];
+    // an account avatar rides the join and is relayed to peers — same-origin PATHS only,
+    // so the room never becomes a vehicle for arbitrary external images
+    const reqAvatar = (url.searchParams.get("avatar") || "").slice(0, 300);
+    const avatar = reqAvatar.startsWith("/") ? reqAvatar : null;
 
     this.sweep();
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ sid, name, color, kind, pose: null, focus: null, joined: Date.now() });
+    server.serializeAttachment({ sid, name, color, avatar, kind, pose: null, focus: null, joined: Date.now() });
 
     const welcome = { t: "welcome", sid, color, peers: this.peers(server) };
     if (this.doc) welcome.doc = this.doc;
@@ -144,7 +148,7 @@ export class BoardRoom {
     const sess = await this.sessionState();
     if (sess.timer || sess.music) welcome.session = this.sessionWire(sess);
     server.send(JSON.stringify(welcome));
-    this.broadcast({ t: "join", peer: { sid, name, color, kind, pose: null, focus: null } }, server);
+    this.broadcast({ t: "join", peer: { sid, name, color, avatar, kind, pose: null, focus: null } }, server);
 
     return new Response(null, { status: 101, webSocket: client });
   }
