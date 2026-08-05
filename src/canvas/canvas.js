@@ -3389,32 +3389,37 @@
       '<circle cx="11" cy="12" r="3.4" class="lbl" fill="#8b8c90"/><circle cx="11" cy="12" r="1" fill="#e8e8ea"/></g>' +
       '<path d="m18.6 2.6 1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z" fill="#ffd43b" stroke="#e3a008" stroke-width=".8"/></svg>';
   }
-  // the turntable: record (grooves + label art) + tone arm + speaker grill. The vinyl and
-  // the arm answer to CSS (.deck.playing spins the record and swings the arm on).
+  // the turntable: record (grooves + label art) + tone arm + speaker grill, measured off
+  // the reference frame: disc INSIDE the box (r43 at 30% width) over a soft shadow, arm
+  // pivot at 64%, dot grill at 84%. The vinyl and the arm answer to CSS (.deck.playing
+  // spins the record and swings the arm onto the label).
   function sessDeckSvg(t) {
     var a = sessArt(t);
-    return '<svg class="decksvg" viewBox="0 0 252 116" fill="none">' +
-      sessGrill(206, 58) +
-      '<g class="vinyl"><circle cx="64" cy="58" r="52" fill="#1b1c1e"/>' +
-      '<circle cx="64" cy="58" r="45" stroke="#2c2d30" stroke-width="1"/>' +
-      '<circle cx="64" cy="58" r="39" stroke="#2c2d30" stroke-width="1"/>' +
-      '<circle cx="64" cy="58" r="33" stroke="#2c2d30" stroke-width="1"/>' +
-      '<path d="M25 42a42 42 0 0 1 18-19" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M103 74a42 42 0 0 1-18 19" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-linecap="round"/>' +
-      '<g class="label"><circle cx="64" cy="58" r="23" fill="' + a.color + '"/>' +
-      '<g transform="translate(47,41) scale(1.42)" stroke="#1a1a1a" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">' + a.motif + "</g></g>" +
-      '<circle cx="64" cy="58" r="2.6" fill="#e8e8ea"/></g>' +
+    return '<svg class="decksvg" viewBox="0 0 288 104" fill="none">' +
+      '<defs><filter id="gvc-softsh" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3"/></filter></defs>' +
+      sessGrill(242, 52) +
+      // the disc's resting shadow — OUTSIDE the spinning group so it never rotates
+      '<ellipse cx="86" cy="96" rx="42" ry="4.5" fill="#000" opacity=".16" filter="url(#gvc-softsh)"/>' +
+      '<g class="vinyl"><circle cx="86" cy="52" r="43" fill="#1b1c1e"/>' +
+      '<circle cx="86" cy="52" r="37" stroke="#2c2d30" stroke-width="1"/>' +
+      '<circle cx="86" cy="52" r="32" stroke="#2c2d30" stroke-width="1"/>' +
+      '<circle cx="86" cy="52" r="27" stroke="#2c2d30" stroke-width="1"/>' +
+      '<path d="M53 40a35 35 0 0 1 16-16" stroke="rgba(255,255,255,.25)" stroke-width="2" stroke-linecap="round"/>' +
+      '<path d="M119 64a35 35 0 0 1-16 16" stroke="rgba(255,255,255,.25)" stroke-width="2" stroke-linecap="round"/>' +
+      '<g class="label"><circle cx="86" cy="52" r="19" fill="' + a.color + '"/>' +
+      '<g transform="translate(72.8,38.8) scale(1.1)" stroke="#1a1a1a" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">' + a.motif + "</g></g>" +
+      '<circle cx="86" cy="52" r="2.4" fill="#e8e8ea"/></g>' +
       // the arm paints AFTER the record — it passes over the disc, like the reference's
-      '<g class="arm"><path d="M142 16 120 68l-10 12" stroke="#c9cacd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="M110 80l-6 7" stroke="#b4b5b8" stroke-width="9" stroke-linecap="round"/>' +
-      '<circle cx="142" cy="16" r="8" fill="#d8d9db"/><circle cx="142" cy="16" r="3.2" fill="#9b9c9f"/></g>' +
+      '<g class="arm"><path d="M160 14 148 60l-20 10" stroke="#cfd0d3" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M128 70l-9 6" stroke="#b4b5b8" stroke-width="9" stroke-linecap="round"/>' +
+      '<circle cx="160" cy="14" r="8.5" fill="#d8d9db"/><circle cx="160" cy="14" r="3.2" fill="#9b9c9f"/></g>' +
       "</svg>";
   }
   function sessGrill(cx, cy) {
-    var d = "", step = 9, n = 4; // a diamond of dots
+    var d = "", step = 7.5, n = 4; // a diamond of dots, reference-dense
     for (var i = -n; i <= n; i++) for (var j = -n; j <= n; j++) {
       if (Math.abs(i) + Math.abs(j) > n) continue;
-      d += '<circle cx="' + (cx + i * step) + '" cy="' + (cy + j * step) + '" r="2" fill="#c2c3c6"/>';
+      d += '<circle cx="' + (cx + i * step) + '" cy="' + (cy + j * step) + '" r="1.7" fill="#b3b5b9"/>';
     }
     return d;
   }

@@ -667,12 +667,12 @@ svg.stk { display: block; overflow: visible; }
 
 #gvc-sesspanel { position: fixed; top: 66px; right: 16px; width: 320px; background: #fff; border: 1px solid #e9e8e6; border-radius: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, .13); font-size: 13px; color: #111827; }
 #gvc-sesspanel.hidden { display: none; }
-#gvc-sesspanel .head { display: flex; align-items: center; justify-content: space-between; padding: 13px 12px 13px 16px; border-bottom: 1px solid #f1f0ee; }
+#gvc-sesspanel .head { display: flex; align-items: center; justify-content: space-between; padding: 13px 12px 13px 16px; border-bottom: 1px solid #ebebed; }
 #gvc-sesspanel .ttl { font-weight: 650; font-size: 15px; }
 #gvc-sesspanel .x { border: 0; background: 0; padding: 4px; border-radius: 6px; cursor: pointer; color: #6b7280; display: flex; }
 #gvc-sesspanel .x:hover { background: #f3f4f6; color: #111827; }
 #gvc-sesspanel .x svg { width: 16px; height: 16px; }
-#gvc-sesspanel .row { padding: 14px 16px; border-bottom: 1px solid #f1f0ee; }
+#gvc-sesspanel .row { padding: 14px 16px; border-bottom: 1px solid #ebebed; }
 #gvc-sesspanel .row:last-child { border-bottom: 0; }
 
 #gvc-sesspanel .row.vol { display: flex; align-items: center; gap: 12px; }
@@ -686,7 +686,7 @@ svg.stk { display: block; overflow: visible; }
 
 /* the clock: unlit 88:88 ghost under the live digits; the ghost copies the input's exact
    box metrics (font, size, padding, centering) so segments overlay segment-for-segment */
-#gvc-sesspanel .clock { position: relative; background: #f5f5f7; border-radius: 12px; }
+#gvc-sesspanel .clock { position: relative; background: #f1f1f4; border-radius: 12px; }
 #gvc-sesspanel .clock .ghost { position: absolute; inset: 0; width: 100%; box-sizing: border-box; border: 1px solid transparent; background: transparent; border-radius: 12px; padding: 18px 0; text-align: center; font-family: DSEG7, ui-monospace, monospace; font-size: 42px; font-weight: 700; letter-spacing: .06em; color: #e4e4e7; pointer-events: none; user-select: none; outline: none; }
 /* mid-edit values ("5:0", "15") center-float and can't sit on the fixed 88:88 cells —
    hide the ghost while typing; blur normalizes to mm:ss, which aligns again */
@@ -720,18 +720,19 @@ svg.stk { display: block; overflow: visible; }
 #gvc-sesspanel [data-tip]:hover::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #1e1e1e; color: #fff; font-size: 12px; font-weight: 500; padding: 6px 10px; border-radius: 7px; white-space: nowrap; z-index: 7; pointer-events: none; opacity: 0; animation: gvc-tipin .12s ease .4s forwards; }
 @keyframes gvc-tipin { to { opacity: 1; } }
 
-/* the turntable. The svg is taller than its box and bottom-anchored, so the record
-   overflows the top edge the way the reference's does */
+/* the turntable, measured off the reference: disc inside the box over its shadow, the
+   arm above it with its own soft shadow, the grill at the right */
 #gvc-sesspanel .row.music { position: static; }
-#gvc-sesspanel .deck { position: relative; background: #f5f5f7; border-radius: 12px; height: 104px; margin-bottom: 12px; }
-#gvc-sesspanel .deck .decksvg { position: absolute; left: 10px; bottom: 2px; width: calc(100% - 20px); height: 112px; overflow: visible; }
+#gvc-sesspanel .deck { position: relative; background: #f1f1f4; border-radius: 12px; height: 104px; margin-bottom: 12px; }
+#gvc-sesspanel .deck .decksvg { position: absolute; inset: 0; width: 100%; height: 100%; }
 #gvc-sesspanel .deck .vinyl { transform-box: fill-box; transform-origin: center; }
 #gvc-sesspanel .deck.playing .vinyl { animation: gvc-spin 2s linear infinite; }
 /* idle label = white with the dark motif (the reference's resting look); playing takes the
    track color. CSS fill wins over the SVG presentation attribute, so no rebuild needed. */
 #gvc-sesspanel .deck:not(.playing) .label circle { fill: #fff; }
-#gvc-sesspanel .deck .arm { transform-box: view-box; transform-origin: 142px 16px; transition: transform .5s ease; }
-#gvc-sesspanel .deck.playing .arm { transform: rotate(14deg); }
+/* the arm rotates only 14°, so a fixed-direction shadow stays believable */
+#gvc-sesspanel .deck .arm { transform-box: view-box; transform-origin: 160px 14px; transition: transform .5s ease; filter: drop-shadow(0 3px 2.5px rgba(0, 0, 0, .18)); }
+#gvc-sesspanel .deck.playing .arm { transform: rotate(12deg); }
 #gvc-sesspanel .deck.off { opacity: .75; }
 #gvc-sesspanel .deck.off .decksvg { filter: grayscale(1); }
 @keyframes gvc-spin { to { transform: rotate(360deg); } }
