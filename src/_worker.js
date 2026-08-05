@@ -92,7 +92,7 @@ function isPublicPath(pathname) {
   // <script>/<link> fetches the login page instead of the asset). RENDERED ASSET extensions
   // only — never a blanket prefix; the board DATA API (/__board) has its own public route below.
   if (pathname.startsWith("/__canvas/") &&
-      /\.(css|js|mjs|json|map|svg|png|webp)$/i.test(pathname)) return true;
+      /\.(css|js|mjs|json|map|svg|png|webp|woff2?)$/i.test(pathname)) return true;
   // Canvas session music: a space's tracks/ folder, at the root for the default space and
   // under /<space>/ for the rest. A public board plays the same track as a gated one, so the
   // audio has to clear the gate too. AUDIO EXTENSIONS ONLY — a README or a stray export that

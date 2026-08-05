@@ -3068,7 +3068,9 @@
   // Facilitator-only control would need a notion of who's running the session, which this
   // engine deliberately doesn't have.
   var TRACKS = null;         // null = manifest not loaded yet; [] = none installed
-  var sessPill, sessPillTime, sessPanel, sessDigits, sessIdle, sessRun, sessPauseBtn, sessMusicBody, sessTrackSel, sessPlayBtn, sessVolIn, sessVolIcon;
+  var sessPill, sessPillTime, sessPillRec, sessPillSpk, sessPanel, sessDigits, sessIdle, sessRun, sessPauseBtn, sessMusicBody, sessDeck, sessTrackBtn, sessTrackMenu, sessTrackChoice, sessPlayBtn, sessVolIn, sessVolIcon;
+  var I_CHEV = '<path d="m6 9 6 6 6-6"/>'; // chevron-down (Lucide)
+  var I_CHECK = '<path d="M20 6 9 17l-5-5"/>'; // check (Lucide)
   var sess = { timer: null, music: null }; // last snapshot from the room
   var sessAt = 0;            // performance.now() when that snapshot landed
   var sessRang = false;      // this countdown's 00:00 has already been announced
@@ -3094,9 +3096,16 @@
   function sessRunning() { var r = sessRemain(); return r != null && sess.timer.running && r > 0; }
 
   function buildSession() {
+    // pill: mini record + seven-segment time (or track name), plus a per-user quick-mute
+    // speaker that only appears while music plays. The speaker is a span, not a nested
+    // button (invalid HTML): it stops propagation so it never toggles the panel.
     sessPillTime = el("span", { class: "t" });
-    sessPill = el("button", { class: "gvc-sesspill", type: "button", title: "Timer and music" },
-      [el("span", { class: "i", html: lucideIcon(I_CLOCK) }), sessPillTime]);
+    sessPillRec = el("span", { class: "rec", html: sessRecIcon() });
+    sessPillSpk = el("span", { class: "spk", role: "button", "aria-label": "Mute" });
+    sessPillSpk.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+    sessPillSpk.addEventListener("click", function (e) { e.stopPropagation(); sessSetMuted(!sessMuted); });
+    sessPill = el("button", { class: "gvc-sesspill", type: "button", "aria-label": "Timer and music" },
+      [sessPillRec, sessPillTime, sessPillSpk]);
     sessPill.addEventListener("click", function (e) { e.stopPropagation(); sessToggle(); });
     // Top RIGHT, beside the presence chips — a session control belongs with the people in the
     // room, not with the file name. Its own row rather than inside #gvc-presence, which hides
@@ -3105,12 +3114,12 @@
     ui.appendChild(topRightEl);
 
     // ---- panel
-    var close = el("button", { class: "x", type: "button", html: lucideIcon(I_X), title: "Close" });
+    var close = el("button", { class: "x", type: "button", html: lucideIcon(I_X), "aria-label": "Close" });
     close.addEventListener("click", function () { sessToggle(false); });
     var head = el("div", { class: "head" }, [el("div", { class: "ttl", text: "Timer and music" }), close]);
 
     // volume (per-user, never synced — your ears, your setting)
-    sessVolIcon = el("button", { class: "vol", type: "button", title: "Mute" });
+    sessVolIcon = el("button", { class: "vol", type: "button", "aria-label": "Mute" });
     sessVolIcon.addEventListener("click", function () { sessSetMuted(!sessMuted); });
     sessVolIn = el("input", { type: "range", min: "0", max: "100", value: String(Math.round(sessVol * 100)) });
     sessVolIn.addEventListener("input", function () {
@@ -3120,7 +3129,9 @@
     });
     var volRow = el("div", { class: "row vol" }, [sessVolIcon, sessVolIn]);
 
-    // timer
+    // timer — a seven-segment clock over its unlit "88:88" ghost. The ghost mirrors the
+    // input's exact box metrics (same font, size, padding) so lit segments land on unlit
+    // ones; the input on top keeps manual entry ("7" → 7:00, "7:30") working unchanged.
     sessDigits = el("input", { class: "digits", value: "05:00", spellcheck: false, "aria-label": "Timer" });
     sessDigits.addEventListener("keydown", function (e) {
       e.stopPropagation(); // the canvas owns single-key shortcuts — don't place a sticky mid-edit
@@ -3129,36 +3140,48 @@
     });
     sessDigits.addEventListener("blur", sessCommitDigits);
     sessDigits.addEventListener("focus", function () { if (!sessDigits.readOnly) sessDigits.select(); });
+    var clock = el("div", { class: "clock" }, [el("div", { class: "ghost", text: "88:88", "aria-hidden": "true" }), sessDigits]);
 
-    var chips = el("div", { class: "chips" });
-    // four, because four fit on one row at the panel's width and a fifth wraps to a lonely
-    // second line. Anything longer is a couple of taps on "+1 min", or type it into the digits.
-    [1, 5, 10, 15].forEach(function (m) {
-      var c = el("button", { class: "chip", type: "button", text: m + " min" });
-      c.addEventListener("click", function () { sessPending = m * 60000; sessSyncTimer(true); });
-      chips.appendChild(c);
+    // idle: "+1 min" nudges the pending duration locally (the room only hears "start");
+    // typing into the digits is the other, unchanged way in. Both clamp at 99:59.
+    var addIdle = el("button", { class: "act wide", type: "button", html: lucideIcon(I_PLUS) + "<span>1 min</span>" });
+    addIdle.addEventListener("click", function () {
+      sessPending = Math.min(sessPending + 60000, 99 * 60000 + 59000);
+      sessSyncTimer(true);
     });
-    var startBtn = el("button", { class: "go", type: "button", text: "Start" });
+    var startBtn = el("button", { class: "go", type: "button", html: lucideIcon(I_PLAY), "data-tip": "Start timer" });
     startBtn.addEventListener("click", sessStart);
-    sessIdle = el("div", { class: "idle" }, [chips, startBtn]);
+    sessIdle = el("div", { class: "idle" }, [addIdle, el("div", { class: "sp" }), startBtn]);
 
     var addBtn = el("button", { class: "act wide", type: "button", html: lucideIcon(I_PLUS) + "<span>1 min</span>" });
     addBtn.addEventListener("click", function () { mpSend({ t: "timer", do: "add", ms: 60000 }); });
-    var stopBtn = el("button", { class: "act", type: "button", html: lucideIcon(I_STOP), title: "Stop" });
+    var stopBtn = el("button", { class: "act stopbtn", type: "button", html: lucideIcon(I_STOP), "data-tip": "Stop" });
     stopBtn.addEventListener("click", function () { mpSend({ t: "timer", do: "stop" }); });
-    sessPauseBtn = el("button", { class: "act", type: "button", title: "Pause" });
+    sessPauseBtn = el("button", { class: "act pausebtn", type: "button" });
     sessPauseBtn.addEventListener("click", function () {
       mpSend({ t: "timer", do: sessRunning() ? "pause" : "resume" });
     });
     sessRun = el("div", { class: "run" }, [addBtn, el("div", { class: "sp" }), stopBtn, sessPauseBtn]);
 
-    var timerBlock = el("div", { class: "row timer" }, [sessDigits, sessIdle, sessRun]);
+    var timerBlock = el("div", { class: "row timer" }, [clock, sessIdle, sessRun]);
 
     // music
     sessMusicBody = el("div", { class: "row music" });
     sessPanel = el("div", { id: "gvc-sesspanel", class: "hidden" }, [head, volRow, timerBlock, sessMusicBody]);
     ui.appendChild(sessPanel);
     sessPanel.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+    // Track-menu dismissal on capture, because the panel (above) and the canvas both stop
+    // pointerdown from bubbling to the document.
+    document.addEventListener("pointerdown", function (e) {
+      if (!sessTrackMenu || sessTrackMenu.classList.contains("hidden")) return;
+      if (sessTrackMenu.contains(e.target) || (sessTrackBtn && sessTrackBtn.contains(e.target))) return;
+      sessTrackMenuToggle(false);
+    }, true);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && sessTrackMenu && !sessTrackMenu.classList.contains("hidden")) {
+        e.stopPropagation(); sessTrackMenuToggle(false);
+      }
+    }, true);
 
     sessSyncVol();
     sessSyncTimer(true);
@@ -3200,8 +3223,12 @@
   function sessSyncVol() {
     var off = sessMuted || sessVol <= 0;
     sessVolIcon.innerHTML = lucideIcon(off ? I_VOL_OFF : I_VOL);
-    sessVolIcon.title = off ? "Unmute" : "Mute";
-    sessVolIn.value = String(Math.round((sessMuted ? 0 : sessVol) * 100));
+    sessVolIcon.setAttribute("aria-label", off ? "Unmute" : "Mute");
+    var p = Math.round((sessMuted ? 0 : sessVol) * 100);
+    sessVolIn.value = String(p);
+    // the filled side of the slider — a gradient split at the thumb, repainted per input
+    sessVolIn.style.background = "linear-gradient(90deg,#4f46e5 " + p + "%,#e5e7eb " + p + "%)";
+    sessSyncPill();
   }
 
   function sessCommitDigits() {
@@ -3231,15 +3258,32 @@
     if (sessPauseBtn) {
       var running = sessRunning();
       sessPauseBtn.innerHTML = lucideIcon(running ? I_PAUSE : I_PLAY);
-      sessPauseBtn.title = running ? "Pause" : "Resume";
+      sessPauseBtn.setAttribute("data-tip", running ? "Pause" : "Resume");
       sessPauseBtn.classList.toggle("hidden", live && r <= 0); // nothing left to pause
     }
     if (hard && document.activeElement !== sessDigits) sessDigits.value = mmss(live ? r : sessPending);
-    // derived, never latched: "+1 min" on a timer that already rang has to drop the expired
-    // styling, and a flag set in sessRing() would still be sitting there
+    sessSyncPill();
+  }
+
+  // One paint for the pill's whole state matrix — derived, never latched: counting shows the
+  // digits; otherwise a playing track shows its name; otherwise the pending duration sits
+  // there as unlit ghost digits. The speaker (per-user mute) and the spinning record only
+  // exist while music plays.
+  function sessSyncPill() {
+    if (!sessPill) return;
+    var r = sessRemain(), live = r != null, playing = !!(sess.music && sess.music.playing);
+    var t = playing ? sessTrack(sess.music.track) : null;
     sessPill.classList.toggle("live", live && r > 0);
     sessPill.classList.toggle("over", live && r <= 0);
-    sessPillTime.textContent = live ? mmss(r) : "";
+    sessPill.classList.toggle("music", playing);
+    sessPillRec.classList.toggle("spin", playing);
+    var lbl = sessPillRec.querySelector(".lbl");
+    if (lbl) lbl.setAttribute("fill", playing ? sessArt(t || sessTrack(sessTrackChoice)).color : "#8b8c90");
+    sessPillSpk.classList.toggle("shown", playing);
+    if (playing) sessPillSpk.innerHTML = lucideIcon(sessMuted || sessVol <= 0 ? I_VOL_OFF : I_VOL);
+    if (live) { sessPillTime.setAttribute("data-mode", "digits"); sessPillTime.textContent = mmss(r); }
+    else if (t) { sessPillTime.setAttribute("data-mode", "name"); sessPillTime.textContent = t.name || t.id; }
+    else { sessPillTime.setAttribute("data-mode", "ghost"); sessPillTime.textContent = mmss(sessPending); }
   }
 
   function sessTick() {
@@ -3247,7 +3291,7 @@
     if (r == null) return;
     var txt = mmss(r);
     if (document.activeElement !== sessDigits && sessDigits.value !== txt) sessDigits.value = txt;
-    if (sessPillTime.textContent !== txt) sessPillTime.textContent = txt;
+    if (sessPillTime.getAttribute("data-mode") === "digits" && sessPillTime.textContent !== txt) sessPillTime.textContent = txt;
     if (r <= 0 && !sessRang) { sessRang = true; sessRing(); }
   }
 
@@ -3255,6 +3299,7 @@
   // together without the room having to broadcast anything at the moment it matters.
   function sessRing() {
     sessSyncTimer(true);
+    sessChime();
     [sessPill, sessDigits].forEach(function (n) {
       if (!n) return;
       n.classList.remove("gvc-rang");
@@ -3263,36 +3308,165 @@
     });
   }
 
+  // The 00:00 chime — synthesized, not an asset, through the same per-user volume/mute as
+  // the music. Scheduled only on a RUNNING AudioContext: a suspended one (this tab never
+  // interacted, autoplay policy) would hold the notes and fire them stale on the next click,
+  // so it's nudged for next time and this ring stays visual-only.
+  var sessAudioCtx = null;
+  function sessChime() {
+    var vol = sessMuted ? 0 : sessVol;
+    if (vol <= 0) return;
+    try {
+      if (!sessAudioCtx) sessAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var ctx = sessAudioCtx;
+      if (ctx.state !== "running") { ctx.resume().catch(function () {}); return; }
+      [880, 1174.7].forEach(function (hz, i) { // A5 then D6 — a doorbell's worth of ceremony
+        var t0 = ctx.currentTime + i * 0.18;
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "triangle"; o.frequency.value = hz;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.4 * vol, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t0); o.stop(t0 + 0.75);
+      });
+    } catch (e) {}
+  }
+
   // ---- music: driven entirely by the room's shared offset -------------------
   function sessTrack(id) {
     if (!TRACKS) return null;
     for (var i = 0; i < TRACKS.length; i++) if (TRACKS[i].id === id) return TRACKS[i];
     return null;
   }
+  // ---- record-label art: abstract motifs, deterministic per track ----------
+  // The engine owns a small set of label drawings and a palette; a track picks both by id
+  // hash, so any manifest gets distinct-looking labels with zero config, and a space that
+  // cares sets `color` / `motif` per track in its tracks/tracks.json.
+  var SESS_COLORS = ["#58ba66", "#ffd43b", "#5b5bd6", "#f76d3c", "#ea8fd0", "#7cc4f8"];
+  var SESS_MOTIFS = {
+    bird: '<path d="M7 15c2.5.6 6-.2 7.6-2.6M9 9.5c1.8-2 5-2.3 7-.8-1 .6-1.4 1.4-1.2 2.4M9 9.5 5.6 8.9l1.7 2.3c-1.2 2.6-.2 4.6 1.7 5.4M15.9 8.6l2.5.9-2.1 1"/>',
+    face: '<circle cx="12" cy="12.5" r="5.6"/><path d="M4.6 12.5a7.4 7.4 0 0 1 14.8 0M4.6 12.5v2.2M19.4 12.5v2.2"/><path d="M9.8 13.6c.5.9 1.1 1.3 2.2 1.3s1.7-.4 2.2-1.3"/><circle cx="10" cy="11.2" r=".4"/><circle cx="14" cy="11.2" r=".4"/>',
+    burst: '<path d="M12 4.5 13.6 9l4.1-2.7-1.9 4.5 4.7.4-4.2 2.3 3.2 3.5-4.6-.9.3 4.7-3.2-3.5-2.4 4.1-.8-4.6-4.3 1.9 2.6-4-4.5-1.5 4.5-1.4-2.4-4 4.3 1.7L12 4.5Z"/>',
+    scribble: '<path d="M6 14.5c1.5-4 4-7 6-6.5s-2.5 3.5-1 5.5 5-1 5.5-3.5-2-3.5-3.5-2.5 1 3.5 3.5 4.5 3-1 2.5-2"/>',
+    gridsun: '<circle cx="12" cy="10" r="4.6"/><path d="M8.2 8.4h7.6M7.6 10.2h8.8M8.4 12h7.2"/><path d="M5 17.5h14M7.5 15.5h9M10.5 19.5h3M12 15.5l2.5 4M9.5 15.5l-3 4M14.8 15.5l4 4"/>',
+    sail: '<path d="M12 5v9M12 5c3 2 4.5 4.5 4.8 7.2L12 14M12 6.5C9.8 8 8.6 10.4 8.4 13H12"/><path d="M6.5 16h11l-1.6 2.6a1.4 1.4 0 0 1-1.2.7H9.3a1.4 1.4 0 0 1-1.2-.7L6.5 16Z"/>',
+  };
+  var SESS_MOTIF_KEYS = ["bird", "face", "burst", "scribble", "gridsun", "sail"];
+  function sessHash(s) { var h = 5381, i; for (i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) >>> 0; return h; }
+  function sessArt(t) {
+    if (!t) return { color: "#c9cacd", motif: SESS_MOTIFS.bird };
+    var h = sessHash(String(t.id));
+    return {
+      color: typeof t.color === "string" ? t.color : SESS_COLORS[h % SESS_COLORS.length],
+      motif: SESS_MOTIFS[t.motif] || SESS_MOTIFS[SESS_MOTIF_KEYS[(h >> 3) % SESS_MOTIF_KEYS.length]],
+    };
+  }
+  // a track's square icon (picker rows + trigger): label color behind its motif
+  function sessChip(t) {
+    var a = sessArt(t);
+    return '<span class="chip" style="background:' + a.color + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' + a.motif + "</svg></span>";
+  }
+  // the pill's mini record (label recolored live) with its little star
+  function sessRecIcon() {
+    return '<svg viewBox="0 0 24 24" fill="none"><g class="disc"><circle cx="11" cy="12" r="9" fill="#1b1c1e"/>' +
+      '<circle cx="11" cy="12" r="6.2" stroke="#3a3b3e" stroke-width="1"/>' +
+      '<path d="M4.6 8.4a7.4 7.4 0 0 1 3-3" stroke="rgba(255,255,255,.35)" stroke-width="1.6" stroke-linecap="round"/>' +
+      '<circle cx="11" cy="12" r="3.4" class="lbl" fill="#8b8c90"/><circle cx="11" cy="12" r="1" fill="#e8e8ea"/></g>' +
+      '<path d="m18.6 2.6 1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z" fill="#ffd43b" stroke="#e3a008" stroke-width=".8"/></svg>';
+  }
+  // the turntable: record (grooves + label art) + tone arm + speaker grill. The vinyl and
+  // the arm answer to CSS (.deck.playing spins the record and swings the arm on).
+  function sessDeckSvg(t) {
+    var a = sessArt(t);
+    return '<svg class="decksvg" viewBox="0 0 252 116" fill="none">' +
+      sessGrill(206, 58) +
+      '<g class="arm"><path d="M152 22v42l-14 16" stroke="#c9cacd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M138 80l-5 6" stroke="#b4b5b8" stroke-width="9" stroke-linecap="round"/>' +
+      '<circle cx="152" cy="22" r="8" fill="#d8d9db"/><circle cx="152" cy="22" r="3.2" fill="#9b9c9f"/></g>' +
+      '<g class="vinyl"><circle cx="64" cy="58" r="52" fill="#1b1c1e"/>' +
+      '<circle cx="64" cy="58" r="45" stroke="#2c2d30" stroke-width="1"/>' +
+      '<circle cx="64" cy="58" r="39" stroke="#2c2d30" stroke-width="1"/>' +
+      '<circle cx="64" cy="58" r="33" stroke="#2c2d30" stroke-width="1"/>' +
+      '<path d="M25 42a42 42 0 0 1 18-19" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-linecap="round"/>' +
+      '<path d="M103 74a42 42 0 0 1-18 19" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-linecap="round"/>' +
+      '<g class="label"><circle cx="64" cy="58" r="23" fill="' + a.color + '"/>' +
+      '<g transform="translate(47,41) scale(1.42)" stroke="#1a1a1a" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">' + a.motif + "</g></g>" +
+      '<circle cx="64" cy="58" r="2.6" fill="#e8e8ea"/></g>' +
+      "</svg>";
+  }
+  function sessGrill(cx, cy) {
+    var d = "", step = 9, n = 4; // a diamond of dots
+    for (var i = -n; i <= n; i++) for (var j = -n; j <= n; j++) {
+      if (Math.abs(i) + Math.abs(j) > n) continue;
+      d += '<circle cx="' + (cx + i * step) + '" cy="' + (cy + j * step) + '" r="2" fill="#c2c3c6"/>';
+    }
+    return d;
+  }
+
   // Built ONCE per manifest, not per session message: a peer starting a timer must not
-  // collapse a dropdown you have open.
+  // collapse a dropdown you have open (sessSyncMusic only toggles classes and labels).
   function sessRenderMusic() {
     if (!sessMusicBody) return;
     sessMusicBody.innerHTML = "";
-    sessTrackSel = sessPlayBtn = null;
+    sessTrackBtn = sessTrackMenu = sessPlayBtn = sessDeck = null;
     if (TRACKS === null) return; // manifest still in flight — render nothing rather than a guess
+    sessDeck = el("div", { class: "deck" + (TRACKS.length ? "" : " off") });
+    sessMusicBody.appendChild(sessDeck);
     if (!TRACKS.length) {
+      // the turntable still furnishes the room — grayed and inert, waiting for tracks
+      sessDeck.innerHTML = sessDeckSvg(null);
       sessMusicBody.appendChild(el("div", { class: "empty", text: "No tracks installed" }));
       return;
     }
-    var sel = el("select", { class: "track" });
-    TRACKS.forEach(function (t) { sel.appendChild(el("option", { value: t.id, text: t.name || t.id })); });
-    sel.addEventListener("change", function () { sessPlay(sel.value, true); });
-    sessTrackSel = sel;
-    sessPlayBtn = el("button", { class: "act", type: "button" });
+    if (!sessTrackChoice || !sessTrack(sessTrackChoice)) sessTrackChoice = TRACKS[0].id;
+    // a trigger + dark menu instead of a native select, so rows can carry the label art
+    sessTrackBtn = el("button", { class: "trackbtn", type: "button", "aria-haspopup": "listbox" });
+    sessTrackBtn.addEventListener("click", function () { sessTrackMenuToggle(); });
+    sessTrackMenu = el("div", { class: "trackmenu hidden", role: "listbox" });
+    TRACKS.forEach(function (t) {
+      var row = el("button", {
+        class: "item", type: "button", role: "option", "data-id": t.id,
+        html: '<span class="tick">' + lucideIcon(I_CHECK) + "</span>" + sessChip(t) + '<span class="nm"></span>',
+      });
+      row.querySelector(".nm").textContent = t.name || t.id;
+      row.addEventListener("click", function () {
+        sessTrackMenuToggle(false);
+        var playing = !!(sess.music && sess.music.playing);
+        sessTrackChoice = t.id;
+        // picking while playing switches the room's track; while stopped it just selects
+        if (playing && sess.music.track !== t.id) sessPlay(t.id, true);
+        else sessSyncMusic();
+      });
+      sessTrackMenu.appendChild(row);
+    });
+    sessTrackMenu.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault(); e.stopPropagation();
+      var items = [].slice.call(sessTrackMenu.querySelectorAll(".item"));
+      var i = items.indexOf(document.activeElement);
+      items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus();
+    });
+    sessPlayBtn = el("button", { class: "go", type: "button" });
     sessPlayBtn.addEventListener("click", function () {
       sessUnblock();
       if (sess.music && sess.music.playing) mpSend({ t: "music", do: "stop" });
-      else sessPlay(sel.value, false);
+      else sessPlay(sessTrackChoice, false);
     });
-    sessMusicBody.appendChild(sel);
-    sessMusicBody.appendChild(sessPlayBtn);
+    sessMusicBody.appendChild(el("div", { class: "musicrow" }, [sessTrackBtn, sessPlayBtn]));
+    sessMusicBody.appendChild(sessTrackMenu);
     sessSyncMusic();
+  }
+  function sessTrackMenuToggle(force) {
+    if (!sessTrackMenu) return;
+    var open = force == null ? sessTrackMenu.classList.contains("hidden") : force;
+    sessTrackMenu.classList.toggle("hidden", !open);
+    sessTrackBtn.classList.toggle("on", open);
+    if (open) {
+      var sel = sessTrackMenu.querySelector(".item.sel");
+      (sel || sessTrackMenu.firstChild).focus();
+    }
   }
   // Starting a track it isn't already on enters at a RANDOM point in the mix, so a board you
   // open every day doesn't always open on the same bar. The offset is picked here and made
@@ -3304,13 +3478,29 @@
     mpSend({ t: "music", do: "play", track: id, at: at });
   }
   function sessSyncMusic() {
-    if (sessTrackSel && sess.music && sess.music.track && sessTrackSel.value !== sess.music.track &&
-        sessTrack(sess.music.track)) sessTrackSel.value = sess.music.track;
-    if (!sessPlayBtn) return;
-    var on = !!(sess.music && sess.music.playing);
-    sessPlayBtn.innerHTML = lucideIcon(on ? I_STOP : I_PLAY);
-    sessPlayBtn.title = on ? "Stop music" : "Play music";
-    sessPlayBtn.classList.toggle("blocked", sessBlocked);
+    var playing = !!(sess.music && sess.music.playing);
+    var pt = playing ? sessTrack(sess.music.track) : null;
+    if (pt) sessTrackChoice = pt.id; // the room's playing track wins the local pick
+    var cur = sessTrack(sessTrackChoice) || null;
+    if (sessDeck) {
+      sessDeck.classList.toggle("playing", playing);
+      var want = (cur && cur.id) || "";
+      // rebuilt only when the track changes, so a session message can't restart the spin
+      if (sessDeck.dataset.track !== want) { sessDeck.dataset.track = want; sessDeck.innerHTML = sessDeckSvg(cur); }
+    }
+    if (sessTrackBtn) {
+      sessTrackBtn.innerHTML = sessChip(cur) + '<span class="nm"></span><span class="chev">' + lucideIcon(I_CHEV) + "</span>";
+      sessTrackBtn.querySelector(".nm").textContent = cur ? (cur.name || cur.id) : "";
+      var rows = sessTrackMenu.querySelectorAll(".item");
+      for (var i = 0; i < rows.length; i++) rows[i].classList.toggle("sel", rows[i].getAttribute("data-id") === sessTrackChoice);
+    }
+    if (sessPlayBtn) {
+      sessPlayBtn.innerHTML = lucideIcon(playing ? I_STOP : I_PLAY);
+      sessPlayBtn.classList.toggle("playing", playing);
+      sessPlayBtn.setAttribute("data-tip", playing ? "Stop music" : "Play music");
+      sessPlayBtn.classList.toggle("blocked", sessBlocked);
+    }
+    sessSyncPill();
   }
   function sessApplyMusic() {
     var m = sess.music, t = m && sessTrack(m.track);
