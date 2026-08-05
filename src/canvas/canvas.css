@@ -519,7 +519,8 @@ svg.stk { display: block; overflow: visible; }
   100% { transform: scale(var(--clawd-k, 1)) rotate(0deg); }
 }
 .gvc-cursor.agent.poked svg { animation: gvc-clawd-hop .7s cubic-bezier(.34, 1.56, .64, 1); }
-#gvc-presence { display: flex; align-items: center; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 5px 8px 5px 12px; }
+/* the presence row lives INSIDE the top-right card — no chrome of its own */
+#gvc-presence { display: flex; align-items: center; padding-left: 5px; }
 #gvc-presence.hidden { display: none; }
 .gvc-peerchip { position: relative; width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); transition: transform .12s; }
 .gvc-peerchip.me { order: 1; }
@@ -578,46 +579,42 @@ svg.stk { display: block; overflow: visible; }
 /* agents strip: the Clawds' home, bottom-right — glance here instead of the terminal.
    working = breathing face + live dot · idle = dimmed, still · attention = amber pulse ·
    done = one green flash. Click a row to follow that Clawd. */
-/* The agent pills live in the top-right column, stacked under the session/presence row.
-   COMPACT by default (face + name + dot): the status text is folded away and unfolds on
-   hover, while following, or when the agent needs you — attention also makes the pill
-   jump so "needs you" is impossible to miss from across the board. */
-#gvc-agents { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
-#gvc-agents.hidden { display: none; }
-#gvc-agents .row {
-  display: flex; align-items: center; gap: 8px; padding: 6px 11px 6px 7px;
-  background: #fff; border: 1px solid #e9e8e6; border-radius: 999px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 4px 16px rgba(0, 0, 0, .10);
-  cursor: pointer; transition: transform .12s;
-  font: 500 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1e1e1e;
-}
-#gvc-agents .row:hover { transform: translateY(-1px); }
-#gvc-agents .row.following { box-shadow: 0 0 0 2px #2563eb33, 0 4px 16px rgba(0, 0, 0, .10); }
-#gvc-agents .face { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
-#gvc-agents .face svg { display: block; }
-#gvc-agents .who { font-weight: 700; }
-#gvc-agents .what { color: #6b7280; max-width: 0; opacity: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: max-width .3s ease, opacity .2s ease; }
-#gvc-agents .row:hover .what, #gvc-agents .row.following .what, #gvc-agents .row.attention .what, #gvc-agents .row.done .what { max-width: 240px; opacity: 1; }
-#gvc-agents .dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
-#gvc-agents .row.working .dot { background: #22c55e; animation: gvc-live 1.6s ease-in-out infinite; }
-#gvc-agents .row.working .face { animation: gvc-breathe 2.4s ease-in-out infinite; }
-#gvc-agents .row.idle { opacity: .62; }
-#gvc-agents .row.idle .dot { background: #c4c9d4; }
-#gvc-agents .row.attention { border-color: #f59e0b; box-shadow: 0 0 0 2px #f59e0b44, 0 4px 16px rgba(0, 0, 0, .12); animation: gvc-jump 2.2s ease-in-out infinite; }
-#gvc-agents .row.attention .dot { background: #f59e0b; }
-#gvc-agents .row.attention .what { color: #b45309; font-weight: 600; }
-#gvc-agents .row.done .dot { background: #22c55e; }
-#gvc-agents .row.done { animation: gvc-doneflash .9s ease-out; }
+/* Clawds sit IN the presence row as avatar chips, wearing their status as the dot on the
+   face — like people, just with a working/idle/attention/done heartbeat. Attention makes
+   the whole chip jump; the status text + actions live in the click-open card below. */
+.gvc-peerchip .st { position: absolute; right: -3px; bottom: -3px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid #fff; }
+.gvc-peerchip .st.working { background: #22c55e; animation: gvc-live 1.6s ease-in-out infinite; }
+.gvc-peerchip .st.idle { background: #c4c9d4; }
+.gvc-peerchip .st.attention { background: #f59e0b; }
+.gvc-peerchip .st.done { background: #22c55e; }
+.gvc-peerchip.resting { opacity: .62; }
+.gvc-peerchip.attn { animation: gvc-jump 2.2s ease-in-out infinite; box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px #f59e0b, 0 2px 6px rgba(0, 0, 0, .22); z-index: 2; }
 @keyframes gvc-live { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
-@keyframes gvc-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.09); } }
 /* two quick hops, then rest — repeated, so it beckons without vibrating */
 @keyframes gvc-jump {
   0%, 26%, 100% { transform: translateY(0); }
-  8% { transform: translateY(-7px); }
+  8% { transform: translateY(-6px); }
   16% { transform: translateY(0); }
-  21% { transform: translateY(-3px); }
+  21% { transform: translateY(-2.5px); }
 }
-@keyframes gvc-doneflash { 0% { background: #dcfce7; } 100% { background: #fff; } }
+
+/* the agent card: status text + actions under the clicked chip */
+#gvc-agentpop { position: fixed; z-index: 80; width: 218px; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, .15); padding: 11px; font: 500 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1e1e1e; }
+#gvc-agentpop .hd { display: flex; align-items: center; gap: 8px; }
+#gvc-agentpop .hd .face { width: 23px; height: 23px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+#gvc-agentpop .hd .face svg { display: block; }
+#gvc-agentpop .hd .who { font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#gvc-agentpop .hd .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; background: #c4c9d4; }
+#gvc-agentpop .hd .dot.working { background: #22c55e; animation: gvc-live 1.6s ease-in-out infinite; }
+#gvc-agentpop .hd .dot.attention { background: #f59e0b; }
+#gvc-agentpop .hd .dot.done { background: #22c55e; }
+#gvc-agentpop .txt { margin: 7px 1px 10px; color: #6b7280; }
+#gvc-agentpop .txt.attention { color: #b45309; font-weight: 600; }
+#gvc-agentpop .acts { display: flex; gap: 6px; }
+#gvc-agentpop .acts button { flex: 1; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; padding: 6px 8px; font: inherit; font-weight: 600; cursor: pointer; color: #1e1e1e; }
+#gvc-agentpop .acts button:hover { background: #f9fafb; border-color: #d1d5db; }
+#gvc-agentpop .acts .kick { color: #b91c1c; border-color: #fecaca; }
+#gvc-agentpop .acts .kick:hover { background: #fef2f2; border-color: #fca5a5; }
 
 /* peers' drags arrive at tick rate (~8Hz) — a short linear tween makes them glide */
 /* 90ms: just over the 50ms drag fast-path cadence, so remote motion is always mid-tween
@@ -636,14 +633,16 @@ svg.stk { display: block; overflow: visible; }
    put and stays readable while you work, which is the whole point of a countdown. */
 /* the top-right row: [timer pill] [presence chips] — one flex line so the pill keeps its place
    as peers come and go, and so it survives presence hiding itself when you're on the board alone */
-/* the top-right corner is a COLUMN: [session pill + presence chips] then agent pills */
-#gvc-topright { position: fixed; top: 14px; right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
-#gvc-topright .gvc-toprow { display: flex; align-items: center; gap: 8px; }
+/* ONE white card for the whole room: [presence avatars][session inset]. The colored
+   session state (lavender live, red over) is a segment INSIDE this card, never its own
+   floating pill — the reference's big-white-chip anatomy. */
+#gvc-topright { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; gap: 9px; background: #fff; border: 1px solid #e9e8e6; border-radius: 14px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 5px; }
 /* the seven-segment display face (shipped under /__canvas/, license alongside) */
 @font-face { font-family: "DSEG7"; src: url("/__canvas/DSEG7Classic-Bold.woff2") format("woff2"); font-weight: 700; font-display: block; }
 
-/* the pill: [mini record] [time or track name] [speaker while music plays] */
-.gvc-sesspill { border: 1px solid #e9e8e6; background: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 8px 12px; border-radius: 12px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 8px; }
+/* the session inset: [mini record] [time or track name] [speaker while music plays] —
+   a light-bordered segment when idle, colored fill when the room is live */
+.gvc-sesspill { border: 1px solid #e5e7eb; background: #fff; padding: 6px 11px; border-radius: 10px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 8px; }
 .gvc-sesspill:hover, .gvc-sesspill.on { background: #f9fafb; }
 .gvc-sesspill .rec { display: flex; }
 .gvc-sesspill .rec svg { width: 24px; height: 24px; display: block; overflow: visible; }
@@ -657,11 +656,11 @@ svg.stk { display: block; overflow: visible; }
 .gvc-sesspill .spk.shown { display: flex; }
 .gvc-sesspill .spk:hover { color: #4338ca; }
 .gvc-sesspill .spk svg { width: 17px; height: 17px; }
-/* a running timer colors the pill so it reads from across the board, not just up close */
-.gvc-sesspill.live, .gvc-sesspill.music { background: #eef2ff; }
+/* a running timer colors the inset so it reads from across the board, not just up close */
+.gvc-sesspill.live, .gvc-sesspill.music { background: #eef2ff; border-color: transparent; }
 .gvc-sesspill.live .t { color: #4338ca; }
 .gvc-sesspill.live:hover, .gvc-sesspill.music:hover { background: #e0e7ff; }
-.gvc-sesspill.over { background: #fee2e2; }
+.gvc-sesspill.over { background: #fee2e2; border-color: transparent; }
 .gvc-sesspill.over .t { color: #b91c1c; }
 
 #gvc-sesspanel { position: fixed; top: 66px; right: 16px; width: 320px; background: #fff; border: 1px solid #e9e8e6; border-radius: 14px; box-shadow: 0 8px 28px rgba(0, 0, 0, .13); font-size: 13px; color: #111827; }

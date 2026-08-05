@@ -2672,7 +2672,7 @@
   var SQUIG_THICK = '<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"><path d="M4 13.5c2.2-5.5 4.8-5.5 7 0s4.6 5.5 7 0"/></svg>';
 
   // ---- UI: toolbar + sub-toolbars + top bar + zoom -------------------------
-  var zoomPct, nameEl, topbarEl, topRightEl, topRightRowEl;
+  var zoomPct, nameEl, topbarEl, topRightEl;
   var barEls = {}, drawBar, shapeBar, stampBar, moreShapes, plusMenu, colorInput;
   function setTool(t) {
     TOOL = typeof t === "string" ? { kind: t } : t;
@@ -3107,13 +3107,12 @@
     sessPill = el("button", { class: "gvc-sesspill", type: "button", "aria-label": "Timer and music" },
       [sessPillRec, sessPillTime, sessPillSpk]);
     sessPill.addEventListener("click", function (e) { e.stopPropagation(); sessToggle(); });
-    // Top RIGHT, beside the presence chips — a session control belongs with the people in the
-    // room, not with the file name. Its own row rather than inside #gvc-presence, which hides
-    // itself when you're alone; a timer you set on your own must not vanish with it.
-    // The corner is a COLUMN: [pill + presence chips] on the first row, the agent pills
-    // stacked beneath — everyone in the room, human and Clawd, lives in this one corner.
-    topRightRowEl = el("div", { class: "gvc-toprow" }, [sessPill]);
-    topRightEl = el("div", { id: "gvc-topright" }, [topRightRowEl]);
+    // Top RIGHT: ONE white card for the whole room (Rob's call 2026-08-05, FigJam-parity):
+    // presence avatars — humans and Clawds — on the left, and the session control as a
+    // colored INSET segment inside the same card. The card is #gvc-topright itself; the
+    // presence row mounts before the pill when multiplayer boots. A timer you set alone
+    // must not vanish with hidden presence, so the pill never hides.
+    topRightEl = el("div", { id: "gvc-topright" }, [sessPill]);
     ui.appendChild(topRightEl);
 
     // ---- panel
@@ -3139,7 +3138,14 @@
     sessDigits.addEventListener("keydown", function (e) {
       e.stopPropagation(); // the canvas owns single-key shortcuts — don't place a sticky mid-edit
       if (e.key === "Enter") { e.preventDefault(); sessDigits.blur(); sessStart(); }
-      if (e.key === "Escape") { e.preventDefault(); sessSyncTimer(true); sessDigits.blur(); }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        // restore the value DIRECTLY, not via sessSyncTimer: its hard rewrite skips a
+        // focused field, so the blur below would commit the very edit being abandoned
+        var r0 = sessRemain();
+        sessDigits.value = mmss(r0 != null ? r0 : sessPending);
+        sessDigits.blur();
+      }
     });
     sessDigits.addEventListener("blur", sessCommitDigits);
     sessDigits.addEventListener("focus", function () { if (!sessDigits.readOnly) sessDigits.select(); });
@@ -4135,44 +4141,79 @@
     mpApplyStatus(p);
     return p.el;
   }
-  // Status is a STATE, so it lives in one calm place — the agent pills under the top-right
-  // corner (Rob's call: everyone in the room, human and Clawd, is glanced at in ONE spot).
-  // The cursor only carries the amber attention pulse, for locality when the Clawd
-  // that needs you happens to be on screen.
+  // Status is a STATE, so it lives on the Clawd's avatar chip in the presence row — the
+  // dot on the face (working/idle/attention/done), the chip itself jumping when the agent
+  // needs you (Rob's call 2026-08-05: agents present the way PEOPLE do, one row for the
+  // whole room). The cursor only carries the amber attention pulse, for locality when the
+  // Clawd that needs you happens to be on screen. The status TEXT lives one click away,
+  // in the agent's card (mpAgentPopOpen).
   function mpApplyStatus(p) {
     if (p.el) p.el.classList.toggle("attention", !!(p.status && p.status.state === "attention"));
-    mpRenderAgents();
+    mpRenderPresence();
+    mpAgentPopSync();
   }
-  // The agent pills: one per agent peer — face (tinted mini Clawd), name, status text,
-  // state (working = live dot · idle = dimmed · attention = amber). The pills are COMPACT
-  // (face + name + dot): the status text stays folded until you hover, follow, or the
-  // agent needs you — attention unfolds the message and makes the pill jump. Click a row
-  // to fly-and-follow that Clawd (an attention click = "take me to what needs me").
-  // Hidden when no agents are in the room.
-  var mpAgentsBar = null;
-  function mpRenderAgents() {
-    if (!mpAgentsBar) return;
-    mpAgentsBar.innerHTML = "";
-    var rows = [];
-    for (var sid in mpPeers) { var p = mpPeers[sid]; if (p.kind === "agent") rows.push({ sid: sid, p: p }); }
-    if (!rows.length) { mpAgentsBar.classList.add("hidden"); return; }
-    mpAgentsBar.classList.remove("hidden");
-    rows.forEach(function (r) {
-      var p = r.p, s = p.status || {};
-      // default state is DETERMINISTIC: working. Idle is only ever set explicitly (the
-      // daemon's heartbeat owns it) — deriving it from the mascot's quiet-pose made the
-      // strip flap and fight the heartbeat's wake.
-      var state = s.state || "working";
-      var text = s.text || (state === "idle" ? "idle" : state === "attention" ? "needs you" : state === "done" ? "done ✓" : "working…");
-      var row = el("div", { class: "row " + state + (mpFollowSid === r.sid ? " following" : ""), title: state === "attention" ? p.name + " needs your input — click to go" : "Click to follow " + p.name });
-      var face = el("span", { class: "face", html: clawdChipSvg("#f6f0e4") }); face.style.background = p.color;
-      row.appendChild(face);
-      row.appendChild(el("span", { class: "who", text: p.name }));
-      row.appendChild(el("span", { class: "what", text: text }));
-      row.appendChild(el("span", { class: "dot" }));
-      row.addEventListener("click", function () { if (mpFollowSid === r.sid) mpUnfollow(); else mpFollow(r.sid); });
-      mpAgentsBar.appendChild(row);
+  // default state is DETERMINISTIC: working. Idle is only ever set explicitly (the
+  // daemon's heartbeat owns it) — deriving it from the mascot's quiet-pose made the
+  // chips flap and fight the heartbeat's wake.
+  function mpAgentState(p) {
+    var s = (p && p.status) || {};
+    var state = s.state || "working";
+    return {
+      state: state,
+      text: s.text || (state === "idle" ? "idle" : state === "attention" ? "needs you" : state === "done" ? "done ✓" : "working…"),
+    };
+  }
+  // The agent card: click a Clawd's chip and its status text + actions open beneath —
+  // Follow (the same fly-and-chase humans get) and Kick off board. Kick is
+  // {t:"kick",sid}: the room relays it to the target only, whose daemon logs it and ENDS
+  // its process (agents only, worker-enforced — a human's tab belongs to that human).
+  var mpAgentPopEl = null, mpAgentPopSid = null;
+  function mpAgentPopClose() {
+    if (!mpAgentPopEl) return;
+    mpAgentPopEl.remove(); mpAgentPopEl = null; mpAgentPopSid = null;
+    document.removeEventListener("pointerdown", mpAgentPopDocDown, true);
+    document.removeEventListener("keydown", mpAgentPopDocKey, true);
+  }
+  function mpAgentPopDocDown(e) { if (mpAgentPopEl && !mpAgentPopEl.contains(e.target)) mpAgentPopClose(); }
+  function mpAgentPopDocKey(e) { if (e.key === "Escape") { e.stopPropagation(); mpAgentPopClose(); } }
+  function mpAgentPopOpen(sid, chip) {
+    if (mpAgentPopSid === sid) { mpAgentPopClose(); return; } // second click folds it back
+    mpAgentPopClose();
+    if (!mpPeers[sid]) return;
+    mpAgentPopSid = sid;
+    mpAgentPopEl = el("div", { id: "gvc-agentpop" });
+    document.body.appendChild(mpAgentPopEl);
+    mpAgentPopSync();
+    // under the chip, right-aligned to it, nudged inside the viewport
+    var r = chip.getBoundingClientRect();
+    mpAgentPopEl.style.top = r.bottom + 9 + "px";
+    mpAgentPopEl.style.left = Math.max(8, Math.min(innerWidth - mpAgentPopEl.offsetWidth - 8, r.right - mpAgentPopEl.offsetWidth)) + "px";
+    document.addEventListener("pointerdown", mpAgentPopDocDown, true);
+    document.addEventListener("keydown", mpAgentPopDocKey, true);
+  }
+  // (re)paint the open card from the live peer — status updates land while it's open, and
+  // the peer leaving (or being kicked) takes the card with it
+  function mpAgentPopSync() {
+    if (!mpAgentPopEl) return;
+    var sid = mpAgentPopSid, p = mpPeers[sid];
+    if (!p) { mpAgentPopClose(); return; }
+    var st = mpAgentState(p);
+    mpAgentPopEl.innerHTML = "";
+    var face = el("span", { class: "face", html: clawdChipSvg("#f6f0e4") });
+    face.style.background = p.color;
+    mpAgentPopEl.appendChild(el("div", { class: "hd" }, [face, el("span", { class: "who", text: p.name }), el("span", { class: "dot " + st.state })]));
+    mpAgentPopEl.appendChild(el("div", { class: "txt " + st.state, text: st.text }));
+    var follow = el("button", { type: "button", text: mpFollowSid === sid ? "Unfollow" : "Follow" });
+    follow.addEventListener("click", function () {
+      if (mpFollowSid === sid) mpUnfollow(); else mpFollow(sid);
+      mpAgentPopClose();
     });
+    var kick = el("button", { class: "kick", type: "button", text: "Kick off board" });
+    kick.addEventListener("click", function () {
+      mpSend({ t: "kick", sid: sid });
+      mpAgentPopClose(); // the chip goes when its leave arrives — the room's word, not ours
+    });
+    mpAgentPopEl.appendChild(el("div", { class: "acts" }, [follow, kick]));
   }
   // cursor chat: a bubble at the cursor for ~6s, then gone. A moment, not a state.
   function mpShowChat(p, text) {
@@ -4324,16 +4365,16 @@
     return String(name || "?").trim().split(/\s+/).map(function (w) { return w.charAt(0); }).slice(0, 2).join("").toUpperCase();
   }
   function mpRenderPresence() {
-    mpRenderAgents(); // the agents strip tracks the same lifecycle events as the chips
     if (!mpPresence) return;
     mpPresence.innerHTML = "";
-    if (!mp || mp.readyState !== 1) { mpPresence.classList.add("hidden"); return; }
-    // top-right chips = HUMANS only. Agents get their own pills stacked under this row
-    // (Rob's call: people and agents are different kinds of presence, one corner for both —
-    // chips for who's here, pills beneath for what the Clawds are doing).
+    if (!mp || mp.readyState !== 1) { mpPresence.classList.add("hidden"); mpAgentPopClose(); return; }
+    // ONE row for the whole room (Rob's call 2026-08-05): humans as initial chips, Clawds
+    // as face chips right beside them, wearing their status as the dot on the avatar —
+    // agents present the way people do. Humans first, then agents.
     var chips = [{ name: mpName, title: mpName + " (you)", color: mpColor, me: true }];
     for (var sid in mpPeers) { var p = mpPeers[sid]; if (p.kind === "agent") continue; chips.push({ sid: sid, name: p.name, title: p.name, color: p.color, kind: p.kind, pose: p.pose }); }
-    if (chips.length < 2) { mpPresence.classList.add("hidden"); return; } // alone — no chrome
+    for (var sid2 in mpPeers) { var p2 = mpPeers[sid2]; if (p2.kind !== "agent") continue; chips.push({ sid: sid2, name: p2.name, title: p2.name, color: p2.color, kind: "agent", peer: p2 }); }
+    if (chips.length < 2) { mpPresence.classList.add("hidden"); mpAgentPopClose(); return; } // alone — no chrome
     mpPresence.classList.remove("hidden");
     chips.forEach(function (c) {
       var isAgent = c.kind === "agent";
@@ -4343,17 +4384,30 @@
       chip.style.background = c.color;
       if (isAgent) chip.innerHTML = clawdChipSvg("#f6f0e4");
       else chip.textContent = mpInitials(c.name);
-      // hover = who this is (a styled label, not the OS tooltip — that took a second to appear
-      // and looked nothing like the board); click = fly the viewport to what they're looking at
       var following = !c.me && c.sid && mpFollowSid === c.sid;
-      chip.appendChild(el("span", { class: "lbl", text: c.me ? c.title : following ? c.title + " — following, click to stop" : c.title + " — click to follow" }));
-      if (!c.me && c.sid) {
+      if (isAgent) {
+        // the status dot rides the avatar; attention makes the whole chip jump. The text
+        // and the actions (follow / kick) are one click away, in the agent's card.
+        var st = mpAgentState(c.peer);
+        chip.appendChild(el("span", { class: "st " + st.state }));
+        chip.classList.toggle("attn", st.state === "attention");
+        chip.classList.toggle("resting", st.state === "idle");
+        chip.appendChild(el("span", { class: "lbl", text: st.state === "attention" ? c.title + " needs you — click" : c.title + " — " + st.text }));
         chip.classList.add("jump");
         if (following) { chip.classList.add("following"); chip.style.setProperty("--halo", c.color); }
-        chip.addEventListener("click", function (e) {
-          e.stopPropagation();
-          if (mpFollowSid === c.sid) mpUnfollow(); else mpFollow(c.sid);
-        });
+        chip.addEventListener("click", function (e) { e.stopPropagation(); mpAgentPopOpen(c.sid, chip); });
+      } else {
+        // hover = who this is (a styled label, not the OS tooltip — that took a second to
+        // appear and looked nothing like the board); click = fly to what they're looking at
+        chip.appendChild(el("span", { class: "lbl", text: c.me ? c.title : following ? c.title + " — following, click to stop" : c.title + " — click to follow" }));
+        if (!c.me && c.sid) {
+          chip.classList.add("jump");
+          if (following) { chip.classList.add("following"); chip.style.setProperty("--halo", c.color); }
+          chip.addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (mpFollowSid === c.sid) mpUnfollow(); else mpFollow(c.sid);
+          });
+        }
       }
       mpPresence.appendChild(chip);
     });
@@ -4501,12 +4555,10 @@
     mpCursorLayer = el("div", { id: "gvc-cursors" });
     document.body.appendChild(mpCursorLayer); // outside #gvc-ui so ⌘. keeps cursors visible
     mpPresence = el("div", { id: "gvc-presence", class: "hidden" });
-    // into the top-right row (next to the timer pill), not straight onto the UI layer
-    (topRightRowEl || ui).appendChild(mpPresence);
-    // the agent pills stack under that row, same corner (Rob's call 2026-08-05: agents
-    // belong top-right with everything else; the strip left the bottom bar)
-    mpAgentsBar = el("div", { id: "gvc-agents", class: "hidden" });
-    (topRightEl || ui).appendChild(mpAgentsBar);
+    // into the top-right card, BEFORE the session pill (avatars left, session right —
+    // the FigJam order), not straight onto the UI layer
+    if (topRightEl) topRightEl.insertBefore(mpPresence, topRightEl.firstChild);
+    else ui.appendChild(mpPresence);
     transformCbs.push(mpPositionCursors);
     root.addEventListener("pointermove", mpTrackPointer);
     document.addEventListener("mouseleave", function () { mpSend({ t: "cursor", gone: true }); });

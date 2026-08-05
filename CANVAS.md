@@ -33,7 +33,7 @@
 > **Clawds feel human (2026-07-27, Rob's brief: "hide the terminal")** — agents on a board
 > now: **walk in** from beside the content; **drag nodes** with cursor + node travelling
 > together; **type** stickies word-by-word under their focus ring; **point by selecting**;
-> live in a bottom-right **agents strip** (face · name · status · working/idle/attention/
+> sit in the top-right presence row as **Clawd avatar chips** beside the humans, status as the dot on the face — click one for its card: status text + Follow + Kick off board (face · working/idle/attention/
 > done states, click to follow) while the top-right chips stay humans-only; wear a
 > **name-hashed accessory** so multiple Clawds differ by silhouette; auto-idle and
 > eventually **walk out** when their session dies (transcript heartbeat); and everyone has
@@ -434,11 +434,24 @@ mp-proto-e2e script pattern (two contexts, isolated room, mount/interact/mirror 
 
 ## Session: the shared timer + music (2026-08-05)
 
-The top bar carries a **timer pill** that opens a *Timer and music* panel. One timer and one
-track per board, the same for everyone; anyone can drive it, like every other shared surface
-here. Start / pause / resume / stop / +1 min, up to 99:59; the digits are editable when idle
-(`7` → 7:00, `7:30` → 7m30s). At zero the pill and digits shake and read 00:00 for everyone,
-panel open or not. `+1 min` on a timer that already rang restarts it.
+The top-right corner is ONE white card holding the whole room: the presence avatars (humans
+and Clawd agents alike) and a **session inset** (mini record + seven-segment time — light
+border idle, lavender fill live) that opens a *Timer and music* panel. One timer and one track per board, the same for everyone; anyone can
+drive it, like every other shared surface here. Start / pause / resume / stop / +1 min, up to
+99:59; the digits are editable when idle (`7` → 7:00, `7:30` → 7m30s). At zero the pill and
+digits shake, read a red 00:00 for everyone (panel open or not), and a short synthesized chime
+rings — same per-user volume/mute as the music, silent for anyone the autoplay policy hasn't
+unlocked yet. `+1 min` on a timer that already rang restarts it.
+
+**The face (2026-08-05, FigJam-parity pass):** the clock renders in the DSEG7 seven-segment
+font (`/__canvas/DSEG7Classic-Bold.woff2`, SIL OFL, license alongside — the input sits over an
+unlit `88:88` ghost with identical box metrics); timer controls are circular with dark hover
+tooltips (`data-tip`); the music section is an SVG **turntable** (record + grooves + label art,
+tone arm, speaker grill) that spins and swings the arm on while playing; the track picker is a
+dark popover whose rows carry the label art, selected row lit + checked. The **pill's** state
+matrix: counting → live digits · music playing, no timer → track name + a per-user quick-mute
+speaker · idle → the pending duration as ghost digits. Picking a track while playing switches
+the room's track; while stopped it only selects locally.
 
 **It is not board content.** Session state lives on the room (`ctx.storage` in the DO), never in
 the document — no node, no ops tick, no undo, no KV doc write. `{t:"timer",do:…}` /
@@ -460,9 +473,13 @@ Three rules that were each bought with a bug:
 
 The picker is built from `/__canvas/tracks.json`, accumulated at build time from each space's
 `tracks/` folder (same pattern as the insert-picker catalog) with ids namespaced `<space>:<id>`.
-A space authors `tracks/tracks.json` as `[{id,name,file,duration}]`; `duration` (seconds) is what
-lets every client seek to the same point. No tracks installed → the section says so and the timer
-is unaffected. Volume and mute are **per-user, localStorage, never synced**.
+A space authors `tracks/tracks.json` as `[{id,name,file,duration,color?,motif?}]`; `duration`
+(seconds) is what lets every client seek to the same point. `color` (CSS color) and `motif`
+(one of the engine's abstract label drawings: `bird` · `face` · `burst` · `scribble` ·
+`gridsun` · `sail`) dress the track's record label and picker icon; omitted, both derive
+deterministically from the id hash — mind the `>>>` (a signed shift on a big hash indexes
+nothing). No tracks installed → the turntable renders grayed + inert with a caption and the
+timer is unaffected. Volume and mute are **per-user, localStorage, never synced**.
 
 Position sync is the fiddly part, and every one of these was a silent failure:
 
@@ -559,7 +576,8 @@ Do this **unless prompted otherwise**.
   and TYPE the text word-by-word under your focus ring (`node` carries final text + optional
   rich; conversational scale only — bulk seeding stays instant). `c.sel(ids)` — point with
   selection rings ("these three"). `c.status(text, 'working'|'idle'|'attention'|'done')` —
-  your line in the bottom-right **agents strip** (attention pulses amber = you need the
+  the status behind your **avatar chip** in the top-right presence row, one click away in
+  your agent card (attention rings the chip amber + makes it jump = you need the
   human; done flashes green; the strip is how Rob works with the terminal hidden — keep it
   current). `c.chat(text)` — cursor-chat bubble (a moment; status is the state).
   `c.follow(name)` / `c.unfollow()` — trail a human at a respectful offset (accompany mode).
