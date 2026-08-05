@@ -108,6 +108,8 @@ const SRC_REVIEW_CAT = path.join(ROOT, "src", "review", "aslam.png");
 const SRC_CANVAS_JS = path.join(ROOT, "src", "canvas", "canvas.js");
 const SRC_CANVAS_CSS = path.join(ROOT, "src", "canvas", "canvas.css");
 const SRC_CANVAS_CAPTURE = path.join(ROOT, "src", "canvas", "capture.js");
+const SRC_CANVAS_7SEG = path.join(ROOT, "src", "canvas", "DSEG7Classic-Bold.woff2");
+const SRC_CANVAS_7SEG_LICENSE = path.join(ROOT, "src", "canvas", "DSEG-LICENSE.txt");
 
 // Dev-facing prototype status baseline. Lives PER SPACE in the space repo at
 // prototype-status.json (repo root) (keyed "<opportunity>/<prototype>"), rendered as a
@@ -4259,9 +4261,11 @@ async function buildSpace(space) {
   }
 
   // ── Canvas session music (per space) → tracks/ shipped verbatim, indexed into the shared
-  // manifest. The space authors tracks/tracks.json as [{id,name,file,duration}]; `file` is
-  // relative to tracks/ and `duration` (seconds) is what lets every client seek to the same
-  // point in a loop, so a track without one plays but won't sync mid-stream.
+  // manifest. The space authors tracks/tracks.json as [{id,name,file,duration,color?,motif?}];
+  // `file` is relative to tracks/ and `duration` (seconds) is what lets every client seek to
+  // the same point in a loop, so a track without one plays but won't sync mid-stream.
+  // `color` (CSS color) and `motif` (a label-art key the canvas knows) dress the track's
+  // record label in the session panel; without them the canvas derives both from the id hash.
   if (await isDir(path.join(WS_ROOT, "tracks"))) {
     await copyDir(path.join(WS_ROOT, "tracks"), path.join(DIST_SPACE, "tracks"), isInternalOnly);
     try {
@@ -4276,6 +4280,8 @@ async function buildSpace(space) {
           // raw space merely looks wrong while a raw # silently truncates the URL to nothing
           url: `${BASE}/tracks/${t.file.split("/").map(encodeURIComponent).join("/")}`,
           ...(Number(t.duration) > 0 ? { duration: Number(t.duration) } : {}),
+          ...(typeof t.color === "string" ? { color: t.color } : {}),
+          ...(typeof t.motif === "string" ? { motif: t.motif } : {}),
         });
       }
     } catch (e) {
@@ -4535,6 +4541,9 @@ async function main() {
   await fs.copyFile(SRC_CANVAS_CSS, path.join(DIST, "__canvas", "canvas.css"));
   // capture.js is not on any page: canvas.js lazy-loads it by absolute path on the first ⌘⇧C
   await fs.copyFile(SRC_CANVAS_CAPTURE, path.join(DIST, "__canvas", "capture.js"));
+  // seven-segment display font for the session clock (SIL OFL — its license ships beside it)
+  await fs.copyFile(SRC_CANVAS_7SEG, path.join(DIST, "__canvas", "DSEG7Classic-Bold.woff2"));
+  await fs.copyFile(SRC_CANVAS_7SEG_LICENSE, path.join(DIST, "__canvas", "DSEG-LICENSE.txt"));
   await fs.writeFile(path.join(DIST, "__canvas", "catalog.json"), JSON.stringify(CANVAS_CATALOG), "utf8");
   // Always written, even empty: the canvas fetches it unconditionally, and a 404 on every
   // board load is a worse signal than an honest [].
