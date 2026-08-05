@@ -519,7 +519,7 @@ svg.stk { display: block; overflow: visible; }
   100% { transform: scale(var(--clawd-k, 1)) rotate(0deg); }
 }
 .gvc-cursor.agent.poked svg { animation: gvc-clawd-hop .7s cubic-bezier(.34, 1.56, .64, 1); }
-#gvc-presence { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 5px 8px 5px 12px; }
+#gvc-presence { display: flex; align-items: center; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 5px 8px 5px 12px; }
 #gvc-presence.hidden { display: none; }
 .gvc-peerchip { position: relative; width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); transition: transform .12s; }
 .gvc-peerchip.me { order: 1; }
@@ -623,8 +623,11 @@ svg.stk { display: block; overflow: visible; }
 /* ---- session: the shared timer + music ------------------------------------
    Lives in the top bar because it belongs to the MEETING, not to the selection: it stays
    put and stays readable while you work, which is the whole point of a countdown. */
-.gvc-sesspill { border: 0; background: 0; padding: 6px 9px; border-radius: 8px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 6px; }
-.gvc-sesspill:hover, .gvc-sesspill.on { background: #f3f4f6; }
+/* the top-right row: [timer pill] [presence chips] — one flex line so the pill keeps its place
+   as peers come and go, and so it survives presence hiding itself when you're on the board alone */
+#gvc-topright { position: fixed; top: 14px; right: 16px; display: flex; align-items: center; gap: 8px; }
+.gvc-sesspill { border: 1px solid #e9e8e6; background: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, .10); padding: 10px 12px; border-radius: 12px; cursor: pointer; color: #374151; font: inherit; display: flex; align-items: center; gap: 7px; }
+.gvc-sesspill:hover, .gvc-sesspill.on { background: #f9fafb; }
 .gvc-sesspill .i { display: flex; }
 .gvc-sesspill svg { width: 17px; height: 17px; display: block; }
 .gvc-sesspill .t { font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: .02em; }
@@ -634,7 +637,7 @@ svg.stk { display: block; overflow: visible; }
 .gvc-sesspill.live:hover { background: #e0e7ff; }
 .gvc-sesspill.over { background: #fee2e2; color: #b91c1c; }
 
-#gvc-sesspanel { position: fixed; top: 62px; left: 16px; width: 300px; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, .13); font-size: 13px; color: #111827; }
+#gvc-sesspanel { position: fixed; top: 66px; right: 16px; width: 300px; background: #fff; border: 1px solid #e9e8e6; border-radius: 12px; box-shadow: 0 8px 28px rgba(0, 0, 0, .13); font-size: 13px; color: #111827; }
 #gvc-sesspanel.hidden { display: none; }
 #gvc-sesspanel .head { display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 12px 14px; border-bottom: 1px solid #f1f0ee; }
 #gvc-sesspanel .ttl { font-weight: 650; font-size: 14px; }
@@ -656,12 +659,14 @@ svg.stk { display: block; overflow: visible; }
 #gvc-sesspanel .digits.live { color: #4338ca; }
 #gvc-sesspanel .digits.over { color: #b91c1c; }
 
-#gvc-sesspanel .idle { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+/* chips on their own wrapping row, Start on a full-width row beneath — a Start button stretched
+   to span two rows of wrapped chips reads like a layout accident */
+#gvc-sesspanel .idle { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 10px; }
 #gvc-sesspanel .idle.hidden, #gvc-sesspanel .run.hidden { display: none; }
 #gvc-sesspanel .chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
 #gvc-sesspanel .chip { border: 1px solid #e5e7eb; background: #fff; border-radius: 999px; padding: 5px 10px; font: inherit; font-size: 12px; color: #374151; cursor: pointer; }
 #gvc-sesspanel .chip:hover { background: #f9fafb; border-color: #d1d5db; }
-#gvc-sesspanel .go { border: 0; background: #4f46e5; color: #fff; border-radius: 8px; padding: 6px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+#gvc-sesspanel .go { border: 0; background: #4f46e5; color: #fff; border-radius: 9px; padding: 9px 16px; width: 100%; font: inherit; font-weight: 600; cursor: pointer; }
 #gvc-sesspanel .go:hover { background: #4338ca; }
 
 #gvc-sesspanel .run { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
@@ -688,6 +693,7 @@ svg.stk { display: block; overflow: visible; }
 }
 
 @media (max-width: 640px) {
-  #gvc-sesspanel { left: 8px; right: 8px; width: auto; top: 54px; }
+  #gvc-topright { top: 8px; right: 8px; }
+  #gvc-sesspanel { left: 8px; right: 8px; width: auto; top: 58px; }
   .gvc-sesspill .t { font-size: 12px; }
 }

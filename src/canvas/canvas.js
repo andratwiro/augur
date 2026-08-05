@@ -2672,7 +2672,7 @@
   var SQUIG_THICK = '<svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round"><path d="M4 13.5c2.2-5.5 4.8-5.5 7 0s4.6 5.5 7 0"/></svg>';
 
   // ---- UI: toolbar + sub-toolbars + top bar + zoom -------------------------
-  var zoomPct, nameEl, topbarEl;
+  var zoomPct, nameEl, topbarEl, topRightEl;
   var barEls = {}, drawBar, shapeBar, stampBar, moreShapes, plusMenu, colorInput;
   function setTool(t) {
     TOOL = typeof t === "string" ? { kind: t } : t;
@@ -3098,7 +3098,11 @@
     sessPill = el("button", { class: "gvc-sesspill", type: "button", title: "Timer and music" },
       [el("span", { class: "i", html: lucideIcon(I_CLOCK) }), sessPillTime]);
     sessPill.addEventListener("click", function (e) { e.stopPropagation(); sessToggle(); });
-    topbarEl.appendChild(sessPill);
+    // Top RIGHT, beside the presence chips — a session control belongs with the people in the
+    // room, not with the file name. Its own row rather than inside #gvc-presence, which hides
+    // itself when you're alone; a timer you set on your own must not vanish with it.
+    topRightEl = el("div", { id: "gvc-topright" }, [sessPill]);
+    ui.appendChild(topRightEl);
 
     // ---- panel
     var close = el("button", { class: "x", type: "button", html: lucideIcon(I_X), title: "Close" });
@@ -3127,7 +3131,9 @@
     sessDigits.addEventListener("focus", function () { if (!sessDigits.readOnly) sessDigits.select(); });
 
     var chips = el("div", { class: "chips" });
-    [1, 5, 10, 15, 20].forEach(function (m) {
+    // four, because four fit on one row at the panel's width and a fifth wraps to a lonely
+    // second line. Anything longer is a couple of taps on "+1 min", or type it into the digits.
+    [1, 5, 10, 15].forEach(function (m) {
       var c = el("button", { class: "chip", type: "button", text: m + " min" });
       c.addEventListener("click", function () { sessPending = m * 60000; sessSyncTimer(true); });
       chips.appendChild(c);
@@ -4299,7 +4305,8 @@
     mpCursorLayer = el("div", { id: "gvc-cursors" });
     document.body.appendChild(mpCursorLayer); // outside #gvc-ui so ⌘. keeps cursors visible
     mpPresence = el("div", { id: "gvc-presence", class: "hidden" });
-    ui.appendChild(mpPresence);
+    // into the top-right row (next to the timer pill), not straight onto the UI layer
+    (topRightEl || ui).appendChild(mpPresence);
     mpAgentsBar = el("div", { id: "gvc-agents", class: "hidden" });
     ui.appendChild(mpAgentsBar);
     transformCbs.push(mpPositionCursors);
