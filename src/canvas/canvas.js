@@ -3359,7 +3359,7 @@
     var h = sessHash(String(t.id));
     return {
       color: typeof t.color === "string" ? t.color : SESS_COLORS[h % SESS_COLORS.length],
-      motif: SESS_MOTIFS[t.motif] || SESS_MOTIFS[SESS_MOTIF_KEYS[(h >> 3) % SESS_MOTIF_KEYS.length]],
+      motif: SESS_MOTIFS[t.motif] || SESS_MOTIFS[SESS_MOTIF_KEYS[(h >>> 3) % SESS_MOTIF_KEYS.length]], // >>> — a signed shift goes negative on big hashes and indexes nothing
     };
   }
   // a track's square icon (picker rows + trigger): label color behind its motif
