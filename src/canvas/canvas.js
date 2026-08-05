@@ -618,6 +618,10 @@
     txt.addEventListener("blur", function () {
       host.classList.remove("editing"); txt.contentEditable = "false";
       commitRich(node, txt);
+      // A text node IS its text — emptied out (cut, select-all-delete, or placed and never
+      // typed in) it has nothing left to be, so it goes when you leave the edit. Stickies and
+      // shapes are boxes that happen to hold text; those stay.
+      if (node.type === "text" && !(node.text || "").trim()) { removeNode(node.id); return; }
       if (node.type !== "image" && node.type !== "tile") node.name = (node.text || "").split("\n")[0].slice(0, 60) || autoName(node.type);
       autoFit(node, true);
       scheduleSave();
