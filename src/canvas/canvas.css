@@ -522,6 +522,8 @@ svg.stk { display: block; overflow: visible; }
 /* the presence row lives INSIDE the top-right card — no chrome of its own */
 #gvc-presence { display: flex; align-items: center; padding-left: 5px; }
 #gvc-presence.hidden { display: none; }
+/* the overlap margin is for chip-on-chip — the FIRST chip must not eat the card's padding */
+#gvc-presence .gvc-peerchip:first-child { margin-left: 0; }
 .gvc-peerchip { position: relative; width: 27px; height: 27px; border-radius: 50%; margin-left: -7px; display: flex; align-items: center; justify-content: center; color: #fff; font: 700 10.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .16); transition: transform .12s; }
 .gvc-peerchip.me { order: 1; }
 /* click a peer's face to fly to them; hover names them (our own label, not the OS tooltip —
@@ -651,7 +653,7 @@ svg.stk { display: block; overflow: visible; }
 /* time (or name). Ghost = the pending duration in unlit gray; digits modes render in the
    seven-segment face, the name mode in the UI face */
 .gvc-sesspill .t { font-family: DSEG7, ui-monospace, monospace; font-weight: 700; font-size: 15px; letter-spacing: .04em; color: #cbccd0; }
-.gvc-sesspill .t[data-mode="name"] { font-family: inherit; font-weight: 600; font-size: 13.5px; letter-spacing: 0; color: #4338ca; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gvc-sesspill .t[data-mode="name"] { font-family: inherit; font-weight: 500; font-size: 12.5px; letter-spacing: 0; color: #4338ca; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gvc-sesspill .spk { display: none; color: #6366f1; padding-left: 8px; margin-left: 0; border-left: 1px solid #e5e7eb; align-self: stretch; align-items: center; }
 .gvc-sesspill .spk.shown { display: flex; }
 .gvc-sesspill .spk:hover { color: #4338ca; }
@@ -686,6 +688,9 @@ svg.stk { display: block; overflow: visible; }
    box metrics (font, size, padding, centering) so segments overlay segment-for-segment */
 #gvc-sesspanel .clock { position: relative; background: #f5f5f7; border-radius: 12px; }
 #gvc-sesspanel .clock .ghost { position: absolute; inset: 0; border: 1px solid transparent; padding: 18px 0; text-align: center; font-family: DSEG7, ui-monospace, monospace; font-size: 42px; font-weight: 700; letter-spacing: .06em; color: #e4e4e7; pointer-events: none; user-select: none; }
+/* mid-edit values ("5:0", "15") center-float and can't sit on the fixed 88:88 cells —
+   hide the ghost while typing; blur normalizes to mm:ss, which aligns again */
+#gvc-sesspanel .clock:focus-within .ghost { visibility: hidden; }
 #gvc-sesspanel .digits { position: relative; width: 100%; box-sizing: border-box; border: 1px solid transparent; background: transparent; border-radius: 12px; padding: 18px 0; text-align: center; font-family: DSEG7, ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 42px; font-weight: 700; letter-spacing: .06em; color: #1f2023; outline: none; }
 #gvc-sesspanel .digits:not(.live):hover { border-color: #d9d8d6; }
 #gvc-sesspanel .digits:not(.live):focus { border-color: #4f46e5; }
@@ -722,16 +727,17 @@ svg.stk { display: block; overflow: visible; }
 #gvc-sesspanel .deck .decksvg { position: absolute; left: 10px; bottom: 2px; width: calc(100% - 20px); height: 112px; overflow: visible; }
 #gvc-sesspanel .deck .vinyl { transform-box: fill-box; transform-origin: center; }
 #gvc-sesspanel .deck.playing .vinyl { animation: gvc-spin 2s linear infinite; }
-#gvc-sesspanel .deck .label { filter: grayscale(1) brightness(1.12) opacity(.75); transition: filter .35s; }
-#gvc-sesspanel .deck.playing .label { filter: none; }
-#gvc-sesspanel .deck .arm { transform-box: view-box; transform-origin: 152px 22px; transition: transform .5s ease; }
-#gvc-sesspanel .deck.playing .arm { transform: rotate(26deg); }
+/* idle label = white with the dark motif (the reference's resting look); playing takes the
+   track color. CSS fill wins over the SVG presentation attribute, so no rebuild needed. */
+#gvc-sesspanel .deck:not(.playing) .label circle { fill: #fff; }
+#gvc-sesspanel .deck .arm { transform-box: view-box; transform-origin: 142px 16px; transition: transform .5s ease; }
+#gvc-sesspanel .deck.playing .arm { transform: rotate(14deg); }
 #gvc-sesspanel .deck.off { opacity: .75; }
 #gvc-sesspanel .deck.off .decksvg { filter: grayscale(1); }
 @keyframes gvc-spin { to { transform: rotate(360deg); } }
 
 #gvc-sesspanel .musicrow { display: flex; align-items: center; gap: 10px; }
-#gvc-sesspanel .trackbtn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; border: 1px solid #e5e7eb; background: #fff; border-radius: 10px; height: 40px; padding: 0 10px; font: inherit; font-size: 13px; color: #1f2023; cursor: pointer; }
+#gvc-sesspanel .trackbtn { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; border: 1px solid #e5e7eb; background: #fff; border-radius: 10px; height: 40px; padding: 0 10px; font: inherit; font-size: 12.5px; font-weight: 400; color: #1f2023; cursor: pointer; }
 #gvc-sesspanel .trackbtn:hover, #gvc-sesspanel .trackbtn.on { background: #f9fafb; border-color: #d1d5db; }
 #gvc-sesspanel .trackbtn .nm { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #gvc-sesspanel .trackbtn .chev { display: flex; color: #6b7280; }

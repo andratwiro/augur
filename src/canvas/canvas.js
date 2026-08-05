@@ -3391,9 +3391,6 @@
     var a = sessArt(t);
     return '<svg class="decksvg" viewBox="0 0 252 116" fill="none">' +
       sessGrill(206, 58) +
-      '<g class="arm"><path d="M152 22v42l-14 16" stroke="#c9cacd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="M138 80l-5 6" stroke="#b4b5b8" stroke-width="9" stroke-linecap="round"/>' +
-      '<circle cx="152" cy="22" r="8" fill="#d8d9db"/><circle cx="152" cy="22" r="3.2" fill="#9b9c9f"/></g>' +
       '<g class="vinyl"><circle cx="64" cy="58" r="52" fill="#1b1c1e"/>' +
       '<circle cx="64" cy="58" r="45" stroke="#2c2d30" stroke-width="1"/>' +
       '<circle cx="64" cy="58" r="39" stroke="#2c2d30" stroke-width="1"/>' +
@@ -3403,6 +3400,10 @@
       '<g class="label"><circle cx="64" cy="58" r="23" fill="' + a.color + '"/>' +
       '<g transform="translate(47,41) scale(1.42)" stroke="#1a1a1a" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">' + a.motif + "</g></g>" +
       '<circle cx="64" cy="58" r="2.6" fill="#e8e8ea"/></g>' +
+      // the arm paints AFTER the record — it passes over the disc, like the reference's
+      '<g class="arm"><path d="M142 16 120 68l-10 12" stroke="#c9cacd" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M110 80l-6 7" stroke="#b4b5b8" stroke-width="9" stroke-linecap="round"/>' +
+      '<circle cx="142" cy="16" r="8" fill="#d8d9db"/><circle cx="142" cy="16" r="3.2" fill="#9b9c9f"/></g>' +
       "</svg>";
   }
   function sessGrill(cx, cy) {
