@@ -863,6 +863,7 @@
   function wireRename(nm, node) {
     var tap = 0;
     nm.addEventListener("pointerdown", function (e) {
+      if (isPan()) return; // drag/hand mode: labels are inert — the tap pans like anywhere else
       if (nm.contentEditable === "true") return; // already editing → let the click place the caret
       e.stopPropagation();
       var now = Date.now();
@@ -3465,14 +3466,17 @@
     sessMusicBody.innerHTML = "";
     sessTrackBtn = sessTrackMenu = sessPlayBtn = sessDeck = null;
     if (TRACKS === null) return; // manifest still in flight — render nothing rather than a guess
-    sessDeck = el("div", { class: "deck" + (TRACKS.length ? "" : " off") });
+    // No tracks installed (a deployed build ships none unless a space commits a tracks/
+    // catalog): hide music entirely — panel row, title, the pill's record — rather than
+    // tease an inert turntable that can't work there. It all returns when a catalog ships.
+    var ttl = sessPanel ? sessPanel.querySelector(".ttl") : null;
+    sessMusicBody.classList.toggle("hidden", !TRACKS.length);
+    if (ttl) ttl.textContent = TRACKS.length ? "Timer and music" : "Timer";
+    if (sessPill) sessPill.setAttribute("aria-label", TRACKS.length ? "Timer and music" : "Timer");
+    if (sessPillRec) sessPillRec.classList.toggle("hidden", !TRACKS.length);
+    if (!TRACKS.length) return;
+    sessDeck = el("div", { class: "deck" });
     sessMusicBody.appendChild(sessDeck);
-    if (!TRACKS.length) {
-      // the turntable still furnishes the room — grayed and inert, waiting for tracks
-      sessDeck.innerHTML = sessDeckSvg(null);
-      sessMusicBody.appendChild(el("div", { class: "empty", text: "No tracks installed" }));
-      return;
-    }
     if (!sessTrackChoice || !sessTrack(sessTrackChoice)) sessTrackChoice = TRACKS[0].id;
     // a trigger + dark menu instead of a native select, so rows can carry the label art
     sessTrackBtn = el("button", { class: "trackbtn", type: "button", "aria-haspopup": "listbox" });

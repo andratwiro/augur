@@ -696,6 +696,9 @@ svg.stk { display: block; overflow: visible; }
 #gvc-sesspanel .x:hover { background: #f3f4f6; color: #111827; }
 #gvc-sesspanel .x svg { width: 16px; height: 16px; }
 #gvc-sesspanel .row { padding: 14px 16px; border-bottom: 1px solid #ebebed; }
+/* no tracks installed → the music surface hides wholesale (row + the pill's record) */
+#gvc-sesspanel .row.hidden { display: none; }
+.gvc-sesspill .rec.hidden { display: none; }
 #gvc-sesspanel .row:last-child { border-bottom: 0; }
 
 #gvc-sesspanel .row.vol { display: flex; align-items: center; gap: 12px; }
