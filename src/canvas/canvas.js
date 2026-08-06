@@ -1913,6 +1913,7 @@
     if (e.shiftKey) {
       if (k === "s") setTool("section");
       else if (k === "t") setTool({ kind: "place", type: "table" });
+      else if (k === "p") { drawStyle.mode = "marker"; setTool("draw"); } // ⇧P = pencil, same as M
       return;
     }
     if (e.key === "/") { e.preventDefault(); openCursorChat(); return; } // cursor chat

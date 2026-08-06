@@ -841,8 +841,8 @@ Do this **unless prompted otherwise**.
   finger. A second finger landing mid-stroke cancels the stroke (it's the palm) and pinches.
 - **The main toolbar** (rebuilt 2026-07-22, pixel-verified against the reference screenshots):
   tool state is one `TOOL` object (`setTool()`), sub-toolbars sync from it (`syncBars()`). Shortcuts:
-  V select · H hand · M marker · S sticky · T text · E stamp (radial wheel picker) · R square ·
-  O circle · L line · X elbow · ⇧S section · ⇧T table · C comment · Esc back to select.
+  V select · H hand · M marker (⇧P too — "pencil") · S sticky · T text · E stamp (radial wheel picker) ·
+  R square · O circle · L line · X elbow · ⇧S section · ⇧T table · C comment · Esc back to select.
   (⌘⇧C, ⌘C/⌘X/⌘V and ⌘D/⌘Z/⌘⇧Z are handled ahead of the tool letters, so ⌘C never toggles comments.)
   Drawing keeps the marker armed; shapes/sticky/text/table place once then return to select; stamps stay
   armed. The eraser deletes whole `draw` strokes only. Sections render behind
