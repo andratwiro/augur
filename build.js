@@ -3414,8 +3414,12 @@ const ADMIN_JS = `(function(){
   function row(u){
     var ini = (u.initials || (u.name||'?').slice(0,2)).toUpperCase();
     var badge = u.role === 'admin' ? ' <span class="au__badge">admin</span>' : '';
+    // account photo when the user has one (same /__avatar URL presence chips use), initials otherwise
+    var av = u.avatar
+      ? '<span class="au__av" style="background:url(&quot;'+esc(u.avatar)+'&quot;) center/cover, '+esc(u.color||'#4f46e5')+'"></span>'
+      : '<span class="au__av" style="background:'+esc(u.color||'#4f46e5')+'">'+esc(ini)+'</span>';
     return '<div class="au" data-email="'+esc(u.email)+'">'
-      + '<span class="au__av" style="background:'+esc(u.color||'#4f46e5')+'">'+esc(ini)+'</span>'
+      + av
       + '<span class="au__id"><span class="au__name">'+esc(u.name)+badge+'</span><span class="au__email">'+esc(u.email)+'</span></span>'
       + '<span class="au__seen'+(u.lastSeen ? '' : ' au__seen--never')+'" title="'+(u.lastSeen ? 'Last connection: '+esc(u.lastSeen) : 'Never signed in')+'">'+esc(ago(u.lastSeen))+'</span>'
       + '<span class="au__pw"><input type="text" class="au__input" value="'+esc(u.pass)+'" aria-label="Password for '+esc(u.email)+'" autocapitalize="off" autocorrect="off" spellcheck="false" />'

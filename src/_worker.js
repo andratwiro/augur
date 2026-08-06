@@ -1060,6 +1060,7 @@ async function adminUsersApi(request, url, env, me) {
       users.push({
         email: u.email, name: u.name, role: u.role || "user",
         initials: u.initials || "", color: u.color || "#4f46e5",
+        avatar: avatarUrl(u),
         pass: await effectivePass(env, u),
         lastSeen,
       });
