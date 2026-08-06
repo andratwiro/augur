@@ -233,6 +233,15 @@ svg.stk { display: block; overflow: visible; }
 #gvc-toolbar .tool.on { background: #7b61ff; color: #fff; }
 #gvc-toolbar .tool svg { width: 21px; height: 21px; }
 #gvc-toolbar .sep { width: 1px; align-self: stretch; background: #e5e4e2; margin: 0 4px; }
+/* phone (.gvc-mobile, ≤640px at boot): navigation-first. Toolbar collapses to
+   select + hand + a chevron that expands the full set; topbar is the bare arrow
+   (no "Back" label, no board name) to leave room for the top-right module. */
+#gvc-toolbar .morebtn { display: none; }
+.gvc-mobile #gvc-toolbar .morebtn { display: flex; }
+.gvc-mobile #gvc-toolbar:not(.open) > *:not([data-t="cursor"]):not([data-t="hand"]):not(.morebtn) { display: none; }
+.gvc-mobile #gvc-toolbar.open { max-width: calc(100vw - 24px); flex-wrap: wrap; height: auto; min-height: 47px; justify-content: center; row-gap: 4px; padding: 6px 7px; }
+.gvc-mobile #gvc-toolbar.open .morebtn svg { transform: rotate(180deg); }
+.gvc-mobile #gvc-topbar .back .bl, .gvc-mobile #gvc-topbar .nm { display: none; }
 
 /* the illustrated marker + sticky: full-height slots whose art fills the pill and lifts on
    hover; when armed the whole slot tints grey */

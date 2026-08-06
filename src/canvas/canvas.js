@@ -2635,6 +2635,7 @@
   var I_BUBBLE = '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>'; // message-circle
   var I_WIDGETS = '<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>'; // shapes
   var I_PLUS = '<path d="M5 12h14"/><path d="M12 5v14"/>'; // plus
+  var I_CHEVRON = '<path d="m18 15-6-6-6 6"/>'; // chevron-up (phone toolbar expander)
   var I_CLOCK = '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'; // clock
   var I_X = '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'; // x
   var I_SPEAKER = '<path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/>';
@@ -2679,6 +2680,8 @@
   var barEls = {}, drawBar, shapeBar, stampBar, moreShapes, plusMenu, colorInput;
   function setTool(t) {
     TOOL = typeof t === "string" ? { kind: t } : t;
+    // phone: picking a tool folds the expanded bar back to select + hand
+    if (barEls.bar) barEls.bar.classList.remove("open");
     root.classList.toggle("hand", TOOL.kind === "hand");
     root.classList.toggle("crosshair", ["draw", "eraser", "shape", "connector", "section", "place"].indexOf(TOOL.kind) >= 0);
     clearGhost();
@@ -2743,7 +2746,7 @@
 
   function buildUI() {
     // top-left: back + rename
-    var back = el("button", { class: "back", type: "button", html: "&larr; Back" });
+    var back = el("button", { class: "back", type: "button", html: '<span class="arr">&larr;</span><span class="bl">Back</span>' });
     back.addEventListener("click", function () { save(); if (history.length > 1) history.back(); else location.href = BOARD_PATH.replace(/[^/]+\/?$/, ""); });
     var nm = el("div", { class: "nm", contentEditable: "false", title: "Rename canvas", text: board.name });
     nm.addEventListener("click", function () { if (nm.contentEditable !== "true") { nm.contentEditable = "true"; nm.focus(); document.execCommand("selectAll", false, null); } });
@@ -2777,6 +2780,9 @@
     transformCbs.push(positionSelBar);
     window.addEventListener("resize", positionSelBar);
     syncBars();
+    // phone (Rob's call 2026-08-06): you're navigating, not editing — pan by default,
+    // toolbar collapsed behind the chevron, topbar shrunk to the bare arrow
+    if (matchMedia("(max-width: 640px)").matches) { document.body.classList.add("gvc-mobile"); setTool("hand"); }
   }
 
   function toolBtn(t, title, svgHtml, key) {
@@ -2837,6 +2843,14 @@
       bar.classList.toggle("plusopen", !plusMenu.classList.contains("hidden"));
     });
     bar.appendChild(barEls.plus);
+
+    // phone: the bar boots collapsed to select + hand — this chevron expands/closes
+    // the full set (CSS under .gvc-mobile does the hiding; desktop never sees it)
+    barEls.more = toolBtn("more", "More tools", lucideIcon(I_CHEVRON));
+    barEls.more.classList.add("morebtn");
+    barEls.more.addEventListener("click", function (e) { e.stopPropagation(); bar.classList.toggle("open"); });
+    bar.appendChild(barEls.more);
+
     barEls.bar = bar;
     ui.appendChild(bar);
   }
