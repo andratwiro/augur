@@ -4510,7 +4510,7 @@
       document.body.appendChild(mpFollowPill);
     }
     mpFollowPill.querySelector(".who").textContent = "Following " + p.name;
-    mpFollowPill.querySelector(".stop").style.background = p.color;
+    mpFollowPill.style.background = p.color; // the pill is part of the border — same color
   }
   // Fly to where a peer is: their live cursor, or the node they're typing in if they haven't
   // moved the mouse yet. Eases rather than teleports so you keep your bearings.

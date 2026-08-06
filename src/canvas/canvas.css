@@ -530,13 +530,16 @@ svg.stk { display: block; overflow: visible; }
    that took a second to appear and looked foreign on the board) */
 .gvc-peerchip.jump { cursor: pointer; }
 .gvc-peerchip.jump:hover { transform: translateY(-1px) scale(1.08); z-index: 2; }
-/* following this person: their chip stays lifted with a colored halo until you stop */
-.gvc-peerchip.following { transform: translateY(-1px) scale(1.1); z-index: 2; box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px var(--halo, #2563eb), 0 2px 6px rgba(0, 0, 0, .22); }
-/* …and the whole viewport wears their color (FigJam-style): border + Following pill */
-#gvc-follow-frame { position: fixed; inset: 0; border: 3px solid #2563eb; border-radius: 6px; pointer-events: none; z-index: 70; }
-#gvc-follow-pill { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 71; display: flex; align-items: center; gap: 10px; background: #1c1f26; color: #fff; padding: 5px 5px 5px 14px; border-radius: 9px; font: 600 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; box-shadow: 0 4px 14px rgba(0, 0, 0, .28); white-space: nowrap; }
-#gvc-follow-pill .stop { border: 0; color: #fff; font: 700 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 4px 11px; border-radius: 6px; cursor: pointer; }
-#gvc-follow-pill .stop:hover { filter: brightness(1.12); }
+/* following this person: a colored ring hugs their avatar (tight — it must stay inside
+   the white corner card, like FigJam's) until you stop */
+.gvc-peerchip.following { z-index: 2; box-shadow: 0 0 0 1.5px #fff, 0 0 0 3px var(--halo, #2563eb); }
+/* …and the whole viewport wears their color (FigJam-style): border + Following pill.
+   The pill is PART of the border — same background color, hanging flush from the top
+   edge — with Stop as a darker inset segment. Both colors are set inline (the peer's). */
+#gvc-follow-frame { position: fixed; inset: 0; border: 5px solid #2563eb; pointer-events: none; z-index: 70; }
+#gvc-follow-pill { position: fixed; top: 5px; left: 50%; transform: translateX(-50%); z-index: 71; display: flex; align-items: center; gap: 10px; background: #2563eb; color: #fff; padding: 5px 6px 7px 16px; border-radius: 0 0 10px 10px; font: 600 12.5px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap; }
+#gvc-follow-pill .stop { border: 0; background: rgba(0, 0, 0, .28); color: #fff; font: 700 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 4px 11px; border-radius: 7px; cursor: pointer; }
+#gvc-follow-pill .stop:hover { background: rgba(0, 0, 0, .42); }
 .gvc-peerchip .lbl {
   position: absolute; top: calc(100% + 7px); left: 50%; transform: translateX(-50%);
   padding: 3px 8px 4px; border-radius: 7px; background: #1e1e1e; color: #fff;
