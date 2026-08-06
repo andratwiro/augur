@@ -2635,7 +2635,7 @@
   var I_BUBBLE = '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>'; // message-circle
   var I_WIDGETS = '<path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/>'; // shapes
   var I_PLUS = '<path d="M5 12h14"/><path d="M12 5v14"/>'; // plus
-  var I_CHEVRON = '<path d="m18 15-6-6-6 6"/>'; // chevron-up (phone toolbar expander)
+  var I_CHEVRON = '<path d="m9 18 6-6-6-6"/>'; // chevron-right (phone toolbar expander; flips left when open)
   var I_CLOCK = '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'; // clock
   var I_X = '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'; // x
   var I_SPEAKER = '<path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/>';
@@ -2681,7 +2681,7 @@
   function setTool(t) {
     TOOL = typeof t === "string" ? { kind: t } : t;
     // phone: picking a tool folds the expanded bar back to select + hand
-    if (barEls.bar) barEls.bar.classList.remove("open");
+    if (barEls.bar) { barEls.bar.classList.remove("open"); barEls.bar.scrollLeft = 0; }
     root.classList.toggle("hand", TOOL.kind === "hand");
     root.classList.toggle("crosshair", ["draw", "eraser", "shape", "connector", "section", "place"].indexOf(TOOL.kind) >= 0);
     clearGhost();
@@ -2856,7 +2856,10 @@
     // the full set (CSS under .gvc-mobile does the hiding; desktop never sees it)
     barEls.more = toolBtn("more", "More tools", lucideIcon(I_CHEVRON));
     barEls.more.classList.add("morebtn");
-    barEls.more.addEventListener("click", function (e) { e.stopPropagation(); bar.classList.toggle("open"); });
+    barEls.more.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (!bar.classList.toggle("open")) bar.scrollLeft = 0; // folding resets the row scroll — the pill must never open clipped
+    });
     bar.appendChild(barEls.more);
 
     barEls.bar = bar;
