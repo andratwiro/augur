@@ -27,6 +27,8 @@
  *                {t:"status",text,state} (persistent work state under an agent cursor:
  *                state working|idle|attention; kept on the attachment for late joiners) ·
  *                {t:"chat",text} (cursor chat — pure ephemeral relay) ·
+ *                {t:"view",v:{x,y,s,w,h}} (live viewport — pan/zoom/window; kept on the
+ *                attachment so follow mode mirrors a peer the instant it starts) ·
  *                {t:"proto",id,ev} (demo sync in a live tile iframe) ·
  *                {t:"timer",do:"start"|"add"|"pause"|"resume"|"stop",ms?} ·
  *                {t:"music",do:"play"|"stop",track?,at?} (shared session — see below) ·
@@ -100,7 +102,7 @@ export class BoardRoom {
     for (const ws of this.ctx.getWebSockets()) {
       if (ws === excludeWs) continue;
       const a = ws.deserializeAttachment();
-      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, avatar: a.avatar || null, kind: a.kind || null, pose: a.pose || null, focus: a.focus || null, sel: a.sel || null, status: a.status || null });
+      if (a) out.push({ sid: a.sid, name: a.name, color: a.color, avatar: a.avatar || null, kind: a.kind || null, pose: a.pose || null, focus: a.focus || null, sel: a.sel || null, status: a.status || null, view: a.view || null });
     }
     return out;
   }
@@ -176,6 +178,16 @@ export class BoardRoom {
       if (a.sel && !a.sel.length) a.sel = null;
       ws.serializeAttachment(a);
       this.broadcast({ t: "sel", sid: a.sid, color: a.color, ids: a.sel }, ws);
+      return;
+    }
+    if (msg.t === "view") {
+      // live viewport (pan/zoom + window size) — follow mode mirrors it. Kept on the
+      // attachment so clicking Follow (or joining late) syncs before the peer next moves
+      const v = msg.v;
+      a.view = v && [v.x, v.y, v.s, v.w, v.h].every((n) => typeof n === "number" && isFinite(n)) && v.s > 0
+        ? { x: v.x, y: v.y, s: v.s, w: Math.max(1, v.w), h: Math.max(1, v.h) } : null;
+      ws.serializeAttachment(a);
+      this.broadcast({ t: "view", sid: a.sid, view: a.view }, ws);
       return;
     }
     if (msg.t === "proto") {

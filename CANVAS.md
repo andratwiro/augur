@@ -21,7 +21,9 @@
 > nesting**, markdown input rules (`- ` `1. ` `**b**` `_i_` `~~s~~`), ⌘B/I/U/⇧S/⇧7/⇧8,
 > font-size dropdown + custom px, text color, align.
 > **Multiplayer** — every canvas is a live room (BoardRoom DO): colored cursors + name
-> pills, presence chips (hover = name, click = **follow mode**), live drags at 20Hz (the
+> pills, presence chips (hover = name, click = **follow mode**: FigJam-style viewport
+> mirroring — pan+zoom tracked via `{t:"view"}`, screen border + "Following ‹name›/Stop"
+> pill in their color; agents fall back to cursor chase), live drags at 20Hz (the
 > cursor fast-path), peer **selection rings** + editing-focus rings, streamed co-typing,
 > remote inserts pop / deletes fade, prototype demo sync inside live tiles, agents co-work
 > as the Clawd mascot (`scripts/clawd-canvas.mjs`).
@@ -398,6 +400,16 @@ solo. Public like `/__board` (the board is the credential).
   pointer wears it too (your color, via injected style; tool/text cursors still win), peers
   render it with a name pill. Cursor layer lives OUTSIDE `#gvc-ui` so ⌘. keeps people visible.
   Names come from `/__me` (login), else "Guest".
+- **Follow mode (2026-08-06, FigJam-parity)** — every client publishes its camera as
+  `{t:"view", v:{x,y,s,w,h}}` (throttled ~10/s off `applyTransform` + resize, change-gated,
+  kept on the socket attachment so a fresh follow syncs before the peer next moves). Click a
+  presence chip → your camera soft-lerps to *their viewport*: their visible world rect fitted
+  into your window, pan AND zoom, tracked live. Chrome while following: a border around the
+  whole viewport + a top-centre "Following ‹name›" pill with a Stop button, both in the
+  peer's identity color, plus the haloed chip. Your own pan/zoom/space-drag (or Stop, the
+  chip, the peer leaving, a socket drop) breaks it. Agents publish no viewport (a daemon has
+  no window) — following one falls back to the old centred cursor chase. Following chains
+  (A follows B follows C) just work: B's chase moves B's camera, which B publishes.
 
 **Prototype demo sync + the ALWAYS-LIVE tile model (2026-07-23, remodeled same day).**
 Tiles are always live — there is NO ▶ Live/■ Stop anymore. Every tile mounts its real

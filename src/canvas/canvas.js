@@ -35,7 +35,8 @@
  *   data             persistence (save = SOLO fallback; camera → localStorage) ·
  *                    undo/redo (per-user snapshot-diff history) · public API (GVCanvas)
  *   multiplayer      socket + protocol · diff tick · remote ops (mpPatchGeo) · proto demo
- *                    sync · peer cursors · Clawd mascot · presence chips · follow mode ·
+ *                    sync · peer cursors · Clawd mascot · presence chips · follow mode
+ *                    (viewport mirroring via {t:"view"} + border/pill chrome) ·
  *                    editing focus + selection rings · boot
  *
  * Deep docs + the gotchas that were each bought with a real bug: augur/CANVAS.md.
@@ -226,6 +227,7 @@
       // world, so tell it. Board-anchored threads read GVCanvas.worldToScreen (comments hook).
       try { window.dispatchEvent(new Event("scroll")); } catch (e) {}
       for (var i = 0; i < transformCbs.length; i++) { try { transformCbs[i](); } catch (e) {} }
+      mpSendView(); // live camera → the room (throttled + change-gated; follow mode mirrors it)
     });
   }
   function zoomAt(sx, sy, factor) {
@@ -4384,6 +4386,7 @@
   }
   function mpRenderPresence() {
     if (!mpPresence) return;
+    mpFollowChrome(); // the border + Following-pill track every presence repaint
     mpPresence.innerHTML = "";
     if (!mp || mp.readyState !== 1) { mpPresence.classList.add("hidden"); mpAgentPopClose(); return; }
     // ONE row for the whole room (Rob's call 2026-08-05): humans as initial chips, Clawds
@@ -4419,7 +4422,7 @@
       } else {
         // hover = who this is (a styled label, not the OS tooltip — that took a second to
         // appear and looked nothing like the board); click = fly to what they're looking at
-        chip.appendChild(el("span", { class: "lbl", text: c.me ? c.title : following ? c.title + " — following, click to stop" : c.title + " — click to follow" }));
+        chip.appendChild(el("span", { class: "lbl", text: c.me ? c.title : following ? c.title + " — click to unfollow" : c.title + " — click to follow" }));
         if (!c.me && c.sid) {
           chip.classList.add("jump");
           if (following) { chip.classList.add("following"); chip.style.setProperty("--halo", c.color); }
@@ -4432,15 +4435,21 @@
       mpPresence.appendChild(chip);
     });
   }
-  // ---- follow mode: glue the camera to a peer --------------------------------
-  // Click a face → fly to them once, then CHASE: every cursor update lerps the viewport
-  // toward keeping them centred. Any manual pan/zoom/space-drag breaks the follow (your
-  // hand always wins) — as does clicking the chip again or the peer leaving.
+  // ---- follow mode: mirror a peer's viewport (the FigJam idiom) --------------
+  // Click a face → your camera glides to THEIR viewport and tracks it — pan AND zoom,
+  // their visible world rect fitted into your window (peers publish it via {t:"view"}).
+  // While following, the screen wears their color as a border and a "Following <name>"
+  // pill with a Stop button sits top-centre. Agents publish no viewport (a daemon has no
+  // window), so following one falls back to the old cursor chase. Any manual pan/zoom/
+  // space-drag breaks the follow (your hand always wins) — as does Stop, clicking the
+  // chip again, or the peer leaving.
   var mpFollowSid = null, mpFollowRaf = null;
   function mpFollow(sid) {
     mpFollowSid = sid;
-    mpJumpTo(sid);
+    var p = mpPeers[sid];
+    if (!(p && p.view)) mpJumpTo(sid); // no shared viewport — fly to their cursor instead
     mpRenderPresence();
+    mpFollowChase();
   }
   function mpUnfollow() {
     if (!mpFollowSid) return;
@@ -4448,20 +4457,60 @@
     if (mpFollowRaf) { cancelAnimationFrame(mpFollowRaf); mpFollowRaf = null; }
     mpRenderPresence();
   }
-  function mpFollowChase() {
+  // where the camera should be right now to mirror the followed peer
+  function mpFollowTarget() {
     var p = mpFollowSid && mpPeers[mpFollowSid];
-    if (!p || p.cx == null) return;
-    if (flyRaf) return; // the initial flyTo is still travelling — don't fight it
-    if (mpFollowRaf) return;
+    if (!p) return null;
+    if (p.view) {
+      var pv = p.view;
+      var ww = pv.w / pv.s, wh = pv.h / pv.s;                            // their visible world rect
+      var cx = (pv.w / 2 - pv.x) / pv.s, cy = (pv.h / 2 - pv.y) / pv.s;  // its centre
+      var ts = clampScale(Math.min(innerWidth / ww, innerHeight / wh));  // fit it into MY window
+      return { x: innerWidth / 2 - cx * ts, y: innerHeight / 2 - cy * ts, s: ts };
+    }
+    if (p.cx != null) { // cursor fallback (agents): keep them centred at my own zoom
+      var v = board.view;
+      return { x: innerWidth / 2 - p.cx * v.scale, y: innerHeight / 2 - p.cy * v.scale, s: v.scale };
+    }
+    return null;
+  }
+  // soft-glide loop: lerp toward the target each frame until settled; new view/cursor
+  // data (or a resize) re-arms it. One raf at a time, ~zero cost once settled.
+  function mpFollowChase() {
+    if (mpFollowRaf || !mpFollowSid) return;
     mpFollowRaf = requestAnimationFrame(function () {
       mpFollowRaf = null;
-      var q = mpFollowSid && mpPeers[mpFollowSid];
-      if (!q || q.cx == null) return;
+      if (!mpFollowSid) return;
+      if (flyRaf) { mpFollowChase(); return; } // the initial flyTo is still travelling — don't fight it
+      var t = mpFollowTarget();
+      if (!t) return;
       var v = board.view;
-      var tx = innerWidth / 2 - q.cx * v.scale, ty = innerHeight / 2 - q.cy * v.scale;
-      v.x += (tx - v.x) * 0.18; v.y += (ty - v.y) * 0.18; // soft chase, not a hard lock
+      var dx = t.x - v.x, dy = t.y - v.y, ds = t.s - v.scale;
+      v.x += dx * 0.18; v.y += dy * 0.18; v.scale += ds * 0.18; // soft chase, not a hard lock
       applyTransform(); saveView();
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 || Math.abs(ds) > 0.0005) mpFollowChase();
     });
+  }
+  // the follow chrome: a border in the followed person's color around the whole viewport
+  // + the top-centre "Following <name>" pill with its Stop button. Rendered from
+  // mpRenderPresence so name/color updates and every follow/unfollow path repaint it.
+  var mpFollowFrame = null, mpFollowPill = null;
+  function mpFollowChrome() {
+    var p = mpFollowSid && mpPeers[mpFollowSid];
+    if (!p) {
+      if (mpFollowFrame) { mpFollowFrame.remove(); mpFollowFrame = null; }
+      if (mpFollowPill) { mpFollowPill.remove(); mpFollowPill = null; }
+      return;
+    }
+    if (!mpFollowFrame) { mpFollowFrame = el("div", { id: "gvc-follow-frame" }); document.body.appendChild(mpFollowFrame); }
+    mpFollowFrame.style.borderColor = p.color;
+    if (!mpFollowPill) {
+      mpFollowPill = el("div", { id: "gvc-follow-pill" }, [el("span", { class: "who" }), el("button", { type: "button", class: "stop", text: "Stop" })]);
+      mpFollowPill.querySelector(".stop").addEventListener("click", function (e) { e.stopPropagation(); mpUnfollow(); });
+      document.body.appendChild(mpFollowPill);
+    }
+    mpFollowPill.querySelector(".who").textContent = "Following " + p.name;
+    mpFollowPill.querySelector(".stop").style.background = p.color;
   }
   // Fly to where a peer is: their live cursor, or the node they're typing in if they haven't
   // moved the mouse yet. Eases rather than teleports so you keep your bearings.
@@ -4515,6 +4564,24 @@
     }, 150);
   }
 
+  // my viewport → the room, trailing-throttled and change-gated. This is what makes
+  // follow mode a viewport mirror instead of a cursor chase: everyone publishes their
+  // camera (pan/zoom) + window size, and a follower fits that rect into their own window.
+  var mpViewTimer = null, mpViewSent = "";
+  function mpSendView() {
+    if (!mp || mp.readyState !== 1) return;
+    if (mpViewTimer) return;
+    mpViewTimer = setTimeout(function () {
+      mpViewTimer = null;
+      var v = board.view;
+      var out = { x: Math.round(v.x), y: Math.round(v.y), s: Math.round(v.scale * 1000) / 1000, w: innerWidth, h: innerHeight };
+      var key = out.x + "," + out.y + "," + out.s + "," + out.w + "," + out.h;
+      if (key === mpViewSent) return;
+      mpViewSent = key;
+      mpSend({ t: "view", v: out });
+    }, 90);
+  }
+
   // ---- socket lifecycle ----------------------------------------------------
   function mpOnMessage(ev) {
     var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
@@ -4523,13 +4590,14 @@
       mpSid = m.sid; mpRetry = 1000;
       if (m.color && m.color !== mpColor) { mpColor = m.color; mpApplyLocalCursor(); } // your pointer takes your room color
       mpPeers = {};
-      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, avatar: p.avatar || null, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null, sel: p.sel || null, status: p.status || null }; });
+      (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, avatar: p.avatar || null, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null, sel: p.sel || null, status: p.status || null, view: p.view || null }; });
       if (m.doc) mpAdoptDoc(m.doc);
       else mpSend({ t: "doc", doc: board }); // seed the room (first in, or post-hibernation — KV is current when the room was idle)
       // walked in on a running timer / playing track: adopt it mid-flight
       sessApply(m.session || { timer: null, music: null });
       mpReady = true;
       mpRenderPresence(); mpRenderFocus();
+      mpViewSent = ""; mpSendView(); // publish my camera now so a follower needn't wait for my first move
     } else if (m.t === "join") {
       mpPeers[m.peer.sid] = { name: m.peer.name, color: m.peer.color, avatar: m.peer.avatar || null, focus: m.peer.focus || null, kind: m.peer.kind || null, pose: m.peer.pose || null, status: m.peer.status || null };
       mpRenderPresence();
@@ -4543,6 +4611,7 @@
     else if (m.t === "ops") mpApplyOps(m.ops || []);
     else if (m.t === "focus") { var fp = mpPeers[m.sid]; if (fp) { fp.focus = m.id || null; mpRenderFocus(); } }
     else if (m.t === "sel") { var sp = mpPeers[m.sid]; if (sp) { sp.sel = m.ids || null; mpRenderFocus(); } }
+    else if (m.t === "view") { var vwp = mpPeers[m.sid]; if (vwp) { vwp.view = m.view || null; if (m.sid === mpFollowSid) mpFollowChase(); } }
     else if (m.t === "status") { var stp = mpPeers[m.sid]; if (stp) { stp.status = m.status || null; mpApplyStatus(stp); mpRenderPresence(); } }
     else if (m.t === "chat") { var cp = mpPeers[m.sid] || (mpPeers[m.sid] = { name: m.name, color: m.color, kind: m.kind || null, focus: null }); mpShowChat(cp, m.text); }
     else if (m.t === "pose") { var qp = mpPeers[m.sid]; if (qp) { qp.pose = m.pose || null; mpUpdateGlyph(qp); mpRenderPresence(); } }
@@ -4564,6 +4633,7 @@
       mp = null; mpReady = false;
       for (var sid in mpPeers) { var p = mpPeers[sid]; if (p.el) p.el.remove(); clearTimeout(p.idle); }
       mpPeers = {};
+      mpUnfollow(); // sids don't survive a reconnect — a stale follow would chase a ghost
       mpRenderPresence(); mpRenderFocus();
       mpRetryLater();
     };
@@ -4605,6 +4675,8 @@
     });
     setInterval(mpTick, 120);
     document.addEventListener("visibilitychange", function () { if (!document.hidden) { try { mpTick(); } catch (e) {} } });
+    // a resized window changes what I can see — republish, and refit anyone I'm following
+    window.addEventListener("resize", function () { mpViewSent = ""; mpSendView(); mpFollowChase(); });
     setInterval(mpPoseTick, 200); // animate agent Clawd state (walk/work/sleep) from behaviour
     // keepalive: the room's auto-responder pongs and timestamps us; sockets that stop
     // pinging (dropped transports) get swept server-side instead of haunting presence
