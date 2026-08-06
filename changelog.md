@@ -16,6 +16,16 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-08-06 — Cards show whose work it is
+The little face on a card is now the person who has worked on it most, not whoever
+happened to save it last, so a project someone else built carries their photo. The
+status dot opens a small menu when you hover it, so you pick the state you want
+instead of clicking through the others, and the cards only re-shuffle once you move
+away, so nothing jumps around while you are setting them. Three more annoyances are
+gone: a list no longer opens scrolled halfway down, you can right-click anything
+pinned in the sidebar to remove it, and a board's music can no longer play out of a
+card preview.
+
 ## 2026-07-03 — Spaces are their own worlds now
 The workspace grew into **spaces**: the original space (everything you know, same
 links) and a new sandbox space, each living in its own repo and switchable from the

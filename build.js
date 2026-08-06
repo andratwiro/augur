@@ -93,9 +93,17 @@ const S = (p) => BASE + p;
 // the engine repo can ship without a real user list; default = the committed file.
 const IDENTITY_PATH = process.env.GV_IDENTITY_PATH || path.join(ROOT, "src", "identity.json");
 const IDENTITY = JSON.parse(readFileSync(IDENTITY_PATH, "utf8"));
-const IDENTITY_PUBLIC = IDENTITY.map(({ pass, ...u }) => u);
-// Lower-cased email → public profile, for mapping git commit authors to a face.
-const USER_BY_EMAIL = new Map(IDENTITY_PUBLIC.map((u) => [u.email.toLowerCase(), u]));
+const IDENTITY_PUBLIC = IDENTITY.map(({ pass, emails, ...u }) => u);
+// Lower-cased email → public profile, for mapping git commit authors to a face. A
+// user may list extra addresses they commit from (identity `emails`: other machines,
+// a personal address, an agent that commits on their behalf) — all fold to one
+// profile, so attribution doesn't fragment per laptop. Those addresses are internal:
+// IDENTITY_PUBLIC strips them, only the account email is ever served.
+const USER_BY_EMAIL = new Map();
+IDENTITY.forEach((u, i) => {
+  const pub = IDENTITY_PUBLIC[i];
+  for (const e of [u.email, ...(u.emails || [])]) if (e) USER_BY_EMAIL.set(e.toLowerCase(), pub);
+});
 
 // Optional, self-contained build addon. If present it can post-process copied HTML,
 // add footer/style/script snippets to shell pages, and emit its own dist files via
@@ -330,7 +338,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.93";
+const UI_VERSION = "0.94";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -613,8 +621,13 @@ async function isDir(p) {
  *    (old name → current name); the date/author a path reports is its most recent
  *    NON-rename change, attributed through however many renames followed it.
  *
- * Returns { file: Map<relPath, {t,email}>, dir: Map<relDirPath, {t,email}> } or
- * null when git/history is unavailable (untracked content falls back to fs mtime).
+ * The same pass also tallies WHO works where — commits per author per path — which
+ * is what the card face reports (see mainContributor): the person whose work a
+ * folder mostly is, not whoever touched it last.
+ *
+ * Returns { file: Map<relPath, {t,email}>, dir: Map<relDirPath, {t,email}>,
+ * by: Map<relPath, Map<email, {n,t}>> } or null when git/history is unavailable
+ * (untracked content falls back to fs mtime).
  */
 const SPACE_DATES = new Map(); // space root → parsed maps (one git pass per space per build)
 function spaceDates(repoRoot) {
@@ -629,38 +642,65 @@ function spaceDates(repoRoot) {
       stdio: ["ignore", "pipe", "ignore"],
       maxBuffer: 64 * 1024 * 1024,
     });
-    const tokens = raw.split("\0");
     const alias = new Map();   // historical path → today's path
     const file = new Map();    // today's path → {t, email} of last real change
+    const by = new Map();      // today's path (file OR dir) → Map<email, {n, t}> commit tally
     const cur = (p) => alias.get(p) || p;
-    let t = 0, email = "";
-    for (let i = 0; i < tokens.length; i++) {
-      let tok = tokens[i];
-      if (!tok) continue;
-      const at = tok.indexOf("\x01");
-      if (at !== -1) { // commit header (may be glued to the previous record's tail)
-        const head = tok.slice(at + 1).trim().split(" ");
-        t = Number(head[0]) * 1000;
-        email = (head[1] || "").toLowerCase();
-        tok = tok.slice(0, at);
+    // Credit one commit to a path and every ancestor dir — once each, however many
+    // files under it the commit touched, so "who works on this folder" counts
+    // sessions of work, not file counts (a 40-file sweep isn't 40 votes).
+    const credit = (paths, email, t) => {
+      if (!email) return;
+      const seen = new Set();
+      for (const p of paths) {
+        for (let d = p; d && d !== "."; d = path.dirname(d)) {
+          if (seen.has(d)) break; // ancestors already credited via an earlier sibling
+          seen.add(d);
+          let m = by.get(d);
+          if (!m) by.set(d, (m = new Map()));
+          const e = m.get(email);
+          // Walking newest→oldest, the first time we see an author on a path is
+          // their most recent commit there — the tiebreaker for equal tallies.
+          if (e) e.n++;
+          else m.set(email, { n: 1, t });
+        }
+      }
+    };
+    // One chunk per commit: "<epoch> <email>" NUL then that commit's status records
+    // (each record's first token carries a stray leading newline from the format).
+    for (const chunk of raw.split("\x01")) {
+      const cut = chunk.indexOf("\0");
+      if (cut === -1) continue;
+      const head = chunk.slice(0, cut).trim().split(" ");
+      const t = Number(head[0]) * 1000;
+      const email = (head[1] || "").toLowerCase();
+      const tokens = chunk.slice(cut + 1).split("\0");
+      const touched = [];
+      for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i].trim();
         if (!tok) continue;
+        const st = tok[0];
+        if (st === "R" || st === "C") {
+          const from = tokens[++i], to = tokens[++i];
+          if (to === undefined) break;
+          const today = cur(to);
+          if (st === "R") alias.set(from, today);
+          // A pure rename (R100) isn't an edit; a rename-with-change (R0xx) and any
+          // copy are. Stamp only the newest occurrence (we walk newest→oldest).
+          if (tok !== "R100") {
+            if (!file.has(today)) file.set(today, { t, email });
+            touched.push(today);
+          }
+        } else { // A / M / T / D — single path
+          const p = tokens[++i];
+          if (p === undefined) break;
+          if (st === "D") continue; // deleted names don't exist today
+          const today = cur(p);
+          if (!file.has(today)) file.set(today, { t, email });
+          touched.push(today);
+        }
       }
-      const st = tok[0];
-      if (st === "R" || st === "C") {
-        const from = tokens[++i], to = tokens[++i];
-        if (to === undefined) break;
-        const today = cur(to);
-        if (st === "R") alias.set(from, today);
-        // A pure rename (R100) isn't an edit; a rename-with-change (R0xx) and any
-        // copy are. Stamp only the newest occurrence (we walk newest→oldest).
-        if (tok !== "R100" && !file.has(today)) file.set(today, { t, email });
-      } else { // A / M / T / D — single path
-        const p = tokens[++i];
-        if (p === undefined) break;
-        if (st === "D") continue; // deleted names don't exist today
-        const today = cur(p);
-        if (!file.has(today)) file.set(today, { t, email });
-      }
+      credit(touched, email, t);
     }
     // Bubble file stamps up to every ancestor dir (max wins) so folder lookups are O(1).
     const dir = new Map();
@@ -672,7 +712,7 @@ function spaceDates(repoRoot) {
         d = path.dirname(d);
       }
     }
-    parsed = { file, dir };
+    parsed = { file, dir, by };
   } catch { parsed = null; }
   SPACE_DATES.set(repoRoot, parsed);
   return parsed;
@@ -700,14 +740,37 @@ function modifiedTime(srcDir, fsLatest) {
 }
 
 /**
- * Last real-change author email for a folder, mapped to an internal user (a "face"
- * on the card). Same rename-transparent map as modifiedTime — a repo restructure
- * doesn't claim authorship of every card. Returns the public profile of a known
- * user, or null (uncommitted folder, or an author we don't know).
+ * The "face" on a card: the folder's MAIN contributor — the known user with the most
+ * commits touching it — not whoever happened to push last. A folder is someone's
+ * work; a passing tweak by a colleague shouldn't hand them the card. Ties (equal
+ * commit counts) go to whoever worked on it most recently.
+ *
+ * Counts are per USER, not per email: people commit from several machines/addresses,
+ * so every address a user lists (identity `emails`) folds into one tally. Unknown
+ * addresses are ignored rather than shown as a blank — a folder whose top committer
+ * has no account still shows the next person who does. Returns a public profile, or
+ * null (uncommitted folder, or nobody we know has touched it).
  */
-function lastEditor(absDir) {
-  const d = dateFor(absDir);
-  return d && d.email ? USER_BY_EMAIL.get(d.email) || null : null;
+function mainContributor(absDir) {
+  const dates = WS_ROOT ? spaceDates(WS_ROOT) : null;
+  if (!dates) return null;
+  const rel = path.relative(WS_ROOT, absDir);
+  if (!rel || rel.startsWith("..")) return null;
+  const tally = dates.by.get(rel);
+  if (!tally) return null;
+  const byUser = new Map(); // public profile → {n, t}
+  for (const [email, v] of tally) {
+    const u = USER_BY_EMAIL.get(email);
+    if (!u) continue;
+    const acc = byUser.get(u);
+    if (acc) { acc.n += v.n; acc.t = Math.max(acc.t, v.t); }
+    else byUser.set(u, { n: v.n, t: v.t });
+  }
+  let best = null, bestV = null;
+  for (const [u, v] of byUser) {
+    if (!bestV || v.n > bestV.n || (v.n === bestV.n && v.t > bestV.t)) { best = u; bestV = v; }
+  }
+  return best;
 }
 
 /** Latest filesystem mtime (ms) of any file within a directory tree. */
@@ -910,7 +973,7 @@ async function scan() {
         poster: await exists(path.join(protoDir, "preview.webp")),
         mtimeMs: modifiedTime(protoDir, latest),
         status: statusMap[`${SPACE_KEY}${top.name}/${proto.name}`] || null,
-        editor: lastEditor(protoDir),
+        editor: mainContributor(protoDir),
       });
     }
 
@@ -1512,6 +1575,27 @@ const PAGE_CSS = `
     .card-proto:has(.status-chip.is-ignore):hover,
     .card-opp:has(.status-chip.is-ignore):hover { opacity: 1; }
     @media (prefers-reduced-motion: reduce) { .status-chip { transition: none; } }
+    /* Status picker — opens on hover/click so a state is CHOSEN, not cycled into
+       (each cycle step used to save and re-rank the card). Light, unlike the dark
+       right-click menu: the state glyphs are the same ones on the cards, and they
+       only read on a light surface. */
+    .gv-status-menu {
+      position: fixed; z-index: 2147483200; min-width: 152px;
+      background: var(--card); color: var(--fg);
+      border: 1px solid var(--line-2); border-radius: 10px; padding: 5px;
+      box-shadow: 0 16px 36px -14px rgba(16,24,40,0.45), 0 2px 6px rgba(16,24,40,0.10);
+      font-size: 12.5px; letter-spacing: -0.006em; user-select: none;
+      animation: gv-ctx-in .1s ease both;
+    }
+    .gv-status-menu button {
+      display: flex; align-items: center; gap: 8px; width: 100%;
+      padding: 6px 8px; border: 0; background: none; border-radius: 7px;
+      font: inherit; color: inherit; text-align: left; cursor: pointer; white-space: nowrap;
+    }
+    .gv-status-menu button:hover, .gv-status-menu button:focus-visible { background: var(--card-hover); outline: none; }
+    .gv-status-menu button[aria-checked="true"] { font-weight: 650; }
+    .gv-status-menu button[aria-checked="true"]::after { content: "✓"; margin-left: auto; color: var(--faint); font-size: 11px; }
+    .gv-status-menu svg { width: 16px; height: 16px; flex: none; display: block; }
 
     /* ---- Right-click card menu (editor-style dark popover) ---- */
     .gv-ctx {
@@ -1707,13 +1791,42 @@ const CAROUSEL_JS = `
       // iframe at its data-src and cross-fade on load. Called only when the card nears
       // the viewport (IntersectionObserver below). The stuck-load backstop is timed
       // from THIS moment, not page load, so a far-down preview keeps its full grace.
+      // A preview runs the REAL prototype, and prototypes focus inputs and call
+      // scrollIntoView on load. Both walk out of the frame and move the LISTING —
+      // which is why this page used to open itself halfway down. A decorative
+      // thumbnail doesn't get to move the reader's viewport: for a moment after each
+      // one loads, any scroll the reader didn't ask for is undone. The reader's own
+      // scrolling (wheel/touch/keys/pointer) always wins and ends the guard.
+      var pinY = null, pinUntil = 0, pinning = false;
+      ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach(function (ev) {
+        // The reader moved the page themselves — drop the held position and re-read
+        // it from wherever they end up, so the guard never fights a real scroll.
+        addEventListener(ev, function () { pinY = null; pinUntil = 0; }, { passive: true, capture: true });
+      });
+      // Snapping back in the scroll event itself lands in the same frame as the jump,
+      // so it never paints; the rAF loop below is the backstop for coalesced events.
+      addEventListener('scroll', function () {
+        if (pinY !== null && performance.now() <= pinUntil && scrollY !== pinY) scrollTo(scrollX, pinY);
+      }, true);
+      function pinScroll() {
+        if (pinY === null) pinY = scrollY;
+        pinUntil = performance.now() + 1200; // covers the frame's own load-time scripts
+        if (pinning) return;
+        pinning = true;
+        (function tick() {
+          if (pinY === null || performance.now() > pinUntil) { pinning = false; return; }
+          if (scrollY !== pinY) scrollTo(scrollX, pinY);
+          requestAnimationFrame(tick);
+        })();
+      }
+
       function loadFrame(p) {
         var f = p.querySelector('iframe');
         if (!f || f.dataset.gvLoaded) return;
         f.dataset.gvLoaded = '1';
-        f.addEventListener('load', function () { reveal(p); });
+        f.addEventListener('load', function () { reveal(p); pinScroll(); });
         var src = f.getAttribute('data-src');
-        if (src) f.src = src; // navigates the iframe to the real page
+        if (src) { pinScroll(); f.src = src; } // navigates the iframe to the real page
         // NB: an iframe sits at about:blank with readyState 'complete' BEFORE it
         // navigates to its real src — so we must NOT reveal on readyState alone, or we
         // unmask the page exactly as its FOUC paints. The load event is the only
@@ -1928,6 +2041,28 @@ const NAV_CSS = `
     .gvside__pinhint { color: #6b7280; font-size: 12px; line-height: 1.45; margin: 2px 8px 2px; }
     .gvside [data-pinned-list] a { cursor: grab; }
     .gvside [data-pinned-list] a.gv-dragging { opacity: .45; cursor: grabbing; }
+    .gvside [data-pinned-list] a.gv-ctxopen { background: rgba(16,17,26,0.06); }
+    /* Right-click menu on a pinned row — unpinning from the rail itself, instead of
+       navigating back to the card that owns the star. Editor-dark, like the card menu. */
+    .gvpin-menu {
+      position: fixed; z-index: 2147483300; min-width: 196px;
+      background: #1c1c1f; color: #f3f3f4;
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 6px;
+      box-shadow: 0 16px 40px -10px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+      font: 500 13px/1.25 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      letter-spacing: -0.006em; user-select: none;
+    }
+    .gvpin-menu__hd {
+      padding: 4px 10px 6px; font-size: 11.5px; font-weight: 500; color: rgba(243,243,244,0.45);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .gvpin-menu button {
+      display: flex; align-items: center; gap: 9px; width: 100%;
+      padding: 7px 10px; border: 0; background: none; border-radius: 7px;
+      font: inherit; color: inherit; text-align: left; cursor: pointer; white-space: nowrap;
+    }
+    .gvpin-menu button:hover, .gvpin-menu button:focus-visible { background: #3a6df0; color: #fff; outline: none; }
+    .gvpin-menu svg { width: 15px; height: 15px; flex: none; opacity: .85; }
 
     /* Collapsible section (Library) — a clickable summary row + indented children. */
     .gvside__sect { display: block; }
@@ -2078,15 +2213,16 @@ function pinStar(key, href) {
   return `<button type="button" class="pin-btn" data-pin-key="${key}" data-pin-href="${href}" aria-pressed="false" aria-label="Pin to sidebar" title="Pin to sidebar">${IC_STAR}</button>`;
 }
 
-// A small avatar for the prototype's last git-commit author (mapped to an internal
-// user by build's lastEditor). "" when the author is unknown / uncommitted.
+// A small avatar for whoever the prototype mostly belongs to (build's
+// mainContributor). "" when nobody we know has committed to it.
 function editorChip(ed) {
   if (!ed) return "";
   const ini = (ed.initials || (ed.name || "?").slice(0, 2)).toUpperCase();
   const style = ed.avatar
     ? `background-image:url('${ed.avatar}')`
     : `background:${ed.color || "#4f46e5"}`;
-  return `<span class="proto-editor" style="${style}" title="Last edited by ${escAttr(ed.name)}" aria-label="Last edited by ${escAttr(ed.name)}">${ed.avatar ? "" : escAttr(ini)}</span>`;
+  const label = `Main contributor: ${escAttr(ed.name)}`;
+  return `<span class="proto-editor" style="${style}" title="${label}" aria-label="${label}">${ed.avatar ? "" : escAttr(ini)}</span>`;
 }
 
 // Test emojis for prototypes/projects (the user will rename to real ones later). A
@@ -2710,8 +2846,9 @@ const STATUS_JS = `
     chip.className = 'status-chip ' + m.cls;
     chip.innerHTML = ICONS[status] || ICONS.ignore;
     chip.setAttribute('data-status', status);
-    chip.setAttribute('aria-label', 'Status: ' + m.label + '. Click to change.');
-    chip.setAttribute('title', 'Status: ' + m.label + '. Click to change.');
+    chip.setAttribute('aria-label', 'Status: ' + m.label + '. Change status.');
+    // No title= on purpose: the picker opens on hover, and a native tooltip would
+    // cover it.
   }
   function applyMap(map){
     chips.forEach(function(chip){
@@ -2758,27 +2895,124 @@ const STATUS_JS = `
         applyMap(map); resort();
       }).catch(function(){});
   }
+  // A status change re-ranks the card, which yanks it out from under the pointer
+  // mid-edit. So resorting WAITS: while the picker is open, or while the pointer is
+  // still inside the grid you're editing, the new order is held back and applied the
+  // moment you move away. Set three cards in a row, see one reflow.
+  var needResort = false, mx = -1, my = -1;
+  function laterResort(){ needResort = true; maybeResort(); }
+  // Pointer GEOMETRY, not :hover — the open picker is a body-level overlay, so the
+  // grid under it stops counting as hovered exactly when the pointer is most likely
+  // to be sitting over a card the user just edited.
+  function inGrid(){
+    if(mx < 0) return false;
+    for(var i=0;i<chips.length;i++){
+      var card = chips[i].closest('.card-proto, .card-opp');
+      var grid = card && card.parentElement;
+      if(!grid) continue;
+      var r = grid.getBoundingClientRect();
+      if(mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom) return true;
+    }
+    return false;
+  }
+  function maybeResort(){
+    if(!needResort || openChip || inGrid()) return;
+    needResort = false; resort();
+  }
+  document.addEventListener('mousemove', function(e){ mx = e.clientX; my = e.clientY; maybeResort(); });
+  window.addEventListener('blur', maybeResort);
+
+  function save(chip, next){
+    var prev = chip.getAttribute('data-status') || 'ignore';
+    if(next === prev) return;
+    paint(chip, next);
+    laterResort();
+    fetch('/__status', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ key: chip.getAttribute('data-status-key'), status: next })
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if(d && d.map){
+        try { sessionStorage.setItem(CACHE, JSON.stringify(d.map)); } catch(e){}
+        var k = chip.getAttribute('data-status-key');
+        paint(chip, d.map[k] || 'ignore');
+        laterResort();
+      }
+    }).catch(function(){ paint(chip, prev); laterResort(); });
+  }
+
+  // Hover/click picker: pick the state you want directly instead of cycling through
+  // the others (every intermediate state used to be saved AND re-sorted). Ordered
+  // like the sort itself — Dev ready first.
+  var PICK = ['dev-ready','in-progress','ignore'];
+  var menu = null, openChip = null, hideT = 0, showT = 0;
+  function closeMenu(){
+    if(!menu) return;
+    menu.remove(); menu = null;
+    if(openChip){ openChip.setAttribute('aria-expanded','false'); openChip = null; }
+    maybeResort();
+  }
+  function openMenu(chip){
+    if(openChip === chip) return;
+    closeMenu();
+    openChip = chip;
+    chip.setAttribute('aria-expanded','true');
+    menu = document.createElement('div');
+    menu.className = 'gv-status-menu';
+    menu.setAttribute('role','menu');
+    var cur = chip.getAttribute('data-status') || 'ignore';
+    menu.innerHTML = PICK.map(function(s){
+      return '<button type="button" role="menuitemradio" data-pick="' + s + '" aria-checked="' + (s === cur) + '">'
+        + ICONS[s] + '<span>' + META[s].label + '</span></button>';
+    }).join('');
+    document.body.appendChild(menu);
+    // Anchored under the chip, flipped above when there is no room below, and
+    // clamped to the viewport (chips sit at a card's bottom-left corner).
+    var c = chip.getBoundingClientRect(), m = menu.getBoundingClientRect();
+    var top = c.bottom + 6;
+    if(top + m.height > innerHeight - 8) top = Math.max(8, c.top - m.height - 6);
+    menu.style.top = top + 'px';
+    menu.style.left = Math.max(8, Math.min(c.left - 4, innerWidth - m.width - 8)) + 'px';
+    menu.addEventListener('mouseenter', function(){ clearTimeout(hideT); });
+    menu.addEventListener('mouseleave', function(){ hideT = setTimeout(closeMenu, 180); });
+    menu.addEventListener('click', function(e){
+      var b = e.target.closest('button'); if(!b) return;
+      e.preventDefault(); e.stopPropagation();
+      var c2 = openChip; closeMenu(); save(c2, b.getAttribute('data-pick'));
+    });
+  }
   chips.forEach(function(chip){
-    chip.addEventListener('click', function(){
-      var cur = chip.getAttribute('data-status') || 'ignore';
-      var next = ORDER[(ORDER.indexOf(cur) + 1 + ORDER.length) % ORDER.length];
-      paint(chip, next);
-      resort();
-      chip.disabled = true;
-      fetch('/__status', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ key: chip.getAttribute('data-status-key'), status: next })
-      }).then(function(r){ return r.json(); }).then(function(d){
-        if(d && d.map){
-          try { sessionStorage.setItem(CACHE, JSON.stringify(d.map)); } catch(e){}
-          var k = chip.getAttribute('data-status-key');
-          paint(chip, d.map[k] || 'ignore');
-          resort();
-        }
-      }).catch(function(){ paint(chip, cur); resort(); }).then(function(){ chip.disabled = false; });
+    chip.setAttribute('aria-haspopup','true');
+    chip.setAttribute('aria-expanded','false');
+    chip.addEventListener('mouseenter', function(){
+      clearTimeout(hideT); clearTimeout(showT);
+      showT = setTimeout(function(){ openMenu(chip); }, 90);
+    });
+    chip.addEventListener('mouseleave', function(){
+      clearTimeout(showT);
+      hideT = setTimeout(closeMenu, 180);
+    });
+    // Click and keyboard both just open the picker — no blind cycling.
+    chip.addEventListener('click', function(e){
+      e.preventDefault(); e.stopPropagation();
+      if(openChip === chip) closeMenu(); else openMenu(chip);
     });
   });
+  document.addEventListener('keydown', function(e){
+    if(!menu) return;
+    if(e.key === 'Escape'){ var c = openChip; closeMenu(); if(c) c.focus(); return; }
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      var btns = Array.prototype.slice.call(menu.querySelectorAll('button'));
+      var i = btns.indexOf(document.activeElement);
+      i = (i + (e.key === 'ArrowDown' ? 1 : -1) + btns.length) % btns.length;
+      btns[i].focus();
+    }
+  }, true);
+  document.addEventListener('mousedown', function(e){
+    if(menu && !e.target.closest('.gv-status-menu, [data-status-key]')) closeMenu();
+  }, true);
+  addEventListener('scroll', function(){ if(menu) closeMenu(); }, true);
 })();
 `;
 
@@ -3047,6 +3281,45 @@ const PINS_JS = `
     listEl.addEventListener('drop', function(e){ if(dragEl) e.preventDefault(); });
     listEl.addEventListener('dragend', function(){ if(!dragEl) return; dragEl.classList.remove('gv-dragging'); dragEl = null; lastDrag = Date.now(); persistOrder(); });
     listEl.addEventListener('click', function(e){ if(Date.now() - lastDrag < 150){ e.preventDefault(); } });
+    // Right-click a pinned row to unpin it from the rail. Before this the only way to
+    // remove a pin was to navigate back to the card that owns the star — for a pin
+    // whose page you can no longer find, a dead end.
+    var pinMenu = null, pinMenuFor = null;
+    var I_UNPIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5"/><path d="M15 9.34V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H9.24"/><path d="m2 2 20 20"/><path d="M4.73 4.73 4 6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 3 15.24V16a1 1 0 0 0 1 1h12"/></svg>';
+    function closePinMenu(){
+      if(!pinMenu) return;
+      pinMenu.remove(); pinMenu = null;
+      if(pinMenuFor){ pinMenuFor.classList.remove('gv-ctxopen'); pinMenuFor = null; }
+    }
+    listEl.addEventListener('contextmenu', function(e){
+      var a = e.target.closest('a'); if(!a) return;
+      e.preventDefault();
+      closePinMenu();
+      var k = a.getAttribute('data-k');
+      pinMenuFor = a; a.classList.add('gv-ctxopen');
+      pinMenu = document.createElement('div');
+      pinMenu.className = 'gvpin-menu'; pinMenu.setAttribute('role','menu');
+      var lbl = a.querySelector('span:last-child');
+      pinMenu.innerHTML = '<div class="gvpin-menu__hd">' + esc(((lbl || a).textContent || '').trim()) + '</div>'
+        + '<button type="button" role="menuitem">' + I_UNPIN + '<span>Remove from sidebar</span></button>';
+      document.body.appendChild(pinMenu);
+      var r = pinMenu.getBoundingClientRect();
+      pinMenu.style.left = Math.max(8, Math.min(e.clientX, innerWidth - r.width - 8)) + 'px';
+      pinMenu.style.top = Math.max(8, Math.min(e.clientY, innerHeight - r.height - 8)) + 'px';
+      pinMenu.querySelector('button').addEventListener('click', function(){
+        closePinMenu();
+        ready(function(){
+          if(!Object.prototype.hasOwnProperty.call(map, k)) return;
+          delete map[k];
+          renderList(); paintBtns();
+          save(Object.keys(map).length === 0);
+        });
+      });
+      pinMenu.querySelector('button').focus();
+    });
+    document.addEventListener('mousedown', function(e){ if(pinMenu && !e.target.closest('.gvpin-menu')) closePinMenu(); }, true);
+    document.addEventListener('keydown', function(e){ if(pinMenu && e.key === 'Escape') closePinMenu(); }, true);
+    addEventListener('blur', closePinMenu);
     listEl.addEventListener('keydown', function(e){
       var a = e.target.closest('a'); if(!a || !e.altKey) return;
       if(e.key === 'ArrowUp'){ e.preventDefault(); var p = a.previousElementSibling; if(p){ listEl.insertBefore(a, p); a.focus(); persistOrder(); } }
