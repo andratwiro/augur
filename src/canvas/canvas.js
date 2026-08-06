@@ -3076,6 +3076,12 @@
   var sessAt = 0;            // performance.now() when that snapshot landed
   var sessRang = false;      // this countdown's 00:00 has already been announced
   var sessAudio = null, sessBlocked = false, sessSeekTries = 0;
+  // A board rendered inside a frame is a PREVIEW (a card thumbnail on a listing page,
+  // an embed inside another board) — it still joins the room to draw the current
+  // state, but it must stay silent. Session music is room state, so without this a
+  // single visible thumbnail of a board whose music is playing fills the page it's
+  // embedded in with sound coming from nowhere the reader can see or stop.
+  var EMBEDDED = (function () { try { return window.top !== window.self; } catch (e) { return true; } })();
   var sessVol = 0.6, sessMuted = false, sessPending = 300000; // 5:00 is the default round
 
   try {
@@ -3329,7 +3335,7 @@
   var sessAudioCtx = null;
   function sessChime() {
     var vol = sessMuted ? 0 : sessVol;
-    if (vol <= 0) return;
+    if (vol <= 0 || EMBEDDED) return; // same reason as the music: a preview is silent
     try {
       if (!sessAudioCtx) sessAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
       var ctx = sessAudioCtx;
@@ -3524,6 +3530,7 @@
   }
   function sessApplyMusic() {
     var m = sess.music, t = m && sessTrack(m.track);
+    if (EMBEDDED) { if (sessAudio) sessAudio.pause(); return; } // previews stay silent
     if (!m || !m.playing || !t) { if (sessAudio) sessAudio.pause(); sessSyncMusic(); return; }
     if (!sessAudio) {
       // in the DOM, not a detached `new Audio()`: it renders nothing without `controls`, and
