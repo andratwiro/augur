@@ -2781,8 +2781,16 @@
     window.addEventListener("resize", positionSelBar);
     syncBars();
     // phone (Rob's call 2026-08-06): you're navigating, not editing — pan by default,
-    // toolbar collapsed behind the chevron, topbar shrunk to the bare arrow
-    if (matchMedia("(max-width: 640px)").matches) { document.body.classList.add("gvc-mobile"); setTool("hand"); }
+    // toolbar collapsed behind the chevron, topbar shrunk to the bare arrow. LIVE query,
+    // not a boot-time check: rotation / devtools responsive mode / window resizes flip it.
+    var mq = matchMedia("(max-width: 640px)");
+    function applyMobile() {
+      document.body.classList.toggle("gvc-mobile", mq.matches);
+      setTool(mq.matches ? "hand" : "select");
+    }
+    if (mq.matches) applyMobile();
+    if (mq.addEventListener) mq.addEventListener("change", applyMobile);
+    else if (mq.addListener) mq.addListener(applyMobile); // older Safari
   }
 
   function toolBtn(t, title, svgHtml, key) {
