@@ -237,9 +237,15 @@ svg.stk { display: block; overflow: visible; }
    select + hand + a chevron that expands the full set; topbar is the bare arrow
    (no "Back" label, no board name) to leave room for the top-right module. */
 #gvc-toolbar .morebtn { display: none; }
-.gvc-mobile #gvc-toolbar .morebtn { display: flex; }
+.gvc-mobile #gvc-toolbar .morebtn { display: flex; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; background: #f2f1ef; }
+.gvc-mobile #gvc-toolbar .morebtn svg { stroke-width: 2.2; }
 .gvc-mobile #gvc-toolbar:not(.open) > *:not([data-t="cursor"]):not([data-t="hand"]):not(.morebtn) { display: none; }
-.gvc-mobile #gvc-toolbar.open { max-width: calc(100vw - 24px); flex-wrap: wrap; height: auto; min-height: 47px; justify-content: center; row-gap: 4px; padding: 6px 7px; }
+/* expanded = ONE lateral row, edge to edge, horizontally scrollable (no wrap); the
+   chevron rides sticky at the right so closing never needs a scroll-to-the-end */
+.gvc-mobile #gvc-toolbar.open { left: 10px; right: 10px; transform: none; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.gvc-mobile #gvc-toolbar.open::-webkit-scrollbar { display: none; }
+.gvc-mobile #gvc-toolbar.open > * { flex: 0 0 auto; }
+.gvc-mobile #gvc-toolbar.open .morebtn { position: sticky; right: 0; box-shadow: -6px 0 8px #fff, 6px 0 0 #fff; }
 .gvc-mobile #gvc-toolbar.open .morebtn svg { transform: rotate(180deg); }
 .gvc-mobile #gvc-topbar .back .bl, .gvc-mobile #gvc-topbar .nm { display: none; }
 
