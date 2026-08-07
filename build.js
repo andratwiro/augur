@@ -338,7 +338,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "1.02";
+const UI_VERSION = "1.03";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1292,12 +1292,18 @@ const PAGE_CSS = `
     .folderbar__new:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     .folderbar__new svg { width: 13px; height: 13px; }
     /* Created-canvas cards (injected by NEWCANVAS_JS from the /__canvases KV map):
-       no poster/iframe to show, so the preview is a dotted whiteboard ghost. */
+       the preview is a dotted whiteboard that NEWCANVAS_JS fills with a live SVG
+       mini-map of the board doc — colored rects per node, marker strokes as
+       polylines. An empty/unreachable board keeps the map-emoji ghost. */
     .preview--canvas {
-      display: grid; place-items: center; font-size: 40px;
       background-image: radial-gradient(circle, var(--line-2) 1px, transparent 1.4px);
       background-size: 16px 16px;
     }
+    .preview--canvas .canvas-map {
+      position: absolute; inset: 0;
+      display: grid; place-items: center; font-size: 40px;
+    }
+    .preview--canvas .canvas-map svg { display: block; width: 100%; height: 100%; }
     .empty { color: var(--muted); }
 
     /* Research/context surface — quiet gated metadata (count + filenames). Colour stays
@@ -3167,8 +3173,7 @@ const CARD_MENU_JS = `
 // state is "ignore"; clicking cycles ignore → in-progress → dev-ready → ignore.
 const STATUS_JS = `
 (function(){
-  var chips = Array.prototype.slice.call(document.querySelectorAll('[data-status-key]'));
-  if(!chips.length) return;
+  var chips = []; // filled by __gvStatusWire at boot + when cards arrive late
   var ORDER = ['ignore','in-progress','dev-ready'];
   var META = {
     'ignore':      {label:'Ignore',      cls:'is-ignore'},
@@ -3187,8 +3192,8 @@ const STATUS_JS = `
     // No title= on purpose: the picker opens on hover, and a native tooltip would
     // cover it.
   }
-  function applyMap(map){
-    chips.forEach(function(chip){
+  function applyMap(map, list){
+    (list || chips).forEach(function(chip){
       var k = chip.getAttribute('data-status-key');
       if(map && Object.prototype.hasOwnProperty.call(map, k)) paint(chip, map[k] || 'ignore');
     });
@@ -3219,18 +3224,22 @@ const STATUS_JS = `
         .forEach(function(o){ g.grid.appendChild(o.card); });
     });
   }
-  // First paint from the per-session cache if we have it — skips the network read.
-  var cached = null;
-  try { cached = JSON.parse(sessionStorage.getItem(CACHE) || 'null'); } catch(e){}
-  if(cached){ applyMap(cached); resort(); }
-  else {
-    fetch('/__status', {headers:{'Accept':'application/json'}})
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var map = (d && d.map) || {};
-        try { sessionStorage.setItem(CACHE, JSON.stringify(map)); } catch(e){}
-        applyMap(map); resort();
-      }).catch(function(){});
+  // The map loads at most once per session (sessionStorage cache, else one fetch) and
+  // only when a page actually has chips — late-wired chips reuse the same promise.
+  var mapP = null;
+  function loadMap(){
+    if(mapP) return mapP;
+    var cached = null;
+    try { cached = JSON.parse(sessionStorage.getItem(CACHE) || 'null'); } catch(e){}
+    mapP = cached ? Promise.resolve(cached)
+      : fetch('/__status', {headers:{'Accept':'application/json'}})
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            var map = (d && d.map) || {};
+            try { sessionStorage.setItem(CACHE, JSON.stringify(map)); } catch(e){}
+            return map;
+          }).catch(function(){ return {}; });
+    return mapP;
   }
   // A status change re-ranks the card, which yanks it out from under the pointer
   // mid-edit. So resorting WAITS: while the picker is open, or while the pointer is
@@ -3271,6 +3280,7 @@ const STATUS_JS = `
     }).then(function(r){ return r.json(); }).then(function(d){
       if(d && d.map){
         try { sessionStorage.setItem(CACHE, JSON.stringify(d.map)); } catch(e){}
+        mapP = Promise.resolve(d.map); // chips wired after this write paint fresh
         var k = chip.getAttribute('data-status-key');
         paint(chip, d.map[k] || 'ignore');
         laterResort();
@@ -3318,7 +3328,7 @@ const STATUS_JS = `
       var c2 = openChip; closeMenu(); save(c2, b.getAttribute('data-pick'));
     });
   }
-  chips.forEach(function(chip){
+  function wireChip(chip){
     chip.setAttribute('aria-haspopup','true');
     chip.setAttribute('aria-expanded','false');
     chip.addEventListener('mouseenter', function(){
@@ -3334,7 +3344,17 @@ const STATUS_JS = `
       e.preventDefault(); e.stopPropagation();
       if(openChip === chip) closeMenu(); else openMenu(chip);
     });
-  });
+  }
+  // Chips can arrive after boot (created-canvas cards are injected once /__canvases
+  // answers) — wiring is a window hook NEWCANVAS_JS re-runs, same idiom as __gvPinsWire.
+  window.__gvStatusWire = function(){
+    var found = Array.prototype.slice.call(document.querySelectorAll('[data-status-key]'));
+    var fresh = found.filter(function(c){ return chips.indexOf(c) < 0; });
+    if(!fresh.length) return;
+    fresh.forEach(function(c){ chips.push(c); wireChip(c); });
+    loadMap().then(function(map){ applyMap(map, fresh); resort(); });
+  };
+  window.__gvStatusWire();
   document.addEventListener('keydown', function(e){
     if(!menu) return;
     if(e.key === 'Escape'){ var c = openChip; closeMenu(); if(c) c.focus(); return; }
@@ -3732,7 +3752,40 @@ const NEWCANVAS_JS = `
   var btn = document.querySelector('[data-new-canvas]');
   if(!btn) return;
   var dir = btn.getAttribute('data-new-canvas');
+  var IC_IGNORE = ${JSON.stringify(STATUS_ICONS.ignore)};
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  // Mini-map thumbnail: the board doc drawn as an SVG floor plan — sections under
+  // content, stickies in their colors, marker strokes as polylines. No iframe (a
+  // live canvas page would join the multiplayer room as a ghost presence).
+  function col(c, fb){ return /^#[0-9a-fA-F]{3,8}$/.test(String(c || '')) ? c : fb; }
+  function minimap(host, doc){
+    var ns = ((doc && doc.nodes) || []).filter(function(n){ return isFinite(n.x) && isFinite(n.y); });
+    if(!host || !ns.length) return;
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    ns.forEach(function(n){
+      var w = +n.w || 160, h = +n.h || 100;
+      if(n.x < x0) x0 = n.x; if(n.y < y0) y0 = n.y;
+      if(n.x + w > x1) x1 = n.x + w; if(n.y + h > y1) y1 = n.y + h;
+    });
+    var pad = Math.max(x1 - x0, y1 - y0) * 0.04 + 40;
+    var RANK = { section: 0, image: 1, tile: 1, text: 1, sticky: 2, draw: 3 };
+    var parts = [];
+    ns.slice().sort(function(a, b){ return (RANK[a.type] || 1) - (RANK[b.type] || 1); }).forEach(function(n){
+      var w = +n.w || 160, h = +n.h || 100;
+      if(n.type === 'draw' && n.points && n.points.length){
+        var pts = n.points.map(function(q){ return (n.x + (+q[0] || 0)).toFixed(1) + ',' + (n.y + (+q[1] || 0)).toFixed(1); }).join(' ');
+        parts.push('<polyline points="' + pts + '" fill="none" stroke="' + col(n.color, '#f24822') + '" stroke-width="2.2" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/>');
+        return;
+      }
+      var fill = n.type === 'sticky' ? col(n.color, '#ffe066')
+        : n.type === 'section' ? col(n.color, '#faf8f4')
+        : n.type === 'image' ? '#dde3ea' : '#ffffff';
+      parts.push('<rect x="' + n.x + '" y="' + n.y + '" width="' + w + '" height="' + h + '" rx="' + (Math.min(w, h) * 0.06).toFixed(1) + '" fill="' + fill + '"' + (n.type === 'section' ? ' fill-opacity=".55"' : '') + ' stroke="#d9d5cd" vector-effect="non-scaling-stroke"/>');
+    });
+    host.innerHTML = '<svg viewBox="' + (x0 - pad).toFixed(1) + ' ' + (y0 - pad).toFixed(1) + ' ' +
+      (x1 - x0 + 2 * pad).toFixed(1) + ' ' + (y1 - y0 + 2 * pad).toFixed(1) +
+      '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>';
+  }
   function rel(t){
     var s = Math.max(0, (Date.now() - t) / 1000);
     if(s < 60) return 'just now';
@@ -3783,15 +3836,25 @@ const NEWCANVAS_JS = `
         card.setAttribute('data-canvas-path', p);
         card.innerHTML =
           '<a class="card-cover-link" href="' + esc(p) + '" aria-label="Open ' + esc(e.name || 'canvas') + '"></a>' +
-          '<div class="preview preview--canvas" aria-hidden="true">\\uD83D\\uDDFA\\uFE0F</div>' +
+          '<div class="preview preview--canvas">' +
+            '<div class="canvas-map" aria-hidden="true">\\uD83D\\uDDFA\\uFE0F</div>' +
+            '<button type="button" class="status-chip is-ignore" data-status-key="canvas:' + esc(p) + '" data-status="ignore" aria-label="Status: Ignore. Click to change.">' + IC_IGNORE + '</button>' +
+          '</div>' +
           '<div class="preview-actions"><button type="button" class="pin-btn" data-pin-key="' + esc(p) + '" data-pin-href="' + esc(p) + '" aria-pressed="false" aria-label="Pin to sidebar" title="Pin to sidebar">${IC_STAR}</button></div>' +
           '<div class="proto-meta"><div class="proto-text">' +
             '<div class="proto-name">' + esc(display) + '</div>' +
             '<div class="proto-date">Canvas' + (e.t ? ' \\u00b7 ' + rel(e.t) : '') + '</div>' +
           '</div></div>';
         grid.insertBefore(card, grid.firstChild);
+        (function(mapEl){
+          fetch('/__board?path=' + encodeURIComponent(p), {headers:{'Accept':'application/json'}})
+            .then(function(r){ return r.json(); })
+            .then(function(d){ if(d && d.doc) minimap(mapEl, d.doc); })
+            .catch(function(){});
+        })(card.querySelector('.canvas-map'));
       });
       if(window.__gvPinsWire) window.__gvPinsWire();
+      if(window.__gvStatusWire) window.__gvStatusWire();
     }).catch(function(){});
 })();`;
 
