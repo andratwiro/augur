@@ -1103,6 +1103,7 @@ async function scanPlayground() {
       name: e.name,
       href,
       file,
+      desc: await metaDesc(file ? path.join(root, decodeURIComponent(file)) : null),
       poster: await exists(path.join(dir, "preview.webp")),
       mtimeMs: modifiedTime(dir, await latestMtime(dir)),
       status: statusMap[`${SPACE_KEY}playground/${e.name}`] || "in-progress",
@@ -4712,6 +4713,12 @@ async function buildSpace(space) {
       renderPlaygroundIndex(playground),
       "utf8"
     );
+    // Playground projects are embeddable too — same insert-picker entry shape as
+    // opportunity prototypes, grouped under "playground". (The catalog block above
+    // runs before this scan, so playground joins the catalog here.)
+    for (const p of playground) {
+      CANVAS_CATALOG.push({ type: "prototype", title: p.name, group: "playground", url: `${BASE}/playground/${p.href}`, thumb: p.poster ? `${BASE}/playground/${p.href}preview.webp` : null, ...(p.desc ? { desc: p.desc } : {}) });
+    }
   }
 
   // ── Canvas session music (per space) → tracks/ shipped verbatim, indexed into the shared
