@@ -5317,6 +5317,10 @@ async function main() {
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
   } catch {}
+  // Local deploys pass GV_BUILD_DIRTY_JSON ({repo id → bool}) so a working-tree
+  // ship is visible in the stamp; CI builds never set it (clean checkouts).
+  let dirtyMap = {};
+  try { dirtyMap = JSON.parse(process.env.GV_BUILD_DIRTY_JSON || "{}"); } catch {}
   const stampSpaces = {};
   for (const space of spaces) {
     let sha = null;
@@ -5326,11 +5330,15 @@ async function main() {
         stdio: ["ignore", "pipe", "ignore"],
       }).trim();
     } catch {}
-    stampSpaces[space.id] = { sha };
+    stampSpaces[space.id] = { sha, ...(dirtyMap[space.id] ? { dirty: true } : {}) };
   }
   await fs.writeFile(
     path.join(DIST, "_build.json"),
-    JSON.stringify({ builtAt: new Date().toISOString(), engine: { sha: engineSha }, spaces: stampSpaces }, null, 2),
+    JSON.stringify({
+      builtAt: new Date().toISOString(),
+      engine: { sha: engineSha, ...(dirtyMap.engine ? { dirty: true } : {}) },
+      spaces: stampSpaces,
+    }, null, 2),
     "utf8"
   );
 
