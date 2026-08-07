@@ -312,15 +312,27 @@ export class ClawdCanvas {
   // set Clawd's expression: idle · thinking · sparkles · happy · sleeping · love · sunglasses
   pose(name) { this._pose = name; this._send({ t: 'pose', pose: name }); }
 
+  // Every write carries a bumped version (v + random vn tiebreak) — the room applies ops
+  // under version-checked LWW now, and an unbumped rewrite of an existing node reads as a
+  // stale echo and bounces (a corrective comes back with what the room holds).
+  _stamp(node) {
+    const cur = this.doc.nodes.find((n) => n.id === node.id);
+    node.v = Math.max(node.v || 0, cur ? cur.v || 0 : 0) + 1;
+    node.vn = Math.floor(Math.random() * 0x7fffffff);
+    return node;
+  }
+
   // ---- ephemeral layer: visible live, NEVER saved to KV ---------------------
   streamUpsert(node) {
+    this._stamp(node);
     const i = this.doc.nodes.findIndex((n) => n.id === node.id);
     if (i >= 0) this.doc.nodes[i] = node; else this.doc.nodes.push(node);
     this._send({ t: 'ops', ops: [{ op: 'upsert', node }] });
   }
   streamDel(id) {
+    const cur = this.doc.nodes.find((n) => n.id === id);
     this.doc.nodes = this.doc.nodes.filter((n) => n.id !== id);
-    this._send({ t: 'ops', ops: [{ op: 'del', id }] });
+    this._send({ t: 'ops', ops: [{ op: 'del', id, v: (cur ? cur.v || 0 : 0) + 1 }] });
   }
 
   // speech bubble: a small ephemeral sticky floating by Clawd with what it's doing.
@@ -347,17 +359,24 @@ export class ClawdCanvas {
   }
 
   upsert(node) {
+    this._stamp(node);
     const i = this.doc.nodes.findIndex((n) => n.id === node.id);
     if (i >= 0) this.doc.nodes[i] = node; else this.doc.nodes.push(node);
     this._send({ t: 'ops', ops: [{ op: 'upsert', node }] });
     this._scheduleSave();
   }
   del(id) {
+    const cur = this.doc.nodes.find((n) => n.id === id);
     this.doc.nodes = this.doc.nodes.filter((n) => n.id !== id);
-    this._send({ t: 'ops', ops: [{ op: 'del', id }] });
+    this._send({ t: 'ops', ops: [{ op: 'del', id, v: (cur ? cur.v || 0 : 0) + 1 }] });
     this._scheduleSave();
   }
-  rename(name) { this.doc.name = name; this._send({ t: 'ops', ops: [{ op: 'name', name }] }); this._scheduleSave(); }
+  rename(name) {
+    this.doc.name = name;
+    this.doc.nameV = (this.doc.nameV || 0) + 1;
+    this._send({ t: 'ops', ops: [{ op: 'name', name, v: this.doc.nameV }] });
+    this._scheduleSave();
+  }
 
   _scheduleSave() { clearTimeout(this._saveT); this._saveT = setTimeout(() => this.save(), 1200); }
 

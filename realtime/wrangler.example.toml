@@ -5,10 +5,12 @@
 #
 # What the worker is: one BoardRoom Durable Object per board path (same key as the KV
 # doc). Every visitor's WebSocket meets there, and the room relays cursors, presence,
-# node ops, selections and editing focus between them. While a room is live it is ALSO
-# the persister — it writes the doc to KV itself (BOARD_KV, dirty-flag alarm +
-# flush-on-empty), so clients only POST /__board as the solo fallback. Rooms under
-# /__test/ never persist.
+# node ops, selections and editing focus between them. The room OWNS the document: the
+# source of truth is the DO's SQLite storage (per-node rows, version-checked LWW,
+# tombstoned deletes), migrated lazily from KV on first touch; BOARD_KV holds a
+# write-through mirror (dirty-flag alarm + flush-on-empty) serving the public GET and
+# the clients' solo fallback, folded back in on cold loads. Rooms under /__test/ never
+# persist. NOTE: sqlite-backed DO storage (new_sqlite_classes below) is REQUIRED.
 #
 # ONE WORKER PER INSTANCE. Rooms are keyed by board path, so two instances pointed at the
 # same worker would share rooms *and* board storage (a real bug, found the hard way).

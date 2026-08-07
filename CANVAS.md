@@ -27,8 +27,14 @@
 > cursor fast-path), peer **selection rings** + editing-focus rings, streamed co-typing,
 > remote inserts pop / deletes fade, prototype demo sync inside live tiles, agents co-work
 > as the Clawd mascot (`scripts/clawd-canvas.mjs`).
-> **Persistence & KV economics** — the ROOM writes KV while live (45s dirty-alarm + flush
-> on empty; client POST is the solo fallback); the camera lives in localStorage, never the
+> **Persistence & versioning (2026-08-07: the room OWNS the doc)** — the BoardRoom DO's
+> own SQLite storage is the document's source of truth (per-node rows; strongly
+> consistent; survives hibernation); Workers KV holds the same doc as a **write-through
+> mirror** (45s dirty-alarm + flush on empty) serving the public GET and the solo
+> fallback. Every node carries `v` (int, bumped by whoever mutates) + `vn` (random
+> tiebreak); deletions leave tombstones — all writes are **version-checked LWW**
+> (Figma/Excalidraw model), so a stale tab, a slept laptop, or an eventually-consistent
+> KV read can merge but can never clobber. The camera lives in localStorage, never the
 > doc; images live OUTSIDE the doc at `/__asset` (content-hashed, immutable, dedup);
 > `/__test/` rooms never persist. Net: a hot multi-person board costs ≤ ~80 KV writes/hour.
 >
@@ -128,6 +134,16 @@ Everything below is a plain object in `board.nodes`. Positions/sizes are WORLD p
 node gets `id` (any unique string; the engine uses `n<rand>`) and should get a human `name`.
 Omitted optional fields just take defaults. Write nodes through the daemon's `upsert` (or
 `GVCanvas.addNode` in-page) — never a raw board POST while people are on the board.
+
+**Versions (2026-08-07, agents MUST respect this):** every node also carries `v` (int) +
+`vn` (random tiebreak), and the room applies ops under version-checked LWW — an update that
+doesn't OUT-version the room's copy bounces (a corrective comes back). Creating a node:
+leave `v`/`vn` off, the engine/room stamps it. Updating one through the proper doors
+(`ClawdCanvas.upsert/del/rename`, `GVCanvas` mutations, the in-page editor) — bumping is
+automatic, do nothing. Hand-rolling ops or a **full-state seed script over an existing
+board**: bump each modified node's `v` above the value you read (and randomize `vn`), or
+the room will treat your write as a stale echo and keep its own copy. Deleted nodes leave
+tombstones in `board.tombs` — recreating an id needs a `v` above the tomb's.
 
 | type | required | optional (what it means) |
 |------|----------|--------------------------|
@@ -377,9 +393,11 @@ The limits, by design:
   by `build.js`, served public via `isPublicPath()`. The js header carries a section MAP.
   `capture.js` rides along in the same copy step — it is on NO page, `canvas.js` fetches it by
   absolute path on the first ⌘⇧C.
-- **Board doc:** worker `boardApi` (`/__board?path=<url>`), KV key `board:<path>`, 20MB cap.
-  **PUBLIC route** (a canvas is a published prototype — no login to load). While a room
-  socket is live the **BoardRoom DO persists instead of the client** (see Multiplayer).
+- **Board doc:** the AUTHORITATIVE copy lives in the BoardRoom DO's SQLite storage (see
+  Multiplayer); worker `boardApi` (`/__board?path=<url>`, KV key `board:<path>`, 20MB cap)
+  serves the KV **mirror** — the public GET, and the solo-fallback write, which the room
+  folds back in (version-ruled) on its next cold load. **PUBLIC route** (a canvas is a
+  published prototype — no login to load).
 - **Images:** worker `assetApi` (`/__asset`), KV `basset:<sha256[0:40]>`, content type in
   metadata, immutable cache headers, dedup on identical bytes. Nodes carry the URL; data-URL
   srcs are the legacy/fallback form and still render.
@@ -400,11 +418,23 @@ The limits, by design:
 
 **The model.** A `BoardRoom` Durable Object per board path (the same key as the KV doc) relays
 cursors, presence, node ops, live selections, and editing focus between everyone on that board
-— and while it's live, **the room is also the persister** (2026-07-27): ops set a dirty flag,
-a 45s alarm writes the doc to KV, and the last socket leaving flushes immediately; `/__test/`
-rooms never persist. Clients POST `/__board` only as the **solo fallback** (socket down).
-Strictly an **enhancement layer**: if the socket can't connect, the canvas behaves exactly as
-solo. Public like `/__board` (the board is the credential).
+— and **the room OWNS the document** (2026-08-07; was "persists while live" since 07-27): the
+doc lives in the DO's own SQLite storage (one row per node + a meta row with name/tombstones),
+loaded before every welcome, written on every accepted ops batch, migrated lazily from KV the
+first time a pre-rewrite board is touched. KV gets a **write-through mirror** on the old
+cadence (dirty flag → 45s alarm → put; last-one-out flushes immediately; failed writes re-arm
+and retry) and is folded back in on every cold load, so solo clients and terminal scripts that
+wrote `/__board` while the room was empty are never steamrolled. Ops apply under
+**version-checked last-writer-wins**: a write must out-version (`v`, then `vn`) what the room
+holds; losers get a corrective op back; deletions leave tombstones that stale upserts can't
+cross; a `{t:"doc"}` seed is **reconciled per-node, never adopted wholesale** — which is what
+killed the whole "stale tab reverts the board" failure family. `/__test/` rooms stay RAM-only.
+Clients POST `/__board` only as the **solo fallback** (socket down or provably stale — the
+client force-closes a half-open socket whose pongs stop). Strictly an **enhancement layer**:
+if the socket can't connect, the canvas behaves exactly as solo. Public like `/__board` (the
+board is the credential). ⚠️ Room-side behavior needs the realtime worker redeployed per
+instance (`npm run deploy:realtime`); the engine client is compatible with older rooms in the
+meantime.
 
 **The pieces:**
 - `realtime/` — the room worker (BoardRoom DO, WebSocket Hibernation API). Deployed
@@ -671,9 +701,11 @@ Do this **unless prompted otherwise**.
   the process open, a 25s keepalive keeps Clawd in the room across turns; a sleeping agent
   stays **fully visible**.
 - **When NOT to co-work live (the "prompted otherwise" cases):** the **bulk first-seed** of a
-  brand-new board (use a full-state seed script while the board is closed — it's a clobber), or
-  when explicitly told to work silently. Full-state `POST /__board` is whole-doc last-write-wins:
-  only when nobody has the board open.
+  brand-new board (use a full-state seed script while the board is closed), or when explicitly
+  told to work silently. Full-state `POST /__board` writes only the KV mirror, and the room
+  folds it in **per-node, version-ruled** on its next cold load — so on an EXISTING board a
+  seed script must bump each node's `v` above what it read, or its changes read as stale and
+  the room keeps its own copies (see "Versions" under the node schemas).
 - **⚠️ Test on a throwaway `boardPath`** — opening a board page (or connecting a client) joins its
   REAL room and broadcasts to real visitors. See the isolation rule in the Multiplayer section.
 - **Multi-agent (several Clawds at once):** each terminal session / subagent joins with its
@@ -837,10 +869,14 @@ Do this **unless prompted otherwise**.
   signature (`docSig` = nodes + name) and skips the POST when only the camera moved, the save
   debounce is 1200ms so a burst is one write, and adopting a room doc reseeds the signature so
   every client doesn't re-persist the same change. If you add a feature that touches
-  `board.view`, call `saveView()`, NOT `scheduleSave()`. As of 2026-07-27 the client POST
-  only runs at all as the SOLO fallback — while the room socket is live, the BoardRoom DO
-  is the persister (see `realtime/src/index.js`: `markDirty`/`alarm`/`persist`, flush on
-  empty, `/__test/` rooms exempt). Playwright note: blocking `POST /__board` no longer
+  `board.view`, call `saveView()`, NOT `scheduleSave()`. The client POST only runs as the
+  SOLO fallback — the BoardRoom DO owns the doc (its SQLite storage) and writes the KV
+  mirror itself (see `realtime/src/index.js`: `applyOps`/`markDirty`/`alarm`/`mirror`,
+  flush on empty, `/__test/` rooms exempt). The solo save is honest since 2026-08-07: it
+  confirms the 2xx before marking the doc saved, retries with backoff, ships `keepalive`
+  so a close-during-save still lands, and beacons on `pagehide` too; a failed board LOAD
+  holds saves off entirely (an empty stand-in must never overwrite the real board).
+  Playwright note: blocking `POST /__board` no longer
   proves "no KV writes" — the room writes server-side; test rooms must stay under
   `/__test/`, and blocking the socket needs a WebSocket-constructor stub (HTTP routes
   don't intercept upgrades).

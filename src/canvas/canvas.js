@@ -282,9 +282,18 @@
     setSelection(newIds);
     scheduleSave();
   }
+  // Deletions leave a TOMBSTONE (id → {v,t}) so a slower peer's — or a stale tab's —
+  // upsert of the node can't resurrect it. The tomb's version out-ranks the node's last
+  // one; the diff tick sends it with the del op and the room enforces it for everyone.
+  function noteTomb(n) {
+    if (!n || !n.id) return;
+    if (!board.tombs) board.tombs = {};
+    board.tombs[n.id] = { v: (n.v || 0) + 1, t: Date.now() };
+  }
   function removeNode(id) {
     var i = board.nodes.findIndex(function (n) { return n.id === id; });
     if (i < 0) return;
+    noteTomb(board.nodes[i]);
     board.nodes.splice(i, 1);
     if (nodeEls[id]) { nodeEls[id].remove(); delete nodeEls[id]; }
     selected = selected.filter(function (s) { return s !== id; }); if (selected.length !== 1) hideSelBar();
@@ -3728,11 +3737,16 @@
       var want = dir === "before" ? it.before : it.after;
       var i = board.nodes.findIndex(function (n) { return n.id === it.id; });
       if (!want) { // the node shouldn't exist on this side
-        if (i >= 0) { board.nodes.splice(i, 1); if (nodeEls[it.id]) { nodeEls[it.id].remove(); delete nodeEls[it.id]; } }
+        if (i >= 0) { noteTomb(board.nodes[i]); board.nodes.splice(i, 1); if (nodeEls[it.id]) { nodeEls[it.id].remove(); delete nodeEls[it.id]; } }
         histForget(it.id);
         return;
       }
       var copy = histClone(want);
+      // the restored state must OUT-VERSION whatever superseded it (a later edit, or the
+      // tombstone of the delete being undone), or the room bounces the undo as stale
+      var tb = board.tombs && board.tombs[it.id];
+      copy.v = Math.max(copy.v || 0, i >= 0 ? (board.nodes[i].v || 0) : 0, tb ? tb.v : 0);
+      if (tb) delete board.tombs[it.id];
       if (i >= 0) board.nodes[i] = copy; else board.nodes.push(copy);
       histShadow[it.id] = histClone(copy);
       touched.push(copy);
@@ -3759,18 +3773,46 @@
   // Writes are the scarce resource on Workers KV (the free tier is a THOUSAND a day) and this
   // doc runs to hundreds of KB once images are inlined — so never spend a write we don't owe.
   // If only the camera moved, the content signature is unchanged and the POST is skipped.
-  var lastSavedSig = null;
+  var lastSavedSig = null; // the last signature CONFIRMED durable (a load, a room adopt, or a 2xx save)
+  var savePending = false, saveRetry = 0, saveWarned = false, loadOk = false;
   function docSig() { return JSON.stringify({ n: board.nodes, m: board.name }); }
   function save() {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-    // While the room socket is live, the ROOM persists (it sees every op and writes KV on
-    // its own alarm) — a client POST here would only duplicate the write and re-open the
-    // two-browsers-stomp problem. This rail is the SOLO fallback: socket down or never up.
-    if (mp && mp.readyState === 1 && mpReady) return;
+    // While the room socket is live AND provably fresh (see mpLiveFresh — a half-open
+    // transport lies about readyState for minutes), the ROOM persists. This rail is the
+    // SOLO fallback: socket down or never up.
+    if (mpLiveFresh()) return;
+    // Never write over a board we never managed to read: with loadOk false the board on
+    // screen may be an EMPTY stand-in after a failed GET, and saving it would wipe the
+    // real one. The room's welcome doc (mpAdoptDoc) also clears this.
+    if (!loadOk) return;
     var sig = docSig();
-    if (sig === lastSavedSig) return;
-    lastSavedSig = sig;
-    fetch(BOARD_API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ doc: board }) }).catch(function () {});
+    if (sig === lastSavedSig || savePending) return;
+    savePending = true;
+    // keepalive: a save racing a tab close must survive the unload — without it the fetch
+    // is aborted mid-flight and the edit exists nowhere
+    fetch(BOARD_API, { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ doc: board }) })
+      .then(function (r) {
+        savePending = false;
+        if (r.ok) {
+          lastSavedSig = sig; saveRetry = 0; saveWarned = false;
+          if (docSig() !== sig) scheduleSave(); // edits landed while the write was in flight
+          return;
+        }
+        saveFail(r.status);
+      }, function () { savePending = false; saveFail(0); });
+  }
+  // A failed save is DEBT, not history: the signature stays unconfirmed, so the retries
+  // here and the unload beacon keep carrying it. (The old code marked the doc saved
+  // before the POST resolved — a 413, a 500 or a dropped connection silently ate the edit.)
+  function saveFail(status) {
+    if (status === 413) { // retrying can't help an over-cap doc — say so instead
+      if (!saveWarned) { saveWarned = true; toast("Board too large to save — remove some images"); }
+      return;
+    }
+    saveRetry++;
+    if (saveRetry === 2 && !saveWarned) { saveWarned = true; toast("Saving isn't reaching the server — retrying"); }
+    setTimeout(function () { if (!mpLiveFresh()) save(); }, Math.min(30000, 800 * Math.pow(2, saveRetry)));
   }
   // The viewport is PER-USER — the room never syncs it — so it has no business in the shared
   // doc, where every pan and every zoom step used to trigger a full-document KV write AND
@@ -3791,21 +3833,52 @@
     } catch (e) {}
     return null;
   }
-  window.addEventListener("beforeunload", function () {
-    if (mp && mp.readyState === 1 && mpReady) return; // the room outlives this tab and flushes on empty
-    if (!saveTimer || docSig() === lastSavedSig) return;
+  function unloadFlush() {
+    if (mpLiveFresh()) return; // the room outlives this tab and flushes on empty
+    if (!loadOk) return;       // an unread board is not ours to overwrite
+    if (docSig() === lastSavedSig) return;
+    // gated on the last CONFIRMED signature (not on a pending timer): an in-flight or
+    // failed save still gets its beacon. Worst case the beacon duplicates a keepalive
+    // fetch that also made it — the same full doc twice is harmless.
     try { navigator.sendBeacon(BOARD_API, new Blob([JSON.stringify({ doc: board })], { type: "application/json" })); } catch (e) {}
-  });
+  }
+  // both events: beforeunload doesn't fire on mobile tab kills; pagehide does
+  window.addEventListener("beforeunload", unloadFlush);
+  window.addEventListener("pagehide", unloadFlush);
+  function pruneTombs() {
+    var t = board.tombs, now = Date.now();
+    for (var id in t) if (now - (t[id].t || 0) > 45 * 86400000) delete t[id];
+  }
   function load(done) {
-    fetch(BOARD_API).then(function (r) { return r.json(); }).then(function (d) {
-      if (d && d.doc && d.doc.nodes) { board = d.doc; board.view = board.view || { x: 0, y: 0, scale: 1 }; board.name = board.name || CFG.name || "Untitled canvas"; }
-      else { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; }
-      var mine = storedView();
-      if (mine) board.view = mine;
-      histSeed();
-      lastSavedSig = docSig(); // freshly loaded == already saved
-      done();
-    }).catch(function () { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; histSeed(); done(); });
+    var attempt = 0;
+    (function go() {
+      fetch(BOARD_API).then(function (r) {
+        if (!r.ok) throw new Error("http " + r.status);
+        return r.json();
+      }).then(function (d) {
+        loadOk = true; // a real answer — {doc:null} means genuinely new, safe to save over
+        if (d && d.doc && d.doc.nodes) { board = d.doc; board.view = board.view || { x: 0, y: 0, scale: 1 }; board.name = board.name || CFG.name || "Untitled canvas"; }
+        else { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; }
+        if (!board.tombs) board.tombs = {};
+        pruneTombs();
+        var mine = storedView();
+        if (mine) board.view = mine;
+        histSeed();
+        lastSavedSig = docSig(); // freshly loaded == already saved
+        done();
+      }).catch(function () {
+        if (++attempt <= 3) { setTimeout(go, 500 * attempt); return; }
+        // Couldn't read the board at all. Render empty so the room can still rescue us
+        // (its welcome carries the doc), but leave loadOk FALSE: solo saves and the unload
+        // beacon stay off, because an empty stand-in must never overwrite the real board
+        // just because a load 500'd (that was audit finding #9).
+        board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 };
+        board.tombs = {};
+        histSeed();
+        done();
+        toast("Couldn't load the board — editing won't save until it reloads");
+      });
+    })();
   }
 
   // ---- public API for the comment overlay + tools --------------------------
@@ -3837,9 +3910,25 @@
   var mpPeers = {};        // sid -> {name,color,focus,cx,cy,el,idle}
   var mpShadow = {};       // node id -> signature as last seen/sent
   var mpShadowName = null; // board name as last seen/sent
-  var mpReady = false, mpRetry = 1000;
+  var mpReady = false, mpRetry = 1000, mpPongAt = 0, mpEverReady = false;
   var mpCursorLayer = null, mpPresence = null, mpCurPend = null, mpCurTimer = null;
   var GEO_KEYS = ["x", "y", "w", "h", "x1", "y1", "x2", "y2"];
+
+  // ---- node versions (the Figma/Excalidraw model, not a CRDT) --------------
+  // Every node carries `v` (bumped by whoever mutates it — the diff tick below) and `vn`
+  // (random tiebreak). The room applies the same total order server-side, so "which write
+  // wins" has ONE answer everywhere; a stale tab reconnecting after a night's sleep loses
+  // per-node instead of clobbering the whole board (the old wholesale adopt).
+  function rndVn() { return Math.floor(Math.random() * 0x7fffffff); }
+  function vOf(x) { return x && typeof x.v === "number" ? x.v : 0; }
+  function vnOf(x) { return x && typeof x.vn === "number" ? x.vn : 0; }
+  function beats(a, b) { return vOf(a) > vOf(b) || (vOf(a) === vOf(b) && vnOf(a) > vnOf(b)); }
+  // The socket only counts as the persistence rail while it's provably alive: a half-open
+  // transport (slept laptop, switched network) reports readyState OPEN for minutes after
+  // the room has reaped us and stopped persisting anything we send into the void.
+  function mpLiveFresh() {
+    return !!(mp && mp.readyState === 1 && mpReady && performance.now() - mpPongAt < 65000);
+  }
 
   // signature = JSON with long strings (inlined image src) collapsed to length + edges,
   // so the 120ms tick stays cheap on image-heavy boards
@@ -3870,15 +3959,33 @@
   // anything an agent mutated while hidden still syncs the moment you come back.
   function mpTick() {
     if (document.hidden) return;
-    if (!mp || mp.readyState !== 1 || !mpReady) return;
+    // versions are stamped even while SOLO (socket down): the bump is what makes an
+    // offline edit a WINNER when the socket returns and the seed reconciles, instead of
+    // stale-looking noise the room throws away
+    var live = mp && mp.readyState === 1 && mpReady;
     var ops = [], seen = {};
     board.nodes.forEach(function (n) {
       var s = mpSig(n); seen[n.id] = true;
-      if (mpShadow[n.id] !== s) { mpShadow[n.id] = s; ops.push({ op: "upsert", node: n }); }
+      if (mpShadow[n.id] !== s) {
+        n.v = (n.v || 0) + 1; n.vn = rndVn();
+        if (board.tombs && board.tombs[n.id]) delete board.tombs[n.id]; // re-created over a tomb (paste/undo)
+        mpShadow[n.id] = mpSig(n); // the post-bump sig, or the bump itself echoes forever
+        ops.push({ op: "upsert", node: n });
+      }
     });
-    for (var id in mpShadow) if (!seen[id]) { delete mpShadow[id]; ops.push({ op: "del", id: id }); }
-    if (board.name !== mpShadowName) { mpShadowName = board.name; ops.push({ op: "name", name: board.name }); }
-    if (ops.length) mpSend({ t: "ops", ops: ops });
+    for (var id in mpShadow) if (!seen[id]) {
+      delete mpShadow[id];
+      var tb = board.tombs && board.tombs[id];
+      var del = { op: "del", id: id };
+      if (tb) del.v = tb.v; // the tomb noteTomb() left — out-ranks the node's last version
+      ops.push(del);
+    }
+    if (board.name !== mpShadowName) {
+      mpShadowName = board.name;
+      board.nameV = (board.nameV || 0) + 1;
+      ops.push({ op: "name", name: board.name, v: board.nameV });
+    }
+    if (ops.length && live) mpSend({ t: "ops", ops: ops });
   }
 
   function mpDragInvolves(id) {
@@ -3911,9 +4018,24 @@
       if (!op) return;
       if (op.op === "upsert" && op.node && op.node.id) {
         var r = op.node;
+        var versioned = typeof r.v === "number";
+        var lcl = nodeById(r.id);
+        var tmb = board.tombs && board.tombs[r.id];
+        // resurrection guard: a write that predates a deletion we know about stays dead
+        if (tmb && !(vOf(r) > tmb.v)) return;
+        // version-checked LWW: a versioned write must beat what we hold (both sides run
+        // the same rule, so concurrent edits converge on ONE winner without the room's
+        // help). v-less writes are legacy clients via a legacy room — apply as always.
+        if (lcl && versioned && !beats(r, lcl)) return;
         mpShadow[r.id] = mpSig(r); // anti-echo — set BEFORE deciding whether to apply
         histSeen(r);               // a peer's edit is not mine to undo
-        if (mpDragInvolves(r.id) || mpLocallyEditing(r.id)) return; // local interaction wins
+        if (mpDragInvolves(r.id) || mpLocallyEditing(r.id)) {
+          // local interaction wins — but adopt the version high-water mark, so the tick's
+          // re-broadcast OUT-versions the write it just overrode instead of losing to it
+          if (lcl && versioned && vOf(r) > vOf(lcl)) lcl.v = r.v;
+          return;
+        }
+        if (tmb) delete board.tombs[r.id];
         var local = nodeById(r.id), host = nodeEls[r.id];
         if (local && host && mpGeoLessSig(r) === mpGeoLessSig(local) && local.type !== "arrow") {
           // geometry-only change (a peer dragging/resizing): patch styles on the live element
@@ -3923,6 +4045,7 @@
           // navigation/geometry-only change on a tile — act on the existing element so the
           // iframe's in-page state survives; never a rebuild (tiles are always live now)
           GEO_KEYS.forEach(function (k) { if (r[k] != null) local[k] = r[k]; });
+          if (typeof r.v === "number") { local.v = r.v; local.vn = r.vn; } // same version-carry as mpPatchGeo
           local.liveUrl = r.liveUrl;
           place(host, local);
           scaleTileChrome(local, host);
@@ -3947,29 +4070,87 @@
           focusDirty = true;
         }
       } else if (op.op === "del" && op.id) {
+        var dv = typeof op.v === "number" ? op.v : null;
+        var dl = nodeById(op.id);
+        // a delete must out-version our copy — if we edited past it, our edit survives
+        // (and the room, applying the same rule, bounced the delete with a corrective)
+        if (dl && dv != null && !(dv > vOf(dl))) return;
+        if (!board.tombs) board.tombs = {};
+        board.tombs[op.id] = { v: dv != null ? dv : (dl ? vOf(dl) + 1 : 1), t: Date.now() };
         delete mpShadow[op.id];
         histForget(op.id);
         mpRemoveLocal(op.id);
       } else if (op.op === "name" && typeof op.name === "string") {
+        if (typeof op.v === "number") {
+          if (op.v <= (board.nameV || 0)) return; // ours is newer — the tick re-offers it
+          board.nameV = op.v;
+        }
         board.name = op.name; mpShadowName = op.name;
         document.title = op.name; if (nameEl) nameEl.textContent = op.name;
       }
     });
     if (focusDirty) mpRenderFocus(); // renderNode replaced elements — re-hang focus rings
   }
-  // adopt the room's live doc (fresher than our KV read) — keep OUR viewport
+  // Fold the room's authoritative doc into OURS — per-node, version-ruled — never a
+  // wholesale replace. The old adopt was the reconnect data-eater: whoever rejoined
+  // second had every offline edit silently swapped for the first joiner's copy. Now a
+  // node of ours that STRICTLY out-versions the room's survives locally and is re-offered
+  // by the tick; everything else takes the room's word. Keeps OUR viewport.
   function mpAdoptDoc(doc) {
     if (!doc || !Array.isArray(doc.nodes)) return;
     var view = board.view;
+    var localBy = {};
+    board.nodes.forEach(function (n) { localBy[n.id] = n; });
+    // union of tombstones — my offline deletions stay deletions, theirs apply to me
+    var tombs = doc.tombs && typeof doc.tombs === "object" ? doc.tombs : {};
+    var mineT = board.tombs || {};
+    for (var tid in mineT) if (!tombs[tid] || mineT[tid].v > tombs[tid].v) tombs[tid] = mineT[tid];
+    var merged = [], dirty = [];
+    doc.nodes.forEach(function (r) {
+      if (!r || !r.id) return;
+      var l = localBy[r.id];
+      delete localBy[r.id];
+      var t = tombs[r.id];
+      if (t && !(vOf(r) > t.v) && !(l && vOf(l) > t.v)) return; // deleted (by either side)
+      if (l && beats(l, r)) { merged.push(l); dirty.push(l.id); }
+      else merged.push(r);
+    });
+    for (var id in localBy) { // nodes the room doesn't know: mine and unsent — keep, reoffer
+      var l2 = localBy[id], t2 = tombs[id];
+      if (t2 && !(vOf(l2) > t2.v)) continue; // deleted while I was away
+      merged.push(l2); dirty.push(id);
+    }
+    var name = doc.name || "Untitled canvas", nameV = typeof doc.nameV === "number" ? doc.nameV : 0;
+    var keptName = (board.nameV || 0) > nameV;
+    if (keptName) { name = board.name; nameV = board.nameV; }
     board = doc;
+    board.nodes = merged;
+    board.tombs = tombs;
+    board.name = name;
+    board.nameV = nameV;
     board.view = view;
-    board.name = board.name || "Untitled canvas";
     document.title = board.name; if (nameEl) nameEl.textContent = board.name;
     render();
     mpSeedShadow();
-    lastSavedSig = docSig(); // the room's doc is the peer's to persist — don't duplicate their write
+    // where WE won, the shadow must NOT match — that difference is what makes the tick
+    // re-send our copy (with a fresh bump, so it wins at the room too)
+    dirty.forEach(function (d2) { delete mpShadow[d2]; });
+    if (keptName) mpShadowName = doc.name || null;
+    loadOk = true; // the room's doc is real state — solo saving is safe from here on
+    lastSavedSig = dirty.length ? null : docSig(); // clean adopt == already persisted; a merge isn't yet
     histSeed(); histUndo.length = 0; histRedo.length = 0; // not your edit — no undoing "into" it
     mpRenderFocus();
+  }
+  // Reconnecting into a room with NO doc (hibernated away, or the realtime worker was
+  // redeployed): our RAM may be hours stale — a slept laptop reseeding from memory was
+  // the #1 board-reverter of the audit. Re-read the KV mirror first, fold it in
+  // (version-ruled, fresher wins), and seed the MERGE. Best-effort: if the read fails,
+  // seeding RAM is still better than seeding nothing.
+  function mpReSeed() {
+    fetch(BOARD_API).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (d && d.doc && d.doc.nodes) mpAdoptDoc(d.doc);
+      mpSend({ t: "doc", doc: board });
+    }).catch(function () { mpSend({ t: "doc", doc: board }); });
   }
 
   // ---- prototype demo sync (inside live tile iframes) ----------------------
@@ -4367,6 +4548,10 @@
   // and the ops tick — one behavior, one place.
   function mpPatchGeo(n, host, src) {
     GEO_KEYS.forEach(function (k) { if (src[k] != null) n[k] = src[k]; });
+    // the version travels with the write: without this the local copy keeps its old v
+    // while the shadow holds the new sig — the next tick would "bump" from the stale v
+    // and re-broadcast a regressed version (echo storm, then a lost race at the room)
+    if (typeof src.v === "number") { n.v = src.v; n.vn = src.vn; }
     if (n.type === "arrow") { renderNode(n); return; }
     // a resizing draw stroke ships its rescaled points (the svg is px-fixed —
     // stretching the host without them would leave the path misdrawn)
@@ -4654,18 +4839,21 @@
 
   // ---- socket lifecycle ----------------------------------------------------
   function mpOnMessage(ev) {
+    if (ev.data === "pong") { mpPongAt = performance.now(); return; } // keepalive reply — proof of transport
     var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
     if (!m || !m.t) return;
+    mpPongAt = performance.now(); // any inbound traffic proves the transport too
     if (m.t === "welcome") {
       mpSid = m.sid; mpRetry = 1000;
       if (m.color && m.color !== mpColor) { mpColor = m.color; mpApplyLocalCursor(); } // your pointer takes your room color
       mpPeers = {};
       (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, avatar: p.avatar || null, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null, sel: p.sel || null, status: p.status || null, view: p.view || null }; });
-      if (m.doc) mpAdoptDoc(m.doc);
-      else mpSend({ t: "doc", doc: board }); // seed the room (first in, or post-hibernation — KV is current when the room was idle)
+      if (m.doc) mpAdoptDoc(m.doc); // merge, not replace — see mpAdoptDoc
+      else if (mpEverReady) mpReSeed(); // RECONNECT into an empty room: our RAM may be stale — KV first
+      else mpSend({ t: "doc", doc: board }); // first connect: the board was JUST loaded — seed it
       // walked in on a running timer / playing track: adopt it mid-flight
       sessApply(m.session || { timer: null, music: null });
-      mpReady = true;
+      mpReady = true; mpEverReady = true;
       mpRenderPresence(); mpRenderFocus();
       mpViewSent = ""; mpSendView(); // publish my camera now so a follower needn't wait for my first move
     } else if (m.t === "join") {
@@ -4749,8 +4937,15 @@
     window.addEventListener("resize", function () { mpViewSent = ""; mpSendView(); mpFollowChase(); });
     setInterval(mpPoseTick, 200); // animate agent Clawd state (walk/work/sleep) from behaviour
     // keepalive: the room's auto-responder pongs and timestamps us; sockets that stop
-    // pinging (dropped transports) get swept server-side instead of haunting presence
-    setInterval(function () { if (mp && mp.readyState === 1) { try { mp.send("ping"); } catch (e) {} } }, 25000);
+    // pinging (dropped transports) get swept server-side instead of haunting presence.
+    // The pong ALSO guards us: no reply for >2 intervals = half-open transport (slept
+    // laptop, switched network) — close it ourselves so onclose flips us to the solo
+    // rail, instead of editing into a void the room stopped persisting long ago.
+    setInterval(function () {
+      if (!mp || mp.readyState !== 1) return;
+      if (mpReady && mpPongAt && performance.now() - mpPongAt > 65000) { try { mp.close(); } catch (e) {} return; }
+      try { mp.send("ping"); } catch (e) {}
+    }, 25000);
     // resolve my display name (and avatar, if the account has one) first so the cursor
     // label and presence chip are right from the first frame
     fetch("/__me", { headers: { Accept: "application/json" } })

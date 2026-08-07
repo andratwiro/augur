@@ -2,24 +2,36 @@
  *
  * The worker upgrades /room?path=<boardPath>&name=<who> to a WebSocket and hands it to
  * the room named by the board path (the same key the KV doc uses). The room is a relay
- * plus soft state: it fans cursor moves / node ops / editing focus out to the other
- * sockets and keeps the latest doc in memory so a joiner starts from the live state
- * rather than a possibly-stale KV read.
+ * plus THE document authority: it fans cursor moves / node ops / editing focus out to
+ * the other sockets, applies every op to its own copy of the doc, and persists.
  *
- * THE ROOM IS ALSO THE PERSISTER (2026-07-27). While a room is live, the room — not the
- * clients — writes the doc to KV: a dirty flag set by ops arms a single alarm (45s), and
- * the last socket leaving flushes immediately. That collapses N clients × edit-bursts of
- * whole-document client writes into ≤ ~80 writes/hour per hot board, and ends the
- * last-writer-wins stomps between two saving browsers. Clients still write /__board
- * themselves ONLY as the solo fallback (socket down). Rooms under /__test/ never persist
- * — that's the Playwright isolation convention (see augur/CANVAS.md).
+ * THE ROOM OWNS THE DOC (2026-08-07 — was "room persists while live" since 2026-07-27).
+ * The document's source of truth is the DO's OWN SQLite-backed storage: one row per node
+ * (`n:<id>`), one meta row (`m` — name, tombstones, clock). DO storage is strongly
+ * consistent and survives hibernation, so the old stash/docreq/cold-alarm dances are
+ * gone with the failure modes they papered over. Workers KV keeps the SAME doc under the
+ * SAME key (`board:<path>`) but demoted to a WRITE-THROUGH MIRROR: it serves the public
+ * GET /__board and the solo fallback, and the room writes it on the old cadence (45s
+ * dirty-alarm + flush on empty) — never reads it back except once, to migrate a
+ * pre-existing board into storage (lazy, first touch, per board).
+ *
+ * VERSIONED NODES (the Figma/Excalidraw model, not a CRDT). Every node carries
+ * `v` (int, bumped by whoever mutates it) and `vn` (random tiebreak). The room applies
+ * an op only if it's NEWER than what it holds (v, then vn); losers get a corrective op
+ * back so every client converges on the same winner. Deletes leave a tombstone
+ * (id → {v,t}) so a stale upsert can't resurrect a deleted node; tombs prune after
+ * TOMB_TTL. A client "seed" ({t:"doc"}) is RECONCILED per-node under the same rules —
+ * never adopted wholesale — so a stale tab (slept laptop, frozen tab, eventual-consistent
+ * KV read) can no longer revert a board, while its genuinely-new offline edits merge in.
+ * Legacy compat: v-less ops from old clients are accepted and stamped (live edits keep
+ * working); v-less nodes inside a SEED count as v0 (stale-tab protection is the point).
+ *
+ * Rooms under /__test/ never touch storage OR KV — pure RAM relay (Playwright isolation);
+ * they keep the old docreq dance since RAM is all they have.
  *
  * Uses the WebSocket Hibernation API, so an idle board with open tabs costs ~nothing.
- * In-memory fields (doc, colors) are caches: after a hibernation wake they rebuild
- * from socket attachments and the docreq dance below. Anything the ALARM depends on must
- * therefore be durable, because the alarm outlives the instance that armed it and fires
- * into a fresh one: ctx.storage holds "path" (the KV key), "dirty" (a write is pending)
- * and "doc" (a stash, refreshed once per alarm window, for flushing an empty room).
+ * `doc` in memory is a cache rebuilt from storage on demand; `dirty` (KV mirror pending)
+ * is durable because the alarm outlives the instance that armed it.
  *
  * Protocol (JSON, one object per message):
  *   client→room: {t:"cursor",x,y,drag?}|{t:"cursor",gone:true} · {t:"ops",ops:[...]} ·
@@ -32,17 +44,17 @@
  *                {t:"proto",id,ev} (demo sync in a live tile iframe) ·
  *                {t:"timer",do:"start"|"add"|"pause"|"resume"|"stop",ms?} ·
  *                {t:"music",do:"play"|"stop",track?,at?} (shared session — see below) ·
- *                {t:"doc",doc} (reply to needDoc/docreq)
+ *                {t:"doc",doc} (seed/merge offer — reconciled, see above)
  *   room→client: {t:"welcome",sid,color,peers,doc?,needDoc?,session?} · {t:"join"|"leave",peer} ·
  *                relayed cursor/ops/focus/sel/status/chat stamped with the sender's info ·
- *                {t:"session",timer,music} · {t:"doc",doc} · {t:"docreq"}
+ *                {t:"session",timer,music} · {t:"doc",doc} · {t:"docreq"} (test rooms only)
  * cursor.drag is the drag fast-path: [{id,x,y,w,h},…] geometry for nodes mid-drag,
  * relayed verbatim on the cursor cadence (~20Hz) so remote drags glide instead of
  * stepping at the 120ms ops tick. Ephemeral — the durable version rides the ops tick.
- * Ops (applied to the room doc AND relayed): {op:"upsert",node} · {op:"del",id} ·
- * {op:"name",name}. The doc's `view` is per-user viewport — never synced (the copy
- * inside the persisted doc is a harmless fossil; clients read their camera from
- * localStorage).
+ * Ops: {op:"upsert",node} · {op:"del",id,v?} · {op:"name",name,v?}. Accepted ops are
+ * broadcast (with room-stamped versions where the sender sent none); rejected ops earn
+ * the SENDER a corrective ops message carrying the winning state. The doc's `view` is
+ * per-user viewport — never synced (a fossil in old mirrors; clients use localStorage).
  */
 
 const MAX_MSG = 8 * 1024 * 1024; // a node op can carry an inlined image; KV caps the doc at 20MB
@@ -66,18 +78,34 @@ export default {
 };
 
 const BOARD_PREFIX = "board:";   // same key scheme as the Pages worker's /__board rail
-const PERSIST_MS = 45000;        // dirty → alarm → KV write; ≤ ~80 writes/hour per hot board
+const PERSIST_MS = 45000;        // dirty → alarm → KV mirror write; ≤ ~80 writes/hour per hot board
+const RETRY_MS = 5000;           // re-arm delay after a FAILED mirror write (KV hiccup — retry soon)
 const MAX_TIMER_MS = 99 * 60000 + 59000; // 99:59 — a session timer, not a scheduler
 const STALE_TIMER_MS = 3600000;  // an expired timer older than this is forgotten, not shown at 00:00
+const TOMB_TTL = 45 * 86400000;  // tombstones outlive any realistic stale tab, then prune
+const TOMB_MAX = 5000;           // hard cap — a board that deleted 5k nodes can afford resurrection risk
+const NODE_CHUNK = 1800000;      // storage rows cap at 2MB; larger node JSON splits into N:<id>:<i>
+const PUT_BATCH = 100;           // storage.put(object) accepts ≤128 keys per call
+
+const vOf = (x) => (x && typeof x.v === "number" ? x.v : 0);
+const vnOf = (x) => (x && typeof x.vn === "number" ? x.vn : 0);
+// deterministic total order: version, then nonce. Equal v+vn = the same write (idempotent).
+const beats = (a, b) => vOf(a) > vOf(b) || (vOf(a) === vOf(b) && vnOf(a) > vnOf(b));
+const sameV = (a, b) => vOf(a) === vOf(b) && vnOf(a) === vnOf(b);
+const rnd = () => Math.floor(Math.random() * 0x7fffffff);
 
 export class BoardRoom {
   constructor(ctx, env) {
     this.ctx = ctx;
     this.env = env;
-    this.doc = null;      // latest board doc (cache — null after hibernation wake)
-    this.wantDoc = false; // a docreq is in flight, don't spam
-    this.dirty = false;   // doc changed since the last KV write (mirrored durably — see markDirty)
-    this.coldWrite = false; // an alarm woke without a doc and asked a client for one
+    this.doc = null;      // {name,nameV,nodes:[…],tombs:{id:{v,t}},clock} — cache over storage
+    this.byId = null;     // Map id → node, rebuilt with doc
+    this.chunked = new Set(); // node ids stored as N:<id>:<i> overflow chunks (JSON > 1.8MB)
+    this.loadP = null;    // in-flight load, so concurrent messages share one storage read
+    this.path = null;     // board path cache (durable under "path")
+    this.ephemeral = false; // /__test/ room: RAM only, never storage, never KV
+    this.wantDoc = false; // test rooms only: a docreq is in flight, don't spam
+    this.dirty = false;   // KV mirror is behind storage (mirrored durably — see markDirty)
     this.alarmSet = false;
     this.sweptAt = 0;
     this.sess = null;     // shared timer/music state (cache — reloaded from storage on demand)
@@ -119,10 +147,12 @@ export class BoardRoom {
     for (const ws of dead) this.reap(ws);
   }
 
+  send(ws, msg) { try { ws.send(JSON.stringify(msg)); } catch (e) {} }
+
   async fetch(request) {
     const url = new URL(request.url);
     const path = (url.searchParams.get("path") || "").slice(0, 600);
-    if (path) this.ctx.storage.put("path", path); // the alarm needs it after a hibernation wake
+    if (path) { this.path = path; this.ephemeral = path.indexOf("/__test/") === 0; this.ctx.storage.put("path", path); }
     const name = (url.searchParams.get("name") || "Guest").slice(0, 60);
     const sid = "p" + Math.random().toString(36).slice(2, 10);
     // `kind=agent` marks a Claude collaboration client — clients render it as Clawd, not the
@@ -137,6 +167,10 @@ export class BoardRoom {
     const reqAvatar = (url.searchParams.get("avatar") || "").slice(0, 300);
     const avatar = reqAvatar.startsWith("/") ? reqAvatar : null;
 
+    // the doc comes up BEFORE the welcome goes out, so every joiner starts from the
+    // room's authoritative state — never from a possibly-stale KV read of their own
+    await this.load();
+
     this.sweep();
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
@@ -144,18 +178,18 @@ export class BoardRoom {
     server.serializeAttachment({ sid, name, color, avatar, kind, pose: null, focus: null, joined: Date.now() });
 
     const welcome = { t: "welcome", sid, color, peers: this.peers(server) };
-    if (this.doc) welcome.doc = this.doc;
-    else if (welcome.peers.length) welcome.needDoc = true; // room woke from hibernation mid-session
+    if (this.doc) welcome.doc = this.wireDoc();
+    else welcome.needDoc = true; // brand-new board (or a cold test room): the client seeds
     // a joiner walks into a running timer mid-countdown — hand them the live values
     const sess = await this.sessionState();
     if (sess.timer || sess.music) welcome.session = this.sessionWire(sess);
-    server.send(JSON.stringify(welcome));
+    this.send(server, welcome);
     this.broadcast({ t: "join", peer: { sid, name, color, avatar, kind, pose: null, focus: null } }, server);
 
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  webSocketMessage(ws, raw) {
+  async webSocketMessage(ws, raw) {
     if (typeof raw !== "string" || raw.length > MAX_MSG) return;
     this.sweep();
     let msg;
@@ -196,15 +230,19 @@ export class BoardRoom {
       return;
     }
     if (msg.t === "ops" && Array.isArray(msg.ops)) {
-      this.applyOps(msg.ops);
-      if (this.doc) this.markDirty();
-      this.broadcast({ t: "ops", sid: a.sid, ops: msg.ops }, ws);
-      // room lost its doc (hibernation) and can't rebuild from deltas — ask the sender,
-      // who by definition has the current state, for a full snapshot
-      if (!this.doc && !this.wantDoc) {
-        this.wantDoc = true;
-        try { ws.send(JSON.stringify({ t: "docreq" })); } catch (e) {}
+      await this.load();
+      if (!this.doc) {
+        // only reachable in a test room (real rooms always load or start a doc): relay for
+        // liveness and ask the sender — who by definition has the state — for a snapshot
+        this.broadcast({ t: "ops", sid: a.sid, ops: msg.ops }, ws);
+        if (!this.wantDoc) { this.wantDoc = true; this.send(ws, { t: "docreq" }); }
+        return;
       }
+      const r = this.applyOps(msg.ops, /*seedMode*/ false);
+      if (r.accepted.length) this.broadcast({ t: "ops", sid: a.sid, ops: r.accepted }, ws);
+      // the sender lost one or more races — hand them the winning state so they converge
+      // (everyone else already holds it or is about to via the accepted broadcast)
+      if (r.corrections.length) this.send(ws, { t: "ops", sid: "room", ops: r.corrections });
       return;
     }
     if (msg.t === "focus") {
@@ -249,7 +287,7 @@ export class BoardRoom {
       for (const peer of this.ctx.getWebSockets()) {
         const p = peer.deserializeAttachment();
         if (!p || p.sid !== target || p.kind !== "agent") continue;
-        try { peer.send(JSON.stringify({ t: "kick", sid: target, by: a.name || "" })); } catch (e) {}
+        this.send(peer, { t: "kick", sid: target, by: a.name || "" });
       }
       return;
     }
@@ -262,20 +300,25 @@ export class BoardRoom {
       return;
     }
     if (msg.t === "doc" && msg.doc && Array.isArray(msg.doc.nodes)) {
-      const had = !!this.doc;
-      this.doc = msg.doc;
+      await this.load();
       this.wantDoc = false;
-      // A fresh seed marks dirty on purpose: the seeder might carry an edit made in the
-      // ~1s between its last KV load and the socket coming up — its own save() skips the
-      // POST once the room is live, so if the room didn't persist the seed, that edit
-      // would only ever exist in RAM. One extra write per room session buys the guarantee.
-      this.markDirty();
-      // A cold alarm asked for this doc because it woke without one. Write NOW: arming
-      // another 45s alarm risks landing cold again, which is how a room stalls forever.
-      if (this.coldWrite) { this.coldWrite = false; this.persist(); }
-      // first seed of a live room: peers loaded from KV themselves, no need to rebroadcast;
-      // only a post-hibernation reseed stays silent too — ops already kept everyone level.
-      if (!had) return;
+      if (!this.doc) {
+        // brand-new board (or a test room rebuilding after hibernation): adopt wholesale —
+        // there is nothing to reconcile against. Nodes keep the versions they came with
+        // (v-less stays v-less = v0), so the seeder's own later bumps still win cleanly.
+        this.adoptDoc(msg.doc);
+        return;
+      }
+      // A board exists → the seed is an OFFER, reconciled per-node under the version rules
+      // (v-less seed nodes count as v0). A slept-laptop tab reconnecting with last week's
+      // RAM merges its genuinely-new nodes and LOSES everything the board has since
+      // out-versioned — the exact opposite of the old wholesale adopt, which let the
+      // stalest client in the world overwrite everyone (the #1 loss bug of the audit).
+      const r = this.reconcileSeed(msg.doc);
+      if (r.accepted.length) this.broadcast({ t: "ops", sid: "room", ops: r.accepted }, ws);
+      // where the room won, the seeder is the one holding stale state — correct them
+      if (r.corrections.length) this.send(ws, { t: "ops", sid: "room", ops: r.corrections });
+      return;
     }
   }
 
@@ -376,33 +419,254 @@ export class BoardRoom {
     this.saveSession(s);
   }
 
-  // ---- persistence (the room owns the KV write while it's alive) ------------
-  // HIBERNATION-SAFE. The alarm is DURABLE, `dirty` and `doc` are in-memory caches, so an
-  // alarm armed before a hibernation wake fires into a FRESH instance where dirty=false and
-  // doc=null — the write was silently skipped and, because the re-arm is also guarded by
-  // dirty, never retried. `path` was already made durable for exactly this reason; the
-  // pending-write flag now lives beside it, and a cold alarm rebuilds the doc from a live
-  // client (docreq — they hold the truth) or, in an empty room, from the durable stash.
+  // ---- the document (storage-backed, version-ruled) --------------------------
+  wireDoc() {
+    // tombs ride along so a reconnecting client can apply deletions it slept through
+    return { name: this.doc.name, nameV: this.doc.nameV, nodes: this.doc.nodes, tombs: this.doc.tombs, clock: this.doc.clock };
+  }
+  indexDoc() {
+    this.byId = new Map();
+    for (const n of this.doc.nodes) this.byId.set(n.id, n);
+  }
+  async load() {
+    if (this.doc || this.ephemeral) return;
+    if (!this.loadP) this.loadP = this._load().finally(() => { this.loadP = null; });
+    return this.loadP;
+  }
+  async _load() {
+    if (!this.path) {
+      this.path = await this.ctx.storage.get("path");
+      this.ephemeral = !!this.path && this.path.indexOf("/__test/") === 0;
+      if (this.ephemeral) return;
+    }
+    const m = await this.ctx.storage.get("m");
+    if (m) {
+      const rows = await this.ctx.storage.list({ prefix: "n:" });
+      const nodes = [];
+      this.chunked = new Set();
+      for (const [key, val] of rows) {
+        let node = typeof val === "string" ? JSON.parse(val) : val;
+        if (node && node.__c) { // oversize node, stored chunked
+          const parts = [];
+          for (let i = 0; i < node.__c; i++) parts.push(await this.ctx.storage.get("N:" + key.slice(2) + ":" + i));
+          node = JSON.parse(parts.join(""));
+          if (node) this.chunked.add(node.id);
+        }
+        if (node && node.id) nodes.push(node);
+      }
+      this.doc = { name: m.name || "Untitled canvas", nameV: m.nameV || 0, nodes, tombs: m.tombs || {}, clock: m.clock || 0 };
+      this.indexDoc();
+      // Fold the KV mirror back in (version-ruled, so a lagging mirror merges to nothing):
+      // solo clients and terminal scripts legitimately write /__board while the room is
+      // empty, and waking up storage-only would erase their work at the next mirror write.
+      try {
+        const raw = this.env.BOARD_KV && this.path ? await this.env.BOARD_KV.get(BOARD_PREFIX + this.path) : null;
+        const kv = raw ? JSON.parse(raw) : null;
+        if (kv && Array.isArray(kv.nodes)) this.reconcileSeed(kv); // no sender — corrections go nowhere, accepted ops are already durable
+      } catch (e) {}
+      return;
+    }
+    await this.migrate();
+  }
+  // One-time, per board: bring a pre-storage board into the DO. Sources, in trust order:
+  // the legacy in-storage stash IF it was dirty (a write the old code owed KV and may never
+  // have delivered), else the KV doc. When both exist they reconcile per-node — everything
+  // is v-less here, so ties go to whichever source the dirty flag says was newer.
+  async migrate() {
+    const stash = await this.ctx.storage.get("doc");
+    const wasDirty = !!(await this.ctx.storage.get("dirty"));
+    let kvDoc = null;
+    try {
+      const raw = this.env.BOARD_KV && this.path ? await this.env.BOARD_KV.get(BOARD_PREFIX + this.path) : null;
+      kvDoc = raw ? JSON.parse(raw) : null;
+    } catch (e) {}
+    let src = null;
+    if (kvDoc && stash && Array.isArray(kvDoc.nodes) && Array.isArray(stash.nodes)) {
+      const base = wasDirty ? stash : kvDoc, over = wasDirty ? kvDoc : stash;
+      const ids = new Map(base.nodes.map((n) => [n.id, n]));
+      for (const n of over.nodes) if (n && n.id && !ids.has(n.id)) ids.set(n.id, n); // union — deletions can't be told apart here, keep both
+      src = { name: base.name, nodes: [...ids.values()] };
+    } else src = kvDoc || stash || null;
+    if (!src || !Array.isArray(src.nodes)) return; // brand-new board — stays null until a client seeds
+    this.doc = {
+      name: src.name || "Untitled canvas",
+      nameV: src.nameV || 0,
+      nodes: src.nodes.filter((n) => n && n.id),
+      tombs: src.tombs || {},
+      clock: src.clock || 0,
+    };
+    this.indexDoc();
+    this.writeAll();
+    this.ctx.storage.delete("doc"); // the legacy stash's job is done
+    if (wasDirty) this.markDirty(); // the old code owed KV a write — we inherit the debt
+  }
+  putNode(puts, dels, n) {
+    const s = JSON.stringify(n);
+    if (s.length <= NODE_CHUNK) {
+      puts["n:" + n.id] = s;
+      if (this.chunked.delete(n.id)) dels.push(...this.chunkKeys(n.id)); // shrank back under the limit
+      return;
+    }
+    const k = Math.ceil(s.length / NODE_CHUNK);
+    for (let i = 0; i < k; i++) puts["N:" + n.id + ":" + i] = s.slice(i * NODE_CHUNK, (i + 1) * NODE_CHUNK);
+    puts["n:" + n.id] = JSON.stringify({ __c: k });
+    this.chunked.add(n.id);
+  }
+  chunkKeys(id) {
+    // over-delete up to the practical ceiling (16 × 1.8MB ≫ the 20MB doc cap); deleting a
+    // missing key is a no-op, and this only runs when a node crosses the chunk boundary
+    const out = [];
+    for (let i = 0; i < 16; i++) out.push("N:" + id + ":" + i);
+    return out;
+  }
+  metaRow() {
+    return { name: this.doc.name, nameV: this.doc.nameV, tombs: this.doc.tombs, clock: this.doc.clock };
+  }
+  writeAll() {
+    const puts = { m: this.metaRow() }, dels = [];
+    for (const n of this.doc.nodes) this.putNode(puts, dels, n);
+    this.flushRows(puts, dels);
+  }
+  flushRows(puts, dels) {
+    if (this.ephemeral) return;
+    // no awaits between these — the runtime coalesces them into one atomic write batch
+    const keys = Object.keys(puts);
+    for (let i = 0; i < keys.length; i += PUT_BATCH) {
+      const slice = {};
+      for (const k of keys.slice(i, i + PUT_BATCH)) slice[k] = puts[k];
+      this.ctx.storage.put(slice).catch((e) => console.error("storage put failed", e));
+    }
+    for (let i = 0; i < dels.length; i += PUT_BATCH)
+      this.ctx.storage.delete(dels.slice(i, i + PUT_BATCH)).catch(() => {});
+  }
+  adoptDoc(d) {
+    this.doc = {
+      name: typeof d.name === "string" ? d.name.slice(0, 200) : "Untitled canvas",
+      nameV: vOf({ v: d.nameV }),
+      nodes: d.nodes.filter((n) => n && n.id),
+      tombs: d.tombs && typeof d.tombs === "object" ? d.tombs : {},
+      clock: 0,
+    };
+    this.indexDoc();
+    this.writeAll();
+    this.markDirty();
+  }
+  pruneTombs() {
+    const t = this.doc.tombs, now = Date.now(), ids = Object.keys(t);
+    if (ids.length <= TOMB_MAX && !ids.some((id) => now - (t[id].t || 0) > TOMB_TTL)) return;
+    const keep = ids.filter((id) => now - (t[id].t || 0) <= TOMB_TTL)
+      .sort((a, b) => (t[b].t || 0) - (t[a].t || 0)).slice(0, TOMB_MAX);
+    this.doc.tombs = {};
+    for (const id of keep) this.doc.tombs[id] = t[id];
+  }
+  // Apply a batch under the version rules. Returns what to broadcast (accepted, with
+  // room-stamped versions where the sender had none) and what to bounce back to the
+  // sender (corrections — the winning state for every op that lost).
+  // seedMode: nodes from a {t:"doc"} offer — v-less means v0 (stale until proven fresh),
+  // whereas a v-less LIVE op is a legacy client's real edit and is accepted + stamped.
+  applyOps(ops, seedMode) {
+    const accepted = [], corrections = [];
+    let metaDirty = false;
+    const puts = {}, dels = [];
+    for (const op of ops) {
+      if (!op) continue;
+      if (op.op === "upsert" && op.node && op.node.id) {
+        const n = op.node, id = n.id, cur = this.byId.get(id), tomb = this.doc.tombs[id];
+        const versioned = typeof n.v === "number";
+        if (tomb && !(vOf(n) > tomb.v)) {
+          // deleted, and this write predates the delete — a stale resurrection attempt
+          if (!seedMode && !versioned) { /* legacy live edit of a deleted node: let the delete win */ }
+          corrections.push({ op: "del", id, v: tomb.v });
+          continue;
+        }
+        if (cur) {
+          if (!versioned && !seedMode) {
+            // legacy client's live edit: accept and stamp, so versioned clients converge
+            n.v = vOf(cur) + 1; n.vn = rnd();
+          } else if (sameV(n, cur)) {
+            // same version twice is an idempotent echo — UNLESS the content drifted, which
+            // only unversioned (legacy/migrated) writes can produce: the room's copy wins
+            // ties and the seeder is told so, or the two sides diverge forever in silence
+            if (JSON.stringify(n) !== JSON.stringify(cur)) corrections.push({ op: "upsert", node: cur });
+            continue;
+          } else if (!beats(n, cur)) {
+            corrections.push({ op: "upsert", node: cur });
+            continue;
+          }
+        } else if (!versioned && !seedMode) {
+          n.v = tomb ? tomb.v + 1 : 1; n.vn = rnd();
+        }
+        if (tomb) { delete this.doc.tombs[id]; metaDirty = true; }
+        if (cur) this.doc.nodes[this.doc.nodes.indexOf(cur)] = n;
+        else this.doc.nodes.push(n);
+        this.byId.set(id, n);
+        this.putNode(puts, dels, n);
+        accepted.push({ op: "upsert", node: n });
+      } else if (op.op === "del" && op.id) {
+        const id = op.id, cur = this.byId.get(id), tomb = this.doc.tombs[id];
+        const versioned = typeof op.v === "number";
+        let tombV;
+        if (cur) {
+          if (versioned && !(op.v > vOf(cur))) { corrections.push({ op: "upsert", node: cur }); continue; }
+          tombV = versioned ? op.v : vOf(cur) + 1;
+          this.doc.nodes.splice(this.doc.nodes.indexOf(cur), 1);
+          this.byId.delete(id);
+          dels.push("n:" + id);
+          if (this.chunked.delete(id)) dels.push(...this.chunkKeys(id));
+        } else {
+          // nothing to delete, but record/raise the tombstone anyway: it's what stops the
+          // node coming back when a slower peer's upsert for it arrives after this del
+          tombV = Math.max(versioned ? op.v : 1, tomb ? tomb.v + (versioned ? 0 : 1) : 0);
+          if (tomb && tombV <= tomb.v) continue;
+        }
+        this.doc.tombs[id] = { v: tombV, t: Date.now() };
+        metaDirty = true;
+        accepted.push({ op: "del", id, v: tombV });
+      } else if (op.op === "name" && typeof op.name === "string") {
+        const versioned = typeof op.v === "number";
+        const curV = this.doc.nameV;
+        if (versioned && op.v <= curV) { corrections.push({ op: "name", name: this.doc.name, v: curV }); continue; }
+        this.doc.name = op.name.slice(0, 200);
+        this.doc.nameV = versioned ? op.v : curV + 1;
+        metaDirty = true;
+        accepted.push({ op: "name", name: this.doc.name, v: this.doc.nameV });
+      }
+    }
+    if (accepted.length || metaDirty) {
+      this.doc.clock++;
+      this.pruneTombs();
+      puts.m = this.metaRow();
+      this.flushRows(puts, dels);
+      this.markDirty();
+    }
+    return { accepted, corrections };
+  }
+  // A {t:"doc"} offer against an existing board: every node becomes a seed-mode upsert,
+  // every tomb a del; nodes the room has that the offer lacks are LEFT ALONE (an absence
+  // in a stale snapshot is not a deletion — real deletions travel as tombs/ops).
+  reconcileSeed(d) {
+    const ops = [];
+    for (const n of d.nodes) if (n && n.id) ops.push({ op: "upsert", node: n });
+    if (d.tombs && typeof d.tombs === "object")
+      for (const id of Object.keys(d.tombs)) ops.push({ op: "del", id, v: vOf({ v: d.tombs[id] && d.tombs[id].v }) });
+    if (typeof d.name === "string" && typeof d.nameV === "number") ops.push({ op: "name", name: d.name, v: d.nameV });
+    const r = this.applyOps(ops, /*seedMode*/ true);
+    // corrections the seeder needs beyond op losses: the nodes it doesn't know exist
+    const known = new Set(d.nodes.map((n) => n && n.id));
+    for (const n of this.doc.nodes) if (!known.has(n.id)) r.corrections.push({ op: "upsert", node: n });
+    return r;
+  }
+
+  // ---- KV mirror (public GET + solo fallback read from it) -------------------
+  // Storage is the source of truth; KV gets a write-through copy on the old cadence: a
+  // dirty flag arms a 45s alarm, the last socket leaving flushes immediately. `dirty` is
+  // durable because the alarm outlives the instance that armed it (hibernation).
   markDirty() {
-    // the durable mirror only needs writing on the false→true edge — while the instance
-    // stays warm `dirty` holds, and a fresh (post-hibernation) instance starts false again
+    if (this.ephemeral) return;
     if (!this.dirty) { this.dirty = true; this.ctx.storage.put("dirty", 1); }
     if (this.alarmSet) return;
     this.alarmSet = true;
-    // Stash the doc when ARMING (≤ once per window, not per ops tick) so a cold alarm with
-    // no one left to ask still has something to write. Best effort: a doc over the DO value
-    // limit just doesn't stash, and the docreq path covers it.
-    if (this.doc) { try { this.ctx.storage.put("doc", this.doc).catch(() => {}); } catch (e) {} }
     this.ctx.storage.setAlarm(Date.now() + PERSIST_MS);
-  }
-  // Write whatever is pending, from a cold instance if need be (no client left to ask).
-  async flush() {
-    if (!(await this.isDirty())) return;
-    if (!this.doc) {
-      const stashed = await this.ctx.storage.get("doc");
-      if (stashed) this.doc = stashed;
-    }
-    await this.persist();
   }
   async isDirty() {
     if (this.dirty) return true;
@@ -415,65 +679,28 @@ export class BoardRoom {
   }
   async alarm() {
     this.alarmSet = false;
+    if (this.ephemeral) return;
     if (!(await this.isDirty())) return;
-    if (!this.doc) {
-      // Cold wake. A connected client has the current state — ask, and write when it answers
-      // (see the `doc` handler). Re-arm as the safety net in case nobody replies.
-      // ZOMBIE-PROOF (bit on the UX-audit board 2026-07-27): sweep FIRST — sweep() otherwise
-      // only runs on message/fetch events, so a room whose only "client" is a dead transport
-      // never reaps it; and ask EVERY socket, not [0] — one zombie in first position would
-      // eat the docreq forever while a live client sits next to it, and the room would
-      // re-arm in a loop without ever persisting.
-      this.sweep();
-      const wss = this.ctx.getWebSockets();
-      if (wss.length) {
-        this.coldWrite = true;
-        if (!this.wantDoc) {
-          this.wantDoc = true;
-          for (const ws of wss) { try { ws.send(JSON.stringify({ t: "docreq" })); } catch (e) {} }
-        }
-        this.alarmSet = true;
-        this.ctx.storage.setAlarm(Date.now() + PERSIST_MS);
-        return;
-      }
-      const stashed = await this.ctx.storage.get("doc"); // empty room: the stash is all we have
-      if (stashed) this.doc = stashed;
-    }
-    await this.persist();
-    // still dirty means ops landed while the write was in flight — re-arm
-    if (this.dirty) this.markDirty();
+    await this.load(); // hibernation wake: the doc is in storage, no client required
+    await this.mirror();
+    // still dirty = the write failed, or ops landed while it ran — either way, retry
+    if (this.dirty && !this.alarmSet) { this.alarmSet = true; this.ctx.storage.setAlarm(Date.now() + RETRY_MS); }
   }
-  async persist() {
-    if (!this.doc || !this.env.BOARD_KV) return;
+  async mirror() {
+    if (!this.doc || !this.env.BOARD_KV || this.ephemeral) return;
     if (!(await this.isDirty())) return;
-    const path = await this.ctx.storage.get("path");
-    if (!path || path.indexOf("/__test/") === 0) { await this.clearDirty(); return; } // test rooms never persist (Playwright isolation)
     await this.clearDirty(); // before the await: ops during the write re-set it
-    try { await this.env.BOARD_KV.put(BOARD_PREFIX + path, JSON.stringify(this.doc)); }
-    catch (e) { this.dirty = true; this.ctx.storage.put("dirty", 1); } // failed write: the next alarm retries
-  }
-
-  applyOps(ops) {
-    if (!this.doc) return;
-    for (const op of ops) {
-      if (!op) continue;
-      if (op.op === "upsert" && op.node && op.node.id) {
-        const i = this.doc.nodes.findIndex((n) => n.id === op.node.id);
-        if (i >= 0) this.doc.nodes[i] = op.node;
-        else this.doc.nodes.push(op.node);
-      } else if (op.op === "del" && op.id) {
-        this.doc.nodes = this.doc.nodes.filter((n) => n.id !== op.id);
-      } else if (op.op === "name" && typeof op.name === "string") {
-        this.doc.name = op.name.slice(0, 200);
-      }
+    try { await this.env.BOARD_KV.put(BOARD_PREFIX + this.path, JSON.stringify(this.wireDoc())); }
+    catch (e) {
+      console.error("KV mirror write failed", e);
+      this.dirty = true; this.ctx.storage.put("dirty", 1);
     }
   }
 
   webSocketClose(ws) { this.reap(ws); }
   webSocketError(ws) { this.reap(ws); }
   // A socket counts as LIVE if it pinged inside ~3 keepalive intervals (sweep's rule). A
-  // zombie (dead transport whose close never fired) must not block the last-one-out flush:
-  // it can't answer a docreq either, so treating it as present just strands the doc in RAM.
+  // zombie (dead transport whose close never fired) must not block the last-one-out flush.
   isLive(ws) {
     const ts = this.ctx.getWebSocketAutoResponseTimestamp(ws);
     const a = ws.deserializeAttachment();
@@ -485,11 +712,17 @@ export class BoardRoom {
     try { ws.close(); } catch (e) {}
     if (a) this.broadcast({ t: "leave", peer: { sid: a.sid, name: a.name, color: a.color } }, ws);
     if (!this.ctx.getWebSockets().some((s) => s !== ws && this.isLive(s))) {
-      // last one out: flush the doc to KV NOW (don't wait for the alarm), then drop the
-      // cache. No waitUntil — the runtime keeps a DO alive while async work is in flight.
-      // dirty/doc can both be cold here (hibernation wake), so flush() re-reads them.
-      const d = this.doc;
-      this.flush().then(() => { if (this.doc === d) this.doc = null; });
+      // last one out: mirror to KV NOW (don't wait for the alarm), then drop the RAM cache
+      // — storage keeps the doc, so an empty room costs nothing and forgets nothing. A
+      // failed mirror stays dirty and the alarm retry path picks it up (the DO wakes on
+      // alarms with zero sockets — that's what alarms are for).
+      this.load()
+        .then(() => this.mirror())
+        .catch(() => {})
+        .then(() => {
+          if (this.dirty && !this.alarmSet) { this.alarmSet = true; this.ctx.storage.setAlarm(Date.now() + RETRY_MS); }
+          this.doc = null; this.byId = null;
+        });
     }
   }
 }
