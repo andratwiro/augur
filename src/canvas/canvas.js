@@ -1884,6 +1884,15 @@
   }, { passive: false });
 
   // ---- keyboard ------------------------------------------------------------
+  // The focused element, resolved THROUGH shadow roots: overlays (e.g. the comment
+  // composer) render in shadow DOM, where document.activeElement is only the host
+  // <div> — treating that as "not typing" made Space pan (and paste hijack) while
+  // writing a comment on a board.
+  function deepActive() {
+    var ae = document.activeElement;
+    while (ae && ae.shadowRoot && ae.shadowRoot.activeElement) ae = ae.shadowRoot.activeElement;
+    return ae;
+  }
   document.addEventListener("keydown", function (e) {
     if (cropState) { // crop mode owns the keyboard: Enter commits, Esc cancels, everything else is inert
       if (e.key === "Enter") { e.preventDefault(); commitCrop(); }
@@ -1891,7 +1900,7 @@
       return;
     }
     if (e.metaKey && e.key === ".") { e.preventDefault(); ui.classList.toggle("hidden"); return; }
-    var ae = document.activeElement, tag = ae ? ae.tagName : "";
+    var ae = deepActive(), tag = ae ? ae.tagName : "";
     var editing = ae && (ae.isContentEditable || tag === "INPUT" || tag === "TEXTAREA");
     // Hold Space to pan (hand cursor); dragging empty space marquee-selects.
     if (e.code === "Space" && !editing && tag !== "BUTTON") { if (!spaceDown) { spaceDown = true; root.classList.add("hand"); } e.preventDefault(); return; }
@@ -2206,8 +2215,8 @@
 
   document.addEventListener("paste", function (e) {
     // a text box owns its own paste (the sticky/text editors handle it, plain-text-only) and
-    // crop mode owns the whole keyboard
-    var ae = document.activeElement, tag = ae ? ae.tagName : "";
+    // crop mode owns the whole keyboard; deepActive: shadow-DOM overlay inputs count too
+    var ae = deepActive(), tag = ae ? ae.tagName : "";
     if (ae && (ae.isContentEditable || tag === "INPUT" || tag === "TEXTAREA")) return;
     if (cropState) return;
     var cd = e.clipboardData; if (!cd) return;
