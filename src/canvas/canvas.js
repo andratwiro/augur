@@ -313,7 +313,7 @@
   function decorate(id) {
     clearDecor();
     var node = nodeById(id), host = nodeEls[id];
-    if (!node || !host || node.type === "arrow" || node.type === "draw") return;
+    if (!node || !host || node.type === "arrow") return;
     if (node.type === "table") {
       // table add affordances: a blue + strip along the bottom (row) and right (column)
       var ar = el("div", { class: "gvc-addrow", text: "+" });
@@ -1715,6 +1715,13 @@
         if (north) { n2.y = drag.oy + (drag.oh - n2.h); re.style.top = n2.y + "px"; }
         if (n2.type === "tile") { var rb = re.querySelector(".gvc-tilebody"); if (rb) fitFrame(rb, n2); }
       }
+      // draw strokes: the svg is px-fixed and the eraser/hit tests read points against
+      // w/h, so a resize rescales the point cloud (from the captured base) and re-renders.
+      if (n2.type === "draw" && drag.pts0) {
+        var kx = drag.ow ? n2.w / drag.ow : 1, ky = drag.oh ? n2.h / drag.oh : 1;
+        n2.points = drag.pts0.map(function (p) { return [p[0] * kx, p[1] * ky]; });
+        renderNode(n2);
+      }
       if (n2.type === "tile") scaleTileChrome(n2, re); else if (n2.type === "section") scaleSectionLabel(n2, re);
       positionSelBar(); }
     else if (drag.mode === "arrow") { var an = drag.node, av = axisLock(dx, dy, e.shiftKey); if (drag.end === "1") { an.x1 = drag.px + av[0] / sc; an.y1 = drag.py + av[1] / sc; } else { an.x2 = drag.px + av[0] / sc; an.y2 = drag.py + av[1] / sc; } renderNode(an); }
@@ -1733,11 +1740,12 @@
     if (drag.mode === "move" && !drag.moved && drag.dblAction) { var act = drag.dblAction; drag = null; act(); scheduleSave(); return; } // the deferred double-tap: a real double-CLICK, not a click-then-drag
     if (drag.mode === "marquee" && marquee) { marquee.remove(); marquee = null; }
     if (drag.mode === "arrow") renderNode(drag.node);
-    if (drag.mode === "resize" && drag.node.type === "stamp") renderNode(drag.node);
+    if (drag.mode === "resize" && (drag.node.type === "stamp" || drag.node.type === "draw")) renderNode(drag.node);
     if (drag.mode === "resize") {
       // you set a height by hand → the box stops hugging its text (it still grows rather than
-      // clip, it just never shrinks under you again)
-      if (drag.node.type !== "text" && Math.abs((drag.node.h || 0) - drag.oh) > 1) drag.node.hFixed = true;
+      // clip, it just never shrinks under you again). Draw strokes are pure geometry — no
+      // text to hug, so no hFixed on them (keeps the node schema clean).
+      if (drag.node.type !== "text" && drag.node.type !== "draw" && Math.abs((drag.node.h || 0) - drag.oh) > 1) drag.node.hFixed = true;
       autoFit(drag.node, false); // a box dragged smaller than its text springs back now, not silently on the next reload
     }
     if (drag.mode === "stroke") {
@@ -1790,7 +1798,10 @@
   }
   // ow/oh fall back to the MEASURED element size — text nodes carry no w/h until first resized,
   // so reading node.w blind gave NaN and the handle silently did nothing (the "drag doesn't work" bug).
-  function startResize(e, node, dir) { e.stopPropagation(); var h = nodeEls[node.id]; drag = { mode: "resize", node: node, dir: dir || "se", sx: e.clientX, sy: e.clientY, ox: node.x, oy: node.y, ow: node.w != null ? node.w : (h ? h.offsetWidth : 150), oh: node.h != null ? node.h : (h ? h.offsetHeight : 100) }; armSnap([node.id]); root.setPointerCapture(e.pointerId); }
+  function startResize(e, node, dir) { e.stopPropagation(); var h = nodeEls[node.id]; drag = { mode: "resize", node: node, dir: dir || "se", sx: e.clientX, sy: e.clientY, ox: node.x, oy: node.y, ow: node.w != null ? node.w : (h ? h.offsetWidth : 150), oh: node.h != null ? node.h : (h ? h.offsetHeight : 100),
+    // draw strokes rescale their POINTS (the model everything hit-tests against), always
+    // from this captured base so a long drag never accumulates rounding drift
+    pts0: node.type === "draw" && node.points ? node.points.map(function (p) { return p.slice(); }) : null }; armSnap([node.id]); root.setPointerCapture(e.pointerId); }
   function startArrowHandle(e, node, end) { e.stopPropagation(); drag = { mode: "arrow", node: node, end: end, sx: e.clientX, sy: e.clientY, px: end === "1" ? node.x1 : node.x2, py: end === "1" ? node.y1 : node.y2 }; root.setPointerCapture(e.pointerId); }
 
   // ---- image crop (double-tap an image; non-destructive) -------------------
@@ -4357,6 +4368,9 @@
   function mpPatchGeo(n, host, src) {
     GEO_KEYS.forEach(function (k) { if (src[k] != null) n[k] = src[k]; });
     if (n.type === "arrow") { renderNode(n); return; }
+    // a resizing draw stroke ships its rescaled points (the svg is px-fixed —
+    // stretching the host without them would leave the path misdrawn)
+    if (n.type === "draw" && src.points) { n.points = src.points; renderNode(n); return; }
     host.classList.add("gvc-remote-move");
     clearTimeout(host.__mpMoveT);
     host.__mpMoveT = setTimeout(function () { host.classList.remove("gvc-remote-move"); }, 300);
@@ -4412,7 +4426,11 @@
       });
     } else if (drag.mode === "resize" && drag.node) {
       var n2 = drag.node;
-      out.push({ id: n2.id, x: n2.x, y: n2.y, w: n2.w, h: n2.h });
+      var op = { id: n2.id, x: n2.x, y: n2.y, w: n2.w, h: n2.h };
+      // a draw stroke's geometry IS its points — without them a peer's render
+      // stretches the svg box around an unchanged path mid-drag
+      if (n2.type === "draw" && n2.points) op.points = n2.points;
+      out.push(op);
     } else if (drag.mode === "arrow" && drag.node) {
       var a = drag.node;
       out.push({ id: a.id, x1: a.x1, y1: a.y1, x2: a.x2, y2: a.y2 });
