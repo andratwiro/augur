@@ -57,18 +57,29 @@ push fires its own `deploy-trigger.yml` (`workspace-updated`, naming the space b
 builds + ships (~1 min). Deploy verification is the public **`/_build.json`** stamp:
 `{builtAt, spaces:{<id>:{sha}}}` — compare a space's sha to `git rev-parse HEAD`.
 
-Build-time injection (all presence-checked placeholders in `src/_worker.js`):
-`USERS` (from `GV_IDENTITY_PATH`), `RESTRICTED_BASES`, `PUBLIC_SKILL_PREFIXES` (the
-default space's skill dir, gate-exempt for asset extensions), and from
-`GV_DEPLOY_CONFIG_PATH` (`deploy.config.json` in the shell): `MCP_HOST_SUFFIXES`,
-`MCP_HOST_ALLOWLIST_URL` (a JSON `{"hosts":[…]}` of exact hosts the `/__mcp/` proxy may
-also forward, for platforms on vanity domains no suffix rule can cover; unset or
-unreachable = suffixes only), `VANITY_REDIRECTS`, `BUILDER_CONFIG` (AI project-builder
-prompts + schema; without it `/__ai/summarize` answers 501), plus `SITE_ORIGIN` for
-absolute og/unfurl URLs. One placeholder is space-injected instead:
-`MCP_HOST_ALLOWLIST`, the validated union of the `{"hosts":[…]}` documents spaces
-declare via `space.json` `"mcpAllowlists": [<space-relative paths>]` — exact hosts
-baked at build, refreshed by every space push, no instance config needed.
+**Runtime config (no build-time worker stamping).** `src/_worker.js` ships VERBATIM;
+build.js emits `dist/__config/instance.json` (users from `GV_IDENTITY_PATH`; from
+`GV_DEPLOY_CONFIG_PATH`: `mcpHostSuffixes`, `mcpHostAllowlistUrl`, `vanityRedirects`,
+`builder`, `rtOrigin`, `sentinels`) and `dist/__config/routing.json` (public prefixes,
+version map, restricted bases, space list, the mcp allowlist union spaces declare via
+`space.json "mcpAllowlists"`). The worker fills these via `loadConfig()` (~1.5s
+per-isolate cache) and seals `/__config/*` from external requests. Build.js also
+emits `dist/__manifests/<id>.json` per space (+ pseudo-space `_engine` for shared
+chrome): `{files: {path → {sha256, mime, size}}}` + the space's routing fragment.
+
+**Direct publish (the bundle store).** With `GV_ASSET_SOURCE=r2` + a `BUNDLES` R2
+binding, the worker serves those manifests from content-addressed R2 blobs and takes
+publishes over `/__publish/<space>/{check,blob,commit,rollback}` (per-space bearer
+tokens, minted at `/__admin/tokens`; instance config pushed via
+`/__publish/_instance/config`). Routing then derives from the LIVE manifests —
+`routing.json` is a Pages-mode artifact only. Without the flag/binding, serving is
+Pages `ASSETS`, byte-identical to the pre-bundle behavior.
+
+**Local commands** (`augur <cmd>` via the bin entry, or `node scripts/<cmd>.mjs`):
+`augur dev` (standalone shell — single space folder, dev identity fallback) ·
+`npm run offline` (god-mode multi-space) · `npm run deploy` (build + direct upload;
+`--check`, `--preview`) · `augur publish [--space <id>|--all] [--dry-run]`
+(incremental per-space publish; `AUGUR_TOKEN` + `AUGUR_ORIGIN`).
 
 Env reference: `GV_SPACES_ROOT` (spaces location) · `GV_IDENTITY_PATH` (user list) ·
 `GV_DEPLOY_CONFIG_PATH` (deploy config) · `OFFLINE_PORT` (offline preview).
