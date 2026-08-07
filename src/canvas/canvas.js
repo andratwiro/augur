@@ -218,6 +218,10 @@
       xfDirty = false;
       var v = board.view;
       world.style.transform = "translate(" + v.x + "px," + v.y + "px) scale(" + v.scale + ")";
+      // Inverse zoom factor for screen-constant chrome INSIDE the scaled world —
+      // selection outlines etc. multiply by this so they read the same at any zoom
+      // (a world-unit stroke vanishes zoomed out, dominates zoomed in).
+      world.style.setProperty("--gvc-inv", String(1 / v.scale));
       var g = gridSpec(v.scale);
       root.style.backgroundImage = "radial-gradient(circle, " + DOT_COLOR + " " + g.r + "px, transparent " + (g.r + 0.6) + "px)";
       root.style.backgroundSize = g.step + "px " + g.step + "px";

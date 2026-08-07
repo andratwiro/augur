@@ -35,7 +35,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
 .gvc-node { position: absolute; box-sizing: border-box; }
 /* FigJam's selection is a HAIRLINE flush to the node, not a ring standing off it — the node
    stays the loudest thing on the board and the chrome gets out of its way. */
-.gvc-node.sel { outline: 1.5px solid #2563eb; outline-offset: 0; }
+/* Screen-constant selection ring: --gvc-inv (set per zoom in applyTransform)
+   cancels the world scale, so the ring reads ~2.5px on screen at every zoom —
+   visible from afar without swallowing the node up close. */
+.gvc-node.sel { outline: calc(2.5px * var(--gvc-inv, 1)) solid #2563eb; outline-offset: 0; }
 .gvc-node > .gvc-name {
   position: absolute; left: 0; top: -19px; font-size: 11px; color: #6b7280;
   max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text;
@@ -646,7 +649,7 @@ svg.stk { display: block; overflow: visible; }
    (continuous glide) instead of hop-pause-hop at the old 120ms ops tick */
 .gvc-node.gvc-remote-move { transition: left .09s linear, top .09s linear, width .09s linear, height .09s linear; }
 /* what a peer has SELECTED — thin ring in their color (typing gets the thicker named ring) */
-.gvc-peer-sel { position: absolute; inset: -3px; border: 1.5px solid; border-radius: 6px; pointer-events: none; z-index: 4; opacity: .85; }
+.gvc-peer-sel { position: absolute; inset: -3px; border: calc(1.5px * var(--gvc-inv, 1)) solid; border-radius: 6px; pointer-events: none; z-index: 4; opacity: .85; }
 /* interact-mode drag grip: pinned to the tile's top-right corner, counter-scaled like the
    name chip; its pointerdown bubbles to the root drag path — no special handling */
 .gvc-draghandle { position: absolute; top: -13px; right: -13px; width: 30px; height: 30px; display: none; align-items: center; justify-content: center; background: #2563eb; color: #fff; border-radius: 50%; box-shadow: 0 2px 8px rgba(0, 0, 0, .28); cursor: grab; transform-origin: top right; z-index: 6; }
