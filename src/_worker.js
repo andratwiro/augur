@@ -520,13 +520,14 @@ function liveReloadSnippet(token, fast) {
 // per-prototype CSS) are left on the default so they still revalidate via ETag/304.
 function withAssetCache(res, url) {
   // The infinite-canvas engine (canvas.js/.css/catalog.json) is loaded by absolute path
-  // with no ?v= cache-buster and is actively iterated, so the default `max-age=0,
-  // must-revalidate` lets a soft/bfcache navigation keep running a stale engine (new CSS,
-  // old JS). no-store guarantees every canvas load fetches the current engine. Tiny files,
-  // low-traffic tool → cost is nil. (Switch to versioned-immutable once it stabilises.)
+  // with no ?v= cache-buster and is actively iterated. `no-cache` forces a REVALIDATION
+  // on every use (so the stale-JS ghosts no-store used to fight stay dead — every load
+  // still checks) but lets the browser answer with its cached copy on the 304, so a
+  // repeat open costs ~1KB of conditional requests instead of ~110KB of engine
+  // re-download (was `no-store` until 2026-08-07, which disabled caching entirely).
   if (url.pathname.startsWith("/__canvas/") && /\.(js|css|json)$/i.test(url.pathname)) {
     const out = new Response(res.body, res);
-    out.headers.set("Cache-Control", "no-store");
+    out.headers.set("Cache-Control", "no-cache");
     return out;
   }
   const versioned = url.searchParams.has("v") || /\.(woff2?|ttf|otf)$/.test(url.pathname);

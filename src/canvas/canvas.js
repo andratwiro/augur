@@ -172,6 +172,7 @@
   // gaps hugely. The dot RADIUS is proportional to the spacing (a fixed ratio, clamped), so
   // wider gaps = bigger dots. Returns { step, r } in screen px.
   var DOT_COLOR = "#c8c8c8";
+  var gridPainted = { step: 0, r: 0 }; // last background actually painted — repaint only on zoom-octave change
   function gridSpec(scale) {
     var s = GRID * scale;
     while (s < 9) s *= 2;
@@ -182,9 +183,10 @@
 
   // ---- DOM scaffold --------------------------------------------------------
   var root = el("div", { id: "gvc-root" });
+  var grid = el("div", { id: "gvc-grid" }); // the dot grid, on its own compositor layer
   var world = el("div", { id: "gvc-world" });
   var ui = el("div", { id: "gvc-ui" });
-  root.appendChild(world); root.appendChild(ui);
+  root.appendChild(grid); root.appendChild(world); root.appendChild(ui);
 
   function el(tag, attrs, kids) {
     var n = document.createElement(tag);
@@ -222,10 +224,19 @@
       // selection outlines etc. multiply by this so they read the same at any zoom
       // (a world-unit stroke vanishes zoomed out, dominates zoomed in).
       world.style.setProperty("--gvc-inv", String(1 / v.scale));
+      // The grid never repaints on a PAN: the pattern repeats every `step`, so translating
+      // its own layer by (v mod step) is indistinguishable from translating by v — pure
+      // compositor work. Only a zoom (step/r change) touches the paint-triggering
+      // background properties. (This used to write background-position on the ROOT every
+      // frame — a full-viewport repaint per pan frame.)
       var g = gridSpec(v.scale);
-      root.style.backgroundImage = "radial-gradient(circle, " + DOT_COLOR + " " + g.r + "px, transparent " + (g.r + 0.6) + "px)";
-      root.style.backgroundSize = g.step + "px " + g.step + "px";
-      root.style.backgroundPosition = v.x + "px " + v.y + "px";
+      if (g.step !== gridPainted.step || g.r !== gridPainted.r) {
+        gridPainted = g;
+        grid.style.backgroundImage = "radial-gradient(circle, " + DOT_COLOR + " " + g.r + "px, transparent " + (g.r + 0.6) + "px)";
+        grid.style.backgroundSize = g.step + "px " + g.step + "px";
+      }
+      var gox = ((v.x % g.step) + g.step) % g.step, goy = ((v.y % g.step) + g.step) % g.step;
+      grid.style.transform = "translate(" + gox + "px," + goy + "px)";
       if (zoomPct) zoomPct.textContent = Math.round(v.scale * 100) + "%";
       // comments.js repositions pins on window scroll; a canvas pan/zoom IS a scroll of the
       // world, so tell it. Board-anchored threads read GVCanvas.worldToScreen (comments hook).
@@ -3690,7 +3701,7 @@
 
   // ---- persistence ---------------------------------------------------------
   var saveTimer = null;
-  function scheduleSave() { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(save, 600); histSchedule(); }
+  function scheduleSave() { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(save, 600); histSchedule(); poke(); }
 
   // ---- undo / redo (⌘Z · ⌘⇧Z) ----------------------------------------------
   // Snapshot-diff history, not a command log: nothing in the mutation paths has to know about
@@ -3849,6 +3860,13 @@
     var t = board.tombs, now = Date.now();
     for (var id in t) if (now - (t[id].t || 0) > 45 * 86400000) delete t[id];
   }
+  // Boot coordination (parallel boot, 2026-08-07): the socket connects WHILE the KV read
+  // runs — whichever doc arrives first renders, the other folds in through the same
+  // version-ruled merge. These flags sequence the seams.
+  var loadSettled = false; // the KV read finished (either way) — seeds may flow
+  var pendingSeed = false; // room asked for a seed before the board finished loading
+  var mpAdopted = false;   // a room doc has been adopted — the KV read must MERGE, not assign
+  var hadStoredView = false;
   function load(done) {
     var attempt = 0;
     (function go() {
@@ -3857,26 +3875,39 @@
         return r.json();
       }).then(function (d) {
         loadOk = true; // a real answer — {doc:null} means genuinely new, safe to save over
-        if (d && d.doc && d.doc.nodes) { board = d.doc; board.view = board.view || { x: 0, y: 0, scale: 1 }; board.name = board.name || CFG.name || "Untitled canvas"; }
-        else { board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 }; }
-        if (!board.tombs) board.tombs = {};
-        pruneTombs();
-        var mine = storedView();
-        if (mine) board.view = mine;
-        histSeed();
-        lastSavedSig = docSig(); // freshly loaded == already saved
+        if (mpAdopted) {
+          // the room's welcome doc got here first and is already on screen — the KV copy
+          // only fills gaps (version-ruled merge; a lagging mirror merges to nothing)
+          if (d && d.doc && d.doc.nodes) mpAdoptDoc(d.doc);
+        } else if (d && d.doc && d.doc.nodes) {
+          var v0 = board.view;
+          board = d.doc;
+          // camera: the boot already applied localStorage (or centered); the doc's own
+          // `view` is only the fallback for a first-ever visit to an old board
+          board.view = hadStoredView || !board.view ? v0 : board.view;
+          board.name = board.name || CFG.name || "Untitled canvas";
+          if (!board.tombs) board.tombs = {};
+          pruneTombs();
+          histSeed();
+          mpSeedShadow(); // the tick must not see the loaded nodes as fresh edits
+          lastSavedSig = docSig(); // freshly loaded == already saved
+          render();
+          applyTransform();
+        } else {
+          lastSavedSig = docSig(); // genuinely-new board: current (empty) state is "saved"
+        }
+        loadSettled = true;
         done();
       }).catch(function () {
         if (++attempt <= 3) { setTimeout(go, 500 * attempt); return; }
-        // Couldn't read the board at all. Render empty so the room can still rescue us
-        // (its welcome carries the doc), but leave loadOk FALSE: solo saves and the unload
-        // beacon stay off, because an empty stand-in must never overwrite the real board
-        // just because a load 500'd (that was audit finding #9).
-        board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 };
-        board.tombs = {};
-        histSeed();
+        // Couldn't read the board at all. If the room already delivered the doc we're
+        // fine (loadOk came with the adopt); otherwise leave loadOk FALSE: solo saves and
+        // the unload beacon stay off, because an empty stand-in must never overwrite the
+        // real board just because a load 500'd (that was audit finding #9).
+        if (!board.tombs) board.tombs = {};
+        if (!mpAdopted) { histSeed(); toast("Couldn't load the board — editing won't save until it reloads"); }
+        loadSettled = true;
         done();
-        toast("Couldn't load the board — editing won't save until it reloads");
       });
     })();
   }
@@ -3957,8 +3988,16 @@
   // the outbound diff tick. Skipped while the tab is hidden — stringifying the whole board
   // 8×/s in a background tab is pure waste; visibilitychange runs one catch-up tick so
   // anything an agent mutated while hidden still syncs the moment you come back.
+  // Idle gate: stringifying every node 8×/s costs real CPU (and battery) on big boards,
+  // and 99% of ticks find nothing. Only run the diff when something might have changed —
+  // recent local input (poke()), an active drag — with a ~1s fallback tick so
+  // programmatic/agent mutations (GVCanvas.addNode from a console) still sync.
+  var mpPokeAt = 0, mpTickN = 0;
+  function poke() { mpPokeAt = Date.now(); }
   function mpTick() {
     if (document.hidden) return;
+    mpTickN++;
+    if (!(drag || Date.now() - mpPokeAt < 2000 || mpTickN % 8 === 0)) return;
     // versions are stamped even while SOLO (socket down): the bump is what makes an
     // offline edit a WINNER when the socket returns and the seed reconciles, instead of
     // stale-looking noise the room throws away
@@ -4098,6 +4137,7 @@
   // by the tick; everything else takes the room's word. Keeps OUR viewport.
   function mpAdoptDoc(doc) {
     if (!doc || !Array.isArray(doc.nodes)) return;
+    mpAdopted = true;
     var view = board.view;
     var localBy = {};
     board.nodes.forEach(function (n) { localBy[n.id] = n; });
@@ -4105,15 +4145,19 @@
     var tombs = doc.tombs && typeof doc.tombs === "object" ? doc.tombs : {};
     var mineT = board.tombs || {};
     for (var tid in mineT) if (!tombs[tid] || mineT[tid].v > tombs[tid].v) tombs[tid] = mineT[tid];
-    var merged = [], dirty = [];
+    var merged = [], dirty = [], toRender = [];
     doc.nodes.forEach(function (r) {
       if (!r || !r.id) return;
       var l = localBy[r.id];
       delete localBy[r.id];
       var t = tombs[r.id];
       if (t && !(vOf(r) > t.v) && !(l && vOf(l) > t.v)) return; // deleted (by either side)
-      if (l && beats(l, r)) { merged.push(l); dirty.push(l.id); }
-      else merged.push(r);
+      if (l && beats(l, r)) { merged.push(l); dirty.push(l.id); return; }
+      if (l && mpSig(l) === mpSig(r)) { merged.push(l); return; } // identical — KEEP the local
+      // object (its element's event handlers close over it) and skip the re-render
+      merged.push(r);
+      toRender.push(r);
+      histSeen(r); // remote change folded into the hist shadow, same as a live op
     });
     for (var id in localBy) { // nodes the room doesn't know: mine and unsent — keep, reoffer
       var l2 = localBy[id], t2 = tombs[id];
@@ -4130,7 +4174,13 @@
     board.nameV = nameV;
     board.view = view;
     document.title = board.name; if (nameEl) nameEl.textContent = board.name;
-    render();
+    // DIFF-AWARE adopt (2026-08-07): only nodes that actually changed re-render. The old
+    // wholesale render() tore down every element — live tile iframes included — on every
+    // reconnect, so each wifi blip flashed the whole board and reloaded every prototype.
+    toRender.forEach(renderNode);
+    var removed = 0;
+    for (var eid in nodeEls) if (!nodeById(eid)) { removed++; histForget(eid); mpRemoveLocal(eid); }
+    if (selected.length && (toRender.length || removed)) setSelection(selected.filter(function (s) { return !!nodeById(s); }));
     mpSeedShadow();
     // where WE won, the shadow must NOT match — that difference is what makes the tick
     // re-send our copy (with a fresh bump, so it wins at the room too)
@@ -4138,7 +4188,6 @@
     if (keptName) mpShadowName = doc.name || null;
     loadOk = true; // the room's doc is real state — solo saving is safe from here on
     lastSavedSig = dirty.length ? null : docSig(); // clean adopt == already persisted; a merge isn't yet
-    histSeed(); histUndo.length = 0; histRedo.length = 0; // not your edit — no undoing "into" it
     mpRenderFocus();
   }
   // Reconnecting into a room with NO doc (hibernated away, or the realtime worker was
@@ -4533,7 +4582,9 @@
   }
   function mpPlaceCursor(p) {
     if (!p.el || p.cx == null) return;
-    var s = worldToScreen(p.cx, p.cy);
+    // rendered position (rx/ry) follows the interpolator; cx/cy stays the latest TARGET
+    // sample (agent pose derivation and follow mode want the truth, not the tween)
+    var s = worldToScreen(p.rx != null ? p.rx : p.cx, p.ry != null ? p.ry : p.cy);
     p.el.style.transform = "translate(" + Math.round(s.x) + "px," + Math.round(s.y) + "px)";
     // the MASCOT soft-scales with zoom (clamped); the name pill stays constant-size like a
     // human cursor's label — the CSS var drives only the svg (and the pill's anchor offset)
@@ -4593,8 +4644,56 @@
     p.el.classList.remove("idle");
     clearTimeout(p.idle);
     p.idle = setTimeout(function () { if (p.el) p.el.classList.add("idle"); }, 5000);
-    mpPlaceCursor(p);
+    mpCursorSample(p, m.x, m.y);
     if (m.sid === mpFollowSid) mpFollowChase();
+  }
+
+  // ---- cursor interpolation (the perfect-cursors technique) -----------------
+  // Samples arrive at ~20Hz (the 50ms send throttle); rendering them directly steps.
+  // Instead each new sample starts a one-sample-long animation: a Catmull-Rom segment
+  // through the last few WORLD points, walked at rAF and blended from wherever the
+  // cursor is currently drawn (so a late/early packet never snaps). Net effect: remote
+  // cursors trace the real hand's curve at 60fps, one update behind — the same approach
+  // tldraw ships as perfect-cursors.
+  var mpCurRaf = null;
+  function mpCursorSample(p, x, y) {
+    var now = performance.now();
+    if (p.rx == null) { // first sighting: teleport, don't glide in from (0,0)
+      p.rx = x; p.ry = y; p.pts = [{ x: x, y: y }]; p.lastAt = now;
+      mpPlaceCursor(p);
+      return;
+    }
+    p.pts = (p.pts || []).concat([{ x: x, y: y }]).slice(-4);
+    p.anim = {
+      fx: p.rx, fy: p.ry, start: now,
+      // animate over the observed inter-arrival gap, clamped: a burst shouldn't teleport,
+      // a stall shouldn't leave the cursor gliding for seconds
+      dur: Math.min(200, Math.max(30, now - (p.lastAt || now))),
+    };
+    p.lastAt = now;
+    if (!mpCurRaf) mpCurRaf = requestAnimationFrame(mpCursorStep);
+  }
+  function mpCursorStep() {
+    mpCurRaf = null;
+    var again = false, now = performance.now();
+    for (var sid in mpPeers) {
+      var p = mpPeers[sid];
+      if (!p || !p.anim) continue;
+      var a = p.anim, k = Math.min(1, (now - a.start) / a.dur);
+      var q = p.pts, n = q.length;
+      var p1 = q[n - 2] || q[n - 1], p2 = q[n - 1];
+      var p0 = q[n - 3] || p1;
+      var p3 = { x: p2.x + (p2.x - p1.x), y: p2.y + (p2.y - p1.y) }; // extrapolated tail
+      var t2 = k * k, t3 = t2 * k;
+      var sx = 0.5 * (2 * p1.x + (p2.x - p0.x) * k + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (3 * p1.x - p0.x - 3 * p2.x + p3.x) * t3);
+      var sy = 0.5 * (2 * p1.y + (p2.y - p0.y) * k + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (3 * p1.y - p0.y - 3 * p2.y + p3.y) * t3);
+      // blend from the currently-drawn point so segment joins never snap
+      p.rx = sx + (a.fx - p1.x) * (1 - k);
+      p.ry = sy + (a.fy - p1.y) * (1 - k);
+      if (k >= 1) { p.rx = p2.x; p.ry = p2.y; p.anim = null; } else again = true;
+      mpPlaceCursor(p);
+    }
+    if (again) mpCurRaf = requestAnimationFrame(mpCursorStep);
   }
   // my cursor out — world coords, trailing-throttled to ~20/s. Mid-drag, the SAME message
   // carries the dragged nodes' geometry (the fast-path): peers get 20Hz motion instead of
@@ -4850,7 +4949,8 @@
       (m.peers || []).forEach(function (p) { mpPeers[p.sid] = { name: p.name, color: p.color, avatar: p.avatar || null, focus: p.focus || null, kind: p.kind || null, pose: p.pose || null, sel: p.sel || null, status: p.status || null, view: p.view || null }; });
       if (m.doc) mpAdoptDoc(m.doc); // merge, not replace — see mpAdoptDoc
       else if (mpEverReady) mpReSeed(); // RECONNECT into an empty room: our RAM may be stale — KV first
-      else mpSend({ t: "doc", doc: board }); // first connect: the board was JUST loaded — seed it
+      else if (loadSettled) { if (loadOk) mpSend({ t: "doc", doc: board }); } // first connect, board loaded: seed
+      else pendingSeed = true; // parallel boot: the board is still loading — seed when it lands
       // walked in on a running timer / playing track: adopt it mid-flight
       sessApply(m.session || { timer: null, music: null });
       mpReady = true; mpEverReady = true;
@@ -4875,7 +4975,7 @@
     else if (m.t === "pose") { var qp = mpPeers[m.sid]; if (qp) { qp.pose = m.pose || null; mpUpdateGlyph(qp); mpRenderPresence(); } }
     else if (m.t === "session") sessApply(m);
     else if (m.t === "doc") mpAdoptDoc(m.doc);
-    else if (m.t === "docreq") mpSend({ t: "doc", doc: board });
+    else if (m.t === "docreq") { if (loadSettled) mpSend({ t: "doc", doc: board }); else pendingSeed = true; }
   }
   function mpConnect() {
     var ws;
@@ -4932,7 +5032,12 @@
       else if (t.classList.contains("gvc-cell") && node.cells) node.cells[t.dataset.rc] = t.innerText.trim();
     });
     setInterval(mpTick, 120);
-    document.addEventListener("visibilitychange", function () { if (!document.hidden) { try { mpTick(); } catch (e) {} } });
+    // activity hooks for the idle gate — every local mutation path passes through one of
+    // pointer input, key input, the contentEditable input listener, or scheduleSave()
+    root.addEventListener("pointerdown", poke);
+    root.addEventListener("pointermove", poke); // presence = not idle; covers every mid-gesture mutation (draw, crop, resize)
+    document.addEventListener("keydown", poke);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) { poke(); try { mpTick(); } catch (e) {} } });
     // a resized window changes what I can see — republish, and refit anyone I'm following
     window.addEventListener("resize", function () { mpViewSent = ""; mpSendView(); mpFollowChase(); });
     setInterval(mpPoseTick, 200); // animate agent Clawd state (walk/work/sleep) from behaviour
@@ -4946,31 +5051,53 @@
       if (mpReady && mpPongAt && performance.now() - mpPongAt > 65000) { try { mp.close(); } catch (e) {} return; }
       try { mp.send("ping"); } catch (e) {}
     }, 25000);
-    // resolve my display name (and avatar, if the account has one) first so the cursor
-    // label and presence chip are right from the first frame
+    // Identity: the cached copy from the last visit lets the socket connect NOW instead
+    // of behind a /__me round-trip; /__me still refreshes it in the background (and a
+    // rename shows from the next join). First-ever visitors wait for /__me once, so
+    // nobody debuts as "Guest" by accident.
+    var cachedMe = null;
+    try { cachedMe = JSON.parse(localStorage.getItem("gvc:me") || "null"); } catch (e) {}
+    var mpStarted = false;
+    if (cachedMe && cachedMe.name) {
+      mpName = cachedMe.name;
+      mpAvatar = cachedMe.avatar || null;
+      ME = ME || mpName;
+      mpStarted = true;
+      mpConnect();
+    }
     fetch("/__me", { headers: { Accept: "application/json" } })
       .then(function (r) { return r.json(); })
       .then(function (d) {
-        mpName = (d && d.user && d.user.name) || ME || "Guest";
+        var nm = (d && d.user && d.user.name) || "";
         var av = d && d.user && d.user.avatar;
         // same-origin paths only — this string rides the join URL to every peer
-        if (typeof av === "string" && av.charAt(0) === "/" && av.length < 300) mpAvatar = av;
+        mpAvatar = typeof av === "string" && av.charAt(0) === "/" && av.length < 300 ? av : null;
+        if (nm) { mpName = nm; ME = nm; }
+        else if (!mpName) mpName = "Guest";
+        try { localStorage.setItem("gvc:me", JSON.stringify({ name: mpName, avatar: mpAvatar })); } catch (e) {}
       })
-      .catch(function () { mpName = ME || "Guest"; })
-      .then(mpConnect);
+      .catch(function () { mpName = mpName || ME || "Guest"; })
+      .then(function () { if (!mpStarted) { mpStarted = true; mpConnect(); } });
   }
 
-  // ---- boot ----------------------------------------------------------------
-  try { fetch("/__me", { headers: { Accept: "application/json" } }).then(function (r) { return r.json(); }).then(function (d) { if (d && d.user && d.user.name) ME = d.user.name; }).catch(function () {}); } catch (e) {}
+  // ---- boot (parallel, 2026-08-07) -----------------------------------------
+  // The old boot was a serial chain — GET /__board → render → /__me → socket → the
+  // welcome re-sent the doc we'd just downloaded. Now the paper+grid paint immediately,
+  // the socket (with cached identity) races the KV read, and whichever doc lands first
+  // renders; the loser folds in through mpAdoptDoc's version-ruled merge. Net: one
+  // round-trip to a live board instead of three, one doc transfer instead of two.
   document.body.appendChild(root);
   buildUI();
+  var mine0 = storedView();
+  if (mine0) { hadStoredView = true; board.view = mine0; }
+  else board.view = { x: innerWidth / 2, y: innerHeight / 2, scale: 1 };
+  applyTransform();
+  mpBoot(); // presence UI, ticks, and the socket — connecting NOW, not after the load
   load(function () {
     document.title = board.name;
     if (nameEl) nameEl.textContent = board.name;
-    render();
-    applyTransform();
-    openDeepLink();  // #n=<id> → fly there (after render, so nodeEls exist)
-    mpBoot();
+    openDeepLink();  // #n=<id> → fly there (after content, so nodeEls exist)
+    if (pendingSeed) { pendingSeed = false; if (loadOk) mpSend({ t: "doc", doc: board }); }
   });
   // pasting a link into the bar of an already-open board never reloads — catch it here
   window.addEventListener("hashchange", openDeepLink);

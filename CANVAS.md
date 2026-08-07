@@ -885,9 +885,11 @@ Do this **unless prompted otherwise**.
   against a shadow on the save debounce and records only the nodes that changed, as
   `{before, after}` pairs; `mpApplyOps` folds every REMOTE change straight into that shadow
   (`histSeen` / `histForget`), so a peer's work never enters your stack. Adopting a room doc
-  (`mpAdoptDoc`) reseeds the shadow and clears both stacks — you can't undo "into" someone
-  else's document. Inside a text box the browser's own undo wins (the global handler returns
-  early while `editing`).
+  (`mpAdoptDoc`) folds each remotely-changed node through the same `histSeen`/`histForget`
+  rail — identical protection, and since 2026-08-07 your undo stack SURVIVES a reconnect
+  (adopt is a per-node diff now, not a wholesale replace that wiped both stacks and
+  re-rendered every element). Inside a text box the browser's own undo wins (the global
+  handler returns early while `editing`).
 - **Snapshots share their strings.** `histClone` is a shallow copy with the mutable containers
   (`points`/`cells`/`crop`) deep-copied — never `JSON.parse(JSON.stringify(node))`, which would
   duplicate every inlined image data-URL on the board 60 times over.

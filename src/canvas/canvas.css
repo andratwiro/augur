@@ -10,13 +10,15 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #f6f6f6; }
   position: fixed; inset: 0; overflow: hidden; touch-action: none;
   font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #1e1e1e; user-select: none; -webkit-user-select: none;
-  /* Paper background: neutral light grey + a neutral dot grid. gridSpec() sets the live
-     background-image (dot radius) + background-size (spacing) per zoom; these are the
-     at-rest defaults for scale 1 until the first transform runs. */
+  /* Paper only — the dot grid moved to #gvc-grid (its own layer, transform-panned);
+     gridSpec()/applyTransform paint the dots there. */
   background-color: #f6f6f6;
-  background-image: radial-gradient(circle, #c8c8c8 0.9px, transparent 1.5px);
-  background-size: 16px 16px; background-position: 0 0;
 }
+/* The dot grid lives on its OWN compositor layer, oversized by more than the largest
+   grid step (96px), and pans by transform only (see applyTransform) — the pattern
+   repeats, so a mod-step translate looks identical to the real camera translate and a
+   pan never repaints the viewport. Paint properties change only on zoom. */
+#gvc-grid { position: absolute; inset: -128px; pointer-events: none; will-change: transform; }
 #gvc-root.panning { cursor: grabbing; }
 #gvc-root.hand { cursor: grab; }
 #gvc-root.crosshair { cursor: crosshair; }
@@ -499,7 +501,9 @@ svg.stk { display: block; overflow: visible; }
 /* ---- multiplayer: peer cursors · presence · remote editing focus ---------- */
 /* cursors live OUTSIDE #gvc-ui so ⌘. (hide UI) keeps collaborators visible */
 #gvc-cursors { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 58; }
-.gvc-cursor { position: absolute; left: 0; top: 0; will-change: transform; transition: transform .06s linear, opacity .4s; }
+/* no transform transition: the spline interpolator (mpCursorStep) animates at rAF —
+   a CSS tween on top would double-smooth into visible lag */
+.gvc-cursor { position: absolute; left: 0; top: 0; will-change: transform; transition: opacity .4s; }
 /* the piti arrow glyph (fill+outline live in the SVG); margin puts the TIP (hotspot
    5,3 of 21px) exactly on the peer's position, like the local cursor hotspot */
 .gvc-cursor svg { display: block; width: 21px; height: 21px; margin: -3px 0 0 -5px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .3)); }
