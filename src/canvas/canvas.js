@@ -3517,7 +3517,10 @@
     sessPlayBtn = el("button", { class: "go", type: "button" });
     sessPlayBtn.addEventListener("click", function () {
       sessUnblock();
-      if (sess.music && sess.music.playing) mpSend({ t: "music", do: "stop" });
+      if (sess.music && sess.music.playing) {
+        if (mpLive()) mpSend({ t: "music", do: "stop" });
+        else sessApply({ timer: sess.timer, music: null }); // solo: no room to relay the stop
+      }
       else sessPlay(sessTrackChoice, false);
     });
     sessMusicBody.appendChild(el("div", { class: "musicrow" }, [sessTrackBtn, sessPlayBtn]));
@@ -3537,11 +3540,18 @@
   // Starting a track it isn't already on enters at a RANDOM point in the mix, so a board you
   // open every day doesn't always open on the same bar. The offset is picked here and made
   // authoritative by the room, so everyone lands on the same one.
+  // With no live room socket, ops sent via mpSend drop SILENTLY — which made the
+  // play button a dead control whenever the socket had died (e.g. a server restart
+  // under an open tab). Music degrades to solo instead: apply the same state change
+  // the room's echo would have carried. When the socket returns, the room snapshot
+  // wins as always ("the room's word is final").
+  function mpLive() { return !!(mp && mp.readyState === 1); }
   function sessPlay(id, force) {
     var t = sessTrack(id), same = !force && sess.music && sess.music.track === id;
     var at = !same && t && t.duration ? Math.floor(Math.random() * t.duration * 1000) : 0;
     sessUnblock();
-    mpSend({ t: "music", do: "play", track: id, at: at });
+    if (mpLive()) mpSend({ t: "music", do: "play", track: id, at: at });
+    else sessApply({ timer: sess.timer, music: { playing: true, track: id, elapsed: at } });
   }
   function sessSyncMusic() {
     var playing = !!(sess.music && sess.music.playing);
