@@ -159,10 +159,34 @@ function isRestrictedPath(pathname) {
 // current values in place — so a raw copy (no config emitted) keeps its empty
 // defaults, and a transient read failure never wipes a working gate.
 let SPACES = [];
+let INSTANCE_SENTINELS = [];
 let cfgAt = 0;
+function applyInstance(inst) {
+  USERS = Array.isArray(inst.users) ? inst.users : [];
+  MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
+  MCP_HOST_ALLOWLIST_URL = inst.mcpHostAllowlistUrl || "";
+  VANITY_REDIRECTS = inst.vanityRedirects || {};
+  BUILDER_CONFIG = inst.builder || null;
+  RT_ORIGIN = inst.rtOrigin || "";
+  INSTANCE_SENTINELS = Array.isArray(inst.sentinels) ? inst.sentinels : [];
+}
 async function loadConfig(env) {
-  if (!env || !env.ASSETS || Date.now() - cfgAt < 1500) return;
+  if (!env || Date.now() - cfgAt < 1500) return;
   cfgAt = Date.now(); // stamp first — a failed load retries next tick, never stampedes
+  // Bundle mode: instance config lives in the store (pushed via /__publish/
+  // _instance/config) and routing derives from the live manifests.
+  if (bundleMode(env)) {
+    try {
+      const [instObj, manifests] = await Promise.all([
+        env.BUNDLES.get("config/instance.json"),
+        loadManifests(env, true),
+      ]);
+      if (instObj) applyInstance(JSON.parse(await instObj.text()));
+      applyDerivedRouting(manifests);
+    } catch (e) {}
+    return;
+  }
+  if (!env.ASSETS) return;
   const grab = async (name) => {
     try {
       const r = await env.ASSETS.fetch("https://config/__config/" + name);
@@ -170,14 +194,7 @@ async function loadConfig(env) {
     } catch (e) { return null; }
   };
   const [inst, routing] = await Promise.all([grab("instance.json"), grab("routing.json")]);
-  if (inst) {
-    USERS = Array.isArray(inst.users) ? inst.users : [];
-    MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
-    MCP_HOST_ALLOWLIST_URL = inst.mcpHostAllowlistUrl || "";
-    VANITY_REDIRECTS = inst.vanityRedirects || {};
-    BUILDER_CONFIG = inst.builder || null;
-    RT_ORIGIN = inst.rtOrigin || "";
-  }
+  if (inst) applyInstance(inst);
   if (routing) {
     BUILD_ID = routing.buildId || "dev";
     VERSION_MAP = routing.versionMap || {};
@@ -342,6 +359,304 @@ function kvFor(env) {
       return { keys: (d.result || []).map((k) => ({ name: k.name })), list_complete: !ri.cursor, cursor: ri.cursor || undefined };
     },
   };
+}
+
+// ---- Bundle store: direct-publish serving + publish API ---------------------
+// Optional second asset source. When GV_ASSET_SOURCE="r2" AND the BUNDLES R2
+// binding exists, assets serve from content-addressed blobs (blobs/<sha256>)
+// resolved through per-space manifests (spaces/<id>/manifest.json) that
+// `augur publish` commits over /__publish/* — no git relay, no site rebuild,
+// and a publish is atomic: immutable blobs first, then ONE manifest PUT.
+// Rollback = re-commit a prior versions/<n>.json. Site routing (public prefixes,
+// version map, restricted bases, space list) is DERIVED from the live manifests
+// on every config refresh — never stored, so it can't go stale or partial.
+// Without the flag/binding none of this runs and assets come from Pages' ASSETS
+// exactly as before. Publishing (the API below) needs only the binding, so a
+// store can be seeded before serving is flipped.
+const bundleMode = (env) => !!(env && env.GV_ASSET_SOURCE === "r2" && env.BUNDLES);
+
+const PUBLISH_TOKENS_KEY = "publish:tokens"; // KV {sha256("pub:"+token): {space,label,createdAt}}
+const BLOB_MAX_BYTES = 25 * 1024 * 1024;
+
+let MANIFESTS = { at: 0, spaces: {} };
+async function loadManifests(env, force) {
+  if (!force && Date.now() - MANIFESTS.at < 1500) return MANIFESTS.spaces;
+  MANIFESTS.at = Date.now();
+  try {
+    const list = await env.BUNDLES.list({ prefix: "spaces/", delimiter: "/" });
+    const ids = (list.delimitedPrefixes || []).map((p) => p.slice("spaces/".length, -1));
+    const out = {};
+    await Promise.all(ids.map(async (id) => {
+      const obj = await env.BUNDLES.get(`spaces/${id}/manifest.json`);
+      if (obj) out[id] = JSON.parse(await obj.text());
+    }));
+    MANIFESTS.spaces = out;
+  } catch (e) {} // a transient list/get failure keeps serving the last good view
+  return MANIFESTS.spaces;
+}
+
+// Site routing from the live manifests (the bundle-mode replacement for
+// routing.json): merge every space's fragment, fold per-space shell signatures
+// into one buildId, and read the chrome pieces off the _engine manifest.
+function applyDerivedRouting(manifests) {
+  const vmap = {}, prefixes = [], restricted = [], mcp = new Set(), spacesList = [];
+  const sigs = [];
+  let skillPrefixes = [], loaderExtras = "";
+  for (const id of Object.keys(manifests).sort()) {
+    const m = manifests[id];
+    if (id === "_engine") { loaderExtras = (m.routing && m.routing.canvasLoaderExtras) || ""; continue; }
+    const r = m.routing || {};
+    prefixes.push(...(r.publicPrefixes || []));
+    Object.assign(vmap, r.versionMap || {});
+    for (const h of r.mcpAllowlist || []) mcp.add(h);
+    if (r.publicSkillPrefixes) skillPrefixes = r.publicSkillPrefixes;
+    const sp = m.space || { id };
+    spacesList.push(sp);
+    if (sp.adminOnly && !sp.default) restricted.push("/" + id);
+    sigs.push(`${id}:${r.shellSig || m.version || 0}`);
+  }
+  let h = 5381;
+  const s = sigs.sort().join("\n");
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  BUILD_ID = h.toString(36);
+  VERSION_MAP = vmap;
+  PUBLIC_PREFIXES = prefixes;
+  PUBLIC_SKILL_PREFIXES = skillPrefixes;
+  RESTRICTED_BASES = restricted;
+  CANVAS_LOADER_EXTRAS = loaderExtras;
+  MCP_HOST_ALLOWLIST = [...mcp].sort();
+  mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
+  SPACES = spacesList.sort((a, b) => (b.default === true) - (a.default === true) || String(a.id).localeCompare(String(b.id)));
+}
+
+// Path → manifest entry. Manifest keys are the built files' real (decoded) paths.
+function lookupBundleFile(manifests, pathname) {
+  for (const id in manifests) {
+    const f = manifests[id].files && manifests[id].files[pathname];
+    if (f) return f;
+  }
+  return null;
+}
+function resolveBundlePath(manifests, pathname) {
+  let p;
+  try { p = decodeURIComponent(pathname); } catch (e) { return { miss: true }; }
+  const direct = lookupBundleFile(manifests, p) ||
+    (p.endsWith("/") ? lookupBundleFile(manifests, p + "index.html") : null);
+  if (direct) return { f: direct };
+  if (!p.endsWith("/") && lookupBundleFile(manifests, p + "/index.html")) return { redirect: p + "/" };
+  return { miss: true };
+}
+
+// The env.ASSETS.fetch drop-in: identical contract (a plain 404 Response means
+// "not found" — callers brand it / try virtual canvases), plus ETag/304 and
+// byte ranges (audio scrubbing) in bundle mode. Edge-cache layering is a later
+// optimization; R2 reads are fine at internal traffic.
+async function assetFetch(env, request) {
+  if (!bundleMode(env)) return env.ASSETS.fetch(request);
+  const url = new URL(request.url);
+  const manifests = await loadManifests(env);
+  const r = resolveBundlePath(manifests, url.pathname);
+  if (r.redirect) return Response.redirect(new URL(r.redirect + url.search, url).toString(), 308);
+  if (r.miss) return new Response("Not Found", { status: 404 });
+  const f = r.f;
+  const inm = request.headers.get("If-None-Match");
+  if (inm && inm.replace(/W\/|"/g, "") === f.h) {
+    return new Response(null, { status: 304, headers: { ETag: `"${f.h}"` } });
+  }
+  const headers = { "Content-Type": f.ct, ETag: `"${f.h}"`, "Accept-Ranges": "bytes" };
+  const rm = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("Range") || "");
+  if (rm && (rm[1] || rm[2])) {
+    let start = rm[1] ? parseInt(rm[1], 10) : Math.max(0, f.s - parseInt(rm[2], 10));
+    let end = rm[1] && rm[2] ? Math.min(parseInt(rm[2], 10), f.s - 1) : f.s - 1;
+    if (start > end || start >= f.s) {
+      return new Response(null, { status: 416, headers: { "Content-Range": `bytes */${f.s}` } });
+    }
+    const obj = await env.BUNDLES.get("blobs/" + f.h, { range: { offset: start, length: end - start + 1 } });
+    if (!obj) return new Response("Not Found", { status: 404 });
+    headers["Content-Range"] = `bytes ${start}-${end}/${f.s}`;
+    headers["Content-Length"] = String(end - start + 1);
+    return new Response(obj.body, { status: 206, headers });
+  }
+  const obj = await env.BUNDLES.get("blobs/" + f.h);
+  if (!obj) return new Response("Not Found", { status: 404 });
+  headers["Content-Length"] = String(f.s);
+  return new Response(request.method === "HEAD" ? null : obj.body, { status: 200, headers });
+}
+
+// Existence probe (no body) — the canvas shadow-check's cheap path.
+async function assetPathExists(env, url) {
+  if (!bundleMode(env)) {
+    const asset = await env.ASSETS.fetch(new Request(url.toString()));
+    return asset.status !== 404;
+  }
+  const r = resolveBundlePath(await loadManifests(env), url.pathname);
+  return !r.miss;
+}
+
+// The /_build.json contract, synthesized from the manifests in bundle mode so
+// collaborators' "is my commit live?" check keeps its exact shape.
+function synthBuildStamp(manifests) {
+  const spaces = {}, engine = { sha: null };
+  let builtAt = null;
+  for (const id in manifests) {
+    const m = manifests[id];
+    if (m.publishedAt && (!builtAt || m.publishedAt > builtAt)) builtAt = m.publishedAt;
+    const src = m.source || {};
+    if (id === "_engine") { engine.sha = src.sha || null; if (src.dirty) engine.dirty = true; continue; }
+    spaces[id] = { sha: src.sha || null, ...(src.dirty ? { dirty: true } : {}) };
+  }
+  return { builtAt: builtAt || new Date().toISOString(), engine, spaces };
+}
+
+// ---- Publish API (/__publish/<space>/{check,blob/<h>,commit,rollback}) ------
+// Bearer-token authed (per-space tokens minted in the admin panel, hashed in
+// KV; "*" = every space). PUBLISH_BOOTSTRAP_TOKEN is a local-dev binding for
+// wrangler dev only — never configure it on a deployed instance.
+async function publishAuth(request, env, spaceId) {
+  const m = /^Bearer\s+(.+)$/.exec(request.headers.get("Authorization") || "");
+  if (!m) return null;
+  const token = m[1].trim();
+  if (env.PUBLISH_BOOTSTRAP_TOKEN && token === env.PUBLISH_BOOTSTRAP_TOKEN) {
+    return { space: "*", label: "bootstrap" };
+  }
+  const kv = kvFor(env);
+  if (!kv) return null;
+  try {
+    const h = await tokenFor("pub:" + token);
+    const raw = await kv.get(PUBLISH_TOKENS_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    const e = map[h];
+    if (!e) return null;
+    if (e.space !== "*" && e.space !== spaceId) return null;
+    return e;
+  } catch (err) { return null; }
+}
+
+async function publishApi(request, url, env) {
+  if (!env.BUNDLES) return jsonResponse({ error: "bundle-store-not-configured" }, 501);
+  const [spaceId, op, arg] = url.pathname.slice("/__publish/".length).split("/");
+  if (!spaceId || !op || !/^[a-z0-9_][a-z0-9-]*$/.test(spaceId)) return jsonResponse({ error: "bad-path" }, 400);
+  const who = await publishAuth(request, env, spaceId);
+  if (!who) return jsonResponse({ error: "forbidden" }, 403);
+
+  // Instance config push (star-scope tokens only): the deploy shell's identity +
+  // knobs become config/instance.json — the bundle-mode source loadConfig reads.
+  if (spaceId === "_instance" && op === "config" && request.method === "POST") {
+    if (who.space !== "*") return jsonResponse({ error: "forbidden" }, 403);
+    const body = await request.text();
+    try { JSON.parse(body); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    await env.BUNDLES.put("config/instance.json", body);
+    cfgAt = 0;
+    return jsonResponse({ ok: true });
+  }
+
+  if (op === "check" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const files = (body && body.files) || {};
+    // A blob already referenced by ANY live manifest exists in the store —
+    // content addressing means cross-space and engine duplicates never re-upload.
+    const have = new Set();
+    const all = await loadManifests(env, true);
+    for (const id in all) for (const k in all[id].files) have.add(all[id].files[k].h);
+    const missing = [...new Set(Object.values(files).map((f) => f && f.h).filter(Boolean))]
+      .filter((h) => !have.has(h));
+    const cur = all[spaceId];
+    return jsonResponse({ missing, liveVersion: (cur && cur.version) || 0 });
+  }
+
+  if (op === "blob" && request.method === "PUT") {
+    if (!/^[0-9a-f]{64}$/.test(arg || "")) return jsonResponse({ error: "bad-hash" }, 400);
+    const buf = await request.arrayBuffer();
+    if (!buf.byteLength || buf.byteLength > BLOB_MAX_BYTES) return jsonResponse({ error: "bad-size" }, 413);
+    const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", buf))]
+      .map((b) => b.toString(16).padStart(2, "0")).join("");
+    if (digest !== arg) return jsonResponse({ error: "hash-mismatch" }, 400);
+    await env.BUNDLES.put("blobs/" + arg, buf);
+    return new Response(null, { status: 204 });
+  }
+
+  if (op === "commit" && request.method === "POST") {
+    let m;
+    try { m = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    if (!m || m.id !== spaceId || !m.files || typeof m.files !== "object") {
+      return jsonResponse({ error: "bad-manifest" }, 400);
+    }
+    const curObj = await env.BUNDLES.get(`spaces/${spaceId}/manifest.json`);
+    const cur = curObj ? JSON.parse(await curObj.text()) : null;
+    // Sentinels (instance-configured paths, e.g. the DS core stylesheet): once
+    // live in a space, a publish may not silently drop them — that's a broken
+    // checkout, not an intent.
+    for (const s of INSTANCE_SENTINELS) {
+      if (cur && cur.files && cur.files[s] && !m.files[s]) {
+        return jsonResponse({ error: "sentinel-missing", path: s }, 422);
+      }
+    }
+    // Spot-validate fresh blobs (free-plan subrequest budget caps a full sweep;
+    // hashed PUTs + content addressing make a missing blob unlikely, and a serve
+    // 404 is the loud failure if one ever slips).
+    const prev = new Set(cur ? Object.values(cur.files).map((f) => f.h) : []);
+    const fresh = [...new Set(Object.values(m.files).map((f) => f && f.h).filter(Boolean))]
+      .filter((h) => !prev.has(h));
+    const sample = fresh.slice(0, 40);
+    const heads = await Promise.all(sample.map((h) => env.BUNDLES.head("blobs/" + h)));
+    const miss = sample.filter((h, i) => !heads[i]);
+    if (miss.length) return jsonResponse({ error: "blobs-missing", missing: miss.slice(0, 5) }, 409);
+    const version = ((cur && cur.version) || 0) + 1;
+    const out = { ...m, version, publishedAt: new Date().toISOString(), publishedBy: who.label || "" };
+    await env.BUNDLES.put(`spaces/${spaceId}/versions/${version}.json`, JSON.stringify(out));
+    await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, JSON.stringify(out));
+    MANIFESTS.at = 0; cfgAt = 0; // this isolate flips immediately; others within ~1.5s
+    return jsonResponse({ ok: true, version });
+  }
+
+  if (op === "rollback" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const v = parseInt(body && body.version, 10);
+    if (!v || v < 1) return jsonResponse({ error: "bad-version" }, 400);
+    const prev = await env.BUNDLES.get(`spaces/${spaceId}/versions/${v}.json`);
+    if (!prev) return jsonResponse({ error: "unknown-version" }, 404);
+    await env.BUNDLES.put(`spaces/${spaceId}/manifest.json`, await prev.text());
+    MANIFESTS.at = 0; cfgAt = 0;
+    return jsonResponse({ ok: true, version: v });
+  }
+
+  return jsonResponse({ error: "unknown-op" }, 400);
+}
+
+// ---- Admin: publish tokens (KV-backed) --------------------------------------
+// GET lists token metadata (hashes only — the token itself is shown once at
+// mint); POST {space,label} mints; DELETE {hash} revokes. Admin-cookie gated.
+async function adminTokensApi(request, env, me) {
+  if (!me || me.role !== "admin") return jsonResponse({ error: "forbidden" }, 403);
+  const kv = kvFor(env);
+  if (!kv) return jsonResponse({ error: "no-kv-binding" }, 500);
+  const raw = await kv.get(PUBLISH_TOKENS_KEY);
+  const map = raw ? JSON.parse(raw) : {};
+  if (request.method === "GET") return jsonResponse({ tokens: map });
+  if (request.method === "POST") {
+    let op;
+    try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const space = clamp(op && op.space, 60).trim() || "*";
+    const label = clamp(op && op.label, 80).trim() || "unnamed";
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    map[await tokenFor("pub:" + token)] = { space, label, createdAt: new Date().toISOString() };
+    await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
+    return jsonResponse({ token, space, label });
+  }
+  if (request.method === "DELETE") {
+    let op;
+    try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const h = clamp(op && op.hash, 80);
+    if (!map[h]) return jsonResponse({ error: "unknown-token" }, 404);
+    delete map[h];
+    await kv.put(PUBLISH_TOKENS_KEY, JSON.stringify(map));
+    return jsonResponse({ ok: true });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
 function loginPage(redirect, error) {
@@ -1098,8 +1413,7 @@ async function canvasesApi(request, url, env, me) {
     const path = dir + slug + "/";
     if (map[path]) return jsonResponse({ error: "exists", path }, 409);
     // Never shadow a real shipped file at the same URL (any non-404, incl. redirects).
-    const asset = await env.ASSETS.fetch(new Request(new URL(path, url).toString()));
-    if (asset.status !== 404) return jsonResponse({ error: "exists", path }, 409);
+    if (await assetPathExists(env, new URL(path, url))) return jsonResponse({ error: "exists", path }, 409);
     map[path] = { name, by: me ? me.email : "", t: Date.now() };
     await kv.put(CANVASES_KEY, JSON.stringify(map));
     return jsonResponse({ map, path });
@@ -1446,6 +1760,16 @@ export default {
     }
     await loadConfig(env);
 
+    // Direct-publish API — self-authed (bearer tokens), before the gate like
+    // the other tooling routes.
+    if (url.pathname.startsWith("/__publish/")) return publishApi(request, url, env);
+
+    // In bundle mode the public build stamp is synthesized from the live
+    // manifests — same shape and contract as the static file Pages serves.
+    if (url.pathname === "/_build.json" && bundleMode(env)) {
+      return jsonResponse(synthBuildStamp(await loadManifests(env)));
+    }
+
     // Vanity domains (from the deploy config): a host CNAME'd to this
     // Pages project + added as a custom domain runs this worker. DNS can't target
     // a path, so land each such host's root on its configured page. Scoped to the
@@ -1554,6 +1878,9 @@ export default {
     // Admin users/passwords API — admin-only (adminUsersApi re-checks me.role).
     if (url.pathname === "/__admin/users") return adminUsersApi(request, url, env, me);
 
+    // Admin publish-token API — mint/list/revoke per-space publish tokens.
+    if (url.pathname === "/__admin/tokens") return adminTokensApi(request, env, me);
+
     // Login form submission.
     if (request.method === "POST" && url.pathname === "/__auth") {
       const form = await request.formData();
@@ -1659,7 +1986,7 @@ export default {
     // The open door is for easy link-sharing, NOT public discovery, so tag every
     // public response as non-indexable (covers HTML and assets alike).
     if (isPublicPath(url.pathname)) {
-      const asset = await env.ASSETS.fetch(request);
+      const asset = await assetFetch(env, request);
       if (asset.status === 404) return notFoundResponse();
       const res = withAssetCache(withLiveReload(asset, url), url);
       const out = new Response(res.body, res);
@@ -1672,7 +1999,7 @@ export default {
     if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) {
       if (!authed) return htmlResponse(loginPage(url.pathname + url.search, false), 200);
       if (usersActive && (!me || me.role !== "admin")) return Response.redirect(new URL("/", url).toString(), 303);
-      const asset = await env.ASSETS.fetch(request);
+      const asset = await assetFetch(env, request);
       if (asset.status === 404) return notFoundResponse();
       return withAssetCache(withLiveReload(asset, url), url);
     }
@@ -1680,7 +2007,7 @@ export default {
     // Past the gate (or nothing gates the site) → serve. A 404 gets one more chance
     // as a created canvas (a KV-registered board with no repo file — see canvasesApi).
     if (authed) {
-      const asset = await env.ASSETS.fetch(request);
+      const asset = await assetFetch(env, request);
       if (asset.status === 404) {
         const virt = await virtualCanvas(request, env, url);
         if (virt) return virt;

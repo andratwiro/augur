@@ -5137,10 +5137,16 @@ async function main() {
   // shell id) are partial by design — the publish server derives routing from ALL
   // live manifests, never from a partial build's routing.json.
   const ONLY_SPACE = process.env.GV_ONLY_SPACE || "";
+  // Per-space routing fragments — merged into the global gate inputs below AND
+  // carried in each space's content manifest, so the direct-publish server can
+  // recompute site routing from the live manifests alone (a partial build's
+  // global accumulations are incomplete by design).
+  const spaceRouting = {};
   for (const space of spaces) {
     if (ONLY_SPACE && space.id !== ONLY_SPACE) continue;
     const r = await buildSpace(space); // sets BASE + DIST_SPACE for this space
     if (space.default) defaultGraph = r.graph;
+    const sr = (spaceRouting[space.id] = { publicPrefixes: [], versionMap: {}, sigParts: [] });
 
     // Published, link-shareable paths (prototypes + playground), prefixed with this
     // space's BASE so the gate opens them and they stay isolated per space. Galleries
@@ -5148,28 +5154,32 @@ async function main() {
     for (const opp of r.opportunities)
       for (const p of opp.prototypes) {
         const u = S(`/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`);
-        publicPrefixes.push(u);
-        versionMap[u] = String(p.mtimeMs);
+        sr.publicPrefixes.push(u);
+        sr.versionMap[u] = String(p.mtimeMs);
       }
     // Playground prototype folders are public (link-shareable); the /playground/ index
     // listing itself stays gated (a shorter path matching no prefix).
     for (const pj of r.playground) {
       const u = S(`/playground/${encodeURIComponent(pj.name)}/`);
-      publicPrefixes.push(u);
-      versionMap[u] = String(pj.mtimeMs);
+      sr.publicPrefixes.push(u);
+      sr.versionMap[u] = String(pj.mtimeMs);
     }
-    for (const c of r.components) versionMap[S(`/components/${encodeURIComponent(c.name)}/`)] = String(c.mtimeMs);
-    for (const b of r.base) versionMap[S(`/base/${encodeURIComponent(b.name)}/`)] = String(b.mtimeMs);
-    for (const pt of r.patterns) versionMap[S(`/patterns/${encodeURIComponent(pt.name)}/`)] = String(pt.mtimeMs);
-    for (const pg of r.pages) versionMap[S(`/pages/${encodeURIComponent(pg.name)}/`)] = String(pg.mtimeMs);
+    for (const c of r.components) sr.versionMap[S(`/components/${encodeURIComponent(c.name)}/`)] = String(c.mtimeMs);
+    for (const b of r.base) sr.versionMap[S(`/base/${encodeURIComponent(b.name)}/`)] = String(b.mtimeMs);
+    for (const pt of r.patterns) sr.versionMap[S(`/patterns/${encodeURIComponent(pt.name)}/`)] = String(pt.mtimeMs);
+    for (const pg of r.pages) sr.versionMap[S(`/pages/${encodeURIComponent(pg.name)}/`)] = String(pg.mtimeMs);
 
     // Structural signature → shell live-reload id (NOT mtimes), namespaced per space.
-    sigParts.push(`space:${space.id}|pg:${r.playground.length > 0}`);
+    sr.sigParts.push(`space:${space.id}|pg:${r.playground.length > 0}`);
     for (const opp of r.opportunities)
       for (const p of opp.prototypes)
-        sigParts.push(`${space.id}:${opp.name}/${p.name}|${p.status || ""}|${p.editor ? p.editor.email : ""}`);
+        sr.sigParts.push(`${space.id}:${opp.name}/${p.name}|${p.status || ""}|${p.editor ? p.editor.email : ""}`);
     for (const [label, arr] of [["c", r.components], ["b", r.base], ["pt", r.patterns], ["pg", r.pages], ["pl", r.playground]])
-      for (const it of arr) sigParts.push(`${space.id}:${label}:${it.name}`);
+      for (const it of arr) sr.sigParts.push(`${space.id}:${label}:${it.name}`);
+
+    publicPrefixes.push(...sr.publicPrefixes);
+    Object.assign(versionMap, sr.versionMap);
+    sigParts.push(...sr.sigParts);
   }
 
   // ── Shared chrome — emitted ONCE at the dist root (NOT space-scoped) ─────────────────
@@ -5247,6 +5257,7 @@ async function main() {
         if (!MCP_HOST_RE.test(bare))
           throw new Error(`[mcp] space "${space.id}": allowlist ${rel} carries an invalid host: ${JSON.stringify(h)}`);
         mcpSpaceHosts.add(bare);
+        if (spaceRouting[space.id]) (spaceRouting[space.id].mcpHosts ||= new Set()).add(bare);
       }
     }
   }
@@ -5266,6 +5277,7 @@ async function main() {
     vanityRedirects: DEPLOY.vanityRedirects || {},
     builder: DEPLOY.builder || null,
     rtOrigin: DEPLOY.realtimeOrigin || "",
+    sentinels: DEPLOY.sentinels || [],
   }), "utf8");
   await fs.writeFile(path.join(DIST, "__config", "routing.json"), JSON.stringify({
     buildId: shellId,
@@ -5487,6 +5499,31 @@ async function main() {
     const body = await fs.readFile(path.join(DIST, rel));
     const h = createHash("sha256").update(body).digest("hex");
     (manifests[owner] ||= { id: owner, files: {} }).files["/" + rel] = { h, ct: ctFor(rel), s: body.length };
+  }
+  // Attach each space's meta + routing fragment (see spaceRouting above); the
+  // engine manifest carries the chrome-derived pieces. djb2 over the space's own
+  // structural signature gives the per-space shell-reload token the publish
+  // server folds into the site buildId.
+  const sigOf = (parts) => {
+    let h = 5381;
+    const s = [...parts].sort().join("\n");
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+    return h.toString(36);
+  };
+  for (const [id, m] of Object.entries(manifests)) {
+    if (id === "_engine") {
+      m.routing = { canvasLoaderExtras: addonHtml(reviewTag()) };
+      continue;
+    }
+    m.space = NAV_STATE.spaces.find((s) => s.id === id) || { id };
+    const sr = spaceRouting[id];
+    if (sr) m.routing = {
+      publicPrefixes: sr.publicPrefixes,
+      versionMap: sr.versionMap,
+      shellSig: sigOf(sr.sigParts),
+      mcpAllowlist: [...(sr.mcpHosts || [])].sort(),
+      ...(m.space.default ? { publicSkillPrefixes: gateExempt } : {}),
+    };
   }
   await fs.mkdir(path.join(DIST, "__manifests"), { recursive: true });
   for (const [id, m] of Object.entries(manifests))
