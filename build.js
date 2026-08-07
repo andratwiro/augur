@@ -4789,6 +4789,26 @@ function renderChangelogPage(entries) {
 // The DEFAULT space (space.json default:true, else the first) builds at the root URLs;
 // the rest under /<id>/. Returns default-first.
 async function discoverSpaces() {
+  // GV_SPACES_ROOT may point DIRECTLY at one space (a dir carrying space.json at
+  // its root) — the standalone `augur dev` case: a lone space clone with no
+  // sibling layout. It builds as the default space of a one-space site.
+  try {
+    const meta = JSON.parse(await fs.readFile(path.join(SPACES_ROOT, "space.json"), "utf8"));
+    return [{
+      id: meta.id || path.basename(SPACES_ROOT),
+      name: meta.name || titleCase(path.basename(SPACES_ROOT)),
+      default: true, // a one-space site has no non-root mount
+      badge: meta.badge || "",
+      adminOnly: false,
+      pendingPages: Array.isArray(meta.pendingPages) ? meta.pendingPages : [],
+      methodPages: Array.isArray(meta.methodPages) ? meta.methodPages : [],
+      designSystem: meta.designSystem || null,
+      projectsLabel: typeof meta.projectsLabel === "string" ? meta.projectsLabel : "",
+      ignore: Array.isArray(meta.ignore) ? meta.ignore : [],
+      mcpAllowlists: Array.isArray(meta.mcpAllowlists) ? meta.mcpAllowlists : [],
+      root: SPACES_ROOT,
+    }];
+  } catch (e) {}
   let entries;
   try {
     entries = await fs.readdir(SPACES_ROOT, { withFileTypes: true });

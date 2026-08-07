@@ -5,6 +5,9 @@
   "license": "MIT",
   "description": "Augur \u2014 build/deploy platform composing spaces (design system + prototypes repos) into a static site with an overlay worker.",
   "type": "module",
+  "bin": {
+    "augur": "scripts/cli.mjs"
+  },
   "scripts": {
     "build": "node build.js",
     "shoot": "node scripts/shoot.mjs",
