@@ -338,7 +338,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "1.00";
+const UI_VERSION = "1.01";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -3709,6 +3709,9 @@ const NEWCANVAS_JS = `
   fetch('/__canvases',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();})
     .then(function(d){
       var map = (d && d.map) || {};
+      // Ascending by creation time, then each PREPENDED to the grid — so the
+      // newest created canvas lands first, where a just-made board is expected
+      // (appending buried it below every prototype; Rob couldn't find his).
       var mine = Object.keys(map).filter(function(p){
         return p.indexOf(dir) === 0 && p.length > dir.length && p.slice(dir.length, -1).indexOf('/') === -1;
       }).sort(function(a,b){ return (map[a].t||0) - (map[b].t||0); });
@@ -3727,7 +3730,7 @@ const NEWCANVAS_JS = `
             '<div class="proto-name">\\uD83D\\uDDFA\\uFE0F ' + esc(e.name || p) + '</div>' +
             '<div class="proto-date">Canvas' + (e.t ? ' \\u00b7 ' + rel(e.t) : '') + '</div>' +
           '</div></div>';
-        grid.appendChild(card);
+        grid.insertBefore(card, grid.firstChild);
       });
       grid.addEventListener('click', function(ev){
         var rm = ev.target.closest && ev.target.closest('[data-canvas-remove]');
