@@ -338,7 +338,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.94";
+const UI_VERSION = "0.95";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1106,6 +1106,7 @@ async function scanPlayground() {
       poster: await exists(path.join(dir, "preview.webp")),
       mtimeMs: modifiedTime(dir, await latestMtime(dir)),
       status: statusMap[`${SPACE_KEY}playground/${e.name}`] || "in-progress",
+      editor: mainContributor(dir),
     });
   }
   projects.sort(byStatusThenRecency);
@@ -3774,9 +3775,12 @@ function renderPlaygroundIndex(projects) {
             ${statusChip(p.status, SPACE_KEY + "playground/" + p.name)}
           </div>
           <div class="preview-actions">${pinStar(pinKey, pinKey)}</div>
-          <div class="opp-meta">
-            <div class="proto-name">${dname}</div>
-            <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
+          <div class="proto-meta">
+            <div class="proto-text">
+              <div class="proto-name">${dname}</div>
+              <div class="proto-date" title="${fmtDate(p.mtimeMs)}">${relTime(p.mtimeMs)}</div>
+            </div>
+            ${editorChip(p.editor)}
           </div>
         </div>`;
     })
