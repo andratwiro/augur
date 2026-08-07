@@ -953,6 +953,46 @@ async function nameApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Prototype deletion (repo-write via dispatch webhook) -------------------
+// "Delete forever" on a prototype card. The worker holds NO repo credentials —
+// it forwards the request to a per-instance webhook (a GitHub repository_dispatch
+// on the deploy shell, which runs the actual `git rm` + push; the redeploy that
+// follows removes the prototype from the live site). Both values come from runtime
+// env (Cloudflare project settings), so the engine stays generic and a raw/local
+// build answers 501: DELETE_DISPATCH_URL (the dispatches endpoint) and
+// DELETE_DISPATCH_TOKEN (a token with write access to fire it).
+// Path shapes are the two prototype homes only — never galleries, never skills.
+const DELETE_PATH_RE = /^(?:[a-z0-9][a-z0-9._-]*\/prototypes\/[a-z0-9][a-z0-9._-]*|playground\/[a-z0-9][a-z0-9._-]*)$/;
+
+async function deleteApi(request, env, me) {
+  if (request.method !== "POST") return jsonResponse({ error: "method-not-allowed" }, 405);
+  if (!env.DELETE_DISPATCH_URL || !env.DELETE_DISPATCH_TOKEN) {
+    return jsonResponse({ error: "not-configured" }, 501);
+  }
+  let op;
+  try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+  const space = clamp(op && op.space, 60);
+  const path = clamp(op && op.path, 200);
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(space) || !DELETE_PATH_RE.test(path) || path.includes("..")) {
+    return jsonResponse({ error: "bad-input" }, 400);
+  }
+  const r = await fetch(env.DELETE_DISPATCH_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.DELETE_DISPATCH_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+      "User-Agent": "augur-worker",
+    },
+    body: JSON.stringify({
+      event_type: "prototype-delete",
+      client_payload: { space, path, by: me ? me.email : "" },
+    }),
+  });
+  if (!r.ok && r.status !== 204) return jsonResponse({ error: "dispatch-failed", status: r.status }, 502);
+  return jsonResponse({ ok: true }, 202);
+}
+
 // ---- Created canvases (KV-backed, single key) -------------------------------
 // "New canvas" from a folder index: registers a board at <dir><slug>/ in one shared
 // { "<path>": {name, by, t} } map (same frugal one-key pattern as statuses/names).
@@ -1503,6 +1543,13 @@ export default {
     if (url.pathname === "/__canvases") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       return canvasesApi(request, url, env, me);
+    }
+    // Prototype deletion — DESTRUCTIVE (repo write). Admin-only in identity mode; in
+    // legacy/open mode any authed operator (a single-operator instance has no roles).
+    if (url.pathname === "/__delete") {
+      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      if (usersActive && (!me || me.role !== "admin")) return jsonResponse({ error: "forbidden" }, 403);
+      return deleteApi(request, env, me);
     }
     // Canvas board docs follow the COMMENTS model, not the status/pins model: a canvas is a
     // PUBLISHED prototype (public, obscure share link), so its board must load & save without a

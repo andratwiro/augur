@@ -338,7 +338,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.96";
+const UI_VERSION = "0.97";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1652,7 +1652,31 @@ const PAGE_CSS = `
       opacity: 0; transition: opacity .16s ease, transform .16s ease; pointer-events: none;
     }
     .gv-toast.show { opacity: 1; transform: translateX(-50%); }
-    @media (prefers-reduced-motion: reduce) { .gv-ctx, .gv-toast { animation: none; transition: none; } }
+    /* Danger modal — the "Delete forever" confirm (CARD_MENU_JS builds it). */
+    .gv-modal-veil {
+      position: fixed; inset: 0; z-index: 2147483204;
+      background: rgba(12,13,20,0.55); backdrop-filter: blur(2px);
+      display: grid; place-items: center; animation: gv-ctx-in .12s ease;
+    }
+    .gv-modal {
+      width: min(420px, calc(100vw - 48px)); background: var(--card); color: var(--fg);
+      border: 1px solid var(--line-2); border-radius: 14px; padding: 22px 22px 18px;
+      box-shadow: 0 24px 70px -18px rgba(0,0,0,0.55);
+    }
+    .gv-modal__title { font-family: var(--font-display); font-size: 16px; font-weight: 650; margin: 0 0 8px; overflow-wrap: anywhere; }
+    .gv-modal__body { font-size: 13.5px; line-height: 1.55; color: var(--muted); margin: 0 0 18px; }
+    .gv-modal__row { display: flex; justify-content: flex-end; gap: 8px; }
+    .gv-modal__btn {
+      font: inherit; font-size: 13px; font-weight: 550; cursor: pointer;
+      border-radius: 8px; padding: 8px 14px; border: 1px solid var(--line-2);
+      background: transparent; color: var(--fg);
+    }
+    .gv-modal__btn:hover { background: var(--card-hover); }
+    .gv-modal__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .gv-modal__btn--danger { background: #c0392b; border-color: #c0392b; color: #fff; }
+    .gv-modal__btn--danger:hover { background: #a93226; }
+    .gv-modal__btn[disabled] { opacity: .6; cursor: default; }
+    @media (prefers-reduced-motion: reduce) { .gv-ctx, .gv-toast, .gv-modal-veil { animation: none; transition: none; } }
 
     /* ---- Components table (small preview per row) ---- */
     .comp-table { width: 100%; border-collapse: collapse; }
@@ -2754,12 +2778,51 @@ const CARD_MENU_JS = `
     if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(function(){showToast('Link copied');},function(){fallbackCopy(url);});
     else fallbackCopy(url); }
   function downloadCard(c){ var b=dlBtn(c); if(b) b.click(); }
+
+  // ---- Delete forever (REAL deletion — repo write via /__delete) ----
+  // Admin-only (html.gv-admin, set by PROFILE_JS; gv-operator on no-identity
+  // builds). The worker forwards to the instance's delete webhook; the deploy that
+  // follows removes the prototype from the live site (~2 min). The card fades out
+  // optimistically so the folder reflects the decision immediately.
+  function canDelete(c){
+    var h=document.documentElement;
+    return c.hasAttribute('data-del-path') && (h.classList.contains('gv-admin') || h.classList.contains('gv-operator'));
+  }
   function deleteCard(c){
     var nm=((nameEl(c)&&nameEl(c).textContent)||'this prototype').trim();
-    if(!confirm('Delete "'+nm+'" for good?\\n\\nThis can\\'t be undone from here. The card is removed from view now; ask Claude to delete the files to finalize.')) return;
-    c.style.transition='opacity .15s ease'; c.style.opacity='0';
-    setTimeout(function(){ c.remove(); },160);
-    showToast('Removed — tell Claude: delete "'+nm+'"');
+    var veil=document.createElement('div'); veil.className='gv-modal-veil';
+    veil.innerHTML='<div class="gv-modal" role="alertdialog" aria-modal="true" aria-labelledby="gv-del-title">'+
+      '<h2 class="gv-modal__title" id="gv-del-title"></h2>'+
+      '<p class="gv-modal__body">This permanently deletes the prototype\\u2019s code from the repository and removes it from the live site for everyone. It cannot be recovered.</p>'+
+      '<div class="gv-modal__row"><button type="button" class="gv-modal__btn" data-m="cancel">Cancel</button>'+
+      '<button type="button" class="gv-modal__btn gv-modal__btn--danger" data-m="del">Delete forever</button></div></div>';
+    veil.querySelector('.gv-modal__title').textContent='Delete \\u201c'+nm+'\\u201d forever?';
+    document.body.appendChild(veil);
+    var cancel=veil.querySelector('[data-m="cancel"]'), del=veil.querySelector('[data-m="del"]');
+    function close(){ veil.remove(); document.removeEventListener('keydown',onKey,true); }
+    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(); } }
+    document.addEventListener('keydown',onKey,true);
+    veil.addEventListener('pointerdown',function(e){ if(e.target===veil) close(); });
+    cancel.addEventListener('click',close);
+    cancel.focus();
+    del.addEventListener('click',function(){
+      del.disabled=true; cancel.disabled=true; del.textContent='Deleting\\u2026';
+      fetch('/__delete',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({space:c.getAttribute('data-del-space'),path:c.getAttribute('data-del-path')})})
+        .then(function(r){ return r.json().then(function(d){ return {status:r.status, d:d}; }); })
+        .then(function(res){
+          close();
+          if(res.status===202){
+            c.style.transition='opacity .2s ease'; c.style.opacity='0';
+            setTimeout(function(){ c.remove(); },210);
+            showToast('Deleting \\u201c'+nm+'\\u201d \\u2014 gone from the live site in ~2 minutes');
+          }
+          else if(res.status===501) showToast('Deletion is not configured on this instance');
+          else if(res.status===403) showToast('Only admins can delete prototypes');
+          else showToast('Delete failed \\u2014 nothing was removed');
+        })
+        .catch(function(){ close(); showToast('Delete failed \\u2014 nothing was removed'); });
+    });
   }
 
   // ---- inline rename (highlight the label, type over it) ----
@@ -2829,8 +2892,9 @@ const CARD_MENU_JS = `
     if(dlBtn(c)) html+=item('download','Download HTML',ICON.dl);
     html+='<hr>'+item('rename','Rename',ICON.rename);
     if(descEl(c)) html+=item('editdesc','Edit description',ICON.desc);
-    // Delete intentionally removed from the UI — too risky (deleting prototypes is a
-    // repo edit; ask Claude to remove files instead).
+    // Delete = REAL repo deletion, admins only (see deleteCard). Non-admins never
+    // see the item; the worker re-checks the role server-side regardless.
+    if(canDelete(c)) html+='<hr>'+item('delete','Delete forever\\u2026',ICON.del,true);
     menu.innerHTML=html; document.body.appendChild(menu);
     var r=menu.getBoundingClientRect();
     menu.style.left=Math.max(8,Math.min(x, innerWidth-r.width-8))+'px';
@@ -3386,7 +3450,12 @@ const PROFILE_JS = `(function(){
     box.hidden = false;
   }
   fetch('/__me', {headers:{'Accept':'application/json'}}).then(function(r){ return r.json(); })
-    .then(function(d){ if(d && d.user) paint(d.user); }).catch(function(){});
+    .then(function(d){
+      if(d && d.user) paint(d.user);
+      // No-identity build → everyone is the operator; admin-ish surfaces (e.g.
+      // Delete forever) key off gv-operator there instead of gv-admin.
+      if(d && d.accounts === false) document.documentElement.classList.add('gv-operator');
+    }).catch(function(){});
   var btn = box.querySelector('[data-prof-toggle]');
   var menu = box.querySelector('[data-prof-menu]');
   function open(o){ if(!menu) return; menu.hidden = !o; if(btn) btn.setAttribute('aria-expanded', o ? 'true' : 'false'); }
@@ -3824,7 +3893,7 @@ function renderOpportunityIndex(opp) {
       const pinKey = S(`/${encodeURIComponent(opp.name)}/${encodeURIComponent(p.name)}/`);
       const dname = protoName(p.name);
       return `
-        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${SPACE_KEY}${opp.name}/${p.name}" data-default-name="${dname}">
+        <div class="card-proto" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${SPACE_KEY}${opp.name}/${p.name}" data-default-name="${dname}" data-del-space="${NAV_STATE.activeSpace}" data-del-path="${opp.name}/prototypes/${p.name}">
           <div class="preview">
             ${media(p.href, p.poster)}
             <a class="preview-link" href="${p.href}" aria-label="Open ${titleCase(p.name)}"></a>
@@ -3872,7 +3941,7 @@ function renderPlaygroundIndex(projects) {
       const pinKey = S(`/playground/${encodeURIComponent(p.name)}/`);
       const dname = protoName(p.name);
       return `
-        <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${SPACE_KEY}playground/${p.name}" data-default-name="${dname}">
+        <div class="card-opp" data-fitem data-fkey="${titleCase(p.name)}" data-rename-key="${SPACE_KEY}playground/${p.name}" data-default-name="${dname}" data-del-space="${NAV_STATE.activeSpace}" data-del-path="playground/${p.name}">
           <a class="card-cover-link" href="${folder}" aria-label="Open ${titleCase(p.name)}"></a>
           <div class="preview">
             ${media(p.href, p.poster)}

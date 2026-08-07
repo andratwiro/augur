@@ -71,7 +71,13 @@ declare via `space.json` `"mcpAllowlists": [<space-relative paths>]` — exact h
 baked at build, refreshed by every space push, no instance config needed.
 
 Env reference: `GV_SPACES_ROOT` (spaces location) · `GV_IDENTITY_PATH` (user list) ·
-`GV_DEPLOY_CONFIG_PATH` (deploy config) · `OFFLINE_PORT` (offline preview). The local
+`GV_DEPLOY_CONFIG_PATH` (deploy config) · `OFFLINE_PORT` (offline preview).
+Runtime worker env (per-instance Cloudflare project settings, not build-time):
+`DELETE_DISPATCH_URL` + `DELETE_DISPATCH_TOKEN` — the webhook the admin-only
+`/__delete` route forwards to (a `prototype-delete` repository_dispatch on the deploy
+shell, whose workflow `git rm`s the folder in the space repo; the redeploy that follows
+removes it live). Unset → the route answers 501 and the "Delete forever" menu item
+reports deletion unconfigured. The local
 deploy scripts read `.env.deploy` for the rest (`PAGES_PROJECT`, `REALTIME_CONFIG`, the
 Cloudflare creds) — see `.env.deploy.example`. **No account id, project, worker name or
 shell repo name is hardcoded anywhere in this repo; scripts resolve the instance through
