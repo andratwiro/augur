@@ -1,17 +1,23 @@
-// Source for dist/_worker.js — injected (USERS, RESTRICTED_BASES, PUBLIC_PREFIXES,
-// VERSION_MAP, BUILD_ID) and copied by build.js into the deploy dir.
+// Source for dist/_worker.js — copied VERBATIM by build.js into the deploy dir.
 // Cloudflare Pages Advanced Mode: this Worker runs in front of every request.
 //
-// Gate model: PER-USER accounts (email + password). build.js injects USERS from
-// src/identity.json; a login sets a cookie carrying "<email>.<token>" where token is
-// derived from the user's effective password (admin-set KV override ?? seed) — see
-// identify(). The internal surface (root index, per-opportunity indexes, galleries)
-// is gated; direct prototype URLs, their DS assets, /pages, /_build.json, and
-// created canvas boards are public — see PUBLIC_PREFIXES / isPublicPath /
-// virtualCanvas. Admin-only spaces' base paths
-// (RESTRICTED_BASES) are sealed to admins. Legacy fallback: with no USERS injected
-// but SITE_PASSWORD set, a single shared-password gate applies; with neither, the
-// site is open (raw/local builds).
+// RUNTIME CONFIG: everything deployment- or build-specific (USERS, PUBLIC_PREFIXES,
+// RESTRICTED_BASES, VERSION_MAP, BUILD_ID, deploy knobs) is DATA, not code. It loads
+// from /__config/{instance,routing}.json — emitted by build.js next to the assets —
+// at request time via loadConfig(), cached per isolate for ~1.5s. The bindings below
+// start at their empty defaults, which is exactly the raw-copy behavior: no config
+// emitted → no users → open gate, nothing public, nothing restricted.
+// /__config/* is rejected for external requests in fetch() before any asset serving.
+//
+// Gate model: PER-USER accounts (email + password). instance.json carries the users;
+// a login sets a cookie carrying "<email>.<token>" where token is derived from the
+// user's effective password (admin-set KV override ?? seed) — see identify(). The
+// internal surface (root index, per-opportunity indexes, galleries) is gated; direct
+// prototype URLs, their DS assets, /pages, /_build.json, and created canvas boards
+// are public — see PUBLIC_PREFIXES / isPublicPath / virtualCanvas. Admin-only spaces'
+// base paths (RESTRICTED_BASES) are sealed to admins. Legacy fallback: with no users
+// configured but SITE_PASSWORD set, a single shared-password gate applies; with
+// neither, the site is open (raw/local builds).
 //
 // Casual gate against link leakage — NOT Zero Trust.
 
@@ -20,40 +26,40 @@ const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 // ---- Users / identity -------------------------------------------------------
 // Augur is a private internal tool — the only real risk is impersonation, and the
-// real work happens through GitHub commits, so this is a casual identity layer, not
-// auth hardening. USERS is the seed identity + DEFAULT password, injected by build.js
-// from src/identity.json (committed). Empty in a raw copy → no users → the gate stays
-// open (offline/local builds with no identity injected). Effective password =
+// real work happens through git commits, so this is a casual identity layer, not
+// auth hardening. USERS is the seed identity + DEFAULT password, filled at runtime
+// from instance.json (loadConfig). Empty in a raw copy → no users → the gate stays
+// open (offline/local builds with no identity configured). Effective password =
 // admin-set KV override (USER_SECRETS_KEY) ?? this default — so passwords are editable
 // at runtime from the admin panel without redeploying. Each entry:
 //   { email, name, pass, initials, color, role? }   role:"admin" → can edit passwords.
-const USERS = [];
-// Deploy-specific knobs, injected by build.js from the deploy config (all empty in a
-// raw engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
+let USERS = [];
+// Deploy-specific knobs, filled at runtime from instance.json (all empty in a raw
+// engine build): gate-exempt skill-asset path prefixes, MCP-proxy host allowlist
 // (suffix rule + space-declared exact hosts + the URL of an exact-host list),
 // vanity-host redirects, and the optional AI project-builder prompts + schema.
-// MCP_HOST_ALLOWLIST alone is space-injected: the union of the {"hosts":[…]} files
-// the spaces declare via space.json "mcpAllowlists" (see build.js).
-const PUBLIC_SKILL_PREFIXES = [];
-const MCP_HOST_SUFFIXES = [];
-const MCP_HOST_ALLOWLIST = [];
-const MCP_HOST_ALLOWLIST_URL = "";
-const VANITY_REDIRECTS = {};
-const BUILDER_CONFIG = null;
+// MCP_HOST_ALLOWLIST alone comes from routing.json: the union of the {"hosts":[…]}
+// files the spaces declare via space.json "mcpAllowlists" (see build.js).
+let PUBLIC_SKILL_PREFIXES = [];
+let MCP_HOST_SUFFIXES = [];
+let MCP_HOST_ALLOWLIST = [];
+let MCP_HOST_ALLOWLIST_URL = "";
+let VANITY_REDIRECTS = {};
+let BUILDER_CONFIG = null;
 const USER_COOKIE = "gv_user";              // value: "<email>.<token>"
 const USER_SECRETS_KEY = "users:secrets";   // KV {email: password} — admin overrides
 const LASTSEEN_PREFIX = "users:lastseen:";  // KV per-user ISO stamp — admin list column
 
-// Build id for the live-reload poller. build.js replaces "dev" with this build's
-// id; it's the FALLBACK version for any path not in VERSION_MAP (index/shell pages,
-// assets). "dev" in a raw/local copy just means a stable id.
-const BUILD_ID = "dev";
+// Build id for the live-reload poller — routing.json carries this build's id; it's
+// the FALLBACK version for any path not in VERSION_MAP (index/shell pages, assets).
+// "dev" in a raw/local copy just means a stable id.
+let BUILD_ID = "dev";
 
 // Per-page live-reload versions: URL-prefix → token that changes only when that
-// folder's content changes. build.js fills this in. Lets a tab reload only when ITS
+// folder's content changes (routing.json). Lets a tab reload only when ITS
 // own prototype changed, so unrelated deploys (e.g. another agent's prototype) don't
 // reload it. versionFor() returns the longest-prefix match, else BUILD_ID.
-const VERSION_MAP = {};
+let VERSION_MAP = {};
 
 function versionFor(pathname) {
   let best = null, bestLen = -1;
@@ -66,12 +72,12 @@ function versionFor(pathname) {
   return best == null ? BUILD_ID : best;
 }
 
-// PUBLIC prototype path-prefixes — served WITHOUT the password. build.js replaces
-// the array below with the real list of `/<opportunity>/<prototype>/` prefixes at
-// build time, so it can never drift from what actually ships. Left empty here so a
-// raw/local copy of this file gates nothing differently (local builds have no
-// password anyway).
-const PUBLIC_PREFIXES = [];
+// PUBLIC prototype path-prefixes — served WITHOUT the password. routing.json carries
+// the real list of `/<opportunity>/<prototype>/` prefixes, derived from the same
+// build that shipped them, so it can never drift from what actually ships. Empty
+// default so a raw/local copy of this file gates nothing differently (local builds
+// have no password anyway).
+let PUBLIC_PREFIXES = [];
 
 // A request is public if it lands inside a published prototype folder (the index
 // page or any asset it loads), or is the dormant review-overlay script that every
@@ -129,13 +135,12 @@ function isPublicPath(pathname) {
   );
 }
 
-// ADMIN-ONLY space base paths (e.g. "/go-vocal-2" — the 2.0 workspace). build.js
-// replaces the array below with the base path of every space whose space.json sets
-// "adminOnly": true, so it can never drift from what shipped. Everything under one
-// of these prefixes requires an admin user — regular users (Irene, Tali) are bounced
-// home, signed-out visitors get the login page. Left empty in a raw copy → no space
+// ADMIN-ONLY space base paths. routing.json carries the base path of every space
+// whose space.json sets "adminOnly": true, so it can never drift from what shipped.
+// Everything under one of these prefixes requires an admin user — regular users are
+// bounced home, signed-out visitors get the login page. Empty default → no space
 // is restricted (a local build with no identity gates nothing extra).
-const RESTRICTED_BASES = [];
+let RESTRICTED_BASES = [];
 
 // Does this path live inside an admin-only space? Matches the base ("/go-vocal-2"),
 // its root ("/go-vocal-2/") and everything beneath it.
@@ -143,6 +148,47 @@ function isRestrictedPath(pathname) {
   return RESTRICTED_BASES.some(
     (b) => pathname === b || pathname.startsWith(b + "/")
   );
+}
+
+// ---- Runtime config loader --------------------------------------------------
+// Fills every binding above from /__config/{instance,routing}.json — the two
+// documents build.js emits next to the assets. Cached per isolate for ~1.5s: fast
+// enough that a fresh deploy (or an offline rebuild) flips the gate's view of the
+// world almost immediately, cheap enough to run on the hot path (between refreshes
+// the call is a sync timestamp check). A missing or unreadable document leaves the
+// current values in place — so a raw copy (no config emitted) keeps its empty
+// defaults, and a transient read failure never wipes a working gate.
+let SPACES = [];
+let cfgAt = 0;
+async function loadConfig(env) {
+  if (!env || !env.ASSETS || Date.now() - cfgAt < 1500) return;
+  cfgAt = Date.now(); // stamp first — a failed load retries next tick, never stampedes
+  const grab = async (name) => {
+    try {
+      const r = await env.ASSETS.fetch("https://config/__config/" + name);
+      return r.ok ? await r.json() : null;
+    } catch (e) { return null; }
+  };
+  const [inst, routing] = await Promise.all([grab("instance.json"), grab("routing.json")]);
+  if (inst) {
+    USERS = Array.isArray(inst.users) ? inst.users : [];
+    MCP_HOST_SUFFIXES = inst.mcpHostSuffixes || [];
+    MCP_HOST_ALLOWLIST_URL = inst.mcpHostAllowlistUrl || "";
+    VANITY_REDIRECTS = inst.vanityRedirects || {};
+    BUILDER_CONFIG = inst.builder || null;
+    RT_ORIGIN = inst.rtOrigin || "";
+  }
+  if (routing) {
+    BUILD_ID = routing.buildId || "dev";
+    VERSION_MAP = routing.versionMap || {};
+    PUBLIC_PREFIXES = routing.publicPrefixes || [];
+    PUBLIC_SKILL_PREFIXES = routing.publicSkillPrefixes || [];
+    RESTRICTED_BASES = routing.restrictedBases || [];
+    CANVAS_LOADER_EXTRAS = routing.canvasLoaderExtras || "";
+    MCP_HOST_ALLOWLIST = routing.mcpAllowlist || [];
+    mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
+    SPACES = Array.isArray(routing.spaces) ? routing.spaces : [];
+  }
 }
 
 async function tokenFor(secret) {
@@ -589,10 +635,10 @@ function mcpAllowlist() {
   return mcpHostAllowlist;
 }
 
-// Space-declared exact hosts, baked in at build (see build.js): no fetch, no
-// failure mode, and a space push refreshes the list with the same deploy that
-// ships the prototype using it.
-const mcpStaticHosts = new Set(MCP_HOST_ALLOWLIST);
+// Space-declared exact hosts, from routing.json (see build.js): no extra fetch, no
+// failure mode, and a space publish refreshes the list with the same deploy that
+// ships the prototype using it. Rebuilt by loadConfig on every config refresh.
+let mcpStaticHosts = new Set();
 
 async function mcpHostAllowed(host) {
   if (MCP_HOST_SUFFIXES.some((sfx) => host.endsWith("." + sfx))) return true;
@@ -1061,12 +1107,12 @@ async function canvasesApi(request, url, env, me) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
-// Build-time injected (presence-checked like USERS): the extra tags every BUILT
-// prototype page carries — the review/comment overlay (graph.js + comments.js,
-// which power C-to-comment and Shift+C provenance) plus any build addon's tags.
-// Without this a worker-served canvas page mounts the engine but loses the
-// overlay stack that real prototype files get injected at build.
-const CANVAS_LOADER_EXTRAS = "";
+// From routing.json: the extra tags every BUILT prototype page carries — the
+// review/comment overlay (graph.js + comments.js, which power C-to-comment and
+// Shift+C provenance) plus any build addon's tags. Without this a worker-served
+// canvas page mounts the engine but loses the overlay stack that real prototype
+// files get injected at build.
+let CANVAS_LOADER_EXTRAS = "";
 
 // The same loader a repo canvas folder carries — the page just names the board and
 // mounts the shared /__canvas/ engine; contents persist to /__board keyed by URL.
@@ -1201,7 +1247,7 @@ async function assetApi(request, url, env) {
 // intact returns the 101 + socket, passed through. Injected at build from the deploy
 // config's `realtimeOrigin`; without one, boards run solo (the client's socket-down
 // fallback: it persists via /__board to this instance's own KV).
-const RT_ORIGIN = "";
+let RT_ORIGIN = "";
 function rtProxy(request, url) {
   if (!RT_ORIGIN) return jsonResponse({ error: "realtime-not-configured" }, 501);
   if (request.headers.get("Upgrade") !== "websocket") return jsonResponse({ error: "expected-websocket" }, 426);
@@ -1392,7 +1438,15 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Vanity domains (injected from the deploy config): a host CNAME'd to this
+    // Runtime config is data served alongside the assets, for the worker's own
+    // reads only — instance.json carries the user list. Reject external requests
+    // BEFORE any asset serving, unconditionally (even in open/legacy mode).
+    if (url.pathname === "/__config" || url.pathname.startsWith("/__config/")) {
+      return notFoundResponse();
+    }
+    await loadConfig(env);
+
+    // Vanity domains (from the deploy config): a host CNAME'd to this
     // Pages project + added as a custom domain runs this worker. DNS can't target
     // a path, so land each such host's root on its configured page. Scoped to the
     // exact hosts in the map — never affects pages.dev or any other domain.
@@ -1557,6 +1611,13 @@ export default {
     if (url.pathname === "/__name") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       return nameApi(request, url, env);
+    }
+    // The shipped space list (id/name/badge/base/adminOnly) for shell UI — gated
+    // like the rail pages that render it (space names are internal until shipped
+    // somewhere public on purpose).
+    if (url.pathname === "/__spaces") {
+      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      return jsonResponse({ spaces: SPACES });
     }
     // Created-canvases registry — gated like /__status: any signed-in user (or anyone,
     // in legacy/open mode) can create/rename/remove a board. The board PAGES it

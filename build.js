@@ -5194,70 +5194,26 @@ async function main() {
   for (let i = 0; i < sig.length; i++) h = ((h << 5) + h + sig.charCodeAt(i)) >>> 0; // djb2
   const shellId = h.toString(36);
 
-  // Edge auth gate. Inject the PUBLIC prototype path-prefixes (every space), the version
-  // map, the shell id, and the user identities. (Derived from what actually shipped, so
-  // the gate can never drift.)
+  // Edge auth gate → runtime config. The worker ships VERBATIM (no string stamping);
+  // everything it used to have injected — users, public prefixes, version map,
+  // restricted bases, deploy knobs — now ships as two JSON documents under
+  // dist/__config/ that the worker reads at request time (short per-isolate cache).
+  // Same derivation, same can't-drift guarantee (emitted by the very build that
+  // shipped the assets); the worker file itself no longer changes per build.
   const workerSrc = await fs.readFile(SRC_WORKER, "utf8");
-  const gatedWorker = workerSrc.replace(
-    "const PUBLIC_PREFIXES = [];",
-    `const PUBLIC_PREFIXES = ${JSON.stringify(publicPrefixes)};`
-  );
-  if (gatedWorker === workerSrc) {
-    throw new Error("build: PUBLIC_PREFIXES placeholder not found in src/_worker.js");
-  }
-  const versionedWorker = gatedWorker
-    .replace('const BUILD_ID = "dev";', `const BUILD_ID = ${JSON.stringify(shellId)};`)
-    .replace("const VERSION_MAP = {};", `const VERSION_MAP = ${JSON.stringify(versionMap)};`);
-  if (versionedWorker === gatedWorker) {
-    throw new Error("build: BUILD_ID / VERSION_MAP placeholder not found in src/_worker.js");
-  }
-  // Inject the internal users (identity + seed passwords) from the identity file so
-  // the gate knows who exists (same injection model as BUILD_ID / VERSION_MAP above).
-  // Presence-check the placeholder BEFORE replacing: an empty identity ([]) makes the
-  // replacement a no-op by value, which is legitimate (raw engine build → open gate).
-  if (!versionedWorker.includes("const USERS = [];")) {
-    throw new Error("build: USERS placeholder not found in src/_worker.js");
-  }
-  const stampedWorker = versionedWorker.replace(
-    "const USERS = [];",
-    `const USERS = ${JSON.stringify(IDENTITY)};`
-  );
-  // Inject the admin-only space base paths (e.g. "/go-vocal-2") so the gate seals them
-  // to admins. Derived from each space's space.json `adminOnly` flag (default space is
-  // never restricted), so it can't drift from what shipped.
+  // Admin-only space base paths (an adminOnly space's "/<id>") seal those spaces
+  // to admins. Derived from each space's space.json `adminOnly` flag (the default
+  // space is never restricted), so it can't drift from what shipped.
   const restrictedBases = NAV_STATE.spaces
     .filter((s) => s.adminOnly && !s.default)
     .map((s) => s.base);
-  // Presence check, not before/after inequality — with zero restricted spaces the
-  // injected value IS the placeholder (`[]`), which a diff check misreads as "not found".
-  if (!stampedWorker.includes("const RESTRICTED_BASES = [];")) {
-    throw new Error("build: RESTRICTED_BASES placeholder not found in src/_worker.js");
-  }
-  let sealedWorker = stampedWorker.replace(
-    "const RESTRICTED_BASES = [];",
-    `const RESTRICTED_BASES = ${JSON.stringify(restrictedBases)};`
-  );
-  // Worker-served canvas loaders (created canvases) must carry the SAME overlay
-  // tags a built prototype gets injected — the review overlay (C-to-comment,
-  // Shift+C provenance) and any addon tags — or those features silently die on
-  // exactly the boards the New-canvas button makes. addonHtml appends the addon's
-  // tag when the addon is present, mirroring the copied-prototype pipeline.
-  if (!sealedWorker.includes('const CANVAS_LOADER_EXTRAS = "";')) {
-    throw new Error("build: CANVAS_LOADER_EXTRAS placeholder not found in src/_worker.js");
-  }
-  sealedWorker = sealedWorker.replace(
-    'const CANVAS_LOADER_EXTRAS = "";',
-    `const CANVAS_LOADER_EXTRAS = ${JSON.stringify(addonHtml(reviewTag()))};`
-  );
-  // Deploy knobs → worker (same injection model, presence-checked): the gate-exempt
-  // skill-asset prefixes (from the DEFAULT space's detected UI skill — root paths
-  // only, mirroring the /skills and /pages doors), the MCP-proxy host allowlist
-  // (suffix rule + space-declared exact hosts + exact-host list URL), vanity
-  // redirects, and the optional AI-builder prompts from the deploy config.
+  // Deploy knobs (gate-exempt skill-asset prefixes from the DEFAULT space's detected
+  // UI skill, the MCP-proxy host allowlist, vanity redirects, the optional AI-builder
+  // prompts) ride the runtime config documents below instead of worker stamping.
   //
   // Space-declared MCP hosts: space.json "mcpAllowlists" names shipped JSON
-  // documents ({"hosts":[…]}, e.g. a generated client list) whose union is baked
-  // into the worker. Mounting a space is the trust act — its declared hosts ride
+  // documents ({"hosts":[…]}, e.g. a generated client list) whose union ships in
+  // routing.json. Mounting a space is the trust act — its declared hosts ride
   // in with it, no per-instance config and no runtime fetch to go stale. Failures
   // are loud: a DECLARED list that is missing or malformed is a broken space, not
   // a knob to degrade past (unlike the URL knob, whose runtime fetch fails soft
@@ -5288,20 +5244,33 @@ async function main() {
   }
   const defaultDs = detectUiSkill(spaces.find((s) => s.default));
   const gateExempt = defaultDs.dirName ? [`/skills/${defaultDs.dirName}/`] : [];
-  let finalWorker = sealedWorker;
-  for (const [ph, value] of [
-    ["const PUBLIC_SKILL_PREFIXES = [];", gateExempt],
-    ["const MCP_HOST_SUFFIXES = [];", DEPLOY.mcpHostSuffixes || []],
-    ["const MCP_HOST_ALLOWLIST = [];", [...mcpSpaceHosts].sort()],
-    ['const MCP_HOST_ALLOWLIST_URL = "";', DEPLOY.mcpHostAllowlistUrl || ""],
-    ["const VANITY_REDIRECTS = {};", DEPLOY.vanityRedirects || {}],
-    ["const BUILDER_CONFIG = null;", DEPLOY.builder || null],
-    ['const RT_ORIGIN = "";', DEPLOY.realtimeOrigin || ""],
-  ]) {
-    if (!finalWorker.includes(ph)) throw new Error(`build: placeholder missing in src/_worker.js: ${ph}`);
-    finalWorker = finalWorker.replace(ph, ph.replace(/= [^=]*;$/, `= ${JSON.stringify(value)};`));
-  }
-  await fs.writeFile(path.join(DIST, "_worker.js"), finalWorker, "utf8");
+
+  // Runtime config: instance.json = who/where (identity + deploy knobs);
+  // routing.json = what shipped (derived from this very build). Served through the
+  // ASSETS binding for the worker's OWN reads only — fetch() rejects external
+  // /__config/* requests before any asset serving, because instance.json carries
+  // the user list (with seed passwords, same sensitivity the stamped worker had).
+  await fs.mkdir(path.join(DIST, "__config"), { recursive: true });
+  await fs.writeFile(path.join(DIST, "__config", "instance.json"), JSON.stringify({
+    users: IDENTITY,
+    mcpHostSuffixes: DEPLOY.mcpHostSuffixes || [],
+    mcpHostAllowlistUrl: DEPLOY.mcpHostAllowlistUrl || "",
+    vanityRedirects: DEPLOY.vanityRedirects || {},
+    builder: DEPLOY.builder || null,
+    rtOrigin: DEPLOY.realtimeOrigin || "",
+  }), "utf8");
+  await fs.writeFile(path.join(DIST, "__config", "routing.json"), JSON.stringify({
+    buildId: shellId,
+    versionMap,
+    publicPrefixes,
+    publicSkillPrefixes: gateExempt,
+    restrictedBases,
+    mcpAllowlist: [...mcpSpaceHosts].sort(),
+    canvasLoaderExtras: addonHtml(reviewTag()),
+    defaultSpace: (NAV_STATE.spaces.find((s) => s.default) || {}).id || null,
+    spaces: NAV_STATE.spaces,
+  }), "utf8");
+  await fs.writeFile(path.join(DIST, "_worker.js"), workerSrc, "utf8");
 
   // Public build stamp: /_build.json — {builtAt, engine:{sha}, spaces:{<id>:{sha}}}.
   // A space-repo collaborator cannot see this repo's CI, so this is their deploy
