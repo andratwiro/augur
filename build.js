@@ -338,7 +338,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "1.01";
+const UI_VERSION = "1.02";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -2967,6 +2967,18 @@ const CARD_MENU_JS = `
     fetch('/__name',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:key,name:name})})
       .then(function(r){return r.json();}).then(function(d){ if(d&&d.map){ try{sessionStorage.setItem(NCACHE,JSON.stringify(d.map));}catch(e){} } }).catch(function(){});
   }
+  // Created-canvas cards store their name in the /__canvases registry (their only
+  // name store), not the /__name override map; empty (= revert) is a no-op there.
+  function persistFor(c,key,name){
+    var cp=c.getAttribute('data-canvas-path');
+    if(cp){
+      if(!name) return;
+      var clean=name.replace(/^\\uD83D\\uDDFA\\uFE0F\\s*/,'');
+      fetch('/__canvases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:cp,rename:true,name:clean})}).catch(function(){});
+      return;
+    }
+    persistName(key,name);
+  }
 
   // ---- toast ----
   var toast;
@@ -2989,7 +3001,35 @@ const CARD_MENU_JS = `
     var h=document.documentElement;
     return c.hasAttribute('data-del-path') && (h.classList.contains('gv-admin') || h.classList.contains('gv-operator'));
   }
+  // Created-canvas cards: removal = un-register from /__canvases. Recoverable by
+  // design (the board doc stays in KV), so the modal says so — unlike repo deletion.
+  function removeCanvas(c){
+    var p=c.getAttribute('data-canvas-path');
+    var nm=((nameEl(c)&&nameEl(c).textContent)||'this canvas').trim();
+    var veil=document.createElement('div'); veil.className='gv-modal-veil';
+    veil.innerHTML='<div class="gv-modal" role="alertdialog" aria-modal="true" aria-labelledby="gv-cvrm-title">'+
+      '<h2 class="gv-modal__title" id="gv-cvrm-title"></h2>'+
+      '<p class="gv-modal__body">Removes the canvas from this folder. Its board content stays saved \\u2014 creating a canvas with the same name here brings it back.</p>'+
+      '<div class="gv-modal__row"><button type="button" class="gv-modal__btn" data-m="cancel">Cancel</button>'+
+      '<button type="button" class="gv-modal__btn gv-modal__btn--danger" data-m="del">Remove</button></div></div>';
+    veil.querySelector('.gv-modal__title').textContent='Remove \\u201c'+nm+'\\u201d?';
+    document.body.appendChild(veil);
+    var cancel=veil.querySelector('[data-m="cancel"]'), del=veil.querySelector('[data-m="del"]');
+    function close(){ veil.remove(); document.removeEventListener('keydown',onKey,true); }
+    function onKey(e){ if(e.key==='Escape'){ e.preventDefault(); close(); } }
+    document.addEventListener('keydown',onKey,true);
+    veil.addEventListener('pointerdown',function(e){ if(e.target===veil) close(); });
+    cancel.addEventListener('click',close);
+    cancel.focus();
+    del.addEventListener('click',function(){
+      del.disabled=true; cancel.disabled=true;
+      fetch('/__canvases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p,remove:true})})
+        .then(function(){ close(); c.style.transition='opacity .2s ease'; c.style.opacity='0'; setTimeout(function(){ c.remove(); },210); showToast('Canvas removed'); })
+        .catch(function(){ close(); showToast('Remove failed'); });
+    });
+  }
   function deleteCard(c){
+    if(c.hasAttribute('data-canvas-path')) return removeCanvas(c);
     var nm=((nameEl(c)&&nameEl(c).textContent)||'this prototype').trim();
     var veil=document.createElement('div'); veil.className='gv-modal-veil';
     veil.innerHTML='<div class="gv-modal" role="alertdialog" aria-modal="true" aria-labelledby="gv-del-title">'+
@@ -3039,8 +3079,8 @@ const CARD_MENU_JS = `
       el.removeEventListener('keydown',onKey); el.removeEventListener('blur',onBlur); el.removeAttribute('contenteditable');
       var val=(el.textContent||'').replace(/\\s+/g,' ').trim().slice(0,80);
       if(!commit){ el.textContent=prev; }
-      else if(!val||val===def){ el.textContent=def; c.setAttribute('data-fkey',def); if(prev!==def) persistName(key,''); }
-      else { el.textContent=val; c.setAttribute('data-fkey',val); persistName(key,val); }
+      else if(!val||val===def){ el.textContent=def; c.setAttribute('data-fkey',def); if(prev!==def) persistFor(c,key,''); }
+      else { el.textContent=val; c.setAttribute('data-fkey',val); persistFor(c,key,val); }
       var s=getSelection(); if(s) s.removeAllRanges();
     }
     el.addEventListener('keydown',onKey); el.addEventListener('blur',onBlur);
@@ -3095,7 +3135,9 @@ const CARD_MENU_JS = `
     if(descEl(c)) html+=item('editdesc','Edit description',ICON.desc);
     // Delete = REAL repo deletion, admins only (see deleteCard). Non-admins never
     // see the item; the worker re-checks the role server-side regardless.
+    // Created-canvas cards get the softer registry removal instead (recoverable).
     if(canDelete(c)) html+='<hr>'+item('delete','Delete forever\\u2026',ICON.del,true);
+    else if(c.hasAttribute('data-canvas-path')) html+='<hr>'+item('delete','Remove canvas\\u2026',ICON.del,true);
     menu.innerHTML=html; document.body.appendChild(menu);
     var r=menu.getBoundingClientRect();
     menu.style.left=Math.max(8,Math.min(x, innerWidth-r.width-8))+'px';
@@ -3532,7 +3574,8 @@ const PINS_JS = `
     var nm = card && card.querySelector('.proto-name');
     return (nm && nm.textContent.trim()) || b.getAttribute('data-pin-key');
   }
-  btns.forEach(function(b){
+  function wireBtn(b){
+    if(b._gvPinWired) return; b._gvPinWired = true;
     b.addEventListener('click', function(e){
       e.preventDefault(); e.stopPropagation();
       var key = b.getAttribute('data-pin-key'), href = b.getAttribute('data-pin-href') || key, lbl = labelFor(b);
@@ -3542,7 +3585,16 @@ const PINS_JS = `
         save(Object.keys(map).length === 0);
       });
     });
-  });
+  }
+  btns.forEach(wireBtn);
+  // Cards injected AFTER load (e.g. created-canvas cards) call this to join: collects
+  // any unwired [data-pin-key] buttons, wires them, and repaints pin state.
+  window.__gvPinsWire = function(){
+    [].forEach.call(document.querySelectorAll('[data-pin-key]'), function(b){
+      if(!b._gvPinWired){ btns.push(b); wireBtn(b); }
+    });
+    paintBtns();
+  };
   // ---- drag-and-drop reorder of the pinned list ----
   if(listEl){
     var dragEl = null, lastDrag = 0;
@@ -3718,29 +3770,28 @@ const NEWCANVAS_JS = `
       if(!mine.length) return;
       mine.forEach(function(p){
         var e = map[p] || {};
+        var display = '\\uD83D\\uDDFA\\uFE0F ' + (e.name || p);
         var card = document.createElement('div');
+        // Full citizen of the card grid: data-rename-key joins the right-click menu
+        // (Open / Copy link / Rename / Remove canvas — CARD_MENU_JS branches on
+        // data-canvas-path), the pin star joins PINS_JS via __gvPinsWire below.
         card.className = 'card-opp card-canvas';
         card.setAttribute('data-fitem','');
         card.setAttribute('data-fkey', e.name || p);
+        card.setAttribute('data-rename-key', 'canvas:' + p);
+        card.setAttribute('data-default-name', display);
+        card.setAttribute('data-canvas-path', p);
         card.innerHTML =
           '<a class="card-cover-link" href="' + esc(p) + '" aria-label="Open ' + esc(e.name || 'canvas') + '"></a>' +
           '<div class="preview preview--canvas" aria-hidden="true">\\uD83D\\uDDFA\\uFE0F</div>' +
-          '<div class="preview-actions"><button type="button" class="btn-icon" data-canvas-remove="' + esc(p) + '" title="Remove canvas" aria-label="Remove canvas">&times;</button></div>' +
+          '<div class="preview-actions"><button type="button" class="pin-btn" data-pin-key="' + esc(p) + '" data-pin-href="' + esc(p) + '" aria-pressed="false" aria-label="Pin to sidebar" title="Pin to sidebar">${IC_STAR}</button></div>' +
           '<div class="proto-meta"><div class="proto-text">' +
-            '<div class="proto-name">\\uD83D\\uDDFA\\uFE0F ' + esc(e.name || p) + '</div>' +
+            '<div class="proto-name">' + esc(display) + '</div>' +
             '<div class="proto-date">Canvas' + (e.t ? ' \\u00b7 ' + rel(e.t) : '') + '</div>' +
           '</div></div>';
         grid.insertBefore(card, grid.firstChild);
       });
-      grid.addEventListener('click', function(ev){
-        var rm = ev.target.closest && ev.target.closest('[data-canvas-remove]');
-        if(!rm) return;
-        ev.preventDefault(); ev.stopPropagation();
-        var p = rm.getAttribute('data-canvas-remove');
-        if(!confirm('Remove this canvas card? Its board content stays in KV \\u2014 recreating the same name brings it back.')) return;
-        fetch('/__canvases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p,remove:true})})
-          .then(function(){ var c = rm.closest('.card-canvas'); if(c) c.remove(); }).catch(function(){});
-      });
+      if(window.__gvPinsWire) window.__gvPinsWire();
     }).catch(function(){});
 })();`;
 

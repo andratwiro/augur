@@ -1029,6 +1029,16 @@ async function canvasesApi(request, url, env, me) {
       await kv.put(CANVASES_KEY, JSON.stringify(map));
       return jsonResponse({ map });
     }
+    // Rename in place: the display name changes, the path (and so the board doc)
+    // stays — same model as card renames, but the registry IS the name store here.
+    if (op && op.rename) {
+      const path = clamp(op.path, 300);
+      const name = clamp(op.name, 80).trim();
+      if (!map[path] || !name) return jsonResponse({ error: "bad-input" }, 400);
+      map[path].name = name;
+      await kv.put(CANVASES_KEY, JSON.stringify(map));
+      return jsonResponse({ map });
+    }
 
     const dir = clamp(op && op.dir, 200);
     const name = clamp(op && op.name, 80).trim();
