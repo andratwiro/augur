@@ -6,8 +6,9 @@
 // src/identity.json; a login sets a cookie carrying "<email>.<token>" where token is
 // derived from the user's effective password (admin-set KV override ?? seed) — see
 // identify(). The internal surface (root index, per-opportunity indexes, galleries)
-// is gated; direct prototype URLs, their DS assets, /pages, and /_build.json are
-// public — see PUBLIC_PREFIXES / isPublicPath. Admin-only spaces' base paths
+// is gated; direct prototype URLs, their DS assets, /pages, /_build.json, and
+// created canvas boards are public — see PUBLIC_PREFIXES / isPublicPath /
+// virtualCanvas. Admin-only spaces' base paths
 // (RESTRICTED_BASES) are sealed to admins. Legacy fallback: with no USERS injected
 // but SITE_PASSWORD set, a single shared-password gate applies; with neither, the
 // site is open (raw/local builds).
@@ -998,10 +999,11 @@ async function deleteApi(request, env, me) {
 // "New canvas" from a folder index: registers a board at <dir><slug>/ in one shared
 // { "<path>": {name, by, t} } map (same frugal one-key pattern as statuses/names).
 // The worker then SERVES the standard canvas loader at that path (virtualCanvas
-// below) — no repo file exists until someone materializes the folder, so until then
-// the page rides the login gate (created boards are team scratch, not public share
-// links). Board CONTENTS live where every canvas keeps them: the /__board doc for
-// that URL — so materializing later is just committing the 12-line loader.
+// below) — no repo file exists until someone materializes the folder. Created
+// boards are PUBLIC like any published prototype (obscure share link, no login) —
+// the loader is served past the gate in the fetch fallthrough. Board CONTENTS live
+// where every canvas keeps them: the /__board doc for that URL — so materializing
+// later is just committing the 12-line loader.
 const CANVASES_KEY = "canvases";
 // A creatable dir is one or more lowercase slug segments ("/playground/",
 // "/<folder>/", "/<space>/<folder>/") — never the site root.
@@ -1557,7 +1559,8 @@ export default {
       return nameApi(request, url, env);
     }
     // Created-canvases registry — gated like /__status: any signed-in user (or anyone,
-    // in legacy/open mode) can create a board; the pages it serves are gated below.
+    // in legacy/open mode) can create/rename/remove a board. The board PAGES it
+    // registers are public (served past the gate in the fetch fallthrough below).
     if (url.pathname === "/__canvases") {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       return canvasesApi(request, url, env, me);
@@ -1624,6 +1627,14 @@ export default {
       }
       return withAssetCache(withLiveReload(asset, url), url);
     }
+
+    // Created canvas boards are public like published prototypes — same obscure
+    // share-link model (the /__board doc and /__rt room were already open; only the
+    // loader page was gated). Checked only after every other door failed, so the KV
+    // read never taxes normal traffic. Boards under an admin-only space never reach
+    // here — isRestrictedPath sealed them above.
+    const virt = await virtualCanvas(request, env, url);
+    if (virt) return virt;
 
     // Otherwise show the login page, remembering where they were headed.
     // 200 (not 401) so password managers treat it as a normal login page.

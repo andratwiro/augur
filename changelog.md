@@ -16,6 +16,11 @@ The date is the day the update went live. The page works out "Today / 3 days ago
 
 ---
 
+## 2026-08-07 — New canvases are shareable right away
+A canvas made with the "＋ New canvas" button now opens for anyone with the link,
+just like a published prototype — no sign-in needed. Before, only signed-in
+teammates could see it.
+
 ## 2026-08-06 — Cards show whose work it is
 The little face on a card is now the person who has worked on it most, not whoever
 happened to save it last, so a project someone else built carries their photo. The

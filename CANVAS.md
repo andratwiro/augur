@@ -368,20 +368,24 @@ contents live in KV anyway. So folder index pages (Playground + each project fol
 carry a "＋ New canvas" folderbar button — signed-in users only (`/__me` reveals it) —
 that registers `<dir><slug>/` in the `canvases` KV map via **`POST /__canvases`**
 `{dir, name}` and navigates there. The worker serves the standard loader at any
-registered path (404 fallthrough in the authed branch — `virtualCanvas` in
-`src/_worker.js`), so the page exists the moment it's named. `NEWCANVAS_JS` (build.js)
+registered path (404 fallthrough in the authed branch, and past the login gate for
+signed-out visitors — `virtualCanvas` in `src/_worker.js`), so the page exists the
+moment it's named. `NEWCANVAS_JS` (build.js)
 also appends a card per registered canvas under the current folder, with a remove
 button (`POST /__canvases {path, remove:true}` — the board doc is left in KV, so
 recreating the same name restores the board).
 
 The limits, by design:
 
-- **Created canvases ride the login gate.** They're not in the build-time
-  `PUBLIC_PREFIXES`, so there is no public share link until someone **materializes**
-  the board: commit the 12-line loader at the matching repo path (e.g.
-  `playground/<slug>/index.html` or `<folder>/prototypes/<slug>/index.html`) and
-  remove the registry entry once it ships. Contents carry over untouched — the
-  board doc is keyed by URL, and the URL doesn't change.
+- **Created canvases are public** (2026-08-07), same obscure-share-link model as
+  published prototypes — the loader is served past the gate, and `/__board` +
+  `/__rt` were always open. Boards under an admin-only space stay sealed
+  (`isRestrictedPath` runs first). Materializing — committing the 12-line loader at
+  the matching repo path (e.g. `playground/<slug>/index.html` or
+  `<folder>/prototypes/<slug>/index.html`) and removing the registry entry — is now
+  purely about promoting a board to a real repo file, not about shareability.
+  Contents carry over untouched — the board doc is keyed by URL, and the URL
+  doesn't change.
 - **Creation refuses to shadow shipped files** (any non-404 at the target URL) and
   refuses the site root; dirs are slug-segment paths only.
 - The registry is one KV key (`canvases`), same frugal pattern as statuses/names:
