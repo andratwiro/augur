@@ -1048,6 +1048,13 @@ async function canvasesApi(request, url, env, me) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// Build-time injected (presence-checked like USERS): the extra tags every BUILT
+// prototype page carries — the review/comment overlay (graph.js + comments.js,
+// which power C-to-comment and Shift+C provenance) plus any build addon's tags.
+// Without this a worker-served canvas page mounts the engine but loses the
+// overlay stack that real prototype files get injected at build.
+const CANVAS_LOADER_EXTRAS = "";
+
 // The same loader a repo canvas folder carries — the page just names the board and
 // mounts the shared /__canvas/ engine; contents persist to /__board keyed by URL.
 function canvasLoaderPage(name) {
@@ -1065,7 +1072,7 @@ function canvasLoaderPage(name) {
 <script>window.GV_CANVAS = ${boot};</script>
 </head>
 <body>
-<script src="/__canvas/canvas.js" defer></script>
+<script src="/__canvas/canvas.js" defer></script>${CANVAS_LOADER_EXTRAS}
 </body>
 </html>`;
 }
