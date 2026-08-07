@@ -121,7 +121,7 @@
 
   // ---- board state ---------------------------------------------------------
   var board = { v: 1, name: CFG.name || "Untitled canvas", view: { x: 0, y: 0, scale: 1 }, nodes: [] };
-  var nodeEls = Object.create(null);        // id -> DOM element (null proto: ids are untrusted strings)
+  var nodeEls = {};        // id -> DOM element
   var selected = [];       // ids of selected nodes (click, shift-add, or marquee = multi)
   var transformCbs = [];   // listeners notified on every pan/zoom (comments overlay, sel bar)
 
@@ -299,7 +299,7 @@
   function noteTomb(n) {
     if (!n || !n.id) return;
     if (!board.tombs) board.tombs = {};
-    setTombOn(board.tombs, n.id, { v: (n.v || 0) + 1, t: Date.now() });
+    board.tombs[n.id] = { v: (n.v || 0) + 1, t: Date.now() };
   }
   function removeNode(id) {
     var i = board.nodes.findIndex(function (n) { return n.id === id; });
@@ -376,7 +376,7 @@
   // ---- render --------------------------------------------------------------
   function render() {
     Object.keys(nodeEls).forEach(function (id) { nodeEls[id].remove(); });
-    nodeEls = Object.create(null);
+    nodeEls = {};
     board.nodes.forEach(renderNode);
     if (selected.length) setSelection(selected.slice());
   }
@@ -3711,7 +3711,7 @@
   // into the shadow as they arrive (histSeen), so they never enter YOUR history and your ⌘Z
   // can never revert a teammate's work. Same debounce as the save, so a burst of typing or one
   // drag is one undo step.
-  var histUndo = [], histRedo = [], histShadow = Object.create(null), histTimer = null, histBusy = false;
+  var histUndo = [], histRedo = [], histShadow = {}, histTimer = null, histBusy = false;
   var HIST_MAX = 60;
   function histClone(n) {
     var c = {}; for (var k in n) if (n.hasOwnProperty(k)) c[k] = n[k];
@@ -3720,13 +3720,13 @@
     if (n.crop) c.crop = { x: n.crop.x, y: n.crop.y, w: n.crop.w, h: n.crop.h };
     return c;
   }
-  function histSeed() { histShadow = Object.create(null); board.nodes.forEach(function (n) { histShadow[n.id] = histClone(n); }); }
+  function histSeed() { histShadow = {}; board.nodes.forEach(function (n) { histShadow[n.id] = histClone(n); }); }
   function histSeen(node) { if (node) histShadow[node.id] = histClone(node); }   // remote change: mine to ignore
   function histForget(id) { delete histShadow[id]; }
   function histSchedule() { if (histBusy) return; if (histTimer) clearTimeout(histTimer); histTimer = setTimeout(histCommit, 500); }
   function histCommit() {
     histTimer = null;
-    var entry = [], seen = Object.create(null);
+    var entry = [], seen = {};
     board.nodes.forEach(function (n) {
       seen[n.id] = true;
       var was = histShadow[n.id];
@@ -3755,7 +3755,7 @@
       var copy = histClone(want);
       // the restored state must OUT-VERSION whatever superseded it (a later edit, or the
       // tombstone of the delete being undone), or the room bounces the undo as stale
-      var tb = tombAt(board.tombs, it.id);
+      var tb = board.tombs && board.tombs[it.id];
       copy.v = Math.max(copy.v || 0, i >= 0 ? (board.nodes[i].v || 0) : 0, tb ? tb.v : 0);
       if (tb) delete board.tombs[it.id];
       if (i >= 0) board.nodes[i] = copy; else board.nodes.push(copy);
@@ -3845,9 +3845,6 @@
     return null;
   }
   function unloadFlush() {
-    // one forced diff first: edits from the last <=120ms (or made while hidden) haven't
-    // ticked yet — flush them through the live socket before deciding the room has them
-    try { mpTick(true); } catch (e) {}
     if (mpLiveFresh()) return; // the room outlives this tab and flushes on empty
     if (!loadOk) return;       // an unread board is not ours to overwrite
     if (docSig() === lastSavedSig) return;
@@ -3942,7 +3939,7 @@
   // `view` is per-user viewport and is never synced.
   var mp = null, mpSid = null, mpName = "", mpColor = "#0d0d0d", mpAvatar = null;
   var mpPeers = {};        // sid -> {name,color,focus,cx,cy,el,idle}
-  var mpShadow = Object.create(null); // node id -> signature as last seen/sent (null proto: untrusted ids)
+  var mpShadow = {};       // node id -> signature as last seen/sent
   var mpShadowName = null; // board name as last seen/sent
   var mpReady = false, mpRetry = 1000, mpPongAt = 0, mpEverReady = false;
   var mpCursorLayer = null, mpPresence = null, mpCurPend = null, mpCurTimer = null;
@@ -3957,11 +3954,6 @@
   function vOf(x) { return x && typeof x.v === "number" ? x.v : 0; }
   function vnOf(x) { return x && typeof x.vn === "number" ? x.vn : 0; }
   function beats(a, b) { return vOf(a) > vOf(b) || (vOf(a) === vOf(b) && vnOf(a) > vnOf(b)); }
-  // tombs are plain objects keyed by node id, and ids are strings other clients chose —
-  // a read must never hit an inherited member ("constructor") and a write must never
-  // follow the "__proto__" setter. Same rule as the room.
-  function tombAt(t, id) { return t && Object.prototype.hasOwnProperty.call(t, id) ? t[id] : null; }
-  function setTombOn(t, id, val) { Object.defineProperty(t, id, { value: val, writable: true, enumerable: true, configurable: true }); }
   // The socket only counts as the persistence rail while it's provably alive: a half-open
   // transport (slept laptop, switched network) reports readyState OPEN for minutes after
   // the room has reaped us and stopped persisting anything we send into the void.
@@ -3987,7 +3979,7 @@
     return mpSig(c);
   }
   function mpSeedShadow() {
-    mpShadow = Object.create(null);
+    mpShadow = {};
     board.nodes.forEach(function (n) { mpShadow[n.id] = mpSig(n); });
     mpShadowName = board.name;
   }
@@ -4002,49 +3994,27 @@
   // programmatic/agent mutations (GVCanvas.addNode from a console) still sync.
   var mpPokeAt = 0, mpTickN = 0;
   function poke() { mpPokeAt = Date.now(); }
-  // The room hard-drops frames over its 8MB ceiling — SILENTLY, from the sender's view.
-  // Stay well under it, split large batches, and say so when a single op can never fit
-  // (the node would otherwise exist in this tab only and die with it).
-  var MP_MAX_OP = 6 * 1024 * 1024;
-  var mpOversizeWarned = Object.create(null);
-  function mpSendOps(ops) {
-    var batch = [], size = 0;
-    for (var i = 0; i < ops.length; i++) {
-      var len = JSON.stringify(ops[i]).length;
-      if (len > MP_MAX_OP) {
-        var oid = (ops[i].node && ops[i].node.id) || ops[i].id || "?";
-        if (!mpOversizeWarned[oid]) {
-          mpOversizeWarned[oid] = 1;
-          toast("An item is too large to sync — others won't see it");
-        }
-        continue;
-      }
-      if (size + len > MP_MAX_OP && batch.length) { mpSend({ t: "ops", ops: batch }); batch = []; size = 0; }
-      batch.push(ops[i]); size += len;
-    }
-    if (batch.length) mpSend({ t: "ops", ops: batch });
-  }
-  function mpTick(force) {
-    if (!force && document.hidden) return;
+  function mpTick() {
+    if (document.hidden) return;
     mpTickN++;
-    if (!(force || drag || Date.now() - mpPokeAt < 2000 || mpTickN % 8 === 0)) return;
+    if (!(drag || Date.now() - mpPokeAt < 2000 || mpTickN % 8 === 0)) return;
     // versions are stamped even while SOLO (socket down): the bump is what makes an
     // offline edit a WINNER when the socket returns and the seed reconciles, instead of
     // stale-looking noise the room throws away
     var live = mp && mp.readyState === 1 && mpReady;
-    var ops = [], seen = Object.create(null);
+    var ops = [], seen = {};
     board.nodes.forEach(function (n) {
       var s = mpSig(n); seen[n.id] = true;
       if (mpShadow[n.id] !== s) {
         n.v = (n.v || 0) + 1; n.vn = rndVn();
-        if (tombAt(board.tombs, n.id)) delete board.tombs[n.id]; // re-created over a tomb (paste/undo)
+        if (board.tombs && board.tombs[n.id]) delete board.tombs[n.id]; // re-created over a tomb (paste/undo)
         mpShadow[n.id] = mpSig(n); // the post-bump sig, or the bump itself echoes forever
         ops.push({ op: "upsert", node: n });
       }
     });
     for (var id in mpShadow) if (!seen[id]) {
       delete mpShadow[id];
-      var tb = tombAt(board.tombs, id);
+      var tb = board.tombs && board.tombs[id];
       var del = { op: "del", id: id };
       if (tb) del.v = tb.v; // the tomb noteTomb() left — out-ranks the node's last version
       ops.push(del);
@@ -4054,7 +4024,7 @@
       board.nameV = (board.nameV || 0) + 1;
       ops.push({ op: "name", name: board.name, v: board.nameV });
     }
-    if (ops.length && live) mpSendOps(ops);
+    if (ops.length && live) mpSend({ t: "ops", ops: ops });
   }
 
   function mpDragInvolves(id) {
@@ -4089,7 +4059,7 @@
         var r = op.node;
         var versioned = typeof r.v === "number";
         var lcl = nodeById(r.id);
-        var tmb = tombAt(board.tombs, r.id);
+        var tmb = board.tombs && board.tombs[r.id];
         // resurrection guard: a write that predates a deletion we know about stays dead
         if (tmb && !(vOf(r) > tmb.v)) return;
         // version-checked LWW: a versioned write must beat what we hold (both sides run
@@ -4145,7 +4115,7 @@
         // (and the room, applying the same rule, bounced the delete with a corrective)
         if (dl && dv != null && !(dv > vOf(dl))) return;
         if (!board.tombs) board.tombs = {};
-        setTombOn(board.tombs, op.id, { v: dv != null ? dv : (dl ? vOf(dl) + 1 : 1), t: Date.now() });
+        board.tombs[op.id] = { v: dv != null ? dv : (dl ? vOf(dl) + 1 : 1), t: Date.now() };
         delete mpShadow[op.id];
         histForget(op.id);
         mpRemoveLocal(op.id);
@@ -4169,40 +4139,19 @@
     if (!doc || !Array.isArray(doc.nodes)) return;
     mpAdopted = true;
     var view = board.view;
-    var localBy = Object.create(null);
+    var localBy = {};
     board.nodes.forEach(function (n) { localBy[n.id] = n; });
     // union of tombstones — my offline deletions stay deletions, theirs apply to me
-    var docT = doc.tombs && typeof doc.tombs === "object" ? doc.tombs : {};
-    var tombs = Object.create(null);
-    for (var dtid in docT) if (Object.prototype.hasOwnProperty.call(docT, dtid)) setTombOn(tombs, dtid, docT[dtid]);
+    var tombs = doc.tombs && typeof doc.tombs === "object" ? doc.tombs : {};
     var mineT = board.tombs || {};
-    for (var tid in mineT) {
-      if (!Object.prototype.hasOwnProperty.call(mineT, tid)) continue;
-      var have = tombAt(tombs, tid);
-      if (!have || mineT[tid].v > have.v) setTombOn(tombs, tid, mineT[tid]);
-    }
-    var merged = [], dirty = [], toRender = [], delOffers = [];
+    for (var tid in mineT) if (!tombs[tid] || mineT[tid].v > tombs[tid].v) tombs[tid] = mineT[tid];
+    var merged = [], dirty = [], toRender = [];
     doc.nodes.forEach(function (r) {
       if (!r || !r.id) return;
       var l = localBy[r.id];
       delete localBy[r.id];
-      var t = tombAt(tombs, r.id);
-      if (t && !(vOf(r) > t.v) && !(l && vOf(l) > t.v)) {
-        // deleted (by either side). If the ROOM still carries the node, the deletion is
-        // OURS and never reached it (offline delete) — the old adopt suppressed the node
-        // locally and told nobody, so the board diverged silently (audit v2). Re-offer
-        // the del, raised above the room's copy so it wins server-side too.
-        if (t.v <= vOf(r)) { t.v = vOf(r) + 1; setTombOn(tombs, r.id, t); }
-        delOffers.push({ op: "del", id: r.id, v: t.v });
-        return;
-      }
-      if (l && (mpDragInvolves(r.id) || mpLocallyEditing(r.id))) {
-        // same rule as mpApplyOps: a node you're mid-drag or mid-typing in is not torn
-        // down by a reconnect adopt — keep the LOCAL object (and its live editor), carry
-        // the version high-water mark, and let the tick re-offer our copy out-versioned
-        if (typeof r.v === "number" && vOf(r) > vOf(l)) l.v = r.v;
-        merged.push(l); dirty.push(l.id); return;
-      }
+      var t = tombs[r.id];
+      if (t && !(vOf(r) > t.v) && !(l && vOf(l) > t.v)) return; // deleted (by either side)
       if (l && beats(l, r)) { merged.push(l); dirty.push(l.id); return; }
       if (l && mpSig(l) === mpSig(r)) { merged.push(l); return; } // identical — KEEP the local
       // object (its element's event handlers close over it) and skip the re-render
@@ -4211,7 +4160,7 @@
       histSeen(r); // remote change folded into the hist shadow, same as a live op
     });
     for (var id in localBy) { // nodes the room doesn't know: mine and unsent — keep, reoffer
-      var l2 = localBy[id], t2 = tombAt(tombs, id);
+      var l2 = localBy[id], t2 = tombs[id];
       if (t2 && !(vOf(l2) > t2.v)) continue; // deleted while I was away
       merged.push(l2); dirty.push(id);
     }
@@ -4238,8 +4187,7 @@
     dirty.forEach(function (d2) { delete mpShadow[d2]; });
     if (keptName) mpShadowName = doc.name || null;
     loadOk = true; // the room's doc is real state — solo saving is safe from here on
-    lastSavedSig = dirty.length || delOffers.length ? null : docSig(); // clean adopt == already persisted; a merge isn't yet
-    if (delOffers.length) mpSend({ t: "ops", ops: delOffers }); // offline deletions, finally delivered
+    lastSavedSig = dirty.length ? null : docSig(); // clean adopt == already persisted; a merge isn't yet
     mpRenderFocus();
   }
   // Reconnecting into a room with NO doc (hibernated away, or the realtime worker was
