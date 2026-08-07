@@ -30,9 +30,9 @@
 //   All modes take [--name N --color '#hex'] — the agent's identity. Multiple agents can
 //   co-work the same board simultaneously: each runs its OWN daemon (own name, color, and
 //   command file); the engine renders each as its own tinted Clawd, per-node LWW merges.
-//   ⚠️ In daemon mode DON'T pass --name for the session's own Clawd: with no --name it
-//   reads the name from the session transcript and FOLLOWS /rename automatically (see
-//   "session identity" below). Pass --name only to pin a sibling agent to its own identity.
+//   ⚠️ In daemon mode DON'T pass --name/--color for the session's own Clawd: with neither
+//   it reads BOTH from the session transcript and FOLLOWS /rename and /color automatically
+//   (see "session identity" below). Pass them only to pin a sibling agent's own identity.
 //
 //   node clawd-canvas.mjs daemon <boardPath> <cmdFile> # persistent puppet: tail a JSONL
 //     command file and execute in order — one connection an agent can command across turns.
@@ -50,8 +50,8 @@
 //       {"cmd":"rename","name":".."} {"cmd":"save"} {"cmd":"quit"}
 //       {"cmd":"chill","v":false}                        disable the ambient chill loop
 //       {"cmd":"identity","name":"F5 Clawd"}             rename the AGENT live (quick
-//         reconnect; color re-derives from the name unless "color" is given). Rarely
-//         needed by hand — a nameless daemon already follows the session's own name.
+//         reconnect; color re-derives unless "color" is given). Rarely needed by hand —
+//         a nameless daemon already follows the session's own name AND /color.
 //     It also mirrors the live doc to <cmdFile dir>/clawd-board.json on every op, so the
 //     agent always reads the human's latest state without reconnecting. While connected and
 //     idle (no commands ~12s, pose plain idle) Clawd CHILLS instead of freezing: fidgets,
@@ -71,9 +71,16 @@ const CLAWD_ORANGE = '#d97757'; // Claude clay — the primary agent's Clawd hue
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-// identity color derives from the name (stable hash → curated palette), so a terminal's
-// Clawd keeps its color across restarts with no coordination. Plain "Clawd" = the orange.
+// identity color: the terminal session's /color is the source of truth (the daemon reads
+// it from the transcript — see sessionNamer); the name hash is only the fallback for
+// sessions that never picked one, so a terminal's Clawd keeps a stable color across
+// restarts with no coordination. Plain "Clawd" = the orange.
 const PALETTE = ['#4e8fd9', '#8a63c9', '#2e9e6b', '#d9569b', '#c8912e', '#3aa6b9', '#6a7dd9', '#b5533c'];
+// Claude Code's /color names, mapped onto the board palette's hues
+export const TERM_COLORS = {
+  red: '#b5533c', orange: CLAWD_ORANGE, yellow: '#c8912e', green: '#2e9e6b',
+  blue: '#4e8fd9', purple: '#8a63c9', pink: '#d9569b',
+};
 export const colorFor = (name) => {
   if (!name || slug(name) === 'clawd') return CLAWD_ORANGE;
   let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -399,12 +406,14 @@ export class ClawdCanvas {
 }
 
 // ---- session identity (the agent names ITSELF) ------------------------------
-// A terminal session's name is the Clawd's name. Relying on the agent to pass
-// --name (and to re-send `identity` on every /rename) failed exactly the way you
-// would expect: it read a stale name and the pill was wrong. So the daemon reads
-// the name from the session transcript instead. Claude Code appends
-//   {"type":"custom-title","customTitle":"…","sessionId":"…"}
-// on every rename, so the LAST such line IS the current name.
+// A terminal session's name is the Clawd's name, and its /color is the Clawd's color.
+// Relying on the agent to pass --name (and to re-send `identity` on every /rename)
+// failed exactly the way you would expect: it read a stale name and the pill was
+// wrong. So the daemon reads identity from the session transcript instead. Claude
+// Code appends
+//   {"type":"custom-title","customTitle":"…","sessionId":"…"}   on every /rename
+//   {"type":"agent-color","agentColor":"orange","sessionId":"…"} on every /color
+// so the LAST such line of each kind IS the current identity.
 // The daemon's command file lives in the session scratchpad
 //   …/<project-slug>/<sessionId>/scratchpad/<cmdFile>
 // which is enough to locate ~/.claude/projects/<project-slug>/<sessionId>.jsonl.
@@ -420,12 +429,14 @@ const sessionTranscriptFor = async (cmdFile) => {
   return join(homedir(), '.claude', 'projects', projectSlug, `${sessionId}.jsonl`);
 };
 
-// Tails the transcript for custom-title lines. Reads the whole file once, then
-// only the bytes appended since — a rename mid-session costs a few hundred bytes.
+// Tails the transcript for identity lines (title + agent color). Reads the whole file
+// once, then only the bytes appended since — a rename or /color mid-session costs a
+// few hundred bytes.
 const sessionNamer = async (file) => {
   const { statSync, openSync, readSync, closeSync, existsSync } = await import('node:fs');
   const TITLE = /"type":"custom-title","customTitle":"((?:[^"\\]|\\.)*)"/g;
-  let seen = 0, current = null;
+  const COLOR = /"type":"agent-color","agentColor":"([a-z]+)"/g;
+  let seen = 0, current = null, colorName = null;
   const poll = () => {
     if (!file || !existsSync(file)) return current;
     try {
@@ -437,13 +448,17 @@ const sessionNamer = async (file) => {
       readSync(fd, buf, 0, buf.length, seen);
       closeSync(fd);
       seen = size;
-      for (const m of buf.toString('utf8').matchAll(TITLE)) {
+      const txt = buf.toString('utf8');
+      for (const m of txt.matchAll(TITLE)) {
         try { current = JSON.parse('"' + m[1] + '"'); } catch { current = m[1]; }
       }
+      for (const m of txt.matchAll(COLOR)) colorName = m[1];
     } catch {}
     return current;
   };
-  return { poll, file };
+  // the session's /color as a board hex, or null if the session never set one
+  const pollColor = () => { poll(); return TERM_COLORS[colorName] || null; };
+  return { poll, pollColor, file };
 };
 
 // ---- CLI --------------------------------------------------------------------
@@ -456,13 +471,14 @@ if (isMain) {
   const sibling = argv.indexOf('--sibling') >= 0; if (sibling) argv.splice(argv.indexOf('--sibling'), 1);
   const lingerMs = Number(flag('linger') ?? process.env.CLAWD_LINGER_MS ?? 3 * 3600 * 1000);
   const idleMs = Number(process.env.CLAWD_IDLE_MS || 180000);
-  const color = flag('color'); // identity: one per agent, so several Clawds can co-work
+  let color = flag('color'); // identity: one per agent, so several Clawds can co-work
+  const colorWasExplicit = color != null; // an explicit --color pins it; no /color following
   const sessionFileFlag = flag('session-file'); // escape hatch when the path isn't derivable
   const [mode, boardPath] = argv;
   if (!mode || !boardPath) { console.error("usage: node clawd-canvas.mjs <probe|demo|chill|daemon> <boardPath> [args] [--name N --color '#hex' --session-file P]"); process.exit(1); }
   // IDENTITY IS DETERMINISTIC, not the agent's choice: the session's own Clawd takes its
-  // name from the terminal session (and follows /rename), its color from the name hash,
-  // and its strip state from behavior. --name exists ONLY for sibling agents that need a
+  // name from the terminal session (and follows /rename), its color from the session's
+  // /color (name-hash fallback when none was ever set), and its strip state from behavior. --name exists ONLY for sibling agents that need a
   // separate identity, and must say so explicitly — this guard is what makes the rule
   // structural instead of a doc plea.
   if (mode === 'daemon' && nameWasExplicit && !sibling) {
@@ -477,6 +493,7 @@ if (isMain) {
   if (mode === 'daemon' && argv[2]) {
     namer = await sessionNamer(sessionFileFlag || (await sessionTranscriptFor(argv[2])));
     if (!name) name = namer.poll() || undefined;
+    if (!colorWasExplicit) color = namer.pollColor() || undefined;
   }
   const c = new ClawdCanvas({ boardPath, ...(name ? { name } : {}), ...(color ? { color } : {}) });
   await c.connect();
@@ -556,7 +573,7 @@ if (isMain) {
     // identity change rides a quick reconnect, carrying pose/bubble/cursor across.
     const setIdentity = async (newName, newColor) => {
       if (!newName && !newColor) return;
-      if ((newName || c.name) === c.name && !newColor) return;
+      if ((newName || c.name) === c.name && (!newColor || newColor === c.color)) return;
       const bubble = c._bubbleText, pose = c._pose, cur = { ...c._cur };
       c.unsay(); c.close();
       c.name = newName || c.name;
@@ -675,12 +692,13 @@ if (isMain) {
       }
     }, 15000);
 
-    // follow the session name — /rename in the terminal renames Clawd on the board,
-    // with nothing for the agent to notice or remember.
+    // follow the session identity — /rename in the terminal renames Clawd on the board,
+    // /color recolors it, with nothing for the agent to notice or remember.
     if (namer && !nameWasExplicit) {
       setInterval(() => {
-        const t = namer.poll();
-        if (t && t !== c.name) enqueue(() => setIdentity(t), 'identity');
+        const t = namer.poll() || c.name;
+        const col = colorWasExplicit ? c.color : (namer.pollColor() || colorFor(t));
+        if (t !== c.name || col !== c.color) enqueue(() => setIdentity(t, col), 'identity');
       }, 5000);
     }
 

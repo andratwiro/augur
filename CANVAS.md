@@ -47,8 +47,8 @@
 > eventually **walk out** when their session dies (transcript heartbeat); and everyone has
 > **cursor chat** (the "/" key) which daemons log to `clawd-events.jsonl` so words typed
 > at a Clawd reach its agent next turn. Identity is DETERMINISTIC: name = session name,
-> color = name hash, default state = working; the daemon refuses `--name` without
-> `--sibling`.
+> color = the session's `/color` (name hash only when none was ever set), default state =
+> working; the daemon refuses `--name` without `--sibling`.
 >
 > **New agents: read "Working on the canvas" below first**, then the Gotchas — every entry
 > there was bought with a real bug. The `canvas.js` header has a section MAP.
