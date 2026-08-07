@@ -5130,7 +5130,15 @@ async function main() {
   const sigParts = [`ui:${UI_VERSION}`];
   let defaultGraph = null;
 
+  // GV_ONLY_SPACE=<id> builds just that space's content (the direct-publish CLI's
+  // fast path — it uploads only that space's manifest, so the other spaces' absence
+  // here is harmless). The space LIST (switcher, routing) still reflects every
+  // discovered space; cross-space accumulations (publicPrefixes, versionMap,
+  // shell id) are partial by design — the publish server derives routing from ALL
+  // live manifests, never from a partial build's routing.json.
+  const ONLY_SPACE = process.env.GV_ONLY_SPACE || "";
   for (const space of spaces) {
+    if (ONLY_SPACE && space.id !== ONLY_SPACE) continue;
     const r = await buildSpace(space); // sets BASE + DIST_SPACE for this space
     if (space.default) defaultGraph = r.graph;
 
@@ -5427,6 +5435,62 @@ async function main() {
       2
     )
   );
+
+  // ── Content manifests (per space + the engine chrome) ────────────────────────
+  // dist/__manifests/<id>.json — {id, files:{<site-relative path>: {h,ct,s}}},
+  // h = sha256 of the body. The diffable unit for the direct-publish path: a
+  // publish uploads only the blobs the store doesn't hold, then commits the
+  // manifest (an atomic pointer flip). Ownership: files under a non-default
+  // space's base belong to that space; the shared chrome (fixed prefix list —
+  // emitted by the engine, not by any space) publishes as the pseudo-space
+  // "_engine"; the default space owns the rest of the root. Excluded entirely:
+  // _worker.js (deployed code, not content), _build.json + __config/ (derived
+  // per build/publish), __manifests/ (this very output).
+  const ENGINE_CHROME = [
+    "fonts/", "__review/", "__canvas/", "admin/", "changelog/", "pitis/",
+    "piti.js", "404.html", "manifest.webmanifest", "space-icon.png",
+    "augur-eye.svg", "augur-icon-192.png", "augur-icon-512.png", "augur-mark.png",
+  ];
+  const MANIFEST_MIME = {
+    html: "text/html; charset=utf-8", css: "text/css; charset=utf-8",
+    js: "text/javascript; charset=utf-8", mjs: "text/javascript; charset=utf-8",
+    json: "application/json; charset=utf-8", map: "application/json",
+    svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+    webp: "image/webp", gif: "image/gif", ico: "image/x-icon",
+    txt: "text/plain; charset=utf-8", md: "text/plain; charset=utf-8",
+    woff: "font/woff", woff2: "font/woff2", ttf: "font/ttf", otf: "font/otf",
+    mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg",
+    opus: "audio/opus", wav: "audio/wav", flac: "audio/flac",
+    webm: "video/webm", mp4: "video/mp4", pdf: "application/pdf",
+    webmanifest: "application/manifest+json", xml: "application/xml",
+  };
+  const ctFor = (p) => MANIFEST_MIME[p.slice(p.lastIndexOf(".") + 1).toLowerCase()] || "application/octet-stream";
+  const { createHash } = await import("node:crypto");
+  const manifests = {};
+  const nonDefaultBases = NAV_STATE.spaces.filter((s) => !s.default).map((s) => ({ id: s.id, prefix: s.id + "/" }));
+  const manifestDefaultId = (NAV_STATE.spaces.find((s) => s.default) || { id: "_root" }).id;
+  async function walkDist(dir, rel, out) {
+    for (const e of await fs.readdir(dir, { withFileTypes: true })) {
+      const r = rel ? rel + "/" + e.name : e.name;
+      if (e.isDirectory()) await walkDist(path.join(dir, e.name), r, out);
+      else out.push(r);
+    }
+    return out;
+  }
+  for (const rel of await walkDist(DIST, "", [])) {
+    if (rel === "_worker.js" || rel === "_build.json") continue;
+    if (rel.startsWith("__config/") || rel.startsWith("__manifests/")) continue;
+    const sp = nonDefaultBases.find((b) => rel.startsWith(b.prefix));
+    const owner = sp ? sp.id
+      : ENGINE_CHROME.some((p) => rel === p || rel.startsWith(p)) ? "_engine"
+      : manifestDefaultId;
+    const body = await fs.readFile(path.join(DIST, rel));
+    const h = createHash("sha256").update(body).digest("hex");
+    (manifests[owner] ||= { id: owner, files: {} }).files["/" + rel] = { h, ct: ctFor(rel), s: body.length };
+  }
+  await fs.mkdir(path.join(DIST, "__manifests"), { recursive: true });
+  for (const [id, m] of Object.entries(manifests))
+    await fs.writeFile(path.join(DIST, "__manifests", id + ".json"), JSON.stringify(m), "utf8");
 
   console.log(`Built dist/ — ${plural(spaces.length, "space")} (${spaces.map((s) => s.id).join(", ")}).`);
 }
