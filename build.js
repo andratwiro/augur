@@ -338,7 +338,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.98";
+const UI_VERSION = "0.99";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -752,12 +752,21 @@ function modifiedTime(srcDir, fsLatest) {
  * null (uncommitted folder, or nobody we know has touched it).
  */
 function mainContributor(absDir) {
+  return contributors(absDir)[0] || null;
+}
+
+/**
+ * EVERY known contributor to a folder, most commits first (ties → most recent).
+ * Same per-user folding as mainContributor; the root-index face pile renders the
+ * whole list, capped for weight.
+ */
+function contributors(absDir) {
   const dates = WS_ROOT ? spaceDates(WS_ROOT) : null;
-  if (!dates) return null;
+  if (!dates) return [];
   const rel = path.relative(WS_ROOT, absDir);
-  if (!rel || rel.startsWith("..")) return null;
+  if (!rel || rel.startsWith("..")) return [];
   const tally = dates.by.get(rel);
-  if (!tally) return null;
+  if (!tally) return [];
   const byUser = new Map(); // public profile → {n, t}
   for (const [email, v] of tally) {
     const u = USER_BY_EMAIL.get(email);
@@ -766,11 +775,9 @@ function mainContributor(absDir) {
     if (acc) { acc.n += v.n; acc.t = Math.max(acc.t, v.t); }
     else byUser.set(u, { n: v.n, t: v.t });
   }
-  let best = null, bestV = null;
-  for (const [u, v] of byUser) {
-    if (!bestV || v.n > bestV.n || (v.n === bestV.n && v.t > bestV.t)) { best = u; bestV = v; }
-  }
-  return best;
+  return [...byUser.entries()]
+    .sort((a, b) => b[1].n - a[1].n || b[1].t - a[1].t)
+    .map(([u]) => u);
 }
 
 /** Latest filesystem mtime (ms) of any file within a directory tree. */
@@ -984,6 +991,7 @@ async function scan() {
       name: top.name,
       prototypes,
       research: await scanResearch(path.join(WS_ROOT, top.name)),
+      people: contributors(path.join(WS_ROOT, top.name)),
       mtimeMs: Math.max(...prototypes.map((p) => p.mtimeMs)),
     });
   }
@@ -1322,6 +1330,11 @@ const PAGE_CSS = `
     /* Landing card: title row so the static tag sits at the far right of the title. */
     .opp-name-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .opp-name-row .proto-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* Contributor face pile (root project cards) — overlapping, capped in facePile(). */
+    .opp-people { display: inline-flex; align-items: center; flex: none; padding-left: 4px; }
+    .opp-face { width: 20px; height: 20px; font-size: 8.5px; margin-left: -6px; }
+    .opp-face:first-child { margin-left: 0; }
+    .opp-face--more { background: var(--bg-2); color: var(--muted); font-size: 9px; }
 
     /* ---- Collapsible Pages sections (native <details>) ---- */
     details.fsection { margin: 0; }
@@ -2254,13 +2267,6 @@ function researchChip(research) {
   const label = researchLabel(research.length);
   return `<span class="research-wrap"><button type="button" class="research-chip" aria-expanded="false" aria-label="${label}" title="${label}">${IC_RESEARCH}<span class="research-chip__n">${research.length}</span></button><div class="research-pop" role="group" aria-label="Research &amp; context files" hidden><div class="research-pop__head">Research &amp; context</div><ul class="research-pop__list">${researchListItems(research)}</ul></div></span>`;
 }
-// Static (landing card): at-a-glance count only, no popover (clicks fall through to
-// the card's cover link, which opens the opportunity where the chip is interactive).
-function researchTag(research) {
-  if (!research || !research.length) return "";
-  const label = researchLabel(research.length);
-  return `<span class="research-tag" title="${label}" aria-label="${label}">${IC_RESEARCH}<span class="research-chip__n">${research.length}</span></span>`;
-}
 const IC_LIBRARY = ic(`<path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/>`); // library
 const IC_CHANGELOG = ic(`<path d="M12 8v4l3 2"/><path d="M3.05 11a9 9 0 1 1 .5 4"/><path d="M3 21v-5h5"/>`); // history (clock + counter-rotate)
 const IC_CHEV = ic(`<path d="m9 18 6-6-6-6"/>`); // chevron-right (rotates open via CSS)
@@ -2301,6 +2307,24 @@ function editorChip(ed) {
     : `background:${ed.color || "#4f46e5"}`;
   const label = `Main contributor: ${escAttr(ed.name)}`;
   return `<span class="proto-editor" style="${style}" title="${label}" aria-label="${label}">${ed.avatar ? "" : escAttr(ini)}</span>`;
+}
+
+// Overlapping face pile — EVERY known contributor to a folder (most commits
+// first), the at-a-glance "who works here" on root project cards. Capped so a
+// busy folder stays light; the overflow count keeps it honest.
+function facePile(people, cap = 5) {
+  if (!people || !people.length) return "";
+  const shown = people.slice(0, cap);
+  const extra = people.length - shown.length;
+  const chips = shown.map((u) => {
+    const ini = (u.initials || (u.name || "?").slice(0, 2)).toUpperCase();
+    const style = u.avatar
+      ? `background-image:url('${u.avatar}')`
+      : `background:${u.color || "#4f46e5"}`;
+    return `<span class="proto-editor opp-face" style="${style}" title="${escAttr(u.name)}" aria-label="${escAttr(u.name)}">${u.avatar ? "" : escAttr(ini)}</span>`;
+  }).join("");
+  const more = extra > 0 ? `<span class="proto-editor opp-face opp-face--more" title="+${extra} more">+${extra}</span>` : "";
+  return `<span class="opp-people" role="group" aria-label="Contributors">${chips}${more}</span>`;
 }
 
 // Test emojis for prototypes/projects (the user will rename to real ones later). A
@@ -3977,7 +4001,7 @@ function renderRootIndex(opportunities) {
           <a class="card-cover-link" href="${oppPath}" aria-label="Open ${titleCase(opp.name)}"></a>
           ${preview(coverSrc, cover && cover.poster)}
           <div class="opp-meta">
-            <div class="opp-name-row"><div class="proto-name">${titleCase(opp.name)}</div>${researchTag(opp.research)}</div>
+            <div class="opp-name-row"><div class="proto-name">${titleCase(opp.name)}</div>${facePile(opp.people)}</div>
             <div class="proto-date">${plural(opp.prototypes.length, "prototype")} &middot; <span title="${fmtDate(opp.mtimeMs)}">${relTime(opp.mtimeMs)}</span></div>
           </div>
         </div>`;
