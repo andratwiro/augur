@@ -338,7 +338,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.99";
+const UI_VERSION = "1.00";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -2067,29 +2067,54 @@ const NAV_CSS = `
       font-size: 17px; line-height: 1; cursor: pointer;
     }
     .gvsearch__clear:hover { background: rgba(16,17,26,0.08); color: #16171a; }
-    /* Global-finder popover (chromeScript renders it under the search field). */
-    .gvsearch-pop {
-      /* Fixed + JS-anchored to the field: the rail clips overflow, and results
-         deserve more width than the rail gives (see grender in chromeScript). */
-      position: fixed; width: min(360px, calc(100vw - 24px)); z-index: 80;
-      background: #fff; border: 1px solid rgba(16,17,26,0.1); border-radius: 12px;
-      box-shadow: 0 16px 40px -12px rgba(16,24,40,0.28), 0 2px 8px rgba(16,24,40,0.08);
-      padding: 5px; max-height: min(420px, 60vh); overflow: auto;
+    /* Global-finder results — a card grid over the content pane, right of the rail
+       (chromeScript positions .gvfind's left edge at the rail's right edge). Poster
+       thumbs where the folder grids have them; glyph tiles otherwise. Self-contained
+       styling so it renders identically on shell AND gallery pages. */
+    .gvfind {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 70; overflow-y: auto;
+      background: #f7f8fb; padding: 24px 28px 40px;
+      font: 500 13px/1.4 "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #16171a;
     }
-    .gvsearch-row {
-      display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 9px;
-      border: 0; background: none; border-radius: 8px; font: inherit; font-size: 13px;
-      color: #16171a; cursor: pointer; text-align: left;
+    .gvfind__head { display: flex; align-items: baseline; gap: 10px; font-size: 16px; font-weight: 600; margin: 0 0 18px; }
+    .gvfind__count {
+      font-size: 12px; font-weight: 560; color: #6b7280; background: #eef0f4;
+      border: 1px solid rgba(16,17,26,0.08); border-radius: 999px; padding: 1px 8px;
     }
-    .gvsearch-row.is-act, .gvsearch-row:hover { background: #eef0fb; }
-    .gvsearch-row__t { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 550; }
-    .gvsearch-row__t b { color: #4650c9; font-weight: 700; }
-    .gvsearch-row__g { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #8a9098; font-size: 12px; }
-    .gvsearch-row__y {
+    .gvfind__hint { margin-left: auto; font-size: 11.5px; font-weight: 450; color: #9aa0aa; }
+    .gvfind__empty { color: #8a9098; }
+    .gvfind__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+    .gvfind-card {
+      display: block; background: #fff; border: 1px solid rgba(16,17,26,0.09); border-radius: 12px;
+      overflow: hidden; text-decoration: none; color: inherit;
+      transition: box-shadow .16s ease, transform .16s ease, border-color .16s ease;
+    }
+    .gvfind-card:hover, .gvfind-card.is-act {
+      border-color: rgba(94,106,210,0.5); transform: translateY(-2px);
+      box-shadow: 0 14px 32px -16px rgba(16,24,40,0.32), 0 0 0 1px rgba(94,106,210,0.18);
+    }
+    .gvfind-card__prev {
+      aspect-ratio: 16 / 10; background-color: #eef0f4; background-size: cover;
+      background-position: top center; border-bottom: 1px solid rgba(16,17,26,0.06);
+    }
+    .gvfind-card__prev--glyph { display: grid; place-items: center; font-size: 36px;
+      background-image: radial-gradient(circle, rgba(16,17,26,0.10) 1px, transparent 1.3px); background-size: 16px 16px; }
+    .gvfind-card__prev--live { position: relative; overflow: hidden; }
+    .gvfind-card__prev--live iframe {
+      position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0;
+      transform-origin: top left; pointer-events: none;
+    }
+    .gvfind-card__meta { padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+    .gvfind-card__t { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gvfind-card__t b { color: #4650c9; font-weight: 700; }
+    .gvfind-card__sub { display: flex; align-items: center; gap: 6px; color: #8a9098; font-size: 11.5px; min-width: 0; }
+    .gvfind-card__sub > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gvfind-card__dot { flex: none; }
+    .gvfind-chip {
       flex: none; font-size: 10px; font-weight: 650; letter-spacing: 0.03em; text-transform: uppercase;
       color: #8a9098; background: #f1f2f5; border-radius: 5px; padding: 2px 6px;
     }
-    .gvsearch-pop__empty { padding: 10px 11px; color: #8a9098; font-size: 12.5px; }
     .gvsearch kbd {
       position: absolute; right: 9px; top: 50%; transform: translateY(-50%);
       min-width: 17px; height: 18px; padding: 0 5px; display: grid; place-items: center;
@@ -2657,7 +2682,7 @@ function chromeScript() {
     // field. The page-filter above keeps working behind it. Loaded lazily on the
     // first real query, once per page view.
     var box = input.closest('.gvsearch');
-    var pop=null, gidx=null, gloadP=null, gact=0, gres=[];
+    var gidx=null, gloadP=null, gact=0, gres=[];
     function gfetch(url){ return fetch(url,{headers:{'Accept':'application/json'}}).then(function(r){ if(!r.ok) throw 0; return r.json(); }); }
     function gload(){
       if(gloadP) return gloadP;
@@ -2707,14 +2732,23 @@ function chromeScript() {
       }
       return out;
     }
-    function ghide(){ if(pop) pop.hidden=true; gres=[]; }
+    // Results render as a CARD GRID over the content pane (right of the rail) —
+    // poster thumbnails where the card grids have them, glyph tiles otherwise —
+    // so searching feels like browsing a folder, not reading a menu.
+    var GLYPH={Canvas:'\\uD83D\\uDDFA\\uFE0F',Playground:'\\uD83D\\uDEDD',Folder:'\\uD83D\\uDCC1',Prototype:'\\uD83E\\uDDEA',Page:'\\uD83D\\uDCC4',Component:'\\uD83E\\uDDE9',Index:'\\uD83D\\uDDC2\\uFE0F'};
+    function ghide(){ if(pane) pane.hidden=true; gres=[]; }
+    var pane=null;
+    function gpane(){
+      if(pane) return pane;
+      pane=document.createElement('div'); pane.className='gvfind'; pane.hidden=true; document.body.appendChild(pane);
+      pane.addEventListener('click', function(e){ var a=e.target.closest('[data-gu]'); if(a){ e.preventDefault(); location.href=a.getAttribute('data-gu'); } });
+      return pane;
+    }
     function grender(q){
-      if(!box) return;
-      if(!pop){
-        pop=document.createElement('div'); pop.className='gvsearch-pop'; pop.hidden=true; box.appendChild(pop);
-        pop.addEventListener('click', function(e){ var b=e.target.closest('[data-gu]'); if(b) location.href=b.getAttribute('data-gu'); });
-        pop.addEventListener('pointerdown', function(e){ e.preventDefault(); }); // keep the input focused
-      }
+      gpane();
+      var side=document.querySelector('.gvside');
+      var edge = side ? side.getBoundingClientRect().right : 0;
+      pane.style.left = Math.max(0, edge) + 'px';
       gres=[];
       (gidx||[]).forEach(function(e){
         var m = fz(q, e.t);
@@ -2723,24 +2757,37 @@ function chromeScript() {
         else if(mg) gres.push({ e:e, s:mg.s, p:[] });
       });
       gres.sort(function(a,b){ return b.s-a.s || a.e.t.localeCompare(b.e.t); });
-      gres = gres.slice(0,12); gact=0;
-      var rct = input.getBoundingClientRect();
-      pop.style.left = rct.left + 'px'; pop.style.top = (rct.bottom + 6) + 'px';
-      if(!gres.length){ pop.innerHTML='<div class="gvsearch-pop__empty">No matches in this space</div>'; pop.hidden=false; return; }
-      pop.innerHTML = gres.map(function(r,i){
-        return '<button type="button" class="gvsearch-row'+(i===gact?' is-act':'')+'" data-gu="'+String(r.e.u).replace(/"/g,'&quot;')+'">'+
-          '<span class="gvsearch-row__t">'+ghtml(r.e.t, r.p)+'</span>'+
-          (r.e.g?'<span class="gvsearch-row__g">'+ghtml(String(r.e.g),[])+'</span>':'')+
-          '<span class="gvsearch-row__y">'+ghtml(String(r.e.y),[])+'</span></button>';
-      }).join('');
-      pop.hidden=false;
+      gres = gres.slice(0,24); gact=0;
+      var head='<div class="gvfind__head">Results<span class="gvfind__count">'+gres.length+'</span><span class="gvfind__hint">\\u2191\\u2193 to pick \\u00b7 Enter to open \\u00b7 Esc to close</span></div>';
+      if(!gres.length){ pane.innerHTML=head+'<div class="gvfind__empty">No matches in this space</div>'; pane.hidden=false; return; }
+      // Preview priority: poster thumb → live scaled iframe (same fallback the folder
+      // grids use) → glyph tile. Canvases stay glyphs: a hidden engine iframe would
+      // join the board's multiplayer room as a ghost presence.
+      var LIVE={Prototype:1,Playground:1,Page:1,Component:1,Folder:1};
+      pane.innerHTML = head+'<div class="gvfind__grid">'+gres.map(function(r,i){
+        var u=String(r.e.u).replace(/"/g,'&quot;');
+        var prev;
+        if(r.e.th) prev='<div class="gvfind-card__prev" style="background-image:url(&quot;'+String(r.e.th).replace(/"/g,'&quot;')+'&quot;)"></div>';
+        else if(LIVE[r.e.y]) prev='<div class="gvfind-card__prev gvfind-card__prev--live"><iframe src="'+u+'" loading="lazy" title="" aria-hidden="true" tabindex="-1" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe></div>';
+        else prev='<div class="gvfind-card__prev gvfind-card__prev--glyph">'+(GLYPH[r.e.y]||GLYPH.Prototype)+'</div>';
+        return '<a class="gvfind-card'+(i===gact?' is-act':'')+'" href="'+u+'" data-gu="'+u+'">'+prev+
+          '<div class="gvfind-card__meta"><span class="gvfind-card__t">'+ghtml(r.e.t, r.p)+'</span>'+
+          '<span class="gvfind-card__sub">'+(r.e.g?ghtml(String(r.e.g),[])+'<span class="gvfind-card__dot">\\u00b7</span>':'')+
+          '<span class="gvfind-chip">'+ghtml(String(r.e.y),[])+'</span></span></div></a>';
+      }).join('')+'</div>';
+      pane.hidden=false; pane.scrollTop=0;
+      // Scale each live iframe to its card (1280-wide virtual viewport, house rule).
+      [].forEach.call(pane.querySelectorAll('.gvfind-card__prev--live'), function(pv){
+        var f=pv.querySelector('iframe');
+        if(f) f.style.transform='scale('+(pv.clientWidth/1280)+')';
+      });
     }
     function gmove(d){
-      if(!pop || pop.hidden || !gres.length) return;
+      if(!pane || pane.hidden || !gres.length) return;
       gact=(gact+d+gres.length)%gres.length;
-      var rows=pop.querySelectorAll('.gvsearch-row');
-      [].forEach.call(rows, function(r,i){ r.classList.toggle('is-act', i===gact); });
-      if(rows[gact] && rows[gact].scrollIntoView) rows[gact].scrollIntoView({block:'nearest'});
+      var cards=pane.querySelectorAll('.gvfind-card');
+      [].forEach.call(cards, function(r,i){ r.classList.toggle('is-act', i===gact); });
+      if(cards[gact] && cards[gact].scrollIntoView) cards[gact].scrollIntoView({block:'nearest'});
     }
     input.addEventListener('input', function(){
       var q=input.value.trim();
@@ -2750,11 +2797,11 @@ function chromeScript() {
     input.addEventListener('keydown', function(e){
       if(e.key==='ArrowDown'){ e.preventDefault(); gmove(1); }
       else if(e.key==='ArrowUp'){ e.preventDefault(); gmove(-1); }
-      else if(e.key==='Enter'){ if(pop && !pop.hidden && gres[gact]){ e.preventDefault(); location.href=gres[gact].e.u; } }
+      else if(e.key==='Enter'){ if(pane && !pane.hidden && gres[gact]){ e.preventDefault(); location.href=gres[gact].e.u; } }
       else if(e.key==='Escape'){ ghide(); }
     });
     input.addEventListener('focus', function(){ var q=input.value.trim(); if(q.length>=2){ gload().then(function(){ grender(q); }); } });
-    document.addEventListener('pointerdown', function(e){ if(pop && !pop.hidden && box && !box.contains(e.target)) ghide(); }, true);
+    if(clear) clear.addEventListener('click', ghide);
   }
 
   // ── Mobile rail drawer (hamburger + scrim) ───────────────────────────────
@@ -4919,16 +4966,17 @@ async function buildSpace(space) {
     if (patterns.length) idx.push({ t: "Patterns", y: "Index", u: S("/patterns/") });
     if (DS.prefix) idx.push({ t: "Primitives", y: "Index", u: S("/primitives/") }, { t: "Tokens", y: "Index", u: S("/tokens/") });
     for (const opp of opportunities) {
-      idx.push({ t: titleCase(opp.name), y: "Folder", u: S(`/${encodeURIComponent(opp.name)}/`) });
+      const cover = opp.prototypes[0];
+      idx.push({ t: titleCase(opp.name), y: "Folder", u: S(`/${encodeURIComponent(opp.name)}/`), ...(cover && cover.poster ? { th: S(`/${encodeURIComponent(opp.name)}/${cover.href}preview.webp`) } : {}) });
       for (const p of opp.prototypes)
-        idx.push({ t: titleCase(p.name), y: "Prototype", g: titleCase(opp.name), u: S(`/${encodeURIComponent(opp.name)}/${p.href}`), k: `${SPACE_KEY}${opp.name}/${p.name}` });
+        idx.push({ t: titleCase(p.name), y: "Prototype", g: titleCase(opp.name), u: S(`/${encodeURIComponent(opp.name)}/${p.href}`), k: `${SPACE_KEY}${opp.name}/${p.name}`, ...(p.poster ? { th: S(`/${encodeURIComponent(opp.name)}/${p.href}preview.webp`) } : {}) });
     }
     for (const p of playground)
-      idx.push({ t: titleCase(p.name), y: "Playground", u: S(`/playground/${p.href}`), k: `${SPACE_KEY}playground/${p.name}` });
+      idx.push({ t: titleCase(p.name), y: "Playground", u: S(`/playground/${p.href}`), k: `${SPACE_KEY}playground/${p.name}`, ...(p.poster ? { th: S(`/playground/${p.href}preview.webp`) } : {}) });
     for (const p of pages)
-      idx.push({ t: titleCase(p.name), y: "Page", ...(p.surface ? { g: p.surface } : {}), u: S(`/pages/${p.href}`), k: `${SPACE_KEY}pages/${p.name}` });
+      idx.push({ t: titleCase(p.name), y: "Page", ...(p.surface ? { g: p.surface } : {}), u: S(`/pages/${p.href}`), k: `${SPACE_KEY}pages/${p.name}`, ...(p.poster ? { th: S(`/pages/${p.href}preview.webp`) } : {}) });
     for (const c of components)
-      idx.push({ t: titleCase(c.name), y: "Component", u: S(`/components/${c.href}`), k: `${SPACE_KEY}components/${c.name}` });
+      idx.push({ t: titleCase(c.name), y: "Component", u: S(`/components/${c.href}`), k: `${SPACE_KEY}components/${c.name}`, ...(c.poster ? { th: S(`/components/${c.href}preview.webp`) } : {}) });
     await fs.writeFile(path.join(DIST_SPACE, "__search.json"), JSON.stringify(idx), "utf8");
   }
 
@@ -5068,9 +5116,21 @@ async function main() {
   if (!stampedWorker.includes("const RESTRICTED_BASES = [];")) {
     throw new Error("build: RESTRICTED_BASES placeholder not found in src/_worker.js");
   }
-  const sealedWorker = stampedWorker.replace(
+  let sealedWorker = stampedWorker.replace(
     "const RESTRICTED_BASES = [];",
     `const RESTRICTED_BASES = ${JSON.stringify(restrictedBases)};`
+  );
+  // Worker-served canvas loaders (created canvases) must carry the SAME overlay
+  // tags a built prototype gets injected — the review overlay (C-to-comment,
+  // Shift+C provenance) and any addon tags — or those features silently die on
+  // exactly the boards the New-canvas button makes. addonHtml appends the addon's
+  // tag when the addon is present, mirroring the copied-prototype pipeline.
+  if (!sealedWorker.includes('const CANVAS_LOADER_EXTRAS = "";')) {
+    throw new Error("build: CANVAS_LOADER_EXTRAS placeholder not found in src/_worker.js");
+  }
+  sealedWorker = sealedWorker.replace(
+    'const CANVAS_LOADER_EXTRAS = "";',
+    `const CANVAS_LOADER_EXTRAS = ${JSON.stringify(addonHtml(reviewTag()))};`
   );
   // Deploy knobs → worker (same injection model, presence-checked): the gate-exempt
   // skill-asset prefixes (from the DEFAULT space's detected UI skill — root paths
