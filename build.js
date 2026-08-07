@@ -338,7 +338,7 @@ function prependTitleEmoji(html, emoji) {
 // build.js shell/CSS, the index pages, or features like carousel/comments/download.
 // Do NOT bump it for changes inside individual prototypes; their content is
 // versioned by their own modified date, not this number.
-const UI_VERSION = "0.95";
+const UI_VERSION = "0.96";
 
 // One id per build (ms timestamp). Baked into every page's live-reload poller AND
 // into the worker's /__version endpoint, so a fresh deploy = a new id = open tabs
@@ -1271,6 +1271,24 @@ const PAGE_CSS = `
       background: var(--bg-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px;
     }
     .folderbar__rule { flex: 1; height: 0; border-top: 1px dashed var(--line-2); margin-left: 2px; }
+    /* "+ New canvas" folderbar action — hidden until NEWCANVAS_JS confirms a
+       signed-in user (or an open/no-identity build). */
+    .folderbar__new {
+      flex: none; font: inherit; font-size: 12.5px; font-weight: 550; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px;
+      border: 1px solid var(--line-2); border-radius: 999px; background: transparent; color: var(--muted);
+      transition: background .12s ease, border-color .12s ease, color .12s ease;
+    }
+    .folderbar__new:hover { background: var(--card-hover); border-color: var(--accent); color: var(--fg); }
+    .folderbar__new:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .folderbar__new svg { width: 13px; height: 13px; }
+    /* Created-canvas cards (injected by NEWCANVAS_JS from the /__canvases KV map):
+       no poster/iframe to show, so the preview is a dotted whiteboard ghost. */
+    .preview--canvas {
+      display: grid; place-items: center; font-size: 40px;
+      background-image: radial-gradient(circle, var(--line-2) 1px, transparent 1.4px);
+      background-size: 16px 16px;
+    }
     .empty { color: var(--muted); }
 
     /* Research/context surface — quiet gated metadata (count + filenames). Colour stays
@@ -2212,6 +2230,17 @@ const IC_STAR = `<svg class="pin-star" viewBox="0 0 24 24" fill="none" stroke="c
 // A "pin to sidebar" star button for a pinnable card. PINS_JS reads/sets state.
 function pinStar(key, href) {
   return `<button type="button" class="pin-btn" data-pin-key="${key}" data-pin-href="${href}" aria-pressed="false" aria-label="Pin to sidebar" title="Pin to sidebar">${IC_STAR}</button>`;
+}
+
+const IC_PLUS = ic(`<path d="M12 5v14"/><path d="M5 12h14"/>`); // plus
+
+// "+ New canvas" — folderbar action on Playground and each project folder. A canvas
+// needs no repo scaffold to be born: the button registers <dir><slug>/ in the
+// /__canvases KV map and the worker serves the standard canvas loader there (see
+// canvasesApi in src/_worker.js). Hidden until NEWCANVAS_JS confirms a signed-in
+// user (or an open/no-identity build).
+function newCanvasBtn(dir) {
+  return `<button type="button" class="folderbar__new" data-new-canvas="${dir}" hidden>${IC_PLUS}New canvas</button>`;
 }
 
 // A small avatar for whoever the prototype mostly belongs to (build's
@@ -3369,6 +3398,79 @@ const PROFILE_JS = `(function(){
 })();
 `;
 
+// "New canvas" behaviour — the folderbar button + the cards for canvases created
+// that way. A created canvas is a worker-served loader page registered in the
+// /__canvases KV map (no repo file until someone materializes the folder — see
+// canvasesApi in src/_worker.js). This block (1) reveals the button once /__me
+// confirms a signed-in user (or an open/no-identity build), (2) creates + navigates
+// on click, and (3) appends a card for each canvas registered under this folder so
+// created boards stay findable. KV-frugal: one /__canvases GET per page view.
+const NEWCANVAS_JS = `
+(function(){
+  var btn = document.querySelector('[data-new-canvas]');
+  if(!btn) return;
+  var dir = btn.getAttribute('data-new-canvas');
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function rel(t){
+    var s = Math.max(0, (Date.now() - t) / 1000);
+    if(s < 60) return 'just now';
+    if(s < 3600) return Math.round(s/60) + ' min ago';
+    if(s < 86400) return Math.round(s/3600) + ' hours ago';
+    return Math.round(s/86400) + ' days ago';
+  }
+  fetch('/__me',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();})
+    .then(function(d){ if(d && (d.user || d.accounts === false)) btn.hidden = false; }).catch(function(){});
+  btn.addEventListener('click', function(){
+    var name = prompt('Name the new canvas:');
+    if(!name || !name.trim()) return;
+    btn.disabled = true;
+    fetch('/__canvases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dir:dir,name:name.trim()})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d && d.path && !d.error){ location.href = d.path; return; }
+        btn.disabled = false;
+        if(d && d.error === 'exists' && d.path){ if(confirm('Something already lives at that name. Open it?')) location.href = d.path; }
+        else alert('Could not create the canvas.');
+      })
+      .catch(function(){ btn.disabled = false; alert('Could not create the canvas.'); });
+  });
+  var grid = document.querySelector('[data-fgroup] .opp-grid, [data-fgroup] .page-grid');
+  if(!grid) return;
+  fetch('/__canvases',{headers:{'Accept':'application/json'}}).then(function(r){return r.json();})
+    .then(function(d){
+      var map = (d && d.map) || {};
+      var mine = Object.keys(map).filter(function(p){
+        return p.indexOf(dir) === 0 && p.length > dir.length && p.slice(dir.length, -1).indexOf('/') === -1;
+      }).sort(function(a,b){ return (map[a].t||0) - (map[b].t||0); });
+      if(!mine.length) return;
+      mine.forEach(function(p){
+        var e = map[p] || {};
+        var card = document.createElement('div');
+        card.className = 'card-opp card-canvas';
+        card.setAttribute('data-fitem','');
+        card.setAttribute('data-fkey', e.name || p);
+        card.innerHTML =
+          '<a class="card-cover-link" href="' + esc(p) + '" aria-label="Open ' + esc(e.name || 'canvas') + '"></a>' +
+          '<div class="preview preview--canvas" aria-hidden="true">\\uD83D\\uDDFA\\uFE0F</div>' +
+          '<div class="preview-actions"><button type="button" class="btn-icon" data-canvas-remove="' + esc(p) + '" title="Remove canvas" aria-label="Remove canvas">&times;</button></div>' +
+          '<div class="proto-meta"><div class="proto-text">' +
+            '<div class="proto-name">\\uD83D\\uDDFA\\uFE0F ' + esc(e.name || p) + '</div>' +
+            '<div class="proto-date">Canvas' + (e.t ? ' \\u00b7 ' + rel(e.t) : '') + '</div>' +
+          '</div></div>';
+        grid.appendChild(card);
+      });
+      grid.addEventListener('click', function(ev){
+        var rm = ev.target.closest && ev.target.closest('[data-canvas-remove]');
+        if(!rm) return;
+        ev.preventDefault(); ev.stopPropagation();
+        var p = rm.getAttribute('data-canvas-remove');
+        if(!confirm('Remove this canvas card? Its board content stays in KV \\u2014 recreating the same name brings it back.')) return;
+        fetch('/__canvases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p,remove:true})})
+          .then(function(){ var c = rm.closest('.card-canvas'); if(c) c.remove(); }).catch(function(){});
+      });
+    }).catch(function(){});
+})();`;
+
 // Space switcher behaviour — open/close the dropdown (the chip + rows are server-rendered,
 // each row a plain <a> to the space's base URL, so switching is just navigation). The
 // Create-new entry is a stub: spaces are REPOS (one repo per space, mounted as Augur
@@ -3626,6 +3728,8 @@ function shell({ title, body, back, activeTab = "prototypes", wrapClass = "" }) 
   </script>
   <script>${PROFILE_JS}
   </script>
+  <script>${NEWCANVAS_JS}
+  </script>
   <script>${SPACE_JS}
   </script>
   <script>${RESEARCH_JS}
@@ -3745,7 +3849,7 @@ function renderOpportunityIndex(opp) {
     title: titleCase(opp.name),
     activeTab: opp.name,
     wrapClass: "wrap--wide",
-    body: `<header class="folderbar"><a class="folderbar__up" href="${S("/")}" aria-label="All ${PROJECTS_LABEL.toLowerCase()}" title="All ${PROJECTS_LABEL.toLowerCase()}"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span>${researchChip(opp.research)}</header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
+    body: `<header class="folderbar"><a class="folderbar__up" href="${S("/")}" aria-label="All ${PROJECTS_LABEL.toLowerCase()}" title="All ${PROJECTS_LABEL.toLowerCase()}"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a><h1 class="folderbar__title">${titleCase(opp.name)}</h1><span class="folderbar__count">${opp.prototypes.length}</span><span class="folderbar__rule"></span>${researchChip(opp.research)}${newCanvasBtn(S(`/${opp.name}/`))}</header><div data-fgroup><div class="page-grid is-3up">${cards}</div></div>${filterEmpty()}`,
   });
 }
 
@@ -3790,7 +3894,7 @@ function renderPlaygroundIndex(projects) {
     title: "Playground",
     activeTab: "playground",
     wrapClass: "wrap--wide",
-    body: `<header class="folderbar"><h1 class="folderbar__title">Playground</h1><span class="folderbar__count">${projects.length}</span><span class="folderbar__rule"></span></header><div data-fgroup><div class="opp-grid">${cards}</div></div>${filterEmpty()}`,
+    body: `<header class="folderbar"><h1 class="folderbar__title">Playground</h1><span class="folderbar__count">${projects.length}</span><span class="folderbar__rule"></span>${newCanvasBtn(S("/playground/"))}</header><div data-fgroup><div class="opp-grid">${cards}</div></div>${filterEmpty()}`,
   });
 }
 

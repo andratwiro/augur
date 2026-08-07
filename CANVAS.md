@@ -336,10 +336,40 @@ intercepted by a page (macOS Chrome is free — inspect element is ⌘⌥C).
 
 - **Engine is a shared Augur asset**, never baked per-canvas — a canvas is a *capability*;
   instances stay 12-line loaders and every board upgrades centrally.
-- **Creation is agent-scaffolds-the-file** (copy the loader folder); no in-app "New canvas"
-  button (spaces/files are repos — creation is a terminal act, like everything else here).
+- **Creation has two doors** (revised 2026-08-07 — was "no in-app button"). The repo way:
+  agent scaffolds the loader folder (copy it, commit, push) — still how a canvas becomes a
+  *published, public-linkable* prototype. The in-app way: the "＋ New canvas" folderbar
+  button on Playground and every project folder, for signed-in users — see "Created
+  canvases" below. Both serve the same engine and keep their contents in the same
+  /__board doc.
 - **Multiple canvases per opportunity** is normal. Tile-add is the insert **picker**.
 - Still genuinely open: connectors that snap to nodes · frames/groups · voting/timers.
+
+## Created canvases (the in-app "＋ New canvas" button, 2026-08-07)
+
+A canvas needs no repo scaffold to be *born*: the loader is 12 generic lines and the
+contents live in KV anyway. So folder index pages (Playground + each project folder)
+carry a "＋ New canvas" folderbar button — signed-in users only (`/__me` reveals it) —
+that registers `<dir><slug>/` in the `canvases` KV map via **`POST /__canvases`**
+`{dir, name}` and navigates there. The worker serves the standard loader at any
+registered path (404 fallthrough in the authed branch — `virtualCanvas` in
+`src/_worker.js`), so the page exists the moment it's named. `NEWCANVAS_JS` (build.js)
+also appends a card per registered canvas under the current folder, with a remove
+button (`POST /__canvases {path, remove:true}` — the board doc is left in KV, so
+recreating the same name restores the board).
+
+The limits, by design:
+
+- **Created canvases ride the login gate.** They're not in the build-time
+  `PUBLIC_PREFIXES`, so there is no public share link until someone **materializes**
+  the board: commit the 12-line loader at the matching repo path (e.g.
+  `playground/<slug>/index.html` or `<folder>/prototypes/<slug>/index.html`) and
+  remove the registry entry once it ships. Contents carry over untouched — the
+  board doc is keyed by URL, and the URL doesn't change.
+- **Creation refuses to shadow shipped files** (any non-404 at the target URL) and
+  refuses the site root; dirs are slug-segment paths only.
+- The registry is one KV key (`canvases`), same frugal pattern as statuses/names:
+  one get per folder-page view (and one per 404 — real page loads never pay for it).
 
 ## The plumbing (what's where)
 

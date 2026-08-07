@@ -953,6 +953,111 @@ async function nameApi(request, url, env) {
   return jsonResponse({ error: "method-not-allowed" }, 405);
 }
 
+// ---- Created canvases (KV-backed, single key) -------------------------------
+// "New canvas" from a folder index: registers a board at <dir><slug>/ in one shared
+// { "<path>": {name, by, t} } map (same frugal one-key pattern as statuses/names).
+// The worker then SERVES the standard canvas loader at that path (virtualCanvas
+// below) — no repo file exists until someone materializes the folder, so until then
+// the page rides the login gate (created boards are team scratch, not public share
+// links). Board CONTENTS live where every canvas keeps them: the /__board doc for
+// that URL — so materializing later is just committing the 12-line loader.
+const CANVASES_KEY = "canvases";
+// A creatable dir is one or more lowercase slug segments ("/playground/",
+// "/<folder>/", "/<space>/<folder>/") — never the site root.
+const CANVAS_DIR_RE = /^\/(?:[a-z0-9-]+\/)+$/;
+
+async function canvasesApi(request, url, env, me) {
+  const kv = kvFor(env);
+  if (!kv) return jsonResponse({ map: {}, warning: "no-kv-binding" });
+
+  if (request.method === "GET") {
+    const raw = await kv.get(CANVASES_KEY);
+    return jsonResponse({ map: raw ? JSON.parse(raw) : {} });
+  }
+  if (request.method === "POST") {
+    let op;
+    try { op = await request.json(); } catch (e) { return jsonResponse({ error: "bad-json" }, 400); }
+    const raw = await kv.get(CANVASES_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+
+    if (op && op.remove) {
+      const path = clamp(op.path, 300);
+      if (!map[path]) return jsonResponse({ error: "not-found" }, 404);
+      // The board doc (board:<path>) is left in KV on purpose — recreating the same
+      // name restores the board, so a mis-click never destroys anyone's work.
+      delete map[path];
+      await kv.put(CANVASES_KEY, JSON.stringify(map));
+      return jsonResponse({ map });
+    }
+
+    const dir = clamp(op && op.dir, 200);
+    const name = clamp(op && op.name, 80).trim();
+    if (!name || !CANVAS_DIR_RE.test(dir)) return jsonResponse({ error: "bad-input" }, 400);
+    const slug = name.toLowerCase().replace(/['’]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+    if (!slug) return jsonResponse({ error: "bad-input" }, 400);
+    const path = dir + slug + "/";
+    if (map[path]) return jsonResponse({ error: "exists", path }, 409);
+    // Never shadow a real shipped file at the same URL (any non-404, incl. redirects).
+    const asset = await env.ASSETS.fetch(new Request(new URL(path, url).toString()));
+    if (asset.status !== 404) return jsonResponse({ error: "exists", path }, 409);
+    map[path] = { name, by: me ? me.email : "", t: Date.now() };
+    await kv.put(CANVASES_KEY, JSON.stringify(map));
+    return jsonResponse({ map, path });
+  }
+  return jsonResponse({ error: "method-not-allowed" }, 405);
+}
+
+// The same loader a repo canvas folder carries — the page just names the board and
+// mounts the shared /__canvas/ engine; contents persist to /__board keyed by URL.
+function canvasLoaderPage(name) {
+  const title = String(name).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const boot = JSON.stringify({ name: String(name) }).replace(/</g, "\\u003c");
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="description" content="Live canvas board (${title}): created from the folder page; its content lives in the board doc at /__board" />
+<title>${title}</title>
+<link rel="stylesheet" href="/__canvas/canvas.css" />
+<script>window.GV_CANVAS = ${boot};</script>
+</head>
+<body>
+<script src="/__canvas/canvas.js" defer></script>
+</body>
+</html>`;
+}
+
+// Serve a registered created-canvas path (null when the path isn't one). Called only
+// on asset 404s, so the extra kv.get never taxes a real page load. Bare
+// "/dir/slug" redirects to the trailing-slash form — the board doc and the room are
+// keyed by the page's URL path, and two spellings must not split one board in two.
+async function virtualCanvas(request, env, url) {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  const kv = kvFor(env);
+  if (!kv) return null;
+  let p = url.pathname;
+  if (p.endsWith("/index.html")) p = p.slice(0, -"index.html".length);
+  const normalized = p.endsWith("/") ? p : p + "/";
+  if (!CANVAS_DIR_RE.test(normalized)) return null;
+  const raw = await kv.get(CANVASES_KEY);
+  if (!raw) return null;
+  const entry = JSON.parse(raw)[normalized];
+  if (!entry) return null;
+  if (url.pathname !== normalized && !url.pathname.endsWith("/index.html")) {
+    return Response.redirect(new URL(normalized, url).toString(), 301);
+  }
+  return new Response(canvasLoaderPage(entry.name), {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+    },
+  });
+}
+
 // ---- Canvas board documents (KV-backed, one key per canvas URL) -------------
 // Each canvas (a prototype that mounts the shared /__canvas/ engine) owns ONE board
 // document — nodes + view + name — keyed by its URL path, the same per-URL rail comments
@@ -1393,6 +1498,12 @@ export default {
       if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
       return nameApi(request, url, env);
     }
+    // Created-canvases registry — gated like /__status: any signed-in user (or anyone,
+    // in legacy/open mode) can create a board; the pages it serves are gated below.
+    if (url.pathname === "/__canvases") {
+      if (!authed) return jsonResponse({ error: "unauthorized" }, 401);
+      return canvasesApi(request, url, env, me);
+    }
     // Canvas board docs follow the COMMENTS model, not the status/pins model: a canvas is a
     // PUBLISHED prototype (public, obscure share link), so its board must load & save without a
     // login, exactly like /__review/api. Writes are full-state but size-capped in boardApi.
@@ -1437,10 +1548,15 @@ export default {
       return withAssetCache(withLiveReload(asset, url), url);
     }
 
-    // Past the gate (or nothing gates the site) → serve.
+    // Past the gate (or nothing gates the site) → serve. A 404 gets one more chance
+    // as a created canvas (a KV-registered board with no repo file — see canvasesApi).
     if (authed) {
       const asset = await env.ASSETS.fetch(request);
-      if (asset.status === 404) return notFoundResponse();
+      if (asset.status === 404) {
+        const virt = await virtualCanvas(request, env, url);
+        if (virt) return virt;
+        return notFoundResponse();
+      }
       return withAssetCache(withLiveReload(asset, url), url);
     }
 
